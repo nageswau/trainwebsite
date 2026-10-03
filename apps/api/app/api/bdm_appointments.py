@@ -1,0 +1,152 @@
+"""bdm-006 (DEC-SCOPE-063, spec §5.3): BDM appointments.
+
+Every `{appt_id}` resolves through `services.bdm_appointments.load_scoped` (out of scope = 404); every write is one transaction --
+scope, row lock (organization before appointment), validation, change, event, audit, one commit here. Lists are
+{items, total, limit, offset}, ordered by start time then id."""
+
+from datetime import date
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.bdm import LIMIT, OFFSET, SEARCH, _matching
+from app.api.deps import get_current_user
+from app.api.lookups import _pattern as like_pattern
+from app.core.database import get_db
+from app.models import BdmAppointment, BdmOrganization, User
+from app.schemas import (
+    BDM_APPOINTMENT_OPTIONAL_FIELDS,
+    BdmAppointmentCreate,
+    BdmAppointmentEnvelope,
+    BdmAppointmentPage,
+    BdmAppointmentStatus,
+    BdmAppointmentType,
+)
+from app.services import bdm_appointments as svc
+from app.services import bdm_organizations as org_svc
+from app.services.bdm import bdm_context
+
+router = APIRouter(prefix="/bdm/appointments", tags=["bdm-appointments"])
+ARCHIVED = "This organization is archived — restore it before booking"
+NOT_ASSIGNED = "Only the assigned BDM can book appointments for this organization"
+FOREIGN_CONTACT = "Choose a contact of this organization"
+
+
+async def _envelope(db: AsyncSession, user: User, appt: BdmAppointment, *, refresh: bool = True) -> dict:
+    return {"appointment": await svc.appointment_out(db, user, appt, refresh=refresh)}
+
+
+async def _contact_of(db: AsyncSession, org: BdmOrganization, contact_id: UUID):
+    """A contact of another organization is a bad choice in this form (422), not a missing resource."""
+    try:
+        return await org_svc.load_contact(db, org, contact_id)
+    except HTTPException:
+        raise HTTPException(422, FOREIGN_CONTACT) from None
+
+
+def _type_allowed(bdm_type: str, appointment_type: str) -> None:
+    if appointment_type not in svc.appointment_types(bdm_type):
+        raise HTTPException(422, f"This appointment type is not available for {bdm_type.capitalize()} BDMs")
+
+
+async def _check_overlap(db: AsyncSession, user: User, starts_at, duration: int, confirm: bool, exclude_id: UUID | None = None) -> int:
+    """A6: warn (409) unless acknowledged; returns the match count so the caller can audit the override."""
+    matches, total = await svc.find_overlaps(db, user.id, starts_at, duration, exclude_id)
+    if total and not confirm:
+        svc.log("bdm_appt_overlap_warned", user, exclude_id or "-", match_count=total)
+        raise svc.overlap_conflict(matches, total)
+    return total
+
+
+@router.get("", response_model=BdmAppointmentPage)
+async def list_appointments(
+    date_from: date | None = None,
+    date_to: date | None = None,
+    status: list[BdmAppointmentStatus] | None = Query(None),
+    appointment_type: BdmAppointmentType | None = None,
+    organization_id: UUID | None = None,
+    bdm_user_id: UUID | None = None,
+    q: str | None = SEARCH,
+    limit: int = LIMIT,
+    offset: int = OFFSET,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Filters are ANDed with the caller's scope, so they only narrow it (R-A10). One page query: organization + owner (no N+1)."""
+    filters = await svc.caller_filters(db, user)
+    if date_from and date_to and date_from > date_to:
+        raise HTTPException(422, "date_from must be on or before date_to")
+    if bdm_user_id is not None:
+        if user.role == "bdm":
+            raise HTTPException(422, "bdm_user_id is only for managers")
+        filters.append(BdmAppointment.bdm_user_id == bdm_user_id)
+    filters += svc.ist_bounds(date_from, date_to)
+    if status:
+        filters.append(BdmAppointment.status.in_(status))
+    if appointment_type:
+        filters.append(BdmAppointment.appointment_type == appointment_type)
+    if organization_id:
+        filters.append(BdmAppointment.organization_id == organization_id)
+    filters += _matching(like_pattern(q), BdmAppointment.code, BdmOrganization.name)
+    joined = BdmOrganization.id == BdmAppointment.organization_id
+    total = await db.scalar(select(func.count()).select_from(BdmAppointment).join(BdmOrganization, joined).where(*filters))
+    stmt = (
+        select(BdmAppointment, BdmOrganization, User)
+        .join(BdmOrganization, joined)
+        .join(User, User.id == BdmAppointment.bdm_user_id)
+        .where(*filters)
+        .order_by(BdmAppointment.starts_at, BdmAppointment.id)
+        .limit(limit)
+        .offset(offset)
+    )
+    rows = (await db.execute(stmt)).all()
+    return {"items": [svc.row_out(a, o, u) for a, o, u in rows], "total": total or 0, "limit": limit, "offset": offset}
+
+
+@router.post("", status_code=201, response_model=BdmAppointmentEnvelope)
+async def create_appointment(payload: BdmAppointmentCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """spec §5.5, in this order so each refusal is exactly one rule. Not idempotent: a retry meets the overlap warning (R-A5)."""
+    profile = await bdm_context(db, user)
+    org = await org_svc.load_scoped(db, user, payload.organization_id, lock=True)  # out of type scope -> 404; serializes with archive
+    if org.assigned_bdm_user_id != user.id:
+        raise HTTPException(403, NOT_ASSIGNED)
+    if org.archived_at is not None:
+        raise HTTPException(422, ARCHIVED)
+    contact = await _contact_of(db, org, payload.contact_id)
+    _type_allowed(profile.bdm_type, payload.appointment_type)
+    svc.require_future(payload.starts_at, await svc.db_now(db))
+    overlaps = await _check_overlap(db, user, payload.starts_at, payload.duration_minutes, payload.confirm_overlap)
+    appt = BdmAppointment(
+        code=await svc.next_code(db),
+        bdm_user_id=user.id,
+        organization_id=org.id,
+        starts_at=payload.starts_at,
+        duration_minutes=payload.duration_minutes,
+        appointment_type=payload.appointment_type,
+        status="scheduled",
+        **svc.snapshot(contact),
+        **{k: getattr(payload, k) for k in BDM_APPOINTMENT_OPTIONAL_FIELDS},
+    )
+    db.add(appt)
+    await db.flush()
+    svc.record(db, appt, user, None, "scheduled")
+    svc.audit(
+        db, user, "create", appt.id,
+        {
+            "code": appt.code, "organization_id": str(org.id), "appointment_type": appt.appointment_type, "starts_at": appt.starts_at.isoformat(),
+            "fields": sorted(k for k in BDM_APPOINTMENT_OPTIONAL_FIELDS if getattr(payload, k) is not None),
+        },
+    )
+    if overlaps:
+        svc.audit(db, user, "overlap_override", appt.id, {"match_count": overlaps})
+    await db.commit()
+    svc.log("bdm_appt_created", user, appt.id, organization_id=str(org.id), overlap_override=bool(overlaps))
+    return await _envelope(db, user, appt)
+
+
+@router.get("/{appt_id}", response_model=BdmAppointmentEnvelope)
+async def get_appointment(appt_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    appt = await svc.load_scoped(db, user, appt_id)
+    return await _envelope(db, user, appt, refresh=False)  # nothing was written
