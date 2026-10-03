@@ -116,7 +116,7 @@ Migration style follows `0068_bdm_trips.py`: CHECK constraints (no PG enums), "t
 - `BdmActivityOut`: `id`, `organization {id, code, name, org_type}`, `bdm {user_id, full_name}`, `contact_id`,
   `contact_name`, `contact_removed` (snapshot present, FK NULL), `channel`, `direction`, `occurred_at`, `note`,
   `created_at`, `updated_at`, `permissions {can_change}`.
-- `BdmActivityDayCounts`: `date`, `by_channel` (all six keys, 0 when none), `calls_made`, `organizations_contacted`.
+- `BdmActivityDayCounts`: `day` (the IST date; not `date`, which would shadow the type in Pydantic), `by_channel` (all six keys, 0 when none), `calls_made`, `organizations_contacted`.
 - `BdmActivityPage`: `items`, `total`, `limit`, `offset`; `BdmActivityDayPage` adds `counts: BdmActivityDayCounts`.
 
 ### 5.2 Service — new `app/services/bdm_activities.py`
@@ -201,7 +201,8 @@ Functions only; nothing commits. Reuses `services.bdm.bdm_context` / `require_ma
   more" by offset.
 - `BdmActivityCounts`: six channel tiles + "Calls made" + "Organizations contacted".
 - A write applies the returned activity locally (no `router.refresh`, avoiding bdm-010 QA10-16). On the activities pages a
-  write re-reads that day's page so the counts stay exact. A 403 / 409 shows the reason at the top and re-reads the item.
+  write re-reads that day's page so the counts stay exact. A 403 / 409 on edit or delete shows the reason and makes that item read-only (Edit / Delete hidden); a 404 removes it from the
+  list. There is no single-activity GET, so nothing is re-read.
 
 ### 6.4 States
 
