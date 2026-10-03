@@ -3,16 +3,68 @@
 Master only (the route refuses staff). Students count for their current owner (P1), selected by the day their agency record was
 created (P4). Read-only: nothing here writes, locks or commits."""
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import ColumnElement, Select, and_, case, distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import AgentOrgMember, User
+from app.models import AgentOrgMember, AgentStudent, OverseasApplication, User, VisaCase
+from app.services.agent_applications import WITHDRAWN
+from app.services.agent_dashboard import agency_applications, offer_clause, owner_join
+from app.services.agent_students import student_scope
 
 TABLE = ("students", "applications", "offers", "visa_applications", "visa_approvals", "enrollments")
 STAGES = ("students", "applications", "submitted", "offers", "visa", "enrolled")
 NONE = (0,) * 6
+
+
+def cohort(user: User, start: date | None, end: date | None) -> list[ColumnElement]:
+    """The caller's agency students (archived included), created within the inclusive UTC days when given (P4, spec §4.1)."""
+    where = list(student_scope(user))
+    if start:
+        where.append(AgentStudent.created_at >= datetime.combine(start, time.min, UTC))
+    if end:
+        where.append(AgentStudent.created_at < datetime.combine(end + timedelta(days=1), time.min, UTC))
+    return where
+
+
+def _visa_by_application():
+    """One row per application with a visa case, `approved` when any case is: a second case is not a second visa application."""
+    approved = func.bool_or(VisaCase.decision == "approved").label("approved")
+    return select(VisaCase.application_id, approved).group_by(VisaCase.application_id).subquery()
+
+
+def _from_cohort(user: User, start: date | None, end: date | None, visa, *columns) -> Select:
+    """Cohort students LEFT JOIN their agency applications (by `owner_join`, School-bridged rows excluded) and those applications'
+    visa summary, so a student with no application still counts as a student."""
+    return (
+        select(*columns)
+        .select_from(AgentStudent)
+        .outerjoin(OverseasApplication, and_(owner_join(), *agency_applications(user)))
+        .outerjoin(visa, visa.c.application_id == OverseasApplication.id)
+        .where(*cohort(user, start, end))
+    )
+
+
+async def table_counts(db: AsyncSession, user: User, start: date | None, end: date | None) -> dict:
+    """Per current owner (P1), AGN-018's G3 columns over the cohort (P5), each application once. Keyed by member id; None =
+    unassigned."""
+    visa = _visa_by_application()
+
+    def applications(condition):
+        return func.count(distinct(case((condition, OverseasApplication.id))))
+
+    stmt = _from_cohort(
+        user, start, end, visa,
+        AgentStudent.assigned_member_id,
+        func.count(distinct(case((AgentStudent.status == "active", AgentStudent.id)))),
+        applications(OverseasApplication.status != WITHDRAWN),
+        applications(offer_clause()),
+        applications(visa.c.application_id.is_not(None)),
+        applications(visa.c.approved.is_(True)),
+        applications(OverseasApplication.status == "enrolled"),
+    ).group_by(AgentStudent.assigned_member_id)
+    return {member_id: tuple(counts) for member_id, *counts in (await db.execute(stmt)).all()}
 
 
 def _counts(table: tuple, funnel: tuple) -> dict:
@@ -29,7 +81,7 @@ def _sum(parts: list[dict]) -> dict:
 
 async def performance(db: AsyncSession, user: User, start: date | None, end: date | None) -> dict:
     """The AGN-019 payload (spec §5.3). Rows (P6): every active staff member; a deactivated one only while they have counts."""
-    table: dict = {}
+    table = await table_counts(db, user, start, end)
     funnel: dict = {}
 
     def counts(key) -> dict:
