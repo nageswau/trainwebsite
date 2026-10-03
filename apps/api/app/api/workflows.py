@@ -2448,16 +2448,23 @@ def _report_date(value: str | None, name: str) -> date | None:
     raise HTTPException(422, f"{name} must be a date (YYYY-MM-DD)")
 
 
+def report_range(date_from: str | None, date_to: str | None) -> tuple[date | None, date | None]:
+    """An optional inclusive range of UTC days (AGN-014 R3; reused by AGN-019). Call it after the caller's guards, so a refused
+    caller never sees a 422."""
+    start, end = _report_date(date_from, "date_from"), _report_date(date_to, "date_to")
+    if start and end and end < start:
+        raise HTTPException(422, "date_to must be on or after date_from")
+    if end == date.max:  # the exclusive bound is the next day, which does not exist (a date input accepts 9999-12-31)
+        raise HTTPException(422, "date_to must be before 9999-12-31")
+    return start, end
+
+
 async def _commission_report_items(user: User, db: AsyncSession, date_from: str | None, date_to: str | None) -> tuple[list[dict], date | None, date | None]:
     """Guards first, then the dates (a refused caller never sees a 422), then one scoped read: a single snapshot for every
     breakdown. Days are inclusive UTC calendar days on the commission's created date (R3/R7)."""
     _require(user, {"agent"}, "overseas")
     _require_agent_master(user)
-    start, end = _report_date(date_from, "date_from"), _report_date(date_to, "date_to")
-    if start and end and end < start:
-        raise HTTPException(422, "date_to must be on or after date_from")
-    if end == date.max:  # the exclusive bound below is the next day, which does not exist (a date input accepts 9999-12-31)
-        raise HTTPException(422, "date_to must be before 9999-12-31")
+    start, end = report_range(date_from, date_to)
     query = (
         select(AgentCommission, OverseasApplication.intake, University.name, Country.name, func.coalesce(User.full_name, SchoolStudent.full_name))
         .select_from(AgentCommission)
