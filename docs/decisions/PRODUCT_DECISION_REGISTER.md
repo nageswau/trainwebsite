@@ -3277,3 +3277,43 @@ validation, the owner's full suites and an independent Codex review are pending.
 - **C16** Address is not in bdm-002 (bdm-003).
 
 **Consequences:** migration `0066_bdm_organizations` (two new tables + `bdm_organization_code_seq`; downgrade refuses while organizations exist); routes `GET/POST /bdm/organizations`, `GET/PATCH /bdm/organizations/{id}`, `POST /{id}/archive|restore|assign`, `POST /{id}/contacts`, `PATCH/DELETE /{id}/contacts/{cid}`; pages `/bdm/organizations[/new|/{id}]` and `/bdm/manager/organizations[/{id}]`. Unchanged: every existing route, table and page (the team route only gains optional filters). bdm-006 refuses appointments on archived organizations (its own AC6). A retention/erasure policy for BDM data stays **NEEDS_CONFIRMATION**. Design: `docs/superpowers/specs/2026-10-03-bdm-002-organization-crm-design.md`; plan: `docs/superpowers/plans/2026-10-03-bdm-002-organization-crm.md`. **New Feature ID authorized:** `bdm-002`.
+
+### DEC-SCOPE-061 — Agent student journey and complete history (`AGN-015`)
+
+**ID note:** drafted as `DEC-SCOPE-060` with migration `0066_audit_entity_index` (both free on `main` @ `e1c2084`); renumbered
+`DEC-SCOPE-061` on merging `main` @ `c5cdc8a`, where `060` is bdm-002 (PR #50) with `0066_bdm_organizations`; the migration is now
+`0067_audit_entity_index` after it (one head). AGN-015 commits from before this merge that say `060` / `0066` mean this decision /
+migration.
+
+**Question:** the owner's `AGN-015` statement (in-session, 2026-10-03): requirement **"Student Journey" (§4) and "View complete student
+history" (§2): Create → Counseling → Shortlist → Documents → Application → Offer → Deposit → Visa → Enrollment**; acceptance: **every
+event from the source items appears once, in order, with its actor; the step tracker matches the stored data.** Several steps keep only
+their current state (counseling, assignment, shortlist removals, deposit terms, visa stages): where do their events come from, how does
+a tracker show several applications, what does each step's completion mean, how are actors outside the agency shown, which events
+count, and in which order?
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2, §4 and §5 Steps 1–9 (the source's wording is not the
+approval; its §4 path omits Counseling, Shortlist and Deposit, which the owner's nine-step list includes). `AGENT_CRM_BACKLOG.md`
+ang-015 (`DERIVED_BLUEPRINT`; its "database impact: none" is superseded by J1). Graphify/codebase survey in the design spec §3.
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL` — the owner's answers, not the source document's wording):
+
+- **J1 — Event sources.** Steps with no history table are read from `audit_logs`; an index on `(entity_type, entity_id, created_at)`
+  is added for per-entity reads. Each event has exactly one source; audit rows that duplicate a status-history row, a document event or
+  the record itself are not events.
+- **J2 — Tracker.** Steps 1–4 (Create, Counseling, Shortlist, Documents) once for the student; steps 5–9 (Application, Offer, Deposit,
+  Visa, Enrollment) one row per in-scope application.
+- **J3 — Completion rules.** As the design spec §4 (states `not_started`, `in_progress`, `done`, `not_required`, `refunded`,
+  `refused`, `withdrawn`; a withdrawn application's unsettled steps read withdrawn).
+- **J4 — Actors.** Members of the viewer's agency by name; everyone else by a fixed role label (EduSphere counsellor / admin, Student,
+  Parent, University, System). No outside name or email leaves the server.
+- **J5 — Event kinds.** All journey changes, plus assignment and archive, tasks and follow-ups, and document downloads; not deposit
+  checkout starts; never commission events (Master-only, `DEC-SCOPE-051`).
+- **J6 — Order.** Newest first, paginated (20 per page; `limit` ≤ 100, `offset` ≤ 10 000).
+
+**Consequences:** migration `0067_audit_entity_index` (one index; no row read or written); a new read-only `services/agent_journey.py`;
+two GET routes (`…/crm/students/{id}/journey`, `…/crm/students/{id}/timeline`) with the student detail's scope and `404`; a Journey
+tracker and a Show-history list in the student detail panel. Unchanged: every existing response, write route, audit action and the
+Staff Activity allow-list. Limitation recorded: document reviews made before AGN-009 (2026-10-02) have no event row and are not
+reconstructed; their uploads are (from the document row). Design: `docs/superpowers/specs/2026-10-03-agn-015-student-journey-design.md`.
+**New Feature ID authorized:** `AGN-015`.

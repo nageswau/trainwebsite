@@ -361,6 +361,19 @@ days) and one overdue-task digest per recipient per India day, idempotent throug
 | `GET /workflows/notifications/unread-count` | Authenticated | Self | `200 NotificationUnreadCount {"unread": n}` — the caller's unread notifications (may exceed the 100-row list). Any signed-in role; `401` without a session. |
 | `GET /portal/overseas/agent/notifications` | Authenticated | Agent (Master or staff), approved | Header-only payload ("Notifications"): the page's role/approval gate, as Tasks. |
 
+**`AGN-015` / `DEC-SCOPE-061` (built 2026-10-03; migration `0067_audit_entity_index`) — agent student journey and complete
+history.** Design spec `docs/superpowers/specs/2026-10-03-agn-015-student-journey-design.md` §3–§6. Two read-only routes; no existing
+response changes. Gate as the student routes (agent of an active organisation, else `403`); the student is loaded with the detail's
+scope, so an unknown id, another agency's student and a staff member's unassigned student are the same `404 "Student not found"`.
+Applications, documents, requests, deposits and visa cases are narrowed by the AGN-008/AGN-009 scopes before any row is read; audit rows
+are read only by ids from those sets. No lock, no write, no cache, no audit row; one info log each (`agent_student_journey_viewed`,
+`agent_student_timeline_viewed`, ids and offset only).
+
+| Method/Path | Auth | Scope | Notes |
+|---|---|---|---|
+| `GET /workflows/overseas/agent/crm/students/{id}/journey` (**new**) | Authenticated | Agent (Master or staff), AGN-004 G4 scope | `200 {"student": {id, full_name, status}, "steps": [{key, state}] ×4, "applications": [{id, university, intake, status, steps: [{key, state}] ×5}]}`, applications oldest first. Keys `create, counseling, shortlist, documents` / `application, offer, deposit, visa, enrollment`; states `not_started, in_progress, done, not_required, refunded, refused, withdrawn` (spec §4). |
+| `GET /workflows/overseas/agent/crm/students/{id}/timeline?limit=20&offset=0` (**new**) | Authenticated | Same | `limit` 1–100, `offset` 0–10 000 (else `422`). `200 {"items": [...], "total", "limit", "offset"}`, newest first (`at`, then source rank). Item keys always present: `id` (`"<source>:<row id>"`), `at`, `kind` (fixed vocabulary, spec §3), `actor` (agency member's name, else a role label), `application` (`{id, university}` or null), `document` (`{id, type}` or null), `from_status`, `to_status`, `fields` (names only), `notes` (status-history and document-event notes only). Never values, amounts, the visa decision, emails, phones or file keys. |
+
 **`AGN-011` / `DEC-SCOPE-058` (built 2026-10-02/03) — agent deposit through Razorpay.** Design spec
 `docs/superpowers/specs/2026-10-02-agn-011-deposit-collection-design.md` §4. Errors are FastAPI `{"detail": ...}`. INR only (D1). Every
 agent write: gate `403` → org lock → application `FOR UPDATE` (scope `404 "Application not found"`) → archived/withdrawn `409` → deposit
