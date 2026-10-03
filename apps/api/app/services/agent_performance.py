@@ -55,7 +55,10 @@ async def table_counts(db: AsyncSession, user: User, start: date | None, end: da
         return func.count(distinct(case((condition, OverseasApplication.id))))
 
     stmt = _from_cohort(
-        user, start, end, visa,
+        user,
+        start,
+        end,
+        visa,
         AgentStudent.assigned_member_id,
         func.count(distinct(case((AgentStudent.status == "active", AgentStudent.id)))),
         applications(OverseasApplication.status != WITHDRAWN),
@@ -84,11 +87,7 @@ async def funnel_counts(db: AsyncSession, user: User, start: date | None, end: d
     application -- non-increasing by construction. Keyed by member id; None = unassigned."""
     visa = _visa_by_application()
     member = AgentStudent.assigned_member_id.label("member_id")
-    per_student = (
-        _from_cohort(user, start, end, visa, member, func.max(_level(visa)).label("level"))
-        .group_by(AgentStudent.id, AgentStudent.assigned_member_id)
-        .subquery()
-    )
+    per_student = _from_cohort(user, start, end, visa, member, func.max(_level(visa)).label("level")).group_by(AgentStudent.id, AgentStudent.assigned_member_id).subquery()
     reached = [func.sum(case((per_student.c.level >= k, 1), else_=0)) for k in range(1, 6)]
     stmt = select(per_student.c.member_id, func.count(), *reached).group_by(per_student.c.member_id)
     return {member_id: tuple(int(n) for n in counts) for member_id, *counts in (await db.execute(stmt)).all()}

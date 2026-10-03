@@ -1,8 +1,12 @@
 """AGN-019 (DEC-SCOPE-063) -- per-staff counts, rows, the funnel and the cohort range against hand counts (spec §4, §7)."""
 
+from datetime import UTC, datetime
+
 import pytest
 import pytest_asyncio
+from sqlalchemy import select
 
+from app.models import AgentStudent
 from tests.agn001_helpers import client_for
 from tests.agn004_helpers import RECORDS, mk_record, mk_staff
 from tests.agn008_helpers import agency_world, mk_application
@@ -151,3 +155,51 @@ async def test_reassigned_student_counts_for_the_current_owner(world):
     assert rows["Staff Two"]["funnel"] == funnel(2, 2, 2, 1, 1, 0)
     assert _table(rows["Staff One"]) == table(3, 6, 4, 1, 1, 2)
     assert _table(rows["Staff Two"]) == table(2, 2, 2, 1, 0, 0)
+
+
+# --- cohort date range (AC4) ---------------------------------------------------------------------------------------------------------
+
+
+@pytest_asyncio.fixture
+async def dated(world, db_session):
+    """r1 on the first second of January, r3 on its last second, r5 on the first second of February (UTC); the rest are 'now'."""
+    for key, at in (("r1", datetime(2026, 1, 1, tzinfo=UTC)), ("r3", datetime(2026, 1, 31, 23, 59, 59, tzinfo=UTC)), ("r5", datetime(2026, 2, 1, tzinfo=UTC))):
+        record = world.get(key) or await _record_named(db_session, world, key)
+        record = await db_session.get(AgentStudent, record.id, populate_existing=True)
+        record.created_at = at
+    await db_session.commit()
+    return world
+
+
+async def _record_named(db_session, world, key):
+    """dashboard_world does not return r1/r3/r5; find them by the name prefix it gives them, inside this agency."""
+    prefix = key.upper() + " "
+    rows = (await db_session.scalars(select(AgentStudent).where(AgentStudent.agent_id == world["master"].id, AgentStudent.full_name.startswith(prefix)))).all()
+    assert len(rows) == 1, (key, len(rows))
+    return rows[0]
+
+
+@pytest.mark.asyncio
+async def test_january_cohort_includes_both_boundary_seconds(dated):
+    body = await _body(dated["master"].email, date_from="2026-01-01", date_to="2026-01-31")
+    rows = _rows(body)
+    assert body["total"]["funnel"] == funnel(2, 2, 2, 2, 1, 0)  # r1 (offer), r3 (visa)
+    assert _table(body["total"]) == table(2, 3, 3, 1, 0, 0)  # a1 a2 | a6; offers a2 a5 a6; visa a5
+    assert rows["Staff One"]["funnel"] == funnel(1, 1, 1, 1, 0, 0) and rows["Staff Two"]["funnel"] == funnel(1, 1, 1, 1, 1, 0)
+    assert _table(rows["Staff Three"]) == dict.fromkeys(TABLE, 0)  # active staff stay listed with zeros
+    assert body["unassigned"] is None  # r5 is February
+
+
+@pytest.mark.asyncio
+async def test_next_day_starts_at_midnight(dated):
+    """Review Focus 5: 2026-02-01 holds r5 (00:00:00Z) and not r3 (23:59:59Z the day before)."""
+    body = await _body(dated["master"].email, date_from="2026-02-01", date_to="2026-02-01")
+    assert body["total"]["funnel"] == funnel(1, 1, 1, 1, 0, 0) and body["unassigned"]["funnel"] == funnel(1, 1, 1, 1, 0, 0)
+
+
+@pytest.mark.asyncio
+async def test_open_bounds(dated):
+    until_january = await _body(dated["master"].email, date_to="2026-01-31")
+    assert until_january["total"]["funnel"]["students"] == 2
+    from_february = await _body(dated["master"].email, date_from="2026-02-01")
+    assert from_february["total"]["funnel"]["students"] == 6  # r2 r4 r5 r6 r7 r8

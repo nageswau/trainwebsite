@@ -7,9 +7,9 @@ Added here: r6 (s2) submitted but not offered, r7 (s2) enrolled with no visa cas
 
 from datetime import date
 
+from tests.agn001_helpers import uniq
 from tests.agn004_helpers import mk_record
 from tests.agn008_helpers import mk_application
-from tests.agn001_helpers import uniq
 from tests.agn018_helpers import dashboard_world
 
 PERFORMANCE_API = "/api/v1/workflows/overseas/agent/crm/performance"

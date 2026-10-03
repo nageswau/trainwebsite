@@ -7,11 +7,10 @@ import pytest
 from tests.agn001_helpers import client_for, mk_active_org, mk_user
 from tests.agn004_helpers import mk_staff
 from tests.agn017_helpers import deactivate, set_org_status
+from tests.agn019_helpers import PERFORMANCE_API, STAGES, TABLE
 
-PERFORMANCE_API = "/api/v1/workflows/overseas/agent/crm/performance"
 MASTER_ONLY = "Only an agency Master can view staff performance"
-ZERO_FUNNEL = dict.fromkeys(("students", "applications", "submitted", "offers", "visa", "enrolled"), 0)
-ZERO_COUNTS = dict.fromkeys(("students", "applications", "offers", "visa_applications", "visa_approvals", "enrollments"), 0) | {"funnel": ZERO_FUNNEL}
+ZERO_COUNTS = dict.fromkeys(TABLE, 0) | {"funnel": dict.fromkeys(STAGES, 0)}
 
 
 async def _get(email, **params):
