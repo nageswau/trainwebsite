@@ -53,7 +53,7 @@ async def test_a_retried_create_meets_the_overlap_warning_naming_the_first(clien
     assert detail["code"] == "possible_overlap" and detail["total"] == 1 and detail["matches"][0]["code"] == first["code"]
     saved = await client.post(APPTS, json={**payload, "confirm_overlap": True})
     assert saved.status_code == 201
-    assert await audits(db_session, saved.json()["appointment"]["id"]) == ["bdm_appointment.create", "bdm_appointment.overlap_override"]
+    assert sorted(await audits(db_session, saved.json()["appointment"]["id"])) == ["bdm_appointment.create", "bdm_appointment.overlap_override"]
 
 
 @pytest.mark.asyncio

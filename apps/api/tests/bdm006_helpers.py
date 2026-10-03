@@ -43,5 +43,7 @@ async def move_to_past(db, appt_id, minutes: int = 30) -> None:
 
 
 async def audits(db, appt_id) -> list[str]:
+    """Audit actions in order. Rows written in one transaction share created_at (now() = transaction start) and have UUID ids,
+    so their relative order is arbitrary: compare those with sorted()."""
     rows = await db.scalars(select(AuditLog.action).where(AuditLog.entity_id == str(appt_id)).order_by(AuditLog.created_at, AuditLog.id))
     return list(rows.all())
