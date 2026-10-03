@@ -117,3 +117,15 @@ and a **pending** (unapproved) agency. The API's numbers matched hand counts for
 Session scratchpad `qa/shots/` (not committed, as earlier passes): `01-master-desktop-top.png`, `02-to-before-from.png`, `03-loading.png`,
 `03-500.png`, `04-staff.png`, `04-empty-agency.png`, `05-desktop*.png`, `05-tablet*.png`, `05-mobile-375*.png`, `05-mobile-320*.png`,
 `05-bad-url-stuck.png`, `08-api-down.png`.
+
+## Fixes after the first pass (2026-10-03, re-verified in the browser on the rebuilt stack)
+
+| Issue | Fix | Test (RED → GREEN) | Browser re-check |
+|---|---|---|---|
+| QA19-01 | `readRange` (shared with AGN-014) reads back only real calendar dates; an impossible one means "no bound" | `tests/lib/agentCommissionReport.range.test.ts` (6 impossible dates failed, now pass); `AgentPerformancePanel.test.tsx` "ignores an impossible date in the address" | `?from=2026-13-01` → all-time figures, no error; `?from=2026-02-30&to=2026-03-01` → only the valid To kept; a valid range unchanged. AGN-014's report and its E2E pass. |
+| QA19-03 | The staff table stacks by the card's own width (container query, ≤860 px) instead of the viewport's | Browser measurement (jsdom does not evaluate media/container queries): before, region 845/633 at 1024 px and 845/647 at 768 px — **the issue also hit 1024 px desktops** | After: 1024 and 768 stack with labelled numbers, nothing hidden (`09-table-1024.png`); 1280/1440 keep the full table; 640/375 unchanged; no page overflow. |
+
+Also fixed (not a QA finding): the 4 `mypy` errors AGN-019 had added in `services/agent_performance.py` (now 0 in that file;
+behaviour unchanged, the 29 AGN-019 backend tests pass).
+
+Still open, Low (owner to fix or accept): QA19-02, QA19-04, QA19-05, QA19-06, QA19-07.
