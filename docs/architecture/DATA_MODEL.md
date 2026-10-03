@@ -1162,7 +1162,7 @@ Additive only: two tables and one sequence; no existing table, column or row cha
   hod, placement_officer, counselor, management, owner, other), `phone`, `email`; `is_primary` with a partial unique index (one primary
   per organization). At least one contact (C1) and at most 20 are service rules.
 - Last Meeting / Next Meeting are **not stored**: computed from bdm-006 appointments (null until then).
-- **Addendum (`bdm-003`, `DEC-SCOPE-064`; migration `0069_bdm_org_profiles`, after `0068_bdm_trips`):** twelve nullable
+- **Addendum (`bdm-003`, `DEC-SCOPE-065`; migration `0069_bdm_org_profiles`, after `0068_bdm_trips`):** twelve nullable
   columns on `bdm_organizations`, no row written; `downgrade()` refuses while any of them holds a value. Common: `address` VARCHAR(500)
   (line breaks allowed, P14). Agent group: `country`, `territory` VARCHAR(120), `source` VARCHAR(20) (CHECK referral, website, event,
   cold_call, walk_in, other), `staff_count` INTEGER (CHECK 0–100 000). School group: `board` VARCHAR(10) (CHECK `CBSE`, `ICSE`,

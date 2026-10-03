@@ -72,7 +72,7 @@ export function teamSearch(bdmType: BdmType, excludeId?: string) {
   };
 }
 
-// bdm-003 (DEC-SCOPE-064, spec §6.1): type-specific profiles. The API validates every value; these drive the form, labels and filters.
+// bdm-003 (DEC-SCOPE-065, spec §6.1): type-specific profiles. The API validates every value; these drive the form, labels and filters.
 export type ProfileGroup = "agent" | "school" | "college";
 const PROFILE_GROUP: Partial<Record<string, ProfileGroup>> = { agent: "agent", school: "school", college: "college", university: "college" };
 export const profileGroup = (orgType: string): ProfileGroup | null => PROFILE_GROUP[orgType] ?? null;

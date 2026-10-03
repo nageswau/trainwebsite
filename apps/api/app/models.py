@@ -1022,7 +1022,7 @@ class BdmTripExpense(Base, TimestampMixin):
 
 BDM_ORG_TYPES = ("college", "university", "agent", "school", "corporate", "training_institute", "other")
 BDM_CONTACT_ROLES = ("principal", "dean", "hod", "placement_officer", "counselor", "management", "owner", "other")
-# bdm-003 (DEC-SCOPE-064, spec §4): the type-specific profile. `board` keeps ENH-009's exact values so bdm-018 can copy it onto
+# bdm-003 (DEC-SCOPE-065, spec §4): the type-specific profile. `board` keeps ENH-009's exact values so bdm-018 can copy it onto
 # `schools.board`; the other enums are lower snake case like `org_type`. Grades: -2 Nursery, -1 LKG, 0 UKG, then 1-12.
 BDM_ORG_SOURCES = ("referral", "website", "event", "cold_call", "walk_in", "other")
 BDM_SCHOOL_BOARDS = ("CBSE", "ICSE", "State", "IB", "Other")
@@ -1070,7 +1070,7 @@ BDM_PROFILE_CHECKS = {  # migration 0069 repeats these strings; test_bdm_003_mig
 class BdmOrganization(Base, TimestampMixin):
     """bdm-002 (DEC-SCOPE-060): an institution a BDM meets (§9). `bdm_type` is the owning module (Q-03), copied from the creator and
     never changed; `name_key`/`city_key` are the server-normalized duplicate key (Q-18). Never hard-deleted: archived instead (C5).
-    bdm-003 (DEC-SCOPE-064): a common address plus one typed profile group per org_type (BDM_PROFILE_FIELDS); a group's columns are
+    bdm-003 (DEC-SCOPE-065): a common address plus one typed profile group per org_type (BDM_PROFILE_FIELDS); a group's columns are
     NULL for every other type."""
 
     __tablename__ = "bdm_organizations"

@@ -3,7 +3,7 @@
 Revision ID: 0069_bdm_org_profiles
 Revises: 0068_bdm_trips
 
-docs/superpowers/specs/2026-10-03-bdm-003-type-specific-profiles-design.md §4 (DEC-SCOPE-064). No row is read or written by upgrade():
+docs/superpowers/specs/2026-10-03-bdm-003-type-specific-profiles-design.md §4 (DEC-SCOPE-065). No row is read or written by upgrade():
 every existing row has NULL in every new column, which satisfies every CHECK. 0001 builds a fresh database from the current models (which
 already carry the columns and CHECKs), so each column and CHECK is added only when missing. downgrade() refuses while any profile value
 exists: entered data is never dropped silently. CHECKS must equal app.models.BDM_PROFILE_CHECKS (test_bdm_003_migration).

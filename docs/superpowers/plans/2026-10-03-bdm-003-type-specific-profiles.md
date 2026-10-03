@@ -1,6 +1,6 @@
 # bdm-003 Type-specific Organization Profiles Implementation Plan
 
-**ID note (merge of `main` @ `65a8ece`, 2026-10-03):** written as `DEC-SCOPE-063` and migration `0068_bdm_org_profiles`; bdm-010 (`DEC-SCOPE-063`, `0068_bdm_trips`, PR #53) reached `main` first, so bdm-003 is now **`DEC-SCOPE-064`** and **`0069_bdm_org_profiles`** (after `0068_bdm_trips`). Mentions of `063` / `0068_bdm_org_profiles` below mean this decision / migration.
+**ID note (merge of `main` @ `65a8ece`, 2026-10-03):** written as `DEC-SCOPE-063` and migration `0068_bdm_org_profiles`; bdm-010 (`DEC-SCOPE-063`, `0068_bdm_trips`, PR #53) reached `main` first, so bdm-003 became `DEC-SCOPE-064`, and after AGN-022 (`DEC-SCOPE-064`, PR #54, merged from `main` @ `39c119b`) it is **`DEC-SCOPE-065`** and **`0069_bdm_org_profiles`** (after `0068_bdm_trips`). Mentions of `063` / `0068_bdm_org_profiles` below mean this decision / migration.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

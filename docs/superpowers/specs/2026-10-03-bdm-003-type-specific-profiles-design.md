@@ -1,6 +1,6 @@
 # bdm-003 — Type-specific organization profiles (Agent / School / College) — Design
 
-**ID note (merge of `main` @ `65a8ece`, 2026-10-03):** written as `DEC-SCOPE-063` and migration `0068_bdm_org_profiles`; bdm-010 (`DEC-SCOPE-063`, `0068_bdm_trips`, PR #53) reached `main` first, so bdm-003 is now **`DEC-SCOPE-064`** and **`0069_bdm_org_profiles`** (after `0068_bdm_trips`). Mentions of `063` / `0068_bdm_org_profiles` below mean this decision / migration.
+**ID note (merge of `main` @ `65a8ece`, 2026-10-03):** written as `DEC-SCOPE-063` and migration `0068_bdm_org_profiles`; bdm-010 (`DEC-SCOPE-063`, `0068_bdm_trips`, PR #53) reached `main` first, so bdm-003 became `DEC-SCOPE-064`, and after AGN-022 (`DEC-SCOPE-064`, PR #54, merged from `main` @ `39c119b`) it is **`DEC-SCOPE-065`** and **`0069_bdm_org_profiles`** (after `0068_bdm_trips`). Mentions of `063` / `0068_bdm_org_profiles` below mean this decision / migration.
 
 **Status:** design approved in-session on 2026-10-03, in five sections: (1) data model + migration, (2) API, (3) transactions, races, authorization and errors, (4) frontend, (5) acceptance criteria, tests, risks and docs. Approach A chosen (§2). No code has been written.
 

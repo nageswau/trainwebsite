@@ -1208,6 +1208,80 @@ class AgentDashboardOut(BaseModel):
     as_of: datetime
 
 
+# AGN-022 (DEC-SCOPE-064): Overseas Admin's agent network. Field lists are allowlists -- the drill-down rows never carry email,
+# phone or date of birth (N1), and the detail carries a staff count, not a staff list (spec R-API-3).
+class AgentNetworkCounts(BaseModel):
+    students: int
+    applications: int
+    enrollments: int
+
+
+class AgentOrgMasterOut(BaseModel):
+    id: UUID
+    code: str
+    full_name: str
+    email: str
+    status: str
+
+
+class AgentNetworkDepositsOut(BaseModel):
+    currency: Literal["INR"]
+    count: int
+    collected: float
+    remitted: float
+    refunded: float
+
+
+class AgentOrgDetailOut(BaseModel):
+    id: UUID
+    name: str
+    prefix: str
+    status: str
+    created_at: datetime
+    status_changed_at: datetime | None
+    masters: list[AgentOrgMasterOut]
+    staff_count: int
+    counts: AgentNetworkCounts
+    commission: AgentCommissionSummaryOut
+    deposits: AgentNetworkDepositsOut
+    as_of: datetime
+
+
+class AgentNetworkStudentOut(BaseModel):
+    id: UUID
+    full_name: str | None
+    status: str
+    assigned_code: str | None
+    has_login: bool
+    applications: int
+    created_at: datetime
+
+
+class AgentNetworkStudentPage(BaseModel):
+    items: list[AgentNetworkStudentOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class AgentNetworkApplicationOut(BaseModel):
+    id: UUID
+    student_name: str | None
+    university: str
+    country: str
+    status: str
+    enrollment_date: date | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class AgentNetworkApplicationPage(BaseModel):
+    items: list[AgentNetworkApplicationOut]
+    total: int
+    limit: int
+    offset: int
+
+
 class InboundUniversityEmailIn(BaseModel):
     external_message_id: str = Field(min_length=1, max_length=255)
     sender: EmailStr
@@ -3481,7 +3555,7 @@ def _bdm_contacts(contacts: list[BdmContactIn]) -> list[BdmContactIn]:
 
 
 class BdmOrgProfileIn(BaseModel):
-    """bdm-003 (DEC-SCOPE-064, spec §5.1): the type-specific fields. Omitted = not sent; null = clear. Which keys an org_type accepts is
+    """bdm-003 (DEC-SCOPE-065, spec §5.1): the type-specific fields. Omitted = not sent; null = clear. Which keys an org_type accepts is
     checked by services.bdm_organizations.check_profile (it needs the effective type); unknown keys -- the live agent figures commission,
     students, applications, enrollments and master_login among them -- are refused here (AC4)."""
 
