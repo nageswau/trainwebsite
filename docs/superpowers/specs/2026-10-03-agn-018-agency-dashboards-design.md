@@ -26,7 +26,9 @@ stage and by offer record, consistently.
 
 Design details fixed by this spec (within the approved sections): D1 visa and offer counts use the milestone base (withdrawn
 included); D2 breakdowns top 10 + "Other"; D3 deactivated members appear in the staff table only while they still have active
-assigned students; D4 the "Claimable commission" INR label (it sums every currency) is unchanged and logged in `RAID.md`.
+assigned students; D4 the portal's "Claimable commission" string (labelled INR, sums every currency) is unchanged and logged in
+`RAID.md`; the new endpoint returns commission as typed per-currency totals instead (§5.3, API review A3), so the board never shows
+the mislabelled sum.
 
 ## 3. Existing behaviour (verified in code, `main` @ `e1c2084`)
 
@@ -74,7 +76,9 @@ Breakdowns: sorted by count desc then label; the first 10 are returned and the r
 `GET /api/v1/workflows/overseas/agent/crm/dashboard` → `AgentDashboardOut`. Router prefix `/workflows/overseas/agent/crm`, registered
 in `main.py` beside the other agent routers. Gate: the same rule as `agent_students._gate` (role `agent`, division `overseas`,
 `agent_denial_reason` → 403). Super admin is refused here (agency-internal, as every CRM route). Read-only: no audit row, no
-commit, no query parameters.
+commit, no query parameters (unknown ones are ignored, never interpreted — the variant comes only from the caller's membership).
+Response header `Cache-Control: private, no-store` (the existing per-user-data precedent). One structured log line per read
+(`agent_dashboard.read`: `org_id`, `actor_id`, `scope`, `duration_ms` — ids only, no names or counts of other members).
 
 ### 5.2 Service — `apps/api/app/services/agent_dashboard.py` (new)
 
@@ -87,17 +91,21 @@ commit, no query parameters.
   (`agent_student_id`) or the linked account (`student_id` of an `agent_students` row of the agency), `COUNT(DISTINCT application id)`
   per member — mirroring `application_scope` for that member (archived links included, as `application_scope` includes them).
   Members listed: active members, plus deactivated members with ≥1 active assigned student (D3), ordered by member code.
-- Commission: the three existing values move into a shared helper (`commission_metrics(commissions)`, including today's
-  `_paid_per_currency`) in this module; `portal._agent` imports it, so both print identical strings. No change to the values.
+- Commission: SQL `GROUP BY currency` over the agency's `AgentCommission` rows (`agent_id IN org_member_ids`): claimable
+  (`eligible`, `estimated`), claims (`claimed`, a count) and revenue (`paid`) — the same status sets the portal uses today.
+  `portal._agent` keeps its own string formatting and values unchanged (no shared-helper refactor; `DEC-SCOPE-051` R5 precedent).
 - For Staff, the staff table, unassigned count and commission are never queried (`null` in the response).
 
 ### 5.3 Schema — `schemas.py`
 
 `AgentDashboardOut`: `scope: Literal["agency","own"]`, `member_code: str | None`, the eight integer counts,
 `by_country` / `by_university: AgentBreakdownOut {items: list[{label: str, count: int}], other: int}`,
-`staff: list[AgentStaffRowOut] | None` (`member_id`, `code`, `name`, `role`, `active`, `students`, `applications`, `offers`,
-`enrollments`), `unassigned_students: int | None`, `commission: AgentCommissionSummaryOut | None` (`claimable`, `claims`, `revenue`
-— display strings as today), `reports_available: bool`, `as_of: datetime`.
+`staff: list[AgentStaffRowOut] | None` (`code`, `name`, `role`, `active`, `students`, `applications`, `offers`, `enrollments`;
+no member or user UUIDs — data minimisation, the code is unique per agency), `unassigned_students: int | None`,
+`commission: AgentCommissionSummaryOut | None` (`claimable: list[CommissionReportTotal]`, `claims: int`,
+`revenue: list[CommissionReportTotal]` — reusing AGN-014's `{currency, count, amount}` type), `reports_available: bool`,
+`as_of: datetime` (UTC). snake_case and FastAPI's `{"detail": ...}` errors, as every existing route. The response has one shape for
+both roles: Master-only fields are present and `null` for Staff, never absent.
 
 ### 5.4 Portal compatibility — `services/portal.py`
 
@@ -120,28 +128,45 @@ counts (same scope, so unchanged except the Students fix). Other sections are no
 ### 6.1 Page
 
 `/overseas/agent/dashboard` keeps `PortalPage` and its fetch list (the portal payload stays the page's gate). When
-`section === "dashboard"` and `user.role === "agent"`: render `<Suspense fallback={<AgentDashboardSkeleton/>}><AgentDashboardPanel/></Suspense>`
-above `PortalSection`, and pass `PortalSection` the payload with `metrics: []` (no duplicated tiles; the open-applications table
-stays). Super admin: unchanged.
+`section === "dashboard"` and `user.role === "agent"`: pass `PortalSection` the payload with `metrics: []` (no duplicated tiles)
+and the board through a new optional `lead?: ReactNode` prop, rendered between the page title and the open-applications table
+(additive; every other caller is unchanged). The lead is `<Suspense fallback={<AgentDashboardSkeleton/>}><AgentDashboardPanel/></Suspense>`,
+so the title and table render at once while the board streams (perceived performance). Super admin: unchanged.
 
 ### 6.2 `components/AgentDashboardPanel.tsx` (new, async server component)
 
 Fetches `DASHBOARD_URL` (`lib/agentDashboard.ts`, new) with `serverApi`. Reuses the `kpi-group` / `kpi-grid` / `kpi-tile` classes and
 `<dl>` markup of `SchoolKpiBoard` (not the component: its keys are school-specific).
 
-- Heading "Agency at a glance" (Master) / "Your students at a glance" (Staff); "Your code M001".
+- Heading hierarchy follows the page: the title is `PortalSection`'s `h2`, so the board's group headings are `h3`. A scope line
+  under the title area: "Whole agency" (Master) / "Your assigned students" (Staff); "Your code M001".
+- Numbers use `toLocaleString("en-IN")` (the `SchoolKpiBoard` convention); money is formatted per currency as
+  "INR 12,000 · USD 500" with a no-break space after the separator (the AGN-014 QA14-01 rule); "INR 0" when empty.
 - Groups: **Students** (Total students, Pending actions); **Pipeline** (Applications, Offers, Visa applications, Visa approvals,
   Enrollments); **Documents** (Pending documents); **Commission** (Master: Claimable commission, Claims, Revenue).
-- Tile links: Total students → `/overseas/agent/students`; Applications → `/overseas/agent/applications`; Enrollments →
-  `?status=enrolled`; Pending documents → `/overseas/agent/documents?view=pending`; Pending actions → `/overseas/agent/tasks?view=open`.
-  Offers / Visa tiles: no link, a short note ("includes later stages and withdrawn").
-- Tables (each with a `<caption>`, in a horizontal-scroll wrapper): Applications by country; Applications by university (+ "Other"
-  row when `other > 0`); Master only: Staff performance (Member, Role, Students, Applications, Offers, Enrollments; deactivated
-  members labelled) + an "Unassigned" students row.
-- "View reports →" when `reports_available`.
-- States: loading skeleton (`aria-busy="true"`, same footprint); empty (zeros; "No applications yet"; "No staff yet — add staff from
-  Team"); error (`role="alert"` "Dashboard figures are unavailable right now" + Retry link to the same URL; the rest of the page
-  works); 401 → the existing access-unavailable card. Works at 320 px and by keyboard.
+- Tile links: a visible text link under the value ("View students", "View applications", "View enrolled", "Review pending",
+  "Open tasks"), so each link has a unique accessible name and the tile stays a `<dl>`: Total students → `/overseas/agent/students`;
+  Applications → `/overseas/agent/applications`; Enrollments → `?status=enrolled`; Pending documents →
+  `/overseas/agent/documents?view=pending`; Pending actions → `/overseas/agent/tasks?view=open`. Offers / Visa tiles: no link, a
+  `kpi-note` ("Includes later stages and withdrawn applications").
+- Tables reuse `.table-scroll` (`tabIndex={0} role="region" aria-label=…`, the `GlobalEducationStudentTable` pattern, so a
+  keyboard user can scroll them) with `<caption>` and `th scope="row"` for the label column: Applications by country;
+  Applications by university (+ "Other" row when `other > 0`); Master only: Staff performance (Member, Role, Students,
+  Applications, Offers, Enrollments; deactivated members carry a text badge "Deactivated", never colour alone) + an "Unassigned"
+  students row.
+- "View reports" link when `reports_available`.
+- States:
+  - loading: `AgentDashboardSkeleton` — the same `kpi-group`/`kpi-tile` footprint with placeholder blocks, `aria-busy="true"` and
+    a visually-hidden "Loading dashboard figures" (no layout shift when the board arrives);
+  - empty: zeros (never blank), "No applications yet" in each breakdown, "No staff yet — add staff from Team" (Master, link to
+    `/overseas/agent/team`);
+  - error: `<p className="form-error" role="alert">` "Dashboard figures are unavailable right now." + a "Try again" link to
+    `/overseas/agent/dashboard`; no error detail shown; the title, table and nav keep working; focus is not moved;
+  - 401 from the panel fetch → the existing access-unavailable card (session expired).
+- Responsive: the existing `kpi-grid` breakpoints (1 / 2 / 4 columns at <768 / 768 / 1024 px); tables scroll inside their region
+  at 320 px without widening the page. Keyboard: tab order follows reading order (links, then each table region).
+- The panel is a server component (no client JS, no client-side fetch, no token in the browser). It stays under ~200 lines by
+  splitting `AgentDashboardSkeleton` and a small `BreakdownTable` into the same file's siblings only if needed.
 - Staff variant renders no commission group, staff table or the word "commission".
 
 ### 6.3 Navigation — `lib/navigation.ts` (G4)
@@ -152,7 +177,10 @@ Fetches `DASHBOARD_URL` (`lib/agentDashboard.ts`, new) with `serverApi`. Reuses 
   Master keeps "Students" without children.
 - Unchanged: Universities, the Withdrawn filter, Reports gating, Team/Commissions hiding, the unread badge, `PortalPage`'s
   section allow-list (all hrefs stay on existing sections).
-- `AgentStudentsPanel`: opens its existing add form when the URL has `new=1` (focus on the first field), so the Add link works.
+- `AgentStudentsPanel`: when the URL has `new=1` it opens its existing add form once, moves focus to the form's first field, and
+  removes `new=1` with `router.replace` (so Back / refresh do not reopen it). Cancel and save keep today's behaviour (focus returns
+  to "Add student", AGN-005 QA5-02). The form, validation and duplicate warning are unchanged.
+- Mobile: `PortalMobileNav` already renders children as "Parent: Child" labels, so "My Students: Add" needs no new component.
 
 ### 6.4 Types
 
@@ -165,6 +193,25 @@ Fetches `DASHBOARD_URL` (`lib/agentDashboard.ts`, new) with `serverApi`. Reuses 
 - Tenant isolation: every clause is bounded by `org_member_ids(user)`; a second agency's data never changes a count.
 - No free text in the response beyond university / country / member names already visible to the same caller.
 
+| Check | Finding / control |
+|---|---|
+| Authentication | Existing session cookie via `get_current_user` (401 without one; an inactive user is refused there). No new auth flow. |
+| Authorization | `_gate` (agent + overseas + `agent_denial_reason`) on the route; scope only from existing helpers in SQL. Super admin 403 here (portal view unchanged). |
+| Role escalation | No parameter selects the variant; Staff vs Master comes only from `user.agent_membership.role`. A Staff caller adding `?scope=agency` or any other parameter gets their own-scope response (test). |
+| IDOR | The route takes no ids. The response carries no member / user / application UUIDs (codes and names only). |
+| Information disclosure | Staff: Master-only fields are never queried and are `null`. Breakdowns for Staff are own-scope. Masters already see member names and codes on the Team page. |
+| Input validation | No input. Unknown query parameters are ignored. |
+| SQL injection | SQLAlchemy expressions only; no `text()` or string-built SQL. |
+| XSS | Names render through React text nodes; no `dangerouslySetInnerHTML`. Agency-entered university names are escaped like everywhere else. |
+| CSRF | GET only, no state change; the existing SameSite session cookie is unchanged. |
+| Token / session | The panel is a server component: `serverApi` forwards the cookie server-side; nothing is exposed to client JS. |
+| Secrets | None introduced. |
+| Sensitive logs | One `agent_dashboard.read` line with ids, scope and duration only — no names, emails, counts of other members or money. |
+| Caching | `Cache-Control: private, no-store` on the response; the page fetch is already `no-store`. No server-side cache, so a stale or cross-user cache cannot leak data. |
+| Rate limiting | None, as for every other read route in the app (only domain throttles exist, e.g. uploads). The read is about six bounded aggregate statements; recorded as an accepted risk, not a new limiter. |
+| Audit | Reads are not audited (`DEC-SCOPE-051` R7 and the AGN-021 precedent). No write, so no audit row. |
+| Errors | FastAPI `{"detail": ...}` 401/403; unexpected errors are a generic 500 (no stack trace). The UI shows a fixed message, never the error text. |
+
 ## 8. Acceptance criteria and tests
 
 | ID | Criterion | Test |
@@ -176,6 +223,7 @@ Fetches `DASHBOARD_URL` (`lib/agentDashboard.ts`, new) with `serverApi`. Reuses 
 | AGN-018-AC05 | Linked KPIs equal their list totals (students, applications All/Enrolled, documents Pending, tasks Open) | `test_agn_018_dashboard.py` |
 | AGN-018-AC06 | Staff response: `staff`, `unassigned_students`, `commission` null; "commission" absent | same |
 | AGN-018-AC07 | 403 for non-agent, super admin, suspended agency, deactivated member; 401 without session; empty agency → zeros | same |
+| AGN-018-AC07b | Staff with `?scope=agency` (or any parameter) still gets own scope; response has no UUIDs; `Cache-Control: private, no-store` | same |
 | AGN-018-AC08 | Portal dashboard keeps labels, order and commission strings; Students now counts no-login students | `test_agn_018_portal_compat.py` |
 | AGN-018-AC09 | UI: Master/Staff variants, links, empty, error, loading; nav as §6.3; keyboard; 320 px | `apps/web/tests/components/AgentDashboardPanel.test.tsx`, nav unit tests, `apps/web/tests/e2e/agn-018-dashboard.spec.ts` |
 
@@ -201,3 +249,33 @@ link; ang-019 funnel and filters; ang-020 reports; ang-022 network oversight; ca
 `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-060`; `API_CONTRACT.md` §8 (new route, snapshot note); `RBAC_MATRIX.md` Dashboard row;
 `RTM.md`; `ENHANCEMENT_BACKLOG.md` §AGN-018; `AGENT_CRM_BACKLOG.md` status table; `ROLE_NAVIGATION.md` Agent; `SCREEN_CATALOG.md`
 SCR-AGT-003; `RAID.md` (I-48 carried on as its own item; new: INR label, `student_documents.application_id` index).
+
+## 12. Design reviews (2026-10-03, at the owner's request)
+
+Applied to this spec before planning; each change is folded into the sections above.
+
+**API and interface design.**
+- A1 One response shape for both roles; Master-only fields present and `null` for Staff (no conditional shapes).
+- A2 Repo conventions kept: snake_case fields, FastAPI `{"detail": ...}` errors, `/workflows/overseas/agent/crm/...` prefix (the
+  backlog's `/agent/dashboard` was a placeholder). GET, 200 / 401 / 403; no 404 / 422 surface (no ids, no input).
+- A3 Money is typed, not pre-formatted: commission reuses `CommissionReportTotal` per currency; the UI formats. The portal payload
+  keeps its strings (Hyrum's law: existing consumers and e2e tests read them).
+- A4 Breakdowns are bounded (top 10 + `other`) instead of paginated — they are aggregates with a fixed maximum size.
+- A5 Backward compatibility: no existing route, field or label changes; the one observable change (portal Students counts no-login
+  students) is a recorded defect fix (`DEC-SCOPE-060`), with the tests that pinned it updated deliberately.
+- A6 Database: about six statements per read, all aggregate (`COUNT`, `COUNT(DISTINCT)`, `GROUP BY`), no N+1, no row loading; one
+  snapshot for the headline counts; read-only session, no commit.
+
+**Frontend UI engineering.**
+- F1 The board sits inside the page through an additive `PortalSection` `lead` slot, so the heading order is h2 → h3 and the
+  existing title / table / workflow panel are reused.
+- F2 Reused: `kpi-group` / `kpi-grid` / `kpi-tile` / `kpi-value` / `kpi-note`, `.table-scroll` region pattern, `form-error`,
+  `visually-hidden`, `PortalMobileNav` child labels. New: one panel component and its skeleton.
+- F3 States: streamed skeleton with the same footprint (no layout shift), zeros not blanks, inline non-blocking error with "Try
+  again", 401 → existing card.
+- F4 Accessibility: visible, uniquely named links; captions and row headers; keyboard-scrollable table regions; text badges, not
+  colour alone; focus moved only for the Add link's form.
+- F5 Mobile: existing 1/2/4-column grid; tables scroll inside their region at 320 px.
+
+**Security and hardening.** The §7 table. No new dependency, auth flow, input, write, limiter or header policy beyond
+`Cache-Control: private, no-store` on the new response.
