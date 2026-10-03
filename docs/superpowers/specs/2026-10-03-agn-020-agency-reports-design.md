@@ -27,6 +27,7 @@ Owner acceptance: each report matches fixture data; the CSV opens with correct h
 | R7 | **Row cap 10,000 + paged screen.** Lists show 50 rows per page; a CSV over 10,000 rows is refused with 422 (never silently truncated). Built in memory like every existing CSV. |
 | R8 | **Old portal summary:** the portal `reports` API payload, its 403 and its tests stay byte-identical; the page stops rendering that table and shows the tabbed reports (as AGN-018 did for the dashboard). |
 | R9 | **Approach A:** one gated route pair `/crm/reports/{kind}` and `/crm/reports/{kind}.csv`, a new `agent_reports` service, a column-driven response; Commission tab = the existing AGN-014 panel. |
+| R10 | **Export throttle** (security review, owner-approved): at most 30 new-report CSV exports per user per 10 minutes, counted from the caller's own `agent_report.export` audit rows (the AGN-008/009/011 no-new-table pattern); over the budget → 429 with `Retry-After`. JSON reads are not throttled. |
 
 Facts that shaped the design (verified in code, `main` @ `3bde879`): agency student records have no reference code and no passport field;
 agencies have no branch list (so no branch filter); `overseas_applications.intake` (String 80, default "Next intake") and
@@ -94,8 +95,20 @@ No student email, phone, date of birth, passport or UUIDs in any report or CSV.
 `APIRouter(prefix="/workflows/overseas/agent/crm", tags=["agent-reports"])`, registered in `app/main.py`.
 
 - `GET /reports/{kind}.csv` — registered **before** the JSON route.
-- `GET /reports/{kind}` — query: `date_from`, `date_to` (str, strict `YYYY-MM-DD`), `member`, `country`, `university`, `intake`,
-  `status`, `page` (≥ 1).
+- `GET /reports/{kind}` — query (all declared `str | None`, validated in the handler **after** authorization, as AGN-014 does, so an
+  int-typed `Query` cannot answer a refused caller with 422 first):
+
+| Param | Kinds | Value |
+|---|---|---|
+| `date_from`, `date_to` | all | strict `YYYY-MM-DD` (`_report_date`) |
+| `member` | all but `staff`; Master only | a member code of the caller's org (`ABC-S001`) or `unassigned` |
+| `country` | students (preferred-country text, exact after trim, case-insensitive — no `LIKE`), applications, universities, intakes, enrollments | catalogue `countries.slug` (students: the free text, ≤ 120 chars) |
+| `university` | applications, enrollments | catalogue `universities.slug` (names are not unique; slugs are) |
+| `intake` | applications | `YYYY-MM` or `unstructured` |
+| `status` | students (`active`/`archived`/`all`), applications (a stage or `withdrawn`) | enum |
+| `limit`, `offset` | list kinds (JSON only) | `limit` 1–100, default 50; `offset` 0–9,950 (the CSV cap bounds paging too) — the codebase's `Page` convention |
+
+Every value is length-capped (≤ 120 chars) before use; no value reaches SQL except as a bound parameter.
 
 Check order (first failure wins; a refused caller never sees 404/422):
 
@@ -104,17 +117,24 @@ Check order (first failure wins; a refused caller never sees 404/422):
 3. `kind == "staff"` and staff → 403 "Only an agency Master can view staff performance".
 4. `kind` not in `REPORT_KINDS` → 404 "Report not found".
 5. Dates via `_report_date` (AGN-014 messages: format, `date_to` before `date_from`, `9999-12-31`) → 422.
-6. Filters: a filter the kind does not support, `member` from staff, an unknown member code / country / university / status / intake
-   key, `page < 1` → 422 naming the parameter.
+6. Filters: a filter the kind does not support, `member` from staff, an unknown member code (including another org's — same message,
+   no cross-tenant oracle) / country / university / status / intake key, `limit`/`offset` out of range → 422.
+7. CSV only: export throttle (R10) → 429 + `Retry-After`.
 
-Both responses: `Cache-Control: private, no-store`; one structured log line `agent_report.read` / `agent_report.export` (org, actor,
-kind, scope, rows, duration — ids only).
+422 body: FastAPI's list shape, `{"detail": [{"loc": ["query", "<param>"], "msg": "<message>", "type": "value_error"}]}`, so the panel
+maps the error to its field by `loc` (the existing `detailMessage` already reads this shape). Date messages keep AGN-014's wording.
+403/404/429 keep the codebase's string `detail`.
+
+Both responses: `Cache-Control: private, no-store`; one structured log line `agent_report.read` / `agent_report.export` (org id,
+actor id, kind, scope, filter **keys** set, rows, duration — no filter values, no names).
 
 ### 5.2 Service — `apps/api/app/services/agent_reports.py` (new)
 
 - `REPORT_KINDS`: kind → `{master_only, date_column, filters, columns, kind: "list"|"summary"}`.
-- `parse_filters(user, kind, raw) -> Filters` (validation of §5.1 step 6; resolves country/university by name against the catalogue).
-- `list_rows(db, user, kind, filters, page) -> (rows, total)` and `summary_rows(db, user, kind, filters) -> (rows, totals)`.
+- `parse_filters(db, user, kind, raw) -> Filters` (validation of §5.1 step 6; resolves country/university slugs against the catalogue
+  and member codes within the caller's org only). Raises a `ReportInputError(param, message)` the route turns into the 422 list shape.
+- `list_rows(db, user, kind, filters, limit, offset, cap=None) -> (rows, total)` — one statement: rows plus `count(*) OVER ()`, so the
+  page and its total come from one snapshot. `summary_rows(db, user, kind, filters) -> (rows, totals)` — one statement.
 - `filter_options(db, user, kind) -> dict` — members (Master only), countries, universities, intakes, statuses present in the caller's
   scope, for the kinds that support them.
 - `fold_intakes(rows)` — pure function, unit-tested.
@@ -122,24 +142,44 @@ kind, scope, rows, duration — ids only).
 
 ### 5.3 Schema — `schemas.py` (additive)
 
-`AgentReportColumn {key, label}`, `AgentReportOut {kind, scope: "agency"|"own", columns, rows: list[dict[str, str|int|None]], totals:
-dict|None, total, page, page_size, options, as_of}`. Codes and names only, no ids.
+`AgentReportColumn {key, label, numeric: bool}`; `AgentReportOption {value, label}`; `AgentReportOut {kind, scope: "agency"|"own",
+columns, items: list[dict[str, str | int | None]], totals: dict | None, total, limit, offset, options: dict[str, list[AgentReportOption]],
+as_of}`. `items/total/limit/offset` follow the codebase's `Page` convention (`schemas.TransferRequestPage`, web `lib/apiErrors.ts`
+`Page`/`isPage`); summaries return every group with `limit = total`, `offset = 0`. Every item's keys are exactly the column keys.
+Option values are slugs and member codes, never ids.
 
 ### 5.4 CSV
 
 UTF-8 with BOM; `text/csv; charset=utf-8`; `Content-Disposition: attachment; filename=agency-{kind}-{from|all}-to-{to|all}.csv`; header
 row = column labels; dates ISO; Yes/No; labels for stage and visa; summary CSV ends with the Total row; empty result = header only.
-Every text cell through `_cell(v) = _safe_cell("" if v is None else str(v))`. Count first: `> CSV_ROW_CAP` (10,000) → 422 "This report
-has N rows; narrow the filters (limit 10,000)" before any row is loaded.
+Every text cell through `_cell(v) = _safe_cell("" if v is None else str(v))`; integers are written as integers (never escaped, never
+negative). Cap check without a count/fetch race: the list query runs with `LIMIT CSV_ROW_CAP + 1`; more than `CSV_ROW_CAP` (10,000)
+rows → 422 "This report has more than 10,000 rows; narrow the filters" and nothing is audited or returned. `Content-Disposition:
+attachment; filename="agency-{kind}-{from|all}-to-{to|all}.csv"` (quoted; built only from the validated kind and dates).
 
-### 5.5 Audit, transactions, races, performance
+### 5.5 Audit, throttle, transactions, races, performance
 
-- CSV: `db.add(AuditLog(user_id, action="agent_report.export", entity_type="agent_report", entity_id=kind, metadata_json={scope,
-  filters, rows}))`, `await db.commit()` before building the response — audit failure → 500, no file (fail closed).
-- JSON: read-only; no lock, no write. One statement per summary; list = rows + `COUNT(*)` of the same filtered query.
-- A report is a point-in-time read (`as_of`); concurrent edits may shift rows between pages — paging order is stable.
-- `page` past the end → empty `rows`, not an error. No new index (existing ones cover `agent_id`, `student_id`, `agent_student_id`,
-  `assigned_member_id`); revisit only if tests show a need, as a separate decision.
+CSV sequence, one transaction:
+
+1. checks 1–6 (§5.1);
+2. `SELECT … FOR UPDATE` on the caller's own `agent_org_members` row — serialises one user's exports so the throttle count cannot be
+   raced by parallel downloads; other users are not blocked;
+3. throttle: the caller's `agent_report.export` audit rows in the last 10 minutes (`audit_logs.user_id` and `action` are indexed),
+   newest first, `LIMIT 30`; 30 present → 429 with `Retry-After` = seconds until the oldest leaves the window (a local
+   `EXPORT_WINDOW`; `agent_orgs.retry_after` is fixed to 24 h and is not changed);
+4. the rows (`LIMIT cap + 1`) and the CSV text, built in memory;
+5. `db.add(AuditLog(user_id, action="agent_report.export", entity_type="agent_report", entity_id=kind, metadata_json={scope, filters:
+   {param: value}, rows}))` — filter values are slugs, codes, dates and enums only; no student names;
+6. `await db.commit()`, then return the file. A failed audit write → 500 and no file (fail closed); a refused export (403/404/422/429)
+   writes nothing.
+
+- JSON: read-only; no lock, no write, no commit.
+- HTTP semantics: the CSV stays a `GET` (a download link, the AGN-014 precedent, and `ReportDownloadButton` fetches with GET); the
+  audit row is a log of the read, not a state change of the report. A retried download writes a second audit row, by design.
+- A report is a point-in-time read (`as_of`); concurrent edits may shift rows between pages — paging order is stable (date basis,
+  then id).
+- `offset` past the end → empty `items`, not an error. No new index (existing ones cover `agent_id`, `student_id`,
+  `agent_student_id`, `assigned_member_id`, `audit_logs.user_id`/`action`); revisit only if tests show a need, as a separate decision.
 
 ## 6. Frontend
 
@@ -148,33 +188,80 @@ has N rows; narrow the filters (limit 10,000)" before any row is loaded.
 Reports branch for `role === "agent"`: `PortalSection` with `lead={<AgentReportsPanel role={…} />}` and the metrics table hidden on the
 page side. The portal fetch, its 403 card and the `serverApi` call order are unchanged. Navigation unchanged.
 
-### 6.2 `components/AgentReportsPanel.tsx` (new, client)
+### 6.2 Components (new, client; each under ~200 lines, composed — no new design primitives)
 
-- Tabs (`Student360Tabs` ARIA pattern): Master — Students, Applications, Universities, Countries, Intakes, Staff performance,
-  Enrollments, Commission; Staff — Students, Applications, Universities, Countries, Intakes, Enrollments. Only the active tab panel is
-  mounted.
-- URL state via `replaceState`: `?report=<kind|commission>&from&to&member&country&university&intake&status&page`.
-- Commission tab renders the existing `AgentCommissionReportPanel` unchanged. `WorkflowPanel` no longer mounts it.
-- Filter form: From / To + selects from `options`, only those the kind supports; Apply with `aria-disabled` while busy; client check
-  To ≥ From.
-- Table: `.table-scroll` region `aria-labelledby` the tab heading; `table compact stack` with `data-label`; Total row on summaries;
-  "Showing a–b of N" + Previous/Next (`aria-disabled` at the ends); "As of" time.
-- CSV: `ReportDownloadButton` (`contentType="text/csv"`, `busyLabel="Preparing CSV…"`), shown when `total > 0`.
+| Component | Job |
+|---|---|
+| `AgentReportsPanel.tsx` | container: role → tab list, URL state, fetch + stale-drop, state machine; renders the two below or the Commission panel |
+| `AgentReportFilters.tsx` | the filter form for one kind |
+| `AgentReportTable.tsx` | presentation only: columns + items + totals → table; pager |
+
+Existing pieces reused: `.s360-tab` styling (already a horizontal scroll strip with scroll-snap under 980 px, QA-01 overflow fix
+included), `.analytics-form` (filter row), `.pager`, `.kpi-skeleton`, `.table-scroll` + `table compact stack` (phone layout,
+QA18-04), `SearchableSelect` (ENH-031) for the university filter (long list), `FormMessage`, `ReportDownloadButton`,
+`AgentCommissionReportPanel` (unchanged), `detailMessage`, `isPage`, `SESSION_EXPIRED` / `SIGN_IN_PATH`.
+
+**Hierarchy.** `PortalSection` keeps the page `h1`. The panel is one full-width `action-card` (spans the grid like
+`.commission-report`) with `h2` "Reports"; each tab panel has an `h3` (the report name, e.g. "Applications by country") and a one-line
+description of what is counted ("Applications created in the selected dates; withdrawn excluded"). Summary result → toolbar row:
+"N rows · As of 14:05" left, Download CSV right.
+
+**Tabs.** Horizontal `role="tablist"` `aria-label="Reports"`, roving `tabIndex`, Left/Right/Home/End move focus **and** activate
+(Student360Tabs' automatic activation; the stale-drop makes rapid arrowing safe), visible focus ring, active tab scrolled into view.
+Master: Students · Applications · Universities · Countries · Intakes · Staff performance · Enrollments · Commission. Staff:
+Students · Applications · Universities · Countries · Intakes · Enrollments. An unknown or role-forbidden `?report=` falls back to the
+first tab (the server refuses anyway). Only the active `role="tabpanel"` is mounted, so label text ("From", "To", "Download CSV") is
+unique on the page.
+
+**URL state.** `?report=<kind|commission>&from&to&member&country&university&intake&status&offset` via `replaceState` (no history
+entries; refresh / Back / a shared link keep the view). Dates are shared by every tab, including Commission (its panel already reads
+and writes `from`/`to` and keeps other params). Switching tab keeps the dates, drops filters the new kind does not support, resets
+`offset`.
+
+**Filters (form).** `<form>` with a visible `<label>` per control; native `<input type="date">` From / To; native `<select>` for
+member, country, intake, status (each with an "All …" first option); `SearchableSelect` for university. Only the controls the kind
+supports render. Enter submits; "Apply" (`aria-disabled` while loading) and "Clear filters" (resets to dates-only). Client check To ≥
+From before fetching (same text as the server). A 422 puts the message under the control named by `detail[0].loc[1]`, links it via
+`aria-describedby`, sets `aria-invalid`, and moves focus there. Controls wrap on phones (`.analytics-form` flex-wrap; QA-022-05
+min-width fix applies).
+
+**Table.** `<table className="table compact stack">` in a `.table-scroll` region (`tabIndex=0`, `role="region"`,
+`aria-labelledby` the `h3`); `<caption className="visually-hidden">` with the applied filters; `<th scope="col">`; first cell
+`<th scope="row">`; numeric columns right-aligned with `font-variant-numeric: tabular-nums` (one added rule, `.num`); summary Total
+row in `<tfoot>`; every `<td>` has `data-label` for the phone layout. Values are rendered as text nodes only (no
+`dangerouslySetInnerHTML`).
+
+**Pager (lists).** `.pager`: "Showing 51–100 of 312" (`role="status"`, polite) + Previous / Next buttons (`aria-disabled` at the
+ends). After a page change focus moves to the table region, so keyboard and screen-reader users land on the new rows.
+
+**CSV.** `ReportDownloadButton` (`contentType="text/csv"`, `busyLabel="Preparing CSV…"`, filename from `lib/agentReports.ts`), with
+the hint "Up to 10,000 rows". Hidden when `total === 0`. Its existing `failureText` shows the server's 422 (over the cap) and 429
+(throttle) messages; nothing new in the button.
 
 ### 6.3 `lib/agentReports.ts` (new)
 
-URLs, `reportQuery`, `readState` / `writeState`, `csvFilename`, `isAgentReport` shape guard; types in `lib/types.ts` (additive).
+`REPORTS_URL`, `REPORT_KINDS` (labels, descriptions, which filters, Master-only), `reportQuery`, `readState` / `writeState`,
+`csvFilename(kind, from, to)`, `isAgentReport` shape guard (uses `isPage`); types in `lib/types.ts` (additive).
 
 ### 6.4 States
 
 | State | UI |
 |---|---|
-| Loading | skeleton + `role="status"` "Loading report…"; stale responses dropped |
-| Empty | "No records match these filters."; CSV hidden |
-| 401 | "Your session has expired" + sign-in link with `?next=` |
-| 403 | the server's detail |
-| 422 | message at the named field, focus moved |
-| 5xx / network | "Couldn't load this report" + "Try again" |
+| First load | `.kpi-skeleton` blocks shaped like the toolbar and 5 table rows, `aria-busy="true"`, and `role="status"` "Loading report…" |
+| Refetch (filter, page, tab) | previous table stays visible, dimmed, `aria-busy="true"` on the region; Apply `aria-disabled`; a response for an older request is dropped (`latest` ref) |
+| Empty, no filters | "No students yet." / "No applications yet." (per kind) — `role="status"` |
+| Empty, with filters | "No records match these filters." + "Clear filters" button; CSV hidden |
+| 401 | `SESSION_EXPIRED` + sign-in link with `?next=` the current URL; table cleared |
+| 403 | the server's detail (e.g. `REPORTS_REFUSED` when the toggle is switched off mid-session); table cleared |
+| 422 | field message as above; the previous table stays |
+| 5xx / network | "Couldn't load this report." + "Try again" (re-requests the last attempted query); previous table stays |
+
+**Perceived performance.** No new dependencies or global state; the panel fetches only the active tab; the first request starts on
+mount; dates persist across tabs so switching tabs is one request.
+
+**Responsive / mobile.** Checked at 320, 375, 768, 1024 and 1440 px: tab strip scrolls horizontally without widening the page; filter
+controls wrap one per row under 640 px; tables become labelled blocks (`stack`); the CSV button and pager wrap below the result line;
+touch targets ≥ 44 px (`.s360-tab` min-height).
 
 ## 7. Authorization and security
 
@@ -188,6 +275,27 @@ URLs, `reportQuery`, `readState` / `writeState`, `csvFilename`, `isAgentReport` 
 Staff cannot widen scope (no `member` filter, options built from own scope). CSV injection neutralised. Filename ASCII-only. Toggle
 changes apply on the next request (`agent_may` reads the eager-loaded membership).
 
+### 7.1 Threat review (security-and-hardening, 2026-10-03)
+
+Trust boundary: the query string and path of two `GET` routes. Assets: agency student names, application and enrollment data, staff
+performance. No new auth flow, secret, upload, outbound call or LLM.
+
+| Area | Finding → control |
+|---|---|
+| Authentication | existing `get_current_user` (httpOnly, `SameSite=Lax`, `Secure` per config cookies); no new token or session handling. A deactivated member or suspended agency is refused by `_gate` on the next request (session version unchanged). |
+| Authorization / role escalation | server-side on every request, in the fixed order of §5.1; nav and tab hiding are cosmetic. `staff` kind and commission routes stay Master-only. Toggle read per request. |
+| IDOR / tenant isolation | no record ids in the API. Every query carries `org_member_ids` (and the staff clauses). `member` codes resolve inside the caller's org only; another org's code gets the same 422 as an unknown one. `country`/`university` are global catalogue slugs and only narrow an already-scoped query. Options lists come from the caller's scope, so they reveal nothing outside it. |
+| Input validation | allowlisted kinds and params per kind; strict date regex; enums; slugs/codes resolved against the DB; ≤ 120 chars; `limit` 1–100, `offset` 0–9,950. Unknown params ignored (FastAPI default) — harmless, nothing reads them. |
+| SQL injection | SQLAlchemy expressions and bound parameters only; no `text()`, no string-built SQL; the students country filter is equality on `lower(trim())`, never `LIKE` (no wildcard widening). |
+| XSS | React text rendering only; no `dangerouslySetInnerHTML`; column labels come from the server's fixed list, cell values rendered as text. |
+| CSV / formula injection | `_safe_cell` on every text cell (`= + - @ \t \r`), `None` coalesced first; numbers are integers. BOM + UTF-8 for safe Unicode. |
+| CSRF | both routes are `GET`; JSON is unreadable cross-origin (CORS allows only `frontend_url`). A cross-site top-level navigation could trigger a CSV download onto the victim's own device and one audit row; nothing leaves to the attacker, and the throttle bounds the noise. Accepted, recorded. |
+| Sensitive data / logs | no email, phone, DOB, passport, UUIDs in reports. Structured logs carry ids, kind, filter keys, counts and timing — no names or filter values. Audit metadata carries slugs/codes/dates/enums and the row count — no student names. Error bodies are fixed strings; 500s expose no internals (existing handler). |
+| Rate limiting / DoS | R10 export throttle (30 / 10 min / user, 429 + `Retry-After`), 10,000-row cap, `limit ≤ 100`, `offset` bound; JSON summaries are single aggregate statements. |
+| Caching | `Cache-Control: private, no-store` on JSON and CSV. |
+| Audit / repudiation | one `agent_report.export` row per successful export, committed before the file is returned; fail closed. |
+| Secrets / dependencies | none added. |
+
 ## 8. Acceptance criteria and tests
 
 | AC | Criterion | Tests |
@@ -196,11 +304,13 @@ changes apply on the next request (`agent_may` reads the eager-loaded membership
 | AC2 | parity with AGN-018: Countries total Applications = dashboard Applications; Offers = O5 | `test_agn_020_reports.py` |
 | AC3 | CSV header row exact per kind, BOM, rows equal JSON, formula cells escaped, unicode round-trip, empty = header only, filename | `test_agn_020_reports_csv.py` |
 | AC4 | toggle off → 403 on every kind × format before 404/422; toggle on → own scope; `staff` → 403 for staff; super_admin / non-agent → 403 | `test_agn_020_reports_access.py` |
-| AC5 | filters: inclusive UTC days per date basis; member (staff → 422); country, university, intake incl. `unstructured`, status; unknown → 422 | `test_agn_020_reports.py` |
-| AC6 | paging 50, total, past-end empty; CSV > cap → 422, no audit row | `test_agn_020_reports_csv.py` (cap monkeypatched) |
-| AC7 | one `agent_report.export` audit row per CSV, no names; JSON none; commission CSV none | `test_agn_020_reports_csv.py` |
-| AC8 | tabs per role, URL state, all states, pagination, CSV button; 375 px; keyboard tabs; axe clean | `AgentReportsPanel.test.tsx`, `lib/agentReports.test.ts`, `PortalPage.agentReports.test.tsx`, `agn-020-reports.spec.ts` |
+| AC5 | filters: inclusive UTC days per date basis; member (staff → 422; another org's code → 422, same text as unknown); country / university by slug; intake incl. `unstructured`; status; unsupported or unknown → 422 in the list shape with `loc` naming the param | `test_agn_020_reports.py` |
+| AC6 | `items/total/limit/offset`; default 50, `limit` 1–100, past-end empty; CSV > cap → 422, no audit row, no file | `test_agn_020_reports_csv.py` (cap monkeypatched) |
+| AC7 | one `agent_report.export` audit row per CSV, no names, filter values only slugs/codes/dates/enums; JSON none; refused export none; commission CSV none | `test_agn_020_reports_csv.py` |
+| AC8 | tabs per role (keyboard Left/Right/Home/End), URL state incl. shared dates with Commission, every state in §6.4, 422 focus to the named field, pager focus, CSV button; 320 / 375 / 1024 px no page overflow; axe clean | `AgentReportsPanel.test.tsx`, `AgentReportFilters.test.tsx`, `AgentReportTable.test.tsx`, `lib/agentReports.test.ts`, `PortalPage.agentReports.test.tsx`, `agn-020-reports.spec.ts` |
 | AC9 | AGN-003 matrix, AGN-014, AGN-018 suites and the portal reports payload unchanged and green | full suites |
+| AC10 | 31st export in 10 minutes → 429 with `Retry-After`; a different user unaffected; no audit row for the refused export | `test_agn_020_reports_csv.py` |
+| AC11 | security: formula payloads in name / intake / university escaped; no UUID, email, phone or DOB anywhere in JSON or CSV; logs carry no names | `test_agn_020_reports_csv.py`, `test_agn_020_reports_access.py` |
 
 Unit: `fold_intakes`, `parse_filters`. Gates: full pytest, vitest, `tsc`, lint, Playwright agn-003 / agn-014 / agn-018 / agn-020.
 
@@ -227,3 +337,36 @@ reports; charts; changing the portal `reports` payload; a structured intake colu
 
 `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-063`; `RBAC_MATRIX.md`; `API_CONTRACT.md`; `SCREEN_CATALOG.md` / `screen_catalog.json`;
 `RTM.md`; `ENHANCEMENT_BACKLOG.md` §AGN-020; `CONFLICT_MATRIX.md` C-10 update (these reports lifted out of "parked").
+
+## 12. Design reviews (2026-10-03, at the owner's request)
+
+Three reviews applied to this spec before planning; changes are already folded into the sections above.
+
+**API and interface design.**
+- Pagination follows the codebase's `Page` convention (`items/total/limit/offset`), not `page/page_size`.
+- Filters use catalogue **slugs** because university names are not unique; options carry slugs and member codes, never ids.
+- 422s use FastAPI's list shape with `loc`, so the client maps errors to fields without parsing text. Date messages keep AGN-014's
+  wording.
+- Every query param is a string validated after authorization, so a refused caller never sees 422.
+- The list page and its total come from one statement (`count(*) OVER ()`). The CSV cap uses `LIMIT cap + 1`, so there is no
+  count/fetch race.
+- CSV stays `GET` (precedent; the audit row logs a read). Retries write a second audit row.
+- The response is additive-only; no existing contract changes.
+
+**Frontend UI engineering.**
+- The panel is split into container / filters / table.
+- Reuses `.s360-tab`, `.analytics-form`, `.pager`, `.kpi-skeleton`, `stack` tables, `SearchableSelect` and `ReportDownloadButton`.
+  One CSS rule is added: `.num`.
+- Heading levels h2/h3 sit under the page h1, with a "what is counted" line per report.
+- Refetches keep the previous table, dimmed, instead of flashing a skeleton.
+- Empty states distinguish "no data yet" from "no matches" (with Clear filters).
+- Errors are tied to their field with focus moved to them; after paging, focus moves to the table.
+- Totals sit in `<tfoot>`, numbers in tabular figures, and there is a caption of the applied filters.
+- Breakpoints 320–1440 px are checked.
+
+**Security and hardening.**
+- The §7.1 threat review was run.
+- One owner decision came out of it: R10, the export throttle.
+- Other controls: member codes resolve inside the org, with the same error text as an unknown code (no cross-tenant oracle).
+  Inputs are length-capped. The students country filter uses equality, never `LIKE`. Logs carry filter keys only, never values.
+- The CSRF residual risk (a cross-site GET download) is accepted and recorded.
