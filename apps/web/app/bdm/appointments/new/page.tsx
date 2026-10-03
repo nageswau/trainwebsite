@@ -4,11 +4,13 @@ import PortalShell from "@/components/PortalShell";
 import { ApiError, serverApi } from "@/lib/api";
 import { BDM_TYPE_LABEL, type BdmMe } from "@/lib/bdm";
 import type { Organization } from "@/lib/bdmOrganizations";
-import { BDM_NAV, BDM_SIGN_IN } from "@/lib/navigation";
+import { bdmNav } from "@/lib/bdmNav";
+import { BDM_SIGN_IN } from "@/lib/navigation";
 
 // bdm-006: book an appointment. `?organization=<id>` (from the organization page) preselects it; an unknown, out-of-scope or archived
 // organization is simply not preselected -- the API refuses archived ones with its own message (A4).
 export default async function BdmAppointmentNewPage({ searchParams }: { searchParams: Promise<{ organization?: string }> }) {
+  const nav = bdmNav(); // bdm-010 QA10-01: the unread badge, read alongside the page's own data (never rejects)
   const { organization: orgParam } = await searchParams;
   let me: BdmMe;
   try {
@@ -27,7 +29,7 @@ export default async function BdmAppointmentNewPage({ searchParams }: { searchPa
   }
   const type = me.bdm_profile.bdm_type;
   return (
-    <PortalShell nav={BDM_NAV} roleLabel={`${BDM_TYPE_LABEL[type]} BDM`} userName={me.full_name}>
+    <PortalShell nav={await nav} roleLabel={`${BDM_TYPE_LABEL[type]} BDM`} userName={me.full_name}>
       <div className="portal-content">
         <div className="portal-title">
           <div>
