@@ -11,7 +11,7 @@ from tests.agn020_helpers import REPORTS, reports_world
 
 KINDS = ["students", "applications", "enrollments", "universities", "countries", "intakes", "staff"]
 STAFF_KINDS = [k for k in KINDS if k != "staff"]
-READY = ["countries"]  # widened to KINDS once every kind is built (plan Tasks 3-4)
+READY = KINDS
 FORMATS = ["", ".csv"]
 STAFF_REPORT_REFUSED = "Only an agency Master can view staff performance"
 

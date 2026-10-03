@@ -1,6 +1,7 @@
 """AGN-020 (DEC-SCOPE-063) -- agency reports: filters, intake folding, report values against hand counts, parity with the AGN-018
 dashboard, paging and options (spec §4, §5, §8)."""
 
+import re
 from datetime import date
 
 import pytest
@@ -225,3 +226,89 @@ async def test_country_filter_on_a_summary(world, db_session):
     slug = (await db_session.get(Country, world["u2"].country_id)).slug
     body = await _report(world["master"].email, "universities", country=slug)
     assert [i["university"] for i in body["items"]] == ["Beta University"]
+
+
+# --- Task 4: list reports and paging (spec §4.2, AC1, AC5, AC6, AC11) ---
+
+UUID_TEXT = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+
+
+def _names(world, *keys):
+    records = world["records"]
+    return [world["login"].full_name if key == "r2" else records[key].full_name for key in keys]
+
+
+@pytest.mark.asyncio
+async def test_students_default_to_active_newest_first(world):
+    body = await _report(world["master"].email, "students")
+    assert [c["label"] for c in body["columns"]] == ["Name", "Assigned staff", "Preferred country", "Preferred intake", "Status", "Created", "Applications"]
+    assert [i["name"] for i in body["items"]] == _names(world, "r5", "r3", "r2", "r1")
+    r1, r5 = body["items"][3], body["items"][0]
+    assert r1 | {"created": None} == {"name": _names(world, "r1")[0], "assigned_staff": f"{world['s1']['member'].code} Staff One", "preferred_country": "Aland", "preferred_intake": "Sep 2027", "status": "Active", "created": None, "applications": 2}
+    assert (r5["assigned_staff"], r5["applications"]) == ("Unassigned", 2)
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", r1["created"])
+    assert body["totals"] is None and body["total"] == 4 and body["limit"] == PAGE_SIZE
+
+
+@pytest.mark.asyncio
+async def test_students_status_and_country_filters(world):
+    assert (await _report(world["master"].email, "students", status="all"))["total"] == 5
+    archived = await _report(world["master"].email, "students", status="archived")
+    assert [i["name"] for i in archived["items"]] == _names(world, "r4") and archived["items"][0]["status"] == "Archived"
+    by_text = await _report(world["master"].email, "students", country="  ALAND ")
+    assert [i["name"] for i in by_text["items"]] == _names(world, "r1")
+
+
+@pytest.mark.asyncio
+async def test_staff_list_only_their_assigned_students(world):
+    body = await _report(world["s1"]["user"].email, "students")
+    assert [i["name"] for i in body["items"]] == _names(world, "r2", "r1")
+
+
+@pytest.mark.asyncio
+async def test_applications_list_every_application_with_labels(world):
+    body = await _report(world["master"].email, "applications", limit="100")
+    assert [c["label"] for c in body["columns"]] == ["Student", "University", "Country", "Course", "Intake", "Application ref", "Stage", "Submitted", "Offer", "Visa", "Created"]
+    assert body["total"] == 10  # withdrawn included; the School-bridged row and the noise agency are not
+    by = {(i["student"], i["intake"], i["stage"]): i for i in body["items"]}
+    r1, r2, r3 = _names(world, "r1", "r2", "r3")
+    assert by[(r3, "Next intake", "Withdrawn")] | {"created": None} == {
+        "student": r3, "university": "Alpha University", "country": "Aland", "course": None, "intake": "Next intake", "application_ref": None,
+        "stage": "Withdrawn", "submitted": None, "offer": "Yes", "visa": "Refused", "created": None,
+    }
+    assert (by[(r2, "09/2027", "Visa documentation")]["visa"], by[(r2, "09/2027", "Visa documentation")]["submitted"]) == ("Approved", "2026-07-01")
+    assert (by[(r1, "Sep 2027", "Enquiry")]["offer"], by[(r1, "Sep 2027", "Enquiry")]["visa"]) == ("No", "None")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("params", "total"), [({"intake": "unstructured"}, 3), ({"intake": "2027-09"}, 5), ({"status": "withdrawn"}, 2)])
+async def test_applications_filters(world, params, total):
+    assert (await _report(world["master"].email, "applications", **params))["total"] == total
+
+
+@pytest.mark.asyncio
+async def test_enrollments_by_enrollment_date(world):
+    body = await _report(world["master"].email, "enrollments")
+    assert [c["label"] for c in body["columns"]] == ["Student", "University", "Country", "Course", "Intake", "Enrollment date", "University student ID"]
+    assert [(i["student"], i["enrollment_date"], i["university_student_id"]) for i in body["items"]] == [(_names(world, "r2")[0], "2027-09-15", "UNI-4"), (_names(world, "r5")[0], None, None)]
+    dated = await _report(world["master"].email, "enrollments", date_from="2027-09-01", date_to="2027-09-30")
+    assert dated["total"] == 1  # the undated legacy enrollment only shows without a date filter
+
+
+@pytest.mark.asyncio
+async def test_paging_keeps_the_total_and_an_empty_page_past_the_end(world):
+    first = await _report(world["master"].email, "students", limit="2")
+    second = await _report(world["master"].email, "students", limit="2", offset="2")
+    past = await _report(world["master"].email, "students", limit="2", offset="10")
+    assert [i["name"] for i in first["items"] + second["items"]] == _names(world, "r5", "r3", "r2", "r1")
+    assert (first["total"], second["total"], past["total"], past["items"]) == (4, 4, 4, [])
+    assert (second["limit"], second["offset"]) == (2, 2)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("kind", ["students", "applications", "enrollments", "staff"])
+async def test_no_ids_or_contact_details_leave_the_api(world, db_session, kind):
+    """AC11: no UUIDs, emails or phone numbers in a report."""
+    async with client_for(world["master"].email) as c:
+        text = (await c.get(f"{REPORTS}/{kind}")).text
+    assert not UUID_TEXT.search(text) and "@example.local" not in text

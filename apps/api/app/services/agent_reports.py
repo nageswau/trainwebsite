@@ -9,12 +9,13 @@ from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, case, distinct, exists, func, select
+from sqlalchemy import ColumnElement, and_, case, distinct, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.core.rbac import is_agent_staff
-from app.models import AgentOrgMember, AgentStudent, Country, OverseasApplication, University, User, VisaCase
-from app.services.agent_applications import OVERSEAS_APPLICATION_STAGES, WITHDRAWN, intake_end
+from app.models import AgentOrgMember, AgentStudent, Country, OverseasApplication, OverseasCourse, University, User, VisaCase
+from app.services.agent_applications import OVERSEAS_APPLICATION_STAGES, WITHDRAWN, counts_as_offer, intake_end, stage_label, with_owner
 from app.services.agent_dashboard import agency_applications, offer_clause
 from app.services.agent_orgs import org_member_ids
 from app.services.agent_students import student_scope
@@ -211,9 +212,12 @@ def _member_is(expression, f: Filters) -> list[ColumnElement[bool]]:
     return [expression.is_(None) if f.member == "unassigned" else expression == f.member]
 
 
-def _application_where(user: User, f: Filters) -> list[ColumnElement[bool]]:
-    """The caller's applications (scope + School-bridged rows out, A12) narrowed by the shared filters. Needs University joined."""
-    where = [*agency_applications(user), *_created_between(OverseasApplication.created_at, f), *_member_is(_assignee(user), f)]
+def _application_where(user: User, f: Filters, *, dated: bool = True) -> list[ColumnElement[bool]]:
+    """The caller's applications (scope + School-bridged rows out, A12) narrowed by the shared filters. Needs University joined.
+    `dated=False`: the caller applies its own date basis (enrollments, R6)."""
+    where = [*agency_applications(user), *_member_is(_assignee(user), f)]
+    if dated:
+        where += _created_between(OverseasApplication.created_at, f)
     if f.country_id:
         where.append(University.country_id == f.country_id)
     if f.university_id:
@@ -320,19 +324,156 @@ async def _staff(db: AsyncSession, user: User, f: Filters) -> tuple[tuple[Column
 SUMMARIES = {"countries": _countries, "universities": _universities, "intakes": _intakes, "staff": _staff}
 
 
+# --- List reports (spec §4.2): one row per record, a page at a time ---
+
+VISA_LABELS = {None: "None", 1: "In progress", 2: "Withdrawn", 3: "Refused", 4: "Approved"}  # the furthest outcome of any case
+
+
+def _day_of(value: datetime | None) -> str | None:
+    return value.astimezone(UTC).date().isoformat() if value else None
+
+
+async def _page(db: AsyncSession, stmt, limit: int, offset: int) -> tuple[list, int]:
+    """The page and its total from ONE statement (`count(*) OVER ()`), so they cannot disagree. Only a page past the end, which has
+    no row to carry the total, costs a second count."""
+    rows = (await db.execute(stmt.add_columns(func.count().over()).limit(limit).offset(offset))).all()
+    if rows:
+        return rows, int(rows[0][-1])
+    total = await db.scalar(select(func.count()).select_from(stmt.order_by(None).subquery())) if offset else 0
+    return [], int(total)
+
+
+STUDENT_COLUMNS = (
+    Column("name", "Name"), Column("assigned_staff", "Assigned staff"), Column("preferred_country", "Preferred country"),
+    Column("preferred_intake", "Preferred intake"), Column("status", "Status"), Column("created", "Created"),
+    Column("applications", "Applications", True),
+)
+
+
+async def _students(db: AsyncSession, user: User, f: Filters, limit: int, offset: int) -> tuple[tuple[Column, ...], list[dict], int]:
+    staff_user = aliased(User)
+    applications = (
+        select(func.count())
+        .select_from(OverseasApplication)
+        .where(
+            or_(
+                OverseasApplication.agent_student_id == AgentStudent.id,
+                and_(OverseasApplication.agent_student_id.is_(None), AgentStudent.student_id.is_not(None), OverseasApplication.student_id == AgentStudent.student_id),
+            ),
+            OverseasApplication.agent_id.in_(org_member_ids(user)),
+            OverseasApplication.school_student_id.is_(None),
+            OverseasApplication.status != WITHDRAWN,
+        )
+        .correlate(AgentStudent)
+        .scalar_subquery()
+    )
+    stmt = (
+        select(AgentStudent, func.coalesce(User.full_name, AgentStudent.full_name), AgentOrgMember.code, staff_user.full_name, applications)
+        .outerjoin(User, User.id == AgentStudent.student_id)
+        .outerjoin(AgentOrgMember, AgentOrgMember.id == AgentStudent.assigned_member_id)
+        .outerjoin(staff_user, staff_user.id == AgentOrgMember.user_id)
+        .where(*student_scope(user), *_created_between(AgentStudent.created_at, f), *_member_is(AgentStudent.assigned_member_id, f))
+        .order_by(AgentStudent.created_at.desc(), AgentStudent.id.desc())
+    )
+    if f.status != "all":
+        stmt = stmt.where(AgentStudent.status == (f.status or "active"))
+    if f.student_country:
+        stmt = stmt.where(func.lower(func.trim(AgentStudent.preferred_country)) == f.student_country)  # equality, never LIKE
+    rows, total = await _page(db, stmt, limit, offset)
+    items = [
+        {
+            "name": name or "—", "assigned_staff": f"{code} {staff_name}" if code else "Unassigned", "preferred_country": record.preferred_country,
+            "preferred_intake": record.preferred_intake, "status": record.status.capitalize(), "created": _day_of(record.created_at), "applications": int(count),
+        }
+        for record, name, code, staff_name, count, _ in rows
+    ]
+    return STUDENT_COLUMNS, items, total
+
+
+def _application_stmt(user: User, f: Filters, *where, dated: bool = True):
+    """Applications with their place, course and owner. `with_owner` (AGN-008) adds the owner as outer joins -- a student with no
+    login is listed -- and keeps School-bridged rows out; its two columns come last before the window total."""
+    visa = (
+        select(func.max(case((VisaCase.decision == "approved", 4), (VisaCase.decision == "refused", 3), (VisaCase.decision == "withdrawn", 2), else_=1)))
+        .where(VisaCase.application_id == OverseasApplication.id)
+        .scalar_subquery()
+    )
+    stmt = (
+        select(OverseasApplication, University.name, Country.name, OverseasCourse.title, visa)
+        .join(University, University.id == OverseasApplication.university_id)
+        .join(Country, Country.id == University.country_id)
+        .outerjoin(OverseasCourse, OverseasCourse.id == OverseasApplication.course_id)
+        .where(*_application_where(user, f, dated=dated), *where)
+    )
+    return with_owner(stmt)
+
+
+APPLICATION_COLUMNS = (
+    Column("student", "Student"), Column("university", "University"), Column("country", "Country"), Column("course", "Course"),
+    Column("intake", "Intake"), Column("application_ref", "Application ref"), Column("stage", "Stage"), Column("submitted", "Submitted"),
+    Column("offer", "Offer"), Column("visa", "Visa"), Column("created", "Created"),
+)
+
+
+async def _applications(db: AsyncSession, user: User, f: Filters, limit: int, offset: int) -> tuple[tuple[Column, ...], list[dict], int]:
+    stmt = _application_stmt(user, f).order_by(OverseasApplication.created_at.desc(), OverseasApplication.id.desc())
+    rows, total = await _page(db, stmt, limit, offset)
+    items = [
+        {
+            "student": name or "—", "university": university, "country": country, "course": course, "intake": app.intake,
+            "application_ref": app.application_reference, "stage": stage_label(app.status),
+            "submitted": app.submitted_on.isoformat() if app.submitted_on else None, "offer": "Yes" if counts_as_offer(app) else "No",
+            "visa": VISA_LABELS[visa], "created": _day_of(app.created_at),
+        }
+        for app, university, country, course, visa, _account, name, _ in rows
+    ]
+    return APPLICATION_COLUMNS, items, total
+
+
+ENROLLMENT_COLUMNS = (
+    Column("student", "Student"), Column("university", "University"), Column("country", "Country"), Column("course", "Course"),
+    Column("intake", "Intake"), Column("enrollment_date", "Enrollment date"), Column("university_student_id", "University student ID"),
+)
+
+
+async def _enrollments(db: AsyncSession, user: User, f: Filters, limit: int, offset: int) -> tuple[tuple[Column, ...], list[dict], int]:
+    """R6: dated by `enrollment_date` (a calendar date, inclusive both ends); an undated legacy enrollment shows only undated."""
+    dates = [OverseasApplication.enrollment_date >= f.start] if f.start else []
+    dates += [OverseasApplication.enrollment_date <= f.end] if f.end else []
+    stmt = _application_stmt(user, f, OverseasApplication.status == "enrolled", *dates, dated=False)
+    stmt = stmt.order_by(OverseasApplication.enrollment_date.desc().nulls_last(), OverseasApplication.id.desc())
+    rows, total = await _page(db, stmt, limit, offset)
+    items = [
+        {
+            "student": name or "—", "university": university, "country": country, "course": course, "intake": app.intake,
+            "enrollment_date": app.enrollment_date.isoformat() if app.enrollment_date else None, "university_student_id": app.university_student_id,
+        }
+        for app, university, country, course, _visa, _account, name, _ in rows
+    ]
+    return ENROLLMENT_COLUMNS, items, total
+
+
+LISTS = {"students": _students, "applications": _applications, "enrollments": _enrollments}
+
+
 async def report(db: AsyncSession, user: User, kind: str, f: Filters, *, limit: int, offset: int) -> dict:
-    """The `AgentReportOut` payload (spec §5.3)."""
-    columns, items = await SUMMARIES[kind](db, user, f)
+    """The `AgentReportOut` payload (spec §5.3). A summary is every group plus a Total row; a list is one page."""
+    if REPORT_KINDS[kind].summary:
+        columns, items = await SUMMARIES[kind](db, user, f)
+        totals, total, limit, offset = _totals(columns, items), len(items), len(items), 0
+    else:
+        columns, items, total = await LISTS[kind](db, user, f, limit, offset)
+        totals = None
     return {
         "kind": kind,
         "title": REPORT_KINDS[kind].title,
         "scope": "own" if is_agent_staff(user) else "agency",
         "columns": [vars(column) for column in columns],
         "items": items,
-        "totals": _totals(columns, items),
-        "total": len(items),
-        "limit": len(items),
-        "offset": 0,
+        "totals": totals,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
         "options": {},
         "as_of": datetime.now(UTC),
     }
