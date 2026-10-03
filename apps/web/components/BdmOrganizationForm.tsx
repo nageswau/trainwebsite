@@ -3,8 +3,20 @@ import { type FormEvent, useRef, useState } from "react";
 
 import BdmContactFields, { blankContact, type ContactValues } from "@/components/BdmContactFields";
 import BdmOrganizationFields, { ORG_FIELDS, type OrgField, type OrgValues } from "@/components/BdmOrganizationFields";
+import BdmOrganizationProfileFields, { filledFields, profileErrors, profilePayload, profileValuesOf, type ProfileValues } from "@/components/BdmOrganizationProfileFields";
 import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
-import { isOrganizationBody, type Organization, orgDuplicate, type OrgDuplicate, ORGS_URL } from "@/lib/bdmOrganizations";
+import {
+  ALL_PROFILE_FIELDS,
+  isOrganizationBody,
+  type Organization,
+  orgDuplicate,
+  type OrgDuplicate,
+  ORGS_URL,
+  profileGroup,
+  profileNotEmpty,
+  type ProfileField,
+  typeChangeMessage,
+} from "@/lib/bdmOrganizations";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 import { useLeaveGuard } from "@/lib/useLeaveGuard";
 import { plural } from "@/lib/plural";
@@ -25,6 +37,7 @@ function valuesOf(o?: Organization): OrgValues {
     name: o?.name ?? "",
     city: o?.city ?? "",
     state: o?.state ?? "",
+    address: o?.address ?? "",
     phone: o?.phone ?? "",
     email: o?.email ?? "",
     website: o?.website ?? "",
@@ -42,13 +55,16 @@ function wire(key: OrgField, value: string | boolean): unknown {
   return key === "student_count" ? Number(trimmed) : trimmed;
 }
 
-/** FastAPI's 422 list -> errors on the organization's own fields (`["body", field]`) or on the contact they belong to
- * (`["body", "contacts", i, field]`, keyed like BdmContactFields). Null when any item maps to neither: the form then shows the
- * whole detail as one message, so nothing is hidden (final review I1). */
-function serverErrors(detail: unknown, contacts: ContactValues[]): { org: Partial<Record<OrgField, string>>; contact: Record<string, string> } | null {
+type ServerErrors = { org: Partial<Record<OrgField, string>>; contact: Record<string, string>; profile: Partial<Record<ProfileField, string>> };
+
+/** FastAPI's 422 list -> errors on the organization's own fields (`["body", field]`), on a profile field (`["body", "profile", field]`,
+ * bdm-003) or on the contact they belong to (`["body", "contacts", i, field]`, keyed like BdmContactFields). Null when any item maps to
+ * none of these: the form then shows the whole detail as one message, so nothing is hidden (final review I1). */
+function serverErrors(detail: unknown, contacts: ContactValues[]): ServerErrors | null {
   if (!Array.isArray(detail) || detail.length === 0) return null;
   const org: Partial<Record<OrgField, string>> = {};
   const contact: Record<string, string> = {};
+  const profile: Partial<Record<ProfileField, string>> = {};
   for (const item of detail as { loc?: unknown[] }[]) {
     const [where, field, index, contactField] = item?.loc ?? [];
     const message = detailMessage([item]);
@@ -56,9 +72,10 @@ function serverErrors(detail: unknown, contacts: ContactValues[]): { org: Partia
     if (item.loc!.length === 2 && ORG_FIELDS.includes(field as OrgField)) org[field as OrgField] = message;
     else if (item.loc!.length === 4 && field === "contacts" && typeof index === "number" && contacts[index] && typeof contactField === "string") {
       contact[`${contacts[index].key}-${contactField}`] = message;
-    } else return null;
+    } else if (item.loc!.length === 3 && field === "profile" && ALL_PROFILE_FIELDS.includes(index as ProfileField)) profile[index as ProfileField] = message;
+    else return null;
   }
-  return { org, contact };
+  return { org, contact, profile };
 }
 
 function contactBody(c: ContactValues): Record<string, unknown> {
@@ -82,6 +99,12 @@ export default function BdmOrganizationForm({
   const original = useRef(valuesOf(organization));
   const [values, setValues] = useState<OrgValues>(original.current);
   const [contacts, setContacts] = useState<ContactValues[]>(() => [blankContact("c1", true)]);
+  // bdm-003: the profile holds every group's values; only the current type's group is shown and sent (switching back restores it).
+  const originalProfile = useRef(profileValuesOf(organization?.profile));
+  const [profile, setProfile] = useState<ProfileValues>(originalProfile.current);
+  const [profileErrs, setProfileErrs] = useState<Partial<Record<ProfileField, string>>>({});
+  const group = profileGroup(values.org_type);
+  const originalGroup = profileGroup(original.current.org_type);
   const [errors, setErrors] = useState<Partial<Record<OrgField, string>>>({});
   const [contactErrors, setContactErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState<string | null>(null);
@@ -91,6 +114,7 @@ export default function BdmOrganizationForm({
   const idPrefix = mode === "create" ? "org-new" : `org-${organization?.id}`;
   const dirty =
     ORG_FIELDS.some((k) => values[k] !== original.current[k]) ||
+    ALL_PROFILE_FIELDS.some((k) => profile[k] !== originalProfile.current[k]) ||
     (mode === "create" && contacts.some((c) => [c.name, c.designation, c.role, c.phone, c.email].some((v) => v.trim())));
 
   // Browser QA-11: unsaved input is not thrown away silently: Cancel, in-app links, reload and close ask first.
@@ -103,22 +127,33 @@ export default function BdmOrganizationForm({
 
   function payload(): Record<string, unknown> {
     if (mode === "edit") {
-      return Object.fromEntries(ORG_FIELDS.filter((k) => values[k] !== original.current[k]).map((k) => [k, wire(k, values[k])]));
+      const changed: Record<string, unknown> = Object.fromEntries(ORG_FIELDS.filter((k) => values[k] !== original.current[k]).map((k) => [k, wire(k, values[k])]));
+      const p = profilePayload(group, profile, originalProfile.current);
+      if (p) changed.profile = p;
+      return changed;
     }
     const body: Record<string, unknown> = Object.fromEntries(ORG_FIELDS.map((k) => [k, wire(k, values[k])]).filter(([, v]) => v !== null));
+    const p = profilePayload(group, profile);
+    if (p) body.profile = p;
     body.contacts = contacts.map(contactBody);
     return body;
   }
 
-  /** Client-side required checks (a convenience; the server decides). Focuses the first problem. */
+  /** Client-side checks (a convenience; the server decides). Focuses the first problem. */
   function check(): boolean {
     const found: Partial<Record<OrgField, string>> = {};
     for (const [key, message] of REQUIRED) if (!String(values[key]).trim()) found[key] = message;
+    if (mode === "edit" && originalGroup && group !== originalGroup) {
+      const filled = filledFields(originalGroup, originalProfile.current);
+      if (filled.length) found.org_type = typeChangeMessage(originalGroup, filled); // P4: the server's 409 is the authority
+    }
+    const foundProfile = profileErrors(group, profile);
     const foundContacts: Record<string, string> = {};
     if (mode === "create") for (const c of contacts) if (!c.name.trim()) foundContacts[`${c.key}-name`] = "Contact name is required";
     setErrors(found);
+    setProfileErrs(foundProfile);
     setContactErrors(foundContacts);
-    const first = Object.keys(found)[0] ?? Object.keys(foundContacts)[0];
+    const first = Object.keys(found)[0] ?? Object.keys(foundProfile)[0] ?? Object.keys(foundContacts)[0];
     if (first) focus(`${idPrefix}-${first}`);
     return !first;
   }
@@ -142,15 +177,21 @@ export default function BdmOrganizationForm({
         return;
       }
       const dup = response.status === 409 ? orgDuplicate(data?.detail) : null;
+      const notEmpty = response.status === 409 ? profileNotEmpty(data?.detail) : null;
       const onFields = response.status === 422 ? serverErrors(data?.detail, contacts) : null;
       if (dup) {
         setDuplicate(dup);
         focus(`${idPrefix}-duplicate`);
+      } else if (notEmpty) {
+        // bdm-003 P4: worded with the stored group when the form knows it, else with the server's own message.
+        setErrors({ org_type: originalGroup ? typeChangeMessage(originalGroup, notEmpty) : `${String(data?.detail?.message ?? "Clear the details before changing the type")}.` });
+        focus(`${idPrefix}-org_type`);
       } else if (onFields) {
         setErrors(onFields.org);
+        setProfileErrs(onFields.profile);
         setContactErrors(onFields.contact);
-        const firstOrg = ORG_FIELDS.find((k) => onFields.org[k]);
-        focus(`${idPrefix}-${firstOrg ?? Object.keys(onFields.contact)[0]}`);
+        const first = ORG_FIELDS.find((k) => onFields.org[k]) ?? ALL_PROFILE_FIELDS.find((k) => onFields.profile[k]) ?? Object.keys(onFields.contact)[0];
+        focus(`${idPrefix}-${first}`);
       } else {
         setFailure(detailMessage(data?.detail, "Unable to save this organization."));
         focus(`${idPrefix}-failure`);
@@ -174,6 +215,7 @@ export default function BdmOrganizationForm({
       }}
     >
       <BdmOrganizationFields idPrefix={idPrefix} values={values} errors={errors} onChange={(k, v) => setValues((prev) => ({ ...prev, [k]: v }))} />
+      <BdmOrganizationProfileFields idPrefix={idPrefix} group={group} values={profile} errors={profileErrs} onChange={(k, v) => setProfile((prev) => ({ ...prev, [k]: v }))} />
       {mode === "create" && <BdmContactFields idPrefix={idPrefix} contacts={contacts} errors={contactErrors} onChange={setContacts} />}
       {duplicate && (
         <div role="alert" className="form-error">

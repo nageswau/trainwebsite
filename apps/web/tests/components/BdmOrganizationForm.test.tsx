@@ -188,3 +188,103 @@ describe("BdmOrganizationForm (bdm-002 AC1, AC2, §12.2 F5)", () => {
     expect(await screen.findByText("1 more similar organization.")).toBeInTheDocument();
   });
 });
+
+const SCHOOL = {
+  ...ORG, org_type: "school", state: null, phone: null, email: null, website: null, existing_partner: false, courses_interested: null, student_count: null, address: null,
+  profile: { kind: "school", board: "CBSE", school_type: null, grade_from: 6, grade_to: 12 },
+} as never;
+
+describe("BdmOrganizationForm profile (bdm-003 AC1, AC2, AC5, AC10, §12.2)", () => {
+  it("shows the type's section, tells screen readers it follows the type, and sends only that group", async () => {
+    const mock = serve(res({ organization: ORG }, 201));
+    render(<BdmOrganizationForm mode="create" onSaved={vi.fn()} onCancel={vi.fn()} />);
+    fillRequired();
+    expect(screen.getByLabelText("Type (required)")).toHaveAccessibleDescription("The details section below changes with the type.");
+    fireEvent.change(screen.getByLabelText("Type (required)"), { target: { value: "agent" } });
+    fireEvent.change(screen.getByLabelText("Country"), { target: { value: "India" } });
+    fireEvent.change(screen.getByLabelText("Type (required)"), { target: { value: "school" } });
+    fireEvent.change(screen.getByLabelText("Board"), { target: { value: "CBSE" } });
+    fireEvent.change(screen.getByLabelText("Address"), { target: { value: "1 Main Rd\nKochi" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save organization" }));
+    await waitFor(() => expect(mock).toHaveBeenCalled());
+    expect(body(mock).profile).toEqual({ board: "CBSE" }); // the agent's Country typed earlier is not sent
+    expect(body(mock).address).toBe("1 Main Rd\nKochi");
+  });
+
+  it("checks the grade order before sending", async () => {
+    const mock = serve();
+    render(<BdmOrganizationForm mode="create" onSaved={vi.fn()} onCancel={vi.fn()} />);
+    fillRequired();
+    fireEvent.change(screen.getByLabelText("Type (required)"), { target: { value: "school" } });
+    fireEvent.change(screen.getByLabelText("Lowest grade"), { target: { value: "8" } });
+    fireEvent.change(screen.getByLabelText("Highest grade"), { target: { value: "6" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save organization" }));
+    expect(await screen.findByText("Lowest grade can't be above the highest grade")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText("Highest grade")).toHaveFocus());
+    expect(mock).not.toHaveBeenCalled();
+  });
+
+  it("puts a server profile 422 on its field", async () => {
+    serve(res({ detail: [{ loc: ["body", "profile", "board"], msg: "Board is not a field for College organizations" }] }, 422));
+    render(<BdmOrganizationForm mode="create" onSaved={vi.fn()} onCancel={vi.fn()} />);
+    fillRequired();
+    fireEvent.change(screen.getByLabelText("Type (required)"), { target: { value: "school" } });
+    fireEvent.change(screen.getByLabelText("Board"), { target: { value: "CBSE" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save organization" }));
+    expect(await screen.findByText("Board is not a field for College organizations")).toBeInTheDocument();
+    expect(screen.getByLabelText("Board")).toHaveAttribute("aria-invalid", "true");
+    await waitFor(() => expect(screen.getByLabelText("Board")).toHaveFocus());
+  });
+
+  it("edits send only changed profile fields", async () => {
+    const mock = serve(res({ organization: SCHOOL }));
+    render(<BdmOrganizationForm mode="edit" organization={SCHOOL} onSaved={vi.fn()} onCancel={vi.fn()} />);
+    expect(screen.getByLabelText("Board")).toHaveValue("CBSE");
+    fireEvent.change(screen.getByLabelText("Highest grade"), { target: { value: "10" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(mock).toHaveBeenCalled());
+    expect(body(mock)).toEqual({ profile: { grade_to: 10 } });
+  });
+
+  it("blocks a type change over entered details and names them", async () => {
+    const mock = serve();
+    render(<BdmOrganizationForm mode="edit" organization={SCHOOL} onSaved={vi.fn()} onCancel={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Type (required)"), { target: { value: "college" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByText("Clear the School details before changing the type: Board, Lowest grade, Highest grade.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText("Type (required)")).toHaveFocus());
+    expect(mock).not.toHaveBeenCalled();
+  });
+
+  it("type changed and changed back is not blocked (Review Focus 4)", async () => {
+    const mock = serve(res({ organization: SCHOOL }));
+    render(<BdmOrganizationForm mode="edit" organization={SCHOOL} onSaved={vi.fn()} onCancel={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Type (required)"), { target: { value: "college" } });
+    fireEvent.change(screen.getByLabelText("Type (required)"), { target: { value: "school" } });
+    fireEvent.change(screen.getByLabelText("Board"), { target: { value: "ICSE" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(mock).toHaveBeenCalled());
+    expect(body(mock)).toEqual({ profile: { board: "ICSE" } });
+  });
+
+  it("shows the server's profile_not_empty 409 under Type", async () => {
+    const corporate = { ...(SCHOOL as object), org_type: "corporate", profile: null } as never;
+    serve(res({ detail: { code: "profile_not_empty", message: "Clear the School details before changing the type", fields: ["board"] } }, 409));
+    render(<BdmOrganizationForm mode="edit" organization={corporate} onSaved={vi.fn()} onCancel={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Type (required)"), { target: { value: "school" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByText("Clear the School details before changing the type.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Type (required)")).toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("counts profile and address edits as unsaved changes", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const onCancel = vi.fn();
+    render(<BdmOrganizationForm mode="edit" organization={SCHOOL} onSaved={vi.fn()} onCancel={onCancel} />);
+    fireEvent.change(screen.getByLabelText("School type"), { target: { value: "private" } });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(confirm).toHaveBeenCalled();
+    expect(onCancel).not.toHaveBeenCalled();
+    confirm.mockRestore();
+  });
+});
