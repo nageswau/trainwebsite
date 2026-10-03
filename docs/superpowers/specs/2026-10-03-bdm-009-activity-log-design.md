@@ -16,7 +16,7 @@ tolerance, V10 daily cap); no earlier decision changed.
 Decisions already in force: `DEC-SCOPE-055` D9 (derived report + manual activity log), Q-02/D11 (read own type, edit
 assigned), Q-13/D22 (submitting a daily report locks that day's activity edits), Q-20/D29 (nothing is sent to contacts).
 
-**Decision record:** **`DEC-SCOPE-064`**, written in this change (next free on `main` @ `65a8ece0`; `063` is bdm-010).
+**Decision record:** **`DEC-SCOPE-065`**, written in this change (next free on `main` @ `39c119b4`; `063` is bdm-010, `064` AGN-022 -- renumbered from `064` on merging `main`).
 Migration **`0069_bdm_activities`** (single head on `main` is `0068_bdm_trips`). bdm-006 and bdm-003 are in flight and
 also claim `0068` / `063`; whichever merges after another renumbers. Recheck `origin/main` before building and before the PR.
 
@@ -49,7 +49,7 @@ Out of scope (owned elsewhere):
 | B | A per-day counter table updated on every write | Rejected: write races and drift between counters and rows; volume is tiny |
 | C | One generic "BDM timeline events" table shared by activities, appointment events and tasks | Rejected: fights bdm-006's `bdm_appointment_events`, redesigns other modules (YAGNI) |
 
-## 3. Decisions (owner answers 2026-10-03, `EXPLICIT_APPROVAL`, recorded in `DEC-SCOPE-064`)
+## 3. Decisions (owner answers 2026-10-03, `EXPLICIT_APPROVAL`, recorded in `DEC-SCOPE-065`)
 
 | # | Question | Answer |
 |---|---|---|
@@ -279,7 +279,7 @@ No existing route, field or response changes. bdm-002 organization output is unc
 
 ## 10. Documentation (updated in the same change)
 
-`docs/decisions/PRODUCT_DECISION_REGISTER.md` (`DEC-SCOPE-064`), `docs/architecture/API_CONTRACT.md` (bdm-009 addendum: routes, status
+`docs/decisions/PRODUCT_DECISION_REGISTER.md` (`DEC-SCOPE-065`), `docs/architecture/API_CONTRACT.md` (bdm-009 addendum: routes, status
 table §12.1 A4, retry semantics A3), `docs/delivery/BDM_CRM_BACKLOG.md` (bdm-009 status line),
 `docs/architecture/DATA_MODEL.md` (`bdm_activities`), `docs/quality/RTM.md` (bdm-009 rows).
 

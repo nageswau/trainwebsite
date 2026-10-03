@@ -20,7 +20,7 @@ Library, Playwright.
 ## Global Constraints
 
 - Branch `feature/bdm-009-activities` (from `origin/main` @ `65a8ece0`); migration `0069_bdm_activities` (down_revision
-  `0068_bdm_trips`); decision `DEC-SCOPE-064`. Before Task 1 and before the PR: `git fetch origin` and check `main` for a newer
+  `0068_bdm_trips`); decision `DEC-SCOPE-065`. Before Task 1 and before the PR: `git fetch origin` and check `main` for a newer
   migration / DEC (bdm-006 and bdm-003 are in flight); if one landed, renumber.
 - No new dependency (backend or web).
 - Channels: `call, whatsapp, email, visit, meeting, other`. Directions: `outbound, inbound` — required for `call, whatsapp, email`,
@@ -258,7 +258,7 @@ Expected: FAIL / collection error — `0069_bdm_activities.py` does not exist.
 Revision ID: 0069_bdm_activities
 Revises: 0068_bdm_trips
 
-docs/superpowers/specs/2026-10-03-bdm-009-activity-log-design.md §4 (DEC-SCOPE-064). Additive: one table; no existing row is read or
+docs/superpowers/specs/2026-10-03-bdm-009-activity-log-design.md §4 (DEC-SCOPE-065). Additive: one table; no existing row is read or
 written. 0001 builds a fresh database from the current models, which already carry it, so creation is guarded (0061's idiom).
 downgrade() refuses while activities exist: they are the only record of each call, message and visit.
 """
@@ -317,7 +317,7 @@ BDM_ACTIVITY_DIRECTIONAL = ("call", "whatsapp", "email")  # V6: these need a dir
 
 
 class BdmActivity(Base, TimestampMixin):
-    """bdm-009 (DEC-SCOPE-064): one call, WhatsApp, email, visit, meeting or other contact a BDM logged by hand (D9; nothing is sent).
+    """bdm-009 (DEC-SCOPE-065): one call, WhatsApp, email, visit, meeting or other contact a BDM logged by hand (D9; nothing is sent).
     `contact_name` is the contact's name at save, kept when bdm-002 hard-deletes the contact (`contact_id` -> NULL)."""
 
     __tablename__ = "bdm_activities"
@@ -467,7 +467,7 @@ def test_update_has_no_organization_and_refuses_clearing_required_fields():
   existing `from app.models import GENDERS` line (`from app.models import BDM_ACTIVITY_DIRECTIONAL, GENDERS`):
 
 ```python
-# --- bdm-009: activity log (DEC-SCOPE-064; docs/superpowers/specs/2026-10-03-bdm-009-activity-log-design.md §5.1) ---
+# --- bdm-009: activity log (DEC-SCOPE-065; docs/superpowers/specs/2026-10-03-bdm-009-activity-log-design.md §5.1) ---
 
 BdmActivityChannel = Literal["call", "whatsapp", "email", "visit", "meeting", "other"]
 BdmActivityDirection = Literal["outbound", "inbound"]
@@ -814,7 +814,7 @@ keeps the real number.
 - [ ] **Step 4: Write the service** — `apps/api/app/services/bdm_activities.py`:
 
 ```python
-"""bdm-009 (DEC-SCOPE-064, spec §4.2, §5.2): activity time rules, scope, rows, day counts and audit.
+"""bdm-009 (DEC-SCOPE-065, spec §4.2, §5.2): activity time rules, scope, rows, day counts and audit.
 
 Functions only; nothing here commits -- the route owns the transaction. Every `{activity_id}` resolves through `load_readable`, so an
 activity on an organization the caller can't read is the same 404 as a missing one. Logs and audit rows carry ids, channel and field
@@ -1245,7 +1245,7 @@ the default contact list.
 - [ ] **Step 3: Write the router** — `apps/api/app/api/bdm_activities.py`:
 
 ```python
-"""bdm-009 (DEC-SCOPE-064, spec §5.3): the BDM activity log.
+"""bdm-009 (DEC-SCOPE-065, spec §5.3): the BDM activity log.
 
 Every `{activity_id}` resolves through `services.bdm_activities.load_readable` (unreadable = 404). Every write is one transaction --
 scope (404), owner / assignee (403), lock (organization, then activity), rules (422 / 409), change, audit, one commit here. Lists are
@@ -1671,7 +1671,7 @@ import { isPage, type Page } from "@/lib/apiErrors";
 import { ORGS_URL, type OrgType } from "@/lib/bdmOrganizations";
 import type { LookupPage } from "@/lib/lookups";
 
-// bdm-009 (DEC-SCOPE-064): activity types, labels and endpoints for the organization timeline and the activity pages. The API decides
+// bdm-009 (DEC-SCOPE-065): activity types, labels and endpoints for the organization timeline and the activity pages. The API decides
 // every rule; `permissions.can_change` only tells the UI whether to offer Edit / Delete.
 export const CHANNELS = ["call", "whatsapp", "email", "visit", "meeting", "other"] as const;
 export type Channel = (typeof CHANNELS)[number];
@@ -2996,17 +2996,17 @@ git commit -m "test(bdm-009): end-to-end activity log journey"
 ### Task 10: Documentation and decision record
 
 **Files:**
-- Modify: `docs/decisions/PRODUCT_DECISION_REGISTER.md` (append `DEC-SCOPE-064` after `DEC-SCOPE-063`)
+- Modify: `docs/decisions/PRODUCT_DECISION_REGISTER.md` (append `DEC-SCOPE-065` after `DEC-SCOPE-064`)
 - Modify: `docs/delivery/BDM_CRM_BACKLOG.md` (status line under `### bdm-009`)
 - Modify: `docs/architecture/DATA_MODEL.md` (`bdm_activities`)
 - Modify: `docs/quality/RTM.md` (bdm-009 rows)
 
-- [ ] **Step 1: Decision record** — append to `PRODUCT_DECISION_REGISTER.md`, in the format of `DEC-SCOPE-063`:
+- [ ] **Step 1: Decision record** — append to `PRODUCT_DECISION_REGISTER.md`, in the format of `DEC-SCOPE-063`, after `DEC-SCOPE-064` (AGN-022):
 
 ```markdown
 ---
 
-### DEC-SCOPE-064 — BDM activity log (`bdm-009`)
+### DEC-SCOPE-065 — BDM activity log (`bdm-009`)
 
 **Question:** how do BDMs log calls, WhatsApp messages, emails, visits and meetings, who may log, see and change them, and how are the
 day's counts defined (`BDM_CRM_BACKLOG.md` §4 bdm-009)?
@@ -3040,7 +3040,7 @@ day's counts defined (`BDM_CRM_BACKLOG.md` §4 bdm-009)?
 - [ ] **Step 2: Backlog status line** — directly under `### bdm-009 — Activity log (call / WhatsApp / email / visit / meeting)`:
 
 ```markdown
-> **Status (2026-10-03):** implemented on `feature/bdm-009-activities` (`DEC-SCOPE-064`, migration `0069_bdm_activities`). Channels
+> **Status (2026-10-03):** implemented on `feature/bdm-009-activities` (`DEC-SCOPE-065`, migration `0069_bdm_activities`). Channels
 > exclude "follow-up" (V2); appointment / task links deferred to bdm-006 / bdm-008 (V3); backdate window 7 IST days and same-day edits
 > (V4). AC4's "report submitted" lock is completed by bdm-015 through `editable()`. Spec:
 > `docs/superpowers/specs/2026-10-03-bdm-009-activity-log-design.md`.
@@ -3050,7 +3050,7 @@ day's counts defined (`BDM_CRM_BACKLOG.md` §4 bdm-009)?
   - `DATA_MODEL.md`: the `bdm_activities` table (columns, checks, indexes, FKs from spec §4.1).
   - `RTM.md`: one row per AC1–AC13 mapping to the test files listed in spec §8 (AC13 → `test_bdm_009_activities.py`
     `test_abuse_cases_server_owned_fields_and_markup`, `test_bdm_009_scope.py`, `BdmActivityItem.test.tsx`).
-  - `API_CONTRACT.md` (after the bdm-010 addendum, `API_CONTRACT.md:391`): "**`bdm-009` / `DEC-SCOPE-064`** — BDM activity log." List
+  - `API_CONTRACT.md` (after the bdm-010 addendum, `API_CONTRACT.md:391`): "**`bdm-009` / `DEC-SCOPE-065`** — BDM activity log." List
     the six routes (spec §5.3), the status table (spec §12.1 A4), the retry semantics (A3: POST not retry-safe, PATCH idempotent,
     second DELETE → 404), V9 and V10, and "no existing route or field changes" (A10).
 
@@ -3058,7 +3058,7 @@ day's counts defined (`BDM_CRM_BACKLOG.md` §4 bdm-009)?
 
 ```bash
 git add docs/decisions/PRODUCT_DECISION_REGISTER.md docs/delivery/BDM_CRM_BACKLOG.md docs/architecture/DATA_MODEL.md docs/architecture/API_CONTRACT.md docs/quality/RTM.md
-git commit -m "docs(bdm-009): DEC-SCOPE-064, backlog status, data model and RTM"
+git commit -m "docs(bdm-009): DEC-SCOPE-065, backlog status, data model and RTM"
 ```
 
 ---
@@ -3068,7 +3068,7 @@ git commit -m "docs(bdm-009): DEC-SCOPE-064, backlog status, data model and RTM"
 **Files:** none (evidence only).
 
 - [ ] **Step 1: Recheck `main`** — `git fetch origin` and `git log --oneline HEAD..origin/main`. If a migration `0069_*` or
-  `DEC-SCOPE-064` landed, merge `main`, renumber this branch's migration / DEC (file name, `revision`, test `BASE`/`HEAD`, docs),
+  `DEC-SCOPE-065` landed, merge `main`, renumber this branch's migration / DEC (file name, `revision`, test `BASE`/`HEAD`, docs),
   and confirm `alembic heads` prints one line.
 - [ ] **Step 2: Backend lite set** — `<P>` = LITE (see "How to run tests"). Expected: all pass. Record the count.
 - [ ] **Step 3: Backend static** — api-test container: `ruff check app tests && mypy app` — no new mypy errors over main's 342.
