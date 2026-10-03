@@ -3384,3 +3384,22 @@ under `/api/v1/bdm/trips` and `/api/v1/bdm/manager/{trips,approvals}`; no existi
 Travel (BDM), Approvals (manager), BDM Travel Approvals (Super Admin). Spec: `docs/superpowers/specs/2026-10-03-bdm-010-travel-design.md`.
 **Status:** implemented on `worktree-bdm-010`; **not COMPLETE** — Playwright, browser validation, the owner's full suites and an
 independent Codex review are pending.
+
+### DEC-SCOPE-064 — Overseas Admin agent network oversight (`AGN-022`)
+
+**ID note:** drafted as `DEC-SCOPE-063` (the next free number on `main` @ `3bde8796`); renumbered `DEC-SCOPE-064` on merging `main` @ `65a8ece`, where `063` is bdm-010 (PR #53). AGN-022 has no migration, so nothing re-chained. AGN-022 commits and docs from before this merge that say `DEC-SCOPE-063` mean this decision.
+
+**Question:** the owner's `AGN-022` statement (in-session, 2026-10-03): "Edusphere's central admin can see the overall agent network and student/application data according to the permissions you define" (Best approach; §9), with acceptance criteria: counts match fixtures; suspend blocks the org immediately (ang-001 AC4); non-admin → 403. How deep does the admin see, is that reading audited, what may super_admin do, which money figures count, and which API shape?
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) "Best approach" and §9; `AGENT_CRM_BACKLOG.md` ang-022 and Q-13 "D17 — read-all; act only on org approve/suspend, commission, and deposit remit/refund recording" (`DERIVED_BLUEPRINT`; its `DEC-SCOPE-035` citation is the known mis-citation). Impact analysis, 2026-10-03 (the committed graphify graph predates AGN-001, so a fresh AST graph was built and findings were checked in source): AGN-001 (`DEC-SCOPE-038` D6/D7) already ships `GET /overseas-admin/agent-orgs` and `POST /overseas-admin/agent-orgs/{id}/approve|reject|suspend|reinstate`, per-request suspension (AC04 test) and the admin 403; AGN-018 holds the count definitions, scoped to the logged-in agent user only.
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL` — answers to structured questions and three design-section reviews; design spec `docs/superpowers/specs/2026-10-03-agn-022-agent-network-design.md` §2):
+
+- **N1 — Counts + lists.** Org list with counts; org detail with read-only lists of the agency's students and applications. No per-student record pages; admin rows carry no email, phone or date of birth.
+- **N2 — Read audit.** One `AuditLog` row per drill-down list request, written before data is returned (fail closed).
+- **N3 — super_admin read-only in the UI.** Suspend/Reinstate shown to `overseas_admin` only; the backend action route is unchanged.
+- **N4 — Money = existing buckets.** Commissions per currency as AGN-018 (Claimable, Claims, Paid revenue), never summed across currencies; deposits (INR) collected / remitted / refunded, not netted. On the org detail only.
+- **N5 — Approach A.** Extend `GET /overseas-admin/agent-orgs` additively (`staff_count`, `counts`); add `GET /agent-orgs/{id}`, `/{id}/students`, `/{id}/applications`; reuse suspend/reinstate. The backlog's `/agent-organizations` + `reactivate` naming is `SUPERSEDED`.
+- **N6 — Limited admin powers (D17).** No admin edits to agent students, applications or staff; approve/reject stay on Agent Approvals.
+
+**Consequences:** no migration; a new read-only service `services/agent_network.py`; three new admin routes and schemas; additive keys on the org list; two new admin pages and components; one appended nav entry. Unchanged: `transition_org`, the suspension gate, the approval page and routes, agent-side routes, models. **New Feature ID authorized:** `AGN-022`. **Status:** owner approved the spec and told implementation to proceed (in-session 2026-10-03); implemented and verified on `feature/agn-022-agent-network` (complete for its scope on lite evidence; browser QA fixed and re-verified; Codex review waived by the owner); the owner's full suites still to run (see `ENHANCEMENT_BACKLOG.md` §AGN-022).

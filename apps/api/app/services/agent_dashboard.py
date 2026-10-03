@@ -5,7 +5,7 @@ Every count is SQL over the existing scope helpers, so a Master counts the agenc
 
 from datetime import UTC, datetime
 
-from sqlalchemy import ColumnElement, and_, case, distinct, func, or_, select
+from sqlalchemy import ColumnElement, Select, and_, case, distinct, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rbac import agent_may, is_agent_staff
@@ -115,10 +115,16 @@ async def staff_rows(db: AsyncSession, user: User) -> tuple[list[dict], int]:
 
 async def commission_summary(db: AsyncSession, user: User) -> dict:
     """Master only (DEC-SCOPE-040 S1): the portal's three commission figures, per currency and never summed across currencies."""
+    return await commission_totals(db, org_member_ids(user))
+
+
+async def commission_totals(db: AsyncSession, member_ids: Select) -> dict:
+    """The three commission figures for the agents in `member_ids` -- the caller's agency (above) or, for Overseas Admin, any one
+    organisation (AGN-022), so the two screens share one definition."""
     figure = case((AgentCommission.status.in_(CLAIMABLE), "claimable"), (AgentCommission.status == "paid", "revenue"), (AgentCommission.status == "claimed", "claims"))
     stmt = (
         select(figure, AgentCommission.currency, func.count(), func.sum(AgentCommission.amount))
-        .where(AgentCommission.agent_id.in_(org_member_ids(user)), figure.is_not(None))
+        .where(AgentCommission.agent_id.in_(member_ids), figure.is_not(None))
         .group_by(figure, AgentCommission.currency)
         .order_by(AgentCommission.currency)
     )
