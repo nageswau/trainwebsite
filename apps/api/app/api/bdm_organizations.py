@@ -27,6 +27,7 @@ from app.schemas import (
     BdmOrganizationPage,
     BdmOrganizationUpdate,
     BdmOrgType,
+    BdmSchoolBoard,
 )
 from app.services import bdm_organizations as svc
 from app.services.bdm import bdm_context
@@ -54,6 +55,9 @@ async def list_organizations(
     q: str | None = SEARCH,
     org_type: BdmOrgType | None = None,
     city: str | None = Query(None, max_length=120),
+    board: BdmSchoolBoard | None = None,
+    affiliation: str | None = Query(None, max_length=200),
+    territory: str | None = Query(None, max_length=120),
     assigned: str | None = Query(None, max_length=36),
     include_archived: bool = False,
     limit: int = LIMIT,
@@ -69,6 +73,10 @@ async def list_organizations(
         filters.append(BdmOrganization.org_type == org_type)
     filters += _matching(like_pattern(q), BdmOrganization.name, BdmOrganization.code)
     filters += _matching(like_pattern(city), BdmOrganization.city)
+    if board:
+        filters.append(BdmOrganization.board == board)
+    filters += _matching(like_pattern(affiliation), BdmOrganization.affiliation)  # bdm-003: literal, case-insensitive substrings
+    filters += _matching(like_pattern(territory), BdmOrganization.territory)
     assignee = _assigned(user, assigned)
     if assignee is not None:
         filters.append(BdmOrganization.assigned_bdm_user_id == assignee)
@@ -87,21 +95,25 @@ async def list_organizations(
 @router.post("", status_code=201, response_model=BdmOrganizationEnvelope)
 async def create_organization(payload: BdmOrganizationCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """AC1/AC2: BDMs only (C9: the creator is the assignee; C3: the creator's module). A likely duplicate is a 409 the BDM must
-    acknowledge with confirm_duplicate; nothing is ever merged (Q-18). Concurrent identical creates both succeed (warn-only)."""
-    profile = await bdm_context(db, user)
+    acknowledge with confirm_duplicate; nothing is ever merged (Q-18). Concurrent identical creates both succeed (warn-only).
+    bdm-003: the profile is checked against org_type before anything is read or written, so a refusal takes no ORG- number."""
+    bdm_profile = await bdm_context(db, user)
+    sent = payload.profile.model_dump(exclude_unset=True) if payload.profile else {}
+    svc.check_profile(payload.org_type, sent, None)
     name_key, city_key = svc.org_keys(payload.name, payload.city)
-    matches, total = await svc.find_duplicates(db, profile.bdm_type, name_key, city_key)
+    matches, total = await svc.find_duplicates(db, bdm_profile.bdm_type, name_key, city_key)
     if total and not payload.confirm_duplicate:
         svc.log("bdm_org_duplicate_warned", user, "-", match_count=total)
         raise svc.duplicate_conflict(matches, total)
     org = BdmOrganization(
         code=await svc.next_code(db),
-        bdm_type=profile.bdm_type,
+        bdm_type=bdm_profile.bdm_type,
         name_key=name_key,
         city_key=city_key,
         assigned_bdm_user_id=user.id,
         created_by_user_id=user.id,
         **{k: getattr(payload, k) for k in BDM_ORG_FIELDS},
+        **sent,
     )
     db.add(org)
     await db.flush()
@@ -118,7 +130,7 @@ async def create_organization(payload: BdmOrganizationCreate, user: User = Depen
             "code": org.code,
             "org_type": org.org_type,
             "bdm_type": org.bdm_type,
-            "fields": sorted(k for k in BDM_ORG_FIELDS if getattr(payload, k) not in (None, False)),
+            "fields": sorted([k for k in BDM_ORG_FIELDS if getattr(payload, k) not in (None, False)] + [k for k, v in sent.items() if v is not None]),
             "contact_count": len(payload.contacts),
         },
     )
@@ -138,10 +150,18 @@ async def get_organization(org_id: UUID, user: User = Depends(get_current_user),
 @router.patch("/{org_id}", response_model=BdmOrganizationEnvelope)
 async def update_organization(org_id: UUID, payload: BdmOrganizationUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """PATCH: only the fields sent; values equal to the stored ones are not changes (no audit, no updated_at bump, §12.1 A6). A
-    changed name or city re-runs the duplicate check (AC2)."""
+    changed name or city re-runs the duplicate check (AC2). bdm-003: the profile is checked against the effective type (the new one when
+    org_type changes) after the lock, so `org` is current; a type change into another profile group is a 409 while the old group has
+    data (P4). Profile keys are columns, so the diff, audit and no-op rules below apply to them as they are."""
     org = await svc.load_scoped(db, user, org_id, lock=True)
     svc.require(user, org, "can_edit", "update")
-    changes = payload.model_dump(exclude_unset=True, exclude={"confirm_duplicate"})
+    changes = payload.model_dump(exclude_unset=True, exclude={"confirm_duplicate", "profile"})
+    sent = payload.profile.model_dump(exclude_unset=True) if payload.profile else {}
+    new_type = changes.get("org_type", org.org_type)
+    svc.check_profile(new_type, sent, org)
+    if new_type != org.org_type:
+        svc.check_type_change(user, org, new_type)
+    changes |= sent
     changed = sorted(k for k, v in changes.items() if getattr(org, k) != v)
     total = 0
     if {"name", "city"} & set(changed):
