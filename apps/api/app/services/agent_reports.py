@@ -17,6 +17,7 @@ from app.models import AgentOrgMember, AgentStudent, Country, OverseasApplicatio
 from app.services.agent_applications import OVERSEAS_APPLICATION_STAGES, WITHDRAWN, intake_end
 from app.services.agent_dashboard import agency_applications, offer_clause
 from app.services.agent_orgs import org_member_ids
+from app.services.agent_students import student_scope
 
 PAGE_SIZE = 50  # R7: the on-screen lists
 MAX_LIMIT = 100
@@ -267,7 +268,56 @@ async def _countries(db: AsyncSession, user: User, f: Filters) -> tuple[tuple[Co
     return (Column("country", "Country"), *STAGE_COLUMNS), items
 
 
-SUMMARIES = {"countries": _countries}
+async def _universities(db: AsyncSession, user: User, f: Filters) -> tuple[tuple[Column, ...], list[dict]]:
+    stmt = _summary_stmt(user, f, University.name, Country.name.label("country")).group_by(University.id, University.name, Country.name)
+    items = [{"university": row.name, "country": row.country, **_counted(row)} for row in (await db.execute(stmt)).all()]
+    items.sort(key=lambda item: (-item["applications"], item["university"], item["country"]))
+    return (Column("university", "University"), Column("country", "Country"), *STAGE_COLUMNS), items
+
+
+async def _intakes(db: AsyncSession, user: User, f: Filters) -> tuple[tuple[Column, ...], list[dict]]:
+    """R4: SQL counts per raw intake text; Python folds the texts into months (the distinct texts per agency are few)."""
+    stmt = _summary_stmt(user, f, OverseasApplication.intake).group_by(OverseasApplication.intake)
+    folded: dict[str, dict] = {}
+    for row in (await db.execute(stmt)).all():
+        key, label = intake_key(row.intake)
+        group = folded.setdefault(key, {"intake": label, **dict.fromkeys((c.key for c in STAGE_COLUMNS), 0)})
+        for name, value in _counted(row).items():
+            group[name] += value
+    order = sorted(folded, key=lambda key: (key == UNSTRUCTURED[0], key))  # months ascending, Unstructured last
+    return (Column("intake", "Intake"), *STAGE_COLUMNS), [folded[key] for key in order]
+
+
+async def _staff(db: AsyncSession, user: User, f: Filters) -> tuple[tuple[Column, ...], list[dict]]:
+    """Master only. Per member: active students assigned (created in range) and the stage counts of the applications counting for
+    them (`_assignee`), plus Unassigned. Active staff are always listed; anyone else only with something to show (spec §4.3)."""
+    assignee = _assignee(user).label("member_id")
+    counted = {row.member_id: _counted(row) for row in (await db.execute(_summary_stmt(user, f, assignee).group_by(assignee))).all()}
+    students_stmt = (
+        select(AgentStudent.assigned_member_id, func.count())
+        .where(*student_scope(user), AgentStudent.status == "active", *_created_between(AgentStudent.created_at, f))
+        .group_by(AgentStudent.assigned_member_id)
+    )
+    students = dict((await db.execute(students_stmt)).all())
+    members = await db.execute(
+        select(AgentOrgMember, User.full_name)
+        .join(User, User.id == AgentOrgMember.user_id)
+        .where(AgentOrgMember.org_id == user.agent_membership.org_id)
+        .order_by(AgentOrgMember.role.desc(), AgentOrgMember.seq)  # staff first, then any Master holding students
+    )
+    zero = dict.fromkeys((c.key for c in STAGE_COLUMNS), 0)
+    items = []
+    for member, name in members.all():
+        row = {"students": students.get(member.id, 0), **counted.get(member.id, zero)}
+        listed = member.role == "staff" and member.status == "active"
+        if listed or any(row.values()):
+            label = f"{member.code} {name}" + ("" if member.status == "active" else " (deactivated)")
+            items.append({"member": label, **row})
+    items.append({"member": "Unassigned", "students": students.get(None, 0), **counted.get(None, zero)})
+    return (Column("member", "Staff member"), Column("students", "Students", True), *STAGE_COLUMNS), items
+
+
+SUMMARIES = {"countries": _countries, "universities": _universities, "intakes": _intakes, "staff": _staff}
 
 
 async def report(db: AsyncSession, user: User, kind: str, f: Filters, *, limit: int, offset: int) -> dict:
