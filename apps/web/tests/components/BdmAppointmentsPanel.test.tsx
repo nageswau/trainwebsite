@@ -47,7 +47,7 @@ describe("BdmAppointmentsPanel (bdm-006 §6.2, §12.2)", () => {
     expect(screen.queryByRole("link", { name: "Book appointment" })).toBeNull();
   });
 
-  it("distinguishes no-match and past-the-end, and retries after a failure", async () => {
+  it("shows no-match with clear filters, and retries after a failure", async () => {
     search.value = "status=cancelled";
     const fetchMock = vi.fn().mockResolvedValueOnce(res({ detail: "boom" }, 500)).mockResolvedValueOnce(res(page([])));
     vi.stubGlobal("fetch", fetchMock);
@@ -74,5 +74,26 @@ describe("BdmAppointmentsPanel (bdm-006 §6.2, §12.2)", () => {
     await screen.findByRole("link", { name: "APT-000001" });
     expect(String(fetchMock.mock.calls[0][0])).toContain("organization_id=o1");
     expect(screen.getByText("Showing one organization")).toBeInTheDocument();
+  });
+
+  it("filters by BDM from the URL and maps the type filter to the API", async () => {
+    search.value = "bdm=b9&type=college_meeting";
+    const fetchMock = vi.fn<typeof fetch>(() => Promise.resolve(res(page([row()]))));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<BdmAppointmentsPanel basePath="/bdm/manager/appointments" isBdm={false} types={ALL_TYPES} />);
+    await screen.findByRole("link", { name: "APT-000001" });
+    const url = String(fetchMock.mock.calls[0][0]);
+    expect(url).toContain("bdm_user_id=b9");
+    expect(url).toContain("appointment_type=college_meeting");
+    expect(screen.getByText("Showing one BDM")).toBeInTheDocument();
+  });
+
+  it("shows the past-the-end state when the page is empty but the total is not", async () => {
+    search.value = "offset=100";
+    vi.stubGlobal("fetch", vi.fn<typeof fetch>(() => Promise.resolve(res(page([], 60, 100)))));
+    render(<BdmAppointmentsPanel basePath="/bdm/appointments" isBdm types={ALL_TYPES} />);
+    expect(await screen.findByText("This page is past the end of the list.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Go to the first page" }));
+    expect(router.push).toHaveBeenCalledWith("/bdm/appointments", { scroll: false });
   });
 });

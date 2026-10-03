@@ -148,7 +148,7 @@ export default function BdmAppointmentsPanel({ basePath, isBdm, types }: { baseP
         </div>
         {!isBdm && (
           <div style={{ flex: "1 1 220px" }}>
-            <SearchableSelect label="BDM" noun="BDM" search={teamMemberSearch()} onChange={(option) => option && go({ bdm: option.id })} />
+            <SearchableSelect key={filters.bdm || "all"} label="BDM" noun="BDM" search={teamMemberSearch()} onChange={(option) => go({ bdm: option?.id ?? "" })} />
           </div>
         )}
         <button type="submit" className="btn secondary small">
