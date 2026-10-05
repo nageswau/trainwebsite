@@ -76,7 +76,7 @@
 | QA6-03 | The overlap warning reuses bdm-002's duplicate-warning style (`role="alert"` `form-error`), sits directly above the submit button, and its heading is focused and scrolled into view. | 0d97c130 |
 | QA6-04 | Server errors (5xx) read "We couldn't save the appointment. Please try again — your entry is kept." (form) / "We couldn't update the appointment. Please try again." (actions); 4xx keep the server's message; a network drop keeps "did not complete". | 8752356a |
 | QA6-05 | Expected leads / revenue validated inline before sending: `aria-invalid` + `aria-describedby` message ("…whole number from 0 to 1,000,000." / "…from 0 to 9,999,999,999.99, with up to 2 decimals."), focus to the first invalid field, error clears on edit; native `min` removed so the message isn't pre-empted. | 8752356a, ffb096aa, 6f333652 |
-| QA6-06 | Not changed — shared `PortalShell` behaviour outside bdm-006. | — |
+| QA6-06 | Fixed 2026-10-05 (owner asked). Root cause re-measured in Edge 154: while scrolling, the sticky sidebar covers the left column at every position; the white strip appears only in full-page captures / print, because the sidebar is one viewport tall and its grid column had no colour. `globals.css` now paints the 270 px column navy at ≥981 px; ≤980 px unchanged. | `apps/web/app/globals.css` |
 | QA6-07 | Informational — nothing to change. | — |
 
 Verification: web vitest (appointment components, panel, lib) 48 passed in the fix wave and 43 passed on the follow-up subset; `tsc --noEmit`, eslint and `next build` exit 0. Independent review: all five ADDRESSED, no new breakage.
@@ -87,7 +87,7 @@ Verification: web vitest (appointment components, panel, lib) 48 passed in the f
 - Playwright e2e `bdm-006-appointments` + `bdm-002-organization-crm`: **3 / 3 passed** (3.8 min).
 - Console: only the browser's native "Failed to load resource" lines for the deliberately provoked 500 and 409.
 
-QA6-01 to QA6-05: **closed**. QA6-06 open as a separate, shared-shell item (not bdm-006).
+QA6-01 to QA6-06: **closed**. QA6-06 check (Edge, `probe_qa606.py`): before — full-page capture at 1366 white below 768 px; after (rule injected on the running build) — navy to the page bottom at 1366×768 and 1920×600; 980/768/375/320 px keep the plain background and no horizontal scroll. Re-check on the rebuilt web container pending.
 
 ## 7. Artefacts
 
