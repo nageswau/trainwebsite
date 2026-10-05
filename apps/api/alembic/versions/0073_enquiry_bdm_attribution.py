@@ -1,12 +1,17 @@
 """bdm-017 -- enquiries: BDM attribution and the explicit conversion link.
 
-Revision ID: 0072_enquiry_bdm_attribution
-Revises: 0071_bdm_activities
+Revision ID: 0073_enquiry_bdm_attribution
+Revises: 0072_bdm_meeting_reports
 
-docs/superpowers/specs/2026-10-05-bdm-017-lead-attribution-design.md §3 (DEC-SCOPE-070). Additive: five nullable columns, two
+docs/superpowers/specs/2026-10-05-bdm-017-lead-attribution-design.md §3 (DEC-SCOPE-071). Additive: five nullable columns, two
 CHECKs, one index and one partial unique index on `enquiries`; every existing row stays NULL (website and manual enquiries are
 unattributed). 0001 builds a fresh database from the current models, which already carry the columns, so the change is guarded
 (0061's idiom). downgrade() refuses while any row is attributed or converted: dropping the columns would silently lose that link.
+
+Re-chained 2026-10-05 on merging `main` @ `c85849d8`: drafted as `0072_enquiry_bdm_attribution` on `0071_bdm_activities`, but bdm-007's
+`0072_bdm_meeting_reports` (DEC-SCOPE-070) reached `main` first, so this revision is `0073_enquiry_bdm_attribution` after it (one head)
+and the decision is DEC-SCOPE-071. A database stamped at `0072_enquiry_bdm_attribution` is re-stamped with
+`alembic stamp --purge 0071_bdm_activities` then `upgrade head` (the change here is guarded, so the re-run is harmless).
 """
 
 import sqlalchemy as sa
@@ -14,8 +19,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0072_enquiry_bdm_attribution"
-down_revision = "0071_bdm_activities"
+revision = "0073_enquiry_bdm_attribution"
+down_revision = "0072_bdm_meeting_reports"
 branch_labels = None
 depends_on = None
 
@@ -44,7 +49,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(
             f"SELECT 1 FROM {TABLE} WHERE bdm_organization_id IS NOT NULL OR converted_user_id IS NOT NULL LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0072_enquiry_bdm_attribution: leads are attributed or converted. Clear them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0073_enquiry_bdm_attribution: leads are attributed or converted. Clear them deliberately first.")
     op.drop_index("uq_enquiries_converted_user", table_name=TABLE)
     op.drop_index("ix_enquiries_bdm_org_created", table_name=TABLE)
     op.drop_constraint("ck_enquiries_conversion", TABLE, type_="check")

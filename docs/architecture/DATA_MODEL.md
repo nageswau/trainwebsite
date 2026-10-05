@@ -434,7 +434,7 @@ covers the commission-specific piece).
   (timeline). CHECK constraints, no PG enums. The day's counts are never stored (one grouped query, `day_counts`, joined to
   organizations like the lists so scope filters are safe). Appointment / task links are deferred to bdm-006 / bdm-008. Additive; no
   existing table or row changes; the downgrade refuses while activities exist.
-- **Addendum, 2026-10-05 (`bdm-017`, `DEC-SCOPE-070`; migration `0072_enquiry_bdm_attribution`, chained after `0071_bdm_activities`) —
+- **Addendum, 2026-10-05 (`bdm-017`, `DEC-SCOPE-071`; migration `0073_enquiry_bdm_attribution`, chained after `0072_bdm_meeting_reports`) —
   student lead attribution.** `enquiries` gains five nullable columns: `bdm_organization_id` FK `bdm_organizations` `ON DELETE RESTRICT`
   and `bdm_user_id` FK `users` `ON DELETE RESTRICT` (the attributing BDM), set together (`ck_enquiries_bdm_attribution`); and
   `converted_user_id` FK `users` `ON DELETE RESTRICT`, `converted_at` timestamptz, `converted_by_user_id` FK `users` `ON DELETE RESTRICT`,
@@ -1193,6 +1193,14 @@ Additive only: two tables and one sequence; no existing table, column or row cha
   medical, polytechnic, other), `courses` VARCHAR(1000). Backstops `ck_bdm_organizations_{agent,school,college}_profile`: a group's
   columns are NULL unless `org_type` belongs to it. Named people (Owner, Principal, Dean …) stay contacts with a role tag; Agreement /
   MoU / Contract / Renewal Date are bdm-005; Commission and live agent counts are not stored (bdm-019 / bdm-022).
+
+## BDM Meeting Reports and Tasks (`bdm-007`, `DEC-SCOPE-070`; migration `0072_bdm_meeting_reports`, after `0071_bdm_activities`)
+
+Additive: two tables; `bdm_appointments` is not altered (its `outcome` / `next_follow_up_on` stay the single source).
+
+- **`bdm_meeting_reports`** — one per completed appointment (`uq_bdm_meeting_reports_appointment`). `appointment_id` FK `bdm_appointments` RESTRICT; `author_user_id` FK `users` RESTRICT; `discussion` VARCHAR(4000) (CHECK `ck_bdm_meeting_reports_discussion`: `legacy OR discussion IS NOT NULL`); `requirements`, `opportunity` (2000), `next_action` (1000), `responsible_person` (200) nullable; `legacy` bool (rows backfilled for bdm-006 completions, read-only); `submitted_at` (anchors the IST-day edit window); `created_at`, `updated_at`.
+- **`bdm_tasks`** — minimal for bdm-007, extended by bdm-008. `kind` CHECK (`follow_up`, `task`); `title` (200); `due_on` date; `organization_id` FK nullable; `source` CHECK (`appointment_outcome`, `mou`, `manual`); `source_appointment_id` FK `bdm_appointments` nullable, unique `uq_bdm_tasks_source_appointment`, CHECK `(source = 'appointment_outcome') = (source_appointment_id IS NOT NULL)`; `assignee_user_id` FK `users`; `status` CHECK (`open`, `done`, `cancelled`) with `(status = 'done') = (completed_at IS NOT NULL)`; index `ix_bdm_tasks_assignee_status_due`.
+- Backfill (0072, idempotent): a legacy report for every completed appointment; an open follow-up for each stored `next_follow_up_on`. Downgrade refuses while non-legacy reports exist.
 
 ## BDM Appointments (`bdm-006`, `DEC-SCOPE-068`; migration `0070_bdm_appointments`, after `0069_bdm_org_profiles`)
 

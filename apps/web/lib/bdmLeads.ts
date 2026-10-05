@@ -1,7 +1,7 @@
 import { ORGS_URL } from "@/lib/bdmOrganizations";
 import type { PersonRef } from "@/lib/bdmTravel";
 
-// bdm-017 (DEC-SCOPE-070): student leads a BDM enters against an organization (`enquiries` rows). The API decides every rule; the client
+// bdm-017 (DEC-SCOPE-071): student leads a BDM enters against an organization (`enquiries` rows). The API decides every rule; the client
 // only checks that the required fields are filled. A BDM sees whether a lead converted, never which account it became.
 export type Lead = {
   id: string; name: string; email: string; phone: string | null; interest: string; status: string; bdm: PersonRef; converted: boolean; created_at: string;

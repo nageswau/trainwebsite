@@ -5,11 +5,11 @@ import BdmAppointmentActions from "@/components/BdmAppointmentActions";
 import type { Appointment, AppointmentPermissions } from "@/lib/bdmAppointments";
 
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
-const none: AppointmentPermissions = { can_edit: false, can_confirm: false, can_reschedule: false, can_cancel: false, can_no_show: false, can_complete: false };
+const none: AppointmentPermissions = { can_edit: false, can_confirm: false, can_reschedule: false, can_cancel: false, can_no_show: false, can_complete: false, can_edit_report: false };
 const appt = (over: Partial<Appointment> = {}) => ({
   id: "a1", code: "APT-000001", starts_at: "2030-01-07T04:30:00Z", duration_minutes: 60, appointment_type: "college_meeting", status: "scheduled",
   organization: { id: "o1", code: "ORG-000001", name: "St Mary", archived: false }, contact_name: "Dr Rao", contact_id: "c1", bdm: { id: "b1", full_name: "Asha", active: true },
-  contact_designation: null, contact_phone: null, contact_email: null, location: null, purpose: null, remarks: null, outcome: null, next_follow_up_on: null,
+  contact_designation: null, contact_phone: null, contact_email: null, location: null, purpose: null, remarks: null, outcome: null, next_follow_up_on: null, outcome_pending: false, report: null, follow_up: null,
   expected_leads: null, expected_revenue: null, events: [], created_at: "", updated_at: "", permissions: none, ...over,
 }) as Appointment;
 afterEach(() => {
@@ -21,6 +21,28 @@ describe("BdmAppointmentActions (bdm-006 §6.2, R-F4, R-F7)", () => {
   it("renders nothing without permissions (managers, closed appointments)", () => {
     const { container } = render(<BdmAppointmentActions appointment={appt()} bdmType="college" onChanged={() => {}} />);
     expect(container.querySelectorAll("button")).toHaveLength(0);
+  });
+
+  it("QA7-01: renders nothing when the only permission is editing the report (its button lives in the report)", () => {
+    const { container } = render(<BdmAppointmentActions appointment={appt({ status: "completed", permissions: { ...none, can_edit_report: true } })} bdmType="college" onChanged={() => {}} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("QA7-03 / QA7-05: a 409 on complete focuses the reason; Reload clears it once the fresh appointment is shown", async () => {
+    const onChanged = vi.fn();
+    const fetchMock = vi.fn().mockResolvedValueOnce(res({ detail: "Appointment is already completed" }, 409)).mockResolvedValueOnce(res({ appointment: appt({ status: "scheduled" }) }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<BdmAppointmentActions appointment={appt({ permissions: { ...none, can_complete: true } })} bdmType="college" onChanged={onChanged} />);
+    fireEvent.click(screen.getByRole("button", { name: "Complete" }));
+    fireEvent.change(screen.getByLabelText("Outcome (required)"), { target: { value: "interested" } });
+    fireEvent.change(screen.getByLabelText("Discussion (required)"), { target: { value: "Notes" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save report and complete" }));
+    const alert = await screen.findByRole("alert");
+    await waitFor(() => expect(document.activeElement).toBe(alert));
+    fireEvent.click(screen.getByRole("button", { name: "Reload" }));
+    await waitFor(() => expect(onChanged).toHaveBeenCalledWith(expect.objectContaining({ status: "scheduled" }), "This appointment is now Scheduled."));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Reload" })).toBeNull();
   });
 
   it("QA6-04: a 5xx shows an actionable sentence; a 422 still shows the server's detail", async () => {
@@ -63,18 +85,40 @@ describe("BdmAppointmentActions (bdm-006 §6.2, R-F4, R-F7)", () => {
     await waitFor(() => expect(onChanged).toHaveBeenCalledWith(expect.objectContaining({ status: "cancelled" }), "This appointment changed — it is now Cancelled."));
   });
 
-  it("completes with an outcome from the BDM type's list", async () => {
+  it("completes by filing the meeting report", async () => {
     const fetchMock = vi.fn(() => Promise.resolve(res({ appointment: appt({ status: "completed", outcome: "agreement_required" }) })));
     vi.stubGlobal("fetch", fetchMock);
     render(<BdmAppointmentActions appointment={appt({ permissions: { ...none, can_complete: true } })} bdmType="agent" onChanged={() => {}} />);
     fireEvent.click(screen.getByRole("button", { name: "Complete" }));
-    const outcomes = Array.from((screen.getByLabelText("Outcome (required)") as HTMLSelectElement).options).map((o) => o.value);
-    expect(outcomes).toContain("agreement_required");
-    expect(outcomes).not.toContain("course_promotion_interested");
     fireEvent.change(screen.getByLabelText("Outcome (required)"), { target: { value: "agreement_required" } });
-    fireEvent.click(screen.getByRole("button", { name: "Mark completed" }));
+    fireEvent.change(screen.getByLabelText("Discussion (required)"), { target: { value: "Agreement terms" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save report and complete" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    expect(JSON.parse(String(((fetchMock.mock.calls[0] as unknown[])[1] as RequestInit).body))).toEqual({ outcome: "agreement_required", next_follow_up_on: null });
+    expect(JSON.parse(String(((fetchMock.mock.calls[0] as unknown[])[1] as RequestInit).body))).toEqual({
+      outcome: "agreement_required", discussion: "Agreement terms", requirements: null, opportunity: null, next_action: null, responsible_person: null, next_follow_up_on: null,
+    });
+  });
+
+  it("keeps the typed report on a 409", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res({ detail: "Appointment is already completed" }, 409))));
+    render(<BdmAppointmentActions appointment={appt({ permissions: { ...none, can_complete: true } })} bdmType="college" onChanged={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: "Complete" }));
+    fireEvent.change(screen.getByLabelText("Outcome (required)"), { target: { value: "interested" } });
+    fireEvent.change(screen.getByLabelText("Discussion (required)"), { target: { value: "Long notes" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save report and complete" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("This appointment changed elsewhere — copy your notes, then reload.");
+    expect(screen.getByLabelText("Discussion (required)")).toHaveValue("Long notes");
+    expect(screen.getByRole("button", { name: "Reload" })).toBeInTheDocument();
+  });
+
+  it("maps a 422 field error onto the report field", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res({ detail: [{ loc: ["body", "opportunity"], msg: "Value error, Opportunity contains invalid characters" }] }, 422))));
+    render(<BdmAppointmentActions appointment={appt({ permissions: { ...none, can_complete: true } })} bdmType="college" onChanged={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: "Complete" }));
+    fireEvent.change(screen.getByLabelText("Outcome (required)"), { target: { value: "interested" } });
+    fireEvent.change(screen.getByLabelText("Discussion (required)"), { target: { value: "x" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save report and complete" }));
+    expect(await screen.findByText("Opportunity contains invalid characters")).toBeInTheDocument();
   });
 
   it("shows the overlap warning inside Reschedule and confirms past it", async () => {

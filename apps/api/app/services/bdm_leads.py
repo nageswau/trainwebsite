@@ -1,4 +1,4 @@
-"""bdm-017 (DEC-SCOPE-070, spec §4): BDM-entered student leads -- `enquiries` rows attributed to an organization and a BDM.
+"""bdm-017 (DEC-SCOPE-071, spec §4): BDM-entered student leads -- `enquiries` rows attributed to an organization and a BDM.
 
 Functions only; nothing here commits -- the route owns the transaction. Organizations resolve through
 `bdm_organizations.load_scoped`, so a lead list of an organization the caller can't read is the same 404 as a missing one. Logs and

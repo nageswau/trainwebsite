@@ -82,7 +82,7 @@ def test_owner_rule():
 def test_permissions_by_role_and_state():
     owner = user()
     future, past = appt(owner=owner.id), appt(owner=owner.id, starts_at=NOW - timedelta(minutes=1))
-    assert svc.permissions(owner, future, NOW) == {"can_edit": True, "can_confirm": True, "can_reschedule": True, "can_cancel": True, "can_no_show": False, "can_complete": False}
+    assert svc.permissions(owner, future, NOW) == {"can_edit": True, "can_confirm": True, "can_reschedule": True, "can_cancel": True, "can_no_show": False, "can_complete": False, "can_edit_report": False}
     assert svc.permissions(owner, past, NOW)["can_complete"] and svc.permissions(owner, past, NOW)["can_no_show"]
     assert svc.permissions(owner, appt("confirmed", owner=owner.id), NOW)["can_confirm"] is False
     assert not any(svc.permissions(owner, appt("cancelled", owner=owner.id), NOW).values())

@@ -721,7 +721,7 @@ class PaymentWebhookEvent(Base, TimestampMixin):
 
 
 class Enquiry(Base, TimestampMixin):
-    """bdm-017 (DEC-SCOPE-070): a BDM-entered lead carries its organization and BDM (both NULL for website and manual enquiries);
+    """bdm-017 (DEC-SCOPE-071): a BDM-entered lead carries its organization and BDM (both NULL for website and manual enquiries);
     a division admin's explicit conversion links it to one student account (`uq_enquiries_converted_user`: one lead per user)."""
 
     __tablename__ = "enquiries"
@@ -1250,6 +1250,58 @@ class BdmAppointmentEvent(Base):
     reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+BDM_TASK_KINDS = ("follow_up", "task")
+BDM_TASK_SOURCES = ("appointment_outcome", "mou", "manual")
+BDM_TASK_STATUSES = ("open", "done", "cancelled")
+
+
+class BdmMeetingReport(Base, TimestampMixin):
+    """bdm-007 (DEC-SCOPE-070): the meeting report filed on completing an appointment (one per appointment). The outcome and next
+    follow-up date stay on the appointment. `legacy` rows were backfilled by 0072 for bdm-006 completions (outcome only, read-only)."""
+
+    __tablename__ = "bdm_meeting_reports"
+    __table_args__ = (
+        UniqueConstraint("appointment_id", name="uq_bdm_meeting_reports_appointment"),
+        CheckConstraint("legacy OR discussion IS NOT NULL", name="ck_bdm_meeting_reports_discussion"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    appointment_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_appointments.id", ondelete="RESTRICT"))
+    author_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    discussion: Mapped[str | None] = mapped_column(String(4000), nullable=True)
+    requirements: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    opportunity: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    next_action: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    responsible_person: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    legacy: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class BdmTask(Base, TimestampMixin):
+    """bdm-007 creates follow-ups (`source = appointment_outcome`, one per appointment); bdm-008 adds manual tasks, MoU follow-ups,
+    completion and the pages."""
+
+    __tablename__ = "bdm_tasks"
+    __table_args__ = (
+        UniqueConstraint("source_appointment_id", name="uq_bdm_tasks_source_appointment"),
+        CheckConstraint(_in_list("kind", BDM_TASK_KINDS), name="ck_bdm_tasks_kind"),
+        CheckConstraint(_in_list("source", BDM_TASK_SOURCES), name="ck_bdm_tasks_source"),
+        CheckConstraint(_in_list("status", BDM_TASK_STATUSES), name="ck_bdm_tasks_status"),
+        CheckConstraint("(source = 'appointment_outcome') = (source_appointment_id IS NOT NULL)", name="ck_bdm_tasks_source_link"),
+        CheckConstraint("(status = 'done') = (completed_at IS NOT NULL)", name="ck_bdm_tasks_completed"),
+        Index("ix_bdm_tasks_assignee_status_due", "assignee_user_id", "status", "due_on"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    kind: Mapped[str] = mapped_column(String(20))
+    title: Mapped[str] = mapped_column(String(200))
+    due_on: Mapped[date] = mapped_column(Date)
+    organization_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"), nullable=True)
+    source: Mapped[str] = mapped_column(String(30))
+    source_appointment_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_appointments.id", ondelete="RESTRICT"), nullable=True)
+    assignee_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    status: Mapped[str] = mapped_column(String(20), default="open", server_default=text("'open'"))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 BDM_ACTIVITY_CHANNELS = ("call", "whatsapp", "email", "visit", "meeting", "other")

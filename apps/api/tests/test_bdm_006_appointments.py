@@ -30,7 +30,7 @@ async def test_create_captures_every_section_2_field(client, db_session):
     assert (a["appointment_type"], a["duration_minutes"], a["location"], a["purpose"], a["remarks"]) == ("placement_discussion", 90, "Main block", "Placement tie-up", "Bring brochure")
     assert a["expected_leads"] == 12 and a["expected_revenue"] == "25000.50"
     assert [(e["from_status"], e["to_status"]) for e in a["events"]] == [(None, "scheduled")]
-    assert a["permissions"] == {"can_edit": True, "can_confirm": True, "can_reschedule": True, "can_cancel": True, "can_no_show": False, "can_complete": False}
+    assert a["permissions"] == {"can_edit": True, "can_confirm": True, "can_reschedule": True, "can_cancel": True, "can_no_show": False, "can_complete": False, "can_edit_report": False}
     assert await audits(db_session, a["id"]) == ["bdm_appointment.create"]
     assert (await client.get(f"{APPTS}/{a['id']}")).json()["appointment"]["code"] == a["code"]
 
@@ -103,7 +103,7 @@ async def test_list_filters_ordering_and_ist_day_edges(client, db_session):
     page = (await client.get(APPTS, params={"date_from": day.isoformat(), "limit": 1, "offset": 1})).json()
     assert (page["total"], page["limit"], page["offset"], [i["code"] for i in page["items"]]) == (2, 1, 1, [early["code"]])
     row = page["items"][0]
-    assert set(row) == {"id", "code", "starts_at", "duration_minutes", "appointment_type", "status", "organization", "contact_name", "bdm"}
+    assert set(row) == {"id", "code", "starts_at", "duration_minutes", "appointment_type", "status", "organization", "contact_name", "bdm", "outcome_pending"}  # bdm-007 adds outcome_pending
 
 
 @pytest.mark.asyncio
