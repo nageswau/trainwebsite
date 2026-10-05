@@ -52,3 +52,36 @@ Captured 2026-10-05 against docs commit `717d6aa8` (= `main` @ `6a9be770` + docs
 | team/20-staff-activity-empty.png | Team | DOC-TEAM-005 | Empty | Master | "No activity yet." |
 | admin-agencies/07-users-resend-link.png | Agency administration | DOC-ADM-008 | Find account | Overseas Admin | Users > Manage users, Re-send link on an awaiting-setup staff row |
 | admin-agencies/08-users-resend-result.png | Agency administration | DOC-ADM-008 | Result | Overseas Admin | "New link created for Esha Pending…" |
+| students/01-students-list-master.png | Students | DOC-STU-001 | List | Master | All students cards, search, Show archived, Assigned to, Add student |
+| students/02-students-list-staff.png | Students | DOC-STU-001 | List | Staff | Staff list: assigned students only, no Archive/Assign |
+| students/03-add-student-form.png | Students | DOC-STU-002 | Fill form | Master | Add student form filled (full page) |
+| students/04-add-student-validation.png | Students | DOC-STU-002 | Error | Master | Email/phone/graduation year validation |
+| students/05-add-student-duplicate.png | Students | DOC-STU-002 | Duplicate | Master | Possible duplicate warning with Save anyway / Go back |
+| students/06-add-student-success.png | Students | DOC-STU-002 | Result | Master | "Neha Sharma added." |
+| students/07-students-no-match.png | Students | DOC-STU-001 | Search | Master | "No students match." + Clear filters |
+| students/08-students-pagination.png | Students | DOC-STU-001 | Paging | Master | Showing 1–20 of 24, Previous/Next |
+| students/09-student-detail.png | Students | DOC-STU-003 | View | Master | Student record (no login) with Journey/Counseling/Shortlist |
+| students/10-student-edit.png | Students | DOC-STU-003 | Edit | Master | Edit Neha Sharma form |
+| students/11-student-with-login.png | Students | DOC-STU-003 | View | Master | Student with a login: no Edit |
+| students/12-archive-confirm.png | Students | DOC-STU-004 | Archive | Master | Confirm archive |
+| students/13-archived-shown.png | Students | DOC-STU-004 | Result | Master | Show archived: Archived badge + Unarchive |
+| students/14-assign-control.png | Students | DOC-STU-005 | Assign | Master | Assign to list |
+| students/15-assign-success.png | Students | DOC-STU-005 | Result | Master | "assigned to EDU-S001 · Asha Staff." |
+| students/16-counseling-form.png | Students | DOC-STU-006 | Form | Master | Record counseling form filled |
+| students/17-counseling-budget-error.png | Students | DOC-STU-006 | Error | Master | Budget decimal format error |
+| students/18-counseling-saved.png | Students | DOC-STU-006 | Result | Master | Counseling saved view |
+| students/19-shortlist-form.png | Students | DOC-STU-007 | Form | Master | Add a university: catalogue university + course |
+| students/20-shortlist-cards.png | Students | DOC-STU-007 | List | Master | Shortlist cards incl. Agency badge |
+| students/21-shortlist-remove-confirm.png | Students | DOC-STU-007 | Remove | Master | Confirm remove |
+| students/22-journey.png | Students | DOC-STU-008 | Journey | Master | Journey: Create/Counseling/Shortlist Done |
+| students/23-history.png | Students | DOC-STU-008 | History | Master | History list with event labels |
+| students/24-link-student-picker.png | Students | DOC-STU-009 | Find | Master | Link student suggestion "Farah Ali — d***@example.test" |
+| students/25-link-student-result.png | Students | DOC-STU-009 | Result | Master | "Student linked." |
+| students/26-link-student-already-linked.png | Students | DOC-STU-009 | Error | Master | Already-linked student not offered: "Choose a student from the list." |
+| universities/01-universities-empty.png | Universities | DOC-UNI-001 | Open | Master | No universities yet |
+| universities/02-university-validation.png | Universities | DOC-UNI-001 | Error | Master | "Name is required." |
+| universities/03-university-form.png | Universities | DOC-UNI-001 | Form | Master | Add university form filled |
+| universities/04-universities-list.png | Universities | DOC-UNI-001 | List | Master | Two agency universities |
+| universities/05-universities-staff.png | Universities | DOC-UNI-001 | Staff view | Staff | No Add/Edit/Delete |
+| universities/06-university-delete-confirm.png | Universities | DOC-UNI-001 | Delete | Master | Confirm delete |
+| universities/07-university-in-use.png | Universities | DOC-UNI-001 | Error | Master | "This university is on 1 shortlist entry…" |

@@ -218,7 +218,7 @@ Features: DOC-TEAM-001..005, DOC-ADM-008.
 
 ### S4 — Students & universities
 Features: DOC-STU-001..009, DOC-UNI-001.
-- [ ] Standard loop. Create ≥21 no-login students (paging), assign some to A and B, archive one; agency universities;
+- [x] Standard loop. Create ≥21 no-login students (paging), assign some to A and B, archive one; agency universities;
   shortlist entries.
 
 ### S5 — Applications core + tasks

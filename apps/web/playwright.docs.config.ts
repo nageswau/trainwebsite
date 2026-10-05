@@ -17,5 +17,6 @@ export default defineConfig({
     colorScheme: "light",
     locale: "en-IN",
     timezoneId: "Asia/Kolkata",
+    actionTimeout: 15_000,
   },
 });

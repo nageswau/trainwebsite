@@ -29,7 +29,7 @@ export function password(kind: "seed" | "test" = "seed"): string {
 
 // Scrolls an element to the top of the viewport (below the sticky header) before a capture.
 export async function toTop(locator: Locator, offset = 80) {
-  await locator.evaluate((el, off) => window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - off }), offset);
+  await locator.first().evaluate((el, off) => window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - off }), offset);
 }
 
 export async function signIn(page: Page, email: string, kind: "seed" | "test" = "seed", landing = /\/overseas\/(agent|admin)\//) {

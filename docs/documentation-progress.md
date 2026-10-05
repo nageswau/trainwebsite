@@ -4,8 +4,8 @@
 |---|---|
 | Code baseline | `main` @ `e376c25c`; 2026-10-05 docs branch merged `main` @ `6a9be770` (+42 commits, bdm-006 etc.) — only Agent-scope-adjacent change is BDM "Appointments" sidebar links in `navigation.ts`; Agent CRM analysis unchanged. Browser work may use a stack from `6a9be770`. |
 | Stack used for browser work | `agentdocs` compose project from worktree `.claude/worktrees/agent-docs` @ `717d6aa8` (= main `6a9be770` + docs); web http://localhost:3010, api :8010; SMTP → local Mailpit (`docker-compose.docs.yml`, UI http://localhost:8025; `EMAIL_ENABLED` is not read by the app); Razorpay test keys present |
-| Last session | S3 — 2026-10-05 |
-| Next session | S4 — Students & universities (DOC-STU-001..009, DOC-UNI-001) |
+| Last session | S4 — 2026-10-05 |
+| Next session | S5 — Applications core + tasks (DOC-APP-001..005, DOC-TASK-001..002) |
 
 Column values: **Code Reviewed** YES / PARTIAL / NO (YES at S1 = reviewed from source at HEAD with file:line evidence in
 `documentation-analysis.md`); **Browser Verified** YES / PARTIAL / NO; **Screenshot** YES / NO / N/A;
@@ -22,16 +22,16 @@ YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES and Rev
 | DOC-AUTH-006 | Account access | My profile | YES | PARTIAL (save success + notification settings not exercised) | YES | DRAFT | NO |
 | DOC-DASH-001 | Dashboard | Agency dashboard — Master | YES | NO | NO | NO | NO |
 | DOC-DASH-002 | Dashboard | Agency dashboard — Staff | YES | NO | NO | NO | NO |
-| DOC-STU-001 | Students | Find students | YES | NO | NO | NO | NO |
-| DOC-STU-002 | Students | Add a student | YES | NO | NO | NO | NO |
-| DOC-STU-003 | Students | View and edit a student record | YES | NO | NO | NO | NO |
-| DOC-STU-004 | Students | Archive / unarchive a student | YES | NO | NO | NO | NO |
-| DOC-STU-005 | Students | Assign a student to staff | YES | NO | NO | NO | NO |
-| DOC-STU-006 | Students | Record counseling | YES | NO | NO | NO | NO |
-| DOC-STU-007 | Students | Build a university shortlist | YES | NO | NO | NO | NO |
-| DOC-STU-008 | Students | Journey and history | YES | NO | NO | NO | NO |
-| DOC-STU-009 | Students | Link an existing student account | YES | NO | NO | NO | NO |
-| DOC-UNI-001 | Universities | Manage the agency university list | YES | NO | NO | NO | NO |
+| DOC-STU-001 | Students | Find students | YES | YES | YES | YES | NO |
+| DOC-STU-002 | Students | Add a student | YES | YES | YES | YES | NO |
+| DOC-STU-003 | Students | View and edit a student record | YES | YES | YES | YES | NO |
+| DOC-STU-004 | Students | Archive / unarchive a student | YES | PARTIAL (unarchive not exercised) | YES | DRAFT | NO |
+| DOC-STU-005 | Students | Assign a student to staff | YES | YES | YES | YES | NO |
+| DOC-STU-006 | Students | Record counseling | YES | YES | YES | YES | NO |
+| DOC-STU-007 | Students | Build a university shortlist | YES | YES | YES | YES | NO |
+| DOC-STU-008 | Students | Journey and history | YES | PARTIAL (journey with applications → S5/S6) | YES | DRAFT | NO |
+| DOC-STU-009 | Students | Link an existing student account | YES | YES | YES | YES | NO |
+| DOC-UNI-001 | Universities | Manage the agency university list | YES | PARTIAL (edit not exercised) | YES | DRAFT | NO |
 | DOC-APP-001 | Applications | View and filter applications | YES | NO | NO | NO | NO |
 | DOC-APP-002 | Applications | Create an application | YES | NO | NO | NO | NO |
 | DOC-APP-003 | Applications | Edit an application | YES | NO | NO | NO | NO |
@@ -69,8 +69,8 @@ YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES and Rev
 | DOC-ADM-007 | Agency administration | Super Admin access to agency screens | YES | NO | NO | NO | NO |
 | DOC-ADM-008 | Agency administration | Resend a staff welcome link | YES | YES | YES | YES | NO |
 
-**Totals:** 54 features · Code reviewed 54 YES · Browser verified 10 YES, 4 PARTIAL · Screenshots 45 / ~178 ·
-Documented 10 YES, 4 DRAFT · Reviewed 0 · **COMPLETE 0**.
+**Totals:** 54 features · Code reviewed 54 YES · Browser verified 17 YES, 7 PARTIAL · Screenshots 78 / ~178 ·
+Documented 17 YES, 7 DRAFT · Reviewed 0 · **COMPLETE 0**.
 
 ## Deliverables outside the feature rows
 | Deliverable | Session | Status |
@@ -90,6 +90,8 @@ Open items U1–U19 are listed in `docs/documentation-analysis.md` §12.1. Close
 |---|---|---|---|
 | U2 | AUTH-005 | S2 | Closed: a pending agent can open Change password. |
 | 12.2 #1 | AUTH-003 | S2 | Confirmed in browser: rejected agency sees "Agent registration is pending approval". |
+| U7 | STU-007 | S4 | Closed: the same university can be shortlisted twice (accepted). |
+| U6 | STU-002 | S4 | Open: network-error wording not reproduced. |
 | U3 | AUTH-003 | S3 | Closed: deactivated staff are refused at sign-in with "Invalid credentials". |
 | U13 | TEAM-001 | S3 | Closed: Team page shows Masters twice (Team table + "Team — {agency}" card) — documented. |
 | U17 | ADM-008 | S3 | Closed: Users > Re-send link works for awaiting-setup staff. |
@@ -106,6 +108,8 @@ Open items U1–U19 are listed in `docs/documentation-analysis.md` §12.1. Close
 | 2026-10-05 | S3 | `EMAIL_ENABLED` in .env is not read by the API; welcome/invite emails go via SMTP, password-reset emails via `EMAIL_WEBHOOK_URL` | config | Docs stack routes SMTP to local Mailpit; note for review report |
 | 2026-10-05 | S3 | An invite-pending Master already shows a Deactivate button | Team card | Documented |
 | 2026-10-05 | S3 | Staff opening a Master-only page get an Access unavailable card with "Go to your dashboard" | `/overseas/agent/team` | Documented |
+| 2026-10-05 | S4 | Link student picker suggests only students who registered themselves and are not yet linked; shows a masked email | Students > Link student | Documented (STU-009) |
+| 2026-10-05 | S4 | Shortlist prefills tuition fee/intake from the catalogue course | Shortlist form | Documented |
 
 ## Session log
 | Session | Date | Commit | Stack / URL | Outcome |
@@ -114,3 +118,4 @@ Open items U1–U19 are listed in `docs/documentation-analysis.md` §12.1. Close
 | S2 part 1 (no stack) | 2026-10-05 | `e376c25c` | none — waiting for a `main` stack | Index, capture tooling, link checker; AUTH-006 code-reviewed |
 | S2 | 2026-10-05 | `717d6aa8` | agentdocs, :3010 | 24 screenshots; AUTH-001..006 + ADM-001 written; test agencies Docs Pending/Rejected/Suspended/Second created |
 | S3 | 2026-10-05 | `717d6aa8` | agentdocs, :3010 + Mailpit :8025 | 21 screenshots; TEAM-001..005 + ADM-008 written, AUTH-003/004 completed; staff Asha/Bala/Chitra/Dev/Esha in EduSphere Partner Agency |
+| S4 | 2026-10-05 | `717d6aa8` | agentdocs, :3010 | 33 screenshots; STU-001..009 + UNI-001 written; Neha Sharma (assigned to Asha) + 20 paging students, Kabir archived, Farah Ali linked, agency universities Northbridge/Harbour Point |

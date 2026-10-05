@@ -1,3 +1,5 @@
+import { writeFileSync } from "node:fs";
+
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
 import { mailCount, mailLink, password, shoot, signIn, toTop } from "./shoot";
@@ -200,5 +202,7 @@ test("S3 team and staff", async ({ browser }) => {
   await shoot(p, ADM, "08-users-resend-result.png");
   await ctx.close();
 
-  console.log(`STAFF ${JSON.stringify(Object.fromEntries(Object.entries(S).map(([k, v]) => [k, v.email])))}`);
+  const emails = JSON.stringify(Object.fromEntries(Object.entries(S).map(([k, v]) => [k, v.email])));
+  if (process.env.DOCS_STAFF_FILE) writeFileSync(process.env.DOCS_STAFF_FILE, emails); // read by later capture specs
+  console.log(`STAFF ${emails}`);
 });
