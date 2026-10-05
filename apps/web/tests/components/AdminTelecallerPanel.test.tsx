@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AdminTelecallerPanel from "@/components/AdminTelecallerPanel";
@@ -44,5 +44,15 @@ describe("AdminTelecallerPanel (tel-001 §6.3)", () => {
     render(<AdminTelecallerPanel role="it_admin" />);
     expect(await screen.findByText("Ravi")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Telecallers" })).toBeInTheDocument();
+  });
+
+  // tel-001 QA follow-up: on a phone the list comes first, so its card offers a jump to the create form.
+  it("offers a jump link that moves focus to the create form's first field", () => {
+    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(res(String(url).includes("telecaller-managers") ? { ...empty, total: 1 } : empty))));
+    render(<AdminTelecallerPanel role="super_admin" />);
+    const jump = screen.getByRole("link", { name: "Create telecaller" });
+    expect(jump).toHaveAttribute("href", "#tel-name");
+    fireEvent.click(jump);
+    expect(screen.getByLabelText("Full name (required)")).toHaveFocus();
   });
 });

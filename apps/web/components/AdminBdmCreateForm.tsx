@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson } from "@/lib/apiErrors";
@@ -20,9 +20,13 @@ export default function AdminBdmCreateForm({ role, managersAvailable, onCreated 
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const focus = useFocusAfterRender();
   const ready = managersAvailable === true;
+  // tel-001 QA follow-up: `busy` only disables the button after a re-render, so a second click in the same instant would POST again.
+  const inFlight = useRef(false);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (inFlight.current) return;
+    inFlight.current = true;
     const formEl = event.currentTarget;
     const form = new FormData(formEl);
     const employeeId = formText(form, "employee_id");
@@ -34,6 +38,7 @@ export default function AdminBdmCreateForm({ role, managersAvailable, onCreated 
         department: formOptional(form, "department"), territory: formOptional(form, "territory"), reporting_manager_user_id: formText(form, "manager"),
       },
     });
+    inFlight.current = false;
     setBusy(false);
     if (outcome.ok) {
       setFeedback(welcomeLinkFeedback("BDM created.", outcome.data));

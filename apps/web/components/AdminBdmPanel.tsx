@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import AdminBdmCreateForm from "@/components/AdminBdmCreateForm";
 import AdminBdmRow from "@/components/AdminBdmRow";
+import CreateJumpLink from "@/components/CreateJumpLink";
 import { isPage, type Page } from "@/lib/apiErrors";
 import { BDMS_URL, MANAGERS_URL, PAGE_SIZE, type BdmAdminRow } from "@/lib/bdm";
 
@@ -94,6 +95,7 @@ export default function AdminBdmPanel({ role }: { role: string }) {
       <AdminBdmCreateForm role={role} managersAvailable={managersAvailable} onCreated={(employeeId) => { search(employeeId); reload(); }} />
       <div className="action-card wide bdm-list" aria-busy={data === null && !loadFailed}>
         <h3>BDMs</h3>
+        <CreateJumpLink targetId="bdm-name" label="Create BDM" />
         <form role="search" onSubmit={(event) => { event.preventDefault(); search(draft); }} style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
           <input type="search" aria-label="Search BDMs" placeholder="Name, email or Employee ID" value={draft} maxLength={200} onChange={(event) => setDraft(event.target.value)} style={{ flex: "1 1 220px" }} />
           <button type="submit" className="btn secondary small">Search</button>

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import AdminTelecallerCreateForm from "@/components/AdminTelecallerCreateForm";
 import AdminTelecallerRow from "@/components/AdminTelecallerRow";
+import CreateJumpLink from "@/components/CreateJumpLink";
 import { isPage, type Page } from "@/lib/apiErrors";
 import { MANAGERS_URL, PAGE_SIZE, TELECALLERS_URL, type TelecallerAdminRow } from "@/lib/telecaller";
 
@@ -89,6 +90,7 @@ export default function AdminTelecallerPanel({ role }: { role: string }) {
       <AdminTelecallerCreateForm role={role} managersAvailable={managersAvailable} onCreated={(employeeId) => { search(employeeId); reload(); }} />
       <div className="action-card wide telecaller-list" aria-busy={data === null && !loadFailed}>
         <h3>Telecallers</h3>
+        <CreateJumpLink targetId="tel-name" label="Create telecaller" />
         <form role="search" onSubmit={(event) => { event.preventDefault(); search(draft); }} style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
           <input type="search" aria-label="Search telecallers" placeholder="Name, email or Employee ID" value={draft} maxLength={200} onChange={(event) => setDraft(event.target.value)} style={{ flex: "1 1 220px" }} />
           <button type="submit" className="btn secondary small">Search</button>

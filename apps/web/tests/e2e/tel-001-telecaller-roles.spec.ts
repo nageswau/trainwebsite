@@ -105,4 +105,8 @@ test("admin Telecallers page works at phone width without horizontal scroll", as
     expect(box.x).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(390);
   }
+  // ... and the list card offers a jump to the create form further down.
+  await page.getByRole("link", { name: "Create telecaller" }).click();
+  await expect(page.getByLabel("Full name (required)")).toBeFocused();
+  await expect(page.getByLabel("Full name (required)")).toBeInViewport();
 });

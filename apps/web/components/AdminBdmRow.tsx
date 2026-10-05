@@ -33,9 +33,10 @@ export default function AdminBdmRow({ row, onChanged }: { row: BdmAdminRow; onCh
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    const fullName = formText(form, "full_name");
     setBusy(true);
     const outcome = await sendJson(`${USERS_URL}/${row.id}`, "PATCH", {
-      full_name: formText(form, "full_name"), phone: formOptional(form, "phone"),
+      full_name: fullName, phone: formOptional(form, "phone"),
       bdm_profile: {
         employee_id: formText(form, "employee_id"), designation: formOptional(form, "designation"), department: formOptional(form, "department"),
         territory: formOptional(form, "territory"), reporting_manager_user_id: formText(form, "manager"),
@@ -44,7 +45,7 @@ export default function AdminBdmRow({ row, onChanged }: { row: BdmAdminRow; onCh
     setBusy(false);
     if (!outcome.ok) return fail(outcome.message, id("error"));
     close();
-    onChanged(`Saved ${row.full_name}.`);
+    onChanged(`Saved ${fullName}.`); // tel-001 QA follow-up: the name as saved, not as it was before the edit
   }
 
   async function setActive(active: boolean) {
@@ -93,14 +94,15 @@ export default function AdminBdmRow({ row, onChanged }: { row: BdmAdminRow; onCh
   }
 
   return (
+    // tel-001 QA follow-up: `data-label` names each cell's column, so below 640 px (globals.css .bdm-list) a row becomes a card.
     <tr>
-      <td>{row.full_name}<br /><span className="muted" style={{ fontSize: 12, overflowWrap: "anywhere" }}>{row.email}</span></td>
-      <td>{row.employee_id}</td>
-      <td>{BDM_TYPE_LABEL[row.bdm_type]}</td>
-      <td>{row.territory ?? "—"}</td>
-      <td>{row.reporting_manager.full_name}{!row.manager_active && <> <span className="badge">No active manager</span></>}</td>
-      <td><span className="badge">{statusLabel(row.active)}</span></td>
-      <td>
+      <td data-label="Name">{row.full_name}<br /><span className="muted" style={{ fontSize: 12, overflowWrap: "anywhere" }}>{row.email}</span></td>
+      <td data-label="Employee ID">{row.employee_id}</td>
+      <td data-label="Module">{BDM_TYPE_LABEL[row.bdm_type]}</td>
+      <td data-label="Territory">{row.territory ?? "—"}</td>
+      <td data-label="Manager">{row.reporting_manager.full_name}{!row.manager_active && <> <span className="badge">No active manager</span></>}</td>
+      <td data-label="Status"><span className="badge">{statusLabel(row.active)}</span></td>
+      <td data-label="Actions">
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           <button id={id("edit")} type="button" className="btn secondary small" aria-label={`Edit ${row.full_name}`} onClick={() => setEditing(true)} disabled={busy}>Edit</button>
           {row.active && !confirming && <button id={id("deactivate")} type="button" className="btn secondary small" aria-label={`Deactivate ${row.full_name}`} onClick={askToDeactivate} disabled={busy}>Deactivate</button>}
