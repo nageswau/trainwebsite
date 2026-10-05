@@ -15,10 +15,9 @@ from app.api.bdm import LIMIT, OFFSET, SEARCH, _matching
 from app.api.deps import get_current_user
 from app.api.lookups import _pattern as like_pattern
 from app.core.database import get_db
-from app.models import BdmAppointment, BdmOrganization, User
+from app.models import BdmAppointment, BdmMeetingReport, BdmOrganization, User
 from app.schemas import (
     BDM_APPOINTMENT_OPTIONAL_FIELDS,
-    BdmAppointmentComplete,
     BdmAppointmentCreate,
     BdmAppointmentEnvelope,
     BdmAppointmentPage,
@@ -27,6 +26,7 @@ from app.schemas import (
     BdmAppointmentStatus,
     BdmAppointmentType,
     BdmAppointmentUpdate,
+    BdmMeetingReportCreate,
 )
 from app.services import bdm_appointments as svc
 from app.services import bdm_organizations as org_svc
@@ -110,7 +110,8 @@ async def list_appointments(
         .offset(offset)
     )
     rows = (await db.execute(stmt)).all()
-    return {"items": [svc.row_out(a, o, u) for a, o, u in rows], "total": total or 0, "limit": limit, "offset": offset}
+    now = await svc.db_now(db)
+    return {"items": [svc.row_out(a, o, u, now) for a, o, u in rows], "total": total or 0, "limit": limit, "offset": offset}
 
 
 @router.post("", status_code=201, response_model=BdmAppointmentEnvelope)
@@ -254,16 +255,28 @@ async def no_show_appointment(appt_id: UUID, payload: BdmAppointmentReason, user
     return await _move(db, user, appt, "no_show", "no_show", reason=payload.reason)
 
 
+async def _outcome_allowed(db: AsyncSession, user: User, outcome: str) -> None:
+    bdm_type = (await bdm_context(db, user)).bdm_type
+    if outcome not in svc.appointment_outcomes(bdm_type):
+        raise HTTPException(422, f"This outcome is not available for {bdm_type.capitalize()} BDMs")
+
+
+def _follow_up_allowed(due_on: date | None, now) -> None:
+    if due_on is not None and due_on < svc.today_ist(now):
+        raise HTTPException(422, "Next follow-up can't be in the past")
+
+
 @router.post("/{appt_id}/complete", response_model=BdmAppointmentEnvelope)
-async def complete_appointment(appt_id: UUID, payload: BdmAppointmentComplete, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """AC5 / A1: an outcome valid for the owner's type and a past start time; the follow-up date is not in the past (IST)."""
+async def complete_appointment(appt_id: UUID, payload: BdmMeetingReportCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """bdm-007 AC1: filing the meeting report is the only way to complete. One transaction: status, report, follow-up (AC3), event,
+    audit. A second complete meets `completed` under the row lock -> 409."""
     appt = await _transitioning(db, user, appt_id, "complete", "completed")
     now = await svc.db_now(db)
     svc.require_started(appt, now, "complete")
-    bdm_type = (await bdm_context(db, user)).bdm_type
-    if payload.outcome not in svc.appointment_outcomes(bdm_type):
-        raise HTTPException(422, f"This outcome is not available for {bdm_type.capitalize()} BDMs")
-    if payload.next_follow_up_on is not None and payload.next_follow_up_on < svc.today_ist(now):
-        raise HTTPException(422, "Next follow-up can't be in the past")
+    await _outcome_allowed(db, user, payload.outcome)
+    _follow_up_allowed(payload.next_follow_up_on, now)
+    db.add(BdmMeetingReport(appointment_id=appt.id, author_user_id=user.id, submitted_at=now, **{k: getattr(payload, k) for k in svc.REPORT_FIELDS}))
+    follow_up = await svc.sync_follow_up(db, appt, payload.next_follow_up_on)
+    # Set after the follow-up query: its autoflush must not write an outcome while the status is still open (the CHECKs pair them).
     appt.outcome, appt.next_follow_up_on = payload.outcome, payload.next_follow_up_on
-    return await _move(db, user, appt, "complete", "completed", {"outcome": payload.outcome})
+    return await _move(db, user, appt, "complete", "completed", {"outcome": payload.outcome, "follow_up": follow_up is not None})

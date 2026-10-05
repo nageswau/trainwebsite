@@ -10,7 +10,7 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, not_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
@@ -23,11 +23,14 @@ from app.models import (
     AuditLog,
     BdmAppointment,
     BdmAppointmentEvent,
+    BdmMeetingReport,
     BdmOrganization,
     BdmOrganizationContact,
     BdmProfile,
+    BdmTask,
     User,
 )
+from app.schemas import BDM_REPORT_TEXT_FIELDS
 from app.services.bdm import bdm_context, person_ref
 
 logger = logging.getLogger("app.bdm")
@@ -53,6 +56,10 @@ NOT_STARTED = {
     "complete": "You can only complete an appointment after its start time",
     "no_show": "You can only mark a no-show after the start time",
 }
+REPORT_FIELDS = BDM_REPORT_TEXT_FIELDS  # bdm-007: the narrative on bdm_meeting_reports; outcome / follow-up date stay on the appointment
+NO_REPORT = "This appointment has no meeting report"
+REPORT_LOCKED = "Meeting reports can only be changed on the day they were filed"
+FOLLOW_UP_DONE = "This follow-up is already done"
 
 
 def appointment_types(bdm_type: str) -> tuple[str, ...]:
@@ -143,6 +150,59 @@ def require_started(appt: BdmAppointment, now: datetime, action: str) -> None:
         raise HTTPException(422, NOT_STARTED[action])
 
 
+def is_pending(appt: BdmAppointment, now: datetime) -> bool:
+    """bdm-007 AC5: open and past its start -- waiting for a meeting report (bdm-023 AL-6 reads the same rule via `pending_filter`)."""
+    return appt.status in BDM_APPOINTMENT_OPEN and appt.starts_at <= now
+
+
+def pending_filter(pending: bool):
+    expr = and_(BdmAppointment.status.in_(BDM_APPOINTMENT_OPEN), BdmAppointment.starts_at <= func.now())
+    return expr if pending else not_(expr)
+
+
+def report_editable(report: BdmMeetingReport, now: datetime) -> bool:
+    """bdm-007 spec §5.4 (R2): the IST day it was filed; legacy reports never."""
+    return not report.legacy and today_ist(report.submitted_at) == today_ist(now)
+
+
+async def load_report(db: AsyncSession, appt_id: UUID, *, lock: bool = False) -> BdmMeetingReport | None:
+    stmt = select(BdmMeetingReport).where(BdmMeetingReport.appointment_id == appt_id).execution_options(populate_existing=True)
+    return await db.scalar(stmt.with_for_update() if lock else stmt)
+
+
+async def load_follow_up(db: AsyncSession, appt_id: UUID, *, lock: bool = False) -> BdmTask | None:
+    stmt = select(BdmTask).where(BdmTask.source_appointment_id == appt_id).execution_options(populate_existing=True)
+    return await db.scalar(stmt.with_for_update() if lock else stmt)
+
+
+async def sync_follow_up(db: AsyncSession, appt: BdmAppointment, due_on: date | None) -> str | None:
+    """bdm-007 spec §4.3: the appointment's one follow-up tracks `due_on`; returns what changed (for the audit) or None. The caller
+    holds the appointment lock (lock order appointment -> report -> follow-up)."""
+    task = await load_follow_up(db, appt.id, lock=True)
+    if task is None:
+        if due_on is None:
+            return None
+        db.add(BdmTask(
+            kind="follow_up", title=f"Follow up on {appt.code}", due_on=due_on, organization_id=appt.organization_id,
+            source="appointment_outcome", source_appointment_id=appt.id, assignee_user_id=appt.bdm_user_id, status="open",
+        ))
+        return "created"
+    if task.status == "done":
+        raise HTTPException(409, FOLLOW_UP_DONE)
+    if due_on is None:
+        if task.status == "cancelled":
+            return None
+        task.status = "cancelled"
+        return "cancelled"
+    if task.status == "cancelled":
+        task.status, task.due_on = "open", due_on
+        return "reopened"
+    if task.due_on == due_on:
+        return None
+    task.due_on = due_on
+    return "moved"
+
+
 def snapshot(contact: BdmOrganizationContact) -> dict:
     return {
         "contact_id": contact.id, "contact_name": contact.name, "contact_designation": contact.designation,
@@ -191,7 +251,7 @@ def record(db: AsyncSession, appt: BdmAppointment, actor: User, from_status: str
     db.add(BdmAppointmentEvent(appointment_id=appt.id, actor_user_id=actor.id, from_status=from_status, to_status=to_status, old_starts_at=old_starts_at, new_starts_at=new_starts_at, reason=reason))
 
 
-def permissions(user: User, appt: BdmAppointment, now: datetime) -> dict[str, bool]:
+def permissions(user: User, appt: BdmAppointment, now: datetime, report: BdmMeetingReport | None = None) -> dict[str, bool]:
     owner = user.role == "bdm" and appt.bdm_user_id == user.id
     open_ = owner and appt.status in BDM_APPOINTMENT_OPEN
     started = appt.starts_at <= now
@@ -202,15 +262,16 @@ def permissions(user: User, appt: BdmAppointment, now: datetime) -> dict[str, bo
         "can_cancel": open_,
         "can_no_show": open_ and started,
         "can_complete": open_ and started,
+        "can_edit_report": owner and report is not None and report_editable(report, now),
     }
 
 
-def row_out(appt: BdmAppointment, org: BdmOrganization, owner: User) -> dict:
+def row_out(appt: BdmAppointment, org: BdmOrganization, owner: User, now: datetime) -> dict:
     return {
         "id": appt.id, "code": appt.code, "starts_at": appt.starts_at, "duration_minutes": appt.duration_minutes,
         "appointment_type": appt.appointment_type, "status": appt.status,
         "organization": {"id": org.id, "code": org.code, "name": org.name, "archived": org.archived_at is not None},
-        "contact_name": appt.contact_name, "bdm": person_ref(owner),
+        "contact_name": appt.contact_name, "bdm": person_ref(owner), "outcome_pending": is_pending(appt, now),
     }
 
 
@@ -229,14 +290,27 @@ async def appointment_out(db: AsyncSession, user: User, appt: BdmAppointment, *,
         )
     ).all()
     now = await db_now(db)
+    report_row = (
+        await db.execute(
+            select(BdmMeetingReport, User).join(User, User.id == BdmMeetingReport.author_user_id)
+            .where(BdmMeetingReport.appointment_id == appt.id).execution_options(populate_existing=True)
+        )
+    ).first()
+    report, author = report_row if report_row else (None, None)
+    follow_up = await load_follow_up(db, appt.id)
     return {
-        **row_out(appt, org, owner),
+        **row_out(appt, org, owner, now),
         **{k: getattr(appt, k) for k in ("contact_id", "contact_designation", "contact_phone", "contact_email", "location", "purpose", "remarks", "outcome", "next_follow_up_on", "expected_leads", "expected_revenue", "created_at", "updated_at")},
         "events": [
             {"from_status": e.from_status, "to_status": e.to_status, "old_starts_at": e.old_starts_at, "new_starts_at": e.new_starts_at, "reason": e.reason, "actor_name": name, "created_at": e.created_at}
             for e, name in events
         ],
-        "permissions": permissions(user, appt, now),
+        "report": None if report is None else {
+            **{k: getattr(report, k) for k in REPORT_FIELDS}, "legacy": report.legacy, "author": person_ref(author),
+            "submitted_at": report.submitted_at, "updated_at": report.updated_at,
+        },
+        "follow_up": None if follow_up is None else {"id": follow_up.id, "due_on": follow_up.due_on, "status": follow_up.status},
+        "permissions": permissions(user, appt, now, report),
     }
 
 

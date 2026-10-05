@@ -3882,12 +3882,6 @@ class BdmAppointmentReason(BaseModel):
     reason: BdmApptReason
 
 
-class BdmAppointmentComplete(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    outcome: BdmAppointmentOutcome
-    next_follow_up_on: date | None = None
-
-
 # --- bdm-007 (DEC-SCOPE-070, spec §5): the meeting report ----------------------------------------------------------------------
 BDM_REPORT_TEXT_FIELDS = ("discussion", "requirements", "opportunity", "next_action", "responsible_person")
 BDM_REPORT_LABELS = {
