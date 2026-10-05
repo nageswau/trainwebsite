@@ -63,10 +63,15 @@ async def flush_unique_email(db: AsyncSession) -> None:
         raise HTTPException(409, "Email already exists") from None
 
 
+# bdm-001 QA-05 / tel-001 §5.6: the `global` manager roles sign in at /admin, so their set-password and reset pages are the admin
+# portal's own. auth.reset_password reads the same set for its `login_portal`.
+ADMIN_PORTAL_ROLES = frozenset({"bdm_manager", "telecaller_manager"})
+
+
 def _set_password_url(user: User, raw: str) -> str:
     # Built from configuration, never from the request's Host header (no host-header poisoning).
     # super_admin logs in via /it. bdm-001 QA-05 (owner, 2026-10-02): a BDM manager's link opens the admin portal's own reset page.
-    segment = "admin" if user.role == "bdm_manager" else ("overseas" if user.division == "overseas" else "it")
+    segment = "admin" if user.role in ADMIN_PORTAL_ROLES else ("overseas" if user.division == "overseas" else "it")
     return f"{settings.frontend_url}/{segment}/reset-password?token={raw}"
 
 

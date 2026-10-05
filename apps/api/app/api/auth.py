@@ -20,6 +20,7 @@ from app.models import AuditLog, Notification, NotificationDelivery, PasswordRes
 from app.schemas import ChangePasswordRequest, LoginRequest, LoginResponse, ProfileUpdate, RegistrationRequest, UserOut
 from app.services.agent_orgs import ensure_agent_org
 from app.services.integrations import send_notification
+from app.services.provisioning import ADMIN_PORTAL_ROLES
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -288,7 +289,9 @@ async def reset_password(payload: dict, db: AsyncSession = Depends(get_db)):
         logger.info("welcome_password_set", extra={"extra_fields": {"user_id": str(user.id)}})
     # bdm-001 (spec §5.6): a BDM manager (division `global`) signs in at /admin/login, and the reset form follows this. The key is
     # always present (null for everyone else), so the response shape never varies by role.
-    return {"ok": True, "login_portal": "admin" if user.role == "bdm_manager" else None}
+    # bdm-001 (spec §5.6) / tel-001: a `global` manager signs in at /admin/login, and the reset form follows this. The key is always
+    # present (null for everyone else), so the response shape never varies by role.
+    return {"ok": True, "login_portal": "admin" if user.role in ADMIN_PORTAL_ROLES else None}
 
 
 @router.post("/change-password")
