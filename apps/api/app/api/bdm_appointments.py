@@ -18,6 +18,7 @@ from app.core.database import get_db
 from app.models import BdmAppointment, BdmMeetingReport, BdmOrganization, User
 from app.schemas import (
     BDM_APPOINTMENT_OPTIONAL_FIELDS,
+    BDM_REPORT_TEXT_FIELDS,
     BdmAppointmentCreate,
     BdmAppointmentEnvelope,
     BdmAppointmentPage,
@@ -280,7 +281,7 @@ async def complete_appointment(appt_id: UUID, payload: BdmMeetingReportCreate, u
     svc.require_started(appt, now, "complete")
     await _outcome_allowed(db, user, payload.outcome)
     _follow_up_allowed(payload.next_follow_up_on, now)
-    db.add(BdmMeetingReport(appointment_id=appt.id, author_user_id=user.id, submitted_at=now, **{k: getattr(payload, k) for k in svc.REPORT_FIELDS}))
+    db.add(BdmMeetingReport(appointment_id=appt.id, author_user_id=user.id, submitted_at=now, **{k: getattr(payload, k) for k in BDM_REPORT_TEXT_FIELDS}))
     follow_up = await svc.sync_follow_up(db, appt, payload.next_follow_up_on)
     # Set after the follow-up query: its autoflush must not write an outcome while the status is still open (the CHECKs pair them).
     appt.outcome, appt.next_follow_up_on = payload.outcome, payload.next_follow_up_on
@@ -300,7 +301,10 @@ async def update_report(appt_id: UUID, payload: BdmMeetingReportUpdate, user: Us
     if not svc.report_editable(report, now):
         raise HTTPException(409, svc.REPORT_LOCKED)
     changes = payload.model_dump(exclude_unset=True)
-    target = lambda key: report if key in svc.REPORT_FIELDS else appt  # noqa: E731 -- outcome / follow-up date live on the appointment
+
+    def target(key: str):
+        return report if key in BDM_REPORT_TEXT_FIELDS else appt  # outcome / follow-up date live on the appointment
+
     changed = sorted(k for k, v in changes.items() if getattr(target(k), k) != v)
     if "outcome" in changed:
         await _outcome_allowed(db, user, changes["outcome"])

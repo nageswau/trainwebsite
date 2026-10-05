@@ -35,10 +35,12 @@ export default function BdmMeetingReportSection({ appointment: a, bdmType, onCha
       setEditing(false);
       return onChanged(outcome.data.appointment, "Meeting report saved.");
     }
-    const mapped = outcome.ok ? {} : fieldErrors(outcome.detail);
+    if (outcome.ok) return setFailure("Unable to save the report.");
+    const mapped = fieldErrors(outcome.detail);
     setErrors(mapped);
-    const server = !outcome.ok && (outcome.status ?? 0) >= 500;
-    setFailure(Object.keys(mapped).length ? "Check the highlighted fields." : outcome.ok ? "Unable to save the report." : server ? "We couldn't save the report. Please try again — your text is kept." : outcome.message);
+    if (Object.keys(mapped).length) return setFailure("Check the highlighted fields.");
+    if ((outcome.status ?? 0) >= 500) return setFailure("We couldn't save the report. Please try again — your text is kept.");
+    setFailure(outcome.message);
   }
 
   const followUp = a.next_follow_up_on ? formatCalendarDate(a.next_follow_up_on) : "—";

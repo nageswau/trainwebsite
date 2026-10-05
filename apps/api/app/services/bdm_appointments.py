@@ -56,7 +56,6 @@ NOT_STARTED = {
     "complete": "You can only complete an appointment after its start time",
     "no_show": "You can only mark a no-show after the start time",
 }
-REPORT_FIELDS = BDM_REPORT_TEXT_FIELDS  # bdm-007: the narrative on bdm_meeting_reports; outcome / follow-up date stay on the appointment
 NO_REPORT = "This appointment has no meeting report"
 REPORT_LOCKED = "Meeting reports can only be changed on the day they were filed"
 FOLLOW_UP_DONE = "This follow-up is already done"
@@ -306,7 +305,7 @@ async def appointment_out(db: AsyncSession, user: User, appt: BdmAppointment, *,
             for e, name in events
         ],
         "report": None if report is None else {
-            **{k: getattr(report, k) for k in REPORT_FIELDS}, "legacy": report.legacy, "author": person_ref(author),
+            **{k: getattr(report, k) for k in BDM_REPORT_TEXT_FIELDS}, "legacy": report.legacy, "author": person_ref(author),
             "submitted_at": report.submitted_at, "updated_at": report.updated_at,
         },
         "follow_up": None if follow_up is None else {"id": follow_up.id, "due_on": follow_up.due_on, "status": follow_up.status},
