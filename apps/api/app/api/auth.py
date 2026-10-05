@@ -20,6 +20,7 @@ from app.models import AuditLog, Notification, NotificationDelivery, PasswordRes
 from app.schemas import ChangePasswordRequest, LoginRequest, LoginResponse, ProfileUpdate, RegistrationRequest, UserOut
 from app.services.agent_orgs import ensure_agent_org
 from app.services.integrations import send_notification
+from app.services.telecaller import parse_self_update
 from app.services.provisioning import ADMIN_PORTAL_ROLES
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -204,6 +205,14 @@ async def update_me(payload: ProfileUpdate, user: User = Depends(get_current_use
             await db.commit()
             logger.warning("profile_update_denied", extra={"extra_fields": {"user_id": str(user.id), "field": key}})
             raise HTTPException(403, f"{key} cannot be changed here")
+    if user.role == "telecaller":
+        # tel-001 TL8: a telecaller changes only their phone (the generic account form resubmits the unchanged name, which is fine).
+        name_changed = "full_name" in changes and changes["full_name"].strip() != user.full_name
+        profile_changed = "profile" in changes and (changes["profile"] or {}) != (user.profile or {})
+        if name_changed or profile_changed:
+            raise HTTPException(403, "Telecallers can change only their phone number — contact your administrator")
+        if "phone" in changes:
+            changes["phone"] = parse_self_update({"phone": changes["phone"]}).phone
     if "full_name" in changes:
         user.full_name = changes["full_name"].strip()
     if "phone" in changes:
