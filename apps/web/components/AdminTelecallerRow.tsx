@@ -32,6 +32,7 @@ export default function AdminTelecallerRow({ row, onChanged }: { row: Telecaller
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    setError(null);
     setBusy(true);
     const outcome = await sendJson(`${USERS_URL}/${row.id}`, "PATCH", {
       full_name: formText(form, "full_name"), phone: formOptional(form, "phone"),
@@ -44,6 +45,7 @@ export default function AdminTelecallerRow({ row, onChanged }: { row: Telecaller
   }
 
   async function setActive(active: boolean) {
+    setError(null);
     setBusy(true);
     const outcome = await sendJson(`${USERS_URL}/${row.id}`, "PATCH", { active });
     setBusy(false);
@@ -83,8 +85,8 @@ export default function AdminTelecallerRow({ row, onChanged }: { row: Telecaller
       <td><span className="badge">{statusLabel(row.active)}</span></td>
       <td>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          <button id={id("edit")} type="button" className="btn secondary small" aria-label={`Edit ${row.full_name}`} onClick={() => setEditing(true)} disabled={busy}>Edit</button>
-          {row.active && !confirming && <button id={id("deactivate")} type="button" className="btn secondary small" aria-label={`Deactivate ${row.full_name}`} onClick={() => { setConfirming(true); focus(id("confirm")); }} disabled={busy}>Deactivate</button>}
+          <button id={id("edit")} type="button" className="btn secondary small" aria-label={`Edit ${row.full_name}`} onClick={() => { setError(null); setEditing(true); }} disabled={busy}>Edit</button>
+          {row.active && !confirming && <button id={id("deactivate")} type="button" className="btn secondary small" aria-label={`Deactivate ${row.full_name}`} onClick={() => { setError(null); setConfirming(true); focus(id("confirm")); }} disabled={busy}>Deactivate</button>}
           {!row.active && <button id={id("reactivate")} type="button" className="btn secondary small" aria-label={`Reactivate ${row.full_name}`} onClick={() => setActive(true)} disabled={busy}>Reactivate</button>}
         </div>
         {confirming && (

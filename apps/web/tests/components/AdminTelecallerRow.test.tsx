@@ -51,6 +51,16 @@ describe("AdminTelecallerRow (tel-001 §6.3)", () => {
     await waitFor(() => expect(JSON.parse(mock.mock.calls[0][1].body)).toEqual({ active: false }));
   });
 
+  it("clears a failed deactivate's error when Edit opens", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(res({ detail: "Cannot deactivate" }, 409)));
+    table(<AdminTelecallerRow row={row} onChanged={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: "Deactivate Ravi" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm deactivate" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Cannot deactivate");
+    fireEvent.click(screen.getByRole("button", { name: "Edit Ravi" }));
+    expect(screen.queryByText("Cannot deactivate")).not.toBeInTheDocument();
+  });
+
   it("shows a failed save in the edit form's alert, focuses it and does not report a change", async () => {
     const mock = vi.fn().mockResolvedValue(res({ detail: "Employee ID already exists" }, 409));
     vi.stubGlobal("fetch", mock);
