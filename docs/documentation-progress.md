@@ -4,8 +4,8 @@
 |---|---|
 | Code baseline | `main` @ `e376c25c`; 2026-10-05 docs branch merged `main` @ `6a9be770` (+42 commits, bdm-006 etc.) — only Agent-scope-adjacent change is BDM "Appointments" sidebar links in `navigation.ts`; Agent CRM analysis unchanged. Browser work may use a stack from `6a9be770`. |
 | Stack used for browser work | `agentdocs` compose project from worktree `.claude/worktrees/agent-docs` @ `717d6aa8` (= main `6a9be770` + docs); web http://localhost:3010, api :8010; SMTP → local Mailpit (`docker-compose.docs.yml`, UI http://localhost:8025; `EMAIL_ENABLED` is not read by the app); Razorpay test keys present |
-| Last session | S4 — 2026-10-05 |
-| Next session | S5 — Applications core + tasks (DOC-APP-001..005, DOC-TASK-001..002) |
+| Last session | S5 — 2026-10-05 |
+| Next session | S6 — Offer, deposit, visa, enrollment (DOC-APP-006..009) |
 
 Column values: **Code Reviewed** YES / PARTIAL / NO (YES at S1 = reviewed from source at HEAD with file:line evidence in
 `documentation-analysis.md`); **Browser Verified** YES / PARTIAL / NO; **Screenshot** YES / NO / N/A;
@@ -32,11 +32,11 @@ YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES and Rev
 | DOC-STU-008 | Students | Journey and history | YES | PARTIAL (journey with applications → S5/S6) | YES | DRAFT | NO |
 | DOC-STU-009 | Students | Link an existing student account | YES | YES | YES | YES | NO |
 | DOC-UNI-001 | Universities | Manage the agency university list | YES | PARTIAL (edit not exercised) | YES | DRAFT | NO |
-| DOC-APP-001 | Applications | View and filter applications | YES | NO | NO | NO | NO |
-| DOC-APP-002 | Applications | Create an application | YES | NO | NO | NO | NO |
-| DOC-APP-003 | Applications | Edit an application | YES | NO | NO | NO | NO |
-| DOC-APP-004 | Applications | Application detail page | YES | NO | NO | NO | NO |
-| DOC-APP-005 | Applications | Change status / withdraw | YES | NO | NO | NO | NO |
+| DOC-APP-001 | Applications | View and filter applications | YES | YES | YES | YES | NO |
+| DOC-APP-002 | Applications | Create an application | YES | YES | YES | YES | NO |
+| DOC-APP-003 | Applications | Edit an application | YES | YES | YES | YES | NO |
+| DOC-APP-004 | Applications | Application detail page | YES | PARTIAL (offer/deposit/visa/enrollment sections → S6) | YES | DRAFT | NO |
+| DOC-APP-005 | Applications | Change status / withdraw | YES | YES | YES | YES | NO |
 | DOC-APP-006 | Applications | Record or edit an offer | YES | NO | NO | NO | NO |
 | DOC-APP-007 | Applications | Deposit terms and payment (Razorpay) | YES | NO | NO | NO | NO |
 | DOC-APP-008 | Applications | Run the visa case | YES | NO | NO | NO | NO |
@@ -47,8 +47,8 @@ YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES and Rev
 | DOC-DOC-004 | Documents | Review a document | YES | NO | NO | NO | NO |
 | DOC-DOC-005 | Documents | Document history | YES | NO | NO | NO | NO |
 | DOC-DOC-006 | Documents | Request an additional document | YES | NO | NO | NO | NO |
-| DOC-TASK-001 | Tasks | View tasks and follow-ups | YES | NO | NO | NO | NO |
-| DOC-TASK-002 | Tasks | Add, edit, complete or cancel a task | YES | NO | NO | NO | NO |
+| DOC-TASK-001 | Tasks | View tasks and follow-ups | YES | YES | YES | YES | NO |
+| DOC-TASK-002 | Tasks | Add, edit, complete or cancel a task | YES | PARTIAL (task edit not exercised) | YES | DRAFT | NO |
 | DOC-NOTIF-001 | Notifications | Read notifications | YES | NO | NO | NO | NO |
 | DOC-COMM-001 | Commissions | View and claim commissions | YES | NO | NO | NO | NO |
 | DOC-RPT-001 | Reports | Run agency reports | YES | NO | NO | NO | NO |
@@ -69,8 +69,8 @@ YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES and Rev
 | DOC-ADM-007 | Agency administration | Super Admin access to agency screens | YES | NO | NO | NO | NO |
 | DOC-ADM-008 | Agency administration | Resend a staff welcome link | YES | YES | YES | YES | NO |
 
-**Totals:** 54 features · Code reviewed 54 YES · Browser verified 17 YES, 7 PARTIAL · Screenshots 78 / ~178 ·
-Documented 17 YES, 7 DRAFT · Reviewed 0 · **COMPLETE 0**.
+**Totals:** 54 features · Code reviewed 54 YES · Browser verified 22 YES, 9 PARTIAL · Screenshots 106 / ~178 ·
+Documented 22 YES, 9 DRAFT · Reviewed 0 · **COMPLETE 0**.
 
 ## Deliverables outside the feature rows
 | Deliverable | Session | Status |
@@ -90,6 +90,7 @@ Open items U1–U19 are listed in `docs/documentation-analysis.md` §12.1. Close
 |---|---|---|---|
 | U2 | AUTH-005 | S2 | Closed: a pending agent can open Change password. |
 | 12.2 #1 | AUTH-003 | S2 | Confirmed in browser: rejected agency sees "Agent registration is pending approval". |
+| U8 | APP-002 | S5 | Closed: Linked student is a type-ahead picker ("{name} — no login" / email). |
 | U7 | STU-007 | S4 | Closed: the same university can be shortlisted twice (accepted). |
 | U6 | STU-002 | S4 | Open: network-error wording not reproduced. |
 | U3 | AUTH-003 | S3 | Closed: deactivated staff are refused at sign-in with "Invalid credentials". |
@@ -110,6 +111,9 @@ Open items U1–U19 are listed in `docs/documentation-analysis.md` §12.1. Close
 | 2026-10-05 | S3 | Staff opening a Master-only page get an Access unavailable card with "Go to your dashboard" | `/overseas/agent/team` | Documented |
 | 2026-10-05 | S4 | Link student picker suggests only students who registered themselves and are not yet linked; shows a masked email | Students > Link student | Documented (STU-009) |
 | 2026-10-05 | S4 | Shortlist prefills tuition fee/intake from the catalogue course | Shortlist form | Documented |
+| 2026-10-05 | S5 | Submitted on / date pickers use the browser max date — the browser itself says "Value must be {today} or earlier." | Create application | Documented |
+| 2026-10-05 | S5 | Task "Assigned to" follows the student's assignee; Master-created tasks for unassigned students show Unassigned | Tasks | Documented |
+| 2026-10-05 | S5 | Task student picker shows full emails of students with a login, while the Link student picker masks them | Tasks vs Students | Note for review report |
 
 ## Session log
 | Session | Date | Commit | Stack / URL | Outcome |

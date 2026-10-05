@@ -85,3 +85,31 @@ Captured 2026-10-05 against docs commit `717d6aa8` (= `main` @ `6a9be770` + docs
 | universities/05-universities-staff.png | Universities | DOC-UNI-001 | Staff view | Staff | No Add/Edit/Delete |
 | universities/06-university-delete-confirm.png | Universities | DOC-UNI-001 | Delete | Master | Confirm delete |
 | universities/07-university-in-use.png | Universities | DOC-UNI-001 | Error | Master | "This university is on 1 shortlist entry…" |
+| applications/01-applications-page.png | Applications | DOC-APP-001 | Open | Master | Applications page: Create application form + list |
+| applications/02-create-form.png | Applications | DOC-APP-002 | Fill form | Master | Create application form filled |
+| applications/03-create-future-date.png | Applications | DOC-APP-002 | Error | Master | Browser blocks future Submitted on date |
+| applications/04-create-success.png | Applications | DOC-APP-002 | Result | Master | "Application created." |
+| applications/05-create-duplicate.png | Applications | DOC-APP-002 | Error | Master | "An application for this university/course already exists" |
+| applications/06-list-all.png | Applications | DOC-APP-001 | List | Master | All applications cards with stage badges and deadlines |
+| applications/07-filter-draft.png | Applications | DOC-APP-001 | Filter | Master | Draft view |
+| applications/07-filter-submitted.png | Applications | DOC-APP-001 | Filter | Master | Submitted view |
+| applications/07-filter-offer.png | Applications | DOC-APP-001 | Filter | Master | Offer received view |
+| applications/07-filter-visa.png | Applications | DOC-APP-001 | Filter | Master | Visa view |
+| applications/07-filter-withdrawn.png | Applications | DOC-APP-001 | Filter | Master | Withdrawn view |
+| applications/08-filter-empty.png | Applications | DOC-APP-001 | Empty | Master | Enrolled view empty: Show all applications |
+| applications/09-edit-form.png | Applications | DOC-APP-003 | Edit | Master | Edit form with university note |
+| applications/10-application-detail.png | Applications | DOC-APP-004 | Detail | Master | Detail after Saved. |
+| applications/11-change-status.png | Applications | DOC-APP-005 | Change status | Master | Move to Offer with note |
+| applications/12-withdraw-confirm.png | Applications | DOC-APP-005 | Withdraw | Master | Withdraw confirmation |
+| applications/13-withdrawn-read-only.png | Applications | DOC-APP-004/005 | Result | Master | Withdrawn, read-only note |
+| applications/14-staff-applications.png | Applications | DOC-APP-001 | Staff view | Staff | Assigned students' applications only |
+| tasks/01-tasks-open.png | Tasks | DOC-TASK-001 | Open view | Master | Open tasks |
+| tasks/02-new-task-form.png | Tasks | DOC-TASK-002 | Form | Master | New task form filled |
+| tasks/03-task-validation.png | Tasks | DOC-TASK-002 | Error | Master | Student/Title/Due validation |
+| tasks/04-new-task-past-due.png | Tasks | DOC-TASK-002 | Hint | Master | "This time has passed…" hint |
+| tasks/05-tasks-overdue.png | Tasks | DOC-TASK-001 | Overdue view | Master | Overdue badge |
+| tasks/06-cancel-task-confirm.png | Tasks | DOC-TASK-002 | Cancel | Master | Confirm cancel |
+| tasks/07-tasks-done.png | Tasks | DOC-TASK-001 | Done view | Master | Done task with Completed by |
+| tasks/08-tasks-cancelled.png | Tasks | DOC-TASK-001 | Cancelled view | Master | Cancelled task |
+| tasks/09-tasks-all.png | Tasks | DOC-TASK-001 | All view | Master | All tasks with every badge |
+| tasks/10-staff-tasks.png | Tasks | DOC-TASK-001 | Staff view | Staff | Staff sees assigned students' tasks |

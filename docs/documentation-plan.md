@@ -223,7 +223,7 @@ Features: DOC-STU-001..009, DOC-UNI-001.
 
 ### S5 — Applications core + tasks
 Features: DOC-APP-001..005, DOC-TASK-001..002.
-- [ ] Standard loop. Applications in every filter group (Draft, Submitted, Offer received, Visa, Enrolled later in S6,
+- [x] Standard loop. Applications in every filter group (Draft, Submitted, Offer received, Visa, Enrolled later in S6,
   Withdrawn); deadlines today/tomorrow/+3 days; tasks open, overdue (past due), done, cancelled.
 
 ### S6 — Offer, deposit, visa, enrollment
