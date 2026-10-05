@@ -1235,6 +1235,33 @@ class BdmAppointmentEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+BDM_ACTIVITY_CHANNELS = ("call", "whatsapp", "email", "visit", "meeting", "other")
+BDM_ACTIVITY_DIRECTIONAL = ("call", "whatsapp", "email")  # V6: these need a direction; the rest must have none
+
+
+class BdmActivity(Base, TimestampMixin):
+    """bdm-009 (DEC-SCOPE-069): one call, WhatsApp, email, visit, meeting or other contact a BDM logged by hand (D9; nothing is sent).
+    `contact_name` is the contact's name at save, kept when bdm-002 hard-deletes the contact (`contact_id` -> NULL)."""
+
+    __tablename__ = "bdm_activities"
+    __table_args__ = (
+        CheckConstraint(_in_list("channel", BDM_ACTIVITY_CHANNELS), name="ck_bdm_activities_channel"),
+        CheckConstraint("direction IS NULL OR direction IN ('outbound', 'inbound')", name="ck_bdm_activities_direction"),
+        CheckConstraint(f"({_in_list('channel', BDM_ACTIVITY_DIRECTIONAL)}) = (direction IS NOT NULL)", name="ck_bdm_activities_direction_channel"),
+        Index("ix_bdm_activities_bdm_user_id_occurred_at", "bdm_user_id", "occurred_at"),
+        Index("ix_bdm_activities_organization_id_occurred_at", "organization_id", "occurred_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    bdm_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    organization_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"))
+    contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organization_contacts.id", ondelete="SET NULL"), nullable=True)
+    contact_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    channel: Mapped[str] = mapped_column(String(20))
+    direction: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
 class LiveSession(Base, TimestampMixin):
     __tablename__ = "live_sessions"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)

@@ -185,3 +185,24 @@ describe("BdmOrganizationDetail profile (bdm-003 AC1, AC10, §12.2 F3-F5, F8)", 
     expect(screen.queryByRole("heading", { level: 4 })).toBeNull();
   });
 });
+
+describe("BdmOrganizationDetail activity timeline (bdm-009, QA9-01)", () => {
+  const timeline = { items: [], total: 0, limit: 20, offset: 0 };
+  const logged = { id: "a1", organization: { id: "o1", code: "ORG-000001", name: "St Mary", org_type: "college" }, bdm: { id: "b1", full_name: "Asha" },
+    contact_id: null, contact_name: null, contact_removed: false, channel: "visit", direction: null, occurred_at: "2026-10-03T05:00:00Z",
+    note: null, created_at: "2026-10-03T05:00:00Z", updated_at: "2026-10-03T05:00:00Z", permissions: { can_change: true } };
+
+  it("has exactly one status live region, and logging an activity announces in it", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(logged, 201))));
+    render(<BdmOrganizationDetail initial={org({ permissions: perms({ can_edit: true }) })} basePath="/bdm/organizations" activities={timeline} />);
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Log activity" }));
+    fireEvent.change(screen.getByLabelText("Channel (required)"), { target: { value: "visit" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save activity" }));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Activity logged."));
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+    expect(document.activeElement).toBe(screen.getByRole("status"));
+    fireEvent.click(screen.getByRole("button", { name: "Log activity" })); // the next action clears the old notice (QA9-03)
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+  });
+});

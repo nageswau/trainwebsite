@@ -33,7 +33,7 @@ def _config() -> Config:
     return cfg
 
 
-def test_migration_chains_after_0067_and_is_the_single_head():
+def test_migration_chains_after_0067_and_there_is_one_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     # bdm-003 (2026-10-03): 0069_bdm_org_profiles now sits on 0068_bdm_trips, so assert one head with 0068 in its history, not 0068 as
     # the head (the AGN-015/017 form), so a later migration does not have to edit this test.

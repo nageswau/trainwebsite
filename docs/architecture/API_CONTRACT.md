@@ -454,6 +454,31 @@ approve/reject → the BDM.
 | `GET /bdm/manager/approvals` | `bdm_manager`, `super_admin` | decidable | submitted + planned; manager: own team; super_admin: inactive-manager trips only |
 | `POST /bdm/manager/trips/{id}/approve`, `…/reject {reason}` | approver | T2/T3 | `404` other team; `403` super_admin while the manager is active; `403` own trip; `409` not pending |
 
+**`bdm-009` / `DEC-SCOPE-069` (built 2026-10-03; migration `0071_bdm_activities`) — BDM activity log.**
+Design spec `docs/superpowers/specs/2026-10-03-bdm-009-activity-log-design.md` §5 and §12.1. All routes are new; **no existing route,
+field, status or message changes** (A10). Lists are `{items,total,limit,offset}`, `limit` 1–100 (default 50), ordered `occurred_at desc,
+id desc`; the day lists add `counts` (`day`, `by_channel` with all six keys, `calls_made`, `organizations_contacted`) for the whole day
+and the same filters, not the page. `GET` without `?date=` uses IST today; `counts.day` states the day used. `BdmActivityOut` carries
+`organization`, `bdm {id, full_name}`, `contact_id`, `contact_name`, `contact_removed`, `channel`, `direction`, `occurred_at`, `note`,
+`permissions {can_change}`.
+
+| Method/Path | Auth | Scope | Notes |
+|---|---|---|---|
+| `GET /bdm/activities?date=&channel=&organization_id=` | `bdm` | own | one IST day; future `date` → `422` |
+| `POST /bdm/activities` | `bdm` | assigned BDM of the organization | `201`; direction rule (V6), time rules (V4, V9), daily cap (V10), contact must belong to the organization |
+| `PATCH /bdm/activities/{id}` | `bdm` | the logger | `200`; today's activities only; cannot move off today; `organization_id` / `bdm_user_id` / `contact_name` / `id` → `422` |
+| `DELETE /bdm/activities/{id}` | `bdm` | the logger | `204`; hard delete with an audit row; today's activities only |
+| `GET /bdm/organizations/{org_id}/activities` | any reader of the organization | `caller_scope` | every BDM's activities on that organization, newest first |
+| `GET /bdm/manager/activities?date=&bdm_user_id=&channel=` | `bdm_manager`, `super_admin` | team / all | `bdm_user_id` is ANDed with scope: outside the team → empty page and zero counts |
+
+**Status table (A4):** `401` no session; `403` wrong role, not the assigned BDM, not the logger (manager / `super_admin` writes included);
+`404` activity or organization outside the caller's scope (incl. out-of-type organization); `409` not today's activity (day gate) and the
+200-per-day cap; `422` schema, time rules, contact, archived organization on create, future `?date=`. `detail` is a string except schema
+`422`s (FastAPI's list). **Retry semantics (A3):** `POST` is not retry-safe (no idempotency key; a duplicate is fixed by a same-day delete);
+`PATCH` is idempotent (same body → same row, no second audit); `DELETE` answers `204`, a second `DELETE` answers `404`. **V9:**
+`occurred_at` up to 5 minutes after the server clock is saved as the server's now; more than 5 minutes ahead → `422`; older than 7 IST
+days → `422`. **V10:** the 201st activity of a BDM's IST day → `409`. Refusal logging: `bdm_activity_write_refused` is logged for "not the organization's assigned BDM" (create) and "not the BDM who logged it" (patch / delete, which also covers a manager or `super_admin` touching a readable team activity); 403s from the role gate (`bdm_context` on create, `caller_scope` for other roles) are not logged.
+
 **`AGN-011` / `DEC-SCOPE-058` (built 2026-10-02/03) — agent deposit through Razorpay.** Design spec
 `docs/superpowers/specs/2026-10-02-agn-011-deposit-collection-design.md` §4. Errors are FastAPI `{"detail": ...}`. INR only (D1). Every
 agent write: gate `403` → org lock → application `FOR UPDATE` (scope `404 "Application not found"`) → archived/withdrawn `409` → deposit

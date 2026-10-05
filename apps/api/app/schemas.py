@@ -26,6 +26,7 @@ from pydantic import (
 from pydantic_core import PydanticCustomError
 
 from app.models import (
+    BDM_ACTIVITY_DIRECTIONAL,
     BDM_APPOINTMENT_ALL_OUTCOMES,
     BDM_APPOINTMENT_ALL_TYPES,
     BDM_APPOINTMENT_STATUSES,
@@ -3952,3 +3953,116 @@ class BdmAppointmentPage(BaseModel):
 
 class BdmAppointmentEnvelope(BaseModel):
     appointment: BdmAppointmentOut
+
+
+# --- bdm-009: activity log (DEC-SCOPE-069; docs/superpowers/specs/2026-10-03-bdm-009-activity-log-design.md §5.1) ---
+
+BdmActivityChannel = Literal["call", "whatsapp", "email", "visit", "meeting", "other"]
+BdmActivityDirection = Literal["outbound", "inbound"]
+ACTIVITY_DIRECTION_REQUIRED = "Choose outgoing or incoming for a call, WhatsApp or email"
+ACTIVITY_DIRECTION_REFUSED = "Direction applies only to calls, WhatsApp and email"
+
+
+def activity_direction_error(channel: str | None, direction: str | None) -> str | None:
+    """V6, shared by the create schema and the service's PATCH check (which sees the merged row)."""
+    if channel is None:
+        return None  # the channel failed its own validation; one error is enough
+    if channel in BDM_ACTIVITY_DIRECTIONAL and direction is None:
+        return ACTIVITY_DIRECTION_REQUIRED
+    if channel not in BDM_ACTIVITY_DIRECTIONAL and direction is not None:
+        return ACTIVITY_DIRECTION_REFUSED
+    return None
+
+
+class BdmActivityCreate(BaseModel):
+    """V1-V6. Owner, contact name and timestamps are server-owned (`extra="forbid"` → 422). Time rules need "now", so the service
+    checks them (spec §4.2)."""
+
+    model_config = ConfigDict(extra="forbid")
+    organization_id: UUID
+    channel: BdmActivityChannel
+    direction: BdmActivityDirection | None = Field(default=None, validate_default=True)
+    contact_id: UUID | None = None
+    occurred_at: AwareDatetime
+    note: TripNote = None
+
+    @field_validator("direction")
+    @classmethod
+    def _direction_fits_channel(cls, value: str | None, info: ValidationInfo) -> str | None:
+        error = activity_direction_error(info.data.get("channel"), value)
+        if error:
+            raise ValueError(error)
+        return value
+
+
+class BdmActivityUpdate(BaseModel):
+    """Only the fields sent change (`model_fields_set`). The organization is fixed after create. `null` clears direction, contact and
+    note; channel and When can't be cleared."""
+
+    model_config = ConfigDict(extra="forbid")
+    channel: BdmActivityChannel | None = None
+    direction: BdmActivityDirection | None = None
+    contact_id: UUID | None = None
+    occurred_at: AwareDatetime | None = None
+    note: TripNote = None
+
+    @model_validator(mode="after")
+    def _required_stay_set(self) -> "BdmActivityUpdate":
+        for field, label in (("channel", "Channel"), ("occurred_at", "When")):
+            if field in self.model_fields_set and getattr(self, field) is None:
+                raise ValueError(f"{label} can't be empty")
+        return self
+
+
+class BdmActivityOrganization(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    org_type: str
+
+
+class BdmActivityPermissions(BaseModel):
+    can_change: bool
+
+
+class BdmActivityOut(BaseModel):
+    id: UUID
+    organization: BdmActivityOrganization
+    bdm: BdmPersonRef
+    contact_id: UUID | None
+    contact_name: str | None
+    contact_removed: bool
+    channel: BdmActivityChannel
+    direction: BdmActivityDirection | None
+    occurred_at: datetime
+    note: str | None
+    created_at: datetime
+    updated_at: datetime
+    permissions: BdmActivityPermissions
+
+
+class BdmActivityPage(BaseModel):
+    items: list[BdmActivityOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class BdmActivityChannelCounts(BaseModel):
+    call: int
+    whatsapp: int
+    email: int
+    visit: int
+    meeting: int
+    other: int
+
+
+class BdmActivityDayCounts(BaseModel):
+    day: date
+    by_channel: BdmActivityChannelCounts
+    calls_made: int
+    organizations_contacted: int
+
+
+class BdmActivityDayPage(BdmActivityPage):
+    counts: BdmActivityDayCounts

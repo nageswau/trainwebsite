@@ -523,6 +523,13 @@ Conventions used below:
 
 ### bdm-009 — Activity log (call / WhatsApp / email / visit / meeting)
 
+> **Status (2026-10-05):** implemented on `feature/bdm-009-activities` (`DEC-SCOPE-069`, migration `0071_bdm_activities`); **COMPLETE for its scope** --
+> verified 2026-10-05 on the merged branch (backend lite 507, web 320, tsc / eslint / build clean, Playwright and Browser Use green; QA reports
+> `docs/quality/BDM-009_BROWSER_QA_2026-10-05.md` and `BDM-009_EXPLORATORY_QA_2026-10-05.md`, all findings fixed). Full suites are run by the
+> owner; Codex review waived. Channels exclude "follow-up" (V2);
+> appointment / task links deferred to bdm-006 / bdm-008 (V3); backdate window 7 IST days and same-day edits (V4). AC4's "report
+> submitted" lock is completed by bdm-015 through `editable()`. Spec: `docs/superpowers/specs/2026-10-03-bdm-009-activity-log-design.md`.
+
 - **Business requirement:** "Activity: Calls, WhatsApp, Emails, Meetings, Visits, Follow-ups" (§4 Common). The daily reports count calls made, organizations contacted and school visits (§11, §G).
 - **Existing behavior:** none. There is no telephony integration.
 - **Expected behavior:** a `bdm_activities` table: channel (`call|whatsapp|email|visit|meeting|other`), `organization_id`, contact (optional), occurred_at, direction, short note, and an optional link to an appointment or task. The log is manual (D9); nothing is sent from the system. "Organizations contacted" = distinct organizations with an activity that day.

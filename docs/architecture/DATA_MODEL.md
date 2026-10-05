@@ -423,6 +423,18 @@ covers the commission-specific piece).
   `created_by_user_id`). Actual cost is never stored (sum of lines, D15). Nothing about the approver is stored (T2). Additive; the
   downgrade refuses while trips exist.
 
+- **Addendum, 2026-10-03 (`bdm-009`, `DEC-SCOPE-069`; migration `0071_bdm_activities`, chained after `0070_bdm_appointments`) — BDM
+  activity log.** `bdm_activities` (UUID PK; `bdm_user_id` FK `users` `ON DELETE RESTRICT` NOT NULL — the logger; `organization_id` FK
+  `bdm_organizations` `ON DELETE RESTRICT` NOT NULL; `contact_id` FK `bdm_organization_contacts` `ON DELETE SET NULL`, nullable;
+  `contact_name` String(200) nullable, copied at save so it survives a contact delete; `channel` String(20) NOT NULL with
+  `ck_bdm_activities_channel` call/whatsapp/email/visit/meeting/other; `direction` String(10) nullable with `ck_bdm_activities_direction`
+  outbound/inbound; `ck_bdm_activities_direction_channel`: `(channel IN ('call','whatsapp','email')) = (direction IS NOT NULL)`;
+  `occurred_at` timestamptz NOT NULL; `note` Text nullable, ≤ 500 validated in the schema; `created_at`, `updated_at`). Indexes
+  `ix_bdm_activities_bdm_user_id_occurred_at` (my day, counts, the daily cap) and `ix_bdm_activities_organization_id_occurred_at`
+  (timeline). CHECK constraints, no PG enums. The day's counts are never stored (one grouped query, `day_counts`, joined to
+  organizations like the lists so scope filters are safe). Appointment / task links are deferred to bdm-006 / bdm-008. Additive; no
+  existing table or row changes; the downgrade refuses while activities exist.
+
 ### 6.3 Commission trigger mapping — `ADR-012` resolution
 **Resolution:** the automatic commission-accrual trigger (`AGT-003`, `DEC-SCOPE-005`) fires when an
 `ApplicationStatusHistory` row is written with `to_status='enrolled'` **for an application that has

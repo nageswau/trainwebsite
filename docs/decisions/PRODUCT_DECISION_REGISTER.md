@@ -3497,3 +3497,27 @@ independent Codex review are pending.
 **Open:** retention / erasure policy for BDM data — `NEEDS_CONFIRMATION` (as bdm-001/002).
 
 **Spec:** `docs/superpowers/specs/2026-10-03-bdm-006-appointments-design.md`.
+
+### DEC-SCOPE-069 — BDM activity log (`bdm-009`)
+
+**ID note:** drafted as `DEC-SCOPE-064`, renumbered `DEC-SCOPE-065` on merging `main` @ `39c119b` (AGN-022 took `064`), with migration `0069_bdm_activities` after `0068_bdm_trips`. bdm-003 (PR #55) then took `DEC-SCOPE-065` and `0069_bdm_org_profiles`, and AGN-019 / AGN-020 (PRs #56 / #57) took `066` / `067`, so on merging `main` @ `e376c25` (2026-10-03) it became `DEC-SCOPE-068` with migration `0070_bdm_activities`. bdm-006 (PR #58) then reached `main` with `DEC-SCOPE-068` and `0070_bdm_appointments`, so on merging `main` @ `6a9be770` (2026-10-05) this entry is **`DEC-SCOPE-069`** and the migration **`0071_bdm_activities`** (after `0070_bdm_appointments`, one head). bdm-009 commits and docs from before these merges that say `DEC-SCOPE-065` / `DEC-SCOPE-068` or `0069_bdm_activities` / `0070_bdm_activities` mean this decision / migration (the bdm-006 entry above is the real `DEC-SCOPE-068`).
+
+**Question:** how do BDMs log calls, WhatsApp messages, emails, visits and meetings, who may log, see and change them, and how are the day's counts defined (`BDM_CRM_BACKLOG.md` §4 bdm-009)?
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md`, `DERIVED_BLUEPRINT`) §4 Common "Activity" (1288–1298), §11 (371–397), Agent §G (759–781), School §G (1000–1022); backlog decisions D9, Q-02, Q-13, Q-20 (`DERIVED_BLUEPRINT`).
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL` — answers to structured questions and five design-section reviews; design spec `docs/superpowers/specs/2026-10-03-bdm-009-activity-log-design.md` §3):
+
+- **V1** Only the organization's assigned BDM logs (out of type → 404, not assigned → 403, archived → 422).
+- **V2** Channels: call, whatsapp, email, visit, meeting, other. No follow-up channel (bdm-008 tasks). Meetings in the daily report come from completed appointments (bdm-015); meeting / visit activities count only under their own channel.
+- **V3** Appointment and task links are deferred to bdm-006 / bdm-008 (their own migrations and FKs).
+- **V4** `occurred_at` not in the future (see V9), at most 7 IST days back; edit / delete only on the activity's IST day (`editable()`, which bdm-015 extends with the report lock).
+- **V5** The organization timeline is visible to everyone who can read the organization.
+- **V6** Direction (outbound / inbound) required for call, WhatsApp, email; empty otherwise. Calls made = outbound calls.
+- **V7** Pages: org timeline + Log activity, `/bdm/activities`, `/bdm/manager/activities`.
+- **V8** Delete is hard, with an audit row (ids and channel only).
+- **V9** (Revision 2) A time up to 5 minutes after the server clock is saved as the server's now; more than 5 minutes ahead → 422.
+- **V10** (Revision 2) At most 200 activities per BDM per IST day (409); a soft abuse bound.
+- **Defaults:** super_admin reads only; the contact must belong to the organization and its name is kept after the contact is deleted (as bdm-006 A5); an edit cannot move an activity off today; no idempotency key (a duplicate is fixed by a same-day delete); no general rate limiter (as bdm-010). Refusal logging: `bdm_activity_write_refused` is logged for "not the organization's assigned BDM" (create) and "not the BDM who logged it" (patch / delete, which also covers a manager or `super_admin` touching a readable team activity); 403s from the role gate (`bdm_context` on create, `caller_scope` for other roles) are not logged (bdm-002's `bdm_org_write_refused` precedent). Notes are visible to every reader of the organization (the form says so). Retention / erasure of BDM data remains `NEEDS_CONFIRMATION` (as bdm-001 / 002 / 006).
+
+**Status:** `EXPLICIT_APPROVAL` for V1–V10; implemented on `feature/bdm-009-activities`; **COMPLETE for its scope** (verified 2026-10-05 on the merged branch: backend lite 507 passed, web 320 passed, tsc / eslint / `next build` clean, mypy equal to `main`, Playwright bdm-009 ×2 + bdm-001/002/003/006/010 green, Browser Use checks of AC1, AC3–AC6 and AC12, browser QA and exploratory QA findings fixed). The owner's full suites are run separately; the independent Codex review was waived by the owner. Migration `0071_bdm_activities`.

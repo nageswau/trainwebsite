@@ -2,19 +2,21 @@
 import Link from "next/link";
 import { type ReactNode, useEffect, useState } from "react";
 
+import BdmActivityTimeline from "@/components/BdmActivityTimeline";
 import BdmConfirm from "@/components/BdmConfirm";
 import BdmOrganizationContacts from "@/components/BdmOrganizationContacts";
 import BdmOrganizationForm from "@/components/BdmOrganizationForm";
 import BdmOrganizationProfileDetails, { DetailList, multiline } from "@/components/BdmOrganizationProfileDetails";
 import BdmOrganizationReassign from "@/components/BdmOrganizationReassign";
-import { sendRequest } from "@/lib/apiErrors";
+import { type Page, sendRequest } from "@/lib/apiErrors";
+import type { Activity } from "@/lib/bdmActivities";
 import { display, isOrganizationBody, LINK_STYLE, meetingText, type Organization, ORG_TYPE_LABEL, ORGS_URL, safeWebsite } from "@/lib/bdmOrganizations";
 import { formatDate } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // bdm-002 (spec §6.2, §12.2): one organization. Actions render from `permissions` only -- the server enforces every rule (AC3-AC5).
 // Every write re-renders from the organization the API returns (no refetch). Last/Next meeting come from bdm-006 appointments ("—" when none).
-export default function BdmOrganizationDetail({ initial, basePath, created = false }: { initial: Organization; basePath: string; created?: boolean }) {
+export default function BdmOrganizationDetail({ initial, basePath, created = false, activities }: { initial: Organization; basePath: string; created?: boolean; activities?: Page<Activity> | null }) {
   const [org, setOrg] = useState(initial);
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -161,6 +163,10 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
         </section>
       )}
       <BdmOrganizationContacts organization={org} onChanged={changed} />
+      {activities !== undefined && ( // bdm-009: the BDM view logs (assigned and not archived = can_edit); the manager view reads
+        <BdmActivityTimeline organization={org} initial={activities} canLog={basePath === "/bdm/organizations" && p.can_edit} orgBasePath={basePath}
+          onNotice={(text, focusStatus) => { setNotice(text); setFailure(null); if (focusStatus) focus(statusId); }} />
+      )}
       {p.can_reassign && (
         <BdmOrganizationReassign
           organization={org}
