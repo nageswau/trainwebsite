@@ -69,6 +69,12 @@ or EduSphere Overseas Admin (Masters) to re-send it.
 **Cause:** The email may be in spam, the address may be wrong, or there is no account for that email.
 **Resolution:** Check spam, then try again with the exact sign-in email. Contact your agency Master if it still does not arrive.
 
+## First-time password (new staff and invited Masters)
+When a Master creates your staff login (or invites you as a Master), you receive the email
+**"Welcome to EduSphere -- set your password"**. Click **Set your password** in the email; it opens the same
+**Choose a new password** page (Step 3). The link is single-use and expires in 72 hours. After saving you are taken
+to the sign-in page.
+
 ## Tips
 - Request only one reset at a time; only the newest link is useful.
 - Agency staff: your Master can also send you a fresh set-password link with **Reset** on the Team page.

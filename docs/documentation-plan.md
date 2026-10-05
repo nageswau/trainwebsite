@@ -212,7 +212,7 @@ Features: DOC-AUTH-001..006, DOC-ADM-001.
 
 ### S3 — Team & staff (creates the Staff personas)
 Features: DOC-TEAM-001..005, DOC-ADM-008.
-- [ ] Standard loop. As the seeded Master create Staff A (no permissions), B (*Verify documents*), C (*View reports*),
+- [x] Standard loop. As the seeded Master create Staff A (no permissions), B (*Verify documents*), C (*View reports*),
   D (to deactivate); invite a second Master. Staff need a set-password link: use ADM-008 (owner approval) or the
   email webhook sink — owner decides in S3.1.
 

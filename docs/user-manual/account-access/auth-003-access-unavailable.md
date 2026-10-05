@@ -1,6 +1,6 @@
 # "Access unavailable" messages
 
-> Doc ID: DOC-AUTH-003 · Verified 2026-10-05 against `main` @ `6a9be770` (docs branch) · Roles: Agency Master, Agency Staff
+> Doc ID: DOC-AUTH-003 · Verified 2026-10-05 against docs commit `717d6aa8` (`main` @ `6a9be770`) · Roles: Agency Master, Agency Staff
 
 ## Purpose
 Explains the **Access unavailable** page you may see after signing in, what each message means and what to do.
@@ -24,7 +24,7 @@ is a mistake." and a **Sign out** button.
 |---|---|
 | Agent registration is pending approval | Your agency has registered but has not been approved yet. **A rejected registration shows this same message.** |
 | Your agency's account is suspended | EduSphere has suspended your agency. Every Master and staff member is blocked. |
-| Your Master account is deactivated | Your own login has been deactivated by your agency. (Staff also see this wording.) — VERIFICATION REQUIRED for staff, see Tips |
+| Your Master account is deactivated | Your own login has been deactivated (wording from the application code; not observed in testing — VERIFICATION REQUIRED). In testing, a deactivated staff member who signs in is refused at the sign-in page with **Invalid credentials** instead. |
 
 ![Pending approval](../../screenshots/account-access/07-access-unavailable-pending.png)
 
@@ -54,8 +54,10 @@ See the table in Step 1.
 
 ## Tips
 - While blocked you can still open **Change password** from the account pages.
-- Whether a deactivated **staff** member sees this page or is refused at sign-in ("Invalid credentials") is
-  VERIFICATION REQUIRED (checked in the Team & staff session).
+- If your agency Master deactivates your login, signing in shows **Invalid credentials**. Ask your Master to
+  reactivate you.
+
+![Deactivated staff member signing in](../../screenshots/account-access/19-deactivated-staff-sign-in.png)
 
 ## When to Contact Administrator
 Always — only EduSphere Overseas Admin (agency status) or your agency Master (your own login) can restore access.

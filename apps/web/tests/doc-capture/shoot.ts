@@ -39,3 +39,26 @@ export async function signIn(page: Page, email: string, kind: "seed" | "test" = 
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL(landing);
 }
+
+// Set-password / reset links emailed to `to`, read from the docs stack's local Mailpit (no mail leaves the machine).
+// `after` = how many such emails existed before the action; waits for a newer one so a used link is never returned.
+export async function mailCount(to: string): Promise<number> {
+  const base = process.env.DOCS_MAILPIT_URL || "http://localhost:8025";
+  const list = await (await fetch(`${base}/api/v1/search?query=${encodeURIComponent(`to:${to}`)}`)).json();
+  return Number(list.messages_count ?? list.messages?.length ?? 0);
+}
+
+export async function mailLink(to: string, after = 0): Promise<string> {
+  const base = process.env.DOCS_MAILPIT_URL || "http://localhost:8025";
+  for (let i = 0; i < 40; i++) {
+    const list = await (await fetch(`${base}/api/v1/search?query=${encodeURIComponent(`to:${to}`)}`)).json();
+    const messages = [...(list.messages ?? [])].sort((x: { Created: string }, y: { Created: string }) => y.Created.localeCompare(x.Created));
+    if (messages.length > after) {
+      const msg = await (await fetch(`${base}/api/v1/message/${messages[0].ID}`)).json();
+      const link = String(msg.Text ?? "").match(/https?:\/\/\S+reset-password\?token=[\w-]+/)?.[0];
+      if (link) return new URL(link).pathname + new URL(link).search;
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  throw new Error(`No new set-password email for ${to}`);
+}

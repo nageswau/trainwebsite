@@ -30,3 +30,25 @@ Captured 2026-10-05 against docs commit `717d6aa8` (= `main` @ `6a9be770` + docs
 | admin-agencies/04-agent-approvals-suspend-confirm.png | Agency administration | DOC-ADM-001 | Suspend | Overseas Admin | Suspend confirmation |
 | admin-agencies/05-agent-approvals-suspended.png | Agency administration | DOC-ADM-001 | Result | Overseas Admin | Suspended tab |
 | admin-agencies/06-agent-approvals-rejected.png | Agency administration | DOC-ADM-001 | Rejected tab | Overseas Admin | Rejected agency listed with Approve |
+| account-access/19-deactivated-staff-sign-in.png | Account access | DOC-AUTH-003 | Blocked | Deactivated Staff | Deactivated staff member refused at sign-in: "Invalid credentials" |
+| team/01-team-page.png | Team | DOC-TEAM-001 | Open page | Master | Team page: Masters table, Actions, Team card, Staff card (no staff) |
+| team/02-invite-master-form.png | Team | DOC-TEAM-001 | Invite | Master | Invite a Master form filled |
+| team/03-invite-master-sent.png | Team | DOC-TEAM-001 | Result | Master | "Invite sent." and Invite pending badge |
+| team/04-deactivate-master-confirm.png | Team | DOC-TEAM-001 | Deactivate | Master | Deactivate Master confirmation |
+| team/05-staff-empty.png | Team | DOC-TEAM-002 | Open card | Master | Staff card, "No staff yet" |
+| team/07-add-staff-form.png | Team | DOC-TEAM-002 | Add staff | Master | Add staff form filled |
+| team/08-add-staff-success.png | Team | DOC-TEAM-002 | Result | Master | "EDU-S001 created. A set-password link was emailed…" |
+| team/09-permissions-form.png | Team | DOC-TEAM-004 | Permissions | Master | "What Bala Verifier can do" with Verify documents ticked |
+| team/10-permissions-saved.png | Team | DOC-TEAM-004 | Result | Master | "permissions saved", summary "Can verify documents" |
+| team/11-edit-staff.png | Team | DOC-TEAM-003 | Edit | Master | Edit staff form |
+| team/12-reset-confirm.png | Team | DOC-TEAM-003 | Reset | Master | Reset confirmation |
+| team/13-deactivate-staff-confirm.png | Team | DOC-TEAM-003 | Deactivate | Master | Deactivate staff confirmation |
+| team/14-staff-deactivated.png | Team | DOC-TEAM-003 | Result | Master | Deactivated badge and Reactivate button |
+| team/15-staff-list.png | Team | DOC-TEAM-002 | Staff list | Master | Staff rows with badges and permission summaries |
+| team/16-staff-sidebar-default.png | Team | DOC-TEAM-004 | Staff view | Staff (no permissions) | Staff sidebar: My Students, no Reports/Team/Commissions |
+| team/17-staff-team-refused.png | Team | DOC-TEAM-001 | Refusal | Staff | "Only an agency Master can open this page" |
+| team/18-staff-sidebar-with-reports.png | Team | DOC-TEAM-004 | Staff view | Staff (View reports) | Staff sidebar with Reports |
+| team/19-staff-activity.png | Team | DOC-TEAM-005 | Activity | Master | "Created a student record · Kiran Kumar" |
+| team/20-staff-activity-empty.png | Team | DOC-TEAM-005 | Empty | Master | "No activity yet." |
+| admin-agencies/07-users-resend-link.png | Agency administration | DOC-ADM-008 | Find account | Overseas Admin | Users > Manage users, Re-send link on an awaiting-setup staff row |
+| admin-agencies/08-users-resend-result.png | Agency administration | DOC-ADM-008 | Result | Overseas Admin | "New link created for Esha Pending…" |
