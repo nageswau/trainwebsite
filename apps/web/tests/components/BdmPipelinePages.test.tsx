@@ -59,12 +59,20 @@ describe("bdm-004 BDM pipeline page", () => {
 });
 
 describe("bdm-004 manager pipeline page", () => {
-  const team = { items: [{ id: "b2", full_name: "Ravi", bdm_type: "school" }, { id: "b1", full_name: "Asha", bdm_type: "college" }], total: 2, limit: 100, offset: 0 };
-  const answer = (user: unknown) => vi.mocked(serverApi).mockImplementation(async (p: string) => {
+  const team = [{ id: "b2", full_name: "Ravi", bdm_type: "school" }, { id: "b1", full_name: "Asha", bdm_type: "college" }];
+  // The team endpoint filtered by `bdm_type` (counts with limit=1, the chosen type's list with limit=100); `totals` overrides a type's
+  // total to stand for a team larger than one page. An unfiltered read returns only the first page (school rows) -- the 100-row cap.
+  const answer = (user: unknown, totals: Record<string, number> = {}) => vi.mocked(serverApi).mockImplementation(async (p: string) => {
     if (p === "/api/v1/auth/me") return user as never;
-    if (p.startsWith("/api/v1/bdm/manager/team")) return team as never;
+    if (p.startsWith("/api/v1/bdm/manager/team")) {
+      const type = new URLSearchParams(p.split("?")[1]).get("bdm_type");
+      const rows = team.filter((b) => (type ? b.bdm_type === type : b.bdm_type === "school"));
+      return { items: rows, total: totals[type ?? ""] ?? rows.length, limit: 100, offset: 0 } as never;
+    }
     return view() as never;
   });
+  const bdmOptions = (tree: ReturnType<typeof elements>) =>
+    tree.filter((el) => el.type === "option" && tree.some((s) => s.props.id === "pipeline-bdm" && elements(s.props.children as never).includes(el))).map((el) => el.props.value);
 
   it("falls back to the team's first type", async () => {
     answer({ id: "m1", full_name: "Meera", role: "bdm_manager" });
@@ -73,13 +81,21 @@ describe("bdm-004 manager pipeline page", () => {
     expect(board(tree).props.orgBasePath).toBe("/bdm/manager/organizations");
   });
 
-  it("filters to one BDM of the chosen type and drops a BDM of another type", async () => {
+  it("filters to one BDM of the chosen type and says when the chosen BDM is of another type", async () => {
     answer({ id: "m1", full_name: "Meera", role: "bdm_manager" });
-    await ManagerPipeline({ searchParams: sp({ type: "school", bdm: "b2" }) });
+    let tree = elements(await ManagerPipeline({ searchParams: sp({ type: "school", bdm: "b2" }) }));
     expect(serverApi).toHaveBeenCalledWith("/api/v1/bdm/pipeline?bdm_type=school&assigned=b2&limit=50&offset=0");
+    expect(bdmOptions(tree)).toEqual(["", "b2"]); // only the chosen type's BDMs are offered
     vi.mocked(serverApi).mockClear();
-    await ManagerPipeline({ searchParams: sp({ type: "school", bdm: "b1" }) });
+    tree = elements(await ManagerPipeline({ searchParams: sp({ type: "school", bdm: "b1" }) }));
     expect(serverApi).toHaveBeenCalledWith("/api/v1/bdm/pipeline?bdm_type=school&limit=50&offset=0");
+    expect(allText(tree)).toContain("That BDM isn't a School BDM in your team — showing everyone.");
+  });
+
+  it("reaches a type whose BDMs come after the first 100 team rows", async () => {
+    answer({ id: "m1", full_name: "Meera", role: "super_admin" }, { school: 150, college: 40 });
+    await ManagerPipeline({ searchParams: sp({ type: "college" }) });
+    expect(serverApi).toHaveBeenCalledWith("/api/v1/bdm/pipeline?bdm_type=college&limit=50&offset=0");
   });
 
   it("refuses a BDM and says when no BDMs report to the manager", async () => {

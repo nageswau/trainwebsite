@@ -18,16 +18,18 @@ const TYPES: BdmType[] = ["agent", "school", "college"];
 export default async function ManagerPipelinePage({ searchParams }: { searchParams: Promise<{ type?: string; bdm?: string; stage?: string; offset?: string }> }) {
   const nav = bdmManagerNav();
   const sp = await searchParams;
+  const teamOf = (t: BdmType, limit: number) => serverApi<Page<BdmTeamRow>>(`${TEAM_URL}?bdm_type=${t}&limit=${limit}&offset=0`);
   let user: User;
-  let team: Page<BdmTeamRow>;
+  let types: BdmType[];
   try {
     user = await serverApi<User>("/api/v1/auth/me");
     if (user.role !== "bdm_manager" && user.role !== "super_admin") return accessDenied(user, "This page is for BDM managers.");
-    team = await serverApi<Page<BdmTeamRow>>(`${TEAM_URL}?limit=100&offset=0`);
+    // One count per type (`total`), so a type is offered however large the team is (a super_admin's "team" is every BDM).
+    const totals = await Promise.all(TYPES.map((t) => teamOf(t, 1).then((page) => page.total)));
+    types = TYPES.filter((_, i) => totals[i] > 0);
   } catch (e) {
     return accessUnavailable(e, "/admin/login");
   }
-  const types = TYPES.filter((t) => team.items.some((b) => b.bdm_type === t));
   const roleLabel = user.role === "super_admin" ? "Super Admin" : "BDM Manager";
   const header = (
     <div className="portal-title">
@@ -49,8 +51,14 @@ export default async function ManagerPipelinePage({ searchParams }: { searchPara
     );
   }
   const type = types.includes(sp.type as BdmType) ? (sp.type as BdmType) : types[0]; // Review Focus 4
-  const ofType = team.items.filter((b) => b.bdm_type === type);
-  const picked = ofType.find((b) => b.id === sp.bdm);
+  let ofType: Page<BdmTeamRow>;
+  try {
+    ofType = await teamOf(type, 100); // the BDM filter offers this type's BDMs (first 100 by name)
+  } catch (e) {
+    return accessUnavailable(e, "/admin/login");
+  }
+  const picked = ofType.items.find((b) => b.id === sp.bdm);
+  const bdmNote = sp.bdm && !picked ? `That BDM isn't a ${BDM_TYPE_LABEL[type]} BDM in your team — showing everyone.` : null;
   const stage = sp.stage || undefined;
   const offset = pageOffset(sp.offset);
   const href = (change: { stage?: string | null; offset?: number }) => {
@@ -83,11 +91,12 @@ export default async function ManagerPipelinePage({ searchParams }: { searchPara
             <label htmlFor="pipeline-bdm">BDM</label>
             <select id="pipeline-bdm" name="bdm" defaultValue={picked?.id ?? ""}>
               <option value="">Everyone</option>
-              {team.items.map((b) => <option key={b.id} value={b.id}>{b.full_name} ({BDM_TYPE_LABEL[b.bdm_type]})</option>)}
+              {ofType.items.map((b) => <option key={b.id} value={b.id}>{b.full_name}</option>)}
             </select>
           </div>
           <button className="btn secondary" type="submit">Show</button>
         </form>
+        {bdmNote && <p className="muted">{bdmNote}</p>}
         {view === "invalid" ? (
           <div className="action-card">
             <p>That filter isn&apos;t valid.</p>

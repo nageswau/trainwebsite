@@ -3,7 +3,7 @@ import { type FormEvent, useState } from "react";
 
 import { sendJson, sendRequest } from "@/lib/apiErrors";
 import { isOrganizationBody, type Organization, ORGS_URL } from "@/lib/bdmOrganizations";
-import { fieldErrors, isBackward, orgActionUrl, stageChanged, STATE_TEXT } from "@/lib/bdmPipeline";
+import { fieldErrors, isBackward, lostConflict, orgActionUrl, stageChanged, STATE_TEXT } from "@/lib/bdmPipeline";
 import { formatDate } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
@@ -53,6 +53,12 @@ export default function BdmOrganizationPipeline({ organization: org, onChanged }
       setTo("");
       setNote("");
       return void reload(current === body.to_stage ? success : `${(outcome.detail as { message: string }).message}. Check the stage and try again.`);
+    }
+    const lost = lostConflict(outcome.detail);
+    if (lost !== null) { // someone else marked it lost / revived it: show the organization as it is now
+      setMode(null);
+      setReason("");
+      return void reload(lost);
     }
     const fields = fieldErrors(outcome.detail);
     if (Object.keys(fields).length) setErrors(fields);

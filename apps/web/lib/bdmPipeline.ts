@@ -40,6 +40,13 @@ export function stageChanged(detail: unknown): string | null {
   return d && typeof d === "object" && d.code === "stage_changed" && typeof d.current_stage === "string" ? d.current_stage : null;
 }
 
+/** The 409 for a Lost flag someone else changed (`organization_lost` / `organization_not_lost`): its message, else null. */
+export function lostConflict(detail: unknown): string | null {
+  const d = detail as { code?: unknown; message?: unknown } | null;
+  const lost = d && typeof d === "object" && (d.code === "organization_lost" || d.code === "organization_not_lost");
+  return lost && typeof d.message === "string" ? d.message : null;
+}
+
 /** FastAPI's 422 list as {field: message}, worded by detailMessage (no "Value error," prefix). */
 export function fieldErrors(detail: unknown): Record<string, string> {
   if (!Array.isArray(detail)) return {};

@@ -122,6 +122,32 @@ describe("BdmOrganizationPipeline (bdm-004 §8.2)", () => {
     expect(screen.getByRole("button", { name: "Revive" })).toBeInTheDocument();
   });
 
+  it("a move on an organization someone else marked lost reloads it and says so", async () => {
+    const fresh = org(pipeline("contacted", { lost: { at: "2026-10-05T10:00:00Z", reason: "Paused" } }));
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(res({ detail: { code: "organization_lost", message: "This organization is marked lost. Revive it first." } }, 409))
+      .mockResolvedValueOnce(res({ organization: fresh })));
+    const onChanged = vi.fn();
+    render(<BdmOrganizationPipeline organization={org()} onChanged={onChanged} />);
+    fireEvent.change(screen.getByLabelText("Move to"), { target: { value: "meeting" } });
+    fireEvent.click(screen.getByRole("button", { name: "Move" }));
+    await waitFor(() => expect(onChanged).toHaveBeenCalledWith(fresh, "This organization is marked lost. Revive it first."));
+    expect(screen.queryByText("Something went wrong.")).toBeNull();
+  });
+
+  it("a revive on an organization someone else already revived reloads it and says so", async () => {
+    const fresh = org(pipeline("contacted"));
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(res({ detail: { code: "organization_not_lost", message: "This organization is not marked lost." } }, 409))
+      .mockResolvedValueOnce(res({ organization: fresh })));
+    const onChanged = vi.fn();
+    render(<BdmOrganizationPipeline organization={org(pipeline("contacted", { lost: { at: "2026-10-05T10:00:00Z", reason: "Paused" } }))} onChanged={onChanged} />);
+    fireEvent.click(screen.getByRole("button", { name: "Revive" }));
+    fireEvent.change(screen.getByLabelText("Reason"), { target: { value: "Back on" } });
+    fireEvent.click(screen.getByRole("button", { name: "Yes, revive" }));
+    await waitFor(() => expect(onChanged).toHaveBeenCalledWith(fresh, "This organization is not marked lost."));
+  });
+
   it("shows the derived agent status", () => {
     render(<BdmOrganizationPipeline organization={org(pipeline("contacted", { agent_status: "Contacted" }))} onChanged={vi.fn()} />);
     expect(screen.getByText("Agent status:")).toHaveTextContent("Agent status: Contacted");
