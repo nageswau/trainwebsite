@@ -1,13 +1,18 @@
 """bdm-004 -- organization pipelines: pipeline_stage + Lost on bdm_organizations, and bdm_pipeline_events.
 
-Revision ID: 0072_bdm_pipeline
-Revises: 0071_bdm_activities
+Revision ID: 0073_bdm_pipeline
+Revises: 0072_bdm_meeting_reports
 
-docs/superpowers/specs/2026-10-05-bdm-004-organization-pipelines-design.md §5 (DEC-SCOPE-070). Additive: existing rows get
+docs/superpowers/specs/2026-10-05-bdm-004-organization-pipelines-design.md §5 (DEC-SCOPE-071). Additive: existing rows get
 'prospect' from the column default (valid for all three types) and no history row. 0001 builds a fresh database from the current
 models, which already carry the columns, CHECKs, index and table, so each is created only when missing. MANUAL_STAGES is a frozen copy
 of app.bdm_stages.MANUAL_STAGES and CHECKS must equal app.models.BDM_PIPELINE_CHECKS (test_bdm_004_migration). downgrade() refuses
 while any pipeline data exists: recorded moves are never dropped silently.
+
+Re-chained 2026-10-05 on merging `main` @ `c85849d8`: cut as `0072_bdm_pipeline` after `0071_bdm_activities` (DEC-SCOPE-070), but
+bdm-007's `0072_bdm_meeting_reports` (DEC-SCOPE-070) reached `main` first, so this revision is now `0073_bdm_pipeline` after it (one
+head) and the decision is DEC-SCOPE-071. A database stamped at `0072_bdm_pipeline` is re-stamped with
+`alembic stamp --purge 0071_bdm_activities` then `upgrade head` (every create here is guarded, so the re-run is harmless).
 """
 
 import sqlalchemy as sa
@@ -15,8 +20,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0072_bdm_pipeline"
-down_revision = "0071_bdm_activities"
+revision = "0073_bdm_pipeline"
+down_revision = "0072_bdm_meeting_reports"
 branch_labels = None
 depends_on = None
 

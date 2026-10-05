@@ -1,4 +1,4 @@
-"""bdm-004 (DEC-SCOPE-070, spec §6.3): stage moves, Lost / Revive, stage history and the pipeline view.
+"""bdm-004 (DEC-SCOPE-071, spec §6.3): stage moves, Lost / Revive, stage history and the pipeline view.
 
 Every `{org_id}` resolves through `services.bdm_organizations.load_scoped` (out of scope = 404); every write is one transaction --
 scope, row lock, `require(can_edit)` (S1: the assigned BDM or super_admin), the pipeline rules, change + history row + audit row,

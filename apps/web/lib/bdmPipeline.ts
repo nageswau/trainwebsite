@@ -2,7 +2,7 @@ import { detailMessage } from "@/lib/apiErrors";
 import { type BdmType, PAGE_SIZE } from "@/lib/bdm";
 import { ORGS_URL, type OrgPerson, type OrgType } from "@/lib/bdmOrganizations";
 
-// bdm-004 (DEC-SCOPE-070): the organization pipeline. The API owns the catalogue (labels, kinds, states come with every organization)
+// bdm-004 (DEC-SCOPE-071): the organization pipeline. The API owns the catalogue (labels, kinds, states come with every organization)
 // and every rule; these helpers only shape requests and read responses.
 export type StepKind = "manual" | "live" | "volume";
 export type StepState = "done" | "current" | "upcoming" | "awaiting_handover" | "not_tracked";

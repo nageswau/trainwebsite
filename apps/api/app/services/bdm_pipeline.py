@@ -1,4 +1,4 @@
-"""bdm-004 (DEC-SCOPE-070, spec §6.2): pipeline output, move / Lost / Revive rules, history and the pipeline view.
+"""bdm-004 (DEC-SCOPE-071, spec §6.2): pipeline output, move / Lost / Revive rules, history and the pipeline view.
 
 Functions only; nothing here commits -- the route owns the transaction (bdm-002's rule). Every check runs on the row locked by
 `load_scoped(lock=True)`. Audit metadata and logs carry stage keys and flags only, never the note or reason text (spec §6.6)."""

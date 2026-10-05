@@ -128,9 +128,10 @@ def isolated_db():
     try:
         settings.database_url = url
         command.upgrade(cfg, BASE)
-        # 0001's create_all also builds later features' tables from the current models (bdm-006's appointments and bdm-009's
-        # activities and bdm-004's pipeline events reference the tables 0066 drops on downgrade); drop them so this file exercises 0066 alone.
-        _sql(url, "DROP TABLE IF EXISTS bdm_pipeline_events, bdm_activities, bdm_appointment_events, bdm_appointments")
+        # 0001's create_all also builds later features' tables from the current models (bdm-006's appointments, bdm-007's reports
+        # and tasks, bdm-009's activities and bdm-004's pipeline events reference the tables 0066 drops on downgrade); drop them so
+        # this file exercises 0066 alone.
+        _sql(url, "DROP TABLE IF EXISTS bdm_pipeline_events, bdm_tasks, bdm_meeting_reports, bdm_activities, bdm_appointment_events, bdm_appointments")
         user_id = uuid.uuid4()
         _sql(
             url,

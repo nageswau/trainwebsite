@@ -16,9 +16,11 @@ both merged.
 (MoU Signed advances the pipeline — bdm-005); `DEC-SCOPE-060` C2 (manager: no create or edit), C14 (super_admin edits
 everything), C15 (archived is read-only); `DEC-SCOPE-065` (bdm-003 precedent: list rows unchanged).
 
-**Decision record:** **`DEC-SCOPE-070`**, written in this change. Migration **`0072_bdm_pipeline`** (after
-`0071_bdm_activities`, one head). Recheck `origin/main` before building and before the PR: renumber both if another
-branch lands first.
+**Decision record:** **`DEC-SCOPE-071`**. Migration **`0073_bdm_pipeline`** (after `0072_bdm_meeting_reports`, one head).
+ID note (merge of `main` @ `c85849d8`, 2026-10-05): drafted as `DEC-SCOPE-070` with `0072_bdm_pipeline` after
+`0071_bdm_activities`; bdm-007 (PR #60) reached `main` first with `DEC-SCOPE-070` / `0072_bdm_meeting_reports`, so this design is
+now `DEC-SCOPE-071` / `0073_bdm_pipeline`. Text below that says `DEC-SCOPE-070` or `0072_bdm_pipeline` means this decision /
+migration.
 
 **Gate:** `APPROVAL_GATES.md` GATE-09.
 

@@ -5,10 +5,10 @@ import { type ReactNode, useEffect, useState } from "react";
 import BdmAppointmentActions from "@/components/BdmAppointmentActions";
 import BdmAppointmentForm from "@/components/BdmAppointmentForm";
 import BdmAppointmentHistory from "@/components/BdmAppointmentHistory";
+import BdmMeetingReportSection from "@/components/BdmMeetingReportSection";
 import type { BdmType } from "@/lib/bdm";
-import { type Appointment, formatInr, OUTCOME_LABEL, STATUS_CLASS, STATUS_LABEL, TYPE_LABEL, whenText } from "@/lib/bdmAppointments";
+import { type Appointment, formatInr, STATUS_CLASS, STATUS_LABEL, TYPE_LABEL, whenText } from "@/lib/bdmAppointments";
 import { display, LINK_STYLE } from "@/lib/bdmOrganizations";
-import { formatCalendarDate } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 function Rows({ rows }: { rows: [string, ReactNode][] }) {
@@ -72,7 +72,8 @@ export default function BdmAppointmentDetail({ initial, basePath, bdmType, creat
           </div>
           <h2>
             {appt.organization.name} <span className={STATUS_CLASS[appt.status]}>{STATUS_LABEL[appt.status]}</span>{" "}
-            {appt.organization.archived && <span className="badge">Archived</span>}
+            {appt.organization.archived && <span className="badge">Archived</span>}{" "}
+            {appt.outcome_pending && <span className="badge">Outcome pending</span>}
           </h2>
           <p style={{ margin: 0 }}>
             <Link href={basePath} style={LINK_STYLE}>
@@ -93,7 +94,12 @@ export default function BdmAppointmentDetail({ initial, basePath, bdmType, creat
       </div>
       {p.can_complete && (
         <p className="muted" role="note">
-          The start time has passed — complete it or mark it as a no-show.
+          Outcome pending — file the meeting report, or mark it as a no-show.
+        </p>
+      )}
+      {appt.outcome_pending && !p.can_complete && (
+        <p className="muted" role="note">
+          Outcome pending — the BDM hasn&apos;t filed the meeting report yet.
         </p>
       )}
       {showEditor ? (
@@ -119,12 +125,7 @@ export default function BdmAppointmentDetail({ initial, basePath, bdmType, creat
           <Rows rows={rows} />
         </section>
       )}
-      {appt.status === "completed" && (
-        <section className="action-card wide" aria-label="Outcome">
-          <h3>Outcome</h3>
-          <Rows rows={[["Outcome", OUTCOME_LABEL[appt.outcome ?? ""] ?? display(appt.outcome)], ["Next follow-up", appt.next_follow_up_on ? formatCalendarDate(appt.next_follow_up_on) : "—"]]} />
-        </section>
-      )}
+      <BdmMeetingReportSection appointment={appt} bdmType={bdmType} onChanged={changed} />
       {!showEditor && <BdmAppointmentActions appointment={appt} bdmType={bdmType} onChanged={changed} />}
       <BdmAppointmentHistory events={appt.events} />
     </>

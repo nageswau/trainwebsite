@@ -72,14 +72,15 @@ test("BDM appointments: book, confirm, reschedule, complete; archived org; manag
   await expect(page.getByText("Rescheduled", { exact: true }).first()).toBeVisible();
   await expect(page.getByRole("region", { name: "History" })).toContainText("moved from");
 
-  // AC5: after the start time, complete with an outcome.
+  // AC5: after the start time, complete with an outcome (bdm-007: by filing the meeting report).
   await page.waitForTimeout(Math.max(0, second.at - Date.now() + 2_000));
   await page.reload();
-  await expect(page.getByRole("note")).toContainText("The start time has passed");
+  await expect(page.getByRole("note")).toContainText("Outcome pending");
   await page.getByRole("button", { name: "Complete" }).click();
   await page.getByLabel("Outcome (required)").selectOption("interested");
-  await page.getByRole("button", { name: "Mark completed" }).click();
-  await expect(page.getByRole("region", { name: "Outcome" })).toContainText("Interested");
+  await page.getByLabel("Discussion (required)").fill("Principal keen on IT training.");
+  await page.getByRole("button", { name: "Save report and complete" }).click();
+  await expect(page.getByRole("region", { name: "Meeting report" })).toContainText("Interested");
   const code = (await page.locator(".eyebrow").first().textContent())?.split(" · ")[0] ?? "";
 
   // AC6: an archived organization offers no booking.

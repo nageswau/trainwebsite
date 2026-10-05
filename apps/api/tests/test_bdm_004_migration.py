@@ -1,4 +1,4 @@
-"""bdm-004 -- migration 0072_bdm_pipeline (spec §5; AC10). Round trip and the downgrade refusal run in a throwaway database (the
+"""bdm-004 -- migration 0073_bdm_pipeline (spec §5; AC10). Round trip and the downgrade refusal run in a throwaway database (the
 bdm-003 pattern); a downgrade never runs against the shared test database."""
 
 import asyncio
@@ -19,12 +19,12 @@ from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-BASE, HEAD = "0071_bdm_activities", "0072_bdm_pipeline"
+BASE, HEAD = "0072_bdm_meeting_reports", "0073_bdm_pipeline"
 NEW_COLUMNS = {"pipeline_stage", "lost_at", "lost_reason"}
 
 
 def _migration():
-    spec = importlib.util.spec_from_file_location("_bdm_004_migration_0072", VERSIONS / f"{HEAD}.py")
+    spec = importlib.util.spec_from_file_location("_bdm_004_migration_0073", VERSIONS / f"{HEAD}.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -36,7 +36,7 @@ def _config() -> Config:
     return cfg
 
 
-def test_chains_after_0071_and_is_the_single_head():
+def test_chains_after_0072_and_is_the_single_head():
     migration = _migration()
     assert (migration.revision, migration.down_revision) == (HEAD, BASE)
     script = ScriptDirectory.from_config(_config())
@@ -94,7 +94,7 @@ def _sql(url: str, sql: str, params: dict | None = None, *, autocommit: bool = F
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0071_bdm_activities with one bdm user."""
+    """A fresh database at 0072_bdm_meeting_reports with one bdm user."""
     cfg = _config()
     original = settings.database_url
     name = f"bdm004_migration_{uuid.uuid4().hex[:8]}"
@@ -130,7 +130,7 @@ def _insert(db, bdm_type: str, **values) -> uuid.UUID:
 
 def test_round_trip_backfills_prospect_and_enforces_the_checks(isolated_db):
     """0001 builds BASE from the current models, so go up, down to BASE (the migration drops the columns), insert a row, and up
-    again: the default and the CHECKs below are 0072's own DDL."""
+    again: the default and the CHECKs below are 0073's own DDL."""
     cfg, url = isolated_db["cfg"], isolated_db["url"]
     command.upgrade(cfg, HEAD)
     command.downgrade(cfg, BASE)

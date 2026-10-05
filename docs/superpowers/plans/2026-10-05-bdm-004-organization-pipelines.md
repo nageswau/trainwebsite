@@ -1,5 +1,7 @@
 # bdm-004 Organization Pipelines — Implementation Plan
 
+**ID note (merge of `main` @ `c85849d8`, 2026-10-05):** written as `DEC-SCOPE-070` and migration `0072_bdm_pipeline` on `0071_bdm_activities`; bdm-007 (PR #60) took `DEC-SCOPE-070` / `0072_bdm_meeting_reports`, so this plan now reads `DEC-SCOPE-071` and `0073_bdm_pipeline` (after `0072_bdm_meeting_reports`). Task text and commit messages keep their original wording.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or
 > superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

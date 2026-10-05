@@ -1,4 +1,4 @@
-"""bdm-004 (DEC-SCOPE-070, spec §4): the three BDM pipelines, in source order and wording (EVID-016 Agent §E, School §D,
+"""bdm-004 (DEC-SCOPE-071, spec §4): the three BDM pipelines, in source order and wording (EVID-016 Agent §E, School §D,
 College §D).
 
 Constants only, with no app imports, so the model CHECK, the migration's parity test, the service and the schemas share one list.

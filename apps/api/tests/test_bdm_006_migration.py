@@ -114,6 +114,8 @@ def isolated_db():
     try:
         settings.database_url = url
         command.upgrade(cfg, BASE)
+        # bdm-007's tables (built by 0001's create_all from the current models) reference bdm_appointments, which 0070 drops.
+        _sql(url, "DROP TABLE IF EXISTS bdm_tasks, bdm_meeting_reports")
         user, org, contact = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
         _sql(url, "INSERT INTO users (id, email, password_hash, full_name, role, division, active, email_verified, locale, profile) VALUES (:id, :email, 'x', 'bdm', 'bdm', 'it', true, true, 'en-GB', '{}')", {"id": user, "email": f"bdm-{name}@example.local"})
         _sql(url, "INSERT INTO bdm_organizations (id, code, org_type, bdm_type, name, name_key, city, city_key, assigned_bdm_user_id, created_by_user_id) VALUES (:id, 'ORG-9', 'college', 'college', 'A', 'a', 'K', 'k', :u, :u)", {"id": org, "u": user})

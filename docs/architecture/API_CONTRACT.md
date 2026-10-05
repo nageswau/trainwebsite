@@ -479,7 +479,7 @@ and the same filters, not the page. `GET` without `?date=` uses IST today; `coun
 `occurred_at` up to 5 minutes after the server clock is saved as the server's now; more than 5 minutes ahead → `422`; older than 7 IST
 days → `422`. **V10:** the 201st activity of a BDM's IST day → `409`. Refusal logging: `bdm_activity_write_refused` is logged for "not the organization's assigned BDM" (create) and "not the BDM who logged it" (patch / delete, which also covers a manager or `super_admin` touching a readable team activity); 403s from the role gate (`bdm_context` on create, `caller_scope` for other roles) are not logged.
 
-**`bdm-004` / `DEC-SCOPE-070` (built 2026-10-05; migration `0072_bdm_pipeline`) — organization pipelines per BDM type + stage history.**
+**`bdm-004` / `DEC-SCOPE-071` (built 2026-10-05; migration `0073_bdm_pipeline`, after bdm-007's `0072_bdm_meeting_reports`) — organization pipelines per BDM type + stage history.**
 Design spec `docs/superpowers/specs/2026-10-05-bdm-004-organization-pipelines-design.md` §6. All routes are new; the only change to an
 existing response is **additive**: every organization detail (`GET/POST/PATCH /bdm/organizations…`, archive / restore / assign / contact
 writes) gains `pipeline {stage, stage_label, lost: {at, reason} | null, agent_status, steps[{key, label, kind, state}]}`. List rows and
@@ -755,6 +755,15 @@ Do not build against an assumed answer to any of these — confirm first.
 | `POST /bdm/appointments/{id}/complete` | Authenticated | `bdm` (owner) | Open to `completed`; start passed and `outcome` valid for the BDM's type (422); optional `next_follow_up_on` not before today in IST (422); 409 when terminal |
 
 Any write by a non-owner (manager, super_admin, other BDM) is 403 after the 404 scope check.
+
+**Addendum, 2026-10-05 (`bdm-007`, `DEC-SCOPE-070`):**
+
+| Method/Path | Auth | Roles | Notes / status codes |
+|---|---|---|---|
+| `POST /bdm/appointments/{id}/complete` | Authenticated | `bdm` (owner) | **Body changed:** the meeting report — `outcome` (owner's type list, 422), `discussion` (required, ≤ 4000), `requirements` / `opportunity` (≤ 2000), `next_action` (≤ 1000), `responsible_person` (≤ 200, one line), `next_follow_up_on` (on or after IST today, 422). One transaction: status, report, follow-up, event, audit. Not open 409; before start 422 |
+| `PATCH /bdm/appointments/{id}/report` | Authenticated | `bdm` (owner) | Any subset of the report fields; `outcome` / `discussion` not null; `next_follow_up_on: null` clears (follow-up cancelled; set again reopens the same row). No report 409; after the IST filing day or legacy 409; follow-up done 409; equal values are not changes |
+| `GET /bdm/appointments` | Authenticated | as above | New filter `outcome_pending` (true = open and past start). Rows gain `outcome_pending` |
+| `GET /bdm/appointments/{id}` | Authenticated | as above | Detail gains `report` (or null), `follow_up` `{id, due_on, status}` (or null), `permissions.can_edit_report` |
 
 **Addendum on `GET /bdm/organizations` and `GET /bdm/organizations/{id}` (bdm-002 contract):** `last_meeting_at` / `next_meeting_at` are now computed (bdm-006, spec §5.6): max `starts_at` of completed, min `starts_at` of open future appointments across all BDMs at that organization. Names, types (`string | null`) and nullability are unchanged.
 
