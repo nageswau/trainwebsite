@@ -45,34 +45,33 @@ async def move_stage(org_id: UUID, payload: BdmStageMove, user: User = Depends(g
     return {"organization": await org_svc.organization_out(db, user, org)}
 
 
+async def _set_lost(org_id: UUID, user: User, db: AsyncSession, reason: str, lost: bool) -> dict:
+    """S5: Lost is a flag with a reason on top of the stage, which is kept; revive clears it, so the organization is back at the
+    stage it was lost at. One shape for both, as bdm-002's `_set_archived`."""
+    org = await org_svc.load_scoped(db, user, org_id, lock=True)
+    org_svc.require(user, org, "can_edit", "lost" if lost else "revive")
+    already_lost = org.lost_at is not None
+    if lost and already_lost:
+        raise HTTPException(409, svc.LOST_CONFLICT)
+    if not lost and not already_lost:
+        raise HTTPException(409, svc.NOT_LOST_CONFLICT)
+    org.lost_at, org.lost_reason = (datetime.now(UTC), reason) if lost else (None, None)
+    kind = "lost" if lost else "revived"
+    svc.record_event(db, user, org, kind, org.pipeline_stage, org.pipeline_stage, reason)
+    org_svc.audit(db, user, kind, org.id, {"stage": org.pipeline_stage})
+    await db.commit()
+    org_svc.log(f"bdm_org_{kind}", user, org.id, stage=org.pipeline_stage)
+    return {"organization": await org_svc.organization_out(db, user, org)}
+
+
 @router.post("/organizations/{org_id}/lost", response_model=BdmOrganizationEnvelope)
 async def mark_lost(org_id: UUID, payload: BdmLostIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """S5: a flag with a reason on top of the stage; the stage is kept."""
-    org = await org_svc.load_scoped(db, user, org_id, lock=True)
-    org_svc.require(user, org, "can_edit", "lost")
-    if org.lost_at is not None:
-        raise HTTPException(409, svc.LOST_CONFLICT)
-    org.lost_at, org.lost_reason = datetime.now(UTC), payload.reason
-    svc.record_event(db, user, org, "lost", org.pipeline_stage, org.pipeline_stage, payload.reason)
-    org_svc.audit(db, user, "lost", org.id, {"stage": org.pipeline_stage})
-    await db.commit()
-    org_svc.log("bdm_org_lost", user, org.id, stage=org.pipeline_stage)
-    return {"organization": await org_svc.organization_out(db, user, org)}
+    return await _set_lost(org_id, user, db, payload.reason, lost=True)
 
 
 @router.post("/organizations/{org_id}/revive", response_model=BdmOrganizationEnvelope)
 async def revive(org_id: UUID, payload: BdmReviveIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """S5: clears the flag with a reason; the organization is back at the stage it was lost at."""
-    org = await org_svc.load_scoped(db, user, org_id, lock=True)
-    org_svc.require(user, org, "can_edit", "revive")
-    if org.lost_at is None:
-        raise HTTPException(409, svc.NOT_LOST_CONFLICT)
-    org.lost_at = org.lost_reason = None
-    svc.record_event(db, user, org, "revived", org.pipeline_stage, org.pipeline_stage, payload.reason)
-    org_svc.audit(db, user, "revived", org.id, {"stage": org.pipeline_stage})
-    await db.commit()
-    org_svc.log("bdm_org_revived", user, org.id, stage=org.pipeline_stage)
-    return {"organization": await org_svc.organization_out(db, user, org)}
+    return await _set_lost(org_id, user, db, payload.reason, lost=False)
 
 
 @router.get("/organizations/{org_id}/stage-history", response_model=BdmStageEventPage)
