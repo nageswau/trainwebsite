@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { isPage, type Page } from "@/lib/apiErrors";
 import { appendUnique } from "@/lib/bdmActivities";
@@ -23,7 +23,7 @@ export default function BdmStageHistory({ orgId, initial, version }: { orgId: st
   const [loading, setLoading] = useState(false);
   const latest = useRef(0);
 
-  async function load(offset: number) {
+  const load = useCallback(async (offset: number) => {
     const ticket = ++latest.current;
     setLoading(true);
     const response = await fetch(historyUrl(orgId, offset)).catch(() => null);
@@ -37,12 +37,11 @@ export default function BdmStageHistory({ orgId, initial, version }: { orgId: st
     setFailed(false);
     setTotal(data.total);
     setItems((current) => (offset === 0 ? data.items : appendUnique(current, data.items)));
-  }
+  }, [orgId]);
 
   useEffect(() => {
-    if (version > 0) void load(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only when a write on this page bumps the version
-  }, [version]);
+    if (version > 0) void load(0); // reload only when a write on this page bumps the version
+  }, [version, load]);
 
   return (
     <section className="action-card wide" aria-label="Stage history">
