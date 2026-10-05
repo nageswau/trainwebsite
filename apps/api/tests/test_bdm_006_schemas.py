@@ -7,7 +7,7 @@ from decimal import Decimal
 import pytest
 from pydantic import ValidationError
 
-from app.schemas import BdmAppointmentComplete, BdmAppointmentCreate, BdmAppointmentReason, BdmAppointmentReschedule, BdmAppointmentUpdate
+from app.schemas import BdmAppointmentCreate, BdmAppointmentReason, BdmAppointmentReschedule, BdmAppointmentUpdate, BdmMeetingReportCreate
 
 
 def base(**over) -> dict:
@@ -75,6 +75,6 @@ def test_reschedule_and_complete_shapes():
     r = BdmAppointmentReschedule.model_validate({"starts_at": "2030-01-08T11:00:00+05:30"})
     assert r.duration_minutes is None and r.reason is None and r.confirm_overlap is False
     with pytest.raises(ValidationError):
-        BdmAppointmentComplete.model_validate({"outcome": "great"})
-    c = BdmAppointmentComplete.model_validate({"outcome": "agreement_required", "next_follow_up_on": "2030-01-10"})
+        BdmMeetingReportCreate.model_validate({"outcome": "great", "discussion": "x"})
+    c = BdmMeetingReportCreate.model_validate({"outcome": "agreement_required", "discussion": "x", "next_follow_up_on": "2030-01-10"})
     assert c.next_follow_up_on.isoformat() == "2030-01-10"

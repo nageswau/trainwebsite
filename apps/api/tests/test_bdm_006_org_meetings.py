@@ -17,7 +17,7 @@ async def test_values_on_list_and_detail(client, db_session):
     assert blank["last_meeting_at"] is None and blank["next_meeting_at"] is None  # bdm-002 AC6 still true without appointments
     done = await create_appt(client, org, starts_at=future(10))
     await move_to_past(db_session, done["id"], minutes=120)
-    await client.post(f"{APPTS}/{done['id']}/complete", json={"outcome": "interested"})
+    await client.post(f"{APPTS}/{done['id']}/complete", json={"outcome": "interested", "discussion": "Met"})
     stale = await create_appt(client, org, starts_at=future(20))
     await move_to_past(db_session, stale["id"], minutes=30)  # open but past: not "next"
     cancelled = await create_appt(client, org, starts_at=future(30))

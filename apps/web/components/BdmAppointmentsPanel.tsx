@@ -12,7 +12,9 @@ import type { PickOption } from "@/lib/lookups";
 
 // bdm-006 (spec §6.2, §12.2): a BDM's own appointments or a manager's team's. The API scopes the rows; nothing here filters for
 // security. Filters and the page live in the URL (BdmOrganizationsPanel's pattern); "From" defaults to today in India time, and an
-// empty "From" in the URL (date_from=) means every date.
+// empty "From" in the URL (date_from=) means every date. bdm-007 (AC5): "Outcome pending" is offered as a status; the API reads it as
+// outcome_pending=true (open and past its start, no meeting report).
+const PENDING = "outcome_pending";
 type Filters = { offset: number; q: string; dateFrom: string; dateTo: string; status: string; type: string; organization: string; bdm: string };
 
 // A stale or hand-edited URL must not wedge the list on an API 422: every value is checked here, before it reaches the API.
@@ -24,17 +26,19 @@ function validDate(value: string): boolean {
 
 function readFilters(params: URLSearchParams, today: string, types: readonly string[]): Filters {
   const n = Number.parseInt(params.get("offset") ?? "", 10);
-  const from = params.get("date_from");
-  const dateFrom = from === null ? today : from === "" || validDate(from) ? from : today;
-  const to = params.get("date_to") ?? "";
   const status = params.get("status") ?? "";
+  const from = params.get("date_from");
+  // QA7-04: pending meetings are all in the past, so the pending filter has no From default (a link may omit date_from=).
+  const fallback = status === PENDING ? "" : today;
+  const dateFrom = from === null ? fallback : from === "" || validDate(from) ? from : fallback;
+  const to = params.get("date_to") ?? "";
   const type = params.get("type") ?? "";
   return {
     offset: Number.isFinite(n) && n > 0 ? n : 0,
     q: (params.get("q") ?? "").trim(),
     dateFrom,
     dateTo: validDate(to) && !(dateFrom && dateFrom > to) ? to : "",
-    status: (STATUSES as readonly string[]).includes(status) ? status : "",
+    status: (STATUSES as readonly string[]).includes(status) || status === PENDING ? status : "",
     type: types.includes(type) ? type : "",
     organization: params.get("organization") ?? "",
     bdm: params.get("bdm") ?? "",
@@ -59,7 +63,8 @@ function toApi(f: Filters): string {
   if (f.q) query.set("q", f.q);
   if (f.dateFrom) query.set("date_from", f.dateFrom);
   if (f.dateTo) query.set("date_to", f.dateTo);
-  if (f.status) query.set("status", f.status);
+  if (f.status === PENDING) query.set("outcome_pending", "true");
+  else if (f.status) query.set("status", f.status);
   if (f.type) query.set("appointment_type", f.type);
   if (f.organization) query.set("organization_id", f.organization);
   if (f.bdm) query.set("bdm_user_id", f.bdm);
@@ -109,6 +114,11 @@ export default function BdmAppointmentsPanel({ basePath, isBdm, types }: { baseP
     setTarget(url.toString());
     router.push(url.size ? `${pathname}?${url}` : pathname, { scroll: false });
   }
+  // Into "Outcome pending": no From date. Out of it: back to the From default (QA7-04).
+  function chooseStatus(status: string) {
+    if (status === PENDING) return go({ status, dateFrom: "" });
+    go(filters.status === PENDING ? { status, dateFrom: today } : { status });
+  }
   const clear = () => go({ q: "", dateFrom: today, dateTo: "", status: "", type: "", organization: "", bdm: "" });
   const filtered = Boolean(filters.q || filters.dateTo || filters.status || filters.type || filters.organization || filters.bdm || filters.dateFrom !== today);
   const submit = (event: FormEvent) => {
@@ -142,13 +152,14 @@ export default function BdmAppointmentsPanel({ basePath, isBdm, types }: { baseP
         </div>
         <div className="field" style={{ flex: "0 1 160px", margin: 0 }}>
           <label htmlFor="appt-filter-status">Status</label>
-          <select id="appt-filter-status" value={filters.status} onChange={(e) => go({ status: e.target.value })}>
+          <select id="appt-filter-status" value={filters.status} onChange={(e) => chooseStatus(e.target.value)}>
             <option value="">All statuses</option>
             {STATUSES.map((s) => (
               <option key={s} value={s}>
                 {STATUS_LABEL[s]}
               </option>
             ))}
+            <option value={PENDING}>Outcome pending</option>
           </select>
         </div>
         <div className="field" style={{ flex: "0 1 200px", margin: 0 }}>
@@ -273,6 +284,12 @@ export default function BdmAppointmentsPanel({ basePath, isBdm, types }: { baseP
                     <td>{TYPE_LABEL[r.appointment_type] ?? r.appointment_type}</td>
                     <td>
                       <span className={STATUS_CLASS[r.status]}>{STATUS_LABEL[r.status]}</span>
+                      {r.outcome_pending && (
+                        <>
+                          {" "}
+                          <span className="badge">Outcome pending</span>
+                        </>
+                      )}
                     </td>
                     {!isBdm && (
                       <td>

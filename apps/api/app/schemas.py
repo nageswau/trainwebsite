@@ -3303,10 +3303,10 @@ TRIP_AMOUNT_FORMAT = "Enter an amount in rupees with up to 2 decimals, for examp
 TRIP_AMOUNT_MAX = Decimal("10000000.00")
 
 
-def _trip_text(pattern: re.Pattern, required: bool):
+def _trip_text(pattern: re.Pattern, required: bool, labels: dict[str, str] = BDM_TRIP_FIELD_LABELS):
     def check(value: str | None, info: ValidationInfo) -> str | None:
         field = info.field_name or ""
-        label = BDM_TRIP_FIELD_LABELS.get(field, field)
+        label = labels.get(field, field)
         if value is not None and pattern.search(value):
             raise ValueError(f"{label} contains invalid characters")
         if required and not value:
@@ -3882,10 +3882,75 @@ class BdmAppointmentReason(BaseModel):
     reason: BdmApptReason
 
 
-class BdmAppointmentComplete(BaseModel):
+# --- bdm-007 (DEC-SCOPE-070, spec §5): the meeting report ----------------------------------------------------------------------
+BDM_REPORT_TEXT_FIELDS = ("discussion", "requirements", "opportunity", "next_action", "responsible_person")
+BDM_REPORT_LABELS = {
+    "discussion": "Discussion", "requirements": "Requirements", "opportunity": "Opportunity", "next_action": "Next action",
+    "responsible_person": "Responsible person",
+}
+
+
+# Trimmed, at most N; line breaks only where the field is multi-line; blank -> None (or "<Label> is required"). Written as plain
+# Annotated aliases (the TripRemarks form) so type checkers accept them as types.
+_REPORT_MULTILINE = AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, BDM_REPORT_LABELS))
+BdmReportDiscussion = Annotated[str, _trimmed(4000), AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, True, BDM_REPORT_LABELS))]
+BdmReportLongText = Annotated[Annotated[str, _trimmed(2000)] | None, _REPORT_MULTILINE]
+BdmReportNextAction = Annotated[Annotated[str, _trimmed(1000)] | None, _REPORT_MULTILINE]
+BdmReportPerson = Annotated[Annotated[str, _trimmed(200)] | None, AfterValidator(_trip_text(_BDM_CONTROL, False, BDM_REPORT_LABELS))]
+BdmFollowUpDate = Annotated[date, BeforeValidator(_trip_date("follow-up date"))]
+
+
+class BdmMeetingReportCreate(BaseModel):
+    """§5.1: the body of `POST /bdm/appointments/{id}/complete` -- filing the report is what completes the appointment. Author,
+    `legacy`, `submitted_at` and the status are server-owned (unknown fields here)."""
+
     model_config = ConfigDict(extra="forbid")
     outcome: BdmAppointmentOutcome
-    next_follow_up_on: date | None = None
+    discussion: BdmReportDiscussion
+    requirements: BdmReportLongText = None
+    opportunity: BdmReportLongText = None
+    next_action: BdmReportNextAction = None
+    responsible_person: BdmReportPerson = None
+    next_follow_up_on: BdmFollowUpDate | None = None
+
+
+class BdmMeetingReportUpdate(BaseModel):
+    """§5.2: omitted = unchanged; a sent null on `outcome` / `discussion` fails the non-nullable type; `next_follow_up_on: null` clears it."""
+
+    model_config = ConfigDict(extra="forbid")
+    outcome: BdmAppointmentOutcome = None
+    discussion: BdmReportDiscussion | None = None
+    requirements: BdmReportLongText = None
+    opportunity: BdmReportLongText = None
+    next_action: BdmReportNextAction = None
+    responsible_person: BdmReportPerson = None
+    next_follow_up_on: BdmFollowUpDate | None = None
+
+    @field_validator("discussion")
+    @classmethod
+    def _discussion_not_null(cls, value: str | None) -> str:
+        """Omitted = unchanged (the default is not validated); a sent null is refused -- a report always has a discussion."""
+        if value is None:
+            raise ValueError("Discussion is required")
+        return value
+
+
+class BdmMeetingReportOut(BaseModel):
+    discussion: str | None
+    requirements: str | None
+    opportunity: str | None
+    next_action: str | None
+    responsible_person: str | None
+    legacy: bool
+    author: BdmOrgPerson
+    submitted_at: datetime
+    updated_at: datetime
+
+
+class BdmFollowUpOut(BaseModel):
+    id: UUID
+    due_on: date
+    status: str
 
 
 class BdmAppointmentPermissions(BaseModel):
@@ -3895,6 +3960,7 @@ class BdmAppointmentPermissions(BaseModel):
     can_cancel: bool
     can_no_show: bool
     can_complete: bool
+    can_edit_report: bool
 
 
 class BdmAppointmentOrgRef(BaseModel):
@@ -3914,6 +3980,7 @@ class BdmAppointmentRow(BaseModel):
     organization: BdmAppointmentOrgRef
     contact_name: str
     bdm: BdmOrgPerson
+    outcome_pending: bool
 
 
 class BdmAppointmentEventOut(BaseModel):
@@ -3936,6 +4003,8 @@ class BdmAppointmentOut(BdmAppointmentRow):
     remarks: str | None
     outcome: str | None
     next_follow_up_on: date | None
+    report: BdmMeetingReportOut | None
+    follow_up: BdmFollowUpOut | None
     expected_leads: int | None
     expected_revenue: Decimal | None
     events: list[BdmAppointmentEventOut]
