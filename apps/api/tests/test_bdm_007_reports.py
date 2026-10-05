@@ -230,3 +230,24 @@ async def test_a_done_follow_up_cannot_move(client, db_session):
     await db_session.commit()
     refused = await client.patch(report_url(a), json={"next_follow_up_on": in_days(3)})
     assert (refused.status_code, refused.json()["detail"]) == (409, "This follow-up is already done")
+
+
+@pytest.mark.asyncio
+async def test_outcome_pending_flag_and_filter(client, db_session):
+    """AC5: open + past start = pending; completed / cancelled / future are not. Managers filter their team."""
+    manager, _, org = await bdm_with_org(client, db_session)
+    pending = await create_appt(client, org)
+    await move_to_past(db_session, pending["id"])
+    future_ = await create_appt(client, org, starts_at=(datetime.now(IST) + timedelta(days=9)).replace(second=0, microsecond=0).isoformat())
+    done = await completed(client, db_session, org)
+    window = {"organization_id": org["id"], "date_from": in_days(-3)}
+    rows = {r["id"]: r["outcome_pending"] for r in (await client.get(APPTS, params=window)).json()["items"]}
+    assert rows == {pending["id"]: True, future_["id"]: False, done["id"]: False}
+    only = (await client.get(APPTS, params={**window, "outcome_pending": "true"})).json()
+    assert [r["id"] for r in only["items"]] == [pending["id"]] and only["total"] == 1
+    others = (await client.get(APPTS, params={**window, "outcome_pending": "false"})).json()
+    assert {r["id"] for r in others["items"]} == {future_["id"], done["id"]}
+    await login(client, manager)
+    team = (await client.get(APPTS, params={**window, "outcome_pending": "true"})).json()
+    assert [r["id"] for r in team["items"]] == [pending["id"]]
+    assert (await client.get(f"{APPTS}/{pending['id']}")).json()["appointment"]["outcome_pending"] is True

@@ -73,13 +73,15 @@ async def list_appointments(
     appointment_type: BdmAppointmentType | None = None,
     organization_id: UUID | None = None,
     bdm_user_id: UUID | None = None,
+    outcome_pending: bool | None = None,
     q: str | None = SEARCH,
     limit: int = LIMIT,
     offset: int = OFFSET,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Filters are ANDed with the caller's scope, so they only narrow it (R-A10). One page query: organization + owner (no N+1)."""
+    """Filters are ANDed with the caller's scope, so they only narrow it (R-A10). One page query: organization + owner (no N+1).
+    bdm-007 AC5: `outcome_pending` is the AL-6 rule bdm-023 reuses."""
     filters = await svc.caller_filters(db, user)
     if date_from and date_to and date_from > date_to:
         raise HTTPException(422, "date_from must be on or before date_to")
@@ -90,6 +92,8 @@ async def list_appointments(
     filters += svc.ist_bounds(date_from, date_to)
     if status:
         filters.append(BdmAppointment.status.in_(status))
+    if outcome_pending is not None:
+        filters.append(svc.pending_filter(outcome_pending))
     if appointment_type:
         filters.append(BdmAppointment.appointment_type == appointment_type)
     if organization_id:
