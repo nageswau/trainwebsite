@@ -82,6 +82,16 @@ Fixed in c4c25b9d: a BDM outside the team list is dropped (no bdm_user_id) with 
 
 Fixed in c4c25b9d: `no-wrap` class on the Log activity button (visual check after rebuild).
 
+## Re-check after the fixes (web rebuilt from `c4c25b9d`)
+
+| Issue | Observed on the rebuilt stack |
+|---|---|
+| QA9B-01 | `/bdm/activities?date=2099-12-31` → portal kept (sidebar, "My activities"), day picker shows today, note "Dates after today can't be shown — showing today."; `?date=2026-02-30` and `?date=garbage` → "That isn't a valid date — showing today."; manager `?date=2099-01-01` → "Team activities" with the same note. Screenshot `12-future-date-fixed.png` |
+| QA9B-05 | Manager B with another team's `?bdm=` → select "Everyone" and the note "That BDM isn't in your team — showing everyone." |
+| QA9B-06 | "Log activity" on one line at 768 and 1024 px (49 px tall; was ~73 px on two lines); no overflow. Screenshot `12-768-button.png` |
+| QA9B-02 / 03 / 04 | Covered by the component tests in the fix commit (they need a mocked server failure to reproduce) |
+| Regression | Playwright `bdm-009-activities`, `bdm-002-organization-crm`, `bdm-010-travel` with `--repeat-each=2`: **16 passed**; no page errors in the re-check |
+
 ## Not tested in this pass
 - A real API outage during a server-rendered page load (needs the API container stopped; the owner controls the stack) — the error-card path was exercised through QA9B-01.
 - The route-level `loading.tsx` skeleton (pages render too fast on this stack to observe it reliably).
