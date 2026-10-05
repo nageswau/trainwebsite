@@ -146,7 +146,7 @@ export default function AdminLeadManagementPanel() {
 
   if (leads === null) {
     return (
-      <div className="action-card">
+      <div className="action-card lead-management">
         <h3>Manage leads</h3>
         <p className="muted">Loading leads…</p>
       </div>
@@ -154,7 +154,7 @@ export default function AdminLeadManagementPanel() {
   }
 
   return (
-    <div className="action-card">
+    <div className="action-card lead-management">
       <h3>Manage leads</h3>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 8 }}>
         <div className="field" style={{ flex: "2 1 16rem" }}>
@@ -177,7 +177,7 @@ export default function AdminLeadManagementPanel() {
       {visible.length === 0 ? (
         <p className="muted" style={{ marginTop: 12 }}>{leads.length === 0 ? "No leads found." : "No leads match this search."}</p>
       ) : (
-        <div className="table-wrap" style={{ marginTop: 12 }}>
+        <div className="table-scroll" style={{ marginTop: 12 }}> {/* QA17-03: the lead's name stays in view while the columns scroll */}
           <table className="table">
             <thead>
               <tr>

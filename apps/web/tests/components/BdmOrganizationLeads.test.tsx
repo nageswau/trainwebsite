@@ -36,6 +36,11 @@ describe("BdmOrganizationLeads (bdm-017 spec §6)", () => {
     expect(rows[2]).toHaveTextContent("Asha");
   });
 
+  it("uses the scrolling table whose row headers keep their case (QA17-01: the email is not shown in capitals)", () => {
+    render(<BdmOrganizationLeads organizationId="o1" initial={page([lead("l1")])} canAdd={false} onNotice={onNotice} />);
+    expect(screen.getByRole("table", { name: "Leads" }).parentElement).toHaveClass("table-scroll");
+  });
+
   it("a failed first load offers Try again, which reads the first page", async () => {
     const fetchMock = vi.fn(() => Promise.resolve(res(page([lead("l1")]))));
     vi.stubGlobal("fetch", fetchMock);

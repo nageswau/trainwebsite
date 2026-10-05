@@ -445,7 +445,9 @@ export default function WorkflowPanel({ user, section }: { user: User; section: 
   // directories stay IT/Super Admin only.
   const showUserManagement = (isAdmin && ["users", "students", "trainers", "employers", "counselors", "staff"].includes(section)) || (user.role === "overseas_admin" && section === "users");
   const showProgramManagement = isAdmin && section === "programs";
-  const showLeadManagement = isAdmin && section === "leads";
+  // bdm-017 L1 (QA17-02): the Overseas Admin manages their division's leads (School / Agent BDM leads included) like the IT Admin;
+  // `/admin/leads` and the conversion routes already scope every request to the caller's division.
+  const showLeadManagement = (isAdmin || user.role === "overseas_admin") && section === "leads";
   const showBatchCreate = isAdmin && section === "batches";
   const showEnrollmentReview = isAdmin && section === "enrollments";
   const showSupportQueue = isAdmin && section === "support";

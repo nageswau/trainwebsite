@@ -36,6 +36,13 @@ describe("AdminLeadManagementPanel (ADM-002 + bdm-017 spec §6)", () => {
     expect(screen.getByRole("columnheader", { name: "Organization" })).toBeInTheDocument();
   });
 
+  it("spans the full width and keeps the lead's name in view while the columns scroll (QA17-03)", async () => {
+    render(<AdminLeadManagementPanel />);
+    const tr = await tableRow("Lead b1");
+    expect(screen.getByRole("heading", { name: "Manage leads" }).closest(".action-card")).toHaveClass("lead-management");
+    expect(tr.closest("table")!.parentElement).toHaveClass("table-scroll");
+  });
+
   it("filters by organization", async () => {
     render(<AdminLeadManagementPanel />);
     await tableRow("Lead b1");

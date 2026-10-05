@@ -183,6 +183,19 @@ async def test_division_admins_cannot_touch_another_divisions_lead(client, db_se
 
 
 @pytest.mark.asyncio
+async def test_the_overseas_admin_sees_and_links_a_school_bdm_lead(client, db_session):
+    """L1 / QA17-02: School and Agent BDM leads are overseas-division leads, managed by the Overseas Admin."""
+    _, _, org = await bdm_with_org(client, db_session, "school")
+    lead = await add_lead(client, org["id"])
+    student = await make_user(db_session, "overseas_student", "overseas")
+    await as_user(client, await make_user(db_session, "overseas_admin", "overseas"))
+    rows = (await client.get(ADMIN_LEADS, params={"bdm_organization_id": org["id"]})).json()
+    assert [(r["id"], r["division"], r["organization"]["code"]) for r in rows] == [(lead["id"], "overseas", org["code"])]
+    response = await client.post(conversion(lead["id"]), json={"student_email": student.email})
+    assert (response.status_code, response.json()["converted_user"]["id"]) == (200, str(student.id))
+
+
+@pytest.mark.asyncio
 async def test_super_admin_converts_in_any_division(client, db_session):
     enquiry = await website_enquiry(db_session, "overseas")
     student = await make_user(db_session, "overseas_student", "overseas")

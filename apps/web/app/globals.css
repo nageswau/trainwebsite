@@ -125,6 +125,7 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
    (browser QA-07); the panel spans the full width of the action grid (browser QA-01). ENH-020: the funding panel too.
    AGN-014: the commission report likewise. */
 .action-grid > .agent-students, .action-grid > .commission-report { grid-column: 1 / -1; }
+.action-grid > .lead-management { grid-column: 1 / -1; } /* bdm-017 QA17-03: organization, student and action columns need the full width */
 /* AGN-014 browser QA14-09: the breakdowns are three short columns; without the data-table 650px minimum they fit a phone. */
 .commission-report .table { min-width: 0; }
 @media (max-width: 640px) {

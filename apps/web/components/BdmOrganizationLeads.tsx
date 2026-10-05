@@ -66,7 +66,7 @@ export default function BdmOrganizationLeads({
       ) : items.length === 0 ? (
         <p className="muted">No leads yet.</p>
       ) : (
-        <div className="table-wrap">
+        <div className="table-scroll"> {/* QA17-01: its row headers keep their case (an email is never shown in capitals) */}
           <table className="table" aria-label="Leads">
             <thead>
               <tr>
