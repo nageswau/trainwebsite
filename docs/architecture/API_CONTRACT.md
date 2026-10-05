@@ -479,6 +479,30 @@ and the same filters, not the page. `GET` without `?date=` uses IST today; `coun
 `occurred_at` up to 5 minutes after the server clock is saved as the server's now; more than 5 minutes ahead → `422`; older than 7 IST
 days → `422`. **V10:** the 201st activity of a BDM's IST day → `409`. Refusal logging: `bdm_activity_write_refused` is logged for "not the organization's assigned BDM" (create) and "not the BDM who logged it" (patch / delete, which also covers a manager or `super_admin` touching a readable team activity); 403s from the role gate (`bdm_context` on create, `caller_scope` for other roles) are not logged.
 
+**`bdm-017` / `DEC-SCOPE-070` (built 2026-10-05; migration `0072_enquiry_bdm_attribution`) — student lead attribution.**
+Design spec `docs/superpowers/specs/2026-10-05-bdm-017-lead-attribution-design.md` §4–§5. Two new BDM routes and two new admin routes;
+`GET /admin/leads` is extended **additively** (every existing key, the 500-row cap and the ordering unchanged); `PATCH /admin/leads/{id}`,
+`POST /public/enquiries` and the CRM webhook payload are **unchanged**. `BdmLeadOut`: `id, name, email, phone, interest, status,
+bdm {id, full_name}, converted (bool), created_at` — the linked account is never shown to BDMs.
+
+| Method/Path | Auth | Scope | Notes |
+|---|---|---|---|
+| `GET /bdm/organizations/{org_id}/leads?limit&offset` | any reader of the organization | `caller_scope` | `{items,total,limit,offset}`, `created_at desc, id desc`; `total` is the exact count (AC4) |
+| `POST /bdm/organizations/{org_id}/leads` | `bdm` | assigned BDM of the organization | `201`; body `name, email, phone?, interest, note?, acknowledge_duplicate?` (`extra="forbid"`); server sets `source='bdm'`, division (D3), attribution; CRM task queued after commit |
+| `GET /admin/leads?division&status&bdm_organization_id` | three admin roles | division (super_admin: all) | rows add `organization {id,code,name}`, `bdm {id,full_name}`, `converted_user {id,full_name,email}` — each `null` when absent; the organization filter is ANDed with the division scope |
+| `POST /admin/leads/{lead_id}/conversion` `{student_email}` | three admin roles | division (super_admin: all) | `200` with the row; sets the link and `status='converted'` |
+| `DELETE /admin/leads/{lead_id}/conversion` | three admin roles | division (super_admin: all) | `200` with the row; clears the link, status unchanged |
+
+**Status table:** `401` no session; `403` wrong role, not the organization's assigned BDM ("Only the organization's assigned BDM can add
+leads", logged `bdm_lead_write_refused` with ids only), another division's lead ("Wrong division"); `404` organization outside the caller's
+scope or unknown, unknown lead; `409` daily cap ("You've added 200 leads today"), same email already a lead of this organization
+(`{message, code: "possible_duplicate", matches[{id,name,created_at}], total}`; resend with `acknowledge_duplicate: true`), lead already
+linked ("Unlink the current student first"), student already linked to another lead ("This student is already linked to another lead" —
+also for two admins at once, via `uq_enquiries_converted_user`), unlinking an unlinked lead; `422` schema (FastAPI's list), archived
+organization ("This organization is archived"), invalid conversion target (one message for missing / inactive / wrong role / wrong
+division). **Retry semantics:** lead `POST` is not retry-safe (no idempotency key) — a repeat is caught by the duplicate 409; a CRM broker
+failure after commit still answers `201` and leaves the lead `pending` (logged `bdm_lead_crm_enqueue_failed`).
+
 **`AGN-011` / `DEC-SCOPE-058` (built 2026-10-02/03) — agent deposit through Razorpay.** Design spec
 `docs/superpowers/specs/2026-10-02-agn-011-deposit-collection-design.md` §4. Errors are FastAPI `{"detail": ...}`. INR only (D1). Every
 agent write: gate `403` → org lock → application `FOR UPDATE` (scope `404 "Application not found"`) → archived/withdrawn `409` → deposit

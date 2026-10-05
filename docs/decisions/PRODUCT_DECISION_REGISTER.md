@@ -3521,3 +3521,26 @@ independent Codex review are pending.
 - **Defaults:** super_admin reads only; the contact must belong to the organization and its name is kept after the contact is deleted (as bdm-006 A5); an edit cannot move an activity off today; no idempotency key (a duplicate is fixed by a same-day delete); no general rate limiter (as bdm-010). Refusal logging: `bdm_activity_write_refused` is logged for "not the organization's assigned BDM" (create) and "not the BDM who logged it" (patch / delete, which also covers a manager or `super_admin` touching a readable team activity); 403s from the role gate (`bdm_context` on create, `caller_scope` for other roles) are not logged (bdm-002's `bdm_org_write_refused` precedent). Notes are visible to every reader of the organization (the form says so). Retention / erasure of BDM data remains `NEEDS_CONFIRMATION` (as bdm-001 / 002 / 006).
 
 **Status:** `EXPLICIT_APPROVAL` for V1–V10; implemented on `feature/bdm-009-activities`; **COMPLETE for its scope** (verified 2026-10-05 on the merged branch: backend lite 507 passed, web 320 passed, tsc / eslint / `next build` clean, mypy equal to `main`, Playwright bdm-009 ×2 + bdm-001/002/003/006/010 green, Browser Use checks of AC1, AC3–AC6 and AC12, browser QA and exploratory QA findings fixed). The owner's full suites are run separately; the independent Codex review was waived by the owner. Migration `0071_bdm_activities`.
+
+### DEC-SCOPE-070 — Student lead attribution to organizations and the explicit conversion link (`bdm-017`)
+
+**ID note:** provisional number, recorded 2026-10-05 on `feature/bdm-017-lead-attribution` (from `main` @ `2e057b3a`). The bdm-004 and bdm-007 branches may also claim `DEC-SCOPE-070` and migration `0072`; whichever merges later renumbers its decision and re-chains its migration (precedent: `DEC-SCOPE-069`).
+
+**Question:** how do BDM-entered student leads connect to organizations and to student accounts ("Student Leads Generated", the College funnel Contacted → Leads → …, the drill-down Outcome → Lead → Student → Revenue), without disturbing the website form, the admin lead list or the CRM sync (`BDM_CRM_BACKLOG.md` §4 bdm-017)?
+
+**Evidence:** backlog D5b (leads are attributed `enquiries` rows; funnel and revenue computed from real records), Q-14/D23 (each lead entered individually), D3 (division derived from BDM type), Q-02/D11 (read own type, edit assigned) — all `EXPLICIT_APPROVAL` in `DEC-SCOPE-055`; `EVID-016` (`DERIVED_BLUEPRINT`) §14 workflow line 474. Impact analysis 2026-10-05 (graphify-led): `enquiries` is shared by `public.create_enquiry`, `admin.leads` / `update_lead`, the counselor's routed leads (`portal.py`), `sync_enquiry_to_crm_task`, the admin dashboard / reports summary and the RPT-001 funnel. **Backlog correction:** the backlog cites the Telecaller extension as "`DEC-SCOPE-036` D3"; `DEC-SCOPE-036` is ENH-017 and no Telecaller decision exists, so this decision defines the `enquiries` extension and the Telecaller item rebases on it.
+
+**Resolution:** owner, in-session 2026-10-05 (`EXPLICIT_APPROVAL` — answers to structured questions put one at a time, then design review against the API, frontend and security skills; design spec `docs/superpowers/specs/2026-10-05-bdm-017-lead-attribution-design.md` §2):
+
+- **L1** The explicit conversion is performed by a division admin (`it_admin` / `overseas_admin` / `super_admin`) from the admin lead list.
+- **L2** The link target is an active student of the lead's division (`it_student` for `it`, `overseas_student` for `overseas`); the link can be undone (audited). Linking sets `status='converted'`; unlinking leaves the status as it is.
+- **L3** BDM leads go through the existing CRM sync task with the payload unchanged (`source='bdm'` identifies them).
+- **L4** The existing admin counts (dashboard "Enquiries", reports summary "leads", RPT-001 funnel) include BDM leads; those queries are unchanged.
+- **L5** A BDM enters name, email, optional phone, interest (stored in `subject`) and optional note (stored in `message`; blank → "Lead entered by BDM at <organization>").
+- **L6** Mirrors bdm-009 V1/V5: the organization's assigned BDM adds (not when archived); everyone who can read the organization sees its leads.
+- **L7** `PATCH /admin/leads/{id}` is unchanged: status stays an admin label; only the link counts as a conversion.
+- **L8** The same email twice in one organization warns (409 `possible_duplicate`) and saves when acknowledged; across organizations both are always kept.
+- **L9** One lead per student account (partial unique index; the first conversion wins).
+- **Defaults:** 200 leads per BDM per IST day (409, a soft abuse bound); the conversion target is named by the student's account email typed by the admin and matched exactly — never inferred from the lead's own email or phone; conversion is allowed on any lead in the admin's division; logs and audit rows carry ids only. Retention / erasure of lead PII remains `NEEDS_CONFIRMATION` (as bdm-001 / 002 / 006 / 009).
+
+**Status:** `EXPLICIT_APPROVAL` for L1–L9; implemented on `feature/bdm-017-lead-attribution`; **not complete** — lite backend and component tests are green, while browser validation, the Playwright run and the independent Codex review are pending. Migration `0072_enquiry_bdm_attribution`.

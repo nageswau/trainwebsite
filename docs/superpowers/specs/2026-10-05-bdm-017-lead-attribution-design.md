@@ -140,7 +140,8 @@ Same lock / 404 / 403; not linked → 409 `"This lead is not linked to a student
 - **`BdmLeadForm.tsx`**: shown by "Add lead" only on the BDM view when `permissions.can_edit` (assigned, not archived).
   Labelled inputs (`type="email"`, `type="tel"`, `autoComplete="off"`), field errors from a 422 tied with
   `aria-describedby`, duplicate 409 lists the matches and offers "Save anyway" through `BdmConfirm`, network loss keeps the
-  entry (`NOT_COMPLETED`). Saved → the profile's live region says "Lead added." and focus returns to "Add lead".
+  entry (`NOT_COMPLETED`). Saved → the profile's one live region says "Lead added." and takes focus (bdm-009 QA9-01: the form that
+  held focus is gone); Cancel → focus returns to "Add lead".
 - **`AdminLeadManagementPanel.tsx`**: an Organization column (`code · name`, or "Website" for unattributed rows), an
   Organization filter `<select>` built from the loaded rows (client-side, like the search), and per row a "Link student"
   inline form (email + Link) or, when linked, the student and an "Unlink" action. Messages stay in the row's `role="status"`.

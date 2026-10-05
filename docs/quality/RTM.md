@@ -464,6 +464,21 @@ role-specific navigation.
 | `bdm-009-AC12` | End to end: log, timeline, counts, manager view, keyboard-only, no overflow at 320 / 375 px | `tests/e2e/bdm-009-activities.spec.ts` — Playwright **passed** (`--repeat-each=2` with bdm-002 / bdm-010: 16 passed, 2026-10-05); browser validation **done** — `docs/quality/BDM-009_BROWSER_QA_2026-10-05.md` (QA9-01..05 fixed and re-checked) |
 | `bdm-009-AC13` | Abuse cases: IDOR 403 / 404, foreign contact 422, server-owned fields 422, `organization_id` in PATCH 422, manager route 403, out-of-team filter empty, markup shown as text | `test_bdm_009_activities.py::test_abuse_cases_server_owned_fields_and_markup`, `test_bdm_009_scope.py`, `BdmActivityItem.test.tsx` |
 
+**Addendum, 2026-10-05 (`bdm-017`)** — one enhancement row and its acceptance-criteria map. Student lead attribution to organizations.
+
+| Feature ID | Contract documents | Old workbook cases | Status |
+|---|---|---|---|
+| `bdm-017` | Requirement: owner's bdm-017 statement (`BDM_CRM_BACKLOG.md` §4 bdm-017) and answers L1–L9 (`EXPLICIT_APPROVAL`) referring to D5b, Q-14/D23, D3, Q-02 (`DEC-SCOPE-055`) → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-070` → design `docs/superpowers/specs/2026-10-05-bdm-017-lead-attribution-design.md` → plan `docs/superpowers/plans/2026-10-05-bdm-017-lead-attribution.md`; `API_CONTRACT.md` bdm-017; `DATA_MODEL.md` bdm-017 addendum → migration `0072_enquiry_bdm_attribution` (after `0071_bdm_activities`) → code `app/api/bdm_leads.py`, `app/services/bdm_leads.py`, `app/api/admin.py` (`leads`, `convert_lead`, `unconvert_lead`), `models.py` (`Enquiry`), `schemas.py` (bdm-017 block); web `lib/bdmLeads.ts`, `lib/bdmLeadsServer.ts`, `components/BdmOrganizationLeads.tsx`, `components/BdmLeadForm.tsx`, `components/AdminLeadManagementPanel.tsx`, the organization profile pages → tests `apps/api/tests/test_bdm_017_{migration,schemas,scope,leads,conversion}.py`, `tests/components/{BdmOrganizationLeads,BdmLeadForm,AdminLeadManagementPanel,BdmOrganizationDetail}.test.tsx`, e2e `tests/e2e/bdm-017-lead-attribution.spec.ts` | None (new feature) | **Implemented, not complete** on `feature/bdm-017-lead-attribution`: lite backend and component tests green; browser validation, the Playwright run and the independent Codex review are pending. |
+
+| AC | Criterion | Tests |
+|---|---|---|
+| `bdm-017-AC1` | A BDM-created lead carries its organization and BDM and appears in the admin lead list | `test_bdm_017_leads.py::test_created_lead_is_attributed_with_server_owned_fields`, `test_bdm_017_conversion.py::test_a_bdm_lead_appears_in_the_admin_list_with_its_organization_and_bdm`, `AdminLeadManagementPanel.test.tsx`, e2e |
+| `bdm-017-AC2` | The website form and existing leads are unaffected (null attribution) | `test_bdm_017_migration.py::test_upgrade_keeps_existing_enquiries_unattributed_and_round_trips`, `test_bdm_017_conversion.py::test_website_rows_keep_their_keys_and_carry_null_attribution`, `…::test_public_enquiry_ignores_smuggled_attribution_and_conversion_fields`, `…::test_patch_cannot_set_attribution_or_conversion`; regression `test_pub_002`, `test_adm_002`, `test_cns_001`, `test_rpt_001` |
+| `bdm-017-AC3` | Converted leads link to exactly one user through an explicit action | `test_bdm_017_conversion.py` (link / unlink, already linked, one lead per student, invalid targets, other division, concurrent links), `test_bdm_017_migration.py::test_one_student_links_to_one_lead_only`, `AdminLeadManagementPanel.test.tsx`, e2e |
+| `bdm-017-AC4` | Lead counts per organization are exact | `test_bdm_017_leads.py::test_list_is_newest_first_and_total_is_exact_per_organization`, `BdmOrganizationLeads.test.tsx`, e2e |
+| `bdm-017-AC5` | Scope: out-of-type 404, unassigned BDM 403 (logged without PII), managers / super_admin read only, other roles 403, archived 422 | `test_bdm_017_scope.py` |
+| `bdm-017-AC6` | Validation and abuse: invalid email 422, server-owned fields refused, same-email duplicate 409 then acknowledge, daily cap 409, broker failure after commit → 201 + pending | `test_bdm_017_schemas.py`, `test_bdm_017_leads.py`, `BdmLeadForm.test.tsx` |
+
 **Addendum, 2026-10-03 (`AGN-022`)** — one enhancement row and its acceptance-criteria map. Overseas Admin agent network oversight.
 
 | Feature ID | Contract documents | Old workbook cases | Status |
