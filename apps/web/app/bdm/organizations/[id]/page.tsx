@@ -6,6 +6,7 @@ import PortalShell from "@/components/PortalShell";
 import { ApiError, serverApi } from "@/lib/api";
 import { BDM_TYPE_LABEL, type BdmMe } from "@/lib/bdm";
 import { firstActivityPage } from "@/lib/bdmActivitiesServer";
+import { firstLeadPage } from "@/lib/bdmLeadsServer";
 import type { Organization } from "@/lib/bdmOrganizations";
 import { bdmNav } from "@/lib/bdmNav";
 import { BDM_SIGN_IN } from "@/lib/navigation";
@@ -22,18 +23,19 @@ export default async function BdmOrganizationPage({ params, searchParams }: { pa
     return accessUnavailable(e, BDM_SIGN_IN);
   }
   const timeline = firstActivityPage(id); // bdm-009: the activity section's first page, read alongside the organization
+  const leadPage = firstLeadPage(id); // bdm-017: the leads section's first page, likewise
   let organization: Organization | null = null;
   try {
     organization = (await serverApi<{ organization: Organization }>(`/api/v1/bdm/organizations/${encodeURIComponent(id)}`)).organization;
   } catch (e) {
     if (!(e instanceof ApiError && (e.status === 404 || e.status === 422))) return accessUnavailable(e, BDM_SIGN_IN);
   }
-  const activities = organization ? await timeline : null;
+  const [activities, leads] = organization ? await Promise.all([timeline, leadPage]) : [null, null];
   return (
     <PortalShell nav={await nav} roleLabel={`${BDM_TYPE_LABEL[me.bdm_profile.bdm_type]} BDM`} userName={me.full_name}>
       <div className="portal-content">
         {organization ? (
-          <BdmOrganizationDetail initial={organization} basePath="/bdm/organizations" created={created} activities={activities} />
+          <BdmOrganizationDetail initial={organization} basePath="/bdm/organizations" created={created} activities={activities} leads={leads} />
         ) : (
           <div className="action-card">
             <h2>Organization not found</h2>

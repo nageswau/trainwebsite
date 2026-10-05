@@ -206,3 +206,36 @@ describe("BdmOrganizationDetail activity timeline (bdm-009, QA9-01)", () => {
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
   });
 });
+
+describe("BdmOrganizationDetail leads (bdm-017 L6)", () => {
+  const leads = { items: [], total: 0, limit: 20, offset: 0 };
+  const saved = { id: "l1", name: "Asha Nair", email: "asha@example.com", phone: null, interest: "B.Tech", status: "new", bdm: { id: "b1", full_name: "Asha" },
+    converted: false, created_at: "2026-10-05T04:00:00Z" };
+
+  it("the assigned BDM adds a lead and the profile's one live region announces it", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(saved, 201))));
+    render(<BdmOrganizationDetail initial={org({ permissions: perms({ can_edit: true }) })} basePath="/bdm/organizations" leads={leads} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add lead" }));
+    fireEvent.change(screen.getByLabelText("Student name (required)"), { target: { value: "Asha Nair" } });
+    fireEvent.change(screen.getByLabelText("Email (required)"), { target: { value: "asha@example.com" } });
+    fireEvent.change(screen.getByLabelText("Interest (required)"), { target: { value: "B.Tech" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save lead" }));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Lead added."));
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+    expect(screen.getByRole("heading", { name: "Leads (1)" })).toBeInTheDocument();
+  });
+
+  it("the manager view and an unassigned BDM read leads but cannot add", () => {
+    render(<BdmOrganizationDetail initial={org({ permissions: perms({ can_reassign: true }) })} basePath="/bdm/manager/organizations" leads={leads} />);
+    expect(screen.getByRole("heading", { name: "Leads (0)" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add lead" })).toBeNull();
+    cleanup();
+    render(<BdmOrganizationDetail initial={org({ permissions: perms() })} basePath="/bdm/organizations" leads={leads} />);
+    expect(screen.queryByRole("button", { name: "Add lead" })).toBeNull();
+  });
+
+  it("no leads prop, no section (pages that don't read leads)", () => {
+    render(<BdmOrganizationDetail initial={org()} basePath="/bdm/organizations" />);
+    expect(screen.queryByRole("heading", { name: /^Leads/ })).toBeNull();
+  });
+});
