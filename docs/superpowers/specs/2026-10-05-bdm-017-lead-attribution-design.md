@@ -145,7 +145,9 @@ Same lock / 404 / 403; not linked → 409 `"This lead is not linked to a student
 - **`AdminLeadManagementPanel.tsx`**: an Organization column (`code · name`, or "Website" for unattributed rows), an
   Organization filter `<select>` built from the loaded rows (client-side, like the search), and per row a "Link student"
   inline form (email + Link) or, when linked, the student and an "Unlink" action. Messages stay in the row's `role="status"`.
-  Existing search, status select and loading/empty texts are unchanged.
+  Existing search, status select and loading/empty texts are unchanged. Browser QA (QA17-02, QA17-03): the panel is shown to the
+  Overseas Admin as well (their division's School / Agent BDM leads), spans the action grid (`.lead-management`) and uses
+  `.table-scroll`, as the organization's lead table does (QA17-01: row headers keep their case).
 - **`lib/bdmLeads.ts`**: types, URL builder, `isLead` guard; writes use `lib/apiErrors.sendJson`.
 
 All text renders through React (no `dangerouslySetInnerHTML`).
