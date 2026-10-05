@@ -409,6 +409,8 @@ Conventions used below:
 
 ### bdm-006 — Appointments (types per BDM type, status lifecycle, reschedule)
 
+> **Status (2026-10-03):** Implementation complete on `feature/bdm-006-appointments` (`DEC-SCOPE-068`, migration `0070_bdm_appointments`); lite backend + web suites green; e2e, browser QA and independent Codex review PENDING — not yet COMPLETE. Spec: `docs/superpowers/specs/2026-10-03-bdm-006-appointments-design.md`; plan: `docs/superpowers/plans/2026-10-03-bdm-006-appointments.md`. AC5 is satisfied by a minimal outcome on Complete (A1); "Next Follow-up" is captured there.
+
 - **Business requirement:** BDMs create and manage appointments with the §2 fields: Appointment ID, BDM, Organization, Contact Person, Designation, Mobile, Email, Date, Time, Type, Location, Purpose, Status, Remarks, Next Follow-up.
   - **Types, common list (§2):** College, Agent, School, MoU Discussion, Student/Institution, Seminar/Workshop, Corporate, Other.
   - **Types, per module:** Agent §C (9), School §C (11), College §C (12).
@@ -418,7 +420,7 @@ Conventions used below:
   - A new `bdm_appointments` table: code, `bdm_user_id`, `organization_id`, `contact_id` (the contact snapshot is copied at booking), `starts_at` (timestamptz; the date and time come from it), duration, type (validated against the list for the BDM's type), location, purpose, status, remarks, `trip_id` (nullable, bdm-011), `expected_leads` / `expected_revenue` (per Q-07).
   - A `bdm_appointment_events` table records status and reschedule history.
   - "Rescheduled" keeps the original time in history. Cancel and No Show need a reason.
-  - "Completed" is only allowed once the start time has passed, and it requires the outcome (bdm-007).
+  - "Completed" is only allowed once the start time has passed, and it requires a minimal outcome (A1: `outcome` per BDM type + optional `next_follow_up_on`, stored on the appointment); bdm-007 layers the meeting report on top.
   - "Next Follow-up" is captured through the outcome (bdm-007/008), not duplicated here.
   - The §4 example's "Pending" is **not a seventh status**. It is how an appointment in `scheduled` (not yet confirmed) is displayed next to confirmed ones. The stored statuses remain the six in §2.
 - **User roles affected:** `bdm` (own), `bdm_manager` (team read; may create on behalf of a team BDM, a spec decision).
@@ -438,8 +440,8 @@ Conventions used below:
   2. The type list depends on the BDM's type and includes the common types.
   3. Every status transition is recorded; the allowed transitions are documented and enforced.
   4. Reschedule keeps the old time in history and sets the status to Rescheduled.
-  5. Completed requires an outcome and a past start time.
-  6. Appointments on archived organizations → 422 (bdm-002 AC5b: resolve the organization with `services/bdm_organizations.load_scoped(..., lock=True)` and refuse when `archived_at` is set).
+  5. Completed requires a minimal outcome (valid for the BDM's type, A1) and a past start time; otherwise 422.
+  6. Creating an appointment on an archived organization → 422 (A4; bdm-002 AC5b: resolve the organization with `services/bdm_organizations.load_scoped(..., lock=True)` and refuse when `archived_at` is set). Existing appointments on it stay manageable.
 - **Positive scenarios:** book → confirm → complete with outcome; reschedule twice.
 - **Negative scenarios:** Completed before the start time → 422; a type from another module → 422; editing another BDM's appointment → 403/404.
 - **Edge cases:** two appointments overlapping for the same BDM (warn, not block); an appointment spanning midnight; changing the timezone display (stored in UTC, shown in IST); cancelling an appointment that belongs to an approved trip (the trip's counts update).

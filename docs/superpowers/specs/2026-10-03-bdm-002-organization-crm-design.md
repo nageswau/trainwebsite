@@ -194,7 +194,7 @@ Every write returns the whole organization (`{organization: BdmOrganizationOut}`
 
 Rows and detail always include `last_meeting_at: null` and `next_meeting_at: null` (bdm-006 fills them; the field names are the contract bdm-006 implements).
 
-**Archived and appointments (AC5b):** bdm-006 must call `load_scoped(..., lock=True)` and refuse an archived organization (409). Recorded here and in the backlog so bdm-006's spec inherits it.
+**Archived and appointments (AC5b):** bdm-006 must call `load_scoped(..., lock=True)` and refuse an archived organization (422 — bdm-006 A4, DEC-SCOPE-063). Recorded here and in the backlog so bdm-006's spec inherits it.
 
 Registration: one import and one entry in the `for r in (...)` router loop in `app/main.py`.
 

@@ -110,8 +110,13 @@ def profile_snapshot(profile: BdmProfile) -> dict:
     return {**_profile_fields(profile), "reporting_manager_user_id": str(profile.reporting_manager_user_id)}
 
 
+def person_ref(user: User) -> dict:
+    """How every BDM payload names a person (manager, assignee, appointment owner)."""
+    return {"id": user.id, "full_name": user.full_name, "active": user.active}
+
+
 def profile_out(profile: BdmProfile, manager: User) -> dict:
-    return {**_profile_fields(profile), "reporting_manager": {"id": manager.id, "full_name": manager.full_name, "active": manager.active}}
+    return {**_profile_fields(profile), "reporting_manager": person_ref(manager)}
 
 
 async def apply_profile_update(db: AsyncSession, profile: BdmProfile, raw) -> tuple[dict, dict]:
