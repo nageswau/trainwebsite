@@ -59,6 +59,7 @@ test("BDM lead attribution: add, duplicate, count, admin filter, link and unlink
   // L8: the same email again warns; Save anyway keeps both. Keyboard only.
   await page.getByRole("button", { name: "Add lead" }).focus();
   await page.keyboard.press("Enter");
+  await expect(page.getByLabel("Student name (required)")).toBeFocused(); // the form moves focus to the name on open
   await page.keyboard.type("Asha N");
   await page.getByLabel("Email (required)").focus();
   await page.keyboard.type(`ASHA-${stamp}@example.com`);
