@@ -235,7 +235,7 @@ Features: DOC-APP-006..009.
 
 ### S7 — Documents
 Features: DOC-DOC-001..006.
-- [ ] Standard loop. Documents in every state, an offer-letter document, open and cancelled requests; Staff B verify
+- [x] Standard loop. Documents in every state, an offer-letter document, open and cancelled requests; Staff B verify
   vs Staff A refusal.
 
 ### S8 — Dashboard, notifications, commissions, reports, staff performance

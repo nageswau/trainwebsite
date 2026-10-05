@@ -4,8 +4,8 @@
 |---|---|
 | Code baseline | `main` @ `e376c25c`; 2026-10-05 docs branch merged `main` @ `6a9be770` (+42 commits, bdm-006 etc.) — only Agent-scope-adjacent change is BDM "Appointments" sidebar links in `navigation.ts`; Agent CRM analysis unchanged. Browser work may use a stack from `6a9be770`. |
 | Stack used for browser work | `agentdocs` compose project from worktree `.claude/worktrees/agent-docs` @ `717d6aa8` (= main `6a9be770` + docs); web http://localhost:3010, api :8010; SMTP → local Mailpit (`docker-compose.docs.yml`, UI http://localhost:8025; `EMAIL_ENABLED` is not read by the app); Razorpay test keys present |
-| Last session | S6 — 2026-10-05 |
-| Next session | S7 — Documents (DOC-DOC-001..006) |
+| Last session | S7 — 2026-10-05 |
+| Next session | S8 — Dashboard, notifications, commissions, reports, staff performance |
 
 Column values: **Code Reviewed** YES / PARTIAL / NO (YES at S1 = reviewed from source at HEAD with file:line evidence in
 `documentation-analysis.md`); **Browser Verified** YES / PARTIAL / NO; **Screenshot** YES / NO / N/A;
@@ -41,12 +41,12 @@ YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES and Rev
 | DOC-APP-007 | Applications | Deposit terms and payment (Razorpay) | YES | PARTIAL (Razorpay window internals + dismiss message not exercised; payment confirmed via signed test webhook) | YES | DRAFT | NO |
 | DOC-APP-008 | Applications | Run the visa case | YES | YES | YES | YES | NO |
 | DOC-APP-009 | Applications | Confirm enrollment | YES | PARTIAL (intake warning not captured) | YES | DRAFT | NO |
-| DOC-DOC-001 | Documents | Browse and download documents | YES | NO | NO | NO | NO |
-| DOC-DOC-002 | Documents | Upload a document | YES | NO | NO | NO | NO |
-| DOC-DOC-003 | Documents | Replace a document file | YES | NO | NO | NO | NO |
-| DOC-DOC-004 | Documents | Review a document | YES | NO | NO | NO | NO |
-| DOC-DOC-005 | Documents | Document history | YES | NO | NO | NO | NO |
-| DOC-DOC-006 | Documents | Request an additional document | YES | NO | NO | NO | NO |
+| DOC-DOC-001 | Documents | Browse and download documents | YES | YES | YES | YES | NO |
+| DOC-DOC-002 | Documents | Upload a document | YES | YES | YES | YES | NO |
+| DOC-DOC-003 | Documents | Replace a document file | YES | YES | YES | YES | NO |
+| DOC-DOC-004 | Documents | Review a document | YES | YES | YES | YES | NO |
+| DOC-DOC-005 | Documents | Document history | YES | YES | YES | YES | NO |
+| DOC-DOC-006 | Documents | Request an additional document | YES | PARTIAL (student-with-login notification not checked) | YES | DRAFT | NO |
 | DOC-TASK-001 | Tasks | View tasks and follow-ups | YES | YES | YES | YES | NO |
 | DOC-TASK-002 | Tasks | Add, edit, complete or cancel a task | YES | PARTIAL (task edit not exercised) | YES | DRAFT | NO |
 | DOC-NOTIF-001 | Notifications | Read notifications | YES | NO | NO | NO | NO |
@@ -69,8 +69,8 @@ YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES and Rev
 | DOC-ADM-007 | Agency administration | Super Admin access to agency screens | YES | NO | NO | NO | NO |
 | DOC-ADM-008 | Agency administration | Resend a staff welcome link | YES | YES | YES | YES | NO |
 
-**Totals:** 54 features · Code reviewed 54 YES · Browser verified 25 YES, 10 PARTIAL · Screenshots 125 / ~178 ·
-Documented 25 YES, 10 DRAFT · Reviewed 0 · **COMPLETE 0**.
+**Totals:** 54 features · Code reviewed 54 YES · Browser verified 30 YES, 11 PARTIAL · Screenshots 141 / ~178 ·
+Documented 30 YES, 11 DRAFT · Reviewed 0 · **COMPLETE 0**.
 
 ## Deliverables outside the feature rows
 | Deliverable | Session | Status |
@@ -90,6 +90,7 @@ Open items U1–U19 are listed in `docs/documentation-analysis.md` §12.1. Close
 |---|---|---|---|
 | U2 | AUTH-005 | S2 | Closed: a pending agent can open Change password. |
 | 12.2 #1 | AUTH-003 | S2 | Confirmed in browser: rejected agency sees "Agent registration is pending approval". |
+| U11 | DOC-001 | S7 | Confirmed: Documents page has no student filter/search control. |
 | U9 | APP-007 | S6 | Partly: Razorpay test checkout opens (Test Mode, ₹ amount); window internals not automated; payment confirmed with a signed test webhook → Paid + receipt button verified. |
 | U8 | APP-002 | S5 | Closed: Linked student is a type-ahead picker ("{name} — no login" / email). |
 | U7 | STU-007 | S4 | Closed: the same university can be shortlisted twice (accepted). |
@@ -117,6 +118,8 @@ Open items U1–U19 are listed in `docs/documentation-analysis.md` §12.1. Close
 | 2026-10-05 | S5 | Task student picker shows full emails of students with a login, while the Link student picker masks them | Tasks vs Students | Note for review report |
 | 2026-10-05 | S6 | Offer-letter options are listed by uploaded file name + status, not by document type | Offer form | Documented |
 | 2026-10-05 | S6 | Razorpay checkout cannot be closed by automation (hosted window) — dismiss message unverified | Deposit | Noted |
+| 2026-10-05 | S7 | Document cards name documents by type (or description for Other), while the offer-letter picker lists file names | Documents vs Offer form | Documented |
+| 2026-10-05 | S7 | Review decision is a dropdown; reason required is enforced by the browser first | Review form | Documented |
 
 ## Session log
 | Session | Date | Commit | Stack / URL | Outcome |

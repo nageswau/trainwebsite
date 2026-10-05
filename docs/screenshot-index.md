@@ -132,3 +132,19 @@ Captured 2026-10-05 against docs commit `717d6aa8` (= `main` @ `6a9be770` + docs
 | applications/37-enrolled.png | Applications | DOC-APP-009 | Result | Master | Enrollment details + status history |
 | applications/38-filter-enrolled.png | Applications | DOC-APP-001/009 | Filter | Master | Enrolled view with Birmingham application |
 | applications/39-enrollment-staff-note.png | Applications | DOC-APP-009 | Staff view | Staff | "An agency Master confirms enrollment." |
+| documents/01-documents-pending.png | Documents | DOC-DOC-001 | Pending | Master | Pending review list |
+| documents/02-documents-uploaded.png | Documents | DOC-DOC-001 | Uploaded | Master | Uploaded documents view |
+| documents/03-upload-form.png | Documents | DOC-DOC-002 | Form | Master | Upload form: Other + description + application |
+| documents/04-upload-other-description.png | Documents | DOC-DOC-002 | Error | Master | Other without Description: browser message |
+| documents/05-upload-success.png | Documents | DOC-DOC-002 | Result | Master | "Document uploaded. It is waiting for review." |
+| documents/06-upload-wrong-type.png | Documents | DOC-DOC-002 | Error | Master | "Upload a PDF, JPEG or PNG file" |
+| documents/07-review-form-master.png | Documents | DOC-DOC-004 | Review | Master | Decision Rejected + reason |
+| documents/08-review-reason-required.png | Documents | DOC-DOC-004 | Error | Master | Reason required (browser message) |
+| documents/09-replace-file.png | Documents | DOC-DOC-003 | Replace | Master | New file chooser |
+| documents/10-replace-success.png | Documents | DOC-DOC-003 | Result | Master | "new file uploaded, waiting for review." |
+| documents/11-document-history.png | Documents | DOC-DOC-005 | History | Master | Uploaded / Rejected / Downloaded / File replaced |
+| documents/12-request-form.png | Documents | DOC-DOC-006 | Form | Master | Request a document form |
+| documents/13-additional-requests.png | Documents | DOC-DOC-006 | List | Master | Additional documents (open requests) |
+| documents/14-request-cancelled.png | Documents | DOC-DOC-006 | Cancel | Master | "Request for LOR from Neha Sharma cancelled." |
+| documents/15-review-staff-verify.png | Documents | DOC-DOC-004 | Staff verify | Staff (Verify documents) | Mark verified button |
+| documents/16-staff-no-verify.png | Documents | DOC-DOC-004 | Staff view | Staff (no permission) | No Review button |
