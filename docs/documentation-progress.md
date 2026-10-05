@@ -4,8 +4,8 @@
 |---|---|
 | Code baseline | `main` @ `e376c25c`; 2026-10-05 docs branch merged `main` @ `6a9be770` (+42 commits, bdm-006 etc.) — only Agent-scope-adjacent change is BDM "Appointments" sidebar links in `navigation.ts`; Agent CRM analysis unchanged. Browser work may use a stack from `6a9be770`. |
 | Stack used for browser work | `agentdocs` compose project from worktree `.claude/worktrees/agent-docs` @ `717d6aa8` (= main `6a9be770` + docs); web http://localhost:3010, api :8010; SMTP → local Mailpit (`docker-compose.docs.yml`, UI http://localhost:8025; `EMAIL_ENABLED` is not read by the app); Razorpay test keys present |
-| Last session | S7 — 2026-10-05 |
-| Next session | S8 — Dashboard, notifications, commissions, reports, staff performance |
+| Last session | S8 — 2026-10-05 |
+| Next session | S9 — Admin: agent network, agency detail, suspend/reinstate, deposits, Super Admin access |
 
 Column values: **Code Reviewed** YES / PARTIAL / NO (YES at S1 = reviewed from source at HEAD with file:line evidence in
 `documentation-analysis.md`); **Browser Verified** YES / PARTIAL / NO; **Screenshot** YES / NO / N/A;
@@ -20,8 +20,8 @@ YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES and Rev
 | DOC-AUTH-004 | Account access | Forgot / reset password; first-time set-password link | YES | YES | YES | YES | NO |
 | DOC-AUTH-005 | Account access | Change password | YES | YES | YES | YES | NO |
 | DOC-AUTH-006 | Account access | My profile | YES | PARTIAL (save success + notification settings not exercised) | YES | DRAFT | NO |
-| DOC-DASH-001 | Dashboard | Agency dashboard — Master | YES | NO | NO | NO | NO |
-| DOC-DASH-002 | Dashboard | Agency dashboard — Staff | YES | NO | NO | NO | NO |
+| DOC-DASH-001 | Dashboard | Agency dashboard — Master | YES | YES | YES | YES | NO |
+| DOC-DASH-002 | Dashboard | Agency dashboard — Staff | YES | YES | YES | YES | NO |
 | DOC-STU-001 | Students | Find students | YES | YES | YES | YES | NO |
 | DOC-STU-002 | Students | Add a student | YES | YES | YES | YES | NO |
 | DOC-STU-003 | Students | View and edit a student record | YES | YES | YES | YES | NO |
@@ -49,28 +49,28 @@ YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES and Rev
 | DOC-DOC-006 | Documents | Request an additional document | YES | PARTIAL (student-with-login notification not checked) | YES | DRAFT | NO |
 | DOC-TASK-001 | Tasks | View tasks and follow-ups | YES | YES | YES | YES | NO |
 | DOC-TASK-002 | Tasks | Add, edit, complete or cancel a task | YES | PARTIAL (task edit not exercised) | YES | DRAFT | NO |
-| DOC-NOTIF-001 | Notifications | Read notifications | YES | NO | NO | NO | NO |
-| DOC-COMM-001 | Commissions | View and claim commissions | YES | NO | NO | NO | NO |
-| DOC-RPT-001 | Reports | Run agency reports | YES | NO | NO | NO | NO |
-| DOC-RPT-002 | Reports | Export a report to CSV | YES | NO | NO | NO | NO |
-| DOC-RPT-003 | Reports | Commission report | YES | NO | NO | NO | NO |
+| DOC-NOTIF-001 | Notifications | Read notifications | YES | PARTIAL (some notification triggers not traced) | YES | DRAFT | NO |
+| DOC-COMM-001 | Commissions | View and claim commissions | YES | YES | YES | YES | NO |
+| DOC-RPT-001 | Reports | Run agency reports | YES | YES | YES | YES | NO |
+| DOC-RPT-002 | Reports | Export a report to CSV | YES | YES | YES | YES | NO |
+| DOC-RPT-003 | Reports | Commission report | YES | YES | YES | YES | NO |
 | DOC-TEAM-001 | Team | Invite or deactivate a Master | YES | PARTIAL (3-Master limit not reproduced) | YES | DRAFT | NO |
 | DOC-TEAM-002 | Team | Create a staff login | YES | YES | YES | YES | NO |
 | DOC-TEAM-003 | Team | Edit, reset, deactivate, reactivate staff | YES | PARTIAL (sign-in after reactivation not exercised) | YES | DRAFT | NO |
 | DOC-TEAM-004 | Team | Set staff permissions | YES | YES | YES | YES | NO |
 | DOC-TEAM-005 | Team | Staff activity | YES | YES | YES | YES | NO |
-| DOC-PERF-001 | Staff performance | View staff performance | YES | NO | NO | NO | NO |
+| DOC-PERF-001 | Staff performance | View staff performance | YES | YES | YES | YES | NO |
 | DOC-ADM-001 | Agency administration | Approve / reject / suspend / reinstate agencies | YES | PARTIAL (Reinstate → S9) | YES | DRAFT | NO |
 | DOC-ADM-002 | Agency administration | Agent network list | YES | NO | NO | NO | NO |
 | DOC-ADM-003 | Agency administration | Agency detail and drill-down | YES | NO | NO | NO | NO |
 | DOC-ADM-004 | Agency administration | Suspend / reinstate from detail | YES | NO | NO | NO | NO |
 | DOC-ADM-005 | Agency administration | Deposit remittance and refund | YES | NO | NO | NO | NO |
-| DOC-ADM-006 | Agency administration | Commission amounts and payouts | YES | NO | NO | NO | NO |
+| DOC-ADM-006 | Agency administration | Commission amounts and payouts | YES | YES | YES | YES | NO |
 | DOC-ADM-007 | Agency administration | Super Admin access to agency screens | YES | NO | NO | NO | NO |
 | DOC-ADM-008 | Agency administration | Resend a staff welcome link | YES | YES | YES | YES | NO |
 
-**Totals:** 54 features · Code reviewed 54 YES · Browser verified 30 YES, 11 PARTIAL · Screenshots 141 / ~178 ·
-Documented 30 YES, 11 DRAFT · Reviewed 0 · **COMPLETE 0**.
+**Totals:** 54 features · Code reviewed 54 YES · Browser verified 38 YES, 12 PARTIAL · Screenshots 169 / ~178 ·
+Documented 38 YES, 12 DRAFT · Reviewed 0 · **COMPLETE 0**.
 
 ## Deliverables outside the feature rows
 | Deliverable | Session | Status |
@@ -90,6 +90,8 @@ Open items U1–U19 are listed in `docs/documentation-analysis.md` §12.1. Close
 |---|---|---|---|
 | U2 | AUTH-005 | S2 | Closed: a pending agent can open Change password. |
 | 12.2 #1 | AUTH-003 | S2 | Confirmed in browser: rejected agency sees "Agent registration is pending approval". |
+| U14 | NOTIF-001 | S8 | Closed: daily reminder job (run on demand on the docs stack) created Deadline today / Deadline in 3 days / Overdue tasks. |
+| U18 | COMM-001 | S8 | Confirmed: claim needs the raw commission reference; table shows raw status words. |
 | U11 | DOC-001 | S7 | Confirmed: Documents page has no student filter/search control. |
 | U9 | APP-007 | S6 | Partly: Razorpay test checkout opens (Test Mode, ₹ amount); window internals not automated; payment confirmed with a signed test webhook → Paid + receipt button verified. |
 | U8 | APP-002 | S5 | Closed: Linked student is a type-ahead picker ("{name} — no login" / email). |
@@ -120,6 +122,8 @@ Open items U1–U19 are listed in `docs/documentation-analysis.md` §12.1. Close
 | 2026-10-05 | S6 | Razorpay checkout cannot be closed by automation (hosted window) — dismiss message unverified | Deposit | Noted |
 | 2026-10-05 | S7 | Document cards name documents by type (or description for Other), while the offer-letter picker lists file names | Documents vs Offer form | Documented |
 | 2026-10-05 | S7 | Review decision is a dropdown; reason required is enforced by the browser first | Review form | Documented |
+| 2026-10-05 | S8 | Extra notification titles not in the plan: Commission estimated, Document verification pending, Assignment due soon | Notifications | Documented (last two unverified triggers) |
+| 2026-10-05 | S8 | Second Overseas Admin not needed: own-payout rule only applies to admin_manual commissions | Commissions | Plan simplified |
 
 ## Session log
 | Session | Date | Commit | Stack / URL | Outcome |

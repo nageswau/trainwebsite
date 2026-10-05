@@ -54,7 +54,7 @@ not create a second commission.
 
 ## Expected Result
 - The application moves to **Applications > Enrolled**.
-- One commission is created with status **Estimated** (see Commissions, DOC-COMM-001).
+- One commission is created with status **Estimated** (see [View and claim commissions](../commissions/comm-001-commissions.md)).
 
 ![Enrolled view](../../screenshots/applications/38-filter-enrolled.png)
 
@@ -76,4 +76,4 @@ not create a second commission.
 
 ## Related Features
 - [Record an offer](app-006-record-an-offer.md)
-- Commissions (DOC-COMM-001, written in a later session)
+- [View and claim commissions](../commissions/comm-001-commissions.md)

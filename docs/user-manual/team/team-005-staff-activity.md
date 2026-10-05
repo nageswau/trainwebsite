@@ -51,4 +51,4 @@ None observed.
 
 ## Related Features
 - [Set staff permissions](team-004-staff-permissions.md)
-- Staff performance (DOC-PERF-001, written in a later session)
+- [Staff performance](../staff-performance/perf-001-staff-performance.md)

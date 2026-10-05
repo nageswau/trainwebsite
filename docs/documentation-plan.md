@@ -240,7 +240,7 @@ Features: DOC-DOC-001..006.
 
 ### S8 — Dashboard, notifications, commissions, reports, staff performance
 Features: DOC-DASH-001..002, DOC-NOTIF-001, DOC-COMM-001, DOC-RPT-001..003, DOC-PERF-001.
-- [ ] Standard loop (data from S3–S7 now exists). Commission states: estimated → eligible (OA sets amount) → claimed
+- [x] Standard loop (data from S3–S7 now exists). Commission states: estimated → eligible (OA sets amount) → claimed
   (Master) → paid (OA approves). Reports as Master, Staff C, Staff A (refusal). Reminder notifications: owner decides
   whether to wait for 08:00 IST or trigger the job (S8.1).
 

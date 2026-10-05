@@ -148,3 +148,31 @@ Captured 2026-10-05 against docs commit `717d6aa8` (= `main` @ `6a9be770` + docs
 | documents/14-request-cancelled.png | Documents | DOC-DOC-006 | Cancel | Master | "Request for LOR from Neha Sharma cancelled." |
 | documents/15-review-staff-verify.png | Documents | DOC-DOC-004 | Staff verify | Staff (Verify documents) | Mark verified button |
 | documents/16-staff-no-verify.png | Documents | DOC-DOC-004 | Staff view | Staff (no permission) | No Review button |
+| dashboard/01-master-dashboard.png | Dashboard | DOC-DASH-001 | Open | Master | Whole agency figures |
+| dashboard/02-master-dashboard-commission.png | Dashboard | DOC-DASH-001 | Commission | Master | Commission figures + breakdowns |
+| dashboard/03-master-dashboard-staff.png | Dashboard | DOC-DASH-001 | Staff table | Master | Staff performance table |
+| dashboard/04-staff-dashboard.png | Dashboard | DOC-DASH-002 | Open | Staff | Your assigned students; no Commission/staff table |
+| notifications/01-notifications-list.png | Notifications | DOC-NOTIF-001 | List | Master | Overdue tasks, Deadline today, Commission estimated |
+| notifications/02-staff-notifications.png | Notifications | DOC-NOTIF-001 | List | Staff | Staff notifications |
+| commissions/01-commissions-table.png | Commissions | DOC-COMM-001 | Table | Master | Commissions table with eligible rows |
+| commissions/02-claim-form.png | Commissions | DOC-COMM-001 | Claim | Master | Claim commission form |
+| commissions/03-commission-claimed.png | Commissions | DOC-COMM-001 | Result | Master | Claimed with CLM- reference |
+| reports/01-reports-students.png | Reports | DOC-RPT-001 | Students tab | Master | Filters, row count, Download CSV |
+| reports/02-reports-applications.png | Reports | DOC-RPT-001 | Applications tab | Master | Applications report |
+| reports/03-reports-universities.png | Reports | DOC-RPT-001 | Universities tab | Master | Applications by university |
+| reports/04-reports-countries.png | Reports | DOC-RPT-001 | Countries tab | Master | Applications by country |
+| reports/05-reports-intakes.png | Reports | DOC-RPT-001 | Intakes tab | Master | Applications by intake |
+| reports/06-reports-staff-performance.png | Reports | DOC-RPT-001 | Staff performance tab | Master | Per staff member |
+| reports/07-reports-enrollments.png | Reports | DOC-RPT-001 | Enrollments tab | Master | Enrollments |
+| reports/08-reports-commission.png | Reports | DOC-RPT-003 | Commission tab | Master | Totals per currency |
+| reports/10-reports-csv.png | Reports | DOC-RPT-002 | Download | Master | After Download CSV (applications) |
+| reports/11-reports-staff-view.png | Reports | DOC-RPT-001 | Staff view | Staff (View reports) | No Staff performance/Commission tabs |
+| reports/12-reports-staff-refused.png | Reports | DOC-RPT-001 | Refusal | Staff (no permission) | Access unavailable |
+| staff-performance/01-performance.png | Staff performance | DOC-PERF-001 | Open | Master | Funnel + figures as of |
+| staff-performance/02-performance-one-staff.png | Staff performance | DOC-PERF-001 | Funnel | Master | Funnel for Asha Staff |
+| staff-performance/03-performance-date-error.png | Staff performance | DOC-PERF-001 | Error | Master | To must be on or after From |
+| staff-performance/04-performance-staff-refused.png | Staff performance | DOC-PERF-001 | Refusal | Staff | Available to agency Masters |
+| admin-agencies/09-commissions-table.png | Agency administration | DOC-ADM-006 | Table | Overseas Admin | Agent Commissions table |
+| admin-agencies/10-commission-set-amount.png | Agency administration | DOC-ADM-006 | Set amount | Overseas Admin | Set/adjust commission amount |
+| admin-agencies/11-commission-approve-payout.png | Agency administration | DOC-ADM-006 | Payout | Overseas Admin | Approve commission payout |
+| admin-agencies/12-commissions-paid.png | Agency administration | DOC-ADM-006 | Result | Overseas Admin | Commission paid |
