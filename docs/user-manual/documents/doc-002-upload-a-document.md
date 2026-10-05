@@ -53,7 +53,7 @@ The document appears with status **Pending review**; a chosen request is marked 
 | Upload a PDF, JPEG or PNG file | The file is another type (for example a .txt or .docx). |
 | The file must be at most 20 MB | The file is too large (limit set by EduSphere). |
 | The file is empty | The file has no content. |
-| Too many documents uploaded today -- try again later | Your agency uploaded 500 files in 24 hours. |
+| Too many documents uploaded today -- try again later | Your agency made 500 uploads or file replacements in 24 hours. |
 
 ![Description required for Other](../../screenshots/documents/04-upload-other-description.png)
 

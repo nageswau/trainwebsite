@@ -53,7 +53,7 @@ Details: [Agency dashboard (Master)](../user-manual/dashboard/dash-001-master-da
 2. Check **Documents > Pending** and review what staff uploaded.
 3. Assign new students to staff (**Students > Assign**).
 4. Look at **Tasks & Follow-ups > Overdue**.
-5. Weekly: **Staff Performance** and **Reports**; claim **eligible** commissions.
+5. Weekly: **Staff Performance** and **Reports**; claim commissions only once they are **eligible** (claiming an estimated one locks it at 0).
 
 ## Restrictions
 - Only Masters can: manage the team and staff permissions, archive or assign students, add/edit/delete agency

@@ -30,7 +30,8 @@ None for agencies. Type these addresses:
 None specific to agencies.
 
 ## Restrictions
-- Cannot approve, reject, suspend or reinstate agencies; cannot record deposits; cannot use the commission screens.
+- No screen lets a Super Admin approve, reject, suspend or reinstate agencies, record deposits or manage commissions
+  (the API accepts some of these — see the documentation review report).
 
 ## Common Problems
 | Problem | Resolution |

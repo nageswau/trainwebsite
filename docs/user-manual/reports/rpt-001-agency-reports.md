@@ -47,7 +47,7 @@ Sidebar > **Reports**.
 ![Enrollments report](../../screenshots/reports/07-reports-enrollments.png)
 
 ### Step 2 — Filter
-Set **From** / **To** (creation dates) and the dropdowns shown for that tab — **Staff member**, **Country**,
+Set **From** / **To** (creation dates; the **Enrollments** tab uses the enrollment date) and the dropdowns shown for that tab — **Staff member**, **Country**,
 **University**, **Intake**, **Status** — then click **Apply**. The line "{N} rows · As of {time}" shows the result
 size. The chosen report and filters are kept in the page address, so you can bookmark or share the view.
 
@@ -73,7 +73,7 @@ The report shows matching rows; summary reports end with a **Total** row.
 | Message | When |
 |---|---|
 | No records match these filters. | Nothing matches. |
-| date_to must be on or after date_from | To is before From. |
+| 'To' must be on or after 'From'. | To is before From. |
 | Couldn't load this report. | Loading failed; click **Try again**. |
 
 ## Common Errors

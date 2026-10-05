@@ -62,7 +62,8 @@ unassigned) is notified "Document requested".
 **Resolution:** Cancel the request, or upload again choosing the request.
 
 ## Tips
-- Whether students who have their own EduSphere login are told about requests was not checked (VERIFICATION REQUIRED).
+- Requests notify only your agency (the student's assignee, or the Masters if unassigned); students with their own
+  EduSphere login are not notified.
 
 ## Related Features
 - [Upload a document](doc-002-upload-a-document.md)

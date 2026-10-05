@@ -35,7 +35,6 @@ Captured 2026-10-05 against docs commit `717d6aa8` (= `main` @ `6a9be770` + docs
 | team/02-invite-master-form.png | Team | DOC-TEAM-001 | Invite | Master | Invite a Master form filled |
 | team/03-invite-master-sent.png | Team | DOC-TEAM-001 | Result | Master | "Invite sent." and Invite pending badge |
 | team/04-deactivate-master-confirm.png | Team | DOC-TEAM-001 | Deactivate | Master | Deactivate Master confirmation |
-| team/05-staff-empty.png | Team | DOC-TEAM-002 | Open card | Master | Staff card, "No staff yet" |
 | team/07-add-staff-form.png | Team | DOC-TEAM-002 | Add staff | Master | Add staff form filled |
 | team/08-add-staff-success.png | Team | DOC-TEAM-002 | Result | Master | "EDU-S001 created. A set-password link was emailed…" |
 | team/09-permissions-form.png | Team | DOC-TEAM-004 | Permissions | Master | "What Bala Verifier can do" with Verify documents ticked |
@@ -197,5 +196,4 @@ Captured 2026-10-05 against docs commit `717d6aa8` (= `main` @ `6a9be770` + docs
 | admin-agencies/32-super-admin-network.png | Agency administration | DOC-ADM-007 | Read-only | Super Admin | Agent network without suspend |
 | admin-agencies/33-super-admin-deposits.png | Agency administration | DOC-ADM-007 | Read-only | Super Admin | Agent deposits without actions |
 | admin-agencies/34-super-admin-agents.png | Agency administration | DOC-ADM-007 | Refused | Super Admin | Workspace not found |
-| admin-agencies/35-super-admin-commissions.png | Agency administration | DOC-ADM-007 | Refused | Super Admin | Workspace not found |
 | applications/40-deposit-refunded-agency-view.png | Applications | DOC-APP-007 | Refunded | Master | Agency view: remitted + refunded |

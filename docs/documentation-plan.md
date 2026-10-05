@@ -257,10 +257,10 @@ Features: DOC-ADM-002..005, DOC-ADM-007 (DOC-ADM-006 is done in S8).
 - [x] Write `docs/user-manual/README.md` and `docs/admin-manual/README.md` indexes.
 
 ### S11 — Final review
-- [ ] Re-check every feature file against code (`e376c25c` or recorded commit), RBAC matrix, screenshots, plan and
+- [x] Re-check every feature file against code (`e376c25c` or recorded commit), RBAC matrix, screenshots, plan and
   tracker; run the link check; detect duplicate screenshots (`certutil -hashfile` / `sha256sum` over
   `docs/screenshots`). Write `docs/documentation-review-report.md` with CRITICAL/HIGH/MEDIUM/LOW findings.
-- [ ] Mark features COMPLETE only when Code Reviewed = YES, Browser Verified = YES, Screenshot = YES (where required),
+- [x] Mark features COMPLETE only when Code Reviewed = YES, Browser Verified = YES, Screenshot = YES (where required),
   Documented = YES, Reviewed = PASSED.
 
 ---

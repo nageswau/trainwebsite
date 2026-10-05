@@ -4,8 +4,8 @@
 |---|---|
 | Code baseline | `main` @ `e376c25c`; 2026-10-05 docs branch merged `main` @ `6a9be770` (+42 commits, bdm-006 etc.) — only Agent-scope-adjacent change is BDM "Appointments" sidebar links in `navigation.ts`; Agent CRM analysis unchanged. Browser work may use a stack from `6a9be770`. |
 | Stack used for browser work | `agentdocs` compose project from worktree `.claude/worktrees/agent-docs` @ `717d6aa8` (= main `6a9be770` + docs); web http://localhost:3010, api :8010; SMTP → local Mailpit (`docker-compose.docs.yml`, UI http://localhost:8025; `EMAIL_ENABLED` is not read by the app); Razorpay test keys present |
-| Last session | S10 — 2026-10-05 |
-| Next session | S11 — Final review and review report |
+| Last session | S11 Final review — 2026-10-05 |
+| Next session | Optional: one browser pass for the 12 PARTIAL details; then mark them COMPLETE |
 
 Column values: **Code Reviewed** YES / PARTIAL / NO (YES at S1 = reviewed from source at HEAD with file:line evidence in
 `documentation-analysis.md`); **Browser Verified** YES / PARTIAL / NO; **Screenshot** YES / NO / N/A;
@@ -14,63 +14,63 @@ YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES and Rev
 
 | ID | Module | Feature | Code Reviewed | Browser Verified | Screenshot | Documented | Reviewed |
 |---|---|---|---|---|---|---|---|
-| DOC-AUTH-001 | Account access | Register an agency | YES | YES | YES | YES | NO |
-| DOC-AUTH-002 | Account access | Sign in and sign out | YES | YES | YES | YES | NO |
-| DOC-AUTH-003 | Account access | "Access unavailable" states | YES | YES (deactivated member: refused at sign-in) | YES | YES | NO |
-| DOC-AUTH-004 | Account access | Forgot / reset password; first-time set-password link | YES | YES | YES | YES | NO |
-| DOC-AUTH-005 | Account access | Change password | YES | YES | YES | YES | NO |
-| DOC-AUTH-006 | Account access | My profile | YES | PARTIAL (save success + notification settings not exercised) | YES | DRAFT | NO |
-| DOC-DASH-001 | Dashboard | Agency dashboard — Master | YES | YES | YES | YES | NO |
-| DOC-DASH-002 | Dashboard | Agency dashboard — Staff | YES | YES | YES | YES | NO |
-| DOC-STU-001 | Students | Find students | YES | YES | YES | YES | NO |
-| DOC-STU-002 | Students | Add a student | YES | YES | YES | YES | NO |
-| DOC-STU-003 | Students | View and edit a student record | YES | YES | YES | YES | NO |
-| DOC-STU-004 | Students | Archive / unarchive a student | YES | PARTIAL (unarchive not exercised) | YES | DRAFT | NO |
-| DOC-STU-005 | Students | Assign a student to staff | YES | YES | YES | YES | NO |
-| DOC-STU-006 | Students | Record counseling | YES | YES | YES | YES | NO |
-| DOC-STU-007 | Students | Build a university shortlist | YES | YES | YES | YES | NO |
-| DOC-STU-008 | Students | Journey and history | YES | PARTIAL (journey with applications → S5/S6) | YES | DRAFT | NO |
-| DOC-STU-009 | Students | Link an existing student account | YES | YES | YES | YES | NO |
-| DOC-UNI-001 | Universities | Manage the agency university list | YES | PARTIAL (edit not exercised) | YES | DRAFT | NO |
-| DOC-APP-001 | Applications | View and filter applications | YES | YES | YES | YES | NO |
-| DOC-APP-002 | Applications | Create an application | YES | YES | YES | YES | NO |
-| DOC-APP-003 | Applications | Edit an application | YES | YES | YES | YES | NO |
-| DOC-APP-004 | Applications | Application detail page | YES | YES | YES | YES | NO |
-| DOC-APP-005 | Applications | Change status / withdraw | YES | YES | YES | YES | NO |
-| DOC-APP-006 | Applications | Record or edit an offer | YES | YES | YES | YES | NO |
-| DOC-APP-007 | Applications | Deposit terms and payment (Razorpay) | YES | PARTIAL (Razorpay window internals + dismiss message not exercised; payment confirmed via signed test webhook) | YES | DRAFT | NO |
-| DOC-APP-008 | Applications | Run the visa case | YES | YES | YES | YES | NO |
-| DOC-APP-009 | Applications | Confirm enrollment | YES | PARTIAL (intake warning not captured) | YES | DRAFT | NO |
-| DOC-DOC-001 | Documents | Browse and download documents | YES | YES | YES | YES | NO |
-| DOC-DOC-002 | Documents | Upload a document | YES | YES | YES | YES | NO |
-| DOC-DOC-003 | Documents | Replace a document file | YES | YES | YES | YES | NO |
-| DOC-DOC-004 | Documents | Review a document | YES | YES | YES | YES | NO |
-| DOC-DOC-005 | Documents | Document history | YES | YES | YES | YES | NO |
-| DOC-DOC-006 | Documents | Request an additional document | YES | PARTIAL (student-with-login notification not checked) | YES | DRAFT | NO |
-| DOC-TASK-001 | Tasks | View tasks and follow-ups | YES | YES | YES | YES | NO |
-| DOC-TASK-002 | Tasks | Add, edit, complete or cancel a task | YES | PARTIAL (task edit not exercised) | YES | DRAFT | NO |
-| DOC-NOTIF-001 | Notifications | Read notifications | YES | PARTIAL (some notification triggers not traced) | YES | DRAFT | NO |
-| DOC-COMM-001 | Commissions | View and claim commissions | YES | YES | YES | YES | NO |
-| DOC-RPT-001 | Reports | Run agency reports | YES | YES | YES | YES | NO |
-| DOC-RPT-002 | Reports | Export a report to CSV | YES | YES | YES | YES | NO |
-| DOC-RPT-003 | Reports | Commission report | YES | YES | YES | YES | NO |
-| DOC-TEAM-001 | Team | Invite or deactivate a Master | YES | PARTIAL (3-Master limit not reproduced) | YES | DRAFT | NO |
-| DOC-TEAM-002 | Team | Create a staff login | YES | YES | YES | YES | NO |
-| DOC-TEAM-003 | Team | Edit, reset, deactivate, reactivate staff | YES | PARTIAL (sign-in after reactivation not exercised) | YES | DRAFT | NO |
-| DOC-TEAM-004 | Team | Set staff permissions | YES | YES | YES | YES | NO |
-| DOC-TEAM-005 | Team | Staff activity | YES | YES | YES | YES | NO |
-| DOC-PERF-001 | Staff performance | View staff performance | YES | YES | YES | YES | NO |
-| DOC-ADM-001 | Agency administration | Approve / reject / suspend / reinstate agencies | YES | YES | YES | YES | NO |
-| DOC-ADM-002 | Agency administration | Agent network list | YES | YES | YES | YES | NO |
-| DOC-ADM-003 | Agency administration | Agency detail and drill-down | YES | PARTIAL (archived sub-filter not exercised) | YES | DRAFT | NO |
-| DOC-ADM-004 | Agency administration | Suspend / reinstate from detail | YES | YES | YES | YES | NO |
-| DOC-ADM-005 | Agency administration | Deposit remittance and refund | YES | YES | YES | YES | NO |
-| DOC-ADM-006 | Agency administration | Commission amounts and payouts | YES | YES | YES | YES | NO |
-| DOC-ADM-007 | Agency administration | Super Admin access to agency screens | YES | YES | YES | YES | NO |
-| DOC-ADM-008 | Agency administration | Resend a staff welcome link | YES | YES | YES | YES | NO |
+| DOC-AUTH-001 | Account access | Register an agency | YES | YES | YES | YES | PASSED |
+| DOC-AUTH-002 | Account access | Sign in and sign out | YES | YES | YES | YES | PASSED |
+| DOC-AUTH-003 | Account access | "Access unavailable" states | YES | YES (deactivated member: refused at sign-in) | YES | YES | PASSED |
+| DOC-AUTH-004 | Account access | Forgot / reset password; first-time set-password link | YES | YES | YES | YES | PASSED |
+| DOC-AUTH-005 | Account access | Change password | YES | YES | YES | YES | PASSED |
+| DOC-AUTH-006 | Account access | My profile | YES | PARTIAL (save success + notification settings not exercised) | YES | YES | PASSED |
+| DOC-DASH-001 | Dashboard | Agency dashboard — Master | YES | YES | YES | YES | PASSED |
+| DOC-DASH-002 | Dashboard | Agency dashboard — Staff | YES | YES | YES | YES | PASSED |
+| DOC-STU-001 | Students | Find students | YES | YES | YES | YES | PASSED |
+| DOC-STU-002 | Students | Add a student | YES | YES | YES | YES | PASSED |
+| DOC-STU-003 | Students | View and edit a student record | YES | YES | YES | YES | PASSED |
+| DOC-STU-004 | Students | Archive / unarchive a student | YES | PARTIAL (unarchive not exercised) | YES | YES | PASSED |
+| DOC-STU-005 | Students | Assign a student to staff | YES | YES | YES | YES | PASSED |
+| DOC-STU-006 | Students | Record counseling | YES | YES | YES | YES | PASSED |
+| DOC-STU-007 | Students | Build a university shortlist | YES | YES | YES | YES | PASSED |
+| DOC-STU-008 | Students | Journey and history | YES | PARTIAL (journey with applications → S5/S6) | YES | YES | PASSED |
+| DOC-STU-009 | Students | Link an existing student account | YES | YES | YES | YES | PASSED |
+| DOC-UNI-001 | Universities | Manage the agency university list | YES | PARTIAL (edit not exercised) | YES | YES | PASSED |
+| DOC-APP-001 | Applications | View and filter applications | YES | YES | YES | YES | PASSED |
+| DOC-APP-002 | Applications | Create an application | YES | YES | YES | YES | PASSED |
+| DOC-APP-003 | Applications | Edit an application | YES | YES | YES | YES | PASSED |
+| DOC-APP-004 | Applications | Application detail page | YES | YES | YES | YES | PASSED |
+| DOC-APP-005 | Applications | Change status / withdraw | YES | YES | YES | YES | PASSED |
+| DOC-APP-006 | Applications | Record or edit an offer | YES | YES | YES | YES | PASSED |
+| DOC-APP-007 | Applications | Deposit terms and payment (Razorpay) | YES | PARTIAL (Razorpay window internals + dismiss message not exercised; payment confirmed via signed test webhook) | YES | YES | PASSED |
+| DOC-APP-008 | Applications | Run the visa case | YES | YES | YES | YES | PASSED |
+| DOC-APP-009 | Applications | Confirm enrollment | YES | PARTIAL (intake warning not captured) | YES | YES | PASSED |
+| DOC-DOC-001 | Documents | Browse and download documents | YES | YES | YES | YES | PASSED |
+| DOC-DOC-002 | Documents | Upload a document | YES | YES | YES | YES | PASSED |
+| DOC-DOC-003 | Documents | Replace a document file | YES | YES | YES | YES | PASSED |
+| DOC-DOC-004 | Documents | Review a document | YES | YES | YES | YES | PASSED |
+| DOC-DOC-005 | Documents | Document history | YES | YES | YES | YES | PASSED |
+| DOC-DOC-006 | Documents | Request an additional document | YES | PARTIAL (student-with-login notification not checked) | YES | YES | PASSED |
+| DOC-TASK-001 | Tasks | View tasks and follow-ups | YES | YES | YES | YES | PASSED |
+| DOC-TASK-002 | Tasks | Add, edit, complete or cancel a task | YES | PARTIAL (task edit not exercised) | YES | YES | PASSED |
+| DOC-NOTIF-001 | Notifications | Read notifications | YES | PARTIAL (some notification triggers not traced) | YES | YES | PASSED |
+| DOC-COMM-001 | Commissions | View and claim commissions | YES | YES | YES | YES | PASSED |
+| DOC-RPT-001 | Reports | Run agency reports | YES | YES | YES | YES | PASSED |
+| DOC-RPT-002 | Reports | Export a report to CSV | YES | YES | YES | YES | PASSED |
+| DOC-RPT-003 | Reports | Commission report | YES | YES | YES | YES | PASSED |
+| DOC-TEAM-001 | Team | Invite or deactivate a Master | YES | PARTIAL (3-Master limit not reproduced) | YES | YES | PASSED |
+| DOC-TEAM-002 | Team | Create a staff login | YES | YES | YES | YES | PASSED |
+| DOC-TEAM-003 | Team | Edit, reset, deactivate, reactivate staff | YES | PARTIAL (sign-in after reactivation not exercised) | YES | YES | PASSED |
+| DOC-TEAM-004 | Team | Set staff permissions | YES | YES | YES | YES | PASSED |
+| DOC-TEAM-005 | Team | Staff activity | YES | YES | YES | YES | PASSED |
+| DOC-PERF-001 | Staff performance | View staff performance | YES | YES | YES | YES | PASSED |
+| DOC-ADM-001 | Agency administration | Approve / reject / suspend / reinstate agencies | YES | YES | YES | YES | PASSED |
+| DOC-ADM-002 | Agency administration | Agent network list | YES | YES | YES | YES | PASSED |
+| DOC-ADM-003 | Agency administration | Agency detail and drill-down | YES | PARTIAL (archived sub-filter not exercised) | YES | YES | PASSED |
+| DOC-ADM-004 | Agency administration | Suspend / reinstate from detail | YES | YES | YES | YES | PASSED |
+| DOC-ADM-005 | Agency administration | Deposit remittance and refund | YES | YES | YES | YES | PASSED |
+| DOC-ADM-006 | Agency administration | Commission amounts and payouts | YES | YES | YES | YES | PASSED |
+| DOC-ADM-007 | Agency administration | Super Admin access to agency screens | YES | YES | YES | YES | PASSED |
+| DOC-ADM-008 | Agency administration | Resend a staff welcome link | YES | YES | YES | YES | PASSED |
 
-**Totals:** 54 features · Code reviewed 54 YES · Browser verified 43 YES, 11 PARTIAL · Screenshots 192 ·
-Documented 43 YES, 11 DRAFT · Reviewed 0 · **COMPLETE 0** (pending final review S11).
+**Totals:** 54 features · Code reviewed 54 YES · Browser verified 42 YES, 12 PARTIAL · Screenshots 191 ·
+Documented 54 YES · Reviewed 54 PASSED · **COMPLETE 42** (the 12 PARTIAL rows need one browser check each — see `documentation-review-report.md` §5).
 
 ## Deliverables outside the feature rows
 | Deliverable | Session | Status |
@@ -81,7 +81,7 @@ Documented 43 YES, 11 DRAFT · Reviewed 0 · **COMPLETE 0** (pending final revie
 | `docs/admin-manual/README.md`, `docs/user-manual/README.md` | S10 | YES |
 | Role guides: Agency Master, Agency Staff, Overseas Admin (agencies), Super Admin (agencies) | S10 | YES |
 | `docs/faq.md`, `docs/troubleshooting.md` | S10 | YES |
-| `docs/documentation-review-report.md` | S11 | NO |
+| `docs/documentation-review-report.md` | S11 | YES |
 
 ## Unresolved verification items
 Open items U1–U19 are listed in `docs/documentation-analysis.md` §12.1. Close each one here with the session and result.

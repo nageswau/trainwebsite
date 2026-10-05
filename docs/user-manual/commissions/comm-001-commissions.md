@@ -9,8 +9,8 @@ See the commissions EduSphere owes your agency and claim them once they are elig
 **Agency Masters only.** Staff do not see Commissions; typing its address shows "Only an agency Master can open this page".
 
 ## Prerequisites
-A commission exists (created automatically when you [confirm an enrollment](../applications/app-009-confirm-enrollment.md))
-and EduSphere has set its amount.
+A commission exists (created automatically when an application is [enrolled](../applications/app-009-confirm-enrollment.md))
+and EduSphere has set its amount (status **eligible**).
 
 ## How to Access
 Sidebar > **Commissions**.
@@ -26,7 +26,7 @@ headings and **Rows per page**.
 
 | Status (as shown) | Meaning | Next step |
 |---|---|---|
-| estimated | Created at enrollment; waiting for EduSphere to set the amount | Wait |
+| estimated | Created at enrollment; EduSphere has not set the amount yet (shown as 0) | **Do not claim yet** — wait for eligible |
 | eligible | Amount set; you can claim it | Claim |
 | claimed | You claimed it (a claim reference is shown) | Wait for payout |
 | payout_pending / paid | EduSphere is paying / has paid it | — |
@@ -55,15 +55,19 @@ EduSphere's Overseas Admin approves the payout and the status becomes **paid**. 
 | Message | When |
 |---|---|
 | Commission not found | The reference is wrong. |
-| Commission cannot be claimed in its current status | The commission is not eligible (for example still estimated or already claimed). |
+| Commission cannot be claimed in its current status | The commission was already claimed, or is being paid / paid. |
 
 ## Common Errors
 **Problem:** "Commission cannot be claimed in its current status".
-**Cause:** The amount has not been set yet (status **estimated**) or it was already claimed.
-**Resolution:** Wait until the status is **eligible**.
+**Cause:** The commission was already claimed (or is already paid).
+**Resolution:** Check the Claim reference column; nothing more to do.
+
+**Problem:** A commission was claimed while still **estimated** and its amount stays at 0.
+**Cause:** EduSphere accepts a claim on an estimated commission, and a claim locks the amount — EduSphere can then no longer set it.
+**Resolution:** Always wait until the status is **eligible** before claiming. If it already happened, contact EduSphere Overseas Admin.
 
 ## Tips
-- Only commissions with status **eligible** can be claimed.
+- Claim only commissions with status **eligible**. The screen also accepts **estimated** ones, but that locks the amount at 0.
 
 ## Related Features
 - [Confirm enrollment](../applications/app-009-confirm-enrollment.md)

@@ -84,7 +84,7 @@ Later, when EduSphere's Overseas Admin forwards the money or records a refund, t
 
 ## Common Errors
 **Problem:** "Payment not completed. You can try again."
-**Cause:** The Razorpay window was closed before paying (message from the application code — VERIFICATION REQUIRED).
+**Cause:** The Razorpay window was closed before paying (message from the application code; closing the window could not be automated in testing).
 **Resolution:** Click **Pay deposit** again.
 
 **Problem:** "Online payment is unavailable right now. Nothing has been charged."

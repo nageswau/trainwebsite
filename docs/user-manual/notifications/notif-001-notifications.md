@@ -55,12 +55,12 @@ The person who made a change is not notified about their own change. Daily remin
 
 ## Common Errors
 **Problem:** No deadline reminders arrive.
-**Cause:** Reminders are sent once a day (08:00 India time) and only for deadlines within the next three days.
+**Cause:** Reminders are sent once a day (08:00 India time) and only when a deadline is exactly 3 days, 1 day or 0 days away.
 **Resolution:** Check again after 08:00; make sure deadlines are entered on the application.
 
 ## Tips
-- Other notification titles observed in testing include "Document verification pending" and
-  "Assignment due soon" (VERIFICATION REQUIRED — triggers not traced).
+- Agency notifications are also sent by email. WhatsApp/SMS settings in My profile do not apply to them, except
+  "Commission estimated" (from the application code).
 
 ## Related Features
 - [Tasks](../tasks/task-001-view-tasks.md)

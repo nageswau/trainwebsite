@@ -35,9 +35,7 @@ The Super Admin sidebar has **no** agency links. Type the addresses below in the
 | `/overseas/admin/commissions` | "Access unavailable — Workspace not found" |
 | `/overseas/admin/applications` | "Access unavailable — Workspace not found" |
 
-![Agents as Super Admin](../screenshots/admin-agencies/34-super-admin-agents.png)
-
-![Commissions as Super Admin](../screenshots/admin-agencies/35-super-admin-commissions.png)
+![Agents or Commissions as Super Admin (both pages show the same message)](../screenshots/admin-agencies/34-super-admin-agents.png)
 
 ## Fields
 None.
@@ -48,7 +46,7 @@ Approvals, suspensions, deposits and commissions are handled by an Overseas Admi
 ## Validation Messages
 | Message | When |
 |---|---|
-| Access unavailable — Workspace not found | The Overseas Admin workspace page is not available to Super Admin. |
+| Access unavailable — Workspace not found | The Overseas Admin workspace page is not available to Super Admin (the page has no data for a user without a division). |
 
 ## Common Errors
 **Problem:** A Super Admin cannot approve an agency.
@@ -57,6 +55,8 @@ Approvals, suspensions, deposits and commissions are handled by an Overseas Admi
 
 ## Tips
 - Use an Overseas Admin account for day-to-day agency administration.
+- These are screen restrictions. The API itself accepts some agency and commission actions from a Super Admin; this is
+  recorded as a product finding in the documentation review report.
 
 ## Related Features
 - [Agent network](adm-002-agent-network.md)

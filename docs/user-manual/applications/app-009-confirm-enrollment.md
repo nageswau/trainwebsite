@@ -50,7 +50,7 @@ not create a second commission.
 |---|---|---|---|
 | Enrollment date (required) | Date the student enrolled (2000–2100). | Yes | 05-10-2026 |
 | University student ID (optional) | The university's student number, up to 60 characters. | No | 2027-BHM-55120 |
-| Note (optional) | Up to 2000 characters; added to the status history (first confirmation only). | No | Enrolment confirmed by email. |
+| Note (optional) | Up to 2000 characters; added to the status history (first confirmation only). | No | Enrollment confirmed by email. |
 
 ## Expected Result
 - The application moves to **Applications > Enrolled**.
@@ -63,8 +63,8 @@ not create a second commission.
 |---|---|
 | Only an agency Master can confirm enrollment | A staff member tried to confirm. |
 | An offer is needed before enrollment | The application has no offer. |
-| The enrollment date is in the future and after the intake month. Check the date. | Warning only — you can still confirm (from the application code; not captured in testing — VERIFICATION REQUIRED). |
-| The intake is not a month and year, so the enrollment date was not checked against it. | The intake is free text such as "Next intake" (warning only). |
+| The enrollment date is in the future and after the intake month. Check the date. | Shown on the enrollment details **after** confirming (warning only). Correct the date with **Edit enrollment details**. |
+| The intake is not a month and year, so the enrollment date was not checked against it. | Shown after confirming when the intake is free text such as "Next intake" (warning only). |
 
 ## Common Errors
 **Problem:** No **Enroll student** button.

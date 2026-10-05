@@ -43,14 +43,14 @@ The message "A new set-password link was emailed to {name}." appears. The person
 ![Deactivate confirmation](../../screenshots/team/13-deactivate-staff-confirm.png)
 
 The message "{code} {name} deactivated. They have been signed out." appears and the row shows **Deactivated** with a
-**Reactivate** button. A deactivated person who tries to sign in gets "Invalid credentials". Their assigned students
+**Reactivate** button. A deactivated person who tries to sign in gets "Invalid credentials"; if they are signed in, their next page shows "Your account was deactivated by your agency. Contact your agency's Master." Their assigned students
 stay assigned to them until you reassign them.
 
 ![Deactivated staff member](../../screenshots/team/14-staff-deactivated.png)
 
 ### Reactivate
-Click **Reactivate** on the row. The message "{name} reactivated." appears and they can sign in again (signing in
-after reactivation was not exercised in testing — VERIFICATION REQUIRED). If they never set a password, the message adds "They have not set a password yet: use Reset to
+Click **Reactivate** on the row. The message "{name} reactivated." appears and they can sign in again with their
+existing password (confirmed in the application code; open set-password links stay cancelled). If they never set a password, the message adds "They have not set a password yet: use Reset to
 send a new link."
 
 ## Fields

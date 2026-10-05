@@ -31,8 +31,8 @@ Tick **Show archived**. Archived students show the badge **Archived** and an **U
 ![Archived student](../../screenshots/students/13-archived-shown.png)
 
 ### Step 3 — Unarchive
-Click **Unarchive**, then **Confirm unarchive**. The expected message is "{name} restored." (from the application
-code; not captured in testing — VERIFICATION REQUIRED).
+Click **Unarchive**, then **Confirm unarchive**. The message "{name} restored." appears (from the application code;
+not captured in testing).
 
 ## Fields
 None.

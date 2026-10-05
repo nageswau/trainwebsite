@@ -27,8 +27,7 @@ your details, and a **Notifications** section.
 1. Change **Full name** (2–160 characters) and/or **Phone** (up to 40 characters).
 2. Click **Save changes**.
 
-Expected message: "Your profile was updated." — VERIFICATION REQUIRED (the success message comes from the
-application code; it was not captured in testing).
+The message "Your profile was updated." appears (from the application code; not captured in testing).
 
 ### Step 3 — Choose notification channels
 Under **Notifications > Send me updates by**:
@@ -36,8 +35,9 @@ Under **Notifications > Send me updates by**:
 - Tick **WhatsApp** and/or **SMS** to receive updates there too. These need a mobile number in your profile; without
   one, the page says "Add a mobile number in your profile above to turn on WhatsApp or SMS."
 
-Click **Save notification settings**. Expected message: "Notification settings saved." — VERIFICATION REQUIRED.
-Whether WhatsApp/SMS messages are actually delivered for agency users is VERIFICATION REQUIRED.
+Click **Save notification settings**. The message "Notification settings saved." appears (from the application code).
+Note: most agency notifications (assignments, requests, status changes, tasks, reminders) are sent in-app and by
+email only; WhatsApp/SMS choices apply to a few other EduSphere messages such as "Commission estimated".
 
 ## Fields
 | Field | Description | Required | Example |

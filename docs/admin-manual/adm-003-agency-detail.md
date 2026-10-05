@@ -24,7 +24,7 @@ Admin, active agencies), and figures for **Staff**, **Students**, **Applications
 ![Agency detail](../screenshots/admin-agencies/17-agency-detail.png)
 
 ### Step 2 — Read the money
-- **Commission** — rows **Claimable**, **Claims** and **Paid revenue**, each with Currency, Count and Amount. Each
+- **Commission** — rows **Claimable** and **Paid revenue** (Currency, Count, Amount) and **Claims** (count only). Each
   currency has its own row; amounts are never added across currencies.
 - **Deposits** — **Collected (N)**, **Remitted to universities** and **Refunded** (₹).
 - **Masters** — each Master's code, name and email.

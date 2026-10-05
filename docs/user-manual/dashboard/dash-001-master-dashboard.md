@@ -56,9 +56,9 @@ The figures reflect the agency's data at the time the page was opened; reload to
 | No staff yet — add staff from Team | No staff members. |
 
 ## Common Errors
-**Problem:** "Claimable commission" shows an amount in INR although some commissions are in another currency.
-**Cause:** This figure is always labelled INR (as built). The commission report totals each currency separately.
-**Resolution:** Use **Reports > Commission** for per-currency totals.
+**Problem:** The commission figures show several amounts, such as "INR 15,000 · USD 2,000".
+**Cause:** Each currency is shown separately; amounts in different currencies are never added together.
+**Resolution:** None needed. "Claimable" includes estimated commissions (amount not yet set).
 
 ## Tips
 - Click a figure's link to go straight to the matching list.

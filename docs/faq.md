@@ -73,7 +73,7 @@ Through EduSphere's Razorpay payment window (**Pay deposit**). Once paid, EduSph
 records the remittance; the agency sees it on the application.
 
 **When can we claim a commission?**
-When its status is **eligible** — after EduSphere sets the amount on the commission created at enrollment.
+When its status is **eligible** — after EduSphere sets the amount on the commission created at enrollment. Do not claim an **estimated** commission: the screen accepts it, but the claim locks the amount at 0.
 
 **Why are commission totals shown per currency?**
 Amounts in different currencies are never added together.
@@ -81,8 +81,8 @@ Amounts in different currencies are never added together.
 ## Notifications and reports
 
 **When do deadline reminders arrive?**
-Once a day at 08:00 India time, for application and offer deadlines today, tomorrow or in three days, plus a summary
-of overdue tasks.
+Once a day at 08:00 India time, for application and offer deadlines that are exactly today, tomorrow or three days
+away, plus a summary of overdue tasks.
 
 **Is there a "mark all as read"?**
 No. Opening a notification marks it as read.

@@ -138,12 +138,12 @@ test("S9 admin agency screens", async ({ browser }) => {
   await s.click("button:has-text('Sign in')");
   await s.waitForURL((u) => !u.pathname.startsWith("/admin/login"));
   console.log(`VERIFY ADM-007 super admin landed on ${new URL(s.url()).pathname}`);
-  for (const [path, file] of [["/overseas/admin/agent-network", "32-super-admin-network.png"], ["/overseas/admin/agent-deposits", "33-super-admin-deposits.png"], ["/overseas/admin/agents", "34-super-admin-agents.png"], ["/overseas/admin/commissions", "35-super-admin-commissions.png"]]) {
+  for (const [path, file] of [["/overseas/admin/agent-network", "32-super-admin-network.png"], ["/overseas/admin/agent-deposits", "33-super-admin-deposits.png"], ["/overseas/admin/agents", "34-super-admin-agents.png"], ["/overseas/admin/commissions", ""]]) {
     await s.goto(path);
     await s.waitForTimeout(1200);
     const t = await text(s).catch(async () => (await s.locator("body").innerText()).replace(/\s+/g, " "));
     console.log(`VERIFY ADM-007 ${path}: buttons=${JSON.stringify((await s.locator("main button").allInnerTexts()).slice(0, 25))} text=${t.slice(0, 300)}`);
-    await shoot(s, ADM, file);
+    if (file) await shoot(s, ADM, file);
   }
   await s.goto("/overseas/admin/agent-network");
   await s.getByRole("link", { name: "EduSphere Partner Agency" }).first().click().catch(() => {});

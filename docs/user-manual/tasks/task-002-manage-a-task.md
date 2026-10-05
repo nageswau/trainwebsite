@@ -40,7 +40,7 @@ Click **Cancel task**, then **Confirm cancel** (or **Keep task**). The message "
 
 ### Step 4 — Edit a task
 Click **Edit** on an open task, change the title, due time, application or notes and save. The student cannot be
-changed. (Edit was not exercised in testing — VERIFICATION REQUIRED for the exact save message.)
+changed. The message "“{title}” saved." appears (from the application code; editing was not captured in testing).
 
 ## Fields
 | Field | Description | Required | Example |

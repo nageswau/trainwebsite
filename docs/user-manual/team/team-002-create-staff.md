@@ -20,7 +20,7 @@ Sidebar > **Team** > **Staff** card > **Add staff**.
 ### Step 1 — Open the Staff card
 On the Team page, scroll to **Staff**. A new agency shows "No staff yet. Add your first staff member below."
 
-![Staff card with no staff](../../screenshots/team/05-staff-empty.png)
+![Team page; the Staff card shows no staff yet](../../screenshots/team/01-team-page.png)
 
 ### Step 2 — Add the staff member
 1. Under **Add staff**, enter **Full name**, **Email** and (optionally) **Phone (optional)**.

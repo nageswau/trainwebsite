@@ -167,7 +167,7 @@ The backend has a single role `agent` for every agency member; Master vs Staff c
 | 2a | Staff + *Verify documents* | `can_verify_documents = true` | — | — | Own; may mark documents **verified** only |
 | 2b | Staff + *View reports* | `can_view_reports = true` | — | — | Own; Reports page (no staff/commission reports) |
 | 3 | **Overseas Admin** | role `overseas_admin` | `/overseas/admin/dashboard` | — | All agencies (admin screens) |
-| 4 | **Super Admin** | role `super_admin` | `/admin` | — | Reaches agency admin screens only by URL; UI read-only (see DOC-ADM-007) |
+| 4 | **Super Admin** | role `super_admin` | `/admin` | — | Only Agent network (list/detail) and Agent deposits open, read-only, by URL; Agents, Commissions and Applications show "Workspace not found" (corrected in S11; see DOC-ADM-007) |
 | 5 | Visitor / prospective agency | not signed in | `/overseas/register` | — | Registration only |
 | 6 | Blocked member (pending / rejected / suspended agency, deactivated member) | role `agent` | Access unavailable card | — | None |
 
@@ -198,16 +198,16 @@ Every agency API runs the agency-state gate first; Super Admin is **not** admitt
 | Documents: reject / changes required | Yes (reason required) | No | No | No | Yes | Yes (API) | No |
 | Tasks | Yes | Own | Own | Own | — | — | No |
 | Notifications | Own | Own | Own | Own | own only | own only | VERIFICATION REQUIRED |
-| Commissions: view, claim | Yes | No (hidden; 403) | No | No | Table + set amount + approve payout | Table only (UI); API allows actions | No |
+| Commissions: view, claim | Yes | No (hidden; 403) | No | No | Table + set amount + approve payout | No page (Workspace not found); API allows actions — corrected in S11 | No |
 | Reports + CSV | Yes | No (hidden; 403) | No | Own scope; no "Staff performance"/"Commission" tabs | — | — | No |
 | Staff performance | Yes | No | No | No | — | — | No |
 | Team, staff permissions, staff activity | Yes | No (hidden; 403) | No | No | — | — | No |
-| Approve / reject / suspend / reinstate agency | — | — | — | — | Yes | UI hidden; **API allows** | — |
+| Approve / reject / suspend / reinstate agency | — | — | — | — | Yes | Agents page unavailable; network detail hides buttons; **API allows** — corrected in S11 | — |
 | Agent network list + detail | — | — | — | — | Yes | Yes (RO) | — |
 | Deposit remittance / refund | — | — | — | — | Yes | No (list RO; API refuses) | — |
 
 Notes for documentation (as-built behaviour, not defects to fix here):
-- The UI hides approval, suspension and commission actions from Super Admin, but the API accepts them
+- (Corrected in S11) The Agents and Commissions pages fail for Super Admin ("Workspace not found") and the network detail hides Suspend, but the API accepts these actions
   (`admin.py:1147-1149`, `workflows.py:120`). User docs describe the **UI**; the gap is reported in §12.
 - Staff with no permission who type a Master-only URL see "Only an agency Master can open this page" or the
   reports refusal "Your agency Master hasn't given you access to reports".
@@ -342,7 +342,7 @@ Public / non-session endpoints in scope: `POST /auth/register`, `POST /auth/logi
 | ADM-003/004 | Agent network → agency name | `GET /overseas-admin/agent-orgs/{id}[/students\|/applications]`, `POST …/suspend\|reinstate` |
 | ADM-005 | Overseas Admin sidebar → Agent deposits | `/overseas-admin/deposits` (3) |
 | ADM-006 | Overseas Admin sidebar → Commissions | `PATCH /workflows/overseas/agent/commissions/{id}`, `POST /overseas-admin/commissions/{id}/approve-payout` |
-| ADM-007 | Super Admin types the URLs above | as above |
+| ADM-007 | Super Admin types `/overseas/admin/agent-network`, `/agent-network/{id}`, `/agent-deposits` (others: Workspace not found) | as above |
 | ADM-008 | Admin → Users (role agent) → resend link | `admin.py:218,544` — VERIFICATION REQUIRED |
 
 ---
@@ -460,11 +460,12 @@ separation) and the Staff/agency personas above.
 
 ### 12.2 As-built behaviour the product owner should know about (documented as-is, not changed)
 1. A **rejected** agency sees the same text as a pending one ("Agent registration is pending approval"); no reason is shown.
-2. A deactivated **staff** member's message reads "Your Master account is deactivated".
+2. (Corrected in S11) Deactivated staff are refused at sign-in ("Invalid credentials") or, if signed in, told "Your account was deactivated by your agency…"; the "Your Master account is deactivated" card is effectively unreachable.
 3. Agencies get **no email or notification** when approved, rejected or suspended.
-4. Super Admin: UI hides approve/suspend/commission actions, but the **API accepts them** (`admin.py:1147`, `workflows.py:120`).
+4. Super Admin: the Agents and Commissions pages are unavailable (Workspace not found) and the network detail hides Suspend, but the **API accepts the actions** (`admin.py:1147`, `workflows.py:120`).
 5. `POST /workflows/overseas/agent/commissions` (manual commission create) has **no UI**.
-6. Dashboard "Claimable commission" is labelled INR even when commissions are in other currencies (`portal.py:729`).
+6. (Corrected in S11 — not an issue) The agency dashboard shows each currency separately (`lib/agentDashboard.ts` formatMoney).
+11. (Found in S11) A Master can claim an **estimated** commission (amount 0); the claim locks the amount (`workflows.py:2574`, `:2620`), so a ₹0 payout can be approved.
 7. Commission CSV export is not audited or throttled, unlike other report exports.
 8. Students "Assigned to" filter offers only Anyone/Unassigned in the UI.
 9. "All applications" excludes withdrawn applications (only the Withdrawn filter shows them).

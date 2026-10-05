@@ -164,13 +164,13 @@ Not needed.
 Claiming a commission is refused.
 
 ### Possible Cause
-The commission is still **estimated** (no amount set) or already claimed.
+The commission was already claimed or paid.
 
 ### Resolution
-Wait until the status is **eligible**.
+Check the Claim reference column. Note: claim only **eligible** commissions — an **estimated** one is accepted but its amount is then locked at 0.
 
 ### When to Contact Administrator
-If a commission stays estimated for long — contact EduSphere Overseas Admin.
+If a commission was claimed at 0 by mistake, or stays estimated for long.
 
 ## "Online payment is unavailable right now. Nothing has been charged."
 

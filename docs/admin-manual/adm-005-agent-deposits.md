@@ -79,7 +79,7 @@ Each remittance and refund is written to the audit log. One refund per deposit; 
 | Enter the remittance reference / Enter the refund reason | A required field is empty. |
 | A refund cannot exceed the paid amount | The refund amount is more than was paid (shown after confirming). |
 | Only a paid deposit can be marked remitted / Only a paid or remitted deposit can be refunded | Wrong status. |
-| Only an Overseas Admin can record remittances and refunds | A Super Admin tried. |
+| Only an Overseas Admin can record remittances and refunds | Returned to any other role calling the service directly; a Super Admin has no buttons. |
 
 ![Future date](../screenshots/admin-agencies/26-remittance-date-error.png)
 

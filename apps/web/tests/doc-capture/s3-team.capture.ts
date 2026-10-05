@@ -80,8 +80,6 @@ test("S3 team and staff", async ({ browser }) => {
   } else console.log("VERIFY TEAM-001 no Deactivate button for an invite-pending Master");
 
   // --- DOC-TEAM-002 create staff ---
-  await toTop(m.getByRole("heading", { name: "Staff", exact: true }));
-  await shoot(m, TEAM, "05-staff-empty.png");
   await addStaff(m, S.a, true);
   await toTop(m.getByRole("heading", { name: "Staff", exact: true }));
   await shoot(m, TEAM, "08-add-staff-success.png");

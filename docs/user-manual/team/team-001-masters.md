@@ -10,6 +10,8 @@ deactivate one who should no longer have access.
 **Agency Masters only.** Staff do not see **Team** in the sidebar; if they open the page by its address they see
 "Access unavailable — Only an agency Master can open this page".
 
+![Staff opening Team](../../screenshots/team/17-staff-team-refused.png)
+
 ## Prerequisites
 - Your agency is approved.
 - The new Master's email is not used by another EduSphere account.
@@ -61,7 +63,8 @@ The invited Master sets a password from the email and signs in with full Master 
 | Message | When |
 |---|---|
 | Email already exists | Another EduSphere account uses this email. |
-| Limit reached: 3 active Masters. Deactivate one to invite another. | Your agency already has 3 active Masters (from the application code; not reproduced in testing — VERIFICATION REQUIRED). |
+| Limit reached: 3 active Masters. Deactivate one to invite another. | Shown as a note when your agency has 3 active Masters; **Send invite** is disabled (from the application code). |
+| This agency already has 3 active Masters | The server refuses an invite over the limit. |
 | This agency has made 10 invite attempts in the last 24 hours. Try again later. | Too many invites in one day. |
 | An agency must keep at least one active Master | You tried to deactivate the last active Master. |
 | Invite created, but the email was not delivered. Ask Overseas Admin to re-send the link. | The invitation email could not be sent. |

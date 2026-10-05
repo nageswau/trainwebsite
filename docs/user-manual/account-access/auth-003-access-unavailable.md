@@ -24,7 +24,7 @@ is a mistake." and a **Sign out** button.
 |---|---|
 | Agent registration is pending approval | Your agency has registered but has not been approved yet. **A rejected registration shows this same message.** |
 | Your agency's account is suspended | EduSphere has suspended your agency. Every Master and staff member is blocked. |
-| Your Master account is deactivated | Your own login has been deactivated (wording from the application code; not observed in testing — VERIFICATION REQUIRED). In testing, a deactivated staff member who signs in is refused at the sign-in page with **Invalid credentials** instead. |
+| Your Master account is deactivated | Exists in the application but is effectively never shown: a deactivated login is refused before this page (see the Tips below). |
 
 ![Pending approval](../../screenshots/account-access/07-access-unavailable-pending.png)
 
@@ -54,8 +54,9 @@ See the table in Step 1.
 
 ## Tips
 - While blocked you can still open **Change password** from the account pages.
-- If your agency Master deactivates your login, signing in shows **Invalid credentials**. Ask your Master to
-  reactivate you.
+- If your agency Master deactivates your login, signing in shows **Invalid credentials**. If you were signed in at the
+  time, your next page shows "Your account was deactivated by your agency. Contact your agency's Master."
+  (a deactivated Master sees "User unavailable"). Ask your Master to reactivate you.
 
 ![Deactivated staff member signing in](../../screenshots/account-access/19-deactivated-staff-sign-in.png)
 

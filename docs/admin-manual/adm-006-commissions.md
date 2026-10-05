@@ -10,7 +10,7 @@ Set the amount of each agency commission and approve its payout after the agency
 [Super Admin access](adm-007-super-admin-access.md)).
 
 ## Prerequisites
-A commission exists — created automatically with status **estimated** when an agency Master confirms an enrollment.
+A commission exists — created automatically with status **estimated** when an application reaches **Enrolled**.
 
 ## How to Access
 Overseas Admin sidebar > **Commissions**.
@@ -51,7 +51,7 @@ appears and the status becomes **paid**.
 | Status | Set by |
 |---|---|
 | estimated | System, at enrollment |
-| eligible | Overseas Admin sets the amount |
+| eligible | Overseas Admin sets the amount (manually created commissions start here) |
 | claimed | Agency Master claims |
 | payout_pending → paid | Overseas Admin approves the payout |
 
@@ -69,6 +69,7 @@ appears and the status becomes **paid**.
 **Resolution:** Ask another Overseas Admin to approve the payout.
 
 ## Tips
+- Set the amount promptly: an agency can claim an **estimated** commission, and after a claim the amount can no longer be set (it stays 0).
 - Commissions created automatically at enrollment (**system_trigger**) can be approved by the same admin who set the amount.
 
 ## Related Features
