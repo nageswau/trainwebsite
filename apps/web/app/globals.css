@@ -166,6 +166,12 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 /* QA-02: a field with help text made its row taller and the grid stretched its neighbour's input; fields keep their own height
    (the fieldset.form-section rule above does the same). */
 .funding-panel .form-grid { align-items: start; }
+/* bdm-009 QA9-02: the activity form keeps each control at its natural height (no stretching to the row); the message and the
+   buttons span both columns, and the Direction group looks like the app's other fieldsets. The 640px rule above makes it one column. */
+.activity-form { align-items: start; }
+.activity-form > .form-error, .activity-form > .actions { grid-column: 1 / -1; }
+fieldset.activity-direction { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin: 0; min-width: 0; }
+fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding: 0 6px; }
 
 /* ENH-016 analytics dashboards: KPI tiles 1 -> 2 -> 4 columns; wide tables scroll inside their card, never the page. */
 .kpi-group { margin-top: 16px; }

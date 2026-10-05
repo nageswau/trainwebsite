@@ -159,7 +159,8 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
       )}
       <BdmOrganizationContacts organization={org} onChanged={changed} />
       {activities !== undefined && ( // bdm-009: the BDM view logs (assigned and not archived = can_edit); the manager view reads
-        <BdmActivityTimeline organization={org} initial={activities} canLog={basePath === "/bdm/organizations" && p.can_edit} orgBasePath={basePath} />
+        <BdmActivityTimeline organization={org} initial={activities} canLog={basePath === "/bdm/organizations" && p.can_edit} orgBasePath={basePath}
+          onNotice={(text, focusStatus) => { setNotice(text); setFailure(null); if (focusStatus) focus(statusId); }} />
       )}
       {p.can_reassign && (
         <BdmOrganizationReassign

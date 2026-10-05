@@ -9,22 +9,21 @@ import type { Organization } from "@/lib/bdmOrganizations";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // bdm-009 (spec §6.2, §6.3; V5): every BDM's activities on this organization, newest first, for anyone who can read it. Writes apply the
-// returned activity locally (no router.refresh -- bdm-010 QA10-16). `null` = the server page could not load the first page.
+// returned activity locally (no router.refresh -- bdm-010 QA10-16). Notices go to the profile's one live region (`onNotice`; QA9-01);
+// `focusStatus` asks it to take focus when the control that was used is gone. `null` = the server page could not load the first page.
 export default function BdmActivityTimeline({
-  organization, initial, canLog, orgBasePath,
-}: { organization: Organization; initial: Page<Activity> | null; canLog: boolean; orgBasePath: string }) {
+  organization, initial, canLog, orgBasePath, onNotice,
+}: { organization: Organization; initial: Page<Activity> | null; canLog: boolean; orgBasePath: string; onNotice: (text: string, focusStatus?: boolean) => void }) {
   const [items, setItems] = useState(initial?.items ?? []);
   const [total, setTotal] = useState(initial?.total ?? 0);
   const [loaded, setLoaded] = useState(initial !== null); // false: the server page couldn't read the first page (§12.2 F6)
   const [logging, setLogging] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const fetched = useRef(initial?.items.length ?? 0); // rows read from the server: Load more's offset (a local insert never moves it)
   const local = useRef(new Set<string>()); // ids saved here and not read from the server
   const focus = useFocusAfterRender();
   const logId = `org-${organization.id}-log-activity`;
-  const statusId = `org-${organization.id}-activity-status`;
 
   async function load(offset: number) {
     setLoading(true);
@@ -50,13 +49,12 @@ export default function BdmActivityTimeline({
       <div className="portal-title" style={{ gap: 12, flexWrap: "wrap" }}>
         <h3 id={`org-${organization.id}-activity`}>Activity</h3>
         {canLog && !logging && (
-          <button id={logId} type="button" className="btn small" onClick={() => setLogging(true)}>Log activity</button>
+          <button id={logId} type="button" className="btn small" onClick={() => { setLogging(true); onNotice(""); }}>Log activity</button>
         )}
       </div>
-      <div id={statusId} tabIndex={-1} role="status" aria-live="polite" className={notice ? "form-message" : undefined}>{notice}</div>
       {logging && (
         <BdmActivityForm organizationId={organization.id} contacts={organization.contacts.map((c) => ({ id: c.id, name: c.name }))}
-          onSaved={(a) => { local.current.add(a.id); setItems((current) => placeNewest(current, a)); setTotal((t) => t + 1); setLogging(false); setNotice("Activity logged."); focus(statusId); }}
+          onSaved={(a) => { local.current.add(a.id); setItems((current) => placeNewest(current, a)); setTotal((t) => t + 1); setLogging(false); onNotice("Activity logged.", true); }}
           onCancel={() => { setLogging(false); focus(logId); }} />
       )}
       {!loaded ? (
@@ -70,11 +68,12 @@ export default function BdmActivityTimeline({
         <ol className="jtl" aria-label="Activity" style={{ listStyle: "none", padding: 0 }}>
           {items.map((a) => (
             <BdmActivityItem key={a.id} activity={a} orgBasePath={orgBasePath}
-              onChanged={(next) => { setItems((current) => placeNewest(current, next)); setNotice("Activity saved."); }}
-              onLocked={(id) => setItems((current) => current.map((x) => (x.id === id ? { ...x, permissions: { can_change: false } } : x)))}
+              onChanged={(next) => { setItems((current) => placeNewest(current, next)); onNotice("Activity saved."); }}
+              onEdit={() => onNotice("")}
+              onLocked={(id) => { onNotice(""); setItems((current) => current.map((x) => (x.id === id ? { ...x, permissions: { can_change: false } } : x))); }}
               onDeleted={(id) => {
                 if (!local.current.delete(id)) fetched.current -= 1; // a row the server gave us shifts the next offset; one saved here never counted
-                setItems((current) => current.filter((x) => x.id !== id)); setTotal((t) => t - 1); setNotice("Activity deleted."); focus(statusId);
+                setItems((current) => current.filter((x) => x.id !== id)); setTotal((t) => t - 1); onNotice("Activity deleted.", true);
               }} />
           ))}
         </ol>

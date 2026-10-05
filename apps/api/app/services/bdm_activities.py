@@ -77,8 +77,8 @@ async def check_daily_cap(db: AsyncSession, bdm_user_id: UUID, day: date) -> Non
 
 
 def refused(user: User, route: str, status: int, detail: str, **ids) -> HTTPException:
-    """§12.3 S10: every refused write is visible in the logs (ids, route, status -- never text fields), as bdm-002's
-    `bdm_org_write_refused`. Returns the exception for the caller to raise."""
+    """§12.3 S10: owner/assignee refusals (not the assigned BDM; not the logger) are visible in the logs (ids, route, status --
+    never text fields), as bdm-002's `bdm_org_write_refused`. Returns the exception for the caller to raise."""
     logger.warning("bdm_activity_write_refused", extra={"extra_fields": {
         "actor_id": str(user.id), "route": route, "status": status, **{k: str(v) for k, v in ids.items()}}})
     return HTTPException(status, detail)

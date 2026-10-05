@@ -178,7 +178,14 @@ describe("bdm-009 activity pages", () => {
 
   it("logging onto another day announces which day it went to", async () => {
     await logOnto("2026-09-01");
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(`Activity logged for ${new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date())}. Change the day to see it.`));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(`Activity logged for ${new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" }).format(new Date())}. Change the day to see it.`));
+  });
+
+  it("starting the next Log activity clears the previous notice (QA9-03)", async () => {
+    await logOnto(new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date()));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Activity logged."));
+    fireEvent.click(screen.getByRole("button", { name: "Log activity" }));
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
   });
 
   it("logging onto the page's own day keeps the plain notice", async () => {

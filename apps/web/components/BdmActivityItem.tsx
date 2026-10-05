@@ -13,13 +13,14 @@ import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 // bdm-009 (spec §6.3): one activity in a timeline or a day list. Edit / Delete only when the API says `can_change` (owner, today).
 // A 403 / 409 makes the item read-only with the reason; a 404 means it is already gone (there is no single-activity GET).
 export default function BdmActivityItem({
-  activity, showOrganization = false, orgBasePath = "/bdm/organizations", onChanged, onDeleted, onLocked,
+  activity, showOrganization = false, orgBasePath = "/bdm/organizations", onChanged, onDeleted, onLocked, onEdit,
 }: {
   activity: Activity;
   showOrganization?: boolean;
   orgBasePath?: string;
   onChanged: (a: Activity) => void;
   onDeleted: (id: string) => void;
+  onEdit?: () => void; // an Edit form opens: the parent clears the old success notice (QA9-03)
   onLocked: (id: string) => void; // the API refused a change (403 / 409): the parent marks the item read-only, with no success notice
 }) {
   const [editing, setEditing] = useState(false);
@@ -73,7 +74,7 @@ export default function BdmActivityItem({
         ) : (
           activity.permissions.can_change && (
             <div className="actions">
-              <button id={editId} type="button" className="btn secondary small" onClick={() => setEditing(true)}>Edit</button>
+              <button id={editId} type="button" className="btn secondary small" onClick={() => { setEditing(true); onEdit?.(); }}>Edit</button>
               <button id={deleteId} type="button" className="btn secondary small" onClick={() => setConfirming(true)} disabled={busy}>Delete</button>
             </div>
           )

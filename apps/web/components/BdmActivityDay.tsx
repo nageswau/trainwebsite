@@ -6,6 +6,7 @@ import BdmActivityForm from "@/components/BdmActivityForm";
 import BdmActivityItem from "@/components/BdmActivityItem";
 import { type ActivityDayPage, DAY_PAGE, isDayPage } from "@/lib/bdmActivities";
 import { indiaDate } from "@/lib/bdmTravel";
+import { formatCalendarDate } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // bdm-009 (spec §6.2, §12.2 F3/F7/F8): one IST day of activities with its counts, under the page's own title (`header`), with Log
@@ -49,7 +50,7 @@ export default function BdmActivityDay({
       <div className="portal-title">
         <div>{header}</div>
         {canLog && !logging && (
-          <button id="activity-day-log" type="button" className="btn" onClick={() => setLogging(true)}>Log activity</button>
+          <button id="activity-day-log" type="button" className="btn" onClick={() => { setLogging(true); setNotice(null); }}>Log activity</button>
         )}
       </div>
       {logging && (
@@ -58,7 +59,7 @@ export default function BdmActivityDay({
             setLogging(false);
             // A backdated entry lands on its own IST day; the page re-reads this one, so say where it went.
             const went = indiaDate(a.occurred_at);
-            void read(0, false, went === pageDay ? "Activity logged." : `Activity logged for ${went}. Change the day to see it.`);
+            void read(0, false, went === pageDay ? "Activity logged." : `Activity logged for ${formatCalendarDate(went)}. Change the day to see it.`);
           }} onCancel={() => { setLogging(false); focus("activity-day-log"); }} />
         </section>
       )}
@@ -72,7 +73,7 @@ export default function BdmActivityDay({
           {day.items.map((a) => (
             <BdmActivityItem key={a.id} activity={a} showOrganization orgBasePath={orgBasePath}
               onChanged={() => void read(0, false, "Activity saved.")}
-              onLocked={(id) => setDay((current) => ({ ...current, items: current.items.map((x) => (x.id === id ? { ...x, permissions: { can_change: false } } : x)) }))} onDeleted={() => void read(0, false, "Activity deleted.")} />
+              onLocked={(id) => { setNotice(null); setDay((current) => ({ ...current, items: current.items.map((x) => (x.id === id ? { ...x, permissions: { can_change: false } } : x)) })); }} onDeleted={() => void read(0, false, "Activity deleted.")} />
           ))}
         </ol>
       )}

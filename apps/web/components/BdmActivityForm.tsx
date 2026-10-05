@@ -116,7 +116,7 @@ export default function BdmActivityForm({
   }
 
   return (
-    <form onSubmit={submit} noValidate aria-label={editing ? "Edit activity" : "Log activity"} className="form-grid">
+    <form onSubmit={submit} noValidate aria-label={editing ? "Edit activity" : "Log activity"} className="form-grid activity-form">
       {failure && <p id={fieldId("message")} tabIndex={-1} className="form-error" role="alert">{failure}</p>}
       {picking && (
         <div className="field">
@@ -133,7 +133,7 @@ export default function BdmActivityForm({
         </select>
       </div>
       {needsDirection(draft.channel) && (
-        <fieldset className="field" aria-describedby={errors.direction ? errorId("direction") : undefined}>
+        <fieldset className="field activity-direction" aria-describedby={errors.direction ? errorId("direction") : undefined}>
           <legend>Direction (required)</legend>
           {(Object.keys(DIRECTION_LABEL) as Direction[]).map((d) => (
             <label key={d} style={{ display: "flex", gap: 6, alignItems: "center", minHeight: 44 }}>

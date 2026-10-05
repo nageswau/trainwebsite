@@ -17,6 +17,16 @@ afterEach(() => {
 });
 
 describe("BdmActivityForm (bdm-009 §6.3)", () => {
+  it("carries the activity-form layout class so controls keep their natural size (QA9-02)", async () => {
+    render(<BdmActivityForm organizationId="o1" contacts={contacts} onSaved={vi.fn()} onCancel={vi.fn()} />);
+    const form = screen.getByRole("form", { name: "Log activity" });
+    expect(form).toHaveClass("form-grid", "activity-form");
+    expect(form.querySelector(".actions")).toContainElement(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save activity" })); // direction missing: the top message appears
+    expect(await screen.findByRole("alert")).toHaveClass("form-error");
+    expect(screen.getByRole("group", { name: "Direction (required)" })).toHaveClass("activity-direction");
+  });
+
   it("shows direction only for call, WhatsApp and email and clears it on a channel change", () => {
     render(<BdmActivityForm organizationId="o1" contacts={contacts} onSaved={vi.fn()} onCancel={vi.fn()} />);
     expect(screen.getByRole("group", { name: "Direction (required)" })).toBeInTheDocument();
