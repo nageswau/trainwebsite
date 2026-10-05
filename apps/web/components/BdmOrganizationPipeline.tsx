@@ -1,5 +1,5 @@
 "use client";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 
 import { sendJson, sendRequest } from "@/lib/apiErrors";
 import { isOrganizationBody, type Organization, ORGS_URL } from "@/lib/bdmOrganizations";
@@ -9,10 +9,15 @@ import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 const GLYPH: Record<StepState, string> = { done: "✓", current: "•", upcoming: "–", awaiting_handover: "…", not_tracked: "–" };
 
+const REFRESH_FAILED = "Unable to show the latest stage. Reload the page.";
+
 // bdm-004 (spec §8.2): the stepper (state as text, never colour alone), the derived agent status, the Lost banner, and -- for the
 // assigned BDM or super_admin (permissions.can_edit) -- Move, Mark lost and Revive. The API enforces every rule; a refusal keeps the
-// entry. Each success hands the returned organization to the detail page, which re-renders this section from it.
-export default function BdmOrganizationPipeline({ organization: org, onChanged }: { organization: Organization; onChanged: (o: Organization, text: string) => void }) {
+// entry. Each success hands the returned organization to the detail page (`onChanged`, with the notice); when someone else changed it
+// meanwhile, the fresh organization goes to `onRefreshed` and the reason is shown here as an error, keeping what was typed (QA4-07).
+export default function BdmOrganizationPipeline({ organization: org, onChanged, onRefreshed }: {
+  organization: Organization; onChanged: (o: Organization, text: string) => void; onRefreshed?: (o: Organization) => void;
+}) {
   const p = org.pipeline;
   const canWrite = org.permissions.can_edit;
   const [to, setTo] = useState("");
@@ -22,47 +27,57 @@ export default function BdmOrganizationPipeline({ organization: org, onChanged }
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState<string | null>(null);
+  const inFlight = useRef(false); // QA4-06: a second submit before the re-render (double click) sends nothing
   const focus = useFocusAfterRender();
   const id = (part: string) => `pipeline-${org.id}-${part}`;
   const backward = to !== "" && isBackward(p, to);
   const labelOf = (key: string) => p.steps.find((s) => s.key === key)?.label ?? key;
 
-  async function reload(text: string) {
+  const resetForms = () => {
+    setTo("");
+    setNote("");
+    setReason("");
+    setMode(null);
+  };
+  async function latest(): Promise<Organization | null> {
     const fresh = await sendRequest(`${ORGS_URL}/${org.id}`, { method: "GET" });
-    if (fresh.ok && isOrganizationBody(fresh.data)) onChanged(fresh.data.organization, text);
-    else setFailure(text);
+    return fresh.ok && isOrganizationBody(fresh.data) ? fresh.data.organization : null;
   }
 
   async function send(action: "stage" | "lost" | "revive", body: Record<string, string>, success: string) {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     setFailure(null);
     setErrors({});
-    const outcome = await sendJson(orgActionUrl(org.id, action), "POST", body);
-    setBusy(false);
-    if (outcome.ok && isOrganizationBody(outcome.data)) {
-      setTo("");
-      setNote("");
-      setReason("");
-      setMode(null);
-      onChanged(outcome.data.organization, success);
-      return;
+    try {
+      const outcome = await sendJson(orgActionUrl(org.id, action), "POST", body);
+      if (outcome.ok && isOrganizationBody(outcome.data)) {
+        resetForms();
+        return onChanged(outcome.data.organization, success);
+      }
+      if (outcome.ok) return setFailure("Unable to update this organization.");
+      const current = stageChanged(outcome.detail);
+      if (current !== null && current === body.to_stage) { // Review Focus 1: a retried move that already landed is a success
+        const fresh = await latest();
+        resetForms();
+        return fresh ? onChanged(fresh, success) : setFailure(REFRESH_FAILED);
+      }
+      const conflict = current !== null ? `${(outcome.detail as { message: string }).message}. Check the stage and try again.` : lostConflict(outcome.detail);
+      if (conflict !== null) { // someone else changed it: show it as it is now and say why; the note / reason stay typed
+        setTo("");
+        setMode(null);
+        const fresh = await latest();
+        if (fresh) onRefreshed?.(fresh);
+        return setFailure(fresh ? conflict : `${conflict} ${REFRESH_FAILED}`);
+      }
+      const fields = fieldErrors(outcome.detail);
+      if (Object.keys(fields).length) setErrors(fields);
+      else setFailure(outcome.message);
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
     }
-    if (outcome.ok) return setFailure("Unable to update this organization.");
-    const current = stageChanged(outcome.detail);
-    if (current !== null) { // Review Focus 1: a retried move that already landed is a success
-      setTo("");
-      setNote("");
-      return void reload(current === body.to_stage ? success : `${(outcome.detail as { message: string }).message}. Check the stage and try again.`);
-    }
-    const lost = lostConflict(outcome.detail);
-    if (lost !== null) { // someone else marked it lost / revived it: show the organization as it is now
-      setMode(null);
-      setReason("");
-      return void reload(lost);
-    }
-    const fields = fieldErrors(outcome.detail);
-    if (Object.keys(fields).length) setErrors(fields);
-    else setFailure(outcome.message);
   }
 
   function submitMove(event: FormEvent) {

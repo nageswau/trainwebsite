@@ -22,7 +22,7 @@ export default function BdmPipelineBoard({ view, href, orgBasePath, selected, em
   return (
     <>
       <nav aria-label="Pipeline stages">
-        <ul className="metric-grid" style={{ listStyle: "none", padding: 0 }}>
+        <ul className="metric-grid pipeline-tiles" style={{ listStyle: "none", padding: 0 }}>
           {tiles.map((t) => (
             <li key={t.key}>
               {t.count === null ? (
@@ -54,7 +54,8 @@ export default function BdmPipelineBoard({ view, href, orgBasePath, selected, em
           </>
         ) : (
           <div className="table-wrap" role="region" aria-label="Organizations" tabIndex={0}>
-            <table style={{ overflowWrap: "anywhere" }}>
+            {/* QA4-02: a minimum width keeps every column readable on phones; the labelled region scrolls sideways instead */}
+            <table style={{ overflowWrap: "anywhere", minWidth: 640 }}>
               <thead>
                 <tr>
                   <th scope="col">Code</th>

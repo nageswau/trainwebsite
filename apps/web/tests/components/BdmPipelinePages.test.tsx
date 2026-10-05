@@ -102,6 +102,12 @@ describe("bdm-004 manager pipeline page", () => {
     expect(allText(tree)).toContain("That BDM isn't a School BDM in your team — showing everyone.");
   });
 
+  it("says 'an Agent BDM' (QA4-04)", async () => {
+    answer({ id: "m1", full_name: "Meera", role: "bdm_manager" }, { agent: 1 });
+    const tree = elements(await ManagerPipeline({ searchParams: sp({ type: "agent", bdm: "b1" }) }));
+    expect(allText(tree)).toContain("That BDM isn't an Agent BDM in your team — showing everyone.");
+  });
+
   it("reaches a type whose BDMs come after the first 100 team rows", async () => {
     answer({ id: "m1", full_name: "Meera", role: "super_admin" }, { school: 150, college: 40 });
     await ManagerPipeline({ searchParams: sp({ type: "college" }) });
@@ -136,6 +142,12 @@ describe("bdm-004 pipeline board", () => {
     expect(filters.map((el) => text(el))).toEqual(expect.arrayContaining(["College Prospect3", "Lost1", "Show all stages", "Previous", "Next"]));
     expect(filters.every((el) => el.type === "a")).toBe(true);
     expect(tree.find((el) => el.props.href === "/o/o1")!.type).toBe(Link);
+  });
+
+  it("keeps two tiles per row and a readable table on phones (QA4-03, QA4-02)", () => {
+    const tree = elements(BdmPipelineBoard({ view: view() as never, href: () => "/x", orgBasePath: "/o", selected: null, emptyText: "" }));
+    expect(tree.find((el) => el.type === "ul")!.props.className).toBe("metric-grid pipeline-tiles");
+    expect(tree.find((el) => el.type === "table")!.props.style).toMatchObject({ minWidth: 640 });
   });
 
   it("says when a stage is empty", () => {

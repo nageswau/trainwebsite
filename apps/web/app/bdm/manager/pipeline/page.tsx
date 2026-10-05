@@ -56,7 +56,9 @@ export default async function ManagerPipelinePage({ searchParams }: { searchPara
     return accessUnavailable(e, "/admin/login");
   }
   const picked = ofType.items.find((b) => b.id === sp.bdm);
-  const bdmNote = sp.bdm && !picked ? `That BDM isn't a ${BDM_TYPE_LABEL[type]} BDM in your team — showing everyone.` : null;
+  const typeLabel = BDM_TYPE_LABEL[type];
+  const article = /^[AEIOU]/.test(typeLabel) ? "an" : "a"; // QA4-04: "an Agent", "a School", "a College"
+  const bdmNote = sp.bdm && !picked ? `That BDM isn't ${article} ${typeLabel} BDM in your team — showing everyone.` : null;
   const stage = sp.stage || undefined;
   const offset = pageOffset(sp.offset);
   const href = (change: { stage?: string | null; offset?: number }) => {

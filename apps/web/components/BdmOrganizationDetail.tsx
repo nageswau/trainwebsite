@@ -155,8 +155,13 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
           setHistoryVersion((v) => v + 1);
           focus(statusId); // the form that was used is reset or gone
         }}
+        onRefreshed={(o) => {
+          // QA4-07: someone else changed it; the pipeline section says why, so no success notice here
+          setOrg(o);
+          setNotice(null);
+          setHistoryVersion((v) => v + 1);
+        }}
       />
-      {stageHistory !== undefined && <BdmStageHistory orgId={org.id} initial={stageHistory} version={historyVersion} />}
       {showEditor ? (
         <section className="action-card wide" aria-label="Edit details">
           <h3>Edit details</h3>
@@ -178,6 +183,8 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
         </section>
       )}
       <BdmOrganizationContacts organization={org} onChanged={changed} />
+      {/* QA4-05: the stage history sits with the activity timeline, after Details and Contacts */}
+      {stageHistory !== undefined && <BdmStageHistory orgId={org.id} initial={stageHistory} version={historyVersion} />}
       {activities !== undefined && ( // bdm-009: the BDM view logs (assigned and not archived = can_edit); the manager view reads
         <BdmActivityTimeline organization={org} initial={activities} canLog={basePath === "/bdm/organizations" && p.can_edit} orgBasePath={basePath}
           onNotice={(text, focusStatus) => { setNotice(text); setFailure(null); if (focusStatus) focus(statusId); }} />

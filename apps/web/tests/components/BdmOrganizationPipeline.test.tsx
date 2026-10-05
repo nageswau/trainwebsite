@@ -81,16 +81,33 @@ describe("BdmOrganizationPipeline (bdm-004 §8.2)", () => {
     expect(screen.getByLabelText("Note (optional)")).toHaveValue("Met the dean");
   });
 
-  it("a stale move reloads the organization and says where it is now", async () => {
+  it("a stale move refreshes the organization, says so as an error and keeps the note (QA4-07)", async () => {
     const fresh = org(pipeline("prospect"));
     vi.stubGlobal("fetch", vi.fn()
       .mockResolvedValueOnce(res({ detail: { code: "stage_changed", current_stage: "prospect", message: "This organization moved to College Prospect meanwhile" } }, 409))
       .mockResolvedValueOnce(res({ organization: fresh })));
     const onChanged = vi.fn();
-    render(<BdmOrganizationPipeline organization={org()} onChanged={onChanged} />);
+    const onRefreshed = vi.fn();
+    render(<BdmOrganizationPipeline organization={org()} onChanged={onChanged} onRefreshed={onRefreshed} />);
     fireEvent.change(screen.getByLabelText("Move to"), { target: { value: "meeting" } });
+    fireEvent.change(screen.getByLabelText("Note (optional)"), { target: { value: "Met the dean" } });
     fireEvent.click(screen.getByRole("button", { name: "Move" }));
-    await waitFor(() => expect(onChanged).toHaveBeenCalledWith(fresh, "This organization moved to College Prospect meanwhile. Check the stage and try again."));
+    await waitFor(() => expect(onRefreshed).toHaveBeenCalledWith(fresh));
+    expect(onChanged).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent("This organization moved to College Prospect meanwhile. Check the stage and try again.");
+    expect(screen.getByLabelText(/^(Note \(optional\)|Reason \(required when moving back\))$/)).toHaveValue("Met the dean");
+  });
+
+  it("two submits in a row send one request (QA4-06)", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(res({ organization: org(pipeline("meeting")) }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<BdmOrganizationPipeline organization={org()} onChanged={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Move to"), { target: { value: "meeting" } });
+    const form = screen.getByRole("form", { name: "Move stage" });
+    fireEvent.submit(form);
+    fireEvent.submit(form);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("a retried move that already landed reads as done", async () => {
@@ -122,30 +139,32 @@ describe("BdmOrganizationPipeline (bdm-004 §8.2)", () => {
     expect(screen.getByRole("button", { name: "Revive" })).toBeInTheDocument();
   });
 
-  it("a move on an organization someone else marked lost reloads it and says so", async () => {
+  it("a move on an organization someone else marked lost refreshes it and says so as an error", async () => {
     const fresh = org(pipeline("contacted", { lost: { at: "2026-10-05T10:00:00Z", reason: "Paused" } }));
     vi.stubGlobal("fetch", vi.fn()
       .mockResolvedValueOnce(res({ detail: { code: "organization_lost", message: "This organization is marked lost. Revive it first." } }, 409))
       .mockResolvedValueOnce(res({ organization: fresh })));
-    const onChanged = vi.fn();
-    render(<BdmOrganizationPipeline organization={org()} onChanged={onChanged} />);
+    const onRefreshed = vi.fn();
+    render(<BdmOrganizationPipeline organization={org()} onChanged={vi.fn()} onRefreshed={onRefreshed} />);
     fireEvent.change(screen.getByLabelText("Move to"), { target: { value: "meeting" } });
     fireEvent.click(screen.getByRole("button", { name: "Move" }));
-    await waitFor(() => expect(onChanged).toHaveBeenCalledWith(fresh, "This organization is marked lost. Revive it first."));
+    await waitFor(() => expect(onRefreshed).toHaveBeenCalledWith(fresh));
+    expect(screen.getByRole("alert")).toHaveTextContent("This organization is marked lost. Revive it first.");
     expect(screen.queryByText("Something went wrong.")).toBeNull();
   });
 
-  it("a revive on an organization someone else already revived reloads it and says so", async () => {
+  it("a revive on an organization someone else already revived refreshes it and says so as an error", async () => {
     const fresh = org(pipeline("contacted"));
     vi.stubGlobal("fetch", vi.fn()
       .mockResolvedValueOnce(res({ detail: { code: "organization_not_lost", message: "This organization is not marked lost." } }, 409))
       .mockResolvedValueOnce(res({ organization: fresh })));
-    const onChanged = vi.fn();
-    render(<BdmOrganizationPipeline organization={org(pipeline("contacted", { lost: { at: "2026-10-05T10:00:00Z", reason: "Paused" } }))} onChanged={onChanged} />);
+    const onRefreshed = vi.fn();
+    render(<BdmOrganizationPipeline organization={org(pipeline("contacted", { lost: { at: "2026-10-05T10:00:00Z", reason: "Paused" } }))} onChanged={vi.fn()} onRefreshed={onRefreshed} />);
     fireEvent.click(screen.getByRole("button", { name: "Revive" }));
     fireEvent.change(screen.getByLabelText("Reason"), { target: { value: "Back on" } });
     fireEvent.click(screen.getByRole("button", { name: "Yes, revive" }));
-    await waitFor(() => expect(onChanged).toHaveBeenCalledWith(fresh, "This organization is not marked lost."));
+    await waitFor(() => expect(onRefreshed).toHaveBeenCalledWith(fresh));
+    expect(screen.getByRole("alert")).toHaveTextContent("This organization is not marked lost.");
   });
 
   it("shows the derived agent status", () => {

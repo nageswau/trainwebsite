@@ -23,6 +23,18 @@ afterEach(() => {
   router.replace.mockClear();
 });
 
+describe("BdmOrganizationDetail -- bdm-004 placement (QA4-05)", () => {
+  it("shows the pipeline first, then Details and Contacts, then the stage history", () => {
+    render(<BdmOrganizationDetail initial={org()} basePath="/bdm/organizations" stageHistory={{ items: [], total: 0, limit: 20, offset: 0 }} />);
+    const before = (a: HTMLElement, b: HTMLElement) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    const pipeline = screen.getByRole("region", { name: "Pipeline" });
+    const details = screen.getByRole("region", { name: "Details" });
+    const contacts = screen.getByRole("list", { name: "Contacts" });
+    const history = screen.getByRole("region", { name: "Stage history" });
+    expect([before(pipeline, details), before(details, contacts), before(contacts, history)]).toEqual([true, true, true]);
+  });
+});
+
 describe("BdmOrganizationDetail (bdm-002 AC3-AC6, §12.2)", () => {
   it("is read-only without permissions; dashes for meetings; unsafe website is plain text", () => {
     render(<BdmOrganizationDetail initial={org()} basePath="/bdm/organizations" />);
