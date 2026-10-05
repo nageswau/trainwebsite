@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import type { User } from "@/lib/types";
 import { type Feedback, toneClass, welcomeLinkFeedback } from "@/lib/welcomeLink";
 import { announceUsersChanged } from "@/lib/usersChanged";
+import { type LookupName, lookupSearch } from "@/lib/lookups";
+import SearchableSelect, { type Noun } from "./SearchableSelect";
 import BatchSlotPicker from "./BatchSlotPicker";
 import LiveClassesPanel from "./LiveClassesPanel";
 import AssignmentSubmissionPanel from "./AssignmentSubmissionPanel";
@@ -35,15 +37,20 @@ import AuditExportPanel from "./AuditExportPanel";
 import ProfileDocumentUpload from "./ProfileDocumentUpload";
 import CounselorChatPanel from "./CounselorChatPanel";
 import AdminUniversityCreatePanel from "./AdminUniversityCreatePanel";
-import AgentApplicationCreatePanel from "./AgentApplicationCreatePanel";
+import AgentStaffPanel from "./AgentStaffPanel";
+import AgentTeamPanel from "./AgentTeamPanel";
 import AdminSchoolApplicationsPanel from "./AdminSchoolApplicationsPanel";
 import AdminSchoolCreatePanel from "./AdminSchoolCreatePanel";
+import AdminSchoolBulkOnboardPanel from "./AdminSchoolBulkOnboardPanel";
+import AdminSchoolEditPanel from "./AdminSchoolEditPanel";
 import AdminSchoolStaffPanel from "./AdminSchoolStaffPanel";
 
 type Field = {
   name: string;
   label: string;
-  type?: "text" | "number" | "date" | "datetime-local" | "textarea" | "select" | "checkbox" | "password";
+  type?: "text" | "number" | "date" | "datetime-local" | "textarea" | "select" | "checkbox" | "password" | "lookup";
+  // ENH-031: a searchable dropdown fed by a role-scoped lookup; the picked id is submitted under `name`.
+  lookup?: { name: LookupName; noun: Noun; minChars?: number; params?: Record<string, string> };
   options?: { label: string; value: string }[];
   required?: boolean;
   placeholder?: string;
@@ -70,6 +77,8 @@ const options = (values: string[]) => values.map(value => ({ value, label: value
 // DATA_MODEL.md #6.2's contract-fixed enum (OVS-002/003) -- exception-path values
 // (rejected/waitlisted/deferred) are a deliberate open item, not offered here.
 const applicationStatuses = options(["enquiry", "eligibility_evaluation", "university_selection", "offer", "visa_documentation", "status_tracking", "enrolled"]);
+// ENH-031 (DEC-SCOPE-039): student/application references are picked, never typed.
+const lookupField = (name: string, label: string, lookup: NonNullable<Field["lookup"]>, required = true): Field => ({ name, label, type: "lookup", required, lookup });
 
 function detailMessage(detail: unknown) {
   if (typeof detail === "string") return detail;
@@ -137,7 +146,7 @@ function ActionForm({ spec }: { spec: ActionSpec }) {
   }
 
   return <div className="action-card"><div><h3>{spec.title}</h3>{spec.description && <p className="muted">{spec.description}</p>}</div><form className="form" onSubmit={submit}>
-    <div className="form-grid">{spec.fields.map(field => <div className={`field${field.type === "textarea" ? " full" : ""}`} key={field.name}>
+    <div className="form-grid">{spec.fields.map(field => field.type === "lookup" && field.lookup ? <SearchableSelect key={field.name} id={`${spec.title}-${field.name}`} label={field.label} name={field.name} required={field.required} noun={field.lookup.noun} minChars={field.lookup.minChars} search={lookupSearch(field.lookup.name, field.lookup.params)}/> : <div className={`field${field.type === "textarea" ? " full" : ""}`} key={field.name}>
       <label htmlFor={`${spec.title}-${field.name}`}>{field.label}</label>
       {field.type === "textarea" ? <textarea id={`${spec.title}-${field.name}`} name={field.name} required={field.required} placeholder={field.placeholder} defaultValue={String(field.defaultValue ?? "")}/> : field.type === "select" ? <select id={`${spec.title}-${field.name}`} name={field.name} required={field.required} defaultValue={String(field.defaultValue ?? "")}><option value="">Select</option>{field.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select> : field.type === "checkbox" ? <input id={`${spec.title}-${field.name}`} name={field.name} type="checkbox" defaultChecked={Boolean(field.defaultValue)}/> : <input id={`${spec.title}-${field.name}`} name={field.name} type={field.type || "text"} required={field.required} placeholder={field.placeholder} defaultValue={String(field.defaultValue ?? "")}/>} 
     </div>)}</div>
@@ -208,7 +217,9 @@ function AssessmentForm() {
   return <div className="action-card"><h3>Take assessment</h3>{!attempt ? <form className="form" onSubmit={start}><div className="field"><label htmlFor="assessment-picker">Assessment</label><select id="assessment-picker" required value={assessmentId} onChange={event => setAssessmentId(event.target.value)} disabled={available === null || !available.length}><option value="">{available === null ? "Loading assessments…" : "Select assessment"}</option>{(available || []).map(row => <option key={row.id} value={row.id}>{row.title} · {new Date(row.scheduled).toLocaleDateString("en-GB")}</option>)}</select></div>{available !== null && !available.length && <p className="muted">No assessment is currently open to attempt.</p>}<button className="btn" disabled={busy || available === null || !available.length}>{busy ? "Opening…" : "Start assessment"}</button></form> : <form className="form" onSubmit={submit}><h3>{attempt.title}</h3>{attempt.questions.map(question => <fieldset className="question" key={question.id}><legend>{question.prompt}</legend>{question.options.length ? question.options.map(option => <label key={option}><input type={question.question_type === "mcq_multiple" ? "checkbox" : "radio"} name={`q_${question.id}`} value={option} required={question.required && question.question_type !== "mcq_multiple"}/> {option}</label>) : question.question_type === "file" ? <input type="file" name={`q_${question.id}`} required={question.required}/> : <textarea name={`q_${question.id}`} required={question.required}/>}</fieldset>)}<button className="btn" disabled={busy}>{busy ? "Submitting…" : "Submit assessment"}</button></form>}{message && <div className={message.startsWith("Submitted") ? "form-message" : "form-error"}>{message}</div>}</div>;
 }
 
-function DocumentUpload({ user }: { user: User }) {
+// OVS-005: a student uploads their own document. Since AGN-009 (DEC-SCOPE-052) agents use AgentDocumentsSection instead, so this form
+// no longer has a student picker; the application lookup is scoped to the signed-in student by the server.
+function DocumentUpload() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -229,19 +240,18 @@ function DocumentUpload({ user }: { user: User }) {
         const upload = await fetch(signed.upload_url, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
         if (!upload.ok) throw new Error("Object storage upload failed"); fileUrl = signed.key;
       }
-      const studentId = String(form.get("student_id") || ""); const applicationId = String(form.get("application_id") || "");
-      const response = await fetch("/api/v1/workflows/overseas/documents", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ student_id: studentId || undefined, application_id: applicationId || undefined, document_type: form.get("document_type"), file_url: fileUrl, original_filename: file.name, content_type: file.type, file_size: file.size }) });
+      const applicationId = String(form.get("application_id") || "");
+      const response = await fetch("/api/v1/workflows/overseas/documents", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ application_id: applicationId || undefined, document_type: form.get("document_type"), file_url: fileUrl, original_filename: file.name, content_type: file.type, file_size: file.size }) });
       const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(detailMessage(data.detail));
       setMessage("Document uploaded and queued for verification."); formElement.reset(); router.refresh();
     } catch (error) { setFailed(true); setMessage(error instanceof Error ? error.message : "Upload failed"); } finally { setBusy(false); }
   }
-  const ownsDocument = user.role === "overseas_student";
-  return <div className="action-card"><h3>Upload document</h3><p className="muted">PDF, Word, and configured image formats are accepted. Recording files are intentionally not stored here.</p><form className="form" onSubmit={submit}><div className="form-grid">{!ownsDocument && <div className="field"><label>Student reference</label><input name="student_id" required/></div>}<div className="field"><label>Application reference (optional)</label><input name="application_id"/></div><div className="field"><label>Document type</label><input name="document_type" required placeholder="Passport, transcript, SOP…"/></div><div className="field"><label>File</label><input name="file" type="file" required/></div></div>{message && <div className={failed ? "form-error" : "form-message"}>{message}</div>}<button className="btn" disabled={busy}>{busy ? "Uploading…" : "Upload document"}</button></form></div>;
+  return <div className="action-card"><h3>Upload document</h3><p className="muted">PDF, Word, and configured image formats are accepted. Recording files are intentionally not stored here.</p><form className="form" onSubmit={submit}><div className="form-grid"><SearchableSelect label="Application reference (optional)" name="application_id" noun="application" search={lookupSearch("overseas-applications")}/><div className="field"><label>Document type</label><input name="document_type" required placeholder="Passport, transcript, SOP…"/></div><div className="field"><label>File</label><input name="file" type="file" required/></div></div>{message && <div className={failed ? "form-error" : "form-message"}>{message}</div>}<button className="btn" disabled={busy}>{busy ? "Uploading…" : "Upload document"}</button></form></div>;
 }
 
 const supportSpec = (): ActionSpec[] => [{ title: "Open support ticket", endpoint: "/api/v1/workflows/support", success: "Support ticket opened.", fields: [{ name: "subject", label: "Subject", required: true }, { name: "description", label: "Description", type: "textarea", required: true }, { name: "priority", label: "Priority", type: "select", defaultValue: "normal", options: options(["low", "normal", "high", "urgent"]) }] }];
 
-const appointmentSpec = (staff: boolean): ActionSpec => ({ title: "Schedule appointment", endpoint: "/api/v1/workflows/overseas/appointments", success: "Appointment scheduled.", fields: [...(staff ? [{ name: "student_id", label: "Student reference", type: "text" as const, required: true }] : []), { name: "scheduled_at", label: "Date and time", type: "datetime-local", required: true }, { name: "appointment_type", label: "Type", defaultValue: "Career Counseling", required: true }, { name: "mode", label: "Mode", type: "select", defaultValue: "Online", options: options(["Online", "Phone", "In person"]) }] });
+const appointmentSpec = (staff: boolean): ActionSpec => ({ title: "Schedule appointment", endpoint: "/api/v1/workflows/overseas/appointments", success: "Appointment scheduled.", fields: [...(staff ? [lookupField("student_id", "Student reference", { name: "overseas-students", noun: "student" })] : []), { name: "scheduled_at", label: "Date and time", type: "datetime-local", required: true }, { name: "appointment_type", label: "Type", defaultValue: "Career Counseling", required: true }, { name: "mode", label: "Mode", type: "select", defaultValue: "Online", options: options(["Online", "Phone", "In person"]) }] });
 
 function liveSessionSpecs(): ActionSpec[] { return [
   { title: "Schedule live session", description: "Google Meet or Zoho Meeting creates the meeting through its API. Manual mode accepts an existing link.", endpoint: "/api/v1/communications/it/live-sessions", success: "Live session scheduled.", fields: [{ name: "batch_id", label: "Batch reference", type: "text", required: true }, { name: "title", label: "Session title", required: true }, { name: "starts_at", label: "Starts", type: "datetime-local", required: true }, { name: "ends_at", label: "Ends", type: "datetime-local", required: true }, { name: "provider", label: "Meeting provider", type: "select", required: true, defaultValue: "manual", options: [{ value: "google_meet", label: "Google Meet" }, { value: "zoho_meeting", label: "Zoho Meeting" }, { value: "manual", label: "Manual link" }] }, { name: "meeting_url", label: "Manual meeting URL" }, { name: "agenda", label: "Agenda", type: "textarea" }] },
@@ -298,18 +308,16 @@ function placementSpecs(section: string): ActionSpec[] {
     { title: "Update job requirement", endpoint: "/api/v1/workflows/it/jobs/:job_id", method: "PATCH", success: "Job requirement updated.", pathFields: ["job_id"], fields: [{ name: "job_id", label: "Job requirement reference", type: "text", required: true }, { name: "status", label: "Status", type: "select", options: options(["open", "closed"]) }, { name: "closes_on", label: "Closes on", type: "date" }, { name: "location", label: "Location" }] },
   ];
   if (section === "interviews") return [
-    { title: "Schedule interview", endpoint: "/api/v1/workflows/it/interviews", success: "Interview scheduled.", fields: [{ name: "application_id", label: "Job application reference", type: "text", required: true }, { name: "scheduled_at", label: "Date and time", type: "datetime-local", required: true }, { name: "mode", label: "Mode", defaultValue: "Online" }, { name: "meeting_url", label: "Meeting URL" }] },
+    { title: "Schedule interview", endpoint: "/api/v1/workflows/it/interviews", success: "Interview scheduled.", fields: [lookupField("application_id", "Job application reference", { name: "it-job-applications", noun: "application" }), { name: "scheduled_at", label: "Date and time", type: "datetime-local", required: true }, { name: "mode", label: "Mode", defaultValue: "Online" }, { name: "meeting_url", label: "Meeting URL" }] },
     { title: "Record interview result", endpoint: "/api/v1/workflows/it/interviews/:interview_id", method: "PATCH", success: "Interview result updated.", pathFields: ["interview_id"], fields: [{ name: "interview_id", label: "Interview reference", type: "text", required: true }, { name: "result", label: "Result", type: "select", required: true, options: options(["selected", "rejected", "on_hold"]) }] }
   ];
-  if (section === "offers") return [{ title: "Create offer", endpoint: "/api/v1/workflows/it/offers", success: "Offer recorded.", fields: [{ name: "application_id", label: "Job application reference", type: "text", required: true }, { name: "compensation", label: "Compensation", type: "number" }, { name: "currency", label: "Currency", defaultValue: "INR" }, { name: "joining_date", label: "Joining date", type: "date" }, { name: "letter_url", label: "Offer letter URL" }] }];
+  if (section === "offers") return [{ title: "Create offer", endpoint: "/api/v1/workflows/it/offers", success: "Offer recorded.", fields: [lookupField("application_id", "Job application reference", { name: "it-job-applications", noun: "application" }), { name: "compensation", label: "Compensation", type: "number" }, { name: "currency", label: "Currency", defaultValue: "INR" }, { name: "joining_date", label: "Joining date", type: "date" }, { name: "letter_url", label: "Offer letter URL" }] }];
   return [];
 }
 
 function agentSpecs(section: string): ActionSpec[] {
-  if (section === "students") return [{ title: "Link student", endpoint: "/api/v1/workflows/overseas/agent/students", success: "Student linked.", fields: [{ name: "student_id", label: "Overseas student reference", type: "text", required: true }] }];
-  // RAID.md I-32: "applications" is now handled by AgentApplicationCreatePanel (real
-  // linked-student/university/course pickers) instead of this generic form -- see
-  // WorkflowPanel's render below.
+  if (section === "students") return [{ title: "Link student", endpoint: "/api/v1/workflows/overseas/agent/students", success: "Student linked.", fields: [lookupField("student_id", "Overseas student reference", { name: "overseas-students", noun: "student", minChars: 3, params: { purpose: "link" } })] }];
+  // AGN-008: "applications" is the AgentApplicationsSection on PortalPage (create panel included).
   if (section === "commissions") return [{ title: "Claim commission", endpoint: "/api/v1/workflows/overseas/agent/commissions/:commission_id/claim", success: "Commission claimed.", pathFields: ["commission_id"], fields: [{ name: "commission_id", label: "Eligible commission reference", type: "text", required: true }] }];
   return [];
 }
@@ -318,7 +326,7 @@ function overseasOperationsSpecs(role: string, section: string): ActionSpec[] {
   // OVS-003: a Counselor now gets a dedicated real picker (CounselorEvaluationPanel,
   // forward-only + enum-validated) instead of this generic form -- see WorkflowPanel's
   // render below. University Rep/Admin keep this broader correction tool.
-  if (role !== "counselor" && ["applications", "admission-updates", "offer-letters"].includes(section)) return [{ title: "Update application", endpoint: "/api/v1/workflows/overseas/applications/:application_id", method: "PATCH", success: "Application updated and student notified.", pathFields: ["application_id"], fields: [{ name: "application_id", label: "Application reference", type: "text", required: true }, { name: "status", label: "Status", type: "select", required: true, options: applicationStatuses }, { name: "application_reference", label: "University reference" }, { name: "offer_letter_url", label: "Offer letter URL" }, { name: "next_action", label: "Next action", type: "textarea" }, { name: "notes", label: "Internal update note", type: "textarea" }] }];
+  if (role !== "counselor" && ["applications", "admission-updates", "offer-letters"].includes(section)) return [{ title: "Update application", endpoint: "/api/v1/workflows/overseas/applications/:application_id", method: "PATCH", success: "Application updated and student notified.", pathFields: ["application_id"], fields: [lookupField("application_id", "Application reference", { name: "overseas-applications", noun: "application" }), { name: "status", label: "Status", type: "select", required: true, options: applicationStatuses }, { name: "application_reference", label: "University reference" }, { name: "offer_letter_url", label: "Offer letter URL" }, { name: "next_action", label: "Next action", type: "textarea" }, { name: "notes", label: "Internal update note", type: "textarea" }] }];
   // OVS-005: a Counselor now gets a real review queue (CounselorDocumentReviewPanel,
   // with an actual "View document" action this generic form never had) instead of this
   // raw-typed form -- see WorkflowPanel's render below. Admin keeps this broader tool.
@@ -328,14 +336,14 @@ function overseasOperationsSpecs(role: string, section: string): ActionSpec[] {
   // instead of typing raw application/visa-case UUIDs -- see WorkflowPanel's render
   // below. Admin keeps this broader tool.
   if (section === "visa" && role !== "counselor") return [
-    { title: "Create visa case", endpoint: "/api/v1/workflows/overseas/visa", success: "Visa case created.", fields: [{ name: "application_id", label: "Application reference", type: "text", required: true }, { name: "status", label: "Status", defaultValue: "checklist" }, { name: "appointment_date", label: "Appointment date", type: "date" }, { name: "checklist", label: "Checklist (comma separated)", parse: "list" }, { name: "tracking_reference", label: "Tracking reference" }] },
+    { title: "Create visa case", endpoint: "/api/v1/workflows/overseas/visa", success: "Visa case created.", fields: [lookupField("application_id", "Application reference", { name: "overseas-applications", noun: "application" }), { name: "status", label: "Status", defaultValue: "checklist" }, { name: "appointment_date", label: "Appointment date", type: "date" }, { name: "checklist", label: "Checklist (comma separated)", parse: "list" }, { name: "tracking_reference", label: "Tracking reference" }] },
     { title: "Update visa case", endpoint: "/api/v1/workflows/overseas/visa/:visa_id", method: "PATCH", success: "Visa case updated.", pathFields: ["visa_id"], fields: [{ name: "visa_id", label: "Visa case reference", type: "text", required: true }, { name: "status", label: "Status", required: true }, { name: "appointment_date", label: "Appointment date", type: "date" }, { name: "tracking_reference", label: "Tracking reference" }, { name: "checklist", label: "Checklist (comma separated)", parse: "list" }] }
   ];
   if (section === "appointments") return [appointmentSpec(true), { title: "Update appointment", endpoint: "/api/v1/workflows/overseas/appointments/:appointment_id", method: "PATCH", success: "Appointment updated.", pathFields: ["appointment_id"], fields: [{ name: "appointment_id", label: "Appointment reference", type: "text", required: true }, { name: "status", label: "Status", type: "select", required: true, options: options(["scheduled", "completed", "cancelled", "no_show"]) }] }];
   // UNI-001: net-new -- no communication action existed for the university rep's own
   // "Student Communication" section at all before this feature, only a read-only view of
   // inbound university emails.
-  if (section === "student-communication" && role === "university_rep") return [{ title: "Post admission update", endpoint: "/api/v1/workflows/overseas/university-rep/applications/:application_id/updates", success: "Update posted to the student and counselor.", pathFields: ["application_id"], fields: [{ name: "application_id", label: "Application reference", type: "text", required: true }, { name: "message", label: "Update message", type: "textarea", required: true }] }];
+  if (section === "student-communication" && role === "university_rep") return [{ title: "Post admission update", endpoint: "/api/v1/workflows/overseas/university-rep/applications/:application_id/updates", success: "Update posted to the student and counselor.", pathFields: ["application_id"], fields: [lookupField("application_id", "Application reference", { name: "overseas-applications", noun: "application" }), { name: "message", label: "Update message", type: "textarea", required: true }] }];
   // AGT-003-AC02: set/adjust the amount on a commission (typically a system-triggered
   // "estimated" row with amount=0, since no fixed commission rate is confirmed).
   // AGT-004-AC01: approve payout on a commission the Agent has already claimed -- the
@@ -354,7 +362,8 @@ function overseasOperationsSpecs(role: string, section: string): ActionSpec[] {
 const ROLES_BY_DIVISION: Record<string, string[]> = {
   it: ["it_student", "trainer", "placement_team", "hr_team", "it_admin"],
   overseas: ["overseas_student", "counselor", "university_rep", "agent", "overseas_admin"],
-  global: ["super_admin"],
+  // bdm-001: managers have no profile, so this generic form creates them; a BDM needs the BDMs page (profile required).
+  global: ["super_admin", "bdm_manager"],
 };
 
 // RAID.md I-31 (ADM-001 follow-up): `it_admin`/`overseas_admin` can never create outside
@@ -389,7 +398,7 @@ function adminSpecs(user: User, section: string): ActionSpec[] {
   // public read and seed-time direct DB inserts existed.
   if (section === "gallery") return [{ title: "Publish gallery item", endpoint: "/api/v1/cms/gallery", success: "Gallery item saved.", fields: [{ name: "division", label: "Division", type: "select", required: true, options: options(["it", "overseas"]) }, { name: "title", label: "Title", required: true }, { name: "image_url", label: "Image URL", required: true }, { name: "alt_text", label: "Alt text" }, { name: "category", label: "Category", defaultValue: "General" }, { name: "published", label: "Published", type: "checkbox", parse: "boolean", defaultValue: true }] }, { title: "Update gallery item", endpoint: "/api/v1/cms/gallery/:item_id", method: "PATCH", success: "Gallery item updated.", pathFields: ["item_id"], fields: [{ name: "item_id", label: "Gallery item reference", type: "text", required: true }, { name: "title", label: "Title" }, { name: "image_url", label: "Image URL" }, { name: "category", label: "Category" }, { name: "published", label: "Published", type: "checkbox", parse: "boolean" }] }];
   if (section === "events") return [{ title: "Create event", endpoint: "/api/v1/cms/events", success: "Event created.", fields: [{ name: "division", label: "Division", type: "select", required: true, options: options(["it", "overseas"]) }, { name: "title", label: "Title", required: true }, { name: "event_type", label: "Type", defaultValue: "Seminar" }, { name: "starts_at", label: "Starts", type: "datetime-local", required: true }, { name: "location", label: "Location", defaultValue: "Online" }, { name: "description", label: "Description", type: "textarea" }, { name: "registration_url", label: "Registration URL" }] }, { title: "Update event", endpoint: "/api/v1/cms/events/:event_id", method: "PATCH", success: "Event updated.", pathFields: ["event_id"], fields: [{ name: "event_id", label: "Event reference", type: "text", required: true }, { name: "title", label: "Title" }, { name: "starts_at", label: "Starts", type: "datetime-local" }, { name: "location", label: "Location" }, { name: "registration_url", label: "Registration URL" }] }];
-  if (section === "applications") return [{ title: "Update overseas application", endpoint: "/api/v1/workflows/overseas/applications/:application_id", method: "PATCH", success: "Application updated.", pathFields: ["application_id"], fields: [{ name: "application_id", label: "Overseas application reference", type: "text", required: true }, { name: "status", label: "Status", type: "select", required: true, options: applicationStatuses }, { name: "application_reference", label: "Reference" }, { name: "offer_letter_url", label: "Offer letter URL" }, { name: "next_action", label: "Next action", type: "textarea" }] }];
+  if (section === "applications") return [{ title: "Update overseas application", endpoint: "/api/v1/workflows/overseas/applications/:application_id", method: "PATCH", success: "Application updated.", pathFields: ["application_id"], fields: [lookupField("application_id", "Overseas application reference", { name: "overseas-applications", noun: "application" }), { name: "status", label: "Status", type: "select", required: true, options: applicationStatuses }, { name: "application_reference", label: "Reference" }, { name: "offer_letter_url", label: "Offer letter URL" }, { name: "next_action", label: "Next action", type: "textarea" }] }];
   if (section === "notifications") return [{ title: "Send notification", endpoint: "/api/v1/communications/notify", success: "Notification queued.", fields: [{ name: "user_id", label: "Recipient user reference", type: "text", required: true }, { name: "title", label: "Title", required: true }, { name: "body", label: "Message", type: "textarea", required: true }, { name: "channels", label: "Channels (comma separated)", parse: "list", defaultValue: "email" }, { name: "action_url", label: "Portal action URL" }] }];
   return [];
 }
@@ -410,7 +419,8 @@ function specsFor(user: User, section: string): ActionSpec[] {
 export default function WorkflowPanel({ user, section }: { user: User; section: string }) {
   const specs = specsFor(user, section);
   const showAssessment = user.role === "it_student" && section === "examinations";
-  const showDocuments = section === "documents" && ["overseas_student", "agent"].includes(user.role);
+  // AGN-009 (DEC-SCOPE-052): the agent Documents page is AgentDocumentsSection (PortalPage) -- upload, review, requests, history.
+  const showDocuments = section === "documents" && user.role === "overseas_student";
   const showDocumentDownload = user.role === "overseas_student" && section === "documents";
   const showCounselorDocumentReview = user.role === "counselor" && section === "documents";
   const showVisaChecklist = user.role === "overseas_student" && section === "visa-status";
@@ -435,7 +445,9 @@ export default function WorkflowPanel({ user, section }: { user: User; section: 
   // directories stay IT/Super Admin only.
   const showUserManagement = (isAdmin && ["users", "students", "trainers", "employers", "counselors", "staff"].includes(section)) || (user.role === "overseas_admin" && section === "users");
   const showProgramManagement = isAdmin && section === "programs";
-  const showLeadManagement = isAdmin && section === "leads";
+  // bdm-017 L1 (QA17-02): the Overseas Admin manages their division's leads (School / Agent BDM leads included) like the IT Admin;
+  // `/admin/leads` and the conversion routes already scope every request to the caller's division.
+  const showLeadManagement = (isAdmin || user.role === "overseas_admin") && section === "leads";
   const showBatchCreate = isAdmin && section === "batches";
   const showEnrollmentReview = isAdmin && section === "enrollments";
   const showSupportQueue = isAdmin && section === "support";
@@ -451,13 +463,15 @@ export default function WorkflowPanel({ user, section }: { user: User; section: 
   // enforces (`super_admin`/`overseas_admin`, not `it_admin` -- IT Admin's own nav has no
   // "universities" entry at all), not the narrower `isAdmin` constant above.
   const showUniversityCreate = ["overseas_admin", "super_admin"].includes(user.role) && section === "universities";
-  const showAgentApplicationCreate = user.role === "agent" && section === "applications";
+  // AGN-001/AGN-002: the agency's Masters (list, invite, deactivate) and staff (add, edit, activate, reset).
+  const showAgentTeam = user.role === "agent" && section === "team";
+  // AGN-014's commission report (Master-only) is the Commission tab of AGN-020's AgentReportsPanel (DEC-SCOPE-067), mounted by PortalPage.
   const showSchoolCreate = ["overseas_admin", "super_admin"].includes(user.role) && section === "schools";
   const showSchoolStaffCreate = ["overseas_admin", "super_admin"].includes(user.role) && section === "school-staff";
   // DEC-SCOPE-018 -- Overseas Admin/Counselor (never school_coordinator) links a School
   // student to a real Overseas application, same section name as the School side's own
   // "school-applications" nav entry but a distinct role gate.
   const showSchoolApplications = ["overseas_admin", "counselor", "super_admin"].includes(user.role) && section === "school-applications";
-  if (!specs.length && !showAssessment && !showDocuments && !showDocumentDownload && !showCounselorDocumentReview && !showVisaChecklist && !showCounselorVisa && !showAgentApproval && !showBatchPicker && !showLiveClasses && !showAgreementConsent && !showAssignmentSubmission && !showCertificateDownload && !showFeedback && !showQuestions && !showProfileDocuments && !showOverseasApply && !showScholarshipApply && !showFeePayment && !showCounselorEvaluation && !showCounselorChat && !showUserManagement && !showProgramManagement && !showLeadManagement && !showBatchCreate && !showEnrollmentReview && !showSupportQueue && !showCertificateIssue && !showPlacementCandidates && !showHrShortlists && !showAuditExport && !showUniversityCreate && !showAgentApplicationCreate && !showSchoolCreate && !showSchoolStaffCreate && !showSchoolApplications && !showExpiredLinks) return null;
-  return <div className="portal-content action-center"><div className="workspace-head action-heading"><div><strong>Actions</strong><p>Changes are validated, permission checked, and written to the live workflow.</p></div><span className="badge">Operational</span></div><div className="action-grid">{showAgreementConsent && <AgreementConsentPanel/>}{showLiveClasses && <LiveClassesPanel userName={user.full_name} userEmail={user.email}/>}{showBatchPicker && <BatchSlotPicker/>}{showAssignmentSubmission && <AssignmentSubmissionPanel section={section as "assignments" | "projects"}/>}{showCertificateDownload && <CertificateDownloadPanel/>}{showFeedback && <FeedbackSubmissionPanel/>}{showQuestions && <QuestionAskPanel/>}{showProfileDocuments && <ProfileDocumentUpload/>}{showOverseasApply && <OverseasApplyPanel/>}{showScholarshipApply && <ScholarshipApplyPanel/>}{showFeePayment && <FeePaymentPanel/>}{showCounselorEvaluation && <CounselorEvaluationPanel/>}{showCounselorChat && <CounselorChatPanel userId={user.id}/>}{showCounselorDocumentReview && <CounselorDocumentReviewPanel/>}{showVisaChecklist && <VisaChecklistPanel/>}{showCounselorVisa && <CounselorVisaPanel/>}{showAgentApproval && <AgentApprovalPanel/>}{showUserManagement && <AdminUserManagementPanel section={section}/>}{showProgramManagement && <AdminProgramManagementPanel/>}{showLeadManagement && <AdminLeadManagementPanel/>}{showBatchCreate && <AdminBatchCreatePanel/>}{showEnrollmentReview && <AdminEnrollmentReviewPanel/>}{showSupportQueue && <SupportTicketQueuePanel/>}{showCertificateIssue && <AdminCertificatePanel/>}{showPlacementCandidates && <PlacementCandidatePanel/>}{showHrShortlists && <HrShortlistPanel/>}{showAuditExport && <AuditExportPanel/>}{showExpiredLinks && <AdminExpiredLinksPanel/>}{showUniversityCreate && <AdminUniversityCreatePanel/>}{showAgentApplicationCreate && <AgentApplicationCreatePanel/>}{showSchoolCreate && <AdminSchoolCreatePanel/>}{showSchoolStaffCreate && <AdminSchoolStaffPanel/>}{showSchoolApplications && <AdminSchoolApplicationsPanel/>}{specs.map(spec => <ActionForm key={spec.title} spec={spec}/>)}{showAssessment && <AssessmentForm/>}{showDocuments && <DocumentUpload user={user}/>}{showDocumentDownload && <DocumentDownloadPanel/>}</div></div>;
+  if (!specs.length && !showAssessment && !showDocuments && !showDocumentDownload && !showCounselorDocumentReview && !showVisaChecklist && !showCounselorVisa && !showAgentApproval && !showBatchPicker && !showLiveClasses && !showAgreementConsent && !showAssignmentSubmission && !showCertificateDownload && !showFeedback && !showQuestions && !showProfileDocuments && !showOverseasApply && !showScholarshipApply && !showFeePayment && !showCounselorEvaluation && !showCounselorChat && !showUserManagement && !showProgramManagement && !showLeadManagement && !showBatchCreate && !showEnrollmentReview && !showSupportQueue && !showCertificateIssue && !showPlacementCandidates && !showHrShortlists && !showAuditExport && !showUniversityCreate && !showAgentTeam && !showSchoolCreate && !showSchoolStaffCreate && !showSchoolApplications && !showExpiredLinks) return null;
+  return <div className="portal-content action-center"><div className="workspace-head action-heading"><div><strong>Actions</strong><p>Changes are validated, permission checked, and written to the live workflow.</p></div><span className="badge">Operational</span></div><div className="action-grid">{showAgreementConsent && <AgreementConsentPanel/>}{showLiveClasses && <LiveClassesPanel userName={user.full_name} userEmail={user.email}/>}{showBatchPicker && <BatchSlotPicker/>}{showAssignmentSubmission && <AssignmentSubmissionPanel section={section as "assignments" | "projects"}/>}{showCertificateDownload && <CertificateDownloadPanel/>}{showFeedback && <FeedbackSubmissionPanel/>}{showQuestions && <QuestionAskPanel/>}{showProfileDocuments && <ProfileDocumentUpload/>}{showOverseasApply && <OverseasApplyPanel/>}{showScholarshipApply && <ScholarshipApplyPanel/>}{showFeePayment && <FeePaymentPanel/>}{showCounselorEvaluation && <CounselorEvaluationPanel/>}{showCounselorChat && <CounselorChatPanel userId={user.id}/>}{showCounselorDocumentReview && <CounselorDocumentReviewPanel/>}{showVisaChecklist && <VisaChecklistPanel/>}{showCounselorVisa && <CounselorVisaPanel/>}{showAgentApproval && <AgentApprovalPanel/>}{showUserManagement && <AdminUserManagementPanel section={section}/>}{showProgramManagement && <AdminProgramManagementPanel/>}{showLeadManagement && <AdminLeadManagementPanel/>}{showBatchCreate && <AdminBatchCreatePanel/>}{showEnrollmentReview && <AdminEnrollmentReviewPanel/>}{showSupportQueue && <SupportTicketQueuePanel/>}{showCertificateIssue && <AdminCertificatePanel/>}{showPlacementCandidates && <PlacementCandidatePanel/>}{showHrShortlists && <HrShortlistPanel/>}{showAuditExport && <AuditExportPanel/>}{showExpiredLinks && <AdminExpiredLinksPanel/>}{showUniversityCreate && <AdminUniversityCreatePanel/>}{showAgentTeam && <AgentTeamPanel/>}{showAgentTeam && <AgentStaffPanel/>}{showSchoolCreate && <AdminSchoolCreatePanel/>}{showSchoolCreate && <AdminSchoolEditPanel/>}{showSchoolCreate && <AdminSchoolBulkOnboardPanel/>}{showSchoolStaffCreate && <AdminSchoolStaffPanel/>}{showSchoolApplications && <AdminSchoolApplicationsPanel/>}{specs.map(spec => <ActionForm key={spec.title} spec={spec}/>)}{showAssessment && <AssessmentForm/>}{showDocuments && <DocumentUpload/>}{showDocumentDownload && <DocumentDownloadPanel/>}</div></div>;
 }

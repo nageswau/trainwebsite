@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ROLE_DASHBOARD_PATH } from "@/lib/navigation";
+import { safeNextPath } from "@/lib/safeNext";
 
 function message(detail: unknown) {
   if (typeof detail === "string") return detail;
@@ -35,7 +36,8 @@ export default function LoginForm({ division }: { division: "it" | "overseas" | 
       setError(message(data.detail));
       return;
     }
-    router.push(search.get("next") || ROLE_DASHBOARD_PATH[data.user.role] || "/");
+    // AGN-008 QA8-07: only a same-origin relative `next` is followed (no open redirect); otherwise the role's dashboard.
+    router.push(safeNextPath(search.get("next")) || ROLE_DASHBOARD_PATH[data.user.role] || "/");
     router.refresh();
   }
 
@@ -50,11 +52,10 @@ export default function LoginForm({ division }: { division: "it" | "overseas" | 
     </div>
     {error && <div className="form-error" role="alert" aria-live="assertive">{error}</div>}
     <button className="btn" disabled={busy}>{busy ? "Signing in…" : "Sign in securely"}</button>
-    {division !== "global" && (
-      <p className="muted" style={{ fontSize: 13 }}>
-        <Link href={`/${division}/forgot-password`} style={{ color: "var(--blue)", fontWeight: 800 }}>Forgot your password?</Link>
-      </p>
-    )}
+    {/* bdm-001 QA-05: the global sign-in (Super Admins, BDM Managers) recovers on the admin portal's own page. */}
+    <p className="muted" style={{ fontSize: 13 }}>
+      <Link href={`/${division === "global" ? "admin" : division}/forgot-password`} style={{ color: "var(--blue)", fontWeight: 800 }}>Forgot your password?</Link>
+    </p>
     <p className="muted" style={{ fontSize: 13 }}>
       Use the portal that matches your account. Role and division access is verified by the API.
     </p>

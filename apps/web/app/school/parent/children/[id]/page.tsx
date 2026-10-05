@@ -1,9 +1,16 @@
 import PortalShell from "@/components/PortalShell";
 import SchoolChildOverview, { loadChildOverview, type ChildOverview } from "@/components/SchoolChildOverview";
+import SchoolGradeHistory, { loadGradeHistory, type StudentGradeHistory } from "@/components/SchoolGradeHistory";
 import SchoolStudentTimeline, { loadStudentTimeline, type StudentTimeline } from "@/components/SchoolStudentTimeline";
+import SchoolTransferHistory, { loadTransferHistory, type TransferHistoryEntry } from "@/components/SchoolTransferHistory";
+import FundingRecordsCard, { loadFundingRecords } from "@/components/FundingRecordsCard";
+import PortfolioPanel from "@/components/PortfolioPanel";
+import ReportDownloadButton from "@/components/ReportDownloadButton";
 import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
+import type { FundingRecord } from "@/lib/fundingRecords";
+import { loadPortfolio, type PortfolioData } from "@/lib/portfolio";
 
 // SCH-007: one child's full profile & progress for their Parent. Same own-child deny as
 // the dashboard, verified server-side even via this direct record ID (SCH-001-AC03).
@@ -26,16 +33,37 @@ export default async function SchoolParentChildPage({ params }: { params: Promis
       </div>
     );
   }
-  const timeline: StudentTimeline | null = await loadStudentTimeline(id).catch(() => null);
+  const [timeline, gradeHistory, transferHistory, portfolio, funding]: [StudentTimeline | null, StudentGradeHistory | null, TransferHistoryEntry[] | null, PortfolioData | null, FundingRecord[] | null] = await Promise.all([
+    loadStudentTimeline(id).catch(() => null),
+    loadGradeHistory(id).catch(() => null),
+    loadTransferHistory(id),
+    loadPortfolio(id).catch(() => null),
+    loadFundingRecords(id),
+  ]);
   return (
     <PortalShell nav={SCHOOL_NAV.parent} roleLabel="Parent" userName={user.full_name}>
       <div className="portal-content">
-        <a className="btn secondary" href="/school/parent/dashboard">Back to my children</a>
+        {/* QA15-03: flex-start, so a download message under its button does not stretch the other buttons in the row.
+            QA15-11: `child-page-actions` narrows the download hint here only, so it cannot widen the row. */}
+        <div className="child-page-actions" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
+          <a className="btn" href={`/school/parent/children/${id}/360`}>Open 360° view</a>
+          {/* ENH-015: the same overview as a PDF -- own linked child only, checked by the server. */}
+          <ReportDownloadButton url={`/api/v1/school/students/${id}/progress-report`} label="Download progress report (PDF)" filename="progress-report.pdf" hint="PDFs are not screen-reader friendly. The same information is on this page." />
+          <a className="btn secondary" href="/school/parent/dashboard">Back to my children</a>
+        </div>
         <SchoolChildOverview overview={overview} />
+        {/* ENH-020: the child's funding support cases, read-only -- right after the overview (QA-04), not below the portfolio. */}
+        <FundingRecordsCard records={funding} />
+        <div className="card">
+          <h3>Grade history</h3>
+          {gradeHistory ? <SchoolGradeHistory history={gradeHistory.history} /> : <p className="muted">Grade history is unavailable right now.</p>}
+        </div>
+        <SchoolTransferHistory history={transferHistory} />
         <div className="card">
           <h3>Journey timeline</h3>
           {timeline ? <SchoolStudentTimeline events={timeline.events} /> : <p className="muted">Timeline is unavailable right now.</p>}
         </div>
+        {portfolio ? <PortfolioPanel data={portfolio} /> : <div className="card"><h3>Digital Portfolio</h3><p className="muted">Portfolio is unavailable right now.</p></div>}
       </div>
     </PortalShell>
   );

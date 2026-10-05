@@ -6,7 +6,53 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
-from app.api import account, admin, auth, cms, communications, employer, files, inbound, payments, portal, public, schools, workflows
+from app.api import (
+    account,
+    admin,
+    agent_applications,
+    agent_dashboard,
+    agent_deposits,
+    agent_documents,
+    agent_performance,
+    agent_reports,
+    agent_shortlist,
+    agent_students,
+    agent_tasks,
+    agent_team,
+    auth,
+    bdm,
+    bdm_activities,
+    bdm_appointments,
+    bdm_leads,
+    bdm_organizations,
+    bdm_pipeline,
+    bdm_travel,
+    cms,
+    communications,
+    employer,
+    files,
+    inbound,
+    lookups,
+    payments,
+    portal,
+    portfolio,
+    portfolio_certificates,
+    public,
+    school_analytics,
+    school_attendance,
+    school_bulk,
+    school_feedback,
+    school_funding,
+    school_global_education,
+    school_onboarding_bulk,
+    school_reports,
+    school_skills,
+    school_student_profile,
+    school_transfers,
+    schools,
+    student_360,
+    workflows,
+)
 from app.core.config import settings
 from app.core.database import engine
 from app.core.logging import configure_logging, get_logger
@@ -30,7 +76,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="EduSphere API", version="1.0.0", lifespan=lifespan)
 app.add_middleware(RequestIdMiddleware)
 app.add_middleware(CORSMiddleware, allow_origins=[settings.frontend_url], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
-for r in (auth.router, public.router, portal.router, admin.router, admin.agents_router, files.router, workflows.router, payments.router, cms.router, communications.router, inbound.router, account.router, employer.router, schools.router):
+for r in (auth.router, public.router, portal.router, admin.router, admin.agents_router, files.router, workflows.router, agent_team.router, agent_students.router, agent_shortlist.router, agent_applications.router, agent_deposits.router, agent_deposits.admin_router, agent_documents.router, agent_tasks.router, agent_dashboard.router, agent_performance.router, agent_reports.router, lookups.router, payments.router, cms.router, communications.router, inbound.router, account.router, employer.router, schools.router, school_transfers.coordinator_router, school_transfers.admin_router, portfolio.router, portfolio_certificates.router, school_skills.router, student_360.router, school_feedback.coordinator_router, school_feedback.admin_router, school_student_profile.router, school_analytics.school_router, school_analytics.admin_router, school_global_education.router, school_reports.router, school_attendance.router, school_bulk.router, school_funding.router, school_onboarding_bulk.router, bdm.router, bdm.admin_router, bdm_organizations.router, bdm_pipeline.router, bdm_travel.router, bdm_appointments.router, bdm_activities.router, bdm_leads.router):
     app.include_router(r, prefix="/api/v1")
 app.mount("/local-files", StaticFiles(directory=settings.local_upload_dir, check_dir=False), name="local-files")
 

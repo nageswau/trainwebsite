@@ -1,0 +1,136 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import ActivityFeedbackDetails from "@/components/ActivityFeedbackDetails";
+import LoadFailureAlert from "@/components/LoadFailureAlert";
+import LocalTime from "@/components/LocalTime";
+import { type AdminActivityFeedback, activityTypeLabel, type LoadFailure, participationText } from "@/lib/activityFeedback";
+import { isPage } from "@/lib/apiErrors";
+
+// ENH-018 (spec §7.3): every school's activity feedback for Edusphere management, newest first. Loaded after first paint like
+// the ENH-005 queue. Each feedback is a card (a <dl>) rather than a wide table, so long free text reflows on a phone. The school
+// filter reuses GET /overseas-admin/schools; if that fails the list still works, unfiltered.
+// Browser QA fixes: a 401 asks the user to sign in rather than retry (QA-018-14); the school filter is never disabled, so keyboard
+// focus stays on it (QA-018-05); the heading's total is only shown for a list that is actually on screen (QA-018-13 side effect);
+// "Load more" moves focus to the first new card (QA-018-04). A "Search schools" box narrows the long dropdown as you type,
+// client-side, always keeping "All schools" and the current choice (QA-018-16).
+const LIMIT = 25;
+type SchoolOption = { id: string; name: string };
+
+export default function AdminActivityFeedbackPanel() {
+  const [schools, setSchools] = useState<SchoolOption[]>([]);
+  const [schoolId, setSchoolId] = useState("");
+  const [query, setQuery] = useState("");
+  const needle = query.trim().toLowerCase();
+  const matches = (s: SchoolOption) => s.name.toLowerCase().includes(needle); // an empty search matches every school
+  const shownSchools = schools.filter((s) => s.id === schoolId || matches(s));
+  const [items, setItems] = useState<AdminActivityFeedback[] | null>(null);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState<"first" | "more" | null>("first");
+  const [failure, setFailure] = useState<LoadFailure>(null);
+  const [focusIndex, setFocusIndex] = useState<number | null>(null);
+  const controller = useRef<AbortController | null>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+
+  const load = useCallback(async (school: string, offset: number, mode: "first" | "more") => {
+    controller.current?.abort();
+    const abort = (controller.current = new AbortController());
+    setLoading(mode);
+    setFailure(null);
+    if (mode === "first") setItems(null);
+    try {
+      const filter = school ? `school_id=${encodeURIComponent(school)}&` : "";
+      const response = await fetch(`/api/v1/overseas-admin/school-activity-feedback?${filter}limit=${LIMIT}&offset=${offset}`, { signal: abort.signal });
+      const data = await response.json().catch(() => null);
+      if (response.status === 401) return setFailure("expired");
+      if (!response.ok || !isPage<AdminActivityFeedback>(data)) return setFailure("failed");
+      setItems((prev) => (mode === "more" && prev ? [...prev, ...data.items] : data.items));
+      setTotal(data.total);
+      if (mode === "more" && data.items.length > 0) setFocusIndex(offset);
+    } catch (error) {
+      if ((error as Error).name !== "AbortError") setFailure("failed");
+    } finally {
+      if (!abort.signal.aborted) setLoading(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load("", 0, "first");
+    fetch("/api/v1/overseas-admin/schools")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rows: unknown) => setSchools(Array.isArray(rows) ? rows.map((s: SchoolOption) => ({ id: s.id, name: s.name })) : []))
+      .catch(() => setSchools([]));
+    return () => controller.current?.abort();
+  }, [load]);
+  useEffect(() => {
+    if (focusIndex === null) return;
+    (listRef.current?.children[focusIndex] as HTMLElement | undefined)?.focus();
+    setFocusIndex(null);
+  }, [focusIndex, items]);
+
+  function changeSchool(next: string) {
+    setSchoolId(next);
+    void load(next, 0, "first");
+  }
+
+  return (
+    <div className="action-card wide">
+      <div>
+        <h3>{`School activity feedback${items !== null && total > 0 ? ` (${total})` : ""}`}</h3>
+        <p className="muted" style={{ margin: 0, fontSize: 13 }}>What School Coordinators said after each Edusphere activity.</p>
+      </div>
+      <div className="table-controls">
+        <div>
+          <label htmlFor="feedback-school-search">Search schools</label>
+          <input
+            id="feedback-school-search"
+            className="search"
+            type="search"
+            value={query}
+            autoComplete="off"
+            aria-describedby="feedback-school-search-hint"
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <p id="feedback-school-search-hint" className="field-hint" aria-live="polite">{needle ? `${schools.filter(matches).length} of ${schools.length} schools match` : ""}</p>
+        </div>
+        <div>
+          <label htmlFor="feedback-school">School</label>
+          <select id="feedback-school" className="select" value={schoolId} onChange={(e) => changeSchool(e.target.value)}>
+            <option value="">All schools</option>
+            {shownSchools.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </div>
+      </div>
+      {failure && <LoadFailureAlert failure={failure} onRetry={() => void load(schoolId, 0, "first")} />}
+      {items === null && !failure ? (
+        <div aria-busy="true">
+          <p className="muted" style={{ margin: "0 0 8px" }}>Loading activity feedback…</p>
+          <div className="skeleton-line" aria-hidden="true" />
+        </div>
+      ) : items !== null && items.length === 0 && !failure ? (
+        <div className="empty"><h3>No feedback submitted yet.</h3></div>
+      ) : items !== null && items.length > 0 ? (
+        <>
+          <p className="muted" aria-live="polite">{`Showing ${items.length} of ${total}`}</p>
+          <ul ref={listRef} className="link-list" role="list" aria-label="Activity feedback">
+            {items.map((f) => (
+              <li key={f.id} className="feedback-row" tabIndex={-1}>
+                <div className="who">
+                  <strong>{f.activity_title}</strong>
+                  <span>
+                    {f.school_name} · {activityTypeLabel(f.activity_type)} · <LocalTime value={f.scheduled_at} time label /> · {participationText(f.participation)}
+                  </span>
+                </div>
+                <ActivityFeedbackDetails feedback={f} zone="viewer" />
+              </li>
+            ))}
+          </ul>
+          {items.length < total && (
+            <button type="button" className="btn secondary small" disabled={loading !== null} onClick={() => void load(schoolId, items.length, "more")}>{loading === "more" ? "Loading…" : "Load more"}</button>
+          )}
+        </>
+      ) : null}
+    </div>
+  );
+}

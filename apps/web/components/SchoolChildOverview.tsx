@@ -1,43 +1,82 @@
+import CareerRecordDetails from "@/components/CareerRecordDetails";
+import { PsychometricResultsList } from "@/components/PsychometricResultDetails";
+import SchoolStudentPhoto from "@/components/SchoolStudentPhoto";
 import { serverApi } from "@/lib/api";
+import { ATTENDANCE_LABEL, type AttendanceStatus } from "@/lib/attendance";
+import type { CareerRecord } from "@/lib/careerRecords";
+import { formatCalendarDate, formatDate, formatSchoolDateTime, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
+import type { PsychometricResult } from "@/lib/psychometric";
+import { attendanceText, ENROLMENT_LABEL, MODULE_LABEL, type SkillModule } from "@/lib/skills";
 
 // SCH-007: one child's complete picture for the Parent Portal, read from
 // GET /school/students/{id}/overview (own-child scope enforced server-side, SCH-001-AC03).
 // Rendered in two densities: `compact` for the dashboard's per-child card, full for
-// /school/parent/children/[id]. Skills, portfolio, and overseas-education progress are
-// deliberately absent -- no confirmed module produces that data yet (`DEC-SCOPE-015`);
-// showing an empty section for them would imply a record set that does not exist.
+// /school/parent/children/[id]. Portfolio and overseas-education progress are deliberately
+// absent -- no confirmed module produces that data yet (`DEC-SCOPE-015`); showing an empty
+// section for them would imply a record set that does not exist. Skills is shown since
+// ENH-011 (`DEC-SCOPE-026`): the Career Counselor's Soft Skills / Digital Skills batches.
 
-type CareerRecord = { id: string; record_type: string; notes: string; created_at: string };
-type Assessment = { id: string; assessment_type: string; status: string; created_at: string };
+type StructuredRecommendation = {
+  record_id: string; record_type: string; created_at: string;
+  recommended_careers: string[] | null; recommended_courses: string[] | null; recommended_stream: string[] | null; recommended_skills: string[] | null;
+};
+type Assessment = { id: string; assessment_type: string; status: string; created_at: string } & PsychometricResult;
 type Result = { id: string; academic_year: string; term: string; subject: string; max_marks: number; marks_obtained: number; percentage: number | null; grade: string | null; teacher_remarks: string | null };
 type Attended = { activity_id: string; title: string; scheduled_at: string; present: boolean };
 type Upcoming = { id: string; title: string; scheduled_at: string };
+type SkillEnrolment = {
+  id: string; batch_id: string; batch_title: string; topic: string | null; trainer_name: string | null; start_date: string; end_date: string | null;
+  status: string; frozen: boolean; completed_at: string | null; certified_at: string | null; attendance: { present: number; marked: number };
+  assessments: { name: string; max_score: number; score: number | null; remarks: string | null }[];
+};
+type SkillModuleProgress = { status: string; enrollments: SkillEnrolment[] };
+
+// ENH-030 (spec §5.3, C3): the 30 most recent marked days at the student's current school, with counts over those same days.
+export type DailyAttendance = { counts: Record<AttendanceStatus, number>; recent: { session_date: string; status: AttendanceStatus }[] };
+
+/** "18 present · 1 late · 1 absent · 0 excused" -- raw counts, no percentage (C3). Shared by the parent card and the 360 tab. */
+export function dailyAttendanceText(d: DailyAttendance): string {
+  return (["present", "late", "absent", "excused"] as const).map((s) => `${d.counts[s]} ${ATTENDANCE_LABEL[s].toLowerCase()}`).join(" · ");
+}
+
+/** "1 marked day" / "20 marked days". */
+export const markedDays = (n: number) => `${n} marked day${n === 1 ? "" : "s"}`;
 
 export type ChildOverview = {
-  student: { id: string; student_code: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null; school_name: string | null; assigned_teacher_name: string | null };
+  // ENH-025: section/roll_number/has_photo are additive on the overview's `student` (it reuses _student_out).
+  student: { id: string; student_code: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null; school_name: string | null; assigned_teacher_name: string | null; section?: string | null; roll_number?: string | null; has_photo?: boolean };
   career_guidance: { status: string; sessions: CareerRecord[] };
   counselling: { status: string; notes: CareerRecord[] };
   recommended_careers: CareerRecord[];
+  // ENH-026: optional so an older API renders exactly as before.
+  structured_recommendations?: StructuredRecommendation[];
   psychometric: { status: string; assessments: Assessment[] };
   results: Result[];
   activities: { attended: Attended[]; upcoming: Upcoming[] };
+  // ENH-011. Optional: an API without it (an older deployment) renders exactly as before.
+  skills?: { soft_skills: SkillModuleProgress; digital_skills: SkillModuleProgress };
+  // ENH-030. Optional: an API without it (an older deployment) renders exactly as before.
+  daily_attendance?: DailyAttendance;
 };
 
 export async function loadChildOverview(studentId: string): Promise<ChildOverview> {
   return serverApi<ChildOverview>(`/api/v1/school/students/${studentId}/overview`);
 }
 
-export function formatDate(value: string | null | undefined, withTime = false): string {
-  if (!value) return "-";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}) });
+/** ENH-005: true when the children's known schools are not all the same. After a transfer a parent can have children at two schools, and a
+ * card must then say which one; a single-school parent's page stays exactly as it was. A child whose overview did not load is ignored. */
+export function childrenSpanSchools(overviews: (ChildOverview | null)[]): boolean {
+  return new Set(overviews.map((o) => o?.student.school_name).filter(Boolean)).size > 1;
 }
 
-const STATUS_LABEL: Record<string, string> = { completed: "Completed", assigned: "Assigned", not_started: "Not started" };
+const STATUS_LABEL: Record<string, string> = {
+  // ENH-011: the enrolment statuses (including "Completed") come from the skills module itself; the rest are this page's own.
+  ...ENROLMENT_LABEL,
+  assigned: "Assigned", not_started: "Not started", in_progress: "In progress", discontinued: "Discontinued",
+};
 
 export function StatusChip({ status }: { status: string }) {
-  const tone = status === "completed" ? "" : status === "assigned" ? " pending" : " pending";
+  const tone = status === "completed" || status === "certified" ? "" : " pending";
   return <span className={`status${tone}`}>{STATUS_LABEL[status] || status}</span>;
 }
 
@@ -48,19 +87,67 @@ export function ChildStatusRow({ overview }: { overview: ChildOverview }) {
       <div className="metric"><span>Counselling</span><StatusChip status={overview.counselling.status} /></div>
       <div className="metric"><span>Psychometric</span><StatusChip status={overview.psychometric.status} /></div>
       <div className="metric"><span>Published results</span><strong>{overview.results.length}</strong></div>
+      {overview.daily_attendance && (
+        <div className="metric">
+          <span>{overview.daily_attendance.recent.length ? `Attendance (last ${markedDays(overview.daily_attendance.recent.length)})` : "Attendance"}</span>
+          <strong>{overview.daily_attendance.recent.length ? dailyAttendanceText(overview.daily_attendance) : "Not marked yet"}</strong>
+        </div>
+      )}
+      {overview.skills && (
+        <>
+          <div className="metric"><span>Soft skills</span><StatusChip status={overview.skills.soft_skills.status} /></div>
+          <div className="metric"><span>Digital skills</span><StatusChip status={overview.skills.digital_skills.status} /></div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// The counselor screens' own labels, so the Parent Portal cannot word a module differently.
+const SKILL_MODULES = Object.entries(MODULE_LABEL) as [SkillModule, string][];
+
+// Exported for ENH-013's Student 360° Skills tab, so both screens render a batch the same way.
+export function SkillsCard({ skills }: { skills: NonNullable<ChildOverview["skills"]> }) {
+  return (
+    <div className="card">
+      <h3>Skills</h3>
+      {SKILL_MODULES.map(([key, label]) => (
+        <section key={key}>
+          <h4>{label}</h4>
+          {skills[key].enrollments.length === 0 ? (
+            <p className="muted">Not enrolled in a {label} batch yet.</p>
+          ) : (
+            <ul>
+              {skills[key].enrollments.map((e) => (
+                <li key={e.id}>
+                  <strong>{e.batch_title}</strong>{e.topic && <> · {e.topic}</>}{e.frozen && <span className="muted"> · at a previous school</span>}{" "}
+                  <StatusChip status={e.status} />
+                  <div className="muted">{attendanceText(e.attendance)}</div>
+                  {e.assessments.length > 0 && (
+                    <ul>{e.assessments.map((a) => <li key={a.name}>{a.score === null ? `${a.name}: not scored yet` : `${a.name}: ${a.score} / ${a.max_score}${a.remarks ? ` — ${a.remarks}` : ""}`}</li>)}</ul>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ))}
     </div>
   );
 }
 
 export default function SchoolChildOverview({ overview }: { overview: ChildOverview }) {
   const s = overview.student;
+  const structured = overview.structured_recommendations ?? [];
   return (
     <>
       <div className="card">
         <h2>{s.full_name} <span className="muted" style={{ fontSize: 14 }}>({s.student_code})</span></h2>
+        <SchoolStudentPhoto studentId={s.id} name={s.full_name} hasPhoto={Boolean(s.has_photo)} canEdit={false} />
         <p><strong>School:</strong> {s.school_name || "-"}</p>
         <p><strong>Grade/Class:</strong> {s.grade_or_class || "-"}</p>
-        <p><strong>Date of birth:</strong> {formatDate(s.date_of_birth)}</p>
+        <p><strong>Section / Roll number:</strong> {s.section || "-"} / {s.roll_number || "-"}</p>
+        <p><strong>Date of birth:</strong> {formatCalendarDate(s.date_of_birth)}</p>
         <p><strong>Class teacher:</strong> {s.assigned_teacher_name || "Not assigned yet"}</p>
       </div>
 
@@ -71,7 +158,7 @@ export default function SchoolChildOverview({ overview }: { overview: ChildOverv
         {overview.career_guidance.sessions.length === 0 ? (
           <p className="muted">No career guidance session recorded yet.</p>
         ) : (
-          <ul>{overview.career_guidance.sessions.map((r) => <li key={r.id}><strong>{formatDate(r.created_at)}</strong> — {r.notes}</li>)}</ul>
+          <ul>{overview.career_guidance.sessions.map((r) => <li key={r.id}><strong>{formatDate(r.created_at, false, SCHOOL_TIME_ZONE)}</strong> — {r.notes}<CareerRecordDetails record={r} /></li>)}</ul>
         )}
       </div>
 
@@ -80,16 +167,27 @@ export default function SchoolChildOverview({ overview }: { overview: ChildOverv
         {overview.counselling.notes.length === 0 ? (
           <p className="muted">No counselling notes yet.</p>
         ) : (
-          <ul>{overview.counselling.notes.map((r) => <li key={r.id}><strong>{formatDate(r.created_at)}</strong> — {r.notes}</li>)}</ul>
+          <ul>{overview.counselling.notes.map((r) => <li key={r.id}><strong>{formatDate(r.created_at, false, SCHOOL_TIME_ZONE)}</strong> — {r.notes}<CareerRecordDetails record={r} /></li>)}</ul>
         )}
       </div>
 
       <div className="card">
         <h3>Recommended careers</h3>
-        {overview.recommended_careers.length === 0 ? (
+        {overview.recommended_careers.length === 0 && !structured.length ? (
           <p className="muted">No career recommendation yet — this appears once the Career Counselor records one.</p>
         ) : (
-          <ul>{overview.recommended_careers.map((r) => <li key={r.id}><span className="badge">{r.notes}</span> <span className="muted">{formatDate(r.created_at)}</span></li>)}</ul>
+          <ul>{overview.recommended_careers.map((r) => <li key={r.id}><span className="badge">{r.notes}</span> <span className="muted">{formatDate(r.created_at, false, SCHOOL_TIME_ZONE)}</span></li>)}</ul>
+        )}
+        {structured.length > 0 && (
+          <>
+            <h4>From counselling sessions</h4>
+            <ul>{structured.map((r) => (
+              <li key={r.record_id}>
+                {[...(r.recommended_careers ?? []), ...(r.recommended_courses ?? []), ...(r.recommended_stream ?? []), ...(r.recommended_skills ?? [])].map((item) => <span className="badge" key={item}>{item}</span>)}
+                {" "}<span className="muted">{formatDate(r.created_at, false, SCHOOL_TIME_ZONE)}</span>
+              </li>
+            ))}</ul>
+          </>
         )}
       </div>
 
@@ -98,16 +196,19 @@ export default function SchoolChildOverview({ overview }: { overview: ChildOverv
         {overview.psychometric.assessments.length === 0 ? (
           <p className="muted">No psychometric assessment assigned yet.</p>
         ) : (
-          <div className="table-wrap">
-            <table className="table">
-              <thead><tr><th>Assessment</th><th>Status</th><th>Assigned on</th></tr></thead>
-              <tbody>
-                {overview.psychometric.assessments.map((a) => (
-                  <tr key={a.id}><td>{a.assessment_type}</td><td><StatusChip status={a.status} /></td><td>{formatDate(a.created_at)}</td></tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <div className="table-wrap">
+              <table className="table">
+                <thead><tr><th>Assessment</th><th>Status</th><th>Assigned on</th></tr></thead>
+                <tbody>
+                  {overview.psychometric.assessments.map((a) => (
+                    <tr key={a.id}><td>{a.assessment_type}</td><td><StatusChip status={a.status} /></td><td>{formatDate(a.created_at, false, SCHOOL_TIME_ZONE)}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <PsychometricResultsList assessments={overview.psychometric.assessments} />
+          </>
         )}
       </div>
 
@@ -139,7 +240,7 @@ export default function SchoolChildOverview({ overview }: { overview: ChildOverv
               <thead><tr><th>Activity</th><th>Date</th><th>Attendance</th></tr></thead>
               <tbody>
                 {overview.activities.attended.map((a) => (
-                  <tr key={a.activity_id}><td>{a.title}</td><td>{formatDate(a.scheduled_at, true)}</td><td><span className={`status${a.present ? "" : " error"}`}>{a.present ? "Present" : "Absent"}</span></td></tr>
+                  <tr key={a.activity_id}><td>{a.title}</td><td>{formatSchoolDateTime(a.scheduled_at, true)}</td><td><span className={`status${a.present ? "" : " error"}`}>{a.present ? "Present" : "Absent"}</span></td></tr>
                 ))}
               </tbody>
             </table>
@@ -147,12 +248,14 @@ export default function SchoolChildOverview({ overview }: { overview: ChildOverv
         )}
       </div>
 
+      {overview.skills && <SkillsCard skills={overview.skills} />}
+
       <div className="card">
         <h3>Upcoming sessions</h3>
         {overview.activities.upcoming.length === 0 ? (
           <p className="muted">Nothing scheduled yet.</p>
         ) : (
-          <ul>{overview.activities.upcoming.map((a) => <li key={a.id}><strong>{formatDate(a.scheduled_at, true)}</strong> — {a.title}</li>)}</ul>
+          <ul>{overview.activities.upcoming.map((a) => <li key={a.id}><strong>{formatSchoolDateTime(a.scheduled_at, true)}</strong> — {a.title}</li>)}</ul>
         )}
       </div>
     </>

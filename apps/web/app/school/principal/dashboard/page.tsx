@@ -1,33 +1,35 @@
 import PortalShell from "@/components/PortalShell";
+import SchoolKpiBoard from "@/components/SchoolKpiBoard";
 import SchoolServiceDeliverySummary from "@/components/SchoolServiceDeliverySummary";
+import SectionUnavailable from "@/components/SectionUnavailable";
 import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
-import type { User } from "@/lib/types";
+import type { SchoolKpi, User } from "@/lib/types";
+import { accessUnavailable } from "@/components/AccessUnavailable";
 
 type Student = { id: string; full_name: string; grade_or_class: string | null };
 
 // SCH-001: school-wide, read-only progress overview -- the one landing view a Principal
-// needs. Exact KPI set is OPEN (DEC-SCOPE-011 confirmed the role/scope, not a dashboard
-// field list) -- this shows the confirmed roster only, not an invented metric set.
+// needs. ENH-016 (DEC-SCOPE-034 D7): the School CRM.md §1 KPI board now leads it, read from
+// the same /school/dashboard the Coordinator uses. Fetched on its own so a failure there
+// leaves the roster below usable.
 export default async function SchoolPrincipalDashboardPage() {
   let user: User;
   let students: Student[];
+  let dashboard: { school_crm_kpis: SchoolKpi[] } | null;
   try {
-    [user, students] = await Promise.all([serverApi<User>("/api/v1/auth/me"), serverApi<Student[]>("/api/v1/school/students")]);
+    [user, students, dashboard] = await Promise.all([
+      serverApi<User>("/api/v1/auth/me"),
+      serverApi<Student[]>("/api/v1/school/students"),
+      serverApi<{ school_crm_kpis: SchoolKpi[] }>("/api/v1/school/dashboard").catch(() => null),
+    ]);
   } catch (e) {
-    return (
-      <div className="section">
-        <div className="container card">
-          <h1>Access unavailable</h1>
-          <p>{e instanceof Error ? e.message : "Unable to load this workspace"}</p>
-          <a className="btn" href="/overseas/login">Return to login</a>
-        </div>
-      </div>
-    );
+    return accessUnavailable(e);
   }
   return (
     <PortalShell nav={SCHOOL_NAV.principal} roleLabel="Principal" userName={user.full_name}>
       <div className="portal-content">
+        {dashboard ? <SchoolKpiBoard kpis={dashboard.school_crm_kpis} /> : <SectionUnavailable title="School at a glance" />}
         <div className="card">
           <h2>Your school</h2>
           {students.length === 0 ? (

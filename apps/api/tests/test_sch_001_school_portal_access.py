@@ -29,7 +29,7 @@ async def _create_school_with_roles(db_session) -> dict:
     admin = User(email=f"sch001-admin-{uuid.uuid4().hex[:8]}@example.local", password_hash=hash_password(PASSWORD), full_name="Overseas Admin", role="overseas_admin", division="overseas", active=True)
     db_session.add(admin)
     await db_session.flush()
-    school = School(name=f"SCH-001 Test School {uuid.uuid4().hex[:6]}", created_by_user_id=admin.id)
+    school = School(name=f"SCH-001 Test School {uuid.uuid4().hex[:6]}", created_by_user_id=admin.id, tier="platinum")  # ENH-022: entitled to every service
     db_session.add(school)
     await db_session.flush()
 

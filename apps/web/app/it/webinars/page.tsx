@@ -3,6 +3,7 @@ import PublicShell from "@/components/PublicShell";
 import PageHero from "@/components/PageHero";
 import { publicApi } from "@/lib/api";
 import type { Webinar } from "@/lib/types";
+import LocalTime from "@/components/LocalTime";
 
 export default async function Webinars() {
   let webinars: Webinar[] = [];
@@ -34,7 +35,7 @@ export default async function Webinars() {
                 <article className="card" key={w.id}>
                   <span className="badge">{w.event_type}</span>
                   <h3 style={{ marginTop: 12 }}>{w.title}</h3>
-                  <p className="muted">{new Date(w.starts_at).toLocaleString("en-GB")} · {w.location}</p>
+                  <p className="muted"><LocalTime value={w.starts_at} time label /> · {w.location}</p>
                   <p>{w.description}</p>
                   <Link className="btn small" href={`/it/webinars/${w.id}`}>View & register</Link>
                 </article>
@@ -52,7 +53,7 @@ export default async function Webinars() {
                 <article className="card" key={w.id}>
                   <span className="badge">{w.event_type}</span>
                   <h3 style={{ marginTop: 12 }}>{w.title}</h3>
-                  <p className="muted">{new Date(w.starts_at).toLocaleString("en-GB")} · {w.location}</p>
+                  <p className="muted"><LocalTime value={w.starts_at} time label /> · {w.location}</p>
                   <Link className="btn small" href={`/it/webinars/${w.id}`}>View details</Link>
                 </article>
               ))}

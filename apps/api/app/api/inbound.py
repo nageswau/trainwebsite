@@ -14,12 +14,11 @@ from app.models import (
     AuditLog,
     InboundUniversityEmail,
     Notification,
-    NotificationDelivery,
     OverseasApplication,
     User,
 )
+from app.notifications.dispatch import queue_deliveries
 from app.schemas import InboundUniversityEmailIn
-from app.services.integrations import send_notification
 
 router = APIRouter(prefix="/inbound", tags=["inbound-integrations"])
 
@@ -68,14 +67,17 @@ async def _match_application(db: AsyncSession, payload: InboundUniversityEmailIn
 
 
 async def _notify_student(db: AsyncSession, email: InboundUniversityEmail, application: OverseasApplication) -> None:
+    # A School-bridged row or an agency student with no login has no account to notify (DEC-SCOPE-018, AGN-008); db.get(User, None)
+    # is a documented SAWarning / future error, so return before it.
+    if application.student_id is None:
+        return
     student = await db.get(User, application.student_id)
     if not student:
         return
     notification = Notification(user_id=student.id, title="University update received", body=email.subject, read=False, action_url="/overseas/student/university-communication")
     db.add(notification)
     await db.flush()
-    status, error = await send_notification("email", {"to": student.email, "title": notification.title, "body": notification.body, "action_url": notification.action_url})
-    db.add(NotificationDelivery(notification_id=notification.id, channel="email", status=status, error=error, sent_at=datetime.now(UTC) if status == "sent" else None))
+    await queue_deliveries(db, notification, student, context={"kind": "inbound"})  # the pre-ENH-014 email payload had no phone (AC12)
 
 
 @router.post("/university-email", status_code=202)

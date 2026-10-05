@@ -1,5 +1,7 @@
 "use client";
 
+import { formatDateTimeIn, viewerTimeZone } from "@/lib/formatDate";
+
 // User-requested join-experience fix (2026-09-09, `docs/decisions/PENDING_ZOHO_LIVE_CLASSES.md`
 // §1b items a/b/c): the raw join URL previously rendered as inert text in the generic
 // `DataTable` and as a plain `<a>` in `LiveClassesPanel` -- neither gated on timing at all,
@@ -54,7 +56,8 @@ export default function JoinSessionButton({
     // the early/late window only applies to a joining participant, never the host.
     const state = isHost ? "joinable" : sessionState(startsAt, endsAt, Date.now());
     if (state === "too_early") {
-      window.alert(`Too early to join -- this session starts at ${new Date(startsAt).toLocaleString()}.`);
+      // window.alert() takes a plain string, so <LocalTime> cannot render here; the same helper gives the viewer's zone and its label.
+      window.alert(`Too early to join -- this session starts at ${formatDateTimeIn(startsAt, viewerTimeZone(), true)}.`);
       return;
     }
     if (state === "ended") {

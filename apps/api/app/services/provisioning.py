@@ -20,7 +20,9 @@ from datetime import UTC, datetime, timedelta
 from typing import NamedTuple
 from uuid import UUID
 
+from fastapi import HTTPException
 from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -51,9 +53,20 @@ def unusable_password_hash() -> str:
     return hash_password(secrets.token_urlsafe(48))
 
 
+async def flush_unique_email(db: AsyncSession) -> None:
+    """Flush a new account; two simultaneous creates for one email are settled by the unique
+    constraint (409 for the loser, never a 500). Rolling back also drops anything created with it."""
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(409, "Email already exists") from None
+
+
 def _set_password_url(user: User, raw: str) -> str:
     # Built from configuration, never from the request's Host header (no host-header poisoning).
-    segment = "overseas" if user.division == "overseas" else "it"  # super_admin logs in via /it
+    # super_admin logs in via /it. bdm-001 QA-05 (owner, 2026-10-02): a BDM manager's link opens the admin portal's own reset page.
+    segment = "admin" if user.role == "bdm_manager" else ("overseas" if user.division == "overseas" else "it")
     return f"{settings.frontend_url}/{segment}/reset-password?token={raw}"
 
 

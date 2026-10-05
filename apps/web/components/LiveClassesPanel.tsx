@@ -3,20 +3,13 @@
 import { useEffect, useState } from "react";
 import type { LiveSessionInfo } from "@/lib/types";
 import JoinSessionButton from "./JoinSessionButton";
+import LocalTime from "@/components/LocalTime";
 
 const PROVIDER_LABEL: Record<string, string> = {
   zoho_meeting: "Zoho Meeting",
   google_meet: "Google Meet",
   manual: "Meeting link",
 };
-
-function formatWhen(iso: string) {
-  try {
-    return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-  } catch {
-    return iso;
-  }
-}
 
 // STU-003/TRN-003: "Student joins from dashboard at session time" / "Trainer views/joins
 // upcoming session." The backend already scopes GET /communications/it/live-sessions to
@@ -74,7 +67,7 @@ export default function LiveClassesPanel({ title = "Live classes", upcomingOnly 
           <div className="card" key={session.id}>
             <span className="badge">{session.batch}</span>
             <h4 style={{ marginTop: 10 }}>{session.title}</h4>
-            <p className="muted" style={{ fontSize: 13 }}>{formatWhen(session.starts_at)}</p>
+            <p className="muted" style={{ fontSize: 13 }}><LocalTime value={session.starts_at} time label /></p>
             <p className="muted" style={{ fontSize: 13 }}>{PROVIDER_LABEL[session.provider] || session.provider}</p>
             <JoinSessionButton
               joinUrl={joinUrl}

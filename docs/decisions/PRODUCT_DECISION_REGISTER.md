@@ -689,6 +689,31 @@ field) so those slot in later without rework, not hardcoded email-only.
 **Status:** extension CONFIRMED_CURRENT — Approved by: user (in-session) — Approval date:
 2026-09-03 — `ADM-011` unblocked for email channel only
 
+**Extended (2026-09-30, ENH-014 — Multi-channel Communication Centre):** resolves the open items above
+for ENH-014's first slice. Each point was answered by the user in-session, one question at a time:
+
+| # | Question | Decision |
+|---|---|---|
+| D1 | Does this decision cover School-domain recipients? | Yes — extended to Parents, Coordinators, Principals and the other School roles as recipients |
+| D2 | SMS provider identity | **Twilio** (same account as WhatsApp) |
+| D3 | Mobile push notifications | Out of scope — no mobile app exists; the in-app notification list is the "CRM notification" channel |
+| D4 | Consent model | **Opt-in** for WhatsApp and SMS, recorded with a timestamp; Email and in-app are always on |
+| D5 | Which triggers | Every existing trigger that sends email today (School and IT/Overseas) also delivers on the recipient's opted-in channels; in-app-only triggers stay in-app-only |
+| D6 | Result-publish recipients | Parents only (unchanged). Part B §11's Student/Teacher recipients are a recorded follow-up |
+| D7 | Auth/invite messages | Password reset, set-password and invite links stay **email-only** regardless of preferences |
+| D8 | Credentials | Twilio sandbox for development; production account and template approval before release |
+| D9 | DPDP/privacy review | **Approved by the user today:** Twilio acts as data processor for phone numbers and message content; opt-in consent recorded; erasure also removes preferences; export includes them |
+| D10 | Dispatch | Celery queue for every channel, enqueued after commit |
+| D11 | Retry policy (`PRD_OPEN_ITEMS.md` item 13) | Up to 3 retries on transient errors (timeout, 5xx, 429) at ~60 s / 5 min / 25 min; then `failed` with the error kept |
+| D12 | Platinum `parent_help_desk` | Separate later slice of ENH-014 |
+| D13 | Message content | One generic approved WhatsApp utility template (title, body, link); SMS carries the same text |
+| D14 | Phone verification | Format check and E.164 normalisation only (default country India, +91); no OTP |
+
+Design: `docs/superpowers/specs/2026-09-30-enh-014-notification-channels-design.md`.
+
+**Status:** extension CONFIRMED_CURRENT — Approved by: user (in-session) — Approval date:
+2026-09-30 — ENH-014 slice 1 unblocked (Twilio WhatsApp + SMS, sandbox credentials)
+
 ---
 
 ## Group 7 — Privacy / Security
@@ -2098,3 +2123,1467 @@ findings and rationale in `docs/superpowers/specs/2026-09-19-enh-003-first-time-
   development. **Pre-existing and out of scope of this decision:** with `ENVIRONMENT=development`,
   `forgot_password` returns `development_reset_token` to anonymous callers — `NEEDS_CONFIRMATION` whether
   to fix separately.
+
+### DEC-SCOPE-020 — Student promotion to the next academic year / grade (`ENH-004`)
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` ENH-004 (source: the user's instruction to think broadly about user lifecycle, "promoted to upper grade in next year if required") had no Decision ID or Feature ID. How does a School Coordinator advance students at academic-year rollover, and what happens to the prior grade?
+
+**Evidence:** Audit of the code, 2026-09-19: no promotion action existed; `PATCH /school/students/{id}` overwrote `grade_or_class`/`grade_level` in place with no history; every school page renders the free-text `grade_or_class` (only the dashboard KPIs read `grade_level`); `SchoolStudent` has no section field; school students never log in (`DEC-ROLE-004`).
+
+**Resolution:** User confirmed in-session, 2026-09-19 (`EXPLICIT_APPROVAL`), six points:
+
+1. **Bulk selection:** an explicit list of student IDs (the UI filters and ticks); no server-side grade/section selector.
+2. **Grade label:** the number inside `grade_or_class` is advanced automatically ("Grade 8-A" → "Grade 9-A"); a label that cannot be advanced fails that row unless the coordinator supplies a replacement.
+3. **Top grade:** a Grade 12 promotion is rejected for that row; graduate/alumni handling is out of scope.
+4. **Who:** `school_coordinator` only, scoped to their own school; the school is never client-supplied.
+5. **Target year and hold-back:** the active academic year, server-resolved; "hold back" is a recorded action (same grade, moved into the new year).
+6. **Partial failure:** valid rows commit and failures are reported per row; a student from another school (or an unknown ID) rejects the whole request with `403`.
+
+Design, API, UI and security review: `docs/superpowers/specs/2026-09-19-enh-004-student-promotion-design.md` (§5.4, §7.1, §14).
+
+**Consequences:** new append-only table `school_student_grade_history` (migration `0033`); `POST /school/students/promotions` and `GET /school/students/{id}/grade-history`; the "student dashboard" in the backlog's acceptance criteria maps to the parent view only.
+
+**`NEEDS_CONFIRMATION` (not decided here):** graduate/alumni handling after Grade 12; a real section field; whether admin roles should ever promote; parent notification on promotion; promotion events in the SCH-008 timeline.
+
+**Security exposure found during ENH-004's review, and its status.** `PATCH /auth/me` merged a client-supplied `profile` into the user's own profile, and every school scope check trusts `profile.school_id`, so a logged-in user could re-point their own school scope and defeat the "a coordinator cannot promote at another school" guarantee this feature relies on. **Fixed 2026-09-20 with the user's approval** (plan Task 3b): `school_id` is now read-only through that route (an unchanged echo is still accepted; a change is `403`, applies nothing else, is audited as `profile.update_denied` and logged). `profile.university_id` had the same weakness for university reps (UNI-001); the independent code review of ENH-004 flagged it as High and it was **fixed the same day** by adding it to the same server-owned list (3 tests, red before the change). **Still OPEN, deliberately not changed here:** no school-student erasure path exists; there is no app-wide rate limiter or CSRF token.
+
+### DEC-SCOPE-021 — Self-service change password for an authenticated user (`ENH-006`)
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` ENH-006 (source: the user's instruction "change password") required two decisions before implementation: the rate-limit threshold and storage for repeated wrong current passwords (`SECURITY_CONTROLS.md` §1 lists auth rate limiting as an open item that must not be decided without sign-off), and the session-invalidation policy after a change (marked `NEEDS_CONFIRMATION` in the backlog).
+
+**Evidence:** Audit of the code, 2026-09-21: `apps/api/app/api/auth.py` has `forgot_password` and `reset_password` but no route for an already-authenticated user; access and refresh tokens are stateless JWTs with no per-session or token-version record (`logout` only deletes cookies); no rate limiter exists anywhere (the only throttle is the ENH-003 welcome-link Re-send cooldown, which is derived from existing rows); `AuditLog` already records denied actions (`profile.update_denied`).
+
+**Resolution:** User confirmed in-session, 2026-09-21 (`EXPLICIT_APPROVAL`):
+
+1. **Rate limit:** 5 failed current-password attempts per authenticated user per 15 minutes; the next attempt is `429` with `Retry-After`, even if it carries the correct password. Keyed on the user id, never on IP.
+2. **Storage:** the limiter counts the `auth.change_password_failed` audit rows this feature already writes. No new table and no migration (the user chose this over a dedicated attempts table).
+3. **Sessions:** other sessions are **not** invalidated. `get_current_user` and the JWT claims are unchanged; other sessions stay valid until their tokens expire.
+4. **Also confirmed:** a new password identical to the current one is rejected (`422`); no confirm-password field; failed attempts are audit-logged (`outcome="denied"`), a successful change as `auth.change_password`.
+5. **Reset links (security review, 2026-09-21, `EXPLICIT_APPROVAL`):** a successful change revokes the user's unused `reset`-purpose password-reset tokens (`superseded_at`, same transaction); welcome tokens, used tokens and other users' tokens are untouched.
+6. **Session survival, accepted risk (2026-09-21, `EXPLICIT_APPROVAL`):** because other sessions are not invalidated (#3), a stolen refresh cookie stays usable for up to 14 days after a change (`refresh_token_days`; access tokens 60 minutes). The smaller alternative — a `password_changed_at` column checked only in `/auth/refresh`, exposure about 60 minutes, one migration — was offered and declined for this feature.
+7. **Whitespace-only passwords (browser QA finding QA-007, user-directed 2026-09-21, `EXPLICIT_APPROVAL`):** `POST /auth/change-password` refuses a `new_password` that is only whitespace (`422`, "Password must not consist only of spaces"); spaces inside or around real characters are kept exactly. **`NEEDS_CONFIRMATION`:** registration and reset-password still accept such a value, so the three entry points now differ.
+8. **Mobile menu placement (browser QA finding QA-004, user-directed 2026-09-21, `EXPLICIT_APPROVAL`):** on the portal's mobile menu, "Change password" is the **first** item, so it is in view without scrolling the role's 17 items on a phone. Only this feature's own item is positioned; no role's menu order is changed.
+9. **Skip link in the shared public shell (browser QA finding QA-008, user-directed 2026-09-21, `EXPLICIT_APPROVAL`):** `PublicShell` gains a "Skip to main content" link and a focusable `main#main-content`. **Scope note:** this is a shared component, so every public page gains it, which is wider than ENH-006's own surface; it was accepted by the instruction below and can be reverted independently (`PublicShell.tsx`, `controls.css`, `PublicShell.test.tsx`).
+
+**Approval trail for #7–#9 (added after the independent review, 2026-09-21).** The browser-QA pass listed QA-004, QA-007 and QA-008 under "your call" and marked them `NEEDS_CONFIRMATION` (spec §13, before commit `8c63fcc`). The user then replied "fix the 2", which was read as item 2 of that list, i.e. those three findings; the interpretation was stated to the user in the same turn ("say so if you meant something else") and was not contested. The fixes were made test-first and the spec, contract and RTM were updated to match. If that reading was wrong, #7–#9 are the three changes to revert.
+
+Design, API, frontend and security review: `docs/superpowers/specs/2026-09-21-enh-006-change-password-design.md` (§4, §6, §12).
+
+**Status:** CONFIRMED_CURRENT — Approved by: user (in-session) — Approval date: 2026-09-21.
+
+**Consequences / still OPEN, deliberately not decided here:** login, forgot-password and reset-password remain unthrottled (`SECURITY_CONTROLS.md` §1); other sessions surviving a password change is a known limitation, not a decision that it is desirable; no notification email on change; no password-history or strength rules beyond the existing 10–128 character rule.
+
+### DEC-SCOPE-022 — Student school transfer, coordinator-requested and admin-approved (`ENH-005`)
+
+**ID note:** this decision was written as `DEC-SCOPE-021` on the ENH-005 branch. `ENH-006` merged to `main` first and holds `DEC-SCOPE-021` (change password), so when `main` was merged into the ENH-005 branch (2026-09-21) this one was renumbered to `DEC-SCOPE-022` everywhere. Earlier ENH-005 commit messages that say `DEC-SCOPE-021` mean this decision.
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` ENH-005 (source: the user's instruction "changing of schools etc.") had no Decision ID or Feature ID. Who may move a student from one school to another, and what happens to everything that hangs off that student (parents, staff visibility, unpublished results, the assigned teacher, history)?
+
+**Evidence:** Audit of the code, 2026-09-21: `SchoolStudent.school_id` was set at creation and never changed; every School-role scope check trusts a single `user.profile["school_id"]`, so a moved student's parent would have been locked out; ENH-004's promotion locking assumed `school_id` never changes; results, career, psychometric, test-prep and language records carry no `school_id`, so a bare update would silently re-home unpublished work to the new school.
+
+**Resolution:** User confirmed in-session, 2026-09-21 (`EXPLICIT_APPROVAL`), nine points (D1-D9 in `docs/superpowers/specs/2026-09-21-enh-005-student-school-transfer-design.md` §3):
+
+1. **D1 Parents:** access is by `SchoolParentLink` alone, not by the parent's school. Links are never deleted. A parent whose only child at the losing school was this student moves to the gaining school (`profile.school_id` rewritten); a parent with another child still there stays.
+2. **D2 Authority:** a School Coordinator of either school requests; `overseas_admin` and `super_admin` approve or reject. The approval is the single action that performs the move. Neither coordinator can change a student's school.
+3. **D3 In-flight results:** Draft and Verified results become `withdrawn` (kept, hidden, uneditable); Published results stay with the student.
+4. **D4 Other records:** career, psychometric, test-prep and language records follow the student unchanged.
+5. **D5 Visibility:** a coordinator sees only requests their own school filed; the other school is told when the admin decides.
+6. **D6 Lists:** `limit`/`offset` with `{items, total, limit, offset}` (default 25, max 100), a deliberate deviation from `API_CONTRACT.md` §0.1's cursor convention, which no endpoint implements.
+7. **D7 Cap:** at most 50 open requests per filing school.
+8. **D8 Throttle:** at most 30 filing attempts per coordinator per rolling hour (counted from the audit rows), `429` with `Retry-After`.
+9. **D9 Email:** the HTML of the parent notification email escapes the text it interpolates.
+
+Assumptions taken with the design and approved with it: "admin" means `overseas_admin` and `super_admin`; "one action" means the admin's approval performs the whole move; the incoming-request endpoint returns the identical `202 {"accepted": true}` for every well-formed Student ID so it is not an existence oracle. One implementation refinement: the free-text check on `reason`/`note` rejects control characters except line breaks and tabs (it is a textarea), plus the bidirectional overrides U+202A-U+202E and U+2066-U+2069, and it accepts zero-width joiners (Indic scripts need them).
+
+Design, API, UI and security review: `docs/superpowers/specs/2026-09-21-enh-005-student-school-transfer-design.md` (§5.5, §6.1, §7.1).
+
+**Consequences:** new table `school_student_transfer_requests` (migration `0034`) that is both the request workflow and the transfer history; ten endpoints (six under `/school`, four under `/overseas-admin`); the value `withdrawn` in `school_academic_results.status` (never returned by any response); a parent's read scope becomes link-only, so "a `SchoolParentLink` joins a parent and a student of the same school" was, at the time this decision was made, still the invariant the three link creators enforced when *creating* a fresh link (superseded by `ENH-008`, see the closing note below — it no longer holds for new links, only ever described link creation, not the read-side scope check, which was already link-only); a parent moved to the gaining school comes under that school's coordinator's account authority (`list_team`, `update_team_account`) and leaves the losing coordinator's; the promotion comment claiming `school_id` never changes is corrected, and a transfer racing a promotion is refused with the promotion's generic `403` having written nothing.
+
+**`NEEDS_CONFIRMATION` (known limits, not decided here):** the unaccepted-parent-invite limit (**decided by the owner on 2026-09-21**, see the paragraph below); ~~full multi-school parent management (`ENH-008`): a parent kept at the losing school because of another child there does not appear in the gaining school's team list and cannot be linked by the gaining coordinator~~ **RESOLVED by `ENH-008`, see the closing note below**; branch moves within a school (`ENH-009`); bulk transfer; graduation/alumni; whether the other school should be consulted before an admin decides (no consent step exists); reversal is simply a new request in the opposite direction.
+
+**Owner decision, 2026-09-21 — unaccepted parent invites: DECIDED, keep the admin warning** (`EXPLICIT_APPROVAL`: the owner chose this option in the session; the options were the ones listed in spec §13). A parent who was invited but had not accepted when their student transferred keeps today's behavior: approval clears the student's `pending_parent_email`, the parent later has an account at the losing school and no linked child, and the gaining coordinator cannot link them. The admin is warned in the queue row and again at the confirm step (`pending_parent_invite`) and can ask the parent to accept first. **Not chosen:** carrying the invite to the gaining school (needs a cross-school exception to the same-school link invariant S2/AC-29 and a rule for invites that cover siblings still at the losing school), and blocking filing or approval while an invite is unaccepted (can stall a transfer on a parent who never responds). Multi-school parent handling can be revisited with `ENH-008`.
+
+**Security findings and status.** Found by the review before code (spec §6.1): HTML injection in parent emails (fixed, D9); the parent read filter no longer double-checking the school (link creators verified and tested); a code-probing oracle through the requester's own list (throttle D8, cap D7, every attempt audited, residual documented); an unrecorded authorization-scope change (one audit row per re-scoped parent); approval as a general write path (restricted to `profile.school_id` on `school_parent` accounts). Reported, not changed (outside ENH-005): the API has no rate limiting on login or elsewhere; no CSRF token exists (`SameSite=Lax` only); `secret_key` defaults to `"change-me"` and `cookie_secure` to `False`; admin routes gate on the `users.role` column rather than active role assignments.
+
+**Closing note, 2026-09-22 (`ENH-008`, `DEC-SCOPE-024`).** The `NEEDS_CONFIRMATION` limitation named above by title — "a parent kept at the losing school … cannot be linked by the gaining coordinator" — is resolved. `ENH-008` removed the same-school restriction on *new* `SchoolParentLink` creation entirely (`link_parent`, `_link_or_invite_parent`, `accept_invite`): a parent already linked at one or more schools can now be linked by any coordinator at any school, including one they were previously kept out of after a transfer. See `DEC-SCOPE-024` below for the full decision record. Also folded into the same wave: the parallel gap in *this* decision's own Consequences paragraph above, where an orphaned `school_parent` (zero links) could vanish from a Team page — fixed in `list_team()`/`update_team_account()` by treating Team membership as the union of "has a link here" OR "`profile.school_id` still matches," not link-only (ENH-008 final-review Finding 2).
+
+### DEC-SCOPE-023 — School Master (`School CRM.md` Part B §2) = `school_coordinator`; account activate/deactivate confirmed in scope (`ENH-010`)
+
+**Status:** CONFIRMED_CURRENT — Approved by: user (in-session) — Approval date: 2026-09-22.
+
+**Question:** Is `School CRM.md` Part B §2's "School Master" role the same actor as the
+already-confirmed `school_coordinator` role (`DEC-SCOPE-011`), and is "Activate/deactivate
+users" confirmed in scope for that role, scoped to their own institution?
+
+**Evidence:** `School CRM.md` (`EVID-014`, `DERIVED_BLUEPRINT`, unattributed) Part B §2,
+verbatim: *"School Master can: … Activate/deactivate users."* Per `CLAUDE.md`, this document's
+own claim is not `EXPLICIT_APPROVAL` by itself.
+
+**Current state:** `apps/api/app/api/schools.py`'s `update_team_account` (added in the initial
+School-domain commit) already implements this and its own docstring asserts it was resolved
+"per direct user confirmation" — but no matching entry exists anywhere in this register.
+`DEC-SCOPE-011` confirms Coordinator "write access" broadly ("add/manage students… monitor
+services") but never names account activation specifically. This entry does not assume which:
+an undocumented earlier confirmation, or an inference never actually put to the user.
+
+**Proposed resolution (drafted, not self-approved):** adopt "School Master" (§2) as the same
+actor as `school_coordinator` (§33, `DEC-SCOPE-011`) — consistent with `DEC-SCOPE-011` already
+treating that role as having broad write access over the school's accounts and data — and
+confirm "Activate/deactivate users" as in-scope write access, scoped to the coordinator's own
+institution, excluding the coordinator's own account and any peer Coordinator account. This
+matches exactly what the shipped code (tested by `test_sch_team_account_activation.py`) already
+does.
+
+**Verified 2026-09-22:** the implementation satisfies all four ENH-010 acceptance criteria, by
+both a real automated test run (9/9 in `test_sch_team_account_activation.py`, including two new
+mutation-checked characterization tests) and a live browser QA pass (all four ACs individually
+observed, not read from code) — see `docs/superpowers/specs/2026-09-22-enh-010-account-
+activation-design.md` §6 and the ENH010-QA findings for the evidence.
+
+**Not resolved by this entry:** whether the two frontend a11y items considered during design
+(`refocus`, differentiated `role="alert"`) should ever be applied — investigated and found to
+already match this component's true sibling's convention, not to deviate from it; left open,
+not part of this decision either way.
+
+### DEC-SCOPE-024 — Parent account linked to children across multiple schools (`ENH-008`)
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` ENH-008 (source: the user's direct instruction "parent may [have] children from different schools") had no Decision ID or Feature ID. `DEC-SCOPE-022` (`ENH-005`) independently flagged the gap this closes as `NEEDS_CONFIRMATION`, deferred to this item by name. Should a `school_parent` account be linkable to students at more than one school, and if so, what does that do to every place a parent's "own school" was assumed to be singular?
+
+**Evidence:** Audit of the code, 2026-09-22: `SchoolParentLink` (`apps/api/app/models.py:1027-1036`) was already many-to-many (`UniqueConstraint(parent_user_id, school_student_id)`, no school-uniqueness constraint) — the block was entirely application-level: `_parent_email_conflict()` and `link_parent()` each independently rejected a parent email whose existing account's `profile.school_id` named a different school; `_own_school_id()` was called unconditionally at the top of `list_students()`/`_load_readable_student()`/`_readable_students()` and would 403 a parent the moment `profile.school_id` stopped naming "the" school; `accept_invite()` wrote `profile.school_id` on every provisioned account including parents; `school_transfers.py:_approve()` rewrote a parent's `profile.school_id` on transfer, built entirely on the single-school-per-parent assumption this feature removes.
+
+**Resolution:** Design approved in-session, 2026-09-22 (brainstorming session; `EXPLICIT_APPROVAL`), full design in `docs/superpowers/specs/2026-09-22-enh-008-parent-multi-school-design.md`:
+
+1. **Core decision:** `profile.school_id` is fully deprecated for the `school_parent` role — never read for authorization, never written, anywhere — unchanged for `school_coordinator`/`school_principal`/`school_teacher`. A parent's scope is derived 100% from their `SchoolParentLink` rows. No schema change, no data migration/backfill — existing stale `profile.school_id` values on parent accounts are simply never read again.
+2. **Conflict checks:** `_parent_email_conflict()` and `link_parent()` drop the cross-school comparison; both reject only when an existing account under that email has a role other than `school_parent`. Error message text drops the "...at this/your school" qualifier it previously carried.
+3. **Read scope:** `list_students()`, `_load_readable_student()`, `_readable_students()` skip `_own_school_id(user)` entirely for `school_parent` — `_scoped_students_query()`'s existing parent branch (built in `ENH-005`) already derives scope from `SchoolParentLink.parent_user_id == user.id` alone. Fails closed by construction: a parent mis-routed into the non-parent branch would pass `school_id=None`, which compiles to `IS NULL` against a `NOT NULL` column — zero rows, never all schools.
+4. **Provisioning:** `accept_invite()` skips writing `profile.school_id` for a `school_parent` invite (every other invited role is unchanged).
+5. **Transfers:** `school_transfers.py:_approve()` no longer rewrites any parent's `profile.school_id`; the per-parent `AuditLog(action=ACTION_SCOPE_CHANGED, ...)` rows this used to write are gone, replaced by folding the affected parent UUIDs into the existing `ACTION_TRANSFER` audit entry's own metadata (`parents_moved_ids`/`parents_kept_ids`) — traceability preserved, shape changed from N rows to one list field. The `parents_moved`/`parents_kept` response field names are unchanged (API contract preserved); their meaning changes to "has no other link at the losing school" / "still has ≥1 link there."
+6. **Frontend:** no functional/data change required (`ENH-005` already built a per-child `school_name` and `childrenSpanSchools()`); two UI-quality improvements bundled in: group child cards by school on the parent dashboard when `childrenSpanSchools()` is true, and add `loading.tsx` skeletons to `/school/parent/dashboard` and `/school/parent/children/[id]/`.
+
+Design, security review: `docs/superpowers/specs/2026-09-22-enh-008-parent-multi-school-design.md` (§3, §5). Implementation plan: `docs/superpowers/plans/2026-09-22-enh-008-parent-multi-school.md` (8 tasks).
+
+**Consequences:** the same-school invariant `DEC-SCOPE-022` described for `SchoolParentLink` *creation* no longer holds — a coordinator at any school can link an existing `school_parent` account regardless of which other school(s) they're already linked at (this is `AC1`, the feature itself, not a defect); the read-side IDOR boundary (`SchoolParentLink.parent_user_id == user.id`) is untouched, since `_own_school_id()`'s parent-branch return value was already discarded downstream before this change; email-enumeration surface via `_parent_email_conflict()` widens from "within one coordinator's school" to platform-wide (bounded by requiring an authenticated `school_coordinator`, every successful link audited, no rate limiting anywhere in this codebase today — accepted, not fixed, same as every other unthrottled endpoint per `SECURITY_CONTROLS.md` §1); `DEC-SCOPE-022`'s own closing note (above) records this decision resolving its `NEEDS_CONFIRMATION` item.
+
+**Final-review fix wave, 2026-09-22 (post-implementation, all 8 tasks already merged):** two Important findings closed in the same commit wave as this record — (1) `_school_dashboard_payload()` undercounted `parent_count` on `/school/dashboard` and `/school/reports` by filtering `school_parent` accounts via `profile.school_id` alone, the same bug class already fixed in `list_team()`; fixed with the identical link-or-stale-profile union pattern. (2) `list_team()`/`update_team_account()` treated a `school_parent`'s Team membership as link-only, so an orphaned parent (zero links — a direct `POST /school/team/invites`, which names no student, or a pre-existing account per `DEC-SCOPE-022`) silently vanished from the Team page and became unmanageable; fixed with a union (link OR matching `profile.school_id`), the option the user explicitly chose over restricting the invite endpoint.
+
+**`NEEDS_CONFIRMATION` (not decided here):** whether `profile.school_id` should eventually be backfilled to `null`/removed from parent accounts rather than left stale-and-unread indefinitely; rate limiting on `_parent_email_conflict()`'s now-platform-wide probe surface.
+
+**Status:** CONFIRMED_CURRENT — Approved by: user (in-session, brainstorming) — Approval date: 2026-09-22.
+
+---
+
+### DEC-SCOPE-025 — School Profile field-by-field scope, and Branch modeled as a field, not an entity
+
+**Renumbered 2026-09-22, on merge with `main`:** this decision was recorded as `DEC-SCOPE-023` at
+the time it was made, in-session, before `ENH-010`'s independent, unrelated use of that same ID had
+landed on `main`. Same precedent as `ENH-008`'s `DEC-SCOPE-024` above (also renumbered on merge for
+an identical collision) — the later-merging branch's ID moves, the content does not. Every reference
+to `DEC-SCOPE-023` elsewhere in this branch's own files (design doc, plan, code comments, tests,
+`ENHANCEMENT_BACKLOG.md`, `RTM.md`) is updated to `DEC-SCOPE-025` to match.
+
+**Status:** CONFIRMED_CURRENT — resolved 2026-09-22, in-session.
+
+**Trigger:** `School CRM.md §2` (`docs/sources/School CRM.md:64-116`, `EVID-014`) lists a full School
+Profile of ~24 fields; `ENHANCEMENT_BACKLOG.md`'s `ENH-009` entry (Revision 4) already recorded the
+user's direct, explicit, `EXPLICIT_APPROVAL`-grade instruction that full field coverage is mandatory
+for this release, leaving two open questions unresolved: (1) whether Branch is a field or a separate
+scoping entity, and (2) whether the resulting design should introduce real Pydantic schemas for
+`School` for the first time, given `create_school`/`list_schools`/`update_school_tier` currently use
+untyped `payload: dict`. Both were put to the user directly during this session's `superpowers:brainstorming`
+pass (`docs/superpowers/specs/2026-09-22-enh-009-school-profile-design.md`).
+
+**Resolution — Branch (`EXPLICIT_APPROVAL`, user, in-session):** Branch is a **free-text field** on
+`School` (`branch: String(200), nullable`), not a separate `SchoolBranch` entity. No new table, no new
+RBAC scoping boundary — `RBAC_MATRIX.md` §2.12's "one `School` row = one isolated tenant" assumption is
+preserved unchanged. This closes `ENH-009`'s own acceptance criterion ("Branch's scope explicitly
+decided and documented before any migration ships") and removes the item's previously-identified High
+regression-risk driver (every `school:coordinator:own_institution`-style check in `schools.py` would
+otherwise have needed to become branch-aware).
+
+**Resolution — field-by-field scope (`EXPLICIT_APPROVAL`, user, in-session, confirming `ENH-009`
+Revision 4's mandatory-coverage directive):** all 24 fields are in scope for this release except two
+carve-outs already recorded in `ENH-009`: (a) populating `Edusphere BDM`'s value is blocked separately
+on the unapproved `BDM` role (`PRD_OPEN_ITEMS.md` item 61) — the field itself ships, as plain text, not
+a role reference; (b) Monthly visit schedule ships as a descriptive text field only — a real
+forward-scheduling engine remains `ENH-019`'s job, unchanged. Number of students/teachers, Principal
+name, School Coordinator name, and Career Counsellor name(s) are exposed **computed** (live query,
+never stored) — the first two per the existing backlog recommendation, the latter two because a
+design self-review during this session caught that Principal/Coordinator/Career Counsellor had been
+left "unchanged, no design gap" despite being 3 of the backlog's own 15 mandatory-missing fields;
+they are role-derived and already queryable, so computed exposure (not a new stored column) is the
+correct fix, matching how Dedicated Counsellor is already handled via `SchoolStaffAssignment` rather
+than a flat field. Vice Principal has no role or account type anywhere in this system to derive from
+— ships as a plain nullable text field (`vice_principal_name`, no login/role), the same
+"field ships, larger structural question deferred" treatment as `edusphere_bdm`. Agreement/MoU ships
+as a plain reference-string field (`mou_reference`), not a document-upload feature — a generic
+`ProfileDocumentUpload`/`StorageService` pattern already exists in this codebase but generalizing it to
+`School` is judged out of scope for a field-coverage item; flagged in the design doc as a deliberate,
+smaller-scope choice rather than a silent omission.
+
+**Resolution — schemas (`EXPLICIT_APPROVAL`, user, in-session):** `SchoolCreate`/`SchoolUpdate`/
+`SchoolOut` Pydantic schemas are introduced in `schemas.py` for the first time for this entity
+(`model_config = {"extra": "forbid"}`, the exact pattern already used for ENH-005's
+`TransferRequestCreate`/`IncomingTransferCreate` — not this file's universal default, but the
+established choice for a security-sensitive create schema), replacing `create_school`/
+`update_school_tier`'s untyped `payload: dict`. Request/response JSON shape stays additive-compatible
+with existing callers (`AdminSchoolCreatePanel.tsx`).
+
+**Resolution — access model (`EXPLICIT_APPROVAL`, user, in-session):** admin-only (`overseas_admin`/
+`super_admin`) create **and** edit, matching who already owns this data today. No new School Coordinator/
+Principal self-service profile page in this pass.
+
+**Evidence:** `EVID-014` (`docs/sources/School CRM.md`); `ENHANCEMENT_BACKLOG.md`'s `ENH-009` entry
+(Revision 4, `EXPLICIT_APPROVAL` already recorded there for mandatory field coverage); this session's
+direct codebase verification against `apps/api/app/models.py:928-948`, `apps/api/app/api/admin.py`,
+`apps/api/app/services/portal.py:1360-1371`, and `apps/api/app/core/identifiers.py`.
+
+**New Feature ID:** none — this is additive scope on the existing `ENH-009` item, not a new feature.
+
+**Consequences:** one additive migration on `schools` (`school_code`, `branch`, `address`,
+`contact_number`, `email`, `website`, `grades_available`, `board`, `partnership_date`, `mou_reference`,
+`edusphere_bdm`, `monthly_visit_schedule`, `vice_principal_name` — all nullable, no backfill); three
+new computed (never stored) fields in `SchoolOut` — Principal name, School Coordinator name, Career
+Counsellor name(s) — alongside the existing computed student/teacher counts; `school_code` reuses
+`core/identifiers.py`'s existing `generate_student_code()`/`unique_student_code()` pattern verbatim;
+`GET /overseas-admin/schools/lookup?code=` (new, `overseas_admin`/`super_admin` only — deliberately
+narrower than the analogous `school-students/lookup` endpoint's role set, which includes `counselor`
+for an unrelated bridge use case that doesn't apply to School-profile edit); `PATCH
+/overseas-admin/schools/{id}` widened from tier-only to all profile fields, true partial-update
+semantics; new `AuditLog` action `school.profile_update` (field-names-only in `metadata_json`, not full
+values, to avoid duplicating partner contact info into the permanent audit trail) alongside the
+existing `school.tier_update`.
+
+**Security review findings and status** (full detail in the design doc's §4): no new authentication,
+CSRF, XSS, or SQL-injection surface (existing patterns reused unchanged); no IDOR fix needed (admin
+roles are intentionally not school-scoped); one real authorization finding closed before code (the new
+lookup endpoint's role set, above). Reported, not changed (pre-existing, outside `ENH-009`, consistent
+with the same items already reported and left unchanged in `DEC-SCOPE-` entries for `ENH-005`): no rate
+limiting anywhere in the API; no CSRF token (`SameSite=Lax` only); admin routes gate on `user.role`
+directly rather than active role assignments.
+
+**Stated by:** user (in-session) — **Date:** 2026-09-22. Resolves `ENH-009`'s two open acceptance-
+criteria blockers (field-by-field scope, Branch design).
+
+### DEC-SCOPE-026 — School skills tracker: Soft Skills and Digital/Web Skills (`ENH-011`)
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` ENH-011 asked to "generalize SCH-009" into Soft Skills (`School CRM.md` §9) and Digital/Web Skills (§10) trackers. Both sections are `EVID-014` (`DERIVED_BLUEPRINT`) and were `OPEN` (`PRD_OPEN_ITEMS.md` item 77, `DEC-SCOPE-015`'s Skills row, `DATA_MODEL.md` "requires their own decisions first"). Are they in scope, in what shape, and who delivers them?
+
+**Evidence:** Audit of the code, 2026-09-22 (Graphify rebuilt from `0e7f400` + reads): SCH-009 has no batch, enrolment or per-session attendance — `SchoolTestPrepRecord`/`SchoolLanguageRecord` are per-student rows — so the backlog's premise ("structurally identical… student → course/batch → attendance → assessment → certification") and its acceptance criterion ("a batch can be created, students enrolled") cannot both hold by reusing SCH-009. Entitlements already declared `soft_skills` (Bronze) and `web_designing` (Silver) with `used: null` (`DEC-SCOPE-017`).
+
+**Resolution:** User confirmed in-session, 2026-09-22 (`EXPLICIT_APPROVAL`), D1–D9 in `docs/superpowers/specs/2026-09-22-enh-011-skills-tracker-design.md` §3:
+
+1. **D1 Scope:** §9 Soft Skills and §10 Digital/Web Skills are both `CURRENT` (closes the Skills half of item 77; Portfolio stays open).
+2. **D2 Shape:** a new school-scoped batch → enrolment → per-session attendance → assessments → completion/certification model with `module_type` `soft_skills` | `digital_skills`.
+3. **D3 SCH-009:** unchanged — no table, route, UI or data change.
+4. **D4 Role:** `career_counselor`, scoped by the `SchoolStaffAssignment` portfolio.
+5. **D5 Surfaces:** staff read-only in their existing scope; Parent Portal Skills section; the SCH-008 timeline (**reverses `DEC-SCOPE-016`'s exclusion of Soft Skills from the timeline**); real entitlement usage.
+6. **D6 Notifications:** parents on enrolment and on completion/certification.
+7. **D7 Batch:** one school per batch; title, module, school, dates, topic, trainer name.
+8. **D8 Assessment/completion:** several named assessments per batch; the counselor marks completion/certification manually.
+9. **D9 Transfer:** an enrolment whose student has moved school is read-only ("frozen"), computed, not stored; ENH-005 unchanged.
+
+**D10–D12, confirmed by the user in-session 2026-09-22 (`EXPLICIT_APPROVAL`), after being adopted on the instruction to proceed:** D10 one session per batch per day; D11 `certified` is terminal (no un-certify); D12 `loading.tsx` skeletons on the two new counselor routes.
+
+**D13 — the two QA observations, kept as designed (user, in-session, 2026-09-22, `EXPLICIT_APPROVAL`):** coordinators and teachers see Skills through the SCH-008 timeline only, with no attendance/score detail on their student pages; and after an ENH-005 transfer the losing school's counselor keeps a read-only view of that student's batch history (D9's frozen enrolment). Neither is a follow-up item.
+
+**Consequences:** migration `0037_school_skills` (six create-only tables); router `app/api/school_skills.py` (ten endpoints under `/school/career-counselor`); additive `skills` key on `GET /school/students/{id}/overview`; timeline categories `soft_skills`/`digital_skills`; `GET /school/entitlements` reports `used` for `soft_skills`/`web_designing`. `SCH-008-AC04`'s "Skills… never appear" no longer holds for Skills (Portfolio still absent).
+
+### DEC-SCOPE-027 — Partnership tier is enforced on use, not only reported (`ENH-022`)
+
+**Number is provisional:** if another branch lands `DEC-SCOPE-027` first, this entry is renumbered on merge (the `DEC-SCOPE-024`/`025` precedent above).
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` ENH-022 (`DERIVED_BLUEPRINT`), citing `School CRM.md` §26 and the brochure's "School Partnership Model" (tier = what a school is *entitled to use*) and the user's instruction "consider the entitlement and there access levels strictly": how strictly, on which actions, and what happens when `tier_valid_until` has passed?
+
+**Evidence:** Graphify-oriented audit, 2026-09-23: `TIER_ORDER`/`TIER_SERVICES`/`_cumulative_services()` (`apps/api/app/api/schools.py`) were read only by `GET /school/entitlements`; no write endpoint checked `School.tier`, and `School.tier_valid_until` was never compared to a date. The backlog itself marked strictness `NEEDS_CONFIRMATION`.
+
+**Resolution:** User confirmed in-session, 2026-09-23 (`EXPLICIT_APPROVAL`), D1–D12 in `docs/superpowers/specs/2026-09-23-enh-022-tier-enforcement-design.md` §3:
+
+1. **D1 Strictness:** hard `403`; no soft-warn mode.
+2. **D2 Expiry:** an expired `tier_valid_until` counts as no tier; the valid-until date itself is still valid; `NULL` never expires.
+3. **D3 Operations:** every write (create, update, delete, attendance, scores) on a tier-gated record; reads stay open.
+4. **D4 Actors:** gated whoever acts — Overseas Admin / Super Admin / Counselor included.
+5. **D5 Career records:** all three record types are `individual_counselling` (Silver+).
+6. **D6 Dedicated counselor:** Platinum schools may have a dedicated counselor, others shared ones; no "dedicated" model exists, so this is **deferred to its own backlog item** and staff assignment stays ungated.
+7. **D7 Free-text activity:** needs any valid tier.
+8. **D8 Frontend:** server `403` + the existing error display; no proactive hiding.
+9. **D9 Overseas bridge:** gate creating a bridged application (`application_support`) and creating/updating a VisaCase on a bridged application (`visa_support`); other overseas writes stay ungated.
+10. **D10 Calendar:** the India date (`Asia/Kolkata`).
+11. **D11 Frontend scope:** only the save-failure path of the six older panels (alert beside the failing form, no stuck button, input kept); no redesign.
+12. **D12 Audit:** a denial writes `AuditLog(action="school.tier_access_denied", outcome="denied", metadata={service_key, reason, tier})` and a `logger.warning`, following the existing denial-audit precedent.
+13. **D13 Service name (after browser QA, QA-022-03):** the `web_designing` service's label is **"Digital skills"** (was "Web designing"), matching the skills tracker's "Digital Skills" module the user picks. Key unchanged, so stored usage is unaffected; `GET /school/entitlements` shows the new label — the owner chose this over a refusal-only wording change.
+
+**Also in scope by owner decision after browser QA (2026-09-23):** two defects that predate ENH-022 but sit on its screens — form rows forced wider than a phone by long `<select>` options (QA-022-05) and React hydration error #418 on the Activities table (QA-022-06).
+
+**Consequences:** new `require_school_entitlement()` in `schools.py`, called on 24 write routes across `schools.py`, `school_skills.py`, `portfolio.py`, `admin.py` and `workflows.py` (spec §7); new `403` strings (spec §5.1, `API_CONTRACT.md` ENH-022 addendum); no migration. `GET /school/entitlements` is unchanged — it still lists services for an expired school (follow-up item in `ENHANCEMENT_BACKLOG.md`). A school with no tier or an expired one loses write access to every gated service on deploy; the pre-deploy check query is in the backlog entry.
+
+### DEC-SCOPE-028 — Student 360° view / Career Passport, first slice (`ENH-013a`)
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` ENH-013 asks for one aggregated student view (`School CRM.md` §8 Career Passport, §35 Student 360° View, Part B §8 Student Profile Central Record). The sources are `EVID-014` (`DERIVED_BLUEPRINT`); the backlog item predates ENH-011/ENH-012 and names six "missing" entities, several of which ENH-012's portfolio now holds.
+
+**Evidence:** Graphify-oriented code audit, 2026-09-23: most tabs are already backed by SCH-004/005/006/007/009/010, ENH-004, ENH-011 and ENH-012; no aggregated view and no career-goal field exist; a parent notification has no student FK (only an `action_url` string); service roles can read only a subset of what `/overview` exposes to School roles. Source inconsistencies: Part B §8 says "15 tabs" but lists 16 names; the acceptance criterion says "grade/section" but teachers are assigned per student (`assigned_teacher_user_id`), and there is no section field.
+
+**Resolution:** User confirmed in-session, 2026-09-23 (`EXPLICIT_APPROVAL`), D1–D12 in `docs/superpowers/specs/2026-09-23-enh-013a-student-360-view-design.md` §3:
+
+1. **D1 Scope split:** ENH-013a = the view + `career_goal`; ENH-013b (later) = Documents / Teacher Remarks log / Parent Communication log entities.
+2. **D2 Tabs:** all 16 listed names kept; the 15-vs-16 inconsistency is recorded, no tab silently dropped.
+3. **D3 Teacher scope:** the existing per-student assignment rule; "grade/section" assignment is a future decision, not built.
+4. **D4 Roles:** the same 7 readers as ENH-012's portfolio, through one shared loader (`schools._load_student_for_reader`, moved from `portfolio.py`).
+5. **D5 Career goal:** `career_counselor` (own portfolio) sets free text ≤120 characters; audited.
+6. **D6 Edusphere Programs:** a roll-up of the programmes the student is in (skills, test prep, languages, overseas).
+7. **D7 Sources that do not exist yet:** real partial data plus a fixed "not tracked yet" note naming the future item (ENH-030, ENH-025, ENH-013b, ENH-014).
+8. **D8 Parent Communication:** "not tracked yet" only — no URL string-matching, no parents' inbox/read-state or names exposed to staff.
+9. **D9 Results:** published only, for every role (SCH-006-AC02 unchanged).
+10. **D10 UI:** a new `/360` route per role, linked from the existing pages; existing pages otherwise unchanged.
+11. **D11 No new exposure:** each tab is built per role from only what that role can already read through an existing endpoint; unreadable tabs are `restricted`.
+12. **D12 Read trail:** one structured log line per read (ids and role only); no database write on a GET.
+13. **D13 Career goal is tier-gated (user, in-session, 2026-09-23, `EXPLICIT_APPROVAL`, after merging ENH-022 / `DEC-SCOPE-027`):** saving a career goal requires the `individual_counselling` service (Silver or higher), the same gate ENH-022 D5 puts on career records. It uses ENH-022's `require_school_entitlement` (same `403` messages, same `school.tier_access_denied` audit row), checked after the scope re-check under the row lock so the student's current school is the one checked. Reading the goal in the 360° view stays ungated (ENH-022 D3: reads stay open).
+
+**Fix scope after browser QA (user, in-session, 2026-09-23, `EXPLICIT_APPROVAL`):** fix only the issues ENH-013 introduced (QA-01/02/03/04/06); the seeded demo report link (QA-05) and the pre-existing QA-07..10 are logged in `RAID.md` (I-34..I-37), not changed.
+
+**Consequences:** migration `0039_student_career_goal` (one nullable column); router `app/api/student_360.py` (`GET /school/students/{id}/360-view`, `PATCH /school/students/{id}/career-goal`); behavior-preserving extractions `_overview_payload`, `_grade_history_rows`, `portfolio_payload`; seven `/360` routes (`SCR-SCH-035`); `PORTFOLIO_SCOPED_ROLES` removed as a duplicate of `SERVICE_DELIVERY_ROLES`.
+
+### DEC-SCOPE-029 — Student Master field coverage (`ENH-025`)
+
+**ID note:** recorded in-session as `DEC-SCOPE-027`, before `ENH-022` merged to `main` holding `DEC-SCOPE-027`
+(PR #14) and while the unmerged `ENH-013` branch uses `DEC-SCOPE-028`. Renumbered to `DEC-SCOPE-029` on this branch
+before merge (flagged by the ENH-013 session) — the same later-branch-moves precedent as `DEC-SCOPE-024`/`025`. Earlier
+ENH-025 commit messages that say `DEC-SCOPE-027` mean this decision.
+
+**Status:** `EXPLICIT_APPROVAL` — user, in-session, 2026-09-23 (brainstorming answers, recorded in
+`docs/superpowers/specs/2026-09-23-enh-025-student-master-fields-design.md` §9).
+**Evidence:** `EVID-014` (`docs/sources/School CRM.md:118-177`); `ENHANCEMENT_BACKLOG.md` `ENH-025`.
+**Decisions:**
+1. `grade_or_class` kept unchanged; new `section` column; ENH-001's `grade_level` is the Grade column.
+2. Career interests, Global education interest, Preferred countries, Preferred courses on `SchoolStudent`;
+   written by the School Coordinator (all paths) and the Career Counsellor (own portfolio, dedicated route).
+3. Photo via authorized upload/stream endpoints; excluded from bulk upload.
+4. Gender fixed list (`female`, `male`, `other`, `prefer_not_to_say`); multi-value fields as JSON string
+   lists; Global education interest nullable boolean.
+5. Roll number unique per school + academic year + grade + section (blank values form a group).
+6. Any academic-year move (promote or hold back) clears roll number; grade history records previous
+   section/roll number and new section.
+7. Transfer approval clears section and roll number.
+8. All new fields optional.
+9. Photo metadata (EXIF etc.) stripped in pure Python before storage.
+
+10. **Photo consent (resolved 2026-09-23, user, in-session, `EXPLICIT_APPROVAL`):** the school, as data
+    controller, obtains consent for student photos through its own enrolment process; EduSphere provides the
+    optional, coordinator-entered Photo field with no consent gate of its own. Closes the earlier
+    `NEEDS_CONFIRMATION` on consent / legal basis for storing photos of minors.
+11. **Migration order (2026-09-23, user, in-session):** first decided as "ENH-025 merges first", but ENH-013
+    (PR #15) reached `main` before that could happen. When merging `main` in, the user chose to resolve on
+    ENH-025's side instead: ENH-025's migration was renumbered to `0040` and re-chained onto
+    `0039_student_career_goal`. ENH-018 (PR #16) then merged its own `0040_school_activity_feedback` on the same
+    parent, so on the next merge of `main` ENH-025's migration moved again to `0041_student_master_fields`, revising
+    `0040_school_activity_feedback`. Neither of the other migrations touches ENH-025's columns, so the order does not
+    change the schema.
+**New Feature ID:** none — additive scope on `ENH-025`.
+
+### DEC-SCOPE-030 — Partnership tier change: grandfathered downgrades, transition audit, notifications (`ENH-023`)
+
+**ID note:** recorded in-session as `DEC-SCOPE-029`. `ENH-025` reached `main` first holding `DEC-SCOPE-029` (PR #17), so
+this entry was renumbered to `DEC-SCOPE-030` when `main` was merged into the `ENH-023` branch (2026-09-26), as its own
+provisional-number note provided — the same later-branch-moves precedent as `DEC-SCOPE-024`/`025`/`027`/`029`. Earlier
+`ENH-023` commit messages and the pre-merge graph that say `DEC-SCOPE-029` mean this decision.
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-023 (`DERIVED_BLUEPRINT`), on the user's instruction "hidden requirements as well like change of gold to platinum etc.": once `ENH-022` (`DEC-SCOPE-027`) enforces tier on use, what happens to work already under way when a school's tier is downgraded, and how is a tier change recorded and communicated?
+
+**Evidence:** Graphify-oriented investigation, 2026-09-23 (graph refreshed after `ENH-022`/`ENH-013` merged at `5d20295`): the only tier write, `update_school` (`PATCH /overseas-admin/schools/{school_id}`), sets `tier`/`tier_valid_until` and writes one `school.tier_update` `AuditLog` row with metadata `{"tier": <new>}` only — no old tier, no direction, no notification. There is no tier-change UI beyond raw API access. `ENH-022` gates every write on the school's *current* tier, so a downgrade could silently strand in-flight work. Principals and Overseas Admins have no notifications page (only Coordinators and Parents do). `TimestampMixin.created_at`/`AuditLog.created_at` use `server_default=func.now()` (transaction-start time), relevant to ordering the grandfather anchor correctly.
+
+**Resolution:** User confirmed in-session, 2026-09-23 (`EXPLICIT_APPROVAL`), D1–D15 in `docs/superpowers/specs/2026-09-23-enh-023-tier-change-design.md` §3:
+
+1. **D1 Relation to ENH-022:** built after `ENH-022` merged, against its real helper.
+2. **D2 Downgrade policy:** **Grandfather** — work under way for a lost service can be finished; new work for it is refused.
+3. **D3 What counts as existing:** a record whose `created_at` is before the downgrade that removed the service. No end date.
+4. **D4 Transition history:** extend the `school.tier_update` `AuditLog` metadata. No new table, no migration.
+5. **D5 Notification:** the school's Coordinator(s) and Principal(s) get in-app plus email; the acting admin also gets a copy.
+6. **D6 Removal / expiry:** `tier → null` is a downgrade (grandfathered and notified). Expiry is not; it stays `ENH-022` D2 (no tier, no notification).
+7. **D7 UI:** tier and valid-until fields in `AdminSchoolEditPanel`; a downgrade shows an inline confirmation step listing lost services.
+8. **D8 Child writes under old work:** **Completion only.** Updates, attendance, scores, sessions and assessments on existing work are allowed; new enrolments, visa cases, bridged applications and portfolio entries are refused.
+9. **D9 Unreachable notifications:** add a Principal notifications page. The acting admin gets the in-app row plus email (no admin page in this item).
+10. **D10 Grandfather mechanism:** **Approach A** — the downgrade time is read from the `school.tier_update` audit rows.
+11. **D11 No-op and valid-until-only changes:** still audited (as today), with `direction="unchanged"`; **no notification**.
+12. **D12 Stale preview → unconfirmed downgrade** (API review, 2026-09-23): the PATCH accepts an optional **`expected_tier`** precondition; a mismatch with the tier read under the row lock is **`409 Conflict`**. The panel always sends it with a tier change; clients that omit it behave as today.
+13. **D13 Empty-string tier** (API review): `""` is **normalised to `null`** (removal) on the PATCH, on `expected_tier`, and on the preview.
+14. **D14 Audit of grandfathered writes** (security review S2): each write allowed **only** by grandfathering adds one `school.tier_grandfathered` `AuditLog` row, metadata `{service_key, reason, tier, grandfathered_since}`, in the route's own transaction: committed with the write, discarded if the route fails. Mirrors `ENH-022` D12 for billing reconciliation and non-repudiation.
+15. **D15 Notification rate limiting** (security review S3): **No throttle.** A tier change is an admin-only, audited, rare action with no public surface. Recorded as an accepted risk.
+
+**Consequences:** `_tier_transition()` (new, pure, `schools.py`), computing `direction`/`gained`/`lost` from `_cumulative_services` only. `require_school_entitlement`, `_require_module_entitlement` (`school_skills.py`) and `_require_bridged_visa_entitlement` (`workflows.py`) each gain an optional keyword-only `grandfathered_since`; omitted, behaviour is byte-for-byte `ENH-022`'s (`test_enh_022_tier_enforcement.py`/`test_enh_022_tier_rules.py` pass unedited, AC-13). Exactly **14** routes pass `grandfathered_since` (the spec §6 table's "15" is a count error, corrected here): 4 in `schools.py` (activity attendance; psychometric/test-prep/language record updates), 6 in `school_skills.py` (skill-batch update, session create, assessment create, session attendance, assessment scores, enrolment status), 3 in `portfolio.py` (entry update, entry delete, personal statement), 1 in `workflows.py` (visa update). New `GET /overseas-admin/schools/{school_id}/tier-change-preview?tier=` (read-only, same role check as the PATCH). Typed contract: `schemas.py` gains `TierChangeService`, `TierChangeOut`, `SchoolUpdateOut`; the PATCH declares `response_model=SchoolUpdateOut`, the preview `response_model=TierChangeOut`. New page `/school/principal/notifications`. No migration, no new table, no new dependency (D4). **Residual, accepted (§8):** a create whose transaction starts in the microseconds between the transition audit row's insert and the downgrade's commit can still get a `created_at` later than the downgrade row, so later updates to that one record are refused; closing this needs a share lock across all 24 `ENH-022`-gated routes, out of scope here and listed as a follow-up (b) in `ENHANCEMENT_BACKLOG.md`.
+
+### DEC-SCOPE-031 — Career Counselling record: structured §7 fields and status lifecycle (`ENH-026`)
+
+**ID note:** provisional number. If a parallel branch reaches `main` first holding `DEC-SCOPE-031`, this entry moves to the next free number on merge (same precedent as `DEC-SCOPE-024`/`025`/`027`/`029`/`030`).
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-026 (`DERIVED_BLUEPRINT`): how does `SchoolCareerRecord` cover the 17-field Counselling Record and the status lifecycle of `School CRM.md §7` (`ORIGINAL_REQUIREMENT`, `docs/sources/School CRM.md:302-344`) without breaking existing records, KPIs or API contracts?
+
+**Evidence:** Graphify-oriented impact analysis, 2026-09-27: `SchoolCareerRecord` (`models.py:1257`) holds only `record_type` + free-text `notes`; no update endpoint (`schools.py:1892-1940`); "Individual Counselling Completed" KPI, overview status and `individual_counselling` usage all treat any `counselling_note` as completed (`schools.py:405, 476, 1045, 1206`); ENH-025 already stores `career_interests`/`global_education_interest` on `SchoolStudent`; DEC-SCOPE-028 limits service roles to student name + school.
+
+**Resolution:** User confirmed in-session, 2026-09-27 (`EXPLICIT_APPROVAL`), C1–C14 in `docs/superpowers/specs/2026-09-27-enh-021-026-internship-and-counselling-record-design.md` §3.1. In short: `record_type` is the counselling type; status + structured fields on `guidance_session`/`counselling_note` only; strict lifecycle with create at Not Started/Scheduled/Completed (omitted ⇒ Completed); legacy rows stay NULL, count as completed, may move only to Completed/Follow-up Required; Completed, Follow-up Required and NULL count as completed; `scheduled_for`/`completed_on`/`next_follow_up_date` with per-status rules; `notes` is the counsellor notes; per-record interest snapshots; four recommendation lists; grade derived and shown to School roles only; any portfolio counsellor may edit (creator kept, `updated_by_user_id` added); parents notified on status change; PATCH gated on `individual_counselling` with grandfathering.
+
+**Consequences:** migration `0042` (additive nullable columns + CHECK + index); new `PATCH /school/career-counselor/records/{id}`; additive response fields; overview adds `in_progress` status value and `structured_recommendations`. Engineering-review addenda (spec §11): optional `expected_status` precondition on the PATCH (409 when stale, `DEC-SCOPE-030` D12 precedent); parent notification on status change runs after the record commit.
+
+### DEC-SCOPE-032 — Internship management on the portfolio `internship` section (`ENH-021`)
+
+**ID note:** provisional number, same rule as `DEC-SCOPE-031`.
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-021 (`DERIVED_BLUEPRINT`): how are `School CRM.md §22` internship fields, the `§1` "Internships" KPI and the `§35` internship status delivered, given ENH-012's `PortfolioEntry` already has an `internship` section and `internships` is a Platinum service (`DEC-SCOPE-017`)?
+
+**Evidence:** Graphify-oriented impact analysis, 2026-09-27: `PortfolioEntry` (`models.py:1133`) internship section holds title/organization/dates only; all portfolio writes gated on Gold `digital_portfolio_creation` (`portfolio.py:140,169,201,218`); KPI and chart hard-coded untracked (`schools.py:86-94,487`); the backlog's "not an existing tracked entity" statement was incomplete.
+
+**Resolution:** User confirmed in-session, 2026-09-27 (`EXPLICIT_APPROVAL`), I1–I8 in the same spec §3.2. In short: extend `PortfolioEntry` (company = `organization`, required; role = `title`); existing portfolio write roles; mentor name + designation, attendance %, four-value completion status, feedback, skills list; legacy entries NULL; completed needs an end date; certificate PDF/JPEG/PNG ≤ 5 MB, only on completed entries, readable by all portfolio readers, deleted from storage after commit when replaced/removed; Platinum `internships` required to create an internship entry, set tracking fields or manage the certificate, while basic edits/deletes keep the Gold gate; KPI and usage = distinct students with any internship; chart by completion status; 360° status by best progress.
+
+**Consequences:** migration `0043` (additive nullable columns + CHECKs); new certificate endpoints (`portfolio_certificates.py`); `test_sch_reports.py:302-305` and `test_sch_011_entitlements.py:137` change because internships become tracked (requirement change). Engineering-review addenda (spec §11, user-confirmed 2026-09-27): certificate downloads are audited (`school.internship_certificate_download`); no rate limiter added — accepted risk consistent with `DEC-SCOPE-030` D15.
+
+**Owner decision, 2026-09-28 (`EXPLICIT_APPROVAL`, final verification):** no certificate download link in the Student 360° view. Career Counselors (who reach students through the 360° view, not the portfolio panel) see internship status only; the link stays in the portfolio panel as spec §7 states. The certificate API still serves every portfolio reader, audited per S13.
+### DEC-SCOPE-033 — Skill India certification tracking on the Digital Portfolio (`ENH-024`)
+
+**ID note:** recorded in-session as `DEC-SCOPE-031`. `ENH-026`/`ENH-021` reached `main` first holding `DEC-SCOPE-031`/`032` (PR #19), so this entry was renumbered to `DEC-SCOPE-033` when `main` was merged into the `ENH-024` branch (2026-09-28), as its own provisional-number note provided — the same later-branch-moves precedent as `DEC-SCOPE-024`/`025`/`027`/`029`/`030`. Its migration moved the same way: cut as `0042_skill_india_certification` on `0041`, re-chained as `0044_skill_india_certification` on `0043_portfolio_internship`. Earlier `ENH-024` commit messages that say `DEC-SCOPE-031` or `0042` mean this decision and that migration.
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-024 (`DERIVED_BLUEPRINT`; source: brochure page 2, "Skill India Certification", no `School CRM.md` section): how is a Skill India certification recorded per student and shown on the Portfolio / 360° view?
+
+**Evidence:** Graphify-oriented investigation, 2026-09-28: ENH-012's `PortfolioEntry` already has a `certification` section; ENH-013's 360° Certificates tab renders exactly those entries (`student_360.py:102`). No field identifies Skill India, and none holds status, certificate number or issue date.
+
+**Resolution:** User confirmed in-session, 2026-09-28 (`EXPLICIT_APPROVAL`), D1–D16 in `docs/superpowers/specs/2026-09-28-enh-024-skill-india-certification-design.md` §3: tag on the existing `certification` section (no new section; completion % unchanged); status (`enrolled`/`in_progress`/`certified`, any-to-any), certificate number, issuing body (= `organization`), issue date — accepted only on tagged entries; `certified` requires number and issue date; no uniqueness; tag set at creation only; no external integration; existing writers, tier gate and transfer behaviour; certificate number kept out of logs and audit metadata; no rate limit added.
+
+**Consequences:** migration `0044_skill_india_certification` (four nullable columns, four CHECKs, no backfill); `PortfolioEntryCreate`/`Update`/`Out` gain fields additively; the entry PATCH locks its row; new `CertificationDetails.tsx`; no new endpoint, table or dependency.
+
+### DEC-SCOPE-034 — School & Edusphere analytics dashboards (`ENH-016`)
+
+**ID note:** recorded in-session as `DEC-SCOPE-031`. `ENH-026`, `ENH-021` and `ENH-024` reached `main` first holding
+`DEC-SCOPE-031`/`032`/`033`, so this entry was renumbered to `DEC-SCOPE-034` when `main` was merged into the `ENH-016` branch
+(2026-09-28), as its provisional-number note provided. Earlier `ENH-016` commit messages that say `DEC-SCOPE-031` mean this decision.
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-016 (`DERIVED_BLUEPRINT`) consolidates `School CRM.md` §1, §27, §28,
+§29, §34 and Part B §14 (`ORIGINAL_REQUIREMENT`) into read-model dashboards. Who sees what, and how is each undefined metric
+computed from data that already exists?
+
+**Evidence:** Graphify-oriented investigation, 2026-09-28 (`origin/main` at `03d4408`): `GET /school/dashboard` already
+returned 18 of 20 §1 KPIs but no page rendered them; `digital_portfolios_created` and the `skills_training` chart were still
+flagged untracked although ENH-012/ENH-011 had shipped; `GET /school/entitlements` counted usage inline for one school only;
+§28/§29/§34/Part B §14 did not exist; `edusphere_school_manager` is not modelled (`RBAC_MATRIX.md:239`, open item 75);
+`schools` has no status/active column.
+
+**Resolution:** User confirmed in-session, 2026-09-28 (`EXPLICIT_APPROVAL`), D1–D16 in
+`docs/superpowers/specs/2026-09-28-enh-016-analytics-dashboards-design.md` §3:
+
+1. **D1 Cross-school audience:** `overseas_admin` + `super_admin` only; `it_admin` and every school-side role → 403.
+2. **D2 Pending:** total students − students who completed the activity.
+3. **D3 Scorecard states:** completed / in progress / not started (service in the tier) / not in plan / not tracked (no module).
+4. **D4 At-risk / top performer:** configurable thresholds on published-result average %; defaults `< 40` and `≥ 85` (`NEEDS_CONFIRMATION`).
+5. **D5 §29 undefined metrics:** labelled estimates from existing data (career readiness, skills development, global education interest, application readiness).
+6. **D6 §34 windows:** new = `partnership_date` (else `created_at`) within 90 days; renewal due = `tier_valid_until` ≤ today + 60 days, expired included; India time. **Revised in-session 2026-09-28** (no status column exists): active = a valid partnership tier, ENH-022's own `_entitlement_denial(tier, valid_until, None, today) is None`.
+7. **D7 "School Master" (Part B §14):** Principal + Coordinator; the Principal dashboard gains the §1 KPI board.
+8. **D8 Cleanup in scope:** digital portfolios and skills training become tracked; the unreachable code in `/school/reports` stays out.
+9. **D9 Scorecard audience:** Coordinator + Principal, own school only.
+10. **D10 Scorecard placement:** per-student card + paginated school-wide grid.
+11. **D11 Digital Portfolios Created:** ≥ 1 portfolio entry or a non-blank personal statement. **Revised 2026-09-28** (user, browser QA QA-016-03): `internship` entries do not count — ENH-021 attributes them to the Internships service; the ENH-012 completion % is unchanged.
+12. **D12 Scorecard Digital Portfolio row:** completed at ENH-012 completion 100 %; in progress when D11 holds below 100 %.
+13. **D13 Entitlement usage:** `/school/entitlements` reports `digital_portfolio_creation.used` = the D11 count.
+14. **D14 Approach A:** one feature module, grouped SQL over a student scope, fixed query count; no summary tables.
+15. **D15 Read audit:** a structured log line per request (ids and counts only); no `AuditLog` row for reads.
+16. **D16 Rate limiting:** no new limiter (none exists platform-wide); accepted risk.
+
+**Consequences:** New `app/api/school_analytics.py` (routers `/school/analytics/{grade-performance,student-development,scorecards}`,
+`/school/students/{id}/scorecard`, `/overseas-admin/analytics/{summary,schools}`); `schools.service_usage()` (batched,
+extracted from `school_entitlements`), `schools._school_account_counts()`, `school_skills.skill_usage_many()`,
+`portfolio.portfolio_completion()` (each extracted unchanged or delegating). Existing responses change only by D8/D13
+(values from `null` to counts; `skills_training` added; nothing renamed or removed); `test_sch_reports.py` and
+`test_sch_011_entitlements.py` assertions that pinned the superseded untracked state were updated accordingly. No migration,
+no new dependency, no write. **Open (`NEEDS_CONFIRMATION`):** D4 default thresholds; D5 estimate definitions; the Visa
+scorecard row's "completed" (taken as admitted, because `visa_cases.status` is free text); `edusphere_school_manager`
+scoping once item 75 resolves; scholarship tracking (ENH-017). **Merge with `main` (2026-09-28):** internships are tracked
+(`ENH-021`, `DEC-SCOPE-032`: scorecard Internship row via `internship_progress`, §34 outcome, §27 participation) and
+guidance/counselling count delivered sessions only (`ENH-026` C5, `DEC-SCOPE-031`), matching `main`'s dashboard and entitlements.
+
+### DEC-SCOPE-035 — Psychometric record: structured result fields (`ENH-027`)
+
+**ID note:** recorded as `DEC-SCOPE-033`, then `DEC-SCOPE-034` after `ENH-024` reached `main` first (PR #20). `ENH-016` then reached `main` first holding `DEC-SCOPE-034` (PR #22), so this entry was renumbered again to `DEC-SCOPE-035` when `main` was merged into the `ENH-027` branch (2026-09-28). The migration did not move this time: `ENH-016` adds none, so ENH-027 stays `0045_psychometric_result_fields` on `0044_skill_india_certification`. Earlier `ENH-027` commit messages and docs that say `DEC-SCOPE-033`/`034` mean this decision.
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-027 (`DERIVED_BLUEPRINT`): how does `SchoolPsychometricRecord` store the 12-field "Individual Student" record of `School CRM.md §6` (`EVID-014`, `docs/sources/School CRM.md:254-300`) when it holds only assessment type, status and a report link today, without changing existing behaviour?
+
+**Evidence:** Graphify-oriented impact analysis, 2026-09-27: `SchoolPsychometricRecord` (`models.py`) has `assessment_type`, `report_url`, `status` and `created_at` (the assignment day, not the test date) — 9 of the 12 source fields are missing; the create/update routes take a raw `payload: dict`; the record is read through six shapes (team list, readable list, overview, portfolio, the 360° Psychometric tab via the portfolio rows, create/update responses); the §1.5 coverage row had marked §6 "Built" without a field-by-field check.
+
+**Resolution:** User confirmed in-session, 2026-09-27/28 (`EXPLICIT_APPROVAL`), Q1–Q9 in `docs/superpowers/specs/2026-09-28-enh-027-psychometric-result-fields-design.md` §9:
+
+| # | Question | Answer |
+|---|---|---|
+| Q1 | Which readers see the new fields? | All existing readers (Coordinator/Principal/Teacher/Parent), same scope as today |
+| Q2 | Who writes Counsellor remarks / Parent discussion? | Psychometric Team only (SCH-005-AC04 unchanged) |
+| Q3 | Career recommendations shape? | `list[str]` — the same shape ENH-026 shipped (`DEC-SCOPE-031`) |
+| Q4 | Parent discussion / Follow-up shape? | Parent discussion = date + notes; Follow-up = date |
+| Q5 | Test date storage? | New nullable `test_date`; `created_at` stays "assigned on" |
+| Q6 | Required fields / completion rule? | All optional; completion still flips only on `report_url` |
+| Q7 | §6 "Counselling Completed" count? | Not in ENH-027 → ENH-026 |
+| Q8 | Field names? | Match ENH-026: `recommended_careers`, `recommended_stream` (UI labels "Career recommendations" / "Recommended streams") |
+| Q9 | How are list fields typed? | Comma-separated, like ENH-025/026 (`splitList`/`listText`) |
+| Q10 | (2026-09-28, final review) The portfolio and 360° Psychometric tab also reach the portfolio-scoped service roles — what do they see? | **Academic Team and Career Counsellor see all ten fields** too (incl. counsellor remarks and parent discussion), for students in their own portfolio — the owner's explicit approval, closing the gap the whole-branch review found against Q1 |
+
+**Known limitation (accepted with Q9):** a comma always separates items, so "Science (Physics, Chemistry, Maths)" becomes three items; the form hint says to use `/` or `;` inside an item.
+
+**Consequences:** migration `0045` (ten additive nullable columns: `test_date`, `strengths`, `interest_areas`, `personality_indicators`, `recommended_careers`, `recommended_stream`, `counsellor_remarks`, `parent_discussion_on`, `parent_discussion_notes`, `follow_up_on`; no backfill); additive request/response keys on the existing psychometric endpoints and read shapes; update audit metadata gains `fields` (names only). Unchanged: roles and scoping, the completion/notification rule, which endpoints return `report_url` (Client Question #20 stays open), reports/KPIs, timeline. `ENH-019` may later read `follow_up_on`; `ENH-028` bulk entry reuses this shape.
+
+### DEC-SCOPE-036 — ENH-017 School-visible Global Education pipeline (provisional number)
+
+**ID note:** provisional number, recorded in-session 2026-09-29. Renumber on merge if another decision has taken `DEC-SCOPE-036` first, as `DEC-SCOPE-034`/`035` were.
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-017 (`DERIVED_BLUEPRINT`) consolidates `School CRM.md` §16, §17, §19, §20 (`EVID-014`, `ORIGINAL_REQUIREMENT`): what may a school see of its students' overseas applications, and how is the §17 funnel computed from data that already exists, without exposing application detail (§19)?
+
+**Evidence:** Graphify-led audit, 2026-09-29 (`docs/superpowers/specs/2026-09-29-enh-017-global-education-pipeline-design.md` §1): the `SCH-010` bridge (`overseas_applications.school_student_id`, migration `0029`) exists and `GET /school/dashboard` already computes bridged KPI counts, but no page shows which students are at which stage and there is no §17 funnel; no data source exists for Applications started/submitted, Deposit, Scholarship (`ScholarshipApplication` links to `users` only), Top-100 (no ranking on `University`) or Alumni (no model); §19 limits the school to high-level status. `EVID-014` §16/§17/§19/§20.
+
+**Resolution:** User confirmed in-session, 2026-09-29 (`EXPLICIT_APPROVAL`), D1–D10 in `docs/superpowers/specs/2026-09-29-enh-017-global-education-pipeline-design.md` §3:
+
+| ID | Decision |
+|---|---|
+| D1 | **Scope: present-only.** Build over existing data; no migrations. Scholarship, Top 100, Alumni, Applications started/submitted and Deposit render as *not tracked* with a reason. |
+| D2 | **Granularity:** funnel counts **plus** a per-student row: name, student code, grade, furthest stage, visa stage label, application count. No university/course/country, no overseas record ids, no notes/references/offer letters/documents/counselor/agent. |
+| D3 | **Counting:** cumulative, per **student** — a student counts once in every stage they have reached on any of their applications. |
+| D4 | **Roles:** `school_coordinator` and `school_principal` only (DEC-SCOPE-011; reuses `_require_school_reader`). Every other role 403. |
+| D5 | **Existing exposure unchanged:** overview/timeline/360 `global_education` fields stay as confirmed under DEC-SCOPE-018 (they are already stage-level). |
+| D6 | **Placement:** a new "Global Education" page for coordinator and principal (`SCR-SCH-038`); no existing page changes. |
+| D7 | **Grade filter:** optional (All grades default, Grades 8–12), same `grade_key` rule as ENH-016 so a grade means the same students everywhere. |
+| D8 | **Tier:** no read gate (DEC-SCOPE-027 D3 keeps reads open). `require_school_entitlement` is not called. |
+| D9 | **Audit:** one structured log line per request (ids and counts only); no AuditLog row — the ENH-016 precedent for read-only school analytics. |
+| D10 | **Visa stage** = a `VisaCase` exists (matches the "Visa Applications" KPI tile). The funnel is therefore not forced monotonic at Visa → Admitted (§17's own example is not monotonic either). |
+
+**Consequences:** new `apps/api/app/api/school_global_education.py` (`GET /api/v1/school/global-education/pipeline`, query `grade` 8–12, `limit` 1–100, `offset`); output models `GlobalEducationPipelineOut` and its parts appended to `schemas.py`; router registered in `main.py`; pages `/school/coordinator/global-education` and `/school/principal/global-education` with `GlobalEducationPage`, `GlobalEducationFunnel`, `GlobalEducationStudentTable` and a sidebar "Global Education" entry. The endpoint uses column-level selects and allowlisted response models; the offer letter is reduced to a non-null-and-non-empty boolean in SQL, matching the dashboard's truthiness test. Existing endpoints, helpers and constants are imported read-only and unchanged. No migration, no new dependency, no write. **Known residuals:** no rate limiting; no `AuditLog` for reads (D9). **Release evidence:** COMPLETE (verified 2026-09-29 at `949aa2c`); `docs/quality/ENH-017_BROWSER_QA_2026-09-29.md`. **Follow-ups (not ENH-017, each `NEEDS_CONFIRMATION`):** scholarship-to-school-student link; university ranking/Top-100; alumni definition, `alumni_network` usage and a Platinum read gate; visa outcomes; started/submitted/deposit statuses; `school_partnership_manager` (PRD open item 75).
+
+### DEC-SCOPE-037 — ENH-015 Reports & Downloads, slice 1 (provisional number)
+
+**ID note:** provisional number, recorded in-session 2026-09-29. Renumber on merge if taken.
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-015 (`DERIVED_BLUEPRINT`) asks for `School CRM.md` §30 (`EVID-014`) student, school and management reports, with format, generation mode, teacher/service-team scope, tier gating and audit all unstated.
+
+**Evidence:** Graphify-led audit, 2026-09-29 (`docs/superpowers/specs/2026-09-29-enh-015-reports-downloads-design.md` §1): no downloadable report exists in the School domain; every §30 management figure is already an `ENH-016` indicator set; the SCH-007 overview is the scope-checked per-student read; `reportlab` is already a dependency; stored files would be reachable through `/files/download` and `/local-files`.
+
+**Resolution:** User answered in-session, 2026-09-29, and instructed "proceed" on the presented design (D1–D10, spec §3): D1 slice 1 = School Summary + Student Progress Report; D2 PDF only (reportlab); D3 synchronous, in memory, nothing stored; D4 summary for coordinator/principal, own school; D5 progress report for parent (linked children) and coordinator/principal (own institution), every other role 403; D6 content = the SCH-007 overview (includes the `ENH-027` fields already parent-visible; never `report_url` — Client Question #20 stays open); D7 all records to date, "as of" date; D8 no tier gate; D9 progress-report download audited (fail closed), summary log line only; D10 buttons on existing pages, no nav change.
+
+**Consequences:** new `apps/api/app/api/school_reports.py` and `apps/api/app/reporting/pdf.py`; `grade_table` extracted from `school_analytics.grade_performance` (behaviour-preserving); new web `components/ReportDownloadButton.tsx` placed on five existing pages. No migration, no new dependency. **Still `NEEDS_CONFIRMATION`:** the other §30 report types; teacher "Limited" reports; service-team domain reports; a per-academic-year Annual report; scholarship figures; non-Latin font support; Client Question #20.
+
+### DEC-SCOPE-038 — Multi-tenant Agent CRM: agent organisation as tenant, Master accounts (`AGN-001`)
+
+**ID note:** recorded in-session as `DEC-SCOPE-034`. `ENH-016` and `ENH-027` reached `main` first holding `DEC-SCOPE-034`/`035`, so this entry was renumbered to `DEC-SCOPE-036` when `main` was merged into the `AGN-001` branch (2026-09-29); `ENH-017` and `ENH-015` then reached `main` first holding `DEC-SCOPE-036`/`037`, so it was renumbered again to `DEC-SCOPE-038` when `main` was merged in on 2026-09-30 (the migration did not move: neither adds one), as its provisional-number note provided (precedent: `DEC-SCOPE-024`/`025`/`027`/`029`/`030`/`033`/`034`/`035`). Its migration moved the same way: cut as `0045_agent_orgs` on `0044`, re-chained as `0046_agent_orgs` on `0045_psychometric_result_fields`. Earlier `AGN-001` commit messages and docs that say `DEC-SCOPE-034` or `0045_agent_orgs` mean this decision and that migration.
+
+**Question:** `functionalities/edusphere_markdown/Agent CRM Functionalities.md` (`EVID-015`, `DERIVED_BLUEPRINT`, parked in `ENHANCEMENT_BACKLOG.md` Appendix B, `CONFLICT_MATRIX.md` `C-10`, `PRD_OPEN_ITEMS.md` item 69) proposes that "every agent gets their own separate CRM environment" (Best approach), a Master login with full access (§1, §2), and account codes such as `ABC-M001` (§3). Is the tenant model wanted, and how does it replace today's one-user-per-agent model (`DEC-SCOPE-004`, `AGT-001`–`004`) without changing existing data access?
+
+**Evidence:** Graphify-oriented impact analysis, 2026-09-28: an Agent today is a single `User` with a `UserRoleAssignment(role='agent')` whose `approval_status` gates every agent route (`core/rbac.py:75` `agent_is_approved`, called from `workflows.py:100` `_require` and `api/portal.py:31`); every agent read and write is scoped by `agent_id == user.id` (`workflows.py:156, 1745, 1771, 1835, 1995, 2061, 2277, 2287-2290, 2307, 2332`; `services/portal.py:677-695`); approve/reject act on the assignment by user id (`admin.py:981-1026`) and audit `entity_type='user_role_assignment'` (`SEC-001`); admin user-create can create `role='agent'` users directly (`admin.py:~391`). No organisation, member or account-code concept exists.
+
+**Conflict recorded, not silently resolved:** `EVID-015` says "one Master account + unlimited Staff accounts". The user's `AGN-001` acceptance criteria allow up to three Masters. The user chose the acceptance criteria (D4).
+
+**Resolution:** User confirmed in-session, 2026-09-28 (`EXPLICIT_APPROVAL` — the user's own `AGN-001` statement and answers, not the source document's wording):
+
+- **D1 — Tenant.** Every agent company is an agent organisation, a separate tenant. No agent route returns or changes another organisation's data; every agent read and write is scoped to the caller's organisation, and each has a cross-tenant test.
+- **D2 — Registration.** Self-registering as an agent creates, in one transaction, exactly one `pending` organisation and one Master member with code `<PREFIX>-M001`. ~~Registration requires an agency name.~~ **Corrected 2026-09-28 (design, E2, `EXPLICIT_APPROVAL`):** the agency name is optional; blank or missing falls back to the user's full name, so existing callers keep working.
+- **D3 — Account code.** The code (e.g. `ABC-M001`) is a display identifier only. Login stays by email.
+- **D4 — Master count.** At most three Masters that are active or have a pending invite, at once. A further invite is `422`. Codes are monotonic per organisation (next = highest ever issued + 1) and never reassigned, so an organisation may reach `M004` and beyond over time.
+- **D5 — Prefix.** The Latin letters of the agency name, first three, uppercased, padded to three with `X` (`A1 Consultants` → `ACO`, `AB` → `ABX`, no Latin letters → `AGT`). On collision with another organisation, append the lowest free integer from 2 (`ABC`, `ABC2`, `ABC3`…).
+- **D6 — Organisation status.** `pending` → `active` (approve) or `rejected` (reject); `active` → `suspended` (suspend); `suspended` → `active` (reinstate). Approve also works from `rejected` (today's behaviour). While an organisation is not `active`, every member is denied every agent route (today's `AGT-001-AC02`, preserved). Suspension is checked on each request, so it applies on the member's next request. It denies agent routes only; `/auth/me`, logout and notifications keep working.
+- **D7 — Admin actions.** Overseas Admin acts on the organisation through new `POST /overseas-admin/agent-orgs/{org_id}/approve|reject|suspend|reinstate`. Each writes an audit row with `entity_type='agent_org'` in the same transaction (fail closed, `SEC-001`). The existing `/overseas-admin/agents/{agent_id}/approve|reject` routes stay and act on that agent's organisation.
+- **D8 — Master management.** Only an active Master of the organisation invites or deactivates its Masters, including deactivating themselves. Overseas Admin does not manage members. Deactivating the last active Master is `422`. A deactivated Master cannot be reactivated.
+- **D9 — Invite.** An invite emails a one-time set-password link using the existing `DEC-SCOPE-019` mechanism (same token and expiry rules).
+- **D10 — Migration.** Each existing agent becomes Master `M001` of its own organisation: `approved` → `active`, `pending` → `pending`, `rejected` → `pending` (for re-review). Data access is unchanged.
+- **D11 — Admin-created agents.** Creating a `role='agent'` user through admin user-create (`ADM-001`) also creates a `pending` organisation with that user as `M001`.
+- **D12 — Notifications.** Agent notifications that today go to the single agent (commission estimated, commission eligible) go to every active Master of the organisation.
+- **D13 — Out of scope.** Staff logins (`S001`…), staff assignment and ownership, staff performance, CRM settings and the rest of `EVID-015` are **not** decided by this entry and remain blocked under `C-10`. *(2026-09-30: Staff logins since decided as `DEC-SCOPE-040`, `AGN-002`; staff assignment and ownership of students since decided as `DEC-SCOPE-042`, `AGN-004`; staff performance and CRM settings remain blocked. 2026-10-01: staff permissions decided as `DEC-SCOPE-044`, `AGN-003`; staff activity decided as `DEC-SCOPE-046` (`AGN-021`); staff performance remains blocked. 2026-10-01: the agency university database and student shortlist (`EVID-015` §5 Step 3, §6 "University Database" / "Add University") decided as `DEC-SCOPE-049`, `AGN-007`.)*
+
+**Review decisions, 2026-09-29 (`EXPLICIT_APPROVAL`, in-session, after the API / security / frontend review of the build):**
+- **R1 — Invite throttle.** At most 10 Master invites per agency per rolling 24 hours (counted from `agent_org.master_invite` audit rows, under the organisation lock); over the limit → `429` with `Retry-After`. Reason: invite → deactivate → invite loops otherwise let an approved agency send unlimited set-password emails to any address under a name it chooses.
+- **R2 — Paginated organisation list.** `GET /overseas-admin/agent-orgs` takes `limit` (1–100, default 25) and `offset` and returns `{items, total, limit, offset}` (the built school skill-batch shape, chosen over `API_CONTRACT.md` §0.1's documented cursor form); the Agent Approvals panel shows one status tab at a time, 20 per page, and follows an organisation to its new tab after an action.
+- **R3 — No self-lockout.** A Master can be deactivated only if some other active Master has login enabled and has accepted their invite (password set); otherwise `422 "At least one other Master must have accepted their invite first"`. Invite-pending Masters still count toward the 3-Master limit.
+
+**Consequences:** new organisation and member tables plus a backfill migration; the approval gate moves from the assignment to the organisation; every agent-scoped query changes from `user.id` to the organisation; new admin and Master-management endpoints; `RegisterForm`, `AgentApprovalPanel` and a new Master team screen change. `SEC-001`'s audit `entity_type` for org actions changes by decision (D7), not to make a test pass. Schema, endpoint shapes and screens are fixed in the `AGN-001` design spec, not here.
+
+### DEC-SCOPE-039 — Searchable reference pickers (`ENH-031`)
+
+**ID note:** recorded as `DEC-SCOPE-037`; `ENH-017`/`ENH-015` reached `main` first holding `DEC-SCOPE-036`/`037`, so this entry was renumbered to `DEC-SCOPE-039` when `main` was merged into the branch (2026-09-30). Earlier `ENH-031` commits and docs that say `DEC-SCOPE-037` mean this decision.
+
+**Question:** the owner asked (in-session, 2026-09-29): "all the student references and application references should be the drop down with valid values. drop down values should be able to search". Which fields, what may each role see, and how?
+
+**Evidence:** read-only investigation, 2026-09-29: 11 forms take a typed student/application id (document upload, appointments, agent Link student, application updates, visa case, University Rep update, interviews, offers, School→Overseas bridge); 9 offer a plain `<select>`; no combobox component and no lookup endpoints exist.
+
+**Resolution:** owner, in-session 2026-09-29 (`EXPLICIT_APPROVAL`), D1–D5 in `docs/superpowers/specs/2026-09-29-enh-031-searchable-reference-pickers-design.md` §2: D1 both groups of fields, other reference fields out of scope; D2 agent link = server search only (≥ 3 characters, ≤ 10 results, masked email, own agency's links left out; **revised 2026-09-30, owner, after the final review:** email matches only in full, names only from the start of a word, 30 searches per agent per minute counted from text-free `lookup.agent_link_search` audit rows); D3 own accessible combobox + role-scoped read-only lookups, no new dependency; D4 bridge = pick the school, then search only its students; D5 built on the AGN-001 branch.
+
+**Consequences:** new `GET /api/v1/lookups/{overseas-students,overseas-applications,it-job-applications,schools,school-students}` (read-only, each with its write endpoint's scope); new `SearchableSelect` component; 20 form fields change control. No write endpoint, schema or migration changes.
+
+### DEC-SCOPE-040 — Agent staff logins (`AGN-002`)
+
+**ID note:** provisional number, the next free after `DEC-SCOPE-039`. If another branch reaches `main` first holding `DEC-SCOPE-040`, this entry is renumbered on merge (precedent: `DEC-SCOPE-038`/`039`).
+
+**Question:** the owner's `AGN-002` statement (in-session, 2026-09-30): "Master creates, edits, activates/deactivates and resets staff logins; Staff ID is auto-generated (§2 Staff, §3)", with acceptance criteria: codes `<PREFIX>-S001`, `S002`, … unique per organisation and never reused; a set-password email is sent or reported; deactivated staff cannot call any API; reactivation restores access; a Master of another organisation cannot see or edit the staff member; every action is audited. `DEC-SCOPE-038` D13 had left Staff logins blocked under `CONFLICT_MATRIX.md` `C-10`. What may staff do, how are they modelled, what does "reset" mean, and which fields and limits apply?
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2 "Staff — Create staff login, Edit staff, Activate/deactivate staff, Reset password", §3 staff fields and example codes `ABC-S001`…, §6 Master-vs-Staff permission table, Best approach "unlimited Staff accounts". Graphify-oriented impact analysis, 2026-09-30: `AgentOrgMember` allows only `role = 'master'` (`ck_agent_org_members_role`) and numbers members by one `seq` unique per organisation (`uq_agent_org_members_org_seq`); every agent read/write is scoped by `org_member_ids` (organisation-wide, `workflows.py`, `lookups.py`, `services/portal.py`); `count_active_masters`, `deactivate_master`'s other-Master check, `notification_recipients` (D12) and the team listings do not filter by member role; `User.active = False` already denies every API (`deps.get_current_user`, login, refresh); the admin Re-send route deliberately cannot reset an account that has a password; there is no session-revocation mechanism.
+
+**Conflicts recorded, not silently resolved:** `EVID-015` §3 has the Master type a "Temporary Password"; `AGN-001` (`DEC-SCOPE-038` D9, spec E5) decided a Master must never be able to set another user's password. The owner chose the set-password link (S3). `EVID-015` §3's Username, Designation, Branch, Joining Date, Assigned Students and Permission Level fields are not taken (S4). `EVID-015` §6 limits staff to "Assigned" students; assignment is not decided (S1).
+
+**Resolution:** owner, in-session 2026-09-30 (`EXPLICIT_APPROVAL` — the owner's `AGN-002` statement and answers to four structured questions, not the source document's wording):
+
+- **S1 — Staff access.** A staff member of an `active` organisation uses the existing agent student and application routes with the organisation-wide scope Masters have today. Team management (Masters and staff) and commissions stay Master-only. Narrowing staff to assigned students, staff assignment/ownership, staff performance and permission levels stay out of scope (still blocked under `C-10`). *(2026-10-01: permission levels since decided as `DEC-SCOPE-044`, `AGN-003` — two per-staff toggles, Verify Documents and Reports; assigned-only scope stays parked. 2026-10-01: staff activity decided as `DEC-SCOPE-046` (`AGN-021`); staff performance remains blocked.)*
+- **S2 — Model.** A staff member is a `User` with `role='agent'`, division `overseas`, an approved `agent` role assignment, and an `AgentOrgMember` with member role `staff`. Staff codes are `<PREFIX>-S###` from a per-organisation staff counter separate from `master_seq`: unique, monotonic (next = highest ever issued + 1), never reassigned. Every Master-only check tests the member role, and the Master rules of `DEC-SCOPE-038` (3-Master limit D4, last-Master rule D8/R3, notifications D12) count Masters only.
+- **S3 — Reset.** Only a Master of the staff member's organisation resets a staff login: the current password becomes unusable, a one-time set-password link is emailed through the `DEC-SCOPE-019` mechanism (the Master never sees the token, as for Master invites), and the staff member's existing sessions end. Creating staff sends the same link; the response reports whether the email was sent.
+- **S4 — Fields and limits.** Name, email and phone. Email is fixed after creation (name and phone are editable). No cap on the number of staff. Staff creations and resets are throttled per agency on a rolling 24 hours, like `DEC-SCOPE-038` R1; the exact budget is set in the design spec.
+- **S5 — Activation.** Only a Master of the organisation deactivates or reactivates its staff. Deactivation disables the login (denied every API on the next request) and revokes any open set-password link; reactivation restores access. Unlike Masters (D8), staff can be reactivated.
+- **S6 — Tenancy and audit.** A Master of another organisation cannot list, see or change a staff member (`404`). Every staff action (create, edit, deactivate, reactivate, reset) writes an audit row with `entity_type='agent_org'` in the same transaction.
+
+**Consequences:** migration widening the member role, the member sequence constraint and the member status set, and adding a staff counter; new staff endpoints under the Master team route; a session-revocation check in `get_current_user` and refresh (design spec); role filters added to the Master rules and team listings; Overseas Admin's per-agent approve/reject and admin user reactivation must not bypass S1/S5 for staff (design spec); `AgentTeamPanel` gains a Staff section. Open design details (session-revocation mechanism, throttle budget, reactivation of a never-activated staff account, admin-route handling) are settled in the `AGN-002` design spec, not here.
+
+### DEC-SCOPE-041 — ENH-030 Daily class attendance for School students (provisional number)
+
+**ID note:** provisional number, recorded in-session 2026-09-30 as `DEC-SCOPE-038`. Renumbered on merging `main`, 2026-10-01: decision `DEC-SCOPE-038` → `DEC-SCOPE-041` (AGN-001, ENH-031 and AGN-002 hold 038–040) and migration `0046` → `0048_school_attendance_records`, chained after AGN-002's `0047_agent_org_staff`.
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-030 (`DERIVED_BLUEPRINT`, from `School CRM.md` = `EVID-014`) asks for routine School-domain attendance: a teacher marks their whole assigned class for a day in one action, visible on Parent/Student/360° views. Open points: what a "class" is, whether a teacher may write (DEC-SCOPE-011 says Teacher *views* attendance), what "Student dashboard" means with no student login, the status set, granularity, and the tier gate.
+
+**Evidence:** Graphify-led audit, 2026-09-30 (`docs/superpowers/specs/2026-09-30-enh-030-daily-attendance-design.md` §1): no class/section entity and no teacher-to-class assignment (per-student `assigned_teacher_user_id`; ENH-013 D3); teacher RBAC bundle read-only; no `school_student` role; IT `Attendance.status` ∈ present/absent/late/excused; the 360 Attendance tab carries a fixed "not tracked yet (ENH-030)" note.
+
+**Resolution:** User answered in-session, 2026-09-30 (`EXPLICIT_APPROVAL`): "go with your recommendations for all six" — spec §2 D1–D6. D1 class = the teacher's currently assigned students; D2 writer = `school_teacher`, assigned students only (additive to DEC-SCOPE-011; Coordinator/Principal read-only for daily attendance in v1); D3 "Student dashboard" = the Student 360° Attendance tab; D4 status ∈ present/absent/late/excused, a missing row = not marked; D5 one record per student per day; D6 tier gate = any valid tier (`service_key=None`).
+
+**Consequences:** new `school_attendance_records` table (migration `0048`), new `apps/api/app/api/school_attendance.py` (`GET`/`PUT /school/attendance`), additive `daily_attendance` key on `/school/students/{id}/overview`, 360 Attendance tab gains daily records and loses the ENH-030 note, new teacher page `/school/teacher/attendance`. Existing `/school/dashboard` and `/school/reports` `attendance` keys unchanged.
+
+**Amendment (executor ruling after the whole-branch review, 2026-09-30) — confirmed by the user in-session 2026-09-30 (`EXPLICIT_APPROVAL`: "confirm D5"):** D5 "one record per student per day" is implemented as one record per student per day **per school** (`UNIQUE (school_student_id, school_id, session_date)`), so a transferred student's previous school's records can never be overwritten by the new school (the review found they could be, for any past date). Refusing the new school's save instead was rejected because it would block a whole class on a transfer day.
+
+**I-3, raised by the substitute independent review, 2026-09-30 — RESOLVED: user in-session 2026-09-30 (`EXPLICIT_APPROVAL`: "go with your recommendation for I-3") chose option (b), built and tested; C4 (option (c)) decided by executor ruling under that approval as "no further lower bound" (changeable). Original question:** the roster for any date is the teacher's *current* class, so a back-dated save can mark a student for a day before they joined the school or the class (e.g. a student transferred in on 28 Sep, marked "present" for 20 Sep; the parent then sees that day as present at the new school). Options: (a) accept, with a note on past dates that the list is today's class; (b) for past dates, exclude or refuse students whose enrolment at this school began after that day (from `SchoolStudent.created_at` and the approved transfer's decision time); (c) bound how far back a teacher may mark (the existing open C4 question). Recommended: (b), with (c) decided alongside it.
+
+### DEC-SCOPE-042 — Agent students: students with no login, staff assignment (`AGN-004`)
+
+**ID note (renumbered 2026-10-01):** `DEC-SCOPE-041` went to `ENH-030` on `main` (PR #27) first, so this entry is now `DEC-SCOPE-042`. Earlier note: `DEC-SCOPE-040` is `AGN-002` (staff logins), on `main` since PR #28; this entry keeps `DEC-SCOPE-042` (no clash
+when `main` was merged into the AGN-004 branch, 2026-10-01).
+
+**Question:** the owner's `AGN-004` statement (in-session, 2026-09-30): "Master/Staff create, edit, view and archive students who
+never log in (§2 Students, §5 Step 1; DEC-ROLE-004; DEC-SCOPE-035 D3)", with acceptance: create/edit/view/archive work for the right
+roles; an archived student leaves default lists but remains in history and reports; Staff cannot see a student assigned to someone
+else (`404`); no `users` row is ever created for an agent student; the within-org duplicate warning fires.
+
+**Evidence:** Graphify-oriented impact analysis, 2026-09-30: `agent_students` is a link table whose `agent_id` and `student_id` are
+both FKs to `users.id` (`models.py` `AgentStudent`) — every agent student is today a real `users` account; there is no edit,
+detail or archive route and no duplicate *warning* anywhere; `OverseasApplication`/`StudentDocument` key the student through
+`users.id` and about fifteen queries inner-join it; `DEC-SCOPE-038` D13 left staff assignment and ownership blocked under `C-10`;
+`AGN-002` (a parallel branch) models staff as `role='agent'` + member role `staff` with agency-wide access (its S1).
+
+**Conflicts recorded, not silently resolved:** (1) the requirement's `DEC-SCOPE-035 D3` citation — `DEC-SCOPE-035` is ENH-027's
+psychometric decision and `DEC-SCOPE-038` D3 is AGN-001's account-code rule; neither decides agent students. (2) `EVID-015` §6
+lists Staff "Delete Student ✗" while the request reads "Master/Staff … archive" — the owner chose Master-only (D5). (3) `AGN-002` S1
+gives staff agency-wide student and application access, while AGN-004's acceptance says staff cannot see another's student — the
+owner chose assigned-only everywhere (G4).
+
+**Resolution:** owner, in-session 2026-09-30 (`EXPLICIT_APPROVAL` — the owner's own statement and answers to structured
+questions, not the source document's wording):
+
+- **D1 — Staff for students.** Staff (as modelled by AGN-002 S2) create, edit and view students. Lifts the staff
+  assignment/ownership part of `DEC-SCOPE-038` D13 / `C-10`; staff performance, permission levels and CRM settings stay blocked. *(2026-10-01: staff activity decided as `DEC-SCOPE-046` (`AGN-021`); staff performance remains blocked.)*
+- **D3 — Two kinds of student.** The existing "link a student who has an account" flow stays; a new flow creates a student with no
+  login whose details live on `agent_students`; no `users` row is ever created for them.
+- **D4 — Assignment.** Created or linked by staff → assigned to that staff member; by a Master → unassigned. Only a Master assigns.
+- **D5 — Archive.** Master only (and unarchive). Archived students leave default lists but stay in history and reports.
+- **D7 — Duplicate warning.** Same email (case-insensitive) or same normalised phone inside the agency → a warning listing the
+  matches; saving again with confirmation proceeds.
+- **D8 — Downstream deferred.** Applications, documents and commissions for students with no login are a later feature.
+- **G1 — Independent of AGN-002**, reconciled at merge.
+- **G2 — Minimal staff code with AGN-002's exact names** (member role `staff`, `staff_seq`, per-role numbering, `is_agent_staff`,
+  Master-only role filters and guards, `agent_member_role`, `agentNavFor`); no staff-management endpoint or UI.
+- **G3 — Staff reach = AGN-002 S1** (Team and Commissions Master-only).
+- **G4 — Assigned-only everywhere** — the new student routes (`404` outside scope) and every existing roster, link, application,
+  document, lookup and portal path (their existing out-of-scope status codes). Narrows AGN-002 S1.
+- **G5 — Deactivation keeps assignments**; only an active staff member can receive a new assignment.
+- **Browser-QA decisions, 2026-10-01 (owner, `EXPLICIT_APPROVAL`):** **Q1** the agent Students page leads with all students (the panel, full width) and the AGT-002 roster is retitled "Application status" for students who have a login (browser QA-01/02); **Q2** phones match for the duplicate warning on their last 10 digits (country code / trunk 0 ignored); numbers under 10 digits must match exactly, ≥ 7 digits (browser QA-04). Report: `docs/quality/AGN-004_BROWSER_QA_2026-10-01.md`.
+- Design choices F1–F5 (no `org_id` column; linked students not editable here; duplicates include archived and linked students;
+  staff see invisible matches only as a count; the detail view sits on the Students page) — design spec §3.
+
+**Consequences:** migration `0049_agent_students_crm` (additive; cut as `0047_agent_students_crm` with AGN-002's staff pieces copied
+in, re-chained after AGN-002's `0047_agent_org_staff` on merge, 2026-10-01, which owns those pieces); new
+`/workflows/overseas/agent/crm/students` routes; scope helpers applied to every agent path; new Students panel. With AGN-002 merged,
+Staff browser flows were verified and the named-staff Assign action built (2026-10-01, `docs/quality/AGN-004_BROWSER_QA_2026-10-01.md`). Schema, endpoint shapes and screens are fixed in
+`docs/superpowers/specs/2026-09-30-agn-004-agent-students-design.md`, not here.
+
+---
+
+### DEC-SCOPE-043 — ENH-028 Bulk data entry for Academic Results, Psychometric, Test Prep and Language records
+
+**ID note (renumbered 2026-10-01 on merging `main`):** recorded in-session as `DEC-SCOPE-042`; `main` gave that number to `AGN-004` first (PR #29), so this entry is `DEC-SCOPE-043`, and its migration moved from `0049` to `0051_school_bulk_uploads`, chained after `0049_agent_students_crm` and `0050_notification_channels`.
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-028 (`MEETING_TRANSCRIPT_REQUEST`: *"check for the possibility of bulk uploads for various pages like results, exams, psychometrics tests etc."*) asks for a bulk-entry path per module with idempotent replay, per-row validation that never blocks the batch, and a batch/row audit trail matching the roster upload. Open points: create-only or also update, how a row names a student, parent notifications, size limits, which modules ("exams"), duplicate handling.
+
+**Evidence:** Graphify-led audit, 2026-10-01 (`docs/superpowers/specs/2026-10-01-enh-028-bulk-data-entry-design.md` §1): one bulk pattern exists (`POST /school/students/bulk-upload`, `SchoolRosterUploadBatch`/`Row`); none for `SchoolAcademicResult`, `SchoolPsychometricRecord`, `SchoolTestPrepRecord`, `SchoolLanguageRecord`. `DEC-SCOPE-010` part 2 already put academic-results bulk upload in scope. Baseline browser QA (2026-10-01) found the roster upload fails the whole batch on one over-long cell, has no size cap, and duplicates a re-uploaded file — the design avoids each.
+
+**Resolution:** User answered in-session, 2026-10-01 (`EXPLICIT_APPROVAL`): D1 create-only; D2 rows identify students by `student_code`; D3 parents get the single-create notice after the batch commits; D4 ≤ 1 MB, 1–500 filled-in rows (new endpoints only); D5 modules = Results, Psychometric, Test Prep, Language ("exams" = exam marks as Results; Career records and trainer assessments out); D6 duplicates rejected per row, bulk only. Spec approved with simplifications S1–S5 ("Spec + S1–S5"): no hourly throttle, no batch-read endpoint, no batch status column, no `school_student_id` on report rows, report rows in file order.
+
+**Consequences:** migration `0051_school_bulk_uploads` (two new tables `school_bulk_upload_batches` / `school_bulk_upload_rows`, create-table only); new `apps/api/app/api/school_bulk.py` (four `GET …/bulk-template` and four `POST …/bulk-upload` routes under the modules' existing prefixes); new `SchoolBulkEntryPanel` on the Academic Team and Psychometric Team dashboards. Unchanged: every single-record endpoint, the roster upload and its tables, Draft → Verified → Published and DEC-ROLE-007, tier rules, every reader.
+
+---
+
+### DEC-SCOPE-044 — Agent staff permissions: the Master vs Staff matrix (`AGN-003`)
+
+**ID note (renumbered twice on 2026-10-01 when merging `main`):** drafted as `DEC-SCOPE-041`; `DEC-SCOPE-041` went to `ENH-030` (PR #27), `DEC-SCOPE-042` to `AGN-004` (PR #29) and `DEC-SCOPE-044` to `ENH-028` (PR #32) first, so this entry is `DEC-SCOPE-044`.
+
+**Question:** the owner's `AGN-003` statement (in-session, 2026-10-01): "the §6 matrix: Staff are limited to the student journey, with no admin modules; 'Set permissions' / 'Permission Level'", with acceptance criteria: every ❌ cell in §6 returns 403 for Staff with a test; every ✅ cell succeeds; toggles flip the two optional rows; a toggle change applies on the next request. `DEC-SCOPE-040` S1 had left permission levels blocked under `CONFLICT_MATRIX.md` `C-10`. Which rows are optional and toggleable, at what granularity, how far does the matrix reach, and how does agent document verification relate to the counselor's review?
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2 "Set permissions", §3 "Permission Level", §4 "Staff Login – Student Journey Only", §6 "Master vs Staff Permissions" (Verify Documents "⚠️ Optional", Reports "❌/Limited"). Impact analysis, 2026-10-01:
+- Staff are refused only team management and commissions today (`agent_team._require_master`, `workflows._require_agent_master`, `portal.py` `{team, commissions}`).
+- No agent can verify or reject documents. `PATCH /workflows/overseas/documents/{id}/verify` is counselor/Overseas Admin only.
+- Several §6 rows have no agent route at all: Create/Edit/Delete Student as records, Assign Student(s), Edit Application, Change Application Status, Add University, Staff Performance and CRM Settings.
+- No per-organisation or per-member settings storage exists.
+
+**Conflicts recorded, not silently resolved:**
+- `EVID-015` §6 limits staff to "Assigned" students and applications; `DEC-SCOPE-040` S1 gives them agency-wide scope (kept as P4; superseded by `DEC-SCOPE-042` G4 on merging `main`, 2026-10-01 -- §6's "Assigned" now holds).
+- `EVID-015` §6 gives Masters "Add University"; no agent has that route (P3, recorded in the spec matrix).
+
+**Resolution:** owner, in-session 2026-10-01 (`EXPLICIT_APPROVAL` — the owner's `AGN-003` statement and answers to six structured questions, not the source document's wording):
+
+- **P1 — Toggles.** Verify Documents and Reports are the two optional rows. Both are off by default for staff. Existing staff therefore lose the Reports page until a Master switches it on.
+- **P2 — Granularity.** Per staff member, set by a Master of the staff member's organisation ("Set permissions").
+- **P3 — Reach.** The matrix is enforced on routes that exist. §6 rows with no capability for any agent are recorded N/A and stay parked under `C-10`. The one new capability is agent document verification, so the Verify toggle has effect. *(Superseded in part 2026-10-01 for the two §6 rows "University Database" and "Add University" only: decided as `DEC-SCOPE-049` (`AGN-007`) -- Master full / Staff view, "Add University" Master-only on an agency-private list. Every other P3 row is unchanged.)*
+- **P4 — Student scope.** Staff keep agency-wide students and applications (`DEC-SCOPE-040` S1). Assignment/ownership stays parked. *(Superseded 2026-10-01 when `main` was merged: the owner adopted `DEC-SCOPE-042` G4 (`AGN-004`) for AGN-003 -- staff reach only their assigned students, their applications and documents, including the agent document review (attached or not).)*
+- **P5 — Agent review.** An agent (a Master, or staff with Verify) decides only a document still `pending`. A counselor's or Overseas Admin's decision is never overwritten by an agent; they may still re-review an agent's decision.
+- **P6 — Staff outcome.** Staff with Verify may record `verified` only. Rejecting or requesting changes stays Master-only.
+
+**Assumptions stated by design (owner may correct in spec review):**
+- **P7** "Permission Level" is not a create-form field.
+- **P8** Toggles may be set on a deactivated staff member, are not throttled, and every change is audited.
+- **P9** Staff with Verify may verify a document they uploaded themselves (§6 asks for no maker-checker); the decision is attributed and counselors/Overseas Admins can still re-review.
+
+**Consequences:**
+- Migration `0048` adds two staff flags to `agent_org_members`.
+- A Master-only `PUT …/team/staff/{id}/permissions`.
+- An agent branch on the document verify route.
+- `agent_permissions` on `/auth/me` and `permissions` on the staff shape (additive).
+- The portal refuses staff Reports without the toggle.
+- The staff row gains Permissions; the agent Documents page gains a review queue.
+- Design and full matrix: `docs/superpowers/specs/2026-10-01-agn-003-staff-permissions-design.md`.
+
+### DEC-SCOPE-045 — ENH-020 Financial support / loan assistance tracking (provisional number)
+
+**Status:** CONFIRMED_CURRENT — resolved 2026-10-01, in-session. **ID note (renumbered 2026-10-01 on merging `main` @ `6360dc0`):** recorded in-session as `DEC-SCOPE-043`; `main` gave `043` to `ENH-028` and `044` to `AGN-003` first, so this entry is `DEC-SCOPE-045`. Its migration moved from `0051` to `0053_school_funding_records` (after ENH-028's `0051_school_bulk_uploads` and AGN-003's `0052_agent_staff_permissions`) and its screens from `SCR-SCH-040`/`041` to `SCR-SCH-041`/`042` (`SCR-SCH-040` is ENH-028's).
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-020 (`DERIVED_BLUEPRINT`, from `School CRM.md` §21 = `EVID-014`) asks to track students requiring an education loan, financial assistance, scholarship or funding guidance through **Required → Counselling → Documents → Application → Approved → Completed**, and made the design conditional on an audit: does the Overseas domain already do this?
+
+**Evidence:** Graphify-led audit, 2026-10-01 (`docs/superpowers/specs/2026-10-01-enh-020-funding-support-tracking-design.md` §1): no loan, financial-assistance or funding-guidance model, route or UI exists; `apps/api/app/finance/` is an empty reserved package; `ScholarshipApplication` is overseas-only (`student_id` → `users`, one hard-coded `submitted` status, no school-student link, never updated); `EMISchedule`/`Payment` are fee instalments (`DEC-PAY-001/002`). `DEC-SCOPE-017` already lists `loan_assistance` (Platinum) and `scholarship_assistance` (Gold) as included services reported `used: null`. **Verdict:** a new School-domain tracker, not a view of an existing one.
+
+**Resolution:** user, in-session 2026-10-01 (`EXPLICIT_APPROVAL` — answers to structured questions, then approval of the written spec): D1 writer = `career_counselor`, own portfolio; D2 per-type tier gate (`scholarship` → `scholarship_assistance`, the other three → `loan_assistance`), type fixed after creation; D3 the six source stages forward one step at a time **plus a terminal `closed` with a required reason** (an addition beyond the source wording), `completed`/`closed` final; D4 lean fields (notes, closure reason, optional provider name, optional amount as free text, stage-entered date — no files, no lender integration); D5 readers = coordinator/principal (own school) and linked parent (own child, read-only), **teachers excluded**, parents notified on create and stage change; D6 new table + router reusing `schools.py` helpers; D7 one open case per student per school per type; D8 usage = distinct students per creating school, closed cases count; D9 ENH-016 scorecard "Scholarship", `UNTRACKED_OUTCOMES["scholarships"]` and ENH-017 "Scholarships" stay *not tracked* (they describe §18, not built here); D10 final cases read-only; D11 counsellor page `/school/career-counselor/funding` + read-only card on parent/coordinator/principal student pages; D12 **cases stay with the creating school** (staff of a student's new school do not see the previous school's cases; parents see all); D13 role/scope denials audited (`school.funding_record_denied`).
+
+**Consequences:** migration `0053_school_funding_records` (additive), `apps/api/app/api/school_funding.py` (`POST`/`PATCH /school/funding-records`, `GET /school/career-counselor/funding-records`, `GET /school/students/{id}/funding-records`), `GET /school/entitlements` `used` for `loan_assistance`/`scholarship_assistance` becomes an integer (ENH-016 utilization follows). **New Feature ID authorized:** `ENH-020`. Schema, endpoint shapes and screens are fixed in the spec, not here.
+
+### DEC-SCOPE-046 — Agent staff activity (`AGN-021`)
+
+**ID note (renumbered 2026-10-01 on merging `main` @ `057dfe0`):** drafted as `DEC-SCOPE-045`; `ENH-020` (PR #34) reached `main` first holding `045`, so this entry is `DEC-SCOPE-046` (precedent: `DEC-SCOPE-038`/`039`, `041`–`045`). Still provisional if another branch lands `046` first.
+
+**Question:** the owner's `AGN-021` statement (in-session, 2026-10-01): requirement **"View staff activity" (§2 Staff)**; acceptance criteria: **a Staff member's actions appear within one page load; other orgs' users → 404.** `DEC-SCOPE-038` D13 / `DEC-SCOPE-040` S1 / `DEC-SCOPE-042` D1 had left staff activity blocked under `CONFLICT_MATRIX.md` `C-10`. What counts as activity, who may view it, how much detail, how fresh, and where does it come from?
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2 Staff "View staff activity" (the source's wording is not the approval). Design spec `docs/superpowers/specs/2026-10-01-agn-021-staff-activity-design.md` §4 audit table: all seven student-journey actions are already written to `audit_logs` with the staff user as `user_id`; no activity store exists.
+
+**Conflicts recorded, not silently resolved:**
+- The earlier AGN-021 scope (staff permission matrix, spec `2026-10-01-agn-021-staff-permission-matrix-design.md`, branch `feature/agn-021-staff-permission-matrix`) shipped as `AGN-003` (PR #33) before AGN-021 was built. The owner re-scoped `AGN-021` to staff activity in-session on 2026-10-01; the earlier scope is `SUPERSEDED`.
+- Staff performance (KPIs, funnels; `EVID-015` §8) is not decided here and stays blocked under `C-10`.
+
+**Resolution:** owner, in-session 2026-10-01 (`EXPLICIT_APPROVAL` — the owner's `AGN-021` statement and answers, not the source document's wording):
+
+- **A1 — What is activity.** Student-journey work only: student records created / edited / saved over a duplicate warning, a student account linked, an application created, a document uploaded, a document verified. Sign-ins, password and profile changes, messages, support tickets and lookup searches are not shown.
+- **A2 — Viewers.** Only an active Master of the staff member's agency. Staff are refused (403); any other organisation's user → 404. Deactivated staff remain viewable (history is kept).
+- **A3 — Detail.** Each line: time, a plain action label, and the subject the Master can already see (student name; application as student — university; document as type — student). For an edit, the names of the fields changed — never their values. Reviewer notes, emails and ids are never shown.
+- **A4 — Freshness.** "Within one page load" = read from the audit log on every request with no cache, so an action is visible the next time the Master opens or refreshes the view. A Refresh button; no live push or polling.
+- **A5 — Source.** The existing audit log (no new store, no new writes). Lifts "staff activity" out of `C-10`; **staff performance (KPIs) stays parked**.
+
+**Consequences:**
+- A Master-only `GET /api/v1/workflows/overseas/agent/team/staff/{member_id}/activity` (`limit` 1–100 default 25, `offset` 0–10000; `{items, total, limit, offset}`).
+- Two services: `services/agent_orgs.find_staff_member` (non-locking lookup, 404 "Staff member not found") and the new `services/staff_activity.py` (allow-list of seven actions, batched subject resolution).
+- An **Activity** button and section on each staff row of the Team page (`AgentStaffActivity`).
+- One operational log line `agent_org_staff_activity_viewed` (ids only).
+- No migration, no new audit writes, no cache.
+- Design: `docs/superpowers/specs/2026-10-01-agn-021-staff-activity-design.md`.
+
+### DEC-SCOPE-047 — ENH-029 Bulk school partner onboarding (Admin, multiple schools at once)
+
+**ID note (renumbered 2026-10-01 on merging `main`):** recorded in-session as `DEC-SCOPE-044`; `main` gave 044 to `AGN-003`, 045 to `ENH-020` and 046 to `AGN-021` first, so this entry is `DEC-SCOPE-047`, and its migration moved from `0052` to `0054_school_onboarding_bulk`, chained after `0052_agent_staff_permissions` and `0053_school_funding_records`.
+
+**Question:** `docs/delivery/ENHANCEMENT_BACKLOG.md` §ENH-029 (user, in-session: *"Admin also may on-board multiple schools at a time."*) asks that an Overseas Admin onboard N schools in one upload, each row creating its school + seed Coordinator independently, per-row failures never blocking the batch, with a per-row batch report. Open points: which columns, duplicate handling, size limit and welcome-email volume, transaction shape, how a replayed report names the created coordinator, rate limiting.
+
+**Evidence:** Graphify-led audit, 2026-10-01 (`docs/superpowers/specs/2026-10-01-enh-029-bulk-school-onboarding-design.md` §1): one create path exists (`POST /overseas-admin/schools`, `admin.create_school`), no bulk variant; ENH-028's generalized `school_bulk_upload_*` tables and parser exist (`DEC-SCOPE-043`). The backlog's security note (default password `"ChangeMe@12345"`) is stale: `create_school` already issues an unusable password + 72 h welcome link (`ENH-003`, `DEC-SCOPE-019`/`025`), so that dependency is met.
+
+**Resolution:** User answered in-session, 2026-10-01 (`EXPLICIT_APPROVAL`): D1 columns = every `SchoolCreate` field (required `name`, `coordinator_full_name`, `coordinator_email`); D2 duplicate (normalized name + city) rejected per row, bulk only, and coordinator emails existing or repeated in the file rejected; D3 ≤ 1 MB, 1–100 filled-in rows, welcome links after the commit, ≤ 5 at a time; D4 approach A — one transaction, a savepoint per row, ENH-028's tables with `target_type = 'school_onboarding'`; D8 `school_bulk_upload_rows.created_user_id` records the coordinator; D9 no extra rate limit (parity with the single create and ENH-028 S1; accepted risk). Design D5 (create-only), D6 (ENH-028 idempotency), D7 (own router module), D10 (one shared CSV parser). Design sections approved in-session; spec revised after an API / security / frontend review and approved for implementation ("Proceed with ENH-029").
+
+**Consequences:** migration `0054_school_onboarding_bulk` (CHECK widened + one nullable column; no data read or written; downgrade refuses while onboarding batches exist); new `apps/api/app/api/school_onboarding_bulk.py` (`GET /overseas-admin/schools/bulk-template`, `POST /overseas-admin/schools/bulk-upload`); `admin.create_school`'s body extracted to `admin._provision_school` (behaviour unchanged); ENH-028's private parser/claim helpers take a `target_type` (behaviour unchanged); new `AdminSchoolBulkOnboardPanel` on `/overseas/admin/schools`. Unchanged: `POST /overseas-admin/schools` contract, every ENH-028 endpoint and report, the roster upload, provisioning/welcome-link services, tier rules, navigation.
+
+### DEC-SCOPE-048 — Agent student counseling record (`AGN-006`)
+
+**ID note:** drafted as `DEC-SCOPE-047`; `ENH-029` (PR #37) reached `main` first holding `047` (and migration `0054`), so this entry is `DEC-SCOPE-048` and the migration is `0055_agent_student_counseling`. Still provisional if another branch (e.g. `AGN-007`) lands `048` first.
+
+**Question:** the owner's `AGN-006` statement (in-session, 2026-10-01): requirement **"record counseling completed, career interest, course preference, country preference, budget and remarks"**; acceptance criteria: **save and read back the record; a negative budget → 422; out-of-scope → 404.** How is the record stored, what is a budget, who may write it and for which students, how is completion recorded, what is the API, and is it shown in Staff Activity?
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §5 "Staff Student Journey", STEP 2 "Counseling" (the source's wording is not the approval). Design spec `docs/superpowers/specs/2026-10-01-agn-006-counseling-record-design.md` (reviewed with api-and-interface-design, frontend-ui-engineering and security-and-hardening).
+
+**Resolution:** owner, in-session 2026-10-01 (`EXPLICIT_APPROVAL` — the owner's answers, not the source document's wording):
+
+- **C1 — One record per student;** a save overwrites it; its history is the audit log.
+- **C2 — Budget** = amount + currency (INR default, USD, GBP, EUR, CAD, AUD, NZD); 0 ≤ amount ≤ 99,999,999.99 with at most 2 decimals; otherwise `422`.
+- **C3 — Separate preferences:** counseling course/country preference are new fields; the Step 1 `preferred_course` / `preferred_country` are untouched and both are shown.
+- **C4 — Access:** the agency Master and the assigned staff member (`DEC-SCOPE-042` G4 scope); students with no login only — a student with a login or an archived student → `409`; out of scope → `404`.
+- **C5 — Completed:** yes/no; the server stamps when and by whom on the change to yes, keeps the stamp while it stays yes, clears it on no.
+- **C6 — API:** `PUT /workflows/overseas/agent/crm/students/{id}/counseling`; read back as a `counseling` object in the student detail; the AGN-004 `PATCH` contract is unchanged.
+- **C7 — Staff Activity:** a new audit action `agent_student.counseling`, shown with field names only, never values (adds one action to `DEC-SCOPE-046` A1).
+- **C8 — Storage:** a separate one-to-one table `agent_student_counseling` (approach A of three).
+- **C9 — Leave prompt** on unsaved counseling changes.
+
+**Consequences:** migration `0055_agent_student_counseling` (create-table only; no existing row read or written; downgrade refuses while records exist); one new route; an additive `counseling` key on every student-detail response; Staff Activity allowlist +1 action; no rate limit added (as for the AGN-004 writes — residual in `PRD_OPEN_ITEMS.md`). §5 Step 2 leaves `EVID-015`'s parked list.
+
+### DEC-SCOPE-049 — Agent student university shortlist and agency university database (`AGN-007`)
+
+**Status:** CONFIRMED_CURRENT — resolved in-session 2026-10-01 (`EXPLICIT_APPROVAL`).
+
+**ID note (provisional number, 2026-10-01):** drafted as `DEC-SCOPE-047`; after merging `main` @ `41fba25`, `DEC-SCOPE-047` is `ENH-029` (on `main`) and `DEC-SCOPE-048` is claimed by the parallel `AGN-006` branch (migration `0055`); `DEC-SCOPE-050` is `AGN-008` (branch, migration `0057`). So this entry is `DEC-SCOPE-049`, with migration `0056_agent_shortlist` chained on `main`'s head `0054_school_onboarding_bulk`. Whichever of `AGN-006` / `AGN-007` / `AGN-008` reaches `main` later renumbers and re-chains (precedent: `DEC-SCOPE-038`/`039`, `041`–`047`). **2026-10-02:** `AGN-006` reached `main` (PR #38) holding `DEC-SCOPE-048` and `0055_agent_student_counseling`; on merging `main` @ `8f0000d` this entry keeps `DEC-SCOPE-049` and `0056_agent_shortlist` now follows `0055` (one head).
+
+**Question:** the owner's `AGN-007` statement (in-session, 2026-10-01): "add university, course, country, intake, tuition fee and entry requirements to a student's shortlist. University DB: Master 'Full', Staff 'View'; 'Add University' is Master only (§6; DEC-SCOPE-035 D4)", with acceptance criteria: a catalogue-backed entry and a free-text entry both save; a free-text entry is invisible to other agencies and to `/public`; a course must belong to the chosen university. `DEC-SCOPE-044` P3 (`AGN-003`) had recorded the two §6 rows as N/A (no agent route) and left them parked under `CONFLICT_MATRIX.md` `C-10`. Where does a "free-text" university live, who owns a shortlist, who may write it, and what are the limits?
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`, provenance `NEEDS_CONFIRMATION`) §5 "STEP 3 — University Shortlisting" and §6 rows "University Database | Full | View" and "Add University | yes | no" (the source's wording is not the approval). Design spec `docs/superpowers/specs/2026-10-01-agn-007-student-shortlist-design.md` §3 (Graphify/codebase survey): no agent-owned university or shortlist model exists; the shared `universities` / `overseas_courses` / `countries` tables are admin-managed and public; `create_bridged_application` stores a `course_id` without the course-belongs-to-university check (out of scope, logged in `RAID.md`).
+
+**Conflicts recorded, not silently resolved:**
+- The requirement cites `DEC-SCOPE-035 D4`. `DEC-SCOPE-035` is `ENH-027`'s psychometric decision and `DEC-SCOPE-038` D4 is `AGN-001`'s three-Master limit; neither decides universities or shortlists. The citation is recorded as a mis-citation (`AGN-004` recorded the same kind for `DEC-SCOPE-042`), not silently corrected.
+- `DEC-SCOPE-044` P3 (`AGN-003`) is superseded **in part**: only the two §6 rows "University Database" and "Add University". Every other P3 row is unchanged. The `test_agn_003_matrix.py` rows for those two cells change deliberately.
+
+**Resolution:** owner, in-session 2026-10-01 (`EXPLICIT_APPROVAL` — the owner's `AGN-007` statement and answers, then approval of the design section by section; the owner added pagination and approved the review amendments including the 500-per-agency cap and the non-idempotent POST):
+
+- **D1 — "Add University" (Master only)** creates an **agency-private** university. It never enters the shared `universities` / `overseas_courses` / `countries` tables and never appears on `/public`.
+- **D2 — Owner of a shortlist.** An `agent_students` row (`AGN-004`): students with and without a login.
+- **D3 — Writers.** Master and Staff both add, edit and remove shortlist entries for students in their scope. "Staff: View" applies to the University Database, not to the shortlist.
+- **D4 — Course rule.** A catalogue course needs a catalogue university and must belong to it (422 "Course does not belong to selected university", the existing message). A free-text course is allowed with either kind of university; an agency university allows only a free-text course.
+- **D5 — Archived students.** Shortlist writes are allowed for every active agency student, linked or not; an archived student's shortlist is read-only (409).
+- **D6 — Approach A.** A "free-text university" *is* an agency university. An entry's university is exactly one of a catalogue university or an agency university. Staff pick a university but cannot create one.
+- **D7 — Fields.** Course, intake, tuition fee and entry requirements are optional; only the university is required. Country is derived from the university and never stored on the entry. Duplicate entries are allowed.
+- **D8 — Caps.** 50 entries per student and 500 agency universities per agency, checked under the agency lock (422 beyond).
+- **D9 — Pagination.** The shortlist list is paged (`limit`/`offset`, the `AGN-004` envelope).
+- **D10 — POST is not idempotent** and is documented as unsafe to retry; the UI disables Save while in flight. No idempotency key and no ETag (neither is contracted); concurrent PATCHes are last-write-wins under the agency lock.
+
+**Consequences:**
+- Migration `0056_agent_shortlist` (two new tables, `agent_universities` and `agent_student_shortlist_entries`; no existing table, column or row changes; downgrade drops only the two tables, entries first).
+- New `apps/api/app/api/agent_shortlist.py` and `services/agent_shortlist.py`; routes under `/workflows/overseas/agent/crm/universities` (Master write, both read) and `/crm/students/{id}/shortlist` (both write, scoped); `agent_students.py` is imported, not edited.
+- Three audit actions `agent_student.shortlist_add|update|remove` (added to the `AGN-021` staff-activity whitelist) and Master-only `agent_university.create|update|delete` (not whitelisted); ids, field names and counts only, never free-text values.
+- A `universities` portal section (header-only payload), a new Agent nav item "Universities" visible to both roles, `AgentUniversitiesPanel` / `AgentUniversityForm`, and an `AgentShortlistPanel` / `AgentShortlistForm` mounted in the `AGN-004` student detail view.
+- Lifts the two §6 rows and §5 Step 3 out of `C-10`; the rest of `EVID-015` stays parked. Out of scope: agency course catalogues, admin course creation, edits to the shared catalogue, converting an entry into an application.
+- Design: `docs/superpowers/specs/2026-10-01-agn-007-student-shortlist-design.md`.
+
+---
+
+### DEC-SCOPE-050 — Agent applications: create, edit, view, change status, Application ID, dates and deadlines (`AGN-008`)
+
+**ID note:** drafted as `DEC-SCOPE-050` while `DEC-SCOPE-048` (`AGN-006`, migration `0055`) and `DEC-SCOPE-049` (`AGN-007`, migration `0056`) were on unmerged branches, with `0057_agent_applications` chained after `0054_school_onboarding_bulk`. **2026-10-02:** both reached `main` (PR #38, PR #39) holding `048`/`0055` and `049`/`0056`; on merging `main` @ `3e06381` this entry keeps `DEC-SCOPE-050` (still free; no renumbering) and `0057_agent_applications` now follows `0056_agent_shortlist` (one head).
+
+**Question:** the owner's `AGN-008` statement (in-session, 2026-10-01): "create, edit, view, change status, application ID, submission date and deadlines; Staff sidebar filters (§2, §4, §5)." Acceptance: create, edit and status change work for an agent student and write history rows; filters return the correct subsets; the admin and university_rep lists include the application with the owner shown correctly; no response crashes on a NULL `student_id`; a backward status change returns `422`; a duplicate (same student, university, course, not withdrawn) returns `409`. `DEC-SCOPE-042` D8 had deferred applications for students with no login, and `EVID-015` §2 Applications, §4 Staff Sidebar and §5 Steps 5-6 were undecided under `C-10`.
+
+**Evidence:** graphify-led impact analysis, 2026-10-01 (four read-only inventories: backend applications, agent CRM backend, frontend/e2e, docs; design spec §10): `overseas_applications` keys its owner through `users.id` and about ten list/report/portal sites inner-join `users` on `student_id`, which drops any application whose student has no login; `AgentStudent` rows with no login exist since `DEC-SCOPE-042`; the AGN-003 matrix rows "Edit Application" and "Change Application Status" had no agent route. `EVID-015` is `DERIVED_BLUEPRINT` (provenance `NEEDS_CONFIRMATION`).
+
+**Conflicts recorded, not silently resolved:** (1) the `EVID-015` §4 sidebar labels (Draft, Submitted, Offer Received, Visa, Enrolled) do not match the confirmed `DEC-WF-001` enum: resolved by A1, A7 and A9 (filters are groups of stages, Draft vs Submitted told apart by `submitted_on`; the enum is not extended). (2) `DEC-SCOPE-036` (ENH-017) lists "started/submitted" as `NEEDS_CONFIRMATION`: AGN-008 adds a `submitted_on` date but **no** submitted status, so that item **stays `NEEDS_CONFIRMATION`** and is not decided here. (3) The `models.py` comment on `OverseasApplication` called it "correct" that inner joins drop rows with a NULL `student_id`; that held for school rows only, and is replaced by A6 and A12.
+
+**Resolution:** owner, in-session 2026-10-01/02 (`EXPLICIT_APPROVAL`; design spec `docs/superpowers/specs/2026-10-02-agn-008-agent-applications-design.md` §3):
+
+- **A1 — Statuses.** The `DEC-WF-001` enum is kept; `withdrawn` is added as a terminal value (a string, no DB enum or CHECK).
+- **A2 — Application ID** = the existing `overseas_applications.application_reference`, the university's reference typed in; not an agency-generated code.
+- **A3 — Dates.** `application_deadline`, `offer_deadline` and `submitted_on` are optional, entered by hand; no reminders.
+- **A4 — Agent status limits.** Forward only, up to `status_tracking` (skips allowed); withdraw from any stage except `enrolled`; `enrolled` stays with counselor, admin and university_rep, so an agent never triggers commission accrual (`DEC-SCOPE-005`). Master and Staff (in scope) alike.
+- **A5 — Link.** Nullable `overseas_applications.agent_student_id` (the `DEC-SCOPE-018` `school_student_id` pattern). Lifts `DEC-SCOPE-042` D8.
+- **A6 — Visibility.** Agent-student applications appear with the owner's name in the admin and university_rep lists, commission lists, RPT-002, visa views, the application lookup and `AGN-021` staff activity.
+- **A7 — Sidebar filters** for Master and Staff: the same page with `?status=<group>`; Staff see only assigned students (G4).
+- **A8 — Notifications.** A student with a login keeps today's "Application created" notification; none added.
+- **A9 — Draft vs Submitted** by `submitted_on` (both cover the stages before an offer).
+- **A10 — University fixed after creation**; to change it, withdraw and create a new application.
+- **A11 — Login students.** The application also stores `student_id` for a student with a login.
+- **A12 — School-bridged applications** (`school_student_id` set) stay excluded wherever they are excluded today.
+- **A13 — Old `POST /workflows/overseas/applications` unchanged** for agents; the agent UI moves to the new routes.
+- **A14 — Create throttle** (security review, 2026-10-02): 200 creates per agency per rolling 24 hours, counted from `overseas.application.create` audit rows under the organisation lock; over the limit `429` with `Retry-After`.
+- **A15 — Archived students' applications are read-only** (2026-10-02): create, edit, status change and withdraw return `409 "Unarchive this student first"`; reads still work.
+
+**Consequences:** `DEC-SCOPE-042` D8 is lifted. The AGN-003 / `DEC-SCOPE-044` matrix rows "Edit Application" and "Change Application Status" move from N/A to enforced for Master and Staff (`test_agn_003_matrix.py`). Migration `0057_agent_applications` (after `0056_agent_shortlist`; adds `agent_student_id` with index `ix_overseas_applications_agent_student_id`, `submitted_on`, `application_deadline`, `offer_deadline`; no existing row changes; downgrade drops them). New router `/workflows/overseas/agent/crm/applications` (`app/api/agent_applications.py`, tag `agent-applications`), service `app/services/agent_applications.py`, and an agent Applications page with sidebar filters. NULL-safe owner joins in the shared lists; a `withdrawn` guard on the counselor/admin PATCH and `/advance`. Staff-activity actions `overseas.application.update`, `.advance`, `.withdraw` added. The counselor/admin PATCH and `/advance` re-read the row `FOR UPDATE` before the withdrawn guard, so a concurrent agent withdraw is refused (`409`), not overwritten (final review, 2026-10-02). **Residual risk, stated (not fixed here):** the legacy agent create path writes the same audit action without the organisation lock, so the A14 throttle can be exceeded by one. Out of scope (accepted): documents for no-login students, shortlist-to-application conversion, offer details beyond the deadline, reminders, agent `enrolled`, rejected/waitlisted/deferred outcomes (still open under `DEC-WF-001`), backfilling `agent_student_id`. Schema, endpoint shapes and screens are fixed in the design spec, not here.
+
+**Addendum, 2026-10-02 — browser QA pass 1 (QA8-01..13) and owner rulings (`EXPLICIT_APPROVAL`, in-session):**
+
+- **A16 — Current sidebar link (QA8-04).** The current link is visually highlighted in every portal, by one global CSS rule on `aria-current="page"` (desktop sidebar and mobile panel). It is not agent-only.
+- **A17 — Agent dashboard (QA8-10).** On the agent dashboard only, the "Applications" KPI and its table exclude `withdrawn` applications, and the table's status column shows a readable label (`stage_label`: `university_selection` → "University selection"). The Applications and Students sections and every other role are unchanged.
+- **A18 — Nearest deadline by stage (QA8-13).** Before the offer (`enquiry`, `eligibility_evaluation`, `university_selection`, legacy values): the earliest upcoming of the application and offer deadlines, else the most recent past one. `offer`, `visa_documentation`, `status_tracking`: the offer deadline only (none if unset). `withdrawn`, `enrolled`: none (the dates stay in the detail fields).
+- **A19 — Expired session (QA8-07 follow-up).** The "Return to login" link on the expired-session card keeps the page and filter in `next` through a client `ReturnToLoginLink` (owner chose option A). The middleware redirect for a signed-out user also keeps the query string.
+- **Other QA fixes (no decision needed; bug fixes to the stated behaviour):** a 422 on Save keeps the edit form open (409 closes and reloads); focus moves to the alert and, after a withdraw, to the read-only notice; the list card follows the reloaded detail; Create, Save and status sends have an in-flight guard; a filter click shows "Loading…"; the mobile menu marks the active filter; legacy stage labels are capitalised; a stale create message clears. Details: `.superpowers/sdd/2026-10-02-agn-008-agent-applications/qa-fix-*.md`.
+- **Security finding (pre-existing, fixed):** the login form followed any `next` value (open redirect). It now accepts only a same-origin relative path (`apps/web/lib/safeNext.ts`, validated on the normalised output; dot-segment forms such as `/.//evil.com` are rejected). See `SECURITY_CONTROLS.md` and `THREAT_MODEL.md`.
+- **Page gate kept:** `/overseas/agent/applications` still fetches the portal payload for everyone, so a wrong role or a pending/rejected agent is refused as before; only a Super Admin's 404 renders the section's note.
+
+### DEC-SCOPE-051 — Commission is Master-only: Revenue on the Master dashboard and agency commission reports (`AGN-014`)
+
+**ID note:** `DEC-SCOPE-049` is `AGN-007` (PR #39) and `DEC-SCOPE-050` is `AGN-008` (PR #40), both on `main` and merged into this branch 2026-10-02; `051` was still free on `main` at that merge. Renumber only if another branch reaches `main` with `051` first.
+
+**Question:** the owner's `AGN-014` statement (in-session, 2026-10-02): "Commission is Master only (§6); Commission/Revenue on the Master dashboard; commission reports", with acceptance criteria: existing commissions are visible to the migrated Master; Staff → `403` on every commission route; the same-admin payout rules are unchanged. What is "Revenue", what do the reports contain, and how are they filtered and exported?
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2 Dashboard "Commission / Revenue", §2 Reports "Commission reports", §6 "Commission ✅ / ❌". Impact analysis, 2026-10-02 (graphify-led):
+- Every agent commission route is already Master-only (`DEC-SCOPE-040` S1: `workflows._require_agent_master`, `api/portal.py` `{team, commissions}`), covered by `AGN-003`'s matrix tests.
+- Migration `0046` made each legacy agent Master M001 of its own organisation without touching `agent_commissions`; commissions are scoped by `org_member_ids`, so the migrated Master already sees them. No test runs the real backfill.
+- No Revenue figure and no agent commission report exist; the Master reports page has one "Paid commission" row.
+
+**Resolution:** owner, in-session 2026-10-02 (`EXPLICIT_APPROVAL` — answers to structured questions and section-by-section design approval, not the source document's wording):
+- **R1 — Revenue** = total of `paid` commissions, per currency, on the Master dashboard.
+- **R2 — Reports** = breakdowns by status and by university / country / intake, date-range filter, CSV export. No per-staff breakdown (stays parked under `C-10`).
+- **R3 — Date basis** = the commission's created date. **R4 — CSV** = one row per commission.
+- **R5** — existing inline Master checks reused; no shared-helper refactor. **R6** — approach A (two read-only routes in `workflows.py`, a client panel on the agent Reports page).
+- **R7** — date bounds are inclusive UTC calendar days; reading or exporting the report writes no audit row.
+
+**Consequences:** no migration; two Master-only routes `GET /workflows/overseas/agent/commissions/report` and `…/report.csv`; one additive "Revenue" metric on the Master dashboard; a new `AgentCommissionReportPanel`; `ReportDownloadButton` gains two optional props with PDF defaults. Unchanged: commission creation, amount, claim, payout approval and the same-admin rule (`AGT-004`), `RPT-002`, the staff pages. Design: `docs/superpowers/specs/2026-10-02-agn-014-commission-master-reports-design.md`. **New Feature ID authorized:** `AGN-014`.
+
+### DEC-SCOPE-052 — Agent documents: upload, download, verify, reject, request additional, history (`AGN-009`)
+
+**ID note:** drafted as `DEC-SCOPE-051` (the next free number on `main` @ `b93a5e5`); renumbered `DEC-SCOPE-052` on merging `main` @ `268d132`, where `DEC-SCOPE-051` is `AGN-014` (PR #41).
+
+**Question:** the owner's `AGN-009` statement (in-session, 2026-10-02): "§2 Documents and §5 Step 4 document types; Staff sidebar Pending/Uploaded/Additional; §6: Staff verify is optional and Staff cannot reject." Acceptance: upload → pending; verify/reject per role matrix; reject without a reason → 422; a request shows under "Additional" until fulfilled; history lists every event in order; an out-of-scope download → 404/403; existing student/counselor document flows unchanged.
+
+**Evidence:** `EVID-015` (`DERIVED_BLUEPRINT`) §2, §4, §5 Step 4, §6. Graphify-led impact analysis, 2026-10-02: `student_documents.student_id` is NOT NULL → `users`, so a student with no login cannot own a document; the AGN-003 agent review exists (`DEC-SCOPE-044` P5/P6) but a reason is optional; there are no requests, no history and no fixed types; the agent download and review scope checks compare `AgentStudent.student_id` with the document's `student_id`, which is NULL for an agency-only document.
+
+**Resolution:** owner, in-session 2026-10-02 (`EXPLICIT_APPROVAL`; structured answers; design spec `docs/superpowers/specs/2026-10-02-agn-009-agent-documents-design.md` §2):
+
+- **G1 — Reason required** on `rejected` and `changes_required` for **agents only** (422 when blank); the counselor/Overseas Admin path is unchanged.
+- **G2 — `changes_required` kept** for agent Masters (`DEC-SCOPE-044` P6 unchanged: staff verify only).
+- **G3 — Types:** a fixed list (§5 Step 4) plus "Other" with a label, for agent uploads only; other paths keep free text.
+- **G4 — Requests:** Master and Staff (within scope) create and cancel; no toggle.
+- **G5 — Fulfilment:** an upload made against an open request fulfils it at upload time.
+- **G6 — Replace:** a new file on the same document, status back to `pending`; the old file is kept and named in history. Refused for a document a counselor or Overseas Admin decided (`DEC-SCOPE-044` P5).
+- **G7 — File handling:** agent uploads are stored by the server under a server-generated key (no client-supplied path); agent lists never return `file_url`. The pre-existing `/files/download` and `/local-files` exposure is recorded in `RAID.md`, not changed here.
+- **G8 — File types:** PDF, JPEG, PNG, decided from the bytes; image metadata stripped.
+- **G9 — Views:** Pending = awaiting review; Uploaded = every in-scope document; Additional = open requests. History records downloads by every role.
+
+**Consequences:** migration `0058_agent_documents` (`student_documents.student_id` nullable + `agent_student_id`, `document_label`, `uploaded_by_user_id`, `fulfils_request_id`; new `document_requests`, `document_events`). New routes under `/workflows/overseas/agent/crm/documents` and `/document-requests`. The existing verify, download and upload routes keep their response shapes and gain event rows. The agent Documents page is replaced by the new section; the sidebar gains Pending / Uploaded / Additional.
+### DEC-SCOPE-053 — Agent tasks and follow-ups, "Pending actions" KPI (`AGN-016`)
+
+**ID note:** drafted as `DEC-SCOPE-051` with migration `0058_agent_tasks`, both provisional while `AGN-009` was open in parallel. On
+merging `main` @ `d371865` (2026-10-02) `DEC-SCOPE-051` is `AGN-014` and `DEC-SCOPE-052` / `0058_agent_documents` are `AGN-009`, so
+this entry is `DEC-SCOPE-053` and its migration `0059_agent_tasks` (after `0058_agent_documents`; `AGENT_CRM_BACKLOG.md` §6.2).
+
+**Question:** the owner's `AGN-016` statement (in-session, 2026-10-02): requirement "Tasks & Follow-ups" (§4); "Pending Actions" KPI
+(§2). Acceptance: "CRUD per scope; overdue = due before now and open; a reassigned student's open tasks follow the new owner (spec: or
+stay)."
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) names only "Tasks & Follow-ups" (Staff sidebar, §4) and
+"Pending Actions" (Master dashboard KPI, §2); it defines no task fields, rules or §6 matrix row. `AGENT_CRM_BACKLOG.md` ang-016
+(`DERIVED_BLUEPRINT`) proposed title, due date, assignee, status `open|done|cancelled` and an `agent_tasks` table — a proposal, not
+authority. Impact analysis 2026-10-02 (the graphify graph predated AGN-001…008, so the source was read directly): AGN-004
+`student_scope` is the single staff-scope rule; `assign_student` writes only `assigned_member_id`.
+
+**Resolution:** owner, in-session 2026-10-02 (`EXPLICIT_APPROVAL`; design spec
+`docs/superpowers/specs/2026-10-02-agn-016-tasks-followups-design.md` §1):
+
+- **T1 — Owner follows the student.** No assignee column; a task's scope is its student's (`student_scope`), so a reassigned
+  student's tasks move with it and no task row is written on reassignment ("follow the new owner"; the "or stay" reading is rejected).
+- **T2 — Cancel only.** Status `open`, `done`, `cancelled`; no hard delete.
+- **T3 — Due time.** `due_at` timestamptz, required; overdue ⇔ open and `due_at` before now.
+- **T4 — Linkage.** A student is required (with or without a login); an application link is optional and must be the same student's,
+  not withdrawn; an archived student's tasks are read-only (409) and leave the open counts.
+- **T5 — KPI and navigation.** One "Pending actions" metric (open tasks of active students in scope) on the existing agent dashboard,
+  Master and Staff; "Tasks" in the nav for both roles. The rest of the dashboard stays with ang-018.
+- **T6 — Edit rules.** Anyone in scope creates, edits, completes and cancels; done/cancelled are final; a past due time is allowed on
+  create (the UI warns).
+- **T7 — Cap** (security review): at most 100 open tasks per student (409).
+- **T8 — Retry.** `POST` is documented as not safe to retry; no `Idempotency-Key`.
+
+**Consequences:** new table `agent_tasks` (migration `0059_agent_tasks`, provisional); routes `/workflows/overseas/agent/crm/tasks`
+(`API_CONTRACT.md`); four audit actions `agent_student.task_add|task_update|task_complete|task_cancel` join AGN-021's staff-activity
+allowlist; the agent dashboard gains one metric after "Applications". No change to `rbac.py`, `workflows.py`, `assign_student` or
+`OverseasApplication.next_action`. Notifications and reminders stay with ang-017.
+
+### DEC-SCOPE-054 — Enrollment confirmation by an agency Master, with the commission trigger (`AGN-013`)
+
+**ID note:** drafted as `DEC-SCOPE-052` (free on `main` @ `268d132`); renumbered `DEC-SCOPE-054` on merging `main` @ `9adcbca`, where `052` is `AGN-009` (PR #42) and `053` is `AGN-016` (PR #43).
+
+**Question:** the owner's `AGN-013` statement (in-session, 2026-10-02): "enrollment confirmed, university, course, intake, enrollment date, university student ID, final status ENROLLED", with acceptance criteria: enrolling creates exactly one estimated commission for the org; re-saving does not duplicate it; an enrollment date is required; a future date beyond intake is flagged (a warning, not blocked).
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §5 Step 9; `AGENT_CRM_BACKLOG.md` ang-013 (`DERIVED_BLUEPRINT`). Impact analysis, 2026-10-02 (graphify-led):
+- `DEC-SCOPE-050` A4 forbade agents from setting `enrolled`, so an agent could never accrue their own commission; the status route returns `403`.
+- `overseas_applications.intake` is free text (`String(80)`, default "Next intake"); the structured intake of D16 was never built.
+- `AGN-014` kept `agent_commissions` keyed to a person (`agent_id`), scoped to the agency through `org_member_ids`.
+
+**Resolution:** owner, in-session 2026-10-02 (`EXPLICIT_APPROVAL` — answers to structured questions and the Section 1 design review, not the source document's wording):
+- **E1** Only an agency **Master** confirms enrollment; Staff read the details and get `403`. Amends A4 for a dedicated route only: `POST …/status` still refuses `enrolled`.
+- **E2** Intake stays free text; a best-effort parser reads "Month YYYY" forms; the date check warns, never blocks, and says when the intake cannot be read.
+- **E3** The AGT-003 trigger is unchanged (`agent_id` = the application's `agent_id`; every Master of the agency sees it). No `agent_commissions` change.
+- **E4** Once enrolled, a Master corrects the date and student ID, also on an application a counselor/admin enrolled; neither creates a commission.
+- **E5** University, course and intake are shown read-only; changes go through the existing Edit. **E6** Enrollment from `offer`, `visa_documentation` or `status_tracking` only (else `422`).
+- **E7** The university student ID is optional and returned only on the agency's application detail. **E8** Approach A: a dedicated `PUT …/{id}/enrollment` in the AGN-008 router.
+
+**Consequences:** migration `0060_agent_app_enrollment` (drafted as `0058`; re-chained after `0059_agent_tasks`) (three nullable columns on `overseas_applications`); one Master-only route; four additive detail fields; a new `AgentApplicationEnrollment` component. Unchanged: the status route, counselor/admin/university-rep routes, commission amount/claim/payout (`AGT-004`), `AGN-014` reports. Design: `docs/superpowers/specs/2026-10-02-agn-013-enrollment-confirmation-design.md`. **New Feature ID authorized:** `AGN-013`.
+
+### DEC-SCOPE-055 — BDM CRM scope and the BDM / BDM Manager roles, profile and provisioning (`bdm-001`)
+
+**ID note:** recorded on the branch as `DEC-SCOPE-052`; `AGN-009` (052), `AGN-016` (053) and `AGN-013` (054) reached `main` first (#42–#44), so this entry was renumbered to `DEC-SCOPE-055` when `main` (`e0395d6`) was merged into `feature/bdm-001-bdm-profile` (2026-10-02). It records the BDM CRM answers of 2026-09-28 (D1–D32), which `BDM_CRM_BACKLOG.md` first mis-cited as `DEC-SCOPE-037` (that number is `ENH-015`), and `bdm-001`'s own B1–B11. bdm-001 commits and docs from before this merge that say `DEC-SCOPE-052` mean this decision.
+
+**Question:** is the BDM CRM in scope, what is the role model, and how are BDM and BDM Manager accounts provisioned, scoped and landed?
+
+**Evidence:** `EVID-016` (`functionalities/edusphere_markdown/BDM Functionalities.md`, `DERIVED_BLUEPRINT`) §1 BDM Management (Name, Employee ID, Designation, Department, Territory, Mobile, Email, Reporting Manager, Active/Inactive) and the Part 2 introduction (Agent / School / College modules). Backlog: `docs/delivery/BDM_CRM_BACKLOG.md` (bdm-001…025). bdm-001 impact analysis, 2026-10-02 (graphify-led): no `bdm`/`bdm_manager` role existed; `admin.create_user` accepted only fixed per-division role sets; `auth.login` requires `payload.division == user.division` except for `super_admin`, so a `global` manager following the existing `/it` set-password redirect got a 403.
+
+**Resolution:** owner, in-session (`EXPLICIT_APPROVAL` — answers to questions put one at a time, and section-by-section design approval; not the source document's own wording):
+- **2026-09-28, D1–D32** — as tabled in `BDM_CRM_BACKLOG.md` §3.1–§3.3. Key to bdm-001: **D1** the whole BDM CRM is in scope (each item behind GATE-09); **D2** prefix `bdm-NNN`; **D3** one `bdm` role + `bdm_type` (agent / school / college), division derived (college → `it`, agent/school → `overseas`); **D4** a new `bdm_manager` role sees and approves only the BDMs who report to them, `super_admin` sees all; **D10 (Q-01)** `super_admin` creates both roles and any type, `it_admin` creates College BDMs, `overseas_admin` creates Agent and School BDMs, only `super_admin` creates managers; **D26 (Q-17)** a manager's division is `global`, any mix of types, managers own no appointments or trips.
+- **2026-10-02, B1–B9 (bdm-001):**
+  - **B1** a `bdm_manager` signs in at `/admin/login`; after a password reset the form follows the server's `login_portal`; the login rule is unchanged.
+  - **B2** `/bdm/my-day` and `/bdm/manager/dashboard` ship as minimal shells (bdm-014 / bdm-023 fill them).
+  - **B3** scope includes `/bdm/me` + `/bdm/profile`, `/bdm/manager/team` + page, `/admin/bdms` + the manager picker, and the scope helpers later items call.
+  - **B4** register these decisions under the next free number (this entry).
+  - **B5** approach A: extend `POST/PATCH /admin/users` (one provisioning path) + a `bdm_profiles` table.
+  - **B6** managers have no profile row. **B7** `bdm_type` cannot be changed (422; transfers are bdm-025). **B8** required: type, Employee ID, reporting manager; designation, department, territory, mobile optional.
+  - **B9** a signed-out `/bdm/manager/*` visit → `/admin/login`; any other `/bdm/*` → a public `/bdm/sign-in` chooser (College BDM → `/it`, Agent/School BDM → `/overseas`).
+
+**Consequences:** migration `0061_bdm_profiles` (new table only; downgrade refuses while profiles exist); roles `bdm` (`bdm:self`) and `bdm_manager` (`bdm:team`) in `core/rbac.py`; `POST /admin/users` accepts `role: bdm` with a required nested `bdm_profile` and `role: bdm_manager` (super_admin, division `global`), and always returns `bdm_profile` (null for other roles); `PATCH /admin/users/{id}` edits the profile (type fixed, manager re-checked only when changed, Employee ID unique ignoring case → 409), audited before/after; `POST /auth/reset-password` always returns `login_portal` (`"admin"` for a manager, else null); new read routes `GET /bdm/me`, `GET /bdm/manager/team`, `GET /admin/bdms`, `GET /admin/bdm-managers` (paged `{items,total,limit,offset}`, the picker without emails). Unchanged: `auth.login`, token claims, `users` columns, set-password URLs, `GET /admin/users`, `School.edusphere_bdm` (bdm-018). Design: `docs/superpowers/specs/2026-10-02-bdm-001-bdm-profile-design.md`; plan: `docs/superpowers/plans/2026-10-02-bdm-001-bdm-profile.md`. **New Feature ID authorized:** `bdm-001` (bdm-002…025 remain behind GATE-09 individually).
+
+**Addendum — browser QA, 2026-10-02 (owner, in-session, `EXPLICIT_APPROVAL`):**
+- **B10 (QA-03)** the reporting-manager picker shows each manager's **email** as a detail line, so same-name managers can be told apart. `GET /admin/bdm-managers` now returns `{id, full_name, email}` to the three admin roles (this supersedes the earlier "no email in the picker" choice in §12.3 of the design).
+- **B11 (QA-05)** BDM managers recover their password **inside the admin portal**: public `/admin/forgot-password` and `/admin/reset-password` pages, a "Forgot your password?" link on `/admin/login`, and a `bdm_manager`'s set-password link now opens `/admin/reset-password`. Every other role's link is unchanged (Super Admin stays on `/it`).
+- Fixes without a new decision: the BDM list spans the full row on desktop (QA-01); the picker is a server-searched combobox, so no manager is unreachable (QA-02, `q` on `/admin/bdm-managers`); the admin list is searchable by name, email or Employee ID and filters to a newly created BDM (QA-04, `q` on `/admin/bdms`, ANDed with the type scope); keyboard focus returns to the row after save/status changes and to the message after an error (QA-06).
+
+### DEC-SCOPE-056 — Agent offer details: type, date, deadline, conditions, offer letter (`AGN-010`)
+
+**ID note:** drafted as `DEC-SCOPE-054` with migration `0060_agent_offer_details` (both free on `main` @ `9adcbca`); renumbered
+`DEC-SCOPE-056` on merging `main` @ `aad6b7c`, where `054` is `AGN-013` (PR #44) and `055` is `bdm-001` (PR #45). The migration
+is now `0062_agent_offer_details`, after `0061_bdm_profiles` (one head). AGN-010 commits from before this merge that say
+`DEC-SCOPE-054` mean this decision.
+
+**Question:** backlog item ang-010 "Offer details (Step 6)": conditional/unconditional offer, offer date, deadline, conditions and
+offer document. Acceptance: an offer deadline before the offer date → 422; a conditional offer requires conditions; switching to
+unconditional is recorded in history; the offer counts in dashboards (fixes the §0 defect for this path).
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §5 Step 6 names the fields only; no rules, counts or
+§6 row. Existing: AGN-008 `offer_deadline` (A3) and the stage list; AGN-009 documents; `offer_letter_url` used by other roles; the agent
+Reports "Offers" row counted only `offer_received`/`accepted` (the §0 defect).
+
+**Resolution:** owner, in-session 2026-10-02 (`EXPLICIT_APPROVAL`; design spec
+`docs/superpowers/specs/2026-10-02-agn-010-offer-details-design.md` §2):
+
+- **O1 — One current offer per application**, as columns on `overseas_applications`; recording again replaces it and the previous
+  values survive in the status-history notes.
+- **O2 — The deadline is the existing `offer_deadline`** (AGN-008 A3); `offer_deadline < offer_date` → 422 on the offer PUT and the
+  AGN-008 PATCH; the nearest-deadline rule (QA8-13) is unchanged.
+- **O3 — Offer document optional**, picked from AGN-009 documents of type "Offer letter" attached to this application, in scope;
+  download stays on the AGN-009 route.
+- **O4 — `offer_letter_url` untouched**; other roles' views and counts of it are unchanged.
+- **O5 — Offers count** = stage `offer` or later (plus legacy `offer_received`/`accepted`) OR an offer recorded, so withdrawn-after-offer
+  counts. Agent pages only (Reports row, new dashboard KPI); the other stale counts stay for ang-018 (`RAID.md`).
+- **O6 — Conditions are free text**, ≤ 2000 characters.
+- **O7 — Concurrent saves: last write wins**, both in history (row lock); no offer version token.
+
+**Consequences:** migration `0062_agent_offer_details` (four nullable columns); new `PUT …/agent/crm/applications/{id}/offer`
+(`API_CONTRACT.md`); detail gains `offer` and `offer_letters`; upload accepts "Offer letter" (requires an application); audit action
+`overseas.application.offer` joins AGN-021's staff-activity allowlist; the agent dashboard gains "Offers" after the commission metrics (Staff: after "Pending actions"). No
+change to `rbac.py`, `/status`, counselor/university/admin routes or `offer_letter_url`. Several offers, removing an offer and
+notifications are out of scope.
+
+### DEC-SCOPE-057 — Visa for agent-managed applications (`AGN-012`)
+
+**ID note:** drafted as `DEC-SCOPE-055` (free on `main` @ `e0395d6`); renumbered `DEC-SCOPE-057` on merging `main` @ `3c4a972`, where `055` is BDM-001 (PR #45) and `056` is AGN-010 (PR #46). Migration drafted as `0061_agent_visa_details`, re-chained as `0063_agent_visa_details` after `0062_agent_offer_details`.
+
+**Question:** the owner's `AGN-012` statement (in-session, 2026-10-02): "visa documents, application date, appointment, interview, status and decision", with acceptance criteria: a decision can be set only at stage `decision`; the interview date may not precede the application date; the existing checklist rule blocks advancing past `checklist` with unverified documents.
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §5 Step 8; `AGENT_CRM_BACKLOG.md` ang-012 and Q-08/D14 (`DERIVED_BLUEPRINT`; D14 was never recorded in this register). Impact analysis, 2026-10-02 (graphify-led):
+- Agents have no visa access: `POST`/`PATCH /workflows/overseas/visa` are counselor/admin only.
+- `visa_cases` has no application date, interview date or decision; `workflows.py` notes approved/refused were "not modeled — no source confirms them". This decision is that confirmation, for agency cases only.
+- The counselor create accepts any initial stage, so the checklist gate can be bypassed at creation; checklist items match documents by exact type text.
+
+**Resolution:** owner, in-session 2026-10-02 (`EXPLICIT_APPROVAL` — answers to structured questions and the two-section design review, not the source document's wording):
+- **V1** Master and Staff both start, edit, advance and decide a visa case (D8); Staff only for assigned students (G4).
+- **V2** Outcomes approved / refused / withdrawn, set only at stage `decision`, final once recorded (the case becomes read-only).
+- **V3** A case always starts at `checklist`; moves are forward-only, skips allowed; leaving `checklist` always runs the verification gate.
+- **V4** Appointment = existing `appointment_date`; new `visa_application_date` and `interview_date` are dates; interview on or after the application date.
+- **V5** Independent of the application stage; a case starts from `offer`, `visa_documentation` or `status_tracking`; writes refused on withdrawn/enrolled applications and archived students.
+- **V6** Checklist items are AGN-009 agency document types (not "Other"); satisfied by the latest document of that type attached to the application being verified.
+- **V7** One case per application; re-application after a final decision is out of scope. **V8** New fields agency-only; no notifications.
+- **V9** Approach A: `POST`/`PATCH …/crm/applications/{id}/visa` in the AGN-008 router; `workflows.py` visa routes untouched.
+
+**Consequences:** migration `0063_agent_visa_details` (four nullable `visa_cases` columns + a decision CHECK); two agency routes; a `visa` block on the agency application detail; four audit actions `overseas.application.visa_start|visa_update|visa_advance|visa_decision` join AGN-021's allowlist; a new `AgentApplicationVisa` component. Unchanged: every existing visa route and response, school/portal/report readers, the application status and enrollment routes, commission. Design: `docs/superpowers/specs/2026-10-02-agn-012-agent-visa-design.md`. **New Feature ID authorized:** `AGN-012`.
+
+### DEC-SCOPE-058 — Agent deposit collection through EduSphere Razorpay; remittance and refunds recorded by Overseas Admin (`AGN-011`)
+
+**ID note:** drafted as `DEC-SCOPE-057` with migration `0063_application_deposits` (both free on `main` @ `3c4a972`); renumbered `DEC-SCOPE-058` on merging `main` @ `ff27fa4`, where `057` is `AGN-012` (PR #47) holding migration `0063_agent_visa_details`. The migration is now `0064_application_deposits`, after `0063_agent_visa_details` (one head). AGN-011 commits and docs from before this merge that say `DEC-SCOPE-057` or `0063_application_deposits` mean this decision.
+
+**Question:** backlog item ang-011 "Deposit collection through Razorpay (Step 7)": deposit required, amount, payment status, payment
+date and receipt; collected through EduSphere's Razorpay, paid by the agency (Master or Staff) on the student's behalf; finance remits to
+the university outside the system and Overseas Admin records remittance and refunds. How is a deposit stored and paid, who may do what,
+and what may change in the shared payment path?
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §5 Step 7 names the fields only. Backlog Q-06/Q-06b
+("D11/D12") give the money flow and cite "`DEC-SCOPE-035` D5–D21" — **a mis-citation, recorded and not silently corrected:**
+`DEC-SCOPE-035` is ENH-027's psychometric decision and `DEC-SCOPE-038` D11/D12 are AGN-001's admin-created agents and notifications; the
+deposit answers had no register entry until this one. Graphify-led impact analysis, 2026-10-02: `Payment.user_id` is NOT NULL → users
+(cannot hold a no-login student) and the checkout/verify are self-only (STU-010-AC04); the webhook overwrote `status` unconditionally, so
+a later `payment.failed` (distinct event id) could regress a paid payment; receipts carried the payer only; `/payments/mine`, admin
+revenue totals and admin payment lists read every `Payment`.
+
+**Resolution:** owner, in-session 2026-10-02 (`EXPLICIT_APPROVAL` — the owner's AGN-011 statement and AC1–AC6, and answers to the design
+questions; design spec `docs/superpowers/specs/2026-10-02-agn-011-deposit-collection-design.md` §2):
+
+- **Money flow (backlog D11/D12, restated by the owner):** collected through EduSphere Razorpay; a Master or Staff member pays at checkout
+  for the student (no link to the student); finance remits outside the system; Overseas Admin records remittance and refunds by hand; no
+  Razorpay refund API.
+- **D1 — INR only.** `DEC-PAY-002` (Razorpay multi-currency) stays `NEEDS_CONFIRMATION` and is not decided here.
+- **D2 — Paid-guard for every payment:** a `paid`/`succeeded` payment never changes status again; paid side effects run once, on the move
+  into `paid`, under a row lock. Student-fee behaviour changes only in refusing paid → other.
+- **D3 — One refund**, from `paid` or `remitted`, amount ≤ the paid amount, with date and reason; `refunded` is final.
+- **D4 — `GET /payments/mine` excludes agent deposits;** admin revenue totals and payment lists are unchanged.
+- **D5 — Remit/refund: `overseas_admin` only** (AC4's wording); `super_admin` reads the list.
+- **D6 — New `application_deposits` table;** each pay attempt is a payer-owned `Payment` (`reference_type="agent_deposit"`,
+  `reference_id` = deposit id), so the self-only checkout/verify, signature check, dedup, invoice and receipt are reused.
+- **D7 — Master, and Staff for assigned students,** set and pay the deposit (AGN-003 matrix: both allowed); no new permission flag.
+- **D8 — One active checkout:** another member's open checkout younger than 15 minutes blocks a new one (`409`); at most 10 attempts per
+  deposit per rolling hour (`429`).
+
+**Consequences:** migration `0064_application_deposits` (one new table; `payments` unchanged apart from the `cancelled` status value for
+deposit payments); new `api/agent_deposits.py` (agent PUT, checkout, receipt; admin list, remit, refund) and `services/agent_deposits.py`;
+`payments.py` gains the row-locked paid-guard and the deposit hook, `/mine` filter and a generic-checkout guard; `admin.py` refuses to
+create or discount agent-deposit payments; receipts of agent deposits name the student (AC5); the detail gains `deposit` and
+`payment_available`; deposit set/checkout join the AGN-021 activity allowlist; web: Deposit block, Agent deposits admin page, shared
+`lib/razorpayCheckout.ts`. Out of scope: partial payments, several refunds, notifications (ang-017), network deposit totals (ang-022),
+revenue reclassification, multi-currency. **Status:** implemented on `feature/agn-011-deposit-payment`; **not COMPLETE** — browser
+validation, the owner's full suites and an independent Codex review are pending.
+### DEC-SCOPE-059 — Agent notifications and daily deadline reminders (`AGN-017`)
+
+**ID note:** drafted as `DEC-SCOPE-055` with migration `0061_agent_notifications` (both free on `main` @ `e0395d6`); renumbered `DEC-SCOPE-058` on merging `main` @ `ff27fa4`, where `055` is bdm-001 (PR #45), `056` AGN-010 (PR #46) and `057` AGN-012 (PR #47), and the migration re-chained as `0064_agent_notifications` after `0063_agent_visa_details`. Renumbered again `DEC-SCOPE-059` on merging `main` @ `3d9244f`, where `058` is AGN-011 (PR #48) with `0064_application_deposits`; the migration is now `0065_agent_notifications` after it (one head).
+
+**Question:** the owner's `AGN-017` statement (in-session, 2026-10-02): requirement "Notifications" (§4); "Monitor deadlines" (§2). Acceptance: "each event produces exactly one notification to the right person; reminders are not sent twice for the same deadline/day; a failed email is recorded, never raised."
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) names only "Notifications" (§4) and "Monitor deadlines" (§2); `AGENT_CRM_BACKLOG.md` ang-017 (`DERIVED_BLUEPRINT`) proposed the events and a daily job. Channels were already settled by `DEC-SCOPE-035` D19 (in-app + email to agency Masters/Staff; students get nothing). Impact analysis 2026-10-02 (the graphify snapshot predates AGN-001…016, so the agency source was read directly): no path notifies agency staff; `Notification` has no dedupe column; deadline columns are unindexed; beat runs only the ENH-014 sweeper; AGN-016 tasks have no assignee (T1).
+
+**Resolution:** owner, in-session 2026-10-02 (`EXPLICIT_APPROVAL` — answers to structured questions and four design-section reviews):
+
+- **N1 — Task event.** A task created by someone else notifies the student's recipient; a reassignment sends one "student assigned" notice that states the moved open-task count; task edits/close notify nobody.
+- **N2 — Recipients.** The student's active assigned staff member, else every active Master of the org; never the actor; inactive org → nobody.
+- **N3 — Status changes.** Agency (CRM status, enrollment, and — after merging AGN-010 — the offer route when it moves the stage to `offer`) and EduSphere (counselor/admin/university-rep `PATCH`/`advance`) changes to applications with an agency record; students' existing notices unchanged.
+- **N4 — Reminders.** Application/offer deadlines at 3, 1 and 0 days; overdue open tasks as **one digest per recipient per IST day** (revised from one per task after the security review — email volume; owner-approved 2026-10-02); `Asia/Kolkata` day; daily at 08:00 IST; no catch-up.
+- **N4a — Content (security review).** Bodies carry no user-typed free text (task titles, document labels, notes) and no names; only fixed strings, known document types, stage labels, university name (control characters stripped, capped) and dates.
+- **N5 — Email.** Existing ENH-014 queue, email channel only.
+- **N6 — Exactly once.** Nullable `notifications.dedupe_key` with a partial unique index; reminders insert `ON CONFLICT DO NOTHING`.
+- **N7 — API.** Existing list/read unchanged; new `GET /workflows/notifications/unread-count`.
+- **N8 — Frontend.** Agent "Notifications" section (Master and Staff) with an unread nav badge; no "mark all read".
+- **N9 — Documents.** `rejected` and `changes_required` both notify; the previous assignee is not told on reassignment.
+- **N10 — Stage rules.** As `nearest_deadline`: none once withdrawn/enrolled; from `offer` on, only the offer deadline.
+- **N11 — Record context (browser QA QA17-02, owner 2026-10-03).** Kept as designed: notices name no student and Open goes to the section list; revisit with ang-018 dashboards.
+
+**Consequences:** migration `0065_agent_notifications` (one nullable column, four partial indexes); a new `services/agent_notifications.py`; additive hooks in `agent_students`, `agent_documents`, `agent_applications`, `agent_tasks` and three `workflows.py` routes; the first crontab beat entry; one new read endpoint; an agent nav item and optional `NavItem.badge`. Unchanged: ENH-014 dispatch/delivery, existing list/read contracts, students' and counselors' notices, `_maybe_trigger_agent_commission`. Design: `docs/superpowers/specs/2026-10-02-agn-017-notifications-design.md`. **New Feature ID authorized:** `AGN-017`.
+
+### DEC-SCOPE-060 — BDM Organization CRM core (`bdm-002`)
+
+**ID note:** recorded on the branch as `DEC-SCOPE-058` with migration `0066_bdm_organizations`; AGN-011 (`DEC-SCOPE-058`, `0064_application_deposits`) and AGN-017 (`DEC-SCOPE-059`, `0065_agent_notifications`) reached `main` first, so this entry became `DEC-SCOPE-060` and the migration `0066_bdm_organizations` when `main` was merged into `feature/bdm-002-organization-crm` (2026-10-03). bdm-002 commits and docs from before that merge that say `DEC-SCOPE-058` / `0064` mean this decision / migration.
+
+**Question:** how are BDM organizations stored, scoped, assigned, archived and de-duplicated?
+
+**Evidence:** `EVID-016` §9 (`DERIVED_BLUEPRINT`); `DEC-SCOPE-055` D5, D11 (Q-02), D12 (Q-03), D26 (Q-17), D27 (Q-18); bdm-002 impact analysis 2026-10-03 (graphify-led).
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL` — questions put one at a time, the design approved section by section, then the spec; not the source document's own wording):
+- **C1** at least one contact on create; the last contact cannot be deleted (supersedes the backlog edge case "an organization with no contacts yet (allowed, flagged)").
+- **C2** a `bdm_manager` reads the organizations assigned to their team and reassigns them among their own BDMs of the same type; no create or edit.
+- **C3** a BDM may create any of the seven organization types; ownership (`bdm_type`) is the creator's type.
+- **C4** codes are sequential `ORG-000123` (a Postgres sequence).
+- **C5** the assigned BDM (or super_admin) archives; the team manager or super_admin restores; both audited.
+- **C6** Courses Interested is free text (the `programs` catalogue is bdm-003).
+- **C7** no access for `it_admin` / `overseas_admin`.
+- **C8** the duplicate check includes archived organizations, labelled archived.
+- **C9** the assignee on create is always the creator.
+- **C10** Contact Person / Designation come from the primary contact; the organization keeps its own phone, email and website.
+- **C11** Existing Partner is a manual yes/no.
+- **C12** approach A: a flat `bdm_organizations` router + service; additive `bdm_type` / `q` filters on `GET /bdm/manager/team`.
+- **C13** Name and City are required.
+- **C14** super_admin reads, edits, archives, restores and reassigns everything; cannot create.
+- **C15** archived organizations are read-only until restored.
+- **C16** Address is not in bdm-002 (bdm-003).
+
+**Consequences:** migration `0066_bdm_organizations` (two new tables + `bdm_organization_code_seq`; downgrade refuses while organizations exist); routes `GET/POST /bdm/organizations`, `GET/PATCH /bdm/organizations/{id}`, `POST /{id}/archive|restore|assign`, `POST /{id}/contacts`, `PATCH/DELETE /{id}/contacts/{cid}`; pages `/bdm/organizations[/new|/{id}]` and `/bdm/manager/organizations[/{id}]`. Unchanged: every existing route, table and page (the team route only gains optional filters). bdm-006 refuses appointments on archived organizations (its own AC6). A retention/erasure policy for BDM data stays **NEEDS_CONFIRMATION**. Design: `docs/superpowers/specs/2026-10-03-bdm-002-organization-crm-design.md`; plan: `docs/superpowers/plans/2026-10-03-bdm-002-organization-crm.md`. **New Feature ID authorized:** `bdm-002`.
+
+### DEC-SCOPE-061 — Agent student journey and complete history (`AGN-015`)
+
+**ID note:** drafted as `DEC-SCOPE-060` with migration `0066_audit_entity_index` (both free on `main` @ `e1c2084`); renumbered
+`DEC-SCOPE-061` on merging `main` @ `c5cdc8a`, where `060` is bdm-002 (PR #50) with `0066_bdm_organizations`; the migration is now
+`0067_audit_entity_index` after it (one head). AGN-015 commits from before this merge that say `060` / `0066` mean this decision /
+migration.
+
+**Question:** the owner's `AGN-015` statement (in-session, 2026-10-03): requirement **"Student Journey" (§4) and "View complete student
+history" (§2): Create → Counseling → Shortlist → Documents → Application → Offer → Deposit → Visa → Enrollment**; acceptance: **every
+event from the source items appears once, in order, with its actor; the step tracker matches the stored data.** Several steps keep only
+their current state (counseling, assignment, shortlist removals, deposit terms, visa stages): where do their events come from, how does
+a tracker show several applications, what does each step's completion mean, how are actors outside the agency shown, which events
+count, and in which order?
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2, §4 and §5 Steps 1–9 (the source's wording is not the
+approval; its §4 path omits Counseling, Shortlist and Deposit, which the owner's nine-step list includes). `AGENT_CRM_BACKLOG.md`
+ang-015 (`DERIVED_BLUEPRINT`; its "database impact: none" is superseded by J1). Graphify/codebase survey in the design spec §3.
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL` — the owner's answers, not the source document's wording):
+
+- **J1 — Event sources.** Steps with no history table are read from `audit_logs`; an index on `(entity_type, entity_id, created_at)`
+  is added for per-entity reads. Each event has exactly one source; audit rows that duplicate a status-history row, a document event or
+  the record itself are not events.
+- **J2 — Tracker.** Steps 1–4 (Create, Counseling, Shortlist, Documents) once for the student; steps 5–9 (Application, Offer, Deposit,
+  Visa, Enrollment) one row per in-scope application.
+- **J3 — Completion rules.** As the design spec §4 (states `not_started`, `in_progress`, `done`, `not_required`, `refunded`,
+  `refused`, `withdrawn`; a withdrawn application's unsettled steps read withdrawn).
+- **J4 — Actors.** Members of the viewer's agency by name; everyone else by a fixed role label (EduSphere counsellor / admin, Student,
+  Parent, University, System). No outside name or email leaves the server.
+- **J5 — Event kinds.** All journey changes, plus assignment and archive, tasks and follow-ups, and document downloads; not deposit
+  checkout starts; never commission events (Master-only, `DEC-SCOPE-051`).
+- **J6 — Order.** Newest first, paginated (20 per page; `limit` ≤ 100, `offset` ≤ 10 000).
+
+**Consequences:** migration `0067_audit_entity_index` (one index; no row read or written); a new read-only `services/agent_journey.py`;
+two GET routes (`…/crm/students/{id}/journey`, `…/crm/students/{id}/timeline`) with the student detail's scope and `404`; a Journey
+tracker and a Show-history list in the student detail panel. Unchanged: every existing response, write route, audit action and the
+Staff Activity allow-list. Limitation recorded: document reviews made before AGN-009 (2026-10-02) have no event row and are not
+reconstructed; their uploads are (from the document row). Design: `docs/superpowers/specs/2026-10-03-agn-015-student-journey-design.md`.
+**New Feature ID authorized:** `AGN-015`.
+
+### DEC-SCOPE-062 — Agency Master / Staff dashboards and role-specific navigation (`AGN-018`)
+
+**ID note:** drafted as `DEC-SCOPE-060` (free on `main` @ `e1c2084`); renumbered `DEC-SCOPE-061` on merging `main` @ `c5cdc8a`, where `060` is bdm-002 (PR #50); renumbered again `DEC-SCOPE-062` on merging `main` @ `09bd5e7`, where `061` is AGN-015 (PR #51). AGN-018 has no migration, so nothing re-chained. AGN-018 commits and docs from before these merges that say `DEC-SCOPE-060` or `DEC-SCOPE-061` mean this decision.
+
+**Question:** the owner's `AGN-018` statement (in-session, 2026-10-03): "Master dashboard with 14 KPIs (§2); Staff 'Dashboard ✅ Limited' and the Staff sidebar (§4, §6)", with acceptance criteria: each KPI equals a hand-computed fixture count; Staff numbers include only their own students; offers are counted by stage and by offer record, consistently. Which KPIs mean what, how is the Staff variant limited, what happens to the stale offer counts carried here (`RAID.md` I-48), and how far does the sidebar change?
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2 Dashboard, §4 Staff sidebar, §6 "Dashboard ✅ / ✅ Limited" (the source's wording is not the approval); `AGENT_CRM_BACKLOG.md` ang-018 (`DERIVED_BLUEPRINT`); Q-10 "Revenue = commission only" (the answers table cites `DEC-SCOPE-035`, a known mis-citation — see that file's citation note). Impact analysis, 2026-10-03 (the graphify snapshot predates AGN-001…017, so findings were checked in source): the agency dashboard is `services/portal.py` `_agent()` computing rows in Python; its Students metric inner-joins `users`, so students with no login are not counted; offers are counted by `counts_as_offer` (O5) while the sidebar "Offer received" filter is `status = 'offer'`; there is no dashboard endpoint and no `SchoolDashboardPanel` (the component is `SchoolKpiBoard`); one shared agency nav is filtered by `agentNavFor`.
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL` — answers to structured questions and three design-section reviews; design spec `docs/superpowers/specs/2026-10-03-agn-018-agency-dashboards-design.md` §2):
+
+- **G1 — Agency only.** `RAID.md` I-48 (non-agent offer counts) stays out of scope and open.
+- **G2 — Staff performance** = a compact Master-only per-member table (Students / Applications / Offers / Enrollments, all-time). Funnel and filters stay with ang-019.
+- **G3 — KPI definitions** (spec §4): Total students = active agency records, login or not; Applications = non-withdrawn; Offers = O5; Visa applications / approvals = distinct applications with a visa case / an approved decision; Enrollments = stage `enrolled`; Pending documents = pending verification in document scope; Pending actions = open tasks (AGN-016, unchanged); by country / by university; Students by staff with an Unassigned row (Master only); Commission = the existing Master values, unchanged.
+- **G4 — Navigation:** relabel and link existing pages only — an "All applications" child and "Tasks & Follow-ups" for both roles; Staff "My Students" with All / Add. No access removed; no Journey link until a route exists.
+- **G5 — One offer rule:** O5 in SQL beside `counts_as_offer`, pinned by a parity test; the Offers tile is not linked to the "Offer received" filter, which keeps its AGN-008 meaning.
+- **G6 — Approach A:** a new read-only `GET /workflows/overseas/agent/crm/dashboard` with a typed schema and a dashboard panel on the existing page; the portal payload keeps its labels, order and strings.
+
+**Consequences:** no migration; a new router, service and schema; `portal._agent` dashboard values sourced from the shared service (Students now counts no-login students — a deliberate fix); a new `AgentDashboardPanel`; nav changes in `lib/navigation.ts`; `AgentStudentsPanel` honours `?new=1`. Unchanged: other roles' dashboards, the sidebar offer filter, commission values and the "Claimable commission" INR label (logged in `RAID.md`), models, existing routes. **New Feature ID authorized:** `AGN-018`. **Status:** implemented and verified on `feature/agn-018-master-dashboard-impl` (see `ENHANCEMENT_BACKLOG.md` §AGN-018).
+
+### DEC-SCOPE-063 — BDM travel requests, approval, modes, costs, expenses (`bdm-010`)
+
+**ID note:** drafted as `DEC-SCOPE-060` with migration `0066_bdm_trips` (both free on `main` @ `e1c2084`); renumbered `DEC-SCOPE-063` on merging `main` @ `3bde879`, where `060` is bdm-002 (`0066_bdm_organizations`), `061` AGN-015 (`0067_audit_entity_index`) and `062` AGN-018; the migration is now `0068_bdm_trips` after `0067_audit_entity_index` (one head).
+
+**Question:** the owner's bdm-010 statement (`BDM_CRM_BACKLOG.md` §4 bdm-010): track travel with the §3 fields and six modes, the
+reporting manager's approval, costs and itemized expenses. The owner confirmed on 2026-10-03 that bdm-010 is travel (the calendar
+text once pasted under that label is bdm-013).
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md`, `DERIVED_BLUEPRINT`) §3 (95–147), §4 Common "Travel" (1270–1286), Agent §D
+(655–683); backlog decisions D4, D15, Q-05, Q-06 (`DERIVED_BLUEPRINT`).
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL` — answers to structured questions, five design-section reviews and
+the revision-2 skill reviews):
+
+- **T1** One From/To per trip; a tour is several trips.
+- **T2** Nothing about the approver is stored; the BDM's reporting manager is resolved at decision time.
+- **T3** Any `super_admin` may decide only while that manager is inactive.
+- **T4** The submit notice is in-app only (`channels=[]`).
+- **T5** Expenses once approved (planned, in progress, completed, or cancelled after approval); none on draft/submitted/rejected.
+- **T6** Codes `TRV-000123` from the `bdm_trip_code_seq` sequence (gaps possible on a rolled-back create).
+- **T7** Expense line = category (travel/stay/food/local/other) + INR amount + date + optional note. **No receipt upload** (Q-06's
+  optional receipt is dropped), so no file storage.
+- **T8** Fallback UI: `/admin/bdm-travel-approvals` with a Super Admin nav entry, listing only trips whose manager is inactive.
+- **T9** Withdraw a submitted trip to draft; edit and resubmit a rejected one (the reason stays in the audit).
+- **T10** Flat module (`api/bdm_travel.py`, `services/bdm_travel.py`); two status columns (approval + travel) with a consistency CHECK.
+- **T11** Submit while the manager is inactive → the notice goes to every active `super_admin`.
+- **T12** The BDM also gets an in-app notice on approve/reject.
+- **T13** Expense amount > 0.
+- **T14** Travel date at most 30 days back; a trip lasts at most 31 days; start/complete only from the travel date (India date).
+- **T15** (browser QA QA10-01, owner 2026-10-03) BDMs and BDM managers get a Notifications nav item with the unread badge (AGN-017's
+  count) on every BDM page, and a list page that marks a notice read on open.
+- **T16** (browser QA QA10-16, owner 2026-10-03) The trip pages are one client workspace that applies each write's returned trip
+  (spec §12.1 A7) instead of re-rendering the server page; a 409 re-reads the trip.
+
+**Deviations from the backlog text:** the router is `app/api/bdm_travel.py`, not `app/api/bdm/travel.py` (a `bdm/` package would
+shadow the existing `app/api/bdm.py`); the T14 date rules are checked in the service, because they need "today".
+
+**Accepted risk:** the API has no general rate limiter; bdm-010 bounds its own surface instead (`limit` ≤ 100, ≤ 100 expense lines per
+trip, text caps). Create and the status commands carry no idempotency key: a retried command gets 409 and the page refreshes; a
+retried create can leave a duplicate draft, which the BDM can cancel.
+
+**Consequences:** migration `0068_bdm_trips` (two tables, one sequence; additive; downgrade refuses while trips exist); 17 new routes
+under `/api/v1/bdm/trips` and `/api/v1/bdm/manager/{trips,approvals}`; no existing route or response changes. Web: `/bdm/travel`,
+`/bdm/travel/new`, `/bdm/travel/[id]`, `/bdm/manager/approvals`, `/bdm/manager/trips/[id]`, `/admin/bdm-travel-approvals`; nav entries
+Travel (BDM), Approvals (manager), BDM Travel Approvals (Super Admin). Spec: `docs/superpowers/specs/2026-10-03-bdm-010-travel-design.md`.
+**Status:** implemented on `worktree-bdm-010`; **not COMPLETE** — Playwright, browser validation, the owner's full suites and an
+independent Codex review are pending.
+
+### DEC-SCOPE-064 — Overseas Admin agent network oversight (`AGN-022`)
+
+**ID note:** drafted as `DEC-SCOPE-063` (the next free number on `main` @ `3bde8796`); renumbered `DEC-SCOPE-064` on merging `main` @ `65a8ece`, where `063` is bdm-010 (PR #53). AGN-022 has no migration, so nothing re-chained. AGN-022 commits and docs from before this merge that say `DEC-SCOPE-063` mean this decision.
+
+**Question:** the owner's `AGN-022` statement (in-session, 2026-10-03): "Edusphere's central admin can see the overall agent network and student/application data according to the permissions you define" (Best approach; §9), with acceptance criteria: counts match fixtures; suspend blocks the org immediately (ang-001 AC4); non-admin → 403. How deep does the admin see, is that reading audited, what may super_admin do, which money figures count, and which API shape?
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) "Best approach" and §9; `AGENT_CRM_BACKLOG.md` ang-022 and Q-13 "D17 — read-all; act only on org approve/suspend, commission, and deposit remit/refund recording" (`DERIVED_BLUEPRINT`; its `DEC-SCOPE-035` citation is the known mis-citation). Impact analysis, 2026-10-03 (the committed graphify graph predates AGN-001, so a fresh AST graph was built and findings were checked in source): AGN-001 (`DEC-SCOPE-038` D6/D7) already ships `GET /overseas-admin/agent-orgs` and `POST /overseas-admin/agent-orgs/{id}/approve|reject|suspend|reinstate`, per-request suspension (AC04 test) and the admin 403; AGN-018 holds the count definitions, scoped to the logged-in agent user only.
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL` — answers to structured questions and three design-section reviews; design spec `docs/superpowers/specs/2026-10-03-agn-022-agent-network-design.md` §2):
+
+- **N1 — Counts + lists.** Org list with counts; org detail with read-only lists of the agency's students and applications. No per-student record pages; admin rows carry no email, phone or date of birth.
+- **N2 — Read audit.** One `AuditLog` row per drill-down list request, written before data is returned (fail closed).
+- **N3 — super_admin read-only in the UI.** Suspend/Reinstate shown to `overseas_admin` only; the backend action route is unchanged.
+- **N4 — Money = existing buckets.** Commissions per currency as AGN-018 (Claimable, Claims, Paid revenue), never summed across currencies; deposits (INR) collected / remitted / refunded, not netted. On the org detail only.
+- **N5 — Approach A.** Extend `GET /overseas-admin/agent-orgs` additively (`staff_count`, `counts`); add `GET /agent-orgs/{id}`, `/{id}/students`, `/{id}/applications`; reuse suspend/reinstate. The backlog's `/agent-organizations` + `reactivate` naming is `SUPERSEDED`.
+- **N6 — Limited admin powers (D17).** No admin edits to agent students, applications or staff; approve/reject stay on Agent Approvals.
+
+**Consequences:** no migration; a new read-only service `services/agent_network.py`; three new admin routes and schemas; additive keys on the org list; two new admin pages and components; one appended nav entry. Unchanged: `transition_org`, the suspension gate, the approval page and routes, agent-side routes, models. **New Feature ID authorized:** `AGN-022`. **Status:** owner approved the spec and told implementation to proceed (in-session 2026-10-03); implemented and verified on `feature/agn-022-agent-network` (complete for its scope on lite evidence; browser QA fixed and re-verified; Codex review waived by the owner); the owner's full suites still to run (see `ENHANCEMENT_BACKLOG.md` §AGN-022).
+
+### DEC-SCOPE-065 — Type-specific organization profiles (`bdm-003`)
+
+**ID note:** drafted as `DEC-SCOPE-063` with migration `0068_bdm_org_profiles` (both free on `main` @ `3bde879`). bdm-010 (`DEC-SCOPE-063`, `0068_bdm_trips`, PR #53) reached `main` first, so on merging `main` @ `65a8ece` this entry became `DEC-SCOPE-064` and the migration **`0069_bdm_org_profiles`** (after `0068_bdm_trips`); AGN-022 (`DEC-SCOPE-064`, no migration, PR #54) then reached `main`, so on merging `main` @ `39c119b` (2026-10-03) this entry is **`DEC-SCOPE-065`**. bdm-003 commits and docs from before those merges that say `DEC-SCOPE-063` / `064` or `0068_bdm_org_profiles` mean this decision / migration.
+
+**Question:** how are the Agent / School / College type-specific organization fields (`EVID-016` Agent §B, School §B, College §B) stored, validated and shown, and which of the listed fields belong to other items?
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md`, `DERIVED_BLUEPRINT`) L561–613, L827–871, L1066–1108 (the source's lists are not an approval); `DEC-SCOPE-060` C6 and C16 (Courses Interested `programs` and Address handed to bdm-003); `BDM_CRM_BACKLOG.md` §4 bdm-003 and its traceability table; bdm-003 impact analysis 2026-10-03 (graphify-led).
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL` — questions put through structured prompts, the design approved section by section, the written spec and its revision 2 approved; spec `docs/superpowers/specs/2026-10-03-bdm-003-type-specific-profiles-design.md`):
+- **P1** the profile follows `org_type`: agent → Agent; school → School; college **and** university → College; corporate, training_institute, other → common fields only.
+- **P2** typed nullable columns on `bdm_organizations` with CHECKs; the API exposes them as a nested `profile` object validated per type (a field of another type → 422).
+- **P3** a common nullable `address` for every type (C16's hand-off).
+- **P4** an `org_type` change into another profile group is a 409 while the old group has data; the BDM clears it first (no clear flag; the type is not locked).
+- **P5** Board = ENH-009's `CBSE, ICSE, State, IB, Other`; School Type = Private, Government, Aided, International, Other; College Type = Engineering, Arts & Science, Management, Medical, Polytechnic, Other; Source = Referral, Website, Event, Cold call, Walk-in, Other.
+- **P6** Country and Territory are free text.
+- **P7** Grades are a from–to range: Nursery, LKG, UKG, 1–12 (stored −2…12); lowest ≤ highest.
+- **P8** contact roles are not restricted per type; the form lists the type's named people first.
+- **P9** Courses Interested as a `programs` multi-select is deferred again (stays free text) — a follow-up item.
+- **P10** Agent Commission is a read-only placeholder ("Available after onboarding") in no request schema; Number of Staff is a BDM-entered whole number (0–100 000).
+- **P11** Agreement, MoU, Contract and Renewal Date stay with bdm-005.
+- **P12** College Affiliation and Courses are free text.
+- **P13** approach A: one profile schema (`extra="forbid"`) + one service check run after the row lock in create and PATCH; one DB CHECK per type group as the backstop.
+- **P14** Address, Courses and bdm-002's Courses Interested accept line breaks (`\r\n` → `\n`); every other control character is still rejected (fixes Enter → 422 in the Courses Interested textarea).
+
+**Consequences:** migration `0069_bdm_org_profiles` (twelve nullable columns, nine CHECKs; no row read or written; downgrade refuses while profile values exist); `POST`/`PATCH /bdm/organizations` accept `address` and `profile`; every detail response gains `address` and `profile` (`null` for common-only types; list rows unchanged); a `profile_not_empty` 409; list filters `board`, `affiliation`, `territory`; web: a profile-fields component, a profile view on the detail page, type-dependent list filters, suggested contact roles. Unchanged: authorization and scope (`DEC-SCOPE-060`), every existing route, status code and field. **NEEDS_CONFIRMATION (bdm-019):** who may see an agent's commission once linked (financial data). **New Feature ID authorized:** `bdm-003`. **Status:** COMPLETE for its scope (2026-10-03) on `feature/bdm-003-type-specific-profile-fields` @ `d711fc6` (`DEC-SCOPE-065`, migration `0069_bdm_org_profiles` after `0068_bdm_trips`; up to date with `main` @ `39c119b`). Verification before completion, all fresh on that commit (compose project `bdm003`, stack rebuilt from it, head `0069_bdm_org_profiles`): backend lite (all `test_bdm_001/002/003/010_*`, `test_agn_022_*`, `test_agn_015/017_migration`) **352 passed, 0 failed**; `alembic heads` single; offline SQL = 12 added nullable columns + 9 CHECKs up, the same dropped down, no row written; ruff clean on the bdm-003 Python; web BDM + navigation set (18 files) **162 passed**; `tsc` 0; `eslint .` 0 errors (30 pre-existing warnings, none in BDM files); `next build` ok; Playwright bdm-001/002/003/010 **15 passed** (one bdm-001 cold-stack timeout on the first run; that spec then passed 21/21 alone and the full set 15/15); Browser Use (isolated Chrome) AC1–AC8 and AC10 observed, AC9 by migration evidence, no sideways scroll at 1366/768/375/320 px, no unlabelled controls, RBAC (peer 403, other module 404, manager 403, signed out 401), no broken images, only deliberate 4xx in the console; diff hygiene: no skipped/focused tests, debug code, secrets or TODOs; `.env` untracked. **Not run, by the owner's standing choice:** full backend and web suites. **Independent Codex review:** waived by the owner (2026-10-03).
+
+### DEC-SCOPE-066 — Staff performance and student funnel (`AGN-019`)
+
+**ID note:** drafted as `DEC-SCOPE-063` (free on `main` @ `3bde879`); renumbered `DEC-SCOPE-065` on merging `main` @ `39c119b`, where `063` is bdm-010 and `064` is AGN-022 (PR #54). AGN-019 has no migration, so nothing re-chained. Renumbered again `DEC-SCOPE-066` on merging `main` @ `cf356ca`, where `065` is bdm-003 (PR #55). AGN-019 commits and docs from before these merges that say `DEC-SCOPE-063` or `DEC-SCOPE-065` mean this decision.
+
+**Question:** the owner's `AGN-019` statement (in-session, 2026-10-03): per-staff Students, Applications, Offers, Visa Applications, Visa Approvals, Enrollments, and the funnel Students → Applications → Submitted → Offers → Visa → Enrolled (§8), with acceptance criteria: funnel stages are monotonic non-increasing for a fixture; a reassigned student counts for the current owner (or the owner at the time: spec decision). Which owner, which filters, which stage rule, and where does the page live?
+
+**Evidence:** `EVID-015` §8 (`DERIVED_BLUEPRINT`) via `AGENT_CRM_BACKLOG.md` ang-019 (`DERIVED_BLUEPRINT`); `DEC-SCOPE-062` G2/G3 (AGN-018 staff table and KPI definitions); `DEC-SCOPE-040` S4 (Branch not taken); impact analysis 2026-10-03 (graphify rebuilt locally from `main` @ `3bde879`, findings checked in source): no branch data, no assignment history table (only `audit_logs` JSON), `staff_rows` counts by current owner, assignment targets active staff only.
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL` — answers to seven structured questions and three design-section reviews; design spec `docs/superpowers/specs/2026-10-03-agn-019-staff-performance-funnel-design.md` §2):
+
+- **P1 — Current owner.** A reassigned student and all their stages count for the staff member assigned now.
+- **P2 — No branch filter.** Deferred (no branch data); logged in `RAID.md`; no schema change.
+- **P3 — "Reached at least" stages.** A student counts at a stage if any application reached it or a later one; non-increasing by construction.
+- **P4 — Student cohort date range.** `date_from`/`date_to` select students by agency-record creation day (inclusive UTC days, as AGN-014).
+- **P5 — History in the funnel.** Archived students and withdrawn applications count in the funnel; the per-staff table keeps `DEC-SCOPE-062` G3 definitions (equal to the dashboard staff table with no dates).
+- **P6 — Rows.** Active staff always; deactivated only when non-zero, marked; Unassigned only when non-zero; funnel per agency / row / Unassigned.
+- **P7 — Placement.** A new Master-only sidebar page "Staff Performance"; the dashboard staff table links to it.
+- **P8 — Approach A.** New `services/agent_performance.py` and `GET /workflows/overseas/agent/crm/performance`; `owner_join()` extracted from `staff_rows` and shared; a parity test pins AGN-019 to AGN-018.
+
+**Consequences:** no migration; a new router, service, schemas, panel and nav item (hidden from staff, refused by the server); `AgentDashboardOut`, models and other roles unchanged; `services/portal.py` gains only a header-only `performance` section (the page gate, Tasks precedent; review finding #1). **New Feature ID authorized:** `AGN-019`. **Status:** implemented on `feature/agn-019-staff-funnel`, lite-tested; Browser Use QA19-01/03 fixed and re-verified, QA19-02/04–07 Low open; full suites and Codex review pending (see `ENHANCEMENT_BACKLOG.md` §AGN-019). Implementation notes: AGN-014's date checks became a shared `report_range()`; AGN-018's table helpers moved to `components/AgentTableRegion.tsx`; the dashboard link sits below the staff table (a link inside the heading would rename its region).
+
+### DEC-SCOPE-067 — Agency reports (7 new + Commission) and CSV export (`AGN-020`)
+
+**ID note:** drafted as `DEC-SCOPE-063` (free on `main` @ `3bde879`); renumbered `DEC-SCOPE-066` on merging `main` @ `cf356ca`, where `063` is bdm-010, `064` AGN-022 and `065` bdm-003; renumbered again `DEC-SCOPE-067` on merging `main` @ `e0747e7`, where `066` is AGN-019. AGN-020 has no migration, so nothing re-chained. AGN-020 commits and docs from before these merges that say `DEC-SCOPE-063` or `DEC-SCOPE-066` mean this decision.
+
+**Question:** the owner's `AGN-020` statement (in-session, 2026-10-03): "Student, Application, University, Country, Intake, Staff performance, Enrollment and Commission reports (§2); Staff reports '❌/Limited'", with acceptance criteria: each report matches fixture data; the CSV opens with correct headers; Staff without the toggle → 403. The source names the reports only. What does each contain, who sees which, how are they filtered, exported and audited?
+
+**Evidence:** `EVID-015` (`Agent CRM Functionalities.md`, `DERIVED_BLUEPRINT`) §2 Reports (eight names, no content), §6 "Reports ✅ Full / ❌/Limited" (the source's wording is not the approval); `AGENT_CRM_BACKLOG.md` ang-020 (`DERIVED_BLUEPRINT`). Impact analysis, 2026-10-03 (graphify snapshot predates AGN-001…018; findings checked in source): no reports route exists; every intake column is free text (the backlog's "structured intake" D16 was never built); agency student records have no reference code, no passport field and agencies have no branch list; the portal Reports payload counts students by login (no-login students dropped) and includes withdrawn applications, unlike AGN-018; `DEC-SCOPE-051` R7 says reading or exporting a report writes no audit row, the backlog says exports are audited; no CSV in the codebase streams; university names are not unique (slugs are).
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL` — answers to eight structured questions, five design-section reviews, and three review passes on the written spec; design spec `docs/superpowers/specs/2026-10-03-agn-020-agency-reports-design.md` §2):
+
+- **R1 — Mixed shape.** Student, Application and Enrollment are row lists; University, Country, Intake and Staff performance are summaries (Applications, Submitted, Offers, Visa apps, Visa approved, Enrolled + Total); Commission is the AGN-014 report, unchanged.
+- **R2 — Staff access.** Staff with `can_view_reports` see six reports, own scope (`DEC-SCOPE-042` G4); Staff performance and Commission `403` for all staff; without the toggle `403` on every report (`DEC-SCOPE-044` P1).
+- **R3 — Audit CSV exports only** (`agent_report.export`); on-screen reads unaudited; the commission CSV keeps `DEC-SCOPE-051` R7.
+- **R4 — Intake** parsed to month + year with AGN-013's parser; unreadable text → "Unstructured". No migration.
+- **R5 — Staff performance** is AGN-020's own summary from AGN-018's queries; AGN-019 keeps its funnel; whichever merges second reconciles.
+- **R6 — Per-report date basis**, inclusive UTC days: students by record created, applications and summaries by application created, enrollments by enrollment date.
+- **R7 — 10,000-row CSV cap** (422 above it, never truncated) and 50-row pages on screen.
+- **R8 — Old portal summary:** its API, 403 and tests unchanged; the page shows the tabbed reports instead.
+- **R9 — Approach A:** `GET /workflows/overseas/agent/crm/reports/{kind}` and `…/{kind}.csv`, one column-driven response.
+- **R10 — Export throttle** (from the security review): 30 CSV exports per user per 10 minutes → `429` + `Retry-After`.
+
+**Consequences:** no migration, no new dependency; a new router (`api/agent_reports.py`), service (`services/agent_reports.py`) and schema (`AgentReportOut`); `AgentReportsPanel` / `AgentReportFilters` / `AgentReportTable` on `/overseas/agent/reports` for agency members; the AGN-014 commission panel moves from `WorkflowPanel` to the Commission tab (component unchanged). Unchanged: the portal reports payload and `REPORTS_REFUSED`, the AGN-014 routes and R7, AGN-018's queries, navigation, models. **New Feature ID authorized:** `AGN-020`. **Status:** implemented and verified on `feature/agn-020-reports` (browser QA + fix pass, see `ENHANCEMENT_BACKLOG.md` §AGN-020); the full backend suite is run by the owner.
+
+
+### DEC-SCOPE-068 — BDM appointments (`bdm-006`)
+
+**ID note:** drafted as `DEC-SCOPE-063` with migration `0068_bdm_appointments` after `0067_audit_entity_index`; bdm-010 (`DEC-SCOPE-063`, `0068_bdm_trips`) reached `main` first, so this is now `DEC-SCOPE-064` and the migration was `0069_bdm_appointments` after `0068_bdm_trips`. Renumbered again on merging `main` @ `e376c25c` (2026-10-05): bdm-003's `0069_bdm_org_profiles` and AGN-022 / bdm-003 / AGN-019 / AGN-020 (`DEC-SCOPE-064`…`067`) reached `main` first, so bdm-006 is now **`DEC-SCOPE-068`** with migration **`0070_bdm_appointments`** after `0069_bdm_org_profiles`. bdm-006 commits and docs from before this merge that say `DEC-SCOPE-063` or `DEC-SCOPE-064` mean this decision.
+
+**Question:** how do BDMs book and manage appointments, which transitions are allowed, and what does Completed require before bdm-007 exists?
+
+**Evidence:** `EVID-016` §2 (lines 27–93), Agent §C (615–653), School §C (873–895), College §C (1110–1134), §8 outcomes (250–275) (`ORIGINAL_REQUIREMENT`); `DEC-SCOPE-055` D3, D11 (Q-02), D16 (Q-07), D20 (Q-11), D26 (Q-17), D29 (Q-20); bdm-002 `DEC-SCOPE-060` AC5b; bdm-006 impact analysis 2026-10-03 (graphify-led).
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL`, via questions; design approved section by section):
+- **A1** Completed takes a minimal outcome (validated per BDM type) and an optional next follow-up date on the appointment; bdm-007 adds the meeting report on top.
+- **A2** Transitions: scheduled / confirmed / rescheduled → confirmed (not from confirmed), rescheduled, cancelled, no show, completed; completed, cancelled and no show are terminal; completed and no show only after the start time; cancel and no show need a reason; reschedule keeps the old time in history.
+- **A3** Only the organization's assigned BDM books and manages; managers and super_admin read only.
+- **A4** An archived organization blocks new appointments (422); existing ones stay manageable.
+- **A5** Deleting an organization contact keeps the appointment's contact snapshot (`contact_id` → NULL). Consequence: a contact delete no longer erases every copy of that person's details.
+- **A6** Overlap for the same BDM warns with a 409 the BDM can confirm past.
+- **A7** Create and reschedule require a future start time.
+- **A8** Outcomes: Agent §C list for agent BDMs; §8 list for school and college BDMs.
+- Defaults approved with the design: type list = §2 common ∪ module list (deduplicated by key); contact picked from the organization's contacts; ownership fixed on organization reassignment (bdm-025 moves portfolios); location, purpose, remarks optional.
+
+**Open:** retention / erasure policy for BDM data — `NEEDS_CONFIRMATION` (as bdm-001/002).
+
+**Spec:** `docs/superpowers/specs/2026-10-03-bdm-006-appointments-design.md`.
+
+### DEC-SCOPE-069 — BDM activity log (`bdm-009`)
+
+**ID note:** drafted as `DEC-SCOPE-064`, renumbered `DEC-SCOPE-065` on merging `main` @ `39c119b` (AGN-022 took `064`), with migration `0069_bdm_activities` after `0068_bdm_trips`. bdm-003 (PR #55) then took `DEC-SCOPE-065` and `0069_bdm_org_profiles`, and AGN-019 / AGN-020 (PRs #56 / #57) took `066` / `067`, so on merging `main` @ `e376c25` (2026-10-03) it became `DEC-SCOPE-068` with migration `0070_bdm_activities`. bdm-006 (PR #58) then reached `main` with `DEC-SCOPE-068` and `0070_bdm_appointments`, so on merging `main` @ `6a9be770` (2026-10-05) this entry is **`DEC-SCOPE-069`** and the migration **`0071_bdm_activities`** (after `0070_bdm_appointments`, one head). bdm-009 commits and docs from before these merges that say `DEC-SCOPE-065` / `DEC-SCOPE-068` or `0069_bdm_activities` / `0070_bdm_activities` mean this decision / migration (the bdm-006 entry above is the real `DEC-SCOPE-068`).
+
+**Question:** how do BDMs log calls, WhatsApp messages, emails, visits and meetings, who may log, see and change them, and how are the day's counts defined (`BDM_CRM_BACKLOG.md` §4 bdm-009)?
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md`, `DERIVED_BLUEPRINT`) §4 Common "Activity" (1288–1298), §11 (371–397), Agent §G (759–781), School §G (1000–1022); backlog decisions D9, Q-02, Q-13, Q-20 (`DERIVED_BLUEPRINT`).
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL` — answers to structured questions and five design-section reviews; design spec `docs/superpowers/specs/2026-10-03-bdm-009-activity-log-design.md` §3):
+
+- **V1** Only the organization's assigned BDM logs (out of type → 404, not assigned → 403, archived → 422).
+- **V2** Channels: call, whatsapp, email, visit, meeting, other. No follow-up channel (bdm-008 tasks). Meetings in the daily report come from completed appointments (bdm-015); meeting / visit activities count only under their own channel.
+- **V3** Appointment and task links are deferred to bdm-006 / bdm-008 (their own migrations and FKs).
+- **V4** `occurred_at` not in the future (see V9), at most 7 IST days back; edit / delete only on the activity's IST day (`editable()`, which bdm-015 extends with the report lock).
+- **V5** The organization timeline is visible to everyone who can read the organization.
+- **V6** Direction (outbound / inbound) required for call, WhatsApp, email; empty otherwise. Calls made = outbound calls.
+- **V7** Pages: org timeline + Log activity, `/bdm/activities`, `/bdm/manager/activities`.
+- **V8** Delete is hard, with an audit row (ids and channel only).
+- **V9** (Revision 2) A time up to 5 minutes after the server clock is saved as the server's now; more than 5 minutes ahead → 422.
+- **V10** (Revision 2) At most 200 activities per BDM per IST day (409); a soft abuse bound.
+- **Defaults:** super_admin reads only; the contact must belong to the organization and its name is kept after the contact is deleted (as bdm-006 A5); an edit cannot move an activity off today; no idempotency key (a duplicate is fixed by a same-day delete); no general rate limiter (as bdm-010). Refusal logging: `bdm_activity_write_refused` is logged for "not the organization's assigned BDM" (create) and "not the BDM who logged it" (patch / delete, which also covers a manager or `super_admin` touching a readable team activity); 403s from the role gate (`bdm_context` on create, `caller_scope` for other roles) are not logged (bdm-002's `bdm_org_write_refused` precedent). Notes are visible to every reader of the organization (the form says so). Retention / erasure of BDM data remains `NEEDS_CONFIRMATION` (as bdm-001 / 002 / 006).
+
+**Status:** `EXPLICIT_APPROVAL` for V1–V10; implemented on `feature/bdm-009-activities`; **COMPLETE for its scope** (verified 2026-10-05 on the merged branch: backend lite 507 passed, web 320 passed, tsc / eslint / `next build` clean, mypy equal to `main`, Playwright bdm-009 ×2 + bdm-001/002/003/006/010 green, Browser Use checks of AC1, AC3–AC6 and AC12, browser QA and exploratory QA findings fixed). The owner's full suites are run separately; the independent Codex review was waived by the owner. Migration `0071_bdm_activities`.
+
+### DEC-SCOPE-070 — Appointment outcome + meeting report (`bdm-007`)
+
+**Question:** how does a BDM record the outcome and meeting report after every meeting, which outcome lists apply, how is the follow-up created, how long can the report change, and how do past appointments without an outcome surface (`BDM_CRM_BACKLOG.md` §4 bdm-007)?
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md`, `DERIVED_BLUEPRINT`) §8 Appointment Outcome (250–283), Agent §C outcomes (637–653), §4 Common "Meeting Report" (1302–1318); backlog D18, Q-13/D22, Appendix B AL-6 (`DERIVED_BLUEPRINT`); bdm-006 `DEC-SCOPE-068` A1/A8.
+
+**Resolution:** owner, in-session 2026-10-05 (`EXPLICIT_APPROVAL` — answers to structured questions, approach A and design section 1; the owner then directed implementation; design spec `docs/superpowers/specs/2026-10-05-bdm-007-meeting-reports-design.md` §3):
+
+- **R1** Follow-ups: a minimal `bdm_tasks` table now (bdm-008's shape); `uq_bdm_tasks_source_appointment` keeps one follow-up per appointment. bdm-008 adds pages, manual tasks and completion.
+- **R2** Edit window: the author edits the report on the IST day it was filed; then read-only.
+- **R3** Appointments completed under bdm-006: migration 0072 backfills one read-only legacy report each (+ an open follow-up for a stored follow-up date).
+- **R4** Outcome "Reschedule": no server-side draft; the BDM's page offers "Book the next meeting" (the existing booking form, organization prefilled).
+- **R5** Responsible person: free text (≤ 200).
+- **R6** Required: outcome + discussion; requirements, opportunity, next action, responsible person, follow-up date optional.
+- **R7** Approach A: `bdm_meeting_reports` holds the narrative; `outcome` / `next_follow_up_on` stay on `bdm_appointments` (one place each).
+- **Defaults:** only the appointment's BDM files or edits (managers and super_admin read); duplicate complete → 409 under the row lock (no idempotency key); no ETag; no rate limiter; report text never in logs or audit metadata. "Not Interested → pipeline lost" waits for bdm-004.
+
+**Consequences:** migration `0072_bdm_meeting_reports` (two tables, set-based idempotent backfill; `bdm_appointments` untouched; downgrade refuses while non-legacy reports exist). `POST /bdm/appointments/{id}/complete` now takes the report (`discussion` required — the one contract change AC1 requires; the web client changed with it). New `PATCH /bdm/appointments/{id}/report`. Additive reads: `report`, `follow_up`, `permissions.can_edit_report`, row `outcome_pending`, list filter `outcome_pending` (the AL-6 rule bdm-023 reuses).
+
+**Status:** `EXPLICIT_APPROVAL` for R1–R7; VERIFIED — ready for owner sign-off (2026-10-05, `feature/bdm-007-meeting-outcomes` @ `5661490b`, migration `0072_bdm_meeting_reports`, `DEC-SCOPE-070`). Fresh evidence: backend lite 164 passed; ruff clean on changed files; mypy 394 = `main`'s baseline (no new errors); single alembic head; web BDM set 324 passed; `tsc` 0; eslint 0; `next build` 0; Playwright bdm-007, bdm-006, bdm-009, bdm-002 (5 tests) passed on a stack built from that commit; exploratory browser QA `docs/quality/BDM-007_EXPLORATORY_QA_2026-10-05.md` — QA7-01…08 fixed test-first and re-checked in the browser. For the owner: Browser Use is not installed here (isolated Playwright Chromium used instead); AC5's alert tile is delivered by bdm-023 (the `outcome_pending` filter it reuses is done); the full backend / web suites are the owner's; Codex review waived by the owner.
+
+### DEC-SCOPE-071 — Organization pipelines per BDM type + stage history (`bdm-004`)
+
+**ID note:** drafted as `DEC-SCOPE-070` with migration `0072_bdm_pipeline` (both free on `main` @ `2e057b3a`); bdm-007 (PR #60) reached `main` first with `DEC-SCOPE-070` and `0072_bdm_meeting_reports`, so on merging `main` @ `c85849d8` (2026-10-05) this entry is **`DEC-SCOPE-071`** and the migration **`0073_bdm_pipeline`** (after `0072_bdm_meeting_reports`). bdm-004 commits and docs from before that merge that say `DEC-SCOPE-070` or `0072_bdm_pipeline` mean this decision / migration.
+
+**Question:** what are the Agent / School / College pipeline stages, who may move an organization between them, what happens to the stages after the onboarding handover, how is the agent status derived, and what does the pipeline view count (`BDM_CRM_BACKLOG.md` §4 bdm-004)?
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md`, `DERIVED_BLUEPRINT`) Agent §B status (561–613), Agent §E (685–741), School §D (897–951), College §D (1136–1190) — the source's lists are not an approval; `DEC-SCOPE-055` D7, D8, D11, D13, D28; `DEC-SCOPE-060` C2, C14, C15; bdm-004 impact analysis 2026-10-05 (graphify-led).
+
+**Resolution:** owner, in-session 2026-10-05 (`EXPLICIT_APPROVAL` — seven structured questions, the approach, then six design sections reviewed against the API, frontend and security skills; spec `docs/superpowers/specs/2026-10-05-bdm-004-organization-pipelines-design.md` §3):
+- **S1** The assigned BDM and `super_admin` move stages (the `can_edit` rule); a `bdm_manager` reads only. Supersedes the backlog line "the manager can move any organization in their team" (C2 stands).
+- **S2** College steps 1–8 are manual (College Activated last); 9–14 are volumes, "Not tracked" until bdm-021.
+- **S3** No link columns in bdm-004: live stages (Agent 8–11, School 9–14) are refused by the move endpoint (422) and shown "Awaiting handover"; a `live_status` hook is filled by bdm-018 / bdm-019.
+- **S4** Agent status derived on read: Prospect, Contacted, Meeting (Scheduled / Completed), Interested, Agreement (Proposal / Agreement, Agreement Signed), Onboarding (Agent Onboarding, Master Login, Staff Logins), Active (Active Agent); Inactive = linked Agent Organization suspended or rejected (bdm-019).
+- **S5** Lost is a flag with a reason on top of the stage; moves while Lost → 409; revive with a reason returns to the same stage; Lost is counted in its own bucket.
+- **S6** Moves are free between manual stages; backward needs a note (422); the same stage → 422; a stale `from_stage` → 409.
+- **S7** A BDM's pipeline view defaults to "assigned to me" with a whole-module toggle; managers see their team (per-BDM filter); super_admin sees all; type chosen by the caller.
+- **Defaults:** archived → 409 on pipeline writes and excluded from counts; every organization starts at Prospect with no history row; keys stored, source labels shown; no rate limit (as every BDM route); note / reason text kept out of logs and audit metadata.
+
+**Consequences:** migration `0073_bdm_pipeline` (`bdm_organizations.pipeline_stage` default `prospect`, `lost_at`, `lost_reason`, per-type CHECK, index `(bdm_type, pipeline_stage)`; new append-only `bdm_pipeline_events`; downgrade refuses while pipeline data exists); routes `POST /bdm/organizations/{id}/stage|lost|revive`, `GET /bdm/organizations/{id}/stage-history`, `GET /bdm/pipeline`; the organization detail gains `pipeline` (list rows and permission keys unchanged); pages `/bdm/pipeline` and `/bdm/manager/pipeline`, a stepper, move form and history on both detail pages. **New Feature ID authorized:** `bdm-004`. **Status:** **COMPLETE for its scope** (2026-10-05) on `feature/bdm-004-pipeline-stages`; fresh lite verification green (backend 358, web 290, tsc, eslint, `next build`, Playwright 6); browser QA findings QA4-01…07 and 10 fixed and re-verified (QA4-01: the pipeline page's filter links are plain links, a full page load, because client navigations into the whole-module view often never committed); QA4-08 / QA4-09 deferred as shared, pre-existing patterns; the independent Codex review was waived by the owner.
+
+### DEC-SCOPE-072 — Student lead attribution to organizations and the explicit conversion link (`bdm-017`)
+
+**ID note:** recorded on the branch as `DEC-SCOPE-070` with migration `0072_enquiry_bdm_attribution` (from `main` @ `2e057b3a`). bdm-007 (PR #60) reached `main` first holding `DEC-SCOPE-070` and `0072_bdm_meeting_reports`, so on merging `main` @ `c85849d8` it became `DEC-SCOPE-071` / `0073_enquiry_bdm_attribution`; bdm-004 (PR #62) then reached `main` holding `DEC-SCOPE-071` and `0073_bdm_pipeline`, so on merging `main` @ `032ce4bf` (2026-10-05) this entry is **`DEC-SCOPE-072`** and the migration **`0074_enquiry_bdm_attribution`** (after `0073_bdm_pipeline`, one head). Earlier bdm-017 commits and docs that say `DEC-SCOPE-070` / `071` or `0072_` / `0073_enquiry_bdm_attribution` mean this decision / migration.
+
+**Question:** how do BDM-entered student leads connect to organizations and to student accounts ("Student Leads Generated", the College funnel Contacted → Leads → …, the drill-down Outcome → Lead → Student → Revenue), without disturbing the website form, the admin lead list or the CRM sync (`BDM_CRM_BACKLOG.md` §4 bdm-017)?
+
+**Evidence:** backlog D5b (leads are attributed `enquiries` rows; funnel and revenue computed from real records), Q-14/D23 (each lead entered individually), D3 (division derived from BDM type), Q-02/D11 (read own type, edit assigned) — all `EXPLICIT_APPROVAL` in `DEC-SCOPE-055`; `EVID-016` (`DERIVED_BLUEPRINT`) §14 workflow line 474. Impact analysis 2026-10-05 (graphify-led): `enquiries` is shared by `public.create_enquiry`, `admin.leads` / `update_lead`, the counselor's routed leads (`portal.py`), `sync_enquiry_to_crm_task`, the admin dashboard / reports summary and the RPT-001 funnel. **Backlog correction:** the backlog cites the Telecaller extension as "`DEC-SCOPE-036` D3"; `DEC-SCOPE-036` is ENH-017 and no Telecaller decision exists, so this decision defines the `enquiries` extension and the Telecaller item rebases on it.
+
+**Resolution:** owner, in-session 2026-10-05 (`EXPLICIT_APPROVAL` — answers to structured questions put one at a time, then design review against the API, frontend and security skills; design spec `docs/superpowers/specs/2026-10-05-bdm-017-lead-attribution-design.md` §2):
+
+- **L1** The explicit conversion is performed by a division admin (`it_admin` / `overseas_admin` / `super_admin`) from the admin lead list.
+- **L2** The link target is an active student of the lead's division (`it_student` for `it`, `overseas_student` for `overseas`); the link can be undone (audited). Linking sets `status='converted'`; unlinking leaves the status as it is.
+- **L3** BDM leads go through the existing CRM sync task with the payload unchanged (`source='bdm'` identifies them).
+- **L4** The existing admin counts (dashboard "Enquiries", reports summary "leads", RPT-001 funnel) include BDM leads; those queries are unchanged.
+- **L5** A BDM enters name, email, optional phone, interest (stored in `subject`) and optional note (stored in `message`; blank → "Lead entered by BDM at <organization>").
+- **L6** Mirrors bdm-009 V1/V5: the organization's assigned BDM adds (not when archived); everyone who can read the organization sees its leads.
+- **L7** `PATCH /admin/leads/{id}` is unchanged: status stays an admin label; only the link counts as a conversion.
+- **L8** The same email twice in one organization warns (409 `possible_duplicate`) and saves when acknowledged; across organizations both are always kept.
+- **L9** One lead per student account (partial unique index; the first conversion wins).
+- **Defaults:** 200 leads per BDM per IST day (409, a soft abuse bound); the conversion target is named by the student's account email typed by the admin and matched exactly — never inferred from the lead's own email or phone; conversion is allowed on any lead in the admin's division; logs and audit rows carry ids only. Retention / erasure of lead PII remains `NEEDS_CONFIRMATION` (as bdm-001 / 002 / 006 / 009).
+
+**Addendum — browser QA, 2026-10-05 (owner direction "fix the issues", `EXPLICIT_APPROVAL`):** **QA17-01** the organization's lead table uses the existing `.table-scroll`, whose row headers keep their case (emails were shown in capitals); **QA17-02** the Overseas Admin gets the ADM-002 Manage leads panel on the leads page (as QA-009 did for users), so School / Agent BDM leads are filtered by organization and linked by their own division admin (L1) — `/admin/leads` and the conversion routes already scoped by division, unchanged; **QA17-03** the panel spans the action grid (`.lead-management`) and keeps the name column in view while scrolling.
+
+**Status:** `EXPLICIT_APPROVAL` for L1–L9 and QA17-01…03; implemented on `feature/bdm-017-lead-attribution` (merged with `main` @ `032ce4bf`; migration `0074_enquiry_bdm_attribution`, one head). Verified 2026-10-05: backend lite 181 passed; ruff clean on changed files; mypy 394 = `main`'s baseline; web 2538 of 2540 passed (the 2 failures are not bdm-017: `dateZoneSweep`'s 9 pre-existing findings in untouched files, and AGN-010 `AgentApplicationOffer` focus timing, 3/3 green alone); `tsc` 0; eslint 0; `next build` compiled; Playwright bdm-017, bdm-007, bdm-006, adm-002, pub-002, cns-001, bdm-002, bdm-009 — 15 passed; Browser Use: AC1–AC4, roles, validation, duplicates, refresh, layouts 320–1280 px and the QA17-01…03 fixes checked. Not browser-verified: the network-drop-on-save message (Browser Use input unreliable on this machine; covered by `BdmLeadForm.test.tsx`). The owner's full suites are run separately; Codex review waived by the owner.

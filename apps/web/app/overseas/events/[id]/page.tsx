@@ -3,6 +3,7 @@ import PublicShell from "@/components/PublicShell";
 import WebinarRegisterForm from "@/components/WebinarRegisterForm";
 import { publicApi } from "@/lib/api";
 import type { Webinar } from "@/lib/types";
+import LocalTime from "@/components/LocalTime";
 
 // OVS-007: the listing page either linked out to an external registration_url or fell
 // back to a generic "Register interest" -> /overseas/contact link, even though the
@@ -34,7 +35,7 @@ export default async function OverseasEventDetail({ params }: { params: Promise<
         <div className="container">
           <div className="eyebrow">{event.event_type}</div>
           <h1 style={{ fontSize: "clamp(34px,4vw,54px)" }}>{event.title}</h1>
-          <p className="lead">{new Date(event.starts_at).toLocaleString("en-GB")} · {event.location}</p>
+          <p className="lead"><LocalTime value={event.starts_at} time label /> · {event.location}</p>
         </div>
       </section>
       <section className="section">

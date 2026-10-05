@@ -3,20 +3,14 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import LocalTime from "@/components/LocalTime";
+
 type AssignmentRow = { id: string; title: string; due: string; submission: string; score: string | null; feedback: string | null };
 
 function detailMessage(detail: unknown) {
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail)) return detail.map((item: { msg?: string }) => item.msg || "Invalid input").join("; ");
   return "Unable to submit.";
-}
-
-function formatDue(iso: string) {
-  try {
-    return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-  } catch {
-    return iso;
-  }
 }
 
 // STU-004: "View assigned work, submit before due date." Previously a student had to
@@ -96,7 +90,7 @@ export default function AssignmentSubmissionPanel({ section }: { section: "assig
         {pending.map((row) => (
           <div className="card" key={row.id}>
             <h4>{row.title}</h4>
-            <p className="muted" style={{ fontSize: 13 }}>Due {formatDue(row.due)}</p>
+            <p className="muted" style={{ fontSize: 13 }}>Due <LocalTime value={row.due} time label /></p>
             {openId === row.id ? (
               <form className="form" onSubmit={(event) => submit(event, row.id)}>
                 <div className="field">

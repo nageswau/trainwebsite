@@ -31,6 +31,7 @@ from app.models import (
     User,
     UserRoleAssignment,
 )
+from tests.enh014_helpers import drain
 
 PASSWORD = "Sup3r-Secret-Pass!"
 
@@ -51,7 +52,7 @@ async def _user(db_session, *, role: str, full_name: str, school_id=None, assign
 
 async def _school(db_session) -> dict:
     admin = await _user(db_session, role="overseas_admin", full_name="Overseas Admin")
-    school = School(name=f"SCH-007 Test School {uuid.uuid4().hex[:6]}", created_by_user_id=admin.id)
+    school = School(name=f"SCH-007 Test School {uuid.uuid4().hex[:6]}", created_by_user_id=admin.id, tier="platinum")  # ENH-022: entitled to every service
     db_session.add(school)
     await db_session.flush()
     coordinator = await _user(db_session, role="school_coordinator", full_name="Coordinator", school_id=school.id, assigned_by=admin)
@@ -145,7 +146,7 @@ async def test_a_child_with_no_records_yet_reports_honest_not_started_statuses(c
 
 
 @pytest.mark.asyncio
-async def test_psychometric_assignment_and_report_notify_only_the_linked_parent(client, db_session):
+async def test_psychometric_assignment_and_report_notify_only_the_linked_parent(client, db_session, enqueued):
     ctx = await _school(db_session)
     psych = await _staff(db_session, ctx, "psychometric_team")
     await _login(client, psych.email)
@@ -159,7 +160,8 @@ async def test_psychometric_assignment_and_report_notify_only_the_linked_parent(
     assert a_notes[0].action_url == f"/school/parent/children/{ctx['student_a'].id}"
     # SCH-001-AC03 carried into notifications: the other parent at the same school hears nothing.
     assert await _notifications_for(db_session, ctx["parent_b"]) == []
-    # NOT-001: one email delivery row per notification, outcome persisted (no SMTP/webhook in tests).
+    # NOT-001 + ENH-014: one email delivery per notification, queued, then sent by the worker (no SMTP/webhook in tests).
+    await drain(enqueued)
     deliveries = (await db_session.scalars(select(NotificationDelivery).where(NotificationDelivery.notification_id.in_([n.id for n in a_notes])))).all()
     assert len(deliveries) == 2 and all(d.channel == "email" and d.status in {"not_configured", "sent", "failed"} for d in deliveries)
 

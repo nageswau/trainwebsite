@@ -15,30 +15,40 @@ import hashlib
 import io
 import re
 import secrets
+from collections import Counter
+from collections.abc import Collection
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Response, UploadFile
-from sqlalchemy import select
+from pydantic import BaseModel, ValidationError
+from sqlalchemy import distinct, func, or_, select, text
+from sqlalchemy.exc import DBAPIError, IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.api.auth import _set_auth_cookies
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.identifiers import unique_student_code
+from app.core.logging import get_logger
 from app.core.security import hash_password
 from app.models import (
     AcademicYear,
     AuditLog,
     Notification,
-    NotificationDelivery,
     OverseasApplication,
+    PortfolioEntry,
     School,
     SchoolAcademicResult,
     SchoolAccountInvite,
     SchoolActivity,
     SchoolActivityAttendance,
+    SchoolActivityFeedback,
     SchoolCareerRecord,
+    SchoolFundingRecord,
     SchoolLanguageRecord,
     SchoolParentLink,
     SchoolPsychometricRecord,
@@ -47,16 +57,41 @@ from app.models import (
     SchoolRosterUploadRow,
     SchoolStaffAssignment,
     SchoolStudent,
+    SchoolStudentGradeHistory,
     SchoolTestPrepRecord,
     University,
     User,
     UserRoleAssignment,
     VisaCase,
 )
+from app.notifications.dispatch import queue_deliveries
+from app.schemas import (
+    CAREER_DATE_KEYS,
+    CAREER_RECORD_TYPES,
+    CAREER_STATUS_INITIAL,
+    CAREER_STATUS_LABEL,
+    CAREER_STRUCTURED_KEYS,
+    COUNTED_CAREER_STATUSES,
+    LIST_FIELD_KEYS,
+    MASTER_FIELD_KEYS,
+    PSYCHOMETRIC_RESULT_KEYS,
+    STRUCTURED_RECORD_TYPES,
+    CareerRecordFields,
+    CareerRecordUpdate,
+    GradeHistoryResponse,
+    PsychometricResultFields,
+    StudentMasterFields,
+    StudentPromotionRequest,
+    StudentPromotionResponse,
+    career_transition_allowed,
+    counts_as_completed,
+    validation_message,
+)
 from app.services.integrations import send_notification
-from app.services.mailer import send_parent_notification_email, send_school_invite_email
+from app.services.mailer import send_school_invite_email
 
 router = APIRouter(prefix="/school", tags=["school"])
+logger = get_logger("app.school")
 SERVICE_DELIVERY_ROLES = {"academic_team", "career_counselor", "psychometric_team"}
 
 SCHOOL_DOMAIN_ROLES = {
@@ -73,15 +108,21 @@ INVITABLE_ROLES = {"school_principal", "school_teacher", "school_parent"}
 INVITE_EXPIRY_DAYS = 7
 OVERSEAS_APPLICATION_STAGES = ["enquiry", "eligibility_evaluation", "university_selection", "offer", "visa_documentation", "status_tracking", "enrolled"]
 OFFER_ONWARD_STATUSES = {"offer", "offer_received", "accepted", "visa_documentation", "status_tracking", "enrolled"}
-UNTRACKED_SCHOOL_DASHBOARD_KPIS = {
-    "digital_portfolios_created": "No confirmed School digital-portfolio model exists yet.",
-    "internships": "No confirmed School internship model exists yet.",
-}
+# ENH-016 D8 (DEC-SCOPE-034): digital portfolios (ENH-012) and skills training (ENH-011) are tracked now; ENH-021 I7 tracks
+# internships. Nothing in the §1 KPI list is untracked any more.
+UNTRACKED_SCHOOL_DASHBOARD_KPIS: dict[str, str] = {}
 UNTRACKED_SCHOOL_DASHBOARD_CHARTS = [
-    {"key": "skills_training", "label": "Skills training", "note": "No confirmed School soft-skills training model exists yet."},
-    {"key": "internships", "label": "Internships", "note": "No confirmed School internship model exists yet."},
     {"key": "student_participation_by_program", "label": "Student participation by program", "note": "No confirmed School program-participation model exists yet."},
 ]
+INTERNSHIP_STATUS_ORDER = ("not_started", "in_progress", "completed", "discontinued")  # ENH-021 I7 chart order, then "no_status"
+
+
+def internship_progress(statuses) -> str:
+    """ENH-021 I8 (School CRM §35): best progress wins. Not started, discontinued and legacy (None) entries read as not started."""
+    seen = set(statuses)
+    if "completed" in seen:
+        return "completed"
+    return "in_progress" if "in_progress" in seen else "not_started"
 
 
 def _require_coordinator(user: User) -> UUID:
@@ -150,13 +191,38 @@ async def create_invite(payload: dict, user: User = Depends(get_current_user), d
     return response
 
 
+async def _parent_ids_at_school(db: AsyncSession, school_id: UUID) -> set[UUID]:
+    """Every school_parent user_id with a SchoolParentLink to a student at this school."""
+    return set(
+        (
+            await db.scalars(
+                select(SchoolParentLink.parent_user_id)
+                .join(SchoolStudent, SchoolStudent.id == SchoolParentLink.school_student_id)
+                .where(SchoolStudent.school_id == school_id)
+                .distinct()
+            )
+        ).all()
+    )
+
+
+def _account_belongs_to_school(a: User, *, school_id: UUID, parent_ids_at_school: set[UUID]) -> bool:
+    """ENH-008: a school_parent's membership is derived from SchoolParentLink (or a still-stale
+    profile.school_id, for accounts that predate the deprecation) -- never profile.school_id alone,
+    which is no longer set for new parent accounts. Every other role still uses profile.school_id,
+    unchanged. Shared by list_team() and _school_dashboard_payload()."""
+    if a.role == "school_parent":
+        return a.id in parent_ids_at_school or (a.profile or {}).get("school_id") == str(school_id)
+    return (a.profile or {}).get("school_id") == str(school_id)
+
+
 @router.get("/team")
 async def list_team(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     school_id = _require_coordinator(user)
     accounts = (
         await db.scalars(select(User).where(User.role.in_(("school_principal", "school_teacher", "school_parent", "school_coordinator"))))
     ).all()
-    accounts = [a for a in accounts if (a.profile or {}).get("school_id") == str(school_id)]
+    parent_ids_at_school = await _parent_ids_at_school(db, school_id)
+    accounts = [a for a in accounts if _account_belongs_to_school(a, school_id=school_id, parent_ids_at_school=parent_ids_at_school)]
     invites = (
         await db.scalars(select(SchoolAccountInvite).where(SchoolAccountInvite.school_id == school_id, SchoolAccountInvite.status == "pending").order_by(SchoolAccountInvite.created_at.desc()))
     ).all()
@@ -185,7 +251,17 @@ async def update_team_account(user_id: UUID, payload: dict, user: User = Depends
     # INVITABLE_ROLES doubles as the guard against targeting a Coordinator, self or peer.
     if target.role not in INVITABLE_ROLES:
         raise HTTPException(403, "Can only activate/deactivate Principal, Teacher, or Parent accounts")
-    if (target.profile or {}).get("school_id") != str(school_id):
+    if target.role == "school_parent":
+        linked_here = await db.scalar(
+            select(SchoolParentLink.id)
+            .join(SchoolStudent, SchoolStudent.id == SchoolParentLink.school_student_id)
+            .where(SchoolParentLink.parent_user_id == target.id, SchoolStudent.school_id == school_id)
+            .limit(1)
+        )
+        at_school = linked_here is not None or (target.profile or {}).get("school_id") == str(school_id)
+    else:
+        at_school = (target.profile or {}).get("school_id") == str(school_id)
+    if not at_school:
         raise HTTPException(403, "This account is not at your institution")
     target.active = payload["active"]
     db.add(AuditLog(
@@ -211,10 +287,10 @@ async def accept_invite(token: str, payload: dict, response: Response, db: Async
         raise HTTPException(422, "Password must be at least 10 characters")
     if await db.scalar(select(User).where(User.email == invite.email)):
         raise HTTPException(409, "Email already exists")
-    # SCH-003-AC06 / DATA_MODEL.md §6.15: the resulting account's `school_id` is always the
-    # invite's own `school_id`, never a value supplied at acceptance time -- closes the
-    # same class of IDOR risk `AGT-002`/`UNI-001` already guard against, applied here to
-    # account creation.
+    # SCH-003-AC06 / DATA_MODEL.md §6.15: for non-parent roles, the account's `school_id` is
+    # always the invite's own `school_id`, never a value supplied at acceptance time -- closes
+    # the same class of IDOR risk `AGT-002`/`UNI-001` already guard against. For parent roles,
+    # school_id is not set (parents can be linked to multiple schools via SchoolParentLink).
     account = User(
         email=invite.email,
         password_hash=hash_password(password),
@@ -223,7 +299,7 @@ async def accept_invite(token: str, payload: dict, response: Response, db: Async
         division="overseas",
         active=True,
         email_verified=False,
-        profile={"school_id": str(invite.school_id)},
+        profile={} if invite.role == "school_parent" else {"school_id": str(invite.school_id)},
     )
     db.add(account)
     await db.flush()
@@ -254,6 +330,21 @@ async def accept_invite(token: str, payload: dict, response: Response, db: Async
 SCHOOL_ROLES = {"school_principal", "school_coordinator", "school_teacher", "school_parent"}
 
 
+def _skills():
+    """ENH-011's module, imported at call time: `school_skills` imports this module's helpers, so a top-level import here
+    would be circular."""
+    from app.api import school_skills  # noqa: PLC0415
+
+    return school_skills
+
+
+def _attendance():
+    """ENH-030's module, imported at call time for the same reason as `_skills()`: `school_attendance` imports this module's helpers."""
+    from app.api import school_attendance  # noqa: PLC0415
+
+    return school_attendance
+
+
 def _own_school_id(user: User) -> UUID:
     if user.role not in SCHOOL_ROLES:
         raise HTTPException(403, "School role required")
@@ -261,6 +352,15 @@ def _own_school_id(user: User) -> UUID:
     if not school_id:
         raise HTTPException(403, "This account is not linked to a school")
     return UUID(str(school_id))
+
+
+def _own_school_id_or_none_for_parent(user: User) -> UUID | None:
+    """ENH-008: a school_parent's scope is their SchoolParentLink rows alone, not a single school
+    (see _scoped_students_query) -- so unlike every other School role, calling _own_school_id() for
+    them would incorrectly 403 an account with no profile.school_id instead of reading their links.
+    Used by list_students() and _readable_students(), which both hand this straight to
+    _scoped_students_query()."""
+    return None if user.role == "school_parent" else _own_school_id(user)
 
 
 def _school_dashboard_kpi(key: str, label: str, value: int | None, *, tracked: bool = True, note: str | None = None) -> dict:
@@ -288,6 +388,19 @@ def _grade_level_from_label(label: str | None) -> str | None:
     return match.group(1) or match.group(2)
 
 
+async def _school_account_counts(db: AsyncSession, school_id: UUID) -> dict[str, int]:
+    """Teacher/parent/principal accounts of one school -- extracted unchanged from `_school_dashboard_payload` so ENH-016's
+    Part B §14 headcounts use exactly the same rule (ENH-008: parent membership via links)."""
+    accounts = (await db.scalars(select(User).where(User.role.in_(("school_principal", "school_teacher", "school_parent"))))).all()
+    parent_ids_at_school = await _parent_ids_at_school(db, school_id)
+    accounts = [a for a in accounts if _account_belongs_to_school(a, school_id=school_id, parent_ids_at_school=parent_ids_at_school)]
+    return {
+        "teachers": sum(1 for a in accounts if a.role == "school_teacher"),
+        "parents": sum(1 for a in accounts if a.role == "school_parent"),
+        "principals": sum(1 for a in accounts if a.role == "school_principal"),
+    }
+
+
 async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
     """Complete School CRM dashboard aggregation for Coordinator/Principal views.
 
@@ -310,14 +423,12 @@ async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
     grade_breakdown = [{"grade": g, "count": c} for g, c in sorted(grade_counts.items())]
     students_with_teacher = sum(1 for s in students if s.assigned_teacher_user_id)
 
-    school_accounts = (await db.scalars(select(User).where(User.role.in_(("school_principal", "school_teacher", "school_parent"))))).all()
-    school_accounts = [a for a in school_accounts if (a.profile or {}).get("school_id") == str(school_id)]
-    teacher_count = sum(1 for a in school_accounts if a.role == "school_teacher")
-    parent_count = sum(1 for a in school_accounts if a.role == "school_parent")
-    principal_count = sum(1 for a in school_accounts if a.role == "school_principal")
+    account_counts = await _school_account_counts(db, school_id)
+    teacher_count, parent_count, principal_count = account_counts["teachers"], account_counts["parents"], account_counts["principals"]
     pending_invite_count = len((await db.scalars(select(SchoolAccountInvite).where(SchoolAccountInvite.school_id == school_id, SchoolAccountInvite.status == "pending"))).all())
 
     career_rows: list[SchoolCareerRecord] = []
+    internship_rows: list = []  # ENH-021: (school_student_id, completion_status) of every internship entry
     psych_rows: list[SchoolPsychometricRecord] = []
     published_students: set = set()
     test_prep_rows: list[SchoolTestPrepRecord] = []
@@ -332,19 +443,33 @@ async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
         )
         test_prep_rows = (await db.scalars(select(SchoolTestPrepRecord).where(SchoolTestPrepRecord.school_student_id.in_(student_ids)))).all()
         language_rows = (await db.scalars(select(SchoolLanguageRecord).where(SchoolLanguageRecord.school_student_id.in_(student_ids)))).all()
+        internship_rows = (await db.execute(
+            select(PortfolioEntry.school_student_id, PortfolioEntry.completion_status)
+            .where(PortfolioEntry.school_student_id.in_(student_ids), PortfolioEntry.section == "internship")
+        )).all()
         applications = (await db.scalars(select(OverseasApplication).where(OverseasApplication.school_student_id.in_(student_ids)))).all()
         application_ids = [application.id for application in applications]
         if application_ids:
             visas = (await db.scalars(select(VisaCase).where(VisaCase.application_id.in_(application_ids)))).all()
 
     career_students = {r.school_student_id for r in career_rows}
-    guidance_students = {r.school_student_id for r in career_rows if r.record_type == "guidance_session"}
-    counselling_students = {r.school_student_id for r in career_rows if r.record_type == "counselling_note"}
+    # ENH-026 C5: a session counts once delivered (completed / follow-up required), or when it predates status tracking.
+    guidance_students = {r.school_student_id for r in career_rows if r.record_type == "guidance_session" and counts_as_completed(r.status)}
+    counselling_students = {r.school_student_id for r in career_rows if r.record_type == "counselling_note" and counts_as_completed(r.status)}
     psych_completed_students = {r.school_student_id for r in psych_rows if r.status == "completed"}
     psych_assigned_students = {r.school_student_id for r in psych_rows} - psych_completed_students
     ielts_students = {r.school_student_id for r in test_prep_rows if r.test_type == "ielts"}
     sat_students = {r.school_student_id for r in test_prep_rows if r.test_type == "sat"}
     language_students = {r.school_student_id for r in language_rows}
+    from app.api.school_analytics import portfolio_started_ids, skill_statuses, students_in  # noqa: PLC0415 -- school_analytics imports this module
+
+    school_scope = students_in([school_id])
+    portfolio_students = await portfolio_started_ids(db, school_scope)  # ENH-016 D11
+    skill_students = await skill_statuses(db, school_scope)  # ENH-016 D8: ENH-011 enrolments, withdrawn excluded
+    # ENH-021 I7: the KPI counts students with any internship entry; the chart counts entries per completion status.
+    internship_students = {student_id for student_id, _status in internship_rows}
+    internship_status = [{"status": s, "count": sum(1 for _sid, status in internship_rows if status == s)} for s in INTERNSHIP_STATUS_ORDER]
+    internship_status.append({"status": "no_status", "count": sum(1 for _sid, status in internship_rows if status is None)})
     global_students = {a.school_student_id for a in applications if a.school_student_id}
     shortlisted_students = {a.school_student_id for a in applications if a.school_student_id and _stage_at_or_after(a.status, "university_selection")}
     admitted_students = {a.school_student_id for a in applications if a.school_student_id and a.status == "enrolled"}
@@ -415,13 +540,13 @@ async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
             _school_dashboard_kpi("ielts_training", "IELTS Training", len(ielts_students)),
             _school_dashboard_kpi("sat_preparation", "SAT Preparation", len(sat_students)),
             _school_dashboard_kpi("foreign_language_students", "Foreign Language Students", len(language_students)),
-            _school_dashboard_kpi("digital_portfolios_created", "Digital Portfolios Created", None, tracked=False, note=UNTRACKED_SCHOOL_DASHBOARD_KPIS["digital_portfolios_created"]),
+            _school_dashboard_kpi("digital_portfolios_created", "Digital Portfolios Created", len(portfolio_students)),
             _school_dashboard_kpi("university_shortlisting", "University Shortlisting", len(shortlisted_students)),
             _school_dashboard_kpi("applications_in_progress", "Applications in Progress", len(applications_in_progress)),
             _school_dashboard_kpi("offers_received", "Offers Received", len(offers)),
             _school_dashboard_kpi("visa_applications", "Visa Applications", len(visa_student_ids)),
             _school_dashboard_kpi("students_admitted", "Students Admitted", len(admitted_students)),
-            _school_dashboard_kpi("internships", "Internships", None, tracked=False, note=UNTRACKED_SCHOOL_DASHBOARD_KPIS["internships"]),
+            _school_dashboard_kpi("internships", "Internships", len(internship_students)),
         ],
         "completion": [
             {"key": "career_guidance", "label": "Career guidance completion", "value": len(guidance_students), "total": total_students, "tracked": True},
@@ -441,6 +566,8 @@ async def _school_dashboard_payload(db: AsyncSession, school_id: UUID) -> dict:
         },
         "application_pipeline": application_pipeline,
         "visa_status": visa_status,
+        "skills_training": {"soft_skills": len(skill_students["soft_skills"]), "digital_skills": len(skill_students["digital_skills"]), "total_students": total_students},
+        "internship_status": internship_status,
         "untracked_charts": UNTRACKED_SCHOOL_DASHBOARD_CHARTS,
     }
 
@@ -453,8 +580,76 @@ def _validate_grade_level(value) -> int | None:
     return value
 
 
+# --- ENH-004: student promotion (docs/superpowers/specs/2026-09-19-enh-004-student-promotion-design.md) ---
+MAX_GRADE_LEVEL = 12
+GRADE_LABEL_MAX_LENGTH = 60  # the school_students.grade_or_class column width
+# Same pattern family as migration 0030 and `_grade_level_from_label`.
+GRADE_LABEL_PATTERN = re.compile(r"\b(?:grade|class)\s*(\d{1,2})\b|\b(\d{1,2})\b", re.IGNORECASE)
+# Stable, machine-readable reasons on a failed/skipped promotion row. Clients may branch on these: never rename one.
+REASON_ALREADY_IN_ACTIVE_YEAR = "already_in_active_year"
+REASON_GRADE_LEVEL_NOT_SET = "grade_level_not_set"
+REASON_TERMINAL_GRADE = "terminal_grade"
+REASON_LABEL_UNPARSEABLE = "label_unparseable"
+
+
+def _swap_grade_label(label: str | None, from_level: int, to_level: int) -> tuple[str | None, str | None]:
+    """Advance the grade number inside a free-text label ("Grade 8-A" -> "Grade 9-A"). Returns
+    (new_label, problem): a missing label stays missing; a label with no grade number, whose number
+    disagrees with `from_level`, or whose result would not fit the column returns (None, message)."""
+    if label is None:
+        return None, None
+    match = GRADE_LABEL_PATTERN.search(label)
+    if match is None:
+        return None, "grade_or_class has no grade number to advance; supply grade_or_class"
+    group = 1 if match.group(1) is not None else 2
+    if int(match.group(group)) != from_level:
+        return None, "grade_or_class does not match grade_level; supply grade_or_class"
+    swapped = label[: match.start(group)] + str(to_level) + label[match.end(group) :]
+    if len(swapped) > GRADE_LABEL_MAX_LENGTH:
+        return None, f"the advanced grade_or_class would be longer than {GRADE_LABEL_MAX_LENGTH} characters; supply a shorter grade_or_class"
+    return swapped, None
+
+
+@dataclass(frozen=True)
+class PromotionDecision:
+    status: str  # promoted | held_back | failed | skipped
+    grade_level: int | None
+    grade_or_class: str | None
+    reason: str | None = None
+    message: str | None = None
+
+
+def _decide_promotion(*, action: str, student_year_id: UUID | None, active_year_id: UUID, grade_level: int | None, grade_or_class: str | None, override: str | None) -> PromotionDecision:
+    """The whole per-row rule table (spec §5.2), with no database access. `grade_level` and
+    `grade_or_class` on the result are the student's state after the request."""
+
+    def _unchanged(status: str, reason: str, message: str) -> PromotionDecision:
+        return PromotionDecision(status, grade_level, grade_or_class, reason, message)
+
+    if student_year_id == active_year_id:
+        return _unchanged("skipped", REASON_ALREADY_IN_ACTIVE_YEAR, "Student is already in the active academic year.")
+    if action == "hold_back":
+        return PromotionDecision("held_back", grade_level, grade_or_class)
+    if grade_level is None:
+        return _unchanged("failed", REASON_GRADE_LEVEL_NOT_SET, "grade_level is not set; set it on the student before promoting.")
+    if grade_level >= MAX_GRADE_LEVEL:
+        return _unchanged("failed", REASON_TERMINAL_GRADE, f"Grade {MAX_GRADE_LEVEL} is the highest grade; graduation is not supported yet.")
+    new_level = grade_level + 1
+    if override is not None:
+        return PromotionDecision("promoted", new_level, override)
+    new_label, problem = _swap_grade_label(grade_or_class, grade_level, new_level)
+    if problem is not None:
+        return _unchanged("failed", REASON_LABEL_UNPARSEABLE, problem)
+    return PromotionDecision("promoted", new_level, new_label)
+
+
+async def _active_academic_year(db: AsyncSession) -> AcademicYear | None:
+    """The one "current academic year" rule (ENH-001): the latest-starting active year."""
+    return await db.scalar(select(AcademicYear).where(AcademicYear.status == "active").order_by(AcademicYear.start_date.desc()))
+
+
 async def _current_academic_year_id(db: AsyncSession) -> UUID | None:
-    year = await db.scalar(select(AcademicYear).where(AcademicYear.status == "active").order_by(AcademicYear.start_date.desc()))
+    year = await _active_academic_year(db)
     return year.id if year else None
 
 
@@ -469,25 +664,81 @@ def _student_out(s: SchoolStudent) -> dict:
         "pending_parent_email": s.pending_parent_email,
         "academic_year_id": s.academic_year_id,
         "grade_level": s.grade_level,
+        # ENH-025: additive; the photo itself is only ever served by GET .../photo, never as a key or URL.
+        **{name: getattr(s, name) for name in MASTER_FIELD_KEYS},
+        "has_photo": s.photo_key is not None,
     }
 
 
+# --- ENH-025: Student Master fields (DEC-SCOPE-029) -------------------------------------------------
+
+ROLL_CONSTRAINT = "uq_school_students_roll"
+ROLL_TAKEN = "roll_number '{roll}' is already used in this grade and section for this academic year"
+
+
+def _master_fields_or_422[M: BaseModel](model: type[M], data: dict) -> M:
+    try:
+        return model.model_validate(data)
+    except ValidationError as exc:
+        raise HTTPException(422, validation_message(exc)) from None
+
+
+def _master_subset(payload: dict) -> dict:
+    """Only the ENH-025 keys; every other key keeps its existing hand-written handling (or is ignored, as today)."""
+    return {key: payload[key] for key in MASTER_FIELD_KEYS if key in payload}
+
+
+def _psychometric_subset(payload: dict) -> dict:
+    """ENH-027: only the ten result keys; `report_url`/`assessment_type`/`school_student_id` keep their existing handling
+    and every other key stays ignored (no mass assignment, spec §4.2)."""
+    return {key: payload[key] for key in PSYCHOMETRIC_RESULT_KEYS if key in payload}
+
+
+def _psychometric_result_out(record: SchoolPsychometricRecord) -> dict:
+    """ENH-027: the ten result fields for every psychometric read shape (null = not recorded)."""
+    return {key: getattr(record, key) for key in PSYCHOMETRIC_RESULT_KEYS}
+
+
+def _apply_master_fields(student: SchoolStudent, fields: BaseModel) -> list[str]:
+    """Set every field the client sent; return the names that actually changed (for audit -- never values)."""
+    changed = []
+    for name in sorted(fields.model_fields_set):
+        value = getattr(fields, name)
+        if getattr(student, name) != value:
+            setattr(student, name, value)
+            changed.append(name)
+    return changed
+
+
+def _is_roll_conflict(exc: IntegrityError) -> bool:
+    return ROLL_CONSTRAINT in str(exc.orig)
+
+
+async def _flush_or_409(db: AsyncSession, roll_number: str | None) -> None:
+    """Flush inside a savepoint so a roll-number clash is a clean 409 decided by the unique index (no
+    read-then-check race). Any other integrity error is re-raised unchanged."""
+    try:
+        async with db.begin_nested():
+            await db.flush()
+    except IntegrityError as exc:
+        if _is_roll_conflict(exc):
+            logger.info("student_roll_conflict", extra={"extra_fields": {"outcome": "rejected"}})
+            raise HTTPException(409, ROLL_TAKEN.format(roll=roll_number)) from None
+        raise
+
+
 # --- SCH-007: Parent Portal notifications ---------------------------------------------------
-# Every trigger below writes the in-app `Notification` row first (what the Parent Portal
-# lists), then records one `NotificationDelivery` for the email copy (`NOT-001`'s per-channel
-# contract). Real SMTP via `mailer.send_parent_notification_email`; when SMTP isn't
-# configured the platform's generic webhook channel is tried instead, and whichever
-# outcome results is persisted -- a failed or unconfigured send never blocks the write
-# that triggered it (SCH-007-AC04).
+# Every trigger below writes the in-app `Notification` row, then queues one `NotificationDelivery` per channel -- email
+# always, WhatsApp/SMS when the recipient opted in (ENH-014, DEC-NOT-001 2026-09-30). The worker sends them after the
+# triggering write commits (app/notifications/delivery.py): real SMTP via `mailer.send_parent_notification_email`, the
+# generic email webhook when SMTP isn't configured, Twilio for WhatsApp/SMS. A failed or unconfigured send never blocks
+# or reverts the write that triggered it (SCH-007-AC04).
 
 async def _notify_parent(db: AsyncSession, parent: User, *, school_name: str, title: str, body: str, action_url: str | None) -> None:
     item = Notification(user_id=parent.id, title=title, body=body, read=False, action_url=action_url)
     db.add(item)
     await db.flush()
-    status, error = await send_parent_notification_email(to_email=parent.email, recipient_name=parent.full_name, school_name=school_name, title=title, body=body, action_url=action_url)
-    if status == "not_configured":
-        status, error = await send_notification("email", {"to": parent.email, "title": title, "body": body, "action_url": action_url})
-    db.add(NotificationDelivery(notification_id=item.id, channel="email", status=status, error=error, sent_at=datetime.now(UTC) if status == "sent" else None))
+    await queue_deliveries(db, item, parent, context={"kind": "school", "school_name": school_name})
 
 
 async def _notify_student_parents(db: AsyncSession, student: SchoolStudent, *, title: str, body: str, action_url: str | None) -> int:
@@ -504,6 +755,58 @@ async def _notify_student_parents(db: AsyncSession, student: SchoolStudent, *, t
     for parent in parents:
         await _notify_parent(db, parent, school_name=school.name if school else "your school", title=title, body=body, action_url=action_url)
     return len(parents)
+
+
+# --- ENH-026: one serializer and one rule set for career records (spec §5.1, A3) -------------------------------
+
+async def _user_names(db: AsyncSession, ids) -> dict:
+    wanted = {i for i in ids if i}
+    if not wanted:
+        return {}
+    return dict((await db.execute(select(User.id, User.full_name).where(User.id.in_(wanted)))).all())
+
+
+def _career_record_out(r: SchoolCareerRecord, names: dict) -> dict:
+    return {
+        "id": r.id, "school_student_id": r.school_student_id, "record_type": r.record_type, "notes": r.notes,
+        "created_at": r.created_at, "updated_at": r.updated_at, "status": r.status,
+        **{key: getattr(r, key) for key in CAREER_DATE_KEYS}, **{key: getattr(r, key) for key in CAREER_STRUCTURED_KEYS},
+        "counselor_name": names.get(r.career_counselor_user_id), "updated_by_name": names.get(r.updated_by_user_id),
+    }
+
+
+async def _career_records_out(db: AsyncSession, rows) -> list[dict]:
+    names = await _user_names(db, [i for r in rows for i in (r.career_counselor_user_id, r.updated_by_user_id)])
+    return [_career_record_out(r, names) for r in rows]
+
+
+def _enter_career_status(record: SchoolCareerRecord, new: str | None, old: str | None, sent: set) -> str | None:
+    """Apply a status change's own rules (C6/C7). Returns a 422 message, or None."""
+    record.status = new
+    if new == old:
+        return None
+    if new == "scheduled" and "scheduled_for" not in sent:
+        return "A scheduled session needs a date and time."
+    if new == "completed" and "completed_on" not in sent:
+        record.completed_on = _today_ist()
+    if new == "follow_up_required" and "next_follow_up_date" not in sent:
+        return "Choose the next follow-up date."
+    if old == "follow_up_required":
+        record.next_follow_up_date = None
+    return None
+
+
+def _career_rule_error(record: SchoolCareerRecord) -> str | None:
+    """Post-merge rules (C6-C8) on the record as it would be saved."""
+    if record.status == "scheduled" and record.scheduled_for is None:
+        return "A scheduled session needs a date and time."
+    if record.status in COUNTED_CAREER_STATUSES and not record.notes:
+        return "notes is required"
+    if record.status == "follow_up_required" and record.next_follow_up_date is not None and record.next_follow_up_date < _today_ist():
+        return "The next follow-up date must be today or later."
+    if record.status != "follow_up_required" and record.next_follow_up_date is not None:
+        return "A next follow-up date can only be set when the status is Follow-up Required."
+    return None
 
 
 async def _notify_school_parents(db: AsyncSession, school_id: UUID, *, title: str, body: str, action_url: str | None) -> int:
@@ -527,34 +830,35 @@ async def _notify_school_parents(db: AsyncSession, school_id: UUID, *, title: st
     return len(parents)
 
 
-async def _parent_email_conflict(db: AsyncSession, *, school_id: UUID, parent_email: str) -> str | None:
-    """None means the email is safe to use as a parent_email (either genuinely new, or
-    already a school_parent at this same school); a string explains why it can't be --
-    an existing account under that email with a different role, or a Parent at a
-    different school. Shared by single-add/edit (raises 422) and bulk upload (rejects
-    just that row, `SCH-002-AC04`'s never-block-the-batch discipline)."""
+async def _parent_email_conflict(db: AsyncSession, *, parent_email: str) -> tuple[User | None, str | None]:
+    """Returns (existing_user, conflict). conflict is None when the email is safe to use as a
+    parent_email (either genuinely new, or already a school_parent at any school) -- in that case
+    existing_user is the resolved account (school_parent) or None (no account yet), so callers that
+    need it never have to re-query by email. A conflict string means an existing account under that
+    email has a role other than school_parent; existing_user is None in that case, since no caller
+    may use that account. Shared by single-add/edit (raises 422), bulk upload (rejects just that
+    row, `SCH-002-AC04`'s never-block-the-batch discipline), and link_parent()."""
     existing_user = await db.scalar(select(User).where(User.email == parent_email))
-    if existing_user and (existing_user.role != "school_parent" or (existing_user.profile or {}).get("school_id") != str(school_id)):
-        return f"parent_email '{parent_email}' belongs to an existing account that is not a Parent at this school"
-    return None
+    if existing_user and existing_user.role != "school_parent":
+        return None, f"parent_email '{parent_email}' belongs to an existing account that is not a Parent"
+    return existing_user, None
 
 
 async def _link_or_invite_parent(db: AsyncSession, *, school: School, student: SchoolStudent, parent_email: str, parent_name: str | None, coordinator: User) -> tuple[str, str | None, str | None]:
     """Roster-driven parent linkage (single-add, edit, or bulk upload all call this).
     Returns (status, error, development_invite_token): status is "linked" (an existing
-    school_parent account at this school was linked immediately, no email sent), "invited"
+    school_parent account was linked immediately, no email sent), "invited"
     (no account existed yet, a new invite was created and emailed), or "invite_reused"
     (another roster row already triggered a pending invite for this exact email -- reused,
     no duplicate email sent). "rejected" + an error message means the email belongs to an
-    account that can't be this student's parent (wrong role, or a Parent at a different
-    school) -- never invented. The token is only ever non-None in a development
-    environment and only for "invited" -- same dev-only exposure as `/team/invites`.
+    account that can't be this student's parent (wrong role) -- never invented. The token
+    is only ever non-None in a development environment and only for "invited" -- same
+    dev-only exposure as `/team/invites`.
     """
     parent_email = parent_email.lower().strip()
-    conflict = await _parent_email_conflict(db, school_id=school.id, parent_email=parent_email)
+    existing_user, conflict = await _parent_email_conflict(db, parent_email=parent_email)
     if conflict:
         return "rejected", conflict, None
-    existing_user = await db.scalar(select(User).where(User.email == parent_email))
     if existing_user:
         already = await db.scalar(select(SchoolParentLink).where(SchoolParentLink.parent_user_id == existing_user.id, SchoolParentLink.school_student_id == student.id))
         if not already:
@@ -570,19 +874,26 @@ async def _link_or_invite_parent(db: AsyncSession, *, school: School, student: S
     return "invited", None, invite_response.get("development_invite_token")
 
 
-async def _scoped_students_query(db: AsyncSession, user: User, school_id: UUID):
+async def _scoped_students_query(db: AsyncSession, user: User, school_id: UUID | None):
     """SCH-001-AC02/AC03: every query is filtered server-side by the acting role's own
     scope -- own institution for Principal/Coordinator, own institution + assigned only for
     Teacher, own institution + own child(ren) only for Parent. Never a client-supplied
     filter, and a narrower-than-institution scope is a distinct check from the
     institution check itself, not implied by it (same class as `DEC-SCOPE-013`'s
-    portfolio-vs-institution distinction for the School service-delivery roles)."""
+    portfolio-vs-institution distinction for the School service-delivery roles).
+
+    ENH-005 + ENH-008: a Parent's scope is their LINKS alone, not their account's school. This query's security
+    guarantee is: a parent can only read students they have an explicit SchoolParentLink to (below),
+    regardless of whether the link's school matches the parent's account's school. ENH-008 allows fresh links
+    to be cross-school; ENH-005 already tolerated cross-school links for transfers. The scoping is link-driven,
+    not school-driven, so the link table is the sole enforcement point. (Security review S2, pinned by
+    tests/test_enh_005_scope.py)."""
+    if user.role == "school_parent":
+        linked = select(SchoolParentLink.school_student_id).where(SchoolParentLink.parent_user_id == user.id)
+        return select(SchoolStudent).where(SchoolStudent.id.in_(linked))
     stmt = select(SchoolStudent).where(SchoolStudent.school_id == school_id)
     if user.role == "school_teacher":
         stmt = stmt.where(SchoolStudent.assigned_teacher_user_id == user.id)
-    elif user.role == "school_parent":
-        linked = select(SchoolParentLink.school_student_id).where(SchoolParentLink.parent_user_id == user.id)
-        stmt = stmt.where(SchoolStudent.id.in_(linked))
     return stmt
 
 
@@ -677,7 +988,7 @@ TIER_SERVICES: dict[str, list[tuple[str, str]]] = {
     ],
     "silver": [
         ("individual_counselling", "Individual counselling"),
-        ("web_designing", "Web designing"),
+        ("web_designing", "Digital skills"),  # ENH-022 D13: named as the skills tracker names the module (key unchanged)
     ],
     "gold": [
         ("application_support", "Application support"),
@@ -708,6 +1019,208 @@ def _cumulative_services(tier: str | None) -> list[tuple[str, str]]:
     return services
 
 
+# ENH-022 / DEC-SCOPE-027: the tier is enforced on every write to a TIER_SERVICES service, not only reported above.
+TIER_TIMEZONE = ZoneInfo("Asia/Kolkata")  # D10: a partnership expires on the India calendar
+TIER_DENIED = "school.tier_access_denied"
+NO_ACTIVE_TIER = "This school has no active partnership tier."
+SERVICE_LABELS = {key: label for services in TIER_SERVICES.values() for key, label in services}
+
+TIER_UPDATE = "school.tier_update"
+
+
+def _tier_name(tier: str | None) -> str:
+    return tier.capitalize() if tier in TIER_ORDER else "no partnership tier"
+
+
+def _tier_transition(old: str | None, new: str | None) -> tuple[str, list[str], list[str]]:
+    """ENH-023 / DEC-SCOPE-030: (direction, gained keys, lost keys). Built only from `_cumulative_services`, so tier ordering
+    lives in one place; an unknown or None tier has no services. Tiers are cumulative, so a change never both gains and loses."""
+    before = [key for key, _ in _cumulative_services(old)]
+    after = [key for key, _ in _cumulative_services(new)]
+    gained = [key for key in after if key not in before]
+    lost = [key for key in before if key not in after]
+    return ("upgrade" if gained else "downgrade" if lost else "unchanged"), gained, lost
+
+
+def tier_change_payload(old: str | None, new: str | None) -> dict:
+    """The `tier_change` object returned by the tier PATCH and its preview (ENH-023 spec §4.2)."""
+    direction, gained, lost = _tier_transition(old, new)
+    return {
+        "direction": direction,
+        "from_tier": old,
+        "to_tier": new,
+        "gained": [{"key": key, "label": SERVICE_LABELS[key]} for key in gained],
+        "lost": [{"key": key, "label": SERVICE_LABELS[key]} for key in lost],
+    }
+
+
+# Request values -> the service they consume; also the allowlists those request fields are validated against.
+ACTIVITY_SERVICE_KEYS = {"career_seminar": "career_seminar", "career_awareness_session": "career_awareness_session", "parent_orientation": "parent_orientation", "campus_visit": "monthly_campus_visits"}
+TEST_PREP_SERVICE_KEYS = {"ielts": "ielts_coaching", "sat": "sat_coaching"}
+# ENH-020 D2 (DEC-SCOPE-045): a funding support case consumes the service of its type; the type never changes after creation.
+FUNDING_SERVICE_KEYS = {"education_loan": "loan_assistance", "financial_assistance": "loan_assistance", "funding_guidance": "loan_assistance", "scholarship": "scholarship_assistance"}
+
+
+def _today_ist() -> date:
+    return datetime.now(TIER_TIMEZONE).date()
+
+
+def _minimum_tier(service_key: str) -> str:
+    for tier in TIER_ORDER:
+        if any(key == service_key for key, _ in TIER_SERVICES[tier]):
+            return tier
+    raise ValueError(f"Unknown tier service key: {service_key!r}")
+
+
+def _entitlement_denial(tier: str | None, valid_until: date | None, service_key: str | None, today: date) -> tuple[str, str] | None:
+    """(reason, 403 message) when the school may not use `service_key`, else None. `service_key=None` asks only for a
+    valid tier (D7). An unknown key raises: a mis-wired call site must fail loudly, never deny forever in silence."""
+    minimum = _minimum_tier(service_key) if service_key is not None else None
+    if tier not in TIER_ORDER:
+        return "no_tier", NO_ACTIVE_TIER
+    if valid_until is not None and valid_until < today:
+        return "expired", f"This school's partnership expired on {valid_until.strftime('%d %b %Y')}."
+    if service_key is not None and service_key not in {key for key, _ in _cumulative_services(tier)}:
+        return "not_included", (
+            f"This school's {tier.capitalize()} partnership does not include {SERVICE_LABELS[service_key]} "
+            f"(requires {minimum.capitalize()} or higher)."
+        )
+    return None
+
+
+TIER_GRANDFATHERED = "school.tier_grandfathered"
+
+
+def _grandfathers(metadata: dict, service_key: str | None) -> bool:
+    """ENH-023 §5: does this `school.tier_update` row take `service_key` away? Rows written before ENH-023 carry no
+    `direction` and never match; `service_key=None` (a free-text activity, ENH-022 D7) is taken away only by a removal."""
+    if metadata.get("direction") != "downgrade":
+        return False
+    if service_key is None:
+        return metadata.get("to_tier") is None
+    return service_key in metadata.get("lost", [])
+
+
+async def _lost_since(db: AsyncSession, school_id: UUID, service_key: str | None, since: datetime) -> bool:
+    """Was `service_key` taken from this school by a tier change after `since`? Filters on the indexed action in SQL and reads
+    the metadata in Python: no JSON operators, no migration. These rows are business inputs now and must not be pruned."""
+    rows = (
+        await db.scalars(select(AuditLog.metadata_json).where(AuditLog.action == TIER_UPDATE, AuditLog.entity_id == str(school_id), AuditLog.created_at > since))
+    ).all()
+    return any(_grandfathers(metadata or {}, service_key) for metadata in rows)
+
+
+async def _is_grandfathered(db: AsyncSession, school: School | None, reason: str, service_key: str | None, since: datetime) -> bool:
+    """ENH-023 D2/D6: only a `not_included`/`no_tier` denial on an unexpired school can be lifted; `expired` never is."""
+    if school is None or reason not in {"not_included", "no_tier"}:
+        return False
+    if school.tier_valid_until is not None and school.tier_valid_until < _today_ist():
+        return False
+    return await _lost_since(db, school.id, service_key, since)
+
+
+async def require_school_entitlement(db: AsyncSession, user: User, school_id: UUID, service_key: str | None, *, grandfathered_since: datetime | None = None) -> None:
+    """403 unless the school's valid cumulative tier includes `service_key`. Call it after the route's own role and scope
+    checks and before any write: a denial commits its audit row (D12), so nothing else may be pending in the session.
+    ENH-023 (DEC-SCOPE-030 D2/D8): a route finishing existing work passes that work's `created_at` as `grandfathered_since`;
+    the denial is then lifted when a tier change after that time took the service away (never for an expired partnership)."""
+    school = await db.get(School, school_id)
+    tier = school.tier if school else None
+    denial = _entitlement_denial(tier, school.tier_valid_until if school else None, service_key, _today_ist())
+    if denial is None:
+        return
+    reason, message = denial
+    if grandfathered_since is not None and await _is_grandfathered(db, school, reason, service_key, grandfathered_since):
+        # D14: added, NOT committed -- it rides on the route's own commit, so a route that fails later leaves no trace.
+        db.add(AuditLog(user_id=user.id, action=TIER_GRANDFATHERED, entity_type="school", entity_id=str(school_id), metadata_json={"service_key": service_key, "reason": reason, "tier": tier, "grandfathered_since": grandfathered_since.isoformat()}))
+        logger.info("tier_grandfathered", extra={"extra_fields": {"actor_id": str(user.id), "role": user.role, "school_id": str(school_id), "service_key": service_key}})
+        return
+    fields = {"actor_id": str(user.id), "role": user.role, "school_id": str(school_id), "service_key": service_key, "reason": reason}
+    db.add(AuditLog(user_id=user.id, action=TIER_DENIED, entity_type="school", entity_id=str(school_id), outcome="denied", metadata_json={"service_key": service_key, "reason": reason, "tier": tier}))
+    try:
+        await db.commit()
+    except SQLAlchemyError:
+        # The denial stands even when its audit row cannot be written.
+        await db.rollback()
+        logger.exception("tier_access_denied_audit_failed", extra={"extra_fields": fields})
+    logger.warning("tier_access_denied", extra={"extra_fields": fields})
+    raise HTTPException(403, message)
+
+
+async def service_usage(db: AsyncSession, school_ids: Collection[UUID]) -> dict[UUID, dict[str, int | bool | None]]:
+    """DEC-SCOPE-017 usage per school and service, extracted from `school_entitlements` for ENH-016's cross-school rollup (spec
+    §5.2). One grouped query per source, so the query count does not depend on how many schools are asked for. A key that is
+    absent here is "not yet tracked" (`used: None`). ENH-016 D13 adds `digital_portfolio_creation` (students with a started
+    portfolio, D11). No writes."""
+    from app.api.school_analytics import portfolio_started_ids, students_in  # noqa: PLC0415 -- school_analytics imports this module
+
+    ids = list(school_ids)
+    if not ids:
+        return {}
+    usage: dict[UUID, dict[str, int | bool | None]] = {school_id: {} for school_id in ids}
+    in_schools = SchoolStudent.school_id.in_(ids)
+
+    async def _per_school(key: str, stmt) -> None:
+        counts = dict((await db.execute(stmt)).tuples().all())
+        for school_id in ids:
+            usage[school_id][key] = counts.get(school_id, 0)
+
+    def _student_rows(model, *conditions):
+        return select(SchoolStudent.school_id, func.count(model.id)).join(SchoolStudent, SchoolStudent.id == model.school_student_id).where(in_schools, *conditions).group_by(SchoolStudent.school_id)
+
+    await _per_school("psychometric_test", _student_rows(SchoolPsychometricRecord))
+    await _per_school(
+        "individual_counselling",
+        _student_rows(
+            SchoolCareerRecord, SchoolCareerRecord.record_type == "counselling_note",
+            or_(SchoolCareerRecord.status.is_(None), SchoolCareerRecord.status.in_(COUNTED_CAREER_STATUSES)),  # ENH-026 C5
+        ),
+    )
+    await _per_school("ielts_coaching", _student_rows(SchoolTestPrepRecord, SchoolTestPrepRecord.test_type == "ielts"))
+    await _per_school("sat_coaching", _student_rows(SchoolTestPrepRecord, SchoolTestPrepRecord.test_type == "sat"))
+    await _per_school("foreign_language_classes", _student_rows(SchoolLanguageRecord))
+    await _per_school("application_support", _student_rows(OverseasApplication))
+    await _per_school(  # ENH-021 I7: distinct students with an internship entry, same definition as the dashboard KPI
+        "internships",
+        select(SchoolStudent.school_id, func.count(distinct(PortfolioEntry.school_student_id)))
+        .join(SchoolStudent, SchoolStudent.id == PortfolioEntry.school_student_id)
+        .where(in_schools, PortfolioEntry.section == "internship")
+        .group_by(SchoolStudent.school_id),
+    )
+    await _per_school(
+        "visa_support",
+        select(SchoolStudent.school_id, func.count(VisaCase.id))
+        .join(OverseasApplication, OverseasApplication.id == VisaCase.application_id)
+        .join(SchoolStudent, SchoolStudent.id == OverseasApplication.school_student_id)
+        .where(in_schools)
+        .group_by(SchoolStudent.school_id),
+    )
+    # ENH-020 D8/D12: distinct students with a funding support case, credited to the school that opened it (no join to where the
+    # student is now). A closed case still counts: the guidance was delivered.
+    funding_students = select(SchoolFundingRecord.school_id, func.count(distinct(SchoolFundingRecord.school_student_id))).where(SchoolFundingRecord.school_id.in_(ids)).group_by(SchoolFundingRecord.school_id)
+    for service in ("loan_assistance", "scholarship_assistance"):
+        types = [support_type for support_type, key in FUNDING_SERVICE_KEYS.items() if key == service]
+        await _per_school(service, funding_students.where(SchoolFundingRecord.support_type.in_(types)))
+    activity_counts = await db.execute(
+        select(SchoolActivity.school_id, SchoolActivity.activity_type, func.count())
+        .where(SchoolActivity.school_id.in_(ids), SchoolActivity.activity_type.in_(list(ACTIVITY_SERVICE_KEYS)))
+        .group_by(SchoolActivity.school_id, SchoolActivity.activity_type)
+    )
+    for school_id in ids:
+        usage[school_id].update({service: 0 for service in ACTIVITY_SERVICE_KEYS.values()})
+    for school_id, activity_type, count in activity_counts.tuples():
+        usage[school_id][ACTIVITY_SERVICE_KEYS[activity_type]] = count
+    staffed = set((await db.scalars(select(SchoolStaffAssignment.school_id).where(SchoolStaffAssignment.school_id.in_(ids)).distinct())).all())
+    skills = await _skills().skill_usage_many(db, ids)  # ENH-011: soft_skills / web_designing
+    started = await portfolio_started_ids(db, students_in(ids))
+    portfolios = Counter((await db.scalars(select(SchoolStudent.school_id).where(SchoolStudent.id.in_(started)))).all()) if started else Counter()
+    for school_id in ids:
+        usage[school_id]["dedicated_counselor"] = school_id in staffed
+        usage[school_id].update(skills[school_id])
+        usage[school_id]["digital_portfolio_creation"] = portfolios[school_id]
+    return usage
+
+
 @router.get("/entitlements")
 async def school_entitlements(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """DEC-SCOPE-017 -- what this school's partnership tier includes, with a REAL usage
@@ -724,31 +1237,7 @@ async def school_entitlements(user: User = Depends(get_current_user), db: AsyncS
     if not services:
         return {"tier": school.tier if school else None, "tier_valid_until": school.tier_valid_until if school else None, "services": []}
 
-    student_ids = (await db.scalars(select(SchoolStudent.id).where(SchoolStudent.school_id == school_id))).all()
-
-    async def _activity_count(activity_type: str) -> int:
-        return len((await db.scalars(select(SchoolActivity.id).where(SchoolActivity.school_id == school_id, SchoolActivity.activity_type == activity_type))).all())
-
-    usage: dict[str, int | bool | None] = {}
-    if student_ids:
-        usage["psychometric_test"] = len((await db.scalars(select(SchoolPsychometricRecord.id).where(SchoolPsychometricRecord.school_student_id.in_(student_ids)))).all())
-        usage["individual_counselling"] = len(
-            (await db.scalars(select(SchoolCareerRecord.id).where(SchoolCareerRecord.school_student_id.in_(student_ids), SchoolCareerRecord.record_type == "counselling_note"))).all()
-        )
-        usage["ielts_coaching"] = len((await db.scalars(select(SchoolTestPrepRecord.id).where(SchoolTestPrepRecord.school_student_id.in_(student_ids), SchoolTestPrepRecord.test_type == "ielts"))).all())
-        usage["sat_coaching"] = len((await db.scalars(select(SchoolTestPrepRecord.id).where(SchoolTestPrepRecord.school_student_id.in_(student_ids), SchoolTestPrepRecord.test_type == "sat"))).all())
-        usage["foreign_language_classes"] = len((await db.scalars(select(SchoolLanguageRecord.id).where(SchoolLanguageRecord.school_student_id.in_(student_ids)))).all())
-        application_ids = (await db.scalars(select(OverseasApplication.id).where(OverseasApplication.school_student_id.in_(student_ids)))).all()
-        usage["application_support"] = len(application_ids)
-        usage["visa_support"] = len((await db.scalars(select(VisaCase.id).where(VisaCase.application_id.in_(application_ids)))).all()) if application_ids else 0
-    else:
-        usage.update({"psychometric_test": 0, "individual_counselling": 0, "ielts_coaching": 0, "sat_coaching": 0, "foreign_language_classes": 0, "application_support": 0, "visa_support": 0})
-    usage["career_seminar"] = await _activity_count("career_seminar")
-    usage["career_awareness_session"] = await _activity_count("career_awareness_session")
-    usage["parent_orientation"] = await _activity_count("parent_orientation")
-    usage["monthly_campus_visits"] = await _activity_count("campus_visit")
-    usage["dedicated_counselor"] = bool(await db.scalar(select(SchoolStaffAssignment.id).where(SchoolStaffAssignment.school_id == school_id)))
-
+    usage = (await service_usage(db, [school_id]))[school_id]
     return {
         "tier": school.tier if school else None,
         "tier_valid_until": school.tier_valid_until if school else None,
@@ -758,7 +1247,7 @@ async def school_entitlements(user: User = Depends(get_current_user), db: AsyncS
 
 @router.get("/students")
 async def list_students(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    school_id = _own_school_id(user)
+    school_id = _own_school_id_or_none_for_parent(user)
     stmt = await _scoped_students_query(db, user, school_id)
     rows = (await db.scalars(stmt.order_by(SchoolStudent.full_name.asc()))).all()
     return [_student_out(s) for s in rows]
@@ -775,7 +1264,7 @@ async def roster_template(user: User = Depends(get_current_user)):
     buffer = io.StringIO()
     writer = csv.writer(buffer)
     writer.writerow(ROSTER_TEMPLATE_HEADERS)
-    writer.writerow(["Jane Doe", "2015-04-12", "Grade 5", "", "Jane's Parent", "", "5"])
+    writer.writerow(ROSTER_TEMPLATE_EXAMPLE)
     return Response(content=buffer.getvalue(), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=school-roster-template.csv"})
 
 
@@ -785,7 +1274,7 @@ async def active_academic_year(user: User = Depends(get_current_user), db: Async
     privilege even though this data isn't sensitive (spec's security review)."""
     if user.role not in SCHOOL_DOMAIN_ROLES:
         raise HTTPException(403, "Not a School-domain role")
-    year = await db.scalar(select(AcademicYear).where(AcademicYear.status == "active").order_by(AcademicYear.start_date.desc()))
+    year = await _active_academic_year(db)
     if not year:
         return None
     return {"id": year.id, "label": year.label, "start_date": year.start_date, "end_date": year.end_date, "status": year.status}
@@ -794,7 +1283,19 @@ async def active_academic_year(user: User = Depends(get_current_user), db: Async
 async def _load_readable_student(db: AsyncSession, user: User, student_id: UUID) -> SchoolStudent:
     """One student, checked against the acting School role's own scope (SCH-001-AC02/AC03):
     own institution for every role, plus assigned-only for Teacher and own-child-only for
-    Parent -- the same rule as the list, applied to a direct record ID."""
+    Parent -- the same rule as the list, applied to a direct record ID. ENH-005/ENH-008: a
+    Parent is scoped by their links alone (see `_scoped_students_query`), never by a single
+    "own school" -- a Parent can legitimately have links at more than one school, so there is
+    no single institution left to distinguish "wrong institution" from "not linked" against;
+    an unlinked student always gets the one generic message below."""
+    if user.role == "school_parent":
+        student = await db.get(SchoolStudent, student_id)
+        if not student:
+            raise HTTPException(404, "Student not found")
+        linked = await db.scalar(select(SchoolParentLink).where(SchoolParentLink.parent_user_id == user.id, SchoolParentLink.school_student_id == student.id))
+        if not linked:
+            raise HTTPException(403, "This student is not linked to your account")
+        return student
     school_id = _own_school_id(user)
     student = await db.get(SchoolStudent, student_id)
     if not student:
@@ -803,10 +1304,6 @@ async def _load_readable_student(db: AsyncSession, user: User, student_id: UUID)
         raise HTTPException(403, "This student is at a different institution")
     if user.role == "school_teacher" and student.assigned_teacher_user_id != user.id:
         raise HTTPException(403, "This student is not assigned to you")
-    if user.role == "school_parent":
-        linked = await db.scalar(select(SchoolParentLink).where(SchoolParentLink.parent_user_id == user.id, SchoolParentLink.school_student_id == student.id))
-        if not linked:
-            raise HTTPException(403, "This student is not linked to your account")
     return student
 
 
@@ -829,6 +1326,12 @@ async def student_overview(student_id: UUID, user: User = Depends(get_current_us
     than faked. Overseas-education progress is now included (`DEC-SCOPE-018`, closes item
     77) once an Overseas Admin/Counselor has linked this student to a real application."""
     student = await _load_readable_student(db, user, student_id)
+    return await _overview_payload(db, student)
+
+
+async def _overview_payload(db: AsyncSession, student: SchoolStudent) -> dict:
+    """SCH-007's overview body for an already scope-checked student -- extracted unchanged from `student_overview` so
+    ENH-013's Student 360° view can reuse it. No scope check here: the caller has already applied the reader's own."""
     school = await db.get(School, student.school_id)
     teacher = await db.get(User, student.assigned_teacher_user_id) if student.assigned_teacher_user_id else None
     career_rows = (await db.scalars(select(SchoolCareerRecord).where(SchoolCareerRecord.school_student_id == student.id).order_by(SchoolCareerRecord.created_at.desc()))).all()
@@ -864,12 +1367,25 @@ async def student_overview(student_id: UUID, user: User = Depends(get_current_us
         visa_rows = (await db.scalars(select(VisaCase).where(VisaCase.application_id.in_(application_ids)))).all()
         visa_by_application = {v.application_id: v for v in visa_rows}
 
+    career_out = {row["id"]: row for row in await _career_records_out(db, career_rows)}  # ENH-026: one serializer (A3)
+
     def _career(rows: list) -> list[dict]:
-        return [{"id": r.id, "record_type": r.record_type, "notes": r.notes, "created_at": r.created_at} for r in rows]
+        return [career_out[r.id] for r in rows]
+
+    def _module_status(rows: list) -> str:  # ENH-026 C14
+        if any(counts_as_completed(r.status) for r in rows):
+            return "completed"
+        return "in_progress" if rows else "not_started"
 
     guidance = [r for r in career_rows if r.record_type == "guidance_session"]
     counselling = [r for r in career_rows if r.record_type == "counselling_note"]
     recommendations = [r for r in career_rows if r.record_type == "recommendation"]
+    recommendation_keys = ("recommended_careers", "recommended_courses", "recommended_stream", "recommended_skills")
+    structured_recommendations = [
+        {"record_id": r.id, "record_type": r.record_type, "created_at": r.created_at, **{key: getattr(r, key) for key in recommendation_keys}}
+        for r in guidance + counselling
+        if any(getattr(r, key) for key in recommendation_keys)
+    ]
     psych_statuses = {r.status for r in psych_rows}
     psychometric_status = "completed" if "completed" in psych_statuses else ("assigned" if psych_rows else "not_started")
     test_prep_statuses = {r.status for r in test_prep_rows}
@@ -878,10 +1394,11 @@ async def student_overview(student_id: UUID, user: User = Depends(get_current_us
     language_status = "certified" if "certified" in language_statuses else ("in_progress" if language_rows else "not_started")
     return {
         "student": {**_student_out(student), "school_name": school.name if school else None, "assigned_teacher_name": teacher.full_name if teacher else None},
-        "career_guidance": {"status": "completed" if guidance else "not_started", "sessions": _career(guidance)},
-        "counselling": {"status": "completed" if counselling else "not_started", "notes": _career(counselling)},
+        "career_guidance": {"status": _module_status(guidance), "sessions": _career(guidance)},
+        "counselling": {"status": _module_status(counselling), "notes": _career(counselling)},
         "recommended_careers": _career(recommendations),
-        "psychometric": {"status": psychometric_status, "assessments": [{"id": r.id, "assessment_type": r.assessment_type, "status": r.status, "created_at": r.created_at} for r in psych_rows]},
+        "structured_recommendations": structured_recommendations,
+        "psychometric": {"status": psychometric_status, "assessments": [{"id": r.id, "assessment_type": r.assessment_type, "status": r.status, "created_at": r.created_at, **_psychometric_result_out(r)} for r in psych_rows]},
         "test_prep": {"status": test_prep_status, "records": [_test_prep_out(r) for r in test_prep_rows]},
         "foreign_language": {"status": language_status, "records": [_language_out(r) for r in language_rows]},
         "results": [_result_out(r) for r in result_rows],
@@ -896,6 +1413,10 @@ async def student_overview(student_id: UUID, user: User = Depends(get_current_us
                 for a, u in application_rows
             ],
         },
+        # ENH-011 (`DEC-SCOPE-026`): additive key; same reader scope as everything above.
+        "skills": await _skills().skills_overview(db, student),
+        # ENH-030 (DEC-SCOPE-041): additive key; same reader scope as everything above.
+        "daily_attendance": await _attendance().daily_attendance_summary(db, student),
     }
 
 
@@ -918,9 +1439,15 @@ async def student_timeline(student_id: UUID, user: User = Depends(get_current_us
     and `SCH-007-AC02`. Read-only, no new tables: every event is derived from an existing
     row's own timestamp, nothing synthesized."""
     student = await _load_readable_student(db, user, student_id)
+    # ENH-004: once a student has been promoted, `grade_or_class` is no longer where they were added.
+    # The earliest history row's `from_grade_or_class` is; with no history the current label is still right.
+    first_move = await db.scalar(
+        select(SchoolStudentGradeHistory).where(SchoolStudentGradeHistory.school_student_id == student.id).order_by(SchoolStudentGradeHistory.created_at.asc(), SchoolStudentGradeHistory.id.asc()).limit(1)
+    )
+    added_to = first_move.from_grade_or_class if first_move else student.grade_or_class
     events: list[dict] = [{
         "date": student.created_at, "category": "profile", "type": "profile_created",
-        "title": "Student profile created", "detail": f"Added to {student.grade_or_class}" if student.grade_or_class else None,
+        "title": "Student profile created", "detail": f"Added to {added_to}" if added_to else None,
     }]
     # Distinct loop-variable names per query (career_r/psych_r/result_r, not a shared `r`) --
     # a reused loop variable across differently-typed queries left MyPy inferring every
@@ -968,8 +1495,44 @@ async def student_timeline(student_id: UUID, user: User = Depends(get_current_us
         visa_r = await db.scalar(select(VisaCase).where(VisaCase.application_id == app_r.id))
         if visa_r:
             events.append({"date": visa_r.updated_at, "category": "global_education", "type": "visa_status", "title": f"Visa status: {visa_r.status}", "detail": uni_r.name})
+    events.extend(await _skills().skill_timeline_events(db, student.id))  # ENH-011: soft_skills / digital_skills
     events.sort(key=lambda e: e["date"])
     return {"student": {"id": student.id, "full_name": student.full_name}, "events": events}
+
+
+@router.get("/students/{student_id}/grade-history", response_model=GradeHistoryResponse)
+async def student_grade_history(student_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ENH-004 -- one student's grade/academic-year transitions, newest first. The same own-scope
+    loader as the overview and timeline (own institution; assigned-only for a Teacher; own-child-only
+    for a Parent). Bounded by one row per academic year per student, so it is not paginated. The
+    performer is stored but deliberately not returned, so a Parent never receives a staff user ID."""
+    student = await _load_readable_student(db, user, student_id)
+    return {"student": {"id": student.id, "full_name": student.full_name}, "history": await _grade_history_rows(db, student)}
+
+
+async def _grade_history_rows(db: AsyncSession, student: SchoolStudent) -> list[dict]:
+    """ENH-004's history list for an already scope-checked student, newest first -- extracted unchanged from
+    `student_grade_history` so ENH-013's Student 360° view can reuse it."""
+    from_year = aliased(AcademicYear)
+    to_year = aliased(AcademicYear)
+    rows = (
+        await db.execute(
+            select(SchoolStudentGradeHistory, from_year, to_year)
+            .outerjoin(from_year, from_year.id == SchoolStudentGradeHistory.from_academic_year_id)
+            .join(to_year, to_year.id == SchoolStudentGradeHistory.to_academic_year_id)
+            .where(SchoolStudentGradeHistory.school_student_id == student.id)
+            .order_by(SchoolStudentGradeHistory.created_at.desc(), SchoolStudentGradeHistory.id.desc())
+        )
+    ).all()
+    return [
+        {
+            "id": h.id, "action": h.action, "created_at": h.created_at,
+            # ENH-025: section and the previous roll number (a year move clears the student's roll number).
+            "from": {"academic_year_id": h.from_academic_year_id, "academic_year_label": from_y.label if from_y else None, "grade_level": h.from_grade_level, "grade_or_class": h.from_grade_or_class, "section": h.from_section, "roll_number": h.from_roll_number},
+            "to": {"academic_year_id": h.to_academic_year_id, "academic_year_label": to_y.label, "grade_level": h.to_grade_level, "grade_or_class": h.to_grade_or_class, "section": h.to_section, "roll_number": None},
+        }
+        for h, from_y, to_y in rows
+    ]
 
 
 @router.post("/students", status_code=201)
@@ -980,6 +1543,7 @@ async def create_student(payload: dict, user: User = Depends(get_current_user), 
     full_name = str(payload.get("full_name", "")).strip()
     if not full_name:
         raise HTTPException(422, "full_name is required")
+    master = _master_fields_or_422(StudentMasterFields, _master_subset(payload))
     # assigned_teacher_user_id (picker) takes precedence over assigned_teacher_email
     # (kept for SCH-002's bulk-upload CSV path, which only ever has an email column).
     assigned_teacher_user_id = None
@@ -1007,8 +1571,9 @@ async def create_student(payload: dict, user: User = Depends(get_current_user), 
         created_by_user_id=user.id,
         assigned_teacher_user_id=assigned_teacher_user_id,
     )
+    changed_fields = _apply_master_fields(student, master)
     db.add(student)
-    await db.flush()
+    await _flush_or_409(db, student.roll_number)
     parent_status = None
     dev_token = None
     parent_email = payload.get("parent_email")
@@ -1017,7 +1582,7 @@ async def create_student(payload: dict, user: User = Depends(get_current_user), 
         parent_status, error, dev_token = await _link_or_invite_parent(db, school=school, student=student, parent_email=str(parent_email), parent_name=payload.get("parent_name"), coordinator=user)
         if error:
             raise HTTPException(422, error)
-    db.add(AuditLog(user_id=user.id, action="school.student_create", entity_type="school_student", entity_id=str(student.id), metadata_json={"school_id": str(school_id), "parent_status": parent_status}))
+    db.add(AuditLog(user_id=user.id, action="school.student_create", entity_type="school_student", entity_id=str(student.id), metadata_json={"school_id": str(school_id), "parent_status": parent_status, "changed_fields": changed_fields}))
     await db.commit()
     out = {**_student_out(student), "parent_status": parent_status}
     if dev_token:
@@ -1035,6 +1600,7 @@ async def update_student(student_id: UUID, payload: dict, user: User = Depends(g
         raise HTTPException(404, "Student not found")
     if student.school_id != school_id:
         raise HTTPException(403, "This student is at a different institution")
+    master = _master_fields_or_422(StudentMasterFields, _master_subset(payload))
     if "full_name" in payload and payload["full_name"]:
         student.full_name = payload["full_name"]
     if "grade_or_class" in payload:
@@ -1061,6 +1627,8 @@ async def update_student(student_id: UUID, payload: dict, user: User = Depends(g
             student.assigned_teacher_user_id = teacher.id
         else:
             student.assigned_teacher_user_id = None
+    changed_fields = _apply_master_fields(student, master)
+    await _flush_or_409(db, student.roll_number)
     parent_status = None
     dev_token = None
     if "parent_email" in payload and payload["parent_email"]:
@@ -1068,7 +1636,7 @@ async def update_student(student_id: UUID, payload: dict, user: User = Depends(g
         parent_status, error, dev_token = await _link_or_invite_parent(db, school=school, student=student, parent_email=str(payload["parent_email"]), parent_name=payload.get("parent_name"), coordinator=user)
         if error:
             raise HTTPException(422, error)
-    db.add(AuditLog(user_id=user.id, action="school.student_update", entity_type="school_student", entity_id=str(student.id), metadata_json={"parent_status": parent_status}))
+    db.add(AuditLog(user_id=user.id, action="school.student_update", entity_type="school_student", entity_id=str(student.id), metadata_json={"parent_status": parent_status, "changed_fields": changed_fields}))
     await db.commit()
     out = {**_student_out(student), "parent_status": parent_status}
     if dev_token:
@@ -1085,9 +1653,11 @@ async def link_parent(student_id: UUID, payload: dict, user: User = Depends(get_
     if not student or student.school_id != school_id:
         raise HTTPException(404, "Student not found")
     parent_email = str(payload.get("parent_email", "")).lower().strip()
-    parent = await db.scalar(select(User).where(User.email == parent_email, User.role == "school_parent"))
-    if not parent or (parent.profile or {}).get("school_id") != str(school_id):
-        raise HTTPException(422, "parent_email must be an existing Parent at your own school")
+    parent, conflict = await _parent_email_conflict(db, parent_email=parent_email)
+    if conflict:
+        raise HTTPException(422, conflict)
+    if not parent:
+        raise HTTPException(422, "parent_email must belong to an existing Parent account")
     existing = await db.scalar(select(SchoolParentLink).where(SchoolParentLink.parent_user_id == parent.id, SchoolParentLink.school_student_id == student.id))
     if existing:
         raise HTTPException(409, "This parent is already linked to this student")
@@ -1099,13 +1669,113 @@ async def link_parent(student_id: UUID, payload: dict, user: User = Depends(get_
     return {"id": link.id, "parent_user_id": parent.id, "school_student_id": student.id}
 
 
+# Bounded wait for the row locks a promotion takes (ENH-004 spec §5.2). A module constant, read at
+# call time so a test can shorten it; it is passed as a bound parameter below and is never request input.
+PROMOTION_LOCK_TIMEOUT = "5s"
+
+
+async def _require_coordinator_user(user: User = Depends(get_current_user)) -> User:
+    """Dependency form of `_require_coordinator`. FastAPI resolves dependencies before it validates
+    the request body, so a non-coordinator gets 403 before any 422 (spec §5.2 check order)."""
+    _require_coordinator(user)
+    return user
+
+
+@router.post("/students/promotions", response_model=StudentPromotionResponse)
+async def promote_students(payload: StudentPromotionRequest, user: User = Depends(_require_coordinator_user), db: AsyncSession = Depends(get_db)):
+    """ENH-004 -- promote (grade + 1) or hold back (same grade) students into the ACTIVE academic
+    year, one transaction per request. The school always comes from the caller's own profile. Every
+    listed student is row-locked in id order; an unknown or other-school ID rejects the whole request
+    with one generic 403 (nothing written). Business-rule failures are per-row results in a 200 body
+    and never block the valid rows. A student already in the active year is skipped, which is what
+    makes a retry or a concurrent duplicate safe (backed by UNIQUE (student, target year))."""
+    school_id = _own_school_id(user)
+    student_ids = [item.student_id for item in payload.items]
+    actor = {"actor_id": str(user.id), "school_id": str(school_id)}
+    # `set_config(..., true)` is SET LOCAL with a bound parameter, so no SQL is built from a string.
+    await db.execute(text("SELECT set_config('lock_timeout', :timeout, true)"), {"timeout": PROMOTION_LOCK_TIMEOUT})
+    # The school filter is part of the locking query itself, so another school's rows are never locked (or even
+    # read) by this request. ENH-005: a student's `school_id` CAN change now (a transfer), but only under this same
+    # row lock, so there is still no check/use gap: a transfer that commits first makes the student no longer match
+    # this filter, the count check below fails, and the whole request is refused with the generic 403 having written
+    # nothing. An unknown ID and another school's ID are the same absence here, which is what makes them
+    # indistinguishable to the caller.
+    try:
+        locked = (await db.scalars(select(SchoolStudent).where(SchoolStudent.id.in_(student_ids), SchoolStudent.school_id == school_id).order_by(SchoolStudent.id).with_for_update())).all()
+    except DBAPIError as exc:
+        await db.rollback()
+        if getattr(exc.orig, "sqlstate", None) == "55P03":  # lock_not_available: the wait exceeded PROMOTION_LOCK_TIMEOUT
+            logger.warning("student_promotion_lock_timeout", extra={"extra_fields": {**actor, "requested": len(student_ids), "lock_timeout": PROMOTION_LOCK_TIMEOUT}})
+            raise HTTPException(409, "Another promotion is in progress; retry") from exc
+        raise
+    students = {s.id: s for s in locked}
+    if len(students) != len(student_ids):
+        not_in_school = len(student_ids) - len(students)
+        # A security-relevant event (probing, or a stale/misdirected client): record it, then refuse. Nothing else has
+        # been written yet, and the audit row carries counts only (no student IDs or names).
+        db.add(AuditLog(user_id=user.id, action="school.student_promotion_denied", entity_type="school", entity_id=str(school_id), outcome="denied", metadata_json={"requested": len(student_ids), "not_in_school": not_in_school}))
+        await db.commit()
+        logger.warning("student_promotion_denied", extra={"extra_fields": {**actor, "requested": len(student_ids), "not_in_school": not_in_school}})
+        raise HTTPException(403, "One or more students are not at your institution")
+    active_year_id = await _current_academic_year_id(db)
+    active_year = await db.get(AcademicYear, active_year_id) if active_year_id else None
+    if active_year is None:
+        logger.info("student_promotion_no_active_year", extra={"extra_fields": actor})
+        raise HTTPException(409, "No active academic year. Ask an Overseas Admin to activate one.")
+
+    counts = {"promoted": 0, "held_back": 0, "failed": 0, "skipped": 0}
+    results: list[dict] = []
+    history: list[SchoolStudentGradeHistory] = []
+    for item in payload.items:
+        student = students[item.student_id]
+        decision = _decide_promotion(
+            action=item.action, student_year_id=student.academic_year_id, active_year_id=active_year.id,
+            grade_level=student.grade_level, grade_or_class=student.grade_or_class, override=item.grade_or_class,
+        )
+        if decision.status in ("promoted", "held_back"):
+            history.append(
+                SchoolStudentGradeHistory(
+                    school_student_id=student.id, action=decision.status,
+                    from_academic_year_id=student.academic_year_id, from_grade_level=student.grade_level, from_grade_or_class=student.grade_or_class,
+                    to_academic_year_id=active_year.id, to_grade_level=decision.grade_level, to_grade_or_class=decision.grade_or_class,
+                    # ENH-025 (DEC-SCOPE-029 item 6): previous class details survive the roll-number reset below.
+                    from_section=student.section, from_roll_number=student.roll_number, to_section=student.section,
+                    performed_by_user_id=user.id,
+                )
+            )
+            student.academic_year_id = active_year.id
+            student.grade_level = decision.grade_level
+            student.grade_or_class = decision.grade_or_class
+            # Roll numbers are reassigned each year; NULL can never violate uq_school_students_roll, so this
+            # cannot fail the promotion's single transaction.
+            student.roll_number = None
+        counts[decision.status] += 1
+        results.append({"student_id": student.id, "status": decision.status, "reason": decision.reason, "message": decision.message, "grade_level": decision.grade_level, "grade_or_class": decision.grade_or_class})
+
+    committed = False
+    if history:
+        db.add_all(history)
+        db.add(AuditLog(user_id=user.id, action="school.student_promotion", entity_type="academic_year", entity_id=str(active_year.id), metadata_json={"academic_year_id": str(active_year.id), **counts}))
+        try:
+            await db.commit()
+        except IntegrityError as exc:
+            await db.rollback()
+            logger.warning("student_promotion_conflict", extra={"extra_fields": {**actor, "academic_year_id": str(active_year.id), "requested": len(student_ids)}})
+            raise HTTPException(409, "A concurrent promotion was detected; reload and retry") from exc
+        committed = True
+    logger.info("student_promotion_completed", extra={"extra_fields": {**actor, "academic_year_id": str(active_year.id), "requested": len(student_ids), **counts, "committed": committed}})
+    return {"academic_year": {"id": active_year.id, "label": active_year.label}, "counts": counts, "results": results}
+
+
 @router.get("/activities")
 async def list_activities(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if user.role != "school_coordinator":
         raise HTTPException(403, "School Coordinator role required")
     school_id = _own_school_id(user)
     rows = (await db.scalars(select(SchoolActivity).where(SchoolActivity.school_id == school_id).order_by(SchoolActivity.scheduled_at.desc()))).all()
-    return [{"id": a.id, "title": a.title, "scheduled_at": a.scheduled_at, "activity_type": a.activity_type} for a in rows]
+    # ENH-018 (QA-018-10): additive flag so the list can offer "View feedback" instead of "Give feedback" once it is recorded.
+    with_feedback = set((await db.scalars(select(SchoolActivityFeedback.activity_id).where(SchoolActivityFeedback.school_id == school_id))).all())
+    return [{"id": a.id, "title": a.title, "scheduled_at": a.scheduled_at, "activity_type": a.activity_type, "feedback_submitted": a.id in with_feedback} for a in rows]
 
 
 @router.post("/activities", status_code=201)
@@ -1121,8 +1791,10 @@ async def create_activity(payload: dict, user: User = Depends(get_current_user),
     # DEC-SCOPE-017: optional entitlement-tracking category -- lets an Entitlements-tracked
     # activity (career seminar, parent orientation, campus visit, ...) actually feed
     # `GET /school/entitlements`'s usage counts; free-text activities keep working unset.
-    if activity_type and activity_type not in {"career_seminar", "career_awareness_session", "parent_orientation", "campus_visit"}:
+    if activity_type and activity_type not in ACTIVITY_SERVICE_KEYS:
         raise HTTPException(422, "activity_type must be one of career_seminar, career_awareness_session, parent_orientation, campus_visit")
+    # ENH-022: a typed activity consumes its tier service; a free-text one still needs a valid partnership (D7).
+    await require_school_entitlement(db, user, school_id, ACTIVITY_SERVICE_KEYS[activity_type] if activity_type else None)
     activity = SchoolActivity(school_id=school_id, title=title, scheduled_at=datetime.fromisoformat(scheduled_at), created_by_user_id=user.id, activity_type=activity_type)
     db.add(activity)
     await db.flush()
@@ -1144,6 +1816,7 @@ async def mark_attendance(activity_id: UUID, payload: dict, user: User = Depends
     activity = await db.get(SchoolActivity, activity_id)
     if not activity or activity.school_id != school_id:
         raise HTTPException(404, "Activity not found")
+    await require_school_entitlement(db, user, school_id, ACTIVITY_SERVICE_KEYS[activity.activity_type] if activity.activity_type else None, grandfathered_since=activity.created_at)
     records = payload.get("records", [])
     if not isinstance(records, list) or not records:
         raise HTTPException(422, "records must be a non-empty list of {student_id, present}")
@@ -1172,7 +1845,36 @@ async def mark_attendance(activity_id: UUID, payload: dict, user: User = Depends
 # not fixed by DATA_MODEL.md §6.13 -- resolved here as technical contract design, mapped
 # directly from SCH-001's own already-built SchoolStudent creation fields (POST /school/
 # students), not an invented field list.
-ROSTER_TEMPLATE_HEADERS = ["full_name", "date_of_birth", "grade_or_class", "assigned_teacher_email", "parent_name", "parent_email", "grade_level"]
+# ENH-025: the ten Student Master columns are appended after the original seven, so existing positions never move.
+ROSTER_TEMPLATE_HEADERS = [
+    "full_name", "date_of_birth", "grade_or_class", "assigned_teacher_email", "parent_name", "parent_email", "grade_level",
+    *MASTER_FIELD_KEYS,
+]
+ROSTER_TEMPLATE_EXAMPLE = ["Jane Doe", "2015-04-12", "Grade 5-A", "", "Jane's Parent", "", "5", "A", "12", "female", "+91 98765 43210", "Pune", "Maths;Science", "Engineering", "yes", "Germany;Canada", "Mechanical Engineering"]
+_CSV_BOOLEANS = {"yes": True, "true": True, "1": True, "no": False, "false": False, "0": False}
+
+
+def _master_fields_from_csv(row: dict) -> tuple[dict, str | None]:
+    """A CSV row -> the StudentMasterFields input shape. A missing column or a short row means "not set";
+    list cells split on ';'. Returns (data, error_message)."""
+    data: dict = {}
+    for key in MASTER_FIELD_KEYS:
+        raw = row.get(key)
+        if raw is None:
+            continue
+        raw = raw.strip()
+        if key in LIST_FIELD_KEYS:
+            data[key] = raw.split(";") if raw else None
+        elif key == "global_education_interest":
+            if not raw:
+                data[key] = None
+            elif raw.lower() in _CSV_BOOLEANS:
+                data[key] = _CSV_BOOLEANS[raw.lower()]
+            else:
+                return {}, "global_education_interest must be yes or no"
+        else:
+            data[key] = raw or None
+    return data, None
 
 
 async def _batch_report(db: AsyncSession, batch: SchoolRosterUploadBatch) -> dict:
@@ -1253,7 +1955,7 @@ async def bulk_upload_students(
             parent_email = (row.get("parent_email") or "").strip().lower() or None
             parent_name = (row.get("parent_name") or "").strip() or None
             if parent_email:
-                error = await _parent_email_conflict(db, school_id=school_id, parent_email=parent_email)
+                _, error = await _parent_email_conflict(db, parent_email=parent_email)
         grade_level = None
         if not error:
             raw_grade_level = (row.get("grade_level") or "").strip()
@@ -1262,6 +1964,14 @@ async def bulk_upload_students(
                     grade_level = _validate_grade_level(int(raw_grade_level))
                 except (ValueError, HTTPException):
                     error = f"grade_level '{raw_grade_level}' must be an integer between 1 and 12"
+        master = None
+        if not error:
+            master_data, error = _master_fields_from_csv(row)
+            if not error:
+                try:
+                    master = StudentMasterFields.model_validate(master_data)
+                except ValidationError as exc:
+                    error = validation_message(exc)
         # SCH-002-AC04: a row that fails validation is recorded and skipped -- it never
         # blocks or discards the rows around it.
         if error:
@@ -1274,8 +1984,19 @@ async def bulk_upload_students(
             created_by_user_id=user.id, assigned_teacher_user_id=assigned_teacher_user_id,
             grade_level=grade_level, academic_year_id=current_year_id,
         )
-        db.add(student)
-        await db.flush()
+        _apply_master_fields(student, master)
+        # ENH-025: the insert runs in its own savepoint so a roll-number clash rejects this row only
+        # (SCH-002-AC04). The parent link/invite runs after, so a rolled-back row never sends an invite.
+        try:
+            async with db.begin_nested():
+                db.add(student)
+                await db.flush()
+        except IntegrityError as exc:
+            if not _is_roll_conflict(exc):
+                raise
+            db.add(SchoolRosterUploadRow(batch_id=batch.id, row_number=i, status="rejected", error_message=ROLL_TAKEN.format(roll=student.roll_number)))
+            rejected += 1
+            continue
         if parent_email:
             # Already validated above (no conflicting account) -- this call only ever
             # links or invites here, it does not reject.
@@ -1288,6 +2009,7 @@ async def bulk_upload_students(
     batch.status = "completed"
     db.add(AuditLog(user_id=user.id, action="school.roster_bulk_upload", entity_type="school_roster_upload_batch", entity_id=str(batch.id), metadata_json={"total": len(rows), "accepted": accepted, "rejected": rejected}))
     await db.commit()
+    logger.info("roster_bulk_upload_completed", extra={"extra_fields": {"batch_id": str(batch.id), "school_id": str(school_id), "total": len(rows), "accepted": accepted, "rejected": rejected}})
     return await _batch_report(db, batch)
 
 
@@ -1314,13 +2036,16 @@ async def _portfolio_school_ids(db: AsyncSession, user: User) -> set:
     return set(rows)
 
 
+OUTSIDE_PORTFOLIO = "This student is at a school outside your own portfolio"
+
+
 async def _student_in_portfolio(db: AsyncSession, user: User, student_id: UUID) -> SchoolStudent:
     student = await db.get(SchoolStudent, student_id)
     if not student:
         raise HTTPException(404, "Student not found")
     portfolio = await _portfolio_school_ids(db, user)
     if student.school_id not in portfolio:
-        raise HTTPException(403, "This student is at a school outside your own portfolio")
+        raise HTTPException(403, OUTSIDE_PORTFOLIO)
     return student
 
 
@@ -1329,9 +2054,19 @@ async def _readable_students(db: AsyncSession, user: User) -> set:
     Teacher/Parent) may see published/visible service-delivery content for -- reuses the
     exact same scoping as SCH-001's own roster access, since it's the same underlying
     own-institution/assigned/own-child rule (SCH-001-AC02/AC03)."""
-    school_id = _own_school_id(user)
+    school_id = _own_school_id_or_none_for_parent(user)
     stmt = await _scoped_students_query(db, user, school_id)
     return set((await db.scalars(stmt.with_only_columns(SchoolStudent.id))).all())
+
+
+async def _load_student_for_reader(db: AsyncSession, user: User, student_id: UUID) -> SchoolStudent:
+    """Read-scope loader for every role that may read one student's record (ENH-012 portfolio, ENH-013 360-view): the 3
+    portfolio-scoped service roles go through `_student_in_portfolio`, everyone else through `_load_readable_student` (which
+    403s any non-School role). Moved here unchanged from portfolio.py so both features share one loader (ENH-013 spec §4);
+    neither helper it calls is modified."""
+    if user.role in SERVICE_DELIVERY_ROLES:
+        return await _student_in_portfolio(db, user, student_id)
+    return await _load_readable_student(db, user, student_id)
 
 
 @router.get("/portfolio-students")
@@ -1360,21 +2095,113 @@ async def create_career_record(payload: dict, user: User = Depends(get_current_u
     if not student_id:
         raise HTTPException(422, "school_student_id is required")
     student = await _student_in_portfolio(db, user, UUID(str(student_id)))
+    await require_school_entitlement(db, user, student.school_id, "individual_counselling")  # D5: every record type
     record_type = payload.get("record_type")
-    if record_type not in {"guidance_session", "counselling_note", "recommendation"}:
+    if record_type not in CAREER_RECORD_TYPES:
         raise HTTPException(422, "record_type must be one of guidance_session, counselling_note, recommendation")
-    notes = str(payload.get("notes", "")).strip()
-    if not notes:
-        raise HTTPException(422, "notes is required")
-    record = SchoolCareerRecord(school_student_id=student.id, career_counselor_user_id=user.id, record_type=record_type, notes=notes)
+    # ENH-026: the §7 fields, validated at the boundary with the house's string 422 (extra="forbid": no owner/id fields).
+    fields = _master_fields_or_422(CareerRecordFields, {k: v for k, v in payload.items() if k not in ("school_student_id", "record_type")})
+    sent = fields.model_fields_set - {"notes"}
+    if record_type not in STRUCTURED_RECORD_TYPES:
+        if sent:
+            raise HTTPException(422, "recommendation records take notes only")
+        if not fields.notes:
+            raise HTTPException(422, "notes is required")
+        status = None
+    else:
+        status = fields.status if fields.status is not None else "completed"  # C3: legacy callers get today's behaviour
+        if status not in CAREER_STATUS_INITIAL:
+            raise HTTPException(422, "status must be one of not_started, scheduled, completed when creating a record")
+    record = SchoolCareerRecord(school_student_id=student.id, career_counselor_user_id=user.id, record_type=record_type, notes=fields.notes)
+    for key in (*CAREER_DATE_KEYS, *CAREER_STRUCTURED_KEYS):
+        if key in sent:
+            setattr(record, key, getattr(fields, key))
+    if status is not None:
+        error = _enter_career_status(record, status, None, sent) or _career_rule_error(record)
+        if error:
+            raise HTTPException(422, error)
     db.add(record)
     await db.flush()
-    db.add(AuditLog(user_id=user.id, action="school.career_record_create", entity_type="school_career_record", entity_id=str(record.id), metadata_json={"record_type": record_type}))
+    db.add(AuditLog(user_id=user.id, action="school.career_record_create", entity_type="school_career_record", entity_id=str(record.id), metadata_json={"record_type": record_type, "status": status, "fields": sorted(sent)}))
     # SCH-007 "Counselling" trigger (guidance session / counselling note / recommendation).
     label = {"guidance_session": "Career guidance session recorded", "counselling_note": "Counselling note added", "recommendation": "Career recommendation added"}[record_type]
     await _notify_student_parents(db, student, title=f"{label} for {student.full_name}", body=f"A Career Counselor has added a new {record_type.replace('_', ' ')} to {student.full_name}'s career profile.", action_url=f"/school/parent/children/{student.id}")
     await db.commit()
-    return {"id": record.id, "school_student_id": record.school_student_id, "record_type": record.record_type, "notes": record.notes, "created_at": record.created_at}
+    await db.refresh(record)
+    logger.info("career_record_create", extra={"extra_fields": {"actor_id": str(user.id), "record_id": str(record.id), "record_type": record_type, "status": status}})
+    return (await _career_records_out(db, [record]))[0]
+
+
+def _audit_value(value):
+    return value.isoformat() if hasattr(value, "isoformat") else value
+
+
+@router.patch("/career-counselor/records/{record_id}")
+async def update_career_record(record_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ENH-026 spec §5.1. One transaction up to the record commit: lock the record, lock its student (the lock transfer
+    approval takes) and re-check the portfolio under it, tier gate, precondition, transition, merge, rules, audit. Parents
+    are notified only after that commit (step 10), so no row lock is held across email delivery."""
+    if user.role != "career_counselor":
+        raise HTTPException(403, "Career Counselor role required")
+    record = await db.scalar(select(SchoolCareerRecord).where(SchoolCareerRecord.id == record_id).with_for_update().execution_options(populate_existing=True))
+    if record is None:
+        raise HTTPException(404, "Career record not found")
+    student = await db.scalar(select(SchoolStudent).where(SchoolStudent.id == record.school_student_id).with_for_update().execution_options(populate_existing=True))
+    if student is None or student.school_id not in await _portfolio_school_ids(db, user):
+        raise HTTPException(403, OUTSIDE_PORTFOLIO)
+    await require_school_entitlement(db, user, student.school_id, "individual_counselling", grandfathered_since=record.created_at)
+    fields = _master_fields_or_422(CareerRecordUpdate, payload)
+    sent = set(fields.model_fields_set)
+    if "expected_status" in sent and fields.expected_status != record.status:
+        raise HTTPException(409, f"This record was changed by someone else (now {CAREER_STATUS_LABEL[record.status]}). Reload to see the latest.")
+    sent.discard("expected_status")
+    if record.record_type not in STRUCTURED_RECORD_TYPES and sent - {"notes"}:
+        raise HTTPException(422, "recommendation records take notes only")
+
+    tracked = ("notes", "status", *CAREER_DATE_KEYS, *CAREER_STRUCTURED_KEYS)
+    before = {key: getattr(record, key) for key in tracked}
+    old_status = record.status
+    if "status" in sent and fields.status != old_status:
+        if fields.status is None or not career_transition_allowed(old_status, fields.status):
+            raise HTTPException(422, f"Cannot change status from {CAREER_STATUS_LABEL[old_status]} to {CAREER_STATUS_LABEL[fields.status]}")
+    for key in sent - {"status"}:
+        setattr(record, key, getattr(fields, key))
+    if "status" in sent:
+        error = _enter_career_status(record, fields.status, old_status, sent)
+        if error:
+            raise HTTPException(422, error)
+    error = _career_rule_error(record)
+    if error:
+        raise HTTPException(422, error)
+
+    changed = [key for key in tracked if getattr(record, key) != before[key]]
+    if not changed:
+        return (await _career_records_out(db, [record]))[0]  # A6: a repeat PATCH writes nothing
+    record.updated_by_user_id = user.id
+    metadata: dict = {"changed_fields": changed}  # field names only, never contents (S10)
+    for key in ("status", *CAREER_DATE_KEYS):
+        if key in changed:
+            metadata[key] = {"old": _audit_value(before[key]), "new": _audit_value(getattr(record, key))}
+    db.add(AuditLog(user_id=user.id, action="school.career_record_update", entity_type="school_career_record", entity_id=str(record.id), metadata_json=metadata))
+    await db.commit()
+    await db.refresh(record)
+    # Everything the response and logs need is read now: a notification failure below rolls back and expires these objects.
+    out = (await _career_records_out(db, [record]))[0]
+    ids = {"actor_id": str(user.id), "record_id": str(record.id), "student_id": str(student.id)}
+    new_status = record.status
+    if new_status != old_status:
+        try:
+            await _notify_student_parents(
+                db, student, title=f"{CAREER_STATUS_LABEL[new_status]} — career record for {student.full_name}",
+                body=f"A Career Counselor updated {student.full_name}'s career record to {CAREER_STATUS_LABEL[new_status]}.",
+                action_url=f"/school/parent/children/{student.id}",
+            )
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            logger.warning("career_record_notify_failed", extra={"extra_fields": ids})
+    logger.info("career_record_update", extra={"extra_fields": {**ids, "status": new_status, "changed": len(changed)}})
+    return out
 
 
 @router.get("/career-counselor/records")
@@ -1386,7 +2213,7 @@ async def list_career_counselor_records(user: User = Depends(get_current_user), 
         return []
     student_ids = (await db.scalars(select(SchoolStudent.id).where(SchoolStudent.school_id.in_(portfolio)))).all()
     rows = (await db.scalars(select(SchoolCareerRecord).where(SchoolCareerRecord.school_student_id.in_(student_ids)).order_by(SchoolCareerRecord.created_at.desc()))).all()
-    return [{"id": r.id, "school_student_id": r.school_student_id, "record_type": r.record_type, "notes": r.notes, "created_at": r.created_at} for r in rows]
+    return await _career_records_out(db, rows)
 
 
 @router.get("/career-records")
@@ -1399,7 +2226,7 @@ async def list_readable_career_records(user: User = Depends(get_current_user), d
     if not readable:
         return []
     rows = (await db.scalars(select(SchoolCareerRecord).where(SchoolCareerRecord.school_student_id.in_(readable)).order_by(SchoolCareerRecord.created_at.desc()))).all()
-    return [{"id": r.id, "school_student_id": r.school_student_id, "record_type": r.record_type, "notes": r.notes, "created_at": r.created_at} for r in rows]
+    return await _career_records_out(db, rows)
 
 
 # --- SCH-005: Psychometric Assessment ----------------------------------------------------
@@ -1412,23 +2239,29 @@ async def create_psychometric_record(payload: dict, user: User = Depends(get_cur
     if not student_id:
         raise HTTPException(422, "school_student_id is required")
     student = await _student_in_portfolio(db, user, UUID(str(student_id)))
+    await require_school_entitlement(db, user, student.school_id, "psychometric_test")
     assessment_type = str(payload.get("assessment_type", "")).strip()
     if not assessment_type:
         raise HTTPException(422, "assessment_type is required")
+    # ENH-027: the result fields are validated after the role/portfolio/tier checks (a 403 always wins) and before any write.
+    result = _master_fields_or_422(PsychometricResultFields, _psychometric_subset(payload))
     record = SchoolPsychometricRecord(
         school_student_id=student.id, psychometric_team_user_id=user.id, assessment_type=assessment_type,
         report_url=payload.get("report_url"), status="completed" if payload.get("report_url") else "assigned",
     )
+    fields = _apply_master_fields(record, result)
     db.add(record)
     await db.flush()
-    db.add(AuditLog(user_id=user.id, action="school.psychometric_record_create", entity_type="school_psychometric_record", entity_id=str(record.id), metadata_json={"assessment_type": assessment_type}))
+    db.add(AuditLog(user_id=user.id, action="school.psychometric_record_create", entity_type="school_psychometric_record", entity_id=str(record.id), metadata_json={"assessment_type": assessment_type, "fields": fields}))
     # SCH-007 "Assessment" trigger: assigned (or completed at once, when a report came with it).
     if record.status == "completed":
         await _notify_student_parents(db, student, title=f"Psychometric report ready for {student.full_name}", body=f"The {assessment_type} report for {student.full_name} is now available.", action_url=f"/school/parent/children/{student.id}")
     else:
         await _notify_student_parents(db, student, title=f"Psychometric assessment assigned to {student.full_name}", body=f"{student.full_name} has been assigned a {assessment_type}.", action_url=f"/school/parent/children/{student.id}")
     await db.commit()
-    return {"id": record.id, "school_student_id": record.school_student_id, "assessment_type": record.assessment_type, "report_url": record.report_url, "status": record.status, "created_at": record.created_at}
+    if fields:
+        logger.info("psychometric_results_saved", extra={"extra_fields": {"action": "create", "record_id": str(record.id), "actor_id": str(user.id), "fields": fields}})
+    return {"id": record.id, "school_student_id": record.school_student_id, "assessment_type": record.assessment_type, "report_url": record.report_url, "status": record.status, "created_at": record.created_at, **_psychometric_result_out(record)}
 
 
 @router.patch("/psychometric-team/records/{record_id}")
@@ -1438,21 +2271,29 @@ async def update_psychometric_record(record_id: UUID, payload: dict, user: User 
     record = await db.get(SchoolPsychometricRecord, record_id)
     if not record:
         raise HTTPException(404, "Record not found")
-    await _student_in_portfolio(db, user, record.school_student_id)
+    student = await _student_in_portfolio(db, user, record.school_student_id)
+    await require_school_entitlement(db, user, student.school_id, "psychometric_test", grandfathered_since=record.created_at)
+    # ENH-027: validate before touching the record, so a 422 leaves it (report_url included) unchanged. Result fields never
+    # change `status` and never notify; only `report_url` does, exactly as before.
+    result = _master_fields_or_422(PsychometricResultFields, _psychometric_subset(payload))
+    fields = _apply_master_fields(record, result)
     became_completed = False
     if "report_url" in payload:
         record.report_url = payload["report_url"]
         if payload["report_url"] and record.status != "completed":
             record.status = "completed"
             became_completed = True
-    db.add(AuditLog(user_id=user.id, action="school.psychometric_record_update", entity_type="school_psychometric_record", entity_id=str(record.id), metadata_json={}))
+    audited = sorted([*fields, "report_url"]) if "report_url" in payload else fields
+    db.add(AuditLog(user_id=user.id, action="school.psychometric_record_update", entity_type="school_psychometric_record", entity_id=str(record.id), metadata_json={"fields": audited}))
     if became_completed:
         student = await db.get(SchoolStudent, record.school_student_id)
         if student is None:
             raise HTTPException(404, "Student not found")
         await _notify_student_parents(db, student, title=f"Psychometric report ready for {student.full_name}", body=f"The {record.assessment_type} report for {student.full_name} is now available.", action_url=f"/school/parent/children/{student.id}")
     await db.commit()
-    return {"id": record.id, "school_student_id": record.school_student_id, "assessment_type": record.assessment_type, "report_url": record.report_url, "status": record.status}
+    if fields:
+        logger.info("psychometric_results_saved", extra={"extra_fields": {"action": "update", "record_id": str(record.id), "actor_id": str(user.id), "fields": fields}})
+    return {"id": record.id, "school_student_id": record.school_student_id, "assessment_type": record.assessment_type, "report_url": record.report_url, "status": record.status, **_psychometric_result_out(record)}
 
 
 @router.get("/psychometric-team/records")
@@ -1464,7 +2305,7 @@ async def list_psychometric_team_records(user: User = Depends(get_current_user),
         return []
     student_ids = (await db.scalars(select(SchoolStudent.id).where(SchoolStudent.school_id.in_(portfolio)))).all()
     rows = (await db.scalars(select(SchoolPsychometricRecord).where(SchoolPsychometricRecord.school_student_id.in_(student_ids)).order_by(SchoolPsychometricRecord.created_at.desc()))).all()
-    return [{"id": r.id, "school_student_id": r.school_student_id, "assessment_type": r.assessment_type, "report_url": r.report_url, "status": r.status, "created_at": r.created_at} for r in rows]
+    return [{"id": r.id, "school_student_id": r.school_student_id, "assessment_type": r.assessment_type, "report_url": r.report_url, "status": r.status, "created_at": r.created_at, **_psychometric_result_out(r)} for r in rows]
 
 
 @router.get("/psychometric-records")
@@ -1475,7 +2316,7 @@ async def list_readable_psychometric_records(user: User = Depends(get_current_us
     if not readable:
         return []
     rows = (await db.scalars(select(SchoolPsychometricRecord).where(SchoolPsychometricRecord.school_student_id.in_(readable)).order_by(SchoolPsychometricRecord.created_at.desc()))).all()
-    return [{"id": r.id, "school_student_id": r.school_student_id, "assessment_type": r.assessment_type, "status": r.status, "created_at": r.created_at} for r in rows]
+    return [{"id": r.id, "school_student_id": r.school_student_id, "assessment_type": r.assessment_type, "status": r.status, "created_at": r.created_at, **_psychometric_result_out(r)} for r in rows]
 
 
 # --- SCH-009: Test Preparation (IELTS/SAT) -----------------------------------------------
@@ -1496,8 +2337,9 @@ async def create_test_prep_record(payload: dict, user: User = Depends(get_curren
         raise HTTPException(422, "school_student_id is required")
     student = await _student_in_portfolio(db, user, UUID(str(student_id)))
     test_type = payload.get("test_type")
-    if test_type not in {"ielts", "sat"}:
+    if test_type not in TEST_PREP_SERVICE_KEYS:
         raise HTTPException(422, "test_type must be one of ielts, sat")
+    await require_school_entitlement(db, user, student.school_id, TEST_PREP_SERVICE_KEYS[test_type])
     record = SchoolTestPrepRecord(school_student_id=student.id, academic_team_user_id=user.id, test_type=test_type, target_score=payload.get("target_score"))
     db.add(record)
     await db.flush()
@@ -1514,7 +2356,8 @@ async def update_test_prep_record(record_id: UUID, payload: dict, user: User = D
     record = await db.get(SchoolTestPrepRecord, record_id)
     if not record:
         raise HTTPException(404, "Record not found")
-    await _student_in_portfolio(db, user, record.school_student_id)
+    student = await _student_in_portfolio(db, user, record.school_student_id)
+    await require_school_entitlement(db, user, student.school_id, TEST_PREP_SERVICE_KEYS[record.test_type], grandfathered_since=record.created_at)  # the stored test, never the body's
     became_completed = False
     if "mock_scores" in payload:
         record.mock_scores = payload["mock_scores"] or []
@@ -1570,6 +2413,7 @@ async def create_language_record(payload: dict, user: User = Depends(get_current
     if not student_id:
         raise HTTPException(422, "school_student_id is required")
     student = await _student_in_portfolio(db, user, UUID(str(student_id)))
+    await require_school_entitlement(db, user, student.school_id, "foreign_language_classes")
     language = str(payload.get("language", "")).strip()
     if not language:
         raise HTTPException(422, "language is required")
@@ -1589,7 +2433,8 @@ async def update_language_record(record_id: UUID, payload: dict, user: User = De
     record = await db.get(SchoolLanguageRecord, record_id)
     if not record:
         raise HTTPException(404, "Record not found")
-    await _student_in_portfolio(db, user, record.school_student_id)
+    student = await _student_in_portfolio(db, user, record.school_student_id)
+    await require_school_entitlement(db, user, student.school_id, "foreign_language_classes", grandfathered_since=record.created_at)
     became_certified = False
     if "classes_attended" in payload:
         record.classes_attended = int(payload["classes_attended"])
@@ -1781,7 +2626,8 @@ async def list_academic_team_results(user: User = Depends(get_current_user), db:
     if not portfolio:
         return []
     student_ids = (await db.scalars(select(SchoolStudent.id).where(SchoolStudent.school_id.in_(portfolio)))).all()
-    rows = (await db.scalars(select(SchoolAcademicResult).where(SchoolAcademicResult.school_student_id.in_(student_ids)).order_by(SchoolAcademicResult.created_at.desc()))).all()
+    # ENH-005: results withdrawn by a student transfer are kept but never listed.
+    rows = (await db.scalars(select(SchoolAcademicResult).where(SchoolAcademicResult.school_student_id.in_(student_ids), SchoolAcademicResult.status != "withdrawn").order_by(SchoolAcademicResult.created_at.desc()))).all()
     return [_result_out(r) for r in rows]
 
 
@@ -1800,7 +2646,7 @@ async def academic_team_progress(user: User = Depends(get_current_user), db: Asy
         await db.execute(select(SchoolStudent, School).join(School, School.id == SchoolStudent.school_id).where(SchoolStudent.school_id.in_(portfolio)).order_by(SchoolStudent.full_name.asc()))
     ).all()
     student_ids = [s.id for s, _sc in rows]
-    result_rows = (await db.scalars(select(SchoolAcademicResult).where(SchoolAcademicResult.school_student_id.in_(student_ids)))).all()
+    result_rows = (await db.scalars(select(SchoolAcademicResult).where(SchoolAcademicResult.school_student_id.in_(student_ids), SchoolAcademicResult.status != "withdrawn"))).all()
     by_student: dict = {}
     for r in result_rows:
         by_student.setdefault(r.school_student_id, []).append(r)

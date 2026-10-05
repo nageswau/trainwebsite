@@ -3,8 +3,9 @@ import SchoolActivitiesPanel from "@/components/SchoolActivitiesPanel";
 import { serverApi } from "@/lib/api";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
+import { accessUnavailable } from "@/components/AccessUnavailable";
 
-type Activity = { id: string; title: string; scheduled_at: string };
+type Activity = { id: string; title: string; scheduled_at: string; activity_type?: string | null; feedback_submitted?: boolean };
 type Student = { id: string; full_name: string };
 
 // SCH-001: schedule an activity, mark attendance -- for the Coordinator's own institution.
@@ -19,15 +20,7 @@ export default async function SchoolCoordinatorActivitiesPage() {
       serverApi<Student[]>("/api/v1/school/students"),
     ]);
   } catch (e) {
-    return (
-      <div className="section">
-        <div className="container card">
-          <h1>Access unavailable</h1>
-          <p>{e instanceof Error ? e.message : "Unable to load this workspace"}</p>
-          <a className="btn" href="/overseas/login">Return to login</a>
-        </div>
-      </div>
-    );
+    return accessUnavailable(e);
   }
   return (
     <PortalShell nav={SCHOOL_NAV.coordinator} roleLabel="School Coordinator" userName={user.full_name}>

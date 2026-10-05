@@ -345,6 +345,117 @@ covers the commission-specific piece).
   change has been made; this note only records that the previously-safe assumption no longer holds
   universally.
 
+- **Addendum, 2026-10-02 (`AGN-010`, `DEC-SCOPE-056`; migration `0062_agent_offer_details`, after `0061_bdm_profiles`).**
+  Four nullable columns on `overseas_applications` (one current offer per application, O1): `offer_type` VARCHAR(20) with CHECK
+  `ck_overseas_applications_offer_type` (`NULL` or `conditional`/`unconditional`); `offer_date` DATE with CHECK
+  `ck_overseas_applications_offer_dated` (`(offer_type IS NULL) = (offer_date IS NULL)`); `offer_conditions` TEXT; `offer_document_id`
+  UUID FK → `student_documents.id` `ON DELETE SET NULL` (`fk_overseas_applications_offer_document_id`, `use_alter` because
+  `student_documents.application_id` points back). The offer's deadline is the existing AGN-008 `offer_deadline` (O2);
+  `offer_letter_url` is untouched (O4). Guarded adds; no existing row is read or rewritten. Downgrade refuses while any `offer_type` is
+  set. Design: `docs/superpowers/specs/2026-10-02-agn-010-offer-details-design.md` §3.
+
+- **Addendum, 2026-10-02 (`AGN-011`, `DEC-SCOPE-058`; migration `0064_application_deposits`, after `0062_agent_offer_details`;
+  provisional number — AGN-012 is open in parallel).** New table `application_deposits`: `id` UUID PK; `application_id` UUID FK →
+  `overseas_applications.id` `ON DELETE RESTRICT`, **unique** (one deposit per application); `required` BOOL; `amount` NUMERIC(12,2) null;
+  `currency` VARCHAR(3) default `INR`; `due_date` DATE; `status` VARCHAR(20); `active_payment_id`, `paid_payment_id` UUID FK → `payments.id`;
+  `paid_at` TIMESTAMPTZ; `remitted_at` DATE, `remittance_reference` VARCHAR(100); `refunded_at` DATE, `refund_amount` NUMERIC(12,2),
+  `refund_reason` TEXT; `created_by_user_id`, `updated_by_user_id` FK → users; timestamps. CHECKs: status in
+  `not_required|pending|paid|remitted|refunded`; `currency = 'INR'` (D1); `(status = 'not_required') = (NOT required)`; amount > 0 when
+  required, amount and due date null when not; `paid_payment_id`/`paid_at` set exactly when paid/remitted/refunded; remittance pair
+  all-or-nothing; refund triple all-or-nothing, set exactly when `refunded`, amount > 0. **`payments`: no schema change** — deposit
+  payments are `reference_type = 'agent_deposit'`, `reference_id` = the deposit id, owned by the paying member; one new status value
+  `cancelled` (agent deposits only: a superseded or failed checkout). Create-if-missing; downgrade refuses while a deposit exists. Design:
+  `docs/superpowers/specs/2026-10-02-agn-011-deposit-collection-design.md` §3.
+
+- **Addendum, 2026-10-02 (`AGN-009`, `DEC-SCOPE-052`; migration `0058_agent_documents`, after `0057_agent_applications`).**
+  `student_documents.student_id` becomes nullable; new nullable columns `agent_student_id` (FK → `agent_students.id`, index
+  `ix_student_documents_agent_student_id`), `document_label` String(80), `uploaded_by_user_id` (FK → `users.id`), `fulfils_request_id`
+  (FK → `document_requests.id`, unique `uq_student_documents_fulfils_request_id`); CHECK `ck_student_documents_owner`
+  (`student_id` or `agent_student_id` set). An agency upload sets `agent_student_id`, plus `student_id` for a student with a login.
+  New `document_requests` (`agent_student_id` NOT NULL, `document_type`, `document_label`, `note`, `status` CHECK
+  `open|fulfilled|cancelled`, `requested_by_user_id`, `closed_by_user_id`, `closed_at`, timestamps; index
+  (`agent_student_id`, `status`)). New append-only `document_events` (`seq` BIGINT identity for ordering, `document_id`/`request_id`
+  with CHECK at least one, `event` CHECK in the nine event names, `actor_user_id`, `from_status`, `to_status`, `notes`, `file_key`,
+  `created_at`). No existing row is written; history starts at deployment. Downgrade refuses while agency documents, requests or
+  events exist.
+
+- **Addendum, 2026-10-02 (`AGN-008`, `DEC-SCOPE-050`; migration `0057_agent_applications`, chained after `0056_agent_shortlist` since the 2026-10-02 merge of `main`; cut on `0054_school_onboarding_bulk`) — agent-student applications.**
+  Lifts `DEC-SCOPE-042` D8. Additive nullable columns on `overseas_applications`: `agent_student_id` UUID FK → `agent_students.id`
+  (index `ix_overseas_applications_agent_student_id`; no cascade, agent students are archived, never deleted), `submitted_on` Date,
+  `application_deadline` Date, `offer_deadline` Date. `status` stays a `String(50)` with no DB enum or CHECK: **`withdrawn`** is added as a
+  terminal value alongside the `DEC-WF-001` stages (no DDL; the rejected/waitlisted/deferred gap above is unchanged), and the
+  "Application ID" is the existing `application_reference` (A2). `student_id` may be `NULL` in an application's API response for an
+  agent student with no login.
+  **Addendum, 2026-10-02 (browser QA pass 1):** no schema change. The 2026-10-02 merge with `main` @ `3e06381` (`AGN-006`, `AGN-007`) re-chained `0057_agent_applications` after `0056_agent_shortlist` (one head); `nearest_deadline` and the agent dashboard filter are computed in the service layer from the existing columns (`DEC-SCOPE-050` A17/A18).
+  **Owner invariant**, enforced at every write site and not as a DB CHECK (the `DEC-SCOPE-018` style): `school_student_id` excludes
+  `student_id` and `agent_student_id`; an agent-created application always has `agent_student_id`, plus `student_id` when the agent student
+  has a login (A11). School-bridged rows stay excluded from every list that excludes them today (A12). Draft vs Submitted is
+  `submitted_on IS NULL` vs `NOT NULL` for the stages before `offer` (A9). Downgrade drops the index and the four columns. No existing row
+  changes and `agent_student_id` is not backfilled. Design: `docs/superpowers/specs/2026-10-02-agn-008-agent-applications-design.md` §4.
+- **Addendum, 2026-10-02 (`AGN-013`, `DEC-SCOPE-054`; migration `0060_agent_app_enrollment`, chained after `0059_agent_tasks` (drafted as `0058`, re-chained on merging `main` @ `9adcbca`)) — enrollment confirmation.**
+  Additive nullable columns on `overseas_applications`: `enrollment_date` Date, `university_student_id` VARCHAR(60), `enrollment_confirmed_at`
+  TIMESTAMPTZ (first time the agency recorded details). No row is read or written by the upgrade; the downgrade refuses while any of the
+  three holds data. The revision id is ≤ 32 characters (`alembic_version.version_num` is `VARCHAR(32)`). `agent_commissions` is unchanged:
+  an agency Master's confirmation reaches `enrolled` through the same `ApplicationStatusHistory` write and §6.3 trigger (E3).
+- **Addendum, 2026-10-02 (`AGN-017`, `DEC-SCOPE-059`; migration `0065_agent_notifications`, chained after `0064_application_deposits` — drafted as `0061`, re-chained as `0064` on merging `main` @ `ff27fa4` and as `0065` @ `3d9244f`) —
+  agency notifications and deadline reminders.** `notifications.dedupe_key` VARCHAR(200) NULL with the partial unique index
+  `ux_notifications_dedupe_key` (`WHERE dedupe_key IS NOT NULL`): only the daily reminder job sets it
+  (`agn017:deadline:{application}:{kind}:{date}:{days_left}:{user}`, `agn017:overdue:{india_date}:{user}`), inserting with
+  `ON CONFLICT DO NOTHING`, so a rerun or a concurrent run creates nothing new. Partial indexes for the job's reads:
+  `ix_overseas_applications_agent_application_deadline` and `ix_overseas_applications_agent_offer_deadline` (`WHERE agent_student_id IS
+  NOT NULL`), `ix_agent_tasks_open_due` (`WHERE status = 'open'`). No row is read or written by the upgrade; existing notifications keep
+  `dedupe_key` NULL; the downgrade drops exactly what it added (the keys are derived reminder markers, not user data).
+- **Addendum, 2026-10-03 (`AGN-015`, `DEC-SCOPE-061`; migration `0067_audit_entity_index`, chained after `0066_bdm_organizations`) —
+  student journey reads.** One index, `ix_audit_logs_entity` on `audit_logs (entity_type, entity_id, created_at)`, for reading one
+  entity's audit history (the student journey timeline reads its student's, applications', deposits' and visa cases' rows). No table or
+  column changes; no row is read or written by the upgrade (guarded add, as `0001` builds from the models); the downgrade drops the index.
+  The timeline itself is derived at read time from `agent_students`, `audit_logs`, `application_status_history`, `document_events` and
+  `student_documents` — nothing is stored.
+
+- **Addendum, 2026-10-03 (`bdm-010`, `DEC-SCOPE-063`; migration `0068_bdm_trips`, chained after `0067_audit_entity_index`) — BDM
+  travel.** `bdm_trips` (UUID PK; `code` unique `TRV-000123` from the sequence `bdm_trip_code_seq`; `bdm_user_id` FK users; travel/return
+  dates with `ck_bdm_trips_dates`; `from_place`/`to_place` ≤ 120; `purpose`; `mode` CHECK flight/train/bus/car/cab/local;
+  `accommodation_required`; `estimated_cost` NUMERIC(14,2) ≥ 0; `currency` = `INR`; `approval_status` draft/submitted/approved/rejected;
+  `travel_status` planned/in_progress/completed/cancelled with `ck_bdm_trips_status_pair` (in progress/completed need approved);
+  `rejection_reason`, `decided_by_user_id`, `submitted_at`, `decided_at`, `completed_at`, `cancelled_at`, `remarks`). Indexes
+  `(bdm_user_id, travel_date)` and partial `(bdm_user_id) WHERE approval_status = 'submitted'`. `bdm_trip_expenses` (UUID PK; `trip_id`
+  FK, indexed; `category` CHECK travel/stay/food/local/other; `amount` NUMERIC(14,2) > 0; `expense_date`; `note` ≤ 500;
+  `created_by_user_id`). Actual cost is never stored (sum of lines, D15). Nothing about the approver is stored (T2). Additive; the
+  downgrade refuses while trips exist.
+
+- **Addendum, 2026-10-03 (`bdm-009`, `DEC-SCOPE-069`; migration `0071_bdm_activities`, chained after `0070_bdm_appointments`) — BDM
+  activity log.** `bdm_activities` (UUID PK; `bdm_user_id` FK `users` `ON DELETE RESTRICT` NOT NULL — the logger; `organization_id` FK
+  `bdm_organizations` `ON DELETE RESTRICT` NOT NULL; `contact_id` FK `bdm_organization_contacts` `ON DELETE SET NULL`, nullable;
+  `contact_name` String(200) nullable, copied at save so it survives a contact delete; `channel` String(20) NOT NULL with
+  `ck_bdm_activities_channel` call/whatsapp/email/visit/meeting/other; `direction` String(10) nullable with `ck_bdm_activities_direction`
+  outbound/inbound; `ck_bdm_activities_direction_channel`: `(channel IN ('call','whatsapp','email')) = (direction IS NOT NULL)`;
+  `occurred_at` timestamptz NOT NULL; `note` Text nullable, ≤ 500 validated in the schema; `created_at`, `updated_at`). Indexes
+  `ix_bdm_activities_bdm_user_id_occurred_at` (my day, counts, the daily cap) and `ix_bdm_activities_organization_id_occurred_at`
+  (timeline). CHECK constraints, no PG enums. The day's counts are never stored (one grouped query, `day_counts`, joined to
+  organizations like the lists so scope filters are safe). Appointment / task links are deferred to bdm-006 / bdm-008. Additive; no
+  existing table or row changes; the downgrade refuses while activities exist.
+- **Addendum, 2026-10-05 (`bdm-017`, `DEC-SCOPE-072`; migration `0074_enquiry_bdm_attribution`, chained after `0073_bdm_pipeline`) —
+  student lead attribution.** `enquiries` gains five nullable columns: `bdm_organization_id` FK `bdm_organizations` `ON DELETE RESTRICT`
+  and `bdm_user_id` FK `users` `ON DELETE RESTRICT` (the attributing BDM), set together (`ck_enquiries_bdm_attribution`); and
+  `converted_user_id` FK `users` `ON DELETE RESTRICT`, `converted_at` timestamptz, `converted_by_user_id` FK `users` `ON DELETE RESTRICT`,
+  set together (`ck_enquiries_conversion`). Indexes: `ix_enquiries_bdm_org_created (bdm_organization_id, created_at)` (the organization's
+  lead list and exact count) and the partial unique `uq_enquiries_converted_user (converted_user_id) WHERE converted_user_id IS NOT NULL`
+  (one lead per student account, L9). A BDM lead is an ordinary enquiry row (`source='bdm'`, division from the BDM type, `subject` = the
+  student's interest, `message` = the note or "Lead entered by BDM at …"). Website and manual enquiries keep every new column NULL; no
+  existing column or row changes; the downgrade refuses while any row is attributed or converted.
+
+- **Addendum, 2026-10-05 (`bdm-004`, `DEC-SCOPE-071`; migration `0073_bdm_pipeline`, chained after `0072_bdm_meeting_reports`) —
+  organization pipelines.** The catalogue lives in `app/bdm_stages.py` (14 steps per type, kinds manual / live / volume; the migration
+  keeps a frozen copy of the manual lists). `bdm_organizations` gains `pipeline_stage` String(40) NOT NULL default `'prospect'` (existing
+  rows backfilled by the default, no history row), `lost_at` timestamptz and `lost_reason` String(500) (both or neither:
+  `ck_bdm_organizations_lost`), `ck_bdm_organizations_pipeline_stage` (each `bdm_type` limited to its own **manual** stages — live
+  stages arrive with bdm-018 / bdm-019, which widen it) and index `ix_bdm_organizations_type_stage (bdm_type, pipeline_stage)`.
+  `bdm_pipeline_events` (UUID PK; `organization_id` FK `bdm_organizations` `ON DELETE RESTRICT`; `actor_user_id` FK `users`
+  `ON DELETE RESTRICT`; `kind` CHECK move / lost / revived; `from_stage`, `to_stage` String(40) — no stage CHECK, so history survives a
+  catalogue change; `note` String(500), required for lost / revived (`ck_bdm_pipeline_events_note`); `position` BIGINT identity;
+  `created_at`), append-only, index `(organization_id, position)`. The agent status is derived, never stored. Additive; the downgrade
+  refuses while any event, non-prospect stage or Lost flag exists.
+
 ### 6.3 Commission trigger mapping — `ADR-012` resolution
 **Resolution:** the automatic commission-accrual trigger (`AGT-003`, `DEC-SCOPE-005`) fires when an
 `ApplicationStatusHistory` row is written with `to_status='enrolled'` **for an application that has
@@ -378,7 +489,14 @@ should gate it further — carried forward as an open item for BRD/PRD follow-up
 - **Compliance constraint:** no field or copy anywhere represents EduSphere as the visa
   decision-maker (`VISA-003-AC02`, sourced from the reference implementation's own compliance
   language, carried forward as a real requirement).
-- **Feature IDs:** `VISA-001`, `VISA-002`, `VISA-003`.
+- **Feature IDs:** `VISA-001`, `VISA-002`, `VISA-003`, `AGN-012`.
+- **Addendum, 2026-10-02 (`AGN-012`, `DEC-SCOPE-057`; migration `0063_agent_visa_details`, chained after `0060_agent_app_enrollment`) —
+  agency visa details.** Additive nullable columns: `visa_application_date` Date, `interview_date` Date, `decision` VARCHAR(20) with
+  `ck_visa_cases_decision` (`approved`/`refused`/`withdrawn` or NULL), `decided_at` TIMESTAMPTZ. The outcome is confirmed by the owner
+  (V2) for agency cases and recorded as the authority's decision (the compliance constraint above still holds; the disclaimer is shown
+  with it). The stage list is unchanged; the outcome is not a stage. Written only by the agency routes; counselor/student routes neither
+  read nor write the new columns. No row is read or written by the upgrade; the downgrade refuses while any of the four holds data.
+  Still one case per application (enforced by the routes, not a unique index).
 
 ### 6.6 `Appointment`
 **Carries over.** **Ownership:** Counselor (schedule), Student (self, view).
@@ -412,6 +530,106 @@ predate an application record).
   today `AGT-002` only reads this table (`DB impact: N`); a create/manage path for the Agent does
   not exist yet and is required scope, not optional polish, once the on-behalf-of model is built.
   See §6.2's note above for the same open `student_user_id` schema question.
+- **Addendum, 2026-09-30 (`AGN-004`, `DEC-SCOPE-042`, migration `0049_agent_students_crm`, cut as `0047_agent_students_crm`) — students with no login.**
+  `student_id` becomes **nullable** (`NULL` = a student who never logs in; no `users` row is ever created for them).
+  Additive nullable columns: `full_name` String(160), `email` String(320, stored lowercased), `phone` String(40),
+  `phone_digits` String(20, server-set, digits only — duplicate check), `date_of_birth` Date, `highest_qualification`
+  String(200), `institution` String(200), `graduation_year` SmallInteger, `preferred_country` String(120),
+  `preferred_course` String(200), `preferred_intake` String(40), `notes` Text (≤ 2000 at the API), `assigned_member_id` →
+  `agent_org_members.id` (`NULL` = unassigned), `archived_at`, `archived_by_user_id` → `users.id`, `updated_by_user_id` →
+  `users.id`. CHECKs `ck_agent_students_identity` (`student_id IS NOT NULL OR full_name IS NOT NULL`) and
+  `ck_agent_students_status` (`active`/`archived`). Indexes `(agent_id, status)`, `(agent_id, lower(email))`,
+  `(agent_id, phone_digits)`, `(assigned_member_id)`. `agent_id` keeps meaning "created or linked by" and still fixes the
+  agency (F1 — no `org_id` column). Linked rows read name/email/phone from `users`; their identity columns stay `NULL`.
+  Upgrade changes no existing row; `downgrade()` refuses while a student with no login, an assignment or a staff member
+  exists. Round trip and refusals verified in a throwaway database (`tests/test_agn_004_migration.py`).
+- **Addendum, 2026-10-01 (`AGN-006`, `DEC-SCOPE-048`, migration `0055_agent_student_counseling`, drafted as `0054`) — counseling record.**
+  New table `agent_student_counseling`, one row per agency student (`UNIQUE agent_student_id` → `agent_students.id`):
+  `counseling_completed` Boolean NOT NULL, `completed_at` timestamptz, `completed_by_user_id` → `users.id`, `career_interest`
+  String(200), `course_preference` String(200), `country_preference` String(120), `budget_amount` Numeric(10,2),
+  `budget_currency` String(3), `remarks` Text (≤ 2000 at the API), `updated_by_user_id` → `users.id` NOT NULL, timestamps.
+  CHECKs: `ck_agent_student_counseling_completed` (completed ⇔ `completed_at` set ⇔ `completed_by_user_id` set),
+  `ck_agent_student_counseling_budget` (`budget_amount >= 0`), `ck_agent_student_counseling_currency` (the 7 codes),
+  `ck_agent_student_counseling_budget_pair` (amount and currency both set or both null). Create-table only: no existing row read
+  or written; `downgrade()` refuses while any counseling record exists. Round trip and refusal verified in a throwaway database
+  (`tests/test_agn_006_migration.py`). Course/country preference are separate from the Step 1 `agent_students.preferred_*`
+  columns (C3). **Retention:** lives and dies with the student row (no hard delete, `DEC-SCOPE-042` D5).
+  `overseas_applications`, `student_documents` and `agent_commissions` are unchanged (D8: applications for students with no
+  login are a later feature).
+
+### 6.8a `AgentOrg`, `AgentOrgMember` — built 2026-09-28 (`AGN-001`, `DEC-SCOPE-038`, migration `0046_agent_orgs`)
+Design: `docs/superpowers/specs/2026-09-28-agn-001-multi-tenant-agent-crm-design.md` §4.
+- **`agent_orgs`** (the tenant): `id`, `name` String(160), `prefix` String(8) unique
+  (`uq_agent_orgs_prefix`; D5), `status` String(20) indexed, CHECK `pending`/`active`/`rejected`/`suspended`
+  (`ck_agent_orgs_status`), `master_seq` Integer ≥ 0 (highest Master number ever issued), `status_changed_by_user_id`
+  → `users.id`, `status_changed_at`, timestamps. `status` is the agent approval gate (`core/rbac.agent_denial_reason`).
+- **`agent_org_members`**: `id`, `org_id` → `agent_orgs.id` (indexed), `user_id` → `users.id` **unique** (a user
+  belongs to one organisation for good), `role` CHECK `master`, `seq` (unique with `org_id`), `code` String(16) unique
+  (`<prefix>-M###`, never reassigned), `status` CHECK `active`/`deactivated` (no reactivation), `invited_by_user_id`,
+  `deactivated_by_user_id`, `deactivated_at`, timestamps. "Active or pending invite" (D4) = `status='active'`; an
+  invited Master is a real `users` row with an unused DEC-SCOPE-019 welcome token.
+- **Invariants (enforced under a row lock on `agent_orgs`):** at most 3 active members; never 0 active once created.
+- **Scope (approach A):** `agent_students`, `agent_commissions` and `overseas_applications` are **unchanged** —
+  `agent_id` still records the acting user; agent queries filter `agent_id IN (member user ids of the caller's
+  organisation)`.
+- **Migration `0045`:** creates both tables; backfills one organisation + active `M001` per `role='agent'` user without
+  a membership (name = `profile.agency_name` or `full_name`; approved assignment → `active`, anything else → `pending`).
+  No existing row altered; idempotent; `downgrade()` drops only the two tables. Round trip verified on a throwaway
+  database (RTM `AGN-001` row).
+- **Feature IDs:** `AGN-001` (changes `AGT-001`–`004`).
+- **Addendum, 2026-09-30 (`AGN-004` G2, same names as `AGN-002`):** member `role` CHECK widens to `master`/`staff`;
+  numbering unique per role (`uq_agent_org_members_org_role_seq` on `org_id, role, seq` replaces `uq_agent_org_members_org_seq`,
+  so `M001` and `S001` coexist); `agent_orgs.staff_seq` Integer ≥ 0 (`ck_agent_orgs_staff_seq`). Owned by AGN-002's migration
+  `0047_agent_org_staff` (AGN-004 carried an identical guarded copy until the 2026-10-01 merge; now removed). The 3-Master
+  limit, the last-Master rule and commission notifications count `role='master'` only.
+
+### 6.8b Agent staff and session version — built 2026-09-30 (`AGN-002`, `DEC-SCOPE-040`, migration `0047_agent_org_staff`)
+Design: `docs/superpowers/specs/2026-09-30-agn-002-staff-logins-design.md` §4.
+- **`agent_orgs.staff_seq`** Integer ≥ 0 (`ck_agent_orgs_staff_seq`), server default 0: the highest staff number ever issued.
+- **`agent_org_members`**: `role` CHECK now `master`/`staff` (`ck_agent_org_members_role`); the sequence is unique per role
+  (`uq_agent_org_members_org_role_seq (org_id, role, seq)`, replacing `uq_agent_org_members_org_seq`), so `M001` and `S001`
+  coexist. Staff codes `<prefix>-S###`, never reassigned. Staff move `active` ↔ `deactivated` (Masters still cannot be
+  reactivated — a service rule). A staff member is a `users` row with `role='agent'` and an approved `agent` assignment.
+- **`users.session_version`** Integer, server default 0: copied into every token as `sv`; a staff reset or deactivation
+  increments it, which ends every older session (tokens without `sv` count as 0).
+- **Migration `0047`:** additive; no row changes; columns added only when missing; `downgrade()` refuses while a staff member
+  exists.
+- **Feature IDs:** `AGN-002`.
+
+### 6.8c AgentOrgMember permission flags (AGN-003, migration `0052_agent_staff_permissions`)
+Design: `docs/superpowers/specs/2026-10-01-agn-003-staff-permissions-design.md` §5. `DEC-SCOPE-044`.
+- **`agent_org_members.can_verify_documents`** and **`.can_view_reports`**: `BOOLEAN NOT NULL DEFAULT false` (`server_default`).
+  The column names are also the API keys.
+- **Staff-only semantics:** the flags apply to `role='staff'`. On Master rows they are stored but never read (`core/rbac.agent_may`
+  returns true for Masters). Read from the membership `get_current_user` already loads: no extra query, no cache.
+- **Migration `0052`** (`down_revision = "0051_school_bulk_uploads"`; drafted as `0048` after `0047`, re-chained to `0051` after `0050` and then to `0052` after ENH-028's `0051` when `main` was merged, 2026-10-01): additive; no constraint, index or backfill. Every existing row reads
+  `false` (existing staff lose the Reports page until a Master switches it on, P1). `downgrade()` drops both columns.
+- **Feature IDs:** `AGN-003`.
+
+### 6.8d `AgentUniversity`, `AgentStudentShortlistEntry` (AGN-007, migration `0056_agent_shortlist`)
+Design: `docs/superpowers/specs/2026-10-01-agn-007-student-shortlist-design.md` §4. `DEC-SCOPE-049`.
+- **`agent_universities`** (the agency-private university list; never part of the shared `universities` catalogue): `id` UUID PK; `org_id` UUID FK
+  `agent_orgs.id` NOT NULL, indexed (`ix_agent_universities_org_id`, the tenant key every read filters on); `name` String(200) NOT NULL;
+  `country` String(120) NOT NULL (free text); `city` String(120) NULL; `entry_requirements` Text NULL (≤ 2000 in the schema);
+  `created_by_user_id`, `updated_by_user_id` UUID FK `users.id`; `created_at`, `updated_at` (`TimestampMixin`). Unique index
+  `uq_agent_universities_org_name_country` on `(org_id, lower(name), lower(country))`.
+- **`agent_student_shortlist_entries`**: `id` UUID PK; `agent_student_id` UUID FK `agent_students.id` NOT NULL (scope is inherited from the student);
+  `university_id` UUID FK `universities.id` NULL (catalogue); `agent_university_id` UUID FK `agent_universities.id` NULL, indexed (agency);
+  `course_id` UUID FK `overseas_courses.id` NULL (catalogue course); `course_title` String(200) NULL (free-text course); `intake` String(120) NULL;
+  `tuition_fee` String(120) NULL (free text, matching `OverseasCourse.tuition_fee`); `entry_requirements` Text NULL (≤ 2000);
+  `created_by_user_id`, `updated_by_user_id` UUID FK `users.id`; `created_at`, `updated_at`. Country is derived from the university, never stored.
+- **CHECK constraints:** `ck_shortlist_one_university` `(university_id IS NULL) <> (agent_university_id IS NULL)`; `ck_shortlist_catalogue_course`
+  `course_id IS NULL OR university_id IS NOT NULL`; `ck_shortlist_one_course_form` `course_id IS NULL OR course_title IS NULL`.
+  Index `ix_shortlist_student_created` on `(agent_student_id, created_at, id)` serves paging.
+- **All foreign keys `ON DELETE RESTRICT`** (nothing is cascade-deleted). "The course belongs to *that* university" needs a cross-table lookup, so the
+  service enforces it (`API_CONTRACT.md` §8 validation order), not a constraint. Caps (50 entries per student, 500 universities per agency) are
+  enforced in the service under the agency lock.
+- **Migration `0056`** (`down_revision = "0055_agent_student_counseling"` since merging `main` @ `8f0000d` on 2026-10-02, when AGN-006's `0055` (also on `0054`) landed first; previously `"0054_school_onboarding_bulk"`; drafted as `0053`, then `0055` and re-chained to `0056` when `main` was merged,
+  2026-10-01; whichever of `AGN-006` (`0055`) / `AGN-007` / `AGN-008` (`0057`) merges later re-chains): creates the two tables only; no existing table,
+  column or row changes. `downgrade()` refuses while either table holds a row ("Cannot downgrade 0056_agent_shortlist: shortlist
+  entries / agency universities exist", as `0047`/`0049`/`0055` do; added 2026-10-02 at verification, `test_agn_007_schema.py::test_downgrade_guard_refuses_while_universities_or_entries_exist`),
+  then drops only the two new tables, entries first.
+- **Feature IDs:** `AGN-007`.
 
 ### 6.9 `InboundUniversityEmail`
 **Carries over.** Supports `UNI-001`'s university-communication surface.
@@ -471,6 +689,18 @@ many-to-many relationship §6.12 proposes. `SchoolActivity` (`school_id`, `title
 `created_by_user_id`) and `SchoolActivityAttendance` (`activity_id`, `school_student_id`, `present`,
 `marked_by_user_id`, unique per activity+student pair) cover the scheduling/attendance workflow.
 **Feature IDs:** `SCH-001`.
+
+**Addendum, 2026-09-19 (`ENH-004` / `DEC-SCOPE-020` — `school_student_grade_history`):** an append-only ledger of grade/academic-year transitions. Columns: `id`; `school_student_id` (FK `school_students`, indexed); `action` (`promoted` \| `held_back`); `from_academic_year_id` (FK `academic_years`, nullable), `from_grade_level` (int, nullable), `from_grade_or_class` (≤60, nullable); `to_academic_year_id` (FK `academic_years`, not null), `to_grade_level`, `to_grade_or_class` (both nullable); `performed_by_user_id` (FK `users`, not null); `created_at`/`updated_at`. `UNIQUE (school_student_id, to_academic_year_id)` (`uq_school_student_grade_history_year`) is the database backstop against promoting a student twice into the same year. Each row records its own "from" state, so no backfill of existing students was needed; `school_students` remains the source of the *current* grade and year. Migration `0033_student_grade_history` is create-table only (inspector-guarded, because the `0001` baseline builds from the current models) and its downgrade drops only this table.
+
+**Addendum, 2026-09-23 (`ENH-025` / `DEC-SCOPE-029` — Student Master fields):** `school_students` gains twelve **nullable** columns: `section` (≤20), `roll_number` (≤20), `gender` (≤20, `CHECK ck_school_students_gender`: `NULL` or one of `female`, `male`, `other`, `prefer_not_to_say`), `student_mobile` (≤20), `city` (≤120), `subjects`/`career_interests`/`preferred_countries`/`preferred_courses` (JSON string lists), `global_education_interest` (boolean), and the internal `photo_key` (≤200) / `photo_content_type` (≤40), which are never serialized or logged. The Grade half of `School CRM.md` §3's Grade/Section is `ENH-001`'s existing `grade_level`; `grade_or_class` is unchanged and remains the free-text display label that promotion rewrites. **Roll-number uniqueness:** partial unique index `uq_school_students_roll` on `(school_id, academic_year_id, grade_level, lower(section), roll_number) NULLS NOT DISTINCT WHERE roll_number IS NOT NULL` (PostgreSQL 15+): a blank section/grade/year is its own group, "A" and "a" are one section, and a student without a roll number is never constrained. `school_student_grade_history` gains nullable `from_section`, `from_roll_number`, `to_section`: promotion (promote **and** hold back, both of which move the student into the active year) records them and then clears `roll_number`; transfer approval clears `section` and `roll_number` with the teacher. **Migration `0041_student_master_fields`** (after `0040_school_activity_feedback`) adds the columns, the CHECK and the index (each guarded, because `0001` builds from the current models) and backfills `section` from `grade_or_class` only where the label ends in a section letter after a grade number (`10-A`, `Grade 8-A`, `Class 7 Section C`, `9B`); anything else stays `NULL` and the migration prints those student codes. `grade_or_class` is read, never written; `downgrade()` drops only what `0039` added. **Retention:** these fields, and the stored photo object, live and die with the student record; no student-deletion path exists today, and when one does it must delete the photo object too.
+
+**Addendum, 2026-09-28 (`ENH-026` / `DEC-SCOPE-031` — Counselling Record):** `school_career_records` gains **nullable** columns `status` (≤30, `CHECK ck_career_record_status`: `NULL` or `not_started`/`scheduled`/`completed`/`follow_up_required`), `scheduled_for` (timestamptz), `completed_on`, `next_follow_up_date` (dates), `career_interests`, `academic_strengths`, `weak_areas`, `recommended_careers`, `recommended_courses`, `recommended_stream`, `recommended_skills` (JSON string lists, stored as SQL `NULL` when empty), `global_education_interest`, `parent_participated` (booleans), `parent_participation_note` (≤500) and `updated_by_user_id` (FK `users`), plus index `ix_school_career_records_student_type_status (school_student_id, record_type, status)`. `status` `NULL` means the record predates tracking (or is a `recommendation`); it is never backfilled and counts as completed. `notes` (NOT NULL) is §7's "Counsellor notes"; Grade is read from the student. **Migration `0042_career_record_fields`** (after `0041`; the revision id is short because `alembic_version.version_num` is `varchar(32)`); `downgrade()` drops exactly these.
+
+**Addendum, 2026-09-28 (`ENH-021` / `DEC-SCOPE-032` — Internships):** `portfolio_entries` gains **nullable** `mentor_name`, `mentor_designation` (≤200), `attendance_percent` (`CHECK ck_portfolio_attendance_percent` 0–100), `completion_status` (≤20, `CHECK ck_portfolio_completion_status`), `feedback` (text), `skills_acquired` (JSON list), `certificate_key` (≤300, never serialized or logged) and `certificate_content_type` (≤50); `CHECK ck_portfolio_internship_fields` keeps all eight `NULL` unless `section = 'internship'`. An internship is an ENH-012 entry with `section='internship'`: `organization` is the company, `title` the role, `date_from`/`date_to` the start/end. **Migration `0043_portfolio_internship`** (after `0042`); `downgrade()` drops these, leaving any stored certificate objects (prefix `portfolio-certificates/`) to be removed by hand. **Retention:** a certificate object is deleted when replaced, removed, or when its entry is deleted.
+
+**Addendum, 2026-09-21 (`ENH-005` / `DEC-SCOPE-022` — `school_student_transfer_requests`):** one table that is both a coordinator's transfer request and, once approved, that student's transfer history (migration `0034`, create-table only, nothing altered or backfilled). Columns: `id`, `school_student_id` (FK, indexed), `from_school_id`, `to_school_id`, `requested_by_user_id`, `filed_by_school_id` (the filing coordinator's school, taken from their server-owned profile; indexed; `direction` is derived, `outgoing` when it equals `from_school_id`), `status` (`pending`/`approved`/`rejected`/`cancelled`), `reason` (optional coordinator free text about a minor: shown only to the filing coordinator and admins, never to the other school, a parent, an audit row or a log), `decided_by_user_id`, `decided_at`, `decision_note`, `outcome` (JSON counts set on approval: `parents_moved`, `parents_kept`, `results_withdrawn`, `teacher_cleared`, `pending_parent_email_cleared`), and `created_at`/`updated_at`. Constraints: a **partial unique index** `uq_school_transfer_pending_student` on `(school_student_id) WHERE status = 'pending'` (at most one open request per student, enforced by the database), and CHECKs `from_school_id <> to_school_id` and `filed_by_school_id IN (from_school_id, to_school_id)`. Both are declared in the model *and* the migration. `school_academic_results.status` gains the value `withdrawn` (a plain string; a Draft/Verified result frozen by a transfer, kept and never returned by any response; a downgrade leaves such rows untouched). **Retention:** requests are kept with the student record; no student-deletion path exists today, and when one does it must include this table.
+
+**Addendum, 2026-09-23 (`ENH-013` / `DEC-SCOPE-028` — `school_students.career_goal`):** one nullable `VARCHAR(120)` column, the Career Counselor's one-line Career Passport goal (`School CRM.md` §8 "Career Interest"). Migration `0039_student_career_goal` is add-column only — no default, no backfill, so no existing row is read or rewritten (a metadata-only change on PostgreSQL); downgrade drops the column (verified: upgrade → downgrade → upgrade, single head). Written only by `PATCH /school/students/{id}/career-goal` (audited `{old, new}`), read only through the 360 view; `_student_out` (the `/students/{id}` contract) is unchanged. No other table changes: the 360 view is a read aggregation over existing tables. **Retention:** lives and dies with the student row.
 
 ### 6.12 School role resource scoping (`school_principal`/`school_coordinator`/`school_teacher`/`school_parent`)
 **RESOLVED as built, 2026-09-14 (`SCH-001`):** `user.profile["school_id"]` — no dedicated
@@ -675,6 +905,14 @@ per `record_type`, no structured sub-fields invented beyond what `DEC-ROLE-006` 
 - **Open:** exact assessment-type taxonomy and report field structure not itemized by `DEC-ROLE-006`
   — `EVID-014`'s detailed proposal is `DERIVED_BLUEPRINT` only, not confirmed.
 - **Feature IDs:** `SCH-005`.
+- **Addendum, 2026-09-28 (`ENH-027` / `DEC-SCOPE-035` — structured result, `School CRM.md §6`):** gains
+  **nullable** columns `test_date` (date — the day the test was taken; `created_at` stays the assignment
+  day), `strengths`, `interest_areas`, `personality_indicators`, `recommended_careers`, `recommended_stream`
+  (JSON string lists, SQL `NULL` when empty; the last two share ENH-026's names and shape), `counsellor_remarks`
+  (text ≤4000), `parent_discussion_on` (date) + `parent_discussion_notes` (text ≤2000), `follow_up_on` (date).
+  No backfill; a record made before this has every new field `NULL`. `status` still moves to `completed` only
+  when `report_url` is set. The report-field structure left open above is now itemized by this addendum.
+  **Migration `0045_psychometric_result_fields`** (after `0044_skill_india_certification`); `downgrade()` drops exactly these ten.
 
 **As built, 2026-09-14 (`prompts/15`), correcting `report_url`'s field description above:** built as
 a plain string field the Psychometric Team member supplies directly (`PATCH .../records/{id}`), not
@@ -693,9 +931,11 @@ have gone beyond `DEC-ROLE-006`'s confirmed scope. `status` moves `assigned → 
 sessions / counselling notes / recommended careers), and §6.18 (`SchoolPsychometricRecord.status`).
 Parent notifications reuse §7's existing `Notification` + `NotificationDelivery` rows unchanged —
 recipient is the linked `school_parent` user, `channel='email'`, `status` carries the real SMTP (or
-webhook fallback) outcome. **Deliberately absent, not forgotten:** no `skills`, `portfolio`, or
-overseas-progress tables — `EVID-014` §9/§10/§14/§15–20 remain unconfirmed `DERIVED_BLUEPRINT`
+webhook fallback) outcome. **Deliberately absent, not forgotten:** no `portfolio` or
+overseas-progress tables — `EVID-014` §14/§15–20 remain unconfirmed `DERIVED_BLUEPRINT`
 (`PRD_OPEN_ITEMS.md` items 77/78); adding those tables requires their own decisions first.
+**Skills (§9/§10) were confirmed 2026-09-22 (`DEC-SCOPE-026`, `ENH-011`)** and are §6.21; the
+overview gains an additive `skills` key read from them.
 
 ### 6.20 Student Journey Timeline (`SCH-008`) — added 2026-09-15, propagating `DEC-SCOPE-016`; no new tables
 
@@ -707,7 +947,120 @@ recommendation, `SchoolPsychometricRecord.created_at` for assignment and `.updat
 a report attach, `SchoolAcademicResult.published_at` for a Published result, `SchoolActivity.
 scheduled_at` for an attended session. **Deliberately absent:** any Foreign Language /
 English Test / University Planning / Soft-Skills stage from `EVID-014`'s own illustrative
-timeline — none of those are confirmed modules (`DEC-SCOPE-015`/`016`).
+timeline — none of those are confirmed modules (`DEC-SCOPE-015`/`016`). **Superseded in part
+2026-09-22 (`DEC-SCOPE-026` D5):** Soft Skills / Digital Skills events now appear, derived from
+§6.21 enrolment timestamps (`created_at`, `completed_at`, `certified_at`).
+
+### 6.21 School skills tracker (`ENH-011`) — added 2026-09-22, propagating `DEC-SCOPE-026`; migration `0037_school_skills`
+
+Six create-only tables; no existing table altered. A **batch** belongs to one school and one
+module (`module_type` `soft_skills` | `digital_skills`) and is run by a `career_counselor` whose
+`SchoolStaffAssignment` portfolio contains that school. Deliberately separate from SCH-009's
+per-student `SchoolTestPrepRecord`/`SchoolLanguageRecord` (unchanged) and from the IT-training
+`Batch`/`Enrollment` (keyed to `users`, not `school_students`).
+
+| Table | Key columns | Constraints |
+|---|---|---|
+| `school_skill_batches` | `school_id`, `module_type`, `title`, `topic?`, `trainer_name?`, `start_date`, `end_date?`, `status` (`open`/`closed`), `created_by_user_id` | module/status CHECKs; `end_date >= start_date`; index (`school_id`, `module_type`) |
+| `school_skill_enrollments` | `batch_id`, `school_student_id`, `status` (`enrolled`/`completed`/`certified`/`withdrawn`), `completed_at?`, `certified_at?`, `enrolled_by_user_id` | UNIQUE (`batch_id`, `school_student_id`); status CHECK |
+| `school_skill_sessions` | `batch_id`, `session_date`, `topic?` | UNIQUE (`batch_id`, `session_date`) — one per day |
+| `school_skill_attendance` | `session_id`, `enrollment_id`, `present`, `marked_by_user_id` | UNIQUE (`session_id`, `enrollment_id`) |
+| `school_skill_assessments` | `batch_id`, `name`, `max_score` numeric(6,2) | UNIQUE (`batch_id`, `name`); `max_score > 0` |
+| `school_skill_scores` | `assessment_id`, `enrollment_id`, `score` numeric(6,2), `remarks?`, `recorded_by_user_id` | UNIQUE (`assessment_id`, `enrollment_id`); `score >= 0` |
+
+An enrolment whose student has since transferred (`school_students.school_id` ≠ the batch's
+school, ENH-005) is **frozen**: computed at read/write time, never stored; it stays visible in the
+student's overview/timeline and rejects further writes. Enrolments are capped at 200 per batch.
+
+### 6.22 Skill India certification on `portfolio_entries` (`ENH-024`) — added 2026-09-28, propagating `DEC-SCOPE-033`; migration `0044_skill_india_certification`
+
+`portfolio_entries` is ENH-012's one-table Digital Portfolio (`section` discriminator over ten list
+sections, design `docs/superpowers/specs/2026-09-22-enh-012-digital-portfolio-design.md` §5). ENH-024
+adds four nullable columns — no new table, no backfill; every existing row is all-NULL in them:
+
+| Column | Type | Meaning |
+|---|---|---|
+| `certification_type` | varchar(30) | `'skill_india'`, else NULL |
+| `certification_status` | varchar(20) | `enrolled` / `in_progress` / `certified` |
+| `certificate_number` | varchar(100) | not unique (spec D7) |
+| `issued_on` | date | issue date |
+
+CHECK constraints (declared on the model and in the migration): `ck_portfolio_cert_type` (the tag is
+NULL, or `skill_india` on a `section = 'certification'` row); `ck_portfolio_cert_status` (the status
+list); `ck_portfolio_cert_fields` (an untagged row has all four NULL; a tagged row has a status);
+`ck_portfolio_cert_certified` (`certified` ⇒ number and issue date). The issuing body reuses the
+existing `organization` column. No index (nothing filters by tag). `downgrade()` drops the four
+CHECKs and columns only; entries survive as plain certifications. **Feature ID:** `ENH-024`.
+
+### 6.23 School daily attendance (`ENH-030`) — added 2026-09-30, propagating `DEC-SCOPE-041` (provisional number); migration `0048_school_attendance_records`
+
+One new table, `school_attendance_records` — create-table only, no existing table altered, no backfill
+(design `docs/superpowers/specs/2026-09-30-enh-030-daily-attendance-design.md` §4):
+
+| Column | Type | Meaning |
+|---|---|---|
+| `id` | uuid PK | |
+| `school_student_id` | uuid FK `school_students.id`, not null | the student |
+| `school_id` | uuid FK `schools.id`, not null | the student's school when marked; readers see only rows of the student's current school (C1) |
+| `session_date` | date, not null | the school-calendar day (Asia/Kolkata); never in the future |
+| `status` | varchar(20), not null | `present` / `absent` / `late` / `excused` (the IT `attendance` values) |
+| `marked_by_user_id` | uuid FK `users.id`, not null | the last `school_teacher` who marked it |
+| `created_at`, `updated_at` | timestamptz | `updated_at` set on every re-mark |
+
+`uq_school_attendance_student_school_date (school_student_id, school_id, session_date)` — one row per
+student per day per school (D5 as amended, confirmed by the user 2026-09-30); re-marking upserts, and after a
+transfer each school keeps its own register (the new school never overwrites the old school's row). `ck_school_attendance_status` — the four statuses. The unique constraint's index is
+the only index (it serves the roster and summary reads). A **missing row means "not marked"**, never
+absent. After a transfer the old school's rows are kept (not shown to the new school's readers).
+A past day may only be marked for students enrolled at the school that day (latest approved transfer into it, else `school_students.created_at`, school calendar; DEC-SCOPE-041 I-3). `downgrade()` drops the table. Writes are audited as `school.daily_attendance_mark` (with the changed
+students, from → to) and refusals as `school.daily_attendance_denied` (counts only). **Feature ID:** `ENH-030`.
+
+### 6.24 Bulk data-entry batches (`ENH-028`) — added 2026-10-01, propagating `DEC-SCOPE-043`; migration `0051_school_bulk_uploads`
+
+`school_bulk_upload_batches` — one row per accepted upload: `id`, `target_type` (`academic_result` | `psychometric_record` |
+`test_prep_record` | `language_record`, `ck_school_bulk_upload_target_type`), `uploaded_by_user_id` (FK users),
+`idempotency_key` (≤120), `file_sha256`, `total_rows`, `accepted_count`, `rejected_count`, timestamps.
+`uq_school_bulk_upload_key (uploaded_by_user_id, target_type, idempotency_key)` decides racing requests and is the only index.
+No `school_id` (a portfolio spans schools) and no status column: a batch is written in the same transaction as its rows.
+
+`school_bulk_upload_rows` — one row per filled-in CSV row: `batch_id` (FK, `ix_school_bulk_upload_rows_batch_id`),
+`row_number` (file line, header = 1), `status` (`accepted` | `rejected`, `ck_school_bulk_upload_row_status`),
+`error_message`, `student_code` (as typed, upper-cased; NULL when blank or longer than 8), `created_record_id` (the new
+record's id in the batch's target table — **no FK**, polymorphic).
+
+The roster upload keeps its own `SchoolRosterUploadBatch`/`Row` (§6.13), unchanged. Records created by a batch are ordinary
+`SchoolAcademicResult`/`SchoolPsychometricRecord`/`SchoolTestPrepRecord`/`SchoolLanguageRecord` rows; their per-record audit
+entries carry `bulk_batch_id`. Create-table only; `downgrade()` drops both tables. **Feature ID:** `ENH-028`.
+
+**Addendum, 2026-10-01 (`ENH-029`, `DEC-SCOPE-047`; migration `0054_school_onboarding_bulk`).** `target_type` also allows
+`school_onboarding` (CHECK widened), and `school_bulk_upload_rows` gains `created_user_id` (nullable FK users, no index — read
+only by `batch_id`). For an onboarding row `created_record_id` is the new `schools.id`, `created_user_id` its seed Coordinator,
+`student_code` NULL; every ENH-028 row leaves `created_user_id` NULL. No existing row is read or written; `downgrade()` refuses
+while onboarding batches exist, otherwise drops the column and restores the previous CHECK. **Feature ID:** `ENH-029`.
+
+### 6.25 School funding support cases (`ENH-020`) — added 2026-10-01, propagating `DEC-SCOPE-045` (provisional number); migration `0053_school_funding_records`
+
+`school_funding_records` — one financial support / loan assistance case (`School CRM.md` §21) for a `school_students` row:
+`id`, `school_student_id` (FK, indexed), `school_id` (FK `schools`; the student's school when the case was opened, never
+changes — D12), `support_type` (`education_loan`/`financial_assistance`/`scholarship`/`funding_guidance`, fixed after creation),
+`status` (`required`/`counselling`/`documents`/`application`/`approved`/`completed`/`closed`), `status_changed_on` (date the
+current stage was entered, school calendar), `provider_name` (≤200, nullable), `amount_text` (≤120, nullable, free text — no
+currency arithmetic), `notes` (text, `""` when empty), `closure_reason` (≤500, nullable), `career_counselor_user_id` (creator),
+`updated_by_user_id` (nullable), `created_at`, `updated_at`.
+
+Constraints: `ck_funding_record_support_type`, `ck_funding_record_status`, `ck_funding_record_closure` (`(status = 'closed') =
+(closure_reason IS NOT NULL)`). Indexes: `uq_funding_record_open_student_type` — **partial unique** on (`school_student_id`,
+`school_id`, `support_type`) `WHERE status NOT IN ('completed', 'closed')`, one open case per student, school and type (D7/D12;
+an open case left at a previous school never blocks the new school); `ix_school_funding_records_school_type` (`school_id`,
+`support_type`) for the entitlement usage count; `ix_school_funding_records_school_student_id`.
+
+Lifecycle: created at `required`; one stage forward at a time or `closed` (with a reason) from any open stage; `completed` and
+`closed` are final (read-only). No delete path (a case is closed, not erased). **Data classification:** the existence of a case and
+its `provider_name`, `amount_text`, `notes`, `closure_reason` are sensitive personal data (a family's financial need): never copied
+into audit rows, logs or notifications. Retention follows `school_students` (no school-student deletion path exists — a
+pre-existing gap, not widened here). Audit: `school.funding_record_create`/`_update` (field names, status old→new) and
+`school.funding_record_denied` (actor, role, reason). Usage: `loan_assistance`/`scholarship_assistance` = distinct students per
+`school_id`. **Feature ID:** `ENH-020`.
 
 ## 7. Notifications, Payments, GDPR, Audit (cross-cutting)
 
@@ -719,6 +1072,13 @@ timeline — none of those are confirmed modules (`DEC-SCOPE-015`/`016`).
   (`PRD_OPEN_ITEMS.md` item 13); this contract fixes only the *mechanism* (a retry-eligible state
   exists), not the *policy* (retry count/backoff), which is not invented here.
 - **Feature IDs:** `NOT-001`, `NOT-002`, `NOT-003`.
+
+**Updated 2026-09-30 (`ENH-014` slice 1; spec §4, migration `0050_notification_channels` — cut as `0046`, re-chained after `0049_agent_students_crm` on the 2026-10-01 merges with `main`; `DEC-NOT-001` extension D4/D10/D11).** Additive only; `downgrade()` removes exactly what `upgrade()` adds. The table in code is `notification_deliveries` (`NotificationDelivery`).
+- **`notification_deliveries.status` values** (column already `String(30)`, no schema change): `queued`, `sending`, `retrying`, `sent`, `failed`, `not_configured`, `skipped`. **This fixes the retry policy** left open above (`PRD_OPEN_ITEMS.md` item 13, resolved for slice 1 by D11): up to 3 retries on transient errors at 60 s / 300 s / 1500 s, at most 4 attempts, then `failed` with the error kept.
+- **`notification_deliveries.attempt_count`:** new queued rows start at 0; each worker claim increments it. The column default (1) is unchanged for the inline auth/invite paths that still construct rows directly.
+- **`notification_deliveries.context`** (new, JSON, nullable): `{"kind": "school", "school_name": "..."}` for the School email path; null for the generic path and every pre-existing row. Not personal data.
+- **Index** `ix_notification_deliveries_status_updated_at` on `(status, updated_at)` for the sweeper (queued/retrying older than 30 min re-published; sending older than 15 min marked `failed`, "worker interrupted").
+- **`notification_preferences`** (new; resolves the "`NotificationPreference` capability is schema-ready" note in `INTEGRATION_CONTRACTS.md` §4): PK `user_id` (FK `users.id`, ON DELETE CASCADE); `whatsapp_opt_in`, `sms_opt_in` (bool, not null, default false); `whatsapp_opted_in_at`, `sms_opted_in_at` (timestamptz, nullable; set on opt-in, cleared on opt-out); `created_at`, `updated_at`. One row per user; no row means WhatsApp and SMS are off. Personal data (consent state), no free text; retained for the life of the account, deleted on GDPR erasure, included in the data export. The phone number stays only in `users.phone`.
 
 ### 7.2 `Payment`, `Invoice`, `Receipt`, `EMISchedule`, `PaymentWebhookEvent`
 **Corrected 2026-09-03 (built alongside `STU-010`/`PAY-001`):** only `Payment` itself carries
@@ -818,3 +1178,48 @@ together with `API_CONTRACT.md`, `RBAC_MATRIX.md`, `INTEGRATION_CONTRACTS.md`, a
 `SECURITY_CONTROLS.md`. `prompts/10_TEST_CATALOG_AUDIT_AND_REBUILD.md` may now proceed. The open
 items listed throughout this document remain open — approval of the contract does not resolve them,
 it only clears the gate to design against them as documented.
+
+## BDM Organization CRM (`bdm-002`, `DEC-SCOPE-060`; migration `0066_bdm_organizations`, after `0065_agent_notifications`)
+
+Additive only: two tables and one sequence; no existing table, column or row changes. `downgrade()` refuses while organizations exist.
+
+- **`bdm_organizations`** — an institution a BDM meets (`EVID-016` §9). `code` VARCHAR(20) unique (`ORG-%06d` from
+  `bdm_organization_code_seq`, server-generated); `org_type` CHECK (college, university, agent, school, corporate,
+  training_institute, other); `bdm_type` CHECK (agent, school, college) = the owning module, copied from the creator (Q-03); `name`,
+  `city` NOT NULL with server-normalized `name_key` / `city_key` (NFKC, whitespace collapsed, casefold) for the Q-18 duplicate warning;
+  `state`, `phone`, `email`, `website`, `courses_interested` (free text, C6), `student_count` (CHECK `>= 0`); `existing_partner`
+  BOOLEAN NOT NULL; `assigned_bdm_user_id`, `created_by_user_id` FK `users` `ON DELETE RESTRICT`; `archived_at` (archive, never hard
+  delete). Indexes `(bdm_type, assigned_bdm_user_id)` and `(bdm_type, name_key, city_key)`.
+- **`bdm_organization_contacts`** — named people (C10: the primary contact is §9's Contact Person / Designation). `organization_id` FK
+  `ON DELETE RESTRICT`; `position` BIGINT identity (insertion order); `name` NOT NULL; `designation`, `role` (CHECK: principal, dean,
+  hod, placement_officer, counselor, management, owner, other), `phone`, `email`; `is_primary` with a partial unique index (one primary
+  per organization). At least one contact (C1) and at most 20 are service rules.
+- Last Meeting / Next Meeting are **not stored**: computed from bdm-006 appointments (null until then).
+- **Addendum (`bdm-003`, `DEC-SCOPE-065`; migration `0069_bdm_org_profiles`, after `0068_bdm_trips`):** twelve nullable
+  columns on `bdm_organizations`, no row written; `downgrade()` refuses while any of them holds a value. Common: `address` VARCHAR(500)
+  (line breaks allowed, P14). Agent group: `country`, `territory` VARCHAR(120), `source` VARCHAR(20) (CHECK referral, website, event,
+  cold_call, walk_in, other), `staff_count` INTEGER (CHECK 0–100 000). School group: `board` VARCHAR(10) (CHECK `CBSE`, `ICSE`,
+  `State`, `IB`, `Other` — ENH-009's values), `school_type` VARCHAR(20) (CHECK private, government, aided, international, other),
+  `grade_from` / `grade_to` SMALLINT (CHECK each −2…12 — −2 Nursery, −1 LKG, 0 UKG — and `grade_from <= grade_to`). College group
+  (`college` and `university`): `affiliation` VARCHAR(200), `college_type` VARCHAR(20) (CHECK engineering, arts_science, management,
+  medical, polytechnic, other), `courses` VARCHAR(1000). Backstops `ck_bdm_organizations_{agent,school,college}_profile`: a group's
+  columns are NULL unless `org_type` belongs to it. Named people (Owner, Principal, Dean …) stay contacts with a role tag; Agreement /
+  MoU / Contract / Renewal Date are bdm-005; Commission and live agent counts are not stored (bdm-019 / bdm-022).
+
+## BDM Meeting Reports and Tasks (`bdm-007`, `DEC-SCOPE-070`; migration `0072_bdm_meeting_reports`, after `0071_bdm_activities`)
+
+Additive: two tables; `bdm_appointments` is not altered (its `outcome` / `next_follow_up_on` stay the single source).
+
+- **`bdm_meeting_reports`** — one per completed appointment (`uq_bdm_meeting_reports_appointment`). `appointment_id` FK `bdm_appointments` RESTRICT; `author_user_id` FK `users` RESTRICT; `discussion` VARCHAR(4000) (CHECK `ck_bdm_meeting_reports_discussion`: `legacy OR discussion IS NOT NULL`); `requirements`, `opportunity` (2000), `next_action` (1000), `responsible_person` (200) nullable; `legacy` bool (rows backfilled for bdm-006 completions, read-only); `submitted_at` (anchors the IST-day edit window); `created_at`, `updated_at`.
+- **`bdm_tasks`** — minimal for bdm-007, extended by bdm-008. `kind` CHECK (`follow_up`, `task`); `title` (200); `due_on` date; `organization_id` FK nullable; `source` CHECK (`appointment_outcome`, `mou`, `manual`); `source_appointment_id` FK `bdm_appointments` nullable, unique `uq_bdm_tasks_source_appointment`, CHECK `(source = 'appointment_outcome') = (source_appointment_id IS NOT NULL)`; `assignee_user_id` FK `users`; `status` CHECK (`open`, `done`, `cancelled`) with `(status = 'done') = (completed_at IS NOT NULL)`; index `ix_bdm_tasks_assignee_status_due`.
+- Backfill (0072, idempotent): a legacy report for every completed appointment; an open follow-up for each stored `next_follow_up_on`. Downgrade refuses while non-legacy reports exist.
+
+## BDM Appointments (`bdm-006`, `DEC-SCOPE-068`; migration `0070_bdm_appointments`, after `0069_bdm_org_profiles`)
+
+Additive only: two tables and one sequence (`bdm_appointment_code_seq`, also on `Base.metadata`); no existing table, column or row changes. `downgrade()` refuses while any appointment exists. Spec §4.2–4.3.
+
+- **`bdm_appointments`** — one meeting of a BDM with an organization contact (`EVID-016` §2). `id` uuid PK; `code` VARCHAR(20) NOT NULL unique `uq_bdm_appointments_code` (`APT-%06d`, server-generated); `bdm_user_id` FK `users` `ON DELETE RESTRICT` (owner = creator, never moves on reassignment); `organization_id` FK `bdm_organizations` `ON DELETE RESTRICT`; `contact_id` FK `bdm_organization_contacts` **`ON DELETE SET NULL`** (A5: the copied `contact_name` NOT NULL, `contact_designation`, `contact_phone`, `contact_email` remain as the meeting record); `starts_at` timestamptz NOT NULL (UTC, shown IST); `duration_minutes` INT NOT NULL default 60 CHECK 15–720; `appointment_type` VARCHAR(40) CHECK in all type keys (per-BDM-type validation is a service rule); `location` (255), `purpose` (1000), `remarks` (2000) nullable; `status` VARCHAR(20) NOT NULL default `scheduled` CHECK (scheduled, confirmed, rescheduled, completed, cancelled, no_show); `outcome` VARCHAR(40) CHECK in all outcome keys (A1); `next_follow_up_on` date; `expected_leads` INT CHECK `>= 0`; `expected_revenue` numeric(12,2) CHECK `>= 0`; `created_at`, `updated_at`.
+  - CHECK `ck_bdm_appointments_outcome_completed`: `(status = 'completed') = (outcome IS NOT NULL)`. CHECK `ck_bdm_appointments_follow_up`: `next_follow_up_on IS NULL OR status = 'completed'`.
+  - Indexes: `ix_bdm_appointments_bdm_starts (bdm_user_id, starts_at)`, `ix_bdm_appointments_org_starts (organization_id, starts_at)`, `ix_bdm_appointments_contact (contact_id)`.
+- **`bdm_appointment_events`** — append-only history (never updated or deleted). `appointment_id` FK `bdm_appointments` `ON DELETE RESTRICT`; `actor_user_id` FK `users` `ON DELETE RESTRICT`; `from_status` (NULL on creation); `to_status` CHECK the six statuses; `old_starts_at` / `new_starts_at` (reschedule only); `reason` VARCHAR(500) (required for cancel / no-show by the service); `created_at` default now(); `position` BIGINT identity (stable order for events written in one transaction). Index `ix_bdm_appointment_events_appointment (appointment_id, position)`.
+- Last / Next meeting on organizations (bdm-002) are still **not stored**: computed from this table (`max(starts_at)` of completed, `min(starts_at)` of open future appointments).

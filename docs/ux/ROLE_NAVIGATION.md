@@ -149,14 +149,28 @@ Per-role navigation structure derived from `SCREEN_CATALOG.md`. Applies the conf
 - `SCR-AGT-003` — /overseas/agent (Dashboard: referred students) — Referred-student roster and status.
 - `SCR-AGT-004` — /overseas/agent/commissions — Commission list (auto-accrued).
 - `SCR-AGT-005` — /overseas/agent/commissions/[id]/claim — Commission claim action.
+- `SCR-AGT-007` — /overseas/agent/team — The agency's Master accounts: list, invite, deactivate *(net-new, 2026-09-28, `AGN-001`)*.
+- **Agency Staff (`AGN-002`, `AGN-003`):** staff never see Team or Commissions. They see **Reports** only when their Master has switched on
+  their Reports permission (`can_view_reports`, off by default; `agentNavFor(nav, memberRole, permissions)` from `user.agent_permissions`).
+  Masters' navigation is unchanged. A typed `/overseas/agent/reports` URL without the permission shows the access-unavailable card
+  (server `403`). The Documents page gains a review queue only for Masters and staff with Verify (`SCR-AGT-005` AGN-003 update).
+- **Staff activity (`AGN-021`, `DEC-SCOPE-046`):** an **Activity** button on each staff row of the Team page (`SCR-AGT-007`), visible to Masters only. No new navigation item; staff never reach the Team page.
+- **Commission Revenue and report (`AGN-014`, `DEC-SCOPE-051`):** no navigation change. Masters see a **Revenue** metric on the Dashboard and a **Commission report** panel (filters, CSV) on their existing **Reports** page (`SCR-AGT-005` AGN-014 update). Staff never see either; staff with Reports switched on keep the commission-free staff report.
+- `SCR-AGT-009` — /overseas/agent/universities — The agency's own university list (Master: add/edit/delete; Staff: view) *(net-new, 2026-10-01, `AGN-007`, `DEC-SCOPE-049`)*. **The Agent nav gains "Universities", visible to both Master and Staff** (it is not in the staff-hidden list in `lib/navigation.ts`; `navigation.agent.test.ts`). The student shortlist is a panel inside `SCR-AGT-008`'s detail view, not a nav item.
+- **Staff Performance (`AGN-019`, `DEC-SCOPE-066` P7):** a Master-only sidebar item "Staff Performance" after Reports →
+  `/overseas/agent/performance` (`SCR-AGT-011`); also linked from the dashboard staff table ("View staff performance"). Hidden from staff
+  (`STAFF_HIDDEN`), with or without the reports toggle; a staff member who opens the address sees a Masters-only note and the API
+  refuses them (`403`).
+- **Master / Staff dashboard and the staff sidebar (`AGN-018`, `DEC-SCOPE-062` G4; relabel and link existing pages only — no access is removed):** `/overseas/agent/dashboard` (`SCR-AGT-003`) shows the agency KPI board to both roles — a Master the whole agency (with the Commission group and the Staff performance table), Staff their assigned students only. Navigation, both roles: **Applications** children now start with **All applications** (`/overseas/agent/applications`, the list's default — browser QA18-07), then the AGN-008 status filters; **Tasks** is labelled **Tasks & Follow-ups**. Staff only: **Students** becomes **My Students** with children **All** (`/overseas/agent/students`) and **Add** (`/overseas/agent/students?new=1`, which opens the existing add form once and then drops `new=1` from the URL); Masters keep **Students** without children. Unchanged: Universities, the Withdrawn filter, Reports gating, Team/Commissions hidden from staff, the unread badge; mobile shows children as "Parent: Child" (e.g. "My Students: Add"). **No Journey link** until a route exists.
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
 ## Overseas Admin
 
-- `SCR-AGT-002` — /overseas/admin/agents — Agent approval queue (Overseas Admin side).
+- `SCR-AGT-002` — /overseas/admin/agents — Agent approval queue (Overseas Admin side); since `AGN-001` it acts on agent organisations (approve / reject / suspend / reinstate).
 - `SCR-AGT-006` — /overseas/admin/commissions — Commission payout approval queue.
 - `SCR-SCH-010` — /overseas/admin/schools — All partner schools + create School/seed Coordinator on the same screen *(net-new, added 2026-09-14, `DEC-SCOPE-012`; `SCR-SCH-011`'s separate `/new` route merged in during `SCH-003`'s build, same day)*.
 - `SCR-SCH-021` — /overseas/admin/school-staff — Create/manage Academic Team, Career Counselor, Psychometric Team accounts and their school portfolios *(net-new, added 2026-09-14, `DEC-SCOPE-014`)*.
+- `SCR-SCH-031` — /overseas/admin/school-transfers — Approve or reject school transfer requests (`ENH-005`, added 2026-09-21).
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
 ## University Representative
@@ -170,6 +184,9 @@ Per-role navigation structure derived from `SCREEN_CATALOG.md`. Applies the conf
 - `SCR-SCH-013` — /school/invite/[token]/accept — **True first entry point**: accepting the School Coordinator's invite (`DEC-SCOPE-012`), before any dashboard nav exists.
 - `SCR-SCH-001` — /school/principal (Dashboard) — School-wide read-only progress overview.
 - `SCR-SCH-026` — /school/principal/students/[id] — One student's Journey Timeline (`SCH-008`, added 2026-09-15).
+- `SCR-SCH-035` — /school/principal/students/[id]/360 — Student 360° view / Career Passport, 16 tabs scoped to this role (from the student page's "Open 360° view") (`ENH-013`, added 2026-09-23).
+- `SCR-SCH-036` — /school/principal/notifications — Own notifications, e.g. partnership tier changes (`ENH-023`, added 2026-09-23).
+- `SCR-SCH-038` — /school/principal/global-education — Global Education: the school's students on the global education pathway, a funnel and a per-student high-level stage list; sidebar label "Global Education", after "Reports" (`ENH-017`, added 2026-09-29).
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
 ## School Coordinator *(net-new, added 2026-09-14, `DEC-SCOPE-011`/`DEC-SCOPE-010` part 1/`DEC-SCOPE-012`)*
@@ -178,9 +195,14 @@ Per-role navigation structure derived from `SCREEN_CATALOG.md`. Applies the conf
 - `SCR-SCH-003` — /school/coordinator/students — Student roster, view/edit.
 - `SCR-SCH-004` — /school/coordinator/students/new — Add one student by hand.
 - `SCR-SCH-025` — /school/coordinator/students/[id] — One student's Journey Timeline (`SCH-008`, added 2026-09-15).
+- `SCR-SCH-027` — /school/coordinator/promotion — Promote or hold back students at academic-year rollover (`ENH-004`, added 2026-09-19).
+- `SCR-SCH-029` — /school/coordinator/transfers — Request a student transfer (either direction), track and cancel requests (`ENH-005`, added 2026-09-21).
+- `SCR-SCH-030` — /school/coordinator/notifications — The school's in-app notices, including transfer decisions (`ENH-005`, added 2026-09-21).
 - `SCR-SCH-005` — /school/coordinator/students/bulk-upload — Bulk roster upload (template-download-first).
 - `SCR-SCH-006` — /school/coordinator/activities — Schedule activities, track attendance.
 - `SCR-SCH-012` — /school/coordinator/team — Invite Principal/Teacher/Parent accounts.
+- `SCR-SCH-035` — /school/coordinator/students/[id]/360 — Student 360° view / Career Passport, 16 tabs scoped to this role (from the student page's "Open 360° view") (`ENH-013`, added 2026-09-23).
+- `SCR-SCH-038` — /school/coordinator/global-education — Global Education: the school's students on the global education pathway, a funnel and a per-student high-level stage list; sidebar label "Global Education", after "Reports" (`ENH-017`, added 2026-09-29).
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
 ## Teacher (school-side) *(net-new, added 2026-09-14, `DEC-SCOPE-011` — role code `school_teacher`,
@@ -189,6 +211,7 @@ distinct from the existing Trainer/"Teacher" role above)*
 - `SCR-SCH-013` — /school/invite/[token]/accept — True first entry point: accepting the Coordinator's invite (`DEC-SCOPE-012`).
 - `SCR-SCH-007` — /school/teacher (Dashboard: assigned students) — Own class list only.
 - `SCR-SCH-008` — /school/teacher/students/[id] — One assigned student's attendance/activities/progress.
+- `SCR-SCH-035` — /school/teacher/students/[id]/360 — Student 360° view / Career Passport, 16 tabs scoped to this role (assigned students only, from the student page's "Open 360° view") (`ENH-013`, added 2026-09-23).
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
 ## Parent (school-side) *(net-new, added 2026-09-14, `DEC-SCOPE-011` — role code `school_parent`)*
@@ -197,6 +220,7 @@ distinct from the existing Trainer/"Teacher" role above)*
 - `SCR-SCH-009` — /school/parent (Dashboard: my children) — Own child(ren) only; per-child status chips, upcoming sessions, latest notifications (`SCH-007`, 2026-09-15).
 - `SCR-SCH-022` — /school/parent/children/[id] (Child profile & progress) — One child's full overview (`SCH-007`); embeds `SCR-SCH-024`'s Journey Timeline (`SCH-008`).
 - `SCR-SCH-023` — /school/parent/notifications — Own notification feed (`SCH-007`).
+- `SCR-SCH-035` — /school/parent/children/[id]/360 — Student 360° view / Career Passport, 16 tabs scoped to this role (own child(ren) only, from the child page's "Open 360° view") (`ENH-013`, added 2026-09-23).
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
 ## Academic Team *(net-new, added 2026-09-14, `DEC-ROLE-006` — supersedes `DEC-ROLE-005`'s single-Counselor-role framing)*
@@ -204,23 +228,56 @@ distinct from the existing Trainer/"Teacher" role above)*
 - `SCR-SCH-014` — /school/academic-team (Dashboard: assigned students) — Result status per assigned student.
 - `SCR-SCH-015` — /school/academic-team/results/new — Enter a result (starts as Draft).
 - `SCR-SCH-016` — /school/academic-team/results/[id] — Verify / Publish a result; status history.
+- `SCR-SCH-037` — /school/academic-team/students/[id] — The student's editable Digital Portfolio, incl. Skill India certifications (own school portfolio, from the dashboard's "Students" list) (`ENH-024`, added 2026-09-28, browser QA finding QA24-01).
+- `SCR-SCH-035` — /school/academic-team/students/[id]/360 — Student 360° view / Career Passport, 16 tabs scoped to this role (own school portfolio, from the student page's "Open 360° view"; "Back to student" returns there) (`ENH-013`, added 2026-09-23; entry point updated 2026-09-28 by `ENH-024` — it was the dashboard's "Student 360° view" list).
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
 ## Career Counselor *(net-new, added 2026-09-14, `DEC-ROLE-006`)*
 
 - `SCR-SCH-017` — /school/career-counselor (Dashboard: assigned students) — Assigned student list.
 - `SCR-SCH-018` — /school/career-counselor/students/[id]/records — Career guidance/counselling records.
+- `SCR-SCH-033` — /school/career-counselor/skills — Soft Skills / Digital Skills batches across the portfolio, and batch creation (`ENH-011`, added 2026-09-22).
+- `SCR-SCH-034` — /school/career-counselor/skills/[id] — One batch: enrolments, attendance, assessments, certification (`ENH-011`, added 2026-09-22).
+- `SCR-SCH-041` — /school/career-counselor/funding — Funding support cases (loan / financial assistance / scholarship / funding guidance) across the portfolio; sidebar "Funding" (`ENH-020`, added 2026-10-01).
+- `SCR-SCH-035` — /school/career-counselor/students/[id]/360 — Student 360° view / Career Passport, 16 tabs scoped to this role (own school portfolio, from the dashboard's "Student 360° view" list; sets the career goal) (`ENH-013`, added 2026-09-23).
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
 ## Psychometric Team *(net-new, added 2026-09-14, `DEC-ROLE-006`)*
 
 - `SCR-SCH-019` — /school/psychometric-team (Dashboard: assigned students) — Assigned student list.
 - `SCR-SCH-020` — /school/psychometric-team/students/[id]/assessments — Assign assessments, upload reports.
+- `SCR-SCH-035` — /school/psychometric-team/students/[id]/360 — Student 360° view / Career Passport, 16 tabs scoped to this role (own school portfolio, from the dashboard's "Student 360° view" list) (`ENH-013`, added 2026-09-23).
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
 
 *Note: `edusphere_school_manager` and `school_partnership_manager` (`DEC-ROLE-006`) have no nav
 entries — their duties are OPEN (`PRD_OPEN_ITEMS.md` item 75) and no screen has been designed for
 either yet.*
+
+## BDM *(net-new, added 2026-10-02, `DEC-SCOPE-055`, `bdm-001`)*
+
+Signs in at `/it/login` (College BDM, division `it`) or `/overseas/login` (Agent / School BDM, division `overseas`); lands on `/bdm/my-day`.
+
+- /bdm/my-day — My Day (minimal shell in bdm-001: welcome + profile summary; content arrives with bdm-014).
+- /bdm/profile — read-only §1 profile.
+- /bdm/organizations — Organization CRM (`bdm-002`): every organization of the BDM's module, filters (name/code, city, type, assigned to me, show archived); `/bdm/organizations/new` (add, ≥1 contact, duplicate warning); `/bdm/organizations/{id}` (details, contacts, edit/archive when assigned). Sidebar: My Day · Organizations · Appointments · Travel · Notifications · Profile.
+- /bdm/appointments — Appointments (`bdm-006`): the BDM's own, filters date range (default today onward), status, type, organization; `/bdm/appointments/new` (book; `?organization=` preselects, opened by "Add appointment" on an assigned, non-archived organization); `/bdm/appointments/{id}` (details, outcome, history; edit, confirm, reschedule, cancel, no-show, complete).
+- /bdm/notifications — the BDM's in-app notices (bdm-010 T15; nav item "Notifications" with the unread count on every BDM page).
+- /bdm/travel — My trips (bdm-010): list with an approval-status filter; /bdm/travel/new (draft); /bdm/travel/[id] (actions, details, edit while draft/rejected, costs and expenses, remarks). Nav item "Travel".
+
+## BDM Manager *(net-new, added 2026-10-02, `DEC-SCOPE-055`, `bdm-001`)*
+
+Division `global`; signs in at `/admin/login` (heading "Administration sign-in"); lands on `/bdm/manager/dashboard`. Password recovery stays in the admin portal (QA-05, B11): "Forgot your password?" on `/admin/login` → public `/admin/forgot-password`; the welcome/reset link opens public `/admin/reset-password`, whose links point to `/admin/login`; after a reset the form also follows the API's `login_portal`.
+
+- /bdm/manager/dashboard — team counts (minimal shell; bdm-023 adds the management dashboard).
+- /bdm/manager/team — the BDMs who report to this manager (paged).
+- /bdm/manager/organizations — the team's organizations (`bdm-002`), read-only except reassign and restore; `/bdm/manager/organizations/{id}`. Sidebar: Dashboard · Team · Organizations · Appointments · Approvals · Notifications.
+- /bdm/manager/appointments — the team's appointments (`bdm-006`), read-only with a BDM filter; `/bdm/manager/appointments/{id}` (details and history, no actions).
+- /bdm/manager/notifications — the manager's in-app notices, e.g. "Travel approval needed" (bdm-010 T15; nav item with the unread count).
+- /bdm/manager/approvals — trips waiting for this manager's approval (bdm-010; nav item "Approvals"); /bdm/manager/trips/[id] — read-only trip with Approve / Reject (reason required).
+
+**Signed-out `/bdm/*`:** `/bdm/manager/*` → `/admin/login?next=…`; any other `/bdm/*` → the public chooser `/bdm/sign-in?next=…` (College BDM / Agent-School BDM / Administration links; `next` kept only when same-origin).
+
+**Admin entry points:** a "BDMs" nav item for Super Admin (`/admin/bdms`), IT Admin (`/it/admin/bdms`, College) and Overseas Admin (`/overseas/admin/bdms`, Agent + School). BDM Managers are created by a Super Admin from Users (division Global). bdm-010 adds "BDM Travel Approvals" for Super Admin (`/admin/bdm-travel-approvals`): trips whose reporting manager is inactive.
 
 ## Division isolation (confirmed, `DEC-ARCH-001`)
 

@@ -1,14 +1,17 @@
 import PortalShell from "@/components/PortalShell";
-import { ChildStatusRow, formatDate, loadChildOverview, type ChildOverview } from "@/components/SchoolChildOverview";
+import { ChildStatusRow, childrenSpanSchools, loadChildOverview, type ChildOverview } from "@/components/SchoolChildOverview";
 import { serverApi } from "@/lib/api";
+import { formatCalendarDate, formatSchoolDateTime } from "@/lib/formatDate";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
+import { accessUnavailable } from "@/components/AccessUnavailable";
 
 type Student = { id: string; student_code: string; full_name: string; date_of_birth: string | null; grade_or_class: string | null };
 type NotificationItem = { id: string; title: string; body: string; read: boolean; action_url: string | null; created_at: string };
 
-// SCH-001 + SCH-007: a Parent's view of their own child(ren) -- own institution AND own
-// child(ren) only, read-only (SCH-001-AC03). One card per linked child with the child's
+// SCH-001 + SCH-007: a Parent's view of their own child(ren) -- own SchoolParentLink rows
+// only, read-only (SCH-001-AC03). ENH-008: a parent's links can span more than one
+// institution, so this is no longer "own institution AND own child(ren)". One card per linked child with the child's
 // career-guidance / counselling / psychometric status and published-result count, a link
 // to the full child page, the school's upcoming sessions, and the parent's latest
 // notifications. No switcher control: every child's summary is visible at once.
@@ -20,22 +23,52 @@ export default async function SchoolParentDashboardPage() {
     [user, children] = await Promise.all([serverApi<User>("/api/v1/auth/me"), serverApi<Student[]>("/api/v1/school/students")]);
     notifications = await serverApi<NotificationItem[]>("/api/v1/workflows/notifications").catch(() => []);
   } catch (e) {
-    return (
-      <div className="section">
-        <div className="container card">
-          <h1>Access unavailable</h1>
-          <p>{e instanceof Error ? e.message : "Unable to load this workspace"}</p>
-          <a className="btn" href="/overseas/login">Return to login</a>
-        </div>
-      </div>
-    );
+    return accessUnavailable(e);
   }
   const overviews = await Promise.all(children.map((c) => loadChildOverview(c.id).catch(() => null)));
+  const multiSchool = childrenSpanSchools(overviews); // ENH-008 Task 8: only then are cards grouped under a school heading (not a per-card name)
   const upcoming = new Map<string, ChildOverview["activities"]["upcoming"][number]>();
   for (const o of overviews) for (const a of o?.activities.upcoming ?? []) upcoming.set(a.id, a);
   const upcomingList = [...upcoming.values()].sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at));
   const latest = notifications.slice(0, 5);
   const unread = notifications.filter((n) => !n.read).length;
+
+  const cards = children.map((c, i) => {
+    const o = overviews[i];
+    return (
+      <div className="card" key={c.id} data-testid={`child-card-${c.id}`}>
+        <h2>{c.full_name} <span className="muted" style={{ fontSize: 14 }}>({c.student_code})</span></h2>
+        <p><strong>Grade/Class:</strong> {c.grade_or_class || "-"}</p>
+        <p><strong>Date of birth:</strong> {formatCalendarDate(c.date_of_birth)}</p>
+        {o ? (
+          <>
+            <p><strong>Class teacher:</strong> {o.student.assigned_teacher_name || "Not assigned yet"}</p>
+            <ChildStatusRow overview={o} />
+            {o.recommended_careers.length > 0 && (
+              <p><strong>Recommended careers:</strong> {o.recommended_careers.map((r) => <span className="badge" key={r.id} style={{ marginRight: 6 }}>{r.notes}</span>)}</p>
+            )}
+          </>
+        ) : (
+          <p className="muted">Progress details are unavailable right now.</p>
+        )}
+        <a className="btn" href={`/school/parent/children/${c.id}`}>View full profile &amp; progress</a>
+      </div>
+    );
+  });
+  let renderedChildren: React.ReactNode = cards;
+  if (multiSchool) {
+    const bySchool = new Map<string, typeof cards>();
+    children.forEach((c, i) => {
+      const school = overviews[i]?.student.school_name || "Other";
+      bySchool.set(school, [...(bySchool.get(school) ?? []), cards[i]]);
+    });
+    renderedChildren = [...bySchool.entries()].map(([school, group]) => (
+      <div key={school}>
+        <h2 style={{ marginTop: 24 }}>{school}</h2>
+        {group}
+      </div>
+    ));
+  }
 
   return (
     <PortalShell nav={SCHOOL_NAV.parent} roleLabel="Parent" userName={user.full_name}>
@@ -46,28 +79,7 @@ export default async function SchoolParentDashboardPage() {
             <p className="muted">No child linked to your account yet. Contact your school to get set up.</p>
           </div>
         ) : (
-          children.map((c, i) => {
-            const o = overviews[i];
-            return (
-              <div className="card" key={c.id} data-testid={`child-card-${c.id}`}>
-                <h2>{c.full_name} <span className="muted" style={{ fontSize: 14 }}>({c.student_code})</span></h2>
-                <p><strong>Grade/Class:</strong> {c.grade_or_class || "-"}</p>
-                <p><strong>Date of birth:</strong> {formatDate(c.date_of_birth)}</p>
-                {o ? (
-                  <>
-                    <p><strong>Class teacher:</strong> {o.student.assigned_teacher_name || "Not assigned yet"}</p>
-                    <ChildStatusRow overview={o} />
-                    {o.recommended_careers.length > 0 && (
-                      <p><strong>Recommended careers:</strong> {o.recommended_careers.map((r) => <span className="badge" key={r.id} style={{ marginRight: 6 }}>{r.notes}</span>)}</p>
-                    )}
-                  </>
-                ) : (
-                  <p className="muted">Progress details are unavailable right now.</p>
-                )}
-                <a className="btn" href={`/school/parent/children/${c.id}`}>View full profile &amp; progress</a>
-              </div>
-            );
-          })
+          renderedChildren
         )}
 
         <div className="card">
@@ -75,7 +87,7 @@ export default async function SchoolParentDashboardPage() {
           {upcomingList.length === 0 ? (
             <p className="muted">Nothing scheduled yet.</p>
           ) : (
-            <ul>{upcomingList.map((a) => <li key={a.id}><strong>{formatDate(a.scheduled_at, true)}</strong> — {a.title}</li>)}</ul>
+            <ul>{upcomingList.map((a) => <li key={a.id}><strong>{formatSchoolDateTime(a.scheduled_at, true)}</strong> — {a.title}</li>)}</ul>
           )}
         </div>
 
@@ -87,7 +99,7 @@ export default async function SchoolParentDashboardPage() {
             <ul>
               {latest.map((n) => (
                 <li key={n.id} style={{ marginBottom: 8 }}>
-                  <strong>{n.title}</strong> <span className="muted">{formatDate(n.created_at, true)}</span>
+                  <strong>{n.title}</strong> <span className="muted">{formatSchoolDateTime(n.created_at)}</span>
                   <br />
                   {n.body} {n.action_url && <a href={n.action_url}>Open</a>}
                 </li>

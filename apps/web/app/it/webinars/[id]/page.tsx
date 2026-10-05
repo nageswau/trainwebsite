@@ -3,6 +3,7 @@ import PublicShell from "@/components/PublicShell";
 import WebinarRegisterForm from "@/components/WebinarRegisterForm";
 import { publicApi } from "@/lib/api";
 import type { Webinar } from "@/lib/types";
+import LocalTime from "@/components/LocalTime";
 
 export default async function WebinarDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -30,7 +31,7 @@ export default async function WebinarDetail({ params }: { params: Promise<{ id: 
         <div className="container">
           <div className="eyebrow">{webinar.event_type}</div>
           <h1 style={{ fontSize: "clamp(34px,4vw,54px)" }}>{webinar.title}</h1>
-          <p className="lead">{new Date(webinar.starts_at).toLocaleString("en-GB")} · {webinar.location}</p>
+          <p className="lead"><LocalTime value={webinar.starts_at} time label /> · {webinar.location}</p>
         </div>
       </section>
       <section className="section">

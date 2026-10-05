@@ -1,8 +1,9 @@
 import PortalShell from "@/components/PortalShell";
-import { formatDate } from "@/components/SchoolChildOverview";
 import { serverApi } from "@/lib/api";
+import { formatSchoolDateTime } from "@/lib/formatDate";
 import { SCHOOL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
+import { accessUnavailable } from "@/components/AccessUnavailable";
 
 type NotificationItem = { id: string; title: string; body: string; read: boolean; action_url: string | null; created_at: string };
 
@@ -16,15 +17,7 @@ export default async function SchoolParentNotificationsPage() {
   try {
     [user, notifications] = await Promise.all([serverApi<User>("/api/v1/auth/me"), serverApi<NotificationItem[]>("/api/v1/workflows/notifications")]);
   } catch (e) {
-    return (
-      <div className="section">
-        <div className="container card">
-          <h1>Access unavailable</h1>
-          <p>{e instanceof Error ? e.message : "Unable to load notifications"}</p>
-          <a className="btn" href="/overseas/login">Return to login</a>
-        </div>
-      </div>
-    );
+    return accessUnavailable(e);
   }
   return (
     <PortalShell nav={SCHOOL_NAV.parent} roleLabel="Parent" userName={user.full_name}>
@@ -40,7 +33,7 @@ export default async function SchoolParentNotificationsPage() {
                 <tbody>
                   {notifications.map((n) => (
                     <tr key={n.id}>
-                      <td>{formatDate(n.created_at, true)}</td>
+                      <td>{formatSchoolDateTime(n.created_at)}</td>
                       <td><strong>{n.title}</strong>{!n.read && <> <span className="badge">new</span></>}<br />{n.body}</td>
                       <td>{n.action_url && <a className="btn secondary small" href={n.action_url}>Open</a>}</td>
                     </tr>

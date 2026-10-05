@@ -19,5 +19,6 @@ describe("Analytics inline script", () => {
   it("never configures GA on reset-password pages, whose URL carries a live token", () => {
     expect(gtagCalls("/overseas/reset-password?token=abc")).not.toContain("config");
     expect(gtagCalls("/it/reset-password?token=abc")).not.toContain("config");
+    expect(gtagCalls("/admin/reset-password?token=abc")).not.toContain("config"); // bdm-001 QA-05: a BDM manager's link
   });
 });

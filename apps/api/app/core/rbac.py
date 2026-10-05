@@ -47,6 +47,9 @@ PERMISSIONS: dict[str, set[str]] = {
     "academic_team": {"school:academic_team:portfolio"},
     "career_counselor": {"school:career_counselor:portfolio"},
     "psychometric_team": {"school:psychometric_team:portfolio"},
+    # bdm-001 (DEC-SCOPE-055): BDM CRM. Type/own/team scope is enforced in services/bdm.py, not by these bundles alone.
+    "bdm": {"bdm:self"},
+    "bdm_manager": {"bdm:team"},
 }
 
 
@@ -72,20 +75,69 @@ def _assignment_is_usable(assignment: UserRoleAssignment) -> bool:
     return True
 
 
-def agent_is_approved(user) -> bool:
-    """Sync check against an already-loaded `user.role_assignments` (eager-loaded by
-    `get_current_user` for every request) -- AGT-001-AC02: a Pending/Rejected Agent must
-    be denied even though the User row itself is active and can log in. Route-level
-    checks in `workflows.py`/`portal.py` use `user.role` directly (a legacy column with
-    no approval concept) rather than this module's own async `user_has_role`/
-    `get_active_assignments`, so every one of those call sites must additionally call
-    this for role="agent" -- it is not implied by passing the simpler role check.
-    """
+PENDING_MESSAGE = "Agent registration is pending approval"
+SUSPENDED_MESSAGE = "Your agency's account is suspended"
+DEACTIVATED_MESSAGE = "Your Master account is deactivated"
+
+
+def agent_denial_reason(user) -> str | None:
+    """AGN-001 (DEC-SCOPE-038 D6, spec E10): why an agent is denied every agent route, or None.
+
+    Reads `user.agent_membership` (+ `.org`), eager-loaded by `get_current_user` on every request, so a suspension
+    applies on the member's next request. The organisation's status is the gate (AGT-001-AC02 preserved: a pending or
+    rejected organisation is denied with the same message as before). Route-level checks in `workflows.py`/`portal.py`
+    use the legacy `user.role` column, so every one of those call sites must additionally call this for role="agent".
+    Non-agents are never denied here."""
 
     if user.role != "agent":
+        return None
+    membership = user.agent_membership
+    if membership is None:
+        return PENDING_MESSAGE
+    if membership.status != "active":
+        return DEACTIVATED_MESSAGE
+    if membership.org.status == "suspended":
+        return SUSPENDED_MESSAGE
+    if membership.org.status != "active":
+        return PENDING_MESSAGE
+    return None
+
+
+def is_agent_staff(user) -> bool:
+    """AGN-002 (DEC-SCOPE-040 S1/S2): a staff member of an agent organisation. Staff share `role='agent'` with Masters, so the
+    Master-only actions (team management, commissions) call this. Reads the membership `get_current_user` eager-loads."""
+
+    if user.role != "agent":
+        return False
+    membership = user.agent_membership
+    return membership is not None and membership.role == "staff"
+
+
+# AGN-003 (DEC-SCOPE-044): the two optional §6 rows. The column names on AgentOrgMember are also the API keys.
+STAFF_PERMISSIONS = ("can_verify_documents", "can_view_reports")
+REPORTS_REFUSED = "Your agency Master hasn't given you access to reports"
+VERIFY_REFUSED = "Your agency Master hasn't given you permission to verify documents"
+REVIEW_MASTER_ONLY = "Only an agency Master can reject documents or request changes"
+REVIEW_REASON_REQUIRED = "Give a reason when you reject a document or ask for changes"  # AGN-009 (DEC-SCOPE-052 G1)
+
+
+def agent_may(user, permission: str) -> bool:
+    """AGN-003 (DEC-SCOPE-044 P1/P2): whether the caller may use an optional §6 row. Masters (and every non-staff caller -- route
+    role checks run first) are never limited; staff follow their own flag. Reads the membership `get_current_user` eager-loads on
+    every request, so a Master's change applies on the staff member's next request."""
+
+    assert permission in STAFF_PERMISSIONS, permission
+    if not is_agent_staff(user):
         return True
-    assignment = next((a for a in user.role_assignments if a.role == "agent" and a.division == user.division and a.is_active), None)
-    return bool(assignment and assignment.approval_status == "approved")
+    return bool(getattr(user.agent_membership, permission))
+
+
+def agent_permissions(user) -> dict[str, bool] | None:
+    """The effective permissions an agency member's portal shows (GET /auth/me); None for anyone without a membership."""
+
+    if user.role != "agent" or user.agent_membership is None:
+        return None
+    return {name: agent_may(user, name) for name in STAFF_PERMISSIONS}
 
 
 async def get_active_assignments(db: AsyncSession, user_id: UUID) -> list[UserRoleAssignment]:

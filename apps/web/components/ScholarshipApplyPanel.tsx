@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Scholarship } from "@/lib/types";
+import { formatCalendarDate } from "@/lib/formatDate";
 
 type ApplicationRow = { scholarship_id: string; title: string; amount: string; status: string };
 
@@ -81,7 +82,7 @@ export default function ScholarshipApplyPanel() {
                 <h4>{s.title}</h4>
                 <p className="muted" style={{ fontSize: 13 }}>{s.amount}</p>
                 <p className="muted" style={{ fontSize: 13 }}>{s.eligibility}</p>
-                {s.deadline && <p className="muted" style={{ fontSize: 13 }}><strong>Deadline:</strong> {new Date(s.deadline).toLocaleDateString("en-GB")}</p>}
+                {s.deadline && <p className="muted" style={{ fontSize: 13 }}><strong>Deadline:</strong> {formatCalendarDate(s.deadline)}</p>}
                 {application ? (
                   <span className="badge">{application.status}</span>
                 ) : (

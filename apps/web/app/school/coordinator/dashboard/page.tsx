@@ -1,13 +1,17 @@
 import Link from "next/link";
 import PortalShell from "@/components/PortalShell";
+import SchoolKpiBoard from "@/components/SchoolKpiBoard";
 import SchoolServiceDeliverySummary from "@/components/SchoolServiceDeliverySummary";
 import { serverApi } from "@/lib/api";
+import { formatSchoolDateTime } from "@/lib/formatDate";
 import { SCHOOL_NAV } from "@/lib/navigation";
-import type { User } from "@/lib/types";
+import type { SchoolKpi, User } from "@/lib/types";
+import { accessUnavailable } from "@/components/AccessUnavailable";
 
 type DashboardPayload = {
   student_count: number;
   upcoming_activities: { id: string; title: string; scheduled_at: string }[];
+  school_crm_kpis: SchoolKpi[];
 };
 
 // SCH-001: Coordinator's landing view -- roster size and upcoming activities, with quick
@@ -18,19 +22,13 @@ export default async function SchoolCoordinatorDashboardPage() {
   try {
     [user, data] = await Promise.all([serverApi<User>("/api/v1/auth/me"), serverApi<DashboardPayload>("/api/v1/school/dashboard")]);
   } catch (e) {
-    return (
-      <div className="section">
-        <div className="container card">
-          <h1>Access unavailable</h1>
-          <p>{e instanceof Error ? e.message : "Unable to load this workspace"}</p>
-          <a className="btn" href="/overseas/login">Return to login</a>
-        </div>
-      </div>
-    );
+    return accessUnavailable(e);
   }
   return (
     <PortalShell nav={SCHOOL_NAV.coordinator} roleLabel="School Coordinator" userName={user.full_name}>
       <div className="portal-content">
+        {/* ENH-016 (School CRM.md §1): the KPI board is the first thing a school sees. */}
+        <SchoolKpiBoard kpis={data.school_crm_kpis} />
         <div className="card">
           <h2>Your school</h2>
           {data.student_count === 0 ? (
@@ -56,7 +54,7 @@ export default async function SchoolCoordinatorDashboardPage() {
               </thead>
               <tbody>
                 {data.upcoming_activities.map((a) => (
-                  <tr key={a.id}><td>{a.title}</td><td>{new Date(a.scheduled_at).toLocaleString()}</td></tr>
+                  <tr key={a.id}><td>{a.title}</td><td>{formatSchoolDateTime(a.scheduled_at, true)}</td></tr>
                 ))}
               </tbody>
             </table>

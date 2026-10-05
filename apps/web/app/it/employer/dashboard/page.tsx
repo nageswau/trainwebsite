@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { serverApi } from "@/lib/api";
 import EmployerJobsPanel from "@/components/EmployerJobsPanel";
 import EmployerCandidateSearchPanel from "@/components/EmployerCandidateSearchPanel";
@@ -35,6 +36,8 @@ export default async function EmployerDashboardPage() {
       <div className="container">
         <h1>Welcome, {profile.company_name}</h1>
         <p className="muted">Signed in as {profile.full_name} ({profile.email}).</p>
+        {/* ENH-006: this page has no PortalShell or site header, so it needs its own way to the change-password page. */}
+        <p><Link className="btn secondary small" href="/account/password">Change password</Link></p>
         <div className="action-card">
           <h3>Company profile</h3>
           <p><strong>Company:</strong> {profile.company_name}</p>

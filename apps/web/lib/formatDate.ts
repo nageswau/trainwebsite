@@ -1,0 +1,66 @@
+// Date display shared by server and client components. It lives here, not in SchoolChildOverview.tsx, because that file imports `serverApi`
+// (`next/headers`), so a "use client" component importing from it fails `next build`. Import it from here.
+
+// The School calendar (DEC-SCOPE-027 D10). Pass it when a server-rendered time must read the same on the server (UTC) and in the
+// browser -- without a zone each side formats in its own and React reports hydration error #418 (QA-022-06).
+export const SCHOOL_TIME_ZONE = "Asia/Kolkata";
+
+// The zone this runtime (the viewer's browser) reports. Some report one Intl cannot format in (e.g. "Etc/Unknown" when the system
+// zone is undetectable); formatting in it throws a RangeError, so fall back to India time rather than crash the page.
+export function viewerTimeZone(): string {
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  // Newer runtimes (e.g. Node 24) report an unusable zone as undefined rather than "Etc/Unknown", and undefined passes the
+  // check below (it means "default zone"), so a missing zone must fall back explicitly.
+  if (!zone) return SCHOOL_TIME_ZONE;
+  try {
+    new Intl.DateTimeFormat("en-GB", { timeZone: zone });
+    return zone;
+  } catch {
+    return SCHOOL_TIME_ZONE;
+  }
+}
+
+export function formatDate(value: string | null | undefined, withTime = false, timeZone?: string): string {
+  if (!value) return "-";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}), ...(timeZone ? { timeZone } : {}) });
+}
+
+// A timestamp with its time of day in `timeZone`. `label` appends the zone's name for a time people act on (a session start, an
+// event); a missing or unparseable value is never labelled.
+export function formatDateTimeIn(value: string | null | undefined, timeZone: string, label = false): string {
+  const text = formatDate(value, true, timeZone);
+  return label && value && text !== value ? `${text} ${zoneLabel(value, timeZone)}` : text;
+}
+
+// A school portal timestamp in India time (D10); `label` adds "IST". Record timestamps (created, decided) stay unlabelled.
+export function formatSchoolDateTime(value: string | null | undefined, label = false): string {
+  return formatDateTimeIn(value, SCHOOL_TIME_ZONE, label);
+}
+
+// A calendar date (YYYY-MM-DD: birth dates, due dates, deadlines, session days) has no time of day. It parses as UTC midnight, so it is
+// formatted in UTC: the same day for every viewer and on the server (a zone west of UTC would otherwise show the day before).
+export function formatCalendarDate(value: string | null | undefined): string {
+  return formatDate(value, false, "UTC");
+}
+
+// Short zone label for a scheduled time. India reads "IST" (the en-US name would be "GMT+5:30"); other zones use the en-US short name,
+// which tracks daylight saving ("EDT"/"EST").
+export function zoneLabel(value: string, timeZone: string): string {
+  if (timeZone === "Asia/Kolkata" || timeZone === "Asia/Calcutta") return "IST";
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone, timeZoneName: "short" }).formatToParts(new Date(value));
+  return parts.find((p) => p.type === "timeZoneName")?.value ?? timeZone;
+}
+
+const YYYY_MM_DD = /^\d{4}-\d{2}-\d{2}$/;
+
+// AGN-019 QA19-01: a real calendar date (not 2026-13-01 or 2026-02-30), which a date input can display -- an impossible one would sit
+// hidden in the form and be re-sent by every Apply. setUTCFullYear, not Date.UTC, so years below 100 are not read as 19xx.
+export function isCalendarDate(value: string): boolean {
+  if (!YYYY_MM_DD.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  return year >= 1 && date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}

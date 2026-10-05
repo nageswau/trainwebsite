@@ -1,6 +1,9 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import SearchableSelect from "@/components/SearchableSelect";
+
+import LocalTime from "@/components/LocalTime";
 
 type JobOption = { id: string; title: string };
 type CandidateOption = { student_id: string; name: string };
@@ -88,15 +91,7 @@ export default function EmployerInterviewsPanel() {
             ))}
           </select>
         </div>
-        <div className="field">
-          <label htmlFor="shortlist-candidate">Candidate</label>
-          <select id="shortlist-candidate" name="student_id" required>
-            <option value="">Select a candidate…</option>
-            {candidates.map((candidate) => (
-              <option key={candidate.student_id} value={candidate.student_id}>{candidate.name}</option>
-            ))}
-          </select>
-        </div>
+        <SearchableSelect id="shortlist-candidate" label="Candidate" name="student_id" required noun="candidate" options={candidates.map((candidate) => ({ id: candidate.student_id, label: candidate.name }))} />
         <button className="btn small">Shortlist</button>
       </form>
       {shortlistMessage && (
@@ -145,7 +140,7 @@ export default function EmployerInterviewsPanel() {
             <div className="card" key={row.id}>
               <span className="badge">{row.result || "Awaiting outcome"}</span>
               <h4 style={{ marginTop: 10 }}>{row.candidate}</h4>
-              <p className="muted" style={{ fontSize: 13 }}>{row.job_title} · {row.mode} · {new Date(row.scheduled_at).toLocaleString()}</p>
+              <p className="muted" style={{ fontSize: 13 }}>{row.job_title} · {row.mode} · <LocalTime value={row.scheduled_at} time label /></p>
             </div>
           ))}
         </div>

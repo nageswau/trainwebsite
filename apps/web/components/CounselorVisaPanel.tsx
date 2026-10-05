@@ -3,6 +3,9 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import FormMessage, { type FormMessageState } from "@/components/FormMessage";
+import { sendJson } from "@/lib/apiErrors";
+
 type ApplicationRow = { id: string; student: string; university: string };
 type ChecklistItem = { item: string; verification_status: string };
 type Checklist = { exists: boolean; id?: string; status: string | null; checklist: ChecklistItem[] };
@@ -11,12 +14,6 @@ type VisaStatus = { exists: boolean; status: string | null; appointment_date: st
 const STAGES = ["checklist", "documentation", "interview_prep", "tracking", "decision"];
 const label = (stage: string) => stage.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
 const DEFAULT_DISCLAIMER = "Visa decisions are made by the relevant government or immigration authority. EduSphere does not decide visa outcomes.";
-
-function detailMessage(detail: unknown) {
-  if (typeof detail === "string") return detail;
-  if (Array.isArray(detail)) return detail.map((item: { msg?: string }) => item.msg || "Invalid input").join("; ");
-  return "Unable to complete this action.";
-}
 
 // VISA-001: a Counselor previously had to type a raw application UUID (to start a case)
 // or a raw visa-case UUID plus a free-typed status (to update one), with no visibility
@@ -30,7 +27,7 @@ export default function CounselorVisaPanel() {
   const [checklists, setChecklists] = useState<Record<string, Checklist>>({});
   const [statuses, setStatuses] = useState<Record<string, VisaStatus>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ id: string; text: string; failed: boolean } | null>(null);
+  const [message, setMessage] = useState<(FormMessageState & { id: string }) | null>(null);
 
   function loadChecklist(applicationId: string) {
     fetch(`/api/v1/workflows/overseas/applications/${applicationId}/visa-checklist`)
@@ -60,15 +57,10 @@ export default function CounselorVisaPanel() {
     setMessage(null);
     const form = new FormData(event.currentTarget);
     const checklist = String(form.get("checklist") || "").split(",").map((s) => s.trim()).filter(Boolean);
-    const response = await fetch("/api/v1/workflows/overseas/visa", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ application_id: applicationId, checklist }),
-    });
-    const data = await response.json().catch(() => ({}));
+    const result = await sendJson("/api/v1/workflows/overseas/visa", "POST", { application_id: applicationId, checklist });
     setBusyId(null);
-    if (!response.ok) {
-      setMessage({ id: applicationId, text: detailMessage(data.detail), failed: true });
+    if (!result.ok) {
+      setMessage({ id: applicationId, text: result.message, failed: true });
       return;
     }
     setMessage({ id: applicationId, text: "Visa case started.", failed: false });
@@ -79,15 +71,10 @@ export default function CounselorVisaPanel() {
   async function advance(applicationId: string, visaId: string, toStatus: string) {
     setBusyId(applicationId);
     setMessage(null);
-    const response = await fetch(`/api/v1/workflows/overseas/visa/${visaId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: toStatus }),
-    });
-    const data = await response.json().catch(() => ({}));
+    const result = await sendJson(`/api/v1/workflows/overseas/visa/${visaId}`, "PATCH", { status: toStatus });
     setBusyId(null);
-    if (!response.ok) {
-      setMessage({ id: applicationId, text: detailMessage(data.detail), failed: true });
+    if (!result.ok) {
+      setMessage({ id: applicationId, text: result.message, failed: true });
       return;
     }
     setMessage({ id: applicationId, text: "Visa case advanced.", failed: false });
@@ -161,11 +148,7 @@ export default function CounselorVisaPanel() {
                   )}
                 </>
               )}
-              {message?.id === row.id && (
-                <div className={message.failed ? "form-error" : "form-message"} role="status" aria-live="polite" style={{ marginTop: 8, fontSize: 13 }}>
-                  {message.text}
-                </div>
-              )}
+              {message?.id === row.id && <FormMessage message={message} style={{ marginTop: 8, fontSize: 13 }} />}
             </div>
           );
         })}

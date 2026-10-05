@@ -1,15 +1,26 @@
+import contextlib
+import csv
+import io
+import logging
+import re
 import secrets
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time, timedelta
+from decimal import Decimal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
+from app.api.files import _allowed
+from app.api.school_bulk import _safe_cell
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import uuid_reference
-from app.core.rbac import agent_is_approved
+from app.core.rbac import REVIEW_MASTER_ONLY, REVIEW_REASON_REQUIRED, VERIFY_REFUSED, agent_denial_reason, agent_may, is_agent_staff
 from app.models import (
     AgentCommission,
     AgentStudent,
@@ -39,7 +50,6 @@ from app.models import (
     LiveSession,
     Message,
     Notification,
-    NotificationDelivery,
     OverseasApplication,
     OverseasCourse,
     Payment,
@@ -50,6 +60,7 @@ from app.models import (
     QuestionThread,
     Scholarship,
     ScholarshipApplication,
+    SchoolStudent,
     StudentDocument,
     Submission,
     SupportTicket,
@@ -57,7 +68,9 @@ from app.models import (
     User,
     VisaCase,
 )
+from app.notifications.dispatch import queue_deliveries
 from app.schemas import (
+    AgentDocumentReview,
     AgentStudentCreate,
     AppointmentCreate,
     AssessmentCreate,
@@ -72,12 +85,14 @@ from app.schemas import (
     AttendanceCorrectionIn,
     CommissionAmountUpdate,
     CommissionCreate,
+    CommissionReportOut,
     CourseFeedbackCreate,
     EnrollmentCreate,
     EnrollmentProgressUpdate,
     LearningResourceCreate,
-    OverseasApplicationCreate,
+    NotificationUnreadCount,
     OverseasApplicationAdvance,
+    OverseasApplicationCreate,
     OverseasApplicationUpdate,
     ProfileDocumentCreate,
     QuestionReplyCreate,
@@ -88,13 +103,17 @@ from app.schemas import (
     SupportTicketUpdate,
     VisaCaseCreate,
 )
-from app.api.files import _allowed
-from app.core.config import settings
+from app.services import agent_notifications as agency_notices
+from app.services.agent_applications import DEFAULT_NEXT_ACTION, OVERSEAS_APPLICATION_STAGES, WITHDRAWN, owned, with_owner
+from app.services.agent_documents import add_event, in_scope
+from app.services.agent_orgs import lock_org, notification_recipients, org_member_ids
+from app.services.agent_students import application_scope, student_scope
+from app.services.agent_visa import VISA_CASE_STAGES, VISA_DECISION_DISCLAIMER
 from app.services.certificates import generate_certificate_pdf
-from app.services.integrations import send_notification
 from app.services.storage import storage
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
+logger = logging.getLogger("app.workflows")
 
 
 def _require(user: User, roles: set[str], division: str | None = None):
@@ -107,8 +126,15 @@ def _require(user: User, roles: set[str], division: str | None = None):
     # AGT-001-AC02: a Pending/Rejected Agent cannot refer students or view data, even
     # though `user.role == "agent"` already passed above -- this codebase's `_require`
     # checks the legacy `User.role` column, which has no approval concept of its own.
-    if not agent_is_approved(user):
-        raise HTTPException(403, "Agent registration is pending approval")
+    reason = agent_denial_reason(user)
+    if reason:
+        raise HTTPException(403, reason)
+
+
+def _require_agent_master(user: User) -> None:
+    """AGN-002 (DEC-SCOPE-040 S1): commissions are Master-only; an agency's staff are refused."""
+    if is_agent_staff(user):
+        raise HTTPException(403, "Only an agency Master can view commissions")
 
 
 async def _audit(db: AsyncSession, user: User, action: str, entity_type: str, entity_id: UUID | str | None, metadata: dict | None = None):
@@ -116,12 +142,12 @@ async def _audit(db: AsyncSession, user: User, action: str, entity_type: str, en
 
 
 async def _notify_user(db: AsyncSession, recipient: User, title: str, body: str, action_url: str | None, channels: list[str] | None = None):
+    """ENH-014: in-app row plus queued deliveries (email + the recipient's opted-in channels), sent after commit.
+    `channels` can only narrow that set (admin sends); it never adds a channel the recipient did not opt in to."""
     item = Notification(user_id=recipient.id, title=title, body=body, read=False, action_url=action_url)
     db.add(item)
     await db.flush()
-    for channel in channels or ["email"]:
-        status, error = await send_notification(channel, {"to": recipient.email, "phone": recipient.phone, "title": title, "body": body, "action_url": action_url})
-        db.add(NotificationDelivery(notification_id=item.id, channel=channel, status=status, error=error, sent_at=datetime.now(UTC) if status == "sent" else None))
+    await queue_deliveries(db, item, recipient, channels=channels)
 
 
 def _grade(percentage: float) -> str:
@@ -146,20 +172,35 @@ async def _assigned_application(db: AsyncSession, user: User, application_id: UU
         return item
     if user.division != "overseas":
         raise HTTPException(403, "Wrong EduSphere division")
+    # AGN-001 (D1): an agent may act on any application referred by a member of its own organisation.
+    # AGN-004 (G4): a staff member only their assigned students' applications.
+    agent_in_scope = user.role == "agent" and bool(await db.scalar(select(OverseasApplication.id).where(OverseasApplication.id == item.id, *application_scope(user))))
     allowed = (
         user.role == "overseas_admin"
         or user.role == "overseas_student"
         and item.student_id == user.id
         or user.role == "counselor"
         and item.counselor_id == user.id
-        or user.role == "agent"
-        and item.agent_id == user.id
+        or agent_in_scope
         or user.role == "university_rep"
         and uuid_reference(user.profile.get("university_id"), "university reference", required=False) == item.university_id
     )
     if not allowed:
         raise HTTPException(403, "Application is outside your assigned scope")
     return item
+
+
+async def _require_bridged_visa_entitlement(db: AsyncSession, user: User, application: OverseasApplication, *, grandfathered_since: datetime | None = None) -> None:
+    """ENH-022 (D9): a visa case on a School-bridged application consumes the school's Platinum `visa_support`. An ordinary
+    Overseas application (no `school_student_id`) is untouched. Call after `_assigned_application`, before any write.
+    ENH-023 D8: updating an existing visa case passes its `created_at`; opening a new case never does."""
+    if application.school_student_id is None:
+        return
+    from app.api.schools import require_school_entitlement  # noqa: PLC0415 -- lazy, like admin.py's bridge import
+    from app.models import SchoolStudent  # noqa: PLC0415
+
+    student = await db.get(SchoolStudent, application.school_student_id)  # FK: always present for a bridged application
+    await require_school_entitlement(db, user, student.school_id, "visa_support", grandfathered_since=grandfathered_since)
 
 
 # ------------------------------- IT LEARNING -------------------------------
@@ -1240,7 +1281,7 @@ async def issue_certificate(enrollment_id: UUID, payload: dict, user: User = Dep
     )
     db.add(item)
     await db.flush()
-    await _notify_user(db, student, "Certificate issued", f"Your {program.title} certificate is ready.", "/it/student/certificates", ["email"])
+    await _notify_user(db, student, "Certificate issued", f"Your {program.title} certificate is ready.", "/it/student/certificates")
     item.emailed_at = datetime.now(UTC)
     await _audit(db, user, "certificate.issue", "certificate", item.id, {"enrollment_id": enrollment.id, "override": override, "override_reason": override_reason if override else None})
     await db.commit()
@@ -1399,7 +1440,7 @@ async def reply_to_question(thread_id: UUID, payload: QuestionReplyCreate, user:
     await db.flush()
     await _audit(db, user, "question.reply", "question_reply", reply.id, {"thread_id": str(thread.id)})
     student = await db.get(User, thread.student_id)
-    await _notify_user(db, student, "Your question has a new reply", f'"{thread.subject}" was answered.', "/it/student/questions", ["email"])
+    await _notify_user(db, student, "Your question has a new reply", f'"{thread.subject}" was answered.', "/it/student/questions")
     await db.commit()
     await db.refresh(reply)
     return _reply_payload(reply)
@@ -1691,7 +1732,6 @@ async def update_job_offer(offer_id: UUID, payload: dict, user: User = Depends(g
 # Exception-path values (rejected/waitlisted/deferred) are deliberately NOT included --
 # DEC-WF-001 leaves those open (PRD_OPEN_ITEMS.md), so a status outside this list is
 # rejected rather than guessed (OVS-003-AC02).
-OVERSEAS_APPLICATION_STAGES = ["enquiry", "eligibility_evaluation", "university_selection", "offer", "visa_documentation", "status_tracking", "enrolled"]
 
 
 async def _maybe_trigger_agent_commission(db: AsyncSession, application: OverseasApplication, old_status: str, changed_by: User) -> None:
@@ -1717,7 +1757,8 @@ async def _maybe_trigger_agent_commission(db: AsyncSession, application: Oversea
     await db.flush()
     agent = await db.get(User, application.agent_id)
     if agent:
-        await _notify_user(db, agent, "Commission estimated", "A referred student has enrolled -- a commission is now estimated and awaiting an amount from Overseas Admin.", "/overseas/agent/commissions")
+        for recipient in await notification_recipients(db, agent):  # AGN-001 (D12): every active Master
+            await _notify_user(db, recipient, "Commission estimated", "A referred student has enrolled -- a commission is now estimated and awaiting an amount from Overseas Admin.", "/overseas/agent/commissions")
     await _audit(db, changed_by, "agent.commission_auto_create", "agent_commission", item.id, {"application_id": str(application.id), "trigger": "enrolled"})
 
 
@@ -1729,7 +1770,7 @@ async def create_overseas_application(payload: OverseasApplicationCreate, user: 
     if not student or student.role != "overseas_student" or student.division != "overseas":
         raise HTTPException(422, "Valid overseas student is required")
     if user.role == "agent":
-        linked = await db.scalar(select(AgentStudent.id).where(AgentStudent.agent_id == user.id, AgentStudent.student_id == student_id, AgentStudent.status == "active"))
+        linked = await db.scalar(select(AgentStudent.id).where(*student_scope(user), AgentStudent.student_id == student_id, AgentStudent.status == "active"))
         if not linked:
             raise HTTPException(403, "Student is not assigned to this agent")
     university = await db.get(University, payload.university_id)
@@ -1767,7 +1808,7 @@ async def create_overseas_application(payload: OverseasApplicationCreate, user: 
         # base codebase's own free-text "profile_evaluation" predates this contract.
         status="enquiry",
         application_reference=payload.application_reference,
-        next_action=payload.next_action or "Complete profile and required document checklist",
+        next_action=payload.next_action or DEFAULT_NEXT_ACTION,
     )
     db.add(item)
     await db.flush()
@@ -1813,16 +1854,16 @@ async def send_counselor_message(payload: dict, user: User = Depends(get_current
 @router.get("/overseas/applications")
 async def list_overseas_applications(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require(user, {"overseas_student", "counselor", "overseas_admin", "university_rep", "agent"}, "overseas")
-    stmt = select(OverseasApplication, University, User).join(University).join(User, User.id == OverseasApplication.student_id)
+    stmt = with_owner(select(OverseasApplication, University).join(University))
     if user.role == "overseas_student":
         stmt = stmt.where(OverseasApplication.student_id == user.id)
     elif user.role == "counselor":
         stmt = stmt.where(OverseasApplication.counselor_id == user.id)
     elif user.role == "agent":
-        stmt = stmt.where(OverseasApplication.agent_id == user.id)
+        stmt = stmt.where(*application_scope(user))
     elif user.role == "university_rep":
         stmt = stmt.where(OverseasApplication.university_id == uuid_reference(user.profile.get("university_id"), "university reference", required=False))
-    rows = (await db.execute(stmt.order_by(OverseasApplication.updated_at.desc()).limit(500))).all()
+    rows = owned((await db.execute(stmt.order_by(OverseasApplication.updated_at.desc()).limit(500))).all())
     return [
         {
             "id": a.id,
@@ -1847,7 +1888,12 @@ async def list_overseas_applications(user: User = Depends(get_current_user), db:
 async def update_overseas_application(application_id: UUID, payload: OverseasApplicationUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require(user, {"counselor", "university_rep", "overseas_admin"}, "overseas")
     item = await _assigned_application(db, user, application_id)
+    # AGN-008 (final review): re-read under the row lock so the guard below sees an agent's committed withdraw.
+    await db.refresh(item, with_for_update=True)
     changes = payload.model_dump(exclude_unset=True)
+    # AGN-008 (A1): `withdrawn` is terminal -- no generic status write revives it (nothing set it before AGN-008).
+    if "status" in changes and item.status == WITHDRAWN:
+        raise HTTPException(409, "This application is withdrawn")
     channels = changes.pop("notify_channels", ["email"])
     notes = changes.pop("notes", None)
     if user.role == "university_rep":
@@ -1869,7 +1915,9 @@ async def update_overseas_application(application_id: UUID, payload: OverseasApp
     if item.status != old_status or item.next_action != old_next_action:
         db.add(ApplicationStatusHistory(application_id=item.id, from_status=old_status, to_status=item.status, next_action=item.next_action, notes=notes, changed_by_id=user.id))
     if item.status != old_status:
+        had_commission = await agency_notices.has_commission(db, item.id)
         await _maybe_trigger_agent_commission(db, item, old_status, user)
+        await agency_notices.status_changed(db, item, old_status, user, had_commission=had_commission)  # AGN-017 (N3, AC3)
     # DEC-SCOPE-018: a bridged (School-origin) application has `student_id IS NULL` --
     # guarded the same way as `advance_overseas_application` below.
     student = await db.get(User, item.student_id) if item.student_id else None
@@ -1915,6 +1963,9 @@ async def advance_overseas_application(application_id: UUID, payload: OverseasAp
     # (they retain the generic PATCH above for their own broader corrections).
     _require(user, {"counselor"}, "overseas")
     item = await _assigned_application(db, user, application_id)
+    await db.refresh(item, with_for_update=True)  # AGN-008 (final review): the guard must see a committed withdraw
+    if item.status == WITHDRAWN:  # AGN-008 (A1): otherwise index -1 would let any target revive it
+        raise HTTPException(409, "This application is withdrawn")
     if payload.to_status not in OVERSEAS_APPLICATION_STAGES:
         raise HTTPException(422, f"'{payload.to_status}' is not a supported application stage yet -- rejection/waitlist/deferral outcomes are an open item (see docs/product/PRD_OPEN_ITEMS.md), not a status this endpoint can set.")
     current_index = OVERSEAS_APPLICATION_STAGES.index(item.status) if item.status in OVERSEAS_APPLICATION_STAGES else -1
@@ -1926,7 +1977,9 @@ async def advance_overseas_application(application_id: UUID, payload: OverseasAp
     if payload.next_action is not None:
         item.next_action = payload.next_action
     db.add(ApplicationStatusHistory(application_id=item.id, from_status=old_status, to_status=item.status, next_action=item.next_action, notes=payload.notes, changed_by_id=user.id))
+    had_commission = await agency_notices.has_commission(db, item.id)
     await _maybe_trigger_agent_commission(db, item, old_status, user)
+    await agency_notices.status_changed(db, item, old_status, user, had_commission=had_commission)  # AGN-017 (N3, AC3)
     # DEC-SCOPE-018: a bridged (School-origin) application has `student_id IS NULL` --
     # `db.get(User, None)` triggers a SAWarning ("fully NULL primary key identity") and
     # is documented as a future error, so it's guarded here rather than relied on to
@@ -1979,7 +2032,7 @@ async def add_document(payload: StudentDocumentCreate, user: User = Depends(get_
         if user.role == "counselor":
             linked = await db.scalar(select(OverseasApplication.id).where(OverseasApplication.student_id == student_id, OverseasApplication.counselor_id == user.id))
         else:
-            linked = await db.scalar(select(AgentStudent.id).where(AgentStudent.student_id == student_id, AgentStudent.agent_id == user.id))
+            linked = await db.scalar(select(AgentStudent.id).where(AgentStudent.student_id == student_id, *student_scope(user)))
         if not linked:
             raise HTTPException(403, "Student is outside your assigned scope")
     item = StudentDocument(
@@ -1991,18 +2044,72 @@ async def add_document(payload: StudentDocumentCreate, user: User = Depends(get_
         original_filename=payload.original_filename,
         content_type=payload.content_type,
         file_size=payload.file_size,
+        uploaded_by_user_id=user.id,
     )
     db.add(item)
     await db.flush()
+    add_event(db, event="uploaded", actor=user, document=item, to_status="pending")  # AGN-009: additive history row
     await _audit(db, user, "document.upload", "student_document", item.id)
     await db.commit()
     await db.refresh(item)
     return {"id": item.id, "verification_status": item.verification_status}
 
 
+async def _agent_document_review(db: AsyncSession, user: User, document_id: UUID, payload: dict) -> dict:
+    """AGN-003 (DEC-SCOPE-044 P3/P5/P6, spec §7): an agency member decides a PENDING document of their agency. Permission checks
+    come before any read (a refused caller learns nothing about the document); the row lock makes a second agent decision see the
+    first and get 409. Same notification and audit action as the counselor path, with validated metadata only."""
+    if not agent_may(user, "can_verify_documents"):
+        logger.warning("document_review_refused_no_permission", extra={"extra_fields": {"document_id": str(document_id), "actor_id": str(user.id)}})
+        raise HTTPException(403, VERIFY_REFUSED)
+    try:
+        review = AgentDocumentReview.model_validate(payload)
+    except ValidationError as exc:
+        raise RequestValidationError([{**e, "loc": ("body", *e["loc"])} for e in exc.errors(include_url=False)]) from exc
+    if is_agent_staff(user) and review.verification_status != "verified":
+        logger.warning(
+            "document_review_refused_staff_outcome",
+            extra={"extra_fields": {"document_id": str(document_id), "actor_id": str(user.id), "verification_status": review.verification_status}},
+        )
+        raise HTTPException(403, REVIEW_MASTER_ONLY)
+    # AGN-009 (DEC-SCOPE-052 G1/G2): an agent rejecting or asking for changes says why -- after the role rule, so staff still get 403.
+    notes = (review.notes or "").strip() or None
+    if review.verification_status != "verified" and notes is None:
+        raise HTTPException(422, REVIEW_REASON_REQUIRED)
+    item = await db.scalar(select(StudentDocument).where(StudentDocument.id == document_id).with_for_update())
+    if not item:
+        raise HTTPException(404, "Document not found")
+    if item.application_id:
+        await _assigned_application(db, user, item.application_id)
+    # AGN-004 G4 (adopted by AGN-003 on merging `main`): a staff member only their assigned students; a Master the agency's.
+    # AGN-009: an unattached document follows its owner -- the agency record or the linked account (`document_scope`).
+    elif not await in_scope(db, user, item.id):
+        raise HTTPException(403, "Document is outside your assigned scope")
+    if item.verification_status != "pending":
+        raise HTTPException(409, "This document has already been reviewed")
+    item.verification_status = review.verification_status
+    item.verified_by_id = user.id
+    item.reviewer_notes = notes
+    add_event(db, event=item.verification_status, actor=user, document=item, from_status="pending", to_status=item.verification_status, notes=notes)
+    student = await db.get(User, item.student_id) if item.student_id else None  # AGN-009: an agency-only document has no account
+    if student:
+        await _notify_user(db, student, "Document reviewed", f"{item.document_type}: {item.verification_status}.", "/overseas/student/documents")
+    await agency_notices.document_needs_attention(db, item, user)  # AGN-017 (DEC-SCOPE-059 N9): rejected / changes required only
+    member_role = user.agent_membership.role
+    await _audit(db, user, "document.verify", "student_document", item.id, {**review.model_dump(), "member_role": member_role})
+    await db.commit()
+    logger.info(
+        "agent_document_reviewed",
+        extra={"extra_fields": {"document_id": str(item.id), "actor_id": str(user.id), "member_role": member_role, "verification_status": item.verification_status}},
+    )
+    return {"id": item.id, "verification_status": item.verification_status}
+
+
 @router.patch("/overseas/documents/{document_id}/verify")
 async def verify_document(document_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    _require(user, {"counselor", "overseas_admin"}, "overseas")
+    _require(user, {"counselor", "overseas_admin", "agent"}, "overseas")
+    if user.role == "agent":  # AGN-003: the agent path is fully separate; the counselor/admin lines below are unchanged
+        return await _agent_document_review(db, user, document_id, payload)
     item = await db.get(StudentDocument, document_id)
     if not item:
         raise HTTPException(404, "Document not found")
@@ -2012,12 +2119,16 @@ async def verify_document(document_id: UUID, payload: dict, user: User = Depends
         assigned = await db.scalar(select(OverseasApplication.id).where(OverseasApplication.student_id == item.student_id, OverseasApplication.counselor_id == user.id))
         if not assigned:
             raise HTTPException(403, "Document is outside your assigned scope")
+    from_status = item.verification_status
     item.verification_status = payload.get("verification_status", "verified")
     item.verified_by_id = user.id
     item.reviewer_notes = payload.get("notes")
-    student = await db.get(User, item.student_id)
+    if item.verification_status in {"verified", "rejected", "changes_required"}:  # AGN-009: history names known outcomes only
+        add_event(db, event=item.verification_status, actor=user, document=item, from_status=from_status, to_status=item.verification_status, notes=item.reviewer_notes)
+    student = await db.get(User, item.student_id) if item.student_id else None
     if student:
         await _notify_user(db, student, "Document reviewed", f"{item.document_type}: {item.verification_status}.", "/overseas/student/documents")
+    await agency_notices.document_needs_attention(db, item, user)  # AGN-017 (DEC-SCOPE-059 N9): an agency document's assignee
     await _audit(db, user, "document.verify", "student_document", item.id, payload)
     await db.commit()
     return {"id": item.id, "verification_status": item.verification_status}
@@ -2044,22 +2155,21 @@ async def download_student_document(document_id: UUID, user: User = Depends(get_
             assigned = await db.scalar(select(OverseasApplication.id).where(OverseasApplication.student_id == item.student_id, OverseasApplication.counselor_id == user.id))
             if not assigned:
                 raise HTTPException(403, "Document is outside your assigned scope")
-    elif user.role == "agent":
-        assigned = await db.scalar(select(AgentStudent.id).where(AgentStudent.student_id == item.student_id, AgentStudent.agent_id == user.id))
-        if not assigned:
-            raise HTTPException(403, "Document is outside your assigned scope")
+    elif user.role == "agent" and not await in_scope(db, user, item.id):  # AGN-009: safe for an agency-only document
+        raise HTTPException(403, "Document is outside your assigned scope")
     # `file_url` is stored in two shapes depending on which upload path a client used
     # (local-upload returns an already browser-servable "/local-files/..." path; the
     # S3 presign path returns a bare object key) -- normalize to a bare key so this
     # always calls `presign_download` uniformly, never trusting either shape blindly.
     key = item.file_url[len("/local-files/"):] if item.file_url.startswith("/local-files/") else item.file_url.lstrip("/")
+    # AGN-009 (G9): every download is in the document's history and the audit log, committed before the link is handed out.
+    add_event(db, event="downloaded", actor=user, document=item)
+    await _audit(db, user, "document.download", "student_document", item.id, {"role": user.role})
+    await db.commit()
     return {"url": storage.presign_download(key), "expires_in": 900 if storage.bucket else None}
 
 
-# DATA_MODEL.md #6.5, DEC-SCOPE-006: the four confirmed category names plus a terminal
-# `decision` state. Exact decision outcomes (approved/refused) are not modeled as
-# separate values -- no source confirms them.
-VISA_CASE_STAGES = ["checklist", "documentation", "interview_prep", "tracking", "decision"]
+# VISA_CASE_STAGES and VISA_DECISION_DISCLAIMER live in services/agent_visa.py (AGN-012 moved them unchanged; imported above).
 
 
 async def _checklist_verification(db: AsyncSession, application_id: UUID, checklist: list[str]) -> dict[str, str]:
@@ -2120,12 +2230,6 @@ async def get_interview_prep(user: User = Depends(get_current_user), db: AsyncSe
     ]
 
 
-# VISA-003-AC02: a fixed compliance sentence, sourced from the reference
-# implementation's own compliance language (DATA_MODEL.md #6.5) -- never invented, and
-# never varied per case, so no response can ever imply EduSphere decides visa outcomes.
-VISA_DECISION_DISCLAIMER = "Visa decisions are made by the relevant government or immigration authority. EduSphere does not decide visa outcomes."
-
-
 @router.get("/overseas/applications/{application_id}/visa-status")
 async def get_visa_status(application_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     # VISA-003: "Status updates as the case progresses (checklist -> ... -> decision)."
@@ -2150,7 +2254,8 @@ async def update_visa(visa_id: UUID, payload: dict, user: User = Depends(get_cur
     item = await db.get(VisaCase, visa_id)
     if not item:
         raise HTTPException(404, "Visa case not found")
-    await _assigned_application(db, user, item.application_id)
+    application = await _assigned_application(db, user, item.application_id)
+    await _require_bridged_visa_entitlement(db, user, application, grandfathered_since=item.created_at)
     if "status" in payload:
         if payload["status"] not in VISA_CASE_STAGES:
             raise HTTPException(422, f"'{payload['status']}' is not a supported visa case stage -- must be one of {VISA_CASE_STAGES}.")
@@ -2177,6 +2282,7 @@ async def create_visa_case(payload: VisaCaseCreate, user: User = Depends(get_cur
     if payload.status not in VISA_CASE_STAGES:
         raise HTTPException(422, f"'{payload.status}' is not a supported visa case stage -- must be one of {VISA_CASE_STAGES}.")
     application = await _assigned_application(db, user, payload.application_id)
+    await _require_bridged_visa_entitlement(db, user, application)
     existing = await db.scalar(select(VisaCase).where(VisaCase.application_id == application.id))
     if existing:
         raise HTTPException(409, "A visa case already exists for this application")
@@ -2259,7 +2365,12 @@ async def apply_scholarship(scholarship_id: UUID, user: User = Depends(get_curre
 @router.get("/overseas/agent/students")
 async def agent_students(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require(user, {"agent"}, "overseas")
-    rows = (await db.execute(select(AgentStudent, User).join(User, User.id == AgentStudent.student_id).where(AgentStudent.agent_id == user.id).order_by(User.full_name))).all()
+    # AGN-004: archived links leave this list (D5); a staff member sees only their assigned students (G4).
+    rows = (
+        await db.execute(
+            select(AgentStudent, User).join(User, User.id == AgentStudent.student_id).where(*student_scope(user), AgentStudent.status == "active").order_by(User.full_name)
+        )
+    ).all()
     return [{"link_id": link.id, "student_id": student.id, "student": student.full_name, "email": student.email, "phone": student.phone, "status": link.status} for link, student in rows]
 
 
@@ -2269,13 +2380,17 @@ async def add_agent_student(payload: AgentStudentCreate, user: User = Depends(ge
     student = await db.get(User, payload.student_id)
     if not student or student.role != "overseas_student" or student.division != "overseas":
         raise HTTPException(404, "Overseas student not found")
-    existing = await db.scalar(select(AgentStudent).where(AgentStudent.agent_id == user.id, AgentStudent.student_id == student.id))
+    if user.agent_membership is not None:
+        await lock_org(db, user.agent_membership.org_id)  # AGN-001 (E12): serialise this organisation's links
+    # Organisation-wide on purpose: a staff member must not re-link another staff member's student.
+    existing = await db.scalar(select(AgentStudent.status).where(AgentStudent.agent_id.in_(org_member_ids(user)), AgentStudent.student_id == student.id))
     if existing:
-        raise HTTPException(409, "Student is already linked to this agent")
-    item = AgentStudent(agent_id=user.id, student_id=student.id, status="active")
+        raise HTTPException(409, "This student is archived — unarchive them first" if existing == "archived" else "Student is already linked to this agency")
+    assigned = user.agent_membership.id if is_agent_staff(user) else None  # AGN-004 D4: a staff member's link is theirs
+    item = AgentStudent(agent_id=user.id, student_id=student.id, status="active", assigned_member_id=assigned)
     db.add(item)
     await db.flush()
-    await _audit(db, user, "agent.student_link", "agent_student", item.id, {"student_id": student.id})
+    await _audit(db, user, "agent.student_link", "agent_student", item.id, {"student_id": student.id, **({"assigned_member_id": str(assigned)} if assigned else {})})
     await db.commit()
     return {"id": item.id, "status": item.status}
 
@@ -2283,16 +2398,21 @@ async def add_agent_student(payload: AgentStudentCreate, user: User = Depends(ge
 @router.get("/overseas/agent/commissions")
 async def agent_commissions(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require(user, {"agent"}, "overseas")
-    rows = (
-        await db.execute(
-            select(AgentCommission, OverseasApplication, University, User)
-            .join(OverseasApplication)
-            .join(University)
-            .join(User, User.id == OverseasApplication.student_id)
-            .where(AgentCommission.agent_id == user.id)
-            .order_by(AgentCommission.created_at.desc())
-        )
-    ).all()
+    _require_agent_master(user)
+    rows = owned(
+        (
+            await db.execute(
+                with_owner(
+                    select(AgentCommission, OverseasApplication, University)
+                    .select_from(AgentCommission)
+                    .join(OverseasApplication, OverseasApplication.id == AgentCommission.application_id)
+                    .join(University, University.id == OverseasApplication.university_id)
+                )
+                .where(AgentCommission.agent_id.in_(org_member_ids(user)))
+                .order_by(AgentCommission.created_at.desc())
+            )
+        ).all()
+    )
     return [
         {
             "id": commission.id,
@@ -2310,11 +2430,146 @@ async def agent_commissions(user: User = Depends(get_current_user), db: AsyncSes
     ]
 
 
+# AGN-014 (DEC-SCOPE-051): the agency's commission report, Master-only like the list above. `by_status` is in lifecycle order.
+COMMISSION_STATUS_RANK = {status: rank for rank, status in enumerate(("estimated", "eligible", "claimed", "payout_pending", "paid"))}
+# Strings, not `date`: FastAPI would answer a bad date with 422 before the Master check (spec §5.1). Documented for OpenAPI here.
+REPORT_DATE_FROM = Query(None, description="Optional. YYYY-MM-DD: the first UTC day (inclusive) of the commissions' created date.")
+REPORT_DATE_TO = Query(None, description="Optional. YYYY-MM-DD: the last UTC day (inclusive) of the commissions' created date; before 9999-12-31.")
+_YYYY_MM_DD = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def _report_date(value: str | None, name: str) -> date | None:
+    if not value:
+        return None
+    # fullmatch first: `date.fromisoformat` also takes "20260930" and ISO week dates, which the contract does not offer.
+    if _YYYY_MM_DD.fullmatch(value):
+        with contextlib.suppress(ValueError):  # e.g. 2026-02-30
+            return date.fromisoformat(value)
+    raise HTTPException(422, f"{name} must be a date (YYYY-MM-DD)")
+
+
+def report_range(date_from: str | None, date_to: str | None) -> tuple[date | None, date | None]:
+    """An optional inclusive range of UTC days (AGN-014 R3; reused by AGN-019). Call it after the caller's guards, so a refused
+    caller never sees a 422."""
+    start, end = _report_date(date_from, "date_from"), _report_date(date_to, "date_to")
+    if start and end and end < start:
+        raise HTTPException(422, "date_to must be on or after date_from")
+    if end == date.max:  # the exclusive bound is the next day, which does not exist (a date input accepts 9999-12-31)
+        raise HTTPException(422, "date_to must be before 9999-12-31")
+    return start, end
+
+
+async def _commission_report_items(user: User, db: AsyncSession, date_from: str | None, date_to: str | None) -> tuple[list[dict], date | None, date | None]:
+    """Guards first, then the dates (a refused caller never sees a 422), then one scoped read: a single snapshot for every
+    breakdown. Days are inclusive UTC calendar days on the commission's created date (R3/R7)."""
+    _require(user, {"agent"}, "overseas")
+    _require_agent_master(user)
+    start, end = report_range(date_from, date_to)
+    query = (
+        select(AgentCommission, OverseasApplication.intake, University.name, Country.name, func.coalesce(User.full_name, SchoolStudent.full_name))
+        .select_from(AgentCommission)
+        .join(OverseasApplication, OverseasApplication.id == AgentCommission.application_id)
+        .join(University, University.id == OverseasApplication.university_id)
+        .join(Country, Country.id == University.country_id)
+        # A bridged school-student application has no login (`student_id` NULL): outer joins, never an inner join on User.
+        .outerjoin(User, User.id == OverseasApplication.student_id)
+        .outerjoin(SchoolStudent, SchoolStudent.id == OverseasApplication.school_student_id)
+        .where(AgentCommission.agent_id.in_(org_member_ids(user)))
+        .order_by(AgentCommission.created_at, AgentCommission.id)
+    )
+    if start:
+        query = query.where(AgentCommission.created_at >= datetime.combine(start, time.min, tzinfo=UTC))
+    if end:
+        query = query.where(AgentCommission.created_at < datetime.combine(end + timedelta(days=1), time.min, tzinfo=UTC))
+    items = [
+        {
+            "student": student or "—", "university": university, "country": country, "intake": intake,
+            "status": commission.status, "amount": Decimal(commission.amount), "currency": commission.currency,
+            "created_at": commission.created_at, "claimed_at": commission.claimed_at, "paid_at": commission.paid_at,
+            "claim_reference": commission.claim_reference,
+        }
+        for commission, intake, university, country, student in (await db.execute(query)).all()
+    ]
+    return items, start, end
+
+
+def _commission_groups(items: list[dict], keys: tuple[str, ...]) -> list[dict]:
+    """Count and amount per (keys..., currency) -- currencies are never added together."""
+    groups: dict[tuple, dict] = {}
+    for item in items:
+        group = groups.setdefault(
+            tuple(item[k] for k in keys) + (item["currency"],),
+            {**{k: item[k] for k in keys}, "currency": item["currency"], "count": 0, "amount": Decimal(0)},
+        )
+        group["count"] += 1
+        group["amount"] += item["amount"]
+    return [{**group, "amount": float(round(group["amount"], 2))} for group in groups.values()]
+
+
+def _ranked(groups: list[dict], keys: tuple[str, ...]) -> list[dict]:
+    return sorted(groups, key=lambda g: (-g["amount"], *(g[k] for k in keys), g["currency"]))
+
+
+def _report_logged(user: User, fmt: str, rows: int, start: date | None, end: date | None) -> None:
+    membership = user.agent_membership
+    logger.info("agent_commission_report", extra={"extra_fields": {
+        "actor_id": str(user.id), "org_id": str(membership.org_id) if membership else None, "format": fmt, "rows": rows,
+        "date_from": start.isoformat() if start else None, "date_to": end.isoformat() if end else None,
+    }})
+
+
+@router.get("/overseas/agent/commissions/report", response_model=CommissionReportOut)
+async def agent_commission_report(date_from: str | None = REPORT_DATE_FROM, date_to: str | None = REPORT_DATE_TO, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    items, start, end = await _commission_report_items(user, db, date_from, date_to)
+    _report_logged(user, "json", len(items), start, end)
+    unknown_last = len(COMMISSION_STATUS_RANK)
+    return {
+        "date_from": start, "date_to": end,
+        "totals": sorted(_commission_groups(items, ()), key=lambda g: g["currency"]),
+        "by_status": sorted(_commission_groups(items, ("status",)), key=lambda g: (COMMISSION_STATUS_RANK.get(g["status"], unknown_last), g["status"], g["currency"])),
+        "by_university": _ranked(_commission_groups(items, ("university", "country")), ("university", "country")),
+        "by_country": _ranked(_commission_groups(items, ("country",)), ("country",)),
+        "by_intake": _ranked(_commission_groups(items, ("intake",)), ("intake",)),
+    }
+
+
+COMMISSION_CSV_COLUMNS = ("Student", "University", "Country", "Intake", "Status", "Amount", "Currency", "Created", "Claimed", "Paid", "Claim reference")
+
+
+def _csv_day(value: datetime | None) -> str:
+    return value.astimezone(UTC).date().isoformat() if value else ""
+
+
+@router.get("/overseas/agent/commissions/report.csv")
+async def agent_commission_report_csv(date_from: str | None = REPORT_DATE_FROM, date_to: str | None = REPORT_DATE_TO, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """AGN-014 R4: one row per commission. Every text cell goes through `_safe_cell` -- names and references are user-entered."""
+    items, start, end = await _commission_report_items(user, db, date_from, date_to)
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(COMMISSION_CSV_COLUMNS)
+    for item in items:
+        writer.writerow([
+            _safe_cell(item["student"]), _safe_cell(item["university"]), _safe_cell(item["country"]), _safe_cell(item["intake"]),
+            item["status"], f"{item['amount']:.2f}", _safe_cell(item["currency"]), _csv_day(item["created_at"]),
+            _csv_day(item["claimed_at"]), _csv_day(item["paid_at"]), _safe_cell(item["claim_reference"] or ""),
+        ])
+    _report_logged(user, "csv", len(items), start, end)
+    filename = f"agency-commissions-{start.isoformat() if start else 'all'}-to-{end.isoformat() if end else 'all'}.csv"
+    return Response(
+        content=buffer.getvalue(), media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename={filename}", "Cache-Control": "private, no-store"},
+    )
+
+
 @router.post("/overseas/agent/commissions/{commission_id}/claim")
 async def claim_commission(commission_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require(user, {"agent"}, "overseas")
-    item = await db.get(AgentCommission, commission_id)
-    if not item or item.agent_id != user.id:
+    _require_agent_master(user)
+    # AGN-001: organisation scope, and a row lock so two Masters claiming one commission claim it once.
+    item = await db.scalar(
+        select(AgentCommission).where(AgentCommission.id == commission_id, AgentCommission.agent_id.in_(org_member_ids(user))).with_for_update().execution_options(populate_existing=True)
+    )
+    if not item:
         raise HTTPException(404, "Commission not found")
     if item.status not in {"eligible", "estimated"}:
         raise HTTPException(409, "Commission cannot be claimed in its current status")
@@ -2345,7 +2600,8 @@ async def create_commission(payload: CommissionCreate, user: User = Depends(get_
     item = AgentCommission(agent_id=agent.id, application_id=application.id, amount=payload.amount, currency=payload.currency, status="eligible", created_by="admin_manual")
     db.add(item)
     await db.flush()
-    await _notify_user(db, agent, "Commission eligible", f"A {payload.currency} {payload.amount:,.2f} commission is available to claim.", "/overseas/agent/commissions")
+    for recipient in await notification_recipients(db, agent):  # AGN-001 (D12): every active Master
+        await _notify_user(db, recipient, "Commission eligible", f"A {payload.currency} {payload.amount:,.2f} commission is available to claim.", "/overseas/agent/commissions")
     await _audit(db, user, "agent.commission_create", "agent_commission", item.id)
     await db.commit()
     return {"id": item.id, "status": item.status}
@@ -2378,6 +2634,13 @@ async def update_commission_amount(commission_id: UUID, payload: CommissionAmoun
 async def notifications(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     rows = (await db.scalars(select(Notification).where(Notification.user_id == user.id).order_by(Notification.created_at.desc()).limit(100))).all()
     return [{"id": x.id, "title": x.title, "body": x.body, "read": x.read, "action_url": x.action_url, "created_at": x.created_at} for x in rows]
+
+
+@router.get("/notifications/unread-count", response_model=NotificationUnreadCount)
+async def unread_notification_count(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """AGN-017 (DEC-SCOPE-059 N7): the caller's own unread count (it may exceed the newest-100 list above)."""
+    count = await db.scalar(select(func.count()).select_from(Notification).where(Notification.user_id == user.id, Notification.read.is_(False)))
+    return {"unread": count or 0}
 
 
 @router.patch("/notifications/{notification_id}/read")

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { pickFromList } from "./helpers/pick";
 import { E2E_PASSWORD, createAndActivateFromUi } from "./helpers/welcome";
 
 // SCH-009 -- Test Preparation (IELTS/SAT) and Foreign Language Classes, delivered by the
@@ -24,6 +25,7 @@ test("academic team starts and completes test prep and language classes; coordin
   await page.fill("#school-name", schoolName);
   await page.fill("#school-coordinator-name", "E2E SCH-009 Coordinator");
   await page.fill("#school-coordinator-email", coordinatorEmail);
+  await page.selectOption("#school-tier", "platinum"); // ENH-022: entitled to every service
   await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
   await expect(page.getByText(/School created\./)).toBeVisible();
 
@@ -58,7 +60,7 @@ test("academic team starts and completes test prep and language classes; coordin
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/academic-team/dashboard");
 
-  await page.selectOption("#testprep-student", { label: `E2E SCH-009 Student — ${schoolName}` });
+  await pickFromList(page.locator("#testprep-student"), "E2E SCH-009 Student", `E2E SCH-009 Student — ${schoolName}`);
   await page.selectOption("#testprep-type", "ielts");
   await page.fill("#testprep-target", "7.5");
   await page.click('button:has-text("Start preparation")');
@@ -70,7 +72,7 @@ test("academic team starts and completes test prep and language classes; coordin
   await expect(page.getByText(/Result recorded\./)).toBeVisible();
   await expect(testPrepRow.getByText("completed")).toBeVisible();
 
-  await page.selectOption("#language-student", { label: `E2E SCH-009 Student — ${schoolName}` });
+  await pickFromList(page.locator("#language-student"), "E2E SCH-009 Student", `E2E SCH-009 Student — ${schoolName}`);
   await page.fill("#language-name", "German");
   await page.fill("#language-level", "A1");
   await page.click('button:has-text("Start classes")');

@@ -1,6 +1,6 @@
 fastapi>=0.115,<1
 uvicorn[standard]>=0.30,<1
-sqlalchemy>=2.0,<3
+sqlalchemy[asyncio]>=2.0,<3  # [asyncio] pulls in greenlet, which SQLAlchemy 2.1 no longer installs by default
 asyncpg>=0.29,<1
 pydantic>=2.8,<3
 pydantic-settings>=2.4,<3
@@ -17,3 +17,5 @@ pytest-asyncio>=0.24,<1
 
 alembic>=1.14,<2
 reportlab>=4,<5
+# ENH-015 (QA15-02): lets reportlab shape Devanagari (vowel signs, conjuncts) in the report PDFs.
+uharfbuzz>=0.39,<1

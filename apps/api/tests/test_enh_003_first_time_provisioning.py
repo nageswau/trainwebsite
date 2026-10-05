@@ -420,7 +420,8 @@ async def _pending_user(db_session, *, active=True, **token_kwargs):
 async def test_a_welcome_link_sets_the_password_verifies_the_email_and_allows_login(client, db_session):
     user, raw, token = await _pending_user(db_session)
     response = await client.post(RESET_URL, json={"token": raw, "new_password": NEW_PASSWORD})
-    assert response.status_code == 200 and response.json() == {"ok": True}
+    # bdm-001 (spec §5.6, AC15) added the always-present `login_portal` key (null for every role but bdm_manager).
+    assert response.status_code == 200 and response.json() == {"ok": True, "login_portal": None}
     await db_session.refresh(user)
     await db_session.refresh(token)
     assert user.email_verified is True and token.used_at is not None
@@ -542,7 +543,15 @@ async def test_a_supplied_password_is_rejected_with_422_and_creates_nothing(clie
     email = _email()
     payload = {**body, ("coordinator_email" if field == "coordinator_password" else "email"): email, field: "Should-Be-Ignored-1!"}
     response = await client.post(path, json=payload)
-    assert response.status_code == 422 and "password" in response.json()["detail"].lower()
+    assert response.status_code == 422
+    # ENH-009: /overseas-admin/schools now validates via a typed, extra="forbid" Pydantic
+    # schema, so a supplied `coordinator_password` is rejected by Pydantic itself (a list-
+    # shaped `detail`) rather than by this route's own string-message check -- the other two
+    # paths are still untyped `dict` bodies and keep the original flat-string 422. Both are a
+    # real 422 naming the rejected field; accept either response shape.
+    detail = response.json()["detail"]
+    detail_text = detail.lower() if isinstance(detail, str) else json.dumps(detail).lower()
+    assert "password" in detail_text
     assert await db_session.scalar(select(User).where(User.email == email)) is None
 
 
@@ -708,7 +717,12 @@ async def test_a_value_longer_than_its_column_is_422_naming_the_field_and_create
     schools_before = await db_session.scalar(sa.select(sa.func.count()).select_from(School))
     response = await client.post(path, json=_create_payload(path, **{field: "N" * (limit + 1)}))
     assert response.status_code == 422, response.text
-    assert str(limit) in response.json()["detail"]
+    # ENH-009: /overseas-admin/schools' name/city/state/coordinator_full_name are now enforced
+    # by SchoolCreate's Field(max_length=...) rather than this route's own _fit() helper, so the
+    # 422 is Pydantic's list-shaped `detail` there; the other paths keep the original flat string.
+    detail = response.json()["detail"]
+    detail_text = detail if isinstance(detail, str) else json.dumps(detail)
+    assert str(limit) in detail_text
     assert await db_session.scalar(sa.select(sa.func.count()).select_from(User)) == users_before
     assert await db_session.scalar(sa.select(sa.func.count()).select_from(School)) == schools_before
 

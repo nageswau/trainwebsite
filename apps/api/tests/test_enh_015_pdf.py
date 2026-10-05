@@ -1,0 +1,210 @@
+"""ENH-015 -- the PDF renderer on its own (spec §5; AC08). Pure: dict in, bytes out, no database."""
+
+from datetime import date, datetime
+
+from pdf_text import pdf_pages, pdf_text
+
+from app.reporting.pdf import DEVANAGARI_FONT, HEADING, _p, render_progress_report, render_school_summary
+
+AS_OF = date(2026, 9, 29)
+
+
+def _summary(**overrides) -> dict:
+    data = {
+        "school_name": "Greenfield High",
+        "as_of": AS_OF,
+        "academic_year": "2026-27",
+        "total_students": 3,
+        "kpis": [("Total students", 3), ("Career guidance", 2), ("Psychometric assessment completed", 1)],
+        "grades": ["Grade 9", "Unspecified"],
+        "students": {"Grade 9": 2, "Unspecified": 1},
+        "metrics": [
+            {"label": "Assessment completion", "is_proxy": False, "definition": None, "cells": {"Grade 9": {"count": 1, "pct": 50.0}, "Unspecified": {"count": 0, "pct": 0.0}}},
+            {
+                "label": "Skills development",
+                "is_proxy": True,
+                "definition": "Students enrolled in a skills batch",
+                "cells": {"Grade 9": {"count": 2, "pct": 100.0}, "Unspecified": {"count": 0, "pct": 0.0}},
+            },
+        ],
+    }
+    return {**data, **overrides}
+
+
+def _overview(**overrides) -> dict:
+    data = {
+        "student": {"full_name": "Asha Rao", "student_code": "STU-0001", "grade_or_class": "Grade 9", "section": "B", "school_name": "Greenfield High", "assigned_teacher_name": "Mr Iyer"},
+        "career_guidance": {
+            "status": "completed",
+            "sessions": [{"status": "completed", "completed_on": date(2026, 8, 1), "notes": "Explored engineering", "counselor_name": "Ms Kapoor", "recommended_careers": ["Engineer", "Architect"]}],
+        },
+        "counselling": {"status": "not_started", "notes": []},
+        "recommended_careers": [],
+        "structured_recommendations": [],
+        "psychometric": {
+            "status": "completed",
+            "assessments": [{"assessment_type": "Aptitude", "status": "completed", "created_at": datetime(2026, 7, 1, 10, 0), "strengths": ["Logic"], "counsellor_remarks": "Strong reasoning"}],
+        },
+        "test_prep": {"status": "not_started", "records": []},
+        "foreign_language": {"status": "not_started", "records": []},
+        "results": [{"subject": "Mathematics", "term": "Term 1", "academic_year": "2026-27", "marks_obtained": 45.0, "max_marks": 50.0, "percentage": 90.0, "grade": "A1", "teacher_remarks": None}],
+        "activities": {"attended": [{"title": "Career fair", "scheduled_at": datetime(2026, 8, 10, 9, 0), "present": True}], "upcoming": []},
+        "global_education": {"status": "not_started", "applications": []},
+        "skills": {"soft_skills": {"status": "not_started", "enrollments": []}, "digital_skills": {"status": "not_started", "enrollments": []}},
+    }
+    return {**data, **overrides}
+
+
+def test_school_summary_is_a_pdf_with_the_management_figures_and_grade_table():
+    pdf = render_school_summary(_summary())
+    assert pdf.startswith(b"%PDF-")
+    text = pdf_text(pdf)
+    for expected in ("School Summary Report", "Greenfield High", "29 Sep 2026", "2026-27", "Career guidance", "Assessment completion", "Grade 9", "1 (50%)", "Students enrolled in a skills batch"):
+        assert expected in text, expected
+
+
+def test_school_summary_of_an_empty_school_says_so():
+    text = pdf_text(render_school_summary(_summary(total_students=0, grades=[], students={}, metrics=[], kpis=[("Total students", 0)])))
+    assert "No students on the roster yet." in text
+
+
+def test_school_summary_with_no_figures_still_renders():  # reportlab rejects a Table with no rows
+    assert render_school_summary(_summary(kpis=[], grades=[], students={}, metrics=[])).startswith(b"%PDF-")
+
+
+def test_school_summary_without_an_active_academic_year():
+    assert "No active academic year" in pdf_text(render_school_summary(_summary(academic_year=None)))
+
+
+def test_progress_report_renders_the_student_and_every_section():
+    pdf = render_progress_report(_overview(), AS_OF)
+    assert pdf.startswith(b"%PDF-")
+    text = pdf_text(pdf)
+    for expected in (
+        "Student Progress Report",
+        "Asha Rao",
+        "STU-0001",
+        "Greenfield High",
+        "Explored engineering",
+        "Engineer, Architect",
+        "Aptitude",
+        "Strong reasoning",
+        "Mathematics",
+        "90",
+        "Career fair",
+        "29 Sep 2026",
+    ):
+        assert expected in text, expected
+
+
+def test_progress_report_says_when_a_section_has_no_records():
+    text = pdf_text(render_progress_report(_overview(), AS_OF))
+    assert "No records yet." in text
+
+
+def test_markup_in_text_is_rendered_literally():  # AC08: Platypus parses <, > and & as markup
+    nasty = 'Use <b>bold</b> & <font color="red">x</font> and a lone < sign'
+    overview = _overview(career_guidance={"status": "completed", "sessions": [{"status": "completed", "notes": nasty}]})
+    text = pdf_text(render_progress_report(overview, AS_OF))
+    assert "<b>bold</b>" in text
+    assert "a lone < sign" in text
+
+
+def test_markup_in_the_school_name_is_rendered_literally():
+    assert "A & B <School>" in pdf_text(render_school_summary(_summary(school_name="A & B <School>")))
+
+
+def test_devanagari_text_is_set_in_the_embedded_devanagari_font():  # QA15-02: was drawn as ■ in Helvetica
+    pdf = render_progress_report(_overview(student={**_overview()["student"], "full_name": "आशा राव"}), AS_OF)
+    assert pdf.startswith(b"%PDF-")
+    assert b"NotoSansDevanagari" in pdf
+
+
+def test_latin_around_devanagari_stays_in_helvetica_and_readable():  # the Devanagari font has no Latin letters
+    pdf = render_progress_report(_overview(student={**_overview()["student"], "full_name": "Asha आशा & Rao"}), AS_OF)
+    assert "Asha" in pdf_text(pdf) and "& Rao" in pdf_text(pdf)
+
+
+def test_a_latin_only_report_does_not_embed_the_devanagari_font():  # no size cost for the common case
+    assert b"NotoSansDevanagari" not in render_progress_report(_overview(), AS_OF)
+
+
+def test_devanagari_paragraphs_are_based_on_the_devanagari_font_so_they_are_shaped():
+    # reportlab shapes a paragraph only when its own font is the shapable one: a Devanagari <font> run inside a Helvetica
+    # paragraph is drawn unshaped (vowel signs in the wrong place -- found when checking QA15-02's fix by eye). The rendered
+    # glyph order cannot be read back from the PDF, so this pins the mechanism.
+    assert _p("आशा राव").style.fontName == DEVANAGARI_FONT
+    assert _p("आशा राव", HEADING).style.fontName == DEVANAGARI_FONT
+    assert _p("Asha Rao").style.fontName == "Helvetica"
+
+
+def test_mixed_devanagari_text_with_markup_and_line_breaks_renders():
+    notes = "छात्रा ने <b>विज्ञान</b> में रुचि & Likes robotics\nदूसरी पंक्ति (line two)"
+    overview = _overview(career_guidance={"status": "completed", "sessions": [{"status": "completed", "notes": notes}]})
+    text = pdf_text(render_progress_report(overview, AS_OF))
+    assert "& Likes robotics" in text and "(line two)" in text
+
+
+def test_control_characters_do_not_break_generation():
+    overview = _overview(career_guidance={"status": "completed", "sessions": [{"status": "completed", "notes": "a\x00b\x07c\nline two"}]})
+    assert "line two" in pdf_text(render_progress_report(overview, AS_OF))
+
+
+SECTION_HEADINGS = {
+    "Career guidance",
+    "Counselling",
+    "Career recommendations",
+    "Psychometric assessment",
+    "Academic results (published)",
+    "Activities attended",
+    "Test preparation (IELTS/SAT)",
+    "Foreign language",
+    "Global education",
+    "Soft skills",
+    "Digital skills",
+}
+RESULT = {"subject": "Physics", "term": "Term 1", "academic_year": "2026-27", "marks_obtained": 40.0, "max_marks": 50.0, "percentage": 80.0, "grade": "A2", "teacher_remarks": "Steady"}
+
+
+def test_a_record_is_never_split_across_pages():  # QA15-05
+    pages = pdf_pages(render_progress_report(_overview(results=[RESULT] * 30), AS_OF))
+    assert len(pages) > 2
+    for number, lines in enumerate(pages, 1):
+        assert lines.count("Subject") == lines.count("Teacher remarks"), f"a results record is split on page {number}"
+
+
+def test_a_section_heading_is_never_the_last_line_of_a_page():  # QA15-05
+    # The QA case: a student with no records (every section "No records yet."); then 0-20 results slide every heading past
+    # the page foot in turn.
+    bare = _overview(
+        student={"full_name": "Asha Rao", "student_code": "STU-0001", "school_name": "Greenfield High"},
+        career_guidance={"status": "not_started", "sessions": []},
+        psychometric={"status": "not_started", "assessments": []},
+        results=[],
+        activities={"attended": [], "upcoming": []},
+    )
+    for count in range(21):
+        for number, lines in enumerate(pdf_pages(render_progress_report({**bare, "results": [RESULT] * count}, AS_OF)), 1):
+            assert lines[-1] not in SECTION_HEADINGS, f"heading {lines[-1]!r} stranded at the foot of page {number} ({count} results)"
+
+
+def test_the_section_status_reads_as_an_overall_status():  # QA15-06: not mistaken for the record's own Status row
+    lines = pdf_text(render_progress_report(_overview(), AS_OF)).split("\n")
+    assert "Overall status: Completed" in lines
+    assert not any(line.startswith("Status: ") for line in lines)
+
+
+def test_test_types_read_as_on_screen():  # QA15-06: "IELTS", as Student360Panels shows it, not the stored "ielts"
+    overview = _overview(test_prep={"status": "in_progress", "records": [{"test_type": "ielts", "status": "in_progress"}]})
+    lines = pdf_text(render_progress_report(overview, AS_OF)).split("\n")
+    assert "IELTS" in lines and "ielts" not in lines
+
+
+def test_grade_falls_back_to_the_grade_level():  # QA15-09: a student stored with grade_level only still shows a grade
+    lines = pdf_text(render_progress_report(_overview(student={"full_name": "Asha Rao", "grade_or_class": None, "grade_level": 9}), AS_OF)).split("\n")
+    assert lines[lines.index("Grade / class") + 1] == "Grade 9"
+
+
+def test_a_free_text_class_wins_over_the_grade_level():
+    lines = pdf_text(render_progress_report(_overview(student={"full_name": "Asha Rao", "grade_or_class": "Grade 9 - B", "grade_level": 9}), AS_OF)).split("\n")
+    assert lines[lines.index("Grade / class") + 1] == "Grade 9 - B"

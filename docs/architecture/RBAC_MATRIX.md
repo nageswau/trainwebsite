@@ -131,6 +131,145 @@ here.
 | `agent`, `approval_status='approved'` | view own referral roster, view own commissions, claim eligible/estimated commissions | **Own referrals/commissions only** — explicit deny on any other agent's rows (`AGT-002-AC02`) | `AGT-002`–`004` |
 | `overseas_admin` | approve/reject agent registration, create manual commissions, **approve commission payout** | Overseas division | `AGT-001`, `AGT-003`, `AGT-004` |
 
+**`AGN-001` / `DEC-SCOPE-038` (2026-09-28) — agent organisation as tenant, BUILT 2026-09-28.**
+The three rows above now read as follows. The approval gate is the **organisation's**
+status, not the assignment's: while it is `pending`, `rejected` or `suspended`, every member is denied
+every agent route (D6; suspension applies on the next request and leaves `/auth/me`, logout and
+notifications working). "Own" means **own organisation**: a Master sees and changes all of their
+organisation's referrals, applications, documents and commissions, and nothing of any other
+organisation (D1). Only an active Master of the organisation invites or deactivates its Masters (D8);
+`overseas_admin` gains approve/reject/suspend/reinstate on the organisation (D7) but does not manage
+members. Staff roles are not decided (D13). Enforcement: `core/rbac.agent_denial_reason` (gate, called by
+`workflows._require`, `portal()` and `api/agent_team.py`) and `services/agent_orgs.org_member_ids` (scope). Proved by
+`tests/test_agn_001_tenancy.py` (cross-organisation matrix) and `test_agn_001_team.py`.
+
+**`AGN-022` / `DEC-SCOPE-064` (2026-10-03) — agent network oversight, BUILT 2026-10-03.** `overseas_admin` and `super_admin`
+read every organisation's counts, money, Masters and (on request) its students and applications, read-only (N6: no admin edits
+to agency students, applications or staff). Drill-down rows carry no email, phone or date of birth (N1), and every drill-down
+page is an audited, fail-closed read (`agent_network.students_read` / `applications_read`, N2). Suspend / reinstate stays the
+AGN-001 D7 action; the UI offers it to `overseas_admin` only (N3 — `super_admin` keeps the backend permission it already had).
+Every other role, including agency Masters and staff, gets `403` before any lookup. Enforcement: `api/admin._require_overseas_admin`;
+scope `services/agent_network.members_of`. Proved by `tests/test_agn_022_network.py`.
+
+**`AGN-002` / `DEC-SCOPE-040` (2026-09-30) — agency staff, BUILT 2026-09-30.** A staff member (`role='agent'`, member
+role `staff`, code `<prefix>-S###`) of an `active` organisation works on the organisation's students, applications and
+documents with the same organisation-wide scope as a Master (S1; narrowed to assigned students by `AGN-004`, below). Staff are
+**denied** team management (`403 "Only an agency Master can manage the team"`), commission list/claim (`403 "Only an agency
+Master can view commissions"`) and the `team`/`commissions` portal pages; their dashboard/reports omit commission figures.
+Only an active Master of the organisation creates, edits, deactivates, reactivates or resets its staff; another
+organisation's Master gets `404`. A deactivated staff member is refused every API (`users.active = false`); a reset or
+deactivation ends every session (`users.session_version`). Staff never count as Masters (3-Master limit, last-Master rule,
+commission notifications) and cannot be approved/rejected as agents by Overseas Admin (`422`). Enforcement:
+`core/rbac.is_agent_staff`, `api/agent_team._require_master`, `services/agent_orgs._staff_member`. Proved by
+`tests/test_agn_002_staff.py`, `test_agn_002_staff_access.py`, `test_agn_002_master_rules.py`, `test_agn_002_sessions.py`.
+Known limitation: admin `PATCH /admin/users/{id}` can still change `active` on any agent user (spec §10, E4).
+
+**`AGN-004` / `DEC-SCOPE-042` (2026-09-30) — agency students and staff scope, BUILT 2026-09-30 (narrows `AGN-002` S1 above; same
+staff model).** A staff member is a `role='agent'` user whose organisation membership has `role='staff'` (created by `AGN-002`).
+
+| Action | Master | Staff |
+|---|---|---|
+| View students (new `/crm/students` list/detail; roster; portal Students) | Whole agency | **Assigned to them only** |
+| Create a student with no login; link a student with an account | ✓ (unassigned) | ✓ (assigned to them) |
+| Edit a student with no login | ✓ | ✓ (assigned only) |
+| Archive / unarchive; assign | ✓ | ✗ (`403`) |
+| Applications, documents, lookups, dashboard, reports | Whole agency | Assigned students' only |
+| Team, Commissions | ✓ | ✗ (`403`, `AGN-002` S1) |
+
+**Existence mask (required by `API_CONTRACT.md` §0.3):** on the `/workflows/overseas/agent/crm/students` routes a row outside
+the caller's scope — another agency's, another staff member's, or an unassigned one for staff — answers **`404 "Student not
+found"`**, never `403`, so its existence is not revealed. A Master-only action on an in-scope row answers `403`. Existing
+routes keep their existing status codes. Assignment targets only an active staff member of the same agency; a deactivated
+staff member keeps their students (G5). Enforcement: `services/agent_students.student_scope` / `application_scope` in the
+`WHERE` clause (identical to AGN-001's clauses for a Master) and `core/rbac.is_agent_staff`. Proved by
+`tests/test_agn_004_students.py`, `test_agn_004_student_actions.py`, `test_agn_004_staff_scope.py`, `test_agn_004_staff_guards.py`.
+
+**AGN-003 addendum (2026-10-01, DEC-SCOPE-044).** The §6 Master-vs-Staff matrix as built (spec §3; ✅ = succeeds, ❌ = `403`,
+T = follows the staff member's toggle, N/A = no route for any agent, so parked under `C-10`). Enforcement: `core/rbac.agent_may`
+(Masters always; staff follow their own flag, read from the membership `get_current_user` loads on every request),
+`api/portal.py` (Reports), `workflows._agent_document_review` (Verify/Reject), `api/agent_team._require_master` (team routes).
+
+| §6 row | Route(s) | Master | Staff |
+|---|---|---|---|
+| Dashboard | `GET /portal/overseas/agent/dashboard`; `GET /workflows/overseas/agent/crm/dashboard` (**new**, `AGN-018` / `DEC-SCOPE-062`; `super_admin` `403`) | ✅ full (agency KPIs, staff table, commission) | ✅ limited (own students; no commission, no staff metrics — those fields are `null` and never queried; AGN-002, AGN-018) |
+| Create Student | `POST /workflows/overseas/agent/students` (links an existing student); `POST /workflows/overseas/agent/crm/students` (no login, AGN-004) | ✅ | ✅ (assigned to them) |
+| View Students | `GET /workflows/overseas/agent/students`, `GET /portal/overseas/agent/students`, `GET /lookups/overseas-students`, `GET /workflows/overseas/agent/crm/students`, `GET …/crm/students/{id}` | ✅ agency | ✅ assigned only (`DEC-SCOPE-042` G4) |
+| Edit Student | `PATCH /workflows/overseas/agent/crm/students/{id}` (students with no login) | ✅ | ✅ assigned only |
+| Record counseling (§5 Step 2, AGN-006) | `PUT /workflows/overseas/agent/crm/students/{id}/counseling` (active students with no login; login / archived → `409`, out of scope → `404`) | ✅ | ✅ assigned only |
+| Delete Student | `POST …/crm/students/{id}/archive`, `POST …/crm/students/{id}/unarchive` (no delete route; `DEC-SCOPE-042` D5) | ✅ | ❌ |
+| Assign Student / Assign Students | `POST …/crm/students/{id}/assign` | ✅ | ❌ |
+| Create Application | `POST /workflows/overseas/applications` | ✅ | ✅ |
+| Edit Application | `PATCH /workflows/overseas/agent/crm/applications/{id}` (**AGN-008**, `DEC-SCOPE-050`; now enforced) | ✅ | ✅ assigned only |
+| View Applications | `GET /workflows/overseas/applications`, `GET /portal/overseas/agent/applications`, `GET /lookups/overseas-applications` | ✅ | ✅ |
+| Change Application Status | `POST /workflows/overseas/agent/crm/applications/{id}/status` (**AGN-008**; forward only up to `status_tracking`, withdraw; never `enrolled`); `PUT …/crm/applications/{id}/offer` (**AGN-010**, `DEC-SCOPE-056`; records the offer and may move a pre-offer stage to `offer`; `super_admin` and other roles `403`, out of scope `404`) | ✅ | ✅ assigned only |
+| Deposit (set, pay, receipt) | `PUT …/crm/applications/{id}/deposit`, `POST …/deposit/checkout`, `GET …/deposit/receipt` (**AGN-011**, `DEC-SCOPE-058` D7; the payer owns the `Payment`; `super_admin` and other roles `403`, out of scope `404`). Remittance and refunds: `POST /overseas-admin/deposits/{id}/remit\|refund` — **`overseas_admin` only** (D5; Master, Staff and `super_admin` `403`); `GET /overseas-admin/deposits` — `overseas_admin`, `super_admin` | ✅ | ✅ assigned only |
+| Confirm Enrollment | `PUT /workflows/overseas/agent/crm/applications/{id}/enrollment` (**AGN-013**, `DEC-SCOPE-054` E1; from `offer` onwards; triggers the commission) | ✅ | ❌ `403` (reads the details on the application) |
+| Upload Documents | `POST /workflows/overseas/documents`; `GET /portal/overseas/agent/documents`; **AGN-009:** `GET`/`POST /workflows/overseas/agent/crm/documents`, `PUT …/documents/{id}/file`, `GET …/documents/{id}/history`, `GET`/`POST …/crm/document-requests`, `POST …/document-requests/{id}/cancel` (`DEC-SCOPE-052` G4: requests are Master and Staff); **AGN-010:** upload type "Offer letter" (requires an application in scope; not requestable) | ✅ | ✅ assigned only |
+| Manage Visa Case | `POST`/`PATCH /workflows/overseas/agent/crm/applications/{id}/visa` (**AGN-012**, `DEC-SCOPE-057` V1; start from `offer` onwards, dates, checklist, forward moves through the checklist gate, final decision) | ✅ | ✅ assigned only |
+| Verify Documents | `PATCH /workflows/overseas/documents/{id}/verify` with `verified` (**new for agents**) | ✅ | **T** |
+| Reject Documents | same route with `rejected` or `changes_required` (**AGN-009:** a reason is required, `422` when blank) | ✅ | ❌ (even with Verify on) |
+| University Database | `GET /public/universities`, `GET /public/universities/{slug}` (shared catalogue, view); `GET /workflows/overseas/agent/crm/universities`, `PATCH`/`DELETE …/crm/universities/{id}` (agency list, **new**, `AGN-007` / `DEC-SCOPE-049`) | ✅ full on the agency list (list, add, edit, delete) + view of the catalogue | 👁 view (list the agency list and the catalogue; `PATCH`/`DELETE` → `403` "Only an agency Master can edit universities" / "…delete universities") |
+| Add University | `POST /workflows/overseas/agent/crm/universities` (**new**, `AGN-007` / `DEC-SCOPE-049`; creates an agency-private university). The shared catalogue's `POST /admin/universities` stays admin-only. | ✅ (agency list only) | ❌ `403` "Only an agency Master can add universities" |
+| Shortlist (student university shortlist) | `GET`/`POST …/crm/students/{id}/shortlist`, `PATCH`/`DELETE …/shortlist/{entry_id}` (**new**, `AGN-007`) | ✅ any agency student | ✅ assigned students only (out of scope → `404`, before any role check) |
+| Staff Management | `GET /workflows/overseas/agent/team/staff`, `PATCH …/staff/{id}`, `PUT …/staff/{id}/permissions` (**new**), `GET /workflows/overseas/agent/team`, `GET /portal/overseas/agent/team` | ✅ | ❌ |
+| Create Staff Login | `POST /workflows/overseas/agent/team/staff`, `POST …/staff/{id}/reset` | ✅ | ❌ |
+| Deactivate Staff | `POST …/staff/{id}/deactivate`, `POST …/staff/{id}/reactivate` | ✅ | ❌ |
+| Staff Performance | `GET /workflows/overseas/agent/crm/performance` (**new**, `AGN-019` / `DEC-SCOPE-066`: per-staff counts + funnel, student-creation date range); the dashboard's summary table (`AGN-018` G2) | ✅ own agency only | ❌ `403` "Only an agency Master can view staff performance" (with or without the reports toggle); no nav item |
+| View staff activity | `GET /workflows/overseas/agent/team/staff/{member_id}/activity` (**new**, `AGN-021` / `DEC-SCOPE-046`) | ✅ (own agency's staff; deactivated staff too) | ❌ `403` "Only an agency Master can manage the team"; another agency's user and any non-staff or unknown member id → `404` "Staff member not found" |
+| Reports | `GET /portal/overseas/agent/reports` | ✅ full | **T** (when on: today's staff report, no commission row) |
+| Agency reports + CSV (`AGN-020`, `DEC-SCOPE-067`) | `GET /workflows/overseas/agent/crm/reports/{kind}`, `GET …/{kind}.csv` (**new**; kinds `students`, `applications`, `enrollments`, `universities`, `countries`, `intakes`, `staff`); order: `_gate` `403` (super admin, non-agents, inactive agency, deactivated member) → toggle `403` `REPORTS_REFUSED` → `staff` kind `403` → unknown kind `404` → `422` → CSV throttle `429` | ✅ agency (`org_member_ids`), every kind; CSV audited (`agent_report.export`) | **T** — when on: six kinds, own students only (G4), no `member` filter (`422`); `staff` kind ❌ `403` "Only an agency Master can view staff performance"; when off: ❌ `403` `REPORTS_REFUSED` on every kind and format |
+| Commission | `GET /workflows/overseas/agent/commissions`, `POST …/commissions/{id}/claim`, `GET /portal/overseas/agent/commissions` | ✅ | ❌ |
+| Commission reports / Revenue (AGN-014, `DEC-SCOPE-051`) | `GET /workflows/overseas/agent/commissions/report`, `GET …/commissions/report.csv` (**new**); dashboard "Revenue" metric | ✅ own agency (`org_member_ids`) | ❌ `403` "Only an agency Master can view commissions" (before any date `422`); no Revenue metric |
+| CRM Settings | — | N/A | N/A |
+
+The Master-team routes (`POST …/team/masters`, `POST …/team/masters/{id}/deactivate`) sit under Staff Management and are ❌ for Staff.
+
+- **Toggles (P1/P2):** `can_verify_documents` and `can_view_reports`, per staff member, **off by default**. Only an active Master of the
+  staff member's organisation sets them (`PUT …/staff/{member_id}/permissions`). Nothing is copied into the JWT, so a change applies on
+  the staff member's next request with no session bump. On a Master's row the flags are stored but never read.
+- **Verify gives `verified` only (P6):** staff with Verify who send `rejected` or `changes_required` get `403`; Reject and Request
+  changes are Master-only. Agents decide only `pending` documents (P5); a counselor or Overseas Admin can still re-review.
+- **N/A rows** (Staff Performance, CRM Settings; Edit Application and Change Application Status stopped being N/A with `AGN-008`, below) have no route for any agent, so no test
+  is possible; they stay parked under `C-10` (spec §2). **Add University** was
+  a deliberate departure from the source's ✅ for Masters in `AGN-003` (admin-only route, P3); **superseded 2026-10-01 by `DEC-SCOPE-049`
+  (`AGN-007`)**: Masters now add universities to an agency-private list (never the shared catalogue), Staff are refused (`403`), and the
+  shared catalogue's `POST /admin/universities` stays admin-only (still tested as `403` for both member roles). The same decision changes the
+  University Database row for the agency list. Every other P3 row is unchanged. The matrix rows for these two cells in
+  `test_agn_003_matrix.py` were changed deliberately; the AGN-007 behaviour is proved by `test_agn_007_universities.py` and
+  `test_agn_007_shortlist.py`.
+
+Proved by `tests/test_agn_003_matrix.py` (every ❌ and every cheap ✅ cell; two Master ✅ cells are cited from `test_agn_001_team.py`
+(`test_a_pending_invitee_can_still_be_deactivated_by_an_accepted_master`, `test_a_master_may_deactivate_themselves_once_another_master_has_accepted`)
+and `test_agn_001_tenancy.py` (`test_a_second_master_sees_and_claims_what_the_first_created`)), `test_agn_003_permissions.py`, `test_agn_003_verify.py`.
+The student rows: `test_agn_003_matrix.py` (**AGN-005**, 2026-10-01 — they were N/A in AGN-003's draft because AGN-004's `/crm/students`
+routes reached `main` later; staff act on a student assigned to them, so each `403` comes from the Master-only check, not the `404`
+existence mask). The staff UI hides Archive, Unarchive and Assign (`AgentStudentsPanel.test.tsx`, including AGN-005-AC06).
+
+**`AGN-008` / `DEC-SCOPE-050` (2026-10-02) — agent applications, BUILT 2026-10-02.** The AGN-003 matrix rows
+"Edit Application" and "Change Application Status" are enforced for Master and Staff on `/workflows/overseas/agent/crm/applications`
+(`test_agn_003_matrix.py`). Authorization is the inline pattern (never `require_role`/`require_permission`): `agent_students._gate`
+(agent, overseas division, `agent_denial_reason`; `super_admin`, counselor and university_rep get `403`), then `student_scope` /
+`application_scope` in the `WHERE` clause.
+
+| Action | Master | Staff |
+|---|---|---|
+| List, open applications | Whole agency | Assigned students' applications only (`application_scope` ORs the assigned `agent_students`) |
+| Create (A15: not for an archived student) | ✓ | ✓ (assigned students only; another's student `404`) |
+| Edit (A10: the university is fixed) | ✓ | ✓ (assigned only) |
+| Change status (A4): forward to `status_tracking`, or withdraw | ✓ | ✓ (assigned only) |
+| Set `enrolled` | ✗ `403` | ✗ `403` (counselor, admin, university_rep only, so an agent never triggers commission accrual) |
+| Withdraw an `enrolled` application | ✗ `409` | ✗ `409` |
+| Sidebar filters (A7) | ✓ | ✓ (assigned only) |
+
+**Existence mask:** an application outside the caller's scope (another agency's, another staff member's student) answers
+`404 "Application not found"`, never `403`. A14 throttle: 200 creates per agency per rolling 24 hours (`429`, `Retry-After`).
+
+**Addendum, 2026-10-02 (browser QA pass 1):** no permission changed. Page gate kept: `/overseas/agent/applications` still fetches the portal payload for every caller, so a wrong role and a pending/rejected agent are refused as before; only a Super Admin's 404 renders the section's note instead of the panel. Login `next` redirects are same-origin relative paths only (`SECURITY_CONTROLS.md`).
+Counselor, admin and university_rep keep their existing endpoints and now see agent-student applications with the owner's name (A6);
+they get `409` when they try to move a `withdrawn` application. Staff-activity actions `overseas.application.update`, `.advance` and
+`.withdraw` are readable by the Master through `AGN-021`. Proved by `test_agn_008_security.py`, `test_agn_008_create.py`,
+`test_agn_008_edit.py`, `test_agn_008_status.py`, `test_agn_008_read.py`, `test_agn_003_matrix.py`, `test_agn_021_activity.py`.
+
 **`DEC-ROLE-004` (2026-09-14) — Agent on-behalf-of a referred student, NOT YET BUILT:** the
 approved Agent row above is read-only (view roster/commissions, claim). Since an Agent-referred
 student is never issued a login, the Agent must also **create** the referral (`AgentStudent`) and
@@ -180,10 +319,14 @@ merely a documented intent.
 | `school_principal` | view dashboard, student statistics, career progress, reports (read-only); **view any own-institution student's Journey Timeline** (`SCH-008`, added 2026-09-15); **view (read-only) the school's partnership-tier entitlements and real usage counts** (`SCH-011`, `DEC-SCOPE-017`) | **Own institution only** — explicit deny on any other school's data, even via direct record ID | `SCH-001`, `SCH-008`, `SCH-011` |
 | `school_coordinator` | create/manage student records (one at a time), schedule activities, track attendance, generate reports; **bulk-upload** student roster via template-download-first workflow; **invite/create `school_principal`, `school_teacher`, `school_parent` accounts** for their own institution, active immediately, no approval gate; **activate/deactivate** those same three own-institution accounts (added 2026-09-15) — **never** a `school_coordinator` account, including their own; **view (read-only)** results/career-guidance/counselling/psychometric/test-prep/foreign-language content for their own institution; **view any own-institution student's Journey Timeline** (`SCH-008`, added 2026-09-15); **view (read-only) the school's partnership-tier entitlements and real usage counts** (`SCH-011`, `DEC-SCOPE-017`) — **cannot** initiate the School→Overseas bridge (`SCH-010`, `DEC-SCOPE-018`'s explicit deny, below) | **Own institution only** | `SCH-001`, `SCH-002`, `SCH-003`, `SCH-004`, `SCH-005`, `SCH-006` (read-only on the last three), `SCH-008`, `SCH-009` (read-only), `SCH-011` |
 | `school_teacher` | view attendance, career activities, student progress (read-only) | **Own institution AND assigned students only** — narrower than the whole institution; explicit deny on any student not assigned to that Teacher, even within the same school (`SCH-001-AC03`) | `SCH-001` |
-| `school_parent` | view own child(ren)'s profile and progress (read-only); **view Published results, career guidance, psychometric, test-prep, and foreign-language content for own child(ren) only**; **child 360 overview** (profile, guidance/counselling/psychometric/test-prep/foreign-language status, recommended careers, Published results, activities, upcoming sessions, and — once linked — global education/Overseas application progress) and **own notification feed** (`SCH-007`, 2026-09-15, extended `SCH-009`/`SCH-010` 2026-09-15); **student journey timeline** — chronological cross-module event list, including test-prep/language/global-education events (`SCH-008`, extended `SCH-009`/`SCH-010`) | **Own institution AND own child(ren) only** — explicit deny on any other student, even within the same school (`SCH-001-AC03`, `SCH-007-AC02`, `SCH-008-AC02`); notification rows keyed to the recipient user only | `SCH-001`, `SCH-004`, `SCH-005`, `SCH-006` (read-only, results Published-only), `SCH-007`, `SCH-008`, `SCH-009`, `SCH-010` |
+| `school_parent` | view own child(ren)'s profile and progress (read-only); **view Published results, career guidance, psychometric, test-prep, and foreign-language content for own child(ren) only**; **child 360 overview** (profile, guidance/counselling/psychometric/test-prep/foreign-language status, recommended careers, Published results, activities, upcoming sessions, and — once linked — global education/Overseas application progress) and **own notification feed** (`SCH-007`, 2026-09-15, extended `SCH-009`/`SCH-010` 2026-09-15); **student journey timeline** — chronological cross-module event list, including test-prep/language/global-education events (`SCH-008`, extended `SCH-009`/`SCH-010`) | **Own `SchoolParentLink` rows only, not "own institution"** (updated `ENH-008`, 2026-09-22: a parent's scope is their links alone, and those links can legitimately span more than one institution — see the `ENH-008` addendum below) — explicit deny on any other student, even within the same school (`SCH-001-AC03`, `SCH-007-AC02`, `SCH-008-AC02`); notification rows keyed to the recipient user only | `SCH-001`, `SCH-004`, `SCH-005`, `SCH-006` (read-only, results Published-only), `SCH-007`, `SCH-008`, `SCH-009`, `SCH-010` |
 | `academic_team` | **create/edit results** (subject/term/marks) as `academic_team`; **verify** a result **only if a different `academic_team` member than its uploader** (`SCH-006-AC04`, same-actor restriction); **publish** likewise restricted to a different member than the uploader; **create/edit Test Preparation (IELTS/SAT) and Foreign Language Class records** — no Draft/Verified/Published gate on these two, unlike results (`SCH-009`, `DEC-SCOPE-018`: reuses this role rather than a new one) | **Own school portfolio only** (`DEC-SCOPE-013` — one or more institutions, many-to-many `SchoolStaffAssignment`, `DATA_MODEL.md` §6.12) — explicit deny on any student at a school outside the acting member's portfolio, even via direct record ID | `SCH-006`, `SCH-009` |
-| `career_counselor` | **create/manage career guidance sessions, counselling notes, recommendations** | **Own school portfolio only** (`DEC-SCOPE-013`, same mechanism as `academic_team` above) — explicit deny on any student at a school outside the portfolio, even via direct record ID | `SCH-004` |
+| `career_counselor` | **create/manage career guidance sessions, counselling notes, recommendations**; **run Soft Skills / Digital Skills batches — create/edit/close, enrol, sessions and attendance, assessments and scores, completion/certification** (`ENH-011`, `DEC-SCOPE-026`) | **Own school portfolio only** (`DEC-SCOPE-013`, same mechanism as `academic_team` above) — explicit deny on any student at a school outside the portfolio, even via direct record ID | `SCH-004`; `ENH-011` |
 | `psychometric_team` | **assign assessments, upload reports** | **Own school portfolio only** (`DEC-SCOPE-013`, same mechanism as `academic_team` above) — explicit deny on any student at a school outside the portfolio, even via direct record ID | `SCH-005` |
+| Global Education pipeline (`ENH-017`, `DEC-SCOPE-036`) | `school_coordinator` ✓ read, `school_principal` ✓ read (`GET /school/global-education/pipeline`); `school_teacher` ✗, `school_parent` ✗, `academic_team`/`career_counselor`/`psychometric_team` ✗, `counselor`/`overseas_admin`/`super_admin`/`it_admin` and every other Edusphere/overseas role ✗ (all `403`). Per-student high-level stage only; application detail never in payload (`School CRM.md` §19). | **Own school only** — derived from the session, no id parameter; no read tier gate (`DEC-SCOPE-027` D3) | `ENH-017` |
+| Reports & downloads, slice 1 (`ENH-015`, `DEC-SCOPE-037` provisional) | School Summary PDF (`GET /school/reports/school-summary`): `school_coordinator` ✓, `school_principal` ✓; every other role ✗ (`403`). Student Progress Report PDF (`GET /school/students/{id}/progress-report`): `school_parent` ✓ (linked children only), `school_coordinator` ✓, `school_principal` ✓ (own institution); `school_teacher` ✗ (teacher "Limited" reports undefined — `NEEDS_CONFIRMATION`), `academic_team`/`career_counselor`/`psychometric_team`, `overseas_admin`, `super_admin`, `it_admin` ✗ (`403`). Content never exceeds the same reader's on-screen view (summary = `ENH-016` figures; progress report = SCH-007 overview, no `report_url`). | **Own school** (summary, from the session) / **SCH-007 reader scope** (progress report); no tier gate | `ENH-015` |
+| Bulk data entry (`ENH-028`, `DEC-SCOPE-043`) | `academic_team` ✓ results / test-prep / language bulk upload and templates; `psychometric_team` ✓ psychometric bulk upload and template; every other role ✗ (`403`, checked before the file is read). **Per row**, the same scope as the single create: the row's student must be in the uploader's own portfolio (`SchoolStaffAssignment`), and the school's tier must include the row's service (not for results). The CSV cannot set the owner, school, status, verifier or publisher; bulk results are always Draft, so `SCH-006-AC04` still requires a different member to verify/publish. Idempotency keys are scoped per uploader. |
+| Bulk school onboarding (`ENH-029`, `DEC-SCOPE-047`) | `overseas_admin` ✓, `super_admin` ✓ — `POST /overseas-admin/schools/bulk-upload` and `GET …/bulk-template`; every other role ✗ (`403`, checked before the file is processed — the multipart body itself is parsed by the framework first, as on every upload route, so a body-size limit belongs at the proxy). Same gate and same per-row effect as `POST /overseas-admin/schools` (`SCH-003`). The CSV cannot set a role, division, status or password: unknown columns (e.g. `role`, `password`) reject the whole file, and every coordinator is `school_coordinator`/`overseas`/active with an unusable password + welcome link. An existing account is never modified (its email is rejected). Idempotency keys and replayed reports are scoped per uploader; no batch-read endpoint. | Division-wide, as `SCH-003` | `ENH-029` |
 
 **Supersedes `DEC-ROLE-005`'s row (2026-09-14, `DEC-ROLE-006`):** the earlier version of this section
 had a single `counselor` (extended) row for all service-delivery data, "if and when those modules are
@@ -266,7 +409,118 @@ counts or `null`, never a fabricated cap) added to this section's grant/deny rul
 `test_sch_009_test_prep_language.py`, `test_sch_010_overseas_bridge.py`, and
 `test_sch_011_entitlements.py`.
 
+**Addendum, 2026-09-21 (`ENH-005` / `DEC-SCOPE-022`) — student school transfer.**
+
+| Action | Granted | Denied |
+|---|---|---|
+| File a transfer request (outgoing: for own school's student; incoming: by Student ID) | `school_coordinator`, from their own server-owned `profile.school_id` | every other role (`403`); an unknown or another school's student gives the identical `403` |
+| List / cancel requests | the `school_coordinator` of the school that **filed** them | every other school, including the destination school of a request it did not file (`DEC-SCOPE-022` D5) |
+| Approve / reject / view the admin queue and a student's full transfer history | `overseas_admin`, `super_admin` | `school_coordinator` (either school), `school_principal`, `school_teacher`, `school_parent`, the three service-delivery roles, `counselor`: `403` |
+| Read a student's approved transfer history | the same own-scope rule as the student (own institution; assigned-only Teacher; linked-only Parent); no reason, no staff IDs | any role outside that scope |
+
+Filers (`school_coordinator`) and approvers (`overseas_admin`, `super_admin`) are disjoint roles, so no user can both file and approve. **Parent scope change:** a `school_parent`'s read scope is their `SchoolParentLink`s alone, not the school on their account (a transferred child lives at another school than the parent's account); an unlinked student now gets a single generic `403` ("This student is not linked to your account") — reduced from two distinct messages to one (`ENH-008` Task 3's reordering of `_load_readable_student`, below). **Consequence for account authority:** a parent moved to the gaining school appears in that school's coordinator's team list and can be activated/deactivated by them (`update_team_account`), and leaves the losing coordinator's. Covered by the `test_enh_005_*.py` files.
+
+**Addendum, 2026-09-22 (`ENH-008`) — cross-school parent linking, same-school invariant removed.** The
+paragraph above originally treated "a `SchoolParentLink` only joins a parent and a student of the same
+school (until a transfer)" as an invariant that `link_parent`, `_link_or_invite_parent` and
+`accept_invite` "must keep enforcing." That was the whole point of `ENH-008`, and it is no longer true:
+none of those three call sites checks the parent's own school (account or existing links) against the
+student's school before creating a fresh `SchoolParentLink` — a Coordinator can link (or a roster
+invite can create) a parent already active at a different institution, and the link is created exactly
+as it would be for a same-school parent. Transfer-preserved links already tolerated this per `ENH-005`;
+`ENH-008` extends it to newly-created links too. Covered by `test_enh_008_*` in
+`docs/superpowers/plans/2026-09-22-enh-008-parent-multi-school.md`'s task test files. **Final-review
+Finding 2 (2026-09-22):** `list_team()`/`update_team_account()` treat a `school_parent`'s Team
+membership at a school as the union of "has a `SchoolParentLink` there" OR "`profile.school_id` still
+matches" — not link-only — so an orphaned parent (zero links, e.g. invited directly via
+`POST /school/team/invites`, or a pre-existing account per `DEC-SCOPE-022`) stays visible/manageable
+rather than silently disappearing. Covered by `test_sch_team_account_activation.py`.
+
+**Addendum, 2026-09-23 (`ENH-012`) — Digital Portfolio read/write scope.**
+
+| Action | Granted | Denied |
+|---|---|---|
+| Read a student's portfolio (`GET .../portfolio`) | `school_coordinator`/`school_principal` (own institution), `school_teacher` (own institution, assigned only), `school_parent` (own child(ren) only), `academic_team`/`career_counselor`/`psychometric_team` (own school portfolio) — 7 roles total, per the design spec's AC-04 | every other role (`403`); a student outside the caller's scope gives the same `403` as `GET /school/students/{id}` (no existence leak) |
+| Write a portfolio entry or the personal statement (`POST`/`PATCH`/`DELETE .../entries*`, `PATCH .../personal-statement`) | `school_coordinator` (own institution), `school_teacher` (own institution, assigned only), `academic_team` (own school portfolio) — 3 of the 7 readers above | the other 4 readers (`school_principal`, `school_parent`, `career_counselor`, `psychometric_team`): `403`, even though they can read; role/scope is checked before the entry lookup, so an unknown entry ID from a denied role is still `403`, not `404` |
+| Act on an entry belonging to a different student (via a direct entry ID under the wrong student's URL) | — | `404` for `PATCH`/`DELETE`, identical whether the entry doesn't exist or belongs to someone else — no ownership leak, same masking convention as `ENH-005`'s transfer-request rows |
+
+`school_teacher`'s portfolio write grant reuses the same per-student `assigned_teacher_user_id` check
+`SCH-001` already enforces for read (§2.12 above), not a separate mechanism. `academic_team`'s grant
+reuses the same `SchoolStaffAssignment` portfolio scope (`DEC-SCOPE-013`) as its existing results/
+test-prep grants (§2.12 above) — a student at a school outside the acting member's portfolio is `403`
+even via direct ID, same as every other use of that mechanism. Covered by `test_enh_012_digital_portfolio.py`.
+
+**Addendum, 2026-09-23 (`ENH-013` / `DEC-SCOPE-028`) — Student 360° view and career goal.**
+
+| Action | Granted | Denied |
+|---|---|---|
+| Open a student's 360° view (`GET .../360-view`) | The same 7 readers as the portfolio above, same scoping (shared loader `_load_student_for_reader`) | any other role `403`; outside own scope `403` |
+| Read a tab's data | Per role, **no new exposure** — only what that role already reads elsewhere. School roles: every tab. `academic_team`: all but Academic Records and Attendance. `career_counselor`/`psychometric_team`: additionally not English Testing or Teacher Remarks; results, languages and psychometric rows in `/portfolio`'s summary shape only. Service roles see name + school only in the header. Full matrix: design spec §6.3 | a non-readable tab is returned `restricted` with no data (never shown as "empty") |
+| Set/clear the career goal (`PATCH .../career-goal`) | `career_counselor`, own school portfolio (re-checked under the student row lock), **and** the student's school tier includes `individual_counselling` (Silver+, ENH-022 gate, `DEC-SCOPE-028` D13) | every other role `403`, including the other six readers; a school with no valid tier, an expired one, or Bronze `403` (ENH-022 messages, denial audited) |
+
+Covered by `test_enh_013_360_view.py` (scope matrix, per-role projection, mutation-checked) and `test_enh_013_career_goal.py`.
+
+**Addendum, 2026-10-01 (`ENH-020` / `DEC-SCOPE-045`) — funding support cases (financial-need data, scoped tighter than career records).**
+
+| Action | Granted | Denied |
+|---|---|---|
+| Open a case (`POST /school/funding-records`) | `career_counselor`, own school portfolio (checked under the student row lock), **and** the school's tier includes the type's service (`scholarship` ⇒ `scholarship_assistance`, Gold+; the other three ⇒ `loan_assistance`, Platinum) | every other role `403`; outside portfolio `403`; tier `403` (`school.tier_access_denied`) |
+| Advance / close a case (`PATCH /school/funding-records/{id}`) | any `career_counselor` whose portfolio covers the student, **only while the student is still at the school that opened the case** (D12); tier with grandfathering | every other role `403`; outside portfolio `403`; previous school's case `403` |
+| Read the counsellor list (`GET /school/career-counselor/funding-records`) | `career_counselor` — cases opened at a portfolio school whose student is still there | every other role `403` |
+| Read one student's cases (`GET /school/students/{id}/funding-records`) | `school_coordinator`/`school_principal` own institution, `school_parent` linked child, `career_counselor` portfolio — staff see only cases opened at the student's current school; parents see all of their child's | **`school_teacher` `403` even for an assigned student** (explicit, before the shared loader); `academic_team`, `psychometric_team`, every other role `403`; outside scope `403` |
+
+Every role/scope refusal on these routes writes `school.funding_record_denied` (actor, role, reason, target id — no contents).
+Reads are not tier-gated. Covered by `test_enh_020_funding_records.py` and `test_enh_020_reads.py` (role × scope matrix,
+teacher deny, transfer, parent with children at two schools).
+
 ---
+
+### 2.13 BDM CRM *(net-new, added 2026-10-02 — `DEC-SCOPE-055`, `bdm-001`)*
+Authorization follows the inline pattern (`User.role` check → `services/bdm.py` scope helper → write); no `require_*` dependency.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `super_admin` | create `bdm` of **any** type and the only creator of `bdm_manager` (`POST /admin/users`); edit any BDM profile; list all BDMs (`GET /admin/bdms`); read the manager picker; read any manager's team view (`GET /bdm/manager/team` → all BDMs) | Not division-restricted (§1) | `bdm-001` |
+| `it_admin` | create / edit **College** BDMs only; list College BDMs; read the manager picker (id, name, email — QA-03 B10; searchable) | Division `it`; any other type → `403` (D10) | `bdm-001` |
+| `overseas_admin` | create / edit **Agent and School** BDMs only; list them; read the manager picker | Division `overseas`; College → `403` (D10) | `bdm-001` |
+| `bdm` | read **own** profile (`GET /bdm/me`) | Own record only — no id parameter. A `bdm` with no profile row is denied every BDM route (`403` "BDM profile not set up"). Type/own scope for later items via `bdm_context` | `bdm-001` |
+| `bdm_manager` | read **own team** (`GET /bdm/manager/team`) | **Team scope:** exactly the BDMs whose `reporting_manager_user_id` is the caller (D4); no id parameter. Division `global`; no profile row (B6) | `bdm-001` |
+
+**Explicit denies:** a `bdm` or `bdm_manager` cannot write any profile (no route); `PATCH /admin/users` never writes `role` or `division`; a reporting manager must be an **active `bdm_manager`** (else `422`), so no one can assign themselves or another role a team; `bdm_type` cannot be changed (`422`, B7); `bdm` calling a manager route, or a manager calling `/bdm/me` → `403`; every other role on any BDM route → `403`. The picker returns a manager's email only to the three admin roles (B10, to tell same-name managers apart). Every create or edit writes one `AuditLog` row (profile before/after on edit).
+
+**BDM organizations (`bdm-002`, `DEC-SCOPE-060`).** Every `{id}` resolves through `services/bdm_organizations.load_scoped`; out of scope is
+the same `404` as a missing id.
+
+| Role | Can | Scope | Item |
+|---|---|---|---|
+| `bdm` | create (any of the 7 types, owned by their `bdm_type`, assigned to themselves); read/list every organization of their type; edit, archive and manage contacts of those **assigned to them** | Type scope (Q-02); other types `404`; not assignee `403` | `bdm-002` |
+| `bdm_manager` | read/list organizations assigned to **their team**; reassign among their own active BDMs of the same type; restore archived ones | Team scope (assignee reports to them); never create or edit (`403`) | `bdm-002` |
+| `super_admin` | read, edit, archive, restore, reassign any organization (any team, same type) | All; cannot create (no `bdm_type`) | `bdm-002` |
+| `it_admin`, `overseas_admin`, others | — | `403` "BDM role required" (C7) | `bdm-002` |
+
+Archived organizations are read-only (`409` "Restore this organization first"). Server-owned fields (`code`, `bdm_type`, assignee,
+`archived_at`) are unknown fields in every request body (`422`).
+
+**bdm-010 travel (`DEC-SCOPE-063`, added 2026-10-03).** Same inline pattern; scope is in the SQL `WHERE`, so an out-of-scope trip or expense id is `404` (never `403`).
+
+| Role | Allowed | Scope / rule | Feature |
+|---|---|---|---|
+| `bdm` | `GET/POST /bdm/trips`; `GET/PATCH /bdm/trips/{id}`; `POST /bdm/trips/{id}/{submit,withdraw,start,complete,cancel}`; `POST /bdm/trips/{id}/expenses`; `PATCH/DELETE /bdm/trips/{id}/expenses/{eid}` | **Own trips only** (`bdm_user_id` = caller); an expense must belong to the path's trip. Fields editable only in draft/rejected; remarks in every state; expenses only once approved (T5) | `bdm-010` |
+| `bdm_manager` | `GET /bdm/manager/trips[/{id}]`; `GET /bdm/manager/approvals`; `POST /bdm/manager/trips/{id}/{approve,reject}` | **Team scope** (D4); `?bdm_user_id=` is ANDed with it. Decides only trips of BDMs who report to them **now** (T2); a reassigned BDM's pending trip moves with them | `bdm-010` |
+| `super_admin` | the manager routes above | Reads every trip; **decides only while the BDM's reporting manager is inactive** (T3, else `403`); its queue lists only those trips | `bdm-010` |
+
+**Explicit denies (bdm-010):** nobody decides their own trip (`403`); a manager never edits a trip or its expenses (no route); server-owned fields (`code`, `bdm_user_id`, statuses, `currency`, `decided_*`) in a body → `422`; a `bdm` on a manager route or a manager on a BDM route → `403`. Every change writes one `AuditLog` row (`bdm.trip_*`) in the same transaction.
+
+**BDM appointments (`bdm-006`, `DEC-SCOPE-068`).** Every `{id}` resolves through the appointment scope (out of scope is the same `404` as a missing id); writes then require ownership.
+
+| Role | Can | Scope | Item |
+|---|---|---|---|
+| `bdm` | book (`POST /bdm/appointments`) only on organizations **assigned to them** that are **not archived**; read own appointments; edit, confirm, reschedule, cancel, mark no-show and complete **own** appointments | Own appointments (`bdm_user_id`); an organization of another type `404`; an unassigned organization `403`; an archived organization `422` (A4) | `bdm-006` |
+| `bdm_manager` | read / list the **team's** appointments (the owner reports to them); `bdm_user_id` filter within the team | Team scope; every write `403` (Q-17 / D26) | `bdm-006` |
+| `super_admin` | read / list any appointment | All; every write `403` | `bdm-006` |
+| `it_admin`, `overseas_admin`, others | — | `403` | `bdm-006` |
+
+An appointment stays with its BDM when the organization is reassigned. `bdm_user_id`, `code`, `status`, `organization_id` (on PATCH) and `outcome` (outside complete) are unknown fields (`422`). Organization `last_meeting_at` / `next_meeting_at` expose dates only to organization readers.
 
 ## 3. Support / admin audit controls
 
@@ -318,6 +572,8 @@ counts or `null`, never a fabricated cap) added to this section's grant/deny rul
 | Any role other than `school_coordinator`/`school_principal` reading `GET /school/entitlements` | `DEC-SCOPE-017`, `SCH-011-AC01` |
 | Any client-supplied `used` value, or a fabricated `0`/invented cap, for a service with no confirmed underlying module on the entitlements view — must be `null` ("not tracked") | `DEC-SCOPE-017`, `SCH-011-AC02` |
 | A bridged `OverseasApplication` (`school_student_id` set, `student_id IS NULL`) appearing in any Overseas-student-centric self-service listing (`GET /overseas/applications`, agent/university-rep views, commission listings) | `DEC-SCOPE-018`, `SCH-010-AC04` — these all inner-join `User` on `student_id`, which a bridged row never matches |
+| **Any role** (including `overseas_admin`/`super_admin`/`counselor`) writing a tier-gated service record for a school whose valid, cumulative partnership tier does not include that service — no tier, an unknown tier, or `tier_valid_until` before today's Asia/Kolkata date all count as not entitled. A third dimension on top of role and own-institution/portfolio scope, checked **after** both, so an out-of-scope caller never learns a school's tier. Reads are not gated. The route → service map is `API_CONTRACT.md`'s ENH-022 addendum | `DEC-SCOPE-027`, `ENH-022` |
+| **ENH-023:** on the **14** completion actions (`API_CONTRACT.md`'s ENH-023 addendum, spec §6 — the spec's own "15" is a count error, corrected in the addendum), a school that lost the service through a recorded downgrade **after** the record's own `created_at` keeps write access to that one record — completion only (updates, attendance, scores, sessions, assessments); every create route on the same modules, and `PATCH .../career-goal`, stay fully gated on the current tier, unaffected. An `expired` denial is never grandfathered (`ENH-022` D2/D6 unchanged). A tier change made directly in the database (seed data, tests) leaves no transition row and grandfathers nothing, so `ENH-022`'s own tests keep passing unedited (AC-13). A Principal reads only their own school's notifications, same own-institution scope as every other Principal read, via the existing `GET /workflows/notifications` feed keyed on the signed-in user — no new endpoint, no cross-school exposure. | `DEC-SCOPE-030`, `ENH-023` |
 
 ---
 

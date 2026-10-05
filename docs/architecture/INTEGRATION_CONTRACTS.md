@@ -81,6 +81,15 @@ dependent (`API_CONTRACT.md` §10).
   rather than inventing an automated reconciliation job that was never asked for.
 - **Ownership:** Engineering (adapter code), Finance/Admin (reconciliation process, provider account).
 
+- **Agent deposits (`AGN-011`, `DEC-SCOPE-058`, 2026-10-02):** the same order/Checkout.js/verify/webhook path collects a university
+  deposit an agency pays for its student. The order is opened by `POST …/agent/crm/applications/{id}/deposit/checkout` for the stored
+  deposit amount in INR (receipt `PAY-<payment id>`); the webhook maps the payment back through `reference_type="agent_deposit"`. The
+  provider call is made with no database row lock held; a provider error answers `502` and cancels the attempt (nothing charged on our
+  side). **Paid-guard (D2, every payment):** a payment already `paid`/`succeeded` is never moved by a later event (`payment.failed`, or
+  `order.paid` after `payment.captured` — distinct event ids), and the paid side effects run once under a row lock. Settlement to the
+  university and refunds happen outside the system and are recorded by Overseas Admin (D12) — no Razorpay refund API is called. A
+  captured payment that does not match the deposit's open checkout or amount is recorded as paid and flagged for a manual refund.
+
 ---
 
 ## 3. Live-class providers (Zoho Meeting default, Google Meet retained)
@@ -122,6 +131,14 @@ dependent (`API_CONTRACT.md` §10).
 - **Opt-out:** `DEC-NOT-001` confirms WhatsApp/Email/SMS as channels but not opt-out rules — a
   `NotificationPreference` capability is schema-ready (not designed in detail here, since the rules
   themselves are the open item, not the mechanism) but not enforced until confirmed.
+- **Update 2026-09-30 (`ENH-014` slice 1, spec §6, `DEC-NOT-001` extension D1–D14) — the paragraphs above are superseded where they conflict:**
+  - **Twilio adapter (`app/notifications/twilio.py`):** WhatsApp and SMS go through Twilio's Messages REST API over the existing `httpx` dependency (no Twilio SDK). Configuration is five environment values, empty = not configured: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`, `TWILIO_SMS_FROM`, `TWILIO_WHATSAPP_CONTENT_SID` (`.env.example`, `docker-compose.ci.yml`). WhatsApp uses one generic approved utility template (title, body, link; D13); SMS carries the same text, capped at 320 characters. Links are sent only for internal paths. The Twilio response is untrusted: only a shape-checked `sid` and numeric error `code` are read. With Twilio unconfigured, WhatsApp/SMS rows are `not_configured`; the legacy `WHATSAPP_WEBHOOK_URL`/`SMS_WEBHOOK_URL` still work when set.
+  - **Retry policy (D11, resolves `PRD_OPEN_ITEMS.md` item 13 for slice 1):** timeout, connection error, 5xx and 429 are transient: retry at 60 s / 300 s / 1500 s after attempts 1 / 2 / 3, at most 4 attempts, then `failed` with the error kept (redacted of digit runs of 6+). Other 4xx are permanent and not retried. An unexpected exception during send becomes `failed` ("unexpected <Type>"). A worker crash mid-send is never resent (Twilio has no idempotency key): the sweeper marks the row `failed` ("worker interrupted").
+  - **Dispatch:** every channel, email included, is queued as a row and published to Celery only when the root transaction commits; the claim is an atomic conditional update so a duplicate task cannot double-send.
+  - **No delivery callbacks in slice 1:** the status-callback signature verification paragraph above is **not implemented**; `sent` means Twilio accepted the message, not that it was delivered. Delivery receipts (`delivered`/`undelivered`) are a recorded follow-up and must verify the Twilio signature when built.
+  - **Opt-out (D4):** opt-in only, recorded with a timestamp, re-checked at send time (`skipped` if withdrawn after queueing). Email and in-app are always on; password reset, set-password and invite messages stay inline and email-only (D7).
+  - **Privacy (D9):** Twilio is a data processor for phone numbers and message content; phone numbers, email addresses, message text and the auth token never appear in logs.
+  - **Sandbox:** D8 — Twilio sandbox for development; production account and template approval before release. No sandbox run has been recorded yet.
 - **Ownership:** Engineering (adapters), Marketing/Admin (message template content, once
   `ADM-011` — currently `BLOCKED` — is unblocked).
 

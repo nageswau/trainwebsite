@@ -1,21 +1,77 @@
 import json
 import logging
 import re
+import time
+from collections.abc import Awaitable, Callable
 from datetime import UTC, date, datetime
+from typing import Literal
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.identifiers import uuid_reference
-from app.models import AcademicYear, AgentCommission, AuditLog, Batch, Company, Country, DataSubjectRequest, Enquiry, Enrollment, Job, JobApplication, Notification, NotificationDelivery, OverseasApplication, Payment, Program, School, University, User, UserRoleAssignment
-from app.schemas import BatchCreate
-from app.services.provisioning import deliver_welcome_link, issue_welcome_token, provisioning_statuses, resend_wait_seconds, revoke_welcome_tokens, unusable_password_hash, user_ids_with_status
+from app.core.identifiers import unique_student_code, uuid_reference
+from app.models import (
+    AcademicYear,
+    AgentCommission,
+    AgentOrg,
+    AgentOrgMember,
+    AuditLog,
+    Batch,
+    BdmProfile,
+    Company,
+    Country,
+    DataSubjectRequest,
+    Enquiry,
+    Enrollment,
+    Job,
+    JobApplication,
+    Notification,
+    NotificationDelivery,
+    NotificationPreference,
+    OverseasApplication,
+    Payment,
+    Program,
+    School,
+    SchoolStaffAssignment,
+    SchoolStudent,
+    University,
+    User,
+    UserRoleAssignment,
+)
+from app.schemas import (
+    AdminLeadConversionIn,
+    AgentNetworkApplicationPage,
+    AgentNetworkStudentPage,
+    AgentOrgDetailOut,
+    BatchCreate,
+    SchoolCreate,
+    SchoolOut,
+    SchoolUpdate,
+    SchoolUpdateOut,
+    TierChangeOut,
+)
+from app.services import bdm as bdm_rules
+from app.services import bdm_leads as lead_rules
+from app.services.agent_applications import owned, with_owner
+from app.services.agent_network import APPLICATION_FILTERS, org_applications, org_counts, org_money, org_students
+from app.services.agent_orgs import ensure_agent_org, lock_org, org_masters, set_org_status, transition_org
+from app.services.provisioning import (
+    IssuedWelcome,
+    deliver_welcome_link,
+    issue_welcome_token,
+    provisioning_statuses,
+    resend_wait_seconds,
+    revoke_welcome_tokens,
+    unusable_password_hash,
+    user_ids_with_status,
+)
+from app.services.provisioning import flush_unique_email as _flush_unique_email
 from app.services.storage import storage
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -40,6 +96,7 @@ def _reject_supplied_password(payload: dict, actor: User, route: str, field: str
 # Cap on the unfiltered directory list; named so tests can lower it. A `provisioning_status` filter is NOT capped:
 # it is the exact set of accounts that still need an admin's action.
 USER_LIST_CAP = 500
+USERS_ROUTE = "/api/v1/admin/users"
 
 # The same email shape the registration schemas already use (no whitespace, so a CR/LF header-injection
 # attempt cannot pass). The address is the only delivery channel for a credential-setting link, so these
@@ -62,14 +119,81 @@ def _fit(value, label: str, limit: int):
     return value
 
 
-async def _flush_unique_email(db: AsyncSession) -> None:
-    """Flush a new account; two simultaneous creates for one email are settled by the unique
-    constraint (409 for the loser, never a 500). Rolling back also drops anything created with it."""
-    try:
-        await db.flush()
-    except IntegrityError:
-        await db.rollback()
-        raise HTTPException(409, "Email already exists") from None
+async def _school_out(db: AsyncSession, school: "School") -> "SchoolOut":
+    """ENH-009 / DEC-SCOPE-025: the one place that assembles a School's full profile response,
+    including the fields that are deliberately computed rather than stored -- student/teacher
+    counts, and the Principal/Coordinator/Career Counsellor names, all of which are derived from
+    role assignments rather than duplicated onto `School` itself (see the design doc §2).
+
+    A thin, single-record wrapper over `_school_outs_batch()` -- kept as its own function because
+    every call site here wants one `SchoolOut`, not a list, but the query logic lives in exactly
+    one place (simplification pass, ENH-009)."""
+    return (await _school_outs_batch(db, [school]))[0]
+
+
+async def _school_outs_batch(db: AsyncSession, schools: list["School"]) -> list["SchoolOut"]:
+    """Same shape as _school_out(), batched across many schools in O(1) queries instead of
+    O(N) -- used by list_schools(), where N is unbounded (final-review finding, ENH-009)."""
+    if not schools:
+        return []
+    ids = [s.id for s in schools]
+    str_ids = [str(i) for i in ids]
+
+    student_counts = dict((await db.execute(
+        select(SchoolStudent.school_id, func.count()).where(SchoolStudent.school_id.in_(ids)).group_by(SchoolStudent.school_id)
+    )).all())
+
+    # Grouped by the *label*, not by a second copy of the JSON-path expression: re-rendering it
+    # emits a different bind parameter for the `'school_id'` key, which PostgreSQL then treats as
+    # a distinct expression ("column users.profile must appear in the GROUP BY clause").
+    school_key = User.profile["school_id"].as_string().label("school_key")
+    teacher_rows = (await db.execute(
+        select(school_key, func.count()).where(
+            User.role == "school_teacher", User.profile["school_id"].as_string().in_(str_ids)
+        ).group_by(school_key)
+    )).all()
+    teacher_counts = {row[0]: row[1] for row in teacher_rows}
+
+    role_rows = (await db.scalars(
+        select(User).where(User.role.in_(["school_principal", "school_coordinator"]), User.profile["school_id"].as_string().in_(str_ids))
+    )).all()
+    principal_by_school: dict[str, str] = {}
+    coordinator_by_school: dict[str, str] = {}
+    for u in role_rows:
+        sid = (u.profile or {}).get("school_id")
+        if u.role == "school_principal":
+            principal_by_school[sid] = u.full_name
+        elif u.role == "school_coordinator":
+            coordinator_by_school[sid] = u.full_name
+
+    counsellor_rows = (await db.execute(
+        select(SchoolStaffAssignment.school_id, User)
+        .join(User, User.id == SchoolStaffAssignment.user_id)
+        .where(SchoolStaffAssignment.school_id.in_(ids), SchoolStaffAssignment.role == "career_counselor")
+    )).all()
+    counsellors_by_school: dict = {}
+    for sid, u in counsellor_rows:
+        counsellors_by_school.setdefault(sid, []).append(u.full_name)
+
+    results = []
+    for school in schools:
+        sid_str = str(school.id)
+        results.append(SchoolOut(
+            id=school.id, name=school.name, city=school.city, state=school.state,
+            tier=school.tier, tier_valid_until=school.tier_valid_until,
+            school_code=school.school_code, branch=school.branch, address=school.address,
+            contact_number=school.contact_number, email=school.email, website=school.website,
+            grades_available=school.grades_available, board=school.board,
+            partnership_date=school.partnership_date, mou_reference=school.mou_reference,
+            edusphere_bdm=school.edusphere_bdm, monthly_visit_schedule=school.monthly_visit_schedule,
+            vice_principal_name=school.vice_principal_name,
+            student_count=student_counts.get(school.id, 0), teacher_count=teacher_counts.get(sid_str, 0),
+            principal_name=principal_by_school.get(sid_str), school_coordinator_name=coordinator_by_school.get(sid_str),
+            career_counsellor_names=counsellors_by_school.get(school.id, []),
+            created_at=school.created_at,
+        ))
+    return results
+
 
 
 @router.get("/dashboard")
@@ -201,15 +325,15 @@ async def notification_records(user: User = Depends(ensure_admin), db: AsyncSess
 async def applications(user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
     output = []
     if user.role in {"super_admin", "overseas_admin"}:
-        rows = (
-            await db.execute(
-                select(OverseasApplication, University, User)
-                .join(University, University.id == OverseasApplication.university_id)
-                .join(User, User.id == OverseasApplication.student_id)
-                .order_by(OverseasApplication.updated_at.desc())
-                .limit(500)
-            )
-        ).all()
+        rows = owned(
+            (
+                await db.execute(
+                    with_owner(select(OverseasApplication, University).join(University, University.id == OverseasApplication.university_id))
+                    .order_by(OverseasApplication.updated_at.desc())
+                    .limit(500)
+                )
+            ).all()
+        )
         output.extend(
             {
                 "id": item.id,
@@ -258,19 +382,57 @@ async def system_status(user: User = Depends(ensure_admin)):
 
 
 @router.get("/leads")
-async def leads(division: str | None = None, status: str | None = None, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
-    stmt = select(Enquiry)
+async def leads(division: str | None = None, status: str | None = None, bdm_organization_id: UUID | None = None, user: User = Depends(ensure_admin),
+                db: AsyncSession = Depends(get_db)):
+    # bdm-017 (spec §5): rows also carry organization / bdm / converted_user (null for website leads); the organization filter is
+    # ANDed with the division scope, so it can only narrow.
+    stmt = lead_rules.admin_rows()
     if user.role != "super_admin":
         stmt = stmt.where(Enquiry.division == user.division)
     elif division:
         stmt = stmt.where(Enquiry.division == division)
     if status:
         stmt = stmt.where(Enquiry.status == status)
-    xs = (await db.scalars(stmt.order_by(Enquiry.created_at.desc()).limit(500))).all()
-    return [
-        {"id": x.id, "name": x.name, "email": x.email, "phone": x.phone, "division": x.division, "subject": x.subject, "status": x.status, "source": x.source, "crm_sync_status": x.crm_sync_status}
-        for x in xs
-    ]
+    if bdm_organization_id:
+        stmt = stmt.where(Enquiry.bdm_organization_id == bdm_organization_id)
+    rows = (await db.execute(stmt.order_by(Enquiry.created_at.desc()).limit(500))).all()
+    return [lead_rules.admin_out(row) for row in rows]
+
+
+@router.post("/leads/{lead_id}/conversion")
+async def convert_lead(lead_id: UUID, payload: AdminLeadConversionIn, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
+    """bdm-017 AC3 (L1, L2, L9): link a lead to exactly one student account, explicitly. Lead locked (404 / 403 / 409), student locked
+    (one 422), student free (409; the partial unique index is the backstop for two admins at once), status 'converted', audit, commit."""
+    lead = await lead_rules.locked_for_admin(db, user, lead_id)
+    if lead.converted_user_id is not None:
+        raise HTTPException(409, lead_rules.ALREADY_LINKED)
+    student = await lead_rules.locked_student(db, lead, payload.student_email)
+    await lead_rules.check_student_free(db, student)
+    now = await db.scalar(select(func.now()))  # read before any change: an autoflush must never see a half-set link (ck_enquiries_conversion)
+    lead.converted_user_id, lead.converted_at, lead.converted_by_user_id, lead.status = student.id, now, user.id, "converted"
+    lead_rules.audit_conversion(db, user, lead, "lead.convert", student.id)
+    actor_id = str(user.id)  # a rollback expires every loaded row, the caller included
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        logger.warning("lead_convert_conflict", extra={"extra_fields": {"actor_id": actor_id, "lead_id": str(lead_id)}})
+        raise HTTPException(409, lead_rules.STUDENT_TAKEN) from None
+    lead_rules.log("lead_converted", user, lead_id)
+    return await lead_rules.admin_one(db, lead_id)
+
+
+@router.delete("/leads/{lead_id}/conversion")
+async def unconvert_lead(lead_id: UUID, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
+    """bdm-017 (L2): undo a mistaken link. Status is left as it is -- it is the admin's label (L7)."""
+    lead = await lead_rules.locked_for_admin(db, user, lead_id)
+    if lead.converted_user_id is None:
+        raise HTTPException(409, lead_rules.NOT_LINKED)
+    lead_rules.audit_conversion(db, user, lead, "lead.unconvert", lead.converted_user_id)
+    lead.converted_user_id = lead.converted_at = lead.converted_by_user_id = None
+    await db.commit()
+    lead_rules.log("lead_unconverted", user, lead_id)
+    return await lead_rules.admin_one(db, lead_id)
 
 
 @router.patch("/leads/{lead_id}")
@@ -307,13 +469,28 @@ async def create_user(payload: dict, user: User = Depends(ensure_admin), db: Asy
 
     division = payload.get("division", user.division)
     role = payload["role"]
+    # bdm-001 (spec §5.4): the BDM type rules run BEFORE the cross-division gate, so a super_admin's mismatched division is the
+    # AC2 422 and a division admin's wrong type is the D10 403. Every other role skips this block (bar a stray bdm_profile).
+    bdm_input = None
+    if role == "bdm":
+        bdm_input = bdm_rules.parse_profile_create(payload.get("bdm_profile"))
+        bdm_rules.require_creator_may(user, bdm_input.bdm_type, USERS_ROUTE)
+        mapped = bdm_rules.BDM_DIVISION[bdm_input.bdm_type]
+        if "division" not in payload:
+            division = mapped
+        elif division != mapped:
+            raise HTTPException(422, f"Division must be {mapped} for a {bdm_input.bdm_type} BDM")
+    elif "bdm_profile" in payload:
+        raise HTTPException(422, "Only a BDM has a BDM profile")
+    elif role == "bdm_manager" and user.role != "super_admin":
+        raise HTTPException(403, "Only a Super Admin can create BDM managers")
     if user.role != "super_admin" and division != user.division:
         raise HTTPException(403, "Cannot create users in another division")
-    _reject_supplied_password(payload, user, "/api/v1/admin/users", "password")
+    _reject_supplied_password(payload, user, USERS_ROUTE, "password")
     allowed_by_division = {
-        "it": {"it_student", "trainer", "placement_team", "hr_team", "it_admin"},
-        "overseas": {"overseas_student", "counselor", "university_rep", "agent", "overseas_admin"},
-        "global": {"super_admin"},
+        "it": {"it_student", "trainer", "placement_team", "hr_team", "it_admin", "bdm"},
+        "overseas": {"overseas_student", "counselor", "university_rep", "agent", "overseas_admin", "bdm"},
+        "global": {"super_admin", "bdm_manager"},
     }
     if role not in allowed_by_division.get(division, set()):
         raise HTTPException(422, "Role is not valid for the selected division")
@@ -333,11 +510,29 @@ async def create_user(payload: dict, user: User = Depends(ensure_admin), db: Asy
     )
     db.add(item)
     await _flush_unique_email(db)
+    if role == "agent":
+        # AGN-001 (D11): an admin-created agent gets its own pending organisation as Master M001.
+        # `payload` is an untyped dict: only a string agency name is used; anything else falls back to the full name.
+        agency_name = item.profile.get("agency_name") if isinstance(item.profile, dict) else None
+        await ensure_agent_org(db, item, agency_name=agency_name if isinstance(agency_name, str) else None, status="pending")
+    profile = manager = None
+    if bdm_input is not None:
+        # Same transaction as the user, token and audit row; the manager row is locked against a concurrent deactivation.
+        manager = await bdm_rules.locked_active_manager(db, bdm_input.reporting_manager_user_id)
+        profile = BdmProfile(user_id=item.id, **bdm_input.model_dump())
+        db.add(profile)
+        await bdm_rules.flush_profile(db)
     issued = await issue_welcome_token(db, user=item, issued_by=user)
-    db.add(AuditLog(user_id=user.id, action="user.create", entity_type="user", entity_id=str(item.id), metadata_json={"role": role, "division": division}))
+    metadata = {"role": role, "division": division}
+    if profile is not None:
+        metadata["bdm_profile"] = bdm_rules.profile_snapshot(profile)
+    db.add(AuditLog(user_id=user.id, action="user.create", entity_type="user", entity_id=str(item.id), metadata_json=metadata))
     await db.commit()
     delivery = await deliver_welcome_link(user=item, issued=issued, issued_by=user)
-    return {"id": item.id, "email": item.email, "role": item.role, "division": item.division, **delivery}
+    return {
+        "id": item.id, "email": item.email, "role": item.role, "division": item.division, **delivery,
+        "bdm_profile": bdm_rules.profile_out(profile, manager) if profile is not None else None,
+    }
 
 
 @router.patch("/users/{user_id}")
@@ -349,6 +544,19 @@ async def update_user(user_id: UUID, payload: dict, user: User = Depends(ensure_
         raise HTTPException(404, "User not found")
     if user.role != "super_admin" and item.division != user.division:
         raise HTTPException(403, "Cannot edit another division")
+    # bdm-001 (spec §5.5): every refusal happens before any write. The profile row is locked so concurrent edits serialise and
+    # each audit row's before/after is exact. A manager is re-checked only when it changes, so a BDM whose manager has since been
+    # deactivated stays editable (the reassignment itself is bdm-025).
+    profile = None
+    if item.role == "bdm":
+        profile = await db.scalar(select(BdmProfile).where(BdmProfile.user_id == item.id).with_for_update())
+        if profile is not None:
+            bdm_rules.require_creator_may(user, profile.bdm_type, f"{USERS_ROUTE}/{{id}}")
+    profile_before = profile_after = None
+    if "bdm_profile" in payload:
+        if profile is None:
+            raise HTTPException(422, "Only a BDM has a BDM profile")
+        profile_before, profile_after = await bdm_rules.apply_profile_update(db, profile, payload["bdm_profile"])
     # ADM-001-AC02: deactivating a trainer with active/upcoming assigned batches is
     # blocked unless explicitly confirmed -- never a silent operation that would strand
     # those batches without a trainer.
@@ -365,7 +573,10 @@ async def update_user(user_id: UUID, payload: dict, user: User = Depends(ensure_
     for k in ("full_name", "phone", "active", "email_verified", "profile"):
         if k in payload:
             setattr(item, k, payload[k])
-    db.add(AuditLog(user_id=user.id, action="user.update", entity_type="user", entity_id=str(item.id), metadata_json={k: v for k, v in payload.items() if k != "password"}))
+    metadata = {k: v for k, v in payload.items() if k != "password"}
+    if profile_before is not None:
+        metadata.update(bdm_profile_before=profile_before, bdm_profile_after=profile_after)
+    db.add(AuditLog(user_id=user.id, action="user.update", entity_type="user", entity_id=str(item.id), metadata_json=metadata))
     await db.commit()
     return {"ok": True}
 
@@ -657,6 +868,8 @@ async def create_payment(payload: dict, user: User = Depends(ensure_admin), db: 
     from app.api.payments import _ensure_invoice, _ensure_receipt
     from app.models import AuditLog, Payment
 
+    if payload.get("reference_type") == "agent_deposit":  # AGN-011: only the application's deposit checkout creates these
+        raise HTTPException(422, "Agent deposits are created from the application")
     target = await db.get(User, uuid_reference(payload.get("user_id"), "user reference"))
     if not target:
         raise HTTPException(404, "User not found")
@@ -709,6 +922,8 @@ async def discount_payment(payment_id: UUID, payload: dict, user: User = Depends
         raise HTTPException(404, "Payment not found")
     if user.role != "super_admin" and item.division != user.division:
         raise HTTPException(403, "Wrong division")
+    if item.reference_type == "agent_deposit":  # AGN-011: the deposit's amount is the agency's, read at its checkout
+        raise HTTPException(409, "An agent deposit's amount is set on its application")
     if item.status not in {"pending", "overdue"}:
         raise HTTPException(409, "Only a pending or overdue payment can be discounted")
     reason = str(payload.get("reason") or "").strip()
@@ -884,6 +1099,8 @@ async def fulfil_data_request(request_id: UUID, payload: dict, user: User = Depe
         # this user (`_retention_hold_reason` in `account.py`).
         subject.full_name = "Deleted user"
         subject.phone = None
+        # ENH-014 (D9): consent state goes with the contact details it applied to.
+        await db.execute(delete(NotificationPreference).where(NotificationPreference.user_id == subject.id))
         subject.profile = {}
         subject.email = f"deleted-{subject.id}@deleted.local"
         subject.active = False
@@ -908,6 +1125,9 @@ async def _pending_agent_assignment(agent_id: UUID, user: User, db: AsyncSession
     agent = await db.get(User, agent_id)
     if not agent or agent.role != "agent":
         raise HTTPException(404, "Agent not found")
+    # AGN-002: a staff login belongs to its agency's Masters; approving/rejecting it here would act on the whole organisation.
+    if await db.scalar(select(AgentOrgMember.id).where(AgentOrgMember.user_id == agent.id, AgentOrgMember.role == "staff")):
+        raise HTTPException(422, "Staff accounts are managed by their agency")
     assignment = await db.scalar(select(UserRoleAssignment).where(UserRoleAssignment.user_id == agent.id, UserRoleAssignment.role == "agent"))
     if not assignment:
         raise HTTPException(404, "Agent registration not found")
@@ -916,10 +1136,15 @@ async def _pending_agent_assignment(agent_id: UUID, user: User, db: AsyncSession
 
 @agents_router.post("/agents/{agent_id}/approve")
 async def approve_agent(agent_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    _, assignment = await _pending_agent_assignment(agent_id, user, db)
+    agent, assignment = await _pending_agent_assignment(agent_id, user, db)
+    # AGN-001 (E4): same any-state behaviour and audit row as before; the agent's organisation follows. The org row is
+    # locked BEFORE the assignment is touched -- the same order as `transition_org` -- so the two paths cannot deadlock.
+    member = await ensure_agent_org(db, agent)
+    org = await lock_org(db, member.org_id)
     assignment.approval_status = "approved"
     assignment.approved_by_user_id = user.id
     assignment.approved_at = datetime.now(UTC)
+    await set_org_status(db, org, "active", user, write_through=True)
     # SEC-001: every Agent-approval action writes an audit record -- fail closed, not
     # open, if this write itself somehow failed (it shares the same transaction as the
     # approval below, so a rollback here rolls back the approval too, never the reverse).
@@ -930,10 +1155,13 @@ async def approve_agent(agent_id: UUID, user: User = Depends(get_current_user), 
 
 @agents_router.post("/agents/{agent_id}/reject")
 async def reject_agent(agent_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    _, assignment = await _pending_agent_assignment(agent_id, user, db)
+    agent, assignment = await _pending_agent_assignment(agent_id, user, db)
+    member = await ensure_agent_org(db, agent)  # AGN-001 (E4); org locked before the assignment, as in approve_agent
+    org = await lock_org(db, member.org_id)
     assignment.approval_status = "rejected"
     assignment.approved_by_user_id = user.id
     assignment.approved_at = datetime.now(UTC)
+    await set_org_status(db, org, "rejected", user, write_through=True)
     db.add(AuditLog(user_id=user.id, action="agent.reject", entity_type="user_role_assignment", entity_id=str(assignment.id), outcome="rejected"))
     await db.commit()
     return {"id": assignment.id, "approval_status": assignment.approval_status}
@@ -943,11 +1171,151 @@ async def reject_agent(agent_id: UUID, user: User = Depends(get_current_user), d
 async def list_agents(status: str | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if user.role not in {"overseas_admin", "super_admin"}:
         raise HTTPException(403, "Overseas Admin role required")
-    stmt = select(User, UserRoleAssignment).join(UserRoleAssignment, UserRoleAssignment.user_id == User.id).where(User.role == "agent", UserRoleAssignment.role == "agent")
+    stmt = (
+        select(User, UserRoleAssignment)
+        .join(UserRoleAssignment, UserRoleAssignment.user_id == User.id)
+        .where(User.role == "agent", UserRoleAssignment.role == "agent")
+        .where(User.id.not_in(select(AgentOrgMember.user_id).where(AgentOrgMember.role == "staff")))  # AGN-002: staff are not agents to approve
+    )
     if status:
         stmt = stmt.where(UserRoleAssignment.approval_status == status)
     rows = (await db.execute(stmt.order_by(User.created_at.desc()))).all()
     return [{"id": agent.id, "name": agent.full_name, "email": agent.email, "approval_status": assignment.approval_status} for agent, assignment in rows]
+
+
+# AGN-001 (DEC-SCOPE-038 D6/D7): Overseas Admin acts on the agent ORGANISATION.
+def _require_overseas_admin(user: User) -> None:
+    if user.role not in {"overseas_admin", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin role required")
+
+
+@agents_router.get("/agent-orgs")
+async def list_agent_orgs(
+    status: Literal["pending", "active", "rejected", "suspended"] | None = None,
+    q: str | None = Query(None, max_length=100),
+    limit: int = Query(25, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Newest first. `{items, total, limit, offset}` like the school skill-batch list (the only built paginated list).
+    `q` (browser QA-13) matches agency name, prefix, or any Master's code or email, case-insensitively and literally."""
+    _require_overseas_admin(user)
+    filters = [AgentOrg.status == status] if status else []
+    term = (q or "").strip()
+    if term:
+        pattern = "%" + term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        member_match = (
+            select(AgentOrgMember.org_id)
+            .join(User, User.id == AgentOrgMember.user_id)
+            .where(AgentOrgMember.role == "master", or_(AgentOrgMember.code.ilike(pattern, escape="\\"), User.email.ilike(pattern, escape="\\")))
+        )
+        filters.append(or_(AgentOrg.name.ilike(pattern, escape="\\"), AgentOrg.prefix.ilike(pattern, escape="\\"), AgentOrg.id.in_(member_match)))
+    total = await db.scalar(select(func.count()).select_from(AgentOrg).where(*filters))
+    orgs = (await db.scalars(select(AgentOrg).where(*filters).order_by(AgentOrg.created_at.desc(), AgentOrg.id.desc()).limit(limit).offset(offset))).all()
+    masters: dict = {}
+    if orgs:
+        for member, member_user in (await db.execute(org_masters(*(o.id for o in orgs)))).all():  # AGN-002: Masters only, never staff
+            masters.setdefault(member.org_id, []).append(_master_row(member, member_user))
+    counts = await org_counts(db, [o.id for o in orgs])  # AGN-022: additive keys only (DEC-SCOPE-064 N5)
+    items = [
+        {"id": o.id, "name": o.name, "prefix": o.prefix, "status": o.status, "created_at": o.created_at, "masters": masters.get(o.id, []), **_network_counts(counts[o.id])}
+        for o in orgs
+    ]
+    return {"items": items, "total": total or 0, "limit": limit, "offset": offset}
+
+
+def _master_row(member: AgentOrgMember, member_user: User) -> dict:
+    return {"id": member.id, "code": member.code, "full_name": member_user.full_name, "email": member_user.email, "status": member.status}
+
+
+def _network_counts(c: dict) -> dict:
+    return {"staff_count": c["staff_count"], "counts": {"students": c["students"], "applications": c["applications"], "enrollments": c["enrollments"]}}
+
+
+# AGN-022 (DEC-SCOPE-064): the agent network -- read-only views of one organisation for Overseas Admin and Super Admin. The gate runs
+# before the lookup, so a non-admin never learns whether an id exists. Responses carry agency data, so they are never cached.
+NETWORK_CACHE = "private, no-store"
+
+
+async def _network_org(db: AsyncSession, org_id: UUID) -> AgentOrg:
+    org = await db.get(AgentOrg, org_id)
+    if org is None:
+        raise HTTPException(404, "Organisation not found")
+    return org
+
+
+@agents_router.get("/agent-orgs/{org_id}", response_model=AgentOrgDetailOut)
+async def get_agent_org(org_id: UUID, response: Response, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    _require_overseas_admin(user)
+    org = await _network_org(db, org_id)
+    counts = (await org_counts(db, [org.id]))[org.id]
+    masters = [_master_row(member, member_user) for member, member_user in (await db.execute(org_masters(org.id))).all()]
+    response.headers["Cache-Control"] = NETWORK_CACHE
+    return {
+        "id": org.id, "name": org.name, "prefix": org.prefix, "status": org.status, "created_at": org.created_at, "status_changed_at": org.status_changed_at,
+        "masters": masters, **_network_counts(counts), **await org_money(db, org.id), "as_of": datetime.now(UTC),
+    }
+
+
+async def _audit_network_read(db: AsyncSession, user: User, org_id: UUID, listing: str, metadata: dict, started: float) -> None:
+    """N2: one access record per drill-down page, committed before any data leaves -- if it cannot be written, the request fails
+    and nothing is returned (SEC-001, fail closed). A retry is a second read and writes a second row. No names in the row or log."""
+    db.add(AuditLog(user_id=user.id, action=f"agent_network.{listing}_read", entity_type="agent_org", entity_id=str(org_id), outcome="read", metadata_json=metadata))
+    await db.commit()
+    logger.info(
+        "agent_network.read",
+        extra={"extra_fields": {"actor_id": str(user.id), "role": user.role, "org_id": str(org_id), "list": listing, "returned": metadata["returned"], "duration_ms": round((time.perf_counter() - started) * 1000)}},
+    )
+
+
+@agents_router.get("/agent-orgs/{org_id}/students", response_model=AgentNetworkStudentPage)
+async def list_agent_org_students(
+    org_id: UUID,
+    response: Response,
+    status: Literal["active", "archived"] = "active",
+    limit: int = Query(25, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _require_overseas_admin(user)
+    started = time.perf_counter()
+    await _network_org(db, org_id)
+    items, total = await org_students(db, org_id, status=status, limit=limit, offset=offset)
+    await _audit_network_read(db, user, org_id, "students", {"status": status, "limit": limit, "offset": offset, "returned": len(items)}, started)
+    response.headers["Cache-Control"] = NETWORK_CACHE
+    return {"items": items, "total": total, "limit": limit, "offset": offset}
+
+
+@agents_router.get("/agent-orgs/{org_id}/applications", response_model=AgentNetworkApplicationPage)
+async def list_agent_org_applications(
+    org_id: UUID,
+    response: Response,
+    status: str | None = Query(None, max_length=40),
+    limit: int = Query(25, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _require_overseas_admin(user)
+    started = time.perf_counter()
+    if status is not None and status not in APPLICATION_FILTERS:
+        raise HTTPException(422, "Unknown application status")
+    await _network_org(db, org_id)
+    items, total = await org_applications(db, org_id, status=status, limit=limit, offset=offset)
+    await _audit_network_read(db, user, org_id, "applications", {"status": status, "limit": limit, "offset": offset, "returned": len(items)}, started)
+    response.headers["Cache-Control"] = NETWORK_CACHE
+    return {"items": items, "total": total, "limit": limit, "offset": offset}
+
+
+@agents_router.post("/agent-orgs/{org_id}/{action}")
+async def act_on_agent_org(org_id: UUID, action: Literal["approve", "reject", "suspend", "reinstate"], user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    _require_overseas_admin(user)
+    org = await transition_org(db, org_id, action, user)
+    result = {"id": org.id, "status": org.status}
+    await db.commit()
+    return result
 
 
 @agents_router.post("/commissions/{commission_id}/approve-payout")
@@ -998,59 +1366,75 @@ async def approve_commission_payout(commission_id: UUID, user: User = Depends(ge
     return {"id": item.id, "status": item.status, "paid_at": item.paid_at}
 
 
-# SCH-003: Overseas Admin creates a School partner record and its seed School Coordinator
-# account together, both active immediately -- no approval gate, unlike Agent
-# (`DEC-SCOPE-012`). Same `/overseas-admin` namespace as the Agent approval routes above,
-# per `API_CONTRACT.md` §12A.
-@agents_router.post("/schools", status_code=201)
-async def create_school(payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    if user.role not in {"overseas_admin", "super_admin"}:
-        raise HTTPException(403, "Overseas Admin role required")
-    _reject_supplied_password(payload, user, "/api/v1/overseas-admin/schools", "coordinator_password")
-    email = str(payload.get("coordinator_email", "")).lower().strip()
-    if not payload.get("name") or not email or not payload.get("coordinator_full_name"):
-        raise HTTPException(422, "School name and Coordinator name/email are required")
-    email = _valid_email(email)
+async def _provision_school(
+    db: AsyncSession,
+    payload: SchoolCreate,
+    actor: User,
+    *,
+    flush_coordinator: Callable[[AsyncSession], Awaitable[None]] = _flush_unique_email,
+    password_hash: str | None = None,
+) -> tuple[School, User, IssuedWelcome]:
+    """SCH-003's School + seed Coordinator, shared by `create_school` and ENH-029's bulk onboarding: role assignment, welcome
+    token and audits included; no commit, no delivery. `flush_coordinator` settles the email race: the default rolls the whole
+    request back into a 409; bulk passes a plain flush so the IntegrityError undoes only that row's savepoint. `password_hash`
+    lets bulk pass an `unusable_password_hash()` computed off the event loop; omitted, it is computed here as before."""
+    email = _valid_email(payload.coordinator_email)
     if await db.scalar(select(User).where(User.email == email)):
         raise HTTPException(409, "Email already exists")
-    tier = payload.get("tier")
-    if tier and tier not in {"bronze", "silver", "gold", "platinum"}:
+    if payload.tier and payload.tier not in {"bronze", "silver", "gold", "platinum"}:
         raise HTTPException(422, "tier must be one of bronze, silver, gold, platinum")
-    tier_valid_until = date.fromisoformat(payload["tier_valid_until"]) if payload.get("tier_valid_until") else None
+    school_code = await unique_student_code(db, School.school_code)
     school = School(
-        name=_fit(payload["name"], "School name", 200),
-        city=_fit(payload.get("city"), "City", 120),
-        state=_fit(payload.get("state"), "State", 120),
-        created_by_user_id=user.id,
-        tier=tier,
-        tier_valid_until=tier_valid_until,
+        name=payload.name, city=payload.city, state=payload.state,
+        created_by_user_id=actor.id, tier=payload.tier, tier_valid_until=payload.tier_valid_until,
+        school_code=school_code,
+        branch=payload.branch, address=payload.address, contact_number=payload.contact_number,
+        email=payload.email, website=payload.website, grades_available=payload.grades_available,
+        board=payload.board, partnership_date=payload.partnership_date,
+        mou_reference=payload.mou_reference, edusphere_bdm=payload.edusphere_bdm,
+        monthly_visit_schedule=payload.monthly_visit_schedule,
+        vice_principal_name=payload.vice_principal_name,
     )
     db.add(school)
     await db.flush()
     coordinator = User(
-        email=email,
-        password_hash=unusable_password_hash(),
-        full_name=_fit(payload["coordinator_full_name"], "Coordinator name", 160),
-        role="school_coordinator",
-        division="overseas",
-        active=True,
-        email_verified=False,
+        email=email, password_hash=password_hash or unusable_password_hash(),
+        full_name=_fit(payload.coordinator_full_name, "Coordinator name", 160),
+        role="school_coordinator", division="overseas", active=True, email_verified=False,
         profile={"school_id": str(school.id)},
     )
     db.add(coordinator)
-    await _flush_unique_email(db)  # a lost race also rolls back the school created above
-    issued = await issue_welcome_token(db, user=coordinator, issued_by=user)
+    await flush_coordinator(db)  # the default's lost race also rolls back the school created above
+    issued = await issue_welcome_token(db, user=coordinator, issued_by=actor)
     # DATA_MODEL.md §6.12: `UserRoleAssignment` is created eagerly here (not lazily on
     # first login like `auth._sync_role_assignment`) so `created_by_user_id`/`assigned_by_
     # user_id` records the acting Overseas Admin from the moment the account exists,
     # satisfying the provisioning audit trail (RBAC_MATRIX.md §3) without waiting for the
     # Coordinator's first login.
-    db.add(UserRoleAssignment(user_id=coordinator.id, division="overseas", role="school_coordinator", is_active=True, assigned_by_user_id=user.id, approval_status="approved"))
-    db.add(AuditLog(user_id=user.id, action="school.create", entity_type="school", entity_id=str(school.id), metadata_json={"name": school.name}))
-    db.add(AuditLog(user_id=user.id, action="school.coordinator_seed", entity_type="user", entity_id=str(coordinator.id), metadata_json={"school_id": str(school.id)}))
+    db.add(UserRoleAssignment(user_id=coordinator.id, division="overseas", role="school_coordinator", is_active=True, assigned_by_user_id=actor.id, approval_status="approved"))
+    db.add(AuditLog(user_id=actor.id, action="school.create", entity_type="school", entity_id=str(school.id), metadata_json={"name": school.name, "school_code": school_code}))
+    db.add(AuditLog(user_id=actor.id, action="school.coordinator_seed", entity_type="user", entity_id=str(coordinator.id), metadata_json={"school_id": str(school.id)}))
+    return school, coordinator, issued
+
+
+# SCH-003: Overseas Admin creates a School partner record and its seed School Coordinator
+# account together, both active immediately -- no approval gate, unlike Agent
+# (`DEC-SCOPE-012`). Same `/overseas-admin` namespace as the Agent approval routes above,
+# per `API_CONTRACT.md` §12A.
+@agents_router.post("/schools", status_code=201)
+async def create_school(payload: SchoolCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if user.role not in {"overseas_admin", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin role required")
+    # SchoolCreate's `extra="forbid"` already rejects a supplied `coordinator_password` at the
+    # Pydantic layer, before this function body runs at all -- an explicit
+    # _reject_supplied_password() call here would be unreachable dead code (simplification pass,
+    # ENH-009). This does lose the WARNING-level `provisioning_password_field_rejected` telemetry
+    # that call used to emit; already noted and accepted in DEC-SCOPE-025's addendum.
+    school, coordinator, issued = await _provision_school(db, payload, user)
     await db.commit()
     delivery = await deliver_welcome_link(user=coordinator, issued=issued, issued_by=user)
-    return {"id": school.id, "name": school.name, "coordinator_id": coordinator.id, "coordinator_email": coordinator.email, **delivery}
+    out = await _school_out(db, school)
+    return {**out.model_dump(mode="json"), "coordinator_id": coordinator.id, "coordinator_email": coordinator.email, **delivery}
 
 
 @agents_router.get("/schools")
@@ -1058,29 +1442,130 @@ async def list_schools(user: User = Depends(get_current_user), db: AsyncSession 
     if user.role not in {"overseas_admin", "super_admin"}:
         raise HTTPException(403, "Overseas Admin role required")
     rows = (await db.scalars(select(School).order_by(School.created_at.desc()))).all()
-    return [{"id": s.id, "name": s.name, "city": s.city, "state": s.state, "tier": s.tier, "tier_valid_until": s.tier_valid_until, "created_at": s.created_at} for s in rows]
+    return await _school_outs_batch(db, rows)
 
 
-@agents_router.patch("/schools/{school_id}")
-async def update_school_tier(school_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """`DEC-SCOPE-017` -- Overseas Admin sets/changes a School's partnership tier after
-    creation. Deliberately narrow: only tier/tier_valid_until are editable here, not the
-    identity fields `create_school` already owns."""
+INVALID_TIER = "tier must be one of bronze, silver, gold, platinum"
+NOTIFICATION_TITLE_MAX = 180  # Notification.title is String(180); a school name alone may be 200 (ENH-023 §9)
+SCHOOL_ENTITLEMENTS_URL = {"school_coordinator": "/school/coordinator/entitlements", "school_principal": "/school/principal/entitlements"}
+
+
+def _tier_notices(school_name: str, change: dict) -> tuple[tuple[str, str], tuple[str, str]]:
+    """((school title, body), (admin title, body)) for a change that moved the tier (ENH-023 spec §4.4)."""
+    from app.api.schools import _tier_name  # noqa: PLC0415
+
+    before, after = _tier_name(change["from_tier"]), _tier_name(change["to_tier"])
+    if change["direction"] == "upgrade":
+        labels = ", ".join(s["label"] for s in change["gained"])
+        school = (f"Your partnership is now {after}", f"{school_name} has moved from {before} to {after}. Newly available: {labels}.")
+        admin_body = f"Newly available: {labels}."
+    else:
+        labels = ", ".join(s["label"] for s in change["lost"])
+        school = (f"Your partnership changed from {before} to {after}", f"These services are no longer available for new work: {labels}. Work already started for them can still be completed.")
+        admin_body = f"No longer available for new work: {labels}. Work already started for them can still be completed."
+    admin_title = f"Tier change recorded: {school_name}, {before} → {after}"
+    return (school[0][:NOTIFICATION_TITLE_MAX], school[1]), (admin_title[:NOTIFICATION_TITLE_MAX], admin_body)
+
+
+async def _notify_tier_change(db: AsyncSession, school_id: UUID, school_name: str, actor_id: UUID, change: dict) -> None:
+    """ENH-023 (D5/D9), for a tier change that has ALREADY committed: the school's active Coordinators and Principals, then the
+    acting admin, each get an in-app notice plus queued deliveries (email, and WhatsApp/SMS when opted in) that the worker sends
+    after the commit (ENH-014). Each recipient is queued and committed alone; a failure while queueing is logged and swallowed,
+    never undoing or failing the tier change (SCH-007-AC04 pattern, school_skills._notify_after_commit)."""
+    from app.api.schools import _notify_parent  # noqa: PLC0415 -- takes any User: in-app row plus queued NotificationDelivery rows
+
+    (school_title, school_body), (admin_title, admin_body) = _tier_notices(school_name, change)
+    staff = (
+        await db.execute(
+            select(User.id, User.role).where(User.role.in_(list(SCHOOL_ENTITLEMENTS_URL)), User.active.is_(True), User.profile["school_id"].as_string() == str(school_id))
+        )
+    ).all()
+    notices = [(user_id, school_title, school_body, SCHOOL_ENTITLEMENTS_URL[role]) for user_id, role in staff]
+    notices.append((actor_id, admin_title, admin_body, None))
+    for user_id, title, body, action_url in notices:
+        try:
+            recipient = await db.get(User, user_id, populate_existing=True)
+            await _notify_parent(db, recipient, school_name=school_name, title=title, body=body, action_url=action_url)
+            await db.commit()
+        except Exception as exc:  # noqa: BLE001 -- the tier change has committed; see docstring
+            await db.rollback()
+            # No exc_info (security review S1): a queueing error can carry recipient data. Send errors happen in the worker and
+            # are recorded on the NotificationDelivery row, not here.
+            logger.warning("tier_change_notification_failed", extra={"extra_fields": {"school_id": str(school_id), "recipient_id": str(user_id), "error_type": type(exc).__name__}})
+
+
+@agents_router.patch("/schools/{school_id}", response_model=SchoolUpdateOut)
+async def update_school(school_id: UUID, payload: SchoolUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """DEC-SCOPE-017 / ENH-009 (DEC-SCOPE-025) -- Overseas Admin updates a School's partnership
+    tier and/or profile fields. `name`/`city`/`state`/`coordinator_*` stay out of scope for this
+    endpoint -- they were never editable before and no acceptance criterion asks for that.
+    ENH-023 (DEC-SCOPE-030): a tier change is recorded as a transition (old -> new, gained/lost), returned as
+    `tier_change`, guarded by the optional `expected_tier` precondition (D12), and told to the school after the commit."""
+    from app.api.schools import TIER_ORDER, TIER_UPDATE, _tier_name, tier_change_payload  # noqa: PLC0415 -- lazy, like the bridge import below
+
+    if user.role not in {"overseas_admin", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin role required")
+    # ENH-023 §8: the row lock queues concurrent tier changes, so each one's `from_tier` is the tier committed before it.
+    school = await db.scalar(select(School).where(School.id == school_id).with_for_update())
+    if not school:
+        raise HTTPException(404, "School not found")
+    fields = payload.model_dump(exclude_unset=True)
+    for key in ("tier", "expected_tier"):  # D13: "" is no tier, stored and compared as null
+        if key in fields:
+            fields[key] = fields[key] or None
+            if fields[key] is not None and fields[key] not in TIER_ORDER:
+                raise HTTPException(422, INVALID_TIER)
+    if "expected_tier" in fields and fields.pop("expected_tier") != (school.tier or None):
+        # D12, checked under the lock: the tier moved since the caller looked, so what they confirmed is not what would happen.
+        raise HTTPException(409, f"This school's tier changed to {_tier_name(school.tier)} since you looked it up. Look it up again before changing the tier.")
+    old_tier, old_valid_until = school.tier, school.tier_valid_until
+    if "tier" in fields:
+        school.tier = fields["tier"]
+    if "tier_valid_until" in fields:
+        school.tier_valid_until = fields["tier_valid_until"]
+    tier_change = None
+    if "tier" in fields or "tier_valid_until" in fields:
+        tier_change = tier_change_payload(old_tier, school.tier)
+        metadata = {
+            "tier": school.tier,
+            "from_tier": old_tier,
+            "to_tier": school.tier,
+            "direction": tier_change["direction"],
+            "gained": [s["key"] for s in tier_change["gained"]],
+            "lost": [s["key"] for s in tier_change["lost"]],
+            "tier_valid_until": school.tier_valid_until.isoformat() if school.tier_valid_until else None,
+            "previous_tier_valid_until": old_valid_until.isoformat() if old_valid_until else None,
+        }
+        # clock_timestamp(), not the transaction-start now(): a record created by a transaction that still saw the old tier
+        # sorts before this row, so grandfathering (schools._lost_since) treats it as existing work (ENH-023 §8).
+        db.add(AuditLog(user_id=user.id, action=TIER_UPDATE, entity_type="school", entity_id=str(school.id), metadata_json=metadata, created_at=func.clock_timestamp()))
+    profile_fields = [k for k in fields if k not in {"tier", "tier_valid_until"}]
+    for key in profile_fields:
+        setattr(school, key, fields[key])
+    if profile_fields:
+        db.add(AuditLog(user_id=user.id, action="school.profile_update", entity_type="school", entity_id=str(school.id), metadata_json={"changed_fields": sorted(profile_fields)}))
+    await db.commit()
+    out = await _school_out(db, school)
+    if tier_change and tier_change["direction"] != "unchanged":
+        await _notify_tier_change(db, school.id, school.name, user.id, tier_change)
+    return {**out.model_dump(mode="json"), "tier_change": tier_change}
+
+
+@agents_router.get("/schools/{school_id}/tier-change-preview", response_model=TierChangeOut)
+async def preview_school_tier_change(school_id: UUID, tier: str | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ENH-023 -- what a tier change would gain or lose, so the admin UI can confirm a downgrade before it happens. Read-only:
+    no lock, no write. An empty or absent `tier` means removing the tier."""
+    from app.api.schools import TIER_ORDER, tier_change_payload  # noqa: PLC0415 -- lazy, like update_school
+
     if user.role not in {"overseas_admin", "super_admin"}:
         raise HTTPException(403, "Overseas Admin role required")
     school = await db.get(School, school_id)
     if not school:
         raise HTTPException(404, "School not found")
-    if "tier" in payload:
-        tier = payload["tier"]
-        if tier and tier not in {"bronze", "silver", "gold", "platinum"}:
-            raise HTTPException(422, "tier must be one of bronze, silver, gold, platinum")
-        school.tier = tier
-    if "tier_valid_until" in payload:
-        school.tier_valid_until = date.fromisoformat(payload["tier_valid_until"]) if payload["tier_valid_until"] else None
-    db.add(AuditLog(user_id=user.id, action="school.tier_update", entity_type="school", entity_id=str(school.id), metadata_json={"tier": school.tier}))
-    await db.commit()
-    return {"id": school.id, "tier": school.tier, "tier_valid_until": school.tier_valid_until}
+    new_tier = tier or None
+    if new_tier is not None and new_tier not in TIER_ORDER:
+        raise HTTPException(422, INVALID_TIER)
+    return tier_change_payload(school.tier, new_tier)
 
 
 ACADEMIC_YEAR_STATUSES = ["draft", "active", "closed"]
@@ -1237,6 +1722,21 @@ async def list_school_staff(user: User = Depends(get_current_user), db: AsyncSes
     return [{"id": u.id, "name": u.full_name, "email": u.email, "role": u.role, "school_ids": [str(sid) for sid in portfolio_by_user.get(u.id, [])]} for u in rows]
 
 
+@agents_router.get("/schools/lookup")
+async def lookup_school_by_code(code: str, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ENH-009 / DEC-SCOPE-025 -- resolves a School's business-facing `school_code` to its full
+    profile, for the admin edit panel. Deliberately narrower than the analogous
+    `school-students/lookup` endpoint: Counselor has a real reason to look up a School *student*
+    (the School->Overseas bridge, DEC-SCOPE-018) but no legitimate reason to see or edit a
+    School's own profile."""
+    if user.role not in {"overseas_admin", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin role required")
+    school = await db.scalar(select(School).where(School.school_code == code.strip().upper()))
+    if not school:
+        raise HTTPException(404, "No school found with that School ID")
+    return await _school_out(db, school)
+
+
 @agents_router.get("/school-students/lookup")
 async def lookup_school_student_by_code(code: str, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Resolves a School student's business-facing `student_code` (added 2026-09-15,
@@ -1265,7 +1765,7 @@ async def lookup_school_student_by_code(code: str, user: User = Depends(get_curr
 
 @agents_router.post("/school-students/{school_student_id}/applications", status_code=201)
 async def create_bridged_application(school_student_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    from app.api.schools import _notify_student_parents
+    from app.api.schools import _notify_student_parents, require_school_entitlement
     from app.models import ApplicationStatusHistory, SchoolStudent
 
     if user.role not in {"overseas_admin", "counselor", "super_admin"}:
@@ -1273,6 +1773,8 @@ async def create_bridged_application(school_student_id: UUID, payload: dict, use
     student = await db.get(SchoolStudent, school_student_id)
     if not student:
         raise HTTPException(404, "School student not found")
+    # ENH-022 (D4/D9): the school's entitlement applies whoever acts -- a bridged application is Gold's application support.
+    await require_school_entitlement(db, user, student.school_id, "application_support")
     university = await db.get(University, uuid_reference(payload.get("university_id"), "university"))
     if not university:
         raise HTTPException(404, "University not found")

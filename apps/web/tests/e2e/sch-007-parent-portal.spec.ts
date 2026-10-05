@@ -23,6 +23,7 @@ test("parent sees child overview, upcoming session, and notification; unlinked c
   await page.fill("#school-name", `E2E Parent Portal School ${unique}`);
   await page.fill("#school-coordinator-name", "E2E PP Coordinator");
   await page.fill("#school-coordinator-email", coordinatorEmail);
+  await page.selectOption("#school-tier", "platinum"); // ENH-022: entitled to every service
   await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
   await expect(page.getByText(/School created\./)).toBeVisible();
 
@@ -82,7 +83,8 @@ test("parent sees child overview, upcoming session, and notification; unlinked c
   await page.click('a:has-text("View full profile & progress")');
   await page.waitForURL(`**/school/parent/children/${linked.id}`);
   for (const heading of ["Career guidance", "Counselling", "Recommended careers", "Psychometric assessment", "Academic results", "Activities", "Upcoming sessions"]) {
-    await expect(page.getByRole("heading", { name: heading })).toBeVisible();
+    // level 3: the overview's sections. The digital portfolio (ENH-012) on the same page has its own h4 "Career guidance".
+    await expect(page.getByRole("heading", { name: heading, level: 3 })).toBeVisible();
   }
   await expect(page.getByText("No published results yet")).toBeVisible();
 

@@ -5,10 +5,289 @@
 .page-hero{padding:56px 0;background:linear-gradient(120deg,#eef5ff,#fff);border-bottom:1px solid var(--line)}.breadcrumbs{font-size:13px;color:var(--muted);margin-bottom:15px}.filterbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:24px 0}.search{flex:1;min-width:240px;border:1px solid #cbd8e8;border-radius:12px;padding:12px 14px}.select{border:1px solid #cbd8e8;border-radius:12px;padding:12px 14px;background:white}.course-meta{display:flex;gap:8px;flex-wrap:wrap;margin:15px 0}.course-price{font-size:22px;font-weight:900;color:var(--blue)}.list-clean{list-style:none;padding:0;margin:0}.list-clean li{padding:9px 0;border-bottom:1px solid var(--line)}.steps{counter-reset:step}.step{display:grid;grid-template-columns:52px 1fr;gap:18px;align-items:start;padding:18px 0;border-bottom:1px solid var(--line)}.step:before{counter-increment:step;content:counter(step);width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:var(--blue);color:#fff;font-weight:900}.faq details{border-bottom:1px solid var(--line);padding:16px 0}.faq summary{cursor:pointer;font-weight:800}.faq p{padding-top:10px;color:var(--muted)}
 .form{display:grid;gap:16px}.field{display:grid;gap:7px}.field label{font-weight:800;font-size:13px}.field input,.field textarea,.field select{border:1px solid #c8d6e7;border-radius:12px;padding:12px 14px;background:#fff}.field textarea{min-height:120px;resize:vertical}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.form-message{padding:12px 14px;border-radius:10px;background:#ecfdf3;color:#166534}.form-error{padding:12px 14px;border-radius:10px;background:#fef2f2;color:#991b1b}
 .auth-page{min-height:calc(100vh - 115px);display:grid;grid-template-columns:1fr 1fr}.auth-brand{background:var(--navy);color:white;display:flex;align-items:center;justify-content:center;padding:48px}.auth-brand-inner{max-width:520px}.auth-brand img{width:300px;margin-bottom:36px}.auth-form-wrap{display:grid;place-items:center;padding:40px}.auth-card{width:min(470px,100%);border:1px solid var(--line);border-radius:22px;padding:30px;box-shadow:var(--shadow)}
-.portal{min-height:100vh;background:#f4f7fb;display:grid;grid-template-columns:270px 1fr}.sidebar{background:var(--navy);color:#fff;padding:22px 16px;position:sticky;top:0;height:100vh;overflow:auto}.sidebar-logo{width:200px;margin:0 8px 24px}.role-pill{margin:0 8px 18px;padding:10px 12px;border-radius:10px;background:#123766;color:#d9e9ff;font-size:12px}.portal-nav{display:grid;gap:4px}.portal-nav a{padding:10px 12px;border-radius:9px;color:#d9e7fa;font-weight:650;font-size:13px}.portal-nav a:hover{background:#123766;color:#fff}.sidebar-footer{margin-top:22px;border-top:1px solid #25466f;padding-top:18px}.portal-main{min-width:0}.portal-mobile-menu{display:none}.portal-topbar{height:68px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:15}.portal-content{padding:30px}.portal-title{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:24px}.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}.metric{background:white;border:1px solid var(--line);border-radius:15px;padding:20px}.metric span{font-size:13px;color:var(--muted);display:block}.metric strong{font-size:28px;display:block;margin-top:5px}.workspace{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden}.workspace-head{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}.table-wrap{overflow:auto}.table{border-collapse:collapse;width:100%;min-width:650px}.table th,.table td{padding:13px 16px;border-bottom:1px solid #edf1f6;text-align:left;font-size:13px}.table th{background:#f8fafc;font-size:12px;color:#60738b;text-transform:uppercase;letter-spacing:.04em}.empty{padding:48px;text-align:center;color:var(--muted)}.panel-list{display:grid;gap:14px;margin-top:20px}.panel{background:#fff;border:1px solid var(--line);border-radius:15px;padding:20px}
+.portal{min-height:100vh;background:#f4f7fb;display:grid;grid-template-columns:270px 1fr}.sidebar{background:var(--navy);color:#fff;padding:22px 16px;position:sticky;top:0;height:100vh;overflow:auto}.sidebar-logo{width:200px;margin:0 8px 24px}.role-pill{margin:0 8px 18px;padding:10px 12px;border-radius:10px;background:#123766;color:#d9e9ff;font-size:12px}.portal-nav{display:grid;gap:4px}.portal-nav a{padding:10px 12px;border-radius:9px;color:#d9e7fa;font-weight:650;font-size:13px}.portal-nav a:hover{background:#123766;color:#fff}.sidebar-footer{margin-top:22px;border-top:1px solid #25466f;padding-top:18px}.portal-main{min-width:0}.portal-mobile-menu{display:none}.portal-topbar{height:68px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:15}.portal-content{padding:30px}.no-wrap{white-space:nowrap;flex-shrink:0}.portal-title{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:24px}.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}.metric{background:white;border:1px solid var(--line);border-radius:15px;padding:20px}.metric span{font-size:13px;color:var(--muted);display:block}.metric strong{font-size:28px;display:block;margin-top:5px}.workspace{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden}.workspace-head{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}.table-wrap{overflow:auto}.table{border-collapse:collapse;width:100%;min-width:650px}.table th,.table td{padding:13px 16px;border-bottom:1px solid #edf1f6;text-align:left;font-size:13px}.table th{background:#f8fafc;font-size:12px;color:#60738b;text-transform:uppercase;letter-spacing:.04em}.empty{padding:48px;text-align:center;color:var(--muted)}.panel-list{display:grid;gap:14px;margin-top:20px}.panel{background:#fff;border:1px solid var(--line);border-radius:15px;padding:20px}
 .report-grid{display:grid;grid-template-columns:2fr 1fr;gap:20px}.chart-placeholder{height:260px;border-radius:15px;background:linear-gradient(180deg,#f7fbff,#edf4fd);border:1px solid var(--line);display:flex;align-items:flex-end;gap:12px;padding:20px}.chart-placeholder span{flex:1;background:linear-gradient(#3b82f6,#0755b9);border-radius:8px 8px 2px 2px;min-height:25px}.grade-bar-chart{display:flex;align-items:flex-end;gap:18px;height:220px;padding:10px 4px 0;overflow-x:auto}.grade-bar-col{flex:1;min-width:56px;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end}.grade-bar-count{font-size:13px;font-weight:800;color:var(--ink);margin-bottom:6px}.grade-bar-track{width:100%;max-width:60px;flex:1;display:flex;align-items:flex-end;background:var(--soft);border-radius:10px;overflow:hidden}.grade-bar-fill{width:100%;background:linear-gradient(180deg,var(--blue2),var(--blue));border-radius:10px 10px 3px 3px;min-height:6px}.grade-bar-label{margin-top:10px;font-size:12px;font-weight:700;color:var(--muted);text-align:center}.report-rings{display:flex;gap:28px;flex-wrap:wrap;justify-content:space-around;padding:8px 0}.report-ring{display:flex;flex-direction:column;align-items:center;gap:10px}.report-ring-label{font-size:13px;font-weight:700;color:var(--ink);text-align:center;max-width:140px}.footer{background:#06152c;color:#d8e5f8;padding:54px 0 28px}.footer-grid{display:grid;grid-template-columns:1.3fr repeat(3,1fr);gap:32px}.footer img{width:210px}.logo-on-dark{background:#fff;border-radius:14px;padding:8px 14px;display:inline-block;aspect-ratio:3/1;object-fit:contain}.footer h4{color:#fff;margin:0 0 12px}.footer a{display:block;color:#c2d3e8;padding:4px 0}.copyright{border-top:1px solid #233b5e;margin-top:35px;padding-top:22px;font-size:13px;color:#91a8c6}
-.action-center{padding-top:0}.action-heading{background:#fff;border:1px solid var(--line);border-radius:16px;margin-bottom:16px}.action-heading p{margin:3px 0 0;color:var(--muted);font-size:13px}.action-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.action-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px;display:grid;gap:16px;align-content:start}.action-card h3{margin-bottom:4px}.action-card .field.full{grid-column:1/-1}.action-card fieldset.question{border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:9px}.action-card fieldset.question legend{font-weight:800;padding:0 6px}.action-card fieldset.question textarea{border:1px solid #c8d6e7;border-radius:10px;padding:10px;min-height:90px}.action-card input[type="checkbox"],.action-card input[type="radio"]{width:auto}.btn:disabled{opacity:.6;cursor:not-allowed}
+.action-center{padding-top:0}.action-heading{background:#fff;border:1px solid var(--line);border-radius:16px;margin-bottom:16px}.action-heading p{margin:3px 0 0;color:var(--muted);font-size:13px}.action-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.action-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px;display:grid;gap:16px;align-content:start}.action-card h3{margin-bottom:4px}.action-card .field.full{grid-column:1/-1}.action-card fieldset.question{border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:9px}.action-card fieldset.question legend{font-weight:800;padding:0 6px}.action-card fieldset.question textarea{border:1px solid #c8d6e7;border-radius:10px;padding:10px;min-height:90px}.action-card input[type="checkbox"],.action-card input[type="radio"]{width:auto}.btn:disabled,.btn[aria-disabled="true"]{opacity:.6;cursor:not-allowed}
 .qa-item{border-left:3px solid var(--line);padding:4px 0 4px 14px;margin-bottom:14px}.qa-item-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}.qa-item-head strong{font-weight:750}.answer-text{margin:8px 0 0;padding:10px 14px;background:var(--soft);border-radius:10px;font-style:italic;color:var(--ink)}.answer-empty{margin:6px 0 0;font-style:italic}
 @media(max-width:980px){.main-nav{display:none}.mobile-menu{display:flex;align-items:center;justify-content:center;margin-left:auto}.hero-grid,.auth-page{grid-template-columns:1fr}.auth-brand{display:none}.grid.four,.metric-grid{grid-template-columns:repeat(2,1fr)}.grid.three{grid-template-columns:repeat(2,1fr)}.footer-grid{grid-template-columns:1fr 1fr}.report-grid,.action-grid{grid-template-columns:1fr}.portal{display:block}.sidebar{display:none}.portal-mobile-menu{display:flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;border:1px solid var(--line);border-radius:10px;background:#fff;flex-shrink:0}.portal-mobile-menu:hover,.portal-mobile-menu:focus-visible{border-color:var(--blue);background:var(--soft)}.portal-mobile-nav-panel{position:absolute;top:100%;left:0;right:0;display:flex;flex-direction:column;background:#fff;border-bottom:1px solid var(--line);box-shadow:var(--shadow);padding:8px 0;z-index:41;max-height:calc(100vh - 68px);overflow:auto}.portal-mobile-nav-panel[hidden]{display:none}.portal-mobile-nav-panel a{display:block;padding:14px 20px;font-weight:700;font-size:15px;color:var(--ink)}.portal-mobile-nav-panel a:hover,.portal-mobile-nav-panel a:focus-visible{background:var(--soft);color:var(--blue)}}
 @media(max-width:640px){.container{width:min(100% - 26px,1180px)}.section{padding:48px 0}.hero{padding:52px 0}.grid.two,.grid.three,.grid.four,.stats,.metric-grid,.form-grid,.footer-grid{grid-template-columns:1fr}.header-row{height:66px}.brand-logo{width:160px}.header-actions .btn.secondary{display:none}.division-row{overflow:auto;white-space:nowrap}.portal-topbar{padding:0 16px}.portal-content{padding:20px 14px}.portal-title{display:block}.portal-title .actions{margin-top:14px}.auth-form-wrap{padding:24px 14px}.auth-card{padding:22px}.stats .stat{text-align:left}.footer{padding-bottom:90px}}
 .jtl{padding:4px 0 0}.jtl-row{display:grid;grid-template-columns:28px 1fr;column-gap:16px;position:relative;padding-bottom:26px}.jtl-row:last-child{padding-bottom:0}.jtl-rail{position:relative;display:flex;justify-content:center}.jtl-rail:before{content:"";position:absolute;top:4px;bottom:-26px;width:2px;background:var(--line)}.jtl-row:last-child .jtl-rail:before{display:none}.jtl-node{position:relative;z-index:1;width:14px;height:14px;border-radius:50%;margin-top:2px;background:var(--jtl-color,var(--blue));border:3px solid #fff;box-shadow:0 0 0 2px var(--jtl-color,var(--blue))}.jtl-date{display:block;font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}.jtl-badge{display:inline-flex;border-radius:99px;padding:3px 9px;font-size:11px;font-weight:800;margin-left:8px;vertical-align:1px;background:color-mix(in srgb,var(--jtl-color,var(--blue)) 14%,white);color:var(--jtl-color,var(--blue))}.jtl-title{margin:2px 0 3px;font-size:15px;font-weight:800;color:var(--ink)}.jtl-detail{margin:0;font-size:13px;color:var(--muted);line-height:1.5}
+.pf-panel { display: flex; flex-direction: column; gap: 0.75rem; }
+.pf-meter { height: 8px; border-radius: 4px; background: #e2e8f0; overflow: hidden; }
+.pf-meter-fill { height: 100%; background: #0755b9; }
+.pf-meter-label { font-size: 0.875rem; color: #475569; margin: 0; }
+.pf-section { border-top: 1px solid #e2e8f0; padding-top: 0.75rem; }
+.pf-section h4 { margin: 0 0 0.5rem; font-size: 0.95rem; }
+.pf-entry-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.pf-entry-org, .pf-entry-date { color: #475569; font-size: 0.875rem; }
+.pf-entry-desc { margin: 0.25rem 0 0; font-size: 0.9rem; }
+.pf-entry-actions { display: flex; gap: 0.5rem; margin-top: 0.25rem; }
+.pf-add-btn { margin-top: 0.5rem; }
+.pf-statement { white-space: pre-wrap; }
+/* QA24-08: the card's confirmation line; takes no space while empty (it stays in the DOM as a live region). */
+.pf-status { margin: 0; font-weight: 700; color: var(--green); }
+/* QA24-05: a comfortable target for the Skill India checkbox (the same 44px row as ENH-018's .score-options labels). */
+.pf-check { display: flex; align-items: center; gap: 8px; min-height: 44px; width: fit-content; cursor: pointer; }
+.pf-check input { width: 20px; height: 20px; margin: 0; }
+.pf-cert { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-top: 0.25rem; overflow-wrap: anywhere; }
+
+/* ENH-025 -- grouped Student Master forms, student photo and profile list (same tokens as fieldset.question). */
+fieldset.form-section { border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin: 0; display: grid; gap: 12px; min-width: 0; }
+fieldset.form-section legend { font-weight: 800; padding: 0 6px; }
+/* QA2-06: a field the server rejected is visibly marked, not only announced (aria-invalid is set by the form). */
+.form [aria-invalid="true"] { border-color: var(--red); }
+/* A help text under one field must not stretch its neighbour's input in the same grid row. */
+fieldset.form-section .form-grid { align-items: start; }
+/* Wraps a form's fields so they can be disabled while saving; keeps .form's own 16px spacing. */
+fieldset.form-busy-wrap { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 16px; }
+fieldset.form-busy-wrap > .btn { justify-self: start; }
+.field-help { font-size: 12px; margin: 0; }
+/* QA2-09: the photo controls sit in a .field grid; keep "Remove photo"/"Confirm remove" at their natural width. */
+.student-photo-block .btn { justify-self: start; }
+.student-photo { width: 96px; height: 96px; border-radius: 12px; object-fit: cover; background: var(--soft); display: inline-flex; align-items: center; justify-content: center; font-weight: 800; color: var(--muted); flex-shrink: 0; }
+.student-profile { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: start; margin-bottom: 16px; }
+.student-profile dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 0; }
+.student-profile dt { font-weight: 700; }
+.student-profile dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 640px) { .student-profile, .student-profile dl { grid-template-columns: 1fr; } .student-profile dt { margin-top: 6px; } }
+
+/* ENH-013 Student 360° view (docs/superpowers/specs/2026-09-23-enh-013a-student-360-view-design.md §8) */
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.s360-layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 20px; align-items: start; margin-top: 16px; }
+/* Sticks below the 68px sticky .portal-topbar (browser QA-03: at top:16px the first tabs slid under it) and scrolls on its own
+   when 16 tabs are taller than the space left, so every tab stays reachable. */
+.s360-tablist { display: flex; flex-direction: column; gap: 4px; position: sticky; top: 84px; max-height: calc(100vh - 100px); overflow-y: auto; }
+/* position:relative contains each tab's absolutely positioned .visually-hidden state text; without it the mobile tab strip's
+   overflow did not clip those spans and they stretched the page to ~2,200px (browser QA-01). */
+.s360-tab { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 10px 14px; border: 1px solid transparent; border-radius: 10px; background: transparent; font: inherit; font-weight: 700; font-size: 14px; color: var(--ink); text-align: left; cursor: pointer; }
+.s360-tab:hover { background: var(--soft); }
+.s360-tab:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.s360-tab[aria-selected="true"] { background: var(--soft); border-color: var(--line); color: var(--blue); }
+.s360-tab.empty, .s360-tab.restricted { color: var(--muted); font-weight: 600; }
+.s360-count { font-size: 12px; font-weight: 800; border-radius: 99px; padding: 2px 8px; background: #e8f0fb; color: var(--blue); }
+.s360-lock { font-size: 11px; font-weight: 700; color: var(--muted); }
+.s360-panel { min-width: 0; }
+.s360-panel:focus-visible { outline: 2px solid var(--blue); outline-offset: 4px; border-radius: var(--radius); }
+.s360-section > * + * { margin-top: 16px; }
+.s360-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin: 0; }
+.s360-facts dd { margin: 4px 0 0; font-weight: 700; }
+.s360-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.s360-list li { padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; overflow-wrap: anywhere; }
+.s360-list li p { margin: 6px 0 0; }
+@media (max-width: 980px) { .s360-layout { grid-template-columns: 1fr; } .s360-tablist { flex-direction: row; overflow-x: auto; overflow-y: hidden; max-height: none; scroll-snap-type: x proximity; position: static; padding-bottom: 4px; } .s360-tab { flex: 0 0 auto; scroll-snap-align: start; white-space: nowrap; } }
+@media (prefers-reduced-motion: reduce) { .s360-tablist { scroll-behavior: auto; } }
+
+/* QA-022-05: grid items default to min-width:auto, so a <select> was as wide as its longest option ("Student - School")
+   and pushed forms -- and the whole page -- wider than a phone. Let form rows shrink; controls never exceed their row. */
+.action-card > *, .form > *, .field > * { min-width: 0; }
+.field input, .field select, .field textarea { max-width: 100%; }
+/* ENH-021/ENH-026: read-only term/value lists under a record (counselling record, internship). Same look as .student-profile dl;
+   one column on phones. Rows use display:contents so each <div> keeps dt+dd valid while the <dl> grid lays them out. */
+/* QA-12: a vertical stack of cards with the same 18px rhythm as .action-grid, so adjacent cards never touch. */
+/* FV-03: minmax(0, 1fr) keeps a wide table from stretching its card past the viewport (an auto column sizes to content);
+   the table-wrap then scrolls instead. position:relative makes that scroll box clip the absolutely positioned
+   .visually-hidden text inside tables (the Edit buttons' names), which otherwise widened the page to ~700px on phones. */
+.card-stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-content: start; }
+.table-wrap { position: relative; }
+.record-details { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 8px 0 0; }
+.record-details-row { display: contents; }
+.record-details dt { font-weight: 700; }
+.record-details dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 640px) { .record-details { grid-template-columns: 1fr; } .record-details dd { margin-bottom: 6px; } }
+/* ENH-027 -- psychometric results: the rows reuse .record-details above (one column on a phone); only the disclosure is new. */
+.psy-results { display: grid; gap: 8px; margin-top: 12px; }
+.psy-result { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+.psy-result summary { cursor: pointer; font-weight: 800; }
+.psy-result-text { white-space: pre-wrap; }
+/* QA27-05: on phones each assessment row is a card (Student, Assessment, Status, then the actions) -- no sideways scroll,
+   so the results button always sits next to the student it is for. Labels come from each cell's data-label.
+   ENH-020: the counsellor's open funding cases use the same card rows. */
+@media (max-width: 640px) {
+  .table.psy-records thead, .table.funding-records thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .table.psy-records, .table.psy-records tbody, .table.psy-records tr, .table.psy-records td,
+  .table.funding-records, .table.funding-records tbody, .table.funding-records tr, .table.funding-records td { display: block; width: 100%; min-width: 0; }
+  .table.psy-records tr, .table.funding-records tr { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-bottom: 10px; }
+  .table.psy-records td, .table.funding-records td { border: 0; padding: 4px 0; overflow-wrap: anywhere; }
+  .table.psy-records td::before, .table.funding-records td::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 800; color: var(--muted); }
+}
+/* ENH-029 bulk school onboarding (browser QA-029-02/03): the card spans the full action grid so its six-column result table fits
+   on a desktop; below 760px (where that table's 650px minimum no longer fits) each result row becomes a labelled card, like
+   QA27-05 above, so a rejected row's reason is never hidden behind a sideways scroll. */
+.action-grid > .bulk-onboarding { grid-column: 1 / -1; }
+@media (max-width: 760px) {
+  .table.bulk-report thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .table.bulk-report, .table.bulk-report tbody, .table.bulk-report tr, .table.bulk-report td { display: block; width: 100%; min-width: 0; }
+  .table.bulk-report tr { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-bottom: 10px; }
+  .table.bulk-report td { border: 0; padding: 4px 0; overflow-wrap: anywhere; }
+  .table.bulk-report td::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 800; color: var(--muted); }
+}
+/* AGN-004: the agency Students panel -- every button (toolbar, cards, paging, forms) is a 44px touch target on phones
+   (browser QA-07); the panel spans the full width of the action grid (browser QA-01). ENH-020: the funding panel too.
+   AGN-014: the commission report likewise. */
+.action-grid > .agent-students, .action-grid > .commission-report { grid-column: 1 / -1; }
+.action-grid > .lead-management { grid-column: 1 / -1; } /* bdm-017 QA17-03: organization, student and action columns need the full width */
+/* AGN-014 browser QA14-09: the breakdowns are three short columns; without the data-table 650px minimum they fit a phone. */
+.commission-report .table { min-width: 0; }
+@media (max-width: 640px) {
+  .agent-students .btn, .funding-panel .btn, .commission-report .btn, .staff-performance .btn { min-height: 44px; }
+  .commission-report .table th, .commission-report .table td { padding: 10px 8px; }
+  .staff-performance .field, .staff-performance .field input, .staff-performance .field select { width: 100%; }
+  .staff-performance .field select { min-height: 44px; }
+}
+/* AGN-019: the student funnel -- label, count and share as text on one line, a decorative bar below (width = share of Students). */
+/* QA19-03: the 7-column staff table needs ~850px; with the sidebar, a 1024px desktop or a tablet gives it ~640px and hid two columns.
+   Stack by the card's own width (container query), not the viewport's -- the same stacked layout as phones (QA18-04 above). */
+.staff-performance { container-type: inline-size; }
+@container (max-width: 860px) {
+  .staff-performance .table.stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+  .staff-performance .table.stack tr { display: block; border-bottom: 1px solid #edf1f6; padding: 8px 0; }
+  .staff-performance .table.stack th[scope="row"], .staff-performance .table.stack td { display: flex; justify-content: space-between; gap: 12px; border: 0; padding: 4px 12px; position: static; }
+  .staff-performance .table.stack td::before { content: attr(data-label); color: var(--muted); }
+}
+.staff-performance .actions { align-items: flex-end; flex-wrap: wrap; }
+.staff-performance .actions .field { margin: 0; }
+.funnel { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 10px; }
+.funnel-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; align-items: baseline; }
+.funnel-label { font-weight: 600; }
+.funnel-count { font-weight: 800; color: #0b1f3a; text-align: right; }
+.funnel-percent { grid-column: 1 / -1; font-size: 13px; }
+.funnel-track { grid-column: 1 / -1; display: block; height: 8px; border-radius: 4px; background: #e7edf6; overflow: hidden; }
+.funnel-fill { display: block; height: 100%; background: var(--blue); }
+/* ENH-020: Closed is an outcome, not an error -- a neutral pill that carries its word; finished cases sit under a disclosure. */
+.status.closed { background: var(--soft); color: var(--muted); }
+.funding-finished { margin-top: 16px; }
+.funding-finished summary { cursor: pointer; font-weight: 800; }
+.funding-finished .record-details, .funding-card .record-details + .record-details { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }
+.funding-notes { white-space: pre-wrap; }
+/* AGN-010: conditions as written, one per line; long words wrap at 320px. History notes carry the conditions too (QA-03/QA-04). */
+.offer-conditions, .history-note { white-space: pre-wrap; overflow-wrap: anywhere; }
+/* QA-06: real heading levels (h1 page, h2 sections) at the sizes the page already had -- the site-wide h1/h2 are marketing sizes. */
+.funding-panel h1 { font-size: clamp(28px, 3.5vw, 44px); }
+.funding-panel h2 { font-size: 20px; }
+/* QA-02: a field with help text made its row taller and the grid stretched its neighbour's input; fields keep their own height
+   (the fieldset.form-section rule above does the same). */
+.funding-panel .form-grid { align-items: start; }
+/* bdm-009 QA9-02: the activity form keeps each control at its natural height (no stretching to the row); the message and the
+   buttons span both columns, and the Direction group looks like the app's other fieldsets. The 640px rule above makes it one column. */
+.activity-form { align-items: start; }
+.activity-form > .form-error, .activity-form > .actions { grid-column: 1 / -1; }
+fieldset.activity-direction { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin: 0; min-width: 0; }
+fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding: 0 6px; }
+
+/* ENH-016 analytics dashboards: KPI tiles 1 -> 2 -> 4 columns; wide tables scroll inside their card, never the page. */
+.kpi-group { margin-top: 16px; }
+.kpi-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin: 8px 0 0; }
+@media (min-width: 768px) { .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .kpi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.kpi-tile { border: 1px solid #e7edf6; border-radius: 10px; padding: 12px; min-width: 0; }
+.kpi-tile dt { color: #61728a; font-size: 13px; }
+.kpi-tile dd { margin: 4px 0 0; }
+.kpi-value { font-size: 24px; font-weight: 800; color: #0b1f3a; }
+.kpi-note { display: block; font-size: 12px; margin-top: 4px; }
+/* AGN-018: the agency board under the page title, and its loading placeholder (same tile footprint, so nothing shifts). */
+.agent-dashboard { margin-bottom: 24px; }
+.kpi-skeleton { min-height: 72px; background: #f4f7fb; }
+/* Browser QA18-03: the global `a` reset makes links look like body text; the tile links read as links (colour + underline). */
+.kpi-link { color: var(--blue); text-decoration: underline; text-underline-offset: 2px; font-size: 14px; font-weight: 600; }
+/* QA18-04: the shared .table min-width (650px) hid a two-column table's numbers on phones; compact tables size to their content. */
+.table.compact { min-width: 0; }
+/* QA18-04: the staff table has too many columns for a phone -- each member becomes a block, every number labelled. */
+@media (max-width: 640px) {
+  .table.stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+  .table.stack tr { display: block; border-bottom: 1px solid #edf1f6; padding: 8px 0; }
+  .table.stack th[scope="row"], .table.stack td { display: flex; justify-content: space-between; gap: 12px; border: 0; padding: 4px 12px; position: static; }
+  .table.stack td::before { content: attr(data-label); color: var(--muted); }
+  .table.stack td.stack-empty { display: none; }
+}
+/* position:relative makes the scroll box the containing block of the .sr-only captions inside it, so they are clipped
+   instead of widening the page on phones (same fix as .table-wrap, FV-03). */
+.table-scroll { overflow-x: auto; max-width: 100%; position: relative; }
+.table-scroll table th:first-child, .table-scroll table td:first-child { position: sticky; left: 0; background: #fff; }
+/* QA-016-02: the report forms land on these sections; keep their heading clear of the sticky portal header. */
+#development, #scorecards, #students { scroll-margin-top: 88px; }
+/* QA-016-04: a row header is a label (a student, a metric), not a column heading -- normal case at body size. */
+.table-scroll tbody th[scope="row"] { text-transform: none; letter-spacing: normal; font-size: 14px; color: #0b1f3a; font-weight: 600; }
+.table-scroll tbody th[scope="row"] .kpi-note { font-weight: 400; }
+.state-badge { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.analytics-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin: 12px 0; }
+.pager { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 12px; }
+/* AGN-020 -- agency Reports: a horizontal tab strip (the .s360-tab look; scrolls sideways, never widens the page), a result line with
+   the CSV beside it (wraps on phones), right-aligned tabular numbers, and a dimmed table while a newer report loads. */
+.report-tablist { display: flex; gap: 4px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; padding-bottom: 4px; margin: 8px 0 12px; border-bottom: 1px solid var(--line); }
+.report-tablist .s360-tab { flex: 0 0 auto; scroll-snap-align: start; white-space: nowrap; }
+.report-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin: 12px 0 8px; }
+.report-skeleton { min-height: 36px; margin-top: 8px; border-radius: 8px; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.report-busy { opacity: .55; transition: opacity .15s; }
+@media (prefers-reduced-motion: reduce) { .report-busy { transition: none; } .report-tablist { scroll-behavior: auto; } }
+/* QA20-06: a date stays on one line; the "scroll sideways" hint shows only where a wide report can overflow (not on a wide screen, and
+   not on a phone, where rows stack). */
+.nowrap { white-space: nowrap; }
+@media (min-width: 1600px), (max-width: 640px) { .wide-hint { display: none; } }
+/* QA20-01: overflow does not apply to a table row group, so the visually hidden header row of a stacked table still widened it past
+   the screen and pushed the values off the right edge. As a block it is clipped; long unbroken values may wrap. */
+@media (max-width: 640px) {
+  .table.stack thead { display: block; }
+  .table.stack th[scope="row"], .table.stack td { overflow-wrap: anywhere; }
+}
+
+/* ENH-031 -- SearchableSelect: the list opens under its input, scrolls inside itself, and never widens the page. */
+.combo-control { position: relative; }
+.combo-control > input { width: 100%; }
+.combo-list { position: absolute; top: 100%; left: 0; right: 0; z-index: 30; max-height: 18rem; overflow-y: auto; margin: 4px 0 0; padding: 4px; list-style: none; background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 24px rgba(15, 23, 42, .12); }
+.combo-list[hidden] { display: none; }
+.combo-list [role="option"] { padding: 8px 10px; border-radius: 8px; cursor: pointer; overflow-wrap: anywhere; }
+.combo-list [role="option"][aria-selected="true"], .combo-list [role="option"]:hover { background: #eef4fc; }
+.combo-status:empty { display: none; }
+
+/* ENH-017 Global Education pipeline (SCR-SCH-038) */
+.pipeline-page h1 { font-size: 28px; margin-bottom: 16px; }
+.pipeline-page .card h2 { font-size: 22px; } /* QA17-02: section headings sit below the 28px page title, above the 20px h3 */
+.pipeline-funnel { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 10px; }
+.pipeline-stage { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: baseline; }
+.pipeline-label { color: var(--ink); font-weight: 600; min-width: 0; }
+.pipeline-count { font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+.pipeline-track { grid-column: 1 / -1; height: 8px; border-radius: 99px; background: var(--soft); border: 1px solid var(--line); overflow: hidden; }
+.pipeline-fill { display: block; height: 100%; background: var(--blue); }
+
+/* ENH-015 (QA15-04): the report download card is a secondary action -- a section-sized heading, and no second
+   .portal-content padding between it and the report below it. */
+.report-downloads { padding-bottom: 0; }
+.report-downloads h2 { font-size: 22px; margin-bottom: 6px; }
+/* QA15-10: where the PDF's content can be read accessibly. Full width in the report cards; narrowed only in the parent's
+   button row, where it would otherwise widen the row (QA15-11). */
+.report-download .field-hint { margin-top: 6px; }
+.child-page-actions .report-download .field-hint { max-width: 42ch; }
+.portal-subnav{list-style:none;margin:0 0 4px;padding:0 0 0 12px;display:grid;gap:2px}.portal-subnav a{font-size:13px}
+/* AGN-008 QA8-04 (owner: every portal): the current page is visible, not only announced. White on the navy sidebar tinted 14% is
+   ~11:1; blue (#0755b9) on the mobile panel's soft background is ~6.5:1 -- both above 4.5:1. */
+.portal-nav a[aria-current="page"]{background:rgba(255,255,255,.14);color:#fff;font-weight:800;border-left:3px solid #7fb2ff;padding-left:9px}
+#portal-mobile-nav-panel a[aria-current="page"]{background:var(--soft);color:var(--blue);font-weight:800;border-left:3px solid var(--blue);padding-left:17px}
+.nav-loading{font-weight:500;opacity:.8;font-size:12px}
+/* AGN-017: the unread count on the agency's Notifications nav item (the existing .badge colours, compact in the sidebar). */
+.portal-nav .nav-badge{margin-left:8px;padding:1px 8px}
+/* bdm-006 QA6-06: the sticky sidebar is one viewport tall, so a full-page capture or print of a long page showed white below it.
+   Paint its 270 px grid column navy too (desktop only -- below 980 px the sidebar is the menu and .portal is a block). */
+@media(min-width:981px){.portal{background:linear-gradient(to right,var(--navy) 270px,#f4f7fb 270px)}}
+/* AGN-017 QA17-05: the unread count in the portal top bar, only while the sidebar is collapsed into the menu (same 980 px breakpoint). */
+.topbar-unread{display:none}
+@media(max-width:980px){.topbar-unread{display:inline-flex}}
+/* bdm-001 browser QA-15: once .action-grid is one column, the BDM list comes before the long create form, so an admin
+   looking for a BDM on a phone or tablet does not scroll past nine fields first. Desktop keeps the form first. */
+@media(max-width:980px){.action-grid > .bdm-list{order:-1}}
+/* AGN-015: student journey step tracker -- wraps on desktop, one step per row on phones (no horizontal scroll at 320px); the state
+   is always text, the glyph and border are decoration. */
+.jny-steps{list-style:none;display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px;padding:0}.jny-step{display:flex;align-items:center;gap:6px;min-width:0;border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;background:#fff}.jny-step[aria-current="step"]{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue)}.jny-glyph{width:1em;text-align:center;font-weight:800;color:var(--muted)}.jny-done .jny-glyph,.jny-not_required .jny-glyph{color:var(--green)}.jny-refused .jny-glyph,.jny-withdrawn .jny-glyph{color:var(--red)}.jny-name{font-weight:700;color:var(--ink)}.jny-state{color:var(--muted)}.jny-caption{margin:8px 0 4px;font-size:13px;font-weight:700;color:var(--ink);overflow-wrap:anywhere}
+@media(max-width:640px){.jny-steps{flex-direction:column}.jny-step{width:100%}}
+/* AGN-022 browser QA22-01: the agencies table has seven columns, which do not fit once the sidebar folds away (<=980px, tablets);
+   there it stacks like .table.stack does below 640px -- each agency a block, every number labelled (data-label). */
+@media (max-width: 980px) {
+  .table.stack-wide thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+  .table.stack-wide tr { display: block; border-bottom: 1px solid #edf1f6; padding: 8px 0; }
+  .table.stack-wide th[scope="row"], .table.stack-wide td { display: flex; justify-content: space-between; gap: 12px; border: 0; padding: 4px 12px; position: static; }
+  .table.stack-wide td::before { content: attr(data-label); color: var(--muted); }
+}
+/* QA22-10: on phones the agency's four figure tiles sit two per row instead of filling the first screen one per row. */
+@media (max-width: 640px) { .agent-network .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* bdm-004 QA4-03: on phones the pipeline's stage tiles sit two per row, so the organization list is not ~1,900 px down (QA22-10's rule). */
+@media (max-width: 640px) { .metric-grid.pipeline-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

@@ -1,9 +1,33 @@
 from datetime import date, datetime
+from decimal import Decimal
 from uuid import UUID, uuid4
 
-from sqlalchemy import JSON, Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, Uuid
+from sqlalchemy import (
+    JSON,
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    Date,
+    DateTime,
+    ForeignKey,
+    Identity,
+    Index,
+    Integer,
+    Numeric,
+    Sequence,
+    SmallInteger,
+    String,
+    Text,
+    UniqueConstraint,
+    Uuid,
+    false,
+    text,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
+
+from app.bdm_stages import FIRST_STAGE as BDM_FIRST_STAGE
+from app.bdm_stages import MANUAL_STAGES as BDM_MANUAL_STAGES
 
 
 class Base(DeclarativeBase):
@@ -38,6 +62,14 @@ class User(Base, TimestampMixin):
     role_assignments: Mapped[list["UserRoleAssignment"]] = relationship(
         foreign_keys="UserRoleAssignment.user_id", viewonly=True, order_by="UserRoleAssignment.assigned_at"
     )
+    # AGN-001: eager-loaded (with `.org`) by `deps.get_current_user` for every request; `lazy="raise"` makes any other
+    # unloaded access fail loudly instead of an async lazy-load crash.
+    agent_membership: Mapped["AgentOrgMember | None"] = relationship(
+        foreign_keys="AgentOrgMember.user_id", viewonly=True, uselist=False, lazy="raise"
+    )
+    # AGN-002 (DEC-SCOPE-040 S3, spec §5): copied into every token as `sv`; a staff reset or deactivation increments it, which ends
+    # every session issued before. Tokens without the claim count as 0.
+    session_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
 
 
 class UserRoleAssignment(Base, TimestampMixin):
@@ -415,14 +447,11 @@ class OverseasCourse(Base, TimestampMixin):
 class OverseasApplication(Base, TimestampMixin):
     __tablename__ = "overseas_applications"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
-    # Nullable as of `DEC-SCOPE-018` (2026-09-15): a bridged application created on behalf
-    # of a School-affiliated student (`DEC-ROLE-004` -- no login, no `users` row) has
-    # school_student_id set instead. Application code enforces "exactly one of the two is
-    # set" at every write site; this is not a DB CHECK constraint, matching this table's
-    # existing style of app-level invariants over DB-level ones. Every pre-existing query
-    # that inner-joins `User` on this column is unaffected -- a bridged row (student_id
-    # NULL) simply never matches those joins, which is correct: those views are for real
-    # logged-in overseas students/agents, not bridged School students.
+    # Owner (DEC-SCOPE-018, AGN-008 DEC-SCOPE-050). Exactly one of `school_student_id` or the agent pair is set, enforced at every
+    # write site (app-level, this table's style). A School-bridged row has `school_student_id` only. An agency's application has
+    # `agent_student_id` (its record, AGN-004), plus `student_id` when that student has a login. Rows made before AGN-008 have
+    # `student_id` only. Shared lists join the owner with `services.agent_applications.with_owner` (outer joins), so a student with
+    # no login is listed rather than dropped; School-bridged rows stay out of them, as before.
     student_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
     school_student_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), nullable=True, index=True)
     university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id"), index=True)
@@ -435,6 +464,30 @@ class OverseasApplication(Base, TimestampMixin):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     application_reference: Mapped[str | None] = mapped_column(String(140), nullable=True)
     offer_letter_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    agent_student_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_students.id"), nullable=True, index=True)
+    submitted_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    application_deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
+    offer_deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # AGN-013 (DEC-SCOPE-054): recorded by an agency Master at enrollment (PUT .../enrollment); NULL until then.
+    enrollment_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    university_student_id: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    enrollment_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # AGN-010 (DEC-SCOPE-056): the current offer, recorded by the agency. `offer_deadline` above is its deadline (O2); the letter is an
+    # AGN-009 document (O3). `use_alter`: student_documents.application_id points back at this table.
+    offer_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    offer_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    offer_conditions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    offer_document_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("student_documents.id", ondelete="SET NULL", use_alter=True, name="fk_overseas_applications_offer_document_id"), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint("offer_type IS NULL OR offer_type IN ('conditional', 'unconditional')", name="ck_overseas_applications_offer_type"),
+        CheckConstraint("(offer_type IS NULL) = (offer_date IS NULL)", name="ck_overseas_applications_offer_dated"),
+        # AGN-017 (DEC-SCOPE-059): the daily reminder job reads agency deadlines through these partial indexes (migration 0065).
+        Index("ix_overseas_applications_agent_application_deadline", "application_deadline", postgresql_where=text("agent_student_id IS NOT NULL")),
+        Index("ix_overseas_applications_agent_offer_deadline", "offer_deadline", postgresql_where=text("agent_student_id IS NOT NULL")),
+    )
 
 
 class ApplicationStatusHistory(Base, TimestampMixin):
@@ -449,9 +502,13 @@ class ApplicationStatusHistory(Base, TimestampMixin):
 
 
 class StudentDocument(Base, TimestampMixin):
+    # Owner (AGN-009, DEC-SCOPE-052): a student's account (`student_id`), an agency record (`agent_student_id`, AGN-004), or both
+    # -- an agency upload for a student with a login sets both (the AGN-008 pattern). Rows made before AGN-009 have `student_id`
+    # only. `file_url` is a server-generated key (`agent-documents/...`) for agency uploads; agent lists never return it.
     __tablename__ = "student_documents"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
-    student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
+    student_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True, nullable=True)
+    agent_student_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_students.id"), index=True, nullable=True)
     application_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("overseas_applications.id"), nullable=True)
     document_type: Mapped[str] = mapped_column(String(80))
     file_url: Mapped[str] = mapped_column(String(500))
@@ -461,6 +518,59 @@ class StudentDocument(Base, TimestampMixin):
     original_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
     content_type: Mapped[str | None] = mapped_column(String(120), nullable=True)
     file_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    document_label: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    uploaded_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    # One document fulfils a request (G5); the unique constraint is the database-level guard against two concurrent uploads.
+    fulfils_request_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("document_requests.id"), nullable=True)
+    __table_args__ = (
+        CheckConstraint("student_id IS NOT NULL OR agent_student_id IS NOT NULL", name="ck_student_documents_owner"),
+        UniqueConstraint("fulfils_request_id", name="uq_student_documents_fulfils_request_id"),
+    )
+
+
+class DocumentRequest(Base, TimestampMixin):
+    """AGN-009 (DEC-SCOPE-052 G4/G5): an agency's request for an additional document from one of its students. Open until an upload
+    made against it fulfils it, or a member cancels it."""
+
+    __tablename__ = "document_requests"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    agent_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_students.id"))
+    document_type: Mapped[str] = mapped_column(String(80))
+    document_label: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="open")
+    requested_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    closed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    __table_args__ = (
+        CheckConstraint("status IN ('open', 'fulfilled', 'cancelled')", name="ck_document_requests_status"),
+        Index("ix_document_requests_student_status", "agent_student_id", "status"),
+    )
+
+
+class DocumentEvent(Base):
+    """AGN-009 (DEC-SCOPE-052): a document's history, one row per event, append-only. `seq` orders events written in one
+    transaction (they share `now()`). `file_key` is the replaced object's key; it is never returned by the API."""
+
+    __tablename__ = "document_events"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    seq: Mapped[int] = mapped_column(BigInteger, Identity(), unique=True)
+    document_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("student_documents.id"), nullable=True, index=True)
+    request_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("document_requests.id"), nullable=True, index=True)
+    event: Mapped[str] = mapped_column(String(30))
+    actor_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    from_status: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    to_status: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    file_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (
+        CheckConstraint("document_id IS NOT NULL OR request_id IS NOT NULL", name="ck_document_events_subject"),
+        CheckConstraint(
+            "event IN ('uploaded', 'replaced', 'verified', 'rejected', 'changes_required', 'requested', 'fulfilled', 'cancelled', 'downloaded')",
+            name="ck_document_events_event",
+        ),
+    )
 
 
 class ProfileDocument(Base, TimestampMixin):
@@ -480,12 +590,19 @@ class ProfileDocument(Base, TimestampMixin):
 
 class VisaCase(Base, TimestampMixin):
     __tablename__ = "visa_cases"
+    __table_args__ = (CheckConstraint("decision IN ('approved', 'refused', 'withdrawn')", name="ck_visa_cases_decision"),)
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("overseas_applications.id"), index=True)
     status: Mapped[str] = mapped_column(String(50), default="checklist")
     appointment_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     checklist: Mapped[list] = mapped_column(JSON, default=list)
     tracking_reference: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # AGN-012 (DEC-SCOPE-057; migration 0063): written only by the agency visa routes; the counselor/student routes neither read nor
+    # write them (V8). `decision` is the authority's outcome as the agency records it, final once set (V2).
+    visa_application_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    interview_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    decision: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Scholarship(Base, TimestampMixin):
@@ -607,7 +724,19 @@ class PaymentWebhookEvent(Base, TimestampMixin):
 
 
 class Enquiry(Base, TimestampMixin):
+    """bdm-017 (DEC-SCOPE-072): a BDM-entered lead carries its organization and BDM (both NULL for website and manual enquiries);
+    a division admin's explicit conversion links it to one student account (`uq_enquiries_converted_user`: one lead per user)."""
+
     __tablename__ = "enquiries"
+    __table_args__ = (
+        CheckConstraint("(bdm_organization_id IS NULL) = (bdm_user_id IS NULL)", name="ck_enquiries_bdm_attribution"),
+        CheckConstraint(
+            "(converted_user_id IS NULL) = (converted_at IS NULL) AND (converted_user_id IS NULL) = (converted_by_user_id IS NULL)",
+            name="ck_enquiries_conversion",
+        ),
+        Index("ix_enquiries_bdm_org_created", "bdm_organization_id", "created_at"),
+        Index("uq_enquiries_converted_user", "converted_user_id", unique=True, postgresql_where=text("converted_user_id IS NOT NULL")),
+    )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     division: Mapped[str] = mapped_column(String(30), index=True)
     name: Mapped[str] = mapped_column(String(160))
@@ -620,6 +749,11 @@ class Enquiry(Base, TimestampMixin):
     owner_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     crm_sync_status: Mapped[str] = mapped_column(String(40), default="pending")
     metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    bdm_organization_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"), nullable=True)
+    bdm_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    converted_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    converted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    converted_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
 
 
 class ContentPage(Base, TimestampMixin):
@@ -699,16 +833,21 @@ class RealProject(Base, TimestampMixin):
 
 class Notification(Base, TimestampMixin):
     __tablename__ = "notifications"
+    # AGN-017 (DEC-SCOPE-059 N6): only scheduled reminders set `dedupe_key`; the partial unique index makes a repeat run a no-op.
+    __table_args__ = (Index("ux_notifications_dedupe_key", "dedupe_key", unique=True, postgresql_where=text("dedupe_key IS NOT NULL")),)
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
     title: Mapped[str] = mapped_column(String(180))
     body: Mapped[str] = mapped_column(Text)
     read: Mapped[bool] = mapped_column(Boolean, default=False)
     action_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    dedupe_key: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
 
 class NotificationDelivery(Base, TimestampMixin):
     __tablename__ = "notification_deliveries"
+    # ENH-014: the stale-delivery sweeper filters on (status, updated_at).
+    __table_args__ = (Index("ix_notification_deliveries_status_updated_at", "status", "updated_at"),)
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     notification_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("notifications.id", ondelete="CASCADE"), index=True)
     channel: Mapped[str] = mapped_column(String(30))
@@ -717,6 +856,21 @@ class NotificationDelivery(Base, TimestampMixin):
     provider_reference: Mapped[str | None] = mapped_column(String(200), nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # ENH-014: what the worker needs to render the email exactly as the old inline path did --
+    # {"kind": "school", "school_name": ...} for the School path, null for the generic path and every pre-ENH-014 row.
+    context: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
+class NotificationPreference(Base, TimestampMixin):
+    """ENH-014 (DEC-NOT-001 2026-09-30, D4): opt-in to WhatsApp and SMS. No row means both off; email and in-app are
+    always on and are not stored. The *_opted_in_at timestamps are the consent evidence (with the audit log)."""
+
+    __tablename__ = "notification_preferences"
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    whatsapp_opt_in: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    sms_opt_in: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    whatsapp_opted_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sms_opted_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class SupportTicket(Base, TimestampMixin):
@@ -789,6 +943,8 @@ class DataSubjectRequest(Base, TimestampMixin):
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
+    # AGN-015 (DEC-SCOPE-061, migration 0067): one entity's history -- the student journey timeline reads audit rows by entity.
+    __table_args__ = (Index("ix_audit_logs_entity", "entity_type", "entity_id", "created_at"),)
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
     action: Mapped[str] = mapped_column(String(120), index=True)
@@ -797,6 +953,423 @@ class AuditLog(Base):
     outcome: Mapped[str] = mapped_column(String(30), default="recorded")
     metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class BdmProfile(Base, TimestampMixin):
+    """bdm-001 (DEC-SCOPE-055): a BDM's §1 profile, 1:1 with a `bdm` user. Name, email, mobile and active stay on `users`.
+    The reporting manager must be an active `bdm_manager` -- enforced in `services/bdm.py` under a row lock (no cross-table CHECK)."""
+
+    __tablename__ = "bdm_profiles"
+    __table_args__ = (
+        UniqueConstraint("user_id", name="uq_bdm_profiles_user"),
+        CheckConstraint("bdm_type IN ('agent', 'school', 'college')", name="ck_bdm_profiles_type"),
+        Index("uq_bdm_profiles_employee_id", text("lower(employee_id)"), unique=True),
+        Index("ix_bdm_profiles_reporting_manager", "reporting_manager_user_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    bdm_type: Mapped[str] = mapped_column(String(20))
+    employee_id: Mapped[str] = mapped_column(String(40))
+    designation: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    department: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    territory: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    reporting_manager_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+
+# bdm-010 (DEC-SCOPE-063, T6): TRV-000123 codes. On the metadata so 0001's create_all makes it on a fresh database; 0068 makes it
+# on an upgraded one. A rolled-back create skips a number; codes stay unique and increasing.
+BDM_TRIP_CODE_SEQ = Sequence("bdm_trip_code_seq", metadata=Base.metadata)
+
+
+class BdmTrip(Base, TimestampMixin):
+    """bdm-010 (DEC-SCOPE-063): one BDM trip (§3). Organization and appointment time are not stored -- bdm-011 links appointments.
+    Actual cost is never stored: it is the sum of `bdm_trip_expenses` (D15). Rules live in `services/bdm_travel.py`."""
+
+    __tablename__ = "bdm_trips"
+    __table_args__ = (
+        UniqueConstraint("code", name="uq_bdm_trips_code"),
+        CheckConstraint("return_date >= travel_date", name="ck_bdm_trips_dates"),
+        CheckConstraint("mode IN ('flight', 'train', 'bus', 'car', 'cab', 'local')", name="ck_bdm_trips_mode"),
+        CheckConstraint("estimated_cost >= 0", name="ck_bdm_trips_estimated_cost"),
+        CheckConstraint("currency = 'INR'", name="ck_bdm_trips_currency"),
+        CheckConstraint("approval_status IN ('draft', 'submitted', 'approved', 'rejected')", name="ck_bdm_trips_approval_status"),
+        CheckConstraint("travel_status IN ('planned', 'in_progress', 'completed', 'cancelled')", name="ck_bdm_trips_travel_status"),
+        CheckConstraint("travel_status IN ('planned', 'cancelled') OR approval_status = 'approved'", name="ck_bdm_trips_status_pair"),
+        Index("ix_bdm_trips_bdm_travel_date", "bdm_user_id", "travel_date"),
+        Index("ix_bdm_trips_submitted", "bdm_user_id", postgresql_where=text("approval_status = 'submitted'")),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    code: Mapped[str] = mapped_column(String(20))
+    bdm_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    travel_date: Mapped[date] = mapped_column(Date)
+    return_date: Mapped[date] = mapped_column(Date)
+    from_place: Mapped[str] = mapped_column(String(120))
+    to_place: Mapped[str] = mapped_column(String(120))
+    purpose: Mapped[str] = mapped_column(Text)
+    mode: Mapped[str] = mapped_column(String(10))
+    accommodation_required: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    estimated_cost: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    currency: Mapped[str] = mapped_column(String(3), default="INR", server_default="INR")
+    approval_status: Mapped[str] = mapped_column(String(12), default="draft", server_default="draft")
+    travel_status: Mapped[str] = mapped_column(String(12), default="planned", server_default="planned")
+    rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decided_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class BdmTripExpense(Base, TimestampMixin):
+    """bdm-010 (T7): one itemized INR expense line on an approved trip. No receipt (owner, 2026-10-03)."""
+
+    __tablename__ = "bdm_trip_expenses"
+    __table_args__ = (
+        CheckConstraint("category IN ('travel', 'stay', 'food', 'local', 'other')", name="ck_bdm_trip_expenses_category"),
+        CheckConstraint("amount > 0", name="ck_bdm_trip_expenses_amount"),
+        Index("ix_bdm_trip_expenses_trip", "trip_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    trip_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_trips.id"))
+    category: Mapped[str] = mapped_column(String(10))
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    expense_date: Mapped[date] = mapped_column(Date)
+    note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+BDM_ORG_TYPES = ("college", "university", "agent", "school", "corporate", "training_institute", "other")
+BDM_CONTACT_ROLES = ("principal", "dean", "hod", "placement_officer", "counselor", "management", "owner", "other")
+# bdm-003 (DEC-SCOPE-065, spec §4): the type-specific profile. `board` keeps ENH-009's exact values so bdm-018 can copy it onto
+# `schools.board`; the other enums are lower snake case like `org_type`. Grades: -2 Nursery, -1 LKG, 0 UKG, then 1-12.
+BDM_ORG_SOURCES = ("referral", "website", "event", "cold_call", "walk_in", "other")
+BDM_SCHOOL_BOARDS = ("CBSE", "ICSE", "State", "IB", "Other")
+BDM_SCHOOL_TYPES = ("private", "government", "aided", "international", "other")
+BDM_COLLEGE_TYPES = ("engineering", "arts_science", "management", "medical", "polytechnic", "other")
+BDM_GRADE_MIN, BDM_GRADE_MAX = -2, 12
+BDM_STAFF_MAX = 100_000
+BDM_PROFILE_GROUP = {"agent": "agent", "school": "school", "college": "college", "university": "college"}
+BDM_PROFILE_FIELDS = {
+    "agent": ("country", "territory", "source", "staff_count"),
+    "school": ("board", "school_type", "grade_from", "grade_to"),
+    "college": ("affiliation", "college_type", "courses"),
+}
+# bdm-002: on the metadata so 0001's create_all builds it for a fresh database; 0066 creates it IF NOT EXISTS.
+BDM_ORGANIZATION_CODE_SEQ = Sequence("bdm_organization_code_seq", metadata=Base.metadata)
+
+
+def _in_list(column: str, values: tuple[str, ...]) -> str:
+    return f"{column} IN ({', '.join(repr(v) for v in values)})"
+
+
+def _group_only(group: str) -> str:
+    """A group's columns stay NULL unless org_type belongs to the group (spec §4.2) -- the backstop under check_profile."""
+    types = tuple(t for t, g in BDM_PROFILE_GROUP.items() if g == group)
+    return f"{_in_list('org_type', types)} OR ({' AND '.join(f'{c} IS NULL' for c in BDM_PROFILE_FIELDS[group])})"
+
+
+def _grade(column: str) -> str:
+    return f"{column} IS NULL OR {column} BETWEEN {BDM_GRADE_MIN} AND {BDM_GRADE_MAX}"
+
+
+BDM_PROFILE_CHECKS = {  # migration 0069 repeats these strings; test_bdm_003_migration asserts they stay identical
+    "ck_bdm_organizations_source": f"source IS NULL OR {_in_list('source', BDM_ORG_SOURCES)}",
+    "ck_bdm_organizations_staff_count": f"staff_count IS NULL OR staff_count BETWEEN 0 AND {BDM_STAFF_MAX}",
+    "ck_bdm_organizations_board": f"board IS NULL OR {_in_list('board', BDM_SCHOOL_BOARDS)}",
+    "ck_bdm_organizations_school_type": f"school_type IS NULL OR {_in_list('school_type', BDM_SCHOOL_TYPES)}",
+    "ck_bdm_organizations_grades": f"({_grade('grade_from')}) AND ({_grade('grade_to')}) AND (grade_from IS NULL OR grade_to IS NULL OR grade_from <= grade_to)",
+    "ck_bdm_organizations_college_type": f"college_type IS NULL OR {_in_list('college_type', BDM_COLLEGE_TYPES)}",
+    "ck_bdm_organizations_agent_profile": _group_only("agent"),
+    "ck_bdm_organizations_school_profile": _group_only("school"),
+    "ck_bdm_organizations_college_profile": _group_only("college"),
+}
+# bdm-004 (DEC-SCOPE-071, spec §5.1): only a manual stage of the organization's own pipeline is stored (S3: live stages arrive with
+# bdm-018 / bdm-019, which widen this CHECK). Lost is a flag with a reason on top of the stage (S5). Migration 0072 repeats these
+# strings; test_bdm_004_migration asserts they stay identical.
+BDM_PIPELINE_CHECKS = {
+    "ck_bdm_organizations_pipeline_stage": " OR ".join(
+        f"(bdm_type = '{bdm_type}' AND {_in_list('pipeline_stage', stages)})" for bdm_type, stages in BDM_MANUAL_STAGES.items()
+    ),
+    "ck_bdm_organizations_lost": "(lost_at IS NULL) = (lost_reason IS NULL)",
+}
+BDM_PIPELINE_EVENT_KINDS = ("move", "lost", "revived")
+
+
+class BdmOrganization(Base, TimestampMixin):
+    """bdm-002 (DEC-SCOPE-060): an institution a BDM meets (§9). `bdm_type` is the owning module (Q-03), copied from the creator and
+    never changed; `name_key`/`city_key` are the server-normalized duplicate key (Q-18). Never hard-deleted: archived instead (C5).
+    bdm-003 (DEC-SCOPE-065): a common address plus one typed profile group per org_type (BDM_PROFILE_FIELDS); a group's columns are
+    NULL for every other type.
+    bdm-004 (DEC-SCOPE-071): pipeline_stage (a manual stage of bdm_type's pipeline) and the Lost flag."""
+
+    __tablename__ = "bdm_organizations"
+    __table_args__ = (
+        UniqueConstraint("code", name="uq_bdm_organizations_code"),
+        CheckConstraint(_in_list("org_type", BDM_ORG_TYPES), name="ck_bdm_organizations_org_type"),
+        CheckConstraint("bdm_type IN ('agent', 'school', 'college')", name="ck_bdm_organizations_bdm_type"),
+        CheckConstraint("student_count IS NULL OR student_count >= 0", name="ck_bdm_organizations_student_count"),
+        *(CheckConstraint(sql, name=name) for name, sql in BDM_PROFILE_CHECKS.items()),
+        *(CheckConstraint(sql, name=name) for name, sql in BDM_PIPELINE_CHECKS.items()),
+        Index("ix_bdm_organizations_type_assignee", "bdm_type", "assigned_bdm_user_id"),
+        Index("ix_bdm_organizations_duplicate_key", "bdm_type", "name_key", "city_key"),
+        Index("ix_bdm_organizations_type_stage", "bdm_type", "pipeline_stage"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    code: Mapped[str] = mapped_column(String(20))
+    org_type: Mapped[str] = mapped_column(String(30))
+    bdm_type: Mapped[str] = mapped_column(String(20))
+    name: Mapped[str] = mapped_column(String(200))
+    name_key: Mapped[str] = mapped_column(String(200))
+    city: Mapped[str] = mapped_column(String(120))
+    city_key: Mapped[str] = mapped_column(String(120))
+    state: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    website: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    existing_partner: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    courses_interested: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    student_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    address: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    country: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    territory: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    source: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    staff_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    board: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    school_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    grade_from: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    grade_to: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    affiliation: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    college_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    courses: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    assigned_bdm_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    pipeline_stage: Mapped[str] = mapped_column(String(40), default=BDM_FIRST_STAGE, server_default=BDM_FIRST_STAGE)
+    lost_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    lost_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+
+class BdmOrganizationContact(Base, TimestampMixin):
+    """bdm-002: a named person at an organization (C10: the primary contact is §9's Contact Person). Data only (D29). `position` keeps
+    insertion order -- contacts created in one request share created_at."""
+
+    __tablename__ = "bdm_organization_contacts"
+    __table_args__ = (
+        CheckConstraint(f"role IS NULL OR {_in_list('role', BDM_CONTACT_ROLES)}", name="ck_bdm_organization_contacts_role"),
+        Index("ix_bdm_organization_contacts_org", "organization_id"),
+        Index("uq_bdm_organization_contacts_primary", "organization_id", unique=True, postgresql_where=text("is_primary")),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    organization_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"))
+    position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    name: Mapped[str] = mapped_column(String(200))
+    designation: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    role: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_primary: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+
+
+class BdmPipelineEvent(Base):
+    """bdm-004 (DEC-SCOPE-071, spec §5.2): one row per stage move, Lost or Revive. Append-only. `from_stage` = `to_stage` for lost /
+    revived; `note` is the move note or the required reason. No stage CHECK: history must survive a future catalogue change.
+    `position` orders rows created in one transaction."""
+
+    __tablename__ = "bdm_pipeline_events"
+    __table_args__ = (
+        CheckConstraint(_in_list("kind", BDM_PIPELINE_EVENT_KINDS), name="ck_bdm_pipeline_events_kind"),
+        CheckConstraint("kind = 'move' OR note IS NOT NULL", name="ck_bdm_pipeline_events_note"),
+        Index("ix_bdm_pipeline_events_org", "organization_id", "position"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    organization_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"))
+    actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    kind: Mapped[str] = mapped_column(String(10))
+    from_stage: Mapped[str] = mapped_column(String(40))
+    to_stage: Mapped[str] = mapped_column(String(40))
+    note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# bdm-006 (DEC-SCOPE-068, spec §4.1): appointment catalogues. Stable keys; the CHECKs accept every key, the service validates each value
+# against the owner's bdm_type (the database cannot see it).
+BDM_APPOINTMENT_STATUSES = ("scheduled", "confirmed", "rescheduled", "completed", "cancelled", "no_show")
+BDM_APPOINTMENT_OPEN = ("scheduled", "confirmed", "rescheduled")
+BDM_APPOINTMENT_COMMON_TYPES = (
+    "college_meeting", "agent_meeting", "school_meeting", "mou_discussion", "student_institution_meeting", "seminar_workshop",
+    "corporate_meeting", "other",
+)
+BDM_APPOINTMENT_MODULE_TYPES = {
+    "agent": (
+        "agent_meeting", "new_agent_presentation", "product_training", "agreement_discussion", "performance_review", "agent_onboarding",
+        "agent_visit", "commission_discussion", "business_review",
+    ),
+    "school": (
+        "principal_meeting", "management_meeting", "career_guidance_presentation", "psychometric_presentation",
+        "profile_building_presentation", "parent_orientation", "teacher_orientation", "seminar", "workshop", "mou_discussion",
+        "renewal_meeting",
+    ),
+    "college": (
+        "principal_meeting", "hod_meeting", "placement_cell_meeting", "course_promotion", "it_training_presentation", "student_seminar",
+        "workshop", "internship_discussion", "placement_discussion", "mou_discussion", "corporate_connect", "faculty_meeting",
+    ),
+}
+BDM_APPOINTMENT_ALL_TYPES = tuple(dict.fromkeys(BDM_APPOINTMENT_COMMON_TYPES + sum(BDM_APPOINTMENT_MODULE_TYPES.values(), ())))
+BDM_APPOINTMENT_COMMON_OUTCOMES = (
+    "interested", "mou_discussion_required", "student_leads_expected", "course_promotion_interested", "follow_up_required",
+    "commercial_discussion", "not_interested", "reschedule", "other",
+)
+BDM_APPOINTMENT_AGENT_OUTCOMES = (
+    "interested", "agreement_required", "product_training_required", "follow_up", "documents_required", "onboarding_required",
+    "active_business_expected", "not_interested",
+)
+BDM_APPOINTMENT_ALL_OUTCOMES = tuple(dict.fromkeys(BDM_APPOINTMENT_COMMON_OUTCOMES + BDM_APPOINTMENT_AGENT_OUTCOMES))
+# On the metadata so 0001's create_all builds it for a fresh database; 0070 creates it IF NOT EXISTS.
+BDM_APPOINTMENT_CODE_SEQ = Sequence("bdm_appointment_code_seq", metadata=Base.metadata)
+
+
+class BdmAppointment(Base, TimestampMixin):
+    """bdm-006 (DEC-SCOPE-068): a BDM's meeting at an organization (§2). The contact is copied at booking (A5: the copy outlives a contact
+    delete). Never deleted: cancelled instead. Not the legacy `Appointment` (overseas counselling slots)."""
+
+    __tablename__ = "bdm_appointments"
+    __table_args__ = (
+        UniqueConstraint("code", name="uq_bdm_appointments_code"),
+        CheckConstraint(_in_list("status", BDM_APPOINTMENT_STATUSES), name="ck_bdm_appointments_status"),
+        CheckConstraint(_in_list("appointment_type", BDM_APPOINTMENT_ALL_TYPES), name="ck_bdm_appointments_type"),
+        CheckConstraint(f"outcome IS NULL OR {_in_list('outcome', BDM_APPOINTMENT_ALL_OUTCOMES)}", name="ck_bdm_appointments_outcome"),
+        CheckConstraint("(status = 'completed') = (outcome IS NOT NULL)", name="ck_bdm_appointments_outcome_completed"),
+        CheckConstraint("next_follow_up_on IS NULL OR status = 'completed'", name="ck_bdm_appointments_follow_up"),
+        CheckConstraint("duration_minutes BETWEEN 15 AND 720", name="ck_bdm_appointments_duration"),
+        CheckConstraint("expected_leads IS NULL OR expected_leads >= 0", name="ck_bdm_appointments_expected_leads"),
+        CheckConstraint("expected_revenue IS NULL OR expected_revenue >= 0", name="ck_bdm_appointments_expected_revenue"),
+        Index("ix_bdm_appointments_bdm_starts", "bdm_user_id", "starts_at"),
+        Index("ix_bdm_appointments_org_starts", "organization_id", "starts_at"),
+        Index("ix_bdm_appointments_contact", "contact_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    code: Mapped[str] = mapped_column(String(20))
+    bdm_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    organization_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"))
+    contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organization_contacts.id", ondelete="SET NULL"), nullable=True)
+    contact_name: Mapped[str] = mapped_column(String(200))
+    contact_designation: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    contact_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    contact_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    duration_minutes: Mapped[int] = mapped_column(Integer, default=60, server_default=text("60"))
+    appointment_type: Mapped[str] = mapped_column(String(40))
+    location: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    purpose: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    remarks: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="scheduled", server_default=text("'scheduled'"))
+    outcome: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    next_follow_up_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    expected_leads: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    expected_revenue: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+
+
+class BdmAppointmentEvent(Base):
+    """bdm-006: one row per status transition (and creation: from_status NULL). Append-only. `position` orders rows created in one
+    transaction."""
+
+    __tablename__ = "bdm_appointment_events"
+    __table_args__ = (
+        CheckConstraint(_in_list("to_status", BDM_APPOINTMENT_STATUSES), name="ck_bdm_appointment_events_to_status"),
+        Index("ix_bdm_appointment_events_appointment", "appointment_id", "position"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    appointment_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_appointments.id", ondelete="RESTRICT"))
+    actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    from_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    to_status: Mapped[str] = mapped_column(String(20))
+    old_starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    new_starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+BDM_TASK_KINDS = ("follow_up", "task")
+BDM_TASK_SOURCES = ("appointment_outcome", "mou", "manual")
+BDM_TASK_STATUSES = ("open", "done", "cancelled")
+
+
+class BdmMeetingReport(Base, TimestampMixin):
+    """bdm-007 (DEC-SCOPE-070): the meeting report filed on completing an appointment (one per appointment). The outcome and next
+    follow-up date stay on the appointment. `legacy` rows were backfilled by 0072 for bdm-006 completions (outcome only, read-only)."""
+
+    __tablename__ = "bdm_meeting_reports"
+    __table_args__ = (
+        UniqueConstraint("appointment_id", name="uq_bdm_meeting_reports_appointment"),
+        CheckConstraint("legacy OR discussion IS NOT NULL", name="ck_bdm_meeting_reports_discussion"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    appointment_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_appointments.id", ondelete="RESTRICT"))
+    author_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    discussion: Mapped[str | None] = mapped_column(String(4000), nullable=True)
+    requirements: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    opportunity: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    next_action: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    responsible_person: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    legacy: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class BdmTask(Base, TimestampMixin):
+    """bdm-007 creates follow-ups (`source = appointment_outcome`, one per appointment); bdm-008 adds manual tasks, MoU follow-ups,
+    completion and the pages."""
+
+    __tablename__ = "bdm_tasks"
+    __table_args__ = (
+        UniqueConstraint("source_appointment_id", name="uq_bdm_tasks_source_appointment"),
+        CheckConstraint(_in_list("kind", BDM_TASK_KINDS), name="ck_bdm_tasks_kind"),
+        CheckConstraint(_in_list("source", BDM_TASK_SOURCES), name="ck_bdm_tasks_source"),
+        CheckConstraint(_in_list("status", BDM_TASK_STATUSES), name="ck_bdm_tasks_status"),
+        CheckConstraint("(source = 'appointment_outcome') = (source_appointment_id IS NOT NULL)", name="ck_bdm_tasks_source_link"),
+        CheckConstraint("(status = 'done') = (completed_at IS NOT NULL)", name="ck_bdm_tasks_completed"),
+        Index("ix_bdm_tasks_assignee_status_due", "assignee_user_id", "status", "due_on"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    kind: Mapped[str] = mapped_column(String(20))
+    title: Mapped[str] = mapped_column(String(200))
+    due_on: Mapped[date] = mapped_column(Date)
+    organization_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"), nullable=True)
+    source: Mapped[str] = mapped_column(String(30))
+    source_appointment_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_appointments.id", ondelete="RESTRICT"), nullable=True)
+    assignee_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    status: Mapped[str] = mapped_column(String(20), default="open", server_default=text("'open'"))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+BDM_ACTIVITY_CHANNELS = ("call", "whatsapp", "email", "visit", "meeting", "other")
+BDM_ACTIVITY_DIRECTIONAL = ("call", "whatsapp", "email")  # V6: these need a direction; the rest must have none
+
+
+class BdmActivity(Base, TimestampMixin):
+    """bdm-009 (DEC-SCOPE-069): one call, WhatsApp, email, visit, meeting or other contact a BDM logged by hand (D9; nothing is sent).
+    `contact_name` is the contact's name at save, kept when bdm-002 hard-deletes the contact (`contact_id` -> NULL)."""
+
+    __tablename__ = "bdm_activities"
+    __table_args__ = (
+        CheckConstraint(_in_list("channel", BDM_ACTIVITY_CHANNELS), name="ck_bdm_activities_channel"),
+        CheckConstraint("direction IS NULL OR direction IN ('outbound', 'inbound')", name="ck_bdm_activities_direction"),
+        CheckConstraint(f"({_in_list('channel', BDM_ACTIVITY_DIRECTIONAL)}) = (direction IS NOT NULL)", name="ck_bdm_activities_direction_channel"),
+        Index("ix_bdm_activities_bdm_user_id_occurred_at", "bdm_user_id", "occurred_at"),
+        Index("ix_bdm_activities_organization_id_occurred_at", "organization_id", "occurred_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    bdm_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    organization_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"))
+    contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organization_contacts.id", ondelete="SET NULL"), nullable=True)
+    contact_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    channel: Mapped[str] = mapped_column(String(20))
+    direction: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class LiveSession(Base, TimestampMixin):
@@ -820,12 +1393,74 @@ class LiveSession(Base, TimestampMixin):
 
 
 class AgentStudent(Base, TimestampMixin):
+    """AGT-002 link of an agent to a student with an account; AGN-004 (DEC-SCOPE-042) adds students with no login
+    (`student_id` NULL, identity on the row), assignment to a staff member, and archive. `agent_id` is the member who created
+    or linked the row; it fixes the agency (membership is permanent)."""
+
     __tablename__ = "agent_students"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     agent_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
-    student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
+    student_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True, nullable=True)
     status: Mapped[str] = mapped_column(String(30), default="active")
-    __table_args__ = (UniqueConstraint("agent_id", "student_id", name="uq_agent_student"),)
+    full_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    phone_digits: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
+    highest_qualification: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    institution: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    graduation_year: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    preferred_country: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    preferred_course: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    preferred_intake: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    assigned_member_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_org_members.id"), nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    archived_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    __table_args__ = (
+        UniqueConstraint("agent_id", "student_id", name="uq_agent_student"),
+        CheckConstraint("student_id IS NOT NULL OR full_name IS NOT NULL", name="ck_agent_students_identity"),
+        CheckConstraint("status IN ('active', 'archived')", name="ck_agent_students_status"),
+        Index("ix_agent_students_agent_status", "agent_id", "status"),
+        Index("ix_agent_students_agent_phone_digits", "agent_id", "phone_digits"),
+        Index("ix_agent_students_assigned_member", "assigned_member_id"),
+    )
+
+
+COUNSELING_CURRENCIES = ("INR", "USD", "GBP", "EUR", "CAD", "AUD", "NZD")  # AGN-006 C2; schemas.CounselingCurrency mirrors it
+
+
+class AgentStudentCounseling(Base, TimestampMixin):
+    """AGN-006 (DEC-SCOPE-048, EVID-015 §5 Step 2): one counseling record per agency student with no login. Replaced whole on every
+    save (C1); its history is the audit log. `completed_at`/`completed_by_user_id` are stamped by the server (C5)."""
+
+    __tablename__ = "agent_student_counseling"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    agent_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_students.id"))
+    counseling_completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    career_interest: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    course_preference: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    country_preference: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    budget_amount: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    budget_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    __table_args__ = (
+        UniqueConstraint("agent_student_id", name="uq_agent_student_counseling_student"),
+        CheckConstraint(
+            "counseling_completed = (completed_at IS NOT NULL) AND (completed_at IS NULL) = (completed_by_user_id IS NULL)",
+            name="ck_agent_student_counseling_completed",
+        ),
+        CheckConstraint("budget_amount IS NULL OR budget_amount >= 0", name="ck_agent_student_counseling_budget"),
+        CheckConstraint(
+            "budget_currency IS NULL OR budget_currency IN (" + ", ".join(f"'{c}'" for c in COUNSELING_CURRENCIES) + ")",
+            name="ck_agent_student_counseling_currency",
+        ),
+        CheckConstraint("(budget_amount IS NULL) = (budget_currency IS NULL)", name="ck_agent_student_counseling_budget_pair"),
+    )
 
 
 class AgentCommission(Base, TimestampMixin):
@@ -842,6 +1477,167 @@ class AgentCommission(Base, TimestampMixin):
     payout_approved_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     payout_approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AgentOrg(Base, TimestampMixin):
+    """AGN-001 / DEC-SCOPE-038: an agent company -- a separate tenant. Its `status` is the agent approval gate
+    (`core.rbac.agent_denial_reason`); `master_seq` is the highest Master number ever issued, so codes are never reused.
+    `staff_seq` is the highest staff number ever issued (AGN-002)."""
+
+    __tablename__ = "agent_orgs"
+    __table_args__ = (
+        UniqueConstraint("prefix", name="uq_agent_orgs_prefix"),
+        CheckConstraint("status IN ('pending', 'active', 'rejected', 'suspended')", name="ck_agent_orgs_status"),
+        CheckConstraint("master_seq >= 0", name="ck_agent_orgs_master_seq"),
+        CheckConstraint("staff_seq >= 0", name="ck_agent_orgs_staff_seq"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(160))
+    prefix: Mapped[str] = mapped_column(String(8))
+    status: Mapped[str] = mapped_column(String(20), index=True)
+    master_seq: Mapped[int] = mapped_column(Integer, default=0)
+    staff_seq: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    status_changed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    status_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AgentOrgMember(Base, TimestampMixin):
+    """AGN-001: a user's membership of exactly one agent organisation, for good (`user_id` unique). AGN-002 adds `staff`
+    (DEC-SCOPE-040): Masters and staff are numbered separately (M001 and S001 coexist). AGN-003 adds two per-staff permission
+    flags (DEC-SCOPE-044)."""
+
+    __tablename__ = "agent_org_members"
+    __table_args__ = (
+        UniqueConstraint("user_id", name="uq_agent_org_members_user"),
+        UniqueConstraint("code", name="uq_agent_org_members_code"),
+        UniqueConstraint("org_id", "role", "seq", name="uq_agent_org_members_org_role_seq"),
+        CheckConstraint("role IN ('master', 'staff')", name="ck_agent_org_members_role"),
+        CheckConstraint("status IN ('active', 'deactivated')", name="ck_agent_org_members_status"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    org_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_orgs.id"), index=True)
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    role: Mapped[str] = mapped_column(String(20), default="master")
+    seq: Mapped[int] = mapped_column(Integer)
+    code: Mapped[str] = mapped_column(String(16))
+    status: Mapped[str] = mapped_column(String(20), default="active")
+    invited_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    deactivated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    deactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # AGN-003 (DEC-SCOPE-044 P1/P2): the two optional §6 rows for staff. Stored on every member but never read for a Master
+    # (`core.rbac.agent_may` always allows Masters).
+    can_verify_documents: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    can_view_reports: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    org: Mapped["AgentOrg"] = relationship(lazy="raise")
+
+
+class AgentUniversity(Base, TimestampMixin):
+    """AGN-007 / DEC-SCOPE-049 D1: an agency's private university ("Add University", Master only). Never part of the shared
+    catalogue (`universities`) and never on /public; `org_id` is the tenant key every read filters on."""
+
+    __tablename__ = "agent_universities"
+    __table_args__ = (
+        Index("uq_agent_universities_org_name_country", "org_id", text("lower(name)"), text("lower(country)"), unique=True),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    org_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_orgs.id", ondelete="RESTRICT"), index=True)
+    name: Mapped[str] = mapped_column(String(200))
+    country: Mapped[str] = mapped_column(String(120))
+    city: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    entry_requirements: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class AgentStudentShortlistEntry(Base, TimestampMixin):
+    """AGN-007 / DEC-SCOPE-049: one university on an agency student's shortlist. The university is exactly one of a catalogue
+    university or the agency's own (D6); a catalogue course needs a catalogue university (D4). Country is read from the university,
+    never stored (D7). Scope is the parent student's (AGN-004 `load_scoped`)."""
+
+    __tablename__ = "agent_student_shortlist_entries"
+    __table_args__ = (
+        CheckConstraint("(university_id IS NULL) <> (agent_university_id IS NULL)", name="ck_shortlist_one_university"),
+        CheckConstraint("course_id IS NULL OR university_id IS NOT NULL", name="ck_shortlist_catalogue_course"),
+        CheckConstraint("course_id IS NULL OR course_title IS NULL", name="ck_shortlist_one_course_form"),
+        Index("ix_shortlist_student_created", "agent_student_id", "created_at", "id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    agent_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_students.id", ondelete="RESTRICT"))
+    university_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"), nullable=True)
+    agent_university_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_universities.id", ondelete="RESTRICT"), nullable=True, index=True)
+    course_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("overseas_courses.id", ondelete="RESTRICT"), nullable=True)
+    course_title: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    intake: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    tuition_fee: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    entry_requirements: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class AgentTask(Base, TimestampMixin):
+    """AGN-016 / DEC-SCOPE-053 (EVID-015 §4 "Tasks & Follow-ups"): a follow-up on an agency student. There is no assignee: the task
+    belongs to its student, so scope is the student's (AGN-004 `student_scope`) and a reassigned student's tasks follow it (T1).
+    `done` and `cancelled` are final (T2, T6); `closed_at`/`closed_by_user_id` are stamped by the server."""
+
+    __tablename__ = "agent_tasks"
+    __table_args__ = (
+        CheckConstraint("status IN ('open', 'done', 'cancelled')", name="ck_agent_tasks_status"),
+        CheckConstraint("(status = 'open') = (closed_at IS NULL) AND (closed_at IS NULL) = (closed_by_user_id IS NULL)", name="ck_agent_tasks_closed"),
+        Index("ix_agent_tasks_student_status_due", "agent_student_id", "status", "due_at"),
+        Index("ix_agent_tasks_open_due", "due_at", postgresql_where=text("status = 'open'")),  # AGN-017: the overdue digest's scan
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    agent_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_students.id", ondelete="RESTRICT"))
+    application_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("overseas_applications.id", ondelete="RESTRICT"), nullable=True, index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(20), default="open", server_default="open")
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    closed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+DEPOSIT_STATUSES = ("not_required", "pending", "paid", "remitted", "refunded")
+
+
+class ApplicationDeposit(Base, TimestampMixin):
+    """AGN-011 / DEC-SCOPE-058 (EVID-015 §5 Step 7): the university deposit on an agency application, one per application. The agency
+    sets it (`not_required` / `pending`) and pays it through EduSphere Razorpay; every pay attempt is a payer-owned `Payment`
+    (`reference_type="agent_deposit"`, `reference_id` = this id) and `active_payment_id` is the open one. Only the paid hook moves it to
+    `paid`; only an Overseas Admin records `remitted` / `refunded` (D3, D5). INR only (D1)."""
+
+    __tablename__ = "application_deposits"
+    __table_args__ = (
+        CheckConstraint("status IN ('not_required', 'pending', 'paid', 'remitted', 'refunded')", name="ck_application_deposits_status"),
+        CheckConstraint("currency = 'INR'", name="ck_application_deposits_currency"),
+        CheckConstraint("(status = 'not_required') = (NOT required)", name="ck_application_deposits_required"),
+        CheckConstraint("(required AND amount IS NOT NULL AND amount > 0) OR (NOT required AND amount IS NULL AND due_date IS NULL)", name="ck_application_deposits_amount"),
+        CheckConstraint("(paid_payment_id IS NULL) = (status IN ('not_required', 'pending')) AND (paid_payment_id IS NULL) = (paid_at IS NULL)", name="ck_application_deposits_paid"),
+        CheckConstraint("(remitted_at IS NULL) = (remittance_reference IS NULL)", name="ck_application_deposits_remitted"),
+        CheckConstraint(
+            "(refunded_at IS NULL) = (refund_amount IS NULL) AND (refunded_at IS NULL) = (refund_reason IS NULL) AND (refunded_at IS NULL) = (status <> 'refunded') AND (refund_amount IS NULL OR refund_amount > 0)",
+            name="ck_application_deposits_refund",
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("overseas_applications.id", ondelete="RESTRICT"), unique=True)
+    required: Mapped[bool] = mapped_column(Boolean)
+    amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    currency: Mapped[str] = mapped_column(String(3), default="INR", server_default="INR")
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(String(20))
+    active_payment_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("payments.id"), nullable=True)
+    paid_payment_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("payments.id"), nullable=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    remitted_at: Mapped[date | None] = mapped_column(Date, nullable=True)
+    remittance_reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    refunded_at: Mapped[date | None] = mapped_column(Date, nullable=True)
+    refund_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    refund_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
 class InboundUniversityEmail(Base, TimestampMixin):
@@ -926,13 +1722,9 @@ class PasswordResetToken(Base, TimestampMixin):
 
 
 class School(Base, TimestampMixin):
-    """School partner record (SCH-003, DATA_MODEL.md §6.11). Net-new.
-
-    Minimal, confirmed-scope-only fields -- EVID-014's elaborate profile field list
-    (Board, Principal name, partnership package, MoU, BDM assignment, etc.) is
-    DERIVED_BLUEPRINT only, not confirmed (DEC-SCOPE-012). Add fields as BRD/PRD
-    confirms them, not preemptively from that document.
-    """
+    """School partner record (SCH-003, DATA_MODEL.md §6.11; profile fields added ENH-009,
+    DEC-SCOPE-025). `EVID-014`'s full field list is now confirmed in scope -- see the
+    design doc for what's stored here vs. computed at read time in `SchoolOut`."""
 
     __tablename__ = "schools"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -940,12 +1732,22 @@ class School(Base, TimestampMixin):
     city: Mapped[str | None] = mapped_column(String(120), nullable=True)
     state: Mapped[str | None] = mapped_column(String(120), nullable=True)
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
-    # Partnership tier (Bronze/Silver/Gold/Platinum), resolved 2026-09-15 (`DEC-SCOPE-017`,
-    # closes `CLIENT_QUESTIONS.md` item 9) -- unlike the rest of EVID-014's field list, this
-    # one is now confirmed, not derived-blueprint-only. Nullable: a School can exist before
-    # a tier is assigned.
     tier: Mapped[str | None] = mapped_column(String(20), nullable=True)
     tier_valid_until: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # ENH-009 / DEC-SCOPE-025: School Profile fields (EVID-014). All nullable, additive.
+    school_code: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    branch: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    address: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    contact_number: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    website: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    grades_available: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    board: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    partnership_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    mou_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    edusphere_bdm: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    monthly_visit_schedule: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    vice_principal_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
 
 class AcademicYear(Base, TimestampMixin):
@@ -982,6 +1784,10 @@ class SchoolAccountInvite(Base, TimestampMixin):
     accepted_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
+# ENH-025 (DEC-SCOPE-029 item 4): the fixed Gender list, shared by the CHECK below and schemas.StudentMasterFields.
+GENDERS = ("female", "male", "other", "prefer_not_to_say")
+
+
 class SchoolStudent(Base, TimestampMixin):
     """School-affiliated student (SCH-001, DATA_MODEL.md §6.11).
 
@@ -998,6 +1804,17 @@ class SchoolStudent(Base, TimestampMixin):
     """
 
     __tablename__ = "school_students"
+    __table_args__ = (
+        # ENH-025 (DEC-SCOPE-029): a roll number is unique within school + academic year + grade + section.
+        # NULLS NOT DISTINCT makes a blank section/grade/year its own group; students with no roll number are
+        # never constrained. lower(section) so "A" and "a" are the same section.
+        Index(
+            "uq_school_students_roll",
+            "school_id", "academic_year_id", "grade_level", func.lower(text("section")), "roll_number",
+            unique=True, postgresql_where=text("roll_number IS NOT NULL"), postgresql_nulls_not_distinct=True,
+        ),
+        CheckConstraint(f"gender IS NULL OR gender IN ({', '.join(repr(g) for g in GENDERS)})", name="ck_school_students_gender"),
+    )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     school_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id"), index=True)
     # Business-facing unique Student ID (PRD_OPEN_ITEMS.md item 66 / CLIENT_QUESTIONS.md
@@ -1022,6 +1839,24 @@ class SchoolStudent(Base, TimestampMixin):
     # this from a client payload (spec's security review, role-escalation finding).
     academic_year_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("academic_years.id"), nullable=True, index=True)
     grade_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # ENH-013: the Career Counselor's one-line Career Passport goal (School CRM.md §8 "Career Interest"). Nullable, no
+    # default, no backfill (migration 0039); written only by PATCH /school/students/{id}/career-goal.
+    career_goal: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # ENH-025 (DEC-SCOPE-029): School CRM.md §3 Student Master fields. All optional; validated at the API
+    # boundary by schemas.StudentMasterFields. grade_or_class stays the free-text display label.
+    section: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    roll_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    gender: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    student_mobile: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    subjects: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    career_interests: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    global_education_interest: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    preferred_countries: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    preferred_courses: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    # Internal only -- never serialized or logged (spec §5: in local storage mode the random key is the barrier).
+    photo_key: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    photo_content_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
 
 
 class SchoolParentLink(Base, TimestampMixin):
@@ -1034,6 +1869,128 @@ class SchoolParentLink(Base, TimestampMixin):
     parent_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
     school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
     linked_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+class SchoolStudentGradeHistory(Base, TimestampMixin):
+    """ENH-004 append-only ledger of a student's grade/academic-year transitions
+    (docs/superpowers/specs/2026-09-19-enh-004-student-promotion-design.md §5.1). Each row is
+    self-contained -- it records the state the student left (`from_*`) and the state they entered
+    (`to_*`) -- so no backfill of existing students is needed and `school_students` stays the
+    source of the *current* grade/year. `UNIQUE (school_student_id, to_academic_year_id)` is the
+    database backstop against promoting the same student twice into the same year."""
+
+    __tablename__ = "school_student_grade_history"
+    __table_args__ = (UniqueConstraint("school_student_id", "to_academic_year_id", name="uq_school_student_grade_history_year"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
+    action: Mapped[str] = mapped_column(String(20))  # promoted | held_back
+    from_academic_year_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("academic_years.id"), nullable=True)
+    from_grade_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    from_grade_or_class: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    to_academic_year_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("academic_years.id"))
+    to_grade_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    to_grade_or_class: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    # ENH-025: previous class details survive roll-number clearing on a year move (DEC-SCOPE-029 item 6).
+    from_section: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    from_roll_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    to_section: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    performed_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+class SchoolStudentTransferRequest(Base, TimestampMixin):
+    """ENH-005 -- a coordinator's request to move a student to another school, and (once approved) that student's
+    transfer history (docs/superpowers/specs/2026-09-21-enh-005-student-school-transfer-design.md §5.1). One table is
+    both the workflow and the history. `filed_by_school_id` is the filing coordinator's school, always taken from their
+    profile; `direction` is derived (outgoing when it equals `from_school_id`). The partial unique index is the database
+    backstop for "at most one open request per student"; the CHECKs keep a request between two different schools, one
+    of which filed it. Both are also in migration 0034 (dev startup can build the schema with `create_all`)."""
+
+    __tablename__ = "school_student_transfer_requests"
+    __table_args__ = (
+        CheckConstraint("from_school_id <> to_school_id", name="ck_school_transfer_distinct_schools"),
+        CheckConstraint("filed_by_school_id IN (from_school_id, to_school_id)", name="ck_school_transfer_filed_by_side"),
+        Index("uq_school_transfer_pending_student", "school_student_id", unique=True, postgresql_where=text("status = 'pending'")),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
+    from_school_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id"))
+    to_school_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id"))
+    requested_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    filed_by_school_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id"), index=True)
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | approved | rejected | cancelled
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decided_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    decision_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    outcome: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # set on approval: the counts of what the transfer changed
+
+
+class PortfolioEntry(Base, TimestampMixin):
+    """ENH-012 -- self-entry Digital Portfolio content
+    (docs/superpowers/specs/2026-09-22-enh-012-digital-portfolio-design.md §5). One generic table with
+    a `section` discriminator covers every list-shaped section (project/internship/competition/sport/
+    leadership/volunteering/extracurricular/award/certification/skill) -- per-section tables were
+    rejected in the spec's Approach section as unnecessary duplication of one shared shape. Net-new."""
+
+    __tablename__ = "portfolio_entries"
+    __table_args__ = (
+        Index("ix_portfolio_entries_student_section", "school_student_id", "section"),
+        CheckConstraint("attendance_percent IS NULL OR attendance_percent BETWEEN 0 AND 100", name="ck_portfolio_attendance_percent"),
+        CheckConstraint("completion_status IS NULL OR completion_status IN ('not_started', 'in_progress', 'completed', 'discontinued')", name="ck_portfolio_completion_status"),
+        CheckConstraint(
+            "section = 'internship' OR (mentor_name IS NULL AND mentor_designation IS NULL AND attendance_percent IS NULL AND completion_status IS NULL "
+            "AND feedback IS NULL AND skills_acquired IS NULL AND certificate_key IS NULL AND certificate_content_type IS NULL)",
+            name="ck_portfolio_internship_fields",
+        ),
+        # ENH-024 (spec §4): mirrored verbatim in migration 0044 -- the API rejects each of these first; the CHECKs are the last line.
+        CheckConstraint("certification_type IS NULL OR (certification_type = 'skill_india' AND section = 'certification')", name="ck_portfolio_cert_type"),
+        CheckConstraint("certification_status IS NULL OR certification_status IN ('enrolled', 'in_progress', 'certified')", name="ck_portfolio_cert_status"),
+        CheckConstraint(
+            "(certification_type IS NULL AND certification_status IS NULL AND certificate_number IS NULL AND issued_on IS NULL) "
+            "OR (certification_type IS NOT NULL AND certification_status IS NOT NULL)",
+            name="ck_portfolio_cert_fields",
+        ),
+        CheckConstraint("certification_status IS DISTINCT FROM 'certified' OR (certificate_number IS NOT NULL AND issued_on IS NOT NULL)", name="ck_portfolio_cert_certified"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
+    section: Mapped[str] = mapped_column(String(40))
+    title: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    organization: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    date_from: Mapped[date | None] = mapped_column(Date, nullable=True)
+    date_to: Mapped[date | None] = mapped_column(Date, nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    # ENH-021 (DEC-SCOPE-032): internship tracking, section='internship' only (CHECK above). All nullable.
+    mentor_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    mentor_designation: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    attendance_percent: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    completion_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
+    skills_acquired: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    certificate_key: Mapped[str | None] = mapped_column(String(300), nullable=True)  # never serialized (spec S9)
+    certificate_content_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    @property
+    def has_certificate(self) -> bool:
+        return self.certificate_key is not None
+    # ENH-024 -- Skill India certification details; all NULL on every other entry (spec §4, DEC-SCOPE-033).
+    certification_type: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    certification_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    certificate_number: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    issued_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+
+class PortfolioProfile(Base, TimestampMixin):
+    """ENH-012 -- one row per student holding the free-text personal statement; separate from
+    `PortfolioEntry` because it isn't list-shaped (spec §5). Net-new."""
+
+    __tablename__ = "portfolio_profiles"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), unique=True, index=True)
+    personal_statement: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
 class SchoolActivity(Base, TimestampMixin):
@@ -1064,6 +2021,55 @@ class SchoolActivityAttendance(Base, TimestampMixin):
     marked_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
+# ENH-030 (DEC-SCOPE-041 D4): the IT `Attendance.status` values; a missing row is "not marked", never absent.
+ATTENDANCE_STATUSES = ("present", "absent", "late", "excused")
+
+
+class SchoolAttendanceRecord(Base, TimestampMixin):
+    """ENH-030 -- one School student's daily class attendance (docs/superpowers/specs/2026-09-30-enh-030-daily-attendance-design.md §4).
+
+    One row per student per day per school (D5 as amended after the final review): re-marking updates it, and after a transfer each
+    school keeps its own register, so the new school never overwrites or re-stamps the old school's row (C1/AC10). Readers see only
+    the student's current school's rows. No single-column indexes: the unique (school_student_id, school_id, session_date) index
+    serves every query (spec §11 A4)."""
+
+    __tablename__ = "school_attendance_records"
+    __table_args__ = (
+        UniqueConstraint("school_student_id", "school_id", "session_date", name="uq_school_attendance_student_school_date"),
+        CheckConstraint("status IN ('present', 'absent', 'late', 'excused')", name="ck_school_attendance_status"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"))
+    school_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id"))
+    session_date: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(20))
+    marked_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+class SchoolActivityFeedback(Base, TimestampMixin):
+    """ENH-018 -- a School Coordinator's feedback on one completed Edusphere activity (`School CRM.md §31`,
+    docs/superpowers/specs/2026-09-23-enh-018-school-activity-feedback-design.md §4). One row per activity (D5) and immutable;
+    `school_id` is copied from the activity so reads stay scoped without a join. Student participation is NOT stored: it is
+    computed from `school_activity_attendance` at read time (D4). `created_at` is the submission time."""
+
+    __tablename__ = "school_activity_feedback"
+    __table_args__ = (
+        UniqueConstraint("activity_id", name="uq_activity_feedback_activity"),
+        CheckConstraint("rating BETWEEN 1 AND 5", name="ck_activity_feedback_rating"),
+        CheckConstraint("satisfaction BETWEEN 1 AND 5", name="ck_activity_feedback_satisfaction"),
+        Index("ix_school_activity_feedback_created_at", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    activity_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_activities.id"))
+    school_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id"), index=True)
+    submitted_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    trainer_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    rating: Mapped[int] = mapped_column(Integer)
+    satisfaction: Mapped[int] = mapped_column(Integer)
+    feedback: Mapped[str] = mapped_column(Text)
+    suggestions: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
 class SchoolRosterUploadBatch(Base, TimestampMixin):
     """SCH-002 bulk roster upload audit trail (DATA_MODEL.md §6.13). Net-new."""
 
@@ -1088,6 +2094,46 @@ class SchoolRosterUploadRow(Base, TimestampMixin):
     created_student_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), nullable=True)
 
 
+BULK_TARGET_TYPES = ("academic_result", "psychometric_record", "test_prep_record", "language_record", "school_onboarding")  # ENH-029 (0054)
+
+
+class SchoolBulkUploadBatch(Base, TimestampMixin):
+    """ENH-028 -- one bulk data-entry upload (docs/superpowers/specs/2026-10-01-enh-028-bulk-data-entry-design.md §4). The
+    roster upload keeps its own SCH-002 tables. The idempotency key is scoped to the uploader and the module, so one user's key
+    can never replay another user's report. No status column (S3): the row only becomes visible already complete."""
+
+    __tablename__ = "school_bulk_upload_batches"
+    __table_args__ = (
+        UniqueConstraint("uploaded_by_user_id", "target_type", "idempotency_key", name="uq_school_bulk_upload_key"),
+        CheckConstraint(f"target_type IN {BULK_TARGET_TYPES}", name="ck_school_bulk_upload_target_type"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    target_type: Mapped[str] = mapped_column(String(30))
+    uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    idempotency_key: Mapped[str] = mapped_column(String(120))
+    file_sha256: Mapped[str] = mapped_column(String(64))
+    total_rows: Mapped[int] = mapped_column(Integer, default=0)
+    accepted_count: Mapped[int] = mapped_column(Integer, default=0)
+    rejected_count: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class SchoolBulkUploadRow(Base, TimestampMixin):
+    """ENH-028 -- one filled-in CSV row's outcome. `created_record_id` points into the batch's target table (no FK: it is
+    polymorphic); `student_code` is what the row named, kept for the report even when it matched nobody. `created_user_id` (ENH-029)
+    is the Coordinator a `school_onboarding` row created (`created_record_id` is then its school); NULL for every other target."""
+
+    __tablename__ = "school_bulk_upload_rows"
+    __table_args__ = (CheckConstraint("status IN ('accepted', 'rejected')", name="ck_school_bulk_upload_row_status"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    batch_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_bulk_upload_batches.id"), index=True)
+    row_number: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(20))
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    student_code: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    created_record_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    created_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
 class SchoolStaffAssignment(Base, TimestampMixin):
     """School-staff portfolio assignment (`DEC-SCOPE-013`) -- scopes an `academic_team`/
     `career_counselor`/`psychometric_team` member to one or more entire schools. Many-to-
@@ -1106,14 +2152,62 @@ class SchoolStaffAssignment(Base, TimestampMixin):
 
 class SchoolCareerRecord(Base, TimestampMixin):
     """SCH-004 -- Career Guidance & Counselling. Net-new, `DATA_MODEL.md` §6.17. No
-    Draft/Published gate -- visible to readers as soon as it's created."""
+    Draft/Published gate -- visible to readers as soon as it's created.
+    ENH-026 (DEC-SCOPE-031): the §7 structured fields and status lifecycle, all nullable. `status` NULL means the
+    record predates tracking (or is a `recommendation`, which never has one)."""
 
     __tablename__ = "school_career_records"
+    __table_args__ = (
+        CheckConstraint("status IS NULL OR status IN ('not_started', 'scheduled', 'completed', 'follow_up_required')", name="ck_career_record_status"),
+        Index("ix_school_career_records_student_type_status", "school_student_id", "record_type", "status"),
+    )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
     career_counselor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
     record_type: Mapped[str] = mapped_column(String(30))
     notes: Mapped[str] = mapped_column(Text)
+    status: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    scheduled_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    next_follow_up_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    career_interests: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    global_education_interest: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    academic_strengths: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    weak_areas: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    recommended_careers: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    recommended_courses: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    recommended_stream: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    recommended_skills: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    parent_participated: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    parent_participation_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class SchoolFundingRecord(Base, TimestampMixin):
+    """ENH-020 (DEC-SCOPE-045) -- School CRM.md §21 financial support / loan assistance case, `DATA_MODEL.md` §6.25.
+    `school_id` is the student's school when the case was opened (D12): staff see a case only while the student is still
+    there; a linked parent always sees it. One open case per student, school and type (partial unique index, D7)."""
+
+    __tablename__ = "school_funding_records"
+    __table_args__ = (
+        CheckConstraint("support_type IN ('education_loan', 'financial_assistance', 'scholarship', 'funding_guidance')", name="ck_funding_record_support_type"),
+        CheckConstraint("status IN ('required', 'counselling', 'documents', 'application', 'approved', 'completed', 'closed')", name="ck_funding_record_status"),
+        CheckConstraint("(status = 'closed') = (closure_reason IS NOT NULL)", name="ck_funding_record_closure"),
+        Index("uq_funding_record_open_student_type", "school_student_id", "school_id", "support_type", unique=True, postgresql_where=text("status NOT IN ('completed', 'closed')")),
+        Index("ix_school_funding_records_school_type", "school_id", "support_type"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
+    school_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id"))
+    support_type: Mapped[str] = mapped_column(String(30))
+    status: Mapped[str] = mapped_column(String(20))
+    status_changed_on: Mapped[date] = mapped_column(Date)
+    provider_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    amount_text: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    notes: Mapped[str] = mapped_column(Text, default="")
+    closure_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    career_counselor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
 class SchoolPsychometricRecord(Base, TimestampMixin):
@@ -1126,6 +2220,19 @@ class SchoolPsychometricRecord(Base, TimestampMixin):
     assessment_type: Mapped[str] = mapped_column(String(120))
     report_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="assigned")
+    # ENH-027 (DEC-SCOPE-035): School CRM.md §6's structured result. All optional; `status` still flips only on
+    # `report_url`. Lists are JSON arrays of short strings (ENH-025's `_clean_list` rule); empty is stored as SQL NULL
+    # (`none_as_null=True`, same as ENH-026's career-record lists). Names match ENH-026's where the concept is shared.
+    test_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    strengths: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    interest_areas: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    personality_indicators: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    recommended_careers: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    recommended_stream: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    counsellor_remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
+    parent_discussion_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    parent_discussion_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    follow_up_on: Mapped[date | None] = mapped_column(Date, nullable=True)
 
 
 class SchoolTestPrepRecord(Base, TimestampMixin):
@@ -1160,6 +2267,94 @@ class SchoolLanguageRecord(Base, TimestampMixin):
     classes_attended: Mapped[int] = mapped_column(Integer, default=0)
     assessment_score: Mapped[str | None] = mapped_column(String(20), nullable=True)
     certification_status: Mapped[str] = mapped_column(String(20), default="not_started")
+
+
+# --- ENH-011: school skills tracker (docs/superpowers/specs/2026-09-22-enh-011-skills-tracker-design.md §4) ---
+# Soft Skills / Digital Skills batches run by a `career_counselor` for ONE school (`DEC-SCOPE-026`). Deliberately separate
+# from SCH-009's per-student rows (left as-is, D3) and from the IT training `Batch`/`Enrollment` (keyed to `users`, not
+# school students). "Frozen" (the student has since transferred) is computed, never stored (D9).
+
+
+class SchoolSkillBatch(Base, TimestampMixin):
+    __tablename__ = "school_skill_batches"
+    __table_args__ = (
+        CheckConstraint("module_type IN ('soft_skills', 'digital_skills')", name="ck_skill_batch_module"),
+        CheckConstraint("status IN ('open', 'closed')", name="ck_skill_batch_status"),
+        CheckConstraint("end_date IS NULL OR end_date >= start_date", name="ck_skill_batch_dates"),
+        Index("ix_school_skill_batches_school_module", "school_id", "module_type"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    school_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id"))
+    module_type: Mapped[str] = mapped_column(String(20))
+    title: Mapped[str] = mapped_column(String(160))
+    topic: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    trainer_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    start_date: Mapped[date] = mapped_column(Date)
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="open")
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+class SchoolSkillEnrollment(Base, TimestampMixin):
+    __tablename__ = "school_skill_enrollments"
+    __table_args__ = (
+        UniqueConstraint("batch_id", "school_student_id", name="uq_skill_enrollment_batch_student"),
+        CheckConstraint("status IN ('enrolled', 'completed', 'certified', 'withdrawn')", name="ck_skill_enrollment_status"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    batch_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_skill_batches.id"))
+    school_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_students.id"), index=True)
+    status: Mapped[str] = mapped_column(String(20), default="enrolled")
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    certified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    enrolled_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+class SchoolSkillSession(Base, TimestampMixin):
+    __tablename__ = "school_skill_sessions"
+    __table_args__ = (UniqueConstraint("batch_id", "session_date", name="uq_skill_session_batch_date"),)  # D10
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    batch_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_skill_batches.id"))
+    session_date: Mapped[date] = mapped_column(Date)
+    topic: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+class SchoolSkillAttendance(Base, TimestampMixin):
+    __tablename__ = "school_skill_attendance"
+    __table_args__ = (UniqueConstraint("session_id", "enrollment_id", name="uq_skill_attendance_session_enrollment"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    session_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_skill_sessions.id"))
+    enrollment_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_skill_enrollments.id"), index=True)
+    present: Mapped[bool] = mapped_column(Boolean)
+    marked_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+class SchoolSkillAssessment(Base, TimestampMixin):
+    __tablename__ = "school_skill_assessments"
+    __table_args__ = (
+        UniqueConstraint("batch_id", "name", name="uq_skill_assessment_batch_name"),
+        CheckConstraint("max_score > 0", name="ck_skill_assessment_max"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    batch_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_skill_batches.id"))
+    name: Mapped[str] = mapped_column(String(120))
+    max_score: Mapped[Decimal] = mapped_column(Numeric(6, 2))
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+class SchoolSkillScore(Base, TimestampMixin):
+    __tablename__ = "school_skill_scores"
+    __table_args__ = (
+        UniqueConstraint("assessment_id", "enrollment_id", name="uq_skill_score_assessment_enrollment"),
+        CheckConstraint("score >= 0", name="ck_skill_score_nonneg"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    assessment_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_skill_assessments.id"))
+    enrollment_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("school_skill_enrollments.id"), index=True)
+    score: Mapped[Decimal] = mapped_column(Numeric(6, 2))
+    remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
+    recorded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
 class SchoolAcademicResult(Base, TimestampMixin):

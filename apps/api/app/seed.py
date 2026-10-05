@@ -9,6 +9,7 @@ from app.core.database import SessionLocal, engine
 from app.core.identifiers import unique_student_code
 from app.core.security import hash_password
 from app.models import *
+from app.services.agent_orgs import ensure_agent_org
 
 PASSWORD = "Demo@123"
 USERS = [
@@ -80,8 +81,9 @@ async def main():
         us["counselor"].profile = {"demo": True, "specialisms": ["UK", "Germany", "Ireland"]}
         us["university_rep"].profile = {"demo": True, "university": "University Partner Demo"}
         us["agent"].profile = {"demo": True, "agency_name": "EduSphere Partner Agency", "registration_status": "approved"}
-        # AGT-001's approval gate (`core.rbac.agent_is_approved`) checks the
-        # `UserRoleAssignment` table, not `User.profile["registration_status"]` above --
+        # AGT-001's approval lives in the `UserRoleAssignment` table (AGN-001: kept in step
+        # with the organisation, whose status is now the gate -- `core.rbac.agent_denial_reason`),
+        # not in `User.profile["registration_status"]` above --
         # without an approved row here the demo agent 403s on every agent-scoped route,
         # including its own portal dashboard. `auth._sync_role_assignment` lazily creates
         # a *pending* row for any role="agent" user on their first-ever login and (by
@@ -93,6 +95,10 @@ async def main():
             demo_agent_assignment.approval_status = "approved"
         else:
             db.add(UserRoleAssignment(user_id=us["agent"].id, division="overseas", role="agent", approval_status="approved"))
+        # AGN-001 (E7): the demo agent's organisation, active like its assignment above.
+        await db.flush()
+        demo_member = await ensure_agent_org(db, us["agent"], agency_name=us["agent"].profile.get("agency_name"), status="active")
+        (await db.get(AgentOrg, demo_member.org_id)).status = "active"
         pmap = {}
         for slug, cat, title, summary, duration, fees, curr in programs:
             p = await db.scalar(select(Program).where(Program.slug == slug))
@@ -615,6 +621,8 @@ async def main():
             school = School(
                 name="Sunrise Public School", city="Hyderabad", state="Telangana", created_by_user_id=us["overseas_admin"].id,
                 tier="platinum", tier_valid_until=date.today() + timedelta(days=365),
+                # QA-023-03: like create_school -- without a School ID the admin edit panel (the only tier-change UI) cannot find it.
+                school_code=await unique_student_code(db, School.school_code),
             )
             db.add(school)
             await db.flush()
@@ -736,7 +744,17 @@ async def main():
             )
             db.add_all(
                 [
-                    SchoolPsychometricRecord(school_student_id=student_a.id, psychometric_team_user_id=psychometric_team.id, assessment_type="Aptitude Test", report_url="/demo/aarav-aptitude-report.pdf", status="completed", created_at=journey_base - timedelta(days=10), updated_at=journey_base - timedelta(days=6)),
+                    # ENH-027: the completed demo assessment carries a structured result; the two `assigned` ones below stay
+                    # legacy-shaped (null result fields) so the empty state is visible in the demo too.
+                    SchoolPsychometricRecord(
+                        school_student_id=student_a.id, psychometric_team_user_id=psychometric_team.id, assessment_type="Aptitude Test", report_url="/demo/aarav-aptitude-report.pdf", status="completed", created_at=journey_base - timedelta(days=10), updated_at=journey_base - timedelta(days=6),
+                        test_date=(journey_base - timedelta(days=9)).date(),
+                        strengths=["Logical reasoning", "Numerical ability"], interest_areas=["Engineering", "Design"],
+                        personality_indicators=["Analytical", "Reflective"], recommended_careers=["Software engineer", "Product designer"],
+                        recommended_stream=["Science (PCM)"], counsellor_remarks="Strong analytical profile; explore design electives alongside PCM.",
+                        parent_discussion_on=(journey_base - timedelta(days=5)).date(), parent_discussion_notes="Parents keen on engineering; agreed to a design summer camp.",
+                        follow_up_on=(journey_base + timedelta(days=30)).date(),
+                    ),
                     SchoolPsychometricRecord(school_student_id=student_c.id, psychometric_team_user_id=psychometric_team.id, assessment_type="Personality Assessment", status="assigned", created_at=journey_base - timedelta(days=8)),
                     SchoolPsychometricRecord(school_student_id=student_d.id, psychometric_team_user_id=psychometric_team.id, assessment_type="Aptitude Test", status="assigned", created_at=journey_base - timedelta(days=6)),
                 ]
@@ -746,10 +764,10 @@ async def main():
         # inside "if not school:" above) so an already-seeded dev database also gets it, same
         # backfill pattern already used for Country.interview_prep earlier in this function.
         # Every tracked entitlement service gets a real, non-zero usage count; every
-        # deliberately-untracked service (soft skills, web designing, digital portfolio
-        # creation, internships, loan assistance, alumni network, parent help desk,
-        # scholarship assistance) is left alone -- it has no seed data because it has no
-        # confirmed module, not because seeding was skipped.
+        # deliberately-untracked service (alumni network, parent help desk) is left alone --
+        # it has no seed data because it has no confirmed module, not because seeding was
+        # skipped. ENH-020 (DEC-SCOPE-045): loan and scholarship assistance are tracked by
+        # funding support cases, seeded below.
         academic1 = await user(db, "school.academic1@edusphere.local", "Divya Academic Team", "academic_team", "overseas")
         academic2 = await user(db, "school.academic2@edusphere.local", "Suresh Academic Team", "academic_team", "overseas")
         school_coordinator = await user(db, "school.coordinator@edusphere.local", "Fatima School Coordinator", "school_coordinator", "overseas")
@@ -757,6 +775,8 @@ async def main():
         if school.tier is None:
             school.tier = "platinum"
             school.tier_valid_until = date.today() + timedelta(days=365)
+        if not school.school_code:  # QA-023-03: backfill a database seeded before the School ID existed
+            school.school_code = await unique_student_code(db, School.school_code)
 
         student_rows = {s.full_name: s for s in (await db.scalars(select(SchoolStudent).where(SchoolStudent.school_id == school.id))).all()}
         student_b = student_rows.get("Isha Mehta")
@@ -783,6 +803,19 @@ async def main():
             db.add(SchoolLanguageRecord(school_student_id=student_b.id, academic_team_user_id=academic1.id, language="French", level="A2", classes_attended=14, certification_status="certified", created_at=entitlement_now - timedelta(days=30), updated_at=entitlement_now - timedelta(days=3)))
         if student_d and not await db.scalar(select(SchoolLanguageRecord).where(SchoolLanguageRecord.school_student_id == student_d.id)):
             db.add(SchoolLanguageRecord(school_student_id=student_d.id, academic_team_user_id=academic2.id, language="German", level="A1", classes_attended=4, certification_status="in_progress", created_at=entitlement_now - timedelta(days=12)))
+
+        # ENH-020 demo funding support cases (one per student, so a re-run never trips the one-open-case index).
+        demo_counselor = await user(db, "school.careercounselor@edusphere.local", "Anita Career Counselor", "career_counselor", "overseas")
+        for demo_student, support_type, status, provider, days_ago in [
+            (student_b, "education_loan", "documents", "State Bank of India", 21),
+            (student_d, "scholarship", "required", None, 4),
+        ]:
+            if demo_student and not await db.scalar(select(SchoolFundingRecord.id).where(SchoolFundingRecord.school_student_id == demo_student.id)):
+                db.add(SchoolFundingRecord(
+                    school_student_id=demo_student.id, school_id=school.id, support_type=support_type, status=status, provider_name=provider,
+                    status_changed_on=(entitlement_now - timedelta(days=days_ago // 2)).date(), notes="Demo case.", career_counselor_user_id=demo_counselor.id,
+                    created_at=entitlement_now - timedelta(days=days_ago),
+                ))
 
         # School->Overseas bridge (SCH-010) demo: feeds the entitlements view's own
         # application_support/visa_support usage counts, and SCH-007/008's global_education

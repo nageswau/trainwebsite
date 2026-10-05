@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { pickFromList } from "./helpers/pick";
 import { E2E_PASSWORD, createAndActivateFromUi } from "./helpers/welcome";
 
 // SCH-004/005/006 -- Career Guidance, Psychometric Assessment, Academic Results.
@@ -34,6 +35,7 @@ test("overseas admin provisions specialized staff, they deliver services, and sc
   await page.fill("#school-name", schoolName);
   await page.fill("#school-coordinator-name", "E2E SVC Coordinator");
   await page.fill("#school-coordinator-email", coordinatorEmail);
+  await page.selectOption("#school-tier", "platinum"); // ENH-022: entitled to every service
   await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
   await expect(page.getByText(/School created\./)).toBeVisible();
 
@@ -81,11 +83,15 @@ test("overseas admin provisions specialized staff, they deliver services, and sc
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/academic-team/dashboard");
 
-  // Scoped to this specific select -- SCH-009 added its own Test Prep/Language student
-  // pickers to the same Academic Team dashboard, so an unscoped option lookup now matches
-  // this same option label across all three selects.
-  await expect(page.locator("#result-student").getByRole("option", { name: /E2E Service Student/ })).toHaveCount(1);
-  await page.selectOption("#result-student", { label: `E2E Service Student — ${schoolName}` });
+  // Scoped to this specific picker -- SCH-009 added its own Test Prep/Language student
+  // pickers to the same Academic Team dashboard, so an unscoped option lookup would match
+  // this same option label across all three. ENH-031: the options live in the picker's own
+  // listbox (`#result-student-list`) and render once it is opened and searched.
+  const resultStudent = page.locator("#result-student");
+  await resultStudent.click();
+  await resultStudent.fill("E2E Service Student");
+  await expect(page.locator("#result-student-list").getByRole("option", { name: /E2E Service Student/ })).toHaveCount(1);
+  await pickFromList(resultStudent, "E2E Service Student", `E2E Service Student — ${schoolName}`);
   await page.fill("#result-year", "2026");
   await page.fill("#result-term", "Term 1");
   await page.fill("#result-subject", "Mathematics");
@@ -118,12 +124,13 @@ test("overseas admin provisions specialized staff, they deliver services, and sc
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/career-counselor/dashboard");
 
-  await page.selectOption("#career-student", { label: `E2E Service Student — ${schoolName}` });
-  await page.selectOption("#career-type", "guidance_session");
-  await page.fill("#career-notes", "Discussed engineering vs. commerce streams.");
+  // ENH-026 prefixed the new-record form's ids (`career-new-*`); ENH-031 made the student a searchable picker.
+  await pickFromList(page.locator("#career-new-student"), "E2E Service Student", `E2E Service Student — ${schoolName}`);
+  await page.selectOption("#career-new-type", "guidance_session");
+  await page.fill("#career-new-notes", "Discussed engineering vs. commerce streams.");
   await page.click('button:has-text("Save record")');
   await expect(page.getByText(/Record saved\./)).toBeVisible();
-  await expect(page.getByRole("cell", { name: "Guidance session" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Guidance session", exact: true })).toBeVisible();
 
   // 7. Psychometric Team assigns an assessment and attaches a report.
   await page.request.post("/api/v1/auth/logout");
@@ -133,7 +140,7 @@ test("overseas admin provisions specialized staff, they deliver services, and sc
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/school/psychometric-team/dashboard");
 
-  await page.selectOption("#psych-student", { label: `E2E Service Student — ${schoolName}` });
+  await pickFromList(page.locator("#psych-student"), "E2E Service Student", `E2E Service Student — ${schoolName}`);
   await page.fill("#psych-type", "Aptitude Test");
   await page.click('button:has-text("Assign assessment")');
   await expect(page.getByText(/Assessment assigned\./)).toBeVisible();
@@ -204,6 +211,7 @@ test("the School portfolio search narrows the dropdown without losing a selectio
     await page.fill("#school-name", name);
     await page.fill("#school-coordinator-name", "E2E Search Coordinator");
     await page.fill("#school-coordinator-email", `sch456-e2e-search-coord-${unique}-${name === alphaName ? "a" : "b"}@example.local`);
+    await page.selectOption("#school-tier", "platinum"); // ENH-022: entitled to every service
     await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
     await expect(page.getByText(/School created\./)).toBeVisible();
   }
@@ -214,7 +222,7 @@ test("the School portfolio search narrows the dropdown without losing a selectio
   await page.fill("#staff-email", staffEmail);
 
   // Search narrows the list to Alpha only, select it.
-  await page.fill('input[placeholder="Search schools…"]', "Search Alpha");
+  await page.fill('input[placeholder="Search schools…"]', `Search Alpha School ${unique}`); // unique: a shared DB keeps earlier runs' schools
   await expect(page.locator("#staff-schools option")).toHaveCount(1);
   await page.selectOption("#staff-schools", { label: alphaName });
   await expect(page.getByText("(1 selected)")).toBeVisible();
@@ -225,7 +233,7 @@ test("the School portfolio search narrows the dropdown without losing a selectio
   await expect(page.getByText("(1 selected)")).toBeVisible();
 
   // Search again and add Beta -- both selections must now be counted.
-  await page.fill('input[placeholder="Search schools…"]', "Search Beta");
+  await page.fill('input[placeholder="Search schools…"]', `Search Beta School ${unique}`);
   await page.selectOption("#staff-schools", { label: betaName });
   await expect(page.getByText("(2 selected)")).toBeVisible();
 
@@ -255,6 +263,7 @@ test("Select all / Select visible / Clear visible / Clear all act on the School 
     await page.fill("#school-name", name);
     await page.fill("#school-coordinator-name", "E2E Bulk Coordinator");
     await page.fill("#school-coordinator-email", `sch456-e2e-bulk-coord-${unique}-${name === alphaName ? "a" : "b"}@example.local`);
+    await page.selectOption("#school-tier", "platinum"); // ENH-022: entitled to every service
     await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
     await expect(page.getByText(/School created\./)).toBeVisible();
   }
@@ -273,13 +282,13 @@ test("Select all / Select visible / Clear visible / Clear all act on the School 
   await expect(page.getByText(/\(\d+ selected\)/)).toHaveCount(0);
 
   // Select visible, scoped to a search, only adds the currently-filtered schools.
-  await page.fill('input[placeholder="Search schools…"]', "Bulk Alpha");
+  await page.fill('input[placeholder="Search schools…"]', `Bulk Alpha School ${unique}`); // unique: a shared DB keeps earlier runs' schools
   await page.getByRole("button", { name: /^Select visible/ }).click();
   await expect(page.getByText("(1 selected)")).toBeVisible();
 
   // Selecting visible again under a *different* search adds to the existing selection,
   // it does not replace it.
-  await page.fill('input[placeholder="Search schools…"]', "Bulk Beta");
+  await page.fill('input[placeholder="Search schools…"]', `Bulk Beta School ${unique}`);
   await page.getByRole("button", { name: /^Select visible/ }).click();
   await expect(page.getByText("(2 selected)")).toBeVisible();
 

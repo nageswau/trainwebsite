@@ -1,0 +1,200 @@
+"use client";
+
+import { FormEvent, useRef, useState } from "react";
+
+import { CERT_STATUS_LABEL } from "@/components/CertificationDetails";
+import InternshipFields from "@/components/InternshipFields";
+import { detailMessage, isRequestBody, NOT_COMPLETED } from "@/lib/apiErrors";
+import { refocus } from "@/lib/focus";
+import { filledInternship, internshipChanges, type InternshipValues, pickInternship } from "@/lib/internship";
+import type { CertificationFields } from "@/lib/portfolio";
+
+type CertErrors = { status?: string; number?: string; issued?: string };
+
+// QA24-02: control characters (Unicode Cc -- the set the server's single-line rule refuses) are invisible, so a pasted one
+// would earn an error the user cannot see to fix. Drop them as they arrive; the server rule stays as the backstop.
+const CONTROL_CHARACTERS = /[\u0000-\u001F\u007F-\u009F]/g;
+
+// ENH-012 -- one form for all 10 self-entry sections (same shape: title/organization/dates/description),
+// mirroring SchoolTransferRequestForm.tsx exactly: per-field useState, busy/inFlight guard, raw fetch(),
+// no optimistic UI (waits for the confirmed response, matching this codebase's deliberately conservative
+// pattern -- spec §3.8). Used both for create (no entryId) and edit (entryId + initial values) by
+// PortfolioPanel.tsx (Task 9).
+
+export default function PortfolioEntryForm({ studentId, section, entryId, initial, tracking: trackingAllowed = true, onDone, onCancel }: {
+  studentId: string; section: string; entryId?: string;
+  initial?: { title: string; description: string | null; organization: string | null; date_from: string | null; date_to: string | null } & InternshipValues & CertificationFields;
+  /** ENH-021 QA-08: false when the school's tier lacks Platinum `internships` -- only the basic fields are offered and sent. */
+  tracking?: boolean;
+  onDone: () => void; onCancel: () => void;
+}) {
+  // ENH-021: an internship's title is its Role and its organization its Company (required); its tracking fields ride along.
+  const internship = section === "internship";
+  const showTracking = internship && trackingAllowed;
+  const [tracking, setTracking] = useState<InternshipValues>(() => pickInternship(initial));
+  const [companyError, setCompanyError] = useState<string | null>(null);
+  const [attendanceError, setAttendanceError] = useState<string | null>(null);
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [organization, setOrganization] = useState(initial?.organization ?? "");
+  const [dateFrom, setDateFrom] = useState(initial?.date_from ?? "");
+  const [dateTo, setDateTo] = useState(initial?.date_to ?? "");
+  // ENH-024 (spec §6): the Skill India tag is chosen only when adding a certification; an edit shows it as text (D8).
+  const [skillIndia, setSkillIndia] = useState(initial?.certification_type === "skill_india");
+  const [certStatus, setCertStatus] = useState(initial?.certification_status ?? "");
+  const [certNumber, setCertNumber] = useState(initial?.certificate_number ?? "");
+  const [issuedOn, setIssuedOn] = useState(initial?.issued_on ?? "");
+  const [busy, setBusy] = useState(false);
+  const [fieldError, setFieldError] = useState<string | null>(null);
+  const [certErrors, setCertErrors] = useState<CertErrors>({});
+  const [alert, setAlert] = useState<string | null>(null);
+  const inFlight = useRef(false);
+  const offerSkillIndia = !entryId && section === "certification";
+
+  // QA24-06: editing a Skill India field clears that field's error (the others stay until the next Save).
+  function clearCertError(field: keyof CertErrors) {
+    setCertErrors((errors) => ({ ...errors, [field]: undefined }));
+  }
+
+  // ENH-024 D6, mirrored for a fast answer; the server stays authoritative.
+  function checkCertification(): CertErrors {
+    if (!skillIndia) return {};
+    const errors: CertErrors = {};
+    if (!certStatus) errors.status = "Choose a status.";
+    if (certStatus === "certified" && !certNumber.trim()) errors.number = "Enter the certificate number.";
+    if (certStatus === "certified" && !issuedOn) errors.issued = "Enter the issue date.";
+    return errors;
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy || inFlight.current) return;
+    setAlert(null);
+    const titleError = title.trim() ? null : internship ? "Enter the role." : "Enter a title.";
+    const errors = checkCertification();
+    setFieldError(titleError);
+    setCertErrors(errors);
+    const firstInvalid = titleError ? "pf-title" : errors.status ? "pf-cert-status" : errors.number ? "pf-cert-number" : errors.issued ? "pf-cert-issued" : null;
+    if (firstInvalid) {
+      refocus(firstInvalid);
+      return;
+    }
+    if (internship && !organization.trim()) {
+      setCompanyError("Enter the company.");
+      return;
+    }
+    setCompanyError(null);
+    // QA-04: checked at the field (the server re-validates; its generic 422 text named no field).
+    const attendance = tracking.attendance_percent;
+    if (internship && attendance != null && !(Number.isInteger(attendance) && attendance >= 0 && attendance <= 100)) {
+      setAttendanceError("Attendance must be a whole number from 0 to 100.");
+      return;
+    }
+    setAttendanceError(null);
+    inFlight.current = true;
+    setBusy(true);
+    const certification = skillIndia
+      ? { ...(entryId ? {} : { certification_type: "skill_india" }), certification_status: certStatus, certificate_number: certNumber.trim() || null, issued_on: issuedOn || null }
+      : {};
+    const body = {
+      ...(entryId ? {} : { section }),
+      title: title.trim(),
+      description: description.trim() || null,
+      organization: organization.trim() || null,
+      date_from: dateFrom || null,
+      date_to: dateTo || null,
+      ...certification,
+      // ENH-021 I6: only changed tracking fields on edit, so a basic edit never needs the Platinum-only gate.
+      ...(showTracking ? (entryId ? internshipChanges(pickInternship(initial), tracking) : filledInternship(tracking)) : {}),
+    };
+    const url = entryId ? `/api/v1/school/students/${studentId}/portfolio/entries/${entryId}` : `/api/v1/school/students/${studentId}/portfolio/entries`;
+    let response: Response;
+    try {
+      response = await fetch(url, { method: entryId ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    } catch {
+      inFlight.current = false;
+      setBusy(false);
+      setAlert(NOT_COMPLETED);
+      refocus("pf-save-btn");
+      return;
+    }
+    const data = await response.json().catch(() => null);
+    inFlight.current = false;
+    setBusy(false);
+    if (!response.ok) {
+      setAlert(detailMessage(data?.detail));
+      refocus("pf-save-btn");
+      return;
+    }
+    if (!isRequestBody(data)) {
+      setAlert("The save could not be confirmed. Please check the list before retrying.");
+      refocus("pf-save-btn");
+      return;
+    }
+    onDone();
+  }
+
+  return (
+    <form className="form" onSubmit={submit} noValidate onKeyDown={(e) => { if (e.key === "Escape" && !busy) onCancel(); }}>
+      <div className="field">
+        <label htmlFor="pf-title">{internship ? "Role" : "Title"}</label>
+        <input id="pf-title" className="search" value={title} disabled={busy} aria-invalid={fieldError ? true : undefined} aria-describedby={fieldError ? "pf-title-error" : undefined} onChange={(e) => setTitle(e.target.value)} />
+        {fieldError && <span id="pf-title-error" className="form-error">{fieldError}</span>}
+      </div>
+      {offerSkillIndia && (
+        <div className="field">
+          <label htmlFor="pf-skill-india" className="pf-check">
+            <input id="pf-skill-india" type="checkbox" checked={skillIndia} disabled={busy} onChange={(e) => setSkillIndia(e.target.checked)} /> Skill India certification
+          </label>
+        </div>
+      )}
+      {entryId && skillIndia && <p className="muted">Skill India certification</p>}
+      {skillIndia && (
+        <fieldset className="form-section">
+          <legend>Skill India details</legend>
+          <div className="field">
+            <label htmlFor="pf-cert-status">Status</label>
+            <select id="pf-cert-status" className="search" value={certStatus} disabled={busy} aria-invalid={certErrors.status ? true : undefined} aria-describedby={certErrors.status ? "pf-cert-status-error" : undefined} onChange={(e) => { setCertStatus(e.target.value); clearCertError("status"); }}>
+              <option value="">Choose status</option>
+              {Object.entries(CERT_STATUS_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+            {certErrors.status && <span id="pf-cert-status-error" className="form-error">{certErrors.status}</span>}
+          </div>
+          <div className="field">
+            <label htmlFor="pf-cert-number">Certificate number</label>
+            <input id="pf-cert-number" className="search" maxLength={100} value={certNumber} disabled={busy} aria-invalid={certErrors.number ? true : undefined} aria-describedby={certErrors.number ? "pf-cert-number-hint pf-cert-number-error" : "pf-cert-number-hint"} onChange={(e) => { setCertNumber(e.target.value.replace(CONTROL_CHARACTERS, "")); clearCertError("number"); }} />
+            <span id="pf-cert-number-hint" className="muted">Required once certified.</span>
+            {certErrors.number && <span id="pf-cert-number-error" className="form-error">{certErrors.number}</span>}
+          </div>
+          <div className="field">
+            <label htmlFor="pf-cert-issued">Issue date</label>
+            <input id="pf-cert-issued" type="date" className="search" value={issuedOn} disabled={busy} aria-invalid={certErrors.issued ? true : undefined} aria-describedby={certErrors.issued ? "pf-cert-issued-hint pf-cert-issued-error" : "pf-cert-issued-hint"} onChange={(e) => { setIssuedOn(e.target.value); clearCertError("issued"); }} />
+            <span id="pf-cert-issued-hint" className="muted">Required once certified.</span>
+            {certErrors.issued && <span id="pf-cert-issued-error" className="form-error">{certErrors.issued}</span>}
+          </div>
+        </fieldset>
+      )}
+      <div className="field">
+        <label htmlFor="pf-organization">{internship ? "Company" : skillIndia ? "Issuing body (optional)" : "Organization (optional)"}</label>
+        <input id="pf-organization" className="search" value={organization} disabled={busy} aria-invalid={companyError ? true : undefined} aria-describedby={companyError ? "pf-organization-error" : undefined} onChange={(e) => setOrganization(e.target.value)} />
+        {companyError && <span id="pf-organization-error" className="form-error">{companyError}</span>}
+      </div>
+      <div className="field">
+        <label htmlFor="pf-date-from">Start date (optional)</label>
+        <input id="pf-date-from" type="date" className="search" value={dateFrom} disabled={busy} onChange={(e) => setDateFrom(e.target.value)} />
+      </div>
+      <div className="field">
+        <label htmlFor="pf-date-to">End date (optional)</label>
+        <input id="pf-date-to" type="date" className="search" value={dateTo} disabled={busy} onChange={(e) => setDateTo(e.target.value)} />
+      </div>
+      {showTracking && <InternshipFields values={tracking} onChange={setTracking} disabled={busy} attendanceError={attendanceError} />}
+      <div className="field">
+        <label htmlFor="pf-description">Description (optional)</label>
+        <textarea id="pf-description" className="search" rows={3} maxLength={2000} value={description} disabled={busy} onChange={(e) => setDescription(e.target.value)} />
+      </div>
+      <button id="pf-save-btn" type="submit" className="btn" disabled={busy}>{busy ? "Saving…" : "Save"}</button>
+      <button type="button" className="btn secondary" disabled={busy} onClick={onCancel}>Cancel</button>
+      {alert && <div role="alert" className="form-error">{alert}</div>}
+    </form>
+  );
+}

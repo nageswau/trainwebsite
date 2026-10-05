@@ -6,9 +6,11 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.identifiers import uuid_reference
-from app.core.rbac import PERMISSIONS
+from app.core.rbac import PERMISSIONS, is_agent_staff
 from app.models import (
     AgentCommission,
+    AgentOrg,
+    AgentOrgMember,
     AgentStudent,
     Agreement,
     Appointment,
@@ -37,7 +39,6 @@ from app.models import (
     PlacementProfile,
     Program,
     QuestionReply,
-    UserRoleAssignment,
     QuestionThread,
     Scholarship,
     ScholarshipApplication,
@@ -51,6 +52,10 @@ from app.models import (
     User,
     VisaCase,
 )
+from app.services.agent_applications import WITHDRAWN, counts_as_offer, owned, stage_label, with_owner
+from app.services.agent_orgs import org_masters, org_member_ids
+from app.services.agent_students import application_scope, student_scope
+from app.services.agent_dashboard import headline_counts
 from app.services.provisioning import provisioning_statuses, user_ids_with_status
 
 logger = logging.getLogger("app.portal")
@@ -674,38 +679,96 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
         return _payload("Downloads", "Verified documents and offer letters.", (("name", "Document"), ("url", "Download")), rows)
 
 
+def _paid_per_currency(commissions) -> str:
+    """AGN-014: paid commissions per currency ("INR 20,000 · USD 500"; "INR 0" when none). A no-break space follows the
+    separator, so a narrow metric card wraps between currencies rather than leaving "·" at a line end (browser QA14-01)."""
+    paid: dict[str, float] = {}
+    for c in commissions:
+        if c.status == "paid":
+            paid[c.currency] = paid.get(c.currency, 0.0) + float(c.amount)
+    return " · ".join(f"{currency} {amount:,.0f}" for currency, amount in sorted(paid.items())) or "INR 0"
+
+
 async def _agent(db: AsyncSession, user: User, section: str):
-    students = (await db.execute(select(AgentStudent, User).join(User, User.id == AgentStudent.student_id).where(AgentStudent.agent_id == user.id))).all()
-    applications = (
-        await db.execute(
-            select(OverseasApplication, University, User)
-            .join(University, University.id == OverseasApplication.university_id)
-            .join(User, User.id == OverseasApplication.student_id)
-            .where(OverseasApplication.agent_id == user.id)
-            .order_by(OverseasApplication.updated_at.desc())
-        )
-    ).all()
+    # AGN-001 (D1): everything referred by any member of the caller's organisation; AGN-004 (G4): a staff member only their
+    # assigned students; archived links leave the student list and KPI (D5) while their applications stay.
+    students = (await db.execute(select(AgentStudent, User).join(User, User.id == AgentStudent.student_id).where(*student_scope(user), AgentStudent.status == "active"))).all()
+    applications = owned(
+        (
+            await db.execute(
+                with_owner(select(OverseasApplication, University).join(University, University.id == OverseasApplication.university_id))
+                .where(*application_scope(user))
+                .order_by(OverseasApplication.updated_at.desc())
+            )
+        ).all()
+    )
     # AGT-002: the roster below needs each referred student's application status
     # alongside the referral link itself -- `applications` is already scoped to this
     # agent, so pick each student's most recent application (already ordered above)
     # rather than issuing a second query.
     latest_application_by_student = {}
     for a, u, s in applications:
-        latest_application_by_student.setdefault(s.id, (a, u))
-    commissions = (await db.scalars(select(AgentCommission).where(AgentCommission.agent_id == user.id))).all()
+        if s.id is not None:  # an agency student with no login is not on the roster map (AGN-008)
+            latest_application_by_student.setdefault(s.id, (a, u))
+    # AGN-002 (DEC-SCOPE-040 S1): commissions are Master-only; a staff member's pages never read or show them.
+    staff = is_agent_staff(user)
+    commissions = [] if staff else (await db.scalars(select(AgentCommission).where(AgentCommission.agent_id.in_(org_member_ids(user))))).all()
     if section == "dashboard":
-        return _payload(
-            "Agent Dashboard",
-            "Your students, applications, next actions, and commissions.",
-            (("student", "Student"), ("university", "University"), ("status", "Status"), ("next_action", "Next action")),
-            ({"student": s.full_name, "university": u.name, "status": a.status, "next_action": a.next_action} for a, u, s in applications),
-            (
-                {"label": "Students", "value": len(students)},
-                {"label": "Applications", "value": len(applications)},
+        # AGN-008 browser QA8-10: a withdrawn application is closed, so it leaves the count and the table; status reads as a label.
+        open_applications = [(a, u, s) for a, u, s in applications if a.status != WITHDRAWN]
+        # AGN-018 (DEC-SCOPE-062): the counts come from the dashboard endpoint's service, so the two never disagree. Students now
+        # includes students with no login (the inner join on users above dropped them); Pending actions is AGN-016's T5 count.
+        counts = await headline_counts(db, user)
+        metrics = [
+            {"label": "Students", "value": counts["students"]},
+            {"label": "Applications", "value": counts["applications"]},
+            {"label": "Pending actions", "value": counts["pending_actions"]},
+        ]
+        if not staff:
+            metrics += [
                 {"label": "Claimable commission", "value": f"INR {sum(float(c.amount) for c in commissions if c.status in {'eligible', 'estimated'}):,.0f}"},
                 {"label": "Claims", "value": sum(1 for c in commissions if c.status == "claimed")},
-            ),
+            ]
+            # AGN-014 (DEC-SCOPE-051 R1): Revenue = paid commissions, per currency (never summed across currencies).
+            metrics.append({"label": "Revenue", "value": _paid_per_currency(commissions)})
+        # AGN-010 (DEC-SCOPE-056 O5): offers received, withdrawn ones included -- the Reports row's rule. After the commission metrics,
+        # so the order AGN-014 and AGN-016 fixed stays as it was.
+        metrics.append({"label": "Offers", "value": counts["offers"]})
+        if user.agent_membership:
+            metrics.append({"label": "Your code", "value": user.agent_membership.code})
+        return _payload(
+            "Agent Dashboard",
+            # AGN-002 browser QA-07: staff have no commissions page, so their pages never mention commissions.
+            "Your agency's students, applications and next actions." if staff else "Your students, applications, next actions, and commissions.",
+            (("student", "Student"), ("university", "University"), ("status", "Status"), ("next_action", "Next action")),
+            ({"student": s.full_name, "university": u.name, "status": stage_label(a.status), "next_action": a.next_action} for a, u, s in open_applications),
+            metrics,
         )
+    if section == "team":
+        # AGN-001: the agency's Master accounts, read-only here; AgentTeamPanel carries the actions (staff: AgentStaffPanel).
+        membership = user.agent_membership
+        rows = (await db.execute(org_masters(membership.org_id))).all() if membership else []
+        # Browser QA-05: same status wording as AgentTeamPanel -- an active Master who has not set a password is "invite pending".
+        pending = set(await provisioning_statuses(db, [u.id for _, u in rows]))
+        return _payload(
+            "Team",
+            "Your agency's Master accounts. Up to 3 can be active at once.",
+            (("code", "Code"), ("name", "Name"), ("email", "Email"), ("status", "Status")),
+            ({"code": m.code, "name": u.full_name, "email": u.email, "status": "invite pending" if m.status == "active" and u.id in pending else m.status} for m, u in rows),
+        )
+    if section == "tasks":
+        # AGN-016 (DEC-SCOPE-053): header only -- PortalPage mounts AgentTasksSection (the Universities precedent).
+        return _payload("Tasks & follow-ups", "Follow-ups on your students, earliest due first.")
+    if section == "notifications":
+        # AGN-017 (DEC-SCOPE-059 N8): header only -- the page's role/approval gate; PortalPage mounts AgentNotificationsSection.
+        return _payload("Notifications", "Your own notifications.")
+    if section == "performance":
+        # AGN-019 (DEC-SCOPE-066 P7): header only -- the page's role/approval gate; PortalPage mounts AgentPerformanceSection, which
+        # reads GET .../crm/performance (Master only). No figures here, so staff learn nothing from this payload.
+        return _payload("Staff performance", "Students added in a period, and how far they got.")
+    if section == "universities":
+        # AGN-007 (DEC-SCOPE-049): header only -- PortalPage mounts AgentUniversitiesPanel for this section (the Students precedent).
+        return _payload("Universities", "Your agency's own universities. Browse the public catalogue for the rest.")
     if section == "students":
         return _payload(
             "Students",
@@ -756,17 +819,16 @@ async def _agent(db: AsyncSession, user: User, section: str):
             ({"id": c.id, "application": c.application_id, "amount": f"{c.currency} {float(c.amount):,.2f}", "status": c.status, "claim": c.claim_reference} for c in commissions),
         )
     if section == "reports":
-        return _payload(
-            "Agent Reports",
-            "Application and commission summary.",
-            (("metric", "Metric"), ("value", "Value")),
-            (
-                {"metric": "Students", "value": len(students)},
-                {"metric": "Applications", "value": len(applications)},
-                {"metric": "Offers", "value": sum(1 for a, _, _ in applications if a.status in {"offer_received", "accepted"})},
-                {"metric": "Paid commission", "value": sum(float(c.amount) for c in commissions if c.status == "paid")},
-            ),
-        )
+        rows = [
+            {"metric": "Students", "value": len(students)},
+            {"metric": "Applications", "value": len(applications)},
+            # AGN-010 (DEC-SCOPE-056 O5): was `status in {"offer_received", "accepted"}`, which missed the `offer` stage (§0 defect).
+            {"metric": "Offers", "value": sum(1 for a, _, _ in applications if counts_as_offer(a))},
+        ]
+        if not staff:
+            # AGN-014 browser QA14-04: per currency, like Revenue and the commission report beside it (was one cross-currency sum).
+            rows.append({"metric": "Paid commission", "value": _paid_per_currency(commissions)})
+        return _payload("Agent Reports", "Application summary." if staff else "Application and commission summary.", (("metric", "Metric"), ("value", "Value")), rows)
 
 
 async def _operations(db: AsyncSession, user: User, section: str):
@@ -922,12 +984,12 @@ async def _operations(db: AsyncSession, user: User, section: str):
                 ),
             )
     if user.role in {"counselor", "university_rep", "overseas_admin"}:
-        stmt = select(OverseasApplication, University, User).join(University, University.id == OverseasApplication.university_id).join(User, User.id == OverseasApplication.student_id)
+        stmt = with_owner(select(OverseasApplication, University).join(University, University.id == OverseasApplication.university_id))
         if user.role == "counselor":
             stmt = stmt.where(OverseasApplication.counselor_id == user.id)
         elif user.role == "university_rep":
             stmt = stmt.where(OverseasApplication.university_id == uuid_reference(user.profile.get("university_id"), "university reference", required=False))
-        applications = (await db.execute(stmt.order_by(OverseasApplication.updated_at.desc()).limit(500))).all()
+        applications = owned((await db.execute(stmt.order_by(OverseasApplication.updated_at.desc()).limit(500))).all())
         app_ids = [a.id for a, _, _ in applications]
         if section == "dashboard":
             return _payload(
@@ -986,14 +1048,15 @@ async def _operations(db: AsyncSession, user: User, section: str):
             )
         if section == "visa":
             visas = (
-                (
-                    await db.execute(
-                        select(VisaCase, OverseasApplication, User)
-                        .join(OverseasApplication, OverseasApplication.id == VisaCase.application_id)
-                        .join(User, User.id == OverseasApplication.student_id)
-                        .where(VisaCase.application_id.in_(app_ids))
-                    )
-                ).all()
+                owned(
+                    (
+                        await db.execute(
+                            with_owner(select(VisaCase, OverseasApplication).join(OverseasApplication, OverseasApplication.id == VisaCase.application_id)).where(
+                                VisaCase.application_id.in_(app_ids)
+                            )
+                        )
+                    ).all()
+                )
                 if app_ids
                 else []
             )
@@ -1004,7 +1067,7 @@ async def _operations(db: AsyncSession, user: User, section: str):
                 ({"id": v.id, "student": s.full_name, "status": v.status, "appointment": v.appointment_date, "reference": v.tracking_reference} for v, _, s in visas),
             )
         if section == "appointments":
-            student_ids = [a.student_id for a, _, _ in applications]
+            student_ids = [a.student_id for a, _, _ in applications if a.student_id]
             rows = (await db.scalars(select(Appointment).where(Appointment.student_id.in_(student_ids)).order_by(Appointment.scheduled_at.desc()))).all() if student_ids else []
             return _payload(
                 "Appointments",
@@ -1117,15 +1180,15 @@ async def _operations(db: AsyncSession, user: User, section: str):
                 if a.status in funnel:
                     funnel[a.status] += 1
             visa_rows = (
-                (
-                    await db.execute(
-                        select(VisaCase, OverseasApplication, User)
-                        .join(OverseasApplication, OverseasApplication.id == VisaCase.application_id)
-                        .join(User, User.id == OverseasApplication.student_id)
-                        .where(VisaCase.application_id.in_(app_ids))
-                        .order_by(VisaCase.updated_at.asc())
-                    )
-                ).all()
+                owned(
+                    (
+                        await db.execute(
+                            with_owner(select(VisaCase, OverseasApplication).join(OverseasApplication, OverseasApplication.id == VisaCase.application_id))
+                            .where(VisaCase.application_id.in_(app_ids))
+                            .order_by(VisaCase.updated_at.asc())
+                        )
+                    ).all()
+                )
                 if app_ids
                 else []
             )
@@ -1346,28 +1409,34 @@ async def _operations(db: AsyncSession, user: User, section: str):
         if section == "agents" and division == "overseas":
             # AGT-001: Overseas Admin's own approve/reject queue -- the generic
             # role_map listing below has no `approval_status` column to show at all.
+            # AGN-001 (browser QA-01): one row per Master with the ORGANISATION's status -- the per-user assignment status
+            # read "approved" for a suspended agency. Approve/reject/suspend/reinstate stay in AgentApprovalPanel below.
             rows = (
                 await db.execute(
-                    select(User, UserRoleAssignment).join(UserRoleAssignment, UserRoleAssignment.user_id == User.id).where(User.role == "agent", UserRoleAssignment.role == "agent").order_by(User.created_at.desc())
+                    select(AgentOrgMember, AgentOrg, User)
+                    .join(AgentOrg, AgentOrg.id == AgentOrgMember.org_id)
+                    .join(User, User.id == AgentOrgMember.user_id)
+                    .where(AgentOrgMember.role == "master")  # AGN-002: staff are managed by their agency, not listed as Masters
+                    .order_by(AgentOrg.created_at.desc(), AgentOrgMember.seq)
                 )
             ).all()
             return _payload(
-                "Agent Registrations",
-                "Approve or reject Agent self-registrations.",
-                (("id", "reference"), ("name", "Name"), ("email", "Email"), ("status", "Approval status")),
-                ({"id": agent.id, "name": agent.full_name, "email": agent.email, "status": assignment.approval_status} for agent, assignment in rows),
+                "Agent Masters",
+                "Every Master of every agent organisation. Approve, reject, suspend or reinstate agencies below.",
+                (("agency", "Agency"), ("code", "Code"), ("name", "Name"), ("email", "Email"), ("org_status", "Agency status"), ("master_status", "Master status")),
+                ({"agency": org.name, "code": member.code, "name": member_user.full_name, "email": member_user.email, "org_status": org.status, "master_status": member.status} for member, org, member_user in rows),
             )
         if section == "schools" and division == "overseas":
-            # SCH-003: Overseas Admin's own partner-school list -- creation itself
-            # (POST /overseas-admin/schools) is handled by AdminSchoolCreatePanel.tsx,
-            # same "read via the generic portal section, write via a dedicated panel"
-            # split already established for `universities` (RAID.md I-32).
+            # SCH-003 / ENH-009 (DEC-SCOPE-025): Overseas Admin's own partner-school list --
+            # creation/edit handled by AdminSchoolCreatePanel.tsx/AdminSchoolEditPanel.tsx, same
+            # "read via the generic portal section, write via a dedicated panel" split already
+            # established for `universities` (RAID.md I-32).
             rows = (await db.scalars(select(School).order_by(School.created_at.desc()))).all()
             return _payload(
                 "Partner Schools",
                 "Every School partner record. Create a new one to seed its Coordinator account.",
-                (("id", "reference"), ("name", "Name"), ("city", "City"), ("state", "State"), ("created_at", "Created")),
-                ({"id": s.id, "name": s.name, "city": s.city or "-", "state": s.state or "-", "created_at": s.created_at} for s in rows),
+                (("id", "reference"), ("school_code", "School ID"), ("name", "Name"), ("branch", "Branch"), ("city", "City"), ("state", "State"), ("board", "Board"), ("tier", "Tier"), ("created_at", "Created")),
+                ({"id": s.id, "school_code": s.school_code or "-", "name": s.name, "branch": s.branch or "-", "city": s.city or "-", "state": s.state or "-", "board": s.board or "-", "tier": s.tier or "-", "created_at": s.created_at} for s in rows),
             )
         if section == "school-staff" and division == "overseas":
             # SCH-004/005/006 (DEC-SCOPE-014): Academic Team/Career Counselor/Psychometric
@@ -1389,15 +1458,17 @@ async def _operations(db: AsyncSession, user: User, section: str):
             # AGT-003-AC02: Overseas Admin needs to see every commission in the division
             # (including system-triggered "estimated" rows with no amount yet) to set/
             # adjust the amount -- no such view existed anywhere before this feature.
-            rows = (
-                await db.execute(
-                    select(AgentCommission, University, User)
-                    .join(OverseasApplication, OverseasApplication.id == AgentCommission.application_id)
-                    .join(University, University.id == OverseasApplication.university_id)
-                    .join(User, User.id == OverseasApplication.student_id)
-                    .order_by(AgentCommission.created_at.desc())
-                )
-            ).all()
+            rows = owned(
+                (
+                    await db.execute(
+                        with_owner(
+                            select(AgentCommission, University)
+                            .join(OverseasApplication, OverseasApplication.id == AgentCommission.application_id)
+                            .join(University, University.id == OverseasApplication.university_id)
+                        ).order_by(AgentCommission.created_at.desc())
+                    )
+                ).all()
+            )
             agent_ids = {c.agent_id for c, _, _ in rows}
             agents = {a.id: a.full_name for a in (await db.scalars(select(User).where(User.id.in_(agent_ids))))} if agent_ids else {}
             return _payload(

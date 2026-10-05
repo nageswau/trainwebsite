@@ -17,6 +17,11 @@
 .pagination button{min-width:36px;height:36px;border:1px solid #cbd8e8;border-radius:9px;background:#fff;color:var(--ink);font-weight:700;padding:0 10px}
 .pagination button:hover:not(:disabled),.pagination button.active{border-color:var(--blue);background:var(--blue);color:#fff}
 .pagination button:disabled{opacity:.45;cursor:not-allowed}
+/* Skip link (ENH-006 QA-008): off-screen until keyboard focus, then the first thing on the page; the main landmark it targets is
+   focused programmatically, so it needs no focus ring of its own. */
+.skip-link{position:absolute;left:-9999px;top:8px;z-index:100;padding:10px 16px;border-radius:10px;background:var(--navy);color:#fff;font-weight:800}
+.skip-link:focus{left:16px}
+main:focus{outline:none}
 .sort-button{border:0;background:transparent;color:inherit;font:inherit;font-weight:inherit;text-transform:inherit;letter-spacing:inherit;padding:0;white-space:nowrap}
 .search:disabled{background:#f1f5f9;color:#94a3b8}
 
@@ -42,3 +47,24 @@
 @keyframes skeleton-pulse{50%{opacity:.5}}
 @media(prefers-reduced-motion:reduce){.skeleton-line{animation:none}}
 @media(max-width:640px){.link-list .meta{width:100%}.link-list .btn{width:100%;min-height:44px}}
+/* ENH-011 browser QA-11: comfortable touch targets on the skills pages on a phone (scoped, so no other screen changes). */
+@media(max-width:640px){.skills-page .btn{min-height:44px}}
+/* ENH-018 activity feedback: score radios, read-only details, and long free text that must wrap rather than widen the page. */
+.score-field{border:0;margin:0;padding:0;min-width:0}
+.score-field legend{font-weight:800;font-size:13px;margin-bottom:7px;padding:0}
+.score-options{display:flex;flex-wrap:wrap;gap:4px 16px}
+.score-options label{display:flex;align-items:center;gap:6px;min-height:44px;font-weight:600}
+.feedback-details{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 16px;margin:8px 0 0}
+.feedback-details dt{font-weight:800;font-size:13px}
+.feedback-details dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.link-list li.feedback-row{flex-direction:column;align-items:stretch}
+/* ENH-018 browser QA: hints/counters under fields (QA-018-02); a comfortable "View feedback" target (QA-018-11, was 23 px);
+   status badges that differ in colour as well as text, both well above 4.5:1 contrast (QA-018-15). */
+.field-hint{margin:0;font-size:13px;color:var(--muted)}
+.feedback-row summary{display:flex;align-items:center;min-height:44px;cursor:pointer;width:fit-content}
+.badge.badge-done{background:#e7f6ec;color:#166534}
+.badge.badge-pending{background:#fff4e0;color:#7a4a00}
+@media(max-width:640px){.feedback-details{grid-template-columns:minmax(0,1fr)}.feedback-details dd{margin-bottom:6px}}
+
+/* bdm-010 QA10-05: an in-text link that looks like one (the global `a` rule inherits colour and drops the underline). */
+.text-link{color:var(--blue);text-decoration:underline;text-underline-offset:2px;font-weight:700}

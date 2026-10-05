@@ -35,6 +35,7 @@ test("student journey timeline renders in order for Parent, Teacher, Coordinator
   await page.fill("#school-name", `E2E Timeline School ${unique}`);
   await page.fill("#school-coordinator-name", "E2E Timeline Coordinator");
   await page.fill("#school-coordinator-email", coordinatorEmail);
+  await page.selectOption("#school-tier", "platinum"); // ENH-022: entitled to every service
   await createAndActivateFromUi(page, 'button:has-text("Create school + seed Coordinator")', "/overseas-admin/schools");
   await expect(page.getByText(/School created\./)).toBeVisible();
   const schoolListRes = await page.request.get("/api/v1/overseas-admin/schools");

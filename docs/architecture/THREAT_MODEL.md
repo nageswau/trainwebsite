@@ -43,6 +43,66 @@ School-specific threat entry existed yet. Original content elsewhere is unchange
   loosely, allowing a status to be set to "joined" without real verification.
 - **Direction:** flagged for Contracts-phase design, not resolved here — do not let an easy-to-set
   status field become the actual trigger without a verification step.
+- **Threat (`AGN-004`, 2026-09-30):** a staff member reading or changing another staff member's (or another agency's)
+  students — directly by id, or indirectly through an application, document, lookup or portal page — or escalating to
+  Master-only actions (archive, assign, team, commissions); a duplicate warning used to enumerate students.
+- **Direction (built):** the agency and, for staff, the assignee are in every query's `WHERE` clause
+  (`services/agent_students.student_scope`/`application_scope`); out-of-scope ids on the new routes are `404` (existence
+  mask); Master-only actions check `is_agent_staff` server-side; server-owned fields are rejected (`extra="forbid"`); the
+  duplicate check reads only the caller's own agency and shows staff matches outside their scope only as a count; every write
+  is audited in the same transaction with ids and field names only. **Residual, stated:** no rate limiting on the new routes
+  (none exists for writes platform-wide except invites and link search); last write wins on concurrent edits; a create with
+  neither email nor phone is not idempotent; students with no login have no erasure path yet (`PRD_OPEN_ITEMS.md` item 80).
+- **Threat (`AGN-007`, `DEC-SCOPE-049`, 2026-10-01):** an agency-private university (or a shortlist entry that names one) leaking to another
+  agency or to `/public`; a staff member reading or writing the shortlist of a student outside their assignment, or creating,
+  editing or deleting an agency university (Master-only); another agency's university or entry id used to probe existence or to
+  attach a foreign row; mass assignment of `org_id` / `agent_student_id`; exhausting an agency's lists.
+- **Direction (built):** agency universities live in their own table (`agent_universities`) and never enter the shared catalogue,
+  so no public query can reach them; the tenant key `org_id` is in every `WHERE` clause and the student scope comes from
+  `load_scoped` (out of scope → `404` before any role check); an `agent_university_id` from another agency gets the same
+  `422 "University not found"` as a nonexistent id, and the entry is loaded by `id AND agent_student_id`; university writes check
+  `is_agent_staff` server-side after the scoped load; bodies are `extra="forbid"`; caps (50 / 500) and duplicates are checked
+  under the agency lock with a unique index and `RESTRICT` foreign keys behind them; audit rows (same transaction, ids and field
+  names only) never carry free-text. Tests: `test_agn_007_isolation.py` (`test_other_agencys_university_id_reads_as_not_found`,
+  `test_public_never_shows_agency_universities_or_entries`, `test_concurrent_adds_never_pass_the_cap`,
+  `test_delete_university_racing_an_add_never_orphans`), `test_agn_007_shortlist.py::test_staff_scope_is_404_before_any_role_check`,
+  `test_agn_007_universities.py::test_staff_view_but_cannot_write`, `::test_other_agency_cannot_see_or_touch`.
+  **Residual, stated:** no new rate limiter; POST is not idempotent and last write wins on concurrent PATCH (D10); an entry's
+  free-text course, intake, fee and requirements follow the `AGN-004` record lifecycle (no erasure path yet).
+- **Threat (`AGN-008`, 2026-10-02):** a staff member opening or changing another staff member's (or another agency's) application or
+  student by id; an agent escalating a status to `enrolled` to self-accrue commission; mass assignment of `agent_id`, `status`,
+  `university_id` or `student_id` through a PATCH; create, withdraw and re-create loops used to spam the student of an application with
+  email; writes on an archived student's application; acting from a stale screen after a counselor or admin changed the application.
+- **Direction (built):** `_gate` plus `student_scope`/`application_scope` in every query's `WHERE` clause with a `404` existence mask;
+  `enrolled` refused to every agent (`403`); `extra="forbid"` request bodies; a 200-per-agency-per-24-hours create throttle (`429`,
+  `Retry-After`) counted from audit rows under the organisation lock; archived students read-only (`409`); an `expected_status`
+  precondition (`409`); the organisation lock then the row `FOR UPDATE` on every write, with audit in the same transaction (ids,
+  field names and from/to status only). Abuse cases are tests (spec §7, AC17).
+- **Fixed (final review, 2026-10-02):** the counselor/admin PATCH and `/advance` re-read the application `FOR UPDATE` (row lock only)
+  before the `withdrawn` guard, so a concurrent agent withdraw is seen and the write is refused (`409`), not overwritten
+  (`test_agn_008_concurrency.py`).
+- **Residual, stated (not fixed in AGN-008):** the legacy agent create path writes the same audit
+  action without the organisation lock, so the throttle can be exceeded by one; no idempotency key (a retry meets the duplicate or
+  forward-only rule); no throttle on reads, edits or status changes; documents for no-login students remain unbuilt.
+- **Threat (found in browser QA, 2026-10-02; pre-existing, not AGN-008-specific):** open redirect through the login form's `next`
+  parameter, used to send a freshly signed-in user to an attacker's site (`//evil.com`, `/\evil.com`, an absolute URL, or a
+  dot-segment form such as `/.//evil.com` that normalises to `//evil.com`).
+- **Fixed:** `apps/web/lib/safeNext.ts` accepts same-origin relative paths only and checks the normalised output, not just the raw
+  input; middleware and the expired-session `ReturnToLoginLink` build `next` as path plus query and go through the same check
+  (`safeNext.test.ts`, `LoginForm.next.test.tsx`). Page gate on `/overseas/agent/applications` kept for every role.
+
+### Agent deposits through Razorpay (`AGN-011`, `DEC-SCOPE-058`, 2026-10-02)
+
+- **Threats:** amount tampering at checkout; paying (or reading the receipt of) another agency's or an unassigned student's deposit;
+  Staff or Master marking a deposit remitted/refunded; a replayed or late webhook regressing a paid payment or paying a deposit twice;
+  two members paying at once; a stale order (amount since edited) paying the deposit; refund above the amount paid; order spam.
+- **Controls:** the checkout reads no body (amount from the deposit row); AGN-008 scope in the `WHERE` clause (`404`); remit/refund on the
+  admin router, `overseas_admin` only; event-id dedup plus a paid-guard on every payment under a row lock; a deposit is paid only by its
+  open checkout at the stored amount; deposit row lock + 15-minute rule; amount edits cancel the open checkout; refund ≤ paid amount;
+  10 attempts per deposit per hour; audit of every step.
+- **Residual, stated:** a payer who completes an already-replaced Razorpay order is charged; the capture is recorded and flagged for a
+  manual refund (no order-cancel API). Webhook delivery failure leaves a paid order pending until verify or a later delivery (existing
+  reconciliation gap, `INTEGRATION_CONTRACTS.md` §2).
 
 ### Employer domain (new, external-party access)
 - **Threat:** an Employer account viewing more of a Student's profile than GDPR-approved visibility
@@ -94,6 +154,19 @@ School-specific threat entry existed yet. Original content elsewhere is unchange
 - **Direction:** the provisioning gate has no self-service anywhere (`DEC-SCOPE-012`); invite tokens
   are single-use and institution-scoped, checked the same way an account-creation IDOR would be
   (`DATA_MODEL.md` §6.15).
+- **Threat (added 2026-09-21, `ENH-005`):** a coordinator pulling another school's student, or learning
+  which Student IDs exist at other schools — by filing requests for guessed codes and watching whether a
+  row appears in their own list, or by comparing responses for a real and an unknown code.
+- **Direction:** the move is only ever performed by an admin's approval; the incoming endpoint answers
+  every well-formed code identically; a not-yet-approved incoming row is redacted; filing is throttled
+  (30/hour/coordinator, counted from the audit rows so it holds across instances) and capped (50 open per
+  school); every attempt is audited with a reason token, never the code. **Residual, stated:** a determined
+  coordinator can still learn that a code exists, slowly, and is recorded doing so (`DEC-SCOPE-022`).
+- **Threat (added 2026-09-21, `ENH-005`):** markup in a student, school or parent name reaching a parent's
+  inbox through the notification email (HTML injection under EduSphere's own sender), or hidden
+  bidirectional characters in a transfer reason/note misleading an admin.
+- **Direction:** the parent notification email escapes everything it interpolates; free text rejects
+  control and bidirectional-override characters and is rendered as text only.
 - **Threat:** premature disclosure of an unverified academic result — a family or student sees a
   `Draft`/`Verified` mark before it's confirmed accurate.
 - **Direction:** the `Draft → Verified → Published` gate exists specifically to prevent this;
@@ -108,6 +181,26 @@ School-specific threat entry existed yet. Original content elsewhere is unchange
 - **Direction:** the assignment-scope mechanism itself is undesigned (`RBAC_MATRIX.md` §5,
   `PRD_OPEN_ITEMS.md` item 76) — this threat cannot be fully mitigated until that mechanism exists;
   carried forward as a named, open risk rather than assumed closed.
+- **Threat (added 2026-09-29, `ENH-017`) — School roles reading Overseas application data:** the
+  Coordinator/Principal Global Education pipeline joins school students to their overseas applications.
+  (a) Over-disclosure: application detail (university, course, country, notes, references, offer letters,
+  documents, counselor/agent) reaching a school, contrary to `School CRM.md` §19's high-level-status limit.
+  (b) Cross-school leakage: one school seeing another school's bridged students or counts.
+- **Direction:** column-level selects with the offer letter reduced to a boolean in SQL; allowlisted
+  response models; the school taken from the session with no id parameter; role gate before validation;
+  exact key-set and planted-value tests on the raw body; GET only, no state change; ids and counts only in
+  logs (`DEC-SCOPE-036`, design spec §11). **Residual, stated:** no rate limiting (no read-endpoint rate limiting exists, this endpoint included;
+  the endpoint is single-school and row-capped) and no `AuditLog` row for reads (`DEC-SCOPE-036` D9, the
+  `ENH-016` precedent).
+- **Threat (added 2026-09-29, `ENH-015`) — PDF report downloads:** (a) an export bypassing row-level scope (another school's figures, an
+  unlinked child's report); (b) a stored report reachable through `/files/download` (any key, any authenticated user) or the
+  unauthenticated `/local-files` mount; (c) stored text (counsellor notes, remarks) injected into reportlab's paragraph markup;
+  (d) PII in logs, filenames or shared caches.
+- **Direction:** the existing loaders decide scope (school from the session; SCH-007 `_load_readable_student`); nothing is
+  stored; one escape point for all text; fixed filenames and `private, no-store`; progress-report downloads audited before
+  bytes leave (fail closed); ids/counts/exception type only in logs (`DEC-SCOPE-037`, spec §11). **Residual, stated:** no rate
+  limiting (platform-wide gap, `ENH-016` D16 precedent); GET + `SameSite=Lax` means a cross-site link can make a user download
+  their own report (one extra audit row, no disclosure); the progress report grows with the student's record count.
 
 ### File uploads (general)
 - **Threat:** malicious file upload (resumes, assignments, documents, resources) used for stored
