@@ -111,7 +111,9 @@ export default function BdmActivityForm({
     if (onRefused && outcome.status && [403, 404, 409].includes(outcome.status)) return onRefused(outcome.status, outcome.message);
     const mapped = { ...fieldErrors(outcome.detail), ...activityRuleField(outcome.detail) };
     setErrors(mapped);
-    setFailure(Object.keys(mapped).length ? "Check the highlighted fields." : outcome.message);
+    // A 5xx, or a body with no usable detail (plain text), says nothing helpful: tell the user the entry is kept (QA9B-04). A network drop (no status) keeps its own message.
+    const unreadable = outcome.status !== undefined && (outcome.status >= 500 || (typeof outcome.detail !== "string" && !Array.isArray(outcome.detail)));
+    setFailure(Object.keys(mapped).length ? "Check the highlighted fields." : unreadable ? "The server couldn't save this activity. Your entry is kept — try again." : outcome.message);
     focusFirst(mapped);
   }
 

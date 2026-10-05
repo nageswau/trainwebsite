@@ -48,6 +48,23 @@ export function contactText(a: Activity): string | null {
   return a.contact_removed ? `${a.contact_name} (removed)` : a.contact_name;
 }
 
+/** A real calendar day: YYYY-MM-DD with a 4-digit year that survives a round trip (2026-02-30 does not). bdm-010's isIsoDate lets that roll over. */
+export function isCalendarDate(value: string): boolean {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!m) return false;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const t = new Date(Date.UTC(y, mo - 1, d));
+  return t.getUTCFullYear() === y && t.getUTCMonth() === mo - 1 && t.getUTCDate() === d;
+}
+
+/** The IST day a page shows for a raw `?date=`: an invalid or future day becomes today, with a note the page prints (QA9B-01). */
+export function activityDay(raw: string | undefined, today: string): { day: string; note: string | null } {
+  if (!raw) return { day: today, note: null };
+  if (!isCalendarDate(raw)) return { day: today, note: "That isn't a valid date — showing today." };
+  if (raw > today) return { day: today, note: "Dates after today can't be shown — showing today." };
+  return { day: raw, note: null };
+}
+
 /** The API answers its time and contact rules as one sentence; put each on the field it is about (the bdm-010 dateRuleField idea). */
 export function activityRuleField(detail: unknown): Record<string, string> {
   if (typeof detail !== "string") return {};

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -8,7 +9,8 @@ import { ApiError, serverApi } from "@/lib/api";
 import type { ActivityDayPage } from "@/lib/bdmActivities";
 import ManagerActivities from "@/app/bdm/manager/activities/page";
 import MyActivities from "@/app/bdm/activities/page";
-import { elements } from "@/tests/helpers/elementTree";
+import { indiaToday } from "@/lib/bdmTravel";
+import { elements, text } from "@/tests/helpers/elementTree";
 
 vi.mock("@/lib/api", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/api")>()), serverApi: vi.fn() }));
 
@@ -54,6 +56,39 @@ describe("bdm-009 activity pages", () => {
     const dayList = tree.find((el) => el.type === BdmActivityDay)!;
     expect(dayList.props.canLog).toBe(false);
     expect(dayList.props.emptyText).toBe("No activities from Asha on this day.");
+  });
+
+  const teamApi = () => vi.mocked(serverApi).mockImplementation(async (p: string) => {
+    if (p === "/api/v1/auth/me") return { id: "m1", full_name: "Meera", role: "bdm_manager" };
+    if (p.startsWith("/api/v1/bdm/manager/team")) return { items: [{ id: B1, full_name: "Asha" }], total: 1, limit: 100, offset: 0 };
+    if (p.includes("unread")) return { unread: 0 };
+    return day();
+  });
+  // The notes live in the day list's `header` prop, which `elements` does not walk.
+  const hasText = (tree: ReturnType<typeof elements>, note: string) => text(tree.find((el) => el.type === BdmActivityDay)!.props.header as ReactNode).includes(note);
+  const NOT_VALID = "That isn't a valid date — showing today.";
+  const FUTURE = "Dates after today can't be shown — showing today.";
+
+  it.each([["2026-02-30", NOT_VALID], ["2099-12-31", FUTURE]])("My Activities with date=%s reads today and says so (QA9B-01)", async (date, note) => {
+    vi.mocked(serverApi).mockImplementation(async (p: string) => (p === "/api/v1/bdm/me" ? me : p.includes("unread") ? { unread: 0 } : day()));
+    const tree = elements(await MyActivities({ searchParams: Promise.resolve({ date }) }));
+    expect(serverApi).toHaveBeenCalledWith(`/api/v1/bdm/activities?date=${indiaToday()}&limit=50&offset=0`);
+    expect(vi.mocked(serverApi).mock.calls.some(([p]) => String(p).includes(date))).toBe(false);
+    expect(hasText(tree, note)).toBe(true);
+  });
+
+  it.each([["2026-02-30", NOT_VALID], ["2099-12-31", FUTURE]])("the team page with date=%s reads today and says so (QA9B-01)", async (date, note) => {
+    teamApi();
+    const tree = elements(await ManagerActivities({ searchParams: Promise.resolve({ date }) }));
+    expect(serverApi).toHaveBeenCalledWith(`/api/v1/bdm/manager/activities?date=${indiaToday()}&limit=50&offset=0`);
+    expect(hasText(tree, note)).toBe(true);
+  });
+
+  it("the team page drops a BDM who is not in the team and says so (QA9B-05)", async () => {
+    teamApi();
+    const tree = elements(await ManagerActivities({ searchParams: Promise.resolve({ bdm: "00000000-0000-4000-8000-0000000000ff" }) }));
+    expect(vi.mocked(serverApi).mock.calls.some(([p]) => String(p).includes("bdm_user_id"))).toBe(false);
+    expect(hasText(tree, "That BDM isn't in your team — showing everyone.")).toBe(true);
   });
 
   it("a refused page shows the access card", async () => {
@@ -175,6 +210,32 @@ describe("bdm-009 activity pages", () => {
     fireEvent.change(screen.getByLabelText("Channel (required)"), { target: { value: "visit" } });
     fireEvent.click(screen.getByRole("button", { name: "Save activity" }));
   };
+
+  it("a write that succeeds but whose re-read fails still says it was saved (QA9B-02)", async () => {
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") return Promise.resolve(res({ ...mk("n1"), occurred_at: new Date().toISOString() }, 201));
+      if (url.includes("assigned=me")) return Promise.resolve(res({ items: [{ id: "o1", code: "ORG-1", name: "St Mary", city: "Kochi" }], total: 1 }));
+      if (url.includes("/organizations/o1")) return Promise.resolve(res({ organization: { id: "o1", contacts: [] } }));
+      return Promise.resolve(res({ detail: "boom" }, 500));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
+    render(<BdmActivityDay header={<h2>My activities</h2>} initial={day()} url={`/api/v1/bdm/activities?date=${today}`} pageDay={today} canLog orgBasePath="/bdm/organizations" />);
+    fireEvent.click(screen.getByRole("button", { name: "Log activity" }));
+    const picker = screen.getByRole("combobox", { name: /Organization/ });
+    fireEvent.focus(picker);
+    fireEvent.change(picker, { target: { value: "Mary" } });
+    fireEvent.click(await screen.findByRole("option", { name: /St Mary/ }));
+    fireEvent.change(screen.getByLabelText("Channel (required)"), { target: { value: "visit" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save activity" }));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/^Activity logged\.$/));
+    expect(screen.getByRole("alert")).toHaveTextContent("The list couldn't be refreshed. Reload the page to see the latest entries and counts.");
+  });
+
+  it("the Log activity title button stays on one line (QA9B-06)", () => {
+    render(<BdmActivityDay header={<h2>My activities</h2>} initial={day()} url={URL_DAY} pageDay="2026-10-03" canLog orgBasePath="/bdm/organizations" />);
+    expect(screen.getByRole("button", { name: "Log activity" })).toHaveClass("no-wrap");
+  });
 
   it("logging onto another day announces which day it went to", async () => {
     await logOnto("2026-09-01");

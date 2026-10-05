@@ -89,6 +89,17 @@ describe("BdmActivityItem (bdm-009 §6.3)", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Only today's activities can be changed");
   });
 
+  it("focuses the refusal alert after a refused delete or edit (QA9B-03)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res({ detail: "Only today's activities can be changed" }, 409))));
+    render(<BdmActivityItem activity={item()} {...props()} />);
+    del();
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveFocus());
+    cleanup();
+    render(<BdmActivityItem activity={item()} {...props()} />);
+    edit();
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveFocus());
+  });
+
   it("an edit 404 removes the item", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res({ detail: "Activity not found" }, 404))));
     const p = props();

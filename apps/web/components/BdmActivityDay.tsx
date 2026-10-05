@@ -36,7 +36,10 @@ export default function BdmActivityDay({
       setDay((current) => (append ? { ...data, items: [...current.items, ...data.items.filter((a) => !current.items.some((c) => c.id === a.id))] } : data));
       if (text) setNotice(text);
     } catch {
-      if (mine === latest.current) setFailure("The day couldn't be refreshed. Reload the page to see the latest counts.");
+      if (mine === latest.current) {
+        if (text) setNotice(text); // the write itself succeeded: say so, or the user logs it again (QA9B-02)
+        setFailure("The list couldn't be refreshed. Reload the page to see the latest entries and counts.");
+      }
     } finally {
       if (mine === latest.current) {
         setBusy(false);
@@ -50,7 +53,7 @@ export default function BdmActivityDay({
       <div className="portal-title">
         <div>{header}</div>
         {canLog && !logging && (
-          <button id="activity-day-log" type="button" className="btn" onClick={() => { setLogging(true); setNotice(null); }}>Log activity</button>
+          <button id="activity-day-log" type="button" className="btn no-wrap" onClick={() => { setLogging(true); setNotice(null); }}>Log activity</button>
         )}
       </div>
       {logging && (

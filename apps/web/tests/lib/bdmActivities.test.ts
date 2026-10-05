@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { activityRuleField, contactText, isDayPage, needsDirection, placeNewest, type Activity } from "@/lib/bdmActivities";
+import { activityRuleField, isCalendarDate, contactText, isDayPage, needsDirection, placeNewest, type Activity } from "@/lib/bdmActivities";
 
 const a = (over: Partial<Activity> = {}): Activity => ({
   id: "a1", organization: { id: "o1", code: "ORG-000001", name: "St Mary", org_type: "college" }, bdm: { id: "b1", full_name: "Asha" },
@@ -9,6 +9,12 @@ const a = (over: Partial<Activity> = {}): Activity => ({
 });
 
 describe("bdmActivities", () => {
+  it("isCalendarDate accepts only real YYYY-MM-DD days (QA9B-01)", () => {
+    expect(isCalendarDate("2026-02-28")).toBe(true);
+    expect(isCalendarDate("2028-02-29")).toBe(true);
+    for (const bad of ["2026-02-30", "2026-13-01", "2026-00-10", "20261-10-01", "2026-1-1", "", "x"]) expect(isCalendarDate(bad)).toBe(false);
+  });
+
   it("knows which channels carry a direction", () => {
     expect(["call", "whatsapp", "email"].every((c) => needsDirection(c as Activity["channel"]))).toBe(true);
     expect(["visit", "meeting", "other"].some((c) => needsDirection(c as Activity["channel"]))).toBe(false);

@@ -3,20 +3,20 @@ import BdmActivityDay from "@/components/BdmActivityDay";
 import PortalShell from "@/components/PortalShell";
 import { serverApi } from "@/lib/api";
 import { BDM_TYPE_LABEL, type BdmMe } from "@/lib/bdm";
-import { ACTIVITIES_URL, type ActivityDayPage, DAY_PAGE } from "@/lib/bdmActivities";
+import { ACTIVITIES_URL, activityDay, type ActivityDayPage, DAY_PAGE } from "@/lib/bdmActivities";
 import { bdmNav } from "@/lib/bdmNav";
-import { indiaToday, isIsoDate } from "@/lib/bdmTravel";
+import { indiaToday } from "@/lib/bdmTravel";
 import { BDM_SIGN_IN } from "@/lib/navigation";
 
 const PATH = "/bdm/activities";
 
 // bdm-009 (spec §6.2): my activities on one IST day with that day's counts. The date lives in the URL (a plain GET form, no JS); a
-// malformed date is ignored (today), a future one is refused by the API.
+// malformed or future date is replaced by today, with a note (QA9B-01), so the API is never asked for it.
 export default async function MyActivitiesPage({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
   const nav = bdmNav(); // the unread badge, read alongside the page's own data (never rejects)
   const raw = (await searchParams).date;
   const today = indiaToday();
-  const chosen = raw && isIsoDate(raw) ? raw : today;
+  const { day: chosen, note } = activityDay(raw, today);
   const url = `${ACTIVITIES_URL}?date=${chosen}`;
   let me: BdmMe, day: ActivityDayPage;
   try {
@@ -43,6 +43,7 @@ export default async function MyActivitiesPage({ searchParams }: { searchParams:
                 </div>
                 <button className="btn secondary" type="submit">Show</button>
               </form>
+              {note && <p className="muted">{note}</p>}
             </>
           }
           initial={day}

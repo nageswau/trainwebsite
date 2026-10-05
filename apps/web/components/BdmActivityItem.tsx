@@ -30,6 +30,7 @@ export default function BdmActivityItem({
   const focus = useFocusAfterRender();
   const editId = `activity-${activity.id}-edit`;
   const deleteId = `activity-${activity.id}-delete`;
+  const failureId = `activity-${activity.id}-failure`;
   const contact = contactText(activity);
   const heading = `${CHANNEL_LABEL[activity.channel]}${activity.direction ? ` · ${DIRECTION_LABEL[activity.direction]}` : ""}`;
 
@@ -37,7 +38,10 @@ export default function BdmActivityItem({
   function refused(status: number | undefined, message: string) {
     if (status === 404) return onDeleted(activity.id);
     setFailure(message);
-    if (status === 403 || status === 409) onLocked(activity.id);
+    if (status === 403 || status === 409) {
+      onLocked(activity.id);
+      focus(failureId); // the controls are gone: keep focus on the reason instead of <body> (QA9B-03)
+    }
   }
 
   async function remove() {
@@ -65,7 +69,7 @@ export default function BdmActivityItem({
           {contact ? `${contact} · ` : ""}Logged by {activity.bdm.full_name}
         </p>
         {activity.note && <p className="jtl-detail" style={{ margin: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{activity.note}</p>}
-        {failure && <p className="form-error" role="alert">{failure}</p>}
+        {failure && <p id={failureId} tabIndex={-1} className="form-error" role="alert">{failure}</p>}
         {editing ? (
           <BdmActivityForm organizationId={activity.organization.id} activity={activity}
             onSaved={(a) => { setEditing(false); onChanged(a); focus(editId); }}

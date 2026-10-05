@@ -96,6 +96,23 @@ describe("BdmActivityForm (bdm-009 §6.3)", () => {
     expect(screen.getByLabelText("Note")).toHaveValue("keep me");
   });
 
+  it("a 5xx or an unreadable error body says the server could not save and the entry is kept (QA9B-04)", async () => {
+    const SERVER = "The server couldn't save this activity. Your entry is kept — try again.";
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response("Internal Server Error", { status: 500 }))));
+    render(<BdmActivityForm organizationId="o1" contacts={contacts} onSaved={vi.fn()} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByLabelText("Outgoing"));
+    fireEvent.change(screen.getByLabelText("Note"), { target: { value: "keep me" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save activity" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(SERVER);
+    expect(screen.getByLabelText("Note")).toHaveValue("keep me");
+    cleanup();
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res({ detail: "Something specific" }, 500))));
+    render(<BdmActivityForm organizationId="o1" contacts={contacts} onSaved={vi.fn()} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByLabelText("Outgoing"));
+    fireEvent.click(screen.getByRole("button", { name: "Save activity" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(SERVER);
+  });
+
   it("edits only the changed fields and sends direction null when the channel no longer needs one", async () => {
     const fetchMock = vi.fn(() => Promise.resolve(res(saved({ channel: "visit", direction: null }))));
     vi.stubGlobal("fetch", fetchMock);

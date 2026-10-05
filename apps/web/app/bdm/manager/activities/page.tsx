@@ -3,9 +3,9 @@ import BdmActivityDay from "@/components/BdmActivityDay";
 import PortalShell from "@/components/PortalShell";
 import { serverApi } from "@/lib/api";
 import type { Page } from "@/lib/apiErrors";
-import { type ActivityDayPage, DAY_PAGE, TEAM_ACTIVITIES_URL } from "@/lib/bdmActivities";
+import { activityDay, type ActivityDayPage, DAY_PAGE, TEAM_ACTIVITIES_URL } from "@/lib/bdmActivities";
 import { bdmManagerNav } from "@/lib/bdmNav";
-import { indiaToday, isIsoDate, isUuid } from "@/lib/bdmTravel";
+import { indiaToday, isUuid } from "@/lib/bdmTravel";
 import type { User } from "@/lib/types";
 
 const PATH = "/bdm/manager/activities";
@@ -15,20 +15,20 @@ export default async function ManagerActivitiesPage({ searchParams }: { searchPa
   const nav = bdmManagerNav();
   const sp = await searchParams;
   const today = indiaToday();
-  const chosen = sp.date && isIsoDate(sp.date) ? sp.date : today;
-  const bdm = sp.bdm && isUuid(sp.bdm) ? sp.bdm : null;
-  const url = `${TEAM_ACTIVITIES_URL}?date=${chosen}${bdm ? `&bdm_user_id=${bdm}` : ""}`;
-  let user: User, team: Page<{ id: string; full_name: string }>, day: ActivityDayPage;
+  const { day: chosen, note } = activityDay(sp.date, today);
+  const wanted = sp.bdm && isUuid(sp.bdm) ? sp.bdm : null;
+  let user: User, team: Page<{ id: string; full_name: string }>, day: ActivityDayPage, bdm: string | null, url: string;
   try {
     user = await serverApi<User>("/api/v1/auth/me");
     if (user.role !== "bdm_manager" && user.role !== "super_admin") return accessDenied(user, "This page is for BDM managers.");
-    [team, day] = await Promise.all([
-      serverApi<Page<{ id: string; full_name: string }>>("/api/v1/bdm/manager/team?limit=100&offset=0"),
-      serverApi<ActivityDayPage>(`${url}&limit=${DAY_PAGE}&offset=0`),
-    ]);
+    team = await serverApi<Page<{ id: string; full_name: string }>>("/api/v1/bdm/manager/team?limit=100&offset=0");
+    bdm = wanted && team.items.some((b) => b.id === wanted) ? wanted : null; // QA9B-05: a BDM outside the team is dropped, not filtered on
+    url = `${TEAM_ACTIVITIES_URL}?date=${chosen}${bdm ? `&bdm_user_id=${bdm}` : ""}`;
+    day = await serverApi<ActivityDayPage>(`${url}&limit=${DAY_PAGE}&offset=0`);
   } catch (e) {
     return accessUnavailable(e, "/admin/login");
   }
+  const bdmNote = wanted && !bdm ? "That BDM isn't in your team — showing everyone." : null;
   const chosenName = bdm ? team.items.find((b) => b.id === bdm)?.full_name ?? null : null; // §12.2 F7
   return (
     <PortalShell nav={await nav} roleLabel={user.role === "super_admin" ? "Super Admin" : "BDM Manager"} userName={user.full_name}>
@@ -55,6 +55,8 @@ export default async function ManagerActivitiesPage({ searchParams }: { searchPa
                 </div>
                 <button className="btn secondary" type="submit">Show</button>
               </form>
+              {note && <p className="muted">{note}</p>}
+              {bdmNote && <p className="muted">{bdmNote}</p>}
             </>
           }
           initial={day}
