@@ -10,11 +10,11 @@ describe("bdm-001 navigation", () => {
 
   it("has a BDM nav, a manager nav and the sign-in chooser path", () => {
     expect(BDM_NAV.map((x) => x.href)).toEqual([
-      "/bdm/my-day", "/bdm/organizations", "/bdm/appointments", "/bdm/activities", "/bdm/travel", "/bdm/notifications", "/bdm/profile",
+      "/bdm/my-day", "/bdm/organizations", "/bdm/pipeline", "/bdm/appointments", "/bdm/activities", "/bdm/travel", "/bdm/notifications", "/bdm/profile",
     ]);
     expect(BDM_MANAGER_NAV.map((x) => x.href)).toEqual([
-      "/bdm/manager/dashboard", "/bdm/manager/team", "/bdm/manager/organizations", "/bdm/manager/appointments", "/bdm/manager/activities",
-      "/bdm/manager/approvals", "/bdm/manager/notifications",
+      "/bdm/manager/dashboard", "/bdm/manager/team", "/bdm/manager/organizations", "/bdm/manager/pipeline", "/bdm/manager/appointments",
+      "/bdm/manager/activities", "/bdm/manager/approvals", "/bdm/manager/notifications",
     ]);
     expect(BDM_SIGN_IN).toBe("/bdm/sign-in");
   });
