@@ -130,6 +130,21 @@ describe("BdmOrganizationDetail (bdm-002 AC3-AC6, §12.2)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Yes, archive" }));
     await waitFor(() => expect(screen.getByRole("status")).toHaveFocus());
   });
+
+  it("shows real meeting times in IST (bdm-006 AC9)", () => {
+    render(<BdmOrganizationDetail initial={org({ last_meeting_at: "2030-01-07T04:30:00Z", next_meeting_at: null })} basePath="/bdm/organizations" />);
+    const details = screen.getByRole("region", { name: "Details" });
+    expect(within(details).getByText("Last meeting").nextElementSibling).toHaveTextContent(/07 Jan 2030, 10:00 IST/);
+    expect(within(details).getByText("Next meeting").nextElementSibling).toHaveTextContent("—");
+  });
+
+  it("offers Add appointment only to the assigned BDM on the BDM portal", () => {
+    const { unmount } = render(<BdmOrganizationDetail initial={org({ permissions: perms({ can_edit: true }) })} basePath="/bdm/organizations" />);
+    expect(screen.getByRole("link", { name: "Add appointment" })).toHaveAttribute("href", "/bdm/appointments/new?organization=o1");
+    unmount();
+    render(<BdmOrganizationDetail initial={org({ permissions: perms({ can_edit: true }) })} basePath="/bdm/manager/organizations" />);
+    expect(screen.queryByRole("link", { name: "Add appointment" })).toBeNull();
+  });
 });
 
 describe("BdmOrganizationDetail profile (bdm-003 AC1, AC10, §12.2 F3-F5, F8)", () => {

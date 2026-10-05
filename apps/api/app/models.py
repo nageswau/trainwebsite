@@ -1136,12 +1136,111 @@ class BdmOrganizationContact(Base, TimestampMixin):
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
 
+# bdm-006 (DEC-SCOPE-068, spec §4.1): appointment catalogues. Stable keys; the CHECKs accept every key, the service validates each value
+# against the owner's bdm_type (the database cannot see it).
+BDM_APPOINTMENT_STATUSES = ("scheduled", "confirmed", "rescheduled", "completed", "cancelled", "no_show")
+BDM_APPOINTMENT_OPEN = ("scheduled", "confirmed", "rescheduled")
+BDM_APPOINTMENT_COMMON_TYPES = (
+    "college_meeting", "agent_meeting", "school_meeting", "mou_discussion", "student_institution_meeting", "seminar_workshop",
+    "corporate_meeting", "other",
+)
+BDM_APPOINTMENT_MODULE_TYPES = {
+    "agent": (
+        "agent_meeting", "new_agent_presentation", "product_training", "agreement_discussion", "performance_review", "agent_onboarding",
+        "agent_visit", "commission_discussion", "business_review",
+    ),
+    "school": (
+        "principal_meeting", "management_meeting", "career_guidance_presentation", "psychometric_presentation",
+        "profile_building_presentation", "parent_orientation", "teacher_orientation", "seminar", "workshop", "mou_discussion",
+        "renewal_meeting",
+    ),
+    "college": (
+        "principal_meeting", "hod_meeting", "placement_cell_meeting", "course_promotion", "it_training_presentation", "student_seminar",
+        "workshop", "internship_discussion", "placement_discussion", "mou_discussion", "corporate_connect", "faculty_meeting",
+    ),
+}
+BDM_APPOINTMENT_ALL_TYPES = tuple(dict.fromkeys(BDM_APPOINTMENT_COMMON_TYPES + sum(BDM_APPOINTMENT_MODULE_TYPES.values(), ())))
+BDM_APPOINTMENT_COMMON_OUTCOMES = (
+    "interested", "mou_discussion_required", "student_leads_expected", "course_promotion_interested", "follow_up_required",
+    "commercial_discussion", "not_interested", "reschedule", "other",
+)
+BDM_APPOINTMENT_AGENT_OUTCOMES = (
+    "interested", "agreement_required", "product_training_required", "follow_up", "documents_required", "onboarding_required",
+    "active_business_expected", "not_interested",
+)
+BDM_APPOINTMENT_ALL_OUTCOMES = tuple(dict.fromkeys(BDM_APPOINTMENT_COMMON_OUTCOMES + BDM_APPOINTMENT_AGENT_OUTCOMES))
+# On the metadata so 0001's create_all builds it for a fresh database; 0070 creates it IF NOT EXISTS.
+BDM_APPOINTMENT_CODE_SEQ = Sequence("bdm_appointment_code_seq", metadata=Base.metadata)
+
+
+class BdmAppointment(Base, TimestampMixin):
+    """bdm-006 (DEC-SCOPE-068): a BDM's meeting at an organization (§2). The contact is copied at booking (A5: the copy outlives a contact
+    delete). Never deleted: cancelled instead. Not the legacy `Appointment` (overseas counselling slots)."""
+
+    __tablename__ = "bdm_appointments"
+    __table_args__ = (
+        UniqueConstraint("code", name="uq_bdm_appointments_code"),
+        CheckConstraint(_in_list("status", BDM_APPOINTMENT_STATUSES), name="ck_bdm_appointments_status"),
+        CheckConstraint(_in_list("appointment_type", BDM_APPOINTMENT_ALL_TYPES), name="ck_bdm_appointments_type"),
+        CheckConstraint(f"outcome IS NULL OR {_in_list('outcome', BDM_APPOINTMENT_ALL_OUTCOMES)}", name="ck_bdm_appointments_outcome"),
+        CheckConstraint("(status = 'completed') = (outcome IS NOT NULL)", name="ck_bdm_appointments_outcome_completed"),
+        CheckConstraint("next_follow_up_on IS NULL OR status = 'completed'", name="ck_bdm_appointments_follow_up"),
+        CheckConstraint("duration_minutes BETWEEN 15 AND 720", name="ck_bdm_appointments_duration"),
+        CheckConstraint("expected_leads IS NULL OR expected_leads >= 0", name="ck_bdm_appointments_expected_leads"),
+        CheckConstraint("expected_revenue IS NULL OR expected_revenue >= 0", name="ck_bdm_appointments_expected_revenue"),
+        Index("ix_bdm_appointments_bdm_starts", "bdm_user_id", "starts_at"),
+        Index("ix_bdm_appointments_org_starts", "organization_id", "starts_at"),
+        Index("ix_bdm_appointments_contact", "contact_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    code: Mapped[str] = mapped_column(String(20))
+    bdm_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    organization_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"))
+    contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organization_contacts.id", ondelete="SET NULL"), nullable=True)
+    contact_name: Mapped[str] = mapped_column(String(200))
+    contact_designation: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    contact_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    contact_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    duration_minutes: Mapped[int] = mapped_column(Integer, default=60, server_default=text("60"))
+    appointment_type: Mapped[str] = mapped_column(String(40))
+    location: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    purpose: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    remarks: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="scheduled", server_default=text("'scheduled'"))
+    outcome: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    next_follow_up_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    expected_leads: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    expected_revenue: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+
+
+class BdmAppointmentEvent(Base):
+    """bdm-006: one row per status transition (and creation: from_status NULL). Append-only. `position` orders rows created in one
+    transaction."""
+
+    __tablename__ = "bdm_appointment_events"
+    __table_args__ = (
+        CheckConstraint(_in_list("to_status", BDM_APPOINTMENT_STATUSES), name="ck_bdm_appointment_events_to_status"),
+        Index("ix_bdm_appointment_events_appointment", "appointment_id", "position"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    appointment_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_appointments.id", ondelete="RESTRICT"))
+    actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    from_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    to_status: Mapped[str] = mapped_column(String(20))
+    old_starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    new_starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 BDM_ACTIVITY_CHANNELS = ("call", "whatsapp", "email", "visit", "meeting", "other")
 BDM_ACTIVITY_DIRECTIONAL = ("call", "whatsapp", "email")  # V6: these need a direction; the rest must have none
 
 
 class BdmActivity(Base, TimestampMixin):
-    """bdm-009 (DEC-SCOPE-068): one call, WhatsApp, email, visit, meeting or other contact a BDM logged by hand (D9; nothing is sent).
+    """bdm-009 (DEC-SCOPE-069): one call, WhatsApp, email, visit, meeting or other contact a BDM logged by hand (D9; nothing is sent).
     `contact_name` is the contact's name at save, kept when bdm-002 hard-deletes the contact (`contact_id` -> NULL)."""
 
     __tablename__ = "bdm_activities"

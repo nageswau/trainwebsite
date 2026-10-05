@@ -454,7 +454,7 @@ approve/reject → the BDM.
 | `GET /bdm/manager/approvals` | `bdm_manager`, `super_admin` | decidable | submitted + planned; manager: own team; super_admin: inactive-manager trips only |
 | `POST /bdm/manager/trips/{id}/approve`, `…/reject {reason}` | approver | T2/T3 | `404` other team; `403` super_admin while the manager is active; `403` own trip; `409` not pending |
 
-**`bdm-009` / `DEC-SCOPE-068` (built 2026-10-03; migration `0070_bdm_activities`) — BDM activity log.**
+**`bdm-009` / `DEC-SCOPE-069` (built 2026-10-03; migration `0071_bdm_activities`) — BDM activity log.**
 Design spec `docs/superpowers/specs/2026-10-03-bdm-009-activity-log-design.md` §5 and §12.1. All routes are new; **no existing route,
 field, status or message changes** (A10). Lists are `{items,total,limit,offset}`, `limit` 1–100 (default 50), ordered `occurred_at desc,
 id desc`; the day lists add `counts` (`day`, `by_channel` with all six keys, `calls_made`, `organizations_contacted`) for the whole day
@@ -715,6 +715,26 @@ Do not build against an assumed answer to any of these — confirm first.
 | `it-job-applications` | placement_team, hr_team, it_admin, super_admin | all | candidate / job title · company · status |
 | `schools` | overseas_admin, super_admin, counselor | all partner schools | name / school code |
 | `school-students?school_id=` (required; 404 unknown) | overseas_admin, super_admin, counselor | that one school only | full name / grade · student code |
+
+## 12B. BDM appointments (`bdm-006`) — addendum, 2026-10-03
+
+`DEC-SCOPE-068`; spec §5.3 / §5.8; `RBAC_MATRIX.md` §2.13; `DATA_MODEL.md` "BDM Appointments". Every write returns `{appointment}` (full detail); the list returns `{items, total, limit, offset}`. No DELETE. Errors: string `detail` for 403 / 404 / 409, FastAPI's list for 422, and `{message, code: "possible_overlap", matches, total}` only for the overlap 409. Not idempotent and no `Idempotency-Key` (R-A5).
+
+| Method/Path | Auth | Roles | Notes / status codes |
+|---|---|---|---|
+| `GET /bdm/appointments` | Authenticated | `bdm` (own), `bdm_manager` (team), `super_admin` (all) | Filters `date_from`, `date_to` (IST, inclusive), `status` (repeatable), `appointment_type`, `organization_id`, `bdm_user_id` (manager / super_admin only; from a `bdm` 422), `q`, `limit` ≤ 100, `offset`. `date_from > date_to` 422; other roles 403 |
+| `POST /bdm/appointments` | Authenticated | `bdm` (assignee of the organization) | 201. Rule order: 403 role / profile, 404 organization out of type scope, 403 not assignee, 422 archived, 422 foreign contact, 422 type not for the BDM's type, 422 past `starts_at`, 409 `possible_overlap` unless `confirm_overlap` |
+| `GET /bdm/appointments/{id}` | Authenticated | `bdm`, `bdm_manager`, `super_admin` in scope | Detail + `events[]` + `permissions`. 404 out of scope or unknown |
+| `PATCH /bdm/appointments/{id}` | Authenticated | `bdm` (owner) | Open statuses only (409 otherwise); unknown / server-owned field 422; foreign contact 422; no-op 200 without audit; changed duration re-runs the overlap check (409) |
+| `POST /bdm/appointments/{id}/confirm` | Authenticated | `bdm` (owner) | `scheduled` / `rescheduled` to `confirmed`; 409 otherwise |
+| `POST /bdm/appointments/{id}/reschedule` | Authenticated | `bdm` (owner) | Open to `rescheduled`; future `starts_at` and different from the current minute (422); overlap 409; 409 when terminal |
+| `POST /bdm/appointments/{id}/cancel` | Authenticated | `bdm` (owner) | Open to `cancelled`; `reason` required (422); 409 when terminal |
+| `POST /bdm/appointments/{id}/no-show` | Authenticated | `bdm` (owner) | Open to `no_show`; `reason` required and start passed (422); 409 when terminal |
+| `POST /bdm/appointments/{id}/complete` | Authenticated | `bdm` (owner) | Open to `completed`; start passed and `outcome` valid for the BDM's type (422); optional `next_follow_up_on` not before today in IST (422); 409 when terminal |
+
+Any write by a non-owner (manager, super_admin, other BDM) is 403 after the 404 scope check.
+
+**Addendum on `GET /bdm/organizations` and `GET /bdm/organizations/{id}` (bdm-002 contract):** `last_meeting_at` / `next_meeting_at` are now computed (bdm-006, spec §5.6): max `starts_at` of completed, min `starts_at` of open future appointments across all BDMs at that organization. Names, types (`string | null`) and nullability are unchanged.
 
 ---
 

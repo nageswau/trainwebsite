@@ -10,12 +10,12 @@ import BdmOrganizationProfileDetails, { DetailList, multiline } from "@/componen
 import BdmOrganizationReassign from "@/components/BdmOrganizationReassign";
 import { type Page, sendRequest } from "@/lib/apiErrors";
 import type { Activity } from "@/lib/bdmActivities";
-import { display, isOrganizationBody, LINK_STYLE, type Organization, ORG_TYPE_LABEL, ORGS_URL, safeWebsite } from "@/lib/bdmOrganizations";
+import { display, isOrganizationBody, LINK_STYLE, meetingText, type Organization, ORG_TYPE_LABEL, ORGS_URL, safeWebsite } from "@/lib/bdmOrganizations";
 import { formatDate } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // bdm-002 (spec §6.2, §12.2): one organization. Actions render from `permissions` only -- the server enforces every rule (AC3-AC5).
-// Every write re-renders from the organization the API returns (no refetch). Last/Next meeting stay "—" until bdm-006 (AC6).
+// Every write re-renders from the organization the API returns (no refetch). Last/Next meeting come from bdm-006 appointments ("—" when none).
 export default function BdmOrganizationDetail({ initial, basePath, created = false, activities }: { initial: Organization; basePath: string; created?: boolean; activities?: Page<Activity> | null }) {
   const [org, setOrg] = useState(initial);
   const [editing, setEditing] = useState(false);
@@ -84,8 +84,8 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
     ["Existing partner", org.existing_partner ? "Yes" : "No"],
     ["Courses interested", multiline(org.courses_interested)],
     ["Number of students", display(org.student_count)],
-    ["Last meeting", display(org.last_meeting_at)],
-    ["Next meeting", display(org.next_meeting_at)],
+    ["Last meeting", meetingText(org.last_meeting_at)],
+    ["Next meeting", meetingText(org.next_meeting_at)],
     ["Assigned BDM", `${org.assigned_bdm.full_name}${org.assigned_bdm.active ? "" : " (inactive)"}`],
     ["Created by", `${org.created_by_name} on ${formatDate(org.created_at)}`],
   ];
@@ -107,6 +107,11 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
           </p>
         </div>
         <div className="actions">
+          {basePath === "/bdm/organizations" && p.can_edit && !showEditor && ( // bdm-006: the assigned BDM, not archived (A3, A4)
+            <Link className="btn small" href={`/bdm/appointments/new?organization=${org.id}`}>
+              Add appointment
+            </Link>
+          )}
           {p.can_edit && !showEditor && (
             <button id={editId} type="button" className="btn secondary small" onClick={() => setEditing(true)}>
               Edit

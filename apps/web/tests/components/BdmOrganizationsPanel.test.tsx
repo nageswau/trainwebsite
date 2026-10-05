@@ -154,6 +154,13 @@ describe("BdmOrganizationsPanel (bdm-002 AC9)", () => {
     await screen.findByRole("link", { name: "College 2" });
     expect(screen.queryByText("Updating organizations…")).toBeNull();
   });
+
+  it("shows real meeting times in IST (bdm-006 AC9)", async () => {
+    serve(res(pg([{ ...row(1), next_meeting_at: "2030-01-07T18:00:00Z" }])));
+    render(<BdmOrganizationsPanel basePath="/bdm/organizations" isBdm />);
+    await screen.findByRole("link", { name: "College 1" });
+    expect(screen.getByText(/07 Jan 2030, 23:30 IST/)).toBeInTheDocument();
+  });
 });
 
 describe("BdmOrganizationsPanel profile filters (bdm-003 AC8, §12.2 F7)", () => {

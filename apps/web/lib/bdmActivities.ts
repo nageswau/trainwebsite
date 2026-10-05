@@ -2,7 +2,7 @@ import { isPage, type Page } from "@/lib/apiErrors";
 import { ORGS_URL, type OrgType } from "@/lib/bdmOrganizations";
 import type { LookupPage } from "@/lib/lookups";
 
-// bdm-009 (DEC-SCOPE-068): activity types, labels and endpoints for the organization timeline and the activity pages. The API decides
+// bdm-009 (DEC-SCOPE-069): activity types, labels and endpoints for the organization timeline and the activity pages. The API decides
 // every rule; `permissions.can_change` only tells the UI whether to offer Edit / Delete.
 export const CHANNELS = ["call", "whatsapp", "email", "visit", "meeting", "other"] as const;
 export type Channel = (typeof CHANNELS)[number];

@@ -1,4 +1,4 @@
-"""bdm-009 (DEC-SCOPE-068, spec §4.2, §5.2): activity time rules, scope, rows, day counts and audit.
+"""bdm-009 (DEC-SCOPE-069, spec §4.2, §5.2): activity time rules, scope, rows, day counts and audit.
 
 Functions only; nothing here commits -- the route owns the transaction. Every `{activity_id}` resolves through `load_readable`, so an
 activity on an organization the caller can't read is the same 404 as a missing one. Logs and audit rows carry ids, channel and field

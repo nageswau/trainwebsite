@@ -1,17 +1,20 @@
 """bdm-009 -- bdm_activities.
 
-Revision ID: 0070_bdm_activities
-Revises: 0069_bdm_org_profiles
+Revision ID: 0071_bdm_activities
+Revises: 0070_bdm_appointments
 
-docs/superpowers/specs/2026-10-03-bdm-009-activity-log-design.md §4 (DEC-SCOPE-068). Additive: one table; no existing row is read or
+docs/superpowers/specs/2026-10-03-bdm-009-activity-log-design.md §4 (DEC-SCOPE-069). Additive: one table; no existing row is read or
 written. 0001 builds a fresh database from the current models, which already carry it, so creation is guarded (0061's idiom).
 downgrade() refuses while activities exist: they are the only record of each call, message and visit.
 
 Re-chained 2026-10-03 on merging `main` @ `e376c25`: drafted as `0069_bdm_activities` on `0068_bdm_trips` (DEC-SCOPE-064, then
 DEC-SCOPE-065 after AGN-022 took 064), but bdm-003's `0069_bdm_org_profiles` (DEC-SCOPE-065) reached `main` first and AGN-019 /
-AGN-020 took DEC-SCOPE-066 / 067; this revision is now `0070_bdm_activities` after 0069 (one head) and the decision is DEC-SCOPE-068.
+AGN-020 took DEC-SCOPE-066 / 067; this revision became `0070_bdm_activities` after 0069 and the decision DEC-SCOPE-068.
 A database stamped at `0069_bdm_activities` is re-stamped with `alembic stamp --purge 0068_bdm_trips` then `upgrade head` (the
 create here is guarded, so the re-run is harmless).
+Re-chained again 2026-10-05 on merging `main` @ `6a9be770`: bdm-006 (PR #58) took `0070_bdm_appointments` and DEC-SCOPE-068, so
+this revision is now `0071_bdm_activities` after `0070_bdm_appointments` (one head) and the decision is DEC-SCOPE-069. A database
+stamped at `0070_bdm_activities` is re-stamped with `alembic stamp --purge 0069_bdm_org_profiles` then `upgrade head`.
 """
 
 import sqlalchemy as sa
@@ -19,8 +22,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0070_bdm_activities"
-down_revision = "0069_bdm_org_profiles"
+revision = "0071_bdm_activities"
+down_revision = "0070_bdm_appointments"
 branch_labels = None
 depends_on = None
 
@@ -56,5 +59,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {TABLE} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0070_bdm_activities: BDM activities exist. Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0071_bdm_activities: BDM activities exist. Remove them deliberately first.")
     op.drop_table(TABLE)

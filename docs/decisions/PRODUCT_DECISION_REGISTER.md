@@ -3474,9 +3474,33 @@ independent Codex review are pending.
 
 **Consequences:** no migration, no new dependency; a new router (`api/agent_reports.py`), service (`services/agent_reports.py`) and schema (`AgentReportOut`); `AgentReportsPanel` / `AgentReportFilters` / `AgentReportTable` on `/overseas/agent/reports` for agency members; the AGN-014 commission panel moves from `WorkflowPanel` to the Commission tab (component unchanged). Unchanged: the portal reports payload and `REPORTS_REFUSED`, the AGN-014 routes and R7, AGN-018's queries, navigation, models. **New Feature ID authorized:** `AGN-020`. **Status:** implemented and verified on `feature/agn-020-reports` (browser QA + fix pass, see `ENHANCEMENT_BACKLOG.md` §AGN-020); the full backend suite is run by the owner.
 
-### DEC-SCOPE-068 — BDM activity log (`bdm-009`)
 
-**ID note:** drafted as `DEC-SCOPE-064`, renumbered `DEC-SCOPE-065` on merging `main` @ `39c119b` (AGN-022 took `064`), with migration `0069_bdm_activities` after `0068_bdm_trips`. bdm-003 (PR #55) then took `DEC-SCOPE-065` and `0069_bdm_org_profiles`, and AGN-019 / AGN-020 (PRs #56 / #57) took `066` / `067`, so on merging `main` @ `e376c25` (2026-10-03) this entry is **`DEC-SCOPE-068`** and the migration **`0070_bdm_activities`** (after `0069_bdm_org_profiles`, one head). bdm-009 commits and docs from before this merge that say `DEC-SCOPE-065` or `0069_bdm_activities` mean this decision / migration.
+### DEC-SCOPE-068 — BDM appointments (`bdm-006`)
+
+**ID note:** drafted as `DEC-SCOPE-063` with migration `0068_bdm_appointments` after `0067_audit_entity_index`; bdm-010 (`DEC-SCOPE-063`, `0068_bdm_trips`) reached `main` first, so this is now `DEC-SCOPE-064` and the migration was `0069_bdm_appointments` after `0068_bdm_trips`. Renumbered again on merging `main` @ `e376c25c` (2026-10-05): bdm-003's `0069_bdm_org_profiles` and AGN-022 / bdm-003 / AGN-019 / AGN-020 (`DEC-SCOPE-064`…`067`) reached `main` first, so bdm-006 is now **`DEC-SCOPE-068`** with migration **`0070_bdm_appointments`** after `0069_bdm_org_profiles`. bdm-006 commits and docs from before this merge that say `DEC-SCOPE-063` or `DEC-SCOPE-064` mean this decision.
+
+**Question:** how do BDMs book and manage appointments, which transitions are allowed, and what does Completed require before bdm-007 exists?
+
+**Evidence:** `EVID-016` §2 (lines 27–93), Agent §C (615–653), School §C (873–895), College §C (1110–1134), §8 outcomes (250–275) (`ORIGINAL_REQUIREMENT`); `DEC-SCOPE-055` D3, D11 (Q-02), D16 (Q-07), D20 (Q-11), D26 (Q-17), D29 (Q-20); bdm-002 `DEC-SCOPE-060` AC5b; bdm-006 impact analysis 2026-10-03 (graphify-led).
+
+**Resolution:** owner, in-session 2026-10-03 (`EXPLICIT_APPROVAL`, via questions; design approved section by section):
+- **A1** Completed takes a minimal outcome (validated per BDM type) and an optional next follow-up date on the appointment; bdm-007 adds the meeting report on top.
+- **A2** Transitions: scheduled / confirmed / rescheduled → confirmed (not from confirmed), rescheduled, cancelled, no show, completed; completed, cancelled and no show are terminal; completed and no show only after the start time; cancel and no show need a reason; reschedule keeps the old time in history.
+- **A3** Only the organization's assigned BDM books and manages; managers and super_admin read only.
+- **A4** An archived organization blocks new appointments (422); existing ones stay manageable.
+- **A5** Deleting an organization contact keeps the appointment's contact snapshot (`contact_id` → NULL). Consequence: a contact delete no longer erases every copy of that person's details.
+- **A6** Overlap for the same BDM warns with a 409 the BDM can confirm past.
+- **A7** Create and reschedule require a future start time.
+- **A8** Outcomes: Agent §C list for agent BDMs; §8 list for school and college BDMs.
+- Defaults approved with the design: type list = §2 common ∪ module list (deduplicated by key); contact picked from the organization's contacts; ownership fixed on organization reassignment (bdm-025 moves portfolios); location, purpose, remarks optional.
+
+**Open:** retention / erasure policy for BDM data — `NEEDS_CONFIRMATION` (as bdm-001/002).
+
+**Spec:** `docs/superpowers/specs/2026-10-03-bdm-006-appointments-design.md`.
+
+### DEC-SCOPE-069 — BDM activity log (`bdm-009`)
+
+**ID note:** drafted as `DEC-SCOPE-064`, renumbered `DEC-SCOPE-065` on merging `main` @ `39c119b` (AGN-022 took `064`), with migration `0069_bdm_activities` after `0068_bdm_trips`. bdm-003 (PR #55) then took `DEC-SCOPE-065` and `0069_bdm_org_profiles`, and AGN-019 / AGN-020 (PRs #56 / #57) took `066` / `067`, so on merging `main` @ `e376c25` (2026-10-03) it became `DEC-SCOPE-068` with migration `0070_bdm_activities`. bdm-006 (PR #58) then reached `main` with `DEC-SCOPE-068` and `0070_bdm_appointments`, so on merging `main` @ `6a9be770` (2026-10-05) this entry is **`DEC-SCOPE-069`** and the migration **`0071_bdm_activities`** (after `0070_bdm_appointments`, one head). bdm-009 commits and docs from before these merges that say `DEC-SCOPE-065` / `DEC-SCOPE-068` or `0069_bdm_activities` / `0070_bdm_activities` mean this decision / migration (the bdm-006 entry above is the real `DEC-SCOPE-068`).
 
 **Question:** how do BDMs log calls, WhatsApp messages, emails, visits and meetings, who may log, see and change them, and how are the day's counts defined (`BDM_CRM_BACKLOG.md` §4 bdm-009)?
 
@@ -3496,4 +3520,4 @@ independent Codex review are pending.
 - **V10** (Revision 2) At most 200 activities per BDM per IST day (409); a soft abuse bound.
 - **Defaults:** super_admin reads only; the contact must belong to the organization and its name is kept after the contact is deleted (as bdm-006 A5); an edit cannot move an activity off today; no idempotency key (a duplicate is fixed by a same-day delete); no general rate limiter (as bdm-010). Refusal logging: `bdm_activity_write_refused` is logged for "not the organization's assigned BDM" (create) and "not the BDM who logged it" (patch / delete, which also covers a manager or `super_admin` touching a readable team activity); 403s from the role gate (`bdm_context` on create, `caller_scope` for other roles) are not logged (bdm-002's `bdm_org_write_refused` precedent). Notes are visible to every reader of the organization (the form says so). Retention / erasure of BDM data remains `NEEDS_CONFIRMATION` (as bdm-001 / 002 / 006).
 
-**Status:** `EXPLICIT_APPROVAL` for V1–V10; implemented on `feature/bdm-009-activities`; **not COMPLETE** — Playwright, browser validation and an independent Codex review are pending, and the owner's full suites have not been run. Migration `0070_bdm_activities`.
+**Status:** `EXPLICIT_APPROVAL` for V1–V10; implemented on `feature/bdm-009-activities`; **not COMPLETE** — Playwright, browser validation and an independent Codex review are pending, and the owner's full suites have not been run. Migration `0071_bdm_activities`.

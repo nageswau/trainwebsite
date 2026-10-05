@@ -1,6 +1,6 @@
 # bdm-009 BDM Activity Log — Implementation Plan
 
-**ID note (merge of `main` @ `e376c25`, 2026-10-03):** written as `DEC-SCOPE-065` and migration `0069_bdm_activities` on `0068_bdm_trips`; bdm-003 (PR #55) took `DEC-SCOPE-065` / `0069_bdm_org_profiles` and AGN-019 / AGN-020 took `066` / `067`, so this plan now reads `DEC-SCOPE-068` and `0070_bdm_activities` (after `0069_bdm_org_profiles`). Task 11 Step 1 keeps its original trigger wording.
+**ID note (merge of `main` @ `6a9be770`, 2026-10-05):** written as `DEC-SCOPE-065` and migration `0069_bdm_activities` on `0068_bdm_trips`; bdm-003 (PR #55) took `DEC-SCOPE-065` / `0069_bdm_org_profiles` and AGN-019 / AGN-020 took `066` / `067`, so the merge of `main` @ `e376c25` (2026-10-03) moved it to `DEC-SCOPE-068` / `0070_bdm_activities`; bdm-006 (PR #58) then took `DEC-SCOPE-068` / `0070_bdm_appointments`, so this plan now reads `DEC-SCOPE-069` and `0071_bdm_activities` (after `0070_bdm_appointments`). Task headings, commit messages and Task 11 Step 1 keep their original wording.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or
 > superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -11,7 +11,7 @@ per-channel counts.
 
 **Architecture:** Flat feature module (spec §2, Approach A), the shape of bdm-002/006/010: `app/api/bdm_activities.py` (routes,
 locks, one commit) over `app/services/bdm_activities.py` (time rules, scope, rows, `day_counts`, audit; never commits), one new
-table in migration `0070_bdm_activities`. The web adds `lib/bdmActivities.ts`, five components, two pages and one section on
+table in migration `0071_bdm_activities`. The web adds `lib/bdmActivities.ts`, five components, two pages and one section on
 the organization profile.
 
 **Tech Stack:** FastAPI, SQLAlchemy 2 async, Alembic, Pydantic v2, PostgreSQL; Next.js (App Router), React, Vitest, Testing
@@ -21,8 +21,8 @@ Library, Playwright.
 
 ## Global Constraints
 
-- Branch `feature/bdm-009-activities` (from `origin/main` @ `65a8ece0`); migration `0070_bdm_activities` (down_revision
-  `0069_bdm_org_profiles`); decision `DEC-SCOPE-068`. Before Task 1 and before the PR: `git fetch origin` and check `main` for a newer
+- Branch `feature/bdm-009-activities` (from `origin/main` @ `65a8ece0`); migration `0071_bdm_activities` (down_revision
+  `0070_bdm_appointments`); decision `DEC-SCOPE-069`. Before Task 1 and before the PR: `git fetch origin` and check `main` for a newer
   migration / DEC (bdm-006 and bdm-003 are in flight); if one landed, renumber.
 - No new dependency (backend or web).
 - Channels: `call, whatsapp, email, visit, meeting, other`. Directions: `outbound, inbound` — required for `call, whatsapp, email`,
@@ -92,7 +92,7 @@ LITE = `tests/test_bdm_009_*.py tests/test_bdm_010_*.py tests/test_bdm_002_*.py 
 ### Task 1: Migration 0069, model, head-pin relaxation
 
 **Files:**
-- Create: `apps/api/alembic/versions/0070_bdm_activities.py`
+- Create: `apps/api/alembic/versions/0071_bdm_activities.py`
 - Modify: `apps/api/app/models.py` (append after `BdmOrganizationContact`, before `class LiveSession`, ~line 1085)
 - Modify: `apps/api/tests/test_bdm_010_migration.py:36-38` (single-head assertion)
 - Test: `apps/api/tests/test_bdm_009_migration.py`
@@ -104,7 +104,7 @@ LITE = `tests/test_bdm_009_*.py tests/test_bdm_010_*.py tests/test_bdm_002_*.py 
 - [ ] **Step 1: Write the failing test** — `apps/api/tests/test_bdm_009_migration.py`:
 
 ```python
-"""bdm-009 -- migration 0070_bdm_activities (spec §4; AC10). Round trip and the downgrade refusal run in a throwaway database
+"""bdm-009 -- migration 0071_bdm_activities (spec §4; AC10). Round trip and the downgrade refusal run in a throwaway database
 (the bdm-001 pattern); a downgrade never runs against the shared test database."""
 
 import asyncio
@@ -124,11 +124,11 @@ from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_bdm_009_migration_0070", VERSIONS / "0070_bdm_activities.py")
+_spec = importlib.util.spec_from_file_location("_bdm_009_migration_0071", VERSIONS / "0071_bdm_activities.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0069_bdm_org_profiles", "0070_bdm_activities"
+BASE, HEAD = "0070_bdm_appointments", "0071_bdm_activities"
 USERS = "SELECT id, email, role FROM users ORDER BY id"
 
 
@@ -138,7 +138,7 @@ def _config() -> Config:
     return cfg
 
 
-def test_migration_chains_after_0069_and_is_the_single_head():
+def test_migration_chains_after_0070_and_is_the_single_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     assert ScriptDirectory.from_config(_config()).get_heads() == [HEAD]
 
@@ -181,7 +181,7 @@ def _sql(url: str, sql: str, params: dict | None = None, *, autocommit: bool = F
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0069 with one BDM user and one organization."""
+    """A fresh database at 0070 with one BDM user and one organization."""
     cfg = _config()
     original = settings.database_url
     name = f"bdm009_migration_{uuid.uuid4().hex[:8]}"
@@ -250,17 +250,17 @@ def test_checks_hold_and_downgrade_refuses_while_activities_exist(isolated_db):
 - [ ] **Step 2: Run it to verify it fails**
 
 Run (backend command) with `<P>` = `tests/test_bdm_009_migration.py`.
-Expected: FAIL / collection error — `0070_bdm_activities.py` does not exist.
+Expected: FAIL / collection error — `0071_bdm_activities.py` does not exist.
 
-- [ ] **Step 3: Write the migration** — `apps/api/alembic/versions/0070_bdm_activities.py`:
+- [ ] **Step 3: Write the migration** — `apps/api/alembic/versions/0071_bdm_activities.py`:
 
 ```python
 """bdm-009 -- bdm_activities.
 
-Revision ID: 0070_bdm_activities
-Revises: 0069_bdm_org_profiles
+Revision ID: 0071_bdm_activities
+Revises: 0070_bdm_appointments
 
-docs/superpowers/specs/2026-10-03-bdm-009-activity-log-design.md §4 (DEC-SCOPE-068). Additive: one table; no existing row is read or
+docs/superpowers/specs/2026-10-03-bdm-009-activity-log-design.md §4 (DEC-SCOPE-069). Additive: one table; no existing row is read or
 written. 0001 builds a fresh database from the current models, which already carry it, so creation is guarded (0061's idiom).
 downgrade() refuses while activities exist: they are the only record of each call, message and visit.
 """
@@ -270,8 +270,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0070_bdm_activities"
-down_revision = "0069_bdm_org_profiles"
+revision = "0071_bdm_activities"
+down_revision = "0070_bdm_appointments"
 branch_labels = None
 depends_on = None
 
@@ -307,7 +307,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {TABLE} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0070_bdm_activities: BDM activities exist. Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0071_bdm_activities: BDM activities exist. Remove them deliberately first.")
     op.drop_table(TABLE)
 ```
 
@@ -319,7 +319,7 @@ BDM_ACTIVITY_DIRECTIONAL = ("call", "whatsapp", "email")  # V6: these need a dir
 
 
 class BdmActivity(Base, TimestampMixin):
-    """bdm-009 (DEC-SCOPE-068): one call, WhatsApp, email, visit, meeting or other contact a BDM logged by hand (D9; nothing is sent).
+    """bdm-009 (DEC-SCOPE-069): one call, WhatsApp, email, visit, meeting or other contact a BDM logged by hand (D9; nothing is sent).
     `contact_name` is the contact's name at save, kept when bdm-002 hard-deletes the contact (`contact_id` -> NULL)."""
 
     __tablename__ = "bdm_activities"
@@ -356,7 +356,7 @@ def test_migration_chains_after_0067_and_there_is_one_head():
 - [ ] **Step 7: Commit**
 
 ```bash
-git add apps/api/alembic/versions/0070_bdm_activities.py apps/api/app/models.py apps/api/tests/test_bdm_009_migration.py apps/api/tests/test_bdm_010_migration.py
+git add apps/api/alembic/versions/0071_bdm_activities.py apps/api/app/models.py apps/api/tests/test_bdm_009_migration.py apps/api/tests/test_bdm_010_migration.py
 git commit -m "feat(bdm-009): bdm_activities table, model and migration 0069"
 ```
 
@@ -469,7 +469,7 @@ def test_update_has_no_organization_and_refuses_clearing_required_fields():
   existing `from app.models import GENDERS` line (`from app.models import BDM_ACTIVITY_DIRECTIONAL, GENDERS`):
 
 ```python
-# --- bdm-009: activity log (DEC-SCOPE-068; docs/superpowers/specs/2026-10-03-bdm-009-activity-log-design.md §5.1) ---
+# --- bdm-009: activity log (DEC-SCOPE-069; docs/superpowers/specs/2026-10-03-bdm-009-activity-log-design.md §5.1) ---
 
 BdmActivityChannel = Literal["call", "whatsapp", "email", "visit", "meeting", "other"]
 BdmActivityDirection = Literal["outbound", "inbound"]
@@ -816,7 +816,7 @@ keeps the real number.
 - [ ] **Step 4: Write the service** — `apps/api/app/services/bdm_activities.py`:
 
 ```python
-"""bdm-009 (DEC-SCOPE-068, spec §4.2, §5.2): activity time rules, scope, rows, day counts and audit.
+"""bdm-009 (DEC-SCOPE-069, spec §4.2, §5.2): activity time rules, scope, rows, day counts and audit.
 
 Functions only; nothing here commits -- the route owns the transaction. Every `{activity_id}` resolves through `load_readable`, so an
 activity on an organization the caller can't read is the same 404 as a missing one. Logs and audit rows carry ids, channel and field
@@ -1247,7 +1247,7 @@ the default contact list.
 - [ ] **Step 3: Write the router** — `apps/api/app/api/bdm_activities.py`:
 
 ```python
-"""bdm-009 (DEC-SCOPE-068, spec §5.3): the BDM activity log.
+"""bdm-009 (DEC-SCOPE-069, spec §5.3): the BDM activity log.
 
 Every `{activity_id}` resolves through `services.bdm_activities.load_readable` (unreadable = 404). Every write is one transaction --
 scope (404), owner / assignee (403), lock (organization, then activity), rules (422 / 409), change, audit, one commit here. Lists are
@@ -1673,7 +1673,7 @@ import { isPage, type Page } from "@/lib/apiErrors";
 import { ORGS_URL, type OrgType } from "@/lib/bdmOrganizations";
 import type { LookupPage } from "@/lib/lookups";
 
-// bdm-009 (DEC-SCOPE-068): activity types, labels and endpoints for the organization timeline and the activity pages. The API decides
+// bdm-009 (DEC-SCOPE-069): activity types, labels and endpoints for the organization timeline and the activity pages. The API decides
 // every rule; `permissions.can_change` only tells the UI whether to offer Edit / Delete.
 export const CHANNELS = ["call", "whatsapp", "email", "visit", "meeting", "other"] as const;
 export type Channel = (typeof CHANNELS)[number];
@@ -2998,17 +2998,17 @@ git commit -m "test(bdm-009): end-to-end activity log journey"
 ### Task 10: Documentation and decision record
 
 **Files:**
-- Modify: `docs/decisions/PRODUCT_DECISION_REGISTER.md` (append `DEC-SCOPE-068` after `DEC-SCOPE-067`)
+- Modify: `docs/decisions/PRODUCT_DECISION_REGISTER.md` (append `DEC-SCOPE-069` after `DEC-SCOPE-068`)
 - Modify: `docs/delivery/BDM_CRM_BACKLOG.md` (status line under `### bdm-009`)
 - Modify: `docs/architecture/DATA_MODEL.md` (`bdm_activities`)
 - Modify: `docs/quality/RTM.md` (bdm-009 rows)
 
-- [ ] **Step 1: Decision record** — append to `PRODUCT_DECISION_REGISTER.md`, in the format of `DEC-SCOPE-063`, after `DEC-SCOPE-067` (AGN-020):
+- [ ] **Step 1: Decision record** — append to `PRODUCT_DECISION_REGISTER.md`, in the format of `DEC-SCOPE-063`, after `DEC-SCOPE-068` (bdm-006):
 
 ```markdown
 ---
 
-### DEC-SCOPE-068 — BDM activity log (`bdm-009`)
+### DEC-SCOPE-069 — BDM activity log (`bdm-009`)
 
 **Question:** how do BDMs log calls, WhatsApp messages, emails, visits and meetings, who may log, see and change them, and how are the
 day's counts defined (`BDM_CRM_BACKLOG.md` §4 bdm-009)?
@@ -3036,13 +3036,13 @@ day's counts defined (`BDM_CRM_BACKLOG.md` §4 bdm-009)?
   remains `NEEDS_CONFIRMATION` (as bdm-001 / 002 / 006).
 
 **Status:** `EXPLICIT_APPROVAL`. Spec `docs/superpowers/specs/2026-10-03-bdm-009-activity-log-design.md`; migration
-`0070_bdm_activities`.
+`0071_bdm_activities`.
 ```
 
 - [ ] **Step 2: Backlog status line** — directly under `### bdm-009 — Activity log (call / WhatsApp / email / visit / meeting)`:
 
 ```markdown
-> **Status (2026-10-03):** implemented on `feature/bdm-009-activities` (`DEC-SCOPE-068`, migration `0070_bdm_activities`). Channels
+> **Status (2026-10-03):** implemented on `feature/bdm-009-activities` (`DEC-SCOPE-069`, migration `0071_bdm_activities`). Channels
 > exclude "follow-up" (V2); appointment / task links deferred to bdm-006 / bdm-008 (V3); backdate window 7 IST days and same-day edits
 > (V4). AC4's "report submitted" lock is completed by bdm-015 through `editable()`. Spec:
 > `docs/superpowers/specs/2026-10-03-bdm-009-activity-log-design.md`.
@@ -3052,7 +3052,7 @@ day's counts defined (`BDM_CRM_BACKLOG.md` §4 bdm-009)?
   - `DATA_MODEL.md`: the `bdm_activities` table (columns, checks, indexes, FKs from spec §4.1).
   - `RTM.md`: one row per AC1–AC13 mapping to the test files listed in spec §8 (AC13 → `test_bdm_009_activities.py`
     `test_abuse_cases_server_owned_fields_and_markup`, `test_bdm_009_scope.py`, `BdmActivityItem.test.tsx`).
-  - `API_CONTRACT.md` (after the bdm-010 addendum, `API_CONTRACT.md:391`): "**`bdm-009` / `DEC-SCOPE-068`** — BDM activity log." List
+  - `API_CONTRACT.md` (after the bdm-010 addendum, `API_CONTRACT.md:391`): "**`bdm-009` / `DEC-SCOPE-069`** — BDM activity log." List
     the six routes (spec §5.3), the status table (spec §12.1 A4), the retry semantics (A3: POST not retry-safe, PATCH idempotent,
     second DELETE → 404), V9 and V10, and "no existing route or field changes" (A10).
 
@@ -3060,7 +3060,7 @@ day's counts defined (`BDM_CRM_BACKLOG.md` §4 bdm-009)?
 
 ```bash
 git add docs/decisions/PRODUCT_DECISION_REGISTER.md docs/delivery/BDM_CRM_BACKLOG.md docs/architecture/DATA_MODEL.md docs/architecture/API_CONTRACT.md docs/quality/RTM.md
-git commit -m "docs(bdm-009): DEC-SCOPE-068, backlog status, data model and RTM"
+git commit -m "docs(bdm-009): DEC-SCOPE-069, backlog status, data model and RTM"
 ```
 
 ---
