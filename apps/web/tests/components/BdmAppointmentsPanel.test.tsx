@@ -10,7 +10,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => router, usePathname: () => 
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const row = (over: Partial<AppointmentRow> = {}): AppointmentRow => ({
   id: "a1", code: "APT-000001", starts_at: "2030-01-07T04:30:00Z", duration_minutes: 60, appointment_type: "college_meeting", status: "scheduled",
-  organization: { id: "o1", code: "ORG-000001", name: "St Mary", archived: false }, contact_name: "Dr Rao", bdm: { id: "b1", full_name: "Asha", active: true }, ...over,
+  organization: { id: "o1", code: "ORG-000001", name: "St Mary", archived: false }, contact_name: "Dr Rao", bdm: { id: "b1", full_name: "Asha", active: true }, outcome_pending: false, ...over,
 });
 const page = (items: AppointmentRow[], total = items.length, offset = 0) => ({ items, total, limit: 50, offset });
 
@@ -86,6 +86,29 @@ describe("BdmAppointmentsPanel (bdm-006 §6.2, §12.2)", () => {
     expect(url).toContain("bdm_user_id=b9");
     expect(url).toContain("appointment_type=college_meeting");
     expect(screen.getByText("Showing one BDM")).toBeInTheDocument();
+  });
+
+  it("bdm-007 AC5: filters outcome-pending appointments and labels them in text", async () => {
+    const fetchMock = vi.fn<typeof fetch>(() => Promise.resolve(res(page([row({ outcome_pending: true })]))));
+    vi.stubGlobal("fetch", fetchMock);
+    search.value = "status=outcome_pending&date_from=";
+    render(<BdmAppointmentsPanel basePath="/bdm/appointments" isBdm types={ALL_TYPES} />);
+    expect(await screen.findByText("Outcome pending", { selector: ".badge" })).toBeInTheDocument();
+    const url = String(fetchMock.mock.calls[0][0]);
+    expect(url).toContain("outcome_pending=true");
+    expect(url).not.toContain("status=");
+    expect(url).not.toContain("date_from=");
+    expect((screen.getByLabelText("Status") as HTMLSelectElement).value).toBe("outcome_pending");
+  });
+
+  it("bdm-007: choosing Outcome pending drops the From date (pending rows are in the past)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(page([row()])))));
+    render(<BdmAppointmentsPanel basePath="/bdm/appointments" isBdm types={ALL_TYPES} />);
+    await screen.findByRole("link", { name: "APT-000001" });
+    fireEvent.change(screen.getByLabelText("Status"), { target: { value: "outcome_pending" } });
+    await waitFor(() => expect(router.push).toHaveBeenCalled());
+    const pushed = new URLSearchParams(String(router.push.mock.calls[0][0]).split("?")[1]);
+    expect([pushed.get("status"), pushed.get("date_from")]).toEqual(["outcome_pending", ""]);
   });
 
   it("shows the past-the-end state when the page is empty but the total is not", async () => {
