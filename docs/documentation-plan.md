@@ -249,12 +249,12 @@ Features: DOC-ADM-002..005, DOC-ADM-007 (DOC-ADM-006 is done in S8).
 - [x] Standard loop as Overseas Admin and Super Admin; record remittance and refund on the S6 deposit(s).
 
 ### S10 — Role guides, FAQ, troubleshooting, indexes
-- [ ] Write `docs/role-guides/agency-master.md`, `agency-staff.md`, `overseas-admin-agencies.md`,
+- [x] Write `docs/role-guides/agency-master.md`, `agency-staff.md`, `overseas-admin-agencies.md`,
   `super-admin-agencies.md` (sections: Role Purpose, Login, Dashboard, Menus Available, Main Activities, Daily
   Workflows, Restrictions, Common Problems, Related Features), linking to feature files; reuse existing screenshots.
-- [ ] Write `docs/faq.md` and `docs/troubleshooting.md` (Problem / Possible Cause / Resolution / When to Contact
+- [x] Write `docs/faq.md` and `docs/troubleshooting.md` (Problem / Possible Cause / Resolution / When to Contact
   Administrator) only from behaviour observed in S2–S9.
-- [ ] Write `docs/user-manual/README.md` and `docs/admin-manual/README.md` indexes.
+- [x] Write `docs/user-manual/README.md` and `docs/admin-manual/README.md` indexes.
 
 ### S11 — Final review
 - [ ] Re-check every feature file against code (`e376c25c` or recorded commit), RBAC matrix, screenshots, plan and

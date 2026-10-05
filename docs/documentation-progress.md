@@ -4,8 +4,8 @@
 |---|---|
 | Code baseline | `main` @ `e376c25c`; 2026-10-05 docs branch merged `main` @ `6a9be770` (+42 commits, bdm-006 etc.) — only Agent-scope-adjacent change is BDM "Appointments" sidebar links in `navigation.ts`; Agent CRM analysis unchanged. Browser work may use a stack from `6a9be770`. |
 | Stack used for browser work | `agentdocs` compose project from worktree `.claude/worktrees/agent-docs` @ `717d6aa8` (= main `6a9be770` + docs); web http://localhost:3010, api :8010; SMTP → local Mailpit (`docker-compose.docs.yml`, UI http://localhost:8025; `EMAIL_ENABLED` is not read by the app); Razorpay test keys present |
-| Last session | S9 — 2026-10-05 |
-| Next session | S10 — Role guides, FAQ, troubleshooting, indexes |
+| Last session | S10 — 2026-10-05 |
+| Next session | S11 — Final review and review report |
 
 Column values: **Code Reviewed** YES / PARTIAL / NO (YES at S1 = reviewed from source at HEAD with file:line evidence in
 `documentation-analysis.md`); **Browser Verified** YES / PARTIAL / NO; **Screenshot** YES / NO / N/A;
@@ -78,9 +78,9 @@ Documented 43 YES, 11 DRAFT · Reviewed 0 · **COMPLETE 0** (pending final revie
 | `docs/screenshot-index.md` | S2 | YES (empty table) |
 | Capture tooling (`apps/web/playwright.docs.config.ts`, `apps/web/tests/doc-capture/shoot.ts`) | S2 | YES (type-checks; 0 specs yet) |
 | `docs/tooling/check-doc-links.mjs` | S2 | YES (runs, all links OK) |
-| `docs/admin-manual/README.md`, `docs/user-manual/README.md` | S10 | NO |
-| Role guides: Agency Master, Agency Staff, Overseas Admin (agencies), Super Admin (agencies) | S10 | NO |
-| `docs/faq.md`, `docs/troubleshooting.md` | S10 | NO |
+| `docs/admin-manual/README.md`, `docs/user-manual/README.md` | S10 | YES |
+| Role guides: Agency Master, Agency Staff, Overseas Admin (agencies), Super Admin (agencies) | S10 | YES |
+| `docs/faq.md`, `docs/troubleshooting.md` | S10 | YES |
 | `docs/documentation-review-report.md` | S11 | NO |
 
 ## Unresolved verification items
