@@ -176,3 +176,26 @@ Captured 2026-10-05 against docs commit `717d6aa8` (= `main` @ `6a9be770` + docs
 | admin-agencies/10-commission-set-amount.png | Agency administration | DOC-ADM-006 | Set amount | Overseas Admin | Set/adjust commission amount |
 | admin-agencies/11-commission-approve-payout.png | Agency administration | DOC-ADM-006 | Payout | Overseas Admin | Approve commission payout |
 | admin-agencies/12-commissions-paid.png | Agency administration | DOC-ADM-006 | Result | Overseas Admin | Commission paid |
+| admin-agencies/13-agent-approvals-reinstated.png | Agency administration | DOC-ADM-001 | Reinstate | Overseas Admin | "Docs Suspended Agency reinstated." |
+| admin-agencies/14-agent-network-all.png | Agency administration | DOC-ADM-002 | List | Overseas Admin | All agencies with counts |
+| admin-agencies/15-agent-network-active.png | Agency administration | DOC-ADM-002 | Filter | Overseas Admin | Active tab |
+| admin-agencies/16-agent-network-no-match.png | Agency administration | DOC-ADM-002 | Search | Overseas Admin | No match |
+| admin-agencies/17-agency-detail.png | Agency administration | DOC-ADM-003 | Detail | Overseas Admin | Summary, Commission, Deposits |
+| admin-agencies/18-agency-records-students.png | Agency administration | DOC-ADM-003 | Records | Overseas Admin | Agency records: Students |
+| admin-agencies/20-agency-records-applications.png | Agency administration | DOC-ADM-003 | Records | Overseas Admin | Agency records: Applications |
+| admin-agencies/21-detail-suspend-confirm.png | Agency administration | DOC-ADM-004 | Suspend | Overseas Admin | Suspend confirmation |
+| admin-agencies/22-detail-suspended.png | Agency administration | DOC-ADM-004 | Result | Overseas Admin | Suspended + Reinstate |
+| admin-agencies/23-detail-pending-review-link.png | Agency administration | DOC-ADM-004 | Pending | Overseas Admin | Review in Agent Approvals link |
+| admin-agencies/24-deposits-paid.png | Agency administration | DOC-ADM-005 | Paid tab | Overseas Admin | Paid deposit card |
+| admin-agencies/25-remittance-form.png | Agency administration | DOC-ADM-005 | Remit | Overseas Admin | Remittance form |
+| admin-agencies/26-remittance-date-error.png | Agency administration | DOC-ADM-005 | Error | Overseas Admin | Future date blocked by browser |
+| admin-agencies/27-deposits-remitted.png | Agency administration | DOC-ADM-005 | Remitted tab | Overseas Admin | Remitted deposit |
+| admin-agencies/28-refund-form.png | Agency administration | DOC-ADM-005 | Refund | Overseas Admin | Refund form |
+| admin-agencies/29-refund-too-large.png | Agency administration | DOC-ADM-005 | Error | Overseas Admin | "A refund cannot exceed the paid amount" |
+| admin-agencies/30-refund-confirm.png | Agency administration | DOC-ADM-005 | Confirm | Overseas Admin | Refund confirmation |
+| admin-agencies/31-deposits-refunded.png | Agency administration | DOC-ADM-005 | Refunded tab | Overseas Admin | Refunded deposit |
+| admin-agencies/32-super-admin-network.png | Agency administration | DOC-ADM-007 | Read-only | Super Admin | Agent network without suspend |
+| admin-agencies/33-super-admin-deposits.png | Agency administration | DOC-ADM-007 | Read-only | Super Admin | Agent deposits without actions |
+| admin-agencies/34-super-admin-agents.png | Agency administration | DOC-ADM-007 | Refused | Super Admin | Workspace not found |
+| admin-agencies/35-super-admin-commissions.png | Agency administration | DOC-ADM-007 | Refused | Super Admin | Workspace not found |
+| applications/40-deposit-refunded-agency-view.png | Applications | DOC-APP-007 | Refunded | Master | Agency view: remitted + refunded |

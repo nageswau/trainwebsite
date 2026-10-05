@@ -4,8 +4,8 @@
 |---|---|
 | Code baseline | `main` @ `e376c25c`; 2026-10-05 docs branch merged `main` @ `6a9be770` (+42 commits, bdm-006 etc.) — only Agent-scope-adjacent change is BDM "Appointments" sidebar links in `navigation.ts`; Agent CRM analysis unchanged. Browser work may use a stack from `6a9be770`. |
 | Stack used for browser work | `agentdocs` compose project from worktree `.claude/worktrees/agent-docs` @ `717d6aa8` (= main `6a9be770` + docs); web http://localhost:3010, api :8010; SMTP → local Mailpit (`docker-compose.docs.yml`, UI http://localhost:8025; `EMAIL_ENABLED` is not read by the app); Razorpay test keys present |
-| Last session | S8 — 2026-10-05 |
-| Next session | S9 — Admin: agent network, agency detail, suspend/reinstate, deposits, Super Admin access |
+| Last session | S9 — 2026-10-05 |
+| Next session | S10 — Role guides, FAQ, troubleshooting, indexes |
 
 Column values: **Code Reviewed** YES / PARTIAL / NO (YES at S1 = reviewed from source at HEAD with file:line evidence in
 `documentation-analysis.md`); **Browser Verified** YES / PARTIAL / NO; **Screenshot** YES / NO / N/A;
@@ -60,17 +60,17 @@ YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES and Rev
 | DOC-TEAM-004 | Team | Set staff permissions | YES | YES | YES | YES | NO |
 | DOC-TEAM-005 | Team | Staff activity | YES | YES | YES | YES | NO |
 | DOC-PERF-001 | Staff performance | View staff performance | YES | YES | YES | YES | NO |
-| DOC-ADM-001 | Agency administration | Approve / reject / suspend / reinstate agencies | YES | PARTIAL (Reinstate → S9) | YES | DRAFT | NO |
-| DOC-ADM-002 | Agency administration | Agent network list | YES | NO | NO | NO | NO |
-| DOC-ADM-003 | Agency administration | Agency detail and drill-down | YES | NO | NO | NO | NO |
-| DOC-ADM-004 | Agency administration | Suspend / reinstate from detail | YES | NO | NO | NO | NO |
-| DOC-ADM-005 | Agency administration | Deposit remittance and refund | YES | NO | NO | NO | NO |
+| DOC-ADM-001 | Agency administration | Approve / reject / suspend / reinstate agencies | YES | YES | YES | YES | NO |
+| DOC-ADM-002 | Agency administration | Agent network list | YES | YES | YES | YES | NO |
+| DOC-ADM-003 | Agency administration | Agency detail and drill-down | YES | PARTIAL (archived sub-filter not exercised) | YES | DRAFT | NO |
+| DOC-ADM-004 | Agency administration | Suspend / reinstate from detail | YES | YES | YES | YES | NO |
+| DOC-ADM-005 | Agency administration | Deposit remittance and refund | YES | YES | YES | YES | NO |
 | DOC-ADM-006 | Agency administration | Commission amounts and payouts | YES | YES | YES | YES | NO |
-| DOC-ADM-007 | Agency administration | Super Admin access to agency screens | YES | NO | NO | NO | NO |
+| DOC-ADM-007 | Agency administration | Super Admin access to agency screens | YES | YES | YES | YES | NO |
 | DOC-ADM-008 | Agency administration | Resend a staff welcome link | YES | YES | YES | YES | NO |
 
-**Totals:** 54 features · Code reviewed 54 YES · Browser verified 38 YES, 12 PARTIAL · Screenshots 169 / ~178 ·
-Documented 38 YES, 12 DRAFT · Reviewed 0 · **COMPLETE 0**.
+**Totals:** 54 features · Code reviewed 54 YES · Browser verified 43 YES, 11 PARTIAL · Screenshots 192 ·
+Documented 43 YES, 11 DRAFT · Reviewed 0 · **COMPLETE 0** (pending final review S11).
 
 ## Deliverables outside the feature rows
 | Deliverable | Session | Status |
@@ -90,6 +90,8 @@ Open items U1–U19 are listed in `docs/documentation-analysis.md` §12.1. Close
 |---|---|---|---|
 | U2 | AUTH-005 | S2 | Closed: a pending agent can open Change password. |
 | 12.2 #1 | AUTH-003 | S2 | Confirmed in browser: rejected agency sees "Agent registration is pending approval". |
+| U15 | ADM-007 | S9 | Closed — differs from code reading: Super Admin gets "Workspace not found" on /overseas/admin/agents and /commissions (not a read-only table); network and deposits are read-only. |
+| U16 | ADM-007 | S9 | Closed: /overseas/admin/applications is "Workspace not found" for Super Admin. |
 | U14 | NOTIF-001 | S8 | Closed: daily reminder job (run on demand on the docs stack) created Deadline today / Deadline in 3 days / Overdue tasks. |
 | U18 | COMM-001 | S8 | Confirmed: claim needs the raw commission reference; table shows raw status words. |
 | U11 | DOC-001 | S7 | Confirmed: Documents page has no student filter/search control. |
@@ -124,6 +126,7 @@ Open items U1–U19 are listed in `docs/documentation-analysis.md` §12.1. Close
 | 2026-10-05 | S7 | Review decision is a dropdown; reason required is enforced by the browser first | Review form | Documented |
 | 2026-10-05 | S8 | Extra notification titles not in the plan: Commission estimated, Document verification pending, Assignment due soon | Notifications | Documented (last two unverified triggers) |
 | 2026-10-05 | S8 | Second Overseas Admin not needed: own-payout rule only applies to admin_manual commissions | Commissions | Plan simplified |
+| 2026-10-05 | S9 | Refund over the paid amount is only refused after the confirmation step (server check) | Agent deposits | Documented |
 
 ## Session log
 | Session | Date | Commit | Stack / URL | Outcome |

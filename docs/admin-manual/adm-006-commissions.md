@@ -6,7 +6,8 @@
 Set the amount of each agency commission and approve its payout after the agency claims it.
 
 ## Who Can Use This Feature
-**Overseas Admin.** (A Super Admin sees the table but not the action forms — VERIFICATION REQUIRED, see DOC-ADM-007.)
+**Overseas Admin.** A Super Admin cannot open this page ("Access unavailable — Workspace not found"; see
+[Super Admin access](adm-007-super-admin-access.md)).
 
 ## Prerequisites
 A commission exists — created automatically with status **estimated** when an agency Master confirms an enrollment.

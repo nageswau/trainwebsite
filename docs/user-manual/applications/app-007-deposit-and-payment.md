@@ -51,7 +51,9 @@ When the payment is confirmed, the deposit shows **Paid**, **Paid on**, **Paid b
 ![Deposit paid](../../screenshots/applications/28-deposit-paid.png)
 
 Later, when EduSphere's Overseas Admin forwards the money or records a refund, the deposit shows
-"Remitted on {date} · Ref. {reference}" or "Refunded ₹{amount} on {date}" (see the admin guide, DOC-ADM-005).
+"Remitted on {date} · Ref. {reference}" and/or "Refunded ₹{amount} on {date}" with the **Refund reason**.
+
+![Remitted and refunded deposit](../../screenshots/applications/40-deposit-refunded-agency-view.png)
 
 ## Fields
 | Field | Description | Required | Example |
@@ -102,4 +104,4 @@ Later, when EduSphere's Overseas Admin forwards the money or records a refund, t
 
 ## Related Features
 - [Record an offer](app-006-record-an-offer.md)
-- Admin: Agent deposits — remittance and refund (DOC-ADM-005, written in a later session)
+- Admin: [Agent deposits — remittance and refund](../../admin-manual/adm-005-agent-deposits.md)

@@ -246,7 +246,7 @@ Features: DOC-DASH-001..002, DOC-NOTIF-001, DOC-COMM-001, DOC-RPT-001..003, DOC-
 
 ### S9 — Admin-side agency management
 Features: DOC-ADM-002..005, DOC-ADM-007 (DOC-ADM-006 is done in S8).
-- [ ] Standard loop as Overseas Admin and Super Admin; record remittance and refund on the S6 deposit(s).
+- [x] Standard loop as Overseas Admin and Super Admin; record remittance and refund on the S6 deposit(s).
 
 ### S10 — Role guides, FAQ, troubleshooting, indexes
 - [ ] Write `docs/role-guides/agency-master.md`, `agency-staff.md`, `overseas-admin-agencies.md`,

@@ -8,8 +8,8 @@ Overseas Admin approves or rejects them. Approved agencies can later be suspende
 reinstated.
 
 ## Who Can Use This Feature
-**Overseas Admin.** A Super Admin who opens this page sees the **Agent Masters** table but not the Agent Approvals
-panel (VERIFICATION REQUIRED — checked in the admin session).
+**Overseas Admin.** A Super Admin who opens this page sees "Access unavailable — Workspace not found" (see
+[Super Admin access](adm-007-super-admin-access.md)).
 
 ## Prerequisites
 At least one agency has registered (see [Register an agency](../user-manual/account-access/auth-001-register-an-agency.md)).
@@ -58,8 +58,10 @@ The agency moves to the **Suspended** tab. All its Masters and staff now see "Yo
 ![Suspended tab](../screenshots/admin-agencies/05-agent-approvals-suspended.png)
 
 ### Step 5 — Reinstate or re-approve
-- **Suspended** tab: click **Reinstate** to restore access. — VERIFICATION REQUIRED (button seen in code; the action is
-  verified in the admin session).
+- **Suspended** tab: click **Reinstate** to restore access. The message "{agency} reinstated." appears.
+
+![Agency reinstated](../screenshots/admin-agencies/13-agent-approvals-reinstated.png)
+
 - **Rejected** tab: click **Approve** if a rejected agency should be allowed after all.
 
 ![Rejected tab](../screenshots/admin-agencies/06-agent-approvals-rejected.png)
@@ -97,7 +99,7 @@ Every action is recorded in the audit log.
 
 ## Tips
 - Staff logins never appear here; agencies manage their own staff.
-- You can also suspend and reinstate from **Agent network** (agency detail page).
+- You can also suspend and reinstate from **Agent network** (see [Suspend or reinstate an agency](adm-004-suspend-reinstate.md)).
 
 ## Related Features
 - User manual: [Register an agency](../user-manual/account-access/auth-001-register-an-agency.md),
