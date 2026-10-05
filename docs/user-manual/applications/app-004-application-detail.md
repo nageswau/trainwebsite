@@ -1,6 +1,6 @@
 # Application detail page
 
-> Doc ID: DOC-APP-004 · Partly verified 2026-10-05 against docs commit `717d6aa8` (`main` @ `6a9be770`) · Roles: Agency Master, Agency Staff
+> Doc ID: DOC-APP-004 · Verified 2026-10-05 against docs commit `717d6aa8` (`main` @ `6a9be770`) · Roles: Agency Master, Agency Staff
 
 ## Purpose
 One place for everything about an application: its details, offer, deposit, visa, enrollment, stage changes and
@@ -27,10 +27,10 @@ The header shows "{student} — {university}", the stage badge and the nearest d
 ### Step 2 — Use the sections
 | Section | What you can do | Guide |
 |---|---|---|
-| Offer | Record or edit the university's offer | DOC-APP-006 (later session) |
-| Deposit | Record deposit terms and pay the deposit | DOC-APP-007 (later session) |
-| Visa | Run the visa case (from the Offer stage) | DOC-APP-008 (later session) |
-| Enrollment | Confirm enrollment (Masters) | DOC-APP-009 (later session) |
+| Offer | Record or edit the university's offer | [Record an offer](app-006-record-an-offer.md) |
+| Deposit | Record deposit terms and pay the deposit | [Deposit and payment](app-007-deposit-and-payment.md) |
+| Visa | Run the visa case (shown from the Offer stage) | [Run the visa case](app-008-visa-case.md) |
+| Enrollment | Confirm enrollment (Masters; shown from the Offer stage) | [Confirm enrollment](app-009-confirm-enrollment.md) |
 | Change status | Move the application forward or withdraw it | [Change status or withdraw](app-005-change-status-or-withdraw.md) |
 | Status history | Every stage change: "{stage} · {who} · {date, time}" and notes | — |
 
@@ -57,8 +57,7 @@ You see the application's full state.
 **Resolution:** See the read-only note at the top of the details.
 
 ## Tips
-- Visa and Enrollment sections appear once the application reaches the stages that allow them (VERIFICATION
-  REQUIRED — covered in the offer/deposit/visa/enrollment session).
+- The **Visa** and **Enrollment** sections appear once the application reaches the **Offer** stage.
 
 ## Related Features
 - [Edit an application](app-003-edit-an-application.md)

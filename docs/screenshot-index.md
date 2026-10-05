@@ -113,3 +113,22 @@ Captured 2026-10-05 against docs commit `717d6aa8` (= `main` @ `6a9be770` + docs
 | tasks/08-tasks-cancelled.png | Tasks | DOC-TASK-001 | Cancelled view | Master | Cancelled task |
 | tasks/09-tasks-all.png | Tasks | DOC-TASK-001 | All view | Master | All tasks with every badge |
 | tasks/10-staff-tasks.png | Tasks | DOC-TASK-001 | Staff view | Staff | Staff sees assigned students' tasks |
+| applications/20-offer-conditions-required.png | Applications | DOC-APP-006 | Error | Master | Conditional offer without conditions: browser "Please fill out this field." |
+| applications/21-offer-form.png | Applications | DOC-APP-006 | Form | Master | Offer form: conditional, dates, conditions, offer letter |
+| applications/22-offer-saved.png | Applications | DOC-APP-006 | Result | Master | "Offer saved." |
+| applications/23-deposit-amount-error.png | Applications | DOC-APP-007 | Error | Master | "The amount must be more than ₹0" |
+| applications/24-deposit-form.png | Applications | DOC-APP-007 | Form | Master | Deposit required Yes, amount, due date |
+| applications/25-deposit-awaiting-payment.png | Applications | DOC-APP-007 | Result | Master | Awaiting payment + Pay deposit |
+| applications/26-razorpay-checkout.png | Applications | DOC-APP-007 | Pay | Master | Razorpay test checkout window (Test Mode ribbon) |
+| applications/28-deposit-paid.png | Applications | DOC-APP-007 | Paid | Master | Paid, Paid on, Paid by, Download receipt (paid via signed test webhook) |
+| applications/29-visa-start-form.png | Applications | DOC-APP-008 | Start | Master | Start visa case form with checklist |
+| applications/30-visa-checklist.png | Applications | DOC-APP-008 | Checklist | Master | Visa case started, checklist statuses |
+| applications/31-visa-checklist-gate.png | Applications | DOC-APP-008 | Error | Master | "Cannot advance past the checklist stage -- not yet verified: English test." |
+| applications/32-visa-skip-confirm.png | Applications | DOC-APP-008 | Move | Master | Skip-stages confirmation |
+| applications/33-visa-decision-confirm.png | Applications | DOC-APP-008 | Decision | Master | Record decision confirmation |
+| applications/34-visa-decision-recorded.png | Applications | DOC-APP-008 | Result | Master | Decision Approved + disclaimer |
+| applications/35-enrollment-form.png | Applications | DOC-APP-009 | Form | Master | Enrollment form |
+| applications/36-enrollment-confirm.png | Applications | DOC-APP-009 | Confirm | Master | Confirm enrollment prompt |
+| applications/37-enrolled.png | Applications | DOC-APP-009 | Result | Master | Enrollment details + status history |
+| applications/38-filter-enrolled.png | Applications | DOC-APP-001/009 | Filter | Master | Enrolled view with Birmingham application |
+| applications/39-enrollment-staff-note.png | Applications | DOC-APP-009 | Staff view | Staff | "An agency Master confirms enrollment." |

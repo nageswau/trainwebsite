@@ -228,9 +228,9 @@ Features: DOC-APP-001..005, DOC-TASK-001..002.
 
 ### S6 — Offer, deposit, visa, enrollment
 Features: DOC-APP-006..009.
-- [ ] **S6.1** Owner confirms Razorpay **test** keys are configured (`RAZORPAY_KEY_ID` starts `rzp_test_`) and the
+- [x] **S6.1** Owner confirms Razorpay **test** keys are configured (`RAZORPAY_KEY_ID` starts `rzp_test_`) and the
   webhook secret is set, or accepts documenting APP-007 payment as VERIFICATION REQUIRED.
-- [ ] Standard loop. Produce a paid deposit, a visa case through to a decision (plus one checklist-gate failure), an
+- [x] Standard loop. Produce a paid deposit, a visa case through to a decision (plus one checklist-gate failure), an
   enrolled application (creates an *estimated* commission for S8).
 
 ### S7 — Documents
