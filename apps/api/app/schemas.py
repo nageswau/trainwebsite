@@ -3752,6 +3752,27 @@ class BdmCollegeProfileOut(BaseModel):
 BdmOrgProfileOut = Annotated[BdmAgentProfileOut | BdmSchoolProfileOut | BdmCollegeProfileOut, Field(discriminator="kind")]
 
 
+# --- bdm-004 (DEC-SCOPE-071, spec §6.1): the pipeline on the organization detail ------------------------------------------------
+class BdmPipelineStepOut(BaseModel):
+    key: str
+    label: str
+    kind: Literal["manual", "live", "volume"]
+    state: Literal["done", "current", "upcoming", "awaiting_handover", "not_tracked"]
+
+
+class BdmPipelineLost(BaseModel):
+    at: datetime
+    reason: str
+
+
+class BdmOrgPipelineOut(BaseModel):
+    stage: str
+    stage_label: str
+    lost: BdmPipelineLost | None
+    agent_status: str | None  # S4: Agent organizations only
+    steps: list[BdmPipelineStepOut]
+
+
 class BdmOrganizationRow(BaseModel):
     id: UUID
     code: str
@@ -3777,6 +3798,7 @@ class BdmOrganizationOut(BdmOrganizationRow):
     courses_interested: str | None
     student_count: int | None
     profile: BdmOrgProfileOut | None  # null for corporate / training_institute / other (spec §5.1)
+    pipeline: BdmOrgPipelineOut  # bdm-004: detail only; list rows are unchanged
     contacts: list[BdmContactOut]
     created_by_name: str
     archived_at: datetime | None
@@ -3793,6 +3815,82 @@ class BdmOrganizationPage(BaseModel):
 
 class BdmOrganizationEnvelope(BaseModel):
     organization: BdmOrganizationOut
+
+
+# --- bdm-004 (DEC-SCOPE-071, spec §6.1): stage moves, Lost / Revive, history and the pipeline view -------------------------------
+BdmStageKey = Annotated[str, StringConstraints(pattern=r"^[a-z_]{1,40}$")]
+# P14 / TripNote: trimmed, at most 500 after \r\n -> \n, line breaks and tabs allowed, other control characters refused, blank -> None.
+BdmPipelineNote = Annotated[TripNote, BeforeValidator(_bdm_newlines)]
+BdmPipelineReason = Annotated[
+    Annotated[Annotated[str, _trimmed(500)], AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, True))], BeforeValidator(_bdm_newlines)
+]
+
+
+class BdmStageMove(BaseModel):
+    """S6: `from_stage` is the stage the form was showing -- a different stored stage is 409 `stage_changed`."""
+
+    model_config = ConfigDict(extra="forbid")
+    from_stage: BdmStageKey
+    to_stage: BdmStageKey
+    note: BdmPipelineNote = None
+
+
+class BdmLostIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: BdmPipelineReason
+
+
+class BdmReviveIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: BdmPipelineReason
+
+
+class BdmStageEventOut(BaseModel):
+    id: UUID
+    kind: Literal["move", "lost", "revived"]
+    from_stage: str
+    from_label: str
+    to_stage: str
+    to_label: str
+    note: str | None
+    actor: BdmPersonRef
+    created_at: datetime
+
+
+class BdmStageEventPage(BaseModel):
+    items: list[BdmStageEventOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class BdmPipelineStageCount(BaseModel):
+    key: str
+    label: str
+    kind: Literal["manual", "live", "volume"]
+    count: int | None  # null for live / volume steps (S2, S3)
+
+
+class BdmPipelineItem(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    city: str
+    org_type: str
+    assigned_bdm: BdmOrgPerson
+    stage: str
+    stage_label: str
+    lost: bool
+
+
+class BdmPipelinePage(BaseModel):
+    bdm_type: BdmType
+    stages: list[BdmPipelineStageCount]
+    lost_count: int
+    items: list[BdmPipelineItem]
+    total: int
+    limit: int
+    offset: int
 
 
 # --- bdm-006 (DEC-SCOPE-068, spec §5.1): appointments ----------------------------------------------------------------------------
@@ -4137,7 +4235,7 @@ class BdmActivityDayPage(BdmActivityPage):
     counts: BdmActivityDayCounts
 
 
-# bdm-017 (DEC-SCOPE-071, spec §4-§5): a student lead a BDM enters against an organization, and the admin's explicit conversion link.
+# bdm-017 (DEC-SCOPE-072, spec §4-§5): a student lead a BDM enters against an organization, and the admin's explicit conversion link.
 # The text rules are bdm-001's (no control characters, blank -> None) with bdm-002's email and phone shapes; the lengths are the
 # `enquiries` columns'. Source, division, status, attribution and conversion are server-owned: `extra="forbid"` answers 422.
 BDM_LEAD_LABELS = {"name": "Student name", "email": "Email", "student_email": "Email", "phone": "Phone", "interest": "Interest", "note": "Note"}

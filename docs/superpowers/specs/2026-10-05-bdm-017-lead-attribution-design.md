@@ -12,8 +12,8 @@ implementation with this design.
 lead individually; "students contacted" = leads entered), D3 (division derived: college → `it`, agent/school → `overseas`),
 Q-02/D11 (read own type, edit assigned). All `EXPLICIT_APPROVAL` in `DEC-SCOPE-055`.
 
-**Decision record:** **`DEC-SCOPE-071`** (provisional number; renumber on merge if taken, as earlier BDM entries were).
-Migration **`0073_enquiry_bdm_attribution`** after `0072_bdm_meeting_reports` (bdm-004 and bdm-007 branches each carry their own
+**Decision record:** **`DEC-SCOPE-072`** (provisional number; renumber on merge if taken, as earlier BDM entries were).
+Migration **`0074_enquiry_bdm_attribution`** after `0073_bdm_pipeline` (bdm-004 and bdm-007 branches each carry their own
 `0072`; whichever merges later re-chains).
 
 **Gate:** `APPROVAL_GATES.md` GATE-09.
@@ -55,7 +55,7 @@ Defaults (design, not separately asked): the BDM daily cap of 200 leads (409, bd
 named by the student's account email typed by the admin and matched exactly (explicit; never inferred from the lead's own
 email); conversion is allowed on any lead in the admin's division (website leads too), so L9 holds across sources.
 
-## 3. Data model — migration `0073_enquiry_bdm_attribution`
+## 3. Data model — migration `0074_enquiry_bdm_attribution`
 
 `enquiries` gains five nullable columns:
 

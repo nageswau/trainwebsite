@@ -12,7 +12,8 @@ const org = (over: Partial<Organization> = {}): Organization => ({
   id: "o1", code: "ORG-000001", name: "St Mary", org_type: "college", bdm_type: "college", city: "Kochi", state: null, existing_partner: false,
   assigned_bdm: { id: "b1", full_name: "Asha", active: true }, primary_contact: { name: "Dr Rao", designation: "Principal", phone: null, email: null },
   archived: false, last_meeting_at: null, next_meeting_at: null, permissions: perms(), phone: null, email: null, website: "javascript:alert(1)",
-  courses_interested: null, student_count: null, address: null, profile: null, created_by_name: "Asha", archived_at: null, created_at: "2026-10-03T00:00:00Z", updated_at: "2026-10-03T00:00:00Z",
+  courses_interested: null, student_count: null, address: null, profile: null,
+  pipeline: { stage: "prospect", stage_label: "College Prospect", lost: null, agent_status: null, steps: [] }, created_by_name: "Asha", archived_at: null, created_at: "2026-10-03T00:00:00Z", updated_at: "2026-10-03T00:00:00Z",
   contacts: [{ id: "c1", name: "Dr Rao", designation: "Principal", role: "principal", phone: null, email: null, is_primary: true }, { id: "c2", name: "Ms Iyer", designation: null, role: null, phone: null, email: null, is_primary: false }],
   ...over,
 });
@@ -20,6 +21,18 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   router.replace.mockClear();
+});
+
+describe("BdmOrganizationDetail -- bdm-004 placement (QA4-05)", () => {
+  it("shows the pipeline first, then Details and Contacts, then the stage history", () => {
+    render(<BdmOrganizationDetail initial={org()} basePath="/bdm/organizations" stageHistory={{ items: [], total: 0, limit: 20, offset: 0 }} />);
+    const before = (a: HTMLElement, b: HTMLElement) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    const pipeline = screen.getByRole("region", { name: "Pipeline" });
+    const details = screen.getByRole("region", { name: "Details" });
+    const contacts = screen.getByRole("list", { name: "Contacts" });
+    const history = screen.getByRole("region", { name: "Stage history" });
+    expect([before(pipeline, details), before(details, contacts), before(contacts, history)]).toEqual([true, true, true]);
+  });
 });
 
 describe("BdmOrganizationDetail (bdm-002 AC3-AC6, §12.2)", () => {

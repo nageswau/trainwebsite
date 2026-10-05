@@ -434,7 +434,7 @@ covers the commission-specific piece).
   (timeline). CHECK constraints, no PG enums. The day's counts are never stored (one grouped query, `day_counts`, joined to
   organizations like the lists so scope filters are safe). Appointment / task links are deferred to bdm-006 / bdm-008. Additive; no
   existing table or row changes; the downgrade refuses while activities exist.
-- **Addendum, 2026-10-05 (`bdm-017`, `DEC-SCOPE-071`; migration `0073_enquiry_bdm_attribution`, chained after `0072_bdm_meeting_reports`) —
+- **Addendum, 2026-10-05 (`bdm-017`, `DEC-SCOPE-072`; migration `0074_enquiry_bdm_attribution`, chained after `0073_bdm_pipeline`) —
   student lead attribution.** `enquiries` gains five nullable columns: `bdm_organization_id` FK `bdm_organizations` `ON DELETE RESTRICT`
   and `bdm_user_id` FK `users` `ON DELETE RESTRICT` (the attributing BDM), set together (`ck_enquiries_bdm_attribution`); and
   `converted_user_id` FK `users` `ON DELETE RESTRICT`, `converted_at` timestamptz, `converted_by_user_id` FK `users` `ON DELETE RESTRICT`,
@@ -443,6 +443,18 @@ covers the commission-specific piece).
   (one lead per student account, L9). A BDM lead is an ordinary enquiry row (`source='bdm'`, division from the BDM type, `subject` = the
   student's interest, `message` = the note or "Lead entered by BDM at …"). Website and manual enquiries keep every new column NULL; no
   existing column or row changes; the downgrade refuses while any row is attributed or converted.
+
+- **Addendum, 2026-10-05 (`bdm-004`, `DEC-SCOPE-071`; migration `0073_bdm_pipeline`, chained after `0072_bdm_meeting_reports`) —
+  organization pipelines.** The catalogue lives in `app/bdm_stages.py` (14 steps per type, kinds manual / live / volume; the migration
+  keeps a frozen copy of the manual lists). `bdm_organizations` gains `pipeline_stage` String(40) NOT NULL default `'prospect'` (existing
+  rows backfilled by the default, no history row), `lost_at` timestamptz and `lost_reason` String(500) (both or neither:
+  `ck_bdm_organizations_lost`), `ck_bdm_organizations_pipeline_stage` (each `bdm_type` limited to its own **manual** stages — live
+  stages arrive with bdm-018 / bdm-019, which widen it) and index `ix_bdm_organizations_type_stage (bdm_type, pipeline_stage)`.
+  `bdm_pipeline_events` (UUID PK; `organization_id` FK `bdm_organizations` `ON DELETE RESTRICT`; `actor_user_id` FK `users`
+  `ON DELETE RESTRICT`; `kind` CHECK move / lost / revived; `from_stage`, `to_stage` String(40) — no stage CHECK, so history survives a
+  catalogue change; `note` String(500), required for lost / revived (`ck_bdm_pipeline_events_note`); `position` BIGINT identity;
+  `created_at`), append-only, index `(organization_id, position)`. The agent status is derived, never stored. Additive; the downgrade
+  refuses while any event, non-prospect stage or Lost flag exists.
 
 ### 6.3 Commission trigger mapping — `ADR-012` resolution
 **Resolution:** the automatic commission-accrual trigger (`AGT-003`, `DEC-SCOPE-005`) fires when an

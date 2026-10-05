@@ -1,4 +1,4 @@
-"""bdm-017 (DEC-SCOPE-071, spec §4): an organization's student leads.
+"""bdm-017 (DEC-SCOPE-072, spec §4): an organization's student leads.
 
 Reads are open to everyone who can read the organization (`load_scoped`; L6 mirrors bdm-009 V5). A lead is added by the organization's
 assigned BDM in one transaction -- role (403), scope + organization lock (404), assignee (403), archived (422), daily cap (409),

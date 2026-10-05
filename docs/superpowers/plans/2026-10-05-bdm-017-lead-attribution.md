@@ -34,9 +34,9 @@ list, with an explicit admin conversion link to one student account.
 ---
 
 ### Task 1: Migration + model columns
-**Files:** Create `apps/api/alembic/versions/0073_enquiry_bdm_attribution.py`; Modify `apps/api/app/models.py` (`Enquiry`);
+**Files:** Create `apps/api/alembic/versions/0074_enquiry_bdm_attribution.py`; Modify `apps/api/app/models.py` (`Enquiry`);
 Test `apps/api/tests/test_bdm_017_migration.py`.
-- [ ] RED: tests — chains after `0072_bdm_meeting_reports` and is the single head; model columns/constraints/indexes/FK ondelete match;
+- [ ] RED: tests — chains after `0073_bdm_pipeline` and is the single head; model columns/constraints/indexes/FK ondelete match;
   columns exist in the shared DB; isolated DB round trip (upgrade → downgrade with no attributed rows) and downgrade refusal
   when a row is attributed (bdm-009 migration test pattern).
 - [ ] GREEN: migration (guarded `add_column`s, two CHECKs, index, partial unique index; downgrade refusal) + model columns.
@@ -86,7 +86,7 @@ Tests `apps/web/tests/components/BdmOrganizationLeads.test.tsx`, `BdmLeadForm.te
 
 ### Task 7: Playwright + docs
 **Files:** Create `apps/web/tests/e2e/bdm-017-lead-attribution.spec.ts`; Modify `docs/decisions/PRODUCT_DECISION_REGISTER.md`
-(`DEC-SCOPE-071`), RTM, `docs/architecture/DATA_MODEL.md` / `API_CONTRACT.md` entries.
+(`DEC-SCOPE-072`), RTM, `docs/architecture/DATA_MODEL.md` / `API_CONTRACT.md` entries.
 - [ ] Spec written (BDM adds lead → admin filters → links → unlink), run when the browser stack is up.
 - [ ] Lite regression: `test_pub_002`, `test_adm_002`, `test_cns_001`, `test_rpt_001`, bdm-002/009 scope; Vitest for touched
   components; `tsc`, eslint, ruff.

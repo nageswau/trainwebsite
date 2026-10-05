@@ -1,4 +1,4 @@
-"""bdm-017 -- migration 0073_enquiry_bdm_attribution (spec §3). Round trip and the downgrade refusal run in a throwaway database
+"""bdm-017 -- migration 0074_enquiry_bdm_attribution (spec §3). Round trip and the downgrade refusal run in a throwaway database
 (the bdm-001 pattern); a downgrade never runs against the shared test database."""
 
 import asyncio
@@ -18,11 +18,11 @@ from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_bdm_017_migration_0073", VERSIONS / "0073_enquiry_bdm_attribution.py")
+_spec = importlib.util.spec_from_file_location("_bdm_017_migration_0074", VERSIONS / "0074_enquiry_bdm_attribution.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0072_bdm_meeting_reports", "0073_enquiry_bdm_attribution"
+BASE, HEAD = "0073_bdm_pipeline", "0074_enquiry_bdm_attribution"
 NEW_COLUMNS = {"bdm_organization_id", "bdm_user_id", "converted_user_id", "converted_at", "converted_by_user_id"}
 ENQUIRIES = "SELECT id, email, source, status FROM enquiries ORDER BY id"
 
@@ -33,7 +33,7 @@ def _config() -> Config:
     return cfg
 
 
-def test_migration_chains_after_0072_bdm_meeting_reports_and_is_the_single_head():
+def test_migration_chains_after_0073_bdm_pipeline_and_is_the_single_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     assert ScriptDirectory.from_config(_config()).get_heads() == [HEAD]
 
@@ -75,7 +75,7 @@ def _sql(url: str, sql: str, params: dict | None = None, *, autocommit: bool = F
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0072_bdm_meeting_reports with one BDM user, one organization and one website enquiry."""
+    """A fresh database at 0073_bdm_pipeline with one BDM user, one organization and one website enquiry."""
     cfg = _config()
     original = settings.database_url
     name = f"bdm017_migration_{uuid.uuid4().hex[:8]}"
