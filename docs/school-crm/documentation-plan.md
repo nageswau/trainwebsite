@@ -57,7 +57,8 @@ open questions. Field-level evidence is in `docs/school-crm/discovery/01..04`.
     - **Digital Portfolio**: a student's achievements.
   - Work items: **activity**, **result** (Draft / Verified / Published), **record** (career guidance / counselling), **assessment** (psychometric), **skills batch**, **funding case**, **transfer request**.
   - Interface: **360° view**, **sidebar**.
-- **Docker belongs to the owner.** Ask before any `docker compose up/down/-v`; never assume the stack is up ([[user-controls-docker-lifecycle]]).
+- **Capture helpers (from S2).** Every school spec calls `noPrefetch(context)` before navigating, because open Next.js prefetch streams stall screenshots on the docs stack. Long cards use `shoot(..., { element })` and messages use `shoot(..., { center })`. Passwords come only from `DOCS_PASSWORD` / `DOCS_TEST_PASSWORD`. School codes and emails pass between specs through `DOCS_SCHOOL_FILE` (JSON, scratchpad only).
+- **Docker.** The owner approved (2026-10-05) Claude starting, seeding and resetting the `schooldocs` stack only. Never touch other compose projects ([[user-controls-docker-lifecycle]]).
 - **Git.**
   - Commit on the docs-only branch `docs/school-crm-user-guide`, using the message style `docs: add <module> School CRM guide`.
   - Stage explicit paths only:
@@ -187,30 +188,30 @@ Add a **What each role sees** table after "Who Can Use This Feature" whenever th
 - [x] Graphify orientation; four discovery passes (account / principal / teacher / parent, coordinator, specialists + 360 + portfolio, admin).
 - [x] `documentation-analysis.md`, this plan, `documentation-progress.md`, `screenshot-index.md` skeleton, `discovery/` appendices.
 
-### S2 — Environment, capture tooling, school administration (creates schools and staff)
+### S2 — Environment, capture tooling, school administration (creates schools and staff) — DONE 2026-10-05
 Features: DOC-SCH-SADM-001, 002, 003, 004, 005, 010, 011 (7).
-- [ ] **S2.1** Owner confirms the stack, using the same pattern as the Agent CRM docs stack:
+- [x] **S2.1** Owner confirms the stack, using the same pattern as the Agent CRM docs stack:
   - A dedicated worktree `.claude/worktrees/school-docs`, compose project `schooldocs`, web `:3020` and api `:8020`.
   - Mailpit through an untracked `docker-compose.docs.yml` (`SMTP_HOST=mailpit`, port 1025, no TLS). Never run the docs stack against the real SMTP in `.env`.
   - Seeded from `ce1f07c2`.
 
   Record the seed password only as the `DOCS_PASSWORD` environment variable, and a new random `DOCS_TEST_PASSWORD` in the session scratchpad only.
-- [ ] **S2.2** Tooling (test-only):
+- [x] **S2.2** Tooling (test-only):
   - (a) Add an optional `root` to `shoot()` in `apps/web/tests/doc-capture/shoot.ts` (default unchanged, so Agent specs keep working), plus `export const SCHOOL_ROOT = path.resolve(__dirname, "../../../../docs/school-crm/screenshots")`.
   - (b) Add `inviteLink(to, after)` next to `mailLink`. It matches `/school/invite/[A-Za-z0-9_-]+/accept` in the Mailpit text body and returns the path only.
   - (c) Create the `apps/web/tests/doc-capture/school/` folder. In it, call `signIn(page, email, kind, /\/school\//)` for school roles and `/\/overseas\/admin\//` for OA.
   - (d) In `docs/tooling/check-doc-links.mjs`, take an optional root argument. With an argument, scan `<root>/user-manual`, `<root>/admin-manual`, `<root>/role-guides`, `<root>/faq.md`, `<root>/troubleshooting.md` and `<root>/screenshot-index.md`. With no argument, keep today's paths.
 
   Run the existing Agent capture spec list once with `--list` to prove nothing broke.
-- [ ] **S2.3** Masking check: capture `account-access/01-login-page.png`, open it, and confirm no password or demo card is readable.
-- [ ] **S2.4** Run the standard loop for the S2 features as Overseas Admin.
+- [x] **S2.3** Masking check: capture `account-access/01-login-page.png`, open it, and confirm no password or demo card is readable.
+- [x] **S2.4** Run the standard loop for the S2 features as Overseas Admin.
   - Create **Docs Bronze School**, **Docs No-Tier School**, **Docs Renewal School** (Gold, valid +30 days), **Docs Expired School** (Gold, valid until yesterday) and **Docs Platinum Two** (Platinum, needed for transfers and the multi-school parent).
   - Create the bulk CSV fixture (D3).
   - Create staff `Docs AT`, `Docs CC` and `Docs PT` (portfolio: Sunrise + Docs Platinum Two) and `Docs Empty Portfolio CC` (no schools).
   - Upgrade, then downgrade, Docs Bronze School (tier notices for S10).
   - As Super Admin, capture "Workspace not found" (SADM-011).
   - For SADM-010, first code-review the Users page re-send panel (U12).
-- [ ] **S2.5** Take a `pg_dump` snapshot (scratchpad).
+- [x] **S2.5** Take a `pg_dump` snapshot (scratchpad).
 
 ### S3 — Account access and Team (creates invited accounts)
 Features: DOC-SCH-AUTH-001..009, DOC-SCH-TEAM-001..003 (12).
