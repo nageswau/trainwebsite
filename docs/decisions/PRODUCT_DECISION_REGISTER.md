@@ -3587,3 +3587,56 @@ independent Codex review are pending.
 **Addendum — browser QA, 2026-10-05 (owner direction "fix the issues", `EXPLICIT_APPROVAL`):** **QA17-01** the organization's lead table uses the existing `.table-scroll`, whose row headers keep their case (emails were shown in capitals); **QA17-02** the Overseas Admin gets the ADM-002 Manage leads panel on the leads page (as QA-009 did for users), so School / Agent BDM leads are filtered by organization and linked by their own division admin (L1) — `/admin/leads` and the conversion routes already scoped by division, unchanged; **QA17-03** the panel spans the action grid (`.lead-management`) and keeps the name column in view while scrolling.
 
 **Status:** `EXPLICIT_APPROVAL` for L1–L9 and QA17-01…03; implemented on `feature/bdm-017-lead-attribution` (merged with `main` @ `032ce4bf`; migration `0074_enquiry_bdm_attribution`, one head). Verified 2026-10-05: backend lite 181 passed; ruff clean on changed files; mypy 394 = `main`'s baseline; web 2538 of 2540 passed (the 2 failures are not bdm-017: `dateZoneSweep`'s 9 pre-existing findings in untouched files, and AGN-010 `AgentApplicationOffer` focus timing, 3/3 green alone); `tsc` 0; eslint 0; `next build` compiled; Playwright bdm-017, bdm-007, bdm-006, adm-002, pub-002, cns-001, bdm-002, bdm-009 — 15 passed; Browser Use: AC1–AC4, roles, validation, duplicates, refresh, layouts 320–1280 px and the QA17-01…03 fixes checked. Not browser-verified: the network-drop-on-save message (Browser Use input unreliable on this machine; covered by `BdmLeadForm.test.tsx`). The owner's full suites are run separately; Codex review waived by the owner.
+
+### DEC-SCOPE-073 — Telecaller CRM scope (T1–T29) and telecaller roles (`tel-001`)
+
+**Evidence:** `EVID-019` (`functionalities/edusphere_markdown/Telecaller Functionalities.md`, `DERIVED_BLUEPRINT`); owner answers in-session
+2026-10-05.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-05) for T1–T29 and TL1–TL7.
+
+**Part A — Telecaller CRM (T1–T29).** Copied verbatim from `docs/delivery/TELECALLER_CRM_BACKLOG.md` §3.1. They lift
+`PRD_OPEN_ITEMS.md` item 61 / `CONFLICT_MATRIX.md` for `EVID-019`. T29 supersedes `DEC-SCOPE-072` L2/L7 for leads in the telecaller
+pipeline; that supersession takes effect with `tel-018`.
+
+| # | Question | Answer | Items |
+|---|---|---|---|
+| T1 | Is `EVID-019` in scope? | **Yes, all 22 sections.** Each item keeps its own questions and stays behind GATE-09 | all |
+| T2 | Role model | **`telecaller` + `telecaller_manager`.** The manager sets targets, manages their team and reassigns. `super_admin` sees all | 001, 007, 022–026 |
+| T3 | Who receives a qualified IT lead | **The existing `counselor` role, allowed in the IT division** (a counselor belongs to `it` or `overseas`) | 017, 018 |
+| T4 | Chain end | **The Telecaller CRM stops at the counselor.** Enrolment, application and visa are read live from `Enrollment` / `OverseasApplication` / `VisaCase` once the lead is linked. No new downstream roles | 015, 018, 024 |
+| T5 | "Converted" | **Computed:** a linked student **and** an IT `Enrollment`, or an `OverseasApplication` that reached `enrolled`. No one can select it | 004, 010, 018, 021–024 |
+| T6 | Lead store | **Extend `enquiries`.** Every enquiry is a lead, with one store and one Lead ID | 003 and all |
+| T7 | Calls | **A manual log + a `tel:` link.** A telephony provider is deferred | 010 |
+| T8 | WhatsApp | **wa.me click-to-chat** with an editable template. The CRM records "WhatsApp sent – date/time – template". No API, approval or consent model now | 013 |
+| T9 | Content ownership | **A manager-edited library:** `telecaller_manager` and `super_admin` maintain scripts and templates per product and upload brochure/fee PDFs. Telecallers may edit the text before sending. Email goes via SMTP with a brochure link | 012–014 |
+| T10 | Appointments | **Counselor:** extend `appointments` with a lead link, booked straight to the counselor. **BDM:** the telecaller files a meeting request, and the BDM accepts it into `bdm_appointments` | 016, 019 |
+| T11 | Distribution | **Manager-configured per team:** product rules, then location rules, then round robin among the team's active telecallers. No match or nobody available → unassigned queue. Manual reassignment is always allowed | 007 |
+| T12 | Duplicates | **Normalised mobile OR email.** Manual create shows the §18 panel and blocks a second lead; the telecaller logs the new enquiry on the existing lead. A website enquiry from a known person attaches to the existing lead. Closed leads are matched too | 005, 006 |
+| T13 | Pipeline | **System-driven where evidence exists.** The telecaller sets qualified / interested / follow-up and the closed outcomes (with a reason). A manager reopens. Every change is written to stage history | 004 |
+| T14 | Alerts | **In-app + email.** Event alerts fire on the write; time-based alerts come from a beat job every 15 minutes, each sent once. The "not contacted" and "hot pending" thresholds are manager-set | 020 |
+| T15 | Intake | **Manual + website + CSV import per campaign** (duplicate check per row). Ad-platform APIs are deferred | 005, 006 |
+| T16 | Campaigns | **A managed list** (name, source, product, start/end, active). No ad spend | 002, 024 |
+| T17 | Products | **A managed list seeded with §3** (group it/overseas/other), editable by the manager. An IT item may link to an existing course | 002 |
+| T18 | "Other" products | **Team per product, set by the manager.** Seeded: Job Assistance and Career Change → IT; Career Guidance and General Enquiry → unassigned queue | 002, 007 |
+| T19 | After handover | **The counselor owns the lead; the telecaller keeps read access only.** The counselor can return the lead with a reason, which reopens follow-up and alerts the telecaller | 018, 020 |
+| T20 | Student link | **The counselor links** (searching by email/mobile); the system suggests a match and the counselor confirms. Never silent. Audited; a manager can undo it (which manager: Q-22) | 018 |
+| T21 | Provisioning | **Like BDM:** `super_admin` creates both roles, and division admins create telecallers for their own team, via admin user-create with a set-password welcome email. The telecaller signs in at their division portal and lands on `/telecaller/dashboard`. The manager is division `global` and signs in at `/admin/login`. Deactivation forces reassignment | 001, 025 |
+| T22 | Team | **One team each (IT or Overseas).** Division follows the team. Moving teams requires reassigning open leads first | 001, 007, 025 |
+| T23 | Manager scope | **Direct reports** (a reporting manager per telecaller) plus the unassigned queue of the teams they manage. `super_admin` sees all | 001, 007, 022–025 |
+| T24 | Report visibility | **Managers** see their reports' leads; **division admins** see their division; **`super_admin`** sees all. Telecallers see only their own figures. On-screen tables + CSV export | 021, 023, 024 |
+| T25 | Admin lead screen | **Kept and aligned to the pipeline:** paginated, new columns, status only via valid stage rules, owner becomes assignment with the same scope checks, legacy statuses mapped by migration | 003, 004 |
+| T26 | "Corporate meeting" | **Routes to college-type BDMs.** No new BDM type | 019 |
+| T27 | Daily activity | **Fully computed** for an IST day. Nothing typed or submitted | 021 |
+| T28 | Targets | **Daily + monthly**, a team default with a per-telecaller override. Changes apply from the next day/month, with history kept; past results are never re-scored | 022 |
+| T29 | bdm-017 reconciliation | **Reuse bdm-017's link columns and admin link/unlink.** tel-018 also lets the assigned counselor link, and changes the meaning: a link moves the lead to `application_enrollment`, and `converted` is computed (T5). This supersedes `DEC-SCOPE-072` (bdm-017) L2/L7 for leads in the telecaller pipeline; it is recorded as a superseding decision | 003, 004, 018 |
+
+**Part B — tel-001 (TL1–TL7).** Design: `docs/superpowers/specs/2026-10-05-tel-001-telecaller-roles-design.md` §3.
+- TL1 Signed-out `/telecaller/*` → public `/telecaller/sign-in` chooser (IT / Overseas); `/telecaller/manager/*` → `/admin/login`.
+- TL2 Active status is `users.active` only.
+- TL3 A telecaller edits only their phone (`PATCH /telecaller/profile`).
+- TL4 Provisioning extends `POST/PATCH /admin/users` (`telecaller_profile`); `/admin/telecallers` is read-only.
+- TL5 A telecaller manager has no profile row.
+- TL6 Required profile fields: team, Employee ID, reporting manager.
+- TL7 Team is fixed in tel-001 (tel-025 moves teams).
+
+**Implementation:** migration `0075_telecaller_profiles`; roles `telecaller` (division = team) and `telecaller_manager` (`global`).

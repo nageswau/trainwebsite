@@ -522,6 +522,21 @@ Archived organizations are read-only (`409` "Restore this organization first"). 
 
 An appointment stays with its BDM when the organization is reassigned. `bdm_user_id`, `code`, `status`, `organization_id` (on PATCH) and `outcome` (outside complete) are unknown fields (`422`). Organization `last_meeting_at` / `next_meeting_at` expose dates only to organization readers.
 
+### 2.14 Telecaller CRM *(net-new, added 2026-10-05 — `DEC-SCOPE-073`, `tel-001`)*
+Authorization follows the inline pattern (`User.role` check → `services/telecaller.py` scope helper → write); no `require_*` dependency. Permission bundles: `telecaller` → `telecaller:self`, `telecaller_manager` → `telecaller:team` (coarse; scope is enforced in the query layer).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `super_admin` | create `telecaller` of **either** team and the only creator of `telecaller_manager` (`POST /admin/users`); edit any telecaller profile; list all telecallers (`GET /admin/telecallers`); read the manager picker (`GET /admin/telecaller-managers`); read any manager's team view (`GET /telecaller/manager/team` → all telecallers) | Not division-restricted (§1) | `tel-001` |
+| `it_admin` | create / edit / list **IT** telecallers only; read the manager picker | Division `it`; an Overseas telecaller → `403` "Your role cannot manage Overseas telecallers"; creating a `telecaller_manager` → `403` "Only a Super Admin can create telecaller managers" | `tel-001` |
+| `overseas_admin` | create / edit / list **Overseas** telecallers only; read the manager picker | Division `overseas`; an IT telecaller → `403` "Your role cannot manage IT telecallers"; creating a `telecaller_manager` → `403` | `tel-001` |
+| `telecaller` | read **own** profile (`GET /telecaller/me`); edit **own phone only** (`PATCH /telecaller/profile`, TL3) | `telecaller:self` — own record only, no id parameter. A `telecaller` with no profile row is denied every telecaller route (`403` "Telecaller profile not set up — contact your administrator") | `tel-001` |
+| `telecaller_manager` | read **own team** (`GET /telecaller/manager/team`) | `telecaller:team` — exactly the telecallers whose `reporting_manager_user_id` is the caller (T23); inactive telecallers included; no id parameter. Division `global`; no profile row (TL5) | `tel-001` |
+
+`/admin/telecallers` and `/admin/telecaller-managers` are for `super_admin` (both teams), `it_admin` (IT) and `overseas_admin` (Overseas); every other role → `403` "Admin role required". `GET /admin/telecallers` narrows by team in SQL; a `team` filter outside the caller's teams → `403`.
+
+**Explicit denies:** a `telecaller` or `telecaller_manager` cannot write Employee ID, team or reporting manager (no route; `PATCH /telecaller/profile` accepts `phone` only, any other key → `422` "Unknown field: …"); `PATCH /admin/users` never writes `role` or `division`; a team change → `422` "Team cannot be changed here" (TL7, tel-025 owns team moves); a reporting manager must be an **active `telecaller_manager`** (else `422`); a `telecaller` calling `/telecaller/manager/team` → `403` "Telecaller manager role required"; a `telecaller_manager` calling `/telecaller/me` → `403` "Telecaller role required"; every other role on any telecaller route → `403`. A division admin cannot create a manager, an other-team telecaller, or any `global` account. Every create or edit writes one `AuditLog` row (profile before/after on admin edit; `telecaller.profile_update` with `{"fields": ["phone"]}` — no values — on a self-edit).
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
