@@ -58,8 +58,8 @@ from app.schemas import (
     TierChangeOut,
 )
 from app.services import bdm as bdm_rules
-from app.services import telecaller as tel_rules
 from app.services import bdm_leads as lead_rules
+from app.services import telecaller as tel_rules
 from app.services.agent_applications import owned, with_owner
 from app.services.agent_network import APPLICATION_FILTERS, org_applications, org_counts, org_money, org_students
 from app.services.agent_orgs import ensure_agent_org, lock_org, org_masters, set_org_status, transition_org
@@ -583,6 +583,17 @@ async def update_user(user_id: UUID, payload: dict, user: User = Depends(ensure_
         if profile is None:
             raise HTTPException(422, "Only a BDM has a BDM profile")
         profile_before, profile_after = await bdm_rules.apply_profile_update(db, profile, payload["bdm_profile"])
+    # tel-001 (spec §5.5): the same shape as the BDM branch. The team is fixed here (TL7); a moved manager is re-checked.
+    tel_profile = None
+    if item.role == "telecaller":
+        tel_profile = await db.scalar(select(TelecallerProfile).where(TelecallerProfile.user_id == item.id).with_for_update())
+        if tel_profile is not None:
+            tel_rules.require_creator_may(user, tel_profile.team, f"{USERS_ROUTE}/{{id}}")
+    tel_before = tel_after = None
+    if "telecaller_profile" in payload:
+        if tel_profile is None:
+            raise HTTPException(422, "Only a telecaller has a telecaller profile")
+        tel_before, tel_after = await tel_rules.apply_profile_update(db, tel_profile, payload["telecaller_profile"])
     # ADM-001-AC02: deactivating a trainer with active/upcoming assigned batches is
     # blocked unless explicitly confirmed -- never a silent operation that would strand
     # those batches without a trainer.
@@ -602,6 +613,8 @@ async def update_user(user_id: UUID, payload: dict, user: User = Depends(ensure_
     metadata = {k: v for k, v in payload.items() if k != "password"}
     if profile_before is not None:
         metadata.update(bdm_profile_before=profile_before, bdm_profile_after=profile_after)
+    if tel_before is not None:
+        metadata.update(telecaller_profile_before=tel_before, telecaller_profile_after=tel_after)
     db.add(AuditLog(user_id=user.id, action="user.update", entity_type="user", entity_id=str(item.id), metadata_json=metadata))
     await db.commit()
     return {"ok": True}
