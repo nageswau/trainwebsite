@@ -12,9 +12,9 @@ import { useLeaveGuard } from "@/lib/useLeaveGuard";
 type Draft = { name: string; email: string; phone: string; interest: string; note: string };
 const EMPTY: Draft = { name: "", email: "", phone: "", interest: "", note: "" };
 const FIELD_ORDER = ["name", "email", "phone", "interest", "note"] as const; // focus order after a refused save
-const REQUIRED: Partial<Record<keyof Draft, string>> = {
-  name: "Enter the student's name.", email: "Enter the student's email.", interest: "Enter what the student is interested in.",
-};
+const REQUIRED: [keyof Draft, string][] = [
+  ["name", "Enter the student's name."], ["email", "Enter the student's email."], ["interest", "Enter what the student is interested in."],
+];
 
 // bdm-017 (spec §6): add one student lead to an organization (Q-14: one at a time). The API decides every rule; the client only checks
 // the required fields. A possible duplicate (409) lists the matching leads and saves only when the BDM confirms (L8).
@@ -69,7 +69,7 @@ export default function BdmLeadForm({ organizationId, onSaved, onCancel }: { org
   function submit(event: FormEvent) {
     event.preventDefault();
     const local: Record<string, string> = {};
-    for (const [key, message] of Object.entries(REQUIRED)) if (!draft[key as keyof Draft].trim()) local[key] = message as string;
+    for (const [key, message] of REQUIRED) if (!draft[key].trim()) local[key] = message;
     setErrors(local);
     if (Object.keys(local).length) {
       setFailure("Check the highlighted fields.");

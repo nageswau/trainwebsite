@@ -35,15 +35,15 @@ async def add_lead(org_id: UUID, payload: BdmLeadCreate, user: User = Depends(ge
     await bdm_context(db, user)
     org = await org_svc.load_scoped(db, user, org_id, lock=True)  # out of type -> 404; serializes adds, archive and reassign
     if org.assigned_bdm_user_id != user.id:
-        raise svc.refused(user, "lead_create", 403, svc.NOT_ASSIGNED, organization_id=org.id)
+        raise svc.not_assigned(user, org.id)
     if org.archived_at is not None:
         raise HTTPException(422, svc.ARCHIVED)
     await svc.check_daily_cap(db, user.id, await db_now(db))
     if not payload.acknowledge_duplicate:
         await svc.check_duplicates(db, org.id, payload.email)
-    lead = Enquiry(
+    lead = Enquiry(  # L5: interest is the subject; `message` is required, so a lead without a note says where it came from
         division=BDM_DIVISION[org.bdm_type], name=payload.name, email=payload.email, phone=payload.phone, subject=payload.interest,
-        message=payload.note or svc.default_message(org.name), source="bdm", status="new", crm_sync_status="pending", metadata_json={},
+        message=payload.note or f"Lead entered by BDM at {org.name}", source="bdm", status="new", crm_sync_status="pending", metadata_json={},
         bdm_organization_id=org.id, bdm_user_id=user.id,
     )
     db.add(lead)

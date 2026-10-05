@@ -38,14 +38,13 @@ function LeadConversion({ row, onChanged, onMessage }: { row: AdminLeadRow; onCh
     const url = `/api/v1/admin/leads/${row.id}/conversion`;
     const outcome = method === "POST" ? await sendJson(url, "POST", { student_email: email.trim() }) : await sendRequest(url, { method: "DELETE" });
     setBusy(false);
+    setConfirming(false);
     if (outcome.ok && isRow(outcome.data)) {
       setOpen(false);
-      setConfirming(false);
       setEmail("");
       onChanged(outcome.data);
       onMessage({ id: row.id, text: method === "POST" ? "Student linked." : "Student unlinked.", failed: false });
     } else {
-      setConfirming(false);
       onMessage({ id: row.id, text: outcome.ok ? "Unable to update lead." : outcome.message, failed: true });
     }
   }

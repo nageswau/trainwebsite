@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 
 import BdmLeadForm from "@/components/BdmLeadForm";
 import { isPage, type Page } from "@/lib/apiErrors";
+import { appendUnique } from "@/lib/bdmActivities";
 import { type Lead, orgLeadsPageUrl } from "@/lib/bdmLeads";
 import { formatDate } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
@@ -34,7 +35,7 @@ export default function BdmOrganizationLeads({
       const data = response.ok ? await response.json() : null;
       if (!isPage<Lead>(data)) throw new Error("bad page");
       fetched.current = offset + data.items.length;
-      setItems((current) => (offset === 0 ? data.items : [...current, ...data.items.filter((x) => !current.some((c) => c.id === x.id))]));
+      setItems((current) => (offset === 0 ? data.items : appendUnique(current, data.items)));
       setTotal(data.total);
       setLoaded(true);
     } catch {

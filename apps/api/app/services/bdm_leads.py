@@ -27,16 +27,12 @@ DUPLICATE = "This student is already a lead of this organization"
 NEWEST = (Enquiry.created_at.desc(), Enquiry.id.desc())
 
 
-def default_message(org_name: str) -> str:
-    """L5: `enquiries.message` is required; a lead entered without a note says where it came from."""
-    return f"Lead entered by BDM at {org_name}"
-
-
-def refused(user: User, route: str, status: int, detail: str, **ids) -> HTTPException:
-    """Assignee refusals are visible in the logs (ids, route, status), as bdm-009's `bdm_activity_write_refused`."""
+def not_assigned(user: User, org_id: UUID) -> HTTPException:
+    """The 403 for a BDM who isn't the organization's assignee, visible in the logs with ids only (bdm-009's
+    `bdm_activity_write_refused`). Returns the exception for the caller to raise."""
     logger.warning("bdm_lead_write_refused", extra={"extra_fields": {
-        "actor_id": str(user.id), "route": route, "status": status, **{k: str(v) for k, v in ids.items()}}})
-    return HTTPException(status, detail)
+        "actor_id": str(user.id), "route": "lead_create", "status": 403, "organization_id": str(org_id)}})
+    return HTTPException(403, NOT_ASSIGNED)
 
 
 async def check_daily_cap(db: AsyncSession, bdm_user_id: UUID, now: datetime) -> None:

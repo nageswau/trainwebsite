@@ -71,7 +71,7 @@ export function placeNewest(items: Activity[], activity: Activity): Activity[] {
 }
 
 /** Newest-first list plus a page read later: rows already shown are not repeated (a write can shift the page boundary). */
-export function appendUnique(current: Activity[], incoming: Activity[]): Activity[] {
+export function appendUnique<T extends { id: string }>(current: T[], incoming: T[]): T[] { // bdm-017 reuses it for leads
   return [...current, ...incoming.filter((a) => !current.some((c) => c.id === a.id))];
 }
 

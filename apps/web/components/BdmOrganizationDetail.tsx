@@ -43,6 +43,12 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
   const p = org.permissions;
   const showEditor = editing && p.can_edit; // a write that removes edit rights also closes the form (simplify review A9)
 
+  // The sections' notices (activity, leads) go to the profile's one live region (QA9-01); `focusStatus` when the used control is gone.
+  const notify = (text: string, focusStatus?: boolean) => {
+    setNotice(text);
+    setFailure(null);
+    if (focusStatus) focus(statusId);
+  };
   const changed = (next: Organization, text: string) => {
     setOrg(next);
     setNotice(text);
@@ -169,11 +175,10 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
       <BdmOrganizationContacts organization={org} onChanged={changed} />
       {activities !== undefined && ( // bdm-009: the BDM view logs (assigned and not archived = can_edit); the manager view reads
         <BdmActivityTimeline organization={org} initial={activities} canLog={basePath === "/bdm/organizations" && p.can_edit} orgBasePath={basePath}
-          onNotice={(text, focusStatus) => { setNotice(text); setFailure(null); if (focusStatus) focus(statusId); }} />
+          onNotice={notify} />
       )}
       {leads !== undefined && ( // bdm-017 (L6): the BDM view adds (assigned and not archived = can_edit); the manager view reads
-        <BdmOrganizationLeads organizationId={org.id} initial={leads} canAdd={basePath === "/bdm/organizations" && p.can_edit}
-          onNotice={(text, focusStatus) => { setNotice(text); setFailure(null); if (focusStatus) focus(statusId); }} />
+        <BdmOrganizationLeads organizationId={org.id} initial={leads} canAdd={basePath === "/bdm/organizations" && p.can_edit} onNotice={notify} />
       )}
       {p.can_reassign && (
         <BdmOrganizationReassign
