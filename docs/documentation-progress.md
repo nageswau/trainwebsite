@@ -4,7 +4,7 @@
 |---|---|
 | Code baseline | `main` @ `e376c25c` (record any change here with date) |
 | Stack used for browser work | — (not started) |
-| Last session | S1 Master planning — 2026-10-05 |
+| Last session | S2 part 1 (stack-independent) — 2026-10-05 |
 | Next session | S2 — Environment, capture tooling, Account access, Agency approvals |
 
 Column values: **Code Reviewed** YES / PARTIAL / NO (YES at S1 = reviewed from source at HEAD with file:line evidence in
@@ -19,7 +19,7 @@ YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES and Rev
 | DOC-AUTH-003 | Account access | "Access unavailable" states | YES | NO | NO | NO | NO |
 | DOC-AUTH-004 | Account access | Forgot / reset password; first-time set-password link | YES | NO | NO | NO | NO |
 | DOC-AUTH-005 | Account access | Change password | YES | NO | NO | NO | NO |
-| DOC-AUTH-006 | Account access | My profile | NO | NO | NO | NO | NO |
+| DOC-AUTH-006 | Account access | My profile | YES | NO | NO | NO | NO |
 | DOC-DASH-001 | Dashboard | Agency dashboard — Master | YES | NO | NO | NO | NO |
 | DOC-DASH-002 | Dashboard | Agency dashboard — Staff | YES | NO | NO | NO | NO |
 | DOC-STU-001 | Students | Find students | YES | NO | NO | NO | NO |
@@ -69,15 +69,15 @@ YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES and Rev
 | DOC-ADM-007 | Agency administration | Super Admin access to agency screens | YES | NO | NO | NO | NO |
 | DOC-ADM-008 | Agency administration | Resend a staff welcome link | PARTIAL | NO | NO | NO | NO |
 
-**Totals:** 54 features · Code reviewed 52 YES, 1 PARTIAL, 1 NO · Browser verified 0 · Screenshots 0 / ~178 ·
+**Totals:** 54 features · Code reviewed 53 YES, 1 PARTIAL · Browser verified 0 · Screenshots 0 / ~178 ·
 Documented 0 · Reviewed 0 · **COMPLETE 0**.
 
 ## Deliverables outside the feature rows
 | Deliverable | Session | Status |
 |---|---|---|
-| `docs/screenshot-index.md` | S2 | NO |
-| Capture tooling (`apps/web/playwright.docs.config.ts`, `apps/web/tests/doc-capture/`) — owner to confirm location | S2 | NO |
-| `docs/tooling/check-doc-links.mjs` | S2 | NO |
+| `docs/screenshot-index.md` | S2 | YES (empty table) |
+| Capture tooling (`apps/web/playwright.docs.config.ts`, `apps/web/tests/doc-capture/shoot.ts`) | S2 | YES (type-checks; 0 specs yet) |
+| `docs/tooling/check-doc-links.mjs` | S2 | YES (runs, all links OK) |
 | `docs/admin-manual/README.md`, `docs/user-manual/README.md` | S10 | NO |
 | Role guides: Agency Master, Agency Staff, Overseas Admin (agencies), Super Admin (agencies) | S10 | NO |
 | `docs/faq.md`, `docs/troubleshooting.md` | S10 | NO |
@@ -99,3 +99,4 @@ Open items U1–U19 are listed in `docs/documentation-analysis.md` §12.1. Close
 | Session | Date | Commit | Stack / URL | Outcome |
 |---|---|---|---|---|
 | S1 Master planning | 2026-10-05 | `e376c25c` | none (no browser) | Analysis, plan, tracker created |
+| S2 part 1 (no stack) | 2026-10-05 | `e376c25c` | none — waiting for a `main` stack | Index, capture tooling, link checker; AUTH-006 code-reviewed |

@@ -320,9 +320,17 @@ verified** unless stated otherwise.
 
 **DOC-AUTH-006 — My profile** · S2
 - Role: M, S · Nav: sidebar footer **My profile** → `/account/profile`
-- Preconditions: signed in · Workflow: **VERIFICATION REQUIRED** (code review first) · Shots (1)
-- Validation / Errors: VERIFICATION REQUIRED
-- Related: AUTH-005 · File: `auth-006-my-profile.md` · Status: **code review pending**, browser NOT verified · Open: U1
+- Preconditions: signed in (page renders in the public site shell, not the portal sidebar; "← Back to dashboard")
+- Workflow (code-reviewed S2, `app/account/profile/page.tsx`, `ProfileForm.tsx`, `NotificationPreferencesForm.tsx`):
+  "Your profile" → Full name (required, 2–160), Phone (≤40) → **Save changes** → "Your profile was updated.";
+  "Notifications" → Email and In-app "Always on"; WhatsApp / SMS checkboxes (shows "Messages go to {phone}" when a
+  valid phone is saved) → **Save notification settings** → "Notification settings saved."
+- Shots (2): profile + notifications page; validation error
+- Errors: "Unable to update your profile. Try again in a moment."; "Network error. Try again."; "Couldn't save your
+  settings. Check your connection and try again."; "We couldn't load your notification settings right now." + Try
+  again; signed out → "Sign in required"; outage → "Temporarily unavailable"
+- Related: AUTH-005 · File: `auth-006-my-profile.md` · Status: code reviewed (S2), browser NOT verified · Open: U1
+  (whether WhatsApp/SMS delivery is configured for agents)
 
 ### Module DASH — Dashboard (`dashboard/`)
 
