@@ -39,3 +39,25 @@ describe("middleware /bdm (bdm-001 AC12)", () => {
     expect(config.matcher).toContain("/bdm/:path*");
   });
 });
+
+describe("middleware /telecaller (tel-001 AC5, TL1)", () => {
+  it("sends a signed-out manager route to the admin sign-in, keeping next", () => {
+    expect(go("/telecaller/manager/team?offset=50")).toBe("http://localhost/admin/login?next=%2Ftelecaller%2Fmanager%2Fteam%3Foffset%3D50");
+    expect(go("/telecaller/manager")).toBe("http://localhost/admin/login?next=%2Ftelecaller%2Fmanager");
+  });
+
+  it("sends other signed-out /telecaller routes to the chooser", () => {
+    expect(go("/telecaller/dashboard")).toBe("http://localhost/telecaller/sign-in?next=%2Ftelecaller%2Fdashboard");
+    expect(go("/telecaller")).toBe("http://localhost/telecaller/sign-in?next=%2Ftelecaller");
+    expect(go("/telecaller/managerial")).toBe("http://localhost/telecaller/sign-in?next=%2Ftelecaller%2Fmanagerial");
+  });
+
+  it("leaves the chooser public, unrelated paths alone, and signed-in visits through", () => {
+    expect(go("/telecaller/sign-in")).toBeNull();
+    expect(go("/telecallerx")).toBeNull();
+    expect(go("/telecaller/dashboard", true)).toBeNull();
+    expect(go("/admin/telecallers")).toBe("http://localhost/admin/login?next=%2Fadmin%2Ftelecallers");
+    expect(config.matcher).toContain("/telecaller/:path*");
+    expect(go("/bdm/my-day")).toBe("http://localhost/bdm/sign-in?next=%2Fbdm%2Fmy-day");
+  });
+});
