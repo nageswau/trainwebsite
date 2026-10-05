@@ -147,7 +147,12 @@ describe("bdm-004 pipeline board", () => {
   it("keeps two tiles per row and a readable table on phones (QA4-03, QA4-02)", () => {
     const tree = elements(BdmPipelineBoard({ view: view() as never, href: () => "/x", orgBasePath: "/o", selected: null, emptyText: "" }));
     expect(tree.find((el) => el.type === "ul")!.props.className).toBe("metric-grid pipeline-tiles");
-    expect(tree.find((el) => el.type === "table")!.props.style).toMatchObject({ minWidth: 640 });
+    const styleOf = (el: (typeof tree)[number]) => (el.props.style ?? {}) as { minWidth?: number; overflowWrap?: string };
+    const table = tree.find((el) => el.type === "table")!;
+    expect(styleOf(table)).toMatchObject({ minWidth: 640 });
+    expect(styleOf(table).overflowWrap).toBeUndefined(); // short columns keep whole words; only the name may break anywhere
+    expect(styleOf(tree.find((el) => el.type === "td" && styleOf(el).minWidth === 160)!)).toMatchObject({ overflowWrap: "anywhere" });
+    expect(styleOf(tree.find((el) => el.type === "td" && text(el) === "Kochi")!)).toMatchObject({ overflowWrap: "anywhere" }); // free-text city
   });
 
   it("says when a stage is empty", () => {

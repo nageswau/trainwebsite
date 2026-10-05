@@ -54,8 +54,9 @@ export default function BdmPipelineBoard({ view, href, orgBasePath, selected, em
           </>
         ) : (
           <div className="table-wrap" role="region" aria-label="Organizations" tabIndex={0}>
-            {/* QA4-02: a minimum width keeps every column readable on phones; the labelled region scrolls sideways instead */}
-            <table style={{ overflowWrap: "anywhere", minWidth: 640 }}>
+            {/* QA4-02: a minimum width and whole-word columns keep every column readable on phones; the labelled region scrolls
+                sideways instead. Only the free-text name and city may break anywhere (one unbroken value must not widen the table). */}
+            <table style={{ minWidth: 640 }}>
               <thead>
                 <tr>
                   <th scope="col">Code</th>
@@ -70,11 +71,11 @@ export default function BdmPipelineBoard({ view, href, orgBasePath, selected, em
                 {view.items.map((r) => (
                   <tr key={r.id}>
                     <td style={{ whiteSpace: "nowrap" }}>{r.code}</td>
-                    <td style={{ minWidth: 160 }}>
+                    <td style={{ minWidth: 160, overflowWrap: "anywhere" }}>
                       <Link href={`${orgBasePath}/${r.id}`} style={LINK_STYLE}>{r.name}</Link>
                     </td>
                     <td>{ORG_TYPE_LABEL[r.org_type]}</td>
-                    <td>{r.city}</td>
+                    <td style={{ overflowWrap: "anywhere" }}>{r.city}</td>
                     <td>
                       {r.stage_label}
                       {r.lost && <> <span className="badge">Lost</span></>}
