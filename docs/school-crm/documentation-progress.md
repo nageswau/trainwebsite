@@ -5,8 +5,8 @@
 | Code baseline | `main` @ `ce1f07c2` (S1 discovery). Record any later `main` used for browser work here, with the affected features re-checked. |
 | Stack used for browser work | `schooldocs` compose project from worktree `.claude/worktrees/school-docs` (detached at docs commit `24a22627` = `main` `ce1f07c2` + docs). Web http://localhost:3020, api :8020. Untracked `docker-compose.docs.yml` adds Mailpit on **127.0.0.1:8026** (the Agent CRM docs stack holds 8025). Untracked `.env` = repo `.env` with `FRONTEND_URL`/ports changed, `SMTP_HOST=mailpit`, `SMTP_PORT=1025`, `SMTP_USE_TLS=false`, no SMTP credentials, **`SMTP_FROM_EMAIL=no-reply@edusphere.local`** (without it the app reports "email is not configured"), `EMAIL_WEBHOOK_URL` empty. Owner approved Claude starting, seeding and resetting this stack (2026-10-05). |
 | Docs branch | `docs/school-crm-user-guide` (from `main` @ `ce1f07c2`) |
-| Last session | S2 Environment, capture tooling, school administration — 2026-10-05 |
-| Next session | S3 — Account access and Team. Start from the S2 data: rerun `sch-s2-admin.capture.ts` on a fresh DB (≈35 s), or restore the S2 snapshot if one exists in the session scratchpad. |
+| Last session | S3 Account access and Team — 2026-10-06 |
+| Next session | S4 — Students and roster. Start from S3 data: reset, clear Mailpit, then run `sch-s2-admin` and `sch-s3-access-team` (≈1.5 min). Docs accounts from S2/S3 use `DOCS_TEST_PASSWORD`; Docs Teacher B is deactivated; Docs Principal and Docs Parent invites are pending. |
 
 **Column values:**
 - **Code Reviewed:** YES / PARTIAL / NO. YES at S1 means reviewed from source at `ce1f07c2`, with file:line evidence in `discovery/`.
@@ -18,19 +18,19 @@
 A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES
 and Reviewed = PASSED.
 
-**Totals (after S2):** 86 features · 7 browser-verified · 7 documented · 0 complete (final review is S12).
+**Totals (after S3):** 86 features · 19 browser-verified (2 partial) · 19 documented · 0 complete (final review is S12).
 
 | ID | Module | Feature | Code Reviewed | Browser Verified | Screenshot | Documented | Reviewed |
 |---|---|---|---|---|---|---|---|
-| DOC-SCH-AUTH-001 | Account access | Sign in to the School portals (and where each role lands) | YES | NO | NO | NO | NO |
-| DOC-SCH-AUTH-002 | Account access | Accept a school invitation and set up your login | YES | NO | NO | NO | NO |
-| DOC-SCH-AUTH-003 | Account access | Set your first password from a welcome link | YES | NO | NO | NO | NO |
-| DOC-SCH-AUTH-004 | Account access | Forgot / reset your password | YES | NO | NO | NO | NO |
-| DOC-SCH-AUTH-005 | Account access | Change your password | YES | NO | NO | NO | NO |
-| DOC-SCH-AUTH-006 | Account access | My profile and notification settings | YES | NO | NO | NO | NO |
-| DOC-SCH-AUTH-007 | Account access | Sign out and session expiry | YES | NO | NO | NO | NO |
-| DOC-SCH-AUTH-008 | Account access | "Access unavailable" messages (signed out, wrong portal, deactivated, other school's student) | YES | NO | NO | NO | NO |
-| DOC-SCH-AUTH-009 | Account access | Find your way around: sidebar, role label, mobile menu | YES | NO | NO | NO | NO |
+| DOC-SCH-AUTH-001 | Account access | Sign in to the School portals (and where each role lands) | YES | YES | YES | YES | NO |
+| DOC-SCH-AUTH-002 | Account access | Accept a school invitation and set up your login | YES | YES | YES | YES | NO |
+| DOC-SCH-AUTH-003 | Account access | Set your first password from a welcome link | YES | YES | YES | YES | NO |
+| DOC-SCH-AUTH-004 | Account access | Forgot / reset your password | YES | PARTIAL (no reset email is sent on the docs stack — U2; reset page reached via the development link) | YES | YES | NO |
+| DOC-SCH-AUTH-005 | Account access | Change your password | YES | YES | YES | YES | NO |
+| DOC-SCH-AUTH-006 | Account access | My profile and notification settings | YES | YES | YES | YES | NO |
+| DOC-SCH-AUTH-007 | Account access | Sign out and session expiry | YES | PARTIAL (ended session simulated by removing the access cookie, not by waiting 60 min — U1) | YES | YES | NO |
+| DOC-SCH-AUTH-008 | Account access | "Access unavailable" messages (signed out, wrong portal, deactivated, other school's student) | YES | YES | YES | YES | NO |
+| DOC-SCH-AUTH-009 | Account access | Find your way around: sidebar, role label, mobile menu | YES | YES | YES | YES | NO |
 | DOC-SCH-DASH-001 | Dashboards | Coordinator dashboard (20 KPI tiles, Your school, Upcoming activities, Results & guidance) | YES | NO | NO | NO | NO |
 | DOC-SCH-DASH-002 | Dashboards | Principal dashboard (School at a glance, Your school roster, Results & guidance) | YES | NO | NO | NO | NO |
 | DOC-SCH-DASH-003 | Dashboards | Teacher dashboard (Your students, Results & guidance) | YES | NO | NO | NO | NO |
@@ -55,9 +55,9 @@ and Reviewed = PASSED.
 | DOC-SCH-ACT-003 | Activities & attendance | Give feedback on a completed EduSphere activity | YES | NO | NO | NO | NO |
 | DOC-SCH-ACT-004 | Activities & attendance | View activity feedback | YES | NO | NO | NO | NO |
 | DOC-SCH-ACT-005 | Activities & attendance | Take daily class attendance | YES | NO | NO | NO | NO |
-| DOC-SCH-TEAM-001 | Team | Invite a Principal, Teacher or Parent | YES | NO | NO | NO | NO |
-| DOC-SCH-TEAM-002 | Team | View your team and pending invites | YES | NO | NO | NO | NO |
-| DOC-SCH-TEAM-003 | Team | Deactivate or reactivate a team account | YES | NO | NO | NO | NO |
+| DOC-SCH-TEAM-001 | Team | Invite a Principal, Teacher or Parent | YES | YES | YES | YES | NO |
+| DOC-SCH-TEAM-002 | Team | View your team and pending invites | YES | YES | YES | YES | NO |
+| DOC-SCH-TEAM-003 | Team | Deactivate or reactivate a team account | YES | YES | YES | YES | NO |
 | DOC-SCH-RPT-001 | Reports & analytics | Download the school report (PDF) | YES | NO | NO | NO | NO |
 | DOC-SCH-RPT-002 | Reports & analytics | School summary: metric tiles, students by grade, service delivery, activities & attendance | YES | NO | NO | NO | NO |
 | DOC-SCH-RPT-003 | Reports & analytics | Grade-wise comparison | YES | NO | NO | NO | NO |
@@ -131,12 +131,12 @@ All items from `documentation-analysis.md` §12.1 are open. Owner-dependent ones
 
 | ID | Item | Session | Status |
 |---|---|---|---|
-| U1 | Session ends at ~60 min (no refresh call) | S3 | OPEN |
-| U2 | Reset email carries a token, not a link (webhook only) | S3 | OPEN |
+| U1 | Session ends at ~60 min (no refresh call) | S3 | PARTIAL: with only the access cookie removed (refresh cookie still present) the portal shows "Access unavailable — Not authenticated" + Return to login, so the app does not refresh. The 60-minute timing itself is from code. |
+| U2 | Reset email carries a token, not a link (webhook only) | S3 | CONFIRMED on the docs stack: forgot-password sends **no email** (Mailpit count unchanged); only the webhook path exists and it is unset. Product finding; AUTH-004 tells users to contact their administrator. |
 | U3 | Active academic year: no admin UI | S6 | DECIDED 2026-10-05: in S6 Claude gives the owner the exact `POST`/`PATCH /overseas-admin/academic-years` calls (as Overseas Admin); the owner runs them on the docs stack. The guide says the year is set up by EduSphere and notes the missing admin screen. |
 | U4 | `/school/coordinator/students/new` message | S4 | OPEN |
 | U5 | Over-length fields / malformed DOB → probable 500 | S4, S5, S7 | OPEN |
-| U6 | Browser-native validation wording | all | OPEN |
+| U6 | Browser-native validation wording | all | DECIDED S3: docs say "your browser asks you to…" instead of quoting browser bubbles. |
 | U7 | Pydantic 422 wording on admin forms | S2 → later | OPEN (not reachable through the S2 happy/error paths; messages marked "From code" in SADM-002/004) |
 | U8 | Parent notifications never marked read | S10 | OPEN |
 | U9 | "Upcoming session" time in UTC? | S5 | OPEN |
@@ -163,11 +163,32 @@ See `documentation-analysis.md` §12.2 (17 items). Notable:
 - Frontend role guards are inconsistent.
 - Parent notifications never clear.
 - Several raw codes are shown to users.
+- **New in S3:**
+  1. Forgot-password emails nothing unless the webhook is configured (U2). Users can't reset their own password on a plain SMTP setup.
+  2. On phones and narrow windows (under 980 px) there is **no Sign out** anywhere. The menu lists only Change password, My profile and the pages.
+  3. Sidebar **Sign out** lands on the site home page, not the login page.
 - **New in S2 (cosmetic):** the login page's large logo is invisible. The page uses the light-on-dark logo (`logo-on-dark`) inside a white box (`/overseas/login`; the same is seen in the Agent CRM screenshot). Documented as-is.
 
 ## Session log
 | Session | Date | Summary |
 |---|---|---|
+| S3 | 2026-10-06 | `sch-s3-access-team.capture.ts` runs green in about 43 s after S2.
+
+**Data created:**
+- Set passwords, through the Mailpit welcome links, for every S2 coordinator and staff account.
+- Invited Docs Teacher A and B (both accepted), plus Docs Principal and Docs Parent (left pending).
+- Deactivated Docs Teacher B.
+
+**Tooling:** `mailLink` now skips non-matching mail, such as tier notices. `snap.sh` and `run-s3.sh` in the scratchpad allow fast reruns from the S2 snapshot.
+
+**Verification:**
+- All 7 role landings and sidebars checked.
+- Invite email sender and reply-to checked.
+- U1 partial, U2 confirmed, U6 decided.
+- Duplicate shot 24 dropped.
+- 29 screenshots reviewed.
+
+**Docs:** AUTH-001..009 and TEAM-001..003 written. |
 | S2 | 2026-10-05 | Owner approved Claude running and resetting the `schooldocs` stack.
 
 **Stack set-up:**

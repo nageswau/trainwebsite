@@ -213,9 +213,9 @@ Features: DOC-SCH-SADM-001, 002, 003, 004, 005, 010, 011 (7).
   - For SADM-010, first code-review the Users page re-send panel (U12).
 - [x] **S2.5** Take a `pg_dump` snapshot (scratchpad).
 
-### S3 — Account access and Team (creates invited accounts)
+### S3 — Account access and Team (creates invited accounts) — DONE 2026-10-06
 Features: DOC-SCH-AUTH-001..009, DOC-SCH-TEAM-001..003 (12).
-- [ ] Standard loop.
+- [x] Standard loop.
   - Use the S2 welcome links (Mailpit) for AUTH-003, as the Docs Platinum Two Coordinator.
   - As the Sunrise Coordinator, invite `Docs Principal`, `Docs Teacher A`, `Docs Teacher B` and `Docs Parent` (TEAM-001), and accept some of them (AUTH-002), leaving one pending.
   - Deactivate `Docs Teacher B` (TEAM-003) for AUTH-008.

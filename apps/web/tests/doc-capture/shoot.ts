@@ -91,8 +91,9 @@ export async function mailLink(to: string, after = 0, pattern = /https?:\/\/\S+r
   for (let i = 0; i < 40; i++) {
     const list = await (await fetch(`${base}/api/v1/search?query=${encodeURIComponent(`to:${to}`)}`)).json();
     const messages = [...(list.messages ?? [])].sort((x: { Created: string }, y: { Created: string }) => y.Created.localeCompare(x.Created));
-    if (messages.length > after) {
-      const msg = await (await fetch(`${base}/api/v1/message/${messages[0].ID}`)).json();
+    // Newest first, only among messages newer than `after`; other mail (e.g. tier notices) is skipped.
+    for (const m of messages.slice(0, Math.max(0, messages.length - after))) {
+      const msg = await (await fetch(`${base}/api/v1/message/${m.ID}`)).json();
       const link = String(msg.Text ?? "").match(pattern)?.[0];
       if (link) return new URL(link).pathname + new URL(link).search;
     }
