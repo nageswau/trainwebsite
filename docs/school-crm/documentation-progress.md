@@ -125,7 +125,7 @@ and Reviewed = PASSED.
 
 ## Unresolved verification items
 All items from `documentation-analysis.md` §12.1 are open. Owner-dependent ones:
-- **U3:** how the active academic year is created; needed before S6. The S1 question to the owner is recorded below.
+- **U3:** decided (see the table below).
 - **U1 / U2:** session length and the reset email. These decide how AUTH-004 / AUTH-007 are written.
 - **U12:** the Users page re-send flow, which needs a code review in S2.
 
@@ -133,7 +133,7 @@ All items from `documentation-analysis.md` §12.1 are open. Owner-dependent ones
 |---|---|---|---|
 | U1 | Session ends at ~60 min (no refresh call) | S3 | OPEN |
 | U2 | Reset email carries a token, not a link (webhook only) | S3 | OPEN |
-| U3 | Active academic year: no admin UI | S1 → owner; needed S6 | OPEN |
+| U3 | Active academic year: no admin UI | S6 | DECIDED 2026-10-05: in S6 Claude gives the owner the exact `POST`/`PATCH /overseas-admin/academic-years` calls (as Overseas Admin); the owner runs them on the docs stack. The guide says the year is set up by EduSphere and notes the missing admin screen. |
 | U4 | `/school/coordinator/students/new` message | S4 | OPEN |
 | U5 | Over-length fields / malformed DOB → probable 500 | S4, S5, S7 | OPEN |
 | U6 | Browser-native validation wording | all | OPEN |

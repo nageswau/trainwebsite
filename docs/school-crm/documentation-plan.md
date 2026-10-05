@@ -245,7 +245,7 @@ Features: DOC-SCH-ACT-001..005, DOC-SCH-SADM-009 (6).
 
 ### S6 — Transfers and promotion
 Features: DOC-SCH-XFER-001..003, DOC-SCH-SADM-007, DOC-SCH-STU-009 (5).
-- [ ] **S6.1** Owner provides an **active academic year** different from the students' year (U3; API / SQL / seed, as the owner decides). Without it, STU-009 can only show "No active academic year".
+- [ ] **S6.1** Owner decision (2026-10-05): Claude writes the exact `POST /overseas-admin/academic-years` + `PATCH /overseas-admin/academic-years/{id}` (activate) calls, to be run as Overseas Admin; the **owner runs them** on the docs stack. Read `apps/api/app/api/admin.py:1574-1660` for the body shape first. STU-009 says the year is set up by EduSphere.
 - [ ] Standard loop.
   - Sunrise CO requests an outgoing transfer to Docs Platinum Two. Docs Platinum Two CO requests an incoming Sunrise student by Student ID (neutral success).
   - Cancel one request.
