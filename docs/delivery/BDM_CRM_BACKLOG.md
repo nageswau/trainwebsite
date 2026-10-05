@@ -521,8 +521,9 @@ Conventions used below:
 
 ### bdm-009 — Activity log (call / WhatsApp / email / visit / meeting)
 
-> **Status (2026-10-03):** implemented on `feature/bdm-009-activities` (`DEC-SCOPE-068`, migration `0070_bdm_activities`); **NOT complete** --
-> Playwright run, browser validation and independent Codex review pending; owner full suites not run. Channels exclude "follow-up" (V2);
+> **Status (2026-10-05):** implemented on `feature/bdm-009-activities` (`DEC-SCOPE-068`, migration `0070_bdm_activities`); **NOT complete** --
+> Playwright passed and browser validation done (`docs/quality/BDM-009_BROWSER_QA_2026-10-05.md`, QA9-01..05 fixed); independent Codex review
+> pending; owner full suites not run. Channels exclude "follow-up" (V2);
 > appointment / task links deferred to bdm-006 / bdm-008 (V3); backdate window 7 IST days and same-day edits (V4). AC4's "report
 > submitted" lock is completed by bdm-015 through `editable()`. Spec: `docs/superpowers/specs/2026-10-03-bdm-009-activity-log-design.md`.
 

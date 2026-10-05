@@ -50,7 +50,15 @@ Observed, not bdm-009 defects (recorded only): a click in the first ~1.5 s after
 - Stale notice on lock: observed as QA9-03.
 - `services/bdm_activities.py` docstring wording: folded into the fix pass.
 
+## Re-check after the fix pass (web rebuilt from `c09d8af7` + `aec4586a`)
+
+| Check | Result |
+|---|---|
+| QA9-01 / QA9-05 | Exactly one `role="status"` on the organization profile (browser and Playwright, 1280 px and 375 px); "Activity logged." announced in it |
+| QA9-02 | Log form controls no longer stretch: Channel / Contact selects 46 px, Save 38 px (were ~76–120 px and ~220 px); unchanged after switching Channel to Visit (no layout jump); Direction fieldset uses the app's bordered style; no overflow at 1280 / 375 px |
+| QA9-03 / QA9-04 | Covered by component tests in the fix pass (notice cleared on open / lock; "05 Oct 2026" date) |
+| Playwright | `bdm-009-activities`, `bdm-002-organization-crm`, `bdm-010-travel` with `--repeat-each=2` (parallel): **16 passed**. The earlier parallel bdm-009 failure ("welcome activation failed: 400") was a test defect — both copies used the same `Date.now()` stamp — fixed in `aec4586a` |
+
 ## Status
 
-Not complete: QA9-01..05 to fix, then rebuild `web` (owner) and rerun Playwright (bdm-009 ×2, bdm-002, bdm-010); independent Codex review and
-the owner's full suites remain.
+QA9-01..05 fixed and re-checked; Playwright green. Not complete: the independent Codex review and the owner's full suites remain.
