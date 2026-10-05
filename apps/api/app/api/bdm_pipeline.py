@@ -7,14 +7,23 @@ one commit here, then the log line."""
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.bdm import LIMIT, OFFSET
+from app.api.bdm_organizations import _assigned
 from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.models import User
-from app.schemas import BdmLostIn, BdmOrganizationEnvelope, BdmReviveIn, BdmStageEventPage, BdmStageMove
+from app.models import BdmOrganization, User
+from app.schemas import (
+    BdmLostIn,
+    BdmOrganizationEnvelope,
+    BdmPipelinePage,
+    BdmReviveIn,
+    BdmStageEventPage,
+    BdmStageMove,
+    BdmType,
+)
 from app.services import bdm_organizations as org_svc
 from app.services import bdm_pipeline as svc
 
@@ -71,3 +80,23 @@ async def stage_history(org_id: UUID, limit: int = LIMIT, offset: int = OFFSET, 
     """Readable by everyone who can read the organization (bdm, its manager, super_admin)."""
     org = await org_svc.load_scoped(db, user, org_id)
     return await svc.history_page(db, org, limit, offset)
+
+
+@router.get("/pipeline", response_model=BdmPipelinePage)
+async def pipeline(
+    bdm_type: BdmType | None = None,
+    assigned: str | None = Query(None, max_length=36),
+    stage: str | None = Query(None, max_length=40),
+    limit: int = LIMIT,
+    offset: int = OFFSET,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """S7: counts per stage in the caller's read scope (bdm: module; manager: team; super_admin: all), optionally one assignee
+    (`me` or a BDM id, the organization list's rule); the page lists one stage, `lost`, or every open organization."""
+    filters = await org_svc.caller_scope(db, user)
+    chosen = await svc.view_type(db, user, bdm_type)
+    assignee = _assigned(user, assigned)
+    if assignee is not None:
+        filters.append(BdmOrganization.assigned_bdm_user_id == assignee)
+    return await svc.pipeline_view(db, filters, chosen, stage, limit, offset)

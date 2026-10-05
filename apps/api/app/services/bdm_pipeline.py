@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.bdm_stages import AGENT_STATUS, LIVE, MANUAL, PIPELINES, VOLUME
 from app.models import BdmOrganization, BdmPipelineEvent, User
 from app.schemas import BdmStageMove
+from app.services.bdm import bdm_context, person_ref
 
 _LATER_STATE = {MANUAL: "upcoming", LIVE: "awaiting_handover", VOLUME: "not_tracked"}
 STAGE_UNKNOWN = "Choose a stage of this organization's pipeline"
@@ -102,3 +103,56 @@ async def history_page(db: AsyncSession, org: BdmOrganization, limit: int, offse
         for e, actor in rows
     ]
     return {"items": items, "total": total or 0, "limit": limit, "offset": offset}
+
+
+LOST = "lost"  # the pipeline view's Lost bucket (S5)
+TYPE_REQUIRED = "Choose a BDM type"
+TYPE_NOT_YOURS = "You can only view your own module's pipeline"
+VIEW_STAGE_UNKNOWN = "Choose a stage of this pipeline"
+
+
+async def view_type(db: AsyncSession, user: User, bdm_type: str | None) -> str:
+    """S7: a BDM sees their own module; a manager / super_admin names the type (a team may mix types, D26). Call after
+    caller_scope, which refuses other roles with 403."""
+    if user.role == "bdm":
+        own = (await bdm_context(db, user)).bdm_type
+        if bdm_type not in (None, own):
+            raise HTTPException(422, TYPE_NOT_YOURS)
+        return own
+    if bdm_type is None:
+        raise HTTPException(422, TYPE_REQUIRED)
+    return bdm_type
+
+
+async def pipeline_view(db: AsyncSession, filters: list, bdm_type: str, stage: str | None, limit: int, offset: int) -> dict:
+    """One grouped count over the (bdm_type, pipeline_stage) index, then one page. Archived organizations are excluded; Lost ones are
+    counted only in lost_count and listed only under stage=lost."""
+    steps = PIPELINES[bdm_type]
+    if stage is not None and stage != LOST and stage not in {s.key for s in steps}:
+        raise HTTPException(422, VIEW_STAGE_UNKNOWN)
+    scope = [*filters, BdmOrganization.bdm_type == bdm_type, BdmOrganization.archived_at.is_(None)]
+    is_lost = BdmOrganization.lost_at.is_not(None)
+    grouped = (await db.execute(select(BdmOrganization.pipeline_stage, is_lost, func.count()).where(*scope).group_by(BdmOrganization.pipeline_stage, is_lost))).all()
+    counts = {key: n for key, lost, n in grouped if not lost}
+    lost_count = sum(n for _, lost, n in grouped if lost)
+    page = [*scope, is_lost if stage == LOST else BdmOrganization.lost_at.is_(None)]
+    if stage not in (None, LOST):
+        page.append(BdmOrganization.pipeline_stage == stage)
+    total = await db.scalar(select(func.count()).select_from(BdmOrganization).where(*page))
+    stmt = select(BdmOrganization, User).join(User, User.id == BdmOrganization.assigned_bdm_user_id).where(*page)
+    rows = (await db.execute(stmt.order_by(BdmOrganization.name, BdmOrganization.id).limit(limit).offset(offset))).all()
+    return {
+        "bdm_type": bdm_type,
+        "stages": [{"key": s.key, "label": s.label, "kind": s.kind, "count": counts.get(s.key, 0) if s.kind == MANUAL else None} for s in steps],
+        "lost_count": lost_count,
+        "items": [
+            {
+                "id": org.id, "code": org.code, "name": org.name, "city": org.city, "org_type": org.org_type, "assigned_bdm": person_ref(assignee),
+                "stage": org.pipeline_stage, "stage_label": label_of(bdm_type, org.pipeline_stage), "lost": org.lost_at is not None,
+            }
+            for org, assignee in rows
+        ],
+        "total": total or 0,
+        "limit": limit,
+        "offset": offset,
+    }
