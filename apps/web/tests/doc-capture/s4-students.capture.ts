@@ -88,7 +88,7 @@ test("S4 students and universities", async ({ browser }) => {
   await m.getByLabel(/Preferred intake/).fill("Sep 2027");
   await m.getByLabel("Notes").fill("Met at the Chennai education fair. Prefers universities in the north of England.");
   await toTop(m.getByRole("heading", { name: "Add student" }));
-  await shoot(m, STU, "03-add-student-form.png", { fullPage: true });
+  await shoot(m, STU, "03-add-student-form.png");
   await m.getByRole("button", { name: "Save student" }).click();
   await expect(m.getByText("Neha Sharma added.")).toBeVisible();
   await shoot(m, STU, "06-add-student-success.png");

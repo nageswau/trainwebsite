@@ -82,6 +82,7 @@ Documented 54 YES · Reviewed 54 PASSED · **COMPLETE 42** (the 12 PARTIAL rows 
 | Role guides: Agency Master, Agency Staff, Overseas Admin (agencies), Super Admin (agencies) | S10 | YES |
 | `docs/faq.md`, `docs/troubleshooting.md` | S10 | YES |
 | `docs/documentation-review-report.md` | S11 | YES |
+| PDFs in `docs/pdf/` (User Manual 214 p., Admin Manual 43 p., Role Guides 13 p., FAQ & Troubleshooting 10 p.) — rebuild with `node docs/tooling/build-pdfs.mjs` | after S11 | YES |
 
 ## Unresolved verification items
 Open items U1–U19 are listed in `docs/documentation-analysis.md` §12.1. Close each one here with the session and result.
