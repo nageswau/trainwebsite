@@ -334,6 +334,8 @@ Conventions used below:
 
 ### bdm-004 — Organization pipelines per BDM type + stage history
 
+> **Status (2026-10-05):** **Implemented, not yet complete** on `feature/bdm-004-pipeline-stages` (`DEC-SCOPE-070`, migration `0072_bdm_pipeline` after `0071_bdm_activities`). Owner answers S1–S7 supersede lines below: only the assigned BDM and super_admin move stages (managers read only, `DEC-SCOPE-060` C2 stands); College steps 9–14 are volume counts; live stages wait for bdm-018/019 links ("Awaiting handover"); Lost is a flag with a reason. Lite verification green (backend bdm-002/003/004/006/009, web BDM set, tsc, eslint 0 errors, `next build`, Playwright bdm-004 + bdm-002/003/006/009). **Pending before completion:** browser validation and the independent Codex review. Spec: `docs/superpowers/specs/2026-10-05-bdm-004-organization-pipelines-design.md`.
+
 - **Business requirement:** a separate pipeline per module.
   - Agent §E: 14 steps, Prospect → … → Enrollments. The first 11 are stages; Students / Applications / Enrollments are volumes read from the Agent CRM. The 8-value agent status (§B) is derived (D13).
   - School §D: 14 stages, Prospect → … → University Planning.

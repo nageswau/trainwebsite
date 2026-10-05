@@ -435,6 +435,18 @@ covers the commission-specific piece).
   organizations like the lists so scope filters are safe). Appointment / task links are deferred to bdm-006 / bdm-008. Additive; no
   existing table or row changes; the downgrade refuses while activities exist.
 
+- **Addendum, 2026-10-05 (`bdm-004`, `DEC-SCOPE-070`; migration `0072_bdm_pipeline`, chained after `0071_bdm_activities`) —
+  organization pipelines.** The catalogue lives in `app/bdm_stages.py` (14 steps per type, kinds manual / live / volume; the migration
+  keeps a frozen copy of the manual lists). `bdm_organizations` gains `pipeline_stage` String(40) NOT NULL default `'prospect'` (existing
+  rows backfilled by the default, no history row), `lost_at` timestamptz and `lost_reason` String(500) (both or neither:
+  `ck_bdm_organizations_lost`), `ck_bdm_organizations_pipeline_stage` (each `bdm_type` limited to its own **manual** stages — live
+  stages arrive with bdm-018 / bdm-019, which widen it) and index `ix_bdm_organizations_type_stage (bdm_type, pipeline_stage)`.
+  `bdm_pipeline_events` (UUID PK; `organization_id` FK `bdm_organizations` `ON DELETE RESTRICT`; `actor_user_id` FK `users`
+  `ON DELETE RESTRICT`; `kind` CHECK move / lost / revived; `from_stage`, `to_stage` String(40) — no stage CHECK, so history survives a
+  catalogue change; `note` String(500), required for lost / revived (`ck_bdm_pipeline_events_note`); `position` BIGINT identity;
+  `created_at`), append-only, index `(organization_id, position)`. The agent status is derived, never stored. Additive; the downgrade
+  refuses while any event, non-prospect stage or Lost flag exists.
+
 ### 6.3 Commission trigger mapping — `ADR-012` resolution
 **Resolution:** the automatic commission-accrual trigger (`AGT-003`, `DEC-SCOPE-005`) fires when an
 `ApplicationStatusHistory` row is written with `to_status='enrolled'` **for an application that has

@@ -479,6 +479,28 @@ and the same filters, not the page. `GET` without `?date=` uses IST today; `coun
 `occurred_at` up to 5 minutes after the server clock is saved as the server's now; more than 5 minutes ahead → `422`; older than 7 IST
 days → `422`. **V10:** the 201st activity of a BDM's IST day → `409`. Refusal logging: `bdm_activity_write_refused` is logged for "not the organization's assigned BDM" (create) and "not the BDM who logged it" (patch / delete, which also covers a manager or `super_admin` touching a readable team activity); 403s from the role gate (`bdm_context` on create, `caller_scope` for other roles) are not logged.
 
+**`bdm-004` / `DEC-SCOPE-070` (built 2026-10-05; migration `0072_bdm_pipeline`) — organization pipelines per BDM type + stage history.**
+Design spec `docs/superpowers/specs/2026-10-05-bdm-004-organization-pipelines-design.md` §6. All routes are new; the only change to an
+existing response is **additive**: every organization detail (`GET/POST/PATCH /bdm/organizations…`, archive / restore / assign / contact
+writes) gains `pipeline {stage, stage_label, lost: {at, reason} | null, agent_status, steps[{key, label, kind, state}]}`. List rows and
+the four permission keys are unchanged. Writes reuse `can_edit` (S1: the assigned BDM or `super_admin`; a manager reads only).
+
+| Method/Path | Auth | Scope | Notes |
+|---|---|---|---|
+| `POST /bdm/organizations/{id}/stage` `{from_stage, to_stage, note?}` | `bdm`, `super_admin` | `can_edit` | `200 {organization}`; a manual stage of the organization's own pipeline; backward needs `note` |
+| `POST /bdm/organizations/{id}/lost` `{reason}` | `bdm`, `super_admin` | `can_edit` | `200 {organization}`; the stage is kept (S5) |
+| `POST /bdm/organizations/{id}/revive` `{reason}` | `bdm`, `super_admin` | `can_edit` | `200 {organization}`; back at the stage it was lost at |
+| `GET /bdm/organizations/{id}/stage-history?limit=&offset=` | any reader of the organization | `caller_scope` | `{items, total, limit, offset}` newest first; items `{id, kind, from_stage, from_label, to_stage, to_label, note, actor {id, full_name}, created_at}` |
+| `GET /bdm/pipeline?bdm_type=&assigned=&stage=&limit=&offset=` | `bdm`, `bdm_manager`, `super_admin` | `caller_scope` | `{bdm_type, stages[{key, label, kind, count}], lost_count, items, total, limit, offset}`; `count` null for live / volume steps; archived excluded; `stage` = a step key or `lost` |
+
+**Status table (spec §6.4):** `401` no session; `403` wrong role or not `can_edit` (logged); `404` organization outside the caller's
+scope; `409` archived ("Restore this organization first"), `{code: "organization_lost"}`, `{code: "organization_not_lost"}`,
+`{code: "stage_changed", current_stage}` (stale `from_stage`); `422` field errors with `loc` `["body", <field>]` (unknown / other-type
+stage, live stage "set by the onboarding handover", volume step, same stage, backward without a note, blank reason). `GET /bdm/pipeline`:
+`422` "Choose a BDM type" (manager / super_admin without `bdm_type`), "You can only view your own module's pipeline" (a BDM naming another
+type), unknown `stage`, `assigned=me` from a non-BDM. **Retry semantics:** a repeated move answers `409 stage_changed` with
+`current_stage` equal to the requested stage (the UI treats it as done); a repeated lost / revive answers `409`. No idempotency key.
+
 **`AGN-011` / `DEC-SCOPE-058` (built 2026-10-02/03) — agent deposit through Razorpay.** Design spec
 `docs/superpowers/specs/2026-10-02-agn-011-deposit-collection-design.md` §4. Errors are FastAPI `{"detail": ...}`. INR only (D1). Every
 agent write: gate `403` → org lock → application `FOR UPDATE` (scope `404 "Application not found"`) → archived/withdrawn `409` → deposit
