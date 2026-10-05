@@ -10,10 +10,11 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.bdm import LIMIT, OFFSET
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import User
-from app.schemas import BdmLostIn, BdmOrganizationEnvelope, BdmReviveIn, BdmStageMove
+from app.schemas import BdmLostIn, BdmOrganizationEnvelope, BdmReviveIn, BdmStageEventPage, BdmStageMove
 from app.services import bdm_organizations as org_svc
 from app.services import bdm_pipeline as svc
 
@@ -63,3 +64,10 @@ async def revive(org_id: UUID, payload: BdmReviveIn, user: User = Depends(get_cu
     await db.commit()
     org_svc.log("bdm_org_revived", user, org.id, stage=org.pipeline_stage)
     return {"organization": await org_svc.organization_out(db, user, org)}
+
+
+@router.get("/organizations/{org_id}/stage-history", response_model=BdmStageEventPage)
+async def stage_history(org_id: UUID, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Readable by everyone who can read the organization (bdm, its manager, super_admin)."""
+    org = await org_svc.load_scoped(db, user, org_id)
+    return await svc.history_page(db, org, limit, offset)

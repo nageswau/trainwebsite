@@ -5,6 +5,7 @@ Functions only; nothing here commits -- the route owns the transaction (bdm-002'
 
 from fastapi import HTTPException
 from fastapi.exceptions import RequestValidationError
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bdm_stages import AGENT_STATUS, LIVE, MANUAL, PIPELINES, VOLUME
@@ -85,3 +86,19 @@ def log_conflict(user: User, org: BdmOrganization, to_stage: str) -> None:
     from app.services.bdm_organizations import log  # local: bdm_organizations imports this module
 
     log("bdm_org_stage_conflict", user, org.id, current_stage=org.pipeline_stage, to_stage=to_stage)
+
+
+async def history_page(db: AsyncSession, org: BdmOrganization, limit: int, offset: int) -> dict:
+    where = BdmPipelineEvent.organization_id == org.id
+    total = await db.scalar(select(func.count()).select_from(BdmPipelineEvent).where(where))
+    stmt = select(BdmPipelineEvent, User).join(User, User.id == BdmPipelineEvent.actor_user_id).where(where)
+    rows = (await db.execute(stmt.order_by(BdmPipelineEvent.position.desc()).limit(limit).offset(offset))).all()
+    items = [
+        {
+            "id": e.id, "kind": e.kind, "from_stage": e.from_stage, "from_label": label_of(org.bdm_type, e.from_stage),
+            "to_stage": e.to_stage, "to_label": label_of(org.bdm_type, e.to_stage), "note": e.note,
+            "actor": {"id": actor.id, "full_name": actor.full_name}, "created_at": e.created_at,
+        }
+        for e, actor in rows
+    ]
+    return {"items": items, "total": total or 0, "limit": limit, "offset": offset}
