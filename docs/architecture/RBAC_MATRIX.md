@@ -511,6 +511,17 @@ Archived organizations are read-only (`409` "Restore this organization first"). 
 
 **Explicit denies (bdm-010):** nobody decides their own trip (`403`); a manager never edits a trip or its expenses (no route); server-owned fields (`code`, `bdm_user_id`, statuses, `currency`, `decided_*`) in a body → `422`; a `bdm` on a manager route or a manager on a BDM route → `403`. Every change writes one `AuditLog` row (`bdm.trip_*`) in the same transaction.
 
+**BDM appointments (`bdm-006`, `DEC-SCOPE-068`).** Every `{id}` resolves through the appointment scope (out of scope is the same `404` as a missing id); writes then require ownership.
+
+| Role | Can | Scope | Item |
+|---|---|---|---|
+| `bdm` | book (`POST /bdm/appointments`) only on organizations **assigned to them** that are **not archived**; read own appointments; edit, confirm, reschedule, cancel, mark no-show and complete **own** appointments | Own appointments (`bdm_user_id`); an organization of another type `404`; an unassigned organization `403`; an archived organization `422` (A4) | `bdm-006` |
+| `bdm_manager` | read / list the **team's** appointments (the owner reports to them); `bdm_user_id` filter within the team | Team scope; every write `403` (Q-17 / D26) | `bdm-006` |
+| `super_admin` | read / list any appointment | All; every write `403` | `bdm-006` |
+| `it_admin`, `overseas_admin`, others | — | `403` | `bdm-006` |
+
+An appointment stays with its BDM when the organization is reassigned. `bdm_user_id`, `code`, `status`, `organization_id` (on PATCH) and `outcome` (outside complete) are unknown fields (`422`). Organization `last_meeting_at` / `next_meeting_at` expose dates only to organization readers.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
