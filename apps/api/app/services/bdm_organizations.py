@@ -27,6 +27,7 @@ from app.models import (
 )
 from app.schemas import BDM_ORG_LABELS
 from app.services.bdm import bdm_context, person_ref
+from app.services.bdm_pipeline import pipeline_out
 
 logger = logging.getLogger("app.bdm")
 
@@ -296,6 +297,7 @@ async def organization_out(db: AsyncSession, user: User, org: BdmOrganization, *
         "courses_interested": org.courses_interested,
         "student_count": org.student_count,
         "profile": profile_out(org),
+        "pipeline": pipeline_out(org),  # bdm-004
         "contacts": [_contact(c) for c in ordered],
         "created_by_name": people[org.created_by_user_id].full_name,
         "archived_at": org.archived_at,

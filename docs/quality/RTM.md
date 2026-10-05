@@ -464,6 +464,27 @@ role-specific navigation.
 | `bdm-009-AC12` | End to end: log, timeline, counts, manager view, keyboard-only, no overflow at 320 / 375 px | `tests/e2e/bdm-009-activities.spec.ts` — Playwright **passed** (`--repeat-each=2` with bdm-002 / bdm-010: 16 passed, 2026-10-05); browser validation **done** — `docs/quality/BDM-009_BROWSER_QA_2026-10-05.md` (QA9-01..05 fixed and re-checked) |
 | `bdm-009-AC13` | Abuse cases: IDOR 403 / 404, foreign contact 422, server-owned fields 422, `organization_id` in PATCH 422, manager route 403, out-of-team filter empty, markup shown as text | `test_bdm_009_activities.py::test_abuse_cases_server_owned_fields_and_markup`, `test_bdm_009_scope.py`, `BdmActivityItem.test.tsx` |
 
+**Addendum, 2026-10-05 (`bdm-004`)** — one enhancement row and its acceptance-criteria map. Organization pipelines per BDM type + stage history.
+
+| Feature ID | Contract documents | Old workbook cases | Status |
+|---|---|---|---|
+| `bdm-004` | Requirement: owner's bdm-004 statement (`BDM_CRM_BACKLOG.md` §4 bdm-004) and answers S1–S7 (`EXPLICIT_APPROVAL`) referring to `EVID-016` (`DERIVED_BLUEPRINT`) Agent §B/§E, School §D, College §D, D7, D8, D11, D13 → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-071` → design `docs/superpowers/specs/2026-10-05-bdm-004-organization-pipelines-design.md` (AC1–AC12) → plan `docs/superpowers/plans/2026-10-05-bdm-004-organization-pipelines.md` (13 tasks); `API_CONTRACT.md` bdm-004; `DATA_MODEL.md` bdm-004 addendum → migration `0073_bdm_pipeline` (after `0072_bdm_meeting_reports`) → code `app/bdm_stages.py`, `app/api/bdm_pipeline.py`, `app/services/bdm_pipeline.py`, `models.py` (`BdmPipelineEvent`, pipeline columns), `schemas.py` (bdm-004 section), `services/bdm_organizations.organization_out`; web `lib/bdmPipeline.ts`, `lib/bdmPipelineServer.ts`, `BdmOrganizationPipeline`, `BdmStageHistory`, `BdmPipelineBoard`, `/bdm/pipeline`, `/bdm/manager/pipeline` | none | **COMPLETE for its scope** (2026-10-05) on `feature/bdm-004-pipeline-stages`: backend lite 358 passed, web 290 passed, tsc / eslint / `next build` clean, Playwright 6 passed, browser QA findings QA4-01…07, 10 fixed and re-verified; QA4-08 / QA4-09 deferred (shared patterns); Codex review waived by the owner |
+
+| AC | Criterion | Tests |
+|---|---|---|
+| `bdm-004-AC1` | 14 steps per type in source order and wording; Agent 7/4/3, School 8/6/0, College 8/0/6 | `test_bdm_004_catalogue.py`, `test_bdm_004_stage.py` |
+| `bdm-004-AC2` | Every move, lost and revive writes one history row and one audit row; refusals write neither | `test_bdm_004_stage.py`, `test_bdm_004_lost.py`, `test_bdm_004_history.py` |
+| `bdm-004-AC3` | Backward without a note (missing or blank) → 422 on `note` | `test_bdm_004_stage.py`, `test_bdm_004_schemas.py` |
+| `bdm-004-AC4` | Live / volume / unknown / other-type stage → 422; DB CHECK backstop; live steps "Awaiting handover", volume "Not tracked" | `test_bdm_004_stage.py`, `test_bdm_004_migration.py`, `BdmOrganizationPipeline.test.tsx` |
+| `bdm-004-AC5` | Per-stage counts in scope (mine / module / team / one BDM / all); archived excluded; Lost apart | `test_bdm_004_pipeline.py`, `BdmPipelinePages.test.tsx` |
+| `bdm-004-AC6` | Authorization matrix: owner / super_admin 200, peer / manager 403, out of scope 404, other roles 403, signed out 401 | `test_bdm_004_scope.py` |
+| `bdm-004-AC7` | Stale `from_stage` → 409 `stage_changed`; two concurrent moves → one wins | `test_bdm_004_stage.py`, `test_bdm_004_concurrency.py` |
+| `bdm-004-AC8` | Lost keeps the stage, blocks moves; revive returns to it; archived → 409 | `test_bdm_004_lost.py` |
+| `bdm-004-AC9` | Agent status derived per S4 | `test_bdm_004_catalogue.py`, `test_bdm_004_stage.py` |
+| `bdm-004-AC10` | Migration: backfill prospect, no events, CHECKs, downgrade refusal, one head, parity | `test_bdm_004_migration.py` |
+| `bdm-004-AC11` | UI: stepper, move / lost / revive, history, pipeline pages; keyboard; no overflow at 320 / 375 px | `BdmOrganizationPipeline.test.tsx`, `BdmStageHistory.test.tsx`, `BdmPipelinePages.test.tsx`, `tests/e2e/bdm-004-pipeline.spec.ts` — Playwright **passed** |
+| `bdm-004-AC12` | List rows, permission keys and existing routes unchanged; only the detail gains `pipeline` | `test_bdm_004_stage.py`, bdm-002 / bdm-003 suites |
+
 **Addendum, 2026-10-03 (`AGN-022`)** — one enhancement row and its acceptance-criteria map. Overseas Admin agent network oversight.
 
 | Feature ID | Contract documents | Old workbook cases | Status |

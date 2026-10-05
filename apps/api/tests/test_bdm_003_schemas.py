@@ -113,6 +113,7 @@ def test_output_profile_is_discriminated_on_kind():
         "permissions": {"can_edit": True, "can_archive": True, "can_restore": False, "can_reassign": False}, "phone": None, "email": None,
         "website": None, "courses_interested": None, "student_count": None, "contacts": [], "created_by_name": "B", "archived_at": None,
         "created_at": "2026-10-03T00:00:00Z", "updated_at": "2026-10-03T00:00:00Z", "address": None,
+        "pipeline": {"stage": "prospect", "stage_label": "School Prospect", "lost": None, "agent_status": None, "steps": []},  # bdm-004
     }
     school = BdmOrganizationOut.model_validate({**base, "profile": {"kind": "school", "board": "CBSE", "school_type": None, "grade_from": 6, "grade_to": 12}})
     assert school.model_dump(mode="json")["profile"] == {"kind": "school", "board": "CBSE", "school_type": None, "grade_from": 6, "grade_to": 12}

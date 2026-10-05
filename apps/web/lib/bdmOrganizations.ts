@@ -1,4 +1,5 @@
 import type { BdmType } from "@/lib/bdm";
+import type { Pipeline } from "@/lib/bdmPipeline";
 import { formatSchoolDateTime } from "@/lib/formatDate";
 import type { LookupPage } from "@/lib/lookups";
 
@@ -34,7 +35,7 @@ export type OrgRow = {
 };
 export type Organization = OrgRow & {
   phone: string | null; email: string | null; website: string | null; address: string | null; courses_interested: string | null; student_count: number | null;
-  profile: OrgProfile | null; contacts: OrgContact[]; created_by_name: string; archived_at: string | null; created_at: string; updated_at: string;
+  profile: OrgProfile | null; pipeline: Pipeline; contacts: OrgContact[]; created_by_name: string; archived_at: string | null; created_at: string; updated_at: string;
 };
 export type OrgDuplicateMatch = { id: string; code: string; name: string; city: string; archived: boolean; assigned_bdm_name: string };
 export type OrgDuplicate = { message: string; matches: OrgDuplicateMatch[]; total: number };
