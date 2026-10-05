@@ -139,16 +139,16 @@ Each module session (S2–S9) follows the **standard session loop**:
 
 ### S2 — Environment, capture tooling, Account access, Agency approvals
 Features: DOC-AUTH-001..006, DOC-ADM-001.
-- [ ] **S2.1** Owner confirms: stack from `e376c25c`, seeded; capture-tooling location (default below); whether the web
+- [x] **S2.1** Owner confirms: stack from `e376c25c`, seeded; capture-tooling location (default below); whether the web
   container may run with `ENVIRONMENT=production` (removes the demo-password card) or masking is used instead.
-- [ ] **S2.2** Create `docs/screenshot-index.md`:
+- [x] **S2.2** Create `docs/screenshot-index.md`:
   ```markdown
   # Screenshot Index
   Captured against `main` @ <commit>, viewport 1440×900, Chromium.
   | Screenshot | Module | Feature | Step | Role | Description |
   |---|---|---|---|---|---|
   ```
-- [ ] **S2.3** Capture tooling (test-only, no product code). `apps/web/playwright.docs.config.ts`:
+- [x] **S2.3** Capture tooling (test-only, no product code). `apps/web/playwright.docs.config.ts`:
   ```ts
   import { defineConfig } from "@playwright/test";
   export default defineConfig({
@@ -186,7 +186,7 @@ Features: DOC-AUTH-001..006, DOC-ADM-001.
   }
   ```
   Run: `npx --prefix apps/web playwright test -c apps/web/playwright.docs.config.ts <spec>`.
-- [ ] **S2.4** Link/asset check script `docs/tooling/check-doc-links.mjs`:
+- [x] **S2.4** Link/asset check script `docs/tooling/check-doc-links.mjs`:
   ```js
   // Fails when a Markdown image/link under docs/ points at a missing file. Usage: node docs/tooling/check-doc-links.mjs
   import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
@@ -205,8 +205,8 @@ Features: DOC-AUTH-001..006, DOC-ADM-001.
   console.log(bad ? `${bad} broken link(s)` : "All links OK");
   process.exit(bad ? 1 : 0);
   ```
-- [ ] **S2.5** Verify masking: capture `01-login-page.png`, open it, confirm no password text or demo card is readable.
-- [ ] **S2.6** Run the standard loop for AUTH-001..006 and ADM-001. Create the test agencies while documenting:
+- [x] **S2.5** Verify masking: capture `01-login-page.png`, open it, confirm no password text or demo card is readable.
+- [x] **S2.6** Run the standard loop for AUTH-001..006 and ADM-001. Create the test agencies while documenting:
   `Docs Pending Agency` (left pending), `Docs Rejected Agency`, `Docs Suspended Agency` (approve → suspend),
   `Docs Second Agency` (approved).
 

@@ -3,9 +3,9 @@
 | | |
 |---|---|
 | Code baseline | `main` @ `e376c25c`; 2026-10-05 docs branch merged `main` @ `6a9be770` (+42 commits, bdm-006 etc.) — only Agent-scope-adjacent change is BDM "Appointments" sidebar links in `navigation.ts`; Agent CRM analysis unchanged. Browser work may use a stack from `6a9be770`. |
-| Stack used for browser work | — (not started) |
-| Last session | S2 part 1 (stack-independent) — 2026-10-05 |
-| Next session | S2 — Environment, capture tooling, Account access, Agency approvals |
+| Stack used for browser work | `agentdocs` compose project from worktree `.claude/worktrees/agent-docs` @ `717d6aa8` (= main `6a9be770` + docs); web http://localhost:3010, api :8010; `EMAIL_ENABLED=false`; Razorpay test keys present |
+| Last session | S2 — 2026-10-05 |
+| Next session | S3 — Team & staff (DOC-TEAM-001..005, DOC-ADM-008) + close AUTH-003/004 partials |
 
 Column values: **Code Reviewed** YES / PARTIAL / NO (YES at S1 = reviewed from source at HEAD with file:line evidence in
 `documentation-analysis.md`); **Browser Verified** YES / PARTIAL / NO; **Screenshot** YES / NO / N/A;
@@ -14,12 +14,12 @@ YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES and Rev
 
 | ID | Module | Feature | Code Reviewed | Browser Verified | Screenshot | Documented | Reviewed |
 |---|---|---|---|---|---|---|---|
-| DOC-AUTH-001 | Account access | Register an agency | YES | NO | NO | NO | NO |
-| DOC-AUTH-002 | Account access | Sign in and sign out | YES | NO | NO | NO | NO |
-| DOC-AUTH-003 | Account access | "Access unavailable" states | YES | NO | NO | NO | NO |
-| DOC-AUTH-004 | Account access | Forgot / reset password; first-time set-password link | YES | NO | NO | NO | NO |
-| DOC-AUTH-005 | Account access | Change password | YES | NO | NO | NO | NO |
-| DOC-AUTH-006 | Account access | My profile | YES | NO | NO | NO | NO |
+| DOC-AUTH-001 | Account access | Register an agency | YES | YES | YES | YES | NO |
+| DOC-AUTH-002 | Account access | Sign in and sign out | YES | YES | YES | YES | NO |
+| DOC-AUTH-003 | Account access | "Access unavailable" states | YES | PARTIAL (deactivated member → S3) | YES | DRAFT | NO |
+| DOC-AUTH-004 | Account access | Forgot / reset password; first-time set-password link | YES | PARTIAL (invitation link → S3) | YES | DRAFT | NO |
+| DOC-AUTH-005 | Account access | Change password | YES | YES | YES | YES | NO |
+| DOC-AUTH-006 | Account access | My profile | YES | PARTIAL (save success + notification settings not exercised) | YES | DRAFT | NO |
 | DOC-DASH-001 | Dashboard | Agency dashboard — Master | YES | NO | NO | NO | NO |
 | DOC-DASH-002 | Dashboard | Agency dashboard — Staff | YES | NO | NO | NO | NO |
 | DOC-STU-001 | Students | Find students | YES | NO | NO | NO | NO |
@@ -60,7 +60,7 @@ YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES and Rev
 | DOC-TEAM-004 | Team | Set staff permissions | YES | NO | NO | NO | NO |
 | DOC-TEAM-005 | Team | Staff activity | YES | NO | NO | NO | NO |
 | DOC-PERF-001 | Staff performance | View staff performance | YES | NO | NO | NO | NO |
-| DOC-ADM-001 | Agency administration | Approve / reject / suspend / reinstate agencies | YES | NO | NO | NO | NO |
+| DOC-ADM-001 | Agency administration | Approve / reject / suspend / reinstate agencies | YES | PARTIAL (Reinstate → S9) | YES | DRAFT | NO |
 | DOC-ADM-002 | Agency administration | Agent network list | YES | NO | NO | NO | NO |
 | DOC-ADM-003 | Agency administration | Agency detail and drill-down | YES | NO | NO | NO | NO |
 | DOC-ADM-004 | Agency administration | Suspend / reinstate from detail | YES | NO | NO | NO | NO |
@@ -69,8 +69,8 @@ YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES and Rev
 | DOC-ADM-007 | Agency administration | Super Admin access to agency screens | YES | NO | NO | NO | NO |
 | DOC-ADM-008 | Agency administration | Resend a staff welcome link | PARTIAL | NO | NO | NO | NO |
 
-**Totals:** 54 features · Code reviewed 53 YES, 1 PARTIAL · Browser verified 0 · Screenshots 0 / ~178 ·
-Documented 0 · Reviewed 0 · **COMPLETE 0**.
+**Totals:** 54 features · Code reviewed 53 YES, 1 PARTIAL · Browser verified 3 YES, 4 PARTIAL · Screenshots 24 / ~178 ·
+Documented 3 YES, 4 DRAFT · Reviewed 0 · **COMPLETE 0**.
 
 ## Deliverables outside the feature rows
 | Deliverable | Session | Status |
@@ -88,15 +88,22 @@ Open items U1–U19 are listed in `docs/documentation-analysis.md` §12.1. Close
 
 | Item | Feature | Session | Result |
 |---|---|---|---|
-| — | — | — | — |
+| U2 | AUTH-005 | S2 | Closed: a pending agent can open Change password. |
+| 12.2 #1 | AUTH-003 | S2 | Confirmed in browser: rejected agency sees "Agent registration is pending approval". |
+| U4 | AUTH-001 | S2 | Partly: duplicate email verified; empty/short fields are blocked by the browser before submit. |
 
 ## Discovered functionality not in the original plan
 | Date | Session | What | Where | Action |
 |---|---|---|---|---|
-| — | — | — | — | — |
+| 2026-10-05 | S2 | Portal tables (dashboard open applications, admin Agent Masters) have Search records, Filter by column, sortable headings and Rows per page (10/25/50) | generic data table | Document in each module where the table appears |
+| 2026-10-05 | S2 | In non-production stacks the forgot-password page shows a "Development only: reset link" | `/overseas/forgot-password` | Masked in screenshots; not documented for users |
+| 2026-10-05 | S2 | Agency codes derive from the agency name (Docs… → DOC, DOC2, DOC3…) | registration | Mentioned in AUTH-001 |
+| 2026-10-05 | S2 | Login-page and sidebar logo render very small inside a white box | `/overseas/login`, sidebar | UI note for review report (LOW) |
+| 2026-10-05 | S2 | Profile validation shows the raw server text "String should have at least 2 characters" | `/account/profile` | Documented as-is; note for review report |
 
 ## Session log
 | Session | Date | Commit | Stack / URL | Outcome |
 |---|---|---|---|---|
 | S1 Master planning | 2026-10-05 | `e376c25c` | none (no browser) | Analysis, plan, tracker created |
 | S2 part 1 (no stack) | 2026-10-05 | `e376c25c` | none — waiting for a `main` stack | Index, capture tooling, link checker; AUTH-006 code-reviewed |
+| S2 | 2026-10-05 | `717d6aa8` | agentdocs, :3010 | 24 screenshots; AUTH-001..006 + ADM-001 written; test agencies Docs Pending/Rejected/Suspended/Second created |
