@@ -27,6 +27,7 @@ from app.schemas import (
     BdmAppointmentType,
     BdmAppointmentUpdate,
     BdmMeetingReportCreate,
+    BdmMeetingReportUpdate,
 )
 from app.services import bdm_appointments as svc
 from app.services import bdm_organizations as org_svc
@@ -280,3 +281,34 @@ async def complete_appointment(appt_id: UUID, payload: BdmMeetingReportCreate, u
     # Set after the follow-up query: its autoflush must not write an outcome while the status is still open (the CHECKs pair them).
     appt.outcome, appt.next_follow_up_on = payload.outcome, payload.next_follow_up_on
     return await _move(db, user, appt, "complete", "completed", {"outcome": payload.outcome, "follow_up": follow_up is not None})
+
+
+@router.patch("/{appt_id}/report", response_model=BdmAppointmentEnvelope)
+async def update_report(appt_id: UUID, payload: BdmMeetingReportUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """bdm-007 §5.2 (AC4): the author changes the report on the IST day it was filed. Lock order appointment -> report -> follow-up.
+    Values equal to the stored ones are not changes (no audit, no updated_at bump)."""
+    appt = await svc.load_scoped(db, user, appt_id, lock=True)
+    svc.require_owner(user, appt, "report_update")
+    report = await svc.load_report(db, appt.id, lock=True)
+    if report is None:
+        raise HTTPException(409, svc.NO_REPORT)
+    now = await svc.db_now(db)
+    if not svc.report_editable(report, now):
+        raise HTTPException(409, svc.REPORT_LOCKED)
+    changes = payload.model_dump(exclude_unset=True)
+    target = lambda key: report if key in svc.REPORT_FIELDS else appt  # noqa: E731 -- outcome / follow-up date live on the appointment
+    changed = sorted(k for k, v in changes.items() if getattr(target(k), k) != v)
+    if "outcome" in changed:
+        await _outcome_allowed(db, user, changes["outcome"])
+    follow_up = None
+    if "next_follow_up_on" in changed:
+        _follow_up_allowed(changes["next_follow_up_on"], now)
+        follow_up = await svc.sync_follow_up(db, appt, changes["next_follow_up_on"])
+    for key in changed:
+        setattr(target(key), key, changes[key])
+    if changed:
+        svc.audit(db, user, "report_update", appt.id, {"fields": changed, **({"follow_up": follow_up} if follow_up else {})})
+    await db.commit()
+    if changed:
+        svc.log("bdm_appt_report_updated", user, appt.id, fields=changed, follow_up=follow_up)
+    return await _envelope(db, user, appt)

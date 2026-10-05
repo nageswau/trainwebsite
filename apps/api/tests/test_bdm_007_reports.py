@@ -125,3 +125,108 @@ async def test_report_text_never_reaches_audit_metadata(client, db_session):
     assert rows and all(secret not in str(m) and "Mr Secret" not in str(m) for m in rows)
     complete = (await db_session.scalars(select(AuditLog.metadata_json).where(AuditLog.entity_id == a["id"], AuditLog.action == "bdm_appointment.complete"))).one()
     assert complete == {"from": "scheduled", "to": "completed", "outcome": "interested", "follow_up": True}
+
+
+def report_url(appt: dict) -> str:
+    return f"{APPTS}/{appt['id']}/report"
+
+
+async def file_yesterday(db, appt_id) -> None:
+    """The only way to test 'the next IST day': move submitted_at back one day."""
+    await db.execute(update(BdmMeetingReport).where(BdmMeetingReport.appointment_id == appt_id).values(submitted_at=func.now() - timedelta(days=1)))
+    await db.commit()
+
+
+@pytest.mark.asyncio
+async def test_author_edits_on_the_filing_day(client, db_session):
+    _, _, org = await bdm_with_org(client, db_session)
+    a = await completed(client, db_session, org)
+    edited = await client.patch(report_url(a), json={"outcome": "mou_discussion_required", "requirements": "Lab with 40 seats", "next_action": "Send MoU draft"})
+    assert edited.status_code == 200, edited.text
+    e = edited.json()["appointment"]
+    assert (e["outcome"], e["report"]["requirements"], e["report"]["next_action"]) == ("mou_discussion_required", "Lab with 40 seats", "Send MoU draft")
+    meta = (await db_session.scalars(select(AuditLog.metadata_json).where(AuditLog.entity_id == a["id"], AuditLog.action == "bdm_appointment.report_update"))).one()
+    assert meta == {"fields": ["next_action", "outcome", "requirements"]}
+
+
+@pytest.mark.asyncio
+async def test_unchanged_values_are_not_an_edit(client, db_session):
+    _, _, org = await bdm_with_org(client, db_session)
+    a = await completed(client, db_session, org)
+    same = await client.patch(report_url(a), json={"outcome": "interested", "discussion": REPORT["discussion"]})
+    assert same.status_code == 200
+    assert await db_session.scalar(select(func.count()).select_from(AuditLog).where(AuditLog.entity_id == a["id"], AuditLog.action == "bdm_appointment.report_update")) == 0
+
+
+@pytest.mark.asyncio
+async def test_edit_window_closes_on_the_next_ist_day(client, db_session):
+    """AC4."""
+    _, _, org = await bdm_with_org(client, db_session)
+    a = await completed(client, db_session, org)
+    await file_yesterday(db_session, a["id"])
+    seen = (await client.get(f"{APPTS}/{a['id']}")).json()["appointment"]
+    assert seen["permissions"]["can_edit_report"] is False
+    late = await client.patch(report_url(a), json={"next_action": "Too late"})
+    assert (late.status_code, late.json()["detail"]) == (409, "Meeting reports can only be changed on the day they were filed")
+
+
+@pytest.mark.asyncio
+async def test_edit_refusals(client, db_session):
+    manager, _, org = await bdm_with_org(client, db_session)
+    a = await completed(client, db_session, org)
+    open_ = await create_appt(client, org)
+    no_report = await client.patch(report_url(open_), json={"next_action": "x"})
+    assert (no_report.status_code, no_report.json()["detail"]) == (409, "This appointment has no meeting report")
+    foreign = await client.patch(report_url(a), json={"outcome": "agreement_required"})
+    assert (foreign.status_code, foreign.json()["detail"]) == (422, "This outcome is not available for College BDMs")
+    past = await client.patch(report_url(a), json={"next_follow_up_on": in_days(-1)})
+    assert (past.status_code, past.json()["detail"]) == (422, "Next follow-up can't be in the past")
+    assert (await client.patch(report_url(a), json={"discussion": None})).status_code == 422
+    await login(client, manager)
+    refused = await client.patch(report_url(a), json={"next_action": "x"})
+    assert (refused.status_code, refused.json()["detail"]) == (403, "Only the appointment's BDM can change it")
+    await login(client, await make_bdm(db_session, manager))
+    assert (await client.patch(report_url(a), json={"next_action": "x"})).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_follow_up_moves_with_the_date(client, db_session):
+    """AC3: one row; moved, never duplicated."""
+    _, _, org = await bdm_with_org(client, db_session)
+    a = await completed(client, db_session, org, next_follow_up_on=in_days(2))
+    moved = (await client.patch(report_url(a), json={"next_follow_up_on": in_days(5)})).json()["appointment"]
+    assert moved["follow_up"]["due_on"] == in_days(5) and moved["next_follow_up_on"] == in_days(5)
+    assert [(st, str(d)) for _, _, st, d, _ in await follow_ups(db_session, a["id"])] == [("open", in_days(5))]
+
+
+@pytest.mark.asyncio
+async def test_follow_up_cleared_then_set_again_reuses_the_row(client, db_session):
+    _, _, org = await bdm_with_org(client, db_session)
+    a = await completed(client, db_session, org, next_follow_up_on=in_days(2))
+    first_id = a["follow_up"]["id"]
+    cleared = (await client.patch(report_url(a), json={"next_follow_up_on": None})).json()["appointment"]
+    assert cleared["next_follow_up_on"] is None and cleared["follow_up"]["status"] == "cancelled"
+    again = (await client.patch(report_url(a), json={"next_follow_up_on": in_days(4)})).json()["appointment"]
+    assert again["follow_up"] == {"id": first_id, "due_on": in_days(4), "status": "open"}
+    assert len(await follow_ups(db_session, a["id"])) == 1
+    actions = (await db_session.scalars(select(AuditLog.metadata_json).where(AuditLog.entity_id == a["id"], AuditLog.action == "bdm_appointment.report_update").order_by(AuditLog.created_at))).all()
+    assert [m["follow_up"] for m in actions] == ["cancelled", "reopened"]
+
+
+@pytest.mark.asyncio
+async def test_a_date_added_on_edit_creates_the_follow_up(client, db_session):
+    _, _, org = await bdm_with_org(client, db_session)
+    a = await completed(client, db_session, org)
+    added = (await client.patch(report_url(a), json={"next_follow_up_on": today()})).json()["appointment"]
+    assert added["follow_up"]["status"] == "open" and len(await follow_ups(db_session, a["id"])) == 1
+
+
+@pytest.mark.asyncio
+async def test_a_done_follow_up_cannot_move(client, db_session):
+    """bdm-008 will complete follow-ups; once done, the report can no longer move it."""
+    _, _, org = await bdm_with_org(client, db_session)
+    a = await completed(client, db_session, org, next_follow_up_on=in_days(2))
+    await db_session.execute(update(BdmTask).where(BdmTask.source_appointment_id == a["id"]).values(status="done", completed_at=func.now()))
+    await db_session.commit()
+    refused = await client.patch(report_url(a), json={"next_follow_up_on": in_days(3)})
+    assert (refused.status_code, refused.json()["detail"]) == (409, "This follow-up is already done")
