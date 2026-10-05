@@ -258,7 +258,8 @@ As bdm-001 §5.8, with these specifics:
   - Signed out: `/telecaller/manager` and `/telecaller/manager/*` → `/admin/login?next=…`; any other `/telecaller/*` →
     `/telecaller/sign-in?next=…` (AC5, TL1). `next` keeps the query string. `/telecallerx` is not matched.
 - **`/telecaller/sign-in`** (new, public, copies `/bdm/sign-in`): h1, one explanatory line, two `.btn` links "IT team" and "Overseas
-  team" carrying `next`, and "Telecaller Managers sign in at Administration" linking to `/admin/login` with `next`.
+  team" carrying `next`, and "Telecaller Managers sign in at Administration" linking to `/admin/login`, carrying `next` only when
+  it starts with `/telecaller/manager` (final-review fix, 2026-10-05).
 - **`/telecaller`** (index): `redirect("/telecaller/dashboard")`.
 - **`WorkflowPanel` `ROLES_BY_DIVISION.global`:** gains `telecaller_manager` (no profile, so the generic form creates it). `telecaller`
   is **not** added: it needs a profile and is created on the Telecallers page.
