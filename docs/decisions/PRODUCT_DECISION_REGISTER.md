@@ -3592,7 +3592,7 @@ independent Codex review are pending.
 
 **Evidence:** `EVID-019` (`functionalities/edusphere_markdown/Telecaller Functionalities.md`, `DERIVED_BLUEPRINT`); owner answers in-session
 2026-10-05.
-**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-05) for T1–T29 and TL1–TL7.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-05) for T1–T29 and TL1–TL8; VERIFIED on `feature/tel-001` — ready for owner sign-off (2026-10-05).
 
 **Part A — Telecaller CRM (T1–T29).** Copied verbatim from `docs/delivery/TELECALLER_CRM_BACKLOG.md` §3.1. They lift
 `PRD_OPEN_ITEMS.md` item 61 / `CONFLICT_MATRIX.md` for `EVID-019`. T29 supersedes `DEC-SCOPE-072` L2/L7 for leads in the telecaller
@@ -3630,7 +3630,7 @@ pipeline; that supersession takes effect with `tel-018`.
 | T28 | Targets | **Daily + monthly**, a team default with a per-telecaller override. Changes apply from the next day/month, with history kept; past results are never re-scored | 022 |
 | T29 | bdm-017 reconciliation | **Reuse bdm-017's link columns and admin link/unlink.** tel-018 also lets the assigned counselor link, and changes the meaning: a link moves the lead to `application_enrollment`, and `converted` is computed (T5). This supersedes `DEC-SCOPE-072` (bdm-017) L2/L7 for leads in the telecaller pipeline; it is recorded as a superseding decision | 003, 004, 018 |
 
-**Part B — tel-001 (TL1–TL7).** Design: `docs/superpowers/specs/2026-10-05-tel-001-telecaller-roles-design.md` §3.
+**Part B — tel-001 (TL1–TL8).** Design: `docs/superpowers/specs/2026-10-05-tel-001-telecaller-roles-design.md` §3.
 - TL1 Signed-out `/telecaller/*` → public `/telecaller/sign-in` chooser (IT / Overseas); `/telecaller/manager/*` → `/admin/login`.
 - TL2 Active status is `users.active` only.
 - TL3 A telecaller edits only their phone (`PATCH /telecaller/profile`).
@@ -3638,5 +3638,6 @@ pipeline; that supersession takes effect with `tel-018`.
 - TL5 A telecaller manager has no profile row.
 - TL6 Required profile fields: team, Employee ID, reporting manager.
 - TL7 Team is fixed in tel-001 (tel-025 moves teams).
+- TL8 `PATCH /auth/me` refuses name/profile changes for `telecaller` (phone validated with the `/telecaller/profile` rule); other roles unchanged (owner, 2026-10-05).
 
 **Implementation:** migration `0075_telecaller_profiles`; roles `telecaller` (division = team) and `telecaller_manager` (`global`).

@@ -186,6 +186,8 @@ NO-ASSUMPTION MODE. Prepared 2026-10-05 at the user's request. **No code was wri
 
 ### tel-001 — Telecaller + Telecaller Manager roles, profile, provisioning, sign-in, shell
 
+**Status (2026-10-05):** implemented and verified on `feature/tel-001` (`DEC-SCOPE-073`, migration `0075_telecaller_profiles`) — ready for owner sign-off; not yet merged.
+
 - **Business requirement:** §22 "Telecaller should not have access to everything". The source refers throughout to "Management" (§15, §16, §17, §21). Under your account-lifecycle convention, creating a user implies the full lifecycle.
 - **Existing behavior:** no telecaller roles. The admin create-user form (`WorkflowPanel.tsx` `ROLES_BY_DIVISION`, `admin.py` create_user) offers fixed role sets per division.
 - **Expected behavior:**
