@@ -50,4 +50,27 @@ describe("AdminTelecallerRow (tel-001 §6.3)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirm deactivate" }));
     await waitFor(() => expect(JSON.parse(mock.mock.calls[0][1].body)).toEqual({ active: false }));
   });
+
+  it("shows a failed save in the edit form's alert, focuses it and does not report a change", async () => {
+    const mock = vi.fn().mockResolvedValue(res({ detail: "Employee ID already exists" }, 409));
+    vi.stubGlobal("fetch", mock);
+    const onChanged = vi.fn();
+    table(<AdminTelecallerRow row={row} onChanged={onChanged} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit Ravi" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    const alert = await screen.findByText("Employee ID already exists");
+    expect(alert).toHaveAttribute("role", "alert");
+    await waitFor(() => expect(alert).toHaveFocus());
+    expect(onChanged).not.toHaveBeenCalled();
+  });
+
+  it("closes the edit form on Escape without any request", () => {
+    const mock = vi.fn();
+    vi.stubGlobal("fetch", mock);
+    table(<AdminTelecallerRow row={row} onChanged={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit Ravi" }));
+    fireEvent.keyDown(screen.getByLabelText("Employee ID (required)"), { key: "Escape" });
+    expect(screen.getByRole("button", { name: "Edit Ravi" })).toBeInTheDocument();
+    expect(mock).not.toHaveBeenCalled();
+  });
 });

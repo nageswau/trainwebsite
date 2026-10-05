@@ -31,6 +31,13 @@ describe("AdminTelecallerPanel (tel-001 §6.3)", () => {
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 
+  it("shows an error with a retry when the managers check fails", async () => {
+    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(String(url).includes("telecaller-managers") ? res({ detail: "x" }, 500) : res(empty))));
+    render(<AdminTelecallerPanel role="super_admin" />);
+    expect(await screen.findByText("Unable to load telecaller managers.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry loading managers" })).toBeInTheDocument();
+  });
+
   it("lists rows from the server", async () => {
     const page = { items: [{ id: "t1", full_name: "Ravi", email: "r@x", phone: null, active: true, team: "it", employee_id: "T-1", reporting_manager: { id: "m1", full_name: "Meena", active: true }, manager_active: true }], total: 1, limit: 50, offset: 0 };
     vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(res(String(url).includes("telecaller-managers") ? { ...empty, total: 1 } : page))));

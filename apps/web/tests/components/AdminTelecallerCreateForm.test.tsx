@@ -57,6 +57,7 @@ describe("AdminTelecallerCreateForm (tel-001 AC1, AC2)", () => {
     await fill();
     fireEvent.click(screen.getByRole("button", { name: "Create telecaller" }));
     await waitFor(() => expect(onCreated).toHaveBeenCalledWith("T-9"));
+    expect(screen.getByRole("status")).toHaveTextContent("Telecaller created. A set-password link was emailed and is valid for 72 hours.");
     const post = mock.mock.calls.find(([url]) => url === "/api/v1/admin/users")!;
     expect(JSON.parse(String(post[1]!.body))).toEqual({
       role: "telecaller", full_name: "Ravi", email: "ravi@x.local", phone: null,
