@@ -10,6 +10,9 @@ const SELECTED = { display: "block", borderColor: "var(--blue)", boxShadow: "0 0
 
 // bdm-004 (spec §8.3): stage tiles (counts are links; live / volume steps say why they have no count) and the organizations at the
 // chosen stage. Server-rendered: every filter is in the address, so the browser's back button and shared links just work.
+// QA4-01: filter links (tiles, Show all stages, pager) are plain <a> -- a full page load, like the GET-form filters on the manager
+// page and Team activities. As next/link, a client navigation into the whole-module view often never committed (no error, the
+// router stayed on the old page). Organization rows go to another route and stay next/link.
 export default function BdmPipelineBoard({ view, href, orgBasePath, selected, emptyText, emptyAction }: {
   view: PipelineView; href: (change: Change) => string; orgBasePath: string; selected: string | null; emptyText: string; emptyAction?: ReactNode;
 }) {
@@ -28,10 +31,10 @@ export default function BdmPipelineBoard({ view, href, orgBasePath, selected, em
                   <strong style={{ fontSize: 15 }}>{t.kind === "live" ? "Awaiting handover" : "Not tracked"}</strong>
                 </div>
               ) : (
-                <Link className="metric" href={href({ stage: t.key, offset: 0 })} aria-current={selected === t.key ? "true" : undefined} style={selected === t.key ? SELECTED : { display: "block" }}>
+                <a className="metric" href={href({ stage: t.key, offset: 0 })} aria-current={selected === t.key ? "true" : undefined} style={selected === t.key ? SELECTED : { display: "block" }}>
                   <span>{t.label}</span>
                   <strong>{t.count}</strong>
-                </Link>
+                </a>
               )}
             </li>
           ))}
@@ -41,7 +44,7 @@ export default function BdmPipelineBoard({ view, href, orgBasePath, selected, em
         <h3>{heading}</h3>
         {selected && (
           <p>
-            <Link href={href({ stage: null, offset: 0 })} style={LINK_STYLE}>Show all stages</Link>
+            <a href={href({ stage: null, offset: 0 })} style={LINK_STYLE}>Show all stages</a>
           </p>
         )}
         {view.items.length === 0 ? (
@@ -85,8 +88,8 @@ export default function BdmPipelineBoard({ view, href, orgBasePath, selected, em
         {view.total > PAGE_SIZE && (
           <nav aria-label="Pipeline pages" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 12 }}>
             <span className="muted" style={{ fontSize: 13 }}>Showing {view.offset + 1}–{last} of {view.total}</span>
-            {view.offset > 0 && <Link className="btn secondary small" href={href({ offset: Math.max(0, view.offset - PAGE_SIZE) })}>Previous</Link>}
-            {last < view.total && <Link className="btn secondary small" href={href({ offset: view.offset + PAGE_SIZE })}>Next</Link>}
+            {view.offset > 0 && <a className="btn secondary small" href={href({ offset: Math.max(0, view.offset - PAGE_SIZE) })}>Previous</a>}
+            {last < view.total && <a className="btn secondary small" href={href({ offset: view.offset + PAGE_SIZE })}>Next</a>}
           </nav>
         )}
       </section>

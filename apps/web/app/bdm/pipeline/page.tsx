@@ -49,13 +49,14 @@ export default async function BdmPipelinePage({ searchParams }: { searchParams: 
           </div>
         </div>
         <nav aria-label="Whose organizations" style={TOGGLE}>
-          <Link className={all ? "btn secondary small" : "btn small"} href={href({ stage: null }, false)} aria-current={all ? undefined : "true"}>Mine</Link>
-          <Link className={all ? "btn small" : "btn secondary small"} href={href({ stage: null }, true)} aria-current={all ? "true" : undefined}>All in module</Link>
+          {/* QA4-01: plain links (a full page load), as the board's filters; QA4-10: the chosen stage is kept, the page is not */}
+          <a className={all ? "btn secondary small" : "btn small"} href={href({}, false)} aria-current={all ? undefined : "true"}>Mine</a>
+          <a className={all ? "btn small" : "btn secondary small"} href={href({}, true)} aria-current={all ? "true" : undefined}>All in module</a>
         </nav>
         {view === "invalid" ? (
           <div className="action-card">
             <p>That filter isn&apos;t valid.</p>
-            <p><Link href={PATH}>Show my pipeline</Link></p>
+            <p><a href={PATH}>Show my pipeline</a></p>
           </div>
         ) : (
           <BdmPipelineBoard

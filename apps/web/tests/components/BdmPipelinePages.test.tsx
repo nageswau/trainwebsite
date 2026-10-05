@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import BdmPipelineBoard from "@/components/BdmPipelineBoard";
@@ -47,6 +48,15 @@ describe("bdm-004 BDM pipeline page", () => {
     expect(board(tree).props.selected).toBe("prospect");
   });
 
+  it("Mine / All are plain links that load the page and keep the selected stage (QA4-01, QA4-10)", async () => {
+    vi.mocked(serverApi).mockImplementation(async (p: string) => (p === "/api/v1/bdm/me" ? me : view()) as never);
+    const tree = elements(await BdmPipeline({ searchParams: sp({ stage: "contacted", offset: "50" }) }));
+    const mine = tree.find((el) => text(el) === "Mine" && el.props.href)!;
+    const all = tree.find((el) => text(el) === "All in module" && el.props.href)!;
+    expect([mine.type, all.type]).toEqual(["a", "a"]);
+    expect([mine.props.href, all.props.href]).toEqual(["/bdm/pipeline?stage=contacted", "/bdm/pipeline?scope=all&stage=contacted"]);
+  });
+
   it("an invalid stage in the address shows a reset link", async () => {
     vi.mocked(serverApi).mockImplementation(async (p: string) => {
       if (p === "/api/v1/bdm/me") return me as never;
@@ -54,7 +64,7 @@ describe("bdm-004 BDM pipeline page", () => {
     });
     const tree = elements(await BdmPipeline({ searchParams: sp({ stage: "<script>" }) }));
     expect(allText(tree)).toContain("That filter isn't valid");
-    expect(tree.some((el) => el.props.href === "/bdm/pipeline")).toBe(true);
+    expect(tree.find((el) => el.props.href === "/bdm/pipeline" && text(el) === "Show my pipeline")!.type).toBe("a");
   });
 });
 
@@ -118,6 +128,14 @@ describe("bdm-004 pipeline board", () => {
     expect(tiles.find((el) => el.props.href === "/x?stage=prospect")!.props["aria-current"]).toBe("true");
     expect(allText(tree)).toContain("Not tracked");
     expect(tree.some((el) => el.props.href === "/bdm/organizations/o1")).toBe(true);
+  });
+
+  it("filter links (tiles, Show all stages, pager) load the page; organization rows stay client links (QA4-01)", () => {
+    const tree = elements(BdmPipelineBoard({ view: view({ total: 120, offset: 50 }) as never, href: ({ stage, offset }) => `/x?stage=${stage}&offset=${offset}`, orgBasePath: "/o", selected: "prospect", emptyText: "" }));
+    const filters = tree.filter((el) => typeof el.props.href === "string" && el.props.href.startsWith("/x"));
+    expect(filters.map((el) => text(el))).toEqual(expect.arrayContaining(["College Prospect3", "Lost1", "Show all stages", "Previous", "Next"]));
+    expect(filters.every((el) => el.type === "a")).toBe(true);
+    expect(tree.find((el) => el.props.href === "/o/o1")!.type).toBe(Link);
   });
 
   it("says when a stage is empty", () => {

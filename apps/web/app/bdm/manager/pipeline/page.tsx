@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { accessDenied, accessUnavailable } from "@/components/AccessUnavailable";
 import BdmPipelineBoard from "@/components/BdmPipelineBoard";
 import PortalShell from "@/components/PortalShell";
@@ -100,7 +98,7 @@ export default async function ManagerPipelinePage({ searchParams }: { searchPara
         {view === "invalid" ? (
           <div className="action-card">
             <p>That filter isn&apos;t valid.</p>
-            <p><Link href={PATH}>Show the team pipeline</Link></p>
+            <p><a href={PATH}>Show the team pipeline</a></p>
           </div>
         ) : (
           <BdmPipelineBoard view={view} href={href} orgBasePath="/bdm/manager/organizations" selected={stage ?? null} emptyText="No organizations at this stage." />
