@@ -1,12 +1,13 @@
 import json
 import logging
 import re
+import time
 from collections.abc import Awaitable, Callable
 from datetime import UTC, date, datetime
 from typing import Literal
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,9 +44,20 @@ from app.models import (
     User,
     UserRoleAssignment,
 )
-from app.schemas import BatchCreate, SchoolCreate, SchoolOut, SchoolUpdate, SchoolUpdateOut, TierChangeOut
+from app.schemas import (
+    AgentNetworkApplicationPage,
+    AgentNetworkStudentPage,
+    AgentOrgDetailOut,
+    BatchCreate,
+    SchoolCreate,
+    SchoolOut,
+    SchoolUpdate,
+    SchoolUpdateOut,
+    TierChangeOut,
+)
 from app.services import bdm as bdm_rules
 from app.services.agent_applications import owned, with_owner
+from app.services.agent_network import APPLICATION_FILTERS, org_applications, org_counts, org_money, org_students
 from app.services.agent_orgs import ensure_agent_org, lock_org, org_masters, set_org_status, transition_org
 from app.services.provisioning import (
     IssuedWelcome,
@@ -1164,9 +1176,97 @@ async def list_agent_orgs(
     masters: dict = {}
     if orgs:
         for member, member_user in (await db.execute(org_masters(*(o.id for o in orgs)))).all():  # AGN-002: Masters only, never staff
-            masters.setdefault(member.org_id, []).append({"id": member.id, "code": member.code, "full_name": member_user.full_name, "email": member_user.email, "status": member.status})
-    items = [{"id": o.id, "name": o.name, "prefix": o.prefix, "status": o.status, "created_at": o.created_at, "masters": masters.get(o.id, [])} for o in orgs]
+            masters.setdefault(member.org_id, []).append(_master_row(member, member_user))
+    counts = await org_counts(db, [o.id for o in orgs])  # AGN-022: additive keys only (DEC-SCOPE-064 N5)
+    items = [
+        {"id": o.id, "name": o.name, "prefix": o.prefix, "status": o.status, "created_at": o.created_at, "masters": masters.get(o.id, []), **_network_counts(counts[o.id])}
+        for o in orgs
+    ]
     return {"items": items, "total": total or 0, "limit": limit, "offset": offset}
+
+
+def _master_row(member: AgentOrgMember, member_user: User) -> dict:
+    return {"id": member.id, "code": member.code, "full_name": member_user.full_name, "email": member_user.email, "status": member.status}
+
+
+def _network_counts(c: dict) -> dict:
+    return {"staff_count": c["staff_count"], "counts": {"students": c["students"], "applications": c["applications"], "enrollments": c["enrollments"]}}
+
+
+# AGN-022 (DEC-SCOPE-064): the agent network -- read-only views of one organisation for Overseas Admin and Super Admin. The gate runs
+# before the lookup, so a non-admin never learns whether an id exists. Responses carry agency data, so they are never cached.
+NETWORK_CACHE = "private, no-store"
+
+
+async def _network_org(db: AsyncSession, org_id: UUID) -> AgentOrg:
+    org = await db.get(AgentOrg, org_id)
+    if org is None:
+        raise HTTPException(404, "Organisation not found")
+    return org
+
+
+@agents_router.get("/agent-orgs/{org_id}", response_model=AgentOrgDetailOut)
+async def get_agent_org(org_id: UUID, response: Response, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    _require_overseas_admin(user)
+    org = await _network_org(db, org_id)
+    counts = (await org_counts(db, [org.id]))[org.id]
+    masters = [_master_row(member, member_user) for member, member_user in (await db.execute(org_masters(org.id))).all()]
+    response.headers["Cache-Control"] = NETWORK_CACHE
+    return {
+        "id": org.id, "name": org.name, "prefix": org.prefix, "status": org.status, "created_at": org.created_at, "status_changed_at": org.status_changed_at,
+        "masters": masters, **_network_counts(counts), **await org_money(db, org.id), "as_of": datetime.now(UTC),
+    }
+
+
+async def _audit_network_read(db: AsyncSession, user: User, org_id: UUID, listing: str, metadata: dict, started: float) -> None:
+    """N2: one access record per drill-down page, committed before any data leaves -- if it cannot be written, the request fails
+    and nothing is returned (SEC-001, fail closed). A retry is a second read and writes a second row. No names in the row or log."""
+    db.add(AuditLog(user_id=user.id, action=f"agent_network.{listing}_read", entity_type="agent_org", entity_id=str(org_id), outcome="read", metadata_json=metadata))
+    await db.commit()
+    logger.info(
+        "agent_network.read",
+        extra={"extra_fields": {"actor_id": str(user.id), "role": user.role, "org_id": str(org_id), "list": listing, "returned": metadata["returned"], "duration_ms": round((time.perf_counter() - started) * 1000)}},
+    )
+
+
+@agents_router.get("/agent-orgs/{org_id}/students", response_model=AgentNetworkStudentPage)
+async def list_agent_org_students(
+    org_id: UUID,
+    response: Response,
+    status: Literal["active", "archived"] = "active",
+    limit: int = Query(25, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _require_overseas_admin(user)
+    started = time.perf_counter()
+    await _network_org(db, org_id)
+    items, total = await org_students(db, org_id, status=status, limit=limit, offset=offset)
+    await _audit_network_read(db, user, org_id, "students", {"status": status, "limit": limit, "offset": offset, "returned": len(items)}, started)
+    response.headers["Cache-Control"] = NETWORK_CACHE
+    return {"items": items, "total": total, "limit": limit, "offset": offset}
+
+
+@agents_router.get("/agent-orgs/{org_id}/applications", response_model=AgentNetworkApplicationPage)
+async def list_agent_org_applications(
+    org_id: UUID,
+    response: Response,
+    status: str | None = Query(None, max_length=40),
+    limit: int = Query(25, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _require_overseas_admin(user)
+    started = time.perf_counter()
+    if status is not None and status not in APPLICATION_FILTERS:
+        raise HTTPException(422, "Unknown application status")
+    await _network_org(db, org_id)
+    items, total = await org_applications(db, org_id, status=status, limit=limit, offset=offset)
+    await _audit_network_read(db, user, org_id, "applications", {"status": status, "limit": limit, "offset": offset, "returned": len(items)}, started)
+    response.headers["Cache-Control"] = NETWORK_CACHE
+    return {"items": items, "total": total, "limit": limit, "offset": offset}
 
 
 @agents_router.post("/agent-orgs/{org_id}/{action}")

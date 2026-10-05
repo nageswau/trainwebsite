@@ -1661,7 +1661,7 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 |---|---|---|---|
 | `SCR-AGT-001` | `/overseas/agent/register` | Agent | `AGT-001` |
 | `SCR-AGT-002` | `/overseas/admin/agents` | Overseas Admin | `AGT-001` |
-| `SCR-AGT-003` | `/overseas/agent (Dashboard: referred students)` | Agent | `AGT-002`, `AGN-018` (KPI board) |
+| `SCR-AGT-003` | `/overseas/agent (Dashboard: referred students)` | Agent | `AGT-002`, `AGN-018` (KPI board), `AGN-020` (Reports page) |
 | `SCR-AGT-004` | `/overseas/agent/commissions` | Agent | `AGT-003` |
 | `SCR-AGT-005` | `/overseas/agent/commissions/[id]/claim` | Agent | `AGT-004` |
 | `SCR-AGT-006` | `/overseas/admin/commissions` | Overseas Admin | `AGT-004` |
@@ -1796,6 +1796,19 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
   the applied range ("Preparing CSV…", "Report downloaded."). Staff never see the metric or the panel (their Reports page, when their
   Master switches it on, is unchanged). Evidence: AGN-014-AC04, AC09–AC11 (`test_agn_014_commission_reports.py`,
   `AgentCommissionReportPanel.test.tsx`, `WorkflowPanel.agentCommissionReport.test.tsx`, e2e `agn-014-commission-master.spec.ts`).
+- **AGN-020 update (2026-10-03, `DEC-SCOPE-067`) — agency Reports page (`/overseas/agent/reports`):** for agency members the page is
+  one **Reports** card (`AgentReportsPanel`) in place of the old summary table (Super Admin's view unchanged; staff without Reports still
+  get the server's refusal card). A horizontal tab strip — Master: Students · Applications · Universities · Countries · Intakes · Staff
+  performance · Enrollments · Commission; Staff with Reports: the first five and Enrollments — with Left/Right/Home/End moving and
+  opening tabs. Each report: an `h3`, a one-line "what is counted", a filter form (From / To, then Staff member (Master only) / Country /
+  University / Intake / Status where offered; Apply, Clear filters; To before From → inline error at To), the result line "N rows · As
+  of hh:mm" with **Download CSV** ("Up to 10,000 rows."), and a table region (row headers, right-aligned numbers, Total row in the
+  footer, labelled blocks on phones) with Previous / Next and "Showing a–b of N" on lists. States: first load skeleton + "Loading
+  report…"; refetch dims the current table; empty "No students yet." (per report) or "No records match these filters." + Clear
+  filters; expired session alert + "Sign in again"; refusals verbatim; field errors at their control; "Couldn't load this report." +
+  Try again. The view (report, dates, filters, page) is kept in the address. The Commission tab is the AGN-014 panel, unchanged.
+  Evidence: AGN-020-AC08 (`AgentReportsPanel.test.tsx`, `AgentReportFilters.test.tsx`, `AgentReportTable.test.tsx`,
+  `PortalPage.agentReports.test.tsx`; e2e `agn-020-reports.spec.ts`, written, not yet run).
 
 ### `SCR-AGT-006`
 - **Route:** `/overseas/admin/commissions`  
@@ -1919,6 +1932,26 @@ division-scoped list (unassigned tickets included, `STU-005-AC02`) with a resolv
 - **Visual-reference mapping:** None — not inspected; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.
 - **Acceptance evidence needed:** AGN-008-AC01–AC18 (`test_agn_008_*.py`, `test_agn_003_matrix.py`, `test_agn_021_activity.py`; `agentApplications.test.ts`, `AgentApplicationCreatePanel.test.tsx`, `AgentApplicationDetail.test.tsx`, `AgentApplicationsPanel.test.tsx`, `PortalShell.children.test.tsx`; e2e `agn-008-agent-applications.spec.ts`); browser validation pending. Added 2026-10-02: `test_agn_008_dashboard.py`, `test_agn_008_concurrency.py`, `safeNext.test.ts`, `LoginForm.next.test.tsx`, `AccessUnavailable.test.tsx`, `PortalPage.agentApplications.test.tsx`, `NavGroup.test.tsx`; browser QA pass 1 fixed, re-check pending.
 - **AGN-010 update (2026-10-02, `DEC-SCOPE-056`) — Offer block in the application detail.** Under the detail, an "Offer" heading: empty state "No offer recorded yet." with **Record offer**; a recorded offer shows the type in words, offer date, deadline, conditions (line breaks kept) and the offer letter (name, status, Download via the AGN-009 route, else "Not attached") with **Edit offer**; no buttons when read-only. The form: a radio group Conditional/Unconditional, offer date (`max` today), deadline (`min` the offer date), a conditions textarea only for conditional (required, ≤ 2000, hint by `aria-describedby`), an offer-letter select from the application's "Offer letter" documents with an empty-state link to Documents; "Saving…", a 422 keeps the input and focuses the notice, success "Offer saved". One form of the detail is open at a time. The Documents upload form offers "Offer letter" and then requires the application. Evidence: AGN-010-AC01–AC09 (`test_agn_010_*.py`; `AgentApplicationOffer.test.tsx`, `AgentDocumentTypes.offer.test.tsx`; e2e `agn-010-offer-details.spec.ts`, not yet run); browser validation pending.
+
+
+### `SCR-AGT-011`
+- **ID note:** next free on `main` @ `3bde879`; still free after merging `main` @ `39c119b` (AGN-022 added no agency screen ID).
+- **Route:** `/overseas/agent/performance` — "Staff performance" title, date filter, Funnel, By staff member *(net-new, added 2026-10-03, `AGN-019`)*
+- **Role(s):** Agent — an agency Master of an active agency. Staff (and any other role the portal admits) see "Staff performance is available to agency Masters." with no request; the API refuses them (`403`).
+- **Purpose:** Per-staff Students / Applications / Offers / Visa applications / Visa approvals / Enrollments and the student funnel Students → Applications → Submitted → Offers → Visa → Enrolled, for students added in a chosen period (`DEC-SCOPE-066`).
+- **Linked Feature ID(s):** `AGN-019` (builds on `AGN-018`)
+- **Entry points:** Agent portal navigation "Staff Performance" (Masters only, after Reports); the dashboard staff table's "View staff performance" link.
+- **Required data:** `GET /workflows/overseas/agent/crm/performance?date_from=&date_to=` — rows (code, name, active, six counts, funnel), `unassigned`, `total`, `as_of`.
+- **Key actions:** From / To dates + Apply (Enter submits; the range is kept in the address); "Show funnel for" select (agency total, each staff member, Unassigned) — no request.
+- **Empty state:** "Your agency has no students yet." / "No students were added in this period." in place of the funnel; the staff table still lists active staff with zeros.
+- **Loading state:** "Loading staff performance…" (`role="status"`, card `aria-busy`); later loads keep the figures with "Updating staff performance…".
+- **Error state:** `role="alert"`: 401 "Your session has expired." + Sign in again; 403 the server's message; 5xx/unreadable "Couldn't load staff performance." + Try again; offline text + Try again; 422 and To-before-From on the named field (`aria-invalid`, focus moved).
+- **Permissions/resource scope:** Own agency only; Master only; counts follow each student's current owner.
+- **Responsive behavior:** Form wraps; inputs and select full width and 44 px targets below 640 px; the staff table stacks into labelled rows; funnel rows are text with a bar below; no horizontal scroll at 320 px (E2E, browser validation pending).
+- **Accessibility requirements:** One `h2`, `h3` Funnel / By staff member; labelled inputs and select; the funnel is an ordered list whose text carries every number and share (bars `aria-hidden`); "Deactivated" as text; the table's focusable scroll region is named by its heading.
+- **Desktop/tablet/mobile behavior:** Same order at every width: filter, as-of line, funnel, table.
+- **Visual-reference mapping:** None — not inspected; see `docs/ux/UX_REFERENCE_GAPS.md` Gap 2. Do not claim parity.
+- **Acceptance evidence needed:** AGN-019-AC9/AC10 (`AgentPerformancePanel.test.tsx`, `AgentPerformanceSection.test.tsx`, `agentPerformance.test.ts`, `navigation.agent.test.ts`; `agn-019-performance.spec.ts`); browser validation pending.
 
 
 ## CNS

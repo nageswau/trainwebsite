@@ -2,6 +2,7 @@
 
 **Build under test:** `feature/bdm-006-appointments` @ `c3b5413a` (bdm-010 merged; migration `0069_bdm_appointments`, `DEC-SCOPE-064`).
 **Environment:** isolated stack `docker compose -p bdm006` — web `http://localhost:3006`, API `:8006`, DB at `0069_bdm_appointments (head)`, seeded.
+**ID note (merge of `main` @ `e376c25c`, 2026-10-05):** this pass ran on the build numbered `DEC-SCOPE-064` / `0069_bdm_appointments`; after bdm-003 (`0069_bdm_org_profiles`) and AGN-019 / AGN-020 / AGN-022 merged first, bdm-006 is `DEC-SCOPE-068` with migration `0070_bdm_appointments`. The findings are unchanged.
 **Browsers:** Browser Use against an **isolated Microsoft Edge 154** (own profile, CDP port 9340 — Chrome was in use by another session); Playwright (Python, isolated headless Chromium) for scripted checks with route interception and CDP network throttling; the repo's Playwright e2e specs in the `web-test` container.
 **Accounts:** throwaway, created through the real admin API — College BDM (owner), College peer BDM (no organizations), School BDM, BDM manager (team), other BDM manager (empty team), super_admin; one archived organization.
 **Scope rule for this pass:** observe and report only — nothing was fixed.

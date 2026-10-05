@@ -1,6 +1,6 @@
 # bdm-006 Appointments — Implementation Plan
 
-> **Renumbered 2026-10-03 on merging `main`:** bdm-010 (`DEC-SCOPE-063`, `0068_bdm_trips`) merged first, so bdm-006 is now `DEC-SCOPE-064` and its migration is `0069_bdm_appointments` (`down_revision = "0068_bdm_trips"`). The task text below is the execution record and keeps the original `DEC-SCOPE-063` / `0068_bdm_appointments` numbers.
+> **Renumbered 2026-10-03 on merging `main`:** bdm-010 (`DEC-SCOPE-063`, `0068_bdm_trips`) merged first, so bdm-006 is now `DEC-SCOPE-064` and its migration is `0069_bdm_appointments` (`down_revision = "0068_bdm_trips"`). Renumbered again on merging `main` @ `e376c25c` (2026-10-05): bdm-003's `0069_bdm_org_profiles` and AGN-022 / bdm-003 / AGN-019 / AGN-020 (`DEC-SCOPE-064`…`067`) reached `main` first, so bdm-006 is now **`DEC-SCOPE-068`** with migration **`0070_bdm_appointments`** after `0069_bdm_org_profiles` (`down_revision = "0069_bdm_org_profiles"`). The task text below is the execution record and keeps the original `DEC-SCOPE-063` / `0068_bdm_appointments` numbers.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

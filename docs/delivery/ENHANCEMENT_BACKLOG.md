@@ -96,6 +96,13 @@ migration is `0067_audit_entity_index`). See §AGN-015.
 §4, §6) is decided as `DEC-SCOPE-062` (G1–G6, owner in-session; drafted as `060`, renumbered on merging `main` @ `c5cdc8a`, where `060`
 is bdm-002, and @ `09bd5e7`, where `061` is AGN-015). See §AGN-018.
 
+**Revision 17 (2026-10-03):** backlog item ang-019 (per-staff counts and the student funnel, `EVID-015` §8) is decided as
+`DEC-SCOPE-066` (P1–P8, owner in-session; drafted as `063`; renumbered `065` on merging `main` @ `39c119b`, where `063` is bdm-010 and `064` is AGN-022, and `066` on merging `main` @ `cf356ca`, where `065` is bdm-003). See §AGN-019.
+
+**Revision 18 (2026-10-03):** backlog item ang-020 (`EVID-015` §2 Reports, §6 "Reports ✅ Full / ❌/Limited") is decided as
+`DEC-SCOPE-067` (R1–R10, owner in-session; drafted as `063`, renumbered `066` on merging `main` @ `cf356ca` (bdm-010, AGN-022, bdm-003)
+and `067` on merging `main` @ `e0747e7`, where `066` is AGN-019). See §AGN-020.
+
 ## 0. Scope and exclusions (read this before the backlog)
 
 **In scope — School CRM only.** `functionalities/edusphere_markdown/School CRM.md` is byte-identical
@@ -188,7 +195,9 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | AGN-010 | Agent offer details — conditional/unconditional, offer date, deadline, conditions, offer letter on an agency application; agent "Offers" count (Rev. 13) | Medium | Medium | Yes | AGN-008, AGN-009, AGN-021 |
 | AGN-017 | Agency notifications (in-app + email) on assignment, document request/rejection, status change, new task; daily deadline reminders and overdue digest; Notifications page + unread badge (Rev. 14) | Medium | Medium | Yes | AGN-004, AGN-008, AGN-009, AGN-013, AGN-016, ENH-014 |
 | AGN-015 | Agent student journey — nine-step tracker (student steps once, application steps per application) and complete history (every event once, newest first, with its actor) on the student detail (Rev. 15) | Medium | Low | Yes | AGN-004, AGN-006–AGN-013, AGN-016, AGN-021 |
+| AGN-020 | Agency reports — Students, Applications, Enrollments lists; University, Country, Intake, Staff performance summaries; the AGN-014 commission report as a tab; filters; audited, throttled CSV (Rev. 17) | Medium | Medium | No | AGN-003, AGN-004, AGN-008, AGN-013, AGN-014, AGN-018 |
 | AGN-018 | Agency Master / Staff dashboards — typed KPI endpoint and board (students, pipeline, documents, Master commission), breakdowns, Master staff table; Staff sidebar (My Students All / Add, All applications, Tasks & Follow-ups) (Rev. 15) | Medium | Medium | No | AGN-004, AGN-005, AGN-008 … AGN-014, AGN-016 |
+| AGN-019 | Agency staff performance and student funnel — Master-only page: per-staff Students / Applications / Offers / Visa applications / Visa approvals / Enrollments and a Students → Applications → Submitted → Offers → Visa → Enrolled funnel by furthest stage reached, for a student-creation date range (Rev. 17) | Medium | Medium | No | AGN-018 |
 
 ---
 
@@ -3763,6 +3772,70 @@ history; a reason required when an agent rejects or asks for changes; Pending / 
 **Status (2026-10-02): IMPLEMENTED, NOT COMPLETE** on `feature/agn-009-agent-documents`. Lite test sets pass (see `RTM.md` AGN-009 row).
 Pending, owner-side: browser validation, the independent Codex review, the full backend/web/E2E suites, the merge.
 
+## AGN-022 — Overseas Admin Agent Network Oversight
+
+**Status (2026-10-03): COMPLETE for the AGN-022 scope (verified on lite evidence)** on `feature/agn-022-agent-network`: lite
+backend and web tests, `tsc`, eslint, `next build`, Playwright (`agn-022-agent-network` 4/4 + neighbour specs) and Browser Use
+(pass 1 + fix pass, `docs/quality/AGN-022_BROWSER_QA_2026-10-03.md`; QA22-01…04/07…10 fixed, QA22-05/06/11 Low and open). Codex review
+waived by the owner. **Still to run: the owner's full suites.**
+
+**Business requirement.** "Edusphere's central admin can see the overall agent network and student/application data according to
+the permissions you define" (`EVID-015` "Best approach" / §9; backlog ang-022, `DERIVED_BLUEPRINT`). Owner acceptance: counts match
+fixtures; suspend blocks the org immediately (ang-001 AC4); non-admin → 403. Decision: `DEC-SCOPE-064` (N1–N6).
+
+**Delivered.** `GET /overseas-admin/agent-orgs` gains `staff_count` and `counts` (additive); new `GET /agent-orgs/{id}` (counts,
+commission per currency, deposits, Masters), `/{id}/students` and `/{id}/applications` (read-only, no contact fields, each page an
+audited fail-closed read); suspend / reinstate reuses the AGN-001 action. Web: "Agent network" list and agency detail pages
+(Overseas Admin acts, Super Admin reads). No migration, no new dependency. Spec
+`docs/superpowers/specs/2026-10-03-agn-022-agent-network-design.md`; plan `docs/superpowers/plans/2026-10-03-agn-022-agent-network.md`.
+
+**Out of scope.** Approve/reject on the network page; per-student record pages; admin edits; offers/visa on the list; money on the
+list; CSV export; a `SUPER_ADMIN_NAV` entry; caching; ang-019/020.
+
+## AGN-019 — Agency Staff Performance and Student Funnel
+
+**Title.** Give the agency Master per-staff performance figures and a student funnel, for students added in a chosen period.
+
+**Business requirement.** Backlog item ang-019 (`AGENT_CRM_BACKLOG.md`, `DERIVED_BLUEPRINT`; `EVID-015` §8): per-staff Students,
+Applications, Offers, Visa Applications, Visa Approvals, Enrollments, and the funnel Students → Applications → Submitted → Offers →
+Visa → Enrolled. Owner acceptance: funnel stages are monotonic non-increasing for a fixture; a reassigned student counts for the current
+owner (or the owner at the time: spec decision). Decision record: `DEC-SCOPE-066` (P1–P8, `EXPLICIT_APPROVAL` in-session 2026-10-03;
+drafted as `063`; renumbered `065` on merging `main` @ `39c119b` and `066` on merging `main` @ `cf356ca`, where `063` is bdm-010, `064` AGN-022 and `065` bdm-003).
+
+**Existing behavior.** AGN-018's dashboard has an all-time, Master-only staff table (Students / Applications / Offers / Enrollments) and
+no funnel, no visa columns and no filters.
+
+**Expected behavior.** A new read-only `GET /api/v1/workflows/overseas/agent/crm/performance?date_from=&date_to=` (`API_CONTRACT.md`
+§8 AGN-019) and a Master-only "Staff Performance" page (`/overseas/agent/performance`, linked from the sidebar and the dashboard's staff
+table). Counts follow the student's current owner (P1). The range selects students by the UTC day their agency record was created (P4).
+The funnel counts each student at every stage up to the furthest one any of their applications reached (P3), archived students and
+withdrawn applications included (P5); the table keeps AGN-018's column definitions, so with no dates it equals the dashboard's staff
+table (pinned by a parity test). Rows: every active staff member; a deactivated one while they have counts; "Unassigned" when non-zero;
+a total of both. No branch filter (P2: no branch data exists). Spec:
+`docs/superpowers/specs/2026-10-03-agn-019-staff-performance-funnel-design.md`; plan
+`docs/superpowers/plans/2026-10-03-agn-019-staff-performance-funnel.md`.
+
+**Roles.** Agency Master only. Staff are refused (`403`, with or without the reports toggle) and have no nav item; opening the address
+shows a Masters-only note without a request. Super Admin and other roles are refused (`403`).
+
+**Out of scope.** Branch filter (P2, `RAID.md`); owner-at-the-time attribution (P1); CSV export and the eight reports (ang-020);
+caching; changes to `AgentDashboardOut`, `services/portal.py` (beyond a header-only `performance` section, the page gate), models or migrations.
+
+**Acceptance criteria.** Spec §7 AC1–AC11; mapped to tests in `RTM.md` AGN-019.
+
+**Regression risks.** Spec §9: `owner_join()` extracted from AGN-018's `staff_rows` (AGN-018 suites unchanged); the AGN-014 date checks
+moved into a shared `report_range()` (AGN-014 tests unchanged); AGN-018's table helpers moved to `components/AgentTableRegion.tsx`
+(dashboard markup unchanged); the agency nav gains one Master-only item; the dashboard staff table gains a link.
+
+**Complexity:** Medium. **Risk:** Medium. **Migration:** none.
+
+**Status (2026-10-03): implemented, lite-tested — NOT complete.** On `feature/agn-019-staff-funnel`. Lite runs only (owner's
+instruction): AGN-019 backend files + `test_agn_018_dashboard.py`/`offer_parity`/`portal_compat` + `test_agn_003_matrix.py` +
+`test_agn_014_commission_reports.py`; the new and touched web tests; `tsc --noEmit`, eslint and ruff on changed files. Seeded timing:
+2,000 students / 4,000 applications / 20 staff → median 48 ms (`RAID.md` R-14). Browser Use QA
+(`docs/quality/AGN-019_BROWSER_QA_2026-10-03.md`): QA19-01 and QA19-03 fixed and re-verified, QA19-02/04–07 Low and open; Playwright
+`agn-019-performance.spec.ts` passes. **Pending:** the owner's decision on the Low findings, the owner's full suites, Codex review.
+
 ## AGN-018 — Agency Master / Staff Dashboards and Role-Specific Navigation
 
 **Title.** Give the agency Master a whole-agency KPI board and each staff member the same board limited to their assigned students,
@@ -3808,6 +3881,35 @@ full vitest 1986/1986, `tsc --noEmit` 0, `eslint .` 0 errors (30 pre-existing wa
 compiled; Playwright `agn-018-dashboard.spec.ts` 2/2 and the related agency specs (agn-002/003/008/010/014/016/017) 15/15; Browser Use
 QA pass 1 (7 findings QA18-01…07, all fixed test-first) and pass 2 (all PASS) — `docs/quality/AGN-018_BROWSER_QA_2026-10-03.md`.
 Codex review waived by the owner (2026-10-03). **Not run here:** the non-agent backend test files (the owner runs the full suites).
+
+## AGN-020 — Agency Reports (7 new + Commission) and CSV Export
+
+**Business requirement.** The owner's `AGN-020` statement (in-session, 2026-10-03): "Student, Application, University, Country,
+Intake, Staff performance, Enrollment and Commission reports (§2); Staff reports '❌/Limited'." Evidence `EVID-015` (`DERIVED_BLUEPRINT`)
+names the reports only; content decided by `DEC-SCOPE-067` (R1–R10). Spec `docs/superpowers/specs/2026-10-03-agn-020-agency-reports-design.md`;
+plan `docs/superpowers/plans/2026-10-03-agn-020-agency-reports.md`.
+
+**Expected behavior.** `/overseas/agent/reports` shows agency members a tabbed Reports card. Lists: Students (default active), Applications
+(withdrawn included), Enrollments (by enrollment date). Summaries with a Total row: by university, by country, by intake (parsed month +
+year; "Unstructured" last), Staff performance (Master only: per member + Unassigned). Commission: the AGN-014 panel, unchanged. Filters
+per report (dates as inclusive UTC days; Staff member for Masters; country / university by slug; intake; status). CSV of the applied
+filters (header = screen labels, BOM, formula-escaped, ≤ 10,000 rows, one `agent_report.export` audit row, 30 per user per 10 minutes).
+Staff with Reports see six reports of their own students; without it, `403` everywhere.
+
+**Acceptance criteria.** AGN-020-AC1 … AC11 (`RTM.md`, spec §8).
+
+**Delivery (2026-10-03).** No migration, no dependency. New `api/agent_reports.py`, `services/agent_reports.py`, `AgentReportOut`;
+`AgentReportsPanel`, `AgentReportFilters`, `AgentReportTable`, `lib/agentReports.ts`; `PortalPage` reports branch; `WorkflowPanel` no
+longer mounts the commission panel. Lite tests (owner instruction): `test_agn_020_reports.py`, `test_agn_020_reports_access.py`,
+`test_agn_020_reports_csv.py` (122 together) and `test_agn_014_commission_reports.py` (40) pass on an isolated database; vitest for the
+seven new / rewritten files plus PortalPage dashboard/applications and the commission panel pass; `tsc` and eslint clean.
+**Verification (2026-10-03, `feature/agn-020-reports`):** Browser Use QA pass 1 (QA20-01…06) and a fix pass, each fix test-first and
+re-checked in the browser — `docs/quality/AGN-020_BROWSER_QA_2026-10-03.md`; the date-zone sweep finding in `AgentReportsPanel` fixed
+(`LocalTime`). Backend: the AGN-020 files and every affected agency/report file (16 files) 377 passed; vitest 2157 passed — the two
+failures are outside AGN-020 (`dateZoneSweep` lists only `BdmOrganizationDetail.tsx:86` from bdm-002; `SchoolSkillEnrolments` failed once
+under full-suite load and passes alone 9/9); eslint 0 errors; `tsc` and `next build` pass; Playwright agn-020 / agn-014 / agn-003 /
+agn-018 6/6 on a stack built from the branch. Codex review waived by the owner (2026-10-03). **Not run here:** the full backend suite
+(the owner runs it).
 
 ## AGN-017 — Agency Notifications and Deadline Reminders
 
@@ -4270,6 +4372,7 @@ item, only for the progress-view question).
 | AGN-016 | `DEC-SCOPE-053` — task owner on reassignment, delete, due time and overdue, linkage, KPI and nav, edit rules, cap, retry | **Resolved 2026-10-02** (T1–T8, `EXPLICIT_APPROVAL` in-session) |
 | AGN-010 | `DEC-SCOPE-056` — one offer per application, deadline column, offer document, `offer_letter_url`, Offers count, conditions, concurrent saves | **Resolved 2026-10-02** (O1–O7, `EXPLICIT_APPROVAL` in-session) |
 | AGN-018 | `DEC-SCOPE-062` — agency-only scope, staff performance summary, KPI definitions, navigation, one offer rule, endpoint approach | **Resolved 2026-10-03** (G1–G6, `EXPLICIT_APPROVAL` in-session; number provisional) |
+| AGN-019 | `DEC-SCOPE-066` — owner on reassignment, branch filter, stage rule, date range, archived/withdrawn, rows, placement, approach | **Resolved 2026-10-03** (P1–P8, `EXPLICIT_APPROVAL` in-session; number provisional) |
 
 All items also individually require whatever their own BRD/PRD/AC delta needs per `APPROVAL_GATES.md`
 GATE-03–05 before GATE-09, even where no new Decision ID is needed, since none of this scope exists in

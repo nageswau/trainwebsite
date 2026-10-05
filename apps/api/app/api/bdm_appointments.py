@@ -1,4 +1,4 @@
-"""bdm-006 (DEC-SCOPE-064, spec §5.3): BDM appointments.
+"""bdm-006 (DEC-SCOPE-068, spec §5.3): BDM appointments.
 
 Every `{appt_id}` resolves through `services.bdm_appointments.load_scoped` (out of scope = 404); every write is one transaction --
 scope, row lock (organization before appointment), validation, change, event, audit, one commit here. Lists are

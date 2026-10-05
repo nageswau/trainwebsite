@@ -5,7 +5,7 @@ Every count is SQL over the existing scope helpers, so a Master counts the agenc
 
 from datetime import UTC, datetime
 
-from sqlalchemy import ColumnElement, and_, case, distinct, func, or_, select
+from sqlalchemy import ColumnElement, Select, and_, case, distinct, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rbac import agent_may, is_agent_staff
@@ -24,6 +24,12 @@ def offer_clause() -> ColumnElement[bool]:
     """O5 (DEC-SCOPE-056) in SQL -- `counts_as_offer`'s twin (a parity test pins them): the stage reached `offer` (legacy values
     included) or an offer is recorded, so an application withdrawn after its offer still counts."""
     return or_(OverseasApplication.status.in_(OFFER_COUNTED_STATUSES), OverseasApplication.offer_type.is_not(None))
+
+
+def owner_join() -> ColumnElement[bool]:
+    """An application belongs to an agency student by the agency record, or by the student's login (AGN-008 A6). Shared by the
+    AGN-018 staff table and AGN-019 performance, so both attribute an application to the same student."""
+    return or_(OverseasApplication.agent_student_id == AgentStudent.id, and_(AgentStudent.student_id.is_not(None), OverseasApplication.student_id == AgentStudent.student_id))
 
 
 def agency_applications(user) -> list[ColumnElement]:
@@ -92,7 +98,7 @@ async def staff_rows(db: AsyncSession, user: User) -> tuple[list[dict], int]:
     per_member = (
         select(AgentStudent.assigned_member_id, distinct_apps(OverseasApplication.status != WITHDRAWN), distinct_apps(offer_clause()), distinct_apps(OverseasApplication.status == "enrolled"))
         .select_from(OverseasApplication)
-        .join(AgentStudent, or_(OverseasApplication.agent_student_id == AgentStudent.id, and_(AgentStudent.student_id.is_not(None), OverseasApplication.student_id == AgentStudent.student_id)))
+        .join(AgentStudent, owner_join())
         .where(*agency_applications(user), AgentStudent.agent_id.in_(agency), AgentStudent.assigned_member_id.is_not(None))
         .group_by(AgentStudent.assigned_member_id)
     )
@@ -115,10 +121,16 @@ async def staff_rows(db: AsyncSession, user: User) -> tuple[list[dict], int]:
 
 async def commission_summary(db: AsyncSession, user: User) -> dict:
     """Master only (DEC-SCOPE-040 S1): the portal's three commission figures, per currency and never summed across currencies."""
+    return await commission_totals(db, org_member_ids(user))
+
+
+async def commission_totals(db: AsyncSession, member_ids: Select) -> dict:
+    """The three commission figures for the agents in `member_ids` -- the caller's agency (above) or, for Overseas Admin, any one
+    organisation (AGN-022), so the two screens share one definition."""
     figure = case((AgentCommission.status.in_(CLAIMABLE), "claimable"), (AgentCommission.status == "paid", "revenue"), (AgentCommission.status == "claimed", "claims"))
     stmt = (
         select(figure, AgentCommission.currency, func.count(), func.sum(AgentCommission.amount))
-        .where(AgentCommission.agent_id.in_(org_member_ids(user)), figure.is_not(None))
+        .where(AgentCommission.agent_id.in_(member_ids), figure.is_not(None))
         .group_by(figure, AgentCommission.currency)
         .order_by(AgentCommission.currency)
     )

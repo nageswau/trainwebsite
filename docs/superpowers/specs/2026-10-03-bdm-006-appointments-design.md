@@ -59,9 +59,9 @@ Design defaults (approved with the design, not separately asked):
 - **Location, purpose, remarks** are optional (online meetings have no location; the source marks nothing mandatory beyond the
   organization, contact, date/time and type).
 
-## 4. Data model — migration `0069_bdm_appointments` (additive only)
+## 4. Data model — migration `0070_bdm_appointments` (additive only)
 
-> **Renumbered 2026-10-03 on merging `main`:** bdm-010 (`DEC-SCOPE-063`, `0068_bdm_trips`) merged first, so bdm-006 is `DEC-SCOPE-064` with migration `0069_bdm_appointments` after `0068_bdm_trips` (per the §10 rule below).
+> **Renumbered 2026-10-03 on merging `main`:** bdm-010 (`DEC-SCOPE-063`, `0068_bdm_trips`) merged first, so bdm-006 is `DEC-SCOPE-064` with migration `0069_bdm_appointments` after `0068_bdm_trips` (per the §10 rule below). Renumbered again on merging `main` @ `e376c25c` (2026-10-05): bdm-003's `0069_bdm_org_profiles` and AGN-022 / bdm-003 / AGN-019 / AGN-020 (`DEC-SCOPE-064`…`067`) reached `main` first, so bdm-006 is now **`DEC-SCOPE-068`** with migration **`0070_bdm_appointments`** after `0069_bdm_org_profiles`.
 
 ### 4.1 Catalogues (`models.py`, after `BDM_CONTACT_ROLES`)
 
