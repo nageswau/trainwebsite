@@ -2,10 +2,10 @@
 import { type FormEvent, useEffect, useId, useState } from "react";
 
 import BdmConfirm from "@/components/BdmConfirm";
+import LocalTime from "@/components/LocalTime";
 import { sendJson } from "@/lib/apiErrors";
 import { isLead, type Lead, NOTE_MAX, orgLeadsUrl, possibleDuplicate, type PossibleDuplicate } from "@/lib/bdmLeads";
 import { fieldErrors } from "@/lib/bdmTravel";
-import { formatDate } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 import { useLeaveGuard } from "@/lib/useLeaveGuard";
 
@@ -104,7 +104,9 @@ export default function BdmLeadForm({ organizationId, onSaved, onCancel }: { org
         <BdmConfirm label="Possible duplicate" className="action-card" confirmText="Save anyway" busyText="Saving…" cancelText="Go back" busy={busy}
           onConfirm={() => void save(true)} onCancel={() => { setDuplicate(null); focus(fieldId("email")); }}>
           {duplicate.message}:{" "}
-          {duplicate.matches.map((m) => `${m.name} (added ${formatDate(m.created_at)})`).join(", ")}
+          {duplicate.matches.map((m, i) => (
+            <span key={m.id}>{i > 0 && ", "}{m.name} (added <LocalTime value={m.created_at} />)</span>
+          ))}
           {duplicate.total > duplicate.matches.length ? ` and ${duplicate.total - duplicate.matches.length} more` : ""}.
         </BdmConfirm>
       )}

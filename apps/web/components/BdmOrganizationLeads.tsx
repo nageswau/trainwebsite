@@ -2,10 +2,10 @@
 import { useRef, useState } from "react";
 
 import BdmLeadForm from "@/components/BdmLeadForm";
+import LocalTime from "@/components/LocalTime";
 import { isPage, type Page } from "@/lib/apiErrors";
 import { appendUnique } from "@/lib/bdmActivities";
 import { type Lead, orgLeadsPageUrl } from "@/lib/bdmLeads";
-import { formatDate } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 const STATUS_LABEL: Record<string, string> = { new: "New", contacted: "Contacted", qualified: "Qualified", converted: "Converted", lost: "Lost" };
@@ -90,7 +90,7 @@ export default function BdmOrganizationLeads({
                     {lead.converted && <div><span className="badge">Converted to a student</span></div>}
                   </td>
                   <td>{lead.bdm.full_name}</td>
-                  <td>{formatDate(lead.created_at)}</td>
+                  <td><LocalTime value={lead.created_at} /></td>
                 </tr>
               ))}
             </tbody>
