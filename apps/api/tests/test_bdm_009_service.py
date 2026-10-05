@@ -135,3 +135,20 @@ async def test_day_counts_accept_organization_scope_filters(client, db_session):
     assert counts["by_channel"]["email"] == 1
     assert counts["calls_made"] == 1
     assert counts["organizations_contacted"] == 1
+
+
+@pytest.mark.asyncio
+async def test_day_page_total_is_the_sum_of_the_counts_on_a_page_shorter_than_the_day(client, db_session):
+    _, bdm, org = await bdm_with_org(client, db_session)
+    org_id = uuid.UUID(org["id"])
+    day = date(2026, 9, 20)
+    start, _ = svc.day_range(day)
+    for hour, channel, direction in ((1, "call", "outbound"), (2, "email", "inbound"), (3, "visit", None), (4, "visit", None), (5, "other", None)):
+        await add_activity(db_session, bdm.id, org_id, start + timedelta(hours=hour), channel, direction)
+    await add_activity(db_session, bdm.id, org_id, start - timedelta(hours=1))  # the day before: in neither the total nor the counts
+    result = await svc.day_page(db_session, [BdmActivity.bdm_user_id == bdm.id], day, 2, 0, bdm, NOW)
+    assert len(result["items"]) == 2  # fewer rows than the day holds
+    assert result["total"] == sum(result["counts"]["by_channel"].values()) == 5
+    assert (result["limit"], result["offset"]) == (2, 0)
+    # the optimisation changes nothing: the counting path agrees
+    assert result["total"] == (await svc.page(db_session, [BdmActivity.bdm_user_id == bdm.id, *svc.day_filters(day)], 2, 0, bdm, NOW))["total"]

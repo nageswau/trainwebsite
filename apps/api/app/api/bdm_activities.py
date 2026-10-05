@@ -18,6 +18,7 @@ from app.schemas import BdmActivityChannel, BdmActivityCreate, BdmActivityDayPag
 from app.services import bdm_activities as svc
 from app.services import bdm_organizations as org_svc
 from app.services.bdm import bdm_context, require_manager, team_filter
+from app.services.bdm_appointments import db_now
 
 router = APIRouter(prefix="/bdm", tags=["bdm-activities"])
 DAY = Query(None, alias="date", description="IST calendar date, YYYY-MM-DD; default today")
@@ -35,11 +36,10 @@ def _day(day: date | None, now) -> date:
 async def my_activities(day: date | None = DAY, channel: BdmActivityChannel | None = None, organization_id: UUID | None = None,
                         limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     await bdm_context(db, user)
-    now = await svc.db_now(db)
+    now = await db_now(db)
     chosen = _day(day, now)
     filters = [BdmActivity.bdm_user_id == user.id, *svc.optional_filters(channel, organization_id)]
-    listed = await svc.page(db, [*filters, *svc.day_filters(chosen)], limit, offset, user, now)
-    return {**listed, "counts": await svc.day_counts(db, filters, chosen)}
+    return await svc.day_page(db, filters, chosen, limit, offset, user, now)
 
 
 @router.post("/activities", status_code=201, response_model=BdmActivityOut)
@@ -51,7 +51,7 @@ async def log_activity(payload: BdmActivityCreate, user: User = Depends(get_curr
     if org.archived_at is not None:
         raise HTTPException(422, svc.ARCHIVED)
     contact = await svc.contact_for(db, org.id, payload.contact_id) if payload.contact_id else None
-    now = await svc.db_now(db)
+    now = await db_now(db)
     occurred_at = svc.check_time(payload.occurred_at, now)  # V9: clamped to now when slightly ahead
     await svc.check_daily_cap(db, user.id, svc.india_date(occurred_at))
     activity = BdmActivity(
@@ -74,7 +74,7 @@ async def _owned(db: AsyncSession, user: User, activity_id: UUID, route: str):
         raise svc.refused(user, route, 403, svc.OWNER_ONLY, activity_id=activity_id)
     org = await org_svc.load_scoped(db, user, current.organization_id, lock=True)
     activity = await svc.load_readable(db, user, activity_id, lock=True)  # a concurrent delete -> 404 here
-    now = await svc.db_now(db)
+    now = await db_now(db)
     if not svc.editable(activity, now):
         raise HTTPException(409, svc.NOT_TODAY)
     return org, activity, now
@@ -124,7 +124,7 @@ async def organization_activities(org_id: UUID, limit: int = LIMIT, offset: int 
                                   db: AsyncSession = Depends(get_db)):
     """V5: every BDM's activities on the organization, for anyone who can read it (out of scope -> 404)."""
     org = await org_svc.load_scoped(db, user, org_id)
-    now = await svc.db_now(db)
+    now = await db_now(db)
     return await svc.page(db, [BdmActivity.organization_id == org.id], limit, offset, user, now)
 
 
@@ -133,10 +133,9 @@ async def team_activities(day: date | None = DAY, bdm_user_id: UUID | None = Non
                           limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Team scope (D4); `bdm_user_id` is ANDed with it, so it can only narrow."""
     require_manager(user)
-    now = await svc.db_now(db)
+    now = await db_now(db)
     chosen = _day(day, now)
     filters = [*team_filter(user), *svc.optional_filters(channel, None)]
     if bdm_user_id:
         filters.append(BdmActivity.bdm_user_id == bdm_user_id)
-    listed = await svc.page(db, [*filters, *svc.day_filters(chosen)], limit, offset, user, now)
-    return {**listed, "counts": await svc.day_counts(db, filters, chosen)}
+    return await svc.day_page(db, filters, chosen, limit, offset, user, now)

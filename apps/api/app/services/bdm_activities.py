@@ -15,8 +15,9 @@ from sqlalchemy.orm import aliased
 
 from app.models import BDM_ACTIVITY_CHANNELS, AuditLog, BdmActivity, BdmOrganization, BdmOrganizationContact, BdmProfile, User
 from app.schemas import activity_direction_error
+from app.services.bdm_appointments import IST  # bdm-006's IST zone and IST day
+from app.services.bdm_appointments import today_ist as india_date
 from app.services.bdm_organizations import caller_scope
-from app.services.bdm_travel import INDIA
 
 logger = logging.getLogger("app.bdm")
 
@@ -38,20 +39,9 @@ NEWEST = (BdmActivity.occurred_at.desc(), BdmActivity.id.desc())
 Logger = aliased(User)
 
 
-async def db_now(db: AsyncSession) -> datetime:
-    """The database clock, read once per request: every time rule compares against the same instant."""
-    now = await db.scalar(select(func.now()))
-    assert now is not None  # SELECT now() always returns one row
-    return now
-
-
-def india_date(moment: datetime) -> date:
-    return moment.astimezone(INDIA).date()
-
-
 def day_range(day: date) -> tuple[datetime, datetime]:
     """An IST calendar day as a half-open instant range (index-friendly; no cast on the column)."""
-    start = datetime.combine(day, time.min, tzinfo=INDIA)
+    start = datetime.combine(day, time.min, tzinfo=IST)
     return start, start + timedelta(days=1)
 
 
@@ -142,9 +132,11 @@ def _out(activity: BdmActivity, org: BdmOrganization, logger_name: str, user: Us
     }
 
 
-async def page(db: AsyncSession, filters: list, limit: int, offset: int, user: User, now: datetime) -> dict:
+async def page(db: AsyncSession, filters: list, limit: int, offset: int, user: User, now: datetime, total: int | None = None) -> dict:
+    """`total` skips the count query when the caller already knows it (see `day_page`)."""
     stmt = _rows(filters)
-    total = await db.scalar(select(func.count()).select_from(stmt.subquery()))
+    if total is None:
+        total = await db.scalar(select(func.count()).select_from(stmt.subquery()))
     result = (await db.execute(stmt.order_by(*NEWEST).limit(limit).offset(offset).execution_options(populate_existing=True))).tuples().all()
     return {"items": [_out(a, o, n, user, now) for a, o, n in result], "total": total or 0, "limit": limit, "offset": offset}
 
@@ -169,6 +161,14 @@ async def day_counts(db: AsyncSession, filters: list, day: date) -> dict:
     n = len(BDM_ACTIVITY_CHANNELS)
     return {"day": day, "by_channel": dict(zip(BDM_ACTIVITY_CHANNELS, row[:n], strict=True)), "calls_made": row[n],
             "organizations_contacted": row[n + 1]}
+
+
+async def day_page(db: AsyncSession, filters: list, day: date, limit: int, offset: int, user: User, now: datetime) -> dict:
+    """One IST day's page plus that day's counts. The list and the counts share filters, joins and day range, so the list's total is the
+    sum of the per-channel counts: the counts query runs once and no second count is needed."""
+    counts = await day_counts(db, filters, day)
+    listed = await page(db, [*filters, *day_filters(day)], limit, offset, user, now, total=sum(counts["by_channel"].values()))
+    return {**listed, "counts": counts}
 
 
 async def load_readable(db: AsyncSession, user: User, activity_id: UUID, *, lock: bool = False) -> BdmActivity:

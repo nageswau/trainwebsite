@@ -4021,13 +4021,6 @@ class BdmActivityOrganization(BaseModel):
     org_type: str
 
 
-class BdmActivityLogger(BaseModel):
-    """bdm-010's `PersonRef` shape (§12.1 A1)."""
-
-    id: UUID
-    full_name: str
-
-
 class BdmActivityPermissions(BaseModel):
     can_change: bool
 
@@ -4035,7 +4028,7 @@ class BdmActivityPermissions(BaseModel):
 class BdmActivityOut(BaseModel):
     id: UUID
     organization: BdmActivityOrganization
-    bdm: BdmActivityLogger
+    bdm: BdmPersonRef
     contact_id: UUID | None
     contact_name: str | None
     contact_removed: bool
