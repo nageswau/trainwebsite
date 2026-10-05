@@ -3,11 +3,11 @@ import { type FormEvent, useState } from "react";
 
 import { sendJson, sendRequest } from "@/lib/apiErrors";
 import { isOrganizationBody, type Organization, ORGS_URL } from "@/lib/bdmOrganizations";
-import { fieldErrors, isBackward, lostConflict, orgActionUrl, stageChanged, STATE_TEXT } from "@/lib/bdmPipeline";
+import { fieldErrors, isBackward, lostConflict, orgActionUrl, stageChanged, STATE_TEXT, type StepState } from "@/lib/bdmPipeline";
 import { formatDate } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
-const GLYPH: Record<string, string> = { done: "✓", current: "•", upcoming: "–", awaiting_handover: "…", not_tracked: "–" };
+const GLYPH: Record<StepState, string> = { done: "✓", current: "•", upcoming: "–", awaiting_handover: "…", not_tracked: "–" };
 
 // bdm-004 (spec §8.2): the stepper (state as text, never colour alone), the derived agent status, the Lost banner, and -- for the
 // assigned BDM or super_admin (permissions.can_edit) -- Move, Mark lost and Revive. The API enforces every rule; a refusal keeps the

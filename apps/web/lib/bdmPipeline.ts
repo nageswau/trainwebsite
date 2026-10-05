@@ -1,6 +1,5 @@
 import { detailMessage } from "@/lib/apiErrors";
-import type { BdmType } from "@/lib/bdm";
-import { PAGE_SIZE } from "@/lib/bdm";
+import { type BdmType, PAGE_SIZE } from "@/lib/bdm";
 import { ORGS_URL, type OrgPerson, type OrgType } from "@/lib/bdmOrganizations";
 
 // bdm-004 (DEC-SCOPE-070): the organization pipeline. The API owns the catalogue (labels, kinds, states come with every organization)
