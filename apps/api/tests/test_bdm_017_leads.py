@@ -111,6 +111,7 @@ async def test_a_broker_failure_after_commit_still_returns_201_and_keeps_the_lea
         raise ConnectionError("broker unavailable")
 
     monkeypatch.setattr(bdm_leads.sync_enquiry_to_crm_task, "delay", down)
+    logging.getLogger("app.bdm").disabled = False  # a migration test earlier in the run (alembic fileConfig) disables existing loggers
     _, _, org = await bdm_with_org(client, db_session)
     with caplog.at_level(logging.WARNING, logger="app.bdm"):
         created = await add_lead(client, org["id"])

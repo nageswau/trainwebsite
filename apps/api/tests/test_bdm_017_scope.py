@@ -26,6 +26,7 @@ async def test_unknown_org_is_404(client, db_session):
 
 @pytest.mark.asyncio
 async def test_same_type_bdm_who_is_not_assigned_gets_403_and_the_refusal_is_logged_without_pii(client, db_session, caplog):
+    logging.getLogger("app.bdm").disabled = False  # a migration test earlier in the run (alembic fileConfig) disables existing loggers
     manager, _, org = await bdm_with_org(client, db_session)
     await as_user(client, await make_bdm(db_session, manager, "college"))
     body = lead_body(name="Secret Student")

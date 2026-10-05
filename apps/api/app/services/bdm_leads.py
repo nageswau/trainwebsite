@@ -12,8 +12,9 @@ from uuid import UUID
 from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
-from app.models import AuditLog, Enquiry, User
+from app.models import AuditLog, BdmOrganization, Enquiry, User
 from app.services.bdm_activities import day_range, india_date
 
 logger = logging.getLogger("app.bdm")
@@ -91,3 +92,71 @@ def audit(db: AsyncSession, user: User, lead: Enquiry) -> None:
 
 def log(event: str, user: User, lead_id, **extra) -> None:
     logger.info(event, extra={"extra_fields": {"actor_id": str(user.id), "lead_id": str(lead_id), **extra}})
+
+
+# --- admin side (spec §5): the lead list's attribution and the explicit conversion link (L1, L2, L9) -------------------------------
+
+LEAD_NOT_FOUND = "Lead not found"
+WRONG_DIVISION = "Wrong division"  # update_lead's wording
+ALREADY_LINKED = "Unlink the current student first"
+NOT_LINKED = "This lead is not linked to a student"
+STUDENT_TAKEN = "This student is already linked to another lead"
+INVALID_STUDENT = "Enter the email of an active student account in this lead's division"
+Attributor = aliased(User)
+Converted = aliased(User)
+
+
+def admin_rows():
+    """Every lead with its organization, attributing BDM and linked student -- outer joins, so website rows come back with NULLs."""
+    return (
+        select(Enquiry, BdmOrganization.code, BdmOrganization.name, Attributor.full_name, Converted.full_name, Converted.email)
+        .outerjoin(BdmOrganization, BdmOrganization.id == Enquiry.bdm_organization_id)
+        .outerjoin(Attributor, Attributor.id == Enquiry.bdm_user_id)
+        .outerjoin(Converted, Converted.id == Enquiry.converted_user_id)
+    )
+
+
+def admin_out(row) -> dict:
+    """ADM-002's row (keys unchanged) plus the three bdm-017 objects, each null when absent."""
+    x, org_code, org_name, bdm_name, student_name, student_email = row
+    return {
+        "id": x.id, "name": x.name, "email": x.email, "phone": x.phone, "division": x.division, "subject": x.subject, "status": x.status,
+        "source": x.source, "crm_sync_status": x.crm_sync_status,
+        "organization": {"id": x.bdm_organization_id, "code": org_code, "name": org_name} if x.bdm_organization_id else None,
+        "bdm": {"id": x.bdm_user_id, "full_name": bdm_name} if x.bdm_user_id else None,
+        "converted_user": {"id": x.converted_user_id, "full_name": student_name, "email": student_email} if x.converted_user_id else None,
+    }
+
+
+async def admin_one(db: AsyncSession, lead_id: UUID) -> dict:
+    return admin_out((await db.execute(admin_rows().where(Enquiry.id == lead_id).execution_options(populate_existing=True))).one())
+
+
+async def locked_for_admin(db: AsyncSession, user: User, lead_id: UUID) -> Enquiry:
+    """The lead row locked FOR UPDATE: a second conversion of the same lead waits for this one. Division as update_lead (403)."""
+    lead = await db.scalar(select(Enquiry).where(Enquiry.id == lead_id).with_for_update().execution_options(populate_existing=True))
+    if lead is None:
+        raise HTTPException(404, LEAD_NOT_FOUND)
+    if user.role != "super_admin" and lead.division != user.division:
+        raise HTTPException(403, WRONG_DIVISION)
+    return lead
+
+
+async def locked_student(db: AsyncSession, lead: Enquiry, email: str) -> User:
+    """L2: an active `<division>_student` of the lead's division, FOR SHARE so a deactivation in the same instant waits for this commit.
+    One message for every invalid target, so the route can't be used to probe accounts."""
+    student = await db.scalar(select(User).where(func.lower(User.email) == email).with_for_update(read=True))
+    if student is None or not student.active or student.role != f"{lead.division}_student" or student.division != lead.division:
+        raise HTTPException(422, INVALID_STUDENT)
+    return student
+
+
+async def check_student_free(db: AsyncSession, student: User) -> None:
+    """L9 read check; `uq_enquiries_converted_user` is the backstop when two admins link one student at the same instant."""
+    if await db.scalar(select(Enquiry.id).where(Enquiry.converted_user_id == student.id).limit(1)):
+        raise HTTPException(409, STUDENT_TAKEN)
+
+
+def audit_conversion(db: AsyncSession, user: User, lead: Enquiry, action: str, student_id: UUID) -> None:
+    db.add(AuditLog(user_id=user.id, action=action, entity_type="enquiry", entity_id=str(lead.id),
+                    metadata_json={"converted_user_id": str(student_id)}))
