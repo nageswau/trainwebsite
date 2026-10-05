@@ -45,6 +45,7 @@ from app.models import (
     UserRoleAssignment,
 )
 from app.schemas import (
+    AdminLeadConversionIn,
     AgentNetworkApplicationPage,
     AgentNetworkStudentPage,
     AgentOrgDetailOut,
@@ -56,6 +57,7 @@ from app.schemas import (
     TierChangeOut,
 )
 from app.services import bdm as bdm_rules
+from app.services import bdm_leads as lead_rules
 from app.services.agent_applications import owned, with_owner
 from app.services.agent_network import APPLICATION_FILTERS, org_applications, org_counts, org_money, org_students
 from app.services.agent_orgs import ensure_agent_org, lock_org, org_masters, set_org_status, transition_org
@@ -380,19 +382,57 @@ async def system_status(user: User = Depends(ensure_admin)):
 
 
 @router.get("/leads")
-async def leads(division: str | None = None, status: str | None = None, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
-    stmt = select(Enquiry)
+async def leads(division: str | None = None, status: str | None = None, bdm_organization_id: UUID | None = None, user: User = Depends(ensure_admin),
+                db: AsyncSession = Depends(get_db)):
+    # bdm-017 (spec §5): rows also carry organization / bdm / converted_user (null for website leads); the organization filter is
+    # ANDed with the division scope, so it can only narrow.
+    stmt = lead_rules.admin_rows()
     if user.role != "super_admin":
         stmt = stmt.where(Enquiry.division == user.division)
     elif division:
         stmt = stmt.where(Enquiry.division == division)
     if status:
         stmt = stmt.where(Enquiry.status == status)
-    xs = (await db.scalars(stmt.order_by(Enquiry.created_at.desc()).limit(500))).all()
-    return [
-        {"id": x.id, "name": x.name, "email": x.email, "phone": x.phone, "division": x.division, "subject": x.subject, "status": x.status, "source": x.source, "crm_sync_status": x.crm_sync_status}
-        for x in xs
-    ]
+    if bdm_organization_id:
+        stmt = stmt.where(Enquiry.bdm_organization_id == bdm_organization_id)
+    rows = (await db.execute(stmt.order_by(Enquiry.created_at.desc()).limit(500))).all()
+    return [lead_rules.admin_out(row) for row in rows]
+
+
+@router.post("/leads/{lead_id}/conversion")
+async def convert_lead(lead_id: UUID, payload: AdminLeadConversionIn, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
+    """bdm-017 AC3 (L1, L2, L9): link a lead to exactly one student account, explicitly. Lead locked (404 / 403 / 409), student locked
+    (one 422), student free (409; the partial unique index is the backstop for two admins at once), status 'converted', audit, commit."""
+    lead = await lead_rules.locked_for_admin(db, user, lead_id)
+    if lead.converted_user_id is not None:
+        raise HTTPException(409, lead_rules.ALREADY_LINKED)
+    student = await lead_rules.locked_student(db, lead, payload.student_email)
+    await lead_rules.check_student_free(db, student)
+    now = await db.scalar(select(func.now()))  # read before any change: an autoflush must never see a half-set link (ck_enquiries_conversion)
+    lead.converted_user_id, lead.converted_at, lead.converted_by_user_id, lead.status = student.id, now, user.id, "converted"
+    lead_rules.audit_conversion(db, user, lead, "lead.convert", student.id)
+    actor_id = str(user.id)  # a rollback expires every loaded row, the caller included
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        logger.warning("lead_convert_conflict", extra={"extra_fields": {"actor_id": actor_id, "lead_id": str(lead_id)}})
+        raise HTTPException(409, lead_rules.STUDENT_TAKEN) from None
+    lead_rules.log("lead_converted", user, lead_id)
+    return await lead_rules.admin_one(db, lead_id)
+
+
+@router.delete("/leads/{lead_id}/conversion")
+async def unconvert_lead(lead_id: UUID, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
+    """bdm-017 (L2): undo a mistaken link. Status is left as it is -- it is the admin's label (L7)."""
+    lead = await lead_rules.locked_for_admin(db, user, lead_id)
+    if lead.converted_user_id is None:
+        raise HTTPException(409, lead_rules.NOT_LINKED)
+    lead_rules.audit_conversion(db, user, lead, "lead.unconvert", lead.converted_user_id)
+    lead.converted_user_id = lead.converted_at = lead.converted_by_user_id = None
+    await db.commit()
+    lead_rules.log("lead_unconverted", user, lead_id)
+    return await lead_rules.admin_one(db, lead_id)
 
 
 @router.patch("/leads/{lead_id}")

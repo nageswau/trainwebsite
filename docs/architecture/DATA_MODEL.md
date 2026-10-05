@@ -434,6 +434,15 @@ covers the commission-specific piece).
   (timeline). CHECK constraints, no PG enums. The day's counts are never stored (one grouped query, `day_counts`, joined to
   organizations like the lists so scope filters are safe). Appointment / task links are deferred to bdm-006 / bdm-008. Additive; no
   existing table or row changes; the downgrade refuses while activities exist.
+- **Addendum, 2026-10-05 (`bdm-017`, `DEC-SCOPE-072`; migration `0074_enquiry_bdm_attribution`, chained after `0073_bdm_pipeline`) —
+  student lead attribution.** `enquiries` gains five nullable columns: `bdm_organization_id` FK `bdm_organizations` `ON DELETE RESTRICT`
+  and `bdm_user_id` FK `users` `ON DELETE RESTRICT` (the attributing BDM), set together (`ck_enquiries_bdm_attribution`); and
+  `converted_user_id` FK `users` `ON DELETE RESTRICT`, `converted_at` timestamptz, `converted_by_user_id` FK `users` `ON DELETE RESTRICT`,
+  set together (`ck_enquiries_conversion`). Indexes: `ix_enquiries_bdm_org_created (bdm_organization_id, created_at)` (the organization's
+  lead list and exact count) and the partial unique `uq_enquiries_converted_user (converted_user_id) WHERE converted_user_id IS NOT NULL`
+  (one lead per student account, L9). A BDM lead is an ordinary enquiry row (`source='bdm'`, division from the BDM type, `subject` = the
+  student's interest, `message` = the note or "Lead entered by BDM at …"). Website and manual enquiries keep every new column NULL; no
+  existing column or row changes; the downgrade refuses while any row is attributed or converted.
 
 - **Addendum, 2026-10-05 (`bdm-004`, `DEC-SCOPE-071`; migration `0073_bdm_pipeline`, chained after `0072_bdm_meeting_reports`) —
   organization pipelines.** The catalogue lives in `app/bdm_stages.py` (14 steps per type, kinds manual / live / volume; the migration

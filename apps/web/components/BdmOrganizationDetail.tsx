@@ -6,12 +6,14 @@ import BdmActivityTimeline from "@/components/BdmActivityTimeline";
 import BdmConfirm from "@/components/BdmConfirm";
 import BdmOrganizationContacts from "@/components/BdmOrganizationContacts";
 import BdmOrganizationForm from "@/components/BdmOrganizationForm";
+import BdmOrganizationLeads from "@/components/BdmOrganizationLeads";
 import BdmOrganizationPipeline from "@/components/BdmOrganizationPipeline";
 import BdmOrganizationProfileDetails, { DetailList, multiline } from "@/components/BdmOrganizationProfileDetails";
 import BdmOrganizationReassign from "@/components/BdmOrganizationReassign";
 import BdmStageHistory from "@/components/BdmStageHistory";
 import { type Page, sendRequest } from "@/lib/apiErrors";
 import type { Activity } from "@/lib/bdmActivities";
+import type { Lead } from "@/lib/bdmLeads";
 import type { StageEvent } from "@/lib/bdmPipeline";
 import { display, isOrganizationBody, LINK_STYLE, meetingText, type Organization, ORG_TYPE_LABEL, ORGS_URL, safeWebsite } from "@/lib/bdmOrganizations";
 import { formatDate } from "@/lib/formatDate";
@@ -19,8 +21,9 @@ import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // bdm-002 (spec §6.2, §12.2): one organization. Actions render from `permissions` only -- the server enforces every rule (AC3-AC5).
 // Every write re-renders from the organization the API returns (no refetch). Last/Next meeting come from bdm-006 appointments ("—" when none).
-export default function BdmOrganizationDetail({ initial, basePath, created = false, activities, stageHistory }: {
-  initial: Organization; basePath: string; created?: boolean; activities?: Page<Activity> | null; stageHistory?: Page<StageEvent> | null;
+export default function BdmOrganizationDetail({ initial, basePath, created = false, activities, leads, stageHistory }: {
+  initial: Organization; basePath: string; created?: boolean; activities?: Page<Activity> | null; leads?: Page<Lead> | null;
+  stageHistory?: Page<StageEvent> | null;
 }) {
   const [org, setOrg] = useState(initial);
   const [historyVersion, setHistoryVersion] = useState(0); // bdm-004: bumped by each pipeline write, which reloads the stage history
@@ -45,6 +48,12 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
   const p = org.permissions;
   const showEditor = editing && p.can_edit; // a write that removes edit rights also closes the form (simplify review A9)
 
+  // The sections' notices (activity, leads) go to the profile's one live region (QA9-01); `focusStatus` when the used control is gone.
+  const notify = (text: string, focusStatus?: boolean) => {
+    setNotice(text);
+    setFailure(null);
+    if (focusStatus) focus(statusId);
+  };
   const changed = (next: Organization, text: string) => {
     setOrg(next);
     setNotice(text);
@@ -187,7 +196,10 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
       {stageHistory !== undefined && <BdmStageHistory orgId={org.id} initial={stageHistory} version={historyVersion} />}
       {activities !== undefined && ( // bdm-009: the BDM view logs (assigned and not archived = can_edit); the manager view reads
         <BdmActivityTimeline organization={org} initial={activities} canLog={basePath === "/bdm/organizations" && p.can_edit} orgBasePath={basePath}
-          onNotice={(text, focusStatus) => { setNotice(text); setFailure(null); if (focusStatus) focus(statusId); }} />
+          onNotice={notify} />
+      )}
+      {leads !== undefined && ( // bdm-017 (L6): the BDM view adds (assigned and not archived = can_edit); the manager view reads
+        <BdmOrganizationLeads organizationId={org.id} initial={leads} canAdd={basePath === "/bdm/organizations" && p.can_edit} onNotice={notify} />
       )}
       {p.can_reassign && (
         <BdmOrganizationReassign

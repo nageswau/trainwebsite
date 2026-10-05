@@ -6,6 +6,7 @@ import PortalShell from "@/components/PortalShell";
 import { ApiError, serverApi } from "@/lib/api";
 import { BDM_TYPE_LABEL, type BdmMe } from "@/lib/bdm";
 import { firstActivityPage } from "@/lib/bdmActivitiesServer";
+import { firstLeadPage } from "@/lib/bdmLeadsServer";
 import type { Organization } from "@/lib/bdmOrganizations";
 import { bdmNav } from "@/lib/bdmNav";
 import { firstStageHistory } from "@/lib/bdmPipelineServer";
@@ -23,6 +24,7 @@ export default async function BdmOrganizationPage({ params, searchParams }: { pa
     return accessUnavailable(e, BDM_SIGN_IN);
   }
   const timeline = firstActivityPage(id); // bdm-009: the activity section's first page, read alongside the organization
+  const leadPage = firstLeadPage(id); // bdm-017: the leads section's first page, likewise
   const stages = firstStageHistory(id); // bdm-004: the stage history's first page, read alongside the organization
   let organization: Organization | null = null;
   try {
@@ -30,13 +32,12 @@ export default async function BdmOrganizationPage({ params, searchParams }: { pa
   } catch (e) {
     if (!(e instanceof ApiError && (e.status === 404 || e.status === 422))) return accessUnavailable(e, BDM_SIGN_IN);
   }
-  const activities = organization ? await timeline : null;
-  const stageHistory = organization ? await stages : null;
+  const [activities, leads, stageHistory] = organization ? await Promise.all([timeline, leadPage, stages]) : [null, null, null];
   return (
     <PortalShell nav={await nav} roleLabel={`${BDM_TYPE_LABEL[me.bdm_profile.bdm_type]} BDM`} userName={me.full_name}>
       <div className="portal-content">
         {organization ? (
-          <BdmOrganizationDetail initial={organization} basePath="/bdm/organizations" created={created} activities={activities} stageHistory={stageHistory} />
+          <BdmOrganizationDetail initial={organization} basePath="/bdm/organizations" created={created} activities={activities} leads={leads} stageHistory={stageHistory} />
         ) : (
           <div className="action-card">
             <h2>Organization not found</h2>

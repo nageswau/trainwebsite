@@ -4233,3 +4233,71 @@ class BdmActivityDayCounts(BaseModel):
 
 class BdmActivityDayPage(BdmActivityPage):
     counts: BdmActivityDayCounts
+
+
+# bdm-017 (DEC-SCOPE-072, spec §4-§5): a student lead a BDM enters against an organization, and the admin's explicit conversion link.
+# The text rules are bdm-001's (no control characters, blank -> None) with bdm-002's email and phone shapes; the lengths are the
+# `enquiries` columns'. Source, division, status, attribution and conversion are server-owned: `extra="forbid"` answers 422.
+BDM_LEAD_LABELS = {"name": "Student name", "email": "Email", "student_email": "Email", "phone": "Phone", "interest": "Interest", "note": "Note"}
+
+
+def _bdm_lead_text(pattern: re.Pattern, required: bool):
+    def check(value: str | None, info: ValidationInfo) -> str | None:
+        label = BDM_LEAD_LABELS[info.field_name or ""]
+        if value is not None and pattern.search(value):
+            raise ValueError(f"{label} contains invalid characters")
+        if not value:
+            if required:
+                raise ValueError(f"{label} is required")
+            return None
+        if info.field_name in ("email", "student_email"):
+            if not _EMAIL_SHAPE.fullmatch(value):
+                raise ValueError("Enter a valid email address")
+            return value.lower()
+        if info.field_name == "phone" and not _BDM_PHONE.fullmatch(value):
+            raise ValueError("Phone may contain only digits, spaces and + - ( )")
+        return value
+    return check
+
+
+BdmLeadName = Annotated[Annotated[str, _trimmed(160)], AfterValidator(_bdm_lead_text(_BDM_CONTROL, True))]
+BdmLeadEmail = Annotated[Annotated[str, _trimmed(255)], AfterValidator(_bdm_lead_text(_BDM_CONTROL, True))]
+BdmLeadPhone = Annotated[Annotated[str, _trimmed(40)] | None, AfterValidator(_bdm_lead_text(_BDM_CONTROL, False))]
+BdmLeadInterest = Annotated[Annotated[str, _trimmed(180)], AfterValidator(_bdm_lead_text(_BDM_CONTROL, True))]
+BdmLeadNote = Annotated[Annotated[str, _trimmed(5000)] | None, AfterValidator(_bdm_lead_text(_BDM_MULTILINE_CONTROL, False))]
+
+
+class BdmLeadCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: BdmLeadName
+    email: BdmLeadEmail
+    phone: BdmLeadPhone = None
+    interest: BdmLeadInterest
+    note: BdmLeadNote = None
+    acknowledge_duplicate: StrictBool = Field(False, description="True saves even when the email is already a lead of this organization (409 possible_duplicate).")
+
+
+class BdmLeadOut(BaseModel):
+    id: UUID
+    name: str
+    email: str
+    phone: str | None
+    interest: str
+    status: str
+    bdm: BdmPersonRef
+    converted: bool
+    created_at: datetime
+
+
+class BdmLeadPage(BaseModel):
+    items: list[BdmLeadOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class AdminLeadConversionIn(BaseModel):
+    """The student account's email, typed by the admin and matched exactly (never inferred from the lead's own email)."""
+
+    model_config = ConfigDict(extra="forbid")
+    student_email: BdmLeadEmail

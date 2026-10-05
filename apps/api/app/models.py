@@ -724,7 +724,19 @@ class PaymentWebhookEvent(Base, TimestampMixin):
 
 
 class Enquiry(Base, TimestampMixin):
+    """bdm-017 (DEC-SCOPE-072): a BDM-entered lead carries its organization and BDM (both NULL for website and manual enquiries);
+    a division admin's explicit conversion links it to one student account (`uq_enquiries_converted_user`: one lead per user)."""
+
     __tablename__ = "enquiries"
+    __table_args__ = (
+        CheckConstraint("(bdm_organization_id IS NULL) = (bdm_user_id IS NULL)", name="ck_enquiries_bdm_attribution"),
+        CheckConstraint(
+            "(converted_user_id IS NULL) = (converted_at IS NULL) AND (converted_user_id IS NULL) = (converted_by_user_id IS NULL)",
+            name="ck_enquiries_conversion",
+        ),
+        Index("ix_enquiries_bdm_org_created", "bdm_organization_id", "created_at"),
+        Index("uq_enquiries_converted_user", "converted_user_id", unique=True, postgresql_where=text("converted_user_id IS NOT NULL")),
+    )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     division: Mapped[str] = mapped_column(String(30), index=True)
     name: Mapped[str] = mapped_column(String(160))
@@ -737,6 +749,11 @@ class Enquiry(Base, TimestampMixin):
     owner_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     crm_sync_status: Mapped[str] = mapped_column(String(40), default="pending")
     metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    bdm_organization_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"), nullable=True)
+    bdm_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    converted_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    converted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    converted_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
 
 
 class ContentPage(Base, TimestampMixin):
