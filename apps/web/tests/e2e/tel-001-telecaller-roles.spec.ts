@@ -98,4 +98,11 @@ test("admin Telecallers page works at phone width without horizontal scroll", as
   const listTop = (await page.getByRole("heading", { name: "Telecallers", exact: true, level: 3 }).boundingBox())!.y;
   const formTop = (await page.getByRole("heading", { name: "Create telecaller" }).boundingBox())!.y;
   expect(listTop).toBeLessThan(formTop);
+  // QA-04: each row is a card at phone width, so its status and actions are on screen, not in a sideways-scrolling table.
+  const firstRow = page.getByRole("region", { name: "Telecallers" }).locator("tbody tr").first();
+  for (const action of [firstRow.getByRole("button", { name: /^Edit / }), firstRow.getByRole("button", { name: /^(Deactivate|Reactivate) / })]) {
+    const box = (await action.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(390);
+  }
 });

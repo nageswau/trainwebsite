@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import TelecallerPhoneForm from "@/components/TelecallerPhoneForm";
@@ -48,5 +48,40 @@ describe("TelecallerPhoneForm (tel-001 TL3)", () => {
     expect(screen.getByLabelText("Mobile")).toHaveValue("abc");
     await waitFor(() => expect(document.activeElement).toBe(message));
     expect(refresh).not.toHaveBeenCalled();
+  });
+
+  // tel-001 QA-05: a second click while the first save is in flight sends nothing.
+  it("sends one PATCH for two clicks in the same instant", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(res({ phone: "+91 98" }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<TelecallerPhoneForm phone={null} />);
+    fireEvent.change(screen.getByLabelText("Mobile"), { target: { value: "+91 98" } });
+    const button = screen.getByRole("button", { name: "Save mobile" });
+    // One act() = no re-render between the clicks, exactly like two clicks in the same instant.
+    act(() => {
+      button.click();
+      button.click();
+    });
+    expect(await screen.findByText("Mobile saved.")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  // tel-001 QA-06: after a save the field shows what was stored (trimmed, or empty when cleared), not the raw typing.
+  it("shows the stored value after saving", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(res({ phone: "+91 98" })));
+    render(<TelecallerPhoneForm phone={null} />);
+    fireEvent.change(screen.getByLabelText("Mobile"), { target: { value: "  +91 98  " } });
+    fireEvent.click(screen.getByRole("button", { name: "Save mobile" }));
+    await screen.findByText("Mobile saved.");
+    expect(screen.getByLabelText("Mobile")).toHaveValue("+91 98");
+  });
+
+  it("shows an empty field after clearing", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(res({ phone: null })));
+    render(<TelecallerPhoneForm phone="+91 11" />);
+    fireEvent.change(screen.getByLabelText("Mobile"), { target: { value: "   " } });
+    fireEvent.click(screen.getByRole("button", { name: "Save mobile" }));
+    await screen.findByText("Mobile saved.");
+    expect(screen.getByLabelText("Mobile")).toHaveValue("");
   });
 });

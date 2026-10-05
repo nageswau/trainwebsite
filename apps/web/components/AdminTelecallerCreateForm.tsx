@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson } from "@/lib/apiErrors";
@@ -19,9 +19,13 @@ export default function AdminTelecallerCreateForm({ role, managersAvailable, onC
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const focus = useFocusAfterRender();
   const ready = managersAvailable === true;
+  // QA-05: `busy` only disables the button after a re-render, so a second click in the same instant would POST again.
+  const inFlight = useRef(false);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (inFlight.current) return;
+    inFlight.current = true;
     const formEl = event.currentTarget;
     const form = new FormData(formEl);
     const employeeId = formText(form, "employee_id");
@@ -30,6 +34,7 @@ export default function AdminTelecallerCreateForm({ role, managersAvailable, onC
       role: "telecaller", full_name: formText(form, "full_name"), email: formText(form, "email"), phone: formOptional(form, "phone"),
       telecaller_profile: { team: formText(form, "team"), employee_id: employeeId, reporting_manager_user_id: formText(form, "manager") },
     });
+    inFlight.current = false;
     setBusy(false);
     if (outcome.ok) {
       setFeedback(welcomeLinkFeedback("Telecaller created.", outcome.data));

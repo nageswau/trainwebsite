@@ -83,4 +83,22 @@ describe("AdminTelecallerRow (tel-001 §6.3)", () => {
     expect(screen.getByRole("button", { name: "Edit Ravi" })).toBeInTheDocument();
     expect(mock).not.toHaveBeenCalled();
   });
+
+  // tel-001 QA-03: the notice names the telecaller as saved, not as they were before the edit.
+  it("announces the saved name after a rename", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(res({ ok: true })));
+    const onChanged = vi.fn();
+    table(<AdminTelecallerRow row={row} onChanged={onChanged} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit Ravi" }));
+    fireEvent.change(screen.getByLabelText("Full name (required)"), { target: { value: "Ravi Kumar" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(onChanged).toHaveBeenCalledWith("Saved Ravi Kumar."));
+  });
+
+  // tel-001 QA-04: every cell carries its column label, so the phone layout can show each value as a labelled line.
+  it("labels each cell for the stacked phone layout", () => {
+    table(<AdminTelecallerRow row={row} onChanged={() => {}} />);
+    const labels = Array.from(document.querySelectorAll("td")).map((td) => td.getAttribute("data-label"));
+    expect(labels).toEqual(["Name", "Employee ID", "Team", "Manager", "Status", "Actions"]);
+  });
 });

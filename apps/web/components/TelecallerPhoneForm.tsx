@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { sendJson } from "@/lib/apiErrors";
 import { PROFILE_URL } from "@/lib/telecaller";
@@ -9,20 +9,28 @@ import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 const MESSAGE_ID = "telecaller-phone-message";
 
 // tel-001 (TL3): the one field a telecaller edits about themselves. A failed save keeps what was typed and moves focus to the
-// server's message; success is announced and the server-rendered card refreshes.
+// server's message; success is announced, the field shows what was stored, and the server-rendered card refreshes.
 export default function TelecallerPhoneForm({ phone }: { phone: string | null }) {
   const router = useRouter();
   const [value, setValue] = useState(phone ?? "");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
   const focus = useFocusAfterRender();
+  // QA-05: `busy` only disables the button after a re-render, so a second click in the same instant would send again.
+  const inFlight = useRef(false);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     const outcome = await sendJson(PROFILE_URL, "PATCH", { phone: value.trim() || null });
+    inFlight.current = false;
     setBusy(false);
     if (outcome.ok) {
+      // QA-06: show the stored value (trimmed, or empty once cleared), not the raw typing.
+      const stored = outcome.data.phone;
+      setValue(typeof stored === "string" ? stored : "");
       setMessage({ text: "Mobile saved.", error: false });
       router.refresh();
     } else {

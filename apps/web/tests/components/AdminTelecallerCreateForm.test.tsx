@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AdminTelecallerCreateForm from "@/components/AdminTelecallerCreateForm";
@@ -72,5 +72,21 @@ describe("AdminTelecallerCreateForm (tel-001 AC1, AC2)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Create telecaller" }));
     expect(await screen.findByText("Employee ID already exists")).toBeInTheDocument();
     expect(screen.getByLabelText("Employee ID (required)")).toHaveValue("T-9");
+  });
+
+  // tel-001 QA-05: a second click while the create is in flight sends nothing.
+  it("sends one POST for two clicks in the same instant", async () => {
+    const mock = route(res({ id: "b9", email_status: "sent", telecaller_profile: {} }, 201));
+    const onCreated = vi.fn();
+    render(<AdminTelecallerCreateForm role="it_admin" managersAvailable onCreated={onCreated} />);
+    await fill();
+    const button = screen.getByRole("button", { name: "Create telecaller" });
+    // One act() = no re-render between the clicks, exactly like two clicks in the same instant.
+    act(() => {
+      button.click();
+      button.click();
+    });
+    await waitFor(() => expect(onCreated).toHaveBeenCalled());
+    expect(mock.mock.calls.filter(([url]) => url === "/api/v1/admin/users")).toHaveLength(1);
   });
 });

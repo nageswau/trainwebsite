@@ -32,16 +32,17 @@ export default function AdminTelecallerRow({ row, onChanged }: { row: Telecaller
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    const fullName = formText(form, "full_name");
     setError(null);
     setBusy(true);
     const outcome = await sendJson(`${USERS_URL}/${row.id}`, "PATCH", {
-      full_name: formText(form, "full_name"), phone: formOptional(form, "phone"),
+      full_name: fullName, phone: formOptional(form, "phone"),
       telecaller_profile: { employee_id: formText(form, "employee_id"), reporting_manager_user_id: formText(form, "manager") },
     });
     setBusy(false);
     if (!outcome.ok) return fail(outcome.message, id("error"));
     close();
-    onChanged(`Saved ${row.full_name}.`);
+    onChanged(`Saved ${fullName}.`); // QA-03: the name as saved, not as it was before the edit
   }
 
   async function setActive(active: boolean) {
@@ -77,13 +78,14 @@ export default function AdminTelecallerRow({ row, onChanged }: { row: Telecaller
   }
 
   return (
+    // QA-04: `data-label` names each cell's column, so below 640 px (globals.css .telecaller-list) a row becomes a card of labelled lines.
     <tr>
-      <td>{row.full_name}<br /><span className="muted" style={{ fontSize: 12, overflowWrap: "anywhere" }}>{row.email}</span></td>
-      <td>{row.employee_id}</td>
-      <td>{TEAM_LABEL[row.team]}</td>
-      <td>{row.reporting_manager.full_name}{!row.manager_active && <> <span className="badge">No active manager</span></>}</td>
-      <td><span className="badge">{statusLabel(row.active)}</span></td>
-      <td>
+      <td data-label="Name">{row.full_name}<br /><span className="muted" style={{ fontSize: 12, overflowWrap: "anywhere" }}>{row.email}</span></td>
+      <td data-label="Employee ID">{row.employee_id}</td>
+      <td data-label="Team">{TEAM_LABEL[row.team]}</td>
+      <td data-label="Manager">{row.reporting_manager.full_name}{!row.manager_active && <> <span className="badge">No active manager</span></>}</td>
+      <td data-label="Status"><span className="badge">{statusLabel(row.active)}</span></td>
+      <td data-label="Actions">
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           <button id={id("edit")} type="button" className="btn secondary small" aria-label={`Edit ${row.full_name}`} onClick={() => { setError(null); setEditing(true); }} disabled={busy}>Edit</button>
           {row.active && !confirming && <button id={id("deactivate")} type="button" className="btn secondary small" aria-label={`Deactivate ${row.full_name}`} onClick={() => { setError(null); setConfirming(true); focus(id("confirm")); }} disabled={busy}>Deactivate</button>}
