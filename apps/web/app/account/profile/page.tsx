@@ -66,7 +66,8 @@ export default async function AccountProfilePage() {
           <h1 style={{ fontSize: 34, marginTop: 14 }}>Your profile</h1>
           <p className="muted">Signed in as {user.full_name} ({user.email}).</p>
           <div className="action-card">
-            <ProfileForm fullName={user.full_name} phone={user.phone ?? null} />
+            {/* tel-001 QA-02 (TL8): the API refuses a telecaller's name change, so the form shows it read-only. */}
+            <ProfileForm fullName={user.full_name} phone={user.phone ?? null} nameLocked={user.role === "telecaller"} />
           </div>
           <h2 style={{ fontSize: 24, marginTop: 28 }}>Notifications</h2>
           <p className="muted">Choose where we send updates about results, sessions and applications.</p>

@@ -112,4 +112,48 @@ describe("ProfileForm (ENH-007)", () => {
     await screen.findByText("bad");
     expect(refresh).not.toHaveBeenCalled();
   });
+
+  // tel-001 QA-01: a 422 about the phone marks and focuses the phone field, not the name.
+  it("marks and focuses the phone field when the server's 422 is about the phone (string detail)", async () => {
+    vi.mocked(global.fetch).mockResolvedValue(
+      new Response(JSON.stringify({ detail: "Phone may contain only digits, spaces and + - ( )" }), { status: 422 }),
+    );
+    render(<ProfileForm fullName="Asha Rao" phone={null} />);
+    fireEvent.change(screen.getByLabelText("Phone"), { target: { value: "abc" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await screen.findByText("Phone may contain only digits, spaces and + - ( )");
+    expect(screen.getByLabelText("Phone")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Phone")).toHaveAttribute("aria-describedby", "profile-error");
+    expect(screen.getByLabelText("Full name")).not.toHaveAttribute("aria-invalid");
+    await waitFor(() => expect(screen.getByLabelText("Phone")).toHaveFocus());
+  });
+
+  it("marks the phone field when a validation-list 422 names the phone", async () => {
+    vi.mocked(global.fetch).mockResolvedValue(
+      new Response(JSON.stringify({ detail: [{ loc: ["body", "phone"], msg: "String should have at most 40 characters" }] }), { status: 422 }),
+    );
+    render(<ProfileForm fullName="Asha Rao" phone={null} />);
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await screen.findByText("String should have at most 40 characters");
+    expect(screen.getByLabelText("Phone")).toHaveAttribute("aria-invalid", "true");
+    await waitFor(() => expect(screen.getByLabelText("Phone")).toHaveFocus());
+  });
+
+  // tel-001 QA-02 (TL8): a telecaller's name is read-only here, but it is still submitted unchanged so the phone can be saved.
+  it("shows the name read-only with a hint when nameLocked, and still submits it unchanged", async () => {
+    vi.mocked(global.fetch).mockResolvedValue(new Response(JSON.stringify({ full_name: "Asha Rao", phone: "+91 1" }), { status: 200 }));
+    render(<ProfileForm fullName="Asha Rao" phone={null} nameLocked />);
+    const name = screen.getByLabelText("Full name");
+    expect(name).toHaveAttribute("readonly");
+    expect(name).toHaveAccessibleDescription("Your administrator manages your name.");
+    fireEvent.change(screen.getByLabelText("Phone"), { target: { value: "+91 1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    expect(JSON.parse(vi.mocked(global.fetch).mock.calls[0][1]?.body as string)).toEqual({ full_name: "Asha Rao", phone: "+91 1" });
+  });
+
+  it("keeps the name editable by default", () => {
+    render(<ProfileForm fullName="Asha Rao" phone={null} />);
+    expect(screen.getByLabelText("Full name")).not.toHaveAttribute("readonly");
+  });
 });

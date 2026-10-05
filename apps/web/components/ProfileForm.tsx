@@ -12,16 +12,29 @@ function message(detail: unknown) {
   return "Unable to update your profile. Try again in a moment.";
 }
 
+type Field = "full_name" | "phone";
+
+// tel-001 QA-01: a 422 is pinned on the field the server named -- a validation list's `loc`, or a sentence that starts with
+// "Phone" (the phone rule's own message) -- and on the name otherwise, as before.
+function fieldOf(detail: unknown): Field {
+  if (Array.isArray(detail)) {
+    return detail.some((item: { loc?: unknown }) => Array.isArray(item.loc) && item.loc.includes("phone")) ? "phone" : "full_name";
+  }
+  return typeof detail === "string" && /^phone\b/i.test(detail) ? "phone" : "full_name";
+}
+
 // Announced to assistive tech but not shown: the button label already says "Saving…" on screen.
 const VISUALLY_HIDDEN: CSSProperties = { position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap" };
 
 // Where a signed-out visitor returns to after signing in.
 const NEXT = encodeURIComponent("/account/profile");
 
-export default function ProfileForm({ fullName, phone }: { fullName: string; phone: string | null }) {
+// `nameLocked` (tel-001 QA-02, TL8): the server refuses a telecaller's name change, so the name is shown read-only with a hint.
+// It is still submitted unchanged, which the server accepts, so the phone can be saved.
+export default function ProfileForm({ fullName, phone, nameLocked = false }: { fullName: string; phone: string | null; nameLocked?: boolean }) {
   const router = useRouter();
   const [error, setError] = useState("");
-  const [errorField, setErrorField] = useState<"full_name" | null>(null);
+  const [errorField, setErrorField] = useState<Field | null>(null);
   const [notice, setNotice] = useState("");
   const [signedOut, setSignedOut] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -84,8 +97,9 @@ export default function ProfileForm({ fullName, phone }: { fullName: string; pho
     }
     setError(message(body.detail));
     if (response.status === 422) {
-      setErrorField("full_name");
-      finish("profile-full-name");
+      const field = fieldOf(body.detail);
+      setErrorField(field);
+      finish(field === "phone" ? "profile-phone" : "profile-full-name");
       return;
     }
     finish();
@@ -110,14 +124,27 @@ export default function ProfileForm({ fullName, phone }: { fullName: string; pho
           minLength={2}
           maxLength={160}
           defaultValue={saved.fullName}
+          readOnly={nameLocked}
           aria-invalid={errorField === "full_name" ? true : undefined}
-          aria-describedby={errorField === "full_name" ? "profile-error" : undefined}
+          aria-describedby={[nameLocked ? "profile-name-hint" : "", errorField === "full_name" ? "profile-error" : ""].filter(Boolean).join(" ") || undefined}
           required
         />
+        {nameLocked && <p id="profile-name-hint" className="muted" style={{ margin: "4px 0 0", fontSize: 13 }}>Your administrator manages your name.</p>}
       </div>
       <div className="field">
         <label htmlFor="profile-phone">Phone</label>
-        <input id="profile-phone" key={saved.phone} name="phone" type="tel" autoComplete="tel" inputMode="tel" maxLength={40} defaultValue={saved.phone} />
+        <input
+          id="profile-phone"
+          key={saved.phone}
+          name="phone"
+          type="tel"
+          autoComplete="tel"
+          inputMode="tel"
+          maxLength={40}
+          defaultValue={saved.phone}
+          aria-invalid={errorField === "phone" ? true : undefined}
+          aria-describedby={errorField === "phone" ? "profile-error" : undefined}
+        />
       </div>
       {error && (
         <div id="profile-error" className="form-error" role="alert" aria-live="assertive">
