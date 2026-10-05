@@ -6,18 +6,24 @@ import BdmActivityTimeline from "@/components/BdmActivityTimeline";
 import BdmConfirm from "@/components/BdmConfirm";
 import BdmOrganizationContacts from "@/components/BdmOrganizationContacts";
 import BdmOrganizationForm from "@/components/BdmOrganizationForm";
+import BdmOrganizationPipeline from "@/components/BdmOrganizationPipeline";
 import BdmOrganizationProfileDetails, { DetailList, multiline } from "@/components/BdmOrganizationProfileDetails";
 import BdmOrganizationReassign from "@/components/BdmOrganizationReassign";
+import BdmStageHistory from "@/components/BdmStageHistory";
 import { type Page, sendRequest } from "@/lib/apiErrors";
 import type { Activity } from "@/lib/bdmActivities";
+import type { StageEvent } from "@/lib/bdmPipeline";
 import { display, isOrganizationBody, LINK_STYLE, meetingText, type Organization, ORG_TYPE_LABEL, ORGS_URL, safeWebsite } from "@/lib/bdmOrganizations";
 import { formatDate } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // bdm-002 (spec §6.2, §12.2): one organization. Actions render from `permissions` only -- the server enforces every rule (AC3-AC5).
 // Every write re-renders from the organization the API returns (no refetch). Last/Next meeting come from bdm-006 appointments ("—" when none).
-export default function BdmOrganizationDetail({ initial, basePath, created = false, activities }: { initial: Organization; basePath: string; created?: boolean; activities?: Page<Activity> | null }) {
+export default function BdmOrganizationDetail({ initial, basePath, created = false, activities, stageHistory }: {
+  initial: Organization; basePath: string; created?: boolean; activities?: Page<Activity> | null; stageHistory?: Page<StageEvent> | null;
+}) {
   const [org, setOrg] = useState(initial);
+  const [historyVersion, setHistoryVersion] = useState(0); // bdm-004: bumped by each pipeline write, which reloads the stage history
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -142,6 +148,15 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
           Archive {org.name}? It will be hidden from the list and read-only until a manager restores it.
         </BdmConfirm>
       )}
+      <BdmOrganizationPipeline
+        organization={org}
+        onChanged={(o, text) => {
+          changed(o, text);
+          setHistoryVersion((v) => v + 1);
+          focus(statusId); // the form that was used is reset or gone
+        }}
+      />
+      {stageHistory !== undefined && <BdmStageHistory orgId={org.id} initial={stageHistory} version={historyVersion} />}
       {showEditor ? (
         <section className="action-card wide" aria-label="Edit details">
           <h3>Edit details</h3>
