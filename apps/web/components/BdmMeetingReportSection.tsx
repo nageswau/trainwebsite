@@ -20,10 +20,13 @@ export default function BdmMeetingReportSection({ appointment: a, bdmType, onCha
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [locked, setLocked] = useState(false); // a 409: the day it was filed has passed while this page was open
   const focus = useFocusAfterRender();
   const r = a.report;
   if (!r) return null;
   const editId = `appt-${a.id}-edit-report`;
+  const failureId = `appt-${a.id}-report-failure`;
+  const editable = a.permissions.can_edit_report && !locked;
 
   async function save(body: ReportBody) {
     setBusy(true);
@@ -36,6 +39,11 @@ export default function BdmMeetingReportSection({ appointment: a, bdmType, onCha
       return onChanged(outcome.data.appointment, "Meeting report saved.");
     }
     if (outcome.ok) return setFailure("Unable to save the report.");
+    if (outcome.status === 409) {
+      setLocked(true);
+      setFailure(outcome.message);
+      return focus(failureId);
+    }
     const mapped = fieldErrors(outcome.detail);
     setErrors(mapped);
     if (Object.keys(mapped).length) return setFailure("Check the highlighted fields.");
@@ -59,7 +67,7 @@ export default function BdmMeetingReportSection({ appointment: a, bdmType, onCha
       <h3>Meeting report</h3>
       {r.legacy && <p className="muted">Recorded before meeting reports — outcome only.</p>}
       {editing && bdmType ? (
-        <BdmMeetingReportForm bdmType={bdmType} mode="edit" busy={busy} errors={errors} initial={{ outcome: a.outcome, next_follow_up_on: a.next_follow_up_on, report: r }} onSubmit={(body) => void save(body)} onCancel={() => { setEditing(false); setFailure(null); focus(editId); }} />
+        <BdmMeetingReportForm bdmType={bdmType} mode="edit" busy={busy} errors={errors} initial={{ outcome: a.outcome, next_follow_up_on: a.next_follow_up_on, report: r }} onSubmit={(body) => void save(body)} locked={locked} onCancel={() => { setEditing(false); setFailure(null); setErrors({}); focus(editId); }} />
       ) : (
         <dl style={{ display: "grid", gridTemplateColumns: "minmax(120px, max-content) 1fr", gap: "8px 16px", margin: 0 }}>
           {rows.map(([label, value]) => [
@@ -68,10 +76,11 @@ export default function BdmMeetingReportSection({ appointment: a, bdmType, onCha
           ])}
         </dl>
       )}
-      {failure && <p className="form-error" role="alert">{failure}</p>}
+      {failure && <p id={failureId} tabIndex={-1} className="form-error" role="alert">{failure}</p>}
+      {!editing && !editable && bdmType && !r.legacy && <p className="muted">This report can no longer be changed.</p>}
       {!editing && (
         <div className="actions">
-          {a.permissions.can_edit_report && bdmType && (
+          {editable && bdmType && (
             <>
               <button id={editId} type="button" className="btn secondary small" onClick={() => setEditing(true)}>Edit report</button>
               <span className="field-hint">You can change this report until midnight IST today.</span>

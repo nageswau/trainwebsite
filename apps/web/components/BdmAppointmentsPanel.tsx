@@ -26,10 +26,12 @@ function validDate(value: string): boolean {
 
 function readFilters(params: URLSearchParams, today: string, types: readonly string[]): Filters {
   const n = Number.parseInt(params.get("offset") ?? "", 10);
-  const from = params.get("date_from");
-  const dateFrom = from === null ? today : from === "" || validDate(from) ? from : today;
-  const to = params.get("date_to") ?? "";
   const status = params.get("status") ?? "";
+  const from = params.get("date_from");
+  // QA7-04: pending meetings are all in the past, so the pending filter has no From default (a link may omit date_from=).
+  const fallback = status === PENDING ? "" : today;
+  const dateFrom = from === null ? fallback : from === "" || validDate(from) ? from : fallback;
+  const to = params.get("date_to") ?? "";
   const type = params.get("type") ?? "";
   return {
     offset: Number.isFinite(n) && n > 0 ? n : 0,
@@ -112,6 +114,11 @@ export default function BdmAppointmentsPanel({ basePath, isBdm, types }: { baseP
     setTarget(url.toString());
     router.push(url.size ? `${pathname}?${url}` : pathname, { scroll: false });
   }
+  // Into "Outcome pending": no From date. Out of it: back to the From default (QA7-04).
+  function chooseStatus(status: string) {
+    if (status === PENDING) return go({ status, dateFrom: "" });
+    go(filters.status === PENDING ? { status, dateFrom: today } : { status });
+  }
   const clear = () => go({ q: "", dateFrom: today, dateTo: "", status: "", type: "", organization: "", bdm: "" });
   const filtered = Boolean(filters.q || filters.dateTo || filters.status || filters.type || filters.organization || filters.bdm || filters.dateFrom !== today);
   const submit = (event: FormEvent) => {
@@ -145,7 +152,7 @@ export default function BdmAppointmentsPanel({ basePath, isBdm, types }: { baseP
         </div>
         <div className="field" style={{ flex: "0 1 160px", margin: 0 }}>
           <label htmlFor="appt-filter-status">Status</label>
-          <select id="appt-filter-status" value={filters.status} onChange={(e) => go({ status: e.target.value, ...(e.target.value === PENDING ? { dateFrom: "" } : {}) })}>
+          <select id="appt-filter-status" value={filters.status} onChange={(e) => chooseStatus(e.target.value)}>
             <option value="">All statuses</option>
             {STATUSES.map((s) => (
               <option key={s} value={s}>

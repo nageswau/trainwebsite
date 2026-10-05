@@ -23,6 +23,28 @@ describe("BdmAppointmentActions (bdm-006 §6.2, R-F4, R-F7)", () => {
     expect(container.querySelectorAll("button")).toHaveLength(0);
   });
 
+  it("QA7-01: renders nothing when the only permission is editing the report (its button lives in the report)", () => {
+    const { container } = render(<BdmAppointmentActions appointment={appt({ status: "completed", permissions: { ...none, can_edit_report: true } })} bdmType="college" onChanged={() => {}} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("QA7-03 / QA7-05: a 409 on complete focuses the reason; Reload clears it once the fresh appointment is shown", async () => {
+    const onChanged = vi.fn();
+    const fetchMock = vi.fn().mockResolvedValueOnce(res({ detail: "Appointment is already completed" }, 409)).mockResolvedValueOnce(res({ appointment: appt({ status: "scheduled" }) }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<BdmAppointmentActions appointment={appt({ permissions: { ...none, can_complete: true } })} bdmType="college" onChanged={onChanged} />);
+    fireEvent.click(screen.getByRole("button", { name: "Complete" }));
+    fireEvent.change(screen.getByLabelText("Outcome (required)"), { target: { value: "interested" } });
+    fireEvent.change(screen.getByLabelText("Discussion (required)"), { target: { value: "Notes" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save report and complete" }));
+    const alert = await screen.findByRole("alert");
+    await waitFor(() => expect(document.activeElement).toBe(alert));
+    fireEvent.click(screen.getByRole("button", { name: "Reload" }));
+    await waitFor(() => expect(onChanged).toHaveBeenCalledWith(expect.objectContaining({ status: "scheduled" }), "This appointment is now Scheduled."));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Reload" })).toBeNull();
+  });
+
   it("QA6-04: a 5xx shows an actionable sentence; a 422 still shows the server's detail", async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(new Response("boom", { status: 500 })).mockResolvedValueOnce(res({ detail: "Only a scheduled appointment can be confirmed" }, 422));
     vi.stubGlobal("fetch", fetchMock);

@@ -48,6 +48,34 @@ describe("BdmMeetingReportForm", () => {
     expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled();
   });
 
+  it("QA7-06: warns before the page is left with a typed report, and not for an untouched form", () => {
+    render(<BdmMeetingReportForm bdmType="college" mode="complete" busy={false} onSubmit={() => {}} onCancel={() => {}} />);
+    const clean = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(clean);
+    expect(clean.defaultPrevented).toBe(false);
+    fireEvent.change(screen.getByLabelText("Discussion (required)"), { target: { value: "Half typed" } });
+    const dirty = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(dirty);
+    expect(dirty.defaultPrevented).toBe(true);
+  });
+
+  it("QA7-05: moves focus to the first invalid field when the server's field errors arrive", () => {
+    const props = { bdmType: "college" as const, mode: "complete" as const, busy: false, onSubmit: () => {}, onCancel: () => {} };
+    const { rerender } = render(<BdmMeetingReportForm {...props} />);
+    rerender(<BdmMeetingReportForm {...props} errors={{ responsible_person: "Bad", opportunity: "Opportunity contains invalid characters" }} />);
+    expect(document.activeElement).toBe(screen.getByLabelText("Opportunity"));
+  });
+
+  it("QA7-02: a locked form keeps the text readable and copyable but cannot be saved", () => {
+    const onCancel = vi.fn();
+    render(<BdmMeetingReportForm bdmType="college" mode="edit" busy={false} locked onSubmit={() => {}} onCancel={onCancel} initial={{ outcome: "interested", next_follow_up_on: null, report: null }} />);
+    expect(screen.getByLabelText("Discussion (required)")).toHaveAttribute("readonly");
+    expect(screen.getByLabelText("Outcome (required)")).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(onCancel).toHaveBeenCalled();
+  });
+
   it("Escape cancels; busy disables saving", () => {
     const onCancel = vi.fn();
     render(<BdmMeetingReportForm bdmType="college" mode="complete" busy onSubmit={() => {}} onCancel={onCancel} />);

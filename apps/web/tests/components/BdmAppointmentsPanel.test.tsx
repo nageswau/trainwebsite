@@ -101,6 +101,27 @@ describe("BdmAppointmentsPanel (bdm-006 §6.2, §12.2)", () => {
     expect((screen.getByLabelText("Status") as HTMLSelectElement).value).toBe("outcome_pending");
   });
 
+  it("QA7-04: a pending link without date_from still lists every pending meeting (no From date)", async () => {
+    const fetchMock = vi.fn<typeof fetch>(() => Promise.resolve(res(page([row({ outcome_pending: true })]))));
+    vi.stubGlobal("fetch", fetchMock);
+    search.value = "status=outcome_pending";
+    render(<BdmAppointmentsPanel basePath="/bdm/appointments" isBdm types={ALL_TYPES} />);
+    await screen.findByText("Outcome pending", { selector: ".badge" });
+    expect(String(fetchMock.mock.calls[0][0])).not.toContain("date_from=");
+    expect((screen.getByLabelText("From (IST)") as HTMLInputElement).value).toBe("");
+  });
+
+  it("QA7-04: leaving Outcome pending for another status brings back the From default (today)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(page([row({ outcome_pending: true })])))));
+    search.value = "status=outcome_pending&date_from=";
+    render(<BdmAppointmentsPanel basePath="/bdm/appointments" isBdm types={ALL_TYPES} />);
+    await screen.findByRole("link", { name: "APT-000001" });
+    fireEvent.change(screen.getByLabelText("Status"), { target: { value: "scheduled" } });
+    await waitFor(() => expect(router.push).toHaveBeenCalled());
+    const pushed = new URLSearchParams(String(router.push.mock.calls[0][0]).split("?")[1]);
+    expect([pushed.get("status"), pushed.has("date_from")]).toEqual(["scheduled", false]);
+  });
+
   it("bdm-007: choosing Outcome pending drops the From date (pending rows are in the past)", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(page([row()])))));
     render(<BdmAppointmentsPanel basePath="/bdm/appointments" isBdm types={ALL_TYPES} />);

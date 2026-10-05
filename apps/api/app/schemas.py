@@ -3890,17 +3890,13 @@ BDM_REPORT_LABELS = {
 }
 
 
-def _bdm_report_text(max_length: int, *, required: bool = False, multiline: bool = True):
-    """Trimmed, at most `max_length`; line breaks only where the field is multi-line; blank -> None (or "<Label> is required")."""
-    check = AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL if multiline else _BDM_CONTROL, required, BDM_REPORT_LABELS))
-    text = Annotated[str, _trimmed(max_length)]
-    return Annotated[text, check] if required else Annotated[text | None, check]
-
-
-BdmReportDiscussion = _bdm_report_text(4000, required=True)
-BdmReportLongText = _bdm_report_text(2000)
-BdmReportNextAction = _bdm_report_text(1000)
-BdmReportPerson = _bdm_report_text(200, multiline=False)
+# Trimmed, at most N; line breaks only where the field is multi-line; blank -> None (or "<Label> is required"). Written as plain
+# Annotated aliases (the TripRemarks form) so type checkers accept them as types.
+_REPORT_MULTILINE = AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, BDM_REPORT_LABELS))
+BdmReportDiscussion = Annotated[str, _trimmed(4000), AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, True, BDM_REPORT_LABELS))]
+BdmReportLongText = Annotated[Annotated[str, _trimmed(2000)] | None, _REPORT_MULTILINE]
+BdmReportNextAction = Annotated[Annotated[str, _trimmed(1000)] | None, _REPORT_MULTILINE]
+BdmReportPerson = Annotated[Annotated[str, _trimmed(200)] | None, AfterValidator(_trip_text(_BDM_CONTROL, False, BDM_REPORT_LABELS))]
 BdmFollowUpDate = Annotated[date, BeforeValidator(_trip_date("follow-up date"))]
 
 
@@ -3923,12 +3919,20 @@ class BdmMeetingReportUpdate(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
     outcome: BdmAppointmentOutcome = None
-    discussion: BdmReportDiscussion = None
+    discussion: BdmReportDiscussion | None = None
     requirements: BdmReportLongText = None
     opportunity: BdmReportLongText = None
     next_action: BdmReportNextAction = None
     responsible_person: BdmReportPerson = None
     next_follow_up_on: BdmFollowUpDate | None = None
+
+    @field_validator("discussion")
+    @classmethod
+    def _discussion_not_null(cls, value: str | None) -> str:
+        """Omitted = unchanged (the default is not validated); a sent null is refused -- a report always has a discussion."""
+        if value is None:
+            raise ValueError("Discussion is required")
+        return value
 
 
 class BdmMeetingReportOut(BaseModel):

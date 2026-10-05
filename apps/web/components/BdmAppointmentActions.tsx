@@ -27,7 +27,9 @@ export default function BdmAppointmentActions({ appointment, bdmType, onChanged 
   const focus = useFocusAfterRender();
   const p = appointment.permissions;
   const buttonId = (g: string) => `appt-${appointment.id}-${g}`;
-  if (!Object.values(p).some(Boolean)) return null;
+  const failureId = buttonId("failure");
+  // QA7-01: the report's Edit button lives in BdmMeetingReportSection, so `can_edit_report` alone is no reason for this bar.
+  if (!Object.entries(p).some(([key, allowed]) => allowed && key !== "can_edit_report")) return null;
 
   const close = (g: Group) => {
     setOpen(null);
@@ -51,7 +53,10 @@ export default function BdmAppointmentActions({ appointment, bdmType, onChanged 
       return onChanged(outcome.data.appointment, DONE[path]);
     }
     if (!outcome.ok && path === "complete") {
-      if (outcome.status === 409) return setFailure(CHANGED_ELSEWHERE);
+      if (outcome.status === 409) {
+        setFailure(CHANGED_ELSEWHERE);
+        return focus(failureId);
+      }
       const mapped = fieldErrors(outcome.detail);
       if (Object.keys(mapped).length) {
         setFieldErrs(mapped);
@@ -73,6 +78,7 @@ export default function BdmAppointmentActions({ appointment, bdmType, onChanged 
   async function reload() {
     const fresh = await refetch();
     if (!fresh) return setFailure("Unable to load this appointment. Reload the page.");
+    setFailure(null);
     setOpen(null);
     onChanged(fresh, `This appointment is now ${STATUS_LABEL[fresh.status]}.`);
   }
@@ -119,7 +125,7 @@ export default function BdmAppointmentActions({ appointment, bdmType, onChanged 
       {open === "cancel" && <BdmAppointmentReasonForm label="Cancel appointment" submitText="Yes, cancel it" busyText="Cancelling…" busy={busy} onSubmit={(reason) => void act("cancel", { reason })} onCancel={() => close("cancel")} />}
       {open === "no_show" && <BdmAppointmentReasonForm label="Mark as no-show" submitText="Mark no-show" busyText="Saving…" busy={busy} onSubmit={(reason) => void act("no-show", { reason })} onCancel={() => close("no_show")} />}
       {failure && (
-        <p className="form-error" role="alert">
+        <p id={failureId} tabIndex={-1} className="form-error" role="alert">
           {failure}
         </p>
       )}

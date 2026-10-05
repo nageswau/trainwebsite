@@ -58,8 +58,38 @@ describe("BdmMeetingReportSection", () => {
     fireEvent.click(screen.getByRole("button", { name: "Edit report" }));
     fireEvent.change(screen.getByLabelText("Next action"), { target: { value: "Late edit" } });
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Meeting reports can only be changed on the day they were filed");
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Meeting reports can only be changed on the day they were filed");
     expect(screen.getByLabelText("Next action")).toHaveValue("Late edit");
+    // QA7-02 / QA7-05: the form locks (text kept to copy), focus goes to the reason, and Close leaves a read-only report.
+    expect(screen.getByLabelText("Next action")).toHaveAttribute("readonly");
+    expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(alert));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("button", { name: "Edit report" })).toBeNull();
+    expect(screen.queryByText("You can change this report until midnight IST today.")).toBeNull();
+    expect(screen.getByText("This report can no longer be changed.")).toBeInTheDocument();
+  });
+
+  it("QA7-07: Cancel clears a field error, so editing again starts clean", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res({ detail: [{ loc: ["body", "next_action"], msg: "Value error, Next action contains invalid characters" }] }, 422))));
+    render(<BdmMeetingReportSection appointment={appt({ permissions: { ...none, can_edit_report: true } })} bdmType="college" onChanged={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit report" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByText("Next action contains invalid characters")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit report" }));
+    expect(screen.queryByText("Next action contains invalid characters")).toBeNull();
+    expect(screen.getByLabelText("Next action")).not.toHaveAttribute("aria-invalid");
+  });
+
+  it("QA7-08: tells the BDM a filed report is read-only once its day has passed (not managers, not legacy)", () => {
+    const { rerender } = render(<BdmMeetingReportSection appointment={appt()} bdmType="college" onChanged={() => {}} />);
+    expect(screen.getByText("This report can no longer be changed.")).toBeInTheDocument();
+    rerender(<BdmMeetingReportSection appointment={appt()} bdmType={null} onChanged={() => {}} />);
+    expect(screen.queryByText("This report can no longer be changed.")).toBeNull();
+    rerender(<BdmMeetingReportSection appointment={appt({ report: { ...report, legacy: true } })} bdmType="college" onChanged={() => {}} />);
+    expect(screen.queryByText("This report can no longer be changed.")).toBeNull();
   });
 
   it("offers booking the next meeting after a Reschedule outcome, for the BDM only", () => {

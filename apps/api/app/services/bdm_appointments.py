@@ -295,7 +295,13 @@ async def appointment_out(db: AsyncSession, user: User, appt: BdmAppointment, *,
             .where(BdmMeetingReport.appointment_id == appt.id).execution_options(populate_existing=True)
         )
     ).first()
-    report, author = report_row if report_row else (None, None)
+    report, report_out = None, None
+    if report_row is not None:
+        report, author = report_row
+        report_out = {
+            **{k: getattr(report, k) for k in BDM_REPORT_TEXT_FIELDS}, "legacy": report.legacy, "author": person_ref(author),
+            "submitted_at": report.submitted_at, "updated_at": report.updated_at,
+        }
     follow_up = await load_follow_up(db, appt.id)
     return {
         **row_out(appt, org, owner, now),
@@ -304,10 +310,7 @@ async def appointment_out(db: AsyncSession, user: User, appt: BdmAppointment, *,
             {"from_status": e.from_status, "to_status": e.to_status, "old_starts_at": e.old_starts_at, "new_starts_at": e.new_starts_at, "reason": e.reason, "actor_name": name, "created_at": e.created_at}
             for e, name in events
         ],
-        "report": None if report is None else {
-            **{k: getattr(report, k) for k in BDM_REPORT_TEXT_FIELDS}, "legacy": report.legacy, "author": person_ref(author),
-            "submitted_at": report.submitted_at, "updated_at": report.updated_at,
-        },
+        "report": report_out,
         "follow_up": None if follow_up is None else {"id": follow_up.id, "due_on": follow_up.due_on, "status": follow_up.status},
         "permissions": permissions(user, appt, now, report),
     }
