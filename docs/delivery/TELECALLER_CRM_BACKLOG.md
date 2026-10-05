@@ -7,7 +7,7 @@ NO-ASSUMPTION MODE. Prepared 2026-10-05 at the user's request. **No code was wri
   source line is traced in Appendix A, and every counted figure is defined in Appendix B.
 - **Scope authority:** the user's in-session answers of 2026-10-05, T1–T29 in §3.1 (`EXPLICIT_APPROVAL`). They lift `PRD_OPEN_ITEMS.md`
   item 61 / `CONFLICT_MATRIX.md` for `EVID-019`, the same way `DEC-SCOPE-055` D1 did for BDM. **To be registered** under the next free
-  `DEC-SCOPE` number when `tel-001` starts. `main` holds `DEC-SCOPE-071`; bdm-017 is in flight and will take the next one, so expect `073` or later.
+  `DEC-SCOPE` number when `tel-001` starts. `main` holds `DEC-SCOPE-072` (bdm-017), so expect `073` or later.
 - **Correction:** `BDM_CRM_BACKLOG.md` cites "`DEC-SCOPE-036`: the Telecaller CRM, reserves `tel-NNN`, leads extend `enquiries` (D3)".
   No Telecaller decision exists anywhere in git history, and `DEC-SCOPE-036` is ENH-017. The bdm-017 design spec records the same finding.
   The `enquiries` extension is defined by bdm-017 and by this backlog's T6 and T29.
@@ -27,7 +27,7 @@ NO-ASSUMPTION MODE. Prepared 2026-10-05 at the user's request. **No code was wri
 | Lead store | `Enquiry` (`enquiries`, `models.py:723`): division, name, email (NOT NULL), phone, subject, message, `source` (default `website`), `status` (free text, default `new`), `owner_id`, `crm_sync_status`, `metadata_json` | Minimal. There is no lead code, priority, product, campaign, telecaller or pipeline. **Extended here (T6).** |
 | Lead intake | `POST /public/enquiries` (`public.py:274`), then the outbox `sync_enquiry_to_crm_task` (Celery, webhook) | Website only. It is kept, and becomes one intake path into the telecaller queue (tel-005). |
 | Admin lead list | `GET/PATCH /admin/leads` (`admin.py:382`): own division, 500-row cap, sets any `status` text and `owner_id`; `AdminLeadManagementPanel.tsx` offers `new/contacted/qualified/converted/lost` | It is kept and aligned to the pipeline (T25, tel-003/tel-004). |
-| bdm-017 (branch `feature/bdm-017-lead-attribution`, **not merged**, `DEC-SCOPE-071` on the branch, migration `0073_enquiry_bdm_attribution`) | Adds `bdm_organization_id`, `bdm_user_id`, `converted_user_id` (unique), `converted_at`, `converted_by_user_id` to `enquiries`, plus admin `POST/DELETE /admin/leads/{id}/conversion` (admin-only; linking sets `status='converted'`) | **Reused, then redefined by tel-018 (T29).** It must merge before tel-003. |
+| bdm-017 (**merged to `main` @ `7de5d44f`**, `DEC-SCOPE-072`, migration `0074_enquiry_bdm_attribution`) | Adds `bdm_organization_id`, `bdm_user_id`, `converted_user_id` (unique), `converted_at`, `converted_by_user_id` to `enquiries`, plus admin `POST/DELETE /admin/leads/{id}/conversion` (admin-only; linking sets `status='converted'`) | **Reused, then redefined by tel-018 (T29).** It must merge before tel-003. |
 | Counselor | Role `counselor`, **Overseas only**: `workflows._require(..., "overseas")`, `ROLES_BY_DIVISION.overseas`, counselor "My Leads" = `enquiries.owner_id == user.id` in the overseas division (`services/portal.py:1093`) | IT has no counselor. **tel-017 enables IT counselors (T3).** |
 | Counselling appointments | `Appointment` (`appointments`: division, `student_id`/`staff_id` → users, `scheduled_at`, type, mode, free-text status); `POST/PATCH /overseas/appointments` (`workflows.py:2298`) need an `overseas_student` user | A lead has no user account, so it can't be booked today. There is no slot or availability model. **Extended in tel-016 (T10).** |
 | BDM appointments | `bdm_appointments` (bdm-006, merged): created by the BDM on their own `bdm_organizations` row | There is no inbound request. **tel-019 adds requests that the BDM accepts (T10).** |
@@ -151,7 +151,7 @@ NO-ASSUMPTION MODE. Prepared 2026-10-05 at the user's request. **No code was wri
 | T26 | "Corporate meeting" | **Routes to college-type BDMs.** No new BDM type | 019 |
 | T27 | Daily activity | **Fully computed** for an IST day. Nothing typed or submitted | 021 |
 | T28 | Targets | **Daily + monthly**, a team default with a per-telecaller override. Changes apply from the next day/month, with history kept; past results are never re-scored | 022 |
-| T29 | bdm-017 reconciliation | **Reuse bdm-017's link columns and admin link/unlink.** tel-018 also lets the assigned counselor link, and changes the meaning: a link moves the lead to `application_enrollment`, and `converted` is computed (T5). This supersedes `DEC-SCOPE-071` L2/L7 for leads in the telecaller pipeline; it is recorded as a superseding decision | 003, 004, 018 |
+| T29 | bdm-017 reconciliation | **Reuse bdm-017's link columns and admin link/unlink.** tel-018 also lets the assigned counselor link, and changes the meaning: a link moves the lead to `application_enrollment`, and `converted` is computed (T5). This supersedes `DEC-SCOPE-072` (bdm-017) L2/L7 for leads in the telecaller pipeline; it is recorded as a superseding decision | 003, 004, 018 |
 
 ### 3.2 Item-level questions (asked one at a time when the item starts; `NEEDS_CONFIRMATION` until then)
 
@@ -271,7 +271,7 @@ NO-ASSUMPTION MODE. Prepared 2026-10-05 at the user's request. **No code was wri
 - **Security impact:** more PII on a shared table. Keep log lines to ids only (Q-21 consent and retention).
 - **Performance impact:** the backfill on a large table runs in a migration batch. New indexes.
 - **Reusable existing modules:** the bdm-002 sequence-code idiom; 0061's guarded-migration idiom; bdm-017 columns.
-- **Dependencies:** tel-001, tel-002, **bdm-017 merged** (same table; rebase on its migration).
+- **Dependencies:** tel-001, tel-002, bdm-017 (merged; chain after `0074`).
 - **Acceptance criteria:**
   1. Every existing and new enquiry has a unique Lead ID.
   2. Website enquiries still return 201 with the same keys plus `lead_code`.
@@ -765,7 +765,7 @@ NO-ASSUMPTION MODE. Prepared 2026-10-05 at the user's request. **No code was wri
 - **Security impact:** suggestions reveal only that an account exists to a counselor, who already has student access in their division. Audit link and unlink.
 - **Performance impact:** the conversion check is per linked lead and indexed.
 - **Reusable existing modules:** bdm-017 conversion endpoints and unique index, `services/agent_journey.py` (stage reads), `OverseasApplication` status enum.
-- **Dependencies:** tel-004, tel-008, tel-016, tel-017, **bdm-017 merged**.
+- **Dependencies:** tel-004, tel-008, tel-016, tel-017, bdm-017 (merged).
 - **Acceptance criteria:**
   1. After handover the telecaller can read but not write (403 on writes).
   2. A return reopens the lead and alerts the telecaller.
@@ -1116,7 +1116,7 @@ graph TD
 
 ### 5.4 Migrations
 
-Numbers are **provisional**. `main` is at `0073_bdm_pipeline` and bdm-017 holds another `0073` that will be re-chained, so the first telecaller migration will be `0075` or later. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
+Numbers are **provisional**. `main` is at `0074_enquiry_bdm_attribution` (bdm-017, merged 2026-10-05), so the first telecaller migration will be `0075` or later. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
 
 | Item | Migration content |
 |---|---|
@@ -1142,7 +1142,7 @@ Numbers are **provisional**. `main` is at `0073_bdm_pipeline` and bdm-017 holds 
 
 ### 5.5 Implement first
 
-1. **Wait for bdm-017 to merge.** tel-003 must rebase on its `enquiries` columns.
+1. ~~Wait for bdm-017 to merge.~~ **Done:** bdm-017 merged 2026-10-05 (`7de5d44f`, `DEC-SCOPE-072`, `0074`). tel-003 chains after it.
 2. **tel-001** (roles: unblocks everything; highest blast radius on shared auth files).
 3. **tel-002** and **tel-022** in parallel (small, isolated), then **tel-017** (after tel-001's shared files).
 4. **tel-003 → tel-004** (the lead foundation; high regression risk; run the full backend suite after tel-004 per the 4–5-story cadence).
