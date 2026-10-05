@@ -79,7 +79,7 @@ describe("bdm-002 organization detail pages", () => {
     vi.mocked(serverApi).mockImplementation(async (path: string) => (path === "/api/v1/bdm/me" ? me : { organization }) as never);
     const tree = elements(await BdmOrganization({ params: params(), searchParams: Promise.resolve({ created: "1" }) }));
     expect(serverApi).toHaveBeenCalledWith("/api/v1/bdm/organizations/o1");
-    expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props).toEqual({ initial: organization, basePath: "/bdm/organizations", created: true, activities: null });
+    expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props).toEqual({ initial: organization, basePath: "/bdm/organizations", created: true, activities: null, leads: null });
   });
 
   it("an unknown or out-of-scope organization is a plain not-found with a way back", async () => {
@@ -100,7 +100,7 @@ describe("bdm-002 organization detail pages", () => {
     vi.mocked(serverApi).mockReset();
     vi.mocked(serverApi).mockImplementation(async (path: string) => (path === "/api/v1/auth/me" ? { id: "m1", full_name: "Meera", role: "bdm_manager" } : { organization }) as never);
     tree = elements(await ManagerOrganization({ params: params() }));
-    expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props).toEqual({ initial: organization, basePath: "/bdm/manager/organizations", activities: null });
+    expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props).toEqual({ initial: organization, basePath: "/bdm/manager/organizations", activities: null, leads: null });
     vi.mocked(serverApi).mockReset();
     refuse("/api/v1/auth/me", new ApiError("Not authenticated", 401));
     tree = elements(await ManagerOrganization({ params: params() }));
@@ -126,5 +126,22 @@ describe("bdm-002 organization detail pages", () => {
     });
     tree = elements(await BdmOrganization({ params: Promise.resolve({ id }), searchParams: Promise.resolve({}) }));
     expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props.activities).toBeNull();
+  });
+
+  it("bdm-017: passes the first lead page on both profiles, or null when only that call fails", async () => {
+    const id = "00000000-0000-4000-8000-000000000002";
+    const org = { id, code: "ORG-000002", name: "Govt College" };
+    const leads = { items: [], total: 3, limit: 20, offset: 0 };
+    vi.mocked(serverApi).mockImplementation(async (p: string) => {
+      if (p === "/api/v1/bdm/me") return me as never;
+      if (p === "/api/v1/auth/me") return { id: "m1", full_name: "Meera", role: "bdm_manager" } as never;
+      if (p === `/api/v1/bdm/organizations/${id}`) return { organization: org } as never;
+      if (p === `/api/v1/bdm/organizations/${id}/leads?limit=20&offset=0`) return leads as never;
+      throw new ApiError("boom", 500);
+    });
+    let tree = elements(await BdmOrganization({ params: Promise.resolve({ id }), searchParams: Promise.resolve({}) }));
+    expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props).toMatchObject({ leads, activities: null });
+    tree = elements(await ManagerOrganization({ params: Promise.resolve({ id }) }));
+    expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props).toMatchObject({ leads, activities: null });
   });
 });
