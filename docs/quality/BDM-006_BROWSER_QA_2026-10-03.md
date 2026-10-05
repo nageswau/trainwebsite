@@ -87,7 +87,7 @@ Verification: web vitest (appointment components, panel, lib) 48 passed in the f
 - Playwright e2e `bdm-006-appointments` + `bdm-002-organization-crm`: **3 / 3 passed** (3.8 min).
 - Console: only the browser's native "Failed to load resource" lines for the deliberately provoked 500 and 409.
 
-QA6-01 to QA6-06: **closed**. QA6-06 check (Edge, `probe_qa606.py`): before — full-page capture at 1366 white below 768 px; after (rule injected on the running build) — navy to the page bottom at 1366×768 and 1920×600; 980/768/375/320 px keep the plain background and no horizontal scroll. Re-check on the rebuilt web container pending.
+QA6-01 to QA6-06: **closed**. QA6-06 check (Edge, `probe_qa606.py`): before — full-page capture at 1366 white below 768 px; after (rule injected on the running build) — navy to the page bottom at 1366×768 and 1920×600; 980/768/375/320 px keep the plain background and no horizontal scroll. Re-checked on the rebuilt web container (no injection), Edge 154: .portal carries the navy column at 1366x768 and 1920x600, full-page captures navy to the bottom (qa606-after-*.png); 980/768/375/320 px: no gradient, scrollWidth equals the viewport.
 
 ## 7. Artefacts
 
