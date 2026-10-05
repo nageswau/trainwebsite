@@ -10,7 +10,7 @@ from datetime import datetime
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -56,7 +56,7 @@ async def check_duplicates(db: AsyncSession, org_id: UUID, email: str) -> None:
     raise HTTPException(409, {"message": DUPLICATE, "code": "possible_duplicate", "matches": matches, "total": total})
 
 
-def _rows(filters: list):
+def _rows(filters: list) -> Select[Enquiry, str]:
     return select(Enquiry, User.full_name).join(User, User.id == Enquiry.bdm_user_id).where(*filters)
 
 
