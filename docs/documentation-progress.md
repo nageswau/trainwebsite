@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Code baseline | `main` @ `e376c25c` (record any change here with date) |
+| Code baseline | `main` @ `e376c25c`; 2026-10-05 docs branch merged `main` @ `6a9be770` (+42 commits, bdm-006 etc.) — only Agent-scope-adjacent change is BDM "Appointments" sidebar links in `navigation.ts`; Agent CRM analysis unchanged. Browser work may use a stack from `6a9be770`. |
 | Stack used for browser work | — (not started) |
 | Last session | S2 part 1 (stack-independent) — 2026-10-05 |
 | Next session | S2 — Environment, capture tooling, Account access, Agency approvals |
