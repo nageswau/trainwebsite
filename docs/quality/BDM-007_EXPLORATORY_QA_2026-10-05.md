@@ -119,3 +119,21 @@ meeting reports — outcome only.", read-only.
 
 No Critical or High findings. Authorization, duplicate submission, server validation, the follow-up rules, the edit window on the
 server and the layouts at 320–1440 px behaved as specified.
+
+## Fix verification (2026-10-05, `5661490b`)
+
+All findings fixed test-first (each web fix had a failing component test first), then re-checked in an isolated Chromium against
+the `bdm007qa` stack rebuilt from `5661490b` with fresh accounts and data (evidence `artifacts/ci/qa7v/`):
+
+| ID | Fix | Browser re-check |
+|---|---|---|
+| QA7-01 | The Actions bar ignores `can_edit_report` (its button lives in the report) | Completed appointment at 390 px: 0 "Actions" regions, Edit report present |
+| QA7-02 | A 409 on a report edit locks the form: fields read-only, Save removed, Cancel becomes Close; Edit and the hint are hidden | Real 409 (window closed by SQL while the form was open): text kept, `readonly`, Save absent, Close shown; after Close no Edit / hint |
+| QA7-03 | Reload clears the "changed elsewhere" error | After Reload: status "This appointment is now Scheduled.", no alert, no Reload button |
+| QA7-04 | The pending filter has no From default; leaving it restores today | `?status=outcome_pending` lists a 3-day-old pending meeting (BDM and manager), From empty; → Scheduled gives `?status=scheduled`, From = today |
+| QA7-05 | Focus to the first invalid field after a 422, to the reason after a 409 | 422 → focus on Opportunity / Next action; 409 → focus on the alert (complete and edit) |
+| QA7-06 | `useLeaveGuard` on the report form | Dirty form: "Back to appointments" → confirm "Discard this meeting report?" (dismiss keeps the text); reload → beforeunload prompt; an untouched form leaves without a confirm |
+| QA7-07 | Cancel clears field errors | Reopened after 422 + Cancel: no error, no `aria-invalid` |
+| QA7-08 | "This report can no longer be changed." for the BDM once the window closes (not managers, not legacy) | Shown after the 409 and after reload |
+
+No JavaScript errors; the only console errors are the intentional 409 / 422 responses.
