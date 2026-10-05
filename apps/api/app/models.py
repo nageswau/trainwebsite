@@ -26,6 +26,9 @@ from sqlalchemy import (
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
+from app.bdm_stages import FIRST_STAGE as BDM_FIRST_STAGE
+from app.bdm_stages import MANUAL_STAGES as BDM_MANUAL_STAGES
+
 
 class Base(DeclarativeBase):
     pass
@@ -1065,13 +1068,24 @@ BDM_PROFILE_CHECKS = {  # migration 0069 repeats these strings; test_bdm_003_mig
     "ck_bdm_organizations_school_profile": _group_only("school"),
     "ck_bdm_organizations_college_profile": _group_only("college"),
 }
+# bdm-004 (DEC-SCOPE-070, spec §5.1): only a manual stage of the organization's own pipeline is stored (S3: live stages arrive with
+# bdm-018 / bdm-019, which widen this CHECK). Lost is a flag with a reason on top of the stage (S5). Migration 0072 repeats these
+# strings; test_bdm_004_migration asserts they stay identical.
+BDM_PIPELINE_CHECKS = {
+    "ck_bdm_organizations_pipeline_stage": " OR ".join(
+        f"(bdm_type = '{bdm_type}' AND {_in_list('pipeline_stage', stages)})" for bdm_type, stages in BDM_MANUAL_STAGES.items()
+    ),
+    "ck_bdm_organizations_lost": "(lost_at IS NULL) = (lost_reason IS NULL)",
+}
+BDM_PIPELINE_EVENT_KINDS = ("move", "lost", "revived")
 
 
 class BdmOrganization(Base, TimestampMixin):
     """bdm-002 (DEC-SCOPE-060): an institution a BDM meets (§9). `bdm_type` is the owning module (Q-03), copied from the creator and
     never changed; `name_key`/`city_key` are the server-normalized duplicate key (Q-18). Never hard-deleted: archived instead (C5).
     bdm-003 (DEC-SCOPE-065): a common address plus one typed profile group per org_type (BDM_PROFILE_FIELDS); a group's columns are
-    NULL for every other type."""
+    NULL for every other type.
+    bdm-004 (DEC-SCOPE-070): pipeline_stage (a manual stage of bdm_type's pipeline) and the Lost flag."""
 
     __tablename__ = "bdm_organizations"
     __table_args__ = (
@@ -1080,8 +1094,10 @@ class BdmOrganization(Base, TimestampMixin):
         CheckConstraint("bdm_type IN ('agent', 'school', 'college')", name="ck_bdm_organizations_bdm_type"),
         CheckConstraint("student_count IS NULL OR student_count >= 0", name="ck_bdm_organizations_student_count"),
         *(CheckConstraint(sql, name=name) for name, sql in BDM_PROFILE_CHECKS.items()),
+        *(CheckConstraint(sql, name=name) for name, sql in BDM_PIPELINE_CHECKS.items()),
         Index("ix_bdm_organizations_type_assignee", "bdm_type", "assigned_bdm_user_id"),
         Index("ix_bdm_organizations_duplicate_key", "bdm_type", "name_key", "city_key"),
+        Index("ix_bdm_organizations_type_stage", "bdm_type", "pipeline_stage"),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     code: Mapped[str] = mapped_column(String(20))
@@ -1113,6 +1129,9 @@ class BdmOrganization(Base, TimestampMixin):
     assigned_bdm_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    pipeline_stage: Mapped[str] = mapped_column(String(40), default=BDM_FIRST_STAGE, server_default=BDM_FIRST_STAGE)
+    lost_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    lost_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
 class BdmOrganizationContact(Base, TimestampMixin):
@@ -1134,6 +1153,28 @@ class BdmOrganizationContact(Base, TimestampMixin):
     phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+
+
+class BdmPipelineEvent(Base):
+    """bdm-004 (DEC-SCOPE-070, spec §5.2): one row per stage move, Lost or Revive. Append-only. `from_stage` = `to_stage` for lost /
+    revived; `note` is the move note or the required reason. No stage CHECK: history must survive a future catalogue change.
+    `position` orders rows created in one transaction."""
+
+    __tablename__ = "bdm_pipeline_events"
+    __table_args__ = (
+        CheckConstraint(_in_list("kind", BDM_PIPELINE_EVENT_KINDS), name="ck_bdm_pipeline_events_kind"),
+        CheckConstraint("kind = 'move' OR note IS NOT NULL", name="ck_bdm_pipeline_events_note"),
+        Index("ix_bdm_pipeline_events_org", "organization_id", "position"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    organization_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"))
+    actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    kind: Mapped[str] = mapped_column(String(10))
+    from_stage: Mapped[str] = mapped_column(String(40))
+    to_stage: Mapped[str] = mapped_column(String(40))
+    note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 # bdm-006 (DEC-SCOPE-068, spec §4.1): appointment catalogues. Stable keys; the CHECKs accept every key, the service validates each value
