@@ -24,7 +24,7 @@ async function noOverflow(page: Page) {
 }
 
 test("BDM activity log: log, timeline, counts, edit, delete, manager view", async ({ page }) => {
-  const stamp = Date.now();
+  const stamp = `${Date.now()}${Math.floor(Math.random() * 1e4)}`;
   await signIn(page, "admin", "superadmin@edusphere.local", "Demo@123", "/admin");
   const manager = await (await page.request.post("/api/v1/admin/users", {
     data: { role: "bdm_manager", division: "global", full_name: `E2E Manager ${stamp}`, email: `bdm009-m-${stamp}@example.local` },
