@@ -5,11 +5,12 @@ import SearchableSelect from "@/components/SearchableSelect";
 import { localToIso, toLocalInput } from "@/lib/agentTasks";
 import { sendJson } from "@/lib/apiErrors";
 import {
-  ACTIVITIES_URL, type Activity, activityRuleField, activityUrl, assignedOrgSearch, BACKDATE_DAYS, type Channel, CHANNEL_LABEL, CHANNELS,
+  ACTIVITIES_URL, type Activity, activityRuleField, activityUrl, BACKDATE_DAYS, type Channel, CHANNEL_LABEL, CHANNELS,
   type Direction, DIRECTION_LABEL, isActivity, needsDirection, NOTE_MAX,
 } from "@/lib/bdmActivities";
-import { fieldErrors } from "@/lib/bdmTravel";
+import { myOrganizationSearch } from "@/lib/bdmAppointments";
 import { ORGS_URL } from "@/lib/bdmOrganizations";
+import { fieldErrors } from "@/lib/bdmTravel";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 import { useLeaveGuard } from "@/lib/useLeaveGuard";
 
@@ -19,6 +20,7 @@ type Draft = { channel: Channel; direction: Direction | null; occurredLocal: str
 const fromActivity = (a: Activity): Draft => ({
   channel: a.channel, direction: a.direction, occurredLocal: toLocalInput(a.occurred_at), contactId: a.contact_id ?? "", note: a.note ?? "",
 });
+const FIELD_ORDER = ["organization_id", "direction", "occurred_at", "contact_id", "note"]; // focus order after a refused save
 const fresh = (): Draft => ({ channel: "call", direction: null, occurredLocal: toLocalInput(new Date().toISOString()), contactId: "", note: "" });
 
 // bdm-009 (spec §6.3): log or edit one activity. The organization is fixed on the profile, or picked (the BDM's own assigned ones) on
@@ -63,7 +65,6 @@ export default function BdmActivityForm({
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((d) => ({ ...d, [key]: value }));
   // §12.2 F4: after a refused save, focus the first field that carries an error, else the top message (the TripForm pattern).
-  const FIELD_ORDER = ["organization_id", "direction", "occurred_at", "contact_id", "note"];
   const focusFirst = (found: Record<string, string>) => {
     const first = FIELD_ORDER.find((name) => found[name]);
     focus(first === "direction" ? `${fieldId("direction")}-outbound` : first ? fieldId(first) : fieldId("message"));
@@ -78,13 +79,12 @@ export default function BdmActivityForm({
     const full = { channel: draft.channel, direction: needsDirection(draft.channel) ? draft.direction : null, contact_id: draft.contactId || null,
       occurred_at, note: draft.note.trim() || null };
     if (!editing) return { organization_id: orgId, ...full };
-    const before = fromActivity(activity!);
     const out: Record<string, unknown> = {};
-    if (draft.channel !== before.channel) out.channel = full.channel;
-    if (full.direction !== before.direction) out.direction = full.direction;
-    if (draft.contactId !== before.contactId) out.contact_id = full.contact_id;
-    if (draft.occurredLocal !== before.occurredLocal) out.occurred_at = full.occurred_at;
-    if (draft.note !== before.note) out.note = full.note;
+    if (draft.channel !== initial.channel) out.channel = full.channel;
+    if (full.direction !== initial.direction) out.direction = full.direction;
+    if (draft.contactId !== initial.contactId) out.contact_id = full.contact_id;
+    if (draft.occurredLocal !== initial.occurredLocal) out.occurred_at = full.occurred_at;
+    if (draft.note !== initial.note) out.note = full.note;
     return out;
   }
 
@@ -122,7 +122,7 @@ export default function BdmActivityForm({
       {failure && <p id={fieldId("message")} tabIndex={-1} className="form-error" role="alert">{failure}</p>}
       {picking && (
         <div className="field">
-          <SearchableSelect id={pickerId} label="Organization (required)" noun="organization" required search={assignedOrgSearch}
+          <SearchableSelect id={pickerId} label="Organization (required)" noun="organization" required search={myOrganizationSearch()}
             onChange={(o) => { setOrgId(o?.id ?? ""); setOptions([]); set("contactId", ""); }} />
           {err("organization_id")}
         </div>

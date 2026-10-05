@@ -4,8 +4,7 @@ import { type ReactNode, useRef, useState } from "react";
 import BdmActivityCounts from "@/components/BdmActivityCounts";
 import BdmActivityForm from "@/components/BdmActivityForm";
 import BdmActivityItem from "@/components/BdmActivityItem";
-import { type ActivityDayPage, DAY_PAGE, isDayPage } from "@/lib/bdmActivities";
-import { indiaDate } from "@/lib/bdmTravel";
+import { type ActivityDayPage, appendUnique, DAY_PAGE, indiaDate, isDayPage, lockActivity } from "@/lib/bdmActivities";
 import { formatCalendarDate } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
@@ -22,18 +21,17 @@ export default function BdmActivityDay({
   const [failure, setFailure] = useState<string | null>(null);
   const focus = useFocusAfterRender();
   const latest = useRef(0); // read sequence: only the newest request may change the page (older answers can arrive late)
-  const sep = url.includes("?") ? "&" : "?";
 
   async function read(offset: number, append: boolean, text?: string) {
     const mine = ++latest.current;
     setBusy(true);
     setFailure(null);
     try {
-      const response = await fetch(`${url}${sep}limit=${DAY_PAGE}&offset=${offset}`);
+      const response = await fetch(`${url}&limit=${DAY_PAGE}&offset=${offset}`);
       const data = response.ok ? await response.json() : null;
       if (!isDayPage(data)) throw new Error("bad page");
       if (mine !== latest.current) return;
-      setDay((current) => (append ? { ...data, items: [...current.items, ...data.items.filter((a) => !current.items.some((c) => c.id === a.id))] } : data));
+      setDay((current) => (append ? { ...data, items: appendUnique(current.items, data.items) } : data));
       if (text) setNotice(text);
     } catch {
       if (mine === latest.current) {
@@ -76,7 +74,7 @@ export default function BdmActivityDay({
           {day.items.map((a) => (
             <BdmActivityItem key={a.id} activity={a} showOrganization orgBasePath={orgBasePath}
               onChanged={() => void read(0, false, "Activity saved.")}
-              onLocked={(id) => { setNotice(null); setDay((current) => ({ ...current, items: current.items.map((x) => (x.id === id ? { ...x, permissions: { can_change: false } } : x)) })); }} onDeleted={() => void read(0, false, "Activity deleted.")} />
+              onLocked={(id) => { setNotice(null); setDay((current) => ({ ...current, items: lockActivity(current.items, id) })); }} onDeleted={() => void read(0, false, "Activity deleted.")} />
           ))}
         </ol>
       )}

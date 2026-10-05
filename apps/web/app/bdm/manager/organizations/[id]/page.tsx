@@ -4,11 +4,9 @@ import { accessDenied, accessUnavailable } from "@/components/AccessUnavailable"
 import BdmOrganizationDetail from "@/components/BdmOrganizationDetail";
 import PortalShell from "@/components/PortalShell";
 import { ApiError, serverApi } from "@/lib/api";
-import type { Page } from "@/lib/apiErrors";
-import { type Activity, orgActivitiesUrl } from "@/lib/bdmActivities";
+import { firstActivityPage } from "@/lib/bdmActivitiesServer";
 import type { Organization } from "@/lib/bdmOrganizations";
 import { bdmManagerNav } from "@/lib/bdmNav";
-import { isUuid } from "@/lib/bdmTravel";
 import type { User } from "@/lib/types";
 
 // bdm-002 (C2, C14): one of the team's organizations for a manager (super_admin: any). A 404 (unknown, or not assigned to this
@@ -16,10 +14,7 @@ import type { User } from "@/lib/types";
 export default async function BdmManagerOrganizationPage({ params }: { params: Promise<{ id: string }> }) {
   const nav = bdmManagerNav(); // bdm-010 QA10-01: the unread badge, read alongside the page's own data (never rejects)
   const { id } = await params;
-  // bdm-009 (spec §6.2, §12.2 F2): the first timeline page, read alongside the organization (never rejects; null = "Try again").
-  const timeline: Promise<Page<Activity> | null> = isUuid(id)
-    ? serverApi<Page<Activity>>(orgActivitiesUrl(id)).catch(() => null)
-    : Promise.resolve(null);
+  const timeline = firstActivityPage(id); // bdm-009: the activity section's first page, read alongside the organization
   let user: User;
   try {
     user = await serverApi<User>("/api/v1/auth/me");

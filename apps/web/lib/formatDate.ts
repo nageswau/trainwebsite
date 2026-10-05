@@ -52,3 +52,15 @@ export function zoneLabel(value: string, timeZone: string): string {
   const parts = new Intl.DateTimeFormat("en-US", { timeZone, timeZoneName: "short" }).formatToParts(new Date(value));
   return parts.find((p) => p.type === "timeZoneName")?.value ?? timeZone;
 }
+
+const YYYY_MM_DD = /^\d{4}-\d{2}-\d{2}$/;
+
+// AGN-019 QA19-01: a real calendar date (not 2026-13-01 or 2026-02-30), which a date input can display -- an impossible one would sit
+// hidden in the form and be re-sent by every Apply. setUTCFullYear, not Date.UTC, so years below 100 are not read as 19xx.
+export function isCalendarDate(value: string): boolean {
+  if (!YYYY_MM_DD.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  return year >= 1 && date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}

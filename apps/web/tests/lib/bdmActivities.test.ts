@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { activityRuleField, isCalendarDate, contactText, isDayPage, needsDirection, placeNewest, type Activity } from "@/lib/bdmActivities";
+import { activityRuleField, appendUnique, contactText, indiaDate, isDayPage, lockActivity, needsDirection, placeNewest, type Activity } from "@/lib/bdmActivities";
+import { isCalendarDate } from "@/lib/formatDate";
 
 const a = (over: Partial<Activity> = {}): Activity => ({
   id: "a1", organization: { id: "o1", code: "ORG-000001", name: "St Mary", org_type: "college" }, bdm: { id: "b1", full_name: "Asha" },
@@ -39,6 +40,27 @@ describe("bdmActivities", () => {
     const list = [a({ id: "a2", occurred_at: "2026-10-03T06:00:00Z" }), a({ id: "a1" })];
     expect(placeNewest(list, a({ id: "a3", occurred_at: "2026-10-03T05:30:00Z" })).map((x) => x.id)).toEqual(["a2", "a3", "a1"]);
     expect(placeNewest(list, a({ id: "a1", occurred_at: "2026-10-03T07:00:00Z" })).map((x) => x.id)).toEqual(["a1", "a2"]);
+  });
+
+  it("appends a later page without repeating rows already shown", () => {
+    const shown = [a({ id: "a2" }), a({ id: "a1" })];
+    expect(appendUnique(shown, [a({ id: "a1" }), a({ id: "a0" })]).map((x) => x.id)).toEqual(["a2", "a1", "a0"]);
+    expect(appendUnique([], [a({ id: "a1" })]).map((x) => x.id)).toEqual(["a1"]);
+    expect(shown).toHaveLength(2); // the list passed in is not changed
+  });
+
+  it("locks one row (no Edit / Delete) and leaves the others and the input alone", () => {
+    const items = [a({ id: "a1" }), a({ id: "a2" })];
+    const locked = lockActivity(items, "a2");
+    expect(locked.map((x) => x.permissions.can_change)).toEqual([true, false]);
+    expect(items[1].permissions.can_change).toBe(true);
+    expect(lockActivity(items, "nope")).toEqual(items);
+  });
+
+  it("indiaDate is the IST calendar day of a moment", () => {
+    expect(indiaDate("2026-09-21T20:00:00Z")).toBe("2026-09-22"); // 01:30 IST
+    expect(indiaDate(new Date("2026-10-03T18:29:59Z"))).toBe("2026-10-03");
+    expect(indiaDate("2026-10-03T18:30:00Z")).toBe("2026-10-04");
   });
 
   it("trusts a day page only with counts", () => {

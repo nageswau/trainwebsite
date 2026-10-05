@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import BdmActivityForm from "@/components/BdmActivityForm";
 import BdmActivityItem from "@/components/BdmActivityItem";
 import { isPage, type Page } from "@/lib/apiErrors";
-import { type Activity, orgActivitiesUrl, placeNewest } from "@/lib/bdmActivities";
+import { type Activity, appendUnique, lockActivity, orgActivitiesUrl, placeNewest } from "@/lib/bdmActivities";
 import type { Organization } from "@/lib/bdmOrganizations";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
@@ -34,7 +34,7 @@ export default function BdmActivityTimeline({
       if (!isPage<Activity>(data)) throw new Error("bad page");
       fetched.current = offset + data.items.length;
       data.items.forEach((a) => local.current.delete(a.id));
-      setItems((current) => (offset === 0 ? data.items : [...current, ...data.items.filter((a) => !current.some((c) => c.id === a.id))]));
+      setItems((current) => (offset === 0 ? data.items : appendUnique(current, data.items)));
       setTotal(data.total);
       setLoaded(true);
     } catch {
@@ -70,7 +70,7 @@ export default function BdmActivityTimeline({
             <BdmActivityItem key={a.id} activity={a} orgBasePath={orgBasePath}
               onChanged={(next) => { setItems((current) => placeNewest(current, next)); onNotice("Activity saved."); }}
               onEdit={() => onNotice("")}
-              onLocked={(id) => { onNotice(""); setItems((current) => current.map((x) => (x.id === id ? { ...x, permissions: { can_change: false } } : x))); }}
+              onLocked={(id) => { onNotice(""); setItems((current) => lockActivity(current, id)); }}
               onDeleted={(id) => {
                 if (!local.current.delete(id)) fetched.current -= 1; // a row the server gave us shifts the next offset; one saved here never counted
                 setItems((current) => current.filter((x) => x.id !== id)); setTotal((t) => t - 1); onNotice("Activity deleted.", true);

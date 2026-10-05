@@ -6,7 +6,7 @@ export default function BdmActivityCounts({ counts, busy = false }: { counts: Da
   const tiles: [string, number][] = [
     ["Calls made", counts.calls_made],
     ["Organizations contacted", counts.organizations_contacted],
-    ...CHANNELS.map((c): [string, number] => [CHANNEL_LABEL[c], counts.by_channel[c] ?? 0]),
+    ...CHANNELS.map((c): [string, number] => [CHANNEL_LABEL[c], counts.by_channel[c]]),
   ];
   return (
     <dl className="kpi-grid" aria-label="Day counts" aria-busy={busy || undefined}>

@@ -1,6 +1,7 @@
 import { isPage, type Page } from "@/lib/apiErrors";
 import { ORGS_URL, type OrgType } from "@/lib/bdmOrganizations";
-import type { LookupPage } from "@/lib/lookups";
+import type { PersonRef } from "@/lib/bdmTravel";
+import { isCalendarDate } from "@/lib/formatDate";
 
 // bdm-009 (DEC-SCOPE-069): activity types, labels and endpoints for the organization timeline and the activity pages. The API decides
 // every rule; `permissions.can_change` only tells the UI whether to offer Edit / Delete.
@@ -14,12 +15,11 @@ export const NOTE_MAX = 500;
 export const BACKDATE_DAYS = 7; // V4 (the API decides; used in the When hint)
 export const TIMELINE_PAGE = 20;
 export const DAY_PAGE = 50;
-const PICKER_LIMIT = 20;
 
 export type Activity = {
   id: string;
   organization: { id: string; code: string; name: string; org_type: OrgType };
-  bdm: { id: string; full_name: string }; // bdm-010's PersonRef shape (spec §12.1 A1)
+  bdm: PersonRef; // bdm-010's shape (spec §12.1 A1)
   contact_id: string | null; contact_name: string | null; contact_removed: boolean;
   channel: Channel; direction: Direction | null; occurred_at: string; note: string | null;
   created_at: string; updated_at: string; permissions: { can_change: boolean };
@@ -48,15 +48,6 @@ export function contactText(a: Activity): string | null {
   return a.contact_removed ? `${a.contact_name} (removed)` : a.contact_name;
 }
 
-/** A real calendar day: YYYY-MM-DD with a 4-digit year that survives a round trip (2026-02-30 does not). bdm-010's isIsoDate lets that roll over. */
-export function isCalendarDate(value: string): boolean {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!m) return false;
-  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
-  const t = new Date(Date.UTC(y, mo - 1, d));
-  return t.getUTCFullYear() === y && t.getUTCMonth() === mo - 1 && t.getUTCDate() === d;
-}
-
 /** The IST day a page shows for a raw `?date=`: an invalid or future day becomes today, with a note the page prints (QA9B-01). */
 export function activityDay(raw: string | undefined, today: string): { day: string; note: string | null } {
   if (!raw) return { day: today, note: null };
@@ -79,12 +70,15 @@ export function placeNewest(items: Activity[], activity: Activity): Activity[] {
   return [...rest, activity].sort((x, y) => (x.occurred_at === y.occurred_at ? y.id.localeCompare(x.id) : y.occurred_at.localeCompare(x.occurred_at)));
 }
 
-/** The activities page's organization picker: the BDM's own assigned, active organizations (V1). */
-export async function assignedOrgSearch(q: string, signal: AbortSignal): Promise<LookupPage> {
-  const query = new URLSearchParams({ assigned: "me", limit: String(PICKER_LIMIT) });
-  if (q) query.set("q", q);
-  const response = await fetch(`${ORGS_URL}?${query}`, { signal });
-  if (!response.ok) throw new Error(`Organization search failed (${response.status})`);
-  const page = (await response.json()) as { items: { id: string; code: string; name: string; city: string }[]; total: number };
-  return { items: page.items.map((o) => ({ id: o.id, label: o.name, detail: `${o.code} · ${o.city}` })), truncated: page.total > page.items.length };
+/** Newest-first list plus a page read later: rows already shown are not repeated (a write can shift the page boundary). */
+export function appendUnique(current: Activity[], incoming: Activity[]): Activity[] {
+  return [...current, ...incoming.filter((a) => !current.some((c) => c.id === a.id))];
 }
+
+/** The API refused a change as "no longer yours / not today": keep the row, drop its Edit and Delete. */
+export function lockActivity(items: Activity[], id: string): Activity[] {
+  return items.map((x) => (x.id === id ? { ...x, permissions: { can_change: false } } : x));
+}
+
+/** India's calendar date (YYYY-MM-DD) of a moment: the day an activity belongs to. */
+export const indiaDate = (value: string | Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date(value));

@@ -5,11 +5,9 @@ import BdmOrganizationDetail from "@/components/BdmOrganizationDetail";
 import PortalShell from "@/components/PortalShell";
 import { ApiError, serverApi } from "@/lib/api";
 import { BDM_TYPE_LABEL, type BdmMe } from "@/lib/bdm";
-import type { Page } from "@/lib/apiErrors";
-import { type Activity, orgActivitiesUrl } from "@/lib/bdmActivities";
+import { firstActivityPage } from "@/lib/bdmActivitiesServer";
 import type { Organization } from "@/lib/bdmOrganizations";
 import { bdmNav } from "@/lib/bdmNav";
-import { isUuid } from "@/lib/bdmTravel";
 import { BDM_SIGN_IN } from "@/lib/navigation";
 
 // bdm-002: one organization. A 404 (unknown or outside the BDM's module) is a plain "not found" -- it never says which.
@@ -23,11 +21,7 @@ export default async function BdmOrganizationPage({ params, searchParams }: { pa
   } catch (e) {
     return accessUnavailable(e, BDM_SIGN_IN);
   }
-  // bdm-009 (spec §6.2, §12.2 F2): the first timeline page, read alongside the organization. It never rejects: a failure is null and
-  // the section offers "Try again"; a malformed id isn't sent (the organization read answers "not found" for it).
-  const timeline: Promise<Page<Activity> | null> = isUuid(id)
-    ? serverApi<Page<Activity>>(orgActivitiesUrl(id)).catch(() => null)
-    : Promise.resolve(null);
+  const timeline = firstActivityPage(id); // bdm-009: the activity section's first page, read alongside the organization
   let organization: Organization | null = null;
   try {
     organization = (await serverApi<{ organization: Organization }>(`/api/v1/bdm/organizations/${encodeURIComponent(id)}`)).organization;
