@@ -53,17 +53,34 @@ export const DURATIONS = [15, 30, 45, 60, 90, 120, 180, 240, 360, 480, 720]; // 
 // The duration choices, plus an off-list value an appointment already has (so a select never hides it).
 export const durationOptions = (current: number): number[] => (DURATIONS.includes(current) ? DURATIONS : [...DURATIONS, current].sort((a, b) => a - b));
 
-export type AppointmentPermissions = { can_edit: boolean; can_confirm: boolean; can_reschedule: boolean; can_cancel: boolean; can_no_show: boolean; can_complete: boolean };
+export type AppointmentPermissions = { can_edit: boolean; can_confirm: boolean; can_reschedule: boolean; can_cancel: boolean; can_no_show: boolean; can_complete: boolean; can_edit_report: boolean };
 export type AppointmentRow = {
   id: string; code: string; starts_at: string; duration_minutes: number; appointment_type: string; status: AppointmentStatus;
   organization: { id: string; code: string; name: string; archived: boolean }; contact_name: string; bdm: { id: string; full_name: string; active: boolean };
+  outcome_pending: boolean; // bdm-007 AC5: open and past its start, no meeting report yet
 };
 export type AppointmentEvent = { from_status: AppointmentStatus | null; to_status: AppointmentStatus; old_starts_at: string | null; new_starts_at: string | null; reason: string | null; actor_name: string; created_at: string };
 export type Appointment = AppointmentRow & {
   contact_id: string | null; contact_designation: string | null; contact_phone: string | null; contact_email: string | null;
   location: string | null; purpose: string | null; remarks: string | null; outcome: string | null; next_follow_up_on: string | null;
+  report: MeetingReport | null; follow_up: FollowUp | null;
   expected_leads: number | null; expected_revenue: string | null; events: AppointmentEvent[]; permissions: AppointmentPermissions;
   created_at: string; updated_at: string;
+};
+// bdm-007 (spec §5.3): the meeting report filed on completion; outcome and follow-up date stay on the appointment.
+export type MeetingReport = {
+  discussion: string | null; requirements: string | null; opportunity: string | null; next_action: string | null;
+  responsible_person: string | null; legacy: boolean; author: { id: string; full_name: string; active: boolean };
+  submitted_at: string; updated_at: string;
+};
+export type FollowUp = { id: string; due_on: string; status: "open" | "done" | "cancelled" };
+export type ReportBody = {
+  outcome: string; discussion: string; requirements: string | null; opportunity: string | null; next_action: string | null;
+  responsible_person: string | null; next_follow_up_on: string | null;
+};
+export const REPORT_LIMITS = { discussion: 4000, requirements: 2000, opportunity: 2000, next_action: 1000, responsible_person: 200 } as const;
+export const REPORT_FIELD_LABEL: Record<keyof typeof REPORT_LIMITS, string> = {
+  discussion: "Discussion", requirements: "Requirements", opportunity: "Opportunity", next_action: "Next action", responsible_person: "Responsible person",
 };
 export type OverlapMatch = { id: string; code: string; starts_at: string; duration_minutes: number; organization_name: string };
 export type Overlap = { message: string; matches: OverlapMatch[]; total: number };
