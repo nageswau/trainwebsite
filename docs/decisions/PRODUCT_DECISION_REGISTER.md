@@ -3521,3 +3521,24 @@ independent Codex review are pending.
 - **Defaults:** super_admin reads only; the contact must belong to the organization and its name is kept after the contact is deleted (as bdm-006 A5); an edit cannot move an activity off today; no idempotency key (a duplicate is fixed by a same-day delete); no general rate limiter (as bdm-010). Refusal logging: `bdm_activity_write_refused` is logged for "not the organization's assigned BDM" (create) and "not the BDM who logged it" (patch / delete, which also covers a manager or `super_admin` touching a readable team activity); 403s from the role gate (`bdm_context` on create, `caller_scope` for other roles) are not logged (bdm-002's `bdm_org_write_refused` precedent). Notes are visible to every reader of the organization (the form says so). Retention / erasure of BDM data remains `NEEDS_CONFIRMATION` (as bdm-001 / 002 / 006).
 
 **Status:** `EXPLICIT_APPROVAL` for V1–V10; implemented on `feature/bdm-009-activities`; **COMPLETE for its scope** (verified 2026-10-05 on the merged branch: backend lite 507 passed, web 320 passed, tsc / eslint / `next build` clean, mypy equal to `main`, Playwright bdm-009 ×2 + bdm-001/002/003/006/010 green, Browser Use checks of AC1, AC3–AC6 and AC12, browser QA and exploratory QA findings fixed). The owner's full suites are run separately; the independent Codex review was waived by the owner. Migration `0071_bdm_activities`.
+
+### DEC-SCOPE-070 — Appointment outcome + meeting report (`bdm-007`)
+
+**Question:** how does a BDM record the outcome and meeting report after every meeting, which outcome lists apply, how is the follow-up created, how long can the report change, and how do past appointments without an outcome surface (`BDM_CRM_BACKLOG.md` §4 bdm-007)?
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md`, `DERIVED_BLUEPRINT`) §8 Appointment Outcome (250–283), Agent §C outcomes (637–653), §4 Common "Meeting Report" (1302–1318); backlog D18, Q-13/D22, Appendix B AL-6 (`DERIVED_BLUEPRINT`); bdm-006 `DEC-SCOPE-068` A1/A8.
+
+**Resolution:** owner, in-session 2026-10-05 (`EXPLICIT_APPROVAL` — answers to structured questions, approach A and design section 1; the owner then directed implementation; design spec `docs/superpowers/specs/2026-10-05-bdm-007-meeting-reports-design.md` §3):
+
+- **R1** Follow-ups: a minimal `bdm_tasks` table now (bdm-008's shape); `uq_bdm_tasks_source_appointment` keeps one follow-up per appointment. bdm-008 adds pages, manual tasks and completion.
+- **R2** Edit window: the author edits the report on the IST day it was filed; then read-only.
+- **R3** Appointments completed under bdm-006: migration 0072 backfills one read-only legacy report each (+ an open follow-up for a stored follow-up date).
+- **R4** Outcome "Reschedule": no server-side draft; the BDM's page offers "Book the next meeting" (the existing booking form, organization prefilled).
+- **R5** Responsible person: free text (≤ 200).
+- **R6** Required: outcome + discussion; requirements, opportunity, next action, responsible person, follow-up date optional.
+- **R7** Approach A: `bdm_meeting_reports` holds the narrative; `outcome` / `next_follow_up_on` stay on `bdm_appointments` (one place each).
+- **Defaults:** only the appointment's BDM files or edits (managers and super_admin read); duplicate complete → 409 under the row lock (no idempotency key); no ETag; no rate limiter; report text never in logs or audit metadata. "Not Interested → pipeline lost" waits for bdm-004.
+
+**Consequences:** migration `0072_bdm_meeting_reports` (two tables, set-based idempotent backfill; `bdm_appointments` untouched; downgrade refuses while non-legacy reports exist). `POST /bdm/appointments/{id}/complete` now takes the report (`discussion` required — the one contract change AC1 requires; the web client changed with it). New `PATCH /bdm/appointments/{id}/report`. Additive reads: `report`, `follow_up`, `permissions.can_edit_report`, row `outcome_pending`, list filter `outcome_pending` (the AL-6 rule bdm-023 reuses).
+
+**Status:** `EXPLICIT_APPROVAL` for R1–R7; IN PROGRESS — implementation complete on `feature/bdm-007-meeting-outcomes` (migration `0072_bdm_meeting_reports`, `DEC-SCOPE-070`); lite backend + web suites green; e2e written, not yet run; browser validation and independent Codex review PENDING — not yet COMPLETE.

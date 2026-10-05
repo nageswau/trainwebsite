@@ -452,6 +452,8 @@ Conventions used below:
 
 ### bdm-007 — Appointment outcome + meeting report
 
+> **Status (2026-10-05):** IN PROGRESS — implementation complete on `feature/bdm-007-meeting-outcomes` (migration `0072_bdm_meeting_reports`, `DEC-SCOPE-070`); lite backend + web suites green; e2e written, not yet run; browser validation and independent Codex review PENDING — not yet COMPLETE. Spec: `docs/superpowers/specs/2026-10-05-bdm-007-meeting-reports-design.md`; plan: `docs/superpowers/plans/2026-10-05-bdm-007-meeting-reports.md`. Owner decisions R1–R7: a minimal `bdm_tasks` table now (one follow-up per appointment), edit on the IST filing day, legacy reports backfilled, Reschedule = a prefilled booking link (no server draft), free-text responsible person, outcome + discussion required, outcome / follow-up date stay on `bdm_appointments`. bdm-006's A1 minimal outcome is superseded: `/complete` now takes the report.
+
 - **Business requirement:** after every meeting the BDM must record the outcome.
   - **Common outcomes (§8):** Interested, MoU Discussion Required, Student Leads Expected, Course Promotion Interested, Follow-up Required, Commercial Discussion, Not Interested, Reschedule, Other.
   - **Agent outcomes (§C):** Interested, Agreement Required, Product Training Required, Follow-up, Documents Required, Onboarding Required, Active Business Expected, Not Interested.

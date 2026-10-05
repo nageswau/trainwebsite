@@ -734,6 +734,15 @@ Do not build against an assumed answer to any of these — confirm first.
 
 Any write by a non-owner (manager, super_admin, other BDM) is 403 after the 404 scope check.
 
+**Addendum, 2026-10-05 (`bdm-007`, `DEC-SCOPE-070`):**
+
+| Method/Path | Auth | Roles | Notes / status codes |
+|---|---|---|---|
+| `POST /bdm/appointments/{id}/complete` | Authenticated | `bdm` (owner) | **Body changed:** the meeting report — `outcome` (owner's type list, 422), `discussion` (required, ≤ 4000), `requirements` / `opportunity` (≤ 2000), `next_action` (≤ 1000), `responsible_person` (≤ 200, one line), `next_follow_up_on` (on or after IST today, 422). One transaction: status, report, follow-up, event, audit. Not open 409; before start 422 |
+| `PATCH /bdm/appointments/{id}/report` | Authenticated | `bdm` (owner) | Any subset of the report fields; `outcome` / `discussion` not null; `next_follow_up_on: null` clears (follow-up cancelled; set again reopens the same row). No report 409; after the IST filing day or legacy 409; follow-up done 409; equal values are not changes |
+| `GET /bdm/appointments` | Authenticated | as above | New filter `outcome_pending` (true = open and past start). Rows gain `outcome_pending` |
+| `GET /bdm/appointments/{id}` | Authenticated | as above | Detail gains `report` (or null), `follow_up` `{id, due_on, status}` (or null), `permissions.can_edit_report` |
+
 **Addendum on `GET /bdm/organizations` and `GET /bdm/organizations/{id}` (bdm-002 contract):** `last_meeting_at` / `next_meeting_at` are now computed (bdm-006, spec §5.6): max `starts_at` of completed, min `starts_at` of open future appointments across all BDMs at that organization. Names, types (`string | null`) and nullability are unchanged.
 
 ---
