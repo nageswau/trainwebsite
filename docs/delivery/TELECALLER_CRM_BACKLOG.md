@@ -551,7 +551,7 @@ API contract §12H; re-chained after bdm-005, bdm-013 and tel-022's `0080_tel_ta
 
 ### tel-012 — Script, message-template and brochure library
 
-**Status (2026-10-06):** verified on `feature/tel-012`, not yet merged (`DEC-SCOPE-083` C1–C4, migration `0083_tel_content`, re-chained
+**Status (2026-10-06):** **merged** to `main` as PR #83 @ `50838192` (`DEC-SCOPE-083` C1–C4, migration `0083_tel_content`, re-chained
 after tel-003 `0078`, bdm-005 `0079`, tel-022 `0080`, tel-004 `0081` and bdm-025 `0082`). C2 moves `GET /telecaller/leads/{id}/render` and the lead-detail script panel to tel-008 / tel-013.
 
 - **Business requirement:** §6, §11 templates, §12 email kinds, T9.
@@ -1139,7 +1139,7 @@ graph TD
 
 ### 5.4 Migrations
 
-Numbers are **provisional**. `main` is at `0081_lead_stage_pipeline` (tel-004, merged 2026-10-06; tel-001 took `0075`, tel-002 `0076`, bdm-008 `0077`, tel-003 `0078`, bdm-005 `0079`, tel-022 `0080`; tel-017 has none; bdm-005/bdm-013/tel-022/tel-004 took `DEC-SCOPE-078`–`081`), so the next telecaller migration will be `0082` or later, and the next decision `DEC-SCOPE-082` or later. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
+Numbers are **provisional**. `main` is at `0083_tel_content` (tel-012, merged 2026-10-06; tel-001 took `0075`, tel-002 `0076`, bdm-008 `0077`, tel-003 `0078`, bdm-005 `0079`, tel-022 `0080`, tel-004 `0081`, bdm-025 `0082`; tel-017 has none; bdm-005/bdm-013/tel-022/tel-004/bdm-025/tel-012 took `DEC-SCOPE-078`–`083`), so the next telecaller migration will be `0084` or later, and the next decision `DEC-SCOPE-084` or later. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
 
 | Item | Migration content |
 |---|---|
