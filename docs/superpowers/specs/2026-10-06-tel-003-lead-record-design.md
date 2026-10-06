@@ -110,3 +110,17 @@ High. The list shape is a breaking change, so every consumer is updated in this 
 table, `test_adm_002`, `test_bdm_017_conversion`, the `pub-002` / `adm-002` / `bdm-017` e2e specs. Untouched readers that the lite set
 re-runs: counselor My Leads (`test_cns_001`), RPT-001 (`test_rpt_001`), the dashboard, the BDM organization lead list
 (`test_bdm_017_leads`), and the CRM sync (`test_pub_002_enquiry_crm`).
+
+## 9. Browser QA (2026-10-06, isolated stack `tel003` web :3073 / API :8073, Edge via CDP :9373 + Playwright)
+
+Independent pass as `it_admin`, `overseas_admin`, `super_admin`, `counselor`, signed out; 1280 / 820 / 390 / 320 px.
+
+| ID | Severity | Page | Finding | Fix |
+|---|---|---|---|---|
+| QA-01 | Minor | `/{division}/admin/leads` workspace table; counselor "My Leads" | The portal tables above the panel showed the row UUID as "Reference", not the Lead ID | `services/portal.py` shows `lead_code` as "Lead ID" (both tables; tel-017's shared `_leads_payload`); `test_tel_003_portal_leads.py` |
+| QA-02 | Minor | Admin lead panel | The search box was a bare input — no visible label, shorter than the filter selects, placeholder cut at 390 px | A `.field` with a visible "Search leads" label and a hint above the input; buttons line up with it; vitest asserts label + `.field` |
+
+Passed with no finding: pager (Showing x–y of n, Previous/Next), every filter into the URL, Back, refresh keeps filters, literal `%_` search,
+no-match message, scope (overseas admin can't widen with `division=it`; counselor 403; signed out 401), `limit=500` / unknown source → 422,
+no page overflow at any width, no console errors, no failed requests, no broken images. One apparent "filter didn't apply" was traced to
+Edge background-tab throttling (server answers in ~50 ms; Playwright and a restarted, unthrottled Edge pass), not the app.
