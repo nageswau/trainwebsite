@@ -1,6 +1,7 @@
 "use client";
 
 import {useMemo, useState} from "react";
+import AssignCounselorButton from "./AssignCounselorButton";
 import JoinSessionButton from "./JoinSessionButton";
 
 type Column = {key: string; label: string; type?: string};
@@ -13,6 +14,10 @@ type SortDirection = "asc" | "desc";
 // `LiveClassesPanel`'s own use of the same button) since every page currently using this
 // column type is a trainer/admin oversight table, not a student join surface.
 function renderCell(column: Column, row: Row) {
+  // AGN-023 (DEC-SCOPE-090 §6): the Overseas Admin's assign/change control, declared by the server like `join`.
+  if (column.type === "assign_counselor") {
+    return <AssignCounselorButton applicationId={String(row.id)} currentId={(row.counselor_id as string | null) ?? null} />;
+  }
   if (column.type === "join") {
     return (
       <JoinSessionButton
