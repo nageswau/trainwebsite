@@ -53,7 +53,7 @@ part of your school's partnership tier) or Not tracked yet. It also shows how co
 
 ### Step 4 — Other sections
 - **Grade history** (Coordinator): promotions and hold-backs; "No promotions recorded yet." until the first one.
-- **Digital Portfolio**: see the Digital Portfolio pages (session S7).
+- **Digital Portfolio**: see [Digital Portfolio overview](../portfolio/port-001-digital-portfolio-overview.md).
 - **Progress report**: see [Download a student progress report](stu-008-progress-report-pdf.md).
 - **Funding support**: loan, scholarship and funding cases opened by the Career Counselor, or "No funding support
   cases for this student." (both seen on the parent's view of the same card in S10; see
@@ -86,7 +86,7 @@ You have a full picture of the student's progress.
 
 ## Tips
 - The details card does not show the assigned teacher or the linked parents.
-- **Open 360° view** shows the same student organised in 16 tabs (session S9).
+- **Open 360° view** shows the same student organised in 16 tabs (see [Student 360° view](../student-360/s360-001-student-360-view.md)).
 
 ## Related Features
 - [Add, replace or remove a student photo](stu-007-student-photo.md)

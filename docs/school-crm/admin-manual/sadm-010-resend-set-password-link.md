@@ -55,7 +55,7 @@ These messages come from the same Users page and were verified in the Agent CRM 
 
 ## Tips
 - Principals, Teachers and Parents do not get set-password links from EduSphere. Their School Coordinator invites them
-  from the school's **Team** page (user manual, session S3).
+  from the school's **Team** page (see [Invite a Principal, Teacher or Parent](../user-manual/team/team-001-invite-a-team-member.md)).
 - The table may need scrolling sideways to see the **Action** column.
 
 ## Related Features

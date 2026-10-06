@@ -12,7 +12,7 @@ receives an email with a link to set their password.
 ## Prerequisites
 - The Coordinator's email address is not used by any other EduSphere account.
 - Decide the school's **partnership tier** (Bronze, Silver, Gold or Platinum). It controls which services the school
-  can use (see the user manual page *Partnership tiers explained*, written in a later session).
+  can use (see [Partnership tiers explained](../user-manual/entitlements/ent-002-partnership-tiers-explained.md)).
 
 ## How to Access
 Overseas Admin sidebar > **Schools** > **Create school** (below the Partner Schools table).
@@ -61,7 +61,7 @@ The form clears and the new school appears at the top of the Partner Schools lis
 - The school exists with a new 8-character **School ID**.
 - The School Coordinator account exists and is waiting for its password to be set.
 - The Coordinator receives the email "Welcome to EduSphere -- set your password". The link is valid for 72 hours (see
-  the user manual page *Set your first password from a welcome link*, written in session S3).
+  [Set your first password from a welcome link](../user-manual/account-access/auth-003-set-your-first-password.md)).
 
 ## Validation Messages
 | Message | When |

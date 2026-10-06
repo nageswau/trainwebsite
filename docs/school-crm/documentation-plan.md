@@ -301,10 +301,10 @@ Features: DOC-SCH-DASH-001..007, DOC-SCH-RPT-001..005, DOC-SCH-ENT-001..002, DOC
   - staff and parent notifications (check U8)
   - School Analytics flags and search
 
-### S11 — Role guides, FAQ, troubleshooting, indexes
-- [ ] Write the nine role guides in `role-guides/`. Each has these sections: Role Purpose, Login, Dashboard, Menus Available, Main Activities, Daily Workflows, Restrictions, Common Problems, Related Features. Link to the feature files and reuse existing screenshots only.
-- [ ] Write `faq.md` and `troubleshooting.md`. Troubleshooting uses Problem / Possible Cause / Resolution / When to Contact Administrator. Include only behaviour observed in S2–S10.
-- [ ] Write the indexes `user-manual/README.md` and `admin-manual/README.md`.
+### S11 — Role guides, FAQ, troubleshooting, indexes — DONE 2026-10-06
+- [x] Write the nine role guides in `role-guides/`. Each has these sections: Role Purpose, Login, Dashboard, Menus Available, Main Activities, Daily Workflows, Restrictions, Common Problems, Related Features. Link to the feature files and reuse existing screenshots only.
+- [x] Write `faq.md` and `troubleshooting.md`. Troubleshooting uses Problem / Possible Cause / Resolution / When to Contact Administrator. Include only behaviour observed in S2–S10.
+- [x] Write the indexes `user-manual/README.md` and `admin-manual/README.md`.
 
 ### S12 — Final review
 - [ ] Re-check every feature file against:

@@ -93,11 +93,11 @@ seen in the browser.)*
 
 ## Tips
 - Changing only **Valid until** does not notify the school.
-- To renew a partnership, move **Valid until** to the new end date. *(From code, not yet seen in the browser: once
-  the date has passed, the school's tier-limited work is refused with "This school's partnership expired on {date}."
-  — confirmed in a later session.)*
+- To renew a partnership, move **Valid until** to the new end date. Once the date has passed, the school's
+  tier-limited work is refused with "This school's partnership expired on {date}." (seen in S5 when scheduling an
+  activity at the expired school; see [Schedule an activity](../user-manual/activities/act-001-schedule-an-activity.md)).
 - A downgrade never removes work the school already started; that work can still be completed.
 
 ## Related Features
 - [Partner Schools list](sadm-001-partner-schools-list.md)
-- School Analytics (flags "Renewal due" and "No active tier"; page written in session S10)
+- [School Analytics](sadm-008-school-analytics.md) (flags "Renewal due" and "No active tier")

@@ -61,7 +61,8 @@ Overseas Admin.
 
 ## Tips
 - Similar messages exist for other cases, for example "This student is not assigned to you" (Teachers) and "This
-  student is not linked to your account" (Parents) *(from code; documented with those pages in later sessions)*.
+  student is not linked to your account" (Parents) *(from code)*. See [Student profile and journey timeline](../students/stu-006-student-profile-and-timeline.md)
+  and [Your child's profile and progress](../parent/par-001-child-profile-and-progress.md).
 - Some pages of another role may open instead of showing this message, but they only ever show your own data. Use the
   pages in your own sidebar.
 

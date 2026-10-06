@@ -85,4 +85,4 @@ for 72 hours."
 
 ## Related Features
 - [Re-send a set-password link](sadm-010-resend-set-password-link.md)
-- User manual: *Set your first password from a welcome link* (session S3)
+- User manual: [Set your first password from a welcome link](../user-manual/account-access/auth-003-set-your-first-password.md)

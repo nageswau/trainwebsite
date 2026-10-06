@@ -5,8 +5,8 @@
 | Code baseline | `main` @ `ce1f07c2` (S1 discovery). Record any later `main` used for browser work here, with the affected features re-checked. |
 | Stack used for browser work | `schooldocs` compose project from worktree `.claude/worktrees/school-docs` (detached at docs commit `24a22627` = `main` `ce1f07c2` + docs). Web http://localhost:3020, api :8020. Untracked `docker-compose.docs.yml` adds Mailpit on **127.0.0.1:8026** (the Agent CRM docs stack holds 8025). Untracked `.env` = repo `.env` with `FRONTEND_URL`/ports changed, `SMTP_HOST=mailpit`, `SMTP_PORT=1025`, `SMTP_USE_TLS=false`, no SMTP credentials, **`SMTP_FROM_EMAIL=no-reply@edusphere.local`** (without it the app reports "email is not configured"), `EMAIL_WEBHOOK_URL` empty. Owner approved Claude starting, seeding and resetting this stack (2026-10-05). |
 | Docs branch | `docs/school-crm-user-guide` (from `main` @ `ce1f07c2`) |
-| Last session | S10 Dashboards, reports, entitlements, notifications, parent, analytics — 2026-10-06 |
-| Next session | S11 — Role guides, FAQ, troubleshooting, README indexes (docs only; no new captures). |
+| Last session | S11 Role guides, FAQ, troubleshooting, indexes — 2026-10-06 |
+| Next session | S12 — Final review: `documentation-review-report.md`, duplicate-screenshot check, mark features COMPLETE. |
 
 **Column values:**
 - **Code Reviewed:** YES / PARTIAL / NO. YES at S1 means reviewed from source at `ce1f07c2`, with file:line evidence in `discovery/`.
@@ -207,6 +207,14 @@ See `documentation-analysis.md` §12.2 (17 items). Notable:
 ## Session log
 | Session | Date | Summary |
 |---|---|---|
+| S11 | 2026-10-06 | Docs only, no captures.
+
+**Written:**
+- Nine role guides in `role-guides/`.
+- `faq.md` and `troubleshooting.md` (Problem / Possible Cause / Resolution / When to Contact Administrator), using only behaviour from S2–S10.
+- `user-manual/README.md` (75 guides) and `admin-manual/README.md` (11 guides).
+
+**Clean-up:** the remaining "(session Sn)" forward references in 10 older guides are replaced with real links. Link check passes. |
 | S10 | 2026-10-06 | `sch-s10-dashboards-reports.capture.ts` runs green in about 35 s after S9 (read-only apart from marking one coordinator notification read).
 
 **Verification:**

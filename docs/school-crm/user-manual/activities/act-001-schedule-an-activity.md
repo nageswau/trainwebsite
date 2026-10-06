@@ -11,7 +11,7 @@ told about it and you can record attendance and feedback afterwards.
 
 ## Prerequisites
 Your school has an active partnership tier. EduSphere activity types (career seminar, career awareness session, parent
-orientation, monthly campus visit) must be included in your tier (see the user page *Partnership tiers explained*, written in session S10).
+orientation, monthly campus visit) must be included in your tier (see [Partnership tiers explained](../entitlements/ent-002-partnership-tiers-explained.md)).
 
 ## How to Access
 Sidebar > **Activities** > **Schedule an activity** (below the activities list).

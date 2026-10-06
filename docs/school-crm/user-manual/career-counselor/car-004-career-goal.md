@@ -56,4 +56,4 @@ Everyone who can open the student's 360° view sees the goal.
 
 ## Related Features
 - [Record career preferences](car-003-career-preferences.md)
-- Student 360° view (written in session S9)
+- [Student 360° view](../student-360/s360-001-student-360-view.md)

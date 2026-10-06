@@ -60,12 +60,12 @@ could not be sent -- share the link manually)". *(From code.)*
 **Problem:** "Email already exists".
 **Cause:** The person already has an EduSphere login.
 **Resolution:** For a Parent who already has an account, link them to the student instead ("Link parent" on the
-**Students** page, documented in session S4).
+**Students** page; see [Link a parent to a student](../students/stu-004-link-a-parent.md)).
 
 ## Tips
 - Pending invitations cannot be re-sent or cancelled from this page. Ask the person to check spam first.
 - An invited **Parent** appears in **Your team** only after being linked to one of your students *(from code)*.
-- You can also invite a parent by entering their email on a student's record (Students page, session S4).
+- You can also invite a parent by entering their email on a student's record (see [Edit a student](../students/stu-003-edit-a-student.md)).
 
 ## Related Features
 - [View your team and pending invites](team-002-view-your-team.md)

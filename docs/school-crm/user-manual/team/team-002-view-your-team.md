@@ -45,7 +45,7 @@ None.
 ## Common Errors
 **Problem:** A parent who accepted an invitation is not in **Your team**.
 **Cause:** Parents are listed only once they are linked to one of your students *(from code)*.
-**Resolution:** Link them to their child from the **Students** page (session S4).
+**Resolution:** Link them to their child from the **Students** page (see [Link a parent to a student](../students/stu-004-link-a-parent.md)).
 
 ## Tips
 - When you are the only account, the page says "It's just you so far. Invite your Principal, teachers, or parents to
