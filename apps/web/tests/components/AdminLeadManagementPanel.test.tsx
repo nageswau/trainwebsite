@@ -108,6 +108,10 @@ describe("AdminLeadManagementPanel (ADM-002, bdm-017 spec §6, tel-003 spec §5)
   it("searches on submit and clears the search", async () => {
     render(<AdminLeadManagementPanel />);
     await tableRow("Lead w1");
+    // browser QA-02: a visible label, and the same .field styling as the filter selects
+    const box = screen.getByLabelText("Search leads");
+    expect(document.querySelector(`label[for="${box.id}"]`)).toHaveTextContent("Search leads");
+    expect(box.closest(".field")).not.toBeNull();
     fireEvent.change(screen.getByLabelText("Search leads"), { target: { value: " LD-000123 " } });
     fireEvent.click(screen.getByRole("button", { name: "Search" }));
     expect(Object.fromEntries(pushedQuery())).toEqual({ q: "LD-000123" });

@@ -1098,8 +1098,8 @@ async def _operations(db: AsyncSession, user: User, section: str):
             return _payload(
                 "My Leads",
                 "Enquiries routed to you.",
-                (("id", "reference"), ("name", "Name"), ("subject", "Interest"), ("status", "Status")),
-                ({"id": e.id, "name": e.name, "subject": e.subject, "status": e.status} for e in rows),
+                (("lead_code", "Lead ID"), ("name", "Name"), ("subject", "Interest"), ("status", "Status")),  # tel-003 QA-01
+                ({"id": e.id, "lead_code": e.lead_code, "name": e.name, "subject": e.subject, "status": e.status} for e in rows),
             )
         if section == "reports" and user.role == "counselor":
             # CNS-001: same gap as "leads" -- PORTAL_NAV lists "Reports" but no handler
@@ -1538,8 +1538,8 @@ async def _operations(db: AsyncSession, user: User, section: str):
             return _payload(
                 "Leads",
                 "Website and CRM enquiry pipeline.",
-                (("id", "reference"), ("name", "Name"), ("subject", "Interest"), ("status", "Status"), ("crm", "CRM sync")),
-                ({"id": e.id, "name": e.name, "subject": e.subject, "status": e.status, "crm": e.crm_sync_status} for e in rows),
+                (("lead_code", "Lead ID"), ("name", "Name"), ("subject", "Interest"), ("status", "Status"), ("crm", "CRM sync")),  # tel-003 QA-01
+                ({"id": e.id, "lead_code": e.lead_code, "name": e.name, "subject": e.subject, "status": e.status, "crm": e.crm_sync_status} for e in rows),
             )
         if section == "payments":
             stmt = select(Payment, User).join(User, User.id == Payment.user_id)

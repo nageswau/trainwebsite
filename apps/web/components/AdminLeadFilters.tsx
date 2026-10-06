@@ -51,10 +51,15 @@ export default function AdminLeadFilters({ values, query, organizations, onChang
 
   return (
     <>
+      {/* QA-02: a visible label and the filter fields' styling; the hint names what is searched */}
       <form role="search" onSubmit={(event) => { event.preventDefault(); onSearch(draft.trim()); }}
-        style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginTop: 8 }}>
-        <input type="search" aria-label="Search leads" placeholder="Lead ID, name, email, phone or subject" value={draft} maxLength={200}
-          onChange={(event) => setDraft(event.target.value)} style={{ flex: "1 1 220px", minWidth: 0 }} />
+        style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-end", marginTop: 8 }}>
+        <div className="field" style={{ flex: "1 1 16rem", minWidth: 0, marginBottom: 0 }}>
+          <label htmlFor="admin-lead-search">Search leads</label>
+          <input id="admin-lead-search" className="search" type="search" aria-describedby="admin-lead-search-hint" value={draft} maxLength={200}
+            onChange={(event) => setDraft(event.target.value)} />
+          <span id="admin-lead-search-hint" className="muted" style={{ fontSize: 13 }}>Lead ID, name, email, phone or subject</span>
+        </div>
         <button type="submit" className="btn secondary small">Search</button>
         {query && <button type="button" className="btn secondary small" onClick={() => onSearch("")}>Clear search</button>}
       </form>
