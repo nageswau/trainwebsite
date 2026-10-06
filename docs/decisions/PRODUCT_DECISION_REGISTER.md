@@ -3711,7 +3711,7 @@ overseas `counselor` (422 "Choose an overseas counselor"), so no overseas chat o
 **Evidence:** `EVID-019` §2 ("Every lead should have a Lead ID", the 18 lead fields, the 13 sources); `DEC-SCOPE-073` T6, T25, T29;
 owner answers in-session 2026-10-06.
 **Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for L1–L2; L3–L6 are recorded defaults the owner did not change.
-Implemented on `feature/tel-003`; not yet merged.
+VERIFIED on `feature/tel-003` (2026-10-06); **MERGED** to `main` as PR #75 @ `10fce82e` (2026-10-06).
 
 | # | Question | Answer |
 |---|---|---|
