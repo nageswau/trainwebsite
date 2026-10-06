@@ -126,6 +126,8 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
    AGN-014: the commission report likewise. */
 .action-grid > .agent-students, .action-grid > .commission-report { grid-column: 1 / -1; }
 .action-grid > .lead-management { grid-column: 1 / -1; } /* bdm-017 QA17-03: organization, student and action columns need the full width */
+/* tel-004 QA-03: below 360px the sticky Name column left too little room, so the row's stage and link forms sat partly under it. */
+@media (max-width: 359px) { .lead-management .table-scroll table th:first-child, .lead-management .table-scroll table td:first-child { position: static; } }
 /* AGN-014 browser QA14-09: the breakdowns are three short columns; without the data-table 650px minimum they fit a phone. */
 .commission-report .table { min-width: 0; }
 @media (max-width: 640px) {

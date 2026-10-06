@@ -2992,6 +2992,17 @@ One existing screen changes (design spec `docs/superpowers/specs/2026-10-06-tel-
   match these filters.", a pager over 50 ("Showing x–y of n"); filters, search and page live in the URL. The table scrolls sideways inside
   its card at phone width.
 
+## tel-004 addendum (2026-10-06, `DEC-SCOPE-078`) — Lead stage on the admin lead list
+
+Design spec `docs/superpowers/specs/2026-10-06-tel-004-lead-pipeline-design.md` §6; no new route, roles unchanged.
+
+- **Route:** `/{it|overseas}/admin/leads`. The **Stage** filter lists the 16 stages by label. The Status column shows the stage label and
+  a **History** toggle (from → to, by whom or "System", when, reason; loading / error / "No stage changes yet."). The action column's
+  status select is replaced by **Change stage**: an inline form with only the valid targets ("Reopen to Follow-up" on a closed lead,
+  nothing on a converted lead), a reason box (required for closed outcomes and reopen), Save / Cancel, inline errors, and focus back on
+  the button after closing. The workspace lead tables (admin Leads, counselor My Leads / dashboard) show the stage label. Below 360 px
+  the Name column stops being sticky so the row's forms fit (QA-03).
+
 ## Required findings report
 
 ### FEATURE_WITHOUT_REQUIRED_SCREEN

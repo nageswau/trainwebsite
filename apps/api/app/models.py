@@ -28,6 +28,7 @@ from sqlalchemy.sql import func
 
 from app.bdm_stages import FIRST_STAGE as BDM_FIRST_STAGE
 from app.bdm_stages import MANUAL_STAGES as BDM_MANUAL_STAGES
+from app.lead_stages import STAGES as LEAD_STAGES
 from app.notifications.phone import normalise_phone
 from app.tel_sources import TEL_SOURCES
 
@@ -735,6 +736,8 @@ LEAD_CHECKS = {  # migration 0078 repeats these strings; test_tel_003_migration 
     "ck_enquiries_priority": f"priority IN ({', '.join(repr(p) for p in LEAD_PRIORITIES)})",
     "ck_enquiries_passing_year": "passing_year IS NULL OR passing_year BETWEEN 1950 AND 2100",
 }
+# tel-004 (DEC-SCOPE-078): `status` is a pipeline stage; migration 0079 repeats this string (test_tel_004_migration).
+LEAD_STATUS_CHECK = f"status IN ({', '.join(repr(s) for s in LEAD_STAGES)})"
 
 
 class Enquiry(Base, TimestampMixin):
@@ -751,6 +754,7 @@ class Enquiry(Base, TimestampMixin):
             name="ck_enquiries_conversion",
         ),
         *(CheckConstraint(sql, name=name) for name, sql in LEAD_CHECKS.items()),
+        CheckConstraint(LEAD_STATUS_CHECK, name="ck_enquiries_status"),
         UniqueConstraint("lead_code", name="uq_enquiries_lead_code"),
         Index("ix_enquiries_bdm_org_created", "bdm_organization_id", "created_at"),
         Index("uq_enquiries_converted_user", "converted_user_id", unique=True, postgresql_where=text("converted_user_id IS NOT NULL")),
@@ -796,6 +800,24 @@ class Enquiry(Base, TimestampMixin):
     def _derive_phone_normalized(self, _key: str, phone: str | None) -> str | None:
         self.phone_normalized = normalise_phone(phone)
         return phone
+
+
+class LeadStageHistory(Base):
+    """tel-004 (DEC-SCOPE-078, spec §3): one row per lead stage change. Append-only. `event` is a system event name, `manual`, `reopen` or
+    `legacy_mapping`; `actor_user_id` is NULL for the system. No stage CHECK: history must survive a future catalogue change (bdm-004).
+    `position` orders rows created in one transaction."""
+
+    __tablename__ = "lead_stage_history"
+    __table_args__ = (Index("ix_lead_stage_history_lead", "lead_id", "position"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    lead_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="RESTRICT"))
+    from_stage: Mapped[str] = mapped_column(String(40))
+    to_stage: Mapped[str] = mapped_column(String(40))
+    event: Mapped[str] = mapped_column(String(30))
+    actor_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class ContentPage(Base, TimestampMixin):

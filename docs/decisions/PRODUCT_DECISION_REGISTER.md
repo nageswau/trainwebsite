@@ -3728,3 +3728,25 @@ VERIFIED on `feature/tel-003` (2026-10-06); **MERGED** to `main` as PR #75 @ `10
 `GET /admin/leads` becomes `{items,total,limit,offset}` with stage/source/product/campaign/telecaller/organization/search filters
 (**breaking**; every in-repo consumer updated); `POST /public/enquiries` and the CRM payload add `lead_code`. bdm-017's columns and
 conversion routes are unchanged (`DEC-SCOPE-072`). Design spec `docs/superpowers/specs/2026-10-06-tel-003-lead-record-design.md`.
+
+### DEC-SCOPE-078 — Lead pipeline: stage engine + stage history (`tel-004`)
+
+**Evidence:** `EVID-019` §19 (11 stages + 5 closed outcomes); `DEC-SCOPE-073` T5, T13, T25, T29; owner answers in-session 2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for PL1–PL4; D1–D4 are recorded defaults. VERIFIED on `feature/tel-004`
+(2026-10-06), not merged. **Provisional number:** tel-012 and tel-022 also claim `DEC-SCOPE-078` / `0079`; whichever merges second re-chains.
+
+| # | Question | Answer |
+|---|---|---|
+| PL1 (Q-02) | Legacy `enquiries.status` mapping | new/contacted/qualified/lost kept; `converted` + linked student → `application_enrollment`, without → `follow_up`; other text → `new`; original in `metadata_json.legacy_status`; one `legacy_mapping` history row per changed lead |
+| PL2 | Assigned vs First Call Pending | Attempt-based: assignment → `assigned`; first unconnected call → `first_call_pending`; first connected call → `contacted` |
+| PL3 (Q-09) | No Response | A manual closed outcome with a reason; an automatic close after N attempts is deferred to tel-010 |
+| PL4 | bdm-017 admin link | Through the engine: Link → `application_enrollment`, Unlink → `follow_up`. **Supersedes `DEC-SCOPE-072` L2/L7** for the stage; nobody selects `converted` (tel-018 computes it) |
+| D1 | Reasons | Required for the 5 closed outcomes and for a reopen (≤ 500); stored in history only, never logged or audited |
+| D2 | Manual moves | Qualified / Interested / Follow-up from any open stage before `application_enrollment`; closed outcomes from any open stage except `converted` |
+| D3 | Closed leads | Only a manager or admin reopens, to `follow_up` (telecaller 403); events on a closed lead don't move it |
+| D4 | Telecaller UI | API now; the lead-detail stage control arrives with tel-008. The admin lead panel gets it now |
+
+**Implementation:** `app/lead_stages.py` (catalogue + event table), `services/lead_pipeline.py` (the only status writer after
+creation), migration `0079_lead_stage_pipeline` (`lead_stage_history`, PL1 mapping, `ck_enquiries_status`; downgrade refuses after a
+real move). Routes: `POST /telecaller/leads/{id}/stage`, `GET /telecaller/leads/{id}/stage-history`, `GET /admin/leads/{id}/stage-history`;
+`PATCH /admin/leads/{id}` status via the engine. Design spec `docs/superpowers/specs/2026-10-06-tel-004-lead-pipeline-design.md`.

@@ -873,6 +873,20 @@ updated in the same item (§12 bdm-017's "500-row cap unchanged" no longer holds
 
 The CRM webhook payload adds `lead_code` (additive; `INTEGRATION_CONTRACTS.md` §1).
 
+## 12G. Lead pipeline (`tel-004`) — addendum, 2026-10-06
+
+`DEC-SCOPE-078`; design spec `docs/superpowers/specs/2026-10-06-tel-004-lead-pipeline-design.md` §4–§5; migration `0079_lead_stage_pipeline`. No new role; the telecaller routes use tel-001's
+`telecaller` / `telecaller_manager` (+ `super_admin`) with SQL scope (T23).
+
+| Method/Path | Roles | Notes / status codes |
+|---|---|---|
+| `POST /telecaller/leads/{id}/stage` | `telecaller` (own leads), `telecaller_manager` (direct reports' leads + their teams' unassigned leads), `super_admin` | Body `{to_stage, reason?}` (extra keys `422`; reason trimmed, ≤ 500, blank = none). `200` `{id, status, status_label, stage_changed_at}`. `422`: unknown / same / system stage (`new`, `assigned`, `first_call_pending`, `contacted`, `counselling_*`, `application_enrollment`, `converted`), a manual move at/after `application_enrollment`, a closed outcome or reopen without a reason, a closed lead to anything but `follow_up`. `403`: other roles; a telecaller on a closed lead. `404`: missing or out of scope. `401` signed out |
+| `GET /telecaller/leads/{id}/stage-history` | as above | `{items, total, limit, offset}`, oldest first; item `{id, from_stage, from_label, to_stage, to_label, event, actor {id, full_name} or null, reason, created_at}` (`actor` null = system) |
+| `GET /admin/leads/{id}/stage-history` | `super_admin`, `it_admin`, `overseas_admin` | Same shape; other division `403`, missing `404` |
+| `PATCH /admin/leads/{id}` | as before | `status` (+ optional `reason`) goes through the engine as a manager (rules above, `422`); the same stage is a no-op; `owner_id` unchanged; audit metadata holds `status`/`owner_id` only |
+| `POST/DELETE /admin/leads/{id}/conversion` | as §12 bdm-017 | Link moves the stage to `application_enrollment` (a closed lead keeps its stage); unlink moves `application_enrollment` → `follow_up` |
+| `GET /admin/leads` | as §12F | Items add `status_label`; the `status` filter takes a stage key |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

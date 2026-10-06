@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.identifiers import uuid_reference
 from app.core.rbac import PERMISSIONS, is_agent_staff
+from app.lead_stages import label as lead_stage_label
 from app.models import (
     AgentCommission,
     AgentOrg,
@@ -1532,8 +1533,9 @@ async def _operations(db: AsyncSession, user: User, section: str):
             return _payload(
                 "Leads",
                 "Website and CRM enquiry pipeline.",
-                (("lead_code", "Lead ID"), ("name", "Name"), ("subject", "Interest"), ("status", "Status"), ("crm", "CRM sync")),  # tel-003 QA-01
-                ({"id": e.id, "lead_code": e.lead_code, "name": e.name, "subject": e.subject, "status": e.status, "crm": e.crm_sync_status} for e in rows),
+                (("lead_code", "Lead ID"), ("name", "Name"), ("subject", "Interest"), ("status", "Stage"), ("crm", "CRM sync")),  # tel-003/004 QA
+                ({"id": e.id, "lead_code": e.lead_code, "name": e.name, "subject": e.subject, "status": lead_stage_label(e.status), "crm": e.crm_sync_status}
+                 for e in rows),
             )
         if section == "payments":
             stmt = select(Payment, User).join(User, User.id == Payment.user_id)
@@ -1570,8 +1572,8 @@ def _leads_payload(rows: list[Enquiry]):
     return _payload(
         "My Leads",
         "Enquiries routed to you.",
-        (("lead_code", "Lead ID"), ("name", "Name"), ("subject", "Interest"), ("status", "Status")),  # tel-003 QA-01
-        ({"id": e.id, "lead_code": e.lead_code, "name": e.name, "subject": e.subject, "status": e.status} for e in rows),
+        (("lead_code", "Lead ID"), ("name", "Name"), ("subject", "Interest"), ("status", "Stage")),  # tel-003 QA-01, tel-004 QA-02
+        ({"id": e.id, "lead_code": e.lead_code, "name": e.name, "subject": e.subject, "status": lead_stage_label(e.status)} for e in rows),
     )
 
 
@@ -1587,8 +1589,8 @@ async def _it_counselor(db: AsyncSession, user: User, section: str):
     return _payload(
         "Counselor Dashboard",
         "IT leads routed to you.",
-        (("name", "Name"), ("subject", "Interest"), ("status", "Status")),
-        ({"name": e.name, "subject": e.subject, "status": e.status} for e in await _routed_leads(db, user, limit=5)),
+        (("name", "Name"), ("subject", "Interest"), ("status", "Stage")),  # tel-004 QA-02
+        ({"name": e.name, "subject": e.subject, "status": lead_stage_label(e.status)} for e in await _routed_leads(db, user, limit=5)),
         ({"label": "Leads routed to you", "value": total}, {"label": "New leads", "value": new}),
     )
 

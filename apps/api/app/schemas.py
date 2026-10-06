@@ -4605,3 +4605,42 @@ class BdmTaskPage(BaseModel):
     offset: int
     today: date
     counts: BdmTaskCounts
+
+
+# tel-004 (DEC-SCOPE-078, spec §5): a person's lead stage move. The reason reuses bdm-004's note rules (trimmed, at most 500,
+# blank -> None); the service decides when it is required.
+class LeadStageMove(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    to_stage: BdmStageKey
+    reason: BdmPipelineNote = None
+
+
+class LeadStageOut(BaseModel):
+    id: UUID
+    status: str
+    status_label: str
+    stage_changed_at: datetime
+
+
+class LeadStageActor(BaseModel):
+    id: UUID
+    full_name: str
+
+
+class LeadStageHistoryRow(BaseModel):
+    id: UUID
+    from_stage: str
+    from_label: str
+    to_stage: str
+    to_label: str
+    event: str
+    actor: LeadStageActor | None
+    reason: str | None
+    created_at: datetime
+
+
+class LeadStageHistoryPage(BaseModel):
+    items: list[LeadStageHistoryRow]
+    total: int
+    limit: int
+    offset: int
