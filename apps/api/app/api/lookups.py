@@ -49,9 +49,12 @@ def _like(column, pattern: str):
     return column.ilike(pattern, escape="\\")
 
 
-def _allow(user: User, roles: set[str]) -> None:
+def _allow(user: User, roles: set[str], division: str | None = None) -> None:
     if user.role != "super_admin" and user.role not in roles:
         raise HTTPException(403, FORBIDDEN)
+    # tel-017 (DEC-SCOPE-076): a counselor can be IT now, so the overseas lookups check the division as workflows._require does.
+    if division and user.role != "super_admin" and user.division != division:
+        raise HTTPException(403, "Wrong EduSphere division")
     reason = agent_denial_reason(user)
     if reason:
         raise HTTPException(403, reason)
@@ -120,7 +123,7 @@ async def overseas_students(
         db.add(AuditLog(user_id=user.id, action=LINK_AUDIT_ACTION, entity_type="lookup", outcome="searched", metadata_json={"purpose": "link"}))
         await db.commit()
     else:
-        _allow(user, {"overseas_admin", "counselor", "agent"})
+        _allow(user, {"overseas_admin", "counselor", "agent"}, "overseas")
         if user.role == "counselor":
             stmt = stmt.where(User.id.in_(select(OverseasApplication.student_id).where(OverseasApplication.counselor_id == user.id)))
         elif user.role == "agent":
@@ -151,7 +154,7 @@ async def overseas_applications(
     """workflows._assigned_application's rule: student own; counselor own; university_rep own university; agent own agency;
     admin all. Bridged (School) applications have no student_id and are labelled with the school student's name. Agency students
     with no login (AGN-008) are labelled with the agency record's name."""
-    _allow(user, {"overseas_student", "counselor", "university_rep", "agent", "overseas_admin"})
+    _allow(user, {"overseas_student", "counselor", "university_rep", "agent", "overseas_admin"}, "overseas")
     student_name = func.coalesce(User.full_name, AgentStudent.full_name, SchoolStudent.full_name)
     stmt = (
         select(OverseasApplication, student_name, University.name, OverseasCourse.title)
@@ -217,7 +220,7 @@ async def schools(
     db: AsyncSession = Depends(get_db),
 ):
     """The School->Overseas bridge's first step (D4): every partner school, for the bridge's roles."""
-    _allow(user, {"overseas_admin", "counselor"})
+    _allow(user, {"overseas_admin", "counselor"}, "overseas")
     stmt = select(School)
     pattern = _pattern(q)
     if pattern:
@@ -235,7 +238,7 @@ async def school_students(
     db: AsyncSession = Depends(get_db),
 ):
     """The bridge's second step (D4): students of ONE chosen school only -- no cross-school name browsing."""
-    _allow(user, {"overseas_admin", "counselor"})
+    _allow(user, {"overseas_admin", "counselor"}, "overseas")
     if await db.get(School, school_id) is None:
         raise HTTPException(404, "School not found")
     stmt = select(SchoolStudent).where(SchoolStudent.school_id == school_id)
