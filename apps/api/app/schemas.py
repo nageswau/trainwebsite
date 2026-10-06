@@ -5268,6 +5268,9 @@ class LeadStageHistoryRow(BaseModel):
 
 class LeadStageHistoryPage(BaseModel):
     items: list[LeadStageHistoryRow]
+    total: int
+    limit: int
+    offset: int
 
 
 # --- bdm-018 (DEC-SCOPE-085, spec §5): the school onboarding handover --------------------------------------------------------------
