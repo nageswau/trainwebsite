@@ -2,7 +2,7 @@ import type { AppointmentTrip } from "@/lib/bdmAppointments";
 import { TRAVEL_LABEL, type TripRow } from "@/lib/bdmTravel";
 import { formatCalendarDate } from "@/lib/formatDate";
 
-// bdm-011 (DEC-SCOPE-089 L2): the optional trip an appointment belongs to. Presentational: the form owns the value. The choices are
+// bdm-011 (DEC-SCOPE-090 L2): the optional trip an appointment belongs to. Presentational: the form owns the value. The choices are
 // the BDM's open trips (read once by the page) that cover the appointment's IST date; the API decides. A current trip that can no
 // longer take appointments (cancelled, completed) stays listed so the select never hides the stored value -- and can be unlinked.
 type TripLike = Pick<TripRow, "id" | "code" | "from_place" | "to_place" | "travel_date" | "return_date" | "travel_status">;

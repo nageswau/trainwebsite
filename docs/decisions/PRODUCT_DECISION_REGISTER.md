@@ -4041,7 +4041,7 @@ and `/telecaller/manager/assignment`. Design spec `docs/superpowers/specs/2026-1
 **Evidence:** `EVID-019` §2 (lead fields), §18 (duplicate detection, L584–L606); `DEC-SCOPE-073` T12, T13, T15; `DEC-SCOPE-077`
 (phone normalisation, Q-04); `DEC-SCOPE-081` (pipeline engine); `DEC-SCOPE-087` (tel-007 distribution, DI2); owner answers in-session
 2026-10-06.
-**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for I1–I6; R1–R10 are recorded defaults. Migration `0086_lead_enquiries`
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for I1–I6; R1–R10 are recorded defaults. **MERGED** to `main` as PR #92 @ `014168b2` (2026-10-06). Migration `0086_lead_enquiries`
 (after tel-007's `0085_tel_distribution`), API contract §12L. Re-chained twice: drafted as `DEC-SCOPE-086` / `0085_lead_enquiries` / §12K;
 bdm-021 (PR #88, no migration) took 086, then tel-007 (PR #90) merged first with `0085_tel_distribution` / `DEC-SCOPE-087` / §12K (the
 owner had planned tel-005 first). On the merge with `main` @ `6a3e7722`, `lead_intake` calls tel-007's `lead_distribution.on_intake` for
@@ -4079,7 +4079,35 @@ calls `website_intake`; the tel-008 timeline gains `kind: "enquiry"`. Web: `/tel
 panel), QA-04 (a double click added two enquiries), QA-05 (warning out of sight on a phone). All five were fixed test-first and
 re-verified in the browser.
 
-### DEC-SCOPE-089 — Trip ↔ appointment linking, itinerary, productivity, travel report (`bdm-011`)
+### DEC-SCOPE-089 — School activity tracking, live per school (`bdm-020`)
+
+**ID note:** drafted as `DEC-SCOPE-086` (free on `main` @ `9b395aaf`); bdm-021 (PR #88) took `DEC-SCOPE-086`, so on merging `main` @
+`a36b5b63` this entry was `DEC-SCOPE-087`; tel-007 (PR #90, `DEC-SCOPE-087`) and tel-005 (PR #92, `DEC-SCOPE-088`) then reached `main`, so on
+merging `main` @ `2b22158b` (2026-10-06) this entry is **`DEC-SCOPE-089`**. bdm-020 commits from before those merges that say
+`DEC-SCOPE-086` / `087` mean this decision. No migration.
+
+**Question:** which per-school student development counts the BDM side shows for a linked School, by which definitions, and how the two
+metrics Q-15 / D24 called unmapped are shown (`BDM_CRM_BACKLOG.md` §4 bdm-020)?
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md` School §E, `DERIVED_BLUEPRINT`); `DEC-SCOPE-055` D5b, D8, Q-15 (D24); `DEC-SCOPE-085`
+(the `bdm_organizations.school_id` link); the School module's own Part B §14 Student development (`school_analytics.DEVELOPMENT_ROWS`,
+ENH-016 D2, ENH-026 C5); bdm-020 impact analysis 2026-10-06 (graphify-led), which found that the School module already reports
+"University Guidance" (students with an application at University Selection or later), contrary to D24's premise.
+
+**Resolution:** owner, in-session 2026-10-06 (`EXPLICIT_APPROVAL` — three structured questions, each answered with the recommended option;
+spec `docs/superpowers/specs/2026-10-06-bdm-020-school-activity-design.md` §1):
+- **A1** University Guidance uses the **School module's own figure**, so the counts equal the School's page (AC1); this refines D24 for
+  this one metric.
+- **A2** Student profile completion is **"Not tracked"** (D24): listed, never a number.
+- **A3** Design approved: one read-only endpoint, a panel on both organization pages, no migration, the School analytics helpers
+  imported unchanged.
+
+**Consequences:** route `GET /bdm/organizations/{id}/school-activity` (`load_scoped`; non-School 404; unlinked `linked: false`); schemas
+`BdmSchoolActivityOut` / `BdmSchoolActivityMetric`; the "School activity" panel (`BdmOrganizationSchoolActivity`) on
+`/bdm/organizations/[id]` and `/bdm/manager/organizations/[id]`. No migration, no write, no change to `/school/*` or `school_analytics`.
+**New Feature ID authorized:** `bdm-020`. **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-020.
+
+### DEC-SCOPE-090 — Trip ↔ appointment linking, itinerary, productivity, travel report (`bdm-011`)
 
 **ID note (2026-10-06):** drafted as `DEC-SCOPE-079` with migration `0080_bdm_appointment_trip` on `main` @ `230a043f`. On merging `main`
 @ `3986958c` (bdm-013 `DEC-SCOPE-079`, tel-022 `080` / `0080_tel_targets`, tel-004 `081` / `0081_lead_stage_pipeline`) it became
@@ -4089,7 +4117,8 @@ re-verified in the browser.
 unchanged); on merging `main` @ `9b395aaf` (bdm-018 `DEC-SCOPE-085` / `0084_bdm_onboarding`) it became `DEC-SCOPE-086` / `0085`;
 on merging `main` @ `a36b5b63` (bdm-021 `DEC-SCOPE-086`, no migration) it became `DEC-SCOPE-087`
 (migration unchanged); on merging `main` @ `2b22158b` (tel-007 `DEC-SCOPE-087` / `0085_tel_distribution`, tel-005 `DEC-SCOPE-088` /
-`0086_lead_enquiries`) it is **`DEC-SCOPE-089`** with migration **`0087_bdm_appointment_trip`**, chained after `0086_lead_enquiries`.
+`0086_lead_enquiries`) it became `DEC-SCOPE-089` / `0087`; on merging `main` @ `4e5730ee` (bdm-020 `DEC-SCOPE-089`, no migration) it is
+**`DEC-SCOPE-090`**; the migration stays **`0087_bdm_appointment_trip`**, chained after `0086_lead_enquiries`.
 
 **Question:** how do appointments link to trips (`BDM_CRM_BACKLOG.md` §4 bdm-011): which trips and appointments can be linked, which
 appointments count as planned, how "actual leads" is defined now that bdm-017 attributes leads, and what a cancelled trip does to its links?

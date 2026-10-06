@@ -554,6 +554,16 @@ requests are for School organizations", "The MoU must be Signed or Active to req
 errors (empty reason, note over 1000). **Retry semantics:** a retried request answers `409 request_pending`; a retried reject / link /
 create answers `409 request_resolved`. No idempotency key.
 
+**`bdm-020` / `DEC-SCOPE-089` (built 2026-10-06; no migration) — School activity per linked School.** Design spec
+`docs/superpowers/specs/2026-10-06-bdm-020-school-activity-design.md` §2. Additive; nothing existing changes.
+
+| Method/Path | Auth | Scope | Notes |
+|---|---|---|---|
+| `GET /bdm/organizations/{id}/school-activity` | `bdm`, `bdm_manager`, `super_admin` | `load_scoped` (module / team / all) | `200 {linked, school: {name, school_code} \| null, total_students \| null, metrics: [{key, label, tracked, completed \| null, pending \| null}]}`; unlinked: `linked: false`, `metrics: []`; linked: the five School-module Student development rows (Career Guidance, Psychometric Test, Foreign Language, English Testing, University Guidance; pending = total − completed) then Student Profile Completion `tracked: false`. Aggregates only — never a student id, name or row |
+
+**Status table:** `401` no session; `403` any other role ("BDM role required"); `404` "Organization not found" (unknown / out of scope),
+"School activity is only for School organizations"; `422` malformed id. Read-only (no idempotency concern).
+
 **`bdm-017` / `DEC-SCOPE-072` (built 2026-10-05; migration `0074_enquiry_bdm_attribution`) — student lead attribution.**
 Design spec `docs/superpowers/specs/2026-10-05-bdm-017-lead-attribution-design.md` §4–§5. Two new BDM routes and two new admin routes;
 `GET /admin/leads` is extended **additively** (every existing key, the 500-row cap and the ordering unchanged); `PATCH /admin/leads/{id}`,
@@ -1079,7 +1089,7 @@ unspecified pending open decisions — not a gap in this traceability check, a d
 alongside the other four contract documents. `prompts/10_TEST_CATALOG_AUDIT_AND_REBUILD.md` may now
 proceed.
 
-**Addendum, 2026-10-06 (`bdm-011`, `DEC-SCOPE-089`): trip ↔ appointment linking, itinerary, productivity, travel report.**
+**Addendum, 2026-10-06 (`bdm-011`, `DEC-SCOPE-090`): trip ↔ appointment linking, itinerary, productivity, travel report.**
 
 Sources: design spec `docs/superpowers/specs/2026-10-06-bdm-011-trip-appointments-design.md` §4; migration `0087_bdm_appointment_trip`.
 Every change is **additive**: new optional request fields, new response fields and new GET routes; no existing field changes meaning.

@@ -1665,7 +1665,7 @@ class BdmAppointment(Base, TimestampMixin):
     next_follow_up_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     expected_leads: Mapped[int | None] = mapped_column(Integer, nullable=True)
     expected_revenue: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
-    # bdm-011 (DEC-SCOPE-089): the trip this meeting is part of -- the BDM's own, covering its IST date (services/bdm_travel).
+    # bdm-011 (DEC-SCOPE-090): the trip this meeting is part of -- the BDM's own, covering its IST date (services/bdm_travel).
     trip_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_trips.id", ondelete="RESTRICT"), nullable=True)
 
 

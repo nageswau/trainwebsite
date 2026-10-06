@@ -379,7 +379,7 @@ async def delete_expense(db: AsyncSession, user: User, trip: BdmTrip, expense_id
     audit(db, user, "expense_delete", trip, **meta)
 
 
-# --- bdm-011 (DEC-SCOPE-089): appointments linked to a trip ---------------------------------------------------------------------
+# --- bdm-011 (DEC-SCOPE-090): appointments linked to a trip ---------------------------------------------------------------------
 
 
 def ist_day(moment: datetime) -> date:

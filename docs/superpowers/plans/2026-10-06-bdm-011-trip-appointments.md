@@ -1,6 +1,6 @@
 # bdm-011 implementation plan
 
-Spec: `docs/superpowers/specs/2026-10-06-bdm-011-trip-appointments-design.md` (`DEC-SCOPE-089`, migration `0087_bdm_appointment_trip`).
+Spec: `docs/superpowers/specs/2026-10-06-bdm-011-trip-appointments-design.md` (`DEC-SCOPE-090`, migration `0087_bdm_appointment_trip`).
 
 Test command (isolated stack `bdm011`, code bind-mounted):
 

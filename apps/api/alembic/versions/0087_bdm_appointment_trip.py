@@ -3,7 +3,7 @@
 Revision ID: 0087_bdm_appointment_trip
 Revises: 0086_lead_enquiries
 
-docs/superpowers/specs/2026-10-06-bdm-011-trip-appointments-design.md §3 (DEC-SCOPE-089). Additive: one nullable column (FK to
+docs/superpowers/specs/2026-10-06-bdm-011-trip-appointments-design.md §3 (DEC-SCOPE-090). Additive: one nullable column (FK to
 bdm_trips, RESTRICT -- trips are never deleted) and its index; no existing row is read or written. 0001 builds a fresh database from
 the current models, which already carry the column, so each step runs only when missing. downgrade() drops the links.
 """

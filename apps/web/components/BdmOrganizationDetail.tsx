@@ -13,6 +13,7 @@ import BdmOrganizationOnboarding from "@/components/BdmOrganizationOnboarding";
 import BdmOrganizationPipeline from "@/components/BdmOrganizationPipeline";
 import BdmOrganizationProfileDetails, { DetailList, multiline } from "@/components/BdmOrganizationProfileDetails";
 import BdmOrganizationReassign from "@/components/BdmOrganizationReassign";
+import BdmOrganizationSchoolActivity from "@/components/BdmOrganizationSchoolActivity";
 import BdmOrganizationTasks from "@/components/BdmOrganizationTasks";
 import BdmStageHistory from "@/components/BdmStageHistory";
 import { type Page, sendRequest } from "@/lib/apiErrors";
@@ -21,6 +22,7 @@ import type { Business } from "@/lib/bdmBusiness";
 import type { Lead } from "@/lib/bdmLeads";
 import type { OrgMou } from "@/lib/bdmMous";
 import type { StageEvent } from "@/lib/bdmPipeline";
+import type { SchoolActivity } from "@/lib/bdmSchoolActivity";
 import type { TaskPage } from "@/lib/bdmTasks";
 import { display, isOrganizationBody, LINK_STYLE, meetingText, type Organization, ORG_TYPE_LABEL, ORGS_URL, safeWebsite } from "@/lib/bdmOrganizations";
 import { formatDate } from "@/lib/formatDate";
@@ -34,9 +36,9 @@ function mouReadOnlyNote(org: Organization): string | undefined {
 
 // bdm-002 (spec §6.2, §12.2): one organization. Actions render from `permissions` only -- the server enforces every rule (AC3-AC5).
 // Every write re-renders from the organization the API returns (no refetch). Last/Next meeting come from bdm-006 appointments ("—" when none).
-export default function BdmOrganizationDetail({ initial, basePath, created = false, activities, leads, stageHistory, tasks, mou, business }: {
+export default function BdmOrganizationDetail({ initial, basePath, created = false, activities, leads, stageHistory, tasks, mou, business, schoolActivity }: {
   initial: Organization; basePath: string; created?: boolean; activities?: Page<Activity> | null; leads?: Page<Lead> | null;
-  stageHistory?: Page<StageEvent> | null; tasks?: TaskPage | null; mou?: OrgMou | null; business?: Business | null;
+  stageHistory?: Page<StageEvent> | null; tasks?: TaskPage | null; mou?: OrgMou | null; business?: Business | null; schoolActivity?: SchoolActivity | null;
 }) {
   const [org, setOrg] = useState(initial);
   const [historyVersion, setHistoryVersion] = useState(0); // bdm-004: bumped by each pipeline write, which reloads the stage history
@@ -205,6 +207,7 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
           focus(statusId); // the form that was used is gone
         }}
       />
+      {schoolActivity !== undefined && org.bdm_type === "school" && <BdmOrganizationSchoolActivity orgId={org.id} initial={schoolActivity} />}
       {showEditor ? (
         <section className="action-card wide" aria-label="Edit details">
           <h3>Edit details</h3>

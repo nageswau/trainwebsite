@@ -1,6 +1,6 @@
 import { formatInr, type TripMetrics } from "@/lib/bdmTravel";
 
-// bdm-011 (College §F, DEC-SCOPE-089 L1/L3): the trip's figures as KPI tiles (the SchoolKpiBoard look). A figure with nothing to be
+// bdm-011 (College §F, DEC-SCOPE-090 L1/L3): the trip's figures as KPI tiles (the SchoolKpiBoard look). A figure with nothing to be
 // computed from says why in words -- never a fabricated 0 (DATA_MODEL.md §8). Actual revenue is not tracked yet (D17).
 const NO_ESTIMATES = "No estimates entered";
 const num = (n: number | null) => (n === null ? null : n.toLocaleString("en-IN"));

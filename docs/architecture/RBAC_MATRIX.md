@@ -733,7 +733,7 @@ either a grant scope (§2) or an explicit deny rule (§4).
 alongside the other four contract documents. `prompts/10_TEST_CATALOG_AUDIT_AND_REBUILD.md` may now
 proceed.
 
-**bdm-011 trip ↔ appointment links and travel report (`DEC-SCOPE-089`, added 2026-10-06).** Same inline pattern; scope in the SQL `WHERE`.
+**bdm-011 trip ↔ appointment links and travel report (`DEC-SCOPE-090`, added 2026-10-06).** Same inline pattern; scope in the SQL `WHERE`.
 
 | Role | Routes | Scope | Item |
 |---|---|---|---|

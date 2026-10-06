@@ -3576,7 +3576,7 @@ class BdmTripItineraryItem(BaseModel):
 
 
 class BdmTripMetrics(BaseModel):
-    """bdm-011 (College §F, DEC-SCOPE-089 L1/L3): null = nothing to compute from; `actual_revenue` is not tracked yet (D17)."""
+    """bdm-011 (College §F, DEC-SCOPE-090 L1/L3): null = nothing to compute from; `actual_revenue` is not tracked yet (D17)."""
 
     meetings_planned: int
     meetings_completed: int
@@ -5438,6 +5438,22 @@ class BdmOnboardingPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# bdm-020 (DEC-SCOPE-089): a linked School's student development counts -- aggregates only, never a student (AC3).
+class BdmSchoolActivityMetric(BaseModel):
+    key: str
+    label: str
+    tracked: bool
+    completed: int | None  # None when not tracked (A2)
+    pending: int | None
+
+
+class BdmSchoolActivityOut(BaseModel):
+    linked: bool
+    school: BdmOnboardingSchoolRef | None
+    total_students: int | None
+    metrics: list[BdmSchoolActivityMetric]
 
 
 # tel-008 (DEC-SCOPE-084 D2): what a telecaller or manager may change on a lead -- the §2 contact fields, the product and the priority.
