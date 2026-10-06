@@ -8,7 +8,7 @@ import type { User } from "@/lib/types";
 
 // tel-002: the shell behind /telecaller/manager/products and /campaigns. Managers and super_admin edit the catalogue; the role check only
 // spares other roles a screen that can only fail -- the API enforces who may write.
-export default async function TelecallerCataloguePage({ title, intro, children }: { title: string; intro: string; children: React.ReactNode }) {
+export default async function TelecallerCataloguePage({ title, intro, eyebrow = "Settings", children }: { title: string; intro: string; eyebrow?: string; children: React.ReactNode }) {
   let user: User;
   try {
     user = await serverApi<User>("/api/v1/auth/me");
@@ -21,7 +21,7 @@ export default async function TelecallerCataloguePage({ title, intro, children }
       <div className="portal-content">
         <div className="portal-title">
           <div>
-            <div className="eyebrow">Settings</div>
+            <div className="eyebrow">{eyebrow}</div>
             <h2>{title}</h2>
             <p className="muted">{intro}</p>
           </div>

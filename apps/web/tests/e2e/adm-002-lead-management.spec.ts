@@ -5,6 +5,7 @@ import { test, expect } from "@playwright/test";
 // as admin, rather than touching any shared seed data.
 
 test("admin routes a lead to a new status, selected by name not a raw ID (ADM-002-AC01)", async ({ page, request }) => {
+  test.setTimeout(30_000); // a sign-in plus several writes: 15 s ran out with 6 parallel workers on one API (tel-007 browser QA)
   const name = `E2E Lead ${Date.now()}`;
   const created = await request.post("/api/v1/public/enquiries", {
     data: { division: "it", name, email: `lead-${Date.now()}@example.com`, subject: "Python Full Stack", message: "Interested in the programme." },

@@ -1,4 +1,4 @@
-"""bdm-020 (DEC-SCOPE-087, spec §2): a linked School's student development counts on the BDM side.
+"""bdm-020 (DEC-SCOPE-089, spec §2): a linked School's student development counts on the BDM side.
 
 The organization resolves through `services.bdm_organizations.load_scoped` (out of scope = 404, other roles 403). The counts are the
 School module's own (`school_analytics.DEVELOPMENT_ROWS` over `student_indicators`, imported unchanged), so they equal the School's

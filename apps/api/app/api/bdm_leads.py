@@ -16,6 +16,7 @@ from app.models import Enquiry, User
 from app.schemas import BdmLeadCreate, BdmLeadOut, BdmLeadPage
 from app.services import bdm_leads as svc
 from app.services import bdm_organizations as org_svc
+from app.services import lead_distribution
 from app.services.bdm import BDM_DIVISION, bdm_context
 from app.services.bdm_appointments import db_now
 from app.worker import sync_enquiry_to_crm_task
@@ -48,6 +49,7 @@ async def add_lead(org_id: UUID, payload: BdmLeadCreate, user: User = Depends(ge
     )
     db.add(lead)
     await db.flush()
+    await lead_distribution.on_intake(db, lead)  # tel-007 DI2
     svc.audit(db, user, lead)
     await db.commit()
     svc.log("bdm_lead_created", user, lead.id, organization_id=str(org.id), duplicate_acknowledged=payload.acknowledge_duplicate)

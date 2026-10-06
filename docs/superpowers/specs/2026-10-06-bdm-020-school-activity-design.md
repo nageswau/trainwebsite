@@ -1,7 +1,7 @@
 # bdm-020 — School activity tracking (live, per school) — design
 
 **Feature:** `BDM_CRM_BACKLOG.md` §4 bdm-020 (School §E of `EVID-016`, `DERIVED_BLUEPRINT`). **Depends on:** bdm-018 (merged, PR #87).
-**Decision:** `DEC-SCOPE-087` (owner, in-session 2026-10-06, three structured questions answered with the recommended option).
+**Decision:** `DEC-SCOPE-089` (owner, in-session 2026-10-06, three structured questions answered with the recommended option).
 
 ## 1. Decisions
 

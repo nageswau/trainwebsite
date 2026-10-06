@@ -5,7 +5,7 @@ import { sendJson, type SendOutcome } from "@/lib/apiErrors";
 export type Priority = "hot" | "warm" | "cold";
 export type PersonRef = { id: string; full_name: string };
 export type TelecallerLead = {
-  id: string; lead_code: string; name: string; email: string; phone: string | null; whatsapp_number: string | null; city: string | null;
+  id: string; lead_code: string; name: string; email: string | null; phone: string | null; whatsapp_number: string | null; city: string | null;
   state: string | null; qualification: string | null; passing_year: number | null; institution: string | null; division: string; subject: string;
   status: string; status_label: string; source: string; priority: Priority; created_at: string; stage_changed_at: string;
   product: { id: string; name: string } | null; campaign: { id: string; name: string } | null; telecaller: PersonRef | null; counselor: PersonRef | null;
@@ -13,11 +13,18 @@ export type TelecallerLead = {
 };
 export type TelecallerLeadDetail = TelecallerLead & { message: string };
 export type TimelineRow = {
-  id: string; kind: "stage" | "priority"; at: string; actor: PersonRef | null; from_value: string; from_label: string; to_value: string;
+  id: string; kind: "stage" | "priority" | "enquiry"; at: string; actor: PersonRef | null; from_value: string; from_label: string; to_value: string;
   to_label: string; reason: string | null;
 };
 
+/** tel-005 (R2): one lead of the §18 duplicate panel -- never its phone, email or messages. */
+export type DuplicateMatch = {
+  id: string; lead_code: string; name: string; status: string; status_label: string; telecaller: PersonRef | null; counselor: PersonRef | null;
+  last_contact_at: string | null; matched_on: ("phone" | "email")[]; enquiries: { subject: string; source: string; at: string }[]; in_scope: boolean;
+};
+
 export const LEADS_URL = "/api/v1/telecaller/leads";
+export const DUPLICATE_CHECK_URL = `${LEADS_URL}/duplicate-check`;
 export const leadUrl = (id: string, suffix = "") => `${LEADS_URL}/${encodeURIComponent(id)}${suffix}`;
 export const TIMELINE_LIMIT = 50;
 export const LEAD_LIST_FILTERS = ["status", "priority", "product_id", "campaign_id"] as const;

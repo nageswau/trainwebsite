@@ -13,7 +13,7 @@ import { SOURCE_LABEL, getPage } from "@/lib/telecallerCatalogue";
 
 type Ref = { id: string; full_name: string };
 type AdminLeadRow = {
-  id: string; name: string; email: string; phone: string | null; division: string; subject: string; status: string; source: string; crm_sync_status: string;
+  id: string; name: string; email: string | null; phone: string | null; division: string; subject: string; status: string; source: string; crm_sync_status: string;
   // bdm-017: null for website / manual enquiries
   organization: Organization | null; bdm: Ref | null; converted_user: (Ref & { email: string }) | null;
   // tel-003 (spec §4): the lead record; each object is null when unset

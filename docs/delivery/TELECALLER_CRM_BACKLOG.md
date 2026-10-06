@@ -328,6 +328,11 @@ API contract §12H; re-chained after bdm-005, bdm-013 and tel-022's `0080_tel_ta
 
 ### tel-005 — Manual lead creation, duplicate detection, website-enquiry intake/attach
 
+**Status (2026-10-06):** **verified** on `feature/tel-005`, not merged (`DEC-SCOPE-088` I1–I6 + R1–R10, migration `0086_lead_enquiries`,
+API contract §12L). Spec `docs/superpowers/specs/2026-10-06-tel-005-lead-intake-design.md`. tel-007 merged first (PR #90, `0085` / `DEC-SCOPE-087` / §12K), so
+tel-005 re-chained after it, and `lead_intake` sends new website leads and manager-created leads through `lead_distribution.on_intake` (I6).
+"Last contact" in the panel waits for tel-010 / tel-013.
+
 - **Business requirement:** §18, T12, T15.
 - **Existing behavior:** only the website form creates leads. No duplicate check exists.
 - **Expected behavior:**
@@ -392,6 +397,9 @@ API contract §12H; re-chained after bdm-005, bdm-013 and tel-022's `0080_tel_ta
 - **Complexity:** medium · **Risk:** medium
 
 ### tel-007 — Lead distribution rules, round robin, unassigned queue, manual (re)assignment
+
+**Status (2026-10-06):** **merged** to `main` as PR #90 @ `595025e4` (`DEC-SCOPE-087` DI1–DI4 + D1–D6, migration `0085_tel_distribution`,
+API contract §12K; re-chained after bdm-025 082 / 0082, tel-012 083 / 0083, tel-008 084, bdm-018 085 / 0084 and bdm-021 086). Spec `docs/superpowers/specs/2026-10-06-tel-007-lead-distribution-design.md`.
 
 - **Business requirement:** §17, T11, T18, T23.
 - **Existing behavior:** admins set `owner_id` by hand only.
@@ -899,7 +907,7 @@ division-change edge case does not apply: `User.division` cannot change after cr
 
 ### tel-022 — Daily + monthly targets
 
-**Status (2026-10-06):** verified on `feature/tel-022` (`DEC-SCOPE-080`, migration `0080_tel_targets`; both numbers provisional until merge); owner answers G1–G4. Not merged.
+**Status (2026-10-06):** **merged** to `main` as PR #80 @ `a38955d5` (`DEC-SCOPE-080`, migration `0080_tel_targets`); owner answers G1–G4.
 
 - **Business requirement:** §15, T28.
 - **Existing behavior:** none (bdm-016 is planned for BDMs).
@@ -1142,7 +1150,7 @@ graph TD
 
 ### 5.4 Migrations
 
-Numbers are **provisional**. `main` is at `0083_tel_content` (tel-012, merged 2026-10-06; tel-001 took `0075`, tel-002 `0076`, bdm-008 `0077`, tel-003 `0078`, bdm-005 `0079`, tel-022 `0080`, tel-004 `0081`, bdm-025 `0082`; tel-017 has none; bdm-005/bdm-013/tel-022/tel-004/bdm-025/tel-012 took `DEC-SCOPE-078`–`083`; tel-008, merged 2026-10-06 with no migration, took `DEC-SCOPE-084`), so the next telecaller migration will be `0084` or later, and the next decision `DEC-SCOPE-085` or later. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
+Numbers are **provisional**. `main` is at `0085_tel_distribution` (tel-007, merged 2026-10-06; tel-001 took `0075`, tel-002 `0076`, bdm-008 `0077`, tel-003 `0078`, bdm-005 `0079`, tel-022 `0080`, tel-004 `0081`, bdm-025 `0082`, tel-012 `0083`, bdm-018 `0084`; tel-017 and tel-008 have none; bdm-005/bdm-013/tel-022/tel-004/bdm-025/tel-012/tel-008/bdm-018/bdm-021/tel-007 took `DEC-SCOPE-078`–`087`), so the next telecaller migration will be `0086` or later, and the next decision `DEC-SCOPE-088` or later. tel-005 (verified; re-chained after tel-007 merged first) holds `0086_lead_enquiries` / `DEC-SCOPE-088` / §12L, so the item after it chains after `0086` / `DEC-SCOPE-089`. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
 
 | Item | Migration content |
 |---|---|
