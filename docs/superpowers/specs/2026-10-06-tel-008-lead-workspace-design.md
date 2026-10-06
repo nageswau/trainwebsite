@@ -2,7 +2,7 @@
 
 Backlog: `docs/delivery/TELECALLER_CRM_BACKLOG.md` tel-008 (EVID-019 §2 field display, §8 priority L314–L330, §22 "View assigned leads";
 `DEC-SCOPE-073` T19, T23). Dependencies tel-003 (PR #75) and tel-004 (PR #81) are merged. Branch `feature/tel-008` from `main` @ `3986958c`.
-Decision: `DEC-SCOPE-083`. **No migration** (the tel-003 indexes and the AGN-015 `ix_audit_logs_entity` index serve every read). API contract §12J.
+Decision: `DEC-SCOPE-084`. **No migration** (the tel-003 indexes and the AGN-015 `ix_audit_logs_entity` index serve every read). API contract §12J.
 
 ## 1. Owner answer (2026-10-06, `EXPLICIT_APPROVAL`) and recorded defaults
 

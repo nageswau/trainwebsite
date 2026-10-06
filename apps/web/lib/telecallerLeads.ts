@@ -1,4 +1,4 @@
-// tel-008 (DEC-SCOPE-083): the telecaller lead workspace -- types, labels and endpoints shared by My Leads and the lead detail. Labels
+// tel-008 (DEC-SCOPE-084): the telecaller lead workspace -- types, labels and endpoints shared by My Leads and the lead detail. Labels
 // are display only; the API decides scope, editability (`read_only`) and every rule.
 import { sendJson, type SendOutcome } from "@/lib/apiErrors";
 

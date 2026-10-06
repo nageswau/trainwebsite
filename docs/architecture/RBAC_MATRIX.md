@@ -589,6 +589,18 @@ Inline pattern: role check, then subject scope (an out-of-scope telecaller is a 
 | `telecaller` | read own targets in effect (dashboard card) | self; another user or a team → `403`; any write → `403` (§22 line 713) | `tel-022` |
 | every other role (incl. division admins) | none → `403` | — | `tel-022` |
 
+### 2.18 Telecaller content library *(net-new, added 2026-10-06 — `DEC-SCOPE-083`, `tel-012`)*
+
+Inline pattern (`services/telecaller_content.require_content_reader` / `services/telecaller.require_manager`); the library is global (T9),
+so there is no row scope.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller_manager`, `super_admin` | create / edit / deactivate / reactivate scripts, message templates and brochure PDFs; list them including inactive rows; preview; mint a brochure link | all rows | `tel-012` |
+| `telecaller` | list **active** scripts, templates and brochures; preview an active template; mint a link for an active brochure | all active rows | `tel-012` |
+| anyone holding a link (no session) | download that one brochure while it is active and the 7-day token is valid | one asset | `tel-012` |
+| every other role (incl. `it_admin`, `overseas_admin`, `counselor`) | none → `403` "Your role cannot view the telecaller library" (writes: `403` "Telecaller manager role required") | — | `tel-012` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

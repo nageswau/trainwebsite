@@ -86,6 +86,9 @@ export const TELECALLER_MANAGER_NAV: NavItem[] = [
   { label: "Team", href: "/telecaller/manager/team" }, { label: "Leads", href: "/telecaller/manager/leads" }, { label: "Targets", href: "/telecaller/manager/targets" },
   { label: "Products", href: "/telecaller/manager/products" },
   { label: "Campaigns", href: "/telecaller/manager/campaigns" },
+  // tel-012: the content library telecallers work from.
+  { label: "Scripts", href: "/telecaller/manager/scripts" }, { label: "Templates", href: "/telecaller/manager/templates" },
+  { label: "Brochures", href: "/telecaller/manager/brochures" },
 ];
 export const TELECALLER_SIGN_IN = "/telecaller/sign-in";
 

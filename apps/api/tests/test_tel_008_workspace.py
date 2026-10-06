@@ -1,4 +1,4 @@
-"""tel-008 -- the telecaller lead workspace (spec §2, §4; DEC-SCOPE-083): My Leads, the lead detail, the PATCH of contact fields and
+"""tel-008 -- the telecaller lead workspace (spec §2, §4; DEC-SCOPE-084): My Leads, the lead detail, the PATCH of contact fields and
 priority, the read-only handed-over lead (D1, T19) and the timeline of stage + priority changes (W1). The shared test database is never
 truncated, so every list assertion narrows to telecallers created by the test."""
 

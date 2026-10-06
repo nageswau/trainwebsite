@@ -15,7 +15,7 @@ the user's (see test-regression cadence).
 | 8 | `TelecallerLeadTable` | vitest: rows, empty/filtered/error states, URL filters | component |
 | 9 | `LeadDetailPanel` (fields, priority, edit, call, activity, read-only) | vitest: priority save → activity refresh; read-only hides controls | component |
 | 10 | Pages + nav | Playwright `tel-008-lead-workspace.spec.ts` | `app/telecaller/**` |
-| 11 | Docs: DEC-SCOPE-083, API §12J, backlog status, RTM row if any | — | docs |
+| 11 | Docs: DEC-SCOPE-084, API §12J, backlog status, RTM row if any | — | docs |
 
 Security review: IDOR (scope in every WHERE), role 403s, no PII in logs or audits, React escaping, a `tel:` href built from a
 sanitised number, and CSRF through the existing `sendJson` cookie and header idiom. Concurrency: `FOR UPDATE` in scope.

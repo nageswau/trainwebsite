@@ -1,4 +1,4 @@
-"""tel-008 (DEC-SCOPE-083, spec §2): the telecaller lead workspace -- the scoped list and detail, the contact/priority edit and the lead
+"""tel-008 (DEC-SCOPE-084, spec §2): the telecaller lead workspace -- the scoped list and detail, the contact/priority edit and the lead
 timeline (W1: stage history + priority changes; tel-015 adds its sources here).
 
 Scope is tel-004's `lead_pipeline.scope`; a lead outside it reads as missing (404). Functions only; nothing here commits -- the route
