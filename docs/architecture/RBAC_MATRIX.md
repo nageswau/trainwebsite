@@ -601,6 +601,18 @@ so there is no row scope.
 | anyone holding a link (no session) | download that one brochure while it is active and the 7-day token is valid | one asset | `tel-012` |
 | every other role (incl. `it_admin`, `overseas_admin`, `counselor`) | none → `403` "Your role cannot view the telecaller library" (writes: `403` "Telecaller manager role required") | — | `tel-012` |
 
+### 2.19 Telecaller lead workspace *(net-new, added 2026-10-06 — `DEC-SCOPE-084`, `tel-008`)*
+
+Inline pattern (`services/lead_pipeline.scope` then `services/telecaller_leads.require_writable`). Scope is a SQL filter in every query, so
+a lead outside it reads as missing (`404`, never `403` — no IDOR oracle). "Handed over" = a counselor is assigned (`owner_id`, D1).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | list / read leads, read the timeline; edit contact fields, product and priority; move the stage (tel-004 rules) | leads where `telecaller_user_id` = self; **read-only** once handed over (writes `403` "This lead is with the counselor…") | `tel-008` |
+| `telecaller_manager` | the same, including on handed-over leads; reopen a closed lead (tel-004) | direct reports' leads + the unassigned leads of those reports' teams (T23) | `tel-008` |
+| `super_admin` | the same as a manager | all leads | `tel-008` |
+| every other role (incl. `it_admin`, `overseas_admin`, `counselor`, students) | none → `403` "Telecaller role required" (admins keep `/admin/leads`) | — | `tel-008` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
@@ -707,7 +719,7 @@ either a grant scope (§2) or an explicit deny rule (§4).
 alongside the other four contract documents. `prompts/10_TEST_CATALOG_AUDIT_AND_REBUILD.md` may now
 proceed.
 
-**bdm-011 trip ↔ appointment links and travel report (`DEC-SCOPE-084`, added 2026-10-06).** Same inline pattern; scope in the SQL `WHERE`.
+**bdm-011 trip ↔ appointment links and travel report (`DEC-SCOPE-085`, added 2026-10-06).** Same inline pattern; scope in the SQL `WHERE`.
 
 | Role | Routes | Scope | Item |
 |---|---|---|---|
