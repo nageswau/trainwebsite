@@ -9,6 +9,7 @@ so the whole card fits); they are marked "(element shot)".
 | S2 — `apps/web/tests/doc-capture/school/sch-s2-admin.capture.ts` | `schooldocs` from `main` @ `ce1f07c2` (+ docs commits), web :3020 | 2026-10-05 |
 | S3 — `sch-s3-access-team.capture.ts` (after S2 on the same DB) | same | 2026-10-06 |
 | S4 — `sch-s4-students.capture.ts` (after S3 on the same DB) | same | 2026-10-06 |
+| S5 — `sch-s5-activities.capture.ts` (after S4 on the same DB) | same | 2026-10-06 |
 
 | Screenshot | Module | Feature | Step | Role | Description |
 |---|---|---|---|---|---|
@@ -85,3 +86,24 @@ so the whole card fits); they are marked "(element shot)".
 | [students/20-progress-report-downloaded.png](screenshots/students/20-progress-report-downloaded.png) | Students & roster | DOC-SCH-STU-008 | 1 Downloaded | School Coordinator | "Report downloaded." |
 | [students/21-student-profile-principal.png](screenshots/students/21-student-profile-principal.png) | Students & roster | DOC-SCH-STU-006 | Role view | Principal | Principal's view of the student page |
 | [students/22-student-profile-teacher.png](screenshots/students/22-student-profile-teacher.png) | Students & roster | DOC-SCH-STU-006 | Role view | Teacher | Teacher's view (assigned student) |
+| [activities/01-schedule-activity-form.png](screenshots/activities/01-schedule-activity-form.png) | Activities | DOC-SCH-ACT-001 | 1 Fill in | School Coordinator | Schedule an activity (Career seminar, next week) |
+| [activities/02-activity-scheduled.png](screenshots/activities/02-activity-scheduled.png) | Activities | DOC-SCH-ACT-001 | 2 Scheduled | School Coordinator | "Docs Career Seminar scheduled." |
+| [activities/03-activities-list.png](screenshots/activities/03-activities-list.png) | Activities | DOC-SCH-ACT-001 | 3 List | School Coordinator | Activities with Mark attendance / Give feedback |
+| [activities/04-mark-attendance.png](screenshots/activities/04-mark-attendance.png) | Activities | DOC-SCH-ACT-002 | 2 Untick | School Coordinator | Mark attendance card, two students unticked (element shot) |
+| [activities/05-attendance-recorded.png](screenshots/activities/05-attendance-recorded.png) | Activities | DOC-SCH-ACT-002 | 3 Saved | School Coordinator | "Attendance recorded for 18 student(s)." |
+| [activities/06-feedback-awaiting.png](screenshots/activities/06-feedback-awaiting.png) | Activities | DOC-SCH-ACT-003 | 1 Find | School Coordinator | Activity feedback, Awaiting feedback |
+| [activities/07-feedback-form.png](screenshots/activities/07-feedback-form.png) | Activities | DOC-SCH-ACT-003 | 2 Fill in | School Coordinator | Feedback form filled (element shot) |
+| [activities/08-feedback-saved.png](screenshots/activities/08-feedback-saved.png) | Activities | DOC-SCH-ACT-003 | 3 Saved | School Coordinator | "Feedback saved for Docs Parent Orientation." |
+| [activities/09-feedback-duplicate.png](screenshots/activities/09-feedback-duplicate.png) | Activities | DOC-SCH-ACT-003 | Error | School Coordinator | Second tab: already submitted, Copy text / Dismiss |
+| [activities/10-feedback-submitted-view.png](screenshots/activities/10-feedback-submitted-view.png) | Activities | DOC-SCH-ACT-003 | 4 View | School Coordinator | Submitted feedback expanded |
+| [activities/11-schedule-tier-not-included.png](screenshots/activities/11-schedule-tier-not-included.png) | Activities | DOC-SCH-ACT-001 | Error | School Coordinator (Bronze) | Monthly campus visit not in Bronze |
+| [activities/12-schedule-no-tier.png](screenshots/activities/12-schedule-no-tier.png) | Activities | DOC-SCH-ACT-001 | Error | School Coordinator (no tier) | "This school has no active partnership tier." |
+| [activities/13-schedule-tier-expired.png](screenshots/activities/13-schedule-tier-expired.png) | Activities | DOC-SCH-ACT-001 | Error | School Coordinator (expired) | "This school's partnership expired on …" |
+| [activities/14-principal-feedback.png](screenshots/activities/14-principal-feedback.png) | Activities | DOC-SCH-ACT-004 | 2 Read | Principal | Principal feedback page with View feedback open |
+| [activities/15-daily-attendance-unmarked.png](screenshots/activities/15-daily-attendance-unmarked.png) | Activities | DOC-SCH-ACT-005 | 1 Day | Teacher | Today, nothing marked |
+| [activities/16-daily-attendance-marked.png](screenshots/activities/16-daily-attendance-marked.png) | Activities | DOC-SCH-ACT-005 | 2 Mark | Teacher | Mark all present + Absent/Late/Excused |
+| [activities/17-daily-attendance-saved.png](screenshots/activities/17-daily-attendance-saved.png) | Activities | DOC-SCH-ACT-005 | 3 Saved | Teacher | "Attendance saved for 10 students on …" |
+| [activities/18-daily-attendance-future-date.png](screenshots/activities/18-daily-attendance-future-date.png) | Activities | DOC-SCH-ACT-005 | Note | Teacher | Future date cannot be marked |
+| [activities/19-daily-attendance-before-enrolment.png](screenshots/activities/19-daily-attendance-before-enrolment.png) | Activities | DOC-SCH-ACT-005 | Note | Teacher | None enrolled on the chosen past date |
+| [admin-schools/23-activity-feedback-list.png](screenshots/admin-schools/23-activity-feedback-list.png) | School administration | DOC-SCH-SADM-009 | 1 List | Overseas Admin | Activity Feedback across schools |
+| [admin-schools/24-activity-feedback-school-filter.png](screenshots/admin-schools/24-activity-feedback-school-filter.png) | School administration | DOC-SCH-SADM-009 | 2 Filter | Overseas Admin | Filtered to Docs Bronze School (none) |

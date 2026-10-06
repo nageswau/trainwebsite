@@ -236,9 +236,9 @@ Features: DOC-SCH-STU-001..008 (8).
   - Student page as CO, PR and TE (role table).
   - Check U4 and U5 once.
 
-### S5 — Activities, attendance and feedback
+### S5 — Activities, attendance and feedback — DONE 2026-10-06
 Features: DOC-SCH-ACT-001..005, DOC-SCH-SADM-009 (6).
-- [ ] Standard loop.
+- [x] Standard loop.
   - Schedule a future typed activity (parents notified; check U9 in the parent's notifications), a past typed activity, a past untyped activity and, at Docs Bronze School, a campus visit (tier denied).
   - Mark attendance, then submit feedback once and capture the duplicate error.
   - Read the feedback as the Principal (ACT-004) and as OA (SADM-009, school filter).

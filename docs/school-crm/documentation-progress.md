@@ -5,8 +5,8 @@
 | Code baseline | `main` @ `ce1f07c2` (S1 discovery). Record any later `main` used for browser work here, with the affected features re-checked. |
 | Stack used for browser work | `schooldocs` compose project from worktree `.claude/worktrees/school-docs` (detached at docs commit `24a22627` = `main` `ce1f07c2` + docs). Web http://localhost:3020, api :8020. Untracked `docker-compose.docs.yml` adds Mailpit on **127.0.0.1:8026** (the Agent CRM docs stack holds 8025). Untracked `.env` = repo `.env` with `FRONTEND_URL`/ports changed, `SMTP_HOST=mailpit`, `SMTP_PORT=1025`, `SMTP_USE_TLS=false`, no SMTP credentials, **`SMTP_FROM_EMAIL=no-reply@edusphere.local`** (without it the app reports "email is not configured"), `EMAIL_WEBHOOK_URL` empty. Owner approved Claude starting, seeding and resetting this stack (2026-10-05). |
 | Docs branch | `docs/school-crm-user-guide` (from `main` @ `ce1f07c2`) |
-| Last session | S4 Students and roster — 2026-10-06 |
-| Next session | S5 — Activities, attendance and feedback. Start from S4 data: reset, clear Mailpit, run `sch-s2-admin` → `sch-s3-access-team` → `sch-s4-students` (≈2 min). Docs Teacher A now has 11 assigned students (Grades 8–12). |
+| Last session | S5 Activities, attendance and feedback — 2026-10-06 |
+| Next session | S6 — Transfers and promotion. **Owner must first create and activate a new academic year** (U3: Claude prepares the API calls). Start from the S5 snapshot, or reset and run `sch-s2` → `sch-s3` → `sch-s4` → `sch-s5`. |
 
 **Column values:**
 - **Code Reviewed:** YES / PARTIAL / NO. YES at S1 means reviewed from source at `ce1f07c2`, with file:line evidence in `discovery/`.
@@ -18,7 +18,7 @@
 A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES
 and Reviewed = PASSED.
 
-**Totals (after S4):** 86 features · 27 browser-verified (3 partial) · 27 documented · 0 complete (final review is S12).
+**Totals (after S5):** 86 features · 33 browser-verified (3 partial) · 33 documented · 0 complete (final review is S12).
 
 | ID | Module | Feature | Code Reviewed | Browser Verified | Screenshot | Documented | Reviewed |
 |---|---|---|---|---|---|---|---|
@@ -50,11 +50,11 @@ and Reviewed = PASSED.
 | DOC-SCH-XFER-001 | Transfers | Request a transfer out to another school | YES | NO | NO | NO | NO |
 | DOC-SCH-XFER-002 | Transfers | Request a student from another school (by Student ID) | YES | NO | NO | NO | NO |
 | DOC-SCH-XFER-003 | Transfers | Track and cancel transfer requests | YES | NO | NO | NO | NO |
-| DOC-SCH-ACT-001 | Activities & attendance | Schedule an activity | YES | NO | NO | NO | NO |
-| DOC-SCH-ACT-002 | Activities & attendance | Mark attendance for an activity | YES | NO | NO | NO | NO |
-| DOC-SCH-ACT-003 | Activities & attendance | Give feedback on a completed EduSphere activity | YES | NO | NO | NO | NO |
-| DOC-SCH-ACT-004 | Activities & attendance | View activity feedback | YES | NO | NO | NO | NO |
-| DOC-SCH-ACT-005 | Activities & attendance | Take daily class attendance | YES | NO | NO | NO | NO |
+| DOC-SCH-ACT-001 | Activities & attendance | Schedule an activity | YES | YES | YES | YES | NO |
+| DOC-SCH-ACT-002 | Activities & attendance | Mark attendance for an activity | YES | YES | YES | YES | NO |
+| DOC-SCH-ACT-003 | Activities & attendance | Give feedback on a completed EduSphere activity | YES | YES | YES | YES | NO |
+| DOC-SCH-ACT-004 | Activities & attendance | View activity feedback | YES | YES | YES | YES | NO |
+| DOC-SCH-ACT-005 | Activities & attendance | Take daily class attendance | YES | YES | YES | YES | NO |
 | DOC-SCH-TEAM-001 | Team | Invite a Principal, Teacher or Parent | YES | YES | YES | YES | NO |
 | DOC-SCH-TEAM-002 | Team | View your team and pending invites | YES | YES | YES | YES | NO |
 | DOC-SCH-TEAM-003 | Team | Deactivate or reactivate a team account | YES | YES | YES | YES | NO |
@@ -105,7 +105,7 @@ and Reviewed = PASSED.
 | DOC-SCH-SADM-006 | School administration | Start an overseas application for a school student | YES | NO | NO | NO | NO |
 | DOC-SCH-SADM-007 | School administration | Review school transfer requests (approve / reject) | YES | NO | NO | NO | NO |
 | DOC-SCH-SADM-008 | School administration | School Analytics | YES | NO | NO | NO | NO |
-| DOC-SCH-SADM-009 | School administration | Activity Feedback across schools | YES | NO | NO | NO | NO |
+| DOC-SCH-SADM-009 | School administration | Activity Feedback across schools | YES | YES | YES | YES | NO |
 | DOC-SCH-SADM-010 | School administration | Re-send a set-password link to a school user (Users page) | YES (Users panel reviewed S2) | YES | YES | YES | NO |
 | DOC-SCH-SADM-011 | School administration | Super Admin and the school screens (what Super Admin can and cannot open) | YES | YES | YES | YES | NO |
 
@@ -135,11 +135,11 @@ All items from `documentation-analysis.md` §12.1 are open. Owner-dependent ones
 | U2 | Reset email carries a token, not a link (webhook only) | S3 | CONFIRMED on the docs stack: forgot-password sends **no email** (Mailpit count unchanged); only the webhook path exists and it is unset. Product finding; AUTH-004 tells users to contact their administrator. |
 | U3 | Active academic year: no admin UI | S6 | DECIDED 2026-10-05: in S6 Claude gives the owner the exact `POST`/`PATCH /overseas-admin/academic-years` calls (as Overseas Admin); the owner runs them on the docs stack. The guide says the year is set up by EduSphere and notes the missing admin screen. |
 | U4 | `/school/coordinator/students/new` message | S4 | CONFIRMED: "Access unavailable — [object Object]" + Back to students. Noted in STU-001. |
-| U5 | Over-length fields / malformed DOB → probable 500 | S4, S5, S7 | PARTIAL: a 170-character full name shows "Something went wrong." (STU-002). Activity title and result fields still to check (S5, S7). |
+| U5 | Over-length fields / malformed DOB → probable 500 | S4, S5, S7 | PARTIAL: a 170-character full name (STU-002) and a 210-character activity title (ACT-001) both show only "Something went wrong.". Result fields still to check (S7). |
 | U6 | Browser-native validation wording | all | DECIDED S3: docs say "your browser asks you to…" instead of quoting browser bubbles. |
 | U7 | Pydantic 422 wording on admin forms | S2 → later | OPEN (not reachable through the S2 happy/error paths; messages marked "From code" in SADM-002/004) |
 | U8 | Parent notifications never marked read | S10 | OPEN |
-| U9 | "Upcoming session" time in UTC? | S5 | OPEN |
+| U9 | "Upcoming session" time in UTC? | S5 | CONFIRMED: a 10:00 IST activity is announced to parents as "… scheduled for 04 Oct 2026, 04:30" (UTC). The feedback "Submitted by" time is also UTC. Documented as tips in ACT-001/003/004 and SADM-009. |
 | U10 | Delivery channels enabled in the docs stack | S2 | PARTIAL: email works (Mailpit). WhatsApp/SMS not configured on the docs stack, so those channels are documented from code only. |
 | U11 | Super Admin "Workspace not found" on three school pages | S2 | CONFIRMED in browser (Schools, School Staff, School Applications); Transfers and Activity Feedback open with the Overseas Admin sidebar/label; Analytics opens with the SA sidebar. Documented in SADM-011. |
 | U12 | Users page re-send set-password for school users | S2 | CLOSED: same Users panel as Agent CRM DOC-ADM-008 (`WorkflowPanel.tsx:446` shows it to Overseas Admin on `users`); re-send verified for a school specialist. |
@@ -163,6 +163,13 @@ See `documentation-analysis.md` §12.2 (17 items). Notable:
 - Frontend role guards are inconsistent.
 - Parent notifications never clear.
 - Several raw codes are shown to users.
+- **New in S5:**
+  1. Parent "Upcoming session" notifications state the time in UTC (U9).
+  2. Feedback "Submitted by" times are UTC.
+  3. The Mark attendance card always reopens with everyone ticked, ignoring saved marks.
+  4. The duplicate-feedback error is shown in a green (success-style) box.
+  5. A 210-character activity title gives only "Something went wrong.".
+  6. Scheduling an activity notifies parents even for past-dated activities.
 - **New in S4:**
   1. The roster upload's empty-file check never shows: the file input is `required`, so the browser prompts first.
   2. A 170-character student name gives only "Something went wrong.".
@@ -177,6 +184,19 @@ See `documentation-analysis.md` §12.2 (17 items). Notable:
 ## Session log
 | Session | Date | Summary |
 |---|---|---|
+| S5 | 2026-10-06 | `sch-s5-activities.capture.ts` runs green in about 38 s after S4 (snapshot restore).
+
+**Data created:**
+- Sunrise activities:
+  - Docs Career Seminar (+7 days)
+  - Docs Parent Orientation (−2 days; attendance 16/18; feedback submitted)
+  - Docs Annual Day Rehearsal (−3 days, no category)
+- Tier denials captured at the Bronze, No-Tier and Expired schools.
+- Docs Teacher A's attendance saved for today.
+
+**Verification:** U9 confirmed, U5 extended. 21 screenshots reviewed.
+
+**Docs:** ACT-001..005 and SADM-009 written. |
 | S4 | 2026-10-06 | `main` had moved to `e73dfa60` (tel-001). Its diff was reviewed: no School CRM route, API or school-role flow changed. The only visible effect is a new Overseas Admin sidebar item **Telecallers**, missing from the S2 screenshots; this is recorded for S12. The stack stays on `ce1f07c2`.
 
 **Run:** Docker was restarted by the owner and the after-S3 snapshot restored. `sch-s4-students.capture.ts` runs green in about 27 s.
