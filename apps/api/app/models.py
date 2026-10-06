@@ -1212,6 +1212,84 @@ class BdmPipelineEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+# bdm-005 (DEC-SCOPE-074, spec §4): the MoU statuses in source order and wording (EVID-016 §10). `expired` is derived on read (M2):
+# a signed / active MoU past `valid_until`; it is never stored, so the status CHECK lists only the settable keys.
+BDM_MOU_STATUS_LABELS: dict[str, str] = {
+    "prospect": "Prospect",
+    "discussion_started": "Discussion Started",
+    "proposal_sent": "Proposal Sent",
+    "under_negotiation": "Under Negotiation",
+    "draft_shared": "Draft Shared",
+    "signed": "Signed",
+    "active": "Active",
+    "expired": "Expired",
+    "rejected": "Rejected",
+}
+BDM_MOU_STATUSES = tuple(BDM_MOU_STATUS_LABELS)
+BDM_MOU_SETTABLE = tuple(k for k in BDM_MOU_STATUSES if k != "expired")
+BDM_MOU_EXPIRING = ("signed", "active")  # M7
+BDM_MOU_EVENT_KINDS = ("created", "status", "updated", "document", "renewed")
+BDM_MOU_CHECKS = {  # migration 0076 repeats these strings; test_bdm_005_migration asserts they stay identical
+    "ck_bdm_mous_status": _in_list("status", BDM_MOU_SETTABLE),
+    "ck_bdm_mous_window": "valid_from IS NULL OR valid_until IS NULL OR valid_until >= valid_from",
+    "ck_bdm_mous_signed_on": "status NOT IN ('signed', 'active') OR signed_on IS NOT NULL",
+    "ck_bdm_mous_active_window": "status <> 'active' OR (valid_from IS NOT NULL AND valid_until IS NOT NULL)",
+    "ck_bdm_mous_document": "(document_key IS NULL) = (document_content_type IS NULL)",
+}
+
+
+class BdmMou(Base, TimestampMixin):
+    """bdm-005 (DEC-SCOPE-074, spec §5.1): an organization's MoU. At most one `is_current` row per organization (M6: a renewal is a
+    new row; the old one is kept). `document_key` is server-generated and never returned or logged; the service owns every rule, the
+    CHECKs are the backstop."""
+
+    __tablename__ = "bdm_mous"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in BDM_MOU_CHECKS.items()),
+        Index("uq_bdm_mous_current", "organization_id", unique=True, postgresql_where=text("is_current")),
+        Index("ix_bdm_mous_org", "organization_id", "created_at"),
+        Index("ix_bdm_mous_status", "status", "valid_until"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    organization_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"))
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    status: Mapped[str] = mapped_column(String(20), default="prospect", server_default="prospect")
+    status_changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    proposal_sent_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    signed_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    valid_from: Mapped[date | None] = mapped_column(Date, nullable=True)
+    valid_until: Mapped[date | None] = mapped_column(Date, nullable=True)
+    reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    notes: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    document_key: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    document_content_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    document_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    document_uploaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    is_current: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+
+
+class BdmMouEvent(Base):
+    """bdm-005 (spec §5.2): one row per MoU write, append-only. `from_status` / `to_status` are the effective statuses (so a date
+    correction that revives an Expired MoU is recorded as expired -> active); `changed` lists field names only. `document_key` is the
+    replaced object's key on a `document` row; it is never returned."""
+
+    __tablename__ = "bdm_mou_events"
+    __table_args__ = (
+        CheckConstraint(_in_list("kind", BDM_MOU_EVENT_KINDS), name="ck_bdm_mou_events_kind"),
+        Index("ix_bdm_mou_events_mou", "mou_id", "position"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    mou_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_mous.id", ondelete="RESTRICT"))
+    actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    kind: Mapped[str] = mapped_column(String(10))
+    from_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    to_status: Mapped[str] = mapped_column(String(20))
+    changed: Mapped[list] = mapped_column(JSON, default=list)
+    document_key: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 # bdm-006 (DEC-SCOPE-068, spec §4.1): appointment catalogues. Stable keys; the CHECKs accept every key, the service validates each value
 # against the owner's bdm_type (the database cannot see it).
 BDM_APPOINTMENT_STATUSES = ("scheduled", "confirmed", "rescheduled", "completed", "cancelled", "no_show")

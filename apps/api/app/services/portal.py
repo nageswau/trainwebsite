@@ -53,9 +53,9 @@ from app.models import (
     VisaCase,
 )
 from app.services.agent_applications import WITHDRAWN, counts_as_offer, owned, stage_label, with_owner
+from app.services.agent_dashboard import headline_counts
 from app.services.agent_orgs import org_masters, org_member_ids
 from app.services.agent_students import application_scope, student_scope
-from app.services.agent_dashboard import headline_counts
 from app.services.provisioning import provisioning_statuses, user_ids_with_status
 
 logger = logging.getLogger("app.portal")

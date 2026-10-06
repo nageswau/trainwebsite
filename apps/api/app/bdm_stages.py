@@ -85,3 +85,6 @@ AGENT_STATUS: dict[str, str] = {
     "staff_logins_created": "Onboarding",
     "active_agent": "Active",
 }
+
+# bdm-005 (DEC-SCOPE-074 M5, D28): an MoU moving to Signed advances the pipeline to this stage, forward only.
+MOU_SIGNED_STAGE: dict[str, str] = {"agent": "agreement_signed", "school": "signed", "college": "mou_signed"}
