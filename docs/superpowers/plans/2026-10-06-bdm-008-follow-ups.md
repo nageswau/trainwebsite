@@ -1982,7 +1982,8 @@ describe("BdmTasksPanel (bdm-008 §9)", () => {
     const fetchMock = vi.fn<typeof fetch>((url) => Promise.resolve(String(url).endsWith("/complete") ? res(task({ status: "done" })) : res(page([task()]))));
     vi.stubGlobal("fetch", fetchMock);
     render(<BdmTasksPanel isBdm />);
-    fireEvent.click(await screen.findByRole("button", { name: "Done" }));
+    await screen.findByText("Call the principal"); // before the first page the tabs carry no counts, so the Done tab is also "Done"
+    fireEvent.click(within(screen.getByRole("list", { name: "Today" })).getByRole("button", { name: "Done" }));
     await waitFor(() => expect(screen.getByText("Marked done.")).toBeInTheDocument());
     expect(screen.getByRole("link", { name: "Log activity" })).toHaveAttribute("href", "/bdm/organizations/o1#org-o1-activity");
     expect(screen.getByRole("link", { name: "Book appointment" })).toHaveAttribute("href", "/bdm/appointments/new?organization=o1");
@@ -1995,7 +1996,7 @@ describe("BdmTasksPanel (bdm-008 §9)", () => {
     expect(await screen.findByText("Asha")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add follow-up or task" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
-    expect(screen.getByLabelText("BDM")).toBeInTheDocument();
+    expect(screen.getByLabelText("BDM", { selector: "input" })).toBeInTheDocument();
   });
 });
 ```
