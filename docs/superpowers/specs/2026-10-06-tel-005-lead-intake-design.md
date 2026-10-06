@@ -1,7 +1,7 @@
 # tel-005 — Manual lead creation, duplicate detection, website-enquiry intake/attach (design)
 
 - **Backlog:** `docs/delivery/TELECALLER_CRM_BACKLOG.md` § tel-005 (EVID-019 §18, T12, T15). Dependencies tel-003 (PR #75) and tel-004 (PR #81) are merged.
-- **Decision:** `DEC-SCOPE-088` · **Migration:** `0086_lead_enquiries` (after tel-007's `0085_tel_distribution`) · **API contract:** §12L.
+- **Decision:** `DEC-SCOPE-088` · **Migration:** `0086_lead_enquiries` (after tel-007's `0085_tel_distribution`) · **API contract:** §12L. **Merged** to `main` as PR #92 @ `014168b2` (2026-10-06).
 
 ## 1. Owner answers (2026-10-06)
 

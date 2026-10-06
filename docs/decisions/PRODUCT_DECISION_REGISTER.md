@@ -4041,7 +4041,7 @@ and `/telecaller/manager/assignment`. Design spec `docs/superpowers/specs/2026-1
 **Evidence:** `EVID-019` §2 (lead fields), §18 (duplicate detection, L584–L606); `DEC-SCOPE-073` T12, T13, T15; `DEC-SCOPE-077`
 (phone normalisation, Q-04); `DEC-SCOPE-081` (pipeline engine); `DEC-SCOPE-087` (tel-007 distribution, DI2); owner answers in-session
 2026-10-06.
-**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for I1–I6; R1–R10 are recorded defaults. Migration `0086_lead_enquiries`
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for I1–I6; R1–R10 are recorded defaults. **MERGED** to `main` as PR #92 @ `014168b2` (2026-10-06). Migration `0086_lead_enquiries`
 (after tel-007's `0085_tel_distribution`), API contract §12L. Re-chained twice: drafted as `DEC-SCOPE-086` / `0085_lead_enquiries` / §12K;
 bdm-021 (PR #88, no migration) took 086, then tel-007 (PR #90) merged first with `0085_tel_distribution` / `DEC-SCOPE-087` / §12K (the
 owner had planned tel-005 first). On the merge with `main` @ `6a3e7722`, `lead_intake` calls tel-007's `lead_distribution.on_intake` for
