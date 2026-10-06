@@ -141,6 +141,8 @@ export default function AgentApplicationDetail({ id, isMaster = false, onChanged
             <dd>{detail.offer_deadline ?? "—"}</dd>
             <dt>Next action</dt>
             <dd>{detail.next_action ?? "—"}</dd>
+            <dt>EduSphere counsellor</dt>
+            <dd>{detail.counselor_name ?? "Not assigned yet"}</dd>
           </dl>
           {!detail.read_only_reason && openForm !== "offer" && openForm !== "deposit" && (
             <button id={editId} type="button" className="btn secondary small" onClick={() => setEditing(true)}>
