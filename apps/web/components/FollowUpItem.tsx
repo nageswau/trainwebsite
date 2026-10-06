@@ -43,8 +43,9 @@ export default function FollowUpItem({ followUp: fu, card, leadBasePath, showTel
   }
 
   const action = fu.next_action ?? reasonLabel(fu.reason);
+  // QA-01: the action card's 16px grid gap is too loose between these short lines
   return (
-    <li className="action-card" style={{ listStyle: "none" }} aria-labelledby={`${id}-title`}>
+    <li className="action-card" style={{ listStyle: "none", gap: 6 }} aria-labelledby={`${id}-title`}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "baseline" }}>
         {card ? (
           <strong id={`${id}-title`}><Link href={`${leadBasePath}/${encodeURIComponent(fu.lead.id)}`} style={LINK_STYLE}>{fu.lead.name}</Link></strong>
@@ -56,7 +57,7 @@ export default function FollowUpItem({ followUp: fu, card, leadBasePath, showTel
         {fu.status === "cancelled" && <span className="badge">Cancelled</span>}
       </div>
       {card ? (
-        <dl style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(10rem, 1fr))", gap: "4px 16px", margin: "6px 0 0" }}>
+        <dl style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(10rem, 1fr))", gap: "4px 16px", margin: 0 }}>
           {([
             ["Interest", fu.lead.product?.name ?? "—"], ["Action", `${action} · ${when}`], ["Priority", PRIORITY_LABEL[fu.lead.priority] ?? fu.lead.priority],
             ["Reason", reasonLabel(fu.reason)], ["Lead", `${fu.lead.lead_code} · ${fu.lead.status_label}`],
@@ -70,11 +71,11 @@ export default function FollowUpItem({ followUp: fu, card, leadBasePath, showTel
         </dl>
       ) : (
         <>
-          <p className="muted" style={{ margin: "4px 0" }}>Due {when}</p>
-          {fu.next_action && <p style={{ ...TEXT, margin: "4px 0" }}><span className="muted">Next action: </span>{fu.next_action}</p>}
+          <p className="muted" style={{ margin: 0 }}>Due {when}</p>
+          {fu.next_action && <p style={{ ...TEXT, margin: 0 }}><span className="muted">Next action: </span>{fu.next_action}</p>}
         </>
       )}
-      {fu.notes && <p style={{ ...TEXT, margin: "4px 0" }}>{fu.notes}</p>}
+      {fu.notes && <p style={{ ...TEXT, margin: 0 }}>{fu.notes}</p>}
       {fu.completed_at && <p className="muted" style={{ margin: 0 }}>Done {formatSchoolDateTime(fu.completed_at)}{fu.completed_by && ` by ${fu.completed_by.full_name}`}</p>}
       {fu.cancelled_at && <p className="muted" style={{ ...TEXT, margin: 0 }}>Cancelled {formatSchoolDateTime(fu.cancelled_at)}{fu.cancel_reason && ` — ${fu.cancel_reason}`}</p>}
       {mode === "edit" && (
