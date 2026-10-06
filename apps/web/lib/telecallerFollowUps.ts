@@ -21,7 +21,6 @@ export const REASON_LABEL: Record<string, string> = Object.fromEntries(REASONS.m
 export const reasonLabel = (key: string) => REASON_LABEL[key] ?? key;
 export const NOTES_MAX = 2000;
 export const ACTION_MAX = 200;
-export const CANCEL_MAX = 500;
 
 export type FollowUp = {
   id: string; due_at: string; reason: FollowUpReason; notes: string | null; next_action: string | null; status: "open" | "done" | "cancelled";

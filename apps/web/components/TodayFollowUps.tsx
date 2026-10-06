@@ -6,7 +6,8 @@ import FollowUpItem from "@/components/FollowUpItem";
 import { todayIst } from "@/lib/bdmAppointments";
 import { formatCalendarDate, isCalendarDate } from "@/lib/formatDate";
 import { pageOffset } from "@/lib/telecaller";
-import { followUpsUrl, isFollowUpPage, LIST_LIMIT, type FollowUpPage, type View } from "@/lib/telecallerFollowUps";
+import { getPage } from "@/lib/telecallerCatalogue";
+import { followUpsUrl, isFollowUpPage, LIST_LIMIT, type FollowUp, type FollowUpPage, type View } from "@/lib/telecallerFollowUps";
 
 const EMPTY: Record<View, string> = { day: "No follow-ups due on this day.", overdue: "No overdue follow-ups." };
 
@@ -32,10 +33,9 @@ export default function TodayFollowUps({ leadBasePath, showTelecaller }: { leadB
   useEffect(() => {
     const controller = new AbortController();
     setFailed(false);
-    fetch(requestUrl, { signal: controller.signal })
-      .then(async (response) => {
-        const body: unknown = response.ok ? await response.json() : null;
-        if (!isFollowUpPage(body)) throw new Error(`Follow-ups failed (${response.status})`);
+    getPage<FollowUp>(requestUrl, controller.signal)
+      .then((body) => {
+        if (!isFollowUpPage(body)) throw new Error("Follow-ups without counts");
         setData(body);
       })
       .catch(() => controller.signal.aborted || setFailed(true));
