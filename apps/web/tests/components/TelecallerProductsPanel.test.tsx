@@ -3,6 +3,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import TelecallerProductsPanel from "@/components/TelecallerProductsPanel";
 
+// QA follow-up: list place (group / search / page) lives in the URL, so refresh and Back keep it.
+const nav = vi.hoisted(() => ({ params: new URLSearchParams(), push: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: nav.push }), usePathname: () => "/telecaller/manager/products", useSearchParams: () => nav.params }));
+
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const page = (items: unknown[]) => ({ items, total: items.length, limit: 100, offset: 0 });
 const sap = { id: "p1", group: "it", name: "SAP", team: "it", program: null, active: true, sort_order: 2 };
@@ -24,6 +28,8 @@ const listOrPrograms = (list: unknown) => ({ url, init }: Call) =>
 
 afterEach(() => {
   cleanup();
+  nav.params = new URLSearchParams();
+  nav.push.mockReset();
   vi.unstubAllGlobals();
 });
 
@@ -118,5 +124,29 @@ describe("TelecallerProductsPanel (tel-002)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirm deactivate" }));
     expect(await screen.findByText("Deactivated SAP.")).toBeInTheDocument();
     expect(JSON.parse(String(calls.find((c) => c.init?.method === "PATCH")!.init!.body))).toEqual({ active: false });
+  });
+
+  it("reads the group filter and page from the URL, and writes a new filter to it", async () => {
+    nav.params = new URLSearchParams("group=other&offset=100");
+    const calls = serve(listOrPrograms(page([guidance])));
+    render(<TelecallerProductsPanel />);
+    await screen.findByText("Career Guidance");
+    const list = calls.find((c) => c.url.includes("/telecaller/products?"))!.url;
+    expect(list).toContain("group=other");
+    expect(list).toContain("offset=100");
+    expect(screen.getByLabelText("Show")).toHaveValue("other");
+    fireEvent.change(screen.getByLabelText("Show"), { target: { value: "overseas" } });
+    expect(nav.push).toHaveBeenCalledWith("/telecaller/manager/products?group=overseas", { scroll: false });
+    fireEvent.change(screen.getByLabelText("Show"), { target: { value: "" } });
+    expect(nav.push).toHaveBeenLastCalledWith("/telecaller/manager/products", { scroll: false });
+  });
+
+  it("ignores an unknown group in the URL", async () => {
+    nav.params = new URLSearchParams("group=global");
+    const calls = serve(listOrPrograms(page([sap])));
+    render(<TelecallerProductsPanel />);
+    await screen.findByText("SAP");
+    expect(calls.find((c) => c.url.includes("/telecaller/products?"))!.url).not.toContain("group=");
+    expect(screen.getByLabelText("Show")).toHaveValue("");
   });
 });

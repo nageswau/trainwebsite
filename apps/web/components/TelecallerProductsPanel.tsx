@@ -1,10 +1,11 @@
 "use client";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import CreateJumpLink from "@/components/CreateJumpLink";
 import TelecallerProductRow from "@/components/TelecallerProductRow";
 import { sendJson, type Page } from "@/lib/apiErrors";
-import { formText } from "@/lib/telecaller";
+import { formText, pageOffset } from "@/lib/telecaller";
 import { CATALOGUE_PAGE_SIZE, GROUPS, GROUP_LABEL, PRODUCTS_URL, activePrograms, getPage, type Product, type ProductGroup, type ProgramOption } from "@/lib/telecallerCatalogue";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 import { toneClass, type Feedback } from "@/lib/welcomeLink";
@@ -16,8 +17,6 @@ const FEEDBACK_ID = "prod-create-feedback";
 export default function TelecallerProductsPanel() {
   const [data, setData] = useState<Page<Product> | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
-  const [filter, setFilter] = useState<ProductGroup | "">("");
-  const [offset, setOffset] = useState(0);
   const [version, setVersion] = useState(0);
   const [programs, setPrograms] = useState<ProgramOption[] | null>(null);
   const [group, setGroup] = useState<ProductGroup>("it");
@@ -26,6 +25,19 @@ export default function TelecallerProductsPanel() {
   const [notice, setNotice] = useState<string | null>(null);
   const inFlight = useRef(false); // `busy` disables the button only after a re-render; a double click must not POST twice
   const focus = useFocusAfterRender();
+  // The group filter and page live in the URL (?group=&offset=), so refresh keeps the place and Back returns to the previous view.
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const urlGroup = params.get("group") as ProductGroup;
+  const filter: ProductGroup | "" = GROUPS.includes(urlGroup) ? urlGroup : "";
+  const offset = pageOffset(params.get("offset") ?? undefined);
+  function go(nextFilter: ProductGroup | "", nextOffset: number) {
+    const next = new URLSearchParams();
+    if (nextFilter) next.set("group", nextFilter);
+    if (nextOffset > 0) next.set("offset", String(nextOffset));
+    router.push(next.size ? `${pathname}?${next}` : pathname, { scroll: false });
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -109,7 +121,7 @@ export default function TelecallerProductsPanel() {
         <CreateJumpLink targetId="prod-group" label="Create product" />
         <div className="field" style={{ maxWidth: 260 }}>
           <label htmlFor="prod-filter">Show</label>
-          <select id="prod-filter" value={filter} onChange={(e) => { setFilter(e.target.value as ProductGroup | ""); setOffset(0); }}>
+          <select id="prod-filter" value={filter} onChange={(e) => go(e.target.value as ProductGroup | "", 0)}>
             <option value="">All groups</option>
             {GROUPS.map((g) => <option key={g} value={g}>{GROUP_LABEL[g]}</option>)}
           </select>
@@ -142,8 +154,8 @@ export default function TelecallerProductsPanel() {
             {data.total > CATALOGUE_PAGE_SIZE && (
               <nav aria-label="Product pages" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 12 }}>
                 <span className="muted" style={{ fontSize: 13 }}>Showing {data.offset + 1}–{data.offset + data.items.length} of {data.total}</span>
-                <button type="button" className="btn secondary small" aria-label="Previous page" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - CATALOGUE_PAGE_SIZE))}>Previous</button>
-                <button type="button" className="btn secondary small" aria-label="Next page" disabled={data.offset + data.items.length >= data.total} onClick={() => setOffset(offset + CATALOGUE_PAGE_SIZE)}>Next</button>
+                <button type="button" className="btn secondary small" aria-label="Previous page" disabled={offset === 0} onClick={() => go(filter, Math.max(0, offset - CATALOGUE_PAGE_SIZE))}>Previous</button>
+                <button type="button" className="btn secondary small" aria-label="Next page" disabled={data.offset + data.items.length >= data.total} onClick={() => go(filter, offset + CATALOGUE_PAGE_SIZE)}>Next</button>
               </nav>
             )}
           </>

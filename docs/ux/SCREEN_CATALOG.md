@@ -2956,12 +2956,14 @@ row is a card of labelled lines.
   course picker); `POST`/`PATCH /telecaller/products`. **Content:** create form (group; name; team only for Other — Unassigned queue / IT /
   Overseas; linked IT course only for IT), "Show" group filter, table (name, group, team, course, order, status, actions: Edit inline with
   Esc to cancel, Deactivate with inline confirm, Reactivate). **States:** loading, error + Retry, empty, pager over 100, `role="status"`
-  notices, double-submit guard, server sentences shown as written.
+  notices, double-submit guard, server sentences shown as written. The group filter and page are in the URL (`?group=&offset=`); after Deactivate/Reactivate
+  focus moves to the row's new status button.
 - **Route:** `/telecaller/manager/campaigns`. **Data:** `GET /telecaller/campaigns?q=&limit=100&offset=`, every active product (all pages);
   `POST`/`PATCH /telecaller/campaigns`. **Content:** create form (name; one of 13 sources; active product grouped IT Courses / Overseas
   Education / Other; start date; optional end date — end before start is refused in the browser and by the API), search, table (name, source,
   product with a "Product inactive" badge, dates, status, actions). Editing a campaign whose product was deactivated keeps that product,
-  offered as "(inactive)". **States:** as above; no active product → the create button is disabled with a link to Products.
+  offered as "(inactive)". **States:** as above (search and page in the URL, `?q=&offset=`); no active product → the create button is disabled with a link to
+  Products.
 
 ## Required findings report
 

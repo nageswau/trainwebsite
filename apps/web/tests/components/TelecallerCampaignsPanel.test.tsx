@@ -4,6 +4,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import TelecallerCampaignsPanel from "@/components/TelecallerCampaignsPanel";
 import { activeProducts, campaignDates } from "@/lib/telecallerCatalogue";
 
+// QA follow-up: list place (group / search / page) lives in the URL, so refresh and Back keep it.
+const nav = vi.hoisted(() => ({ params: new URLSearchParams(), push: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: nav.push }), usePathname: () => "/telecaller/manager/campaigns", useSearchParams: () => nav.params }));
+
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const page = (items: unknown[]) => ({ items, total: items.length, limit: 100, offset: 0 });
 const cyber = { id: "p1", group: "it", name: "Cyber Security", team: "it", program: null, active: true, sort_order: 3 };
@@ -28,6 +32,8 @@ function serve(campaigns: unknown, products: unknown[] = [cyber, uk], onWrite?: 
 
 afterEach(() => {
   cleanup();
+  nav.params = new URLSearchParams();
+  nav.push.mockReset();
   vi.unstubAllGlobals();
 });
 
@@ -146,5 +152,21 @@ describe("TelecallerCampaignsPanel (tel-002)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Reactivate Old Dubai push" }));
     expect(await screen.findByText("Reactivated Old Dubai push.")).toBeInTheDocument();
     expect(calls.filter((c) => c.init?.method === "PATCH").map((c) => JSON.parse(String(c.init!.body)))).toEqual([{ active: false }, { active: true }]);
+  });
+
+  it("reads the search and page from the URL, and writes a new search to it", async () => {
+    nav.params = new URLSearchParams("q=Sep&offset=100");
+    const calls = serve(page([sep]));
+    render(<TelecallerCampaignsPanel />);
+    await screen.findByText("Sep 2026 Cyber Security");
+    const list = calls.find((c) => c.url.includes("/telecaller/campaigns?"))!.url;
+    expect(list).toContain("q=Sep");
+    expect(list).toContain("offset=100");
+    expect(screen.getByRole("searchbox", { name: "Search campaigns" })).toHaveValue("Sep");
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search campaigns" }), { target: { value: " Diwali " } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(nav.push).toHaveBeenCalledWith("/telecaller/manager/campaigns?q=Diwali", { scroll: false });
+    fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+    expect(nav.push).toHaveBeenLastCalledWith("/telecaller/manager/campaigns", { scroll: false });
   });
 });

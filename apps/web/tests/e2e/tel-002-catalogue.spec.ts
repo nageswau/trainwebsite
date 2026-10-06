@@ -51,6 +51,9 @@ test("manager: seeded products, create + deactivate a product, campaign with dat
   await page.getByRole("link", { name: "Products" }).first().click();
   await page.waitForURL("**/telecaller/manager/products");
   await page.getByLabel("Show").selectOption("other");
+  await page.waitForURL("**/telecaller/manager/products?group=other");
+  await page.reload(); // the filter lives in the URL, so a refresh keeps it
+  await expect(page.getByLabel("Show")).toHaveValue("other");
   const guidance = page.getByRole("row", { name: /^Career Guidance/ });
   await expect(guidance).toContainText("Unassigned queue"); // AC1 / T18
   await expect(page.getByRole("row", { name: /^Job Assistance/ })).toContainText("IT");
@@ -64,6 +67,7 @@ test("manager: seeded products, create + deactivate a product, campaign with dat
   await page.getByRole("button", { name: `Deactivate ${product}` }).click();
   await page.getByRole("button", { name: "Confirm deactivate" }).click();
   await expect(page.getByText(`Deactivated ${product}.`)).toBeVisible();
+  await expect(page.getByRole("button", { name: `Reactivate ${product}` })).toBeFocused(); // focus follows the new status button
 
   await page.getByRole("link", { name: "Campaigns" }).first().click();
   await page.waitForURL("**/telecaller/manager/campaigns");
@@ -84,7 +88,15 @@ test("manager: seeded products, create + deactivate a product, campaign with dat
   await expect(page.getByText(`Created ${campaign}.`)).toBeVisible();
   await page.getByRole("searchbox", { name: "Search campaigns" }).fill(String(stamp));
   await page.getByRole("button", { name: "Search", exact: true }).click();
+  await page.waitForURL(`**/telecaller/manager/campaigns?q=${stamp}`);
   await expect(page.getByRole("row", { name: new RegExp(campaign) })).toContainText("Instagram");
+  await page.reload(); // the search lives in the URL
+  await expect(page.getByRole("searchbox", { name: "Search campaigns" })).toHaveValue(String(stamp));
+  await expect(page.getByRole("row", { name: new RegExp(campaign) })).toBeVisible();
+  await page.getByRole("button", { name: "Clear search" }).click();
+  await page.waitForURL(/\/telecaller\/manager\/campaigns$/);
+  await page.goBack(); // Back returns to the searched view
+  await expect(page.getByRole("searchbox", { name: "Search campaigns" })).toHaveValue(String(stamp));
 
   // Refresh keeps the page working; tablet and phone widths never scroll sideways.
   await page.reload();

@@ -112,3 +112,5 @@ sideways scroll at 768 px and 390 px (labelled cards on phones). The app and tes
 |---|---|---|---|---|
 | QA-01 | Low | manager / Campaigns | The product picker fetched one page of 100 active products; more were silently missing (this stack had 92 from test data) | `activeProducts()` reads every page (vitest) |
 | QA-02 | Medium | manager / both pages, ≤980 px | The list sits above the create form on tablets/phones and there was no jump to the form (tel-001 added one for this) | `CreateJumpLink` on both list cards (vitest + e2e at 768/390 px) |
+| QA-03 | Low | manager / both pages | After Deactivate/Reactivate focus landed on Edit, not the row's new status button (focus moved before the list reload arrived) | the row focuses its new status button when its status changes; Edit holds focus meanwhile (vitest + e2e) |
+| QA-04 | Low | manager / both pages | The Products group filter, the Campaigns search and the page were in memory only; refresh and Back lost them (tel-001 keeps them in the URL) | `?group=` / `?q=` and `?offset=` in the URL (vitest + e2e reload/Back) |

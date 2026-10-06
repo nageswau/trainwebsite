@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { accessDenied, accessUnavailable } from "@/components/AccessUnavailable";
 import PortalShell from "@/components/PortalShell";
 import { serverApi } from "@/lib/api";
@@ -26,7 +28,7 @@ export default async function TelecallerCataloguePage({ title, intro, children }
         </div>
       </div>
       <div className="portal-content action-center">
-        <div className="action-grid">{children}</div>
+        <div className="action-grid"><Suspense fallback={<p className="muted" role="status">Loading…</p>}>{children}</Suspense></div>
       </div>
     </PortalShell>
   );

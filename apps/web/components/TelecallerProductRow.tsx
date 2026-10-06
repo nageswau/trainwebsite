@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { sendJson } from "@/lib/apiErrors";
 import { formText, statusLabel } from "@/lib/telecaller";
@@ -15,6 +15,14 @@ export default function TelecallerProductRow({ row, programs, onChanged }: { row
   const [error, setError] = useState<string | null>(null);
   const focus = useFocusAfterRender();
   const id = (name: string) => `prod-${name}-${row.id}`;
+  // After Deactivate/Reactivate the list reloads; once this row comes back with its new status, focus its new status button
+  // (until then focus waits on Edit, so it is never lost).
+  const statusFocus = useRef<string | null>(null);
+  useEffect(() => {
+    const target = statusFocus.current ? document.getElementById(statusFocus.current) : null;
+    statusFocus.current = null;
+    target?.focus();
+  }, [row.active]);
   // The current link stays choosable even if that course has since been retired from the public list.
   const courses = row.program && !programs.some((p) => p.id === row.program!.id) ? [row.program, ...programs] : programs;
 
@@ -50,7 +58,9 @@ export default function TelecallerProductRow({ row, programs, onChanged }: { row
   }
 
   async function setActive(active: boolean) {
-    if (await patch({ active }, `${active ? "Reactivated" : "Deactivated"} ${row.name}.`, id("status-error"))) focus(active ? id("deactivate") : id("reactivate"), id("edit"));
+    if (!(await patch({ active }, `${active ? "Reactivated" : "Deactivated"} ${row.name}.`, id("status-error")))) return;
+    statusFocus.current = id(active ? "deactivate" : "reactivate");
+    focus(id("edit"));
   }
 
   if (editing) {

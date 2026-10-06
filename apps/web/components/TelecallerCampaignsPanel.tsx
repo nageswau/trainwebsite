@@ -1,12 +1,13 @@
 "use client";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import CreateJumpLink from "@/components/CreateJumpLink";
 import TelecallerCampaignRow from "@/components/TelecallerCampaignRow";
 import ProductOptions from "@/components/TelecallerProductOptions";
 import { sendJson, type Page } from "@/lib/apiErrors";
-import { formOptional, formText } from "@/lib/telecaller";
+import { formOptional, formText, pageOffset } from "@/lib/telecaller";
 import { CAMPAIGNS_URL, CATALOGUE_PAGE_SIZE, SOURCES, SOURCE_LABEL, activeProducts, datesInOrder, getPage, type Campaign, type Product } from "@/lib/telecallerCatalogue";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 import { toneClass, type Feedback } from "@/lib/welcomeLink";
@@ -21,15 +22,26 @@ export default function TelecallerCampaignsPanel() {
   const [loadFailed, setLoadFailed] = useState(false);
   const [products, setProducts] = useState<Product[] | null>(null);
   const [productsFailed, setProductsFailed] = useState(false);
-  const [offset, setOffset] = useState(0);
-  const [query, setQuery] = useState("");
-  const [draft, setDraft] = useState("");
   const [version, setVersion] = useState(0);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const inFlight = useRef(false); // `busy` disables the button only after a re-render; a double click must not POST twice
   const focus = useFocusAfterRender();
+  // The search and page live in the URL (?q=&offset=), so refresh keeps the place and Back returns to the previous view.
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const query = (params.get("q") ?? "").trim();
+  const offset = pageOffset(params.get("offset") ?? undefined);
+  const [draft, setDraft] = useState(query);
+  useEffect(() => setDraft(query), [query]);
+  function go(nextQuery: string, nextOffset: number) {
+    const next = new URLSearchParams();
+    if (nextQuery) next.set("q", nextQuery);
+    if (nextOffset > 0) next.set("offset", String(nextOffset));
+    router.push(next.size ? `${pathname}?${next}` : pathname, { scroll: false });
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -52,8 +64,7 @@ export default function TelecallerCampaignsPanel() {
   const reload = () => setVersion((v) => v + 1);
   const search = (text: string) => {
     setDraft(text);
-    setQuery(text.trim());
-    setOffset(0);
+    go(text.trim(), 0);
   };
   const noProducts = products !== null && products.length === 0;
 
@@ -153,8 +164,8 @@ export default function TelecallerCampaignsPanel() {
             {data.total > CATALOGUE_PAGE_SIZE && (
               <nav aria-label="Campaign pages" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 12 }}>
                 <span className="muted" style={{ fontSize: 13 }}>Showing {data.offset + 1}–{data.offset + data.items.length} of {data.total}</span>
-                <button type="button" className="btn secondary small" aria-label="Previous page" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - CATALOGUE_PAGE_SIZE))}>Previous</button>
-                <button type="button" className="btn secondary small" aria-label="Next page" disabled={data.offset + data.items.length >= data.total} onClick={() => setOffset(offset + CATALOGUE_PAGE_SIZE)}>Next</button>
+                <button type="button" className="btn secondary small" aria-label="Previous page" disabled={offset === 0} onClick={() => go(query, Math.max(0, offset - CATALOGUE_PAGE_SIZE))}>Previous</button>
+                <button type="button" className="btn secondary small" aria-label="Next page" disabled={data.offset + data.items.length >= data.total} onClick={() => go(query, offset + CATALOGUE_PAGE_SIZE)}>Next</button>
               </nav>
             )}
           </>
