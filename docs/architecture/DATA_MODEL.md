@@ -456,7 +456,7 @@ covers the commission-specific piece).
   `created_at`), append-only, index `(organization_id, position)`. The agent status is derived, never stored. Additive; the downgrade
   refuses while any event, non-prospect stage or Lost flag exists.
 
-- **Addendum, 2026-10-06 (`bdm-018`, `DEC-SCOPE-083`; migration `0083_bdm_onboarding`, chained after `0082_bdm_assignment_history`) — school
+- **Addendum, 2026-10-06 (`bdm-018`, `DEC-SCOPE-084`; migration `0084_bdm_onboarding`, chained after `0083_tel_content`) — school
   onboarding handover.** `bdm_organizations` gains `school_id` (nullable FK `schools` `ON DELETE RESTRICT`, unique
   `uq_bdm_organizations_school`: one organization ↔ at most one School). The School's BDM is **derived** from that link (the
   organization's `assigned_bdm_user_id`, H1); `schools` gets no column and `schools.edusphere_bdm` stays as legacy history (Q-16).

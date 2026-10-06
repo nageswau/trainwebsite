@@ -1,6 +1,6 @@
 # bdm-018 — School onboarding handover + `schools` link (design)
 
-- **Feature ID:** bdm-018 · **Decision:** `DEC-SCOPE-083` · **Migration:** `0083_bdm_onboarding` (after `0082_bdm_assignment_history`)
+- **Feature ID:** bdm-018 · **Decision:** `DEC-SCOPE-084` · **Migration:** `0084_bdm_onboarding` (after `0083_tel_content`)
 - **Backlog:** `docs/delivery/BDM_CRM_BACKLOG.md` §4 bdm-018 (`DERIVED_BLUEPRINT`); `DEC-SCOPE-055` D5, D8, Q-16 (D25); `DEC-SCOPE-071` S3; `DEC-SCOPE-078` M2.
 - **Dependencies:** bdm-004 (COMPLETE), bdm-005 (merged to `main`, PR #77; its record says "VERIFIED — not yet COMPLETE": only Browser Use and the owner's full suites are open).
 
@@ -13,7 +13,7 @@
 | H3 | Linking an existing School | **Through the request.** The BDM requests onboarding as usual. The admin resolves the request with *Create school* or *Link existing school* (by School ID). Admins never browse BDM organizations. |
 | H4 | Legacy `schools.edusphere_bdm` (Q-16) | **Read-only in the UI.** The create panel drops the input. The edit panel shows it read-only as "Edusphere BDM (legacy note)". The API still accepts the field (backward compatible; ENH-029 bulk CSV unchanged). |
 
-Defaults taken without a question (recorded in `DEC-SCOPE-083`):
+Defaults taken without a question (recorded in `DEC-SCOPE-084`):
 
 - **H5** Who requests: the assigned BDM or `super_admin` (bdm-004 S1 / bdm-005 M3, i.e. `can_edit`). Managers read.
 - **H6** Request preconditions: the organization is a School-module one (`bdm_type = 'school'`), not archived (409), not Lost (409 `organization_lost`), not already linked (409 `already_linked`), with no pending request (409 `request_pending`), and its current MoU reads Signed or Active (bdm-005 effective status, so an Expired one is refused; 422).
@@ -29,7 +29,7 @@ Defaults taken without a question (recorded in `DEC-SCOPE-083`):
 
 **Out:** Agent onboarding (bdm-019; the table's `kind` CHECK allows `'school'` only, and bdm-019 widens it); per-school counts (bdm-020); unlinking; deactivating the School's BDM (bdm-025).
 
-## 3. Data — migration `0083_bdm_onboarding` (additive)
+## 3. Data — migration `0084_bdm_onboarding` (additive)
 
 `bdm_onboarding_requests`
 

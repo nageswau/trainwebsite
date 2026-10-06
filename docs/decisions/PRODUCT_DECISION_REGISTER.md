@@ -3890,16 +3890,39 @@ picked the recommended option. Design spec: `docs/superpowers/specs/2026-10-06-b
 
 **Status:** `EXPLICIT_APPROVAL` for L1–L5. Implemented on `worktree-bdm-025`; the verification status is in the backlog entry and the RTM row.
 
+### DEC-SCOPE-083 — Script, message-template and brochure library (`tel-012`)
+
+**ID note:** drafted as `DEC-SCOPE-076` with migration `0078_tel_content` (free on `main` @ `442ce465`), then renumbered on each merge of `main`: tel-017 (`DEC-SCOPE-076`), tel-003 (`DEC-SCOPE-077` / `0078_enquiry_lead_record`), bdm-005 (`DEC-SCOPE-078` / `0079_bdm_mous`), bdm-013 (`DEC-SCOPE-079`), tel-022 (`DEC-SCOPE-080` / `0080_tel_targets`) tel-004 (`DEC-SCOPE-081` / `0081_lead_stage_pipeline`) and bdm-025 (`DEC-SCOPE-082` / `0082_bdm_assignment_history`) reached `main` first. On merging `main` @ `4ec7a22b` (2026-10-06) this entry is `DEC-SCOPE-083` and the migration is **`0083_tel_content`** (after `0082_bdm_assignment_history`).
+
+**Question:** how scripts, message templates and brochure PDFs are shaped, who maintains and reads them, and how a signed-out lead opens a brochure (`TELECALLER_CRM_BACKLOG.md` §4 tel-012, Q-15)?
+
+**Evidence:** `EVID-019` §6 (call script), §11 (9 WhatsApp templates), §12 (7 email kinds) — the source's lists are not an approval; `DEC-SCOPE-073` T8, T9; owner answers in-session 2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for C1–C4. The roles are a recorded default (T9 plus the tel-002 P1 shape), not asked.
+
+| # | Question | Answer |
+|---|---|---|
+| C1 (Q-15) | Brochure links for signed-out leads | A **signed, asset-scoped token valid 7 days** (JWT `type: tel_asset`), served by `GET /public/telecaller-assets/{token}`. Deactivating the brochure ends every link at once. No file is public by URL |
+| C2 | Lead-dependent parts | Library + manager/telecaller **preview with sample values** now. `GET /telecaller/leads/{id}/render` and the lead-detail script panel **move to tel-008 / tel-013** (they need tel-003's lead product and tel-008's ownership) |
+| C3 | Script shape | Required product, name, **ordered steps** (title + optional talking points), 1–20 steps; **at most one active script per product** (partial unique index). Seed: the §6 Cyber Security example |
+| C4 | Seed wording | One **generic** template per kind (9 WhatsApp + 7 email), short neutral English; none uses `{brochure_link}` (no brochure exists at seed time) |
+
+**Recorded defaults:** writers `telecaller_manager`, `super_admin`; readers add `telecaller` (active rows only); other roles 403. Placeholders are exactly `{name}`, `{product}`, `{brochure_link}` (needs a brochure), `{appointment_time}`; any other `{…}` is a 422 on save. Rendering is plain text and single-pass; the sink escapes it (tel-013 URL-encodes, tel-014 HTML-escapes). PDFs are judged by their bytes, within `MAX_UPLOAD_BYTES`. Nothing is deleted. A deactivated row keeps its list position.
+
+**Implementation:** migration `0083_tel_content` (`tel_scripts`, `tel_assets`, `tel_message_templates`, plus seeds; no existing row is touched; downgrade refuses while manager data exists). Routes `GET|POST|PATCH /telecaller/{scripts,templates,assets}`, `GET /telecaller/templates/{id}/preview`, `POST /telecaller/assets/{id}/link`, `GET /public/telecaller-assets/{token}` (`API_CONTRACT.md` §12I, `RBAC_MATRIX.md` §2.18). Manager pages `/telecaller/manager/{scripts,templates,brochures}`. Design spec `docs/superpowers/specs/2026-10-06-tel-012-content-library-design.md`.
+VERIFIED on `feature/tel-012` @ final HEAD (2026-10-06): lite backend 339 (tel-001/002/003/012/017 + bdm-005 migration; re-run after the 4ec7a22b merge), vitest 75, Playwright 7, Browser Use QA (QA-01…04 fixed test-first and re-verified). Full backend suite deferred to the owner.
 
 
-### DEC-SCOPE-083 — School onboarding handover + `schools` link (`bdm-018`)
+
+
+### DEC-SCOPE-084 — School onboarding handover + `schools` link (`bdm-018`)
 
 **ID note:** drafted as `DEC-SCOPE-079` with migration `0080_bdm_onboarding` (both free on `main` @ `230a043f`); bdm-013 (PR #78) took
 `DEC-SCOPE-079` and tel-022 (PR #80) `DEC-SCOPE-080` / `0080_tel_targets` first, so on merging `main` @ `a38955d5` (2026-10-06) this entry was
 `DEC-SCOPE-081` with `0081_bdm_onboarding`; tel-004 (PR #81, `DEC-SCOPE-081` / `0081_lead_stage_pipeline`) and bdm-025 (PR #79, `DEC-SCOPE-082` /
-`0082_bdm_assignment_history`) then reached `main`, so on merging `main` @ `4ec7a22b` this entry is **`DEC-SCOPE-083`** and the migration
-**`0083_bdm_onboarding`** (after `0082_bdm_assignment_history`). bdm-018 commits from before those merges that say `DEC-SCOPE-079` / `DEC-SCOPE-081`
-or `0080_bdm_onboarding` / `0081_bdm_onboarding` mean this decision / migration.
+`0082_bdm_assignment_history`) then reached `main`, so on merging `main` @ `4ec7a22b` this entry was `DEC-SCOPE-083` with
+`0083_bdm_onboarding`; tel-012 (PR #83, `DEC-SCOPE-083` / `0083_tel_content`) then reached `main`, so on merging `main` @ `50838192` this entry is
+**`DEC-SCOPE-084`** and the migration **`0084_bdm_onboarding`** (after `0083_tel_content`). bdm-018 commits from before those merges that say
+`DEC-SCOPE-079` / `081` / `083` or `0080` / `0081` / `0083_bdm_onboarding` mean this decision / migration.
 
 **Question:** how a School-module BDM hands a signed school over to Overseas Admin, how the created (or existing) School is linked to the
 organization, what the School records as its BDM, what happens to the legacy `schools.edusphere_bdm` text (Q-16), and how the live School
@@ -3923,7 +3946,7 @@ option; spec `docs/superpowers/specs/2026-10-06-bdm-018-school-onboarding-handov
   H10 the BDM sees the School's name and ID plus the step states, no School-portal data; H11 live stages are never stored and the pipeline
   view is unchanged.
 
-**Consequences:** migration `0083_bdm_onboarding` (new `bdm_onboarding_requests`; `bdm_organizations.school_id`; no existing row touched;
+**Consequences:** migration `0084_bdm_onboarding` (new `bdm_onboarding_requests`; `bdm_organizations.school_id`; no existing row touched;
 downgrade refuses while requests or links exist); routes `POST /bdm/organizations/{id}/onboarding-request`,
 `GET /overseas-admin/bdm-onboarding-requests`, `POST …/{id}/reject`, `POST …/{id}/link`; `POST /overseas-admin/schools` accepts
 `bdm_onboarding_request_id` (route-only `SchoolCreateIn`, so ENH-029's bulk template is unchanged); `SchoolOut.linked_bdm`; the organization
