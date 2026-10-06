@@ -328,6 +328,11 @@ API contract §12H; re-chained after bdm-005, bdm-013 and tel-022's `0080_tel_ta
 
 ### tel-005 — Manual lead creation, duplicate detection, website-enquiry intake/attach
 
+**Status (2026-10-06):** **verified** on `feature/tel-005`, not merged (`DEC-SCOPE-088` I1–I6 + R1–R10, migration `0086_lead_enquiries`,
+API contract §12L). Spec `docs/superpowers/specs/2026-10-06-tel-005-lead-intake-design.md`. tel-007 merged first (PR #90, `0085` / `DEC-SCOPE-087` / §12K), so
+tel-005 re-chained after it, and `lead_intake` sends new website leads and manager-created leads through `lead_distribution.on_intake` (I6).
+"Last contact" in the panel waits for tel-010 / tel-013.
+
 - **Business requirement:** §18, T12, T15.
 - **Existing behavior:** only the website form creates leads. No duplicate check exists.
 - **Expected behavior:**
@@ -1145,7 +1150,7 @@ graph TD
 
 ### 5.4 Migrations
 
-Numbers are **provisional**. `main` is at `0085_tel_distribution` (tel-007, merged 2026-10-06; tel-001 took `0075`, tel-002 `0076`, bdm-008 `0077`, tel-003 `0078`, bdm-005 `0079`, tel-022 `0080`, tel-004 `0081`, bdm-025 `0082`, tel-012 `0083`, bdm-018 `0084`; tel-017 and tel-008 have none; bdm-005/bdm-013/tel-022/tel-004/bdm-025/tel-012/tel-008/bdm-018/bdm-021/tel-007 took `DEC-SCOPE-078`–`087`), so the next telecaller migration will be `0086` or later, and the next decision `DEC-SCOPE-088` or later. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
+Numbers are **provisional**. `main` is at `0085_tel_distribution` (tel-007, merged 2026-10-06; tel-001 took `0075`, tel-002 `0076`, bdm-008 `0077`, tel-003 `0078`, bdm-005 `0079`, tel-022 `0080`, tel-004 `0081`, bdm-025 `0082`, tel-012 `0083`, bdm-018 `0084`; tel-017 and tel-008 have none; bdm-005/bdm-013/tel-022/tel-004/bdm-025/tel-012/tel-008/bdm-018/bdm-021/tel-007 took `DEC-SCOPE-078`–`087`), so the next telecaller migration will be `0086` or later, and the next decision `DEC-SCOPE-088` or later. tel-005 (verified; re-chained after tel-007 merged first) holds `0086_lead_enquiries` / `DEC-SCOPE-088` / §12L, so the item after it chains after `0086` / `DEC-SCOPE-089`. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
 
 | Item | Migration content |
 |---|---|

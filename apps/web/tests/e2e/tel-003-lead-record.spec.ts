@@ -24,11 +24,12 @@ test("a website enquiry gets a Lead ID the admin can search and filter by", asyn
   const stamp = `${Date.now()}${Math.floor(Math.random() * 1e4)}`;
   const email = `tel003-${stamp}@example.com`;
   const name = `Lead Record ${stamp}`;
+  const mobile = `9${String(stamp).slice(-9)}`; // tel-005 (T12): a known mobile would attach to its existing lead
   const created = await page.request.post("/api/v1/public/enquiries", {
-    data: { division: "it", name, email, phone: "098765 43210", subject: "Cyber Security", message: "Please call me about the course." },
+    data: { division: "it", name, email, phone: `0${mobile.slice(0, 5)} ${mobile.slice(5)}`, subject: "Cyber Security", message: "Please call me about the course." },
   });
   expect(created.status()).toBe(201);
-  const { lead_code: leadCode, status } = await created.json();
+  const { lead_code: leadCode } = await created.json();
   expect(leadCode).toMatch(/^LD-\d{6,}$/);
 
   await signInItAdmin(page);
@@ -40,7 +41,9 @@ test("a website enquiry gets a Lead ID the admin can search and filter by", asyn
   await expect(panel.getByRole("rowheader")).toHaveText([name]);
   const row = panel.locator("tr", { has: page.getByRole("rowheader", { name, exact: true }) });
   for (const text of [leadCode, "Website", "Warm", "Cyber Security"]) await expect(row).toContainText(text);
-  // tel-007 DI2: distributed on arrival when an IT telecaller is eligible; otherwise it waits unassigned.
+  // tel-007 DI2: distributed on arrival when an IT telecaller is eligible; otherwise it waits unassigned. The public reply's status is
+  // a constant acknowledgement (tel-005 I3), so the stage comes from the stored lead.
+  const { status } = (await (await page.request.get(`/api/v1/admin/leads?q=${leadCode}`)).json()).items[0];
   if (status !== "assigned") await expect(row).toContainText("Unassigned");
 
   await panel.getByLabel("Source").selectOption("google");

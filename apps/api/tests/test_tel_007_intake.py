@@ -23,7 +23,8 @@ def no_crm(monkeypatch):
 
 
 def _body(division: str = "it") -> dict:
-    return {"division": division, "name": "Asha N", "email": f"{uuid.uuid4().hex[:8]}@example.com", "phone": "9876543210",
+    # tel-005 (T12): a known mobile attaches to its existing lead, so every call uses a fresh one
+    return {"division": division, "name": "Asha N", "email": f"{uuid.uuid4().hex[:8]}@example.com", "phone": f"9{uuid.uuid4().int % 10**9:09d}",
             "subject": "Cyber security course", "message": "Please call me back."}
 
 
@@ -40,7 +41,7 @@ async def test_a_website_enquiry_is_assigned_round_robin(client, db_session, div
     await make_telecaller(db_session, await make_tl_manager(db_session), team=division)  # at least one eligible telecaller
     response = await client.post(URL, json=_body(division))
     assert response.status_code == 201, response.text
-    assert response.json()["status"] == "assigned"
+    assert response.json()["status"] == "new"  # tel-005 I3: a constant acknowledgement; the stored row below carries the stage
     row, history, audits = await _assignment(db_session, response.json()["id"])
     assert row.telecaller_user_id is not None and row.status == "assigned"
     assert history == [("assigned", "assigned")]

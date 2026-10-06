@@ -12,7 +12,7 @@ from sqlalchemy import String, cast, func, literal, null, select, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.lead_stages import label as stage_label
-from app.models import AuditLog, Enquiry, LeadStageHistory, User
+from app.models import AuditLog, Enquiry, LeadEnquiry, LeadStageHistory, User
 from app.services import bdm_leads, lead_pipeline
 from app.services.telecaller_catalogue import locked_active_product
 
@@ -71,11 +71,14 @@ async def apply_update(db: AsyncSession, user: User, lead: Enquiry, changes: dic
 
 
 def _label(kind: str, value: str) -> str:
+    if kind == "enquiry":  # tel-005: the source key and the subject, as stored (the client labels the source)
+        return value
     return PRIORITY_LABEL.get(value, value) if kind == "priority" else stage_label(value)
 
 
 async def timeline_page(db: AsyncSession, lead_id: UUID, limit: int, offset: int) -> dict:
-    """W1: the lead's stage changes and priority changes, newest first (`seq` keeps one transaction's stage rows in order)."""
+    """W1: the lead's stage changes and priority changes, newest first (`seq` keeps one transaction's stage rows in order). tel-005 adds
+    each further enquiry (`from_value` = its source, `to_value` = its subject, `reason` = its notes; no actor = the website)."""
     stages = select(
         LeadStageHistory.id, literal("stage").label("kind"), LeadStageHistory.created_at.label("at"), LeadStageHistory.position.label("seq"),
         LeadStageHistory.actor_user_id.label("actor_id"), LeadStageHistory.from_stage.label("from_value"),
@@ -85,7 +88,11 @@ async def timeline_page(db: AsyncSession, lead_id: UUID, limit: int, offset: int
         AuditLog.id, literal("priority"), AuditLog.created_at, literal(0), AuditLog.user_id,
         AuditLog.metadata_json["from"].as_string(), AuditLog.metadata_json["to"].as_string(), cast(null(), String),
     ).where(AuditLog.entity_type == "enquiry", AuditLog.entity_id == str(lead_id), AuditLog.action == PRIORITY_CHANGE)
-    events = union_all(stages, priorities).subquery()
+    enquiries = select(
+        LeadEnquiry.id, literal("enquiry"), LeadEnquiry.created_at, literal(0), LeadEnquiry.created_by_user_id, LeadEnquiry.source,
+        LeadEnquiry.subject, cast(LeadEnquiry.message, String),
+    ).where(LeadEnquiry.lead_id == lead_id)
+    events = union_all(stages, priorities, enquiries).subquery()
     total = await db.scalar(select(func.count()).select_from(events))
     stmt = select(events, User.full_name).outerjoin(User, User.id == events.c.actor_id)
     rows = (await db.execute(stmt.order_by(events.c.at.desc(), events.c.seq.desc()).limit(limit).offset(offset))).all()

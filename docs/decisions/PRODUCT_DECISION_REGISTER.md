@@ -4035,3 +4035,46 @@ VERIFIED on `feature/tel-012` @ final HEAD (2026-10-06): lite backend 339 (tel-0
 (`GET/POST/PATCH/DELETE /telecaller/distribution-rules`, `GET /telecaller/leads/unassigned`, `GET /telecaller/leads/assigned`,
 `POST /telecaller/leads/assign`); `public.create_enquiry` and `bdm_leads.add_lead` call `on_intake`. Web `/telecaller/manager/distribution`
 and `/telecaller/manager/assignment`. Design spec `docs/superpowers/specs/2026-10-06-tel-007-lead-distribution-design.md`.
+
+### DEC-SCOPE-088 — Lead intake: manual creation, duplicate detection, website-enquiry attach (`tel-005`)
+
+**Evidence:** `EVID-019` §2 (lead fields), §18 (duplicate detection, L584–L606); `DEC-SCOPE-073` T12, T13, T15; `DEC-SCOPE-077`
+(phone normalisation, Q-04); `DEC-SCOPE-081` (pipeline engine); `DEC-SCOPE-087` (tel-007 distribution, DI2); owner answers in-session
+2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for I1–I6; R1–R10 are recorded defaults. Migration `0086_lead_enquiries`
+(after tel-007's `0085_tel_distribution`), API contract §12L. Re-chained twice: drafted as `DEC-SCOPE-086` / `0085_lead_enquiries` / §12K;
+bdm-021 (PR #88, no migration) took 086, then tel-007 (PR #90) merged first with `0085_tel_distribution` / `DEC-SCOPE-087` / §12K (the
+owner had planned tel-005 first). On the merge with `main` @ `6a3e7722`, `lead_intake` calls tel-007's `lead_distribution.on_intake` for
+new website leads and manager-created leads (I6), and the public reply keeps I3 over tel-007's real status (owner).
+
+| # | Question | Answer |
+|---|---|---|
+| I1 (Q-03) | Email on a manual lead | `enquiries.email` becomes nullable. A manual lead requires a valid mobile (`normalise_phone`); email is optional. The website form still requires email |
+| I2 | Owner of a manual lead | The creator keeps it: a telecaller's lead is assigned to them (pipeline event `assigned`) and is never redistributed. A manager's or admin's lead: I6 |
+| I3 | Public reply | Same `201` and keys on every path. On attach, `id` + `lead_code` are the existing lead's. `status` is always `"new"` and `crm_sync_status` always `"pending"`, never the stored stage, including after tel-007's distribution (owner, on the merge with tel-007). The reply never reveals that the person is known or who took the lead; tests read the stage from the stored lead |
+| I6 | A manager's manual lead after tel-007 | Distributed on arrival through `lead_distribution.on_intake` (rules, then round robin; a SAVEPOINT, so an error leaves it unassigned). When nobody is eligible it waits in its team's unassigned queue |
+| I4 | CRM webhook for an attached enquiry | Per lead: none is queued. A new lead (website, manual) is queued after the commit, as before |
+| I5 | Who may "Add enquiry to this lead" | Any `telecaller` / `telecaller_manager` / `super_admin`, on any lead (another telecaller's, handed over, closed). Append-only; no read access is granted. A closed lead stays closed until a manager reopens it (T13) |
+| R1 | Match | `phone_normalized` = normalised mobile OR `lower(email)`, across every lead (all divisions, closed, BDM-entered) |
+| R2 | Panel | ≤ 5 matches, newest first: Lead ID, name, stage, telecaller, counselor, last contact, `matched_on`, ≤ 5 previous enquiries, `in_scope`. Never another lead's phone, email or messages |
+| R3 | Last contact | `null` until tel-010 / tel-013 exist ("No contact logged yet") |
+| R4 | Several matches on the website | Attach to the newest matching lead |
+| R5 | Product, campaign, division | Product required; the division is the product's team, or `division` for a product without a team. An optional campaign must be active and match the product and source |
+| R6 | Subject / notes | Subject defaults to the product name, notes to empty |
+| R7 | Races | `pg_advisory_xact_lock` on the sorted phone/email keys before the match, on every intake path |
+| R8 | BDM lead entry | Unchanged (bdm-017's per-organization rule) |
+| R9 | Unmatched website enquiry | A new lead, distributed on arrival by tel-007 (DI2) as on `main` |
+| R10 | CRM sync of a manual lead | Queued after the commit, like website and BDM leads |
+
+**Implementation:** `services/lead_intake.py` (shared by manual and website intake; tel-006 CSV joins later); `models.LeadEnquiry`;
+routes `POST /telecaller/leads`, `GET /telecaller/leads/duplicate-check`, `POST /telecaller/leads/{id}/enquiries`; `public.create_enquiry`
+calls `website_intake`; the tel-008 timeline gains `kind: "enquiry"`. Web: `/telecaller/leads/new`, `/telecaller/manager/leads/new`
+(`NewLeadForm` with the §18 panel), a New lead button, and enquiry rows in the lead Activity. Design spec
+`docs/superpowers/specs/2026-10-06-tel-005-lead-intake-design.md`.
+
+**Also fixed (owner-approved, separate commit):** bdm-018's merge (`418b4e03`) had dropped `total` / `limit` / `offset` from
+`LeadStageHistoryPage` (tel-004 §12H); restored.
+
+**Addendum, browser QA (2026-10-06):** QA-01 (priority options truncated), QA-02 (unnamed missing fields), QA-03 (stale duplicate
+panel), QA-04 (a double click added two enquiries), QA-05 (warning out of sight on a phone). All five were fixed test-first and
+re-verified in the browser.

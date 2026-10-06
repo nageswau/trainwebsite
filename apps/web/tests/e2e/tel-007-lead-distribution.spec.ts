@@ -51,11 +51,12 @@ test("rules, distribution on intake and reassignment from the Lead assignment pa
   const { manager, a, b, stranger } = await accounts(page, stamp);
   const town = `E2E Town ${stamp}`;
 
-  // A website enquiry is distributed in its own transaction (DI2): it comes back Assigned.
+  // A website enquiry is distributed in its own transaction (DI2); the Assigned tab below proves it. The public reply's status is a
+  // constant acknowledgement (tel-005 I3), never the lead's stage.
   const enquiry = await (await page.request.post("/api/v1/public/enquiries", {
     data: { division: "it", name: `E2E Dist Lead ${stamp}`, email: `tel007-l-${stamp}@example.com`, subject: "Cyber security", message: "Please call me." },
   })).json();
-  expect(enquiry.status).toBe("assigned");
+  expect(enquiry.status).toBe("new");
 
   // super_admin moves it onto this run's telecaller A from the Assigned tab.
   await page.goto("/telecaller/manager/assignment?view=assigned");

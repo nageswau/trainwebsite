@@ -27,9 +27,11 @@ test("admin closes a lead with a reason, reopens it, and reads the history", asy
   });
   expect(created.ok()).toBeTruthy();
   // tel-007 DI2: the enquiry is distributed on arrival when an IT telecaller is eligible (a system New Lead -> Assigned row first).
-  const assigned = (await created.json()).status === "assigned";
-  const first = assigned ? "Assigned" : "New Lead";
+  // tel-005 I3: the public reply's status is a constant acknowledgement, so the stage is read from the stored lead.
   await signInAsItAdmin(page);
+  const stored = (await (await page.request.get(`/api/v1/admin/leads?q=${encodeURIComponent(name)}`)).json()).items[0];
+  const assigned = stored.status === "assigned";
+  const first = assigned ? "Assigned" : "New Lead";
   const row = await leadRow(page, name);
   await expect(row).toContainText(first);
 

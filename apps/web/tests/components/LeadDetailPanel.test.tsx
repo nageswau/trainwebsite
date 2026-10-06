@@ -166,4 +166,20 @@ describe("LeadDetailPanel (tel-008)", () => {
     expect(screen.getByText("Unable to load the activity.")).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Call Asha Rao" })).toBeNull();
   });
+
+  it("lists a further enquiry in the activity (tel-005), from a person or the website", () => {
+    const enquiry: TimelineRow = { id: "e1", kind: "enquiry", at: "2026-10-06T07:00:00Z", actor: null, from_value: "website", from_label: "website",
+      to_value: "Weekend batch", to_label: "Weekend batch", reason: "Please call after 6" };
+    render(<LeadDetailPanel initial={detail()} timeline={pageOf([enquiry])} canReopen={false} />);
+    const activity = screen.getByRole("list", { name: "Lead activity" });
+    expect(within(activity).getByText("New enquiry: Weekend batch")).toBeTruthy();
+    expect(within(activity).getByText(/Website form · Website/)).toBeTruthy();
+    expect(within(activity).getByText("Please call after 6")).toBeTruthy();
+  });
+
+  it("doesn't require an email when the lead has none (tel-005 I1)", () => {
+    render(<LeadDetailPanel initial={detail({ email: null })} timeline={pageOf([])} canReopen={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit details" }));
+    expect(screen.getByLabelText("Email").getAttribute("aria-required")).toBeNull();
+  });
 });
