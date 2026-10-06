@@ -87,7 +87,9 @@ export default function AdminSchoolOnboardingRequests({ selectedId, version, onU
     body = <p className="muted">No onboarding requests waiting.</p>;
   } else {
     body = (
-      <ul className="list" aria-label="Onboarding requests" style={{ listStyle: "none", padding: 0, display: "grid", gap: 12 }}>
+      // QA18-02: a long queue scrolls in place (keyboard-reachable), so the create form beside it stays in view
+      <ul className="list" aria-label="Onboarding requests" tabIndex={0}
+        style={{ listStyle: "none", padding: "0 4px 0 0", display: "grid", gap: 12, maxHeight: "min(70vh, 720px)", overflowY: "auto" }}>
         {items.map((item) => {
           const o = item.organization;
           const kind = action?.id === item.id ? action.kind : null;

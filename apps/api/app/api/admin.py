@@ -1503,15 +1503,15 @@ async def create_school(payload: SchoolCreateIn, user: User = Depends(get_curren
     # that call used to emit; already noted and accepted in DEC-SCOPE-025's addendum.
     # bdm-018 (DEC-SCOPE-081 §5.5): a request is locked and checked first, so a refusal arrives before anything is created; the School,
     # its Coordinator, the link and the completed request then commit together.
-    handover = await onboarding_svc.lock_pending(db, payload.bdm_onboarding_request_id) if payload.bdm_onboarding_request_id else None
+    request_id = payload.bdm_onboarding_request_id
+    request, org = await onboarding_svc.lock_pending(db, request_id) if request_id else (None, None)
     school, coordinator, issued = await _provision_school(db, payload, user)
-    if handover:
-        request, org = handover
+    if request and org:
         await onboarding_svc.complete(db, user, request, org, school, "created")
         await notify_outcome(db, request, org, school)
     await db.commit()
-    if handover:
-        onboarding_svc.log("bdm_onboarding_created", user, handover[0], school_id=str(school.id))
+    if request:
+        onboarding_svc.log("bdm_onboarding_created", user, request, school_id=str(school.id))
     delivery = await deliver_welcome_link(user=coordinator, issued=issued, issued_by=user)
     out = await _school_out(db, school)
     return {**out.model_dump(mode="json"), "coordinator_id": coordinator.id, "coordinator_email": coordinator.email, **delivery}

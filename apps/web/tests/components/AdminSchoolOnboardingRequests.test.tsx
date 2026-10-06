@@ -101,6 +101,15 @@ describe("AdminSchoolOnboardingRequests (bdm-018 §6)", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("The request could not be confirmed. Reload the page to check before trying again.");
   });
 
+  it("QA18-02: a long queue scrolls inside its own keyboard-reachable region instead of stretching the page", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(res(page([item()]))));
+    queue();
+    const list = await screen.findByRole("list", { name: "Onboarding requests" });
+    expect(list).toHaveAttribute("tabindex", "0");
+    expect(list.style.overflowY).toBe("auto");
+    expect(list.style.maxHeight).not.toBe("");
+  });
+
   it("offers more when the queue has another page", async () => {
     const second = item({ id: "r2", organization: { ...item().organization, id: "o2", code: "ORG-000002" } });
     vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(res(page([item()], 2))).mockResolvedValueOnce(res({ ...page([second], 2), offset: 20 })));
