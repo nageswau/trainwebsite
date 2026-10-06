@@ -20,6 +20,7 @@ async function leadRow(page: Page, name: string) {
 }
 
 test("admin closes a lead with a reason, reopens it, and reads the history", async ({ page, request }) => {
+  test.setTimeout(30_000); // two moves, a reload and the history: 15 s ran out with 6 parallel workers on one API (tel-007 browser QA)
   const name = `E2E Pipeline ${Date.now()}`;
   const created = await request.post("/api/v1/public/enquiries", {
     data: { division: "it", name, email: `pipe-${Date.now()}@example.com`, subject: "Python", message: "Interested." },
