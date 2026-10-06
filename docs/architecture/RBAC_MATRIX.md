@@ -119,9 +119,9 @@ here.
 | Role | Actions | Scope | Feature |
 |---|---|---|---|
 | `overseas_student` (same identity as Student) | submit/track own applications, upload documents, apply scholarships, register events | Self — **applies only to a self-authenticating applicant** (EduSphere-direct or self-registered). An Agent-referred applicant has no login at all (`DEC-ROLE-004`, 2026-09-14) and is entirely outside this row's scope — see §2.8's note. | `OVS-002`–`007` |
-| `counselor` | evaluate eligibility, verify documents, manage visa cases/appointments | **Assigned students only** — explicit deny on any student not assigned to that Counselor, even via direct record ID (`CNS-001-AC02`) | `OVS-003`, `OVS-005`, `VISA-001`–`003`, `CNS-001` |
+| `counselor` | evaluate eligibility, verify documents, manage visa cases/appointments; on an agency application (`agent_id` set): advance except to `enrolled`, visa under AGN-012 rules, no visa decision (`AGN-023`, `DEC-SCOPE-090`) | **Assigned students only** — explicit deny on any student not assigned to that Counselor, even via direct record ID (`CNS-001-AC02`) | `OVS-003`, `OVS-005`, `VISA-001`–`003`, `CNS-001` |
 | `university_rep` | review/update applications, post updates | **Own institution only**, filtered server-side by `university_id` (`DATA_MODEL.md` §6.10) | `UNI-001` |
-| `overseas_admin` | manage users/students/counselors/universities/applications/leads/payments; approve agents; approve commission payouts | Overseas division | `ADM` (Overseas), `AGT-001`, `AGT-004` |
+| `overseas_admin` | manage users/students/counselors/universities/applications/leads/payments; approve agents; approve commission payouts; assign/change an application's EduSphere counselor (`AGN-023`) | Overseas division | `ADM` (Overseas), `AGT-001`, `AGT-004` |
 | Visitor | browse destinations/universities/courses/scholarships/events (read-only) | Public | `OVS-001`, `OVS-006`, `OVS-007` |
 
 ### 2.8 Agent
@@ -269,6 +269,8 @@ Counselor, admin and university_rep keep their existing endpoints and now see ag
 they get `409` when they try to move a `withdrawn` application. Staff-activity actions `overseas.application.update`, `.advance` and
 `.withdraw` are readable by the Master through `AGN-021`. Proved by `test_agn_008_security.py`, `test_agn_008_create.py`,
 `test_agn_008_edit.py`, `test_agn_008_status.py`, `test_agn_008_read.py`, `test_agn_003_matrix.py`, `test_agn_021_activity.py`.
+
+**AGN-023 (`DEC-SCOPE-090`):** `counselor_id` is set only by `PUT …/counselor` (Overseas Admin; not super_admin); the generic PATCH refuses it for every role. Proved by `test_agn_023_assign.py`, `test_agn_023_counselor_scope.py`, `test_agn_023_filters.py`, `test_tel_017_it_counselor.py`.
 
 **`DEC-ROLE-004` (2026-09-14) — Agent on-behalf-of a referred student, NOT YET BUILT:** the
 approved Agent row above is read-only (view roster/commissions, claim). Since an Agent-referred

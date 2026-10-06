@@ -1,6 +1,6 @@
 # AGN-023 — EduSphere counselor assignment for overseas applications: Design
 
-**Status:** Sections 1–3 approved by the owner in-session 2026-10-06; H11–H12 (filters, counselor screen limits) added at the spec review the same day. This written spec is for the owner's review.
+**Status:** Built on `feature/agn-023` (2026-10-06); lite backend set and vitest green; the AGN-023 e2e spec is pending (Task 7); full backend suite deferred to the owner. Sections 1–3 approved by the owner in-session 2026-10-06; H11–H12 (filters, counselor screen limits) added at the spec review the same day.
 **Branch:** `feature/agn-023` (rebased on `origin/main` `4e5730ee`). **Decision:** `DEC-SCOPE-090` (drafted as `089`; bdm-020 took `089` on `main` @ `4e5730ee`).
 **API contract:** §12M. **Migration:** none (`overseas_applications.counselor_id` exists).
 **Resolves:** `PRD_OPEN_ITEMS.md` item 84 (hand-off of an agency application to an EduSphere counselor).

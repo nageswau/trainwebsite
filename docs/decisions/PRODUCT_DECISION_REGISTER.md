@@ -4106,3 +4106,38 @@ spec `docs/superpowers/specs/2026-10-06-bdm-020-school-activity-design.md` §1):
 `BdmSchoolActivityOut` / `BdmSchoolActivityMetric`; the "School activity" panel (`BdmOrganizationSchoolActivity`) on
 `/bdm/organizations/[id]` and `/bdm/manager/organizations/[id]`. No migration, no write, no change to `/school/*` or `school_analytics`.
 **New Feature ID authorized:** `bdm-020`. **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-020.
+
+### DEC-SCOPE-090 — EduSphere counselor assignment and agency hand-off (`AGN-023`)
+
+**ID note:** drafted as `DEC-SCOPE-089`; bdm-020 took `089` on `main` @ `4e5730ee`, so this entry is **`DEC-SCOPE-090`**. No migration.
+
+**Question:** `PRD_OPEN_ITEMS.md` item 84 -- who assigns an EduSphere counselor to an (agency) application, when, who is told, what the
+agency and the counselor see, and who owns the application afterwards.
+
+**Evidence:** `PRD_OPEN_ITEMS.md` item 84; `DEC-SCOPE-050` A6 (visibility), `DEC-SCOPE-054` E1/E4 (Master-only enrollment), `DEC-SCOPE-057`
+(agency visa, AGN-012), `DEC-SCOPE-059` (agency notices, AGN-017), `DEC-SCOPE-076` (`_require_overseas_counselor`); impact analysis
+2026-10-06 (graphify-led).
+
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for H1-H12; built on `feature/agn-023`. **Resolves:** `PRD_OPEN_ITEMS.md`
+item 84. **Spec:** `docs/superpowers/specs/2026-10-06-agn-023-counselor-assignment-design.md`.
+
+- **H1** The counselor supports the agency; the agency keeps ownership.
+- **H2** The Overseas Admin assigns (`PUT /workflows/overseas/applications/{id}/counselor`), and can change the counselor.
+- **H3** At any open stage; `withdrawn`/`enrolled` -> 409.
+- **H4** On an agency application the counselor advances (never `enrolled`, which stays with the Master, `DEC-SCOPE-054` E1), runs the
+  visa case under the AGN-012 rules, and verifies documents. The visa decision stays with the agency.
+- **H5** Notices: the new counselor, the previous counselor on a change (only while their account is active), the agency (AGN-017 recipients, no names).
+- **H6** The counselor sees the application only -- no agency counseling, budget, shortlist, email or phone.
+- **H7** The agency sees the counselor's name only.
+- **H8** Swap only; a counselor cannot be cleared.
+- **H9** The assign action covers every overseas application; H4/H6 apply to agency applications only.
+- **H10** The generic `PATCH /workflows/overseas/applications/{id}` refuses `counselor_id` (422).
+- **H11** Students/Applications filters: Admin by agency and counselor, counselor by agency; server-side, before the row cap.
+- **H12** On agency applications the counselor's screens hide **Enrolled** and locked or backward visa stages.
+
+**Consequences:** narrows `DEC-SCOPE-054` E4's tolerance for the counselor only (the Admin and university_rep generic update is
+otherwise unchanged); `tel-017`'s PATCH-based counselor check moves to the assign route. The generic PATCH now answers a university_rep's
+`counselor_id` with 422 (was 403). The agency visa rules on `POST`/`PATCH /workflows/overseas/visa` key on `agent_id`, not role, so they bind
+the Overseas Admin too, and no decision is accepted on those routes. Filters, the new columns and row keys, and the `filters` payload appear
+only on the `students` and `applications` sections; admission-updates and offer-letters keep their payload. API: `API_CONTRACT.md` §12M.
+No migration. **New Feature ID authorized:** `AGN-023`. **Status of the build:** see `AGENT_CRM_BACKLOG.md` (AGN-023 row) and `RTM.md`.

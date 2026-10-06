@@ -2101,6 +2101,15 @@ single-Counselor-role model with five specialized internal roles. `SCH-001`'s de
 - **Acceptance Criteria:** see `FEATURE_ACCEPTANCE_CRITERIA.md#ops-002`  
 
 
+### `AGN-023` — EduSphere counselor assignment for overseas applications
+- **Module:** Overseas / Agent CRM
+- **Description:** The Overseas Admin assigns or changes an EduSphere counselor on an overseas application. On an agency application the counselor supports the agency within the agency's rules (agency keeps ownership, Master confirms enrollment, visa decision stays with the agency). Agency and counselor filters on the Students and Applications lists.
+- **Actors:** primary — Overseas Admin; secondary — Counselor, Agency (name only)
+- **Traces to:** `PRD_OPEN_ITEMS.md` item 84 · Decisions `DEC-SCOPE-090` (H1–H12) · API `API_CONTRACT.md` §12M
+- **Scope/Priority/MoSCoW/Release:** CURRENT
+- **Implementation status:** IMPLEMENTED (2026-10-06, `feature/agn-023`; no migration) · **Test status:** VERIFIED, full regression deferred (lite backend set and vitest green; e2e spec pending, Task 7)
+- **Acceptance Criteria:** AC01–AC21 in `docs/superpowers/specs/2026-10-06-agn-023-counselor-assignment-design.md`
+
 ---
 
 **APPROVED** by user (in-session), 2026-09-01. GATE-05 satisfied for the 68 `CURRENT` features above. `BLOCKED` features are not authorized to build by this approval — see `FEATURE_QUESTIONS.md` and each feature's blocked reason above.

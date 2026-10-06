@@ -1069,6 +1069,39 @@ Roles are §12H's (`telecaller`, `telecaller_manager`, `super_admin`); other rol
 | `GET /telecaller/leads/{id}/timeline` | §12J, plus `kind: "enquiry"` rows: `from_value` = source, `to_value` = subject, `reason` = notes, `actor` null for the website |
 | `POST /public/enquiries` | Unchanged request and keys. A known person's enquiry attaches to their newest lead (a `lead_enquiries` row; no new lead, no CRM webhook). The reply is `{id, lead_code}` of that lead with `status: "new"` and `crm_sync_status: "pending"`, identical in shape and constant values to a new lead's |
 
+## 12M. EduSphere counselor assignment (`AGN-023`) — addendum, 2026-10-06
+
+`DEC-SCOPE-090`; design spec `docs/superpowers/specs/2026-10-06-agn-023-counselor-assignment-design.md`. No migration
+(`overseas_applications.counselor_id` exists). FastAPI validates the body before the role check, so a non-admin sending an invalid body
+to the assign route gets `422`, not `403`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `PUT /workflows/overseas/applications/{id}/counselor` | Body `{counselor_id: UUID}` (required; `null` or missing is `422`: swap only, H8). Overseas Admin only (`role == overseas_admin` and `division == overseas`; `super_admin` and every other role `403 "Only the Overseas Admin can assign a counselor"`). Order of checks: body `422`; role `403`; `404 "Application not found"`; `409 "This application is closed"` (`withdrawn` or `enrolled`); `422 "Choose an active overseas counselor"` (unknown, not a `counselor`, not overseas, or inactive). `200 {id, counselor_id, counselor_name, changed}`; the same counselor again is `changed: false` with no history, audit or notice. A real change writes an `ApplicationStatusHistory` row (`from_status == to_status`, notes `EduSphere counsellor assigned` / `EduSphere counsellor changed`), audit `overseas.application.counselor_assign` (`from_counselor_id`, `to_counselor_id`), a notice to the new counselor ("Application assigned to you"), a notice to the previous counselor ("Application reassigned") only while their account is active, and, on an agency application (`agent_id` set), an AGN-017 agency notice titled `EduSphere counsellor assigned` / `EduSphere counsellor changed` (no person names) |
+| `PATCH /workflows/overseas/applications/{id}` | Any body containing `counselor_id` (even `null`) is `422 "Use Assign counselor to change the counselor"` for every caller. A `university_rep` now gets this `422` where it previously got `403` |
+| `POST /workflows/overseas/applications/{id}/advance` | On an agency application a counselor may advance, but `to_status: "enrolled"` is `403 "Only the agency's Master confirms enrollment"`; non-agency applications unchanged |
+| `POST /workflows/overseas/visa` | On an agency application (`agent_id` set; **any** caller, the Overseas Admin included): `409 "This application is enrolled, so its visa case can no longer be changed"`, `422 "An offer is needed before a visa case"`, `422 "A visa case starts at the checklist stage"` (`status` must be `checklist`). No decision is accepted |
+| `PATCH /workflows/overseas/visa/{id}` | On an agency application (any caller): enrolled `409` (same text), `422 "The visa decision is recorded by the agency"` when the body has `decision`, then the AGN-012 rules (`agent_visa.update_case`: decided lock, forward-only stage, checklist lock and gate). Returns `{id, status}`. Non-agency cases unchanged |
+| `GET /workflows/overseas/applications/{id}/visa-checklist` | Gains `locked_reason` on **both** the no-case response (`{exists: false, status: null, checklist: [], appointment_date: null, tracking_reference: null, locked_reason}`) and the case response. Non-null only on an agency application: `"This application is enrolled, so its visa case can no longer be changed"` or `"The visa decision is recorded, so this case can no longer be changed"`; otherwise `null` |
+| `GET /workflows/overseas/agent/crm/applications/{id}` | `application` gains `counselor_name` (`null` when unassigned): the counselor's name only (H7), never an id, email or phone |
+
+**Portal list filters.** `GET /portal/{division}/{role}/{section}?agency=&counselor=` for `overseas_admin` and `counselor` (overseas), sections
+`students` and `applications` only. `agency` = an agency organisation id, `any` or `none`. `counselor` = an overseas counselor id or `none`
+(Overseas Admin only). Filters narrow the caller's existing scope in SQL before the row cap. `422 "Filter not available"`: any filter on another
+section or role, or `counselor` from a counselor. `422 "Unknown filter value"`: a malformed value, an unknown agency or counselor, and an
+**empty** value (`?agency=`); "all" means omitting the parameter.
+
+**Rows and `filters` payload** (`students` and `applications` sections only; admission-updates, offer-letters and every other section keep
+their pre-AGN-023 payload). Each row gains `is_agency` (bool) and `agency` (name or null); the Overseas Admin's rows also gain `counselor`
+(name, or `"Not assigned"`), `counselor_id` (string or null) and `assign` (the application id, for the Assign/Change control). Columns
+`Agency`, (Admin) `EduSphere counsellor` and an `assign_counselor` action column are added to match. The payload gains
+`filters: {agency, counselor, agencies: [{value, label}], counselors?: [{value, label}]}`: the applied values (`null` when none), the agency
+options (a counselor's are only the agencies on their own applications) and, for the Admin only, every overseas counselor, inactive ones
+labelled `"<name> (inactive)"`.
+
+**Web behaviour.** The pages forward `agency`/`counselor` only on the overseas admin and counselor pages. When a filtered request gets `422`,
+the page shows the unfiltered list with the message `"<detail> -- showing all applications."`.
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
