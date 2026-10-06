@@ -2254,7 +2254,7 @@ Manager page: copy `apps/web/app/bdm/manager/appointments/page.tsx`'s gate, nav 
 - [ ] **Step 1: Failing test**
 
 ```tsx
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import BdmOrganizationTasks from "@/components/BdmOrganizationTasks";
@@ -2278,7 +2278,7 @@ describe("BdmOrganizationTasks (bdm-008 §9)", () => {
     expect(screen.getByRole("heading", { name: "Follow-ups & tasks" })).toBeInTheDocument();
     expect(screen.getByText("Send brochure")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Add task" }));
-    expect(screen.getByText("St Mary")).toBeInTheDocument(); // the organization is fixed in the form
+    expect(within(screen.getByRole("form", { name: "Add follow-up or task" })).getByText("St Mary")).toBeInTheDocument(); // fixed in the form
   });
 
   it("is read-only without canAdd and says when nothing is open", () => {
