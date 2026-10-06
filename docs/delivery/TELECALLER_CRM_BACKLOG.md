@@ -291,7 +291,7 @@ NO-ASSUMPTION MODE. Prepared 2026-10-05 at the user's request. **No code was wri
 
 ### tel-004 — Pipeline stage engine + stage history
 
-**Status (2026-10-06):** **verified** on `feature/tel-004`, not merged (`DEC-SCOPE-081` PL1–PL4 + D1–D4, migration `0081_lead_stage_pipeline`,
+**Status (2026-10-06):** **merged** to `main` as PR #81 @ `69829a59` (`DEC-SCOPE-081` PL1–PL4 + D1–D4, migration `0081_lead_stage_pipeline`,
 API contract §12H; re-chained after bdm-005, bdm-013 and tel-022's `0080_tel_targets` / `DEC-SCOPE-080`). Spec `docs/superpowers/specs/2026-10-06-tel-004-lead-pipeline-design.md`.
 
 - **Business requirement:** §19 pipeline and closed outcomes; T13.
@@ -1129,7 +1129,7 @@ graph TD
 
 ### 5.4 Migrations
 
-Numbers are **provisional**. `main` is at `0079_bdm_mous` (bdm-005, merged 2026-10-06; tel-001 took `0075`, tel-002 `0076`, bdm-008 `0077`, tel-003 `0078`; tel-017 has none; bdm-005/bdm-013 took `DEC-SCOPE-078`/`079`). tel-022 re-chained to `0080` / `DEC-SCOPE-080`, so the next telecaller migration will be `0081` or later, and the next decision `DEC-SCOPE-081` or later. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
+Numbers are **provisional**. `main` is at `0081_lead_stage_pipeline` (tel-004, merged 2026-10-06; tel-001 took `0075`, tel-002 `0076`, bdm-008 `0077`, tel-003 `0078`, bdm-005 `0079`, tel-022 `0080`; tel-017 has none; bdm-005/bdm-013/tel-022/tel-004 took `DEC-SCOPE-078`–`081`), so the next telecaller migration will be `0082` or later, and the next decision `DEC-SCOPE-082` or later. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
 
 | Item | Migration content |
 |---|---|
