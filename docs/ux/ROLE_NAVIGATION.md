@@ -296,15 +296,16 @@ Division `global`; signs in at `/admin/login` (heading "Administration sign-in")
 
 Signs in at `/it/login` (IT team, division `it`) or `/overseas/login` (Overseas team, division `overseas`) by team; lands on `/telecaller/dashboard`. Sidebar: Dashboard · Profile.
 
-- /telecaller/dashboard — greeting and a profile summary card (team, Employee ID, reporting manager); minimal shell, tel-021 fills it in. A missing profile shows the 403 message.
+- /telecaller/dashboard — greeting, a profile summary card (team, Employee ID, reporting manager) and *(tel-022)* a "My targets" card (today / this month per KPI); tel-021 fills in the rest. A missing profile shows the 403 message.
 - /telecaller/profile — read-only profile (name, email, team, Employee ID, reporting manager, status) plus an editable phone (TL3).
 - /telecaller — redirects to `/telecaller/dashboard`.
 
 ## Telecaller Manager *(net-new, 2026-10-05, `DEC-SCOPE-073`, `tel-001`)*
 
-Division `global`; signs in at `/admin/login`; lands on `/telecaller/manager/team`. Sidebar: Team · Products · Campaigns (tel-002). Password recovery stays in the admin portal: "Forgot your password?" on `/admin/login` → `/admin/forgot-password`; the welcome/reset link opens `/admin/reset-password`, and after a reset the form follows the API's `login_portal` (`"admin"`).
+Division `global`; signs in at `/admin/login`; lands on `/telecaller/manager/team`. Sidebar: Team · Targets (tel-022) · Products · Campaigns (tel-002). Password recovery stays in the admin portal: "Forgot your password?" on `/admin/login` → `/admin/forgot-password`; the welcome/reset link opens `/admin/reset-password`, and after a reset the form follows the API's `login_portal` (`"admin"`).
 
 - /telecaller/manager/team — the telecallers who report to this manager (paged, inactive included).
+- /telecaller/manager/targets — *(tel-022, `DEC-SCOPE-080`)* daily + monthly targets: team defaults (IT/Overseas) and per-telecaller overrides from a future date, targets in effect on any date, history; `?for=it|overseas|<telecaller id>` keeps the choice on refresh.
 - /telecaller/manager/products — *(tel-002, `DEC-SCOPE-074`)* the product/interest catalogue: create, edit, deactivate/reactivate; a Super Admin uses the same URL.
 - /telecaller/manager/campaigns — *(tel-002)* the campaign list (source → product → campaign): create, edit, deactivate/reactivate.
 

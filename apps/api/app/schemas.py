@@ -3,7 +3,7 @@ import re
 import unicodedata
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import (
@@ -36,6 +36,7 @@ from app.models import (
     BDM_MOU_STATUSES,
     BDM_STAFF_MAX,
     GENDERS,
+    TEL_TARGET_KPIS,
 )
 from app.services.agent_visa import VISA_CASE_STAGES
 from app.tel_sources import TEL_SOURCES
@@ -4813,3 +4814,91 @@ class BdmCalendarOut(BaseModel):
     appointments: list[BdmCalendarAppointment]
     trips: list[BdmCalendarTrip]
     tasks: list[BdmCalendarTask]
+
+
+# --- tel-022 (DEC-SCOPE-080): daily + monthly targets ------------------------------------------------------------------------
+TelTargetPeriod = Literal["daily", "monthly"]
+TelTargetKpi = Literal[TEL_TARGET_KPIS]
+TEL_TARGET_KPI_LABELS = dict(zip(TEL_TARGET_KPIS, ("Calls", "Connected calls", "Qualified leads", "Follow-ups", "Counselling appointments", "Conversions"), strict=True))
+TEL_TARGET_MAX = 100_000
+TEL_TARGET_FIELD_LABELS = {"scope": "Scope", "team": "Team", "user_id": "Telecaller", "period": "Period", "effective_from": "Starts", "values": "Values"}
+
+
+def _target_values(values: dict) -> dict:
+    """Each sentence names its KPI (services/telecaller._parse keeps a value_error's own text). None = remove the override."""
+    if not values:
+        raise ValueError("Values: enter at least one target")
+    for kpi, value in values.items():
+        label = TEL_TARGET_KPI_LABELS.get(kpi)
+        if label is None:
+            raise ValueError(f"Values: unknown KPI {kpi}")
+        if value is None:
+            continue
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise ValueError(f"Values: {label} must be a whole number")
+        if value < 0:
+            raise ValueError(f"Values: {label} must be 0 or more")
+        if value > TEL_TARGET_MAX:
+            raise ValueError(f"Values: {label} must be {TEL_TARGET_MAX} or less")
+    return values
+
+
+class TelTargetSet(BaseModel):
+    """The scope shape (team xor user) and the date rules are checked in services/telecaller_targets, each with its own sentence."""
+
+    model_config = ConfigDict(extra="forbid")
+    scope: Literal["team", "user"]
+    team: TelecallerTeam | None = None
+    user_id: UUID | None = None
+    period: TelTargetPeriod
+    effective_from: date | None = None  # omitted = the earliest allowed date
+    values: Annotated[dict[str, Any], AfterValidator(_target_values)]
+
+
+class TelTargetPerson(BaseModel):
+    id: UUID
+    full_name: str
+
+
+class TelTargetSetOut(BaseModel):
+    scope: str
+    team: str | None
+    user: TelTargetPerson | None
+    period: str
+    effective_from: date
+    values: dict[str, int | None]
+
+
+class TelTargetOut(BaseModel):
+    id: UUID
+    scope: str
+    team: str | None
+    user: TelTargetPerson | None
+    period: str
+    kpi: str
+    value: int | None
+    effective_from: date
+    set_by: TelTargetPerson
+    updated_at: datetime
+
+
+class TelTargetPage(BaseModel):
+    items: list[TelTargetOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class TelTargetValue(BaseModel):
+    kpi: str
+    value: int | None
+    source: Literal["user", "team"] | None
+
+
+class TelTargetEffectiveOut(BaseModel):
+    date: date
+    month: date
+    team: str
+    user: TelTargetPerson | None
+    daily: list[TelTargetValue]
+    monthly: list[TelTargetValue]

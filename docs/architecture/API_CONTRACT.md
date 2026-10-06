@@ -501,7 +501,7 @@ stage, live stage "set by the onboarding handover", volume step, same stage, bac
 type), unknown `stage`, `assigned=me` from a non-BDM. **Retry semantics:** a repeated move answers `409 stage_changed` with
 `current_stage` equal to the requested stage (the UI treats it as done); a repeated lost / revive answers `409`. No idempotency key.
 
-**`bdm-005` / `DEC-SCOPE-078` (built 2026-10-06; migration `0079_bdm_mous`, after `0078_enquiry_lead_record`) — MoU tracking.**
+**`bdm-005` / `DEC-SCOPE-080` (built 2026-10-06; migration `0079_bdm_mous`, after `0078_enquiry_lead_record`) — MoU tracking.**
 Design spec `docs/superpowers/specs/2026-10-06-bdm-005-mou-tracking-design.md` §6. All routes are new; no existing request or response
 changes (the organization detail does not embed the MoU). Writes reuse `can_edit` (M3: the assigned BDM or `super_admin`); reads and
 downloads follow `caller_scope`. `status` everywhere is the **effective** status: a Signed / Active MoU with `valid_until` before today
@@ -907,6 +907,18 @@ updated in the same item (§12 bdm-017's "500-row cap unchanged" no longer holds
 | `PATCH /admin/leads/{id}` | as before | Unchanged (tel-004 replaces the status editor) |
 
 The CRM webhook payload adds `lead_code` (additive; `INTEGRATION_CONTRACTS.md` §1).
+
+## 12G. Telecaller targets (`tel-022`) — addendum, 2026-10-06
+
+`DEC-SCOPE-080` (provisional number); design spec `docs/superpowers/specs/2026-10-06-tel-022-targets-design.md` §5; `RBAC_MATRIX.md` §2.17;
+migration `0080_tel_targets`. KPI keys: `calls, connected_calls, qualified_leads, follow_ups, counselling_appointments, conversions`. Days
+are IST calendar days on the database clock. Every `422` is one sentence.
+
+| Method/Path | Roles | Notes / status codes |
+|---|---|---|
+| `POST /telecaller/targets` | `telecaller_manager`, `super_admin` (else `403`) | `200` (an idempotent upsert per KPI). Body `{scope: team\|user, team?, user_id?, period: daily\|monthly, effective_from?, values: {kpi: int\|null}}`, unknown keys → `422`. `scope=team` needs `team` (no `user_id`), and its values can't be `null`; `scope=user` needs `user_id` (no `team`), a telecaller who reports to the caller (super_admin: any) → else `404` "Telecaller not found"; inactive → `422`. Values are whole numbers 0–100000 (`null` = the override ends from that date). `effective_from` defaults to the earliest allowed date: daily ≥ tomorrow, monthly = the 1st, ≥ next month, else `422`. Answer `{scope, team, user: {id, full_name}\|null, period, effective_from, values}`. One audit row `telecaller.target_set` |
+| `GET /telecaller/targets` | `telecaller_manager`, `super_admin` (else `403`) | History `{items, total, limit, offset}` (`limit` default 50, max 100). Filters `scope`, `team`, `user_id` (out of scope → `404`), `period`, `kpi`. A manager sees team rows plus their reports' rows. Order: `effective_from` desc, period, KPI. Item `{id, scope, team, user, period, kpi, value, effective_from, set_by: {id, full_name}, updated_at}` |
+| `GET /telecaller/targets/effective` | `telecaller` (self only), `telecaller_manager`, `super_admin` | `date` (default today IST; any date). A telecaller: no `team` and no other `user_id` (else `403`). A manager: exactly one of `user_id` (in scope, else `404`) or `team` (else `422`). Answer `{date, month, team, user, daily: [{kpi, value, source: user\|team\|null}×6], monthly: […×6]}`; an override beats the team default |
 
 ## 13. Traceability check
 

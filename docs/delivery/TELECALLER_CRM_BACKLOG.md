@@ -883,6 +883,8 @@ division-change edge case does not apply: `User.division` cannot change after cr
 
 ### tel-022 — Daily + monthly targets
 
+**Status (2026-10-06):** verified on `feature/tel-022` (`DEC-SCOPE-080`, migration `0080_tel_targets`; both numbers provisional until merge); owner answers G1–G4. Not merged.
+
 - **Business requirement:** §15, T28.
 - **Existing behavior:** none (bdm-016 is planned for BDMs).
 - **Expected behavior:**
@@ -1124,7 +1126,7 @@ graph TD
 
 ### 5.4 Migrations
 
-Numbers are **provisional**. `main` is at `0078_enquiry_lead_record` (tel-003, merged 2026-10-06; tel-001 took `0075`, tel-002 `0076`, bdm-008 `0077`; tel-017 has none), so the next telecaller migration will be `0079` or later, and the next decision `DEC-SCOPE-078` or later. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
+Numbers are **provisional**. `main` is at `0079_bdm_mous` (bdm-005, merged 2026-10-06; tel-001 took `0075`, tel-002 `0076`, bdm-008 `0077`, tel-003 `0078`; tel-017 has none; bdm-005/bdm-013 took `DEC-SCOPE-078`/`079`). tel-022 re-chained to `0080` / `DEC-SCOPE-080`, so the next telecaller migration will be `0081` or later, and the next decision `DEC-SCOPE-081` or later. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
 
 | Item | Migration content |
 |---|---|

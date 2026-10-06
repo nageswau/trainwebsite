@@ -3779,3 +3779,27 @@ with recommended answers" and to ask only on real blockers; the owner may overri
 **Implementation:** `GET /api/v1/bdm/calendar` (`app/api/bdm_calendar.py`, three indexed range queries joined to organizations, no
 write, no audit); `/bdm/calendar`, `/bdm/manager/calendar`. No migration. Design spec
 `docs/superpowers/specs/2026-10-06-bdm-013-calendar-design.md`; QA `docs/quality/BDM-013_BROWSER_QA_2026-10-06.md`.
+
+### DEC-SCOPE-080 — Daily + monthly telecaller targets (`tel-022`)
+
+**Evidence:** `EVID-019` §15 (lines 528–547: "Management should be able to assign monthly/daily targets", 6 KPIs, achieved / target) and
+§22 line 713 ("Telecaller should not … modify employee targets"); `DEC-SCOPE-073` T2, T23, T28; owner answers in-session 2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for G1–G4. VERIFIED on `feature/tel-022` (2026-10-06); not merged.
+**Re-chained 2026-10-06** on merging `main` @ `6655e284`: drafted as `DEC-SCOPE-078` / `0079_tel_targets`, but bdm-005 (`DEC-SCOPE-078`, `0079_bdm_mous`) and bdm-013 (`DEC-SCOPE-079`) reached `main` first. **Still provisional:** tel-012 also chains after `0078`, so whichever merges second takes the next numbers.
+
+| # | Question | Answer |
+|---|---|---|
+| G1 (Q-17) | Working days for daily targets | **No working-day calendar.** A daily target applies to every IST calendar day |
+| G2 | Choosing the effective date | **The manager picks it.** Daily targets start tomorrow or later; monthly targets start on the 1st of a month, next month or later; the earliest is the default. Re-saving the same future date replaces that pending value. Rows whose date has arrived are never edited (T28: past results are never re-scored) |
+| G3 | Who writes | **Any `telecaller_manager` or `super_admin` sets team defaults** (both teams; managers are global). **Overrides only for direct reports** (`super_admin`: any). Division admins and telecallers have no write access |
+| G4 | Telecaller read before tel-021 | **A "My targets" card on `/telecaller/dashboard`** (today's daily and this month's monthly targets; tel-021 adds the achieved figures) |
+
+Recorded defaults the owner did not change: the 6 KPIs are Appendix B K1–K6 (the source's example values are **not** seeded); values are whole
+numbers 0–100000; a `null` override value means "back to the team default" from its date; resolution uses the telecaller's **current**
+team (team history on a mid-month move is tel-025's); achieved figures come from tel-021's `telecaller_metrics` (not built yet).
+
+**Implementation:** migration `0080_tel_targets` (`tel_targets`: scope team/user, team, user_id, period, kpi, value, effective_from,
+set_by_user_id; CHECKs on every enum, the subject shape, the value range, NULL only for user scope and monthly = day 1; partial unique
+indexes per subject; the downgrade refuses while targets exist). `services/telecaller_targets.py` (`effective_targets` is the single
+resolution function), `POST/GET /telecaller/targets`, `GET /telecaller/targets/effective`. Web `/telecaller/manager/targets` and the dashboard
+card. Design spec `docs/superpowers/specs/2026-10-06-tel-022-targets-design.md`.
