@@ -64,7 +64,7 @@ test("a manager imports a campaign CSV: created, attached and rejected rows, the
 
   // the campaign is required before anything is sent
   await page.getByRole("button", { name: "Import leads" }).click();
-  await expect(page.getByRole("alert")).toHaveText("Choose a campaign first.");
+  await expect(page.locator(".lead-import [role=alert]")).toHaveText("Choose a campaign first."); // not Next's route announcer
 
   await page.getByLabel("Campaign", { exact: true }).selectOption({ label: `${campaign.name} — Facebook → Cyber Security` });
   const csv = ["name,phone,email,city,priority", `Fresh Lead ${stamp},${fresh},,Pune,hot`, `Known Again,+91 ${known},,,`, "Bad Mobile,12345,,,"].join("\n");
