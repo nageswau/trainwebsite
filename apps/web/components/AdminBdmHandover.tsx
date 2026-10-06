@@ -9,7 +9,7 @@ import {
 import type { PickOption } from "@/lib/lookups";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
-type Moved = { organizations: number; appointments: number; tasks: number };
+type Moved = Omit<BdmPortfolio, "trips">;
 type Choice = "reassign" | "leave";
 
 // bdm-025 (DEC-SCOPE-076): the inline group behind a BDM row's Deactivate (pick who takes over -- another BDM of the same module, or

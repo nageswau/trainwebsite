@@ -5,6 +5,8 @@ then the source user (FOR UPDATE), then the target (FOR SHARE) -- the same organ
 so the two cannot deadlock. Logs and audit metadata carry ids and counts, never names, emails or task text."""
 
 import logging
+from collections.abc import Callable
+from typing import Any
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -14,7 +16,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.workflows import _notify_user
 from app.models import (
     BDM_APPOINTMENT_OPEN,
-    AuditLog,
     BdmAppointment,
     BdmAssignmentHistory,
     BdmOrganization,
@@ -34,7 +35,7 @@ MANAGER_TARGET_INVALID = "Choose another active BDM manager"
 TRIP_CANCEL_REASON = "BDM deactivated"
 
 # L5: the open portfolio -- (history entity, model, owner column, extra filters). Everything else stays with the original BDM.
-PORTFOLIO = {
+PORTFOLIO: dict[str, tuple[str, Any, Any, Callable[[], list]]] = {
     "organizations": ("organization", BdmOrganization, BdmOrganization.assigned_bdm_user_id, lambda: [BdmOrganization.archived_at.is_(None)]),
     "appointments": ("appointment", BdmAppointment, BdmAppointment.bdm_user_id,
                      lambda: [BdmAppointment.status.in_(BDM_APPOINTMENT_OPEN), BdmAppointment.starts_at > func.now()]),
@@ -58,8 +59,7 @@ async def portfolio_counts(db: AsyncSession, user_id: UUID) -> dict[str, int]:
 async def load_bdm(db: AsyncSession, actor: User, bdm_id: UUID) -> tuple[User, BdmProfile]:
     """404 unless a BDM with a profile; then 403 unless the actor manages that type (Q-01, `require_creator_may`)."""
     bdm = await db.get(User, bdm_id)
-    profile = await db.scalar(select(BdmProfile).where(BdmProfile.user_id == bdm_id)) if bdm is not None and bdm.role == "bdm" else None
-    if profile is None:
+    if bdm is None or bdm.role != "bdm" or (profile := await db.scalar(select(BdmProfile).where(BdmProfile.user_id == bdm_id))) is None:
         raise HTTPException(404, "BDM not found")
     require_creator_may(actor, profile.bdm_type, "/admin/bdms/{id}")
     return bdm, profile
@@ -68,13 +68,13 @@ async def load_bdm(db: AsyncSession, actor: User, bdm_id: UUID) -> tuple[User, B
 async def lock_source(db: AsyncSession, user_id: UUID) -> User:
     """The source's open organizations FOR UPDATE, then the user row FOR UPDATE, re-read so state checks see committed values."""
     await db.execute(select(BdmOrganization.id).where(BdmOrganization.assigned_bdm_user_id == user_id, BdmOrganization.archived_at.is_(None)).with_for_update())
-    return await db.scalar(select(User).where(User.id == user_id).with_for_update().execution_options(populate_existing=True))
+    return (await db.execute(select(User).where(User.id == user_id).with_for_update().execution_options(populate_existing=True))).scalar_one()
 
 
-async def locked_target(db: AsyncSession, source: User, profile: BdmProfile, target_id: UUID) -> User:
+async def locked_target(db: AsyncSession, source: User, profile: BdmProfile, target_id: UUID | None) -> User:
     """An active `bdm` of the same type, not the source. FOR SHARE: a deactivation of the target in the same instant waits for this
     commit. One message for every invalid target, so the route can't be used to probe users."""
-    target = None if target_id == source.id else await db.scalar(select(User).where(User.id == target_id).with_for_update(read=True))
+    target = None if target_id in (None, source.id) else await db.scalar(select(User).where(User.id == target_id).with_for_update(read=True))
     target_type = await db.scalar(select(BdmProfile.bdm_type).where(BdmProfile.user_id == target_id)) if target is not None else None
     if target is None or not target.active or target.role != "bdm" or target_type != profile.bdm_type:
         raise HTTPException(422, BDM_TARGET_INVALID)
@@ -143,7 +143,7 @@ async def lock_manager(db: AsyncSession, manager_id: UUID) -> User:
     if manager is None or manager.role != "bdm_manager":
         raise HTTPException(404, "BDM manager not found")
     await db.execute(select(BdmProfile.id).where(BdmProfile.reporting_manager_user_id == manager_id).with_for_update())
-    return await db.scalar(select(User).where(User.id == manager_id).with_for_update().execution_options(populate_existing=True))
+    return (await db.execute(select(User).where(User.id == manager_id).with_for_update().execution_options(populate_existing=True))).scalar_one()
 
 
 async def locked_manager_target(db: AsyncSession, source: User, target_id: UUID | None) -> User:
@@ -162,10 +162,6 @@ async def move_team(db: AsyncSession, source: User, target: User) -> list[UUID]:
 async def notify_team_moved(db: AsyncSession, target: User, moved: int) -> None:
     title = f"{_plural(moved, 'BDM', 'BDMs')} now {'reports' if moved == 1 else 'report'} to you"
     await _notify_user(db, target, title, "Their pending travel approvals are now yours to decide.", "/bdm/manager/team")
-
-
-def audit(db: AsyncSession, actor: User, action: str, entity_type: str, entity_id: UUID, metadata: dict) -> None:
-    db.add(AuditLog(user_id=actor.id, action=action, entity_type=entity_type, entity_id=str(entity_id), metadata_json=metadata))
 
 
 def log(event: str, actor: User, **fields) -> None:

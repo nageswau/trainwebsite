@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.admin import ensure_admin
+from app.api.workflows import _audit
 from app.core.database import get_db
 from app.models import User
 from app.schemas import (
@@ -46,7 +47,7 @@ async def deactivate(bdm_id: UUID, payload: BdmDeactivate, user: User = Depends(
         moved = await svc.move_portfolio(db, user, source, target, "bdm_deactivated")
     trips_cancelled = await svc.cancel_trips(db, user, source)
     await svc.deactivate_user(db, source)
-    svc.audit(db, user, "bdm.deactivate", "user", source.id, {
+    await _audit(db, user, "bdm.deactivate", "user", source.id, {
         "mode": payload.mode, "reassign_to": str(target.id) if target else None, "moved": moved, "trips_cancelled": trips_cancelled})
     if target is not None:
         await svc.notify_handover(db, source, target, moved)
@@ -68,7 +69,7 @@ async def handover(bdm_id: UUID, payload: BdmHandover, user: User = Depends(ensu
     moved = await svc.move_portfolio(db, user, source, target, "portfolio_handover")
     if not any(moved.values()):
         raise HTTPException(409, "No open work to hand over")
-    svc.audit(db, user, "bdm.portfolio_handover", "user", source.id, {"reassign_to": str(target.id), "moved": moved})
+    await _audit(db, user, "bdm.portfolio_handover", "user", source.id, {"reassign_to": str(target.id), "moved": moved})
     await svc.notify_handover(db, source, target, moved)
     await db.commit()
     svc.log("bdm_portfolio_handed_over", user, bdm_id=str(source.id), target_id=str(target.id), **moved)
@@ -91,9 +92,9 @@ async def deactivate_manager(manager_id: UUID, payload: BdmManagerDeactivate, us
         target = await svc.locked_manager_target(db, source, payload.reassign_to)
         moved = await svc.move_team(db, source, target)
     await svc.deactivate_user(db, source)
-    svc.audit(db, user, "bdm_manager.deactivate", "user", source.id, {
+    await _audit(db, user, "bdm_manager.deactivate", "user", source.id, {
         "reassign_to": str(target.id) if target else None, "moved_bdm_ids": [str(i) for i in moved]})
-    if moved:
+    if target is not None and moved:
         await svc.notify_team_moved(db, target, len(moved))
     await db.commit()
     svc.log("bdm_manager_deactivated", user, manager_id=str(source.id), target_id=str(target.id) if target else None, moved_bdms=len(moved))

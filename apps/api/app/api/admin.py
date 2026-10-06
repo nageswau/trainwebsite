@@ -58,8 +58,8 @@ from app.schemas import (
     TierChangeOut,
 )
 from app.services import bdm as bdm_rules
-from app.services import bdm_lifecycle
 from app.services import bdm_leads as lead_rules
+from app.services import bdm_lifecycle
 from app.services import telecaller as tel_rules
 from app.services.agent_applications import owned, with_owner
 from app.services.agent_network import APPLICATION_FILTERS, org_applications, org_counts, org_money, org_students
