@@ -613,6 +613,20 @@ a lead outside it reads as missing (`404`, never `403` — no IDOR oracle). "Han
 | `super_admin` | the same as a manager | all leads | `tel-008` |
 | every other role (incl. `it_admin`, `overseas_admin`, `counselor`, students) | none → `403` "Telecaller role required" (admins keep `/admin/leads`) | — | `tel-008` |
 
+### 2.20 Lead distribution and assignment *(net-new, added 2026-10-06 — `DEC-SCOPE-087`, `tel-007`)*
+
+Inline pattern: role (`require_manager`), then scope (tel-004 `lead_pipeline.scope`; a lead outside it is `404`), then the target check
+(`lead_distribution.assignee`: not a direct report `403`, AC5; inactive / other team / not a telecaller `422`), then the write. One
+`lead.assign` audit row per changed lead; rule writes are audited too.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller_manager` | read every distribution rule (both teams); create / change / delete a rule; list the unassigned queue and the team's assigned leads; assign / reassign 1–100 leads | rule writes only for rules whose telecaller is a direct report (else `403`); the queue = unassigned leads of the teams their reports are on; assigned leads = their reports'; targets = active direct reports on the leads' team | `tel-007` |
+| `super_admin` | the same | all rules, all leads, any active telecaller | `tel-007` |
+| `telecaller` | none → `403` (receives leads; never assigns) | — | `tel-007` |
+| every other role (incl. `it_admin`, `overseas_admin`, `counselor`) | none → `403` (admins keep `/admin/leads`) | — | `tel-007` |
+| system (website / BDM intake) | distributes a new lead: product rule → city rule → round robin among the team's active telecallers → unassigned | the lead's division | `tel-007` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
@@ -719,7 +733,7 @@ either a grant scope (§2) or an explicit deny rule (§4).
 alongside the other four contract documents. `prompts/10_TEST_CATALOG_AUDIT_AND_REBUILD.md` may now
 proceed.
 
-**bdm-011 trip ↔ appointment links and travel report (`DEC-SCOPE-087`, added 2026-10-06).** Same inline pattern; scope in the SQL `WHERE`.
+**bdm-011 trip ↔ appointment links and travel report (`DEC-SCOPE-089`, added 2026-10-06).** Same inline pattern; scope in the SQL `WHERE`.
 
 | Role | Routes | Scope | Item |
 |---|---|---|---|

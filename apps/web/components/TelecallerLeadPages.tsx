@@ -3,6 +3,7 @@ import { Suspense } from "react";
 
 import { accessDenied, accessUnavailable } from "@/components/AccessUnavailable";
 import LeadDetailPanel from "@/components/LeadDetailPanel";
+import NewLeadForm from "@/components/NewLeadForm";
 import PortalShell from "@/components/PortalShell";
 import TelecallerLeadTable from "@/components/TelecallerLeadTable";
 import { ApiError, serverApi } from "@/lib/api";
@@ -51,10 +52,35 @@ export async function TelecallerLeadsPage({ manager }: { manager: boolean }) {
               {manager ? "Leads of the telecallers who report to you, and your teams' unassigned leads." : "The leads assigned to you. Open a lead to call, update it or set its priority."}
             </p>
           </div>
+          <Link className="btn" href={`${basePath(manager)}/new`}>New lead</Link>
         </div>
         <Suspense fallback={<p className="muted" role="status">Loading leads…</p>}>
           <TelecallerLeadTable basePath={basePath(manager)} showTelecaller={manager} />
         </Suspense>
+      </div>
+    </PortalShell>
+  );
+}
+
+/** tel-005 (spec §4): the New Lead form. A telecaller's lead is theirs; a manager's waits in the team's unassigned queue (I2). */
+export async function TelecallerNewLeadPage({ manager }: { manager: boolean }) {
+  const shell = await shellFor(manager);
+  if (!("nav" in shell)) return shell;
+  return (
+    <PortalShell nav={shell.nav} roleLabel={shell.roleLabel} userName={shell.userName}>
+      <div className="portal-content">
+        <p style={{ margin: "0 0 12px" }}><Link href={basePath(manager)}>← Back to leads</Link></p>
+        <div className="portal-title">
+          <div>
+            <div className="eyebrow">Leads</div>
+            <h2>New lead</h2>
+            <p className="muted">
+              {manager ? "The lead goes to your team's telecallers by your distribution rules, or waits in the unassigned queue." : "The lead is assigned to you."} We check the mobile number and email
+              against every lead first, so a person is never entered twice.
+            </p>
+          </div>
+        </div>
+        <NewLeadForm basePath={basePath(manager)} />
       </div>
     </PortalShell>
   );

@@ -14,7 +14,6 @@ from app.models import (
     Certificate,
     Company,
     Country,
-    Enquiry,
     Event,
     GalleryItem,
     Job,
@@ -28,6 +27,7 @@ from app.models import (
     WebinarRegistration,
 )
 from app.schemas import CareerPathOut, CountryOut, EnquiryIn, ProgramOut, RealProjectOut, TestimonialOut, UniversityOut, WebinarRegistrationIn
+from app.services import lead_intake
 from app.worker import sync_enquiry_to_crm_task
 
 router = APIRouter(prefix="/public", tags=["public"])
@@ -273,25 +273,18 @@ async def search(q: str = Query(min_length=2), db: AsyncSession = Depends(get_db
 
 @router.post("/enquiries", status_code=201)
 async def create_enquiry(payload: EnquiryIn, db: AsyncSession = Depends(get_db)):
-    x = Enquiry(
-        division=payload.division,
-        name=payload.name,
-        email=payload.email,
-        phone=payload.phone,
-        subject=payload.subject,
-        message=payload.message,
-        source=payload.source,
-        metadata_json=payload.metadata,
-        crm_sync_status="pending",
-    )
-    db.add(x)
+    # tel-005 (T12, I3, I4): a known person's enquiry attaches to their lead instead of creating another one.
+    lead, attached = await lead_intake.website_intake(db, payload)
     await db.commit()
-    await db.refresh(x)
     # Outbox pattern (INTEGRATION_CONTRACTS.md §1): the enquiry is already committed above
     # -- the webhook attempt is queued for the background worker so a slow/unreachable
-    # CRM endpoint can never block or lose this response (PUB-002-AC02).
-    sync_enquiry_to_crm_task.delay(str(x.id))
-    return {"id": x.id, "status": x.status, "crm_sync_status": x.crm_sync_status, "lead_code": x.lead_code}  # tel-003 AC2: additive
+    # CRM endpoint can never block or lose this response (PUB-002-AC02). I4: per lead,
+    # so an attached enquiry queues nothing.
+    if not attached:
+        sync_enquiry_to_crm_task.delay(str(lead.id))
+    # tel-003 AC2 added lead_code. I3: status and crm_sync_status are constant acknowledgements on every path -- never the lead's real
+    # stage, not even after tel-007's distribution -- so the reply never says whether the person was known or who took the lead.
+    return {"id": lead.id, "status": "new", "crm_sync_status": "pending", "lead_code": lead.lead_code}
 
 
 @router.get("/posts")

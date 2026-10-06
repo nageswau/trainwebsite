@@ -468,6 +468,14 @@ covers the commission-specific piece).
   created_at)`. Live pipeline stages are still never stored (H11), so `ck_bdm_organizations_pipeline_stage` is **not** widened (the
   bdm-004 note above anticipated it). Additive; the downgrade refuses while any request or link exists.
 
+- **Addendum, 2026-10-06 (`tel-005`, `DEC-SCOPE-088`; migration `0086_lead_enquiries`, chained after `0085_tel_distribution`) — lead
+  intake.** `enquiries.email` becomes **nullable** (I1: a manual lead may have a mobile only; the website form still requires one).
+  New `lead_enquiries` (UUID PK; `lead_id` FK `enquiries` RESTRICT; `subject` String(180); `message` Text; `source` String(30) CHECK
+  the 13 §2 sources (`ck_lead_enquiries_source`); `campaign_id` FK `tel_campaigns` NULL; `metadata_json` JSON; `created_by_user_id` FK
+  `users` RESTRICT, NULL = website; `created_at`), append-only, index `(lead_id, created_at)`: a further enquiry from a person who is
+  already a lead (T12). Duplicate matching uses the existing `ix_enquiries_phone_normalized` and `ix_enquiries_email_lower` indexes.
+  The downgrade writes `''` into a null email, then restores NOT NULL and drops the table.
+
 ### 6.3 Commission trigger mapping — `ADR-012` resolution
 **Resolution:** the automatic commission-accrual trigger (`AGT-003`, `DEC-SCOPE-005`) fires when an
 `ApplicationStatusHistory` row is written with `to_status='enrolled'` **for an application that has
@@ -1253,7 +1261,7 @@ Additive only: two tables and one sequence (`bdm_appointment_code_seq`, also on 
 - **`bdm_appointment_events`** — append-only history (never updated or deleted). `appointment_id` FK `bdm_appointments` `ON DELETE RESTRICT`; `actor_user_id` FK `users` `ON DELETE RESTRICT`; `from_status` (NULL on creation); `to_status` CHECK the six statuses; `old_starts_at` / `new_starts_at` (reschedule only); `reason` VARCHAR(500) (required for cancel / no-show by the service); `created_at` default now(); `position` BIGINT identity (stable order for events written in one transaction). Index `ix_bdm_appointment_events_appointment (appointment_id, position)`.
 - Last / Next meeting on organizations (bdm-002) are still **not stored**: computed from this table (`max(starts_at)` of completed, `min(starts_at)` of open future appointments).
 
-## Trip ↔ appointment link (`bdm-011`, `DEC-SCOPE-087`; migration `0085_bdm_appointment_trip`, after `0084_bdm_onboarding`)
+## Trip ↔ appointment link (`bdm-011`, `DEC-SCOPE-089`; migration `0087_bdm_appointment_trip`, after `0086_lead_enquiries`)
 
 - `bdm_appointments.trip_id UUID NULL` → `bdm_trips.id` `ON DELETE RESTRICT` (trips are never deleted); index `ix_bdm_appointments_trip`.
 - Additive: no existing row is read or written. The downgrade drops the index and the column (the links are lost).

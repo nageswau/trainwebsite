@@ -3784,7 +3784,7 @@ write, no audit); `/bdm/calendar`, `/bdm/manager/calendar`. No migration. Design
 
 **Evidence:** `EVID-019` §15 (lines 528–547: "Management should be able to assign monthly/daily targets", 6 KPIs, achieved / target) and
 §22 line 713 ("Telecaller should not … modify employee targets"); `DEC-SCOPE-073` T2, T23, T28; owner answers in-session 2026-10-06.
-**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for G1–G4. VERIFIED on `feature/tel-022` (2026-10-06); not merged.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for G1–G4. VERIFIED on `feature/tel-022` (2026-10-06); **merged** to `main` as PR #80 @ `a38955d5`.
 **Re-chained 2026-10-06** on merging `main` @ `6655e284`: drafted as `DEC-SCOPE-078` / `0079_tel_targets`, but bdm-005 (`DEC-SCOPE-078`, `0079_bdm_mous`) and bdm-013 (`DEC-SCOPE-079`) reached `main` first. **Still provisional:** tel-012 also chains after `0078`, so whichever merges second takes the next numbers.
 
 | # | Question | Answer |
@@ -4011,7 +4011,75 @@ query); a Business section on both organization profiles for College organizatio
 
 VERIFIED on `feature/tel-012` @ final HEAD (2026-10-06): lite backend 339 (tel-001/002/003/012/017 + bdm-005 migration; re-run after the 4ec7a22b merge), vitest 75, Playwright 7, Browser Use QA (QA-01…04 fixed test-first and re-verified). Full backend suite deferred to the owner.
 
-### DEC-SCOPE-087 — Trip ↔ appointment linking, itinerary, productivity, travel report (`bdm-011`)
+### DEC-SCOPE-087 — Lead distribution: rules, round robin, unassigned queue, manual (re)assignment (`tel-007`)
+
+**Evidence:** `EVID-019` §17 (round robin, product, location, manual); `DEC-SCOPE-073` T11, T18, T22, T23; owner answers in-session 2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for DI1–DI4; D1–D6 are recorded defaults. VERIFIED on `feature/tel-007`
+(2026-10-06); **merged** to `main` as PR #90 @ `595025e4`. Drafted as `DEC-SCOPE-082` / `0082`; re-chained on `main` @ `50838192` (bdm-025 took 082 / `0082_bdm_assignment_history`; tel-012 took 083 / `0083_tel_content` and API §12I), then on `main` @ `7afd4a4b` (tel-008 took `DEC-SCOPE-084` and API §12J, no migration), then on `main` @ `9b395aaf` (bdm-018 took `DEC-SCOPE-085` / `0084_bdm_onboarding`), then on `main` @ `a36b5b63` (bdm-021 took `DEC-SCOPE-086`, no migration).
+
+| # | Question | Answer |
+|---|---|---|
+| DI1 (Q-07) | Eligibility | Active account only: role `telecaller`, `users.active`, on the lead's team. No pause flag (tel-025 owns deactivation) |
+| DI2 (Q-05) | Intake | Website and BDM-entered leads are distributed in the intake transaction; team = the lead's division; no product → city rule, then round robin. Existing unassigned leads are not backfilled |
+| DI3 | Rule editing | Every manager reads all rules of both teams; creates/changes/deletes only rules whose telecaller is a direct report (`super_admin`: all). One rule per team + product / team + city |
+| DI4 | Reassign UI | One Lead assignment page: Unassigned and Assigned to my team tabs, bulk assign/reassign to a direct report |
+| D1 | Lead team | `enquiries.division`; a product with no team → unassigned queue (T18) |
+| D2 | Round robin | Eligible telecallers in user-id order after the team cursor (row-locked); rules and manual moves don't advance it |
+| D3 | Manual assignment | 1–100 leads, all or nothing; leads in scope (else 404); target a direct report (else 403, AC5), active and on the leads' team (else 422); same telecaller = unchanged; any stage, only `new` moves to `assigned` |
+| D4 | History | One `lead.assign` audit row per change (from, to, method) + the `assigned` stage event; no assignment table |
+| D5 | Alert | "New Lead Assigned" is tel-020's |
+| D6 | Rule shape | No active flag (delete to stop); PATCH changes only the telecaller |
+
+**Implementation:** migration `0085_tel_distribution` (`tel_distribution_rules`, `tel_round_robin_cursors`; downgrade refuses while rules exist),
+`services/lead_distribution.py` (`distribute`, `on_intake` in a SAVEPOINT, `assign`, `assignee`, `next_in_turn`), `api/telecaller_distribution.py`
+(`GET/POST/PATCH/DELETE /telecaller/distribution-rules`, `GET /telecaller/leads/unassigned`, `GET /telecaller/leads/assigned`,
+`POST /telecaller/leads/assign`); `public.create_enquiry` and `bdm_leads.add_lead` call `on_intake`. Web `/telecaller/manager/distribution`
+and `/telecaller/manager/assignment`. Design spec `docs/superpowers/specs/2026-10-06-tel-007-lead-distribution-design.md`.
+
+### DEC-SCOPE-088 — Lead intake: manual creation, duplicate detection, website-enquiry attach (`tel-005`)
+
+**Evidence:** `EVID-019` §2 (lead fields), §18 (duplicate detection, L584–L606); `DEC-SCOPE-073` T12, T13, T15; `DEC-SCOPE-077`
+(phone normalisation, Q-04); `DEC-SCOPE-081` (pipeline engine); `DEC-SCOPE-087` (tel-007 distribution, DI2); owner answers in-session
+2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for I1–I6; R1–R10 are recorded defaults. Migration `0086_lead_enquiries`
+(after tel-007's `0085_tel_distribution`), API contract §12L. Re-chained twice: drafted as `DEC-SCOPE-086` / `0085_lead_enquiries` / §12K;
+bdm-021 (PR #88, no migration) took 086, then tel-007 (PR #90) merged first with `0085_tel_distribution` / `DEC-SCOPE-087` / §12K (the
+owner had planned tel-005 first). On the merge with `main` @ `6a3e7722`, `lead_intake` calls tel-007's `lead_distribution.on_intake` for
+new website leads and manager-created leads (I6), and the public reply keeps I3 over tel-007's real status (owner).
+
+| # | Question | Answer |
+|---|---|---|
+| I1 (Q-03) | Email on a manual lead | `enquiries.email` becomes nullable. A manual lead requires a valid mobile (`normalise_phone`); email is optional. The website form still requires email |
+| I2 | Owner of a manual lead | The creator keeps it: a telecaller's lead is assigned to them (pipeline event `assigned`) and is never redistributed. A manager's or admin's lead: I6 |
+| I3 | Public reply | Same `201` and keys on every path. On attach, `id` + `lead_code` are the existing lead's. `status` is always `"new"` and `crm_sync_status` always `"pending"`, never the stored stage, including after tel-007's distribution (owner, on the merge with tel-007). The reply never reveals that the person is known or who took the lead; tests read the stage from the stored lead |
+| I6 | A manager's manual lead after tel-007 | Distributed on arrival through `lead_distribution.on_intake` (rules, then round robin; a SAVEPOINT, so an error leaves it unassigned). When nobody is eligible it waits in its team's unassigned queue |
+| I4 | CRM webhook for an attached enquiry | Per lead: none is queued. A new lead (website, manual) is queued after the commit, as before |
+| I5 | Who may "Add enquiry to this lead" | Any `telecaller` / `telecaller_manager` / `super_admin`, on any lead (another telecaller's, handed over, closed). Append-only; no read access is granted. A closed lead stays closed until a manager reopens it (T13) |
+| R1 | Match | `phone_normalized` = normalised mobile OR `lower(email)`, across every lead (all divisions, closed, BDM-entered) |
+| R2 | Panel | ≤ 5 matches, newest first: Lead ID, name, stage, telecaller, counselor, last contact, `matched_on`, ≤ 5 previous enquiries, `in_scope`. Never another lead's phone, email or messages |
+| R3 | Last contact | `null` until tel-010 / tel-013 exist ("No contact logged yet") |
+| R4 | Several matches on the website | Attach to the newest matching lead |
+| R5 | Product, campaign, division | Product required; the division is the product's team, or `division` for a product without a team. An optional campaign must be active and match the product and source |
+| R6 | Subject / notes | Subject defaults to the product name, notes to empty |
+| R7 | Races | `pg_advisory_xact_lock` on the sorted phone/email keys before the match, on every intake path |
+| R8 | BDM lead entry | Unchanged (bdm-017's per-organization rule) |
+| R9 | Unmatched website enquiry | A new lead, distributed on arrival by tel-007 (DI2) as on `main` |
+| R10 | CRM sync of a manual lead | Queued after the commit, like website and BDM leads |
+
+**Implementation:** `services/lead_intake.py` (shared by manual and website intake; tel-006 CSV joins later); `models.LeadEnquiry`;
+routes `POST /telecaller/leads`, `GET /telecaller/leads/duplicate-check`, `POST /telecaller/leads/{id}/enquiries`; `public.create_enquiry`
+calls `website_intake`; the tel-008 timeline gains `kind: "enquiry"`. Web: `/telecaller/leads/new`, `/telecaller/manager/leads/new`
+(`NewLeadForm` with the §18 panel), a New lead button, and enquiry rows in the lead Activity. Design spec
+`docs/superpowers/specs/2026-10-06-tel-005-lead-intake-design.md`.
+
+**Also fixed (owner-approved, separate commit):** bdm-018's merge (`418b4e03`) had dropped `total` / `limit` / `offset` from
+`LeadStageHistoryPage` (tel-004 §12H); restored.
+
+**Addendum, browser QA (2026-10-06):** QA-01 (priority options truncated), QA-02 (unnamed missing fields), QA-03 (stale duplicate
+panel), QA-04 (a double click added two enquiries), QA-05 (warning out of sight on a phone). All five were fixed test-first and
+re-verified in the browser.
+
+### DEC-SCOPE-089 — Trip ↔ appointment linking, itinerary, productivity, travel report (`bdm-011`)
 
 **ID note (2026-10-06):** drafted as `DEC-SCOPE-079` with migration `0080_bdm_appointment_trip` on `main` @ `230a043f`. On merging `main`
 @ `3986958c` (bdm-013 `DEC-SCOPE-079`, tel-022 `080` / `0080_tel_targets`, tel-004 `081` / `0081_lead_stage_pipeline`) it became
@@ -4019,8 +4087,9 @@ VERIFIED on `feature/tel-012` @ final HEAD (2026-10-06): lite backend 339 (tel-0
 `DEC-SCOPE-083` / `0083`; on merging `main` @ `50838192` (tel-012 `DEC-SCOPE-083` / `0083_tel_content`) it became `DEC-SCOPE-084`
 / `0084`; on merging `main` @ `b76c92f7` (tel-008 `DEC-SCOPE-084`, no migration) it became `DEC-SCOPE-085` (migration
 unchanged); on merging `main` @ `9b395aaf` (bdm-018 `DEC-SCOPE-085` / `0084_bdm_onboarding`) it became `DEC-SCOPE-086` / `0085`;
-on merging `main` @ `a36b5b63` (bdm-021 `DEC-SCOPE-086`, no migration) it is **`DEC-SCOPE-087`**; the migration stays
-**`0085_bdm_appointment_trip`**, chained after `0084_bdm_onboarding`.
+on merging `main` @ `a36b5b63` (bdm-021 `DEC-SCOPE-086`, no migration) it became `DEC-SCOPE-087`
+(migration unchanged); on merging `main` @ `2b22158b` (tel-007 `DEC-SCOPE-087` / `0085_tel_distribution`, tel-005 `DEC-SCOPE-088` /
+`0086_lead_enquiries`) it is **`DEC-SCOPE-089`** with migration **`0087_bdm_appointment_trip`**, chained after `0086_lead_enquiries`.
 
 **Question:** how do appointments link to trips (`BDM_CRM_BACKLOG.md` §4 bdm-011): which trips and appointments can be linked, which
 appointments count as planned, how "actual leads" is defined now that bdm-017 attributes leads, and what a cancelled trip does to its links?
