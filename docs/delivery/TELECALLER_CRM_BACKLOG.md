@@ -366,6 +366,10 @@ tel-005 re-chained after it, and `lead_intake` sends new website leads and manag
 
 ### tel-006 — CSV lead import per campaign
 
+**Status (2026-10-06):** **implemented** on `feature/tel-006` (`DEC-SCOPE-091` IM1 + R1–R12, migration `0087_lead_import_batches`, API
+contract §12N; 090 / §12M are claimed by the open AGN-023 branch). Spec `docs/superpowers/specs/2026-10-06-tel-006-lead-import-design.md`.
+Q-06 answered: one campaign per upload, per-row report, ≤ 1 MB / 500 rows.
+
 - **Business requirement:** T15 (Instagram/Facebook/Google/event leads).
 - **Existing behavior:** none. School bulk imports exist (`school_bulk.py`, `school_onboarding_bulk.py`).
 - **Expected behavior:**
