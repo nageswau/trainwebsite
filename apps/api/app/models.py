@@ -1079,6 +1079,42 @@ class TelCampaign(Base, TimestampMixin):
     active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
 
 
+TEL_TARGET_KPIS = ("calls", "connected_calls", "qualified_leads", "follow_ups", "counselling_appointments", "conversions")
+
+
+class TelTarget(Base, TimestampMixin):
+    """tel-022 (DEC-SCOPE-080, T28): one target value -- a team default or a per-telecaller override -- for one KPI and period,
+    effective from a date. Append-only history: a row is only ever updated while its date is still in the future (the route's date
+    rule), so a past day always resolves to the value it had. A NULL value (user scope only) ends an override from its date.
+    Resolution lives in `services/telecaller_targets.py`."""
+
+    __tablename__ = "tel_targets"
+    __table_args__ = (
+        CheckConstraint("scope IN ('team', 'user')", name="ck_tel_targets_scope"),
+        CheckConstraint(
+            "(scope = 'team' AND team IS NOT NULL AND user_id IS NULL) OR (scope = 'user' AND user_id IS NOT NULL AND team IS NULL)",
+            name="ck_tel_targets_subject",
+        ),
+        CheckConstraint("period IN ('daily', 'monthly')", name="ck_tel_targets_period"),
+        CheckConstraint(f"kpi IN ({', '.join(repr(k) for k in TEL_TARGET_KPIS)})", name="ck_tel_targets_kpi"),
+        CheckConstraint("team IN ('it', 'overseas')", name="ck_tel_targets_team"),
+        CheckConstraint("value IS NULL OR value BETWEEN 0 AND 100000", name="ck_tel_targets_value"),
+        CheckConstraint("value IS NOT NULL OR scope = 'user'", name="ck_tel_targets_value_null_user_only"),
+        CheckConstraint("period = 'daily' OR EXTRACT(DAY FROM effective_from) = 1", name="ck_tel_targets_monthly_first"),
+        Index("uq_tel_targets_team", "team", "period", "kpi", "effective_from", unique=True, postgresql_where=text("scope = 'team'")),
+        Index("uq_tel_targets_user", "user_id", "period", "kpi", "effective_from", unique=True, postgresql_where=text("scope = 'user'")),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    scope: Mapped[str] = mapped_column(String(10))
+    team: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    period: Mapped[str] = mapped_column(String(10))
+    kpi: Mapped[str] = mapped_column(String(40))
+    value: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    effective_from: Mapped[date] = mapped_column(Date)
+    set_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
 # bdm-010 (DEC-SCOPE-063, T6): TRV-000123 codes. On the metadata so 0001's create_all makes it on a fresh database; 0068 makes it
 # on an upgraded one. A rolled-back create skips a number; codes stay unique and increasing.
 BDM_TRIP_CODE_SEQ = Sequence("bdm_trip_code_seq", metadata=Base.metadata)
@@ -1296,7 +1332,7 @@ class BdmPipelineEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-# bdm-005 (DEC-SCOPE-078, spec §4): the MoU statuses in source order and wording (EVID-016 §10). `expired` is derived on read (M2):
+# bdm-005 (DEC-SCOPE-080, spec §4): the MoU statuses in source order and wording (EVID-016 §10). `expired` is derived on read (M2):
 # a signed / active MoU past `valid_until`; it is never stored, so the status CHECK lists only the settable keys.
 BDM_MOU_STATUS_LABELS: dict[str, str] = {
     "prospect": "Prospect",
@@ -1323,7 +1359,7 @@ BDM_MOU_CHECKS = {  # migration 0076 repeats these strings; test_bdm_005_migrati
 
 
 class BdmMou(Base, TimestampMixin):
-    """bdm-005 (DEC-SCOPE-078, spec §5.1): an organization's MoU. At most one `is_current` row per organization (M6: a renewal is a
+    """bdm-005 (DEC-SCOPE-080, spec §5.1): an organization's MoU. At most one `is_current` row per organization (M6: a renewal is a
     new row; the old one is kept). `document_key` is server-generated and never returned or logged; the service owns every rule, the
     CHECKs are the backstop."""
 
@@ -1535,7 +1571,7 @@ BDM_ASSIGNMENT_REASONS = ("bdm_deactivated", "portfolio_handover", "organization
 
 
 class BdmAssignmentHistory(Base):
-    """bdm-025 (DEC-SCOPE-080): one row per organization, appointment or task that changed owner. Append-only; `entity_id` has no
+    """bdm-025 (DEC-SCOPE-081): one row per organization, appointment or task that changed owner. Append-only; `entity_id` has no
     foreign key (polymorphic) -- those rows are never deleted (archived / cancelled instead)."""
 
     __tablename__ = "bdm_assignment_history"

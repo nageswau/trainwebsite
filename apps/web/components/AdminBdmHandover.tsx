@@ -12,7 +12,7 @@ import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 type Moved = Omit<BdmPortfolio, "trips">;
 type Choice = "reassign" | "leave";
 
-// bdm-025 (DEC-SCOPE-080): the inline group behind a BDM row's Deactivate (pick who takes over -- another BDM of the same module, or
+// bdm-025 (DEC-SCOPE-081): the inline group behind a BDM row's Deactivate (pick who takes over -- another BDM of the same module, or
 // keep the work with them for a later handover, L3) and an inactive row's Hand over. The counts come from the server first, so the
 // admin sees what moves; the server re-checks every rule and answers one message for an invalid target. Same inline-group
 // conventions as BdmConfirm: the codebase has no dialog library, Escape cancels, an error takes focus.

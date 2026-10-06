@@ -41,7 +41,7 @@ LITE = `tests/test_bdm_025_*.py tests/test_bdm_001_*.py tests/test_bdm_002_assig
 ---
 
 ### Task 1: Migration + model `BdmAssignmentHistory`
-**Files:** create `alembic/versions/0080_bdm_assignment_history.py`; modify `app/models.py` (BDM section); test `tests/test_bdm_025_migration.py`.
+**Files:** create `alembic/versions/0081_bdm_assignment_history.py`; modify `app/models.py` (BDM section); test `tests/test_bdm_025_migration.py`.
 - [ ] RED: the test asserts the table and CHECKs exist (inserting a bad `entity_type` / `reason` raises), and that the downgrade
   SQL refuses while rows exist (0077's guard idiom), with a single head.
 - [ ] GREEN: the model plus a migration with the `create_all` guard, indexes `ix_bdm_assignment_history_entity` and
@@ -116,5 +116,5 @@ update `AdminBdmRow.test.tsx` and `AdminBdmPanel.test.tsx`, new `AdminBdmManager
 
 ### Task 10: e2e + docs
 `tests/e2e/bdm-025-deactivation.spec.ts` (super_admin: create 2 BDMs + organization via API → deactivate A with handover to B
-in the UI → counts shown → success notice → A Inactive, "Hand over" visible). Docs: `DEC-SCOPE-080`, backlog status, RTM row,
+in the UI → counts shown → success notice → A Inactive, "Hand over" visible). Docs: `DEC-SCOPE-081`, backlog status, RTM row,
 `API_CONTRACT.md`, `DATA_MODEL.md`, `RBAC_MATRIX.md`. Commit.

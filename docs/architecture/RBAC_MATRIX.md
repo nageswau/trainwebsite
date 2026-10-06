@@ -511,7 +511,7 @@ Archived organizations are read-only (`409` "Restore this organization first"). 
 
 **Explicit denies (bdm-010):** nobody decides their own trip (`403`); a manager never edits a trip or its expenses (no route); server-owned fields (`code`, `bdm_user_id`, statuses, `currency`, `decided_*`) in a body → `422`; a `bdm` on a manager route or a manager on a BDM route → `403`. Every change writes one `AuditLog` row (`bdm.trip_*`) in the same transaction.
 
-**BDM deactivation and handover (`bdm-025`, `DEC-SCOPE-080`, added 2026-10-06).** Same inline pattern.
+**BDM deactivation and handover (`bdm-025`, `DEC-SCOPE-081`, added 2026-10-06).** Same inline pattern.
 
 | Role | Can | Scope | Item |
 |---|---|---|---|
@@ -577,6 +577,17 @@ A `counselor` belongs to `it` or `overseas` (fixed at creation). Inline pattern:
 | `counselor` (IT) | portal `dashboard` and `leads` only (`/portal/it/counselor/*`; any other section → 404) | leads with `division == "it"` and `owner_id` = self | `tel-017` |
 | `counselor` (IT) | every overseas counselor route: the 14 `workflows.py` overseas routes, `/overseas-admin/school-*`, the overseas lookups, `/inbound/university-email*`, `/portal/overseas/counselor/*` | none → `403` | `tel-017` |
 | `counselor` (Overseas) | unchanged (§2.2); `/portal/it/counselor/*` → `403` | assigned students / own routed overseas leads | `CNS-001` |
+
+### 2.17 Telecaller targets *(net-new, added 2026-10-06 — `DEC-SCOPE-080`, `tel-022`)*
+
+Inline pattern: role check, then subject scope (an out-of-scope telecaller is a `404`), then the write.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller_manager` | set team defaults (both teams); set/remove overrides; read history and targets in effect | team rows: all; user rows: direct reports only | `tel-022` |
+| `super_admin` | the same | all | `tel-022` |
+| `telecaller` | read own targets in effect (dashboard card) | self; another user or a team → `403`; any write → `403` (§22 line 713) | `tel-022` |
+| every other role (incl. division admins) | none → `403` | — | `tel-022` |
 
 ## 3. Support / admin audit controls
 

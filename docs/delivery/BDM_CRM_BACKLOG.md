@@ -1154,7 +1154,8 @@ Conventions used below:
 
 ### bdm-025 — BDM deactivation, portfolio reassignment, manager change
 
-> **Status (2026-10-06):** implemented on `worktree-bdm-025` (`DEC-SCOPE-080`, migration `0080_bdm_assignment_history`).
+> **Status (2026-10-06):** implemented on `worktree-bdm-025` (`DEC-SCOPE-081`, migration `0081_bdm_assignment_history`;
+> renumbered from `076` / `0078` as tel-017, tel-003, bdm-005, bdm-013 and tel-022 merged first).
 > **COMPLETE WITH DEFERRED FULL REGRESSION (2026-10-06, `2efee1c9`):** the feature is verified; the repository-wide regression
 > remains (the owner's).
 >
