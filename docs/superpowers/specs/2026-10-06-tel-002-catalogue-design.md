@@ -98,3 +98,17 @@ writes on a small table).
 
 Low: two new tables, one new router, two nav entries. Touches `main.py` router tuple, `models.py`/`schemas.py` (append-only),
 `navigation.ts` (manager nav). Existing `/telecaller/manager/team` and its tests must still pass.
+
+## 9. Browser QA (2026-10-06, isolated stack `tel002` web :3072 / API :8072, Edge via CDP + Playwright)
+
+Passed: signed-out redirect with `next`; manager sign-in → Team → Products/Campaigns nav; seed values with T18 teams; create Other product
+with team; double-click create makes one row; duplicate name 409 sentence (entry kept); blank name; inline edit, Esc restores focus to Edit;
+native validation blocks a negative/empty order; deactivate after confirm; deactivated product absent from the campaign picker; 13 sources;
+end-before-start refused; campaign created and listed; editing a campaign whose product was deactivated keeps it "(inactive)" and saves;
+pager over 100; refresh; telecaller → "Telecaller manager role required" card, reads active rows only, POST 403; no console errors; no
+sideways scroll at 768 px and 390 px (labelled cards on phones). The app and test databases are shared by design, so test rows appear in lists.
+
+| ID | Severity | Role / page | Found | Fix |
+|---|---|---|---|---|
+| QA-01 | Low | manager / Campaigns | The product picker fetched one page of 100 active products; more were silently missing (this stack had 92 from test data) | `activeProducts()` reads every page (vitest) |
+| QA-02 | Medium | manager / both pages, ≤980 px | The list sits above the create form on tablets/phones and there was no jump to the form (tel-001 added one for this) | `CreateJumpLink` on both list cards (vitest + e2e at 768/390 px) |

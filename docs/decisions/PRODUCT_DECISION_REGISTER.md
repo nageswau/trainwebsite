@@ -3641,3 +3641,22 @@ pipeline; that supersession takes effect with `tel-018`.
 - TL8 `PATCH /auth/me` refuses name/profile changes for `telecaller` (phone validated with the `/telecaller/profile` rule); other roles unchanged (owner, 2026-10-05).
 
 **Implementation:** migration `0075_telecaller_profiles`; roles `telecaller` (division = team) and `telecaller_manager` (`global`).
+
+
+### DEC-SCOPE-074 — Telecaller product/interest catalogue and campaign list (`tel-002`)
+
+**Evidence:** `EVID-019` §2 (13 lead sources, "exact campaign/source", e.g. Instagram → Cyber Security → September 2026 Campaign) and §3
+(18 product/interest values); `DEC-SCOPE-073` T16, T17, T18; owner answers in-session 2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for P1–P4; VERIFIED on `feature/tel-002` — ready for owner sign-off (2026-10-06).
+
+| # | Question | Answer |
+|---|---|---|
+| P1 | Who reads the lists | `telecaller`, `telecaller_manager`, `super_admin`, `it_admin`, `overseas_admin`, `counselor` read **active** rows; `telecaller_manager` and `super_admin` also see inactive rows and alone write. Any other role → 403 |
+| P2 | Which team routes a product (T18) | **Fixed for IT/Overseas** (team = group). Only an `other` product's team is chosen: `it`, `overseas` or none (= unassigned queue). The optional course link is IT-only (`programs.id`) |
+| P3 | Campaign dates | Start **required**, end optional; end before start → 422 |
+| P4 | Deactivation | **Independent.** A campaign is created on / moved to an **active** product only; a campaign whose product was later deactivated stays editable |
+
+**Implementation:** migration `0076_tel_catalogue` (`tel_products` seeded with the 18 §3 values — Job Assistance and Career Change team
+`it`, Career Guidance and General Enquiry unassigned — and `tel_campaigns`); sources are the fixed §2 list (`app/tel_sources.py`), not
+manager-edited. API `GET/POST/PATCH /telecaller/products`, `GET/POST/PATCH /telecaller/campaigns`; screens `/telecaller/manager/products`
+and `/telecaller/manager/campaigns`. Design spec `docs/superpowers/specs/2026-10-06-tel-002-catalogue-design.md`.

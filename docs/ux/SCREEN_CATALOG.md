@@ -2945,6 +2945,24 @@ Five screens (seven routes) added by `tel-001` (design spec `docs/superpowers/sp
 - **Route:** `/telecaller/manager/team`. **Role(s):** `telecaller_manager` (direct reports), `super_admin` (all). **Data:** `GET /telecaller/manager/team?offset=`. **Content:** table (name, Employee ID, team, mobile, status as a word in a badge) in a labelled, focusable scroll region with a `<caption>`; Previous / Next links. **States:** empty — "No telecallers report to you yet."; past-the-end offset — a message with "Go to the first page"; error — the access-unavailable block, sign-in link `/admin/login`. **Responsive:** the table scrolls horizontally inside its region; the page never does.
 - **Route:** `/admin/telecallers` (also `/it/admin/telecallers`, `/overseas/admin/telecallers`). **Role(s):** `super_admin` (both teams), `it_admin` (IT; also reachable by `super_admin`), `overseas_admin` (Overseas; also reachable by `super_admin`). **Data:** `GET /admin/telecallers`, `GET /admin/telecaller-managers`, `POST` / `PATCH /admin/users`. **Content:** create form (full name, email, mobile, team — fixed text for a division admin, a two-option select for `super_admin`, Employee ID, reporting manager via a server-search picker), list with row edit (name, mobile, Employee ID, manager; team read-only, TL7) and activate / deactivate with inline confirmation; "No active manager" badge when `manager_active` is false. **States:** loading — "Loading telecallers…"; empty — "No telecallers yet. Use the Create telecaller form to add the first one."; a search with no match — "No telecallers match “…”."; error — "Unable to load telecallers." with Retry; past the end of the list — "This page is past the end of the list." with "Go to the first page"; no active manager — "No active telecaller manager — a Super Admin must create one first", submit disabled; create success — the welcome-link feedback; server 403 / 409 / 422 messages inline; a save names the telecaller as saved ("Saved ⟨new name⟩."). A second click while a create is in flight sends nothing. **Responsive:** below 640px each row is a card — name and email, then labelled Employee ID / Team / Manager / Status lines, then Edit / Deactivate — so nothing sits off-screen; tablet and desktop keep the table (tel-001 QA-03/04/05). Up to 980px, where the list comes before the form, the list card starts with a "Create telecaller" link that scrolls to the form and focuses Full name.
 
+## tel-002 addendum (2026-10-06, `DEC-SCOPE-074`) — Telecaller catalogue
+
+Two screens (design spec `docs/superpowers/specs/2026-10-06-tel-002-catalogue-design.md` §5). No catalogue ID is invented; visual reference
+None (the `AdminTelecallerPanel` pattern). Both: `telecaller_manager` and `super_admin` (other signed-in roles see "Telecaller manager role
+required"; signed out → `/admin/login?next=…`). Below 980 px the list comes first and its card links to the create form; below 640 px each
+row is a card of labelled lines.
+
+- **Route:** `/telecaller/manager/products`. **Data:** `GET /telecaller/products?group=&limit=100&offset=`, `GET /public/programs` (IT
+  course picker); `POST`/`PATCH /telecaller/products`. **Content:** create form (group; name; team only for Other — Unassigned queue / IT /
+  Overseas; linked IT course only for IT), "Show" group filter, table (name, group, team, course, order, status, actions: Edit inline with
+  Esc to cancel, Deactivate with inline confirm, Reactivate). **States:** loading, error + Retry, empty, pager over 100, `role="status"`
+  notices, double-submit guard, server sentences shown as written.
+- **Route:** `/telecaller/manager/campaigns`. **Data:** `GET /telecaller/campaigns?q=&limit=100&offset=`, every active product (all pages);
+  `POST`/`PATCH /telecaller/campaigns`. **Content:** create form (name; one of 13 sources; active product grouped IT Courses / Overseas
+  Education / Other; start date; optional end date — end before start is refused in the browser and by the API), search, table (name, source,
+  product with a "Product inactive" badge, dates, status, actions). Editing a campaign whose product was deactivated keeps that product,
+  offered as "(inactive)". **States:** as above; no active product → the create button is disabled with a link to Products.
+
 ## Required findings report
 
 ### FEATURE_WITHOUT_REQUIRED_SCREEN
