@@ -4111,7 +4111,7 @@ spec `docs/superpowers/specs/2026-10-06-bdm-020-school-activity-design.md` §1):
 
 **Evidence:** `EVID-019` §2 (lead sources and fields); `DEC-SCOPE-073` T12, T15; `DEC-SCOPE-074` (campaigns); `DEC-SCOPE-087` (tel-007
 distribution); `DEC-SCOPE-088` (tel-005 intake, I4–I6, R5–R7); owner answer in-session 2026-10-06.
-**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for IM1; R1–R12 are recorded defaults. Migration
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for IM1; R1–R12 are recorded defaults. **MERGED** to `main` as PR #96 @ `126b454b` (2026-10-06), no re-chain. Migration
 `0087_lead_import_batches` (after tel-005's `0086_lead_enquiries`), API contract §12N. `DEC-SCOPE-090` / §12M are claimed by the open
 AGN-023 branch, so this entry is 091 / §12N; numbers re-chain at merge if `main` moves. Spec
 `docs/superpowers/specs/2026-10-06-tel-006-lead-import-design.md`.
