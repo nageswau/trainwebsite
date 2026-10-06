@@ -5,6 +5,7 @@ Dependencies tel-001, tel-002, tel-003 and tel-004 are merged (tel-004 PR #81 @ 
 Decision: `DEC-SCOPE-087`. Migration: `0085_tel_distribution` (after `0084_bdm_onboarding`). API contract §12K. Drafted as `DEC-SCOPE-082` / `0082` / §12I;
 re-chained on `main` @ `50838192` (bdm-025: 082 / 0082; tel-012: 083 / 0083 / §12I), `7afd4a4b` (tel-008: 084 / §12J) 
 `9b395aaf` (bdm-018: 085 / `0084_bdm_onboarding`) and `a36b5b63` (bdm-021: 086, no migration).
+**Merged** to `main` as PR #90 @ `595025e4` (2026-10-06).
 
 ## 1. Owner answers (2026-10-06, `EXPLICIT_APPROVAL`) and recorded defaults
 
