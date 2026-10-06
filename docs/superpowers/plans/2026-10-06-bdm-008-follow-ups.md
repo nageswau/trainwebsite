@@ -12,12 +12,12 @@ bdm-007's `sync_follow_up` and bdm-002's archive. Web: `lib/bdmTasks.ts`, `BdmTa
 
 **Tech Stack:** FastAPI, Pydantic v2, async SQLAlchemy 2, Alembic, PostgreSQL; Next.js App Router, React, Vitest, Playwright.
 
-**Spec:** `docs/superpowers/specs/2026-10-06-bdm-008-follow-ups-design.md` (decisions F1–F7, `DEC-SCOPE-074`).
+**Spec:** `docs/superpowers/specs/2026-10-06-bdm-008-follow-ups-design.md` (decisions F1–F7, `DEC-SCOPE-075`).
 
 ## Global Constraints
 
-- Migration `0076_bdm_tasks_followups`, `down_revision = "0075_telecaller_profiles"`; additive only; downgrade refuses while `manual` tasks exist.
-- Decision id `DEC-SCOPE-074`.
+- Migration `0077_bdm_tasks_followups`, `down_revision = "0075_telecaller_profiles"`; additive only; downgrade refuses while `manual` tasks exist.
+- Decision id `DEC-SCOPE-075`.
 - Today = `today_ist(db_now(db))`, read once per request.
 - Title 1–200 single line; notes ≤ 2000 multi-line; reason ≤ 500 (bdm-006's `BdmAppointmentReason`); due date strict `YYYY-MM-DD`, ≥ IST today on create and when changed.
 - Daily create cap 200 manual items per BDM per IST day → 409 "You've added 200 tasks today".
@@ -57,7 +57,7 @@ LITE = `tests/test_bdm_008_*.py tests/test_bdm_007_*.py tests/test_bdm_002_organ
 
 | File | Responsibility |
 |---|---|
-| `apps/api/alembic/versions/0076_bdm_tasks_followups.py` (new) | columns, backfill, CHECKs, guarded downgrade |
+| `apps/api/alembic/versions/0077_bdm_tasks_followups.py` (new) | columns, backfill, CHECKs, guarded downgrade |
 | `apps/api/app/models.py` (modify `BdmTask`) | three columns, two CHECKs |
 | `apps/api/app/schemas.py` (append) | `BdmTaskCreate/Update/Out/Page` and refs |
 | `apps/api/app/services/bdm_tasks.py` (new) | scope, buckets, counts, output, write loading, cap, archive cancel, audit/log |
@@ -76,7 +76,7 @@ LITE = `tests/test_bdm_008_*.py tests/test_bdm_007_*.py tests/test_bdm_002_organ
 ### Task 1: Migration 0076 and the model
 
 **Files:**
-- Create: `apps/api/alembic/versions/0076_bdm_tasks_followups.py`
+- Create: `apps/api/alembic/versions/0077_bdm_tasks_followups.py`
 - Modify: `apps/api/app/models.py` (`class BdmTask`)
 - Modify: `apps/api/tests/test_bdm_007_migration.py` (`test_models_match_the_migration` column set)
 - Modify: `apps/api/tests/test_tel_001_migration.py:39` (single head → on the chain)
@@ -88,7 +88,7 @@ constraint names `ck_bdm_tasks_cancelled`, `ck_bdm_tasks_cancel_reason`; migrati
 - [ ] **Step 1: Write the failing test** `apps/api/tests/test_bdm_008_migration.py`
 
 ```python
-"""bdm-008 -- migration 0076_bdm_tasks_followups (spec §4). Isolated database per test (the bdm-007 pattern)."""
+"""bdm-008 -- migration 0077_bdm_tasks_followups (spec §4). Isolated database per test (the bdm-007 pattern)."""
 
 import asyncio
 import importlib.util
@@ -107,12 +107,12 @@ from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_bdm_008_migration_0076", VERSIONS / "0076_bdm_tasks_followups.py")
+_spec = importlib.util.spec_from_file_location("_bdm_008_migration_0076", VERSIONS / "0077_bdm_tasks_followups.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
 BASE = "0075_telecaller_profiles"
-HEAD = "0076_bdm_tasks_followups"
+HEAD = "0077_bdm_tasks_followups"
 
 
 def _config() -> Config:
@@ -213,17 +213,17 @@ def test_downgrade_refuses_while_manual_tasks_exist_and_round_trips_otherwise(is
 - [ ] **Step 2: Run it to see it fail**
 
 Run: `… pytest -q tests/test_bdm_008_migration.py`
-Expected: FAIL / ERROR — `FileNotFoundError` for `0076_bdm_tasks_followups.py`.
+Expected: FAIL / ERROR — `FileNotFoundError` for `0077_bdm_tasks_followups.py`.
 
-- [ ] **Step 3: Write the migration** `apps/api/alembic/versions/0076_bdm_tasks_followups.py`
+- [ ] **Step 3: Write the migration** `apps/api/alembic/versions/0077_bdm_tasks_followups.py`
 
 ```python
-"""bdm-008 (DEC-SCOPE-074): follow-ups and tasks -- notes, cancelled_at and cancel_reason on bdm_tasks.
+"""bdm-008 (DEC-SCOPE-075): follow-ups and tasks -- notes, cancelled_at and cancel_reason on bdm_tasks.
 
 Rows bdm-007 already cancelled (the meeting report's follow-up date was cleared) get their time and reason, so "cancelled <=> a
 cancellation time" holds for every row. Additive: no column is dropped or retyped.
 
-Revision ID: 0076_bdm_tasks_followups
+Revision ID: 0077_bdm_tasks_followups
 Revises: 0075_telecaller_profiles
 """
 
@@ -231,7 +231,7 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0076_bdm_tasks_followups"
+revision = "0077_bdm_tasks_followups"
 down_revision = "0075_telecaller_profiles"
 branch_labels = None
 depends_on = None
@@ -266,7 +266,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {TASKS} WHERE source = 'manual' LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0076_bdm_tasks_followups: manual tasks exist. Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0077_bdm_tasks_followups: manual tasks exist. Remove them deliberately first.")
     for name in CHECKS:
         op.drop_constraint(name, TASKS, type_="check")
     for column in ("cancel_reason", "cancelled_at", "notes"):
@@ -275,7 +275,7 @@ def downgrade() -> None:
 
 - [ ] **Step 4: Extend the model** (`apps/api/app/models.py`, `class BdmTask`)
 
-Docstring: append "bdm-008 (DEC-SCOPE-074) adds notes, the cancellation time and reason, manual tasks and completion."
+Docstring: append "bdm-008 (DEC-SCOPE-075) adds notes, the cancellation time and reason, manual tasks and completion."
 Add to `__table_args__` after `ck_bdm_tasks_completed`:
 
 ```python
@@ -374,7 +374,7 @@ def test_update_is_partial_and_refuses_null_title_and_due():
 - [ ] **Step 3: Implement** (append to `schemas.py`)
 
 ```python
-# --- bdm-008 (DEC-SCOPE-074, spec §6): follow-ups and tasks ---------------------------------------------------------------------
+# --- bdm-008 (DEC-SCOPE-075, spec §6): follow-ups and tasks ---------------------------------------------------------------------
 BDM_TASK_LABELS = {"title": "Title", "notes": "Notes"}
 BdmTaskKind = Literal["follow_up", "task"]
 BdmTaskBucket = Literal["today", "overdue", "upcoming", "open", "done", "cancelled"]
@@ -598,7 +598,7 @@ def test_permissions_follow_owner_state_and_source():
 - [ ] **Step 3: Implement** `apps/api/app/services/bdm_tasks.py`
 
 ```python
-"""bdm-008 (DEC-SCOPE-074, spec §5-§7): follow-up and task scope, buckets, counts, permissions and output.
+"""bdm-008 (DEC-SCOPE-075, spec §5-§7): follow-up and task scope, buckets, counts, permissions and output.
 
 Functions only; nothing here commits -- the route owns the transaction. Every `{task_id}` resolves through the caller's scope in SQL,
 so another BDM's task is the same 404 as a missing one. Lock order: an outcome follow-up's appointment before the task (bdm-007's
@@ -948,7 +948,7 @@ async def test_list_refuses_bad_filters(client, db_session):
 - [ ] **Step 4: Implement** `apps/api/app/api/bdm_tasks.py` (list only for now)
 
 ```python
-"""bdm-008 (DEC-SCOPE-074, spec §6): BDM follow-ups and tasks.
+"""bdm-008 (DEC-SCOPE-075, spec §6): BDM follow-ups and tasks.
 
 Every `{task_id}` resolves through `services.bdm_tasks` scope (out of scope = 404); every write is one transaction -- scope, locks
 (appointment or organization before the task), owner, state, validation, change, audit, one commit here, log. Lists carry the
@@ -1489,7 +1489,7 @@ describe("bdmTasks (bdm-008 §6, §9)", () => {
 import { isPage, type Page } from "@/lib/apiErrors";
 import { ORG_TYPE_LABEL, type OrgType } from "@/lib/bdmOrganizations";
 
-// bdm-008 (DEC-SCOPE-074, spec §6, §9): follow-up and task types, labels and URLs. The API decides every rule; `permissions` only tells
+// bdm-008 (DEC-SCOPE-075, spec §6, §9): follow-up and task types, labels and URLs. The API decides every rule; `permissions` only tells
 // the UI which actions to offer.
 export const TASKS_URL = "/api/v1/bdm/tasks";
 export const TABS = ["today", "overdue", "upcoming", "done", "cancelled"] as const;
@@ -2498,8 +2498,8 @@ test("BDM follow-ups: add, counts, done, cancel, manager read-only, phone width"
 - [ ] **Step 2: Docs**
   - `DATA_MODEL.md` (`bdm_tasks` entry): append "bdm-008 (0076): `notes` (2000), `cancelled_at`, `cancel_reason` (500); `ck_bdm_tasks_cancelled`, `ck_bdm_tasks_cancel_reason`; archive cancels open items."
   - `API_CONTRACT.md`: a bdm-008 section with the five endpoints, parameters, `BdmTaskOut`, `BdmTaskPage.counts`, errors (spec §6) and the archive side effect.
-  - Decision register: `### DEC-SCOPE-074 — Follow-ups and tasks (bdm-008)` with Question, Evidence (EVID-016 §5/§13/§15/§4 Common), Answer F1–F7 + defaults, Status `EXPLICIT_APPROVAL` (in-session 2026-10-05/06), links to spec/plan, migration `0076`.
-  - Backlog bdm-008: a status block "implemented on `feature/bdm-008-follow-ups` (DEC-SCOPE-074, 0076) — NOT COMPLETE: awaiting browser validation and Codex review" + lite evidence.
+  - Decision register: `### DEC-SCOPE-075 — Follow-ups and tasks (bdm-008)` with Question, Evidence (EVID-016 §5/§13/§15/§4 Common), Answer F1–F7 + defaults, Status `EXPLICIT_APPROVAL` (in-session 2026-10-05/06), links to spec/plan, migration `0076`.
+  - Backlog bdm-008: a status block "implemented on `feature/bdm-008-follow-ups` (DEC-SCOPE-075, 0076) — NOT COMPLETE: awaiting browser validation and Codex review" + lite evidence.
   - RTM: a `bdm-008` row (requirement → decision → AC1–AC9 → screens → API/DB → tests → code).
   - ROLE_NAVIGATION: `/bdm/follow-ups`, `/bdm/manager/follow-ups`, the organization profile section, the nav entries. (Executed note: BDM screens carry no `SCREEN_CATALOG` id by precedent — bdm-001…007 and tel-001's note — so the catalogue files are not changed.)
 - [ ] **Step 3: Static checks** — `npx tsc --noEmit`; `npx eslint` on the changed web files; `python -m ruff check` on the changed api files; `python -m mypy app` and compare with `main`'s count.

@@ -1,7 +1,7 @@
 # bdm-008 — Exploratory browser QA and Playwright (2026-10-06)
 
 **Build under test:** `feature/bdm-008-follow-ups`, compose project `bdm008qa` (web `localhost:3108`, API `localhost:8108`, DB at
-`0076_bdm_tasks_followups`, seeded). The web container was rebuilt after the fixes below and every scenario re-run.
+`0077_bdm_tasks_followups`, seeded). The web container was rebuilt after the fixes below and every scenario re-run.
 **Tools:** Browser Use is not installed on this machine; as for bdm-007, the pass used throwaway Playwright scripts in the `web-test`
 container — an isolated Chromium per scenario (base URL `http://host.docker.internal:3108`) recording console errors, page errors,
 4xx/5xx responses and failed requests, with screenshots. Scripts were kept outside the repository; evidence in `artifacts/ci/pw008/`

@@ -10,7 +10,8 @@ describe("tel-001 navigation", () => {
 
   it("has a telecaller nav, a manager nav and the sign-in chooser path", () => {
     expect(TELECALLER_NAV.map((x) => x.href)).toEqual(["/telecaller/dashboard", "/telecaller/profile"]);
-    expect(TELECALLER_MANAGER_NAV.map((x) => x.href)).toEqual(["/telecaller/manager/team"]);
+    // tel-002 adds the catalogue pages after Team.
+    expect(TELECALLER_MANAGER_NAV.map((x) => x.href)).toEqual(["/telecaller/manager/team", "/telecaller/manager/products", "/telecaller/manager/campaigns"]);
     expect(TELECALLER_SIGN_IN).toBe("/telecaller/sign-in");
   });
 

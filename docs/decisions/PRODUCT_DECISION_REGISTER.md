@@ -3592,7 +3592,7 @@ independent Codex review are pending.
 
 **Evidence:** `EVID-019` (`functionalities/edusphere_markdown/Telecaller Functionalities.md`, `DERIVED_BLUEPRINT`); owner answers in-session
 2026-10-05.
-**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-05) for T1–T29 and TL1–TL8; VERIFIED on `feature/tel-001` — ready for owner sign-off (2026-10-05).
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-05) for T1–T29 and TL1–TL8; VERIFIED on `feature/tel-001` (2026-10-05); **MERGED** to `main` as PR #68 @ `e73dfa60` (2026-10-06).
 
 **Part A — Telecaller CRM (T1–T29).** Copied verbatim from `docs/delivery/TELECALLER_CRM_BACKLOG.md` §3.1. They lift
 `PRD_OPEN_ITEMS.md` item 61 / `CONFLICT_MATRIX.md` for `EVID-019`. T29 supersedes `DEC-SCOPE-072` L2/L7 for leads in the telecaller
@@ -3642,7 +3642,27 @@ pipeline; that supersession takes effect with `tel-018`.
 
 **Implementation:** migration `0075_telecaller_profiles`; roles `telecaller` (division = team) and `telecaller_manager` (`global`).
 
-### DEC-SCOPE-074 — Follow-ups and tasks (`bdm-008`)
+### DEC-SCOPE-074 — Telecaller product/interest catalogue and campaign list (`tel-002`)
+
+**Evidence:** `EVID-019` §2 (13 lead sources, "exact campaign/source", e.g. Instagram → Cyber Security → September 2026 Campaign) and §3
+(18 product/interest values); `DEC-SCOPE-073` T16, T17, T18; owner answers in-session 2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for P1–P4; VERIFIED on `feature/tel-002` (2026-10-06); **MERGED** to `main` as PR #69 @ `c80180be` (2026-10-06).
+
+| # | Question | Answer |
+|---|---|---|
+| P1 | Who reads the lists | `telecaller`, `telecaller_manager`, `super_admin`, `it_admin`, `overseas_admin`, `counselor` read **active** rows; `telecaller_manager` and `super_admin` also see inactive rows and alone write. Any other role → 403 |
+| P2 | Which team routes a product (T18) | **Fixed for IT/Overseas** (team = group). Only an `other` product's team is chosen: `it`, `overseas` or none (= unassigned queue). The optional course link is IT-only (`programs.id`) |
+| P3 | Campaign dates | Start **required**, end optional; end before start → 422 |
+| P4 | Deactivation | **Independent.** A campaign is created on / moved to an **active** product only; a campaign whose product was later deactivated stays editable |
+
+**Implementation:** migration `0076_tel_catalogue` (`tel_products` seeded with the 18 §3 values — Job Assistance and Career Change team
+`it`, Career Guidance and General Enquiry unassigned — and `tel_campaigns`); sources are the fixed §2 list (`app/tel_sources.py`), not
+manager-edited. API `GET/POST/PATCH /telecaller/products`, `GET/POST/PATCH /telecaller/campaigns`; screens `/telecaller/manager/products`
+and `/telecaller/manager/campaigns`. Design spec `docs/superpowers/specs/2026-10-06-tel-002-catalogue-design.md`.
+
+### DEC-SCOPE-075 — Follow-ups and tasks (`bdm-008`)
+
+**ID note (2026-10-06):** drafted as `DEC-SCOPE-074` with migration `0076_bdm_tasks_followups`; on merging `main` @ `784738e7`, `DEC-SCOPE-074` and `0076` are `tel-002` (`0076_tel_catalogue`), so this entry is `DEC-SCOPE-075` and the migration is `0077_bdm_tasks_followups` chained after `0076_tel_catalogue` (precedent: bdm-004's renumber to `DEC-SCOPE-071` / `0073`).
 
 **Question:** how do follow-ups and tasks work for a BDM — where they come from, how Today / Overdue / Upcoming are decided, what can be changed, what managers see, how they are counted by organization type, and what happens when an organization is archived (`BDM_CRM_BACKLOG.md` §4 bdm-008)?
 
@@ -3659,6 +3679,6 @@ pipeline; that supersession takes effect with `tel-018`.
 - **F7** After completing: "Log activity" and "Book appointment" links only (no stored activity → task link).
 - **Defaults:** no idempotency key (row lock + state check → 409); no ETag; no general rate limiter — 200 manual creates per BDM per IST day (409); task text never in logs or audit metadata.
 
-**Consequences:** migration `0076_bdm_tasks_followups` (`notes`, `cancelled_at`, `cancel_reason`, two CHECKs, backfill; downgrade refuses while manual tasks exist). New `GET/POST /bdm/tasks`, `PATCH /bdm/tasks/{id}`, `POST /bdm/tasks/{id}/complete`, `POST /bdm/tasks/{id}/cancel`; `sync_follow_up` records the cancellation time and reason; the organization archive cancels open items. Web: `/bdm/follow-ups`, `/bdm/manager/follow-ups`, nav "Follow-ups", "Follow-ups & tasks" on the organization profile.
+**Consequences:** migration `0077_bdm_tasks_followups` (`notes`, `cancelled_at`, `cancel_reason`, two CHECKs, backfill; downgrade refuses while manual tasks exist). New `GET/POST /bdm/tasks`, `PATCH /bdm/tasks/{id}`, `POST /bdm/tasks/{id}/complete`, `POST /bdm/tasks/{id}/cancel`; `sync_follow_up` records the cancellation time and reason; the organization archive cancels open items. Web: `/bdm/follow-ups`, `/bdm/manager/follow-ups`, nav "Follow-ups", "Follow-ups & tasks" on the organization profile.
 
-**Status:** `EXPLICIT_APPROVAL` for F1–F7; implemented on `feature/bdm-008-follow-ups` — **VERIFIED — ready for owner sign-off, NOT marked COMPLETE (2026-10-06, `feature/bdm-008-follow-ups` @ `ae5758f8`).** Fresh evidence on that commit: backend LITE 100 passed; ruff clean on changed files; mypy 401 = `main`'s 401 (no new errors); single alembic head `0076_bdm_tasks_followups` (offline SQL additive: 3 nullable columns, backfill before 2 CHECKs); web BDM set 431 passed (47 files); `tsc` 0; eslint 0 on changed web files; `next build` 0; Playwright bdm-008 + bdm-002 (2) / 006 / 007 / 009 — 6 passed on a stack rebuilt from that commit; browser verification (isolated Playwright Chromium, 20 areas + QA8-01/02 and QA8B-01…07 re-checks) passed with 0 page errors. Codex review waived by the owner. **Open for the owner:** Browser Use is not installed on this machine (isolated Playwright Chromium used instead); the full backend / web suites are the owner's; MoU-sourced follow-ups wait for bdm-005 (F1).
+**Status:** `EXPLICIT_APPROVAL` for F1–F7; implemented on `feature/bdm-008-follow-ups` — **VERIFIED — ready for owner sign-off, NOT marked COMPLETE (2026-10-06, `feature/bdm-008-follow-ups` @ `ae5758f8`).** Fresh evidence on that commit: backend LITE 100 passed; ruff clean on changed files; mypy 401 = `main`'s 401 (no new errors); single alembic head `0077_bdm_tasks_followups` (offline SQL additive: 3 nullable columns, backfill before 2 CHECKs); web BDM set 431 passed (47 files); `tsc` 0; eslint 0 on changed web files; `next build` 0; Playwright bdm-008 + bdm-002 (2) / 006 / 007 / 009 — 6 passed on a stack rebuilt from that commit; browser verification (isolated Playwright Chromium, 20 areas + QA8-01/02 and QA8B-01…07 re-checks) passed with 0 page errors. Codex review waived by the owner. **Open for the owner:** Browser Use is not installed on this machine (isolated Playwright Chromium used instead); the full backend / web suites are the owner's; MoU-sourced follow-ups wait for bdm-005 (F1).

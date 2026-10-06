@@ -1,7 +1,7 @@
 import { isPage, type Page } from "@/lib/apiErrors";
 import { ORG_TYPE_LABEL, type OrgType } from "@/lib/bdmOrganizations";
 
-// bdm-008 (DEC-SCOPE-074, spec §6, §9): follow-up and task types, labels and URLs. The API decides every rule; `permissions` only tells
+// bdm-008 (DEC-SCOPE-075, spec §6, §9): follow-up and task types, labels and URLs. The API decides every rule; `permissions` only tells
 // the UI which actions to offer.
 export const TASKS_URL = "/api/v1/bdm/tasks";
 export const TABS = ["today", "overdue", "upcoming", "done", "cancelled"] as const;

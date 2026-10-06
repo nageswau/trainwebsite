@@ -1,4 +1,4 @@
-"""bdm-008 (DEC-SCOPE-074, spec §6): BDM follow-ups and tasks.
+"""bdm-008 (DEC-SCOPE-075, spec §6): BDM follow-ups and tasks.
 
 Every `{task_id}` resolves through `services.bdm_tasks` scope (out of scope = 404); every write is one transaction -- scope, locks
 (appointment or organization before the task), owner, state, validation, change, audit, one commit here, log. Lists carry the

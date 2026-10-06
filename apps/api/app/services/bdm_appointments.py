@@ -59,7 +59,7 @@ NOT_STARTED = {
 NO_REPORT = "This appointment has no meeting report"
 REPORT_LOCKED = "Meeting reports can only be changed on the day they were filed"
 FOLLOW_UP_DONE = "This follow-up is already done"
-FOLLOW_UP_CLEARED = "Follow-up date removed from the meeting report"  # bdm-008 §4.1; migration 0076 backfills the same words
+FOLLOW_UP_CLEARED = "Follow-up date removed from the meeting report"  # bdm-008 §4.1; migration 0077 backfills the same words
 
 
 def appointment_types(bdm_type: str) -> tuple[str, ...]:

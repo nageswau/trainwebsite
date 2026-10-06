@@ -36,6 +36,7 @@ from app.models import (
     GENDERS,
 )
 from app.services.agent_visa import VISA_CASE_STAGES
+from app.tel_sources import TEL_SOURCES
 
 
 class LoginRequest(BaseModel):
@@ -4380,7 +4381,129 @@ class TelecallerAdminPage(BaseModel):
     offset: int
 
 
-# --- bdm-008 (DEC-SCOPE-074, spec §6): follow-ups and tasks ---------------------------------------------------------------------
+# --- tel-002 (DEC-SCOPE-074): product/interest catalogue + campaigns --------------------------------------------------------
+TelProductGroup = Literal["it", "overseas", "other"]
+TelSource = Literal[TEL_SOURCES]
+TelSortOrder = Annotated[StrictInt, Field(ge=0, le=9999)]
+TEL_CATALOGUE_FIELD_LABELS = {
+    "group": "Group", "name": "Name", "team": "Team", "program_id": "Course", "active": "Active", "sort_order": "Sort order",
+    "source": "Source", "product_id": "Product", "start_date": "Start date", "end_date": "End date",
+}
+
+
+def _tel_name(max_length: int):
+    """Trimmed, required, capped, no control characters; each failure names the field (services/telecaller._parse keeps a custom
+    validator's own sentence)."""
+
+    def check(value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Name is required")
+        if len(value) > max_length:
+            raise ValueError(f"Name must be at most {max_length} characters")
+        if _BDM_CONTROL.search(value):
+            raise ValueError("Name contains invalid characters")
+        return value
+
+    return Annotated[str, AfterValidator(check)]
+
+
+TelProductName, TelCampaignName = _tel_name(120), _tel_name(160)
+
+
+class TelProductCreate(BaseModel):
+    """P2: `team` may be omitted -- an IT/Overseas product takes its group's team, an Other product defaults to none (unassigned).
+    `sort_order` may be omitted -- the product goes to the end of its group."""
+
+    model_config = ConfigDict(extra="forbid")
+    group: TelProductGroup
+    name: TelProductName
+    team: TelecallerTeam | None = None
+    program_id: UUID | None = None
+    sort_order: TelSortOrder = None  # omitted = after the group's last product
+
+
+class TelProductUpdate(BaseModel):
+    """Omitted = unchanged. An explicit null clears `team` (Other only) or `program_id`; on any other key it is a 422. `group` exists
+    only so a change is refused with a sentence (it is fixed once created)."""
+
+    model_config = ConfigDict(extra="forbid")
+    group: TelProductGroup = None
+    name: TelProductName = None
+    team: TelecallerTeam | None = None
+    program_id: UUID | None = None
+    active: StrictBool = None
+    sort_order: TelSortOrder = None
+
+
+class TelCampaignCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: TelCampaignName
+    source: TelSource
+    product_id: UUID
+    start_date: date
+    end_date: date | None = None
+
+
+class TelCampaignUpdate(BaseModel):
+    """Omitted = unchanged; null clears only `end_date`. The date order is checked on the merged row (services/telecaller_catalogue)."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: TelCampaignName = None
+    source: TelSource = None
+    product_id: UUID = None
+    start_date: date = None
+    end_date: date | None = None
+    active: StrictBool = None
+
+
+class TelProgramRef(BaseModel):
+    id: UUID
+    title: str
+
+
+class TelProductOut(BaseModel):
+    id: UUID
+    group: str
+    name: str
+    team: str | None
+    program: TelProgramRef | None
+    active: bool
+    sort_order: int
+
+
+class TelProductPage(BaseModel):
+    items: list[TelProductOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class TelCampaignProductRef(BaseModel):
+    id: UUID
+    name: str
+    group: str
+    active: bool
+
+
+class TelCampaignOut(BaseModel):
+    id: UUID
+    name: str
+    source: str
+    product: TelCampaignProductRef
+    start_date: date
+    end_date: date | None
+    active: bool
+
+
+class TelCampaignPage(BaseModel):
+    items: list[TelCampaignOut]
+    total: int
+    limit: int
+    offset: int
+
+
+# --- bdm-008 (DEC-SCOPE-075, spec §6): follow-ups and tasks ---------------------------------------------------------------------
 BDM_TASK_LABELS = {"title": "Title", "notes": "Notes"}
 BdmTaskKind = Literal["follow_up", "task"]
 BdmTaskBucket = Literal["today", "overdue", "upcoming", "open", "done", "cancelled"]

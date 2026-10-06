@@ -2,7 +2,7 @@
 
 - **Item:** `bdm-008` (`docs/delivery/BDM_CRM_BACKLOG.md` §4). Depends on bdm-002 (organizations) and bdm-007 (merged,
   `0072_bdm_meeting_reports`, which created the minimal `bdm_tasks` table and the one-follow-up-per-appointment sync).
-- **Decision:** `DEC-SCOPE-074`. **Migration:** `0076_bdm_tasks_followups` (down_revision `0075_telecaller_profiles`).
+- **Decision:** `DEC-SCOPE-075`. **Migration:** `0077_bdm_tasks_followups` (down_revision `0076_tel_catalogue`; renumbered from `0076` on merging `main` @ `784738e7`, where tel-002 holds `DEC-SCOPE-074` / `0076`).
 - **Branch:** `feature/bdm-008-follow-ups` from `origin/main` @ `e73dfa60`.
 - **Evidence:** `EVID-016` `BDM Functionalities.md` (`DERIVED_BLUEPRINT`) §5 Calendar (172–196: "Follow-ups", "Tasks"), §13
   Management dashboard alerts (413–434: "Follow-up overdue"), §15 My Day (476–506: "4 College follow-ups, 2 Agent follow-ups,
@@ -45,7 +45,7 @@ no ETag (not contracted; one writer per row); no general rate limiter — a crea
 (bdm-009 V10's 409 pattern). Query parameters keep the API's snake_case; action sub-paths (`/complete`, `/cancel`) follow
 `/archive`, `/assign`, `/confirm`.
 
-## 4. Data model (migration `0076_bdm_tasks_followups`)
+## 4. Data model (migration `0077_bdm_tasks_followups`)
 
 `bdm_tasks` gains three nullable columns; nothing is dropped or retyped.
 
@@ -59,7 +59,7 @@ no ETag (not contracted; one writer per row); no general rate limiter — a crea
   `cancelled_at = updated_at`, `cancel_reason = 'Follow-up date removed from the meeting report'`.
 - **Fresh database guard (0072's idiom):** when `0001`'s `create_all` already built the columns from the models, skip the DDL but
   still run the backfill.
-- **Downgrade** refuses while a `manual` task exists ("Cannot downgrade 0076_bdm_tasks_followups: manual tasks exist …") — their
+- **Downgrade** refuses while a `manual` task exists ("Cannot downgrade 0077_bdm_tasks_followups: manual tasks exist …") — their
   notes and reasons would be lost; otherwise drops the two CHECKs and three columns (outcome follow-ups lose only derivable data).
 - `BdmTask` in `models.py` gains the same columns and CHECKs. `BDM_TASK_CANCEL_REASON_*` constants live in `services/bdm_tasks.py`.
 

@@ -28,6 +28,7 @@ from sqlalchemy.sql import func
 
 from app.bdm_stages import FIRST_STAGE as BDM_FIRST_STAGE
 from app.bdm_stages import MANUAL_STAGES as BDM_MANUAL_STAGES
+from app.tel_sources import TEL_SOURCES
 
 
 class Base(DeclarativeBase):
@@ -995,6 +996,48 @@ class TelecallerProfile(Base, TimestampMixin):
     reporting_manager_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
+class TelProduct(Base, TimestampMixin):
+    """tel-002 (DEC-SCOPE-074 P2, T17/T18): a product/interest a lead can name. IT and Overseas products route to their own team;
+    only an `other` product's team is chosen (none = the unassigned queue). The optional course link is IT-only. Never deleted:
+    deactivating hides it from pickers while leads keep the link."""
+
+    __tablename__ = "tel_products"
+    __table_args__ = (
+        CheckConstraint("product_group IN ('it', 'overseas', 'other')", name="ck_tel_products_group"),
+        CheckConstraint("team IN ('it', 'overseas')", name="ck_tel_products_team"),
+        CheckConstraint("product_group = 'other' OR team = product_group", name="ck_tel_products_team_matches_group"),
+        CheckConstraint("program_id IS NULL OR product_group = 'it'", name="ck_tel_products_program_it_only"),
+        Index("uq_tel_products_group_name", "product_group", text("lower(name)"), unique=True),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    product_group: Mapped[str] = mapped_column(String(20))
+    name: Mapped[str] = mapped_column(String(120))
+    team: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    program_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("programs.id"), nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+
+
+class TelCampaign(Base, TimestampMixin):
+    """tel-002 (T16, P3/P4): a marketing campaign -- the "Instagram → Cyber Security → September 2026" of EVID-019 §2. The source is
+    one of the fixed §2 sources; the product must be active when it is set (services/telecaller_catalogue)."""
+
+    __tablename__ = "tel_campaigns"
+    __table_args__ = (
+        CheckConstraint(f"source IN ({', '.join(repr(s) for s in TEL_SOURCES)})", name="ck_tel_campaigns_source"),
+        CheckConstraint("end_date IS NULL OR end_date >= start_date", name="ck_tel_campaigns_dates"),
+        Index("uq_tel_campaigns_name", text("lower(name)"), unique=True),
+        Index("ix_tel_campaigns_product", "product_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(160))
+    source: Mapped[str] = mapped_column(String(30))
+    product_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("tel_products.id"))
+    start_date: Mapped[date] = mapped_column(Date)
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+
+
 # bdm-010 (DEC-SCOPE-063, T6): TRV-000123 codes. On the metadata so 0001's create_all makes it on a fresh database; 0068 makes it
 # on an upgraded one. A rolled-back create skips a number; codes stay unique and increasing.
 BDM_TRIP_CODE_SEQ = Sequence("bdm_trip_code_seq", metadata=Base.metadata)
@@ -1338,7 +1381,7 @@ class BdmMeetingReport(Base, TimestampMixin):
 
 
 class BdmTask(Base, TimestampMixin):
-    """bdm-007 creates follow-ups (`source = appointment_outcome`, one per appointment); bdm-008 (DEC-SCOPE-074) adds manual tasks,
+    """bdm-007 creates follow-ups (`source = appointment_outcome`, one per appointment); bdm-008 (DEC-SCOPE-075) adds manual tasks,
     notes, completion, the cancellation time and reason, and the pages. `mou` stays reserved for bdm-005."""
 
     __tablename__ = "bdm_tasks"

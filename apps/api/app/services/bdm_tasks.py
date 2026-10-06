@@ -1,4 +1,4 @@
-"""bdm-008 (DEC-SCOPE-074, spec §5-§7): follow-up and task scope, buckets, counts, permissions and output.
+"""bdm-008 (DEC-SCOPE-075, spec §5-§7): follow-up and task scope, buckets, counts, permissions and output.
 
 Functions only; nothing here commits -- the route owns the transaction. Every `{task_id}` resolves through the caller's scope in SQL,
 so another BDM's task is the same 404 as a missing one. Lock order: an outcome follow-up's appointment before the task (bdm-007's

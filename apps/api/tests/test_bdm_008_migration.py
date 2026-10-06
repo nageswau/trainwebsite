@@ -1,4 +1,4 @@
-"""bdm-008 -- migration 0076_bdm_tasks_followups (spec §4). Isolated database per test (the bdm-007 pattern)."""
+"""bdm-008 -- migration 0077_bdm_tasks_followups (spec §4). Isolated database per test (the bdm-007 pattern)."""
 
 import asyncio
 import importlib.util
@@ -17,12 +17,12 @@ from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_bdm_008_migration_0076", VERSIONS / "0076_bdm_tasks_followups.py")
+_spec = importlib.util.spec_from_file_location("_bdm_008_migration_0077", VERSIONS / "0077_bdm_tasks_followups.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE = "0075_telecaller_profiles"
-HEAD = "0076_bdm_tasks_followups"
+BASE = "0076_tel_catalogue"
+HEAD = "0077_bdm_tasks_followups"
 
 
 def _config() -> Config:
@@ -31,7 +31,7 @@ def _config() -> Config:
     return cfg
 
 
-def test_chains_after_0075_and_is_on_the_single_chain():
+def test_chains_after_0076_and_is_on_the_single_chain():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
@@ -67,7 +67,7 @@ TASK = (
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0075 whose bdm_tasks is put back to 0072's shape (0001's create_all builds it from the models), holding one
+    """A fresh database at 0076 whose bdm_tasks is put back to 0072's shape (0001's create_all builds it from the models), holding one
     open and one cancelled (bdm-007 "date cleared") task."""
     cfg = _config()
     original = settings.database_url

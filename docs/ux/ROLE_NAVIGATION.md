@@ -291,9 +291,11 @@ Signs in at `/it/login` (IT team, division `it`) or `/overseas/login` (Overseas 
 
 ## Telecaller Manager *(net-new, 2026-10-05, `DEC-SCOPE-073`, `tel-001`)*
 
-Division `global`; signs in at `/admin/login`; lands on `/telecaller/manager/team`. Sidebar: Team. Password recovery stays in the admin portal: "Forgot your password?" on `/admin/login` → `/admin/forgot-password`; the welcome/reset link opens `/admin/reset-password`, and after a reset the form follows the API's `login_portal` (`"admin"`).
+Division `global`; signs in at `/admin/login`; lands on `/telecaller/manager/team`. Sidebar: Team · Products · Campaigns (tel-002). Password recovery stays in the admin portal: "Forgot your password?" on `/admin/login` → `/admin/forgot-password`; the welcome/reset link opens `/admin/reset-password`, and after a reset the form follows the API's `login_portal` (`"admin"`).
 
 - /telecaller/manager/team — the telecallers who report to this manager (paged, inactive included).
+- /telecaller/manager/products — *(tel-002, `DEC-SCOPE-074`)* the product/interest catalogue: create, edit, deactivate/reactivate; a Super Admin uses the same URL.
+- /telecaller/manager/campaigns — *(tel-002)* the campaign list (source → product → campaign): create, edit, deactivate/reactivate.
 
 **Signed-out `/telecaller/*` (TL1):** `/telecaller/manager/*` → `/admin/login?next=…`; any other `/telecaller/*` → the public chooser `/telecaller/sign-in?next=…` ("IT team" → `/it/login?next=…`, "Overseas team" → `/overseas/login?next=…`, plus the line "Telecaller Managers sign in at Administration" linking to `/admin/login`).
 

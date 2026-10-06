@@ -40,14 +40,14 @@ def require_creator_may(actor: User, team: str, route: str) -> None:
         raise _cannot_manage(team)
 
 
-def _readable(error: dict) -> str:
+def _readable(error: dict, labels: dict[str, str]) -> str:
     """The admin sees a sentence naming the field, not a pydantic path (bdm-001 QA-08)."""
     field = str(error["loc"][0]) if error["loc"] else ""
-    label = TELECALLER_FIELD_LABELS.get(field, field)
+    label = labels.get(field, field)
     if error["type"] == "extra_forbidden":
         return f"Unknown field: {field}"
     explicit_null = "input" in error and error["input"] is None
-    if error["type"] == "missing" or (explicit_null and field in TELECALLER_FIELD_LABELS and field != "phone"):
+    if error["type"] == "missing" or (explicit_null and field in labels and field != "phone"):
         return f"{label} is required"
     if error["type"] == "value_error":
         return error["msg"].removeprefix("Value error, ")
@@ -56,15 +56,15 @@ def _readable(error: dict) -> str:
     return f"{label}: {error['msg']}"
 
 
-def _parse(model: type[BaseModel], raw, not_an_object: str):
+def _parse(model: type[BaseModel], raw, not_an_object: str, labels: dict[str, str] = TELECALLER_FIELD_LABELS):
     """The /admin/users payload is an untyped dict (existing contract), so nested objects are validated here; the first error becomes
-    a readable 422."""
+    a readable 422. tel-002 reuses it for the catalogue bodies with its own labels."""
     if not isinstance(raw, dict):
         raise HTTPException(422, not_an_object)
     try:
         return model.model_validate(raw)
     except ValidationError as exc:
-        raise HTTPException(422, _readable(exc.errors()[0])) from None
+        raise HTTPException(422, _readable(exc.errors()[0], labels)) from None
 
 
 def parse_profile_create(raw) -> TelecallerProfileCreate:

@@ -70,7 +70,11 @@ export const BDM_SIGN_IN = "/bdm/sign-in";
 export const TELECALLER_NAV: NavItem[] = [
   { label: "Dashboard", href: "/telecaller/dashboard" }, { label: "Profile", href: "/telecaller/profile" },
 ];
-export const TELECALLER_MANAGER_NAV: NavItem[] = [{ label: "Team", href: "/telecaller/manager/team" }];
+// tel-002: Products and Campaigns (the catalogue the manager maintains).
+export const TELECALLER_MANAGER_NAV: NavItem[] = [
+  { label: "Team", href: "/telecaller/manager/team" }, { label: "Products", href: "/telecaller/manager/products" },
+  { label: "Campaigns", href: "/telecaller/manager/campaigns" },
+];
 export const TELECALLER_SIGN_IN = "/telecaller/sign-in";
 
 // SCH-001/SCH-003 -- School roles use their own dedicated pages (bespoke forms/actions,

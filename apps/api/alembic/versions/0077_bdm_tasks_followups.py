@@ -1,18 +1,18 @@
-"""bdm-008 (DEC-SCOPE-074): follow-ups and tasks -- notes, cancelled_at and cancel_reason on bdm_tasks.
+"""bdm-008 (DEC-SCOPE-075): follow-ups and tasks -- notes, cancelled_at and cancel_reason on bdm_tasks.
 
 Rows bdm-007 already cancelled (the meeting report's follow-up date was cleared) get their time and reason, so "cancelled <=> a
 cancellation time" holds for every row. Additive: no column is dropped or retyped.
 
-Revision ID: 0076_bdm_tasks_followups
-Revises: 0075_telecaller_profiles
+Revision ID: 0077_bdm_tasks_followups
+Revises: 0076_tel_catalogue
 """
 
 import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0076_bdm_tasks_followups"
-down_revision = "0075_telecaller_profiles"
+revision = "0077_bdm_tasks_followups"
+down_revision = "0076_tel_catalogue"
 branch_labels = None
 depends_on = None
 
@@ -46,7 +46,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {TASKS} WHERE source = 'manual' LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0076_bdm_tasks_followups: manual tasks exist. Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0077_bdm_tasks_followups: manual tasks exist. Remove them deliberately first.")
     for name in CHECKS:
         op.drop_constraint(name, TASKS, type_="check")
     for column in ("cancel_reason", "cancelled_at", "notes"):

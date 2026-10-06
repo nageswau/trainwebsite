@@ -2,7 +2,7 @@
 
 **No code was changed in this pass.** Build under test: `feature/bdm-008-follow-ups` @ `d66de2d6` (web image built from `d5604c04`; the
 later commits change only tests and docs), compose project `bdm008qa` (web `localhost:3108`, API `localhost:8108`, DB at
-`0076_bdm_tasks_followups`, seeded).
+`0077_bdm_tasks_followups`, seeded).
 **Tools:** Browser Use is **not installed** on this machine (`browser_use` not importable, no CLI). As in the bdm-007 pass, throwaway
 Playwright scripts ran in the `web-test` container — an **isolated Chromium context per scenario** (base URL
 `http://host.docker.internal:3108`) recording console errors, page errors, every 4xx/5xx response, failed requests, main-frame
