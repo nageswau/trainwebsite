@@ -530,6 +530,30 @@ URL), `expired_on`, `created_by`, `permissions {can_edit, can_upload, can_renew}
 limit. **Retry semantics:** a retried create answers `409 mou_exists`; a retried status change answers `409 mou_status_changed`. No
 idempotency key.
 
+**`bdm-018` / `DEC-SCOPE-079` (built 2026-10-06; migration `0080_bdm_onboarding`, after `0079_bdm_mous`) — school onboarding handover.**
+Design spec `docs/superpowers/specs/2026-10-06-bdm-018-school-onboarding-handover-design.md` §5. Three things change additively:
+`POST /overseas-admin/schools` accepts an optional `bdm_onboarding_request_id` (absent = unchanged), `SchoolOut` gains
+`linked_bdm {full_name, active, organization_code} | null` (derived from the linked organization's assignee, H1; returned only on the
+overseas-admin School routes), and the BDM organization detail gains `onboarding` (null unless `bdm_type = 'school'`). The School
+pipeline's live steps (9–14) now take `done` / `current` / `upcoming` from the linked School's evidence (spec §4); `stage` stays the stored
+manual stage. Unchanged: `PATCH /overseas-admin/schools/{id}` (no `bdm_user_id`), the stage-move route, the pipeline view, `/school/*`,
+and ENH-029's bulk template.
+
+| Method/Path | Auth | Scope | Notes |
+|---|---|---|---|
+| `POST /bdm/organizations/{id}/onboarding-request` `{note?}` | `bdm`, `super_admin` | `can_edit` | `201 {organization}`; a School organization whose current MoU reads Signed or Active, not Lost, not linked, none pending; in-app notice to every active `overseas_admin` |
+| `GET /overseas-admin/bdm-onboarding-requests?status=pending\|completed\|rejected&limit=&offset=` | `overseas_admin`, `super_admin` | all | `{items, total, limit, offset}`; pending oldest first, else newest resolved first; items carry the organization prefill, primary contact, MoU reference / signed date, requester, assigned BDM, School |
+| `POST /overseas-admin/bdm-onboarding-requests/{id}/reject` `{reason}` | `overseas_admin`, `super_admin` | all | `200` item; the BDM is told the reason (in-app); the BDM may request again |
+| `POST /overseas-admin/bdm-onboarding-requests/{id}/link` `{school_code}` | `overseas_admin`, `super_admin` | all | `200` item; links an existing School (H3); the BDM is told (in-app) |
+| `POST /overseas-admin/schools` `{…, bdm_onboarding_request_id?}` | `overseas_admin`, `super_admin` | all | `201` as before; with the id, School + Coordinator + link + completed request commit together |
+
+**Status table:** `401` no session; `403` wrong role ("Overseas Admin role required") or not `can_edit`; `404` organization outside scope,
+"Onboarding request not found"; `409` archived ("Restore this organization first"), `{code: "organization_lost"}`,
+`{code: "request_pending"}`, `{code: "already_linked"}`, `{code: "request_resolved"}`, `{code: "school_linked"}`; `422` "Onboarding
+requests are for School organizations", "The MoU must be Signed or Active to request onboarding", "No School has that School ID", field
+errors (empty reason, note over 1000). **Retry semantics:** a retried request answers `409 request_pending`; a retried reject / link /
+create answers `409 request_resolved`. No idempotency key.
+
 **`bdm-017` / `DEC-SCOPE-072` (built 2026-10-05; migration `0074_enquiry_bdm_attribution`) — student lead attribution.**
 Design spec `docs/superpowers/specs/2026-10-05-bdm-017-lead-attribution-design.md` §4–§5. Two new BDM routes and two new admin routes;
 `GET /admin/leads` is extended **additively** (every existing key, the 500-row cap and the ordering unchanged); `PATCH /admin/leads/{id}`,

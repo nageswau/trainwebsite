@@ -3749,3 +3749,38 @@ conversion routes are unchanged (`DEC-SCOPE-072`). Design spec `docs/superpowers
 - **M9** An Expired MoU refuses status changes (409 `mou_expired`) but accepts date / reference / notes corrections and a document.
 
 **Consequences:** migration `0079_bdm_mous` (new `bdm_mous`, append-only `bdm_mou_events`; no existing row touched; downgrade refuses while MoUs exist); routes `GET|POST|PATCH /bdm/organizations/{id}/mou`, `PUT /bdm/organizations/{id}/mou/document`, `GET /bdm/mous`, `GET /bdm/mous/{id}/history`, `GET /bdm/mous/{id}/document`; an MoU card on both organization detail pages; pages `/bdm/mous`, `/bdm/manager/mous`. Residual risk recorded, not changed: `/local-files` serves the local upload directory unauthenticated (existing). **New Feature ID authorized:** `bdm-005`. **Status:** VERIFIED, not yet COMPLETE (2026-10-06): Fresh evidence on the merged HEAD (main @ `442ce465` merged; `d9183437`): backend lite (bdm-005 / 008 / 004 / 002, tel-002) 359 passed, 2 failed — the two `test_bdm_002_migration` round trips, which fail identically on `origin/main` @ `442ce465` (bdm-017's `enquiries` FK blocks the 0066 downgrade; `bdm_mous` adds a second FK of the same kind); web unit 2762 passed, 1 failed — `dateZoneSweep` lists only the ten pre-existing entries also failing on main (bdm-005's two were fixed); `tsc` 0; eslint 0 errors (no warning in bdm-005 files); ruff / format clean; mypy 0 in bdm-005 modules (+2 = the two `Literal[tuple]` aliases, the bdm-006 / tel-002 pattern); `next build` ok; one alembic head `0079_bdm_mous`, offline SQL additive only; Playwright bdm-005 + bdm-008 + bdm-004 + bdm-002 5 passed. Exploratory QA pass 1 (isolated Playwright Chromium; Browser Use not installed) found QA5-01…06: QA5-01 (stale field edit, `expected_updated_at` → 409 `mou_changed`), QA5-02 (focus after Not yet / Escape), QA5-04 (filters one scrolling row), QA5-05 (actions beside the status) and QA5-06 (read-only reason) fixed test-first and re-verified in the browser; QA5-03 not reproducible through the UI (a click after the session ends cancels the download and the page stays; only a typed API URL shows the JSON, as every API route). Open: Browser Use itself, the owner's full suites, the Codex review the owner set aside.
+
+### DEC-SCOPE-079 — School onboarding handover + `schools` link (`bdm-018`)
+
+**ID note:** free on `main` @ `230a043f` (2026-10-06, after bdm-005 / PR #77 took `DEC-SCOPE-078` and `0079_bdm_mous`). If another item
+reaches `main` first, this entry and migration `0080_bdm_onboarding` are renumbered on merge.
+
+**Question:** how a School-module BDM hands a signed school over to Overseas Admin, how the created (or existing) School is linked to the
+organization, what the School records as its BDM, what happens to the legacy `schools.edusphere_bdm` text (Q-16), and how the live School
+stages 9–14 are derived (`BDM_CRM_BACKLOG.md` §4 bdm-018)?
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md`, `DERIVED_BLUEPRINT`) School §B / §D; `DEC-SCOPE-055` D5, D8, Q-16 (D25); `DEC-SCOPE-071`
+S3 (the `live_status` hook); `DEC-SCOPE-078` M2 (effective MoU status); bdm-018 impact analysis 2026-10-06 (graphify-led).
+
+**Resolution:** owner, in-session 2026-10-06 (`EXPLICIT_APPROVAL` — four structured questions, each answered with the recommended
+option; spec `docs/superpowers/specs/2026-10-06-bdm-018-school-onboarding-handover-design.md` §1):
+- **H1** The School's BDM is **derived from the link** (`bdm_organizations.school_id`, unique); no `schools.bdm_user_id` column and no
+  PATCH field. `SchoolOut.linked_bdm` is read-only.
+- **H2** Live stages from **per-step evidence**: School Onboarding (linked; a pending request makes it current), Users Created (≥1
+  teacher, ≥1 parent link, ≥1 student), Career Guidance (a completed guidance session), Psychometric (a completed assessment), Profile
+  Building (a portfolio entry or personal statement), University Planning (a bridged overseas application).
+- **H3** An existing School is linked **through the BDM's request** (the admin chooses Create or Link by School ID); admins never browse
+  BDM organizations.
+- **H4** `edusphere_bdm` is **read-only in the UI** (create input removed, edit panel shows it as a legacy note); the API still accepts it.
+- Defaults recorded with the answers: H5 the assigned BDM or super_admin requests; H6 School module only, not Lost / archived / linked /
+  pending, MoU effective status Signed or Active; H7 in-app notices only; H8 a rejected request may be followed by a new one; H9 no unlink;
+  H10 the BDM sees the School's name and ID plus the step states, no School-portal data; H11 live stages are never stored and the pipeline
+  view is unchanged.
+
+**Consequences:** migration `0080_bdm_onboarding` (new `bdm_onboarding_requests`; `bdm_organizations.school_id`; no existing row touched;
+downgrade refuses while requests or links exist); routes `POST /bdm/organizations/{id}/onboarding-request`,
+`GET /overseas-admin/bdm-onboarding-requests`, `POST …/{id}/reject`, `POST …/{id}/link`; `POST /overseas-admin/schools` accepts
+`bdm_onboarding_request_id` (route-only `SchoolCreateIn`, so ENH-029's bulk template is unchanged); `SchoolOut.linked_bdm`; the organization
+detail's `onboarding` and live pipeline steps; a School onboarding card on both organization pages; the onboarding queue above the
+School create form; the linked BDM on the School edit panel. Follow-ups logged: unlinking a wrong link; per-school counts (bdm-020);
+the School's BDM on deactivation (bdm-025). **New Feature ID authorized:** `bdm-018`. **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-018.
