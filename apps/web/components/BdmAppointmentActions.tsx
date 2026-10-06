@@ -50,7 +50,10 @@ export default function BdmAppointmentActions({ appointment, bdmType, onChanged 
     if (outcome.ok && isAppointmentBody(outcome.data)) {
       setOpen(null);
       setWarning(null);
-      return onChanged(outcome.data.appointment, DONE[path]);
+      const next = outcome.data.appointment;
+      const trip = appointment.trip; // bdm-011: a reschedule outside the trip's dates is unlinked by the API -- say so
+      return onChanged(next, path === "reschedule" && trip && !next.trip
+        ? `${DONE[path]} It is now outside ${trip.code}'s dates, so it was removed from that trip.` : DONE[path]);
     }
     if (!outcome.ok && path === "complete") {
       if (outcome.status === 409) {

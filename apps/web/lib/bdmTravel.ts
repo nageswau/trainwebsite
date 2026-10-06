@@ -1,4 +1,5 @@
 import { detailMessage } from "@/lib/apiErrors";
+import type { AppointmentStatus } from "@/lib/bdmAppointments";
 
 // bdm-010 (DEC-SCOPE-063): trip types, labels and endpoints shared by the BDM, manager and admin travel screens.
 export type TripMode = "flight" | "train" | "bus" | "car" | "cab" | "local";
@@ -12,7 +13,18 @@ export type TripRow = {
   accommodation_required: boolean; estimated_cost: string; actual_cost: string; currency: "INR"; approval_status: ApprovalStatus;
   travel_status: TravelStatus; submitted_at: string | null;
 };
+// bdm-011 (DEC-SCOPE-079): the appointments linked to a trip and the figures computed from them. A null figure has nothing to be
+// computed from (no estimate given, nothing completed); `actual_revenue` is always null for now -- not tracked (D17).
+export type ItineraryItem = {
+  id: string; code: string; starts_at: string; duration_minutes: number; appointment_type: string; status: AppointmentStatus;
+  organization: { id: string; name: string }; expected_leads: number | null; expected_revenue: string | null;
+};
+export type TripMetrics = {
+  meetings_planned: number; meetings_completed: number; estimated_cost: string; actual_cost: string; cost_per_completed_meeting: string | null;
+  expected_leads: number | null; expected_revenue: string | null; actual_leads: number; actual_revenue: string | null;
+};
 export type Trip = TripRow & {
+  itinerary: ItineraryItem[]; metrics: TripMetrics;
   purpose: string; remarks: string | null; rejection_reason: string | null; decided_by: PersonRef | null; decided_at: string | null;
   completed_at: string | null; cancelled_at: string | null; expenses: TripExpense[];
   can_edit: boolean; can_submit: boolean; can_withdraw: boolean; can_start: boolean; can_complete: boolean; can_cancel: boolean;
@@ -30,6 +42,16 @@ export const TEAM_TRIPS_URL = "/api/v1/bdm/manager/trips";
 export const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 export const tripUrl = (id: string) => `${TRIPS_URL}/${id}`;
 export const teamTripUrl = (id: string) => `${TEAM_TRIPS_URL}/${id}`;
+/** bdm-011: the page paths for one trip, as its BDM ("owner") or their manager sees it. The travel reminder (bdm-012) deep-links to
+ * the trip page's sections: #trip-appointments (View Appointments), #trip-costs (View Expenses), #trip-remarks (Add Remarks). */
+export const tripPagePath = (view: "owner" | "manager", id: string) => (view === "owner" ? `/bdm/travel/${id}` : `/bdm/manager/trips/${id}`);
+export const appointmentPagePath = (view: "owner" | "manager", id: string) =>
+  view === "owner" ? `/bdm/appointments/${id}` : `/bdm/manager/appointments/${id}`;
+const IST_TIME = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit", hour12: true });
+const IST_DAY = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short" });
+/** An itinerary row's time in India ("10:00 am"); with its day ("18 Sep, 10:00 am") when the trip spans several days. */
+export const itineraryWhen = (iso: string, withDay: boolean) =>
+  withDay ? `${IST_DAY.format(new Date(iso))}, ${IST_TIME.format(new Date(iso))}` : IST_TIME.format(new Date(iso));
 export const PAST_DAYS = 30;
 /** Rupees with up to 2 decimals (the API's TRIP_AMOUNT_FORMAT); the API decides. */
 export const AMOUNT_PATTERN = /^\d+(\.\d{1,2})?$/;

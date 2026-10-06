@@ -4,16 +4,28 @@ Functions only; nothing here commits -- the route owns the transaction. One tran
 and the UI's `can_*` flags. Logs carry ids, route, action and state -- never places, purpose, remarks, reason or amounts (S11)."""
 
 import logging
-from datetime import UTC, date, datetime, timedelta
-from decimal import Decimal
+from datetime import UTC, date, datetime, time, timedelta
+from decimal import ROUND_HALF_UP, Decimal
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.models import BDM_TRIP_CODE_SEQ, AuditLog, BdmProfile, BdmTrip, BdmTripExpense, User
+from app.models import (
+    BDM_APPOINTMENT_OPEN,
+    BDM_TRIP_CODE_SEQ,
+    AuditLog,
+    BdmAppointment,
+    BdmOrganization,
+    BdmProfile,
+    BdmTrip,
+    BdmTripExpense,
+    Enquiry,
+    User,
+)
 from app.services.bdm import bdm_context, require_manager, team_filter
 
 logger = logging.getLogger("app.bdm")
@@ -170,11 +182,13 @@ async def update_trip(db: AsyncSession, user: User, trip: BdmTrip, body, today: 
         if not allowed(trip, "edit", today):
             raise _refuse(user, trip, "edit", refusal(trip, "edit", today))
         check_dates(changes.get("travel_date", trip.travel_date), changes.get("return_date", trip.return_date), today)
+    unlinked = await _keep_links_in_range(db, user, trip, changes.get("travel_date", trip.travel_date), changes.get("return_date", trip.return_date))
     before = {k: getattr(trip, k) for k in changes}
     for key, value in changes.items():
         setattr(trip, key, value)
     await db.flush()
-    audit(db, user, "update", trip, before=before, after=changes)
+    extra: dict[str, Any] = {"unlinked_appointments": unlinked} if unlinked else {}
+    audit(db, user, "update", trip, before=before, after=changes, **extra)
 
 
 async def transition(db: AsyncSession, user: User, trip: BdmTrip, action: str, today: date) -> None:
@@ -269,8 +283,11 @@ async def trip_out(db: AsyncSession, trip: BdmTrip, user: User, today: date) -> 
     else:
         flags = dict.fromkeys(FLAG_ACTIONS, False) | {
             "can_decide": allowed(trip, "decide", today) and decider_may(user, await reporting_manager(db, trip))}
+    actual_cost = sum((e.amount for e in expenses), Decimal(0))
+    itinerary, metrics = await _itinerary(db, trip, actual_cost)
     return {
-        **_row(trip, owner.full_name, sum((e.amount for e in expenses), Decimal(0))),
+        **_row(trip, owner.full_name, actual_cost),
+        "itinerary": itinerary, "metrics": metrics,
         "purpose": trip.purpose, "remarks": trip.remarks, "rejection_reason": trip.rejection_reason,
         "decided_by": {"id": decided_by.id, "full_name": decided_by.full_name} if decided_by else None,
         "decided_at": trip.decided_at, "completed_at": trip.completed_at, "cancelled_at": trip.cancelled_at,
@@ -360,3 +377,108 @@ async def delete_expense(db: AsyncSession, user: User, trip: BdmTrip, expense_id
     await db.delete(expense)
     await db.flush()
     audit(db, user, "expense_delete", trip, **meta)
+
+
+# --- bdm-011 (DEC-SCOPE-079): appointments linked to a trip ---------------------------------------------------------------------
+
+
+def ist_day(moment: datetime) -> date:
+    return moment.astimezone(INDIA).date()
+
+
+def covers(trip: BdmTrip, day: date) -> bool:
+    return trip.travel_date <= day <= trip.return_date
+
+
+def _outside(travel: date, ret: date):
+    """Appointments whose IST date is outside [travel, ret], as an instant range (so ix_bdm_appointments_trip narrows first)."""
+    return or_(BdmAppointment.starts_at < datetime.combine(travel, time(), INDIA),
+               BdmAppointment.starts_at >= datetime.combine(ret + timedelta(days=1), time(), INDIA))
+
+
+async def linkable_trip(db: AsyncSession, user: User, trip_id, starts_at: datetime) -> BdmTrip:
+    """L2: the caller's own trip (another BDM's is 404), still planned or in progress (409), covering the appointment's IST date
+    (422). FOR SHARE: a concurrent date edit or cancel (FOR UPDATE) waits for this link, or this link sees its result. The caller
+    already holds the appointment lock -- the order is always appointment -> trip."""
+    trip = await db.scalar(select(BdmTrip).where(BdmTrip.id == trip_id, BdmTrip.bdm_user_id == user.id)
+                           .with_for_update(read=True).execution_options(populate_existing=True))
+    if trip is None:
+        raise HTTPException(404, "Trip not found")
+    if trip.travel_status not in UNDERWAY:
+        raise HTTPException(409, f"This trip {state_phrase(trip)} and can't take appointments")
+    day = ist_day(starts_at)
+    if not covers(trip, day):
+        raise HTTPException(422, f"This appointment is on {day:%d %b %Y}, outside {trip.code} ({trip.travel_date:%d %b %Y} – {trip.return_date:%d %b %Y})")
+    return trip
+
+
+def trip_ref(trip: BdmTrip) -> dict:
+    return {k: getattr(trip, k) for k in ("id", "code", "from_place", "to_place", "travel_date", "return_date", "approval_status", "travel_status")}
+
+
+async def _keep_links_in_range(db: AsyncSession, user: User, trip: BdmTrip, travel: date, ret: date) -> list[str]:
+    """A date edit must not strand a linked appointment. Open ones the BDM can fix (unlink or reschedule), so refuse (422). Closed
+    ones can't be edited any more: they are unlinked here and their codes go into the trip's audit row."""
+    outside = [BdmAppointment.trip_id == trip.id, _outside(travel, ret)]
+    stranded = await db.scalar(select(func.count()).select_from(BdmAppointment).where(*outside, BdmAppointment.status.in_(BDM_APPOINTMENT_OPEN))) or 0
+    if stranded:
+        noun, them = ("appointment falls", "it") if stranded == 1 else ("appointments fall", "them")
+        raise _refuse(user, trip, "edit", HTTPException(422, f"{stranded} linked {noun} outside the new dates — unlink or reschedule {them} first"))
+    closed = list(await db.scalars(select(BdmAppointment).where(*outside)))
+    for appt in closed:
+        appt.trip_id = None
+    return sorted(a.code for a in closed)
+
+
+LEAD_GRACE_DAYS = 7  # L1: leads entered up to a week after the return date still count for the trip
+
+
+def _total(values):
+    """A sum over the estimates that were given; None when none was (never a fabricated 0)."""
+    given = [v for v in values if v is not None]
+    return sum(given) if given else None
+
+
+async def _actual_leads(db: AsyncSession, trip: BdmTrip, org_ids: set) -> int:
+    """L1: the BDM's own attributed leads of the organizations met (completed), created travel date .. return date + 7 (IST)."""
+    if not org_ids:
+        return 0
+    return await db.scalar(select(func.count()).select_from(Enquiry).where(
+        Enquiry.bdm_user_id == trip.bdm_user_id, Enquiry.bdm_organization_id.in_(org_ids),
+        Enquiry.created_at >= datetime.combine(trip.travel_date, time(), INDIA),
+        Enquiry.created_at < datetime.combine(trip.return_date + timedelta(days=LEAD_GRACE_DAYS + 1), time(), INDIA),
+    )) or 0
+
+
+async def _itinerary(db: AsyncSession, trip: BdmTrip, actual_cost: Decimal) -> tuple[list[dict], dict]:
+    """The linked appointments (one query, organization joined) and the College §F figures computed from them (L3: cancelled
+    appointments are listed but neither planned nor summed)."""
+    rows = (await db.execute(
+        select(BdmAppointment, BdmOrganization.name).join(BdmOrganization, BdmOrganization.id == BdmAppointment.organization_id)
+        .where(BdmAppointment.trip_id == trip.id).order_by(BdmAppointment.starts_at, BdmAppointment.id)
+    )).all()
+    planned = [a for a, _ in rows if a.status != "cancelled"]
+    done = [a for a in planned if a.status == "completed"]
+    expected_revenue = _total(a.expected_revenue for a in planned)
+    metrics = {
+        "meetings_planned": len(planned), "meetings_completed": len(done),
+        "estimated_cost": _money(trip.estimated_cost), "actual_cost": _money(actual_cost),
+        "cost_per_completed_meeting": (Decimal(actual_cost) / len(done)).quantize(CENTS, ROUND_HALF_UP) if done else None,
+        "expected_leads": _total(a.expected_leads for a in planned),
+        "expected_revenue": None if expected_revenue is None else _money(expected_revenue),
+        "actual_leads": await _actual_leads(db, trip, {a.organization_id for a in done}),
+        "actual_revenue": None,  # D17: not tracked until a revenue source exists for trips
+    }
+    itinerary = [
+        {"id": a.id, "code": a.code, "starts_at": a.starts_at, "duration_minutes": a.duration_minutes, "appointment_type": a.appointment_type,
+         "status": a.status, "organization": {"id": a.organization_id, "name": name}, "expected_leads": a.expected_leads,
+         "expected_revenue": a.expected_revenue}
+        for a, name in rows
+    ]
+    return itinerary, metrics
+
+
+def linkable_filters(today: date) -> list:
+    """The appointment form's trip choices (L2): still underway and not yet ended -- an appointment is always in the future, so a trip
+    that ended before today can't cover one. The form narrows them to the chosen date."""
+    return [BdmTrip.travel_status.in_(UNDERWAY), BdmTrip.return_date >= today]

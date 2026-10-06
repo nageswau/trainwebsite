@@ -37,10 +37,11 @@ def _config() -> Config:
     return cfg
 
 
-def test_chains_after_0078_and_is_the_single_head():
+def test_chains_after_0078_and_is_on_the_single_chain():
     migration = _migration()
     assert (migration.revision, migration.down_revision) == (HEAD, BASE)
-    assert ScriptDirectory.from_config(_config()).get_heads() == [HEAD]
+    script = ScriptDirectory.from_config(_config())  # bdm-011's 0080 follows; still one head
+    assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
 
 
 def test_frozen_lists_and_checks_equal_the_model():

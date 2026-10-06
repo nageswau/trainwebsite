@@ -28,9 +28,11 @@ from app.models import (
     BdmOrganizationContact,
     BdmProfile,
     BdmTask,
+    BdmTrip,
     User,
 )
 from app.schemas import BDM_REPORT_TEXT_FIELDS
+from app.services import bdm_travel as travel
 from app.services.bdm import bdm_context, person_ref
 
 logger = logging.getLogger("app.bdm")
@@ -304,8 +306,10 @@ async def appointment_out(db: AsyncSession, user: User, appt: BdmAppointment, *,
             "submitted_at": report.submitted_at, "updated_at": report.updated_at,
         }
     follow_up = await load_follow_up(db, appt.id)
+    trip = await db.get(BdmTrip, appt.trip_id, populate_existing=True) if appt.trip_id else None
     return {
         **row_out(appt, org, owner, now),
+        "trip": travel.trip_ref(trip) if trip else None,
         **{k: getattr(appt, k) for k in ("contact_id", "contact_designation", "contact_phone", "contact_email", "location", "purpose", "remarks", "outcome", "next_follow_up_on", "expected_leads", "expected_revenue", "created_at", "updated_at")},
         "events": [
             {"from_status": e.from_status, "to_status": e.to_status, "old_starts_at": e.old_starts_at, "new_starts_at": e.new_starts_at, "reason": e.reason, "actor_name": name, "created_at": e.created_at}
@@ -315,6 +319,18 @@ async def appointment_out(db: AsyncSession, user: User, appt: BdmAppointment, *,
         "follow_up": None if follow_up is None else {"id": follow_up.id, "due_on": follow_up.due_on, "status": follow_up.status},
         "permissions": permissions(user, appt, now, report),
     }
+
+
+async def unlink_if_outside_trip(db: AsyncSession, user: User, appt: BdmAppointment) -> None:
+    """bdm-011 edge case: a reschedule that leaves the linked trip's dates unlinks it (audited; the page says so). Lock order
+    appointment -> trip, as every link."""
+    if appt.trip_id is None:
+        return
+    trip = await db.get(BdmTrip, appt.trip_id, with_for_update={"read": True}, populate_existing=True)
+    if trip is not None and travel.covers(trip, travel.ist_day(appt.starts_at)):
+        return
+    audit(db, user, "trip_unlinked", appt.id, {"trip_id": str(appt.trip_id), "reason": "rescheduled_outside_trip"})
+    appt.trip_id = None
 
 
 def audit(db: AsyncSession, user: User, action: str, appt_id: UUID, metadata: dict | None = None) -> None:

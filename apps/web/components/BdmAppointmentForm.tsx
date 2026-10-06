@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useState } from "react";
 
 import BdmAppointmentFields, { type FieldValues } from "@/components/BdmAppointmentFields";
+import BdmAppointmentTripField, { covers } from "@/components/BdmAppointmentTripField";
 import BdmOverlapAlert from "@/components/BdmOverlapAlert";
 import FormMessage, { type FormMessageState } from "@/components/FormMessage";
 import SearchableSelect from "@/components/SearchableSelect";
@@ -11,14 +12,17 @@ import { sendJson } from "@/lib/apiErrors";
 import type { BdmType } from "@/lib/bdm";
 import { type Appointment, APPOINTMENTS_URL, isAppointmentBody, isoToIstInput, istInputToIso, myOrganizationSearch, type Overlap, overlap as readOverlap } from "@/lib/bdmAppointments";
 import { isOrganizationBody, LINK_STYLE, type OrgContact, type Organization, ORGS_URL } from "@/lib/bdmOrganizations";
+import type { TripRow } from "@/lib/bdmTravel";
 
 // bdm-006 (spec §6.2, R-F3-R-F6): book an appointment (create) or edit an open one (edit: no time -- that is Reschedule). The API
 // decides every rule; this form keeps the entry on any failure and shows the message. Any
 // field change clears the overlap warning, and the warning keeps the exact body that was checked: "Save anyway" resends that body, never
 // the current fields (an edit made while the request was pending cannot be confirmed unchecked).
-type Props =
+// bdm-011: `trips` are the BDM's open trips (read once by the page); `tripsUnavailable` says that read failed.
+type Props = (
   | { mode: "create"; bdmType: BdmType; initialOrganization: Organization | null }
-  | { mode: "edit"; bdmType: BdmType; appointment: Appointment; onSaved: (a: Appointment, saved: boolean) => void; onCancel: () => void };
+  | { mode: "edit"; bdmType: BdmType; appointment: Appointment; onSaved: (a: Appointment, saved: boolean) => void; onCancel: () => void }
+) & { trips?: TripRow[]; tripsUnavailable?: boolean };
 
 const primaryOf = (contacts: OrgContact[]) => (contacts.find((c) => c.is_primary) ?? contacts[0])?.id ?? "";
 const text = (v: string | null) => v ?? "";
@@ -67,9 +71,13 @@ export default function BdmAppointmentForm(props: Props) {
   const [message, setMessage] = useState<FormMessageState | null>(null);
   const [warning, setWarning] = useState<{ overlap: Overlap; body: Record<string, unknown> } | null>(null);
   const [errors, setErrors] = useState<EstimateErrors>({});
+  const trips = props.trips ?? [];
+  const [tripId, setTripId] = useState(editing?.trip?.id ?? "");
+  const day = values.when.slice(0, 10); // the IST date (datetime-local); an edit keeps its time, so its date never changes here
   const set = <K extends keyof FieldValues>(key: K, value: FieldValues[K]) => {
     setWarning(null);
     if (key === "leads" || key === "revenue") setErrors((e) => ({ ...e, [key]: undefined }));
+    if (key === "when" && tripId && !trips.some((t) => t.id === tripId && covers(t, String(value).slice(0, 10)))) setTripId(""); // left the trip
     setValues((v) => ({ ...v, [key]: value }));
   };
 
@@ -88,10 +96,11 @@ export default function BdmAppointmentForm(props: Props) {
   }, []);
 
   function changedFields(a: Appointment): Record<string, unknown> {
-    const next: Record<string, unknown> = { ...fieldBody(values), contact_id: values.contactId || a.contact_id };
+    const next: Record<string, unknown> = { ...fieldBody(values), contact_id: values.contactId || a.contact_id, trip_id: tripId || null };
     const before: Record<string, unknown> = {
       contact_id: a.contact_id, duration_minutes: a.duration_minutes, appointment_type: a.appointment_type, location: a.location, purpose: a.purpose,
       remarks: a.remarks, expected_leads: a.expected_leads, expected_revenue: a.expected_revenue === null ? null : String(Number(a.expected_revenue)),
+      trip_id: a.trip?.id ?? null,
     };
     if (next.expected_revenue !== null) next.expected_revenue = String(Number(next.expected_revenue));
     return Object.fromEntries(Object.entries(next).filter(([k, v]) => v !== before[k]));
@@ -119,7 +128,7 @@ export default function BdmAppointmentForm(props: Props) {
       if (!Object.keys(body).length) return edit.onSaved(edit.appointment, false);
       return void send(body, false);
     }
-    void send({ organization_id: orgId, starts_at: istInputToIso(values.when), ...fieldBody(values) }, false);
+    void send({ organization_id: orgId, starts_at: istInputToIso(values.when), ...fieldBody(values), trip_id: tripId || null }, false);
   }
 
   function handle(outcome: Awaited<ReturnType<typeof sendJson>>, body: Record<string, unknown>, onOk: (a: Appointment) => void) {
@@ -173,6 +182,8 @@ export default function BdmAppointmentForm(props: Props) {
         </p>
       )}
       <BdmAppointmentFields values={values} set={set} bdmType={props.bdmType} contacts={contacts} contactsLoading={contactsLoading} showWhen={!editing} contactRequired={!(editing && editing.contact_id === null)} errors={errors} />
+      <BdmAppointmentTripField trips={trips} current={editing?.trip ?? null} day={day} value={tripId} unavailable={props.tripsUnavailable}
+        onChange={(id) => { setWarning(null); setTripId(id); }} />
       {message && <FormMessage message={message} />}
       {warning && <BdmOverlapAlert overlap={warning.overlap} busy={busy} onConfirm={() => void send(warning.body, true)} onCancel={() => setWarning(null)} />}
       <div className="actions">
