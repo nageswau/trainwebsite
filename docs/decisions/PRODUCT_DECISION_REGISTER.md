@@ -3641,3 +3641,24 @@ pipeline; that supersession takes effect with `tel-018`.
 - TL8 `PATCH /auth/me` refuses name/profile changes for `telecaller` (phone validated with the `/telecaller/profile` rule); other roles unchanged (owner, 2026-10-05).
 
 **Implementation:** migration `0075_telecaller_profiles`; roles `telecaller` (division = team) and `telecaller_manager` (`global`).
+
+### DEC-SCOPE-074 — Follow-ups and tasks (`bdm-008`)
+
+**Question:** how do follow-ups and tasks work for a BDM — where they come from, how Today / Overdue / Upcoming are decided, what can be changed, what managers see, how they are counted by organization type, and what happens when an organization is archived (`BDM_CRM_BACKLOG.md` §4 bdm-008)?
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md`, `DERIVED_BLUEPRINT`) §5 Calendar (172–196: "Follow-ups", "Tasks"), §13 Management dashboard alerts (413–434: "Follow-up overdue"), §15 My Day (476–506: "4 College follow-ups, 2 Agent follow-ups, 1 MoU follow-up"), §4 Common reminders (1254–1334: "Follow-up reminder", "Task reminder"); backlog D18 (`DERIVED_BLUEPRINT`); bdm-007 `DEC-SCOPE-070` R1 (the minimal `bdm_tasks` table and its one-follow-up-per-appointment sync).
+
+**Resolution:** owner, in-session 2026-10-05/06 (`EXPLICIT_APPROVAL` — answers to structured questions, approach A and design sections 1–3; the owner then directed implementation; design spec `docs/superpowers/specs/2026-10-06-bdm-008-follow-ups-design.md` §3).
+
+- **F1** Scope: data + pages only. `source='mou'` stays reserved for bdm-005; the task reminder (bdm-012), calendar (bdm-013), My Day (bdm-014) and "Follow-up overdue" tile (bdm-023) read bdm-008's list and filters later.
+- **F2** A follow-up created by a meeting report is complete-only on the follow-ups page; its date changes or clears only through the report (bdm-007 R7).
+- **F3** Manual items: kind (follow-up / task), title ≤ 200, due date (IST, today or later), optional organization (one the BDM may edit, not archived), optional notes ≤ 2000; edit title / notes / due date while open; complete; cancel with a required reason. Done and cancelled are final. Date only, no time.
+- **F4** Managers read their team (super_admin all); only the assigned BDM writes.
+- **F5** Counts by the 7 organization types + "No organization", from the list's own filters.
+- **F6** Archiving an organization cancels its open items with "Organization archived"; restore reopens nothing.
+- **F7** After completing: "Log activity" and "Book appointment" links only (no stored activity → task link).
+- **Defaults:** no idempotency key (row lock + state check → 409); no ETag; no general rate limiter — 200 manual creates per BDM per IST day (409); task text never in logs or audit metadata.
+
+**Consequences:** migration `0076_bdm_tasks_followups` (`notes`, `cancelled_at`, `cancel_reason`, two CHECKs, backfill; downgrade refuses while manual tasks exist). New `GET/POST /bdm/tasks`, `PATCH /bdm/tasks/{id}`, `POST /bdm/tasks/{id}/complete`, `POST /bdm/tasks/{id}/cancel`; `sync_follow_up` records the cancellation time and reason; the organization archive cancels open items. Web: `/bdm/follow-ups`, `/bdm/manager/follow-ups`, nav "Follow-ups", "Follow-ups & tasks" on the organization profile.
+
+**Status:** `EXPLICIT_APPROVAL` for F1–F7; implemented on `feature/bdm-008-follow-ups` — **NOT COMPLETE**: browser validation and the independent Codex review are pending; the full backend / web suites are the owner's.

@@ -494,6 +494,8 @@ Conventions used below:
 
 ### bdm-008 — Follow-ups and tasks
 
+> **Status (2026-10-06):** implemented on `feature/bdm-008-follow-ups` (`DEC-SCOPE-074`, migration `0076_bdm_tasks_followups`) — **NOT COMPLETE**: browser validation and the independent Codex review are pending; the full backend / web suites are the owner's. Owner decisions F1–F7: data + pages only (MoU source reserved for bdm-005; reminders, calendar, My Day and the alert tile read this later), outcome follow-ups complete-only, lean manual items (date only, final when done / cancelled), managers read the team, counts by organization type + "No organization", archive cancels open items, links only after Done. Lite evidence (2026-10-06): backend LITE 100 passed; ruff clean on changed files; mypy 401 = `main`'s baseline; web BDM set 418 passed; `tsc` 0; eslint 0. Spec: `docs/superpowers/specs/2026-10-06-bdm-008-follow-ups-design.md`; plan: `docs/superpowers/plans/2026-10-06-bdm-008-follow-ups.md`.
+
 - **Business requirement:** follow-ups by organization type (college/agent/MoU follow-ups, §15), "Follow-up overdue" alerts (§13), tasks on the calendar (§5), and the task reminder (§4).
 - **Existing behavior:** none. `ang-016` plans agent-side tasks for the Agent CRM, but they are a different tenant and are not shared.
 - **Expected behavior:**
