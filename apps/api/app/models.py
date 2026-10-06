@@ -843,6 +843,47 @@ class LeadEnquiry(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+QUAL_SKILL_LEVELS = ("beginner", "intermediate", "advanced")
+QUAL_MODES = ("online", "offline")
+QUAL_STUDY_LEVELS = ("ug", "masters")
+QUAL_PASSPORT = ("none", "applied", "valid")
+
+
+def _in(column: str, values: tuple[str, ...]) -> str:
+    return f"{column} IS NULL OR {column} IN ({', '.join(repr(v) for v in values)})"
+
+
+class LeadQualification(Base, TimestampMixin):
+    """tel-009 (DEC-SCOPE-092, EVID-019 §4): a lead's qualification -- the basic answers plus the IT or overseas requirement. One row per
+    lead; the shared answers (qualification, passing year, city, state) stay on `enquiries` (QD1). The group not shown for the lead's
+    current product keeps its values (AC3)."""
+
+    __tablename__ = "lead_qualifications"
+    __table_args__ = (
+        CheckConstraint("work_experience_years IS NULL OR work_experience_years BETWEEN 0 AND 50", name="ck_lead_qualifications_experience"),
+        CheckConstraint("academic_percentage IS NULL OR academic_percentage BETWEEN 0 AND 100", name="ck_lead_qualifications_percentage"),
+        CheckConstraint(_in("it_skill_level", QUAL_SKILL_LEVELS), name="ck_lead_qualifications_skill_level"),
+        CheckConstraint(_in("preferred_mode", QUAL_MODES), name="ck_lead_qualifications_mode"),
+        CheckConstraint(_in("study_level", QUAL_STUDY_LEVELS), name="ck_lead_qualifications_study_level"),
+        CheckConstraint(_in("passport_status", QUAL_PASSPORT), name="ck_lead_qualifications_passport"),
+    )
+    lead_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="CASCADE"), primary_key=True)
+    current_org: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    work_experience_years: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    it_skill_level: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    career_objective: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    preferred_batch: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    budget_range: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    preferred_mode: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    study_level: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    preferred_course: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    intake: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    academic_percentage: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    english_test_status: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    passport_status: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
 class LeadImportBatch(Base, TimestampMixin):
     """tel-006 (DEC-SCOPE-091, IM1): one CSV lead import for a campaign. The file is never stored (R9): only its hash, the counts and each
     row's outcome {row_number, status, lead_id, error} -- no names, phones or emails. The Idempotency-Key is scoped to the uploader (R8)."""
