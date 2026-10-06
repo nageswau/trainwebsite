@@ -12,8 +12,8 @@ from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.lookups import _pattern as like_pattern
 from app.api.deps import get_current_user
+from app.api.lookups import _pattern as like_pattern
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import unique_student_code, uuid_reference
@@ -394,7 +394,11 @@ async def leads(division: str | None = None, status: str | None = None, source: 
     # bdm-017 (spec §5): rows also carry organization / bdm / converted_user (null for website leads).
     # tel-003 (DEC-SCOPE-075, T25): a {items,total,limit,offset} page (the 500-row cap is gone) with the lead fields; every filter is
     # ANDed with the division scope, so it can only narrow. `q` is a literal substring of the Lead ID, name, email, phone or subject.
-    filters = [Enquiry.division == user.division] if user.role != "super_admin" else [Enquiry.division == division] if division else []
+    filters = []
+    if user.role != "super_admin":
+        filters.append(Enquiry.division == user.division)
+    elif division:
+        filters.append(Enquiry.division == division)
     for column, value in ((Enquiry.status, status), (Enquiry.source, source), (Enquiry.product_id, product_id), (Enquiry.campaign_id, campaign_id),
                           (Enquiry.telecaller_user_id, telecaller_user_id), (Enquiry.bdm_organization_id, bdm_organization_id)):
         if value:

@@ -122,11 +122,15 @@ export default function AdminLeadManagementPanel() {
   useEffect(() => {
     const controller = new AbortController();
     setLoadFailed(false);
-    getPage<AdminLeadRow>(requestUrl, controller.signal).then(setData).catch(() => controller.signal.aborted || setLoadFailed(true));
+    getPage<AdminLeadRow>(requestUrl, controller.signal)
+      .then((page) => {
+        for (const lead of page.items) if (lead.organization) seen.current.set(lead.organization.id, lead.organization);
+        setData(page);
+      })
+      .catch(() => controller.signal.aborted || setLoadFailed(true));
     return () => controller.abort();
   }, [requestUrl, version]);
 
-  for (const lead of data?.items ?? []) if (lead.organization) seen.current.set(lead.organization.id, lead.organization);
   const organizations = [...seen.current.values()].sort((a, b) => a.code.localeCompare(b.code));
 
   /** A new filter or search starts again from the first page; only the pager passes an offset. */
