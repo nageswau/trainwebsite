@@ -81,8 +81,9 @@ New columns on `enquiries`:
   Filters: Stage, Source (the 13 labels; "Website" replaces the old "Website (no organization)" option), Product (the tel-002
   `TelecallerProductOptions` picker), Campaign, Telecaller (`/admin/users?role=telecaller`), Organization (the organizations on the
   current page plus the selected one). The search becomes a submit-on-Enter search form. A pager appears when `total > 50`.
-- Columns: Lead ID, Name (+ phone), Interest (product name, else subject), Source · Campaign, Telecaller, Priority, Organization,
-  CRM sync, Status, Student, Action. Loading / error + Retry / empty / no-match states. The table scrolls horizontally inside `table-scroll`.
+- Columns: Name (the sticky row header, kept first so it stays in view — QA17-03), Lead ID, Interest (product name, else subject),
+  Source · Campaign, Telecaller, Priority, Organization, CRM sync, Status, Student, Action. The filter bar is its own component
+  (`AdminLeadFilters.tsx`; frontend review: keeps the panel focused). Loading / error + Retry / empty / no-match states. The table scrolls horizontally inside `table-scroll`.
 - `app/admin/[module]/page.tsx` leads table reads `.items` and shows `lead_code` as the reference.
 - `lib/telecallerCatalogue.ts`: `activeCampaigns()`, built on the same paged reader as `activeProducts()`.
 

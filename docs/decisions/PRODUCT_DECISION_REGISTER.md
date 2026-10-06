@@ -3660,3 +3660,26 @@ pipeline; that supersession takes effect with `tel-018`.
 `it`, Career Guidance and General Enquiry unassigned — and `tel_campaigns`); sources are the fixed §2 list (`app/tel_sources.py`), not
 manager-edited. API `GET/POST/PATCH /telecaller/products`, `GET/POST/PATCH /telecaller/campaigns`; screens `/telecaller/manager/products`
 and `/telecaller/manager/campaigns`. Design spec `docs/superpowers/specs/2026-10-06-tel-002-catalogue-design.md`.
+
+### DEC-SCOPE-075 — Lead record: Lead ID, EVID-019 §2 fields, admin list alignment (`tel-003`)
+
+**Evidence:** `EVID-019` §2 ("Every lead should have a Lead ID", the 18 lead fields, the 13 sources); `DEC-SCOPE-073` T6, T25, T29;
+owner answers in-session 2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for L1–L2; L3–L6 are recorded defaults the owner did not change.
+Implemented on `feature/tel-003`; not yet merged.
+
+| # | Question | Answer |
+|---|---|---|
+| L1 (Q-01) | Lead ID format | **`LD-000001`, one global sequence**, a database default on every insert path (no truncation past 999999); existing rows backfilled oldest-first |
+| L2 | Legacy `source` values outside the 13 §2 values | Case/space-folded first; anything still unknown → **`other`**, the original kept in `metadata_json.legacy_source` (a clean downgrade restores it). The public API answers `422` for a source outside the list |
+| L3 (Q-04) | Mobile normalisation | Reuse ENH-014 `normalise_phone` (`+91` default for an Indian 10-digit mobile, `+` E.164 kept, else null) — a model validator, so it follows every `phone` change |
+| L4 (Q-03) | Nullable email | Not changed here; tel-005 (phone-only manual leads) owns it |
+| L5 | Admin status editor | Unchanged until tel-004's stage engine |
+| L6 | Q-02 / Q-21 | Deferred to tel-004 (status mapping) and tel-005/013/014 (consent, retention) |
+
+**Implementation:** migration `0077_enquiry_lead_record` (13 columns on `enquiries` — `lead_code`, `phone_normalized`, `whatsapp_number`,
+`city`, `state`, `qualification`, `passing_year`, `institution`, `product_id`, `campaign_id`, `telecaller_user_id`, `priority`,
+`stage_changed_at` — CHECKs on source/priority/passing year, unique Lead ID, five indexes; downgrade refuses while lead data exists).
+`GET /admin/leads` becomes `{items,total,limit,offset}` with stage/source/product/campaign/telecaller/organization/search filters
+(**breaking**; every in-repo consumer updated); `POST /public/enquiries` and the CRM payload add `lead_code`. bdm-017's columns and
+conversion routes are unchanged (`DEC-SCOPE-072`). Design spec `docs/superpowers/specs/2026-10-06-tel-003-lead-record-design.md`.

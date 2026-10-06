@@ -255,6 +255,8 @@ NO-ASSUMPTION MODE. Prepared 2026-10-05 at the user's request. **No code was wri
 
 ### tel-003 — Lead record: `enquiries` extension, Lead ID, admin list alignment
 
+**Status (2026-10-06):** implemented and verified on `feature/tel-003` (`DEC-SCOPE-075` L1–L6, migration `0077_enquiry_lead_record`) — ready for owner sign-off; not yet merged.
+
 - **Business requirement:** §2 "Every lead should have a Lead ID" and the 18 fields; T6, T25.
 - **Existing behavior:** see §0. bdm-017 adds attribution and link columns.
 - **Expected behavior:**

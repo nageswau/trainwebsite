@@ -2965,6 +2965,19 @@ row is a card of labelled lines.
   offered as "(inactive)". **States:** as above (search and page in the URL, `?q=&offset=`); no active product → the create button is disabled with a link to
   Products.
 
+## tel-003 addendum (2026-10-06, `DEC-SCOPE-075`) — Admin lead list
+
+One existing screen changes (design spec `docs/superpowers/specs/2026-10-06-tel-003-lead-record-design.md` §5); no new route, roles unchanged.
+
+- **Route:** `/{it|overseas}/admin/leads` ("Manage leads", `AdminLeadManagementPanel` + `AdminLeadFilters`). **Data:**
+  `GET /admin/leads?status=&source=&product_id=&campaign_id=&telecaller_user_id=&bdm_organization_id=&q=&limit=50&offset=`; filter options
+  from `GET /telecaller/products` and `/telecaller/campaigns` (active, all pages) and `GET /admin/users?role=telecaller`. **Content:** search
+  (Lead ID, name, email, phone or subject; submit on Enter), filters Stage / Source (13) / Product (grouped) / Campaign / Telecaller /
+  Organization, a table (Name — sticky row header; Lead ID; Interest = product, else subject; Source · Campaign; Telecaller or "Unassigned";
+  Priority; Organization; CRM sync; Status; Student link; status action). **States:** loading, error + Retry, "No leads found.", "No leads
+  match these filters.", a pager over 50 ("Showing x–y of n"); filters, search and page live in the URL. The table scrolls sideways inside
+  its card at phone width.
+
 ## Required findings report
 
 ### FEATURE_WITHOUT_REQUIRED_SCREEN
