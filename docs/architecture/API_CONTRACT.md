@@ -1082,6 +1082,31 @@ AGN-023 branch.)
 | `GET /telecaller/imports?limit=&offset=` | `200 {items: [{id, campaign, division, uploaded_by: {id, full_name}, total_rows, created_count, attached_count, rejected_count, created_at}], total, limit, offset}`, newest first; a manager's own imports, super_admin all |
 | `GET /telecaller/imports/{id}` | `200` the report above; `404 "Import not found"` for another manager's import |
 
+## 12P. Lead follow-ups (`tel-011`) — addendum, 2026-10-06
+
+`DEC-SCOPE-093`; design spec `docs/superpowers/specs/2026-10-06-tel-011-follow-ups-design.md` §3. Migration `0089_lead_follow_ups`. Scope is
+the lead's (`lead_pipeline.scope`): a telecaller their leads, a manager their reports' leads and their teams' unassigned queue, super_admin
+all; other roles `403`, signed out `401`, out of scope `404`. Only the lead's telecaller writes (`403` for managers); a handed-over lead is
+`403` for its telecaller. (§12O is claimed by the open tel-009 branch.)
+
+Follow-up item: `{id, due_at, reason, notes, next_action, status: open|done|cancelled, overdue, lead: {id, lead_code, name, priority, status,
+status_label, product, telecaller}, created_by, created_at, completed_at, completed_by, cancelled_at, cancel_reason, can_change}`. `reason` is
+one of `discuss_with_parents, course_details, fee_details, waiting_salary, waiting_documents, comparing_courses, next_month, next_intake,
+university_information, counselor_call`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/follow-ups?view=day\|overdue&day=YYYY-MM-DD&limit=&offset=` | `200 {items, total, limit, offset, day, counts: {day, overdue}}`. `day` (default): open follow-ups due in that IST day (default today), oldest first. `overdue`: every open follow-up past its due time, oldest first. `422` for an unknown view or a malformed day |
+| `GET /telecaller/leads/{id}/follow-ups?limit=&offset=` | `200` page of the lead's follow-ups: open by due time, then done/cancelled newest first |
+| `POST /telecaller/leads/{id}/follow-ups` | `{due_at (with offset), reason, notes?, next_action?, move_to_follow_up?}` → `201` item. `409` closed lead or 20 open follow-ups; `422` a past time / beyond 366 days (on `due_at`), or a stage move tel-004 refuses. Not idempotent. Audit `lead_follow_up.create` |
+| `PATCH /telecaller/follow-ups/{id}` | `{due_at?, reason?, notes?, next_action?}` → `200`; only changed values written (audit `lead_follow_up.update` with field names); a changed `due_at` must be in the future; `409` done/cancelled |
+| `POST /telecaller/follow-ups/{id}/complete` | `200`; `409 "This follow-up is already done"` / cancelled. Audit `lead_follow_up.complete` |
+| `POST /telecaller/follow-ups/{id}/cancel` | `{reason}` (required, ≤ 500) → `200`; `409` done/cancelled. Audit `lead_follow_up.cancel` |
+| `GET /telecaller/leads?follow_up=today\|overdue` | tel-008's list narrowed to leads with an open follow-up due today (IST) / overdue |
+
+A move to a closed stage (`POST /telecaller/leads/{id}/stage`, `PATCH /admin/leads` stage) cancels the lead's open follow-ups with
+`cancel_reason` "Lead closed".
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

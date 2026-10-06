@@ -4134,3 +4134,28 @@ only. R10 `metadata_json.import_batch_id` on created leads and attached enquirie
 (`GET /telecaller/imports/template`, `POST /telecaller/imports`, `GET /telecaller/imports`, `GET /telecaller/imports/{id}`); web page
 `/telecaller/manager/imports` ("Lead import" in the manager nav). **New Feature ID authorized:** `tel-006`. **Status:** see
 `TELECALLER_CRM_BACKLOG.md` §4 tel-006.
+
+### DEC-SCOPE-093 — Lead follow-ups (`tel-011`)
+
+**Evidence:** `EVID-019` §7 (L266–L312); `DEC-SCOPE-073` T13, T19, T23; `DEC-SCOPE-081` (tel-004 pipeline); `DEC-SCOPE-084` (tel-008
+workspace, D1); owner answers in-session 2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for F1–F4; F5–F10 are recorded defaults. Branch `feature/tel-011`, not yet
+merged. Migration `0089_lead_follow_ups` (chained after `0087_lead_import_batches`), API contract §12P. The open tel-009 branch claims
+`0088` / `DEC-SCOPE-092` / §12O; whichever merges second re-chains. Spec `docs/superpowers/specs/2026-10-06-tel-011-follow-ups-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| F1 (Q-10) | When is a follow-up overdue; does a call complete it? | **Overdue = open and `due_at` < now** (to the minute). Logging a call (tel-010) never auto-completes a follow-up |
+| F2 | Who writes | **Only the lead's telecaller** creates, reschedules, completes, cancels. `telecaller_manager` / `super_admin` read their scope; writes `403` |
+| F3 | Reassignment | Follow-ups **move with the lead**: scope is the lead's, so the new telecaller has them and the old one gets `404`. No `telecaller_user_id` column |
+| F4 | Closed / handed-over leads | No new follow-up on a closed lead (`409`) or, for a telecaller, a handed-over lead (`403`). A move to a closed stage cancels the lead's open follow-ups in the same transaction (`cancel_reason` "Lead closed"); cancel on handover stays with tel-018 |
+
+Recorded defaults: F5 the stage moves to Follow-up only when the telecaller ticks it (tel-004 rules apply). F6 `due_at` timezone-aware, in
+the future at create and on a changed reschedule, within 366 days; IST day windows. F7 `PATCH` + `POST …/complete` + `POST …/cancel`
+(reason required); done/cancelled `409`. F8 the §7 card's "Last Call" arrives with tel-010. F9 My Leads `follow_up=today|overdue`. F10 at
+most 20 open follow-ups per lead (`409`).
+
+**Consequences:** table `lead_follow_ups`; `services/lead_follow_ups.py`; router `api/telecaller_follow_ups.py`; `lead_pipeline.person_move`
+cancels open follow-ups on a close; `GET /telecaller/leads` gains `follow_up`. Web: the lead-detail Follow-ups section, `/telecaller/follow-ups`
+and `/telecaller/manager/follow-ups` ("Follow-ups" in both navs), the dashboard "Today's follow-ups" card, My Leads "Due follow-up" filter.
+**New Feature ID authorized:** `tel-011`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-011.
