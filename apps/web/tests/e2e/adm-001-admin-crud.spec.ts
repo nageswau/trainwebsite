@@ -92,7 +92,8 @@ test("IT Admin's Create user form only offers the IT division and IT roles (RAID
   const divisionOptions = await form.locator('select[name="division"] option').allTextContents();
   const roleOptions = await form.locator('select[name="role"] option').allTextContents();
   expect(divisionOptions).toEqual(["Select", "it"]);
-  expect(roleOptions).toEqual(["Select", "it student", "trainer", "placement team", "hr team", "it admin"]);
+  // tel-017 (DEC-SCOPE-076): counselors are IT or Overseas.
+  expect(roleOptions).toEqual(["Select", "it student", "trainer", "placement team", "hr team", "counselor", "it admin"]);
 });
 
 test("Overseas Admin's Create user form only offers the overseas division and overseas roles (RAID.md I-31)", async ({ page }) => {
@@ -123,7 +124,8 @@ test("Super Admin sees every division/role and can create another Super Admin th
   const roleOptions = await form.locator('select[name="role"] option').allTextContents();
   expect(divisionOptions).toEqual(["Select", "it", "overseas", "global"]);
   // bdm-001 (DEC-SCOPE-055 §6.1): the global division also offers BDM managers, who have no profile and use this generic form. tel-001: and telecaller managers.
-  expect(roleOptions).toEqual(["Select", "it student", "trainer", "placement team", "hr team", "it admin", "overseas student", "counselor", "university rep", "agent", "overseas admin", "super admin", "bdm manager", "telecaller manager"]);
+  // tel-017: `counselor` is listed once, in its IT position.
+  expect(roleOptions).toEqual(["Select", "it student", "trainer", "placement team", "hr team", "counselor", "it admin", "overseas student", "university rep", "agent", "overseas admin", "super admin", "bdm manager", "telecaller manager"]);
 
   const email = `e2e-second-super-admin-${Date.now()}@example.com`;
   await form.locator('input[name="full_name"]').fill("E2E Second Super Admin");

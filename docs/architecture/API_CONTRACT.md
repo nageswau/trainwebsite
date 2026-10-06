@@ -846,6 +846,18 @@ is one sentence naming the field (e.g. "Name is required", "Source: Input should
 Every write adds an `AuditLog` row (`telecaller.product_create|product_update|campaign_create|campaign_update`, entity `tel_product` /
 `tel_campaign`, `metadata_json.fields` = the changed field names only).
 
+## 12E. IT counselor (`tel-017`) — addendum, 2026-10-06
+
+`DEC-SCOPE-076`; design spec `docs/superpowers/specs/2026-10-06-tel-017-it-counselor-design.md`; `RBAC_MATRIX.md` §2.16. No new endpoint
+and no response-shape change.
+
+| Endpoint | Change |
+|---|---|
+| `POST /admin/users` | `role: "counselor"` is now valid with `division: "it"` (was `422` "Role is not valid for the selected division") |
+| `POST /workflows/overseas/applications`, `PATCH /workflows/overseas/applications/{id}` | A supplied `counselor_id` must be a `counselor` in the `overseas` division, else `422` "Choose an overseas counselor" (an unknown id used to fail with `500`); `null` still clears it |
+| `GET /portal/it/counselor/{dashboard,leads}` | New sections for an IT counselor (the existing `PortalPayload` shape). Any other section → `404` "Workspace not found" |
+| `GET /overseas-admin/school-students/lookup`, `POST /overseas-admin/school-students/{id}/applications`, `GET /overseas-admin/school-applications`, `GET /lookups/{overseas-students,overseas-applications,schools,school-students}`, `GET /inbound/university-email`, `PATCH /inbound/university-email/{id}/match` | A caller outside the `overseas` division now gets `403` "Wrong EduSphere division" after the role check (`super_admin` exempt). Every role these routes already admitted is overseas-only, so their behaviour is unchanged |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

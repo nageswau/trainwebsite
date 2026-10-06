@@ -747,6 +747,9 @@ NO-ASSUMPTION MODE. Prepared 2026-10-05 at the user's request. **No code was wri
 - **Regression risks:** **high.** CNS-001 counselor workspace tests and overseas counselor scope tests.
 - **Complexity:** medium · **Risk:** high
 
+**Status (2026-10-06):** implemented and verified on `feature/tel-017` (`DEC-SCOPE-076` C1: Dashboard + My Leads only; no migration). The
+division-change edge case does not apply: `User.division` cannot change after creation. Ready for owner sign-off; not yet merged.
+
 ### tel-018 — Handover to counselor, return, student link, computed conversion
 
 - **Business requirement:** §10, §13 (Counselor Assigned → Application/Enrollment → Converted), T4, T5, T19, T20, T29.

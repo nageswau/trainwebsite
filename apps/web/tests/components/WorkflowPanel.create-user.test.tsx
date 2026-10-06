@@ -78,3 +78,22 @@ describe("WorkflowPanel Create user card (ENH-003)", () => {
     expect(await screen.findByRole("button", { name: "Re-send set-password link to New Trainer" })).toBeInTheDocument();
   });
 });
+
+// tel-017 (DEC-SCOPE-076): the Role select mirrors the server allow-list, which now has `counselor` under IT too.
+describe("WorkflowPanel Create user roles (tel-017)", () => {
+  const roleValues = () => Array.from((screen.getByLabelText("Role") as HTMLSelectElement).options).map((o) => o.value);
+
+  it.each([itAdmin, { ...itAdmin, role: "overseas_admin", division: "overseas" } as User])("offers Counselor to the $role", async (admin) => {
+    stubFetch(json({}, 201));
+    render(<WorkflowPanel user={admin} section="users" />);
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Create user" })).toBeInTheDocument());
+    expect(roleValues()).toContain("counselor");
+  });
+
+  it("lists Counselor once for the Super Admin (it is in both divisions)", async () => {
+    stubFetch(json({}, 201));
+    render(<WorkflowPanel user={{ ...itAdmin, role: "super_admin", division: "global" } as User} section="users" />);
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Create user" })).toBeInTheDocument());
+    expect(roleValues().filter((v) => v === "counselor")).toHaveLength(1);
+  });
+});

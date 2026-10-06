@@ -3682,3 +3682,26 @@ and `/telecaller/manager/campaigns`. Design spec `docs/superpowers/specs/2026-10
 **Consequences:** migration `0077_bdm_tasks_followups` (`notes`, `cancelled_at`, `cancel_reason`, two CHECKs, backfill; downgrade refuses while manual tasks exist). New `GET/POST /bdm/tasks`, `PATCH /bdm/tasks/{id}`, `POST /bdm/tasks/{id}/complete`, `POST /bdm/tasks/{id}/cancel`; `sync_follow_up` records the cancellation time and reason; the organization archive cancels open items. Web: `/bdm/follow-ups`, `/bdm/manager/follow-ups`, nav "Follow-ups", "Follow-ups & tasks" on the organization profile.
 
 **Status:** `EXPLICIT_APPROVAL` for F1–F7; implemented on `feature/bdm-008-follow-ups` — **VERIFIED — ready for owner sign-off, NOT marked COMPLETE (2026-10-06, `feature/bdm-008-follow-ups` @ `ae5758f8`).** Fresh evidence on that commit: backend LITE 100 passed; ruff clean on changed files; mypy 401 = `main`'s 401 (no new errors); single alembic head `0077_bdm_tasks_followups` (offline SQL additive: 3 nullable columns, backfill before 2 CHECKs); web BDM set 431 passed (47 files); `tsc` 0; eslint 0 on changed web files; `next build` 0; Playwright bdm-008 + bdm-002 (2) / 006 / 007 / 009 — 6 passed on a stack rebuilt from that commit; browser verification (isolated Playwright Chromium, 20 areas + QA8-01/02 and QA8B-01…07 re-checks) passed with 0 page errors. Codex review waived by the owner. **Open for the owner:** Browser Use is not installed on this machine (isolated Playwright Chromium used instead); the full backend / web suites are the owner's; MoU-sourced follow-ups wait for bdm-005 (F1).
+
+
+### DEC-SCOPE-076 — Counselor role in the IT division + IT counselor workspace (`tel-017`)
+
+**Evidence:** `EVID-019` §9 "IT course counselling", §10 handover; `DEC-SCOPE-073` T3 ("the existing `counselor` role, allowed in the IT
+division"); backlog Q-23; owner answer in-session 2026-10-06. (`DEC-SCOPE-075` is held by tel-003, which runs in parallel.)
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for C1; VERIFIED on `feature/tel-017` — ready for owner sign-off (2026-10-06).
+
+| # | Question | Answer |
+|---|---|---|
+| C1 | Which sections does the IT counselor workspace have now (Q-23)? | **Dashboard + My Leads only.** tel-016 adds Appointments and tel-018 the student link to the same nav; no empty pages |
+| — | Can a counselor's division change (Q-23 edge case)? | **Not applicable:** `User.division` is fixed at creation (`PATCH /admin/users` never writes it), so no 422 path is added |
+
+**Implementation:** `counselor` joins the IT allow-list of `POST /admin/users`. `services/portal._it_counselor` serves `dashboard` (leads routed
+to you, new leads, five most recent) and `leads` (`Enquiry.division == user.division AND owner_id == user.id`, shared with the overseas
+counselor) for an IT counselor; every other section → 404. Nine overseas-only routes that checked the role only now also require the
+`overseas` division (`403` "Wrong EduSphere division", `super_admin` exempt): `/overseas-admin/school-students/lookup`,
+`/overseas-admin/school-students/{id}/applications`, `/overseas-admin/school-applications`, `/lookups/{overseas-students,
+overseas-applications,schools,school-students}`, `/inbound/university-email` and `/inbound/university-email/{id}/match`. The 14 counselor
+routes in `workflows.py` already called `_require(..., "overseas")`; their `counselor_id` (create/PATCH application) must now be an
+overseas `counselor` (422 "Choose an overseas counselor"), so no overseas chat or notice can reach an IT counselor. Web: `/it/counselor/{dashboard,leads}`, `/it/admin/counselors`,
+`dashboardPathFor()` for the post-sign-in and "Back to dashboard" links. No migration. Design spec
+`docs/superpowers/specs/2026-10-06-tel-017-it-counselor-design.md`.
