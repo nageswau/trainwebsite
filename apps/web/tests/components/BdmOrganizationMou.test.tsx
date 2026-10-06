@@ -99,4 +99,27 @@ describe("BdmOrganizationMou (bdm-005 §8)", () => {
     await waitFor(() => expect(onPipelineChanged).toHaveBeenCalled());
     expect(onNotice).toHaveBeenCalledWith("MoU saved. The pipeline moved to MoU Signed.");
   });
+
+  it("bdm-018: any status change asks the page to re-read the organization (onboarding follows Signed / Active); a field edit does not", async () => {
+    const before = mou("prospect");
+    const moved = mou("proposal_sent", { proposal_sent_on: "2026-10-06" });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(res({ mou: moved })).mockResolvedValueOnce(res({ current: moved, can_start: false })));
+    const onPipelineChanged = vi.fn();
+    card({ current: before, can_start: false }, { onPipelineChanged });
+    fireEvent.click(screen.getByRole("button", { name: "Edit MoU" }));
+    fireEvent.change(screen.getByLabelText("Status"), { target: { value: "proposal_sent" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save MoU" }));
+    await waitFor(() => expect(onPipelineChanged).toHaveBeenCalledTimes(1));
+    cleanup();
+    const edited = mou("prospect", { notes: "Second visit" });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(res({ mou: edited })).mockResolvedValueOnce(res({ current: edited, can_start: false })));
+    const untouched = vi.fn();
+    const onNotice = vi.fn();
+    card({ current: before, can_start: false }, { onPipelineChanged: untouched, onNotice });
+    fireEvent.click(screen.getByRole("button", { name: "Edit MoU" }));
+    fireEvent.change(screen.getByLabelText("Notes"), { target: { value: "Second visit" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save MoU" }));
+    await waitFor(() => expect(onNotice).toHaveBeenCalledWith("MoU saved."));
+    expect(untouched).not.toHaveBeenCalled();
+  });
 });

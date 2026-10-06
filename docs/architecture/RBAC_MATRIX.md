@@ -613,7 +613,7 @@ a lead outside it reads as missing (`404`, never `403` — no IDOR oracle). "Han
 | `super_admin` | the same as a manager | all leads | `tel-008` |
 | every other role (incl. `it_admin`, `overseas_admin`, `counselor`, students) | none → `403` "Telecaller role required" (admins keep `/admin/leads`) | — | `tel-008` |
 
-### 2.20 Lead distribution and assignment *(net-new, added 2026-10-06 — `DEC-SCOPE-085`, `tel-007`)*
+### 2.20 Lead distribution and assignment *(net-new, added 2026-10-06 — `DEC-SCOPE-086`, `tel-007`)*
 
 Inline pattern: role (`require_manager`), then scope (tel-004 `lead_pipeline.scope`; a lead outside it is `404`), then the target check
 (`lead_distribution.assignee`: not a direct report `403`, AC5; inactive / other team / not a telecaller `422`), then the write. One

@@ -456,6 +456,18 @@ covers the commission-specific piece).
   `created_at`), append-only, index `(organization_id, position)`. The agent status is derived, never stored. Additive; the downgrade
   refuses while any event, non-prospect stage or Lost flag exists.
 
+- **Addendum, 2026-10-06 (`bdm-018`, `DEC-SCOPE-085`; migration `0084_bdm_onboarding`, chained after `0083_tel_content`) — school
+  onboarding handover.** `bdm_organizations` gains `school_id` (nullable FK `schools` `ON DELETE RESTRICT`, unique
+  `uq_bdm_organizations_school`: one organization ↔ at most one School). The School's BDM is **derived** from that link (the
+  organization's `assigned_bdm_user_id`, H1); `schools` gets no column and `schools.edusphere_bdm` stays as legacy history (Q-16).
+  `bdm_onboarding_requests` (UUID PK; `organization_id` FK `bdm_organizations` RESTRICT; `kind` CHECK `'school'` — bdm-019 widens it;
+  `status` CHECK pending / completed / rejected; `note` String(1000); `requested_by_user_id`, `resolved_by_user_id` FK `users`
+  RESTRICT; `resolved_at`; `resolution` CHECK created / linked; `school_id` FK `schools` RESTRICT; `reject_reason` String(500);
+  timestamps; CHECKs: resolved ⇔ not pending, completed ⇒ School + resolution, rejected ⇒ reason), unique partial index
+  `uq_bdm_onboarding_requests_pending (organization_id) WHERE status = 'pending'` and `ix_bdm_onboarding_requests_status (status,
+  created_at)`. Live pipeline stages are still never stored (H11), so `ck_bdm_organizations_pipeline_stage` is **not** widened (the
+  bdm-004 note above anticipated it). Additive; the downgrade refuses while any request or link exists.
+
 ### 6.3 Commission trigger mapping — `ADR-012` resolution
 **Resolution:** the automatic commission-accrual trigger (`AGT-003`, `DEC-SCOPE-005`) fires when an
 `ApplicationStatusHistory` row is written with `to_status='enrolled'` **for an application that has

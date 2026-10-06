@@ -1,4 +1,4 @@
-"""tel-007 -- migration 0084_tel_distribution (spec §3). Round trip, constraints and downgrade refusal run in a throwaway database built
+"""tel-007 -- migration 0085_tel_distribution (spec §3). Round trip, constraints and downgrade refusal run in a throwaway database built
 from scratch (the tel-001 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -14,15 +14,15 @@ from app.core.config import settings
 from tests.test_tel_001_migration import _config, _sql
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_tel_007_migration_0084", VERSIONS / "0084_tel_distribution.py")
+_spec = importlib.util.spec_from_file_location("_tel_007_migration_0085", VERSIONS / "0085_tel_distribution.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0083_tel_content", "0084_tel_distribution"
+BASE, HEAD = "0084_bdm_onboarding", "0085_tel_distribution"
 RULE = "INSERT INTO tel_distribution_rules (id, team, kind, product_id, city, telecaller_user_id) VALUES (:id, :team, :kind, :product, :city, :user)"
 
 
-def test_migration_chains_after_0081_and_is_the_single_head():
+def test_migration_chains_after_0084_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
@@ -106,7 +106,7 @@ def test_round_trip_and_constraints(isolated_db):
     _sql(url, "INSERT INTO tel_round_robin_cursors (team, last_user_id) VALUES ('it', :user)", {"user": user})
     with pytest.raises(Exception, match="ck_tel_round_robin_cursors_team"):
         _sql(url, "INSERT INTO tel_round_robin_cursors (team) VALUES ('global')")
-    with pytest.raises(Exception, match="Cannot downgrade 0084_tel_distribution"):
+    with pytest.raises(Exception, match="Cannot downgrade 0085_tel_distribution"):
         command.downgrade(cfg, BASE)
     _sql(url, "DELETE FROM tel_distribution_rules")
     command.downgrade(cfg, BASE)

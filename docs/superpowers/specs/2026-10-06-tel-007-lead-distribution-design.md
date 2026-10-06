@@ -2,8 +2,9 @@
 
 Backlog: `docs/delivery/TELECALLER_CRM_BACKLOG.md` tel-007 (EVID-019 §17, Appendix A L560–L582; `DEC-SCOPE-073` T11, T18, T22, T23).
 Dependencies tel-001, tel-002, tel-003 and tel-004 are merged (tel-004 PR #81 @ `69829a59`); branch `feature/tel-007` from `main` @ `3986958c`.
-Decision: `DEC-SCOPE-085`. Migration: `0084_tel_distribution` (after `0083_tel_content`). API contract §12K. Drafted as `DEC-SCOPE-082` / `0082` / §12I;
-re-chained on `main` @ `50838192` (bdm-025: 082 / 0082; tel-012: 083 / 0083 / §12I).
+Decision: `DEC-SCOPE-086`. Migration: `0085_tel_distribution` (after `0084_bdm_onboarding`). API contract §12K. Drafted as `DEC-SCOPE-082` / `0082` / §12I;
+re-chained on `main` @ `50838192` (bdm-025: 082 / 0082; tel-012: 083 / 0083 / §12I), `7afd4a4b` (tel-008: 084 / §12J) and
+`9b395aaf` (bdm-018: 085 / `0084_bdm_onboarding`).
 
 ## 1. Owner answers (2026-10-06, `EXPLICIT_APPROVAL`) and recorded defaults
 
@@ -31,7 +32,7 @@ For a new lead (status `new`, no telecaller) in team `T = lead.division`:
 A rule whose telecaller is inactive is skipped (AC3), so the lead falls through to the next step. Eligible = role `telecaller`, active,
 `telecaller_profiles.team = T`. A division outside `it`/`overseas` → unassigned.
 
-## 3. Data model (migration `0084_tel_distribution`)
+## 3. Data model (migration `0085_tel_distribution`)
 
 `tel_distribution_rules`: `id` uuid PK; `team` varchar(20) CHECK `it`/`overseas`; `kind` varchar(10) CHECK `product`/`city`; `product_id`
 FK `tel_products` NULL; `city` varchar(120) NULL; `telecaller_user_id` FK `users` NOT NULL; timestamps. CHECK shape
