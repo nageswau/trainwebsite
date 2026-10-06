@@ -36,7 +36,8 @@ def _config() -> Config:
 def test_migration_chains_after_0074_and_is_the_single_head():
     assert _migration.revision == HEAD
     assert _migration.down_revision == BASE
-    assert ScriptDirectory.from_config(_config()).get_heads() == [HEAD]
+    script = ScriptDirectory.from_config(_config())  # bdm-008's 0076 follows; 0075 stays on the single chain
+    assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
 
 
 def test_model_matches_the_migration():

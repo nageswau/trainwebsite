@@ -1338,8 +1338,8 @@ class BdmMeetingReport(Base, TimestampMixin):
 
 
 class BdmTask(Base, TimestampMixin):
-    """bdm-007 creates follow-ups (`source = appointment_outcome`, one per appointment); bdm-008 adds manual tasks, MoU follow-ups,
-    completion and the pages."""
+    """bdm-007 creates follow-ups (`source = appointment_outcome`, one per appointment); bdm-008 (DEC-SCOPE-074) adds manual tasks,
+    notes, completion, the cancellation time and reason, and the pages. `mou` stays reserved for bdm-005."""
 
     __tablename__ = "bdm_tasks"
     __table_args__ = (
@@ -1349,6 +1349,8 @@ class BdmTask(Base, TimestampMixin):
         CheckConstraint(_in_list("status", BDM_TASK_STATUSES), name="ck_bdm_tasks_status"),
         CheckConstraint("(source = 'appointment_outcome') = (source_appointment_id IS NOT NULL)", name="ck_bdm_tasks_source_link"),
         CheckConstraint("(status = 'done') = (completed_at IS NOT NULL)", name="ck_bdm_tasks_completed"),
+        CheckConstraint("(status = 'cancelled') = (cancelled_at IS NOT NULL)", name="ck_bdm_tasks_cancelled"),
+        CheckConstraint("cancel_reason IS NULL OR status = 'cancelled'", name="ck_bdm_tasks_cancel_reason"),
         Index("ix_bdm_tasks_assignee_status_due", "assignee_user_id", "status", "due_on"),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -1361,6 +1363,9 @@ class BdmTask(Base, TimestampMixin):
     assignee_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     status: Mapped[str] = mapped_column(String(20), default="open", server_default=text("'open'"))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    notes: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
 BDM_ACTIVITY_CHANNELS = ("call", "whatsapp", "email", "visit", "meeting", "other")
