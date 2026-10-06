@@ -4,6 +4,7 @@ import { STATUS_CLASS, STATUS_LABEL, TYPE_LABEL, type AppointmentStatus, formatM
 import {
   addDays, type CalendarData, type CalendarView, dayItems, daysOf, dayTitle, headline, itemHref, pageHref, rangeOf, rangeTitle, type TripRole,
 } from "@/lib/bdmCalendar";
+import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import { SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 
 // bdm-013 (DEC-SCOPE-078 §7): the read-only calendar. A list of days -- never a canvas or a fixed-width grid -- so it reflows to one
@@ -11,6 +12,7 @@ import { SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 type Props = { data: CalendarData | null; view: CalendarView; date: string; basePath: string; managerOf: string | null };
 
 const ROW = { display: "flex", flexWrap: "wrap", gap: 8, alignItems: "baseline", padding: "8px 0", borderTop: "1px solid var(--line, #e5e7eb)" } as const;
+const LINK = { ...LINK_STYLE, overflowWrap: "anywhere" } as const; // QA13-01: item links must read as links
 const ROLE_TEXT: Record<TripRole, string> = { departs: "Departs", away: "Away", returns: "Return travel", "day trip": "Day trip" };
 const TRIP_STATUS: Record<string, string> = { draft: "Draft", submitted: "Submitted", in_progress: "In progress", completed: "Completed" };
 
@@ -22,12 +24,12 @@ function renderDay(data: CalendarData, day: string, managerOf: string | null) {
   const empty = !items.trips.length && !items.appointments.length && !items.tasks.length;
   return (
     <section key={day} aria-labelledby={`cal-${day}`} style={{ padding: "12px 0", borderTop: "2px solid var(--line, #e5e7eb)" }}>
-      <h3 id={`cal-${day}`} style={{ margin: 0, fontSize: 16, overflowWrap: "anywhere" }}>
+      <h4 id={`cal-${day}`} style={{ margin: 0, fontSize: 16, overflowWrap: "anywhere" }}>
         {dayTitle(day)}
         {day === data.today ? <> <span className="badge">Today</span></> : null}
         {" — "}
         {headline(data, day)}
-      </h3>
+      </h4>
       {!empty && (
         <ul style={{ listStyle: "none", padding: 0, margin: "4px 0 0" }}>
           {items.trips.map(({ trip, role }) => {
@@ -35,7 +37,7 @@ function renderDay(data: CalendarData, day: string, managerOf: string | null) {
             return (
               <li key={trip.id} style={ROW}>
                 <span className="badge">Trip</span>
-                <Link href={itemHref("trip", trip, managerOf)}>Trip {trip.code}</Link>
+                <Link href={itemHref("trip", trip, managerOf)} style={LINK}>Trip {trip.code}</Link>
                 <span style={{ overflowWrap: "anywhere" }}>{trip.from_place} → {trip.to_place} · {ROLE_TEXT[role]}</span>
                 {status && <span className="status pending">{status}</span>}
               </li>
@@ -45,7 +47,7 @@ function renderDay(data: CalendarData, day: string, managerOf: string | null) {
             <li key={a.id} style={ROW}>
               <span className="badge">{a.seminar ? "Seminar" : "Appointment"}</span>
               <span>{time(a.starts_at)} · {formatMinutes(a.duration_minutes)}</span>
-              <Link href={itemHref("appointment", a, managerOf)} style={{ overflowWrap: "anywhere" }}>
+              <Link href={itemHref("appointment", a, managerOf)} style={LINK}>
                 {TYPE_LABEL[a.appointment_type] ?? a.appointment_type} — {a.organization.name}
               </Link>
               {a.status !== "scheduled" && (
@@ -56,7 +58,7 @@ function renderDay(data: CalendarData, day: string, managerOf: string | null) {
           {items.tasks.map((t) => (
             <li key={t.id} style={ROW}>
               <span className="badge">{t.kind === "task" ? "Task" : "Follow-up"}</span>
-              <Link href={itemHref("task", t, managerOf)} style={{ overflowWrap: "anywhere" }}>
+              <Link href={itemHref("task", t, managerOf)} style={LINK}>
                 {t.title}{t.organization ? ` — ${t.organization.name}` : ""}
               </Link>
               {t.status === "done" && <span className="status">Done</span>}

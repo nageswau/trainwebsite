@@ -47,7 +47,7 @@ describe("BdmCalendar view", () => {
     const tree = elements(BdmCalendar(props()));
     const days = tree.filter((el) => el.type === "section");
     expect(days).toHaveLength(7);
-    expect(days.map((d) => text(elements(d.props.children).find((el) => el.type === "h3")))).toEqual([
+    expect(days.map((d) => text(elements(d.props.children).find((el) => el.type === "h4")))).toEqual([
       "Monday 3 Mar — Nothing planned",
       "Tuesday 4 Mar Today — Vijayawada – College Meetings",
       "Wednesday 5 Mar — Vijayawada – Seminar / Workshops",
@@ -71,6 +71,12 @@ describe("BdmCalendar view", () => {
       "/bdm/calendar?view=day&date=2031-03-05", "/bdm/calendar?view=week&date=2031-03-05",
       "/bdm/calendar?view=week&date=2031-02-26", "/bdm/calendar?view=week&date=2031-03-12", "/bdm/calendar?view=week&date=2031-03-04",
     ]));
+  });
+
+  it("styles every item link as a link (QA13-01)", () => {
+    const itemLinks = elements(BdmCalendar(props())).filter((el) => typeof el.props.href === "string" && /\/(appointments|travel|follow-ups)/.test(el.props.href as string));
+    expect(itemLinks).toHaveLength(6); // the 3-day trip on each of its days, 2 appointments, 1 follow-up
+    for (const link of itemLinks) expect(link.props.style).toMatchObject({ textDecoration: "underline" });
   });
 
   it("keeps the manager on manager pages and the chosen BDM in every calendar link", () => {
