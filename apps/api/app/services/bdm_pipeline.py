@@ -82,6 +82,22 @@ def record_event(db: AsyncSession, user: User, org: BdmOrganization, kind: str, 
     db.add(BdmPipelineEvent(organization_id=org.id, actor_user_id=user.id, kind=kind, from_stage=from_stage, to_stage=to_stage, note=note))
 
 
+def behind(org: BdmOrganization, stage: str) -> bool:
+    keys = [s.key for s in PIPELINES[org.bdm_type]]
+    return keys.index(org.pipeline_stage) < keys.index(stage)
+
+
+def advance_to(db: AsyncSession, user: User, org: BdmOrganization, stage: str, note: str) -> str | None:
+    """bdm-005 (D28 / DEC-SCOPE-078 M5): move a locked organization forward to `stage` as one `move` event; at or past it, nothing.
+    Returns the stage it left, or None. The caller owns the audit row and the commit."""
+    if not behind(org, stage):
+        return None
+    from_stage = org.pipeline_stage
+    org.pipeline_stage = stage
+    record_event(db, user, org, "move", from_stage, stage, note)
+    return from_stage
+
+
 def log_conflict(user: User, org: BdmOrganization, to_stage: str) -> None:
     """Operational signal for two people (or two tabs) moving one organization; ids and keys only."""
     from app.services.bdm_organizations import log  # local: bdm_organizations imports this module

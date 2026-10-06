@@ -1,4 +1,4 @@
-"""bdm-013 (DEC-SCOPE-078, spec §5): the read-only BDM calendar -- appointments, trips, follow-ups and tasks in one date range.
+"""bdm-013 (DEC-SCOPE-079, spec §5): the read-only BDM calendar -- appointments, trips, follow-ups and tasks in one date range.
 
 Whose calendar comes from the session (a BDM) or a validated `bdm_user_id` (a manager's team, super_admin any BDM); out of scope is
 the same 404 as a missing BDM. Three indexed range queries, each joined to its organization; no write, no audit, no log line."""

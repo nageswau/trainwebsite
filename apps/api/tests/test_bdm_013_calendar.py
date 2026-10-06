@@ -1,4 +1,4 @@
-"""bdm-013 (DEC-SCOPE-078) -- GET /bdm/calendar: scope (K3), range rules (K2), which rows land on which days (K4, K5, AC1)."""
+"""bdm-013 (DEC-SCOPE-079) -- GET /bdm/calendar: scope (K3), range rules (K2), which rows land on which days (K4, K5, AC1)."""
 
 import uuid
 from datetime import date, datetime, time, timedelta

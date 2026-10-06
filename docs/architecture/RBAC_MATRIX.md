@@ -522,7 +522,7 @@ Archived organizations are read-only (`409` "Restore this organization first"). 
 
 An appointment stays with its BDM when the organization is reassigned. `bdm_user_id`, `code`, `status`, `organization_id` (on PATCH) and `outcome` (outside complete) are unknown fields (`422`). Organization `last_meeting_at` / `next_meeting_at` expose dates only to organization readers.
 
-**BDM calendar (`bdm-013`, `DEC-SCOPE-078`).** Read-only `GET /bdm/calendar`. `bdm`: own calendar only (`bdm_user_id` → `422`).
+**BDM calendar (`bdm-013`, `DEC-SCOPE-079`).** Read-only `GET /bdm/calendar`. `bdm`: own calendar only (`bdm_user_id` → `422`).
 `bdm_manager`: one BDM who reports to them (`bdm_user_id` required; anyone else `404`). `super_admin`: any BDM (`404` if not a BDM).
 Every other role `403`. No write path.
 

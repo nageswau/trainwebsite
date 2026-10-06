@@ -1,7 +1,7 @@
 import { TYPE_LABEL } from "@/lib/bdmAppointments";
 import { isCalendarDate } from "@/lib/formatDate";
 
-// bdm-013 (DEC-SCOPE-078): the calendar's pure helpers -- ranges (K7), placing items on days (AC1), the §5 day headline (K6) and
+// bdm-013 (DEC-SCOPE-079): the calendar's pure helpers -- ranges (K7), placing items on days (AC1), the §5 day headline (K6) and
 // item links (K8). Dates are "YYYY-MM-DD" IST calendar dates; arithmetic runs in UTC so no viewer's zone can shift a day.
 const CALENDAR_URL = "/api/v1/bdm/calendar";
 const VIEWS = ["day", "week"] as const;

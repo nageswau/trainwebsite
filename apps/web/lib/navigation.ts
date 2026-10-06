@@ -54,20 +54,21 @@ export function dashboardPathFor(user: { role: string; division?: string | null 
 // bdm-001: BDM and BDM-manager sidebars, and the signed-out chooser (College BDMs sign in at /it, Agent/School BDMs at /overseas;
 // managers at /admin). bdm-002 adds Organizations to both; bdm-006 adds Appointments to both.
 // bdm-010: Travel (BDM), Approvals (manager), and each role's Notifications (QA10-01; the unread badge comes from lib/bdmNav).
-// bdm-009: Activities in both. bdm-004: Pipeline in both.
+// bdm-009: Activities in both. bdm-004: Pipeline in both. bdm-005: MoUs after Pipeline in both.
 export const BDM_NOTIFICATIONS_HREF = "/bdm/notifications";
 export const BDM_MANAGER_NOTIFICATIONS_HREF = "/bdm/manager/notifications";
 export const BDM_NAV: NavItem[] = [
   { label: "My Day", href: "/bdm/my-day" }, { label: "Calendar", href: "/bdm/calendar" }, { label: "Organizations", href: "/bdm/organizations" },
   { label: "Pipeline", href: "/bdm/pipeline" },
-  { label: "Appointments", href: "/bdm/appointments" }, { label: "Follow-ups", href: "/bdm/follow-ups" },
+  { label: "MoUs", href: "/bdm/mous" }, { label: "Appointments", href: "/bdm/appointments" }, { label: "Follow-ups", href: "/bdm/follow-ups" },
   { label: "Activities", href: "/bdm/activities" }, { label: "Travel", href: "/bdm/travel" },
   { label: "Notifications", href: BDM_NOTIFICATIONS_HREF }, { label: "Profile", href: "/bdm/profile" },
 ];
 export const BDM_MANAGER_NAV: NavItem[] = [
   { label: "Dashboard", href: "/bdm/manager/dashboard" }, { label: "Team", href: "/bdm/manager/team" },
   { label: "Organizations", href: "/bdm/manager/organizations" }, { label: "Pipeline", href: "/bdm/manager/pipeline" },
-  { label: "Appointments", href: "/bdm/manager/appointments" }, { label: "Follow-ups", href: "/bdm/manager/follow-ups" },
+  { label: "MoUs", href: "/bdm/manager/mous" }, { label: "Appointments", href: "/bdm/manager/appointments" },
+  { label: "Follow-ups", href: "/bdm/manager/follow-ups" },
   { label: "Calendar", href: "/bdm/manager/calendar" }, { label: "Activities", href: "/bdm/manager/activities" },
   { label: "Approvals", href: "/bdm/manager/approvals" },
   { label: "Notifications", href: BDM_MANAGER_NOTIFICATIONS_HREF },

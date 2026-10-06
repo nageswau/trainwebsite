@@ -9,7 +9,7 @@ import BdmCalendarPage from "@/app/bdm/calendar/page";
 import ManagerCalendarPage from "@/app/bdm/manager/calendar/page";
 import { elements, text } from "@/tests/helpers/elementTree";
 
-// bdm-013 (DEC-SCOPE-078): the calendar view and its two pages. The view is a plain function of its props, so it is called directly.
+// bdm-013 (DEC-SCOPE-079): the calendar view and its two pages. The view is a plain function of its props, so it is called directly.
 vi.mock("@/lib/api", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/api")>()), serverApi: vi.fn() }));
 
 const org = { id: "o1", code: "ORG-1", name: "Govt College", archived: false };

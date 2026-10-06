@@ -7,7 +7,7 @@ import {
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import { SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 
-// bdm-013 (DEC-SCOPE-078 §7): the read-only calendar. A list of days -- never a canvas or a fixed-width grid -- so it reflows to one
+// bdm-013 (DEC-SCOPE-079 §7): the read-only calendar. A list of days -- never a canvas or a fixed-width grid -- so it reflows to one
 // column on a phone (AC4); every control is a plain link, so it works with the keyboard and the browser history (AC5).
 type Props = { data: CalendarData | null; view: CalendarView; date: string; basePath: string; managerOf: string | null };
 

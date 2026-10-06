@@ -5,7 +5,7 @@ import {
   plural, rangeOf, rangeTitle, weekStart,
 } from "@/lib/bdmCalendar";
 
-// bdm-013 (DEC-SCOPE-078 K6/K7/K8): the pure calendar helpers. The §5 week: Mon 2031-03-03 … Sun 2031-03-09.
+// bdm-013 (DEC-SCOPE-079 K6/K7/K8): the pure calendar helpers. The §5 week: Mon 2031-03-03 … Sun 2031-03-09.
 const org = (name: string) => ({ id: `o-${name}`, code: "ORG-1", name, archived: false });
 const appt = (id: string, day: string, type: string, time = "10:00", seminar = false) => ({
   id, code: `APT-${id}`, day, starts_at: `${day}T${time}:00+05:30`, duration_minutes: 60, appointment_type: type, status: "scheduled",

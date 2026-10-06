@@ -1,7 +1,7 @@
 # bdm-013 — BDM calendar (daily / weekly) (design)
 
 - **Backlog item:** `docs/delivery/BDM_CRM_BACKLOG.md` § bdm-013. **Source:** `EVID-016` §5 "BDM Calendar" (lines 172–196) and §4 Common "Calendar" (1254–1265).
-- **Decision:** `DEC-SCOPE-078` (K1–K10 below).
+- **Decision:** `DEC-SCOPE-079` (K1–K10 below).
 - **Dependencies (merged to `main`):** bdm-006 appointments (PR #58), bdm-008 follow-ups and tasks (PR #71), bdm-010 travel.
 - **Migration:** none. **New tables:** none.
 
@@ -24,7 +24,7 @@ Managers read the calendar of any BDM on their team (super_admin: any BDM). Noth
 **In:** `GET /api/v1/bdm/calendar`; `/bdm/calendar` (BDM); `/bdm/manager/calendar` (manager / super_admin); a "Calendar" nav entry in both sidebars.
 **Out:** drag-and-drop editing; external calendar sync (Q-11); the travel ↔ appointment link (bdm-011); reminders (bdm-012); My Day (bdm-014).
 
-## 3. Decisions (`DEC-SCOPE-078`)
+## 3. Decisions (`DEC-SCOPE-079`)
 
 These are **agent-recommended defaults**. On 2026-10-06 the owner told this session to "proceed with recommended answers" and to ask only on
 real blockers. They are recorded as such, not as `EXPLICIT_APPROVAL`, and the owner can override any of them.

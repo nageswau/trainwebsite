@@ -3729,8 +3729,32 @@ VERIFIED on `feature/tel-003` (2026-10-06); **MERGED** to `main` as PR #75 @ `10
 (**breaking**; every in-repo consumer updated); `POST /public/enquiries` and the CRM payload add `lead_code`. bdm-017's columns and
 conversion routes are unchanged (`DEC-SCOPE-072`). Design spec `docs/superpowers/specs/2026-10-06-tel-003-lead-record-design.md`.
 
+### DEC-SCOPE-078 — MoU tracking (`bdm-005`)
 
-### DEC-SCOPE-078 — BDM calendar, daily / weekly (`bdm-013`)
+**ID note:** drafted as `DEC-SCOPE-074` with migration `0076_bdm_mous` (both free on `main` @ `e73dfa60`); tel-002 (PR #69) reached `main` first with `DEC-SCOPE-074` / `0076_tel_catalogue` and bdm-008 (PR #71) with `DEC-SCOPE-075` / `0077_bdm_tasks_followups`, so on merging `main` @ `442ce465` (2026-10-06) this entry was `DEC-SCOPE-077` and the migration **`0078_bdm_mous`** (after `0077_bdm_tasks_followups`); tel-017 (PR #73) then took `DEC-SCOPE-077` (no migration), so on merging `main` @ `edd9a9b0` this entry was `DEC-SCOPE-077` with `0078_bdm_mous`; tel-003 (PR #75) then took `DEC-SCOPE-077` and `0078_enquiry_lead_record`, so on merging `main` @ `11f4c9c7` this entry is **`DEC-SCOPE-078`** and the migration **`0079_bdm_mous`** (after `0078_enquiry_lead_record`). bdm-005 commits and docs from before that merge that say `DEC-SCOPE-074` or `0076_bdm_mous` mean this decision / migration.
+
+**Question:** which organizations track MoUs, how statuses move and expire, who may change and download them, what the document rules are, how an MoU couples to the pipeline (D28) and how renewals work (`BDM_CRM_BACKLOG.md` §4 bdm-005)?
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md`, `DERIVED_BLUEPRINT`) §10 MoU Tracking (339–369), Agent §B / School §B / College §B (Agreement, MoU, Contract, Renewal Date) — the source's lists are not an approval; `DEC-SCOPE-055` D19 (Q-10), D28 (Q-19); `DEC-SCOPE-065` P11; `DEC-SCOPE-071`; bdm-005 impact analysis 2026-10-06 (graphify-led).
+
+**Resolution:** owner, in-session 2026-10-06 (`EXPLICIT_APPROVAL` — six structured questions, the approach, then four design sections reviewed against the API, frontend and security skills; spec `docs/superpowers/specs/2026-10-06-bdm-005-mou-tracking-design.md` §3):
+- **M1** All three BDM types (agent, school, college) track MoUs.
+- **M2** Free moves among the 8 settable statuses (date rules enforced); `Expired` is derived, never stored or settable: Signed / Active with `valid_until` before today (Asia/Kolkata) reads Expired. Rejected re-opens by moving to another status.
+- **M3** Writes: the assigned BDM and `super_admin` (`can_edit`); reads and downloads follow organization scope; out of scope = 404; every download audited.
+- **M4** Document: PDF / JPEG / PNG by bytes, `max_upload_bytes`, metadata stripped; one current file; a replace keeps the old object.
+- **M5** D28: Signed advances the pipeline to the type's signed stage only when behind; Lost refuses MoU writes (409); archived refuses (409).
+- **M6** Renewal is a new row; one current MoU per organization; a new one only when none, or the current reads Expired / Rejected.
+- **M7** Both Signed and Active expire.
+- **M8** Upload rate limit 20 per user per rolling hour (429 `Retry-After`) — the first rate limit on a BDM route, approved by the owner.
+- **M9** An Expired MoU refuses status changes (409 `mou_expired`) but accepts date / reference / notes corrections and a document.
+
+**Consequences:** migration `0079_bdm_mous` (new `bdm_mous`, append-only `bdm_mou_events`; no existing row touched; downgrade refuses while MoUs exist); routes `GET|POST|PATCH /bdm/organizations/{id}/mou`, `PUT /bdm/organizations/{id}/mou/document`, `GET /bdm/mous`, `GET /bdm/mous/{id}/history`, `GET /bdm/mous/{id}/document`; an MoU card on both organization detail pages; pages `/bdm/mous`, `/bdm/manager/mous`. Residual risk recorded, not changed: `/local-files` serves the local upload directory unauthenticated (existing). **New Feature ID authorized:** `bdm-005`. **Status:** VERIFIED, not yet COMPLETE (2026-10-06): Fresh evidence on the merged HEAD (main @ `442ce465` merged; `d9183437`): backend lite (bdm-005 / 008 / 004 / 002, tel-002) 359 passed, 2 failed — the two `test_bdm_002_migration` round trips, which fail identically on `origin/main` @ `442ce465` (bdm-017's `enquiries` FK blocks the 0066 downgrade; `bdm_mous` adds a second FK of the same kind); web unit 2762 passed, 1 failed — `dateZoneSweep` lists only the ten pre-existing entries also failing on main (bdm-005's two were fixed); `tsc` 0; eslint 0 errors (no warning in bdm-005 files); ruff / format clean; mypy 0 in bdm-005 modules (+2 = the two `Literal[tuple]` aliases, the bdm-006 / tel-002 pattern); `next build` ok; one alembic head `0079_bdm_mous`, offline SQL additive only; Playwright bdm-005 + bdm-008 + bdm-004 + bdm-002 5 passed. Exploratory QA pass 1 (isolated Playwright Chromium; Browser Use not installed) found QA5-01…06: QA5-01 (stale field edit, `expected_updated_at` → 409 `mou_changed`), QA5-02 (focus after Not yet / Escape), QA5-04 (filters one scrolling row), QA5-05 (actions beside the status) and QA5-06 (read-only reason) fixed test-first and re-verified in the browser; QA5-03 not reproducible through the UI (a click after the session ends cancels the download and the page stays; only a typed API URL shows the JSON, as every API route). Open: Browser Use itself, the owner's full suites, the Codex review the owner set aside.
+
+### DEC-SCOPE-079 — BDM calendar, daily / weekly (`bdm-013`)
+
+**ID note:** drafted as `DEC-SCOPE-078`. bdm-005 (PR #77) reached `main` first with `DEC-SCOPE-078`, so when `main` @ `230a043f` was
+merged (2026-10-06) this entry became **`DEC-SCOPE-079`**. bdm-013 commits and docs from before that merge that say `DEC-SCOPE-078` mean
+this decision. No migration.
 
 **Evidence:** `EVID-016` §5 "BDM Calendar" and §4 Common "Calendar" (`DERIVED_BLUEPRINT`); `BDM_CRM_BACKLOG.md` §bdm-013 (scope approved
 under `DEC-SCOPE-055` D1). Dependencies bdm-006 (PR #58), bdm-008 (PR #71) and bdm-010 are merged to `main`; bdm-006's and bdm-008's

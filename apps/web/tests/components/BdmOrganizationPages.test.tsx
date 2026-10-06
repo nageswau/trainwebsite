@@ -79,7 +79,23 @@ describe("bdm-002 organization detail pages", () => {
     vi.mocked(serverApi).mockImplementation(async (path: string) => (path === "/api/v1/bdm/me" ? me : { organization }) as never);
     const tree = elements(await BdmOrganization({ params: params(), searchParams: Promise.resolve({ created: "1" }) }));
     expect(serverApi).toHaveBeenCalledWith("/api/v1/bdm/organizations/o1");
-    expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props).toEqual({ initial: organization, basePath: "/bdm/organizations", created: true, activities: null, leads: null, stageHistory: null, tasks: null });
+    expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props).toEqual({ initial: organization, basePath: "/bdm/organizations", created: true, activities: null, leads: null, stageHistory: null, tasks: null, mou: null });
+  });
+
+  it("bdm-005: both detail pages read the MoU card alongside the organization", async () => {
+    const id = "6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b";
+    const orgMou = { current: null, can_start: true };
+    vi.mocked(serverApi).mockImplementation(async (path: string) => {
+      if (path === "/api/v1/bdm/me") return me as never;
+      if (path === "/api/v1/auth/me") return { id: "m1", full_name: "Meera", role: "bdm_manager" } as never;
+      if (path === `/api/v1/bdm/organizations/${id}/mou`) return orgMou as never;
+      if (path === `/api/v1/bdm/organizations/${id}`) return { organization } as never;
+      throw new ApiError("x", 500);
+    });
+    let tree = elements(await BdmOrganization({ params: params(id), searchParams: noQuery }));
+    expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props.mou).toEqual(orgMou);
+    tree = elements(await ManagerOrganization({ params: params(id) }));
+    expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props.mou).toEqual(orgMou);
   });
 
   it("an unknown or out-of-scope organization is a plain not-found with a way back", async () => {
@@ -100,7 +116,7 @@ describe("bdm-002 organization detail pages", () => {
     vi.mocked(serverApi).mockReset();
     vi.mocked(serverApi).mockImplementation(async (path: string) => (path === "/api/v1/auth/me" ? { id: "m1", full_name: "Meera", role: "bdm_manager" } : { organization }) as never);
     tree = elements(await ManagerOrganization({ params: params() }));
-    expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props).toEqual({ initial: organization, basePath: "/bdm/manager/organizations", activities: null, leads: null, stageHistory: null, tasks: null });
+    expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props).toEqual({ initial: organization, basePath: "/bdm/manager/organizations", activities: null, leads: null, stageHistory: null, tasks: null, mou: null });
     vi.mocked(serverApi).mockReset();
     refuse("/api/v1/auth/me", new ApiError("Not authenticated", 401));
     tree = elements(await ManagerOrganization({ params: params() }));
