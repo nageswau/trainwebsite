@@ -1,4 +1,4 @@
-// tel-022 (DEC-SCOPE-078): daily + monthly targets -- types, KPI labels, endpoints and the date helpers behind the manager's Targets
+// tel-022 (DEC-SCOPE-080): daily + monthly targets -- types, KPI labels, endpoints and the date helpers behind the manager's Targets
 // page and the telecaller's "My targets" card. The API decides every rule (G2 dates, T23 scope); the browser only mirrors the dates.
 import type { LookupPage } from "@/lib/lookups";
 import type { TelecallerTeam, TelecallerTeamRow } from "@/lib/telecaller";

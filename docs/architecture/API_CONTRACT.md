@@ -501,6 +501,35 @@ stage, live stage "set by the onboarding handover", volume step, same stage, bac
 type), unknown `stage`, `assigned=me` from a non-BDM. **Retry semantics:** a repeated move answers `409 stage_changed` with
 `current_stage` equal to the requested stage (the UI treats it as done); a repeated lost / revive answers `409`. No idempotency key.
 
+**`bdm-005` / `DEC-SCOPE-080` (built 2026-10-06; migration `0079_bdm_mous`, after `0078_enquiry_lead_record`) — MoU tracking.**
+Design spec `docs/superpowers/specs/2026-10-06-bdm-005-mou-tracking-design.md` §6. All routes are new; no existing request or response
+changes (the organization detail does not embed the MoU). Writes reuse `can_edit` (M3: the assigned BDM or `super_admin`); reads and
+downloads follow `caller_scope`. `status` everywhere is the **effective** status: a Signed / Active MoU with `valid_until` before today
+(Asia/Kolkata) reads `expired`, which is never stored or accepted as input (M2, M7).
+
+| Method/Path | Auth | Scope | Notes |
+|---|---|---|---|
+| `GET /bdm/organizations/{id}/mou` | any reader of the organization | `caller_scope` | `200 {current: MouOut \| null, can_start}` |
+| `POST /bdm/organizations/{id}/mou` `{status?, proposal_sent_on?, signed_on?, valid_from?, valid_until?, reference?, notes?}` | `bdm`, `super_admin` | `can_edit` | `201 {mou}`; a first MoU, or a renewal when the current one reads Expired / Rejected (the old row becomes `is_current=false`) |
+| `PATCH /bdm/organizations/{id}/mou` `{status?, from_status?, expected_updated_at?, …fields}` | `bdm`, `super_admin` | `can_edit` | `200 {mou}`; omitted = unchanged, `null` = clear; `status` needs `from_status`; `expected_updated_at` (optional, QA5-01) = the MoU `updated_at` the form showed; Signed advances the pipeline when behind (D28) |
+| `PUT /bdm/organizations/{id}/mou/document` multipart `file` | `bdm`, `super_admin` | `can_edit` | `200 {mou}`; PDF / JPEG / PNG by bytes, `max_upload_bytes`; 20 per user per hour |
+| `GET /bdm/mous?status=&bdm_type=&organization=&current=&limit=&offset=` | `bdm`, `bdm_manager`, `super_admin` | `caller_scope` | `{items, total, limit, offset}`; rows `{id, organization {id, code, name, bdm_type}, assigned_bdm, status, status_label, status_changed_at, signed_on, valid_until, reference, has_document, is_current}`; `current` defaults to `true` |
+| `GET /bdm/mous/{id}/history?limit=&offset=` | any reader of the organization | `caller_scope` | newest first; items `{id, kind, from_status, from_label, to_status, to_label, changed[], actor, created_at}` |
+| `GET /bdm/mous/{id}/document` | any reader of the organization | `caller_scope` | the bytes, `attachment; filename="mou-<org code>.<ext>"`, `nosniff`, `no-store`, CSP sandbox; audited before any byte |
+
+`MouOut` = the row + `proposal_sent_on`, `valid_from`, `notes`, `document {name, content_type, uploaded_at} | null` (never a key or a
+URL), `expired_on`, `created_by`, `permissions {can_edit, can_upload, can_renew}`, `pipeline_on_sign {key, label} | null`,
+`created_at`, `updated_at`.
+
+**Status table (spec §6.4):** `401` no session; `403` wrong role or not `can_edit`; `404` organization / MoU outside the caller's scope
+(same body as an unknown id), "No MoU yet", "No document on file"; `409` archived ("Restore this organization first"),
+`{code: "organization_lost"}`, `{code: "mou_exists"}`, `{code: "mou_status_changed", current_status}` (stale `from_status`),
+`{code: "mou_expired"}` (a status change on an Expired MoU), `{code: "mou_changed"}` (`expected_updated_at` older than the stored MoU; checked after the status conflict); `413` too large; `415` not a PDF / JPEG / PNG; `422` field errors with `loc`
+`["body", <field>]` (Signed / Active without `signed_on`, Active without the window, `valid_until` before `valid_from`, same status,
+`expired` sent as a status, `status` without `from_status`, malformed dates) or an unknown `status` filter; `429` + `Retry-After` upload
+limit. **Retry semantics:** a retried create answers `409 mou_exists`; a retried status change answers `409 mou_status_changed`. No
+idempotency key.
+
 **`bdm-017` / `DEC-SCOPE-072` (built 2026-10-05; migration `0074_enquiry_bdm_attribution`) — student lead attribution.**
 Design spec `docs/superpowers/specs/2026-10-05-bdm-017-lead-attribution-design.md` §4–§5. Two new BDM routes and two new admin routes;
 `GET /admin/leads` is extended **additively** (every existing key, the 500-row cap and the ordering unchanged); `PATCH /admin/leads/{id}`,
@@ -805,6 +834,12 @@ Write order: scope 404 → lock (an outcome follow-up's appointment first) → a
 
 ---
 
+**Addendum, 2026-10-06 (`bdm-013`, `DEC-SCOPE-079`) — BDM calendar.** Design spec `docs/superpowers/specs/2026-10-06-bdm-013-calendar-design.md` §5. Read-only; no migration, no audit, no log line.
+
+| Method/Path | Auth | Roles | Notes / status codes |
+|---|---|---|---|
+| `GET /bdm/calendar` | Authenticated | `bdm` (own), `bdm_manager` (a BDM reporting to them), `super_admin` (any BDM) | Query `date_from`, `date_to` (required, inclusive IST dates; `date_from > date_to` → `422` "date_from must be on or before date_to"; more than 31 days → `422` "The calendar shows at most 31 days"), `bdm_user_id` (a `bdm` sending it → `422` "bdm_user_id is only for managers"; a manager / super_admin omitting it → `422` "Choose a BDM"; outside the team or not a BDM → `404` "BDM not found"). Other roles `403` "BDM role required"; a BDM without a profile `403`. Response `{bdm: {id, full_name, active}, date_from, date_to, today, truncated, appointments: [{id, code, day, starts_at, duration_minutes, appointment_type, status, seminar, organization: {id, code, name, archived}}], trips: [{id, code, travel_date, return_date, from_place, to_place, mode, approval_status, travel_status}], tasks: [{id, kind, title, due_on, status, overdue, organization \| null}]}`. Excludes cancelled appointments, cancelled or rejected trips, cancelled tasks; a trip is included when it overlaps the range. `day` = the IST date of `starts_at`; `seminar` = type `seminar_workshop`, `seminar`, `workshop` or `student_seminar`. At most 500 rows per list (`truncated: true` when cut) |
+
 ## 12C. Telecaller roles (`tel-001`) — addendum, 2026-10-05
 
 `DEC-SCOPE-073`; design spec `docs/superpowers/specs/2026-10-05-tel-001-telecaller-roles-design.md` §5; `RBAC_MATRIX.md` §2.14; migration `0075_telecaller_profiles`. Lists are `{items, total, limit, offset}` (`limit` default 50, max 100; `offset` ≥ 0; ordered by `full_name, id`). No `/telecaller` route takes a user id; scope comes from the session. GETs are read-only.
@@ -875,8 +910,8 @@ The CRM webhook payload adds `lead_code` (additive; `INTEGRATION_CONTRACTS.md` �
 
 ## 12G. Telecaller targets (`tel-022`) — addendum, 2026-10-06
 
-`DEC-SCOPE-078` (provisional number); design spec `docs/superpowers/specs/2026-10-06-tel-022-targets-design.md` §5; `RBAC_MATRIX.md` §2.17;
-migration `0079_tel_targets`. KPI keys: `calls, connected_calls, qualified_leads, follow_ups, counselling_appointments, conversions`. Days
+`DEC-SCOPE-080` (provisional number); design spec `docs/superpowers/specs/2026-10-06-tel-022-targets-design.md` §5; `RBAC_MATRIX.md` §2.17;
+migration `0080_tel_targets`. KPI keys: `calls, connected_calls, qualified_leads, follow_ups, counselling_appointments, conversions`. Days
 are IST calendar days on the database clock. Every `422` is one sentence.
 
 | Method/Path | Roles | Notes / status codes |

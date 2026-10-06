@@ -3019,7 +3019,7 @@ None possible to detect beyond what's already flagged: only one screen (`SCR-PUB
 instruction: no screen above claims Canva visual parity beyond the single actually-inspected
 thumbnail (`SCR-PUB-001`), and even that is scoped to structural reference only, per `DEC-UX-001`.
 
-## tel-022 addendum (2026-10-06, `DEC-SCOPE-078`) — Telecaller targets
+## tel-022 addendum (2026-10-06, `DEC-SCOPE-080`) — Telecaller targets
 
 Design spec `docs/superpowers/specs/2026-10-06-tel-022-targets-design.md` §6. No catalogue ID is invented; visual reference = the existing
 portal card/table idiom (no Canva frame for this screen: `NEEDS_CONFIRMATION` for visual fidelity).

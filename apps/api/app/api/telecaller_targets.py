@@ -1,4 +1,4 @@
-"""tel-022 (DEC-SCOPE-078, spec §5): daily + monthly targets. Managers and super_admin set team defaults (both teams, G3) and
+"""tel-022 (DEC-SCOPE-080, spec §5): daily + monthly targets. Managers and super_admin set team defaults (both teams, G3) and
 overrides for their direct reports (T23); a telecaller reads only their own effective targets (§22 line 713: never writes).
 
 Inline checks per the 2026-09-28 convention: role first, then scope (an out-of-scope telecaller is a 404), then the write. Days are

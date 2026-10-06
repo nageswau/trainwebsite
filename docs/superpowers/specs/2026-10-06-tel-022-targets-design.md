@@ -2,7 +2,7 @@
 
 NO-ASSUMPTION MODE. Feature `tel-022` of `docs/delivery/TELECALLER_CRM_BACKLOG.md` (EVID-019 §15, T2, T23, T28). Branch
 `feature/tel-022` from `origin/main` @ `10fce82e` (tel-003 merged; migration head `0078_enquiry_lead_record`).
-Dependency tel-001 is merged (PR #68). Decision: **`DEC-SCOPE-078` (provisional)**; migration **`0079_tel_targets` (provisional)** —
+Dependency tel-001 is merged (PR #68). Decision: **`DEC-SCOPE-080` (provisional)**; migration **`0080_tel_targets` (provisional)** —
 tel-012 also re-chains after 0078, so whichever merges second renumbers.
 
 ## 1. Authority

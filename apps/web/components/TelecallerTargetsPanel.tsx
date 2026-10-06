@@ -26,7 +26,7 @@ function fromUrl(raw: string | null): { kind: SubjectKind; userId: string | null
   return raw && UUID.test(raw) ? { kind: "user", userId: raw } : { kind: "it", userId: null };
 }
 
-// tel-022 (DEC-SCOPE-078): the manager's Targets page. Choose a team default or one of your telecallers, see what is in effect today
+// tel-022 (DEC-SCOPE-080): the manager's Targets page. Choose a team default or one of your telecallers, see what is in effect today
 // and this month, set new values from a future date (G2), and read the history (T28). The API decides every rule.
 export default function TelecallerTargetsPanel() {
   // The subject is read from the URL once and replaced on every change, so a refresh keeps it (QA-05).

@@ -32,6 +32,8 @@ from app.models import (
     BDM_APPOINTMENT_STATUSES,
     BDM_GRADE_MAX,
     BDM_GRADE_MIN,
+    BDM_MOU_SETTABLE,
+    BDM_MOU_STATUSES,
     BDM_STAFF_MAX,
     GENDERS,
     TEL_TARGET_KPIS,
@@ -3895,6 +3897,166 @@ class BdmPipelinePage(BaseModel):
     offset: int
 
 
+# --- bdm-005 (DEC-SCOPE-078, spec §6.1): MoU tracking ----------------------------------------------------------------------------
+MOU_FIELD_LABELS = {
+    "reference": "Reference",
+    "notes": "Notes",
+    "proposal_sent_on": "Proposal sent date",
+    "signed_on": "Signed date",
+    "valid_from": "Valid-from date",
+    "valid_until": "Valid-until date",
+}
+BdmMouStatusIn = Literal[BDM_MOU_SETTABLE]  # M2: `expired` is derived, never accepted
+BdmMouStatus = Literal[BDM_MOU_STATUSES]
+
+
+def _mou_date(label: str):
+    """bdm-010's YYYY-MM-DD rule (plain words, a 4-digit year); blank or null clears the date."""
+    parse = _trip_date(label)
+    return lambda value: None if value is None or (isinstance(value, str) and not value.strip()) else parse(value)
+
+
+BdmMouReference = Annotated[Annotated[str, _trimmed(100)] | None, AfterValidator(_trip_text(_BDM_CONTROL, False, MOU_FIELD_LABELS))]
+BdmMouNotes = Annotated[
+    Annotated[Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, MOU_FIELD_LABELS))],
+    BeforeValidator(_bdm_newlines),
+]
+BdmMouProposalSentOn = Annotated[date | None, BeforeValidator(_mou_date("proposal sent date"))]
+BdmMouSignedOn = Annotated[date | None, BeforeValidator(_mou_date("signed date"))]
+BdmMouValidFrom = Annotated[date | None, BeforeValidator(_mou_date("valid-from date"))]
+BdmMouValidUntil = Annotated[date | None, BeforeValidator(_mou_date("valid-until date"))]
+
+
+class BdmMouCreate(BaseModel):
+    """A first MoU or a renewal (M6). Owner, organization, current flag and document are server-owned (`extra="forbid"`); the date
+    rules run in the service on the merged state."""
+
+    model_config = ConfigDict(extra="forbid")
+    status: BdmMouStatusIn = "prospect"
+    proposal_sent_on: BdmMouProposalSentOn = None
+    signed_on: BdmMouSignedOn = None
+    valid_from: BdmMouValidFrom = None
+    valid_until: BdmMouValidUntil = None
+    reference: BdmMouReference = None
+    notes: BdmMouNotes = None
+
+
+class BdmMouUpdate(BaseModel):
+    """Partial: an omitted field is unchanged, `null` clears it. A status change carries `from_status` -- the (effective) status the
+    form was showing; a different one is 409 `mou_status_changed` (the bdm-004 `from_stage` rule)."""
+
+    model_config = ConfigDict(extra="forbid")
+    status: BdmMouStatusIn | None = None
+    from_status: BdmMouStatus | None = Field(default=None, validate_default=True)
+    expected_updated_at: datetime | None = None  # QA5-01: the version the form showed; a newer stored one is 409 `mou_changed`
+    proposal_sent_on: BdmMouProposalSentOn = None
+    signed_on: BdmMouSignedOn = None
+    valid_from: BdmMouValidFrom = None
+    valid_until: BdmMouValidUntil = None
+    reference: BdmMouReference = None
+    notes: BdmMouNotes = None
+
+    @field_validator("status")
+    @classmethod
+    def _status_not_null(cls, value):  # runs only when sent: an explicit null is not "unchanged"
+        if value is None:
+            raise PydanticCustomError("mou_status", "Choose a status")
+        return value
+
+    @field_validator("from_status")
+    @classmethod
+    def _from_status_with_status(cls, value, info: ValidationInfo):
+        if info.data.get("status") is not None and value is None:
+            raise PydanticCustomError("mou_from_status", "Send the status the form was showing")
+        return value
+
+
+class BdmMouOrgRef(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    bdm_type: BdmType
+
+
+class BdmMouDocumentOut(BaseModel):
+    name: str | None
+    content_type: str
+    uploaded_at: datetime
+
+
+class BdmMouPermissions(BaseModel):
+    can_edit: bool
+    can_upload: bool
+    can_renew: bool
+
+
+class BdmMouStageRef(BaseModel):
+    key: str
+    label: str
+
+
+class BdmMouRow(BaseModel):
+    id: UUID
+    organization: BdmMouOrgRef
+    assigned_bdm: BdmPersonRef
+    status: BdmMouStatus
+    status_label: str
+    status_changed_at: datetime
+    signed_on: date | None
+    valid_until: date | None
+    reference: str | None
+    has_document: bool
+    is_current: bool
+
+
+class BdmMouOut(BdmMouRow):
+    proposal_sent_on: date | None
+    valid_from: date | None
+    notes: str | None
+    document: BdmMouDocumentOut | None
+    expired_on: date | None
+    created_by: BdmPersonRef
+    permissions: BdmMouPermissions
+    pipeline_on_sign: BdmMouStageRef | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class BdmMouEnvelope(BaseModel):
+    mou: BdmMouOut
+
+
+class BdmOrgMouOut(BaseModel):
+    current: BdmMouOut | None
+    can_start: bool
+
+
+class BdmMouPage(BaseModel):
+    items: list[BdmMouRow]
+    total: int
+    limit: int
+    offset: int
+
+
+class BdmMouEventOut(BaseModel):
+    id: UUID
+    kind: Literal["created", "status", "updated", "document", "renewed"]
+    from_status: BdmMouStatus | None
+    from_label: str | None
+    to_status: BdmMouStatus
+    to_label: str
+    changed: list[str]
+    actor: BdmPersonRef
+    created_at: datetime
+
+
+class BdmMouEventPage(BaseModel):
+    items: list[BdmMouEventOut]
+    total: int
+    limit: int
+    offset: int
+
+
 # --- bdm-006 (DEC-SCOPE-068, spec §5.1): appointments ----------------------------------------------------------------------------
 BdmAppointmentType = Literal[BDM_APPOINTMENT_ALL_TYPES]
 BdmAppointmentOutcome = Literal[BDM_APPOINTMENT_ALL_OUTCOMES]
@@ -4608,7 +4770,53 @@ class BdmTaskPage(BaseModel):
     counts: BdmTaskCounts
 
 
-# --- tel-022 (DEC-SCOPE-078): daily + monthly targets ------------------------------------------------------------------------
+# bdm-013 (DEC-SCOPE-079): the read-only calendar feed -- only what the calendar shows (no notes, contacts, purpose or costs).
+class BdmCalendarAppointment(BaseModel):
+    id: UUID
+    code: str
+    day: date  # the IST date of starts_at
+    starts_at: datetime
+    duration_minutes: int
+    appointment_type: str
+    status: str
+    seminar: bool
+    organization: BdmAppointmentOrgRef
+
+
+class BdmCalendarTrip(BaseModel):
+    id: UUID
+    code: str
+    travel_date: date
+    return_date: date
+    from_place: str
+    to_place: str
+    mode: str
+    approval_status: str
+    travel_status: str
+
+
+class BdmCalendarTask(BaseModel):
+    id: UUID
+    kind: str
+    title: str
+    due_on: date
+    status: str
+    overdue: bool
+    organization: BdmAppointmentOrgRef | None
+
+
+class BdmCalendarOut(BaseModel):
+    bdm: BdmManagerRef
+    date_from: date
+    date_to: date
+    today: date
+    truncated: bool
+    appointments: list[BdmCalendarAppointment]
+    trips: list[BdmCalendarTrip]
+    tasks: list[BdmCalendarTask]
+
+
+# --- tel-022 (DEC-SCOPE-080): daily + monthly targets ------------------------------------------------------------------------
 TelTargetPeriod = Literal["daily", "monthly"]
 TelTargetKpi = Literal[TEL_TARGET_KPIS]
 TEL_TARGET_KPI_LABELS = dict(zip(TEL_TARGET_KPIS, ("Calls", "Connected calls", "Qualified leads", "Follow-ups", "Counselling appointments", "Conversions"), strict=True))

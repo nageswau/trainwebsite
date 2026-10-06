@@ -1,4 +1,4 @@
-"""tel-022 (DEC-SCOPE-078, spec §4-§5): target subjects, the date rules and effective-target resolution -- the one function tel-021's
+"""tel-022 (DEC-SCOPE-080, spec §4-§5): target subjects, the date rules and effective-target resolution -- the one function tel-021's
 dashboard and tel-023's comparison will call for "achieved / target".
 
 Functions only; nothing here commits -- the route owns the transaction. Audit rows carry ids and KPI keys only."""

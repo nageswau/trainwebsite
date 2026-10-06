@@ -1,4 +1,4 @@
-"""tel-022 -- migration 0079_tel_targets (spec §3). Round trip, constraints and downgrade refusal run in a throwaway database built from
+"""tel-022 -- migration 0080_tel_targets (spec §3). Round trip, constraints and downgrade refusal run in a throwaway database built from
 scratch (the tel-001 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -15,15 +15,15 @@ from app.core.config import settings
 from tests.test_tel_001_migration import _config, _sql
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_tel_022_migration_0079", VERSIONS / "0079_tel_targets.py")
+_spec = importlib.util.spec_from_file_location("_tel_022_migration_0080", VERSIONS / "0080_tel_targets.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0078_enquiry_lead_record", "0079_tel_targets"
+BASE, HEAD = "0079_bdm_mous", "0080_tel_targets"
 INSERT = "INSERT INTO tel_targets (id, scope, team, user_id, period, kpi, value, effective_from, set_by_user_id) VALUES (:id, :scope, :team, :user, :period, :kpi, :value, :from, :by)"
 
 
-def test_migration_chains_after_0078_and_is_the_single_head():
+def test_migration_chains_after_0079_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
@@ -120,7 +120,7 @@ def test_round_trip_and_constraints(isolated_db):
         with pytest.raises(Exception, match=constraint):
             _row(url, by, **{"from": date(2026, 11, 9), **overrides})
     _row(url, by, period="monthly", **{"from": date(2026, 12, 1)})
-    with pytest.raises(Exception, match="Cannot downgrade 0079_tel_targets"):
+    with pytest.raises(Exception, match="Cannot downgrade 0080_tel_targets"):
         command.downgrade(cfg, BASE)
     _sql(url, "DELETE FROM tel_targets")
     command.downgrade(cfg, BASE)

@@ -1,12 +1,16 @@
 """tel-022 -- tel_targets: team defaults and per-telecaller overrides for the six EVID-019 §15 KPIs, daily and monthly, effective-dated.
 
-Revision ID: 0079_tel_targets
-Revises: 0078_enquiry_lead_record
+Revision ID: 0080_tel_targets
+Revises: 0079_bdm_mous
 
-docs/superpowers/specs/2026-10-06-tel-022-targets-design.md §3 (DEC-SCOPE-078, provisional: tel-012 also chains after 0078, so whichever
-merges second re-chains). Adds one table; no existing row is read or written, and nothing is seeded (the source's example values are not
+docs/superpowers/specs/2026-10-06-tel-022-targets-design.md §3 (DEC-SCOPE-080). Adds one table; no existing row is read or written, and nothing is seeded (the source's example values are not
 defaults). 0001 builds a fresh database from the current models, which already carry the table, so creation is guarded (0075's idiom).
 downgrade() refuses while any target exists: rows are the only record of what each past day's target was (T28).
+
+Re-chained 2026-10-06 on merging `main` @ `6655e284`: drafted as `0079_tel_targets` on `0078_enquiry_lead_record` (DEC-SCOPE-078), but
+bdm-005's `0079_bdm_mous` (DEC-SCOPE-078) and bdm-013 (DEC-SCOPE-079) reached `main` first, so this revision is `0080_tel_targets` after
+it (one head) and the decision is DEC-SCOPE-080. Still provisional: tel-012 also chains after 0078. A database stamped at `0079_tel_targets`
+is re-stamped with `alembic stamp --purge 0078_enquiry_lead_record` then `upgrade head` (the create is guarded, so the re-run is harmless).
 """
 
 import sqlalchemy as sa
@@ -14,8 +18,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0079_tel_targets"
-down_revision = "0078_enquiry_lead_record"
+revision = "0080_tel_targets"
+down_revision = "0079_bdm_mous"
 branch_labels = None
 depends_on = None
 
@@ -57,5 +61,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {TABLE} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0079_tel_targets: targets exist (the only record of past targets). Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0080_tel_targets: targets exist (the only record of past targets). Remove them deliberately first.")
     op.drop_table(TABLE)

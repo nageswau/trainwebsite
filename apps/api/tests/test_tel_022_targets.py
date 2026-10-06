@@ -1,4 +1,4 @@
-"""tel-022 -- telecaller targets API (spec §5; AC1-AC8; DEC-SCOPE-078 G1-G4). The test database is shared and never truncated, and team
+"""tel-022 -- telecaller targets API (spec §5; AC1-AC8; DEC-SCOPE-080 G1-G4). The test database is shared and never truncated, and team
 defaults are global per team, so team-default tests use a random far-future date and assert on that date only; per-user rows are
 isolated by their fresh user."""
 
