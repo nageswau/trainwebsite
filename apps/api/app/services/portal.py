@@ -53,6 +53,8 @@ from app.models import (
     User,
     VisaCase,
 )
+from app.services import application_filters
+from app.services.application_filters import ApplicationFilters
 from app.services.agent_applications import WITHDRAWN, counts_as_offer, owned, stage_label, with_owner
 from app.services.agent_orgs import org_masters, org_member_ids
 from app.services.agent_students import application_scope, student_scope
@@ -832,7 +834,7 @@ async def _agent(db: AsyncSession, user: User, section: str):
         return _payload("Agent Reports", "Application summary." if staff else "Application and commission summary.", (("metric", "Metric"), ("value", "Value")), rows)
 
 
-async def _operations(db: AsyncSession, user: User, section: str):
+async def _operations(db: AsyncSession, user: User, section: str, *, filters: ApplicationFilters | None = None):
     if user.role in {"placement_team", "hr_team"}:
         if section == "dashboard":
             jobs = (await db.execute(select(Job, Company).join(Company, Company.id == Job.company_id).where(Job.status == "open"))).all()
@@ -990,6 +992,8 @@ async def _operations(db: AsyncSession, user: User, section: str):
             stmt = stmt.where(OverseasApplication.counselor_id == user.id)
         elif user.role == "university_rep":
             stmt = stmt.where(OverseasApplication.university_id == uuid_reference(user.profile.get("university_id"), "university reference", required=False))
+        if filters is not None:  # AGN-023 (DEC-SCOPE-090 H11): SQL-side, before the row cap; parse() admits only students/applications
+            stmt = application_filters.apply(stmt, filters)
         applications = owned((await db.execute(stmt.order_by(OverseasApplication.updated_at.desc()).limit(500))).all())
         app_ids = [a.id for a, _, _ in applications]
         if section == "dashboard":
@@ -1025,12 +1029,22 @@ async def _operations(db: AsyncSession, user: User, section: str):
                 ),
             )
         if section in {"students", "applications", "admission-updates", "offer-letters"}:
-            return _payload(
-                "Application Tracking",
-                "Assigned applications and next actions.",
-                (("id", "reference"), ("student", "Student"), ("university", "University"), ("reference", "Reference"), ("status", "Status"), ("next_action", "Next action")),
-                ({"id": a.id, "student_id": s.id, "student": s.full_name, "university": u.name, "reference": a.application_reference, "status": a.status, "next_action": a.next_action} for a, u, s in applications),
-            )
+            columns = [("id", "reference"), ("student", "Student"), ("university", "University"), ("reference", "Reference"), ("status", "Status"), ("next_action", "Next action")]
+            rows = [{"id": a.id, "student_id": s.id, "student": s.full_name, "university": u.name, "reference": a.application_reference, "status": a.status, "next_action": a.next_action} for a, u, s in applications]
+            if user.role in {"overseas_admin", "counselor"}:  # AGN-023 (DEC-SCOPE-090 §3.3); university_rep unchanged
+                agencies, counselors = await application_filters.row_labels(db, [a for a, _, _ in applications])
+                for row, (a, _, _) in zip(rows, applications, strict=True):
+                    row |= {"is_agency": a.agent_id is not None, "agency": agencies.get(a.agent_id)}
+                    if user.role == "overseas_admin":
+                        row |= {"counselor": counselors.get(a.counselor_id) or "Not assigned", "counselor_id": str(a.counselor_id) if a.counselor_id else None, "assign": a.id}
+                columns.insert(2, ("agency", "Agency"))
+                if user.role == "overseas_admin":
+                    columns.insert(4, ("counselor", "EduSphere counsellor"))
+                    columns.append(("assign", "", "assign_counselor"))
+            payload = _payload("Application Tracking", "Assigned applications and next actions.", columns, rows)
+            if user.role in {"overseas_admin", "counselor"}:
+                payload["filters"] = await application_filters.payload_part(db, user, filters or ApplicationFilters())
+            return payload
         if section == "documents":
             docs = (
                 (
@@ -1600,7 +1614,7 @@ async def _it_counselor(db: AsyncSession, user: User, section: str):
     )
 
 
-async def section_payload(db: AsyncSession, user: User, section: str) -> dict | None:
+async def section_payload(db: AsyncSession, user: User, section: str, *, filters: ApplicationFilters | None = None) -> dict | None:
     if user.role == "it_student":
         result = await _it_student(db, user, section)
     elif user.role == "trainer":
@@ -1612,5 +1626,5 @@ async def section_payload(db: AsyncSession, user: User, section: str) -> dict | 
     elif user.role == "counselor" and user.division == "it":
         result = await _it_counselor(db, user, section)
     else:
-        result = await _operations(db, user, section)
+        result = await _operations(db, user, section, filters=filters)
     return result
