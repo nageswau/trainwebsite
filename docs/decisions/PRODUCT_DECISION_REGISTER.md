@@ -3909,13 +3909,13 @@ picked the recommended option. Design spec: `docs/superpowers/specs/2026-10-06-b
 **Recorded defaults:** writers `telecaller_manager`, `super_admin`; readers add `telecaller` (active rows only); other roles 403. Placeholders are exactly `{name}`, `{product}`, `{brochure_link}` (needs a brochure), `{appointment_time}`; any other `{…}` is a 422 on save. Rendering is plain text and single-pass; the sink escapes it (tel-013 URL-encodes, tel-014 HTML-escapes). PDFs are judged by their bytes, within `MAX_UPLOAD_BYTES`. Nothing is deleted. A deactivated row keeps its list position.
 
 **Implementation:** migration `0083_tel_content` (`tel_scripts`, `tel_assets`, `tel_message_templates`, plus seeds; no existing row is touched; downgrade refuses while manager data exists). Routes `GET|POST|PATCH /telecaller/{scripts,templates,assets}`, `GET /telecaller/templates/{id}/preview`, `POST /telecaller/assets/{id}/link`, `GET /public/telecaller-assets/{token}` (`API_CONTRACT.md` §12I, `RBAC_MATRIX.md` §2.18). Manager pages `/telecaller/manager/{scripts,templates,brochures}`. Design spec `docs/superpowers/specs/2026-10-06-tel-012-content-library-design.md`.
-VERIFIED on `feature/tel-012` @ final HEAD (2026-10-06): lite backend 339 (tel-001/002/003/012/017 + bdm-005 migration; re-run after the 4ec7a22b merge), vitest 75, Playwright 7, Browser Use QA (QA-01…04 fixed test-first and re-verified). Full backend suite deferred to the owner.
+VERIFIED on `feature/tel-012` (2026-10-06): lite backend 440 on the final merge (every `test_tel_0*` file + the bdm-005/bdm-025 migration tests), vitest 75, Playwright 7, Browser Use QA (QA-01…04 fixed test-first and re-verified). Full backend suite deferred to the owner. **MERGED** to `main` as PR #83 @ `50838192` (2026-10-06).
 
 ### DEC-SCOPE-084 — Telecaller lead workspace: My Leads, lead detail, priority (`tel-008`)
 
 **Evidence:** `EVID-019` §2 (field display), §8 (priority, L314–L330), §22 ("View assigned leads"); `DEC-SCOPE-073` T19, T23;
 `DEC-SCOPE-081` D4; owner answer in-session 2026-10-06.
-**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for W1; D1–D5 are recorded defaults. Branch `feature/tel-008`. No migration.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for W1; D1–D6 are recorded defaults. Branch `feature/tel-008`. No migration.
 
 | # | Question | Answer |
 |---|---|---|
