@@ -1,16 +1,14 @@
 """bdm-008 -- the follow-ups list, create, edit, complete and cancel (spec §5, §6; AC1-AC6, AC8)."""
 
-import logging
-
 import pytest
 from sqlalchemy import select
 
-from app.models import AuditLog, BdmTask
-from tests.bdm001_helpers import login, make_manager
+from app.models import AuditLog
+from tests.bdm001_helpers import login
 from tests.bdm002_helpers import create_org, make_bdm
 from tests.bdm006_helpers import bdm_with_org
 from tests.bdm007_helpers import completed
-from tests.bdm008_helpers import TASKS, create_task, insert_task, ist_day, listed
+from tests.bdm008_helpers import TASKS, bdm_logs, create_task, insert_task, ist_day, listed
 
 
 @pytest.mark.asyncio
@@ -180,12 +178,16 @@ async def test_outcome_follow_up_is_complete_only(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_no_task_text_in_audit_or_logs(client, db_session, caplog):
-    """AC8."""
+async def test_no_task_text_in_audit_or_logs(client, db_session, caplog, monkeypatch):
+    """AC8 -- and the events themselves are logged (so the absence below is not silence)."""
     await bdm_with_org(client, db_session)
-    caplog.set_level(logging.INFO, logger="app.bdm")
+    bdm_logs(caplog, monkeypatch)
     t = await create_task(client, title="SECRET-TITLE", notes="SECRET-NOTES")
     await client.patch(url(t), json={"title": "SECRET-TITLE-2"})
     await client.post(url(t, "cancel"), json={"reason": "SECRET-REASON"})
     metadata = (await db_session.scalars(select(AuditLog.metadata_json).where(AuditLog.entity_id == t["id"]))).all()
-    assert len(metadata) == 3 and "SECRET" not in repr(metadata) and "SECRET" not in caplog.text
+    assert len(metadata) == 3 and "SECRET" not in repr(metadata)
+    events = [r.getMessage() for r in caplog.records if r.name == "app.bdm"]
+    assert {"bdm_task_created", "bdm_task_updated", "bdm_task_cancelled"} <= set(events)
+    text = " | ".join(f"{r.getMessage()} {getattr(r, 'extra_fields', '')}" for r in caplog.records)
+    assert "SECRET" not in text

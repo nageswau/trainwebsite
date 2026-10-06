@@ -125,7 +125,7 @@ async def _type_counts(db: AsyncSession, filters: list) -> list[dict]:
         select(BdmOrganization.org_type, func.count()).select_from(BdmTask).outerjoin(BdmOrganization, ORG_JOIN)
         .where(*filters).group_by(BdmOrganization.org_type)
     )).all()
-    found = {t: n for t, n in rows}
+    found: dict[str | None, int] = {t: n for t, n in rows}
     return [{"org_type": t, "count": found[t]} for t in (*BDM_ORG_TYPES, None) if found.get(t)]
 
 
@@ -135,7 +135,7 @@ async def page(db: AsyncSession, user: User, base: list, bucket: str, org_type: 
     of_type = [org_type_filter(org_type)] if org_type else []
     filters = [*base, in_bucket, *of_type]
     total = await db.scalar(_count(*filters))
-    rows = (await db.execute(_rows().where(*filters).order_by(*_ordering(bucket)).limit(limit).offset(offset))).all()
+    rows = (await db.execute(_rows().where(*filters).order_by(*_ordering(bucket)).limit(limit).offset(offset))).tuples().all()
     return {
         "items": [_out(user, t, o, u, code, today) for t, o, u, code in rows],
         "total": total or 0, "limit": limit, "offset": offset, "today": today,
@@ -145,7 +145,7 @@ async def page(db: AsyncSession, user: User, base: list, bucket: str, org_type: 
 
 async def one(db: AsyncSession, user: User, task_id: UUID, today: date) -> dict:
     """The row as written (populate_existing: never a stale identity-map copy after a commit)."""
-    task, org, assignee, code = (await db.execute(_rows().where(BdmTask.id == task_id).execution_options(populate_existing=True))).one()
+    task, org, assignee, code = (await db.execute(_rows().where(BdmTask.id == task_id).execution_options(populate_existing=True))).tuples().one()
     return _out(user, task, org, assignee, code, today)
 
 
@@ -185,12 +185,13 @@ async def created_today(db: AsyncSession, user_id: UUID, today: date) -> int:
 
 async def cancel_open_for_organization(db: AsyncSession, org_id: UUID) -> int:
     """F6: the archive's transaction (the caller holds the organization lock) cancels every assignee's open items on it."""
-    result = await db.execute(
+    cancelled = await db.scalars(
         update(BdmTask).where(BdmTask.organization_id == org_id, BdmTask.status == "open")
         .values(status="cancelled", cancelled_at=func.now(), cancel_reason=ORG_ARCHIVED, updated_at=func.now())
+        .returning(BdmTask.id)
         .execution_options(synchronize_session=False)
     )
-    return result.rowcount or 0
+    return len(cancelled.all())
 
 
 def audit(db: AsyncSession, user: User, action: str, task_id, metadata: dict | None = None) -> None:

@@ -1,5 +1,6 @@
 """bdm-008 test builders (on bdm-006's). Unique per call: the shared test database is never truncated, so every test uses fresh BDMs."""
 
+import logging
 from datetime import date, datetime, timedelta
 
 from sqlalchemy import func
@@ -41,3 +42,10 @@ async def listed(client, **params) -> dict:
     response = await client.get(TASKS, params=params)
     assert response.status_code == 200, response.text
     return response.json()
+
+
+def bdm_logs(caplog, monkeypatch, level: int = logging.INFO) -> None:
+    """Capture `app.bdm`. alembic/env.py's fileConfig() disables loggers that already exist when a migration test ran earlier in the
+    same session (the agn-009 note), which would make a "nothing secret was logged" assertion pass on silence."""
+    monkeypatch.setattr(logging.getLogger("app.bdm"), "disabled", False)
+    caplog.set_level(level, logger="app.bdm")
