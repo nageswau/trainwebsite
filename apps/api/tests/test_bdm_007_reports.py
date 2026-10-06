@@ -251,3 +251,16 @@ async def test_outcome_pending_flag_and_filter(client, db_session):
     team = (await client.get(APPTS, params={**window, "outcome_pending": "true"})).json()
     assert [r["id"] for r in team["items"]] == [pending["id"]]
     assert (await client.get(f"{APPTS}/{pending['id']}")).json()["appointment"]["outcome_pending"] is True
+
+
+@pytest.mark.asyncio
+async def test_clearing_the_date_records_when_and_why_and_setting_it_again_clears_both(client, db_session):
+    """bdm-008 (spec §4.1): a cancelled follow-up carries its time and reason; a reopened one carries neither."""
+    _, _, org = await bdm_with_org(client, db_session)
+    a = await completed(client, db_session, org, next_follow_up_on=in_days(2))
+    await client.patch(report_url(a), json={"next_follow_up_on": None})
+    row = (await db_session.execute(select(BdmTask.cancelled_at, BdmTask.cancel_reason).where(BdmTask.source_appointment_id == a["id"]).execution_options(populate_existing=True))).one()
+    assert row.cancelled_at is not None and row.cancel_reason == "Follow-up date removed from the meeting report"
+    await client.patch(report_url(a), json={"next_follow_up_on": in_days(3)})
+    row = (await db_session.execute(select(BdmTask.status, BdmTask.cancelled_at, BdmTask.cancel_reason).where(BdmTask.source_appointment_id == a["id"]).execution_options(populate_existing=True))).one()
+    assert tuple(row) == ("open", None, None)
