@@ -123,7 +123,7 @@ async def test_no_visa_case_yet_is_an_honest_empty_state_not_an_error(client, db
     await _login(client, student.email)
     response = await client.get(f"/api/v1/workflows/overseas/applications/{application.id}/visa-checklist")
     assert response.status_code == 200
-    assert response.json() == {"exists": False, "status": None, "checklist": [], "appointment_date": None, "tracking_reference": None}
+    assert response.json() == {"exists": False, "status": None, "checklist": [], "appointment_date": None, "tracking_reference": None, "locked_reason": None}
 
 
 @pytest.mark.asyncio

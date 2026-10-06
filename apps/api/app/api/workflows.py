@@ -105,11 +105,11 @@ from app.schemas import (
     VisaCaseCreate,
 )
 from app.services import agent_notifications as agency_notices
-from app.services.agent_applications import DEFAULT_NEXT_ACTION, OVERSEAS_APPLICATION_STAGES, WITHDRAWN, owned, with_owner
+from app.services.agent_applications import DEFAULT_NEXT_ACTION, OFFER_STAGES_ON, OVERSEAS_APPLICATION_STAGES, WITHDRAWN, owned, with_owner
 from app.services.agent_documents import add_event, in_scope
 from app.services.agent_orgs import lock_org, notification_recipients, org_member_ids
 from app.services.agent_students import application_scope, student_scope
-from app.services.agent_visa import VISA_CASE_STAGES, VISA_DECISION_DISCLAIMER
+from app.services.agent_visa import VISA_CASE_STAGES, VISA_DECIDED, VISA_DECISION_DISCLAIMER, VISA_ENROLLED, VISA_OFFER_NEEDED, update_case
 from app.services.certificates import generate_certificate_pdf
 from app.services.storage import storage
 
@@ -118,6 +118,9 @@ logger = logging.getLogger("app.workflows")
 COUNSELOR_REFUSED_ON_UPDATE = "Use Assign counselor to change the counselor"  # AGN-023 (DEC-SCOPE-090 H10)
 APPLICATION_CLOSED = "This application is closed"
 CHOOSE_ACTIVE_COUNSELOR = "Choose an active overseas counselor"
+MASTER_ENROLLS = "Only the agency's Master confirms enrollment"  # AGN-023 (DEC-SCOPE-090 H4), DEC-SCOPE-054 E1
+AGENCY_VISA_STARTS_AT_CHECKLIST = "A visa case starts at the checklist stage"
+AGENCY_RECORDS_VISA_DECISION = "The visa decision is recorded by the agency"
 
 
 def _require(user: User, roles: set[str], division: str | None = None):
@@ -2028,6 +2031,8 @@ async def advance_overseas_application(application_id: UUID, payload: OverseasAp
     await db.refresh(item, with_for_update=True)  # AGN-008 (final review): the guard must see a committed withdraw
     if item.status == WITHDRAWN:  # AGN-008 (A1): otherwise index -1 would let any target revive it
         raise HTTPException(409, "This application is withdrawn")
+    if item.agent_id is not None and payload.to_status == "enrolled":
+        raise HTTPException(403, MASTER_ENROLLS)
     if payload.to_status not in OVERSEAS_APPLICATION_STAGES:
         raise HTTPException(422, f"'{payload.to_status}' is not a supported application stage yet -- rejection/waitlist/deferral outcomes are an open item (see docs/product/PRD_OPEN_ITEMS.md), not a status this endpoint can set.")
     current_index = OVERSEAS_APPLICATION_STAGES.index(item.status) if item.status in OVERSEAS_APPLICATION_STAGES else -1
@@ -2247,17 +2252,22 @@ async def get_visa_checklist(application_id: UUID, user: User = Depends(get_curr
     _require(user, {"overseas_student", "counselor", "overseas_admin"}, "overseas")
     application = await _assigned_application(db, user, application_id)
     case = await db.scalar(select(VisaCase).where(VisaCase.application_id == application.id))
+    # AGN-023 (DEC-SCOPE-090 H12): agency cases tell the counselor's screen why nothing can be changed any more.
+    locked_reason = None
+    if application.agent_id is not None:
+        locked_reason = VISA_ENROLLED if application.status == "enrolled" else VISA_DECIDED if case is not None and case.decision is not None else None
     if not case:
         # No visa case has been started yet -- an honest empty state, not an error or a
         # fabricated one (the case is created by a Counselor once the application is far
         # enough along; not every application has reached that point).
-        return {"exists": False, "status": None, "checklist": [], "appointment_date": None, "tracking_reference": None}
+        return {"exists": False, "status": None, "checklist": [], "appointment_date": None, "tracking_reference": None, "locked_reason": locked_reason}
     return {
         "exists": True,
         "id": case.id,
         "status": case.status,
         "appointment_date": case.appointment_date,
         "tracking_reference": case.tracking_reference,
+        "locked_reason": locked_reason,
         "checklist": [{"item": item, "verification_status": status} for item, status in (await _checklist_verification(db, application.id, case.checklist)).items()],
     }
 
@@ -2310,6 +2320,34 @@ async def get_visa_status(application_id: UUID, user: User = Depends(get_current
     }
 
 
+async def _update_agency_visa(db: AsyncSession, user: User, application: OverseasApplication, case: VisaCase, payload: dict) -> dict:
+    """AGN-023 (DEC-SCOPE-090 H4, spec §4): a counselor's change to an agency visa case goes through the agency's own rules
+    (agent_visa.update_case: decided lock, forward only, checklist lock, checklist gate). Lock order matches the agency route:
+    the application, then the case; the expected stage is the one read under that lock. The decision stays with the agency."""
+    await db.refresh(application, with_for_update=True)
+    await db.refresh(case, with_for_update=True)
+    if application.status == "enrolled":
+        raise HTTPException(409, VISA_ENROLLED)
+    if "decision" in payload:
+        raise HTTPException(422, AGENCY_RECORDS_VISA_DECISION)
+    changes: dict = {"expected_stage": case.status}
+    target = payload.get("status")
+    if target is not None and target != case.status:
+        if target not in VISA_CASE_STAGES:
+            raise HTTPException(422, f"'{target}' is not a supported visa case stage -- must be one of {VISA_CASE_STAGES}.")
+        changes["to_stage"] = target
+    if "checklist" in payload:
+        changes["checklist"] = payload["checklist"]
+    if payload.get("appointment_date"):
+        changes["appointment_date"] = date.fromisoformat(payload["appointment_date"])
+    if case.decision is None and "tracking_reference" in payload:
+        case.tracking_reference = payload["tracking_reference"]
+    await update_case(db, case, changes)
+    await _audit(db, user, "visa.update", "visa_case", case.id, payload)
+    await db.commit()
+    return {"id": case.id, "status": case.status}
+
+
 @router.patch("/overseas/visa/{visa_id}")
 async def update_visa(visa_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require(user, {"counselor", "overseas_admin"}, "overseas")
@@ -2318,6 +2356,8 @@ async def update_visa(visa_id: UUID, payload: dict, user: User = Depends(get_cur
         raise HTTPException(404, "Visa case not found")
     application = await _assigned_application(db, user, item.application_id)
     await _require_bridged_visa_entitlement(db, user, application, grandfathered_since=item.created_at)
+    if application.agent_id is not None:
+        return await _update_agency_visa(db, user, application, item, payload)
     if "status" in payload:
         if payload["status"] not in VISA_CASE_STAGES:
             raise HTTPException(422, f"'{payload['status']}' is not a supported visa case stage -- must be one of {VISA_CASE_STAGES}.")
@@ -2344,6 +2384,14 @@ async def create_visa_case(payload: VisaCaseCreate, user: User = Depends(get_cur
     if payload.status not in VISA_CASE_STAGES:
         raise HTTPException(422, f"'{payload.status}' is not a supported visa case stage -- must be one of {VISA_CASE_STAGES}.")
     application = await _assigned_application(db, user, payload.application_id)
+    if application.agent_id is not None:  # AGN-023 (DEC-SCOPE-090 H4): the agency's AGN-012 start rules, under the same lock order
+        await db.refresh(application, with_for_update=True)
+        if application.status == "enrolled":
+            raise HTTPException(409, VISA_ENROLLED)
+        if application.status not in OFFER_STAGES_ON:
+            raise HTTPException(422, VISA_OFFER_NEEDED)
+        if payload.status != "checklist":
+            raise HTTPException(422, AGENCY_VISA_STARTS_AT_CHECKLIST)
     await _require_bridged_visa_entitlement(db, user, application)
     existing = await db.scalar(select(VisaCase).where(VisaCase.application_id == application.id))
     if existing:

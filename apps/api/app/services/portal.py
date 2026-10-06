@@ -1035,7 +1035,12 @@ async def _operations(db: AsyncSession, user: User, section: str):
             docs = (
                 (
                     await db.execute(
-                        select(StudentDocument, User).join(User, User.id == StudentDocument.student_id).where(StudentDocument.application_id.in_(app_ids)).order_by(StudentDocument.updated_at.desc())
+                        # AGN-023 (DEC-SCOPE-090 §4): outer joins, so a no-login agency student's documents are listed; still scoped to app_ids.
+                        select(StudentDocument, func.coalesce(User.full_name, AgentStudent.full_name, "A student"))
+                        .outerjoin(User, User.id == StudentDocument.student_id)
+                        .outerjoin(AgentStudent, AgentStudent.id == StudentDocument.agent_student_id)
+                        .where(StudentDocument.application_id.in_(app_ids))
+                        .order_by(StudentDocument.updated_at.desc())
                     )
                 ).all()
                 if app_ids
@@ -1045,7 +1050,7 @@ async def _operations(db: AsyncSession, user: User, section: str):
                 "Document Verification",
                 "Admission and visa document review queue.",
                 (("id", "reference"), ("student", "Student"), ("document", "Document"), ("status", "Status"), ("notes", "Notes")),
-                ({"id": d.id, "student": s.full_name, "document": d.document_type, "status": d.verification_status, "notes": d.reviewer_notes} for d, s in docs),
+                ({"id": d.id, "student": name, "document": d.document_type, "status": d.verification_status, "notes": d.reviewer_notes} for d, name in docs),
             )
         if section == "visa":
             visas = (
