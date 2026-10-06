@@ -3,7 +3,7 @@
 Revision ID: 0078_bdm_mous
 Revises: 0077_bdm_tasks_followups
 
-docs/superpowers/specs/2026-10-06-bdm-005-mou-tracking-design.md §5 (DEC-SCOPE-076). Additive: two new tables, no existing row read
+docs/superpowers/specs/2026-10-06-bdm-005-mou-tracking-design.md §5 (DEC-SCOPE-077). Additive: two new tables, no existing row read
 or written. 0001 builds a fresh database from the current models, which already carry both tables, so each is created only when
 missing. STATUSES / EVENT_KINDS are frozen copies of app.models.BDM_MOU_SETTABLE / BDM_MOU_EVENT_KINDS and CHECKS must equal
 app.models.BDM_MOU_CHECKS (test_bdm_005_migration). downgrade() refuses while any MoU exists: recorded agreements are never dropped
@@ -11,7 +11,7 @@ silently.
 
 Re-chained 2026-10-06 on merging `main` @ `442ce465`: cut as `0076_bdm_mous` after `0075_telecaller_profiles` (DEC-SCOPE-074), but
 tel-002's `0076_tel_catalogue` and bdm-008's `0077_bdm_tasks_followups` reached `main` first, so this revision is now `0078_bdm_mous`
-after them (one head) and the decision is DEC-SCOPE-076. A database stamped at `0076_bdm_mous` is re-stamped with
+after them (one head) and the decision is DEC-SCOPE-077. A database stamped at `0076_bdm_mous` is re-stamped with
 `alembic stamp --purge 0075_telecaller_profiles` then `upgrade head` (every create here is guarded, so the re-run is harmless).
 """
 

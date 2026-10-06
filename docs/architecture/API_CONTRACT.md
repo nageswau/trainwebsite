@@ -501,7 +501,7 @@ stage, live stage "set by the onboarding handover", volume step, same stage, bac
 type), unknown `stage`, `assigned=me` from a non-BDM. **Retry semantics:** a repeated move answers `409 stage_changed` with
 `current_stage` equal to the requested stage (the UI treats it as done); a repeated lost / revive answers `409`. No idempotency key.
 
-**`bdm-005` / `DEC-SCOPE-076` (built 2026-10-06; migration `0078_bdm_mous`, after `0077_bdm_tasks_followups`) — MoU tracking.**
+**`bdm-005` / `DEC-SCOPE-077` (built 2026-10-06; migration `0078_bdm_mous`, after `0077_bdm_tasks_followups`) — MoU tracking.**
 Design spec `docs/superpowers/specs/2026-10-06-bdm-005-mou-tracking-design.md` §6. All routes are new; no existing request or response
 changes (the organization detail does not embed the MoU). Writes reuse `can_edit` (M3: the assigned BDM or `super_admin`); reads and
 downloads follow `caller_scope`. `status` everywhere is the **effective** status: a Signed / Active MoU with `valid_until` before today
@@ -874,6 +874,18 @@ is one sentence naming the field (e.g. "Name is required", "Source: Input should
 
 Every write adds an `AuditLog` row (`telecaller.product_create|product_update|campaign_create|campaign_update`, entity `tel_product` /
 `tel_campaign`, `metadata_json.fields` = the changed field names only).
+
+## 12E. IT counselor (`tel-017`) — addendum, 2026-10-06
+
+`DEC-SCOPE-076`; design spec `docs/superpowers/specs/2026-10-06-tel-017-it-counselor-design.md`; `RBAC_MATRIX.md` §2.16. No new endpoint
+and no response-shape change.
+
+| Endpoint | Change |
+|---|---|
+| `POST /admin/users` | `role: "counselor"` is now valid with `division: "it"` (was `422` "Role is not valid for the selected division") |
+| `POST /workflows/overseas/applications`, `PATCH /workflows/overseas/applications/{id}` | A supplied `counselor_id` must be a `counselor` in the `overseas` division, else `422` "Choose an overseas counselor" (an unknown id used to fail with `500`); `null` still clears it |
+| `GET /portal/it/counselor/{dashboard,leads}` | New sections for an IT counselor (the existing `PortalPayload` shape). Any other section → `404` "Workspace not found" |
+| `GET /overseas-admin/school-students/lookup`, `POST /overseas-admin/school-students/{id}/applications`, `GET /overseas-admin/school-applications`, `GET /lookups/{overseas-students,overseas-applications,schools,school-students}`, `GET /inbound/university-email`, `PATCH /inbound/university-email/{id}/match` | A caller outside the `overseas` division now gets `403` "Wrong EduSphere division" after the role check (`super_admin` exempt). Every role these routes already admitted is overseas-only, so their behaviour is unchanged |
 
 ## 13. Traceability check
 

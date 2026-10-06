@@ -3,7 +3,7 @@ import Link from "next/link";
 import ChangePasswordForm from "@/components/ChangePasswordForm";
 import PublicShell from "@/components/PublicShell";
 import { ApiError, serverApi } from "@/lib/api";
-import { ROLE_DASHBOARD_PATH } from "@/lib/navigation";
+import { dashboardPathFor } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
 // ENH-006: like /account/privacy (SEC-002), this belongs to no one role's portal nav (`PORTAL_NAV`), so it is one shared
@@ -55,7 +55,7 @@ export default async function AccountPasswordPage() {
     <PublicShell division={division}>
       <div className="section compact">
         <div className="container" style={{ maxWidth: 560 }}>
-          <Link href={ROLE_DASHBOARD_PATH[user.role] || "/"} className="muted" style={{ display: "inline-block", padding: "6px 0" }}>← Back to dashboard</Link>
+          <Link href={dashboardPathFor(user)} className="muted" style={{ display: "inline-block", padding: "6px 0" }}>← Back to dashboard</Link>
           <h1 style={{ fontSize: 34, marginTop: 14 }}>Change your password</h1>
           <p className="muted">Signed in as {user.full_name} ({user.email}).</p>
           <div className="action-card">

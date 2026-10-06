@@ -747,6 +747,9 @@ NO-ASSUMPTION MODE. Prepared 2026-10-05 at the user's request. **No code was wri
 - **Regression risks:** **high.** CNS-001 counselor workspace tests and overseas counselor scope tests.
 - **Complexity:** medium · **Risk:** high
 
+**Status (2026-10-06):** **merged** to `main` as PR #73 @ `675762d3` (`DEC-SCOPE-076` C1: Dashboard + My Leads only; no migration). The
+division-change edge case does not apply: `User.division` cannot change after creation.
+
 ### tel-018 — Handover to counselor, return, student link, computed conversion
 
 - **Business requirement:** §10, §13 (Counselor Assigned → Application/Enrollment → Converted), T4, T5, T19, T20, T29.
@@ -1119,7 +1122,7 @@ graph TD
 
 ### 5.4 Migrations
 
-Numbers are **provisional**. `main` is at `0076_tel_catalogue` (tel-002, merged 2026-10-06; tel-001 took `0075`), so the next telecaller migration will be `0077` or later. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
+Numbers are **provisional**. `main` is at `0077_bdm_tasks_followups` (bdm-008, merged 2026-10-06; tel-001 took `0075`, tel-002 `0076`; tel-017 has none), so the next telecaller migration will be `0078` or later, and the next decision `DEC-SCOPE-077` or later. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
 
 | Item | Migration content |
 |---|---|

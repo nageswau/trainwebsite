@@ -12,7 +12,7 @@ AGN-009's upload validation. Expired is derived on read. The web adds an MoU car
 
 **Tech Stack:** FastAPI, SQLAlchemy 2 async, Alembic, Pydantic 2, PostgreSQL 16; Next.js App Router, React, Vitest, Playwright.
 
-> **Renumbered 2026-10-06** on merging `main` @ `442ce465`: `DEC-SCOPE-074` → `DEC-SCOPE-076`, `0076_bdm_mous` → `0078_bdm_mous`
+> **Renumbered 2026-10-06** on merging `main` @ `442ce465` and `edd9a9b0`: `DEC-SCOPE-074` → `DEC-SCOPE-077` (tel-002 holds 074, bdm-008 075, tel-017 076), `0076_bdm_mous` → `0078_bdm_mous`
 > (after `0077_bdm_tasks_followups`). The task text below keeps the drafted numbers.
 
 **Spec:** `docs/superpowers/specs/2026-10-06-bdm-005-mou-tracking-design.md` (decisions M1–M9, `DEC-SCOPE-074`).

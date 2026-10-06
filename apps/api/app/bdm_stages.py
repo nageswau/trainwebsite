@@ -86,5 +86,5 @@ AGENT_STATUS: dict[str, str] = {
     "active_agent": "Active",
 }
 
-# bdm-005 (DEC-SCOPE-076 M5, D28): an MoU moving to Signed advances the pipeline to this stage, forward only.
+# bdm-005 (DEC-SCOPE-077 M5, D28): an MoU moving to Signed advances the pipeline to this stage, forward only.
 MOU_SIGNED_STAGE: dict[str, str] = {"agent": "agreement_signed", "school": "signed", "college": "mou_signed"}

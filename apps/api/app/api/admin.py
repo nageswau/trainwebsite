@@ -504,7 +504,8 @@ async def create_user(payload: dict, user: User = Depends(ensure_admin), db: Asy
         raise HTTPException(403, "Cannot create users in another division")
     _reject_supplied_password(payload, user, USERS_ROUTE, "password")
     allowed_by_division = {
-        "it": {"it_student", "trainer", "placement_team", "hr_team", "it_admin", "bdm", "telecaller"},
+        # tel-017 (DEC-SCOPE-076, T3): a counselor belongs to IT or Overseas.
+        "it": {"it_student", "trainer", "placement_team", "hr_team", "it_admin", "bdm", "telecaller", "counselor"},
         "overseas": {"overseas_student", "counselor", "university_rep", "agent", "overseas_admin", "bdm", "telecaller"},
         "global": {"super_admin", "bdm_manager", "telecaller_manager"},
     }
@@ -1158,6 +1159,14 @@ async def fulfil_data_request(request_id: UUID, payload: dict, user: User = Depe
 agents_router = APIRouter(prefix="/overseas-admin", tags=["overseas-admin"])
 
 
+def _require_bridge_role(user: User) -> None:
+    """The School->Overseas bridge's roles. tel-017 (DEC-SCOPE-076): a counselor can be IT now, so the division is checked too."""
+    if user.role not in {"overseas_admin", "counselor", "super_admin"}:
+        raise HTTPException(403, "Overseas Admin or Counselor role required")
+    if user.role != "super_admin" and user.division != "overseas":
+        raise HTTPException(403, "Wrong EduSphere division")
+
+
 async def _pending_agent_assignment(agent_id: UUID, user: User, db: AsyncSession) -> tuple[User, UserRoleAssignment]:
     if user.role not in {"overseas_admin", "super_admin"}:
         raise HTTPException(403, "Overseas Admin role required")
@@ -1784,8 +1793,7 @@ async def lookup_school_student_by_code(code: str, user: User = Depends(get_curr
     School student across every school without a raw internal-id picker."""
     from app.models import School, SchoolStudent
 
-    if user.role not in {"overseas_admin", "counselor", "super_admin"}:
-        raise HTTPException(403, "Overseas Admin or Counselor role required")
+    _require_bridge_role(user)
     student = await db.scalar(select(SchoolStudent).where(SchoolStudent.student_code == code.strip().upper()))
     if not student:
         raise HTTPException(404, "No school student found with that Student ID")
@@ -1807,8 +1815,7 @@ async def create_bridged_application(school_student_id: UUID, payload: dict, use
     from app.api.schools import _notify_student_parents, require_school_entitlement
     from app.models import ApplicationStatusHistory, SchoolStudent
 
-    if user.role not in {"overseas_admin", "counselor", "super_admin"}:
-        raise HTTPException(403, "Overseas Admin or Counselor role required")
+    _require_bridge_role(user)
     student = await db.get(SchoolStudent, school_student_id)
     if not student:
         raise HTTPException(404, "School student not found")
@@ -1850,8 +1857,7 @@ async def create_bridged_application(school_student_id: UUID, payload: dict, use
 async def list_bridged_applications(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     from app.models import SchoolStudent
 
-    if user.role not in {"overseas_admin", "counselor", "super_admin"}:
-        raise HTTPException(403, "Overseas Admin or Counselor role required")
+    _require_bridge_role(user)
     stmt = (
         select(OverseasApplication, SchoolStudent, University)
         .join(SchoolStudent, SchoolStudent.id == OverseasApplication.school_student_id)

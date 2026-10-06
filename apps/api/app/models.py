@@ -1255,7 +1255,7 @@ class BdmPipelineEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-# bdm-005 (DEC-SCOPE-076, spec §4): the MoU statuses in source order and wording (EVID-016 §10). `expired` is derived on read (M2):
+# bdm-005 (DEC-SCOPE-077, spec §4): the MoU statuses in source order and wording (EVID-016 §10). `expired` is derived on read (M2):
 # a signed / active MoU past `valid_until`; it is never stored, so the status CHECK lists only the settable keys.
 BDM_MOU_STATUS_LABELS: dict[str, str] = {
     "prospect": "Prospect",
@@ -1282,7 +1282,7 @@ BDM_MOU_CHECKS = {  # migration 0076 repeats these strings; test_bdm_005_migrati
 
 
 class BdmMou(Base, TimestampMixin):
-    """bdm-005 (DEC-SCOPE-076, spec §5.1): an organization's MoU. At most one `is_current` row per organization (M6: a renewal is a
+    """bdm-005 (DEC-SCOPE-077, spec §5.1): an organization's MoU. At most one `is_current` row per organization (M6: a renewal is a
     new row; the old one is kept). `document_key` is server-generated and never returned or logged; the service owns every rule, the
     CHECKs are the backstop."""
 

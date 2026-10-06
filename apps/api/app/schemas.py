@@ -3896,7 +3896,7 @@ class BdmPipelinePage(BaseModel):
     offset: int
 
 
-# --- bdm-005 (DEC-SCOPE-076, spec §6.1): MoU tracking ----------------------------------------------------------------------------
+# --- bdm-005 (DEC-SCOPE-077, spec §6.1): MoU tracking ----------------------------------------------------------------------------
 MOU_FIELD_LABELS = {
     "reference": "Reference",
     "notes": "Notes",

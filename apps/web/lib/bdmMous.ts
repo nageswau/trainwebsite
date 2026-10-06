@@ -1,7 +1,7 @@
 import { type BdmType, PAGE_SIZE } from "@/lib/bdm";
 import { ORGS_URL, type OrgPerson } from "@/lib/bdmOrganizations";
 
-// bdm-005 (DEC-SCOPE-076): an organization's MoU. The API owns every rule (dates, Expired, D28, scope); these helpers only shape
+// bdm-005 (DEC-SCOPE-077): an organization's MoU. The API owns every rule (dates, Expired, D28, scope); these helpers only shape
 // requests and read responses. The status list is the source's, in its order (EVID-016 §10; AC5).
 export type MouStatus =
   | "prospect" | "discussion_started" | "proposal_sent" | "under_negotiation" | "draft_shared" | "signed" | "active" | "expired" | "rejected";

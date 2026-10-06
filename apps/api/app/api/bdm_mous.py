@@ -1,4 +1,4 @@
-"""bdm-005 (DEC-SCOPE-076, spec §6.3): an organization's MoU, its document and history, and the MoU lists.
+"""bdm-005 (DEC-SCOPE-077, spec §6.3): an organization's MoU, its document and history, and the MoU lists.
 
 Every `{org_id}` resolves through `services.bdm_organizations.load_scoped` (out of scope = 404). Every write is one transaction --
 scope, organization row lock, `writable` (the assigned BDM or super_admin; archived / Lost 409), the current MoU row lock, the rules,
