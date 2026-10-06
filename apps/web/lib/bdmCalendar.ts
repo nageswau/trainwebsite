@@ -3,8 +3,8 @@ import { isCalendarDate } from "@/lib/formatDate";
 
 // bdm-013 (DEC-SCOPE-078): the calendar's pure helpers -- ranges (K7), placing items on days (AC1), the §5 day headline (K6) and
 // item links (K8). Dates are "YYYY-MM-DD" IST calendar dates; arithmetic runs in UTC so no viewer's zone can shift a day.
-export const CALENDAR_URL = "/api/v1/bdm/calendar";
-export const VIEWS = ["day", "week"] as const;
+const CALENDAR_URL = "/api/v1/bdm/calendar";
+const VIEWS = ["day", "week"] as const;
 export type CalendarView = (typeof VIEWS)[number];
 
 type OrgRef = { id: string; code: string; name: string; archived: boolean };
@@ -22,7 +22,7 @@ export type CalendarData = {
   appointments: CalendarAppointment[]; trips: CalendarTrip[]; tasks: CalendarTask[];
 };
 export type TripRole = "departs" | "away" | "returns" | "day trip";
-export type DayItems = { trips: { trip: CalendarTrip; role: TripRole }[]; appointments: CalendarAppointment[]; tasks: CalendarTask[] };
+type DayItems = { trips: { trip: CalendarTrip; role: TripRole }[]; appointments: CalendarAppointment[]; tasks: CalendarTask[] };
 
 const DAY_MS = 86_400_000;
 const utc = (iso: string) => new Date(`${iso}T00:00:00Z`);

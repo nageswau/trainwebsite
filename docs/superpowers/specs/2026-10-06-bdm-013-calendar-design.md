@@ -64,7 +64,7 @@ Query: `date_from`, `date_to` (required dates), `bdm_user_id` (UUID, optional). 
 {
   "bdm": {"id": "…", "full_name": "…", "active": true},
   "date_from": "2026-10-05", "date_to": "2026-10-11", "today": "2026-10-06", "truncated": false,
-  "appointments": [{"id": "…", "code": "APT-000012", "date": "2026-10-06", "starts_at": "…", "duration_minutes": 60,
+  "appointments": [{"id": "…", "code": "APT-000012", "day": "2026-10-06", "starts_at": "…", "duration_minutes": 60,
                     "appointment_type": "college_meeting", "status": "scheduled", "seminar": false,
                     "organization": {"id": "…", "name": "…"}}],
   "trips": [{"id": "…", "code": "TRV-000004", "travel_date": "…", "return_date": "…", "from_place": "…", "to_place": "…",
@@ -77,7 +77,7 @@ Query: `date_from`, `date_to` (required dates), `bdm_user_id` (UUID, optional). 
 - Three indexed range queries (`ix_bdm_appointments_bdm_starts`, `ix_bdm_trips_bdm_travel_date`, `ix_bdm_tasks_assignee_status_due`),
   each joined to `bdm_organizations` where it has one, so four tables and no N+1. Ordered: appointments by `starts_at, id`; trips by
   `travel_date, code`; tasks by `due_on, created_at, id`.
-- The appointment `date` is the IST date of `starts_at`, and the range is `[date_from 00:00 IST, date_to + 1 00:00 IST)`, using bdm-006's `ist_bounds`.
+- The appointment `day` is the IST date of `starts_at` (named `day`, not `date`, so the field does not shadow the type in the schema), and the range is `[date_from 00:00 IST, date_to + 1 00:00 IST)`, using bdm-006's `ist_bounds`.
 - A trip is in the range when `travel_date ≤ date_to AND return_date ≥ date_from`, so a trip across the week boundary appears in both weeks.
 - Read only: no transaction beyond the read, no audit, no log line (reads of the sibling lists don't log either).
 - Errors: 401 signed out; 403 wrong role or a BDM without a profile; 404 BDM not in scope; 422 for a missing date, a bad date or UUID, a reversed range, a range over 31 days, or `bdm_user_id` sent by a BDM / missing for a manager.
@@ -102,7 +102,7 @@ Query: `date_from`, `date_to` (required dates), `bdm_user_id` (UUID, optional). 
   without JS, keep browser history and are keyboard-reachable (AC5).
 - **Manager:** a BDM picker (`SearchableSelect` + `teamMemberSearch`, as on the follow-ups page) in a small client component that pushes
   `?bdm=`. With no BDM chosen the page asks for one; a 404 from the API shows "This BDM is not on your team".
-- **Layout:** the week is an ordered list of days. Each day is a `<section>` with a heading `Monday 5 Oct — Vijayawada – College
+- **Layout:** the week is an ordered list of days. Each day is a `<section>` with an `h4` heading (under the `h3` range title) `Monday 5 Oct — Vijayawada – College
   Meetings`, then a `<ul>` of items: trips (all day), appointments by time, then follow-ups and tasks. Today's day is marked
   "Today" (text, not just colour). The day view shows one such section. On a phone it is a single column that wraps text, so there is
   no horizontal scroll (AC4). It is not a canvas or a grid of fixed-width cells.
@@ -110,7 +110,7 @@ Query: `date_from`, `date_to` (required dates), `bdm_user_id` (UUID, optional). 
   route, and a status pill for appointments / trips / tasks that are not simply scheduled or open (STATUS_LABEL from bdm-006,
   "Draft" / "Submitted" for trips, "Done" / "Overdue" for tasks).
 - **States:** loading (`loading.tsx`, `role=status`); empty week or day ("Nothing planned this week."); API failure → an inline
-  `role=alert` message with a "Try again" link to the same URL; `truncated` → a note to narrow the range.
+  `role=alert` message with a "Try again" link to the same URL; `truncated` → the note "Some items are not shown."
 
 ## 8. Acceptance criteria (testable)
 

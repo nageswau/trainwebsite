@@ -100,7 +100,7 @@ export default function BdmCalendar({ data, view, date, basePath, managerOf }: P
         </div>
       ) : (
         <>
-          {data.truncated && <p className="muted" role="status">Some items are not shown. Choose a shorter range.</p>}
+          {data.truncated && <p className="muted" role="status">Some items are not shown.</p>}
           {nothing && <p className="empty" role="status">Nothing planned this {view}.</p>}
           {days.map((day) => renderDay(data, day, managerOf))}
         </>
