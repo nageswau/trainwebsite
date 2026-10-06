@@ -8,6 +8,8 @@ from typing import Literal
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -52,6 +54,8 @@ from app.schemas import (
     AgentNetworkStudentPage,
     AgentOrgDetailOut,
     BatchCreate,
+    LeadStageHistoryPage,
+    LeadStageMove,
     SchoolCreate,
     SchoolOut,
     SchoolUpdate,
@@ -61,6 +65,7 @@ from app.schemas import (
 )
 from app.services import bdm as bdm_rules
 from app.services import bdm_leads as lead_rules
+from app.services import lead_pipeline
 from app.services import telecaller as tel_rules
 from app.services.agent_applications import owned, with_owner
 from app.services.agent_network import APPLICATION_FILTERS, org_applications, org_counts, org_money, org_students
@@ -419,8 +424,11 @@ async def convert_lead(lead_id: UUID, payload: AdminLeadConversionIn, user: User
         raise HTTPException(409, lead_rules.ALREADY_LINKED)
     student = await lead_rules.locked_student(db, lead, payload.student_email)
     await lead_rules.check_student_free(db, student)
-    now = await db.scalar(select(func.now()))  # read before any change: an autoflush must never see a half-set link (ck_enquiries_conversion)
-    lead.converted_user_id, lead.converted_at, lead.converted_by_user_id, lead.status = student.id, now, user.id, "converted"
+    # tel-004 PL4 (T29): the link moves the lead to Application/Enrollment (a closed lead keeps its stage). The event runs first: its
+    # read autoflushes, and an autoflush must never see a half-set link (ck_enquiries_conversion) or raise the unique-student error early.
+    await lead_pipeline.apply_event(db, lead, "student_linked", user)
+    now = await db.scalar(select(func.now()))
+    lead.converted_user_id, lead.converted_at, lead.converted_by_user_id = student.id, now, user.id
     lead_rules.audit_conversion(db, user, lead, "lead.convert", student.id)
     actor_id = str(user.id)  # a rollback expires every loaded row, the caller included
     try:
@@ -435,10 +443,11 @@ async def convert_lead(lead_id: UUID, payload: AdminLeadConversionIn, user: User
 
 @router.delete("/leads/{lead_id}/conversion")
 async def unconvert_lead(lead_id: UUID, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
-    """bdm-017 (L2): undo a mistaken link. Status is left as it is -- it is the admin's label (L7)."""
+    """bdm-017 (L2): undo a mistaken link. tel-004 PL4: Application/Enrollment goes back to Follow-up (supersedes L7)."""
     lead = await lead_rules.locked_for_admin(db, user, lead_id)
     if lead.converted_user_id is None:
         raise HTTPException(409, lead_rules.NOT_LINKED)
+    await lead_pipeline.apply_event(db, lead, "student_unlinked", user)
     lead_rules.audit_conversion(db, user, lead, "lead.unconvert", lead.converted_user_id)
     lead.converted_user_id = lead.converted_at = lead.converted_by_user_id = None
     await db.commit()
@@ -448,17 +457,33 @@ async def unconvert_lead(lead_id: UUID, user: User = Depends(ensure_admin), db: 
 
 @router.patch("/leads/{lead_id}")
 async def update_lead(lead_id: UUID, payload: dict, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
-    x = await db.get(Enquiry, lead_id)
-    if not x:
-        raise HTTPException(404, "Lead not found")
-    if user.role != "super_admin" and x.division != user.division:
-        raise HTTPException(403, "Wrong division")
-    for f in ("status", "owner_id"):
-        if f in payload:
-            setattr(x, f, payload[f])
-    db.add(AuditLog(user_id=user.id, action="lead.update", entity_type="enquiry", entity_id=str(x.id), metadata_json=payload))
+    """tel-004 (T25): `status` is a stage move through the pipeline, as a manager (reason required for a closed outcome or a reopen); the
+    same stage is a no-op so a resend with `owner_id` still works. The audit row names the values, never the reason text."""
+    x = await lead_rules.locked_for_admin(db, user, lead_id)
+    if "status" in payload and payload["status"] != x.status:
+        try:
+            move = LeadStageMove.model_validate({"to_stage": payload["status"], "reason": payload.get("reason")})
+        except ValidationError as exc:
+            raise RequestValidationError(exc.errors()) from None
+        await lead_pipeline.person_move(db, x, user, "manager", move.to_stage, move.reason)
+    if "owner_id" in payload:
+        x.owner_id = payload["owner_id"]
+    audited = {f: payload[f] for f in ("status", "owner_id") if f in payload}
+    db.add(AuditLog(user_id=user.id, action="lead.update", entity_type="enquiry", entity_id=str(x.id), metadata_json=audited))
     await db.commit()
     return {"ok": True}
+
+
+@router.get("/leads/{lead_id}/stage-history", response_model=LeadStageHistoryPage)
+async def lead_stage_history(lead_id: UUID, limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0), user: User = Depends(ensure_admin),
+                             db: AsyncSession = Depends(get_db)):
+    """tel-004 AC5: a lead's stage changes, oldest first, in the admin's division (404 / 403 as the other admin lead routes)."""
+    division = await db.scalar(select(Enquiry.division).where(Enquiry.id == lead_id))
+    if division is None:
+        raise HTTPException(404, lead_rules.LEAD_NOT_FOUND)
+    if user.role != "super_admin" and division != user.division:
+        raise HTTPException(403, lead_rules.WRONG_DIVISION)
+    return await lead_pipeline.history_page(db, lead_id, limit, offset)
 
 
 @router.get("/reports/summary")

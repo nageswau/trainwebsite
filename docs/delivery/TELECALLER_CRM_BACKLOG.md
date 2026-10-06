@@ -291,6 +291,9 @@ NO-ASSUMPTION MODE. Prepared 2026-10-05 at the user's request. **No code was wri
 
 ### tel-004 — Pipeline stage engine + stage history
 
+**Status (2026-10-06):** **verified** on `feature/tel-004`, not merged (`DEC-SCOPE-081` PL1–PL4 + D1–D4, migration `0081_lead_stage_pipeline`,
+API contract §12H; re-chained after bdm-005, bdm-013 and tel-022's `0080_tel_targets` / `DEC-SCOPE-080`). Spec `docs/superpowers/specs/2026-10-06-tel-004-lead-pipeline-design.md`.
+
 - **Business requirement:** §19 pipeline and closed outcomes; T13.
 - **Existing behavior:** `status` is free text, set by admin PATCH; bdm-017 sets `converted` on link.
 - **Expected behavior:**
