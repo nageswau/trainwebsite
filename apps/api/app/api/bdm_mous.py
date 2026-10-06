@@ -14,7 +14,8 @@ from app.api.deps import get_current_user
 from app.api.portfolio_certificates import EXTENSION, HEADERS
 from app.core.database import get_db
 from app.models import BdmMou, User
-from app.schemas import BdmMouCreate, BdmMouEnvelope, BdmMouUpdate, BdmOrgMouOut
+from app.api.bdm import LIMIT, OFFSET
+from app.schemas import BdmMouCreate, BdmMouEnvelope, BdmMouEventPage, BdmMouPage, BdmMouStatus, BdmMouUpdate, BdmOrgMouOut, BdmType
 from app.services import bdm_mous as svc
 from app.services import bdm_organizations as org_svc
 from app.services.agent_documents import read_upload
@@ -139,6 +140,28 @@ async def upload_document(org_id: UUID, file: UploadFile = File(...), user: User
     await db.refresh(mou)
     svc.log("bdm_mou_document_uploaded", user, mou, content_type=content_type, replaced=old_key is not None, bytes=len(data))
     return {"mou": await svc.mou_out(db, user, org, mou, on)}
+
+
+@router.get("/mous", response_model=BdmMouPage)
+async def list_mous(
+    status: BdmMouStatus | None = None,
+    bdm_type: BdmType | None = None,
+    organization: UUID | None = None,
+    current: bool = True,
+    limit: int = LIMIT,
+    offset: int = OFFSET,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Scoped as the organizations (a BDM: their type; a manager: their team; super_admin: all). `status` filters on the derived
+    status, so `expired` lists Signed / Active MoUs past their date. `current=false` lists previous MoUs (renewed ones)."""
+    return await svc.list_page(db, user, on=svc.today(), status=status, bdm_type=bdm_type, organization=organization, current=current, limit=limit, offset=offset)
+
+
+@router.get("/mous/{mou_id}/history", response_model=BdmMouEventPage)
+async def mou_history(mou_id: UUID, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    mou, _ = await svc.load_scoped_mou(db, user, mou_id)
+    return await svc.history_page(db, mou, limit, offset)
 
 
 @router.get("/mous/{mou_id}/document")

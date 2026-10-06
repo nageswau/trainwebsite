@@ -11,7 +11,7 @@ from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bdm_stages import MOU_SIGNED_STAGE
@@ -54,6 +54,12 @@ def effective_status(mou: BdmMou, on: date) -> str:
     if mou.status in BDM_MOU_EXPIRING and mou.valid_until is not None and mou.valid_until < on:
         return "expired"
     return mou.status
+
+
+def effective_status_sql(on: date):
+    """`effective_status` as SQL, so the list filter and the detail always agree (AC3)."""
+    expired = and_(BdmMou.status.in_(BDM_MOU_EXPIRING), BdmMou.valid_until.is_not(None), BdmMou.valid_until < on)
+    return case((expired, "expired"), else_=BdmMou.status)
 
 
 def label(status: str) -> str:
@@ -199,11 +205,8 @@ def _document(mou: BdmMou) -> dict | None:
     return {"name": mou.document_name, "content_type": mou.document_content_type, "uploaded_at": mou.document_uploaded_at}
 
 
-async def mou_out(db: AsyncSession, user: User, org: BdmOrganization, mou: BdmMou, on: date) -> dict:
-    status = effective_status(mou, on)
-    editable = can_write(user, org) and mou.is_current
-    assigned = await db.get(User, org.assigned_bdm_user_id)
-    creator = await db.get(User, mou.created_by_user_id)
+def row_out(mou: BdmMou, org: BdmOrganization, assigned: User, status: str) -> dict:
+    """The list row (BdmMouRow): no notes, no document details."""
     return {
         "id": mou.id,
         "organization": {"id": org.id, "code": org.code, "name": org.name, "bdm_type": org.bdm_type},
@@ -211,9 +214,24 @@ async def mou_out(db: AsyncSession, user: User, org: BdmOrganization, mou: BdmMo
         "status": status,
         "status_label": label(status),
         "status_changed_at": mou.status_changed_at,
-        **{f: getattr(mou, f) for f in FIELDS},
+        "signed_on": mou.signed_on,
+        "valid_until": mou.valid_until,
+        "reference": mou.reference,
         "has_document": mou.document_key is not None,
         "is_current": mou.is_current,
+    }
+
+
+async def mou_out(db: AsyncSession, user: User, org: BdmOrganization, mou: BdmMou, on: date) -> dict:
+    status = effective_status(mou, on)
+    editable = can_write(user, org) and mou.is_current
+    assigned = await db.get(User, org.assigned_bdm_user_id)
+    creator = await db.get(User, mou.created_by_user_id)
+    return {
+        **row_out(mou, org, assigned, status),
+        "proposal_sent_on": mou.proposal_sent_on,
+        "valid_from": mou.valid_from,
+        "notes": mou.notes,
         "document": _document(mou),
         "expired_on": mou.valid_until + timedelta(days=1) if status == "expired" else None,
         "created_by": person_ref(creator),
@@ -229,6 +247,46 @@ async def org_mou_out(db: AsyncSession, user: User, org: BdmOrganization) -> dic
     current = await load_current(db, org)
     renewable = current is None or effective_status(current, on) in RENEWABLE
     return {"current": await mou_out(db, user, org, current, on) if current else None, "can_start": can_write(user, org) and renewable}
+
+
+async def list_page(db: AsyncSession, user: User, *, on: date, status: str | None, bdm_type: str | None, organization: UUID | None, current: bool, limit: int, offset: int) -> dict:
+    effective = effective_status_sql(on)
+    where = [*await org_svc.caller_scope(db, user), BdmMou.is_current.is_(current)]
+    if status is not None:
+        where.append(effective == status)
+    if bdm_type is not None:
+        where.append(BdmOrganization.bdm_type == bdm_type)
+    if organization is not None:
+        where.append(BdmMou.organization_id == organization)
+    base = select(BdmMou, BdmOrganization, User).join(BdmOrganization, BdmOrganization.id == BdmMou.organization_id)
+    base = base.join(User, User.id == BdmOrganization.assigned_bdm_user_id).where(*where)
+    total = await db.scalar(select(func.count()).select_from(base.subquery()))
+    rows = (await db.execute(base.order_by(BdmMou.status_changed_at.desc(), BdmMou.id).limit(limit).offset(offset))).all()
+    items = [row_out(mou, org, assigned, effective_status(mou, on)) for mou, org, assigned in rows]
+    return {"items": items, "total": total, "limit": limit, "offset": offset}
+
+
+async def history_page(db: AsyncSession, mou: BdmMou, limit: int, offset: int) -> dict:
+    """Newest first (bdm-004's stage history order); the replaced document's key is never returned."""
+    where = BdmMouEvent.mou_id == mou.id
+    total = await db.scalar(select(func.count()).select_from(BdmMouEvent).where(where))
+    stmt = select(BdmMouEvent, User).join(User, User.id == BdmMouEvent.actor_user_id).where(where)
+    rows = (await db.execute(stmt.order_by(BdmMouEvent.position.desc()).limit(limit).offset(offset))).all()
+    items = [
+        {
+            "id": e.id,
+            "kind": e.kind,
+            "from_status": e.from_status,
+            "from_label": label(e.from_status) if e.from_status else None,
+            "to_status": e.to_status,
+            "to_label": label(e.to_status),
+            "changed": e.changed,
+            "actor": person_ref(actor),
+            "created_at": e.created_at,
+        }
+        for e, actor in rows
+    ]
+    return {"items": items, "total": total, "limit": limit, "offset": offset}
 
 
 def now() -> datetime:
