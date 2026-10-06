@@ -1591,6 +1591,31 @@ class BdmTask(Base, TimestampMixin):
     cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
+BDM_ASSIGNMENT_ENTITIES = ("organization", "appointment", "task")
+BDM_ASSIGNMENT_REASONS = ("bdm_deactivated", "portfolio_handover", "organization_reassigned")
+
+
+class BdmAssignmentHistory(Base):
+    """bdm-025 (DEC-SCOPE-082): one row per organization, appointment or task that changed owner. Append-only; `entity_id` has no
+    foreign key (polymorphic) -- those rows are never deleted (archived / cancelled instead)."""
+
+    __tablename__ = "bdm_assignment_history"
+    __table_args__ = (
+        CheckConstraint(_in_list("entity_type", BDM_ASSIGNMENT_ENTITIES), name="ck_bdm_assignment_history_entity_type"),
+        CheckConstraint(_in_list("reason", BDM_ASSIGNMENT_REASONS), name="ck_bdm_assignment_history_reason"),
+        Index("ix_bdm_assignment_history_entity", "entity_type", "entity_id"),
+        Index("ix_bdm_assignment_history_from", "from_user_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    entity_type: Mapped[str] = mapped_column(String(20))
+    entity_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True))
+    from_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    to_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    reason: Mapped[str] = mapped_column(String(30))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 BDM_ACTIVITY_CHANNELS = ("call", "whatsapp", "email", "visit", "meeting", "other")
 BDM_ACTIVITY_DIRECTIONAL = ("call", "whatsapp", "email")  # V6: these need a direction; the rest must have none
 

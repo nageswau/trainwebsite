@@ -262,7 +262,8 @@ async def test_patch_invalid_manager_is_422(client, db_session):
 @pytest.mark.asyncio
 async def test_patch_other_fields_when_manager_inactive_succeeds(client, db_session):
     body, manager = await _bdm(client, db_session)
-    assert (await _patch(client, manager.id, {"active": False})).status_code == 200
+    manager.active = False  # bdm-025: PATCH refuses a manager with BDMs; this is the legacy "inactive manager" state
+    await db_session.commit()
     payload = {"bdm_profile": {"territory": "Thrissur", "reporting_manager_user_id": str(manager.id)}}
     assert (await _patch(client, body["id"], payload)).status_code == 200
     assert (await _profile(db_session, body["id"])).territory == "Thrissur"
