@@ -56,9 +56,10 @@ export default function AdminLeadFilters({ values, query, organizations, onChang
         style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-end", marginTop: 8 }}>
         <div className="field" style={{ flex: "1 1 16rem", minWidth: 0, marginBottom: 0 }}>
           <label htmlFor="admin-lead-search">Search leads</label>
+          <span id="admin-lead-search-hint" className="muted" style={{ fontSize: 13 }}>Lead ID, name, email, phone or subject</span>
+          {/* the input is the field's last line, so the buttons (flex-end) line up with it */}
           <input id="admin-lead-search" className="search" type="search" aria-describedby="admin-lead-search-hint" value={draft} maxLength={200}
             onChange={(event) => setDraft(event.target.value)} />
-          <span id="admin-lead-search-hint" className="muted" style={{ fontSize: 13 }}>Lead ID, name, email, phone or subject</span>
         </div>
         <button type="submit" className="btn secondary small">Search</button>
         {query && <button type="button" className="btn secondary small" onClick={() => onSearch("")}>Clear search</button>}
