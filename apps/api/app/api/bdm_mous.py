@@ -6,16 +6,18 @@ change + history row + audit row, one commit here, then the log line (spec §6.4
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
+from app.api.portfolio_certificates import EXTENSION, HEADERS
 from app.core.database import get_db
 from app.models import BdmMou, User
 from app.schemas import BdmMouCreate, BdmMouEnvelope, BdmMouUpdate, BdmOrgMouOut
 from app.services import bdm_mous as svc
 from app.services import bdm_organizations as org_svc
+from app.services.agent_documents import read_upload
 
 router = APIRouter(prefix="/bdm", tags=["bdm-mous"])
 
@@ -57,7 +59,6 @@ async def create_mou(org_id: UUID, payload: BdmMouCreate, user: User = Depends(g
     svc.audit(db, user, "created", mou, {"status": mou.status})
     advanced = svc.advance_on_sign(db, user, org) if mou.status == "signed" else None
     await db.commit()
-    await db.refresh(org)
     await db.refresh(mou)
     svc.log("bdm_mou_created", user, mou, status=mou.status, renewed=current is not None)
     svc.log_advance(user, org, advanced)
@@ -100,8 +101,55 @@ async def change_mou(org_id: UUID, payload: BdmMouUpdate, user: User = Depends(g
     svc.audit(db, user, action, mou, {"from": before, "to": after, "changed": changed})
     advanced = svc.advance_on_sign(db, user, org) if status == "signed" else None
     await db.commit()
-    await db.refresh(org)
     await db.refresh(mou)
     svc.log(f"bdm_mou_{action}", user, mou, from_status=before, to_status=after, changed=changed)
     svc.log_advance(user, org, advanced)
     return {"mou": await svc.mou_out(db, user, org, mou, on)}
+
+
+@router.put("/organizations/{org_id}/mou/document", response_model=BdmMouEnvelope)
+async def upload_document(org_id: UUID, file: UploadFile = File(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """M4 / M8 (spec §6.5): scope and role first, then the bytes (type by content, size cap, metadata stripped) before any lock, then
+    the locked write. The new object is deleted when anything after storing it fails; a replaced object is kept (its key is in the
+    event row, never returned)."""
+    svc.writable(user, await org_svc.load_scoped(db, user, org_id), "mou_document")
+    data, content_type, name = await read_upload(file)
+    org = await org_svc.load_scoped(db, user, org_id, lock=True)
+    svc.writable(user, org, "mou_document")
+    mou = await svc.load_current(db, org, lock=True)
+    if mou is None:
+        raise HTTPException(404, svc.NO_MOU)
+    wait = await svc.upload_wait(db, user)
+    if wait:
+        svc.log("bdm_mou_throttled", user, mou, wait_seconds=wait)
+        raise HTTPException(429, svc.THROTTLED, headers={"Retry-After": str(wait)})
+    on = svc.today()
+    old_key = mou.document_key
+    key = svc.store(data, content_type)
+    try:
+        mou.document_key, mou.document_content_type, mou.document_name, mou.document_uploaded_at = key, content_type, name, svc.now()
+        status = svc.effective_status(mou, on)
+        svc.record(db, user, mou, "document", status, status, ["document"], document_key=old_key)
+        svc.audit(db, user, "document_uploaded", mou, {"content_type": content_type, "replaced": old_key is not None, "bytes": len(data)})
+        await db.commit()
+    except BaseException:
+        await db.rollback()
+        svc.discard(key)
+        raise
+    await db.refresh(mou)
+    svc.log("bdm_mou_document_uploaded", user, mou, content_type=content_type, replaced=old_key is not None, bytes=len(data))
+    return {"mou": await svc.mou_out(db, user, org, mou, on)}
+
+
+@router.get("/mous/{mou_id}/document")
+async def download_document(mou_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """M3 / AC4: in the organization's read scope only (404 otherwise, as an unknown id). The audit row is committed before any byte
+    leaves (a failed commit serves nothing); the file name is built from the organization code, never the uploaded name."""
+    mou, org = await svc.load_scoped_mou(db, user, mou_id)
+    data = svc.read_document(mou)
+    media_type = mou.document_content_type or "application/octet-stream"
+    filename = f"mou-{org.code}.{EXTENSION.get(media_type, 'bin')}"
+    svc.audit(db, user, "document_downloaded", mou, {"role": user.role})
+    await db.commit()
+    svc.log("bdm_mou_document_downloaded", user, mou, role=user.role)
+    return Response(content=data, media_type=media_type, headers={**HEADERS, "Content-Disposition": f'attachment; filename="{filename}"'})

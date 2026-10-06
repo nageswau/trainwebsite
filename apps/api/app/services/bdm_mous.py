@@ -4,7 +4,10 @@ Functions only; nothing here commits -- the route owns the transaction (bdm-002'
 locked by `bdm_organizations.load_scoped(lock=True)` and then the current MoU row (the lock order of spec §6.5). Audit metadata and
 logs carry ids, status keys and field names only, never the notes, reference, file name or storage key (spec §6.6)."""
 
+import hashlib
+import logging
 from datetime import UTC, date, datetime, timedelta
+from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
@@ -15,8 +18,10 @@ from app.bdm_stages import MOU_SIGNED_STAGE
 from app.models import BDM_MOU_EXPIRING, BDM_MOU_STATUS_LABELS, AuditLog, BdmMou, BdmMouEvent, BdmOrganization, User
 from app.services import bdm_organizations as org_svc
 from app.services import bdm_pipeline
+from app.services.agent_orgs import retry_after
 from app.services.bdm import person_ref
 from app.services.bdm_pipeline import LOST_CONFLICT, _invalid
+from app.services.storage import storage
 
 IST = ZoneInfo("Asia/Kolkata")  # M2: "today" is the India calendar date (as bdm_appointments.IST)
 FIELDS = ("proposal_sent_on", "signed_on", "valid_from", "valid_until", "reference", "notes")
@@ -29,6 +34,15 @@ SIGNED_ON_REQUIRED = "Add the signed date"
 WINDOW_REQUIRED = "Add the validity window"
 WINDOW_ORDER = "Valid-until can't be before valid-from"
 SIGN_NOTE = "Advanced by MoU signed"
+NOT_FOUND = "MoU not found"
+NO_DOCUMENT = "No document on file"
+STORAGE_PREFIX = "bdm-mous"
+UPLOAD_ACTION = "bdm_mou.document_uploaded"
+UPLOAD_LIMIT = 20  # M8: per user per rolling hour
+UPLOAD_WINDOW = timedelta(hours=1)
+THROTTLED = "Too many uploads. Try again later."
+
+logger = logging.getLogger("app.bdm")
 
 
 def today() -> date:
@@ -77,6 +91,63 @@ async def load_current(db: AsyncSession, org: BdmOrganization, *, lock: bool = F
     if lock:
         stmt = stmt.with_for_update().execution_options(populate_existing=True)
     return await db.scalar(stmt)
+
+
+async def load_scoped_mou(db: AsyncSession, user: User, mou_id: UUID) -> tuple[BdmMou, BdmOrganization]:
+    """Any MoU (current or previous) through its organization's read scope; unknown and out of scope give the same 404 (§7 IDOR)."""
+    stmt = select(BdmMou, BdmOrganization).join(BdmOrganization, BdmOrganization.id == BdmMou.organization_id)
+    row = (await db.execute(stmt.where(BdmMou.id == mou_id, *await org_svc.caller_scope(db, user)))).first()
+    if row is None:
+        raise HTTPException(404, NOT_FOUND)
+    return row[0], row[1]
+
+
+def _digest(key: str) -> str:
+    return hashlib.sha256(key.encode()).hexdigest()[:16]
+
+
+def store(data: bytes, content_type: str) -> str:
+    """M4: a server-generated key; the client never names a path. A storage failure is a 500, logged by key digest (never the key)."""
+    key = f"{STORAGE_PREFIX}/{uuid4().hex}"
+    try:
+        storage.write_bytes(key, data, content_type)
+    except Exception:
+        logger.exception("bdm_mou_document_store_failed", extra={"extra_fields": {"key_digest": _digest(key)}})
+        raise
+    return key
+
+
+def discard(key: str) -> None:
+    """Delete an object stored for a write that did not commit; only this module's keys. A failure leaves a logged orphan."""
+    if not key.startswith(f"{STORAGE_PREFIX}/"):
+        logger.error("bdm_mou_document_discard_refused", extra={"extra_fields": {"key_digest": _digest(key)}})
+        return
+    try:
+        storage.delete(key)
+    except Exception:
+        logger.warning("bdm_mou_document_orphaned", extra={"extra_fields": {"key_digest": _digest(key)}})
+
+
+def read_document(mou: BdmMou) -> bytes:
+    if mou.document_key is None:
+        raise HTTPException(404, NO_DOCUMENT)
+    try:
+        return storage.read_bytes(mou.document_key)
+    except FileNotFoundError:
+        logger.warning("bdm_mou_document_missing", extra={"extra_fields": {"mou_id": str(mou.id), "key_digest": _digest(mou.document_key)}})
+        raise HTTPException(404, NO_DOCUMENT) from None
+
+
+async def upload_wait(db: AsyncSession, user: User) -> int:
+    """M8: seconds before the caller may upload again (their audit rows in the last hour; shared by every API instance)."""
+    now = datetime.now(UTC)
+    stmt = (
+        select(AuditLog.created_at)
+        .where(AuditLog.user_id == user.id, AuditLog.action == UPLOAD_ACTION, AuditLog.created_at > now - UPLOAD_WINDOW)
+        .order_by(AuditLog.created_at.desc())
+        .limit(UPLOAD_LIMIT)
+    )
+    return retry_after(list((await db.scalars(stmt)).all()), UPLOAD_LIMIT, now, UPLOAD_WINDOW)
 
 
 def can_write(user: User, org: BdmOrganization) -> bool:
