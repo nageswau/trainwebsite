@@ -12,8 +12,8 @@
 
 ## Global Constraints
 
-- Migration `0080_bdm_onboarding`, down_revision `0079_bdm_mous`. Additive only, and every create is guarded (the 0079 style). The downgrade refuses while requests or links exist.
-- Decision `DEC-SCOPE-079`; owner answers H1–H4 and defaults H5–H11 (spec §1).
+- Migration `0081_bdm_onboarding`, down_revision `0080_tel_targets`. Additive only, and every create is guarded (the 0079 style). The downgrade refuses while requests or links exist.
+- Decision `DEC-SCOPE-081`; owner answers H1–H4 and defaults H5–H11 (spec §1).
 - Routes own commits; services never commit. Audit rows ride the same transaction. Logs carry ids and keys only, never names, notes or reasons.
 - Out of scope = 404 (`load_scoped`); wrong role on admin routes = 403 "Overseas Admin role required".
 - Notices are in-app only: `workflows._notify_user(..., channels=[])`.
@@ -32,7 +32,7 @@
 
 ### Task 1: Model + migration
 
-**Files:** Modify `apps/api/app/models.py` (BdmOrganization gets `school_id`; new `BdmOnboardingRequest` + `BDM_ONBOARDING_CHECKS`). Create `apps/api/alembic/versions/0080_bdm_onboarding.py`. Test: `apps/api/tests/test_bdm_018_migration.py`.
+**Files:** Modify `apps/api/app/models.py` (BdmOrganization gets `school_id`; new `BdmOnboardingRequest` + `BDM_ONBOARDING_CHECKS`). Create `apps/api/alembic/versions/0081_bdm_onboarding.py`. Test: `apps/api/tests/test_bdm_018_migration.py`.
 
 **Produces:** `BdmOnboardingRequest(id, organization_id, kind, status, note, requested_by_user_id, resolved_by_user_id, resolved_at, resolution, school_id, reject_reason, created_at, updated_at)`; `BdmOrganization.school_id`; `BDM_ONBOARDING_CHECKS: dict[str,str]`.
 
@@ -41,7 +41,7 @@
 
 ```python
 BDM_ONBOARDING_STATUSES = ("pending", "completed", "rejected")
-BDM_ONBOARDING_CHECKS = {  # migration 0080 repeats these strings; test_bdm_018_migration asserts they stay identical
+BDM_ONBOARDING_CHECKS = {  # migration 0081 repeats these strings; test_bdm_018_migration asserts they stay identical
     "ck_bdm_onboarding_requests_kind": "kind IN ('school')",
     "ck_bdm_onboarding_requests_status": _in_list("status", BDM_ONBOARDING_STATUSES),
     "ck_bdm_onboarding_requests_resolution": "resolution IS NULL OR resolution IN ('created', 'linked')",
@@ -141,7 +141,7 @@ Add the migration (the guarded create for the table; `add_column` + `create_uniq
 
 ### Task 8: E2E, docs
 
-**Files:** `apps/web/tests/e2e/bdm-018-school-handover.spec.ts` (follow the bdm-005 e2e setup); `docs/decisions/PRODUCT_DECISION_REGISTER.md` (DEC-SCOPE-079); `docs/delivery/BDM_CRM_BACKLOG.md` (status); `docs/architecture/DATA_MODEL.md`; and the API contract doc, if bdm-005 updated one.
+**Files:** `apps/web/tests/e2e/bdm-018-school-handover.spec.ts` (follow the bdm-005 e2e setup); `docs/decisions/PRODUCT_DECISION_REGISTER.md` (DEC-SCOPE-081); `docs/delivery/BDM_CRM_BACKLOG.md` (status); `docs/architecture/DATA_MODEL.md`; and the API contract doc, if bdm-005 updated one.
 
 - [ ] Playwright: the BDM requests → the admin uses the request and creates the School → the BDM's organization shows Linked and the pipeline step "School Onboarding" done.
 - [ ] Docs. Commit.

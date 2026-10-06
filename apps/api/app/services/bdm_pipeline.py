@@ -42,7 +42,7 @@ def label_of(bdm_type: str, key: str) -> str:
 
 
 async def live_status(db: AsyncSession, org: BdmOrganization) -> dict[str, bool] | None:
-    """S3, filled by bdm-018 for School organizations (DEC-SCOPE-079 H2, spec §4): each live step's own evidence from the linked
+    """S3, filled by bdm-018 for School organizations (DEC-SCOPE-081 H2, spec §4): each live step's own evidence from the linked
     School, in one query of EXISTS checks; a pending request alone means nothing is reached yet. None (no request, no link) keeps
     "Awaiting handover". Agent organizations wait for bdm-019."""
     if org.bdm_type != "school":

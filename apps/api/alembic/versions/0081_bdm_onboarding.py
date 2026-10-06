@@ -1,12 +1,17 @@
 """bdm-018 -- school onboarding handover: bdm_onboarding_requests and bdm_organizations.school_id.
 
-Revision ID: 0080_bdm_onboarding
-Revises: 0079_bdm_mous
+Revision ID: 0081_bdm_onboarding
+Revises: 0080_tel_targets
 
-docs/superpowers/specs/2026-10-06-bdm-018-school-onboarding-handover-design.md §3 (DEC-SCOPE-079). Additive: one new table and one
+docs/superpowers/specs/2026-10-06-bdm-018-school-onboarding-handover-design.md §3 (DEC-SCOPE-081). Additive: one new table and one
 nullable column with a unique constraint; no existing row read or written. 0001 builds a fresh database from the current models, which
 already carry both, so each is created only when missing. CHECKS must equal app.models.BDM_ONBOARDING_CHECKS
 (test_bdm_018_migration). downgrade() refuses while any request or link exists: a handover is never dropped silently.
+
+Re-chained 2026-10-06: cut as `0080_bdm_onboarding` after `0079_bdm_mous` (DEC-SCOPE-079); tel-022 (`0080_tel_targets`, DEC-SCOPE-080) and
+bdm-013 (DEC-SCOPE-079, no migration) merged first, so this revision is `0081_bdm_onboarding` after `0080_tel_targets` and the decision is
+DEC-SCOPE-081. A database stamped at `0080_bdm_onboarding` is re-stamped with `alembic stamp --purge 0079_bdm_mous` then `upgrade head`
+(every create here is guarded).
 """
 
 import sqlalchemy as sa
@@ -14,8 +19,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0080_bdm_onboarding"
-down_revision = "0079_bdm_mous"
+revision = "0081_bdm_onboarding"
+down_revision = "0080_tel_targets"
 branch_labels = None
 depends_on = None
 
@@ -68,7 +73,7 @@ def downgrade() -> None:
     if not op.get_context().as_sql:
         bind = op.get_bind()
         if bind.execute(sa.text(f"SELECT 1 FROM {REQUESTS} LIMIT 1")).first() or bind.execute(sa.text(f"SELECT 1 FROM {ORGS} WHERE school_id IS NOT NULL LIMIT 1")).first():
-            raise RuntimeError("Cannot downgrade 0080_bdm_onboarding: onboarding data exists. Clear it deliberately first.")
+            raise RuntimeError("Cannot downgrade 0081_bdm_onboarding: onboarding data exists. Clear it deliberately first.")
     op.drop_table(REQUESTS)
     op.drop_constraint(LINK_UNIQUE, ORGS, type_="unique")
     op.drop_column(ORGS, "school_id")

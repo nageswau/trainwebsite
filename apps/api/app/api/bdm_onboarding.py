@@ -1,4 +1,4 @@
-"""bdm-018 (DEC-SCOPE-079, spec §5): the school onboarding handover.
+"""bdm-018 (DEC-SCOPE-081, spec §5): the school onboarding handover.
 
 The BDM side resolves `{org_id}` through `services.bdm_organizations.load_scoped` (out of scope = 404) and writes under the organization
 row lock. The admin side is Overseas Admin / super_admin only (403 otherwise) and never reads a BDM organization except through a

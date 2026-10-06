@@ -1501,7 +1501,7 @@ async def create_school(payload: SchoolCreateIn, user: User = Depends(get_curren
     # _reject_supplied_password() call here would be unreachable dead code (simplification pass,
     # ENH-009). This does lose the WARNING-level `provisioning_password_field_rejected` telemetry
     # that call used to emit; already noted and accepted in DEC-SCOPE-025's addendum.
-    # bdm-018 (DEC-SCOPE-079 §5.5): a request is locked and checked first, so a refusal arrives before anything is created; the School,
+    # bdm-018 (DEC-SCOPE-081 §5.5): a request is locked and checked first, so a refusal arrives before anything is created; the School,
     # its Coordinator, the link and the completed request then commit together.
     handover = await onboarding_svc.lock_pending(db, payload.bdm_onboarding_request_id) if payload.bdm_onboarding_request_id else None
     school, coordinator, issued = await _provision_school(db, payload, user)
