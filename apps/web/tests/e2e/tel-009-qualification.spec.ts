@@ -58,7 +58,7 @@ test("a telecaller qualifies an overseas lead and the section follows the produc
   await expect(section.getByRole("group", { name: "Basic qualification" })).toBeVisible();
   await expect(section.getByRole("group", { name: "IT training requirement" })).toHaveCount(0);
   const overseas = section.getByRole("group", { name: "Overseas requirement" });
-  await section.getByLabel("Qualification").fill("B.Tech");
+  await section.getByLabel("Qualification", { exact: true }).fill("B.Tech");
   await section.getByLabel("City").fill("Chennai");
   await overseas.getByLabel("UG / Master's").selectOption("masters");
   await overseas.getByLabel("Preferred course").fill("MSc Data Science");
