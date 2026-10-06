@@ -14,6 +14,7 @@ from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from app.lead_stages import label as stage_label
 from app.models import AuditLog, BdmOrganization, Enquiry, TelCampaign, TelProduct, User
 from app.services.bdm_activities import day_range, india_date
 
@@ -125,11 +126,12 @@ def _ref(ref_id, **fields) -> dict | None:
 
 
 def admin_out(row) -> dict:
-    """ADM-002's row (keys unchanged), the three bdm-017 objects and the tel-003 lead fields; each object is null when absent."""
+    """ADM-002's row (keys unchanged), the three bdm-017 objects, the tel-003 lead fields and (tel-004) the stage label; each object is
+    null when absent."""
     x, org_code, org_name, bdm_name, student_name, student_email, product_name, campaign_name, telecaller_name, counselor_name = row
     return {
         "id": x.id, "lead_code": x.lead_code, "name": x.name, "email": x.email, "phone": x.phone, "division": x.division,
-        "subject": x.subject, "status": x.status, "source": x.source, "crm_sync_status": x.crm_sync_status, "priority": x.priority,
+        "subject": x.subject, "status": x.status, "status_label": stage_label(x.status), "source": x.source, "crm_sync_status": x.crm_sync_status, "priority": x.priority,
         "whatsapp_number": x.whatsapp_number, "city": x.city, "state": x.state, "qualification": x.qualification,
         "passing_year": x.passing_year, "institution": x.institution, "created_at": x.created_at, "stage_changed_at": x.stage_changed_at,
         "product": _ref(x.product_id, name=product_name),

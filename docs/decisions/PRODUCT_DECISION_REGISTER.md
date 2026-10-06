@@ -3804,7 +3804,29 @@ indexes per subject; the downgrade refuses while targets exist). `services/telec
 resolution function), `POST/GET /telecaller/targets`, `GET /telecaller/targets/effective`. Web `/telecaller/manager/targets` and the dashboard
 card. Design spec `docs/superpowers/specs/2026-10-06-tel-022-targets-design.md`.
 
-### DEC-SCOPE-081 — BDM deactivation, portfolio handover and manager change (`bdm-025`)
+### DEC-SCOPE-081 — Lead pipeline: stage engine + stage history (`tel-004`)
+
+**Evidence:** `EVID-019` §19 (11 stages + 5 closed outcomes); `DEC-SCOPE-073` T5, T13, T25, T29; owner answers in-session 2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for PL1–PL4; D1–D4 are recorded defaults. VERIFIED on `feature/tel-004`
+(2026-10-06); **MERGED** to `main` as PR #81 @ `69829a59` (2026-10-06). Drafted as `DEC-SCOPE-078` / `0079`; re-chained twice on 2026-10-06 (bdm-005 took 078 / `0079_bdm_mous`; bdm-013 took 079; tel-022 took 080 / `0080_tel_targets` and API §12G).
+
+| # | Question | Answer |
+|---|---|---|
+| PL1 (Q-02) | Legacy `enquiries.status` mapping | new/contacted/qualified/lost kept; `converted` + linked student → `application_enrollment`, without → `follow_up`; other text → `new`; original in `metadata_json.legacy_status`; one `legacy_mapping` history row per changed lead |
+| PL2 | Assigned vs First Call Pending | Attempt-based: assignment → `assigned`; first unconnected call → `first_call_pending`; first connected call → `contacted` |
+| PL3 (Q-09) | No Response | A manual closed outcome with a reason; an automatic close after N attempts is deferred to tel-010 |
+| PL4 | bdm-017 admin link | Through the engine: Link → `application_enrollment`, Unlink → `follow_up`. **Supersedes `DEC-SCOPE-072` L2/L7** for the stage; nobody selects `converted` (tel-018 computes it) |
+| D1 | Reasons | Required for the 5 closed outcomes and for a reopen (≤ 500); stored in history only, never logged or audited |
+| D2 | Manual moves | Qualified / Interested / Follow-up from any open stage before `application_enrollment`; closed outcomes from any open stage except `converted` |
+| D3 | Closed leads | Only a manager or admin reopens, to `follow_up` (telecaller 403); events on a closed lead don't move it |
+| D4 | Telecaller UI | API now; the lead-detail stage control arrives with tel-008. The admin lead panel gets it now |
+
+**Implementation:** `app/lead_stages.py` (catalogue + event table), `services/lead_pipeline.py` (the only status writer after
+creation), migration `0081_lead_stage_pipeline` (`lead_stage_history`, PL1 mapping, `ck_enquiries_status`; downgrade refuses after a
+real move). Routes: `POST /telecaller/leads/{id}/stage`, `GET /telecaller/leads/{id}/stage-history`, `GET /admin/leads/{id}/stage-history`;
+`PATCH /admin/leads/{id}` status via the engine. Design spec `docs/superpowers/specs/2026-10-06-tel-004-lead-pipeline-design.md`.
+
+### DEC-SCOPE-082 — BDM deactivation, portfolio handover and manager change (`bdm-025`)
 
 **ID note (2026-10-06):** drafted as `DEC-SCOPE-076` with migration `0078_bdm_assignment_history` on `main` @ `442ce465`.
 
@@ -3820,6 +3842,9 @@ migration stays `0080_bdm_assignment_history` (backlog §6.2).
 
 On merging `main` @ `a38955d5`, tel-022 holds `DEC-SCOPE-080` and `0080_tel_targets`. So this entry is **`DEC-SCOPE-081`** and
 the migration is **`0081_bdm_assignment_history`**, chained after `0080_tel_targets`.
+
+On merging `main` @ `3986958c`, tel-004 holds `DEC-SCOPE-081` and `0081_lead_stage_pipeline`. So this entry is **`DEC-SCOPE-082`** and the
+migration is **`0082_bdm_assignment_history`**, chained after `0081_lead_stage_pipeline`.
 
 **Question:** what must happen when a BDM or a BDM manager is deactivated? Specifically: what counts as their open work, where does
 it go, what happens to trips and pending approvals, and how is the reporting manager changed (`BDM_CRM_BACKLOG.md` §4 bdm-025)?
@@ -3852,7 +3877,7 @@ picked the recommended option. Design spec: `docs/superpowers/specs/2026-10-06-b
   - a manager change stays on `PATCH /admin/users` `bdm_profile.reporting_manager_user_id`, and pending approvals follow because of T2.
 
 **Consequences:**
-- Migration `0081_bdm_assignment_history`: an append-only table; the downgrade refuses while rows exist.
+- Migration `0082_bdm_assignment_history`: an append-only table; the downgrade refuses while rows exist.
 - New routes:
   - `GET /admin/bdms/{id}/portfolio`
   - `POST /admin/bdms/{id}/deactivate` `{mode, reassign_to}`

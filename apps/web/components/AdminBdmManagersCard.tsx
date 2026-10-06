@@ -7,7 +7,7 @@ import { type BdmManagerRow, bdmCountText, MANAGERS_URL, managerDeactivateUrl, m
 import type { PickOption } from "@/lib/lookups";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
-// bdm-025 (DEC-SCOPE-081 L4, AC4): the Super Admin's BDM managers. A manager who still has BDMs is deactivated only together with a
+// bdm-025 (DEC-SCOPE-082 L4, AC4): the Super Admin's BDM managers. A manager who still has BDMs is deactivated only together with a
 // replacement manager, who takes every one of them (and so their pending travel approvals) in one step. The server re-checks it all.
 export default function AdminBdmManagersCard({ onChanged }: { onChanged: (notice: string) => void }) {
   const [data, setData] = useState<Page<BdmManagerRow> | null>(null);

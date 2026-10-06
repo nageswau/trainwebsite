@@ -511,7 +511,7 @@ Archived organizations are read-only (`409` "Restore this organization first"). 
 
 **Explicit denies (bdm-010):** nobody decides their own trip (`403`); a manager never edits a trip or its expenses (no route); server-owned fields (`code`, `bdm_user_id`, statuses, `currency`, `decided_*`) in a body → `422`; a `bdm` on a manager route or a manager on a BDM route → `403`. Every change writes one `AuditLog` row (`bdm.trip_*`) in the same transaction.
 
-**BDM deactivation and handover (`bdm-025`, `DEC-SCOPE-081`, added 2026-10-06).** Same inline pattern.
+**BDM deactivation and handover (`bdm-025`, `DEC-SCOPE-082`, added 2026-10-06).** Same inline pattern.
 
 | Role | Can | Scope | Item |
 |---|---|---|---|

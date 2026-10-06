@@ -71,11 +71,11 @@ async def test_a_failed_sync_enquiry_is_still_actionable(client, db_session):
     failed = await _create_enquiry(db_session, crm_sync_status="failed")
     await _login(client, admin.email)
 
-    response = await client.patch(f"/api/v1/admin/leads/{failed.id}", json={"status": "contacted"})
+    response = await client.patch(f"/api/v1/admin/leads/{failed.id}", json={"status": "qualified"})  # tel-004: a manual stage
     assert response.status_code == 200
 
     await db_session.refresh(failed)
-    assert failed.status == "contacted"
+    assert failed.status == "qualified"
     assert failed.crm_sync_status == "failed"  # routing never touches sync status
 
 
@@ -85,11 +85,11 @@ async def test_admin_can_route_an_enquiry_to_an_owner(client, db_session):
     enquiry = await _create_enquiry(db_session)
     await _login(client, admin.email)
 
-    response = await client.patch(f"/api/v1/admin/leads/{enquiry.id}", json={"status": "contacted", "owner_id": str(admin.id)})
+    response = await client.patch(f"/api/v1/admin/leads/{enquiry.id}", json={"status": "qualified", "owner_id": str(admin.id)})
     assert response.status_code == 200
 
     await db_session.refresh(enquiry)
-    assert enquiry.status == "contacted"
+    assert enquiry.status == "qualified"
     assert enquiry.owner_id == admin.id
 
 

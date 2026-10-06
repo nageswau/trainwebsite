@@ -3,7 +3,8 @@
 - **Item:** `bdm-025` (`docs/delivery/BDM_CRM_BACKLOG.md` §4). Depends on bdm-002, bdm-006, bdm-008, bdm-010 — all merged on
   `main` @ `442ce465`. The owner confirmed in-session (2026-10-06) that "merged with verified QA evidence" counts as completed for
   bdm-006 (status line stale) and bdm-008 ("VERIFIED — ready for owner sign-off").
-- **Decision:** `DEC-SCOPE-081`. **Migration:** `0081_bdm_assignment_history` (down_revision `0080_tel_targets`). Drafted as
+- **Decision:** `DEC-SCOPE-082`. **Migration:** `0082_bdm_assignment_history` (down_revision `0081_lead_stage_pipeline`). Last renumbered on merging `main` @ `3986958c`
+  (tel-004 took `081` / `0081_lead_stage_pipeline`). Drafted as
   `DEC-SCOPE-076` / `0078`, after `0077_bdm_tasks_followups`. It was renumbered on merging `main` @ `230a043f`, where tel-017,
   tel-003 and bdm-005 took `076`–`078` and `0078`–`0079`, so it became `079`. Then it became `080` on merging `main` @ `6655e284`,
   where bdm-013 (no migration) took `079`. Then it became `081` / `0081` on merging `main` @ `a38955d5`, where tel-022 took
@@ -51,7 +52,7 @@ them over, and pending travel approvals follow the BDM's current manager.
 - No idempotency key: a repeat finds the BDM inactive → 409.
 - No new rate limiter (admin-only, bounded by portfolio size).
 
-## 4. Data model — migration `0081_bdm_assignment_history`
+## 4. Data model — migration `0082_bdm_assignment_history`
 
 | Column | Type | Rule |
 |---|---|---|
