@@ -3661,4 +3661,4 @@ pipeline; that supersession takes effect with `tel-018`.
 
 **Consequences:** migration `0076_bdm_tasks_followups` (`notes`, `cancelled_at`, `cancel_reason`, two CHECKs, backfill; downgrade refuses while manual tasks exist). New `GET/POST /bdm/tasks`, `PATCH /bdm/tasks/{id}`, `POST /bdm/tasks/{id}/complete`, `POST /bdm/tasks/{id}/cancel`; `sync_follow_up` records the cancellation time and reason; the organization archive cancels open items. Web: `/bdm/follow-ups`, `/bdm/manager/follow-ups`, nav "Follow-ups", "Follow-ups & tasks" on the organization profile.
 
-**Status:** `EXPLICIT_APPROVAL` for F1–F7; implemented on `feature/bdm-008-follow-ups` — **NOT COMPLETE**: browser validation and the independent Codex review are pending; the full backend / web suites are the owner's.
+**Status:** `EXPLICIT_APPROVAL` for F1–F7; implemented on `feature/bdm-008-follow-ups` — **NOT COMPLETE**: the independent Codex review is pending; the full backend / web suites are the owner's. Browser QA and Playwright passed 2026-10-06 (`docs/quality/BDM-008_EXPLORATORY_QA_2026-10-06.md`).

@@ -51,7 +51,7 @@ test("BDM follow-ups: add, counts, done, cancel, manager read-only, phone width"
 
   await page.goto("/bdm/follow-ups");
   await page.getByRole("button", { name: "Add follow-up or task" }).first().click();
-  await page.getByLabel("Task").check();
+  await page.getByRole("radio", { name: "Task" }).check(); // getByLabel("Task") also matches the form "Add follow-up or task"
   await page.getByLabel("Title (required)").fill("Prepare the travel plan");
   await page.getByLabel("Due date (IST, required)").fill(istDate(1));
   await page.getByRole("button", { name: "Add", exact: true }).click();
@@ -60,7 +60,7 @@ test("BDM follow-ups: add, counts, done, cancel, manager read-only, phone width"
   await expect(tabs.getByRole("button", { name: "Upcoming (1)" })).toBeVisible();
   await expect(page.getByRole("button", { name: "College 1" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Done" }).click();
+  await page.getByRole("button", { name: "Done", exact: true }).click(); // not the "Done (n)" tab
   await expect(page.getByText("Marked done.")).toBeVisible();
   await expect(page.getByRole("link", { name: "Book appointment" })).toHaveAttribute("href", `/bdm/appointments/new?organization=${org.id}`);
 
