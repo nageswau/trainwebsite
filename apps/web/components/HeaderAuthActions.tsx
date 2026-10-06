@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ROLE_DASHBOARD_PATH } from "@/lib/navigation";
+import { dashboardPathFor } from "@/lib/navigation";
 
 type Session = { role: string; dashboardHref: string } | null | "loading";
 
@@ -23,7 +23,7 @@ export default function HeaderAuthActions({ loginHref }: { loginHref: string }) 
       .then((res) => (res.ok ? res.json() : null))
       .then((user) => {
         if (cancelled) return;
-        setSession(user ? { role: user.role, dashboardHref: ROLE_DASHBOARD_PATH[user.role] || "/" } : null);
+        setSession(user ? { role: user.role, dashboardHref: dashboardPathFor(user) } : null);
       })
       .catch(() => !cancelled && setSession(null));
     return () => {

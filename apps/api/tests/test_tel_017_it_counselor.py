@@ -28,6 +28,17 @@ async def test_admin_creates_a_counselor_in_its_division(client, db_session, rol
 
 
 @pytest.mark.asyncio
+async def test_it_admin_counselors_page_lists_only_it_counselors(client, db_session):
+    it_one, overseas_one = await make_user(db_session, "counselor", "it"), await make_user(db_session, "counselor", "overseas")
+    await login(client, await make_user(db_session, "it_admin", "it"))
+    response = await client.get("/api/v1/portal/it/admin/counselors")
+    assert response.status_code == 200, response.text
+    emails = {row["email"] for row in response.json()["rows"]}
+    assert it_one.email in emails and overseas_one.email not in emails
+    assert {row["role"] for row in response.json()["rows"]} == {"counselor"}
+
+
+@pytest.mark.asyncio
 async def test_overseas_admin_still_cannot_create_an_it_counselor(client, db_session):
     await login(client, await make_user(db_session, "overseas_admin", "overseas"))
     assert (await client.post(USERS, json=_counselor_payload("it"))).status_code == 403

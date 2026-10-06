@@ -4,7 +4,7 @@ import NotificationPreferencesForm from "@/components/NotificationPreferencesFor
 import ProfileForm from "@/components/ProfileForm";
 import PublicShell from "@/components/PublicShell";
 import { ApiError, serverApi } from "@/lib/api";
-import { ROLE_DASHBOARD_PATH } from "@/lib/navigation";
+import { dashboardPathFor } from "@/lib/navigation";
 import { isNotificationPreferences, type NotificationPreferences, type User } from "@/lib/types";
 
 // Belongs to no one role's portal nav (PORTAL_NAV/SCHOOL_NAV), so it is one shared route, same
@@ -62,7 +62,7 @@ export default async function AccountProfilePage() {
     <PublicShell division={division}>
       <div className="section compact">
         <div className="container" style={{ maxWidth: 560 }}>
-          <Link href={ROLE_DASHBOARD_PATH[user.role] || "/"} className="muted" style={{ display: "inline-block", padding: "6px 0" }}>← Back to dashboard</Link>
+          <Link href={dashboardPathFor(user)} className="muted" style={{ display: "inline-block", padding: "6px 0" }}>← Back to dashboard</Link>
           <h1 style={{ fontSize: 34, marginTop: 14 }}>Your profile</h1>
           <p className="muted">Signed in as {user.full_name} ({user.email}).</p>
           <div className="action-card">

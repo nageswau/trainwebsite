@@ -1,5 +1,5 @@
 import { ApiError, serverApi } from "@/lib/api";
-import { ROLE_DASHBOARD_PATH } from "@/lib/navigation";
+import { dashboardPathFor } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
 import ReturnToLoginLink from "./ReturnToLoginLink";
@@ -37,7 +37,7 @@ function AccessUnavailableCard({ message, home, loginHref }: { message: string; 
 /** For a page that has already read the session and is refusing the user itself: no lookup, the dashboard comes from the user in
  * hand. `accessUnavailable` is for the catch path, where there may be no session at all. */
 export function accessDenied(user: User, message: string) {
-  return <AccessUnavailableCard message={message} home={ROLE_DASHBOARD_PATH[user.role] ?? "/"} loginHref="/overseas/login" />;
+  return <AccessUnavailableCard message={message} home={dashboardPathFor(user)} loginHref="/overseas/login" />;
 }
 
 /** Pages `return accessUnavailable(e)` from their own async body, so the lookup happens there and the page still resolves to plain
@@ -48,7 +48,7 @@ export async function accessUnavailable(error: unknown, loginHref = "/overseas/l
   if (!(error instanceof ApiError && error.status === 401)) {
     try {
       const user = await serverApi<User>("/api/v1/auth/me");
-      home = ROLE_DASHBOARD_PATH[user.role] ?? "/";
+      home = dashboardPathFor(user);
     } catch {
       home = null;
     }
