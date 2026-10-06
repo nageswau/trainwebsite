@@ -700,6 +700,8 @@ Conventions used below:
 
 ### bdm-013 — BDM calendar (daily / weekly)
 
+> **Status (2026-10-06):** implemented on `feature/bdm-013-calendar` (`DEC-SCOPE-078`, no migration). **VERIFIED, with full regression deferred; NOT merged.** K1–K10 are agent-recommended defaults pending owner confirmation, notably `date_from/date_to/bdm_user_id` rather than `from/to/bdm_id`. Fresh evidence on `db50ef8c`: backend LITE 143 passed (bdm-013 + bdm-001/006/008/010 neighbours); ruff clean; mypy 414 vs `main`'s 416 (none in bdm-013 code); single head `0078`; web BDM set 427 passed (47 files); `tsc` 0; eslint 0 on changed files; `next build` 0; Playwright bdm-013 + bdm-008 + bdm-010 7 passed; browser QA `docs/quality/BDM-013_BROWSER_QA_2026-10-06.md` (QA13-01/02 fixed test-first; isolated Playwright Chromium, since Browser Use is not installed). Full suites are deferred to the regression session. Spec `docs/superpowers/specs/2026-10-06-bdm-013-calendar-design.md`; plan `docs/superpowers/plans/2026-10-06-bdm-013-calendar.md`.
+
 - **Business requirement:** each BDM has a calendar showing appointments, travel, meetings, follow-ups, seminars and tasks, in daily and weekly views (§5, §4 Common). The weekly example shows each day with its city and theme.
 - **Existing behavior:** none.
 - **Expected behavior:**

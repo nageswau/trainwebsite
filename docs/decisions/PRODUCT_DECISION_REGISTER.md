@@ -3728,3 +3728,30 @@ VERIFIED on `feature/tel-003` (2026-10-06); **MERGED** to `main` as PR #75 @ `10
 `GET /admin/leads` becomes `{items,total,limit,offset}` with stage/source/product/campaign/telecaller/organization/search filters
 (**breaking**; every in-repo consumer updated); `POST /public/enquiries` and the CRM payload add `lead_code`. bdm-017's columns and
 conversion routes are unchanged (`DEC-SCOPE-072`). Design spec `docs/superpowers/specs/2026-10-06-tel-003-lead-record-design.md`.
+
+
+### DEC-SCOPE-078 — BDM calendar, daily / weekly (`bdm-013`)
+
+**Evidence:** `EVID-016` §5 "BDM Calendar" and §4 Common "Calendar" (`DERIVED_BLUEPRINT`); `BDM_CRM_BACKLOG.md` §bdm-013 (scope approved
+under `DEC-SCOPE-055` D1). Dependencies bdm-006 (PR #58), bdm-008 (PR #71) and bdm-010 are merged to `main`; bdm-006's and bdm-008's
+backlog lines still await the owner's formal COMPLETE sign-off.
+**Status:** K1–K10 are **agent-recommended defaults, NOT `EXPLICIT_APPROVAL`**. On 2026-10-06 the owner told this session to "proceed
+with recommended answers" and to ask only on real blockers; the owner may override any of them. Implemented and verified on
+`feature/bdm-013-calendar` (not merged).
+
+| # | Question | Default |
+|---|---|---|
+| K1 | Parameter names | `date_from`, `date_to`, `bdm_user_id` (the sibling lists' names; the backlog sketched `from/to/bdm_id`) |
+| K2 | Range | Both dates required; > 31 days or reversed → `422` |
+| K3 | Whose calendar | BDM own (`bdm_user_id` → `422`); manager one team BDM (required; else `404`); super_admin any BDM |
+| K4 | Rows | All but cancelled appointments; trips overlapping the range except cancelled / rejected; tasks except cancelled |
+| K5 | Seminars | Types `seminar_workshop`, `seminar`, `workshop`, `student_seminar` flagged and badged |
+| K6 | Day headline | Trip destination + dominant appointment type ("Vijayawada – College Meetings"), "Travel to X", "Return travel", the type alone, "Follow-ups" / "Tasks", "Nothing planned" |
+| K7 | Week | Monday–Sunday; default view week, date today (IST); invalid params fall back |
+| K8 | Links | Appointment / trip detail; follow-up or task → its organization page, else the Follow-ups list |
+| K9 | Bound | 500 rows per list, `truncated` flag |
+| K10 | Nav | "Calendar" after My Day (BDM) and after Follow-ups (manager) |
+
+**Implementation:** `GET /api/v1/bdm/calendar` (`app/api/bdm_calendar.py`, three indexed range queries joined to organizations, no
+write, no audit); `/bdm/calendar`, `/bdm/manager/calendar`. No migration. Design spec
+`docs/superpowers/specs/2026-10-06-bdm-013-calendar-design.md`; QA `docs/quality/BDM-013_BROWSER_QA_2026-10-06.md`.
