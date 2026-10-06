@@ -1069,6 +1069,19 @@ Roles are §12H's (`telecaller`, `telecaller_manager`, `super_admin`); other rol
 | `GET /telecaller/leads/{id}/timeline` | §12J, plus `kind: "enquiry"` rows: `from_value` = source, `to_value` = subject, `reason` = notes, `actor` null for the website |
 | `POST /public/enquiries` | Unchanged request and keys. A known person's enquiry attaches to their newest lead (a `lead_enquiries` row; no new lead, no CRM webhook). The reply is `{id, lead_code}` of that lead with `status: "new"` and `crm_sync_status: "pending"`, identical in shape and constant values to a new lead's |
 
+## 12N. Lead import (`tel-006`) — addendum, 2026-10-06
+
+`DEC-SCOPE-091`; design spec `docs/superpowers/specs/2026-10-06-tel-006-lead-import-design.md` §3. Migration `0087_lead_import_batches`.
+Roles `telecaller_manager` and `super_admin`; other roles get `403`, and a signed-out caller gets `401`. (§12M is claimed by the open
+AGN-023 branch.)
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/imports/template` | `200 text/csv`: the header row `name,phone,email,whatsapp_number,city,state,qualification,passing_year,institution,priority,subject,message` |
+| `POST /telecaller/imports` | Multipart `file` (UTF-8 CSV, BOM allowed, headers case-insensitive), `campaign_id` (active, active product), `division?` (only for a product without a team); header `Idempotency-Key` (required, 1–120 of `A-Za-z0-9._:-`). `201 {id, campaign: {id, name}, division, total_rows, created_count, attached_count, rejected_count, created_at, rows: [{row_number, status: created\|attached\|rejected, lead_id, lead_code, error}]}`. `413` > 1 MB; `422` before any row for a missing/unknown/repeated column, no rows, > 500 rows, an inactive campaign, a missing/contradicting division, a missing key or a key reused for a different file; `409` while another import (or the same key) is still running. Same key + same file replays the stored report. Audit `lead.import`; CRM queued after commit per created lead |
+| `GET /telecaller/imports?limit=&offset=` | `200 {items: [{id, campaign, division, uploaded_by: {id, full_name}, total_rows, created_count, attached_count, rejected_count, created_at}], total, limit, offset}`, newest first; a manager's own imports, super_admin all |
+| `GET /telecaller/imports/{id}` | `200` the report above; `404 "Import not found"` for another manager's import |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
@@ -1089,9 +1102,9 @@ unspecified pending open decisions — not a gap in this traceability check, a d
 alongside the other four contract documents. `prompts/10_TEST_CATALOG_AUDIT_AND_REBUILD.md` may now
 proceed.
 
-**Addendum, 2026-10-06 (`bdm-011`, `DEC-SCOPE-090`): trip ↔ appointment linking, itinerary, productivity, travel report.**
+**Addendum, 2026-10-06 (`bdm-011`, `DEC-SCOPE-092`): trip ↔ appointment linking, itinerary, productivity, travel report.**
 
-Sources: design spec `docs/superpowers/specs/2026-10-06-bdm-011-trip-appointments-design.md` §4; migration `0087_bdm_appointment_trip`.
+Sources: design spec `docs/superpowers/specs/2026-10-06-bdm-011-trip-appointments-design.md` §4; migration `0088_bdm_appointment_trip`.
 Every change is **additive**: new optional request fields, new response fields and new GET routes; no existing field changes meaning.
 
 | Method + path | Change | Refusals |

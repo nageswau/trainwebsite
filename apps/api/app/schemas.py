@@ -3576,7 +3576,7 @@ class BdmTripItineraryItem(BaseModel):
 
 
 class BdmTripMetrics(BaseModel):
-    """bdm-011 (College §F, DEC-SCOPE-090 L1/L3): null = nothing to compute from; `actual_revenue` is not tracked yet (D17)."""
+    """bdm-011 (College §F, DEC-SCOPE-092 L1/L3): null = nothing to compute from; `actual_revenue` is not tracked yet (D17)."""
 
     meetings_planned: int
     meetings_completed: int
@@ -5516,6 +5516,24 @@ class LeadEnquiryCreate(BaseModel):
     message: BdmLeadNote = None
     source: Literal[TEL_SOURCES]
     campaign_id: UUID | None = None
+
+
+class LeadImportRow(BaseModel):
+    """tel-006 (IM1): one CSV row -- tel-005's lead fields; the campaign gives the source, product and team."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: BdmLeadName
+    phone: LeadMobile
+    email: LeadOptionalEmail = None
+    whatsapp_number: BdmLeadPhone = None
+    city: LeadPlace = None
+    state: LeadPlace = None
+    qualification: LeadPlace = None
+    passing_year: int | None = Field(default=None, ge=1950, le=2100)
+    institution: LeadInstitution = None
+    priority: Literal[LEAD_PRIORITIES] = "warm"
+    subject: LeadSubject = None
+    message: BdmLeadNote = None
 
 
 class LeadTimelineRow(BaseModel):

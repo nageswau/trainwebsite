@@ -843,6 +843,30 @@ class LeadEnquiry(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class LeadImportBatch(Base, TimestampMixin):
+    """tel-006 (DEC-SCOPE-091, IM1): one CSV lead import for a campaign. The file is never stored (R9): only its hash, the counts and each
+    row's outcome {row_number, status, lead_id, error} -- no names, phones or emails. The Idempotency-Key is scoped to the uploader (R8)."""
+
+    __tablename__ = "lead_import_batches"
+    __table_args__ = (
+        UniqueConstraint("uploaded_by_user_id", "idempotency_key", name="uq_lead_import_batches_key"),
+        CheckConstraint("division IN ('it', 'overseas')", name="ck_lead_import_batches_division"),
+        CheckConstraint("created_count + attached_count + rejected_count = total_rows", name="ck_lead_import_batches_counts"),
+        Index("ix_lead_import_batches_uploader", "uploaded_by_user_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    campaign_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("tel_campaigns.id"))
+    division: Mapped[str] = mapped_column(String(20))
+    uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    idempotency_key: Mapped[str] = mapped_column(String(120))
+    file_sha256: Mapped[str] = mapped_column(String(64))
+    total_rows: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    created_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    attached_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    rejected_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    results_json: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+
+
 class ContentPage(Base, TimestampMixin):
     __tablename__ = "content_pages"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -1665,7 +1689,7 @@ class BdmAppointment(Base, TimestampMixin):
     next_follow_up_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     expected_leads: Mapped[int | None] = mapped_column(Integer, nullable=True)
     expected_revenue: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
-    # bdm-011 (DEC-SCOPE-090): the trip this meeting is part of -- the BDM's own, covering its IST date (services/bdm_travel).
+    # bdm-011 (DEC-SCOPE-092): the trip this meeting is part of -- the BDM's own, covering its IST date (services/bdm_travel).
     trip_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_trips.id", ondelete="RESTRICT"), nullable=True)
 
 
