@@ -6,8 +6,7 @@ NO-ASSUMPTION MODE. Prepared 2026-10-05 at the user's request. **No code was wri
   sha256 `24f743e1…`). I read it end to end (742 lines, 22 numbered sections plus an architecture note). The section audit is in §1. Every
   source line is traced in Appendix A, and every counted figure is defined in Appendix B.
 - **Scope authority:** the user's in-session answers of 2026-10-05, T1–T29 in §3.1 (`EXPLICIT_APPROVAL`). They lift `PRD_OPEN_ITEMS.md`
-  item 61 / `CONFLICT_MATRIX.md` for `EVID-019`, the same way `DEC-SCOPE-055` D1 did for BDM. **To be registered** under the next free
-  `DEC-SCOPE` number when `tel-001` starts. `main` holds `DEC-SCOPE-072` (bdm-017), so expect `073` or later.
+  item 61 / `CONFLICT_MATRIX.md` for `EVID-019`, the same way `DEC-SCOPE-055` D1 did for BDM. Registered as `DEC-SCOPE-073`.
 - **Correction:** `BDM_CRM_BACKLOG.md` cites "`DEC-SCOPE-036`: the Telecaller CRM, reserves `tel-NNN`, leads extend `enquiries` (D3)".
   No Telecaller decision exists anywhere in git history, and `DEC-SCOPE-036` is ENH-017. The bdm-017 design spec records the same finding.
   The `enquiries` extension is defined by bdm-017 and by this backlog's T6 and T29.
@@ -187,6 +186,8 @@ NO-ASSUMPTION MODE. Prepared 2026-10-05 at the user's request. **No code was wri
 
 ### tel-001 — Telecaller + Telecaller Manager roles, profile, provisioning, sign-in, shell
 
+**Status (2026-10-05):** implemented and verified on `feature/tel-001` (`DEC-SCOPE-073`, migration `0075_telecaller_profiles`) — ready for owner sign-off; not yet merged.
+
 - **Business requirement:** §22 "Telecaller should not have access to everything". The source refers throughout to "Management" (§15, §16, §17, §21). Under your account-lifecycle convention, creating a user implies the full lifecycle.
 - **Existing behavior:** no telecaller roles. The admin create-user form (`WorkflowPanel.tsx` `ROLES_BY_DIVISION`, `admin.py` create_user) offers fixed role sets per division.
 - **Expected behavior:**
@@ -199,7 +200,7 @@ NO-ASSUMPTION MODE. Prepared 2026-10-05 at the user's request. **No code was wri
 - **Frontend impact:** `ROLES_BY_DIVISION`, a Telecallers admin page (the `AdminBdmPage` pattern), `lib/navigation.ts` `TELECALLER_NAV`, `middleware.ts` matcher and redirect rules, and the login landing map.
 - **Backend impact:** `rbac.PERMISSIONS` (`telecaller: {"telecaller:self"}`, `telecaller_manager: {"telecaller:team"}`); new `api/telecaller.py` + `services/telecaller.py` (`telecaller_context`, `require_manager`, `team_filter`, mirroring `services/bdm.py`); `admin.py` create/update user; `auth.PORTAL_SIGN_IN`.
 - **Database impact:** `telecaller_profiles` (user_id PK/FK, employee_id unique, team, reporting_manager_user_id FK, timestamps). Check: team ∈ {it, overseas} and team = user.division.
-- **API impact:** `GET /telecaller/me`, `PATCH /telecaller/profile` (limited fields), `GET /telecaller/manager/team`, `GET/POST/PATCH /admin/telecallers`.
+- **API impact:** `GET /telecaller/me`, `PATCH /telecaller/profile` (phone only), `GET /telecaller/manager/team`, `GET /admin/telecallers`, `GET /admin/telecaller-managers`; create and edit via `POST/PATCH /admin/users` (`DEC-SCOPE-073` TL4).
 - **Integration impact:** SMTP welcome email (existing).
 - **Authentication impact:** new sign-in landings. Manager sign-in at `/admin/login`, as for `bdm_manager`.
 - **Authorization impact:** new roles; division-admin team lock; manager sees direct reports only (T23).

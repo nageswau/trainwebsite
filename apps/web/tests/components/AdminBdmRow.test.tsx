@@ -141,4 +141,21 @@ describe("AdminBdmRow (bdm-001 AC13)", () => {
     expect(screen.getByRole("button", { name: "Reactivate Asha" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Deactivate Asha" })).toBeNull();
   });
+
+  // tel-001 QA follow-up (QA-03 on the BDM page): the notice names the BDM as saved, not as they were before the edit.
+  it("announces the saved name after a rename", async () => {
+    route();
+    const onChanged = mount();
+    fireEvent.click(screen.getByRole("button", { name: "Edit Asha" }));
+    fireEvent.change(screen.getByLabelText("Full name (required)"), { target: { value: "Asha Rao" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(onChanged).toHaveBeenCalledWith("Saved Asha Rao."));
+  });
+
+  // QA-04 on the BDM page: every cell carries its column label for the stacked phone layout.
+  it("labels each cell for the stacked phone layout", () => {
+    mount();
+    const labels = Array.from(document.querySelectorAll("td")).map((td) => td.getAttribute("data-label"));
+    expect(labels).toEqual(["Name", "Employee ID", "Module", "Territory", "Manager", "Status", "Actions"]);
+  });
 });

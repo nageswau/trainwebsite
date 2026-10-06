@@ -500,3 +500,14 @@ Each fix was written test-first and re-checked in the browser. No new owner deci
 | QA-14 | A page past the last row (team page or admin list) says so and offers "Go to the first page". |
 | QA-15 | Once the admin grid is one column (≤ 980px), the BDM list comes before the create form (CSS `order`, `.bdm-list`). |
 | QA-16 | "1 BDM reports to you"; the team table caption is screen-reader only. Found while verifying: `.sr-only` is not a defined class here, so the caption and the list's "Actions" header now use the project's `.visually-hidden`. |
+
+## 15. Addendum — tel-001 QA follow-up (2026-10-05)
+
+Found by the tel-001 exploratory QA on the copied telecaller admin page; fixed here too at the owner's request (`feature/tel-001`).
+
+| # | Change |
+|---|---|
+| F1 | A row save announces the name as saved ("Saved ⟨new name⟩."), not the name before the edit (`AdminBdmRow`). |
+| F2 | Below 640px each BDM row is a card (cells carry `data-label`; shared `.bdm-list`/`.telecaller-list` rules in `globals.css`), so status and Edit/Deactivate are never off-screen. |
+| F3 | A second click on Create BDM while a create is in flight sends nothing (`AdminBdmCreateForm`, in-flight ref). |
+| F4 | QA-15 stands; up to 980px the list card starts with a "Create BDM" link (`CreateJumpLink`) that scrolls to the form and focuses Full name. |

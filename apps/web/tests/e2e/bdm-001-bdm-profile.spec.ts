@@ -118,4 +118,15 @@ test("admin BDM page works at phone width without horizontal scroll", async ({ p
   const listTop = (await page.getByRole("heading", { name: "BDMs", exact: true, level: 3 }).boundingBox())!.y;
   const formTop = (await page.getByRole("heading", { name: "Create BDM" }).boundingBox())!.y;
   expect(listTop).toBeLessThan(formTop);
+  // tel-001 QA follow-up: each row is a card at phone width, so its actions are on screen, not in a sideways-scrolling table.
+  const firstRow = page.getByRole("region", { name: "BDMs" }).locator("tbody tr").first();
+  for (const action of [firstRow.getByRole("button", { name: /^Edit / }), firstRow.getByRole("button", { name: /^(Deactivate|Reactivate) / })]) {
+    const box = (await action.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(390);
+  }
+  // ... and the list card offers a jump to the create form further down.
+  await page.getByRole("link", { name: "Create BDM" }).click();
+  await expect(page.getByLabel("Full name (required)")).toBeFocused();
+  await expect(page.getByLabel("Full name (required)")).toBeInViewport();
 });

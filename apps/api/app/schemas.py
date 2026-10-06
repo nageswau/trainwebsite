@@ -4301,3 +4301,80 @@ class AdminLeadConversionIn(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
     student_email: BdmLeadEmail
+
+
+# --- tel-001 (DEC-SCOPE-073): telecaller profile ------------------------------------------------------------------------
+TelecallerTeam = Literal["it", "overseas"]
+TELECALLER_FIELD_LABELS = {"team": "Team", "employee_id": "Employee ID", "reporting_manager_user_id": "Reporting manager", "phone": "Phone"}
+
+
+class TelecallerProfileCreate(BaseModel):
+    """spec §5.2 / TL6: team, Employee ID and reporting manager, all required; nothing optional."""
+
+    model_config = ConfigDict(extra="forbid")
+    team: TelecallerTeam
+    employee_id: BdmEmployeeId
+    reporting_manager_user_id: UUID
+
+
+class TelecallerProfileUpdate(BaseModel):
+    """Omitted = unchanged. An explicit null for any key fails (all three are required on the row). `team` exists only so an equal
+    value is a no-op; a different one is refused by services/telecaller.apply_profile_update (TL7)."""
+
+    model_config = ConfigDict(extra="forbid")
+    team: TelecallerTeam = None
+    employee_id: BdmEmployeeId = None
+    reporting_manager_user_id: UUID = None
+
+
+class TelecallerSelfUpdate(BaseModel):
+    """TL3: a telecaller may change only their phone. The key is required; null or "" clears it. bdm-017's lead phone rule
+    (trimmed, max 40, digits/spaces/+-(), no control characters) is reused, not copied."""
+
+    model_config = ConfigDict(extra="forbid")
+    phone: BdmLeadPhone
+
+
+class TelecallerProfileOut(BaseModel):
+    team: str
+    employee_id: str
+    reporting_manager: BdmManagerRef
+
+
+class TelecallerMeOut(BaseModel):
+    id: UUID
+    full_name: str
+    email: str
+    phone: str | None
+    active: bool
+    division: str
+    telecaller_profile: TelecallerProfileOut
+
+
+class TelecallerTeamRow(BaseModel):
+    id: UUID
+    full_name: str
+    email: str
+    phone: str | None
+    active: bool
+    team: str
+    employee_id: str
+
+
+class TelecallerAdminRow(TelecallerTeamRow):
+    reporting_manager: BdmManagerRef
+    manager_active: bool
+
+
+class TelecallerTeamPage(BaseModel):
+    items: list[TelecallerTeamRow]
+    total: int
+    limit: int
+    offset: int
+
+
+class TelecallerAdminPage(BaseModel):
+    items: list[TelecallerAdminRow]
+    total: int
+    limit: int
+    offset: int

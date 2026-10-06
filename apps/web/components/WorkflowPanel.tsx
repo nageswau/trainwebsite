@@ -362,8 +362,9 @@ function overseasOperationsSpecs(role: string, section: string): ActionSpec[] {
 const ROLES_BY_DIVISION: Record<string, string[]> = {
   it: ["it_student", "trainer", "placement_team", "hr_team", "it_admin"],
   overseas: ["overseas_student", "counselor", "university_rep", "agent", "overseas_admin"],
-  // bdm-001: managers have no profile, so this generic form creates them; a BDM needs the BDMs page (profile required).
-  global: ["super_admin", "bdm_manager"],
+  // bdm-001 / tel-001: managers have no profile, so this generic form creates them; a BDM or telecaller needs its own admin page
+  // (profile required).
+  global: ["super_admin", "bdm_manager", "telecaller_manager"],
 };
 
 // RAID.md I-31 (ADM-001 follow-up): `it_admin`/`overseas_admin` can never create outside

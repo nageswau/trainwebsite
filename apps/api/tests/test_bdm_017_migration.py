@@ -35,7 +35,7 @@ def _config() -> Config:
 
 def test_migration_chains_after_0073_bdm_pipeline_and_is_the_single_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
-    assert ScriptDirectory.from_config(_config()).get_heads() == [HEAD]
+    assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1  # tel-001's 0075 now follows this revision
 
 
 def test_model_matches_the_migration():

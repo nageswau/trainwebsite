@@ -122,8 +122,8 @@ test("Super Admin sees every division/role and can create another Super Admin th
   const divisionOptions = await form.locator('select[name="division"] option').allTextContents();
   const roleOptions = await form.locator('select[name="role"] option').allTextContents();
   expect(divisionOptions).toEqual(["Select", "it", "overseas", "global"]);
-  // bdm-001 (DEC-SCOPE-055 §6.1): the global division also offers BDM managers, who have no profile and use this generic form.
-  expect(roleOptions).toEqual(["Select", "it student", "trainer", "placement team", "hr team", "it admin", "overseas student", "counselor", "university rep", "agent", "overseas admin", "super admin", "bdm manager"]);
+  // bdm-001 (DEC-SCOPE-055 §6.1): the global division also offers BDM managers, who have no profile and use this generic form. tel-001: and telecaller managers.
+  expect(roleOptions).toEqual(["Select", "it student", "trainer", "placement team", "hr team", "it admin", "overseas student", "counselor", "university rep", "agent", "overseas admin", "super admin", "bdm manager", "telecaller manager"]);
 
   const email = `e2e-second-super-admin-${Date.now()}@example.com`;
   await form.locator('input[name="full_name"]').fill("E2E Second Super Admin");

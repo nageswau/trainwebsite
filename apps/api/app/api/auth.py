@@ -20,6 +20,8 @@ from app.models import AuditLog, Notification, NotificationDelivery, PasswordRes
 from app.schemas import ChangePasswordRequest, LoginRequest, LoginResponse, ProfileUpdate, RegistrationRequest, UserOut
 from app.services.agent_orgs import ensure_agent_org
 from app.services.integrations import send_notification
+from app.services.telecaller import parse_self_update
+from app.services.provisioning import ADMIN_PORTAL_ROLES
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -203,6 +205,14 @@ async def update_me(payload: ProfileUpdate, user: User = Depends(get_current_use
             await db.commit()
             logger.warning("profile_update_denied", extra={"extra_fields": {"user_id": str(user.id), "field": key}})
             raise HTTPException(403, f"{key} cannot be changed here")
+    if user.role == "telecaller":
+        # tel-001 TL8: a telecaller changes only their phone (the generic account form resubmits the unchanged name, which is fine).
+        name_changed = "full_name" in changes and changes["full_name"].strip() != user.full_name
+        profile_changed = "profile" in changes and (changes["profile"] or {}) != (user.profile or {})
+        if name_changed or profile_changed:
+            raise HTTPException(403, "Telecallers can change only their phone number — contact your administrator")
+        if "phone" in changes:
+            changes["phone"] = parse_self_update({"phone": changes["phone"]}).phone
     if "full_name" in changes:
         user.full_name = changes["full_name"].strip()
     if "phone" in changes:
@@ -288,7 +298,9 @@ async def reset_password(payload: dict, db: AsyncSession = Depends(get_db)):
         logger.info("welcome_password_set", extra={"extra_fields": {"user_id": str(user.id)}})
     # bdm-001 (spec §5.6): a BDM manager (division `global`) signs in at /admin/login, and the reset form follows this. The key is
     # always present (null for everyone else), so the response shape never varies by role.
-    return {"ok": True, "login_portal": "admin" if user.role == "bdm_manager" else None}
+    # bdm-001 (spec §5.6) / tel-001: a `global` manager signs in at /admin/login, and the reset form follows this. The key is always
+    # present (null for everyone else), so the response shape never varies by role.
+    return {"ok": True, "login_portal": "admin" if user.role in ADMIN_PORTAL_ROLES else None}
 
 
 @router.post("/change-password")

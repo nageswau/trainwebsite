@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AdminBdmCreateForm from "@/components/AdminBdmCreateForm";
@@ -105,5 +105,21 @@ describe("AdminBdmCreateForm (bdm-001 AC01, AC13, QA-02, QA-03)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Create BDM" }));
     expect(await screen.findByText(/your entry is kept/)).toBeInTheDocument();
     expect(screen.getByLabelText("Full name (required)")).toHaveValue("Asha");
+  });
+
+  // tel-001 QA follow-up (QA-05 on the BDM page): a second click while the create is in flight sends nothing.
+  it("sends one POST for two clicks in the same instant", async () => {
+    const mock = route(res({ id: "b9", email_status: "sent", bdm_profile: {} }, 201));
+    const onCreated = vi.fn();
+    render(<AdminBdmCreateForm role="it_admin" managersAvailable onCreated={onCreated} />);
+    await fill();
+    const button = screen.getByRole("button", { name: "Create BDM" });
+    // One act() = no re-render between the clicks, exactly like two clicks in the same instant.
+    act(() => {
+      button.click();
+      button.click();
+    });
+    await waitFor(() => expect(onCreated).toHaveBeenCalled());
+    expect(mock.mock.calls.filter(([url]) => url === "/api/v1/admin/users")).toHaveLength(1);
   });
 });

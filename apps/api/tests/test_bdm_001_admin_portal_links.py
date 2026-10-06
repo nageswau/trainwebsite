@@ -11,7 +11,7 @@ from app.services.provisioning import _set_password_url
 
 @pytest.mark.parametrize(
     ("role", "division", "segment"),
-    [("bdm_manager", "global", "admin"), ("super_admin", "global", "it"), ("bdm", "it", "it"), ("bdm", "overseas", "overseas"), ("counselor", "overseas", "overseas")],
+    [("bdm_manager", "global", "admin"), ("super_admin", "global", "it"), ("bdm", "it", "it"), ("bdm", "overseas", "overseas"), ("counselor", "overseas", "overseas"), ("telecaller_manager", "global", "admin"), ("telecaller", "it", "it"), ("telecaller", "overseas", "overseas")],
 )
 def test_set_password_url_by_role(role, division, segment):
     url = _set_password_url(SimpleNamespace(role=role, division=division), "tok")

@@ -976,6 +976,24 @@ class BdmProfile(Base, TimestampMixin):
     reporting_manager_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
+class TelecallerProfile(Base, TimestampMixin):
+    """tel-001 (DEC-SCOPE-073): a telecaller's profile, 1:1 with a `telecaller` user. Name, email, mobile and active stay on `users`.
+    `team` is the user's division (T22); the reporting manager must be an active `telecaller_manager`. Both rules span tables, so
+    `services/telecaller.py` enforces them under a row lock (no cross-table CHECK)."""
+
+    __tablename__ = "telecaller_profiles"
+    __table_args__ = (
+        UniqueConstraint("user_id", name="uq_telecaller_profiles_user"),
+        CheckConstraint("team IN ('it', 'overseas')", name="ck_telecaller_profiles_team"),
+        Index("uq_telecaller_profiles_employee_id", text("lower(employee_id)"), unique=True),
+        Index("ix_telecaller_profiles_reporting_manager", "reporting_manager_user_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    team: Mapped[str] = mapped_column(String(20))
+    employee_id: Mapped[str] = mapped_column(String(40))
+    reporting_manager_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
 
 # bdm-010 (DEC-SCOPE-063, T6): TRV-000123 codes. On the metadata so 0001's create_all makes it on a fresh database; 0068 makes it
 # on an upgraded one. A rolled-back create skips a number; codes stay unique and increasing.

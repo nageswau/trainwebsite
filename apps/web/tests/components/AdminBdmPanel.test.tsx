@@ -197,4 +197,14 @@ describe("AdminBdmPanel search (QA-04)", () => {
     expect(screen.getByRole("searchbox", { name: "Search BDMs" })).toHaveValue("E-NEW");
     expect(screen.queryByText("E-1")).toBeNull();
   });
+
+  // tel-001 QA follow-up: on a phone the list comes first (QA-15), so its card offers a jump to the create form.
+  it("offers a jump link that moves focus to the create form's first field", async () => {
+    route([res(pg([row(1)]))]);
+    render(<AdminBdmPanel role="super_admin" />);
+    const jump = screen.getByRole("link", { name: "Create BDM" });
+    expect(jump).toHaveAttribute("href", "#bdm-name");
+    fireEvent.click(jump);
+    expect(screen.getByLabelText("Full name (required)")).toHaveFocus();
+  });
 });

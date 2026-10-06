@@ -40,6 +40,7 @@ from app.models import (
     School,
     SchoolStaffAssignment,
     SchoolStudent,
+    TelecallerProfile,
     University,
     User,
     UserRoleAssignment,
@@ -58,6 +59,7 @@ from app.schemas import (
 )
 from app.services import bdm as bdm_rules
 from app.services import bdm_leads as lead_rules
+from app.services import telecaller as tel_rules
 from app.services.agent_applications import owned, with_owner
 from app.services.agent_network import APPLICATION_FILTERS, org_applications, org_counts, org_money, org_students
 from app.services.agent_orgs import ensure_agent_org, lock_org, org_masters, set_org_status, transition_org
@@ -484,13 +486,27 @@ async def create_user(payload: dict, user: User = Depends(ensure_admin), db: Asy
         raise HTTPException(422, "Only a BDM has a BDM profile")
     elif role == "bdm_manager" and user.role != "super_admin":
         raise HTTPException(403, "Only a Super Admin can create BDM managers")
+    # tel-001 (spec §5.4): same placement and order as the BDM block -- profile, then creator team (403), then division (422) -- so a
+    # super_admin's mismatch is the 422 and a division admin's other team is the 403. Every other role skips it (bar a stray profile).
+    tel_input = None
+    if role == "telecaller":
+        tel_input = tel_rules.parse_profile_create(payload.get("telecaller_profile"))
+        tel_rules.require_creator_may(user, tel_input.team, USERS_ROUTE)
+        if "division" not in payload:
+            division = tel_input.team
+        elif division != tel_input.team:
+            raise HTTPException(422, "Division must match the telecaller's team")
+    elif "telecaller_profile" in payload:
+        raise HTTPException(422, "Only a telecaller has a telecaller profile")
+    elif role == "telecaller_manager" and user.role != "super_admin":
+        raise HTTPException(403, "Only a Super Admin can create telecaller managers")
     if user.role != "super_admin" and division != user.division:
         raise HTTPException(403, "Cannot create users in another division")
     _reject_supplied_password(payload, user, USERS_ROUTE, "password")
     allowed_by_division = {
-        "it": {"it_student", "trainer", "placement_team", "hr_team", "it_admin", "bdm"},
-        "overseas": {"overseas_student", "counselor", "university_rep", "agent", "overseas_admin", "bdm"},
-        "global": {"super_admin", "bdm_manager"},
+        "it": {"it_student", "trainer", "placement_team", "hr_team", "it_admin", "bdm", "telecaller"},
+        "overseas": {"overseas_student", "counselor", "university_rep", "agent", "overseas_admin", "bdm", "telecaller"},
+        "global": {"super_admin", "bdm_manager", "telecaller_manager"},
     }
     if role not in allowed_by_division.get(division, set()):
         raise HTTPException(422, "Role is not valid for the selected division")
@@ -522,16 +538,26 @@ async def create_user(payload: dict, user: User = Depends(ensure_admin), db: Asy
         profile = BdmProfile(user_id=item.id, **bdm_input.model_dump())
         db.add(profile)
         await bdm_rules.flush_profile(db)
+    tel_profile = tel_manager = None
+    if tel_input is not None:
+        # Same transaction as the user, token and audit row; the manager row is locked against a concurrent deactivation.
+        tel_manager = await tel_rules.locked_active_manager(db, tel_input.reporting_manager_user_id)
+        tel_profile = TelecallerProfile(user_id=item.id, **tel_input.model_dump())
+        db.add(tel_profile)
+        await tel_rules.flush_profile(db)
     issued = await issue_welcome_token(db, user=item, issued_by=user)
     metadata = {"role": role, "division": division}
     if profile is not None:
         metadata["bdm_profile"] = bdm_rules.profile_snapshot(profile)
+    if tel_profile is not None:
+        metadata["telecaller_profile"] = tel_rules.profile_snapshot(tel_profile)
     db.add(AuditLog(user_id=user.id, action="user.create", entity_type="user", entity_id=str(item.id), metadata_json=metadata))
     await db.commit()
     delivery = await deliver_welcome_link(user=item, issued=issued, issued_by=user)
     return {
         "id": item.id, "email": item.email, "role": item.role, "division": item.division, **delivery,
         "bdm_profile": bdm_rules.profile_out(profile, manager) if profile is not None else None,
+        "telecaller_profile": tel_rules.profile_out(tel_profile, tel_manager) if tel_profile is not None else None,
     }
 
 
@@ -557,6 +583,17 @@ async def update_user(user_id: UUID, payload: dict, user: User = Depends(ensure_
         if profile is None:
             raise HTTPException(422, "Only a BDM has a BDM profile")
         profile_before, profile_after = await bdm_rules.apply_profile_update(db, profile, payload["bdm_profile"])
+    # tel-001 (spec §5.5): the same shape as the BDM branch. The team is fixed here (TL7); a moved manager is re-checked.
+    tel_profile = None
+    if item.role == "telecaller":
+        tel_profile = await db.scalar(select(TelecallerProfile).where(TelecallerProfile.user_id == item.id).with_for_update())
+        if tel_profile is not None:
+            tel_rules.require_creator_may(user, tel_profile.team, f"{USERS_ROUTE}/{{id}}")
+    tel_before = tel_after = None
+    if "telecaller_profile" in payload:
+        if tel_profile is None:
+            raise HTTPException(422, "Only a telecaller has a telecaller profile")
+        tel_before, tel_after = await tel_rules.apply_profile_update(db, tel_profile, payload["telecaller_profile"])
     # ADM-001-AC02: deactivating a trainer with active/upcoming assigned batches is
     # blocked unless explicitly confirmed -- never a silent operation that would strand
     # those batches without a trainer.
@@ -576,6 +613,8 @@ async def update_user(user_id: UUID, payload: dict, user: User = Depends(ensure_
     metadata = {k: v for k, v in payload.items() if k != "password"}
     if profile_before is not None:
         metadata.update(bdm_profile_before=profile_before, bdm_profile_after=profile_after)
+    if tel_before is not None:
+        metadata.update(telecaller_profile_before=tel_before, telecaller_profile_after=tel_after)
     db.add(AuditLog(user_id=user.id, action="user.update", entity_type="user", entity_id=str(item.id), metadata_json=metadata))
     await db.commit()
     return {"ok": True}

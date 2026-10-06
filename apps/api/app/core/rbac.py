@@ -50,6 +50,9 @@ PERMISSIONS: dict[str, set[str]] = {
     # bdm-001 (DEC-SCOPE-055): BDM CRM. Type/own/team scope is enforced in services/bdm.py, not by these bundles alone.
     "bdm": {"bdm:self"},
     "bdm_manager": {"bdm:team"},
+    # tel-001 (DEC-SCOPE-073): coarse bundles; self/team scope is enforced in services/telecaller.py.
+    "telecaller": {"telecaller:self"},
+    "telecaller_manager": {"telecaller:team"},
 }
 
 

@@ -279,6 +279,24 @@ Division `global`; signs in at `/admin/login` (heading "Administration sign-in")
 
 **Admin entry points:** a "BDMs" nav item for Super Admin (`/admin/bdms`), IT Admin (`/it/admin/bdms`, College) and Overseas Admin (`/overseas/admin/bdms`, Agent + School). BDM Managers are created by a Super Admin from Users (division Global). bdm-010 adds "BDM Travel Approvals" for Super Admin (`/admin/bdm-travel-approvals`): trips whose reporting manager is inactive.
 
+## Telecaller *(net-new, 2026-10-05, `DEC-SCOPE-073`, `tel-001`)*
+
+Signs in at `/it/login` (IT team, division `it`) or `/overseas/login` (Overseas team, division `overseas`) by team; lands on `/telecaller/dashboard`. Sidebar: Dashboard · Profile.
+
+- /telecaller/dashboard — greeting and a profile summary card (team, Employee ID, reporting manager); minimal shell, tel-021 fills it in. A missing profile shows the 403 message.
+- /telecaller/profile — read-only profile (name, email, team, Employee ID, reporting manager, status) plus an editable phone (TL3).
+- /telecaller — redirects to `/telecaller/dashboard`.
+
+## Telecaller Manager *(net-new, 2026-10-05, `DEC-SCOPE-073`, `tel-001`)*
+
+Division `global`; signs in at `/admin/login`; lands on `/telecaller/manager/team`. Sidebar: Team. Password recovery stays in the admin portal: "Forgot your password?" on `/admin/login` → `/admin/forgot-password`; the welcome/reset link opens `/admin/reset-password`, and after a reset the form follows the API's `login_portal` (`"admin"`).
+
+- /telecaller/manager/team — the telecallers who report to this manager (paged, inactive included).
+
+**Signed-out `/telecaller/*` (TL1):** `/telecaller/manager/*` → `/admin/login?next=…`; any other `/telecaller/*` → the public chooser `/telecaller/sign-in?next=…` ("IT team" → `/it/login?next=…`, "Overseas team" → `/overseas/login?next=…`, plus the line "Telecaller Managers sign in at Administration" linking to `/admin/login`).
+
+**Admin entry points:** a "Telecallers" nav item for Super Admin (`/admin/telecallers`, both teams), IT Admin (`/it/admin/telecallers`, IT) and Overseas Admin (`/overseas/admin/telecallers`, Overseas). Telecaller Managers are created by a Super Admin from Users (division Global); telecallers are created on the Telecallers page.
+
 ## Division isolation (confirmed, `DEC-ARCH-001`)
 
 A user's nav never crosses `it` / `overseas` / `global` divisions except for **Super Admin**, the sole cross-division role. An `overseas_student` never sees `/it/*` nav items and vice versa, even though — per `DEC-ROLE-001` — both may be the *same person's* account. This is a navigation-visibility rule; the underlying identity-model question (one account, two role-assignments) is Architecture-phase work, tracked in `docs/features/FEATURE_QUESTIONS.md` item 3.
