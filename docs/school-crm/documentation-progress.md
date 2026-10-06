@@ -5,8 +5,8 @@
 | Code baseline | `main` @ `ce1f07c2` (S1 discovery). Record any later `main` used for browser work here, with the affected features re-checked. |
 | Stack used for browser work | `schooldocs` compose project from worktree `.claude/worktrees/school-docs` (detached at docs commit `24a22627` = `main` `ce1f07c2` + docs). Web http://localhost:3020, api :8020. Untracked `docker-compose.docs.yml` adds Mailpit on **127.0.0.1:8026** (the Agent CRM docs stack holds 8025). Untracked `.env` = repo `.env` with `FRONTEND_URL`/ports changed, `SMTP_HOST=mailpit`, `SMTP_PORT=1025`, `SMTP_USE_TLS=false`, no SMTP credentials, **`SMTP_FROM_EMAIL=no-reply@edusphere.local`** (without it the app reports "email is not configured"), `EMAIL_WEBHOOK_URL` empty. Owner approved Claude starting, seeding and resetting this stack (2026-10-05). |
 | Docs branch | `docs/school-crm-user-guide` (from `main` @ `ce1f07c2`) |
-| Last session | S9 Psychometric Team, Student 360°, overseas pathway — 2026-10-06 |
-| Next session | S10 — Dashboards, reports, entitlements, notifications, parent, analytics. Start from the S9 snapshot, or reset and run `sch-s2` … `sch-s9` in order. |
+| Last session | S10 Dashboards, reports, entitlements, notifications, parent, analytics — 2026-10-06 |
+| Next session | S11 — Role guides, FAQ, troubleshooting, README indexes (docs only; no new captures). |
 
 **Column values:**
 - **Code Reviewed:** YES / PARTIAL / NO. YES at S1 means reviewed from source at `ce1f07c2`, with file:line evidence in `discovery/`.
@@ -18,7 +18,7 @@
 A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES
 and Reviewed = PASSED.
 
-**Totals (after S9):** 86 features · 68 browser-verified (4 partial) · 68 documented · 0 complete (final review is S12).
+**Totals (after S10):** 86 features · 86 browser-verified (3 partial) · 86 documented · 0 complete (final review is S12).
 
 | ID | Module | Feature | Code Reviewed | Browser Verified | Screenshot | Documented | Reviewed |
 |---|---|---|---|---|---|---|---|
@@ -31,19 +31,19 @@ and Reviewed = PASSED.
 | DOC-SCH-AUTH-007 | Account access | Sign out and session expiry | YES | PARTIAL (ended session simulated by removing the access cookie, not by waiting 60 min — U1) | YES | YES | NO |
 | DOC-SCH-AUTH-008 | Account access | "Access unavailable" messages (signed out, wrong portal, deactivated, other school's student) | YES | YES | YES | YES | NO |
 | DOC-SCH-AUTH-009 | Account access | Find your way around: sidebar, role label, mobile menu | YES | YES | YES | YES | NO |
-| DOC-SCH-DASH-001 | Dashboards | Coordinator dashboard (20 KPI tiles, Your school, Upcoming activities, Results & guidance) | YES | NO | NO | NO | NO |
-| DOC-SCH-DASH-002 | Dashboards | Principal dashboard (School at a glance, Your school roster, Results & guidance) | YES | NO | NO | NO | NO |
-| DOC-SCH-DASH-003 | Dashboards | Teacher dashboard (Your students, Results & guidance) | YES | NO | NO | NO | NO |
-| DOC-SCH-DASH-004 | Dashboards | Parent dashboard: My children, Upcoming sessions, Important notifications (incl. children at several schools) | YES | NO | NO | NO | NO |
-| DOC-SCH-DASH-005 | Dashboards | Academic Team dashboard: layout and sections | YES | NO | NO | NO | NO |
-| DOC-SCH-DASH-006 | Dashboards | Career Counselor dashboard: layout and sections | YES | NO | NO | NO | NO |
-| DOC-SCH-DASH-007 | Dashboards | Psychometric Team dashboard: layout and sections | YES | NO | NO | NO | NO |
+| DOC-SCH-DASH-001 | Dashboards | Coordinator dashboard (20 KPI tiles, Your school, Upcoming activities, Results & guidance) | YES | YES | YES | YES | NO |
+| DOC-SCH-DASH-002 | Dashboards | Principal dashboard (School at a glance, Your school roster, Results & guidance) | YES | YES | YES | YES | NO |
+| DOC-SCH-DASH-003 | Dashboards | Teacher dashboard (Your students, Results & guidance) | YES | YES | YES | YES | NO |
+| DOC-SCH-DASH-004 | Dashboards | Parent dashboard: My children, Upcoming sessions, Important notifications (incl. children at several schools) | YES | YES | YES | YES | NO |
+| DOC-SCH-DASH-005 | Dashboards | Academic Team dashboard: layout and sections | YES | YES | YES | YES | NO |
+| DOC-SCH-DASH-006 | Dashboards | Career Counselor dashboard: layout and sections | YES | YES | YES | YES | NO |
+| DOC-SCH-DASH-007 | Dashboards | Psychometric Team dashboard: layout and sections | YES | YES | YES | YES | NO |
 | DOC-SCH-STU-001 | Students & roster | View the student roster | YES | YES | YES | YES | NO |
 | DOC-SCH-STU-002 | Students & roster | Add one student | YES | YES | YES | YES | NO |
 | DOC-SCH-STU-003 | Students & roster | Edit a student (incl. teacher assignment) | YES | YES | YES | YES | NO |
 | DOC-SCH-STU-004 | Students & roster | Link a parent to a student | YES | YES | YES | YES | NO |
 | DOC-SCH-STU-005 | Students & roster | Upload the roster in bulk (CSV) | YES | YES | YES | YES | NO |
-| DOC-SCH-STU-006 | Students & roster | Student profile and journey timeline (grade/transfer history, scorecard, funding cases) | YES | PARTIAL (Principal/Teacher dashboard entry buttons verified in S10; Funding support card not exercised with data) | YES | YES | NO |
+| DOC-SCH-STU-006 | Students & roster | Student profile and journey timeline (grade/transfer history, scorecard, funding cases) | YES | YES | YES | YES | NO |
 | DOC-SCH-STU-007 | Students & roster | Add, replace or remove a student photo | YES | YES | YES | YES | NO |
 | DOC-SCH-STU-008 | Students & roster | Download a student progress report (PDF) | YES | YES | YES | YES | NO |
 | DOC-SCH-STU-009 | Students & roster | Promote or hold back students for the new academic year | YES | YES | YES | YES | NO |
@@ -58,17 +58,17 @@ and Reviewed = PASSED.
 | DOC-SCH-TEAM-001 | Team | Invite a Principal, Teacher or Parent | YES | YES | YES | YES | NO |
 | DOC-SCH-TEAM-002 | Team | View your team and pending invites | YES | YES | YES | YES | NO |
 | DOC-SCH-TEAM-003 | Team | Deactivate or reactivate a team account | YES | YES | YES | YES | NO |
-| DOC-SCH-RPT-001 | Reports & analytics | Download the school report (PDF) | YES | NO | NO | NO | NO |
-| DOC-SCH-RPT-002 | Reports & analytics | School summary: metric tiles, students by grade, service delivery, activities & attendance | YES | NO | NO | NO | NO |
-| DOC-SCH-RPT-003 | Reports & analytics | Grade-wise comparison | YES | NO | NO | NO | NO |
-| DOC-SCH-RPT-004 | Reports & analytics | Student development, at-risk students and top performers | YES | NO | NO | NO | NO |
-| DOC-SCH-RPT-005 | Reports & analytics | Student progress scorecards | YES | NO | NO | NO | NO |
+| DOC-SCH-RPT-001 | Reports & analytics | Download the school report (PDF) | YES | YES | YES | YES | NO |
+| DOC-SCH-RPT-002 | Reports & analytics | School summary: metric tiles, students by grade, service delivery, activities & attendance | YES | YES | YES | YES | NO |
+| DOC-SCH-RPT-003 | Reports & analytics | Grade-wise comparison | YES | YES | YES | YES | NO |
+| DOC-SCH-RPT-004 | Reports & analytics | Student development, at-risk students and top performers | YES | YES | YES | YES | NO |
+| DOC-SCH-RPT-005 | Reports & analytics | Student progress scorecards | YES | YES | YES | YES | NO |
 | DOC-SCH-RPT-006 | Reports & analytics | Global education pipeline | YES | YES | YES | YES | NO |
-| DOC-SCH-ENT-001 | Entitlements | View your school's partnership entitlements | YES | NO | NO | NO | NO |
-| DOC-SCH-ENT-002 | Entitlements | Partnership tiers explained (what each tier includes; "not included" messages) | YES | NO | NO | NO | NO |
-| DOC-SCH-NOTIF-001 | Notifications | Notifications for school staff | YES | NO | NO | NO | NO |
-| DOC-SCH-NOTIF-002 | Notifications | Notifications for parents (what triggers them) | YES | NO | NO | NO | NO |
-| DOC-SCH-PAR-001 | Parent | Your child's profile and progress page | YES | NO | NO | NO | NO |
+| DOC-SCH-ENT-001 | Entitlements | View your school's partnership entitlements | YES | YES | YES | YES | NO |
+| DOC-SCH-ENT-002 | Entitlements | Partnership tiers explained (what each tier includes; "not included" messages) | YES | YES | YES | YES | NO |
+| DOC-SCH-NOTIF-001 | Notifications | Notifications for school staff | YES | YES | YES | YES | NO |
+| DOC-SCH-NOTIF-002 | Notifications | Notifications for parents (what triggers them) | YES | YES | YES | YES | NO |
+| DOC-SCH-PAR-001 | Parent | Your child's profile and progress page | YES | YES | YES | YES | NO |
 | DOC-SCH-ACAD-001 | Academic Team | Portfolio progress | YES | YES | YES | YES | NO |
 | DOC-SCH-ACAD-002 | Academic Team | Upload a result as Draft | YES | YES | YES | YES | NO |
 | DOC-SCH-ACAD-003 | Academic Team | Verify and publish results (two-person rule) | YES | YES | YES | YES | NO |
@@ -104,7 +104,7 @@ and Reviewed = PASSED.
 | DOC-SCH-SADM-005 | School administration | Create school staff accounts (Academic Team / Career Counselor / Psychometric Team) and their school portfolio | YES | YES | YES | YES | NO |
 | DOC-SCH-SADM-006 | School administration | Start an overseas application for a school student | YES | PARTIAL (how school-linked applications move past enquiry is not shown in any in-scope screen — U15) | YES | YES | NO |
 | DOC-SCH-SADM-007 | School administration | Review school transfer requests (approve / reject) | YES | YES | YES | YES | NO |
-| DOC-SCH-SADM-008 | School administration | School Analytics | YES | NO | NO | NO | NO |
+| DOC-SCH-SADM-008 | School administration | School Analytics | YES | YES | YES | YES | NO |
 | DOC-SCH-SADM-009 | School administration | Activity Feedback across schools | YES | YES | YES | YES | NO |
 | DOC-SCH-SADM-010 | School administration | Re-send a set-password link to a school user (Users page) | YES (Users panel reviewed S2) | YES | YES | YES | NO |
 | DOC-SCH-SADM-011 | School administration | Super Admin and the school screens (what Super Admin can and cannot open) | YES | YES | YES | YES | NO |
@@ -138,7 +138,7 @@ All items from `documentation-analysis.md` §12.1 are open. Owner-dependent ones
 | U5 | Over-length fields / malformed DOB → probable 500 | S4, S5, S7 | CLOSED: a 170-character full name (STU-002) and a 210-character activity title (ACT-001) both show only "Something went wrong.". A 90-character result subject (ACAD-002) also shows "Something went wrong.". U5 closed: over-length text gives the generic error everywhere seen. |
 | U6 | Browser-native validation wording | all | DECIDED S3: docs say "your browser asks you to…" instead of quoting browser bubbles. |
 | U7 | Pydantic 422 wording on admin forms | S2 → later | OPEN (not reachable through the S2 happy/error paths; messages marked "From code" in SADM-002/004) |
-| U8 | Parent notifications never marked read | S10 | OPEN |
+| U8 | Parent notifications never marked read | S10 | CONFIRMED: after **Open** on the parent Notifications page the badge count stayed 4 → 4. Documented in DASH-004 and NOTIF-002. |
 | U9 | "Upcoming session" time in UTC? | S5 | CONFIRMED: a 10:00 IST activity is announced to parents as "… scheduled for 04 Oct 2026, 04:30" (UTC). (Correction S6: feedback "Submitted by" and notification list times are IST — checked against stored UTC timestamps; only the time written inside the parent "Upcoming session" text is UTC.) Documented in ACT-001. |
 | U10 | Delivery channels enabled in the docs stack | S2 | PARTIAL: email works (Mailpit). WhatsApp/SMS not configured on the docs stack, so those channels are documented from code only. |
 | U11 | Super Admin "Workspace not found" on three school pages | S2 | CONFIRMED in browser (Schools, School Staff, School Applications); Transfers and Activity Feedback open with the Overseas Admin sidebar/label; Analytics opens with the SA sidebar. Documented in SADM-011. |
@@ -163,6 +163,10 @@ See `documentation-analysis.md` §12.2 (17 items). Notable:
 - Frontend role guards are inconsistent.
 - Parent notifications never clear.
 - Several raw codes are shown to users.
+- **New in S10:**
+  1. The Reports "Students by grade" chart groups by the Grade/Class text, while the dashboard tiles, grade-wise comparison and scorecard filter use the grade level, so the numbers differ (Grade 9: 4 in the chart, 5 elsewhere).
+  2. An expired school is flagged "No active tier" in School Analytics but still shows its tier name there, and its own Entitlements page shows no warning.
+  3. The parent "Attendance" tile counts only daily class attendance, so a child can be Present at activities and still show "Not marked yet".
 - **New in S9:**
   1. The Global Education stage counts are not strictly cumulative: Rohan is counted at Visa and Profile evaluation but not at the stages between.
   2. The Psychometric "Report URL" accepts any text on the single form (from code; bulk rejects non-http(s) rows, seen in S9).
@@ -203,6 +207,17 @@ See `documentation-analysis.md` §12.2 (17 items). Notable:
 ## Session log
 | Session | Date | Summary |
 |---|---|---|
+| S10 | 2026-10-06 | `sch-s10-dashboards-reports.capture.ts` runs green in about 35 s after S9 (read-only apart from marking one coordinator notification read).
+
+**Verification:**
+- Dashboards for CO, PR, TE and PA (single and multi-school); Principal **Timeline** and Teacher **View** navigation (closes the STU-006 partial).
+- Reports: PDF `school-report.pdf`, summary, grade-wise comparison, student development, threshold error, scorecards and grade filter; Principal view.
+- Entitlements for Platinum, Bronze, no tier, expired Gold, and Principal.
+- Notifications: coordinator **Open** marks read (2 → 1); Principal empty state; parent badges never clear (U8 confirmed).
+- School Analytics as OA (KPIs, flags, search) and SA.
+- 36 screenshots reviewed.
+
+**Docs:** DASH-001..007, RPT-001..005, ENT-001..002, NOTIF-001..002, PAR-001 and SADM-008 written; STU-006 updated. |
 | S9 | 2026-10-06 | `sch-s9-psy-360-pathway.capture.ts` runs green in about 29 s after S8.
 
 **Data created:**

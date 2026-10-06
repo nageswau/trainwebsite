@@ -290,9 +290,9 @@ Features: DOC-SCH-PSY-001..004, DOC-SCH-S360-001, DOC-SCH-SADM-006, DOC-SCH-RPT-
   - Check how the stages advance (U15). Move at least one student far enough for the Global Education funnel, recording the method used.
   - RPT-006 as CO and PR.
 
-### S10 — Dashboards, reports, entitlements, notifications, parent, analytics
+### S10 — Dashboards, reports, entitlements, notifications, parent, analytics — DONE 2026-10-06
 Features: DOC-SCH-DASH-001..007, DOC-SCH-RPT-001..005, DOC-SCH-ENT-001..002, DOC-SCH-NOTIF-001..002, DOC-SCH-PAR-001, DOC-SCH-SADM-008 (18). Most of these are read-only screens over data from S2–S9. If time runs short, split into **S10a** (DASH, PAR, NOTIF) and **S10b** (RPT, ENT, SADM-008).
-- [ ] Standard loop. Capture:
+- [x] Standard loop. Capture:
   - each role's dashboard
   - the parent multi-school grouping
   - reports and the threshold form, including the invalid-value messages

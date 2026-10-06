@@ -28,8 +28,8 @@ The student is at your school (Teachers: assigned to you).
 
 ## How to Access
 - **School Coordinator:** Sidebar > **Students** > **Profile & timeline**.
-- **Principal:** Dashboard > **Timeline** on the student's row *(button from code; dashboards are verified in S10)*.
-- **Teacher:** Dashboard > **View** on the student's row *(button from code; dashboards are verified in S10)*.
+- **Principal:** Dashboard > **Timeline** on the student's row.
+- **Teacher:** Dashboard > **View** on the student's row.
 
 ## Steps
 
@@ -56,7 +56,8 @@ part of your school's partnership tier) or Not tracked yet. It also shows how co
 - **Digital Portfolio**: see the Digital Portfolio pages (session S7).
 - **Progress report**: see [Download a student progress report](stu-008-progress-report-pdf.md).
 - **Funding support**: loan, scholarship and funding cases opened by the Career Counselor, or "No funding support
-  cases for this student." *(text from code)*.
+  cases for this student." (both seen on the parent's view of the same card in S10; see
+  [Your child's profile and progress](../parent/par-001-child-profile-and-progress.md)).
 
 ![Principal view](../../screenshots/students/21-student-profile-principal.png)
 

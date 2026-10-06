@@ -14,6 +14,7 @@ so the whole card fits); they are marked "(element shot)".
 | S7 — `sch-s7-academic-portfolio.capture.ts` (after S6 on the same DB) | same | 2026-10-06 |
 | S8 — `sch-s8-career-counselor.capture.ts` (after S7 on the same DB) | same | 2026-10-06 |
 | S9 — `sch-s9-psy-360-pathway.capture.ts` (after S8 on the same DB) | same | 2026-10-06 |
+| S10 — `sch-s10-dashboards-reports.capture.ts` (after S9 on the same DB) | same | 2026-10-06 |
 
 | Screenshot | Module | Feature | Step | Role | Description |
 |---|---|---|---|---|---|
@@ -210,3 +211,39 @@ so the whole card fits); they are marked "(element shot)".
 | [reports/10-global-education-funnel.png](screenshots/reports/10-global-education-funnel.png) | Reports & analytics | DOC-SCH-RPT-006 | 1 Pipeline | School Coordinator | Pipeline funnel + Not tracked yet |
 | [reports/11-global-education-students.png](screenshots/reports/11-global-education-students.png) | Reports & analytics | DOC-SCH-RPT-006 | 2 Students | School Coordinator | Students on the pathway |
 | [reports/12-global-education-principal.png](screenshots/reports/12-global-education-principal.png) | Reports & analytics | DOC-SCH-RPT-006 | Role view | Principal | Principal's Global education page |
+| [dashboards/01-coordinator-kpis.png](screenshots/dashboards/01-coordinator-kpis.png) | Dashboards | DOC-SCH-DASH-001 | 1 KPIs | School Coordinator | School at a glance (20 tiles) |
+| [dashboards/02-coordinator-lower-cards.png](screenshots/dashboards/02-coordinator-lower-cards.png) | Dashboards | DOC-SCH-DASH-001 | 2 Cards | School Coordinator | Your school, Upcoming activities, Results & guidance |
+| [dashboards/03-principal-dashboard.png](screenshots/dashboards/03-principal-dashboard.png) | Dashboards | DOC-SCH-DASH-002 | 1 KPIs | Principal | Principal School at a glance |
+| [dashboards/04-principal-roster.png](screenshots/dashboards/04-principal-roster.png) | Dashboards | DOC-SCH-DASH-002 | 2 Roster | Principal | Your school roster with Timeline |
+| [dashboards/05-teacher-dashboard.png](screenshots/dashboards/05-teacher-dashboard.png) | Dashboards | DOC-SCH-DASH-003 | 1 List | Teacher | Your students with View |
+| [dashboards/06-parent-children.png](screenshots/dashboards/06-parent-children.png) | Dashboards | DOC-SCH-DASH-004 | 1 Children | Parent | My children cards |
+| [dashboards/07-parent-multi-school.png](screenshots/dashboards/07-parent-multi-school.png) | Dashboards | DOC-SCH-DASH-004 | 2 Grouping | Parent | Children grouped by school |
+| [dashboards/08-parent-upcoming-and-notifications.png](screenshots/dashboards/08-parent-upcoming-and-notifications.png) | Dashboards | DOC-SCH-DASH-004, NOTIF-002 | 4 Cards | Parent | Upcoming sessions + Important notifications (4 unread) |
+| [reports/01-school-report-downloaded.png](screenshots/reports/01-school-report-downloaded.png) | Reports & analytics | DOC-SCH-RPT-001 | 2 Done | School Coordinator | "Report downloaded." |
+| [reports/02-summary-tiles-and-grades.png](screenshots/reports/02-summary-tiles-and-grades.png) | Reports & analytics | DOC-SCH-RPT-002 | 1 Tiles | School Coordinator | Tiles + Students by grade |
+| [reports/03-service-delivery-and-activities.png](screenshots/reports/03-service-delivery-and-activities.png) | Reports & analytics | DOC-SCH-RPT-002 | 2 Rings | School Coordinator | Service delivery + Activities & attendance |
+| [reports/04-grade-wise-comparison.png](screenshots/reports/04-grade-wise-comparison.png) | Reports & analytics | DOC-SCH-RPT-003 | 1 Table | School Coordinator | Grade-wise comparison |
+| [reports/05-student-development.png](screenshots/reports/05-student-development.png) | Reports & analytics | DOC-SCH-RPT-003, RPT-004 | 1 Table | School Coordinator | Estimate rows + Student development |
+| [reports/06-at-risk-and-top-performers.png](screenshots/reports/06-at-risk-and-top-performers.png) | Reports & analytics | DOC-SCH-RPT-004 | 4 Lists | School Coordinator | Thresholds, At-risk (1), Top performers (2) |
+| [reports/07-threshold-error.png](screenshots/reports/07-threshold-error.png) | Reports & analytics | DOC-SCH-RPT-004 | Error | School Coordinator | "Thresholds must be between 0 and 100. Showing the defaults." |
+| [reports/08-scorecards-grid.png](screenshots/reports/08-scorecards-grid.png) | Reports & analytics | DOC-SCH-RPT-005 | 1 Grid | School Coordinator | Student progress scorecards |
+| [reports/09-scorecards-grade-filter.png](screenshots/reports/09-scorecards-grade-filter.png) | Reports & analytics | DOC-SCH-RPT-005 | 2 Filter | School Coordinator | Scorecards, Grade 9 |
+| [reports/10-principal-reports.png](screenshots/reports/10-principal-reports.png) | Reports & analytics | DOC-SCH-RPT-001 | Role view | Principal | Principal Reports page |
+| [entitlements/01-entitlements-platinum.png](screenshots/entitlements/01-entitlements-platinum.png) | Entitlements | DOC-SCH-ENT-001 | 2 Table | School Coordinator | Platinum Partner, valid until 05 Oct 2027 |
+| [entitlements/02-entitlements-bronze.png](screenshots/entitlements/02-entitlements-bronze.png) | Entitlements | DOC-SCH-ENT-001 | 2 Table | School Coordinator | Bronze Partner (5 services) |
+| [entitlements/03-entitlements-no-tier.png](screenshots/entitlements/03-entitlements-no-tier.png) | Entitlements | DOC-SCH-ENT-001 | Empty | School Coordinator | No partnership tier has been set… |
+| [entitlements/04-entitlements-expired.png](screenshots/entitlements/04-entitlements-expired.png) | Entitlements | DOC-SCH-ENT-001 | Error | School Coordinator | Expired Gold: only the past date, no warning |
+| [entitlements/05-entitlements-principal.png](screenshots/entitlements/05-entitlements-principal.png) | Entitlements | DOC-SCH-ENT-001 | Role view | Principal | Principal Entitlements |
+| [notifications/01-coordinator-notifications.png](screenshots/notifications/01-coordinator-notifications.png) | Notifications | DOC-SCH-NOTIF-001 | 1 List | School Coordinator | Transfer approved / not approved |
+| [notifications/02-tier-change-notices.png](screenshots/notifications/02-tier-change-notices.png) | Notifications | DOC-SCH-NOTIF-001 | Fields | School Coordinator | Bronze school tier-change notices |
+| [notifications/03-parent-notifications.png](screenshots/notifications/03-parent-notifications.png) | Notifications | DOC-SCH-NOTIF-002 | 1 List | Parent | Parent notifications table |
+| [parent/01-child-overview.png](screenshots/parent/01-child-overview.png) | Parent | DOC-SCH-PAR-001 | 1 Header | Parent | Child header, actions, status tiles |
+| [parent/02-child-guidance-and-psychometric.png](screenshots/parent/02-child-guidance-and-psychometric.png) | Parent | DOC-SCH-PAR-001 | 2 Guidance | Parent | Counselling, Recommended careers, Psychometric |
+| [parent/03-child-results-and-activities.png](screenshots/parent/03-child-results-and-activities.png) | Parent | DOC-SCH-PAR-001 | 3 Results | Parent | Academic results + Activities |
+| [parent/04-child-funding-support.png](screenshots/parent/04-child-funding-support.png) | Parent | DOC-SCH-PAR-001, STU-006 | 4 Funding | Parent | Funding support (Stage 3 of 6) + Grade history |
+| [parent/05-child-transfer-history.png](screenshots/parent/05-child-transfer-history.png) | Parent | DOC-SCH-PAR-001 | 5 History | Parent | Transfer history + Journey timeline |
+| [parent/06-child-360.png](screenshots/parent/06-child-360.png) | Parent | DOC-SCH-PAR-001, S360-001 | 6 360° | Parent | Child 360° view, Back to my child |
+| [admin-schools/37-analytics-kpis.png](screenshots/admin-schools/37-analytics-kpis.png) | School administration | DOC-SCH-SADM-008 | 1 KPIs | Overseas Admin | All partner schools |
+| [admin-schools/38-analytics-utilization.png](screenshots/admin-schools/38-analytics-utilization.png) | School administration | DOC-SCH-SADM-008 | 2 Table | Overseas Admin | Service utilization by school with flags |
+| [admin-schools/39-analytics-search.png](screenshots/admin-schools/39-analytics-search.png) | School administration | DOC-SCH-SADM-008 | 3 Search | Overseas Admin | Search "Docs" |
+| [admin-schools/40-analytics-super-admin.png](screenshots/admin-schools/40-analytics-super-admin.png) | School administration | DOC-SCH-SADM-008 | Role view | Super Admin | Super Admin School Analytics |
