@@ -1,15 +1,18 @@
 """tel-004 -- the lead pipeline: `lead_stage_history`, the legacy status mapping and the `enquiries.status` CHECK.
 
-Revision ID: 0079_lead_stage_pipeline
-Revises: 0078_enquiry_lead_record
+Revision ID: 0080_lead_stage_pipeline
+Revises: 0079_bdm_mous
 
-docs/superpowers/specs/2026-10-06-tel-004-lead-pipeline-design.md §3 (DEC-SCOPE-078). PL1: `new`, `contacted`, `qualified`, `lost` (and
+docs/superpowers/specs/2026-10-06-tel-004-lead-pipeline-design.md §3 (DEC-SCOPE-079). PL1: `new`, `contacted`, `qualified`, `lost` (and
 any other value already a stage) are kept; `converted` becomes `application_enrollment` when a student is linked, else `follow_up`; any
 other text becomes `new`. Each changed lead keeps its original text in `metadata_json.legacy_status` and gets one history row
 (`legacy_mapping`, no actor). 0001 builds a fresh database from the current models, which already carry all of this, so the upgrade is
 guarded (0074's idiom). downgrade() refuses once any real stage change has been recorded; otherwise it restores each legacy status.
 
-Provisional number: tel-012 and tel-022 also claim 0079 on unmerged branches; whichever merges second re-chains (tel-003's idiom).
+Re-chained 2026-10-06 on merging `main` @ `230a043f`: drafted as `0079_lead_stage_pipeline` (DEC-SCOPE-078) on 0078, but bdm-005's
+`0079_bdm_mous` (DEC-SCOPE-078) reached `main` first, so this revision is 0080 after it (one head) and the decision is DEC-SCOPE-079.
+A database stamped at `0079_lead_stage_pipeline` is re-stamped with `alembic stamp --purge 0078_enquiry_lead_record` then `upgrade
+head` (the upgrade is guarded, so the re-run is harmless). tel-012 / tel-022 still claim 0079 on unmerged branches.
 """
 
 import sqlalchemy as sa
@@ -17,8 +20,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0079_lead_stage_pipeline"
-down_revision = "0078_enquiry_lead_record"
+revision = "0080_lead_stage_pipeline"
+down_revision = "0079_bdm_mous"
 branch_labels = None
 depends_on = None
 
@@ -69,7 +72,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {TABLE} WHERE event <> 'legacy_mapping' LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0079_lead_stage_pipeline: lead stage history exists. Clear it deliberately first.")
+        raise RuntimeError("Cannot downgrade 0080_lead_stage_pipeline: lead stage history exists. Clear it deliberately first.")
     op.drop_constraint("ck_enquiries_status", "enquiries", type_="check")
     op.execute(
         "UPDATE enquiries SET status = metadata_json::jsonb ->> 'legacy_status', metadata_json = (metadata_json::jsonb - 'legacy_status')::json "

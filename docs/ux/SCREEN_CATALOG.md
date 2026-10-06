@@ -2992,7 +2992,7 @@ One existing screen changes (design spec `docs/superpowers/specs/2026-10-06-tel-
   match these filters.", a pager over 50 ("Showing x–y of n"); filters, search and page live in the URL. The table scrolls sideways inside
   its card at phone width.
 
-## tel-004 addendum (2026-10-06, `DEC-SCOPE-078`) — Lead stage on the admin lead list
+## tel-004 addendum (2026-10-06, `DEC-SCOPE-079`) — Lead stage on the admin lead list
 
 Design spec `docs/superpowers/specs/2026-10-06-tel-004-lead-pipeline-design.md` §6; no new route, roles unchanged.
 

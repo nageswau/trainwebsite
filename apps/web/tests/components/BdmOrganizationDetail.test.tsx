@@ -35,6 +35,57 @@ describe("BdmOrganizationDetail -- bdm-004 placement (QA4-05)", () => {
   });
 });
 
+describe("BdmOrganizationDetail -- bdm-005 MoU card", () => {
+  it("places the MoU card right after the pipeline, and only when the page read it", () => {
+    render(<BdmOrganizationDetail initial={org()} basePath="/bdm/organizations" mou={{ current: null, can_start: false }} />);
+    const pipeline = screen.getByRole("region", { name: "Pipeline" });
+    const mou = screen.getByRole("region", { name: "MoU" });
+    expect(Boolean(pipeline.compareDocumentPosition(mou) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+    expect(mou.nextElementSibling).toBe(screen.getByRole("region", { name: "Details" }));
+    cleanup();
+    render(<BdmOrganizationDetail initial={org()} basePath="/bdm/organizations" />);
+    expect(screen.queryByRole("region", { name: "MoU" })).toBeNull();
+  });
+
+  it("QA5-06: tells the MoU card why it is read-only on a lost or archived organization", () => {
+    const lost = { stage: "prospect", stage_label: "College Prospect", lost: { at: "2026-10-01T00:00:00Z", reason: "No budget" }, agent_status: null, steps: [] };
+    render(<BdmOrganizationDetail initial={org({ pipeline: lost })} basePath="/bdm/organizations" mou={{ current: null, can_start: false }} />);
+    expect(within(screen.getByRole("region", { name: "MoU" })).getByText("This organization is marked lost, so its MoU is read-only.")).toBeInTheDocument();
+    cleanup();
+    render(<BdmOrganizationDetail initial={org({ archived: true })} basePath="/bdm/organizations" mou={{ current: null, can_start: false }} />);
+    expect(within(screen.getByRole("region", { name: "MoU" })).getByText("This organization is archived, so its MoU is read-only.")).toBeInTheDocument();
+    cleanup();
+    render(<BdmOrganizationDetail initial={org()} basePath="/bdm/organizations" mou={{ current: null, can_start: false }} />);
+    expect(within(screen.getByRole("region", { name: "MoU" })).queryByText(/so its MoU is read-only/)).toBeNull();
+  });
+
+  it("re-reads the organization when signing moved the pipeline", async () => {
+    const moved = org({ pipeline: { stage: "mou_signed", stage_label: "MoU Signed", lost: null, agent_status: null, steps: [] } });
+    const signed = { id: "m1", status: "signed", status_label: "Signed", pipeline_on_sign: null, permissions: { can_edit: true, can_upload: true, can_renew: false } };
+    const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(async (url) => {
+      if (url === "/api/v1/bdm/organizations/o1") return res({ organization: moved });
+      if (url === "/api/v1/bdm/organizations/o1/mou") return res({ mou: { ...signed, organization: { id: "o1" } } });
+      return res({});
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const current = {
+      id: "m1", organization: { id: "o1", code: "ORG-000001", name: "St Mary", bdm_type: "college" }, assigned_bdm: { id: "b1", full_name: "Asha", active: true },
+      status: "under_negotiation", status_label: "Under Negotiation", status_changed_at: "2026-10-01T00:00:00Z", signed_on: null, valid_until: null, reference: null,
+      has_document: false, is_current: true, proposal_sent_on: null, valid_from: null, notes: null, document: null, expired_on: null,
+      created_by: { id: "b1", full_name: "Asha" }, permissions: { can_edit: true, can_upload: true, can_renew: false }, pipeline_on_sign: { key: "mou_signed", label: "MoU Signed" },
+      created_at: "2026-10-01T00:00:00Z", updated_at: "2026-10-01T00:00:00Z",
+    } as const;
+    render(<BdmOrganizationDetail initial={org({ permissions: perms({ can_edit: true }) })} basePath="/bdm/organizations" mou={{ current, can_start: false }} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit MoU" }));
+    fireEvent.change(screen.getByLabelText("Status"), { target: { value: "signed" } });
+    fireEvent.change(screen.getByLabelText("Signed date (required)"), { target: { value: "2026-10-06" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save MoU" }));
+    fireEvent.click(within(screen.getByRole("group", { name: "Confirm signing" })).getByRole("button", { name: "Yes, save" }));
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) => url === "/api/v1/bdm/organizations/o1" && (init as RequestInit | undefined)?.method === "GET")).toBe(true));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("MoU saved. The pipeline moved to MoU Signed."));
+  });
+});
+
 describe("BdmOrganizationDetail (bdm-002 AC3-AC6, §12.2)", () => {
   it("is read-only without permissions; dashes for meetings; unsafe website is plain text", () => {
     render(<BdmOrganizationDetail initial={org()} basePath="/bdm/organizations" />);

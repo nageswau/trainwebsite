@@ -1,5 +1,5 @@
-"""tel-004 (DEC-SCOPE-078, spec §2): the EVID-019 §19 lead pipeline -- 11 ordered stages and 5 closed outcomes, with the system
-events that move a lead. `services/lead_pipeline.py` is the only writer; migration 0079 keeps a frozen copy of STAGES."""
+"""tel-004 (DEC-SCOPE-079, spec §2): the EVID-019 §19 lead pipeline -- 11 ordered stages and 5 closed outcomes, with the system
+events that move a lead. `services/lead_pipeline.py` is the only writer; migration 0080 keeps a frozen copy of STAGES."""
 
 OPEN_STAGES = (
     ("new", "New Lead"),

@@ -2,8 +2,8 @@
 
 Backlog: `docs/delivery/TELECALLER_CRM_BACKLOG.md` tel-004 (EVID-019 §19, Appendix A L608–L636; `DEC-SCOPE-073` T5, T13, T25, T29).
 Dependency: tel-003 merged (PR #75 @ `10fce82e`); branch `feature/tel-004` from `main` @ `11f4c9c7`.
-Decision: `DEC-SCOPE-078` (provisional). Migration: `0079_lead_stage_pipeline` (provisional). tel-012 and tel-022 also claim `0079` /
-`DEC-SCOPE-078` on unmerged branches, so whichever merges second re-chains (the tel-003 re-chain idiom).
+Decision: `DEC-SCOPE-079`. Migration: `0080_lead_stage_pipeline` (after bdm-005's `0079_bdm_mous`). Drafted as `DEC-SCOPE-078` / `0079`;
+re-chained on merging `main` @ `230a043f`, where bdm-005 took both. tel-012 / tel-022 still claim provisional numbers on unmerged branches.
 
 ## 1. Owner answers (2026-10-06, `EXPLICIT_APPROVAL`) and recorded defaults
 
@@ -43,7 +43,7 @@ System events (frozen API; callers in tel-007/010/016/018 only fire them):
 Any other from-stage → no move (returns `False`, no history). This makes each automatic transition fire exactly once (AC1): a repeat finds
 the lead already past its from-set.
 
-## 3. Data model (migration `0079_lead_stage_pipeline`)
+## 3. Data model (migration `0080_lead_stage_pipeline`)
 
 `lead_stage_history`: `id` uuid PK; `lead_id` FK `enquiries.id` ON DELETE RESTRICT; `from_stage` varchar(40) NOT NULL; `to_stage`
 varchar(40) NOT NULL; `event` varchar(30) NOT NULL (an event name, `manual`, `reopen` or `legacy_mapping`); `actor_user_id` FK `users.id`

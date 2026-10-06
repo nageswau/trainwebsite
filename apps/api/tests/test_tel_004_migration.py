@@ -1,8 +1,8 @@
-"""tel-004 -- migration 0079_lead_stage_pipeline (spec §3; PL1, AC7). The legacy mapping, the CHECK, the round trip and the downgrade
+"""tel-004 -- migration 0080_lead_stage_pipeline (spec §3; PL1, AC7). The legacy mapping, the CHECK, the round trip and the downgrade
 refusal run in a throwaway database (the tel-003 pattern); a downgrade never runs against the shared test database.
 
 0001 builds a fresh database from the current models, which already carry the table and the CHECK, so each test first downgrades to
-0078 to reach the real pre-tel-004 shape, inserts legacy rows there, and then runs the real upgrade."""
+0079_bdm_mous to reach the real pre-tel-004 shape, inserts legacy rows there, and then runs the real upgrade."""
 
 import asyncio
 import importlib.util
@@ -22,11 +22,11 @@ from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_tel_004_migration_0079", VERSIONS / "0079_lead_stage_pipeline.py")
+_spec = importlib.util.spec_from_file_location("_tel_004_migration_0080", VERSIONS / "0080_lead_stage_pipeline.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0078_enquiry_lead_record", "0079_lead_stage_pipeline"
+BASE, HEAD = "0079_bdm_mous", "0080_lead_stage_pipeline"
 
 
 def _config() -> Config:
@@ -35,7 +35,7 @@ def _config() -> Config:
     return cfg
 
 
-def test_migration_chains_after_0078_and_there_is_one_head():
+def test_migration_chains_after_0079_bdm_mous_and_there_is_one_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
@@ -91,7 +91,7 @@ ROWS = (
 
 @pytest.fixture
 def legacy_db():
-    """A fresh database at 0078_enquiry_lead_record (the real pre-tel-004 shape) holding one enquiry per legacy status."""
+    """A fresh database at 0079_bdm_mous (the real pre-tel-004 shape) holding one enquiry per legacy status."""
     cfg = _config()
     original = settings.database_url
     name = f"tel004_migration_{uuid.uuid4().hex[:8]}"
@@ -114,7 +114,7 @@ def legacy_db():
         _sql(original, f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)', autocommit=True)
 
 
-def test_downgrade_to_0078_leaves_the_legacy_shape(legacy_db):
+def test_downgrade_to_0079_leaves_the_legacy_shape(legacy_db):
     url = legacy_db["url"]
     assert _sql(url, "SELECT to_regclass('lead_stage_history')") == [(None,)]
     assert _sql(url, "SELECT count(*) FROM pg_constraint WHERE conname = 'ck_enquiries_status'") == [(0,)]
