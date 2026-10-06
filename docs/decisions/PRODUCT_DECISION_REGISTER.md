@@ -3660,3 +3660,25 @@ pipeline; that supersession takes effect with `tel-018`.
 `it`, Career Guidance and General Enquiry unassigned — and `tel_campaigns`); sources are the fixed §2 list (`app/tel_sources.py`), not
 manager-edited. API `GET/POST/PATCH /telecaller/products`, `GET/POST/PATCH /telecaller/campaigns`; screens `/telecaller/manager/products`
 and `/telecaller/manager/campaigns`. Design spec `docs/superpowers/specs/2026-10-06-tel-002-catalogue-design.md`.
+
+
+### DEC-SCOPE-076 — Counselor role in the IT division + IT counselor workspace (`tel-017`)
+
+**Evidence:** `EVID-019` §9 "IT course counselling", §10 handover; `DEC-SCOPE-073` T3 ("the existing `counselor` role, allowed in the IT
+division"); backlog Q-23; owner answer in-session 2026-10-06. (`DEC-SCOPE-075` is held by tel-003, which runs in parallel.)
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for C1; VERIFIED on `feature/tel-017` — ready for owner sign-off (2026-10-06).
+
+| # | Question | Answer |
+|---|---|---|
+| C1 | Which sections does the IT counselor workspace have now (Q-23)? | **Dashboard + My Leads only.** tel-016 adds Appointments and tel-018 the student link to the same nav; no empty pages |
+| — | Can a counselor's division change (Q-23 edge case)? | **Not applicable:** `User.division` is fixed at creation (`PATCH /admin/users` never writes it), so no 422 path is added |
+
+**Implementation:** `counselor` joins the IT allow-list of `POST /admin/users`. `services/portal._it_counselor` serves `dashboard` (leads routed
+to you, new leads, five most recent) and `leads` (`Enquiry.division == user.division AND owner_id == user.id`, shared with the overseas
+counselor) for an IT counselor; every other section → 404. Nine overseas-only routes that checked the role only now also require the
+`overseas` division (`403` "Wrong EduSphere division", `super_admin` exempt): `/overseas-admin/school-students/lookup`,
+`/overseas-admin/school-students/{id}/applications`, `/overseas-admin/school-applications`, `/lookups/{overseas-students,
+overseas-applications,schools,school-students}`, `/inbound/university-email` and `/inbound/university-email/{id}/match`. The 14 counselor
+routes in `workflows.py` already called `_require(..., "overseas")`. Web: `/it/counselor/{dashboard,leads}`, `/it/admin/counselors`,
+`dashboardPathFor()` for the post-sign-in and "Back to dashboard" links. No migration. Design spec
+`docs/superpowers/specs/2026-10-06-tel-017-it-counselor-design.md`.

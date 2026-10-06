@@ -2965,6 +2965,20 @@ row is a card of labelled lines.
   offered as "(inactive)". **States:** as above (search and page in the URL, `?q=&offset=`); no active product → the create button is disabled with a link to
   Products.
 
+## tel-017 addendum (2026-10-06, `DEC-SCOPE-076`) — IT counselor workspace
+
+Three screens on the existing `PortalPage` / `PortalSection` pattern (design spec `docs/superpowers/specs/2026-10-06-tel-017-it-counselor-design.md`).
+No catalogue ID is invented; visual reference: the overseas counselor workspace (`SCR-CNS-001`). Signed out → `/it/login?next=…`.
+
+- **Route:** `/it/counselor/dashboard` (IT `counselor`). **Data:** `GET /portal/it/counselor/dashboard`. **Content:** metric tiles "Leads
+  routed to you" and "New leads"; a table of the five most recent routed leads (name, interest, status). **States:** empty ("No records
+  yet"); another role or an overseas counselor → the access-unavailable card ("Role/division mismatch") with a link to their own dashboard.
+- **Route:** `/it/counselor/leads` (IT `counselor`). **Data:** `GET /portal/it/counselor/leads`. **Content:** "My Leads" — reference, name,
+  interest, status, with the shared search / column filter / paging. **States:** as above. Any other section in the URL → 404.
+- **Route:** `/it/admin/counselors` (`it_admin`, `super_admin`). **Data:** `GET /portal/it/admin/counselors`, `/admin/users`. **Content:**
+  the division's counselors (reference, name, email, role, active, setup) with the Manage users panel and Create user (Role offers
+  Counselor).
+
 ## Required findings report
 
 ### FEATURE_WITHOUT_REQUIRED_SCREEN
