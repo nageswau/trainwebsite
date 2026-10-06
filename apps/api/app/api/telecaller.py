@@ -17,9 +17,19 @@ from app.api.bdm import LIMIT, OFFSET, SEARCH, _matching, _paged
 from app.api.deps import get_current_user
 from app.api.lookups import _pattern as like_pattern
 from app.core.database import get_db
-from app.models import AuditLog, Enquiry, TelecallerProfile, User
-from app.schemas import BdmManagerPage, LeadStageHistoryPage, LeadStageMove, LeadStageOut, TelecallerAdminPage, TelecallerMeOut, TelecallerTeamPage
-from app.services import lead_pipeline
+from app.models import LEAD_PRIORITIES, AuditLog, Enquiry, TelecallerProfile, User
+from app.schemas import (
+    BdmManagerPage,
+    LeadStageHistoryPage,
+    LeadStageMove,
+    LeadStageOut,
+    LeadTimelinePage,
+    TelecallerAdminPage,
+    TelecallerLeadUpdate,
+    TelecallerMeOut,
+    TelecallerTeamPage,
+)
+from app.services import lead_pipeline, telecaller_leads
 from app.services.telecaller import admin_team_filter, parse_self_update, person_ref, profile_out, require_manager, team_filter, telecaller_context
 
 router = APIRouter(prefix="/telecaller", tags=["telecaller"])
@@ -81,12 +91,64 @@ async def team(q: str | None = SEARCH, limit: int = LIMIT, offset: int = OFFSET,
     return await _paged(db, _profiles(filters), limit, offset, lambda profile, member, _manager: _team_row(profile, member))
 
 
+@router.get("/leads")
+async def my_leads(
+    status: str | None = None,
+    priority: Literal[LEAD_PRIORITIES] | None = None,
+    product_id: UUID | None = None,
+    campaign_id: UUID | None = None,
+    q: str | None = SEARCH,
+    limit: int = LIMIT,
+    offset: int = OFFSET,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """tel-008 (spec §2, AC1/AC6): My Leads -- the caller's scope (tel-004 T23), newest first. Every filter is ANDed with the scope, so
+    it can only narrow; `q` is a literal substring of the Lead ID, name, email, phone or WhatsApp number."""
+    _, filters = lead_pipeline.scope(user)
+    for column, value in ((Enquiry.status, status), (Enquiry.priority, priority), (Enquiry.product_id, product_id), (Enquiry.campaign_id, campaign_id)):
+        if value:
+            filters.append(column == value)
+    filters += _matching(like_pattern(q), *telecaller_leads.SEARCHED)
+    return await telecaller_leads.page(db, user, filters, limit, offset)
+
+
+@router.get("/leads/{lead_id}")
+async def lead_detail(lead_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """AC2: a lead in scope with its enquiry message and the caller's `read_only` (D1); anything else is 404."""
+    _, filters = lead_pipeline.scope(user)
+    return await telecaller_leads.detail(db, user, lead_id, filters)
+
+
+@router.patch("/leads/{lead_id}")
+async def update_lead(lead_id: UUID, payload: TelecallerLeadUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """D2: contact fields, product and priority (AC3). The row is locked within the scope, so a lead reassigned while the page was open
+    is 404 (spec edge case); a telecaller on a handed-over lead is 403 (AC4)."""
+    _, filters = lead_pipeline.scope(user)
+    lead = await lead_pipeline.locked_lead(db, lead_id, *filters)
+    telecaller_leads.require_writable(user, lead)
+    await telecaller_leads.apply_update(db, user, lead, payload.model_dump(exclude_unset=True))
+    await db.commit()
+    return await telecaller_leads.detail(db, user, lead_id, filters)
+
+
+@router.get("/leads/{lead_id}/timeline", response_model=LeadTimelinePage)
+async def lead_timeline(lead_id: UUID, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """W1: stage and priority changes of a lead in scope, newest first (tel-015 adds the other sources)."""
+    _, filters = lead_pipeline.scope(user)
+    if await db.scalar(select(Enquiry.id).where(Enquiry.id == lead_id, *filters)) is None:
+        raise HTTPException(404, lead_pipeline.LEAD_NOT_FOUND)
+    return await telecaller_leads.timeline_page(db, lead_id, limit, offset)
+
+
 @router.post("/leads/{lead_id}/stage", response_model=LeadStageOut)
 async def change_stage(lead_id: UUID, payload: LeadStageMove, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """tel-004 (spec §5): a telecaller's or manager's stage move on a lead in scope (T23; anything else is 404). The lead row is
-    locked, so two moves of one lead serialise (each is checked against the stage the other left)."""
+    locked, so two moves of one lead serialise (each is checked against the stage the other left). tel-008 D1: not on a lead handed
+    over to a counselor, for a telecaller (403)."""
     kind, filters = lead_pipeline.scope(user)
     lead = await lead_pipeline.locked_lead(db, lead_id, *filters)
+    telecaller_leads.require_writable(user, lead)
     await lead_pipeline.person_move(db, lead, user, kind, payload.to_stage, payload.reason)
     out = lead_pipeline.stage_out(lead)
     await db.commit()

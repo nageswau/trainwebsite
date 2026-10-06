@@ -3910,3 +3910,23 @@ picked the recommended option. Design spec: `docs/superpowers/specs/2026-10-06-b
 
 **Implementation:** migration `0083_tel_content` (`tel_scripts`, `tel_assets`, `tel_message_templates`, plus seeds; no existing row is touched; downgrade refuses while manager data exists). Routes `GET|POST|PATCH /telecaller/{scripts,templates,assets}`, `GET /telecaller/templates/{id}/preview`, `POST /telecaller/assets/{id}/link`, `GET /public/telecaller-assets/{token}` (`API_CONTRACT.md` §12I, `RBAC_MATRIX.md` §2.18). Manager pages `/telecaller/manager/{scripts,templates,brochures}`. Design spec `docs/superpowers/specs/2026-10-06-tel-012-content-library-design.md`.
 VERIFIED on `feature/tel-012` (2026-10-06): lite backend 440 on the final merge (every `test_tel_0*` file + the bdm-005/bdm-025 migration tests), vitest 75, Playwright 7, Browser Use QA (QA-01…04 fixed test-first and re-verified). Full backend suite deferred to the owner. **MERGED** to `main` as PR #83 @ `50838192` (2026-10-06).
+
+### DEC-SCOPE-084 — Telecaller lead workspace: My Leads, lead detail, priority (`tel-008`)
+
+**Evidence:** `EVID-019` §2 (field display), §8 (priority, L314–L330), §22 ("View assigned leads"); `DEC-SCOPE-073` T19, T23;
+`DEC-SCOPE-081` D4; owner answer in-session 2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for W1; D1–D6 are recorded defaults. Branch `feature/tel-008`. No migration.
+
+| # | Question | Answer |
+|---|---|---|
+| W1 (AC3) | Where does a priority change "appear on the timeline" before tel-015? | An `audit_logs` row `lead.priority_change` `{from, to}` written in the same transaction. The detail page's Activity list merges stage history with priority changes, newest first, through `GET /telecaller/leads/{id}/timeline`. tel-015 adds its sources to the same endpoint |
+| D1 | "Handed over" before tel-018 | `owner_id IS NOT NULL` (the assigned counselor). A telecaller's PATCH and stage move on such a lead are 403, and the read carries `read_only`. Managers and `super_admin` still write |
+| D2 | Editable fields | `name`, `email`, `phone`, `whatsapp_number`, `city`, `state`, `product_id` (active product or null) and `priority`. Any other key is 422. Duplicate checks are tel-005's |
+| D3 | List filters | Stage, priority, product, campaign and `q` (Lead ID, name, phone, WhatsApp, email). "Due follow-up" waits for tel-011 |
+| D4 | Actions | Call (`tel:` link) and Change stage only. The other actions arrive with their items, and there are no placeholder buttons |
+| D5 | Manager view | `/telecaller/manager/leads` (+ `/{id}`), with tel-004's `lead_pipeline.scope` (reports' leads plus their teams' unassigned queue) |
+| D6 | tel-012 C2 (script panel) | tel-012 merged (`DEC-SCOPE-083`), so the lead detail shows the active call script of the lead's product (`GET /telecaller/scripts?product_id=&active=true&limit=1`). It is re-read when the product changes. `/render` stays with tel-013 |
+
+**Implementation:** `services/telecaller_leads.py`. Routes `GET /telecaller/leads`, `GET/PATCH /telecaller/leads/{id}` and
+`GET /telecaller/leads/{id}/timeline`; tel-004's `POST /telecaller/leads/{id}/stage` gains D1. Web pages `/telecaller/leads` and
+`/telecaller/manager/leads` (+ `[id]`), `TelecallerLeadTable`, `LeadDetailPanel`. Design spec `docs/superpowers/specs/2026-10-06-tel-008-lead-workspace-design.md`.

@@ -36,6 +36,7 @@ from app.models import (
     BDM_MOU_STATUSES,
     BDM_STAFF_MAX,
     GENDERS,
+    LEAD_PRIORITIES,
     TEL_TARGET_KPIS,
 )
 from app.services.agent_visa import VISA_CASE_STAGES
@@ -4487,7 +4488,8 @@ class BdmActivityDayPage(BdmActivityPage):
 # bdm-017 (DEC-SCOPE-072, spec §4-§5): a student lead a BDM enters against an organization, and the admin's explicit conversion link.
 # The text rules are bdm-001's (no control characters, blank -> None) with bdm-002's email and phone shapes; the lengths are the
 # `enquiries` columns'. Source, division, status, attribution and conversion are server-owned: `extra="forbid"` answers 422.
-BDM_LEAD_LABELS = {"name": "Student name", "email": "Email", "student_email": "Email", "phone": "Phone", "interest": "Interest", "note": "Note"}
+BDM_LEAD_LABELS = {"name": "Student name", "email": "Email", "student_email": "Email", "phone": "Phone", "interest": "Interest", "note": "Note",
+                   "whatsapp_number": "WhatsApp number", "city": "City", "state": "State"}  # the last three: tel-008's lead edit
 
 
 def _bdm_lead_text(pattern: re.Pattern, required: bool):
@@ -4503,7 +4505,7 @@ def _bdm_lead_text(pattern: re.Pattern, required: bool):
             if not _EMAIL_SHAPE.fullmatch(value):
                 raise ValueError("Enter a valid email address")
             return value.lower()
-        if info.field_name == "phone" and not _BDM_PHONE.fullmatch(value):
+        if info.field_name in ("phone", "whatsapp_number") and not _BDM_PHONE.fullmatch(value):
             raise ValueError("Phone may contain only digits, spaces and + - ( )")
         return value
     return check
@@ -5229,6 +5231,43 @@ class LeadStageHistoryRow(BaseModel):
 
 class LeadStageHistoryPage(BaseModel):
     items: list[LeadStageHistoryRow]
+    total: int
+    limit: int
+    offset: int
+
+
+# tel-008 (DEC-SCOPE-084 D2): what a telecaller or manager may change on a lead -- the §2 contact fields, the product and the priority.
+# Owner, telecaller, stage, source, campaign and the qualification fields are not editable here: `extra="forbid"` answers 422. Text
+# follows bdm-017's lead rules (trimmed, no control characters, blank -> None; email lower-cased, phone shape).
+LeadPlace = Annotated[Annotated[str, _trimmed(120)] | None, AfterValidator(_bdm_lead_text(_BDM_CONTROL, False))]
+
+
+class TelecallerLeadUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: BdmLeadName = None
+    email: BdmLeadEmail = None
+    phone: BdmLeadPhone = None
+    whatsapp_number: BdmLeadPhone = None
+    city: LeadPlace = None
+    state: LeadPlace = None
+    product_id: UUID | None = None
+    priority: Literal[LEAD_PRIORITIES] = None
+
+
+class LeadTimelineRow(BaseModel):
+    id: UUID
+    kind: Literal["stage", "priority"]
+    at: datetime
+    actor: LeadStageActor | None
+    from_value: str
+    from_label: str
+    to_value: str
+    to_label: str
+    reason: str | None
+
+
+class LeadTimelinePage(BaseModel):
+    items: list[LeadTimelineRow]
     total: int
     limit: int
     offset: int

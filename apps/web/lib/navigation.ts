@@ -77,12 +77,13 @@ export const BDM_SIGN_IN = "/bdm/sign-in";
 
 // tel-001: the telecaller and telecaller-manager sidebars and the signed-out chooser (IT telecallers sign in at /it, Overseas at
 // /overseas, managers at /admin). Later tel items add their pages here.
+// tel-008: My Leads (telecaller) and Leads (manager).
 export const TELECALLER_NAV: NavItem[] = [
-  { label: "Dashboard", href: "/telecaller/dashboard" }, { label: "Profile", href: "/telecaller/profile" },
+  { label: "Dashboard", href: "/telecaller/dashboard" }, { label: "My Leads", href: "/telecaller/leads" }, { label: "Profile", href: "/telecaller/profile" },
 ];
 // tel-002: Products and Campaigns (the catalogue the manager maintains); tel-022: Targets.
 export const TELECALLER_MANAGER_NAV: NavItem[] = [
-  { label: "Team", href: "/telecaller/manager/team" }, { label: "Targets", href: "/telecaller/manager/targets" },
+  { label: "Team", href: "/telecaller/manager/team" }, { label: "Leads", href: "/telecaller/manager/leads" }, { label: "Targets", href: "/telecaller/manager/targets" },
   { label: "Products", href: "/telecaller/manager/products" },
   { label: "Campaigns", href: "/telecaller/manager/campaigns" },
   // tel-012: the content library telecallers work from.
