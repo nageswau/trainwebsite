@@ -3977,3 +3977,26 @@ downgrade refuses while requests or links exist); routes `POST /bdm/organization
 detail's `onboarding` and live pipeline steps; a School onboarding card on both organization pages; the onboarding queue above the
 School create form; the linked BDM on the School edit panel. Follow-ups logged: unlinking a wrong link; per-school counts (bdm-020);
 the School's BDM on deactivation (bdm-025). **New Feature ID authorized:** `bdm-018`. **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-018.
+
+### DEC-SCOPE-086 — School activity tracking, live per school (`bdm-020`)
+
+**Question:** which per-school student development counts the BDM side shows for a linked School, by which definitions, and how the two
+metrics Q-15 / D24 called unmapped are shown (`BDM_CRM_BACKLOG.md` §4 bdm-020)?
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md` School §E, `DERIVED_BLUEPRINT`); `DEC-SCOPE-055` D5b, D8, Q-15 (D24); `DEC-SCOPE-085`
+(the `bdm_organizations.school_id` link); the School module's own Part B §14 Student development (`school_analytics.DEVELOPMENT_ROWS`,
+ENH-016 D2, ENH-026 C5); bdm-020 impact analysis 2026-10-06 (graphify-led), which found that the School module already reports
+"University Guidance" (students with an application at University Selection or later), contrary to D24's premise.
+
+**Resolution:** owner, in-session 2026-10-06 (`EXPLICIT_APPROVAL` — three structured questions, each answered with the recommended option;
+spec `docs/superpowers/specs/2026-10-06-bdm-020-school-activity-design.md` §1):
+- **A1** University Guidance uses the **School module's own figure**, so the counts equal the School's page (AC1); this refines D24 for
+  this one metric.
+- **A2** Student profile completion is **"Not tracked"** (D24): listed, never a number.
+- **A3** Design approved: one read-only endpoint, a panel on both organization pages, no migration, the School analytics helpers
+  imported unchanged.
+
+**Consequences:** route `GET /bdm/organizations/{id}/school-activity` (`load_scoped`; non-School 404; unlinked `linked: false`); schemas
+`BdmSchoolActivityOut` / `BdmSchoolActivityMetric`; the "School activity" panel (`BdmOrganizationSchoolActivity`) on
+`/bdm/organizations/[id]` and `/bdm/manager/organizations/[id]`. No migration, no write, no change to `/school/*` or `school_analytics`.
+**New Feature ID authorized:** `bdm-020`. **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-020.

@@ -38,7 +38,9 @@ test("School activity: not onboarded yet, then the linked School's counts on the
 
   await signIn(page, "overseas", bdm.email, E2E_PASSWORD, "/bdm/my-day");
   const name = `E2E Activity School ${stamp}`;
-  const org = (await (await page.request.post("/api/v1/bdm/organizations", { data: { org_type: "school", name, city: "Kochi" } })).json()).organization;
+  const org = (await (await page.request.post("/api/v1/bdm/organizations", {
+    data: { org_type: "school", name, city: "Kochi", contacts: [{ name: "Dr Rao", role: "principal", email: `rao-${stamp}@example.local` }] },
+  })).json()).organization;
   await page.goto(`/bdm/organizations/${org.id}`);
   const panel = page.getByRole("region", { name: "School activity" });
   await expect(panel).toContainText("Not onboarded yet. Counts appear once Overseas Admin links the School.");
@@ -74,6 +76,14 @@ test("School activity: not onboarded yet, then the linked School's counts on the
   await expect(panel.getByRole("row", { name: /Student Profile Completion/ })).toContainText("Not tracked");
   await expect(panel).not.toContainText("Ravi");
   await noOverflow(page);
+  for (const width of [320, 375]) {  // QA20-01: three short columns fit a phone; the counts are never scrolled out of sight
+    await page.setViewportSize({ width, height: 800 });
+    const box = await panel.locator(".table-scroll").evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth }));
+    expect(box.scroll, `table scrolls at ${width}px`).toBeLessThanOrEqual(box.client);
+    await careerRow.scrollIntoViewIfNeeded();
+    await expect(careerRow.getByRole("cell").last()).toBeInViewport({ ratio: 1 });
+  }
+  await page.setViewportSize({ width: 1280, height: 800 });
 
   // The manager's page shows the same panel
   await signIn(page, "admin", manager.email, E2E_PASSWORD, "/bdm/manager/dashboard");

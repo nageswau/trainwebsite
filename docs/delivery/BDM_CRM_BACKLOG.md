@@ -970,6 +970,8 @@ Conventions used below:
 
 ### bdm-020 — School activity tracking (live, per school)
 
+> **Status (2026-10-06):** **VERIFIED, full regression deferred** on `feature/bdm-020-school-activity` (`DEC-SCOPE-086` A1–A3; no migration, head stays `0084_bdm_onboarding`). Owner answer A1 supersedes Q-15 for University Guidance (the School module's own figure); A2 keeps Student profile completion "Not tracked". Evidence: backend focused (bdm-020, bdm-018, bdm-002, ENH-016) 122 passed, 0 failed; ruff clean; web BDM organization + School development components 153 passed; sweeps: `dateZoneSweep` lists only pre-existing entries; `tsc` 0; eslint 0; `next build` ok; Playwright (one worker) bdm-020 + bdm-018 + bdm-002/003/004/005/017 8 passed. Browser QA (isolated Playwright Chromium; Browser Use not installed): the source example 800 / 650 / 580 / 300 / 150 equals the School module exactly; QA20-01 fixed test-first: `docs/quality/BDM-020_BROWSER_QA_2026-10-06.md`. **Deferred:** full backend + E2E regression. Spec: `docs/superpowers/specs/2026-10-06-bdm-020-school-activity-design.md`.
+
 - **Business requirement:** for each school, management sees Total students, Career guidance completed, Psychometric completed, Foreign language students, English testing, University guidance and Student profile completion (School §E). The School KPIs include Students Onboarded, Career Guidance and Psychometric Tests.
 - **Existing behavior:** the data exists per school: `SchoolStudent`, `SchoolCareerRecord`, `SchoolPsychometricRecord`, `SchoolLanguageRecord`, `SchoolTestPrepRecord`, `PortfolioEntry`. It is aggregated for admins in `school_analytics.py` and `schools.service_usage()`.
 - **Expected behavior:**

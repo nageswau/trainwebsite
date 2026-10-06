@@ -22,7 +22,8 @@ router = APIRouter(prefix="/bdm/organizations", tags=["bdm-school-activity"])
 logger = get_logger("app.bdm.school_activity")
 
 NOT_SCHOOL = "School activity is only for School organizations"
-UNTRACKED = [("student_profile_completion", "Student Profile Completion")]  # D24 / A2: no School-module figure exists
+# D24 / A2: the School module has no figure for it, so it is listed as not tracked -- never a 0.
+PROFILE_COMPLETION = {"key": "student_profile_completion", "label": "Student Profile Completion", "tracked": False, "completed": None, "pending": None}
 
 
 @router.get("/{org_id}/school-activity", response_model=BdmSchoolActivityOut)
@@ -37,6 +38,5 @@ async def school_activity(org_id: UUID, user: User = Depends(get_current_user), 
     indicators = await student_indicators(db, students_in([school.id]))
     completed = {key: len(rule(indicators)) for key, _label, rule in DEVELOPMENT_ROWS}
     metrics = [{"key": key, "label": label, "tracked": True, "completed": completed[key], "pending": total - completed[key]} for key, label, _rule in DEVELOPMENT_ROWS]  # D2
-    metrics += [{"key": key, "label": label, "tracked": False, "completed": None, "pending": None} for key, label in UNTRACKED]
     logger.info("bdm_school_activity_viewed", extra={"extra_fields": {"actor_id": str(user.id), "org_id": str(org.id), "school_id": str(school.id)}})
-    return {"linked": True, "school": {"name": school.name, "school_code": school.school_code}, "total_students": total, "metrics": metrics}
+    return {"linked": True, "school": {"name": school.name, "school_code": school.school_code}, "total_students": total, "metrics": [*metrics, PROFILE_COMPLETION]}

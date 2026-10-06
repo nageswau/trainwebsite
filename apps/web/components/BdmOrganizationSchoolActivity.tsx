@@ -64,7 +64,7 @@ export default function BdmOrganizationSchoolActivity({ orgId, initial }: { orgI
   }
 
   return (
-    <section className="action-card wide" aria-label="School activity">
+    <section className="action-card wide bdm-school-activity" aria-label="School activity">
       <h3>School activity</h3>
       {body}
     </section>
