@@ -27,8 +27,9 @@ export const LEADS_URL = "/api/v1/telecaller/leads";
 export const DUPLICATE_CHECK_URL = `${LEADS_URL}/duplicate-check`;
 export const leadUrl = (id: string, suffix = "") => `${LEADS_URL}/${encodeURIComponent(id)}${suffix}`;
 export const TIMELINE_LIMIT = 50;
-export const LEAD_LIST_FILTERS = ["status", "priority", "product_id", "campaign_id"] as const;
+export const LEAD_LIST_FILTERS = ["status", "priority", "product_id", "campaign_id", "follow_up"] as const; // tel-011 F9: follow_up
 export type LeadListFilter = (typeof LEAD_LIST_FILTERS)[number];
+export const FOLLOW_UP_FILTERS = [{ key: "today", label: "Due today" }, { key: "overdue", label: "Overdue" }] as const;
 
 // EVID-019 §8 (L316-L328): three levels, with the source's own help text.
 export const PRIORITIES: { key: Priority; label: string; help: string }[] = [

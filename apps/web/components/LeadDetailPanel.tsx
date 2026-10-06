@@ -3,10 +3,11 @@
 import { type FormEvent, useEffect, useState } from "react";
 
 import { LeadStageControl } from "@/components/AdminLeadStage";
+import LeadFollowUps from "@/components/LeadFollowUps";
 import ProductOptions from "@/components/TelecallerProductOptions";
 import { isRequestBody, sendJson, type Page } from "@/lib/apiErrors";
 import { formatDate } from "@/lib/formatDate";
-import { stageLabel } from "@/lib/leadStages";
+import { isClosed, stageLabel } from "@/lib/leadStages";
 import { SOURCE_LABEL, activeProducts, getPage, type Product } from "@/lib/telecallerCatalogue";
 import { SCRIPTS_URL, type Script } from "@/lib/telecallerContent";
 import {
@@ -217,6 +218,10 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
           <NoticeLine notice={priorityNotice} />
         </form>
       )}
+
+      {/* tel-011 (F2, F4): only the lead's telecaller adds follow-ups (a manager reads); never on a closed lead */}
+      <LeadFollowUps leadId={lead.id} leadStage={lead.status} canWrite={!canReopen && !lead.read_only && !isClosed(lead.status)}
+        onStageChanged={(status) => { setLead((l) => ({ ...l, status, status_label: stageLabel(status) })); void reloadActivity(); }} />
 
       <LeadScriptPanel product={lead.product} />
 

@@ -6,6 +6,7 @@ import LeadDetailPanel from "@/components/LeadDetailPanel";
 import NewLeadForm from "@/components/NewLeadForm";
 import PortalShell from "@/components/PortalShell";
 import TelecallerLeadTable from "@/components/TelecallerLeadTable";
+import TodayFollowUps from "@/components/TodayFollowUps";
 import { ApiError, serverApi } from "@/lib/api";
 import type { Page } from "@/lib/apiErrors";
 import { TELECALLER_MANAGER_NAV, TELECALLER_NAV, TELECALLER_SIGN_IN, type NavItem } from "@/lib/navigation";
@@ -56,6 +57,30 @@ export async function TelecallerLeadsPage({ manager }: { manager: boolean }) {
         </div>
         <Suspense fallback={<p className="muted" role="status">Loading leads…</p>}>
           <TelecallerLeadTable basePath={basePath(manager)} showTelecaller={manager} />
+        </Suspense>
+      </div>
+    </PortalShell>
+  );
+}
+
+/** tel-011 (spec §4): "Today's follow-ups" and the overdue list -- a telecaller's own, a manager's reports' (read only, F2). */
+export async function TelecallerFollowUpsPage({ manager }: { manager: boolean }) {
+  const shell = await shellFor(manager);
+  if (!("nav" in shell)) return shell;
+  return (
+    <PortalShell nav={shell.nav} roleLabel={shell.roleLabel} userName={shell.userName}>
+      <div className="portal-content">
+        <div className="portal-title">
+          <div>
+            <div className="eyebrow">Follow-ups</div>
+            <h2>{manager ? "Team follow-ups" : "Today's follow-ups"}</h2>
+            <p className="muted">
+              {manager ? "Follow-ups on the leads of the telecallers who report to you. Times are India time (IST)." : "Your open follow-ups for the day, earliest first. Times are India time (IST)."}
+            </p>
+          </div>
+        </div>
+        <Suspense fallback={<p className="muted" role="status">Loading follow-ups…</p>}>
+          <TodayFollowUps leadBasePath={basePath(manager)} showTelecaller={manager} />
         </Suspense>
       </div>
     </PortalShell>
