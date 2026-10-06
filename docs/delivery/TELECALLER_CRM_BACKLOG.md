@@ -186,7 +186,7 @@ NO-ASSUMPTION MODE. Prepared 2026-10-05 at the user's request. **No code was wri
 
 ### tel-001 — Telecaller + Telecaller Manager roles, profile, provisioning, sign-in, shell
 
-**Status (2026-10-05):** implemented and verified on `feature/tel-001` (`DEC-SCOPE-073`, migration `0075_telecaller_profiles`) — ready for owner sign-off; not yet merged.
+**Status (2026-10-06):** **merged** to `main` as PR #68 @ `e73dfa60` (`DEC-SCOPE-073`, migration `0075_telecaller_profiles`).
 
 - **Business requirement:** §22 "Telecaller should not have access to everything". The source refers throughout to "Management" (§15, §16, §17, §21). Under your account-lifecycle convention, creating a user implies the full lifecycle.
 - **Existing behavior:** no telecaller roles. The admin create-user form (`WorkflowPanel.tsx` `ROLES_BY_DIVISION`, `admin.py` create_user) offers fixed role sets per division.
@@ -222,7 +222,7 @@ NO-ASSUMPTION MODE. Prepared 2026-10-05 at the user's request. **No code was wri
 
 ### tel-002 — Product/interest catalogue + campaign list
 
-**Status (2026-10-06):** implemented and verified on `feature/tel-002` (`DEC-SCOPE-074` P1–P4, migration `0076_tel_catalogue`) — ready for owner sign-off; not yet merged.
+**Status (2026-10-06):** **merged** to `main` as PR #69 @ `c80180be` (`DEC-SCOPE-074` P1–P4, migration `0076_tel_catalogue`).
 
 - **Business requirement:** §3 interest selection; §2 "exact campaign/source", e.g. "Instagram → Cyber Security → September 2026 Campaign".
 - **Existing behavior:** none. `enquiries.subject` is free text, and IT courses (`Course`/`Program`) and `seed/countries.json` exist separately.
@@ -1119,7 +1119,7 @@ graph TD
 
 ### 5.4 Migrations
 
-Numbers are **provisional**. `main` is at `0074_enquiry_bdm_attribution` (bdm-017, merged 2026-10-05), so the first telecaller migration will be `0075` or later. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
+Numbers are **provisional**. `main` is at `0076_tel_catalogue` (tel-002, merged 2026-10-06; tel-001 took `0075`), so the next telecaller migration will be `0077` or later. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
 
 | Item | Migration content |
 |---|---|
