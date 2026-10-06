@@ -50,6 +50,25 @@ describe("BdmTaskForm (bdm-008 §9)", () => {
     expect(screen.queryByRole("radio")).toBeNull(); // kind is fixed after create
   });
 
+  it("words a server error plainly and keeps the text (QA8B-03)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res({ detail: "Internal Server Error" }, 500))));
+    render(<BdmTaskForm task={task()} onSaved={vi.fn()} onCancel={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Title (required)"), { target: { value: "Kept" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByText("We couldn't save this. Please try again.")).toBeInTheDocument();
+    expect(screen.queryByText("Internal Server Error")).toBeNull();
+    expect(screen.getByLabelText("Title (required)")).toHaveValue("Kept");
+  });
+
+  it("offers sign-in when the session has ended, keeping the text (QA8B-02)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res({ detail: "Not authenticated" }, 401))));
+    render(<BdmTaskForm task={task()} onSaved={vi.fn()} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByText("Your session has ended — sign in again to continue.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Return to login" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Title (required)")).toHaveValue("Send brochure");
+  });
+
   it("Escape cancels", () => {
     const onCancel = vi.fn();
     render(<BdmTaskForm onSaved={vi.fn()} onCancel={onCancel} />);

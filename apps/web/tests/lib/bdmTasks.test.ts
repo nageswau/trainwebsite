@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { daysOverdue, isTask, isTaskPage, orgTasksUrl, orgTypeText, taskRuleField, tasksUrl } from "@/lib/bdmTasks";
+import { daysOverdue, isTask, isTaskPage, orgTasksUrl, orgTypeText, taskRuleField, tasksUrl, writeFailure } from "@/lib/bdmTasks";
 
 describe("bdmTasks (bdm-008 §6, §9)", () => {
   it("builds list URLs with only the filters that are set", () => {
@@ -24,5 +24,13 @@ describe("bdmTasks (bdm-008 §6, §9)", () => {
     expect(taskRuleField("This organization is archived — restore it before adding tasks")).toEqual({ organization_id: "This organization is archived — restore it before adding tasks" });
     expect(taskRuleField("boom")).toEqual({});
     expect(daysOverdue("2026-09-20", "2026-09-23")).toBe(3);
+  });
+
+  it("sorts a failed write: session, changed elsewhere, invalid, retry, offline (QA8B-01..03)", () => {
+    expect(writeFailure(401)).toBe("session");
+    for (const status of [403, 404, 409]) expect(writeFailure(status)).toBe("changed");
+    expect(writeFailure(422)).toBe("invalid");
+    for (const status of [500, 502, 503, 429]) expect(writeFailure(status)).toBe("retry");
+    expect(writeFailure(undefined)).toBe("offline");
   });
 });

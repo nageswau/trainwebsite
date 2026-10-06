@@ -1,12 +1,14 @@
 "use client";
 import { type ChangeEvent, type FormEvent, useId, useState } from "react";
 
+import ReturnToLoginLink from "@/components/ReturnToLoginLink";
 import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson } from "@/lib/apiErrors";
 import { myOrganizationSearch, todayIst } from "@/lib/bdmAppointments";
-import { isTask, KIND_LABEL, KINDS, NOTES_MAX, type Task, type TaskKind, TASKS_URL, taskRuleField, taskUrl, TITLE_MAX } from "@/lib/bdmTasks";
+import { isTask, KIND_LABEL, KINDS, NOTES_MAX, SAVE_FAILED, SESSION_ENDED, type Task, type TaskKind, TASKS_URL, taskRuleField, taskUrl, TITLE_MAX, writeFailure } from "@/lib/bdmTasks";
 import { fieldErrors } from "@/lib/bdmTravel";
 import type { PickOption } from "@/lib/lookups";
+import { BDM_SIGN_IN } from "@/lib/navigation";
 import { useLeaveGuard } from "@/lib/useLeaveGuard";
 
 // bdm-008 (spec §9): add a follow-up or task, or change an open one of your own. The API decides every rule (dates, organization,
@@ -21,6 +23,7 @@ export default function BdmTaskForm({ task, organization, onSaved, onCancel }: {
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState<string | null>(null);
+  const [sessionEnded, setSessionEnded] = useState(false);
   const [today] = useState(todayIst);
   useLeaveGuard(!busy && (v.title !== start.title || v.notes !== start.notes || v.due_on !== start.due_on), "Discard this task?");
   const fid = (key: string) => `${id}-${key}`;
@@ -37,6 +40,7 @@ export default function BdmTaskForm({ task, organization, onSaved, onCancel }: {
     setBusy(true);
     setErrors({});
     setFailure(null);
+    setSessionEnded(false);
     const common = { title: v.title, due_on: v.due_on, notes: v.notes.trim() || null };
     const orgId = organization?.id ?? org?.id;
     const result = task
@@ -44,10 +48,12 @@ export default function BdmTaskForm({ task, organization, onSaved, onCancel }: {
       : await sendJson(TASKS_URL, "POST", { kind: v.kind, ...common, ...(orgId ? { organization_id: orgId } : {}) });
     setBusy(false);
     if (result.ok && isTask(result.data)) return onSaved(result.data);
-    if (result.ok) return setFailure("The task couldn't be saved. Try again.");
+    if (result.ok) return setFailure(SAVE_FAILED);
     const placed = { ...fieldErrors(result.detail), ...taskRuleField(result.detail) };
     if (Object.keys(placed).length) return setErrors(placed);
-    setFailure(result.message);
+    const kind = writeFailure(result.status); // QA8B-02/03: never the server's raw 5xx text; the typed text stays either way
+    if (kind === "session") return setSessionEnded(true);
+    setFailure(kind === "retry" ? SAVE_FAILED : result.message);
   }
 
   return (
@@ -88,6 +94,12 @@ export default function BdmTaskForm({ task, organization, onSaved, onCancel }: {
         {error("notes")}
       </div>
       {failure && <p className="form-error" role="alert">{failure}</p>}
+      {sessionEnded && (
+        <div role="alert">
+          <p className="form-error">{SESSION_ENDED}</p>
+          <ReturnToLoginLink loginHref={BDM_SIGN_IN} />
+        </div>
+      )}
       <div className="actions">
         <button type="submit" className="btn small" disabled={busy}>{busy ? "Saving…" : task ? "Save changes" : "Add"}</button>
         <button type="button" className="btn secondary small" onClick={onCancel}>Cancel</button>

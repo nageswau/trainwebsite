@@ -76,6 +76,35 @@ describe("BdmTasksPanel (bdm-008 §9)", () => {
     expect(fetchMock.mock.calls.filter((c) => String(c[0]).startsWith("/api/v1/bdm/tasks?")).length).toBe(2);
   });
 
+  it("asks to sign in again when the list answers 401, with no useless Retry (QA8B-02)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res({ detail: "Not authenticated" }, 401))));
+    render(<BdmTasksPanel isBdm />);
+    expect(await screen.findByText("Your session has ended — sign in again to continue.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Return to login" }).getAttribute("href")).toMatch(/^\/bdm\/sign-in/);
+    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+  });
+
+  it("clears the Done notice when the list changes (QA8B-04)", async () => {
+    vi.stubGlobal("fetch", vi.fn<typeof fetch>((url) => Promise.resolve(String(url).endsWith("/complete") ? res(task({ status: "done" })) : res(page([task()])))));
+    const { rerender } = render(<BdmTasksPanel isBdm />);
+    await screen.findByText("Call the principal");
+    fireEvent.click(within(screen.getByRole("list", { name: "Today" })).getByRole("button", { name: "Done" }));
+    await screen.findByText("Marked done.");
+    search.value = "bucket=upcoming";
+    rerender(<BdmTasksPanel isBdm />);
+    await waitFor(() => expect(screen.queryByText("Marked done.")).toBeNull());
+    expect(screen.queryByRole("link", { name: "Book appointment" })).toBeNull();
+  });
+
+  it("shows which BDM a manager's list is filtered to, with Show all (QA8B-05)", async () => {
+    search.value = "bdm=b1";
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(page([task({ permissions: { can_edit: false, can_complete: false, can_cancel: false } })])))));
+    render(<BdmTasksPanel isBdm={false} />);
+    expect(await screen.findByText("Showing one BDM: Asha")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Show all" }));
+    expect(router.push).toHaveBeenCalledWith("/bdm/follow-ups", { scroll: false });
+  });
+
   it("reads only for managers, with a BDM filter and no Add", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(page([task({ permissions: { can_edit: false, can_complete: false, can_cancel: false } })])))));
     render(<BdmTasksPanel isBdm={false} />);

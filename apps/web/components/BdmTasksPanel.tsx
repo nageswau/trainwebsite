@@ -5,11 +5,13 @@ import { useEffect, useState } from "react";
 
 import BdmTaskForm from "@/components/BdmTaskForm";
 import BdmTaskItem from "@/components/BdmTaskItem";
+import ReturnToLoginLink from "@/components/ReturnToLoginLink";
 import SearchableSelect from "@/components/SearchableSelect";
 import { teamMemberSearch } from "@/lib/bdmAppointments";
 import { LINK_STYLE, ORG_TYPES } from "@/lib/bdmOrganizations";
-import { EMPTY_TEXT, isTaskPage, KIND_LABEL, KINDS, orgTypeText, TAB_LABEL, TABS, type Tab, type Task, TASK_PAGE, type TaskPage, tasksUrl } from "@/lib/bdmTasks";
+import { EMPTY_TEXT, isTaskPage, SESSION_ENDED, KIND_LABEL, KINDS, orgTypeText, TAB_LABEL, TABS, type Tab, type Task, TASK_PAGE, type TaskPage, tasksUrl } from "@/lib/bdmTasks";
 import type { PickOption } from "@/lib/lookups";
+import { BDM_SIGN_IN } from "@/lib/navigation";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // bdm-008 (spec §9): a BDM's follow-ups and tasks, or a manager's team's (read only). The API scopes the rows and computes the counts
@@ -48,7 +50,7 @@ export default function BdmTasksPanel({ isBdm }: { isBdm: boolean }) {
   const filters = readFilters(useSearchParams());
   const apiUrl = tasksUrl({ bucket: filters.bucket, kind: filters.kind, orgType: filters.orgType, bdm: filters.bdm, offset: filters.offset });
   const [data, setData] = useState<TaskPage | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<false | "error" | "session">(false); // "session": a 401 -- Retry can't help (QA8B-02)
   const [fetching, setFetching] = useState(true);
   const [version, setVersion] = useState(0);
   const [adding, setAdding] = useState(false);
@@ -63,14 +65,17 @@ export default function BdmTasksPanel({ isBdm }: { isBdm: boolean }) {
     setFetching(true);
     fetch(apiUrl)
       .then(async (response) => {
+        if (response.status === 401) throw new Error("session");
         const body = await response.json().catch(() => null);
         if (!response.ok || !isTaskPage(body)) throw new Error("not a page");
         if (live) setData(body);
       })
-      .catch(() => live && setFailed(true))
+      .catch((e: Error) => live && setFailed(e.message === "session" ? "session" : "error"))
       .finally(() => live && setFetching(false));
     return () => { live = false; };
   }, [apiUrl, version]);
+  // QA8B-04: a notice belongs to the list it was given on; another tab, filter or page clears it (a reload after a write keeps it).
+  useEffect(() => setNotice(null), [apiUrl]);
 
   function go(next: Partial<Filters>) {
     const url = toUrl({ ...filters, offset: 0, ...next });
@@ -81,6 +86,8 @@ export default function BdmTasksPanel({ isBdm }: { isBdm: boolean }) {
   const refused = (message: string) => { setNotice({ text: `${message}. This item changed elsewhere — the list has been reloaded.` }); reload(); };
   const filtered = Boolean(filters.kind || filters.orgType || filters.bdm);
   const addButton = (id?: string) => isBdm && !adding && <button id={id} type="button" className="btn small" onClick={() => setAdding(true)}>Add follow-up or task</button>;
+  // QA8B-05: a BDM filter from the URL (reload, shared link) is shown, named when the picker or a row knows the name.
+  const bdmName = filters.bdm ? (picked?.id === filters.bdm ? picked.label : data?.items.find((t) => t.assignee.id === filters.bdm)?.assignee.full_name) : undefined;
   const doneOrg = notice?.done?.organization && !notice.done.organization.archived ? notice.done.organization : null;
 
   return (
@@ -135,7 +142,18 @@ export default function BdmTasksPanel({ isBdm }: { isBdm: boolean }) {
         )}
         {filtered && <button type="button" className="btn secondary small" onClick={() => go({ kind: "", orgType: "", bdm: "" })}>Clear filters</button>}
       </div>
-      {failed ? (
+      {!isBdm && filters.bdm && (
+        <p className="muted" style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", margin: "8px 0 0" }}>
+          <span className="badge">{bdmName ? `Showing one BDM: ${bdmName}` : "Showing one BDM"}</span>
+          <button type="button" className="btn secondary small" onClick={() => go({ bdm: "" })}>Show all</button>
+        </p>
+      )}
+      {failed === "session" ? (
+        <div role="alert">
+          <p className="form-error">{SESSION_ENDED}</p>
+          <ReturnToLoginLink loginHref={isBdm ? BDM_SIGN_IN : "/admin/login"} />
+        </div>
+      ) : failed ? (
         <div role="alert">
           <p className="form-error">Unable to load follow-ups.</p>
           <button type="button" className="btn secondary small" onClick={reload}>Retry</button>

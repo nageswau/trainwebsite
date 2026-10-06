@@ -58,6 +58,39 @@ describe("BdmTaskItem (bdm-008 §9)", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Cancel task" })).toHaveFocus());
   });
 
+  it("says a server error didn't save instead of 'changed elsewhere' (QA8B-01)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res({ detail: "Internal Server Error" }, 500))));
+    render(<ul><BdmTaskItem task={task()} {...props} /></ul>);
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(await screen.findByText("We couldn't save this. Please try again.")).toBeInTheDocument();
+    expect(props.onRefused).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Internal Server Error/)).toBeNull();
+  });
+
+  it("offers sign-in when the session has ended (QA8B-02)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res({ detail: "Not authenticated" }, 401))));
+    render(<ul><BdmTaskItem task={task()} {...props} /></ul>);
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(await screen.findByText("Your session has ended — sign in again to continue.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Return to login" }).getAttribute("href")).toMatch(/^\/bdm\/sign-in/);
+    expect(props.onRefused).not.toHaveBeenCalled();
+  });
+
+  it("disables the row's other actions while a save is in flight (QA8B-06)", () => {
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => {})));
+    render(<ul><BdmTaskItem task={task()} {...props} /></ul>);
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(screen.getByRole("button", { name: "Saving…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Edit" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Cancel task" })).toBeDisabled();
+  });
+
+  it("gives the detail-line links a 24px target (QA8B-07)", () => {
+    render(<ul><BdmTaskItem task={task({ appointment: { id: "a1", code: "APT-000001" } })} {...props} /></ul>);
+    expect(screen.getByRole("link", { name: "St Mary" })).toHaveStyle({ minHeight: "24px" });
+    expect(screen.getByRole("link", { name: "From APT-000001" })).toHaveStyle({ minHeight: "24px" });
+  });
+
   it("hands a 409 to the list (reloads on a 409)", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res({ detail: "This task was cancelled" }, 409))));
     render(<ul><BdmTaskItem task={task()} {...props} /></ul>);

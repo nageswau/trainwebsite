@@ -66,3 +66,17 @@ export function taskRuleField(detail: unknown): Record<string, string> {
 export function daysOverdue(due: string, today: string): number {
   return Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${due}T00:00:00Z`)) / 86_400_000);
 }
+
+// QA8B-01..03: how a failed write is shown. Only a state the server says changed (403 / 404 / 409) means "changed elsewhere, reload";
+// a 401 means the session ended (offer sign-in); a 422 carries the server's own words; anything else is a plain "try again"; no status
+// means the network dropped (the caller shows NOT_COMPLETED). The entry is kept in every case.
+export const SESSION_ENDED = "Your session has ended — sign in again to continue.";
+export const SAVE_FAILED = "We couldn't save this. Please try again.";
+export type WriteFailure = "session" | "changed" | "invalid" | "retry" | "offline";
+
+export function writeFailure(status: number | undefined): WriteFailure {
+  if (status === undefined) return "offline";
+  if (status === 401) return "session";
+  if (status === 403 || status === 404 || status === 409) return "changed";
+  return status === 422 ? "invalid" : "retry";
+}
