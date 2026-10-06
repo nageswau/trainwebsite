@@ -4106,3 +4106,31 @@ spec `docs/superpowers/specs/2026-10-06-bdm-020-school-activity-design.md` §1):
 `BdmSchoolActivityOut` / `BdmSchoolActivityMetric`; the "School activity" panel (`BdmOrganizationSchoolActivity`) on
 `/bdm/organizations/[id]` and `/bdm/manager/organizations/[id]`. No migration, no write, no change to `/school/*` or `school_analytics`.
 **New Feature ID authorized:** `bdm-020`. **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-020.
+
+### DEC-SCOPE-091 — CSV lead import per campaign (`tel-006`)
+
+**Evidence:** `EVID-019` §2 (lead sources and fields); `DEC-SCOPE-073` T12, T15; `DEC-SCOPE-074` (campaigns); `DEC-SCOPE-087` (tel-007
+distribution); `DEC-SCOPE-088` (tel-005 intake, I4–I6, R5–R7); owner answer in-session 2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for IM1; R1–R12 are recorded defaults. Migration
+`0087_lead_import_batches` (after tel-005's `0086_lead_enquiries`), API contract §12N. `DEC-SCOPE-090` / §12M are claimed by the open
+AGN-023 branch, so this entry is 091 / §12N; numbers re-chain at merge if `main` moves. Spec
+`docs/superpowers/specs/2026-10-06-tel-006-lead-import-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| IM1 (Q-06) | CSV columns, cap, failure behaviour | **Per-row report.** One active campaign per upload (source, product, team). Columns `name`*, `phone`*, `email`, `whatsapp_number`, `city`, `state`, `qualification`, `passing_year`, `institution`, `priority`, `subject`, `message`; ≤ 1 MB, ≤ 500 filled-in rows. A bad file is `422` and nothing is created; otherwise each row is created, attached (T12, including an earlier row of the same file) or rejected with its line and reason. Idempotency-Key replays the report |
+
+Recorded defaults: R1 `telecaller_manager` / `super_admin` only. R2 the campaign and its product must be active; division = the product's
+team, or a `division` field for an `other` product without one. R3 source/product/campaign from the campaign; subject defaults to the
+product name, message `""`, priority `warm`. R4 an imported lead is a manager's lead → `lead_distribution.on_intake`. R5 an attached row is a
+`lead_enquiries` row (campaign source/id, uploader); the stage never moves. R6 the CRM webhook is queued after the commit per created lead
+only. R7 one transaction with a SAVEPOINT per row; tel-005's per-person advisory locks; a lock timeout or deadlock rejects only that row.
+R7b imports serialise on one advisory lock (`409` past `lock_timeout`). R8 unique `(uploader, key)`; same key + same file/campaign/division
+replays, anything else `422`. R9 the file is never stored; the batch keeps counts, the SHA-256 and `{row_number, status, lead_id, error}`
+only. R10 `metadata_json.import_batch_id` on created leads and attached enquiries; one audit row `lead.import`. R11 history: own imports
+(super_admin all); another manager's report `404`. R12 the report is on-screen JSON; CSV-export escaping is tel-024's.
+
+**Consequences:** table `lead_import_batches`; `lead_intake.lead_team` / `import_row`; router `api/telecaller_import.py`
+(`GET /telecaller/imports/template`, `POST /telecaller/imports`, `GET /telecaller/imports`, `GET /telecaller/imports/{id}`); web page
+`/telecaller/manager/imports` ("Lead import" in the manager nav). **New Feature ID authorized:** `tel-006`. **Status:** see
+`TELECALLER_CRM_BACKLOG.md` §4 tel-006.
