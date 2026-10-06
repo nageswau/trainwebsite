@@ -376,6 +376,8 @@ Conventions used below:
 
 ### bdm-005 — MoU tracking
 
+> **Status (2026-10-06):** Implementation complete on `feature/bdm-005` (`DEC-SCOPE-074` M1–M9, migration `0076_bdm_mous` after `0075_telecaller_profiles`); **not yet COMPLETE** — browser validation and the independent Codex review are PENDING, and the owner runs the full suites. Lite evidence on the branch: backend bdm-005 99 passed; bdm-002 / bdm-004 suites green except two `test_bdm_002_migration` round-trip tests that fail identically on `origin/main` (bdm-017's `enquiries` FK blocks the 0066 downgrade; `bdm_mous` adds a second FK of the same kind); web BDM set 440 tests, one timing-flaky `BdmOrganizationForm` focus test that passes alone; `tsc` 0; eslint 0 on changed files; `next build` ok; one alembic head; Playwright bdm-005 + bdm-002 + bdm-004 4 passed. Deviations settled in the design: Expired is derived on read (never stored); a renewal is a new row with one current MoU per organization; downloads are streamed and audited, never through `/local-files`; uploads are capped at 20 per user per hour (the first BDM rate limit, owner-approved). The list pages use the QA4-02 sideways-scrolling table, not stacked rows. Spec: `docs/superpowers/specs/2026-10-06-bdm-005-mou-tracking-design.md`; plan: `docs/superpowers/plans/2026-10-06-bdm-005-mou-tracking.md`.
+
 - **Business requirement:** MoU status: Prospect, Discussion Started, Proposal Sent, Under Negotiation, Draft Shared, Signed, Active, Expired, Rejected (§10). The CRM reminds the BDM when a proposal has been waiting (e.g. 5 days), and the school/college databases carry MoU, Agreement, Contract and Renewal Date.
 - **Existing behavior:** `schools.mou_reference` (text) and `partnership_date` only.
 - **Expected behavior:**

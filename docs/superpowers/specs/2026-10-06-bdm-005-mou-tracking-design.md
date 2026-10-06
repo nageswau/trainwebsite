@@ -207,7 +207,8 @@ documents). MoU keys are random and never exposed; production uses S3. Follow-up
   `<a href download>` to the streamed route.
 - `BdmMouHistory.tsx` — `BdmStageHistory` pattern; an "Expired on … (automatic)" line when `expired_on`.
 - `BdmMousPanel.tsx` + pages `app/bdm/mous`, `app/bdm/manager/mous` (+ `loading.tsx`): server-rendered first page, status filter as
-  URL links (full page loads, QA4-01), per-filter empty text, table that stacks at 320 px, organization links to its profile.
+  URL links (full page loads, QA4-01), per-filter empty text, organization links to its profile. The table follows bdm-004's QA4-02
+  pattern (a labelled region with a minimum width that scrolls sideways on phones, whole-word columns) rather than stacked rows.
 - Nav: "MoUs" after Pipeline in `BDM_NAV` and `BDM_MANAGER_NAV`.
 - Accessibility: visible labels, `aria-describedby` errors, `role="alert"` / `role="status"`, one `h1`, native controls; 320 / 768 /
   1024 / 1440 px.
