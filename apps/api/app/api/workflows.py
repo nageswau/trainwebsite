@@ -93,6 +93,7 @@ from app.schemas import (
     NotificationUnreadCount,
     OverseasApplicationAdvance,
     OverseasApplicationCreate,
+    OverseasApplicationCounselorAssign,
     OverseasApplicationUpdate,
     ProfileDocumentCreate,
     QuestionReplyCreate,
@@ -114,6 +115,9 @@ from app.services.storage import storage
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
 logger = logging.getLogger("app.workflows")
+COUNSELOR_REFUSED_ON_UPDATE = "Use Assign counselor to change the counselor"  # AGN-023 (DEC-SCOPE-090 H10)
+APPLICATION_CLOSED = "This application is closed"
+CHOOSE_ACTIVE_COUNSELOR = "Choose an active overseas counselor"
 
 
 def _require(user: User, roles: set[str], division: str | None = None):
@@ -1901,6 +1905,9 @@ async def update_overseas_application(application_id: UUID, payload: OverseasApp
     # AGN-008 (final review): re-read under the row lock so the guard below sees an agent's committed withdraw.
     await db.refresh(item, with_for_update=True)
     changes = payload.model_dump(exclude_unset=True)
+    # AGN-023 (DEC-SCOPE-090 H10): after creation only the Admin's assign route changes the counselor (audited, notified).
+    if "counselor_id" in changes:
+        raise HTTPException(422, COUNSELOR_REFUSED_ON_UPDATE)
     # AGN-008 (A1): `withdrawn` is terminal -- no generic status write revives it (nothing set it before AGN-008).
     if "status" in changes and item.status == WITHDRAWN:
         raise HTTPException(409, "This application is withdrawn")
@@ -1915,11 +1922,9 @@ async def update_overseas_application(application_id: UUID, payload: OverseasApp
     # forward-only `/advance` endpoint below is the confirmed way to change stage.
     if "status" in changes and changes["status"] not in OVERSEAS_APPLICATION_STAGES:
         raise HTTPException(422, f"'{changes['status']}' is not a supported application stage yet -- rejection/waitlist/deferral outcomes are an open item (see docs/product/PRD_OPEN_ITEMS.md), not a status this endpoint can set.")
-    if changes.get("counselor_id"):
-        await _require_overseas_counselor(db, changes["counselor_id"])
     old_status = item.status
     old_next_action = item.next_action
-    allowed = {"counselor_id", "intake", "status", "application_reference", "offer_letter_url"}
+    allowed = {"intake", "status", "application_reference", "offer_letter_url"}
     allowed.add("next_action")
     for k, v in changes.items():
         if k in allowed:
@@ -1941,6 +1946,51 @@ async def update_overseas_application(application_id: UUID, payload: OverseasApp
     await _audit(db, user, "overseas.application.update", "overseas_application", item.id, changes)
     await db.commit()
     return {"id": item.id, "status": item.status, "next_action": item.next_action}
+
+
+async def _owner_name(db: AsyncSession, item: OverseasApplication) -> str:
+    """The application's student for an internal counselor notice: the account, else the agency record, else the school record."""
+    for model, key in ((User, item.student_id), (AgentStudent, item.agent_student_id), (SchoolStudent, item.school_student_id)):
+        if key is not None:
+            name = await db.scalar(select(model.full_name).where(model.id == key))
+            if name:
+                return name
+    return "A student"
+
+
+@router.put("/overseas/applications/{application_id}/counselor")
+async def assign_overseas_counselor(
+    application_id: UUID, payload: OverseasApplicationCounselorAssign, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    """AGN-023 (DEC-SCOPE-090 §3.1): the Overseas Admin assigns or swaps an application's EduSphere counselor (H2, H8). Not
+    super_admin, which `_require` would wave through."""
+    if user.role != "overseas_admin" or user.division != "overseas":
+        raise HTTPException(403, "Only the Overseas Admin can assign a counselor")
+    item = await db.get(OverseasApplication, application_id, with_for_update=True)
+    if item is None:
+        raise HTTPException(404, "Application not found")
+    if item.status in {WITHDRAWN, "enrolled"}:
+        raise HTTPException(409, APPLICATION_CLOSED)
+    counselor = await db.get(User, payload.counselor_id)
+    if counselor is None or counselor.role != "counselor" or counselor.division != "overseas" or not counselor.active:
+        raise HTTPException(422, CHOOSE_ACTIVE_COUNSELOR)
+    result = {"id": item.id, "counselor_id": counselor.id, "counselor_name": counselor.full_name}
+    if item.counselor_id == counselor.id:
+        return {**result, "changed": False}
+    previous_id = item.counselor_id
+    item.counselor_id = counselor.id
+    note = "EduSphere counsellor changed" if previous_id else "EduSphere counsellor assigned"
+    db.add(ApplicationStatusHistory(application_id=item.id, from_status=item.status, to_status=item.status, next_action=item.next_action, notes=note, changed_by_id=user.id))
+    await _audit(db, user, "overseas.application.counselor_assign", "overseas_application", item.id, {"from_counselor_id": str(previous_id) if previous_id else None, "to_counselor_id": str(counselor.id)})
+    university = await db.scalar(select(University.name).where(University.id == item.university_id))
+    await _notify_user(db, counselor, "Application assigned to you", f"{await _owner_name(db, item)} — {university}", "/overseas/counselor/applications")
+    previous = await db.get(User, previous_id) if previous_id else None
+    if previous is not None and previous.active:
+        await _notify_user(db, previous, "Application reassigned", "An application has moved to another counselor.", "/overseas/counselor/applications")
+    if item.agent_id is not None:
+        await agency_notices.counselor_assigned(db, item, user, changed=previous_id is not None)
+    await db.commit()
+    return {**result, "changed": True}
 
 
 @router.post("/overseas/university-rep/applications/{application_id}/updates", status_code=201)

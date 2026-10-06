@@ -388,6 +388,12 @@ class OverseasApplicationUpdate(BaseModel):
     notify_channels: list[str] = Field(default_factory=lambda: ["email"])
 
 
+class OverseasApplicationCounselorAssign(BaseModel):
+    """AGN-023 (DEC-SCOPE-090 H8): swap only -- a counselor is required; null or missing is a 422."""
+
+    counselor_id: UUID
+
+
 class OverseasApplicationAdvance(BaseModel):
     to_status: str = Field(max_length=50)
     next_action: str | None = Field(default=None, max_length=5000)

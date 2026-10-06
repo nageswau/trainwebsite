@@ -186,7 +186,11 @@ async def test_application_counselor_must_be_an_overseas_counselor(client, db_se
     created = await client.post("/api/v1/workflows/overseas/applications", json={**body, "counselor_id": str(good.id)})
     assert created.status_code == 201, created.text
     app_id = created.json()["id"]
-    patch = await client.patch(f"/api/v1/workflows/overseas/applications/{app_id}", json={"counselor_id": str(bad)})
-    assert patch.status_code == 422, patch.text
+    # AGN-023 (DEC-SCOPE-090 H10): the generic update no longer changes the counselor at all; the assign route checks the target.
+    for value in (str(bad), None):
+        patch = await client.patch(f"/api/v1/workflows/overseas/applications/{app_id}", json={"counselor_id": value})
+        assert patch.status_code == 422, patch.text
+        assert patch.json()["detail"] == "Use Assign counselor to change the counselor"
     assert (await db_session.get(OverseasApplication, uuid.UUID(app_id), populate_existing=True)).counselor_id == good.id
-    assert (await client.patch(f"/api/v1/workflows/overseas/applications/{app_id}", json={"counselor_id": None})).status_code == 200
+    assign = await client.put(f"/api/v1/workflows/overseas/applications/{app_id}/counselor", json={"counselor_id": str(bad)})
+    assert assign.status_code == 422, assign.text
