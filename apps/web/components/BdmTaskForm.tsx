@@ -82,7 +82,8 @@ export default function BdmTaskForm({ task, organization, onSaved, onCancel }: {
       ))}
       <div className="field">
         <label htmlFor={fid("notes")}>Notes</label>
-        <textarea id={fid("notes")} rows={3} maxLength={NOTES_MAX} value={v.notes} onChange={set("notes")} aria-describedby={`${fid("notes")}-count`} {...(errors.notes ? invalid("notes") : {})} />
+        <textarea id={fid("notes")} rows={3} maxLength={NOTES_MAX} value={v.notes} onChange={set("notes")} aria-invalid={errors.notes ? true : undefined}
+          aria-describedby={errors.notes ? `${fid("notes")}-count ${fid("notes")}-error` : `${fid("notes")}-count`} />
         <p id={`${fid("notes")}-count`} className="muted" style={{ margin: 0 }}>{v.notes.length}/{NOTES_MAX}</p>
         {error("notes")}
       </div>

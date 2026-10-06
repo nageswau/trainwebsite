@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import BdmTasksPanel from "@/components/BdmTasksPanel";
-import type { Task, TaskPage } from "@/lib/bdmTasks";
+import type { Task, TaskPage, TypeCount } from "@/lib/bdmTasks";
 
 const router = vi.hoisted(() => ({ push: vi.fn() }));
 const search = vi.hoisted(() => ({ value: "" }));
@@ -16,7 +16,7 @@ const task = (over: Partial<Task> = {}): Task => ({
 });
 const page = (items: Task[], over: Partial<TaskPage> = {}): TaskPage => ({
   items, total: items.length, limit: 50, offset: 0, today: "2030-01-07",
-  counts: { buckets: { today: items.length, overdue: 2, upcoming: 0, done: 0, cancelled: 0 }, by_org_type: [{ org_type: "college", count: items.length }, { org_type: null, count: 0 }].filter((c) => c.count) },
+  counts: { buckets: { today: items.length, overdue: 2, upcoming: 0, done: 0, cancelled: 0 }, by_org_type: ([{ org_type: "college", count: items.length }] as TypeCount[]).filter((c) => c.count) },
   ...over,
 });
 
