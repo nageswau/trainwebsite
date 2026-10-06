@@ -426,7 +426,7 @@ API contract §12H; re-chained after bdm-005, bdm-013 and tel-022's `0080_tel_ta
 
 ### tel-008 — Telecaller lead workspace: My Leads, lead detail, priority
 
-**Status (2026-10-06):** implemented on `feature/tel-008` (`DEC-SCOPE-084` W1 + D1–D6, no migration, API contract §12J). Spec
+**Status (2026-10-06):** **merged** to `main` as PR #85 @ `b76c92f7` (`DEC-SCOPE-084` W1 + D1–D6, no migration, API contract §12J). Spec
 `docs/superpowers/specs/2026-10-06-tel-008-lead-workspace-design.md`. "Due follow-up" filter → tel-011; other action buttons → their items. The inherited script panel (below) is built (D6).
 
 **Inherited from tel-012 (`DEC-SCOPE-083` C2):** the lead-detail **script panel**. It shows the lead's product's active script from
@@ -1142,7 +1142,7 @@ graph TD
 
 ### 5.4 Migrations
 
-Numbers are **provisional**. `main` is at `0083_tel_content` (tel-012, merged 2026-10-06; tel-001 took `0075`, tel-002 `0076`, bdm-008 `0077`, tel-003 `0078`, bdm-005 `0079`, tel-022 `0080`, tel-004 `0081`, bdm-025 `0082`; tel-017 has none; bdm-005/bdm-013/tel-022/tel-004/bdm-025/tel-012 took `DEC-SCOPE-078`–`083`), so the next telecaller migration will be `0084` or later, and the next decision `DEC-SCOPE-084` or later. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
+Numbers are **provisional**. `main` is at `0083_tel_content` (tel-012, merged 2026-10-06; tel-001 took `0075`, tel-002 `0076`, bdm-008 `0077`, tel-003 `0078`, bdm-005 `0079`, tel-022 `0080`, tel-004 `0081`, bdm-025 `0082`; tel-017 has none; bdm-005/bdm-013/tel-022/tel-004/bdm-025/tel-012 took `DEC-SCOPE-078`–`083`; tel-008, merged 2026-10-06 with no migration, took `DEC-SCOPE-084`), so the next telecaller migration will be `0084` or later, and the next decision `DEC-SCOPE-085` or later. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
 
 | Item | Migration content |
 |---|---|

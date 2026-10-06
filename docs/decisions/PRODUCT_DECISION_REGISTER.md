@@ -3915,7 +3915,7 @@ VERIFIED on `feature/tel-012` (2026-10-06): lite backend 440 on the final merge 
 
 **Evidence:** `EVID-019` §2 (field display), §8 (priority, L314–L330), §22 ("View assigned leads"); `DEC-SCOPE-073` T19, T23;
 `DEC-SCOPE-081` D4; owner answer in-session 2026-10-06.
-**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for W1; D1–D6 are recorded defaults. Branch `feature/tel-008`. No migration.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for W1; D1–D6 are recorded defaults. No migration. VERIFIED on `feature/tel-008` (2026-10-06): tel-008 backend 27 + lite 176, then 172 after merging tel-012 (every tel-012 suite); vitest 42; Playwright 7; Browser Use QA (QA-01, 02, 04, 05 fixed test-first; `docs/quality/TEL-008_EXPLORATORY_QA_2026-10-06.md`). **MERGED** to `main` as PR #85 @ `b76c92f7` (2026-10-06). Drafted as `DEC-SCOPE-082`, renumbered twice (bdm-025 took 082; tel-012 took 083 / API §12I).
 
 | # | Question | Answer |
 |---|---|---|
