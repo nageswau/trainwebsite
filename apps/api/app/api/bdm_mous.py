@@ -53,7 +53,7 @@ async def create_mou(org_id: UUID, payload: BdmMouCreate, user: User = Depends(g
     except IntegrityError:
         await db.rollback()
         raise HTTPException(409, svc.MOU_EXISTS) from None
-    if current is not None:
+    if current is not None and previous is not None:
         svc.record(db, user, current, "renewed", previous, previous, [])
         svc.audit(db, user, "renewed", current, {"renewed_by": str(mou.id)})
     svc.record(db, user, mou, "created", None, mou.status, [])

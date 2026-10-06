@@ -225,15 +225,15 @@ def row_out(mou: BdmMou, org: BdmOrganization, assigned: User, status: str) -> d
 async def mou_out(db: AsyncSession, user: User, org: BdmOrganization, mou: BdmMou, on: date) -> dict:
     status = effective_status(mou, on)
     editable = can_write(user, org) and mou.is_current
-    assigned = await db.get(User, org.assigned_bdm_user_id)
-    creator = await db.get(User, mou.created_by_user_id)
+    assigned = await db.get_one(User, org.assigned_bdm_user_id)  # RESTRICT foreign keys: both rows always exist
+    creator = await db.get_one(User, mou.created_by_user_id)
     return {
         **row_out(mou, org, assigned, status),
         "proposal_sent_on": mou.proposal_sent_on,
         "valid_from": mou.valid_from,
         "notes": mou.notes,
         "document": _document(mou),
-        "expired_on": mou.valid_until + timedelta(days=1) if status == "expired" else None,
+        "expired_on": mou.valid_until + timedelta(days=1) if status == "expired" and mou.valid_until else None,
         "created_by": person_ref(creator),
         "permissions": {"can_edit": editable, "can_upload": editable, "can_renew": editable and status in RENEWABLE},
         "pipeline_on_sign": _pipeline_on_sign(org),
