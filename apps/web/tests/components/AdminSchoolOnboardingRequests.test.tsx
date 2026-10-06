@@ -92,6 +92,15 @@ describe("AdminSchoolOnboardingRequests (bdm-018 §6)", () => {
     expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toEqual({ school_code: "ab12cd34" });
   });
 
+  it("QA18-01: a server error on reject says the outcome is unknown", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(res(page([item()]))).mockResolvedValueOnce(new Response("boom", { status: 502 })));
+    queue();
+    fireEvent.click(await screen.findByRole("button", { name: "Reject" }));
+    fireEvent.change(screen.getByLabelText("Reason (sent to the BDM)"), { target: { value: "No" } });
+    fireEvent.click(screen.getByRole("button", { name: "Reject request" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("The request could not be confirmed. Reload the page to check before trying again.");
+  });
+
   it("offers more when the queue has another page", async () => {
     const second = item({ id: "r2", organization: { ...item().organization, id: "o2", code: "ORG-000002" } });
     vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(res(page([item()], 2))).mockResolvedValueOnce(res({ ...page([second], 2), offset: 20 })));

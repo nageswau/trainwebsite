@@ -25,8 +25,12 @@ export const QUEUE_URL = "/api/v1/overseas-admin/bdm-onboarding-requests";
 export const QUEUE_PAGE = 20;
 export const requestUrl = (orgId: string) => `/api/v1/bdm/organizations/${orgId}/onboarding-request`;
 
-/** The 409s carry `{message, code}`; detailMessage only words strings and 422 lists. */
-export function onboardingMessage(outcome: { message: string; detail?: unknown }): string {
+export const UNCONFIRMED = "The request could not be confirmed. Reload the page to check before trying again.";
+
+/** The 409s carry `{message, code}`; detailMessage only words strings and 422 lists. A 5xx can fail after the commit, so its outcome is
+ * unknown (QA18-01, the QA-023-04 rule). */
+export function onboardingMessage(outcome: { message: string; status?: number; detail?: unknown }): string {
+  if ((outcome.status ?? 0) >= 500) return UNCONFIRMED;
   const d = outcome.detail as { message?: unknown } | null | undefined;
   return d && typeof d === "object" && typeof d.message === "string" ? d.message : outcome.message;
 }

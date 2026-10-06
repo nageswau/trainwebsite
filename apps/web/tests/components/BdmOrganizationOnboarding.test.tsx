@@ -75,6 +75,14 @@ describe("BdmOrganizationOnboarding (bdm-018 §6)", () => {
     expect(screen.getByRole("button", { name: "Send request" })).toBeEnabled();
   });
 
+  it("QA18-01: a server error says the outcome is unknown instead of a generic message", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("Internal Server Error", { status: 500 })));
+    card(org({ request: null, school: null, can_request: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Request onboarding" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send request" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("The request could not be confirmed. Reload the page to check before trying again.");
+  });
+
   it("cancel closes the form and returns focus to the button", async () => {
     card(org({ request: null, school: null, can_request: true }));
     fireEvent.click(screen.getByRole("button", { name: "Request onboarding" }));

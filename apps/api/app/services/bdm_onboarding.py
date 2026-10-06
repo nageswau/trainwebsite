@@ -141,7 +141,8 @@ def reject(db: AsyncSession, user: User, request: BdmOnboardingRequest, reason: 
 def outcome_notice(org: BdmOrganization, request: BdmOnboardingRequest, school: School | None) -> tuple[str, str]:
     """H7: the in-app notice for the organization's assigned BDM."""
     if school is not None:
-        return "School onboarded", f"{org.code} · {org.name} is now linked to {school.name} ({school.school_code})."
+        as_name = "" if school.name == org.name else f" as {school.name}"  # QA18-03: the School usually keeps the prefilled name
+        return "School onboarded", f"{org.code} · {org.name} is now onboarded{as_name} (School ID {school.school_code})."
     return "School onboarding not approved", f"{org.code} · {org.name}: {request.reject_reason}"
 
 
