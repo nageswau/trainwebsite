@@ -78,6 +78,9 @@ export default function TelecallerTemplateRow({ row, products, assets, onChanged
                   {preview.preview.subject !== null && <p><strong>Subject:</strong> {preview.preview.subject}</p>}
                   <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{preview.preview.body}</p>
                   {preview.preview.brochure_link && <p className="muted" style={{ fontSize: 13 }}>The brochure link works until {formatDate(preview.preview.brochure_link.expires_at, true)}.</p>}
+                  {row.asset && !preview.preview.brochure_link && (
+                    <p className="form-warning">{row.asset.name} is inactive, so {"{brochure_link}"} is left empty. Reactivate it or choose another brochure.</p>
+                  )}
                 </div>
               )}
           </td>

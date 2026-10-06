@@ -93,6 +93,22 @@ describe("TelecallerScriptsPanel (tel-012)", () => {
     expect(screen.getByRole("button", { name: "Add step" })).toBeDisabled();
   });
 
+  it("keeps keyboard focus on the step being moved, added or removed (QA-02)", async () => {
+    serve(() => undefined);
+    render(<TelecallerScriptsPanel />);
+    fireEvent.click(screen.getByRole("button", { name: "Add step" }));
+    expect(screen.getByLabelText("Step 2 title")).toHaveFocus();
+    fireEvent.change(screen.getByLabelText("Step 2 title"), { target: { value: "Second" } });
+    fireEvent.click(screen.getByRole("button", { name: "Move step 2 up" }));
+    await waitFor(() => expect(screen.getByLabelText("Step 1 title")).toHaveValue("Second"));
+    // At the top its Up is disabled, so focus follows to Down.
+    await waitFor(() => expect(screen.getByRole("button", { name: "Move step 1 down" })).toHaveFocus());
+    fireEvent.click(screen.getByRole("button", { name: "Move step 1 down" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Move step 2 up" })).toHaveFocus());
+    fireEvent.click(screen.getByRole("button", { name: "Remove step 2" }));
+    await waitFor(() => expect(screen.getByLabelText("Step 1 title")).toHaveFocus());
+  });
+
   it("shows the server's sentence when a second active script is refused", async () => {
     serve(({ url, init }) =>
       init?.method === "PATCH" ? res({ detail: "Cyber Security already has an active script. Deactivate it first." }, 409)
@@ -146,6 +162,16 @@ describe("TelecallerTemplatesPanel (tel-012)", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Preview Course details" }));
     expect(await screen.findByText("Hi Priya Sharma: https://x/l")).toBeInTheDocument();
     expect(screen.getByText(/Sample values/)).toBeInTheDocument();
+  });
+
+  it("explains an empty brochure link when the brochure is inactive (QA-01)", async () => {
+    const stale = { ...template, asset: { id: "a1", name: "Cyber brochure", active: false } };
+    serve(({ url }) =>
+      url.includes("/preview") ? res({ subject: null, body: "Hi Priya Sharma: ", brochure_link: null })
+        : url.includes("/templates?") ? res(page([stale])) : undefined);
+    render(<TelecallerTemplatesPanel />);
+    fireEvent.click(await screen.findByRole("button", { name: "Preview Course details" }));
+    expect(await screen.findByText("Cyber brochure is inactive, so {brochure_link} is left empty. Reactivate it or choose another brochure.")).toBeInTheDocument();
   });
 });
 
