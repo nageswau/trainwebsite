@@ -7,6 +7,7 @@ change + history row + audit row, one commit here, then the log line (spec §6.4
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
@@ -27,26 +28,38 @@ async def get_mou(org_id: UUID, user: User = Depends(get_current_user), db: Asyn
 
 @router.post("/organizations/{org_id}/mou", status_code=201, response_model=BdmMouEnvelope)
 async def create_mou(org_id: UUID, payload: BdmMouCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """A first MoU (M6). 409 `mou_exists` while a current one is in progress."""
+    """A first MoU, or a renewal once the current one reads Expired or Rejected (M6): the old row stops being current and keeps its
+    history. 409 `mou_exists` while a current one is in progress; the partial unique index is the backstop under the lock."""
     org = await org_svc.load_scoped(db, user, org_id, lock=True)
     svc.writable(user, org, "mou_create")
     on = svc.today()
     current = await svc.load_current(db, org, lock=True)
-    if current is not None:
+    previous = svc.effective_status(current, on) if current else None
+    if current is not None and previous not in svc.RENEWABLE:
         raise HTTPException(409, svc.MOU_EXISTS)
     state = payload.model_dump()
     svc.apply_defaults(state, on)
     svc.check_rules(state)
+    if current is not None:
+        current.is_current = False
+        await db.flush()  # the index allows the new current row only after this
     mou = BdmMou(organization_id=org.id, created_by_user_id=user.id, **state)
     db.add(mou)
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(409, svc.MOU_EXISTS) from None
+    if current is not None:
+        svc.record(db, user, current, "renewed", previous, previous, [])
+        svc.audit(db, user, "renewed", current, {"renewed_by": str(mou.id)})
     svc.record(db, user, mou, "created", None, mou.status, [])
     svc.audit(db, user, "created", mou, {"status": mou.status})
     advanced = svc.advance_on_sign(db, user, org) if mou.status == "signed" else None
     await db.commit()
     await db.refresh(org)
     await db.refresh(mou)
-    svc.log("bdm_mou_created", user, mou, status=mou.status)
+    svc.log("bdm_mou_created", user, mou, status=mou.status, renewed=current is not None)
     svc.log_advance(user, org, advanced)
     return {"mou": await svc.mou_out(db, user, org, mou, on)}
 
