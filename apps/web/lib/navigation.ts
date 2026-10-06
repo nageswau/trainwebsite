@@ -44,22 +44,30 @@ export const ROLE_DASHBOARD_PATH: Record<string, string> = {
   telecaller_manager: "/telecaller/manager/team",
 };
 
+// tel-017 (DEC-SCOPE-076): a counselor belongs to IT or Overseas, so its landing depends on the division too. Every caller that
+// knows the account's division uses this; the role map above stays the default.
+export function dashboardPathFor(user: { role: string; division?: string | null }): string {
+  if (user.role === "counselor" && user.division === "it") return "/it/counselor/dashboard";
+  return ROLE_DASHBOARD_PATH[user.role] ?? "/";
+}
+
 // bdm-001: BDM and BDM-manager sidebars, and the signed-out chooser (College BDMs sign in at /it, Agent/School BDMs at /overseas;
 // managers at /admin). bdm-002 adds Organizations to both; bdm-006 adds Appointments to both.
 // bdm-010: Travel (BDM), Approvals (manager), and each role's Notifications (QA10-01; the unread badge comes from lib/bdmNav).
-// bdm-009: Activities in both. bdm-004: Pipeline in both.
+// bdm-009: Activities in both. bdm-004: Pipeline in both. bdm-005: MoUs after Pipeline in both.
 export const BDM_NOTIFICATIONS_HREF = "/bdm/notifications";
 export const BDM_MANAGER_NOTIFICATIONS_HREF = "/bdm/manager/notifications";
 export const BDM_NAV: NavItem[] = [
   { label: "My Day", href: "/bdm/my-day" }, { label: "Organizations", href: "/bdm/organizations" }, { label: "Pipeline", href: "/bdm/pipeline" },
-  { label: "Appointments", href: "/bdm/appointments" }, { label: "Follow-ups", href: "/bdm/follow-ups" },
+  { label: "MoUs", href: "/bdm/mous" }, { label: "Appointments", href: "/bdm/appointments" }, { label: "Follow-ups", href: "/bdm/follow-ups" },
   { label: "Activities", href: "/bdm/activities" }, { label: "Travel", href: "/bdm/travel" },
   { label: "Notifications", href: BDM_NOTIFICATIONS_HREF }, { label: "Profile", href: "/bdm/profile" },
 ];
 export const BDM_MANAGER_NAV: NavItem[] = [
   { label: "Dashboard", href: "/bdm/manager/dashboard" }, { label: "Team", href: "/bdm/manager/team" },
   { label: "Organizations", href: "/bdm/manager/organizations" }, { label: "Pipeline", href: "/bdm/manager/pipeline" },
-  { label: "Appointments", href: "/bdm/manager/appointments" }, { label: "Follow-ups", href: "/bdm/manager/follow-ups" },
+  { label: "MoUs", href: "/bdm/manager/mous" }, { label: "Appointments", href: "/bdm/manager/appointments" },
+  { label: "Follow-ups", href: "/bdm/manager/follow-ups" },
   { label: "Activities", href: "/bdm/manager/activities" }, { label: "Approvals", href: "/bdm/manager/approvals" },
   { label: "Notifications", href: BDM_MANAGER_NOTIFICATIONS_HREF },
 ];
@@ -126,7 +134,9 @@ export const PORTAL_NAV:Record<string,NavItem[]> = {
   "it/placement": ["dashboard","candidates","company-requirements","interviews","offers","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/placement/${x}`})),
   "it/hr": ["dashboard","job-requirements","shortlists","candidates","interviews"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/hr/${x}`})),
   // bdm-001: "BDMs" is written out -- the generated label would read "Bdms".
-  "it/admin": [...["dashboard","users","students","trainers","employers","programs","batches","enrollments","certificates","resources","consent","payments","roles","leads","support","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/admin/${x}`})),{label:"BDMs",href:"/it/admin/bdms"},{label:"Telecallers",href:"/it/admin/telecallers"}],
+  // tel-017 (DEC-SCOPE-076 C1): an IT counselor works leads only; tel-016 adds Appointments, tel-018 the student link.
+  "it/counselor": ["dashboard","leads"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/counselor/${x}`})),
+  "it/admin": [...["dashboard","users","students","trainers","counselors","employers","programs","batches","enrollments","certificates","resources","consent","payments","roles","leads","support","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/admin/${x}`})),{label:"BDMs",href:"/it/admin/bdms"},{label:"Telecallers",href:"/it/admin/telecallers"}],
   "overseas/student": ["dashboard","profile","applications","documents","offer-letters","visa-status","scholarships","university-communication","payments","appointments","counselor-chat","downloads"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/student/${x}`})),
   "overseas/counselor": ["dashboard","students","leads","documents","applications","school-applications","visa","appointments","counselor-chat","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/counselor/${x}`})),
   "overseas/university": ["dashboard","applications","offer-letters","admission-updates","student-communication","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/university/${x}`})),

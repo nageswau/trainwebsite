@@ -27,7 +27,7 @@ controls only.
 | `hr_team` | `it` | Carries over | Internal staff |
 | `it_admin` | `it` | Carries over | |
 | `employer` | `it` | **Net-new** | No base equivalent (`DEC-SCOPE-002`) |
-| `counselor` | `overseas` | Carries over | Internal staff |
+| `counselor` | `overseas` or `it` *(IT added 2026-10-06, `DEC-SCOPE-076`, `tel-017`)* | Carries over | Internal staff |
 | `university_rep` | `overseas` | Carries over | External partner |
 | `agent` | `overseas` | Carries over, approval gate **extended** | Self-registers, gated (`DEC-SCOPE-004`) |
 | `overseas_admin` | `overseas` | Carries over | |
@@ -511,7 +511,7 @@ Archived organizations are read-only (`409` "Restore this organization first"). 
 
 **Explicit denies (bdm-010):** nobody decides their own trip (`403`); a manager never edits a trip or its expenses (no route); server-owned fields (`code`, `bdm_user_id`, statuses, `currency`, `decided_*`) in a body → `422`; a `bdm` on a manager route or a manager on a BDM route → `403`. Every change writes one `AuditLog` row (`bdm.trip_*`) in the same transaction.
 
-**BDM deactivation and handover (`bdm-025`, `DEC-SCOPE-076`, added 2026-10-06).** Same inline pattern.
+**BDM deactivation and handover (`bdm-025`, `DEC-SCOPE-079`, added 2026-10-06).** Same inline pattern.
 
 | Role | Can | Scope | Item |
 |---|---|---|---|
@@ -562,6 +562,17 @@ so there is no row scope.
 | `telecaller_manager`, `super_admin` | create / edit / deactivate / reactivate products and campaigns; list them including inactive rows | all rows | `tel-002` |
 | `telecaller`, `it_admin`, `overseas_admin`, `counselor` | list **active** products and campaigns (pickers) | all active rows | `tel-002` |
 | every other role | none → `403` "Your role cannot view the telecaller catalogue" (writes: `403` "Telecaller manager role required") | — | `tel-002` |
+
+### 2.16 IT counselor *(added 2026-10-06 — `DEC-SCOPE-076`, `tel-017`)*
+
+A `counselor` belongs to `it` or `overseas` (fixed at creation). Inline pattern: role check, then division check, then scope.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `it_admin`, `super_admin` | create an IT counselor (`POST /admin/users`); list them (`/portal/it/admin/counselors`) | IT division | `tel-017` |
+| `counselor` (IT) | portal `dashboard` and `leads` only (`/portal/it/counselor/*`; any other section → 404) | leads with `division == "it"` and `owner_id` = self | `tel-017` |
+| `counselor` (IT) | every overseas counselor route: the 14 `workflows.py` overseas routes, `/overseas-admin/school-*`, the overseas lookups, `/inbound/university-email*`, `/portal/overseas/counselor/*` | none → `403` | `tel-017` |
+| `counselor` (Overseas) | unchanged (§2.2); `/portal/it/counselor/*` → `403` | assigned students / own routed overseas leads | `CNS-001` |
 
 ## 3. Support / admin audit controls
 

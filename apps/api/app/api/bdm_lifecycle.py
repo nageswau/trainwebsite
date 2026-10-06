@@ -1,4 +1,4 @@
-"""bdm-025 (DEC-SCOPE-076, spec §5): the admin's BDM lifecycle routes -- portfolio preview, deactivate with a handover choice,
+"""bdm-025 (DEC-SCOPE-079, spec §5): the admin's BDM lifecycle routes -- portfolio preview, deactivate with a handover choice,
 later handover from an inactive BDM, and BDM manager deactivation. Inline authorization (backlog convention): `ensure_admin`, then
 the creator-type scope, then the write. Every refusal happens before any write; one transaction per route."""
 

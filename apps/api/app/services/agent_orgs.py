@@ -201,12 +201,12 @@ STAFF_ACTIONS = ("agent_org.staff_create", "agent_org.staff_create_rejected", "a
 THROTTLE_WINDOW = timedelta(hours=24)
 
 
-def retry_after(recent: list[datetime], limit: int, now: datetime) -> int:
-    """Seconds until the oldest of the last `limit` actions leaves THROTTLE_WINDOW; 0 while under the limit. `recent` is newest
-    first and holds at most `limit` timestamps."""
+def retry_after(recent: list[datetime], limit: int, now: datetime, window: timedelta = THROTTLE_WINDOW) -> int:
+    """Seconds until the oldest of the last `limit` actions leaves `window` (THROTTLE_WINDOW unless given; bdm-005 uses one hour);
+    0 while under the limit. `recent` is newest first and holds at most `limit` timestamps."""
     if len(recent) < limit:
         return 0
-    return max(1, math.ceil((recent[-1] + THROTTLE_WINDOW - now).total_seconds()))
+    return max(1, math.ceil((recent[-1] + window - now).total_seconds()))
 
 
 async def _wait_seconds(db: AsyncSession, org_id, actions: tuple[str, ...], limit: int) -> int:

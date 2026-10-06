@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ROLE_DASHBOARD_PATH } from "@/lib/navigation";
+import { dashboardPathFor } from "@/lib/navigation";
 import { safeNextPath } from "@/lib/safeNext";
 
 function message(detail: unknown) {
@@ -37,7 +37,7 @@ export default function LoginForm({ division }: { division: "it" | "overseas" | 
       return;
     }
     // AGN-008 QA8-07: only a same-origin relative `next` is followed (no open redirect); otherwise the role's dashboard.
-    router.push(safeNextPath(search.get("next")) || ROLE_DASHBOARD_PATH[data.user.role] || "/");
+    router.push(safeNextPath(search.get("next")) || dashboardPathFor(data.user));
     router.refresh();
   }
 

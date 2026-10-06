@@ -1,6 +1,6 @@
 # bdm-025 — Exploratory browser QA, pass 1 (no code changes) — 2026-10-06
 
-**Build under test:** `worktree-bdm-025` @ the "BDM managers card" commit (migration head `0078_bdm_assignment_history`, `DEC-SCOPE-076`).
+**Build under test:** `worktree-bdm-025` @ the "BDM managers card" commit (migration head `0078_bdm_assignment_history`, `DEC-SCOPE-076` at the time; renumbered `0080` / `DEC-SCOPE-079` on merging `main` @ `230a043f`. The findings are unchanged).
 
 **Environment:** an isolated stack, `docker compose -p bdm025`:
 - web `http://localhost:13025`, API `:18025`;

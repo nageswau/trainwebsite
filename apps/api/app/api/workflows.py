@@ -164,6 +164,14 @@ def _grade(percentage: float) -> str:
     return "F"
 
 
+async def _require_overseas_counselor(db: AsyncSession, counselor_id: UUID) -> None:
+    """tel-017 (DEC-SCOPE-076): a counselor can be IT now, and an application's counselor receives the student's counselor-chat and
+    the update notices -- so the one set on an overseas application must be an overseas counselor."""
+    counselor = await db.get(User, counselor_id)
+    if counselor is None or counselor.role != "counselor" or counselor.division != "overseas":
+        raise HTTPException(422, "Choose an overseas counselor")
+
+
 async def _assigned_application(db: AsyncSession, user: User, application_id: UUID) -> OverseasApplication:
     item = await db.get(OverseasApplication, application_id)
     if not item:
@@ -1795,6 +1803,8 @@ async def create_overseas_application(payload: OverseasApplicationCreate, user: 
     )
     if duplicate:
         raise HTTPException(409, "An application for this university/course already exists")
+    if payload.counselor_id:
+        await _require_overseas_counselor(db, payload.counselor_id)
     counselor_id = payload.counselor_id or (user.id if user.role == "counselor" else None)
     agent_id = user.id if user.role == "agent" else payload.agent_id
     item = OverseasApplication(
@@ -1905,6 +1915,8 @@ async def update_overseas_application(application_id: UUID, payload: OverseasApp
     # forward-only `/advance` endpoint below is the confirmed way to change stage.
     if "status" in changes and changes["status"] not in OVERSEAS_APPLICATION_STAGES:
         raise HTTPException(422, f"'{changes['status']}' is not a supported application stage yet -- rejection/waitlist/deferral outcomes are an open item (see docs/product/PRD_OPEN_ITEMS.md), not a status this endpoint can set.")
+    if changes.get("counselor_id"):
+        await _require_overseas_counselor(db, changes["counselor_id"])
     old_status = item.status
     old_next_action = item.next_action
     allowed = {"counselor_id", "intake", "status", "application_reference", "offer_letter_url"}

@@ -3683,10 +3683,82 @@ and `/telecaller/manager/campaigns`. Design spec `docs/superpowers/specs/2026-10
 
 **Status:** `EXPLICIT_APPROVAL` for F1–F7; implemented on `feature/bdm-008-follow-ups` — **VERIFIED — ready for owner sign-off, NOT marked COMPLETE (2026-10-06, `feature/bdm-008-follow-ups` @ `ae5758f8`).** Fresh evidence on that commit: backend LITE 100 passed; ruff clean on changed files; mypy 401 = `main`'s 401 (no new errors); single alembic head `0077_bdm_tasks_followups` (offline SQL additive: 3 nullable columns, backfill before 2 CHECKs); web BDM set 431 passed (47 files); `tsc` 0; eslint 0 on changed web files; `next build` 0; Playwright bdm-008 + bdm-002 (2) / 006 / 007 / 009 — 6 passed on a stack rebuilt from that commit; browser verification (isolated Playwright Chromium, 20 areas + QA8-01/02 and QA8B-01…07 re-checks) passed with 0 page errors. Codex review waived by the owner. **Open for the owner:** Browser Use is not installed on this machine (isolated Playwright Chromium used instead); the full backend / web suites are the owner's; MoU-sourced follow-ups wait for bdm-005 (F1).
 
-### DEC-SCOPE-076 — BDM deactivation, portfolio handover and manager change (`bdm-025`)
 
-**ID note:** drafted as `DEC-SCOPE-076` with migration `0078_bdm_assignment_history` on `main` @ `442ce465`. Per backlog §6.2, if another
-branch (e.g. bdm-005) merges first with the same numbers, the second to merge renumbers.
+### DEC-SCOPE-076 — Counselor role in the IT division + IT counselor workspace (`tel-017`)
+
+**Evidence:** `EVID-019` §9 "IT course counselling", §10 handover; `DEC-SCOPE-073` T3 ("the existing `counselor` role, allowed in the IT
+division"); backlog Q-23; owner answer in-session 2026-10-06. (`DEC-SCOPE-075` is held by tel-003, which runs in parallel.)
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for C1; VERIFIED on `feature/tel-017` (2026-10-06); **MERGED** to `main` as PR #73 @ `675762d3` (2026-10-06).
+
+| # | Question | Answer |
+|---|---|---|
+| C1 | Which sections does the IT counselor workspace have now (Q-23)? | **Dashboard + My Leads only.** tel-016 adds Appointments and tel-018 the student link to the same nav; no empty pages |
+| — | Can a counselor's division change (Q-23 edge case)? | **Not applicable:** `User.division` is fixed at creation (`PATCH /admin/users` never writes it), so no 422 path is added |
+
+**Implementation:** `counselor` joins the IT allow-list of `POST /admin/users`. `services/portal._it_counselor` serves `dashboard` (leads routed
+to you, new leads, five most recent) and `leads` (`Enquiry.division == user.division AND owner_id == user.id`, shared with the overseas
+counselor) for an IT counselor; every other section → 404. Nine overseas-only routes that checked the role only now also require the
+`overseas` division (`403` "Wrong EduSphere division", `super_admin` exempt): `/overseas-admin/school-students/lookup`,
+`/overseas-admin/school-students/{id}/applications`, `/overseas-admin/school-applications`, `/lookups/{overseas-students,
+overseas-applications,schools,school-students}`, `/inbound/university-email` and `/inbound/university-email/{id}/match`. The 14 counselor
+routes in `workflows.py` already called `_require(..., "overseas")`; their `counselor_id` (create/PATCH application) must now be an
+overseas `counselor` (422 "Choose an overseas counselor"), so no overseas chat or notice can reach an IT counselor. Web: `/it/counselor/{dashboard,leads}`, `/it/admin/counselors`,
+`dashboardPathFor()` for the post-sign-in and "Back to dashboard" links. No migration. Design spec
+`docs/superpowers/specs/2026-10-06-tel-017-it-counselor-design.md`.
+
+### DEC-SCOPE-077 — Lead record: Lead ID, EVID-019 §2 fields, admin list alignment (`tel-003`)
+
+**Evidence:** `EVID-019` §2 ("Every lead should have a Lead ID", the 18 lead fields, the 13 sources); `DEC-SCOPE-073` T6, T25, T29;
+owner answers in-session 2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for L1–L2; L3–L6 are recorded defaults the owner did not change.
+VERIFIED on `feature/tel-003` (2026-10-06); **MERGED** to `main` as PR #75 @ `10fce82e` (2026-10-06).
+
+| # | Question | Answer |
+|---|---|---|
+| L1 (Q-01) | Lead ID format | **`LD-000001`, one global sequence**, a database default on every insert path (no truncation past 999999); existing rows backfilled oldest-first |
+| L2 | Legacy `source` values outside the 13 §2 values | Case/space-folded first; anything still unknown → **`other`**, the original kept in `metadata_json.legacy_source` (a clean downgrade restores it). The public API answers `422` for a source outside the list |
+| L3 (Q-04) | Mobile normalisation | Reuse ENH-014 `normalise_phone` (`+91` default for an Indian 10-digit mobile, `+` E.164 kept, else null) — a model validator, so it follows every `phone` change |
+| L4 (Q-03) | Nullable email | Not changed here; tel-005 (phone-only manual leads) owns it |
+| L5 | Admin status editor | Unchanged until tel-004's stage engine |
+| L6 | Q-02 / Q-21 | Deferred to tel-004 (status mapping) and tel-005/013/014 (consent, retention) |
+
+**Implementation:** migration `0078_enquiry_lead_record` (13 columns on `enquiries` — `lead_code`, `phone_normalized`, `whatsapp_number`,
+`city`, `state`, `qualification`, `passing_year`, `institution`, `product_id`, `campaign_id`, `telecaller_user_id`, `priority`,
+`stage_changed_at` — CHECKs on source/priority/passing year, unique Lead ID, five indexes; downgrade refuses while lead data exists).
+`GET /admin/leads` becomes `{items,total,limit,offset}` with stage/source/product/campaign/telecaller/organization/search filters
+(**breaking**; every in-repo consumer updated); `POST /public/enquiries` and the CRM payload add `lead_code`. bdm-017's columns and
+conversion routes are unchanged (`DEC-SCOPE-072`). Design spec `docs/superpowers/specs/2026-10-06-tel-003-lead-record-design.md`.
+
+### DEC-SCOPE-078 — MoU tracking (`bdm-005`)
+
+**ID note:** drafted as `DEC-SCOPE-074` with migration `0076_bdm_mous` (both free on `main` @ `e73dfa60`); tel-002 (PR #69) reached `main` first with `DEC-SCOPE-074` / `0076_tel_catalogue` and bdm-008 (PR #71) with `DEC-SCOPE-075` / `0077_bdm_tasks_followups`, so on merging `main` @ `442ce465` (2026-10-06) this entry was `DEC-SCOPE-077` and the migration **`0078_bdm_mous`** (after `0077_bdm_tasks_followups`); tel-017 (PR #73) then took `DEC-SCOPE-077` (no migration), so on merging `main` @ `edd9a9b0` this entry was `DEC-SCOPE-077` with `0078_bdm_mous`; tel-003 (PR #75) then took `DEC-SCOPE-077` and `0078_enquiry_lead_record`, so on merging `main` @ `11f4c9c7` this entry is **`DEC-SCOPE-078`** and the migration **`0079_bdm_mous`** (after `0078_enquiry_lead_record`). bdm-005 commits and docs from before that merge that say `DEC-SCOPE-074` or `0076_bdm_mous` mean this decision / migration.
+
+**Question:** which organizations track MoUs, how statuses move and expire, who may change and download them, what the document rules are, how an MoU couples to the pipeline (D28) and how renewals work (`BDM_CRM_BACKLOG.md` §4 bdm-005)?
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md`, `DERIVED_BLUEPRINT`) §10 MoU Tracking (339–369), Agent §B / School §B / College §B (Agreement, MoU, Contract, Renewal Date) — the source's lists are not an approval; `DEC-SCOPE-055` D19 (Q-10), D28 (Q-19); `DEC-SCOPE-065` P11; `DEC-SCOPE-071`; bdm-005 impact analysis 2026-10-06 (graphify-led).
+
+**Resolution:** owner, in-session 2026-10-06 (`EXPLICIT_APPROVAL` — six structured questions, the approach, then four design sections reviewed against the API, frontend and security skills; spec `docs/superpowers/specs/2026-10-06-bdm-005-mou-tracking-design.md` §3):
+- **M1** All three BDM types (agent, school, college) track MoUs.
+- **M2** Free moves among the 8 settable statuses (date rules enforced); `Expired` is derived, never stored or settable: Signed / Active with `valid_until` before today (Asia/Kolkata) reads Expired. Rejected re-opens by moving to another status.
+- **M3** Writes: the assigned BDM and `super_admin` (`can_edit`); reads and downloads follow organization scope; out of scope = 404; every download audited.
+- **M4** Document: PDF / JPEG / PNG by bytes, `max_upload_bytes`, metadata stripped; one current file; a replace keeps the old object.
+- **M5** D28: Signed advances the pipeline to the type's signed stage only when behind; Lost refuses MoU writes (409); archived refuses (409).
+- **M6** Renewal is a new row; one current MoU per organization; a new one only when none, or the current reads Expired / Rejected.
+- **M7** Both Signed and Active expire.
+- **M8** Upload rate limit 20 per user per rolling hour (429 `Retry-After`) — the first rate limit on a BDM route, approved by the owner.
+- **M9** An Expired MoU refuses status changes (409 `mou_expired`) but accepts date / reference / notes corrections and a document.
+
+**Consequences:** migration `0079_bdm_mous` (new `bdm_mous`, append-only `bdm_mou_events`; no existing row touched; downgrade refuses while MoUs exist); routes `GET|POST|PATCH /bdm/organizations/{id}/mou`, `PUT /bdm/organizations/{id}/mou/document`, `GET /bdm/mous`, `GET /bdm/mous/{id}/history`, `GET /bdm/mous/{id}/document`; an MoU card on both organization detail pages; pages `/bdm/mous`, `/bdm/manager/mous`. Residual risk recorded, not changed: `/local-files` serves the local upload directory unauthenticated (existing). **New Feature ID authorized:** `bdm-005`. **Status:** VERIFIED, not yet COMPLETE (2026-10-06): Fresh evidence on the merged HEAD (main @ `442ce465` merged; `d9183437`): backend lite (bdm-005 / 008 / 004 / 002, tel-002) 359 passed, 2 failed — the two `test_bdm_002_migration` round trips, which fail identically on `origin/main` @ `442ce465` (bdm-017's `enquiries` FK blocks the 0066 downgrade; `bdm_mous` adds a second FK of the same kind); web unit 2762 passed, 1 failed — `dateZoneSweep` lists only the ten pre-existing entries also failing on main (bdm-005's two were fixed); `tsc` 0; eslint 0 errors (no warning in bdm-005 files); ruff / format clean; mypy 0 in bdm-005 modules (+2 = the two `Literal[tuple]` aliases, the bdm-006 / tel-002 pattern); `next build` ok; one alembic head `0079_bdm_mous`, offline SQL additive only; Playwright bdm-005 + bdm-008 + bdm-004 + bdm-002 5 passed. Exploratory QA pass 1 (isolated Playwright Chromium; Browser Use not installed) found QA5-01…06: QA5-01 (stale field edit, `expected_updated_at` → 409 `mou_changed`), QA5-02 (focus after Not yet / Escape), QA5-04 (filters one scrolling row), QA5-05 (actions beside the status) and QA5-06 (read-only reason) fixed test-first and re-verified in the browser; QA5-03 not reproducible through the UI (a click after the session ends cancels the download and the page stays; only a typed API URL shows the JSON, as every API route). Open: Browser Use itself, the owner's full suites, the Codex review the owner set aside.
+
+### DEC-SCOPE-079 — BDM deactivation, portfolio handover and manager change (`bdm-025`)
+
+**ID note (2026-10-06):** drafted as `DEC-SCOPE-076` with migration `0078_bdm_assignment_history` on `main` @ `442ce465`. On merging
+`main` @ `230a043f`, the earlier numbers were taken:
+- tel-017 holds `DEC-SCOPE-076`;
+- tel-003 holds `DEC-SCOPE-077` / `0078_enquiry_lead_record`;
+- bdm-005 holds `DEC-SCOPE-078` / `0079_bdm_mous`.
+
+So this entry is `DEC-SCOPE-079`, and the migration is `0080_bdm_assignment_history`, chained after `0079_bdm_mous` (backlog §6.2).
 
 **Question:** what must happen when a BDM or a BDM manager is deactivated? Specifically: what counts as their open work, where does
 it go, what happens to trips and pending approvals, and how is the reporting manager changed (`BDM_CRM_BACKLOG.md` §4 bdm-025)?
@@ -3719,7 +3791,7 @@ picked the recommended option. Design spec: `docs/superpowers/specs/2026-10-06-b
   - a manager change stays on `PATCH /admin/users` `bdm_profile.reporting_manager_user_id`, and pending approvals follow because of T2.
 
 **Consequences:**
-- Migration `0078_bdm_assignment_history`: an append-only table; the downgrade refuses while rows exist.
+- Migration `0080_bdm_assignment_history`: an append-only table; the downgrade refuses while rows exist.
 - New routes:
   - `GET /admin/bdms/{id}/portfolio`
   - `POST /admin/bdms/{id}/deactivate` `{mode, reassign_to}`

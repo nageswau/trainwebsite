@@ -41,16 +41,21 @@ export async function getPage<T>(url: string, signal?: AbortSignal): Promise<Pag
   return body;
 }
 
-/** The product picker: every active product, in catalogue order (the API orders them). It reads page after page (QA-01): a picker
- *  that stopped at the first 100 would silently hide the rest. */
-export async function activeProducts(signal?: AbortSignal): Promise<Product[]> {
-  const items: Product[] = [];
+/** Every row of a paged list, page after page (QA-01): a picker that stopped at the first 100 would silently hide the rest. */
+async function readAll<T>(url: string, signal?: AbortSignal): Promise<T[]> {
+  const items: T[] = [];
   for (;;) {
-    const page = await getPage<Product>(`${PRODUCTS_URL}?active=true&limit=${CATALOGUE_PAGE_SIZE}&offset=${items.length}`, signal);
+    const page = await getPage<T>(`${url}?active=true&limit=${CATALOGUE_PAGE_SIZE}&offset=${items.length}`, signal);
     items.push(...page.items);
     if (page.items.length === 0 || items.length >= page.total) return items;
   }
 }
+
+/** The product picker: every active product, in catalogue order (the API orders them). */
+export const activeProducts = (signal?: AbortSignal) => readAll<Product>(PRODUCTS_URL, signal);
+
+/** tel-003: the admin lead list's campaign filter -- every active campaign. */
+export const activeCampaigns = (signal?: AbortSignal) => readAll<Campaign>(CAMPAIGNS_URL, signal);
 
 /** The IT course link picker: the public list of active programs. */
 export async function activePrograms(signal?: AbortSignal): Promise<ProgramOption[]> {

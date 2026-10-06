@@ -376,6 +376,8 @@ Conventions used below:
 
 ### bdm-005 — MoU tracking
 
+> **Status (2026-10-06):** **VERIFIED — not yet COMPLETE** on `feature/bdm-005` (`DEC-SCOPE-078` M1–M9, drafted as 074; migration `0079_bdm_mous` after `0078_enquiry_lead_record`, drafted as 0076). Fresh evidence on the merged HEAD (main @ `442ce465` merged; `d9183437`): backend lite (bdm-005 / 008 / 004 / 002, tel-002) 359 passed, 2 failed — the two `test_bdm_002_migration` round trips, which fail identically on `origin/main` @ `442ce465` (bdm-017's `enquiries` FK blocks the 0066 downgrade; `bdm_mous` adds a second FK of the same kind); web unit 2762 passed, 1 failed — `dateZoneSweep` lists only the ten pre-existing entries also failing on main (bdm-005's two were fixed); `tsc` 0; eslint 0 errors (no warning in bdm-005 files); ruff / format clean; mypy 0 in bdm-005 modules (+2 = the two `Literal[tuple]` aliases, the bdm-006 / tel-002 pattern); `next build` ok; one alembic head `0079_bdm_mous`, offline SQL additive only; Playwright bdm-005 + bdm-008 + bdm-004 + bdm-002 5 passed. Exploratory QA pass 1 (isolated Playwright Chromium; Browser Use not installed) found QA5-01…06: QA5-01 (stale field edit, `expected_updated_at` → 409 `mou_changed`), QA5-02 (focus after Not yet / Escape), QA5-04 (filters one scrolling row), QA5-05 (actions beside the status) and QA5-06 (read-only reason) fixed test-first and re-verified in the browser; QA5-03 not reproducible through the UI (a click after the session ends cancels the download and the page stays; only a typed API URL shows the JSON, as every API route). **Open (owner):** Browser Use itself was not run (the isolated Playwright pass stands in for it until the owner accepts or runs it), the full backend / web suites, and the Codex review the owner set aside. Spec: `docs/superpowers/specs/2026-10-06-bdm-005-mou-tracking-design.md`; plan: `docs/superpowers/plans/2026-10-06-bdm-005-mou-tracking.md`; RTM addendum `bdm-005`.
+
 - **Business requirement:** MoU status: Prospect, Discussion Started, Proposal Sent, Under Negotiation, Draft Shared, Signed, Active, Expired, Rejected (§10). The CRM reminds the BDM when a proposal has been waiting (e.g. 5 days), and the school/college databases carry MoU, Agreement, Contract and Renewal Date.
 - **Existing behavior:** `schools.mou_reference` (text) and `partnership_date` only.
 - **Expected behavior:**
@@ -1150,7 +1152,7 @@ Conventions used below:
 
 ### bdm-025 — BDM deactivation, portfolio reassignment, manager change
 
-> **Status (2026-10-06):** implemented on `worktree-bdm-025` (`DEC-SCOPE-076`, migration `0078_bdm_assignment_history`).
+> **Status (2026-10-06):** implemented on `worktree-bdm-025` (`DEC-SCOPE-079`, migration `0080_bdm_assignment_history`).
 > **COMPLETE WITH DEFERRED FULL REGRESSION (2026-10-06, `2efee1c9`):** the feature is verified; the repository-wide regression
 > remains (the owner's).
 >

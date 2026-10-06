@@ -19,7 +19,8 @@ test("admin routes a lead to a new status, selected by name not a raw ID (ADM-00
 
   await page.goto("/it/admin/leads");
   const panel = page.locator(".action-card", { has: page.getByRole("heading", { name: "Manage leads" }) });
-  await panel.getByLabel("Search by name, email, or subject").fill(name);
+  await panel.getByLabel("Search leads").fill(name); // tel-003: the API searches; Enter submits
+  await panel.getByLabel("Search leads").press("Enter");
   const row = panel.locator("tr", { hasText: name });
   await expect(row).toBeVisible();
   await row.getByLabel(`${name} status`).selectOption("contacted");
