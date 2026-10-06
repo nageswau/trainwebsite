@@ -24,11 +24,24 @@ depends_on = None
 SOURCES = ("instagram", "facebook", "google", "website", "whatsapp", "walk_in", "college", "school", "agent", "referral", "exhibition_event", "bdm", "other")
 # (group, name, team) in EVID-019 §3 order; T18 sets the "Other" teams (None = the unassigned queue).
 SEED = (
-    ("it", "Digital Marketing", "it"), ("it", "SAP", "it"), ("it", "Cyber Security", "it"), ("it", "Python Full Stack", "it"), ("it", "Java", "it"),
-    ("overseas", "UK", "overseas"), ("overseas", "USA", "overseas"), ("overseas", "Canada", "overseas"), ("overseas", "Australia", "overseas"),
-    ("overseas", "New Zealand", "overseas"), ("overseas", "Germany", "overseas"), ("overseas", "Japan", "overseas"),
-    ("overseas", "South Korea", "overseas"), ("overseas", "Dubai", "overseas"),
-    ("other", "Career Guidance", None), ("other", "Job Assistance", "it"), ("other", "Career Change", "it"), ("other", "General Enquiry", None),
+    ("it", "Digital Marketing", "it"),
+    ("it", "SAP", "it"),
+    ("it", "Cyber Security", "it"),
+    ("it", "Python Full Stack", "it"),
+    ("it", "Java", "it"),
+    ("overseas", "UK", "overseas"),
+    ("overseas", "USA", "overseas"),
+    ("overseas", "Canada", "overseas"),
+    ("overseas", "Australia", "overseas"),
+    ("overseas", "New Zealand", "overseas"),
+    ("overseas", "Germany", "overseas"),
+    ("overseas", "Japan", "overseas"),
+    ("overseas", "South Korea", "overseas"),
+    ("overseas", "Dubai", "overseas"),
+    ("other", "Career Guidance", None),
+    ("other", "Job Assistance", "it"),
+    ("other", "Career Change", "it"),
+    ("other", "General Enquiry", None),
 )
 
 

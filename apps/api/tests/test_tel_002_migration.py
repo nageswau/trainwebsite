@@ -22,11 +22,24 @@ _spec.loader.exec_module(_migration)
 
 BASE, HEAD = "0075_telecaller_profiles", "0076_tel_catalogue"
 SEED = {
-    ("it", "Digital Marketing", "it"), ("it", "SAP", "it"), ("it", "Cyber Security", "it"), ("it", "Python Full Stack", "it"), ("it", "Java", "it"),
-    ("overseas", "UK", "overseas"), ("overseas", "USA", "overseas"), ("overseas", "Canada", "overseas"), ("overseas", "Australia", "overseas"),
-    ("overseas", "New Zealand", "overseas"), ("overseas", "Germany", "overseas"), ("overseas", "Japan", "overseas"),
-    ("overseas", "South Korea", "overseas"), ("overseas", "Dubai", "overseas"),
-    ("other", "Career Guidance", None), ("other", "Job Assistance", "it"), ("other", "Career Change", "it"), ("other", "General Enquiry", None),
+    ("it", "Digital Marketing", "it"),
+    ("it", "SAP", "it"),
+    ("it", "Cyber Security", "it"),
+    ("it", "Python Full Stack", "it"),
+    ("it", "Java", "it"),
+    ("overseas", "UK", "overseas"),
+    ("overseas", "USA", "overseas"),
+    ("overseas", "Canada", "overseas"),
+    ("overseas", "Australia", "overseas"),
+    ("overseas", "New Zealand", "overseas"),
+    ("overseas", "Germany", "overseas"),
+    ("overseas", "Japan", "overseas"),
+    ("overseas", "South Korea", "overseas"),
+    ("overseas", "Dubai", "overseas"),
+    ("other", "Career Guidance", None),
+    ("other", "Job Assistance", "it"),
+    ("other", "Career Change", "it"),
+    ("other", "General Enquiry", None),
 }
 D1, D30 = date(2026, 9, 1), date(2026, 9, 30)
 PRODUCTS = "SELECT product_group, name, team FROM tel_products"
@@ -48,8 +61,15 @@ def test_models_match_the_migration():
     assert campaign.c.end_date.nullable and not campaign.c.start_date.nullable and not campaign.c.product_id.nullable
     names = {i.name for t in (product, campaign) for i in t.indexes} | {c.name for t in (product, campaign) for c in t.constraints}
     assert {
-        "uq_tel_products_group_name", "ck_tel_products_group", "ck_tel_products_team", "ck_tel_products_team_matches_group",
-        "ck_tel_products_program_it_only", "uq_tel_campaigns_name", "ck_tel_campaigns_source", "ck_tel_campaigns_dates", "ix_tel_campaigns_product",
+        "uq_tel_products_group_name",
+        "ck_tel_products_group",
+        "ck_tel_products_team",
+        "ck_tel_products_team_matches_group",
+        "ck_tel_products_program_it_only",
+        "uq_tel_campaigns_name",
+        "ck_tel_campaigns_source",
+        "ck_tel_campaigns_dates",
+        "ix_tel_campaigns_product",
     } <= names
 
 
@@ -79,8 +99,7 @@ def isolated_db():
 
 
 def _insert_product(url, group, name, team, program=None):
-    _sql(url, "INSERT INTO tel_products (id, product_group, name, team, program_id) VALUES (:id, :g, :n, :t, :p)",
-         {"id": uuid.uuid4(), "g": group, "n": name, "t": team, "p": program})
+    _sql(url, "INSERT INTO tel_products (id, product_group, name, team, program_id) VALUES (:id, :g, :n, :t, :p)", {"id": uuid.uuid4(), "g": group, "n": name, "t": team, "p": program})
 
 
 def test_seed_round_trip_and_idempotence(isolated_db):
@@ -111,9 +130,12 @@ def test_constraints_hold(isolated_db):
     with pytest.raises(Exception, match="ck_tel_products_group"):
         _insert_product(url, "global", "Rust", None)
     program = uuid.uuid4()
-    _sql(url, "INSERT INTO programs (id, slug, category, title, summary, duration, eligibility, fees, certification, curriculum, "
-              "placement_assistance, trainer_name, active) VALUES (:id, :slug, 'it', 'P', 's', 'd', 'e', 1, 'c', '[]', 'p', 't', true)",
-         {"id": program, "slug": f"p-{program.hex[:8]}"})
+    _sql(
+        url,
+        "INSERT INTO programs (id, slug, category, title, summary, duration, eligibility, fees, certification, curriculum, "
+        "placement_assistance, trainer_name, active) VALUES (:id, :slug, 'it', 'P', 's', 'd', 'e', 1, 'c', '[]', 'p', 't', true)",
+        {"id": program, "slug": f"p-{program.hex[:8]}"},
+    )
     with pytest.raises(Exception, match="ck_tel_products_program_it_only"):
         _insert_product(url, "other", "Coaching", None, program)
     product = _sql(url, "SELECT id FROM tel_products WHERE name = 'SAP'")[0][0]
@@ -135,7 +157,6 @@ def test_downgrade_refuses_while_manager_data_exists(isolated_db):
         command.downgrade(cfg, BASE)
     _sql(url, "UPDATE tel_products SET team = NULL WHERE name = 'Career Guidance'")
     product = _sql(url, "SELECT id FROM tel_products WHERE name = 'SAP'")[0][0]
-    _sql(url, "INSERT INTO tel_campaigns (id, name, source, product_id, start_date) VALUES (:id, 'C', 'google', :p, :a)",
-         {"id": uuid.uuid4(), "p": product, "a": D1})
+    _sql(url, "INSERT INTO tel_campaigns (id, name, source, product_id, start_date) VALUES (:id, 'C', 'google', :p, :a)", {"id": uuid.uuid4(), "p": product, "a": D1})
     with pytest.raises(Exception, match="manager data"):
         command.downgrade(cfg, BASE)

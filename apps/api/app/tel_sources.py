@@ -2,5 +2,17 @@
 `source` type read it from here; migration 0076 keeps its own frozen copy."""
 
 TEL_SOURCES = (
-    "instagram", "facebook", "google", "website", "whatsapp", "walk_in", "college", "school", "agent", "referral", "exhibition_event", "bdm", "other",
+    "instagram",
+    "facebook",
+    "google",
+    "website",
+    "whatsapp",
+    "walk_in",
+    "college",
+    "school",
+    "agent",
+    "referral",
+    "exhibition_event",
+    "bdm",
+    "other",
 )
