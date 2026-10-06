@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useState } from "react";
 
 import BdmActivityTimeline from "@/components/BdmActivityTimeline";
 import BdmConfirm from "@/components/BdmConfirm";
+import BdmOrganizationBusiness from "@/components/BdmOrganizationBusiness";
 import BdmOrganizationContacts from "@/components/BdmOrganizationContacts";
 import BdmOrganizationForm from "@/components/BdmOrganizationForm";
 import BdmOrganizationLeads from "@/components/BdmOrganizationLeads";
@@ -16,6 +17,7 @@ import BdmOrganizationTasks from "@/components/BdmOrganizationTasks";
 import BdmStageHistory from "@/components/BdmStageHistory";
 import { type Page, sendRequest } from "@/lib/apiErrors";
 import type { Activity } from "@/lib/bdmActivities";
+import type { Business } from "@/lib/bdmBusiness";
 import type { Lead } from "@/lib/bdmLeads";
 import type { OrgMou } from "@/lib/bdmMous";
 import type { StageEvent } from "@/lib/bdmPipeline";
@@ -32,9 +34,9 @@ function mouReadOnlyNote(org: Organization): string | undefined {
 
 // bdm-002 (spec §6.2, §12.2): one organization. Actions render from `permissions` only -- the server enforces every rule (AC3-AC5).
 // Every write re-renders from the organization the API returns (no refetch). Last/Next meeting come from bdm-006 appointments ("—" when none).
-export default function BdmOrganizationDetail({ initial, basePath, created = false, activities, leads, stageHistory, tasks, mou }: {
+export default function BdmOrganizationDetail({ initial, basePath, created = false, activities, leads, stageHistory, tasks, mou, business }: {
   initial: Organization; basePath: string; created?: boolean; activities?: Page<Activity> | null; leads?: Page<Lead> | null;
-  stageHistory?: Page<StageEvent> | null; tasks?: TaskPage | null; mou?: OrgMou | null;
+  stageHistory?: Page<StageEvent> | null; tasks?: TaskPage | null; mou?: OrgMou | null; business?: Business | null;
 }) {
   const [org, setOrg] = useState(initial);
   const [historyVersion, setHistoryVersion] = useState(0); // bdm-004: bumped by each pipeline write, which reloads the stage history
@@ -236,6 +238,9 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
       )}
       {leads !== undefined && ( // bdm-017 (L6): the BDM view adds (assigned and not archived = can_edit); the manager view reads
         <BdmOrganizationLeads organizationId={org.id} initial={leads} canAdd={basePath === "/bdm/organizations" && p.can_edit} onNotice={notify} />
+      )}
+      {business !== undefined && org.bdm_type === "college" && ( // bdm-021: the funnel builds on the leads above; read by the page
+        <BdmOrganizationBusiness organizationId={org.id} initial={business} />
       )}
       {p.can_reassign && (
         <BdmOrganizationReassign
