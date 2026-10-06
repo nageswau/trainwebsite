@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 
 import ProductOptions from "@/components/TelecallerProductOptions";
 import { isRequestBody, sendJson } from "@/lib/apiErrors";
@@ -25,6 +25,8 @@ const TEXT_FIELDS = [
   { key: "passing_year", label: "Passing year", type: "number", max: 4, required: false },
   { key: "institution", label: "College/University", type: "text", max: 200, required: false },
 ] as const;
+const REQUIRED = [["name", "student name"], ["phone", "mobile number"], ["product_id", "product interest"], ["source", "lead source"]] as const;
+const listed = (items: string[]) => (items.length > 1 ? `${items.slice(0, -1).join(", ")} and ${items.at(-1)}` : items[0]);
 const EMPTY: Record<string, string> = {
   ...Object.fromEntries(TEXT_FIELDS.map(({ key }) => [key, ""])),
   product_id: "", campaign_id: "", source: "", priority: "warm", division: "", subject: "", message: "",
@@ -37,26 +39,37 @@ function NoticeLine({ notice }: { notice: Notice }) {
 
 /** EVID-019 §18: who has the existing lead and where it stands, with "Add enquiry to this lead" (I5) and, when the caller may open it,
  *  a link to it. */
-function DuplicatePanel({ matches, basePath, enquiry }: { matches: DuplicateMatch[]; basePath: string; enquiry: () => Record<string, string> | string }) {
+function DuplicatePanel({ matches, basePath, enquiry, focusRequest }: {
+  matches: DuplicateMatch[]; basePath: string; enquiry: () => Record<string, string> | string; focusRequest: number;
+}) {
   const [busy, setBusy] = useState<string | null>(null);
+  const [added, setAdded] = useState<Set<string>>(new Set());
   const [notices, setNotices] = useState<Record<string, Notice>>({});
+  const sending = useRef(false); // QA-04: a double click sends one request (state only updates after the handler)
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (focusRequest > 0) heading.current?.focus(); // QA-05: a refused create takes the user to the warning
+  }, [focusRequest]);
 
   async function addEnquiry(match: DuplicateMatch) {
     const payload = enquiry();
     if (typeof payload === "string") return setNotices((n) => ({ ...n, [match.id]: { text: payload, failed: true } }));
+    if (sending.current) return;
+    sending.current = true;
     setBusy(match.id);
     const outcome = await sendJson(leadUrl(match.id, "/enquiries"), "POST", payload);
+    sending.current = false;
     setBusy(null);
-    const notice = outcome.ok && isRequestBody(outcome.data)
-      ? { text: `Enquiry added to ${match.lead_code}.`, failed: false }
-      : { text: outcome.ok ? "Unable to add the enquiry." : outcome.message, failed: true };
+    const ok = outcome.ok && isRequestBody(outcome.data);
+    if (ok) setAdded((a) => new Set(a).add(match.id));
+    const notice = ok ? { text: `Enquiry added to ${match.lead_code}.`, failed: false } : { text: outcome.ok ? "Unable to add the enquiry." : outcome.message, failed: true };
     setNotices((n) => ({ ...n, [match.id]: notice }));
   }
 
   return (
     <section aria-labelledby="duplicate-heading" className="action-card" style={{ borderColor: "#d97706", display: "grid", gap: 12 }}>
       <div>
-        <h3 id="duplicate-heading" style={{ margin: 0 }}>⚠️ Lead already exists.</h3>
+        <h3 id="duplicate-heading" ref={heading} tabIndex={-1} style={{ margin: 0 }}>⚠️ Lead already exists.</h3>
         <p className="muted" style={{ margin: "4px 0 0", fontSize: 13 }}>
           A lead with this mobile number or email is already in the CRM. Add this enquiry to it instead of creating another lead.
         </p>
@@ -82,8 +95,9 @@ function DuplicatePanel({ matches, basePath, enquiry }: { matches: DuplicateMatc
             ))}
           </ul>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
-            <button type="button" className="btn small" disabled={busy !== null} aria-label={`Add enquiry to ${m.lead_code}`} onClick={() => void addEnquiry(m)}>
-              {busy === m.id ? "Adding…" : "Add enquiry to this lead"}
+            <button type="button" className="btn small" disabled={busy !== null || added.has(m.id)} aria-label={`Add enquiry to ${m.lead_code}`}
+              onClick={() => void addEnquiry(m)}>
+              {added.has(m.id) ? "Enquiry added" : busy === m.id ? "Adding…" : "Add enquiry to this lead"}
             </button>
             {m.in_scope && <Link className="btn secondary small" href={`${basePath}/${encodeURIComponent(m.id)}`} aria-label={`Open ${m.lead_code}`}>Open lead</Link>}
           </div>
@@ -103,6 +117,8 @@ export default function NewLeadForm({ basePath }: { basePath: string }) {
   const [matches, setMatches] = useState<DuplicateMatch[]>([]);
   const [notice, setNotice] = useState<Notice>(null);
   const [busy, setBusy] = useState(false);
+  const [focusRequest, setFocusRequest] = useState(0);
+  const sending = useRef(false); // QA-04: one create per click burst
 
   useEffect(() => {
     const controller = new AbortController();
@@ -131,7 +147,7 @@ export default function NewLeadForm({ basePath }: { basePath: string }) {
     if (!query.size) return setMatches([]);
     const response = await fetch(`${DUPLICATE_CHECK_URL}?${query}`).catch(() => null);
     const data = response?.ok ? await response.json().catch(() => null) : null;
-    if (Array.isArray(data?.matches)) setMatches(data.matches);
+    setMatches(Array.isArray(data?.matches) ? data.matches : []); // QA-03: a number that can't be checked keeps no stale match
   }
 
   /** The new enquiry, for "Add enquiry to this lead": the form's subject (else the product), notes, source and campaign. */
@@ -148,6 +164,11 @@ export default function NewLeadForm({ basePath }: { basePath: string }) {
   async function submit(event: FormEvent) {
     event.preventDefault();
     setNotice(null);
+    const missing: string[] = REQUIRED.filter(([key]) => !values[key].trim()).map(([, label]) => label);
+    if (product && !product.team && !values.division) missing.push("division");
+    if (missing.length) return setNotice({ text: `Enter the ${listed(missing)}.`, failed: true }); // QA-02
+    if (sending.current) return;
+    sending.current = true;
     const payload: Record<string, string | number> = { priority: values.priority };
     for (const [key, value] of Object.entries(values)) {
       const text = value.trim();
@@ -157,16 +178,20 @@ export default function NewLeadForm({ basePath }: { basePath: string }) {
     const outcome = await sendJson(LEADS_URL, "POST", payload);
     setBusy(false);
     if (outcome.ok && isRequestBody(outcome.data)) return router.push(`${basePath}/${encodeURIComponent(outcome.data.id)}`);
+    sending.current = false;
     const detail = outcome.ok ? null : (outcome.detail as { code?: string; matches?: DuplicateMatch[] } | undefined);
     if (detail?.code === "duplicate_lead" && Array.isArray(detail.matches)) {
       setMatches(detail.matches);
-      return setNotice({ text: "This person is already a lead -- see below.", failed: true });
+      setFocusRequest((n) => n + 1);
+      return setNotice({ text: "This person is already a lead. Add the enquiry to the existing lead instead.", failed: true });
     }
     setNotice({ text: outcome.ok ? "Unable to create the lead." : outcome.message, failed: true });
   }
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
+      {/* QA-05: above the form, so the warning shows next to the mobile/email fields even on a phone */}
+      {matches.length > 0 && <DuplicatePanel matches={matches} basePath={basePath} enquiry={enquiryPayload} focusRequest={focusRequest} />}
       <form onSubmit={submit} noValidate className="action-card" style={{ display: "grid", gap: 12 }}>
         <div className="form-grid" style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))" }}>
           {TEXT_FIELDS.map(({ key, label, type, max, required }) => (
@@ -210,9 +235,10 @@ export default function NewLeadForm({ basePath }: { basePath: string }) {
           </div>
           <div className="field">
             <label htmlFor="new-priority">Priority</label>
-            <select id="new-priority" value={values.priority} disabled={busy} onChange={(e) => set("priority", e.target.value)}>
-              {PRIORITIES.map((p) => <option key={p.key} value={p.key}>{p.label} – {p.help}</option>)}
+            <select id="new-priority" aria-describedby="new-priority-help" value={values.priority} disabled={busy} onChange={(e) => set("priority", e.target.value)}>
+              {PRIORITIES.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
             </select>
+            <span id="new-priority-help" className="muted" style={{ fontSize: 13 }}>{PRIORITIES.find((p) => p.key === values.priority)?.help}</span>
           </div>
           <div className="field">
             <label htmlFor="new-subject">Enquiry subject</label>
@@ -231,7 +257,6 @@ export default function NewLeadForm({ basePath }: { basePath: string }) {
           <Link className="btn secondary" href={basePath}>Cancel</Link>
         </div>
       </form>
-      {matches.length > 0 && <DuplicatePanel matches={matches} basePath={basePath} enquiry={enquiryPayload} />}
     </div>
   );
 }

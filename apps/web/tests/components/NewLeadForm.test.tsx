@@ -116,6 +116,61 @@ describe("NewLeadForm (tel-005)", () => {
     expect(within(panel).getByRole("link", { name: "Open LD-000009" }).getAttribute("href")).toBe("/telecaller/leads/L9");
   });
 
+  it("QA-02: names the missing required fields and sends nothing", async () => {
+    render(<NewLeadForm basePath="/telecaller/leads" />);
+    await screen.findByRole("option", { name: "Cyber Security" });
+    fireEvent.click(screen.getByRole("button", { name: "Create lead" }));
+    expect((await screen.findByText("Enter the student name, mobile number, product interest and lead source.")).getAttribute("role")).toBe("alert");
+    expect(calls("POST", "/api/v1/telecaller/leads")).toHaveLength(0);
+  });
+
+  it("QA-03: clears the panel when the mobile no longer matches or can't be checked", async () => {
+    checkReply = () => res({ matches: [match()] });
+    await fillRequired();
+    fireEvent.blur(screen.getByLabelText(/Mobile number/));
+    await screen.findByRole("region", { name: /Lead already exists/ });
+    checkReply = () => res({ detail: "Enter a valid mobile number" }, 422);
+    type(/Mobile number/, "12");
+    fireEvent.blur(screen.getByLabelText(/Mobile number/));
+    await waitFor(() => expect(screen.queryByRole("region", { name: /Lead already exists/ })).toBeNull());
+  });
+
+  it("QA-04: a double click adds one enquiry and the button then says it is done; Create is sent once", async () => {
+    createReply = () => res({ detail: { message: "Lead already exists.", code: "duplicate_lead", matches: [match()] } }, 409);
+    await fillRequired();
+    const create = screen.getByRole("button", { name: "Create lead" });
+    fireEvent.click(create);
+    fireEvent.click(create);
+    const panel = await screen.findByRole("region", { name: /Lead already exists/ });
+    expect(calls("POST", "/api/v1/telecaller/leads")).toHaveLength(1);
+    const add = within(panel).getByRole("button", { name: "Add enquiry to LD-000009" });
+    fireEvent.click(add);
+    fireEvent.click(add);
+    await within(panel).findByText("Enquiry added to LD-000009.");
+    expect(calls("POST", "/api/v1/telecaller/leads/L9/enquiries")).toHaveLength(1);
+    expect((within(panel).getByRole("button", { name: "Add enquiry to LD-000009" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(within(panel).getByRole("button", { name: "Add enquiry to LD-000009" }).textContent).toBe("Enquiry added");
+  });
+
+  it("QA-05: the panel comes before the form, and a refused create moves focus to it", async () => {
+    createReply = () => res({ detail: { message: "Lead already exists.", code: "duplicate_lead", matches: [match()] } }, 409);
+    await fillRequired();
+    fireEvent.click(screen.getByRole("button", { name: "Create lead" }));
+    const heading = await screen.findByRole("heading", { name: /Lead already exists/ });
+    const form = screen.getByRole("button", { name: "Create lead" }).closest("form")!;
+    expect(heading.compareDocumentPosition(form) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+  });
+
+  it("QA-01: priority options are short and the chosen level's help shows beside them", async () => {
+    render(<NewLeadForm basePath="/telecaller/leads" />);
+    const priority = screen.getByLabelText("Priority");
+    expect(within(priority).getAllByRole("option").map((o) => o.textContent)).toEqual(["Hot", "Warm", "Cold"]);
+    expect(screen.getByText("Interested but needs follow-up.")).toBeTruthy();
+    fireEvent.change(priority, { target: { value: "hot" } });
+    expect(screen.getByText("Ready to join / immediate requirement.")).toBeTruthy();
+  });
+
   it("shows the API's message when the lead is refused", async () => {
     createReply = () => res({ detail: "This campaign is for another product" }, 422);
     await fillRequired();
