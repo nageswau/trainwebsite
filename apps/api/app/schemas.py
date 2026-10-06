@@ -5467,6 +5467,24 @@ class LeadEnquiryCreate(BaseModel):
     campaign_id: UUID | None = None
 
 
+class LeadImportRow(BaseModel):
+    """tel-006 (IM1): one CSV row -- tel-005's lead fields; the campaign gives the source, product and team."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: BdmLeadName
+    phone: LeadMobile
+    email: LeadOptionalEmail = None
+    whatsapp_number: BdmLeadPhone = None
+    city: LeadPlace = None
+    state: LeadPlace = None
+    qualification: LeadPlace = None
+    passing_year: int | None = Field(default=None, ge=1950, le=2100)
+    institution: LeadInstitution = None
+    priority: Literal[LEAD_PRIORITIES] = "warm"
+    subject: LeadSubject = None
+    message: BdmLeadNote = None
+
+
 class LeadTimelineRow(BaseModel):
     id: UUID
     kind: Literal["stage", "priority", "enquiry"]

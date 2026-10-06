@@ -1,5 +1,5 @@
 """tel-005 (DEC-SCOPE-088, spec §3): lead intake -- the duplicate match (T12), manual lead creation, "Add enquiry to this lead" and the
-website enquiry that attaches to a person who is already a lead. tel-006's CSV import joins here.
+website enquiry that attaches to a person who is already a lead, and tel-006's CSV import row.
 
 A person is their normalised mobile OR their lower-cased email, matched across every lead (closed ones too, R1). Each intake path takes
 the person's advisory locks before it matches (R7), so two intakes of one person serialise and the second sees the first. Functions only;
@@ -14,9 +14,9 @@ from sqlalchemy import func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.lead_stages import label as stage_label
-from app.models import AuditLog, Enquiry, LeadEnquiry, TelCampaign, User
+from app.models import AuditLog, Enquiry, LeadEnquiry, TelCampaign, TelProduct, User
 from app.notifications.phone import normalise_phone
-from app.schemas import EnquiryIn, LeadEnquiryCreate, TelecallerLeadCreate
+from app.schemas import EnquiryIn, LeadEnquiryCreate, LeadImportRow, TelecallerLeadCreate
 from app.services import lead_distribution, lead_pipeline
 from app.services.telecaller_catalogue import locked_active_product
 
@@ -92,15 +92,21 @@ async def _campaign(db: AsyncSession, campaign_id: UUID) -> TelCampaign:
     return campaign
 
 
+def lead_team(product: TelProduct, division: str | None) -> str:
+    """R5 (tel-006 R2): the product's team, or the chosen division for an `other` product without one."""
+    if product.team and division and division != product.team:
+        raise HTTPException(422, f"{product.name} belongs to the {TEAM_LABEL[product.team]} team")
+    team = product.team or division
+    if team is None:
+        raise HTTPException(422, "Choose the division (IT or Overseas) for this product")
+    return team
+
+
 async def create_lead(db: AsyncSession, user: User, payload: TelecallerLeadCreate) -> Enquiry:
     """I2 / R5 / R6: validate the catalogue choices, block a known person (409 with the panel), insert. A telecaller's lead is theirs
     (`assigned` event); a manager's goes through tel-007's distribution (I6), else waits in its team's unassigned queue."""
     product = await locked_active_product(db, payload.product_id)
-    if product.team and payload.division and payload.division != product.team:
-        raise HTTPException(422, f"{product.name} belongs to the {TEAM_LABEL[product.team]} team")
-    division = product.team or payload.division
-    if division is None:
-        raise HTTPException(422, "Choose the division (IT or Overseas) for this product")
+    division = lead_team(product, payload.division)
     if payload.campaign_id:
         campaign = await _campaign(db, payload.campaign_id)
         if campaign.product_id != product.id:
@@ -166,4 +172,26 @@ async def website_intake(db: AsyncSession, payload: EnquiryIn) -> tuple[Enquiry,
     db.add(lead)
     await db.flush()
     await lead_distribution.on_intake(db, lead)  # tel-007 DI2: in this transaction; an error leaves the lead unassigned, never lost
+    return lead, False
+
+
+async def import_row(db: AsyncSession, user: User, campaign: TelCampaign, product: TelProduct, division: str, row: LeadImportRow,
+                     batch_id: UUID) -> tuple[Enquiry, bool]:
+    """tel-006 (IM1, R3-R5): one CSV row. A known person's row attaches to their newest lead (the website rule, R4) -- a person from an
+    earlier row of the same file is already flushed, so they match too. Anyone else is a manager's new lead for the campaign, distributed
+    on arrival (I6). Returns the lead and whether the row attached."""
+    phone_key, email_key = identity(row.phone, row.email)
+    await lock_identity(db, phone_key, email_key)
+    known = await matching_leads(db, phone_key, email_key, limit=1)
+    subject, message, trace = row.subject or product.name, row.message or "", {"import_batch_id": str(batch_id)}
+    if known:
+        db.add(LeadEnquiry(lead_id=known[0].id, subject=subject, message=message, source=campaign.source, campaign_id=campaign.id,
+                           metadata_json=trace, created_by_user_id=user.id))
+        await db.flush()
+        return known[0], True
+    lead = Enquiry(**row.model_dump(exclude={"subject", "message"}), division=division, product_id=product.id, campaign_id=campaign.id,
+                   source=campaign.source, subject=subject, message=message, metadata_json=trace)
+    db.add(lead)
+    await db.flush()
+    await lead_distribution.on_intake(db, lead)
     return lead, False
