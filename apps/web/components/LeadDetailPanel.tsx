@@ -67,13 +67,16 @@ function DetailsForm({ lead, onSaved, onCancel }: { lead: TelecallerLeadDetail; 
   return (
     <form onSubmit={save} noValidate style={{ display: "grid", gap: 8, marginTop: 8 }}>
       <div className="form-grid" style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))" }}>
-        {FIELDS.map(({ key, label, type, max, required }) => (
+        {FIELDS.map(({ key, label, type, max, required: always }) => {
+          const required = always && (key !== "email" || !!lead.email); // tel-005 I1: a lead may have a mobile only
+          return (
           <div className="field" key={key}>
             <label htmlFor={`lead-${key}`}>{label}</label>
             <input id={`lead-${key}`} type={type} maxLength={max} aria-required={required || undefined} value={values[key]} disabled={busy}
               onChange={(e) => setValues((v) => ({ ...v, [key]: e.target.value }))} />
           </div>
-        ))}
+          );
+        })}
         <div className="field">
           <label htmlFor="lead-product_id">Product interest</label>
           <select id="lead-product_id" value={values.product_id} disabled={busy} onChange={(e) => setValues((v) => ({ ...v, product_id: e.target.value }))}>
@@ -256,15 +259,22 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
           <ol aria-label="Lead activity" style={{ margin: "6px 0 0", paddingLeft: 18, display: "grid", gap: 6 }}>
             {activity.items.map((row) => (
               <li key={`${row.kind}-${row.id}`}>
-                <strong>{row.kind === "priority" ? "Priority" : "Stage"}: {row.from_label} → {row.to_label}</strong>
-                <div className="muted" style={{ fontSize: 13 }}>{row.actor ? row.actor.full_name : "System"} · {formatDate(row.at, true)}</div>
-                {row.reason && <div style={{ fontSize: 13, overflowWrap: "anywhere" }}>{row.reason}</div>}
+                {row.kind === "enquiry" ? (
+                  <strong style={{ overflowWrap: "anywhere" }}>New enquiry: {row.to_label}</strong>
+                ) : (
+                  <strong>{row.kind === "priority" ? "Priority" : "Stage"}: {row.from_label} → {row.to_label}</strong>
+                )}
+                <div className="muted" style={{ fontSize: 13 }}>
+                  {row.actor ? row.actor.full_name : row.kind === "enquiry" ? "Website form" : "System"}
+                  {row.kind === "enquiry" && ` · ${SOURCE_LABEL[row.from_value] ?? row.from_value}`} · {formatDate(row.at, true)}
+                </div>
+                {row.reason && <div style={{ fontSize: 13, overflowWrap: "anywhere", whiteSpace: "pre-wrap" }}>{row.reason}</div>}
               </li>
             ))}
           </ol>
         )}
         {activity && activity.total > activity.items.length && (
-          <p className="muted" style={{ fontSize: 13 }}>Showing the latest {activity.items.length} of {activity.total} changes.</p>
+          <p className="muted" style={{ fontSize: 13 }}>Showing the latest {activity.items.length} of {activity.total} entries.</p>
         )}
       </section>
     </div>
