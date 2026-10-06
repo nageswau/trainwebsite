@@ -41,7 +41,7 @@ Agent CRM and School CRM can run back to back (about 1 h 45 min with a break) or
 | # | Item | Affects | Status |
 |---|---|---|---|
 | 1 | Which commit dev runs. The scripts follow the manuals verified at `6a9be770` (Agent) and `ce1f07c2` (School) | Both | `NEEDS_CONFIRMATION` |
-| 2 | Email delivery on dev (welcome, set-password and invitation emails) | Both | `NEEDS_CONFIRMATION` |
+| 2 | Email delivery on dev (welcome, set-password and invitation emails). The app sends these only when **both** `SMTP_HOST` and `SMTP_FROM_EMAIL` are set (`apps/api/app/services/mailer.py`); otherwise it records `not_configured` and sends nothing. `EMAIL_ENABLED` is not read. Password-reset emails go through `EMAIL_WEBHOOK_URL` instead. The local `.env` checked on 2026-10-06 had working Gmail SMTP credentials but no `SMTP_FROM_EMAIL` | Both | `NEEDS_CONFIRMATION` |
 | 3 | Razorpay test mode and its webhook on dev, for the deposit payment | Agent | `NEEDS_CONFIRMATION` |
 | 4 | An open new academic year on dev, for Promotion | School | `NEEDS_CONFIRMATION` |
 | 5 | Whether the sign-in page shows the development **Demo accounts** card on dev | Both | `NEEDS_CONFIRMATION` |

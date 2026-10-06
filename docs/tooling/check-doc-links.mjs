@@ -11,7 +11,7 @@ const dirs = ["user-manual", "admin-manual", "role-guides"].map((d) => join(base
 const files = ["faq.md", "troubleshooting.md", "screenshot-index.md"].map((f) => join(base, f)).filter(existsSync);
 const walk = (d) =>
   existsSync(d)
-    ? readdirSync(d).flatMap((f) => {
+    ? readdirSync(d).filter((f) => !f.startsWith(".")).flatMap((f) => {
         const p = join(d, f);
         return statSync(p).isDirectory() ? walk(p) : p.endsWith(".md") ? [p] : [];
       })
