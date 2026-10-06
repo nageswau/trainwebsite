@@ -3592,7 +3592,7 @@ independent Codex review are pending.
 
 **Evidence:** `EVID-019` (`functionalities/edusphere_markdown/Telecaller Functionalities.md`, `DERIVED_BLUEPRINT`); owner answers in-session
 2026-10-05.
-**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-05) for T1–T29 and TL1–TL8; VERIFIED on `feature/tel-001` — ready for owner sign-off (2026-10-05).
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-05) for T1–T29 and TL1–TL8; VERIFIED on `feature/tel-001` (2026-10-05); **MERGED** to `main` as PR #68 @ `e73dfa60` (2026-10-06).
 
 **Part A — Telecaller CRM (T1–T29).** Copied verbatim from `docs/delivery/TELECALLER_CRM_BACKLOG.md` §3.1. They lift
 `PRD_OPEN_ITEMS.md` item 61 / `CONFLICT_MATRIX.md` for `EVID-019`. T29 supersedes `DEC-SCOPE-072` L2/L7 for leads in the telecaller
@@ -3647,7 +3647,7 @@ pipeline; that supersession takes effect with `tel-018`.
 
 **Evidence:** `EVID-019` §2 (13 lead sources, "exact campaign/source", e.g. Instagram → Cyber Security → September 2026 Campaign) and §3
 (18 product/interest values); `DEC-SCOPE-073` T16, T17, T18; owner answers in-session 2026-10-06.
-**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for P1–P4; VERIFIED on `feature/tel-002` — ready for owner sign-off (2026-10-06).
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for P1–P4; VERIFIED on `feature/tel-002` (2026-10-06); **MERGED** to `main` as PR #69 @ `c80180be` (2026-10-06).
 
 | # | Question | Answer |
 |---|---|---|
