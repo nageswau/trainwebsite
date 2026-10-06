@@ -4,7 +4,7 @@ Functions only; nothing here commits -- the route owns the transaction (bdm-002'
 locked by `bdm_organizations.load_scoped(lock=True)` and then the current MoU row (the lock order of spec §6.5). Audit metadata and
 logs carry ids, status keys and field names only, never the notes, reference, file name or storage key (spec §6.6)."""
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
@@ -21,6 +21,7 @@ FIELDS = ("proposal_sent_on", "signed_on", "valid_from", "valid_until", "referen
 RENEWABLE = ("expired", "rejected")  # M6
 NO_MOU = "No MoU yet"
 MOU_EXISTS = {"message": "This organization already has an MoU in progress", "code": "mou_exists"}
+MOU_EXPIRED = {"message": "This MoU has expired. Start a renewal.", "code": "mou_expired"}  # M9
 SAME_STATUS = "The MoU is already at this status"
 SIGNED_ON_REQUIRED = "Add the signed date"
 WINDOW_REQUIRED = "Add the validity window"
@@ -32,6 +33,9 @@ def today() -> date:
 
 
 def effective_status(mou: BdmMou, on: date) -> str:
+    """M2 / M7: a signed or active MoU whose `valid_until` is before `on` reads Expired; `expired` is never stored."""
+    if mou.status in BDM_MOU_EXPIRING and mou.valid_until is not None and mou.valid_until < on:
+        return "expired"
     return mou.status
 
 
@@ -118,7 +122,7 @@ async def mou_out(db: AsyncSession, user: User, org: BdmOrganization, mou: BdmMo
         "has_document": mou.document_key is not None,
         "is_current": mou.is_current,
         "document": _document(mou),
-        "expired_on": None,
+        "expired_on": mou.valid_until + timedelta(days=1) if status == "expired" else None,
         "created_by": person_ref(creator),
         "permissions": {"can_edit": editable, "can_upload": editable, "can_renew": editable and status in RENEWABLE},
         "pipeline_on_sign": None,

@@ -64,6 +64,8 @@ async def change_mou(org_id: UUID, payload: BdmMouUpdate, user: User = Depends(g
     if status is not None:
         if from_status != before:
             raise svc.stale_status(before)
+        if before == "expired":
+            raise HTTPException(409, svc.MOU_EXPIRED)
         if status == before:
             raise svc._invalid("status", svc.SAME_STATUS, status)
     state = {**svc.stored_state(mou), **sent, **({"status": status} if status else {})}
