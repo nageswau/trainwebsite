@@ -1,9 +1,9 @@
 """tel-012 -- tel_scripts, tel_assets, tel_message_templates (seeded with the EVID-019 §11/§12 kinds and the §6 example script).
 
-Revision ID: 0079_tel_content
-Revises: 0078_enquiry_lead_record
+Revision ID: 0080_tel_content
+Revises: 0079_bdm_mous
 
-docs/superpowers/specs/2026-10-06-tel-012-content-library-design.md §3 (DEC-SCOPE-078). Adds three tables; no existing row is written.
+docs/superpowers/specs/2026-10-06-tel-012-content-library-design.md §3 (DEC-SCOPE-079). Adds three tables; no existing row is written.
 0001 builds a fresh database from the current models, which already carry the tables, so creation is guarded (0076's idiom) -- but the
 seed always runs and inserts only what is missing, so it is idempotent and never overwrites a manager's edit. The kinds are a frozen
 copy (app/tel_content_kinds.py is the live one). downgrade() refuses while manager data exists: any asset, or any template/script that
@@ -18,8 +18,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0079_tel_content"
-down_revision = "0078_enquiry_lead_record"
+revision = "0080_tel_content"
+down_revision = "0079_bdm_mous"
 branch_labels = None
 depends_on = None
 
@@ -193,7 +193,7 @@ def _manager_data(bind) -> bool:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and _manager_data(op.get_bind()):
-        raise RuntimeError("Cannot downgrade 0079_tel_content: manager data exists (assets, or edited templates/scripts). Remove it deliberately first.")
+        raise RuntimeError("Cannot downgrade 0080_tel_content: manager data exists (assets, or edited templates/scripts). Remove it deliberately first.")
     op.drop_table("tel_message_templates")
     op.drop_table("tel_assets")
     op.drop_table("tel_scripts")

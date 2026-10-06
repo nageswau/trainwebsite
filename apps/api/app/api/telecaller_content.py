@@ -1,4 +1,4 @@
-"""tel-012 (DEC-SCOPE-078, spec §6): the script, message-template and brochure library. Managers and super_admin write; telecallers
+"""tel-012 (DEC-SCOPE-079, spec §6): the script, message-template and brochure library. Managers and super_admin write; telecallers
 read active rows. The library is global (T9), so there is no row scope -- only the role checks below. Rendering against a real lead
 arrives with tel-008/tel-013 (C2); here a template previews with sample values.
 

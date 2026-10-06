@@ -1,4 +1,4 @@
-"""tel-012 -- migration 0079_tel_content (spec §3; AC1). Round trip, seed and downgrade refusal run in a throwaway database built from
+"""tel-012 -- migration 0080_tel_content (spec §3; AC1). Round trip, seed and downgrade refusal run in a throwaway database built from
 scratch (the tel-001/tel-002 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -16,11 +16,11 @@ from app.tel_content_kinds import EMAIL_KINDS, WHATSAPP_KINDS
 from tests.test_tel_001_migration import _config, _sql
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_tel_012_migration_0079", VERSIONS / "0079_tel_content.py")
+_spec = importlib.util.spec_from_file_location("_tel_012_migration_0080", VERSIONS / "0080_tel_content.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0078_enquiry_lead_record", "0079_tel_content"
+BASE, HEAD = "0079_bdm_mous", "0080_tel_content"
 STEPS = [
     "Introduction",
     "Understand qualification",
@@ -34,7 +34,7 @@ TEMPLATES = "SELECT channel, kind FROM tel_message_templates"
 SCRIPTS = "SELECT s.name, s.steps, p.name FROM tel_scripts s JOIN tel_products p ON p.id = s.product_id"
 
 
-def test_migration_chains_after_0078_and_is_the_single_head():
+def test_migration_chains_after_0079_and_is_the_single_head():
     assert _migration.revision == HEAD
     assert _migration.down_revision == BASE
     assert ScriptDirectory.from_config(_config()).get_heads() == [HEAD]

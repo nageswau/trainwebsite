@@ -1,4 +1,4 @@
-"""tel-012 -- call scripts API (spec §6; AC6, AC7; DEC-SCOPE-078 C3). The test database is shared and never truncated, so every
+"""tel-012 -- call scripts API (spec §6; AC6, AC7; DEC-SCOPE-079 C3). The test database is shared and never truncated, so every
 product is created per test and lists are narrowed with `product_id`."""
 
 import pytest

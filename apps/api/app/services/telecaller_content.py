@@ -1,4 +1,4 @@
-"""tel-012 (DEC-SCOPE-078, spec §4-§6): the script, message-template and brochure library -- placeholder rules and rendering, the
+"""tel-012 (DEC-SCOPE-079, spec §4-§6): the script, message-template and brochure library -- placeholder rules and rendering, the
 merged-row template checks, the signed brochure links, and the stored PDF objects.
 
 Functions only; nothing here commits -- the route owns the transaction. Audit rows carry ids and changed field names only (tel-002's

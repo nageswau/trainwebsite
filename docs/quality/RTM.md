@@ -485,6 +485,25 @@ role-specific navigation.
 | `bdm-004-AC11` | UI: stepper, move / lost / revive, history, pipeline pages; keyboard; no overflow at 320 / 375 px | `BdmOrganizationPipeline.test.tsx`, `BdmStageHistory.test.tsx`, `BdmPipelinePages.test.tsx`, `tests/e2e/bdm-004-pipeline.spec.ts` — Playwright **passed** |
 | `bdm-004-AC12` | List rows, permission keys and existing routes unchanged; only the detail gains `pipeline` | `test_bdm_004_stage.py`, bdm-002 / bdm-003 suites |
 
+**Addendum, 2026-10-06 (`bdm-005`)** — one enhancement row and its acceptance-criteria map. MoU tracking.
+
+| Feature ID | Contract documents | Old workbook cases | Status |
+|---|---|---|---|
+| `bdm-005` | Requirement: owner's bdm-005 statement (`BDM_CRM_BACKLOG.md` §4 bdm-005, AC1–AC5) and answers M1–M9 (`EXPLICIT_APPROVAL`) referring to `EVID-016` (`DERIVED_BLUEPRINT`) §10, Agent / School / College §B, Q-10 / D19, Q-19 / D28 → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-078` (drafted as 074) → design `docs/superpowers/specs/2026-10-06-bdm-005-mou-tracking-design.md` (AC1–AC9) → plan `docs/superpowers/plans/2026-10-06-bdm-005-mou-tracking.md` (13 tasks); `API_CONTRACT.md` bdm-005 → migration `0079_bdm_mous` (after `0078_enquiry_lead_record`; drafted as 0076) → code `app/api/bdm_mous.py`, `app/services/bdm_mous.py`, `models.py` (`BdmMou`, `BdmMouEvent`, `BDM_MOU_*`), `schemas.py` (bdm-005 section), `bdm_stages.MOU_SIGNED_STAGE`, `bdm_pipeline.advance_to`; web `lib/bdmMous.ts`, `lib/bdmMousServer.ts`, `BdmOrganizationMou`, `BdmMouForm`, `BdmMouDocument`, `BdmMouHistory`, `BdmMouPrevious`, `BdmMousPanel`, `/bdm/mous`, `/bdm/manager/mous` | none | **VERIFIED, not yet COMPLETE** (2026-10-06): lite backend / web / Playwright green except failures shown pre-existing on main; QA5-01…06 closed; open: Browser Use itself, the owner's full suites, the set-aside Codex review (see `BDM_CRM_BACKLOG.md` bdm-005) |
+
+| AC | Criterion | Tests |
+|---|---|---|
+| `bdm-005-AC1` | Every person-made status change writes an event (actor, time, from → to) and an audit row; Expired is an automatic line | `test_bdm_005_service.py`, `test_bdm_005_list.py` (history), `BdmMouHistory.test.tsx` |
+| `bdm-005-AC2` | Signed / Active need `signed_on`; Active needs the window; `valid_until ≥ valid_from`; merged-state check; DB CHECK backstop | `test_bdm_005_service.py`, `test_bdm_005_schemas.py`, `test_bdm_005_migration.py`, `BdmMouForm.test.tsx` |
+| `bdm-005-AC3` | Signed / Active past `valid_until` (IST) read Expired in detail, list and filter; never settable; status change on Expired 409 | `test_bdm_005_expiry.py`, `test_bdm_005_list.py` |
+| `bdm-005-AC4` | Document downloads only in scope (9-role matrix), audited before bytes, attachment headers, key never returned | `test_bdm_005_download.py`, `test_bdm_005_document.py` |
+| `bdm-005-AC5` | The 9 source statuses, exact labels and order | `test_bdm_005_catalogue.py`, `bdmMous.test.ts` |
+| `bdm-005-AC6` | Signed advances the pipeline only when behind (D28) | `test_bdm_005_pipeline.py`, `BdmOrganizationDetail.test.tsx` |
+| `bdm-005-AC7` | One current MoU; renewal only from Expired / Rejected; old row kept; races | `test_bdm_005_renewal.py`, `test_bdm_005_concurrency.py` |
+| `bdm-005-AC8` | Writes only by the assigned BDM / super_admin; archived / Lost 409; stale status 409; stale field edit 409 (QA5-01) | `test_bdm_005_scope.py`, `test_bdm_005_service.py`, `test_bdm_005_stale.py` |
+| `bdm-005-AC9` | Upload: bytes-typed, 413 / 415, metadata stripped, 20 / hour 429, failed write deletes the new object | `test_bdm_005_document.py`, `BdmMouDocument.test.tsx` |
+| `bdm-005-UI` | Card, form, list pages, nav; keyboard; focus after cancel (QA5-02); 320 / 375 px | `BdmOrganizationMou.test.tsx`, `BdmMouForm.test.tsx`, `BdmMousPages.test.tsx`, `tests/e2e/bdm-005-mou.spec.ts` |
+
 **Addendum, 2026-10-05 (`bdm-017`)** — one enhancement row and its acceptance-criteria map. Student lead attribution to organizations.
 
 | Feature ID | Contract documents | Old workbook cases | Status |
