@@ -377,7 +377,8 @@ function createUserDivisionOptions(user: User) {
 }
 
 function createUserRoleOptions(user: User) {
-  const roles = user.role === "super_admin" ? [...ROLES_BY_DIVISION.it, ...ROLES_BY_DIVISION.overseas, ...ROLES_BY_DIVISION.global] : ROLES_BY_DIVISION[user.division] || [];
+  // tel-017: `counselor` is in both IT and Overseas, so the Super Admin's combined list is de-duplicated.
+  const roles = user.role === "super_admin" ? [...new Set([...ROLES_BY_DIVISION.it, ...ROLES_BY_DIVISION.overseas, ...ROLES_BY_DIVISION.global])] : ROLES_BY_DIVISION[user.division] || [];
   return options(roles);
 }
 

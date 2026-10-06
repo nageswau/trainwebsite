@@ -842,6 +842,7 @@ and no response-shape change.
 | Endpoint | Change |
 |---|---|
 | `POST /admin/users` | `role: "counselor"` is now valid with `division: "it"` (was `422` "Role is not valid for the selected division") |
+| `POST /workflows/overseas/applications`, `PATCH /workflows/overseas/applications/{id}` | A supplied `counselor_id` must be a `counselor` in the `overseas` division, else `422` "Choose an overseas counselor" (an unknown id used to fail with `500`); `null` still clears it |
 | `GET /portal/it/counselor/{dashboard,leads}` | New sections for an IT counselor (the existing `PortalPayload` shape). Any other section → `404` "Workspace not found" |
 | `GET /overseas-admin/school-students/lookup`, `POST /overseas-admin/school-students/{id}/applications`, `GET /overseas-admin/school-applications`, `GET /lookups/{overseas-students,overseas-applications,schools,school-students}`, `GET /inbound/university-email`, `PATCH /inbound/university-email/{id}/match` | A caller outside the `overseas` division now gets `403` "Wrong EduSphere division" after the role check (`super_admin` exempt). Every role these routes already admitted is overseas-only, so their behaviour is unchanged |
 

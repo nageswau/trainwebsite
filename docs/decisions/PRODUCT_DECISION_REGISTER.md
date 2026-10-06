@@ -3679,6 +3679,7 @@ counselor) for an IT counselor; every other section → 404. Nine overseas-only 
 `overseas` division (`403` "Wrong EduSphere division", `super_admin` exempt): `/overseas-admin/school-students/lookup`,
 `/overseas-admin/school-students/{id}/applications`, `/overseas-admin/school-applications`, `/lookups/{overseas-students,
 overseas-applications,schools,school-students}`, `/inbound/university-email` and `/inbound/university-email/{id}/match`. The 14 counselor
-routes in `workflows.py` already called `_require(..., "overseas")`. Web: `/it/counselor/{dashboard,leads}`, `/it/admin/counselors`,
+routes in `workflows.py` already called `_require(..., "overseas")`; their `counselor_id` (create/PATCH application) must now be an
+overseas `counselor` (422 "Choose an overseas counselor"), so no overseas chat or notice can reach an IT counselor. Web: `/it/counselor/{dashboard,leads}`, `/it/admin/counselors`,
 `dashboardPathFor()` for the post-sign-in and "Back to dashboard" links. No migration. Design spec
 `docs/superpowers/specs/2026-10-06-tel-017-it-counselor-design.md`.

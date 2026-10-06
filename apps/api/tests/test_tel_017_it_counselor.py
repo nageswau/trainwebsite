@@ -4,7 +4,7 @@ import uuid
 
 import pytest
 
-from app.models import Enquiry
+from app.models import Country, Enquiry, OverseasApplication, University
 from tests.bdm001_helpers import USERS, email, login, make_user
 
 ZERO = uuid.UUID(int=0)
@@ -111,6 +111,18 @@ async def test_it_counselor_sees_only_it_leads_routed_to_them(client, db_session
 
 
 @pytest.mark.asyncio
+async def test_it_counselor_dashboard_counts_every_lead_but_lists_the_five_newest(client, db_session):
+    me = await make_user(db_session, "counselor", "it")
+    for i in range(6):
+        await _lead(db_session, "it", me, f"Lead {i}", status="new" if i % 2 else "contacted")
+    await login(client, me)
+    body = (await client.get("/api/v1/portal/it/counselor/dashboard")).json()
+    assert {m["label"]: m["value"] for m in body["metrics"]} == {"Leads routed to you": 6, "New leads": 3}
+    assert [r["name"] for r in body["rows"]] == [f"Lead {i}" for i in range(5, 0, -1)]
+    assert len((await client.get("/api/v1/portal/it/counselor/leads")).json()["rows"]) == 6
+
+
+@pytest.mark.asyncio
 async def test_it_counselor_with_no_leads_gets_empty_sections(client, db_session):
     await login(client, await make_user(db_session, "counselor", "it"))
     leads = await client.get("/api/v1/portal/it/counselor/leads")
@@ -145,3 +157,36 @@ async def test_overseas_counselor_leads_still_ignore_it_leads(client, db_session
     response = await client.get("/api/v1/portal/overseas/counselor/leads")
     assert response.status_code == 200
     assert {r["name"] for r in response.json()["rows"]} == {f"Overseas mine {tag}"}
+
+
+# --- Review R1: an overseas application's counselor must be an overseas counselor ----------------------------------------
+# Otherwise an IT counselor's id on an application would route the student's counselor-chat and update notifications to IT.
+async def _university(db) -> University:
+    tag = uuid.uuid4().hex[:8]
+    country = Country(slug=f"tel017-{tag}", name="Testland", overview="", tuition="", living_expenses="", visa_process=[], work_opportunities="", post_study_work="", pr_opportunities="", faq=[])
+    db.add(country)
+    await db.flush()
+    university = University(country_id=country.id, slug=f"tel017-u-{tag}", name="Tel017 University", city="Testville", overview="", eligibility="", requirements=[], deadlines=[], scholarships=[])
+    db.add(university)
+    await db.commit()
+    return university
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("target", ["it_counselor", "overseas_admin", "unknown"])
+async def test_application_counselor_must_be_an_overseas_counselor(client, db_session, target):
+    student, university = await make_user(db_session, "overseas_student", "overseas"), await _university(db_session)
+    bad = {"it_counselor": (await make_user(db_session, "counselor", "it")).id, "overseas_admin": (await make_user(db_session, "overseas_admin", "overseas")).id, "unknown": uuid.uuid4()}[target]
+    good = await make_user(db_session, "counselor", "overseas")
+    await login(client, await make_user(db_session, "overseas_admin", "overseas"))
+    body = {"student_id": str(student.id), "university_id": str(university.id), "intake": "Fall 2027"}
+    refused = await client.post("/api/v1/workflows/overseas/applications", json={**body, "counselor_id": str(bad)})
+    assert refused.status_code == 422, refused.text
+    assert refused.json()["detail"] == "Choose an overseas counselor"
+    created = await client.post("/api/v1/workflows/overseas/applications", json={**body, "counselor_id": str(good.id)})
+    assert created.status_code == 201, created.text
+    app_id = created.json()["id"]
+    patch = await client.patch(f"/api/v1/workflows/overseas/applications/{app_id}", json={"counselor_id": str(bad)})
+    assert patch.status_code == 422, patch.text
+    assert (await db_session.get(OverseasApplication, uuid.UUID(app_id), populate_existing=True)).counselor_id == good.id
+    assert (await client.patch(f"/api/v1/workflows/overseas/applications/{app_id}", json={"counselor_id": None})).status_code == 200

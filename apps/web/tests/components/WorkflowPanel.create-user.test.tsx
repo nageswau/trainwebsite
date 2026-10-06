@@ -89,4 +89,11 @@ describe("WorkflowPanel Create user roles (tel-017)", () => {
     await waitFor(() => expect(screen.getByRole("heading", { name: "Create user" })).toBeInTheDocument());
     expect(roleValues()).toContain("counselor");
   });
+
+  it("lists Counselor once for the Super Admin (it is in both divisions)", async () => {
+    stubFetch(json({}, 201));
+    render(<WorkflowPanel user={{ ...itAdmin, role: "super_admin", division: "global" } as User} section="users" />);
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Create user" })).toBeInTheDocument());
+    expect(roleValues().filter((v) => v === "counselor")).toHaveLength(1);
+  });
 });

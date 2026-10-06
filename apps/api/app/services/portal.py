@@ -1557,10 +1557,13 @@ async def _operations(db: AsyncSession, user: User, section: str):
             )
 
 
-async def _routed_leads(db: AsyncSession, user: User) -> list[Enquiry]:
+def _routed(user: User, *columns):
     """CNS-001 / tel-017: the leads routed to this counselor (`Enquiry.owner_id`), in the counselor's own division only."""
-    stmt = select(Enquiry).where(Enquiry.division == user.division, Enquiry.owner_id == user.id).order_by(Enquiry.created_at.desc())
-    return list((await db.scalars(stmt)).all())
+    return select(*columns).where(Enquiry.division == user.division, Enquiry.owner_id == user.id)
+
+
+async def _routed_leads(db: AsyncSession, user: User, limit: int | None = None) -> list[Enquiry]:
+    return list((await db.scalars(_routed(user, Enquiry).order_by(Enquiry.created_at.desc()).limit(limit))).all())
 
 
 def _leads_payload(rows: list[Enquiry]):
@@ -1577,15 +1580,16 @@ async def _it_counselor(db: AsyncSession, user: User, section: str):
     student link). Every overseas section stays the overseas counselor's, so anything else is a 404 here."""
     if section not in {"dashboard", "leads"}:
         return None
-    rows = await _routed_leads(db, user)
     if section == "leads":
-        return _leads_payload(rows)
+        return _leads_payload(await _routed_leads(db, user))
+    total = await db.scalar(_routed(user, func.count()))
+    new = await db.scalar(_routed(user, func.count()).where(Enquiry.status == "new"))
     return _payload(
         "Counselor Dashboard",
         "IT leads routed to you.",
         (("name", "Name"), ("subject", "Interest"), ("status", "Status")),
-        ({"name": e.name, "subject": e.subject, "status": e.status} for e in rows[:5]),
-        ({"label": "Leads routed to you", "value": len(rows)}, {"label": "New leads", "value": sum(1 for e in rows if e.status == "new")}),
+        ({"name": e.name, "subject": e.subject, "status": e.status} for e in await _routed_leads(db, user, limit=5)),
+        ({"label": "Leads routed to you", "value": total}, {"label": "New leads", "value": new}),
     )
 
 

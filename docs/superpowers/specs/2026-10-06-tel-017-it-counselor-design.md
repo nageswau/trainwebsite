@@ -104,8 +104,9 @@ Facts verified in code (not assumed):
 - The new division gate on `lookups`/`inbound`/`overseas-admin` would affect any non-overseas caller that relied on the role check
   alone. Only `super_admin` qualifies, and it is exempt.
 - Out of scope, recorded as follow-ups: `PATCH /admin/leads` accepts any `owner_id` (tel-018 adds the real "Assign to Counselor").
-  `counselor_id` on overseas applications isn't validated as an overseas counselor; this is now harmless, because every scoped read is
-  division-gated.
+  An overseas application's `counselor_id` was unvalidated. Branch review R1 found that an IT counselor's id there would route the
+  student's counselor-chat and update notices to IT. **Fixed:** `POST`/`PATCH /workflows/overseas/applications` now require an overseas
+  `counselor` (422 "Choose an overseas counselor"; an unknown id used to be a 500).
 
 ## 6. Tests
 - Backend: `tests/test_tel_017_it_counselor.py` covers creation (AC1), the leads/dashboard scope (AC2), a parametrised 403 sweep over
