@@ -34,12 +34,43 @@ export function pageOffset(raw: string | undefined): number {
 }
 const PICKER_LIMIT = 20;
 
-/** QA-02: the reporting-manager picker searches the server (SearchableSelect server mode), so every manager is reachable. */
-export async function managerSearch(q: string, signal: AbortSignal): Promise<LookupPage> {
+/** QA-02: the reporting-manager picker searches the server (SearchableSelect server mode), so every manager is reachable.
+ * bdm-025: `excludeId` drops the manager being deactivated from their own replacement list. */
+export async function managerSearch(q: string, signal: AbortSignal, excludeId?: string): Promise<LookupPage> {
   const query = new URLSearchParams({ limit: String(PICKER_LIMIT) });
   if (q) query.set("q", q);
   const response = await fetch(`${MANAGERS_URL}?${query}`, { signal });
   if (!response.ok) throw new Error(`Manager search failed (${response.status})`);
   const page = (await response.json()) as { items: BdmManagerOption[]; total: number };
-  return { items: page.items.map((m) => ({ id: m.id, label: m.full_name, detail: m.email })), truncated: page.total > page.items.length };
+  const items = page.items.filter((m) => m.id !== excludeId);
+  return { items: items.map((m) => ({ id: m.id, label: m.full_name, detail: m.email })), truncated: page.total > page.items.length };
+}
+
+// --- bdm-025 (DEC-SCOPE-076): deactivation with a handover choice, later handover, BDM manager deactivation ---
+export type BdmPortfolio = { organizations: number; appointments: number; tasks: number; trips: number };
+export type BdmManagerRow = BdmManagerOption & { bdm_count: number };
+export const portfolioUrl = (bdmId: string) => `${BDMS_URL}/${bdmId}/portfolio`;
+export const deactivateUrl = (bdmId: string) => `${BDMS_URL}/${bdmId}/deactivate`;
+export const handoverUrl = (bdmId: string) => `${BDMS_URL}/${bdmId}/handover`;
+export const managerDeactivateUrl = (managerId: string) => `${MANAGERS_URL}/${managerId}/deactivate`;
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+/** "3 organizations, 1 appointment and 2 follow-ups/tasks" -- the server's notification wording. */
+export function portfolioText(p: Pick<BdmPortfolio, "organizations" | "appointments" | "tasks">): string {
+  return `${plural(p.organizations, "organization", "organizations")}, ${plural(p.appointments, "appointment", "appointments")} and ${plural(p.tasks, "follow-up/task", "follow-ups/tasks")}`;
+}
+export const hasOpenWork = (p: BdmPortfolio) => p.organizations + p.appointments + p.tasks > 0;
+export const bdmCountText = (n: number) => plural(n, "BDM", "BDMs");
+
+/** The handover target picker: active BDMs of the same module, minus the BDM handing over (the server re-checks every rule). */
+export function bdmSearch(bdmType: BdmType, excludeId: string) {
+  return async (q: string, signal: AbortSignal): Promise<LookupPage> => {
+    const query = new URLSearchParams({ limit: String(PICKER_LIMIT), bdm_type: bdmType, active: "true" });
+    if (q) query.set("q", q);
+    const response = await fetch(`${BDMS_URL}?${query}`, { signal });
+    if (!response.ok) throw new Error(`BDM search failed (${response.status})`);
+    const page = (await response.json()) as { items: BdmAdminRow[]; total: number };
+    const items = page.items.filter((b) => b.id !== excludeId);
+    return { items: items.map((b) => ({ id: b.id, label: b.full_name, detail: `${b.employee_id} · ${b.email}` })), truncated: page.total > page.items.length };
+  };
 }
