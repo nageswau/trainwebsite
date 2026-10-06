@@ -148,6 +148,6 @@ async def test_a_linked_organization_cannot_request_again(client, db_session):
 
 @pytest.mark.asyncio
 async def test_a_bdm_never_reaches_school_portal_routes(client, db_session):
-    w = await school_world(client, db_session)  # the School BDM is signed in
+    await school_world(client, db_session)  # the School BDM is signed in
     for path in ("/api/v1/school/students", "/api/v1/school/analytics/scorecards"):
         assert (await client.get(path)).status_code == 403, path

@@ -52,16 +52,17 @@ def test_checks_equal_the_model():
     assert {"uq_bdm_onboarding_requests_pending", "ix_bdm_onboarding_requests_status"} <= {i.name for i in BdmOnboardingRequest.__table__.indexes}
     assert "uq_bdm_organizations_school" in {c.name for c in BdmOrganization.__table__.constraints}
     assert {fk.parent.name: fk.ondelete for fk in BdmOnboardingRequest.__table__.foreign_keys} == {
-        "organization_id": "RESTRICT", "requested_by_user_id": "RESTRICT", "resolved_by_user_id": "RESTRICT", "school_id": "RESTRICT",
+        "organization_id": "RESTRICT",
+        "requested_by_user_id": "RESTRICT",
+        "resolved_by_user_id": "RESTRICT",
+        "school_id": "RESTRICT",
     }
 
 
 @pytest.mark.asyncio
 async def test_table_and_link_exist_in_the_shared_database(db_session):
     conn = await db_session.connection()
-    tables, org_columns = await conn.run_sync(
-        lambda sync: (set(inspect(sync).get_table_names()), {c["name"] for c in inspect(sync).get_columns("bdm_organizations")})
-    )
+    tables, org_columns = await conn.run_sync(lambda sync: (set(inspect(sync).get_table_names()), {c["name"] for c in inspect(sync).get_columns("bdm_organizations")}))
     assert "bdm_onboarding_requests" in tables
     assert "school_id" in org_columns
 

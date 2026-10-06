@@ -45,8 +45,7 @@ async def request_onboarding(org_id: UUID, payload: BdmOnboardingRequestIn, user
 
 
 @admin_router.get("/bdm-onboarding-requests", response_model=BdmOnboardingPage)
-async def onboarding_queue(status: BdmOnboardingStatus = "pending", limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user),
-                           db: AsyncSession = Depends(get_db)):
+async def onboarding_queue(status: BdmOnboardingStatus = "pending", limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Spec §5.2: the queue with each organization's details, which prefill the School create form."""
     svc.require_admin(user)
     return await svc.queue_page(db, status, limit, offset)

@@ -80,14 +80,9 @@ async def org_onboarding_out(db: AsyncSession, user: User, org: BdmOrganization)
     """Spec §5.7: null unless a School organization; the latest request, the linked School and whether this caller may request."""
     if org.bdm_type != SCHOOL:
         return None
-    latest = await db.scalar(
-        select(BdmOnboardingRequest).where(BdmOnboardingRequest.organization_id == org.id).order_by(BdmOnboardingRequest.created_at.desc()).limit(1)
-    )
+    latest = await db.scalar(select(BdmOnboardingRequest).where(BdmOnboardingRequest.organization_id == org.id).order_by(BdmOnboardingRequest.created_at.desc()).limit(1))
     school = await db.get(School, org.school_id) if org.school_id else None
-    can_request = (
-        org_svc.permissions(user, org)["can_edit"] and org.lost_at is None and school is None
-        and (latest is None or latest.status != "pending") and await _mou_qualifies(db, org)
-    )
+    can_request = org_svc.permissions(user, org)["can_edit"] and org.lost_at is None and school is None and (latest is None or latest.status != "pending") and await _mou_qualifies(db, org)
     return {
         "request": None if latest is None else {k: getattr(latest, k) for k in ("id", "status", "created_at", "resolved_at", "reject_reason")},
         "school": None if school is None else {"name": school.name, "school_code": school.school_code},
@@ -166,10 +161,7 @@ async def items_out(db: AsyncSession, requests: list[BdmOnboardingRequest]) -> l
     orgs = {o.id: o for o in (await db.scalars(select(BdmOrganization).where(BdmOrganization.id.in_(org_ids)))).all()}
     user_ids = {r.requested_by_user_id for r in requests} | {o.assigned_bdm_user_id for o in orgs.values()}
     people = {u.id: u for u in (await db.scalars(select(User).where(User.id.in_(user_ids)))).all()}
-    contacts = {
-        c.organization_id: c
-        for c in (await db.scalars(select(BdmOrganizationContact).where(BdmOrganizationContact.organization_id.in_(org_ids), BdmOrganizationContact.is_primary))).all()
-    }
+    contacts = {c.organization_id: c for c in (await db.scalars(select(BdmOrganizationContact).where(BdmOrganizationContact.organization_id.in_(org_ids), BdmOrganizationContact.is_primary))).all()}
     mous = {m.organization_id: m for m in (await db.scalars(select(BdmMou).where(BdmMou.organization_id.in_(org_ids), BdmMou.is_current.is_(True)))).all()}
     school_ids = {r.school_id for r in requests if r.school_id}
     schools = {s.id: s for s in (await db.scalars(select(School).where(School.id.in_(school_ids)))).all()} if school_ids else {}
