@@ -42,10 +42,12 @@ async def create_mou(org_id: UUID, payload: BdmMouCreate, user: User = Depends(g
     await db.flush()
     svc.record(db, user, mou, "created", None, mou.status, [])
     svc.audit(db, user, "created", mou, {"status": mou.status})
+    advanced = svc.advance_on_sign(db, user, org) if mou.status == "signed" else None
     await db.commit()
     await db.refresh(org)
     await db.refresh(mou)
     svc.log("bdm_mou_created", user, mou, status=mou.status)
+    svc.log_advance(user, org, advanced)
     return {"mou": await svc.mou_out(db, user, org, mou, on)}
 
 
@@ -83,8 +85,10 @@ async def change_mou(org_id: UUID, payload: BdmMouUpdate, user: User = Depends(g
     kind, action = ("status", "status_changed") if status else ("updated", "updated")
     svc.record(db, user, mou, kind, before, after, changed)
     svc.audit(db, user, action, mou, {"from": before, "to": after, "changed": changed})
+    advanced = svc.advance_on_sign(db, user, org) if status == "signed" else None
     await db.commit()
     await db.refresh(org)
     await db.refresh(mou)
     svc.log(f"bdm_mou_{action}", user, mou, from_status=before, to_status=after, changed=changed)
+    svc.log_advance(user, org, advanced)
     return {"mou": await svc.mou_out(db, user, org, mou, on)}

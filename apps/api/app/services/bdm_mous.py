@@ -11,9 +11,11 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.bdm_stages import MOU_SIGNED_STAGE
 from app.models import BDM_MOU_EXPIRING, BDM_MOU_STATUS_LABELS, AuditLog, BdmMou, BdmMouEvent, BdmOrganization, User
 from app.services import bdm_organizations as org_svc
 from app.services.bdm import person_ref
+from app.services import bdm_pipeline
 from app.services.bdm_pipeline import LOST_CONFLICT, _invalid
 
 IST = ZoneInfo("Asia/Kolkata")  # M2: "today" is the India calendar date (as bdm_appointments.IST)
@@ -26,6 +28,7 @@ SAME_STATUS = "The MoU is already at this status"
 SIGNED_ON_REQUIRED = "Add the signed date"
 WINDOW_REQUIRED = "Add the validity window"
 WINDOW_ORDER = "Valid-until can't be before valid-from"
+SIGN_NOTE = "Advanced by MoU signed"
 
 
 def today() -> date:
@@ -100,6 +103,25 @@ def log(event: str, user: User, mou: BdmMou, **extra) -> None:
     org_svc.log(event, user, mou.organization_id, mou_id=str(mou.id), **extra)
 
 
+def advance_on_sign(db: AsyncSession, user: User, org: BdmOrganization) -> str | None:
+    """D28 inside the MoU write's transaction, on the already-locked organization; bdm-004's audit row marked `source: mou`."""
+    target = MOU_SIGNED_STAGE[org.bdm_type]
+    from_stage = bdm_pipeline.advance_to(db, user, org, target, SIGN_NOTE)
+    if from_stage is not None:
+        org_svc.audit(db, user, "stage_changed", org.id, {"from": from_stage, "to": target, "backward": False, "note": True, "source": "mou"})
+    return from_stage
+
+
+def log_advance(user: User, org: BdmOrganization, from_stage: str | None) -> None:
+    if from_stage is not None:
+        org_svc.log("bdm_org_stage_changed", user, org.id, from_stage=from_stage, to_stage=org.pipeline_stage, backward=False, source="mou")
+
+
+def _pipeline_on_sign(org: BdmOrganization) -> dict | None:
+    target = MOU_SIGNED_STAGE[org.bdm_type]
+    return {"key": target, "label": bdm_pipeline.label_of(org.bdm_type, target)} if bdm_pipeline.behind(org, target) else None
+
+
 def _document(mou: BdmMou) -> dict | None:
     if mou.document_key is None:
         return None
@@ -125,7 +147,7 @@ async def mou_out(db: AsyncSession, user: User, org: BdmOrganization, mou: BdmMo
         "expired_on": mou.valid_until + timedelta(days=1) if status == "expired" else None,
         "created_by": person_ref(creator),
         "permissions": {"can_edit": editable, "can_upload": editable, "can_renew": editable and status in RENEWABLE},
-        "pipeline_on_sign": None,
+        "pipeline_on_sign": _pipeline_on_sign(org),
         "created_at": mou.created_at,
         "updated_at": mou.updated_at,
     }
