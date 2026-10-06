@@ -1,4 +1,4 @@
-"""bdm-018 (DEC-SCOPE-084, spec §5): the school onboarding handover -- request rules, resolution, queue and output.
+"""bdm-018 (DEC-SCOPE-085, spec §5): the school onboarding handover -- request rules, resolution, queue and output.
 
 Functions only; nothing here commits -- the route owns the transaction (bdm-002's rule). Lock order is always organization -> request
 -> school (spec §5). Audit metadata and logs carry ids only, never the note, the reason or any name."""

@@ -36,6 +36,7 @@ from app.models import (
     BDM_MOU_STATUSES,
     BDM_STAFF_MAX,
     GENDERS,
+    LEAD_PRIORITIES,
     TEL_TARGET_KPIS,
 )
 from app.services.agent_visa import VISA_CASE_STAGES
@@ -2829,7 +2830,7 @@ class SchoolCreate(BaseModel):
 
 
 class SchoolCreateIn(SchoolCreate):
-    """The single create's body (SCH-003). bdm-018 (DEC-SCOPE-084 §5.5): optionally resolves a pending onboarding request in the same
+    """The single create's body (SCH-003). bdm-018 (DEC-SCOPE-085 §5.5): optionally resolves a pending onboarding request in the same
     transaction. A subclass, so ENH-029's bulk template (`SchoolCreate.model_fields`) does not gain the column."""
 
     bdm_onboarding_request_id: UUID | None = None
@@ -3878,7 +3879,7 @@ class BdmOrgPipelineOut(BaseModel):
     steps: list[BdmPipelineStepOut]
 
 
-# --- bdm-018 (DEC-SCOPE-084, spec §5.7): the onboarding handover on the organization detail -------------------------------------
+# --- bdm-018 (DEC-SCOPE-085, spec §5.7): the onboarding handover on the organization detail -------------------------------------
 class BdmOnboardingRequestRef(BaseModel):
     id: UUID
     status: Literal["pending", "completed", "rejected"]
@@ -4524,7 +4525,8 @@ class BdmActivityDayPage(BdmActivityPage):
 # bdm-017 (DEC-SCOPE-072, spec §4-§5): a student lead a BDM enters against an organization, and the admin's explicit conversion link.
 # The text rules are bdm-001's (no control characters, blank -> None) with bdm-002's email and phone shapes; the lengths are the
 # `enquiries` columns'. Source, division, status, attribution and conversion are server-owned: `extra="forbid"` answers 422.
-BDM_LEAD_LABELS = {"name": "Student name", "email": "Email", "student_email": "Email", "phone": "Phone", "interest": "Interest", "note": "Note"}
+BDM_LEAD_LABELS = {"name": "Student name", "email": "Email", "student_email": "Email", "phone": "Phone", "interest": "Interest", "note": "Note",
+                   "whatsapp_number": "WhatsApp number", "city": "City", "state": "State"}  # the last three: tel-008's lead edit
 
 
 def _bdm_lead_text(pattern: re.Pattern, required: bool):
@@ -4540,7 +4542,7 @@ def _bdm_lead_text(pattern: re.Pattern, required: bool):
             if not _EMAIL_SHAPE.fullmatch(value):
                 raise ValueError("Enter a valid email address")
             return value.lower()
-        if info.field_name == "phone" and not _BDM_PHONE.fullmatch(value):
+        if info.field_name in ("phone", "whatsapp_number") and not _BDM_PHONE.fullmatch(value):
             raise ValueError("Phone may contain only digits, spaces and + - ( )")
         return value
     return check
@@ -4788,7 +4790,7 @@ class TelCampaignPage(BaseModel):
     offset: int
 
 
-# --- tel-012 (DEC-SCOPE-084): scripts, message templates, brochure assets --------------------------------------------------
+# --- tel-012 (DEC-SCOPE-083): scripts, message templates, brochure assets --------------------------------------------------
 TelChannel = Literal["whatsapp", "email"]
 TelAssetKind = Literal[TEL_ASSET_KINDS]
 TEL_CONTENT_FIELD_LABELS = {
@@ -5098,7 +5100,7 @@ class BdmTaskPage(BaseModel):
     counts: BdmTaskCounts
 
 
-# bdm-013 (DEC-SCOPE-084): the read-only calendar feed -- only what the calendar shows (no notes, contacts, purpose or costs).
+# bdm-013 (DEC-SCOPE-079): the read-only calendar feed -- only what the calendar shows (no notes, contacts, purpose or costs).
 class BdmCalendarAppointment(BaseModel):
     id: UUID
     code: str
@@ -5232,7 +5234,7 @@ class TelTargetEffectiveOut(BaseModel):
     monthly: list[TelTargetValue]
 
 
-# tel-004 (DEC-SCOPE-084, spec §5): a person's lead stage move. The reason reuses bdm-004's note rules (trimmed, at most 500,
+# tel-004 (DEC-SCOPE-081, spec §5): a person's lead stage move. The reason reuses bdm-004's note rules (trimmed, at most 500,
 # blank -> None); the service decides when it is required.
 class LeadStageMove(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -5268,7 +5270,7 @@ class LeadStageHistoryPage(BaseModel):
     items: list[LeadStageHistoryRow]
 
 
-# --- bdm-018 (DEC-SCOPE-084, spec §5): the school onboarding handover --------------------------------------------------------------
+# --- bdm-018 (DEC-SCOPE-085, spec §5): the school onboarding handover --------------------------------------------------------------
 _ONBOARDING_LABELS = {"note": "Note", "reason": "Reason", "school_code": "School ID"}
 BdmOnboardingNote = Annotated[
     Annotated[Annotated[str, _trimmed(1000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, _ONBOARDING_LABELS))],
@@ -5348,6 +5350,43 @@ class BdmOnboardingItem(BaseModel):
 
 class BdmOnboardingPage(BaseModel):
     items: list[BdmOnboardingItem]
+    total: int
+    limit: int
+    offset: int
+
+
+# tel-008 (DEC-SCOPE-084 D2): what a telecaller or manager may change on a lead -- the §2 contact fields, the product and the priority.
+# Owner, telecaller, stage, source, campaign and the qualification fields are not editable here: `extra="forbid"` answers 422. Text
+# follows bdm-017's lead rules (trimmed, no control characters, blank -> None; email lower-cased, phone shape).
+LeadPlace = Annotated[Annotated[str, _trimmed(120)] | None, AfterValidator(_bdm_lead_text(_BDM_CONTROL, False))]
+
+
+class TelecallerLeadUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: BdmLeadName = None
+    email: BdmLeadEmail = None
+    phone: BdmLeadPhone = None
+    whatsapp_number: BdmLeadPhone = None
+    city: LeadPlace = None
+    state: LeadPlace = None
+    product_id: UUID | None = None
+    priority: Literal[LEAD_PRIORITIES] = None
+
+
+class LeadTimelineRow(BaseModel):
+    id: UUID
+    kind: Literal["stage", "priority"]
+    at: datetime
+    actor: LeadStageActor | None
+    from_value: str
+    from_label: str
+    to_value: str
+    to_label: str
+    reason: str | None
+
+
+class LeadTimelinePage(BaseModel):
+    items: list[LeadTimelineRow]
     total: int
     limit: int
     offset: int

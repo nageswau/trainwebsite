@@ -530,7 +530,7 @@ URL), `expired_on`, `created_by`, `permissions {can_edit, can_upload, can_renew}
 limit. **Retry semantics:** a retried create answers `409 mou_exists`; a retried status change answers `409 mou_status_changed`. No
 idempotency key.
 
-**`bdm-018` / `DEC-SCOPE-084` (built 2026-10-06; migration `0084_bdm_onboarding`, after `0083_tel_content`) — school onboarding handover.**
+**`bdm-018` / `DEC-SCOPE-085` (built 2026-10-06; migration `0084_bdm_onboarding`, after `0083_tel_content`) — school onboarding handover.**
 Design spec `docs/superpowers/specs/2026-10-06-bdm-018-school-onboarding-handover-design.md` §5. Three things change additively:
 `POST /overseas-admin/schools` accepts an optional `bdm_onboarding_request_id` (absent = unchanged), `SchoolOut` gains
 `linked_bdm {full_name, active, organization_code} | null` (derived from the linked organization's assignee, H1; returned only on the
@@ -1014,6 +1014,20 @@ Nothing is deleted. Rows keep their list position when deactivated.
 
 Every write adds an `AuditLog` row (`telecaller.script_create|script_update|template_create|template_update|asset_create|asset_update`,
 `metadata_json.fields` = field names only). A link token is never a session (`deps.get_current_user` accepts only `type: access`).
+
+## 12J. Telecaller lead workspace (`tel-008`) — addendum, 2026-10-06
+
+`DEC-SCOPE-084`; design spec `docs/superpowers/specs/2026-10-06-tel-008-lead-workspace-design.md` §2. No migration. Roles and scope are
+§12H's: `telecaller` (own leads), `telecaller_manager` (direct reports' leads + their teams' unassigned leads) and `super_admin` (all).
+Other roles get `403`, signed out `401`, and missing or out of scope `404`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/leads` | `{items, total, limit, offset}`, newest first. Filters `status`, `priority` (`hot`/`warm`/`cold`, else `422`), `product_id`, `campaign_id`, `q` (literal substring of Lead ID, name, email, phone, WhatsApp; ≤ 200). `limit` 1–100 (default 50). Item = the §12F admin row + `read_only` |
+| `GET /telecaller/leads/{id}` | The row + `message` + `read_only` (`true` for a telecaller once `owner_id` is set) |
+| `PATCH /telecaller/leads/{id}` | Body any of `name`, `email`, `phone`, `whatsapp_number`, `city`, `state`, `product_id`, `priority`. Other keys, invalid values or an inactive/unknown product give `422`. A telecaller on a handed-over lead gets `403`. `200` returns the detail. Audits: `lead.priority_change {from,to}`, and `lead.contact_update {fields}` (names only) |
+| `GET /telecaller/leads/{id}/timeline` | `{items, total, limit, offset}`, newest first; item `{id, kind: stage|priority, at, actor {id, full_name} or null, from_value, from_label, to_value, to_label, reason}` |
+| `POST /telecaller/leads/{id}/stage` | As §12H, plus `403` for a telecaller on a handed-over lead |
 
 ## 13. Traceability check
 

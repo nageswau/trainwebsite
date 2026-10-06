@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Migration `0084_bdm_onboarding`, down_revision `0083_tel_content`. Additive only, and every create is guarded (the 0079 style). The downgrade refuses while requests or links exist.
-- Decision `DEC-SCOPE-084`; owner answers H1–H4 and defaults H5–H11 (spec §1).
+- Decision `DEC-SCOPE-085`; owner answers H1–H4 and defaults H5–H11 (spec §1).
 - Routes own commits; services never commit. Audit rows ride the same transaction. Logs carry ids and keys only, never names, notes or reasons.
 - Out of scope = 404 (`load_scoped`); wrong role on admin routes = 403 "Overseas Admin role required".
 - Notices are in-app only: `workflows._notify_user(..., channels=[])`.
@@ -141,7 +141,7 @@ Add the migration (the guarded create for the table; `add_column` + `create_uniq
 
 ### Task 8: E2E, docs
 
-**Files:** `apps/web/tests/e2e/bdm-018-school-handover.spec.ts` (follow the bdm-005 e2e setup); `docs/decisions/PRODUCT_DECISION_REGISTER.md` (DEC-SCOPE-084); `docs/delivery/BDM_CRM_BACKLOG.md` (status); `docs/architecture/DATA_MODEL.md`; and the API contract doc, if bdm-005 updated one.
+**Files:** `apps/web/tests/e2e/bdm-018-school-handover.spec.ts` (follow the bdm-005 e2e setup); `docs/decisions/PRODUCT_DECISION_REGISTER.md` (DEC-SCOPE-085); `docs/delivery/BDM_CRM_BACKLOG.md` (status); `docs/architecture/DATA_MODEL.md`; and the API contract doc, if bdm-005 updated one.
 
 - [ ] Playwright: the BDM requests → the admin uses the request and creates the School → the BDM's organization shows Linked and the pipeline step "School Onboarding" done.
 - [ ] Docs. Commit.

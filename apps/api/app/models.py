@@ -739,7 +739,7 @@ LEAD_CHECKS = {  # migration 0078 repeats these strings; test_tel_003_migration 
     "ck_enquiries_priority": f"priority IN ({', '.join(repr(p) for p in LEAD_PRIORITIES)})",
     "ck_enquiries_passing_year": "passing_year IS NULL OR passing_year BETWEEN 1950 AND 2100",
 }
-# tel-004 (DEC-SCOPE-084): `status` is a pipeline stage; migration 0084 repeats this string (test_tel_004_migration).
+# tel-004 (DEC-SCOPE-081): `status` is a pipeline stage; migration 0081 repeats this string (test_tel_004_migration).
 LEAD_STATUS_CHECK = f"status IN ({', '.join(repr(s) for s in LEAD_STAGES)})"
 
 
@@ -806,7 +806,7 @@ class Enquiry(Base, TimestampMixin):
 
 
 class LeadStageHistory(Base):
-    """tel-004 (DEC-SCOPE-084, spec §3): one row per lead stage change. Append-only. `event` is a system event name, `manual`, `reopen` or
+    """tel-004 (DEC-SCOPE-081, spec §3): one row per lead stage change. Append-only. `event` is a system event name, `manual`, `reopen` or
     `legacy_mapping`; `actor_user_id` is NULL for the system. No stage CHECK: history must survive a future catalogue change (bdm-004).
     `position` orders rows created in one transaction."""
 
@@ -1105,7 +1105,7 @@ class TelCampaign(Base, TimestampMixin):
 
 
 class TelScript(Base, TimestampMixin):
-    """tel-012 (DEC-SCOPE-084 C3, EVID-019 §6): a product's standard call script -- ordered `{title, notes}` steps. At most one active
+    """tel-012 (DEC-SCOPE-083 C3, EVID-019 §6): a product's standard call script -- ordered `{title, notes}` steps. At most one active
     script per product (partial unique index). Never deleted; deactivating hides it from telecallers."""
 
     __tablename__ = "tel_scripts"
@@ -1372,7 +1372,7 @@ class BdmOrganization(Base, TimestampMixin):
     pipeline_stage: Mapped[str] = mapped_column(String(40), default=BDM_FIRST_STAGE, server_default=BDM_FIRST_STAGE)
     lost_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     lost_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    # bdm-018 (DEC-SCOPE-084 H1): the onboarded School; one organization <-> at most one School. The School's BDM is derived from it.
+    # bdm-018 (DEC-SCOPE-085 H1): the onboarded School; one organization <-> at most one School. The School's BDM is derived from it.
     school_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id", ondelete="RESTRICT"), nullable=True)
 
 
@@ -1497,7 +1497,7 @@ class BdmMouEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-# bdm-018 (DEC-SCOPE-084, spec §3): the onboarding handover. `kind` is 'school' only; bdm-019 widens it for agents.
+# bdm-018 (DEC-SCOPE-085, spec §3): the onboarding handover. `kind` is 'school' only; bdm-019 widens it for agents.
 BDM_ONBOARDING_STATUSES = ("pending", "completed", "rejected")
 BDM_ONBOARDING_CHECKS = {  # migration 0084 repeats these strings; test_bdm_018_migration asserts they stay identical
     "ck_bdm_onboarding_requests_kind": "kind IN ('school')",

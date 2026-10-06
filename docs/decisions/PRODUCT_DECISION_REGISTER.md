@@ -3909,20 +3909,44 @@ picked the recommended option. Design spec: `docs/superpowers/specs/2026-10-06-b
 **Recorded defaults:** writers `telecaller_manager`, `super_admin`; readers add `telecaller` (active rows only); other roles 403. Placeholders are exactly `{name}`, `{product}`, `{brochure_link}` (needs a brochure), `{appointment_time}`; any other `{…}` is a 422 on save. Rendering is plain text and single-pass; the sink escapes it (tel-013 URL-encodes, tel-014 HTML-escapes). PDFs are judged by their bytes, within `MAX_UPLOAD_BYTES`. Nothing is deleted. A deactivated row keeps its list position.
 
 **Implementation:** migration `0083_tel_content` (`tel_scripts`, `tel_assets`, `tel_message_templates`, plus seeds; no existing row is touched; downgrade refuses while manager data exists). Routes `GET|POST|PATCH /telecaller/{scripts,templates,assets}`, `GET /telecaller/templates/{id}/preview`, `POST /telecaller/assets/{id}/link`, `GET /public/telecaller-assets/{token}` (`API_CONTRACT.md` §12I, `RBAC_MATRIX.md` §2.18). Manager pages `/telecaller/manager/{scripts,templates,brochures}`. Design spec `docs/superpowers/specs/2026-10-06-tel-012-content-library-design.md`.
+VERIFIED on `feature/tel-012` (2026-10-06): lite backend 440 on the final merge (every `test_tel_0*` file + the bdm-005/bdm-025 migration tests), vitest 75, Playwright 7, Browser Use QA (QA-01…04 fixed test-first and re-verified). Full backend suite deferred to the owner. **MERGED** to `main` as PR #83 @ `50838192` (2026-10-06).
+
+### DEC-SCOPE-084 — Telecaller lead workspace: My Leads, lead detail, priority (`tel-008`)
+
+**Evidence:** `EVID-019` §2 (field display), §8 (priority, L314–L330), §22 ("View assigned leads"); `DEC-SCOPE-073` T19, T23;
+`DEC-SCOPE-081` D4; owner answer in-session 2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for W1; D1–D6 are recorded defaults. Branch `feature/tel-008`. No migration.
+
+| # | Question | Answer |
+|---|---|---|
+| W1 (AC3) | Where does a priority change "appear on the timeline" before tel-015? | An `audit_logs` row `lead.priority_change` `{from, to}` written in the same transaction. The detail page's Activity list merges stage history with priority changes, newest first, through `GET /telecaller/leads/{id}/timeline`. tel-015 adds its sources to the same endpoint |
+| D1 | "Handed over" before tel-018 | `owner_id IS NOT NULL` (the assigned counselor). A telecaller's PATCH and stage move on such a lead are 403, and the read carries `read_only`. Managers and `super_admin` still write |
+| D2 | Editable fields | `name`, `email`, `phone`, `whatsapp_number`, `city`, `state`, `product_id` (active product or null) and `priority`. Any other key is 422. Duplicate checks are tel-005's |
+| D3 | List filters | Stage, priority, product, campaign and `q` (Lead ID, name, phone, WhatsApp, email). "Due follow-up" waits for tel-011 |
+| D4 | Actions | Call (`tel:` link) and Change stage only. The other actions arrive with their items, and there are no placeholder buttons |
+| D5 | Manager view | `/telecaller/manager/leads` (+ `/{id}`), with tel-004's `lead_pipeline.scope` (reports' leads plus their teams' unassigned queue) |
+| D6 | tel-012 C2 (script panel) | tel-012 merged (`DEC-SCOPE-083`), so the lead detail shows the active call script of the lead's product (`GET /telecaller/scripts?product_id=&active=true&limit=1`). It is re-read when the product changes. `/render` stays with tel-013 |
+
+**Implementation:** `services/telecaller_leads.py`. Routes `GET /telecaller/leads`, `GET/PATCH /telecaller/leads/{id}` and
+`GET /telecaller/leads/{id}/timeline`; tel-004's `POST /telecaller/leads/{id}/stage` gains D1. Web pages `/telecaller/leads` and
+`/telecaller/manager/leads` (+ `[id]`), `TelecallerLeadTable`, `LeadDetailPanel`. Design spec `docs/superpowers/specs/2026-10-06-tel-008-lead-workspace-design.md`.
+
+
 VERIFIED on `feature/tel-012` @ final HEAD (2026-10-06): lite backend 339 (tel-001/002/003/012/017 + bdm-005 migration; re-run after the 4ec7a22b merge), vitest 75, Playwright 7, Browser Use QA (QA-01…04 fixed test-first and re-verified). Full backend suite deferred to the owner.
 
 
 
 
-### DEC-SCOPE-084 — School onboarding handover + `schools` link (`bdm-018`)
+### DEC-SCOPE-085 — School onboarding handover + `schools` link (`bdm-018`)
 
 **ID note:** drafted as `DEC-SCOPE-079` with migration `0080_bdm_onboarding` (both free on `main` @ `230a043f`); bdm-013 (PR #78) took
 `DEC-SCOPE-079` and tel-022 (PR #80) `DEC-SCOPE-080` / `0080_tel_targets` first, so on merging `main` @ `a38955d5` (2026-10-06) this entry was
 `DEC-SCOPE-081` with `0081_bdm_onboarding`; tel-004 (PR #81, `DEC-SCOPE-081` / `0081_lead_stage_pipeline`) and bdm-025 (PR #79, `DEC-SCOPE-082` /
 `0082_bdm_assignment_history`) then reached `main`, so on merging `main` @ `4ec7a22b` this entry was `DEC-SCOPE-083` with
-`0083_bdm_onboarding`; tel-012 (PR #83, `DEC-SCOPE-083` / `0083_tel_content`) then reached `main`, so on merging `main` @ `50838192` this entry is
-**`DEC-SCOPE-084`** and the migration **`0084_bdm_onboarding`** (after `0083_tel_content`). bdm-018 commits from before those merges that say
-`DEC-SCOPE-079` / `081` / `083` or `0080` / `0081` / `0083_bdm_onboarding` mean this decision / migration.
+`0083_bdm_onboarding`; tel-012 (PR #83, `DEC-SCOPE-083` / `0083_tel_content`) then reached `main`, so on merging `main` @ `50838192` this entry was
+`DEC-SCOPE-084` with **`0084_bdm_onboarding`** (after `0083_tel_content`); tel-008 (PR #85, `DEC-SCOPE-084`, no migration) then reached `main`, so on
+merging `main` @ `b76c92f7` this entry is **`DEC-SCOPE-085`** and the migration stays `0084_bdm_onboarding`. bdm-018 commits from before those merges that say
+`DEC-SCOPE-079` / `081` / `083` / `084` or `0080` / `0081` / `0083_bdm_onboarding` mean this decision / migration.
 
 **Question:** how a School-module BDM hands a signed school over to Overseas Admin, how the created (or existing) School is linked to the
 organization, what the School records as its BDM, what happens to the legacy `schools.edusphere_bdm` text (Q-16), and how the live School

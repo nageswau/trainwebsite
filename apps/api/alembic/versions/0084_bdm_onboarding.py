@@ -3,7 +3,7 @@
 Revision ID: 0084_bdm_onboarding
 Revises: 0083_tel_content
 
-docs/superpowers/specs/2026-10-06-bdm-018-school-onboarding-handover-design.md §3 (DEC-SCOPE-084). Additive: one new table and one
+docs/superpowers/specs/2026-10-06-bdm-018-school-onboarding-handover-design.md §3 (DEC-SCOPE-085). Additive: one new table and one
 nullable column with a unique constraint; no existing row read or written. 0001 builds a fresh database from the current models, which
 already carry both, so each is created only when missing. CHECKS must equal app.models.BDM_ONBOARDING_CHECKS
 (test_bdm_018_migration). downgrade() refuses while any request or link exists: a handover is never dropped silently.
@@ -11,7 +11,7 @@ already carry both, so each is created only when missing. CHECKS must equal app.
 Re-chained 2026-10-06: cut as `0080_bdm_onboarding` after `0079_bdm_mous` (DEC-SCOPE-079); tel-022 (`0080_tel_targets`, DEC-SCOPE-080) and
 bdm-013 (DEC-SCOPE-079, no migration) merged first, and then tel-004 (`0081_lead_stage_pipeline`, DEC-SCOPE-081) and bdm-025 (`0082_bdm_assignment_history`, DEC-SCOPE-082),
 and then tel-012 (`0083_tel_content`, DEC-SCOPE-083), so this revision is `0084_bdm_onboarding` after `0083_tel_content` and the
-decision is DEC-SCOPE-084. A database stamped at `0080_bdm_onboarding`, `0081_bdm_onboarding` or `0083_bdm_onboarding` is re-stamped with `alembic stamp --purge 0079_bdm_mous` then `upgrade head`
+decision is DEC-SCOPE-085 (tel-008 took DEC-SCOPE-084 without a migration). A database stamped at `0080_bdm_onboarding`, `0081_bdm_onboarding` or `0083_bdm_onboarding` is re-stamped with `alembic stamp --purge 0079_bdm_mous` then `upgrade head`
 (every create here is guarded).
 """
 
