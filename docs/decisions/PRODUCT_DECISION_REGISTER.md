@@ -3890,12 +3890,34 @@ picked the recommended option. Design spec: `docs/superpowers/specs/2026-10-06-b
 
 **Status:** `EXPLICIT_APPROVAL` for L1–L5. Implemented on `worktree-bdm-025`; the verification status is in the backlog entry and the RTM row.
 
-### DEC-SCOPE-083 — Trip ↔ appointment linking, itinerary, productivity, travel report (`bdm-011`)
+### DEC-SCOPE-083 — Script, message-template and brochure library (`tel-012`)
+
+**ID note:** drafted as `DEC-SCOPE-076` with migration `0078_tel_content` (free on `main` @ `442ce465`), then renumbered on each merge of `main`: tel-017 (`DEC-SCOPE-076`), tel-003 (`DEC-SCOPE-077` / `0078_enquiry_lead_record`), bdm-005 (`DEC-SCOPE-078` / `0079_bdm_mous`), bdm-013 (`DEC-SCOPE-079`), tel-022 (`DEC-SCOPE-080` / `0080_tel_targets`) tel-004 (`DEC-SCOPE-081` / `0081_lead_stage_pipeline`) and bdm-025 (`DEC-SCOPE-082` / `0082_bdm_assignment_history`) reached `main` first. On merging `main` @ `4ec7a22b` (2026-10-06) this entry is `DEC-SCOPE-083` and the migration is **`0083_tel_content`** (after `0082_bdm_assignment_history`).
+
+**Question:** how scripts, message templates and brochure PDFs are shaped, who maintains and reads them, and how a signed-out lead opens a brochure (`TELECALLER_CRM_BACKLOG.md` §4 tel-012, Q-15)?
+
+**Evidence:** `EVID-019` §6 (call script), §11 (9 WhatsApp templates), §12 (7 email kinds) — the source's lists are not an approval; `DEC-SCOPE-073` T8, T9; owner answers in-session 2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for C1–C4. The roles are a recorded default (T9 plus the tel-002 P1 shape), not asked.
+
+| # | Question | Answer |
+|---|---|---|
+| C1 (Q-15) | Brochure links for signed-out leads | A **signed, asset-scoped token valid 7 days** (JWT `type: tel_asset`), served by `GET /public/telecaller-assets/{token}`. Deactivating the brochure ends every link at once. No file is public by URL |
+| C2 | Lead-dependent parts | Library + manager/telecaller **preview with sample values** now. `GET /telecaller/leads/{id}/render` and the lead-detail script panel **move to tel-008 / tel-013** (they need tel-003's lead product and tel-008's ownership) |
+| C3 | Script shape | Required product, name, **ordered steps** (title + optional talking points), 1–20 steps; **at most one active script per product** (partial unique index). Seed: the §6 Cyber Security example |
+| C4 | Seed wording | One **generic** template per kind (9 WhatsApp + 7 email), short neutral English; none uses `{brochure_link}` (no brochure exists at seed time) |
+
+**Recorded defaults:** writers `telecaller_manager`, `super_admin`; readers add `telecaller` (active rows only); other roles 403. Placeholders are exactly `{name}`, `{product}`, `{brochure_link}` (needs a brochure), `{appointment_time}`; any other `{…}` is a 422 on save. Rendering is plain text and single-pass; the sink escapes it (tel-013 URL-encodes, tel-014 HTML-escapes). PDFs are judged by their bytes, within `MAX_UPLOAD_BYTES`. Nothing is deleted. A deactivated row keeps its list position.
+
+**Implementation:** migration `0083_tel_content` (`tel_scripts`, `tel_assets`, `tel_message_templates`, plus seeds; no existing row is touched; downgrade refuses while manager data exists). Routes `GET|POST|PATCH /telecaller/{scripts,templates,assets}`, `GET /telecaller/templates/{id}/preview`, `POST /telecaller/assets/{id}/link`, `GET /public/telecaller-assets/{token}` (`API_CONTRACT.md` §12I, `RBAC_MATRIX.md` §2.18). Manager pages `/telecaller/manager/{scripts,templates,brochures}`. Design spec `docs/superpowers/specs/2026-10-06-tel-012-content-library-design.md`.
+VERIFIED on `feature/tel-012` @ final HEAD (2026-10-06): lite backend 339 (tel-001/002/003/012/017 + bdm-005 migration; re-run after the 4ec7a22b merge), vitest 75, Playwright 7, Browser Use QA (QA-01…04 fixed test-first and re-verified). Full backend suite deferred to the owner.
+
+### DEC-SCOPE-084 — Trip ↔ appointment linking, itinerary, productivity, travel report (`bdm-011`)
 
 **ID note (2026-10-06):** drafted as `DEC-SCOPE-079` with migration `0080_bdm_appointment_trip` on `main` @ `230a043f`. On merging `main`
 @ `3986958c` (bdm-013 `DEC-SCOPE-079`, tel-022 `080` / `0080_tel_targets`, tel-004 `081` / `0081_lead_stage_pipeline`) it became
-`DEC-SCOPE-082` / `0082`; on merging `main` @ `4ec7a22b` (bdm-025 `DEC-SCOPE-082` / `0082_bdm_assignment_history`) it is
-**`DEC-SCOPE-083`** with migration **`0083_bdm_appointment_trip`** chained after `0082_bdm_assignment_history`.
+`DEC-SCOPE-082` / `0082`; on merging `main` @ `4ec7a22b` (bdm-025 `DEC-SCOPE-082` / `0082_bdm_assignment_history`) it became
+`DEC-SCOPE-083` / `0083`; on merging `main` @ `50838192` (tel-012 `DEC-SCOPE-083` / `0083_tel_content`) it is **`DEC-SCOPE-084`**
+with migration **`0084_bdm_appointment_trip`** chained after `0083_tel_content`.
 
 **Question:** how do appointments link to trips (`BDM_CRM_BACKLOG.md` §4 bdm-011): which trips and appointments can be linked, which
 appointments count as planned, how "actual leads" is defined now that bdm-017 attributes leads, and what a cancelled trip does to its links?

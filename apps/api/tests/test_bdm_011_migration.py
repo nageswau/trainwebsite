@@ -1,4 +1,4 @@
-"""bdm-011 -- migration 0083_bdm_appointment_trip (spec §3): one nullable FK + index on bdm_appointments, additive."""
+"""bdm-011 -- migration 0084_bdm_appointment_trip (spec §3): one nullable FK + index on bdm_appointments, additive."""
 
 import asyncio
 import importlib.util
@@ -19,11 +19,11 @@ from app.core.config import settings
 from app.models import BdmAppointment
 
 API_ROOT = Path(__file__).resolve().parents[1]
-BASE, HEAD = "0082_bdm_assignment_history", "0083_bdm_appointment_trip"
+BASE, HEAD = "0083_tel_content", "0084_bdm_appointment_trip"
 
 
 def _migration():
-    spec = importlib.util.spec_from_file_location("_bdm_011_migration_0083", API_ROOT / "alembic" / "versions" / f"{HEAD}.py")
+    spec = importlib.util.spec_from_file_location("_bdm_011_migration_0084", API_ROOT / "alembic" / "versions" / f"{HEAD}.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -35,7 +35,7 @@ def _config() -> Config:
     return cfg
 
 
-def test_chains_after_0082_and_is_on_the_single_chain():
+def test_chains_after_0083_and_is_on_the_single_chain():
     migration = _migration()
     assert (migration.revision, migration.down_revision) == (HEAD, BASE)
     script = ScriptDirectory.from_config(_config())
@@ -88,7 +88,7 @@ def _sql(url: str, sql: str, *, autocommit: bool = False):
 
 
 def test_round_trip_runs_the_migrations_own_ddl():
-    """0001 builds BASE from the current models (column included), so go down to BASE -- 0083 drops it -- and up again: what is
+    """0001 builds BASE from the current models (column included), so go down to BASE -- 0084 drops it -- and up again: what is
     left is 0083 own column, FK and index. A throwaway database; the shared one is never downgraded."""
     cfg, original = _config(), settings.database_url
     name = f"bdm011_migration_{uuid.uuid4().hex[:8]}"

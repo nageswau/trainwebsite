@@ -965,6 +965,32 @@ are IST calendar days on the database clock. Every `422` is one sentence.
 | `POST/DELETE /admin/leads/{id}/conversion` | as §12 bdm-017 | Link moves the stage to `application_enrollment` (a closed lead keeps its stage); unlink moves `application_enrollment` → `follow_up` |
 | `GET /admin/leads` | as §12F | Items add `status_label`; the `status` filter takes a stage key |
 
+## 12I. Telecaller content library (`tel-012`) — addendum, 2026-10-06
+
+`DEC-SCOPE-083`; design spec `docs/superpowers/specs/2026-10-06-tel-012-content-library-design.md` §4–§6; `RBAC_MATRIX.md` §2.18;
+migration `0083_tel_content`. Lists are `{items, total, limit, offset}` (`limit` default 50, max 100). JSON bodies reject unknown keys;
+every `422` is one sentence. Readers = `telecaller` (active rows only), `telecaller_manager`, `super_admin`; writers = `telecaller_manager`,
+`super_admin`. Other roles → `403` "Your role cannot view the telecaller library" (writes: "Telecaller manager role required"); signed out → `401`.
+Nothing is deleted. Rows keep their list position when deactivated.
+
+| Method/Path | Roles | Notes / status codes |
+|---|---|---|
+| `GET /telecaller/scripts` | readers | Filters `product_id`, `active`, `q` (name). Order: product name, script name. Item `{id, product: {id, name, group, active}, name, steps: [{title, notes}], active}` |
+| `POST /telecaller/scripts` | writers | `201`. Body `{product_id, name, steps}`; 1–20 steps, title 1–120, notes ≤ 1000 (blank → null). Inactive/missing product → `422` "Choose an active product". The product already has an active script → `409` "<product> already has an active script. Deactivate it first." |
+| `PATCH /telecaller/scripts/{id}` | writers | Any of `{product_id, name, steps, active}`. Reactivating, or moving into a product with an active script → `409` (partial unique index). Unknown id → `404` |
+| `GET /telecaller/templates` | readers | Filters `channel` (`whatsapp\|email`, else `422`), `kind`, `product_id`, `active`, `q`. Order: WhatsApp then email, source kind order, name. Item `{id, channel, kind, name, product \| null, asset: {id, name, active} \| null, subject \| null, body, active}` |
+| `POST /telecaller/templates` | writers | `201`. Body `{channel, kind, name, product_id?, asset_id?, subject?, body}`. Kind must belong to the channel (§11: welcome, course_details, brochure, fee_details, counselling_appointment, reminder, follow_up, overseas_destination, document_request; §12: course_brochure, fee_proposal, counselling_confirmation, overseas_information, university_information, follow_up, appointment_confirmation). Only email has a subject (1–200, one line). Body ≤ 1000 (WhatsApp) / 5000 (email). Placeholders `{name}`, `{product}`, `{brochure_link}`, `{appointment_time}`; any other `{…}` → `422` "Unknown placeholder {x}. …"; `{brochure_link}` without `asset_id` → `422`. `asset_id`/`product_id` must be active when set. Duplicate name per channel (case-insensitive) → `409` |
+| `PATCH /telecaller/templates/{id}` | writers | Every rule re-checked on the merged row; a different `channel` → `422` "Channel cannot be changed". Keeping a since-deactivated brochure/product is allowed |
+| `GET /telecaller/templates/{id}/preview` | readers | Renders with sample values (`Priya Sharma`, the template's product or `Cyber Security`, `Mon 14 Sept 2026, 10:30 AM`). `{subject, body, brochure_link: {url, expires_at} \| null}`; the link is minted only while the brochure is active. Telecaller + inactive template → `404` |
+| `GET /telecaller/assets` | readers | Filters `kind` (`brochure\|fee`), `product_id`, `active`, `q`. Order: newest upload first. Item `{id, name, kind, product \| null, file_name, size_bytes, active, uploaded_at}` (the storage key is never returned) |
+| `POST /telecaller/assets` | writers | `201`, `multipart/form-data`: `name`, `kind`, `product_id?`, `file`. The bytes must start `%PDF-` → else `422` "Upload a PDF file"; empty → `422`; over `MAX_UPLOAD_BYTES` → `413` |
+| `PATCH /telecaller/assets/{id}` | writers | JSON any of `{name, kind, product_id, active}` (metadata only). Deactivating ends every link at once |
+| `POST /telecaller/assets/{id}/link` | readers | `{url, expires_at}`: `{FRONTEND_URL}/api/v1/public/telecaller-assets/{token}`, a signed JWT (`type: tel_asset`, `sub` = asset id) valid 7 days. Inactive/missing → `404` |
+| `GET /public/telecaller-assets/{token}` | Public | `200 application/pdf`, `Content-Disposition: inline` (ASCII + RFC 5987 name), `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`. Bad/expired/foreign token, missing or inactive brochure → `404` "This link has expired or is no longer available" |
+
+Every write adds an `AuditLog` row (`telecaller.script_create|script_update|template_create|template_update|asset_create|asset_update`,
+`metadata_json.fields` = field names only). A link token is never a session (`deps.get_current_user` accepts only `type: access`).
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
@@ -985,9 +1011,9 @@ unspecified pending open decisions — not a gap in this traceability check, a d
 alongside the other four contract documents. `prompts/10_TEST_CATALOG_AUDIT_AND_REBUILD.md` may now
 proceed.
 
-**Addendum, 2026-10-06 (`bdm-011`, `DEC-SCOPE-083`): trip ↔ appointment linking, itinerary, productivity, travel report.**
+**Addendum, 2026-10-06 (`bdm-011`, `DEC-SCOPE-084`): trip ↔ appointment linking, itinerary, productivity, travel report.**
 
-Sources: design spec `docs/superpowers/specs/2026-10-06-bdm-011-trip-appointments-design.md` §4; migration `0083_bdm_appointment_trip`.
+Sources: design spec `docs/superpowers/specs/2026-10-06-bdm-011-trip-appointments-design.md` §4; migration `0084_bdm_appointment_trip`.
 Every change is **additive**: new optional request fields, new response fields and new GET routes; no existing field changes meaning.
 
 | Method + path | Change | Refusals |
