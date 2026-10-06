@@ -475,6 +475,10 @@ API contract §12K; re-chained after bdm-025 082 / 0082, tel-012 083 / 0083, tel
 
 ### tel-009 — Qualification form
 
+**Status (2026-10-06):** **implemented** on `feature/tel-009` (`DEC-SCOPE-092` QF1–QF3 + QD1–QD4, migration `0088_lead_qualifications`, API
+contract §12O). Spec `docs/superpowers/specs/2026-10-06-tel-009-qualification-form-design.md`. The counselor's read after handover moves
+to tel-018 (QF3).
+
 - **Business requirement:** §4.
 - **Existing behavior:** none.
 - **Expected behavior:**

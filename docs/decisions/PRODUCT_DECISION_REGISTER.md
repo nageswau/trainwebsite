@@ -4134,3 +4134,27 @@ only. R10 `metadata_json.import_batch_id` on created leads and attached enquirie
 (`GET /telecaller/imports/template`, `POST /telecaller/imports`, `GET /telecaller/imports`, `GET /telecaller/imports/{id}`); web page
 `/telecaller/manager/imports` ("Lead import" in the manager nav). **New Feature ID authorized:** `tel-006`. **Status:** see
 `TELECALLER_CRM_BACKLOG.md` §4 tel-006.
+
+### DEC-SCOPE-092 — Lead qualification form (`tel-009`)
+
+**Evidence:** `EVID-019` §4 (`Telecaller Functionalities.md` L144–L196, Appendix A); `DEC-SCOPE-073` T19 (read-only after handover);
+`DEC-SCOPE-084` D1, D2 (tel-008 workspace; the product is edited in Lead details); owner answers in-session 2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06 — three structured questions, each answered with the recommended option) for
+QF1–QF3; QD1–QD4 are recorded defaults. Migration `0088_lead_qualifications` (after tel-006's `0087_lead_import_batches`), API contract
+§12O. `§12M` is still claimed by the open AGN-023 branch; numbers re-chain at merge if `main` moves. Spec
+`docs/superpowers/specs/2026-10-06-tel-009-qualification-form-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| QF1 | Where are "Course interested in" / "Destination" (the lead's product) picked? | **Lead details only.** The form shows the product read-only; the IT/overseas section follows the saved product; the other group's values are kept but hidden |
+| QF2 | Field types | **Selects + free text.** Selects: skill level beginner/intermediate/advanced, mode online/offline, study level UG/Masters, passport none/applied/valid. Free text: IELTS/PTE status, batch, budget, intake, course, objective, current college/company. Experience 0–50 whole years; percentage 0–100 (2 dp); passing year 1950–2100 |
+| QF3 | Counselor read after handover | **Deferred to tel-018** (no counselor lead screen exists yet) |
+
+Recorded defaults: QD1 the shared answers (qualification, passing year, city, state) are written to `enquiries`; name is edited in Lead
+details. QD2 the PUT replaces the fields that apply to the lead's product group (basic always, plus IT or overseas); a field that does not
+apply is `422`; the other group's stored values are untouched. QD3 changed values only, one `lead.qualification_update {fields}` audit row
+(names only); the stage never moves. QD4 the lead row is locked `FOR UPDATE` within scope.
+
+**Consequences:** table `lead_qualifications`; service `services/lead_qualification.py`; routes `GET`/`PUT
+/telecaller/leads/{id}/qualification`; component `LeadQualificationForm` in the lead detail (telecaller and manager pages). **New Feature ID
+authorized:** `tel-009`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-009.
