@@ -282,8 +282,8 @@ async def create_enquiry(payload: EnquiryIn, db: AsyncSession = Depends(get_db))
     # so an attached enquiry queues nothing.
     if not attached:
         sync_enquiry_to_crm_task.delay(str(lead.id))
-    # tel-003 AC2 added lead_code. I3: status and crm_sync_status are the new-lead values on both paths, so the reply never says
-    # whether the person was already known.
+    # tel-003 AC2 added lead_code. I3: status and crm_sync_status are constant acknowledgements on every path -- never the lead's real
+    # stage, not even after tel-007's distribution -- so the reply never says whether the person was known or who took the lead.
     return {"id": lead.id, "status": "new", "crm_sync_status": "pending", "lead_code": lead.lead_code}
 
 

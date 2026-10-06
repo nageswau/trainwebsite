@@ -1,15 +1,16 @@
 # tel-005 — Manual lead creation, duplicate detection, website-enquiry intake/attach (design)
 
 - **Backlog:** `docs/delivery/TELECALLER_CRM_BACKLOG.md` § tel-005 (EVID-019 §18, T12, T15). Dependencies tel-003 (PR #75) and tel-004 (PR #81) are merged.
-- **Decision:** `DEC-SCOPE-087` · **Migration:** `0085_lead_enquiries` (after bdm-018's `0084_bdm_onboarding`) · **API contract:** §12K.
+- **Decision:** `DEC-SCOPE-088` · **Migration:** `0086_lead_enquiries` (after tel-007's `0085_tel_distribution`) · **API contract:** §12L.
 
 ## 1. Owner answers (2026-10-06)
 
 | ID | Question | Answer |
 |---|---|---|
 | I1 (Q-03) | Email on a manual lead | `enquiries.email` becomes **nullable**. A manual lead requires a valid mobile; email is optional. The website form still requires email. |
-| I2 | Who owns a manual lead (tel-007 not built) | **The creator keeps it:** a telecaller's lead is assigned to them (pipeline event `assigned` → stage Assigned). A manager's/admin's lead goes to its team's unassigned queue (stage New). tel-007 adds rule-based distribution later. |
-| I3 | Public reply on attach | Same 201 and keys. `id` + `lead_code` are the existing lead's; `status` is always `"new"` and `crm_sync_status` always `"pending"` on both paths, so the body never reveals the lead's real stage. |
+| I2 | Who owns a manual lead | **The creator keeps it:** a telecaller's lead is assigned to them (pipeline event `assigned` → stage Assigned) and is never redistributed. A manager's/admin's lead: I6. |
+| I3 | Public reply | Same 201 and keys. On attach, `id` + `lead_code` are the existing lead's. `status` is always `"new"` and `crm_sync_status` always `"pending"` on every path, so the body never reveals the lead's real stage. This holds after tel-007's distribution too (owner, on the merge with tel-007). |
+| I6 | A manager's lead after tel-007 merged (first) | Distributed on arrival through `lead_distribution.on_intake`, like website and BDM leads. If nobody is eligible it waits in the team's unassigned queue. |
 | I4 | CRM webhook on attach | **Per lead:** an attached enquiry queues no webhook. A new lead still queues exactly as today. |
 | I5 | Who may "Add enquiry to this lead" | **Any telecaller / manager / super_admin**, on any lead (another telecaller's, handed over, or closed). Append-only; it grants no read access beyond the duplicate panel. A closed lead stays closed (T13: only a manager reopens). |
 
@@ -23,12 +24,12 @@ Recorded defaults (no owner question needed):
 - **R6:** a manual lead's `subject` defaults to the product name, and `message` defaults to an empty string.
 - **R7:** races: every intake path takes `pg_advisory_xact_lock` on the normalised phone and email keys (sorted, so there is no deadlock) before the match query. Two concurrent creates of one person serialise, and the second sees the first.
 - **R8:** BDM lead entry (bdm-017) is unchanged. It keeps its own per-organization duplicate rule and isn't routed through the new intake.
-- **R9:** a website lead that doesn't match is created exactly as today (stage New, unassigned; Q-05 is decided in tel-007).
+- **R9:** a website lead that doesn't match is a new lead, distributed on arrival by tel-007 (DI2).
 - **R10:** a manual lead is queued for the CRM webhook after the commit, like website and BDM leads.
 
 ## 2. Data
 
-`0085_lead_enquiries`:
+`0086_lead_enquiries`:
 
 - `ALTER TABLE enquiries ALTER COLUMN email DROP NOT NULL` (I1). On downgrade, a null email becomes `''` before NOT NULL is restored.
 - `lead_enquiries`: `id` uuid PK, `lead_id` → `enquiries.id` (RESTRICT), `subject` varchar(180), `message` text, `source` varchar(30) CHECK in TEL_SOURCES, `campaign_id` → `tel_campaigns.id` NULL, `metadata_json` JSON default `{}`, `created_by_user_id` → `users.id` NULL (NULL = website), `created_at`. Index `(lead_id, created_at)`.

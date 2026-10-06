@@ -133,11 +133,13 @@ async def duplicate_check(phone: str | None = None, email: str | None = None, us
 async def create_lead(payload: TelecallerLeadCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """tel-005 (I1, I2): a telecaller or manager enters a lead; a known person is 409 with the duplicate panel. Like every other lead,
     it is queued for the CRM only after the commit (R10)."""
-    lead_pipeline.scope(user)
+    _, filters = lead_pipeline.scope(user)
     lead = await lead_intake.create_lead(db, user, payload)
     await db.commit()
     sync_enquiry_to_crm_task.delay(str(lead.id))
-    return await telecaller_leads.detail(db, user, lead.id, [])
+    # QA-06: tel-007 may give a manager's lead to a telecaller outside the manager's reports; `in_scope` tells the form not to open it
+    in_scope = await db.scalar(select(Enquiry.id).where(Enquiry.id == lead.id, *filters)) is not None
+    return {**await telecaller_leads.detail(db, user, lead.id, []), "in_scope": in_scope}
 
 
 @router.post("/leads/{lead_id}/enquiries", status_code=201)

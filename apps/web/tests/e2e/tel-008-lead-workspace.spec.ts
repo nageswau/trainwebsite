@@ -2,8 +2,9 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { E2E_PASSWORD, activateWithToken } from "./helpers/welcome";
 
-// tel-008 (AC1-AC3, D4, D5): the lead workspace. Assigning a lead to a telecaller arrives with tel-007 (no HTTP path yet), so the
-// worked journey is the manager's: a fresh website lead sits in the IT unassigned queue of a manager whose telecaller is in IT (T23).
+// tel-008 (AC1-AC3, D4, D5): the lead workspace. The worked journey is the manager's: a fresh website lead, placed with the manager's
+// IT telecaller (T23). tel-007 (DI2) distributes it on arrival to any eligible IT telecaller in the shared database, so super_admin
+// then assigns it to this run's telecaller through tel-007's API -- either way its history starts New Lead -> Assigned.
 // The telecaller's side checks the empty My Leads and that another lead's id reads as not found (AC2).
 test.describe.configure({ timeout: 120_000 });
 
@@ -40,13 +41,17 @@ const noSideScroll = (page: Page) => page.evaluate(() => document.documentElemen
 
 test("a manager opens a queue lead, sets its priority and stage, edits it, and finds it by priority", async ({ page }) => {
   const stamp = Date.now();
-  const { manager } = await accounts(page, stamp);
+  const { manager, caller } = await accounts(page, stamp);
   const name = `Workspace Lead ${stamp}`;
   const mobile = `9${String(stamp).slice(-9)}`; // tel-005 (T12): a known mobile would attach to its existing lead
   const created = await page.request.post("/api/v1/public/enquiries", {
     data: { division: "it", name, email: `tel008-${stamp}@example.com`, phone: `${mobile.slice(0, 5)} ${mobile.slice(5)}`, subject: "Cyber Security", message: "Call me after 6pm." },
   });
   expect(created.status()).toBe(201);
+  await page.request.post("/api/v1/auth/login", { data: { email: "superadmin@edusphere.local", password: "Demo@123", division: "global" } });
+  const assigned = await page.request.post("/api/v1/telecaller/leads/assign", { data: { lead_ids: [(await created.json()).id], telecaller_user_id: caller.id } });
+  expect(assigned.status()).toBe(200);
+  await page.request.post("/api/v1/auth/logout");
 
   const consoleErrors: string[] = [];
   page.on("console", (m) => m.type() === "error" && consoleErrors.push(m.text()));
@@ -63,7 +68,8 @@ test("a manager opens a queue lead, sets its priority and stage, edits it, and f
   await expect(page.getByRole("heading", { name })).toBeVisible();
   await expect(page.getByText("Call me after 6pm.")).toBeVisible();
   await expect(page.getByRole("link", { name: `Call ${name}` })).toHaveAttribute("href", `tel:${mobile}`);
-  await expect(page.getByText("No activity yet.")).toBeVisible();
+  await expect(page.getByRole("list", { name: "Lead activity" }).getByRole("listitem")).toHaveCount(1); // tel-007: the assignment
+  await expect(page.getByRole("list", { name: "Lead activity" })).toContainText("Stage: New Lead → Assigned");
   await expect(page.getByText("Set the lead's product interest to see its call script.")).toBeVisible(); // a website lead has no product
 
   await page.getByRole("group", { name: "Priority" }).getByLabel(/Hot/).check();
@@ -76,7 +82,7 @@ test("a manager opens a queue lead, sets its priority and stage, edits it, and f
   await page.getByLabel(`New stage for ${name}`).selectOption("qualified");
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByText("Stage updated.")).toBeVisible();
-  await expect(activity.getByRole("listitem").first()).toContainText("Stage: New Lead → Qualified");
+  await expect(activity.getByRole("listitem").first()).toContainText("Stage: Assigned → Qualified");
 
   await page.getByRole("button", { name: "Edit details" }).click();
   await page.getByLabel("City").fill("Hyderabad");
@@ -94,7 +100,7 @@ test("a manager opens a queue lead, sets its priority and stage, edits it, and f
   await page.reload(); // stored, not just shown
   await expect(page.getByText("Hyderabad")).toBeVisible();
   await expect(page.getByText(/Stage: Qualified · Priority: Hot/)).toBeVisible();
-  await expect(page.getByRole("list", { name: "Lead activity" }).getByRole("listitem")).toHaveCount(2);
+  await expect(page.getByRole("list", { name: "Lead activity" }).getByRole("listitem")).toHaveCount(3); // assignment, priority, stage
   for (const width of [375, 768]) {
     await page.setViewportSize({ width, height: 900 });
     expect(await noSideScroll(page), `no side scroll at ${width}px`).toBe(true);
@@ -111,11 +117,12 @@ test("a manager opens a queue lead, sets its priority and stage, edits it, and f
 
 test("a telecaller's My Leads starts empty and another lead reads as not found", async ({ page }) => {
   const stamp = Date.now();
-  const { caller } = await accounts(page, stamp);
+  // Before the telecaller exists, so tel-007's round robin (DI2) can never hand this lead to them.
   const created = await page.request.post("/api/v1/public/enquiries", {
     data: { division: "it", name: `Not Mine ${stamp}`, email: `tel008-x-${stamp}@example.com`, subject: "Java", message: "Please call me." },
   });
   const { id } = await created.json();
+  const { caller } = await accounts(page, stamp);
 
   await signIn(page, "it", caller.email, "/telecaller/dashboard");
   await page.getByRole("link", { name: "My Leads" }).first().click();

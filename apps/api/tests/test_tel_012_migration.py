@@ -37,7 +37,7 @@ SCRIPTS = "SELECT s.name, s.steps, p.name FROM tel_scripts s JOIN tel_products p
 def test_migration_chains_after_0082_and_is_the_single_head():
     assert _migration.revision == HEAD
     assert _migration.down_revision == BASE
-    script = ScriptDirectory.from_config(_config())  # bdm-018's 0084 now follows this revision; 0083 stays on the single chain
+    script = ScriptDirectory.from_config(_config())  # bdm-018's 0084 and tel-007's 0085 now follow this revision; 0083 stays on the single chain
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
 
 

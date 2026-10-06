@@ -4009,20 +4009,50 @@ below is the recommended option, recorded so the owner can override it. It is **
 query); a Business section on both organization profiles for College organizations. **New Feature ID authorized:** `bdm-021`. **Status:** see
 `BDM_CRM_BACKLOG.md` §4 bdm-021.
 
-### DEC-SCOPE-087 — Lead intake: manual creation, duplicate detection, website-enquiry attach (`tel-005`)
+VERIFIED on `feature/tel-012` @ final HEAD (2026-10-06): lite backend 339 (tel-001/002/003/012/017 + bdm-005 migration; re-run after the 4ec7a22b merge), vitest 75, Playwright 7, Browser Use QA (QA-01…04 fixed test-first and re-verified). Full backend suite deferred to the owner.
+
+### DEC-SCOPE-087 — Lead distribution: rules, round robin, unassigned queue, manual (re)assignment (`tel-007`)
+
+**Evidence:** `EVID-019` §17 (round robin, product, location, manual); `DEC-SCOPE-073` T11, T18, T22, T23; owner answers in-session 2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for DI1–DI4; D1–D6 are recorded defaults. VERIFIED on `feature/tel-007`
+(2026-10-06); **merged** to `main` as PR #90 @ `595025e4`. Drafted as `DEC-SCOPE-082` / `0082`; re-chained on `main` @ `50838192` (bdm-025 took 082 / `0082_bdm_assignment_history`; tel-012 took 083 / `0083_tel_content` and API §12I), then on `main` @ `7afd4a4b` (tel-008 took `DEC-SCOPE-084` and API §12J, no migration), then on `main` @ `9b395aaf` (bdm-018 took `DEC-SCOPE-085` / `0084_bdm_onboarding`), then on `main` @ `a36b5b63` (bdm-021 took `DEC-SCOPE-086`, no migration).
+
+| # | Question | Answer |
+|---|---|---|
+| DI1 (Q-07) | Eligibility | Active account only: role `telecaller`, `users.active`, on the lead's team. No pause flag (tel-025 owns deactivation) |
+| DI2 (Q-05) | Intake | Website and BDM-entered leads are distributed in the intake transaction; team = the lead's division; no product → city rule, then round robin. Existing unassigned leads are not backfilled |
+| DI3 | Rule editing | Every manager reads all rules of both teams; creates/changes/deletes only rules whose telecaller is a direct report (`super_admin`: all). One rule per team + product / team + city |
+| DI4 | Reassign UI | One Lead assignment page: Unassigned and Assigned to my team tabs, bulk assign/reassign to a direct report |
+| D1 | Lead team | `enquiries.division`; a product with no team → unassigned queue (T18) |
+| D2 | Round robin | Eligible telecallers in user-id order after the team cursor (row-locked); rules and manual moves don't advance it |
+| D3 | Manual assignment | 1–100 leads, all or nothing; leads in scope (else 404); target a direct report (else 403, AC5), active and on the leads' team (else 422); same telecaller = unchanged; any stage, only `new` moves to `assigned` |
+| D4 | History | One `lead.assign` audit row per change (from, to, method) + the `assigned` stage event; no assignment table |
+| D5 | Alert | "New Lead Assigned" is tel-020's |
+| D6 | Rule shape | No active flag (delete to stop); PATCH changes only the telecaller |
+
+**Implementation:** migration `0085_tel_distribution` (`tel_distribution_rules`, `tel_round_robin_cursors`; downgrade refuses while rules exist),
+`services/lead_distribution.py` (`distribute`, `on_intake` in a SAVEPOINT, `assign`, `assignee`, `next_in_turn`), `api/telecaller_distribution.py`
+(`GET/POST/PATCH/DELETE /telecaller/distribution-rules`, `GET /telecaller/leads/unassigned`, `GET /telecaller/leads/assigned`,
+`POST /telecaller/leads/assign`); `public.create_enquiry` and `bdm_leads.add_lead` call `on_intake`. Web `/telecaller/manager/distribution`
+and `/telecaller/manager/assignment`. Design spec `docs/superpowers/specs/2026-10-06-tel-007-lead-distribution-design.md`.
+
+### DEC-SCOPE-088 — Lead intake: manual creation, duplicate detection, website-enquiry attach (`tel-005`)
 
 **Evidence:** `EVID-019` §2 (lead fields), §18 (duplicate detection, L584–L606); `DEC-SCOPE-073` T12, T13, T15; `DEC-SCOPE-077`
-(phone normalisation, Q-04); `DEC-SCOPE-081` (pipeline engine); owner answers in-session 2026-10-06.
-**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for I1–I5 and the merge order; R1–R10 are recorded defaults. Migration
-`0085_lead_enquiries` (after bdm-018's `0084_bdm_onboarding`). Drafted as `DEC-SCOPE-086`; bdm-021 (PR #88, no migration) took 086 first.
-**Merge order (owner):** tel-005 merges before tel-007 (backlog §5.2). tel-007 then re-chains (`0086`, `DEC-SCOPE-088`, API §12L) and
-routes `lead_intake.website_intake`'s new leads and manager-created leads through distribution.
+(phone normalisation, Q-04); `DEC-SCOPE-081` (pipeline engine); `DEC-SCOPE-087` (tel-007 distribution, DI2); owner answers in-session
+2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for I1–I6; R1–R10 are recorded defaults. Migration `0086_lead_enquiries`
+(after tel-007's `0085_tel_distribution`), API contract §12L. Re-chained twice: drafted as `DEC-SCOPE-086` / `0085_lead_enquiries` / §12K;
+bdm-021 (PR #88, no migration) took 086, then tel-007 (PR #90) merged first with `0085_tel_distribution` / `DEC-SCOPE-087` / §12K (the
+owner had planned tel-005 first). On the merge with `main` @ `6a3e7722`, `lead_intake` calls tel-007's `lead_distribution.on_intake` for
+new website leads and manager-created leads (I6), and the public reply keeps I3 over tel-007's real status (owner).
 
 | # | Question | Answer |
 |---|---|---|
 | I1 (Q-03) | Email on a manual lead | `enquiries.email` becomes nullable. A manual lead requires a valid mobile (`normalise_phone`); email is optional. The website form still requires email |
-| I2 | Owner of a manual lead before tel-007 | The creator keeps it: a telecaller's lead is assigned to them (pipeline event `assigned`). A manager's or admin's lead waits unassigned (`new`) in its team's queue |
-| I3 | Public reply when a website enquiry attaches | Same `201` and keys. `id` + `lead_code` are the existing lead's; `status` is always `"new"` and `crm_sync_status` always `"pending"`, so the reply never reveals that the person is known |
+| I2 | Owner of a manual lead | The creator keeps it: a telecaller's lead is assigned to them (pipeline event `assigned`) and is never redistributed. A manager's or admin's lead: I6 |
+| I3 | Public reply | Same `201` and keys on every path. On attach, `id` + `lead_code` are the existing lead's. `status` is always `"new"` and `crm_sync_status` always `"pending"`, never the stored stage, including after tel-007's distribution (owner, on the merge with tel-007). The reply never reveals that the person is known or who took the lead; tests read the stage from the stored lead |
+| I6 | A manager's manual lead after tel-007 | Distributed on arrival through `lead_distribution.on_intake` (rules, then round robin; a SAVEPOINT, so an error leaves it unassigned). When nobody is eligible it waits in its team's unassigned queue |
 | I4 | CRM webhook for an attached enquiry | Per lead: none is queued. A new lead (website, manual) is queued after the commit, as before |
 | I5 | Who may "Add enquiry to this lead" | Any `telecaller` / `telecaller_manager` / `super_admin`, on any lead (another telecaller's, handed over, closed). Append-only; no read access is granted. A closed lead stays closed until a manager reopens it (T13) |
 | R1 | Match | `phone_normalized` = normalised mobile OR `lower(email)`, across every lead (all divisions, closed, BDM-entered) |
@@ -4033,7 +4063,7 @@ routes `lead_intake.website_intake`'s new leads and manager-created leads throug
 | R6 | Subject / notes | Subject defaults to the product name, notes to empty |
 | R7 | Races | `pg_advisory_xact_lock` on the sorted phone/email keys before the match, on every intake path |
 | R8 | BDM lead entry | Unchanged (bdm-017's per-organization rule) |
-| R9 | Unmatched website enquiry | Created exactly as before (Q-05 is tel-007's) |
+| R9 | Unmatched website enquiry | A new lead, distributed on arrival by tel-007 (DI2) as on `main` |
 | R10 | CRM sync of a manual lead | Queued after the commit, like website and BDM leads |
 
 **Implementation:** `services/lead_intake.py` (shared by manual and website intake; tel-006 CSV joins later); `models.LeadEnquiry`;

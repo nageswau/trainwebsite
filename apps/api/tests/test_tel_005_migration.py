@@ -1,6 +1,6 @@
-"""tel-005 -- migration 0085_lead_enquiries (spec §2; I1). The round trip runs in a throwaway database (the tel-004 pattern); a downgrade
+"""tel-005 -- migration 0086_lead_enquiries (spec §2; I1). The round trip runs in a throwaway database (the tel-004 pattern); a downgrade
 never runs against the shared test database. 0001 builds a fresh database from the current models, so each test first downgrades to
-0084_bdm_onboarding to reach the real pre-tel-005 shape."""
+0085_tel_distribution to reach the real pre-tel-005 shape."""
 
 import asyncio
 import importlib.util
@@ -19,11 +19,11 @@ from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_tel_005_migration_0085", VERSIONS / "0085_lead_enquiries.py")
+_spec = importlib.util.spec_from_file_location("_tel_005_migration_0086", VERSIONS / "0086_lead_enquiries.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0084_bdm_onboarding", "0085_lead_enquiries"
+BASE, HEAD = "0085_tel_distribution", "0086_lead_enquiries"
 
 
 def _config() -> Config:
@@ -45,7 +45,7 @@ def _sql(url: str, sql: str, params: dict | None = None, *, autocommit: bool = F
     return asyncio.run(_inner())
 
 
-def test_migration_chains_after_0084_bdm_onboarding_and_there_is_one_head():
+def test_migration_chains_after_0085_tel_distribution_and_there_is_one_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
@@ -90,7 +90,7 @@ PHONE_ONLY = ("INSERT INTO enquiries (id, division, name, email, subject, messag
               "VALUES (:id, 'it', 'Phone Only', NULL, 'Python', '', 'walk_in', 'new', 'pending', '{}')")
 
 
-def test_downgrade_to_0084_leaves_the_old_shape(base_db):
+def test_downgrade_to_0085_leaves_the_old_shape(base_db):
     url = base_db["url"]
     assert _sql(url, "SELECT to_regclass('lead_enquiries')") == [(None,)]
     assert _sql(url, NULLABLE) == [("NO",)]

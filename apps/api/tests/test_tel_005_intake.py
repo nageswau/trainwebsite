@@ -1,4 +1,4 @@
-"""tel-005 -- manual lead creation, the duplicate panel, the duplicate check and "Add enquiry to this lead" (spec §1, §3; DEC-SCOPE-087;
+"""tel-005 -- manual lead creation, the duplicate panel, the duplicate check and "Add enquiry to this lead" (spec §1, §3; DEC-SCOPE-088;
 I1, I2, I5, R1-R6). The test database is shared and never truncated, and the duplicate match runs across every lead, so each test uses a
 fresh mobile number and email."""
 
@@ -79,16 +79,71 @@ async def test_a_telecaller_creates_a_lead_assigned_to_themselves(client, db_ses
 
 
 @pytest.mark.asyncio
-async def test_a_manager_lead_waits_unassigned_in_its_teams_queue(client, db_session):
+async def test_a_manager_lead_is_distributed_on_arrival(client, db_session):
+    """I6: a manager's lead goes through tel-007's distribution, like website and BDM leads (the team has eligible telecallers)."""
     manager, _, _ = await team(db_session)
     await as_user(client, manager)
     response = await client.post(LEADS, json=await body(db_session, email=mail().upper(), subject="Weekend batch", message="Call after 6"))
     assert response.status_code == 201, response.text
     data = response.json()
-    assert (data["status"], data["telecaller"], data["division"]) == ("new", None, "it")
+    assert (data["status"], data["division"]) == ("assigned", "it") and data["telecaller"] is not None
     assert data["email"] == data["email"].lower() and (data["subject"], data["message"]) == ("Weekend batch", "Call after 6")
+    [assign] = await audits(db_session, data["id"], "lead.assign")
+    assert assign.metadata_json["method"] in ("round_robin", "product_rule", "location_rule")
+
+
+@pytest.mark.asyncio
+async def test_create_says_whether_the_new_lead_is_in_the_callers_scope(client, db_session, monkeypatch):
+    """QA-06: tel-007 may give a manager's lead to an IT telecaller outside the manager's reports; the reply says so (`in_scope`)."""
+    from app.services import lead_distribution
+
+    manager, _, _ = await team(db_session)
+    stranger = await make_telecaller(db_session, await make_tl_manager(db_session))
+
+    async def elsewhere(db, lead):
+        await lead_distribution.assign(db, lead, stranger.id, "round_robin", None)
+        return "round_robin"
+
+    monkeypatch.setattr(lead_distribution, "distribute", elsewhere)
+    await as_user(client, manager)
+    data = (await client.post(LEADS, json=await body(db_session))).json()
+    assert (data["telecaller"]["id"], data["in_scope"]) == (str(stranger.id), False)
+    monkeypatch.undo()
+    _, tel, _ = await team(db_session)
+    await as_user(client, tel)
+    assert (await client.post(LEADS, json=await body(db_session))).json()["in_scope"] is True
+
+
+@pytest.mark.asyncio
+async def test_a_manager_lead_nobody_takes_waits_in_its_teams_queue(client, db_session, monkeypatch):
+    from app.services import lead_distribution
+
+    async def nobody(db, lead):
+        return None
+
+    monkeypatch.setattr(lead_distribution, "distribute", nobody)
+    manager, _, _ = await team(db_session)
+    await as_user(client, manager)
+    data = (await client.post(LEADS, json=await body(db_session))).json()
+    assert (data["status"], data["telecaller"]) == ("new", None)
     listed = (await client.get(LEADS, params={"q": data["lead_code"]})).json()["items"]
     assert [item["id"] for item in listed] == [data["id"]]  # in the manager's team queue
+
+
+@pytest.mark.asyncio
+async def test_a_telecaller_lead_is_never_redistributed(client, db_session, monkeypatch):
+    from app.services import lead_distribution
+
+    calls: list = []
+
+    async def spy(db, lead):
+        calls.append(lead.id)
+
+    monkeypatch.setattr(lead_distribution, "on_intake", spy)
+    _, tel, _ = await team(db_session)
+    await as_user(client, tel)
+    data = (await client.post(LEADS, json=await body(db_session))).json()
+    assert (data["status"], data["telecaller"]["id"], calls) == ("assigned", str(tel.id), [])  # I2: the creator keeps it
 
 
 @pytest.mark.asyncio

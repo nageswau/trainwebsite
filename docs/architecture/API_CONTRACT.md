@@ -1029,16 +1029,32 @@ Other roles get `403`, signed out `401`, and missing or out of scope `404`.
 | `GET /telecaller/leads/{id}/timeline` | `{items, total, limit, offset}`, newest first; item `{id, kind: stage|priority, at, actor {id, full_name} or null, from_value, from_label, to_value, to_label, reason}` |
 | `POST /telecaller/leads/{id}/stage` | As §12H, plus `403` for a telecaller on a handed-over lead |
 
-## 12K. Lead intake (`tel-005`) — addendum, 2026-10-06
+## 12K. Lead distribution (`tel-007`) — addendum, 2026-10-06
 
-`DEC-SCOPE-087`; design spec `docs/superpowers/specs/2026-10-06-tel-005-lead-intake-design.md` §3. Migration `0085_lead_enquiries`.
+`DEC-SCOPE-087`; design spec `docs/superpowers/specs/2026-10-06-tel-007-lead-distribution-design.md` §4–§5; migration `0085_tel_distribution`.
+All routes: `telecaller_manager` or `super_admin` (other roles `403`, signed out `401`). Lists are `{items, total, limit, offset}` (`limit` default 50, max 100).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/distribution-rules` | Filters `team`, `kind`, `telecaller_user_id`. Item `{id, team, kind, product {id, name, active} \| null, city, telecaller {id, full_name, active}, editable}`; every manager reads every rule, `editable` = the telecaller is my direct report (`super_admin`: true) |
+| `POST /telecaller/distribution-rules` | Body `{team, kind: product\|city, product_id?, city?, telecaller_user_id}` (extra keys `422`; city trimmed, ≤ 120). `201` item. `422`: shape, inactive/unknown product, product without a team, product of the other team, telecaller not an active telecaller of the team. `403`: not a direct report. `409`: the team already has a rule for that product / city (case-insensitive) |
+| `PATCH /telecaller/distribution-rules/{id}` | Body `{telecaller_user_id}` only. `200` item; `404` missing; `403` when the current or new telecaller isn't my report; `422` as above |
+| `DELETE /telecaller/distribution-rules/{id}` | `204`; `404` / `403` as PATCH |
+| `GET /telecaller/leads/unassigned` | `team`, `q` (Lead ID, name or city). Unassigned leads of the teams my reports are on (`super_admin`: all), oldest first. Item `{id, lead_code, name, division, city, product {id, name} \| null, source, status, status_label, telecaller: null, created_at}` |
+| `GET /telecaller/leads/assigned` | `telecaller_user_id` (not my report → `404`), `team`, `q`. My reports' leads (`super_admin`: every assigned lead), newest first; `telecaller {id, full_name, active}` |
+| `POST /telecaller/leads/assign` | Body `{lead_ids: 1–100 distinct, telecaller_user_id}` (extra keys `422`). All or nothing: a lead out of scope `404`; leads of two teams `422`; target not my report `403`; inactive / other team / not a telecaller `422`. `200` `{assigned, unchanged}`; a new lead moves to `assigned`; one `lead.assign` audit row per changed lead |
+| `POST /public/enquiries`, `POST /bdm/organizations/{id}/leads` | Shape unchanged. The lead is distributed in the same transaction (product rule → city rule → round robin, else unassigned), so `status` is `assigned` when a telecaller was chosen; a distribution error leaves it unassigned (never a failed enquiry) |
+
+## 12L. Lead intake (`tel-005`) — addendum, 2026-10-06
+
+`DEC-SCOPE-088`; design spec `docs/superpowers/specs/2026-10-06-tel-005-lead-intake-design.md` §3. Migration `0086_lead_enquiries`.
 Roles are §12H's (`telecaller`, `telecaller_manager`, `super_admin`); other roles get `403`, and a signed-out caller gets `401`. A
 "duplicate" is any lead with the same normalised mobile or the same email in any case, across every lead, closed ones included.
 
 | Method/Path | Notes / status codes |
 |---|---|
 | `GET /telecaller/leads/duplicate-check?phone=&email=` | `200 {matches: [...]}` (empty when none). `422` when neither is given or the phone can't be parsed. Match = `{id, lead_code, name, status, status_label, telecaller, counselor, last_contact_at (null until tel-010), matched_on: [phone|email], enquiries: [{subject, source, at}] (≤ 5), in_scope}`, ≤ 5 newest first; never the other lead's phone, email or messages |
-| `POST /telecaller/leads` | Body `name`, `phone` (required, must normalise), `email?`, `whatsapp_number?`, `city?`, `state?`, `qualification?`, `passing_year?` (1950–2100), `institution?`, `product_id` (active), `campaign_id?` (active, same product and source), `source` (§2 list), `priority?` (default `warm`), `division?` (only for a product without a team), `subject?` (default = product name), `message?`. Other keys `422`. `201` = the §12J detail (a telecaller's lead `assigned` to them; a manager's `new`, unassigned). `409 {detail: {message: "Lead already exists.", code: "duplicate_lead", matches}}`. Audit `lead.create`; CRM queued after commit |
+| `POST /telecaller/leads` | Body `name`, `phone` (required, must normalise), `email?`, `whatsapp_number?`, `city?`, `state?`, `qualification?`, `passing_year?` (1950–2100), `institution?`, `product_id` (active), `campaign_id?` (active, same product and source), `source` (§2 list), `priority?` (default `warm`), `division?` (only for a product without a team), `subject?` (default = product name), `message?`. Other keys `422`. `201` = the §12J detail (a telecaller's lead `assigned` to them; a manager's distributed by tel-007, else `new` in the team queue) plus `in_scope` (QA-06: false when the lead went to a telecaller outside the caller's leads). `409 {detail: {message: "Lead already exists.", code: "duplicate_lead", matches}}`. Audit `lead.create`; CRM queued after commit |
 | `POST /telecaller/leads/{id}/enquiries` | Body `subject`, `message?`, `source`, `campaign_id?` (active). Any existing lead (I5); the stage never moves. `201 {id, lead_id, lead_code, subject, source, created_at}`; `404` unknown lead; `422` invalid. Audit `lead.enquiry_add` |
 | `GET /telecaller/leads/{id}/timeline` | §12J, plus `kind: "enquiry"` rows: `from_value` = source, `to_value` = subject, `reason` = notes, `actor` null for the website |
 | `POST /public/enquiries` | Unchanged request and keys. A known person's enquiry attaches to their newest lead (a `lead_enquiries` row; no new lead, no CRM webhook). The reply is `{id, lead_code}` of that lead with `status: "new"` and `crm_sync_status: "pending"`, identical in shape and constant values to a new lead's |

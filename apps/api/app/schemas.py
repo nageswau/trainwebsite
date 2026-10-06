@@ -5413,7 +5413,7 @@ def _mobile(value: str) -> str:
     return value
 
 
-# tel-005 (DEC-SCOPE-087; I1, R5, R6): a lead a telecaller or manager enters. The mobile is required and must be a number the duplicate check
+# tel-005 (DEC-SCOPE-088; I1, R5, R6): a lead a telecaller or manager enters. The mobile is required and must be a number the duplicate check
 # can match on; email is optional (I1). Owner, telecaller and stage are never sent (`extra="forbid"`): the creator and the pipeline decide.
 LeadMobile = Annotated[Annotated[str, _trimmed(40)], AfterValidator(_bdm_lead_text(_BDM_CONTROL, True)), AfterValidator(_mobile)]
 LeadOptionalEmail = Annotated[Annotated[str, _trimmed(255)] | None, AfterValidator(_bdm_lead_text(_BDM_CONTROL, False))]
@@ -5468,3 +5468,93 @@ class LeadTimelinePage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# --- tel-007 (DEC-SCOPE-087, spec §5): distribution rules, the unassigned queue and manual (re)assignment ---------------------------
+class TelDistributionRuleCreate(BaseModel):
+    """The service checks the shape (a product rule names a product, a city rule a city), the product and the telecaller."""
+    model_config = ConfigDict(extra="forbid")
+    team: Literal["it", "overseas"]
+    kind: Literal["product", "city"]
+    product_id: UUID | None = None
+    city: BdmOrgShort = None
+    telecaller_user_id: UUID
+
+
+class TelDistributionRuleUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    telecaller_user_id: UUID
+
+
+class TelRuleProduct(BaseModel):
+    id: UUID
+    name: str
+    active: bool
+
+
+class TelRuleTelecaller(BaseModel):
+    id: UUID
+    full_name: str
+    active: bool
+
+
+class TelDistributionRuleOut(BaseModel):
+    id: UUID
+    team: str
+    kind: str
+    product: TelRuleProduct | None
+    city: str | None
+    telecaller: TelRuleTelecaller
+    editable: bool
+
+
+class TelDistributionRulePage(BaseModel):
+    items: list[TelDistributionRuleOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class TelQueueProduct(BaseModel):
+    id: UUID
+    name: str
+
+
+class TelQueueLead(BaseModel):
+    id: UUID
+    lead_code: str
+    name: str
+    division: str
+    city: str | None
+    product: TelQueueProduct | None
+    source: str
+    status: str
+    status_label: str
+    telecaller: TelRuleTelecaller | None
+    created_at: datetime
+
+
+class TelQueueLeadPage(BaseModel):
+    items: list[TelQueueLead]
+    total: int
+    limit: int
+    offset: int
+
+
+class TelLeadAssign(BaseModel):
+    """D3: 1-100 distinct leads to one telecaller, all or nothing."""
+    model_config = ConfigDict(extra="forbid")
+    lead_ids: list[UUID] = Field(min_length=1, max_length=100)
+    telecaller_user_id: UUID
+
+    @field_validator("lead_ids")
+    @classmethod
+    def _distinct(cls, value: list[UUID]) -> list[UUID]:
+        if len(set(value)) != len(value):
+            raise ValueError("Each lead can be chosen once")
+        return value
+
+
+class TelLeadAssignOut(BaseModel):
+    assigned: int
+    unchanged: int

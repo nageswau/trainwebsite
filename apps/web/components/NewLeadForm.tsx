@@ -177,8 +177,16 @@ export default function NewLeadForm({ basePath }: { basePath: string }) {
     setBusy(true);
     const outcome = await sendJson(LEADS_URL, "POST", payload);
     setBusy(false);
-    if (outcome.ok && isRequestBody(outcome.data)) return router.push(`${basePath}/${encodeURIComponent(outcome.data.id)}`);
     sending.current = false;
+    if (outcome.ok && isRequestBody(outcome.data)) {
+      const created = outcome.data as { id: string; lead_code?: string; in_scope?: boolean; telecaller?: { full_name: string } | null };
+      if (created.in_scope !== false) return router.push(`${basePath}/${encodeURIComponent(created.id)}`);
+      // QA-06: distribution gave it to someone outside the caller's leads, so opening it would only say "not found"
+      setValues(EMPTY);
+      setMatches([]);
+      const to = created.telecaller ? ` and assigned to ${created.telecaller.full_name}` : "";
+      return setNotice({ text: `Lead ${created.lead_code} created${to}.`, failed: false });
+    }
     const detail = outcome.ok ? null : (outcome.detail as { code?: string; matches?: DuplicateMatch[] } | undefined);
     if (detail?.code === "duplicate_lead" && Array.isArray(detail.matches)) {
       setMatches(detail.matches);

@@ -3,7 +3,7 @@
 Spec: `docs/superpowers/specs/2026-10-06-tel-005-lead-intake-design.md`. TDD on every task: RED → GREEN → refactor.
 
 1. **Migration + model.** Test `test_tel_005_migration.py`: email nullable, `lead_enquiries` columns/CHECK/index, downgrade round-trip.
-   Implement `0085_lead_enquiries.py`, `models.LeadEnquiry`, and `Enquiry.email` nullable.
+   Implement `0086_lead_enquiries.py`, `models.LeadEnquiry`, and `Enquiry.email` nullable.
 2. **Intake service + manual create.** Test `test_tel_005_intake.py`:
    - create → 201, Assigned to the telecaller, and the audit row;
    - a manager → New/unassigned;
@@ -23,6 +23,6 @@ Spec: `docs/superpowers/specs/2026-10-06-tel-005-lead-intake-design.md`. TDD on 
    Rewire `public.create_enquiry`.
 5. **Frontend.** Vitest for `NewLeadForm` (submit payload, 409 panel, add enquiry, division visibility) and the timeline enquiry row. Implement the lib types/helpers, `NewLeadForm.tsx`, the new pages, the New lead button, the `LeadDetailPanel` enquiry row and email-required tweak, and `AdminLeadManagementPanel` email null-safety.
 6. **Playwright** `tel-005-lead-intake.spec.ts`: create → detail; a duplicate → panel → add enquiry; mobile layout.
-7. **Docs:** DEC-SCOPE-087, API contract §12K, backlog status, data model note.
+7. **Docs:** DEC-SCOPE-088, API contract §12L, backlog status, data model note.
 
 Lite backend set: tel_005_*, tel_003_intake, tel_003_admin_leads, tel_004_*, tel_008_workspace, pub_002_enquiry_crm, bdm_017_leads.

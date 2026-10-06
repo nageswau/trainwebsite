@@ -468,7 +468,7 @@ covers the commission-specific piece).
   created_at)`. Live pipeline stages are still never stored (H11), so `ck_bdm_organizations_pipeline_stage` is **not** widened (the
   bdm-004 note above anticipated it). Additive; the downgrade refuses while any request or link exists.
 
-- **Addendum, 2026-10-06 (`tel-005`, `DEC-SCOPE-087`; migration `0085_lead_enquiries`, chained after `0084_bdm_onboarding`) — lead
+- **Addendum, 2026-10-06 (`tel-005`, `DEC-SCOPE-088`; migration `0086_lead_enquiries`, chained after `0085_tel_distribution`) — lead
   intake.** `enquiries.email` becomes **nullable** (I1: a manual lead may have a mobile only; the website form still requires one).
   New `lead_enquiries` (UUID PK; `lead_id` FK `enquiries` RESTRICT; `subject` String(180); `message` Text; `source` String(30) CHECK
   the 13 §2 sources (`ck_lead_enquiries_source`); `campaign_id` FK `tel_campaigns` NULL; `metadata_json` JSON; `created_by_user_id` FK

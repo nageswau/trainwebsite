@@ -75,7 +75,7 @@ export async function TelecallerNewLeadPage({ manager }: { manager: boolean }) {
             <div className="eyebrow">Leads</div>
             <h2>New lead</h2>
             <p className="muted">
-              {manager ? "The lead waits in its team's unassigned queue." : "The lead is assigned to you."} We check the mobile number and email
+              {manager ? "The lead goes to your team's telecallers by your distribution rules, or waits in the unassigned queue." : "The lead is assigned to you."} We check the mobile number and email
               against every lead first, so a person is never entered twice.
             </p>
           </div>

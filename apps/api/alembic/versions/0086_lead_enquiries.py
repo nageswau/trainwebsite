@@ -1,11 +1,16 @@
 """tel-005 -- `lead_enquiries` (an enquiry added to an existing lead) and a nullable `enquiries.email`.
 
-Revision ID: 0085_lead_enquiries
-Revises: 0084_bdm_onboarding
+Revision ID: 0086_lead_enquiries
+Revises: 0085_tel_distribution
 
-docs/superpowers/specs/2026-10-06-tel-005-lead-intake-design.md §2 (DEC-SCOPE-087). I1 (Q-03): a manual lead needs a mobile, not an
+docs/superpowers/specs/2026-10-06-tel-005-lead-intake-design.md §2 (DEC-SCOPE-088). I1 (Q-03): a manual lead needs a mobile, not an
 email, so `enquiries.email` drops NOT NULL (the website form still requires one). 0001 builds a fresh database from the current models,
 which already carry both, so the upgrade is guarded (0074's idiom). downgrade() writes '' into a null email before NOT NULL returns.
+
+Re-chained on 2026-10-06. Drafted as `0085_lead_enquiries` (DEC-SCOPE-086, then 087); bdm-021 took DEC-SCOPE-086 and tel-007 took
+`0085_tel_distribution` / DEC-SCOPE-087 / API §12K (main @ `6a3e7722`), so this revision is `0086_lead_enquiries` after
+`0085_tel_distribution` and the decision is DEC-SCOPE-088 (API §12L). A database stamped at `0085_lead_enquiries` is re-stamped with
+`alembic stamp --purge 0084_bdm_onboarding` then `upgrade head` (both upgrades are guarded, so the re-run is harmless).
 """
 
 import sqlalchemy as sa
@@ -13,8 +18,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0085_lead_enquiries"
-down_revision = "0084_bdm_onboarding"
+revision = "0086_lead_enquiries"
+down_revision = "0085_tel_distribution"
 branch_labels = None
 depends_on = None
 

@@ -40,7 +40,11 @@ test("a website enquiry gets a Lead ID the admin can search and filter by", asyn
   await expect(page).toHaveURL(new RegExp(`q=${leadCode}`));
   await expect(panel.getByRole("rowheader")).toHaveText([name]);
   const row = panel.locator("tr", { has: page.getByRole("rowheader", { name, exact: true }) });
-  for (const text of [leadCode, "Website", "Unassigned", "Warm", "Cyber Security"]) await expect(row).toContainText(text);
+  for (const text of [leadCode, "Website", "Warm", "Cyber Security"]) await expect(row).toContainText(text);
+  // tel-007 DI2: distributed on arrival when an IT telecaller is eligible; otherwise it waits unassigned. The public reply's status is
+  // a constant acknowledgement (tel-005 I3), so the stage comes from the stored lead.
+  const { status } = (await (await page.request.get(`/api/v1/admin/leads?q=${leadCode}`)).json()).items[0];
+  if (status !== "assigned") await expect(row).toContainText("Unassigned");
 
   await panel.getByLabel("Source").selectOption("google");
   await expect(panel.getByText("No leads match these filters.")).toBeVisible();

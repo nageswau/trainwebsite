@@ -3028,6 +3028,23 @@ and keep their place. After a status change, focus moves to the row's new status
   filter, and a table (name, kind, product, file + size, uploaded, status, actions incl. Copy link). Copy link puts a 7-day link on the
   clipboard and says when it expires. Without clipboard access, the link is shown in a read-only field.
 
+## tel-007 addendum (2026-10-06, `DEC-SCOPE-087`) — Lead assignment and Distribution rules
+
+Design spec `docs/superpowers/specs/2026-10-06-tel-007-lead-distribution-design.md` §6. Roles `telecaller_manager` and `super_admin`; the
+manager sidebar adds **Lead assignment** and **Distribution rules** after Team.
+
+- **`/telecaller/manager/distribution`** (eyebrow "Settings"): a **Create rule** form — Team, Rule type (Product / City), Product (the team's
+  active products) or City, Telecaller (my active reports on that team; "No active telecaller on the … team reports to you." otherwise),
+  inline server errors (409 duplicate, 422, 403). The **Rules** list explains the order (product → city → round robin → unassigned queue),
+  has a team filter in the URL, loading / error + Retry / empty states and a pager; each of my rules has **Change telecaller** (inline
+  select, Save / Cancel / Esc) and **Delete** (inline confirm); another manager's rule reads "Another manager's report". An inactive
+  telecaller's rule shows "Inactive — skipped".
+- **`/telecaller/manager/assignment`** (eyebrow "Leads"): tabs **Unassigned** (oldest first) and **Assigned to my team** (newest first, a
+  Telecaller filter); arrow keys move between tabs; view, filter, search (Lead ID, name or city) and page live in the URL. A table with a
+  checkbox per lead and "Select all leads on this page", an **Assign to** picker (my active reports, "Name (Team)") and **Assign / Reassign
+  n selected**; a team mismatch is said before posting; success "Assigned n leads to X." (plus "m already with them."); loading / empty /
+  error + Retry states; the table scrolls inside its card at phone width.
+
 ## Required findings report
 
 ### FEATURE_WITHOUT_REQUIRED_SCREEN

@@ -171,6 +171,15 @@ describe("NewLeadForm (tel-005)", () => {
     expect(screen.getByText("Ready to join / immediate requirement.")).toBeTruthy();
   });
 
+  it("QA-06: a lead that went to someone outside the caller's leads is confirmed in place, not opened", async () => {
+    createReply = () => res({ id: "NEW2", lead_code: "LD-000200", in_scope: false, telecaller: { id: "t9", full_name: "Far Caller" } }, 201);
+    await fillRequired();
+    fireEvent.click(screen.getByRole("button", { name: "Create lead" }));
+    expect((await screen.findByText("Lead LD-000200 created and assigned to Far Caller.")).getAttribute("role")).toBe("status");
+    expect(push).not.toHaveBeenCalled();
+    expect((screen.getByLabelText(/Student name/) as HTMLInputElement).value).toBe(""); // ready for the next caller
+  });
+
   it("shows the API's message when the lead is refused", async () => {
     createReply = () => res({ detail: "This campaign is for another product" }, 422);
     await fillRequired();

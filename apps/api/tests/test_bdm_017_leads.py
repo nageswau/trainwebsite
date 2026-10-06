@@ -27,8 +27,9 @@ async def test_created_lead_is_attributed_with_server_owned_fields(client, db_se
     _, bdm, org = await bdm_with_org(client, db_session, bdm_type)
     created = await add_lead(client, org["id"], email="  Asha.N@Example.com ", note=None)
     assert created["email"] == "asha.n@example.com"
-    assert (created["status"], created["converted"], created["bdm"]["id"]) == ("new", False, str(bdm.id))
     row = await db_session.get(Enquiry, uuid.UUID(created["id"]))
+    # tel-007 DI2: the lead is distributed on entry, so it is `assigned` whenever a telecaller of its division was eligible
+    assert (created["status"], created["converted"], created["bdm"]["id"]) == ("assigned" if row.telecaller_user_id else "new", False, str(bdm.id))
     assert (row.bdm_organization_id, row.bdm_user_id) == (uuid.UUID(org["id"]), bdm.id)
     assert (row.source, row.division, row.crm_sync_status, row.subject) == ("bdm", division, "pending", "B.Tech admissions")
     assert row.message == f"Lead entered by BDM at {org['name']}"
@@ -124,6 +125,7 @@ async def test_creation_is_audited_with_ids_only(client, db_session, crm_calls):
     _, bdm, org = await bdm_with_org(client, db_session)
     body = lead_body(name="Private Person")
     created = await add_lead(client, org["id"], **body)
-    audit = await db_session.scalar(select(AuditLog).where(AuditLog.entity_type == "enquiry", AuditLog.entity_id == created["id"]))
+    audit = await db_session.scalar(select(AuditLog).where(  # tel-007 adds a system `lead.assign` row for the same lead
+        AuditLog.entity_type == "enquiry", AuditLog.entity_id == created["id"], AuditLog.action == "bdm_lead.created"))
     assert (audit.action, audit.user_id) == ("bdm_lead.created", bdm.id)
     assert audit.metadata_json == {"bdm_organization_id": org["id"]}

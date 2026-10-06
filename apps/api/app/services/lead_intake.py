@@ -1,4 +1,4 @@
-"""tel-005 (DEC-SCOPE-087, spec §3): lead intake -- the duplicate match (T12), manual lead creation, "Add enquiry to this lead" and the
+"""tel-005 (DEC-SCOPE-088, spec §3): lead intake -- the duplicate match (T12), manual lead creation, "Add enquiry to this lead" and the
 website enquiry that attaches to a person who is already a lead. tel-006's CSV import joins here.
 
 A person is their normalised mobile OR their lower-cased email, matched across every lead (closed ones too, R1). Each intake path takes
@@ -17,7 +17,7 @@ from app.lead_stages import label as stage_label
 from app.models import AuditLog, Enquiry, LeadEnquiry, TelCampaign, User
 from app.notifications.phone import normalise_phone
 from app.schemas import EnquiryIn, LeadEnquiryCreate, TelecallerLeadCreate
-from app.services import lead_pipeline
+from app.services import lead_distribution, lead_pipeline
 from app.services.telecaller_catalogue import locked_active_product
 
 logger = logging.getLogger("app.leads")
@@ -94,7 +94,7 @@ async def _campaign(db: AsyncSession, campaign_id: UUID) -> TelCampaign:
 
 async def create_lead(db: AsyncSession, user: User, payload: TelecallerLeadCreate) -> Enquiry:
     """I2 / R5 / R6: validate the catalogue choices, block a known person (409 with the panel), insert. A telecaller's lead is theirs
-    (`assigned` event); a manager's waits unassigned in its team's queue for tel-007's distribution."""
+    (`assigned` event); a manager's goes through tel-007's distribution (I6), else waits in its team's unassigned queue."""
     product = await locked_active_product(db, payload.product_id)
     if product.team and payload.division and payload.division != product.team:
         raise HTTPException(422, f"{product.name} belongs to the {TEAM_LABEL[product.team]} team")
@@ -125,6 +125,8 @@ async def create_lead(db: AsyncSession, user: User, payload: TelecallerLeadCreat
     await db.flush()
     if assigned:
         await lead_pipeline.apply_event(db, lead, "assigned", user)
+    else:
+        await lead_distribution.on_intake(db, lead)  # I6: a manager's lead is distributed like website and BDM leads (tel-007)
     db.add(AuditLog(user_id=user.id, action="lead.create", entity_type="enquiry", entity_id=str(lead.id),
                     metadata_json={"source": lead.source, "product_id": str(product.id), "assigned": assigned}))
     logger.info("lead_created", extra={"extra_fields": {"actor_id": str(user.id), "lead_id": str(lead.id), "assigned": assigned}})
@@ -162,4 +164,6 @@ async def website_intake(db: AsyncSession, payload: EnquiryIn) -> tuple[Enquiry,
     lead = Enquiry(division=payload.division, name=payload.name, email=payload.email, phone=payload.phone, subject=payload.subject,
                    message=payload.message, source=payload.source, metadata_json=payload.metadata, crm_sync_status="pending")
     db.add(lead)
+    await db.flush()
+    await lead_distribution.on_intake(db, lead)  # tel-007 DI2: in this transaction; an error leaves the lead unassigned, never lost
     return lead, False
