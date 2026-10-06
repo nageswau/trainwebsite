@@ -426,7 +426,7 @@ API contract §12H; re-chained after bdm-005, bdm-013 and tel-022's `0080_tel_ta
 
 ### tel-008 — Telecaller lead workspace: My Leads, lead detail, priority
 
-**Inherited from tel-012 (`DEC-SCOPE-082` C2):** the lead-detail **script panel**. It shows the lead's product's active script from
+**Inherited from tel-012 (`DEC-SCOPE-083` C2):** the lead-detail **script panel**. It shows the lead's product's active script from
 `GET /telecaller/scripts?product_id=`.
 
 - **Business requirement:** §22 "View assigned leads", §8 priority, §2 field display.
@@ -551,8 +551,8 @@ API contract §12H; re-chained after bdm-005, bdm-013 and tel-022's `0080_tel_ta
 
 ### tel-012 — Script, message-template and brochure library
 
-**Status (2026-10-06):** verified on `feature/tel-012`, not yet merged (`DEC-SCOPE-082` C1–C4, migration `0082_tel_content`, re-chained
-after tel-003 `0078`, bdm-005 `0079`, tel-022 `0080` and tel-004 `0081`). C2 moves `GET /telecaller/leads/{id}/render` and the lead-detail script panel to tel-008 / tel-013.
+**Status (2026-10-06):** verified on `feature/tel-012`, not yet merged (`DEC-SCOPE-083` C1–C4, migration `0083_tel_content`, re-chained
+after tel-003 `0078`, bdm-005 `0079`, tel-022 `0080`, tel-004 `0081` and bdm-025 `0082`). C2 moves `GET /telecaller/leads/{id}/render` and the lead-detail script panel to tel-008 / tel-013.
 
 - **Business requirement:** §6, §11 templates, §12 email kinds, T9.
 - **Existing behavior:** none. ENH-014 has notification templates in code.
@@ -588,7 +588,7 @@ after tel-003 `0078`, bdm-005 `0079`, tel-022 `0080` and tel-004 `0081`). C2 mov
 
 ### tel-013 — WhatsApp click-to-chat + send log
 
-**Inherited from tel-012 (`DEC-SCOPE-082` C2):** `GET /telecaller/leads/{id}/render?template_id=`. It renders through
+**Inherited from tel-012 (`DEC-SCOPE-083` C2):** `GET /telecaller/leads/{id}/render?template_id=`. It renders through
 `services/telecaller_content.render` with the lead's values, using `asset_link` for `{brochure_link}`. The owning-telecaller check comes
 from tel-008. The rendered text is plain, so this item URL-encodes it for wa.me.
 

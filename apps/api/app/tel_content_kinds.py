@@ -1,5 +1,5 @@
-"""tel-012 (DEC-SCOPE-082): the fixed message-template kinds of EVID-019 §11 (WhatsApp) and §12 (email), and the asset kinds. The
-model CHECKs and the API types read them from here; migration 0082 keeps its own frozen copy."""
+"""tel-012 (DEC-SCOPE-083): the fixed message-template kinds of EVID-019 §11 (WhatsApp) and §12 (email), and the asset kinds. The
+model CHECKs and the API types read them from here; migration 0083 keeps its own frozen copy."""
 
 WHATSAPP_KINDS = (
     "welcome",

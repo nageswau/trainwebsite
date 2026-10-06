@@ -1,9 +1,9 @@
 # tel-012 — Script, message-template and brochure library (design)
 
 NO-ASSUMPTION MODE. Backlog: `docs/delivery/TELECALLER_CRM_BACKLOG.md` §4 tel-012. Source: `EVID-019` §6, §11, §12. Authority: T9
-(`DEC-SCOPE-073`), owner answers C1–C4 of 2026-10-06 (`EXPLICIT_APPROVAL`, recorded as **`DEC-SCOPE-082`**, provisional — re-check
-`main` before merge). Branch `feature/tel-012` from `origin/main` @ `442ce465`. Migration **`0082_tel_content`** after
-`0081_lead_stage_pipeline`.
+(`DEC-SCOPE-073`), owner answers C1–C4 of 2026-10-06 (`EXPLICIT_APPROVAL`, recorded as **`DEC-SCOPE-083`**, provisional — re-check
+`main` before merge). Branch `feature/tel-012` from `origin/main` @ `442ce465`. Migration **`0083_tel_content`** after
+`0082_bdm_assignment_history`.
 
 ## 1. Owner answers
 
@@ -26,7 +26,7 @@ the name (tel-013).
    almost no columns; check constraints would become conditional soup.
 3. Reuse ENH-014 notification templates — rejected: they live in code, not manager-editable, and target users not leads.
 
-## 3. Data (migration `0082_tel_content`)
+## 3. Data (migration `0083_tel_content`)
 
 `tel_assets` — id, `name` varchar(160), `kind` ∈ {`brochure`, `fee`}, `product_id` → tel_products NULL, `storage_key` varchar(255)
 UNIQUE (server-generated `tel-assets/<uuid4hex>`), `file_name` varchar(255) (display only), `size_bytes` int, `active` bool,

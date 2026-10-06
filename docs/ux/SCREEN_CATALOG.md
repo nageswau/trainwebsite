@@ -3003,7 +3003,7 @@ Design spec `docs/superpowers/specs/2026-10-06-tel-004-lead-pipeline-design.md` 
   the button after closing. The workspace lead tables (admin Leads, counselor My Leads / dashboard) show the stage label. Below 360 px
   the Name column stops being sticky so the row's forms fit (QA-03).
 
-## tel-012 addendum (2026-10-06, `DEC-SCOPE-082`) — Telecaller content library
+## tel-012 addendum (2026-10-06, `DEC-SCOPE-083`) — Telecaller content library
 
 Three screens (design spec `docs/superpowers/specs/2026-10-06-tel-012-content-library-design.md` §7) on the tel-002 layout
 (`TelecallerCataloguePage`). No catalogue ID is invented, and there is no visual reference. Each is for `telecaller_manager` and

@@ -5,7 +5,7 @@
 
 **Goal:** Manager-maintained call scripts, WhatsApp/email message templates and PDF brochures, with signed 7-day public brochure links.
 
-**Architecture:** Three tables (`tel_scripts`, `tel_message_templates`, `tel_assets`) in migration `0082_tel_content`; rules in
+**Architecture:** Three tables (`tel_scripts`, `tel_message_templates`, `tel_assets`) in migration `0083_tel_content`; rules in
 `services/telecaller_content.py`; routes in `api/telecaller_content.py` (prefix `/telecaller`, plus a `public_router`); three manager
 pages reusing the tel-002 `TelecallerCataloguePage` shell.
 
@@ -38,7 +38,7 @@ pages reusing the tel-002 `TelecallerCataloguePage` shell.
 ### Task 1: Models, schemas, migration + seeds
 
 **Files:** Modify `apps/api/app/models.py` (after `TelCampaign`), `apps/api/app/schemas.py` (after tel-002 block); Create
-`apps/api/alembic/versions/0082_tel_content.py`, `apps/api/app/tel_content_kinds.py`; Test `apps/api/tests/test_tel_012_migration.py`.
+`apps/api/alembic/versions/0083_tel_content.py`, `apps/api/app/tel_content_kinds.py`; Test `apps/api/tests/test_tel_012_migration.py`.
 
 **Produces:** `TelScript`, `TelMessageTemplate`, `TelAsset`; `WHATSAPP_KINDS`, `EMAIL_KINDS`, `SEED_TEMPLATES`, `SEED_SCRIPT_STEPS`
 in `app/tel_content_kinds.py` (imported by models, migration, tests).
@@ -116,7 +116,7 @@ used names); `render(text: str, values: dict[str, str]) -> str`; `SAMPLE_VALUES`
 ### Task 7: Playwright e2e + docs
 
 **Files:** Create `apps/web/tests/e2e/tel-012-content-library.spec.ts`; Modify `docs/delivery/TELECALLER_CRM_BACKLOG.md` (status),
-`docs/decisions/PRODUCT_DECISION_REGISTER.md` (DEC-SCOPE-082).
+`docs/decisions/PRODUCT_DECISION_REGISTER.md` (DEC-SCOPE-083).
 
 - [ ] e2e: manager creates a script with steps, a template (unknown placeholder rejected, then saved), uploads a PDF, links it, previews,
   opens the public link signed-out (PDF 200), deactivates the brochure → link 404; telecaller cannot open manager pages.

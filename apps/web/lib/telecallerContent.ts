@@ -1,4 +1,4 @@
-// tel-012 (DEC-SCOPE-082): the call-script, message-template and brochure library -- types, labels, endpoints and the placeholder rule.
+// tel-012 (DEC-SCOPE-083): the call-script, message-template and brochure library -- types, labels, endpoints and the placeholder rule.
 // Labels and the placeholder check are display only; the API decides (services/telecaller_content.py).
 import { CATALOGUE_PAGE_SIZE, getPage } from "@/lib/telecallerCatalogue";
 

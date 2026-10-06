@@ -308,7 +308,7 @@ Division `global`; signs in at `/admin/login`; lands on `/telecaller/manager/tea
 - /telecaller/manager/targets — *(tel-022, `DEC-SCOPE-080`)* daily + monthly targets: team defaults (IT/Overseas) and per-telecaller overrides from a future date, targets in effect on any date, history; `?for=it|overseas|<telecaller id>` keeps the choice on refresh.
 - /telecaller/manager/products — *(tel-002, `DEC-SCOPE-074`)* the product/interest catalogue: create, edit, deactivate/reactivate; a Super Admin uses the same URL.
 - /telecaller/manager/campaigns — *(tel-002)* the campaign list (source → product → campaign): create, edit, deactivate/reactivate.
-- /telecaller/manager/scripts — *(tel-012, `DEC-SCOPE-082`)* call scripts: one active script per product, ordered steps.
+- /telecaller/manager/scripts — *(tel-012, `DEC-SCOPE-083`)* call scripts: one active script per product, ordered steps.
 - /telecaller/manager/templates — *(tel-012)* WhatsApp and email message templates with placeholders and a sample-value preview.
 - /telecaller/manager/brochures — *(tel-012)* brochure / fee-sheet PDFs: upload, edit, deactivate/reactivate, copy a 7-day link.
 
