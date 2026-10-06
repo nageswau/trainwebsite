@@ -1,6 +1,6 @@
 # AGN-023 — EduSphere counselor assignment for overseas applications: Design
 
-**Status:** Sections 1–3 approved by the owner in-session 2026-10-06; this written spec is for the owner's review.
+**Status:** Sections 1–3 approved by the owner in-session 2026-10-06; H11–H12 (filters, counselor screen limits) added at the spec review the same day. This written spec is for the owner's review.
 **Branch:** `feature/agn-023` (from `origin/main` `2b22158b`). **Decision:** `DEC-SCOPE-089` (next free on `main` @ `2b22158b`).
 **API contract:** §12M. **Migration:** none (`overseas_applications.counselor_id` exists).
 **Resolves:** `PRD_OPEN_ITEMS.md` item 84 (hand-off of an agency application to an EduSphere counselor).
@@ -15,7 +15,7 @@ OVS-003 (counselor `/advance`), VISA-001–003 (counselor visa routes), tel-017 
 sees only applications where `counselor_id` is their own. The Overseas Admin can set `counselor_id` only through the generic
 `PATCH /workflows/overseas/applications/{id}`, and no screen does it.
 
-**Owner's answers (in-session, 2026-10-06, `EXPLICIT_APPROVAL`):**
+**Owner's answers (in-session, 2026-10-06, `EXPLICIT_APPROVAL`; H11–H12 added at the spec review):**
 
 | # | Decision |
 |---|---|
@@ -29,6 +29,8 @@ sees only applications where `counselor_id` is their own. The Overseas Admin can
 | H8 | **Swap only.** Once set, the counselor can be changed but not cleared. |
 | H9 | **The assign action covers every overseas application** (agency, self-service, school-bridged). H4 and H6 apply to agency applications only. |
 | H10 | **Approach A:** a dedicated Admin-only assign route; `counselor_id` leaves the generic update. |
+| H11 | **Filters** on the Students and Applications lists: the Overseas Admin filters by Agency and by Counsellor; a counselor filters by Agency only. |
+| H12 | **On an agency application the counselor's screens offer only what is allowed:** the stage list hides **Enrolled** (with the note "Enrollment is confirmed by the agency"), and the visa stage list offers forward stages only. |
 
 **Definition:** an *agency application* is an `OverseasApplication` with `agent_id IS NOT NULL`.
 
@@ -66,12 +68,38 @@ Order of checks (inline pattern: role, division, then scope; never `require_role
 counselor"`, for every caller (counselor, university_rep, overseas_admin). `counselor_id` leaves the `allowed` set.
 `OverseasApplicationUpdate` keeps the field so the refusal is explicit, not a silent drop.
 
-### 3.3 Admin list data
+### 3.3 Application list data and filters (H11)
 
-`portal.py` "Application Tracking" payload, `overseas_admin` only: two new columns, **Agency** (the org name for an agency
-application, blank otherwise) and **EduSphere counsellor** (the counselor's name, or "Not assigned"), and a filter
-**Agency, no counsellor** (`agent_id IS NOT NULL AND counselor_id IS NULL`). The counselor and university_rep payloads are
-unchanged.
+The "Application Tracking" payload in `portal.py` backs both the **Students** and **Applications** sections for
+`overseas_admin` and `counselor` (one table, `section in {"students", "applications", ...}`), so every change here shows on both.
+
+**Columns:**
+
+- `overseas_admin`: two new columns, **Agency** (the agency's org name for an agency application, blank otherwise) and
+  **EduSphere counsellor** (the counselor's name, or "Not assigned").
+- `counselor`: a new **Agency** column (blank for a non-agency application). No counsellor column, because every row is their own.
+- `university_rep`: unchanged.
+
+**Filters** (H11) are optional query parameters on `GET /portal/{division}/{role}/{section}`. They are applied in SQL
+**before** the existing 500-row limit, so a filtered list is complete up to that limit:
+
+| Parameter | Values | Who may use it |
+|---|---|---|
+| `agency` | an agency org id; `any` (every agency application); `none` (not from an agency) | `overseas_admin`, `counselor` |
+| `counselor` | an overseas counselor's user id; `none` (not assigned) | `overseas_admin` only |
+
+- The filters combine with AND. For example, `agency=any&counselor=none` gives agency applications still waiting for a counselor.
+- A malformed value, or an id that doesn't resolve to an agency org or an overseas counselor, gets `422 "Unknown filter value"`.
+- `counselor=` sent by a counselor or a university_rep, or `agency=` sent by a university_rep, gets `422 "Filter not available"`.
+- On any other section, either parameter also gets `422 "Filter not available"`. It is never silently ignored.
+- Each row carries `is_agency: bool`, so the counselor's screens can apply H12 without a second request.
+- The filters only narrow the caller's existing scope and never widen it. A counselor filtering on an agency still sees only
+  their own applications.
+- The payload carries `filters`: the applied values plus the **option lists** for the dropdowns.
+  - Admin agency options: every agency org with at least one overseas application.
+  - Counselor agency options: only the agencies on the counselor's own applications, so no agency names outside their caseload leak.
+  - Admin counsellor options: every overseas counselor, including inactive ones, because past assignments can still name them.
+    Inactive counselors are marked "(inactive)".
 
 ## 4. Counselor on an agency application (H4, H6)
 
@@ -102,13 +130,37 @@ A send failure never rolls back the assignment (existing `_notify_user` / `queue
 
 ## 6. Frontend
 
-- **Admin, Overseas → Applications:** the two §3.3 columns and filter; an **Assign counsellor** action per row (**Change
-  counsellor** when one is set) that opens a picker of active overseas counselors (from `GET /admin/users?role=counselor`,
-  inactive users dropped client-side), calls §3.1, and shows "{name} assigned." or the API's message. No clear option.
-- **Agency application detail** (Master and Staff): a line **EduSphere counsellor: {name}**, or *Not assigned yet*. The
-  agency application detail payload gains `counselor_name` (name only).
-- **Counselor:** no new screen. Agency applications appear in the existing Applications, Visa and Document Verification
-  sections once assigned.
+**Overseas Admin, Overseas → Applications and Students** (the same table):
+
+- The §3.3 columns.
+- An **Assign counsellor** action on each row (it reads **Change counsellor** when one is set). It opens a picker of
+  **active** overseas counselors, taken from `GET /admin/users?role=counselor` with inactive users dropped client-side.
+  It calls §3.1 and shows "{name} assigned." or the API's message. There is no option to clear the counsellor.
+
+**Filter bar** (H11), above the table:
+
+- **Agency:** All · Any agency · Not from an agency · each agency. Both the Admin and the counselor get this.
+- **Counsellor:** All · Not assigned · each counselor. Admin only.
+- The chosen values live in the page URL (`?agency=…&counselor=…`), so a filtered view can be bookmarked or shared and
+  survives a reload.
+- A **Clear filters** link resets them.
+- The table's empty state reads "No applications match these filters".
+- After an assignment, the list reloads with the same filters.
+
+**Agency application detail** (Master and Staff):
+
+- A line **EduSphere counsellor: {name}**, or *Not assigned yet*.
+- The agency application detail payload gains `counselor_name` (name only).
+
+**Counselor screens:** no new page. Agency applications appear in the existing Applications, Students, Visa and Document
+Verification sections once assigned. On a row with `is_agency` (H12):
+
+- **Advance stage** (`CounselorEvaluationPanel`): the stage list leaves out **Enrolled** and shows the note "Enrollment is
+  confirmed by the agency". Other forward stages are offered as today.
+- **Visa:** the stage list offers only the stages after the case's current stage. No stage is offered once a decision is
+  recorded or the application is enrolled; the panel shows the matching message ("The visa decision is recorded…" /
+  "This application is enrolled…") instead. The checklist editor is shown only at the checklist stage.
+- The server still enforces every rule in §4. The screens only stop offering choices that would be refused.
 
 ## 7. Security
 
@@ -140,14 +192,30 @@ A send failure never rolls back the assignment (existing `_notify_user` / `queue
 | AC12 | The counselor's Document Verification queue lists documents of an assigned agency application whose student has no login; verify/reject works. |
 | AC13 | No counselor-facing response contains an agency student's email, phone, counseling, budget or shortlist. |
 | AC14 | The agency application detail shows the counselor's name, or "Not assigned yet"; no email or phone. |
-| AC15 | The Admin screen shows the Agency and EduSphere counsellor columns and the "Agency, no counsellor" filter; the picker lists active overseas counselors only. |
+| AC15 | The Admin screen shows the Agency and EduSphere counsellor columns; the picker lists active overseas counselors only. |
+| AC16 | Admin filters: `agency=<id>`, `any` and `none`, and `counselor=<id>` and `none`, each return exactly the matching rows. Combined, they AND together (`agency=any&counselor=none` = agency applications with no counselor). Filtering happens before the 500-row limit. |
+| AC17 | A counselor's `agency=` filter returns only their own matching applications. Their agency options list only agencies on their own applications. Their `counselor=` → `422`. |
+| AC18 | A malformed or unknown filter value → `422 "Unknown filter value"`. A filter on another section, or from a university_rep → `422 "Filter not available"`. |
+| AC19 | The filter bar keeps its values in the URL, survives a reload, and **Clear filters** resets it. The empty state reads "No applications match these filters". |
+| AC20 | On an agency application the counselor's stage list has no **Enrolled** and shows "Enrollment is confirmed by the agency". A non-agency application still offers **Enrolled**. |
+| AC21 | On an agency application the counselor's visa stage list offers only forward stages. It offers none once the decision is recorded or the application is enrolled, and shows the matching message instead. |
 
 ## 9. Tests (lite runs per task; the owner runs full suites)
 
-- **API (pytest):** `test_agn_023_assign.py` (AC01–AC08), `test_agn_023_counselor_scope.py` (AC09–AC13), plus AC14 in the
-  agency detail tests. Real HTTP calls through the test client, never reasoning alone.
-- **Web (vitest):** the picker and action (AC15), the agency counselor line (AC14).
-- **E2E (Playwright), one flow:** Admin assigns → counselor sees and advances (not to Enrolled) → agency sees the name.
+- **API (pytest):** real HTTP calls through the test client, never reasoning alone.
+  - `test_agn_023_assign.py`: AC01–AC08.
+  - `test_agn_023_counselor_scope.py`: AC09–AC13.
+  - `test_agn_023_filters.py`: AC16–AC18, including a case with more than 500 rows.
+  - AC14 goes in the agency detail tests.
+- **Web (vitest):**
+  - The picker and action (AC15).
+  - The filter bar with URL state (AC19).
+  - The counselor stage and visa lists (AC20–AC21).
+  - The agency counselor line (AC14).
+- **E2E (Playwright), one flow:**
+  1. The Admin filters to "Any agency / Not assigned" and assigns a counselor.
+  2. The counselor filters by that agency, sees no **Enrolled** option, and advances the application.
+  3. The agency sees the counselor's name.
 - **Regression to re-run (lite):** `test_agn_008_*`, `test_agn_012_*`, `test_agn_013_*`, `test_agn_017_*`, the OVS-003 and
   VISA-001–003 counselor tests, `test_agn_003_matrix.py`.
 
@@ -157,6 +225,9 @@ A send failure never rolls back the assignment (existing `_notify_user` / `queue
 - The counselor visa PATCH now needs the application row lock on agency applications; keep the lock order (application, then
   visa case) the same as the agency route to avoid deadlocks.
 - The documents queue outer join must not widen the counselor's scope: it stays filtered by the counselor's `app_ids`.
+- The portal section route gains query parameters. Callers that send none must get exactly today's payload, apart from
+  the new columns, `is_agency` and `filters`. The dashboard and the other sections that share the same application query
+  must not pick up a filter by accident.
 
 ## 11. Documents to update
 
