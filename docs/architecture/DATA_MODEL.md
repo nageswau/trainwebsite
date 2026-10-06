@@ -1253,7 +1253,7 @@ Additive only: two tables and one sequence (`bdm_appointment_code_seq`, also on 
 - **`bdm_appointment_events`** — append-only history (never updated or deleted). `appointment_id` FK `bdm_appointments` `ON DELETE RESTRICT`; `actor_user_id` FK `users` `ON DELETE RESTRICT`; `from_status` (NULL on creation); `to_status` CHECK the six statuses; `old_starts_at` / `new_starts_at` (reschedule only); `reason` VARCHAR(500) (required for cancel / no-show by the service); `created_at` default now(); `position` BIGINT identity (stable order for events written in one transaction). Index `ix_bdm_appointment_events_appointment (appointment_id, position)`.
 - Last / Next meeting on organizations (bdm-002) are still **not stored**: computed from this table (`max(starts_at)` of completed, `min(starts_at)` of open future appointments).
 
-## Trip ↔ appointment link (`bdm-011`, `DEC-SCOPE-086`; migration `0085_bdm_appointment_trip`, after `0084_bdm_onboarding`)
+## Trip ↔ appointment link (`bdm-011`, `DEC-SCOPE-087`; migration `0085_bdm_appointment_trip`, after `0084_bdm_onboarding`)
 
 - `bdm_appointments.trip_id UUID NULL` → `bdm_trips.id` `ON DELETE RESTRICT` (trips are never deleted); index `ix_bdm_appointments_trip`.
 - Additive: no existing row is read or written. The downgrade drops the index and the column (the links are lost).

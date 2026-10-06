@@ -3575,7 +3575,7 @@ class BdmTripItineraryItem(BaseModel):
 
 
 class BdmTripMetrics(BaseModel):
-    """bdm-011 (College §F, DEC-SCOPE-086 L1/L3): null = nothing to compute from; `actual_revenue` is not tracked yet (D17)."""
+    """bdm-011 (College §F, DEC-SCOPE-087 L1/L3): null = nothing to compute from; `actual_revenue` is not tracked yet (D17)."""
 
     meetings_planned: int
     meetings_completed: int
@@ -4633,6 +4633,35 @@ class BdmLeadPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# bdm-021 (spec §4): a College organization's funnel and revenue -- aggregates only (AC3). An untracked stage or line is
+# `tracked: false` with a null figure, never a 0 (AC2).
+class BdmBusinessStage(BaseModel):
+    key: str
+    label: str
+    definition: str
+    tracked: bool
+    count: int | None
+
+
+class BdmRevenueLine(BaseModel):
+    key: str
+    label: str
+    definition: str
+    tracked: bool
+    amount: Decimal | None
+
+
+class BdmBusinessRevenue(BaseModel):
+    lines: list[BdmRevenueLine]
+
+
+class BdmBusinessOut(BaseModel):
+    organization_id: UUID
+    currency: Literal["INR"]
+    funnel: list[BdmBusinessStage]
+    revenue: BdmBusinessRevenue | None = Field(description="Null unless the caller is the assigned BDM, a manager or super_admin (B3).")
 
 
 class AdminLeadConversionIn(BaseModel):

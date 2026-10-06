@@ -1049,7 +1049,7 @@ unspecified pending open decisions — not a gap in this traceability check, a d
 alongside the other four contract documents. `prompts/10_TEST_CATALOG_AUDIT_AND_REBUILD.md` may now
 proceed.
 
-**Addendum, 2026-10-06 (`bdm-011`, `DEC-SCOPE-086`): trip ↔ appointment linking, itinerary, productivity, travel report.**
+**Addendum, 2026-10-06 (`bdm-011`, `DEC-SCOPE-087`): trip ↔ appointment linking, itinerary, productivity, travel report.**
 
 Sources: design spec `docs/superpowers/specs/2026-10-06-bdm-011-trip-appointments-design.md` §4; migration `0085_bdm_appointment_trip`.
 Every change is **additive**: new optional request fields, new response fields and new GET routes; no existing field changes meaning.
