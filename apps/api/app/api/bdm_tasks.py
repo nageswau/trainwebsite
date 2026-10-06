@@ -60,8 +60,7 @@ async def create_task(payload: BdmTaskCreate, user: User = Depends(get_current_u
     today = today_ist(await db_now(db))
     if payload.due_on < today:
         raise HTTPException(422, svc.PAST_DUE)
-    if await svc.created_today(db, user.id, today) >= svc.DAILY_CAP:
-        raise HTTPException(409, f"You've added {svc.DAILY_CAP} tasks today")
+    await svc.check_daily_cap(db, user.id, today)
     task = BdmTask(
         kind=payload.kind, title=payload.title, notes=payload.notes, due_on=payload.due_on, organization_id=payload.organization_id,
         source="manual", assignee_user_id=user.id, status="open",

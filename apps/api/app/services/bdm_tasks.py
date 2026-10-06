@@ -27,8 +27,8 @@ FROM_REPORT = "Change this follow-up from its meeting report"
 PAST_DUE = "Due date can't be in the past"
 NOT_ASSIGNED = "Only the assigned BDM can add tasks for this organization"
 ARCHIVED = "This organization is archived — restore it before adding tasks"
-ORG_ARCHIVED = "Organization archived"
-DAILY_CAP = 200  # an abuse bound, far above real use (bdm-009 V10's pattern); the route words the 409 from it
+ARCHIVE_REASON = "Organization archived"  # the cancel reason on items an archive closed (F6)
+DAILY_CAP = 200  # an abuse bound, far above real use (bdm-009 V10's pattern)
 TABS = ("today", "overdue", "upcoming", "done", "cancelled")
 ORG_JOIN = BdmOrganization.id == BdmTask.organization_id
 
@@ -175,19 +175,20 @@ def require_manual(task: BdmTask) -> None:
         raise HTTPException(409, FROM_REPORT)
 
 
-async def created_today(db: AsyncSession, user_id: UUID, today: date) -> int:
-    """The daily cap's count (create only). A soft bound: two concurrent saves may pass it by one (bdm-009 V10's accepted race)."""
+async def check_daily_cap(db: AsyncSession, user_id: UUID, today: date) -> None:
+    """Create only (bdm-009's check_daily_cap). A soft bound: two concurrent saves may pass it by one (bdm-009 V10's accepted race)."""
     start, end = day_range(today)
     count = await db.scalar(select(func.count()).select_from(BdmTask).where(
         BdmTask.assignee_user_id == user_id, BdmTask.source == "manual", BdmTask.created_at >= start, BdmTask.created_at < end))
-    return count or 0
+    if (count or 0) >= DAILY_CAP:
+        raise HTTPException(409, f"You've added {DAILY_CAP} tasks today")
 
 
 async def cancel_open_for_organization(db: AsyncSession, org_id: UUID) -> int:
     """F6: the archive's transaction (the caller holds the organization lock) cancels every assignee's open items on it."""
     cancelled = await db.scalars(
         update(BdmTask).where(BdmTask.organization_id == org_id, BdmTask.status == "open")
-        .values(status="cancelled", cancelled_at=func.now(), cancel_reason=ORG_ARCHIVED, updated_at=func.now())
+        .values(status="cancelled", cancelled_at=func.now(), cancel_reason=ARCHIVE_REASON, updated_at=func.now())
         .returning(BdmTask.id)
         .execution_options(synchronize_session=False)
     )
