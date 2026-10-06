@@ -4,7 +4,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import WorkflowPanel from "@/components/WorkflowPanel";
 import type { User } from "@/lib/types";
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }), useSearchParams: () => new URLSearchParams() }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }), useSearchParams: () => new URLSearchParams(), usePathname: () => "/it/admin/leads",
+}));
 
 const asUser = (role: string, division: string) => ({ id: "u1", email: `${role}@example.local`, full_name: "Test User", role, division }) as unknown as User;
 
