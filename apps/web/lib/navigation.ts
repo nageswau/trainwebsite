@@ -80,9 +80,10 @@ export const BDM_SIGN_IN = "/bdm/sign-in";
 export const TELECALLER_NAV: NavItem[] = [
   { label: "Dashboard", href: "/telecaller/dashboard" }, { label: "Profile", href: "/telecaller/profile" },
 ];
-// tel-002: Products and Campaigns (the catalogue the manager maintains); tel-022: Targets.
+// tel-002: Products and Campaigns (the catalogue the manager maintains); tel-022: Targets; tel-007: Lead assignment and Distribution rules.
 export const TELECALLER_MANAGER_NAV: NavItem[] = [
-  { label: "Team", href: "/telecaller/manager/team" }, { label: "Targets", href: "/telecaller/manager/targets" },
+  { label: "Team", href: "/telecaller/manager/team" }, { label: "Lead assignment", href: "/telecaller/manager/assignment" },
+  { label: "Distribution rules", href: "/telecaller/manager/distribution" }, { label: "Targets", href: "/telecaller/manager/targets" },
   { label: "Products", href: "/telecaller/manager/products" },
   { label: "Campaigns", href: "/telecaller/manager/campaigns" },
 ];

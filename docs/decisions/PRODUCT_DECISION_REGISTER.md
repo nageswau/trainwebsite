@@ -3825,3 +3825,28 @@ card. Design spec `docs/superpowers/specs/2026-10-06-tel-022-targets-design.md`.
 creation), migration `0081_lead_stage_pipeline` (`lead_stage_history`, PL1 mapping, `ck_enquiries_status`; downgrade refuses after a
 real move). Routes: `POST /telecaller/leads/{id}/stage`, `GET /telecaller/leads/{id}/stage-history`, `GET /admin/leads/{id}/stage-history`;
 `PATCH /admin/leads/{id}` status via the engine. Design spec `docs/superpowers/specs/2026-10-06-tel-004-lead-pipeline-design.md`.
+
+### DEC-SCOPE-082 — Lead distribution: rules, round robin, unassigned queue, manual (re)assignment (`tel-007`)
+
+**Evidence:** `EVID-019` §17 (round robin, product, location, manual); `DEC-SCOPE-073` T11, T18, T22, T23; owner answers in-session 2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for DI1–DI4; D1–D6 are recorded defaults. VERIFIED on `feature/tel-007`
+(2026-10-06), not merged. **Provisional number:** tel-012 also drafted `DEC-SCOPE-082` / `0082` after 0081; whichever merges second re-chains.
+
+| # | Question | Answer |
+|---|---|---|
+| DI1 (Q-07) | Eligibility | Active account only: role `telecaller`, `users.active`, on the lead's team. No pause flag (tel-025 owns deactivation) |
+| DI2 (Q-05) | Intake | Website and BDM-entered leads are distributed in the intake transaction; team = the lead's division; no product → city rule, then round robin. Existing unassigned leads are not backfilled |
+| DI3 | Rule editing | Every manager reads all rules of both teams; creates/changes/deletes only rules whose telecaller is a direct report (`super_admin`: all). One rule per team + product / team + city |
+| DI4 | Reassign UI | One Lead assignment page: Unassigned and Assigned to my team tabs, bulk assign/reassign to a direct report |
+| D1 | Lead team | `enquiries.division`; a product with no team → unassigned queue (T18) |
+| D2 | Round robin | Eligible telecallers in user-id order after the team cursor (row-locked); rules and manual moves don't advance it |
+| D3 | Manual assignment | 1–100 leads, all or nothing; leads in scope (else 404); target a direct report (else 403, AC5), active and on the leads' team (else 422); same telecaller = unchanged; any stage, only `new` moves to `assigned` |
+| D4 | History | One `lead.assign` audit row per change (from, to, method) + the `assigned` stage event; no assignment table |
+| D5 | Alert | "New Lead Assigned" is tel-020's |
+| D6 | Rule shape | No active flag (delete to stop); PATCH changes only the telecaller |
+
+**Implementation:** migration `0082_tel_distribution` (`tel_distribution_rules`, `tel_round_robin_cursors`; downgrade refuses while rules exist),
+`services/lead_distribution.py` (`distribute`, `on_intake` in a SAVEPOINT, `assign`, `assignee`, `next_in_turn`), `api/telecaller_distribution.py`
+(`GET/POST/PATCH/DELETE /telecaller/distribution-rules`, `GET /telecaller/leads/unassigned`, `GET /telecaller/leads/assigned`,
+`POST /telecaller/leads/assign`); `public.create_enquiry` and `bdm_leads.add_lead` call `on_intake`. Web `/telecaller/manager/distribution`
+and `/telecaller/manager/assignment`. Design spec `docs/superpowers/specs/2026-10-06-tel-007-lead-distribution-design.md`.

@@ -28,6 +28,7 @@ from app.models import (
     WebinarRegistration,
 )
 from app.schemas import CareerPathOut, CountryOut, EnquiryIn, ProgramOut, RealProjectOut, TestimonialOut, UniversityOut, WebinarRegistrationIn
+from app.services import lead_distribution
 from app.worker import sync_enquiry_to_crm_task
 
 router = APIRouter(prefix="/public", tags=["public"])
@@ -285,6 +286,8 @@ async def create_enquiry(payload: EnquiryIn, db: AsyncSession = Depends(get_db))
         crm_sync_status="pending",
     )
     db.add(x)
+    await db.flush()
+    await lead_distribution.on_intake(db, x)  # tel-007 DI2: in this transaction; an error leaves the enquiry unassigned, never lost
     await db.commit()
     await db.refresh(x)
     # Outbox pattern (INTEGRATION_CONTRACTS.md §1): the enquiry is already committed above
