@@ -4008,3 +4008,43 @@ below is the recommended option, recorded so the owner can override it. It is **
 **Consequences:** no migration; route `GET /bdm/organizations/{id}/business` (`api/bdm_metrics.py`, `services/bdm_metrics.py`, one aggregate
 query); a Business section on both organization profiles for College organizations. **New Feature ID authorized:** `bdm-021`. **Status:** see
 `BDM_CRM_BACKLOG.md` §4 bdm-021.
+
+### DEC-SCOPE-087 — Lead intake: manual creation, duplicate detection, website-enquiry attach (`tel-005`)
+
+**Evidence:** `EVID-019` §2 (lead fields), §18 (duplicate detection, L584–L606); `DEC-SCOPE-073` T12, T13, T15; `DEC-SCOPE-077`
+(phone normalisation, Q-04); `DEC-SCOPE-081` (pipeline engine); owner answers in-session 2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for I1–I5 and the merge order; R1–R10 are recorded defaults. Migration
+`0085_lead_enquiries` (after bdm-018's `0084_bdm_onboarding`). Drafted as `DEC-SCOPE-086`; bdm-021 (PR #88, no migration) took 086 first.
+**Merge order (owner):** tel-005 merges before tel-007 (backlog §5.2). tel-007 then re-chains (`0086`, `DEC-SCOPE-088`, API §12L) and
+routes `lead_intake.website_intake`'s new leads and manager-created leads through distribution.
+
+| # | Question | Answer |
+|---|---|---|
+| I1 (Q-03) | Email on a manual lead | `enquiries.email` becomes nullable. A manual lead requires a valid mobile (`normalise_phone`); email is optional. The website form still requires email |
+| I2 | Owner of a manual lead before tel-007 | The creator keeps it: a telecaller's lead is assigned to them (pipeline event `assigned`). A manager's or admin's lead waits unassigned (`new`) in its team's queue |
+| I3 | Public reply when a website enquiry attaches | Same `201` and keys. `id` + `lead_code` are the existing lead's; `status` is always `"new"` and `crm_sync_status` always `"pending"`, so the reply never reveals that the person is known |
+| I4 | CRM webhook for an attached enquiry | Per lead: none is queued. A new lead (website, manual) is queued after the commit, as before |
+| I5 | Who may "Add enquiry to this lead" | Any `telecaller` / `telecaller_manager` / `super_admin`, on any lead (another telecaller's, handed over, closed). Append-only; no read access is granted. A closed lead stays closed until a manager reopens it (T13) |
+| R1 | Match | `phone_normalized` = normalised mobile OR `lower(email)`, across every lead (all divisions, closed, BDM-entered) |
+| R2 | Panel | ≤ 5 matches, newest first: Lead ID, name, stage, telecaller, counselor, last contact, `matched_on`, ≤ 5 previous enquiries, `in_scope`. Never another lead's phone, email or messages |
+| R3 | Last contact | `null` until tel-010 / tel-013 exist ("No contact logged yet") |
+| R4 | Several matches on the website | Attach to the newest matching lead |
+| R5 | Product, campaign, division | Product required; the division is the product's team, or `division` for a product without a team. An optional campaign must be active and match the product and source |
+| R6 | Subject / notes | Subject defaults to the product name, notes to empty |
+| R7 | Races | `pg_advisory_xact_lock` on the sorted phone/email keys before the match, on every intake path |
+| R8 | BDM lead entry | Unchanged (bdm-017's per-organization rule) |
+| R9 | Unmatched website enquiry | Created exactly as before (Q-05 is tel-007's) |
+| R10 | CRM sync of a manual lead | Queued after the commit, like website and BDM leads |
+
+**Implementation:** `services/lead_intake.py` (shared by manual and website intake; tel-006 CSV joins later); `models.LeadEnquiry`;
+routes `POST /telecaller/leads`, `GET /telecaller/leads/duplicate-check`, `POST /telecaller/leads/{id}/enquiries`; `public.create_enquiry`
+calls `website_intake`; the tel-008 timeline gains `kind: "enquiry"`. Web: `/telecaller/leads/new`, `/telecaller/manager/leads/new`
+(`NewLeadForm` with the §18 panel), a New lead button, and enquiry rows in the lead Activity. Design spec
+`docs/superpowers/specs/2026-10-06-tel-005-lead-intake-design.md`.
+
+**Also fixed (owner-approved, separate commit):** bdm-018's merge (`418b4e03`) had dropped `total` / `limit` / `offset` from
+`LeadStageHistoryPage` (tel-004 §12H); restored.
+
+**Addendum, browser QA (2026-10-06):** QA-01 (priority options truncated), QA-02 (unnamed missing fields), QA-03 (stale duplicate
+panel), QA-04 (a double click added two enquiries), QA-05 (warning out of sight on a phone). All five were fixed test-first and
+re-verified in the browser.

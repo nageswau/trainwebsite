@@ -23,6 +23,6 @@ Spec: `docs/superpowers/specs/2026-10-06-tel-005-lead-intake-design.md`. TDD on 
    Rewire `public.create_enquiry`.
 5. **Frontend.** Vitest for `NewLeadForm` (submit payload, 409 panel, add enquiry, division visibility) and the timeline enquiry row. Implement the lib types/helpers, `NewLeadForm.tsx`, the new pages, the New lead button, the `LeadDetailPanel` enquiry row and email-required tweak, and `AdminLeadManagementPanel` email null-safety.
 6. **Playwright** `tel-005-lead-intake.spec.ts`: create → detail; a duplicate → panel → add enquiry; mobile layout.
-7. **Docs:** DEC-SCOPE-086, API contract §12K, backlog status, data model note.
+7. **Docs:** DEC-SCOPE-087, API contract §12K, backlog status, data model note.
 
 Lite backend set: tel_005_*, tel_003_intake, tel_003_admin_leads, tel_004_*, tel_008_workspace, pub_002_enquiry_crm, bdm_017_leads.

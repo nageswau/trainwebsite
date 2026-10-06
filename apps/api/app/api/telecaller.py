@@ -125,7 +125,8 @@ async def duplicate_check(phone: str | None = None, email: str | None = None, us
         raise HTTPException(422, "Enter a valid mobile number")
     if not phone_key and not email_key:
         raise HTTPException(422, "Enter a mobile number or an email")
-    return {"matches": await lead_intake.duplicates(db, user, phone, email)}
+    matches = await lead_intake.matching_leads(db, phone_key, email_key)
+    return {"matches": await lead_intake.panel(db, user, matches, phone_key, email_key)}
 
 
 @router.post("/leads", status_code=201)

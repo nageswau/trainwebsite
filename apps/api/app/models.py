@@ -824,7 +824,7 @@ class LeadStageHistory(Base):
 
 
 class LeadEnquiry(Base):
-    """tel-005 (DEC-SCOPE-086, T12): a further enquiry from a person who is already a lead -- added by a telecaller or manager from the
+    """tel-005 (DEC-SCOPE-087, T12): a further enquiry from a person who is already a lead -- added by a telecaller or manager from the
     duplicate panel, or a website enquiry that matched (`created_by_user_id` NULL). Append-only; the lead's timeline lists it."""
 
     __tablename__ = "lead_enquiries"

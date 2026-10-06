@@ -1029,6 +1029,20 @@ Other roles get `403`, signed out `401`, and missing or out of scope `404`.
 | `GET /telecaller/leads/{id}/timeline` | `{items, total, limit, offset}`, newest first; item `{id, kind: stage|priority, at, actor {id, full_name} or null, from_value, from_label, to_value, to_label, reason}` |
 | `POST /telecaller/leads/{id}/stage` | As §12H, plus `403` for a telecaller on a handed-over lead |
 
+## 12K. Lead intake (`tel-005`) — addendum, 2026-10-06
+
+`DEC-SCOPE-087`; design spec `docs/superpowers/specs/2026-10-06-tel-005-lead-intake-design.md` §3. Migration `0085_lead_enquiries`.
+Roles are §12H's (`telecaller`, `telecaller_manager`, `super_admin`); other roles get `403`, and a signed-out caller gets `401`. A
+"duplicate" is any lead with the same normalised mobile or the same email in any case, across every lead, closed ones included.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/leads/duplicate-check?phone=&email=` | `200 {matches: [...]}` (empty when none). `422` when neither is given or the phone can't be parsed. Match = `{id, lead_code, name, status, status_label, telecaller, counselor, last_contact_at (null until tel-010), matched_on: [phone|email], enquiries: [{subject, source, at}] (≤ 5), in_scope}`, ≤ 5 newest first; never the other lead's phone, email or messages |
+| `POST /telecaller/leads` | Body `name`, `phone` (required, must normalise), `email?`, `whatsapp_number?`, `city?`, `state?`, `qualification?`, `passing_year?` (1950–2100), `institution?`, `product_id` (active), `campaign_id?` (active, same product and source), `source` (§2 list), `priority?` (default `warm`), `division?` (only for a product without a team), `subject?` (default = product name), `message?`. Other keys `422`. `201` = the §12J detail (a telecaller's lead `assigned` to them; a manager's `new`, unassigned). `409 {detail: {message: "Lead already exists.", code: "duplicate_lead", matches}}`. Audit `lead.create`; CRM queued after commit |
+| `POST /telecaller/leads/{id}/enquiries` | Body `subject`, `message?`, `source`, `campaign_id?` (active). Any existing lead (I5); the stage never moves. `201 {id, lead_id, lead_code, subject, source, created_at}`; `404` unknown lead; `422` invalid. Audit `lead.enquiry_add` |
+| `GET /telecaller/leads/{id}/timeline` | §12J, plus `kind: "enquiry"` rows: `from_value` = source, `to_value` = subject, `reason` = notes, `actor` null for the website |
+| `POST /public/enquiries` | Unchanged request and keys. A known person's enquiry attaches to their newest lead (a `lead_enquiries` row; no new lead, no CRM webhook). The reply is `{id, lead_code}` of that lead with `status: "new"` and `crm_sync_status: "pending"`, identical in shape and constant values to a new lead's |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

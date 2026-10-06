@@ -1,4 +1,4 @@
-"""tel-005 -- manual lead creation, the duplicate panel, the duplicate check and "Add enquiry to this lead" (spec §1, §3; DEC-SCOPE-086;
+"""tel-005 -- manual lead creation, the duplicate panel, the duplicate check and "Add enquiry to this lead" (spec §1, §3; DEC-SCOPE-087;
 I1, I2, I5, R1-R6). The test database is shared and never truncated, and the duplicate match runs across every lead, so each test uses a
 fresh mobile number and email."""
 

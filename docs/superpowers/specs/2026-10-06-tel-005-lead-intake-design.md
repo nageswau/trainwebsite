@@ -1,7 +1,7 @@
 # tel-005 — Manual lead creation, duplicate detection, website-enquiry intake/attach (design)
 
 - **Backlog:** `docs/delivery/TELECALLER_CRM_BACKLOG.md` § tel-005 (EVID-019 §18, T12, T15). Dependencies tel-003 (PR #75) and tel-004 (PR #81) are merged.
-- **Decision:** `DEC-SCOPE-086` · **Migration:** `0085_lead_enquiries` (after bdm-018's `0084_bdm_onboarding`) · **API contract:** §12K.
+- **Decision:** `DEC-SCOPE-087` · **Migration:** `0085_lead_enquiries` (after bdm-018's `0084_bdm_onboarding`) · **API contract:** §12K.
 
 ## 1. Owner answers (2026-10-06)
 
@@ -24,6 +24,7 @@ Recorded defaults (no owner question needed):
 - **R7:** races: every intake path takes `pg_advisory_xact_lock` on the normalised phone and email keys (sorted, so there is no deadlock) before the match query. Two concurrent creates of one person serialise, and the second sees the first.
 - **R8:** BDM lead entry (bdm-017) is unchanged. It keeps its own per-organization duplicate rule and isn't routed through the new intake.
 - **R9:** a website lead that doesn't match is created exactly as today (stage New, unassigned; Q-05 is decided in tel-007).
+- **R10:** a manual lead is queued for the CRM webhook after the commit, like website and BDM leads.
 
 ## 2. Data
 

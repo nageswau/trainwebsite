@@ -3,7 +3,7 @@
 Revision ID: 0085_lead_enquiries
 Revises: 0084_bdm_onboarding
 
-docs/superpowers/specs/2026-10-06-tel-005-lead-intake-design.md §2 (DEC-SCOPE-086). I1 (Q-03): a manual lead needs a mobile, not an
+docs/superpowers/specs/2026-10-06-tel-005-lead-intake-design.md §2 (DEC-SCOPE-087). I1 (Q-03): a manual lead needs a mobile, not an
 email, so `enquiries.email` drops NOT NULL (the website form still requires one). 0001 builds a fresh database from the current models,
 which already carry both, so the upgrade is guarded (0074's idiom). downgrade() writes '' into a null email before NOT NULL returns.
 """

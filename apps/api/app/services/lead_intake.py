@@ -1,4 +1,4 @@
-"""tel-005 (DEC-SCOPE-086, spec §3): lead intake -- the duplicate match (T12), manual lead creation, "Add enquiry to this lead" and the
+"""tel-005 (DEC-SCOPE-087, spec §3): lead intake -- the duplicate match (T12), manual lead creation, "Add enquiry to this lead" and the
 website enquiry that attaches to a person who is already a lead. tel-006's CSV import joins here.
 
 A person is their normalised mobile OR their lower-cased email, matched across every lead (closed ones too, R1). Each intake path takes
@@ -83,11 +83,6 @@ async def panel(db: AsyncSession, user: User, leads: list[Enquiry], phone_key: s
         }
         for lead in leads
     ]
-
-
-async def duplicates(db: AsyncSession, user: User, phone: str | None, email: str | None) -> list[dict]:
-    phone_key, email_key = identity(phone, email)
-    return await panel(db, user, await matching_leads(db, phone_key, email_key), phone_key, email_key)
 
 
 async def _campaign(db: AsyncSession, campaign_id: UUID) -> TelCampaign:

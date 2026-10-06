@@ -5413,7 +5413,7 @@ def _mobile(value: str) -> str:
     return value
 
 
-# tel-005 (DEC-SCOPE-086; I1, R5, R6): a lead a telecaller or manager enters. The mobile is required and must be a number the duplicate check
+# tel-005 (DEC-SCOPE-087; I1, R5, R6): a lead a telecaller or manager enters. The mobile is required and must be a number the duplicate check
 # can match on; email is optional (I1). Owner, telecaller and stage are never sent (`extra="forbid"`): the creator and the pipeline decide.
 LeadMobile = Annotated[Annotated[str, _trimmed(40)], AfterValidator(_bdm_lead_text(_BDM_CONTROL, True)), AfterValidator(_mobile)]
 LeadOptionalEmail = Annotated[Annotated[str, _trimmed(255)] | None, AfterValidator(_bdm_lead_text(_BDM_CONTROL, False))]
