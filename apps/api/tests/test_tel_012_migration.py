@@ -34,10 +34,10 @@ TEMPLATES = "SELECT channel, kind FROM tel_message_templates"
 SCRIPTS = "SELECT s.name, s.steps, p.name FROM tel_scripts s JOIN tel_products p ON p.id = s.product_id"
 
 
-def test_migration_chains_after_0082_and_is_on_the_single_chain():
+def test_migration_chains_after_0082_and_is_the_single_head():
     assert _migration.revision == HEAD
     assert _migration.down_revision == BASE
-    script = ScriptDirectory.from_config(_config())  # bdm-011's 0084 now follows this revision; 0083 stays on the single chain
+    script = ScriptDirectory.from_config(_config())  # bdm-018's 0084 now follows this revision; 0083 stays on the single chain
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
 
 
