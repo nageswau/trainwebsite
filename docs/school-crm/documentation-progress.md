@@ -5,8 +5,8 @@
 | Code baseline | `main` @ `ce1f07c2` (S1 discovery). Record any later `main` used for browser work here, with the affected features re-checked. |
 | Stack used for browser work | `schooldocs` compose project from worktree `.claude/worktrees/school-docs` (detached at docs commit `24a22627` = `main` `ce1f07c2` + docs). Web http://localhost:3020, api :8020. Untracked `docker-compose.docs.yml` adds Mailpit on **127.0.0.1:8026** (the Agent CRM docs stack holds 8025). Untracked `.env` = repo `.env` with `FRONTEND_URL`/ports changed, `SMTP_HOST=mailpit`, `SMTP_PORT=1025`, `SMTP_USE_TLS=false`, no SMTP credentials, **`SMTP_FROM_EMAIL=no-reply@edusphere.local`** (without it the app reports "email is not configured"), `EMAIL_WEBHOOK_URL` empty. Owner approved Claude starting, seeding and resetting this stack (2026-10-05). |
 | Docs branch | `docs/school-crm-user-guide` (from `main` @ `ce1f07c2`) |
-| Last session | S8 Career Counselor — 2026-10-06 |
-| Next session | S9 — Psychometric Team, Student 360°, overseas pathway. Start from the S8 snapshot, or reset and run `sch-s2` … `sch-s8` in order. |
+| Last session | S9 Psychometric Team, Student 360°, overseas pathway — 2026-10-06 |
+| Next session | S10 — Dashboards, reports, entitlements, notifications, parent, analytics. Start from the S9 snapshot, or reset and run `sch-s2` … `sch-s9` in order. |
 
 **Column values:**
 - **Code Reviewed:** YES / PARTIAL / NO. YES at S1 means reviewed from source at `ce1f07c2`, with file:line evidence in `discovery/`.
@@ -18,7 +18,7 @@
 A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES
 and Reviewed = PASSED.
 
-**Totals (after S8):** 86 features · 61 browser-verified (3 partial) · 61 documented · 0 complete (final review is S12).
+**Totals (after S9):** 86 features · 68 browser-verified (4 partial) · 68 documented · 0 complete (final review is S12).
 
 | ID | Module | Feature | Code Reviewed | Browser Verified | Screenshot | Documented | Reviewed |
 |---|---|---|---|---|---|---|---|
@@ -63,7 +63,7 @@ and Reviewed = PASSED.
 | DOC-SCH-RPT-003 | Reports & analytics | Grade-wise comparison | YES | NO | NO | NO | NO |
 | DOC-SCH-RPT-004 | Reports & analytics | Student development, at-risk students and top performers | YES | NO | NO | NO | NO |
 | DOC-SCH-RPT-005 | Reports & analytics | Student progress scorecards | YES | NO | NO | NO | NO |
-| DOC-SCH-RPT-006 | Reports & analytics | Global education pipeline | YES | NO | NO | NO | NO |
+| DOC-SCH-RPT-006 | Reports & analytics | Global education pipeline | YES | YES | YES | YES | NO |
 | DOC-SCH-ENT-001 | Entitlements | View your school's partnership entitlements | YES | NO | NO | NO | NO |
 | DOC-SCH-ENT-002 | Entitlements | Partnership tiers explained (what each tier includes; "not included" messages) | YES | NO | NO | NO | NO |
 | DOC-SCH-NOTIF-001 | Notifications | Notifications for school staff | YES | NO | NO | NO | NO |
@@ -87,11 +87,11 @@ and Reviewed = PASSED.
 | DOC-SCH-CAR-009 | Career Counselor | Add assessments and record scores | YES | YES | YES | YES | NO |
 | DOC-SCH-CAR-010 | Career Counselor | Open a funding support case | YES | YES | YES | YES | NO |
 | DOC-SCH-CAR-011 | Career Counselor | Move a funding case through its stages or close it | YES | YES | YES | YES | NO |
-| DOC-SCH-PSY-001 | Psychometric Team | Assign a psychometric assessment | YES | NO | NO | NO | NO |
-| DOC-SCH-PSY-002 | Psychometric Team | Attach an assessment report | YES | NO | NO | NO | NO |
-| DOC-SCH-PSY-003 | Psychometric Team | Record or edit assessment results | YES | NO | NO | NO | NO |
-| DOC-SCH-PSY-004 | Psychometric Team | Bulk entry: assessments (CSV) | YES | NO | NO | NO | NO |
-| DOC-SCH-S360-001 | Student 360° | Student 360° view: the 16 tabs and what each role sees | YES | NO | NO | NO | NO |
+| DOC-SCH-PSY-001 | Psychometric Team | Assign a psychometric assessment | YES | YES | YES | YES | NO |
+| DOC-SCH-PSY-002 | Psychometric Team | Attach an assessment report | YES | YES | YES | YES | NO |
+| DOC-SCH-PSY-003 | Psychometric Team | Record or edit assessment results | YES | YES | YES | YES | NO |
+| DOC-SCH-PSY-004 | Psychometric Team | Bulk entry: assessments (CSV) | YES | YES | YES | YES | NO |
+| DOC-SCH-S360-001 | Student 360° | Student 360° view: the 16 tabs and what each role sees | YES | YES | YES | YES | NO |
 | DOC-SCH-PORT-001 | Digital Portfolio | Digital Portfolio overview and completion % | YES | YES | YES | YES | NO |
 | DOC-SCH-PORT-002 | Digital Portfolio | Add, edit or delete portfolio entries | YES | YES | YES | YES | NO |
 | DOC-SCH-PORT-003 | Digital Portfolio | Record a Skill India certification | YES | YES | YES | YES | NO |
@@ -102,7 +102,7 @@ and Reviewed = PASSED.
 | DOC-SCH-SADM-003 | School administration | Edit a school profile and change its partnership tier | YES | YES | YES | YES | NO |
 | DOC-SCH-SADM-004 | School administration | Onboard several schools by CSV | YES | YES | YES | YES | NO |
 | DOC-SCH-SADM-005 | School administration | Create school staff accounts (Academic Team / Career Counselor / Psychometric Team) and their school portfolio | YES | YES | YES | YES | NO |
-| DOC-SCH-SADM-006 | School administration | Start an overseas application for a school student | YES | NO | NO | NO | NO |
+| DOC-SCH-SADM-006 | School administration | Start an overseas application for a school student | YES | PARTIAL (how school-linked applications move past enquiry is not shown in any in-scope screen — U15) | YES | YES | NO |
 | DOC-SCH-SADM-007 | School administration | Review school transfer requests (approve / reject) | YES | YES | YES | YES | NO |
 | DOC-SCH-SADM-008 | School administration | School Analytics | YES | NO | NO | NO | NO |
 | DOC-SCH-SADM-009 | School administration | Activity Feedback across schools | YES | YES | YES | YES | NO |
@@ -145,8 +145,8 @@ All items from `documentation-analysis.md` §12.1 are open. Owner-dependent ones
 | U12 | Users page re-send set-password for school users | S2 | CLOSED: same Users panel as Agent CRM DOC-ADM-008 (`WorkflowPanel.tsx:446` shows it to Overseas Admin on `users`); re-send verified for a school specialist. |
 | U13 | Template example row imported as a real student | S4 | CONFIRMED: the downloaded roster template contains the "Jane Doe" example row and the page does not warn. STU-005 tells users to delete it. |
 | U14 | Teacher portfolio editing as seen by a Teacher | S7 | CONFIRMED: Docs Teacher A added a Skills entry for an assigned student ("Skill added."). Documented in PORT-002. |
-| U15 | What moves school-linked applications past `enquiry` | S9 | OPEN |
-| U16 | 360° tab list at mobile width | S9 | OPEN |
+| U15 | What moves school-linked applications past `enquiry` | S9 | OPEN (narrowed): school-linked applications started by the Overseas Admin do not appear in the Counselor's Applications list. The seeded Rohan application is at Visa, so stages can advance, but not through any in-scope screen. Owner/EduSphere application team to confirm. SADM-006 marks it VERIFICATION REQUIRED. |
+| U16 | 360° tab list at mobile width | S9 | CLOSED: at 390 px the tabs become a horizontal row above the panel (S360-001 shot 06). |
 
 ## Discovered functionality not in the original plan
 Record anything found during browser work that has no Doc ID here, with a recommendation.
@@ -163,6 +163,9 @@ See `documentation-analysis.md` §12.2 (17 items). Notable:
 - Frontend role guards are inconsistent.
 - Parent notifications never clear.
 - Several raw codes are shown to users.
+- **New in S9:**
+  1. The Global Education stage counts are not strictly cumulative: Rohan is counted at Visa and Profile evaluation but not at the stages between.
+  2. The Psychometric "Report URL" accepts any text on the single form (from code; bulk rejects non-http(s) rows, seen in S9).
 - **New in S8:**
   1. Several Career Counselor screens do not refresh after a change.
      - After **Close batch** the header still shows Open / Close batch until a reload.
@@ -200,6 +203,20 @@ See `documentation-analysis.md` §12.2 (17 items). Notable:
 ## Session log
 | Session | Date | Summary |
 |---|---|---|
+| S9 | 2026-10-06 | `sch-s9-psy-360-pathway.capture.ts` runs green in about 29 s after S8.
+
+**Data created:**
+- Ananya's Aptitude Test: assigned, report attached, results recorded.
+- Bulk upload: Sara's Interest Inventory added, and 1 row rejected.
+- School-linked applications for Ananya (Arizona State) and Arjun (Delft), plus the Bronze-school denial.
+
+**Verification:**
+- 360° view captured as a school role (16 tabs), with Restricted tabs for the Academic Team, the Psychometric tab, and mobile.
+- Global Education captured as CO and PR.
+- U16 closed, U15 narrowed.
+- 23 screenshots reviewed.
+
+**Docs:** PSY-001..004, S360-001, SADM-006 and RPT-006 written. |
 | S8 | 2026-10-06 | `sch-s8-career-counselor.capture.ts` runs green in about 41 s after S7.
 
 **Data created:**

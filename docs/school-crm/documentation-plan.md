@@ -281,9 +281,9 @@ Features: DOC-SCH-CAR-001..011 (11).
   - Funding: cases moved through the stages, one closed with a reason, and the duplicate open case error.
   - Show the empty-portfolio state with `Docs Empty Portfolio CC`.
 
-### S9 — Psychometric Team, Student 360°, overseas pathway
+### S9 — Psychometric Team, Student 360°, overseas pathway — DONE 2026-10-06
 Features: DOC-SCH-PSY-001..004, DOC-SCH-S360-001, DOC-SCH-SADM-006, DOC-SCH-RPT-006 (7).
-- [ ] Standard loop.
+- [x] Standard loop.
   - Assign assessments, attach a report URL, then record and edit the results (validation messages); bulk CSV.
   - 360° view as a school role (16 tabs) and as AT / CC / PT ("Restricted" tabs), plus one 390 px shot (U16).
   - SADM-006 as OA and as Counselor: start applications for Gold+ students, then capture the Silver / Bronze tier denial.

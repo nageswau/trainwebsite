@@ -13,6 +13,7 @@ so the whole card fits); they are marked "(element shot)".
 | S6 — `sch-s6-transfers-promotion.capture.ts` (after S5 on the same DB; creates and activates academic year 2027-28 through the admin API) | same | 2026-10-06 |
 | S7 — `sch-s7-academic-portfolio.capture.ts` (after S6 on the same DB) | same | 2026-10-06 |
 | S8 — `sch-s8-career-counselor.capture.ts` (after S7 on the same DB) | same | 2026-10-06 |
+| S9 — `sch-s9-psy-360-pathway.capture.ts` (after S8 on the same DB) | same | 2026-10-06 |
 
 | Screenshot | Module | Feature | Step | Role | Description |
 |---|---|---|---|---|---|
@@ -186,3 +187,26 @@ so the whole card fits); they are marked "(element shot)".
 | [career-counselor/23-funding-open-and-finished.png](screenshots/career-counselor/23-funding-open-and-finished.png) | Career Counselor | DOC-SCH-CAR-011 | 4 Finished | Career Counselor | Open cases + Finished cases |
 | [career-counselor/24-empty-portfolio-dashboard.png](screenshots/career-counselor/24-empty-portfolio-dashboard.png) | Career Counselor | DOC-SCH-CAR-001 | Empty | Career Counselor (no schools) | Counselor with no school portfolio: dashboard |
 | [career-counselor/25-empty-portfolio-skills.png](screenshots/career-counselor/25-empty-portfolio-skills.png) | Career Counselor | DOC-SCH-CAR-005 | Empty | Career Counselor (no schools) | Counselor with no school portfolio: Skills |
+| [psychometric-team/01-dashboard.png](screenshots/psychometric-team/01-dashboard.png) | Psychometric Team | DOC-SCH-DASH-007, PSY-001 | 1 Dashboard | Psychometric Team | Psychometric Team dashboard |
+| [psychometric-team/02-assign-assessment-form.png](screenshots/psychometric-team/02-assign-assessment-form.png) | Psychometric Team | DOC-SCH-PSY-001 | 2 Assign | Psychometric Team | Assign an assessment |
+| [psychometric-team/03-assessment-assigned.png](screenshots/psychometric-team/03-assessment-assigned.png) | Psychometric Team | DOC-SCH-PSY-001 | 2 Saved | Psychometric Team | "Assessment assigned." |
+| [psychometric-team/04-attach-report.png](screenshots/psychometric-team/04-attach-report.png) | Psychometric Team | DOC-SCH-PSY-002 | 1 URL | Psychometric Team | Attach report (Report URL) |
+| [psychometric-team/05-results-validation.png](screenshots/psychometric-team/05-results-validation.png) | Psychometric Team | DOC-SCH-PSY-003 | Error | Psychometric Team | "Each item must be 80 characters or fewer." |
+| [psychometric-team/06-results-form.png](screenshots/psychometric-team/06-results-form.png) | Psychometric Team | DOC-SCH-PSY-003 | 1 Fill in | Psychometric Team | Results form filled (element shot) |
+| [psychometric-team/07-results-saved.png](screenshots/psychometric-team/07-results-saved.png) | Psychometric Team | DOC-SCH-PSY-003 | 2 Saved | Psychometric Team | "Results saved." |
+| [psychometric-team/08-bulk-assessments-report.png](screenshots/psychometric-team/08-bulk-assessments-report.png) | Psychometric Team | DOC-SCH-PSY-004 | 2 Result | Psychometric Team | Bulk assessments: 1 added, 1 rejected (report_url) |
+| [student-360/01-overview-school-role.png](screenshots/student-360/01-overview-school-role.png) | Student 360° | DOC-SCH-S360-001 | 1 Header | School Coordinator | Overview tab, 16 tabs with counts |
+| [student-360/02-examination-results.png](screenshots/student-360/02-examination-results.png) | Student 360° | DOC-SCH-S360-001 | 2 Tab | School Coordinator | Examination Results (Arjun, published) |
+| [student-360/03-edusphere-programs.png](screenshots/student-360/03-edusphere-programs.png) | Student 360° | DOC-SCH-S360-001 | 2 Tab | School Coordinator | Edusphere Programs statuses |
+| [student-360/04-restricted-tab-service-role.png](screenshots/student-360/04-restricted-tab-service-role.png) | Student 360° | DOC-SCH-S360-001 | Restricted | Academic Team | Restricted Attendance tab |
+| [student-360/05-psychometric-tab-psychometric-team.png](screenshots/student-360/05-psychometric-tab-psychometric-team.png) | Student 360° | DOC-SCH-PSY-003, S360-001 | Tab | Psychometric Team | Psychometric Assessment tab with results |
+| [student-360/06-mobile-tabs.png](screenshots/student-360/06-mobile-tabs.png) | Student 360° | DOC-SCH-S360-001 | Mobile | School Coordinator | 360° view at **390 × 844** (tabs as a row) |
+| [admin-schools/31-school-applications-page.png](screenshots/admin-schools/31-school-applications-page.png) | School administration | DOC-SCH-SADM-006 | 1 Page | Overseas Admin | School-Linked Overseas Applications |
+| [admin-schools/32-school-application-form.png](screenshots/admin-schools/32-school-application-form.png) | School administration | DOC-SCH-SADM-006 | 3 Form | Overseas Admin | School → Student → University → Intake (element shot) |
+| [admin-schools/33-school-application-started.png](screenshots/admin-schools/33-school-application-started.png) | School administration | DOC-SCH-SADM-006 | 4 Started | Overseas Admin | "Application started for Docs Student Ananya." |
+| [admin-schools/34-school-application-tier-denied.png](screenshots/admin-schools/34-school-application-tier-denied.png) | School administration | DOC-SCH-SADM-006 | Error | Overseas Admin | Bronze: Application support not included (element shot) |
+| [admin-schools/35-linked-applications.png](screenshots/admin-schools/35-linked-applications.png) | School administration | DOC-SCH-SADM-006 | 4 List | Overseas Admin | Linked applications |
+| [admin-schools/36-counselor-school-applications.png](screenshots/admin-schools/36-counselor-school-applications.png) | School administration | DOC-SCH-SADM-006 | Role view | Counselor | Counselor's School Applications (own applications only) |
+| [reports/10-global-education-funnel.png](screenshots/reports/10-global-education-funnel.png) | Reports & analytics | DOC-SCH-RPT-006 | 1 Pipeline | School Coordinator | Pipeline funnel + Not tracked yet |
+| [reports/11-global-education-students.png](screenshots/reports/11-global-education-students.png) | Reports & analytics | DOC-SCH-RPT-006 | 2 Students | School Coordinator | Students on the pathway |
+| [reports/12-global-education-principal.png](screenshots/reports/12-global-education-principal.png) | Reports & analytics | DOC-SCH-RPT-006 | Role view | Principal | Principal's Global education page |
