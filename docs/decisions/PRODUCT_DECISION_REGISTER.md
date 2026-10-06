@@ -4015,7 +4015,7 @@ VERIFIED on `feature/tel-012` @ final HEAD (2026-10-06): lite backend 339 (tel-0
 
 **Evidence:** `EVID-019` §17 (round robin, product, location, manual); `DEC-SCOPE-073` T11, T18, T22, T23; owner answers in-session 2026-10-06.
 **Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for DI1–DI4; D1–D6 are recorded defaults. VERIFIED on `feature/tel-007`
-(2026-10-06), not merged. Drafted as `DEC-SCOPE-082` / `0082`; re-chained on `main` @ `50838192` (bdm-025 took 082 / `0082_bdm_assignment_history`; tel-012 took 083 / `0083_tel_content` and API §12I), then on `main` @ `7afd4a4b` (tel-008 took `DEC-SCOPE-084` and API §12J, no migration), then on `main` @ `9b395aaf` (bdm-018 took `DEC-SCOPE-085` / `0084_bdm_onboarding`), then on `main` @ `a36b5b63` (bdm-021 took `DEC-SCOPE-086`, no migration).
+(2026-10-06); **merged** to `main` as PR #90 @ `595025e4`. Drafted as `DEC-SCOPE-082` / `0082`; re-chained on `main` @ `50838192` (bdm-025 took 082 / `0082_bdm_assignment_history`; tel-012 took 083 / `0083_tel_content` and API §12I), then on `main` @ `7afd4a4b` (tel-008 took `DEC-SCOPE-084` and API §12J, no migration), then on `main` @ `9b395aaf` (bdm-018 took `DEC-SCOPE-085` / `0084_bdm_onboarding`), then on `main` @ `a36b5b63` (bdm-021 took `DEC-SCOPE-086`, no migration).
 
 | # | Question | Answer |
 |---|---|---|

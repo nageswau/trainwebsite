@@ -393,8 +393,8 @@ API contract §12H; re-chained after bdm-005, bdm-013 and tel-022's `0080_tel_ta
 
 ### tel-007 — Lead distribution rules, round robin, unassigned queue, manual (re)assignment
 
-**Status (2026-10-06):** **verified** on `feature/tel-007`, not merged (`DEC-SCOPE-087` DI1–DI4 + D1–D6, migration `0085_tel_distribution`,
-API contract §12K; re-chained after bdm-025 082 / 0082 and tel-012 083 / 0083). Spec `docs/superpowers/specs/2026-10-06-tel-007-lead-distribution-design.md`.
+**Status (2026-10-06):** **merged** to `main` as PR #90 @ `595025e4` (`DEC-SCOPE-087` DI1–DI4 + D1–D6, migration `0085_tel_distribution`,
+API contract §12K; re-chained after bdm-025 082 / 0082, tel-012 083 / 0083, tel-008 084, bdm-018 085 / 0084 and bdm-021 086). Spec `docs/superpowers/specs/2026-10-06-tel-007-lead-distribution-design.md`.
 
 - **Business requirement:** §17, T11, T18, T23.
 - **Existing behavior:** admins set `owner_id` by hand only.
@@ -1145,7 +1145,7 @@ graph TD
 
 ### 5.4 Migrations
 
-Numbers are **provisional**. `main` is at `0083_tel_content` (tel-012, merged 2026-10-06; tel-001 took `0075`, tel-002 `0076`, bdm-008 `0077`, tel-003 `0078`, bdm-005 `0079`, tel-022 `0080`, tel-004 `0081`, bdm-025 `0082`; tel-017 has none; bdm-005/bdm-013/tel-022/tel-004/bdm-025/tel-012 took `DEC-SCOPE-078`–`083`; tel-008, merged 2026-10-06 with no migration, took `DEC-SCOPE-084`), so the next telecaller migration will be `0084` or later, and the next decision `DEC-SCOPE-085` or later. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
+Numbers are **provisional**. `main` is at `0085_tel_distribution` (tel-007, merged 2026-10-06; tel-001 took `0075`, tel-002 `0076`, bdm-008 `0077`, tel-003 `0078`, bdm-005 `0079`, tel-022 `0080`, tel-004 `0081`, bdm-025 `0082`, tel-012 `0083`, bdm-018 `0084`; tel-017 and tel-008 have none; bdm-005/bdm-013/tel-022/tel-004/bdm-025/tel-012/tel-008/bdm-018/bdm-021/tel-007 took `DEC-SCOPE-078`–`087`), so the next telecaller migration will be `0086` or later, and the next decision `DEC-SCOPE-088` or later. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
 
 | Item | Migration content |
 |---|---|
