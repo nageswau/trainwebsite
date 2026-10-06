@@ -1031,7 +1031,7 @@ Other roles get `403`, signed out `401`, and missing or out of scope `404`.
 
 ## 12K. Lead distribution (`tel-007`) — addendum, 2026-10-06
 
-`DEC-SCOPE-086`; design spec `docs/superpowers/specs/2026-10-06-tel-007-lead-distribution-design.md` §4–§5; migration `0085_tel_distribution`.
+`DEC-SCOPE-087`; design spec `docs/superpowers/specs/2026-10-06-tel-007-lead-distribution-design.md` §4–§5; migration `0085_tel_distribution`.
 All routes: `telecaller_manager` or `super_admin` (other roles `403`, signed out `401`). Lists are `{items, total, limit, offset}` (`limit` default 50, max 100).
 
 | Method/Path | Notes / status codes |

@@ -3978,13 +3978,44 @@ detail's `onboarding` and live pipeline steps; a School onboarding card on both 
 School create form; the linked BDM on the School edit panel. Follow-ups logged: unlinking a wrong link; per-school counts (bdm-020);
 the School's BDM on deactivation (bdm-025). **New Feature ID authorized:** `bdm-018`. **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-018.
 
+### DEC-SCOPE-086 — College business tracking: student funnel + revenue (`bdm-021`)
+
+**ID note:** the next free number on `main` @ `9b395aaf` (2026-10-06). If another item reaches `main` first holding `DEC-SCOPE-086`, this entry is
+renumbered on merge, as earlier bdm items were. No migration.
+
+**Question:** how a College organization's student funnel (Contacted → Leads → Registrations → Training → Certification → Internship →
+Placement) and revenue lines (training, internship, placement, other) are defined and computed from attributed records, and who sees revenue
+(`BDM_CRM_BACKLOG.md` §4 bdm-021)?
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md`, `DERIVED_BLUEPRINT`) College §E; `DEC-SCOPE-055` D5b, Q-08 (D17), Q-14 (D23); `DEC-SCOPE-072`
+(bdm-017) L2 / L9; bdm-021 impact analysis 2026-10-06 (graphify-led).
+
+**Resolution:** owner's standing direction for this session, 2026-10-06 ("proceed with recommended answers; ask only if blocking"). Each choice
+below is the recommended option, recorded so the owner can override it. It is **not** a separate question-by-question approval. Spec
+`docs/superpowers/specs/2026-10-06-bdm-021-college-business-design.md` §2–§3:
+- **B1** Every College-module organization (`bdm_type = 'college'`, any `org_type`, per Q-03) has the view; any other module is the same 404 as a missing organization.
+- **B2** The funnel is visible to everyone who can read the organization (the lead list's audience, L6).
+- **B3** Revenue is visible to the assigned BDM, a `bdm_manager` (team scope) and `super_admin`; any other College BDM gets `revenue: null`.
+- **B4** All time, computed live (no snapshot, no cache, no period filter; bdm-024 owns periods).
+- **B5** Contacted = Leads (Q-14).
+- **B6** Each stage counts distinct linked students by its own definition: Training = an enrollment not `withdrawn`; Certification = an
+  `issued` certificate; Placement = a job offer `accepted` or `joined`. It is not a "furthest stage" count.
+- **B7** Training revenue = the linked students' payments with status `paid` / `succeeded`, currency `INR`, excluding `agent_deposit`, of any date.
+- **B8** Internship (stage) and internship / placement / other revenue are "Not tracked yet" (`tracked: false`, null figure), never 0.
+
+**Addendum, browser QA (2026-10-06):** QA21-01. An untracked stage's or line's note no longer repeats "Not tracked yet" (the badge says it).
+
+**Consequences:** no migration; route `GET /bdm/organizations/{id}/business` (`api/bdm_metrics.py`, `services/bdm_metrics.py`, one aggregate
+query); a Business section on both organization profiles for College organizations. **New Feature ID authorized:** `bdm-021`. **Status:** see
+`BDM_CRM_BACKLOG.md` §4 bdm-021.
+
 VERIFIED on `feature/tel-012` @ final HEAD (2026-10-06): lite backend 339 (tel-001/002/003/012/017 + bdm-005 migration; re-run after the 4ec7a22b merge), vitest 75, Playwright 7, Browser Use QA (QA-01…04 fixed test-first and re-verified). Full backend suite deferred to the owner.
 
-### DEC-SCOPE-086 — Lead distribution: rules, round robin, unassigned queue, manual (re)assignment (`tel-007`)
+### DEC-SCOPE-087 — Lead distribution: rules, round robin, unassigned queue, manual (re)assignment (`tel-007`)
 
 **Evidence:** `EVID-019` §17 (round robin, product, location, manual); `DEC-SCOPE-073` T11, T18, T22, T23; owner answers in-session 2026-10-06.
 **Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for DI1–DI4; D1–D6 are recorded defaults. VERIFIED on `feature/tel-007`
-(2026-10-06), not merged. Drafted as `DEC-SCOPE-082` / `0082`; re-chained on `main` @ `50838192` (bdm-025 took 082 / `0082_bdm_assignment_history`; tel-012 took 083 / `0083_tel_content` and API §12I), then on `main` @ `7afd4a4b` (tel-008 took `DEC-SCOPE-084` and API §12J, no migration), then on `main` @ `9b395aaf` (bdm-018 took `DEC-SCOPE-085` / `0084_bdm_onboarding`).
+(2026-10-06), not merged. Drafted as `DEC-SCOPE-082` / `0082`; re-chained on `main` @ `50838192` (bdm-025 took 082 / `0082_bdm_assignment_history`; tel-012 took 083 / `0083_tel_content` and API §12I), then on `main` @ `7afd4a4b` (tel-008 took `DEC-SCOPE-084` and API §12J, no migration), then on `main` @ `9b395aaf` (bdm-018 took `DEC-SCOPE-085` / `0084_bdm_onboarding`), then on `main` @ `a36b5b63` (bdm-021 took `DEC-SCOPE-086`, no migration).
 
 | # | Question | Answer |
 |---|---|---|

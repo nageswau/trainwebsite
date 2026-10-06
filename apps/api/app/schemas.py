@@ -4584,6 +4584,35 @@ class BdmLeadPage(BaseModel):
     offset: int
 
 
+# bdm-021 (spec §4): a College organization's funnel and revenue -- aggregates only (AC3). An untracked stage or line is
+# `tracked: false` with a null figure, never a 0 (AC2).
+class BdmBusinessStage(BaseModel):
+    key: str
+    label: str
+    definition: str
+    tracked: bool
+    count: int | None
+
+
+class BdmRevenueLine(BaseModel):
+    key: str
+    label: str
+    definition: str
+    tracked: bool
+    amount: Decimal | None
+
+
+class BdmBusinessRevenue(BaseModel):
+    lines: list[BdmRevenueLine]
+
+
+class BdmBusinessOut(BaseModel):
+    organization_id: UUID
+    currency: Literal["INR"]
+    funnel: list[BdmBusinessStage]
+    revenue: BdmBusinessRevenue | None = Field(description="Null unless the caller is the assigned BDM, a manager or super_admin (B3).")
+
+
 class AdminLeadConversionIn(BaseModel):
     """The student account's email, typed by the admin and matched exactly (never inferred from the lead's own email)."""
 
@@ -5395,7 +5424,7 @@ class LeadTimelinePage(BaseModel):
     offset: int
 
 
-# --- tel-007 (DEC-SCOPE-086, spec §5): distribution rules, the unassigned queue and manual (re)assignment ---------------------------
+# --- tel-007 (DEC-SCOPE-087, spec §5): distribution rules, the unassigned queue and manual (re)assignment ---------------------------
 class TelDistributionRuleCreate(BaseModel):
     """The service checks the shape (a product rule names a product, a city rule a city), the product and the telecaller."""
     model_config = ConfigDict(extra="forbid")

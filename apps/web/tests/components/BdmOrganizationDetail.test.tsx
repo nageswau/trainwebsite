@@ -58,6 +58,19 @@ describe("BdmOrganizationDetail -- bdm-018 school onboarding", () => {
   });
 });
 
+describe("BdmOrganizationDetail -- bdm-021 business", () => {
+  const figures = { organization_id: "o1", currency: "INR" as const, funnel: [{ key: "leads", label: "Leads", definition: "Attributed.", tracked: true, count: 3 }], revenue: null };
+
+  it("shows the Business section right after the leads for a College organization the page read it for", () => {
+    render(<BdmOrganizationDetail initial={org()} basePath="/bdm/organizations" leads={{ items: [], total: 0, limit: 20, offset: 0 }} business={figures} />);
+    const leads = screen.getByRole("region", { name: "Leads (0)" });
+    expect(leads.nextElementSibling).toBe(screen.getByRole("region", { name: "Business" }));
+    cleanup();
+    render(<BdmOrganizationDetail initial={org()} basePath="/bdm/organizations" />);
+    expect(screen.queryByRole("region", { name: "Business" })).toBeNull();
+  });
+});
+
 describe("BdmOrganizationDetail -- bdm-005 MoU card", () => {
   it("places the MoU card right after the pipeline, and only when the page read it", () => {
     render(<BdmOrganizationDetail initial={org()} basePath="/bdm/organizations" mou={{ current: null, can_start: false }} />);

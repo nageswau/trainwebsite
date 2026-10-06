@@ -3028,7 +3028,7 @@ and keep their place. After a status change, focus moves to the row's new status
   filter, and a table (name, kind, product, file + size, uploaded, status, actions incl. Copy link). Copy link puts a 7-day link on the
   clipboard and says when it expires. Without clipboard access, the link is shown in a read-only field.
 
-## tel-007 addendum (2026-10-06, `DEC-SCOPE-086`) — Lead assignment and Distribution rules
+## tel-007 addendum (2026-10-06, `DEC-SCOPE-087`) — Lead assignment and Distribution rules
 
 Design spec `docs/superpowers/specs/2026-10-06-tel-007-lead-distribution-design.md` §6. Roles `telecaller_manager` and `super_admin`; the
 manager sidebar adds **Lead assignment** and **Distribution rules** after Team.

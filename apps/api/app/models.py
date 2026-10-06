@@ -1105,7 +1105,7 @@ class TelCampaign(Base, TimestampMixin):
 
 
 class TelDistributionRule(Base, TimestampMixin):
-    """tel-007 (DEC-SCOPE-086, T11): a manager's routing rule for one team -- a product or a city sends new leads to one telecaller.
+    """tel-007 (DEC-SCOPE-087, T11): a manager's routing rule for one team -- a product or a city sends new leads to one telecaller.
     The telecaller's team, role and active state span tables, so `services/lead_distribution.py` checks them on write and again at
     distribution time (an inactive telecaller's rule is skipped). Deleted, not deactivated, to stop it (audited)."""
 

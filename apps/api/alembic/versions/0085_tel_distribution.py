@@ -3,7 +3,7 @@
 Revision ID: 0085_tel_distribution
 Revises: 0084_bdm_onboarding
 
-docs/superpowers/specs/2026-10-06-tel-007-lead-distribution-design.md §3 (DEC-SCOPE-086). Adds two tables; no existing row is read or
+docs/superpowers/specs/2026-10-06-tel-007-lead-distribution-design.md §3 (DEC-SCOPE-087). Adds two tables; no existing row is read or
 written, and existing unassigned leads are not backfilled (DI2). 0001 builds a fresh database from the current models, which already carry
 the tables, so creation is guarded (0075's idiom). downgrade() refuses while any rule exists: rules are manager configuration that a
 downgrade would silently lose.
