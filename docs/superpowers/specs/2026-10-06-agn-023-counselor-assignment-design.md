@@ -1,7 +1,7 @@
 # AGN-023 — EduSphere counselor assignment for overseas applications: Design
 
 **Status:** Sections 1–3 approved by the owner in-session 2026-10-06; H11–H12 (filters, counselor screen limits) added at the spec review the same day. This written spec is for the owner's review.
-**Branch:** `feature/agn-023` (from `origin/main` `2b22158b`). **Decision:** `DEC-SCOPE-089` (next free on `main` @ `2b22158b`).
+**Branch:** `feature/agn-023` (rebased on `origin/main` `4e5730ee`). **Decision:** `DEC-SCOPE-090` (drafted as `089`; bdm-020 took `089` on `main` @ `4e5730ee`).
 **API contract:** §12M. **Migration:** none (`overseas_applications.counselor_id` exists).
 **Resolves:** `PRD_OPEN_ITEMS.md` item 84 (hand-off of an agency application to an EduSphere counselor).
 **Builds on:** AGN-008 (`DEC-SCOPE-050`, agency applications, A6 visibility), AGN-012 (`DEC-SCOPE-057`, agency visa,
@@ -231,6 +231,6 @@ Verification sections once assigned. On a row with `is_agency` (H12):
 
 ## 11. Documents to update
 
-`PRODUCT_DECISION_REGISTER.md` (`DEC-SCOPE-089`), `API_CONTRACT.md` §12M, `RBAC_MATRIX.md` (§2.7 counselor and the AGN-008
-notes), `MASTER_FEATURE_CATALOG.md` / `AGENT_CRM_BACKLOG.md` (AGN-023), `PRD_OPEN_ITEMS.md` item 84 (resolved by `DEC-SCOPE-089`),
+`PRODUCT_DECISION_REGISTER.md` (`DEC-SCOPE-090`), `API_CONTRACT.md` §12M, `RBAC_MATRIX.md` (§2.7 counselor and the AGN-008
+notes), `MASTER_FEATURE_CATALOG.md` / `AGENT_CRM_BACKLOG.md` (AGN-023), `PRD_OPEN_ITEMS.md` item 84 (resolved by `DEC-SCOPE-090`),
 the RTM.
