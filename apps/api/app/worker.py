@@ -25,6 +25,21 @@ def heartbeat_task():
     return {"status": "ok"}
 
 
+def crm_payload(enquiry) -> dict:
+    """The CRM webhook body (INTEGRATION_CONTRACTS.md §1); tel-003 adds `lead_code` (additive)."""
+    return {
+        "id": str(enquiry.id),
+        "lead_code": enquiry.lead_code,
+        "division": enquiry.division,
+        "name": enquiry.name,
+        "email": enquiry.email,
+        "phone": enquiry.phone,
+        "subject": enquiry.subject,
+        "message": enquiry.message,
+        "source": enquiry.source,
+    }
+
+
 @celery.task(bind=True, autoretry_for=(RuntimeError,), retry_backoff=True, retry_backoff_max=600, retry_jitter=True, max_retries=5)
 def sync_enquiry_to_crm_task(self, enquiry_id: str):
     """PUB-002 / INTEGRATION_CONTRACTS.md §1 outbox pattern.
@@ -47,18 +62,7 @@ def sync_enquiry_to_crm_task(self, enquiry_id: str):
             enquiry = await db.scalar(select(Enquiry).where(Enquiry.id == UUID(enquiry_id)))
             if enquiry is None:
                 return
-            status = await sync_crm_enquiry(
-                {
-                    "id": str(enquiry.id),
-                    "division": enquiry.division,
-                    "name": enquiry.name,
-                    "email": enquiry.email,
-                    "phone": enquiry.phone,
-                    "subject": enquiry.subject,
-                    "message": enquiry.message,
-                    "source": enquiry.source,
-                }
-            )
+            status = await sync_crm_enquiry(crm_payload(enquiry))
             enquiry.crm_sync_status = status
             await db.commit()
             if status == "failed":

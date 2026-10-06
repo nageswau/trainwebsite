@@ -291,7 +291,7 @@ async def create_enquiry(payload: EnquiryIn, db: AsyncSession = Depends(get_db))
     # -- the webhook attempt is queued for the background worker so a slow/unreachable
     # CRM endpoint can never block or lose this response (PUB-002-AC02).
     sync_enquiry_to_crm_task.delay(str(x.id))
-    return {"id": x.id, "status": x.status, "crm_sync_status": x.crm_sync_status}
+    return {"id": x.id, "status": x.status, "crm_sync_status": x.crm_sync_status, "lead_code": x.lead_code}  # tel-003 AC2: additive
 
 
 @router.get("/posts")
