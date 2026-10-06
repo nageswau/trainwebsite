@@ -11,6 +11,7 @@ so the whole card fits); they are marked "(element shot)".
 | S4 — `sch-s4-students.capture.ts` (after S3 on the same DB) | same | 2026-10-06 |
 | S5 — `sch-s5-activities.capture.ts` (after S4 on the same DB) | same | 2026-10-06 |
 | S6 — `sch-s6-transfers-promotion.capture.ts` (after S5 on the same DB; creates and activates academic year 2027-28 through the admin API) | same | 2026-10-06 |
+| S7 — `sch-s7-academic-portfolio.capture.ts` (after S6 on the same DB) | same | 2026-10-06 |
 
 | Screenshot | Module | Feature | Step | Role | Description |
 |---|---|---|---|---|---|
@@ -127,3 +128,34 @@ so the whole card fits); they are marked "(element shot)".
 | [students/25-promotion-confirm.png](screenshots/students/25-promotion-confirm.png) | Students & roster | DOC-SCH-STU-009 | 3 Confirm | School Coordinator | "Promote 16 and hold back 1 into 2027-28?" |
 | [students/26-promotion-result.png](screenshots/students/26-promotion-result.png) | Students & roster | DOC-SCH-STU-009 | 4 Result | School Coordinator | "Done for 2027-28: 13 promoted, 1 held back, 3 not changed, 0 skipped." |
 | [students/27-grade-history.png](screenshots/students/27-grade-history.png) | Students & roster | DOC-SCH-STU-009 | 5 Grade history | School Coordinator | Promoted Grade 8 → Grade 9 entry |
+| [academic-team/01-dashboard.png](screenshots/academic-team/01-dashboard.png) | Academic Team | DOC-SCH-ACAD-001 | 1 Dashboard | Academic Team | Academic Team dashboard (top) |
+| [academic-team/02-portfolio-progress.png](screenshots/academic-team/02-portfolio-progress.png) | Academic Team | DOC-SCH-ACAD-001 | 2 Table | Academic Team | Portfolio progress (element shot) |
+| [academic-team/03-upload-result-form.png](screenshots/academic-team/03-upload-result-form.png) | Academic Team | DOC-SCH-ACAD-002 | 2 Fill in | Academic Team | Upload a result filled (element shot) |
+| [academic-team/04-result-saved-as-draft.png](screenshots/academic-team/04-result-saved-as-draft.png) | Academic Team | DOC-SCH-ACAD-002 | 3 Saved | Academic Team | "Mathematics result saved as Draft." |
+| [academic-team/05-results-uploader-view.png](screenshots/academic-team/05-results-uploader-view.png) | Academic Team | DOC-SCH-ACAD-003 | 1 Uploader | Academic Team | Results with "Ask another Academic Team member…" (element shot) |
+| [academic-team/06-results-verify-button.png](screenshots/academic-team/06-results-verify-button.png) | Academic Team | DOC-SCH-ACAD-003 | 1 Colleague | Academic Team | Results with Verify/Publish for a colleague (element shot) |
+| [academic-team/07-result-verified.png](screenshots/academic-team/07-result-verified.png) | Academic Team | DOC-SCH-ACAD-003 | 2 Verified | Academic Team | "Result verified." |
+| [academic-team/08-result-published.png](screenshots/academic-team/08-result-published.png) | Academic Team | DOC-SCH-ACAD-003 | 3 Published | Academic Team | Results after publishing (element shot) |
+| [academic-team/09-bulk-results-panel.png](screenshots/academic-team/09-bulk-results-panel.png) | Academic Team | DOC-SCH-ACAD-004 | 1 Panel | Academic Team | Bulk entry — results opened |
+| [academic-team/10-bulk-results-report.png](screenshots/academic-team/10-bulk-results-report.png) | Academic Team | DOC-SCH-ACAD-004 | 3 Result | Academic Team | 1 added, 2 rejected |
+| [academic-team/11-test-prep-start.png](screenshots/academic-team/11-test-prep-start.png) | Academic Team | DOC-SCH-ACAD-005 | 1 Start | Academic Team | Start test preparation (IELTS) |
+| [academic-team/12-test-prep-score-recorded.png](screenshots/academic-team/12-test-prep-score-recorded.png) | Academic Team | DOC-SCH-ACAD-005 | 2 Score | Academic Team | "Result recorded." |
+| [academic-team/13-language-started.png](screenshots/academic-team/13-language-started.png) | Academic Team | DOC-SCH-ACAD-006 | 1 Start | Academic Team | "German classes started." |
+| [academic-team/14-language-certified.png](screenshots/academic-team/14-language-certified.png) | Academic Team | DOC-SCH-ACAD-006 | 2 Certified | Academic Team | "Marked certified." |
+| [academic-team/15-bulk-test-prep-report.png](screenshots/academic-team/15-bulk-test-prep-report.png) | Academic Team | DOC-SCH-ACAD-007 | 2 Result | Academic Team | Bulk test prep: 1 added, 1 rejected |
+| [portfolio/01-portfolio-overview.png](screenshots/portfolio/01-portfolio-overview.png) | Digital Portfolio | DOC-SCH-PORT-001 | 1 Overview | Academic Team | Digital Portfolio card with completion % |
+| [portfolio/02-add-entry-form.png](screenshots/portfolio/02-add-entry-form.png) | Digital Portfolio | DOC-SCH-PORT-002 | 1 Add | Academic Team | Add award form |
+| [portfolio/03-entry-added.png](screenshots/portfolio/03-entry-added.png) | Digital Portfolio | DOC-SCH-PORT-002 | 2 Saved | Academic Team | "Award added." |
+| [portfolio/04-entry-date-error.png](screenshots/portfolio/04-entry-date-error.png) | Digital Portfolio | DOC-SCH-PORT-002 | Error | Academic Team | "End date must not be before start date" |
+| [portfolio/05-delete-confirm.png](screenshots/portfolio/05-delete-confirm.png) | Digital Portfolio | DOC-SCH-PORT-002 | 4 Delete | Academic Team | Confirm delete button |
+| [portfolio/06-skill-india-errors.png](screenshots/portfolio/06-skill-india-errors.png) | Digital Portfolio | DOC-SCH-PORT-003 | Error | Academic Team | Certified without number/date |
+| [portfolio/07-skill-india-form.png](screenshots/portfolio/07-skill-india-form.png) | Digital Portfolio | DOC-SCH-PORT-003 | 2 Details | Academic Team | Skill India details filled |
+| [portfolio/08-skill-india-saved.png](screenshots/portfolio/08-skill-india-saved.png) | Digital Portfolio | DOC-SCH-PORT-003 | 3 Saved | Academic Team | "Certification added." |
+| [portfolio/09-internship-form.png](screenshots/portfolio/09-internship-form.png) | Digital Portfolio | DOC-SCH-PORT-004 | 1 Add | Academic Team | Internship with tracking fields |
+| [portfolio/10-certificate-too-big.png](screenshots/portfolio/10-certificate-too-big.png) | Digital Portfolio | DOC-SCH-PORT-004 | Error | Academic Team | "Certificate must be at most 5 MB" |
+| [portfolio/11-certificate-saved.png](screenshots/portfolio/11-certificate-saved.png) | Digital Portfolio | DOC-SCH-PORT-004 | 2 Uploaded | Academic Team | "Certificate saved." with Download/Replace/Remove |
+| [portfolio/12-personal-statement-saved.png](screenshots/portfolio/12-personal-statement-saved.png) | Digital Portfolio | DOC-SCH-PORT-005 | 2 Saved | Academic Team | "Personal statement saved." |
+| [portfolio/13-portfolio-complete-view.png](screenshots/portfolio/13-portfolio-complete-view.png) | Digital Portfolio | DOC-SCH-PORT-001 | 3 Sections | Academic Team | Portfolio after entries |
+| [portfolio/14-portfolio-tier-denied.png](screenshots/portfolio/14-portfolio-tier-denied.png) | Digital Portfolio | DOC-SCH-PORT-002 | Error | School Coordinator (Bronze) | Digital portfolio creation not in Bronze |
+| [portfolio/15-internships-platinum-only.png](screenshots/portfolio/15-internships-platinum-only.png) | Digital Portfolio | DOC-SCH-PORT-004 | Error | School Coordinator (Bronze) | Internship tracking Platinum-only notice |
+| [portfolio/16-teacher-adds-skill.png](screenshots/portfolio/16-teacher-adds-skill.png) | Digital Portfolio | DOC-SCH-PORT-002 | Tip | Teacher | "Skill added." by the assigned Teacher |

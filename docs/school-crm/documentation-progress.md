@@ -5,8 +5,8 @@
 | Code baseline | `main` @ `ce1f07c2` (S1 discovery). Record any later `main` used for browser work here, with the affected features re-checked. |
 | Stack used for browser work | `schooldocs` compose project from worktree `.claude/worktrees/school-docs` (detached at docs commit `24a22627` = `main` `ce1f07c2` + docs). Web http://localhost:3020, api :8020. Untracked `docker-compose.docs.yml` adds Mailpit on **127.0.0.1:8026** (the Agent CRM docs stack holds 8025). Untracked `.env` = repo `.env` with `FRONTEND_URL`/ports changed, `SMTP_HOST=mailpit`, `SMTP_PORT=1025`, `SMTP_USE_TLS=false`, no SMTP credentials, **`SMTP_FROM_EMAIL=no-reply@edusphere.local`** (without it the app reports "email is not configured"), `EMAIL_WEBHOOK_URL` empty. Owner approved Claude starting, seeding and resetting this stack (2026-10-05). |
 | Docs branch | `docs/school-crm-user-guide` (from `main` @ `ce1f07c2`) |
-| Last session | S6 Transfers and promotion — 2026-10-06 |
-| Next session | S7 — Academic Team and Digital Portfolio. Start from the S6 snapshot, or reset and run `sch-s2` … `sch-s6` in order. |
+| Last session | S7 Academic Team and Digital Portfolio — 2026-10-06 |
+| Next session | S8 — Career Counselor. Start from the S7 snapshot, or reset and run `sch-s2` … `sch-s7` in order. |
 
 **Column values:**
 - **Code Reviewed:** YES / PARTIAL / NO. YES at S1 means reviewed from source at `ce1f07c2`, with file:line evidence in `discovery/`.
@@ -18,7 +18,7 @@
 A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES
 and Reviewed = PASSED.
 
-**Totals (after S6):** 86 features · 38 browser-verified (3 partial) · 38 documented · 0 complete (final review is S12).
+**Totals (after S7):** 86 features · 50 browser-verified (3 partial) · 50 documented · 0 complete (final review is S12).
 
 | ID | Module | Feature | Code Reviewed | Browser Verified | Screenshot | Documented | Reviewed |
 |---|---|---|---|---|---|---|---|
@@ -69,13 +69,13 @@ and Reviewed = PASSED.
 | DOC-SCH-NOTIF-001 | Notifications | Notifications for school staff | YES | NO | NO | NO | NO |
 | DOC-SCH-NOTIF-002 | Notifications | Notifications for parents (what triggers them) | YES | NO | NO | NO | NO |
 | DOC-SCH-PAR-001 | Parent | Your child's profile and progress page | YES | NO | NO | NO | NO |
-| DOC-SCH-ACAD-001 | Academic Team | Portfolio progress | YES | NO | NO | NO | NO |
-| DOC-SCH-ACAD-002 | Academic Team | Upload a result as Draft | YES | NO | NO | NO | NO |
-| DOC-SCH-ACAD-003 | Academic Team | Verify and publish results (two-person rule) | YES | NO | NO | NO | NO |
-| DOC-SCH-ACAD-004 | Academic Team | Bulk entry: results (CSV) | YES | NO | NO | NO | NO |
-| DOC-SCH-ACAD-005 | Academic Team | Test preparation (IELTS / SAT): start and record the score | YES | NO | NO | NO | NO |
-| DOC-SCH-ACAD-006 | Academic Team | Foreign language classes: start and mark certified | YES | NO | NO | NO | NO |
-| DOC-SCH-ACAD-007 | Academic Team | Bulk entry: test preparation and language classes (CSV) | YES | NO | NO | NO | NO |
+| DOC-SCH-ACAD-001 | Academic Team | Portfolio progress | YES | YES | YES | YES | NO |
+| DOC-SCH-ACAD-002 | Academic Team | Upload a result as Draft | YES | YES | YES | YES | NO |
+| DOC-SCH-ACAD-003 | Academic Team | Verify and publish results (two-person rule) | YES | YES | YES | YES | NO |
+| DOC-SCH-ACAD-004 | Academic Team | Bulk entry: results (CSV) | YES | YES | YES | YES | NO |
+| DOC-SCH-ACAD-005 | Academic Team | Test preparation (IELTS / SAT): start and record the score | YES | YES | YES | YES | NO |
+| DOC-SCH-ACAD-006 | Academic Team | Foreign language classes: start and mark certified | YES | YES | YES | YES | NO |
+| DOC-SCH-ACAD-007 | Academic Team | Bulk entry: test preparation and language classes (CSV) | YES | YES | YES | YES | NO |
 | DOC-SCH-CAR-001 | Career Counselor | Add a career guidance / counselling record | YES | NO | NO | NO | NO |
 | DOC-SCH-CAR-002 | Career Counselor | Edit a record and move its status | YES | NO | NO | NO | NO |
 | DOC-SCH-CAR-003 | Career Counselor | Record a student's career preferences | YES | NO | NO | NO | NO |
@@ -92,11 +92,11 @@ and Reviewed = PASSED.
 | DOC-SCH-PSY-003 | Psychometric Team | Record or edit assessment results | YES | NO | NO | NO | NO |
 | DOC-SCH-PSY-004 | Psychometric Team | Bulk entry: assessments (CSV) | YES | NO | NO | NO | NO |
 | DOC-SCH-S360-001 | Student 360° | Student 360° view: the 16 tabs and what each role sees | YES | NO | NO | NO | NO |
-| DOC-SCH-PORT-001 | Digital Portfolio | Digital Portfolio overview and completion % | YES | NO | NO | NO | NO |
-| DOC-SCH-PORT-002 | Digital Portfolio | Add, edit or delete portfolio entries | YES | NO | NO | NO | NO |
-| DOC-SCH-PORT-003 | Digital Portfolio | Record a Skill India certification | YES | NO | NO | NO | NO |
-| DOC-SCH-PORT-004 | Digital Portfolio | Internship tracking and certificate upload (Platinum) | YES | NO | NO | NO | NO |
-| DOC-SCH-PORT-005 | Digital Portfolio | Write the personal statement | YES | NO | NO | NO | NO |
+| DOC-SCH-PORT-001 | Digital Portfolio | Digital Portfolio overview and completion % | YES | YES | YES | YES | NO |
+| DOC-SCH-PORT-002 | Digital Portfolio | Add, edit or delete portfolio entries | YES | YES | YES | YES | NO |
+| DOC-SCH-PORT-003 | Digital Portfolio | Record a Skill India certification | YES | YES | YES | YES | NO |
+| DOC-SCH-PORT-004 | Digital Portfolio | Internship tracking and certificate upload (Platinum) | YES | YES | YES | YES | NO |
+| DOC-SCH-PORT-005 | Digital Portfolio | Write the personal statement | YES | YES | YES | YES | NO |
 | DOC-SCH-SADM-001 | School administration | Partner Schools list | YES | YES | YES | YES | NO |
 | DOC-SCH-SADM-002 | School administration | Create a school and seed its Coordinator | YES | YES | YES | YES | NO |
 | DOC-SCH-SADM-003 | School administration | Edit a school profile and change its partnership tier | YES | YES | YES | YES | NO |
@@ -135,7 +135,7 @@ All items from `documentation-analysis.md` §12.1 are open. Owner-dependent ones
 | U2 | Reset email carries a token, not a link (webhook only) | S3 | CONFIRMED on the docs stack: forgot-password sends **no email** (Mailpit count unchanged); only the webhook path exists and it is unset. Product finding; AUTH-004 tells users to contact their administrator. |
 | U3 | Active academic year: no admin UI | S6 | CLOSED: owner changed the decision on 2026-10-06 — Claude creates and activates 2027-28 through the Overseas Admin API inside `sch-s6` (docs stack only). STU-009 says EduSphere opens the year and shows the "Already in {year}" state before it does. |
 | U4 | `/school/coordinator/students/new` message | S4 | CONFIRMED: "Access unavailable — [object Object]" + Back to students. Noted in STU-001. |
-| U5 | Over-length fields / malformed DOB → probable 500 | S4, S5, S7 | PARTIAL: a 170-character full name (STU-002) and a 210-character activity title (ACT-001) both show only "Something went wrong.". Result fields still to check (S7). |
+| U5 | Over-length fields / malformed DOB → probable 500 | S4, S5, S7 | PARTIAL: a 170-character full name (STU-002) and a 210-character activity title (ACT-001) both show only "Something went wrong.". A 90-character result subject (ACAD-002) also shows \"Something went wrong.\". U5 closed: over-length text gives the generic error everywhere seen. |
 | U6 | Browser-native validation wording | all | DECIDED S3: docs say "your browser asks you to…" instead of quoting browser bubbles. |
 | U7 | Pydantic 422 wording on admin forms | S2 → later | OPEN (not reachable through the S2 happy/error paths; messages marked "From code" in SADM-002/004) |
 | U8 | Parent notifications never marked read | S10 | OPEN |
@@ -144,7 +144,7 @@ All items from `documentation-analysis.md` §12.1 are open. Owner-dependent ones
 | U11 | Super Admin "Workspace not found" on three school pages | S2 | CONFIRMED in browser (Schools, School Staff, School Applications); Transfers and Activity Feedback open with the Overseas Admin sidebar/label; Analytics opens with the SA sidebar. Documented in SADM-011. |
 | U12 | Users page re-send set-password for school users | S2 | CLOSED: same Users panel as Agent CRM DOC-ADM-008 (`WorkflowPanel.tsx:446` shows it to Overseas Admin on `users`); re-send verified for a school specialist. |
 | U13 | Template example row imported as a real student | S4 | CONFIRMED: the downloaded roster template contains the "Jane Doe" example row and the page does not warn. STU-005 tells users to delete it. |
-| U14 | Teacher portfolio editing as seen by a Teacher | S7 | OPEN |
+| U14 | Teacher portfolio editing as seen by a Teacher | S7 | CONFIRMED: Docs Teacher A added a Skills entry for an assigned student ("Skill added."). Documented in PORT-002. |
 | U15 | What moves school-linked applications past `enquiry` | S9 | OPEN |
 | U16 | 360° tab list at mobile width | S9 | OPEN |
 
@@ -163,6 +163,12 @@ See `documentation-analysis.md` §12.2 (17 items). Notable:
 - Frontend role guards are inconsistent.
 - Parent notifications never clear.
 - Several raw codes are shown to users.
+- **New in S7:**
+  1. The single-result form accepts marks above the maximum (75/50 is saved and shown as "150%"), and a colleague can verify it. Bulk entry rejects the same row.
+  2. A 90-character subject gives only "Something went wrong.".
+  3. Bulk-entry reports number the header as row 1 (first student = row 2), while the roster upload numbers the first student row 1.
+  4. The portfolio's Career guidance list shows the raw code `guidance_session`.
+  5. Seeded results use the year label "2026" while new ones use "2026-27", so reports may group them apart.
 - **New in S6:**
   1. When no new academic year exists, the Promotion page gives no explanation: every row just says "Already in {year}".
   2. An incoming transfer request gives the same answer whether or not the Student ID exists, so a typo fails silently (by design, for privacy).
@@ -188,6 +194,23 @@ See `documentation-analysis.md` §12.2 (17 items). Notable:
 ## Session log
 | Session | Date | Summary |
 |---|---|---|
+| S7 | 2026-10-06 | `sch-s7-academic-portfolio.capture.ts` runs green in about 36 s after S6.
+
+**Data created:**
+- Results:
+  - Arjun Maths 92 and Meera Science 32: published.
+  - Arjun English: verified.
+  - Dev History 75/50: draft.
+  - Bulk upload added Dev Maths 88.
+- Test prep: IELTS for Ananya (score 7.5) and SAT for Sara.
+- Language: German A1 for Ananya, certified.
+- Aarav's portfolio: an award, a Skill India certification, a completed internship with a PDF certificate, and a personal statement.
+- Docs Bronze Student, used for the tier-denied shots.
+- A skill added by Docs Teacher A on Arjun's portfolio.
+
+**Verification:** U5 closed, U14 confirmed. 31 screenshots reviewed.
+
+**Docs:** ACAD-001..007 and PORT-001..005 written. |
 | S6 | 2026-10-06 | `sch-s6-transfers-promotion.capture.ts` runs green in about 24 s after S5.
 
 **Data created:**

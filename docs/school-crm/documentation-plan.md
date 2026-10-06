@@ -255,9 +255,9 @@ Features: DOC-SCH-XFER-001..003, DOC-SCH-SADM-007, DOC-SCH-STU-009 (5). Owner up
   - Docs Platinum Two CO links the existing Docs Parent to a student (D17, multi-school parent).
   - Promotion: promote, hold back, mixed result, Grade 12 hint, label mismatch.
 
-### S7 — Academic Team and Digital Portfolio
+### S7 — Academic Team and Digital Portfolio — DONE 2026-10-06
 Features: DOC-SCH-ACAD-001..007, DOC-SCH-PORT-001..005 (12).
-- [ ] Standard loop.
+- [x] Standard loop.
   - `school.academic1` uploads a Draft, `school.academic2` verifies it, and academic1 sees "Ask another…".
   - academic2 publishes a result uploaded by academic1.
   - Include marks below 40 % and at or above 85 % (for RPT-004).
