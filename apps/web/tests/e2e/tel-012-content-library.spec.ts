@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { E2E_PASSWORD, activateWithToken } from "./helpers/welcome";
 
-// tel-012 (AC1-AC5, DEC-SCOPE-079 C1-C4): a telecaller manager keeps the call scripts, message templates and brochures; a brochure
+// tel-012 (AC1-AC5, DEC-SCOPE-082 C1-C4): a telecaller manager keeps the call scripts, message templates and brochures; a brochure
 // link opens signed out until the brochure is deactivated; a telecaller reads the library but cannot open the manager screens.
 // Throwaway accounts via the real admin API; every name carries a stamp because the database is shared.
 

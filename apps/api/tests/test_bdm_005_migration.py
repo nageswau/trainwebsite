@@ -40,7 +40,7 @@ def _config() -> Config:
 def test_chains_after_0078_and_is_the_single_head():
     migration = _migration()
     assert (migration.revision, migration.down_revision) == (HEAD, BASE)
-    script = ScriptDirectory.from_config(_config())  # tel-012's 0080 now follows; 0079 stays on the single chain
+    script = ScriptDirectory.from_config(_config())  # tel-022's 0080 now follows this revision; 0079 stays on the single chain
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
 
 

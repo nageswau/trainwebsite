@@ -126,8 +126,15 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
    AGN-014: the commission report likewise. */
 .action-grid > .agent-students, .action-grid > .commission-report { grid-column: 1 / -1; }
 .action-grid > .lead-management { grid-column: 1 / -1; } /* bdm-017 QA17-03: organization, student and action columns need the full width */
+/* tel-004 QA-03: below 360px the sticky Name column left too little room, so the row's stage and link forms sat partly under it. */
+@media (max-width: 359px) { .lead-management .table-scroll table th:first-child, .lead-management .table-scroll table td:first-child { position: static; } }
 /* AGN-014 browser QA14-09: the breakdowns are three short columns; without the data-table 650px minimum they fit a phone. */
 .commission-report .table { min-width: 0; }
+/* tel-022 browser QA-01/QA-06: the targets tables are 3-5 short columns (no 650px minimum); KPI row headers read as labels, not as the
+   uppercase column headings; "Use team default" is a 44px touch row on phones. */
+.tel-targets .table { min-width: 0; }
+.tel-targets .table tbody th { background: none; text-transform: none; letter-spacing: 0; color: var(--ink, inherit); font-size: 13px; font-weight: 650; }
+@media (max-width: 640px) { .tel-targets .tel-check { display: flex; align-items: center; gap: 8px; min-height: 44px; } }
 @media (max-width: 640px) {
   .agent-students .btn, .funding-panel .btn, .commission-report .btn, .staff-performance .btn { min-height: 44px; }
   .commission-report .table th, .commission-report .table td { padding: 10px 8px; }

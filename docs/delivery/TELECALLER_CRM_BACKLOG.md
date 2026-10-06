@@ -291,6 +291,9 @@ NO-ASSUMPTION MODE. Prepared 2026-10-05 at the user's request. **No code was wri
 
 ### tel-004 — Pipeline stage engine + stage history
 
+**Status (2026-10-06):** **merged** to `main` as PR #81 @ `69829a59` (`DEC-SCOPE-081` PL1–PL4 + D1–D4, migration `0081_lead_stage_pipeline`,
+API contract §12H; re-chained after bdm-005, bdm-013 and tel-022's `0080_tel_targets` / `DEC-SCOPE-080`). Spec `docs/superpowers/specs/2026-10-06-tel-004-lead-pipeline-design.md`.
+
 - **Business requirement:** §19 pipeline and closed outcomes; T13.
 - **Existing behavior:** `status` is free text, set by admin PATCH; bdm-017 sets `converted` on link.
 - **Expected behavior:**
@@ -423,7 +426,7 @@ NO-ASSUMPTION MODE. Prepared 2026-10-05 at the user's request. **No code was wri
 
 ### tel-008 — Telecaller lead workspace: My Leads, lead detail, priority
 
-**Inherited from tel-012 (`DEC-SCOPE-079` C2):** the lead-detail **script panel**. It shows the lead's product's active script from
+**Inherited from tel-012 (`DEC-SCOPE-082` C2):** the lead-detail **script panel**. It shows the lead's product's active script from
 `GET /telecaller/scripts?product_id=`.
 
 - **Business requirement:** §22 "View assigned leads", §8 priority, §2 field display.
@@ -548,8 +551,8 @@ NO-ASSUMPTION MODE. Prepared 2026-10-05 at the user's request. **No code was wri
 
 ### tel-012 — Script, message-template and brochure library
 
-**Status (2026-10-06):** verified on `feature/tel-012`, not yet merged (`DEC-SCOPE-079` C1–C4, migration `0080_tel_content`, re-chained
-after tel-003 `0078` and bdm-005 `0079`). C2 moves `GET /telecaller/leads/{id}/render` and the lead-detail script panel to tel-008 / tel-013.
+**Status (2026-10-06):** verified on `feature/tel-012`, not yet merged (`DEC-SCOPE-082` C1–C4, migration `0082_tel_content`, re-chained
+after tel-003 `0078`, bdm-005 `0079`, tel-022 `0080` and tel-004 `0081`). C2 moves `GET /telecaller/leads/{id}/render` and the lead-detail script panel to tel-008 / tel-013.
 
 - **Business requirement:** §6, §11 templates, §12 email kinds, T9.
 - **Existing behavior:** none. ENH-014 has notification templates in code.
@@ -585,7 +588,7 @@ after tel-003 `0078` and bdm-005 `0079`). C2 moves `GET /telecaller/leads/{id}/r
 
 ### tel-013 — WhatsApp click-to-chat + send log
 
-**Inherited from tel-012 (`DEC-SCOPE-079` C2):** `GET /telecaller/leads/{id}/render?template_id=`. It renders through
+**Inherited from tel-012 (`DEC-SCOPE-082` C2):** `GET /telecaller/leads/{id}/render?template_id=`. It renders through
 `services/telecaller_content.render` with the lead's values, using `asset_link` for `{brochure_link}`. The owning-telecaller check comes
 from tel-008. The rendered text is plain, so this item URL-encodes it for wa.me.
 
@@ -893,6 +896,8 @@ division-change edge case does not apply: `User.division` cannot change after cr
 
 ### tel-022 — Daily + monthly targets
 
+**Status (2026-10-06):** verified on `feature/tel-022` (`DEC-SCOPE-080`, migration `0080_tel_targets`; both numbers provisional until merge); owner answers G1–G4. Not merged.
+
 - **Business requirement:** §15, T28.
 - **Existing behavior:** none (bdm-016 is planned for BDMs).
 - **Expected behavior:**
@@ -1134,7 +1139,7 @@ graph TD
 
 ### 5.4 Migrations
 
-Numbers are **provisional**. `main` is at `0078_enquiry_lead_record` (tel-003, merged 2026-10-06; tel-001 took `0075`, tel-002 `0076`, bdm-008 `0077`; tel-017 has none), so the next telecaller migration will be `0079` or later, and the next decision `DEC-SCOPE-078` or later. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
+Numbers are **provisional**. `main` is at `0081_lead_stage_pipeline` (tel-004, merged 2026-10-06; tel-001 took `0075`, tel-002 `0076`, bdm-008 `0077`, tel-003 `0078`, bdm-005 `0079`, tel-022 `0080`; tel-017 has none; bdm-005/bdm-013/tel-022/tel-004 took `DEC-SCOPE-078`–`081`), so the next telecaller migration will be `0082` or later, and the next decision `DEC-SCOPE-082` or later. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
 
 | Item | Migration content |
 |---|---|

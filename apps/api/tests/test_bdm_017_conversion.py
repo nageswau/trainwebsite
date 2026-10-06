@@ -92,10 +92,10 @@ async def test_patch_cannot_set_attribution_or_conversion(client, db_session):
     student = await make_user(db_session, "it_student", "it")
     await as_user(client, await make_user(db_session, "it_admin", "it"))
     response = await client.patch(f"{ADMIN_LEADS}/{enquiry.id}", json={
-        "status": "contacted", "bdm_organization_id": org["id"], "converted_user_id": str(student.id)})
+        "status": "qualified", "bdm_organization_id": org["id"], "converted_user_id": str(student.id)})  # tel-004: a manual stage
     assert response.status_code == 200
     await db_session.refresh(enquiry)
-    assert (enquiry.status, enquiry.bdm_organization_id, enquiry.converted_user_id) == ("contacted", None, None)
+    assert (enquiry.status, enquiry.bdm_organization_id, enquiry.converted_user_id) == ("qualified", None, None)
 
 
 # --- conversion (AC3) ------------------------------------------------------------------------------------------------------------
@@ -111,7 +111,7 @@ async def test_admin_links_a_lead_to_one_student_and_unlinks_it(client, db_sessi
     assert response.status_code == 200, response.text
     row = response.json()
     assert row["converted_user"] == {"id": str(student.id), "full_name": student.full_name, "email": student.email}
-    assert row["status"] == "converted"
+    assert row["status"] == "application_enrollment"  # tel-004 PL4 (T29): the link moves the stage; "converted" is computed (tel-018)
     stored = await db_session.get(Enquiry, uuid.UUID(lead["id"]))
     await db_session.refresh(stored)
     assert (stored.converted_user_id, stored.converted_by_user_id) == (student.id, admin.id) and stored.converted_at is not None
@@ -120,7 +120,7 @@ async def test_admin_links_a_lead_to_one_student_and_unlinks_it(client, db_sessi
 
     response = await client.delete(conversion(lead["id"]))
     assert response.status_code == 200
-    assert (response.json()["converted_user"], response.json()["status"]) == (None, "converted")  # L2: status is left to the admin
+    assert (response.json()["converted_user"], response.json()["status"]) == (None, "follow_up")  # tel-004 PL4 supersedes L7
     await db_session.refresh(stored)
     assert (stored.converted_user_id, stored.converted_at, stored.converted_by_user_id) == (None, None, None)
 

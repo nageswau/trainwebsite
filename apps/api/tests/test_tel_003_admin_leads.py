@@ -12,7 +12,7 @@ from app.models import Enquiry, TelCampaign, TelProduct
 from tests.bdm001_helpers import login, make_user
 from tests.bdm017_helpers import ADMIN_LEADS, as_user, conversion
 
-KEYS = {"id", "lead_code", "name", "email", "phone", "division", "subject", "status", "source", "crm_sync_status", "priority",
+KEYS = {"id", "lead_code", "name", "email", "phone", "division", "subject", "status", "status_label", "source", "crm_sync_status", "priority",
         "whatsapp_number", "city", "state", "qualification", "passing_year", "institution", "created_at", "stage_changed_at",
         "product", "campaign", "telecaller", "counselor", "organization", "bdm", "converted_user"}
 

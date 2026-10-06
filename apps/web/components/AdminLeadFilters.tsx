@@ -3,15 +3,13 @@
 import { useEffect, useState } from "react";
 
 import ProductOptions from "@/components/TelecallerProductOptions";
+import { STAGES } from "@/lib/leadStages";
 import { SOURCES, SOURCE_LABEL, activeCampaigns, activeProducts, type Campaign, type Product } from "@/lib/telecallerCatalogue";
 
 export const LEAD_FILTERS = ["status", "source", "product_id", "campaign_id", "telecaller_user_id", "bdm_organization_id"] as const;
 export type LeadFilter = (typeof LEAD_FILTERS)[number];
 export type Organization = { id: string; code: string; name: string };
 type Telecaller = { id: string; name: string };
-
-// The legacy statuses until tel-004's pipeline stages replace them (spec L5).
-export const STATUS_OPTIONS = ["new", "contacted", "qualified", "converted", "lost"];
 
 /** tel-003 (spec §5): the admin lead list's search and filters. Values come from and go to the URL (the panel owns that); the option
  *  lists are the catalogue (tel-002), the division's telecallers (/admin/users is already division-scoped) and the organizations the
@@ -65,7 +63,7 @@ export default function AdminLeadFilters({ values, query, organizations, onChang
         {query && <button type="button" className="btn secondary small" onClick={() => onSearch("")}>Clear search</button>}
       </form>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 8 }}>
-        {select("status", "Stage", "All stages", STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>))}
+        {select("status", "Stage", "All stages", STAGES.map(([key, label]) => <option key={key} value={key}>{label}</option>))}
         {select("source", "Source", "All sources", SOURCES.map((s) => <option key={s} value={s}>{SOURCE_LABEL[s]}</option>))}
         {select("product_id", "Product", "All products", <ProductOptions products={products} />)}
         {select("campaign_id", "Campaign", "All campaigns", campaigns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>))}

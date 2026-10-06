@@ -1,4 +1,4 @@
-"""tel-012 -- brochure assets, signed links and the public download (spec §5, §6; AC4, AC5, AC6; DEC-SCOPE-079 C1). Local storage
+"""tel-012 -- brochure assets, signed links and the public download (spec §5, §6; AC4, AC5, AC6; DEC-SCOPE-082 C1). Local storage
 (AWS_S3_BUCKET is empty in CI)."""
 
 import uuid
