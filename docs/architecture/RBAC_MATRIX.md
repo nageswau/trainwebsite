@@ -694,3 +694,11 @@ either a grant scope (§2) or an explicit deny rule (§4).
 **GATE-08 APPROVED** (user, in-session, 2026-09-01 — approved as drafted, no changes requested)
 alongside the other four contract documents. `prompts/10_TEST_CATALOG_AUDIT_AND_REBUILD.md` may now
 proceed.
+
+**bdm-011 trip ↔ appointment links and travel report (`DEC-SCOPE-083`, added 2026-10-06).** Same inline pattern; scope in the SQL `WHERE`.
+
+| Role | Routes | Scope | Item |
+|---|---|---|---|
+| `bdm` | `trip_id` on `POST /bdm/appointments`, `PATCH /bdm/appointments/{id}`; `GET /bdm/trips?linkable=true`; `GET /bdm/trips/{id}/report` | **Own appointments and own trips only**: the trip is loaded with `bdm_user_id` = caller, so another BDM's trip is `404`; another BDM's appointment stays `404` (bdm-006) | `bdm-011` |
+| `bdm_manager` | `GET /bdm/manager/trips/{id}` (itinerary + metrics), `GET /bdm/manager/trips/{id}/report` | **Team scope**, read-only; a manager never links (`PATCH` stays owner-only, `403`) | `bdm-011` |
+| `super_admin` | the manager routes above | Reads every trip; never links | `bdm-011` |

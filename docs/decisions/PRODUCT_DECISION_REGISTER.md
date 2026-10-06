@@ -3889,3 +3889,35 @@ picked the recommended option. Design spec: `docs/superpowers/specs/2026-10-06-b
 - Web: the deactivate / hand-over dialog on the admin BDM rows, and the "BDM managers" card (super_admin).
 
 **Status:** `EXPLICIT_APPROVAL` for L1–L5. Implemented on `worktree-bdm-025`; the verification status is in the backlog entry and the RTM row.
+
+### DEC-SCOPE-083 — Trip ↔ appointment linking, itinerary, productivity, travel report (`bdm-011`)
+
+**ID note (2026-10-06):** drafted as `DEC-SCOPE-079` with migration `0080_bdm_appointment_trip` on `main` @ `230a043f`. On merging `main`
+@ `3986958c` (bdm-013 `DEC-SCOPE-079`, tel-022 `080` / `0080_tel_targets`, tel-004 `081` / `0081_lead_stage_pipeline`) it became
+`DEC-SCOPE-082` / `0082`; on merging `main` @ `4ec7a22b` (bdm-025 `DEC-SCOPE-082` / `0082_bdm_assignment_history`) it is
+**`DEC-SCOPE-083`** with migration **`0083_bdm_appointment_trip`** chained after `0082_bdm_assignment_history`.
+
+**Question:** how do appointments link to trips (`BDM_CRM_BACKLOG.md` §4 bdm-011): which trips and appointments can be linked, which
+appointments count as planned, how "actual leads" is defined now that bdm-017 attributes leads, and what a cancelled trip does to its links?
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md`, `DERIVED_BLUEPRINT`) §4 Travel + Appointment Linking (149–170), Agent §D
+(655–683), School §F (982–998), College §F (1224–1252), §7 Travel Reminder buttons (229–248); `DEC-SCOPE-055` D14 (Q-05), D15 (Q-06),
+D16 (Q-07), D17 (Q-08); bdm-017 lead attribution (`enquiries.bdm_organization_id`, `bdm_user_id`).
+
+**Resolution:** owner, in-session 2026-10-06, `EXPLICIT_APPROVAL` through structured questions; the owner picked the recommended option
+each time. Design spec: `docs/superpowers/specs/2026-10-06-bdm-011-trip-appointments-design.md` §2.
+
+- **L1** Actual leads: leads the trip's BDM attributed to organizations met in the trip's **completed** linked appointments, created
+  from the travel date 00:00 IST to the end of return date + 7 days (IST).
+- **L2** Link rules: link / unlink only while the appointment is open (the existing PATCH rule), to the BDM's own trip that is planned
+  or in progress (any approval state; not approved yet shows "Trip not approved yet"); the appointment's IST date must lie within the
+  trip dates, else 422.
+- **L3** Meetings planned = linked appointments not cancelled (no-shows count as planned); expected leads / revenue sum the same set.
+- **L4** A cancelled trip keeps its links as the record; it takes no new ones; the BDM can still unlink.
+
+**Consequences (spec decisions, no new product choice):** actual revenue shows "Not tracked yet" (D17); a trip date edit that would
+leave an open linked appointment outside the new dates is refused (422), closed ones are unlinked and named in the trip's audit row; a
+reschedule outside the trip unlinks it (audited, on-screen notice); bdm-025's handover clears the link of a moved appointment (trips
+never move); the report is the trip detail behind a "completed" gate (409 before).
+
+**Status:** `EXPLICIT_APPROVAL` for L1–L4. Implemented on `worktree-bdm-011`; the verification status is in the backlog entry and the RTM row.
