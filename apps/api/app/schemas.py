@@ -4767,3 +4767,49 @@ class BdmTaskPage(BaseModel):
     offset: int
     today: date
     counts: BdmTaskCounts
+
+
+# bdm-013 (DEC-SCOPE-079): the read-only calendar feed -- only what the calendar shows (no notes, contacts, purpose or costs).
+class BdmCalendarAppointment(BaseModel):
+    id: UUID
+    code: str
+    day: date  # the IST date of starts_at
+    starts_at: datetime
+    duration_minutes: int
+    appointment_type: str
+    status: str
+    seminar: bool
+    organization: BdmAppointmentOrgRef
+
+
+class BdmCalendarTrip(BaseModel):
+    id: UUID
+    code: str
+    travel_date: date
+    return_date: date
+    from_place: str
+    to_place: str
+    mode: str
+    approval_status: str
+    travel_status: str
+
+
+class BdmCalendarTask(BaseModel):
+    id: UUID
+    kind: str
+    title: str
+    due_on: date
+    status: str
+    overdue: bool
+    organization: BdmAppointmentOrgRef | None
+
+
+class BdmCalendarOut(BaseModel):
+    bdm: BdmManagerRef
+    date_from: date
+    date_to: date
+    today: date
+    truncated: bool
+    appointments: list[BdmCalendarAppointment]
+    trips: list[BdmCalendarTrip]
+    tasks: list[BdmCalendarTask]

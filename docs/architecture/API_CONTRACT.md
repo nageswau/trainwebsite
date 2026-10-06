@@ -834,6 +834,12 @@ Write order: scope 404 → lock (an outcome follow-up's appointment first) → a
 
 ---
 
+**Addendum, 2026-10-06 (`bdm-013`, `DEC-SCOPE-079`) — BDM calendar.** Design spec `docs/superpowers/specs/2026-10-06-bdm-013-calendar-design.md` §5. Read-only; no migration, no audit, no log line.
+
+| Method/Path | Auth | Roles | Notes / status codes |
+|---|---|---|---|
+| `GET /bdm/calendar` | Authenticated | `bdm` (own), `bdm_manager` (a BDM reporting to them), `super_admin` (any BDM) | Query `date_from`, `date_to` (required, inclusive IST dates; `date_from > date_to` → `422` "date_from must be on or before date_to"; more than 31 days → `422` "The calendar shows at most 31 days"), `bdm_user_id` (a `bdm` sending it → `422` "bdm_user_id is only for managers"; a manager / super_admin omitting it → `422` "Choose a BDM"; outside the team or not a BDM → `404` "BDM not found"). Other roles `403` "BDM role required"; a BDM without a profile `403`. Response `{bdm: {id, full_name, active}, date_from, date_to, today, truncated, appointments: [{id, code, day, starts_at, duration_minutes, appointment_type, status, seminar, organization: {id, code, name, archived}}], trips: [{id, code, travel_date, return_date, from_place, to_place, mode, approval_status, travel_status}], tasks: [{id, kind, title, due_on, status, overdue, organization \| null}]}`. Excludes cancelled appointments, cancelled or rejected trips, cancelled tasks; a trip is included when it overlaps the range. `day` = the IST date of `starts_at`; `seminar` = type `seminar_workshop`, `seminar`, `workshop` or `student_seminar`. At most 500 rows per list (`truncated: true` when cut) |
+
 ## 12C. Telecaller roles (`tel-001`) — addendum, 2026-10-05
 
 `DEC-SCOPE-073`; design spec `docs/superpowers/specs/2026-10-05-tel-001-telecaller-roles-design.md` §5; `RBAC_MATRIX.md` §2.14; migration `0075_telecaller_profiles`. Lists are `{items, total, limit, offset}` (`limit` default 50, max 100; `offset` ≥ 0; ordered by `full_name, id`). No `/telecaller` route takes a user id; scope comes from the session. GETs are read-only.

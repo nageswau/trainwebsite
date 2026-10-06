@@ -3749,3 +3749,33 @@ conversion routes are unchanged (`DEC-SCOPE-072`). Design spec `docs/superpowers
 - **M9** An Expired MoU refuses status changes (409 `mou_expired`) but accepts date / reference / notes corrections and a document.
 
 **Consequences:** migration `0079_bdm_mous` (new `bdm_mous`, append-only `bdm_mou_events`; no existing row touched; downgrade refuses while MoUs exist); routes `GET|POST|PATCH /bdm/organizations/{id}/mou`, `PUT /bdm/organizations/{id}/mou/document`, `GET /bdm/mous`, `GET /bdm/mous/{id}/history`, `GET /bdm/mous/{id}/document`; an MoU card on both organization detail pages; pages `/bdm/mous`, `/bdm/manager/mous`. Residual risk recorded, not changed: `/local-files` serves the local upload directory unauthenticated (existing). **New Feature ID authorized:** `bdm-005`. **Status:** VERIFIED, not yet COMPLETE (2026-10-06): Fresh evidence on the merged HEAD (main @ `442ce465` merged; `d9183437`): backend lite (bdm-005 / 008 / 004 / 002, tel-002) 359 passed, 2 failed — the two `test_bdm_002_migration` round trips, which fail identically on `origin/main` @ `442ce465` (bdm-017's `enquiries` FK blocks the 0066 downgrade; `bdm_mous` adds a second FK of the same kind); web unit 2762 passed, 1 failed — `dateZoneSweep` lists only the ten pre-existing entries also failing on main (bdm-005's two were fixed); `tsc` 0; eslint 0 errors (no warning in bdm-005 files); ruff / format clean; mypy 0 in bdm-005 modules (+2 = the two `Literal[tuple]` aliases, the bdm-006 / tel-002 pattern); `next build` ok; one alembic head `0079_bdm_mous`, offline SQL additive only; Playwright bdm-005 + bdm-008 + bdm-004 + bdm-002 5 passed. Exploratory QA pass 1 (isolated Playwright Chromium; Browser Use not installed) found QA5-01…06: QA5-01 (stale field edit, `expected_updated_at` → 409 `mou_changed`), QA5-02 (focus after Not yet / Escape), QA5-04 (filters one scrolling row), QA5-05 (actions beside the status) and QA5-06 (read-only reason) fixed test-first and re-verified in the browser; QA5-03 not reproducible through the UI (a click after the session ends cancels the download and the page stays; only a typed API URL shows the JSON, as every API route). Open: Browser Use itself, the owner's full suites, the Codex review the owner set aside.
+
+### DEC-SCOPE-079 — BDM calendar, daily / weekly (`bdm-013`)
+
+**ID note:** drafted as `DEC-SCOPE-078`. bdm-005 (PR #77) reached `main` first with `DEC-SCOPE-078`, so when `main` @ `230a043f` was
+merged (2026-10-06) this entry became **`DEC-SCOPE-079`**. bdm-013 commits and docs from before that merge that say `DEC-SCOPE-078` mean
+this decision. No migration.
+
+**Evidence:** `EVID-016` §5 "BDM Calendar" and §4 Common "Calendar" (`DERIVED_BLUEPRINT`); `BDM_CRM_BACKLOG.md` §bdm-013 (scope approved
+under `DEC-SCOPE-055` D1). Dependencies bdm-006 (PR #58), bdm-008 (PR #71) and bdm-010 are merged to `main`; bdm-006's and bdm-008's
+backlog lines still await the owner's formal COMPLETE sign-off.
+**Status:** K1–K10 are **agent-recommended defaults, NOT `EXPLICIT_APPROVAL`**. On 2026-10-06 the owner told this session to "proceed
+with recommended answers" and to ask only on real blockers; the owner may override any of them. Implemented and verified on
+`feature/bdm-013-calendar` (not merged).
+
+| # | Question | Default |
+|---|---|---|
+| K1 | Parameter names | `date_from`, `date_to`, `bdm_user_id` (the sibling lists' names; the backlog sketched `from/to/bdm_id`) |
+| K2 | Range | Both dates required; > 31 days or reversed → `422` |
+| K3 | Whose calendar | BDM own (`bdm_user_id` → `422`); manager one team BDM (required; else `404`); super_admin any BDM |
+| K4 | Rows | All but cancelled appointments; trips overlapping the range except cancelled / rejected; tasks except cancelled |
+| K5 | Seminars | Types `seminar_workshop`, `seminar`, `workshop`, `student_seminar` flagged and badged |
+| K6 | Day headline | Trip destination + dominant appointment type ("Vijayawada – College Meetings"), "Travel to X", "Return travel", the type alone, "Follow-ups" / "Tasks", "Nothing planned" |
+| K7 | Week | Monday–Sunday; default view week, date today (IST); invalid params fall back |
+| K8 | Links | Appointment / trip detail; follow-up or task → its organization page, else the Follow-ups list |
+| K9 | Bound | 500 rows per list, `truncated` flag |
+| K10 | Nav | "Calendar" after My Day (BDM) and after Follow-ups (manager) |
+
+**Implementation:** `GET /api/v1/bdm/calendar` (`app/api/bdm_calendar.py`, three indexed range queries joined to organizations, no
+write, no audit); `/bdm/calendar`, `/bdm/manager/calendar`. No migration. Design spec
+`docs/superpowers/specs/2026-10-06-bdm-013-calendar-design.md`; QA `docs/quality/BDM-013_BROWSER_QA_2026-10-06.md`.
