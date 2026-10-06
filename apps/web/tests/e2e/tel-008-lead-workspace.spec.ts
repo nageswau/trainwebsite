@@ -42,8 +42,9 @@ test("a manager opens a queue lead, sets its priority and stage, edits it, and f
   const stamp = Date.now();
   const { manager } = await accounts(page, stamp);
   const name = `Workspace Lead ${stamp}`;
+  const mobile = `9${String(stamp).slice(-9)}`; // tel-005 (T12): a known mobile would attach to its existing lead
   const created = await page.request.post("/api/v1/public/enquiries", {
-    data: { division: "it", name, email: `tel008-${stamp}@example.com`, phone: "98765 43210", subject: "Cyber Security", message: "Call me after 6pm." },
+    data: { division: "it", name, email: `tel008-${stamp}@example.com`, phone: `${mobile.slice(0, 5)} ${mobile.slice(5)}`, subject: "Cyber Security", message: "Call me after 6pm." },
   });
   expect(created.status()).toBe(201);
 
@@ -61,7 +62,7 @@ test("a manager opens a queue lead, sets its priority and stage, edits it, and f
 
   await expect(page.getByRole("heading", { name })).toBeVisible();
   await expect(page.getByText("Call me after 6pm.")).toBeVisible();
-  await expect(page.getByRole("link", { name: `Call ${name}` })).toHaveAttribute("href", "tel:9876543210");
+  await expect(page.getByRole("link", { name: `Call ${name}` })).toHaveAttribute("href", `tel:${mobile}`);
   await expect(page.getByText("No activity yet.")).toBeVisible();
   await expect(page.getByText("Set the lead's product interest to see its call script.")).toBeVisible(); // a website lead has no product
 
