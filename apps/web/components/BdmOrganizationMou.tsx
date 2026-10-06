@@ -2,7 +2,10 @@
 import { type ReactNode, useState } from "react";
 
 import BdmConfirm from "@/components/BdmConfirm";
+import BdmMouDocument from "@/components/BdmMouDocument";
 import BdmMouForm from "@/components/BdmMouForm";
+import BdmMouHistory from "@/components/BdmMouHistory";
+import BdmMouPrevious from "@/components/BdmMouPrevious";
 import { DetailList, multiline } from "@/components/BdmOrganizationProfileDetails";
 import { sendJson, sendRequest } from "@/lib/apiErrors";
 import { isMouBody, isOrgMou, type Mou, MOU_LADDER, mouConflict, type OrgMou, orgMouUrl } from "@/lib/bdmMous";
@@ -32,8 +35,8 @@ const day = (value: string | null) => (value ? formatCalendarDate(value) : displ
 // for the assigned BDM / super_admin (permissions) Start, Edit and Start renewal. The server enforces every rule; after each write the
 // card re-reads the MoU, and a Signed that moved the pipeline (D28) asks the page to re-read the organization (`onPipelineChanged`).
 // Success notices go to the page's one live region (`onNotice`).
-export default function BdmOrganizationMou({ orgId, initial, onNotice, onPipelineChanged, children }: {
-  orgId: string; initial: OrgMou | null; onNotice: (text: string) => void; onPipelineChanged: () => void; children?: (m: Mou) => ReactNode;
+export default function BdmOrganizationMou({ orgId, initial, onNotice, onPipelineChanged }: {
+  orgId: string; initial: OrgMou | null; onNotice: (text: string) => void; onPipelineChanged: () => void;
 }) {
   const [data, setData] = useState<OrgMou | null>(initial);
   const [loading, setLoading] = useState(false);
@@ -128,7 +131,9 @@ export default function BdmOrganizationMou({ orgId, initial, onNotice, onPipelin
         </ol>
         {end && <p className="form-message">{end}</p>}
         <DetailList rows={rows} />
-        {children?.(current)}
+        <BdmMouDocument orgId={orgId} mou={current} onUploaded={(m) => saved(m, "Document saved.")} />
+        <BdmMouHistory key={current.updated_at} mou={current} />
+        <BdmMouPrevious orgId={orgId} />
         <div className="actions">
           {current.permissions.can_edit && <button id={id("edit")} type="button" className="btn secondary small" onClick={() => setMode("edit")}>Edit MoU</button>}
           {current.permissions.can_renew && data.can_start && !renewing && (

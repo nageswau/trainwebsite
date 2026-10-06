@@ -60,6 +60,18 @@ describe("BdmOrganizationMou (bdm-005 §8)", () => {
     expect(fetchMock.mock.calls[0][1].method).toBe("POST");
   });
 
+  it("carries the document, the history and the previous MoUs, and reports an upload", async () => {
+    const uploaded = mou("prospect", { has_document: true, document: { name: "a.pdf", content_type: "application/pdf", uploaded_at: "2026-10-06T05:00:00Z" } });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(res({ mou: uploaded })).mockResolvedValueOnce(res({ current: uploaded, can_start: false })));
+    const onNotice = vi.fn();
+    card({ current: mou(), can_start: false }, { onNotice });
+    expect(screen.getByText("MoU history")).toBeInTheDocument();
+    expect(screen.getByText("Previous MoUs")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/Upload document/), { target: { files: [new File(["%PDF"], "a.pdf", { type: "application/pdf" })] } });
+    await waitFor(() => expect(onNotice).toHaveBeenCalledWith("Document saved."));
+    await waitFor(() => expect(screen.getByRole("link", { name: "Download document (PDF)" })).toBeInTheDocument());
+  });
+
   it("tells the page when signing moved the pipeline", async () => {
     const before = mou("under_negotiation");
     const after = mou("signed", { signed_on: "2026-10-06", pipeline_on_sign: null });
