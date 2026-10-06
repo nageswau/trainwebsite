@@ -2,6 +2,7 @@
 
 import asyncio
 import importlib.util
+import io
 import uuid
 from pathlib import Path
 
@@ -56,6 +57,21 @@ async def test_column_and_index_exist_in_the_shared_database(db_session):
 
     columns, indexes = await (await db_session.connection()).run_sync(read)
     assert columns.get("trip_id") is True and "ix_bdm_appointments_trip" in indexes
+
+
+def test_offline_sql_is_the_additive_column_fk_and_index():
+    """`alembic upgrade --sql` (a reviewed script for production) renders without a database: no inspection, only the three DDL steps."""
+    buffer = io.StringIO()
+    cfg = Config(str(API_ROOT / "alembic.ini"), output_buffer=buffer)
+    cfg.set_main_option("script_location", str(API_ROOT / "alembic"))
+    command.upgrade(cfg, f"{BASE}:{HEAD}", sql=True)
+    statements = [line for line in buffer.getvalue().splitlines() if line.startswith(("ALTER", "CREATE", "DROP", "UPDATE", "INSERT", "DELETE"))]
+    ddl = [s for s in statements if "alembic_version" not in s]  # no row of any app table is written
+    assert ddl == [
+        "ALTER TABLE bdm_appointments ADD COLUMN trip_id UUID;",
+        "ALTER TABLE bdm_appointments ADD CONSTRAINT fk_bdm_appointments_trip_id FOREIGN KEY(trip_id) REFERENCES bdm_trips (id) ON DELETE RESTRICT;",
+        "CREATE INDEX ix_bdm_appointments_trip ON bdm_appointments (trip_id);",
+    ]
 
 
 def _sql(url: str, sql: str, *, autocommit: bool = False):

@@ -23,11 +23,16 @@ INDEX = "ix_bdm_appointments_trip"
 
 
 def upgrade() -> None:
-    insp = sa.inspect(op.get_bind())
-    if "trip_id" not in {c["name"] for c in insp.get_columns(TABLE)}:
+    columns: set[str] = set()
+    indexes: set[str | None] = set()
+    if not op.get_context().as_sql:  # offline SQL has no database to inspect: emit every step
+        insp = sa.inspect(op.get_bind())
+        columns = {c["name"] for c in insp.get_columns(TABLE)}
+        indexes = {i["name"] for i in insp.get_indexes(TABLE)}
+    if "trip_id" not in columns:
         op.add_column(TABLE, sa.Column("trip_id", sa.Uuid(), nullable=True))
         op.create_foreign_key(FK, TABLE, "bdm_trips", ["trip_id"], ["id"], ondelete="RESTRICT")
-    if INDEX not in {i["name"] for i in insp.get_indexes(TABLE)}:
+    if INDEX not in indexes:
         op.create_index(INDEX, TABLE, ["trip_id"])
 
 
