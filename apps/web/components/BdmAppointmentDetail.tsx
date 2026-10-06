@@ -7,8 +7,9 @@ import BdmAppointmentForm from "@/components/BdmAppointmentForm";
 import BdmAppointmentHistory from "@/components/BdmAppointmentHistory";
 import BdmMeetingReportSection from "@/components/BdmMeetingReportSection";
 import type { BdmType } from "@/lib/bdm";
-import { type Appointment, formatInr, STATUS_CLASS, STATUS_LABEL, TYPE_LABEL, whenText } from "@/lib/bdmAppointments";
+import { type Appointment, type AppointmentTrip, formatInr, STATUS_CLASS, STATUS_LABEL, TYPE_LABEL, whenText } from "@/lib/bdmAppointments";
 import { display, LINK_STYLE } from "@/lib/bdmOrganizations";
+import { tripPagePath, type TripRow } from "@/lib/bdmTravel";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 function Rows({ rows }: { rows: [string, ReactNode][] }) {
@@ -26,9 +27,24 @@ function Rows({ rows }: { rows: [string, ReactNode][] }) {
   );
 }
 
+// bdm-011: the linked trip, opening on its appointments; it says when the trip can't be relied on yet (Q-05) or was cancelled (L4).
+function TripCell({ trip, view }: { trip: AppointmentTrip; view: "owner" | "manager" }) {
+  const note = trip.travel_status === "cancelled" ? "Trip cancelled" : trip.approval_status !== "approved" ? "Trip not approved yet" : null;
+  return (
+    <>
+      <Link href={`${tripPagePath(view, trip.id)}#trip-appointments`} style={LINK_STYLE}>
+        {trip.code} · {trip.from_place} → {trip.to_place}
+      </Link>
+      {note && <span className="muted"> · {note}</span>}
+    </>
+  );
+}
+
 // bdm-006 (spec §6.2, §12.2): one appointment. Every write re-renders from the appointment the API returns. Actions render from
 // `permissions` only; a manager (bdmType null) sees no actions.
-export default function BdmAppointmentDetail({ initial, basePath, bdmType, created = false }: { initial: Appointment; basePath: string; bdmType: BdmType | null; created?: boolean }) {
+export default function BdmAppointmentDetail({ initial, basePath, bdmType, created = false, trips, tripsUnavailable }: {
+  initial: Appointment; basePath: string; bdmType: BdmType | null; created?: boolean; trips?: TripRow[]; tripsUnavailable?: boolean;
+}) {
   const [appt, setAppt] = useState(initial);
   const [editing, setEditing] = useState(false);
   const [notice, setNotice] = useState<string | null>(created ? `Appointment ${initial.code} booked.` : null);
@@ -38,7 +54,8 @@ export default function BdmAppointmentDetail({ initial, basePath, bdmType, creat
   useEffect(() => {
     if (created) window.history.replaceState(null, "", `${basePath}/${initial.id}`);
   }, [created, basePath, initial.id]);
-  const orgHref = `${basePath.startsWith("/bdm/manager") ? "/bdm/manager/organizations" : "/bdm/organizations"}/${appt.organization.id}`;
+  const manager = basePath.startsWith("/bdm/manager");
+  const orgHref = `${manager ? "/bdm/manager/organizations" : "/bdm/organizations"}/${appt.organization.id}`;
   const changed = (next: Appointment, text: string) => {
     setAppt(next);
     setNotice(text);
@@ -61,6 +78,7 @@ export default function BdmAppointmentDetail({ initial, basePath, bdmType, creat
     ["Expected leads", display(appt.expected_leads)],
     ["Expected revenue", formatInr(appt.expected_revenue)],
     ["BDM", `${appt.bdm.full_name}${appt.bdm.active ? "" : " (inactive)"}`],
+    ["Trip", appt.trip ? <TripCell key="trip" trip={appt.trip} view={manager ? "manager" : "owner"} /> : display(null)],
   ];
 
   return (
@@ -109,6 +127,8 @@ export default function BdmAppointmentDetail({ initial, basePath, bdmType, creat
             mode="edit"
             bdmType={bdmType}
             appointment={appt}
+            trips={trips}
+            tripsUnavailable={tripsUnavailable}
             onSaved={(a, saved) => {
               setEditing(false);
               changed(a, saved ? "Changes saved." : "No changes to save.");

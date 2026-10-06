@@ -9,14 +9,17 @@ import TripDecision from "@/components/TripDecision";
 import TripDetails from "@/components/TripDetails";
 import TripExpenses from "@/components/TripExpenses";
 import TripForm from "@/components/TripForm";
+import TripItinerary from "@/components/TripItinerary";
+import TripProductivity from "@/components/TripProductivity";
 import TripRemarks from "@/components/TripRemarks";
 import TripStatusBadges from "@/components/TripStatusBadges";
-import { teamTripUrl, tripUrl, type Trip } from "@/lib/bdmTravel";
+import { teamTripUrl, tripPagePath, tripUrl, type Trip } from "@/lib/bdmTravel";
 import { refocus } from "@/lib/focus";
 import { TripLiveContext, isTrip, type TripLive } from "@/lib/tripLive";
 import { WRITE_STARTED } from "@/lib/useTripWrite";
 
 const NOTICE_ID = "trip-notice";
+const DEEP_LINKS = ["trip-appointments", "trip-costs", "trip-remarks"];
 
 // bdm-010 (QA10-16): one trip page as one client workspace. The server page reads the trip once; every write below applies the
 // trip it returns (useTripWrite + TripLiveContext), and a 409 re-reads it -- so two quick saves can never leave a stale render on
@@ -46,6 +49,12 @@ export default function TripWorkspace({ initialTrip, view, today, backHref, back
     },
   }), [owner, initialTrip.id]);
   useEffect(() => {
+    // bdm-011 QA11-01: the travel reminder links to #trip-appointments / #trip-costs / #trip-remarks. The page streams in after its
+    // loading state, so the browser's own jump to the anchor has nothing to land on; scroll once the section is on screen.
+    const id = window.location.hash.slice(1);
+    if (DEEP_LINKS.includes(id)) document.getElementById(id)?.scrollIntoView();
+  }, []);
+  useEffect(() => {
     const clear = () => setNotice(null); // a new write supersedes the old reason (QA10-09)
     window.addEventListener(WRITE_STARTED, clear);
     return () => window.removeEventListener(WRITE_STARTED, clear);
@@ -59,7 +68,10 @@ export default function TripWorkspace({ initialTrip, view, today, backHref, back
           <h2 style={{ overflowWrap: "anywhere" }}>{trip.from_place} → {trip.to_place}</h2>
           <p><TripStatusBadges trip={trip} /></p>
         </div>
-        <Link className="btn secondary" href={backHref}>{backLabel}</Link>
+        <div className="actions" style={{ marginTop: 0 }}>
+          {trip.travel_status === "completed" && <Link className="btn" href={`${tripPagePath(view, trip.id)}/report`}>View travel report</Link>}
+          <Link className="btn secondary" href={backHref}>{backLabel}</Link>
+        </div>
       </div>
       <div id={NOTICE_ID} tabIndex={-1}>{notice && <FormMessage message={{ text: notice, failed: true }} style={{ marginBottom: 16 }} />}</div>
       {owner && trip.rejection_reason && (
@@ -84,12 +96,20 @@ export default function TripWorkspace({ initialTrip, view, today, backHref, back
           <TripForm trip={trip} today={today} />
         </section>
       )}
-      <section className="card" aria-labelledby="trip-costs-heading" style={{ marginTop: 20 }}>
+      <section id="trip-appointments" className="card" aria-labelledby="trip-appointments-heading" style={{ marginTop: 20 }}>
+        <h3 id="trip-appointments-heading">Appointments</h3>
+        <TripItinerary trip={trip} view={view} />
+      </section>
+      <section className="card" aria-labelledby="trip-productivity-heading" style={{ marginTop: 20 }}>
+        <h3 id="trip-productivity-heading">Productivity</h3>
+        <TripProductivity metrics={trip.metrics} />
+      </section>
+      <section id="trip-costs" className="card" aria-labelledby="trip-costs-heading" style={{ marginTop: 20 }}>
         <h3 id="trip-costs-heading">Costs and expenses</h3>
         <TripExpenses trip={trip} ownerView={owner} />
       </section>
       {(owner || trip.remarks) && (
-        <section className="card" aria-labelledby="trip-remarks-heading" style={{ marginTop: 20 }}>
+        <section id="trip-remarks" className="card" aria-labelledby="trip-remarks-heading" style={{ marginTop: 20 }}>
           <h3 id="trip-remarks-heading">Remarks</h3>
           {owner ? <TripRemarks trip={trip} /> : <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{trip.remarks}</p>}
         </section>
