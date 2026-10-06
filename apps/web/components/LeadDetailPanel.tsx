@@ -8,6 +8,7 @@ import { isRequestBody, sendJson, type Page } from "@/lib/apiErrors";
 import { formatDate } from "@/lib/formatDate";
 import { stageLabel } from "@/lib/leadStages";
 import { SOURCE_LABEL, activeProducts, getPage, type Product } from "@/lib/telecallerCatalogue";
+import { SCRIPTS_URL, type Script } from "@/lib/telecallerContent";
 import {
   PRIORITIES, PRIORITY_LABEL, TIMELINE_LIMIT, leadUrl, moveStage, telHref, type Priority, type TelecallerLeadDetail, type TimelineRow,
 } from "@/lib/telecallerLeads";
@@ -88,6 +89,47 @@ function DetailsForm({ lead, onSaved, onCancel }: { lead: TelecallerLeadDetail; 
         <button type="button" className="btn secondary small" disabled={busy} onClick={onCancel}>Cancel</button>
       </div>
     </form>
+  );
+}
+
+/** tel-012 C2 (inherited): the active call script of the lead's product -- at most one per product (tel-012 C3). Re-read whenever the
+ *  product changes; a failed read is said in place and never blocks the rest of the page. */
+function LeadScriptPanel({ product }: { product: { id: string; name: string } | null }) {
+  // the read's product travels with its result, so a result for an earlier product is never shown as the current one's
+  const [state, setState] = useState<{ productId: string; script: Script | null | "failed" } | null>(null);
+  const productId = product?.id ?? null;
+  useEffect(() => {
+    if (!productId) return;
+    const controller = new AbortController();
+    getPage<Script>(`${SCRIPTS_URL}?${new URLSearchParams({ product_id: productId, active: "true", limit: "1" })}`, controller.signal)
+      .then((page) => setState({ productId, script: page.items[0] ?? null }))
+      .catch(() => controller.signal.aborted || setState({ productId, script: "failed" }));
+    return () => controller.abort();
+  }, [productId]);
+
+  let body: React.ReactNode;
+  if (!product) body = <p className="muted" style={{ fontSize: 13 }}>Set the lead&apos;s product interest to see its call script.</p>;
+  else if (state === null || state.productId !== product.id) body = <p className="muted" role="status" style={{ fontSize: 13 }}>Loading the call script…</p>;
+  else if (state.script === "failed") body = <p className="form-error" style={{ fontSize: 13 }}>Unable to load the call script.</p>;
+  else if (!state.script) body = <p className="muted" style={{ fontSize: 13 }}>No active call script for {product.name} yet.</p>;
+  else body = (
+    <>
+      <p style={{ margin: "6px 0 0" }}><strong>{state.script.name}</strong></p>
+      <ol aria-label="Call script steps" style={{ margin: "6px 0 0", paddingLeft: 18, display: "grid", gap: 4 }}>
+        {state.script.steps.map((step, i) => (
+          <li key={i}>
+            <strong>{step.title}</strong>
+            {step.notes && <div className="muted" style={{ fontSize: 13, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{step.notes}</div>}
+          </li>
+        ))}
+      </ol>
+    </>
+  );
+  return (
+    <section aria-labelledby="lead-script-heading">
+      <h3 id="lead-script-heading" style={{ margin: 0 }}>Call script</h3>
+      {body}
+    </section>
   );
 }
 
@@ -172,6 +214,8 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
           <NoticeLine notice={priorityNotice} />
         </form>
       )}
+
+      <LeadScriptPanel product={lead.product} />
 
       <section aria-labelledby="lead-details-heading">
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between" }}>

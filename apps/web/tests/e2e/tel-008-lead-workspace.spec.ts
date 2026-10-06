@@ -63,6 +63,7 @@ test("a manager opens a queue lead, sets its priority and stage, edits it, and f
   await expect(page.getByText("Call me after 6pm.")).toBeVisible();
   await expect(page.getByRole("link", { name: `Call ${name}` })).toHaveAttribute("href", "tel:9876543210");
   await expect(page.getByText("No activity yet.")).toBeVisible();
+  await expect(page.getByText("Set the lead's product interest to see its call script.")).toBeVisible(); // a website lead has no product
 
   await page.getByRole("group", { name: "Priority" }).getByLabel(/Hot/).check();
   await page.getByRole("button", { name: "Save priority" }).click();
@@ -83,8 +84,11 @@ test("a manager opens a queue lead, sets its priority and stage, edits it, and f
   // Next's route announcer is also role=alert, so narrow to the form's message
   await expect(page.getByRole("alert").filter({ hasText: "Enter a valid email address" })).toBeVisible();
   await page.getByLabel("Email").fill(`tel008-${stamp}@example.com`);
+  await page.getByLabel("Product interest").selectOption({ label: "Cyber Security" });
   await page.getByRole("button", { name: "Save details" }).click();
   await expect(page.getByText("Details saved.")).toBeVisible();
+  // tel-012 C2: the product's active call script (tel-012 seeds one for Cyber Security; a manager may have edited its steps)
+  await expect(page.getByRole("list", { name: "Call script steps" }).getByRole("listitem").first()).toBeVisible();
 
   await page.reload(); // stored, not just shown
   await expect(page.getByText("Hyderabad")).toBeVisible();

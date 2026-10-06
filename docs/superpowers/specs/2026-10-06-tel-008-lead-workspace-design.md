@@ -14,7 +14,7 @@ Decision: `DEC-SCOPE-084`. **No migration** (the tel-003 indexes and the AGN-015
 | D3 (default) | List filters | `status` (stage), `priority`, `product_id`, `campaign_id` and `q` (Lead ID, name, phone, WhatsApp, email). "Due follow-up" arrives with tel-011's follow-ups, because nothing to filter on exists yet. The list is newest first, 50 rows per page, and `limit` is at most 100 |
 | D4 (default) | Action buttons | Only the ones that work today: **Call** (a `tel:` link, T7; logging is tel-010) and **Change stage** (tel-004 D4). WhatsApp, email, follow-up, booking and Assign to counselor arrive with tel-013, tel-014, tel-011, tel-016 and tel-018. There are no placeholder buttons |
 | D5 (default) | Manager view | Managers use `/telecaller/manager/leads` and `/telecaller/manager/leads/{id}`, with the same components plus a Telecaller column. Scope is `lead_pipeline.scope`: direct reports' leads plus their teams' unassigned queue (T23). `super_admin` sees all |
-| D6 (default) | tel-012 C2 (`GET /telecaller/leads/{id}/render` + script panel) | Not in tel-008: tel-012 is not on `main`, so its tables do not exist on this branch. Moves to tel-013, which depends on tel-008 and tel-012 |
+| D6 (default) | tel-012 C2 | **Script panel built here** once tel-012 merged (`DEC-SCOPE-083`): the active call script of the lead's product, from tel-012's `GET /telecaller/scripts?product_id=&active=true&limit=1`, re-read when the product changes. Its states are no product, loading, none and failed. `GET /telecaller/leads/{id}/render` goes to tel-013 (backlog) |
 
 ## 2. API (`app/api/telecaller.py`)
 

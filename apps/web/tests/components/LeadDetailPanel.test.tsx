@@ -22,18 +22,24 @@ const priorityRow: TimelineRow = {
 const products = pageOf([{ id: "p1", group: "it", name: "Cyber Security", team: "it", program: null, active: true, sort_order: 1 },
   { id: "p2", group: "it", name: "Java", team: "it", program: null, active: true, sort_order: 2 }]);
 
+const script = { id: "s1", product: { id: "p1", name: "Cyber Security", group: "it", active: true }, name: "Cyber Security call", active: true,
+  steps: [{ title: "Greet", notes: "Introduce yourself" }, { title: "Ask about background", notes: null }] };
+
 let fetchMock: ReturnType<typeof vi.fn>;
 let patchReply: (body: Record<string, unknown>) => Response;
 let timeline: TimelineRow[];
+let scripts: () => Response;
 const calls = (method: string) => fetchMock.mock.calls.filter(([, init]) => (init?.method ?? "GET") === method);
 beforeEach(() => {
   timeline = [];
+  scripts = () => res(pageOf([]));
   patchReply = (body) => res({ ...detail(), ...body });
   fetchMock = vi.fn((url: string, init?: RequestInit) => {
     if (init?.method === "PATCH") return Promise.resolve(patchReply(JSON.parse(String(init.body))));
     if (init?.method === "POST") return Promise.resolve(res({ id: "L1", status: "qualified", status_label: "Qualified", stage_changed_at: "x" }));
     if (url.startsWith("/api/v1/telecaller/leads/L1/timeline")) return Promise.resolve(res(pageOf(timeline)));
     if (url.startsWith("/api/v1/telecaller/products")) return Promise.resolve(res(products));
+    if (url.startsWith("/api/v1/telecaller/scripts")) return Promise.resolve(scripts());
     return Promise.resolve(res({}, 404));
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -118,6 +124,41 @@ describe("LeadDetailPanel (tel-008)", () => {
     render(<LeadDetailPanel initial={detail({ counselor: { id: "c9", full_name: "Kiran Counselor" } })} timeline={pageOf([])} canReopen />);
     expect(screen.getByText(/This lead is with the counselor, Kiran Counselor\.$/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Save priority" })).toBeTruthy();
+  });
+
+  it("shows the active call script of the lead's product (tel-012 C2)", async () => {
+    scripts = () => res(pageOf([script]));
+    render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen={false} />);
+    const steps = await screen.findByRole("list", { name: "Call script steps" });
+    expect(within(steps).getAllByRole("listitem").map((li) => li.textContent)).toEqual(["GreetIntroduce yourself", "Ask about background"]);
+    const url = String(fetchMock.mock.calls.map(([u]) => String(u)).find((u) => u.startsWith("/api/v1/telecaller/scripts")));
+    expect(Object.fromEntries(new URLSearchParams(url.split("?")[1]))).toEqual({ product_id: "p1", active: "true", limit: "1" });
+  });
+
+  it("says when the product has no script, when the lead has no product, and when the script fails to load", async () => {
+    render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen={false} />);
+    expect(await screen.findByText("No active call script for Cyber Security yet.")).toBeTruthy();
+    cleanup();
+    render(<LeadDetailPanel initial={detail({ product: null })} timeline={pageOf([])} canReopen={false} />);
+    expect(screen.getByText("Set the lead's product interest to see its call script.")).toBeTruthy();
+    expect(fetchMock.mock.calls.filter(([u]) => String(u).startsWith("/api/v1/telecaller/scripts"))).toHaveLength(1);
+    cleanup();
+    scripts = () => res({ detail: "boom" }, 500);
+    render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen={false} />);
+    expect(await screen.findByText("Unable to load the call script.")).toBeTruthy();
+  });
+
+  it("loads the new product's script after the product is changed", async () => {
+    scripts = () => res(pageOf([script]));
+    patchReply = (body) => res({ ...detail(), ...body, product: { id: "p2", name: "Java" } });
+    render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen={false} />);
+    await screen.findByRole("list", { name: "Call script steps" });
+    scripts = () => res(pageOf([]));
+    fireEvent.click(screen.getByRole("button", { name: "Edit details" }));
+    await waitFor(() => expect(screen.getByRole("option", { name: "Java" })).toBeTruthy());
+    fireEvent.change(screen.getByLabelText("Product interest"), { target: { value: "p2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save details" }));
+    expect(await screen.findByText("No active call script for Java yet.")).toBeTruthy();
   });
 
   it("says when the activity list could not be loaded", () => {

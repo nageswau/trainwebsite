@@ -3925,7 +3925,7 @@ VERIFIED on `feature/tel-012` @ final HEAD (2026-10-06): lite backend 339 (tel-0
 | D3 | List filters | Stage, priority, product, campaign and `q` (Lead ID, name, phone, WhatsApp, email). "Due follow-up" waits for tel-011 |
 | D4 | Actions | Call (`tel:` link) and Change stage only. The other actions arrive with their items, and there are no placeholder buttons |
 | D5 | Manager view | `/telecaller/manager/leads` (+ `/{id}`), with tel-004's `lead_pipeline.scope` (reports' leads plus their teams' unassigned queue) |
-| D6 | tel-012 C2 (lead render + script panel) | Not in tel-008: tel-012 is not on `main`, so its tables do not exist here. It moves to tel-013, which depends on both |
+| D6 | tel-012 C2 (script panel) | tel-012 merged (`DEC-SCOPE-083`), so the lead detail shows the active call script of the lead's product (`GET /telecaller/scripts?product_id=&active=true&limit=1`). It is re-read when the product changes. `/render` stays with tel-013 |
 
 **Implementation:** `services/telecaller_leads.py`. Routes `GET /telecaller/leads`, `GET/PATCH /telecaller/leads/{id}` and
 `GET /telecaller/leads/{id}/timeline`; tel-004's `POST /telecaller/leads/{id}/stage` gains D1. Web pages `/telecaller/leads` and
