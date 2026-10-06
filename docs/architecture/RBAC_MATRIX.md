@@ -559,6 +559,18 @@ A `counselor` belongs to `it` or `overseas` (fixed at creation). Inline pattern:
 | `counselor` (IT) | every overseas counselor route: the 14 `workflows.py` overseas routes, `/overseas-admin/school-*`, the overseas lookups, `/inbound/university-email*`, `/portal/overseas/counselor/*` | none → `403` | `tel-017` |
 | `counselor` (Overseas) | unchanged (§2.2); `/portal/it/counselor/*` → `403` | assigned students / own routed overseas leads | `CNS-001` |
 
+### 2.17 Telecaller content library *(net-new, added 2026-10-06 — `DEC-SCOPE-079`, `tel-012`)*
+
+Inline pattern (`services/telecaller_content.require_content_reader` / `services/telecaller.require_manager`); the library is global (T9),
+so there is no row scope.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller_manager`, `super_admin` | create / edit / deactivate / reactivate scripts, message templates and brochure PDFs; list them including inactive rows; preview; mint a brochure link | all rows | `tel-012` |
+| `telecaller` | list **active** scripts, templates and brochures; preview an active template; mint a link for an active brochure | all active rows | `tel-012` |
+| anyone holding a link (no session) | download that one brochure while it is active and the 7-day token is valid | one asset | `tel-012` |
+| every other role (incl. `it_admin`, `overseas_admin`, `counselor`) | none → `403` "Your role cannot view the telecaller library" (writes: `403` "Telecaller manager role required") | — | `tel-012` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

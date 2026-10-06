@@ -423,6 +423,9 @@ NO-ASSUMPTION MODE. Prepared 2026-10-05 at the user's request. **No code was wri
 
 ### tel-008 — Telecaller lead workspace: My Leads, lead detail, priority
 
+**Inherited from tel-012 (`DEC-SCOPE-079` C2):** the lead-detail **script panel**. It shows the lead's product's active script from
+`GET /telecaller/scripts?product_id=`.
+
 - **Business requirement:** §22 "View assigned leads", §8 priority, §2 field display.
 - **Existing behavior:** none for telecallers.
 - **Expected behavior:**
@@ -545,6 +548,9 @@ NO-ASSUMPTION MODE. Prepared 2026-10-05 at the user's request. **No code was wri
 
 ### tel-012 — Script, message-template and brochure library
 
+**Status (2026-10-06):** verified on `feature/tel-012`, not yet merged (`DEC-SCOPE-079` C1–C4, migration `0080_tel_content`, re-chained
+after tel-003 `0078` and bdm-005 `0079`). C2 moves `GET /telecaller/leads/{id}/render` and the lead-detail script panel to tel-008 / tel-013.
+
 - **Business requirement:** §6, §11 templates, §12 email kinds, T9.
 - **Existing behavior:** none. ENH-014 has notification templates in code.
 - **Expected behavior:**
@@ -578,6 +584,10 @@ NO-ASSUMPTION MODE. Prepared 2026-10-05 at the user's request. **No code was wri
 - **Complexity:** medium · **Risk:** medium
 
 ### tel-013 — WhatsApp click-to-chat + send log
+
+**Inherited from tel-012 (`DEC-SCOPE-079` C2):** `GET /telecaller/leads/{id}/render?template_id=`. It renders through
+`services/telecaller_content.render` with the lead's values, using `asset_link` for `{brochure_link}`. The owning-telecaller check comes
+from tel-008. The rendered text is plain, so this item URL-encodes it for wa.me.
 
 - **Business requirement:** §11, T8.
 - **Existing behavior:** none for leads.

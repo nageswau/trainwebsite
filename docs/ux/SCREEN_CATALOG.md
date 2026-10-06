@@ -2992,6 +2992,31 @@ One existing screen changes (design spec `docs/superpowers/specs/2026-10-06-tel-
   match these filters.", a pager over 50 ("Showing x–y of n"); filters, search and page live in the URL. The table scrolls sideways inside
   its card at phone width.
 
+## tel-012 addendum (2026-10-06, `DEC-SCOPE-079`) — Telecaller content library
+
+Three screens (design spec `docs/superpowers/specs/2026-10-06-tel-012-content-library-design.md` §7) on the tel-002 layout
+(`TelecallerCataloguePage`). No catalogue ID is invented, and there is no visual reference. Each is for `telecaller_manager` and
+`super_admin`; other signed-in roles see "Telecaller manager role required", and a signed-out visitor goes to `/admin/login?next=…`. All
+three share loading, error + Retry, empty / "No … match this filter.", a pager over 100, `role="status"` notices, a double-submit guard and
+server sentences shown as written. The filter and page are in the URL. Rows edit inline (Esc cancels), deactivate behind an inline confirm,
+and keep their place. After a status change, focus moves to the row's new status button. Below 640 px each row is a card.
+
+- **Route:** `/telecaller/manager/scripts`. **Data:** `GET /telecaller/scripts?product_id=&limit=100&offset=`, and every active product;
+  `POST`/`PATCH /telecaller/scripts`. **Content:** a create form (product, name, an ordered step editor: title + talking points, Add / Up /
+  Down / Remove, 1–20 steps; focus stays on the step being moved, added or removed), a Product filter, and a table (name, product, numbered
+  steps, status, actions). A second active script for a product shows the API's 409 sentence.
+- **Route:** `/telecaller/manager/templates`. **Data:** `GET /telecaller/templates?channel=&limit=100&offset=`, plus active products and
+  brochures; `POST`/`PATCH /telecaller/templates`; `GET /telecaller/templates/{id}/preview`. **Content:** a create form (channel; the
+  channel's kinds; name; optional product and brochure; subject for email only; a message with a placeholder hint, a character counter
+  (1000 / 5000) and a live "Unknown placeholder" warning), a channel filter, and a table (name, channel, kind, product, brochure — "(inactive)"
+  when deactivated —, status, actions incl. Preview). The preview row shows the sample values, the subject and body, and the brochure link's
+  expiry, or why the link is empty when the brochure is inactive.
+- **Route:** `/telecaller/manager/brochures`. **Data:** `GET /telecaller/assets?kind=&limit=100&offset=`, active products;
+  `POST /telecaller/assets` (multipart), `PATCH /telecaller/assets/{id}`, `POST /telecaller/assets/{id}/link`. **Content:** an upload form
+  (name, kind Brochure / Fee sheet, optional product, PDF file — a non-PDF is refused before upload, and the API checks the bytes), a kind
+  filter, and a table (name, kind, product, file + size, uploaded, status, actions incl. Copy link). Copy link puts a 7-day link on the
+  clipboard and says when it expires. Without clipboard access, the link is shown in a read-only field.
+
 ## Required findings report
 
 ### FEATURE_WITHOUT_REQUIRED_SCREEN
