@@ -144,6 +144,30 @@ describe("AdminBdmHandover (bdm-025)", () => {
     expect(onCancel).toHaveBeenCalledTimes(2);
   });
 
+  // QA25-01: the trigger unmounts when the group opens, so the group itself takes focus; Escape works without tabbing in first.
+  it("takes focus when it opens, so Escape works straight away", async () => {
+    route();
+    const { onCancel } = mount();
+    const group = screen.getByRole("group", { name: "Deactivate Asha" });
+    await waitFor(() => expect(group).toHaveFocus());
+    fireEvent.keyDown(document.activeElement as Element, { key: "Escape" });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  // QA25-03: a 5xx is worded for people (bdm-006 QA6-04); a 4xx keeps the server's sentence.
+  it.each([
+    ["deactivate", "We couldn't deactivate Asha. Please try again."],
+    ["handover", "We couldn't hand over Asha's work. Please try again."],
+  ] as const)("words a server error in %s mode", async (mode, message) => {
+    route(OPEN, res({ detail: "Internal Server Error" }, 500));
+    mount(mode, { active: mode === "deactivate" });
+    if (mode === "deactivate") fireEvent.click(await screen.findByRole("radio", { name: "Hand over to another BDM" }));
+    else await screen.findByText(/Open work/);
+    await pickRavi();
+    fireEvent.click(screen.getByRole("button", { name: mode === "deactivate" ? "Confirm deactivate" : "Hand over" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(message);
+  });
+
   it("handover mode: picker only, then hands over", async () => {
     const mock = route(OPEN, res({ id: "b1", moved: { organizations: 3, appointments: 1, tasks: 2 } }));
     const { onDone } = mount("handover", { active: false });

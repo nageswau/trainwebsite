@@ -43,6 +43,9 @@ export default function AdminBdmHandover({ row, mode, onDone, onCancel }: {
   }, [row.id]);
 
   useEffect(load, [load]);
+  // QA25-01: the trigger button unmounts when this opens, so the group takes focus -- Escape and Tab work from here.
+  const groupId = id("handover-group");
+  useEffect(() => focus(groupId), [focus, groupId]);
 
   const open = counts !== null && hasOpenWork(counts);
   // With nothing open there is nothing to choose: deactivation keeps (= moves) nothing.
@@ -58,7 +61,9 @@ export default function AdminBdmHandover({ row, mode, onDone, onCancel }: {
       : await sendJson(handoverUrl(row.id), "POST", { reassign_to: picked?.id });
     setBusy(false);
     if (!outcome.ok) {
-      setError(outcome.message);
+      // QA25-03: a 5xx in plain words (bdm-006 QA6-04); a 4xx keeps the server's own sentence.
+      const failed = deactivating ? `We couldn't deactivate ${row.full_name}.` : `We couldn't hand over ${row.full_name}'s work.`;
+      setError((outcome.status ?? 0) >= 500 ? `${failed} Please try again.` : outcome.message);
       focus(id("handover-error"));
       return;
     }
@@ -73,7 +78,7 @@ export default function AdminBdmHandover({ row, mode, onDone, onCancel }: {
 
   const label = deactivating ? `Deactivate ${row.full_name}` : `Hand over ${row.full_name}'s open work`;
   return (
-    <div role="group" aria-label={label} className="form" style={{ marginTop: 6 }}
+    <div id={groupId} tabIndex={-1} role="group" aria-label={label} className="form" style={{ marginTop: 6 }}
       onKeyDown={(e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); }}>
       {loadFailed ? (
         <>

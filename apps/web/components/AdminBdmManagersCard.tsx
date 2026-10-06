@@ -36,6 +36,7 @@ export default function AdminBdmManagersCard({ onChanged }: { onChanged: (notice
     setOpen(id);
     setPicked(null);
     setError(null);
+    focus(`manager-group-${id}`); // QA25-02: the Deactivate button unmounts; the group takes focus so Escape works
   }
 
   function close(id: string) {
@@ -50,7 +51,8 @@ export default function AdminBdmManagersCard({ onChanged }: { onChanged: (notice
     const outcome = await sendJson(managerDeactivateUrl(manager.id), "POST", picked ? { reassign_to: picked.id } : {});
     setBusy(false);
     if (!outcome.ok) {
-      setError(outcome.message);
+      // QA25-03: a 5xx in plain words; a 4xx keeps the server's own sentence.
+      setError((outcome.status ?? 0) >= 500 ? `We couldn't deactivate ${manager.full_name}. Please try again.` : outcome.message);
       focus(`manager-error-${manager.id}`);
       return;
     }
@@ -61,7 +63,7 @@ export default function AdminBdmManagersCard({ onChanged }: { onChanged: (notice
   }
 
   return (
-    <div className="action-card wide">
+    <div className="action-card wide bdm-managers">
       <h3>BDM managers</h3>
       <p className="muted" style={{ marginTop: 0 }}>A manager who still has BDMs is deactivated together with the manager who takes them over.</p>
       {loadFailed ? (
@@ -83,13 +85,13 @@ export default function AdminBdmManagersCard({ onChanged }: { onChanged: (notice
               <tbody>
                 {data.items.map((m) => (
                   <tr key={m.id}>
-                    <td data-label="Manager">{m.full_name}<br /><span className="muted" style={{ fontSize: 12, overflowWrap: "anywhere" }}>{m.email}</span></td>
+                    <td data-label="Name">{m.full_name}<br /><span className="muted" style={{ fontSize: 12, overflowWrap: "anywhere" }}>{m.email}</span></td>
                     <td data-label="BDMs">{bdmCountText(m.bdm_count ?? 0)}</td>
                     <td data-label="Actions">
                       {open !== m.id ? (
                         <button id={`manager-deactivate-${m.id}`} type="button" className="btn secondary small" aria-label={`Deactivate ${m.full_name}`} onClick={() => start(m.id)} disabled={busy}>Deactivate</button>
                       ) : (
-                        <div role="group" aria-label={`Deactivate ${m.full_name}`} className="form" onKeyDown={(e: KeyboardEvent) => { if (e.key === "Escape") close(m.id); }}>
+                        <div id={`manager-group-${m.id}`} tabIndex={-1} role="group" aria-label={`Deactivate ${m.full_name}`} className="form" onKeyDown={(e: KeyboardEvent) => { if (e.key === "Escape") close(m.id); }}>
                           {m.bdm_count > 0 ? (
                             <>
                               <p style={{ margin: 0 }}>Move their {bdmCountText(m.bdm_count)} to another manager first. Pending travel approvals move with them.</p>

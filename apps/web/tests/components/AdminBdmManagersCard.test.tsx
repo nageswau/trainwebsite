@@ -33,6 +33,16 @@ describe("AdminBdmManagersCard (bdm-025 AC4)", () => {
     expect(within(table).getByText("0 BDMs")).toBeInTheDocument();
   });
 
+  // QA25-04: on a phone each manager is a labelled card (the BDM list's stacked layout), keyed on these classes and labels.
+  it("uses the stacked phone layout's class and cell labels", async () => {
+    route();
+    render(<AdminBdmManagersCard onChanged={vi.fn()} />);
+    const region = await screen.findByRole("region", { name: "BDM managers" });
+    expect(region.closest(".action-card")).toHaveClass("bdm-managers");
+    const labels = Array.from(region.querySelectorAll("tbody tr:first-child td")).map((td) => td.getAttribute("data-label"));
+    expect(labels).toEqual(["Name", "BDMs", "Actions"]);
+  });
+
   it("an empty list and a failed load read differently", async () => {
     const mock = route(() => res(pg([])));
     render(<AdminBdmManagersCard onChanged={vi.fn()} />);
@@ -75,6 +85,15 @@ describe("AdminBdmManagersCard (bdm-025 AC4)", () => {
     fireEvent.click(within(group).getByRole("button", { name: "Confirm deactivate" }));
     await waitFor(() => expect(onChanged).toHaveBeenCalledWith("Deactivated Ravi."));
     expect(JSON.parse(String(posts(mock)[0][1]?.body))).toEqual({});
+  });
+
+  it("the group takes focus when it opens (QA25-02) and words a server error (QA25-03)", async () => {
+    route(undefined, res({ detail: "Internal Server Error" }, 503));
+    render(<AdminBdmManagersCard onChanged={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Deactivate Ravi" }));
+    await waitFor(() => expect(screen.getByRole("group", { name: "Deactivate Ravi" })).toHaveFocus());
+    fireEvent.click(screen.getByRole("button", { name: "Confirm deactivate" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("We couldn't deactivate Ravi. Please try again.");
   });
 
   it("shows a refusal in an alert with focus; Keep active and Escape close the group", async () => {
