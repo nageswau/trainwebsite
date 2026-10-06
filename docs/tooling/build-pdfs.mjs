@@ -1,25 +1,40 @@
-// Builds the Agent CRM documentation PDFs: pandoc (Markdown -> one HTML per book, images embedded) + Playwright's
-// Chromium (HTML -> A4 PDF with page numbers). Usage (repo root): node docs/tooling/build-pdfs.mjs
-// Output: docs/pdf/*.pdf. Intermediate HTML goes to docs/pdf/.build/ (git-ignored by docs/pdf/.gitignore).
+// Builds the documentation PDFs: pandoc (Markdown -> one HTML per book, images embedded) + Playwright's
+// Chromium (HTML -> A4 PDF with page numbers). Usage (repo root):
+//   node docs/tooling/build-pdfs.mjs          -> Agent CRM, output docs/pdf/*.pdf
+//   node docs/tooling/build-pdfs.mjs school   -> School CRM, output docs/school-crm/pdf/*.pdf
+// Intermediate HTML goes to <output>/.build/ (git-ignored by <output>/.gitignore).
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 
-const ROOT = path.resolve("docs");
+const SCHOOL = process.argv[2] === "school";
+const ROOT = path.resolve(SCHOOL ? "docs/school-crm" : "docs");
 const OUT = path.join(ROOT, "pdf");
 const BUILD = path.join(OUT, ".build");
 mkdirSync(BUILD, { recursive: true });
 writeFileSync(path.join(OUT, ".gitignore"), ".build/\n");
 
-const md = (dir) => readdirSync(path.join(ROOT, dir)).filter((f) => /^[a-z]+-\d{3}-.*\.md$/.test(f)).sort().map((f) => `${dir}/${f}`);
+const md = (dir) => readdirSync(path.join(ROOT, dir)).filter((f) => /^[a-z0-9]+-\d{3}-.*\.md$/.test(f)).sort().map((f) => `${dir}/${f}`);
+const PREFIX = SCHOOL ? "EduSphere School CRM — " : "EduSphere Agent CRM — ";
 const UM = ["account-access", "dashboard", "students", "universities", "applications", "documents", "tasks", "notifications", "commissions", "reports", "team", "staff-performance"];
-const BOOKS = [
+const SCHOOL_UM = ["account-access", "dashboards", "students", "team", "transfers", "activities", "academic-team", "portfolio",
+  "career-counselor", "psychometric-team", "student-360", "reports", "entitlements", "notifications", "parent"];
+const SCHOOL_ROLES = ["school-coordinator", "principal", "teacher", "parent", "academic-team", "career-counselor", "psychometric-team",
+  "overseas-admin-schools", "super-admin-schools"];
+const SCHOOL_BOOKS = () => [
+  { file: "EduSphere-School-CRM-User-Manual", title: "EduSphere School CRM — User Manual", subtitle: "For School Coordinators, Principals, Teachers, Parents, Academic Team, Career Counselors and Psychometric Team", pages: SCHOOL_UM.flatMap((d) => md(`user-manual/${d}`)) },
+  { file: "EduSphere-School-CRM-Admin-Manual", title: "EduSphere School CRM — Administrator Manual", subtitle: "For Overseas Admins and Super Admins", pages: ["admin-manual/README.md", ...md("admin-manual")] },
+  { file: "EduSphere-School-CRM-Role-Guides", title: "EduSphere School CRM — Role Quick-Start Guides", subtitle: "Nine roles, from School Coordinator to Super Admin", pages: SCHOOL_ROLES.map((r) => `role-guides/${r}.md`) },
+  { file: "EduSphere-School-CRM-FAQ-and-Troubleshooting", title: "EduSphere School CRM — FAQ and Troubleshooting", subtitle: "Answers and fixes based on verified behaviour", pages: ["faq.md", "troubleshooting.md"] },
+];
+const AGENT_BOOKS = () => [
   { file: "EduSphere-Agent-CRM-User-Manual", title: "EduSphere Agent CRM — User Manual", subtitle: "For Agency Masters and Agency Staff", pages: UM.flatMap((d) => md(`user-manual/${d}`)) },
   { file: "EduSphere-Agent-CRM-Admin-Manual", title: "EduSphere Agent CRM — Administrator Manual", subtitle: "For Overseas Admins and Super Admins", pages: ["admin-manual/README.md", ...md("admin-manual")] },
   { file: "EduSphere-Agent-CRM-Role-Guides", title: "EduSphere Agent CRM — Role Quick-Start Guides", subtitle: "Agency Master · Agency Staff · Overseas Admin · Super Admin", pages: ["role-guides/agency-master.md", "role-guides/agency-staff.md", "role-guides/overseas-admin-agencies.md", "role-guides/super-admin-agencies.md"] },
   { file: "EduSphere-Agent-CRM-FAQ-and-Troubleshooting", title: "EduSphere Agent CRM — FAQ and Troubleshooting", subtitle: "Answers and fixes based on verified behaviour", pages: ["faq.md", "troubleshooting.md"] },
 ];
+const BOOKS = SCHOOL ? SCHOOL_BOOKS() : AGENT_BOOKS();
 const bookOf = (rel) => BOOKS.find((b) => b.pages.includes(rel));
 const anchor = (rel) => "p-" + rel.replace(/\.md$/, "").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
 
@@ -61,7 +76,7 @@ function transform(rel, book) {
     const t = path.posix.normalize(path.posix.join(dir, target));
     if (book.pages.includes(t)) return `[${label}](#${anchor(t)})`;
     const other = bookOf(t);
-    return other ? `${label} [(see the ${other.title.replace("EduSphere Agent CRM — ", "")})]{.xref}` : label;
+    return other ? `${label} [(see the ${other.title.replace(PREFIX, "")})]{.xref}` : label;
   });
   // Pandoc needs a blank line before a list that directly follows a paragraph line (GitHub does not).
   text = text.replace(/^([^\n|>#\-*\d\s][^\n]*)\n((?:[-*]|\d+\.) )/gm, "$1\n\n$2");

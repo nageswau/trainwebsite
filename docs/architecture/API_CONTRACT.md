@@ -846,6 +846,33 @@ is one sentence naming the field (e.g. "Name is required", "Source: Input should
 Every write adds an `AuditLog` row (`telecaller.product_create|product_update|campaign_create|campaign_update`, entity `tel_product` /
 `tel_campaign`, `metadata_json.fields` = the changed field names only).
 
+## 12E. IT counselor (`tel-017`) — addendum, 2026-10-06
+
+`DEC-SCOPE-076`; design spec `docs/superpowers/specs/2026-10-06-tel-017-it-counselor-design.md`; `RBAC_MATRIX.md` §2.16. No new endpoint
+and no response-shape change.
+
+| Endpoint | Change |
+|---|---|
+| `POST /admin/users` | `role: "counselor"` is now valid with `division: "it"` (was `422` "Role is not valid for the selected division") |
+| `POST /workflows/overseas/applications`, `PATCH /workflows/overseas/applications/{id}` | A supplied `counselor_id` must be a `counselor` in the `overseas` division, else `422` "Choose an overseas counselor" (an unknown id used to fail with `500`); `null` still clears it |
+| `GET /portal/it/counselor/{dashboard,leads}` | New sections for an IT counselor (the existing `PortalPayload` shape). Any other section → `404` "Workspace not found" |
+| `GET /overseas-admin/school-students/lookup`, `POST /overseas-admin/school-students/{id}/applications`, `GET /overseas-admin/school-applications`, `GET /lookups/{overseas-students,overseas-applications,schools,school-students}`, `GET /inbound/university-email`, `PATCH /inbound/university-email/{id}/match` | A caller outside the `overseas` division now gets `403` "Wrong EduSphere division" after the role check (`super_admin` exempt). Every role these routes already admitted is overseas-only, so their behaviour is unchanged |
+
+## 12F. Lead record (`tel-003`) — addendum, 2026-10-06
+
+`DEC-SCOPE-077`; design spec `docs/superpowers/specs/2026-10-06-tel-003-lead-record-design.md` §4; migration `0078_enquiry_lead_record`.
+Roles and scope are unchanged (no `RBAC_MATRIX.md` change). **Breaking:** `GET /admin/leads` is now a page; every in-repo consumer was
+updated in the same item (§12 bdm-017's "500-row cap unchanged" no longer holds).
+
+| Method/Path | Roles | Notes / status codes |
+|---|---|---|
+| `POST /public/enquiries` | Public | `201` answers `{id, status, crm_sync_status, lead_code}` (`lead_code` added, `LD-000123`). `source` must be one of the 13 §2 keys (default `website`), else `422`. `phone_normalized` is derived server-side (`+91…` / E.164 / null) |
+| `GET /admin/leads` | `super_admin`, `it_admin`, `overseas_admin` | `{items, total, limit, offset}` (`limit` 1–100, default 50; `offset` ≥ 0; else `422`), newest first. Filters, all ANDed with the division scope (super_admin: all, or `division=`): `status`, `source` (13 keys, else `422`), `product_id`, `campaign_id`, `telecaller_user_id`, `bdm_organization_id` (UUIDs, else `422`), `q` (≤ 200 chars; a literal case-insensitive substring of Lead ID, name, email, phone or subject). Item = every previous key plus `lead_code, priority (hot\|warm\|cold), whatsapp_number, city, state, qualification, passing_year, institution, created_at, stage_changed_at, product {id,name}, campaign {id,name}, telecaller {id,full_name}, counselor {id,full_name}` (each object `null` when unset; `counselor` = `owner_id`) |
+| `POST/DELETE /admin/leads/{id}/conversion` | as §12 bdm-017 | Unchanged behaviour; the returned row carries the new keys |
+| `PATCH /admin/leads/{id}` | as before | Unchanged (tel-004 replaces the status editor) |
+
+The CRM webhook payload adds `lead_code` (additive; `INTEGRATION_CONTRACTS.md` §1).
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

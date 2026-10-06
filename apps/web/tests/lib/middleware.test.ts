@@ -61,3 +61,12 @@ describe("middleware /telecaller (tel-001 AC5, TL1)", () => {
     expect(go("/bdm/my-day")).toBe("http://localhost/bdm/sign-in?next=%2Fbdm%2Fmy-day");
   });
 });
+
+describe("middleware /it/counselor (tel-017)", () => {
+  it("protects the IT counselor workspace like the other IT portals", () => {
+    expect(go("/it/counselor/leads")).toBe("http://localhost/it/login?next=%2Fit%2Fcounselor%2Fleads");
+    expect(go("/it/counselor")).toBe("http://localhost/it/login?next=%2Fit%2Fcounselor");
+    expect(go("/it/counselor/dashboard", true)).toBeNull();
+    expect(go("/overseas/counselor/dashboard")).toBe("http://localhost/overseas/login?next=%2Foverseas%2Fcounselor%2Fdashboard");
+  });
+});

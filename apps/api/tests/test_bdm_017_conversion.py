@@ -48,7 +48,7 @@ def row_for(rows: list[dict], lead_id) -> dict:
 async def test_a_bdm_lead_appears_in_the_admin_list_with_its_organization_and_bdm(client, db_session):
     org, lead, bdm = await college_lead(client, db_session)
     await as_user(client, await make_user(db_session, "it_admin", "it"))
-    rows = (await client.get(ADMIN_LEADS, params={"bdm_organization_id": org["id"]})).json()
+    rows = (await client.get(ADMIN_LEADS, params={"bdm_organization_id": org["id"]})).json()["items"]
     assert [r["id"] for r in rows] == [lead["id"]]
     row = rows[0]
     assert row["organization"] == {"id": org["id"], "code": org["code"], "name": org["name"]}
@@ -60,7 +60,7 @@ async def test_a_bdm_lead_appears_in_the_admin_list_with_its_organization_and_bd
 async def test_website_rows_keep_their_keys_and_carry_null_attribution(client, db_session):
     enquiry = await website_enquiry(db_session)
     await as_user(client, await make_user(db_session, "it_admin", "it"))
-    row = row_for((await client.get(ADMIN_LEADS)).json(), enquiry.id)
+    row = row_for((await client.get(ADMIN_LEADS, params={"q": enquiry.lead_code})).json()["items"], enquiry.id)
     assert {"id", "name", "email", "phone", "division", "subject", "status", "source", "crm_sync_status"} <= row.keys()
     assert (row["organization"], row["bdm"], row["converted_user"]) == (None, None, None)
 
@@ -69,7 +69,7 @@ async def test_website_rows_keep_their_keys_and_carry_null_attribution(client, d
 async def test_the_organization_filter_cannot_widen_the_division_scope(client, db_session):
     org, _, _ = await college_lead(client, db_session)  # an it-division lead
     await as_user(client, await make_user(db_session, "overseas_admin", "overseas"))
-    assert (await client.get(ADMIN_LEADS, params={"bdm_organization_id": org["id"]})).json() == []
+    assert (await client.get(ADMIN_LEADS, params={"bdm_organization_id": org["id"]})).json()["items"] == []
 
 
 @pytest.mark.asyncio
@@ -189,7 +189,7 @@ async def test_the_overseas_admin_sees_and_links_a_school_bdm_lead(client, db_se
     lead = await add_lead(client, org["id"])
     student = await make_user(db_session, "overseas_student", "overseas")
     await as_user(client, await make_user(db_session, "overseas_admin", "overseas"))
-    rows = (await client.get(ADMIN_LEADS, params={"bdm_organization_id": org["id"]})).json()
+    rows = (await client.get(ADMIN_LEADS, params={"bdm_organization_id": org["id"]})).json()["items"]
     assert [(r["id"], r["division"], r["organization"]["code"]) for r in rows] == [(lead["id"], "overseas", org["code"])]
     response = await client.post(conversion(lead["id"]), json={"student_email": student.email})
     assert (response.status_code, response.json()["converted_user"]["id"]) == (200, str(student.id))
