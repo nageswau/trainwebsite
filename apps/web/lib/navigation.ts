@@ -52,14 +52,14 @@ export const BDM_NOTIFICATIONS_HREF = "/bdm/notifications";
 export const BDM_MANAGER_NOTIFICATIONS_HREF = "/bdm/manager/notifications";
 export const BDM_NAV: NavItem[] = [
   { label: "My Day", href: "/bdm/my-day" }, { label: "Organizations", href: "/bdm/organizations" }, { label: "Pipeline", href: "/bdm/pipeline" },
-  { label: "Appointments", href: "/bdm/appointments" },
+  { label: "Appointments", href: "/bdm/appointments" }, { label: "Follow-ups", href: "/bdm/follow-ups" },
   { label: "Activities", href: "/bdm/activities" }, { label: "Travel", href: "/bdm/travel" },
   { label: "Notifications", href: BDM_NOTIFICATIONS_HREF }, { label: "Profile", href: "/bdm/profile" },
 ];
 export const BDM_MANAGER_NAV: NavItem[] = [
   { label: "Dashboard", href: "/bdm/manager/dashboard" }, { label: "Team", href: "/bdm/manager/team" },
   { label: "Organizations", href: "/bdm/manager/organizations" }, { label: "Pipeline", href: "/bdm/manager/pipeline" },
-  { label: "Appointments", href: "/bdm/manager/appointments" },
+  { label: "Appointments", href: "/bdm/manager/appointments" }, { label: "Follow-ups", href: "/bdm/manager/follow-ups" },
   { label: "Activities", href: "/bdm/manager/activities" }, { label: "Approvals", href: "/bdm/manager/approvals" },
   { label: "Notifications", href: BDM_MANAGER_NOTIFICATIONS_HREF },
 ];
