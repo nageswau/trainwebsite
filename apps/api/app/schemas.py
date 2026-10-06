@@ -3557,7 +3557,42 @@ class BdmTripRow(BaseModel):
     submitted_at: datetime | None
 
 
+class BdmTripOrgRef(BaseModel):
+    id: UUID
+    name: str
+
+
+class BdmTripItineraryItem(BaseModel):
+    """bdm-011: one linked appointment on the trip page (§4: time, organization, meeting, status)."""
+
+    id: UUID
+    code: str
+    starts_at: datetime
+    duration_minutes: int
+    appointment_type: str
+    status: str
+    organization: BdmTripOrgRef
+    expected_leads: int | None
+    expected_revenue: Decimal | None
+
+
+class BdmTripMetrics(BaseModel):
+    """bdm-011 (College §F, DEC-SCOPE-092 L1/L3): null = nothing to compute from; `actual_revenue` is not tracked yet (D17)."""
+
+    meetings_planned: int
+    meetings_completed: int
+    estimated_cost: Decimal
+    actual_cost: Decimal
+    cost_per_completed_meeting: Decimal | None
+    expected_leads: int | None
+    expected_revenue: Decimal | None
+    actual_leads: int
+    actual_revenue: Decimal | None
+
+
 class BdmTripOut(BdmTripRow):
+    itinerary: list[BdmTripItineraryItem]
+    metrics: BdmTripMetrics
     purpose: str
     remarks: str | None
     rejection_reason: str | None
@@ -4237,6 +4272,7 @@ class BdmAppointmentCreate(BaseModel):
     remarks: BdmApptRemarks = None
     expected_leads: BdmApptLeads = None
     expected_revenue: BdmApptRevenue = None
+    trip_id: UUID | None = None  # bdm-011: one of the caller's trips covering the date (services/bdm_travel.linkable_trip)
     confirm_overlap: StrictBool = False
 
 
@@ -4253,6 +4289,7 @@ class BdmAppointmentUpdate(BaseModel):
     remarks: BdmApptRemarks = None
     expected_leads: BdmApptLeads = None
     expected_revenue: BdmApptRevenue = None
+    trip_id: UUID | None = None  # bdm-011: null unlinks
     confirm_overlap: StrictBool = False
 
 
@@ -4380,7 +4417,21 @@ class BdmAppointmentEventOut(BaseModel):
     created_at: datetime
 
 
+class BdmAppointmentTripRef(BaseModel):
+    """bdm-011: the linked trip, enough to show and link to it."""
+
+    id: UUID
+    code: str
+    from_place: str
+    to_place: str
+    travel_date: date
+    return_date: date
+    approval_status: str
+    travel_status: str
+
+
 class BdmAppointmentOut(BdmAppointmentRow):
+    trip: BdmAppointmentTripRef | None
     contact_id: UUID | None
     contact_designation: str | None
     contact_phone: str | None

@@ -1708,6 +1708,7 @@ class BdmAppointment(Base, TimestampMixin):
         Index("ix_bdm_appointments_bdm_starts", "bdm_user_id", "starts_at"),
         Index("ix_bdm_appointments_org_starts", "organization_id", "starts_at"),
         Index("ix_bdm_appointments_contact", "contact_id"),
+        Index("ix_bdm_appointments_trip", "trip_id"),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     code: Mapped[str] = mapped_column(String(20))
@@ -1729,6 +1730,8 @@ class BdmAppointment(Base, TimestampMixin):
     next_follow_up_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     expected_leads: Mapped[int | None] = mapped_column(Integer, nullable=True)
     expected_revenue: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    # bdm-011 (DEC-SCOPE-092): the trip this meeting is part of -- the BDM's own, covering its IST date (services/bdm_travel).
+    trip_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_trips.id", ondelete="RESTRICT"), nullable=True)
 
 
 class BdmAppointmentEvent(Base):

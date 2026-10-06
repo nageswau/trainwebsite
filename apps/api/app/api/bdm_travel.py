@@ -7,7 +7,7 @@ so a failed commit leaves no trip change, audit row or notice behind. Lists are 
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.bdm import LIMIT, OFFSET
@@ -30,10 +30,13 @@ def _place_line(trip: BdmTrip) -> str:
 
 
 @router.get("/trips", response_model=BdmTripPage)
-async def my_trips(approval_status: ApprovalStatus | None = None, travel_status: TravelStatus | None = None, limit: int = LIMIT,
-                   offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def my_trips(approval_status: ApprovalStatus | None = None, travel_status: TravelStatus | None = None, linkable: bool = False,
+                   limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """`linkable` (bdm-011): only trips a new or open appointment can still be linked to (the appointment form's choices)."""
     await bdm_context(db, user)
     filters = [BdmTrip.bdm_user_id == user.id, *travel.status_filters(approval_status, travel_status)]
+    if linkable:
+        filters += travel.linkable_filters(travel.india_today())
     return await travel.page(db, travel.trip_rows(filters), limit, offset, NEWEST)
 
 
@@ -105,6 +108,23 @@ async def approvals(limit: int = LIMIT, offset: int = OFFSET, user: User = Depen
 async def team_trip(trip_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     trip = await travel.load_team_trip(db, user, trip_id)
     return await travel.trip_out(db, trip, user, travel.india_today())
+
+
+async def _report(db: AsyncSession, user: User, trip: BdmTrip) -> dict:
+    """bdm-011 AC3: the read-only travel report is the trip summary, available once the trip is completed."""
+    if trip.travel_status != "completed":
+        raise HTTPException(409, "The travel report is available once the trip is completed")
+    return await travel.trip_out(db, trip, user, travel.india_today())
+
+
+@router.get("/trips/{trip_id}/report", response_model=BdmTripOut)
+async def trip_report(trip_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _report(db, user, await travel.load_own_trip(db, user, trip_id))
+
+
+@router.get("/manager/trips/{trip_id}/report", response_model=BdmTripOut)
+async def team_trip_report(trip_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _report(db, user, await travel.load_team_trip(db, user, trip_id))
 
 
 async def _decision(db: AsyncSession, user: User, trip_id: UUID, approve: bool, reason: str | None = None) -> dict:

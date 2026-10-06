@@ -1,6 +1,6 @@
 """tel-011 -- migration 0089_lead_follow_ups (spec §2). The round trip runs in a throwaway database (the tel-004/005/006 pattern); a
 downgrade never runs against the shared test database. 0001 builds a fresh database from the current models, so each test first
-downgrades to 0087_lead_import_batches to reach the real pre-tel-011 shape."""
+downgrades to 0088_bdm_appointment_trip (bdm-011) to reach the real pre-tel-011 shape."""
 
 import asyncio
 import importlib.util
@@ -24,7 +24,7 @@ _spec = importlib.util.spec_from_file_location("_tel_011_migration_0089", VERSIO
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0087_lead_import_batches", "0089_lead_follow_ups"
+BASE, HEAD = "0088_bdm_appointment_trip", "0089_lead_follow_ups"
 COLUMNS = {"id", "lead_id", "due_at", "reason", "notes", "next_action", "status", "created_by_user_id", "completed_at",
            "completed_by_user_id", "cancelled_at", "cancel_reason", "created_at", "updated_at"}
 NULLABLE = {"notes", "next_action", "completed_at", "completed_by_user_id", "cancelled_at", "cancel_reason"}
@@ -49,7 +49,7 @@ def _sql(url: str, sql: str, params: dict | None = None, *, autocommit: bool = F
     return asyncio.run(_inner())
 
 
-def test_migration_chains_after_0087_and_there_is_one_head():
+def test_migration_chains_after_0088_and_there_is_one_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
@@ -95,7 +95,7 @@ ROW = ("INSERT INTO lead_follow_ups (id, lead_id, due_at, reason, status, create
        "cancelled_at, cancel_reason) VALUES (:id, :lead, now() + interval '1 day', :reason, :status, :user, :done_at, :done_by, :cancel_at, :cancel_reason)")
 
 
-def test_downgrade_to_0087_has_no_table(base_db):
+def test_downgrade_to_0088_has_no_table(base_db):
     assert _sql(base_db["url"], EXISTS) == [(None,)]
 
 

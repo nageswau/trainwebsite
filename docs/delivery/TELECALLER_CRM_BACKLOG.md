@@ -536,7 +536,7 @@ API contract §12K; re-chained after bdm-025 082 / 0082, tel-012 083 / 0083, tel
 ### tel-011 — Follow-ups
 
 **Status (2026-10-06):** **built** on `feature/tel-011` (`DEC-SCOPE-093` F1–F4 + F5–F10, migration `0089_lead_follow_ups`, API contract §12P;
-not yet merged; tel-009 holds 0088 / 092 / §12O). Spec `docs/superpowers/specs/2026-10-06-tel-011-follow-ups-design.md`. The §7 card's "Last
+re-chained after bdm-011's `0088_bdm_appointment_trip` / `DEC-SCOPE-092`; not yet merged; tel-009 holds a 0088 and §12O). Spec `docs/superpowers/specs/2026-10-06-tel-011-follow-ups-design.md`. The §7 card's "Last
 Call" arrives with tel-010 (F8); a follow-up moves with its lead (F3), so tel-025 has nothing to rewrite.
 
 - **Business requirement:** §7 ("one of the most important functions").

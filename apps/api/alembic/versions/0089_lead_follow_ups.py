@@ -1,10 +1,10 @@
 """tel-011 -- `lead_follow_ups`: follow-ups on a lead.
 
 Revision ID: 0089_lead_follow_ups
-Revises: 0087_lead_import_batches
+Revises: 0088_bdm_appointment_trip
 
-docs/superpowers/specs/2026-10-06-tel-011-follow-ups-design.md §2 (DEC-SCOPE-093). The open tel-009 branch claims 0088; whichever merges
-second re-chains onto the other. 0001 builds a fresh database from the current models, which already carry the table, so the upgrade is
+docs/superpowers/specs/2026-10-06-tel-011-follow-ups-design.md §2 (DEC-SCOPE-093). Re-chained after bdm-011's 0088_bdm_appointment_trip;
+the open tel-009 branch also chains a 0088, so whichever of tel-009 and tel-011 merges second re-chains. 0001 builds a fresh database from the current models, which already carry the table, so the upgrade is
 guarded (0074's idiom). CHECKS repeats models.LEAD_FOLLOW_UP_CHECKS (test_tel_011_migration asserts they stay identical).
 """
 
@@ -14,7 +14,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0089_lead_follow_ups"
-down_revision = "0087_lead_import_batches"
+down_revision = "0088_bdm_appointment_trip"
 branch_labels = None
 depends_on = None
 
