@@ -1,7 +1,7 @@
 # tel-006 — CSV lead import per campaign (design)
 
 - **Backlog:** `docs/delivery/TELECALLER_CRM_BACKLOG.md` § tel-006 (EVID-019 §2, T12, T15). Dependencies tel-005 (PR #92) and tel-007 (PR #90) are merged.
-- **Decision:** `DEC-SCOPE-091` (main holds 089 = bdm-020; 090 / §12M are claimed by the open AGN-023 branch) · **Migration:** `0087_lead_import_batches` (after tel-005's `0086_lead_enquiries`) · **API contract:** §12N. Numbers are provisional and re-chain at merge if main moves.
+- **Decision:** `DEC-SCOPE-091` (main holds 089 = bdm-020; 090 / §12M are claimed by the open AGN-023 branch) · **Migration:** `0087_lead_import_batches` (after tel-005's `0086_lead_enquiries`) · **API contract:** §12N. **Merged** to `main` as PR #96 @ `126b454b` (2026-10-06) with these numbers (no re-chain).
 
 ## 1. Owner answer (2026-10-06)
 
