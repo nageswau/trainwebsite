@@ -30,6 +30,7 @@ from app.schemas import (
     BdmSchoolBoard,
 )
 from app.services import bdm_organizations as svc
+from app.services import bdm_tasks as task_svc
 from app.services.bdm import bdm_context
 
 router = APIRouter(prefix="/bdm/organizations", tags=["bdm-organizations"])
@@ -188,9 +189,12 @@ async def _set_archived(org_id: UUID, user: User, db: AsyncSession, archive: boo
     action = "archive" if archive else "restore"
     svc.require(user, org, "can_archive" if archive else "can_restore", action)
     org.archived_at = datetime.now(UTC) if archive else None
-    svc.audit(db, user, action, org.id)
+    # bdm-008 F6: every assignee's open follow-ups / tasks on it are cancelled under the organization lock; restore reopens nothing.
+    cancelled = await task_svc.cancel_open_for_organization(db, org.id) if archive else 0
+    extra = {"tasks_cancelled": cancelled} if cancelled else {}
+    svc.audit(db, user, action, org.id, extra or None)
     await db.commit()
-    svc.log(f"bdm_org_{action}d", user, org.id)
+    svc.log(f"bdm_org_{action}d", user, org.id, **extra)
     return {"organization": await svc.organization_out(db, user, org)}
 
 
