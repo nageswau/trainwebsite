@@ -53,7 +53,7 @@ def _body(model, payload):
     return _parse(model, payload, NOT_AN_OBJECT, TEL_CONTENT_FIELD_LABELS)
 
 
-async def _readable(db: AsyncSession, user: User, model, row_id: UUID, noun: str):
+async def _visible(db: AsyncSession, user: User, model, row_id: UUID, noun: str):
     """A row the caller may read: 404 when missing, and for a telecaller also when inactive."""
     row = await db.get(model, row_id)
     if not row or not (row.active or sees_inactive(user)):
@@ -76,13 +76,13 @@ async def scripts(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Active first, then product, then name."""
+    """Product, then name -- whatever the status, so deactivating never moves a row (QA-04)."""
     svc.require_content_reader(user)
     filters = active_filters(user, TelScript.active, active) + _matching(like_pattern(q), TelScript.name)
     if product_id:
         filters.append(TelScript.product_id == product_id)
     stmt = select(TelScript, TelProduct).join(TelProduct, TelProduct.id == TelScript.product_id).where(*filters)
-    order = (TelScript.active.desc(), func.lower(TelProduct.name), func.lower(TelScript.name), TelScript.id)
+    order = (func.lower(TelProduct.name), func.lower(TelScript.name), TelScript.id)
     return await _page(db, stmt, order, limit, offset, svc.script_out)
 
 
@@ -200,7 +200,7 @@ async def update_template(template_id: UUID, payload: dict = Body(...), user: Us
 async def preview_template(template_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """AC2 with sample values (C2). The brochure link is real (7 days) while the brochure is active; otherwise it is omitted."""
     svc.require_content_reader(user)
-    template = await _readable(db, user, TelMessageTemplate, template_id, "Template")
+    template = await _visible(db, user, TelMessageTemplate, template_id, "Template")
     product, asset = await _template_refs(db, template)
     link = svc.asset_link(asset) if asset and asset.active else None
     values = {**svc.SAMPLE_VALUES, "brochure_link": link["url"] if link else ""}
@@ -222,14 +222,14 @@ async def assets(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Active first, then the newest upload."""
+    """Newest upload first -- whatever the status, so deactivating never moves a row (QA-04)."""
     svc.require_content_reader(user)
     filters = active_filters(user, TelAsset.active, active) + _matching(like_pattern(q), TelAsset.name)
     for column, value in ((TelAsset.kind, kind), (TelAsset.product_id, product_id)):
         if value:
             filters.append(column == value)
     stmt = select(TelAsset, TelProduct).outerjoin(TelProduct, TelProduct.id == TelAsset.product_id).where(*filters)
-    return await _page(db, stmt, (TelAsset.active.desc(), TelAsset.created_at.desc(), TelAsset.id), limit, offset, svc.asset_out)
+    return await _page(db, stmt, (TelAsset.created_at.desc(), TelAsset.id), limit, offset, svc.asset_out)
 
 
 @router.post("/assets", response_model=TelAssetOut, status_code=201)
@@ -272,8 +272,6 @@ async def update_asset(asset_id: UUID, payload: dict = Body(...), user: User = D
     fields = apply_changes(asset, changes)
     if fields:
         audit(db, user, "telecaller.asset_update", "tel_asset", asset.id, fields)
-    await db.flush()
-    await db.refresh(asset)
     out = svc.asset_out(asset, await db.get(TelProduct, asset.product_id) if asset.product_id else None)
     await db.commit()
     return out

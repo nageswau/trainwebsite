@@ -73,6 +73,18 @@ async def test_readers_list_and_telecallers_see_active_only(client, db_session, 
 
 
 @pytest.mark.asyncio
+async def test_a_deactivated_script_keeps_its_place(client, db_session):
+    """QA-04: ordered by product then name whatever the status, so deactivating never moves the row away."""
+    prod = await product(db_session)
+    await as_role(client, db_session)
+    first = (await _create(client, prod.id, name="A first")).json()
+    await client.patch(f"{SCRIPTS}/{first['id']}", json={"active": False})
+    await _create(client, prod.id, name="B second")
+    names = [i["name"] for i in (await client.get(SCRIPTS, params={"product_id": str(prod.id)})).json()["items"]]
+    assert names == ["A first", "B second"]
+
+
+@pytest.mark.asyncio
 async def test_one_active_script_per_product(client, db_session):
     """C3 / AC7: a second active script → 409; reactivating or moving into a product that has one → 409."""
     prod, other = await product(db_session), await product(db_session)

@@ -22,7 +22,8 @@ async def as_role(client, db, role="telecaller_manager", division="global"):
 
 
 async def product(db, *, group="it", active=True) -> TelProduct:
-    row = TelProduct(product_group=group, name=uname("Prod"), team=None if group == "other" else group, active=active)
+    """Sorted after the seed (1000, well under the 9999 cap) so the shared database's seeded §3 products stay on the first page of tel-002's list tests."""
+    row = TelProduct(product_group=group, name=uname("Prod"), team=None if group == "other" else group, active=active, sort_order=1000)
     db.add(row)
     await db.commit()
     return row

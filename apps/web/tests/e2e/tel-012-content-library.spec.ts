@@ -71,11 +71,17 @@ test("manager: scripts, templates and a brochure whose link works signed out unt
   // Templates: an unknown placeholder is refused (AC3); a template with the brochure previews a working link (AC2, AC4).
   await page.getByRole("link", { name: "Templates" }).first().click();
   await page.waitForURL("**/telecaller/manager/templates");
-  await expect(page.getByRole("row", { name: /^Welcome message WhatsApp/ }).first()).toBeVisible(); // AC1 seed
+  // AC1 seed, read by name: the shared database's test rows can push it off the first page.
+  const seeded = await (await page.request.get("/api/v1/telecaller/templates?channel=whatsapp&q=Welcome%20message")).json();
+  expect(seeded.items.some((t: { name: string; product: unknown }) => t.name === "Welcome message" && t.product === null)).toBe(true);
+  // An email "Course brochure": the first email kind, so the new row lists on the first page even beside the shared database's
+  // many WhatsApp test templates.
   const name = `Course ${stamp}`;
-  await page.getByLabel("Kind (required)").selectOption("course_details");
+  await page.getByLabel("Channel (required)").selectOption("email");
+  await page.getByLabel("Kind (required)").selectOption("course_brochure");
   await page.getByLabel("Template name (required)").fill(name);
   await page.getByLabel("Brochure", { exact: true }).selectOption({ label: brochure });
+  await page.getByLabel("Subject (required)").fill("{product} brochure");
   await page.getByLabel("Message (required)").fill("Hi {first_name}: {brochure_link}");
   await expect(page.getByText("Unknown placeholder: {first_name}")).toBeVisible();
   await page.getByRole("button", { name: "Create template" }).click();
@@ -83,10 +89,13 @@ test("manager: scripts, templates and a brochure whose link works signed out unt
   await page.getByLabel("Message (required)").fill("Hi {name}: {brochure_link}");
   await page.getByRole("button", { name: "Create template" }).click();
   await expect(page.locator("#tpl-create-feedback")).toHaveText(`Created ${name}.`);
-  await page.getByLabel("Show").selectOption("whatsapp");
-  await page.waitForURL("**/telecaller/manager/templates?channel=whatsapp");
+  await page.getByLabel("Show").selectOption("email");
+  await page.waitForURL("**/telecaller/manager/templates?channel=email");
+  await page.reload(); // the filter lives in the URL, so a refresh keeps it
+  await expect(page.getByLabel("Show")).toHaveValue("email");
   await page.getByRole("button", { name: `Preview ${name}` }).click();
   const preview = page.getByRole("region", { name: `Preview of ${name}` });
+  await expect(preview).toContainText("Subject: Cyber Security brochure");
   await expect(preview).toContainText("Hi Priya Sharma: http");
   const link = (await preview.innerText()).match(/https?:\/\/\S+telecaller-assets\/\S+/)![0];
   const path = new URL(link).pathname; // the link is absolute on FRONTEND_URL; open it on this test's origin

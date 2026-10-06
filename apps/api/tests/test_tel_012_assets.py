@@ -108,7 +108,19 @@ async def test_readers_list_and_telecallers_see_active_only(client, db_session, 
     new = (await _upload(client, product_id=str(prod.id))).json()
     await as_role(client, db_session, role, division)
     ids = [i["id"] for i in (await client.get(ASSETS, params={"product_id": str(prod.id)})).json()["items"]]
-    assert ids == ([new["id"]] if role == "telecaller" else [new["id"], old["id"]])  # active first, then newest
+    assert ids == ([new["id"]] if role == "telecaller" else [new["id"], old["id"]])  # newest first
+
+
+@pytest.mark.asyncio
+async def test_a_deactivated_brochure_keeps_its_place(client, db_session):
+    """QA-04: the order is newest first whatever the status, so deactivating never moves the row (or its Reactivate button) away."""
+    prod = await product(db_session)
+    await as_role(client, db_session)
+    older = (await _upload(client, product_id=str(prod.id))).json()
+    newer = (await _upload(client, product_id=str(prod.id))).json()
+    await client.patch(f"{ASSETS}/{newer['id']}", json={"active": False})
+    ids = [i["id"] for i in (await client.get(ASSETS, params={"product_id": str(prod.id)})).json()["items"]]
+    assert ids == [newer["id"], older["id"]]
 
 
 @pytest.mark.asyncio
