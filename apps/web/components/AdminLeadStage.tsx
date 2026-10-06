@@ -2,7 +2,7 @@
 
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 
-import { sendJson } from "@/lib/apiErrors";
+import { sendJson, type SendOutcome } from "@/lib/apiErrors";
 import { formatDate } from "@/lib/formatDate";
 import { isClosed, needsReason, personTargets, stageLabel } from "@/lib/leadStages";
 import { getPage } from "@/lib/telecallerCatalogue";
@@ -14,9 +14,16 @@ type HistoryRow = {
   actor: { id: string; full_name: string } | null; reason: string | null; created_at: string;
 };
 
+const adminMove = (id: string, target: string, reason: string) =>
+  sendJson(`/api/v1/admin/leads/${id}`, "PATCH", reason ? { status: target, reason } : { status: target });
+
 // tel-004 (spec §6, T25): an admin's stage move. Only the moves the API accepts are offered (lib/leadStages mirrors the rules); a
 // closed outcome or a reopen needs a reason, checked here first so the admin isn't sent a 422. The API stays the authority.
-export function LeadStageControl({ lead, onChanged, onMessage }: { lead: Lead; onChanged: (status: string) => void; onMessage: (m: Message) => void }) {
+// tel-008: the lead detail reuses it with the telecaller route (`move`); a telecaller can't reopen a closed lead (`canReopen`).
+export function LeadStageControl({ lead, onChanged, onMessage, move = adminMove, canReopen = true }: {
+  lead: Lead; onChanged: (status: string) => void; onMessage: (m: Message) => void;
+  move?: (id: string, target: string, reason: string) => Promise<SendOutcome>; canReopen?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState("");
   const [reason, setReason] = useState("");
@@ -32,7 +39,7 @@ export function LeadStageControl({ lead, onChanged, onMessage }: { lead: Lead; o
       opener.current?.focus();
     }
   }, [open]);
-  const targets = personTargets(lead.status, true);
+  const targets = personTargets(lead.status, canReopen);
   if (targets.length === 0) return null;
 
   function close() {
@@ -50,7 +57,7 @@ export function LeadStageControl({ lead, onChanged, onMessage }: { lead: Lead; o
     if (needsReason(lead.status, target) && !text) return setError("Add a reason for this stage.");
     setError("");
     setBusy(true);
-    const outcome = await sendJson(`/api/v1/admin/leads/${lead.id}`, "PATCH", text ? { status: target, reason: text } : { status: target });
+    const outcome = await move(lead.id, target, text);
     setBusy(false);
     if (!outcome.ok) return onMessage({ id: lead.id, text: outcome.message, failed: true });
     close();

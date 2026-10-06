@@ -426,6 +426,9 @@ API contract §12H; re-chained after bdm-005, bdm-013 and tel-022's `0080_tel_ta
 
 ### tel-008 — Telecaller lead workspace: My Leads, lead detail, priority
 
+**Status (2026-10-06):** implemented on `feature/tel-008` (`DEC-SCOPE-083` W1 + D1–D5, no migration, API contract §12J). Spec
+`docs/superpowers/specs/2026-10-06-tel-008-lead-workspace-design.md`. "Due follow-up" filter → tel-011; other action buttons → their items.
+
 - **Business requirement:** §22 "View assigned leads", §8 priority, §2 field display.
 - **Existing behavior:** none for telecallers.
 - **Expected behavior:**

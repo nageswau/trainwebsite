@@ -3825,3 +3825,23 @@ card. Design spec `docs/superpowers/specs/2026-10-06-tel-022-targets-design.md`.
 creation), migration `0081_lead_stage_pipeline` (`lead_stage_history`, PL1 mapping, `ck_enquiries_status`; downgrade refuses after a
 real move). Routes: `POST /telecaller/leads/{id}/stage`, `GET /telecaller/leads/{id}/stage-history`, `GET /admin/leads/{id}/stage-history`;
 `PATCH /admin/leads/{id}` status via the engine. Design spec `docs/superpowers/specs/2026-10-06-tel-004-lead-pipeline-design.md`.
+
+### DEC-SCOPE-083 — Telecaller lead workspace: My Leads, lead detail, priority (`tel-008`)
+
+**Evidence:** `EVID-019` §2 (field display), §8 (priority, L314–L330), §22 ("View assigned leads"); `DEC-SCOPE-073` T19, T23;
+`DEC-SCOPE-081` D4; owner answer in-session 2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for W1; D1–D5 are recorded defaults. Branch `feature/tel-008`. No migration.
+
+| # | Question | Answer |
+|---|---|---|
+| W1 (AC3) | Where does a priority change "appear on the timeline" before tel-015? | An `audit_logs` row `lead.priority_change` `{from, to}` written in the same transaction. The detail page's Activity list merges stage history with priority changes, newest first, through `GET /telecaller/leads/{id}/timeline`. tel-015 adds its sources to the same endpoint |
+| D1 | "Handed over" before tel-018 | `owner_id IS NOT NULL` (the assigned counselor). A telecaller's PATCH and stage move on such a lead are 403, and the read carries `read_only`. Managers and `super_admin` still write |
+| D2 | Editable fields | `name`, `email`, `phone`, `whatsapp_number`, `city`, `state`, `product_id` (active product or null) and `priority`. Any other key is 422. Duplicate checks are tel-005's |
+| D3 | List filters | Stage, priority, product, campaign and `q` (Lead ID, name, phone, WhatsApp, email). "Due follow-up" waits for tel-011 |
+| D4 | Actions | Call (`tel:` link) and Change stage only. The other actions arrive with their items, and there are no placeholder buttons |
+| D5 | Manager view | `/telecaller/manager/leads` (+ `/{id}`), with tel-004's `lead_pipeline.scope` (reports' leads plus their teams' unassigned queue) |
+| D6 | tel-012 C2 (lead render + script panel) | Not in tel-008: tel-012 (`DEC-SCOPE-082`) is not on `main`, so its tables do not exist here. It moves to tel-013, which depends on both |
+
+**Implementation:** `services/telecaller_leads.py`. Routes `GET /telecaller/leads`, `GET/PATCH /telecaller/leads/{id}` and
+`GET /telecaller/leads/{id}/timeline`; tel-004's `POST /telecaller/leads/{id}/stage` gains D1. Web pages `/telecaller/leads` and
+`/telecaller/manager/leads` (+ `[id]`), `TelecallerLeadTable`, `LeadDetailPanel`. Design spec `docs/superpowers/specs/2026-10-06-tel-008-lead-workspace-design.md`.

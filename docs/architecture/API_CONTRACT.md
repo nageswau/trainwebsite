@@ -934,6 +934,20 @@ are IST calendar days on the database clock. Every `422` is one sentence.
 | `POST/DELETE /admin/leads/{id}/conversion` | as §12 bdm-017 | Link moves the stage to `application_enrollment` (a closed lead keeps its stage); unlink moves `application_enrollment` → `follow_up` |
 | `GET /admin/leads` | as §12F | Items add `status_label`; the `status` filter takes a stage key |
 
+## 12J. Telecaller lead workspace (`tel-008`) — addendum, 2026-10-06
+
+`DEC-SCOPE-083`; design spec `docs/superpowers/specs/2026-10-06-tel-008-lead-workspace-design.md` §2. No migration. Roles and scope are
+§12H's: `telecaller` (own leads), `telecaller_manager` (direct reports' leads + their teams' unassigned leads) and `super_admin` (all).
+Other roles get `403`, signed out `401`, and missing or out of scope `404`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/leads` | `{items, total, limit, offset}`, newest first. Filters `status`, `priority` (`hot`/`warm`/`cold`, else `422`), `product_id`, `campaign_id`, `q` (literal substring of Lead ID, name, email, phone, WhatsApp; ≤ 200). `limit` 1–100 (default 50). Item = the §12F admin row + `read_only` |
+| `GET /telecaller/leads/{id}` | The row + `message` + `read_only` (`true` for a telecaller once `owner_id` is set) |
+| `PATCH /telecaller/leads/{id}` | Body any of `name`, `email`, `phone`, `whatsapp_number`, `city`, `state`, `product_id`, `priority`. Other keys, invalid values or an inactive/unknown product give `422`. A telecaller on a handed-over lead gets `403`. `200` returns the detail. Audits: `lead.priority_change {from,to}`, and `lead.contact_update {fields}` (names only) |
+| `GET /telecaller/leads/{id}/timeline` | `{items, total, limit, offset}`, newest first; item `{id, kind: stage|priority, at, actor {id, full_name} or null, from_value, from_label, to_value, to_label, reason}` |
+| `POST /telecaller/leads/{id}/stage` | As §12H, plus `403` for a telecaller on a handed-over lead |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
