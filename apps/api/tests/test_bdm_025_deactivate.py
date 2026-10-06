@@ -198,6 +198,19 @@ async def test_logs_carry_ids_only(client, db_session, caplog, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_single_reassign_writes_history(client, db_session):
+    """§5.8: bdm-002's manager reassign of one organization is recorded in the same history table."""
+    manager, a, b = await team(db_session)
+    o = await org(db_session, a)
+    client.cookies.clear()
+    await login(client, manager)
+    response = await client.post(f"/api/v1/bdm/organizations/{o.id}/assign", json={"bdm_user_id": str(b.id)})
+    assert response.status_code == 200, response.text
+    [row] = await history(db_session, o.id)
+    assert (row.entity_type, row.from_user_id, row.to_user_id, row.actor_user_id, row.reason) == ("organization", a.id, b.id, manager.id, "organization_reassigned")
+
+
+@pytest.mark.asyncio
 async def test_no_audit_or_write_when_unauthenticated(client, db_session):
     _, a, b = await team(db_session)
     client.cookies.clear()
