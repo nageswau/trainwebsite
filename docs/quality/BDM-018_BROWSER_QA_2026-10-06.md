@@ -21,8 +21,9 @@ double-click made one request and one School; every refused role got 403 / 404 a
 | QA18-02 | Low | Overseas Admin, `/overseas/admin/schools` | 75+ pending requests, Show more × 4 | The create form stays usable beside the queue | The page grew very tall | **Fixed** (test-first): the list scrolls in its own keyboard-reachable region (`min(70vh, 720px)`) |
 | QA18-03 | Low | School BDM, notifications | Create the School from the request with the prefilled name | Readable notice | "St Mary is now linked to St Mary (CODE)" | **Fixed** (test-first): "ORG-… · St Mary is now onboarded (School ID CODE)." (the School is named only when it differs) |
 
-## Pass 2 — re-verification on the merged HEAD (main @ `a38955d5` merged)
+## Pass 2 — re-verification on the merged HEADs (main @ `a38955d5`, then @ `4ec7a22b`)
 
 QA18-01: the 500 message reads as fixed. QA18-02: 120 rows, list height 630 px, scrolls; PageDown scrolls it from the keyboard. QA18-03:
 the notice reads "… is now onboarded (School ID …)". The full pass-1 scenario set repeated with the same results; Playwright
 `bdm-018-school-handover.spec.ts` passed.
+Repeated on main @ `4ec7a22b` merged: same results (136 queued rows scroll in a 630 px region); a database check confirmed the double-click made exactly one request.
