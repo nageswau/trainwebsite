@@ -20,17 +20,20 @@ from app.core.database import get_db
 from app.models import LEAD_PRIORITIES, AuditLog, Enquiry, TelecallerProfile, User
 from app.schemas import (
     BdmManagerPage,
+    LeadEnquiryCreate,
     LeadStageHistoryPage,
     LeadStageMove,
     LeadStageOut,
     LeadTimelinePage,
     TelecallerAdminPage,
+    TelecallerLeadCreate,
     TelecallerLeadUpdate,
     TelecallerMeOut,
     TelecallerTeamPage,
 )
-from app.services import lead_pipeline, telecaller_leads
+from app.services import lead_intake, lead_pipeline, telecaller_leads
 from app.services.telecaller import admin_team_filter, parse_self_update, person_ref, profile_out, require_manager, team_filter, telecaller_context
+from app.worker import sync_enquiry_to_crm_task
 
 router = APIRouter(prefix="/telecaller", tags=["telecaller"])
 admin_router = APIRouter(prefix="/admin", tags=["telecaller-admin"])
@@ -111,6 +114,38 @@ async def my_leads(
             filters.append(column == value)
     filters += _matching(like_pattern(q), *telecaller_leads.SEARCHED)
     return await telecaller_leads.page(db, user, filters, limit, offset)
+
+
+@router.get("/leads/duplicate-check")
+async def duplicate_check(phone: str | None = None, email: str | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """tel-005 (T12, R2): the §18 panel for a mobile and/or email, before a lead is created -- across every lead, closed ones too."""
+    lead_pipeline.scope(user)
+    phone_key, email_key = lead_intake.identity(phone, email)
+    if phone and not phone_key:
+        raise HTTPException(422, "Enter a valid mobile number")
+    if not phone_key and not email_key:
+        raise HTTPException(422, "Enter a mobile number or an email")
+    return {"matches": await lead_intake.duplicates(db, user, phone, email)}
+
+
+@router.post("/leads", status_code=201)
+async def create_lead(payload: TelecallerLeadCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """tel-005 (I1, I2): a telecaller or manager enters a lead; a known person is 409 with the duplicate panel. Like every other lead,
+    it is queued for the CRM only after the commit (R10)."""
+    lead_pipeline.scope(user)
+    lead = await lead_intake.create_lead(db, user, payload)
+    await db.commit()
+    sync_enquiry_to_crm_task.delay(str(lead.id))
+    return await telecaller_leads.detail(db, user, lead.id, [])
+
+
+@router.post("/leads/{lead_id}/enquiries", status_code=201)
+async def add_enquiry(lead_id: UUID, payload: LeadEnquiryCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """tel-005 (I5): "Add enquiry to this lead" from the duplicate panel -- any lead, append-only, no read access granted."""
+    lead_pipeline.scope(user)
+    out = await lead_intake.add_enquiry(db, user, lead_id, payload)
+    await db.commit()
+    return out
 
 
 @router.get("/leads/{lead_id}")

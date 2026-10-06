@@ -771,7 +771,7 @@ class Enquiry(Base, TimestampMixin):
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     division: Mapped[str] = mapped_column(String(30), index=True)
     name: Mapped[str] = mapped_column(String(160))
-    email: Mapped[str] = mapped_column(String(255), index=True)
+    email: Mapped[str | None] = mapped_column(String(255), index=True, nullable=True)  # tel-005 I1: a manual lead may have a mobile only
     phone: Mapped[str | None] = mapped_column(String(40), nullable=True)
     subject: Mapped[str] = mapped_column(String(180))
     message: Mapped[str] = mapped_column(Text)
@@ -820,6 +820,26 @@ class LeadStageHistory(Base):
     actor_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class LeadEnquiry(Base):
+    """tel-005 (DEC-SCOPE-086, T12): a further enquiry from a person who is already a lead -- added by a telecaller or manager from the
+    duplicate panel, or a website enquiry that matched (`created_by_user_id` NULL). Append-only; the lead's timeline lists it."""
+
+    __tablename__ = "lead_enquiries"
+    __table_args__ = (
+        CheckConstraint(f"source IN ({', '.join(repr(s) for s in TEL_SOURCES)})", name="ck_lead_enquiries_source"),
+        Index("ix_lead_enquiries_lead", "lead_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    lead_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="RESTRICT"))
+    subject: Mapped[str] = mapped_column(String(180))
+    message: Mapped[str] = mapped_column(Text)
+    source: Mapped[str] = mapped_column(String(30))
+    campaign_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("tel_campaigns.id"), nullable=True)
+    metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
