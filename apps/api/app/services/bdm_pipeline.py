@@ -5,15 +5,28 @@ Functions only; nothing here commits -- the route owns the transaction (bdm-002'
 
 from fastapi import HTTPException
 from fastapi.exceptions import RequestValidationError
-from sqlalchemy import func, select
+from sqlalchemy import and_, exists, func, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bdm_stages import AGENT_STATUS, LIVE, MANUAL, PIPELINES, VOLUME
-from app.models import BdmOrganization, BdmPipelineEvent, User
+from app.models import (
+    BdmOnboardingRequest,
+    BdmOrganization,
+    BdmPipelineEvent,
+    OverseasApplication,
+    PortfolioEntry,
+    PortfolioProfile,
+    SchoolCareerRecord,
+    SchoolParentLink,
+    SchoolPsychometricRecord,
+    SchoolStudent,
+    User,
+)
 from app.schemas import BdmStageMove
 from app.services.bdm import bdm_context, person_ref
 
 _LATER_STATE = {MANUAL: "upcoming", LIVE: "awaiting_handover", VOLUME: "not_tracked"}
+_SCHOOL_LIVE = tuple(s.key for s in PIPELINES["school"] if s.kind == LIVE)
 STAGE_UNKNOWN = "Choose a stage of this organization's pipeline"
 STAGE_LIVE = "This stage is set by the onboarding handover"
 STAGE_VOLUME = "This step is counted from live records, not set by hand"
@@ -28,25 +41,57 @@ def label_of(bdm_type: str, key: str) -> str:
     return next((s.label for s in PIPELINES[bdm_type] if s.key == key), key)
 
 
-def live_status(org: BdmOrganization) -> None:
-    """S3: the live post-handover stage, read from the linked School (bdm-018) or Agent Organization (bdm-019). Nothing is linked
-    yet, so live steps show "Awaiting handover"."""
-    return None
+async def live_status(db: AsyncSession, org: BdmOrganization) -> dict[str, bool] | None:
+    """S3, filled by bdm-018 for School organizations (DEC-SCOPE-085 H2, spec §4): each live step's own evidence from the linked
+    School, in one query of EXISTS checks; a pending request alone means nothing is reached yet. None (no request, no link) keeps
+    "Awaiting handover". Agent organizations wait for bdm-019."""
+    if org.bdm_type != "school":
+        return None
+    if org.school_id is None:
+        pending = exists().where(BdmOnboardingRequest.organization_id == org.id, BdmOnboardingRequest.status == "pending")
+        return dict.fromkeys(_SCHOOL_LIVE, False) if await db.scalar(select(pending)) else None
+    students = select(SchoolStudent.id).where(SchoolStudent.school_id == org.school_id)
+    checks = {
+        "school_onboarding": true(),
+        "users_created": and_(
+            exists().where(User.role == "school_teacher", User.profile["school_id"].as_string() == str(org.school_id)),
+            exists().where(SchoolParentLink.school_student_id.in_(students)),
+            students.exists(),
+        ),
+        "career_guidance": exists().where(
+            SchoolCareerRecord.school_student_id.in_(students), SchoolCareerRecord.record_type == "guidance_session", SchoolCareerRecord.status == "completed"
+        ),
+        "psychometric": exists().where(SchoolPsychometricRecord.school_student_id.in_(students), SchoolPsychometricRecord.status == "completed"),
+        "profile_building": or_(
+            exists().where(PortfolioEntry.school_student_id.in_(students)),
+            exists().where(PortfolioProfile.school_student_id.in_(students), func.coalesce(func.trim(PortfolioProfile.personal_statement), "") != ""),
+        ),
+        "university_planning": exists().where(OverseasApplication.school_student_id.in_(students)),
+    }
+    row = (await db.execute(select(*(check.label(key) for key, check in checks.items())))).one()
+    return {key: bool(value) for key, value in row._mapping.items()}
 
 
-def pipeline_out(org: BdmOrganization) -> dict:
+def pipeline_out(org: BdmOrganization, live: dict[str, bool] | None = None) -> dict:
+    """bdm-018 (spec §4): with `live`, manual steps up to the stored stage are done, live steps are done on their own evidence and the
+    first one without it is current. `stage` stays the stored manual stage (H11)."""
     steps = PIPELINES[org.bdm_type]
     current = next(i for i, s in enumerate(steps) if s.key == org.pipeline_stage)
+    first_open = next((s.key for s in steps if s.kind == LIVE and not live[s.key]), None) if live is not None else None
 
-    def state(i: int, kind: str) -> str:
-        return "done" if i < current else "current" if i == current else _LATER_STATE[kind]
+    def state(i: int, step) -> str:
+        if live is not None and step.kind == LIVE:
+            return "done" if live[step.key] else "current" if step.key == first_open else "upcoming"
+        if live is not None and step.kind == MANUAL:
+            return "done" if i <= current else "upcoming"
+        return "done" if i < current else "current" if i == current else _LATER_STATE[step.kind]
 
     return {
         "stage": org.pipeline_stage,
         "stage_label": steps[current].label,
         "lost": {"at": org.lost_at, "reason": org.lost_reason} if org.lost_at else None,
         "agent_status": AGENT_STATUS[org.pipeline_stage] if org.bdm_type == "agent" else None,
-        "steps": [{"key": s.key, "label": s.label, "kind": s.kind, "state": state(i, s.kind)} for i, s in enumerate(steps)],
+        "steps": [{"key": s.key, "label": s.label, "kind": s.kind, "state": state(i, s)} for i, s in enumerate(steps)],
     }
 
 

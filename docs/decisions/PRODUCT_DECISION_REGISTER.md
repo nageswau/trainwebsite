@@ -3930,3 +3930,50 @@ VERIFIED on `feature/tel-012` (2026-10-06): lite backend 440 on the final merge 
 **Implementation:** `services/telecaller_leads.py`. Routes `GET /telecaller/leads`, `GET/PATCH /telecaller/leads/{id}` and
 `GET /telecaller/leads/{id}/timeline`; tel-004's `POST /telecaller/leads/{id}/stage` gains D1. Web pages `/telecaller/leads` and
 `/telecaller/manager/leads` (+ `[id]`), `TelecallerLeadTable`, `LeadDetailPanel`. Design spec `docs/superpowers/specs/2026-10-06-tel-008-lead-workspace-design.md`.
+
+
+VERIFIED on `feature/tel-012` @ final HEAD (2026-10-06): lite backend 339 (tel-001/002/003/012/017 + bdm-005 migration; re-run after the 4ec7a22b merge), vitest 75, Playwright 7, Browser Use QA (QA-01…04 fixed test-first and re-verified). Full backend suite deferred to the owner.
+
+
+
+
+### DEC-SCOPE-085 — School onboarding handover + `schools` link (`bdm-018`)
+
+**ID note:** drafted as `DEC-SCOPE-079` with migration `0080_bdm_onboarding` (both free on `main` @ `230a043f`); bdm-013 (PR #78) took
+`DEC-SCOPE-079` and tel-022 (PR #80) `DEC-SCOPE-080` / `0080_tel_targets` first, so on merging `main` @ `a38955d5` (2026-10-06) this entry was
+`DEC-SCOPE-081` with `0081_bdm_onboarding`; tel-004 (PR #81, `DEC-SCOPE-081` / `0081_lead_stage_pipeline`) and bdm-025 (PR #79, `DEC-SCOPE-082` /
+`0082_bdm_assignment_history`) then reached `main`, so on merging `main` @ `4ec7a22b` this entry was `DEC-SCOPE-083` with
+`0083_bdm_onboarding`; tel-012 (PR #83, `DEC-SCOPE-083` / `0083_tel_content`) then reached `main`, so on merging `main` @ `50838192` this entry was
+`DEC-SCOPE-084` with **`0084_bdm_onboarding`** (after `0083_tel_content`); tel-008 (PR #85, `DEC-SCOPE-084`, no migration) then reached `main`, so on
+merging `main` @ `b76c92f7` this entry is **`DEC-SCOPE-085`** and the migration stays `0084_bdm_onboarding`. bdm-018 commits from before those merges that say
+`DEC-SCOPE-079` / `081` / `083` / `084` or `0080` / `0081` / `0083_bdm_onboarding` mean this decision / migration.
+
+**Question:** how a School-module BDM hands a signed school over to Overseas Admin, how the created (or existing) School is linked to the
+organization, what the School records as its BDM, what happens to the legacy `schools.edusphere_bdm` text (Q-16), and how the live School
+stages 9–14 are derived (`BDM_CRM_BACKLOG.md` §4 bdm-018)?
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md`, `DERIVED_BLUEPRINT`) School §B / §D; `DEC-SCOPE-055` D5, D8, Q-16 (D25); `DEC-SCOPE-071`
+S3 (the `live_status` hook); `DEC-SCOPE-078` M2 (effective MoU status); bdm-018 impact analysis 2026-10-06 (graphify-led).
+
+**Resolution:** owner, in-session 2026-10-06 (`EXPLICIT_APPROVAL` — four structured questions, each answered with the recommended
+option; spec `docs/superpowers/specs/2026-10-06-bdm-018-school-onboarding-handover-design.md` §1):
+- **H1** The School's BDM is **derived from the link** (`bdm_organizations.school_id`, unique); no `schools.bdm_user_id` column and no
+  PATCH field. `SchoolOut.linked_bdm` is read-only.
+- **H2** Live stages from **per-step evidence**: School Onboarding (linked; a pending request makes it current), Users Created (≥1
+  teacher, ≥1 parent link, ≥1 student), Career Guidance (a completed guidance session), Psychometric (a completed assessment), Profile
+  Building (a portfolio entry or personal statement), University Planning (a bridged overseas application).
+- **H3** An existing School is linked **through the BDM's request** (the admin chooses Create or Link by School ID); admins never browse
+  BDM organizations.
+- **H4** `edusphere_bdm` is **read-only in the UI** (create input removed, edit panel shows it as a legacy note); the API still accepts it.
+- Defaults recorded with the answers: H5 the assigned BDM or super_admin requests; H6 School module only, not Lost / archived / linked /
+  pending, MoU effective status Signed or Active; H7 in-app notices only; H8 a rejected request may be followed by a new one; H9 no unlink;
+  H10 the BDM sees the School's name and ID plus the step states, no School-portal data; H11 live stages are never stored and the pipeline
+  view is unchanged.
+
+**Consequences:** migration `0084_bdm_onboarding` (new `bdm_onboarding_requests`; `bdm_organizations.school_id`; no existing row touched;
+downgrade refuses while requests or links exist); routes `POST /bdm/organizations/{id}/onboarding-request`,
+`GET /overseas-admin/bdm-onboarding-requests`, `POST …/{id}/reject`, `POST …/{id}/link`; `POST /overseas-admin/schools` accepts
+`bdm_onboarding_request_id` (route-only `SchoolCreateIn`, so ENH-029's bulk template is unchanged); `SchoolOut.linked_bdm`; the organization
+detail's `onboarding` and live pipeline steps; a School onboarding card on both organization pages; the onboarding queue above the
+School create form; the linked BDM on the School edit panel. Follow-ups logged: unlinking a wrong link; per-school counts (bdm-020);
+the School's BDM on deactivation (bdm-025). **New Feature ID authorized:** `bdm-018`. **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-018.

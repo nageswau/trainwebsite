@@ -26,6 +26,7 @@ from app.models import (
     AgentOrgMember,
     AuditLog,
     Batch,
+    BdmOrganization,
     BdmProfile,
     Company,
     Country,
@@ -57,6 +58,8 @@ from app.schemas import (
     LeadStageHistoryPage,
     LeadStageMove,
     SchoolCreate,
+    SchoolCreateIn,
+    SchoolLinkedBdm,
     SchoolOut,
     SchoolUpdate,
     SchoolUpdateOut,
@@ -184,6 +187,14 @@ async def _school_outs_batch(db: AsyncSession, schools: list["School"]) -> list[
     for sid, u in counsellor_rows:
         counsellors_by_school.setdefault(sid, []).append(u.full_name)
 
+    # bdm-018 (H1): the School's BDM is the linked organization's assignee; never stored on the School.
+    linked_rows = (await db.execute(
+        select(BdmOrganization.school_id, BdmOrganization.code, User.full_name, User.active)
+        .join(User, User.id == BdmOrganization.assigned_bdm_user_id)
+        .where(BdmOrganization.school_id.in_(ids))
+    )).all()
+    linked_bdm = {sid: SchoolLinkedBdm(full_name=name, active=active, organization_code=code) for sid, code, name, active in linked_rows}
+
     results = []
     for school in schools:
         sid_str = str(school.id)
@@ -199,7 +210,7 @@ async def _school_outs_batch(db: AsyncSession, schools: list["School"]) -> list[
             student_count=student_counts.get(school.id, 0), teacher_count=teacher_counts.get(sid_str, 0),
             principal_name=principal_by_school.get(sid_str), school_coordinator_name=coordinator_by_school.get(sid_str),
             career_counsellor_names=counsellors_by_school.get(school.id, []),
-            created_at=school.created_at,
+            created_at=school.created_at, linked_bdm=linked_bdm.get(school.id),
         ))
     return results
 
@@ -1508,7 +1519,10 @@ async def _provision_school(
 # (`DEC-SCOPE-012`). Same `/overseas-admin` namespace as the Agent approval routes above,
 # per `API_CONTRACT.md` §12A.
 @agents_router.post("/schools", status_code=201)
-async def create_school(payload: SchoolCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def create_school(payload: SchoolCreateIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    from app.api.bdm_onboarding import notify_outcome  # noqa: PLC0415 -- lazy, like the other cross-router imports here
+    from app.services import bdm_onboarding as onboarding_svc  # noqa: PLC0415
+
     if user.role not in {"overseas_admin", "super_admin"}:
         raise HTTPException(403, "Overseas Admin role required")
     # SchoolCreate's `extra="forbid"` already rejects a supplied `coordinator_password` at the
@@ -1516,8 +1530,17 @@ async def create_school(payload: SchoolCreate, user: User = Depends(get_current_
     # _reject_supplied_password() call here would be unreachable dead code (simplification pass,
     # ENH-009). This does lose the WARNING-level `provisioning_password_field_rejected` telemetry
     # that call used to emit; already noted and accepted in DEC-SCOPE-025's addendum.
+    # bdm-018 (DEC-SCOPE-085 §5.5): a request is locked and checked first, so a refusal arrives before anything is created; the School,
+    # its Coordinator, the link and the completed request then commit together.
+    request_id = payload.bdm_onboarding_request_id
+    request, org = await onboarding_svc.lock_pending(db, request_id) if request_id else (None, None)
     school, coordinator, issued = await _provision_school(db, payload, user)
+    if request and org:
+        await onboarding_svc.complete(db, user, request, org, school, "created")
+        await notify_outcome(db, request, org, school)
     await db.commit()
+    if request:
+        onboarding_svc.log("bdm_onboarding_created", user, request, school_id=str(school.id))
     delivery = await deliver_welcome_link(user=coordinator, issued=issued, issued_by=user)
     out = await _school_out(db, school)
     return {**out.model_dump(mode="json"), "coordinator_id": coordinator.id, "coordinator_email": coordinator.email, **delivery}

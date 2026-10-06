@@ -8,6 +8,7 @@ import BdmOrganizationContacts from "@/components/BdmOrganizationContacts";
 import BdmOrganizationForm from "@/components/BdmOrganizationForm";
 import BdmOrganizationLeads from "@/components/BdmOrganizationLeads";
 import BdmOrganizationMou from "@/components/BdmOrganizationMou";
+import BdmOrganizationOnboarding from "@/components/BdmOrganizationOnboarding";
 import BdmOrganizationPipeline from "@/components/BdmOrganizationPipeline";
 import BdmOrganizationProfileDetails, { DetailList, multiline } from "@/components/BdmOrganizationProfileDetails";
 import BdmOrganizationReassign from "@/components/BdmOrganizationReassign";
@@ -71,6 +72,7 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
     setFailure(null);
   };
   // bdm-005 (D28): a Signed MoU moved the pipeline server-side; re-read the organization so the pipeline and its history show it.
+  // bdm-018: any MoU status change re-reads it too, since Signed / Active decide whether onboarding can be requested.
   async function reloadOrganization() {
     const fresh = await sendRequest(`${ORGS_URL}/${org.id}`, { method: "GET" });
     if (fresh.ok && isOrganizationBody(fresh.data)) {
@@ -194,6 +196,13 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
       {mou !== undefined && (
         <BdmOrganizationMou orgId={org.id} initial={mou} onNotice={notify} onPipelineChanged={() => void reloadOrganization()} readOnlyNote={mouReadOnlyNote(org)} />
       )}
+      <BdmOrganizationOnboarding
+        organization={org}
+        onRequested={(o) => {
+          changed(o, "Onboarding requested. Overseas Admin will create or link the School.");
+          focus(statusId); // the form that was used is gone
+        }}
+      />
       {showEditor ? (
         <section className="action-card wide" aria-label="Edit details">
           <h3>Edit details</h3>

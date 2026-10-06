@@ -261,3 +261,34 @@ describe("AdminSchoolEditPanel save outcomes", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("The save could not be confirmed. Look the school up again to check before retrying.");
   });
 });
+
+describe("AdminSchoolEditPanel -- bdm-018 linked BDM (H1, Q-16)", () => {
+  const school = { id: "11111111-1111-1111-1111-111111111111", school_code: "ABCD1234", name: "Test School", branch: null, edusphere_bdm: "Old Name" };
+
+  async function lookUp(loaded: object) {
+    const mock = stubFetch([json(loaded, 200), json({ ...loaded, branch: "North" }, 200)]);
+    render(<AdminSchoolEditPanel />);
+    fireEvent.change(screen.getByLabelText("School ID"), { target: { value: "ABCD1234" } });
+    fireEvent.click(screen.getByRole("button", { name: "Look up" }));
+    await screen.findByLabelText("Branch");
+    return mock;
+  }
+
+  it("shows the linked BDM and the legacy note read-only, and never sends the note", async () => {
+    const mock = await lookUp({ ...school, linked_bdm: { full_name: "Asha", active: false, organization_code: "ORG-000001" } });
+    expect(screen.getByText("Linked BDM")).toBeInTheDocument();
+    expect(screen.getByText("Asha (inactive) · ORG-000001")).toBeInTheDocument();
+    expect(screen.getByText("Edusphere BDM (legacy note)")).toBeInTheDocument();
+    expect(screen.getByText("Old Name")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Edusphere BDM")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Branch"), { target: { value: "North" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await screen.findByText(/updated/i);
+    expect(JSON.parse(mock.mock.calls[1][1].body)).toEqual({ branch: "North" });
+  });
+
+  it("says when no BDM organization is linked", async () => {
+    await lookUp({ ...school, edusphere_bdm: null, linked_bdm: null });
+    expect(screen.getByText("Not linked to a BDM organization")).toBeInTheDocument();
+  });
+});

@@ -33,7 +33,8 @@ const day = (value: string | null) => (value ? formatCalendarDate(value) : displ
 
 // bdm-005 (spec §8): the organization's current MoU -- status as text on a step list (never colour alone), its dates and notes, and
 // for the assigned BDM / super_admin (permissions) Start, Edit and Start renewal. The server enforces every rule; after each write the
-// card re-reads the MoU, and a Signed that moved the pipeline (D28) asks the page to re-read the organization (`onPipelineChanged`).
+// card re-reads the MoU, and a status change -- a Signed that moved the pipeline (D28), or one that changes whether onboarding can be
+// requested (bdm-018) -- asks the page to re-read the organization (`onPipelineChanged`).
 // Success notices go to the page's one live region (`onNotice`).
 export default function BdmOrganizationMou({ orgId, initial, onNotice, onPipelineChanged, readOnlyNote }: {
   orgId: string; initial: OrgMou | null; onNotice: (text: string) => void; onPipelineChanged: () => void;
@@ -65,7 +66,7 @@ export default function BdmOrganizationMou({ orgId, initial, onNotice, onPipelin
     setFailure(null);
     setData({ current: next, can_start: false });
     onNotice(moved && before?.pipeline_on_sign && !next.pipeline_on_sign ? `${text} The pipeline moved to ${before.pipeline_on_sign.label}.` : text);
-    if (moved) onPipelineChanged();
+    if (next.status !== before?.status) onPipelineChanged(); // bdm-018: Signed / Active also decide whether onboarding can be requested
     focus(id("edit"));
     void reload();
   }
