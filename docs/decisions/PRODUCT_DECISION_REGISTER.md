@@ -3688,7 +3688,7 @@ and `/telecaller/manager/campaigns`. Design spec `docs/superpowers/specs/2026-10
 
 **Evidence:** `EVID-019` §9 "IT course counselling", §10 handover; `DEC-SCOPE-073` T3 ("the existing `counselor` role, allowed in the IT
 division"); backlog Q-23; owner answer in-session 2026-10-06. (`DEC-SCOPE-075` is held by tel-003, which runs in parallel.)
-**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for C1; VERIFIED on `feature/tel-017` — ready for owner sign-off (2026-10-06).
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for C1; VERIFIED on `feature/tel-017` (2026-10-06); **MERGED** to `main` as PR #73 @ `675762d3` (2026-10-06).
 
 | # | Question | Answer |
 |---|---|---|
