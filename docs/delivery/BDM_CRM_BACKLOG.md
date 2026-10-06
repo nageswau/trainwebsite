@@ -1151,7 +1151,22 @@ Conventions used below:
 ### bdm-025 — BDM deactivation, portfolio reassignment, manager change
 
 > **Status (2026-10-06):** implemented on `worktree-bdm-025` (`DEC-SCOPE-076`, migration `0078_bdm_assignment_history`).
-> **NOT marked COMPLETE:** one verification run is still pending.
+> **COMPLETE WITH DEFERRED FULL REGRESSION (2026-10-06, `2efee1c9`):** the feature is verified; the repository-wide regression
+> remains (the owner's).
+>
+> Re-run after the QA25-05 fix, on `2efee1c9`, in chunks because host memory was short:
+> - all `test_bdm_*`: bdm-002/003/004 198 passed + 3 failed, all pre-existing on `main` (see below); bdm-006/007/008/009 237 passed;
+>   bdm-001/010/017/025 308 passed;
+> - ENH-003 / ADM-001 / tel-001: 180 passed;
+> - Playwright bdm-025 / 001 / 002 / 010 / 006 on a stack rebuilt from that commit: 17 passed.
+>
+> **Pre-existing failures, not bdm-025, reproduced on `main` @ `442ce465`:**
+> - `test_bdm_002_migration` ×2: a fresh database built from the models already has bdm-017's `enquiries.bdm_organization_id` FK, so
+>   0066's downgrade cannot drop `bdm_organizations`;
+> - `test_bdm_002_organizations::test_rename_into_a_duplicate_warns` (intermittent): two audit rows in one transaction share
+>   `created_at`, so their order is arbitrary. It passes alone (16/16).
+>
+> The earlier evidence for this item follows.
 >
 > Owner decisions L1–L5: dependencies accepted as merged; not-started trips are cancelled; "leave" = keep with the BDM and hand over
 > later; managers are moved in bulk by super_admin; only live items move.

@@ -96,4 +96,8 @@ throttle. A single login a minute later returned 200, and the affected groups th
 - `test_bdm_025_concurrency.py` keeps 404 as a legitimate outcome only when the deactivation moved the organization to another
   manager's team first.
 
-**Open issues: none.**
+**After QA25-05 (on `2efee1c9`):**
+- all `test_bdm_*` passed except 3 failures that are pre-existing on `main` (see the backlog status);
+- Playwright bdm-025 / 001 / 002 / 010 / 006: 17 passed on the rebuilt stack.
+
+**Open issues caused by bdm-025: none.**
