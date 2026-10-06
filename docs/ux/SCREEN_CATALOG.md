@@ -2992,6 +2992,17 @@ One existing screen changes (design spec `docs/superpowers/specs/2026-10-06-tel-
   match these filters.", a pager over 50 ("Showing x–y of n"); filters, search and page live in the URL. The table scrolls sideways inside
   its card at phone width.
 
+## tel-004 addendum (2026-10-06, `DEC-SCOPE-081`) — Lead stage on the admin lead list
+
+Design spec `docs/superpowers/specs/2026-10-06-tel-004-lead-pipeline-design.md` §6; no new route, roles unchanged.
+
+- **Route:** `/{it|overseas}/admin/leads`. The **Stage** filter lists the 16 stages by label. The Status column shows the stage label and
+  a **History** toggle (from → to, by whom or "System", when, reason; loading / error / "No stage changes yet."). The action column's
+  status select is replaced by **Change stage**: an inline form with only the valid targets ("Reopen to Follow-up" on a closed lead,
+  nothing on a converted lead), a reason box (required for closed outcomes and reopen), Save / Cancel, inline errors, and focus back on
+  the button after closing. The workspace lead tables (admin Leads, counselor My Leads / dashboard) show the stage label. Below 360 px
+  the Name column stops being sticky so the row's forms fit (QA-03).
+
 ## Required findings report
 
 ### FEATURE_WITHOUT_REQUIRED_SCREEN
@@ -3018,3 +3029,19 @@ None possible to detect beyond what's already flagged: only one screen (`SCR-PUB
 **APPROVED** by user (in-session), 2026-09-01. GATE-06 satisfied. Per this session's explicit
 instruction: no screen above claims Canva visual parity beyond the single actually-inspected
 thumbnail (`SCR-PUB-001`), and even that is scoped to structural reference only, per `DEC-UX-001`.
+
+## tel-022 addendum (2026-10-06, `DEC-SCOPE-080`) — Telecaller targets
+
+Design spec `docs/superpowers/specs/2026-10-06-tel-022-targets-design.md` §6. No catalogue ID is invented; visual reference = the existing
+portal card/table idiom (no Canva frame for this screen: `NEEDS_CONFIRMATION` for visual fidelity).
+
+- **Route:** `/telecaller/manager/targets` (telecaller manager, super_admin; other roles see "Telecaller manager role required").
+  **Data:** `GET /telecaller/targets/effective?team=|user_id=&date=`, `GET /telecaller/targets?…&limit=50&offset=`,
+  `GET /telecaller/manager/team?q=` (telecaller picker, active only), `POST /telecaller/targets`. **Content:** "Whose targets" (IT team
+  default / Overseas team default / a telecaller via a searchable picker), an "In effect on" date and a KPI × daily/monthly table (with
+  Override / Team default for a telecaller); "Set new targets" (Daily/Monthly radio, Starts on: a date ≥ tomorrow or one of the next 12 months,
+  6 whole-number inputs, blank = unchanged, "Use team default" per KPI for a telecaller); "History" (Starts, Period, KPI, Target, Set by;
+  paged 50). **States:** loading, "No targets set yet.", "Unable to load targets." + Retry, the API's sentence on a refused save, focus to
+  the message, Save disabled while nothing is entered or a save is in flight. **Responsive:** no page side-scroll at 390px; 44px checkbox rows.
+- **Route:** `/telecaller/dashboard` — "My targets" card (KPI · Today · <Month>; "Not set" for gaps; "Targets are unavailable right now."
+  if the read fails).

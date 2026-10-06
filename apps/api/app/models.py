@@ -28,6 +28,7 @@ from sqlalchemy.sql import func
 
 from app.bdm_stages import FIRST_STAGE as BDM_FIRST_STAGE
 from app.bdm_stages import MANUAL_STAGES as BDM_MANUAL_STAGES
+from app.lead_stages import STAGES as LEAD_STAGES
 from app.notifications.phone import normalise_phone
 from app.tel_sources import TEL_SOURCES
 
@@ -735,6 +736,8 @@ LEAD_CHECKS = {  # migration 0078 repeats these strings; test_tel_003_migration 
     "ck_enquiries_priority": f"priority IN ({', '.join(repr(p) for p in LEAD_PRIORITIES)})",
     "ck_enquiries_passing_year": "passing_year IS NULL OR passing_year BETWEEN 1950 AND 2100",
 }
+# tel-004 (DEC-SCOPE-081): `status` is a pipeline stage; migration 0081 repeats this string (test_tel_004_migration).
+LEAD_STATUS_CHECK = f"status IN ({', '.join(repr(s) for s in LEAD_STAGES)})"
 
 
 class Enquiry(Base, TimestampMixin):
@@ -751,6 +754,7 @@ class Enquiry(Base, TimestampMixin):
             name="ck_enquiries_conversion",
         ),
         *(CheckConstraint(sql, name=name) for name, sql in LEAD_CHECKS.items()),
+        CheckConstraint(LEAD_STATUS_CHECK, name="ck_enquiries_status"),
         UniqueConstraint("lead_code", name="uq_enquiries_lead_code"),
         Index("ix_enquiries_bdm_org_created", "bdm_organization_id", "created_at"),
         Index("uq_enquiries_converted_user", "converted_user_id", unique=True, postgresql_where=text("converted_user_id IS NOT NULL")),
@@ -796,6 +800,24 @@ class Enquiry(Base, TimestampMixin):
     def _derive_phone_normalized(self, _key: str, phone: str | None) -> str | None:
         self.phone_normalized = normalise_phone(phone)
         return phone
+
+
+class LeadStageHistory(Base):
+    """tel-004 (DEC-SCOPE-081, spec §3): one row per lead stage change. Append-only. `event` is a system event name, `manual`, `reopen` or
+    `legacy_mapping`; `actor_user_id` is NULL for the system. No stage CHECK: history must survive a future catalogue change (bdm-004).
+    `position` orders rows created in one transaction."""
+
+    __tablename__ = "lead_stage_history"
+    __table_args__ = (Index("ix_lead_stage_history_lead", "lead_id", "position"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    lead_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="RESTRICT"))
+    from_stage: Mapped[str] = mapped_column(String(40))
+    to_stage: Mapped[str] = mapped_column(String(40))
+    event: Mapped[str] = mapped_column(String(30))
+    actor_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class ContentPage(Base, TimestampMixin):
@@ -1077,6 +1099,42 @@ class TelCampaign(Base, TimestampMixin):
     start_date: Mapped[date] = mapped_column(Date)
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+
+
+TEL_TARGET_KPIS = ("calls", "connected_calls", "qualified_leads", "follow_ups", "counselling_appointments", "conversions")
+
+
+class TelTarget(Base, TimestampMixin):
+    """tel-022 (DEC-SCOPE-080, T28): one target value -- a team default or a per-telecaller override -- for one KPI and period,
+    effective from a date. Append-only history: a row is only ever updated while its date is still in the future (the route's date
+    rule), so a past day always resolves to the value it had. A NULL value (user scope only) ends an override from its date.
+    Resolution lives in `services/telecaller_targets.py`."""
+
+    __tablename__ = "tel_targets"
+    __table_args__ = (
+        CheckConstraint("scope IN ('team', 'user')", name="ck_tel_targets_scope"),
+        CheckConstraint(
+            "(scope = 'team' AND team IS NOT NULL AND user_id IS NULL) OR (scope = 'user' AND user_id IS NOT NULL AND team IS NULL)",
+            name="ck_tel_targets_subject",
+        ),
+        CheckConstraint("period IN ('daily', 'monthly')", name="ck_tel_targets_period"),
+        CheckConstraint(f"kpi IN ({', '.join(repr(k) for k in TEL_TARGET_KPIS)})", name="ck_tel_targets_kpi"),
+        CheckConstraint("team IN ('it', 'overseas')", name="ck_tel_targets_team"),
+        CheckConstraint("value IS NULL OR value BETWEEN 0 AND 100000", name="ck_tel_targets_value"),
+        CheckConstraint("value IS NOT NULL OR scope = 'user'", name="ck_tel_targets_value_null_user_only"),
+        CheckConstraint("period = 'daily' OR EXTRACT(DAY FROM effective_from) = 1", name="ck_tel_targets_monthly_first"),
+        Index("uq_tel_targets_team", "team", "period", "kpi", "effective_from", unique=True, postgresql_where=text("scope = 'team'")),
+        Index("uq_tel_targets_user", "user_id", "period", "kpi", "effective_from", unique=True, postgresql_where=text("scope = 'user'")),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    scope: Mapped[str] = mapped_column(String(10))
+    team: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    period: Mapped[str] = mapped_column(String(10))
+    kpi: Mapped[str] = mapped_column(String(40))
+    value: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    effective_from: Mapped[date] = mapped_column(Date)
+    set_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
 # bdm-010 (DEC-SCOPE-063, T6): TRV-000123 codes. On the metadata so 0001's create_all makes it on a fresh database; 0068 makes it
@@ -1451,7 +1509,7 @@ class BdmAppointment(Base, TimestampMixin):
     next_follow_up_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     expected_leads: Mapped[int | None] = mapped_column(Integer, nullable=True)
     expected_revenue: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
-    # bdm-011 (DEC-SCOPE-079): the trip this meeting is part of -- the BDM's own, covering its IST date (services/bdm_travel).
+    # bdm-011 (DEC-SCOPE-082): the trip this meeting is part of -- the BDM's own, covering its IST date (services/bdm_travel).
     trip_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_trips.id", ondelete="RESTRICT"), nullable=True)
 
 

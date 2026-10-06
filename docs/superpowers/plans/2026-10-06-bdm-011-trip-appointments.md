@@ -1,6 +1,6 @@
 # bdm-011 implementation plan
 
-Spec: `docs/superpowers/specs/2026-10-06-bdm-011-trip-appointments-design.md` (`DEC-SCOPE-079`, migration `0080_bdm_appointment_trip`).
+Spec: `docs/superpowers/specs/2026-10-06-bdm-011-trip-appointments-design.md` (`DEC-SCOPE-082`, migration `0082_bdm_appointment_trip`).
 
 Test command (isolated stack `bdm011`, code bind-mounted):
 
@@ -23,16 +23,16 @@ Lite tests only (owner's standing choice): bdm-011 files + bdm-006 / bdm-007 / b
   link, unlink and auto-unlink. No new public endpoint; existing cookie auth and CSRF handling unchanged.
 - **Frontend:** reuse `kpi-grid`/`kpi-tile`, `table`, `FormMessage`, existing section/card pattern; itinerary is a real `<table>`
   with `<caption>` and `scope="col"`; links are keyboard reachable; table scrolls inside its card on phones (no page sideways scroll).
-  Loading: pages are server-rendered (existing `loading.tsx`); the trip picker shows "Loading trips…" and an error line.
+  Loading: pages are server-rendered (existing `loading.tsx`); the trip choices come from the server page (no client loading state); a failed read shows a note and booking still works.
 
 ## Tasks
 
-1. **Model + migration** — `BdmAppointment.trip_id` + index; `0080_bdm_appointment_trip`; `test_bdm_011_migration.py` (one head,
-   additive, chained after 0079). Update bdm-005 "single head" test only if it pins the head name.
+1. **Model + migration** — `BdmAppointment.trip_id` + index; `0082_bdm_appointment_trip`; `test_bdm_011_migration.py` (one head,
+   additive, chained after 0081). Update bdm-005 "single head" test only if it pins the head name.
 2. **Link rules (API)** — `services/bdm_travel.py`: `trip_ref`, `load_linkable_trip`, `in_range`; `bdm_appointments` create/PATCH
    accept `trip_id`; reschedule auto-unlink; `appointment_out.trip`. Tests `test_bdm_011_links.py` (AC1, 404s, L2, L4, auto-unlink,
    audits) written first.
-3. **Itinerary + metrics** — `trip_out` adds `itinerary` and `metrics` (L1, L3); trip date edit guard; `GET /bdm/trips?linkable_on=`.
+3. **Itinerary + metrics** — `trip_out` adds `itinerary` and `metrics` (L1, L3); trip date edit guard; `GET /bdm/trips?linkable=true`.
    Tests `test_bdm_011_metrics.py` first.
 4. **Report routes** — owner + manager, 409 until completed. `test_bdm_011_report.py` first.
 5. **Web lib + trip page** — types; `TripItinerary`, `TripProductivity`; section ids; report link. Component tests first.

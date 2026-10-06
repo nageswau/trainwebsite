@@ -3,9 +3,11 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import AdminLeadFilters, { LEAD_FILTERS, STATUS_OPTIONS, type LeadFilter, type Organization } from "@/components/AdminLeadFilters";
+import AdminLeadFilters, { LEAD_FILTERS, type LeadFilter, type Organization } from "@/components/AdminLeadFilters";
+import { LeadStageControl, LeadStageHistory } from "@/components/AdminLeadStage";
 import BdmConfirm from "@/components/BdmConfirm";
 import { sendJson, sendRequest, type Page } from "@/lib/apiErrors";
+import { stageLabel } from "@/lib/leadStages";
 import { pageOffset } from "@/lib/telecaller";
 import { SOURCE_LABEL, getPage } from "@/lib/telecallerCatalogue";
 
@@ -23,12 +25,6 @@ type RowMessage = { id: string; text: string; failed: boolean };
 const LEADS_URL = "/api/v1/admin/leads";
 const PAGE_SIZE = 50;
 const PRIORITY_LABEL = { hot: "Hot", warm: "Warm", cold: "Cold" };
-
-function detailMessage(detail: unknown) {
-  if (typeof detail === "string") return detail;
-  if (Array.isArray(detail)) return detail.map((item: { msg?: string }) => item.msg || "Invalid input").join("; ");
-  return "Unable to update lead.";
-}
 
 const isRow = (data: unknown): data is AdminLeadRow => !!data && typeof (data as AdminLeadRow).id === "string" && "converted_user" in (data as object);
 
@@ -98,6 +94,7 @@ function LeadConversion({ row, onChanged, onMessage }: { row: AdminLeadRow; onCh
 // bdm-017: each lead also shows the organization a BDM attributed it to (filterable), and the student account it converted to.
 // tel-003 (spec §5, T25): the API pages, filters and searches the list (no client-side cap); the filters, search and page live in the
 // URL (tel-002 QA-04), so refresh keeps the place and Back returns to the previous view. Each row shows the Lead ID and lead fields.
+// tel-004 (T25): the Status column is the pipeline stage with its history; "Change stage" offers only the valid moves.
 export default function AdminLeadManagementPanel() {
   const router = useRouter();
   const pathname = usePathname();
@@ -115,7 +112,6 @@ export default function AdminLeadManagementPanel() {
   const [data, setData] = useState<Page<AdminLeadRow> | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [version, setVersion] = useState(0);
-  const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<RowMessage | null>(null);
   const seen = useRef(new Map<string, Organization>()); // the Organization filter's options: every organization shown so far
 
@@ -146,25 +142,6 @@ export default function AdminLeadManagementPanel() {
   }
 
   const replace = (next: AdminLeadRow) => setData((prev) => (prev ? { ...prev, items: prev.items.map((l) => (l.id === next.id ? next : l)) } : prev));
-
-  async function updateStatus(row: AdminLeadRow, status: string) {
-    setBusyId(row.id);
-    setMessage(null);
-    const response = await fetch(`${LEADS_URL}/${row.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    const body = await response.json().catch(() => ({}));
-    setBusyId(null);
-    if (!response.ok) {
-      setMessage({ id: row.id, text: detailMessage(body.detail), failed: true });
-      return;
-    }
-    setMessage({ id: row.id, text: "Lead updated.", failed: false });
-    replace({ ...row, status });
-    router.refresh();
-  }
 
   return (
     <div className="action-card lead-management" aria-busy={data === null && !loadFailed}>
@@ -213,18 +190,15 @@ export default function AdminLeadManagementPanel() {
                       {row.bdm && <div className="muted">by {row.bdm.full_name}</div>}
                     </td>
                     <td>{row.crm_sync_status === "failed" ? <span className="form-error">Failed</span> : row.crm_sync_status}</td>
-                    <td>{row.status}</td>
+                    <td>
+                      {stageLabel(row.status)}
+                      <LeadStageHistory key={row.status} lead={row} />
+                    </td>
                     <td>
                       <LeadConversion row={row} onChanged={replace} onMessage={setMessage} />
                     </td>
                     <td>
-                      <select aria-label={`${row.name} status`} value={row.status} onChange={(event) => void updateStatus(row, event.target.value)} disabled={busyId === row.id}>
-                        {STATUS_OPTIONS.map((option) => (
-                          <option key={option} value={option}>
-                            {option}
-                          </option>
-                        ))}
-                      </select>
+                      <LeadStageControl lead={row} onMessage={setMessage} onChanged={(status) => replace({ ...row, status })} />
                       {message?.id === row.id && (
                         <div className={message.failed ? "form-error" : "form-message"} role="status" aria-live="polite" style={{ marginTop: 6, fontSize: 13 }}>
                           {message.text}

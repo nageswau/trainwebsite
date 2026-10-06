@@ -46,7 +46,7 @@ def test_models_match_the_migration():
         "id", "code", "bdm_user_id", "organization_id", "contact_id", "contact_name", "contact_designation", "contact_phone",
         "contact_email", "starts_at", "duration_minutes", "appointment_type", "location", "purpose", "remarks", "status", "outcome",
         "next_follow_up_on", "expected_leads", "expected_revenue", "created_at", "updated_at",
-        "trip_id",  # bdm-011, migration 0080
+        "trip_id",  # bdm-011, migration 0082
     }
     for required in ("code", "bdm_user_id", "organization_id", "contact_name", "starts_at", "duration_minutes", "appointment_type", "status"):
         assert not appt.c[required].nullable, required

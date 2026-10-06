@@ -1,4 +1,4 @@
-"""bdm-011 -- migration 0080_bdm_appointment_trip (spec §3): one nullable FK + index on bdm_appointments, additive."""
+"""bdm-011 -- migration 0082_bdm_appointment_trip (spec §3): one nullable FK + index on bdm_appointments, additive."""
 
 import asyncio
 import importlib.util
@@ -18,11 +18,11 @@ from app.core.config import settings
 from app.models import BdmAppointment
 
 API_ROOT = Path(__file__).resolve().parents[1]
-BASE, HEAD = "0079_bdm_mous", "0080_bdm_appointment_trip"
+BASE, HEAD = "0081_lead_stage_pipeline", "0082_bdm_appointment_trip"
 
 
 def _migration():
-    spec = importlib.util.spec_from_file_location("_bdm_011_migration_0080", API_ROOT / "alembic" / "versions" / f"{HEAD}.py")
+    spec = importlib.util.spec_from_file_location("_bdm_011_migration_0082", API_ROOT / "alembic" / "versions" / f"{HEAD}.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -34,7 +34,7 @@ def _config() -> Config:
     return cfg
 
 
-def test_chains_after_0079_and_is_on_the_single_chain():
+def test_chains_after_0081_and_is_on_the_single_chain():
     migration = _migration()
     assert (migration.revision, migration.down_revision) == (HEAD, BASE)
     script = ScriptDirectory.from_config(_config())
@@ -72,8 +72,8 @@ def _sql(url: str, sql: str, *, autocommit: bool = False):
 
 
 def test_round_trip_runs_the_migrations_own_ddl():
-    """0001 builds BASE from the current models (column included), so go down to BASE -- 0080 drops it -- and up again: what is
-    left is 0080's own column, FK and index. A throwaway database; the shared one is never downgraded."""
+    """0001 builds BASE from the current models (column included), so go down to BASE -- 0082 drops it -- and up again: what is
+    left is 0082 own column, FK and index. A throwaway database; the shared one is never downgraded."""
     cfg, original = _config(), settings.database_url
     name = f"bdm011_migration_{uuid.uuid4().hex[:8]}"
     url = make_url(original).set(database=name).render_as_string(hide_password=False)

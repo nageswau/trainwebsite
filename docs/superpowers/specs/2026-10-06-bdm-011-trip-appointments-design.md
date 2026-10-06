@@ -1,7 +1,7 @@
 # bdm-011 — Trip ↔ appointment linking, itinerary, productivity, travel report (design)
 
-Status: design for `DEC-SCOPE-079` (owner answers L1–L4, in-session 2026-10-06). Migration `0080_bdm_appointment_trip` after
-`0079_bdm_mous`. Backlog: `docs/delivery/BDM_CRM_BACKLOG.md` § bdm-011.
+Status: design for `DEC-SCOPE-082` (owner answers L1–L4, in-session 2026-10-06). Migration `0082_bdm_appointment_trip` after
+`0081_lead_stage_pipeline` (drafted as `DEC-SCOPE-079` / `0080`; renumbered on merging `main` with bdm-013, tel-022, tel-004). Backlog: `docs/delivery/BDM_CRM_BACKLOG.md` § bdm-011.
 
 ## 1. Evidence and authority
 
@@ -19,7 +19,7 @@ Status: design for `DEC-SCOPE-079` (owner answers L1–L4, in-session 2026-10-06
 
 Dependencies: bdm-006 (merged, PR #58, browser QA closed) and bdm-010 (COMPLETE) — satisfied. bdm-017 (lead attribution) is on `main`.
 
-## 2. Owner decisions (DEC-SCOPE-079)
+## 2. Owner decisions (DEC-SCOPE-082)
 
 - **L1 Actual leads:** leads (`enquiries`) the trip's BDM attributed (`bdm_user_id`) to organizations met in the trip's **completed**
   linked appointments, created from the travel date 00:00 IST up to the end of return date + 7 days (IST).

@@ -95,7 +95,7 @@ def downgrade() -> None:
         raise RuntimeError("Cannot downgrade 0068_bdm_trips: BDM trips exist. Remove them deliberately first.")
     op.drop_table(EXPENSES)
     # bdm-011: a database 0001 built from newer models already has bdm_appointments.trip_id -> bdm_trips (the real chain drops it in
-    # 0080's downgrade). With no trip left (checked above) every link is NULL, so dropping the column loses nothing.
+    # 0082's downgrade). With no trip left (checked above) every link is NULL, so dropping the column loses nothing.
     op.execute("ALTER TABLE IF EXISTS bdm_appointments DROP COLUMN IF EXISTS trip_id")
     op.drop_table(TRIPS)
     op.execute(f"DROP SEQUENCE IF EXISTS {SEQUENCE}")
