@@ -119,16 +119,16 @@ async def test_two_assignments_at_once_leave_one_history_row(db_session, world):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("who", ["admin", "counselor"])
-async def test_the_generic_update_refuses_counselor_id(db_session, world, who):  # AC07
+@pytest.mark.parametrize(("who", "key"), [("admin", "app"), ("counselor", "direct_app")])  # a counselor's PATCH on an agency app is a 403 (C1)
+async def test_the_generic_update_refuses_counselor_id(db_session, world, who, key):  # AC07
     async with client_for(world["admin"].email) as c:
-        await _assign(c, world["app"], world["counselor"])
+        await _assign(c, world[key], world["counselor"])
     async with client_for(world[who].email) as c:
         for value in (str(world["counselor2"].id), None):
-            r = await c.patch(UPDATE.format(world["app"].id), json={"counselor_id": value})
+            r = await c.patch(UPDATE.format(world[key].id), json={"counselor_id": value})
             assert r.status_code == 422, r.text
             assert r.json()["detail"] == "Use Assign counselor to change the counselor"
-    assert (await fresh(db_session, world["app"])).counselor_id == world["counselor"].id
+    assert (await fresh(db_session, world[key])).counselor_id == world["counselor"].id
 
 
 @pytest.mark.asyncio

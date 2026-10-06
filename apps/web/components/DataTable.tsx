@@ -15,7 +15,9 @@ type SortDirection = "asc" | "desc";
 // column type is a trainer/admin oversight table, not a student join surface.
 function renderCell(column: Column, row: Row) {
   // AGN-023 (DEC-SCOPE-090 §6): the Overseas Admin's assign/change control, declared by the server like `join`.
+  // A closed (withdrawn or enrolled) row carries `assign: null`, so it gets no control.
   if (column.type === "assign_counselor") {
+    if (!row.assign) return null;
     return <AssignCounselorButton applicationId={String(row.id)} currentId={(row.counselor_id as string | null) ?? null} />;
   }
   if (column.type === "join") {

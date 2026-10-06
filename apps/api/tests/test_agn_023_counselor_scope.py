@@ -6,7 +6,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import func, select
 
-from app.models import AgentCommission, VisaCase
+from app.models import AgentCommission
 from tests.agn001_helpers import client_for
 from tests.agn004_helpers import mk_record
 from tests.agn008_helpers import APPS, mk_application
@@ -78,7 +78,7 @@ async def test_agency_visa_updates_follow_the_agency_rules(db_session, world):  
         assert (await c.patch(f"{VISA}/{case.id}", json={"status": "interview_prep"})).status_code == 200  # a skip, as the agency may
         back = await c.patch(f"{VISA}/{case.id}", json={"status": "documentation"})
         assert back.status_code == 422 and back.json()["detail"] == "A visa case can only move forward"
-        locked = await c.patch(f"{VISA}/{case.id}", json={"checklist": ["Passport", "Bank statement"]})
+        locked = await c.patch(f"{VISA}/{case.id}", json={"checklist": ["Passport", "CV"]})
         assert locked.status_code == 422 and locked.json()["detail"] == "The checklist can only be changed at the checklist stage"
         refused = await c.patch(f"{VISA}/{case.id}", json={"decision": "approved"})
         assert refused.status_code == 422 and refused.json()["detail"] == "The visa decision is recorded by the agency"

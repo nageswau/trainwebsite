@@ -905,6 +905,27 @@ class AgentVisaUpdate(_AgentVisaDates):
         return value
 
 
+class CounselorAgencyVisaUpdate(BaseModel):
+    """AGN-023 (DEC-SCOPE-090 H4, final review I2): an EduSphere counselor's change to an agency visa case (PATCH /overseas/visa/{id}),
+    typed so a bad body is a 422 and never a stored string. The checklist has the agency's limits (`AgentVisaUpdate`); the reference
+    has the VisaCase column's length. `decision` is refused by the route before this model (the agency records it)."""
+
+    status: str | None = Field(default=None, max_length=50)
+    checklist: list[AgentDocumentType] | None = Field(default=None, max_length=8)
+    appointment_date: date | None = None
+    tracking_reference: str | None = Field(default=None, max_length=120)
+
+    @field_validator("checklist")
+    @classmethod
+    def _checklist(cls, value):
+        return _visa_checklist(value)
+
+    @field_validator("appointment_date")
+    @classmethod
+    def _appointment_date(cls, value):
+        return _application_date(value)
+
+
 # --- AGN-010: offer details (DEC-SCOPE-056; docs/superpowers/specs/2026-10-02-agn-010-offer-details-design.md §4.1) ---
 
 OFFER_DEADLINE_BEFORE = "Offer deadline cannot be before the offer date"  # also the AGN-008 PATCH's answer once an offer exists (O2)

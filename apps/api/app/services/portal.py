@@ -54,11 +54,11 @@ from app.models import (
     VisaCase,
 )
 from app.services import application_filters
-from app.services.application_filters import ApplicationFilters
 from app.services.agent_applications import WITHDRAWN, counts_as_offer, owned, stage_label, with_owner
+from app.services.agent_dashboard import headline_counts
 from app.services.agent_orgs import org_masters, org_member_ids
 from app.services.agent_students import application_scope, student_scope
-from app.services.agent_dashboard import headline_counts
+from app.services.application_filters import ApplicationFilters
 from app.services.provisioning import provisioning_statuses, user_ids_with_status
 
 logger = logging.getLogger("app.portal")
@@ -97,6 +97,17 @@ def _payload(title, subtitle, columns=(), rows=(), metrics=(), actions=(), panel
         "columns": [{"key": column[0], "label": column[1], **({"type": column[2]} if len(column) > 2 else {})} for column in columns],
         "rows": list(rows),
         "panels": list(panels),
+    }
+
+
+def _counselor_cells(application, counselors: dict) -> dict:
+    """AGN-023 (DEC-SCOPE-090 §6): the Overseas Admin's counsellor cells. `assign` is null on a closed (withdrawn or enrolled) row --
+    the assign route refuses those (409) -- so the table draws no control there (final review M1)."""
+    closed = application.status in {WITHDRAWN, "enrolled"}
+    return {
+        "counselor": counselors.get(application.counselor_id) or "Not assigned",
+        "counselor_id": str(application.counselor_id) if application.counselor_id else None,
+        "assign": None if closed else application.id,
     }
 
 
@@ -1037,7 +1048,7 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                 for row, (a, _, _) in zip(rows, applications, strict=True):
                     row |= {"is_agency": a.agent_id is not None, "agency": agencies.get(a.agent_id)}
                     if user.role == "overseas_admin":
-                        row |= {"counselor": counselors.get(a.counselor_id) or "Not assigned", "counselor_id": str(a.counselor_id) if a.counselor_id else None, "assign": a.id}
+                        row |= _counselor_cells(a, counselors)
                 columns.insert(2, ("agency", "Agency"))
                 if user.role == "overseas_admin":
                     columns.insert(4, ("counselor", "EduSphere counsellor"))
@@ -1259,11 +1270,18 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
             if user.role == "counselor":
                 stmt = stmt.where(OverseasApplication.counselor_id == user.id)
             rows = (await db.execute(stmt)).all()
+            columns = [("id", "reference"), ("student", "Student"), ("student_code", "Student ID"), ("university", "University"), ("status", "Status")]
+            table = [{"id": a.id, "student": s.full_name, "student_code": s.student_code, "university": u.name, "status": a.status} for a, s, u in rows]
+            if user.role == "overseas_admin":  # AGN-023 (H9, final review I3): the assign control covers school-bridged applications too
+                _, counselors = await application_filters.row_labels(db, [a for a, _, _ in rows])
+                for row, (a, _, _) in zip(table, rows, strict=True):
+                    row |= _counselor_cells(a, counselors)
+                columns += [("counselor", "EduSphere counsellor"), ("assign", "", "assign_counselor")]
             return _payload(
                 "School-Linked Overseas Applications",
                 "Overseas applications started for School-affiliated students. Start a new one below by Student ID.",
-                (("id", "reference"), ("student", "Student"), ("student_code", "Student ID"), ("university", "University"), ("status", "Status")),
-                ({"id": a.id, "student": s.full_name, "student_code": s.student_code, "university": u.name, "status": a.status} for a, s, u in rows),
+                columns,
+                table,
             )
     if user.role in {"it_admin", "overseas_admin", "super_admin"}:
         division = user.division if user.role != "super_admin" else None
