@@ -1,7 +1,8 @@
 // Fails when a Markdown link or image under the documentation folders points at a missing file.
 // Usage (repo root): node docs/tooling/check-doc-links.mjs [root]
 //   no root    -> the Agent CRM set (docs/user-manual, docs/admin-manual, docs/role-guides, docs/*.md)
-//   root given -> the same layout under that folder, e.g. docs/school-crm
+//   root given -> the same layout under that folder, e.g. docs/school-crm; a folder without that layout
+//                 (e.g. docs/demo) is checked as a whole
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
@@ -17,7 +18,8 @@ const walk = (d) =>
     : [];
 
 let bad = 0;
-for (const f of [...dirs.flatMap(walk), ...files]) {
+const standard = dirs.some(existsSync) || files.length > 0;
+for (const f of standard ? [...dirs.flatMap(walk), ...files] : walk(base)) {
   for (const m of readFileSync(f, "utf8").matchAll(/\]\(([^)#\s]+)(?:#[^)]*)?\)/g)) {
     const target = m[1];
     if (/^(https?:|mailto:)/.test(target)) continue;

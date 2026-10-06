@@ -2,6 +2,7 @@
 // Chromium (HTML -> A4 PDF with page numbers). Usage (repo root):
 //   node docs/tooling/build-pdfs.mjs          -> Agent CRM, output docs/pdf/*.pdf
 //   node docs/tooling/build-pdfs.mjs school   -> School CRM, output docs/school-crm/pdf/*.pdf
+//   node docs/tooling/build-pdfs.mjs demo     -> CRM demo guides, output docs/demo/pdf/*.pdf
 // Intermediate HTML goes to <output>/.build/ (git-ignored by <output>/.gitignore).
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
@@ -9,14 +10,15 @@ import { createRequire } from "node:module";
 import path from "node:path";
 
 const SCHOOL = process.argv[2] === "school";
-const ROOT = path.resolve(SCHOOL ? "docs/school-crm" : "docs");
+const DEMO = process.argv[2] === "demo";
+const ROOT = path.resolve(SCHOOL ? "docs/school-crm" : DEMO ? "docs/demo" : "docs");
 const OUT = path.join(ROOT, "pdf");
 const BUILD = path.join(OUT, ".build");
 mkdirSync(BUILD, { recursive: true });
 writeFileSync(path.join(OUT, ".gitignore"), ".build/\n");
 
 const md = (dir) => readdirSync(path.join(ROOT, dir)).filter((f) => /^[a-z0-9]+-\d{3}-.*\.md$/.test(f)).sort().map((f) => `${dir}/${f}`);
-const PREFIX = SCHOOL ? "EduSphere School CRM — " : "EduSphere Agent CRM — ";
+const PREFIX = SCHOOL ? "EduSphere School CRM — " : DEMO ? "EduSphere " : "EduSphere Agent CRM — ";
 const UM = ["account-access", "dashboard", "students", "universities", "applications", "documents", "tasks", "notifications", "commissions", "reports", "team", "staff-performance"];
 const SCHOOL_UM = ["account-access", "dashboards", "students", "team", "transfers", "activities", "academic-team", "portfolio",
   "career-counselor", "psychometric-team", "student-360", "reports", "entitlements", "notifications", "parent"];
@@ -34,7 +36,12 @@ const AGENT_BOOKS = () => [
   { file: "EduSphere-Agent-CRM-Role-Guides", title: "EduSphere Agent CRM — Role Quick-Start Guides", subtitle: "Agency Master · Agency Staff · Overseas Admin · Super Admin", pages: ["role-guides/agency-master.md", "role-guides/agency-staff.md", "role-guides/overseas-admin-agencies.md", "role-guides/super-admin-agencies.md"] },
   { file: "EduSphere-Agent-CRM-FAQ-and-Troubleshooting", title: "EduSphere Agent CRM — FAQ and Troubleshooting", subtitle: "Answers and fixes based on verified behaviour", pages: ["faq.md", "troubleshooting.md"] },
 ];
-const BOOKS = SCHOOL ? SCHOOL_BOOKS() : AGENT_BOOKS();
+const DEMO_PAGES = (crm) => ["01-prep-checklist", "02-demo-script", "03-uat-checklist"].map((f) => `${crm}/${f}.md`);
+const DEMO_BOOKS = () => [
+  { file: "EduSphere-Agent-CRM-Demo-Guide", title: "EduSphere Agent CRM — Demo Guide", subtitle: "Preparation checklist · 45-minute demo script · UAT checklist", dateLabel: "Prepared", pages: DEMO_PAGES("agent-crm") },
+  { file: "EduSphere-School-CRM-Demo-Guide", title: "EduSphere School CRM — Demo Guide", subtitle: "Preparation checklist · 45-minute demo script · UAT checklist", dateLabel: "Prepared", pages: DEMO_PAGES("school-crm") },
+];
+const BOOKS = SCHOOL ? SCHOOL_BOOKS() : DEMO ? DEMO_BOOKS() : AGENT_BOOKS();
 const bookOf = (rel) => BOOKS.find((b) => b.pages.includes(rel));
 const anchor = (rel) => "p-" + rel.replace(/\.md$/, "").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
 
@@ -99,7 +106,7 @@ for (const book of BOOKS) {
   writeFileSync(mdFile, combined);
   execFileSync("pandoc", [mdFile, "--standalone", "--embed-resources",
     "--resource-path", ROOT, "--css", path.join(BUILD, "print.css"), "--toc", "--toc-depth=1", "--metadata", "toc-title=Contents",
-    "--metadata", `title=${book.title}`, "--metadata", `subtitle=${book.subtitle}`, "--metadata", `date=Verified ${date}`,
+    "--metadata", `title=${book.title}`, "--metadata", `subtitle=${book.subtitle}`, "--metadata", `date=${book.dateLabel ?? "Verified"} ${date}`,
     "--metadata", "lang=en", "-o", htmlFile], { cwd: ROOT, stdio: ["ignore", "inherit", "inherit"] });
   const page = await browser.newPage();
   await page.goto("file:///" + htmlFile.replace(/\\/g, "/"));
