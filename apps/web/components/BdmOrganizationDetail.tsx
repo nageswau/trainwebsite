@@ -7,6 +7,7 @@ import BdmConfirm from "@/components/BdmConfirm";
 import BdmOrganizationContacts from "@/components/BdmOrganizationContacts";
 import BdmOrganizationForm from "@/components/BdmOrganizationForm";
 import BdmOrganizationLeads from "@/components/BdmOrganizationLeads";
+import BdmOrganizationMou from "@/components/BdmOrganizationMou";
 import BdmOrganizationPipeline from "@/components/BdmOrganizationPipeline";
 import BdmOrganizationProfileDetails, { DetailList, multiline } from "@/components/BdmOrganizationProfileDetails";
 import BdmOrganizationReassign from "@/components/BdmOrganizationReassign";
@@ -14,6 +15,7 @@ import BdmStageHistory from "@/components/BdmStageHistory";
 import { type Page, sendRequest } from "@/lib/apiErrors";
 import type { Activity } from "@/lib/bdmActivities";
 import type { Lead } from "@/lib/bdmLeads";
+import type { OrgMou } from "@/lib/bdmMous";
 import type { StageEvent } from "@/lib/bdmPipeline";
 import { display, isOrganizationBody, LINK_STYLE, meetingText, type Organization, ORG_TYPE_LABEL, ORGS_URL, safeWebsite } from "@/lib/bdmOrganizations";
 import { formatDate } from "@/lib/formatDate";
@@ -21,9 +23,9 @@ import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // bdm-002 (spec §6.2, §12.2): one organization. Actions render from `permissions` only -- the server enforces every rule (AC3-AC5).
 // Every write re-renders from the organization the API returns (no refetch). Last/Next meeting come from bdm-006 appointments ("—" when none).
-export default function BdmOrganizationDetail({ initial, basePath, created = false, activities, leads, stageHistory }: {
+export default function BdmOrganizationDetail({ initial, basePath, created = false, activities, leads, stageHistory, mou }: {
   initial: Organization; basePath: string; created?: boolean; activities?: Page<Activity> | null; leads?: Page<Lead> | null;
-  stageHistory?: Page<StageEvent> | null;
+  stageHistory?: Page<StageEvent> | null; mou?: OrgMou | null;
 }) {
   const [org, setOrg] = useState(initial);
   const [historyVersion, setHistoryVersion] = useState(0); // bdm-004: bumped by each pipeline write, which reloads the stage history
@@ -59,6 +61,14 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
     setNotice(text);
     setFailure(null);
   };
+  // bdm-005 (D28): a Signed MoU moved the pipeline server-side; re-read the organization so the pipeline and its history show it.
+  async function reloadOrganization() {
+    const fresh = await sendRequest(`${ORGS_URL}/${org.id}`, { method: "GET" });
+    if (fresh.ok && isOrganizationBody(fresh.data)) {
+      setOrg(fresh.data.organization);
+      setHistoryVersion((v) => v + 1);
+    }
+  }
   async function act(path: "archive" | "restore") {
     setBusy(true);
     setFailure(null);
@@ -171,6 +181,7 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
           setHistoryVersion((v) => v + 1);
         }}
       />
+      {mou !== undefined && <BdmOrganizationMou orgId={org.id} initial={mou} onNotice={(text) => notify(text)} onPipelineChanged={() => void reloadOrganization()} />}
       {showEditor ? (
         <section className="action-card wide" aria-label="Edit details">
           <h3>Edit details</h3>
