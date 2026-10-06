@@ -10,10 +10,9 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import AuditLog, TelecallerProfile, TelTarget, User
-from app.schemas import TEL_TARGET_KPI_LABELS, TelTargetSet
+from app.models import TEL_TARGET_KPIS, AuditLog, TelecallerProfile, TelTarget, User
+from app.schemas import TelTargetSet
 
-KPIS = tuple(TEL_TARGET_KPI_LABELS)
 NOT_FOUND = "Telecaller not found"
 
 
@@ -118,4 +117,4 @@ async def effective_targets(db: AsyncSession, team: str, user_id, day: date) -> 
         value = team_values.get((period, kpi))
         return {"kpi": kpi, "value": value, "source": "team" if value is not None else None}
 
-    return {period: [resolve(period, kpi) for kpi in KPIS] for period in ("daily", "monthly")}
+    return {period: [resolve(period, kpi) for kpi in TEL_TARGET_KPIS] for period in ("daily", "monthly")}

@@ -19,7 +19,7 @@ from app.core.database import get_db
 from app.models import TelecallerProfile, TelTarget, User
 from app.schemas import TEL_TARGET_FIELD_LABELS, TelTargetEffectiveOut, TelTargetKpi, TelTargetPage, TelTargetPeriod, TelTargetSet, TelTargetSetOut
 from app.services.bdm_appointments import db_now, today_ist
-from app.services.telecaller import _parse, require_manager
+from app.services.telecaller import _parse, require_manager, telecaller_context
 from app.services.telecaller_targets import check_effective_from, check_shape, effective_targets, month_start, save_targets, telecaller_in_scope
 
 router = APIRouter(prefix="/telecaller", tags=["telecaller-targets"])
@@ -108,10 +108,7 @@ async def targets_in_effect(
     if user.role == "telecaller":
         if team is not None or user_id not in (None, user.id):
             raise HTTPException(403, "You can only view your own targets")
-        profile = await db.scalar(select(TelecallerProfile).where(TelecallerProfile.user_id == user.id))
-        if not profile:
-            raise HTTPException(403, "Telecaller profile not set up — contact your administrator")
-        subject, team = user, profile.team
+        subject, team = user, (await telecaller_context(db, user)).team
     else:
         require_manager(user)
         if (user_id is None) == (team is None):

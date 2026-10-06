@@ -34,6 +34,7 @@ from app.models import (
     BDM_GRADE_MIN,
     BDM_STAFF_MAX,
     GENDERS,
+    TEL_TARGET_KPIS,
 )
 from app.services.agent_visa import VISA_CASE_STAGES
 from app.tel_sources import TEL_SOURCES
@@ -4609,11 +4610,8 @@ class BdmTaskPage(BaseModel):
 
 # --- tel-022 (DEC-SCOPE-078): daily + monthly targets ------------------------------------------------------------------------
 TelTargetPeriod = Literal["daily", "monthly"]
-TelTargetKpi = Literal["calls", "connected_calls", "qualified_leads", "follow_ups", "counselling_appointments", "conversions"]
-TEL_TARGET_KPI_LABELS = {  # EVID-019 §15 order (Appendix B K1-K6)
-    "calls": "Calls", "connected_calls": "Connected calls", "qualified_leads": "Qualified leads", "follow_ups": "Follow-ups",
-    "counselling_appointments": "Counselling appointments", "conversions": "Conversions",
-}
+TelTargetKpi = Literal[TEL_TARGET_KPIS]
+TEL_TARGET_KPI_LABELS = dict(zip(TEL_TARGET_KPIS, ("Calls", "Connected calls", "Qualified leads", "Follow-ups", "Counselling appointments", "Conversions"), strict=True))
 TEL_TARGET_MAX = 100_000
 TEL_TARGET_FIELD_LABELS = {"scope": "Scope", "team": "Team", "user_id": "Telecaller", "period": "Period", "effective_from": "Starts", "values": "Values"}
 
