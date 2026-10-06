@@ -14,12 +14,14 @@ type School = {
   board: string | null; partnership_date: string | null; mou_reference: string | null;
   edusphere_bdm: string | null; monthly_visit_schedule: string | null; vice_principal_name: string | null;
   tier?: string | null; tier_valid_until?: string | null;
+  linked_bdm?: { full_name: string; active: boolean; organization_code: string } | null; // bdm-018 (H1): derived, read-only
 };
 
 type TierChange = { direction: "upgrade" | "downgrade" | "unchanged"; from_tier: string | null; to_tier: string | null; gained: TierService[]; lost: TierService[] };
 type Body = Record<string, string | null>;
 
-const FIELDS = ["branch", "address", "contact_number", "email", "website", "grades_available", "board", "partnership_date", "mou_reference", "edusphere_bdm", "monthly_visit_schedule", "vice_principal_name", "tier", "tier_valid_until"] as const;
+// bdm-018 (Q-16): `edusphere_bdm` is legacy history, shown read-only and never sent; the School's BDM comes from the linked organization.
+const FIELDS = ["branch", "address", "contact_number", "email", "website", "grades_available", "board", "partnership_date", "mou_reference", "monthly_visit_schedule", "vice_principal_name", "tier", "tier_valid_until"] as const;
 const SAVE_ID = "edit-save-btn";
 
 const tierName = (tier: string | null | undefined) => (tier ? tier.charAt(0).toUpperCase() + tier.slice(1) : "no partnership tier");
@@ -211,10 +213,19 @@ export default function AdminSchoolEditPanel() {
           </div>
           <div className="field"><label htmlFor="edit-partnership-date">Partnership date</label><input id="edit-partnership-date" name="partnership_date" type="date" defaultValue={school.partnership_date ?? ""} disabled={isBusy} /></div>
           <div className="field"><label htmlFor="edit-mou">Agreement / MoU reference</label><input id="edit-mou" name="mou_reference" defaultValue={school.mou_reference ?? ""} disabled={isBusy} /></div>
-          <div className="form-grid">
-            <div className="field"><label htmlFor="edit-bdm">Edusphere BDM</label><input id="edit-bdm" name="edusphere_bdm" defaultValue={school.edusphere_bdm ?? ""} disabled={isBusy} /></div>
-            <div className="field"><label htmlFor="edit-vp">Vice Principal</label><input id="edit-vp" name="vice_principal_name" defaultValue={school.vice_principal_name ?? ""} disabled={isBusy} /></div>
-          </div>
+          <dl className="form-grid">
+            <div className="field">
+              <dt>Linked BDM</dt>
+              <dd>{school.linked_bdm ? `${school.linked_bdm.full_name}${school.linked_bdm.active ? "" : " (inactive)"} · ${school.linked_bdm.organization_code}` : "Not linked to a BDM organization"}</dd>
+            </div>
+            {school.edusphere_bdm && (
+              <div className="field">
+                <dt>Edusphere BDM (legacy note)</dt>
+                <dd>{school.edusphere_bdm}</dd>
+              </div>
+            )}
+          </dl>
+          <div className="field"><label htmlFor="edit-vp">Vice Principal</label><input id="edit-vp" name="vice_principal_name" defaultValue={school.vice_principal_name ?? ""} disabled={isBusy} /></div>
           <div className="field"><label htmlFor="edit-visits">Monthly visit schedule</label><input id="edit-visits" name="monthly_visit_schedule" defaultValue={school.monthly_visit_schedule ?? ""} disabled={isBusy} /></div>
           <fieldset className="question">
             <legend>Partnership</legend>
