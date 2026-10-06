@@ -10,11 +10,13 @@ import { teamMemberSearch } from "@/lib/bdmAppointments";
 import { LINK_STYLE, ORG_TYPES } from "@/lib/bdmOrganizations";
 import { EMPTY_TEXT, isTaskPage, KIND_LABEL, KINDS, orgTypeText, TAB_LABEL, TABS, type Tab, type Task, TASK_PAGE, type TaskPage, tasksUrl } from "@/lib/bdmTasks";
 import type { PickOption } from "@/lib/lookups";
+import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // bdm-008 (spec §9): a BDM's follow-ups and tasks, or a manager's team's (read only). The API scopes the rows and computes the counts
 // from the same filters, so the chips always add up to the list. Filters live in the URL; every value is checked before it reaches the API.
 type Filters = { bucket: Tab; kind: string; orgType: string; bdm: string; offset: number };
 const TYPES: readonly string[] = [...ORG_TYPES, "none"];
+const ADD_ID = "tasks-add"; // the header Add button: where focus returns when the form closes (QA8-02)
 
 function readFilters(params: URLSearchParams): Filters {
   const bucket = params.get("bucket") ?? "";
@@ -53,6 +55,7 @@ export default function BdmTasksPanel({ isBdm }: { isBdm: boolean }) {
   const [notice, setNotice] = useState<{ text: string; done?: Task } | null>(null);
   const [picked, setPicked] = useState<PickOption | null>(null);
   const basePath = isBdm ? "/bdm" : "/bdm/manager";
+  const focus = useFocusAfterRender();
 
   useEffect(() => {
     let live = true;
@@ -77,14 +80,14 @@ export default function BdmTasksPanel({ isBdm }: { isBdm: boolean }) {
   const changed = (task: Task, text: string) => { setNotice({ text, done: task.status === "done" ? task : undefined }); setAdding(false); reload(); };
   const refused = (message: string) => { setNotice({ text: `${message}. This item changed elsewhere — the list has been reloaded.` }); reload(); };
   const filtered = Boolean(filters.kind || filters.orgType || filters.bdm);
-  const add = isBdm && !adding && <button type="button" className="btn small" onClick={() => setAdding(true)}>Add follow-up or task</button>;
+  const addButton = (id?: string) => isBdm && !adding && <button id={id} type="button" className="btn small" onClick={() => setAdding(true)}>Add follow-up or task</button>;
   const doneOrg = notice?.done?.organization && !notice.done.organization.archived ? notice.done.organization : null;
 
   return (
     <div className="action-card wide" aria-busy={fetching && !failed}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
         <h3>Follow-ups and tasks</h3>
-        {add}
+        {addButton(ADD_ID)}
       </div>
       <div role="status" aria-live="polite">
         {notice && (
@@ -95,7 +98,7 @@ export default function BdmTasksPanel({ isBdm }: { isBdm: boolean }) {
           </p>
         )}
       </div>
-      {adding && <BdmTaskForm onSaved={(t) => changed(t, "Added.")} onCancel={() => setAdding(false)} />}
+      {adding && <BdmTaskForm onSaved={(t) => changed(t, "Added.")} onCancel={() => { setAdding(false); focus(ADD_ID); }} />}
       <nav aria-label="Follow-up lists" style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "8px 0" }}>
         {TABS.map((tab) => {
           const n = data?.counts.buckets[tab];
@@ -142,7 +145,7 @@ export default function BdmTasksPanel({ isBdm }: { isBdm: boolean }) {
       ) : data.total === 0 ? (
         <div role="status">
           <p className="empty">{filtered ? "No items match these filters." : EMPTY_TEXT[filters.bucket]}</p>
-          {filtered ? <button type="button" className="btn secondary small" onClick={() => go({ kind: "", orgType: "", bdm: "" })}>Clear filters</button> : add}
+          {filtered ? <button type="button" className="btn secondary small" onClick={() => go({ kind: "", orgType: "", bdm: "" })}>Clear filters</button> : addButton()}
         </div>
       ) : data.items.length === 0 ? (
         <div role="status">

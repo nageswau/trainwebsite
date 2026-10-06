@@ -55,6 +55,15 @@ describe("BdmTasksPanel (bdm-008 §9)", () => {
     expect(screen.getAllByRole("button", { name: "Add follow-up or task" }).length).toBeGreaterThan(0);
   });
 
+  it("returns focus to Add when the form is closed with Escape (QA8: focus was lost)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(page([task()])))));
+    render(<BdmTasksPanel isBdm />);
+    await screen.findByText("Call the principal");
+    fireEvent.click(screen.getByRole("button", { name: "Add follow-up or task" }));
+    fireEvent.keyDown(screen.getByLabelText("Title (required)"), { key: "Escape" });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Add follow-up or task" })).toHaveFocus());
+  });
+
   it("after Done says so with next-step links and reloads", async () => {
     const fetchMock = vi.fn<typeof fetch>((url) => Promise.resolve(String(url).endsWith("/complete") ? res(task({ status: "done" })) : res(page([task()]))));
     vi.stubGlobal("fetch", fetchMock);

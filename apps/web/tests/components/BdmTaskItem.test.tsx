@@ -24,6 +24,12 @@ describe("BdmTaskItem (bdm-008 §9)", () => {
     expect(screen.getByText(/Line 1/)).toHaveStyle({ whiteSpace: "pre-wrap" });
   });
 
+  it("wraps unbroken notes and reasons instead of widening the page (QA8: 600-char note overflowed by 3600px at 390px)", () => {
+    render(<ul><BdmTaskItem task={task({ notes: "x".repeat(600), status: "cancelled", cancelled_at: "2030-01-07T05:00:00Z", cancel_reason: "y".repeat(400) })} {...props} /></ul>);
+    expect(screen.getByText("x".repeat(600))).toHaveStyle({ overflowWrap: "anywhere" });
+    expect(screen.getByText(/y{400}/)).toHaveStyle({ overflowWrap: "anywhere" });
+  });
+
   it("completes and reports the change", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res(task({ status: "done", completed_at: "2030-01-07T05:00:00Z" })))));
     render(<ul><BdmTaskItem task={task()} {...props} /></ul>);
@@ -40,6 +46,16 @@ describe("BdmTaskItem (bdm-008 §9)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cancel it" }));
     await waitFor(() => expect(props.onChanged).toHaveBeenCalledWith(expect.objectContaining({ status: "cancelled" }), "Cancelled."));
     expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ reason: "Clash" });
+  });
+
+  it("returns focus to Edit / Cancel task when their form is closed with Escape", async () => {
+    render(<ul><BdmTaskItem task={task()} {...props} /></ul>);
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.keyDown(screen.getByLabelText("Title (required)"), { key: "Escape" });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Edit" })).toHaveFocus());
+    fireEvent.click(screen.getByRole("button", { name: "Cancel task" }));
+    fireEvent.keyDown(screen.getByLabelText("Reason (required)"), { key: "Escape" });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Cancel task" })).toHaveFocus());
   });
 
   it("hands a 409 to the list (reloads on a 409)", async () => {
