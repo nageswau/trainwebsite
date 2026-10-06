@@ -3776,6 +3776,26 @@ class BdmOrgPipelineOut(BaseModel):
     steps: list[BdmPipelineStepOut]
 
 
+# --- bdm-018 (DEC-SCOPE-079, spec §5.7): the onboarding handover on the organization detail -------------------------------------
+class BdmOnboardingRequestRef(BaseModel):
+    id: UUID
+    status: Literal["pending", "completed", "rejected"]
+    created_at: datetime
+    resolved_at: datetime | None
+    reject_reason: str | None
+
+
+class BdmOnboardingSchoolRef(BaseModel):
+    name: str
+    school_code: str | None
+
+
+class BdmOrgOnboardingOut(BaseModel):
+    request: BdmOnboardingRequestRef | None  # the latest request
+    school: BdmOnboardingSchoolRef | None
+    can_request: bool
+
+
 class BdmOrganizationRow(BaseModel):
     id: UUID
     code: str
@@ -3802,6 +3822,7 @@ class BdmOrganizationOut(BdmOrganizationRow):
     student_count: int | None
     profile: BdmOrgProfileOut | None  # null for corporate / training_institute / other (spec §5.1)
     pipeline: BdmOrgPipelineOut  # bdm-004: detail only; list rows are unchanged
+    onboarding: BdmOrgOnboardingOut | None = None  # bdm-018: School organizations only
     contacts: list[BdmContactOut]
     created_by_name: str
     archived_at: datetime | None
@@ -4767,3 +4788,88 @@ class BdmTaskPage(BaseModel):
     offset: int
     today: date
     counts: BdmTaskCounts
+
+
+# --- bdm-018 (DEC-SCOPE-079, spec §5): the school onboarding handover --------------------------------------------------------------
+_ONBOARDING_LABELS = {"note": "Note", "reason": "Reason", "school_code": "School ID"}
+BdmOnboardingNote = Annotated[
+    Annotated[Annotated[str, _trimmed(1000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, _ONBOARDING_LABELS))],
+    BeforeValidator(_bdm_newlines),
+]
+BdmOnboardingReason = Annotated[
+    Annotated[Annotated[str, _trimmed(500)], AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, True, _ONBOARDING_LABELS))], BeforeValidator(_bdm_newlines)
+]
+BdmOnboardingSchoolCode = Annotated[Annotated[str, _trimmed(8)], AfterValidator(_trip_text(_BDM_CONTROL, True, _ONBOARDING_LABELS))]
+BdmOnboardingStatus = Literal["pending", "completed", "rejected"]
+
+
+class BdmOnboardingRequestIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    note: BdmOnboardingNote = None
+
+
+class BdmOnboardingRejectIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: BdmOnboardingReason
+
+
+class BdmOnboardingLinkIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    school_code: BdmOnboardingSchoolCode
+
+
+class BdmOnboardingOrgPrefill(BaseModel):
+    """The organization's details the admin creates the School from (spec §5.2): read live, never snapshotted."""
+
+    id: UUID
+    code: str
+    name: str
+    city: str
+    state: str | None
+    address: str | None
+    phone: str | None
+    email: str | None
+    website: str | None
+    board: str | None
+    grade_from: int | None
+    grade_to: int | None
+
+
+class BdmOnboardingContact(BaseModel):
+    name: str
+    email: str | None
+    phone: str | None
+
+
+class BdmOnboardingMou(BaseModel):
+    reference: str | None
+    signed_on: date | None
+
+
+class BdmOnboardingSchool(BaseModel):
+    id: UUID
+    name: str
+    school_code: str | None
+
+
+class BdmOnboardingItem(BaseModel):
+    id: UUID
+    status: BdmOnboardingStatus
+    note: str | None
+    created_at: datetime
+    resolved_at: datetime | None
+    resolution: Literal["created", "linked"] | None
+    reject_reason: str | None
+    requested_by: BdmPersonRef
+    assigned_bdm: BdmOrgPerson
+    organization: BdmOnboardingOrgPrefill
+    primary_contact: BdmOnboardingContact | None
+    mou: BdmOnboardingMou | None
+    school: BdmOnboardingSchool | None
+
+
+class BdmOnboardingPage(BaseModel):
+    items: list[BdmOnboardingItem]
+    total: int
+    limit: int
+    offset: int

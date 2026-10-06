@@ -281,6 +281,8 @@ def row_out(user: User, org: BdmOrganization, assignee: User, primary: BdmOrgani
 
 async def organization_out(db: AsyncSession, user: User, org: BdmOrganization, *, refresh: bool = True) -> dict:
     """The detail every route returns (§12.1 A1). Refreshes first: server defaults (timestamps) are expired after a flush."""
+    from app.services.bdm_onboarding import org_onboarding_out  # local: bdm_onboarding imports this module
+
     if refresh:
         await db.refresh(org)
     contacts = await contacts_of(db, org.id)
@@ -298,6 +300,7 @@ async def organization_out(db: AsyncSession, user: User, org: BdmOrganization, *
         "student_count": org.student_count,
         "profile": profile_out(org),
         "pipeline": pipeline_out(org),  # bdm-004
+        "onboarding": await org_onboarding_out(db, user, org),  # bdm-018
         "contacts": [_contact(c) for c in ordered],
         "created_by_name": people[org.created_by_user_id].full_name,
         "archived_at": org.archived_at,
