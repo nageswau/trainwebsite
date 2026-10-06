@@ -9,9 +9,9 @@ import { sendJson, type Page } from "@/lib/apiErrors";
 import { formOptional, formText } from "@/lib/telecaller";
 import { CAMPAIGNS_URL, CATALOGUE_PAGE_SIZE, SOURCES, SOURCE_LABEL, activeProducts, datesInOrder, getPage, type Campaign, type Product } from "@/lib/telecallerCatalogue";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
+import { toneClass, type Feedback } from "@/lib/welcomeLink";
 
 const FEEDBACK_ID = "camp-create-feedback";
-type Feedback = { text: string; error: boolean };
 
 // tel-002 (T16, P3/P4): the manager's campaign list -- "Instagram → Cyber Security → September 2026". A create form (one of the 13
 // §2 sources, an active product, start required, end optional and not before the start) and the list with loading / error+Retry /
@@ -67,7 +67,7 @@ export default function TelecallerCampaignsPanel() {
       start_date: formText(form, "start_date"), end_date: formOptional(form, "end_date"),
     };
     if (!datesInOrder(body.start_date, body.end_date)) {
-      setFeedback({ text: "End date cannot be before the start date", error: true });
+      setFeedback({ text: "End date cannot be before the start date", tone: "error" });
       return focus(FEEDBACK_ID);
     }
     inFlight.current = true;
@@ -76,11 +76,11 @@ export default function TelecallerCampaignsPanel() {
     inFlight.current = false;
     setBusy(false);
     if (outcome.ok) {
-      setFeedback({ text: `Created ${body.name}.`, error: false });
+      setFeedback({ text: `Created ${body.name}.`, tone: "success" });
       formEl.reset();
       reload();
     } else {
-      setFeedback({ text: outcome.message, error: true });
+      setFeedback({ text: outcome.message, tone: "error" });
     }
     focus(FEEDBACK_ID);
   }
@@ -113,7 +113,7 @@ export default function TelecallerCampaignsPanel() {
         <div className="field"><label htmlFor="camp-start">Start date (required)</label><input id="camp-start" name="start_date" type="date" required disabled={busy} /></div>
         <div className="field"><label htmlFor="camp-end">End date</label><input id="camp-end" name="end_date" type="date" disabled={busy} /></div>
         <button className="btn" disabled={busy || !products?.length}>{busy ? "Creating…" : "Create campaign"}</button>
-        <div id={FEEDBACK_ID} tabIndex={-1} className={feedback ? (feedback.error ? "form-error" : "form-message") : undefined} role="status" aria-live="polite" style={{ marginTop: 8, overflowWrap: "anywhere" }}>
+        <div id={FEEDBACK_ID} tabIndex={-1} className={feedback ? toneClass[feedback.tone] : undefined} role="status" aria-live="polite" style={{ marginTop: 8, overflowWrap: "anywhere" }}>
           {feedback?.text}
         </div>
       </form>

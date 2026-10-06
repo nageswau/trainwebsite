@@ -7,9 +7,9 @@ import { sendJson, type Page } from "@/lib/apiErrors";
 import { formText } from "@/lib/telecaller";
 import { CATALOGUE_PAGE_SIZE, GROUPS, GROUP_LABEL, PRODUCTS_URL, activePrograms, getPage, type Product, type ProductGroup, type ProgramOption } from "@/lib/telecallerCatalogue";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
+import { toneClass, type Feedback } from "@/lib/welcomeLink";
 
 const FEEDBACK_ID = "prod-create-feedback";
-type Feedback = { text: string; error: boolean };
 
 // tel-002 (DEC-SCOPE-074): the manager's product/interest catalogue -- a create form (team only for Other, course only for IT; P2) and
 // the list with loading / error+Retry / empty / pager states. Managers see inactive products too; the API decides who may write.
@@ -57,12 +57,12 @@ export default function TelecallerProductsPanel() {
     inFlight.current = false;
     setBusy(false);
     if (outcome.ok) {
-      setFeedback({ text: `Created ${name}.`, error: false });
+      setFeedback({ text: `Created ${name}.`, tone: "success" });
       formEl.reset();
       setGroup("it");
       reload();
     } else {
-      setFeedback({ text: outcome.message, error: true });
+      setFeedback({ text: outcome.message, tone: "error" });
     }
     focus(FEEDBACK_ID);
   }
@@ -100,7 +100,7 @@ export default function TelecallerProductsPanel() {
           )
         )}
         <button className="btn" disabled={busy}>{busy ? "Creating…" : "Create product"}</button>
-        <div id={FEEDBACK_ID} tabIndex={-1} className={feedback ? (feedback.error ? "form-error" : "form-message") : undefined} role="status" aria-live="polite" style={{ marginTop: 8, overflowWrap: "anywhere" }}>
+        <div id={FEEDBACK_ID} tabIndex={-1} className={feedback ? toneClass[feedback.tone] : undefined} role="status" aria-live="polite" style={{ marginTop: 8, overflowWrap: "anywhere" }}>
           {feedback?.text}
         </div>
       </form>
