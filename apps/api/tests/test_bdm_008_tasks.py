@@ -76,3 +76,42 @@ async def test_list_refuses_bad_filters(client, db_session):
         assert (await client.get(TASKS, params=params)).status_code == 422
     other = await client.get(TASKS, params={"bdm_user_id": "00000000-0000-0000-0000-000000000000"})
     assert (other.status_code, other.json()["detail"]) == (422, "bdm_user_id is only for managers")
+
+
+@pytest.mark.asyncio
+async def test_create_a_manual_task_with_and_without_an_organization(client, db_session):
+    """AC1: manual items; the server owns assignee, source and status."""
+    _, bdm, org = await bdm_with_org(client, db_session)
+    t = await create_task(client, kind="follow_up", organization_id=org["id"], notes="Ask for\nthe prospectus", due_on=ist_day(1).isoformat())
+    assert (t["source"], t["status"], t["assignee"]["id"], t["notes"], t["organization"]["code"]) == ("manual", "open", str(bdm.id), "Ask for\nthe prospectus", org["code"])
+    assert t["permissions"] == {"can_edit": True, "can_complete": True, "can_cancel": True}
+    general = await create_task(client)
+    assert general["organization"] is None and general["kind"] == "task"
+
+
+@pytest.mark.asyncio
+async def test_create_refusals(client, db_session):
+    manager, bdm, org = await bdm_with_org(client, db_session)
+    past = await client.post(TASKS, json={"kind": "task", "title": "x", "due_on": ist_day(-1).isoformat()})
+    assert (past.status_code, past.json()["detail"]) == (422, "Due date can't be in the past")
+    other = await make_bdm(db_session, manager)
+    await login(client, other)
+    theirs = await client.post(TASKS, json={"kind": "task", "title": "x", "due_on": ist_day().isoformat(), "organization_id": org["id"]})
+    assert (theirs.status_code, theirs.json()["detail"]) == (403, "Only the assigned BDM can add tasks for this organization")
+    await login(client, bdm)
+    assert (await client.post(f"/api/v1/bdm/organizations/{org['id']}/archive")).status_code == 200
+    archived = await client.post(TASKS, json={"kind": "task", "title": "x", "due_on": ist_day().isoformat(), "organization_id": org["id"]})
+    assert (archived.status_code, archived.json()["detail"]) == (422, "This organization is archived — restore it before adding tasks")
+    await login(client, manager)
+    assert (await client.post(TASKS, json={"kind": "task", "title": "x", "due_on": ist_day().isoformat()})).status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_create_cap(client, db_session, monkeypatch):
+    from app.services import bdm_tasks
+
+    monkeypatch.setattr(bdm_tasks, "DAILY_CAP", 1)
+    await bdm_with_org(client, db_session)
+    await create_task(client)
+    again = await client.post(TASKS, json={"kind": "task", "title": "x", "due_on": ist_day().isoformat()})
+    assert again.status_code == 409
