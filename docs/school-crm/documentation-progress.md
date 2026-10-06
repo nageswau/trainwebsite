@@ -5,8 +5,8 @@
 | Code baseline | `main` @ `ce1f07c2` (S1 discovery). Record any later `main` used for browser work here, with the affected features re-checked. |
 | Stack used for browser work | `schooldocs` compose project from worktree `.claude/worktrees/school-docs` (detached at docs commit `24a22627` = `main` `ce1f07c2` + docs). Web http://localhost:3020, api :8020. Untracked `docker-compose.docs.yml` adds Mailpit on **127.0.0.1:8026** (the Agent CRM docs stack holds 8025). Untracked `.env` = repo `.env` with `FRONTEND_URL`/ports changed, `SMTP_HOST=mailpit`, `SMTP_PORT=1025`, `SMTP_USE_TLS=false`, no SMTP credentials, **`SMTP_FROM_EMAIL=no-reply@edusphere.local`** (without it the app reports "email is not configured"), `EMAIL_WEBHOOK_URL` empty. Owner approved Claude starting, seeding and resetting this stack (2026-10-05). |
 | Docs branch | `docs/school-crm-user-guide` (from `main` @ `ce1f07c2`) |
-| Last session | S5 Activities, attendance and feedback — 2026-10-06 |
-| Next session | S6 — Transfers and promotion. **Owner must first create and activate a new academic year** (U3: Claude prepares the API calls). Start from the S5 snapshot, or reset and run `sch-s2` → `sch-s3` → `sch-s4` → `sch-s5`. |
+| Last session | S6 Transfers and promotion — 2026-10-06 |
+| Next session | S7 — Academic Team and Digital Portfolio. Start from the S6 snapshot, or reset and run `sch-s2` … `sch-s6` in order. |
 
 **Column values:**
 - **Code Reviewed:** YES / PARTIAL / NO. YES at S1 means reviewed from source at `ce1f07c2`, with file:line evidence in `discovery/`.
@@ -18,7 +18,7 @@
 A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES
 and Reviewed = PASSED.
 
-**Totals (after S5):** 86 features · 33 browser-verified (3 partial) · 33 documented · 0 complete (final review is S12).
+**Totals (after S6):** 86 features · 38 browser-verified (3 partial) · 38 documented · 0 complete (final review is S12).
 
 | ID | Module | Feature | Code Reviewed | Browser Verified | Screenshot | Documented | Reviewed |
 |---|---|---|---|---|---|---|---|
@@ -46,10 +46,10 @@ and Reviewed = PASSED.
 | DOC-SCH-STU-006 | Students & roster | Student profile and journey timeline (grade/transfer history, scorecard, funding cases) | YES | PARTIAL (Principal/Teacher dashboard entry buttons verified in S10; Funding support card not exercised with data) | YES | YES | NO |
 | DOC-SCH-STU-007 | Students & roster | Add, replace or remove a student photo | YES | YES | YES | YES | NO |
 | DOC-SCH-STU-008 | Students & roster | Download a student progress report (PDF) | YES | YES | YES | YES | NO |
-| DOC-SCH-STU-009 | Students & roster | Promote or hold back students for the new academic year | YES | NO | NO | NO | NO |
-| DOC-SCH-XFER-001 | Transfers | Request a transfer out to another school | YES | NO | NO | NO | NO |
-| DOC-SCH-XFER-002 | Transfers | Request a student from another school (by Student ID) | YES | NO | NO | NO | NO |
-| DOC-SCH-XFER-003 | Transfers | Track and cancel transfer requests | YES | NO | NO | NO | NO |
+| DOC-SCH-STU-009 | Students & roster | Promote or hold back students for the new academic year | YES | YES | YES | YES | NO |
+| DOC-SCH-XFER-001 | Transfers | Request a transfer out to another school | YES | YES | YES | YES | NO |
+| DOC-SCH-XFER-002 | Transfers | Request a student from another school (by Student ID) | YES | YES | YES | YES | NO |
+| DOC-SCH-XFER-003 | Transfers | Track and cancel transfer requests | YES | YES | YES | YES | NO |
 | DOC-SCH-ACT-001 | Activities & attendance | Schedule an activity | YES | YES | YES | YES | NO |
 | DOC-SCH-ACT-002 | Activities & attendance | Mark attendance for an activity | YES | YES | YES | YES | NO |
 | DOC-SCH-ACT-003 | Activities & attendance | Give feedback on a completed EduSphere activity | YES | YES | YES | YES | NO |
@@ -103,7 +103,7 @@ and Reviewed = PASSED.
 | DOC-SCH-SADM-004 | School administration | Onboard several schools by CSV | YES | YES | YES | YES | NO |
 | DOC-SCH-SADM-005 | School administration | Create school staff accounts (Academic Team / Career Counselor / Psychometric Team) and their school portfolio | YES | YES | YES | YES | NO |
 | DOC-SCH-SADM-006 | School administration | Start an overseas application for a school student | YES | NO | NO | NO | NO |
-| DOC-SCH-SADM-007 | School administration | Review school transfer requests (approve / reject) | YES | NO | NO | NO | NO |
+| DOC-SCH-SADM-007 | School administration | Review school transfer requests (approve / reject) | YES | YES | YES | YES | NO |
 | DOC-SCH-SADM-008 | School administration | School Analytics | YES | NO | NO | NO | NO |
 | DOC-SCH-SADM-009 | School administration | Activity Feedback across schools | YES | YES | YES | YES | NO |
 | DOC-SCH-SADM-010 | School administration | Re-send a set-password link to a school user (Users page) | YES (Users panel reviewed S2) | YES | YES | YES | NO |
@@ -133,13 +133,13 @@ All items from `documentation-analysis.md` §12.1 are open. Owner-dependent ones
 |---|---|---|---|
 | U1 | Session ends at ~60 min (no refresh call) | S3 | PARTIAL: with only the access cookie removed (refresh cookie still present) the portal shows "Access unavailable — Not authenticated" + Return to login, so the app does not refresh. The 60-minute timing itself is from code. |
 | U2 | Reset email carries a token, not a link (webhook only) | S3 | CONFIRMED on the docs stack: forgot-password sends **no email** (Mailpit count unchanged); only the webhook path exists and it is unset. Product finding; AUTH-004 tells users to contact their administrator. |
-| U3 | Active academic year: no admin UI | S6 | DECIDED 2026-10-05: in S6 Claude gives the owner the exact `POST`/`PATCH /overseas-admin/academic-years` calls (as Overseas Admin); the owner runs them on the docs stack. The guide says the year is set up by EduSphere and notes the missing admin screen. |
+| U3 | Active academic year: no admin UI | S6 | CLOSED: owner changed the decision on 2026-10-06 — Claude creates and activates 2027-28 through the Overseas Admin API inside `sch-s6` (docs stack only). STU-009 says EduSphere opens the year and shows the "Already in {year}" state before it does. |
 | U4 | `/school/coordinator/students/new` message | S4 | CONFIRMED: "Access unavailable — [object Object]" + Back to students. Noted in STU-001. |
 | U5 | Over-length fields / malformed DOB → probable 500 | S4, S5, S7 | PARTIAL: a 170-character full name (STU-002) and a 210-character activity title (ACT-001) both show only "Something went wrong.". Result fields still to check (S7). |
 | U6 | Browser-native validation wording | all | DECIDED S3: docs say "your browser asks you to…" instead of quoting browser bubbles. |
 | U7 | Pydantic 422 wording on admin forms | S2 → later | OPEN (not reachable through the S2 happy/error paths; messages marked "From code" in SADM-002/004) |
 | U8 | Parent notifications never marked read | S10 | OPEN |
-| U9 | "Upcoming session" time in UTC? | S5 | CONFIRMED: a 10:00 IST activity is announced to parents as "… scheduled for 04 Oct 2026, 04:30" (UTC). The feedback "Submitted by" time is also UTC. Documented as tips in ACT-001/003/004 and SADM-009. |
+| U9 | "Upcoming session" time in UTC? | S5 | CONFIRMED: a 10:00 IST activity is announced to parents as "… scheduled for 04 Oct 2026, 04:30" (UTC). (Correction S6: feedback "Submitted by" and notification list times are IST — checked against stored UTC timestamps; only the time written inside the parent "Upcoming session" text is UTC.) Documented in ACT-001. |
 | U10 | Delivery channels enabled in the docs stack | S2 | PARTIAL: email works (Mailpit). WhatsApp/SMS not configured on the docs stack, so those channels are documented from code only. |
 | U11 | Super Admin "Workspace not found" on three school pages | S2 | CONFIRMED in browser (Schools, School Staff, School Applications); Transfers and Activity Feedback open with the Overseas Admin sidebar/label; Analytics opens with the SA sidebar. Documented in SADM-011. |
 | U12 | Users page re-send set-password for school users | S2 | CLOSED: same Users panel as Agent CRM DOC-ADM-008 (`WorkflowPanel.tsx:446` shows it to Overseas Admin on `users`); re-send verified for a school specialist. |
@@ -163,9 +163,13 @@ See `documentation-analysis.md` §12.2 (17 items). Notable:
 - Frontend role guards are inconsistent.
 - Parent notifications never clear.
 - Several raw codes are shown to users.
+- **New in S6:**
+  1. When no new academic year exists, the Promotion page gives no explanation: every row just says "Already in {year}".
+  2. An incoming transfer request gives the same answer whether or not the Student ID exists, so a typo fails silently (by design, for privacy).
+  3. The time zone check showed that notification-list and feedback times **are** IST. Only the time inside the parent "Upcoming session" text is UTC, and the S5 note was corrected.
 - **New in S5:**
   1. Parent "Upcoming session" notifications state the time in UTC (U9).
-  2. Feedback "Submitted by" times are UTC.
+  2. (Withdrawn in S6: the feedback "Submitted by" times are IST, not UTC.)
   3. The Mark attendance card always reopens with everyone ticked, ignoring saved marks.
   4. The duplicate-feedback error is shown in a green (success-style) box.
   5. A 210-character activity title gives only "Something went wrong.".
@@ -184,6 +188,23 @@ See `documentation-analysis.md` §12.2 (17 items). Notable:
 ## Session log
 | Session | Date | Summary |
 |---|---|---|
+| S6 | 2026-10-06 | `sch-s6-transfers-promotion.capture.ts` runs green in about 24 s after S5.
+
+**Data created:**
+- Transfers:
+  - Vihaan approved to Docs Platinum Two (his parent now has children at two schools, D17).
+  - Riya rejected with a note.
+  - Omar cancelled.
+  - Ananya → Docs Bronze School left pending, showing both admin warnings.
+  - Incoming request for Sara left pending.
+- Academic year 2027-28 created and activated through the API, then 13 students promoted, 1 held back and 3 not changed.
+
+**Verification:**
+- All transfer notifications seen for both coordinators and the parent.
+- The S5 time-zone claim corrected against stored timestamps.
+- 19 screenshots reviewed.
+
+**Docs:** XFER-001..003, SADM-007 and STU-009 written. |
 | S5 | 2026-10-06 | `sch-s5-activities.capture.ts` runs green in about 38 s after S4 (snapshot restore).
 
 **Data created:**

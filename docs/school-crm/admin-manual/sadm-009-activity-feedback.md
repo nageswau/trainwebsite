@@ -38,7 +38,7 @@ When there are more than 25, click **Load more**.
 | Overall rating, School satisfaction | 1 – Poor to 5 – Excellent. |
 | Trainer / Counsellor | "Not recorded" when empty. |
 | Feedback, Suggestions | The coordinator's text ("None" when no suggestions). |
-| Submitted by | Coordinator and time (shown in UTC). |
+| Submitted by | Coordinator and time (IST, not labelled). |
 
 ## Expected Result
 You can review the quality of EduSphere sessions by school.

@@ -10,6 +10,7 @@ so the whole card fits); they are marked "(element shot)".
 | S3 — `sch-s3-access-team.capture.ts` (after S2 on the same DB) | same | 2026-10-06 |
 | S4 — `sch-s4-students.capture.ts` (after S3 on the same DB) | same | 2026-10-06 |
 | S5 — `sch-s5-activities.capture.ts` (after S4 on the same DB) | same | 2026-10-06 |
+| S6 — `sch-s6-transfers-promotion.capture.ts` (after S5 on the same DB; creates and activates academic year 2027-28 through the admin API) | same | 2026-10-06 |
 
 | Screenshot | Module | Feature | Step | Role | Description |
 |---|---|---|---|---|---|
@@ -107,3 +108,22 @@ so the whole card fits); they are marked "(element shot)".
 | [activities/19-daily-attendance-before-enrolment.png](screenshots/activities/19-daily-attendance-before-enrolment.png) | Activities | DOC-SCH-ACT-005 | Note | Teacher | None enrolled on the chosen past date |
 | [admin-schools/23-activity-feedback-list.png](screenshots/admin-schools/23-activity-feedback-list.png) | School administration | DOC-SCH-SADM-009 | 1 List | Overseas Admin | Activity Feedback across schools |
 | [admin-schools/24-activity-feedback-school-filter.png](screenshots/admin-schools/24-activity-feedback-school-filter.png) | School administration | DOC-SCH-SADM-009 | 2 Filter | Overseas Admin | Filtered to Docs Bronze School (none) |
+| [transfers/01-request-transfer-form.png](screenshots/transfers/01-request-transfer-form.png) | Transfers | DOC-SCH-XFER-001 | 1 Form | School Coordinator | Request a transfer (destination + reason) |
+| [transfers/02-transfer-requested.png](screenshots/transfers/02-transfer-requested.png) | Transfers | DOC-SCH-XFER-001 | 2 Pending | School Coordinator | "Transfer requested" badge on the profile |
+| [transfers/03-incoming-request-form.png](screenshots/transfers/03-incoming-request-form.png) | Transfers | DOC-SCH-XFER-002 | 1 Form | School Coordinator (Docs Platinum Two) | Request a student by Student ID |
+| [transfers/04-incoming-request-sent.png](screenshots/transfers/04-incoming-request-sent.png) | Transfers | DOC-SCH-XFER-002 | 2 Sent | School Coordinator (Docs Platinum Two) | Neutral confirmation |
+| [transfers/05-transfer-requests-pending.png](screenshots/transfers/05-transfer-requests-pending.png) | Transfers | DOC-SCH-XFER-003 | 1 Pending | School Coordinator | Pending requests with Cancel |
+| [transfers/06-transfer-cancelled.png](screenshots/transfers/06-transfer-cancelled.png) | Transfers | DOC-SCH-XFER-003 | 2 Cancelled | School Coordinator | "Request cancelled." |
+| [transfers/07-transfer-requests-all.png](screenshots/transfers/07-transfer-requests-all.png) | Transfers | DOC-SCH-XFER-003 | 3 All | School Coordinator | Approved / Rejected (admin note) / Cancelled / Pending |
+| [transfers/08-transfer-history-on-profile.png](screenshots/transfers/08-transfer-history-on-profile.png) | Transfers | DOC-SCH-XFER-003 | 5 History | School Coordinator (Docs Platinum Two) | Transfer history card at the new school |
+| [admin-schools/25-transfers-pending-queue.png](screenshots/admin-schools/25-transfers-pending-queue.png) | School administration | DOC-SCH-SADM-007 | 1 Queue | Overseas Admin | Pending transfer requests |
+| [admin-schools/26-transfer-warnings.png](screenshots/admin-schools/26-transfer-warnings.png) | School administration | DOC-SCH-SADM-007 | 2 Warnings | Overseas Admin | No staff school portfolio + pending parent invite warnings |
+| [admin-schools/27-transfer-approve-confirm.png](screenshots/admin-schools/27-transfer-approve-confirm.png) | School administration | DOC-SCH-SADM-007 | 3a Confirm | Overseas Admin | Approval consequences + Confirm approval |
+| [admin-schools/28-transfer-approved.png](screenshots/admin-schools/28-transfer-approved.png) | School administration | DOC-SCH-SADM-007 | 3a Approved | Overseas Admin | "Moved Docs Student Vihaan to Docs Platinum Two …" |
+| [admin-schools/29-transfer-reject-note.png](screenshots/admin-schools/29-transfer-reject-note.png) | School administration | DOC-SCH-SADM-007 | 3b Reject | Overseas Admin | Note for the requesting coordinator |
+| [admin-schools/30-transfers-all.png](screenshots/admin-schools/30-transfers-all.png) | School administration | DOC-SCH-SADM-007 | 4 All | Overseas Admin | Status filter All |
+| [students/23-promotion-all-in-current-year.png](screenshots/students/23-promotion-all-in-current-year.png) | Students & roster | DOC-SCH-STU-009 | 1 Before | School Coordinator | Every student "Already in 2026-27" (new year not opened) |
+| [students/24-promotion-list.png](screenshots/students/24-promotion-list.png) | Students & roster | DOC-SCH-STU-009 | 2 Select | School Coordinator | All selected, actions Promote/Hold back |
+| [students/25-promotion-confirm.png](screenshots/students/25-promotion-confirm.png) | Students & roster | DOC-SCH-STU-009 | 3 Confirm | School Coordinator | "Promote 16 and hold back 1 into 2027-28?" |
+| [students/26-promotion-result.png](screenshots/students/26-promotion-result.png) | Students & roster | DOC-SCH-STU-009 | 4 Result | School Coordinator | "Done for 2027-28: 13 promoted, 1 held back, 3 not changed, 0 skipped." |
+| [students/27-grade-history.png](screenshots/students/27-grade-history.png) | Students & roster | DOC-SCH-STU-009 | 5 Grade history | School Coordinator | Promoted Grade 8 → Grade 9 entry |

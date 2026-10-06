@@ -71,7 +71,7 @@ submitted.
 
 ## Tips
 - Leaving the page with unsaved text asks you to confirm *(from code)*.
-- The "Submitted by" time is shown in UTC, not IST.
+- The "Submitted by" time is Indian time (IST), although it is not labelled "IST".
 
 ## Related Features
 - [View activity feedback (Principal)](act-004-view-activity-feedback.md)

@@ -244,10 +244,10 @@ Features: DOC-SCH-ACT-001..005, DOC-SCH-SADM-009 (6).
   - Read the feedback as the Principal (ACT-004) and as OA (SADM-009, school filter).
   - Daily attendance as Docs Teacher A across three past days and today, covering the future-date note, the unsaved-changes prompt and the partial save.
 
-### S6 — Transfers and promotion
-Features: DOC-SCH-XFER-001..003, DOC-SCH-SADM-007, DOC-SCH-STU-009 (5).
-- [ ] **S6.1** Owner decision (2026-10-05): Claude writes the exact `POST /overseas-admin/academic-years` + `PATCH /overseas-admin/academic-years/{id}` (activate) calls, to be run as Overseas Admin; the **owner runs them** on the docs stack. Read `apps/api/app/api/admin.py:1574-1660` for the body shape first. STU-009 says the year is set up by EduSphere.
-- [ ] Standard loop.
+### S6 — Transfers and promotion — DONE 2026-10-06
+Features: DOC-SCH-XFER-001..003, DOC-SCH-SADM-007, DOC-SCH-STU-009 (5). Owner update 2026-10-06: Claude creates the academic year via the API inside the spec.
+- [x] **S6.1** Owner decision (2026-10-05): Claude writes the exact `POST /overseas-admin/academic-years` + `PATCH /overseas-admin/academic-years/{id}` (activate) calls, to be run as Overseas Admin; the **owner runs them** on the docs stack. Read `apps/api/app/api/admin.py:1574-1660` for the body shape first. STU-009 says the year is set up by EduSphere.
+- [x] Standard loop.
   - Sunrise CO requests an outgoing transfer to Docs Platinum Two. Docs Platinum Two CO requests an incoming Sunrise student by Student ID (neutral success).
   - Cancel one request.
   - OA approves one transfer (warnings visible: pending parent invite; destination with no staff school portfolio) and rejects one with a note.

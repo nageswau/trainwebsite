@@ -36,7 +36,7 @@ Use **Show**: **All**, **Awaiting feedback** or **Submitted**. When there are mo
 | Overall rating, School satisfaction | 1 – Poor to 5 – Excellent. |
 | Trainer / Counsellor | Who ran the session ("Not recorded" if empty). |
 | Feedback, Suggestions | The Coordinator's text. |
-| Submitted by | Coordinator and time (shown in UTC). |
+| Submitted by | Coordinator and time (IST, not labelled). |
 
 ## Expected Result
 You can follow how EduSphere activities went at your school.
