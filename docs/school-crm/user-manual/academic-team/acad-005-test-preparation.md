@@ -34,7 +34,7 @@ recorded." appears, the score shows under **Actual** and the status becomes `com
 |---|---|---|---|
 | Student | Pick from your portfolio. | Yes | Docs Student Ananya |
 | Test | IELTS or SAT. | Yes | IELTS |
-| Target score | Free text. | No | 7.0 |
+| Target score | Up to 20 characters. | No | 7.0 |
 | Actual score (row) | The score achieved. | To record | 7.5 |
 
 ## Expected Result

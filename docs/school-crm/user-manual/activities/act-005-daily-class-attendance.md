@@ -68,7 +68,7 @@ replaces them *(from code)*.
 
 ## Tips
 - The list is sorted by grade, then name.
-- Parents are not notified of daily attendance; they see the totals on their child's page *(from code; parent page verified in S10)*.
+- Parents are not notified of daily attendance; they see the totals on their child's page (the **Attendance** tile was seen on the parent pages in S10; the absence of a notification is from code).
 
 ## Related Features
 - [Mark attendance for an activity](act-002-mark-activity-attendance.md) (Coordinator, for events)

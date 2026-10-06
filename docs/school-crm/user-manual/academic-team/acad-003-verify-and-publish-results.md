@@ -44,8 +44,8 @@ None.
 ## Expected Result
 - Published results appear on the student's page, timeline ("Academic result published") and Digital Portfolio, and in
   school reports.
-- The student's parents are notified: "{Term} {Subject} result published for {name}" *(from code; parent notifications
-  are checked in S10)*.
+- The student's parents are notified: "{Term} {Subject} result published for {name}" *(from code; the documentation
+  parent did not receive one, so it was not seen)*.
 
 ## Validation Messages
 | Message | When |

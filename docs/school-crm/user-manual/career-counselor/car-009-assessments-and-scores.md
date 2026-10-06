@@ -47,5 +47,9 @@ Scores are stored for each student and appear in their 360° view (Skills).
 **Cause:** No score has been typed.
 **Resolution:** Enter at least one score.
 
+## Tips
+- Each assessment name can be used once per batch; add the date to the name for repeated tests (for example "Presentation – Oct").
+- Scores show in the student's 360° view on the **Skills** tab.
+
 ## Related Features
 - [Add sessions and take batch attendance](car-008-sessions-and-attendance.md)

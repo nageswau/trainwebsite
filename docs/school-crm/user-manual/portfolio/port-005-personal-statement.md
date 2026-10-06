@@ -28,7 +28,7 @@ appears.
 ## Fields
 | Field | Description | Required | Example |
 |---|---|---|---|
-| Personal statement | The student's own words, up to 4000 characters. | Yes | I enjoy building things that solve everyday problems… |
+| Personal statement | The student's own words, up to 4000 characters. Saving an empty box removes the statement (and it no longer counts towards completion). | No | I enjoy building things that solve everyday problems… |
 
 ## Expected Result
 The statement is shown in the portfolio and counts towards its completion.

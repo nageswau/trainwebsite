@@ -19,7 +19,7 @@ The dashboard opens after you sign in. Sidebar: **Dashboard**, **Skills**, **Fun
 ### Step 1 — Know the sections
 | Section | What you do there | Guide |
 |---|---|---|
-| Records | All your guidance sessions, counselling notes and recommendations; **Edit** a record | [Edit a record](../career-counselor/car-002-edit-a-record.md) |
+| Records | Every guidance session, counselling note and recommendation for students in your portfolio, including other counselors' records; **Edit** a record | [Edit a record](../career-counselor/car-002-edit-a-record.md) |
 | Add a record | Record a session, note or recommendation | [Add a record](../career-counselor/car-001-add-a-record.md) |
 | Career preferences | A student's interests, countries and courses | [Career preferences](../career-counselor/car-003-career-preferences.md) |
 | Student 360° view | Open a student's 360° view (and set their career goal) | [Career goal](../career-counselor/car-004-career-goal.md) |

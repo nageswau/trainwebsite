@@ -66,6 +66,10 @@ The batch exists, open for enrolment.
 **Cause:** That school has no students yet.
 **Resolution:** Ask the School Coordinator to add students first.
 
+## Tips
+- Set **Status** to **Open** to hide finished batches.
+- After creating a batch, enrol students on its page (see [Enrol students](car-007-enrolments.md)).
+
 ## Related Features
 - [Edit, close or reopen a skills batch](car-006-edit-close-reopen-batch.md)
 - [Enrol students](car-007-enrolments.md)

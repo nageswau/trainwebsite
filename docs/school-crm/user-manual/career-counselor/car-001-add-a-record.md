@@ -54,7 +54,7 @@ A **Recommendation** has notes only (no status or session fields).
 
 ## Expected Result
 - The record is listed in **Records** (newest first) and on the student's timeline and 360° view (Career Guidance).
-- Parents are notified, for example "Career guidance session recorded for {name}" *(from code; checked in S10)*.
+- Parents are notified, for example "Career guidance session recorded for {name}" *(from code; the documentation parent did not receive one, so it was not seen)*.
 
 ## Validation Messages
 | Message | When |

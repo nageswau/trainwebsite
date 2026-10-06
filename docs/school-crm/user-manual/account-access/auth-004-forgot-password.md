@@ -31,7 +31,7 @@ when the email is unknown, so nobody can use this page to find out who has an ac
 Open the reset link you receive. On **Choose a new password**, type a new password (10 to 128 characters) and click
 **Reset password**. You are taken to the sign-in page.
 
-![Choose a new password](../../screenshots/account-access/17-reset-password-form.png)
+![Choose a new password (the same form as for a first password)](../../screenshots/account-access/04-set-password-form.png)
 
 ### Step 3 — Sign in
 Sign in with your new password.
@@ -50,7 +50,7 @@ code)*.
 | Message | When |
 |---|---|
 | If an account exists for that email, we've sent instructions to reset the password. | Always, after **Send reset instructions**. |
-| Reset token is invalid or expired | The link is used, older than 30 minutes, or replaced by a newer one. |
+| Reset token is invalid or expired | The link was already used, is older than 30 minutes, or you changed your password after requesting it. |
 
 ## Common Errors
 **Problem:** No reset email arrives.
@@ -62,8 +62,9 @@ Teachers, Parents) or EduSphere's Overseas Admin (Coordinators and specialists).
 set-password link to accounts that never set a password.
 
 **Problem:** "Reset token is invalid or expired".
-**Cause:** More than 30 minutes passed, or you requested another link afterwards.
-**Resolution:** Request a new link and use the newest one straight away.
+**Cause:** More than 30 minutes passed, the link was already used, or you changed your password since.
+**Resolution:** Request a new link and use it straight away. (Requesting another link does not cancel earlier ones;
+each link works for 30 minutes.)
 
 ## Tips
 - If you know your current password and only want to change it, use

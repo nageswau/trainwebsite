@@ -13,7 +13,7 @@ school's **Global Education** page, and the student's parents are told.
 - A **Super Admin** gets "Workspace not found" on this page (see [Super Admin and the school screens](sadm-011-super-admin-access.md)).
 
 ## Prerequisites
-The student's school has a **Gold** or **Platinum** partnership (Application support).
+The student's school has an unexpired **Gold** or **Platinum** partnership (Application support).
 
 ## How to Access
 Sidebar > **School Applications**.
@@ -58,7 +58,9 @@ Click **Start application**. The message "Application started for {student}." ap
 ## Validation Messages
 | Message | When |
 |---|---|
-| This school's {Tier} partnership does not include Application support (requires Gold or higher). | The school is Bronze or Silver (or has no active tier). |
+| This school's {Tier} partnership does not include Application support (requires Gold or higher). | The school has a valid Bronze or Silver tier. |
+| This school has no active partnership tier. | The school has no tier. *(From code.)* |
+| This school's partnership expired on {date}. | The school's tier has expired. *(From code.)* |
 | An application for this university already exists for this student | Same student and university again. |
 | Choose a school, then a student, first. | Missing picks. *(From code.)* |
 

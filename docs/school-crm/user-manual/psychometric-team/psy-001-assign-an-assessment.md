@@ -38,8 +38,7 @@ appears and the assessment is listed with status `assigned`.
 | Assessment type | Name of the test. | Yes | Aptitude Test |
 
 ## Expected Result
-The parent is notified "Psychometric assessment assigned to {name}" *(from code; parent notifications are checked in
-S10)*. The assessment appears in the student's 360° view.
+The parent is notified "Psychometric assessment assigned to {name}" *(from code; the documentation parent did not receive one, so it was not seen)*. The assessment appears in the student's 360° view.
 
 ## Validation Messages
 | Message | When |
@@ -50,6 +49,10 @@ S10)*. The assessment appears in the student's 360° view.
 **Problem:** "No students in your portfolio yet. Contact your Overseas Admin." *(From code.)*
 **Cause:** No school is assigned to you.
 **Resolution:** Ask your Overseas Admin.
+
+## Tips
+- To assign many assessments at once, use [Bulk entry: assessments](psy-004-bulk-assessments.md).
+- The status changes to `completed` when you attach the report.
 
 ## Related Features
 - [Attach an assessment report](psy-002-attach-a-report.md)

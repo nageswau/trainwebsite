@@ -53,8 +53,8 @@ The internship is listed with a **Completed** badge, mentor, attendance and skil
 |---|---|
 | Certificate must be at most 5 MB | The file is too large. |
 | Certificate must be a PDF, JPEG or PNG file | Another file type. *(From code.)* |
-| A completed internship needs an end date / An internship marked completed needs an end date | Completion is Completed without an end date. *(From code.)* |
-| Company is required for an internship | No company. *(From code.)* |
+| An internship marked completed needs an end date | Completion is Completed without an end date (the hint "A completed internship needs an end date." is always shown under **Completion**). *(From code.)* |
+| Enter the company. | Company is empty. *(From code.)* |
 | Attendance must be a whole number from 0 to 100. | Invalid attendance. *(From code.)* |
 
 ![Certificate too large](../../screenshots/portfolio/10-certificate-too-big.png)

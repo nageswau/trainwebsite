@@ -306,16 +306,16 @@ Features: DOC-SCH-DASH-001..007, DOC-SCH-RPT-001..005, DOC-SCH-ENT-001..002, DOC
 - [x] Write `faq.md` and `troubleshooting.md`. Troubleshooting uses Problem / Possible Cause / Resolution / When to Contact Administrator. Include only behaviour observed in S2–S10.
 - [x] Write the indexes `user-manual/README.md` and `admin-manual/README.md`.
 
-### S12 — Final review
-- [ ] Re-check every feature file against:
+### S12 — Final review — DONE 2026-10-06
+- [x] Re-check every feature file against:
   - the code (baseline or recorded commit)
   - the permission matrix (§5)
   - the routes and APIs
   - the screenshots
   - this plan and the tracker
-- [ ] Run the link check. Detect duplicate screenshots with `sha256sum docs/school-crm/screenshots/*/*.png | sort | uniq -D -w64`.
-- [ ] Write `documentation-review-report.md`, with findings rated CRITICAL / HIGH / MEDIUM / LOW.
-- [ ] Mark a feature COMPLETE only when Code Reviewed = YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES and Reviewed = PASSED.
+- [x] Run the link check. Detect duplicate screenshots with `sha256sum docs/school-crm/screenshots/*/*.png | sort | uniq -D -w64`.
+- [x] Write `documentation-review-report.md`, with findings rated CRITICAL / HIGH / MEDIUM / LOW.
+- [x] Mark a feature COMPLETE only when Code Reviewed = YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES and Reviewed = PASSED.
 
 ---
 

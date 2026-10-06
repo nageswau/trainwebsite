@@ -75,7 +75,7 @@ School name, City, State and the Coordinator cannot be changed here.
 |---|---|
 | No changes to save. | You clicked **Save changes** without changing anything. |
 | No school found with that School ID | The School ID does not exist. |
-| This school's tier changed to {tier} since you looked it up. Look it up again before changing the tier. | Another admin changed the tier while you were editing. *(From code; not seen in the browser.)* |
+| Not saved: This school's tier changed to {tier} since you looked it up. Look it up again before changing the tier. | Another admin changed the tier while you were editing. *(From code; not seen in the browser.)* |
 
 ![No changes to save](../screenshots/admin-schools/11-edit-school-no-changes.png)
 

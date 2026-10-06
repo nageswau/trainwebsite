@@ -41,7 +41,7 @@ The parent sees this child on their **My children** dashboard.
 |---|---|
 | This parent is already linked to this student | The link exists already. |
 | Parent's email '{email}' belongs to an existing account that is not a Parent | The email belongs to another kind of account. |
-| parent_email must belong to an existing Parent account | No Parent account has this email. *(From code.)* |
+| Parent's email must belong to an existing Parent account | No Parent account has this email. *(From code.)* |
 
 ![Already linked](../../screenshots/students/10-link-parent-already-linked.png)
 

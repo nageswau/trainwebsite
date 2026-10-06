@@ -205,7 +205,7 @@ test("School CRM S3 account access and team", async ({ browser }) => {
     const dev = await page.getByRole("link", { name: "reset link" }).getAttribute("href");
     await page.goto(new URL(dev!, page.url()).pathname + new URL(dev!, page.url()).search);
     await page.fill("#reset-new-password", password("test"));
-    await shoot(page, ACC, "17-reset-password-form.png", opts);
+    // No shot: the reset form is byte-identical to 04-set-password-form.png (same page); AUTH-004 reuses 04.
     await page.getByRole("button", { name: "Reset password" }).click();
     await page.waitForURL(/\/overseas\/login/);
     await ctx.close();
@@ -250,7 +250,7 @@ test("School CRM S3 account access and team", async ({ browser }) => {
     await ctx.clearCookies({ name: "edusphere_access" });
     await page.goto("/school/teacher/dashboard");
     console.log(`VERIFY expired session: ${(await page.locator("body").innerText()).replace(/\s+/g, " ").slice(0, 300)}`);
-    await shoot(page, ACC, "23-session-expired.png", opts);
+    // No shot: identical to 12-access-signed-out.png; AUTH-007 reuses 12.
 
     await signIn(page, INVITES[0].email, "test", /\/school\/teacher\//);
     await page.getByRole("button", { name: "Sign out" }).click();

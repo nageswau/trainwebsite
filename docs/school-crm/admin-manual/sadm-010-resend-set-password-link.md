@@ -51,7 +51,9 @@ These messages come from the same Users page and were verified in the Agent CRM 
 ## Common Errors
 **Problem:** There is no **Re-send link** button on the row.
 **Cause:** The person has already set a password, or the account is deactivated.
-**Resolution:** Ask them to use **Forgot your password?** on the sign-in page.
+**Resolution:** If they already set a password, ask them to use **Forgot your password?** on the sign-in page. If the
+account is deactivated, reactivate it first and then re-send the link (**Forgot your password?** does nothing for a
+deactivated account).
 
 ## Tips
 - Principals, Teachers and Parents do not get set-password links from EduSphere. Their School Coordinator invites them

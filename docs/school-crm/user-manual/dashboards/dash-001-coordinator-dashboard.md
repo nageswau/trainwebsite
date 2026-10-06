@@ -35,9 +35,9 @@ pathway**. The definitions are in the table below.
 |---|---|
 | Total Students | Every student on your roster. |
 | Grade 8 … Grade 12 | Students in that grade (taken from the grade level, or from the Grade/Class text such as "Grade 9" or "Class 9"). Grades below 8 have no tile. |
-| Career Guidance Completed | Students with a completed career guidance session. |
+| Career Guidance Completed | Students with a guidance session marked Completed or Follow-up Required (or recorded before statuses were tracked). |
 | Psychometric Tests Completed | Students with a completed psychometric assessment. |
-| Individual Counselling Completed | Students with a completed counselling note. |
+| Individual Counselling Completed | Students with a counselling note marked Completed or Follow-up Required (or recorded before statuses were tracked). |
 | IELTS Training / SAT Preparation | Students with any IELTS / SAT test-preparation record. |
 | Foreign Language Students | Students with any language-class record. |
 | Digital Portfolios Created | Students whose Digital Portfolio has been started. |
@@ -58,8 +58,8 @@ You see up-to-date figures every time you open the page.
 None. The page is read-only.
 
 ## Common Errors
-**Problem:** A card says "This section couldn't load. Refresh to try again." *(From code.)*
-**Cause:** The figures could not be fetched.
+**Problem:** The whole page shows "Access unavailable" with an error message. *(From code.)*
+**Cause:** The dashboard figures could not be fetched.
 **Resolution:** Refresh the page. If it keeps happening, contact your EduSphere Overseas Admin.
 
 **Problem:** The **Results & guidance** card is missing.

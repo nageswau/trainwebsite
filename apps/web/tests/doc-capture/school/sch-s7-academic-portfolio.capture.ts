@@ -259,7 +259,8 @@ test("School CRM S7 academic team and digital portfolio", async ({ browser }) =>
   await expect(p.getByText("Personal statement saved.")).toBeVisible();
   await shoot(p, PF, "12-personal-statement-saved.png", { ...opts, center: p.getByText("Personal statement saved.") });
   console.log(`VERIFY portfolio after: ${(await card(p, "Digital Portfolio").innerText()).replace(/\s+/g, " ").slice(0, 400)}`);
-  await shoot(p, PF, "13-portfolio-complete-view.png", { ...opts, center: p.getByRole("heading", { name: "Digital Portfolio" }) });
+  // Centre on the entry sections, not the heading, so the shot differs from 12.
+  await shoot(p, PF, "13-portfolio-complete-view.png", { ...opts, center: p.locator("#pf-add-btn-certification") });
   await a1.ctx.close();
 
   // ===== Bronze school: portfolio locked by tier =====

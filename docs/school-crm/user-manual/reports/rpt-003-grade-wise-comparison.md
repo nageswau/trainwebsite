@@ -3,7 +3,7 @@
 > Doc ID: DOC-SCH-RPT-003 · Verified on 2026-10-06 against `main` @ `ce1f07c2` · Roles: School Coordinator, Principal
 
 ## Purpose
-Compare grades 9 to 12 (and the rest of the school) on readiness, assessments, counselling, skills and overseas
+Compare grades 8 to 12 (and the rest of the school) on readiness, assessments, counselling, skills and overseas
 applications.
 
 ## Who Can Use This Feature
@@ -37,17 +37,16 @@ Rows marked with an "Estimate:" line are approximations; the line says how they 
 | Skills development | Estimate: Students enrolled in a soft-skills or digital-skills batch. |
 | Global education interest | Estimate: Students with any overseas application. |
 | Application readiness | Estimate: Students whose application has reached university selection or later. |
-| University applications | Students with an overseas application. |
+| University applications | Students with an overseas application that is not withdrawn or rejected. |
 | Admissions | Students admitted to a university. |
 
 | Column | Students included |
 |---|---|
-| Grade 9 … Grade 12 | Students at that grade level. |
-| Other grades | Students at any other grade level (for example Grade 4–8). |
+| Grade 8 … Grade 12 | Students at that grade level. A column appears only when the school has students in it (the documentation school had no Grade 8). |
+| Other grades | Students at any other grade level (for example Grade 4–7). |
 | No grade | Students whose grade could not be worked out from Grade/Class. |
 
-*(Column grouping from code; the grade-8 column is shown only when the school has grade-8 students — VERIFICATION
-REQUIRED, the documentation school had none.)*
+*(Column grouping from code.)*
 
 ## Expected Result
 You can see which grades are behind on each service.

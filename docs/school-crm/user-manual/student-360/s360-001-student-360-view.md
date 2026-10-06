@@ -21,8 +21,8 @@ You can open the student.
 ## Steps
 
 ### Step 1 — Read the header
-The header shows the student's name (and Student ID for school roles), school, grade and date of birth, and **Career
-goal** (set by the Career Counselor).
+The header shows the student's name and school, plus Student ID, grade and date of birth for school roles, and the
+**Career goal** (set by the Career Counselor).
 
 ![360° view, school role](../../screenshots/student-360/01-overview-school-role.png)
 
@@ -46,7 +46,10 @@ colleagues who can see the student.
 | Academic Records, Attendance | ✔ | Restricted | Restricted | Restricted |
 | Examination Results (published only) | ✔ | ✔ | ✔ | ✔ |
 | Career Guidance, Psychometric Assessment, Certificates, Documents, Parent Communication | ✔ | ✔ | ✔ | ✔ |
-| Skills, Foreign Languages, Activities, Edusphere Programs | ✔ | ✔ (portfolio entries) | ✔ | ✔ (portfolio entries) |
+| Skills | ✔ | portfolio entries | ✔ batches + portfolio entries | portfolio entries |
+| Foreign Languages | ✔ | ✔ | portfolio list | portfolio list |
+| Activities | ✔ | portfolio entries | portfolio entries | portfolio entries |
+| Edusphere Programs | ✔ (incl. global education) | test prep, languages, internship | skills, languages, internship | languages, internship |
 | English Testing, Teacher Remarks | ✔ | ✔ | Restricted | Restricted |
 
 *(Tab-by-role details beyond the tabs shown in the screenshots are from code.)* A **Restricted** tab shows "This

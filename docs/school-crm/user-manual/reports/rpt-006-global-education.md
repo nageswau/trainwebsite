@@ -33,7 +33,7 @@ tracked yet** lists figures EduSphere does not record yet, with the reason.
 | Column | Description |
 |---|---|
 | Furthest stage | The furthest stage any of the student's applications has reached. |
-| Visa | Checklist, Documentation, Interview preparation, Tracking or Decision (— when none). |
+| Visa | The most advanced of Checklist, Documentation, Interview preparation, Tracking or Decision; **In progress** when a visa case exists at another stage; — when none. |
 | Applications | Number of linked applications. |
 
 ## Expected Result

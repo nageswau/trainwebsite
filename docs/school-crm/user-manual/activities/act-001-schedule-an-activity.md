@@ -42,7 +42,7 @@ and, for EduSphere activities that have taken place, **Give feedback**.
 | Entitlement category (optional) | None, Career seminar, Student career awareness session, Parent orientation or Monthly campus visit. Choose one for EduSphere activities; it counts toward your partnership usage and allows feedback later. | No | Career seminar |
 
 ## Expected Result
-- The activity appears in the list, and on your dashboard's **Upcoming activities** while it is in the future *(dashboard: from code, verified in S10)*.
+- The activity appears in the list, and on your dashboard's **Upcoming activities** while it is in the future (seen on the dashboard in S10).
 - **Every linked parent at your school** receives a notification "Upcoming session: {title}".
 
 ## Validation Messages

@@ -55,7 +55,7 @@ Each moved student's profile now has an entry in **Grade history**.
 | Grade level (filter) | All grades, one grade, or "Grade level not set". | No | Grade 8 |
 | Select all shown / row checkbox | Which students to change. | At least one | ✓ |
 | Action | Promote (grade + 1) or Hold back (same grade, new year). | Yes | Promote |
-| New label (optional) | The new class label for promoted students; must contain the new grade number. | No | Grade 9-B |
+| New label (optional) | The new class label for promoted students, up to 60 characters. It is saved exactly as typed, so include the new grade. Left empty, EduSphere updates the grade number in the current label. | No | Grade 9-B |
 
 ## Expected Result
 Selected students are in the new academic year, with their grade advanced (Promote) or kept (Hold back).
@@ -80,7 +80,7 @@ Reasons shown for students that were **not changed**:
 **Resolution:** Contact EduSphere.
 
 ## Tips
-- **Promotion clears each moved student's roll number** (Grade history keeps the previous section and roll number). Set
+- **Both Promote and Hold back clear the student's roll number** (Grade history keeps the previous section and roll number). Set
   new roll numbers on the roster afterwards.
 - At most 500 students can be changed at once.
 - Students who were not changed stay selected; fix the cause and run the review again.

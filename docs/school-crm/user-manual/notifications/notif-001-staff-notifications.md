@@ -30,8 +30,8 @@ transfer notice took the coordinator to **Transfers** and the unread count went 
 | Notification | Who gets it | Open goes to |
 |---|---|---|
 | Transfer approved: {student} moved to {school} | Coordinator of the student's school | Transfers |
-| Transfer of {student} to {school} was not approved | Coordinator of the student's school | Transfers |
-| {student} has joined {school} *(from code)* | Coordinator of the receiving school | Transfers |
+| Transfer of {student} to {school} was not approved ("Transfer request for Student ID {code} was not approved" when your school asked for the student) | The coordinator who filed the request | Transfers |
+| {student} has joined {school} *(from code)* | Coordinators of the receiving school | The student's page |
 | Your partnership is now {Tier} / "… Newly available: …" | Coordinators and Principals | Entitlements |
 | Your partnership changed from {A} to {B} / "These services are no longer available for new work: … Work already started for them can still be completed." | Coordinators and Principals | Entitlements |
 

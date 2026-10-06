@@ -23,7 +23,7 @@ Click **Sign out** at the bottom of the sidebar. You are taken to the EduSphere 
 If you return to a portal page after your session has ended, you see **Access unavailable — Not authenticated** with a
 **Return to login** button. Click it and sign in again.
 
-![Session ended](../../screenshots/account-access/23-session-expired.png)
+![Session ended (the same screen as after signing out)](../../screenshots/account-access/12-access-signed-out.png)
 
 ## Fields
 None.

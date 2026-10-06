@@ -57,8 +57,8 @@ students assigned to you yet."
 [Forgot your password?](auth-004-forgot-password.md). Otherwise ask your School Coordinator to invite you again.
 
 **Problem:** You never received the invitation email.
-**Cause:** The email went to spam, or the school's email could not be sent (the Coordinator then sees "share the link
-manually").
+**Cause:** The email went to spam, or the school's email could not be sent. (Invitations sent from the **Team** page
+show the Coordinator "share the link manually" when the email fails; invitations sent from a student's record do not.)
 **Resolution:** Ask your School Coordinator.
 
 ## Tips

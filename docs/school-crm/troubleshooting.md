@@ -25,8 +25,8 @@
 - **When to Contact Administrator:** Nothing arrives after 10 minutes.
 
 ### "Reset token is invalid or expired"
-- **Possible Cause:** The link is older than 30 minutes (reset) or 72 hours (first password), was already used, or a
-  newer link was sent.
+- **Possible Cause:** The link is older than 30 minutes (reset) or 72 hours (first password), was already used, or (for
+  a first-password link only) a newer link was sent. Requesting another reset link does not cancel earlier ones.
 - **Resolution:** Request a new link and use the newest one straight away.
 - **When to Contact Administrator:** A first-password link has expired; the Overseas Admin re-sends it.
 
@@ -53,7 +53,8 @@
 ## Dashboards and pages
 
 ### "This section couldn't load. Refresh to try again." *(from code)*
-- **Possible Cause:** A temporary problem fetching figures.
+- **Possible Cause:** A temporary problem fetching figures (Principal dashboard, Reports, School Analytics; on the
+  Coordinator dashboard the whole page shows "Access unavailable" instead).
 - **Resolution:** Refresh the page.
 - **When to Contact Administrator:** It persists for more than an hour.
 

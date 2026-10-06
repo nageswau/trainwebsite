@@ -29,7 +29,7 @@ Click **Add student**. The message confirms the student and tells you what happe
 
 | Message | Meaning |
 |---|---|
-| "{Name} added to the roster. Invite email sent to {email}." | The parent had no account; they received an invitation. |
+| "{Name} added to the roster. Invite email sent to {email}." | The parent had no account, so an invitation was created. This message appears even if the email could not be sent; if the parent receives nothing, contact your Overseas Admin. |
 | "{Name} added to the roster. Parent linked immediately (they already had an account)." | The parent already had a Parent account; they can see this child now. |
 | "{Name} added to the roster." | No parent email was given. |
 

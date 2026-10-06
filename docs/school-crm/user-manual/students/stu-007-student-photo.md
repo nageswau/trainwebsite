@@ -44,7 +44,7 @@ The photo appears on the student's page for every role that can see the student.
 |---|---|
 | Photo must be a JPEG or PNG image | The file is another type (for example a PDF). |
 | Photo must be at most 2 MB | The file is too large. |
-| photo could not be read as a valid JPEG or PNG image | The file is damaged or not really an image. *(From code.)* |
+| Photo could not be read as a valid JPEG or PNG image | The file is damaged or not really an image. *(From code.)* |
 
 ![Photo too large](../../screenshots/students/17-photo-too-big.png)
 

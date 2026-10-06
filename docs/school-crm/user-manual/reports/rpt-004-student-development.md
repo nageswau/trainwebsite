@@ -55,12 +55,14 @@ The lists update for the thresholds you entered. The thresholds are in the page 
 ![Threshold error](../../screenshots/reports/07-threshold-error.png)
 
 ## Common Errors
-**Problem:** The lists are empty or show "No published results yet." *(from code)*.
+**Problem:** **Academic performance** shows "No published results yet." and the lists show "No students below 40%." /
+"No students at or above 85% yet." *(from code)*.
 **Cause:** No results have been published.
 **Resolution:** Ask the Academic Team to verify and publish results.
 
 ## Tips
-- In the lists, "Grade other" means a grade outside 9–12 (for example a Grade 6 student).
+- In the lists, "Grade other" means a grade outside 8–12 (for example a Grade 6 student); "Grade unspecified" means no
+  grade could be worked out *(from code)*.
 - Each list names at most 50 students ("Showing the first N." *(from code)*).
 - The thresholds are not saved. They reset to 40 and 85 when you open Reports from the sidebar.
 

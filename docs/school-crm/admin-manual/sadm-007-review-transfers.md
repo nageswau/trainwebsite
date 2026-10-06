@@ -63,7 +63,8 @@ Set **Status** to **All**, **Approved**, **Rejected** or **Cancelled** to see de
   - The student moves; their teacher, section and roll number are cleared, and unpublished results are withdrawn.
   - Both coordinators and the linked parents are notified.
   - Parents keep access to their child.
-- **Rejected:** nothing changes; the requesting coordinator is notified with your note.
+- **Rejected:** nothing changes; the requesting coordinator gets an in-app notice (without your note), and your note
+  appears with the request on their **Transfers** page ("Admin note: …").
 
 ## Validation Messages
 | Message | When |

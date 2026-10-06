@@ -36,7 +36,8 @@ Set **Status** to **All** (or Approved, Rejected, Cancelled). A rejected request
 ### Step 4 — Notifications
 Your **Notifications** page tells you about each decision:
 - "Transfer approved: {student} moved to {school}"
-- "Transfer of {student} to {school} was not approved" ("An admin reviewed the request and did not approve it. Nothing has changed.")
+- "Transfer of {student} to {school} was not approved" ("An admin reviewed the request and did not approve it. Nothing has changed.");
+  for a request to bring a student in: "Transfer request for Student ID {code} was not approved"
 - At the receiving school: "{student} has joined {school}"
 
 ### Step 5 — After an approved transfer

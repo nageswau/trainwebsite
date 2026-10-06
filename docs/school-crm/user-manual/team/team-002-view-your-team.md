@@ -51,6 +51,8 @@ None.
 - When you are the only account, the page says "It's just you so far. Invite your Principal, teachers, or parents to
   give them their own login." *(From code.)*
 - The tables have no search or sorting; they list everyone at once.
+- An invitation whose **Expires** date has passed stays in **Pending invites** but can no longer be accepted; invite the
+  person again.
 
 ## Related Features
 - [Invite a Principal, Teacher or Parent](team-001-invite-a-team-member.md)

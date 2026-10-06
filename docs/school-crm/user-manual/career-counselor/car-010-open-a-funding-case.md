@@ -53,5 +53,9 @@ The case is tracked; the parent is notified "Funding support update for {name}" 
 **Cause:** Only one open case per support type per student.
 **Resolution:** Click **Edit** on the existing case in **Open cases**.
 
+## Tips
+- A student can have open cases of different support types at the same time, but only one of each type.
+- Parents see every case on their child's page (seen in S10; see [Your child's profile and progress](../parent/par-001-child-profile-and-progress.md)).
+
 ## Related Features
 - [Move a funding case through its stages or close it](car-011-update-or-close-a-funding-case.md)

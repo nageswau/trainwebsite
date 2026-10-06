@@ -9,7 +9,8 @@ Assign assessments (and optionally record their results) for many students at on
 **Psychometric Team.**
 
 ## Prerequisites
-At least one school in your school portfolio.
+At least one school in your school portfolio. Each student's school needs an active partnership (Psychometric test is
+in every tier from Bronze); rows for other schools are rejected with the partnership message.
 
 ## How to Access
 Sidebar > **Dashboard** > **Bulk entry — assessments (CSV)**.
@@ -47,6 +48,10 @@ Each added row is an assessment; parents are notified after the upload *(from co
 
 ## Common Errors
 See the results page: [Bulk entry: results](../academic-team/acad-004-bulk-results.md#common-errors).
+
+## Tips
+- In the CSV, separate list items with `;`, not commas.
+- Rows that were added are kept even when other rows are rejected; fix the rejected rows and upload only those again.
 
 ## Related Features
 - [Assign a psychometric assessment](psy-001-assign-an-assessment.md)

@@ -97,8 +97,8 @@ again." *(From code; not seen in the browser.)*
 - Setting a tier here does not send the school a "tier changed" notice; only later changes do.
 - **School name**, **City** and **State** cannot be changed after the school is created. Check them before you click
   the button.
-- VERIFICATION REQUIRED: whether this form stops you creating two schools with the same name and city (the CSV upload
-  does).
+- This form does not stop you creating a second school with the same name and city (the CSV upload does) *(from
+  code)*. Search the list first.
 
 ## Related Features
 - [Partner Schools list](sadm-001-partner-schools-list.md)
