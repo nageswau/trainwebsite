@@ -13,7 +13,7 @@ from app.api.bdm import LIMIT, OFFSET
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import BdmTask, User
-from app.schemas import BdmTaskBucket, BdmTaskCreate, BdmTaskKind, BdmTaskOrgType, BdmTaskOut, BdmTaskPage
+from app.schemas import BdmAppointmentReason, BdmTaskBucket, BdmTaskCreate, BdmTaskKind, BdmTaskOrgType, BdmTaskOut, BdmTaskPage, BdmTaskUpdate
 from app.services import bdm_organizations as org_svc
 from app.services import bdm_tasks as svc
 from app.services.bdm import bdm_context
@@ -72,3 +72,51 @@ async def create_task(payload: BdmTaskCreate, user: User = Depends(get_current_u
     await db.commit()
     svc.log("bdm_task_created", user, task.id, kind=task.kind)
     return await svc.one(db, user, task.id, today)
+
+
+@router.patch("/{task_id}", response_model=BdmTaskOut)
+async def update_task(task_id: UUID, payload: BdmTaskUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """§6.3. Values equal to the stored ones are not changes (no audit, no updated_at bump); only a changed due date must be today or later."""
+    task = await svc.load_for_write(db, user, task_id, "update")
+    svc.require_open(task)
+    svc.require_manual(task)
+    today = today_ist(await db_now(db))
+    changes = payload.model_dump(exclude_unset=True)
+    changed = sorted(k for k, v in changes.items() if getattr(task, k) != v)
+    if "due_on" in changed and changes["due_on"] < today:
+        raise HTTPException(422, svc.PAST_DUE)
+    for key in changed:
+        setattr(task, key, changes[key])
+    if changed:
+        svc.audit(db, user, "update", task.id, {"fields": changed})
+    await db.commit()
+    if changed:
+        svc.log("bdm_task_updated", user, task.id, fields=changed)
+    return await svc.one(db, user, task.id, today)
+
+
+@router.post("/{task_id}/complete", response_model=BdmTaskOut)
+async def complete_task(task_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Any open item of the assignee, outcome follow-ups included (F2). A second complete meets `done` under the lock -> 409."""
+    task = await svc.load_for_write(db, user, task_id, "complete")
+    svc.require_open(task)
+    now = await db_now(db)
+    task.status, task.completed_at = "done", now
+    svc.audit(db, user, "complete", task.id, {"source": task.source})
+    await db.commit()
+    svc.log("bdm_task_completed", user, task.id, source=task.source)
+    return await svc.one(db, user, task.id, today_ist(now))
+
+
+@router.post("/{task_id}/cancel", response_model=BdmTaskOut)
+async def cancel_task(task_id: UUID, payload: BdmAppointmentReason, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Manual items only (F3); the reason is kept and never logged."""
+    task = await svc.load_for_write(db, user, task_id, "cancel")
+    svc.require_open(task)
+    svc.require_manual(task)
+    now = await db_now(db)
+    task.status, task.cancelled_at, task.cancel_reason = "cancelled", now, payload.reason
+    svc.audit(db, user, "cancel", task.id)
+    await db.commit()
+    svc.log("bdm_task_cancelled", user, task.id)
+    return await svc.one(db, user, task.id, today_ist(now))

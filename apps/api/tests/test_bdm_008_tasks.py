@@ -115,3 +115,77 @@ async def test_create_cap(client, db_session, monkeypatch):
     await create_task(client)
     again = await client.post(TASKS, json={"kind": "task", "title": "x", "due_on": ist_day().isoformat()})
     assert again.status_code == 409
+
+
+def url(t: dict, action: str = "") -> str:
+    return f"{TASKS}/{t['id']}{'/' + action if action else ''}"
+
+
+@pytest.mark.asyncio
+async def test_edit_changes_only_what_differs(client, db_session):
+    await bdm_with_org(client, db_session)
+    t = await create_task(client, notes="old")
+    same = (await client.patch(url(t), json={"title": t["title"]})).json()
+    assert same["updated_at"] == t["updated_at"]  # nothing changed: no bump, no audit
+    moved = (await client.patch(url(t), json={"due_on": ist_day(3).isoformat(), "notes": None})).json()
+    assert (moved["due_on"], moved["notes"]) == (ist_day(3).isoformat(), None)
+    rows = (await db_session.scalars(select(AuditLog.metadata_json).where(AuditLog.entity_id == t["id"], AuditLog.action == "bdm_task.update"))).all()
+    assert rows == [{"fields": ["due_on", "notes"]}]
+    past = await client.patch(url(t), json={"due_on": ist_day(-1).isoformat()})
+    assert (past.status_code, past.json()["detail"]) == (422, "Due date can't be in the past")
+
+
+@pytest.mark.asyncio
+async def test_unchanged_past_due_date_is_accepted(client, db_session):
+    """Review Focus 4: an overdue task's title can still be corrected."""
+    _, bdm, _ = await bdm_with_org(client, db_session)
+    seeded = await insert_task(db_session, bdm.id, due_on=ist_day(-5))
+    fixed = await client.patch(f"{TASKS}/{seeded.id}", json={"title": "Call back", "due_on": ist_day(-5).isoformat()})
+    assert fixed.status_code == 200 and fixed.json()["title"] == "Call back"
+
+
+@pytest.mark.asyncio
+async def test_complete_then_everything_is_final(client, db_session):
+    """AC3: done is kept and final."""
+    await bdm_with_org(client, db_session)
+    t = await create_task(client)
+    done = (await client.post(url(t, "complete"))).json()
+    assert done["status"] == "done" and done["completed_at"] and not any(done["permissions"].values())
+    for method, path, body in (("post", "complete", None), ("post", "cancel", {"reason": "x"}), ("patch", "", {"title": "y"})):
+        refused = await client.request(method.upper(), url(t, path), json=body)
+        assert (refused.status_code, refused.json()["detail"]) == (409, "This task is already done")
+
+
+@pytest.mark.asyncio
+async def test_cancel_needs_a_reason_and_is_kept(client, db_session):
+    await bdm_with_org(client, db_session)
+    t = await create_task(client)
+    assert (await client.post(url(t, "cancel"), json={"reason": "  "})).status_code == 422
+    c = (await client.post(url(t, "cancel"), json={"reason": "Principal on leave"})).json()
+    assert (c["status"], c["cancel_reason"]) == ("cancelled", "Principal on leave") and c["cancelled_at"]
+    refused = await client.post(url(t, "complete"))
+    assert (refused.status_code, refused.json()["detail"]) == (409, "This task was cancelled")
+
+
+@pytest.mark.asyncio
+async def test_outcome_follow_up_is_complete_only(client, db_session):
+    """AC6 / F2."""
+    _, _, org = await bdm_with_org(client, db_session)
+    a = await completed(client, db_session, org, next_follow_up_on=ist_day(1).isoformat())
+    task = {"id": a["follow_up"]["id"]}
+    for method, path, body in (("patch", "", {"title": "y"}), ("post", "cancel", {"reason": "x"})):
+        refused = await client.request(method.upper(), url(task, path), json=body)
+        assert (refused.status_code, refused.json()["detail"]) == (409, "Change this follow-up from its meeting report")
+    assert (await client.post(url(task, "complete"))).json()["status"] == "done"
+
+
+@pytest.mark.asyncio
+async def test_no_task_text_in_audit_or_logs(client, db_session, caplog):
+    """AC8."""
+    await bdm_with_org(client, db_session)
+    caplog.set_level(logging.INFO, logger="app.bdm")
+    t = await create_task(client, title="SECRET-TITLE", notes="SECRET-NOTES")
+    await client.patch(url(t), json={"title": "SECRET-TITLE-2"})
+    await client.post(url(t, "cancel"), json={"reason": "SECRET-REASON"})
+    metadata = (await db_session.scalars(select(AuditLog.metadata_json).where(AuditLog.entity_id == t["id"]))).all()
+    assert len(metadata) == 3 and "SECRET" not in repr(metadata) and "SECRET" not in caplog.text
