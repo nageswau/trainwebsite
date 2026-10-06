@@ -129,6 +129,8 @@ async def receive_university_email(payload: InboundUniversityEmailIn, x_webhook_
 async def list_university_email(match_status: str | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if user.role not in {"super_admin", "overseas_admin", "counselor", "university_rep"}:
         raise HTTPException(403, "Overseas operations role required")
+    if user.role != "super_admin" and user.division != "overseas":
+        raise HTTPException(403, "Wrong EduSphere division")  # tel-017 (DEC-SCOPE-076): a counselor can be IT now
     stmt = select(InboundUniversityEmail).order_by(InboundUniversityEmail.received_at.desc())
     if match_status:
         stmt = stmt.where(InboundUniversityEmail.match_status == match_status)
@@ -161,6 +163,8 @@ async def list_university_email(match_status: str | None = None, user: User = De
 async def manually_match_email(email_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if user.role not in {"super_admin", "overseas_admin", "counselor"}:
         raise HTTPException(403, "Overseas operations role required")
+    if user.role != "super_admin" and user.division != "overseas":
+        raise HTTPException(403, "Wrong EduSphere division")  # tel-017 (DEC-SCOPE-076): a counselor can be IT now
     email = await db.get(InboundUniversityEmail, email_id)
     application = await db.get(OverseasApplication, uuid_reference(payload.get("application_id"), "application reference"))
     if not email or not application:

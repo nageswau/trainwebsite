@@ -791,6 +791,18 @@ Any write by a non-owner (manager, super_admin, other BDM) is 403 after the 404 
 
 **Addendum on `GET /bdm/organizations` and `GET /bdm/organizations/{id}` (bdm-002 contract):** `last_meeting_at` / `next_meeting_at` are now computed (bdm-006, spec §5.6): max `starts_at` of completed, min `starts_at` of open future appointments across all BDMs at that organization. Names, types (`string | null`) and nullability are unchanged.
 
+**Addendum, 2026-10-06 (`bdm-008`, `DEC-SCOPE-075`) — follow-ups and tasks.** Design spec `docs/superpowers/specs/2026-10-06-bdm-008-follow-ups-design.md` §6; migration `0077_bdm_tasks_followups`. Scope: `bdm` own (assignee = caller), `bdm_manager` team, `super_admin` all, any other role 403. Every `{id}` outside scope → 404 "Task not found". Today = the IST date of the database clock.
+
+| Method/Path | Auth | Roles | Notes / status codes |
+|---|---|---|---|
+| `GET /bdm/tasks` | Authenticated | `bdm`, `bdm_manager`, `super_admin` | `bucket` = `today` (default) / `overdue` / `upcoming` / `open` / `done` / `cancelled`; `kind` (`follow_up` / `task`); `org_type` (7 types or `none`); `organization_id`; `bdm_user_id` (managers only; a `bdm` → 422); `limit` 1–100 (50), `offset`. Response `{items, total, limit, offset, today, counts: {buckets: {today, overdue, upcoming, done, cancelled}, by_org_type: [{org_type, count}]}}` — bucket counts use every filter but `bucket`, type counts every filter but `org_type` (non-zero only). Order: open by `due_on, created_at`; done by `completed_at desc`; cancelled by `cancelled_at desc` |
+| `POST /bdm/tasks` | Authenticated | `bdm` | 201 `BdmTaskOut`. Body (`extra=forbid`): `kind`, `title` (1–200, one line), `due_on` (YYYY-MM-DD, ≥ IST today, else 422), `organization_id?` (scope 404; not assigned 403; archived 422), `notes?` (≤ 2000). Server sets `source=manual`, assignee, `open`. 409 after 200 creates in an IST day |
+| `PATCH /bdm/tasks/{id}` | Authenticated | `bdm` (assignee) | `title` / `notes` (null clears) / `due_on` (a changed one ≥ IST today). Unchanged values are not changes. 409 when not open, or not manual ("Change this follow-up from its meeting report") |
+| `POST /bdm/tasks/{id}/complete` | Authenticated | `bdm` (assignee) | No body. Any open item (outcome follow-ups included). 409 when already done / cancelled |
+| `POST /bdm/tasks/{id}/cancel` | Authenticated | `bdm` (assignee) | `{reason}` (≤ 500, required). Manual items only (409 otherwise) |
+
+Write order: scope 404 → lock (an outcome follow-up's appointment first) → assignee 403 ("Only the assigned BDM can change this task", logged) → state 409 → source 409 → 422. `BdmTaskOut`: `id, kind, title, notes, due_on, status, source, overdue, organization {id, code, name, org_type, archived} or null, appointment {id, code} or null, assignee {id, full_name, active}, completed_at, cancelled_at, cancel_reason, created_at, updated_at, permissions {can_edit, can_complete, can_cancel}`. **Changed:** `POST /bdm/organizations/{id}/archive` also cancels the organization's open items (reason "Organization archived"); its audit metadata gains `tasks_cancelled` when > 0; the response is unchanged. Unchanged: the appointment's `follow_up {id, due_on, status}`.
+
 ---
 
 ## 12C. Telecaller roles (`tel-001`) — addendum, 2026-10-05
@@ -834,9 +846,21 @@ is one sentence naming the field (e.g. "Name is required", "Source: Input should
 Every write adds an `AuditLog` row (`telecaller.product_create|product_update|campaign_create|campaign_update`, entity `tel_product` /
 `tel_campaign`, `metadata_json.fields` = the changed field names only).
 
-## 12E. Lead record (`tel-003`) — addendum, 2026-10-06
+## 12E. IT counselor (`tel-017`) — addendum, 2026-10-06
 
-`DEC-SCOPE-075`; design spec `docs/superpowers/specs/2026-10-06-tel-003-lead-record-design.md` §4; migration `0077_enquiry_lead_record`.
+`DEC-SCOPE-076`; design spec `docs/superpowers/specs/2026-10-06-tel-017-it-counselor-design.md`; `RBAC_MATRIX.md` §2.16. No new endpoint
+and no response-shape change.
+
+| Endpoint | Change |
+|---|---|
+| `POST /admin/users` | `role: "counselor"` is now valid with `division: "it"` (was `422` "Role is not valid for the selected division") |
+| `POST /workflows/overseas/applications`, `PATCH /workflows/overseas/applications/{id}` | A supplied `counselor_id` must be a `counselor` in the `overseas` division, else `422` "Choose an overseas counselor" (an unknown id used to fail with `500`); `null` still clears it |
+| `GET /portal/it/counselor/{dashboard,leads}` | New sections for an IT counselor (the existing `PortalPayload` shape). Any other section → `404` "Workspace not found" |
+| `GET /overseas-admin/school-students/lookup`, `POST /overseas-admin/school-students/{id}/applications`, `GET /overseas-admin/school-applications`, `GET /lookups/{overseas-students,overseas-applications,schools,school-students}`, `GET /inbound/university-email`, `PATCH /inbound/university-email/{id}/match` | A caller outside the `overseas` division now gets `403` "Wrong EduSphere division" after the role check (`super_admin` exempt). Every role these routes already admitted is overseas-only, so their behaviour is unchanged |
+
+## 12F. Lead record (`tel-003`) — addendum, 2026-10-06
+
+`DEC-SCOPE-077`; design spec `docs/superpowers/specs/2026-10-06-tel-003-lead-record-design.md` §4; migration `0078_enquiry_lead_record`.
 Roles and scope are unchanged (no `RBAC_MATRIX.md` change). **Breaking:** `GET /admin/leads` is now a page; every in-repo consumer was
 updated in the same item (§12 bdm-017's "500-row cap unchanged" no longer holds).
 

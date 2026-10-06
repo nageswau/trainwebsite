@@ -90,6 +90,7 @@ Per-role navigation structure derived from `SCREEN_CATALOG.md`. Applies the conf
 
 - `SCR-ADM-001` — /it/admin (Operations Dashboard) — IT Admin landing dashboard.
 - `SCR-ADM-002` — /it/admin/users, /it/admin/users/[id] — User/Student/Trainer directory and detail.
+- /it/admin/counselors — *(tel-017, `DEC-SCOPE-076`)* the IT division's counselors (same directory as Trainers); Create user offers Counselor.
 - `SCR-ADM-003` — /it/admin/courses — Course management.
 - `SCR-ADM-004` — /it/admin/leads (Enquiries) — Enquiry/lead list synced via the CRM webhook.
 - `SCR-ADM-005` — /it/admin/batches, /it/admin/batches/[id] — Batch creation and trainer assignment.
@@ -142,6 +143,14 @@ Per-role navigation structure derived from `SCREEN_CATALOG.md`. Applies the conf
 - `SCR-CNS-002` — /overseas/counselor/students — [base] Assigned-student list.
 - `SCR-CNS-003` — /overseas/counselor/appointments — [base] Appointment management.
 - `SCR-SEC-001` — /account/privacy (Data export/delete request) — GDPR self-service export/delete request.
+
+## IT Counselor *(added 2026-10-06, `DEC-SCOPE-076`, `tel-017`)*
+
+Role `counselor` in division `it`; signs in at `/it/login`; lands on `/it/counselor/dashboard`. Sidebar: Dashboard · Leads (C1; tel-016 adds
+Appointments, tel-018 the student link). The overseas counselor pages show "Role/division mismatch" with a link back to the IT dashboard.
+
+- /it/counselor/dashboard — leads routed to you, new leads, the five most recent.
+- /it/counselor/leads — My Leads: IT enquiries whose owner is this counselor.
 
 ## Agent
 
@@ -261,6 +270,7 @@ Signs in at `/it/login` (College BDM, division `it`) or `/overseas/login` (Agent
 - /bdm/profile — read-only §1 profile.
 - /bdm/organizations — Organization CRM (`bdm-002`): every organization of the BDM's module, filters (name/code, city, type, assigned to me, show archived); `/bdm/organizations/new` (add, ≥1 contact, duplicate warning); `/bdm/organizations/{id}` (details, contacts, edit/archive when assigned). Sidebar: My Day · Organizations · Appointments · Travel · Notifications · Profile.
 - /bdm/appointments — Appointments (`bdm-006`): the BDM's own, filters date range (default today onward), status, type, organization; `/bdm/appointments/new` (book; `?organization=` preselects, opened by "Add appointment" on an assigned, non-archived organization); `/bdm/appointments/{id}` (details, outcome, history; edit, confirm, reschedule, cancel, no-show, complete).
+- /bdm/follow-ups — Follow-ups and tasks (`bdm-008`): tabs Today / Overdue / Upcoming / Done / Cancelled with counts (IST dates), organization-type chips that filter, kind filter; add a follow-up or task, Done (then "Log activity" / "Book appointment"), Edit and Cancel (reason) on manual items. Nav item "Follow-ups" after Appointments. The organization profile shows its open items ("Follow-ups & tasks"; Add task when assigned).
 - /bdm/notifications — the BDM's in-app notices (bdm-010 T15; nav item "Notifications" with the unread count on every BDM page).
 - /bdm/travel — My trips (bdm-010): list with an approval-status filter; /bdm/travel/new (draft); /bdm/travel/[id] (actions, details, edit while draft/rejected, costs and expenses, remarks). Nav item "Travel".
 
@@ -272,6 +282,7 @@ Division `global`; signs in at `/admin/login` (heading "Administration sign-in")
 - /bdm/manager/team — the BDMs who report to this manager (paged).
 - /bdm/manager/organizations — the team's organizations (`bdm-002`), read-only except reassign and restore; `/bdm/manager/organizations/{id}`. Sidebar: Dashboard · Team · Organizations · Appointments · Approvals · Notifications.
 - /bdm/manager/appointments — the team's appointments (`bdm-006`), read-only with a BDM filter; `/bdm/manager/appointments/{id}` (details and history, no actions).
+- /bdm/manager/follow-ups — the team's follow-ups and tasks (`bdm-008`), read-only with a BDM filter; nav item "Follow-ups" after Appointments.
 - /bdm/manager/notifications — the manager's in-app notices, e.g. "Travel approval needed" (bdm-010 T15; nav item with the unread count).
 - /bdm/manager/approvals — trips waiting for this manager's approval (bdm-010; nav item "Approvals"); /bdm/manager/trips/[id] — read-only trip with Approve / Reject (reason required).
 

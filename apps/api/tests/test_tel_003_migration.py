@@ -1,7 +1,7 @@
-"""tel-003 -- migration 0077_enquiry_lead_record (spec §3; AC1, AC4, AC5, L1, L2). The backfill, the round trip and the downgrade
+"""tel-003 -- migration 0078_enquiry_lead_record (spec §3; AC1, AC4, AC5, L1, L2). The backfill, the round trip and the downgrade
 refusal run in a throwaway database (the bdm-017 pattern); a downgrade never runs against the shared test database.
 
-0001 builds a fresh database from the current models, which already carry the new columns, so each test first downgrades to 0076 to
+0001 builds a fresh database from the current models, which already carry the new columns, so each test first downgrades to 0077 to
 reach the real pre-tel-003 shape, inserts legacy rows there, and then runs the real upgrade."""
 
 import asyncio
@@ -22,11 +22,11 @@ from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_tel_003_migration_0077", VERSIONS / "0077_enquiry_lead_record.py")
+_spec = importlib.util.spec_from_file_location("_tel_003_migration_0078", VERSIONS / "0078_enquiry_lead_record.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0076_tel_catalogue", "0077_enquiry_lead_record"
+BASE, HEAD = "0077_bdm_tasks_followups", "0078_enquiry_lead_record"
 NEW_COLUMNS = {"lead_code", "phone_normalized", "whatsapp_number", "city", "state", "qualification", "passing_year", "institution",
                "product_id", "campaign_id", "telecaller_user_id", "priority", "stage_changed_at"}
 BDM_017 = {"bdm_organization_id", "bdm_user_id", "converted_user_id", "converted_at", "converted_by_user_id"}
@@ -38,7 +38,7 @@ def _config() -> Config:
     return cfg
 
 
-def test_migration_chains_after_0076_tel_catalogue_and_is_the_single_head():
+def test_migration_chains_after_0077_bdm_tasks_followups_and_is_the_single_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     assert ScriptDirectory.from_config(_config()).get_heads() == [HEAD]
 
@@ -99,7 +99,7 @@ ROWS = (
 
 @pytest.fixture
 def legacy_db():
-    """A fresh database at 0076_tel_catalogue (the real pre-tel-003 shape) holding three legacy enquiries."""
+    """A fresh database at 0077_bdm_tasks_followups (the real pre-tel-003 shape) holding three legacy enquiries."""
     cfg = _config()
     original = settings.database_url
     name = f"tel003_migration_{uuid.uuid4().hex[:8]}"
@@ -122,7 +122,7 @@ def _leads(url):
                      "FROM enquiries ORDER BY created_at")
 
 
-def test_downgrade_to_0076_leaves_the_legacy_shape(legacy_db):
+def test_downgrade_to_0077_leaves_the_legacy_shape(legacy_db):
     columns = {r[0] for r in _sql(legacy_db["url"], "SELECT column_name FROM information_schema.columns WHERE table_name = 'enquiries'")}
     assert not (NEW_COLUMNS & columns)
     assert BDM_017 <= columns  # AC4: bdm-017's columns are untouched

@@ -725,12 +725,12 @@ class PaymentWebhookEvent(Base, TimestampMixin):
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
-# tel-003 (DEC-SCOPE-075 L1): LD-000001 Lead IDs. On the metadata so 0001's create_all builds it before the table on a fresh database;
-# 0077 creates it on an upgraded one. format('%6s') pads to six and, unlike lpad, never truncates (LD-1234567); one nextval, so atomic.
+# tel-003 (DEC-SCOPE-077 L1): LD-000001 Lead IDs. On the metadata so 0001's create_all builds it before the table on a fresh database;
+# 0078 creates it on an upgraded one. format('%6s') pads to six and, unlike lpad, never truncates (LD-1234567); one nextval, so atomic.
 ENQUIRY_LEAD_CODE_SEQ = Sequence("enquiry_lead_code_seq", metadata=Base.metadata)
 LEAD_CODE_DEFAULT = "'LD-' || translate(format('%6s', nextval('enquiry_lead_code_seq')), ' ', '0')"
 LEAD_PRIORITIES = ("hot", "warm", "cold")
-LEAD_CHECKS = {  # migration 0077 repeats these strings; test_tel_003_migration asserts they stay identical
+LEAD_CHECKS = {  # migration 0078 repeats these strings; test_tel_003_migration asserts they stay identical
     "ck_enquiries_source": f"source IN ({', '.join(repr(s) for s in TEL_SOURCES)})",
     "ck_enquiries_priority": f"priority IN ({', '.join(repr(p) for p in LEAD_PRIORITIES)})",
     "ck_enquiries_passing_year": "passing_year IS NULL OR passing_year BETWEEN 1950 AND 2100",
@@ -740,7 +740,7 @@ LEAD_CHECKS = {  # migration 0077 repeats these strings; test_tel_003_migration 
 class Enquiry(Base, TimestampMixin):
     """bdm-017 (DEC-SCOPE-072): a BDM-entered lead carries its organization and BDM (both NULL for website and manual enquiries);
     a division admin's explicit conversion links it to one student account (`uq_enquiries_converted_user`: one lead per user).
-    tel-003 (DEC-SCOPE-075, T6): every enquiry is a lead -- a database-assigned Lead ID and the EVID-019 §2 fields. `owner_id` stays the
+    tel-003 (DEC-SCOPE-077, T6): every enquiry is a lead -- a database-assigned Lead ID and the EVID-019 §2 fields. `owner_id` stays the
     assigned counselor; `phone_normalized` follows `phone` (the validator below) for duplicate matching."""
 
     __tablename__ = "enquiries"
@@ -1422,8 +1422,8 @@ class BdmMeetingReport(Base, TimestampMixin):
 
 
 class BdmTask(Base, TimestampMixin):
-    """bdm-007 creates follow-ups (`source = appointment_outcome`, one per appointment); bdm-008 adds manual tasks, MoU follow-ups,
-    completion and the pages."""
+    """bdm-007 creates follow-ups (`source = appointment_outcome`, one per appointment); bdm-008 (DEC-SCOPE-075) adds manual tasks,
+    notes, completion, the cancellation time and reason, and the pages. `mou` stays reserved for bdm-005."""
 
     __tablename__ = "bdm_tasks"
     __table_args__ = (
@@ -1433,6 +1433,8 @@ class BdmTask(Base, TimestampMixin):
         CheckConstraint(_in_list("status", BDM_TASK_STATUSES), name="ck_bdm_tasks_status"),
         CheckConstraint("(source = 'appointment_outcome') = (source_appointment_id IS NOT NULL)", name="ck_bdm_tasks_source_link"),
         CheckConstraint("(status = 'done') = (completed_at IS NOT NULL)", name="ck_bdm_tasks_completed"),
+        CheckConstraint("(status = 'cancelled') = (cancelled_at IS NOT NULL)", name="ck_bdm_tasks_cancelled"),
+        CheckConstraint("cancel_reason IS NULL OR status = 'cancelled'", name="ck_bdm_tasks_cancel_reason"),
         Index("ix_bdm_tasks_assignee_status_due", "assignee_user_id", "status", "due_on"),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -1445,6 +1447,9 @@ class BdmTask(Base, TimestampMixin):
     assignee_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     status: Mapped[str] = mapped_column(String(20), default="open", server_default=text("'open'"))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    notes: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
 BDM_ACTIVITY_CHANNELS = ("call", "whatsapp", "email", "visit", "meeting", "other")

@@ -1094,13 +1094,7 @@ async def _operations(db: AsyncSession, user: User, section: str):
             # already-existing routing mechanism (ADM-002 already lets Admin set it) --
             # scoped here to leads actually routed to this Counselor, never the full
             # division-wide queue that only Admin sees.
-            rows = (await db.scalars(select(Enquiry).where(Enquiry.division == "overseas", Enquiry.owner_id == user.id).order_by(Enquiry.created_at.desc()))).all()
-            return _payload(
-                "My Leads",
-                "Enquiries routed to you.",
-                (("lead_code", "Lead ID"), ("name", "Name"), ("subject", "Interest"), ("status", "Status")),  # tel-003 QA-01
-                ({"id": e.id, "lead_code": e.lead_code, "name": e.name, "subject": e.subject, "status": e.status} for e in rows),
-            )
+            return _leads_payload(await _routed_leads(db, user))
         if section == "reports" and user.role == "counselor":
             # CNS-001: same gap as "leads" -- PORTAL_NAV lists "Reports" but no handler
             # existed. A real aggregate of this Counselor's own already-scoped caseload,
@@ -1563,6 +1557,42 @@ async def _operations(db: AsyncSession, user: User, section: str):
             )
 
 
+def _routed(user: User, *columns):
+    """CNS-001 / tel-017: the leads routed to this counselor (`Enquiry.owner_id`), in the counselor's own division only."""
+    return select(*columns).where(Enquiry.division == user.division, Enquiry.owner_id == user.id)
+
+
+async def _routed_leads(db: AsyncSession, user: User, limit: int | None = None) -> list[Enquiry]:
+    return list((await db.scalars(_routed(user, Enquiry).order_by(Enquiry.created_at.desc()).limit(limit))).all())
+
+
+def _leads_payload(rows: list[Enquiry]):
+    return _payload(
+        "My Leads",
+        "Enquiries routed to you.",
+        (("lead_code", "Lead ID"), ("name", "Name"), ("subject", "Interest"), ("status", "Status")),  # tel-003 QA-01
+        ({"id": e.id, "lead_code": e.lead_code, "name": e.name, "subject": e.subject, "status": e.status} for e in rows),
+    )
+
+
+async def _it_counselor(db: AsyncSession, user: User, section: str):
+    """tel-017 (DEC-SCOPE-076 C1): an IT counselor works leads only -- Dashboard and My Leads (tel-016 adds Appointments, tel-018 the
+    student link). Every overseas section stays the overseas counselor's, so anything else is a 404 here."""
+    if section not in {"dashboard", "leads"}:
+        return None
+    if section == "leads":
+        return _leads_payload(await _routed_leads(db, user))
+    total = await db.scalar(_routed(user, func.count()))
+    new = await db.scalar(_routed(user, func.count()).where(Enquiry.status == "new"))
+    return _payload(
+        "Counselor Dashboard",
+        "IT leads routed to you.",
+        (("name", "Name"), ("subject", "Interest"), ("status", "Status")),
+        ({"name": e.name, "subject": e.subject, "status": e.status} for e in await _routed_leads(db, user, limit=5)),
+        ({"label": "Leads routed to you", "value": total}, {"label": "New leads", "value": new}),
+    )
+
+
 async def section_payload(db: AsyncSession, user: User, section: str) -> dict | None:
     if user.role == "it_student":
         result = await _it_student(db, user, section)
@@ -1572,6 +1602,8 @@ async def section_payload(db: AsyncSession, user: User, section: str) -> dict | 
         result = await _overseas_student(db, user, section)
     elif user.role == "agent":
         result = await _agent(db, user, section)
+    elif user.role == "counselor" and user.division == "it":
+        result = await _it_counselor(db, user, section)
     else:
         result = await _operations(db, user, section)
     return result

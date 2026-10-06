@@ -2,7 +2,8 @@
 
 Backlog: `docs/delivery/TELECALLER_CRM_BACKLOG.md` tel-003 (EVID-019 §2, Appendix A L22–L90; `DEC-SCOPE-073` T6, T25, T29).
 Dependencies: tel-001 (PR #68), tel-002 (PR #69) and bdm-017 (`0074`) are all merged on `main` @ `784738e7`. Branch `feature/tel-003`.
-Decision: `DEC-SCOPE-075` (the next free number on `main`). Migration: `0077_enquiry_lead_record` (after `0076_tel_catalogue`).
+Decision: `DEC-SCOPE-077`. Migration: `0078_enquiry_lead_record` (after bdm-008's `0077_bdm_tasks_followups`). Drafted as
+`DEC-SCOPE-075` / `0077`; re-chained on merging `main` @ `675762d3` (bdm-008 took 075 and 0077, tel-017 took 076 and API contract §12E).
 
 ## 1. Owner answers (2026-10-06, `EXPLICIT_APPROVAL`) and recorded defaults
 
@@ -33,7 +34,7 @@ Decision: `DEC-SCOPE-075` (the next free number on `main`). Migration: `0077_enq
 - **Edge:** a legacy row with an invalid phone keeps `phone_normalized = NULL`. A `phone` edit re-derives `phone_normalized` (model
   validator), so it never goes stale.
 
-## 3. Data model (migration `0077_enquiry_lead_record`)
+## 3. Data model (migration `0078_enquiry_lead_record`)
 
 New columns on `enquiries`:
 

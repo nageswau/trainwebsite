@@ -37,7 +37,7 @@
 
 **Files:**
 - Modify: `apps/api/app/models.py` (Enquiry; `ENQUIRY_LEAD_CODE_SEQ`; `LEAD_PRIORITIES`)
-- Create: `apps/api/alembic/versions/0077_enquiry_lead_record.py`
+- Create: `apps/api/alembic/versions/0078_enquiry_lead_record.py`
 - Test: `apps/api/tests/test_tel_003_migration.py`, `apps/api/tests/test_tel_003_lead_code.py`
 
 **Interfaces — Produces:** `Enquiry.lead_code`, `.phone_normalized`, `.whatsapp_number`, `.city`, `.state`, `.qualification`,
@@ -108,5 +108,5 @@ the admin sees `LD-` in the list, filters by Source and searches by Lead ID; mob
 
 ### Task 6: Docs
 
-`PRODUCT_DECISION_REGISTER.md` DEC-SCOPE-075; the API contract for `/admin/leads` + public enquiries; backlog tel-003 status; RBAC
+`PRODUCT_DECISION_REGISTER.md` DEC-SCOPE-077; the API contract for `/admin/leads` + public enquiries; backlog tel-003 status; RBAC
 unchanged note; screen catalog; QA log in the spec §9. Commit `docs(tel-003): ...`.

@@ -1,13 +1,18 @@
 """tel-003 -- enquiries become leads: the LD-000001 Lead ID and the EVID-019 §2 fields.
 
-Revision ID: 0077_enquiry_lead_record
-Revises: 0076_tel_catalogue
+Revision ID: 0078_enquiry_lead_record
+Revises: 0077_bdm_tasks_followups
 
-docs/superpowers/specs/2026-10-06-tel-003-lead-record-design.md §3 (DEC-SCOPE-075). Thirteen columns, three CHECKs, a unique Lead ID and
+docs/superpowers/specs/2026-10-06-tel-003-lead-record-design.md §3 (DEC-SCOPE-077). Thirteen columns, three CHECKs, a unique Lead ID and
 five indexes on `enquiries`, plus the backfill: Lead IDs oldest-first (L1), `source` folded onto the 13 §2 values with any other text kept
 in `metadata_json.legacy_source` (L2), `phone_normalized` (L3) and `stage_changed_at = created_at`. 0001 builds a fresh database from the
 current models, which already carry all of this, so the upgrade is guarded (0074's idiom). bdm-017's columns are not touched.
 downgrade() refuses while any lead holds data a downgrade would drop; otherwise it restores each legacy source.
+
+Re-chained 2026-10-06 on merging `main` @ `675762d3`: drafted as `0077_enquiry_lead_record` on `0076_tel_catalogue` (DEC-SCOPE-075), but
+bdm-008's `0077_bdm_tasks_followups` (DEC-SCOPE-075) and tel-017 (DEC-SCOPE-076) reached `main` first, so this revision is
+`0078_enquiry_lead_record` after it (one head) and the decision is DEC-SCOPE-077. A database stamped at `0077_enquiry_lead_record` is
+re-stamped with `alembic stamp --purge 0076_tel_catalogue` then `upgrade head` (the change here is guarded, so the re-run is harmless).
 """
 
 import re
@@ -17,8 +22,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0077_enquiry_lead_record"
-down_revision = "0076_tel_catalogue"
+revision = "0078_enquiry_lead_record"
+down_revision = "0077_bdm_tasks_followups"
 branch_labels = None
 depends_on = None
 
@@ -122,7 +127,7 @@ def downgrade() -> None:
     if not op.get_context().as_sql:
         own = " OR ".join(f"{c} IS NOT NULL" for c in OWN_DATA)
         if op.get_bind().execute(sa.text(f"SELECT 1 FROM {TABLE} WHERE {own} OR priority <> 'warm' LIMIT 1")).first():
-            raise RuntimeError("Cannot downgrade 0077_enquiry_lead_record: lead data exists (assignment, product, campaign, contact details "
+            raise RuntimeError("Cannot downgrade 0078_enquiry_lead_record: lead data exists (assignment, product, campaign, contact details "
                                "or priority). Clear it deliberately first.")
     for name, _ in reversed(INDEXES):
         op.drop_index(name, table_name=TABLE)

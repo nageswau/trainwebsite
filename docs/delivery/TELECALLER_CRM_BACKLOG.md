@@ -255,7 +255,7 @@ NO-ASSUMPTION MODE. Prepared 2026-10-05 at the user's request. **No code was wri
 
 ### tel-003 — Lead record: `enquiries` extension, Lead ID, admin list alignment
 
-**Status (2026-10-06):** implemented and verified on `feature/tel-003` (`DEC-SCOPE-075` L1–L6, migration `0077_enquiry_lead_record`) — ready for owner sign-off; not yet merged.
+**Status (2026-10-06):** implemented and verified on `feature/tel-003` (`DEC-SCOPE-077` L1–L6, migration `0078_enquiry_lead_record`, re-chained after bdm-008 `0077` and tel-017 `DEC-SCOPE-076`) — ready for owner sign-off; not yet merged.
 
 - **Business requirement:** §2 "Every lead should have a Lead ID" and the 18 fields; T6, T25.
 - **Existing behavior:** see §0. bdm-017 adds attribution and link columns.
@@ -748,6 +748,9 @@ NO-ASSUMPTION MODE. Prepared 2026-10-05 at the user's request. **No code was wri
 - **Edge cases:** changing a counselor's division with open leads/appointments → 422 (Q-23).
 - **Regression risks:** **high.** CNS-001 counselor workspace tests and overseas counselor scope tests.
 - **Complexity:** medium · **Risk:** high
+
+**Status (2026-10-06):** implemented and verified on `feature/tel-017` (`DEC-SCOPE-076` C1: Dashboard + My Leads only; no migration). The
+division-change edge case does not apply: `User.division` cannot change after creation. Ready for owner sign-off; not yet merged.
 
 ### tel-018 — Handover to counselor, return, student link, computed conversion
 

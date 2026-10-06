@@ -1381,7 +1381,7 @@ class EnquiryIn(BaseModel):
     phone: str | None = Field(default=None, max_length=40)
     subject: str = Field(min_length=2, max_length=180)
     message: str = Field(min_length=5, max_length=5000)
-    source: Literal[TEL_SOURCES] = "website"  # tel-003 (DEC-SCOPE-075): one of the 13 EVID-019 §2 sources, else 422
+    source: Literal[TEL_SOURCES] = "website"  # tel-003 (DEC-SCOPE-077): one of the 13 EVID-019 §2 sources, else 422
     metadata: dict = Field(default_factory=dict)
 
 
@@ -4501,3 +4501,107 @@ class TelCampaignPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# --- bdm-008 (DEC-SCOPE-075, spec §6): follow-ups and tasks ---------------------------------------------------------------------
+BDM_TASK_LABELS = {"title": "Title", "notes": "Notes"}
+BdmTaskKind = Literal["follow_up", "task"]
+BdmTaskBucket = Literal["today", "overdue", "upcoming", "open", "done", "cancelled"]
+BdmTaskOrgType = BdmOrgType | Literal["none"]
+BdmTaskTitle = Annotated[str, _trimmed(200), AfterValidator(_trip_text(_BDM_CONTROL, True, BDM_TASK_LABELS))]
+BdmTaskNotes = Annotated[Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, BDM_TASK_LABELS))]
+BdmTaskDue = Annotated[date, BeforeValidator(_trip_date("due date"))]
+
+
+class BdmTaskCreate(BaseModel):
+    """§6.2: a manual follow-up or task. Assignee, source, status and timestamps are server-owned (unknown fields here)."""
+
+    model_config = ConfigDict(extra="forbid")
+    kind: BdmTaskKind
+    title: BdmTaskTitle
+    due_on: BdmTaskDue
+    organization_id: UUID | None = None
+    notes: BdmTaskNotes = None
+
+
+class BdmTaskUpdate(BaseModel):
+    """§6.3: omitted = unchanged; `notes: null` clears; a sent null title or due date is refused (both are always set)."""
+
+    model_config = ConfigDict(extra="forbid")
+    title: BdmTaskTitle | None = None
+    due_on: BdmTaskDue | None = None
+    notes: BdmTaskNotes = None
+
+    @field_validator("title", "due_on")
+    @classmethod
+    def _not_null(cls, value, info: ValidationInfo):
+        """Omitted = unchanged (the default is not validated); a sent null is refused."""
+        if value is None:
+            raise ValueError(f"{'Title' if info.field_name == 'title' else 'Due date'} is required")
+        return value
+
+
+class BdmTaskOrgRef(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    org_type: str
+    archived: bool
+
+
+class BdmTaskAppointmentRef(BaseModel):
+    id: UUID
+    code: str
+
+
+class BdmTaskPermissions(BaseModel):
+    can_edit: bool
+    can_complete: bool
+    can_cancel: bool
+
+
+class BdmTaskOut(BaseModel):
+    id: UUID
+    kind: str
+    title: str
+    notes: str | None
+    due_on: date
+    status: str
+    source: str
+    overdue: bool
+    organization: BdmTaskOrgRef | None
+    appointment: BdmTaskAppointmentRef | None
+    assignee: BdmOrgPerson
+    completed_at: datetime | None
+    cancelled_at: datetime | None
+    cancel_reason: str | None
+    created_at: datetime
+    updated_at: datetime
+    permissions: BdmTaskPermissions
+
+
+class BdmTaskBucketCounts(BaseModel):
+    today: int
+    overdue: int
+    upcoming: int
+    done: int
+    cancelled: int
+
+
+class BdmTaskTypeCount(BaseModel):
+    org_type: str | None
+    count: int
+
+
+class BdmTaskCounts(BaseModel):
+    buckets: BdmTaskBucketCounts
+    by_org_type: list[BdmTaskTypeCount]
+
+
+class BdmTaskPage(BaseModel):
+    items: list[BdmTaskOut]
+    total: int
+    limit: int
+    offset: int
+    today: date
+    counts: BdmTaskCounts

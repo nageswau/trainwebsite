@@ -10,6 +10,7 @@ import { firstLeadPage } from "@/lib/bdmLeadsServer";
 import type { Organization } from "@/lib/bdmOrganizations";
 import { bdmNav } from "@/lib/bdmNav";
 import { firstStageHistory } from "@/lib/bdmPipelineServer";
+import { firstTaskPage } from "@/lib/bdmTasksServer";
 import { BDM_SIGN_IN } from "@/lib/navigation";
 
 // bdm-002: one organization. A 404 (unknown or outside the BDM's module) is a plain "not found" -- it never says which.
@@ -26,18 +27,19 @@ export default async function BdmOrganizationPage({ params, searchParams }: { pa
   const timeline = firstActivityPage(id); // bdm-009: the activity section's first page, read alongside the organization
   const leadPage = firstLeadPage(id); // bdm-017: the leads section's first page, likewise
   const stages = firstStageHistory(id); // bdm-004: the stage history's first page, read alongside the organization
+  const taskPage = firstTaskPage(id); // bdm-008: the open follow-ups, likewise
   let organization: Organization | null = null;
   try {
     organization = (await serverApi<{ organization: Organization }>(`/api/v1/bdm/organizations/${encodeURIComponent(id)}`)).organization;
   } catch (e) {
     if (!(e instanceof ApiError && (e.status === 404 || e.status === 422))) return accessUnavailable(e, BDM_SIGN_IN);
   }
-  const [activities, leads, stageHistory] = organization ? await Promise.all([timeline, leadPage, stages]) : [null, null, null];
+  const [activities, leads, stageHistory, tasks] = organization ? await Promise.all([timeline, leadPage, stages, taskPage]) : [null, null, null, null];
   return (
     <PortalShell nav={await nav} roleLabel={`${BDM_TYPE_LABEL[me.bdm_profile.bdm_type]} BDM`} userName={me.full_name}>
       <div className="portal-content">
         {organization ? (
-          <BdmOrganizationDetail initial={organization} basePath="/bdm/organizations" created={created} activities={activities} leads={leads} stageHistory={stageHistory} />
+          <BdmOrganizationDetail initial={organization} basePath="/bdm/organizations" created={created} activities={activities} leads={leads} stageHistory={stageHistory} tasks={tasks} />
         ) : (
           <div className="action-card">
             <h2>Organization not found</h2>

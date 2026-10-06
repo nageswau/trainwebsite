@@ -48,7 +48,8 @@ PRODUCTS = "SELECT product_group, name, team FROM tel_products"
 def test_migration_chains_after_0075_and_is_the_single_head():
     assert _migration.revision == HEAD
     assert _migration.down_revision == BASE
-    assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1  # tel-003's 0077 now follows this revision
+    script = ScriptDirectory.from_config(_config())  # bdm-008's 0077 and tel-003's 0078 follow; 0076 stays on the single chain
+    assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
 
 
 def test_models_match_the_migration():

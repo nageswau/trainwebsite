@@ -51,7 +51,7 @@ def test_models_match_the_migration():
     task = BdmTask.__table__
     assert {c.name for c in task.columns} == {
         "id", "kind", "title", "due_on", "organization_id", "source", "source_appointment_id", "assignee_user_id", "status",
-        "completed_at", "created_at", "updated_at",
+        "completed_at", "created_at", "updated_at", "notes", "cancelled_at", "cancel_reason",  # + bdm-008 (0076)
     }
     names = {i.name for i in task.indexes} | {c.name for c in task.constraints}
     assert {

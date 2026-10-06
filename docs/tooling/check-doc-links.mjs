@@ -1,10 +1,13 @@
 // Fails when a Markdown link or image under the documentation folders points at a missing file.
-// Usage (repo root): node docs/tooling/check-doc-links.mjs
+// Usage (repo root): node docs/tooling/check-doc-links.mjs [root]
+//   no root    -> the Agent CRM set (docs/user-manual, docs/admin-manual, docs/role-guides, docs/*.md)
+//   root given -> the same layout under that folder, e.g. docs/school-crm
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
-const dirs = ["docs/user-manual", "docs/admin-manual", "docs/role-guides"];
-const files = ["docs/faq.md", "docs/troubleshooting.md", "docs/screenshot-index.md"].filter(existsSync);
+const base = process.argv[2] ?? "docs";
+const dirs = ["user-manual", "admin-manual", "role-guides"].map((d) => join(base, d));
+const files = ["faq.md", "troubleshooting.md", "screenshot-index.md"].map((f) => join(base, f)).filter(existsSync);
 const walk = (d) =>
   existsSync(d)
     ? readdirSync(d).flatMap((f) => {

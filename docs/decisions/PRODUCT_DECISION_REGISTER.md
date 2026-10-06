@@ -3642,7 +3642,6 @@ pipeline; that supersession takes effect with `tel-018`.
 
 **Implementation:** migration `0075_telecaller_profiles`; roles `telecaller` (division = team) and `telecaller_manager` (`global`).
 
-
 ### DEC-SCOPE-074 — Telecaller product/interest catalogue and campaign list (`tel-002`)
 
 **Evidence:** `EVID-019` §2 (13 lead sources, "exact campaign/source", e.g. Instagram → Cyber Security → September 2026 Campaign) and §3
@@ -3661,7 +3660,53 @@ pipeline; that supersession takes effect with `tel-018`.
 manager-edited. API `GET/POST/PATCH /telecaller/products`, `GET/POST/PATCH /telecaller/campaigns`; screens `/telecaller/manager/products`
 and `/telecaller/manager/campaigns`. Design spec `docs/superpowers/specs/2026-10-06-tel-002-catalogue-design.md`.
 
-### DEC-SCOPE-075 — Lead record: Lead ID, EVID-019 §2 fields, admin list alignment (`tel-003`)
+### DEC-SCOPE-075 — Follow-ups and tasks (`bdm-008`)
+
+**ID note (2026-10-06):** drafted as `DEC-SCOPE-074` with migration `0076_bdm_tasks_followups`; on merging `main` @ `784738e7`, `DEC-SCOPE-074` and `0076` are `tel-002` (`0076_tel_catalogue`), so this entry is `DEC-SCOPE-075` and the migration is `0077_bdm_tasks_followups` chained after `0076_tel_catalogue` (precedent: bdm-004's renumber to `DEC-SCOPE-071` / `0073`).
+
+**Question:** how do follow-ups and tasks work for a BDM — where they come from, how Today / Overdue / Upcoming are decided, what can be changed, what managers see, how they are counted by organization type, and what happens when an organization is archived (`BDM_CRM_BACKLOG.md` §4 bdm-008)?
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md`, `DERIVED_BLUEPRINT`) §5 Calendar (172–196: "Follow-ups", "Tasks"), §13 Management dashboard alerts (413–434: "Follow-up overdue"), §15 My Day (476–506: "4 College follow-ups, 2 Agent follow-ups, 1 MoU follow-up"), §4 Common reminders (1254–1334: "Follow-up reminder", "Task reminder"); backlog D18 (`DERIVED_BLUEPRINT`); bdm-007 `DEC-SCOPE-070` R1 (the minimal `bdm_tasks` table and its one-follow-up-per-appointment sync).
+
+**Resolution:** owner, in-session 2026-10-05/06 (`EXPLICIT_APPROVAL` — answers to structured questions, approach A and design sections 1–3; the owner then directed implementation; design spec `docs/superpowers/specs/2026-10-06-bdm-008-follow-ups-design.md` §3).
+
+- **F1** Scope: data + pages only. `source='mou'` stays reserved for bdm-005; the task reminder (bdm-012), calendar (bdm-013), My Day (bdm-014) and "Follow-up overdue" tile (bdm-023) read bdm-008's list and filters later.
+- **F2** A follow-up created by a meeting report is complete-only on the follow-ups page; its date changes or clears only through the report (bdm-007 R7).
+- **F3** Manual items: kind (follow-up / task), title ≤ 200, due date (IST, today or later), optional organization (one the BDM may edit, not archived), optional notes ≤ 2000; edit title / notes / due date while open; complete; cancel with a required reason. Done and cancelled are final. Date only, no time.
+- **F4** Managers read their team (super_admin all); only the assigned BDM writes.
+- **F5** Counts by the 7 organization types + "No organization", from the list's own filters.
+- **F6** Archiving an organization cancels its open items with "Organization archived"; restore reopens nothing.
+- **F7** After completing: "Log activity" and "Book appointment" links only (no stored activity → task link).
+- **Defaults:** no idempotency key (row lock + state check → 409); no ETag; no general rate limiter — 200 manual creates per BDM per IST day (409); task text never in logs or audit metadata.
+
+**Consequences:** migration `0077_bdm_tasks_followups` (`notes`, `cancelled_at`, `cancel_reason`, two CHECKs, backfill; downgrade refuses while manual tasks exist). New `GET/POST /bdm/tasks`, `PATCH /bdm/tasks/{id}`, `POST /bdm/tasks/{id}/complete`, `POST /bdm/tasks/{id}/cancel`; `sync_follow_up` records the cancellation time and reason; the organization archive cancels open items. Web: `/bdm/follow-ups`, `/bdm/manager/follow-ups`, nav "Follow-ups", "Follow-ups & tasks" on the organization profile.
+
+**Status:** `EXPLICIT_APPROVAL` for F1–F7; implemented on `feature/bdm-008-follow-ups` — **VERIFIED — ready for owner sign-off, NOT marked COMPLETE (2026-10-06, `feature/bdm-008-follow-ups` @ `ae5758f8`).** Fresh evidence on that commit: backend LITE 100 passed; ruff clean on changed files; mypy 401 = `main`'s 401 (no new errors); single alembic head `0077_bdm_tasks_followups` (offline SQL additive: 3 nullable columns, backfill before 2 CHECKs); web BDM set 431 passed (47 files); `tsc` 0; eslint 0 on changed web files; `next build` 0; Playwright bdm-008 + bdm-002 (2) / 006 / 007 / 009 — 6 passed on a stack rebuilt from that commit; browser verification (isolated Playwright Chromium, 20 areas + QA8-01/02 and QA8B-01…07 re-checks) passed with 0 page errors. Codex review waived by the owner. **Open for the owner:** Browser Use is not installed on this machine (isolated Playwright Chromium used instead); the full backend / web suites are the owner's; MoU-sourced follow-ups wait for bdm-005 (F1).
+
+
+### DEC-SCOPE-076 — Counselor role in the IT division + IT counselor workspace (`tel-017`)
+
+**Evidence:** `EVID-019` §9 "IT course counselling", §10 handover; `DEC-SCOPE-073` T3 ("the existing `counselor` role, allowed in the IT
+division"); backlog Q-23; owner answer in-session 2026-10-06. (`DEC-SCOPE-075` is held by tel-003, which runs in parallel.)
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for C1; VERIFIED on `feature/tel-017` — ready for owner sign-off (2026-10-06).
+
+| # | Question | Answer |
+|---|---|---|
+| C1 | Which sections does the IT counselor workspace have now (Q-23)? | **Dashboard + My Leads only.** tel-016 adds Appointments and tel-018 the student link to the same nav; no empty pages |
+| — | Can a counselor's division change (Q-23 edge case)? | **Not applicable:** `User.division` is fixed at creation (`PATCH /admin/users` never writes it), so no 422 path is added |
+
+**Implementation:** `counselor` joins the IT allow-list of `POST /admin/users`. `services/portal._it_counselor` serves `dashboard` (leads routed
+to you, new leads, five most recent) and `leads` (`Enquiry.division == user.division AND owner_id == user.id`, shared with the overseas
+counselor) for an IT counselor; every other section → 404. Nine overseas-only routes that checked the role only now also require the
+`overseas` division (`403` "Wrong EduSphere division", `super_admin` exempt): `/overseas-admin/school-students/lookup`,
+`/overseas-admin/school-students/{id}/applications`, `/overseas-admin/school-applications`, `/lookups/{overseas-students,
+overseas-applications,schools,school-students}`, `/inbound/university-email` and `/inbound/university-email/{id}/match`. The 14 counselor
+routes in `workflows.py` already called `_require(..., "overseas")`; their `counselor_id` (create/PATCH application) must now be an
+overseas `counselor` (422 "Choose an overseas counselor"), so no overseas chat or notice can reach an IT counselor. Web: `/it/counselor/{dashboard,leads}`, `/it/admin/counselors`,
+`dashboardPathFor()` for the post-sign-in and "Back to dashboard" links. No migration. Design spec
+`docs/superpowers/specs/2026-10-06-tel-017-it-counselor-design.md`.
+
+### DEC-SCOPE-077 — Lead record: Lead ID, EVID-019 §2 fields, admin list alignment (`tel-003`)
 
 **Evidence:** `EVID-019` §2 ("Every lead should have a Lead ID", the 18 lead fields, the 13 sources); `DEC-SCOPE-073` T6, T25, T29;
 owner answers in-session 2026-10-06.
@@ -3677,7 +3722,7 @@ Implemented on `feature/tel-003`; not yet merged.
 | L5 | Admin status editor | Unchanged until tel-004's stage engine |
 | L6 | Q-02 / Q-21 | Deferred to tel-004 (status mapping) and tel-005/013/014 (consent, retention) |
 
-**Implementation:** migration `0077_enquiry_lead_record` (13 columns on `enquiries` — `lead_code`, `phone_normalized`, `whatsapp_number`,
+**Implementation:** migration `0078_enquiry_lead_record` (13 columns on `enquiries` — `lead_code`, `phone_normalized`, `whatsapp_number`,
 `city`, `state`, `qualification`, `passing_year`, `institution`, `product_id`, `campaign_id`, `telecaller_user_id`, `priority`,
 `stage_changed_at` — CHECKs on source/priority/passing year, unique Lead ID, five indexes; downgrade refuses while lead data exists).
 `GET /admin/leads` becomes `{items,total,limit,offset}` with stage/source/product/campaign/telecaller/organization/search filters
