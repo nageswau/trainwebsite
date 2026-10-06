@@ -14,7 +14,7 @@ from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.models import AuditLog, BdmOrganization, Enquiry, User
+from app.models import AuditLog, BdmOrganization, Enquiry, TelCampaign, TelProduct, User
 from app.services.bdm_activities import day_range, india_date
 
 logger = logging.getLogger("app.bdm")
@@ -100,27 +100,45 @@ STUDENT_TAKEN = "This student is already linked to another lead"
 INVALID_STUDENT = "Enter the email of an active student account in this lead's division"
 Attributor = aliased(User)
 Converted = aliased(User)
+Telecaller = aliased(User)
+Counselor = aliased(User)
 
 
 def admin_rows():
-    """Every lead with its organization, attributing BDM and linked student -- outer joins, so website rows come back with NULLs."""
+    """Every lead with its organization, attributing BDM, linked student and (tel-003) product, campaign, telecaller and counselor --
+    outer joins, so a row missing any of them comes back with NULLs."""
     return (
-        select(Enquiry, BdmOrganization.code, BdmOrganization.name, Attributor.full_name, Converted.full_name, Converted.email)
+        select(Enquiry, BdmOrganization.code, BdmOrganization.name, Attributor.full_name, Converted.full_name, Converted.email,
+               TelProduct.name, TelCampaign.name, Telecaller.full_name, Counselor.full_name)
         .outerjoin(BdmOrganization, BdmOrganization.id == Enquiry.bdm_organization_id)
         .outerjoin(Attributor, Attributor.id == Enquiry.bdm_user_id)
         .outerjoin(Converted, Converted.id == Enquiry.converted_user_id)
+        .outerjoin(TelProduct, TelProduct.id == Enquiry.product_id)
+        .outerjoin(TelCampaign, TelCampaign.id == Enquiry.campaign_id)
+        .outerjoin(Telecaller, Telecaller.id == Enquiry.telecaller_user_id)
+        .outerjoin(Counselor, Counselor.id == Enquiry.owner_id)
     )
 
 
+def _ref(ref_id, **fields) -> dict | None:
+    return {"id": ref_id, **fields} if ref_id else None
+
+
 def admin_out(row) -> dict:
-    """ADM-002's row (keys unchanged) plus the three bdm-017 objects, each null when absent."""
-    x, org_code, org_name, bdm_name, student_name, student_email = row
+    """ADM-002's row (keys unchanged), the three bdm-017 objects and the tel-003 lead fields; each object is null when absent."""
+    x, org_code, org_name, bdm_name, student_name, student_email, product_name, campaign_name, telecaller_name, counselor_name = row
     return {
-        "id": x.id, "name": x.name, "email": x.email, "phone": x.phone, "division": x.division, "subject": x.subject, "status": x.status,
-        "source": x.source, "crm_sync_status": x.crm_sync_status,
-        "organization": {"id": x.bdm_organization_id, "code": org_code, "name": org_name} if x.bdm_organization_id else None,
-        "bdm": {"id": x.bdm_user_id, "full_name": bdm_name} if x.bdm_user_id else None,
-        "converted_user": {"id": x.converted_user_id, "full_name": student_name, "email": student_email} if x.converted_user_id else None,
+        "id": x.id, "lead_code": x.lead_code, "name": x.name, "email": x.email, "phone": x.phone, "division": x.division,
+        "subject": x.subject, "status": x.status, "source": x.source, "crm_sync_status": x.crm_sync_status, "priority": x.priority,
+        "whatsapp_number": x.whatsapp_number, "city": x.city, "state": x.state, "qualification": x.qualification,
+        "passing_year": x.passing_year, "institution": x.institution, "created_at": x.created_at, "stage_changed_at": x.stage_changed_at,
+        "product": _ref(x.product_id, name=product_name),
+        "campaign": _ref(x.campaign_id, name=campaign_name),
+        "telecaller": _ref(x.telecaller_user_id, full_name=telecaller_name),
+        "counselor": _ref(x.owner_id, full_name=counselor_name),
+        "organization": _ref(x.bdm_organization_id, code=org_code, name=org_name),
+        "bdm": _ref(x.bdm_user_id, full_name=bdm_name),
+        "converted_user": _ref(x.converted_user_id, full_name=student_name, email=student_email),
     }
 
 

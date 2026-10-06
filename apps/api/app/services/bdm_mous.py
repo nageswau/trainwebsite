@@ -1,4 +1,4 @@
-"""bdm-005 (DEC-SCOPE-077, spec §6.2): MoU rules, history, audit and output.
+"""bdm-005 (DEC-SCOPE-078, spec §6.2): MoU rules, history, audit and output.
 
 Functions only; nothing here commits -- the route owns the transaction (bdm-002's rule). Every write runs on the organization row
 locked by `bdm_organizations.load_scoped(lock=True)` and then the current MoU row (the lock order of spec §6.5). Audit metadata and

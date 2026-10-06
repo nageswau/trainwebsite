@@ -1,4 +1,4 @@
-"""bdm-005 -- migration 0078_bdm_mous (spec §5; AC2 backstop, AC7 index). Round trip and the downgrade refusal run in a throwaway
+"""bdm-005 -- migration 0079_bdm_mous (spec §5; AC2 backstop, AC7 index). Round trip and the downgrade refusal run in a throwaway
 database (the bdm-003/004 pattern); a downgrade never runs against the shared test database."""
 
 import asyncio
@@ -21,11 +21,11 @@ from app.core.config import settings
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
 D1 = date(2026, 1, 1)
-BASE, HEAD = "0077_bdm_tasks_followups", "0078_bdm_mous"
+BASE, HEAD = "0078_enquiry_lead_record", "0079_bdm_mous"
 
 
 def _migration():
-    spec = importlib.util.spec_from_file_location("_bdm_005_migration_0078", VERSIONS / f"{HEAD}.py")
+    spec = importlib.util.spec_from_file_location("_bdm_005_migration_0079", VERSIONS / f"{HEAD}.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -37,7 +37,7 @@ def _config() -> Config:
     return cfg
 
 
-def test_chains_after_0077_and_is_the_single_head():
+def test_chains_after_0078_and_is_the_single_head():
     migration = _migration()
     assert (migration.revision, migration.down_revision) == (HEAD, BASE)
     assert ScriptDirectory.from_config(_config()).get_heads() == [HEAD]

@@ -23,11 +23,12 @@ from sqlalchemy import (
     false,
     text,
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, validates
 from sqlalchemy.sql import func
 
 from app.bdm_stages import FIRST_STAGE as BDM_FIRST_STAGE
 from app.bdm_stages import MANUAL_STAGES as BDM_MANUAL_STAGES
+from app.notifications.phone import normalise_phone
 from app.tel_sources import TEL_SOURCES
 
 
@@ -724,9 +725,23 @@ class PaymentWebhookEvent(Base, TimestampMixin):
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+# tel-003 (DEC-SCOPE-077 L1): LD-000001 Lead IDs. On the metadata so 0001's create_all builds it before the table on a fresh database;
+# 0078 creates it on an upgraded one. format('%6s') pads to six and, unlike lpad, never truncates (LD-1234567); one nextval, so atomic.
+ENQUIRY_LEAD_CODE_SEQ = Sequence("enquiry_lead_code_seq", metadata=Base.metadata)
+LEAD_CODE_DEFAULT = "'LD-' || translate(format('%6s', nextval('enquiry_lead_code_seq')), ' ', '0')"
+LEAD_PRIORITIES = ("hot", "warm", "cold")
+LEAD_CHECKS = {  # migration 0078 repeats these strings; test_tel_003_migration asserts they stay identical
+    "ck_enquiries_source": f"source IN ({', '.join(repr(s) for s in TEL_SOURCES)})",
+    "ck_enquiries_priority": f"priority IN ({', '.join(repr(p) for p in LEAD_PRIORITIES)})",
+    "ck_enquiries_passing_year": "passing_year IS NULL OR passing_year BETWEEN 1950 AND 2100",
+}
+
+
 class Enquiry(Base, TimestampMixin):
     """bdm-017 (DEC-SCOPE-072): a BDM-entered lead carries its organization and BDM (both NULL for website and manual enquiries);
-    a division admin's explicit conversion links it to one student account (`uq_enquiries_converted_user`: one lead per user)."""
+    a division admin's explicit conversion links it to one student account (`uq_enquiries_converted_user`: one lead per user).
+    tel-003 (DEC-SCOPE-077, T6): every enquiry is a lead -- a database-assigned Lead ID and the EVID-019 §2 fields. `owner_id` stays the
+    assigned counselor; `phone_normalized` follows `phone` (the validator below) for duplicate matching."""
 
     __tablename__ = "enquiries"
     __table_args__ = (
@@ -735,9 +750,17 @@ class Enquiry(Base, TimestampMixin):
             "(converted_user_id IS NULL) = (converted_at IS NULL) AND (converted_user_id IS NULL) = (converted_by_user_id IS NULL)",
             name="ck_enquiries_conversion",
         ),
+        *(CheckConstraint(sql, name=name) for name, sql in LEAD_CHECKS.items()),
+        UniqueConstraint("lead_code", name="uq_enquiries_lead_code"),
         Index("ix_enquiries_bdm_org_created", "bdm_organization_id", "created_at"),
         Index("uq_enquiries_converted_user", "converted_user_id", unique=True, postgresql_where=text("converted_user_id IS NOT NULL")),
+        Index("ix_enquiries_telecaller_status", "telecaller_user_id", "status"),
+        Index("ix_enquiries_phone_normalized", "phone_normalized"),
+        Index("ix_enquiries_email_lower", text("lower(email)")),
+        Index("ix_enquiries_campaign", "campaign_id"),
+        Index("ix_enquiries_product", "product_id"),
     )
+    __mapper_args__ = {"eager_defaults": True}  # the INSERT returns lead_code / stage_changed_at: no lazy load on an async session
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     division: Mapped[str] = mapped_column(String(30), index=True)
     name: Mapped[str] = mapped_column(String(160))
@@ -755,6 +778,24 @@ class Enquiry(Base, TimestampMixin):
     converted_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     converted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     converted_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    lead_code: Mapped[str] = mapped_column(String(20), server_default=text(LEAD_CODE_DEFAULT))
+    phone_normalized: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    whatsapp_number: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    state: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    qualification: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    passing_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    institution: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    product_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("tel_products.id"), nullable=True)
+    campaign_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("tel_campaigns.id"), nullable=True)
+    telecaller_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    priority: Mapped[str] = mapped_column(String(10), default="warm", server_default=text("'warm'"))
+    stage_changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    @validates("phone")
+    def _derive_phone_normalized(self, _key: str, phone: str | None) -> str | None:
+        self.phone_normalized = normalise_phone(phone)
+        return phone
 
 
 class ContentPage(Base, TimestampMixin):
@@ -1255,7 +1296,7 @@ class BdmPipelineEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-# bdm-005 (DEC-SCOPE-077, spec §4): the MoU statuses in source order and wording (EVID-016 §10). `expired` is derived on read (M2):
+# bdm-005 (DEC-SCOPE-078, spec §4): the MoU statuses in source order and wording (EVID-016 §10). `expired` is derived on read (M2):
 # a signed / active MoU past `valid_until`; it is never stored, so the status CHECK lists only the settable keys.
 BDM_MOU_STATUS_LABELS: dict[str, str] = {
     "prospect": "Prospect",
@@ -1282,7 +1323,7 @@ BDM_MOU_CHECKS = {  # migration 0076 repeats these strings; test_bdm_005_migrati
 
 
 class BdmMou(Base, TimestampMixin):
-    """bdm-005 (DEC-SCOPE-077, spec §5.1): an organization's MoU. At most one `is_current` row per organization (M6: a renewal is a
+    """bdm-005 (DEC-SCOPE-078, spec §5.1): an organization's MoU. At most one `is_current` row per organization (M6: a renewal is a
     new row; the old one is kept). `document_key` is server-generated and never returned or logged; the service owns every rule, the
     CHECKs are the backstop."""
 

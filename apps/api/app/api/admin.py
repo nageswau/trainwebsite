@@ -13,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
+from app.api.lookups import _pattern as like_pattern
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import unique_student_code, uuid_reference
@@ -55,6 +56,7 @@ from app.schemas import (
     SchoolOut,
     SchoolUpdate,
     SchoolUpdateOut,
+    TelSource,
     TierChangeOut,
 )
 from app.services import bdm as bdm_rules
@@ -384,21 +386,28 @@ async def system_status(user: User = Depends(ensure_admin)):
 
 
 @router.get("/leads")
-async def leads(division: str | None = None, status: str | None = None, bdm_organization_id: UUID | None = None, user: User = Depends(ensure_admin),
+async def leads(division: str | None = None, status: str | None = None, source: TelSource | None = None, product_id: UUID | None = None,
+                campaign_id: UUID | None = None, telecaller_user_id: UUID | None = None, bdm_organization_id: UUID | None = None,
+                q: str | None = Query(None, max_length=200), limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0),
+                user: User = Depends(ensure_admin),
                 db: AsyncSession = Depends(get_db)):
-    # bdm-017 (spec §5): rows also carry organization / bdm / converted_user (null for website leads); the organization filter is
-    # ANDed with the division scope, so it can only narrow.
-    stmt = lead_rules.admin_rows()
+    # bdm-017 (spec §5): rows also carry organization / bdm / converted_user (null for website leads).
+    # tel-003 (DEC-SCOPE-077, T25): a {items,total,limit,offset} page (the 500-row cap is gone) with the lead fields; every filter is
+    # ANDed with the division scope, so it can only narrow. `q` is a literal substring of the Lead ID, name, email, phone or subject.
+    filters = []
     if user.role != "super_admin":
-        stmt = stmt.where(Enquiry.division == user.division)
+        filters.append(Enquiry.division == user.division)
     elif division:
-        stmt = stmt.where(Enquiry.division == division)
-    if status:
-        stmt = stmt.where(Enquiry.status == status)
-    if bdm_organization_id:
-        stmt = stmt.where(Enquiry.bdm_organization_id == bdm_organization_id)
-    rows = (await db.execute(stmt.order_by(Enquiry.created_at.desc()).limit(500))).all()
-    return [lead_rules.admin_out(row) for row in rows]
+        filters.append(Enquiry.division == division)
+    for column, value in ((Enquiry.status, status), (Enquiry.source, source), (Enquiry.product_id, product_id), (Enquiry.campaign_id, campaign_id),
+                          (Enquiry.telecaller_user_id, telecaller_user_id), (Enquiry.bdm_organization_id, bdm_organization_id)):
+        if value:
+            filters.append(column == value)
+    if pattern := like_pattern(q):
+        filters.append(or_(*(c.ilike(pattern, escape="\\") for c in (Enquiry.lead_code, Enquiry.name, Enquiry.email, Enquiry.phone, Enquiry.subject))))
+    total = await db.scalar(select(func.count()).select_from(Enquiry).where(*filters))
+    rows = (await db.execute(lead_rules.admin_rows().where(*filters).order_by(*lead_rules.NEWEST).limit(limit).offset(offset))).all()
+    return {"items": [lead_rules.admin_out(row) for row in rows], "total": total or 0, "limit": limit, "offset": offset}
 
 
 @router.post("/leads/{lead_id}/conversion")

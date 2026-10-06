@@ -88,7 +88,7 @@ def behind(org: BdmOrganization, stage: str) -> bool:
 
 
 def advance_to(db: AsyncSession, user: User, org: BdmOrganization, stage: str, note: str) -> str | None:
-    """bdm-005 (D28 / DEC-SCOPE-077 M5): move a locked organization forward to `stage` as one `move` event; at or past it, nothing.
+    """bdm-005 (D28 / DEC-SCOPE-078 M5): move a locked organization forward to `stage` as one `move` event; at or past it, nothing.
     Returns the stage it left, or None. The caller owns the audit row and the commit."""
     if not behind(org, stage):
         return None

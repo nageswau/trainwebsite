@@ -60,8 +60,8 @@ test("a submitted enquiry is visible to the correct division admin via the API, 
 
   const cookies = await page.context().cookies();
   const access = cookies.find((c) => c.name === "edusphere_access");
-  const leads = await request.get("/api/v1/admin/leads", { headers: { cookie: `edusphere_access=${access?.value}` } });
+  const leads = await request.get(`/api/v1/admin/leads?q=${encodeURIComponent(email)}`, { headers: { cookie: `edusphere_access=${access?.value}` } });
   expect(leads.status()).toBe(200);
-  const found = (await leads.json()).some((lead: { email: string }) => lead.email === email);
+  const found = (await leads.json()).items.some((lead: { email: string }) => lead.email === email); // tel-003: a page
   expect(found).toBe(true);
 });

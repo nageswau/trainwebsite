@@ -1383,7 +1383,7 @@ class EnquiryIn(BaseModel):
     phone: str | None = Field(default=None, max_length=40)
     subject: str = Field(min_length=2, max_length=180)
     message: str = Field(min_length=5, max_length=5000)
-    source: str = Field(default="website", max_length=80)
+    source: Literal[TEL_SOURCES] = "website"  # tel-003 (DEC-SCOPE-077): one of the 13 EVID-019 §2 sources, else 422
     metadata: dict = Field(default_factory=dict)
 
 
@@ -3896,7 +3896,7 @@ class BdmPipelinePage(BaseModel):
     offset: int
 
 
-# --- bdm-005 (DEC-SCOPE-077, spec §6.1): MoU tracking ----------------------------------------------------------------------------
+# --- bdm-005 (DEC-SCOPE-078, spec §6.1): MoU tracking ----------------------------------------------------------------------------
 MOU_FIELD_LABELS = {
     "reference": "Reference",
     "notes": "Notes",

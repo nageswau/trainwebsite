@@ -75,4 +75,4 @@ async def test_admin_leads_scoped_to_own_division_for_division_admin(client, db_
 
     leads = await client.get("/api/v1/admin/leads")
     assert leads.status_code == 200
-    assert all(item["division"] == "it" for item in leads.json())
+    assert all(item["division"] == "it" for item in leads.json()["items"])

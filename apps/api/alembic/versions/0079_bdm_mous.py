@@ -1,18 +1,19 @@
 """bdm-005 -- MoU tracking: bdm_mous and bdm_mou_events.
 
-Revision ID: 0078_bdm_mous
-Revises: 0077_bdm_tasks_followups
+Revision ID: 0079_bdm_mous
+Revises: 0078_enquiry_lead_record
 
-docs/superpowers/specs/2026-10-06-bdm-005-mou-tracking-design.md §5 (DEC-SCOPE-077). Additive: two new tables, no existing row read
+docs/superpowers/specs/2026-10-06-bdm-005-mou-tracking-design.md §5 (DEC-SCOPE-078). Additive: two new tables, no existing row read
 or written. 0001 builds a fresh database from the current models, which already carry both tables, so each is created only when
 missing. STATUSES / EVENT_KINDS are frozen copies of app.models.BDM_MOU_SETTABLE / BDM_MOU_EVENT_KINDS and CHECKS must equal
 app.models.BDM_MOU_CHECKS (test_bdm_005_migration). downgrade() refuses while any MoU exists: recorded agreements are never dropped
 silently.
 
-Re-chained 2026-10-06 on merging `main` @ `442ce465`: cut as `0076_bdm_mous` after `0075_telecaller_profiles` (DEC-SCOPE-074), but
-tel-002's `0076_tel_catalogue` and bdm-008's `0077_bdm_tasks_followups` reached `main` first, so this revision is now `0078_bdm_mous`
-after them (one head) and the decision is DEC-SCOPE-077. A database stamped at `0076_bdm_mous` is re-stamped with
-`alembic stamp --purge 0075_telecaller_profiles` then `upgrade head` (every create here is guarded, so the re-run is harmless).
+Re-chained 2026-10-06 while other items reached `main` first: cut as `0076_bdm_mous` after `0075_telecaller_profiles`
+(DEC-SCOPE-074); tel-002 (`0076_tel_catalogue`, 074), bdm-008 (`0077_bdm_tasks_followups`, 075), tel-017 (076, no migration) and
+tel-003 (`0078_enquiry_lead_record`, 077) merged before it, so this revision is now `0079_bdm_mous` after `0078_enquiry_lead_record`
+(one head) and the decision is DEC-SCOPE-078. A database stamped at an earlier bdm-005 revision (`0076_bdm_mous` or `0078_bdm_mous`)
+is re-stamped with `alembic stamp --purge <the revision before it>` then `upgrade head` (every create here is guarded).
 """
 
 import sqlalchemy as sa
@@ -20,8 +21,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0078_bdm_mous"
-down_revision = "0077_bdm_tasks_followups"
+revision = "0079_bdm_mous"
+down_revision = "0078_enquiry_lead_record"
 branch_labels = None
 depends_on = None
 
@@ -99,6 +100,6 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {MOUS} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0078_bdm_mous: MoU data exists. Clear it deliberately first.")
+        raise RuntimeError("Cannot downgrade 0079_bdm_mous: MoU data exists. Clear it deliberately first.")
     op.drop_table(EVENTS)
     op.drop_table(MOUS)
