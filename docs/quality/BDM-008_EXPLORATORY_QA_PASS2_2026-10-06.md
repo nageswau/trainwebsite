@@ -100,4 +100,19 @@ organization marked "Archived" and "— Organization archived"; a manager restor
 - Signing in from the chooser returns to the requested follow-ups URL.
 - Wrong-role pages render "Access unavailable" with a dashboard link (no redirect loop).
 
-**Not covered:** the full backend / web suites (owner), the independent Codex review. Nothing was fixed in this pass.
+## Fixes (2026-10-06, after this pass; commit `922d60e9`)
+
+All seven fixed test-first (each new test seen failing first), then re-checked in the browser on a rebuilt web container:
+
+| ID | Fix | Test | Browser re-check |
+|---|---|---|---|
+| QA8B-01 | `writeFailure()` in `lib/bdmTasks.ts`: only 403 / 404 / 409 mean "changed elsewhere"; a 5xx says "We couldn't save this. Please try again." and leaves the row | `BdmTaskItem.test.tsx` "says a server error didn't save…", `bdmTasks.test.ts` "sorts a failed write…" | Pass — `V01-done-500.png` |
+| QA8B-02 | A 401 on a row action, the form or the list shows "Your session has ended — sign in again to continue." with `ReturnToLoginLink` (returns here); the list drops the useless Retry | `BdmTaskItem` / `BdmTaskForm` / `BdmTasksPanel` "…session has ended…" | Pass — link `/bdm/sign-in?next=%2Fbdm%2Ffollow-ups%3Fbucket%3Dupcoming`; `V02-session.png` |
+| QA8B-03 | The form never shows a 5xx's raw text; typed text kept | `BdmTaskForm.test.tsx` "words a server error plainly…" | Pass |
+| QA8B-04 | The notice clears when the list URL (tab / filter / page) changes; a reload after a write keeps it | `BdmTasksPanel.test.tsx` "clears the Done notice…" | Pass |
+| QA8B-05 | Manager view: "Showing one BDM: <name>" + Show all when `?bdm=` is set | `BdmTasksPanel.test.tsx` "shows which BDM…" | Pass — `V05-manager-filter.png` |
+| QA8B-06 | Edit / Cancel task disabled while a save is in flight | `BdmTaskItem.test.tsx` "disables the row's other actions…" | Pass |
+| QA8B-07 | Detail-line links are `inline-block`, min 24 px tall | `BdmTaskItem.test.tsx` "gives the detail-line links a 24px target" | Pass — 24 / 24.25 px; no overflow at 320 px |
+
+After the fixes: web BDM set 431 passed (47 files), `tsc` 0, eslint 0; Playwright `bdm-008-follow-ups.spec.ts` passed on the rebuilt
+stack. **Not covered:** the full backend / web suites (owner), the independent Codex review.
