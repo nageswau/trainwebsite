@@ -83,4 +83,17 @@ All three are caused by bdm-025 and are in scope. They are fixed below, each tes
 One harness note: a re-run once stalled on the admin sign-in page, because the script's rapid repeated logins hit the existing login
 throttle. A single login a minute later returned 200, and the affected groups then passed. This is not a product issue.
 
+**Found in verification (Phase 8 LITE run): QA25-05 (Medium, concurrency)**
+
+- **Symptom:** `test_bdm_002_assign.py::test_concurrent_reassigns_serialize` failed: two concurrent reassigns of one organization by
+  its manager answered `[200, 404]` instead of `[200, 200]` / `[200, 409]`. It is intermittent on `main` too (2/15 runs at
+  `442ce465`). bdm-025's extra history insert widens the window (6/15).
+- **Root cause:** `bdm_organizations.load_scoped(lock=True)` used `FOR UPDATE` with the manager scope as a semi-join on
+  `bdm_profiles`. Postgres's READ COMMITTED re-check combines the updated organization row with the *originally joined* profile row
+  (the old assignee's), so a row still in scope was dropped → 404.
+- **Fix:** lock by id, then evaluate the scope in a fresh statement.
+- **Evidence:** the race test 30× plus the bdm-025 race tests 30× → 120/120 passed (it was 6/15 failing before the fix).
+- `test_bdm_025_concurrency.py` keeps 404 as a legitimate outcome only when the deactivation moved the organization to another
+  manager's team first.
+
 **Open issues: none.**

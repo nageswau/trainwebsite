@@ -1214,6 +1214,23 @@ Additive: two tables; `bdm_appointments` is not altered (its `outcome` / `next_f
 - **`bdm_tasks`** — minimal for bdm-007, extended by bdm-008. `kind` CHECK (`follow_up`, `task`); `title` (200); `due_on` date; `organization_id` FK nullable; `source` CHECK (`appointment_outcome`, `mou`, `manual`); `source_appointment_id` FK `bdm_appointments` nullable, unique `uq_bdm_tasks_source_appointment`, CHECK `(source = 'appointment_outcome') = (source_appointment_id IS NOT NULL)`; `assignee_user_id` FK `users`; `status` CHECK (`open`, `done`, `cancelled`) with `(status = 'done') = (completed_at IS NOT NULL)`; index `ix_bdm_tasks_assignee_status_due`. **bdm-008 (`0077_bdm_tasks_followups`, `DEC-SCOPE-075`):** `notes` (2000, manual items), `cancelled_at`, `cancel_reason` (500); CHECKs `ck_bdm_tasks_cancelled` `(status = 'cancelled') = (cancelled_at IS NOT NULL)` and `ck_bdm_tasks_cancel_reason` (a reason only when cancelled); rows bdm-007 had cancelled are backfilled ("Follow-up date removed from the meeting report"). Archiving an organization cancels its open items ("Organization archived"); `mou` stays reserved for bdm-005. Downgrade refuses while `manual` tasks exist.
 - Backfill (0072, idempotent): a legacy report for every completed appointment; an open follow-up for each stored `next_follow_up_on`. Downgrade refuses while non-legacy reports exist.
 
+## BDM Assignment History (`bdm-025`, `DEC-SCOPE-076`; migration `0078_bdm_assignment_history`, after `0077_bdm_tasks_followups`)
+
+Additive only: one append-only table. No existing table or column changes.
+
+- **`bdm_assignment_history`**: one row per organization, appointment or task whose owner changed.
+  - Columns: `id` uuid PK; `entity_type` CHECK (`organization`, `appointment`, `task`); `entity_id` uuid; `from_user_id`,
+    `to_user_id`, `actor_user_id` FK `users` RESTRICT; `reason` CHECK (`bdm_deactivated`, `portfolio_handover`,
+    `organization_reassigned`); `created_at`.
+  - `entity_id` has no FK, because it is polymorphic. Those rows are never deleted.
+  - Indexes: `ix_bdm_assignment_history_entity` (`entity_type`, `entity_id`) and `ix_bdm_assignment_history_from`.
+  - Written by deactivation with a handover, by a later handover from an inactive BDM, and by bdm-002's single organization
+    reassign.
+  - The downgrade refuses while rows exist.
+- **What moves (L5):** non-archived organizations (`assigned_bdm_user_id`); `bdm_appointments` that are scheduled, confirmed or
+  rescheduled with `starts_at > now()` (`bdm_user_id`); open `bdm_tasks` (`assignee_user_id`).
+- **What stays:** history keeps the original BDM. Not-started `bdm_trips` are cancelled; they never move (L2).
+
 ## BDM Appointments (`bdm-006`, `DEC-SCOPE-068`; migration `0070_bdm_appointments`, after `0069_bdm_org_profiles`)
 
 Additive only: two tables and one sequence (`bdm_appointment_code_seq`, also on `Base.metadata`); no existing table, column or row changes. `downgrade()` refuses while any appointment exists. Spec §4.2–4.3.

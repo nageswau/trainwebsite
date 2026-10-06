@@ -3682,3 +3682,52 @@ and `/telecaller/manager/campaigns`. Design spec `docs/superpowers/specs/2026-10
 **Consequences:** migration `0077_bdm_tasks_followups` (`notes`, `cancelled_at`, `cancel_reason`, two CHECKs, backfill; downgrade refuses while manual tasks exist). New `GET/POST /bdm/tasks`, `PATCH /bdm/tasks/{id}`, `POST /bdm/tasks/{id}/complete`, `POST /bdm/tasks/{id}/cancel`; `sync_follow_up` records the cancellation time and reason; the organization archive cancels open items. Web: `/bdm/follow-ups`, `/bdm/manager/follow-ups`, nav "Follow-ups", "Follow-ups & tasks" on the organization profile.
 
 **Status:** `EXPLICIT_APPROVAL` for F1–F7; implemented on `feature/bdm-008-follow-ups` — **VERIFIED — ready for owner sign-off, NOT marked COMPLETE (2026-10-06, `feature/bdm-008-follow-ups` @ `ae5758f8`).** Fresh evidence on that commit: backend LITE 100 passed; ruff clean on changed files; mypy 401 = `main`'s 401 (no new errors); single alembic head `0077_bdm_tasks_followups` (offline SQL additive: 3 nullable columns, backfill before 2 CHECKs); web BDM set 431 passed (47 files); `tsc` 0; eslint 0 on changed web files; `next build` 0; Playwright bdm-008 + bdm-002 (2) / 006 / 007 / 009 — 6 passed on a stack rebuilt from that commit; browser verification (isolated Playwright Chromium, 20 areas + QA8-01/02 and QA8B-01…07 re-checks) passed with 0 page errors. Codex review waived by the owner. **Open for the owner:** Browser Use is not installed on this machine (isolated Playwright Chromium used instead); the full backend / web suites are the owner's; MoU-sourced follow-ups wait for bdm-005 (F1).
+
+### DEC-SCOPE-076 — BDM deactivation, portfolio handover and manager change (`bdm-025`)
+
+**ID note:** drafted as `DEC-SCOPE-076` with migration `0078_bdm_assignment_history` on `main` @ `442ce465`. Per backlog §6.2, if another
+branch (e.g. bdm-005) merges first with the same numbers, the second to merge renumbers.
+
+**Question:** what must happen when a BDM or a BDM manager is deactivated? Specifically: what counts as their open work, where does
+it go, what happens to trips and pending approvals, and how is the reporting manager changed (`BDM_CRM_BACKLOG.md` §4 bdm-025)?
+
+**Evidence:**
+- `EVID-016` (`BDM Functionalities.md`, `DERIVED_BLUEPRINT`) §1 BDM Management, lines 5–25 (Reporting Manager, Active/Inactive);
+- backlog `DEC-SCOPE-055` D3, D4, D10 (Q-01);
+- bdm-001 B7 (type fixed; transfers are bdm-025);
+- bdm-010 T2/T3 (the approver is resolved at decision time).
+
+**Resolution:** owner, in-session 2026-10-06. `EXPLICIT_APPROVAL` through answers to structured questions; for each one the owner
+picked the recommended option. Design spec: `docs/superpowers/specs/2026-10-06-bdm-025-deactivation-handover-design.md` §3.
+
+- **L1** Dependencies: "merged on `main` with verified QA evidence" counts as completed for bdm-006 (stale status line) and bdm-008
+  ("VERIFIED — ready for owner sign-off").
+- **L2** Trips: a deactivated BDM's not-started trips (`travel_status = planned`, any approval state) are cancelled with the reason
+  "BDM deactivated". A trip already in progress stays with the original BDM.
+- **L3** "Leave unassigned": `mode=leave` keeps the open work on the inactive BDM. "Hand over" stays available on the inactive row
+  (`POST /admin/bdms/{id}/handover`). No owner column becomes nullable.
+- **L4** A manager with BDMs: a super_admin-only bulk move to a replacement active manager, from the "BDM managers" card. The generic
+  Users page refuses with a 422 that says where to do it.
+- **L5** Open portfolio = non-archived organizations; scheduled / confirmed / rescheduled appointments that start in the future; open
+  follow-ups and tasks. History (archived organizations, past or finished appointments, done / cancelled tasks, reports, activities)
+  keeps the original BDM.
+- **Defaults:**
+  - actors are super_admin and the Q-01 creator types (`require_creator_may`);
+  - one 422 message for any invalid target;
+  - no idempotency key (a repeat → 409);
+  - reactivation stays on `PATCH /admin/users` `active: true` (login only, never the old portfolio);
+  - a manager change stays on `PATCH /admin/users` `bdm_profile.reporting_manager_user_id`, and pending approvals follow because of T2.
+
+**Consequences:**
+- Migration `0078_bdm_assignment_history`: an append-only table; the downgrade refuses while rows exist.
+- New routes:
+  - `GET /admin/bdms/{id}/portfolio`
+  - `POST /admin/bdms/{id}/deactivate` `{mode, reassign_to}`
+  - `POST /admin/bdms/{id}/handover` `{reassign_to}`
+  - `POST /admin/bdm-managers/{id}/deactivate` `{reassign_to}`
+- `PATCH /admin/users/{id}` `active: false` → 422 for a BDM, or for a manager with BDMs.
+- `GET /admin/bdm-managers` rows gain `bdm_count`; the telecaller picker shape is unchanged.
+- bdm-002's single reassign also writes a history row.
+- Web: the deactivate / hand-over dialog on the admin BDM rows, and the "BDM managers" card (super_admin).
+
+**Status:** `EXPLICIT_APPROVAL` for L1–L5. Implemented on `worktree-bdm-025`; the verification status is in the backlog entry and the RTM row.

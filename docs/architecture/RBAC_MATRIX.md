@@ -511,6 +511,21 @@ Archived organizations are read-only (`409` "Restore this organization first"). 
 
 **Explicit denies (bdm-010):** nobody decides their own trip (`403`); a manager never edits a trip or its expenses (no route); server-owned fields (`code`, `bdm_user_id`, statuses, `currency`, `decided_*`) in a body → `422`; a `bdm` on a manager route or a manager on a BDM route → `403`. Every change writes one `AuditLog` row (`bdm.trip_*`) in the same transaction.
 
+**BDM deactivation and handover (`bdm-025`, `DEC-SCOPE-076`, added 2026-10-06).** Same inline pattern.
+
+| Role | Can | Scope | Item |
+|---|---|---|---|
+| `super_admin` | `GET /admin/bdms/{id}/portfolio`; `POST /admin/bdms/{id}/{deactivate,handover}`; `POST /admin/bdm-managers/{id}/deactivate` | Every BDM type; **the only role that deactivates a BDM manager** (Q-01: managers are created by super_admin only) | `bdm-025` |
+| `it_admin` | the three `/admin/bdms/{id}/…` routes | College BDMs only (`require_creator_may`); otherwise 403 | `bdm-025` |
+| `overseas_admin` | the three `/admin/bdms/{id}/…` routes | Agent and School BDMs only; otherwise 403 | `bdm-025` |
+| `bdm_manager`, `bdm`, others | — | 403 (`ensure_admin`) | `bdm-025` |
+
+**Explicit denies (bdm-025):**
+- A handover target must be an active `bdm` of the same type, and not the source (one 422 for any invalid target).
+- A replacement manager must be another active `bdm_manager`.
+- `PATCH /admin/users` cannot deactivate a BDM, or a manager who still has BDMs (422).
+- History rows never change owner.
+
 **BDM appointments (`bdm-006`, `DEC-SCOPE-068`).** Every `{id}` resolves through the appointment scope (out of scope is the same `404` as a missing id); writes then require ownership.
 
 | Role | Can | Scope | Item |

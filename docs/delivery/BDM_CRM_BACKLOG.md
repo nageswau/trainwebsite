@@ -1150,6 +1150,32 @@ Conventions used below:
 
 ### bdm-025 — BDM deactivation, portfolio reassignment, manager change
 
+> **Status (2026-10-06):** implemented on `worktree-bdm-025` (`DEC-SCOPE-076`, migration `0078_bdm_assignment_history`).
+> **NOT marked COMPLETE:** one verification run is still pending.
+>
+> Owner decisions L1–L5: dependencies accepted as merged; not-started trips are cancelled; "leave" = keep with the BDM and hand over
+> later; managers are moved in bulk by super_admin; only live items move.
+>
+> Fresh evidence on `db3597db`:
+> - backend LITE (bdm-025, bdm-001, bdm-002 assign/organizations/scope, bdm-010, ENH-003, ADM-001, tel-001, bdm-008 tasks, bdm-006
+>   scope): 470 passed, 1 failed — `test_bdm_002_assign::test_concurrent_reassigns_serialize`;
+> - single alembic head; 0078 offline SQL additive (1 table + 2 indexes; the downgrade drops only that table and is guarded);
+> - ruff: only the 3 pre-existing B904s in `admin.py`; mypy 414 = `main`'s 414;
+> - web BDM set: 454 passed (49 files); `tsc` 0; eslint 0 errors; `next build` 0;
+> - Playwright bdm-025 / 001 / 002 / 010: 16 passed;
+> - exploratory browser QA (isolated Playwright Chromium; Browser Use is not installed):
+>   `docs/quality/BDM-025_EXPLORATORY_QA_2026-10-06.md`. QA25-01…04 were fixed test-first and re-checked.
+>
+> **QA25-05:** the failing race is pre-existing on `main` (2/15) and was widened by bdm-025 (6/15). Fixed in
+> `bdm_organizations.load_scoped`: lock by id, then check scope. The race tests then passed 120/120.
+>
+> **Pending:**
+> - the re-run of all `test_bdm_*` after that `load_scoped` change (the run was stopped by the host for low memory);
+> - the full backend / web suites (the owner's).
+>
+> Spec: `docs/superpowers/specs/2026-10-06-bdm-025-deactivation-handover-design.md`; plan:
+> `docs/superpowers/plans/2026-10-06-bdm-025-deactivation-handover.md`.
+
 - **Business requirement:** BDM Active/Inactive (§1) and the Reporting Manager. By the project's user-lifecycle convention, "creation" implies the full account lifecycle.
 - **Existing behavior:** `users.active` blocks login (`get_current_user`). There is no ownership concept to reassign.
 - **Expected behavior:**
