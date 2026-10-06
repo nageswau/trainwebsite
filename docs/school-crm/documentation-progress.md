@@ -5,8 +5,8 @@
 | Code baseline | `main` @ `ce1f07c2` (S1 discovery). Record any later `main` used for browser work here, with the affected features re-checked. |
 | Stack used for browser work | `schooldocs` compose project from worktree `.claude/worktrees/school-docs` (detached at docs commit `24a22627` = `main` `ce1f07c2` + docs). Web http://localhost:3020, api :8020. Untracked `docker-compose.docs.yml` adds Mailpit on **127.0.0.1:8026** (the Agent CRM docs stack holds 8025). Untracked `.env` = repo `.env` with `FRONTEND_URL`/ports changed, `SMTP_HOST=mailpit`, `SMTP_PORT=1025`, `SMTP_USE_TLS=false`, no SMTP credentials, **`SMTP_FROM_EMAIL=no-reply@edusphere.local`** (without it the app reports "email is not configured"), `EMAIL_WEBHOOK_URL` empty. Owner approved Claude starting, seeding and resetting this stack (2026-10-05). |
 | Docs branch | `docs/school-crm-user-guide` (from `main` @ `ce1f07c2`) |
-| Last session | S3 Account access and Team — 2026-10-06 |
-| Next session | S4 — Students and roster. Start from S3 data: reset, clear Mailpit, then run `sch-s2-admin` and `sch-s3-access-team` (≈1.5 min). Docs accounts from S2/S3 use `DOCS_TEST_PASSWORD`; Docs Teacher B is deactivated; Docs Principal and Docs Parent invites are pending. |
+| Last session | S4 Students and roster — 2026-10-06 |
+| Next session | S5 — Activities, attendance and feedback. Start from S4 data: reset, clear Mailpit, run `sch-s2-admin` → `sch-s3-access-team` → `sch-s4-students` (≈2 min). Docs Teacher A now has 11 assigned students (Grades 8–12). |
 
 **Column values:**
 - **Code Reviewed:** YES / PARTIAL / NO. YES at S1 means reviewed from source at `ce1f07c2`, with file:line evidence in `discovery/`.
@@ -18,7 +18,7 @@
 A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES
 and Reviewed = PASSED.
 
-**Totals (after S3):** 86 features · 19 browser-verified (2 partial) · 19 documented · 0 complete (final review is S12).
+**Totals (after S4):** 86 features · 27 browser-verified (3 partial) · 27 documented · 0 complete (final review is S12).
 
 | ID | Module | Feature | Code Reviewed | Browser Verified | Screenshot | Documented | Reviewed |
 |---|---|---|---|---|---|---|---|
@@ -38,14 +38,14 @@ and Reviewed = PASSED.
 | DOC-SCH-DASH-005 | Dashboards | Academic Team dashboard: layout and sections | YES | NO | NO | NO | NO |
 | DOC-SCH-DASH-006 | Dashboards | Career Counselor dashboard: layout and sections | YES | NO | NO | NO | NO |
 | DOC-SCH-DASH-007 | Dashboards | Psychometric Team dashboard: layout and sections | YES | NO | NO | NO | NO |
-| DOC-SCH-STU-001 | Students & roster | View the student roster | YES | NO | NO | NO | NO |
-| DOC-SCH-STU-002 | Students & roster | Add one student | YES | NO | NO | NO | NO |
-| DOC-SCH-STU-003 | Students & roster | Edit a student (incl. teacher assignment) | YES | NO | NO | NO | NO |
-| DOC-SCH-STU-004 | Students & roster | Link a parent to a student | YES | NO | NO | NO | NO |
-| DOC-SCH-STU-005 | Students & roster | Upload the roster in bulk (CSV) | YES | NO | NO | NO | NO |
-| DOC-SCH-STU-006 | Students & roster | Student profile and journey timeline (grade/transfer history, scorecard, funding cases) | YES | NO | NO | NO | NO |
-| DOC-SCH-STU-007 | Students & roster | Add, replace or remove a student photo | YES | NO | NO | NO | NO |
-| DOC-SCH-STU-008 | Students & roster | Download a student progress report (PDF) | YES | NO | NO | NO | NO |
+| DOC-SCH-STU-001 | Students & roster | View the student roster | YES | YES | YES | YES | NO |
+| DOC-SCH-STU-002 | Students & roster | Add one student | YES | YES | YES | YES | NO |
+| DOC-SCH-STU-003 | Students & roster | Edit a student (incl. teacher assignment) | YES | YES | YES | YES | NO |
+| DOC-SCH-STU-004 | Students & roster | Link a parent to a student | YES | YES | YES | YES | NO |
+| DOC-SCH-STU-005 | Students & roster | Upload the roster in bulk (CSV) | YES | YES | YES | YES | NO |
+| DOC-SCH-STU-006 | Students & roster | Student profile and journey timeline (grade/transfer history, scorecard, funding cases) | YES | PARTIAL (Principal/Teacher dashboard entry buttons verified in S10; Funding support card not exercised with data) | YES | YES | NO |
+| DOC-SCH-STU-007 | Students & roster | Add, replace or remove a student photo | YES | YES | YES | YES | NO |
+| DOC-SCH-STU-008 | Students & roster | Download a student progress report (PDF) | YES | YES | YES | YES | NO |
 | DOC-SCH-STU-009 | Students & roster | Promote or hold back students for the new academic year | YES | NO | NO | NO | NO |
 | DOC-SCH-XFER-001 | Transfers | Request a transfer out to another school | YES | NO | NO | NO | NO |
 | DOC-SCH-XFER-002 | Transfers | Request a student from another school (by Student ID) | YES | NO | NO | NO | NO |
@@ -134,8 +134,8 @@ All items from `documentation-analysis.md` §12.1 are open. Owner-dependent ones
 | U1 | Session ends at ~60 min (no refresh call) | S3 | PARTIAL: with only the access cookie removed (refresh cookie still present) the portal shows "Access unavailable — Not authenticated" + Return to login, so the app does not refresh. The 60-minute timing itself is from code. |
 | U2 | Reset email carries a token, not a link (webhook only) | S3 | CONFIRMED on the docs stack: forgot-password sends **no email** (Mailpit count unchanged); only the webhook path exists and it is unset. Product finding; AUTH-004 tells users to contact their administrator. |
 | U3 | Active academic year: no admin UI | S6 | DECIDED 2026-10-05: in S6 Claude gives the owner the exact `POST`/`PATCH /overseas-admin/academic-years` calls (as Overseas Admin); the owner runs them on the docs stack. The guide says the year is set up by EduSphere and notes the missing admin screen. |
-| U4 | `/school/coordinator/students/new` message | S4 | OPEN |
-| U5 | Over-length fields / malformed DOB → probable 500 | S4, S5, S7 | OPEN |
+| U4 | `/school/coordinator/students/new` message | S4 | CONFIRMED: "Access unavailable — [object Object]" + Back to students. Noted in STU-001. |
+| U5 | Over-length fields / malformed DOB → probable 500 | S4, S5, S7 | PARTIAL: a 170-character full name shows "Something went wrong." (STU-002). Activity title and result fields still to check (S5, S7). |
 | U6 | Browser-native validation wording | all | DECIDED S3: docs say "your browser asks you to…" instead of quoting browser bubbles. |
 | U7 | Pydantic 422 wording on admin forms | S2 → later | OPEN (not reachable through the S2 happy/error paths; messages marked "From code" in SADM-002/004) |
 | U8 | Parent notifications never marked read | S10 | OPEN |
@@ -143,7 +143,7 @@ All items from `documentation-analysis.md` §12.1 are open. Owner-dependent ones
 | U10 | Delivery channels enabled in the docs stack | S2 | PARTIAL: email works (Mailpit). WhatsApp/SMS not configured on the docs stack, so those channels are documented from code only. |
 | U11 | Super Admin "Workspace not found" on three school pages | S2 | CONFIRMED in browser (Schools, School Staff, School Applications); Transfers and Activity Feedback open with the Overseas Admin sidebar/label; Analytics opens with the SA sidebar. Documented in SADM-011. |
 | U12 | Users page re-send set-password for school users | S2 | CLOSED: same Users panel as Agent CRM DOC-ADM-008 (`WorkflowPanel.tsx:446` shows it to Overseas Admin on `users`); re-send verified for a school specialist. |
-| U13 | Template example row imported as a real student | S4 | OPEN |
+| U13 | Template example row imported as a real student | S4 | CONFIRMED: the downloaded roster template contains the "Jane Doe" example row and the page does not warn. STU-005 tells users to delete it. |
 | U14 | Teacher portfolio editing as seen by a Teacher | S7 | OPEN |
 | U15 | What moves school-linked applications past `enquiry` | S9 | OPEN |
 | U16 | 360° tab list at mobile width | S9 | OPEN |
@@ -163,6 +163,11 @@ See `documentation-analysis.md` §12.2 (17 items). Notable:
 - Frontend role guards are inconsistent.
 - Parent notifications never clear.
 - Several raw codes are shown to users.
+- **New in S4:**
+  1. The roster upload's empty-file check never shows: the file input is `required`, so the browser prompts first.
+  2. A 170-character student name gives only "Something went wrong.".
+  3. `/students/new` shows "[object Object]".
+  4. The roster template includes an importable example row.
 - **New in S3:**
   1. Forgot-password emails nothing unless the webhook is configured (U2). Users can't reset their own password on a plain SMTP setup.
   2. On phones and narrow windows (under 980 px) there is **no Sign out** anywhere. The menu lists only Change password, My profile and the pages.
@@ -172,6 +177,19 @@ See `documentation-analysis.md` §12.2 (17 items). Notable:
 ## Session log
 | Session | Date | Summary |
 |---|---|---|
+| S4 | 2026-10-06 | `main` had moved to `e73dfa60` (tel-001). Its diff was reviewed: no School CRM route, API or school-role flow changed. The only visible effect is a new Overseas Admin sidebar item **Telecallers**, missing from the S2 screenshots; this is recorded for S12. The stack stays on `ce1f07c2`.
+
+**Run:** Docker was restarted by the owner and the after-S3 snapshot restored. `sch-s4-students.capture.ts` runs green in about 27 s.
+
+**Data created:**
+- Students Docs Student Ananya (Grade 9, new parent invited) and Vihaan (linked to the existing parent).
+- Bulk upload: 11 added, 6 rejected. This gives Grades 8–12, a student with no grade level and a label mismatch, all assigned to Docs Teacher A.
+- Kabir linked to the parent.
+- Initials avatar photo on Aarav.
+
+**Verification:** Progress reports downloaded as CO, PR and PA. U4 and U13 confirmed, U5 partial.
+
+**Docs:** STU-001..008 written; 21 screenshots reviewed. |
 | S3 | 2026-10-06 | `sch-s3-access-team.capture.ts` runs green in about 43 s after S2.
 
 **Data created:**

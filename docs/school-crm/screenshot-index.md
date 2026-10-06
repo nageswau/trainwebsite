@@ -8,6 +8,7 @@ so the whole card fits); they are marked "(element shot)".
 |---|---|---|
 | S2 — `apps/web/tests/doc-capture/school/sch-s2-admin.capture.ts` | `schooldocs` from `main` @ `ce1f07c2` (+ docs commits), web :3020 | 2026-10-05 |
 | S3 — `sch-s3-access-team.capture.ts` (after S2 on the same DB) | same | 2026-10-06 |
+| S4 — `sch-s4-students.capture.ts` (after S3 on the same DB) | same | 2026-10-06 |
 
 | Screenshot | Module | Feature | Step | Role | Description |
 |---|---|---|---|---|---|
@@ -63,3 +64,24 @@ so the whole card fits); they are marked "(element shot)".
 | [team/04-invite-email-exists.png](screenshots/team/04-invite-email-exists.png) | Team | DOC-SCH-TEAM-001 | Error | School Coordinator | "Email already exists" |
 | [team/05-team-and-pending-invites.png](screenshots/team/05-team-and-pending-invites.png) | Team | DOC-SCH-TEAM-002 | 2 Pending | School Coordinator | Your team + Pending invites (element shot of main) |
 | [team/06-teacher-deactivated.png](screenshots/team/06-teacher-deactivated.png) | Team | DOC-SCH-TEAM-003 | 1 Deactivated | School Coordinator | "Docs Teacher B deactivated." |
+| [students/01-roster.png](screenshots/students/01-roster.png) | Students & roster | DOC-SCH-STU-001 | 1 Roster | School Coordinator | Student roster with row actions (seeded students) |
+| [students/02-roster-empty.png](screenshots/students/02-roster-empty.png) | Students & roster | DOC-SCH-STU-001 | Empty | School Coordinator | Empty roster of a new school |
+| [students/03-add-student-filled.png](screenshots/students/03-add-student-filled.png) | Students & roster | DOC-SCH-STU-002 | 1 Fill in | School Coordinator | Add one student, all groups filled (element shot) |
+| [students/04-add-student-success.png](screenshots/students/04-add-student-success.png) | Students & roster | DOC-SCH-STU-002 | 2 Added | School Coordinator | Added + parent invite sent |
+| [students/05-add-student-roll-conflict.png](screenshots/students/05-add-student-roll-conflict.png) | Students & roster | DOC-SCH-STU-002 | Error | School Coordinator | Roll number already used |
+| [students/06-edit-student.png](screenshots/students/06-edit-student.png) | Students & roster | DOC-SCH-STU-003 | 1 Edit | School Coordinator | Edit form, section changed (element shot) |
+| [students/07-edit-student-saved.png](screenshots/students/07-edit-student-saved.png) | Students & roster | DOC-SCH-STU-003 | 2 Saved | School Coordinator | "Student updated." with pending-invite note |
+| [students/08-link-parent-form.png](screenshots/students/08-link-parent-form.png) | Students & roster | DOC-SCH-STU-004 | 1 Email | School Coordinator | Link a parent to Kabir Nair |
+| [students/09-link-parent-success.png](screenshots/students/09-link-parent-success.png) | Students & roster | DOC-SCH-STU-004 | 2 Linked | School Coordinator | "Parent linked to this student." |
+| [students/10-link-parent-already-linked.png](screenshots/students/10-link-parent-already-linked.png) | Students & roster | DOC-SCH-STU-004 | Error | School Coordinator | Parent already linked |
+| [students/11-bulk-template-and-columns.png](screenshots/students/11-bulk-template-and-columns.png) | Students & roster | DOC-SCH-STU-005 | 1 Template | School Coordinator | Download template + Column reference |
+| [students/13-bulk-upload-result.png](screenshots/students/13-bulk-upload-result.png) | Students & roster | DOC-SCH-STU-005 | 4 Result | School Coordinator | 11 added, 6 rejected with reasons (element shot) |
+| [students/14-student-profile-header.png](screenshots/students/14-student-profile-header.png) | Students & roster | DOC-SCH-STU-006 | 1 Details | School Coordinator | Profile card of Aarav Mehta (initials) |
+| [students/15-student-journey-timeline.png](screenshots/students/15-student-journey-timeline.png) | Students & roster | DOC-SCH-STU-006 | 2 Timeline | School Coordinator | Journey timeline events |
+| [students/16-student-progress-scorecard.png](screenshots/students/16-student-progress-scorecard.png) | Students & roster | DOC-SCH-STU-006 | 3 Scorecard | School Coordinator | Progress report card + Progress scorecard |
+| [students/17-photo-too-big.png](screenshots/students/17-photo-too-big.png) | Students & roster | DOC-SCH-STU-007 | Error | School Coordinator | "Photo must be at most 2 MB" |
+| [students/18-photo-saved.png](screenshots/students/18-photo-saved.png) | Students & roster | DOC-SCH-STU-007 | 1 Saved | School Coordinator | Generated initials avatar uploaded, "Photo saved." |
+| [students/19-photo-remove-confirm.png](screenshots/students/19-photo-remove-confirm.png) | Students & roster | DOC-SCH-STU-007 | 3 Remove | School Coordinator | Confirm remove / Cancel |
+| [students/20-progress-report-downloaded.png](screenshots/students/20-progress-report-downloaded.png) | Students & roster | DOC-SCH-STU-008 | 1 Downloaded | School Coordinator | "Report downloaded." |
+| [students/21-student-profile-principal.png](screenshots/students/21-student-profile-principal.png) | Students & roster | DOC-SCH-STU-006 | Role view | Principal | Principal's view of the student page |
+| [students/22-student-profile-teacher.png](screenshots/students/22-student-profile-teacher.png) | Students & roster | DOC-SCH-STU-006 | Role view | Teacher | Teacher's view (assigned student) |

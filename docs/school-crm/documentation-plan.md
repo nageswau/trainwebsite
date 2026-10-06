@@ -224,9 +224,9 @@ Features: DOC-SCH-AUTH-001..009, DOC-SCH-TEAM-001..003 (12).
   - Verify U1 (session length) and U2 (reset email); the latter decides how AUTH-004 is written.
   - Mobile menu shot at 390 px (AUTH-009).
 
-### S4 — Students and roster
+### S4 — Students and roster — DONE 2026-10-06
 Features: DOC-SCH-STU-001..008 (8).
-- [ ] Standard loop as the Sunrise Coordinator.
+- [x] Standard loop as the Sunrise Coordinator.
   - Add students in Grades 8–12 (≥ 2 each) with sections and roll numbers. Assign them to Docs Teacher A.
   - Give one student a parent email for a new parent (invite sent) and one an existing parent (linked).
   - Trigger the roll-number clash, the non-parent email error and the link-parent errors.
