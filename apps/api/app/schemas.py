@@ -3266,7 +3266,13 @@ class BdmManagerOption(BaseModel):
     id: UUID
     full_name: str
     email: str
-    bdm_count: int = 0  # bdm-025: BDMs reporting to this manager (active or not), for the BDM managers card
+
+
+class BdmManagerRow(BdmManagerOption):
+    """bdm-025: /admin/bdm-managers only (the telecaller picker keeps BdmManagerOption) -- BDMs reporting to this manager, active or
+    not, for the BDM managers card."""
+
+    bdm_count: int
 
 
 class BdmTeamPage(BaseModel):
@@ -3285,6 +3291,13 @@ class BdmAdminPage(BaseModel):
 
 class BdmManagerPage(BaseModel):
     items: list[BdmManagerOption]
+    total: int
+    limit: int
+    offset: int
+
+
+class BdmManagerRowPage(BaseModel):
+    items: list[BdmManagerRow]
     total: int
     limit: int
     offset: int

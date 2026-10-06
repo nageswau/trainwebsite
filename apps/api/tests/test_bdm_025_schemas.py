@@ -5,7 +5,7 @@ import uuid
 import pytest
 from pydantic import ValidationError
 
-from app.schemas import BdmDeactivate, BdmHandover, BdmManagerDeactivate, BdmManagerOption
+from app.schemas import BdmDeactivate, BdmHandover, BdmManagerDeactivate, BdmManagerOption, BdmManagerRow
 
 TARGET = str(uuid.uuid4())
 
@@ -48,5 +48,9 @@ def test_manager_deactivate_target_optional():
         BdmManagerDeactivate.model_validate({"other": 1})
 
 
-def test_manager_option_defaults_bdm_count():
-    assert BdmManagerOption.model_validate({"id": TARGET, "full_name": "M", "email": "m@x"}).bdm_count == 0
+def test_bdm_count_only_on_the_bdm_manager_row():
+    """The telecaller picker shares BdmManagerOption; its shape must not grow."""
+    assert "bdm_count" not in BdmManagerOption.model_fields
+    assert BdmManagerRow.model_validate({"id": TARGET, "full_name": "M", "email": "m@x", "bdm_count": 2}).bdm_count == 2
+    with pytest.raises(ValidationError):
+        BdmManagerRow.model_validate({"id": TARGET, "full_name": "M", "email": "m@x"})

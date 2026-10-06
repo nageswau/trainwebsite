@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from app.models import AuditLog, BdmAppointment, BdmOrganization, BdmTask, BdmTrip, Notification, User
 from tests.bdm001_helpers import login, make_manager, make_user
 from tests.bdm002_helpers import make_bdm
+from tests.bdm008_helpers import bdm_logs
 from tests.bdm025_helpers import (
     BDMS, appt, as_super, audit_rows, deactivate, fresh, history, org, task, team, trip,
 )
@@ -183,11 +184,11 @@ async def test_already_inactive_is_409(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_logs_carry_ids_only(client, db_session, caplog):
+async def test_logs_carry_ids_only(client, db_session, caplog, monkeypatch):
     _, a, b = await team(db_session)
     await org(db_session, a)
     await as_super(client, db_session)
-    caplog.set_level("INFO", logger="app.bdm")
+    bdm_logs(caplog, monkeypatch)
     assert (await deactivate(client, a.id, {"mode": "reassign", "reassign_to": str(b.id)})).status_code == 200
     records = [r for r in caplog.records if r.getMessage() == "bdm_deactivated"]
     assert len(records) == 1

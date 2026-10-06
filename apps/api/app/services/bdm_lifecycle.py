@@ -122,6 +122,48 @@ async def deactivate_user(db: AsyncSession, user: User) -> None:
     await revoke_welcome_tokens(db, user.id)
 
 
+async def team_size(db: AsyncSession, manager_id: UUID) -> int:
+    """Every BDM reporting to the manager, active or not (an inactive BDM may be reactivated under them)."""
+    return await db.scalar(select(func.count()).select_from(BdmProfile).where(BdmProfile.reporting_manager_user_id == manager_id)) or 0
+
+
+async def refuse_plain_deactivation(db: AsyncSession, user: User) -> None:
+    """`PATCH /admin/users` with `active: false` (spec §5.7): a BDM needs the handover choice (AC1); a manager with BDMs needs them
+    moved first (AC4)."""
+    if user.role == "bdm":
+        raise HTTPException(422, "Deactivate a BDM from the BDMs page, choosing who takes over their open work")
+    if user.role == "bdm_manager" and (n := await team_size(db, user.id)):
+        raise HTTPException(422, f"This manager has {_plural(n, 'BDM', 'BDMs')}. Move them to another manager first (BDMs page → BDM managers)")
+
+
+async def lock_manager(db: AsyncSession, manager_id: UUID) -> User:
+    """404 unless a BDM manager. Its team's profiles FOR UPDATE, then the manager FOR UPDATE (a concurrent BDM create or manager
+    change under it takes FOR SHARE on the manager, so it waits and then sees it inactive)."""
+    manager = await db.get(User, manager_id)
+    if manager is None or manager.role != "bdm_manager":
+        raise HTTPException(404, "BDM manager not found")
+    await db.execute(select(BdmProfile.id).where(BdmProfile.reporting_manager_user_id == manager_id).with_for_update())
+    return await db.scalar(select(User).where(User.id == manager_id).with_for_update().execution_options(populate_existing=True))
+
+
+async def locked_manager_target(db: AsyncSession, source: User, target_id: UUID | None) -> User:
+    target = None if target_id is None or target_id == source.id else await db.scalar(select(User).where(User.id == target_id).with_for_update(read=True))
+    if target is None or not target.active or target.role != "bdm_manager":
+        raise HTTPException(422, MANAGER_TARGET_INVALID)
+    return target
+
+
+async def move_team(db: AsyncSession, source: User, target: User) -> list[UUID]:
+    stmt = (update(BdmProfile).where(BdmProfile.reporting_manager_user_id == source.id).values(reporting_manager_user_id=target.id)
+            .returning(BdmProfile.user_id))
+    return list((await db.execute(stmt.execution_options(synchronize_session=False))).scalars().all())
+
+
+async def notify_team_moved(db: AsyncSession, target: User, moved: int) -> None:
+    title = f"{_plural(moved, 'BDM', 'BDMs')} now {'reports' if moved == 1 else 'report'} to you"
+    await _notify_user(db, target, title, "Their pending travel approvals are now yours to decide.", "/bdm/manager/team")
+
+
 def audit(db: AsyncSession, actor: User, action: str, entity_type: str, entity_id: UUID, metadata: dict) -> None:
     db.add(AuditLog(user_id=actor.id, action=action, entity_type=entity_type, entity_id=str(entity_id), metadata_json=metadata))
 

@@ -10,7 +10,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.admin import ensure_admin
 from app.core.database import get_db
 from app.models import User
-from app.schemas import BdmDeactivate, BdmDeactivateOut, BdmHandover, BdmHandoverOut, BdmPortfolio
+from app.schemas import (
+    BdmDeactivate,
+    BdmDeactivateOut,
+    BdmHandover,
+    BdmHandoverOut,
+    BdmManagerDeactivate,
+    BdmManagerDeactivateOut,
+    BdmPortfolio,
+)
 from app.services import bdm_lifecycle as svc
 
 router = APIRouter(prefix="/admin", tags=["bdm-admin"])
@@ -65,3 +73,28 @@ async def handover(bdm_id: UUID, payload: BdmHandover, user: User = Depends(ensu
     await db.commit()
     svc.log("bdm_portfolio_handed_over", user, bdm_id=str(source.id), target_id=str(target.id), **moved)
     return {"id": source.id, "moved": moved}
+
+
+@router.post("/bdm-managers/{manager_id}/deactivate", response_model=BdmManagerDeactivateOut)
+async def deactivate_manager(manager_id: UUID, payload: BdmManagerDeactivate, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
+    """AC4 / L4: super_admin only (managers are created by super_admin only, Q-01). Every BDM reporting to the manager -- active or
+    not -- moves to the replacement in the same transaction; their pending trips follow, because the approver is resolved at
+    decision time (bdm-010 T2)."""
+    if user.role != "super_admin":
+        raise HTTPException(403, "Only a Super Administrator can deactivate a BDM manager")
+    source = await svc.lock_manager(db, manager_id)
+    if not source.active:
+        raise HTTPException(409, "This manager is already inactive")
+    moved: list = []
+    target = None
+    if await svc.team_size(db, source.id) or payload.reassign_to is not None:
+        target = await svc.locked_manager_target(db, source, payload.reassign_to)
+        moved = await svc.move_team(db, source, target)
+    await svc.deactivate_user(db, source)
+    svc.audit(db, user, "bdm_manager.deactivate", "user", source.id, {
+        "reassign_to": str(target.id) if target else None, "moved_bdm_ids": [str(i) for i in moved]})
+    if moved:
+        await svc.notify_team_moved(db, target, len(moved))
+    await db.commit()
+    svc.log("bdm_manager_deactivated", user, manager_id=str(source.id), target_id=str(target.id) if target else None, moved_bdms=len(moved))
+    return {"id": source.id, "active": False, "moved_bdms": len(moved)}
