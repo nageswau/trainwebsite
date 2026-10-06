@@ -1,4 +1,4 @@
-"""tel-004 (DEC-SCOPE-079, spec §4): the lead pipeline -- the only writer of `enquiries.status` after a lead is created.
+"""tel-004 (DEC-SCOPE-081, spec §4): the lead pipeline -- the only writer of `enquiries.status` after a lead is created.
 
 System events (tel-007/010/016/018 and the admin student link) call `apply_event`; people call `person_move`. Both work on a row the
 caller locked with `locked_lead` (or `bdm_leads.locked_for_admin`), so concurrent changes serialise. Functions only; nothing here

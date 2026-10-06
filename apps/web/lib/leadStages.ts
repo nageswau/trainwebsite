@@ -1,4 +1,4 @@
-// tel-004 (DEC-SCOPE-079, spec §2/§6): the EVID-019 §19 lead pipeline. Mirrors apps/api/app/lead_stages.py so the stage picker offers
+// tel-004 (DEC-SCOPE-081, spec §2/§6): the EVID-019 §19 lead pipeline. Mirrors apps/api/app/lead_stages.py so the stage picker offers
 // only moves the API will accept; the API stays the authority (it answers 422/403 for anything else).
 
 export const OPEN_STAGES = [

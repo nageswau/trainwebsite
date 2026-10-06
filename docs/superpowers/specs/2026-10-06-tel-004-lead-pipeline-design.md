@@ -2,8 +2,8 @@
 
 Backlog: `docs/delivery/TELECALLER_CRM_BACKLOG.md` tel-004 (EVID-019 §19, Appendix A L608–L636; `DEC-SCOPE-073` T5, T13, T25, T29).
 Dependency: tel-003 merged (PR #75 @ `10fce82e`); branch `feature/tel-004` from `main` @ `11f4c9c7`.
-Decision: `DEC-SCOPE-079`. Migration: `0080_lead_stage_pipeline` (after bdm-005's `0079_bdm_mous`). Drafted as `DEC-SCOPE-078` / `0079`;
-re-chained on merging `main` @ `230a043f`, where bdm-005 took both. tel-012 / tel-022 still claim provisional numbers on unmerged branches.
+Decision: `DEC-SCOPE-081`. Migration: `0081_lead_stage_pipeline` (after tel-022's `0080_tel_targets`). API contract §12H. Drafted as `DEC-SCOPE-078` / `0079`;
+re-chained on `main` @ `230a043f` (bdm-005: 078 / 0079) and again @ `a38955d5` (bdm-013: 079; tel-022: 080 / 0080 / §12G).
 
 ## 1. Owner answers (2026-10-06, `EXPLICIT_APPROVAL`) and recorded defaults
 
@@ -43,7 +43,7 @@ System events (frozen API; callers in tel-007/010/016/018 only fire them):
 Any other from-stage → no move (returns `False`, no history). This makes each automatic transition fire exactly once (AC1): a repeat finds
 the lead already past its from-set.
 
-## 3. Data model (migration `0080_lead_stage_pipeline`)
+## 3. Data model (migration `0081_lead_stage_pipeline`)
 
 `lead_stage_history`: `id` uuid PK; `lead_id` FK `enquiries.id` ON DELETE RESTRICT; `from_stage` varchar(40) NOT NULL; `to_stage`
 varchar(40) NOT NULL; `event` varchar(30) NOT NULL (an event name, `manual`, `reopen` or `legacy_mapping`); `actor_user_id` FK `users.id`
