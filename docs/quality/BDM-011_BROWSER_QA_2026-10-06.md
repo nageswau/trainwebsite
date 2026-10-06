@@ -1,6 +1,6 @@
 # bdm-011 — Exploratory browser QA (2026-10-06)
 
-Feature: trip ↔ appointment linking, itinerary, productivity, travel report (`DEC-SCOPE-082`, migration `0082_bdm_appointment_trip`).
+Feature: trip ↔ appointment linking, itinerary, productivity, travel report (`DEC-SCOPE-083`, migration `0083_bdm_appointment_trip`).
 
 ## Setup
 

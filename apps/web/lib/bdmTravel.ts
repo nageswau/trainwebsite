@@ -13,7 +13,7 @@ export type TripRow = {
   accommodation_required: boolean; estimated_cost: string; actual_cost: string; currency: "INR"; approval_status: ApprovalStatus;
   travel_status: TravelStatus; submitted_at: string | null;
 };
-// bdm-011 (DEC-SCOPE-082): the appointments linked to a trip and the figures computed from them. A null figure has nothing to be
+// bdm-011 (DEC-SCOPE-083): the appointments linked to a trip and the figures computed from them. A null figure has nothing to be
 // computed from (no estimate given, nothing completed); `actual_revenue` is always null for now -- not tracked (D17).
 export type ItineraryItem = {
   id: string; code: string; starts_at: string; duration_minutes: number; appointment_type: string; status: AppointmentStatus;

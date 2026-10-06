@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { E2E_PASSWORD, activateWithToken } from "./helpers/welcome";
 
-// bdm-011 (AC1, AC2, AC4; DEC-SCOPE-082): a College BDM plans tomorrow's Hyderabad -> Vijayawada trip with three meetings (EVID-016 §4),
+// bdm-011 (AC1, AC2, AC4; DEC-SCOPE-083): a College BDM plans tomorrow's Hyderabad -> Vijayawada trip with three meetings (EVID-016 §4),
 // links one from the booking form's Trip choice, and sees them under the trip with its productivity figures; a date outside the trip
 // offers no trip; the manager sees the same itinerary; the report waits for completion; the trip page fits a phone.
 

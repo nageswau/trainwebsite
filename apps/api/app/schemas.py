@@ -3557,7 +3557,7 @@ class BdmTripItineraryItem(BaseModel):
 
 
 class BdmTripMetrics(BaseModel):
-    """bdm-011 (College §F, DEC-SCOPE-082 L1/L3): null = nothing to compute from; `actual_revenue` is not tracked yet (D17)."""
+    """bdm-011 (College §F, DEC-SCOPE-083 L1/L3): null = nothing to compute from; `actual_revenue` is not tracked yet (D17)."""
 
     meetings_planned: int
     meetings_completed: int

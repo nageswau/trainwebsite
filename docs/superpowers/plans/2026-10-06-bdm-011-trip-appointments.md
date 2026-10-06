@@ -1,6 +1,6 @@
 # bdm-011 implementation plan
 
-Spec: `docs/superpowers/specs/2026-10-06-bdm-011-trip-appointments-design.md` (`DEC-SCOPE-082`, migration `0082_bdm_appointment_trip`).
+Spec: `docs/superpowers/specs/2026-10-06-bdm-011-trip-appointments-design.md` (`DEC-SCOPE-083`, migration `0083_bdm_appointment_trip`).
 
 Test command (isolated stack `bdm011`, code bind-mounted):
 
@@ -27,8 +27,8 @@ Lite tests only (owner's standing choice): bdm-011 files + bdm-006 / bdm-007 / b
 
 ## Tasks
 
-1. **Model + migration** — `BdmAppointment.trip_id` + index; `0082_bdm_appointment_trip`; `test_bdm_011_migration.py` (one head,
-   additive, chained after 0081). Update bdm-005 "single head" test only if it pins the head name.
+1. **Model + migration** — `BdmAppointment.trip_id` + index; `0083_bdm_appointment_trip`; `test_bdm_011_migration.py` (one head,
+   additive, chained after 0082). Update bdm-005 "single head" test only if it pins the head name.
 2. **Link rules (API)** — `services/bdm_travel.py`: `trip_ref`, `load_linkable_trip`, `in_range`; `bdm_appointments` create/PATCH
    accept `trip_id`; reschedule auto-unlink; `appointment_out.trip`. Tests `test_bdm_011_links.py` (AC1, 404s, L2, L4, auto-unlink,
    audits) written first.
