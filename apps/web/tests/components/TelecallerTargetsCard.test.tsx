@@ -17,6 +17,7 @@ describe("TelecallerTargetsCard (tel-022 G4)", () => {
   it("shows today's and this month's targets, with Not set for gaps", () => {
     render(<TelecallerTargetsCard targets={mine} />);
     const card = screen.getByRole("region", { name: "My targets" });
+    expect(card.querySelector("table")).toHaveClass("table"); // QA-01
     expect(within(card).getByRole("columnheader", { name: /Today/ })).toBeInTheDocument();
     expect(within(card).getByRole("columnheader", { name: /October 2026/ })).toBeInTheDocument();
     const calls = within(card).getByText("Calls").closest("tr")!;

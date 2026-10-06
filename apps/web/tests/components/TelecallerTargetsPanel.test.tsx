@@ -4,6 +4,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import TelecallerTargetsPanel from "@/components/TelecallerTargetsPanel";
 import { earliestDaily, istToday, monthOptions } from "@/lib/telecallerTargets";
 
+// QA-05: the chosen subject lives in the URL (?for=), read once on load and replaced on change.
+const nav = vi.hoisted(() => ({ params: new URLSearchParams(), replace: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: nav.replace }), usePathname: () => "/telecaller/manager/targets", useSearchParams: () => nav.params }));
+
+const RID = "6506f705-50b7-4738-b8ab-689c7d0939f8";
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const page = (items: unknown[], total = items.length) => ({ items, total, limit: 50, offset: 0 });
 const values = (overrides: Record<string, [number | null, string | null]> = {}) =>
@@ -34,7 +39,59 @@ const posts = (calls: Call[]) => calls.filter((c) => c.init?.method === "POST").
 
 afterEach(() => {
   cleanup();
+  nav.params = new URLSearchParams();
+  nav.replace.mockReset();
   vi.unstubAllGlobals();
+});
+
+describe("TelecallerTargetsPanel browser QA fixes", () => {
+  it("QA-01: its tables use the portal table style", async () => {
+    serve();
+    render(<TelecallerTargetsPanel />);
+    expect((await screen.findByRole("region", { name: "Targets in effect" })).querySelector("table")).toHaveClass("table");
+    expect((await screen.findByRole("region", { name: "Target history" })).querySelector("table")).toHaveClass("table");
+  });
+
+  it("QA-02: shows the targets in effect on a chosen date", async () => {
+    const calls = serve();
+    render(<TelecallerTargetsPanel />);
+    await screen.findByRole("region", { name: "Targets in effect" });
+    expect(screen.getByLabelText("In effect on")).toHaveValue(istToday());
+    fireEvent.change(screen.getByLabelText("In effect on"), { target: { value: "2026-11-15" } });
+    await waitFor(() => expect(calls.some((c) => c.url.includes("/targets/effective?team=it&date=2026-11-15"))).toBe(true));
+  });
+
+  it("QA-04: a blank start date is caught in the browser", async () => {
+    const calls = serve();
+    render(<TelecallerTargetsPanel />);
+    await screen.findByRole("region", { name: "Targets in effect" });
+    fireEvent.change(screen.getByLabelText("Starts on"), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText("Calls target"), { target: { value: "80" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save targets" }));
+    expect(await screen.findByText("Choose a start date.")).toBeInTheDocument();
+    expect(posts(calls)).toEqual([]);
+  });
+
+  it("QA-05: restores the subject from ?for= and records a change in the URL", async () => {
+    nav.params = new URLSearchParams("for=overseas");
+    const calls = serve();
+    render(<TelecallerTargetsPanel />);
+    await screen.findByRole("region", { name: "Targets in effect" });
+    expect(screen.getByLabelText("Set targets for")).toHaveValue("overseas");
+    expect(calls.some((c) => c.url.includes("/targets/effective?team=overseas"))).toBe(true);
+    fireEvent.change(screen.getByLabelText("Set targets for"), { target: { value: "user" } });
+    expect(nav.replace).toHaveBeenLastCalledWith("/telecaller/manager/targets?for=user", { scroll: false });
+  });
+
+  it("QA-05: restores a chosen telecaller by id, naming them from the API", async () => {
+    nav.params = new URLSearchParams(`for=${RID}`);
+    const calls = serve({ eff: { ...effective(), user: { id: RID, full_name: "Ravi Telecaller" } } });
+    render(<TelecallerTargetsPanel />);
+    await screen.findByRole("region", { name: "Targets in effect" });
+    expect(calls.some((c) => c.url.includes(`/targets/effective?user_id=${RID}`))).toBe(true);
+    expect(screen.getByLabelText("Set targets for")).toHaveValue("user");
+    expect(screen.getByRole("combobox", { name: /Telecaller/ })).toHaveValue("Ravi Telecaller");
+  });
 });
 
 describe("target dates (G2)", () => {

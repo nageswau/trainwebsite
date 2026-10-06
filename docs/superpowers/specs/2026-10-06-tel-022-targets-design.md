@@ -167,3 +167,23 @@ CSRF follows the existing cookie/session setup unchanged.
 The change is additive: a new table, routes, pages and a nav item. The shared files touched are `models.py`, `schemas.py`, `main.py`,
 `navigation.ts` (one array item) and the dashboard page (one card). The navigation test that snapshots `TELECALLER_MANAGER_NAV` must be
 updated.
+
+## 10. Browser QA log (Phase 5, Edge via CDP, stack `tel022` web :3092 / api :8092, 2026-10-06)
+
+Accounts: QA Manager One (reports: Asha IT, Bala Overseas), QA Manager Two (report: Chitra IT), all created through the admin API.
+
+Verified with no defect: an IT team-default save (Calls 75, Follow-ups 20 from tomorrow) shows "Saved 2 targets", moves focus to the
+message and adds history rows. The telecaller picker lists only direct reports (Chitra is absent for Manager One). Override saves Calls
+90 and "Use team default" for Follow-ups (stored as NULL, history shows "Team default"). Monthly saves default to the 1st of next month.
+The browser refuses negative, decimal and over-cap values; the API refuses a past date with its sentence and the entry is kept. A double
+click sends one POST. The telecaller dashboard shows "My targets" (today "Not set", because the override starts tomorrow). A telecaller
+opening `/telecaller/manager/targets` gets "Telecaller manager role required". Signed out, the page redirects (307) to `/admin/login` and
+the API returns 401. Mobile (390px) and tablet (820px) have no horizontal scroll. No console errors, no failed requests.
+
+| ID | Severity | Role / page | Steps | Expected | Actual | Status |
+|---|---|---|---|---|---|---|
+| QA-01 | Medium | Manager `/telecaller/manager/targets`; telecaller dashboard | Open either page | Tables use the portal's table style (headers, row lines, left-aligned) | "Targets in effect", "History" and "My targets" render as bare, centre-aligned tables (no `table` class) | Fixed |
+| QA-02 | Medium | Manager Targets | Save Calls 75 for tomorrow, then look at "Targets in effect" | The manager can check what applies on the date a change starts | The table only shows today ("Not set"); there is no way to see a scheduled value except in the history | Fixed: an "In effect on" date picker (the API already takes `date`) |
+| QA-04 | Low | Manager Targets | Clear "Starts on" (or leave a partial date) and save | A plain sentence | Raw Pydantic text "Starts: Input should be a valid date or datetime, input is too short" | Fixed: the browser asks "Choose a start date." |
+| QA-05 | Low | Manager Targets | Choose "Overseas team default", refresh | The same subject stays chosen (Products/Campaigns keep their place in the URL) | Resets to "IT team default" | Fixed: `?for=it\|overseas\|<telecaller id>` |
+| QA-06 | Low | Manager Targets, 390px | Tap "Use team default" | A 44px touch target (portal mobile rule) | An 18px checkbox row | Fixed |

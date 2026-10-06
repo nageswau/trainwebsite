@@ -6,14 +6,14 @@ export default function TelecallerTargetsCard({ targets }: { targets: TargetsInE
   const month = targets ? new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${targets.month}T00:00:00Z`)) : "";
   const value = (rows: TargetsInEffect["daily"], kpi: string) => targetText(rows.find((r) => r.kpi === kpi)?.value ?? null);
   return (
-    <section className="card" aria-labelledby="my-targets-title" style={{ marginTop: 16 }}>
+    <section className="card tel-targets" aria-labelledby="my-targets-title" style={{ marginTop: 16 }}>
       <h3 id="my-targets-title">My targets</h3>
       {targets === null ? (
         <p className="muted" role="status">Targets are unavailable right now.</p>
       ) : (
         <>
           <div className="table-wrap" role="region" aria-label="My targets by period" tabIndex={0}>
-            <table>
+            <table className="table">
               <thead>
                 <tr><th scope="col">KPI</th><th scope="col">Today</th><th scope="col">{month}</th></tr>
               </thead>

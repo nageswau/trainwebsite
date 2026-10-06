@@ -1,4 +1,5 @@
 "use client";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import SearchableSelect from "@/components/SearchableSelect";
@@ -17,14 +18,27 @@ type SubjectKind = "it" | "overseas" | "user";
 const FEEDBACK_ID = "tgt-feedback";
 const SUBJECT_LABEL: Record<SubjectKind, string> = { it: "IT team default", overseas: "Overseas team default", user: "A telecaller (override)" };
 const dateText = (iso: string) => formatDate(iso, false, "UTC");
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** QA-05: `?for=` is a team, "user" (a telecaller not yet chosen) or a telecaller's id; anything else is the IT team. */
+function fromUrl(raw: string | null): { kind: SubjectKind; userId: string | null } {
+  if (raw === "it" || raw === "overseas" || raw === "user") return { kind: raw, userId: null };
+  return raw && UUID.test(raw) ? { kind: "user", userId: raw } : { kind: "it", userId: null };
+}
 
 // tel-022 (DEC-SCOPE-078): the manager's Targets page. Choose a team default or one of your telecallers, see what is in effect today
 // and this month, set new values from a future date (G2), and read the history (T28). The API decides every rule.
 export default function TelecallerTargetsPanel() {
-  const [kind, setKind] = useState<SubjectKind>("it");
-  const [picked, setPicked] = useState<PickOption | null>(null);
+  // The subject is read from the URL once and replaced on every change, so a refresh keeps it (QA-05).
+  const router = useRouter();
+  const pathname = usePathname();
+  const initial = fromUrl(useSearchParams().get("for"));
+  const [kind, setKind] = useState<SubjectKind>(initial.kind);
+  const [picked, setPicked] = useState<PickOption | null>(initial.userId ? { id: initial.userId, label: "" } : null);
+  const [restoring, setRestoring] = useState(initial.userId !== null); // the picker waits for the restored telecaller's name
   const [period, setPeriod] = useState<TargetPeriod>("daily");
   const today = istToday();
+  const [onDate, setOnDate] = useState(today);
   const [from, setFrom] = useState(earliestDaily(today));
   const [values, setValues] = useState<Record<string, string>>({});
   const [useDefault, setUseDefault] = useState<Record<string, boolean>>({});
@@ -48,16 +62,27 @@ export default function TelecallerTargetsPanel() {
     setLoadFailed(false);
     if (!subject) return;
     const controller = new AbortController();
-    const effectiveRequest = fetch(`${EFFECTIVE_URL}?${subject}`, { signal: controller.signal }).then(async (r) => {
+    const effectiveRequest = fetch(`${EFFECTIVE_URL}?${subject}${onDate ? `&date=${onDate}` : ""}`, { signal: controller.signal }).then(async (r) => {
       if (!r.ok) throw new Error(`Request failed (${r.status})`);
       return (await r.json()) as TargetsInEffect;
     });
     const historyRequest = getPage<TargetRow>(`${TARGETS_URL}?${historyQuery}&limit=${HISTORY_PAGE_SIZE}&offset=${offset}`, controller.signal);
     Promise.all([effectiveRequest, historyRequest])
-      .then(([e, h]) => { setEffective(e); setHistory(h); })
-      .catch(() => controller.signal.aborted || setLoadFailed(true));
+      .then(([e, h]) => {
+        setEffective(e);
+        setHistory(h);
+        if (e.user) setPicked((p) => (p && !p.label ? { id: e.user!.id, label: e.user!.full_name } : p));
+        setRestoring(false);
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        setLoadFailed(true);
+        setRestoring(false);
+      });
     return () => controller.abort();
-  }, [subject, historyQuery, offset, version]);
+  }, [subject, historyQuery, onDate, offset, version]);
+
+  const remember = (value: string) => router.replace(`${pathname}?for=${value}`, { scroll: false });
 
   function chooseKind(next: SubjectKind) {
     setKind(next);
@@ -65,6 +90,7 @@ export default function TelecallerTargetsPanel() {
     setOffset(0);
     setUseDefault({});
     setFeedback(null);
+    remember(next);
   }
 
   function choosePeriod(next: TargetPeriod) {
@@ -77,6 +103,11 @@ export default function TelecallerTargetsPanel() {
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (inFlight.current || entered.length === 0) return;
+    if (!from) { // QA-04: a cleared or half-typed date is "" here; the API's parse error would be a Pydantic sentence
+      setFeedback({ text: "Choose a start date.", tone: "error" });
+      focus(FEEDBACK_ID);
+      return;
+    }
     const body: Record<string, number | null> = {};
     for (const k of entered) {
       if (useDefault[k.key]) {
@@ -125,7 +156,7 @@ export default function TelecallerTargetsPanel() {
 
   return (
     <>
-      <div className="action-card wide">
+      <div className="action-card wide tel-targets">
         <h3>Whose targets</h3>
         <div className="field" style={{ maxWidth: 320 }}>
           <label htmlFor="tgt-subject">Set targets for</label>
@@ -135,8 +166,17 @@ export default function TelecallerTargetsPanel() {
         </div>
         {isUser && (
           <div style={{ maxWidth: 420 }}>
-            <SearchableSelect key="tgt-user" id="tgt-user" label="Telecaller (required)" noun="telecaller" required search={telecallerSearch} disabled={busy}
-              onChange={(option) => { setPicked(option); setOffset(0); setUseDefault({}); setFeedback(null); }} />
+            {restoring ? <p className="muted" role="status">Loading telecaller…</p> : (
+              <SearchableSelect id="tgt-user" label="Telecaller (required)" noun="telecaller" required search={telecallerSearch} disabled={busy}
+                initial={picked?.label ? picked : null}
+                onChange={(option) => { setPicked(option); setOffset(0); setUseDefault({}); setFeedback(null); remember(option ? option.id : "user"); }} />
+            )}
+          </div>
+        )}
+        {subject && (
+          <div className="field" style={{ maxWidth: 220 }}>
+            <label htmlFor="tgt-on">In effect on</label>
+            <input id="tgt-on" type="date" value={onDate} onChange={(e) => setOnDate(e.target.value)} />
           </div>
         )}
         {!subject ? (
@@ -150,9 +190,9 @@ export default function TelecallerTargetsPanel() {
           <p className="muted" role="status">Loading targets…</p>
         ) : (
           <div className="table-wrap" role="region" aria-label="Targets in effect" tabIndex={0}>
-            <table>
-              <caption className="muted" style={{ textAlign: "left" }}>In effect on {dateText(effective.date)}{isUser ? " — an override replaces the team default" : ""}</caption>
-              <thead><tr><th scope="col">KPI</th><th scope="col">Today (daily)</th><th scope="col">{monthLabel} (monthly)</th></tr></thead>
+            <table className="table">
+              <caption className="muted" style={{ textAlign: "left", paddingBottom: 6 }}>In effect on {dateText(effective.date)}{isUser ? " — an override replaces the team default" : ""}</caption>
+              <thead><tr><th scope="col">KPI</th><th scope="col">{effective.date === today ? "Today" : dateText(effective.date)} (daily)</th><th scope="col">{monthLabel} (monthly)</th></tr></thead>
               <tbody>
                 {KPIS.map((k) => <tr key={k.key}><th scope="row">{k.label}</th>{cell(effective.daily, k.key)}{cell(effective.monthly, k.key)}</tr>)}
               </tbody>
@@ -162,7 +202,7 @@ export default function TelecallerTargetsPanel() {
       </div>
 
       {subject && (
-        <form className="action-card form" onSubmit={save} noValidate aria-describedby={FEEDBACK_ID}>
+        <form className="action-card form tel-targets" onSubmit={save} noValidate aria-describedby={FEEDBACK_ID}>
           <h3>Set new targets</h3>
           <fieldset className="field" disabled={busy} style={{ border: 0, padding: 0, margin: 0 }}>
             <legend>Period</legend>
@@ -190,7 +230,7 @@ export default function TelecallerTargetsPanel() {
                 value={values[k.key] ?? ""} disabled={busy || !!useDefault[k.key]}
                 onChange={(e) => setValues((v) => ({ ...v, [k.key]: e.target.value }))} />
               {isUser && (
-                <label style={{ fontSize: 13 }}>
+                <label className="tel-check" style={{ fontSize: 13 }}>
                   <input type="checkbox" aria-label={`Use team default for ${k.label}`} checked={!!useDefault[k.key]} disabled={busy}
                     onChange={(e) => setUseDefault((d) => ({ ...d, [k.key]: e.target.checked }))} /> Use team default
                 </label>
@@ -206,14 +246,14 @@ export default function TelecallerTargetsPanel() {
       )}
 
       {subject && history && (
-        <div className="action-card wide">
+        <div className="action-card wide tel-targets">
           <h3>History</h3>
           {history.items.length === 0 ? (
             <p className="empty" role="status">No targets set yet.</p>
           ) : (
             <>
               <div className="table-wrap" role="region" aria-label="Target history" tabIndex={0}>
-                <table>
+                <table className="table">
                   <thead><tr><th scope="col">Starts</th><th scope="col">Period</th><th scope="col">KPI</th><th scope="col">Target</th><th scope="col">Set by</th></tr></thead>
                   <tbody>
                     {history.items.map((r) => (
