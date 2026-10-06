@@ -272,9 +272,9 @@ Features: DOC-SCH-ACAD-001..007, DOC-SCH-PORT-001..005 (12).
     - the Platinum-only notice at Docs Bronze School
   - Teacher editing the portfolio of an assigned student (U14).
 
-### S8 — Career Counselor
+### S8 — Career Counselor — DONE 2026-10-06
 Features: DOC-SCH-CAR-001..011 (11).
-- [ ] Standard loop as `school.careercounselor`.
+- [x] Standard loop as `school.careercounselor`.
   - Records in every status path (including the follow-up date rules), and the 409 conflict (two tabs).
   - Career preferences, and a career goal in the 360° view.
   - Skills: a Soft batch (open) with enrolments in every status, sessions with attendance, and an assessment with scores; a Digital batch closed (read-only); a Digital batch at Docs Bronze School (tier denied).

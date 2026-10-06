@@ -12,6 +12,7 @@ so the whole card fits); they are marked "(element shot)".
 | S5 — `sch-s5-activities.capture.ts` (after S4 on the same DB) | same | 2026-10-06 |
 | S6 — `sch-s6-transfers-promotion.capture.ts` (after S5 on the same DB; creates and activates academic year 2027-28 through the admin API) | same | 2026-10-06 |
 | S7 — `sch-s7-academic-portfolio.capture.ts` (after S6 on the same DB) | same | 2026-10-06 |
+| S8 — `sch-s8-career-counselor.capture.ts` (after S7 on the same DB) | same | 2026-10-06 |
 
 | Screenshot | Module | Feature | Step | Role | Description |
 |---|---|---|---|---|---|
@@ -159,3 +160,29 @@ so the whole card fits); they are marked "(element shot)".
 | [portfolio/14-portfolio-tier-denied.png](screenshots/portfolio/14-portfolio-tier-denied.png) | Digital Portfolio | DOC-SCH-PORT-002 | Error | School Coordinator (Bronze) | Digital portfolio creation not in Bronze |
 | [portfolio/15-internships-platinum-only.png](screenshots/portfolio/15-internships-platinum-only.png) | Digital Portfolio | DOC-SCH-PORT-004 | Error | School Coordinator (Bronze) | Internship tracking Platinum-only notice |
 | [portfolio/16-teacher-adds-skill.png](screenshots/portfolio/16-teacher-adds-skill.png) | Digital Portfolio | DOC-SCH-PORT-002 | Tip | Teacher | "Skill added." by the assigned Teacher |
+| [career-counselor/01-dashboard.png](screenshots/career-counselor/01-dashboard.png) | Career Counselor | DOC-SCH-DASH-006 | Dashboard | Career Counselor | Career Counselor dashboard (top) |
+| [career-counselor/02-add-record-form.png](screenshots/career-counselor/02-add-record-form.png) | Career Counselor | DOC-SCH-CAR-001 | 2 Fill in | Career Counselor | Add a record (Guidance session, Scheduled) (element shot) |
+| [career-counselor/03-record-saved.png](screenshots/career-counselor/03-record-saved.png) | Career Counselor | DOC-SCH-CAR-001 | 3 Saved | Career Counselor | "Record saved." |
+| [career-counselor/04-records-table.png](screenshots/career-counselor/04-records-table.png) | Career Counselor | DOC-SCH-CAR-001 | 3 List | Career Counselor | Records table with statuses (element shot) |
+| [career-counselor/05-edit-record-follow-up.png](screenshots/career-counselor/05-edit-record-follow-up.png) | Career Counselor | DOC-SCH-CAR-002 | 2 Status | Career Counselor | Edit record: Follow-up Required + Next follow-up (element shot) |
+| [career-counselor/06-record-changed-elsewhere.png](screenshots/career-counselor/06-record-changed-elsewhere.png) | Career Counselor | DOC-SCH-CAR-002 | Error | Career Counselor | Changed by someone else + Discard my changes and reload |
+| [career-counselor/07-career-preferences-saved.png](screenshots/career-counselor/07-career-preferences-saved.png) | Career Counselor | DOC-SCH-CAR-003 | 2 Saved | Career Counselor | Career preferences saved (element shot) |
+| [career-counselor/08-career-goal-form.png](screenshots/career-counselor/08-career-goal-form.png) | Career Counselor | DOC-SCH-CAR-004 | 1 Form | Career Counselor | Career goal input in the 360° view |
+| [career-counselor/09-career-goal-saved.png](screenshots/career-counselor/09-career-goal-saved.png) | Career Counselor | DOC-SCH-CAR-004 | 2 Saved | Career Counselor | "Career goal saved." (card not yet refreshed) |
+| [career-counselor/09b-career-goal-after-reload.png](screenshots/career-counselor/09b-career-goal-after-reload.png) | Career Counselor | DOC-SCH-CAR-004 | 3 Reload | Career Counselor | Goal shown after reload |
+| [career-counselor/10-skills-batches.png](screenshots/career-counselor/10-skills-batches.png) | Career Counselor | DOC-SCH-CAR-005 | 1 List | Career Counselor | Skills batches (no batches yet) + filters |
+| [career-counselor/11-create-batch-form.png](screenshots/career-counselor/11-create-batch-form.png) | Career Counselor | DOC-SCH-CAR-005 | 2 Create | Career Counselor | Create a batch (element shot) |
+| [career-counselor/12-batch-header.png](screenshots/career-counselor/12-batch-header.png) | Career Counselor | DOC-SCH-CAR-005 | 3 Created | Career Counselor | New batch page |
+| [career-counselor/13-enrol-students.png](screenshots/career-counselor/13-enrol-students.png) | Career Counselor | DOC-SCH-CAR-007 | 1 Enrol | Career Counselor | Enrol students with filter |
+| [career-counselor/14-certify-confirm.png](screenshots/career-counselor/14-certify-confirm.png) | Career Counselor | DOC-SCH-CAR-007 | 3 Certify | Career Counselor | Certify confirmation |
+| [career-counselor/15-enrolment-statuses.png](screenshots/career-counselor/15-enrolment-statuses.png) | Career Counselor | DOC-SCH-CAR-007 | 2 Statuses | Career Counselor | Completed / Certified / Withdrawn / Enrolled (element shot) |
+| [career-counselor/16-session-attendance.png](screenshots/career-counselor/16-session-attendance.png) | Career Counselor | DOC-SCH-CAR-008 | 2 Attendance | Career Counselor | Sessions and attendance (element shot) |
+| [career-counselor/17-assessment-scores.png](screenshots/career-counselor/17-assessment-scores.png) | Career Counselor | DOC-SCH-CAR-009 | 2 Scores | Career Counselor | Assessments and scores (element shot) |
+| [career-counselor/18-batch-closed.png](screenshots/career-counselor/18-batch-closed.png) | Career Counselor | DOC-SCH-CAR-006 | 2 Closed | Career Counselor | Closed batch after reload (read-only notice, Reopen batch) |
+| [career-counselor/19-add-funding-case.png](screenshots/career-counselor/19-add-funding-case.png) | Career Counselor | DOC-SCH-CAR-010 | 1 Fill in | Career Counselor | Add a case (Scholarship) (element shot) |
+| [career-counselor/20-funding-duplicate.png](screenshots/career-counselor/20-funding-duplicate.png) | Career Counselor | DOC-SCH-CAR-010 | Error | Career Counselor | Already has an open scholarship case |
+| [career-counselor/21-update-funding-stage.png](screenshots/career-counselor/21-update-funding-stage.png) | Career Counselor | DOC-SCH-CAR-011 | 2 Stage | Career Counselor | Update case: Counselling (element shot) |
+| [career-counselor/22-close-funding-case.png](screenshots/career-counselor/22-close-funding-case.png) | Career Counselor | DOC-SCH-CAR-011 | 3 Close | Career Counselor | Closed + Reason for closing (element shot) |
+| [career-counselor/23-funding-open-and-finished.png](screenshots/career-counselor/23-funding-open-and-finished.png) | Career Counselor | DOC-SCH-CAR-011 | 4 Finished | Career Counselor | Open cases + Finished cases |
+| [career-counselor/24-empty-portfolio-dashboard.png](screenshots/career-counselor/24-empty-portfolio-dashboard.png) | Career Counselor | DOC-SCH-CAR-001 | Empty | Career Counselor (no schools) | Counselor with no school portfolio: dashboard |
+| [career-counselor/25-empty-portfolio-skills.png](screenshots/career-counselor/25-empty-portfolio-skills.png) | Career Counselor | DOC-SCH-CAR-005 | Empty | Career Counselor (no schools) | Counselor with no school portfolio: Skills |

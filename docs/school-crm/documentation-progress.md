@@ -5,8 +5,8 @@
 | Code baseline | `main` @ `ce1f07c2` (S1 discovery). Record any later `main` used for browser work here, with the affected features re-checked. |
 | Stack used for browser work | `schooldocs` compose project from worktree `.claude/worktrees/school-docs` (detached at docs commit `24a22627` = `main` `ce1f07c2` + docs). Web http://localhost:3020, api :8020. Untracked `docker-compose.docs.yml` adds Mailpit on **127.0.0.1:8026** (the Agent CRM docs stack holds 8025). Untracked `.env` = repo `.env` with `FRONTEND_URL`/ports changed, `SMTP_HOST=mailpit`, `SMTP_PORT=1025`, `SMTP_USE_TLS=false`, no SMTP credentials, **`SMTP_FROM_EMAIL=no-reply@edusphere.local`** (without it the app reports "email is not configured"), `EMAIL_WEBHOOK_URL` empty. Owner approved Claude starting, seeding and resetting this stack (2026-10-05). |
 | Docs branch | `docs/school-crm-user-guide` (from `main` @ `ce1f07c2`) |
-| Last session | S7 Academic Team and Digital Portfolio — 2026-10-06 |
-| Next session | S8 — Career Counselor. Start from the S7 snapshot, or reset and run `sch-s2` … `sch-s7` in order. |
+| Last session | S8 Career Counselor — 2026-10-06 |
+| Next session | S9 — Psychometric Team, Student 360°, overseas pathway. Start from the S8 snapshot, or reset and run `sch-s2` … `sch-s8` in order. |
 
 **Column values:**
 - **Code Reviewed:** YES / PARTIAL / NO. YES at S1 means reviewed from source at `ce1f07c2`, with file:line evidence in `discovery/`.
@@ -18,7 +18,7 @@
 A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES
 and Reviewed = PASSED.
 
-**Totals (after S7):** 86 features · 50 browser-verified (3 partial) · 50 documented · 0 complete (final review is S12).
+**Totals (after S8):** 86 features · 61 browser-verified (3 partial) · 61 documented · 0 complete (final review is S12).
 
 | ID | Module | Feature | Code Reviewed | Browser Verified | Screenshot | Documented | Reviewed |
 |---|---|---|---|---|---|---|---|
@@ -76,17 +76,17 @@ and Reviewed = PASSED.
 | DOC-SCH-ACAD-005 | Academic Team | Test preparation (IELTS / SAT): start and record the score | YES | YES | YES | YES | NO |
 | DOC-SCH-ACAD-006 | Academic Team | Foreign language classes: start and mark certified | YES | YES | YES | YES | NO |
 | DOC-SCH-ACAD-007 | Academic Team | Bulk entry: test preparation and language classes (CSV) | YES | YES | YES | YES | NO |
-| DOC-SCH-CAR-001 | Career Counselor | Add a career guidance / counselling record | YES | NO | NO | NO | NO |
-| DOC-SCH-CAR-002 | Career Counselor | Edit a record and move its status | YES | NO | NO | NO | NO |
-| DOC-SCH-CAR-003 | Career Counselor | Record a student's career preferences | YES | NO | NO | NO | NO |
-| DOC-SCH-CAR-004 | Career Counselor | Set a student's career goal (360° view) | YES | NO | NO | NO | NO |
-| DOC-SCH-CAR-005 | Career Counselor | Find and create skills batches | YES | NO | NO | NO | NO |
-| DOC-SCH-CAR-006 | Career Counselor | Edit, close or reopen a skills batch | YES | NO | NO | NO | NO |
-| DOC-SCH-CAR-007 | Career Counselor | Enrol students and change enrolment status (complete, certify, withdraw) | YES | NO | NO | NO | NO |
-| DOC-SCH-CAR-008 | Career Counselor | Add sessions and take batch attendance | YES | NO | NO | NO | NO |
-| DOC-SCH-CAR-009 | Career Counselor | Add assessments and record scores | YES | NO | NO | NO | NO |
-| DOC-SCH-CAR-010 | Career Counselor | Open a funding support case | YES | NO | NO | NO | NO |
-| DOC-SCH-CAR-011 | Career Counselor | Move a funding case through its stages or close it | YES | NO | NO | NO | NO |
+| DOC-SCH-CAR-001 | Career Counselor | Add a career guidance / counselling record | YES | YES | YES | YES | NO |
+| DOC-SCH-CAR-002 | Career Counselor | Edit a record and move its status | YES | YES | YES | YES | NO |
+| DOC-SCH-CAR-003 | Career Counselor | Record a student's career preferences | YES | YES | YES | YES | NO |
+| DOC-SCH-CAR-004 | Career Counselor | Set a student's career goal (360° view) | YES | YES | YES | YES | NO |
+| DOC-SCH-CAR-005 | Career Counselor | Find and create skills batches | YES | YES | YES | YES | NO |
+| DOC-SCH-CAR-006 | Career Counselor | Edit, close or reopen a skills batch | YES | YES | YES | YES | NO |
+| DOC-SCH-CAR-007 | Career Counselor | Enrol students and change enrolment status (complete, certify, withdraw) | YES | YES | YES | YES | NO |
+| DOC-SCH-CAR-008 | Career Counselor | Add sessions and take batch attendance | YES | YES | YES | YES | NO |
+| DOC-SCH-CAR-009 | Career Counselor | Add assessments and record scores | YES | YES | YES | YES | NO |
+| DOC-SCH-CAR-010 | Career Counselor | Open a funding support case | YES | YES | YES | YES | NO |
+| DOC-SCH-CAR-011 | Career Counselor | Move a funding case through its stages or close it | YES | YES | YES | YES | NO |
 | DOC-SCH-PSY-001 | Psychometric Team | Assign a psychometric assessment | YES | NO | NO | NO | NO |
 | DOC-SCH-PSY-002 | Psychometric Team | Attach an assessment report | YES | NO | NO | NO | NO |
 | DOC-SCH-PSY-003 | Psychometric Team | Record or edit assessment results | YES | NO | NO | NO | NO |
@@ -163,6 +163,12 @@ See `documentation-analysis.md` §12.2 (17 items). Notable:
 - Frontend role guards are inconsistent.
 - Parent notifications never clear.
 - Several raw codes are shown to users.
+- **New in S8:**
+  1. Several Career Counselor screens do not refresh after a change.
+     - After **Close batch** the header still shows Open / Close batch until a reload.
+     - After saving a career goal the card still says "No career goal set yet." until a reload.
+     - Edited records may need a reload before the table shows the new status.
+  2. Skills tier denials (Digital skills on Bronze) could not be shown: no Career Counselor school portfolio includes a Bronze or Silver school, and portfolios cannot be changed in the UI.
 - **New in S7:**
   1. The single-result form accepts marks above the maximum (75/50 is saved and shown as "150%"), and a colleague can verify it. Bulk entry rejects the same row.
   2. A 90-character subject gives only "Something went wrong.".
@@ -194,6 +200,24 @@ See `documentation-analysis.md` §12.2 (17 items). Notable:
 ## Session log
 | Session | Date | Summary |
 |---|---|---|
+| S8 | 2026-10-06 | `sch-s8-career-counselor.capture.ts` runs green in about 41 s after S7.
+
+**Data created:**
+- Records:
+  - Ananya guidance session (Scheduled → Completed → Follow-up Required → Scheduled, plus a 409 from a second tab).
+  - Arjun counselling note (Completed) and recommendation.
+- Ananya's career preferences and career goal.
+- Docs Public Speaking Batch (Soft Skills):
+  - 4 enrolled: Ananya completed, Arjun certified, Dev withdrawn, Meera enrolled.
+  - 1 session with attendance, 1 assessment with scores.
+  - Then closed.
+- Funding cases:
+  - Ananya Scholarship moved to Counselling.
+  - Arjun Education loan closed with a reason.
+
+**Verification:** Empty-portfolio states captured. 26 screenshots reviewed.
+
+**Docs:** CAR-001..011 written. |
 | S7 | 2026-10-06 | `sch-s7-academic-portfolio.capture.ts` runs green in about 36 s after S6.
 
 **Data created:**
