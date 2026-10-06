@@ -85,6 +85,7 @@ export const TELECALLER_NAV: NavItem[] = [
 export const TELECALLER_MANAGER_NAV: NavItem[] = [
   { label: "Team", href: "/telecaller/manager/team" }, { label: "Leads", href: "/telecaller/manager/leads" },
   { label: "Lead assignment", href: "/telecaller/manager/assignment" }, { label: "Distribution rules", href: "/telecaller/manager/distribution" },
+  { label: "Lead import", href: "/telecaller/manager/imports" }, // tel-006
   { label: "Targets", href: "/telecaller/manager/targets" },
   { label: "Products", href: "/telecaller/manager/products" },
   { label: "Campaigns", href: "/telecaller/manager/campaigns" },
