@@ -138,7 +138,11 @@ def test_round_trip_creates_the_tables_and_enforces_the_checks(isolated_db):
     with pytest.raises(Exception, match="uq_bdm_mous_current"):
         _mou(isolated_db)
     with pytest.raises(Exception, match="ck_bdm_mou_events_kind"):
-        _sql(url, "INSERT INTO bdm_mou_events (id, mou_id, actor_user_id, kind, to_status, changed) VALUES (:id, :m, :u, 'expired', 'expired', '[]')", {"id": uuid.uuid4(), "m": first, "u": isolated_db["user"]})
+        _sql(
+            url,
+            "INSERT INTO bdm_mou_events (id, mou_id, actor_user_id, kind, to_status, changed) VALUES (:id, :m, :u, 'expired', 'expired', '[]')",
+            {"id": uuid.uuid4(), "m": first, "u": isolated_db["user"]},
+        )
 
 
 def test_downgrade_refuses_while_mous_exist(isolated_db):
