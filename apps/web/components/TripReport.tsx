@@ -56,7 +56,7 @@ export default function TripReport({ trip, view }: { trip: Trip; view: "owner" |
               <thead><tr><th scope="col">Category</th><th scope="col">Amount</th></tr></thead>
               <tbody>
                 {lines.map(([label, amount]) => <tr key={label}><td>{label}</td><td>{formatInr(amount)}</td></tr>)}
-                <tr><th scope="row">Total</th><td><strong>{formatInr(trip.actual_cost)}</strong></td></tr>
+                <tr><th scope="row" style={{ textAlign: "left" }}>Total</th><td><strong>{formatInr(trip.actual_cost)}</strong></td></tr>
               </tbody>
             </table>
           </div>

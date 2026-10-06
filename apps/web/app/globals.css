@@ -110,6 +110,15 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
   .table.psy-records td, .table.funding-records td { border: 0; padding: 4px 0; overflow-wrap: anywhere; }
   .table.psy-records td::before, .table.funding-records td::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 800; color: var(--muted); }
 }
+/* bdm-011 QA11-02: a trip's appointments (Time, Organization, Meeting, Status) as labelled cards on phones, the QA27-05 pattern,
+   so each meeting's status is visible without a sideways scroll. */
+@media (max-width: 640px) {
+  .table.trip-itinerary thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .table.trip-itinerary, .table.trip-itinerary tbody, .table.trip-itinerary tr, .table.trip-itinerary td { display: block; width: 100%; min-width: 0; }
+  .table.trip-itinerary tr { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-bottom: 10px; }
+  .table.trip-itinerary td { border: 0; padding: 4px 0; overflow-wrap: anywhere; }
+  .table.trip-itinerary td::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 800; color: var(--muted); }
+}
 /* ENH-029 bulk school onboarding (browser QA-029-02/03): the card spans the full action grid so its six-column result table fits
    on a desktop; below 760px (where that table's 650px minimum no longer fits) each result row becomes a labelled card, like
    QA27-05 above, so a rejected row's reason is never hidden behind a sideways scroll. */

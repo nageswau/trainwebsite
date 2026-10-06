@@ -63,6 +63,18 @@ describe("TripItinerary (bdm-011 AC4)", () => {
     expect(screen.getByRole("note")).toHaveTextContent("This trip is cancelled");
   });
 
+  it("QA11-02: every cell carries its column name, so a phone can show each row as a labelled card with its status", () => {
+    render(<TripItinerary trip={sourceTrip()} view="owner" />);
+    expect(screen.getByRole("table")).toHaveClass("table", "trip-itinerary");
+    const cells = within(screen.getAllByRole("row")[1]).getAllByRole("cell");
+    expect(cells.map((c) => c.getAttribute("data-label"))).toEqual(["Time", "Organization", "Meeting", "Status"]);
+  });
+
+  it("QA11-04: organization names look like links", () => {
+    render(<TripItinerary trip={sourceTrip()} view="owner" />);
+    expect(screen.getByRole("link", { name: "ABC College" })).toHaveStyle({ textDecoration: "underline" });
+  });
+
   it("an empty trip has no note -- there are no appointments for it to be about", () => {
     render(<TripItinerary trip={trip({ approval_status: "submitted" })} view="owner" />);
     expect(screen.queryByRole("note")).toBeNull();
@@ -103,6 +115,32 @@ describe("TripWorkspace sections (bdm-011)", () => {
     for (const id of ["trip-appointments", "trip-costs", "trip-remarks"]) expect(container.querySelector(`section#${id}`)).not.toBeNull();
     expect(screen.getByRole("heading", { name: "Appointments" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Productivity" })).toBeInTheDocument();
+  });
+
+  it("QA11-01: a deep link (the travel reminder's buttons) scrolls its section into view once the page is on screen", () => {
+    const scrolled: string[] = [];
+    Element.prototype.scrollIntoView = function (this: Element) { scrolled.push(this.id); };
+    window.history.replaceState(null, "", "#trip-costs");
+    try {
+      ws("owner");
+      expect(scrolled).toEqual(["trip-costs"]);
+    } finally {
+      window.history.replaceState(null, "", window.location.pathname);
+      delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+    }
+  });
+
+  it("a hash that is not one of the trip's sections scrolls nothing", () => {
+    const scrolled: string[] = [];
+    Element.prototype.scrollIntoView = function (this: Element) { scrolled.push(this.id); };
+    window.history.replaceState(null, "", "#trip-details-heading");
+    try {
+      ws("owner");
+      expect(scrolled).toEqual([]);
+    } finally {
+      window.history.replaceState(null, "", window.location.pathname);
+      delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+    }
   });
 
   it("offers the travel report only once the trip is completed", () => {

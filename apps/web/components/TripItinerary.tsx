@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { STATUS_LABEL, TYPE_LABEL } from "@/lib/bdmAppointments";
+import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import { appointmentPagePath, itineraryWhen, type Trip } from "@/lib/bdmTravel";
 
 // bdm-011 (EVID-016 §4, Agent §D, School §F): the trip's linked appointments -- time, organization, meeting, status -- shared by
@@ -21,7 +22,8 @@ export default function TripItinerary({ trip, view }: { trip: Trip; view: "owner
         </p>
       ) : (
         <div className="table-wrap" role="region" aria-label="Appointments on this trip" tabIndex={0}>
-          <table>
+          {/* QA11-02: on phones each row is a labelled card (globals.css .trip-itinerary), so the status is never behind a scroll */}
+          <table className="table trip-itinerary">
             <caption className="visually-hidden">Appointments on this trip</caption>
             <thead>
               <tr><th scope="col">Time</th><th scope="col">Organization</th><th scope="col">Meeting</th><th scope="col">Status</th></tr>
@@ -29,10 +31,10 @@ export default function TripItinerary({ trip, view }: { trip: Trip; view: "owner
             <tbody>
               {trip.itinerary.map((a) => (
                 <tr key={a.id}>
-                  <td style={{ whiteSpace: "nowrap" }}>{itineraryWhen(a.starts_at, multiDay)}</td>
-                  <td><Link href={appointmentPagePath(view, a.id)}>{a.organization.name}</Link></td>
-                  <td>{TYPE_LABEL[a.appointment_type] ?? a.appointment_type}</td>
-                  <td>{STATUS_LABEL[a.status]}</td>
+                  <td data-label="Time" style={{ whiteSpace: "nowrap" }}>{itineraryWhen(a.starts_at, multiDay)}</td>
+                  <td data-label="Organization"><Link href={appointmentPagePath(view, a.id)} style={LINK_STYLE}>{a.organization.name}</Link></td>
+                  <td data-label="Meeting">{TYPE_LABEL[a.appointment_type] ?? a.appointment_type}</td>
+                  <td data-label="Status">{STATUS_LABEL[a.status]}</td>
                 </tr>
               ))}
             </tbody>

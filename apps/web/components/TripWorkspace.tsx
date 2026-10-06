@@ -19,6 +19,7 @@ import { TripLiveContext, isTrip, type TripLive } from "@/lib/tripLive";
 import { WRITE_STARTED } from "@/lib/useTripWrite";
 
 const NOTICE_ID = "trip-notice";
+const DEEP_LINKS = ["trip-appointments", "trip-costs", "trip-remarks"];
 
 // bdm-010 (QA10-16): one trip page as one client workspace. The server page reads the trip once; every write below applies the
 // trip it returns (useTripWrite + TripLiveContext), and a 409 re-reads it -- so two quick saves can never leave a stale render on
@@ -47,6 +48,12 @@ export default function TripWorkspace({ initialTrip, view, today, backHref, back
       refocus(NOTICE_ID);
     },
   }), [owner, initialTrip.id]);
+  useEffect(() => {
+    // bdm-011 QA11-01: the travel reminder links to #trip-appointments / #trip-costs / #trip-remarks. The page streams in after its
+    // loading state, so the browser's own jump to the anchor has nothing to land on; scroll once the section is on screen.
+    const id = window.location.hash.slice(1);
+    if (DEEP_LINKS.includes(id)) document.getElementById(id)?.scrollIntoView();
+  }, []);
   useEffect(() => {
     const clear = () => setNotice(null); // a new write supersedes the old reason (QA10-09)
     window.addEventListener(WRITE_STARTED, clear);

@@ -52,6 +52,7 @@ describe("TripReport (bdm-011 AC3)", () => {
     const table = screen.getByRole("table", { name: "Expenses by category" });
     const rows = within(table).getAllByRole("row").slice(1).map((r) => Array.from(r.children).map((c) => c.textContent));
     expect(rows).toEqual([["Travel", "₹1,200.00"], ["Food", "₹450.50"], ["Total", "₹1,650.50"]]);
+    expect(within(table).getByRole("rowheader", { name: "Total" })).toHaveStyle({ textAlign: "left" }); // QA11-03
     expect(screen.getByText("Two colleges keen.")).toBeInTheDocument();
   });
 
