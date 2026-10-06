@@ -89,6 +89,17 @@ describe("AdminBdmPanel (bdm-001 AC13)", () => {
     expect(await screen.findByText("No BDMs yet. Use the Create BDM form to add the first one.")).toBeInTheDocument();
   });
 
+  it("shows the BDM managers card to a Super Admin only (bdm-025 L4)", async () => {
+    route([res(pg([row(1)]))]);
+    render(<AdminBdmPanel role="super_admin" />);
+    expect(await screen.findByRole("heading", { name: "BDM managers" })).toBeInTheDocument();
+    cleanup();
+    route([res(pg([row(1)]))]);
+    render(<AdminBdmPanel role="it_admin" />);
+    await screen.findByText("E-1");
+    expect(screen.queryByRole("heading", { name: "BDM managers" })).toBeNull();
+  });
+
   it("shows an error with Retry, including for a non-page body", async () => {
     route([res({ detail: "boom" }, 500), res("<html>"), res(pg([row(1)]))]);
     render(<AdminBdmPanel role="super_admin" />);

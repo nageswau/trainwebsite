@@ -530,7 +530,7 @@ URL), `expired_on`, `created_by`, `permissions {can_edit, can_upload, can_renew}
 limit. **Retry semantics:** a retried create answers `409 mou_exists`; a retried status change answers `409 mou_status_changed`. No
 idempotency key.
 
-**`bdm-018` / `DEC-SCOPE-081` (built 2026-10-06; migration `0081_bdm_onboarding`, after `0080_tel_targets`) — school onboarding handover.**
+**`bdm-018` / `DEC-SCOPE-083` (built 2026-10-06; migration `0083_bdm_onboarding`, after `0082_bdm_assignment_history`) — school onboarding handover.**
 Design spec `docs/superpowers/specs/2026-10-06-bdm-018-school-onboarding-handover-design.md` §5. Three things change additively:
 `POST /overseas-admin/schools` accepts an optional `bdm_onboarding_request_id` (absent = unchanged), `SchoolOut` gains
 `linked_bdm {full_name, active, organization_code} | null` (derived from the linked organization's assignee, H1; returned only on the
@@ -858,6 +858,37 @@ Write order: scope 404 → lock (an outcome follow-up's appointment first) → a
 
 ---
 
+**Addendum, 2026-10-06 (`bdm-025`, `DEC-SCOPE-082`): BDM deactivation and portfolio handover.**
+
+Sources:
+- design spec `docs/superpowers/specs/2026-10-06-bdm-025-deactivation-handover-design.md` §5;
+- migration `0082_bdm_assignment_history`.
+
+Who may call these routes: `ensure_admin`, then the creator types (`super_admin` any; `it_admin` College; `overseas_admin`
+Agent / School) → otherwise 403. A non-BDM or unknown id → 404 "BDM not found". The request bodies forbid extra fields.
+
+| Method + path | Body | Success | Refusals |
+|---|---|---|---|
+| `GET /admin/bdms/{id}/portfolio` | — | `{organizations, appointments, tasks, trips}`: open work + not-started trips | 403 / 404 |
+| `POST /admin/bdms/{id}/deactivate` | `{mode: "reassign" \| "leave", reassign_to: uuid \| null}` | `{id, active: false, mode, moved: {organizations, appointments, tasks}, trips_cancelled}` | 422 no / mismatched choice ("Choose who takes over this BDM's open work"); 422 "Choose an active BDM of the same module"; 409 "This BDM is already inactive" |
+| `POST /admin/bdms/{id}/handover` | `{reassign_to: uuid}` | `{id, moved}` | 409 "Deactivate this BDM first"; 409 "No open work to hand over"; 422 invalid target |
+| `POST /admin/bdm-managers/{id}/deactivate` | `{reassign_to: uuid \| null}` (required while BDMs report to them) | `{id, active: false, moved_bdms}` | 403 not super_admin; 404 not a manager; 409 already inactive; 422 "Choose another active BDM manager" |
+
+Existing routes:
+- `PATCH /admin/users/{id}` with `active: false`:
+  - on a BDM → **422** "Deactivate a BDM from the BDMs page, choosing who takes over their open work";
+  - on a manager with BDMs → **422** "This manager has N BDMs. Move them to another manager first (BDMs page → BDM managers)";
+  - **422, not 409:** the Users page reads a 409 as the trainer "confirm cascade" prompt.
+- `GET /admin/bdm-managers` rows add `bdm_count` (additive).
+- `POST /bdm/organizations/{id}/assign` also records history.
+
+The routes write in one transaction:
+- moves with history rows;
+- trip cancels, each with a `bdm.trip_cancel` audit row (`reason: "BDM deactivated"`);
+- `active = false` and revoked welcome links;
+- an audit row: `bdm.deactivate`, `bdm.portfolio_handover` or `bdm_manager.deactivate`;
+- an in-app + email notification to the new owner or manager.
+
 **Addendum, 2026-10-06 (`bdm-013`, `DEC-SCOPE-079`) — BDM calendar.** Design spec `docs/superpowers/specs/2026-10-06-bdm-013-calendar-design.md` §5. Read-only; no migration, no audit, no log line.
 
 | Method/Path | Auth | Roles | Notes / status codes |
@@ -943,6 +974,20 @@ are IST calendar days on the database clock. Every `422` is one sentence.
 | `POST /telecaller/targets` | `telecaller_manager`, `super_admin` (else `403`) | `200` (an idempotent upsert per KPI). Body `{scope: team\|user, team?, user_id?, period: daily\|monthly, effective_from?, values: {kpi: int\|null}}`, unknown keys → `422`. `scope=team` needs `team` (no `user_id`), and its values can't be `null`; `scope=user` needs `user_id` (no `team`), a telecaller who reports to the caller (super_admin: any) → else `404` "Telecaller not found"; inactive → `422`. Values are whole numbers 0–100000 (`null` = the override ends from that date). `effective_from` defaults to the earliest allowed date: daily ≥ tomorrow, monthly = the 1st, ≥ next month, else `422`. Answer `{scope, team, user: {id, full_name}\|null, period, effective_from, values}`. One audit row `telecaller.target_set` |
 | `GET /telecaller/targets` | `telecaller_manager`, `super_admin` (else `403`) | History `{items, total, limit, offset}` (`limit` default 50, max 100). Filters `scope`, `team`, `user_id` (out of scope → `404`), `period`, `kpi`. A manager sees team rows plus their reports' rows. Order: `effective_from` desc, period, KPI. Item `{id, scope, team, user, period, kpi, value, effective_from, set_by: {id, full_name}, updated_at}` |
 | `GET /telecaller/targets/effective` | `telecaller` (self only), `telecaller_manager`, `super_admin` | `date` (default today IST; any date). A telecaller: no `team` and no other `user_id` (else `403`). A manager: exactly one of `user_id` (in scope, else `404`) or `team` (else `422`). Answer `{date, month, team, user, daily: [{kpi, value, source: user\|team\|null}×6], monthly: […×6]}`; an override beats the team default |
+
+## 12H. Lead pipeline (`tel-004`) — addendum, 2026-10-06
+
+`DEC-SCOPE-081`; design spec `docs/superpowers/specs/2026-10-06-tel-004-lead-pipeline-design.md` §4–§5; migration `0081_lead_stage_pipeline`. No new role; the telecaller routes use tel-001's
+`telecaller` / `telecaller_manager` (+ `super_admin`) with SQL scope (T23).
+
+| Method/Path | Roles | Notes / status codes |
+|---|---|---|
+| `POST /telecaller/leads/{id}/stage` | `telecaller` (own leads), `telecaller_manager` (direct reports' leads + their teams' unassigned leads), `super_admin` | Body `{to_stage, reason?}` (extra keys `422`; reason trimmed, ≤ 500, blank = none). `200` `{id, status, status_label, stage_changed_at}`. `422`: unknown / same / system stage (`new`, `assigned`, `first_call_pending`, `contacted`, `counselling_*`, `application_enrollment`, `converted`), a manual move at/after `application_enrollment`, a closed outcome or reopen without a reason, a closed lead to anything but `follow_up`. `403`: other roles; a telecaller on a closed lead. `404`: missing or out of scope. `401` signed out |
+| `GET /telecaller/leads/{id}/stage-history` | as above | `{items, total, limit, offset}`, oldest first; item `{id, from_stage, from_label, to_stage, to_label, event, actor {id, full_name} or null, reason, created_at}` (`actor` null = system) |
+| `GET /admin/leads/{id}/stage-history` | `super_admin`, `it_admin`, `overseas_admin` | Same shape; other division `403`, missing `404` |
+| `PATCH /admin/leads/{id}` | as before | `status` (+ optional `reason`) goes through the engine as a manager (rules above, `422`); the same stage is a no-op; `owner_id` unchanged; audit metadata holds `status`/`owner_id` only |
+| `POST/DELETE /admin/leads/{id}/conversion` | as §12 bdm-017 | Link moves the stage to `application_enrollment` (a closed lead keeps its stage); unlink moves `application_enrollment` → `follow_up` |
+| `GET /admin/leads` | as §12F | Items add `status_label`; the `status` filter takes a stage key |
 
 ## 13. Traceability check
 

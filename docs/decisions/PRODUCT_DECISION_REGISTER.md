@@ -3804,13 +3804,102 @@ indexes per subject; the downgrade refuses while targets exist). `services/telec
 resolution function), `POST/GET /telecaller/targets`, `GET /telecaller/targets/effective`. Web `/telecaller/manager/targets` and the dashboard
 card. Design spec `docs/superpowers/specs/2026-10-06-tel-022-targets-design.md`.
 
+### DEC-SCOPE-081 — Lead pipeline: stage engine + stage history (`tel-004`)
 
-### DEC-SCOPE-081 — School onboarding handover + `schools` link (`bdm-018`)
+**Evidence:** `EVID-019` §19 (11 stages + 5 closed outcomes); `DEC-SCOPE-073` T5, T13, T25, T29; owner answers in-session 2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for PL1–PL4; D1–D4 are recorded defaults. VERIFIED on `feature/tel-004`
+(2026-10-06); **MERGED** to `main` as PR #81 @ `69829a59` (2026-10-06). Drafted as `DEC-SCOPE-078` / `0079`; re-chained twice on 2026-10-06 (bdm-005 took 078 / `0079_bdm_mous`; bdm-013 took 079; tel-022 took 080 / `0080_tel_targets` and API §12G).
+
+| # | Question | Answer |
+|---|---|---|
+| PL1 (Q-02) | Legacy `enquiries.status` mapping | new/contacted/qualified/lost kept; `converted` + linked student → `application_enrollment`, without → `follow_up`; other text → `new`; original in `metadata_json.legacy_status`; one `legacy_mapping` history row per changed lead |
+| PL2 | Assigned vs First Call Pending | Attempt-based: assignment → `assigned`; first unconnected call → `first_call_pending`; first connected call → `contacted` |
+| PL3 (Q-09) | No Response | A manual closed outcome with a reason; an automatic close after N attempts is deferred to tel-010 |
+| PL4 | bdm-017 admin link | Through the engine: Link → `application_enrollment`, Unlink → `follow_up`. **Supersedes `DEC-SCOPE-072` L2/L7** for the stage; nobody selects `converted` (tel-018 computes it) |
+| D1 | Reasons | Required for the 5 closed outcomes and for a reopen (≤ 500); stored in history only, never logged or audited |
+| D2 | Manual moves | Qualified / Interested / Follow-up from any open stage before `application_enrollment`; closed outcomes from any open stage except `converted` |
+| D3 | Closed leads | Only a manager or admin reopens, to `follow_up` (telecaller 403); events on a closed lead don't move it |
+| D4 | Telecaller UI | API now; the lead-detail stage control arrives with tel-008. The admin lead panel gets it now |
+
+**Implementation:** `app/lead_stages.py` (catalogue + event table), `services/lead_pipeline.py` (the only status writer after
+creation), migration `0081_lead_stage_pipeline` (`lead_stage_history`, PL1 mapping, `ck_enquiries_status`; downgrade refuses after a
+real move). Routes: `POST /telecaller/leads/{id}/stage`, `GET /telecaller/leads/{id}/stage-history`, `GET /admin/leads/{id}/stage-history`;
+`PATCH /admin/leads/{id}` status via the engine. Design spec `docs/superpowers/specs/2026-10-06-tel-004-lead-pipeline-design.md`.
+
+### DEC-SCOPE-082 — BDM deactivation, portfolio handover and manager change (`bdm-025`)
+
+**ID note (2026-10-06):** drafted as `DEC-SCOPE-076` with migration `0078_bdm_assignment_history` on `main` @ `442ce465`.
+
+On merging `main` @ `230a043f`, the earlier numbers were taken:
+- tel-017 holds `DEC-SCOPE-076`;
+- tel-003 holds `DEC-SCOPE-077` / `0078_enquiry_lead_record`;
+- bdm-005 holds `DEC-SCOPE-078` / `0079_bdm_mous`.
+
+So this entry became `DEC-SCOPE-079`, with the migration `0080_bdm_assignment_history` chained after `0079_bdm_mous`.
+
+On merging `main` @ `6655e284`, bdm-013 (no migration) holds `DEC-SCOPE-079`. So this entry is now **`DEC-SCOPE-080`**; the
+migration stays `0080_bdm_assignment_history` (backlog §6.2).
+
+On merging `main` @ `a38955d5`, tel-022 holds `DEC-SCOPE-080` and `0080_tel_targets`. So this entry is **`DEC-SCOPE-081`** and
+the migration is **`0081_bdm_assignment_history`**, chained after `0080_tel_targets`.
+
+On merging `main` @ `3986958c`, tel-004 holds `DEC-SCOPE-081` and `0081_lead_stage_pipeline`. So this entry is **`DEC-SCOPE-082`** and the
+migration is **`0082_bdm_assignment_history`**, chained after `0081_lead_stage_pipeline`.
+
+**Question:** what must happen when a BDM or a BDM manager is deactivated? Specifically: what counts as their open work, where does
+it go, what happens to trips and pending approvals, and how is the reporting manager changed (`BDM_CRM_BACKLOG.md` §4 bdm-025)?
+
+**Evidence:**
+- `EVID-016` (`BDM Functionalities.md`, `DERIVED_BLUEPRINT`) §1 BDM Management, lines 5–25 (Reporting Manager, Active/Inactive);
+- backlog `DEC-SCOPE-055` D3, D4, D10 (Q-01);
+- bdm-001 B7 (type fixed; transfers are bdm-025);
+- bdm-010 T2/T3 (the approver is resolved at decision time).
+
+**Resolution:** owner, in-session 2026-10-06. `EXPLICIT_APPROVAL` through answers to structured questions; for each one the owner
+picked the recommended option. Design spec: `docs/superpowers/specs/2026-10-06-bdm-025-deactivation-handover-design.md` §3.
+
+- **L1** Dependencies: "merged on `main` with verified QA evidence" counts as completed for bdm-006 (stale status line) and bdm-008
+  ("VERIFIED — ready for owner sign-off").
+- **L2** Trips: a deactivated BDM's not-started trips (`travel_status = planned`, any approval state) are cancelled with the reason
+  "BDM deactivated". A trip already in progress stays with the original BDM.
+- **L3** "Leave unassigned": `mode=leave` keeps the open work on the inactive BDM. "Hand over" stays available on the inactive row
+  (`POST /admin/bdms/{id}/handover`). No owner column becomes nullable.
+- **L4** A manager with BDMs: a super_admin-only bulk move to a replacement active manager, from the "BDM managers" card. The generic
+  Users page refuses with a 422 that says where to do it.
+- **L5** Open portfolio = non-archived organizations; scheduled / confirmed / rescheduled appointments that start in the future; open
+  follow-ups and tasks. History (archived organizations, past or finished appointments, done / cancelled tasks, reports, activities)
+  keeps the original BDM.
+- **Defaults:**
+  - actors are super_admin and the Q-01 creator types (`require_creator_may`);
+  - one 422 message for any invalid target;
+  - no idempotency key (a repeat → 409);
+  - reactivation stays on `PATCH /admin/users` `active: true` (login only, never the old portfolio);
+  - a manager change stays on `PATCH /admin/users` `bdm_profile.reporting_manager_user_id`, and pending approvals follow because of T2.
+
+**Consequences:**
+- Migration `0082_bdm_assignment_history`: an append-only table; the downgrade refuses while rows exist.
+- New routes:
+  - `GET /admin/bdms/{id}/portfolio`
+  - `POST /admin/bdms/{id}/deactivate` `{mode, reassign_to}`
+  - `POST /admin/bdms/{id}/handover` `{reassign_to}`
+  - `POST /admin/bdm-managers/{id}/deactivate` `{reassign_to}`
+- `PATCH /admin/users/{id}` `active: false` → 422 for a BDM, or for a manager with BDMs.
+- `GET /admin/bdm-managers` rows gain `bdm_count`; the telecaller picker shape is unchanged.
+- bdm-002's single reassign also writes a history row.
+- Web: the deactivate / hand-over dialog on the admin BDM rows, and the "BDM managers" card (super_admin).
+
+**Status:** `EXPLICIT_APPROVAL` for L1–L5. Implemented on `worktree-bdm-025`; the verification status is in the backlog entry and the RTM row.
+
+
+
+### DEC-SCOPE-083 — School onboarding handover + `schools` link (`bdm-018`)
 
 **ID note:** drafted as `DEC-SCOPE-079` with migration `0080_bdm_onboarding` (both free on `main` @ `230a043f`); bdm-013 (PR #78) took
-`DEC-SCOPE-079` and tel-022 (PR #80) `DEC-SCOPE-080` / `0080_tel_targets` first, so on merging `main` @ `a38955d5` (2026-10-06) this entry is
-**`DEC-SCOPE-081`** and the migration **`0081_bdm_onboarding`** (after `0080_tel_targets`). bdm-018 commits from before that merge that say
-`DEC-SCOPE-079` or `0080_bdm_onboarding` mean this decision / migration.
+`DEC-SCOPE-079` and tel-022 (PR #80) `DEC-SCOPE-080` / `0080_tel_targets` first, so on merging `main` @ `a38955d5` (2026-10-06) this entry was
+`DEC-SCOPE-081` with `0081_bdm_onboarding`; tel-004 (PR #81, `DEC-SCOPE-081` / `0081_lead_stage_pipeline`) and bdm-025 (PR #79, `DEC-SCOPE-082` /
+`0082_bdm_assignment_history`) then reached `main`, so on merging `main` @ `4ec7a22b` this entry is **`DEC-SCOPE-083`** and the migration
+**`0083_bdm_onboarding`** (after `0082_bdm_assignment_history`). bdm-018 commits from before those merges that say `DEC-SCOPE-079` / `DEC-SCOPE-081`
+or `0080_bdm_onboarding` / `0081_bdm_onboarding` mean this decision / migration.
 
 **Question:** how a School-module BDM hands a signed school over to Overseas Admin, how the created (or existing) School is linked to the
 organization, what the School records as its BDM, what happens to the legacy `schools.edusphere_bdm` text (Q-16), and how the live School
@@ -3834,7 +3923,7 @@ option; spec `docs/superpowers/specs/2026-10-06-bdm-018-school-onboarding-handov
   H10 the BDM sees the School's name and ID plus the step states, no School-portal data; H11 live stages are never stored and the pipeline
   view is unchanged.
 
-**Consequences:** migration `0081_bdm_onboarding` (new `bdm_onboarding_requests`; `bdm_organizations.school_id`; no existing row touched;
+**Consequences:** migration `0083_bdm_onboarding` (new `bdm_onboarding_requests`; `bdm_organizations.school_id`; no existing row touched;
 downgrade refuses while requests or links exist); routes `POST /bdm/organizations/{id}/onboarding-request`,
 `GET /overseas-admin/bdm-onboarding-requests`, `POST …/{id}/reject`, `POST …/{id}/link`; `POST /overseas-admin/schools` accepts
 `bdm_onboarding_request_id` (route-only `SchoolCreateIn`, so ENH-029's bulk template is unchanged); `SchoolOut.linked_bdm`; the organization

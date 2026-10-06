@@ -1,6 +1,6 @@
 # bdm-018 — browser QA log (2026-10-06)
 
-**Feature:** School onboarding handover + `schools` link (`DEC-SCOPE-081`, migration `0081_bdm_onboarding`).
+**Feature:** School onboarding handover + `schools` link (`DEC-SCOPE-083`, migration `0083_bdm_onboarding`).
 **Environment:** isolated compose project `bdm018` (web :13018, API :18018); isolated Playwright Chromium in the `bdm018` web-test
 container (Browser Use is not installed in this environment). Script: an exploratory Playwright pass driven as a QA engineer (roles,
 states, errors, layouts), screenshots under `artifacts/ci/qa/` (not committed).

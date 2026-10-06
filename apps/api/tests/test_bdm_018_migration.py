@@ -1,4 +1,4 @@
-"""bdm-018 -- migration 0081_bdm_onboarding (spec §3). Round trip and the downgrade refusal run in a throwaway database (the
+"""bdm-018 -- migration 0083_bdm_onboarding (spec §3). Round trip and the downgrade refusal run in a throwaway database (the
 bdm-005 pattern); a downgrade never runs against the shared test database."""
 
 import asyncio
@@ -20,11 +20,11 @@ from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-BASE, HEAD = "0080_tel_targets", "0081_bdm_onboarding"
+BASE, HEAD = "0082_bdm_assignment_history", "0083_bdm_onboarding"
 
 
 def _migration():
-    spec = importlib.util.spec_from_file_location("_bdm_018_migration_0081", VERSIONS / f"{HEAD}.py")
+    spec = importlib.util.spec_from_file_location("_bdm_018_migration_0083", VERSIONS / f"{HEAD}.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -36,7 +36,7 @@ def _config() -> Config:
     return cfg
 
 
-def test_chains_after_0080_and_is_the_single_head():
+def test_chains_after_0082_and_is_the_single_head():
     migration = _migration()
     assert (migration.revision, migration.down_revision) == (HEAD, BASE)
     script = ScriptDirectory.from_config(_config())

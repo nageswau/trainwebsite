@@ -1,6 +1,6 @@
 import type { OrgPerson } from "@/lib/bdmOrganizations";
 
-// bdm-018 (DEC-SCOPE-081): the school onboarding handover. The API owns every rule (who may request, MoU Signed/Active, one pending,
+// bdm-018 (DEC-SCOPE-083): the school onboarding handover. The API owns every rule (who may request, MoU Signed/Active, one pending,
 // one School per organization); these types only read its responses.
 export type OnboardingStatus = "pending" | "completed" | "rejected";
 export type OrgOnboarding = {

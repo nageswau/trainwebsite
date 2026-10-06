@@ -2828,7 +2828,7 @@ class SchoolCreate(BaseModel):
 
 
 class SchoolCreateIn(SchoolCreate):
-    """The single create's body (SCH-003). bdm-018 (DEC-SCOPE-081 §5.5): optionally resolves a pending onboarding request in the same
+    """The single create's body (SCH-003). bdm-018 (DEC-SCOPE-083 §5.5): optionally resolves a pending onboarding request in the same
     transaction. A subclass, so ENH-029's bulk template (`SchoolCreate.model_fields`) does not gain the column."""
 
     bdm_onboarding_request_id: UUID | None = None
@@ -3287,6 +3287,13 @@ class BdmManagerOption(BaseModel):
     email: str
 
 
+class BdmManagerRow(BdmManagerOption):
+    """bdm-025: /admin/bdm-managers only (the telecaller picker keeps BdmManagerOption) -- BDMs reporting to this manager, active or
+    not, for the BDM managers card."""
+
+    bdm_count: int
+
+
 class BdmTeamPage(BaseModel):
     items: list[BdmTeamRow]
     total: int
@@ -3306,6 +3313,83 @@ class BdmManagerPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class BdmManagerRowPage(BaseModel):
+    items: list[BdmManagerRow]
+    total: int
+    limit: int
+    offset: int
+
+
+# --- bdm-025: deactivation, portfolio handover, manager deactivation (DEC-SCOPE-082; spec §5) ---
+
+
+class BdmDeactivate(BaseModel):
+    """AC1: deactivating a BDM always says who takes over -- another BDM (`reassign`) or nobody yet (`leave`, handed over later)."""
+
+    model_config = ConfigDict(extra="forbid")
+    mode: Literal["reassign", "leave"]
+    reassign_to: UUID | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _mode_given(cls, data):
+        if isinstance(data, dict) and data.get("mode") is None:
+            raise ValueError("Choose who takes over this BDM's open work")
+        return data
+
+    @model_validator(mode="after")
+    def _target_matches_mode(self):
+        if self.mode == "reassign" and self.reassign_to is None:
+            raise ValueError("Choose the BDM who takes over")
+        if self.mode == "leave" and self.reassign_to is not None:
+            raise ValueError("Keeping the work with this BDM takes no target")
+        return self
+
+
+class BdmHandover(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reassign_to: UUID
+
+
+class BdmManagerDeactivate(BaseModel):
+    """`reassign_to` is required only while BDMs report to the manager (checked by the route, which knows the team)."""
+
+    model_config = ConfigDict(extra="forbid")
+    reassign_to: UUID | None = None
+
+
+class BdmPortfolio(BaseModel):
+    organizations: int
+    appointments: int
+    tasks: int
+    trips: int
+
+
+class BdmMoved(BaseModel):
+    organizations: int
+    appointments: int
+    tasks: int
+
+
+class BdmDeactivateOut(BaseModel):
+    id: UUID
+    active: bool
+    mode: Literal["reassign", "leave"]
+    moved: BdmMoved
+    trips_cancelled: int
+
+
+class BdmHandoverOut(BaseModel):
+    id: UUID
+    moved: BdmMoved
+
+
+class BdmManagerDeactivateOut(BaseModel):
+    id: UUID
+    active: bool
+    moved_bdms: int
 
 
 # --- bdm-010: travel requests, approval, expenses (DEC-SCOPE-063; docs/superpowers/specs/2026-10-03-bdm-010-travel-design.md §5.1) ---
@@ -3793,7 +3877,7 @@ class BdmOrgPipelineOut(BaseModel):
     steps: list[BdmPipelineStepOut]
 
 
-# --- bdm-018 (DEC-SCOPE-081, spec §5.7): the onboarding handover on the organization detail -------------------------------------
+# --- bdm-018 (DEC-SCOPE-083, spec §5.7): the onboarding handover on the organization detail -------------------------------------
 class BdmOnboardingRequestRef(BaseModel):
     id: UUID
     status: Literal["pending", "completed", "rejected"]
@@ -4807,7 +4891,7 @@ class BdmTaskPage(BaseModel):
     counts: BdmTaskCounts
 
 
-# bdm-013 (DEC-SCOPE-081): the read-only calendar feed -- only what the calendar shows (no notes, contacts, purpose or costs).
+# bdm-013 (DEC-SCOPE-083): the read-only calendar feed -- only what the calendar shows (no notes, contacts, purpose or costs).
 class BdmCalendarAppointment(BaseModel):
     id: UUID
     code: str
@@ -4941,7 +5025,43 @@ class TelTargetEffectiveOut(BaseModel):
     monthly: list[TelTargetValue]
 
 
-# --- bdm-018 (DEC-SCOPE-081, spec §5): the school onboarding handover --------------------------------------------------------------
+# tel-004 (DEC-SCOPE-083, spec §5): a person's lead stage move. The reason reuses bdm-004's note rules (trimmed, at most 500,
+# blank -> None); the service decides when it is required.
+class LeadStageMove(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    to_stage: BdmStageKey
+    reason: BdmPipelineNote = None
+
+
+class LeadStageOut(BaseModel):
+    id: UUID
+    status: str
+    status_label: str
+    stage_changed_at: datetime
+
+
+class LeadStageActor(BaseModel):
+    id: UUID
+    full_name: str
+
+
+class LeadStageHistoryRow(BaseModel):
+    id: UUID
+    from_stage: str
+    from_label: str
+    to_stage: str
+    to_label: str
+    event: str
+    actor: LeadStageActor | None
+    reason: str | None
+    created_at: datetime
+
+
+class LeadStageHistoryPage(BaseModel):
+    items: list[LeadStageHistoryRow]
+
+
+# --- bdm-018 (DEC-SCOPE-083, spec §5): the school onboarding handover --------------------------------------------------------------
 _ONBOARDING_LABELS = {"note": "Note", "reason": "Reason", "school_code": "School ID"}
 BdmOnboardingNote = Annotated[
     Annotated[Annotated[str, _trimmed(1000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, _ONBOARDING_LABELS))],

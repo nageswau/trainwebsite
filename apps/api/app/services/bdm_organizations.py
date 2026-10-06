@@ -95,7 +95,12 @@ async def caller_scope(db: AsyncSession, user: User) -> list:
 async def load_scoped(db: AsyncSession, user: User, org_id: UUID, *, lock: bool = False) -> BdmOrganization:
     stmt = select(BdmOrganization).where(BdmOrganization.id == org_id, *await caller_scope(db, user))
     if lock:
-        stmt = stmt.with_for_update(of=BdmOrganization).execution_options(populate_existing=True)
+        # bdm-025: lock by id first, then check scope in a fresh statement. A FOR UPDATE that waited on a concurrent reassign is
+        # re-checked by Postgres against the *old* joined bdm_profiles row of the manager scope's semi-join, so it dropped a row still
+        # in scope and answered 404 (test_concurrent_reassigns_serialize, intermittent on main). Nothing leaks: an out-of-scope row
+        # is only held until the 404 ends the transaction.
+        await db.execute(select(BdmOrganization.id).where(BdmOrganization.id == org_id).with_for_update())
+        stmt = stmt.execution_options(populate_existing=True)
     org = await db.scalar(stmt)
     if org is None:
         raise HTTPException(404, NOT_FOUND)

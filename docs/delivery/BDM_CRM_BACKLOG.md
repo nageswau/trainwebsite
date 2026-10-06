@@ -887,7 +887,7 @@ Conventions used below:
 
 ### bdm-018 — School onboarding handover + `schools` link
 
-> **Status (2026-10-06):** **VERIFIED, full regression deferred** on `feature/bdm-018-school-handover` (`DEC-SCOPE-081` H1–H11, drafted as 079; migration `0081_bdm_onboarding` after `0080_tel_targets`, drafted as 0080). Owner answers H1–H4 supersede lines below: the School's BDM is **derived** from `bdm_organizations.school_id` (no `schools.bdm_user_id`, no PATCH field); live stages from per-step evidence; existing Schools are linked through the BDM's request; `edusphere_bdm` is read-only in the UI only; the create field is `bdm_onboarding_request_id` (not `bdm_organization_id`). Fresh evidence on the merged HEAD (main @ `a38955d5` merged): backend lite (bdm-018, SCH-003, ENH-009/023/029, bdm-002/003/004/005, tel-022 migration) 300 passed, 1 failed — `test_enh_023_tier_change::test_failing_email_never_fails_or_undoes_the_tier_change`, which passes alone and fails identically after tel-022's migration test (any Alembic run's `fileConfig` disables existing loggers before its `caplog` check; pre-existing); ruff clean on bdm-018 files (3 pre-existing B904 in untouched `admin.py` lines); web touched areas 1307 passed, 1 failed — `dateZoneSweep` lists only pre-existing entries; `tsc` 0; eslint 0; `next build` ok; one alembic head; Playwright bdm-018 + bdm-002/003/004/005 passed (bdm-004 once timed out under parallel load, then 2/2). Browser QA (isolated Playwright Chromium; Browser Use not installed) found QA18-01…03, all fixed test-first and re-verified: `docs/quality/BDM-018_BROWSER_QA_2026-10-06.md`. **Deferred:** the mandatory full backend + E2E regression after bdm-018 (R4, `schools`). Spec: `docs/superpowers/specs/2026-10-06-bdm-018-school-onboarding-handover-design.md`.
+> **Status (2026-10-06):** **VERIFIED, full regression deferred** on `feature/bdm-018-school-handover` (`DEC-SCOPE-083` H1–H11, drafted as 079, then 081; migration `0083_bdm_onboarding` after `0082_bdm_assignment_history`, drafted as 0080, then 0081). Owner answers H1–H4 supersede lines below: the School's BDM is **derived** from `bdm_organizations.school_id` (no `schools.bdm_user_id`, no PATCH field); live stages from per-step evidence; existing Schools are linked through the BDM's request; `edusphere_bdm` is read-only in the UI only; the create field is `bdm_onboarding_request_id` (not `bdm_organization_id`). Fresh evidence on the merged HEAD (main @ `a38955d5` merged): backend lite (bdm-018, SCH-003, ENH-009/023/029, bdm-002/003/004/005, tel-022 migration) 300 passed, 1 failed — `test_enh_023_tier_change::test_failing_email_never_fails_or_undoes_the_tier_change`, which passes alone and fails identically after tel-022's migration test (any Alembic run's `fileConfig` disables existing loggers before its `caplog` check; pre-existing); ruff clean on bdm-018 files (3 pre-existing B904 in untouched `admin.py` lines); web touched areas 1307 passed, 1 failed — `dateZoneSweep` lists only pre-existing entries; `tsc` 0; eslint 0; `next build` ok; one alembic head; Playwright bdm-018 + bdm-002/003/004/005 passed (bdm-004 once timed out under parallel load, then 2/2). Browser QA (isolated Playwright Chromium; Browser Use not installed) found QA18-01…03, all fixed test-first and re-verified: `docs/quality/BDM-018_BROWSER_QA_2026-10-06.md`. **Deferred:** the mandatory full backend + E2E regression after bdm-018 (R4, `schools`). Spec: `docs/superpowers/specs/2026-10-06-bdm-018-school-onboarding-handover-design.md`.
 
 - **Business requirement:** School §D: Signed → School Onboarding → Teachers/Parents/Students Created → Career Guidance → Psychometric → Profile Building → University Planning. School §B carries the Assigned BDM, Existing Partner?, MoU, Contract and Renewal Date.
 - **Existing behavior:**
@@ -1155,6 +1155,59 @@ Conventions used below:
 ---
 
 ### bdm-025 — BDM deactivation, portfolio reassignment, manager change
+
+> **Status (2026-10-06):** implemented on `worktree-bdm-025` (`DEC-SCOPE-082`, migration `0082_bdm_assignment_history`;
+> renumbered from `076` / `0078` as tel-017, tel-003, bdm-005, bdm-013, tel-022 and tel-004 merged first).
+> **COMPLETE WITH DEFERRED FULL REGRESSION (2026-10-06, `2efee1c9`):** the feature is verified; the repository-wide regression
+> remains (the owner's).
+>
+> Re-run after the QA25-05 fix, on `2efee1c9`, in chunks because host memory was short:
+> - all `test_bdm_*`: bdm-002/003/004 198 passed + 3 failed, all pre-existing on `main` (see below); bdm-006/007/008/009 237 passed;
+>   bdm-001/010/017/025 308 passed;
+> - ENH-003 / ADM-001 / tel-001: 180 passed;
+> - Playwright bdm-025 / 001 / 002 / 010 / 006 on a stack rebuilt from that commit: 17 passed.
+>
+> **Pre-existing failures, not bdm-025, reproduced on `main` @ `442ce465`:**
+> - `test_bdm_002_migration` ×2: a fresh database built from the models already has bdm-017's `enquiries.bdm_organization_id` FK, so
+>   0066's downgrade cannot drop `bdm_organizations`;
+> - `test_bdm_002_organizations::test_rename_into_a_duplicate_warns` (intermittent): two audit rows in one transaction share
+>   `created_at`, so their order is arbitrary. It passes alone (16/16).
+>
+> **Re-verified after merging `main` @ `230a043f`** (tel-017, tel-003, bdm-005; renumbered to `DEC-SCOPE-079` /
+> `0080_bdm_assignment_history`, merge `f95879b2`):
+> - bdm-025 + bdm-005 + bdm-002 assign/organizations + bdm-008: 213 passed. The one failure was bdm-005's head pin, which was relaxed to
+>   single head + in history (the tel-003 precedent); migration tests then passed 21/21;
+> - single head `0080_bdm_assignment_history`; ruff clean; mypy 416 = the new `main`'s 416;
+> - web BDM + navigation set: 504 passed; `tsc` 0; eslint 0 errors; `next build` 0;
+> - Playwright bdm-025 / 005 / 001 / 002 / 010: 17 passed.
+>
+> A database stamped at the old `0078_bdm_assignment_history` is fixed with `alembic stamp --purge 0077_bdm_tasks_followups` then
+> `upgrade head`.
+>
+> The earlier evidence for this item follows.
+>
+> Owner decisions L1–L5: dependencies accepted as merged; not-started trips are cancelled; "leave" = keep with the BDM and hand over
+> later; managers are moved in bulk by super_admin; only live items move.
+>
+> Fresh evidence on `db3597db`:
+> - backend LITE (bdm-025, bdm-001, bdm-002 assign/organizations/scope, bdm-010, ENH-003, ADM-001, tel-001, bdm-008 tasks, bdm-006
+>   scope): 470 passed, 1 failed — `test_bdm_002_assign::test_concurrent_reassigns_serialize`;
+> - single alembic head; 0078 offline SQL additive (1 table + 2 indexes; the downgrade drops only that table and is guarded);
+> - ruff: only the 3 pre-existing B904s in `admin.py`; mypy 414 = `main`'s 414;
+> - web BDM set: 454 passed (49 files); `tsc` 0; eslint 0 errors; `next build` 0;
+> - Playwright bdm-025 / 001 / 002 / 010: 16 passed;
+> - exploratory browser QA (isolated Playwright Chromium; Browser Use is not installed):
+>   `docs/quality/BDM-025_EXPLORATORY_QA_2026-10-06.md`. QA25-01…04 were fixed test-first and re-checked.
+>
+> **QA25-05:** the failing race is pre-existing on `main` (2/15) and was widened by bdm-025 (6/15). Fixed in
+> `bdm_organizations.load_scoped`: lock by id, then check scope. The race tests then passed 120/120.
+>
+> **Pending:**
+> - the re-run of all `test_bdm_*` after that `load_scoped` change (the run was stopped by the host for low memory);
+> - the full backend / web suites (the owner's).
+>
+> Spec: `docs/superpowers/specs/2026-10-06-bdm-025-deactivation-handover-design.md`; plan:
+> `docs/superpowers/plans/2026-10-06-bdm-025-deactivation-handover.md`.
 
 - **Business requirement:** BDM Active/Inactive (§1) and the Reporting Manager. By the project's user-lifecycle convention, "creation" implies the full account lifecycle.
 - **Existing behavior:** `users.active` blocks login (`get_current_user`). There is no ownership concept to reassign.

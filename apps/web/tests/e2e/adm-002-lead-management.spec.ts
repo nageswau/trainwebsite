@@ -23,9 +23,12 @@ test("admin routes a lead to a new status, selected by name not a raw ID (ADM-00
   await panel.getByLabel("Search leads").press("Enter");
   const row = panel.locator("tr", { hasText: name });
   await expect(row).toBeVisible();
-  await row.getByLabel(`${name} status`).selectOption("contacted");
-  await expect(row).toContainText("Lead updated.");
-  await expect(row).toContainText("contacted");
+  // tel-004: the status editor is the pipeline's "Change stage" (valid moves only)
+  await row.getByRole("button", { name: `Change stage for ${name}` }).click();
+  await row.getByLabel(`New stage for ${name}`).selectOption("qualified");
+  await row.getByRole("button", { name: "Save" }).click();
+  await expect(row).toContainText("Stage updated.");
+  await expect(row).toContainText("Qualified");
 });
 
 test("lead management requires authentication", async ({ page }) => {

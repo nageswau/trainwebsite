@@ -28,6 +28,7 @@ from sqlalchemy.sql import func
 
 from app.bdm_stages import FIRST_STAGE as BDM_FIRST_STAGE
 from app.bdm_stages import MANUAL_STAGES as BDM_MANUAL_STAGES
+from app.lead_stages import STAGES as LEAD_STAGES
 from app.notifications.phone import normalise_phone
 from app.tel_sources import TEL_SOURCES
 
@@ -735,6 +736,8 @@ LEAD_CHECKS = {  # migration 0078 repeats these strings; test_tel_003_migration 
     "ck_enquiries_priority": f"priority IN ({', '.join(repr(p) for p in LEAD_PRIORITIES)})",
     "ck_enquiries_passing_year": "passing_year IS NULL OR passing_year BETWEEN 1950 AND 2100",
 }
+# tel-004 (DEC-SCOPE-083): `status` is a pipeline stage; migration 0083 repeats this string (test_tel_004_migration).
+LEAD_STATUS_CHECK = f"status IN ({', '.join(repr(s) for s in LEAD_STAGES)})"
 
 
 class Enquiry(Base, TimestampMixin):
@@ -751,6 +754,7 @@ class Enquiry(Base, TimestampMixin):
             name="ck_enquiries_conversion",
         ),
         *(CheckConstraint(sql, name=name) for name, sql in LEAD_CHECKS.items()),
+        CheckConstraint(LEAD_STATUS_CHECK, name="ck_enquiries_status"),
         UniqueConstraint("lead_code", name="uq_enquiries_lead_code"),
         Index("ix_enquiries_bdm_org_created", "bdm_organization_id", "created_at"),
         Index("uq_enquiries_converted_user", "converted_user_id", unique=True, postgresql_where=text("converted_user_id IS NOT NULL")),
@@ -796,6 +800,24 @@ class Enquiry(Base, TimestampMixin):
     def _derive_phone_normalized(self, _key: str, phone: str | None) -> str | None:
         self.phone_normalized = normalise_phone(phone)
         return phone
+
+
+class LeadStageHistory(Base):
+    """tel-004 (DEC-SCOPE-083, spec §3): one row per lead stage change. Append-only. `event` is a system event name, `manual`, `reopen` or
+    `legacy_mapping`; `actor_user_id` is NULL for the system. No stage CHECK: history must survive a future catalogue change (bdm-004).
+    `position` orders rows created in one transaction."""
+
+    __tablename__ = "lead_stage_history"
+    __table_args__ = (Index("ix_lead_stage_history_lead", "lead_id", "position"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    lead_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="RESTRICT"))
+    from_stage: Mapped[str] = mapped_column(String(40))
+    to_stage: Mapped[str] = mapped_column(String(40))
+    event: Mapped[str] = mapped_column(String(30))
+    actor_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class ContentPage(Base, TimestampMixin):
@@ -1288,7 +1310,7 @@ class BdmOrganization(Base, TimestampMixin):
     pipeline_stage: Mapped[str] = mapped_column(String(40), default=BDM_FIRST_STAGE, server_default=BDM_FIRST_STAGE)
     lost_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     lost_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    # bdm-018 (DEC-SCOPE-081 H1): the onboarded School; one organization <-> at most one School. The School's BDM is derived from it.
+    # bdm-018 (DEC-SCOPE-083 H1): the onboarded School; one organization <-> at most one School. The School's BDM is derived from it.
     school_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id", ondelete="RESTRICT"), nullable=True)
 
 
@@ -1335,7 +1357,7 @@ class BdmPipelineEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-# bdm-005 (DEC-SCOPE-080, spec §4): the MoU statuses in source order and wording (EVID-016 §10). `expired` is derived on read (M2):
+# bdm-005 (DEC-SCOPE-078, spec §4): the MoU statuses in source order and wording (EVID-016 §10). `expired` is derived on read (M2):
 # a signed / active MoU past `valid_until`; it is never stored, so the status CHECK lists only the settable keys.
 BDM_MOU_STATUS_LABELS: dict[str, str] = {
     "prospect": "Prospect",
@@ -1362,7 +1384,7 @@ BDM_MOU_CHECKS = {  # migration 0076 repeats these strings; test_bdm_005_migrati
 
 
 class BdmMou(Base, TimestampMixin):
-    """bdm-005 (DEC-SCOPE-080, spec §5.1): an organization's MoU. At most one `is_current` row per organization (M6: a renewal is a
+    """bdm-005 (DEC-SCOPE-078, spec §5.1): an organization's MoU. At most one `is_current` row per organization (M6: a renewal is a
     new row; the old one is kept). `document_key` is server-generated and never returned or logged; the service owns every rule, the
     CHECKs are the backstop."""
 
@@ -1413,9 +1435,9 @@ class BdmMouEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-# bdm-018 (DEC-SCOPE-081, spec §3): the onboarding handover. `kind` is 'school' only; bdm-019 widens it for agents.
+# bdm-018 (DEC-SCOPE-083, spec §3): the onboarding handover. `kind` is 'school' only; bdm-019 widens it for agents.
 BDM_ONBOARDING_STATUSES = ("pending", "completed", "rejected")
-BDM_ONBOARDING_CHECKS = {  # migration 0081 repeats these strings; test_bdm_018_migration asserts they stay identical
+BDM_ONBOARDING_CHECKS = {  # migration 0083 repeats these strings; test_bdm_018_migration asserts they stay identical
     "ck_bdm_onboarding_requests_kind": "kind IN ('school')",
     "ck_bdm_onboarding_requests_status": _in_list("status", BDM_ONBOARDING_STATUSES),
     "ck_bdm_onboarding_requests_resolution": "resolution IS NULL OR resolution IN ('created', 'linked')",
@@ -1602,6 +1624,31 @@ class BdmTask(Base, TimestampMixin):
     notes: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+
+BDM_ASSIGNMENT_ENTITIES = ("organization", "appointment", "task")
+BDM_ASSIGNMENT_REASONS = ("bdm_deactivated", "portfolio_handover", "organization_reassigned")
+
+
+class BdmAssignmentHistory(Base):
+    """bdm-025 (DEC-SCOPE-082): one row per organization, appointment or task that changed owner. Append-only; `entity_id` has no
+    foreign key (polymorphic) -- those rows are never deleted (archived / cancelled instead)."""
+
+    __tablename__ = "bdm_assignment_history"
+    __table_args__ = (
+        CheckConstraint(_in_list("entity_type", BDM_ASSIGNMENT_ENTITIES), name="ck_bdm_assignment_history_entity_type"),
+        CheckConstraint(_in_list("reason", BDM_ASSIGNMENT_REASONS), name="ck_bdm_assignment_history_reason"),
+        Index("ix_bdm_assignment_history_entity", "entity_type", "entity_id"),
+        Index("ix_bdm_assignment_history_from", "from_user_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    entity_type: Mapped[str] = mapped_column(String(20))
+    entity_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True))
+    from_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    to_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    reason: Mapped[str] = mapped_column(String(30))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 BDM_ACTIVITY_CHANNELS = ("call", "whatsapp", "email", "visit", "meeting", "other")
