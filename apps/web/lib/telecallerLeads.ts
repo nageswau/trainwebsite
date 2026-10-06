@@ -49,7 +49,7 @@ export function telHref(phone: string | null): string | null {
 export const moveStage = (id: string, target: string, reason: string): Promise<SendOutcome> =>
   sendJson(leadUrl(id, "/stage"), "POST", reason ? { to_stage: target, reason } : { to_stage: target });
 
-// tel-009 (DEC-SCOPE-092, spec §3-§4): the qualification form. The API decides which fields apply (QD2); these lists only lay out the form.
+// tel-009 (DEC-SCOPE-093, spec §3-§4): the qualification form. The API decides which fields apply (QD2); these lists only lay out the form.
 export type ProductGroup = "it" | "overseas" | "other";
 export type LeadQualification = {
   lead_id: string; product: { id: string; name: string; group: ProductGroup } | null; product_group: ProductGroup | null;

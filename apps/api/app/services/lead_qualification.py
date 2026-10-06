@@ -1,4 +1,4 @@
-"""tel-009 (DEC-SCOPE-092, spec §3): the lead qualification form -- basic answers always, the IT or overseas requirement by the lead's
+"""tel-009 (DEC-SCOPE-093, spec §3): the lead qualification form -- basic answers always, the IT or overseas requirement by the lead's
 product group (QD2). The shared answers live on `enquiries` (QD1); the rest in `lead_qualifications`. A PUT replaces only the fields that
 apply, so the other group's stored values are kept (AC3).
 

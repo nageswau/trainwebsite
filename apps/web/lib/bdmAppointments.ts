@@ -1,5 +1,6 @@
 import type { BdmType } from "@/lib/bdm";
 import { ORGS_URL, TEAM_URL } from "@/lib/bdmOrganizations";
+import type { ApprovalStatus, TravelStatus } from "@/lib/bdmTravel";
 import { formatSchoolDateTime, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 import type { LookupPage } from "@/lib/lookups";
 
@@ -60,7 +61,13 @@ export type AppointmentRow = {
   outcome_pending: boolean; // bdm-007 AC5: open and past its start, no meeting report yet
 };
 export type AppointmentEvent = { from_status: AppointmentStatus | null; to_status: AppointmentStatus; old_starts_at: string | null; new_starts_at: string | null; reason: string | null; actor_name: string; created_at: string };
+// bdm-011: the trip this appointment is linked to (BdmAppointmentTripRef).
+export type AppointmentTrip = {
+  id: string; code: string; from_place: string; to_place: string; travel_date: string; return_date: string;
+  approval_status: ApprovalStatus; travel_status: TravelStatus;
+};
 export type Appointment = AppointmentRow & {
+  trip: AppointmentTrip | null;
   contact_id: string | null; contact_designation: string | null; contact_phone: string | null; contact_email: string | null;
   location: string | null; purpose: string | null; remarks: string | null; outcome: string | null; next_follow_up_on: string | null;
   report: MeetingReport | null; follow_up: FollowUp | null;

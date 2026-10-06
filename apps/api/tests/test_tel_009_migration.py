@@ -1,6 +1,6 @@
-"""tel-009 -- migration 0088_lead_qualifications (spec §2). The round trip runs in a throwaway database (the tel-004 pattern); a downgrade
+"""tel-009 -- migration 0089_lead_qualifications (spec §2). The round trip runs in a throwaway database (the tel-004 pattern); a downgrade
 never runs against the shared test database. 0001 builds a fresh database from the current models, so each test first downgrades to
-0087_lead_import_batches to reach the real pre-tel-009 shape."""
+0088_bdm_appointment_trip to reach the real pre-tel-009 shape."""
 
 import asyncio
 import importlib.util
@@ -19,11 +19,11 @@ from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_tel_009_migration_0088", VERSIONS / "0088_lead_qualifications.py")
+_spec = importlib.util.spec_from_file_location("_tel_009_migration_0089", VERSIONS / "0089_lead_qualifications.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0087_lead_import_batches", "0088_lead_qualifications"
+BASE, HEAD = "0088_bdm_appointment_trip", "0089_lead_qualifications"
 
 
 def _config() -> Config:
@@ -45,7 +45,7 @@ def _sql(url: str, sql: str, params: dict | None = None, *, autocommit: bool = F
     return asyncio.run(_inner())
 
 
-def test_migration_chains_after_0087_lead_import_batches_and_there_is_one_head():
+def test_migration_chains_after_0088_bdm_appointment_trip_and_there_is_one_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

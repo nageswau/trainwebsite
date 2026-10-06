@@ -1,4 +1,4 @@
-"""tel-009 -- the lead qualification form (spec §3, §5; DEC-SCOPE-092): GET/PUT /telecaller/leads/{id}/qualification. Basic fields always,
+"""tel-009 -- the lead qualification form (spec §3, §5; DEC-SCOPE-093): GET/PUT /telecaller/leads/{id}/qualification. Basic fields always,
 the IT or overseas fields by the product group (QD2), shared fields written through to the lead (QD1), no stage move and one names-only
 audit row (QD3), the tel-008 scope and handed-over rule (QF3). The shared test database is never truncated."""
 

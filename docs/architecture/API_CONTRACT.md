@@ -1084,7 +1084,7 @@ AGN-023 branch.)
 
 ## 12O. Lead qualification (`tel-009`) — addendum, 2026-10-06
 
-`DEC-SCOPE-092`; design spec `docs/superpowers/specs/2026-10-06-tel-009-qualification-form-design.md` §3. Migration `0088_lead_qualifications`.
+`DEC-SCOPE-093`; design spec `docs/superpowers/specs/2026-10-06-tel-009-qualification-form-design.md` §3. Migration `0089_lead_qualifications`.
 Roles and scope are §12J's: `telecaller` (own leads), `telecaller_manager`, `super_admin`. Other roles get `403`, signed out `401`, and
 missing or out of scope `404`. Basic fields = `qualification`, `current_org`, `passing_year`, `work_experience_years`, `city`, `state`; IT =
 `it_skill_level`, `career_objective`, `preferred_batch`, `budget_range`, `preferred_mode`; overseas = `study_level`, `preferred_course`,
@@ -1114,3 +1114,23 @@ unspecified pending open decisions — not a gap in this traceability check, a d
 **GATE-08 APPROVED** (user, in-session, 2026-09-01 — approved as drafted, no changes requested)
 alongside the other four contract documents. `prompts/10_TEST_CATALOG_AUDIT_AND_REBUILD.md` may now
 proceed.
+
+**Addendum, 2026-10-06 (`bdm-011`, `DEC-SCOPE-092`): trip ↔ appointment linking, itinerary, productivity, travel report.**
+
+Sources: design spec `docs/superpowers/specs/2026-10-06-bdm-011-trip-appointments-design.md` §4; migration `0088_bdm_appointment_trip`.
+Every change is **additive**: new optional request fields, new response fields and new GET routes; no existing field changes meaning.
+
+| Method + path | Change | Refusals |
+|---|---|---|
+| `POST /bdm/appointments` | optional `trip_id` | 404 "Trip not found" (not the caller's); 409 "This trip is cancelled and can't take appointments" (or completed); 422 "This appointment is on 18 Sep 2026, outside TRV-000123 (20 Sep 2026 – 21 Sep 2026)" |
+| `PATCH /bdm/appointments/{id}` | optional `trip_id`; `null` unlinks; omitted = unchanged | as above; the existing owner (403) and open (409) rules apply first |
+| `POST /bdm/appointments/{id}/reschedule` | a linked appointment moved outside its trip's dates is unlinked (audit `bdm_appointment.trip_unlinked`) | unchanged |
+| every appointment envelope | `appointment.trip`: `{id, code, from_place, to_place, travel_date, return_date, approval_status, travel_status}` or `null` | — |
+| `GET /bdm/trips` | `linkable=true`: the caller's planned / in-progress trips whose return date is today (IST) or later | unchanged |
+| `GET /bdm/trips/{id}`, `GET /bdm/manager/trips/{id}` and every trip write | `itinerary[]` (`{id, code, starts_at, duration_minutes, appointment_type, status, organization: {id, name}, expected_leads, expected_revenue}`, by start) and `metrics` (`meetings_planned, meetings_completed, estimated_cost, actual_cost, cost_per_completed_meeting, expected_leads, expected_revenue, actual_leads, actual_revenue`; null = nothing to compute from; `actual_revenue` always null = not tracked) | — |
+| `PATCH /bdm/trips/{id}` | a date change that would leave an open linked appointment outside → **422** "N linked appointment(s) fall(s) outside the new dates — unlink or reschedule … first"; closed ones are unlinked (named in the `bdm.trip_update` audit) | — |
+| `GET /bdm/trips/{id}/report` (new) | the trip (`BdmTripOut`) once completed | 409 "The travel report is available once the trip is completed"; 404 out of scope |
+| `GET /bdm/manager/trips/{id}/report` (new) | the same, team scope | 409 / 404 as above |
+| `POST /admin/bdms/{id}/deactivate`, `/handover` (bdm-025) | a moved appointment's `trip_id` is cleared (trips never move) | unchanged |
+
+Deep-link targets for the travel reminder (bdm-012): `/bdm/travel/{id}#trip-appointments`, `#trip-costs`, `#trip-remarks`.

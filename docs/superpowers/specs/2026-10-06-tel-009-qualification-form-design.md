@@ -1,8 +1,8 @@
 # tel-009 — Lead qualification form (design)
 
 Backlog: `docs/delivery/TELECALLER_CRM_BACKLOG.md` tel-009 (EVID-019 §4, Appendix A L144–L196). Dependency tel-008 is merged (PR #85).
-The branch is `feature/tel-009`, cut from `main` @ `126b454b` (tel-006 merged). Decision `DEC-SCOPE-092`, migration `0088_lead_qualifications`
-(after tel-006's `0087_lead_import_batches`), API contract §12O. §12M is still claimed by the open AGN-023 branch.
+The branch is `feature/tel-009`, cut from `main` @ `126b454b` (tel-006 merged). Decision `DEC-SCOPE-093`, migration `0089_lead_qualifications`
+(after bdm-011's `0088_bdm_appointment_trip`), API contract §12O. §12M is still claimed by the open AGN-023 branch.
 
 ## 1. Owner answers (2026-10-06, `EXPLICIT_APPROVAL`, in-session) and recorded defaults
 
@@ -16,7 +16,7 @@ The branch is `feature/tel-009`, cut from `main` @ `126b454b` (tel-006 merged). 
 | QD3 (default) | Audit | Only fields that actually changed are written. One `lead.qualification_update {fields}` audit row is written per save, holding field names only, never values. No change means no audit. The stage never moves (backlog: the telecaller marks Qualified through tel-004) |
 | QD4 (default) | Concurrency | The lead row is locked `FOR UPDATE` within scope (tel-008's `locked_lead`), so two first saves can't both insert the `lead_id` primary key. A lead reassigned while the form was open is 404 |
 
-## 2. Data (`lead_qualifications`, migration `0088_lead_qualifications`)
+## 2. Data (`lead_qualifications`, migration `0089_lead_qualifications`)
 
 | Column | Type |
 |---|---|

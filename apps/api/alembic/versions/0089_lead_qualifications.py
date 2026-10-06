@@ -1,9 +1,9 @@
 """tel-009 -- `lead_qualifications`: a lead's qualification answers (EVID-019 §4).
 
-Revision ID: 0088_lead_qualifications
-Revises: 0087_lead_import_batches
+Revision ID: 0089_lead_qualifications
+Revises: 0088_bdm_appointment_trip
 
-docs/superpowers/specs/2026-10-06-tel-009-qualification-form-design.md §2 (DEC-SCOPE-092). One row per lead; the shared answers stay on
+docs/superpowers/specs/2026-10-06-tel-009-qualification-form-design.md §2 (DEC-SCOPE-093). One row per lead; the shared answers stay on
 `enquiries` (QD1), so no existing column or row changes. 0001 builds a fresh database from the current models, which already carry the
 table, so the upgrade is guarded (0074's idiom).
 """
@@ -13,8 +13,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0088_lead_qualifications"
-down_revision = "0087_lead_import_batches"
+revision = "0089_lead_qualifications"
+down_revision = "0088_bdm_appointment_trip"
 branch_labels = None
 depends_on = None
 

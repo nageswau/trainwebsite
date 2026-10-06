@@ -5,12 +5,14 @@ import { ApiError, serverApi } from "@/lib/api";
 import { BDM_TYPE_LABEL, type BdmMe } from "@/lib/bdm";
 import type { Organization } from "@/lib/bdmOrganizations";
 import { bdmNav } from "@/lib/bdmNav";
+import { linkableTrips } from "@/lib/bdmTripChoices";
 import { BDM_SIGN_IN } from "@/lib/navigation";
 
 // bdm-006: book an appointment. `?organization=<id>` (from the organization page) preselects it; an unknown, out-of-scope or archived
 // organization is simply not preselected -- the API refuses archived ones with its own message (A4).
 export default async function BdmAppointmentNewPage({ searchParams }: { searchParams: Promise<{ organization?: string }> }) {
   const nav = bdmNav(); // bdm-010 QA10-01: the unread badge, read alongside the page's own data (never rejects)
+  const choices = linkableTrips(); // bdm-011: the Trip choice, likewise read alongside (never rejects)
   const { organization: orgParam } = await searchParams;
   let me: BdmMe;
   try {
@@ -39,7 +41,7 @@ export default async function BdmAppointmentNewPage({ searchParams }: { searchPa
           </div>
         </div>
         <div className="action-card wide">
-          <BdmAppointmentForm mode="create" bdmType={type} initialOrganization={organization} />
+          <BdmAppointmentForm mode="create" bdmType={type} initialOrganization={organization} {...await choices} />
         </div>
       </div>
     </PortalShell>

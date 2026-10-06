@@ -627,7 +627,7 @@ Inline pattern: role (`require_manager`), then scope (tel-004 `lead_pipeline.sco
 | every other role (incl. `it_admin`, `overseas_admin`, `counselor`) | none → `403` (admins keep `/admin/leads`) | — | `tel-007` |
 | system (website / BDM intake) | distributes a new lead: product rule → city rule → round robin among the team's active telecallers → unassigned | the lead's division | `tel-007` |
 
-### 2.21 Lead qualification *(net-new, added 2026-10-06 — `DEC-SCOPE-092`, `tel-009`)*
+### 2.21 Lead qualification *(net-new, added 2026-10-06 — `DEC-SCOPE-093`, `tel-009`)*
 
 The same inline pattern as §2.19 (`lead_pipeline.scope`, then `telecaller_leads.require_writable` on the PUT). The lead row is locked
 `FOR UPDATE` within scope. A field that does not apply to the lead's product group is `422`.
@@ -745,3 +745,11 @@ either a grant scope (§2) or an explicit deny rule (§4).
 **GATE-08 APPROVED** (user, in-session, 2026-09-01 — approved as drafted, no changes requested)
 alongside the other four contract documents. `prompts/10_TEST_CATALOG_AUDIT_AND_REBUILD.md` may now
 proceed.
+
+**bdm-011 trip ↔ appointment links and travel report (`DEC-SCOPE-092`, added 2026-10-06).** Same inline pattern; scope in the SQL `WHERE`.
+
+| Role | Routes | Scope | Item |
+|---|---|---|---|
+| `bdm` | `trip_id` on `POST /bdm/appointments`, `PATCH /bdm/appointments/{id}`; `GET /bdm/trips?linkable=true`; `GET /bdm/trips/{id}/report` | **Own appointments and own trips only**: the trip is loaded with `bdm_user_id` = caller, so another BDM's trip is `404`; another BDM's appointment stays `404` (bdm-006) | `bdm-011` |
+| `bdm_manager` | `GET /bdm/manager/trips/{id}` (itinerary + metrics), `GET /bdm/manager/trips/{id}/report` | **Team scope**, read-only; a manager never links (`PATCH` stays owner-only, `403`) | `bdm-011` |
+| `super_admin` | the manager routes above | Reads every trip; never links | `bdm-011` |
