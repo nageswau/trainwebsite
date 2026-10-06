@@ -99,6 +99,16 @@ describe("TelecallerProductsPanel (tel-002)", () => {
     expect(JSON.parse(String(patch.init!.body))).toEqual({ name: "Guidance", team: "overseas", sort_order: 15 });
   });
 
+  // QA-02: on tablets and phones the list comes first, so its card offers a jump to the create form (the tel-001 idiom).
+  it("offers a jump link that moves focus to the create form", () => {
+    serve(listOrPrograms(page([])));
+    render(<TelecallerProductsPanel />);
+    const jump = screen.getByRole("link", { name: "Create product" });
+    expect(jump).toHaveAttribute("href", "#prod-group");
+    fireEvent.click(jump);
+    expect(screen.getByLabelText("Group (required)")).toHaveFocus();
+  });
+
   it("deactivates only after an inline confirm", async () => {
     const calls = serve(listOrPrograms(page([sap])));
     render(<TelecallerProductsPanel />);

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 
+import CreateJumpLink from "@/components/CreateJumpLink";
 import TelecallerProductRow from "@/components/TelecallerProductRow";
 import { sendJson, type Page } from "@/lib/apiErrors";
 import { formText } from "@/lib/telecaller";
@@ -105,6 +106,7 @@ export default function TelecallerProductsPanel() {
       </form>
       <div className="action-card wide telecaller-list" aria-busy={data === null && !loadFailed}>
         <h3>Products</h3>
+        <CreateJumpLink targetId="prod-group" label="Create product" />
         <div className="field" style={{ maxWidth: 260 }}>
           <label htmlFor="prod-filter">Show</label>
           <select id="prod-filter" value={filter} onChange={(e) => { setFilter(e.target.value as ProductGroup | ""); setOffset(0); }}>

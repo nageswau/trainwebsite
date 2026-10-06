@@ -41,8 +41,16 @@ export async function getPage<T>(url: string, signal?: AbortSignal): Promise<Pag
   return body;
 }
 
-/** The product picker: active products only, in catalogue order (the API orders and, for non-managers, filters them too). */
-export const activeProducts = (signal?: AbortSignal) => getPage<Product>(`${PRODUCTS_URL}?active=true&limit=${CATALOGUE_PAGE_SIZE}`, signal).then((p) => p.items);
+/** The product picker: every active product, in catalogue order (the API orders them). It reads page after page (QA-01): a picker
+ *  that stopped at the first 100 would silently hide the rest. */
+export async function activeProducts(signal?: AbortSignal): Promise<Product[]> {
+  const items: Product[] = [];
+  for (;;) {
+    const page = await getPage<Product>(`${PRODUCTS_URL}?active=true&limit=${CATALOGUE_PAGE_SIZE}&offset=${items.length}`, signal);
+    items.push(...page.items);
+    if (page.items.length === 0 || items.length >= page.total) return items;
+  }
+}
 
 /** The IT course link picker: the public list of active programs. */
 export async function activePrograms(signal?: AbortSignal): Promise<ProgramOption[]> {

@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import CreateJumpLink from "@/components/CreateJumpLink";
 import TelecallerCampaignRow from "@/components/TelecallerCampaignRow";
 import ProductOptions from "@/components/TelecallerProductOptions";
 import { sendJson, type Page } from "@/lib/apiErrors";
@@ -118,6 +119,7 @@ export default function TelecallerCampaignsPanel() {
       </form>
       <div className="action-card wide telecaller-list" aria-busy={data === null && !loadFailed}>
         <h3>Campaigns</h3>
+        <CreateJumpLink targetId="camp-name" label="Create campaign" />
         <form role="search" onSubmit={(event) => { event.preventDefault(); search(draft); }} style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
           <input type="search" aria-label="Search campaigns" placeholder="Campaign name" value={draft} maxLength={200} onChange={(event) => setDraft(event.target.value)} style={{ flex: "1 1 220px" }} />
           <button type="submit" className="btn secondary small">Search</button>

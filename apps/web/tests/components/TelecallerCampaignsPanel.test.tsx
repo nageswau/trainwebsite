@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import TelecallerCampaignsPanel from "@/components/TelecallerCampaignsPanel";
-import { campaignDates } from "@/lib/telecallerCatalogue";
+import { activeProducts, campaignDates } from "@/lib/telecallerCatalogue";
 
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const page = (items: unknown[]) => ({ items, total: items.length, limit: 100, offset: 0 });
@@ -35,6 +35,20 @@ describe("campaignDates", () => {
   it("reads date-only values without shifting the day", () => {
     expect(campaignDates({ start_date: "2026-09-01", end_date: "2026-09-30" })).toMatch(/^01 Sept? 2026 – 30 Sept? 2026$/);
     expect(campaignDates({ start_date: "2026-09-01", end_date: null })).toMatch(/^From 01 Sep/);
+  });
+});
+
+// QA-01: the picker must reach every active product, not only the first page of 100.
+describe("activeProducts", () => {
+  it("follows the pages until the total is read", async () => {
+    const make = (n: number, from: number) => Array.from({ length: n }, (_, i) => ({ ...cyber, id: `p${from + i}`, name: `P${from + i}` }));
+    const fetchMock = vi.fn((url: string) => {
+      const offset = Number(new URL(url, "http://x").searchParams.get("offset") ?? 0);
+      return Promise.resolve(res({ items: offset === 0 ? make(100, 0) : make(5, 100), total: 105, limit: 100, offset }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    expect((await activeProducts()).length).toBe(105);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -111,6 +125,16 @@ describe("TelecallerCampaignsPanel (tel-002)", () => {
     expect(JSON.parse(String(calls.find((c) => c.init?.method === "PATCH")!.init!.body))).toEqual({
       name: "Dubai push", source: "instagram", product_id: "p9", start_date: "2026-09-01", end_date: null,
     });
+  });
+
+  // QA-02: on tablets and phones the list comes first, so its card offers a jump to the create form (the tel-001 idiom).
+  it("offers a jump link that moves focus to the create form", () => {
+    serve(page([]));
+    render(<TelecallerCampaignsPanel />);
+    const jump = screen.getByRole("link", { name: "Create campaign" });
+    expect(jump).toHaveAttribute("href", "#camp-name");
+    fireEvent.click(jump);
+    expect(screen.getByLabelText("Campaign name (required)")).toHaveFocus();
   });
 
   it("deactivates after confirm and reactivates directly", async () => {
