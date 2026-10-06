@@ -1315,18 +1315,17 @@ def _client() -> AsyncClient:
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
 
 
-async def _pair(db):
+async def _logged_in(db, one: AsyncClient, two: AsyncClient) -> None:
+    """Two sessions of one fresh BDM (call inside `async with` -- an httpx client opens once)."""
     bdm = await make_bdm(db, await make_manager(db))
-    one, two = _client(), _client()
     await login(one, bdm)
     await login(two, bdm)
-    return one, two
 
 
 @pytest.mark.asyncio
 async def test_double_complete(db_session):
-    one, two = await _pair(db_session)
-    async with one, two:
+    async with _client() as one, _client() as two:
+        await _logged_in(db_session, one, two)
         t = (await one.post(TASKS, json=task_body())).json()
         results = await asyncio.gather(one.post(f"{TASKS}/{t['id']}/complete"), two.post(f"{TASKS}/{t['id']}/complete"))
     assert sorted(r.status_code for r in results) == [200, 409]
@@ -1334,8 +1333,8 @@ async def test_double_complete(db_session):
 
 @pytest.mark.asyncio
 async def test_complete_and_report_date_edit_serialize_on_the_appointment(db_session):
-    one, two = await _pair(db_session)
-    async with one, two:
+    async with _client() as one, _client() as two:
+        await _logged_in(db_session, one, two)
         org = await create_org(one)
         a = await create_appt(one, org)
         await move_to_past(db_session, a["id"])
@@ -1351,8 +1350,8 @@ async def test_complete_and_report_date_edit_serialize_on_the_appointment(db_ses
 
 @pytest.mark.asyncio
 async def test_create_and_archive_serialize_on_the_organization(db_session):
-    one, two = await _pair(db_session)
-    async with one, two:
+    async with _client() as one, _client() as two:
+        await _logged_in(db_session, one, two)
         org = await create_org(one)
         created, archived = await asyncio.gather(
             one.post(TASKS, json=task_body(organization_id=org["id"])), two.post(f"/api/v1/bdm/organizations/{org['id']}/archive"))
