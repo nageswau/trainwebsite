@@ -3808,7 +3808,7 @@ card. Design spec `docs/superpowers/specs/2026-10-06-tel-022-targets-design.md`.
 
 **Evidence:** `EVID-019` §19 (11 stages + 5 closed outcomes); `DEC-SCOPE-073` T5, T13, T25, T29; owner answers in-session 2026-10-06.
 **Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for PL1–PL4; D1–D4 are recorded defaults. VERIFIED on `feature/tel-004`
-(2026-10-06), not merged. Drafted as `DEC-SCOPE-078` / `0079`; re-chained twice on 2026-10-06 (bdm-005 took 078 / `0079_bdm_mous`; bdm-013 took 079; tel-022 took 080 / `0080_tel_targets` and API §12G).
+(2026-10-06); **MERGED** to `main` as PR #81 @ `69829a59` (2026-10-06). Drafted as `DEC-SCOPE-078` / `0079`; re-chained twice on 2026-10-06 (bdm-005 took 078 / `0079_bdm_mous`; bdm-013 took 079; tel-022 took 080 / `0080_tel_targets` and API §12G).
 
 | # | Question | Answer |
 |---|---|---|

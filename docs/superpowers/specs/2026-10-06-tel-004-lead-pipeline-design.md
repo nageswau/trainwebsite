@@ -4,6 +4,7 @@ Backlog: `docs/delivery/TELECALLER_CRM_BACKLOG.md` tel-004 (EVID-019 §19, Appen
 Dependency: tel-003 merged (PR #75 @ `10fce82e`); branch `feature/tel-004` from `main` @ `11f4c9c7`.
 Decision: `DEC-SCOPE-081`. Migration: `0081_lead_stage_pipeline` (after tel-022's `0080_tel_targets`). API contract §12H. Drafted as `DEC-SCOPE-078` / `0079`;
 re-chained on `main` @ `230a043f` (bdm-005: 078 / 0079) and again @ `a38955d5` (bdm-013: 079; tel-022: 080 / 0080 / §12G).
+**Merged** to `main` as PR #81 @ `69829a59` (2026-10-06).
 
 ## 1. Owner answers (2026-10-06, `EXPLICIT_APPROVAL`) and recorded defaults
 
