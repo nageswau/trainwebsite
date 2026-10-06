@@ -57,4 +57,23 @@ describe("AssignCounselorButton", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("This application is closed");
     expect(refresh).not.toHaveBeenCalled();
   });
+
+  it("shows an alert, disables Save and sends no PUT when the list fails to load", async () => {
+    const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<unknown>>(() => json(500, {}));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AssignCounselorButton applicationId="a1" currentId={null} />);
+    fireEvent.click(screen.getByRole("button", { name: "Assign counsellor" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't load the counsellors -- try again.");
+    expect(screen.queryByLabelText("EduSphere counsellor")).toBeNull();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PUT")).toBe(false);
+  });
+
+  it("says so when there are no active overseas counsellors", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => json(200, [])));
+    render(<AssignCounselorButton applicationId="a1" currentId={null} />);
+    fireEvent.click(screen.getByRole("button", { name: "Assign counsellor" }));
+    expect(await screen.findByText("No active overseas counsellors.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
 });

@@ -13,6 +13,7 @@ export default function AssignCounselorButton({ applicationId, currentId }: { ap
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [counselors, setCounselors] = useState<Counselor[] | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; failed: boolean } | null>(null);
   const label = currentId ? "Change counsellor" : "Assign counsellor";
@@ -21,10 +22,15 @@ export default function AssignCounselorButton({ applicationId, currentId }: { ap
   function start() {
     setOpen(true);
     setMessage(null);
+    setLoadFailed(false);
+    setCounselors(null);
     fetch("/api/v1/admin/users?role=counselor")
-      .then((res) => (res.ok ? res.json() : []))
-      .then((users: Counselor[]) => setCounselors(users.filter((u) => u.active && u.division === "overseas")))
-      .catch(() => setCounselors([]));
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("load failed"))))
+      .then((users: Counselor[]) => {
+        if (!Array.isArray(users)) throw new Error("bad list");
+        setCounselors(users.filter((u) => u.active && u.division === "overseas"));
+      })
+      .catch(() => setLoadFailed(true));
   }
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -52,8 +58,12 @@ export default function AssignCounselorButton({ applicationId, currentId }: { ap
         <form className="form" onSubmit={save} aria-label={label}>
           <div className="field">
             <label htmlFor={selectId}>EduSphere counsellor</label>
-            {counselors === null ? (
+            {loadFailed ? (
+              <p className="form-error" role="alert">Couldn&apos;t load the counsellors -- try again.</p>
+            ) : counselors === null ? (
               <p className="muted">Loading counsellors…</p>
+            ) : counselors.length === 0 ? (
+              <p className="muted">No active overseas counsellors.</p>
             ) : (
               <select id={selectId} name="counselor_id" defaultValue={currentId ?? ""} required>
                 <option value="" disabled>Choose…</option>
@@ -63,7 +73,7 @@ export default function AssignCounselorButton({ applicationId, currentId }: { ap
               </select>
             )}
           </div>
-          <button className="btn small" disabled={busy || counselors === null}>{busy ? "Saving…" : "Save"}</button>{" "}
+          <button className="btn small" disabled={busy || loadFailed || !counselors?.length}>{busy ? "Saving…" : "Save"}</button>{" "}
           <button type="button" className="btn small secondary" onClick={() => setOpen(false)}>Cancel</button>
         </form>
       )}
