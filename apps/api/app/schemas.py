@@ -5355,6 +5355,22 @@ class BdmOnboardingPage(BaseModel):
     offset: int
 
 
+# bdm-020 (DEC-SCOPE-086): a linked School's student development counts -- aggregates only, never a student (AC3).
+class BdmSchoolActivityMetric(BaseModel):
+    key: str
+    label: str
+    tracked: bool
+    completed: int | None  # None when not tracked (A2)
+    pending: int | None
+
+
+class BdmSchoolActivityOut(BaseModel):
+    linked: bool
+    school: BdmOnboardingSchoolRef | None
+    total_students: int | None
+    metrics: list[BdmSchoolActivityMetric]
+
+
 # tel-008 (DEC-SCOPE-084 D2): what a telecaller or manager may change on a lead -- the §2 contact fields, the product and the priority.
 # Owner, telecaller, stage, source, campaign and the qualification fields are not editable here: `extra="forbid"` answers 422. Text
 # follows bdm-017's lead rules (trimmed, no control characters, blank -> None; email lower-cased, phone shape).

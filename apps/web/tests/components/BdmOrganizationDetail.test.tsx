@@ -58,6 +58,22 @@ describe("BdmOrganizationDetail -- bdm-018 school onboarding", () => {
   });
 });
 
+describe("BdmOrganizationDetail -- bdm-020 school activity", () => {
+  const activity = { linked: false, school: null, total_students: null, metrics: [] };
+
+  it("shows the school activity panel after the onboarding card, for School organizations the page read it for", () => {
+    const school = org({ org_type: "school", bdm_type: "school", onboarding: { request: null, school: null, can_request: false } });
+    render(<BdmOrganizationDetail initial={school} basePath="/bdm/organizations" schoolActivity={activity} />);
+    expect(screen.getByRole("region", { name: "School onboarding" }).nextElementSibling).toBe(screen.getByRole("region", { name: "School activity" }));
+    cleanup();
+    render(<BdmOrganizationDetail initial={school} basePath="/bdm/organizations" />);
+    expect(screen.queryByRole("region", { name: "School activity" })).toBeNull();
+    cleanup();
+    render(<BdmOrganizationDetail initial={org({ onboarding: null })} basePath="/bdm/organizations" schoolActivity={activity} />);
+    expect(screen.queryByRole("region", { name: "School activity" })).toBeNull();
+  });
+});
+
 describe("BdmOrganizationDetail -- bdm-005 MoU card", () => {
   it("places the MoU card right after the pipeline, and only when the page read it", () => {
     render(<BdmOrganizationDetail initial={org()} basePath="/bdm/organizations" mou={{ current: null, can_start: false }} />);
