@@ -42,7 +42,8 @@ export default function BdmMouForm({ orgId, mou, onSaved, onCancel, onConflict }
     const before = fieldsOf(mou);
     const changed = Object.entries(fields).filter(([f, v]) => v !== before[f as keyof MouFields]);
     const statusChange = !expired && status !== mou.status ? { status, from_status: mou.status } : {};
-    return { ...statusChange, ...Object.fromEntries(changed.map(([f, v]) => [f, v.trim() === "" ? null : v])) };
+    // QA5-01: the version the form was showing; a newer one on the server is a 409 instead of a silent overwrite
+    return { ...statusChange, ...Object.fromEntries(changed.map(([f, v]) => [f, v.trim() === "" ? null : v])), expected_updated_at: mou.updated_at };
   }
 
   async function send() {
@@ -76,6 +77,10 @@ export default function BdmMouForm({ orgId, mou, onSaved, onCancel, onConflict }
     if (signing) return setConfirming(true);
     void send();
   }
+  const cancelSigning = () => {
+    setConfirming(false);
+    focus(id("save")); // QA5-02: the confirm group (and the focused button) is gone
+  };
   const describedBy = (f: string) => (errors[f] ? id(`${f}-error`) : undefined);
   const error = (f: string) => (errors[f] ? <p id={id(`${f}-error`)} className="form-error">{errors[f]}</p> : null);
 
@@ -109,12 +114,12 @@ export default function BdmMouForm({ orgId, mou, onSaved, onCancel, onConflict }
         {error("notes")}
       </div>
       {confirming && mou?.pipeline_on_sign ? (
-        <BdmConfirm label="Confirm signing" confirmText="Yes, save" cancelText="Not yet" busyText="Saving…" busy={busy} onConfirm={() => void send()} onCancel={() => setConfirming(false)}>
+        <BdmConfirm label="Confirm signing" confirmText="Yes, save" cancelText="Not yet" busyText="Saving…" busy={busy} onConfirm={() => void send()} onCancel={cancelSigning}>
           This also moves the pipeline to {mou.pipeline_on_sign.label}.
         </BdmConfirm>
       ) : (
         <div className="actions">
-          <button type="submit" className="btn small" disabled={busy}>{busy ? "Saving…" : mou ? "Save MoU" : "Start MoU"}</button>
+          <button id={id("save")} type="submit" className="btn small" disabled={busy}>{busy ? "Saving…" : mou ? "Save MoU" : "Start MoU"}</button>
           <button type="button" className="btn secondary small" onClick={onCancel} disabled={busy}>Cancel</button>
         </div>
       )}

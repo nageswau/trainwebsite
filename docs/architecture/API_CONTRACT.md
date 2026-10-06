@@ -501,7 +501,7 @@ stage, live stage "set by the onboarding handover", volume step, same stage, bac
 type), unknown `stage`, `assigned=me` from a non-BDM. **Retry semantics:** a repeated move answers `409 stage_changed` with
 `current_stage` equal to the requested stage (the UI treats it as done); a repeated lost / revive answers `409`. No idempotency key.
 
-**`bdm-005` / `DEC-SCOPE-074` (built 2026-10-06; migration `0076_bdm_mous`, after `0075_telecaller_profiles`) — MoU tracking.**
+**`bdm-005` / `DEC-SCOPE-076` (built 2026-10-06; migration `0078_bdm_mous`, after `0077_bdm_tasks_followups`) — MoU tracking.**
 Design spec `docs/superpowers/specs/2026-10-06-bdm-005-mou-tracking-design.md` §6. All routes are new; no existing request or response
 changes (the organization detail does not embed the MoU). Writes reuse `can_edit` (M3: the assigned BDM or `super_admin`); reads and
 downloads follow `caller_scope`. `status` everywhere is the **effective** status: a Signed / Active MoU with `valid_until` before today
@@ -511,7 +511,7 @@ downloads follow `caller_scope`. `status` everywhere is the **effective** status
 |---|---|---|---|
 | `GET /bdm/organizations/{id}/mou` | any reader of the organization | `caller_scope` | `200 {current: MouOut \| null, can_start}` |
 | `POST /bdm/organizations/{id}/mou` `{status?, proposal_sent_on?, signed_on?, valid_from?, valid_until?, reference?, notes?}` | `bdm`, `super_admin` | `can_edit` | `201 {mou}`; a first MoU, or a renewal when the current one reads Expired / Rejected (the old row becomes `is_current=false`) |
-| `PATCH /bdm/organizations/{id}/mou` `{status?, from_status?, …fields}` | `bdm`, `super_admin` | `can_edit` | `200 {mou}`; omitted = unchanged, `null` = clear; `status` needs `from_status`; Signed advances the pipeline when behind (D28) |
+| `PATCH /bdm/organizations/{id}/mou` `{status?, from_status?, expected_updated_at?, …fields}` | `bdm`, `super_admin` | `can_edit` | `200 {mou}`; omitted = unchanged, `null` = clear; `status` needs `from_status`; `expected_updated_at` (optional, QA5-01) = the MoU `updated_at` the form showed; Signed advances the pipeline when behind (D28) |
 | `PUT /bdm/organizations/{id}/mou/document` multipart `file` | `bdm`, `super_admin` | `can_edit` | `200 {mou}`; PDF / JPEG / PNG by bytes, `max_upload_bytes`; 20 per user per hour |
 | `GET /bdm/mous?status=&bdm_type=&organization=&current=&limit=&offset=` | `bdm`, `bdm_manager`, `super_admin` | `caller_scope` | `{items, total, limit, offset}`; rows `{id, organization {id, code, name, bdm_type}, assigned_bdm, status, status_label, status_changed_at, signed_on, valid_until, reference, has_document, is_current}`; `current` defaults to `true` |
 | `GET /bdm/mous/{id}/history?limit=&offset=` | any reader of the organization | `caller_scope` | newest first; items `{id, kind, from_status, from_label, to_status, to_label, changed[], actor, created_at}` |
@@ -524,7 +524,7 @@ URL), `expired_on`, `created_by`, `permissions {can_edit, can_upload, can_renew}
 **Status table (spec §6.4):** `401` no session; `403` wrong role or not `can_edit`; `404` organization / MoU outside the caller's scope
 (same body as an unknown id), "No MoU yet", "No document on file"; `409` archived ("Restore this organization first"),
 `{code: "organization_lost"}`, `{code: "mou_exists"}`, `{code: "mou_status_changed", current_status}` (stale `from_status`),
-`{code: "mou_expired"}` (a status change on an Expired MoU); `413` too large; `415` not a PDF / JPEG / PNG; `422` field errors with `loc`
+`{code: "mou_expired"}` (a status change on an Expired MoU), `{code: "mou_changed"}` (`expected_updated_at` older than the stored MoU; checked after the status conflict); `413` too large; `415` not a PDF / JPEG / PNG; `422` field errors with `loc`
 `["body", <field>]` (Signed / Active without `signed_on`, Active without the window, `valid_until` before `valid_from`, same status,
 `expired` sent as a status, `status` without `from_status`, malformed dates) or an unknown `status` filter; `429` + `Retry-After` upload
 limit. **Retry semantics:** a retried create answers `409 mou_exists`; a retried status change answers `409 mou_status_changed`. No
@@ -820,6 +820,18 @@ Any write by a non-owner (manager, super_admin, other BDM) is 403 after the 404 
 
 **Addendum on `GET /bdm/organizations` and `GET /bdm/organizations/{id}` (bdm-002 contract):** `last_meeting_at` / `next_meeting_at` are now computed (bdm-006, spec §5.6): max `starts_at` of completed, min `starts_at` of open future appointments across all BDMs at that organization. Names, types (`string | null`) and nullability are unchanged.
 
+**Addendum, 2026-10-06 (`bdm-008`, `DEC-SCOPE-075`) — follow-ups and tasks.** Design spec `docs/superpowers/specs/2026-10-06-bdm-008-follow-ups-design.md` §6; migration `0077_bdm_tasks_followups`. Scope: `bdm` own (assignee = caller), `bdm_manager` team, `super_admin` all, any other role 403. Every `{id}` outside scope → 404 "Task not found". Today = the IST date of the database clock.
+
+| Method/Path | Auth | Roles | Notes / status codes |
+|---|---|---|---|
+| `GET /bdm/tasks` | Authenticated | `bdm`, `bdm_manager`, `super_admin` | `bucket` = `today` (default) / `overdue` / `upcoming` / `open` / `done` / `cancelled`; `kind` (`follow_up` / `task`); `org_type` (7 types or `none`); `organization_id`; `bdm_user_id` (managers only; a `bdm` → 422); `limit` 1–100 (50), `offset`. Response `{items, total, limit, offset, today, counts: {buckets: {today, overdue, upcoming, done, cancelled}, by_org_type: [{org_type, count}]}}` — bucket counts use every filter but `bucket`, type counts every filter but `org_type` (non-zero only). Order: open by `due_on, created_at`; done by `completed_at desc`; cancelled by `cancelled_at desc` |
+| `POST /bdm/tasks` | Authenticated | `bdm` | 201 `BdmTaskOut`. Body (`extra=forbid`): `kind`, `title` (1–200, one line), `due_on` (YYYY-MM-DD, ≥ IST today, else 422), `organization_id?` (scope 404; not assigned 403; archived 422), `notes?` (≤ 2000). Server sets `source=manual`, assignee, `open`. 409 after 200 creates in an IST day |
+| `PATCH /bdm/tasks/{id}` | Authenticated | `bdm` (assignee) | `title` / `notes` (null clears) / `due_on` (a changed one ≥ IST today). Unchanged values are not changes. 409 when not open, or not manual ("Change this follow-up from its meeting report") |
+| `POST /bdm/tasks/{id}/complete` | Authenticated | `bdm` (assignee) | No body. Any open item (outcome follow-ups included). 409 when already done / cancelled |
+| `POST /bdm/tasks/{id}/cancel` | Authenticated | `bdm` (assignee) | `{reason}` (≤ 500, required). Manual items only (409 otherwise) |
+
+Write order: scope 404 → lock (an outcome follow-up's appointment first) → assignee 403 ("Only the assigned BDM can change this task", logged) → state 409 → source 409 → 422. `BdmTaskOut`: `id, kind, title, notes, due_on, status, source, overdue, organization {id, code, name, org_type, archived} or null, appointment {id, code} or null, assignee {id, full_name, active}, completed_at, cancelled_at, cancel_reason, created_at, updated_at, permissions {can_edit, can_complete, can_cancel}`. **Changed:** `POST /bdm/organizations/{id}/archive` also cancels the organization's open items (reason "Organization archived"); its audit metadata gains `tasks_cancelled` when > 0; the response is unchanged. Unchanged: the appointment's `follow_up {id, due_on, status}`.
+
 ---
 
 ## 12C. Telecaller roles (`tel-001`) — addendum, 2026-10-05
@@ -843,6 +855,25 @@ Any write by a non-owner (manager, super_admin, other BDM) is 403 after the 404 
 **`POST /auth/reset-password` — `login_portal` addendum.** The response shape is unchanged: `login_portal` is now `"admin"` for `telecaller_manager` as well as `bdm_manager` (one constant, `ADMIN_PORTAL_ROLES`), and `null` for every other role. A telecaller manager's welcome / reset link opens `/admin/reset-password`; a telecaller's opens its division's page.
 
 ---
+
+## 12D. Telecaller catalogue (`tel-002`) — addendum, 2026-10-06
+
+`DEC-SCOPE-074`; design spec `docs/superpowers/specs/2026-10-06-tel-002-catalogue-design.md` §4; `RBAC_MATRIX.md` §2.15; migration
+`0076_tel_catalogue`. Lists are `{items, total, limit, offset}` (`limit` default 50, max 100). Write bodies reject unknown keys; every `422`
+is one sentence naming the field (e.g. "Name is required", "Source: Input should be …"). Readers = `telecaller`, `telecaller_manager`,
+`super_admin`, `it_admin`, `overseas_admin`, `counselor`; writers = `telecaller_manager`, `super_admin`. Other roles → `403`; signed out → `401`.
+
+| Method/Path | Roles | Notes / status codes |
+|---|---|---|
+| `GET /telecaller/products` | readers | Filters `group` (`it\|overseas\|other`, else `422`), `active`, `q` (name). Non-managers always get active rows only (an `active` param cannot widen it). Order: IT, Overseas, Other, then `sort_order`, then name. Item `{id, group, name, team, program: {id, title} \| null, active, sort_order}` |
+| `POST /telecaller/products` | writers | `201`. Body `{group, name, team?, program_id?, sort_order?}`. `team` omitted → the group's team (IT/Overseas) or none (Other); an IT/Overseas `team` ≠ group → `422` "IT products always route to the IT team" / "Overseas products …". `program_id` on a non-IT product → `422` "Only IT products can link to a course"; missing/inactive program → `422` "Choose an active course". `sort_order` omitted → after the group's last product. Duplicate name in the group (case-insensitive) → `409` |
+| `PATCH /telecaller/products/{id}` | writers | Body any of `{name, team, program_id, active, sort_order}`; omitted = unchanged; `null` clears `team` (Other only) or `program_id`, else `422`. A different `group` → `422` "Group cannot be changed". Unknown id → `404`. Renaming keeps the id (lead links survive) |
+| `GET /telecaller/campaigns` | readers | Filters `product_id`, `source` (one of the 13 keys, else `422`), `active`, `q` (name). Non-managers: active only. Order: active first, newest `start_date`, name. Item `{id, name, source, product: {id, name, group, active}, start_date, end_date, active}` |
+| `POST /telecaller/campaigns` | writers | `201`. Body `{name, source, product_id, start_date, end_date?}`. `source` ∈ `instagram, facebook, google, website, whatsapp, walk_in, college, school, agent, referral, exhibition_event, bdm, other`. Missing/inactive product → `422` "Choose an active product". `end_date < start_date` → `422` "End date cannot be before the start date". Duplicate name (case-insensitive, global) → `409` |
+| `PATCH /telecaller/campaigns/{id}` | writers | Body any of `{name, source, product_id, start_date, end_date, active}`; `null` clears only `end_date`. The date rule is checked on the merged row. Moving to another product needs an active one; keeping a since-deactivated product is allowed (P4). Unknown id → `404` |
+
+Every write adds an `AuditLog` row (`telecaller.product_create|product_update|campaign_create|campaign_update`, entity `tel_product` /
+`tel_campaign`, `metadata_json.fields` = the changed field names only).
 
 ## 13. Traceability check
 

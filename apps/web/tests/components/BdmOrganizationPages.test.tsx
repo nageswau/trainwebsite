@@ -79,7 +79,7 @@ describe("bdm-002 organization detail pages", () => {
     vi.mocked(serverApi).mockImplementation(async (path: string) => (path === "/api/v1/bdm/me" ? me : { organization }) as never);
     const tree = elements(await BdmOrganization({ params: params(), searchParams: Promise.resolve({ created: "1" }) }));
     expect(serverApi).toHaveBeenCalledWith("/api/v1/bdm/organizations/o1");
-    expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props).toEqual({ initial: organization, basePath: "/bdm/organizations", created: true, activities: null, leads: null, stageHistory: null, mou: null });
+    expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props).toEqual({ initial: organization, basePath: "/bdm/organizations", created: true, activities: null, leads: null, stageHistory: null, tasks: null, mou: null });
   });
 
   it("bdm-005: both detail pages read the MoU card alongside the organization", async () => {
@@ -116,7 +116,7 @@ describe("bdm-002 organization detail pages", () => {
     vi.mocked(serverApi).mockReset();
     vi.mocked(serverApi).mockImplementation(async (path: string) => (path === "/api/v1/auth/me" ? { id: "m1", full_name: "Meera", role: "bdm_manager" } : { organization }) as never);
     tree = elements(await ManagerOrganization({ params: params() }));
-    expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props).toEqual({ initial: organization, basePath: "/bdm/manager/organizations", activities: null, leads: null, stageHistory: null, mou: null });
+    expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props).toEqual({ initial: organization, basePath: "/bdm/manager/organizations", activities: null, leads: null, stageHistory: null, tasks: null, mou: null });
     vi.mocked(serverApi).mockReset();
     refuse("/api/v1/auth/me", new ApiError("Not authenticated", 401));
     tree = elements(await ManagerOrganization({ params: params() }));

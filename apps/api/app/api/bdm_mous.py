@@ -1,4 +1,4 @@
-"""bdm-005 (DEC-SCOPE-074, spec §6.3): an organization's MoU, its document and history, and the MoU lists.
+"""bdm-005 (DEC-SCOPE-076, spec §6.3): an organization's MoU, its document and history, and the MoU lists.
 
 Every `{org_id}` resolves through `services.bdm_organizations.load_scoped` (out of scope = 404). Every write is one transaction --
 scope, organization row lock, `writable` (the assigned BDM or super_admin; archived / Lost 409), the current MoU row lock, the rules,
@@ -76,10 +76,11 @@ async def change_mou(org_id: UUID, payload: BdmMouUpdate, user: User = Depends(g
     if mou is None:
         raise HTTPException(404, svc.NO_MOU)
     sent = payload.model_dump(exclude_unset=True)
-    status, from_status = sent.pop("status", None), sent.pop("from_status", None)
+    status, from_status, expected = sent.pop("status", None), sent.pop("from_status", None), sent.pop("expected_updated_at", None)
     before = svc.effective_status(mou, on)
     if status is not None:
-        svc.check_status_change(before, status, from_status)
+        svc.check_status_change(before, status, from_status)  # first: its message names the status someone else set
+    svc.check_version(mou, expected)
     state = {**svc.stored_state(mou), **sent, **({"status": status} if status else {})}
     if status is not None:
         svc.apply_defaults(state, on)

@@ -47,6 +47,18 @@ describe("BdmOrganizationDetail -- bdm-005 MoU card", () => {
     expect(screen.queryByRole("region", { name: "MoU" })).toBeNull();
   });
 
+  it("QA5-06: tells the MoU card why it is read-only on a lost or archived organization", () => {
+    const lost = { stage: "prospect", stage_label: "College Prospect", lost: { at: "2026-10-01T00:00:00Z", reason: "No budget" }, agent_status: null, steps: [] };
+    render(<BdmOrganizationDetail initial={org({ pipeline: lost })} basePath="/bdm/organizations" mou={{ current: null, can_start: false }} />);
+    expect(within(screen.getByRole("region", { name: "MoU" })).getByText("This organization is marked lost, so its MoU is read-only.")).toBeInTheDocument();
+    cleanup();
+    render(<BdmOrganizationDetail initial={org({ archived: true })} basePath="/bdm/organizations" mou={{ current: null, can_start: false }} />);
+    expect(within(screen.getByRole("region", { name: "MoU" })).getByText("This organization is archived, so its MoU is read-only.")).toBeInTheDocument();
+    cleanup();
+    render(<BdmOrganizationDetail initial={org()} basePath="/bdm/organizations" mou={{ current: null, can_start: false }} />);
+    expect(within(screen.getByRole("region", { name: "MoU" })).queryByText(/so its MoU is read-only/)).toBeNull();
+  });
+
   it("re-reads the organization when signing moved the pipeline", async () => {
     const moved = org({ pipeline: { stage: "mou_signed", stage_label: "MoU Signed", lost: null, agent_status: null, steps: [] } });
     const signed = { id: "m1", status: "signed", status_label: "Signed", pipeline_on_sign: null, permissions: { can_edit: true, can_upload: true, can_renew: false } };

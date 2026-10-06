@@ -6,7 +6,8 @@ import { MOU_STATUSES, type MouRow, type MouStatus, statusLabel } from "@/lib/bd
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import { formatCalendarDate } from "@/lib/formatDate";
 
-const FILTERS = { display: "flex", gap: 8, flexWrap: "wrap", margin: "0 0 16px" } as const;
+// QA5-04: one row that scrolls sideways when it doesn't fit (ten wrapped buttons took ~5 rows on a phone); the links stay focusable.
+const FILTERS = { display: "flex", gap: 8, flexWrap: "nowrap", overflowX: "auto", whiteSpace: "nowrap", padding: "0 0 6px", margin: "0 0 10px" } as const;
 const day = (value: string | null) => (value ? formatCalendarDate(value) : "—");
 
 // bdm-005 (spec §8): the scoped MoU list. Filters and pages are plain <a> -- a full page load (bdm-004 QA4-01); the table is a labelled

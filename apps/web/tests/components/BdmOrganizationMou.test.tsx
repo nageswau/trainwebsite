@@ -72,6 +72,18 @@ describe("BdmOrganizationMou (bdm-005 §8)", () => {
     await waitFor(() => expect(screen.getByRole("link", { name: "Download document (PDF)" })).toBeInTheDocument());
   });
 
+  it("QA5-05: puts Edit and renewal beside the status, before the details", () => {
+    card({ current: mou(), can_start: false });
+    const edit = screen.getByRole("button", { name: "Edit MoU" });
+    const reference = screen.getByText("Reference");
+    expect(Boolean(edit.compareDocumentPosition(reference) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+  });
+
+  it("QA5-06: says why the card is read-only when the page gives a reason", () => {
+    card({ current: mou("prospect", { permissions: { can_edit: false, can_upload: false, can_renew: false } }), can_start: false }, { readOnlyNote: "This organization is archived, so its MoU is read-only." });
+    expect(screen.getByText("This organization is archived, so its MoU is read-only.")).toBeInTheDocument();
+  });
+
   it("tells the page when signing moved the pipeline", async () => {
     const before = mou("under_negotiation");
     const after = mou("signed", { signed_on: "2026-10-06", pipeline_on_sign: null });

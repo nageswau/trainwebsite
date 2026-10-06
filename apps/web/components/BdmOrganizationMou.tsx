@@ -35,8 +35,9 @@ const day = (value: string | null) => (value ? formatCalendarDate(value) : displ
 // for the assigned BDM / super_admin (permissions) Start, Edit and Start renewal. The server enforces every rule; after each write the
 // card re-reads the MoU, and a Signed that moved the pipeline (D28) asks the page to re-read the organization (`onPipelineChanged`).
 // Success notices go to the page's one live region (`onNotice`).
-export default function BdmOrganizationMou({ orgId, initial, onNotice, onPipelineChanged }: {
+export default function BdmOrganizationMou({ orgId, initial, onNotice, onPipelineChanged, readOnlyNote }: {
   orgId: string; initial: OrgMou | null; onNotice: (text: string) => void; onPipelineChanged: () => void;
+  readOnlyNote?: string; // QA5-06: why the card offers no writes (a Lost or archived organization), from the page
 }) {
   const [data, setData] = useState<OrgMou | null>(initial);
   const [loading, setLoading] = useState(false);
@@ -130,10 +131,7 @@ export default function BdmOrganizationMou({ orgId, initial, onNotice, onPipelin
           ))}
         </ol>
         {end && <p className="form-message">{end}</p>}
-        <DetailList rows={rows} />
-        <BdmMouDocument orgId={orgId} mou={current} onUploaded={(m) => saved(m, "Document saved.")} />
-        <BdmMouHistory key={current.updated_at} mou={current} />
-        <BdmMouPrevious orgId={orgId} />
+        {/* QA5-05: the actions sit with the status they change, before the details */}
         <div className="actions">
           {current.permissions.can_edit && <button id={id("edit")} type="button" className="btn secondary small" onClick={() => setMode("edit")}>Edit MoU</button>}
           {current.permissions.can_renew && data.can_start && !renewing && (
@@ -145,6 +143,10 @@ export default function BdmOrganizationMou({ orgId, initial, onNotice, onPipelin
             Start a new MoU for this organization? The current one is kept in its history.
           </BdmConfirm>
         )}
+        <DetailList rows={rows} />
+        <BdmMouDocument orgId={orgId} mou={current} onUploaded={(m) => saved(m, "Document saved.")} />
+        <BdmMouHistory key={current.updated_at} mou={current} />
+        <BdmMouPrevious orgId={orgId} />
       </>
     );
   }
@@ -152,6 +154,7 @@ export default function BdmOrganizationMou({ orgId, initial, onNotice, onPipelin
   return (
     <section className="action-card wide" aria-label="MoU">
       <h3>MoU</h3>
+      {readOnlyNote && <p className="muted">{readOnlyNote}</p>}
       {failure && <p className="form-error" role="alert">{failure}</p>}
       {body}
     </section>

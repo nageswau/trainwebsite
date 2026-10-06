@@ -38,6 +38,7 @@ from app.models import (
     GENDERS,
 )
 from app.services.agent_visa import VISA_CASE_STAGES
+from app.tel_sources import TEL_SOURCES
 
 
 class LoginRequest(BaseModel):
@@ -3895,7 +3896,7 @@ class BdmPipelinePage(BaseModel):
     offset: int
 
 
-# --- bdm-005 (DEC-SCOPE-074, spec §6.1): MoU tracking ----------------------------------------------------------------------------
+# --- bdm-005 (DEC-SCOPE-076, spec §6.1): MoU tracking ----------------------------------------------------------------------------
 MOU_FIELD_LABELS = {
     "reference": "Reference",
     "notes": "Notes",
@@ -3946,6 +3947,7 @@ class BdmMouUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     status: BdmMouStatusIn | None = None
     from_status: BdmMouStatus | None = Field(default=None, validate_default=True)
+    expected_updated_at: datetime | None = None  # QA5-01: the version the form showed; a newer stored one is 409 `mou_changed`
     proposal_sent_on: BdmMouProposalSentOn = None
     signed_on: BdmMouSignedOn = None
     valid_from: BdmMouValidFrom = None
@@ -4539,3 +4541,229 @@ class TelecallerAdminPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# --- tel-002 (DEC-SCOPE-074): product/interest catalogue + campaigns --------------------------------------------------------
+TelProductGroup = Literal["it", "overseas", "other"]
+TelSource = Literal[TEL_SOURCES]
+TelSortOrder = Annotated[StrictInt, Field(ge=0, le=9999)]
+TEL_CATALOGUE_FIELD_LABELS = {
+    "group": "Group", "name": "Name", "team": "Team", "program_id": "Course", "active": "Active", "sort_order": "Sort order",
+    "source": "Source", "product_id": "Product", "start_date": "Start date", "end_date": "End date",
+}
+
+
+def _tel_name(max_length: int):
+    """Trimmed, required, capped, no control characters; each failure names the field (services/telecaller._parse keeps a custom
+    validator's own sentence)."""
+
+    def check(value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Name is required")
+        if len(value) > max_length:
+            raise ValueError(f"Name must be at most {max_length} characters")
+        if _BDM_CONTROL.search(value):
+            raise ValueError("Name contains invalid characters")
+        return value
+
+    return Annotated[str, AfterValidator(check)]
+
+
+TelProductName, TelCampaignName = _tel_name(120), _tel_name(160)
+
+
+class TelProductCreate(BaseModel):
+    """P2: `team` may be omitted -- an IT/Overseas product takes its group's team, an Other product defaults to none (unassigned).
+    `sort_order` may be omitted -- the product goes to the end of its group."""
+
+    model_config = ConfigDict(extra="forbid")
+    group: TelProductGroup
+    name: TelProductName
+    team: TelecallerTeam | None = None
+    program_id: UUID | None = None
+    sort_order: TelSortOrder = None  # omitted = after the group's last product
+
+
+class TelProductUpdate(BaseModel):
+    """Omitted = unchanged. An explicit null clears `team` (Other only) or `program_id`; on any other key it is a 422. `group` exists
+    only so a change is refused with a sentence (it is fixed once created)."""
+
+    model_config = ConfigDict(extra="forbid")
+    group: TelProductGroup = None
+    name: TelProductName = None
+    team: TelecallerTeam | None = None
+    program_id: UUID | None = None
+    active: StrictBool = None
+    sort_order: TelSortOrder = None
+
+
+class TelCampaignCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: TelCampaignName
+    source: TelSource
+    product_id: UUID
+    start_date: date
+    end_date: date | None = None
+
+
+class TelCampaignUpdate(BaseModel):
+    """Omitted = unchanged; null clears only `end_date`. The date order is checked on the merged row (services/telecaller_catalogue)."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: TelCampaignName = None
+    source: TelSource = None
+    product_id: UUID = None
+    start_date: date = None
+    end_date: date | None = None
+    active: StrictBool = None
+
+
+class TelProgramRef(BaseModel):
+    id: UUID
+    title: str
+
+
+class TelProductOut(BaseModel):
+    id: UUID
+    group: str
+    name: str
+    team: str | None
+    program: TelProgramRef | None
+    active: bool
+    sort_order: int
+
+
+class TelProductPage(BaseModel):
+    items: list[TelProductOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class TelCampaignProductRef(BaseModel):
+    id: UUID
+    name: str
+    group: str
+    active: bool
+
+
+class TelCampaignOut(BaseModel):
+    id: UUID
+    name: str
+    source: str
+    product: TelCampaignProductRef
+    start_date: date
+    end_date: date | None
+    active: bool
+
+
+class TelCampaignPage(BaseModel):
+    items: list[TelCampaignOut]
+    total: int
+    limit: int
+    offset: int
+
+
+# --- bdm-008 (DEC-SCOPE-075, spec §6): follow-ups and tasks ---------------------------------------------------------------------
+BDM_TASK_LABELS = {"title": "Title", "notes": "Notes"}
+BdmTaskKind = Literal["follow_up", "task"]
+BdmTaskBucket = Literal["today", "overdue", "upcoming", "open", "done", "cancelled"]
+BdmTaskOrgType = BdmOrgType | Literal["none"]
+BdmTaskTitle = Annotated[str, _trimmed(200), AfterValidator(_trip_text(_BDM_CONTROL, True, BDM_TASK_LABELS))]
+BdmTaskNotes = Annotated[Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, BDM_TASK_LABELS))]
+BdmTaskDue = Annotated[date, BeforeValidator(_trip_date("due date"))]
+
+
+class BdmTaskCreate(BaseModel):
+    """§6.2: a manual follow-up or task. Assignee, source, status and timestamps are server-owned (unknown fields here)."""
+
+    model_config = ConfigDict(extra="forbid")
+    kind: BdmTaskKind
+    title: BdmTaskTitle
+    due_on: BdmTaskDue
+    organization_id: UUID | None = None
+    notes: BdmTaskNotes = None
+
+
+class BdmTaskUpdate(BaseModel):
+    """§6.3: omitted = unchanged; `notes: null` clears; a sent null title or due date is refused (both are always set)."""
+
+    model_config = ConfigDict(extra="forbid")
+    title: BdmTaskTitle | None = None
+    due_on: BdmTaskDue | None = None
+    notes: BdmTaskNotes = None
+
+    @field_validator("title", "due_on")
+    @classmethod
+    def _not_null(cls, value, info: ValidationInfo):
+        """Omitted = unchanged (the default is not validated); a sent null is refused."""
+        if value is None:
+            raise ValueError(f"{'Title' if info.field_name == 'title' else 'Due date'} is required")
+        return value
+
+
+class BdmTaskOrgRef(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    org_type: str
+    archived: bool
+
+
+class BdmTaskAppointmentRef(BaseModel):
+    id: UUID
+    code: str
+
+
+class BdmTaskPermissions(BaseModel):
+    can_edit: bool
+    can_complete: bool
+    can_cancel: bool
+
+
+class BdmTaskOut(BaseModel):
+    id: UUID
+    kind: str
+    title: str
+    notes: str | None
+    due_on: date
+    status: str
+    source: str
+    overdue: bool
+    organization: BdmTaskOrgRef | None
+    appointment: BdmTaskAppointmentRef | None
+    assignee: BdmOrgPerson
+    completed_at: datetime | None
+    cancelled_at: datetime | None
+    cancel_reason: str | None
+    created_at: datetime
+    updated_at: datetime
+    permissions: BdmTaskPermissions
+
+
+class BdmTaskBucketCounts(BaseModel):
+    today: int
+    overdue: int
+    upcoming: int
+    done: int
+    cancelled: int
+
+
+class BdmTaskTypeCount(BaseModel):
+    org_type: str | None
+    count: int
+
+
+class BdmTaskCounts(BaseModel):
+    buckets: BdmTaskBucketCounts
+    by_org_type: list[BdmTaskTypeCount]
+
+
+class BdmTaskPage(BaseModel):
+    items: list[BdmTaskOut]
+    total: int
+    limit: int
+    offset: int
+    today: date
+    counts: BdmTaskCounts

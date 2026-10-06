@@ -28,6 +28,7 @@ from sqlalchemy.sql import func
 
 from app.bdm_stages import FIRST_STAGE as BDM_FIRST_STAGE
 from app.bdm_stages import MANUAL_STAGES as BDM_MANUAL_STAGES
+from app.tel_sources import TEL_SOURCES
 
 
 class Base(DeclarativeBase):
@@ -995,6 +996,48 @@ class TelecallerProfile(Base, TimestampMixin):
     reporting_manager_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
+class TelProduct(Base, TimestampMixin):
+    """tel-002 (DEC-SCOPE-074 P2, T17/T18): a product/interest a lead can name. IT and Overseas products route to their own team;
+    only an `other` product's team is chosen (none = the unassigned queue). The optional course link is IT-only. Never deleted:
+    deactivating hides it from pickers while leads keep the link."""
+
+    __tablename__ = "tel_products"
+    __table_args__ = (
+        CheckConstraint("product_group IN ('it', 'overseas', 'other')", name="ck_tel_products_group"),
+        CheckConstraint("team IN ('it', 'overseas')", name="ck_tel_products_team"),
+        CheckConstraint("product_group = 'other' OR team = product_group", name="ck_tel_products_team_matches_group"),
+        CheckConstraint("program_id IS NULL OR product_group = 'it'", name="ck_tel_products_program_it_only"),
+        Index("uq_tel_products_group_name", "product_group", text("lower(name)"), unique=True),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    product_group: Mapped[str] = mapped_column(String(20))
+    name: Mapped[str] = mapped_column(String(120))
+    team: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    program_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("programs.id"), nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+
+
+class TelCampaign(Base, TimestampMixin):
+    """tel-002 (T16, P3/P4): a marketing campaign -- the "Instagram → Cyber Security → September 2026" of EVID-019 §2. The source is
+    one of the fixed §2 sources; the product must be active when it is set (services/telecaller_catalogue)."""
+
+    __tablename__ = "tel_campaigns"
+    __table_args__ = (
+        CheckConstraint(f"source IN ({', '.join(repr(s) for s in TEL_SOURCES)})", name="ck_tel_campaigns_source"),
+        CheckConstraint("end_date IS NULL OR end_date >= start_date", name="ck_tel_campaigns_dates"),
+        Index("uq_tel_campaigns_name", text("lower(name)"), unique=True),
+        Index("ix_tel_campaigns_product", "product_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(160))
+    source: Mapped[str] = mapped_column(String(30))
+    product_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("tel_products.id"))
+    start_date: Mapped[date] = mapped_column(Date)
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+
+
 # bdm-010 (DEC-SCOPE-063, T6): TRV-000123 codes. On the metadata so 0001's create_all makes it on a fresh database; 0068 makes it
 # on an upgraded one. A rolled-back create skips a number; codes stay unique and increasing.
 BDM_TRIP_CODE_SEQ = Sequence("bdm_trip_code_seq", metadata=Base.metadata)
@@ -1212,7 +1255,7 @@ class BdmPipelineEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-# bdm-005 (DEC-SCOPE-074, spec §4): the MoU statuses in source order and wording (EVID-016 §10). `expired` is derived on read (M2):
+# bdm-005 (DEC-SCOPE-076, spec §4): the MoU statuses in source order and wording (EVID-016 §10). `expired` is derived on read (M2):
 # a signed / active MoU past `valid_until`; it is never stored, so the status CHECK lists only the settable keys.
 BDM_MOU_STATUS_LABELS: dict[str, str] = {
     "prospect": "Prospect",
@@ -1239,7 +1282,7 @@ BDM_MOU_CHECKS = {  # migration 0076 repeats these strings; test_bdm_005_migrati
 
 
 class BdmMou(Base, TimestampMixin):
-    """bdm-005 (DEC-SCOPE-074, spec §5.1): an organization's MoU. At most one `is_current` row per organization (M6: a renewal is a
+    """bdm-005 (DEC-SCOPE-076, spec §5.1): an organization's MoU. At most one `is_current` row per organization (M6: a renewal is a
     new row; the old one is kept). `document_key` is server-generated and never returned or logged; the service owns every rule, the
     CHECKs are the backstop."""
 
@@ -1416,8 +1459,8 @@ class BdmMeetingReport(Base, TimestampMixin):
 
 
 class BdmTask(Base, TimestampMixin):
-    """bdm-007 creates follow-ups (`source = appointment_outcome`, one per appointment); bdm-008 adds manual tasks, MoU follow-ups,
-    completion and the pages."""
+    """bdm-007 creates follow-ups (`source = appointment_outcome`, one per appointment); bdm-008 (DEC-SCOPE-075) adds manual tasks,
+    notes, completion, the cancellation time and reason, and the pages. `mou` stays reserved for bdm-005."""
 
     __tablename__ = "bdm_tasks"
     __table_args__ = (
@@ -1427,6 +1470,8 @@ class BdmTask(Base, TimestampMixin):
         CheckConstraint(_in_list("status", BDM_TASK_STATUSES), name="ck_bdm_tasks_status"),
         CheckConstraint("(source = 'appointment_outcome') = (source_appointment_id IS NOT NULL)", name="ck_bdm_tasks_source_link"),
         CheckConstraint("(status = 'done') = (completed_at IS NOT NULL)", name="ck_bdm_tasks_completed"),
+        CheckConstraint("(status = 'cancelled') = (cancelled_at IS NOT NULL)", name="ck_bdm_tasks_cancelled"),
+        CheckConstraint("cancel_reason IS NULL OR status = 'cancelled'", name="ck_bdm_tasks_cancel_reason"),
         Index("ix_bdm_tasks_assignee_status_due", "assignee_user_id", "status", "due_on"),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -1439,6 +1484,9 @@ class BdmTask(Base, TimestampMixin):
     assignee_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     status: Mapped[str] = mapped_column(String(20), default="open", server_default=text("'open'"))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    notes: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
 BDM_ACTIVITY_CHANNELS = ("call", "whatsapp", "email", "visit", "meeting", "other")

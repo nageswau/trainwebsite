@@ -53,7 +53,20 @@ describe("BdmMouForm (bdm-005 §8)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save MoU" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     expect(fetchMock.mock.calls[0][1].method).toBe("PATCH");
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ status: "discussion_started", from_status: "prospect", notes: null });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ status: "discussion_started", from_status: "prospect", notes: null, expected_updated_at: "2026-10-01T10:00:00Z" });
+  });
+
+  it("QA5-02: Not yet and Escape return focus to Save MoU", async () => {
+    vi.stubGlobal("fetch", vi.fn());
+    form();
+    fireEvent.change(screen.getByLabelText("Status"), { target: { value: "signed" } });
+    fireEvent.change(screen.getByLabelText("Signed date (required)"), { target: { value: "2026-10-06" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save MoU" }));
+    fireEvent.click(within(screen.getByRole("group", { name: "Confirm signing" })).getByRole("button", { name: "Not yet" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Save MoU" })).toHaveFocus());
+    fireEvent.click(screen.getByRole("button", { name: "Save MoU" }));
+    fireEvent.keyDown(screen.getByRole("group", { name: "Confirm signing" }), { key: "Escape" });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Save MoU" })).toHaveFocus());
   });
 
   it("puts a 422 on its field and focuses it", async () => {

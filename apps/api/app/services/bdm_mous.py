@@ -1,4 +1,4 @@
-"""bdm-005 (DEC-SCOPE-074, spec §6.2): MoU rules, history, audit and output.
+"""bdm-005 (DEC-SCOPE-076, spec §6.2): MoU rules, history, audit and output.
 
 Functions only; nothing here commits -- the route owns the transaction (bdm-002's rule). Every write runs on the organization row
 locked by `bdm_organizations.load_scoped(lock=True)` and then the current MoU row (the lock order of spec §6.5). Audit metadata and
@@ -29,6 +29,7 @@ RENEWABLE = ("expired", "rejected")  # M6
 NO_MOU = "No MoU yet"
 MOU_EXISTS = {"message": "This organization already has an MoU in progress", "code": "mou_exists"}
 MOU_EXPIRED = {"message": "This MoU has expired. Start a renewal.", "code": "mou_expired"}  # M9
+MOU_CHANGED = {"message": "This MoU was changed meanwhile", "code": "mou_changed"}  # QA5-01
 SAME_STATUS = "The MoU is already at this status"
 SIGNED_ON_REQUIRED = "Add the signed date"
 WINDOW_REQUIRED = "Add the validity window"
@@ -86,6 +87,12 @@ def check_rules(state: dict) -> None:
 
 def stored_state(mou: BdmMou) -> dict:
     return {"status": mou.status, **{f: getattr(mou, f) for f in FIELDS}}
+
+
+def check_version(mou: BdmMou, expected: datetime | None) -> None:
+    """QA5-01: a form showing an older version would overwrite someone else's edit; optional, so older clients still save."""
+    if expected is not None and expected != mou.updated_at:
+        raise HTTPException(409, MOU_CHANGED)
 
 
 def check_status_change(before: str, status: str, from_status: str | None) -> None:

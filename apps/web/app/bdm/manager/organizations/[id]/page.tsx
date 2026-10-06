@@ -10,6 +10,7 @@ import type { Organization } from "@/lib/bdmOrganizations";
 import { bdmManagerNav } from "@/lib/bdmNav";
 import { firstMou } from "@/lib/bdmMousServer";
 import { firstStageHistory } from "@/lib/bdmPipelineServer";
+import { firstTaskPage } from "@/lib/bdmTasksServer";
 import type { User } from "@/lib/types";
 
 // bdm-002 (C2, C14): one of the team's organizations for a manager (super_admin: any). A 404 (unknown, or not assigned to this
@@ -21,6 +22,7 @@ export default async function BdmManagerOrganizationPage({ params }: { params: P
   const leadPage = firstLeadPage(id); // bdm-017: the leads section's first page, likewise
   const stages = firstStageHistory(id); // bdm-004: the stage history's first page, read alongside the organization
   const mouCard = firstMou(id); // bdm-005: the MoU card, likewise (never rejects)
+  const taskPage = firstTaskPage(id); // bdm-008: the open follow-ups, likewise
   let user: User;
   try {
     user = await serverApi<User>("/api/v1/auth/me");
@@ -34,12 +36,12 @@ export default async function BdmManagerOrganizationPage({ params }: { params: P
   } catch (e) {
     if (!(e instanceof ApiError && (e.status === 404 || e.status === 422))) return accessUnavailable(e, "/admin/login");
   }
-  const [activities, leads, stageHistory, mou] = organization ? await Promise.all([timeline, leadPage, stages, mouCard]) : [null, null, null, null];
+  const [activities, leads, stageHistory, tasks, mou] = organization ? await Promise.all([timeline, leadPage, stages, taskPage, mouCard]) : [null, null, null, null, null];
   return (
     <PortalShell nav={await nav} roleLabel={user.role === "super_admin" ? "Super Admin" : "BDM Manager"} userName={user.full_name}>
       <div className="portal-content">
         {organization ? (
-          <BdmOrganizationDetail initial={organization} basePath="/bdm/manager/organizations" activities={activities} leads={leads} stageHistory={stageHistory} mou={mou} />
+          <BdmOrganizationDetail initial={organization} basePath="/bdm/manager/organizations" activities={activities} leads={leads} stageHistory={stageHistory} tasks={tasks} mou={mou} />
         ) : (
           <div className="action-card">
             <h2>Organization not found</h2>

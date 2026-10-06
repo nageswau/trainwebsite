@@ -52,7 +52,7 @@ export const BDM_NOTIFICATIONS_HREF = "/bdm/notifications";
 export const BDM_MANAGER_NOTIFICATIONS_HREF = "/bdm/manager/notifications";
 export const BDM_NAV: NavItem[] = [
   { label: "My Day", href: "/bdm/my-day" }, { label: "Organizations", href: "/bdm/organizations" }, { label: "Pipeline", href: "/bdm/pipeline" },
-  { label: "MoUs", href: "/bdm/mous" }, { label: "Appointments", href: "/bdm/appointments" },
+  { label: "MoUs", href: "/bdm/mous" }, { label: "Appointments", href: "/bdm/appointments" }, { label: "Follow-ups", href: "/bdm/follow-ups" },
   { label: "Activities", href: "/bdm/activities" }, { label: "Travel", href: "/bdm/travel" },
   { label: "Notifications", href: BDM_NOTIFICATIONS_HREF }, { label: "Profile", href: "/bdm/profile" },
 ];
@@ -60,6 +60,7 @@ export const BDM_MANAGER_NAV: NavItem[] = [
   { label: "Dashboard", href: "/bdm/manager/dashboard" }, { label: "Team", href: "/bdm/manager/team" },
   { label: "Organizations", href: "/bdm/manager/organizations" }, { label: "Pipeline", href: "/bdm/manager/pipeline" },
   { label: "MoUs", href: "/bdm/manager/mous" }, { label: "Appointments", href: "/bdm/manager/appointments" },
+  { label: "Follow-ups", href: "/bdm/manager/follow-ups" },
   { label: "Activities", href: "/bdm/manager/activities" }, { label: "Approvals", href: "/bdm/manager/approvals" },
   { label: "Notifications", href: BDM_MANAGER_NOTIFICATIONS_HREF },
 ];
@@ -70,7 +71,11 @@ export const BDM_SIGN_IN = "/bdm/sign-in";
 export const TELECALLER_NAV: NavItem[] = [
   { label: "Dashboard", href: "/telecaller/dashboard" }, { label: "Profile", href: "/telecaller/profile" },
 ];
-export const TELECALLER_MANAGER_NAV: NavItem[] = [{ label: "Team", href: "/telecaller/manager/team" }];
+// tel-002: Products and Campaigns (the catalogue the manager maintains).
+export const TELECALLER_MANAGER_NAV: NavItem[] = [
+  { label: "Team", href: "/telecaller/manager/team" }, { label: "Products", href: "/telecaller/manager/products" },
+  { label: "Campaigns", href: "/telecaller/manager/campaigns" },
+];
 export const TELECALLER_SIGN_IN = "/telecaller/sign-in";
 
 // SCH-001/SCH-003 -- School roles use their own dedicated pages (bespoke forms/actions,

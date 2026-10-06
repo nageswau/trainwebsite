@@ -26,6 +26,7 @@ describe("bdm-005 MoU library (AC5)", () => {
     expect(mouConflict({ code: "mou_status_changed", message: "This MoU moved to Signed meanwhile", current_status: "signed" })).toBe("This MoU moved to Signed meanwhile.");
     expect(mouConflict({ code: "mou_expired", message: "This MoU has expired. Start a renewal." })).toBe("This MoU has expired. Start a renewal.");
     expect(mouConflict({ code: "organization_lost", message: "This organization is marked lost. Revive it first." })).toBe("This organization is marked lost. Revive it first.");
+    expect(mouConflict({ code: "mou_changed", message: "This MoU was changed meanwhile" })).toBe("This MoU was changed meanwhile. Check it and try again.");
     expect(mouConflict("Restore this organization first")).toBeNull();
   });
 

@@ -1,11 +1,13 @@
 # bdm-005 — MoU tracking: design
 
 - **Feature ID:** `bdm-005` (`BDM_CRM_BACKLOG.md` §4 bdm-005)
-- **Decision:** `DEC-SCOPE-074` (owner, in-session 2026-10-06, `EXPLICIT_APPROVAL`)
+- **Decision:** `DEC-SCOPE-076` (owner, in-session 2026-10-06, `EXPLICIT_APPROVAL`). **ID note:** drafted as `DEC-SCOPE-074` / migration
+  `0076_bdm_mous`; renumbered on merging `main` @ `442ce465`, where tel-002 holds 074 / `0076_tel_catalogue` and bdm-008 holds 075 /
+  `0077_bdm_tasks_followups`. Below, `0076_bdm_mous` means `0078_bdm_mous`.
 - **Evidence:** `EVID-016` (`functionalities/edusphere_markdown/BDM Functionalities.md`, `DERIVED_BLUEPRINT`) §10 lines 339–369,
   Agent §B / School §B / College §B (Agreement, MoU, Contract, Renewal Date); `DEC-SCOPE-055` D19 (Q-10), D28 (Q-19);
   `DEC-SCOPE-065` P11; `DEC-SCOPE-071` (bdm-004). Impact analysis 2026-10-06 (graphify-led).
-- **Branch:** `feature/bdm-005`, migration `0076_bdm_mous` (after `0075_telecaller_profiles`).
+- **Branch:** `feature/bdm-005`, migration `0078_bdm_mous` (after `0077_bdm_tasks_followups`).
 
 ## 1. Scope
 

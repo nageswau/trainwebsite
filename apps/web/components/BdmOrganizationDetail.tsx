@@ -11,24 +11,33 @@ import BdmOrganizationMou from "@/components/BdmOrganizationMou";
 import BdmOrganizationPipeline from "@/components/BdmOrganizationPipeline";
 import BdmOrganizationProfileDetails, { DetailList, multiline } from "@/components/BdmOrganizationProfileDetails";
 import BdmOrganizationReassign from "@/components/BdmOrganizationReassign";
+import BdmOrganizationTasks from "@/components/BdmOrganizationTasks";
 import BdmStageHistory from "@/components/BdmStageHistory";
 import { type Page, sendRequest } from "@/lib/apiErrors";
 import type { Activity } from "@/lib/bdmActivities";
 import type { Lead } from "@/lib/bdmLeads";
 import type { OrgMou } from "@/lib/bdmMous";
 import type { StageEvent } from "@/lib/bdmPipeline";
+import type { TaskPage } from "@/lib/bdmTasks";
 import { display, isOrganizationBody, LINK_STYLE, meetingText, type Organization, ORG_TYPE_LABEL, ORGS_URL, safeWebsite } from "@/lib/bdmOrganizations";
 import { formatDate } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
+// bdm-005 QA5-06: an archived or Lost organization refuses every MoU write (409); the card says so instead of just showing no buttons.
+function mouReadOnlyNote(org: Organization): string | undefined {
+  if (org.archived) return "This organization is archived, so its MoU is read-only.";
+  return org.pipeline.lost ? "This organization is marked lost, so its MoU is read-only." : undefined;
+}
+
 // bdm-002 (spec §6.2, §12.2): one organization. Actions render from `permissions` only -- the server enforces every rule (AC3-AC5).
 // Every write re-renders from the organization the API returns (no refetch). Last/Next meeting come from bdm-006 appointments ("—" when none).
-export default function BdmOrganizationDetail({ initial, basePath, created = false, activities, leads, stageHistory, mou }: {
+export default function BdmOrganizationDetail({ initial, basePath, created = false, activities, leads, stageHistory, tasks, mou }: {
   initial: Organization; basePath: string; created?: boolean; activities?: Page<Activity> | null; leads?: Page<Lead> | null;
-  stageHistory?: Page<StageEvent> | null; mou?: OrgMou | null;
+  stageHistory?: Page<StageEvent> | null; tasks?: TaskPage | null; mou?: OrgMou | null;
 }) {
   const [org, setOrg] = useState(initial);
   const [historyVersion, setHistoryVersion] = useState(0); // bdm-004: bumped by each pipeline write, which reloads the stage history
+  const [tasksVersion, setTasksVersion] = useState(0); // bdm-008: bumped by an archive here, which cancelled the open follow-ups
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -77,6 +86,7 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
     setConfirming(false);
     if (outcome.ok && isOrganizationBody(outcome.data)) {
       changed(outcome.data.organization, path === "archive" ? "Organization archived." : "Organization restored.");
+      if (path === "archive") setTasksVersion((v) => v + 1);
       focus(statusId); // the button that was used is gone (simplify review A5)
     } else setFailure(outcome.ok ? "Unable to update this organization." : outcome.message);
   }
@@ -181,7 +191,9 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
           setHistoryVersion((v) => v + 1);
         }}
       />
-      {mou !== undefined && <BdmOrganizationMou orgId={org.id} initial={mou} onNotice={notify}onPipelineChanged={() => void reloadOrganization()} />}
+      {mou !== undefined && (
+        <BdmOrganizationMou orgId={org.id} initial={mou} onNotice={notify} onPipelineChanged={() => void reloadOrganization()} readOnlyNote={mouReadOnlyNote(org)} />
+      )}
       {showEditor ? (
         <section className="action-card wide" aria-label="Edit details">
           <h3>Edit details</h3>
@@ -208,6 +220,10 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
       {activities !== undefined && ( // bdm-009: the BDM view logs (assigned and not archived = can_edit); the manager view reads
         <BdmActivityTimeline organization={org} initial={activities} canLog={basePath === "/bdm/organizations" && p.can_edit} orgBasePath={basePath}
           onNotice={notify} />
+      )}
+      {tasks !== undefined && ( // bdm-008: the BDM view adds (assigned and not archived = can_edit); the manager view reads
+        <BdmOrganizationTasks organization={{ id: org.id, name: org.name }} initial={tasks} canAdd={basePath === "/bdm/organizations" && p.can_edit}
+          basePath={basePath === "/bdm/organizations" ? "/bdm" : "/bdm/manager"} version={tasksVersion} onNotice={notify} />
       )}
       {leads !== undefined && ( // bdm-017 (L6): the BDM view adds (assigned and not archived = can_edit); the manager view reads
         <BdmOrganizationLeads organizationId={org.id} initial={leads} canAdd={basePath === "/bdm/organizations" && p.can_edit} onNotice={notify} />
