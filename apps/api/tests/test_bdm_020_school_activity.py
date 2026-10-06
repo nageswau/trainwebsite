@@ -1,4 +1,4 @@
-"""bdm-020 (DEC-SCOPE-086, spec §2) -- a linked School's student development counts for the BDM side, read through the School
+"""bdm-020 (DEC-SCOPE-087, spec §2) -- a linked School's student development counts for the BDM side, read through the School
 module's own analytics (AC1), with Student Profile Completion "not tracked" (AC2, A2) and never a student row (AC3)."""
 
 from uuid import UUID, uuid4

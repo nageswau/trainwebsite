@@ -1,6 +1,6 @@
 # bdm-020 — browser QA log (2026-10-06)
 
-**Feature:** School activity tracking, live per school (`DEC-SCOPE-086`, no migration).
+**Feature:** School activity tracking, live per school (`DEC-SCOPE-087`, no migration).
 **Environment:** isolated compose project `bdm020qa` (web :13020, API :18020, `app.seed` demo data); isolated Playwright Chromium in
 the `bdm020qa` web-test container (Browser Use is not installed in this environment). Script: an exploratory Playwright pass driven as a
 QA engineer (scratch, not committed). Screenshots were kept in the session scratchpad (not committed).

@@ -1,4 +1,4 @@
-// bdm-020 (DEC-SCOPE-086): a linked School's student development counts, as the School module reports them. Aggregates only; the API
+// bdm-020 (DEC-SCOPE-087): a linked School's student development counts, as the School module reports them. Aggregates only; the API
 // owns every rule (scope, which metrics are tracked).
 export type SchoolActivityMetric = { key: string; label: string; tracked: boolean; completed: number | null; pending: number | null };
 export type SchoolActivity = {

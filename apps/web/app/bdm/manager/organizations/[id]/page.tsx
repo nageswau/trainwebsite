@@ -5,6 +5,7 @@ import BdmOrganizationDetail from "@/components/BdmOrganizationDetail";
 import PortalShell from "@/components/PortalShell";
 import { ApiError, serverApi } from "@/lib/api";
 import { firstActivityPage } from "@/lib/bdmActivitiesServer";
+import { firstBusiness } from "@/lib/bdmBusinessServer";
 import { firstLeadPage } from "@/lib/bdmLeadsServer";
 import type { Organization } from "@/lib/bdmOrganizations";
 import { bdmManagerNav } from "@/lib/bdmNav";
@@ -24,6 +25,7 @@ export default async function BdmManagerOrganizationPage({ params }: { params: P
   const stages = firstStageHistory(id); // bdm-004: the stage history's first page, read alongside the organization
   const mouCard = firstMou(id); // bdm-005: the MoU card, likewise (never rejects)
   const taskPage = firstTaskPage(id); // bdm-008: the open follow-ups, likewise
+  const figures = firstBusiness(id); // bdm-021: the Business section, likewise (kept only for a College organization)
   const activityCounts = firstSchoolActivity(id); // bdm-020: the School activity panel, likewise (never rejects)
   let user: User;
   try {
@@ -38,14 +40,14 @@ export default async function BdmManagerOrganizationPage({ params }: { params: P
   } catch (e) {
     if (!(e instanceof ApiError && (e.status === 404 || e.status === 422))) return accessUnavailable(e, "/admin/login");
   }
-  const [activities, leads, stageHistory, tasks, mou, schoolActivity] = organization
-    ? await Promise.all([timeline, leadPage, stages, taskPage, mouCard, activityCounts])
-    : [null, null, null, null, null, null];
+  const [activities, leads, stageHistory, tasks, mou, business, schoolActivity] = organization
+    ? await Promise.all([timeline, leadPage, stages, taskPage, mouCard, figures, activityCounts])
+    : [null, null, null, null, null, null, null];
   return (
     <PortalShell nav={await nav} roleLabel={user.role === "super_admin" ? "Super Admin" : "BDM Manager"} userName={user.full_name}>
       <div className="portal-content">
         {organization ? (
-          <BdmOrganizationDetail initial={organization} basePath="/bdm/manager/organizations" activities={activities} leads={leads} stageHistory={stageHistory} tasks={tasks} mou={mou} schoolActivity={schoolActivity} />
+          <BdmOrganizationDetail initial={organization} basePath="/bdm/manager/organizations" activities={activities} leads={leads} stageHistory={stageHistory} tasks={tasks} mou={mou} business={organization.bdm_type === "college" ? business : undefined} schoolActivity={schoolActivity} />
         ) : (
           <div className="action-card">
             <h2>Organization not found</h2>

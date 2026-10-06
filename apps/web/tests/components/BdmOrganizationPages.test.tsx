@@ -114,6 +114,26 @@ describe("bdm-002 organization detail pages", () => {
     expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props.schoolActivity).toEqual(activity);
   });
 
+  it("bdm-021: both detail pages pass the business figures for a College organization only", async () => {
+    const id = "6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b";
+    const figures = { organization_id: id, currency: "INR", funnel: [], revenue: null };
+    let shown = { ...organization, bdm_type: "college" };
+    vi.mocked(serverApi).mockImplementation(async (path: string) => {
+      if (path === "/api/v1/bdm/me") return me as never;
+      if (path === "/api/v1/auth/me") return { id: "m1", full_name: "Meera", role: "bdm_manager" } as never;
+      if (path === `/api/v1/bdm/organizations/${id}/business`) return figures as never;
+      if (path === `/api/v1/bdm/organizations/${id}`) return { organization: shown } as never;
+      throw new ApiError("x", 500);
+    });
+    let tree = elements(await BdmOrganization({ params: params(id), searchParams: noQuery }));
+    expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props.business).toEqual(figures);
+    tree = elements(await ManagerOrganization({ params: params(id) }));
+    expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props.business).toEqual(figures);
+    shown = { ...organization, bdm_type: "school" };
+    tree = elements(await ManagerOrganization({ params: params(id) }));
+    expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props.business).toBeUndefined();
+  });
+
   it("an unknown or out-of-scope organization is a plain not-found with a way back", async () => {
     vi.mocked(serverApi).mockImplementation(async (path: string) => {
       if (path === "/api/v1/bdm/me") return me as never;

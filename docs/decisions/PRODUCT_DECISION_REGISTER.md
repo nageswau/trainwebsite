@@ -3978,7 +3978,42 @@ detail's `onboarding` and live pipeline steps; a School onboarding card on both 
 School create form; the linked BDM on the School edit panel. Follow-ups logged: unlinking a wrong link; per-school counts (bdm-020);
 the School's BDM on deactivation (bdm-025). **New Feature ID authorized:** `bdm-018`. **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-018.
 
-### DEC-SCOPE-086 — School activity tracking, live per school (`bdm-020`)
+### DEC-SCOPE-086 — College business tracking: student funnel + revenue (`bdm-021`)
+
+**ID note:** the next free number on `main` @ `9b395aaf` (2026-10-06). If another item reaches `main` first holding `DEC-SCOPE-086`, this entry is
+renumbered on merge, as earlier bdm items were. No migration.
+
+**Question:** how a College organization's student funnel (Contacted → Leads → Registrations → Training → Certification → Internship →
+Placement) and revenue lines (training, internship, placement, other) are defined and computed from attributed records, and who sees revenue
+(`BDM_CRM_BACKLOG.md` §4 bdm-021)?
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md`, `DERIVED_BLUEPRINT`) College §E; `DEC-SCOPE-055` D5b, Q-08 (D17), Q-14 (D23); `DEC-SCOPE-072`
+(bdm-017) L2 / L9; bdm-021 impact analysis 2026-10-06 (graphify-led).
+
+**Resolution:** owner's standing direction for this session, 2026-10-06 ("proceed with recommended answers; ask only if blocking"). Each choice
+below is the recommended option, recorded so the owner can override it. It is **not** a separate question-by-question approval. Spec
+`docs/superpowers/specs/2026-10-06-bdm-021-college-business-design.md` §2–§3:
+- **B1** Every College-module organization (`bdm_type = 'college'`, any `org_type`, per Q-03) has the view; any other module is the same 404 as a missing organization.
+- **B2** The funnel is visible to everyone who can read the organization (the lead list's audience, L6).
+- **B3** Revenue is visible to the assigned BDM, a `bdm_manager` (team scope) and `super_admin`; any other College BDM gets `revenue: null`.
+- **B4** All time, computed live (no snapshot, no cache, no period filter; bdm-024 owns periods).
+- **B5** Contacted = Leads (Q-14).
+- **B6** Each stage counts distinct linked students by its own definition: Training = an enrollment not `withdrawn`; Certification = an
+  `issued` certificate; Placement = a job offer `accepted` or `joined`. It is not a "furthest stage" count.
+- **B7** Training revenue = the linked students' payments with status `paid` / `succeeded`, currency `INR`, excluding `agent_deposit`, of any date.
+- **B8** Internship (stage) and internship / placement / other revenue are "Not tracked yet" (`tracked: false`, null figure), never 0.
+
+**Addendum, browser QA (2026-10-06):** QA21-01. An untracked stage's or line's note no longer repeats "Not tracked yet" (the badge says it).
+
+**Consequences:** no migration; route `GET /bdm/organizations/{id}/business` (`api/bdm_metrics.py`, `services/bdm_metrics.py`, one aggregate
+query); a Business section on both organization profiles for College organizations. **New Feature ID authorized:** `bdm-021`. **Status:** see
+`BDM_CRM_BACKLOG.md` §4 bdm-021.
+
+### DEC-SCOPE-087 — School activity tracking, live per school (`bdm-020`)
+
+**ID note:** drafted as `DEC-SCOPE-086` (free on `main` @ `9b395aaf`); bdm-021 (PR #88) reached `main` first holding `DEC-SCOPE-086`, so on
+merging `main` @ `a36b5b63` (2026-10-06) this entry is **`DEC-SCOPE-087`**. bdm-020 commits from before that merge that say `DEC-SCOPE-086`
+mean this decision. No migration.
 
 **Question:** which per-school student development counts the BDM side shows for a linked School, by which definitions, and how the two
 metrics Q-15 / D24 called unmapped are shown (`BDM_CRM_BACKLOG.md` §4 bdm-020)?

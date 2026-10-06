@@ -554,7 +554,7 @@ requests are for School organizations", "The MoU must be Signed or Active to req
 errors (empty reason, note over 1000). **Retry semantics:** a retried request answers `409 request_pending`; a retried reject / link /
 create answers `409 request_resolved`. No idempotency key.
 
-**`bdm-020` / `DEC-SCOPE-086` (built 2026-10-06; no migration) — School activity per linked School.** Design spec
+**`bdm-020` / `DEC-SCOPE-087` (built 2026-10-06; no migration) — School activity per linked School.** Design spec
 `docs/superpowers/specs/2026-10-06-bdm-020-school-activity-design.md` §2. Additive; nothing existing changes.
 
 | Method/Path | Auth | Scope | Notes |
