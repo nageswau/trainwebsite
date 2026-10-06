@@ -39,6 +39,7 @@ from app.models import (
     TEL_TARGET_KPIS,
 )
 from app.services.agent_visa import VISA_CASE_STAGES
+from app.tel_content_kinds import ASSET_KINDS as TEL_ASSET_KINDS
 from app.tel_sources import TEL_SOURCES
 
 
@@ -4745,6 +4746,212 @@ class TelCampaignOut(BaseModel):
 
 class TelCampaignPage(BaseModel):
     items: list[TelCampaignOut]
+    total: int
+    limit: int
+    offset: int
+
+
+# --- tel-012 (DEC-SCOPE-083): scripts, message templates, brochure assets --------------------------------------------------
+TelChannel = Literal["whatsapp", "email"]
+TelAssetKind = Literal[TEL_ASSET_KINDS]
+TEL_CONTENT_FIELD_LABELS = {
+    "name": "Name", "product_id": "Product", "steps": "Steps", "active": "Active", "channel": "Channel", "kind": "Kind",
+    "asset_id": "Brochure", "subject": "Subject", "body": "Message",
+}
+_TEL_BODY_CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")  # tabs and newlines are text in a message body
+TelContentName = _tel_name(160)
+
+
+class TelScriptStep(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    title: str
+    notes: str | None = None
+
+    @field_validator("title")
+    @classmethod
+    def _title(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Every step needs a title")
+        if len(value) > 120:
+            raise ValueError("A step title must be at most 120 characters")
+        if _BDM_CONTROL.search(value):
+            raise ValueError("A step title contains invalid characters")
+        return value
+
+    @field_validator("notes")
+    @classmethod
+    def _notes(cls, value: str | None) -> str | None:
+        value = (value or "").strip() or None
+        if value and len(value) > 1000:
+            raise ValueError("Talking points must be at most 1000 characters")
+        if value and _TEL_BODY_CONTROL.search(value):
+            raise ValueError("Talking points contain invalid characters")
+        return value
+
+
+def _tel_steps(value: list[TelScriptStep]) -> list[TelScriptStep]:
+    if not 1 <= len(value) <= 20:
+        raise ValueError("Add between 1 and 20 steps")
+    return value
+
+
+TelScriptSteps = Annotated[list[TelScriptStep], AfterValidator(_tel_steps)]
+
+
+def _tel_subject(value: str | None) -> str | None:
+    if value is None:
+        return None
+    value = value.strip()
+    if not value:
+        raise ValueError("Subject is required")
+    if len(value) > 200:
+        raise ValueError("Subject must be at most 200 characters")
+    if _BDM_CONTROL.search(value):
+        raise ValueError("Subject must be one line without control characters")
+    return value
+
+
+def _tel_body(value: str) -> str:
+    """The per-channel length is checked on the merged row (services/telecaller_content); CRLF is stored as LF."""
+    value = value.replace("\r\n", "\n").strip()
+    if not value:
+        raise ValueError("Message is required")
+    if _TEL_BODY_CONTROL.search(value):
+        raise ValueError("Message contains invalid characters")
+    return value
+
+
+TelSubject = Annotated[str | None, AfterValidator(_tel_subject)]
+TelBody = Annotated[str, AfterValidator(_tel_body)]
+
+
+class TelScriptCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    product_id: UUID
+    name: TelContentName
+    steps: TelScriptSteps
+
+
+class TelScriptUpdate(BaseModel):
+    """Omitted = unchanged; null is a 422 on every key (nothing here is optional once set)."""
+
+    model_config = ConfigDict(extra="forbid")
+    product_id: UUID = None
+    name: TelContentName = None
+    steps: TelScriptSteps = None
+    active: StrictBool = None
+
+
+class TelTemplateCreate(BaseModel):
+    """`kind` is a string checked against the channel's list in the service, so the 422 names the channel."""
+
+    model_config = ConfigDict(extra="forbid")
+    channel: TelChannel
+    kind: str
+    name: TelContentName
+    product_id: UUID | None = None
+    asset_id: UUID | None = None
+    subject: TelSubject = None
+    body: TelBody
+
+
+class TelTemplateUpdate(BaseModel):
+    """Omitted = unchanged; null clears `product_id`, `asset_id` and `subject` (an email then fails "Subject is required"). `channel`
+    exists only so a change is refused with a sentence."""
+
+    model_config = ConfigDict(extra="forbid")
+    channel: TelChannel = None
+    kind: str = None
+    name: TelContentName = None
+    product_id: UUID | None = None
+    asset_id: UUID | None = None
+    subject: TelSubject = None
+    body: TelBody = None
+    active: StrictBool = None
+
+
+class TelAssetCreate(BaseModel):
+    """The multipart form fields of an upload (the file itself is checked by services/telecaller_content.read_pdf)."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: TelContentName
+    kind: TelAssetKind
+    product_id: UUID | None = None
+
+
+class TelAssetUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: TelContentName = None
+    kind: TelAssetKind = None
+    product_id: UUID | None = None
+    active: StrictBool = None
+
+
+class TelScriptOut(BaseModel):
+    id: UUID
+    product: TelCampaignProductRef
+    name: str
+    steps: list[TelScriptStep]
+    active: bool
+
+
+class TelScriptPage(BaseModel):
+    items: list[TelScriptOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class TelAssetRef(BaseModel):
+    id: UUID
+    name: str
+    active: bool
+
+
+class TelTemplateOut(BaseModel):
+    id: UUID
+    channel: str
+    kind: str
+    name: str
+    product: TelCampaignProductRef | None
+    asset: TelAssetRef | None
+    subject: str | None
+    body: str
+    active: bool
+
+
+class TelTemplatePage(BaseModel):
+    items: list[TelTemplateOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class TelAssetLink(BaseModel):
+    url: str
+    expires_at: datetime
+
+
+class TelTemplatePreview(BaseModel):
+    subject: str | None
+    body: str
+    brochure_link: TelAssetLink | None
+
+
+class TelAssetOut(BaseModel):
+    id: UUID
+    name: str
+    kind: str
+    product: TelCampaignProductRef | None
+    file_name: str
+    size_bytes: int
+    active: bool
+    uploaded_at: datetime
+
+
+class TelAssetPage(BaseModel):
+    items: list[TelAssetOut]
     total: int
     limit: int
     offset: int

@@ -30,6 +30,9 @@ from app.bdm_stages import FIRST_STAGE as BDM_FIRST_STAGE
 from app.bdm_stages import MANUAL_STAGES as BDM_MANUAL_STAGES
 from app.lead_stages import STAGES as LEAD_STAGES
 from app.notifications.phone import normalise_phone
+from app.tel_content_kinds import ASSET_KINDS as TEL_ASSET_KINDS
+from app.tel_content_kinds import EMAIL_KINDS as TEL_EMAIL_KINDS
+from app.tel_content_kinds import WHATSAPP_KINDS as TEL_WHATSAPP_KINDS
 from app.tel_sources import TEL_SOURCES
 
 
@@ -1098,6 +1101,65 @@ class TelCampaign(Base, TimestampMixin):
     product_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("tel_products.id"))
     start_date: Mapped[date] = mapped_column(Date)
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+
+
+class TelScript(Base, TimestampMixin):
+    """tel-012 (DEC-SCOPE-083 C3, EVID-019 §6): a product's standard call script -- ordered `{title, notes}` steps. At most one active
+    script per product (partial unique index). Never deleted; deactivating hides it from telecallers."""
+
+    __tablename__ = "tel_scripts"
+    __table_args__ = (Index("uq_tel_scripts_active_product", "product_id", unique=True, postgresql_where=text("active")),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    product_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("tel_products.id"))
+    name: Mapped[str] = mapped_column(String(160))
+    steps: Mapped[list] = mapped_column(JSON, default=list)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+
+
+class TelAsset(Base, TimestampMixin):
+    """tel-012 (C1): a brochure/fee PDF. The object lives at a server-generated `tel-assets/<uuid>` key that no API returns; leads
+    reach it only through a signed 7-day link (services/telecaller_content). Deactivating it ends every link at once."""
+
+    __tablename__ = "tel_assets"
+    __table_args__ = (
+        CheckConstraint(f"kind IN ({', '.join(repr(k) for k in TEL_ASSET_KINDS)})", name="ck_tel_assets_kind"),
+        Index("uq_tel_assets_storage_key", "storage_key", unique=True),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(160))
+    kind: Mapped[str] = mapped_column(String(20))
+    product_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("tel_products.id"), nullable=True)
+    storage_key: Mapped[str] = mapped_column(String(255))
+    file_name: Mapped[str] = mapped_column(String(255))
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+class TelMessageTemplate(Base, TimestampMixin):
+    """tel-012 (T9, C4): a WhatsApp (§11) or email (§12) template. Only email has a subject. Placeholders are checked on save;
+    `{brochure_link}` needs `asset_id`. A name is unique per channel (case-insensitive)."""
+
+    __tablename__ = "tel_message_templates"
+    __table_args__ = (
+        CheckConstraint("channel IN ('whatsapp', 'email')", name="ck_tel_message_templates_channel"),
+        CheckConstraint(
+            f"(channel = 'whatsapp' AND kind IN ({', '.join(repr(k) for k in TEL_WHATSAPP_KINDS)})) OR "
+            f"(channel = 'email' AND kind IN ({', '.join(repr(k) for k in TEL_EMAIL_KINDS)}))",
+            name="ck_tel_message_templates_kind",
+        ),
+        CheckConstraint("(channel = 'email') = (subject IS NOT NULL)", name="ck_tel_message_templates_subject"),
+        Index("uq_tel_message_templates_channel_name", "channel", text("lower(name)"), unique=True),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    channel: Mapped[str] = mapped_column(String(20))
+    kind: Mapped[str] = mapped_column(String(40))
+    name: Mapped[str] = mapped_column(String(160))
+    product_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("tel_products.id"), nullable=True)
+    asset_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("tel_assets.id"), nullable=True)
+    subject: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    body: Mapped[str] = mapped_column(Text)
     active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
 
 
