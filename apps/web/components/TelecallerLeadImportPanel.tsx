@@ -123,7 +123,7 @@ export default function TelecallerLeadImportPanel({ onImported }: { onImported?:
   }
 
   return (
-    <div className="action-card">
+    <div className="action-card lead-import">
       <h3>Import leads (CSV)</h3>
       <p className="muted">Add the leads from an ad platform or an event in one go. A person who is already a lead gets this enquiry added to their lead instead of a duplicate; new leads are distributed like any other.</p>
       <form className="form" onSubmit={upload} aria-busy={busy} noValidate>

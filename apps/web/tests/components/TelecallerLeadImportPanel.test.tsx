@@ -55,6 +55,12 @@ function choose(name = "leads.csv", size = 10) {
 const submit = () => fireEvent.click(screen.getByRole("button", { name: /Import leads|Importing/ }));
 
 describe("TelecallerLeadImportPanel", () => {
+  it("is a full-width action card, so the result table never needs a side scroll on desktop (QA-03)", async () => {
+    const { container } = render(<TelecallerLeadImportPanel />);
+    await screen.findByRole("option", { name: /Camp c1/ });
+    expect((container.firstElementChild as HTMLElement).className).toBe("action-card lead-import");
+  });
+
   it("lists the active campaigns and links the template", async () => {
     await ready();
     expect(fetchMock.mock.calls[0][0]).toContain("active=true");

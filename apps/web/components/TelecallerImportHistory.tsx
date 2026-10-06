@@ -21,7 +21,7 @@ export default function TelecallerImportHistory({ version }: { version: number }
   }, [version, retry]);
 
   return (
-    <div className="action-card">
+    <div className="action-card lead-import">
       <h3>Past imports</h3>
       {failed ? (
         <p className="form-error" role="alert">Past imports could not be loaded. <button type="button" className="btn secondary" onClick={() => setRetry((n) => n + 1)}>Retry</button></p>

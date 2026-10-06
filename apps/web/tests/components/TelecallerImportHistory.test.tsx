@@ -18,7 +18,8 @@ afterEach(() => {
 describe("TelecallerImportHistory", () => {
   it("shows a loading state, then each import with its counts", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(page([item])));
-    render(<TelecallerImportHistory version={0} />);
+    const { container } = render(<TelecallerImportHistory version={0} />);
+    expect((container.firstElementChild as HTMLElement).className).toBe("action-card lead-import"); // QA-03: full width
     expect(screen.getByRole("status").textContent).toMatch(/Loading/);
     const table = await screen.findByRole("table");
     const cells = within(table).getAllByRole("row")[1].textContent;
