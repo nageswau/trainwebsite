@@ -1168,6 +1168,17 @@ Conventions used below:
 > - `test_bdm_002_organizations::test_rename_into_a_duplicate_warns` (intermittent): two audit rows in one transaction share
 >   `created_at`, so their order is arbitrary. It passes alone (16/16).
 >
+> **Re-verified after merging `main` @ `230a043f`** (tel-017, tel-003, bdm-005; renumbered to `DEC-SCOPE-079` /
+> `0080_bdm_assignment_history`, merge `f95879b2`):
+> - bdm-025 + bdm-005 + bdm-002 assign/organizations + bdm-008: 213 passed. The one failure was bdm-005's head pin, which was relaxed to
+>   single head + in history (the tel-003 precedent); migration tests then passed 21/21;
+> - single head `0080_bdm_assignment_history`; ruff clean; mypy 416 = the new `main`'s 416;
+> - web BDM + navigation set: 504 passed; `tsc` 0; eslint 0 errors; `next build` 0;
+> - Playwright bdm-025 / 005 / 001 / 002 / 010: 17 passed.
+>
+> A database stamped at the old `0078_bdm_assignment_history` is fixed with `alembic stamp --purge 0077_bdm_tasks_followups` then
+> `upgrade head`.
+>
 > The earlier evidence for this item follows.
 >
 > Owner decisions L1–L5: dependencies accepted as merged; not-started trips are cancelled; "leave" = keep with the BDM and hand over
