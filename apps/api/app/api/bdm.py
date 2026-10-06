@@ -15,7 +15,7 @@ from app.api.deps import get_current_user
 from app.api.lookups import _pattern as like_pattern
 from app.core.database import get_db
 from app.models import BdmProfile, User
-from app.schemas import BdmAdminPage, BdmManagerPage, BdmMeOut, BdmTeamPage
+from app.schemas import BdmAdminPage, BdmManagerRowPage, BdmMeOut, BdmTeamPage
 from app.services.bdm import admin_type_filter, bdm_context, profile_out, require_manager, team_filter
 
 router = APIRouter(prefix="/bdm", tags=["bdm"])
@@ -106,11 +106,13 @@ async def admin_bdms(
     return await _paged(db, _profiles(filters), limit, offset, _admin_row)
 
 
-@admin_router.get("/bdm-managers", response_model=BdmManagerPage)
+@admin_router.get("/bdm-managers", response_model=BdmManagerRowPage)
 async def bdm_managers(q: str | None = SEARCH, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
     """The reporting-manager picker: active managers only, searchable by name or email (QA-02). Email is shown as a detail line
     so same-name managers can be told apart (QA-03, owner 2026-10-02)."""
-    stmt = select(User.id, User.full_name, User.email).where(
+    # bdm-025: `bdm_count` (every BDM reporting to them, active or not) for the BDM managers card; a correlated count, one query.
+    bdm_count = select(func.count()).where(BdmProfile.reporting_manager_user_id == User.id).scalar_subquery()
+    stmt = select(User.id, User.full_name, User.email, bdm_count).where(
         User.role == "bdm_manager", User.active.is_(True), *_matching(like_pattern(q), User.full_name, User.email)
     )
-    return await _paged(db, stmt, limit, offset, lambda id_, full_name, email: {"id": id_, "full_name": full_name, "email": email})
+    return await _paged(db, stmt, limit, offset, lambda id_, full_name, email, count: {"id": id_, "full_name": full_name, "email": email, "bdm_count": count})
