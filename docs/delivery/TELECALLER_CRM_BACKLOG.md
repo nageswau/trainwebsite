@@ -393,6 +393,9 @@ API contract §12H; re-chained after bdm-005, bdm-013 and tel-022's `0080_tel_ta
 
 ### tel-007 — Lead distribution rules, round robin, unassigned queue, manual (re)assignment
 
+**Status (2026-10-06):** **verified** on `feature/tel-007`, not merged (`DEC-SCOPE-087` DI1–DI4 + D1–D6, migration `0085_tel_distribution`,
+API contract §12K; re-chained after bdm-025 082 / 0082 and tel-012 083 / 0083). Spec `docs/superpowers/specs/2026-10-06-tel-007-lead-distribution-design.md`.
+
 - **Business requirement:** §17, T11, T18, T23.
 - **Existing behavior:** admins set `owner_id` by hand only.
 - **Expected behavior:**

@@ -1029,6 +1029,22 @@ Other roles get `403`, signed out `401`, and missing or out of scope `404`.
 | `GET /telecaller/leads/{id}/timeline` | `{items, total, limit, offset}`, newest first; item `{id, kind: stage|priority, at, actor {id, full_name} or null, from_value, from_label, to_value, to_label, reason}` |
 | `POST /telecaller/leads/{id}/stage` | As §12H, plus `403` for a telecaller on a handed-over lead |
 
+## 12K. Lead distribution (`tel-007`) — addendum, 2026-10-06
+
+`DEC-SCOPE-087`; design spec `docs/superpowers/specs/2026-10-06-tel-007-lead-distribution-design.md` §4–§5; migration `0085_tel_distribution`.
+All routes: `telecaller_manager` or `super_admin` (other roles `403`, signed out `401`). Lists are `{items, total, limit, offset}` (`limit` default 50, max 100).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/distribution-rules` | Filters `team`, `kind`, `telecaller_user_id`. Item `{id, team, kind, product {id, name, active} \| null, city, telecaller {id, full_name, active}, editable}`; every manager reads every rule, `editable` = the telecaller is my direct report (`super_admin`: true) |
+| `POST /telecaller/distribution-rules` | Body `{team, kind: product\|city, product_id?, city?, telecaller_user_id}` (extra keys `422`; city trimmed, ≤ 120). `201` item. `422`: shape, inactive/unknown product, product without a team, product of the other team, telecaller not an active telecaller of the team. `403`: not a direct report. `409`: the team already has a rule for that product / city (case-insensitive) |
+| `PATCH /telecaller/distribution-rules/{id}` | Body `{telecaller_user_id}` only. `200` item; `404` missing; `403` when the current or new telecaller isn't my report; `422` as above |
+| `DELETE /telecaller/distribution-rules/{id}` | `204`; `404` / `403` as PATCH |
+| `GET /telecaller/leads/unassigned` | `team`, `q` (Lead ID, name or city). Unassigned leads of the teams my reports are on (`super_admin`: all), oldest first. Item `{id, lead_code, name, division, city, product {id, name} \| null, source, status, status_label, telecaller: null, created_at}` |
+| `GET /telecaller/leads/assigned` | `telecaller_user_id` (not my report → `404`), `team`, `q`. My reports' leads (`super_admin`: every assigned lead), newest first; `telecaller {id, full_name, active}` |
+| `POST /telecaller/leads/assign` | Body `{lead_ids: 1–100 distinct, telecaller_user_id}` (extra keys `422`). All or nothing: a lead out of scope `404`; leads of two teams `422`; target not my report `403`; inactive / other team / not a telecaller `422`. `200` `{assigned, unchanged}`; a new lead moves to `assigned`; one `lead.assign` audit row per changed lead |
+| `POST /public/enquiries`, `POST /bdm/organizations/{id}/leads` | Shape unchanged. The lead is distributed in the same transaction (product rule → city rule → round robin, else unassigned), so `status` is `assigned` when a telecaller was chosen; a distribution error leaves it unassigned (never a failed enquiry) |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

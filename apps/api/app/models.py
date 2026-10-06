@@ -1104,6 +1104,42 @@ class TelCampaign(Base, TimestampMixin):
     active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
 
 
+class TelDistributionRule(Base, TimestampMixin):
+    """tel-007 (DEC-SCOPE-087, T11): a manager's routing rule for one team -- a product or a city sends new leads to one telecaller.
+    The telecaller's team, role and active state span tables, so `services/lead_distribution.py` checks them on write and again at
+    distribution time (an inactive telecaller's rule is skipped). Deleted, not deactivated, to stop it (audited)."""
+
+    __tablename__ = "tel_distribution_rules"
+    __table_args__ = (
+        CheckConstraint("team IN ('it', 'overseas')", name="ck_tel_distribution_rules_team"),
+        CheckConstraint("kind IN ('product', 'city')", name="ck_tel_distribution_rules_kind"),
+        CheckConstraint(
+            "(kind = 'product' AND product_id IS NOT NULL AND city IS NULL) OR (kind = 'city' AND city IS NOT NULL AND product_id IS NULL)",
+            name="ck_tel_distribution_rules_shape",
+        ),
+        Index("uq_tel_distribution_rules_product", "team", "product_id", unique=True, postgresql_where=text("kind = 'product'")),
+        Index("uq_tel_distribution_rules_city", "team", text("lower(city)"), unique=True, postgresql_where=text("kind = 'city'")),
+        Index("ix_tel_distribution_rules_telecaller", "telecaller_user_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    team: Mapped[str] = mapped_column(String(20))
+    kind: Mapped[str] = mapped_column(String(10))
+    product_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("tel_products.id"), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    telecaller_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+class TelRoundRobinCursor(Base):
+    """tel-007 (D2): the last telecaller a team's round robin chose. Locked FOR UPDATE per distribution, so concurrent intakes serialise.
+    Created on first use (0001's create_all seeds nothing)."""
+
+    __tablename__ = "tel_round_robin_cursors"
+    __table_args__ = (CheckConstraint("team IN ('it', 'overseas')", name="ck_tel_round_robin_cursors_team"),)
+    team: Mapped[str] = mapped_column(String(20), primary_key=True)
+    last_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
 class TelScript(Base, TimestampMixin):
     """tel-012 (DEC-SCOPE-083 C3, EVID-019 §6): a product's standard call script -- ordered `{title, notes}` steps. At most one active
     script per product (partial unique index). Never deleted; deactivating hides it from telecallers."""

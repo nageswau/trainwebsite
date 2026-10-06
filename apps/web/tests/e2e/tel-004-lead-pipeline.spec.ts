@@ -20,14 +20,18 @@ async function leadRow(page: Page, name: string) {
 }
 
 test("admin closes a lead with a reason, reopens it, and reads the history", async ({ page, request }) => {
+  test.setTimeout(30_000); // two moves, a reload and the history: 15 s ran out with 6 parallel workers on one API (tel-007 browser QA)
   const name = `E2E Pipeline ${Date.now()}`;
   const created = await request.post("/api/v1/public/enquiries", {
     data: { division: "it", name, email: `pipe-${Date.now()}@example.com`, subject: "Python", message: "Interested." },
   });
   expect(created.ok()).toBeTruthy();
+  // tel-007 DI2: the enquiry is distributed on arrival when an IT telecaller is eligible (a system New Lead -> Assigned row first).
+  const assigned = (await created.json()).status === "assigned";
+  const first = assigned ? "Assigned" : "New Lead";
   await signInAsItAdmin(page);
   const row = await leadRow(page, name);
-  await expect(row).toContainText("New Lead");
+  await expect(row).toContainText(first);
 
   await row.getByRole("button", { name: `Change stage for ${name}` }).click();
   const select = row.getByLabel(`New stage for ${name}`);
@@ -52,10 +56,12 @@ test("admin closes a lead with a reason, reopens it, and reads the history", asy
   await expect(reloaded).toContainText("Follow-up");
   await reloaded.getByRole("button", { name: `Stage history for ${name}` }).click();
   const items = reloaded.getByRole("list", { name: `Stage history for ${name}` }).getByRole("listitem");
-  await expect(items).toHaveCount(2);
-  await expect(items.nth(0)).toContainText("New Lead → Not Interested");
-  await expect(items.nth(0)).toContainText("Chose a different course");
-  await expect(items.nth(1)).toContainText("Not Interested → Follow-up");
+  const skip = assigned ? 1 : 0;
+  await expect(items).toHaveCount(2 + skip);
+  if (assigned) await expect(items.nth(0)).toContainText("New Lead → Assigned");
+  await expect(items.nth(skip)).toContainText(`${first} → Not Interested`);
+  await expect(items.nth(skip)).toContainText("Chose a different course");
+  await expect(items.nth(skip + 1)).toContainText("Not Interested → Follow-up");
 });
 
 test("the Stage filter lists the pipeline by label", async ({ page }) => {

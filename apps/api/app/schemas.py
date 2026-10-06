@@ -5297,6 +5297,9 @@ class LeadStageHistoryRow(BaseModel):
 
 class LeadStageHistoryPage(BaseModel):
     items: list[LeadStageHistoryRow]
+    total: int
+    limit: int
+    offset: int
 
 
 # --- bdm-018 (DEC-SCOPE-085, spec §5): the school onboarding handover --------------------------------------------------------------
@@ -5419,3 +5422,93 @@ class LeadTimelinePage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# --- tel-007 (DEC-SCOPE-087, spec §5): distribution rules, the unassigned queue and manual (re)assignment ---------------------------
+class TelDistributionRuleCreate(BaseModel):
+    """The service checks the shape (a product rule names a product, a city rule a city), the product and the telecaller."""
+    model_config = ConfigDict(extra="forbid")
+    team: Literal["it", "overseas"]
+    kind: Literal["product", "city"]
+    product_id: UUID | None = None
+    city: BdmOrgShort = None
+    telecaller_user_id: UUID
+
+
+class TelDistributionRuleUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    telecaller_user_id: UUID
+
+
+class TelRuleProduct(BaseModel):
+    id: UUID
+    name: str
+    active: bool
+
+
+class TelRuleTelecaller(BaseModel):
+    id: UUID
+    full_name: str
+    active: bool
+
+
+class TelDistributionRuleOut(BaseModel):
+    id: UUID
+    team: str
+    kind: str
+    product: TelRuleProduct | None
+    city: str | None
+    telecaller: TelRuleTelecaller
+    editable: bool
+
+
+class TelDistributionRulePage(BaseModel):
+    items: list[TelDistributionRuleOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class TelQueueProduct(BaseModel):
+    id: UUID
+    name: str
+
+
+class TelQueueLead(BaseModel):
+    id: UUID
+    lead_code: str
+    name: str
+    division: str
+    city: str | None
+    product: TelQueueProduct | None
+    source: str
+    status: str
+    status_label: str
+    telecaller: TelRuleTelecaller | None
+    created_at: datetime
+
+
+class TelQueueLeadPage(BaseModel):
+    items: list[TelQueueLead]
+    total: int
+    limit: int
+    offset: int
+
+
+class TelLeadAssign(BaseModel):
+    """D3: 1-100 distinct leads to one telecaller, all or nothing."""
+    model_config = ConfigDict(extra="forbid")
+    lead_ids: list[UUID] = Field(min_length=1, max_length=100)
+    telecaller_user_id: UUID
+
+    @field_validator("lead_ids")
+    @classmethod
+    def _distinct(cls, value: list[UUID]) -> list[UUID]:
+        if len(set(value)) != len(value):
+            raise ValueError("Each lead can be chosen once")
+        return value
+
+
+class TelLeadAssignOut(BaseModel):
+    assigned: int
+    unchanged: int

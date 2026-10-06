@@ -28,7 +28,7 @@ test("a website enquiry gets a Lead ID the admin can search and filter by", asyn
     data: { division: "it", name, email, phone: "098765 43210", subject: "Cyber Security", message: "Please call me about the course." },
   });
   expect(created.status()).toBe(201);
-  const { lead_code: leadCode } = await created.json();
+  const { lead_code: leadCode, status } = await created.json();
   expect(leadCode).toMatch(/^LD-\d{6,}$/);
 
   await signInItAdmin(page);
@@ -39,7 +39,9 @@ test("a website enquiry gets a Lead ID the admin can search and filter by", asyn
   await expect(page).toHaveURL(new RegExp(`q=${leadCode}`));
   await expect(panel.getByRole("rowheader")).toHaveText([name]);
   const row = panel.locator("tr", { has: page.getByRole("rowheader", { name, exact: true }) });
-  for (const text of [leadCode, "Website", "Unassigned", "Warm", "Cyber Security"]) await expect(row).toContainText(text);
+  for (const text of [leadCode, "Website", "Warm", "Cyber Security"]) await expect(row).toContainText(text);
+  // tel-007 DI2: distributed on arrival when an IT telecaller is eligible; otherwise it waits unassigned.
+  if (status !== "assigned") await expect(row).toContainText("Unassigned");
 
   await panel.getByLabel("Source").selectOption("google");
   await expect(panel.getByText("No leads match these filters.")).toBeVisible();
