@@ -13,7 +13,7 @@ TDD per task: write the test, see it fail for the expected reason, implement, se
 | 6 | Web lib + rules page | `TelecallerRulesPanel.test.tsx`, `telecallerDistribution.test.ts` | `lib/telecallerDistribution.ts`, `components/TelecallerRulesPanel.tsx`, `TelecallerRuleRow.tsx`, page, nav |
 | 7 | Web assignment page | `TelecallerAssignmentPanel.test.tsx` | `components/TelecallerAssignmentPanel.tsx`, page |
 | 8 | E2E | `tests/e2e/tel-007-lead-distribution.spec.ts` | — |
-| 9 | Docs | — | decision register `DEC-SCOPE-084`, API §12J, SCREEN_CATALOG, ROLE_NAVIGATION, backlog status |
+| 9 | Docs | — | decision register `DEC-SCOPE-085`, API §12K, SCREEN_CATALOG, ROLE_NAVIGATION, backlog status |
 
 Lite backend set: the tel-007 files plus `test_tel_003_intake`, `test_pub_002_enquiry_crm`, `test_tel_004_routes`, `test_tel_004_pipeline`,
 `test_bdm_017_conversion`, bdm lead tests, `test_tel_001_reads`, and the latest migration tests (`test_tel_004_migration`, `test_tel_022_migration`).

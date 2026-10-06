@@ -991,9 +991,23 @@ Nothing is deleted. Rows keep their list position when deactivated.
 Every write adds an `AuditLog` row (`telecaller.script_create|script_update|template_create|template_update|asset_create|asset_update`,
 `metadata_json.fields` = field names only). A link token is never a session (`deps.get_current_user` accepts only `type: access`).
 
-## 12J. Lead distribution (`tel-007`) — addendum, 2026-10-06
+## 12J. Telecaller lead workspace (`tel-008`) — addendum, 2026-10-06
 
-`DEC-SCOPE-084`; design spec `docs/superpowers/specs/2026-10-06-tel-007-lead-distribution-design.md` §4–§5; migration `0084_tel_distribution`.
+`DEC-SCOPE-084`; design spec `docs/superpowers/specs/2026-10-06-tel-008-lead-workspace-design.md` §2. No migration. Roles and scope are
+§12H's: `telecaller` (own leads), `telecaller_manager` (direct reports' leads + their teams' unassigned leads) and `super_admin` (all).
+Other roles get `403`, signed out `401`, and missing or out of scope `404`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/leads` | `{items, total, limit, offset}`, newest first. Filters `status`, `priority` (`hot`/`warm`/`cold`, else `422`), `product_id`, `campaign_id`, `q` (literal substring of Lead ID, name, email, phone, WhatsApp; ≤ 200). `limit` 1–100 (default 50). Item = the §12F admin row + `read_only` |
+| `GET /telecaller/leads/{id}` | The row + `message` + `read_only` (`true` for a telecaller once `owner_id` is set) |
+| `PATCH /telecaller/leads/{id}` | Body any of `name`, `email`, `phone`, `whatsapp_number`, `city`, `state`, `product_id`, `priority`. Other keys, invalid values or an inactive/unknown product give `422`. A telecaller on a handed-over lead gets `403`. `200` returns the detail. Audits: `lead.priority_change {from,to}`, and `lead.contact_update {fields}` (names only) |
+| `GET /telecaller/leads/{id}/timeline` | `{items, total, limit, offset}`, newest first; item `{id, kind: stage|priority, at, actor {id, full_name} or null, from_value, from_label, to_value, to_label, reason}` |
+| `POST /telecaller/leads/{id}/stage` | As §12H, plus `403` for a telecaller on a handed-over lead |
+
+## 12K. Lead distribution (`tel-007`) — addendum, 2026-10-06
+
+`DEC-SCOPE-085`; design spec `docs/superpowers/specs/2026-10-06-tel-007-lead-distribution-design.md` §4–§5; migration `0084_tel_distribution`.
 All routes: `telecaller_manager` or `super_admin` (other roles `403`, signed out `401`). Lists are `{items, total, limit, offset}` (`limit` default 50, max 100).
 
 | Method/Path | Notes / status codes |

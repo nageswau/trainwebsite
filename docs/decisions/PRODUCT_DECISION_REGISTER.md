@@ -3909,13 +3909,35 @@ picked the recommended option. Design spec: `docs/superpowers/specs/2026-10-06-b
 **Recorded defaults:** writers `telecaller_manager`, `super_admin`; readers add `telecaller` (active rows only); other roles 403. Placeholders are exactly `{name}`, `{product}`, `{brochure_link}` (needs a brochure), `{appointment_time}`; any other `{…}` is a 422 on save. Rendering is plain text and single-pass; the sink escapes it (tel-013 URL-encodes, tel-014 HTML-escapes). PDFs are judged by their bytes, within `MAX_UPLOAD_BYTES`. Nothing is deleted. A deactivated row keeps its list position.
 
 **Implementation:** migration `0083_tel_content` (`tel_scripts`, `tel_assets`, `tel_message_templates`, plus seeds; no existing row is touched; downgrade refuses while manager data exists). Routes `GET|POST|PATCH /telecaller/{scripts,templates,assets}`, `GET /telecaller/templates/{id}/preview`, `POST /telecaller/assets/{id}/link`, `GET /public/telecaller-assets/{token}` (`API_CONTRACT.md` §12I, `RBAC_MATRIX.md` §2.18). Manager pages `/telecaller/manager/{scripts,templates,brochures}`. Design spec `docs/superpowers/specs/2026-10-06-tel-012-content-library-design.md`.
+VERIFIED on `feature/tel-012` (2026-10-06): lite backend 440 on the final merge (every `test_tel_0*` file + the bdm-005/bdm-025 migration tests), vitest 75, Playwright 7, Browser Use QA (QA-01…04 fixed test-first and re-verified). Full backend suite deferred to the owner. **MERGED** to `main` as PR #83 @ `50838192` (2026-10-06).
+
+### DEC-SCOPE-084 — Telecaller lead workspace: My Leads, lead detail, priority (`tel-008`)
+
+**Evidence:** `EVID-019` §2 (field display), §8 (priority, L314–L330), §22 ("View assigned leads"); `DEC-SCOPE-073` T19, T23;
+`DEC-SCOPE-081` D4; owner answer in-session 2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for W1; D1–D6 are recorded defaults. No migration. VERIFIED on `feature/tel-008` (2026-10-06): tel-008 backend 27 + lite 176, then 172 after merging tel-012 (every tel-012 suite); vitest 42; Playwright 7; Browser Use QA (QA-01, 02, 04, 05 fixed test-first; `docs/quality/TEL-008_EXPLORATORY_QA_2026-10-06.md`). **MERGED** to `main` as PR #85 @ `b76c92f7` (2026-10-06). Drafted as `DEC-SCOPE-082`, renumbered twice (bdm-025 took 082; tel-012 took 083 / API §12I).
+
+| # | Question | Answer |
+|---|---|---|
+| W1 (AC3) | Where does a priority change "appear on the timeline" before tel-015? | An `audit_logs` row `lead.priority_change` `{from, to}` written in the same transaction. The detail page's Activity list merges stage history with priority changes, newest first, through `GET /telecaller/leads/{id}/timeline`. tel-015 adds its sources to the same endpoint |
+| D1 | "Handed over" before tel-018 | `owner_id IS NOT NULL` (the assigned counselor). A telecaller's PATCH and stage move on such a lead are 403, and the read carries `read_only`. Managers and `super_admin` still write |
+| D2 | Editable fields | `name`, `email`, `phone`, `whatsapp_number`, `city`, `state`, `product_id` (active product or null) and `priority`. Any other key is 422. Duplicate checks are tel-005's |
+| D3 | List filters | Stage, priority, product, campaign and `q` (Lead ID, name, phone, WhatsApp, email). "Due follow-up" waits for tel-011 |
+| D4 | Actions | Call (`tel:` link) and Change stage only. The other actions arrive with their items, and there are no placeholder buttons |
+| D5 | Manager view | `/telecaller/manager/leads` (+ `/{id}`), with tel-004's `lead_pipeline.scope` (reports' leads plus their teams' unassigned queue) |
+| D6 | tel-012 C2 (script panel) | tel-012 merged (`DEC-SCOPE-083`), so the lead detail shows the active call script of the lead's product (`GET /telecaller/scripts?product_id=&active=true&limit=1`). It is re-read when the product changes. `/render` stays with tel-013 |
+
+**Implementation:** `services/telecaller_leads.py`. Routes `GET /telecaller/leads`, `GET/PATCH /telecaller/leads/{id}` and
+`GET /telecaller/leads/{id}/timeline`; tel-004's `POST /telecaller/leads/{id}/stage` gains D1. Web pages `/telecaller/leads` and
+`/telecaller/manager/leads` (+ `[id]`), `TelecallerLeadTable`, `LeadDetailPanel`. Design spec `docs/superpowers/specs/2026-10-06-tel-008-lead-workspace-design.md`.
+
 VERIFIED on `feature/tel-012` @ final HEAD (2026-10-06): lite backend 339 (tel-001/002/003/012/017 + bdm-005 migration; re-run after the 4ec7a22b merge), vitest 75, Playwright 7, Browser Use QA (QA-01…04 fixed test-first and re-verified). Full backend suite deferred to the owner.
 
-### DEC-SCOPE-084 — Lead distribution: rules, round robin, unassigned queue, manual (re)assignment (`tel-007`)
+### DEC-SCOPE-085 — Lead distribution: rules, round robin, unassigned queue, manual (re)assignment (`tel-007`)
 
 **Evidence:** `EVID-019` §17 (round robin, product, location, manual); `DEC-SCOPE-073` T11, T18, T22, T23; owner answers in-session 2026-10-06.
 **Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for DI1–DI4; D1–D6 are recorded defaults. VERIFIED on `feature/tel-007`
-(2026-10-06), not merged. Drafted as `DEC-SCOPE-082` / `0082`; re-chained on `main` @ `50838192` (bdm-025 took 082 / `0082_bdm_assignment_history`; tel-012 took 083 / `0083_tel_content` and API §12I).
+(2026-10-06), not merged. Drafted as `DEC-SCOPE-082` / `0082`; re-chained on `main` @ `50838192` (bdm-025 took 082 / `0082_bdm_assignment_history`; tel-012 took 083 / `0083_tel_content` and API §12I), then on `main` @ `7afd4a4b` (tel-008 took `DEC-SCOPE-084` and API §12J, no migration).
 
 | # | Question | Answer |
 |---|---|---|

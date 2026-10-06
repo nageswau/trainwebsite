@@ -601,6 +601,32 @@ so there is no row scope.
 | anyone holding a link (no session) | download that one brochure while it is active and the 7-day token is valid | one asset | `tel-012` |
 | every other role (incl. `it_admin`, `overseas_admin`, `counselor`) | none → `403` "Your role cannot view the telecaller library" (writes: `403` "Telecaller manager role required") | — | `tel-012` |
 
+### 2.19 Telecaller lead workspace *(net-new, added 2026-10-06 — `DEC-SCOPE-084`, `tel-008`)*
+
+Inline pattern (`services/lead_pipeline.scope` then `services/telecaller_leads.require_writable`). Scope is a SQL filter in every query, so
+a lead outside it reads as missing (`404`, never `403` — no IDOR oracle). "Handed over" = a counselor is assigned (`owner_id`, D1).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | list / read leads, read the timeline; edit contact fields, product and priority; move the stage (tel-004 rules) | leads where `telecaller_user_id` = self; **read-only** once handed over (writes `403` "This lead is with the counselor…") | `tel-008` |
+| `telecaller_manager` | the same, including on handed-over leads; reopen a closed lead (tel-004) | direct reports' leads + the unassigned leads of those reports' teams (T23) | `tel-008` |
+| `super_admin` | the same as a manager | all leads | `tel-008` |
+| every other role (incl. `it_admin`, `overseas_admin`, `counselor`, students) | none → `403` "Telecaller role required" (admins keep `/admin/leads`) | — | `tel-008` |
+
+### 2.20 Lead distribution and assignment *(net-new, added 2026-10-06 — `DEC-SCOPE-085`, `tel-007`)*
+
+Inline pattern: role (`require_manager`), then scope (tel-004 `lead_pipeline.scope`; a lead outside it is `404`), then the target check
+(`lead_distribution.assignee`: not a direct report `403`, AC5; inactive / other team / not a telecaller `422`), then the write. One
+`lead.assign` audit row per changed lead; rule writes are audited too.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller_manager` | read every distribution rule (both teams); create / change / delete a rule; list the unassigned queue and the team's assigned leads; assign / reassign 1–100 leads | rule writes only for rules whose telecaller is a direct report (else `403`); the queue = unassigned leads of the teams their reports are on; assigned leads = their reports'; targets = active direct reports on the leads' team | `tel-007` |
+| `super_admin` | the same | all rules, all leads, any active telecaller | `tel-007` |
+| `telecaller` | none → `403` (receives leads; never assigns) | — | `tel-007` |
+| every other role (incl. `it_admin`, `overseas_admin`, `counselor`) | none → `403` (admins keep `/admin/leads`) | — | `tel-007` |
+| system (website / BDM intake) | distributes a new lead: product rule → city rule → round robin among the team's active telecallers → unassigned | the lead's division | `tel-007` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

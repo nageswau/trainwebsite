@@ -393,8 +393,8 @@ API contract §12H; re-chained after bdm-005, bdm-013 and tel-022's `0080_tel_ta
 
 ### tel-007 — Lead distribution rules, round robin, unassigned queue, manual (re)assignment
 
-**Status (2026-10-06):** **verified** on `feature/tel-007`, not merged (`DEC-SCOPE-084` DI1–DI4 + D1–D6, migration `0084_tel_distribution`,
-API contract §12J; re-chained after bdm-025 082 / 0082 and tel-012 083 / 0083). Spec `docs/superpowers/specs/2026-10-06-tel-007-lead-distribution-design.md`.
+**Status (2026-10-06):** **verified** on `feature/tel-007`, not merged (`DEC-SCOPE-085` DI1–DI4 + D1–D6, migration `0084_tel_distribution`,
+API contract §12K; re-chained after bdm-025 082 / 0082 and tel-012 083 / 0083). Spec `docs/superpowers/specs/2026-10-06-tel-007-lead-distribution-design.md`.
 
 - **Business requirement:** §17, T11, T18, T23.
 - **Existing behavior:** admins set `owner_id` by hand only.
@@ -428,6 +428,9 @@ API contract §12J; re-chained after bdm-025 082 / 0082 and tel-012 083 / 0083).
 - **Complexity:** large · **Risk:** high
 
 ### tel-008 — Telecaller lead workspace: My Leads, lead detail, priority
+
+**Status (2026-10-06):** **merged** to `main` as PR #85 @ `b76c92f7` (`DEC-SCOPE-084` W1 + D1–D6, no migration, API contract §12J). Spec
+`docs/superpowers/specs/2026-10-06-tel-008-lead-workspace-design.md`. "Due follow-up" filter → tel-011; other action buttons → their items. The inherited script panel (below) is built (D6).
 
 **Inherited from tel-012 (`DEC-SCOPE-083` C2):** the lead-detail **script panel**. It shows the lead's product's active script from
 `GET /telecaller/scripts?product_id=`.
@@ -554,7 +557,7 @@ API contract §12J; re-chained after bdm-025 082 / 0082 and tel-012 083 / 0083).
 
 ### tel-012 — Script, message-template and brochure library
 
-**Status (2026-10-06):** verified on `feature/tel-012`, not yet merged (`DEC-SCOPE-083` C1–C4, migration `0083_tel_content`, re-chained
+**Status (2026-10-06):** **merged** to `main` as PR #83 @ `50838192` (`DEC-SCOPE-083` C1–C4, migration `0083_tel_content`, re-chained
 after tel-003 `0078`, bdm-005 `0079`, tel-022 `0080`, tel-004 `0081` and bdm-025 `0082`). C2 moves `GET /telecaller/leads/{id}/render` and the lead-detail script panel to tel-008 / tel-013.
 
 - **Business requirement:** §6, §11 templates, §12 email kinds, T9.
@@ -1142,7 +1145,7 @@ graph TD
 
 ### 5.4 Migrations
 
-Numbers are **provisional**. `main` is at `0081_lead_stage_pipeline` (tel-004, merged 2026-10-06; tel-001 took `0075`, tel-002 `0076`, bdm-008 `0077`, tel-003 `0078`, bdm-005 `0079`, tel-022 `0080`; tel-017 has none; bdm-005/bdm-013/tel-022/tel-004 took `DEC-SCOPE-078`–`081`), so the next telecaller migration will be `0082` or later, and the next decision `DEC-SCOPE-082` or later. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
+Numbers are **provisional**. `main` is at `0083_tel_content` (tel-012, merged 2026-10-06; tel-001 took `0075`, tel-002 `0076`, bdm-008 `0077`, tel-003 `0078`, bdm-005 `0079`, tel-022 `0080`, tel-004 `0081`, bdm-025 `0082`; tel-017 has none; bdm-005/bdm-013/tel-022/tel-004/bdm-025/tel-012 took `DEC-SCOPE-078`–`083`; tel-008, merged 2026-10-06 with no migration, took `DEC-SCOPE-084`), so the next telecaller migration will be `0084` or later, and the next decision `DEC-SCOPE-085` or later. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
 
 | Item | Migration content |
 |---|---|

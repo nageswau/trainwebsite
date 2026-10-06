@@ -2,7 +2,7 @@
 
 Backlog: `docs/delivery/TELECALLER_CRM_BACKLOG.md` tel-007 (EVID-019 §17, Appendix A L560–L582; `DEC-SCOPE-073` T11, T18, T22, T23).
 Dependencies tel-001, tel-002, tel-003 and tel-004 are merged (tel-004 PR #81 @ `69829a59`); branch `feature/tel-007` from `main` @ `3986958c`.
-Decision: `DEC-SCOPE-084`. Migration: `0084_tel_distribution` (after `0083_tel_content`). API contract §12J. Drafted as `DEC-SCOPE-082` / `0082` / §12I;
+Decision: `DEC-SCOPE-085`. Migration: `0084_tel_distribution` (after `0083_tel_content`). API contract §12K. Drafted as `DEC-SCOPE-082` / `0082` / §12I;
 re-chained on `main` @ `50838192` (bdm-025: 082 / 0082; tel-012: 083 / 0083 / §12I).
 
 ## 1. Owner answers (2026-10-06, `EXPLICIT_APPROVAL`) and recorded defaults
@@ -56,7 +56,7 @@ Creation is guarded (skip if the tables exist). Downgrade refuses while any rule
 - `assignee(db, actor, user_id, *, lock)`: the target check shared by rules and manual assignment (not a telecaller / inactive → 422; a manager's
   non-report → 403). The profile is read `FOR SHARE` on writes so a concurrent manager change waits.
 
-## 5. API (`API_CONTRACT.md` §12J)
+## 5. API (`API_CONTRACT.md` §12K)
 
 All routes: `telecaller_manager` or `super_admin` (else 403; signed out 401). Lists are `{items, total, limit, offset}`.
 
