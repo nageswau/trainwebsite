@@ -88,8 +88,14 @@ def stored_state(mou: BdmMou) -> dict:
     return {"status": mou.status, **{f: getattr(mou, f) for f in FIELDS}}
 
 
-def stale_status(current: str) -> HTTPException:
-    return HTTPException(409, {"message": f"This MoU moved to {label(current)} meanwhile", "code": "mou_status_changed", "current_status": current})
+def check_status_change(before: str, status: str, from_status: str | None) -> None:
+    """A status change from the form (spec §6.4 step 5): stale `from_status` 409, Expired 409 (M9), the same status 422."""
+    if from_status != before:
+        raise HTTPException(409, {"message": f"This MoU moved to {label(before)} meanwhile", "code": "mou_status_changed", "current_status": before})
+    if before == "expired":
+        raise HTTPException(409, MOU_EXPIRED)
+    if status == before:
+        raise _invalid("status", SAME_STATUS, status)
 
 
 async def load_current(db: AsyncSession, org: BdmOrganization, *, lock: bool = False) -> BdmMou | None:

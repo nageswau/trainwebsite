@@ -181,7 +181,7 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
           setHistoryVersion((v) => v + 1);
         }}
       />
-      {mou !== undefined && <BdmOrganizationMou orgId={org.id} initial={mou} onNotice={(text) => notify(text)} onPipelineChanged={() => void reloadOrganization()} />}
+      {mou !== undefined && <BdmOrganizationMou orgId={org.id} initial={mou} onNotice={notify}onPipelineChanged={() => void reloadOrganization()} />}
       {showEditor ? (
         <section className="action-card wide" aria-label="Edit details">
           <h3>Edit details</h3>
