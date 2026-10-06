@@ -10,7 +10,7 @@ import { DetailList, multiline } from "@/components/BdmOrganizationProfileDetail
 import { sendJson, sendRequest } from "@/lib/apiErrors";
 import { isMouBody, isOrgMou, type Mou, MOU_LADDER, mouConflict, type OrgMou, orgMouUrl } from "@/lib/bdmMous";
 import { display } from "@/lib/bdmOrganizations";
-import { formatCalendarDate, formatDate } from "@/lib/formatDate";
+import { formatCalendarDate, formatSchoolDateTime } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 type Step = "done" | "current" | "upcoming";
@@ -116,7 +116,7 @@ export default function BdmOrganizationMou({ orgId, initial, onNotice, onPipelin
       ["Valid from", day(current.valid_from)],
       ["Valid until (renewal date)", day(current.valid_until)],
       ["Notes", multiline(current.notes)],
-      ["Status changed", formatDate(current.status_changed_at)],
+      ["Status changed", formatSchoolDateTime(current.status_changed_at, true)],
     ];
     body = (
       <>

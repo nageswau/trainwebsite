@@ -3,7 +3,7 @@ import { type ChangeEvent, useState } from "react";
 
 import { sendRequest } from "@/lib/apiErrors";
 import { isMouBody, type Mou, mouDocumentUrl, orgMouUrl } from "@/lib/bdmMous";
-import { formatDate } from "@/lib/formatDate";
+import { formatSchoolDateTime } from "@/lib/formatDate";
 import { refocus } from "@/lib/focus";
 
 const MAX_BYTES = 20 * 1024 * 1024; // the API's max_upload_bytes; fast feedback only, the server re-checks by content
@@ -41,7 +41,7 @@ export default function BdmMouDocument({ orgId, mou, onUploaded }: { orgId: stri
     <div className="field">
       {doc ? (
         <p style={{ margin: 0 }}>
-          Document: {doc.name ?? "on file"} · uploaded {formatDate(doc.uploaded_at)}{" "}
+          Document: {doc.name ?? "on file"} · uploaded {formatSchoolDateTime(doc.uploaded_at, true)}{" "}
           <a className="btn ghost small" href={mouDocumentUrl(mou.id)} download>
             Download document ({doc.content_type === "application/pdf" ? "PDF" : "image"})
           </a>
