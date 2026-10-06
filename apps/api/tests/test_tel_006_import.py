@@ -292,7 +292,7 @@ async def test_the_template_is_the_header_row(client, db_session):
 @pytest.mark.asyncio
 async def test_history_lists_own_batches_and_the_report_is_private(client, db_session, recorded):
     camp = await campaign(db_session)
-    other = await manager_in(client, db_session)
+    await manager_in(client, db_session)
     theirs = (await upload(client, camp, csv_bytes([row()]))).json()
     me = await manager_in(client, db_session)
     mine = (await upload(client, camp, csv_bytes([row(), row(phone="1")]))).json()
@@ -309,4 +309,3 @@ async def test_history_lists_own_batches_and_the_report_is_private(client, db_se
     ids = [item["id"] for item in (await client.get(f"{IMPORTS}?limit=100")).json()["items"]]
     assert {mine["id"], theirs["id"]} <= set(ids)
     assert (await client.get(f"{IMPORTS}/{theirs['id']}")).status_code == 200
-    assert other.id != me.id
