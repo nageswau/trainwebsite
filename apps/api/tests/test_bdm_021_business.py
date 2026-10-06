@@ -167,10 +167,11 @@ async def test_untracked_stages_and_lines_are_labelled_not_zero(client, db_sessi
     body = (await client.get(business(org["id"]))).json()
     internship = by_key(body["funnel"])["internship"]
     assert (internship["tracked"], internship["count"]) == (False, None)
+    assert not internship["definition"].startswith("Not tracked")  # QA21-01: the panel's badge says it; the note says why
     for key in ("internship", "placement", "other"):
         line = by_key(body["revenue"]["lines"])[key]
         assert (line["tracked"], line["amount"]) == (False, None)
-        assert line["definition"]
+        assert line["definition"] and not line["definition"].startswith("Not tracked")
 
 
 @pytest.mark.asyncio

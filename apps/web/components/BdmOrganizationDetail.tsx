@@ -239,7 +239,7 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
       {leads !== undefined && ( // bdm-017 (L6): the BDM view adds (assigned and not archived = can_edit); the manager view reads
         <BdmOrganizationLeads organizationId={org.id} initial={leads} canAdd={basePath === "/bdm/organizations" && p.can_edit} onNotice={notify} />
       )}
-      {business !== undefined && org.bdm_type === "college" && ( // bdm-021: the funnel builds on the leads above; read by the page
+      {business !== undefined && ( // bdm-021: the funnel builds on the leads above; the page passes it for College organizations only
         <BdmOrganizationBusiness organizationId={org.id} initial={business} />
       )}
       {p.can_reassign && (

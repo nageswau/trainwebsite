@@ -24,14 +24,14 @@ STAGES = (
     ("registrations", "Registrations", "Students whose account is linked to one of these leads."),
     ("training", "Training", "Registered students with at least one enrollment that is not withdrawn."),
     ("certification", "Certification", "Registered students with at least one issued certificate."),
-    ("internship", "Internship", "Not tracked yet: internships are not recorded in EduSphere."),
+    ("internship", "Internship", "Internships are not recorded in EduSphere."),
     ("placement", "Placement", "Registered students with an accepted or joined job offer."),
 )
 REVENUE_LINES = (
     ("training", "Training fees", "Paid INR payments of the registered students; pending, failed and refunded payments are excluded."),
-    ("internship", "Internship", "Not tracked yet: no internship revenue is recorded."),
-    ("placement", "Placement", "Not tracked yet: no placement revenue is recorded."),
-    ("other", "Other", "Not tracked yet: no other revenue is recorded."),
+    ("internship", "Internship", "No internship revenue is recorded in EduSphere."),
+    ("placement", "Placement", "No placement revenue is recorded in EduSphere."),
+    ("other", "Other", "No other revenue is recorded in EduSphere."),
 )
 
 

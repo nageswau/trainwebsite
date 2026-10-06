@@ -20,7 +20,7 @@ merged on `main`, migration `0074_enquiry_bdm_attribution`) · **Decision:** `DE
 |---|---|---|---|
 | B1 | Which organizations have a business view | Every organization of the **College module** (`bdm_type = 'college'`, any `org_type`). Any other module → **404**, the same as a missing one | Q-03: university / corporate / other organizations created by a College BDM belong to the College module; their leads are IT leads |
 | B2 | Who sees the funnel | Everyone who can read the organization (`load_scoped`: College BDMs by type, the team's manager, super_admin) | Same audience as the lead list (bdm-017 L6); counts only |
-| B3 | Who sees revenue | The **assigned BDM**, a `bdm_manager` (team scope already applied) and `super_admin`. Any other College BDM gets `revenue: null`, and the panel says revenue is visible to the assigned BDM and managers | The backlog's security note: revenue is business-sensitive, visible to the owning BDM, the manager and super_admin only |
+| B3 | Who sees revenue | The **assigned BDM**, a `bdm_manager` (team scope already applied) and `super_admin`. Any other College BDM gets `revenue: null`, and the panel says who can see revenue | The backlog's security note: revenue is business-sensitive, visible to the owning BDM, the manager and super_admin only |
 | B4 | Period | **All time**, computed live on every request (no snapshot, no cache) | No period in the source; bdm-024 owns period views |
 | B5 | Contacted | **= Leads** (Q-14: "students contacted = leads entered"), shown with that definition | D23 |
 | B6 | Stage counting | Each stage counts **distinct students** independently by its definition (not "furthest stage"); bars are sized against Leads | Definitions stay literal and checkable (AC1) |
@@ -38,7 +38,7 @@ merged on `main`, migration `0074_enquiry_bdm_attribution`) · **Decision:** `DE
 | `registrations` | Registrations | Distinct students linked to one of these leads (the explicit conversion link) |
 | `training` | Training | Students in `S` with at least one enrollment that is not withdrawn |
 | `certification` | Certification | Students in `S` with at least one issued certificate |
-| `internship` | Internship | Not tracked: internships are not recorded in EduSphere |
+| `internship` | Internship | Not tracked: "Internships are not recorded in EduSphere." (the badge carries "Not tracked yet"; QA21-01) |
 | `placement` | Placement | Students in `S` with an accepted or joined job offer |
 
 A student linked to leads of two organizations can't exist: L9's `uq_enquiries_converted_user` allows one lead per student (first
@@ -75,7 +75,7 @@ conversion wins). Unlinking a lead removes the student from every later stage on
   manager), rendered only when `organization.bdm_type === "college"`. It reuses ENH-017's `.pipeline-funnel` markup: the count is the
   text, and the bar is decoration (`aria-hidden`) sized against Leads. Each stage shows its definition as muted text. Untracked stages and
   lines show the "Not tracked yet" badge (no number). Revenue uses `formatInr` (`lib/bdmAppointments.ts`). When `revenue` is null:
-  "Revenue is visible to the assigned BDM and managers."
+  "Revenue is visible to the organization's assigned BDM and their manager."
 - Loaded on the server alongside the organization (the `firstMou` pattern): `lib/bdmBusinessServer.ts#firstBusiness` never rejects.
   A `null` gives a `role="alert"` error with "Try again", which re-fetches on the client. A non-college organization doesn't request it.
 - Empty state: zero leads → "No leads yet. The funnel starts when leads are added." The tracked stages still read 0 (real zeros).
