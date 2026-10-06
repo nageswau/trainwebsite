@@ -907,7 +907,7 @@ division-change edge case does not apply: `User.division` cannot change after cr
 
 ### tel-022 — Daily + monthly targets
 
-**Status (2026-10-06):** verified on `feature/tel-022` (`DEC-SCOPE-080`, migration `0080_tel_targets`; both numbers provisional until merge); owner answers G1–G4. Not merged.
+**Status (2026-10-06):** **merged** to `main` as PR #80 @ `a38955d5` (`DEC-SCOPE-080`, migration `0080_tel_targets`); owner answers G1–G4.
 
 - **Business requirement:** §15, T28.
 - **Existing behavior:** none (bdm-016 is planned for BDMs).
