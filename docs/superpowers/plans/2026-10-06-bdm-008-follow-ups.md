@@ -2501,7 +2501,7 @@ test("BDM follow-ups: add, counts, done, cancel, manager read-only, phone width"
   - Decision register: `### DEC-SCOPE-074 — Follow-ups and tasks (bdm-008)` with Question, Evidence (EVID-016 §5/§13/§15/§4 Common), Answer F1–F7 + defaults, Status `EXPLICIT_APPROVAL` (in-session 2026-10-05/06), links to spec/plan, migration `0076`.
   - Backlog bdm-008: a status block "implemented on `feature/bdm-008-follow-ups` (DEC-SCOPE-074, 0076) — NOT COMPLETE: awaiting browser validation and Codex review" + lite evidence.
   - RTM: a `bdm-008` row (requirement → decision → AC1–AC9 → screens → API/DB → tests → code).
-  - SCREEN_CATALOG (+ json) and ROLE_NAVIGATION: `/bdm/follow-ups`, `/bdm/manager/follow-ups`, the organization profile section, the nav entries.
+  - ROLE_NAVIGATION: `/bdm/follow-ups`, `/bdm/manager/follow-ups`, the organization profile section, the nav entries. (Executed note: BDM screens carry no `SCREEN_CATALOG` id by precedent — bdm-001…007 and tel-001's note — so the catalogue files are not changed.)
 - [ ] **Step 3: Static checks** — `npx tsc --noEmit`; `npx eslint` on the changed web files; `python -m ruff check` on the changed api files; `python -m mypy app` and compare with `main`'s count.
 - [ ] **Step 4: LITE backend + web set** — run LITE and the web files from Tasks 10–14 plus `BdmOrganizationDetail`, `BdmOrganizationPages`, `navigation.bdm`.
 - [ ] **Step 5: Commit** `docs(bdm-008): traceability, contract, data model; e2e spec`
