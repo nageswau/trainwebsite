@@ -4,6 +4,7 @@ import uuid
 
 import pytest
 
+from app.models import Enquiry
 from tests.bdm001_helpers import USERS, email, login, make_user
 
 ZERO = uuid.UUID(int=0)
@@ -68,3 +69,68 @@ async def test_every_overseas_counselor_route_refuses_an_it_counselor(client, db
     await login(client, await make_user(db_session, "counselor", "it"))
     response = await client.request(method, path, json=body)
     assert response.status_code == 403, response.text
+
+
+# --- AC2 / C1 -------------------------------------------------------------------------------------------------------------
+async def _lead(db, division: str, owner, name: str, status: str = "new") -> Enquiry:
+    row = Enquiry(division=division, name=name, email=email("lead"), subject="Full Stack", message="x", owner_id=owner.id if owner else None, status=status)
+    db.add(row)
+    await db.commit()
+    return row
+
+
+@pytest.mark.asyncio
+async def test_it_counselor_sees_only_it_leads_routed_to_them(client, db_session):
+    me, other = await make_user(db_session, "counselor", "it"), await make_user(db_session, "counselor", "it")
+    tag = uuid.uuid4().hex[:6]
+    await _lead(db_session, "it", me, f"Mine {tag}")
+    await _lead(db_session, "it", me, f"Mine contacted {tag}", status="contacted")
+    await _lead(db_session, "it", other, f"Theirs {tag}")
+    await _lead(db_session, "it", None, f"Unrouted {tag}")
+    await _lead(db_session, "overseas", me, f"Overseas {tag}")
+    await login(client, me)
+    leads = await client.get("/api/v1/portal/it/counselor/leads")
+    assert leads.status_code == 200, leads.text
+    assert leads.json()["title"] == "My Leads"
+    assert {r["name"] for r in leads.json()["rows"]} == {f"Mine {tag}", f"Mine contacted {tag}"}
+    dash = await client.get("/api/v1/portal/it/counselor/dashboard")
+    assert dash.status_code == 200, dash.text
+    assert {m["label"]: m["value"] for m in dash.json()["metrics"]} == {"Leads routed to you": 2, "New leads": 1}
+    assert {r["name"] for r in dash.json()["rows"]} == {f"Mine {tag}", f"Mine contacted {tag}"}
+
+
+@pytest.mark.asyncio
+async def test_it_counselor_with_no_leads_gets_empty_sections(client, db_session):
+    await login(client, await make_user(db_session, "counselor", "it"))
+    leads = await client.get("/api/v1/portal/it/counselor/leads")
+    assert leads.status_code == 200 and leads.json()["rows"] == []
+    dash = await client.get("/api/v1/portal/it/counselor/dashboard")
+    assert {m["label"]: m["value"] for m in dash.json()["metrics"]} == {"Leads routed to you": 0, "New leads": 0}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("section", ["students", "documents", "applications", "school-applications", "visa", "appointments", "counselor-chat", "reports"])
+async def test_it_counselor_has_no_overseas_sections(client, db_session, section):
+    await login(client, await make_user(db_session, "counselor", "it"))
+    assert (await client.get(f"/api/v1/portal/it/counselor/{section}")).status_code == 404
+
+
+# --- AC3 / AC4: each counselor's portal refuses the other division --------------------------------------------------------
+@pytest.mark.asyncio
+async def test_counselor_portals_refuse_the_other_division(client, db_session):
+    await login(client, await make_user(db_session, "counselor", "it"))
+    assert (await client.get("/api/v1/portal/overseas/counselor/dashboard")).status_code == 403
+    await login(client, await make_user(db_session, "counselor", "overseas"))
+    assert (await client.get("/api/v1/portal/it/counselor/leads")).status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_overseas_counselor_leads_still_ignore_it_leads(client, db_session):
+    me = await make_user(db_session, "counselor", "overseas")
+    tag = uuid.uuid4().hex[:6]
+    await _lead(db_session, "overseas", me, f"Overseas mine {tag}")
+    await _lead(db_session, "it", me, f"IT stray {tag}")
+    await login(client, me)
+    response = await client.get("/api/v1/portal/overseas/counselor/leads")
+    assert response.status_code == 200
+    assert {r["name"] for r in response.json()["rows"]} == {f"Overseas mine {tag}"}
