@@ -59,6 +59,7 @@ NOT_STARTED = {
 NO_REPORT = "This appointment has no meeting report"
 REPORT_LOCKED = "Meeting reports can only be changed on the day they were filed"
 FOLLOW_UP_DONE = "This follow-up is already done"
+FOLLOW_UP_CLEARED = "Follow-up date removed from the meeting report"  # bdm-008 §4.1; migration 0076 backfills the same words
 
 
 def appointment_types(bdm_type: str) -> tuple[str, ...]:
@@ -191,10 +192,10 @@ async def sync_follow_up(db: AsyncSession, appt: BdmAppointment, due_on: date | 
     if due_on is None:
         if task.status == "cancelled":
             return None
-        task.status = "cancelled"
+        task.status, task.cancelled_at, task.cancel_reason = "cancelled", func.now(), FOLLOW_UP_CLEARED
         return "cancelled"
-    if task.status == "cancelled":
-        task.status, task.due_on = "open", due_on
+    if task.status == "cancelled":  # also one an archive cancelled (bdm-008 §4.1): the BDM's own same-day report edit wins
+        task.status, task.due_on, task.cancelled_at, task.cancel_reason = "open", due_on, None, None
         return "reopened"
     if task.due_on == due_on:
         return None
