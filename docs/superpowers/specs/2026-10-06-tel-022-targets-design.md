@@ -187,3 +187,10 @@ the API returns 401. Mobile (390px) and tablet (820px) have no horizontal scroll
 | QA-04 | Low | Manager Targets | Clear "Starts on" (or leave a partial date) and save | A plain sentence | Raw Pydantic text "Starts: Input should be a valid date or datetime, input is too short" | Fixed: the browser asks "Choose a start date." |
 | QA-05 | Low | Manager Targets | Choose "Overseas team default", refresh | The same subject stays chosen (Products/Campaigns keep their place in the URL) | Resets to "IT team default" | Fixed: `?for=it\|overseas\|<telecaller id>` |
 | QA-06 | Low | Manager Targets, 390px | Tap "Use team default" | A 44px touch target (portal mobile rule) | An 18px checkbox row | Fixed |
+
+QA-03 (withdrawn, by design): "Use team default" is offered even when no override is in effect, because it is also how a manager
+ends a *scheduled* future override.
+
+Re-verified after the fixes (Edge, same stack): the restored `?for=<id>` names the telecaller, "In effect on 10 Nov 2026" shows Calls 90
+(Override), Follow-ups 20 (Team default) and November's 1800 / 50, a blank start date shows "Choose a start date.", and the checkbox rows are 44px at 390px
+with no page side-scroll. There are no console errors, and the tel-001/002/017/022 Playwright specs pass (8/8).

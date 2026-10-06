@@ -883,6 +883,8 @@ division-change edge case does not apply: `User.division` cannot change after cr
 
 ### tel-022 — Daily + monthly targets
 
+**Status (2026-10-06):** verified on `feature/tel-022` (`DEC-SCOPE-078`, migration `0079_tel_targets`; both numbers provisional until merge); owner answers G1–G4. Not merged.
+
 - **Business requirement:** §15, T28.
 - **Existing behavior:** none (bdm-016 is planned for BDMs).
 - **Expected behavior:**
