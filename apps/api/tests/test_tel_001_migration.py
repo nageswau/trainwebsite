@@ -36,7 +36,7 @@ def _config() -> Config:
 def test_migration_chains_after_0074_and_is_the_single_head():
     assert _migration.revision == HEAD
     assert _migration.down_revision == BASE
-    assert ScriptDirectory.from_config(_config()).get_heads() == [HEAD]
+    assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1  # tel-002's 0076 now follows this revision
 
 
 def test_model_matches_the_migration():

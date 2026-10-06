@@ -222,6 +222,8 @@ NO-ASSUMPTION MODE. Prepared 2026-10-05 at the user's request. **No code was wri
 
 ### tel-002 — Product/interest catalogue + campaign list
 
+**Status (2026-10-06):** implemented and verified on `feature/tel-002` (`DEC-SCOPE-074` P1–P4, migration `0076_tel_catalogue`) — ready for owner sign-off; not yet merged.
+
 - **Business requirement:** §3 interest selection; §2 "exact campaign/source", e.g. "Instagram → Cyber Security → September 2026 Campaign".
 - **Existing behavior:** none. `enquiries.subject` is free text, and IT courses (`Course`/`Program`) and `seed/countries.json` exist separately.
 - **Expected behavior:**

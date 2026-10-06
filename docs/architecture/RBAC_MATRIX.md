@@ -537,6 +537,17 @@ Authorization follows the inline pattern (`User.role` check → `services/teleca
 
 **Explicit denies:** a `telecaller` or `telecaller_manager` cannot write Employee ID, team or reporting manager (no route; `PATCH /telecaller/profile` accepts `phone` only, any other key → `422` "Unknown field: …"); `PATCH /admin/users` never writes `role` or `division`; a team change → `422` "Team cannot be changed here" (TL7, tel-025 owns team moves); a reporting manager must be an **active `telecaller_manager`** (else `422`); a `telecaller` calling `/telecaller/manager/team` → `403` "Telecaller manager role required"; a `telecaller_manager` calling `/telecaller/me` → `403` "Telecaller role required"; every other role on any telecaller route → `403`. A division admin cannot create a manager, an other-team telecaller, or any `global` account. Every create or edit writes one `AuditLog` row (profile before/after on admin edit; `telecaller.profile_update` with `{"fields": ["phone"]}` — no values — on a self-edit).
 
+### 2.15 Telecaller catalogue *(net-new, added 2026-10-06 — `DEC-SCOPE-074`, `tel-002`)*
+
+Inline pattern (role check in `services/telecaller_catalogue.py` / `services/telecaller.require_manager`); the catalogue is global (T17),
+so there is no row scope.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller_manager`, `super_admin` | create / edit / deactivate / reactivate products and campaigns; list them including inactive rows | all rows | `tel-002` |
+| `telecaller`, `it_admin`, `overseas_admin`, `counselor` | list **active** products and campaigns (pickers) | all active rows | `tel-002` |
+| every other role | none → `403` "Your role cannot view the telecaller catalogue" (writes: `403` "Telecaller manager role required") | — | `tel-002` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

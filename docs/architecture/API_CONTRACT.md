@@ -815,6 +815,25 @@ Any write by a non-owner (manager, super_admin, other BDM) is 403 after the 404 
 
 ---
 
+## 12D. Telecaller catalogue (`tel-002`) — addendum, 2026-10-06
+
+`DEC-SCOPE-074`; design spec `docs/superpowers/specs/2026-10-06-tel-002-catalogue-design.md` §4; `RBAC_MATRIX.md` §2.15; migration
+`0076_tel_catalogue`. Lists are `{items, total, limit, offset}` (`limit` default 50, max 100). Write bodies reject unknown keys; every `422`
+is one sentence naming the field (e.g. "Name is required", "Source: Input should be …"). Readers = `telecaller`, `telecaller_manager`,
+`super_admin`, `it_admin`, `overseas_admin`, `counselor`; writers = `telecaller_manager`, `super_admin`. Other roles → `403`; signed out → `401`.
+
+| Method/Path | Roles | Notes / status codes |
+|---|---|---|
+| `GET /telecaller/products` | readers | Filters `group` (`it\|overseas\|other`, else `422`), `active`, `q` (name). Non-managers always get active rows only (an `active` param cannot widen it). Order: IT, Overseas, Other, then `sort_order`, then name. Item `{id, group, name, team, program: {id, title} \| null, active, sort_order}` |
+| `POST /telecaller/products` | writers | `201`. Body `{group, name, team?, program_id?, sort_order?}`. `team` omitted → the group's team (IT/Overseas) or none (Other); an IT/Overseas `team` ≠ group → `422` "IT products always route to the IT team" / "Overseas products …". `program_id` on a non-IT product → `422` "Only IT products can link to a course"; missing/inactive program → `422` "Choose an active course". `sort_order` omitted → after the group's last product. Duplicate name in the group (case-insensitive) → `409` |
+| `PATCH /telecaller/products/{id}` | writers | Body any of `{name, team, program_id, active, sort_order}`; omitted = unchanged; `null` clears `team` (Other only) or `program_id`, else `422`. A different `group` → `422` "Group cannot be changed". Unknown id → `404`. Renaming keeps the id (lead links survive) |
+| `GET /telecaller/campaigns` | readers | Filters `product_id`, `source` (one of the 13 keys, else `422`), `active`, `q` (name). Non-managers: active only. Order: active first, newest `start_date`, name. Item `{id, name, source, product: {id, name, group, active}, start_date, end_date, active}` |
+| `POST /telecaller/campaigns` | writers | `201`. Body `{name, source, product_id, start_date, end_date?}`. `source` ∈ `instagram, facebook, google, website, whatsapp, walk_in, college, school, agent, referral, exhibition_event, bdm, other`. Missing/inactive product → `422` "Choose an active product". `end_date < start_date` → `422` "End date cannot be before the start date". Duplicate name (case-insensitive, global) → `409` |
+| `PATCH /telecaller/campaigns/{id}` | writers | Body any of `{name, source, product_id, start_date, end_date, active}`; `null` clears only `end_date`. The date rule is checked on the merged row. Moving to another product needs an active one; keeping a since-deactivated product is allowed (P4). Unknown id → `404` |
+
+Every write adds an `AuditLog` row (`telecaller.product_create|product_update|campaign_create|campaign_update`, entity `tel_product` /
+`tel_campaign`, `metadata_json.fields` = the changed field names only).
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
