@@ -2826,6 +2826,13 @@ class SchoolCreate(BaseModel):
     vice_principal_name: str | None = Field(default=None, max_length=200)
 
 
+class SchoolCreateIn(SchoolCreate):
+    """The single create's body (SCH-003). bdm-018 (DEC-SCOPE-079 §5.5): optionally resolves a pending onboarding request in the same
+    transaction. A subclass, so ENH-029's bulk template (`SchoolCreate.model_fields`) does not gain the column."""
+
+    bdm_onboarding_request_id: UUID | None = None
+
+
 class SchoolUpdate(BaseModel):
     model_config = {"extra": "forbid"}
     tier: str | None = None
@@ -2847,6 +2854,14 @@ class SchoolUpdate(BaseModel):
     edusphere_bdm: str | None = Field(default=None, max_length=200)
     monthly_visit_schedule: str | None = Field(default=None, max_length=200)
     vice_principal_name: str | None = Field(default=None, max_length=200)
+
+
+class SchoolLinkedBdm(BaseModel):
+    """bdm-018 (H1): the School's BDM, derived from the linked organization's assignee; admin routes only."""
+
+    full_name: str
+    active: bool
+    organization_code: str
 
 
 class SchoolOut(BaseModel):
@@ -2875,6 +2890,7 @@ class SchoolOut(BaseModel):
     school_coordinator_name: str | None
     career_counsellor_names: list[str]
     created_at: datetime
+    linked_bdm: SchoolLinkedBdm | None = None
 
 
 class TierChangeService(BaseModel):
