@@ -46,7 +46,7 @@ export async function managerSearch(q: string, signal: AbortSignal, excludeId?: 
   return { items: items.map((m) => ({ id: m.id, label: m.full_name, detail: m.email })), truncated: page.total > page.items.length };
 }
 
-// --- bdm-025 (DEC-SCOPE-079): deactivation with a handover choice, later handover, BDM manager deactivation ---
+// --- bdm-025 (DEC-SCOPE-080): deactivation with a handover choice, later handover, BDM manager deactivation ---
 export type BdmPortfolio = { organizations: number; appointments: number; tasks: number; trips: number };
 export type BdmManagerRow = BdmManagerOption & { bdm_count: number };
 export const portfolioUrl = (bdmId: string) => `${BDMS_URL}/${bdmId}/portfolio`;

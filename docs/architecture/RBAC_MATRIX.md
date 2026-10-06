@@ -511,7 +511,7 @@ Archived organizations are read-only (`409` "Restore this organization first"). 
 
 **Explicit denies (bdm-010):** nobody decides their own trip (`403`); a manager never edits a trip or its expenses (no route); server-owned fields (`code`, `bdm_user_id`, statuses, `currency`, `decided_*`) in a body → `422`; a `bdm` on a manager route or a manager on a BDM route → `403`. Every change writes one `AuditLog` row (`bdm.trip_*`) in the same transaction.
 
-**BDM deactivation and handover (`bdm-025`, `DEC-SCOPE-079`, added 2026-10-06).** Same inline pattern.
+**BDM deactivation and handover (`bdm-025`, `DEC-SCOPE-080`, added 2026-10-06).** Same inline pattern.
 
 | Role | Can | Scope | Item |
 |---|---|---|---|
@@ -536,6 +536,10 @@ Archived organizations are read-only (`409` "Restore this organization first"). 
 | `it_admin`, `overseas_admin`, others | — | `403` | `bdm-006` |
 
 An appointment stays with its BDM when the organization is reassigned. `bdm_user_id`, `code`, `status`, `organization_id` (on PATCH) and `outcome` (outside complete) are unknown fields (`422`). Organization `last_meeting_at` / `next_meeting_at` expose dates only to organization readers.
+
+**BDM calendar (`bdm-013`, `DEC-SCOPE-079`).** Read-only `GET /bdm/calendar`. `bdm`: own calendar only (`bdm_user_id` → `422`).
+`bdm_manager`: one BDM who reports to them (`bdm_user_id` required; anyone else `404`). `super_admin`: any BDM (`404` if not a BDM).
+Every other role `403`. No write path.
 
 ### 2.14 Telecaller CRM *(net-new, added 2026-10-05 — `DEC-SCOPE-073`, `tel-001`)*
 Authorization follows the inline pattern (`User.role` check → `services/telecaller.py` scope helper → write); no `require_*` dependency. Permission bundles: `telecaller` → `telecaller:self`, `telecaller_manager` → `telecaller:team` (coarse; scope is enforced in the query layer).

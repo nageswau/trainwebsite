@@ -1535,7 +1535,7 @@ BDM_ASSIGNMENT_REASONS = ("bdm_deactivated", "portfolio_handover", "organization
 
 
 class BdmAssignmentHistory(Base):
-    """bdm-025 (DEC-SCOPE-079): one row per organization, appointment or task that changed owner. Append-only; `entity_id` has no
+    """bdm-025 (DEC-SCOPE-080): one row per organization, appointment or task that changed owner. Append-only; `entity_id` has no
     foreign key (polymorphic) -- those rows are never deleted (archived / cancelled instead)."""
 
     __tablename__ = "bdm_assignment_history"

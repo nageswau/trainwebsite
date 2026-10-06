@@ -116,5 +116,5 @@ update `AdminBdmRow.test.tsx` and `AdminBdmPanel.test.tsx`, new `AdminBdmManager
 
 ### Task 10: e2e + docs
 `tests/e2e/bdm-025-deactivation.spec.ts` (super_admin: create 2 BDMs + organization via API → deactivate A with handover to B
-in the UI → counts shown → success notice → A Inactive, "Hand over" visible). Docs: `DEC-SCOPE-079`, backlog status, RTM row,
+in the UI → counts shown → success notice → A Inactive, "Hand over" visible). Docs: `DEC-SCOPE-080`, backlog status, RTM row,
 `API_CONTRACT.md`, `DATA_MODEL.md`, `RBAC_MATRIX.md`. Commit.

@@ -1214,7 +1214,7 @@ Additive: two tables; `bdm_appointments` is not altered (its `outcome` / `next_f
 - **`bdm_tasks`** — minimal for bdm-007, extended by bdm-008. `kind` CHECK (`follow_up`, `task`); `title` (200); `due_on` date; `organization_id` FK nullable; `source` CHECK (`appointment_outcome`, `mou`, `manual`); `source_appointment_id` FK `bdm_appointments` nullable, unique `uq_bdm_tasks_source_appointment`, CHECK `(source = 'appointment_outcome') = (source_appointment_id IS NOT NULL)`; `assignee_user_id` FK `users`; `status` CHECK (`open`, `done`, `cancelled`) with `(status = 'done') = (completed_at IS NOT NULL)`; index `ix_bdm_tasks_assignee_status_due`. **bdm-008 (`0077_bdm_tasks_followups`, `DEC-SCOPE-075`):** `notes` (2000, manual items), `cancelled_at`, `cancel_reason` (500); CHECKs `ck_bdm_tasks_cancelled` `(status = 'cancelled') = (cancelled_at IS NOT NULL)` and `ck_bdm_tasks_cancel_reason` (a reason only when cancelled); rows bdm-007 had cancelled are backfilled ("Follow-up date removed from the meeting report"). Archiving an organization cancels its open items ("Organization archived"); `mou` stays reserved for bdm-005. Downgrade refuses while `manual` tasks exist.
 - Backfill (0072, idempotent): a legacy report for every completed appointment; an open follow-up for each stored `next_follow_up_on`. Downgrade refuses while non-legacy reports exist.
 
-## BDM Assignment History (`bdm-025`, `DEC-SCOPE-079`; migration `0080_bdm_assignment_history`, after `0079_bdm_mous`)
+## BDM Assignment History (`bdm-025`, `DEC-SCOPE-080`; migration `0080_bdm_assignment_history`, after `0079_bdm_mous`)
 
 Additive only: one append-only table. No existing table or column changes.
 

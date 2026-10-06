@@ -1,4 +1,4 @@
-"""bdm-025 (DEC-SCOPE-079, spec §5): BDM deactivation, portfolio handover and BDM manager deactivation.
+"""bdm-025 (DEC-SCOPE-080, spec §5): BDM deactivation, portfolio handover and BDM manager deactivation.
 
 Functions only; nothing here commits -- the route owns the transaction. Lock order everywhere: the source's open organizations,
 then the source user (FOR UPDATE), then the target (FOR SHARE) -- the same organization-before-user order as bdm-002's reassign,

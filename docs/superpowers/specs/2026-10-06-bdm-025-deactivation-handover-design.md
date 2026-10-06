@@ -3,10 +3,10 @@
 - **Item:** `bdm-025` (`docs/delivery/BDM_CRM_BACKLOG.md` §4). Depends on bdm-002, bdm-006, bdm-008, bdm-010 — all merged on
   `main` @ `442ce465`. The owner confirmed in-session (2026-10-06) that "merged with verified QA evidence" counts as completed for
   bdm-006 (status line stale) and bdm-008 ("VERIFIED — ready for owner sign-off").
-- **Decision:** `DEC-SCOPE-079`. **Migration:** `0080_bdm_assignment_history` (down_revision `0079_bdm_mous`). Drafted as
+- **Decision:** `DEC-SCOPE-080`. **Migration:** `0080_bdm_assignment_history` (down_revision `0079_bdm_mous`). Drafted as
   `DEC-SCOPE-076` / `0078`, after `0077_bdm_tasks_followups`. It was renumbered on merging `main` @ `230a043f`, where tel-017,
-  tel-003 and bdm-005 took `076`–`078` and `0078`–`0079`.
-  Per the backlog's §6.2 rule, the branch that merges second renumbers (bdm-005 is in flight in parallel).
+  tel-003 and bdm-005 took `076`–`078` and `0078`–`0079`, so it became `079`. Then it became `080` on merging `main` @ `6655e284`,
+  where bdm-013 (no migration) took `079`. Per the backlog's §6.2 rule, the branch that merges second renumbers.
 - **Branch / worktree:** `worktree-bdm-025` at `.claude/worktrees/bdm-025`, from `origin/main` @ `442ce465`.
 - **Evidence:** `EVID-016` (`BDM Functionalities.md`, `DERIVED_BLUEPRINT`) §1 BDM Management, lines 5–25 (Reporting Manager,
   Active/Inactive); backlog `DEC-SCOPE-055` D3, D4, D10 (Q-01); bdm-001 B7 (type fixed, transfers are bdm-025); bdm-010 T2/T3

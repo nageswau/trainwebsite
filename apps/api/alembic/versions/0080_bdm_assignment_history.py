@@ -1,4 +1,4 @@
-"""bdm-025 (DEC-SCOPE-079) -- bdm_assignment_history.
+"""bdm-025 (DEC-SCOPE-080) -- bdm_assignment_history.
 
 docs/superpowers/specs/2026-10-06-bdm-025-deactivation-handover-design.md §4. Additive: one append-only table recording each
 organization, appointment or task that changed owner (deactivation, later handover, bdm-002's single reassign). No existing row is
@@ -7,7 +7,7 @@ idiom). downgrade() refuses while rows exist: they are the only record of who ow
 
 Re-chained 2026-10-06 on merging `main` @ `230a043f`: drafted as `0078_bdm_assignment_history` after `0077_bdm_tasks_followups`
 (DEC-SCOPE-076); tel-003 took `0078_enquiry_lead_record` (DEC-SCOPE-077) and bdm-005 `0079_bdm_mous` (DEC-SCOPE-078), and tel-017
-took DEC-SCOPE-076, so this is `0080_bdm_assignment_history` after `0079_bdm_mous` and the decision is DEC-SCOPE-079. A database
+took DEC-SCOPE-076, so this is `0080_bdm_assignment_history` after `0079_bdm_mous` and the decision became DEC-SCOPE-079 (DEC-SCOPE-080 after bdm-013 took 079 at `main` @ `6655e284`). A database
 stamped at `0078_bdm_assignment_history` is re-stamped with `alembic stamp --purge 0077_bdm_tasks_followups` then `upgrade head`.
 
 Revision ID: 0080_bdm_assignment_history
