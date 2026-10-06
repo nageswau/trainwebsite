@@ -14,8 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.bdm_stages import MOU_SIGNED_STAGE
 from app.models import BDM_MOU_EXPIRING, BDM_MOU_STATUS_LABELS, AuditLog, BdmMou, BdmMouEvent, BdmOrganization, User
 from app.services import bdm_organizations as org_svc
-from app.services.bdm import person_ref
 from app.services import bdm_pipeline
+from app.services.bdm import person_ref
 from app.services.bdm_pipeline import LOST_CONFLICT, _invalid
 
 IST = ZoneInfo("Asia/Kolkata")  # M2: "today" is the India calendar date (as bdm_appointments.IST)
