@@ -35,6 +35,29 @@ describe("BdmOrganizationDetail -- bdm-004 placement (QA4-05)", () => {
   });
 });
 
+describe("BdmOrganizationDetail -- bdm-018 school onboarding", () => {
+  const school = (onboarding: Organization["onboarding"]) => org({ org_type: "school", bdm_type: "school", permissions: perms({ can_edit: true }), onboarding });
+
+  it("shows the onboarding card after the MoU card for School organizations only", () => {
+    render(<BdmOrganizationDetail initial={school({ request: null, school: null, can_request: true })} basePath="/bdm/organizations" mou={{ current: null, can_start: false }} />);
+    const mou = screen.getByRole("region", { name: "MoU" });
+    expect(mou.nextElementSibling).toBe(screen.getByRole("region", { name: "School onboarding" }));
+    cleanup();
+    render(<BdmOrganizationDetail initial={org({ onboarding: null })} basePath="/bdm/organizations" />);
+    expect(screen.queryByRole("region", { name: "School onboarding" })).toBeNull();
+  });
+
+  it("a request re-renders the page from the returned organization and announces it", async () => {
+    const pendingOrg = school({ request: { id: "r1", status: "pending", created_at: "2026-10-06T05:00:00Z", resolved_at: null, reject_reason: null }, school: null, can_request: false });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(res({ organization: pendingOrg }, 201)));
+    render(<BdmOrganizationDetail initial={school({ request: null, school: null, can_request: true })} basePath="/bdm/organizations" />);
+    fireEvent.click(screen.getByRole("button", { name: "Request onboarding" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send request" }));
+    expect(await screen.findByText("Onboarding requested. Overseas Admin will create or link the School.")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "School onboarding" })).toHaveTextContent("Waiting for Overseas Admin");
+  });
+});
+
 describe("BdmOrganizationDetail -- bdm-005 MoU card", () => {
   it("places the MoU card right after the pipeline, and only when the page read it", () => {
     render(<BdmOrganizationDetail initial={org()} basePath="/bdm/organizations" mou={{ current: null, can_start: false }} />);
