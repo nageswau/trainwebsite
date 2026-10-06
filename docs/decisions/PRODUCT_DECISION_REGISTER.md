@@ -3641,3 +3641,22 @@ pipeline; that supersession takes effect with `tel-018`.
 - TL8 `PATCH /auth/me` refuses name/profile changes for `telecaller` (phone validated with the `/telecaller/profile` rule); other roles unchanged (owner, 2026-10-05).
 
 **Implementation:** migration `0075_telecaller_profiles`; roles `telecaller` (division = team) and `telecaller_manager` (`global`).
+
+### DEC-SCOPE-074 — MoU tracking (`bdm-005`)
+
+**Question:** which organizations track MoUs, how statuses move and expire, who may change and download them, what the document rules are, how an MoU couples to the pipeline (D28) and how renewals work (`BDM_CRM_BACKLOG.md` §4 bdm-005)?
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md`, `DERIVED_BLUEPRINT`) §10 MoU Tracking (339–369), Agent §B / School §B / College §B (Agreement, MoU, Contract, Renewal Date) — the source's lists are not an approval; `DEC-SCOPE-055` D19 (Q-10), D28 (Q-19); `DEC-SCOPE-065` P11; `DEC-SCOPE-071`; bdm-005 impact analysis 2026-10-06 (graphify-led).
+
+**Resolution:** owner, in-session 2026-10-06 (`EXPLICIT_APPROVAL` — six structured questions, the approach, then four design sections reviewed against the API, frontend and security skills; spec `docs/superpowers/specs/2026-10-06-bdm-005-mou-tracking-design.md` §3):
+- **M1** All three BDM types (agent, school, college) track MoUs.
+- **M2** Free moves among the 8 settable statuses (date rules enforced); `Expired` is derived, never stored or settable: Signed / Active with `valid_until` before today (Asia/Kolkata) reads Expired. Rejected re-opens by moving to another status.
+- **M3** Writes: the assigned BDM and `super_admin` (`can_edit`); reads and downloads follow organization scope; out of scope = 404; every download audited.
+- **M4** Document: PDF / JPEG / PNG by bytes, `max_upload_bytes`, metadata stripped; one current file; a replace keeps the old object.
+- **M5** D28: Signed advances the pipeline to the type's signed stage only when behind; Lost refuses MoU writes (409); archived refuses (409).
+- **M6** Renewal is a new row; one current MoU per organization; a new one only when none, or the current reads Expired / Rejected.
+- **M7** Both Signed and Active expire.
+- **M8** Upload rate limit 20 per user per rolling hour (429 `Retry-After`) — the first rate limit on a BDM route, approved by the owner.
+- **M9** An Expired MoU refuses status changes (409 `mou_expired`) but accepts date / reference / notes corrections and a document.
+
+**Consequences:** migration `0076_bdm_mous` (new `bdm_mous`, append-only `bdm_mou_events`; no existing row touched; downgrade refuses while MoUs exist); routes `GET|POST|PATCH /bdm/organizations/{id}/mou`, `PUT /bdm/organizations/{id}/mou/document`, `GET /bdm/mous`, `GET /bdm/mous/{id}/history`, `GET /bdm/mous/{id}/document`; an MoU card on both organization detail pages; pages `/bdm/mous`, `/bdm/manager/mous`. Residual risk recorded, not changed: `/local-files` serves the local upload directory unauthenticated (existing). **New Feature ID authorized:** `bdm-005`. **Status:** in implementation on `feature/bdm-005`.
