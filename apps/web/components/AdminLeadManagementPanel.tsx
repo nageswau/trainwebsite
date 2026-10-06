@@ -1,21 +1,28 @@
 "use client";
 
-import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { type FormEvent, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+import AdminLeadFilters, { LEAD_FILTERS, STATUS_OPTIONS, type LeadFilter, type Organization } from "@/components/AdminLeadFilters";
 import BdmConfirm from "@/components/BdmConfirm";
-import { sendJson, sendRequest } from "@/lib/apiErrors";
+import { sendJson, sendRequest, type Page } from "@/lib/apiErrors";
+import { pageOffset } from "@/lib/telecaller";
+import { SOURCE_LABEL, getPage } from "@/lib/telecallerCatalogue";
 
 type Ref = { id: string; full_name: string };
 type AdminLeadRow = {
   id: string; name: string; email: string; phone: string | null; division: string; subject: string; status: string; source: string; crm_sync_status: string;
   // bdm-017: null for website / manual enquiries
-  organization: { id: string; code: string; name: string } | null; bdm: Ref | null; converted_user: (Ref & { email: string }) | null;
+  organization: Organization | null; bdm: Ref | null; converted_user: (Ref & { email: string }) | null;
+  // tel-003 (spec §4): the lead record; each object is null when unset
+  lead_code: string; priority: "hot" | "warm" | "cold"; product: { id: string; name: string } | null; campaign: { id: string; name: string } | null;
+  telecaller: Ref | null; counselor: Ref | null;
 };
 type RowMessage = { id: string; text: string; failed: boolean };
 
-const STATUS_OPTIONS = ["new", "contacted", "qualified", "converted", "lost"];
-const WEBSITE = "website"; // the Organization filter's value for unattributed leads
+const LEADS_URL = "/api/v1/admin/leads";
+const PAGE_SIZE = 50;
+const PRIORITY_LABEL = { hot: "Hot", warm: "Warm", cold: "Cold" };
 
 function detailMessage(detail: unknown) {
   if (typeof detail === "string") return detail;
@@ -89,140 +96,154 @@ function LeadConversion({ row, onChanged, onMessage }: { row: AdminLeadRow; onCh
 // shows crm_sync_status directly, so a failed sync is visible at a glance rather than
 // requiring the admin to already know which lead needs attention.
 // bdm-017: each lead also shows the organization a BDM attributed it to (filterable), and the student account it converted to.
+// tel-003 (spec §5, T25): the API pages, filters and searches the list (no client-side cap); the filters, search and page live in the
+// URL (tel-002 QA-04), so refresh keeps the place and Back returns to the previous view. Each row shows the Lead ID and lead fields.
 export default function AdminLeadManagementPanel() {
   const router = useRouter();
-  const [leads, setLeads] = useState<AdminLeadRow[] | null>(null);
-  const [query, setQuery] = useState("");
-  const [organization, setOrganization] = useState("");
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const query = (params.get("q") ?? "").trim();
+  const offset = pageOffset(params.get("offset") ?? undefined);
+  const filters = Object.fromEntries(LEAD_FILTERS.map((key) => [key, params.get(key) ?? ""])) as Record<LeadFilter, string>;
+  const request = new URLSearchParams(Object.entries(filters).filter(([, value]) => value));
+  if (query) request.set("q", query);
+  request.set("limit", String(PAGE_SIZE));
+  request.set("offset", String(offset));
+  const requestUrl = `${LEADS_URL}?${request}`;
+  const filtered = !!query || Object.values(filters).some(Boolean);
+
+  const [data, setData] = useState<Page<AdminLeadRow> | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [version, setVersion] = useState(0);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<RowMessage | null>(null);
+  const seen = useRef(new Map<string, Organization>()); // the Organization filter's options: every organization shown so far
 
   useEffect(() => {
-    let cancelled = false;
-    fetch("/api/v1/admin/leads")
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data) => !cancelled && setLeads(data))
-      .catch(() => !cancelled && setLeads([]));
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    const controller = new AbortController();
+    setLoadFailed(false);
+    getPage<AdminLeadRow>(requestUrl, controller.signal)
+      .then((page) => {
+        for (const lead of page.items) if (lead.organization) seen.current.set(lead.organization.id, lead.organization);
+        setData(page);
+      })
+      .catch(() => controller.signal.aborted || setLoadFailed(true));
+    return () => controller.abort();
+  }, [requestUrl, version]);
 
-  const organizations = useMemo(() => {
-    const seen = new Map<string, NonNullable<AdminLeadRow["organization"]>>();
-    for (const l of leads ?? []) if (l.organization) seen.set(l.organization.id, l.organization);
-    return [...seen.values()].sort((a, b) => a.code.localeCompare(b.code));
-  }, [leads]);
+  const organizations = [...seen.current.values()].sort((a, b) => a.code.localeCompare(b.code));
 
-  const visible = useMemo(() => {
-    if (!leads) return [];
-    const normalized = query.trim().toLowerCase();
-    return leads.filter((l) => {
-      if (organization === WEBSITE ? l.organization !== null : organization && l.organization?.id !== organization) return false;
-      return !normalized || l.name.toLowerCase().includes(normalized) || l.email.toLowerCase().includes(normalized) || l.subject.toLowerCase().includes(normalized);
-    });
-  }, [leads, query, organization]);
+  /** A new filter or search starts again from the first page; only the pager passes an offset. */
+  function go(changes: Record<string, string>, nextOffset = 0) {
+    const next = new URLSearchParams(params.toString());
+    for (const [key, value] of Object.entries(changes)) {
+      if (value) next.set(key, value);
+      else next.delete(key);
+    }
+    if (nextOffset > 0) next.set("offset", String(nextOffset));
+    else next.delete("offset");
+    router.push(next.size ? `${pathname}?${next}` : pathname, { scroll: false });
+  }
 
-  const replace = (next: AdminLeadRow) => setLeads((prev) => (prev ? prev.map((l) => (l.id === next.id ? next : l)) : prev));
+  const replace = (next: AdminLeadRow) => setData((prev) => (prev ? { ...prev, items: prev.items.map((l) => (l.id === next.id ? next : l)) } : prev));
 
   async function updateStatus(row: AdminLeadRow, status: string) {
     setBusyId(row.id);
     setMessage(null);
-    const response = await fetch(`/api/v1/admin/leads/${row.id}`, {
+    const response = await fetch(`${LEADS_URL}/${row.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
-    const data = await response.json().catch(() => ({}));
+    const body = await response.json().catch(() => ({}));
     setBusyId(null);
     if (!response.ok) {
-      setMessage({ id: row.id, text: detailMessage(data.detail), failed: true });
+      setMessage({ id: row.id, text: detailMessage(body.detail), failed: true });
       return;
     }
     setMessage({ id: row.id, text: "Lead updated.", failed: false });
-    setLeads((prev) => (prev ? prev.map((l) => (l.id === row.id ? { ...l, status } : l)) : prev));
+    replace({ ...row, status });
     router.refresh();
   }
 
-  if (leads === null) {
-    return (
-      <div className="action-card lead-management">
-        <h3>Manage leads</h3>
-        <p className="muted">Loading leads…</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="action-card lead-management">
+    <div className="action-card lead-management" aria-busy={data === null && !loadFailed}>
       <h3>Manage leads</h3>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 8 }}>
-        <div className="field" style={{ flex: "2 1 16rem" }}>
-          <label htmlFor="admin-lead-search">Search by name, email, or subject</label>
-          <input id="admin-lead-search" className="search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} />
+      <AdminLeadFilters values={filters} query={query} organizations={organizations}
+        onChange={(key, value) => go({ [key]: value })} onSearch={(text) => go({ q: text })} />
+      {loadFailed ? (
+        <div style={{ marginTop: 12 }}>
+          <p className="form-error" role="alert">Unable to load leads.</p>
+          <button type="button" className="btn secondary small" onClick={() => setVersion((v) => v + 1)}>Retry</button>
         </div>
-        <div className="field" style={{ flex: "1 1 12rem" }}>
-          <label htmlFor="admin-lead-organization">Organization</label>
-          <select id="admin-lead-organization" value={organization} onChange={(event) => setOrganization(event.target.value)}>
-            <option value="">All organizations</option>
-            <option value={WEBSITE}>Website (no organization)</option>
-            {organizations.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.code} · {o.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-      {visible.length === 0 ? (
-        <p className="muted" style={{ marginTop: 12 }}>{leads.length === 0 ? "No leads found." : "No leads match this search."}</p>
+      ) : data === null ? (
+        <p className="muted" role="status" style={{ marginTop: 12 }}>Loading leads…</p>
+      ) : data.items.length === 0 ? (
+        <p className="muted" role="status" style={{ marginTop: 12 }}>{filtered ? "No leads match these filters." : "No leads found."}</p>
       ) : (
-        <div className="table-scroll" style={{ marginTop: 12 }}> {/* QA17-03: the lead's name stays in view while the columns scroll */}
-          <table className="table">
-            <thead>
-              <tr>
-                <th scope="col">Name</th>
-                <th scope="col">Subject</th>
-                <th scope="col">Organization</th>
-                <th scope="col">CRM sync</th>
-                <th scope="col">Status</th>
-                <th scope="col">Student</th>
-                <th scope="col">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visible.map((row) => (
-                <tr key={row.id}>
-                  <th scope="row">{row.name}</th>
-                  <td>{row.subject}</td>
-                  <td>
-                    {row.organization ? `${row.organization.code} · ${row.organization.name}` : "Website"}
-                    {row.bdm && <div className="muted">by {row.bdm.full_name}</div>}
-                  </td>
-                  <td>{row.crm_sync_status === "failed" ? <span className="form-error">Failed</span> : row.crm_sync_status}</td>
-                  <td>{row.status}</td>
-                  <td>
-                    <LeadConversion row={row} onChanged={replace} onMessage={setMessage} />
-                  </td>
-                  <td>
-                    <select aria-label={`${row.name} status`} value={row.status} onChange={(event) => void updateStatus(row, event.target.value)} disabled={busyId === row.id}>
-                      {STATUS_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                    {message?.id === row.id && (
-                      <div className={message.failed ? "form-error" : "form-message"} role="status" aria-live="polite" style={{ marginTop: 6, fontSize: 13 }}>
-                        {message.text}
-                      </div>
-                    )}
-                  </td>
+        <>
+          <div className="table-scroll" style={{ marginTop: 12 }}> {/* QA17-03: the lead's name stays in view while the columns scroll */}
+            <table className="table">
+              <thead>
+                <tr>
+                  <th scope="col">Name</th>
+                  <th scope="col">Lead ID</th>
+                  <th scope="col">Interest</th>
+                  <th scope="col">Source · Campaign</th>
+                  <th scope="col">Telecaller</th>
+                  <th scope="col">Priority</th>
+                  <th scope="col">Organization</th>
+                  <th scope="col">CRM sync</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Student</th>
+                  <th scope="col">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {data.items.map((row) => (
+                  <tr key={row.id}>
+                    <th scope="row">{row.name}</th>
+                    <td style={{ whiteSpace: "nowrap" }}>{row.lead_code}</td>
+                    <td>{row.product?.name ?? row.subject}</td>
+                    <td>{SOURCE_LABEL[row.source] ?? row.source}{row.campaign && ` · ${row.campaign.name}`}</td>
+                    <td>{row.telecaller ? row.telecaller.full_name : <span className="muted">Unassigned</span>}</td>
+                    <td>{PRIORITY_LABEL[row.priority] ?? row.priority}</td>
+                    <td>
+                      {row.organization ? `${row.organization.code} · ${row.organization.name}` : "Website"}
+                      {row.bdm && <div className="muted">by {row.bdm.full_name}</div>}
+                    </td>
+                    <td>{row.crm_sync_status === "failed" ? <span className="form-error">Failed</span> : row.crm_sync_status}</td>
+                    <td>{row.status}</td>
+                    <td>
+                      <LeadConversion row={row} onChanged={replace} onMessage={setMessage} />
+                    </td>
+                    <td>
+                      <select aria-label={`${row.name} status`} value={row.status} onChange={(event) => void updateStatus(row, event.target.value)} disabled={busyId === row.id}>
+                        {STATUS_OPTIONS.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                      {message?.id === row.id && (
+                        <div className={message.failed ? "form-error" : "form-message"} role="status" aria-live="polite" style={{ marginTop: 6, fontSize: 13 }}>
+                          {message.text}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {data.total > PAGE_SIZE && (
+            <nav aria-label="Lead pages" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 12 }}>
+              <span className="muted" style={{ fontSize: 13 }}>Showing {data.offset + 1}–{data.offset + data.items.length} of {data.total}</span>
+              <button type="button" className="btn secondary small" aria-label="Previous page" disabled={offset === 0} onClick={() => go({}, Math.max(0, offset - PAGE_SIZE))}>Previous</button>
+              <button type="button" className="btn secondary small" aria-label="Next page" disabled={data.offset + data.items.length >= data.total} onClick={() => go({}, offset + PAGE_SIZE)}>Next</button>
+            </nav>
+          )}
+        </>
       )}
     </div>
   );

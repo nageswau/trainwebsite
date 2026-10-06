@@ -58,9 +58,9 @@ async def test_a_failed_sync_enquiry_still_appears_in_the_leads_list(client, db_
     failed = await _create_enquiry(db_session, crm_sync_status="failed")
     await _login(client, admin.email)
 
-    response = await client.get("/api/v1/admin/leads")
+    response = await client.get("/api/v1/admin/leads", params={"q": failed.lead_code})  # tel-003: a page; find the row by its Lead ID
     assert response.status_code == 200
-    listed = next(item for item in response.json() if item["id"] == str(failed.id))
+    listed = next(item for item in response.json()["items"] if item["id"] == str(failed.id))
     assert listed["crm_sync_status"] == "failed"
 
 
