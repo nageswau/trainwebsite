@@ -15,9 +15,7 @@ async def _wa(client, **body):
 
 
 async def _email(client, **body):
-    return await client.post(
-        TEMPLATES, json={"channel": "email", "kind": "fee_proposal", "name": uname("EM"), "subject": "{product} fees", "body": "Dear {name}", **body}
-    )
+    return await client.post(TEMPLATES, json={"channel": "email", "kind": "fee_proposal", "name": uname("EM"), "subject": "{product} fees", "body": "Dear {name}", **body})
 
 
 @pytest.mark.asyncio
@@ -30,14 +28,23 @@ async def test_writers_create_both_channels(client, db_session, role, division):
     assert wa.status_code == 201, wa.text
     body = wa.json()
     assert body == {
-        "id": body["id"], "channel": "whatsapp", "kind": "welcome", "name": name, "product": {"id": str(prod.id), "name": prod.name, "group": "it", "active": True},
-        "asset": None, "subject": None, "body": "Hi {name},\n\twelcome to {product}", "active": True,
+        "id": body["id"],
+        "channel": "whatsapp",
+        "kind": "welcome",
+        "name": name,
+        "product": {"id": str(prod.id), "name": prod.name, "group": "it", "active": True},
+        "asset": None,
+        "subject": None,
+        "body": "Hi {name},\n\twelcome to {product}",
+        "active": True,
     }
     email = await _email(client)
     assert email.status_code == 201 and email.json()["subject"] == "{product} fees" and email.json()["product"] is None
     audit = await db_session.scalar(select(AuditLog).where(AuditLog.entity_id == body["id"]))
     assert (audit.action, audit.user_id, audit.metadata_json) == (
-        "telecaller.template_create", user.id, {"fields": ["asset_id", "body", "channel", "kind", "name", "product_id", "subject"]},
+        "telecaller.template_create",
+        user.id,
+        {"fields": ["asset_id", "body", "channel", "kind", "name", "product_id", "subject"]},
     )
 
 

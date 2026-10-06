@@ -46,10 +46,30 @@ def test_models_match_the_migration():
     script, template, asset = TelScript.__table__, TelMessageTemplate.__table__, TelAsset.__table__
     assert {c.name for c in script.columns} == {"id", "product_id", "name", "steps", "active", "created_at", "updated_at"}
     assert {c.name for c in template.columns} == {
-        "id", "channel", "kind", "name", "product_id", "asset_id", "subject", "body", "active", "created_at", "updated_at",
+        "id",
+        "channel",
+        "kind",
+        "name",
+        "product_id",
+        "asset_id",
+        "subject",
+        "body",
+        "active",
+        "created_at",
+        "updated_at",
     }
     assert {c.name for c in asset.columns} == {
-        "id", "name", "kind", "product_id", "storage_key", "file_name", "size_bytes", "active", "uploaded_by_user_id", "created_at", "updated_at",
+        "id",
+        "name",
+        "kind",
+        "product_id",
+        "storage_key",
+        "file_name",
+        "size_bytes",
+        "active",
+        "uploaded_by_user_id",
+        "created_at",
+        "updated_at",
     }
     assert template.c.subject.nullable and template.c.product_id.nullable and template.c.asset_id.nullable and not template.c.body.nullable
     assert not script.c.product_id.nullable and asset.c.product_id.nullable and not asset.c.storage_key.nullable

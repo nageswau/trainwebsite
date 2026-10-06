@@ -24,8 +24,11 @@ async def test_writers_create_and_audit(client, db_session, role, division):
     assert response.status_code == 201, response.text
     body = response.json()
     assert body == {
-        "id": body["id"], "product": {"id": str(prod.id), "name": prod.name, "group": "it", "active": True}, "name": "Standard",
-        "steps": [{"title": "Intro", "notes": None}], "active": True,
+        "id": body["id"],
+        "product": {"id": str(prod.id), "name": prod.name, "group": "it", "active": True},
+        "name": "Standard",
+        "steps": [{"title": "Intro", "notes": None}],
+        "active": True,
     }
     audit = await db_session.scalar(select(AuditLog).where(AuditLog.entity_id == body["id"]))
     assert (audit.action, audit.user_id, audit.entity_type) == ("telecaller.script_create", user.id, "tel_script")

@@ -4624,6 +4624,15 @@ class TelTemplateUpdate(BaseModel):
     active: StrictBool = None
 
 
+class TelAssetCreate(BaseModel):
+    """The multipart form fields of an upload (the file itself is checked by services/telecaller_content.read_pdf)."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: TelContentName
+    kind: TelAssetKind
+    product_id: UUID | None = None
+
+
 class TelAssetUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: TelContentName = None

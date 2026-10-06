@@ -9,6 +9,7 @@ import logging
 import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from urllib.parse import quote
 from uuid import UUID, uuid4
 
 import jwt
@@ -150,6 +151,16 @@ def read_object(asset: TelAsset) -> bytes | None:
     except Exception:
         logger.warning("tel_asset_unreadable", extra={"extra_fields": {"asset_id": str(asset.id)}})
         return None
+
+
+def download_headers(file_name: str) -> dict:
+    """Inline PDF; an ASCII fallback name plus the RFC 5987 UTF-8 name, so a quote or a newline in a name never breaks the header."""
+    fallback = re.sub(r'[^\x20-\x7e]|["\\]', "_", file_name)
+    return {
+        "Content-Disposition": f"inline; filename=\"{fallback}\"; filename*=UTF-8''{quote(file_name, safe='')}",
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+    }
 
 
 # --- shapes ---------------------------------------------------------------------------------------------------------------------

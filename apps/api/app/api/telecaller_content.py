@@ -7,7 +7,7 @@ Bodies are untyped dicts parsed by services/telecaller._parse, so a 422 is one s
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Query, Response, UploadFile
 from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +19,11 @@ from app.core.database import get_db
 from app.models import TelAsset, TelMessageTemplate, TelProduct, TelScript, User
 from app.schemas import (
     TEL_CONTENT_FIELD_LABELS,
+    TelAssetCreate,
+    TelAssetLink,
+    TelAssetOut,
+    TelAssetPage,
+    TelAssetUpdate,
     TelScriptCreate,
     TelScriptOut,
     TelScriptPage,
@@ -35,6 +40,7 @@ from app.services.telecaller_catalogue import active_filters, apply_changes, aud
 from app.tel_content_kinds import KINDS_BY_CHANNEL
 
 router = APIRouter(prefix="/telecaller", tags=["telecaller-content"])
+public_router = APIRouter(prefix="/public", tags=["telecaller-content"])
 NOT_AN_OBJECT = "The request body must be an object"
 # WhatsApp before email, then the source's kind order (§11, §12), then name.
 KIND_ORDER = case(
@@ -202,3 +208,93 @@ async def preview_template(template_id: UUID, user: User = Depends(get_current_u
         values["product"] = product.name
     subject = svc.render(template.subject, values) if template.subject is not None else None
     return {"subject": subject, "body": svc.render(template.body, values), "brochure_link": link}
+
+
+# --- brochure assets ------------------------------------------------------------------------------------------------------------
+@router.get("/assets", response_model=TelAssetPage)
+async def assets(
+    kind: Literal["brochure", "fee"] | None = None,
+    product_id: UUID | None = None,
+    active: bool | None = None,
+    q: str | None = SEARCH,
+    limit: int = LIMIT,
+    offset: int = OFFSET,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Active first, then the newest upload."""
+    svc.require_content_reader(user)
+    filters = active_filters(user, TelAsset.active, active) + _matching(like_pattern(q), TelAsset.name)
+    for column, value in ((TelAsset.kind, kind), (TelAsset.product_id, product_id)):
+        if value:
+            filters.append(column == value)
+    stmt = select(TelAsset, TelProduct).outerjoin(TelProduct, TelProduct.id == TelAsset.product_id).where(*filters)
+    return await _page(db, stmt, (TelAsset.active.desc(), TelAsset.created_at.desc(), TelAsset.id), limit, offset, svc.asset_out)
+
+
+@router.post("/assets", response_model=TelAssetOut, status_code=201)
+async def upload_asset(
+    name: str = Form(""),
+    kind: str = Form(""),
+    product_id: str = Form(""),
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """AC5: a PDF by its bytes, within the upload limit. The object is written before the row and deleted if the row fails."""
+    require_manager(user)
+    data = _body(TelAssetCreate, {"name": name, "kind": kind, "product_id": product_id or None})
+    content, file_name = await svc.read_pdf(file)
+    product = await locked_active_product(db, data.product_id) if data.product_id else None
+    key = svc.store(content)
+    try:
+        asset = TelAsset(**data.model_dump(), storage_key=key, file_name=file_name, size_bytes=len(content), active=True, uploaded_by_user_id=user.id)
+        db.add(asset)
+        await db.flush()
+        audit(db, user, "telecaller.asset_create", "tel_asset", asset.id, ["file", "kind", "name", "product_id"])
+        await db.commit()
+    except BaseException:
+        await db.rollback()
+        svc.discard(key)
+        raise
+    await db.refresh(asset)
+    return svc.asset_out(asset, product)
+
+
+@router.patch("/assets/{asset_id}", response_model=TelAssetOut)
+async def update_asset(asset_id: UUID, payload: dict = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Metadata only. Deactivating ends every link at once (AC4); templates that use it keep it but stop previewing a link."""
+    require_manager(user)
+    asset = await _locked(db, TelAsset, asset_id, "Brochure")
+    changes = _body(TelAssetUpdate, payload).model_dump(exclude_unset=True)
+    if changes.get("product_id") not in (None, asset.product_id):
+        await locked_active_product(db, changes["product_id"])
+    fields = apply_changes(asset, changes)
+    if fields:
+        audit(db, user, "telecaller.asset_update", "tel_asset", asset.id, fields)
+    await db.flush()
+    await db.refresh(asset)
+    out = svc.asset_out(asset, await db.get(TelProduct, asset.product_id) if asset.product_id else None)
+    await db.commit()
+    return out
+
+
+@router.post("/assets/{asset_id}/link", response_model=TelAssetLink)
+async def asset_link(asset_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """C1: a 7-day signed link for one active brochure. Nothing is stored; the token is never logged."""
+    svc.require_content_reader(user)
+    asset = await db.get(TelAsset, asset_id)
+    if not asset or not asset.active:
+        raise HTTPException(404, "Brochure not found")
+    return svc.asset_link(asset)
+
+
+@public_router.get("/telecaller-assets/{token}")
+async def public_asset(token: str, db: AsyncSession = Depends(get_db)):
+    """AC4: no session. Every failure -- bad, expired or foreign token, missing or deactivated brochure, unreadable object -- is the same
+    404, so nothing is learned about which."""
+    asset = await svc.asset_from_token(db, token)
+    content = svc.read_object(asset) if asset else None
+    if content is None:
+        raise HTTPException(404, "This link has expired or is no longer available")
+    return Response(content=content, media_type=svc.PDF, headers=svc.download_headers(asset.file_name))
