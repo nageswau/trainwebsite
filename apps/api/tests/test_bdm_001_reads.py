@@ -19,8 +19,15 @@ async def _team_of_two(client, db):
     a = (await create_bdm(client, m1.id)).json()
     b = (await create_bdm(client, m1.id, bdm_type="agent")).json()
     c = (await create_bdm(client, m2.id, bdm_type="school")).json()
-    assert (await client.patch(f"/api/v1/admin/users/{b['id']}", json={"active": False})).status_code == 200
+    # bdm-025: PATCH no longer deactivates a BDM (the handover dialog does); this setup only needs an inactive BDM row.
+    await _set_active(db, b["id"], False)
     return m1, m2, a, b, c
+
+
+async def _set_active(db, user_id, active: bool) -> None:
+    user = await db.get(User, uuid.UUID(str(user_id)))
+    user.active = active
+    await db.commit()
 
 
 async def _sign_in_as_created(client, db, created: dict) -> User:
@@ -87,7 +94,7 @@ async def test_bdm_me_without_profile_and_other_roles_are_403(client, db_session
 @pytest.mark.asyncio
 async def test_admin_bdms_scoped_by_creator_types_and_flags_inactive_manager(client, db_session):
     _, m2, a, _, c = await _team_of_two(client, db_session)
-    assert (await client.patch(f"/api/v1/admin/users/{m2.id}", json={"active": False})).status_code == 200
+    await _set_active(db_session, m2.id, False)  # bdm-025: a manager with BDMs is no longer deactivated through PATCH (legacy state)
     await login(client, await make_user(db_session, "overseas_admin", "overseas"))
     school = (await client.get(BDMS, params={"bdm_type": "school", "limit": 100})).json()
     rows = {r["id"]: r for r in school["items"]}
@@ -116,7 +123,7 @@ async def test_manager_picker_lists_active_managers_with_email(client, db_sessio
     await login(client, await make_user(db_session, "it_admin", "it"))
     body = (await client.get(MANAGERS, params={"limit": 100})).json()
     assert str(inactive_id) not in {r["id"] for r in body["items"]}
-    assert body["items"] and all(set(r) == {"id", "full_name", "email"} for r in body["items"])
+    assert body["items"] and all(set(r) == {"id", "full_name", "email", "bdm_count"} for r in body["items"])  # bdm-025 adds bdm_count
     await login(client, await make_user(db_session, "counselor", "overseas"))
     assert (await client.get(MANAGERS)).status_code == 403
 

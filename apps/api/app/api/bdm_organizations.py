@@ -15,7 +15,7 @@ from app.api.bdm import LIMIT, OFFSET, SEARCH, _matching
 from app.api.deps import get_current_user
 from app.api.lookups import _pattern as like_pattern
 from app.core.database import get_db
-from app.models import BdmOrganization, BdmOrganizationContact, User
+from app.models import BdmAssignmentHistory, BdmOrganization, BdmOrganizationContact, User
 from app.schemas import (
     BDM_MAX_CONTACTS,
     BDM_ORG_FIELDS,
@@ -218,6 +218,8 @@ async def assign_organization(org_id: UUID, payload: BdmOrganizationAssign, user
     target = await svc.locked_reassign_target(db, user, org, payload.bdm_user_id)
     before = org.assigned_bdm_user_id
     org.assigned_bdm_user_id = target.id
+    db.add(BdmAssignmentHistory(entity_type="organization", entity_id=org.id, from_user_id=before, to_user_id=target.id, actor_user_id=user.id,
+                                reason="organization_reassigned"))  # bdm-025 §5.8
     svc.audit(db, user, "assign", org.id, {"from": str(before), "to": str(target.id)})
     await db.commit()
     svc.log("bdm_org_reassigned", user, org.id, from_user=str(before), to_user=str(target.id))

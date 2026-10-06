@@ -65,7 +65,7 @@ from app.schemas import (
 )
 from app.services import bdm as bdm_rules
 from app.services import bdm_leads as lead_rules
-from app.services import lead_pipeline
+from app.services import bdm_lifecycle, lead_pipeline
 from app.services import telecaller as tel_rules
 from app.services.agent_applications import owned, with_owner
 from app.services.agent_network import APPLICATION_FILTERS, org_applications, org_counts, org_money, org_students
@@ -629,6 +629,10 @@ async def update_user(user_id: UUID, payload: dict, user: User = Depends(ensure_
         if tel_profile is None:
             raise HTTPException(422, "Only a telecaller has a telecaller profile")
         tel_before, tel_after = await tel_rules.apply_profile_update(db, tel_profile, payload["telecaller_profile"])
+    # bdm-025 (spec §5.7): a BDM is deactivated only with a handover choice, and a manager only once their BDMs have moved. 422, not
+    # 409 -- the Users page reads a 409 as the trainer "confirm cascade" prompt, which must never bypass this.
+    if payload.get("active") is False and item.active:
+        await bdm_lifecycle.refuse_plain_deactivation(db, item)
     # ADM-001-AC02: deactivating a trainer with active/upcoming assigned batches is
     # blocked unless explicitly confirmed -- never a silent operation that would strand
     # those batches without a trainer.

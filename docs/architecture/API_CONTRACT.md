@@ -834,6 +834,37 @@ Write order: scope 404 → lock (an outcome follow-up's appointment first) → a
 
 ---
 
+**Addendum, 2026-10-06 (`bdm-025`, `DEC-SCOPE-082`): BDM deactivation and portfolio handover.**
+
+Sources:
+- design spec `docs/superpowers/specs/2026-10-06-bdm-025-deactivation-handover-design.md` §5;
+- migration `0082_bdm_assignment_history`.
+
+Who may call these routes: `ensure_admin`, then the creator types (`super_admin` any; `it_admin` College; `overseas_admin`
+Agent / School) → otherwise 403. A non-BDM or unknown id → 404 "BDM not found". The request bodies forbid extra fields.
+
+| Method + path | Body | Success | Refusals |
+|---|---|---|---|
+| `GET /admin/bdms/{id}/portfolio` | — | `{organizations, appointments, tasks, trips}`: open work + not-started trips | 403 / 404 |
+| `POST /admin/bdms/{id}/deactivate` | `{mode: "reassign" \| "leave", reassign_to: uuid \| null}` | `{id, active: false, mode, moved: {organizations, appointments, tasks}, trips_cancelled}` | 422 no / mismatched choice ("Choose who takes over this BDM's open work"); 422 "Choose an active BDM of the same module"; 409 "This BDM is already inactive" |
+| `POST /admin/bdms/{id}/handover` | `{reassign_to: uuid}` | `{id, moved}` | 409 "Deactivate this BDM first"; 409 "No open work to hand over"; 422 invalid target |
+| `POST /admin/bdm-managers/{id}/deactivate` | `{reassign_to: uuid \| null}` (required while BDMs report to them) | `{id, active: false, moved_bdms}` | 403 not super_admin; 404 not a manager; 409 already inactive; 422 "Choose another active BDM manager" |
+
+Existing routes:
+- `PATCH /admin/users/{id}` with `active: false`:
+  - on a BDM → **422** "Deactivate a BDM from the BDMs page, choosing who takes over their open work";
+  - on a manager with BDMs → **422** "This manager has N BDMs. Move them to another manager first (BDMs page → BDM managers)";
+  - **422, not 409:** the Users page reads a 409 as the trainer "confirm cascade" prompt.
+- `GET /admin/bdm-managers` rows add `bdm_count` (additive).
+- `POST /bdm/organizations/{id}/assign` also records history.
+
+The routes write in one transaction:
+- moves with history rows;
+- trip cancels, each with a `bdm.trip_cancel` audit row (`reason: "BDM deactivated"`);
+- `active = false` and revoked welcome links;
+- an audit row: `bdm.deactivate`, `bdm.portfolio_handover` or `bdm_manager.deactivate`;
+- an in-app + email notification to the new owner or manager.
+
 **Addendum, 2026-10-06 (`bdm-013`, `DEC-SCOPE-079`) — BDM calendar.** Design spec `docs/superpowers/specs/2026-10-06-bdm-013-calendar-design.md` §5. Read-only; no migration, no audit, no log line.
 
 | Method/Path | Auth | Roles | Notes / status codes |

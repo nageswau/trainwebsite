@@ -3272,6 +3272,13 @@ class BdmManagerOption(BaseModel):
     email: str
 
 
+class BdmManagerRow(BdmManagerOption):
+    """bdm-025: /admin/bdm-managers only (the telecaller picker keeps BdmManagerOption) -- BDMs reporting to this manager, active or
+    not, for the BDM managers card."""
+
+    bdm_count: int
+
+
 class BdmTeamPage(BaseModel):
     items: list[BdmTeamRow]
     total: int
@@ -3291,6 +3298,83 @@ class BdmManagerPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class BdmManagerRowPage(BaseModel):
+    items: list[BdmManagerRow]
+    total: int
+    limit: int
+    offset: int
+
+
+# --- bdm-025: deactivation, portfolio handover, manager deactivation (DEC-SCOPE-082; spec §5) ---
+
+
+class BdmDeactivate(BaseModel):
+    """AC1: deactivating a BDM always says who takes over -- another BDM (`reassign`) or nobody yet (`leave`, handed over later)."""
+
+    model_config = ConfigDict(extra="forbid")
+    mode: Literal["reassign", "leave"]
+    reassign_to: UUID | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _mode_given(cls, data):
+        if isinstance(data, dict) and data.get("mode") is None:
+            raise ValueError("Choose who takes over this BDM's open work")
+        return data
+
+    @model_validator(mode="after")
+    def _target_matches_mode(self):
+        if self.mode == "reassign" and self.reassign_to is None:
+            raise ValueError("Choose the BDM who takes over")
+        if self.mode == "leave" and self.reassign_to is not None:
+            raise ValueError("Keeping the work with this BDM takes no target")
+        return self
+
+
+class BdmHandover(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reassign_to: UUID
+
+
+class BdmManagerDeactivate(BaseModel):
+    """`reassign_to` is required only while BDMs report to the manager (checked by the route, which knows the team)."""
+
+    model_config = ConfigDict(extra="forbid")
+    reassign_to: UUID | None = None
+
+
+class BdmPortfolio(BaseModel):
+    organizations: int
+    appointments: int
+    tasks: int
+    trips: int
+
+
+class BdmMoved(BaseModel):
+    organizations: int
+    appointments: int
+    tasks: int
+
+
+class BdmDeactivateOut(BaseModel):
+    id: UUID
+    active: bool
+    mode: Literal["reassign", "leave"]
+    moved: BdmMoved
+    trips_cancelled: int
+
+
+class BdmHandoverOut(BaseModel):
+    id: UUID
+    moved: BdmMoved
+
+
+class BdmManagerDeactivateOut(BaseModel):
+    id: UUID
+    active: bool
+    moved_bdms: int
 
 
 # --- bdm-010: travel requests, approval, expenses (DEC-SCOPE-063; docs/superpowers/specs/2026-10-03-bdm-010-travel-design.md §5.1) ---
