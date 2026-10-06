@@ -103,6 +103,7 @@ describe("LeadQualificationForm (tel-009)", () => {
     expect(screen.getByText("Enter a year from 1950 to 2100.")).toBeTruthy();
     expect(pct.getAttribute("aria-invalid")).toBe("true");
     expect(puts()).toHaveLength(0);
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Passing year"))); // QA-01: the first invalid field, in form order
   });
 
   it("shows the server's refusal and stays in the form", async () => {
@@ -110,7 +111,8 @@ describe("LeadQualificationForm (tel-009)", () => {
     render(<LeadQualificationForm leadId="L1" productId="p-uk" readOnly={false} onSaved={() => undefined} />);
     await edit();
     fireEvent.click(screen.getByRole("button", { name: "Save qualification" }));
-    expect(await screen.findByText(/don't apply to this lead's product/)).toBeTruthy();
+    const message = await screen.findByText(/don't apply to this lead's product/);
+    await waitFor(() => expect(document.activeElement).toBe(message)); // QA-01: a message with no field takes focus
     expect(screen.getByRole("button", { name: "Save qualification" })).toBeTruthy();
   });
 

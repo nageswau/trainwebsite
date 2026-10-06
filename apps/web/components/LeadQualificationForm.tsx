@@ -5,6 +5,7 @@ import { type FormEvent, useEffect, useId, useState } from "react";
 import { sendJson } from "@/lib/apiErrors";
 import { fieldErrors } from "@/lib/bdmTravel";
 import { formatDate } from "@/lib/formatDate";
+import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 import { useLeaveGuard } from "@/lib/useLeaveGuard";
 import { BASIC_FIELDS, REQUIREMENT, qualificationUrl, type LeadQualification, type QualField, type QualKey } from "@/lib/telecallerLeads";
 
@@ -58,12 +59,21 @@ export default function LeadQualificationForm({ leadId, productId, readOnly, onS
   const q = loaded && loaded.productId === productId && loaded.data !== "failed" ? loaded.data : null;
   useLeaveGuard(!!q && !!draft && JSON.stringify(draft) !== JSON.stringify(draftOf(q)) && !busy, "Discard the qualification changes?");
 
+  const focus = useFocusAfterRender();
   const fieldId = (key: string) => `${idp}-${key}`;
   const errorId = (key: string) => `${idp}-${key}-error`;
   const set = (key: QualKey, value: string) => {
     setDraft((d) => ({ ...d, [key]: value }));
     setSaved(false);
   };
+
+  // QA-01: focus the first refused field in form order, else the message (a radio group has no element with its id)
+  function refuse(found: Record<string, string>, message: string) {
+    setErrors(found);
+    setFailure(message);
+    const first = q ? applicable(q).find((f) => found[f.key]) : undefined;
+    focus(...(first ? [fieldId(first.key)] : []), fieldId("message"));
+  }
 
   async function save(event: FormEvent) {
     event.preventDefault();
@@ -81,15 +91,14 @@ export default function LeadQualificationForm({ leadId, productId, readOnly, onS
         body[field.key] = value;
       }
     }
-    setErrors(local);
-    if (Object.keys(local).length) return setFailure("Check the highlighted fields.");
+    if (Object.keys(local).length) return refuse(local, "Check the highlighted fields.");
+    setErrors({});
     setBusy(true);
     const outcome = await sendJson(qualificationUrl(leadId), "PUT", body);
     setBusy(false);
     if (!outcome.ok) {
       const mapped = fieldErrors(outcome.detail);
-      setErrors(mapped);
-      return setFailure(Object.keys(mapped).length ? "Check the highlighted fields." : outcome.message);
+      return refuse(mapped, Object.keys(mapped).length ? "Check the highlighted fields." : outcome.message);
     }
     const next = outcome.data as unknown as LeadQualification;
     setLoaded({ productId, data: next });
@@ -148,7 +157,7 @@ export default function LeadQualificationForm({ leadId, productId, readOnly, onS
   );
   else if (draft) body = (
     <form onSubmit={save} noValidate aria-label="Qualification form" style={{ display: "grid", gap: 12, marginTop: 8 }}>
-      {failure && <p className="form-error" role="alert" style={{ margin: 0 }}>{failure}</p>}
+      {failure && <p id={fieldId("message")} tabIndex={-1} className="form-error" role="alert" style={{ margin: 0 }}>{failure}</p>}
       <ProductNote q={q} />
       {sections(q).map((section) => (
         <fieldset className="form-section" key={section.legend}>
