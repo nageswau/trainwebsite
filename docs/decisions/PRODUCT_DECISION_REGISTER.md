@@ -3784,7 +3784,7 @@ write, no audit); `/bdm/calendar`, `/bdm/manager/calendar`. No migration. Design
 
 **Evidence:** `EVID-019` §15 (lines 528–547: "Management should be able to assign monthly/daily targets", 6 KPIs, achieved / target) and
 §22 line 713 ("Telecaller should not … modify employee targets"); `DEC-SCOPE-073` T2, T23, T28; owner answers in-session 2026-10-06.
-**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for G1–G4. VERIFIED on `feature/tel-022` (2026-10-06); not merged.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for G1–G4. VERIFIED on `feature/tel-022` (2026-10-06); **merged** to `main` as PR #80 @ `a38955d5`.
 **Re-chained 2026-10-06** on merging `main` @ `6655e284`: drafted as `DEC-SCOPE-078` / `0079_tel_targets`, but bdm-005 (`DEC-SCOPE-078`, `0079_bdm_mous`) and bdm-013 (`DEC-SCOPE-079`) reached `main` first. **Still provisional:** tel-012 also chains after `0078`, so whichever merges second takes the next numbers.
 
 | # | Question | Answer |
