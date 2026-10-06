@@ -1,4 +1,4 @@
-"""tel-007 (DEC-SCOPE-082, spec §2/§4): who a lead goes to -- the team's product rule, then its city rule, then round robin among the
+"""tel-007 (DEC-SCOPE-084, spec §2/§4): who a lead goes to -- the team's product rule, then its city rule, then round robin among the
 team's active telecallers; otherwise the unassigned queue (T11, T18). Manual (re)assignment shares `assign` and `assignee`.
 
 Functions only; nothing here commits -- the route owns the transaction. Logs and audit rows carry ids and the method, never a lead's

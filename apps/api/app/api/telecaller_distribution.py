@@ -1,4 +1,4 @@
-"""tel-007 (DEC-SCOPE-082, spec §5): distribution rules, the unassigned queue, the team's assigned leads and manual (re)assignment.
+"""tel-007 (DEC-SCOPE-084, spec §5): distribution rules, the unassigned queue, the team's assigned leads and manual (re)assignment.
 
 Inline checks per the 2026-09-28 convention: role first (`require_manager`), then scope -- a lead outside tel-004's manager scope is a 404,
 a target outside the caller's direct reports a 403 (AC5) -- then the write. Registered before `telecaller.router` in main.py, so a later

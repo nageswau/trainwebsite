@@ -30,6 +30,9 @@ from app.bdm_stages import FIRST_STAGE as BDM_FIRST_STAGE
 from app.bdm_stages import MANUAL_STAGES as BDM_MANUAL_STAGES
 from app.lead_stages import STAGES as LEAD_STAGES
 from app.notifications.phone import normalise_phone
+from app.tel_content_kinds import ASSET_KINDS as TEL_ASSET_KINDS
+from app.tel_content_kinds import EMAIL_KINDS as TEL_EMAIL_KINDS
+from app.tel_content_kinds import WHATSAPP_KINDS as TEL_WHATSAPP_KINDS
 from app.tel_sources import TEL_SOURCES
 
 
@@ -1102,7 +1105,7 @@ class TelCampaign(Base, TimestampMixin):
 
 
 class TelDistributionRule(Base, TimestampMixin):
-    """tel-007 (DEC-SCOPE-082, T11): a manager's routing rule for one team -- a product or a city sends new leads to one telecaller.
+    """tel-007 (DEC-SCOPE-084, T11): a manager's routing rule for one team -- a product or a city sends new leads to one telecaller.
     The telecaller's team, role and active state span tables, so `services/lead_distribution.py` checks them on write and again at
     distribution time (an inactive telecaller's rule is skipped). Deleted, not deactivated, to stop it (audited)."""
 
@@ -1135,6 +1138,65 @@ class TelRoundRobinCursor(Base):
     team: Mapped[str] = mapped_column(String(20), primary_key=True)
     last_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class TelScript(Base, TimestampMixin):
+    """tel-012 (DEC-SCOPE-083 C3, EVID-019 §6): a product's standard call script -- ordered `{title, notes}` steps. At most one active
+    script per product (partial unique index). Never deleted; deactivating hides it from telecallers."""
+
+    __tablename__ = "tel_scripts"
+    __table_args__ = (Index("uq_tel_scripts_active_product", "product_id", unique=True, postgresql_where=text("active")),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    product_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("tel_products.id"))
+    name: Mapped[str] = mapped_column(String(160))
+    steps: Mapped[list] = mapped_column(JSON, default=list)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+
+
+class TelAsset(Base, TimestampMixin):
+    """tel-012 (C1): a brochure/fee PDF. The object lives at a server-generated `tel-assets/<uuid>` key that no API returns; leads
+    reach it only through a signed 7-day link (services/telecaller_content). Deactivating it ends every link at once."""
+
+    __tablename__ = "tel_assets"
+    __table_args__ = (
+        CheckConstraint(f"kind IN ({', '.join(repr(k) for k in TEL_ASSET_KINDS)})", name="ck_tel_assets_kind"),
+        Index("uq_tel_assets_storage_key", "storage_key", unique=True),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(160))
+    kind: Mapped[str] = mapped_column(String(20))
+    product_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("tel_products.id"), nullable=True)
+    storage_key: Mapped[str] = mapped_column(String(255))
+    file_name: Mapped[str] = mapped_column(String(255))
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+class TelMessageTemplate(Base, TimestampMixin):
+    """tel-012 (T9, C4): a WhatsApp (§11) or email (§12) template. Only email has a subject. Placeholders are checked on save;
+    `{brochure_link}` needs `asset_id`. A name is unique per channel (case-insensitive)."""
+
+    __tablename__ = "tel_message_templates"
+    __table_args__ = (
+        CheckConstraint("channel IN ('whatsapp', 'email')", name="ck_tel_message_templates_channel"),
+        CheckConstraint(
+            f"(channel = 'whatsapp' AND kind IN ({', '.join(repr(k) for k in TEL_WHATSAPP_KINDS)})) OR "
+            f"(channel = 'email' AND kind IN ({', '.join(repr(k) for k in TEL_EMAIL_KINDS)}))",
+            name="ck_tel_message_templates_kind",
+        ),
+        CheckConstraint("(channel = 'email') = (subject IS NOT NULL)", name="ck_tel_message_templates_subject"),
+        Index("uq_tel_message_templates_channel_name", "channel", text("lower(name)"), unique=True),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    channel: Mapped[str] = mapped_column(String(20))
+    kind: Mapped[str] = mapped_column(String(40))
+    name: Mapped[str] = mapped_column(String(160))
+    product_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("tel_products.id"), nullable=True)
+    asset_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("tel_assets.id"), nullable=True)
+    subject: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    body: Mapped[str] = mapped_column(Text)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
 
 
 TEL_TARGET_KPIS = ("calls", "connected_calls", "qualified_leads", "follow_ups", "counselling_appointments", "conversions")
@@ -1622,6 +1684,31 @@ class BdmTask(Base, TimestampMixin):
     notes: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+
+BDM_ASSIGNMENT_ENTITIES = ("organization", "appointment", "task")
+BDM_ASSIGNMENT_REASONS = ("bdm_deactivated", "portfolio_handover", "organization_reassigned")
+
+
+class BdmAssignmentHistory(Base):
+    """bdm-025 (DEC-SCOPE-082): one row per organization, appointment or task that changed owner. Append-only; `entity_id` has no
+    foreign key (polymorphic) -- those rows are never deleted (archived / cancelled instead)."""
+
+    __tablename__ = "bdm_assignment_history"
+    __table_args__ = (
+        CheckConstraint(_in_list("entity_type", BDM_ASSIGNMENT_ENTITIES), name="ck_bdm_assignment_history_entity_type"),
+        CheckConstraint(_in_list("reason", BDM_ASSIGNMENT_REASONS), name="ck_bdm_assignment_history_reason"),
+        Index("ix_bdm_assignment_history_entity", "entity_type", "entity_id"),
+        Index("ix_bdm_assignment_history_from", "from_user_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    entity_type: Mapped[str] = mapped_column(String(20))
+    entity_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True))
+    from_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    to_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    reason: Mapped[str] = mapped_column(String(30))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 BDM_ACTIVITY_CHANNELS = ("call", "whatsapp", "email", "visit", "meeting", "other")

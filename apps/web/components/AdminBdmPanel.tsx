@@ -3,6 +3,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import AdminBdmCreateForm from "@/components/AdminBdmCreateForm";
+import AdminBdmManagersCard from "@/components/AdminBdmManagersCard";
 import AdminBdmRow from "@/components/AdminBdmRow";
 import CreateJumpLink from "@/components/CreateJumpLink";
 import { isPage, type Page } from "@/lib/apiErrors";
@@ -143,6 +144,8 @@ export default function AdminBdmPanel({ role }: { role: string }) {
           </>
         )}
       </div>
+      {/* bdm-025 (L4): only a Super Admin manages BDM managers (Q-01); a move changes the list's Manager column, so it reloads. */}
+      {role === "super_admin" && <AdminBdmManagersCard onChanged={(text) => { setNotice(text); reload(); }} />}
     </>
   );
 }

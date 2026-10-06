@@ -511,6 +511,21 @@ Archived organizations are read-only (`409` "Restore this organization first"). 
 
 **Explicit denies (bdm-010):** nobody decides their own trip (`403`); a manager never edits a trip or its expenses (no route); server-owned fields (`code`, `bdm_user_id`, statuses, `currency`, `decided_*`) in a body → `422`; a `bdm` on a manager route or a manager on a BDM route → `403`. Every change writes one `AuditLog` row (`bdm.trip_*`) in the same transaction.
 
+**BDM deactivation and handover (`bdm-025`, `DEC-SCOPE-082`, added 2026-10-06).** Same inline pattern.
+
+| Role | Can | Scope | Item |
+|---|---|---|---|
+| `super_admin` | `GET /admin/bdms/{id}/portfolio`; `POST /admin/bdms/{id}/{deactivate,handover}`; `POST /admin/bdm-managers/{id}/deactivate` | Every BDM type; **the only role that deactivates a BDM manager** (Q-01: managers are created by super_admin only) | `bdm-025` |
+| `it_admin` | the three `/admin/bdms/{id}/…` routes | College BDMs only (`require_creator_may`); otherwise 403 | `bdm-025` |
+| `overseas_admin` | the three `/admin/bdms/{id}/…` routes | Agent and School BDMs only; otherwise 403 | `bdm-025` |
+| `bdm_manager`, `bdm`, others | — | 403 (`ensure_admin`) | `bdm-025` |
+
+**Explicit denies (bdm-025):**
+- A handover target must be an active `bdm` of the same type, and not the source (one 422 for any invalid target).
+- A replacement manager must be another active `bdm_manager`.
+- `PATCH /admin/users` cannot deactivate a BDM, or a manager who still has BDMs (422).
+- History rows never change owner.
+
 **BDM appointments (`bdm-006`, `DEC-SCOPE-068`).** Every `{id}` resolves through the appointment scope (out of scope is the same `404` as a missing id); writes then require ownership.
 
 | Role | Can | Scope | Item |
@@ -573,6 +588,18 @@ Inline pattern: role check, then subject scope (an out-of-scope telecaller is a 
 | `super_admin` | the same | all | `tel-022` |
 | `telecaller` | read own targets in effect (dashboard card) | self; another user or a team → `403`; any write → `403` (§22 line 713) | `tel-022` |
 | every other role (incl. division admins) | none → `403` | — | `tel-022` |
+
+### 2.18 Telecaller content library *(net-new, added 2026-10-06 — `DEC-SCOPE-083`, `tel-012`)*
+
+Inline pattern (`services/telecaller_content.require_content_reader` / `services/telecaller.require_manager`); the library is global (T9),
+so there is no row scope.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller_manager`, `super_admin` | create / edit / deactivate / reactivate scripts, message templates and brochure PDFs; list them including inactive rows; preview; mint a brochure link | all rows | `tel-012` |
+| `telecaller` | list **active** scripts, templates and brochures; preview an active template; mint a link for an active brochure | all active rows | `tel-012` |
+| anyone holding a link (no session) | download that one brochure while it is active and the 7-day token is valid | one asset | `tel-012` |
+| every other role (incl. `it_admin`, `overseas_admin`, `counselor`) | none → `403` "Your role cannot view the telecaller library" (writes: `403` "Telecaller manager role required") | — | `tel-012` |
 
 ## 3. Support / admin audit controls
 

@@ -302,14 +302,17 @@ Signs in at `/it/login` (IT team, division `it`) or `/overseas/login` (Overseas 
 
 ## Telecaller Manager *(net-new, 2026-10-05, `DEC-SCOPE-073`, `tel-001`)*
 
-Division `global`; signs in at `/admin/login`; lands on `/telecaller/manager/team`. Sidebar: Team · Lead assignment · Distribution rules (tel-007) · Targets (tel-022) · Products · Campaigns (tel-002). Password recovery stays in the admin portal: "Forgot your password?" on `/admin/login` → `/admin/forgot-password`; the welcome/reset link opens `/admin/reset-password`, and after a reset the form follows the API's `login_portal` (`"admin"`).
+Division `global`; signs in at `/admin/login`; lands on `/telecaller/manager/team`. Sidebar: Team · Lead assignment · Distribution rules (tel-007) · Targets (tel-022) · Products · Campaigns (tel-002) · Scripts · Templates · Brochures (tel-012). Password recovery stays in the admin portal: "Forgot your password?" on `/admin/login` → `/admin/forgot-password`; the welcome/reset link opens `/admin/reset-password`, and after a reset the form follows the API's `login_portal` (`"admin"`).
 
 - /telecaller/manager/team — the telecallers who report to this manager (paged, inactive included).
-- /telecaller/manager/assignment — *(tel-007, `DEC-SCOPE-082`)* Lead assignment: Unassigned queue of my reports' teams and Assigned to my team, bulk assign/reassign to a direct report; `?view=assigned&telecaller=&q=&offset=` keep the place.
+- /telecaller/manager/assignment — *(tel-007, `DEC-SCOPE-084`)* Lead assignment: Unassigned queue of my reports' teams and Assigned to my team, bulk assign/reassign to a direct report; `?view=assigned&telecaller=&q=&offset=` keep the place.
 - /telecaller/manager/distribution — *(tel-007)* product and city rules for my reports (all rules readable), with the distribution order explained; `?team=` filters.
 - /telecaller/manager/targets — *(tel-022, `DEC-SCOPE-080`)* daily + monthly targets: team defaults (IT/Overseas) and per-telecaller overrides from a future date, targets in effect on any date, history; `?for=it|overseas|<telecaller id>` keeps the choice on refresh.
 - /telecaller/manager/products — *(tel-002, `DEC-SCOPE-074`)* the product/interest catalogue: create, edit, deactivate/reactivate; a Super Admin uses the same URL.
 - /telecaller/manager/campaigns — *(tel-002)* the campaign list (source → product → campaign): create, edit, deactivate/reactivate.
+- /telecaller/manager/scripts — *(tel-012, `DEC-SCOPE-083`)* call scripts: one active script per product, ordered steps.
+- /telecaller/manager/templates — *(tel-012)* WhatsApp and email message templates with placeholders and a sample-value preview.
+- /telecaller/manager/brochures — *(tel-012)* brochure / fee-sheet PDFs: upload, edit, deactivate/reactivate, copy a 7-day link.
 
 **Signed-out `/telecaller/*` (TL1):** `/telecaller/manager/*` → `/admin/login?next=…`; any other `/telecaller/*` → the public chooser `/telecaller/sign-in?next=…` ("IT team" → `/it/login?next=…`, "Overseas team" → `/overseas/login?next=…`, plus the line "Telecaller Managers sign in at Administration" linking to `/admin/login`).
 

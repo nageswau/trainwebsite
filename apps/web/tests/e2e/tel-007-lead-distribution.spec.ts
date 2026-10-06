@@ -61,6 +61,8 @@ test("rules, distribution on intake and reassignment from the Lead assignment pa
   await page.goto("/telecaller/manager/assignment?view=assigned");
   await page.getByRole("searchbox", { name: "Search leads" }).fill(enquiry.lead_code);
   await page.getByRole("button", { name: "Search" }).click();
+  await expect(page).toHaveURL(new RegExp(`q=${enquiry.lead_code}`));
+  await expect(page.getByRole("region", { name: "Leads" }).locator("tbody tr")).toHaveCount(1); // the searched list, not the one before it
   await page.getByRole("checkbox", { name: `Select E2E Dist Lead ${stamp}` }).check();
   await page.getByLabel("Assign to").selectOption({ label: `E2E Dist A ${stamp} (IT)` });
   await page.getByRole("button", { name: "Reassign 1 selected" }).click();
@@ -89,6 +91,8 @@ test("rules, distribution on intake and reassignment from the Lead assignment pa
   await expect(page.getByRole("tab", { name: "Unassigned" })).toHaveAttribute("aria-selected", "true");
   await page.getByRole("tab", { name: "Assigned to my team" }).click();
   await page.getByLabel("Telecaller", { exact: true }).selectOption({ label: `E2E Dist A ${stamp}` });
+  await expect(page).toHaveURL(new RegExp(`telecaller=${a.id}`));
+  await expect(page.getByRole("region", { name: "Leads" }).locator("tbody tr")).toHaveCount(1);
   await expect(page.getByRole("cell", { name: `E2E Dist Lead ${stamp}`, exact: true })).toBeVisible();
   await page.getByRole("checkbox", { name: `Select E2E Dist Lead ${stamp}` }).check();
   await page.getByLabel("Assign to").selectOption({ label: `E2E Dist B ${stamp} (IT)` });

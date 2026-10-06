@@ -834,6 +834,37 @@ Write order: scope 404 → lock (an outcome follow-up's appointment first) → a
 
 ---
 
+**Addendum, 2026-10-06 (`bdm-025`, `DEC-SCOPE-082`): BDM deactivation and portfolio handover.**
+
+Sources:
+- design spec `docs/superpowers/specs/2026-10-06-bdm-025-deactivation-handover-design.md` §5;
+- migration `0082_bdm_assignment_history`.
+
+Who may call these routes: `ensure_admin`, then the creator types (`super_admin` any; `it_admin` College; `overseas_admin`
+Agent / School) → otherwise 403. A non-BDM or unknown id → 404 "BDM not found". The request bodies forbid extra fields.
+
+| Method + path | Body | Success | Refusals |
+|---|---|---|---|
+| `GET /admin/bdms/{id}/portfolio` | — | `{organizations, appointments, tasks, trips}`: open work + not-started trips | 403 / 404 |
+| `POST /admin/bdms/{id}/deactivate` | `{mode: "reassign" \| "leave", reassign_to: uuid \| null}` | `{id, active: false, mode, moved: {organizations, appointments, tasks}, trips_cancelled}` | 422 no / mismatched choice ("Choose who takes over this BDM's open work"); 422 "Choose an active BDM of the same module"; 409 "This BDM is already inactive" |
+| `POST /admin/bdms/{id}/handover` | `{reassign_to: uuid}` | `{id, moved}` | 409 "Deactivate this BDM first"; 409 "No open work to hand over"; 422 invalid target |
+| `POST /admin/bdm-managers/{id}/deactivate` | `{reassign_to: uuid \| null}` (required while BDMs report to them) | `{id, active: false, moved_bdms}` | 403 not super_admin; 404 not a manager; 409 already inactive; 422 "Choose another active BDM manager" |
+
+Existing routes:
+- `PATCH /admin/users/{id}` with `active: false`:
+  - on a BDM → **422** "Deactivate a BDM from the BDMs page, choosing who takes over their open work";
+  - on a manager with BDMs → **422** "This manager has N BDMs. Move them to another manager first (BDMs page → BDM managers)";
+  - **422, not 409:** the Users page reads a 409 as the trainer "confirm cascade" prompt.
+- `GET /admin/bdm-managers` rows add `bdm_count` (additive).
+- `POST /bdm/organizations/{id}/assign` also records history.
+
+The routes write in one transaction:
+- moves with history rows;
+- trip cancels, each with a `bdm.trip_cancel` audit row (`reason: "BDM deactivated"`);
+- `active = false` and revoked welcome links;
+- an audit row: `bdm.deactivate`, `bdm.portfolio_handover` or `bdm_manager.deactivate`;
+- an in-app + email notification to the new owner or manager.
+
 **Addendum, 2026-10-06 (`bdm-013`, `DEC-SCOPE-079`) — BDM calendar.** Design spec `docs/superpowers/specs/2026-10-06-bdm-013-calendar-design.md` §5. Read-only; no migration, no audit, no log line.
 
 | Method/Path | Auth | Roles | Notes / status codes |
@@ -934,9 +965,35 @@ are IST calendar days on the database clock. Every `422` is one sentence.
 | `POST/DELETE /admin/leads/{id}/conversion` | as §12 bdm-017 | Link moves the stage to `application_enrollment` (a closed lead keeps its stage); unlink moves `application_enrollment` → `follow_up` |
 | `GET /admin/leads` | as §12F | Items add `status_label`; the `status` filter takes a stage key |
 
-## 12I. Lead distribution (`tel-007`) — addendum, 2026-10-06
+## 12I. Telecaller content library (`tel-012`) — addendum, 2026-10-06
 
-`DEC-SCOPE-082` (provisional); design spec `docs/superpowers/specs/2026-10-06-tel-007-lead-distribution-design.md` §4–§5; migration `0082_tel_distribution`.
+`DEC-SCOPE-083`; design spec `docs/superpowers/specs/2026-10-06-tel-012-content-library-design.md` §4–§6; `RBAC_MATRIX.md` §2.18;
+migration `0083_tel_content`. Lists are `{items, total, limit, offset}` (`limit` default 50, max 100). JSON bodies reject unknown keys;
+every `422` is one sentence. Readers = `telecaller` (active rows only), `telecaller_manager`, `super_admin`; writers = `telecaller_manager`,
+`super_admin`. Other roles → `403` "Your role cannot view the telecaller library" (writes: "Telecaller manager role required"); signed out → `401`.
+Nothing is deleted. Rows keep their list position when deactivated.
+
+| Method/Path | Roles | Notes / status codes |
+|---|---|---|
+| `GET /telecaller/scripts` | readers | Filters `product_id`, `active`, `q` (name). Order: product name, script name. Item `{id, product: {id, name, group, active}, name, steps: [{title, notes}], active}` |
+| `POST /telecaller/scripts` | writers | `201`. Body `{product_id, name, steps}`; 1–20 steps, title 1–120, notes ≤ 1000 (blank → null). Inactive/missing product → `422` "Choose an active product". The product already has an active script → `409` "<product> already has an active script. Deactivate it first." |
+| `PATCH /telecaller/scripts/{id}` | writers | Any of `{product_id, name, steps, active}`. Reactivating, or moving into a product with an active script → `409` (partial unique index). Unknown id → `404` |
+| `GET /telecaller/templates` | readers | Filters `channel` (`whatsapp\|email`, else `422`), `kind`, `product_id`, `active`, `q`. Order: WhatsApp then email, source kind order, name. Item `{id, channel, kind, name, product \| null, asset: {id, name, active} \| null, subject \| null, body, active}` |
+| `POST /telecaller/templates` | writers | `201`. Body `{channel, kind, name, product_id?, asset_id?, subject?, body}`. Kind must belong to the channel (§11: welcome, course_details, brochure, fee_details, counselling_appointment, reminder, follow_up, overseas_destination, document_request; §12: course_brochure, fee_proposal, counselling_confirmation, overseas_information, university_information, follow_up, appointment_confirmation). Only email has a subject (1–200, one line). Body ≤ 1000 (WhatsApp) / 5000 (email). Placeholders `{name}`, `{product}`, `{brochure_link}`, `{appointment_time}`; any other `{…}` → `422` "Unknown placeholder {x}. …"; `{brochure_link}` without `asset_id` → `422`. `asset_id`/`product_id` must be active when set. Duplicate name per channel (case-insensitive) → `409` |
+| `PATCH /telecaller/templates/{id}` | writers | Every rule re-checked on the merged row; a different `channel` → `422` "Channel cannot be changed". Keeping a since-deactivated brochure/product is allowed |
+| `GET /telecaller/templates/{id}/preview` | readers | Renders with sample values (`Priya Sharma`, the template's product or `Cyber Security`, `Mon 14 Sept 2026, 10:30 AM`). `{subject, body, brochure_link: {url, expires_at} \| null}`; the link is minted only while the brochure is active. Telecaller + inactive template → `404` |
+| `GET /telecaller/assets` | readers | Filters `kind` (`brochure\|fee`), `product_id`, `active`, `q`. Order: newest upload first. Item `{id, name, kind, product \| null, file_name, size_bytes, active, uploaded_at}` (the storage key is never returned) |
+| `POST /telecaller/assets` | writers | `201`, `multipart/form-data`: `name`, `kind`, `product_id?`, `file`. The bytes must start `%PDF-` → else `422` "Upload a PDF file"; empty → `422`; over `MAX_UPLOAD_BYTES` → `413` |
+| `PATCH /telecaller/assets/{id}` | writers | JSON any of `{name, kind, product_id, active}` (metadata only). Deactivating ends every link at once |
+| `POST /telecaller/assets/{id}/link` | readers | `{url, expires_at}`: `{FRONTEND_URL}/api/v1/public/telecaller-assets/{token}`, a signed JWT (`type: tel_asset`, `sub` = asset id) valid 7 days. Inactive/missing → `404` |
+| `GET /public/telecaller-assets/{token}` | Public | `200 application/pdf`, `Content-Disposition: inline` (ASCII + RFC 5987 name), `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`. Bad/expired/foreign token, missing or inactive brochure → `404` "This link has expired or is no longer available" |
+
+Every write adds an `AuditLog` row (`telecaller.script_create|script_update|template_create|template_update|asset_create|asset_update`,
+`metadata_json.fields` = field names only). A link token is never a session (`deps.get_current_user` accepts only `type: access`).
+
+## 12J. Lead distribution (`tel-007`) — addendum, 2026-10-06
+
+`DEC-SCOPE-084`; design spec `docs/superpowers/specs/2026-10-06-tel-007-lead-distribution-design.md` §4–§5; migration `0084_tel_distribution`.
 All routes: `telecaller_manager` or `super_admin` (other roles `403`, signed out `401`). Lists are `{items, total, limit, offset}` (`limit` default 50, max 100).
 
 | Method/Path | Notes / status codes |

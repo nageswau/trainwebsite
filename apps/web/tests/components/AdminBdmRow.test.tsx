@@ -10,9 +10,17 @@ const row = {
 };
 const managerPage = { items: [{ id: "m2", full_name: "Ravi", email: "ravi@x.local" }], total: 1, limit: 20, offset: 0 };
 
-/** Picker searches get one manager (Ravi); every PATCH gets `patch`. */
-function route(patch: Response = res({ ok: true })) {
-  const mock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>((url) => Promise.resolve(String(url).startsWith("/api/v1/admin/bdm-managers") ? res(managerPage) : patch.clone()));
+const NOTHING_OPEN = { organizations: 0, appointments: 0, tasks: 0, trips: 0 };
+const deactivated = { id: "b1", active: false, mode: "leave", moved: { organizations: 0, appointments: 0, tasks: 0 }, trips_cancelled: 0 };
+
+/** Picker searches get one manager (Ravi); the bdm-025 portfolio preview has nothing open; a POST gets `post`; every PATCH gets `patch`. */
+function route(patch: Response = res({ ok: true }), post: Response = res(deactivated)) {
+  const mock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>((url, init) => {
+    const u = String(url);
+    if (u.startsWith("/api/v1/admin/bdm-managers")) return Promise.resolve(res(managerPage));
+    if (u.endsWith("/portfolio")) return Promise.resolve(res(NOTHING_OPEN));
+    return Promise.resolve((init?.method === "POST" ? post : patch).clone());
+  });
   vi.stubGlobal("fetch", mock);
   return mock;
 }
@@ -103,43 +111,55 @@ describe("AdminBdmRow (bdm-001 AC13)", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Edit Asha" })).toHaveFocus());
   });
 
-  it("moves keyboard focus into the deactivate confirmation and back out of it", async () => {
+  // bdm-025: Deactivate opens the handover group (AdminBdmHandover has its own tests); PATCH never deactivates a BDM.
+  it("Deactivate opens the handover group; Keep active returns focus to Deactivate", async () => {
     route();
     mount();
     fireEvent.click(screen.getByRole("button", { name: "Deactivate Asha" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "Confirm deactivate" })).toHaveFocus());
-    fireEvent.click(screen.getByRole("button", { name: "Keep active" }));
+    expect(screen.getByRole("group", { name: "Deactivate Asha" })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Keep active" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Deactivate Asha" })).toHaveFocus());
+    expect(screen.queryByRole("group", { name: "Deactivate Asha" })).toBeNull();
   });
 
-  it("deactivation needs a second, explicit confirm, then focus lands on the row (QA-06)", async () => {
+  it("deactivates through the handover endpoint, never PATCH, then focus lands on the row", async () => {
     const mock = route();
     const onChanged = mount();
     fireEvent.click(screen.getByRole("button", { name: "Deactivate Asha" }));
-    expect(patches(mock)).toHaveLength(0);
-    expect(screen.getByText(/can no longer sign in/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Confirm deactivate" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Confirm deactivate" }));
     await waitFor(() => expect(onChanged).toHaveBeenCalledWith("Deactivated Asha."));
-    expect(patchBody(mock)).toEqual({ active: false });
+    expect(patches(mock)).toHaveLength(0);
+    expect(mock.mock.calls.some(([u, init]) => u === "/api/v1/admin/bdms/b1/deactivate" && init?.method === "POST")).toBe(true);
     await waitFor(() => expect(document.activeElement).not.toBe(document.body));
     expect(document.activeElement?.closest("tr")).not.toBeNull();
   });
 
-  it("a failed status change shows the message and focuses it", async () => {
+  it("a failed reactivation shows the message and focuses it", async () => {
     route(res({ detail: "Not allowed" }, 403));
-    mount();
-    fireEvent.click(screen.getByRole("button", { name: "Deactivate Asha" }));
-    fireEvent.click(screen.getByRole("button", { name: "Confirm deactivate" }));
+    mount({ active: false });
+    fireEvent.click(screen.getByRole("button", { name: "Reactivate Asha" }));
     const message = await screen.findByText("Not allowed");
     await waitFor(() => expect(message).toHaveFocus());
   });
 
-  it("shows status in words and offers Reactivate for an inactive BDM", () => {
+  it("shows status in words and offers Reactivate and Hand over for an inactive BDM", async () => {
     route();
     mount({ active: false });
     expect(screen.getByText("Inactive")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reactivate Asha" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Deactivate Asha" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Hand over Asha's open work" }));
+    expect(await screen.findByText("Asha has no open work to hand over.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Hand over Asha's open work" })).toHaveFocus());
+  });
+
+  it("reactivates through PATCH and says so", async () => {
+    const mock = route();
+    const onChanged = mount({ active: false });
+    fireEvent.click(screen.getByRole("button", { name: "Reactivate Asha" }));
+    await waitFor(() => expect(onChanged).toHaveBeenCalledWith("Reactivated Asha."));
+    expect(patchBody(mock)).toEqual({ active: true });
   });
 
   // tel-001 QA follow-up (QA-03 on the BDM page): the notice names the BDM as saved, not as they were before the edit.

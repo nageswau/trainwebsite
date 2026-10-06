@@ -1,12 +1,17 @@
 """tel-007 -- tel_distribution_rules and tel_round_robin_cursors: per-team product/city routing rules and the round-robin cursor.
 
-Revision ID: 0082_tel_distribution
-Revises: 0081_lead_stage_pipeline
+Revision ID: 0084_tel_distribution
+Revises: 0083_tel_content
 
-docs/superpowers/specs/2026-10-06-tel-007-lead-distribution-design.md §3 (DEC-SCOPE-082, provisional: tel-012 also chains after 0081, so
-whichever merges second re-chains). Adds two tables; no existing row is read or written, and existing unassigned leads are not backfilled
-(DI2). 0001 builds a fresh database from the current models, which already carry the tables, so creation is guarded (0075's idiom).
-downgrade() refuses while any rule exists: rules are manager configuration that a downgrade would silently lose.
+docs/superpowers/specs/2026-10-06-tel-007-lead-distribution-design.md §3 (DEC-SCOPE-084). Adds two tables; no existing row is read or
+written, and existing unassigned leads are not backfilled (DI2). 0001 builds a fresh database from the current models, which already carry
+the tables, so creation is guarded (0075's idiom). downgrade() refuses while any rule exists: rules are manager configuration that a
+downgrade would silently lose.
+
+Re-chained 2026-10-06 on merging `main` @ `50838192`: drafted as `0082_tel_distribution` on `0081_lead_stage_pipeline` (DEC-SCOPE-082), but
+bdm-025's `0082_bdm_assignment_history` (DEC-SCOPE-082) and tel-012's `0083_tel_content` (DEC-SCOPE-083) reached `main` first. A database
+stamped at `0082_tel_distribution` is re-stamped with `alembic stamp --purge 0081_lead_stage_pipeline` then `upgrade head` (the create is
+guarded, so the re-run is harmless).
 """
 
 import sqlalchemy as sa
@@ -14,8 +19,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0082_tel_distribution"
-down_revision = "0081_lead_stage_pipeline"
+revision = "0084_tel_distribution"
+down_revision = "0083_tel_content"
 branch_labels = None
 depends_on = None
 
@@ -56,6 +61,6 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {RULES} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0082_tel_distribution: distribution rules exist (manager configuration). Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0084_tel_distribution: distribution rules exist (manager configuration). Remove them deliberately first.")
     op.drop_table(CURSORS)
     op.drop_table(RULES)

@@ -1,4 +1,4 @@
-// tel-007 (DEC-SCOPE-082): distribution rules and the manager's Lead assignment page -- types, endpoints and the shared pickers.
+// tel-007 (DEC-SCOPE-084): distribution rules and the manager's Lead assignment page -- types, endpoints and the shared pickers.
 // Display only: the API decides who may write (DI3) and which leads are in scope (T23).
 import { getPage } from "@/lib/telecallerCatalogue";
 import type { TelecallerTeam, TelecallerTeamRow } from "@/lib/telecaller";
