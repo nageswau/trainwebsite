@@ -118,3 +118,21 @@ async def test_filters_apply_before_the_500_row_cap(db_session, world):  # AC16,
         _, filtered = await _ids(c, "admin", agency=str(ctx["org"].id))
     assert str(old.id) not in unfiltered
     assert filtered == {str(old.id)}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("role", "section", "email_key"), [("admin", "admission-updates", "admin"), ("counselor", "admission-updates", "counselor"), ("admin", "offer-letters", "admin")])
+async def test_other_sections_keep_their_original_payload(world, role, section, email_key):  # AC18: no filters advertised where they are refused
+    async with client_for(world[email_key].email) as c:
+        data, _ = await _ids(c, role, section)
+    assert "filters" not in data
+    assert [col["key"] for col in data["columns"]] == ["id", "student", "university", "reference", "status", "next_action"]
+    assert all(not {"agency", "counselor", "counselor_id", "is_agency", "assign"} & row.keys() for row in data["rows"])
+
+
+@pytest.mark.asyncio
+async def test_a_university_rep_counselor_filter_is_refused(db_session, world):  # AC18
+    rep = await mk_user(db_session, role="university_rep", profile={"university_id": str(world["university"].id)})
+    async with client_for(rep.email) as c:
+        r = await c.get(PORTAL.format("university", "applications"), params={"counselor": str(world["counselor"].id)})
+    assert r.status_code == 422 and r.json()["detail"] == "Filter not available"

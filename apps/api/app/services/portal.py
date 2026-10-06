@@ -1031,7 +1031,8 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
         if section in {"students", "applications", "admission-updates", "offer-letters"}:
             columns = [("id", "reference"), ("student", "Student"), ("university", "University"), ("reference", "Reference"), ("status", "Status"), ("next_action", "Next action")]
             rows = [{"id": a.id, "student_id": s.id, "student": s.full_name, "university": u.name, "reference": a.application_reference, "status": a.status, "next_action": a.next_action} for a, u, s in applications]
-            if user.role in {"overseas_admin", "counselor"}:  # AGN-023 (DEC-SCOPE-090 §3.3); university_rep unchanged
+            agn023 = user.role in {"overseas_admin", "counselor"} and section in application_filters.FILTER_SECTIONS  # AGN-023 (DEC-SCOPE-090 §3.3): students/applications only; university_rep and the other sections unchanged
+            if agn023:
                 agencies, counselors = await application_filters.row_labels(db, [a for a, _, _ in applications])
                 for row, (a, _, _) in zip(rows, applications, strict=True):
                     row |= {"is_agency": a.agent_id is not None, "agency": agencies.get(a.agent_id)}
@@ -1042,7 +1043,7 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                     columns.insert(4, ("counselor", "EduSphere counsellor"))
                     columns.append(("assign", "", "assign_counselor"))
             payload = _payload("Application Tracking", "Assigned applications and next actions.", columns, rows)
-            if user.role in {"overseas_admin", "counselor"}:
+            if agn023:
                 payload["filters"] = await application_filters.payload_part(db, user, filters or ApplicationFilters())
             return payload
         if section == "documents":
