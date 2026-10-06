@@ -55,7 +55,7 @@ from app.models import (
 from app.services.agent_applications import WITHDRAWN, counts_as_offer, owned, stage_label, with_owner
 from app.services.agent_orgs import org_masters, org_member_ids
 from app.services.agent_students import application_scope, student_scope
-from app.services.agent_tasks import pending_count
+from app.services.agent_dashboard import headline_counts
 from app.services.provisioning import provisioning_statuses, user_ids_with_status
 
 logger = logging.getLogger("app.portal")
@@ -716,10 +716,13 @@ async def _agent(db: AsyncSession, user: User, section: str):
     if section == "dashboard":
         # AGN-008 browser QA8-10: a withdrawn application is closed, so it leaves the count and the table; status reads as a label.
         open_applications = [(a, u, s) for a, u, s in applications if a.status != WITHDRAWN]
+        # AGN-018 (DEC-SCOPE-062): the counts come from the dashboard endpoint's service, so the two never disagree. Students now
+        # includes students with no login (the inner join on users above dropped them); Pending actions is AGN-016's T5 count.
+        counts = await headline_counts(db, user)
         metrics = [
-            {"label": "Students", "value": len(students)},
-            {"label": "Applications", "value": len(open_applications)},
-            {"label": "Pending actions", "value": await pending_count(db, user)},  # AGN-016 (DEC-SCOPE-053 T5): open tasks in scope
+            {"label": "Students", "value": counts["students"]},
+            {"label": "Applications", "value": counts["applications"]},
+            {"label": "Pending actions", "value": counts["pending_actions"]},
         ]
         if not staff:
             metrics += [
@@ -730,7 +733,7 @@ async def _agent(db: AsyncSession, user: User, section: str):
             metrics.append({"label": "Revenue", "value": _paid_per_currency(commissions)})
         # AGN-010 (DEC-SCOPE-056 O5): offers received, withdrawn ones included -- the Reports row's rule. After the commission metrics,
         # so the order AGN-014 and AGN-016 fixed stays as it was.
-        metrics.append({"label": "Offers", "value": sum(1 for a, _, _ in applications if counts_as_offer(a))})
+        metrics.append({"label": "Offers", "value": counts["offers"]})
         if user.agent_membership:
             metrics.append({"label": "Your code", "value": user.agent_membership.code})
         return _payload(
@@ -756,6 +759,13 @@ async def _agent(db: AsyncSession, user: User, section: str):
     if section == "tasks":
         # AGN-016 (DEC-SCOPE-053): header only -- PortalPage mounts AgentTasksSection (the Universities precedent).
         return _payload("Tasks & follow-ups", "Follow-ups on your students, earliest due first.")
+    if section == "notifications":
+        # AGN-017 (DEC-SCOPE-059 N8): header only -- the page's role/approval gate; PortalPage mounts AgentNotificationsSection.
+        return _payload("Notifications", "Your own notifications.")
+    if section == "performance":
+        # AGN-019 (DEC-SCOPE-066 P7): header only -- the page's role/approval gate; PortalPage mounts AgentPerformanceSection, which
+        # reads GET .../crm/performance (Master only). No figures here, so staff learn nothing from this payload.
+        return _payload("Staff performance", "Students added in a period, and how far they got.")
     if section == "universities":
         # AGN-007 (DEC-SCOPE-049): header only -- PortalPage mounts AgentUniversitiesPanel for this section (the Students precedent).
         return _payload("Universities", "Your agency's own universities. Browse the public catalogue for the rest.")
