@@ -670,6 +670,18 @@ lead → counselor user → appointment.
 | `counselor` (IT or overseas) | list own lead appointments; confirm, complete, no-show (after the start), reschedule, cancel | `staff_id` = self; another counselor's is `404` | `tel-016` |
 | every other role | none → `403` on the lead routes and the counselor list, `404` on an action | — | `tel-016` |
 
+### 2.24 BDM daily activity report *(net-new, added 2026-10-07 — `DEC-SCOPE-096`, `bdm-015`)*
+
+`bdm_context` gates the BDM routes (own report only — no route names another BDM); `require_manager` + `team_filter` gate the manager
+routes (a BDM outside the team is `404`).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `bdm` | read the day's preview / snapshot; **submit** (today or up to 7 days back, once); read the manager's comment | own | `bdm-015` |
+| `bdm_manager` | team grid (submitted / missing); read a team BDM's report; **comment** on a submitted one | BDMs reporting to them | `bdm-015` |
+| `super_admin` | as a manager | all BDMs | `bdm-015` |
+| every other role | none → `403` | — | `bdm-015` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

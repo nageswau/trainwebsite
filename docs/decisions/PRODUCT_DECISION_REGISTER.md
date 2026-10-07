@@ -4294,3 +4294,31 @@ counselor's, a manager's request) is `404` — the backlog's "403" for another c
 `LeadAppointmentCard`, `CounselorAppointmentsPanel`. **New Feature ID authorized:** `tel-016`. **Status:** see `TELECALLER_CRM_BACKLOG.md`
 §4 tel-016.
 
+### DEC-SCOPE-096 — BDM daily activity report (`bdm-015`)
+
+**Evidence:** `EVID-016` §11, Agent §G, School §G (`BDM_CRM_BACKLOG.md` Appendix A L371–L397, L759–L781, L1000–L1022);
+`DEC-SCOPE-055` D9 (derived + activity log + note + submit), D22 / Q-13 (not enforced; submitting snapshots and locks the report and that
+day's activity edits; the manager can comment), D31 (School daily sessions); Appendix B M-rows; bdm-009 V6 ("Calls made" = outbound calls).
+**Status:** R1–R10 are the **recommended answers**, used under the owner's standing direction for this session to proceed with
+recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). Drafted as `DEC-SCOPE-096`; renumbered on merge if another
+item takes it. Migration `0092_bdm_daily_reports` (after `0091_lead_appointments`), API contract §12R, RBAC §2.24. Spec
+`docs/superpowers/specs/2026-10-07-bdm-015-daily-activity-report-design.md`.
+
+| # | Question | Recommended answer (used) |
+|---|---|---|
+| R1 | Counts per type | The source lists: College = §11 (11), Agent §G (11), School §G (11), each one Appendix B M-row |
+| R2 | "Calls made" | Outbound calls (bdm-009 V6), so the report equals the Activities tile |
+| R3 | Late submission | Today or up to 7 IST days back; older days are a read-only preview; a future day is `422` |
+| R4 | Note | Optional, ≤ 2000 characters |
+| R5 | What submitting locks | That day's activities: create (backdated), edit and delete → `409`. Other records are not locked |
+| R6 | Resubmit / unsubmit | Neither; a second submit is `409` |
+| R7 | Manager comment (D22) | One per submitted report, replaceable, ≤ 1000, team scope or super_admin, audited; a missing report → `409` |
+| R8 | Team view | Active team BDMs × the 7 days up to the chosen date: Submitted / Missing / "—" before the BDM's profile existed |
+| R9 | Whose count | The record's BDM column; a submitted snapshot never changes after a bdm-025 handover |
+| R10 | Not tracked | Labelled with its reason, never 0: New agents (bdm-019), Applications / Enrollments generated (Agent CRM link) |
+
+**Consequences:** table `bdm_daily_reports` (unique `(bdm_user_id, report_date)`); `services/bdm_metrics.daily_counts` + the M-row
+builders bdm-016 / 023 / 024 reuse; `services/bdm_daily_reports.py`; routes in `api/bdm_daily_reports.py`; bdm-009's `editable()` gains
+the report lock and activity writes take the day's advisory lock; pages `/bdm/daily-report`, `/bdm/manager/daily-reports`,
+`/bdm/manager/daily-reports/[bdmId]`; component `BdmDailyReport`. **Feature ID:** `bdm-015`. **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-015.
+

@@ -1193,6 +1193,26 @@ or marking a no-show, or acting on a handed-over lead; `409` "Appointment is alr
 A stage move that closes the lead (`POST /telecaller/leads/{id}/stage`, the admin move) also cancels its open appointment: an event row with reason "Lead closed" and an audit row `lead_appointment.cancel {reason: lead_closed}`; the lead stays closed (AP15). `PATCH /workflows/overseas/appointments/{id}` is `404` for a lead appointment (AP12); its student behaviour is unchanged. `GET
 /portal/it/counselor/appointments` returns a header-only payload (AP14).
 
+## 12R. BDM daily activity report (`bdm-015`) — addendum, 2026-10-07
+
+`DEC-SCOPE-096`; design spec `docs/superpowers/specs/2026-10-07-bdm-015-daily-activity-report-design.md` §5. Migration
+`0092_bdm_daily_reports`. Signed out `401`. Dates are IST calendar days (`YYYY-MM-DD`; a malformed one is `422`). The report shape:
+`{report_date, bdm: {id, full_name}, bdm_type, status: draft|submitted, submitted_at, note, counts: [{key, label, definition, tracked,
+count}], can_submit, submit_window_days: 7, manager_comment: {text, by: {id, full_name}, at} | null}` — a not-tracked count has
+`tracked: false, count: null`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /bdm/daily-reports/{report_date}` | `bdm` only (else `403`). Own report: the live preview (`draft`, nothing stored) or the submitted snapshot. Future `422` |
+| `POST /bdm/daily-reports/{report_date}/submit` | `bdm` only (a manager or any other role `403` — no one submits for another BDM). Body `{note?}` (≤ 2000, control characters `422`, unknown keys `422`). Future or more than 7 days back `422`; already submitted `409`. `201` the shape; audit `bdm_daily_report.submitted {report_date}` |
+| `GET /bdm/manager/daily-reports?date=&limit=&offset=` | `bdm_manager` (team) / `super_admin` (all), else `403`. `{dates: [7 days ending at date], items: [{bdm, bdm_type, days: [{report_date, status: submitted\|missing\|not_started, submitted_at}]}], total, limit, offset}` — active BDMs, by name. Future `422` |
+| `GET /bdm/manager/daily-reports/{bdm_user_id}/{report_date}` | Manager roles. The shape, `can_submit: false`. A BDM outside the team `404` |
+| `PUT /bdm/manager/daily-reports/{bdm_user_id}/{report_date}/comment` | Manager roles. Body `{comment}` (1–1000). Not submitted `409`; outside the team `404`. Replaces any earlier comment; audit `bdm_daily_report.commented` |
+
+Changed (bdm-009): `POST /bdm/activities` with `occurred_at` on a submitted day, and `PATCH` / `DELETE /bdm/activities/{id}` on a
+submitted day's activity, are `409` "This day's report has been submitted, so its activities can't be changed"; `permissions.can_change`
+is `false` for them. No other field or code changes.
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
