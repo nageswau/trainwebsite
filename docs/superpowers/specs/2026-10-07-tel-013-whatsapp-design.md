@@ -4,8 +4,8 @@
   tel-012 (PR #83) are merged. Inherits tel-012 C2: `GET /telecaller/leads/{id}/render`.
 - **Status:** built on `feature/tel-013`, not yet merged. QA: `docs/quality/TEL-013_EXPLORATORY_QA_2026-10-07.md` (QA-01–QA-04 fixed).
 - **Decision:** `DEC-SCOPE-099` (WA1–WA4 owner answers 2026-10-07; D1–D9 defaults). Migration `0094_lead_messages`, API contract §12U,
-  RBAC §2.27. bdm-014 took 097 on `main` (no migration); tel-019 (`0093` / §12S / 2.25) and tel-018 (098 / §12T / 2.26) are built in parallel and unmerged, so `0094` chains to
-  main's `0092_lead_calls` and is re-chained at merge if either lands first.
+  RBAC §2.27. bdm-014 took 097 (no migration) and tel-019 merged first with `0093_bdm_meeting_requests` / 098 / §12S / 2.25, so `0094`
+  (drafted on `0092`) is re-chained after `0093`. §12T / 2.26 stay claimed by tel-018's open branch.
 
 ## 1. Decisions
 

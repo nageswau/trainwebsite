@@ -4351,6 +4351,43 @@ pending. No migration. API contract §12B (`GET /bdm/my-day`), RBAC (BDM My Day 
 **Consequences:** route `app/api/bdm_my_day.py`; schemas `BdmMyDay*`; page `app/bdm/my-day` (+ `loading.tsx`); component `BdmMyDay`;
 helpers `lib/bdmMyDay.ts`. **New Feature ID authorized:** none (bdm-014 is in the backlog). **Status:** see `BDM_CRM_BACKLOG.md` §bdm-014.
 
+
+### DEC-SCOPE-098 — BDM meeting requests (`tel-019`)
+
+**Evidence:** `EVID-019` §9 BDM meeting types (`Telecaller Functionalities.md` L346–L384, Appendix A); `DEC-SCOPE-073` T10 (the
+telecaller files a meeting request; the BDM accepts it into `bdm_appointments`), T26 (corporate meetings → college BDMs);
+`DEC-SCOPE-068` (bdm-006 appointments); owner answers in-session 2026-10-07.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option) for
+MR1–MR4; MR5–MR14 are recorded defaults. **MERGED** to `main` as PR #109 @ `f8f599ee` (2026-10-07). Migration
+`0093_bdm_meeting_requests` (after tel-010's `0092_lead_calls`; drafted on `0091` and re-chained at the
+`main` @ `3d7dd99a` merge, where bdm-014 had taken `DEC-SCOPE-097`), API contract §12S, RBAC §2.25. Spec
+`docs/superpowers/specs/2026-10-07-tel-019-bdm-meeting-requests-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| MR1 | Q-13: routing | The telecaller **may name an active BDM of the type**; left blank, the request goes to the type's **pool** — every active BDM of that type sees it and the first to accept takes it. No manager triage |
+| MR2 | Decline | A reason is required; a decline is **final** (the telecaller files a new request) |
+| MR3 | Read-only viewers | `bdm_manager`: their team's requests plus the open pool; `super_admin`: all. No telecaller-manager view in this item |
+| MR4 | Withdraw | **No.** Statuses `pending` / `accepted` / `declined` only |
+
+Recorded defaults: MR5 request type → BDM type: college → college, agent → agent, school → school, corporate → college. MR6 `MRQ-000001`
+codes from `bdm_meeting_request_code_seq`. MR7 organization (≤ 200), person (≤ 200), phone (7–30 of digits, spaces, `+ - ( )`), optional
+email, proposed time (future, ≤ 366 days), mode `Online` / `Phone` / `In person`, optional link-or-location (≤ 255), purpose (≤ 1000),
+optional remarks (≤ 2000). MR8 a named BDM must be an active `bdm` of the type (`422`). MR9 accept takes the bdm-006 create body and applies
+every bdm-006 rule unchanged (one organization assigned to the BDM, its contact, a future start — so a request accepted after its proposed
+time just takes a new start); the UI starts from the request (time, `college_meeting` / `agent_meeting` / `school_meeting` /
+`corporate_meeting`, location, purpose, remarks). MR10 the organization must exist (the accept form links to Organizations). MR11 a BDM
+sees their type's pool plus the requests that are theirs; a pool request taken by another BDM reads as `404`. MR12 managers and
+super_admin never accept or decline (`403`); a telecaller sees only their own. MR13 no notifications here (tel-020); a request named for a
+BDM later deactivated stays pending (follow-up for tel-025 / BDM deactivation). MR14 no lead link.
+
+**Consequences:** table `bdm_meeting_requests` (CHECKs: accepted ⇔ appointment, declined ⇔ reason, decided ⇒ BDM + time; unique
+appointment); `api/bdm_appointments.book_appointment` (the bdm-006 create body, shared, no behaviour change); service
+`services/bdm_meeting_requests.py`; routes in `api/bdm_meeting_requests.py`; components `MeetingRequestForm`, `MeetingRequestList`,
+`MeetingRequestDecide`, `MeetingRequestsCard`; `BdmAppointmentForm` gains an optional `request` (prefill + accept URL). Navs: telecaller
+"BDM requests", BDM and BDM-manager "Requests". **New Feature ID authorized:** `tel-019`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4
+tel-019.
+
 ### DEC-SCOPE-099 — WhatsApp click-to-chat + send log (`tel-013`)
 
 **Evidence:** `EVID-019` §11 (L416–L452); `DEC-SCOPE-073` T8 (wa.me, an editable template, "WhatsApp sent – date/time – template", no API /
@@ -4358,10 +4395,10 @@ approval / consent model now), T9, T19, T23 and Appendix B D10; `DEC-SCOPE-083` 
 route moves to tel-013); `DEC-SCOPE-084` D1 (handover = read-only); `DEC-SCOPE-096` CL2 / CL4 (closed lead, same-day change); owner
 answers in-session 2026-10-07.
 **Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option)
-for WA1–WA4; D1–D9 are recorded defaults. Branch `feature/tel-013`, not yet merged. Migration `0094_lead_messages` (chained to `main`'s
-`0092_lead_calls`; bdm-014 took `DEC-SCOPE-097` on `main` (PR #108, no migration); tel-019's open branch claims `0093` / §12S / RBAC
-2.25 and tel-018's `DEC-SCOPE-098` / §12T / RBAC 2.26, so `0094` re-chains at merge if `0093` lands first), API contract §12U, RBAC
-§2.27. Spec
+for WA1–WA4; D1–D9 are recorded defaults. Branch `feature/tel-013`, not yet merged. Migration `0094_lead_messages` (drafted on
+`0092_lead_calls`; bdm-014 took `DEC-SCOPE-097` (PR #108, no migration) and tel-019 merged first as PR #109 with
+`0093_bdm_meeting_requests` / `DEC-SCOPE-098` / §12S / RBAC 2.25, so `0094` is re-chained after `0093`; §12T / RBAC 2.26 stay claimed by
+tel-018's open branch), API contract §12U, RBAC §2.27. Spec
 `docs/superpowers/specs/2026-10-07-tel-013-whatsapp-design.md`.
 
 | # | Question | Answer |

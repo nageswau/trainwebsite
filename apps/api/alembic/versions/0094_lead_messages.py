@@ -1,11 +1,11 @@
 """tel-013 -- `lead_messages`: WhatsApp (and, from tel-014, email) messages sent to a lead.
 
 Revision ID: 0094_lead_messages
-Revises: 0092_lead_calls
+Revises: 0093_bdm_meeting_requests
 
-docs/superpowers/specs/2026-10-07-tel-013-whatsapp-design.md §2 (DEC-SCOPE-099). tel-019 holds 0093 on an unmerged branch, so this chains
-to main's head 0092_lead_calls and is re-chained at merge if 0093 lands first. 0001 builds a fresh database from the current models, which
-already carry the table, so the upgrade is guarded (0092's idiom). CHECKS repeats models.LEAD_MESSAGE_CHECKS (test_tel_013_migration
+docs/superpowers/specs/2026-10-07-tel-013-whatsapp-design.md §2 (DEC-SCOPE-099). Drafted on 0092_lead_calls and re-chained after tel-019's
+0093_bdm_meeting_requests (DEC-SCOPE-098), which merged first. 0001 builds a fresh database from the current models, which already carry
+the table, so the upgrade is guarded (0092's idiom). CHECKS repeats models.LEAD_MESSAGE_CHECKS (test_tel_013_migration
 asserts they stay identical).
 """
 
@@ -15,7 +15,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0094_lead_messages"
-down_revision = "0092_lead_calls"
+down_revision = "0093_bdm_meeting_requests"
 branch_labels = None
 depends_on = None
 

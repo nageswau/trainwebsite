@@ -617,7 +617,7 @@ after tel-003 `0078`, bdm-005 `0079`, tel-022 `0080`, tel-004 `0081` and bdm-025
 ### tel-013 — WhatsApp click-to-chat + send log
 
 **Status (2026-10-07):** **built** on `feature/tel-013`, not yet merged (`DEC-SCOPE-099` WA1–WA4 + D1–D9, migration `0094_lead_messages`,
-API contract §12U, RBAC §2.27; chained to `main`'s `0092`, re-chained at merge if tel-019's `0093` lands first). Spec
+API contract §12U, RBAC §2.27; re-chained after tel-019's `0093_bdm_meeting_requests`, merged first as PR #109). Spec
 `docs/superpowers/specs/2026-10-07-tel-013-whatsapp-design.md`; QA report `docs/quality/TEL-013_EXPLORATORY_QA_2026-10-07.md`. Q-21 →
 WA1 (full text kept); consent and retention stay open (`PRD_OPEN_ITEMS.md` row 85). The tel-005 duplicate panel's "Last contact" is not
 added here (tel-015 owns the merged contact history).
@@ -839,6 +839,10 @@ division-change edge case does not apply: `User.division` cannot change after cr
 - **Complexity:** large · **Risk:** high
 
 ### tel-019 — BDM meeting requests
+
+**Status (2026-10-07):** **merged** to `main` as PR #109 @ `f8f599ee` (`DEC-SCOPE-098` MR1–MR4 + MR5–MR14, migration
+`0093_bdm_meeting_requests`, API contract §12S, RBAC §2.25; re-chained after tel-010's `0092_lead_calls`; QA-01/QA-02 fixed). Spec `docs/superpowers/specs/2026-10-07-tel-019-bdm-meeting-requests-design.md`. Q-13 → MR1 (a named BDM of
+the type, or the type's pool; first accept wins); a decline is final (MR2); no withdraw (MR4).
 
 - **Business requirement:** §9 BDM meeting types; T10, T26.
 - **Existing behavior:** bdm-006 appointments are created only by the BDM on their own organization.
@@ -1181,9 +1185,10 @@ graph TD
 Numbers are **provisional**. `main` is at `0085_tel_distribution` (tel-007, merged 2026-10-06; tel-001 took `0075`, tel-002 `0076`, bdm-008 `0077`, tel-003 `0078`, bdm-005 `0079`, tel-022 `0080`, tel-004 `0081`, bdm-025 `0082`, tel-012 `0083`, bdm-018 `0084`; tel-017 and tel-008 have none; bdm-005/bdm-013/tel-022/tel-004/bdm-025/tel-012/tel-008/bdm-018/bdm-021/tel-007 took `DEC-SCOPE-078`–`087`), so the next telecaller migration will be `0086` or later, and the next decision `DEC-SCOPE-088` or later. tel-005 (merged 2026-10-06 as PR #92, re-chained after tel-007) took `0086_lead_enquiries` / `DEC-SCOPE-088` / §12L, `main` then took bdm-020 (`DEC-SCOPE-089`, no migration). tel-006 (merged 2026-10-06 as PR #96 @ `126b454b`) took `0087_lead_import_batches` / `DEC-SCOPE-091` / §12N (090 / §12M are claimed by the open AGN-023 branch), so `main` was at `0087`; bdm-011 (PR #89) then took `0088_bdm_appointment_trip` / `DEC-SCOPE-092`, so tel-009 (PR #98) chained after it as `0089_lead_qualifications` / `DEC-SCOPE-093` / §12O, and tel-011 (PR #100 @ `8f9f1676`) after
 that as `0090_lead_follow_ups` / `DEC-SCOPE-094` / §12P. tel-016 (PR #103 @ `92946a8a`) then took
 `0091_lead_appointments` / `DEC-SCOPE-095` / §12Q / RBAC §2.23, and tel-010 (PR #106 @ `7e3ab62a`) `0092_lead_calls` /
-`DEC-SCOPE-096` / §12R / RBAC §2.24. bdm-014 (PR #108) then took `DEC-SCOPE-097` (no migration). `main` is at `0092`; open telecaller
-branches claim tel-019 `0093` / §12S / RBAC §2.25, tel-018 `DEC-SCOPE-098` / §12T / RBAC §2.26 and tel-013 `0094_lead_messages` /
-`DEC-SCOPE-099` / §12U / RBAC §2.27. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
+`DEC-SCOPE-096` / §12R / RBAC §2.24. bdm-014 (PR #108) took `DEC-SCOPE-097` (no migration), and tel-019 (PR #109 @ `f8f599ee`)
+`0093_bdm_meeting_requests` / `DEC-SCOPE-098` / §12S / RBAC §2.25. `main` is at `0093`; tel-013 (open branch) chains after it with
+`0094_lead_messages` / `DEC-SCOPE-099` / §12U / RBAC §2.27 (§12T / RBAC §2.26 stay claimed by tel-018's open branch). Each item takes the
+next free head when it merges, following the existing re-chain notes idiom.
 
 | Item | Migration content |
 |---|---|
@@ -1201,7 +1206,7 @@ branches claim tel-019 `0093` / §12S / RBAC §2.25, tel-018 `DEC-SCOPE-098` / �
 | tel-013 | `lead_messages` (`0094`, on `feature/tel-013`) |
 | tel-016 | `appointments` + lead_id, appointment_code, duration_minutes, purpose, meeting_link, location, remarks, booked_by; CHECK student-or-lead; `appointment_events`; `appointment_code_seq` (`0091`, merged PR #103 @ `92946a8a`) |
 | tel-018 | possibly `enquiries.handed_over_at` (decided in-item) |
-| tel-019 | `bdm_meeting_requests` |
+| tel-019 | `bdm_meeting_requests` + `bdm_meeting_request_code_seq` (`0093`, merged PR #109 @ `f8f599ee`) |
 | tel-020 | `tel_alert_log`, `tel_settings` |
 | tel-022 | `tel_targets` |
 

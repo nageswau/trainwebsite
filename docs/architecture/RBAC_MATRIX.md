@@ -686,12 +686,26 @@ then the call's IST day. Every write is audited (`lead_call.*`, ids / outcome / 
 | `super_admin` | read; day counts of all calls (writes `403`) | all leads | `tel-010` |
 | every other role | none → `403` "Telecaller role required" | — | `tel-010` |
 
+### 2.25 BDM meeting requests *(net-new, added 2026-10-07 — `DEC-SCOPE-098`, `tel-019`)*
+
+The inline pattern: `telecaller_context` on the telecaller routes, `services.bdm_meeting_requests.scope_filters` on the BDM routes (§2.24
+is tel-010's). An id outside scope is `404`; accept and decline re-check the scope under the request's row lock. Lock order: request →
+organization → appointment (then bdm-006's own).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | read the options; **file** a request (pool, or a named active BDM of the type); list own | own requests only | `tel-019` |
+| `bdm` | list / read; **accept** (books a bdm-006 appointment on one of their organizations) or **decline** with a reason, while pending | their type's open pool + requests named for or decided by them; another type's or a taken pool request is `404` | `tel-019` |
+| `bdm_manager` | list / read only (accept / decline `403`) | their team's requests + the whole open pool | `tel-019` |
+| `super_admin` | list / read only (accept / decline `403`) | all | `tel-019` |
+| every other role (incl. `telecaller_manager`) | none → `403` | — | `tel-019` |
+
 ### 2.27 Lead WhatsApp messages *(net-new, added 2026-10-07 — `DEC-SCOPE-099`, `tel-013`)*
 
 Inline pattern as §2.24: scope (tel-004 `lead_pipeline.scope`, joined through the message's lead; out of scope `404`), the lead lock, then
 the role (`telecaller`), the sender (`sender_user_id` = self, for delete) and handover (`telecaller_leads.require_writable`), then the send's
-IST day. Every write is audited (`lead_message.*`, ids / channel / template id — never the text or a number). §2.25 / §2.26 are claimed
-by the open tel-019 / tel-018 branches.
+IST day. Every write is audited (`lead_message.*`, ids / channel / template id — never the text or a number). §2.25 is tel-019's; §2.26
+is claimed by the open tel-018 branch.
 
 | Role | Actions | Scope | Feature |
 |---|---|---|---|

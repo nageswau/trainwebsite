@@ -1215,12 +1215,32 @@ not_interested, wrong_number, busy, no_answer, switched_off, call_back_requested
 `GET /telecaller/follow-ups` and `GET /telecaller/leads/{id}/follow-ups` items gain `lead.last_call: {occurred_at, outcome} | null` (the
 lead's newest call; tel-011 F8).
 
+## 12S. BDM meeting requests (`tel-019`) — addendum, 2026-10-07
+
+`DEC-SCOPE-098`; design spec `docs/superpowers/specs/2026-10-07-tel-019-bdm-meeting-requests-design.md` §3. Migration
+`0093_bdm_meeting_requests` (§12R is tel-010's). Signed out `401`. The request shape: `{id, code, request_type, type_label, bdm_type,
+organization_name, person_name, contact_phone, contact_email, proposed_at, mode, location, purpose, remarks, status, requester: {id,
+full_name}, bdm: {id, full_name} | null, appointment: {id, code, starts_at, status} | null, decline_reason, decided_at, created_at,
+permissions: {can_accept, can_decline}}`. Lists are `{items, total, limit, offset}` (`limit` ≤ 100); a bad `status` is `422`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/meeting-requests/options` | `telecaller` only (else `403`). `200 {types: [{key, label, bdm_type}], bdms: {college, agent, school: [{id, full_name}]}, modes}` — active BDMs by name |
+| `POST /telecaller/meeting-requests` | `telecaller` only. Body `{request_type, bdm_user_id?, organization_name, person_name, contact_phone, contact_email?, proposed_at, mode, location?, purpose, remarks?}`. `422` fields, lengths, control characters, phone / email format, past / beyond 366 days, a named BDM that is not an active BDM of the type (corporate → college). `201` the shape above (`pending`); audit `bdm_meeting_request.create`. **Not idempotent** (as bdm-006 R-A5): a retry files a second request; the form disables its button while sending |
+| `GET /telecaller/meeting-requests?status=&limit=&offset=` | `telecaller` only. Own requests, newest first |
+| `GET /bdm/meeting-requests?status=&limit=&offset=` | `bdm`: their type's pool + theirs; `bdm_manager`: their team's + the whole pool; `super_admin`: all; else `403`. Pending first — those named for the caller ahead of the pool (QA-02), then soonest proposed first — then decided (latest first) |
+| `GET /bdm/meeting-requests/{id}` | Same scope; `404` outside it |
+| `POST /bdm/meeting-requests/{id}/accept` | `bdm` only (`403` manager / super_admin). Body = `POST /bdm/appointments` (§12-bdm-006). In order: `403` role / profile; `404` scope (re-checked under the row lock — a pool request another BDM took is `404`); `409` "This request is already accepted/declined"; then every bdm-006 create rule (`404` organization out of type, `403` not assigned, `422` archived / foreign contact / type / past, `409 possible_overlap` unless `confirm_overlap`). A refusal rolls the whole accept back (the request stays pending). `200 {appointment: <bdm-006 detail>, meeting_request: <shape>}`; audits `bdm_appointment.create` and `bdm_meeting_request.accept`. Safe to retry: a second accept is `409`, never a second appointment |
+| `POST /bdm/meeting-requests/{id}/decline` | `bdm` only. Body `{reason}` (required, ≤ 500). Same `403` / `404` / `409` order. `200` the shape (`declined`, final); audit `bdm_meeting_request.decline` (no reason text) |
+
+Audit rows and logs carry ids, codes, types and statuses only — never the person, phone, email or free text.
+
 ## 12U. Lead messages — WhatsApp click-to-chat (`tel-013`) — addendum, 2026-10-07
 
 `DEC-SCOPE-099`; design spec `docs/superpowers/specs/2026-10-07-tel-013-whatsapp-design.md` §3. Migration `0094_lead_messages`. Reads use
 the lead's scope (`lead_pipeline.scope`; other roles `403`, signed out `401`, out of scope `404`). Only the lead's telecaller records a send
-(`403` for managers / super_admin); a handed-over lead is `403` for its telecaller; a closed lead `409`. (§12S / §12T are claimed by
-the open tel-019 / tel-018 branches.)
+(`403` for managers / super_admin); a handed-over lead is `403` for its telecaller; a closed lead `409`. (§12S is tel-019's; §12T is
+claimed by the open tel-018 branch.)
 
 Message item: `{id, lead_id, channel: whatsapp|email, template: {id, name} | null, subject, body, sent_at, sender: {id, full_name},
 can_delete}`. `template.name` is the name when sent (D6); `null` = a custom message (WA4).
