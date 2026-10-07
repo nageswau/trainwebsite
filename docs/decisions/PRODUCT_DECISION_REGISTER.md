@@ -4204,8 +4204,8 @@ authorized:** `tel-009`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-009
 
 **Evidence:** `EVID-019` §7 (L266–L312); `DEC-SCOPE-073` T13, T19, T23; `DEC-SCOPE-081` (tel-004 pipeline); `DEC-SCOPE-084` (tel-008
 workspace, D1); owner answers in-session 2026-10-06.
-**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for F1–F4; F5–F10 are recorded defaults. Branch `feature/tel-011`, not yet
-merged. Migration `0090_lead_follow_ups` (re-chained after tel-009's `0089_lead_qualifications` / `DEC-SCOPE-093` / §12O, which merged
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for F1–F4; F5–F10 are recorded defaults. **MERGED** to `main` as PR #100 @ `8f9f1676`
+(2026-10-07). Migration `0090_lead_follow_ups` (re-chained after tel-009's `0089_lead_qualifications` / `DEC-SCOPE-093` / §12O, which merged
 first), API contract §12P. Spec `docs/superpowers/specs/2026-10-06-tel-011-follow-ups-design.md`.
 
 | # | Question | Answer |
