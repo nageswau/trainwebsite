@@ -61,6 +61,15 @@ describe("AdminTelecallerManagersCard (tel-025 D4)", () => {
     expect(JSON.parse(String(mock.mock.calls.find(([, i]) => i?.method === "POST")![1]?.body))).toEqual({});
   });
 
+  it("reloads when the page's version changes, so a team move's new manager count shows (QA-T25-01)", async () => {
+    const mock = route();
+    const { rerender } = render(<AdminTelecallerManagersCard version={0} onChanged={() => {}} />);
+    expect(await screen.findByText("3 telecallers")).toBeInTheDocument();
+    mock.mockImplementation(() => Promise.resolve(res(page([{ ...meena, telecaller_count: 2 }, { ...kiran, telecaller_count: 1 }]))));
+    rerender(<AdminTelecallerManagersCard version={1} onChanged={() => {}} />);
+    expect(await screen.findByText("2 telecallers")).toBeInTheDocument();
+  });
+
   it("shows the server's sentence on a refusal", async () => {
     route(res(page([meena, kiran])), res({ detail: "Choose another active telecaller manager" }, 422));
     render(<AdminTelecallerManagersCard onChanged={() => {}} />);

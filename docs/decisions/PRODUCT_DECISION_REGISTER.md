@@ -4480,3 +4480,29 @@ converts the lead at once.
 `services/lead_handover.py`; routes `api/lead_handover.py`; timeline rows gain `event`; telecaller lead detail gains `milestones`; components
 `LeadHandoverForm`, `LeadMilestones`, `CounselorLeadsPanel`, `CounselorLeadDetail`; pages `/{it|overseas}/counselor/leads/[id]`.
 **New Feature ID authorized:** `tel-018`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-018.
+
+### DEC-SCOPE-104 — Telecaller deactivation, team move and bulk reassignment (`tel-025`)
+
+**Evidence:** `EVID-019` §13 ("when staff changes"); `DEC-SCOPE-073` T21, T22, T23; `DEC-SCOPE-087` (tel-007 assignment); `DEC-SCOPE-094`
+F3 (follow-ups belong to the lead); `DEC-SCOPE-095` (lead appointments); `DEC-SCOPE-101` (handover); the bdm-025 precedent
+(`DEC-SCOPE-082`); owner answers in-session 2026-10-07.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option) for
+LC1–LC4; D1–D6 are recorded defaults. **Not yet merged** (branch `feature/tel-025`). **No migration.** API contract §12Y, RBAC §2.31. Spec
+`docs/superpowers/specs/2026-10-07-tel-025-telecaller-lifecycle-design.md`. Number provisional: tel-014 holds 102 and tel-021 103 (both unmerged).
+
+| # | Question | Answer |
+|---|---|---|
+| LC1 | Who may deactivate / move a telecaller | **Admins only**: `super_admin` any team, `it_admin` / `overseas_admin` their own team (tel-001 `CREATOR_TEAMS`). A team move needs both teams in scope (so `super_admin`). Only `super_admin` deactivates a `telecaller_manager`. Telecaller managers have no lifecycle power |
+| LC2 | What is open work | Leads of the telecaller **not closed and not Converted**, handed-over ones included (the counselor stays owner, a later return reaches an active telecaller). Open follow-ups and appointments ride with their lead. Closed / converted leads, calls, stage history and audit rows keep the original actor |
+| LC3 | Target | Required when open work exists: an **active telecaller of the same team** (`target=telecaller`, `reassign_to`) or the **team's unassigned queue** (`target=queue`). No "keep with them" |
+| LC4 | Reactivation; legacy inactive telecallers with leads | Reactivation allowed (moved work does not come back). An inactive telecaller's remaining open leads move via `POST /admin/telecallers/{id}/handover` |
+
+Recorded defaults: D1 deactivation increments `session_version` (the session ends at once) and revokes open welcome links. D2 a team move
+changes `team` and `users.division` together and increments `session_version`. D3 the telecaller's tel-007 distribution rules are deleted
+(audited `telecaller.rule_delete`) on deactivation and team move. D4 a manager with reports is deactivated only with an active replacement
+manager; every report moves. D5 `PATCH /admin/users` `active:false` is `422` for a telecaller with open leads and for a manager with reports;
+otherwise it also ends the session. D6 the receiving telecaller gets an in-app + email notice.
+
+**Consequences:** service `services/telecaller_lifecycle.py`; routes `api/telecaller_lifecycle.py`; `GET /admin/telecaller-managers` gains
+`telecaller_count`; components `AdminTelecallerLifecycle`, `AdminTelecallerManagersCard`; `AdminTelecallerRow` loses the plain confirm.
+**New Feature ID authorized:** `tel-025`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-025.

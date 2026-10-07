@@ -139,7 +139,7 @@ export default function AdminTelecallerPanel({ role }: { role: string }) {
           </>
         )}
       </div>
-      {role === "super_admin" && <AdminTelecallerManagersCard onChanged={(text) => { setNotice(text); reload(); }} />}
+      {role === "super_admin" && <AdminTelecallerManagersCard version={version} onChanged={(text) => { setNotice(text); reload(); }} />}
     </>
   );
 }

@@ -1296,6 +1296,23 @@ Changed: `POST/DELETE /admin/leads/{id}/conversion` keep their contract and now 
 an unlink of a converted lead returns it to Follow-up (HO2). `GET /telecaller/leads/{id}` (and the PATCH answer) gains `milestones`.
 Timeline rows gain `event` (a stage row's pipeline event, else `null`).
 
+## 12Y. Telecaller deactivation, team move and handover (`tel-025`) — addendum, 2026-10-07
+
+`DEC-SCOPE-104`; design spec `docs/superpowers/specs/2026-10-07-tel-025-telecaller-lifecycle-design.md` §2. No migration. Signed out `401`;
+non-admin `403` (`ensure_admin`). Body `{target?: "telecaller"|"queue", reassign_to?}`: `reassign_to` only with `target=telecaller`
+(else `422`). `moved` = `{leads, follow_ups, appointments}` (the open work before the move; follow-ups and appointments ride with their lead).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /admin/telecallers/{id}/open-work` | `{leads, follow_ups, appointments}`. `404` not a telecaller; `403` another team |
+| `POST /admin/telecallers/{id}/deactivate` | `409` already inactive; `422` open leads and no `target`; `422` "Choose an active telecaller of the same team" (any invalid target). Leads move (`lead.assign` audit per lead, method `deactivation`), rules deleted, `active=false`, `session_version`+1. `200 {id, active, target, moved, rules_removed}`; audit `telecaller.deactivate` |
+| `POST /admin/telecallers/{id}/handover` | `409` still active; `409` no open leads; `422` no / invalid target. Method `handover`. `200 {id, target, moved}`; audit `telecaller.handover` |
+| `POST /admin/telecallers/{id}/move-team` | Body adds `team` (`it`/`overseas`) and optional `reporting_manager_user_id`. `403` unless the actor manages both teams; `422` same team; `422` inactive manager; target must be on the **old** team. `team` + `division` change, `session_version`+1. `200 {id, team, target, moved, rules_removed}`; audit `telecaller.move_team` |
+| `POST /admin/telecaller-managers/{id}/deactivate` | `super_admin` only (`403`). Body `{reassign_to?}`, required while the manager has reports (`422`, also for an inactive / non-manager / self target). `409` already inactive. `200 {id, active, moved_telecallers}`; audit `telecaller_manager.deactivate` |
+
+Changed: `GET /admin/telecaller-managers` items gain `telecaller_count` (reports, active or not). `PATCH /admin/users/{id}` with
+`active:false` answers `422` for a telecaller with open leads or a manager with reports (D5).
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

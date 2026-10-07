@@ -11,7 +11,8 @@ const telecallers = (n: number) => plural(n, "telecaller");
 
 // tel-025 (DEC-SCOPE-104 D4): the Super Admin's telecaller managers -- the AdminBdmManagersCard pattern. A manager who still has
 // telecallers is deactivated only together with a replacement manager, who takes every one of them in one step. The server re-checks it all.
-export default function AdminTelecallerManagersCard({ onChanged }: { onChanged: (notice: string) => void }) {
+// `version` is the page's reload counter: a team move from a telecaller row can change a manager's count (QA-T25-01).
+export default function AdminTelecallerManagersCard({ version = 0, onChanged }: { version?: number; onChanged: (notice: string) => void }) {
   const [data, setData] = useState<Page<TelecallerManagerRow> | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [offset, setOffset] = useState(0);
@@ -32,7 +33,7 @@ export default function AdminTelecallerManagersCard({ onChanged }: { onChanged: 
       .catch(() => setLoadFailed(true));
   }, [offset]);
 
-  useEffect(load, [load]);
+  useEffect(load, [load, version]);
 
   function start(id: string) {
     setOpen(id);

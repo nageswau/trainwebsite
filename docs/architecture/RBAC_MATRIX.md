@@ -741,6 +741,17 @@ appointment.
 | `it_admin` / `overseas_admin` | link / unlink (a converted lead too) by the same rules | own division (`403` otherwise) | `tel-018` |
 | every other role | `403` on the counselor routes and the handover | — | `tel-018` |
 
+### 2.31 Telecaller deactivation, team move and handover *(net-new, added 2026-10-07 — `DEC-SCOPE-104`, `tel-025`)*
+
+Inline: `ensure_admin`, then the team scope (`services/telecaller.require_creator_may`), then the write. Locks: the source's open leads →
+its profile → its user (FOR UPDATE) → the target (FOR SHARE).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `super_admin` | preview, deactivate, hand over, move team, deactivate a telecaller manager | all teams | `tel-025` |
+| `it_admin` / `overseas_admin` | preview, deactivate, hand over | own team (`403` otherwise); move team `403` | `tel-025` |
+| `telecaller_manager`, `telecaller`, every other role | none (`403`) | — | `tel-025` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
