@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
@@ -12,7 +12,7 @@ router = APIRouter(prefix="/portal", tags=["portal"])
 
 
 @router.get("/{division}/{role}/{section}")
-async def portal(division: str, role: str, section: str, agency: str | None = None, counselor: str | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def portal(division: str, role: str, section: str, request: Request, agency: str | None = None, counselor: str | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     route_role = {
         "student": "it_student" if division == "it" else "overseas_student",
         "trainer": "trainer",
@@ -39,7 +39,9 @@ async def portal(division: str, role: str, section: str, agency: str | None = No
     if section == "reports" and user.role == "agent" and not agent_may(user, "can_view_reports"):
         raise HTTPException(403, REPORTS_REFUSED)
     # AGN-023 (DEC-SCOPE-090 H11): optional list filters; a filter on the wrong section or role is a 422, never ignored.
-    filters = await application_filters.parse(db, user, section, agency, counselor)
+    # A repeated filter key would otherwise keep only the last value silently (B7); parse refuses it once availability is settled.
+    repeated = frozenset(key for key in ("agency", "counselor") if len(request.query_params.getlist(key)) > 1)
+    filters = await application_filters.parse(db, user, section, agency, counselor, repeated)
     payload = await section_payload(db, user, section, filters=filters)
     if payload is None:
         raise HTTPException(404, "Workspace not found")

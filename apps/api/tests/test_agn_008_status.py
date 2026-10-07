@@ -107,6 +107,21 @@ async def test_counselor_cannot_revive_a_withdrawn_application(db_session, world
 
 
 @pytest.mark.asyncio
+async def test_the_overseas_admin_may_still_edit_a_withdrawn_application_without_a_status(db_session, world):  # T14: only a status change is refused
+    admin = await mk_user(db_session, role="overseas_admin", full_name="Overseas Admin")
+    row = await db_session.get(OverseasApplication, world["app"].id, populate_existing=True)
+    row.status = "withdrawn"
+    await db_session.commit()
+    async with client_for(admin.email) as c:
+        revive = await c.patch(f"/api/v1/workflows/overseas/applications/{world['app'].id}", json={"status": "offer"})
+        notes_only = await c.patch(f"/api/v1/workflows/overseas/applications/{world['app'].id}", json={"next_action": "Archive the file"})
+    assert revive.status_code == 409
+    assert notes_only.status_code == 200, notes_only.text
+    after = await db_session.get(OverseasApplication, world["app"].id, populate_existing=True)
+    assert (after.status, after.next_action) == ("withdrawn", "Archive the file")
+
+
+@pytest.mark.asyncio
 async def test_status_change_is_logged(world, caplog, monkeypatch):
     monkeypatch.setattr(logging.getLogger("app.agent_applications"), "disabled", False)
     caplog.set_level(logging.INFO, logger="app.agent_applications")

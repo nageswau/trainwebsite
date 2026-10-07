@@ -9,9 +9,10 @@ export async function pickFromList(input: Locator, search: string, option: strin
   await expect(input).toHaveAttribute("aria-expanded", "false");
 }
 
-// When a spec only knows the record id (e.g. from an API call), pick the option carrying that id.
-export async function pickByValue(input: Locator, value: string) {
+// When a spec only knows the record id (e.g. from an API call), pick the option carrying that id. `search` narrows a type-ahead first.
+export async function pickByValue(input: Locator, value: string, search?: string) {
   await input.click();
+  if (search !== undefined) await input.fill(search);
   const listId = await input.getAttribute("aria-controls");
   await input.page().locator(`[id="${listId}"] [data-value="${value}"]`).click();
   await expect(input).toHaveAttribute("aria-expanded", "false");

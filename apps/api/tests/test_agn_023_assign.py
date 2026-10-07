@@ -40,6 +40,8 @@ async def test_a_swap_moves_access_and_tells_both_counselors(db_session, world):
         r = await _assign(c, world["app"], world["counselor2"])
     assert r.status_code == 200 and r.json()["changed"] is True
     assert await history_notes(db_session, world["app"]) == ["EduSphere counsellor assigned", "EduSphere counsellor changed"]
+    audits = await assign_audits(db_session, world["app"])
+    assert audits[1] == {"from_counselor_id": str(world["counselor"].id), "to_counselor_id": str(world["counselor2"].id)}  # T15
     async with client_for(world["counselor"].email) as c:
         assert (await c.post(ADVANCE.format(world["app"].id), json={"to_status": "visa_documentation"})).status_code == 403
     assert [n.title for n in await notices(db_session, world["counselor"])] == ["Application assigned to you", "Application reassigned"]
@@ -57,6 +59,18 @@ async def test_only_the_overseas_admin_may_assign(db_session, world, who):  # AC
     user = users.get(who) or await mk_user(db_session, role=who, division="overseas")
     async with client_for(user.email) as c:
         r = await _assign(c, world["app"], world["counselor2"])
+    assert r.status_code == 403, r.text
+    assert (await fresh(db_session, world["app"])).counselor_id is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("role", "division"), [("overseas_admin", "it"), ("it_admin", "it")])
+async def test_an_admin_of_another_division_may_not_assign(db_session, world, role, division):  # T15
+    from tests.agn001_helpers import mk_user
+
+    user = await mk_user(db_session, role=role, division=division)
+    async with client_for(user.email, division) as c:
+        r = await _assign(c, world["app"], world["counselor"])
     assert r.status_code == 403, r.text
     assert (await fresh(db_session, world["app"])).counselor_id is None
 

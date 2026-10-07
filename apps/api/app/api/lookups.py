@@ -143,6 +143,24 @@ def _join(*parts) -> str:
     return " · ".join(part for part in parts if part)
 
 
+@router.get("/overseas-counselors")
+async def overseas_counselors(
+    q: str | None = Query(None, max_length=100),
+    limit: int = Query(20, ge=1, le=50),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """AGN-023 follow-up: the Overseas Admin's Assign counsellor picker -- active overseas counselors by name (name + id only).
+    Replaces the picker's read of /admin/users, whose 500-row cap hid older counselors."""
+    _allow(user, {"overseas_admin"}, "overseas")
+    stmt = select(User).where(User.role == "counselor", User.division == "overseas", User.active.is_(True))
+    pattern = _pattern(q)
+    if pattern:
+        stmt = stmt.where(_like(User.full_name, pattern))
+    stmt = stmt.order_by(User.full_name, User.id)
+    return await _page(db, stmt, limit, lambda row: {"id": row[0].id, "label": row[0].full_name, "detail": None}, "overseas-counselors", user)
+
+
 @router.get("/overseas-applications")
 async def overseas_applications(
     q: str | None = Query(None, max_length=100),
