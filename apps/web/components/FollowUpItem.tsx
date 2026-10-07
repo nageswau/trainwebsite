@@ -10,6 +10,7 @@ import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import { SAVE_FAILED, SESSION_ENDED, writeFailure } from "@/lib/bdmTasks";
 import { formatSchoolDateTime } from "@/lib/formatDate";
 import { TELECALLER_SIGN_IN } from "@/lib/navigation";
+import { outcomeLabel } from "@/lib/telecallerCalls";
 import { followUpUrl, isFollowUp, reasonLabel, type FollowUp } from "@/lib/telecallerFollowUps";
 import { PRIORITY_LABEL } from "@/lib/telecallerLeads";
 
@@ -61,6 +62,7 @@ export default function FollowUpItem({ followUp: fu, card, leadBasePath, showTel
           {([
             ["Interest", fu.lead.product?.name ?? "—"], ["Action", `${action} · ${when}`], ["Priority", PRIORITY_LABEL[fu.lead.priority] ?? fu.lead.priority],
             ["Reason", reasonLabel(fu.reason)], ["Lead", `${fu.lead.lead_code} · ${fu.lead.status_label}`],
+            ["Last call", fu.lead.last_call ? `${outcomeLabel(fu.lead.last_call.outcome)} · ${formatSchoolDateTime(fu.lead.last_call.occurred_at, true)}` : "No calls yet"],
             ...(showTelecaller ? [["Telecaller", fu.lead.telecaller?.full_name ?? "Unassigned"]] : []),
           ] as [string, string][]).map(([term, value]) => (
             <div key={term}>

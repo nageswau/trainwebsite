@@ -509,6 +509,11 @@ to tel-018 (QF3).
 
 ### tel-010 — Call logging
 
+**Status (2026-10-07):** **built** on `feature/tel-010`, not yet merged (`DEC-SCOPE-096` CL1–CL4 + D1–D10, migration `0092_lead_calls`,
+API contract §12R, RBAC §2.24; re-chained after tel-016's `0091` / `DEC-SCOPE-095` / §12Q / RBAC 2.23, merged first as PR #103). Spec
+`docs/superpowers/specs/2026-10-07-tel-010-call-logging-design.md`. AC2 confirmed (bdm-009 bounds). The tel-005 duplicate panel's "Last
+contact" is not added here (it waits for tel-013 too); a Duplicate Lead merge stays deferred (CL3).
+
 - **Business requirement:** §5, T7.
 - **Existing behavior:** none. bdm-009 logs BDM activities.
 - **Expected behavior:**

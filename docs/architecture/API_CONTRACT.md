@@ -1193,6 +1193,27 @@ or marking a no-show, or acting on a handed-over lead; `409` "Appointment is alr
 A stage move that closes the lead (`POST /telecaller/leads/{id}/stage`, the admin move) also cancels its open appointment: an event row with reason "Lead closed" and an audit row `lead_appointment.cancel {reason: lead_closed}`; the lead stays closed (AP15). `PATCH /workflows/overseas/appointments/{id}` is `404` for a lead appointment (AP12); its student behaviour is unchanged. `GET
 /portal/it/counselor/appointments` returns a header-only payload (AP14).
 
+## 12R. Lead call logging (`tel-010`) — addendum, 2026-10-07
+
+`DEC-SCOPE-096`; design spec `docs/superpowers/specs/2026-10-07-tel-010-call-logging-design.md` §4. Migration `0092_lead_calls`. Reads use
+the lead's scope (`lead_pipeline.scope`; other roles `403`, signed out `401`, out of scope `404`). Only the lead's telecaller logs (`403`
+for managers / super_admin); a handed-over lead is `403` for its telecaller; a closed lead `409`. (§12Q is tel-016's.)
+
+Call item: `{id, lead_id, occurred_at, duration_seconds, call_type: outgoing|incoming, outcome, outcome_label, connected, remarks, caller:
+{id, full_name}, created_at, can_change}`. `outcome` is one of `interested, need_information, follow_up_required, appointment_fixed,
+not_interested, wrong_number, busy, no_answer, switched_off, call_back_requested, already_joined, duplicate_lead, not_eligible`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/leads/{id}/calls?limit=&offset=` | `200` page of the lead's calls, newest first |
+| `POST /telecaller/leads/{id}/calls` | `{occurred_at? (with offset, default now), duration_seconds (0–14400), call_type, outcome, remarks? (≤ 2000), next_follow_up? (§12P create body)}` → `201 {call, lead: {id, status, status_label, stage_changed_at}, follow_up_id}`. The outcome's pipeline effect applies (DEC-SCOPE-096 D3). `422` on the field: a time > 5 min ahead or > 7 IST days back (`occurred_at`), Duplicate Lead without `remarks`, Follow-up Required / Call Back Requested without `next_follow_up`, a closing outcome with one, an invalid next follow-up (nothing is written). `409` closed lead or 300 calls that IST day. Not idempotent. Audit `lead_call.create` (lead id, outcome, follow-up id) |
+| `PATCH /telecaller/calls/{id}` | `{occurred_at?, duration_seconds?, call_type?, remarks?}` (`outcome` → `422`) → `200` item. Only the caller (`403`), lead not handed over (`403`), the call's IST day only (`409`); a moved time must stay in today (`422`); a Duplicate Lead keeps its remarks (`422`). Audit `lead_call.update` with field names |
+| `DELETE /telecaller/calls/{id}` | `204`; same gates as `PATCH`. Never reverses a stage move or a follow-up. Audit `lead_call.delete` |
+| `GET /telecaller/calls/day-counts?day=YYYY-MM-DD` | `200 {day, total, connected, not_connected, by_outcome: {<every outcome>: n}}` for calls *made* that IST day (default today) by a telecaller (own), a manager's direct reports, or anyone (super_admin); other roles `403` |
+
+`GET /telecaller/follow-ups` and `GET /telecaller/leads/{id}/follow-ups` items gain `lead.last_call: {occurred_at, outcome} | null` (the
+lead's newest call; tel-011 F8).
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
