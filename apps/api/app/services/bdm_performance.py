@@ -7,12 +7,14 @@ leave this module."""
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
+from typing import cast
 from uuid import UUID
 
 from fastapi import HTTPException
 from sqlalchemy import Select, distinct, func, null, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.school_analytics import student_indicators, students_in
 from app.models import (
     AgentOrgMember,
     AgentStudent,
@@ -28,7 +30,6 @@ from app.models import (
     SchoolStudent,
     User,
 )
-from app.api.school_analytics import student_indicators, students_in
 from app.services.agent_dashboard import funnel_columns
 from app.services.agent_network import NETWORK_APPLICATION, members_of
 from app.services.bdm_appointments import IST
@@ -112,7 +113,8 @@ async def figures(db: AsyncSession, team: Select, start: date, end: date) -> dic
     """(BDM, organization) -> the non-zero figures of the period. A constant number of statements whatever the team size."""
     out: dict[Key, dict[str, int | Decimal]] = defaultdict(dict)
     for figure, stmt in _statements(team, start, end):
-        for bdm_id, org_id, value in (await db.execute(stmt)).all():
+        rows = cast(list[tuple[UUID, UUID | None, int | Decimal]], (await db.execute(stmt)).all())
+        for bdm_id, org_id, value in rows:
             row = out[(bdm_id, org_id)]
             row[figure] = row.get(figure, 0) + value
     return out
@@ -202,6 +204,11 @@ def _chain(bdm_type: str, rows: list[dict]) -> list:
             for _key, _label, _definition, source in CHAINS[bdm_type]]
 
 
+def _is_linked(org) -> bool:
+    """Appendix B "Linked": an Agent / School organization once onboarded; every College organization has its chain."""
+    return {"agent": org.agent_org_id, "school": org.school_id}.get(org.bdm_type, org.id) is not None
+
+
 async def hierarchy(db: AsyncSession, team: Select) -> list[dict]:
     """P10: non-archived organizations of the BDM's own module; Agent / School ones only once linked (the rest are counted)."""
     members = await team_members(db, team)
@@ -211,8 +218,7 @@ async def hierarchy(db: AsyncSession, team: Select) -> list[dict]:
         .join(BdmProfile, BdmProfile.user_id == BdmOrganization.assigned_bdm_user_id)
         .where(BdmOrganization.assigned_bdm_user_id.in_(team), BdmOrganization.archived_at.is_(None), BdmOrganization.bdm_type == BdmProfile.bdm_type)
         .order_by(BdmOrganization.name, BdmOrganization.id))).all()
-    link = {"agent": lambda o: o.agent_org_id, "school": lambda o: o.school_id, "college": lambda o: o.id}
-    linked = [o for o in orgs if link[o.bdm_type](o) is not None]
+    linked = [o for o in orgs if _is_linked(o)]
     figures_of = {
         **await _college(db, [o.id for o in linked if o.bdm_type == "college"]),
         **await _agent(db, [o.id for o in linked if o.bdm_type == "agent"]),

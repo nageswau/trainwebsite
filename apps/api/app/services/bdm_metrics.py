@@ -72,6 +72,11 @@ def show_revenue(user: User, org: BdmOrganization) -> bool:
     return user.role in ("bdm_manager", "super_admin") or org.assigned_bdm_user_id == user.id
 
 
+def fee_filter() -> list:
+    """R-1 (D17): paid INR payments, never an agent deposit (pass-through)."""
+    return [Payment.status.in_(PAID_STATUSES), Payment.currency == CURRENCY, Payment.reference_type != AGENT_DEPOSIT]
+
+
 def college_columns(org_id) -> dict:
     """The funnel and fee figures of one College organization as scalar subqueries over `S`. `org_id` is a value, or (bdm-024's master
     view) the correlated `BdmOrganization.id` of an outer SELECT, so the panel and the master view run the same SQL."""
@@ -92,11 +97,6 @@ def college_columns(org_id) -> dict:
         .scalar_subquery(),
         "fees": select(func.coalesce(func.sum(Payment.amount), 0)).where(Payment.user_id.in_(students), *fee_filter()).scalar_subquery(),
     }
-
-
-def fee_filter() -> list:
-    """R-1 (D17): paid INR payments, never an agent deposit (pass-through)."""
-    return [Payment.status.in_(PAID_STATUSES), Payment.currency == CURRENCY, Payment.reference_type != AGENT_DEPOSIT]
 
 
 async def college_business(db: AsyncSession, org: BdmOrganization, with_revenue: bool) -> dict:
