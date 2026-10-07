@@ -32,4 +32,22 @@ describe("HeaderAuthActions", () => {
     expect(await screen.findByRole("link", { name: "Login" })).toHaveAttribute("href", "/it/login");
     await waitFor(() => expect(screen.queryByRole("link", { name: "Password" })).toBeNull());
   });
+
+  // The corporate home page has no Login button (IT/Overseas pages keep theirs): loginHref={null}.
+  it("shows no Login to a signed-out visitor when loginHref is null", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(json({ detail: "Not authenticated" }, 401));
+    vi.stubGlobal("fetch", fetchMock);
+    const { container } = render(<HeaderAuthActions loginHref={null} />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    await waitFor(() => expect(container).toBeEmptyDOMElement());
+    expect(screen.queryByText("Login")).toBeNull();
+  });
+
+  it("still shows Dashboard, Privacy and Logout to a signed-in user when loginHref is null", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ role: "it_student" }, 200)));
+    render(<HeaderAuthActions loginHref={null} />);
+    expect(await screen.findByRole("link", { name: "Dashboard" })).toHaveAttribute("href", "/it/student/dashboard");
+    expect(screen.getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/account/privacy");
+    expect(screen.getByRole("button", { name: "Logout" })).toBeInTheDocument();
+  });
 });

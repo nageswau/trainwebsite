@@ -13,7 +13,9 @@ type Session = { role: string; dashboardHref: string } | null | "loading";
 // (the access token is HttpOnly, so this is the only way a client component can know)
 // and swaps in the role-appropriate action. It never grants access itself -- every
 // destination it links to is still independently authorized server-side (FND-002).
-export default function HeaderAuthActions({ loginHref }: { loginHref: string }) {
+// `loginHref: null` hides the signed-out Login button (the corporate home page has none);
+// a signed-in visitor still gets their Dashboard/Privacy/Logout actions.
+export default function HeaderAuthActions({ loginHref }: { loginHref: string | null }) {
   const router = useRouter();
   const [session, setSession] = useState<Session>("loading");
 
@@ -39,13 +41,14 @@ export default function HeaderAuthActions({ loginHref }: { loginHref: string }) 
   }
 
   if (session === "loading") {
+    if (!loginHref) return null;
     // Reserve the same layout space as the signed-out state so nothing shifts once
     // the check resolves; renders no action a visitor could mistake for a real one.
     return <span className="btn" aria-hidden="true" style={{ visibility: "hidden" }}>Login</span>;
   }
 
   if (session === null) {
-    return <Link className="btn" href={loginHref}>Login</Link>;
+    return loginHref ? <Link className="btn" href={loginHref}>Login</Link> : null;
   }
 
   return (
