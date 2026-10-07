@@ -4780,7 +4780,7 @@ recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). 
 - Owner answers in-session 2026-10-07.
 
 **Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option)
-for AL1–AL4; AL5–AL12 are recorded defaults. Migration `0099_tel_settings` (after bdm-019's `0098_bdm_agent_link`), API contract §12AE, RBAC
+for AL1–AL4, and AL13 confirmed by the owner in-session after the merge (2026-10-07); AL5–AL12 are recorded defaults. **MERGED** to `main` as PR #129 @ `d6097548` (2026-10-07). Migration `0099_tel_settings` (after bdm-019's `0098_bdm_agent_link`), API contract §12AE, RBAC
 §2.37. Spec `docs/superpowers/specs/2026-10-07-tel-020-alerts-design.md`. Drafted as `0098` / `DEC-SCOPE-107` / §12AA / 2.33; bdm-019 (`0098_bdm_agent_link` / 107 / §12AA / 2.33) and bdm-023 (108 / §12AB / 2.34) merged first, then tel-024 (no migration / 109 / §12AC / 2.35) and bdm-022 (no migration / 110 / §12AD / 2.36), so it is renumbered again (the migration stays `0099`).
 
 | # | Question | Answer |
@@ -4802,7 +4802,7 @@ Recorded defaults:
 - **AL11** Any `telecaller_manager` and `super_admin` read and set both teams (tel-022 G3's rule); the change applies from the next run; audited
   `tel.settings.update` with the old and new values.
 - **AL12** tel-021's B9 Overdue uses the team's `not_contacted_hours` instead of the fixed 24 h (DB1).
-- **AL13** tel-025's lifecycle moves (deactivation, team move, handover) keep their single D6 summary notice to the new telecaller and send
+- **AL13** (`EXPLICIT_APPROVAL`, owner confirmed 2026-10-07) tel-025's lifecycle moves (deactivation, team move, handover) keep their single D6 summary notice to the new telecaller and send
   no per-lead "New lead assigned" (`lead_distribution.assign(..., notify=False)`), so a bulk move is never N extra emails.
 - Bodies carry the lead's name, Lead ID and a time only; links are app paths (`/telecaller/leads/{id}`, `/telecaller/follow-ups`) needing a session.
 
