@@ -35,14 +35,10 @@ async def get_settings(user: User = Depends(get_current_user), db: AsyncSession 
 async def set_settings(team: str, payload: dict = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """An idempotent replace of the team's row (seeded by 0098), hence 200; the row lock serialises two managers saving at once."""
     require_manager(user)
-    if team not in TEAMS:
+    row = await db.scalar(select(TelSetting).where(TelSetting.team == team).with_for_update()) if team in TEAMS else None
+    if row is None:  # 0098 seeds both teams, so only an unknown team gets here
         raise HTTPException(404, "Team not found")
     data = _parse(TelSettingsUpdate, payload, "The request body must be an object", TEL_SETTING_FIELD_LABELS)
-    row = await db.scalar(select(TelSetting).where(TelSetting.team == team).with_for_update())
-    if row is None:  # a database built before 0098's seed
-        row = TelSetting(team=team)
-        db.add(row)
-        await db.flush()
     before = {f: getattr(row, f) for f in FIELDS}
     for field, value in data.model_dump().items():
         setattr(row, field, value)

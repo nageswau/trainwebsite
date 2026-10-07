@@ -36,8 +36,9 @@ test("an assigned lead alerts the telecaller; the manager edits the alert thresh
 
   await page.request.post("/api/v1/auth/login", { data: { email: "superadmin@edusphere.local", password: "Demo@123", division: "global" } });
   const { manager, caller } = await account(page, stamp);
+  const phone = `7${stamp.slice(-9)}`;
   const created = await page.request.post("/api/v1/public/enquiries", {
-    data: { division: "it", name: `Alert Lead ${stamp}`, email: `tel020-${stamp}@example.com`, phone: `7${stamp.slice(-9)}`, subject: "Python", message: "Call me." },
+    data: { division: "it", name: `Alert Lead ${stamp}`, email: `tel020-${stamp}@example.com`, phone, subject: "Python", message: "Call me." },
   });
   expect(created.status()).toBe(201);
   const lead = await created.json();
@@ -56,7 +57,7 @@ test("an assigned lead alerts the telecaller; the manager edits the alert thresh
   const notice = page.getByText(`Alert Lead ${stamp}`, { exact: false }).first();
   await expect(notice).toContainText("is now assigned to you.");
   await expect(page.getByText("New lead assigned").first()).toBeVisible();
-  await expect(page.getByText(/9\d{9}|7\d{9}/)).toHaveCount(0); // never the phone
+  await expect(page.getByText(phone)).toHaveCount(0); // never the phone
   await page.getByRole("link", { name: /New lead assigned/ }).first().click();
   await page.waitForURL(`**/telecaller/leads/${lead.id}`);
   await page.goto("/telecaller/notifications");
