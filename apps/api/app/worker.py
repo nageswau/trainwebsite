@@ -71,7 +71,8 @@ def sync_enquiry_to_crm_task(self, enquiry_id: str):
                 # stuck on a stale "pending" while retries are in flight.
                 raise RuntimeError("CRM webhook delivery failed")
 
-    asyncio.run(_run())
+    # tel-014 QA-01: a bare asyncio.run left pooled connections on this run's closed loop, crashing the next task on the process
+    _run_with_fresh_pool(_run)
 
 
 def _run_with_fresh_pool(make_coro):
@@ -137,9 +138,26 @@ def sweep_lead_conversions_task():
     return _run_with_fresh_pool(run)
 
 
+@celery.task
+def deliver_lead_email_task(message_id: str):
+    """tel-014 (DEC-SCOPE-106 E4/E5): send one queued lead email; retries are re-enqueued by `deliver_lead_email` itself."""
+    from app.notifications.lead_email import deliver_lead_email
+
+    return _run_with_fresh_pool(lambda: deliver_lead_email(UUID(message_id)))
+
+
+@celery.task
+def sweep_stale_lead_emails_task():
+    """tel-014 (E5): every 5 minutes via beat."""
+    from app.notifications.lead_email import sweep_stale_lead_emails
+
+    return _run_with_fresh_pool(sweep_stale_lead_emails)
+
+
 celery.conf.beat_schedule = {
     "enh014-sweep-stale-deliveries": {"task": "app.worker.sweep_stale_deliveries_task", "schedule": 300.0},
     "agn017-daily-reminders": {"task": "app.worker.send_daily_reminders_task", "schedule": crontab(hour=2, minute=30)},  # UTC = 08:00 IST
     "bdm012-reminders": {"task": "app.worker.send_bdm_reminders_task", "schedule": 300.0},
     "tel018-conversion-sweep": {"task": "app.worker.sweep_lead_conversions_task", "schedule": 900.0},
+    "tel014-sweep-stale-lead-emails": {"task": "app.worker.sweep_stale_lead_emails_task", "schedule": 300.0},
 }

@@ -6023,13 +6023,32 @@ class LeadCallCreate(BaseModel):
     next_follow_up: LeadFollowUpCreate | None = None
 
 
-class LeadMessageCreate(BaseModel):
-    """tel-013: D9 WhatsApp only (email arrives with tel-014); WA4 the template is optional; WA1 the text as sent (tel-012's limit)."""
+class LeadWhatsAppCreate(BaseModel):
+    """tel-013: WA4 the template is optional; WA1 the text as sent (tel-012's limit)."""
 
     model_config = ConfigDict(extra="forbid")
     channel: Literal["whatsapp"]
     template_id: UUID | None = None
     body: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
+
+
+def _one_line(value):
+    """tel-014 E6: a subject is one header line -- CR/LF become spaces (header injection)."""
+    return re.sub(r"[\r\n]+", " ", value) if isinstance(value, str) else value
+
+
+class LeadEmailCreate(BaseModel):
+    """tel-014 (DEC-SCOPE-106): EM4 the template is optional; E6 tel-012's email limits. The recipient is always the lead's address (E7),
+    never the caller's."""
+
+    model_config = ConfigDict(extra="forbid")
+    channel: Literal["email"]
+    template_id: UUID | None = None
+    subject: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200), BeforeValidator(_one_line)]
+    body: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=5000)]
+
+
+LeadMessageCreate = Annotated[LeadWhatsAppCreate | LeadEmailCreate, Field(discriminator="channel")]
 
 
 class LeadCallUpdate(BaseModel):

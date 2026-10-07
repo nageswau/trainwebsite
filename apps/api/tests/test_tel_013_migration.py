@@ -58,12 +58,12 @@ def test_model_matches_the_migration():
     from app.models import LEAD_MESSAGE_CHECKS, LeadMessage
 
     table = LeadMessage.__table__
-    assert {c.name for c in table.columns} == COLUMNS
+    assert {c.name for c in table.columns} == COLUMNS | {"attempt_count"}  # tel-014 0097 adds attempt_count and ck_lead_messages_email
     assert {c.name for c in table.columns if c.nullable} == {"template_id", "template_name", "subject", "delivery_status"}
     assert {fk.parent.name: fk.column.table.name for fk in table.foreign_keys} == {
         "lead_id": "enquiries", "sender_user_id": "users", "template_id": "tel_message_templates"}
     checks = {c.name: str(c.sqltext) for c in table.constraints if isinstance(c, sa.CheckConstraint)}
-    assert checks == LEAD_MESSAGE_CHECKS == _migration.CHECKS
+    assert {name: checks[name] for name in LEAD_MESSAGE_CHECKS} == LEAD_MESSAGE_CHECKS == _migration.CHECKS
     assert {"ix_lead_messages_lead_sent", "ix_lead_messages_sender_sent"} <= {i.name for i in table.indexes}
 
 

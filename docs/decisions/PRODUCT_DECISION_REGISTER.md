@@ -4593,3 +4593,53 @@ became mine today (a `lead.assign` to me, or my own already-assigned `lead.creat
 components `TelecallerDashboardTiles`, `TelecallerAppointmentsCard`, `TelecallerActivityPanel`; `TelecallerTargetsCard` gains achieved
 figures; page `/telecaller/manager/team/[id]/activity`; the Team table links each report's activity.
 **New Feature ID authorized:** `tel-021`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-021.
+
+### DEC-SCOPE-106 — Email to a lead + send log (`tel-014`)
+
+**Evidence:**
+- `EVID-019` §12 (L454–L472: seven email kinds, "stored under the student's timeline").
+- `DEC-SCOPE-073` T9 (email via SMTP; a library of manager-edited templates).
+- `DEC-SCOPE-083` C1/C2 (brochure links, the render route).
+- `DEC-SCOPE-100` WA1–WA4 / D1–D9 (`lead_messages`, its gate, D9 reserving email for tel-014).
+- `DEC-SCOPE-084` D1 (read-only after handover).
+- Backlog open question Q-16 (sender identity).
+- Owner answers in-session 2026-10-07.
+
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option)
+for EM1–EM4; E1–E10 are recorded defaults. **MERGED** to `main` as PR #120 @ `becb70c5` (2026-10-07). Migration `0097_lead_message_email` (after bdm-016's `0096_bdm_targets`), API
+contract §12Z, RBAC §2.32. Spec `docs/superpowers/specs/2026-10-07-tel-014-email-design.md`. Drafted as `0096` / `DEC-SCOPE-102` / §12W / 2.29; tel-018 (`DEC-SCOPE-101`, no migration), bdm-012 (`DEC-SCOPE-102`),
+bdm-016 (`0096_bdm_targets` / `DEC-SCOPE-103` / §12W / 2.29) and tel-021 (`DEC-SCOPE-105` / §12X / 2.30, no migration) merged first
+and tel-025 holds `DEC-SCOPE-104` / §12Y / 2.31, so it is renumbered.
+
+| # | Question | Answer |
+|---|---|---|
+| EM1 | Q-16: who an email appears to come from | **The telecaller via the system address**: From `"<telecaller> via EduSphere" <SMTP_FROM_EMAIL>`, Reply-To the telecaller's login email. Replies reach the telecaller and are not tracked in the CRM |
+| EM2 | Undo a sent email | **Never.** An email row records a real system send, so it stays as evidence (`DELETE` → `409`). WhatsApp keeps WA3 |
+| EM3 | Daily cap | **100 emails per telecaller per IST day → `429`**, separate from WhatsApp's 300 (`409`), which now counts WhatsApp only |
+| EM4 | Must an email start from a template | **No**, as WA4. A template fills the subject and body, both editable; a free email is "Custom message" |
+
+Recorded defaults:
+- **E1** WA2's gate: the lead's telecaller, open lead, before handover.
+- **E2** No address: the action is disabled; the API refuses with `409`.
+- **E3** SMTP unset: `503` with nothing stored.
+- **E4** Asynchronous: the row is stored `queued` and published to `deliver_lead_email_task` after the commit.
+- **E5** Delivery: claim → `sending` → `sent` | `retrying` (60 s / 5 min / 25 min, at most four attempts; transient = connection, timeout,
+  4xx) | `failed` (5xx, refused recipient, malformed address, SMTP unset, address removed). A 5-minute sweeper republishes stale queued rows
+  and fails rows stuck in `sending` (never resent).
+- **E6** Content: plain text plus an escaped HTML part with linked URLs. The subject's CR/LF become spaces. Subject ≤ 200 characters,
+  body ≤ 5000.
+- **E7** The recipient is the lead's current address, read at send time.
+- **E8** Templates: active email ones only; another product's template is a warning.
+- **E9** No stage effect.
+- **E10** Logs and audit carry ids, the channel, the status and the error type only.
+
+**Consequences:**
+- Data: `lead_messages.attempt_count` and the check `ck_lead_messages_email`.
+- Backend: the schemas `LeadWhatsAppCreate` / `LeadEmailCreate`, `mailer.lead_email_message`, the worker `notifications/lead_email.py`
+  (`deliver_lead_email`, `sweep_stale_lead_emails`), `dispatch.enqueue_lead_email`, and the beat job `tel014-sweep-stale-lead-emails`.
+- Web: `EmailComposer`; `LeadMessages` gains Send email and the email rows; the lead header gets an "Email" button.
+- Downstream: tel-015 shows the rows and tel-021 counts them.
+- Still open: consent and retention for emailed leads (`PRD_OPEN_ITEMS.md` row 85). SMTP throughput is shared with system emails (one
+  account).
+
+**New Feature ID authorized:** `tel-014`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-014.

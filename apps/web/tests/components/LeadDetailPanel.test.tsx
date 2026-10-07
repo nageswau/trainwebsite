@@ -129,6 +129,22 @@ describe("LeadDetailPanel (tel-008)", () => {
     expect(screen.queryByRole("button", { name: "WhatsApp Asha Rao" })).toBeNull();
   });
 
+  it("offers Email only to the lead's telecaller with an address, and the header Email opens the email composer (tel-014)", async () => {
+    render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen={false} />);
+    expect(await screen.findByText("No messages sent yet.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Email Asha Rao" }));
+    expect(await screen.findByLabelText("Subject")).toBeTruthy();
+    cleanup();
+    render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen />); // a manager reads only (E1)
+    expect(await screen.findByText("No messages sent yet.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Email Asha Rao" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Send email" })).toBeNull();
+    cleanup();
+    render(<LeadDetailPanel initial={detail({ email: null })} timeline={pageOf([])} canReopen={false} />); // AC3
+    expect(await screen.findByText("No email address on this lead.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Email Asha Rao" })).toBeNull();
+  });
+
   it("shows the counselling appointments, with Book only for the lead's telecaller on an open lead (tel-016)", async () => {
     render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen={false} />);
     expect(await screen.findByText("No counselling appointments yet.")).toBeTruthy();
