@@ -3,7 +3,7 @@ import Link from "next/link";
 import { type Filters, type Performance, periodText, TYPE_LABEL, typePath, valueText } from "@/lib/bdmPerformance";
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
 
-// bdm-024 (DEC-SCOPE-111 §6): the §5 management view -- KPIs x BDM types for the period. Every tracked number links to the BDMs of its
+// bdm-024 (DEC-SCOPE-113 §6): the §5 management view -- KPIs x BDM types for the period. Every tracked number links to the BDMs of its
 // type (P8); an untracked one says so and is not a link (AC3). The table scrolls inside its box on a phone (AC5).
 const NOTE = { margin: "4px 0 0" } as const;
 

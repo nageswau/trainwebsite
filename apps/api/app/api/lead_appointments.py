@@ -22,7 +22,7 @@ from app.lead_stages import CLOSED
 from app.models import LEAD_APPOINTMENT_STATUSES, Appointment, Enquiry, User
 from app.schemas import LeadAppointmentCancel, LeadAppointmentCreate, LeadAppointmentReschedule
 from app.services import lead_appointments as svc
-from app.services import lead_pipeline, telecaller_leads
+from app.services import lead_pipeline, telecaller_alerts, telecaller_leads
 
 telecaller_router = APIRouter(prefix="/telecaller/leads", tags=["lead-appointments"])
 counselor_router = APIRouter(prefix="/counselor/appointments", tags=["lead-appointments"])
@@ -116,6 +116,8 @@ async def _act(db: AsyncSession, user: User, appt_id: UUID, action: str, *, reas
     svc.audit(db, user, action, appt, meta)
     if action in svc.STAGE_EVENT:
         await lead_pipeline.apply_event(db, lead, svc.STAGE_EVENT[action], user)
+    if action == "complete":
+        await telecaller_alerts.notify_appointment_completed(db, appt, lead, user)  # tel-020
     await db.commit()
     return (await svc.outs(db, user, [appt]))[0]
 

@@ -1404,9 +1404,35 @@ ids-only info log, no audit row). Signed out `401`.
 |---|---|
 | `GET /bdm/organizations/{id}/agent-performance` | `bdm` / `bdm_manager` / `super_admin` through `load_scoped`, else `403` "BDM role required"; out of scope or unknown `404`; malformed id `422`; not an Agent organization `404` "Agent performance is only for Agent organizations". Unlinked `200 {organization_id, linked: false, agency: null, steps: [], applications_by_stage: [], visa_applications: null, as_of}`. Linked `200 {organization_id, linked: true, agency: {name, prefix, status}, steps: [{key students\|applications\|offers\|visa\|enrolled\|revenue, label, definition, tracked, count \| null}], applications_by_stage: [{key, label, count}], visa_applications, as_of}`. Revenue `tracked: false`, `count: null`. Aggregates only. Constant statement count |
 
-## 12AE. BDM performance by type + master view (`bdm-024`) — addendum, 2026-10-07
+## 12AE. Telecaller alert settings (`tel-020`) — addendum, 2026-10-07
 
-`DEC-SCOPE-111`; design spec `docs/superpowers/specs/2026-10-07-bdm-024-performance-master-design.md` §4. No migration. Read-only (no
+`DEC-SCOPE-111`; design spec `docs/superpowers/specs/2026-10-07-tel-020-alerts-design.md` §4. Migration `0099_tel_settings`. Signed out `401`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/settings` | `telecaller_manager` / `super_admin`; every other role `403`. `200` `{items: [{team, team_label, not_contacted_hours, hot_pending_hours, updated_at, updated_by: {id, full_name} \| null}]}`, both teams in order `it`, `overseas` |
+| `PUT /telecaller/settings/{team}` | Same roles. Unknown team `404` "Team not found". Body `{not_contacted_hours, hot_pending_hours}`: whole numbers 1–168 (strings and fractions refused), both required, extra fields `422` with a readable sentence. `200` the item (an idempotent replace); audit `tel.settings.update {from, to}` (entity = the team). The beat uses the new values from its next run |
+
+Alerts themselves (no new endpoint): rows in `notifications` read through the existing `GET /workflows/notifications` and
+`/workflows/notifications/unread-count`; each also queues one email delivery (`context.kind = "tel_alert"`, SMTP only). The beat job
+`tel020-alerts` runs every 15 minutes.
+
+## 12AF. Telecaller performance comparison (`tel-023`) — addendum, 2026-10-07
+
+`DEC-SCOPE-112`; design spec `docs/superpowers/specs/2026-10-07-tel-023-performance-design.md` §3. No migration. Signed out `401`.
+Query (all optional): `date_from`, `date_to` (ISO; default the 1st of `date_to`'s month → today, IST), `team` (`it`/`overseas`), `sort`
+(`name`/`leads`/`calls`/`connected`/`qualified`/`appointments`/`conversions`, default `calls`), `dir` (`asc`/`desc`, default `desc`; ties by name).
+Malformed values `422` (FastAPI list); then the role (`403` "Telecaller performance is for managers and administrators"; a division admin's
+other `team` `403`); then the range (`422`: start after end, end in the future, over 366 days).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/manager/performance` | `telecaller_manager` (direct reports), `it_admin`/`overseas_admin` (own team), `super_admin` (all). `200 {date_from, date_to, team, sort, dir, teams, columns: [{key, label}], items: [{user_id, full_name, team, active, status, leads, calls, connected, qualified, appointments, conversions}], totals: {full_name: "Total", ...}}`; inactive telecallers included. `Cache-Control: private, no-store` |
+| `GET /telecaller/manager/performance.csv` | Same query and checks. `text/csv` (UTF-8 BOM, the `columns` labels, the rows in the same order, Total last; formula cells neutralised). Audit `telecaller_performance.export` (filters, sort, rows) committed before the file. `attachment; filename="telecaller-performance-{from}-to-{to}.csv"` |
+
+## 12AG. BDM performance by type + master view (`bdm-024`) — addendum, 2026-10-07
+
+`DEC-SCOPE-113`; design spec `docs/superpowers/specs/2026-10-07-bdm-024-performance-master-design.md` §4. No migration. Read-only (no
 log line, no audit row). Signed out `401`; a role other than `bdm_manager` / `super_admin` `403` "BDM manager role required";
 `manager_user_id` from a `bdm_manager` `422` "Only a super admin can choose a manager", an id that is not a manager `404` "Manager not
 found" (bdm-023 `team_scope`).

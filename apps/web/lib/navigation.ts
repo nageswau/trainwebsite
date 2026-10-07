@@ -85,10 +85,12 @@ export const BDM_SIGN_IN = "/bdm/sign-in";
 // tel-001: the telecaller and telecaller-manager sidebars and the signed-out chooser (IT telecallers sign in at /it, Overseas at
 // /overseas, managers at /admin). Later tel items add their pages here.
 // tel-008: My Leads (telecaller) and Leads (manager).
+export const TELECALLER_NOTIFICATIONS_HREF = "/telecaller/notifications"; // tel-020: the §20 alerts
 export const TELECALLER_NAV: NavItem[] = [
   { label: "Dashboard", href: "/telecaller/dashboard" }, { label: "My Leads", href: "/telecaller/leads" },
   { label: "Follow-ups", href: "/telecaller/follow-ups" }, // tel-011
   { label: "BDM requests", href: "/telecaller/meeting-requests" }, // tel-019
+  { label: "Notifications", href: TELECALLER_NOTIFICATIONS_HREF },
   { label: "Profile", href: "/telecaller/profile" },
 ];
 // tel-002: Products and Campaigns (the catalogue the manager maintains); tel-022: Targets; tel-007: Lead assignment and Distribution rules.
@@ -98,7 +100,9 @@ export const TELECALLER_MANAGER_NAV: NavItem[] = [
   { label: "Lead assignment", href: "/telecaller/manager/assignment" }, { label: "Distribution rules", href: "/telecaller/manager/distribution" },
   { label: "Lead import", href: "/telecaller/manager/imports" }, // tel-006
   { label: "Targets", href: "/telecaller/manager/targets" },
+  { label: "Performance", href: "/telecaller/manager/performance" }, // tel-023
   { label: "Reports", href: "/telecaller/manager/reports" }, // tel-024
+  { label: "Alert settings", href: "/telecaller/manager/alerts" }, // tel-020
   { label: "Products", href: "/telecaller/manager/products" },
   { label: "Campaigns", href: "/telecaller/manager/campaigns" },
   // tel-012: the content library telecallers work from.
@@ -158,11 +162,11 @@ export const PORTAL_NAV:Record<string,NavItem[]> = {
   // bdm-001: "BDMs" is written out -- the generated label would read "Bdms".
   // tel-017 (DEC-SCOPE-076 C1): an IT counselor works leads only; tel-016 added Appointments (lead bookings), tel-018 the student link.
   "it/counselor": ["dashboard","leads","appointments"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/counselor/${x}`})),
-  "it/admin": [...["dashboard","users","students","trainers","counselors","employers","programs","batches","enrollments","certificates","resources","consent","payments","roles","leads","support","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/admin/${x}`})),{label:"BDMs",href:"/it/admin/bdms"},{label:"Telecallers",href:"/it/admin/telecallers"},{label:"Telecaller Reports",href:"/it/admin/telecaller-reports"}],
+  "it/admin": [...["dashboard","users","students","trainers","counselors","employers","programs","batches","enrollments","certificates","resources","consent","payments","roles","leads","support","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/admin/${x}`})),{label:"BDMs",href:"/it/admin/bdms"},{label:"Telecallers",href:"/it/admin/telecallers"},{label:"Telecaller Performance",href:"/it/admin/telecaller-performance"},{label:"Telecaller Reports",href:"/it/admin/telecaller-reports"}],
   "overseas/student": ["dashboard","profile","applications","documents","offer-letters","visa-status","scholarships","university-communication","payments","appointments","counselor-chat","downloads"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/student/${x}`})),
   "overseas/counselor": ["dashboard","students","leads","documents","applications","school-applications","visa","appointments","counselor-chat","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/counselor/${x}`})),
   "overseas/university": ["dashboard","applications","offer-letters","admission-updates","student-communication","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/university/${x}`})),
-  "overseas/admin": [...["dashboard","users","students","counselors","agents","commissions","universities","schools","school-staff","school-applications","school-transfers","activity-feedback","school-analytics","applications","leads","payments","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/admin/${x}`})),{label:"BDMs",href:"/overseas/admin/bdms"},{label:"Telecallers",href:"/overseas/admin/telecallers"},{label:"Telecaller Reports",href:"/overseas/admin/telecaller-reports"},{label:"Agent deposits",href:"/overseas/admin/agent-deposits"},{label:"Agent network",href:"/overseas/admin/agent-network"}], // AGN-011: its own page (DEC-SCOPE-058); AGN-022: its own page (DEC-SCOPE-064)
+  "overseas/admin": [...["dashboard","users","students","counselors","agents","commissions","universities","schools","school-staff","school-applications","school-transfers","activity-feedback","school-analytics","applications","leads","payments","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/admin/${x}`})),{label:"BDMs",href:"/overseas/admin/bdms"},{label:"Telecallers",href:"/overseas/admin/telecallers"},{label:"Telecaller Performance",href:"/overseas/admin/telecaller-performance"},{label:"Telecaller Reports",href:"/overseas/admin/telecaller-reports"},{label:"Agent deposits",href:"/overseas/admin/agent-deposits"},{label:"Agent network",href:"/overseas/admin/agent-network"}], // AGN-011: its own page (DEC-SCOPE-058); AGN-022: its own page (DEC-SCOPE-064)
   // AGN-007 (DEC-SCOPE-049): Universities is the agency's own university list. AGN-008 (DEC-SCOPE-050 A7): Applications carries
   // the EVID-015 §4 sidebar filters as sub-links (same page, ?status=). AGN-016 (DEC-SCOPE-053 T5): Tasks, for Masters and staff,
   // after Documents (the EVID-015 §4 sidebar order). AGN-017 (DEC-SCOPE-059 N8): Notifications, for Masters and staff, after Tasks.
@@ -191,4 +195,4 @@ export function agentNavFor(nav: NavItem[], memberRole?: string | null, permissi
     .map((item) => (item.href === STAFF_STUDENTS.href ? STAFF_STUDENTS : item));
 }
 // ENH-016: the cross-school School Analytics page lives under /overseas/admin (D1: Overseas and Super Admins).
-export const SUPER_ADMIN_NAV:NavItem[] = [...["dashboard","users","students","staff","programs","batches","universities","recruiters","content","blogs","gallery","events","leads","applications","payments","reports","notifications","roles","settings","security-logs","backups"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:x==="dashboard"?"/admin":`/admin/${x}`})),{label:"BDMs",href:"/admin/bdms"},{label:"BDM Travel Approvals",href:"/admin/bdm-travel-approvals"},{label:"BDM Dashboard",href:"/bdm/manager/dashboard"},{label:"BDM Performance",href:"/bdm/manager/performance"},{label:"BDM Master View",href:"/bdm/manager/hierarchy"},{label:"Telecallers",href:"/admin/telecallers"},{label:"Telecaller Reports",href:"/admin/telecaller-reports"},{label:"School Analytics",href:"/overseas/admin/school-analytics"}];
+export const SUPER_ADMIN_NAV:NavItem[] = [...["dashboard","users","students","staff","programs","batches","universities","recruiters","content","blogs","gallery","events","leads","applications","payments","reports","notifications","roles","settings","security-logs","backups"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:x==="dashboard"?"/admin":`/admin/${x}`})),{label:"BDMs",href:"/admin/bdms"},{label:"BDM Travel Approvals",href:"/admin/bdm-travel-approvals"},{label:"BDM Dashboard",href:"/bdm/manager/dashboard"},{label:"BDM Performance",href:"/bdm/manager/performance"},{label:"BDM Master View",href:"/bdm/manager/hierarchy"},{label:"Telecallers",href:"/admin/telecallers"},{label:"Telecaller Performance",href:"/admin/telecaller-performance"},{label:"Telecaller Reports",href:"/admin/telecaller-reports"},{label:"School Analytics",href:"/overseas/admin/school-analytics"}];

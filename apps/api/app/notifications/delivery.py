@@ -108,7 +108,7 @@ async def _send_email(s: _Snapshot, context: dict | None) -> twilio.SendResult:
         status, error = await send_parent_notification_email(to_email=s.email, recipient_name=s.full_name, school_name=context.get("school_name") or "your school", title=s.title, body=s.body, action_url=s.action_url)
         if status == "not_configured":
             status, error = await send_notification("email", {"to": s.email, "title": s.title, "body": s.body, "action_url": s.action_url})
-    elif context and context.get("kind") == "bdm_reminder":  # bdm-012 (DEC-SCOPE-102 R9): SMTP only; not_configured stays recorded
+    elif context and context.get("kind") in ("bdm_reminder", "tel_alert"):  # bdm-012 R9 / tel-020 AL2: SMTP only; not_configured stays recorded
         status, error = await send_bdm_reminder_email(to_email=s.email, recipient_name=s.full_name, title=s.title, body=s.body, links=context.get("links") or [])
     elif context and context.get("kind") == "inbound":  # inbound._notify_student never sent the phone
         status, error = await send_notification("email", {"to": s.email, "title": s.title, "body": s.body, "action_url": s.action_url})

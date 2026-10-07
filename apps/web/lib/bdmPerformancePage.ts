@@ -5,7 +5,7 @@ import { bdmManagerNav } from "@/lib/bdmNav";
 import { type NavItem, SUPER_ADMIN_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
-// bdm-024 (DEC-SCOPE-111 §6): what the four performance pages share on the server -- the role's sidebar (super_admin keeps the admin
+// bdm-024 (DEC-SCOPE-113 §6): what the four performance pages share on the server -- the role's sidebar (super_admin keeps the admin
 // navigation, as bdm-023), the manager options for super_admin's team filter, and reading one API response as data or an ApiError.
 export const UNABLE = "Unable to load the performance figures.";
 

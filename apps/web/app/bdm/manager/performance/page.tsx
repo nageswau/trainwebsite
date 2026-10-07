@@ -12,7 +12,7 @@ import type { User } from "@/lib/types";
 
 type Search = { from?: string; to?: string; manager?: string };
 
-// bdm-024 (DEC-SCOPE-111): the §5 management view -- KPIs x BDM types for a period (default: this IST month), for a manager's team or,
+// bdm-024 (DEC-SCOPE-113): the §5 management view -- KPIs x BDM types for a period (default: this IST month), for a manager's team or,
 // for super_admin, all teams or one manager's. Every number drills down to the BDMs of its type.
 export default async function BdmPerformancePage({ searchParams }: { searchParams: Promise<Search> }) {
   let user: User;

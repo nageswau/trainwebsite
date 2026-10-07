@@ -15,7 +15,7 @@ import type { User } from "@/lib/types";
 
 type Search = { from?: string; to?: string; manager?: string };
 
-// bdm-024 (DEC-SCOPE-111 P8, L2): the BDMs of one type with their figures for the period; the Total row is the type's column of the
+// bdm-024 (DEC-SCOPE-113 P8, L2): the BDMs of one type with their figures for the period; the Total row is the type's column of the
 // §5 table. Each BDM drills down to their organizations and trips. Inactive BDMs are listed (their records still count, P4).
 export default async function BdmPerformanceTypePage({ params, searchParams }: { params: Promise<{ type: string }>; searchParams: Promise<Search> }) {
   const { type } = await params;

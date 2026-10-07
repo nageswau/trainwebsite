@@ -14,7 +14,7 @@ import TypePage from "@/app/bdm/manager/performance/[type]/page";
 import BdmPage from "@/app/bdm/manager/performance/bdms/[id]/page";
 import { elements, text } from "@/tests/helpers/elementTree";
 
-// bdm-024 (DEC-SCOPE-111): the four pages -- the role's shell and filters, what each sends to the API, and the inline failure.
+// bdm-024 (DEC-SCOPE-113): the four pages -- the role's shell and filters, what each sends to the API, and the inline failure.
 vi.mock("next/navigation", () => ({
   notFound: vi.fn(() => { throw new Error("NEXT_NOT_FOUND"); }), redirect: vi.fn(),
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }), usePathname: () => "/", useSearchParams: () => new URLSearchParams(),

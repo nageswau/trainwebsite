@@ -1,4 +1,4 @@
-"""bdm-024 (DEC-SCOPE-111 P10/P11) -- GET /bdm/manager/hierarchy: the §6 master view, type -> BDMs -> linked organizations -> value chain
+"""bdm-024 (DEC-SCOPE-113 P10/P11) -- GET /bdm/manager/hierarchy: the §6 master view, type -> BDMs -> linked organizations -> value chain
 (Appendix B.6 V-A / V-S / V-C). Each organization's chain must equal its own panels (bdm-020/021/022); BDM and type totals are sums."""
 
 from datetime import UTC, datetime

@@ -5413,7 +5413,7 @@ class BdmManagerDashboardOut(BaseModel):
     alerts: list[BdmDashboardAlert]
 
 
-# --- bdm-024 (DEC-SCOPE-111): performance by BDM type (Appendix B.6 P-rows) + drill-down, and the master view (V-chains) --------------
+# --- bdm-024 (DEC-SCOPE-113): performance by BDM type (Appendix B.6 P-rows) + drill-down, and the master view (V-chains) --------------
 BdmTypeName = Literal["agent", "school", "college"]
 
 
@@ -5621,6 +5621,30 @@ class TelTargetEffectiveOut(BaseModel):
     user: TelTargetPerson | None
     daily: list[TelTargetValue]
     monthly: list[TelTargetValue]
+
+
+# tel-020 (DEC-SCOPE-111 AL1, AL11; API §12AE): a team's alert thresholds, whole hours 1-168 (a string or a fraction is refused).
+TEL_SETTING_FIELD_LABELS = {"not_contacted_hours": "Lead not contacted after (hours)", "hot_pending_hours": "Hot lead pending after (hours)"}
+TelSettingHours = Annotated[StrictInt, Field(ge=1, le=168)]
+
+
+class TelSettingsUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    not_contacted_hours: TelSettingHours
+    hot_pending_hours: TelSettingHours
+
+
+class TelSettingsOut(BaseModel):
+    team: str
+    team_label: str
+    not_contacted_hours: int
+    hot_pending_hours: int
+    updated_at: datetime
+    updated_by: TelTargetPerson | None
+
+
+class TelSettingsPage(BaseModel):
+    items: list[TelSettingsOut]
 
 
 # tel-004 (DEC-SCOPE-081, spec §5): a person's lead stage move. The reason reuses bdm-004's note rules (trimmed, at most 500,

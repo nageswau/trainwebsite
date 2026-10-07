@@ -1,6 +1,6 @@
 # bdm-024 — BDM performance by type + drill-down + master dashboard (design)
 
-Decision: `DEC-SCOPE-111` (P1–P12 below). Backlog: `BDM_CRM_BACKLOG.md` §bdm-024; definitions Appendix B.6 (P-01…P-08,
+Decision: `DEC-SCOPE-113` (P1–P12 below). Backlog: `BDM_CRM_BACKLOG.md` §bdm-024; definitions Appendix B.6 (P-01…P-08,
 V-A/V-S/V-C). Evidence: `EVID-016` §5 Management view (lines 1336–1357) and §6 Master dashboard (lines 1359–1420)
 (`DERIVED_BLUEPRINT`); scope approved under `DEC-SCOPE-055` D1.
 

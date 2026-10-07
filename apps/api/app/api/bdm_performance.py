@@ -1,4 +1,4 @@
-"""bdm-024 (DEC-SCOPE-111, spec §4): management performance by BDM type for a period (the §5 table, Appendix B.6 P-01...P-08), its
+"""bdm-024 (DEC-SCOPE-113, spec §4): management performance by BDM type for a period (the §5 table, Appendix B.6 P-01...P-08), its
 drill-down (type -> BDMs -> one BDM's organizations and trips), and the master view (§6, V-A / V-S / V-C).
 
 Scope is bdm-023's (`team_scope`): a manager's team, or for super_admin all teams or one manager's (P1). Read-only: no write, no audit,

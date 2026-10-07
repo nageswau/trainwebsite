@@ -1,7 +1,7 @@
 import type { BdmManagerOption } from "@/lib/bdm";
 import type { Filters } from "@/lib/bdmPerformance";
 
-// bdm-024 (DEC-SCOPE-111 §6): the controls the performance pages share -- a plain GET form (works without JavaScript) for the period
+// bdm-024 (DEC-SCOPE-113 §6): the controls the performance pages share -- a plain GET form (works without JavaScript) for the period
 // and, for super_admin, the team; and the inline failure with "Try again" and "Show this month".
 export function PerformanceFilters({ action, filters, period, managers }: {
   action: string; filters: Filters; period: { from: string; to: string } | null; managers?: BdmManagerOption[];

@@ -18,7 +18,7 @@ import type { User } from "@/lib/types";
 
 type Search = { from?: string; to?: string };
 
-// bdm-024 (DEC-SCOPE-111 P8/P9, L3): one BDM's organizations with a figure in the period (each links to its page: appointments,
+// bdm-024 (DEC-SCOPE-113 P8/P9, L3): one BDM's organizations with a figure in the period (each links to its page: appointments,
 // outcomes, leads and the student / revenue panels), and their trips (trips belong to the BDM, not to an organization).
 export default async function BdmPerformanceBdmPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Search> }) {
   const { id } = await params;

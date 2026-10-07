@@ -7,7 +7,7 @@ import BdmPerformanceTable from "@/components/BdmPerformanceTable";
 import type { Figures, Hierarchy, Performance } from "@/lib/bdmPerformance";
 import { elements, text } from "@/tests/helpers/elementTree";
 
-// bdm-024 (DEC-SCOPE-111): the three views are plain functions of their data, so they are called directly.
+// bdm-024 (DEC-SCOPE-113): the three views are plain functions of their data, so they are called directly.
 const TYPES = ["agent", "school", "college"] as const;
 const row = (key: string, label: string, values: (number | string | null)[], definition = `${label} definition.`) => ({
   key, label, cells: TYPES.map((type, i) => ({ type, tracked: values[i] !== null, value: values[i], definition })),

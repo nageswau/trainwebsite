@@ -3,7 +3,7 @@ import Link from "next/link";
 import { type ChainStep, type Hierarchy, organizationPath, type Value, valueText } from "@/lib/bdmPerformance";
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
 
-// bdm-024 (DEC-SCOPE-111 P10/P11): the §6 master view -- BDM type -> its BDMs -> their linked organizations, each with the type's value
+// bdm-024 (DEC-SCOPE-113 P10/P11): the §6 master view -- BDM type -> its BDMs -> their linked organizations, each with the type's value
 // chain (V-A / V-S / V-C). A structured hierarchy, not a map: native <details> open and close by keyboard; each organization links to
 // its page, whose panels show the same figures. Untracked steps say so; inactive BDMs and empty branches are said in words.
 const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString("en-IN")} ${n === 1 ? one : many}`;

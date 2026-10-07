@@ -7,7 +7,8 @@ import TelecallerFollowUpsCard, { DASHBOARD_FOLLOW_UPS } from "@/components/Tele
 import TelecallerProfileCard from "@/components/TelecallerProfileCard";
 import TelecallerTargetsCard from "@/components/TelecallerTargetsCard";
 import { serverApi } from "@/lib/api";
-import { TELECALLER_NAV, TELECALLER_SIGN_IN } from "@/lib/navigation";
+import { TELECALLER_SIGN_IN } from "@/lib/navigation";
+import { telecallerNav } from "@/lib/telecallerNav";
 import { teamRoleLabel, type TelecallerMe } from "@/lib/telecaller";
 import { FOLLOW_UPS_URL, type FollowUpPage } from "@/lib/telecallerFollowUps";
 import { DASHBOARD_URL, activityError, activityUrl, dayParam, type TelecallerActivity, type TelecallerDashboard } from "@/lib/telecallerMetrics";
@@ -36,7 +37,7 @@ export default async function TelecallerDashboardPage({ searchParams }: { search
   ]);
   const today = dashboard?.day ?? istToday();
   return (
-    <PortalShell nav={TELECALLER_NAV} roleLabel={teamRoleLabel(me.telecaller_profile.team)} userName={me.full_name}>
+    <PortalShell nav={await telecallerNav()} roleLabel={teamRoleLabel(me.telecaller_profile.team)} userName={me.full_name}>
       <div className="portal-content">
         <div className="portal-title">
           <div>

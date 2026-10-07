@@ -96,4 +96,4 @@ dict[(bdm_id, org_id|None), dict[str, int|Decimal]]`; `FIGURES = ("meetings","tr
 
 - [ ] `tests/e2e/bdm-024-performance.spec.ts` (seed through the API as bdm-023's spec; drill type → BDM → org page; period change; master
   view; 390 px with no overflow).
-- [ ] Docs: decision register `DEC-SCOPE-111`, API §12AE, RBAC §2.37, RTM row, backlog status, QA report.
+- [ ] Docs: decision register `DEC-SCOPE-113`, API §12AG, RBAC §2.39, RTM row, backlog status, QA report.

@@ -1,7 +1,7 @@
 import { isUuid } from "@/lib/bdmTravel";
 import { formatCalendarDate } from "@/lib/formatDate";
 
-// bdm-024 (DEC-SCOPE-111): management performance by BDM type, its drill-down and the master view. The API computes and defines every
+// bdm-024 (DEC-SCOPE-113): management performance by BDM type, its drill-down and the master view. The API computes and defines every
 // figure; the web owns the links between levels (P8), which always carry the period and, for super_admin, the chosen manager.
 const API = "/api/v1/bdm/manager";
 export const PERFORMANCE_PATH = "/bdm/manager/performance";

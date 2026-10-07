@@ -3,7 +3,7 @@ import Link from "next/link";
 import { FIGURE_COLUMNS, type Figures, valueText } from "@/lib/bdmPerformance";
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
 
-// bdm-024 (DEC-SCOPE-111 §6): the drill-down tables -- the BDMs of a type (L2) and one BDM's organizations (L3). Each row's name and
+// bdm-024 (DEC-SCOPE-113 §6): the drill-down tables -- the BDMs of a type (L2) and one BDM's organizations (L3). Each row's name and
 // numbers link to its next level; the Total row is the level above's figure (P8). A figure that does not apply (an organization's
 // trips) is a dash; an untracked one (Agent / School revenue) says so. Neither is a link.
 export type FigureRow = { key: string; name: string; href: string; note?: string; figures: Figures };

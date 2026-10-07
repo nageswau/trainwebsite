@@ -1,4 +1,4 @@
-"""bdm-024 (DEC-SCOPE-111, spec §3-§4): the management performance figures of Appendix B.6 (P-02...P-08) for an IST period.
+"""bdm-024 (DEC-SCOPE-113, spec §3-§4): the management performance figures of Appendix B.6 (P-02...P-08) for an IST period.
 
 Every figure is counted once, at (BDM, organization) grain, by one grouped statement; the type table, the BDM list and a BDM's
 organizations are sums of the same rows, so the levels of the drill-down cannot disagree (AC2, P8). Read-only; only counts and sums

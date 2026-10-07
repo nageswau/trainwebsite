@@ -1,4 +1,4 @@
-"""bdm-024 (DEC-SCOPE-111) -- GET /bdm/manager/performance: the §5 KPI x BDM-type table (Appendix B.6 P-01...P-08) for a period, and with
+"""bdm-024 (DEC-SCOPE-113) -- GET /bdm/manager/performance: the §5 KPI x BDM-type table (Appendix B.6 P-01...P-08) for a period, and with
 `type` the BDMs of that type; GET /bdm/manager/performance/bdms/{id}: one BDM's organizations and trips. The levels must agree (AC2)."""
 
 import uuid

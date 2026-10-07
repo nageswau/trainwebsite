@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.lead_stages import CLOSED
 from app.models import (
+    TEL_SETTING_DEFAULTS,
     TEL_TARGET_KPIS,
     Appointment,
     AuditLog,
@@ -24,6 +25,7 @@ from app.models import (
     LeadFollowUp,
     LeadMessage,
     LeadStageHistory,
+    TelSetting,
 )
 from app.services.bdm_activities import day_range
 from app.services.bdm_appointments import today_ist
@@ -37,7 +39,6 @@ ACTIVITY_KEYS = (
 )
 # Appendix B K1-K6: each target KPI is one daily-activity count.
 KPI_COUNTS = dict(zip(TEL_TARGET_KPIS, ("calls", "connected_calls", "qualified_leads", "follow_ups_completed", "counselor_appointments", "converted_leads"), strict=True))
-NOT_CONTACTED_AFTER = timedelta(hours=24)  # DB1: until tel-020 brings the team's threshold
 FIRST_CALL = ("assigned", "first_call_pending")
 CANCELLED = "cancelled"  # DB7: every other status is on the day's list
 
@@ -204,22 +205,37 @@ async def appointments_today(db: AsyncSession, user_id: UUID, now: datetime) -> 
     return [dict(row._mapping) for row in result]
 
 
+def _became_mine(user_id: UUID, start: datetime, end: datetime):
+    """DB8: the lead became the telecaller's in [start, end) -- a `lead.assign` to them, or a lead they created already assigned."""
+    return or_(
+        exists(_audit("lead.assign").where(AuditLog.metadata_json["to"].as_string() == str(user_id), *_in(AuditLog.created_at, start, end))),
+        exists(_audit("lead.create").where(AuditLog.user_id == user_id, AuditLog.metadata_json["assigned"].as_boolean().is_(True),
+                                           *_in(AuditLog.created_at, start, end))),
+    )
+
+
+async def leads_received(db: AsyncSession, user_id: UUID, start: datetime, end: datetime) -> int:
+    """tel-023 P1 (PF2): distinct leads that became the telecaller's in the range, kept or since reassigned."""
+    return await db.scalar(select(func.count()).select_from(Enquiry).where(_became_mine(user_id, start, end)))
+
+
+async def _not_contacted_after(db: AsyncSession, team: str) -> timedelta:
+    """DB1 / DEC-SCOPE-111 AL12: the team's Lead Not Contacted hours (tel-020), the default for a team without a row."""
+    hours = await db.scalar(select(TelSetting.not_contacted_hours).where(TelSetting.team == team))
+    return timedelta(hours=hours or TEL_SETTING_DEFAULTS["not_contacted_hours"])
+
+
 async def tiles(db: AsyncSession, user_id: UUID, team: str, now: datetime) -> dict:
     """§1: the ten tiles for today (Appendix B B1-B10)."""
     today = today_ist(now)
     start, end = day_range(today)
     flow = await flow_counts(db, user_id, start, end)
-    became_mine = or_(
-        exists(_audit("lead.assign").where(AuditLog.metadata_json["to"].as_string() == str(user_id), *_in(AuditLog.created_at, start, end))),
-        exists(_audit("lead.create").where(AuditLog.user_id == user_id, AuditLog.metadata_json["assigned"].as_boolean().is_(True),
-                                           *_in(AuditLog.created_at, start, end))),
-    )
     first_call = await db.scalar(select(func.count()).select_from(Enquiry).where(*_own_open(user_id), Enquiry.status.in_(FIRST_CALL)))
     due_today = await db.scalar(_own_open_follow_ups(user_id).where(*_in(LeadFollowUp.due_at, start, end)))
     rows = _appointments_today(user_id, start, end)
     daily_calls = next(r for r in (await effective_targets(db, team, user_id, today))["daily"] if r["kpi"] == "calls")
     return {
-        "new_leads": await db.scalar(select(func.count()).select_from(Enquiry).where(Enquiry.telecaller_user_id == user_id, became_mine)),
+        "new_leads": await db.scalar(select(func.count()).select_from(Enquiry).where(Enquiry.telecaller_user_id == user_id, _became_mine(user_id, start, end))),
         "calls_today": {"done": flow["calls"], "to_do": first_call + due_today},
         "follow_ups_due": due_today,
         "hot_leads": await db.scalar(select(func.count()).select_from(Enquiry).where(*_own_open(user_id), Enquiry.priority == "hot")),
@@ -229,7 +245,7 @@ async def tiles(db: AsyncSession, user_id: UUID, team: str, now: datetime) -> di
         "converted": flow["converted_leads"],
         "overdue": await db.scalar(_own_open_follow_ups(user_id).where(LeadFollowUp.due_at < now)) + await db.scalar(
             select(func.count()).select_from(Enquiry).where(
-                *_own_open(user_id), Enquiry.status == "first_call_pending", Enquiry.stage_changed_at < now - NOT_CONTACTED_AFTER)),
+                *_own_open(user_id), Enquiry.status == "first_call_pending", Enquiry.stage_changed_at < now - await _not_contacted_after(db, team))),
         "daily_target": {"achieved": flow["calls"], "target": daily_calls["value"]},
     }
 

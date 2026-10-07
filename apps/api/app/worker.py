@@ -139,6 +139,15 @@ def sweep_lead_conversions_task():
 
 
 @celery.task
+def send_telecaller_alerts_task():
+    """tel-020 (DEC-SCOPE-111): every 15 minutes via beat. Idempotent per alert (notifications.dedupe_key), so a rerun or an overlapping
+    run creates nothing new and a late run catches up (AC2)."""
+    from app.services.telecaller_alerts import run_telecaller_alerts
+
+    return _run_with_fresh_pool(run_telecaller_alerts)
+
+
+@celery.task
 def deliver_lead_email_task(message_id: str):
     """tel-014 (DEC-SCOPE-106 E4/E5): send one queued lead email; retries are re-enqueued by `deliver_lead_email` itself."""
     from app.notifications.lead_email import deliver_lead_email
@@ -160,4 +169,5 @@ celery.conf.beat_schedule = {
     "bdm012-reminders": {"task": "app.worker.send_bdm_reminders_task", "schedule": 300.0},
     "tel018-conversion-sweep": {"task": "app.worker.sweep_lead_conversions_task", "schedule": 900.0},
     "tel014-sweep-stale-lead-emails": {"task": "app.worker.sweep_stale_lead_emails_task", "schedule": 300.0},
+    "tel020-alerts": {"task": "app.worker.send_telecaller_alerts_task", "schedule": 900.0},
 }

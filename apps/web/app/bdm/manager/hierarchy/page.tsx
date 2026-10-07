@@ -10,7 +10,7 @@ import { failureText, isDenied, load, managerOptions, shellFor } from "@/lib/bdm
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import type { User } from "@/lib/types";
 
-// bdm-024 (DEC-SCOPE-111 P10/P11): the §6 BDM master view -- each BDM type, its BDMs and their linked organizations with the type's
+// bdm-024 (DEC-SCOPE-113 P10/P11): the §6 BDM master view -- each BDM type, its BDMs and their linked organizations with the type's
 // value chain. Live, all-time figures (the organization panels' own).
 export default async function BdmHierarchyPage({ searchParams }: { searchParams: Promise<{ manager?: string }> }) {
   let user: User;

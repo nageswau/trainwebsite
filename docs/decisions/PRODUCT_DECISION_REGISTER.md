@@ -4769,7 +4769,76 @@ recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). 
 `lib/bdmAgentPerformance.ts`, `components/BdmOrganizationAgentPerformance.tsx` on both organization pages. **Feature ID:** `bdm-022`.
 **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-022.
 
-### DEC-SCOPE-111 — BDM performance by type + drill-down + master dashboard (`bdm-024`)
+### DEC-SCOPE-111 — Telecaller alerts & notifications (`tel-020`)
+
+**Evidence:**
+- `EVID-019` §20 (L638–L650: nine alerts the CRM "should automatically notify the telecaller" of).
+- `DEC-SCOPE-073` T14 (in-app + email; event alerts on the write, time-based alerts from a 15-minute beat, each once; manager-set thresholds).
+- `DEC-SCOPE-094` F1 (overdue follow-up), `DEC-SCOPE-095` (lead appointments), `DEC-SCOPE-101` HO4 (return), `DEC-SCOPE-087` (assignment).
+- `DEC-SCOPE-102` R1 (bdm-012: `notifications.dedupe_key` as the once-only record) and `DEC-SCOPE-105` DB1 (the 24 h that waited for tel-020).
+- Backlog open question Q-14 (threshold defaults, quiet hours, digest vs per-event email).
+- Owner answers in-session 2026-10-07.
+
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option)
+for AL1–AL4, and AL13 confirmed by the owner in-session after the merge (2026-10-07); AL5–AL12 are recorded defaults. **MERGED** to `main` as PR #129 @ `d6097548` (2026-10-07). Migration `0099_tel_settings` (after bdm-019's `0098_bdm_agent_link`), API contract §12AE, RBAC
+§2.37. Spec `docs/superpowers/specs/2026-10-07-tel-020-alerts-design.md`. Drafted as `0098` / `DEC-SCOPE-107` / §12AA / 2.33; bdm-019 (`0098_bdm_agent_link` / 107 / §12AA / 2.33) and bdm-023 (108 / §12AB / 2.34) merged first, then tel-024 (no migration / 109 / §12AC / 2.35) and bdm-022 (no migration / 110 / §12AD / 2.36), so it is renumbered again (the migration stays `0099`).
+
+| # | Question | Answer |
+|---|---|---|
+| AL1 | Q-14a: default thresholds | **Lead Not Contacted 24 h, Hot Lead Pending 4 h** per team; whole hours 1–168, set by a manager |
+| AL2 | Q-14b: digest or per event | **Per alert, in-app + email**, as bdm-012 |
+| AL3 | Q-14c: quiet hours | **None** |
+| AL4 | Timing | **Follow-up Due** in the 15 min before the due time; **Missed Follow-up** when still open 1 h after it; **Appointment Tomorrow** once, from 18:00 IST the day before |
+
+Recorded defaults:
+- **AL5** The recipient is the lead's telecaller (`enquiries.telecaller_user_id`), only while an active `telecaller`; the actor never alerts themselves.
+- **AL6** Once-only via `notifications.dedupe_key` `tel020:{kind}:{object}:{user}:{event time}` (no `tel_alert_log` table): a rerun or a
+  late run is a no-op, and a new due time, appointment time, stage time or call re-arms the alert.
+- **AL7** Event alerts (New Lead Assigned — only when the telecaller changes, Counselor Appointment Completed, Lead Returned) are written in the
+  caller's transaction; a rolled-back write leaves nothing and the outbox publishes after commit.
+- **AL8** Lead Not Contacted: own open lead, not handed over, in Assigned / First Call Pending, `stage_changed_at` at least the team's hours ago.
+- **AL9** Hot Lead Pending: own open hot lead, not handed over, no call for the team's hours (from its latest call, else its creation).
+- **AL10** Catch-up windows: Due `now − 1 h < due ≤ now + 15 min`; Missed `now − 25 h < due ≤ now − 1 h`; in 1 hour `now < start ≤ now + 1 h`.
+- **AL11** Any `telecaller_manager` and `super_admin` read and set both teams (tel-022 G3's rule); the change applies from the next run; audited
+  `tel.settings.update` with the old and new values.
+- **AL12** tel-021's B9 Overdue uses the team's `not_contacted_hours` instead of the fixed 24 h (DB1).
+- **AL13** (`EXPLICIT_APPROVAL`, owner confirmed 2026-10-07) tel-025's lifecycle moves (deactivation, team move, handover) keep their single D6 summary notice to the new telecaller and send
+  no per-lead "New lead assigned" (`lead_distribution.assign(..., notify=False)`), so a bulk move is never N extra emails.
+- Bodies carry the lead's name, Lead ID and a time only; links are app paths (`/telecaller/leads/{id}`, `/telecaller/follow-ups`) needing a session.
+
+**Consequences:**
+- Data: `tel_settings` (seeded `it` and `overseas` with 24 / 4).
+- Backend: `services/telecaller_alerts.py`; hooks in `lead_distribution.assign`, the lead-appointment `complete` action and
+  `lead_handover.return_lead`; the beat job `tel020-alerts` (900 s); the email kind `tel_alert` (SMTP via `send_bdm_reminder_email`);
+  `GET/PUT /telecaller/settings`.
+- Web: `/telecaller/notifications` with the unread badge on every telecaller page; the manager's `/telecaller/manager/alerts`.
+- Volume: a CSV import of N leads sends N "New lead assigned" emails (AL2 accepted).
+
+**New Feature ID authorized:** `tel-020`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-020.
+
+### DEC-SCOPE-112 — Telecaller performance comparison (`tel-023`)
+
+**Evidence:** `EVID-019` §16 (the 6-column comparison); `DEC-SCOPE-073` T23, T24; backlog Appendix B P1–P6 and open question Q-19;
+`DEC-SCOPE-105` (tel-021 metrics, DB2, DB6, DB8); owner answers in-session 2026-10-07.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option)
+for PF1–PF4. **MERGED** to `main` as PR #131 @ `2059b26d` (2026-10-07). **No migration.** API contract §12AF, RBAC §2.38. Spec `docs/superpowers/specs/2026-10-07-tel-023-performance-design.md`.
+Numbered after bdm-019 (`DEC-SCOPE-107` / §12AA / 2.33, migration `0098`), bdm-023 (`DEC-SCOPE-108` / §12AB / 2.34), tel-024 (`DEC-SCOPE-109` / §12AC / 2.35), bdm-022 / tel-020 (`DEC-SCOPE-110`–`111` / §12AD–§12AE / 2.36–2.37, migration `0099_tel_settings`), all merged first.
+
+| # | Question | Answer |
+|---|---|---|
+| PF1 | Who sees it; where rows link | `telecaller_manager` (direct reports), `it_admin` / `overseas_admin` (their team), `super_admin` (all). Names link to the tel-021 daily activity only for viewers who may open it (manager, super_admin); division admins see plain rows, so DB6 is unchanged |
+| PF2 | P1 "Leads" | Distinct leads that **became the telecaller's in the range** (DB8's rule: a `lead.assign` to them, or their own already-assigned `lead.create`), whether or not still theirs |
+| PF3 | Q-19: credit after reassignment | **Whoever did it**: calls, connected, qualified and appointments are tel-021's actor-based flow counts; conversions per DB2 |
+| PF4 | Rows, sort, defaults | Every telecaller in scope, inactive ones marked; a Total row; default the 1st of the month → today (IST); sort by column-header links (default Calls, high-to-low; ties by name), the CSV in the same order; at most 366 days |
+
+**Consequences:** `telecaller_metrics.leads_received` (B1 now reuses the same expression); `services/telecaller_performance.py`; routes
+`GET /telecaller/manager/performance(.csv)` in `api/telecaller_dashboard.py`; `TelecallerPerformancePanel` / `TelecallerPerformancePage`;
+pages `/telecaller/manager/performance`, `/it/admin/telecaller-performance`, `/overseas/admin/telecaller-performance`,
+`/admin/telecaller-performance`; nav "Performance" / "Telecaller Performance". P2–P6 use tel-024's grouped
+`flow_counts_by_user` (one query per count for the whole scope).
+**New Feature ID authorized:** `tel-023`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-023.
+
+### DEC-SCOPE-113 — BDM performance by type + drill-down + master dashboard (`bdm-024`)
 
 **Evidence:** `EVID-016` §5 Management view and §6 Master dashboard (`BDM_CRM_BACKLOG.md` Appendix A L1336–L1420: the KPI × BDM-type
 table "BDMs / Meetings / Travel Trips / New Organizations / MoUs / Leads / Students / Revenue", "click any number and drill down",
@@ -4778,7 +4847,7 @@ the BDM master hierarchy and the three value chains) and Appendix B.6 rows P-01�
 `DEC-SCOPE-089` (bdm-020, A1), `DEC-SCOPE-110` (bdm-022), `DEC-SCOPE-018` (the `school_student_id` bridge), D17. Dependencies
 verified on `main` @ `8b6d4dbe`: bdm-020, bdm-021, bdm-022, bdm-023 merged with verified evidence.
 **Status:** P1–P12 are the **recommended answers**, used under the owner's standing direction for this session to proceed with
-recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). No migration. API contract §12AE, RBAC §2.37. Spec
+recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). No migration. API contract §12AG, RBAC §2.39. Drafted as `DEC-SCOPE-111` / §12AE / §2.37 and renumbered on merging `main` @ `68b87639` (tel-020 took 111 / §12AE / §2.37, tel-023 112 / §12AF / §2.38). Spec
 `docs/superpowers/specs/2026-10-07-bdm-024-performance-master-design.md`.
 
 | # | Question | Recommended answer (used) |
