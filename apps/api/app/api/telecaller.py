@@ -8,7 +8,7 @@ from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -19,7 +19,6 @@ from app.api.lookups import _pattern as like_pattern
 from app.core.database import get_db
 from app.models import LEAD_PRIORITIES, AuditLog, Enquiry, TelecallerProfile, User
 from app.schemas import (
-    BdmManagerPage,
     LeadEnquiryCreate,
     LeadQualificationIn,
     LeadStageHistoryPage,
@@ -29,6 +28,7 @@ from app.schemas import (
     TelecallerAdminPage,
     TelecallerLeadCreate,
     TelecallerLeadUpdate,
+    TelecallerManagerPage,
     TelecallerMeOut,
     TelecallerTeamPage,
 )
@@ -249,10 +249,12 @@ async def admin_telecallers(
     return await _paged(db, _profiles(filters), limit, offset, _admin_row)
 
 
-@admin_router.get("/telecaller-managers", response_model=BdmManagerPage)
+@admin_router.get("/telecaller-managers", response_model=TelecallerManagerPage)
 async def telecaller_managers(q: str | None = SEARCH, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
-    """The reporting-manager picker: active telecaller managers only, searchable by name or email; email tells same-name managers apart."""
-    stmt = select(User.id, User.full_name, User.email).where(
+    """The reporting-manager picker: active telecaller managers only, searchable by name or email; email tells same-name managers apart.
+    tel-025: `telecaller_count` (every report, active or not) for the Telecaller managers card; a correlated count, one query."""
+    count = select(func.count()).where(TelecallerProfile.reporting_manager_user_id == User.id).scalar_subquery()
+    stmt = select(User.id, User.full_name, User.email, count).where(
         User.role == "telecaller_manager", User.active.is_(True), *_matching(like_pattern(q), User.full_name, User.email)
     )
-    return await _paged(db, stmt, limit, offset, lambda id_, full_name, email: {"id": id_, "full_name": full_name, "email": email})
+    return await _paged(db, stmt, limit, offset, lambda id_, full_name, email, n: {"id": id_, "full_name": full_name, "email": email, "telecaller_count": n})

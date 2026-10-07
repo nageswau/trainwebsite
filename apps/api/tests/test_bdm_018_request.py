@@ -83,14 +83,14 @@ async def test_only_the_owner_or_super_admin_may_request(client, db_session, act
 async def test_only_school_organizations_have_onboarding(client, db_session):
     w = await school_world(client, db_session)
     detail = (await client.get(f"{ORGS}/{w['org']['id']}")).json()["organization"]
-    assert detail["onboarding"] == {"request": None, "school": None, "can_request": True}
-    for bdm_type in ("college", "agent"):
-        other = await school_world_of(client, db_session, bdm_type)
-        detail = (await client.get(f"{ORGS}/{other['id']}")).json()["organization"]
-        assert detail["onboarding"] is None
-        response = await request(client, other)
-        assert response.status_code == 422
-        assert response.json()["detail"] == "Onboarding requests are for School organizations"
+    assert detail["onboarding"] == {"request": None, "school": None, "agent": None, "can_request": True}  # bdm-019 added `agent`
+    # bdm-019 (DEC-SCOPE-107) gave Agent organizations their own handover (test_bdm_019_request); College ones still have none.
+    other = await school_world_of(client, db_session, "college")
+    detail = (await client.get(f"{ORGS}/{other['id']}")).json()["organization"]
+    assert detail["onboarding"] is None
+    response = await request(client, other)
+    assert response.status_code == 422
+    assert response.json()["detail"] == "Onboarding requests are for School or Agent organizations"
 
 
 async def school_world_of(client, db, bdm_type):

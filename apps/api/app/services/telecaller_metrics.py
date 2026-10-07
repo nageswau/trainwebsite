@@ -187,7 +187,7 @@ async def appointments_today(db: AsyncSession, user_id: UUID, now: datetime) -> 
 
 
 async def _not_contacted_after(db: AsyncSession, team: str) -> timedelta:
-    """DB1 / DEC-SCOPE-107 AL12: the team's Lead Not Contacted hours (tel-020), the default for a team without a row."""
+    """DB1 / DEC-SCOPE-109 AL12: the team's Lead Not Contacted hours (tel-020), the default for a team without a row."""
     hours = await db.scalar(select(TelSetting.not_contacted_hours).where(TelSetting.team == team))
     return timedelta(hours=hours or TEL_SETTING_DEFAULTS["not_contacted_hours"])
 

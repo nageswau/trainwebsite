@@ -1,6 +1,6 @@
 # tel-020 — exploratory QA (2026-10-07)
 
-Stack: isolated `tel020` (web :3120, API :8120, migration head `0098_tel_settings`, seeded; SMTP deliberately unset, so email deliveries
+Stack: isolated `tel020` (web :3120, API :8120, migration head `0099_tel_settings`, seeded; SMTP deliberately unset, so email deliveries
 record `not_configured`). Browser: isolated Edge (CDP :9420, own profile) driven by Browser Use; Playwright `tel-020-alerts.spec.ts`.
 
 ## Scenarios

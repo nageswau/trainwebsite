@@ -1,4 +1,4 @@
-"""tel-020 (DEC-SCOPE-107 AL1, AL11; API §12AA): each team's alert thresholds -- Lead Not Contacted and Hot Lead Pending, in whole hours.
+"""tel-020 (DEC-SCOPE-109 AL1, AL11; API §12AC): each team's alert thresholds -- Lead Not Contacted and Hot Lead Pending, in whole hours.
 Any telecaller manager or super_admin reads and sets both teams (the tel-022 G3 rule for team defaults); every other role is 403. The beat
 reads the rows on every run, so a change applies from the next run (AC4).
 
@@ -33,10 +33,10 @@ async def get_settings(user: User = Depends(get_current_user), db: AsyncSession 
 
 @router.put("/settings/{team}", response_model=TelSettingsOut)
 async def set_settings(team: str, payload: dict = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """An idempotent replace of the team's row (seeded by 0098), hence 200; the row lock serialises two managers saving at once."""
+    """An idempotent replace of the team's row (seeded by 0099), hence 200; the row lock serialises two managers saving at once."""
     require_manager(user)
     row = await db.scalar(select(TelSetting).where(TelSetting.team == team).with_for_update()) if team in TEAMS else None
-    if row is None:  # 0098 seeds both teams, so only an unknown team gets here
+    if row is None:  # 0099 seeds both teams, so only an unknown team gets here
         raise HTTPException(404, "Team not found")
     data = _parse(TelSettingsUpdate, payload, "The request body must be an object", TEL_SETTING_FIELD_LABELS)
     before = {f: getattr(row, f) for f in FIELDS}

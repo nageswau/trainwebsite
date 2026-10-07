@@ -1,4 +1,4 @@
-"""tel-020 -- migration 0098_tel_settings (spec §3; DEC-SCOPE-107 AL1). Round trip, the seeded 24 h / 4 h defaults and the 1-168 checks run
+"""tel-020 -- migration 0099_tel_settings (spec §3; DEC-SCOPE-109 AL1). Round trip, the seeded 24 h / 4 h defaults and the 1-168 checks run
 in a throwaway database built from scratch (the tel-001 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -14,14 +14,14 @@ from app.core.config import settings
 from tests.test_tel_001_migration import _config, _sql
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_tel_020_migration_0098", VERSIONS / "0098_tel_settings.py")
+_spec = importlib.util.spec_from_file_location("_tel_020_migration_0099", VERSIONS / "0099_tel_settings.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0097_lead_message_email", "0098_tel_settings"
+BASE, HEAD = "0098_bdm_agent_link", "0099_tel_settings"
 
 
-def test_migration_chains_after_0097_and_is_the_single_head():
+def test_migration_chains_after_0098_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

@@ -32,12 +32,45 @@ export function pageOffset(raw: string | undefined): number {
 }
 const PICKER_LIMIT = 20;
 
-/** The reporting-manager picker searches the server (SearchableSelect server mode), so every manager is reachable. */
-export async function managerSearch(q: string, signal: AbortSignal): Promise<LookupPage> {
+/** The reporting-manager picker searches the server (SearchableSelect server mode), so every manager is reachable. `excludeId`: the
+ * manager being replaced (tel-025's replacement picker). */
+export async function managerSearch(q: string, signal: AbortSignal, excludeId?: string): Promise<LookupPage> {
   const query = new URLSearchParams({ limit: String(PICKER_LIMIT) });
   if (q) query.set("q", q);
   const response = await fetch(`${MANAGERS_URL}?${query}`, { signal });
   if (!response.ok) throw new Error(`Manager search failed (${response.status})`);
   const page = (await response.json()) as { items: ManagerOption[]; total: number };
-  return { items: page.items.map((m) => ({ id: m.id, label: m.full_name, detail: m.email })), truncated: page.total > page.items.length };
+  const items = page.items.filter((m) => m.id !== excludeId);
+  return { items: items.map((m) => ({ id: m.id, label: m.full_name, detail: m.email })), truncated: page.total > page.items.length };
+}
+
+// --- tel-025 (DEC-SCOPE-104): deactivation, handover, team move and manager deactivation ---------------------------------------------
+export type OpenWork = { leads: number; follow_ups: number; appointments: number };
+export type TelecallerManagerRow = ManagerOption & { telecaller_count: number };
+export type LifecycleAction = "deactivate" | "handover" | "move-team";
+export const openWorkUrl = (id: string) => `${TELECALLERS_URL}/${id}/open-work`;
+export const lifecycleUrl = (id: string, action: LifecycleAction) => `${TELECALLERS_URL}/${id}/${action}`;
+export const managerDeactivateUrl = (id: string) => `${MANAGERS_URL}/${id}/deactivate`;
+export const otherTeam = (team: TelecallerTeam): TelecallerTeam => (team === "it" ? "overseas" : "it");
+/** LC1: a team move spans two teams, so only an admin who manages both may start one (the API decides). */
+export const canMoveTeams = (role: string) => creatableTeams(role).length === 2;
+
+export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+/** "4 open leads, with 2 open follow-ups and 1 appointment" -- the follow-ups and appointments ride with their leads (LC2). */
+export function openWorkText(w: OpenWork): string {
+  const riders = [w.follow_ups && plural(w.follow_ups, "open follow-up"), w.appointments && plural(w.appointments, "appointment")].filter(Boolean);
+  return `${plural(w.leads, "open lead")}${riders.length ? `, with ${riders.join(" and ")}` : ""}`;
+}
+
+/** The new-owner picker: active telecallers of `team`, minus the one leaving (the server re-checks every rule). */
+export function telecallerSearch(team: TelecallerTeam, excludeId: string) {
+  return async (q: string, signal: AbortSignal): Promise<LookupPage> => {
+    const query = new URLSearchParams({ limit: String(PICKER_LIMIT), team, active: "true" });
+    if (q) query.set("q", q);
+    const response = await fetch(`${TELECALLERS_URL}?${query}`, { signal });
+    if (!response.ok) throw new Error(`Telecaller search failed (${response.status})`);
+    const page = (await response.json()) as { items: TelecallerAdminRow[]; total: number };
+    const items = page.items.filter((t) => t.id !== excludeId);
+    return { items: items.map((t) => ({ id: t.id, label: t.full_name, detail: `${t.employee_id} · ${t.email}` })), truncated: page.total > page.items.length };
+  };
 }

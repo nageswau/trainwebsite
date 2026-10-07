@@ -1,4 +1,4 @@
-"""tel-020 (DEC-SCOPE-107; EVID-019 §20, T14): the nine telecaller alerts, each one in-app notice plus one email (AL2), to the lead's telecaller
+"""tel-020 (DEC-SCOPE-109; EVID-019 §20, T14): the nine telecaller alerts, each one in-app notice plus one email (AL2), to the lead's telecaller
 while that user is an active telecaller (AL5). No quiet hours (AL3).
 
 - Event alerts (New Lead Assigned, Counselor Appointment Completed, Lead Returned) are added in the caller's transaction and never commit
@@ -98,7 +98,7 @@ def _key_time(value: datetime) -> str:
 
 
 async def thresholds(db: AsyncSession) -> dict[str, dict[str, int]]:
-    """Each team's hours; a team without a row (a database older than 0098's seed) uses the defaults."""
+    """Each team's hours; a team without a row (a database older than 0099's seed) uses the defaults."""
     rows = {row.team: row for row in await db.scalars(select(TelSetting))}
     return {team: {k: getattr(rows[team], k) if team in rows else v for k, v in TEL_SETTING_DEFAULTS.items()} for team in TEAMS}
 

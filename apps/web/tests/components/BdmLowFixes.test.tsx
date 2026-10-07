@@ -83,7 +83,7 @@ describe("QA-14: the team page past its last row", () => {
 describe("QA-16: copy", () => {
   it("says 'reports' for one BDM", async () => {
     vi.mocked(serverApi).mockImplementation(async (path: string) => (path === "/api/v1/auth/me" ? manager : page([row("a")])) as never);
-    expect(allText(elements(await ManagerDashboard()))).toContain("1 BDM reports to you: 1 active, 0 inactive.");
+    expect(allText(elements(await ManagerDashboard({ searchParams: Promise.resolve({}) })))).toContain("1 BDM reports to you: 1 active, 0 inactive.");
   });
 
   it("keeps the table caption for screen readers only, so the heading is not shown twice", () => {

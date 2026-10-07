@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import {
   BOARD_LABEL,
   COLLEGE_TYPE_LABEL,
+  COMMISSION_LINKED_NOTE,
   COMMISSION_NOTE,
   display,
   gradeRange,
@@ -37,14 +38,15 @@ export function DetailList({ rows }: { rows: [string, ReactNode][] }) {
   );
 }
 
-function rowsOf(profile: OrgProfile): [string, ReactNode][] {
+function rowsOf(profile: OrgProfile, liveStaff: number | null): [string, ReactNode][] {
   switch (profile.kind) {
     case "agent":
       return [
         [PROFILE_LABEL.country, display(profile.country)],
         [PROFILE_LABEL.territory, display(profile.territory)],
         [PROFILE_LABEL.source, labelOf(SOURCE_LABEL, profile.source)],
-        [PROFILE_LABEL.staff_count, display(profile.staff_count)],
+        // bdm-019: once linked, the agency's live staff count, with the value the BDM entered kept beside it
+        [PROFILE_LABEL.staff_count, liveStaff === null ? display(profile.staff_count) : `${liveStaff} live${profile.staff_count === null ? "" : ` (${profile.staff_count} entered)`}`],
       ];
     case "school":
       return [
@@ -65,12 +67,14 @@ export default function BdmOrganizationProfileDetails({ organization: org }: { o
   const group = profileGroup(org.org_type);
   if (!group) return null;
   const name = PROFILE_GROUP_LABEL[group];
-  const filled = org.profile && Object.entries(org.profile).some(([key, value]) => key !== "kind" && value !== null) ? org.profile : null;
+  const agent = org.onboarding?.agent ?? null;
+  // QA19-02: a linked agency always has a live staff count to show, even when no details were entered
+  const filled = org.profile && (agent || Object.entries(org.profile).some(([key, value]) => key !== "kind" && value !== null)) ? org.profile : null;
   return (
     <>
       <h4 style={{ margin: "16px 0 8px" }}>{name} details</h4>
       {filled ? (
-        <DetailList rows={rowsOf(filled)} />
+        <DetailList rows={rowsOf(filled, agent?.staff_count ?? null)} />
       ) : (
         <p className="muted" style={{ margin: 0 }}>
           No {name.toLowerCase()} details yet.{org.permissions.can_edit ? " Use Edit to add them." : ""}
@@ -78,7 +82,7 @@ export default function BdmOrganizationProfileDetails({ organization: org }: { o
       )}
       {group === "agent" && (
         <p className="muted" style={{ margin: "8px 0 0" }}>
-          {COMMISSION_NOTE}
+          {agent ? COMMISSION_LINKED_NOTE : COMMISSION_NOTE}
         </p>
       )}
     </>

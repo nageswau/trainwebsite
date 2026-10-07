@@ -24,7 +24,8 @@ COLUMN = "SELECT column_name FROM information_schema.columns WHERE table_name = 
 
 def test_migration_chains_after_0096_and_there_is_one_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
-    assert ScriptDirectory.from_config(_config()).get_heads() == [HEAD]
+    script = ScriptDirectory.from_config(_config())  # bdm-019's 0098 chains after this one, so the head moved on
+    assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
 
 
 def test_model_matches_the_migration():

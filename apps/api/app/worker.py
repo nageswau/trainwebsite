@@ -140,7 +140,7 @@ def sweep_lead_conversions_task():
 
 @celery.task
 def send_telecaller_alerts_task():
-    """tel-020 (DEC-SCOPE-107): every 15 minutes via beat. Idempotent per alert (notifications.dedupe_key), so a rerun or an overlapping
+    """tel-020 (DEC-SCOPE-109): every 15 minutes via beat. Idempotent per alert (notifications.dedupe_key), so a rerun or an overlapping
     run creates nothing new and a late run catches up (AC2)."""
     from app.services.telecaller_alerts import run_telecaller_alerts
 

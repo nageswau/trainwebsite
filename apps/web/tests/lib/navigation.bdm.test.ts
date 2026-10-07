@@ -26,6 +26,7 @@ describe("bdm-001 navigation", () => {
   it("gives each admin a BDMs entry, spelled BDMs", () => {
     expect(SUPER_ADMIN_NAV).toContainEqual({ label: "BDMs", href: "/admin/bdms" });
     expect(SUPER_ADMIN_NAV).toContainEqual({ label: "BDM Travel Approvals", href: "/admin/bdm-travel-approvals" }); // bdm-010 T8
+    expect(SUPER_ADMIN_NAV).toContainEqual({ label: "BDM Dashboard", href: "/bdm/manager/dashboard" }); // bdm-023 R1
     expect(PORTAL_NAV["it/admin"]).toContainEqual({ label: "BDMs", href: "/it/admin/bdms" });
     expect(PORTAL_NAV["overseas/admin"]).toContainEqual({ label: "BDMs", href: "/overseas/admin/bdms" });
   });

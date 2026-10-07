@@ -1,8 +1,8 @@
 # tel-020 — Telecaller alerts & notifications (design)
 
 - **Feature:** tel-020 (`docs/delivery/TELECALLER_CRM_BACKLOG.md` → tel-020; EVID-019 §20 lines 638–650; T14)
-- **Decision:** `DEC-SCOPE-107` (AL1–AL4 owner answers 2026-10-07, `EXPLICIT_APPROVAL`; defaults AL5–AL12 below)
-- **Numbers:** migration `0098_tel_settings` (after `0097_lead_message_email`), API contract §12AA, RBAC §2.33
+- **Decision:** `DEC-SCOPE-109` (AL1–AL4 owner answers 2026-10-07, `EXPLICIT_APPROVAL`; defaults AL5–AL12 below)
+- **Numbers:** migration `0099_tel_settings` (after bdm-019's `0098_bdm_agent_link`), API contract §12AC, RBAC §2.35
 - **Dependencies (all merged):** tel-007 (PR #90), tel-011 (PR #100), tel-016 (PR #103), tel-018 (PR #114)
 
 ## 1. Intent
@@ -45,7 +45,7 @@ write paths (route owns txn)                    beat every 15 min (Celery)
 - `app/services/telecaller_alerts.py` (new): `Alert` dataclass; the builders; `notify_assigned`, `notify_appointment_completed`,
   `notify_returned`; `send_telecaller_alerts(db, now)`; `run_telecaller_alerts()`; `thresholds(db)`.
 - `app/models.py`: `TelSetting` (`tel_settings`: `team` PK `it|overseas`, `not_contacted_hours`, `hot_pending_hours` CHECK 1–168,
-  `updated_by_user_id` nullable FK, timestamps). Migration `0098` creates it and seeds both teams with 24 / 4.
+  `updated_by_user_id` nullable FK, timestamps). Migration `0099` creates it and seeds both teams with 24 / 4.
 - `app/worker.py`: `send_telecaller_alerts_task` plus the beat entry `tel020-alerts` (900 s), through `_run_with_fresh_pool`.
 - `app/api/telecaller_settings.py` (new): `GET /telecaller/settings`, `PUT /telecaller/settings/{team}`.
 - Hooks: `lead_distribution.assign` (only when the telecaller changes), `api/lead_appointments._act` (action `complete`),
@@ -57,7 +57,7 @@ The title is the kind's label. The body carries the lead's name (cleaned and cap
 includes a phone number, an email address or free text such as a return reason or follow-up notes. The links are app paths with no token:
 `/telecaller/leads/{id}` for lead-level alerts, `/telecaller/follow-ups` for follow-up alerts. Logs carry counts and ids only.
 
-## 4. API (§12AA)
+## 4. API (§12AC)
 
 | Method | Path | Who | Result |
 |---|---|---|---|

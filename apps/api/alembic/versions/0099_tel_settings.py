@@ -1,9 +1,10 @@
 """tel-020 -- tel_settings: each team's alert thresholds (Lead Not Contacted, Hot Lead Pending), seeded 24 h / 4 h.
 
-Revision ID: 0098_tel_settings
-Revises: 0097_lead_message_email
+Revision ID: 0099_tel_settings
+Revises: 0098_bdm_agent_link
 
-docs/superpowers/specs/2026-10-07-tel-020-alerts-design.md §3 (DEC-SCOPE-107 AL1). Adds one table; no existing row is read or written.
+docs/superpowers/specs/2026-10-07-tel-020-alerts-design.md §3 (DEC-SCOPE-109 AL1). Adds one table; no existing row is read or written.
+Drafted as 0098_tel_settings on 0097; bdm-019 merged first with 0098_bdm_agent_link, so it is renumbered to 0099 after it.
 0001 builds a fresh database from the current models, which already carry the table, so creation is guarded (0080's idiom); the seed
 always runs and skips a team that already has a row. DEFAULTS repeats models.TEL_SETTING_DEFAULTS (test_tel_020_migration asserts it).
 """
@@ -13,8 +14,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0098_tel_settings"
-down_revision = "0097_lead_message_email"
+revision = "0099_tel_settings"
+down_revision = "0098_bdm_agent_link"
 branch_labels = None
 depends_on = None
 

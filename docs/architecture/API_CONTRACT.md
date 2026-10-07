@@ -1321,6 +1321,23 @@ days are IST; every figure is computed by `services/telecaller_metrics.py` (back
 | `GET /telecaller/dashboard` | `telecaller` only (else `403`). `200 {day, tiles: {new_leads, calls_today: {done, to_do}, follow_ups_due, hot_leads, appointments, connected, not_connected, converted, overdue, daily_target: {achieved, target}}, targets: {daily: [{kpi, achieved, target}], monthly: [...]}, appointments: [{kind: counselling\|bdm, id, code, title, scheduled_at, status, lead_id}]}`; `target` is `null` when none is set |
 | `GET /telecaller/activity?date=&user_id=` | `date` defaults to today; a future day `422`. Telecaller: own only (`user_id` other than self `403`). Manager / `super_admin`: `user_id` required (`422`), out of scope `404`. Other roles `403`. `200 {day, user: {id, full_name}, counts: {leads_assigned, calls, connected_calls, not_connected, follow_ups_completed, follow_ups_pending, new_appointments, counselor_appointments, bdm_appointments, whatsapp_messages, qualified_leads, hot_leads, converted_leads}, targets: [{kpi, achieved, target}]}` (that day's daily targets) |
 
+## 12Y. Telecaller deactivation, team move and handover (`tel-025`) — addendum, 2026-10-07
+
+`DEC-SCOPE-104`; design spec `docs/superpowers/specs/2026-10-07-tel-025-telecaller-lifecycle-design.md` §2. No migration. Signed out `401`;
+non-admin `403` (`ensure_admin`). Body `{target?: "telecaller"|"queue", reassign_to?}`: `reassign_to` only with `target=telecaller`
+(else `422`). `moved` = `{leads, follow_ups, appointments}` (the open work before the move; follow-ups and appointments ride with their lead).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /admin/telecallers/{id}/open-work` | `{leads, follow_ups, appointments}`. `404` not a telecaller; `403` another team |
+| `POST /admin/telecallers/{id}/deactivate` | `409` already inactive; `422` open leads and no `target`; `422` "Choose an active telecaller of the same team" (any invalid target). Leads move (`lead.assign` audit per lead, method `deactivation`), rules deleted, `active=false`, `session_version`+1. `200 {id, active, target, moved, rules_removed}`; audit `telecaller.deactivate` |
+| `POST /admin/telecallers/{id}/handover` | `409` still active; `409` no open leads; `422` no / invalid target. Method `handover`. `200 {id, target, moved}`; audit `telecaller.handover` |
+| `POST /admin/telecallers/{id}/move-team` | Body adds `team` (`it`/`overseas`) and optional `reporting_manager_user_id`. `403` unless the actor manages both teams; `422` same team; `422` inactive manager; target must be on the **old** team. `team` + `division` change, `session_version`+1. `200 {id, team, target, moved, rules_removed}`; audit `telecaller.move_team` |
+| `POST /admin/telecaller-managers/{id}/deactivate` | `super_admin` only (`403`). Body `{reassign_to?}`, required while the manager has reports (`422`, also for an inactive / non-manager / self target). `409` already inactive. `200 {id, active, moved_telecallers}`; audit `telecaller_manager.deactivate` |
+
+Changed: `GET /admin/telecaller-managers` items gain `telecaller_count` (reports, active or not). `PATCH /admin/users/{id}` with
+`active:false` answers `422` for a telecaller with open leads or a manager with reports (D5).
+
 ## 12Z. Lead messages — email to a lead (`tel-014`) — addendum, 2026-10-07
 
 `DEC-SCOPE-106`; design spec `docs/superpowers/specs/2026-10-07-tel-014-email-design.md` §3. Migration `0097_lead_message_email`. Extends
@@ -1337,9 +1354,35 @@ Delivery (worker, not HTTP): the claim moves `queued` / `retrying` to `sending`.
 address removed) → `failed`. A 5-minute sweeper republishes stale queued rows and fails rows stuck in `sending`. The mail is From
 `"<telecaller> via EduSphere" <SMTP_FROM_EMAIL>` with Reply-To the telecaller, as plain text plus an escaped HTML part.
 
-## 12AA. Telecaller alert settings (`tel-020`) — addendum, 2026-10-07
+## 12AA. Agent onboarding handover (`bdm-019`) — addendum, 2026-10-07
 
-`DEC-SCOPE-107`; design spec `docs/superpowers/specs/2026-10-07-tel-020-alerts-design.md` §4. Migration `0098_tel_settings`. Signed out `401`.
+`DEC-SCOPE-107`; design spec `docs/superpowers/specs/2026-10-07-bdm-019-agent-onboarding-handover-design.md` §4. Migration
+`0098_bdm_agent_link`. Signed out `401`. Every write is one transaction with its audit row and in-app notice.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `POST /bdm/organizations/{id}/onboarding-request` | **Changed:** an Agent organization may request at stored stage `agreement_signed` (else `422` "The agreement must be signed to request onboarding"); a College one `422` "Onboarding requests are for School or Agent organizations". School rules unchanged. The row's `kind` is the organization's type. |
+| `GET /overseas-admin/bdm-onboarding-requests?kind=school\|agent` | **Changed:** `kind` (default `school`, so existing callers see the same queue; another value `422`). Items gain `kind` and `agent_org: {id, name, prefix, status} \| null`. |
+| `POST /overseas-admin/bdm-onboarding-requests/{id}/link-agent` | **New.** `overseas_admin` / `super_admin` (else `403`). Body `{agent_code}` (1–8, case-insensitive; unknown keys `422`). Unknown request `404`; a School request `422`; resolved `409 request_resolved`; organization linked `409 already_linked`; no such code `422` "No agent organization has that code"; agency linked elsewhere `409 agent_org_linked`. `200` the item; audit `bdm_onboarding_request.linked` `{organization_id, agent_org_id}`; notice "Agent onboarded" to the assigned BDM. |
+| `POST /overseas-admin/bdm-onboarding-requests/{id}/link`, `POST /overseas-admin/schools` (`bdm_onboarding_request_id`) | **Changed:** an agent request `422` "This request is for an Agent organization". |
+| `POST /overseas-admin/bdm-onboarding-requests/{id}/reject` | Both kinds; the notice title follows the type ("Agent onboarding not approved"). |
+
+`BdmOrganizationOut.onboarding` is also returned for Agent organizations and gains `agent: {name, prefix, status, master_login,
+staff_count, counts: {students, applications, enrollments}} | null` (`null` for School ones). `pipeline.steps[]` gain `count: int | null`
+(a volume step's live count once linked); `pipeline.agent_status` follows `DEC-SCOPE-107` A5. No commission or money figure is returned.
+
+## 12AB. BDM management dashboard (`bdm-023`) — addendum, 2026-10-07
+
+`DEC-SCOPE-108`; design spec `docs/superpowers/specs/2026-10-07-bdm-023-management-dashboard-design.md` §4–§5. No migration. Read-only
+(no write, no audit, no log line). Signed out `401`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /bdm/manager/dashboard?manager_user_id=` | `bdm_manager` (own team) / `super_admin` (all teams), else `403` "BDM manager role required". `manager_user_id` (UUID, malformed `422`) is super_admin only: a manager sending it `422` "Only a super admin can choose a manager"; not a `bdm_manager` user `404` "Manager not found". `200 {today, month, manager: {id, full_name} \| null, tiles: [{key T-M01…T-M08, label, definition, value}], alerts: [{key AL-1…AL-7, label, tone: danger\|warning\|success, record: appointment\|trip\|task\|mou\|daily_report, count, items (first 10): [{id, title, bdm: {id, full_name}, at, organization_id}]}]}`. Rules: Appendix B.4 as tightened by the spec §4. Constant statement count |
+
+## 12AC. Telecaller alert settings (`tel-020`) — addendum, 2026-10-07
+
+`DEC-SCOPE-109`; design spec `docs/superpowers/specs/2026-10-07-tel-020-alerts-design.md` §4. Migration `0099_tel_settings`. Signed out `401`.
 
 | Method/Path | Notes / status codes |
 |---|---|
