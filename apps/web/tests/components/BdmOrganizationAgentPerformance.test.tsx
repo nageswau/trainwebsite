@@ -53,6 +53,25 @@ describe("BdmOrganizationAgentPerformance (bdm-022 §4)", () => {
     expect(within(table).getByRole("row", { name: /Withdrawn/ })).toHaveTextContent("3");
   });
 
+  it("QA22-01: sizes every bar against the largest figure, so more applications than students never overflows", () => {
+    const more = { ...linked, steps: [step("students", "Students", 3), step("applications", "Applications", 4), step("revenue", "Revenue", null)] };
+    const { container } = render(<BdmOrganizationAgentPerformance orgId="o1" initial={more} />);
+    expect([...container.querySelectorAll<HTMLElement>(".pipeline-fill")].map((f) => f.style.width)).toEqual(["75%", "100%"]);
+  });
+
+  it("QA22-02: says there are no visa applications instead of 0 of 0", () => {
+    render(<BdmOrganizationAgentPerformance orgId="o1" initial={{ ...linked, visa_applications: 0 }} />);
+    const visa = screen.getAllByRole("listitem").find((i) => i.textContent?.startsWith("Visa"));
+    expect(visa).toHaveTextContent("No visa applications yet.");
+    expect(visa).not.toHaveTextContent("of 0 visa applications");
+  });
+
+  it("QA22-03: says withdrawn applications are not part of the Applications count", () => {
+    render(<BdmOrganizationAgentPerformance orgId="o1" initial={linked} />);
+    fireEvent.click(screen.getByRole("button", { name: "Show applications by stage" }));
+    expect(screen.getByText("Withdrawn applications are not counted in Applications.")).toBeInTheDocument();
+  });
+
   it("flags a suspended agency in text", () => {
     render(<BdmOrganizationAgentPerformance orgId="o1" initial={{ ...linked, agency: { name: "ABC Overseas", prefix: "ABC", status: "suspended" } }} />);
     expect(screen.getByText(/Suspended — this agency's members can't sign in, so these figures are not changing\./)).toBeInTheDocument();

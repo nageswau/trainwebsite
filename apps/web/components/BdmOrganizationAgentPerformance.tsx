@@ -15,7 +15,8 @@ const STATUS_FLAG: Record<string, string> = {
 };
 
 // bdm-022 (spec §4): Agent → Students → Applications → Offers → Visa → Enrolled → Revenue for the linked agency, as the agency's own
-// dashboard counts them. bdm-021's funnel markup: the count is the text, the bar is decoration sized against Students. Applications
+// dashboard counts them. bdm-021's funnel markup: the count is the text, the bar is decoration sized against the largest figure (an
+// agency can have more applications than students, QA22-01). Applications
 // drills down by stage (aggregates only). An untracked step says so -- never a fabricated 0.
 export default function BdmOrganizationAgentPerformance({ orgId, initial }: { orgId: string; initial: AgentPerformance | null }) {
   const [data, setData] = useState<AgentPerformance | null>(initial);
@@ -41,7 +42,7 @@ export default function BdmOrganizationAgentPerformance({ orgId, initial }: { or
   } else if (!data.linked || !data.agency) {
     body = <p className="muted">Not onboarded yet. Figures appear once Overseas Admin links the agent organization.</p>;
   } else {
-    const students = data.steps.find((s) => s.key === "students")?.count ?? 0;
+    const largest = Math.max(0, ...data.steps.map((s) => s.count ?? 0));
     const flag = STATUS_FLAG[data.agency.status];
     body = (
       <>
@@ -53,32 +54,36 @@ export default function BdmOrganizationAgentPerformance({ orgId, initial }: { or
               <span className="pipeline-label">{s.label}</span>
               {s.count === null ? NOT_TRACKED : <span className="pipeline-count">{number(s.count)}</span>}
               {s.count !== null && (
-                <span className="pipeline-track" aria-hidden="true"><span className="pipeline-fill" style={{ width: `${pct(s.count, students)}%` }} /></span>
+                <span className="pipeline-track" aria-hidden="true"><span className="pipeline-fill" style={{ width: `${pct(s.count, largest)}%` }} /></span>
               )}
               <span className="kpi-note muted" style={{ gridColumn: "1 / -1", marginTop: 0 }}>
                 {s.definition}
-                {s.key === "visa" && data.visa_applications !== null && ` ${number(s.count ?? 0)} approved of ${number(data.visa_applications)} visa applications.`}
+                {s.key === "visa" && data.visa_applications !== null &&
+                  (data.visa_applications === 0 ? " No visa applications yet." : ` ${number(s.count ?? 0)} approved of ${number(data.visa_applications)} visa applications.`)}
               </span>
               {s.key === "applications" && (
                 <div style={{ gridColumn: "1 / -1" }}>
                   <button type="button" className="btn secondary small" aria-expanded={showStages} aria-controls={stagesId} onClick={() => setShowStages((v) => !v)}>
                     {showStages ? "Hide applications by stage" : "Show applications by stage"}
                   </button>
-                  <div id={stagesId} hidden={!showStages}>
+                  <div id={stagesId}>
                     {showStages && (
-                      <div className="table-scroll">
-                        <table className="table">
-                          <caption className="visually-hidden">Applications by stage</caption>
-                          <thead>
-                            <tr><th scope="col">Stage</th><th scope="col">Applications</th></tr>
-                          </thead>
-                          <tbody>
-                            {data.applications_by_stage.map((r) => (
-                              <tr key={r.key}><th scope="row">{r.label}</th><td>{number(r.count)}</td></tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                      <>
+                        <p className="kpi-note muted">Withdrawn applications are not counted in Applications.</p>
+                        <div className="table-scroll">
+                          <table className="table">
+                            <caption className="visually-hidden">Applications by stage</caption>
+                            <thead>
+                              <tr><th scope="col">Stage</th><th scope="col">Applications</th></tr>
+                            </thead>
+                            <tbody>
+                              {data.applications_by_stage.map((r) => (
+                                <tr key={r.key}><th scope="row">{r.label}</th><td>{number(r.count)}</td></tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>
