@@ -2,7 +2,7 @@
 target progress. The shared test database is never truncated, so each test counts only for users it created."""
 
 import uuid
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, datetime, timedelta
 
 import pytest
 
@@ -22,9 +22,9 @@ from app.models import (
 from app.services import telecaller_metrics as metrics
 from app.services.bdm_activities import day_range
 from app.services.bdm_appointments import db_now, today_ist
+from tests.bdm001_helpers import make_manager
 from tests.bdm002_helpers import create_org, make_bdm
 from tests.bdm017_helpers import as_user
-from tests.bdm001_helpers import make_manager
 from tests.tel004_helpers import make_telecaller, make_tl_manager
 
 pytestmark = pytest.mark.asyncio
