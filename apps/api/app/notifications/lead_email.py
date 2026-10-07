@@ -11,16 +11,14 @@ from uuid import UUID
 
 from sqlalchemy import select, update
 
-from app.core.config import settings
 from app.core.database import SessionLocal
 from app.models import Enquiry, LeadMessage, User
-from app.notifications.delivery import MAX_ATTEMPTS, RETRY_COUNTDOWNS, STALE_QUEUED, STALE_SENDING
+from app.notifications.delivery import CLAIMABLE, MAX_ATTEMPTS, RETRY_COUNTDOWNS, STALE_QUEUED, STALE_SENDING
 from app.notifications.dispatch import enqueue_lead_email
 from app.services import mailer
 
 logger = logging.getLogger(__name__)
 
-CLAIMABLE = ("queued", "retrying")
 EMAIL = LeadMessage.channel == "email"
 
 
@@ -39,11 +37,10 @@ async def deliver_lead_email(message_id: UUID) -> str | None:
             return None
         attempt, lead_id, sender_id, subject, body = claimed
         to_email = await db.scalar(select(Enquiry.email).where(Enquiry.id == lead_id))  # E7: the lead's address now
-        sender = await db.get(User, sender_id)
-        sender_name, sender_email = sender.full_name, sender.email
+        sender_name, sender_email = (await db.execute(select(User.full_name, User.email).where(User.id == sender_id))).one()  # FK RESTRICT
         await db.commit()  # end the read transaction before sending
 
-    status, error_type = await _send(to_email, subject, body, sender_name, sender_email)
+    status, error_type = await _send(to_email, subject or "", body, sender_name, sender_email)  # ck_lead_messages_email: never empty
     if status == "retry":
         status = "retrying" if attempt < MAX_ATTEMPTS else "failed"
     async with SessionLocal() as db:
@@ -62,7 +59,7 @@ async def deliver_lead_email(message_id: UUID) -> str | None:
 async def _send(to_email: str | None, subject: str, body: str, sender_name: str, sender_email: str) -> tuple[str, str | None]:
     """("sent" | "retry" | "failed", error type). Transient: the connection, a timeout, an SMTP 4xx. Permanent: a 5xx, a refused recipient,
     a malformed address, SMTP unset since the request (E3) or the lead's address removed (E7)."""
-    if not (settings.smtp_host and settings.smtp_from_email):
+    if not mailer.smtp_configured():
         return "failed", "not_configured"
     if not to_email:
         return "failed", "no_address"

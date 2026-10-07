@@ -302,6 +302,11 @@ async def send_welcome_email(
 
 # --- tel-014 / DEC-SCOPE-102: a telecaller's email to a lead ------------------------------------------------------------------
 
+def smtp_configured() -> bool:
+    """E3: a lead email needs both the host and the verified From address."""
+    return bool(settings.smtp_host and settings.smtp_from_email)
+
+
 _LINK = re.compile(r"https?://[^\s<>\"']+")
 
 
@@ -323,7 +328,7 @@ def lead_email_message(*, to_email: str, subject: str, body: str, sender_name: s
     ValueError, which the worker records as a permanent failure. The subject arrives single-line (schemas.LeadEmailCreate)."""
     msg = EmailMessage()
     msg["Subject"] = subject
-    msg["From"] = formataddr((f"{sender_name} via EduSphere", settings.smtp_from_email))
+    msg["From"] = formataddr((f"{sender_name} via EduSphere", settings.smtp_from_email or ""))
     msg["To"] = to_email
     msg["Reply-To"] = formataddr((sender_name, sender_email))
     msg.set_content(f"{body}\n\n--\nSent by {sender_name} via EduSphere.\n")

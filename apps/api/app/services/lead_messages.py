@@ -16,11 +16,10 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.lead_stages import CLOSED
 from app.models import LEAD_APPOINTMENT_OPEN, Appointment, AuditLog, Enquiry, LeadMessage, TelAsset, TelMessageTemplate, TelProduct, User
 from app.schemas import LeadEmailCreate, LeadWhatsAppCreate
-from app.services import lead_pipeline, telecaller_content, telecaller_leads
+from app.services import lead_pipeline, mailer, telecaller_content, telecaller_leads
 from app.services.bdm_activities import day_range
 from app.services.bdm_appointments import IST, today_ist
 from app.services.lead_appointments import invalid
@@ -103,17 +102,13 @@ async def lead_page(db: AsyncSession, user: User, lead: Enquiry, now: datetime, 
     return {"items": [out(user, lead, message, sender, now) for message, sender in rows], "total": total or 0, "limit": limit, "offset": offset}
 
 
-def smtp_configured() -> bool:
-    return bool(settings.smtp_host and settings.smtp_from_email)
-
-
 async def create(db: AsyncSession, user: User, lead: Enquiry, payload: LeadWhatsAppCreate | LeadEmailCreate, now: datetime) -> LeadMessage:
     """The caller locked the lead and checked role and handover. WA2 closed -> 409. WhatsApp: D2 no number -> 409; D4 the template; D8 cap
     409. Email: E3 SMTP unset -> 503; E2 no address -> 409; E8 the template; EM3 cap 429. An email is stored `queued` (E5)."""
     if lead.status in CLOSED:
         raise HTTPException(409, LEAD_CLOSED)
-    is_email = payload.channel == "email"
-    if is_email and not smtp_configured():
+    is_email = isinstance(payload, LeadEmailCreate)
+    if is_email and not mailer.smtp_configured():
         raise HTTPException(503, EMAIL_NOT_CONFIGURED)
     if is_email and not lead.email:
         raise HTTPException(409, NO_EMAIL)
@@ -129,7 +124,7 @@ async def create(db: AsyncSession, user: User, lead: Enquiry, payload: LeadWhats
     if (count or 0) >= cap:
         raise HTTPException(status, detail)
     message = LeadMessage(lead_id=lead.id, sender_user_id=user.id, channel=payload.channel, template_id=payload.template_id,
-                          template_name=template.name if template else None, subject=payload.subject if is_email else None, body=payload.body,
+                          template_name=template.name if template else None, subject=payload.subject if isinstance(payload, LeadEmailCreate) else None, body=payload.body,
                           delivery_status="queued" if is_email else None, sent_at=now)
     db.add(message)
     await db.flush()

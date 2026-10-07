@@ -3,8 +3,8 @@ stale sweeper. SMTP itself is replaced by a recorder on `mailer._send_sync`; the
 
 import smtplib
 from datetime import UTC, datetime, timedelta
-from uuid import uuid4
 from email.message import EmailMessage
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import update
