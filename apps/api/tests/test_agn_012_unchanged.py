@@ -26,7 +26,7 @@ async def test_student_and_admin_responses_keep_their_keys(db_session):
     async with client_for(student.email) as c:
         checklist = (await c.get(f"{BASE}/applications/{app.id}/visa-checklist")).json()
         status = (await c.get(f"{BASE}/applications/{app.id}/visa-status")).json()
-    assert set(checklist) == {"exists", "id", "status", "appointment_date", "tracking_reference", "checklist"}
+    assert set(checklist) == {"exists", "id", "status", "appointment_date", "tracking_reference", "checklist", "locked_reason"}
     assert set(status) == {"exists", "status", "appointment_date", "tracking_reference", "disclaimer"}
     async with client_for(admin.email) as c:
         r = await c.patch(f"{BASE}/visa/{case.id}", json={"status": "checklist"})  # the old route still allows a backward move

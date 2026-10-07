@@ -1,10 +1,14 @@
 export type Program = { id:string; slug:string; category:string; title:string; summary:string; duration:string; eligibility:string; fees:number; certification:string; curriculum:string[]; placement_assistance:string; trainer_name:string };
 export type Country = { id:string; slug:string; name:string; overview:string; tuition:string; living_expenses:string; visa_process:string[]; work_opportunities:string; post_study_work:string; pr_opportunities:string; faq:{question:string;answer:string}[] };
 export type University = { id:string; country_id:string; slug:string; name:string; city:string; overview:string; eligibility:string; requirements:string[]; deadlines:string[]; scholarships:string[] };
+// AGN-023 (DEC-SCOPE-090 H11): the overseas Students/Applications list filters; `counselors` is the Overseas Admin's only.
+export type FilterOption = { value: string; label: string };
+export type ApplicationFilterState = { agency: string | null; counselor: string | null; agencies: FilterOption[]; counselors?: FilterOption[] };
 export type PortalPayload = {
   title:string; subtitle:string; metrics:{label:string;value:string|number}[];
   actions:{label:string;href:string}[]; columns:{key:string;label:string;type?:string}[];
   rows:Record<string, unknown>[]; panels:{title:string;items:string[]}[];
+  filters?: ApplicationFilterState;
 };
 // AGN-003 (DEC-SCOPE-044): an agency member's effective optional permissions (GET /auth/me; a Master gets both true).
 export type AgentPermissions = { can_verify_documents: boolean; can_view_reports: boolean };

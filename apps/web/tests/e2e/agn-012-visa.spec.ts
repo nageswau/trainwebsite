@@ -33,6 +33,7 @@ async function applicationAtOffer(page: Page, name: string) {
 }
 
 test("a Master runs a visa case from an offer to a recorded decision (AC1-AC5, AC11)", async ({ page }) => {
+  test.setTimeout(60_000); // a student, an application, a visa start, three stage moves and a decision: ~18 s on a fresh stack (AGN-023 browser QA)
   const name = `E2E Visa ${stamp()}`;
   await signIn(page, "agent@edusphere.local", "Demo@123");
   const detail = await applicationAtOffer(page, name);

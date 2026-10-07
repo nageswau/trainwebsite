@@ -393,6 +393,12 @@ class OverseasApplicationUpdate(BaseModel):
     notify_channels: list[str] = Field(default_factory=lambda: ["email"])
 
 
+class OverseasApplicationCounselorAssign(BaseModel):
+    """AGN-023 (DEC-SCOPE-090 H8): swap only -- a counselor is required; null or missing is a 422."""
+
+    counselor_id: UUID
+
+
 class OverseasApplicationAdvance(BaseModel):
     to_status: str = Field(max_length=50)
     next_action: str | None = Field(default=None, max_length=5000)
@@ -902,6 +908,27 @@ class AgentVisaUpdate(_AgentVisaDates):
         if value is None:
             raise PydanticCustomError("not_clearable", "A recorded decision cannot be cleared")
         return value
+
+
+class CounselorAgencyVisaUpdate(BaseModel):
+    """AGN-023 (DEC-SCOPE-090 H4, final review I2): an EduSphere counselor's change to an agency visa case (PATCH /overseas/visa/{id}),
+    typed so a bad body is a 422 and never a stored string. The checklist has the agency's limits (`AgentVisaUpdate`); the reference
+    has the VisaCase column's length. `decision` is refused by the route before this model (the agency records it)."""
+
+    status: str | None = Field(default=None, max_length=50)
+    checklist: list[AgentDocumentType] | None = Field(default=None, max_length=8)
+    appointment_date: date | None = None
+    tracking_reference: str | None = Field(default=None, max_length=120)
+
+    @field_validator("checklist")
+    @classmethod
+    def _checklist(cls, value):
+        return _visa_checklist(value)
+
+    @field_validator("appointment_date")
+    @classmethod
+    def _appointment_date(cls, value):
+        return _application_date(value)
 
 
 # --- AGN-010: offer details (DEC-SCOPE-056; docs/superpowers/specs/2026-10-02-agn-010-offer-details-design.md §4.1) ---

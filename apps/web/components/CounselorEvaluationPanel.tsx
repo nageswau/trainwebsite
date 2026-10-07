@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-type ApplicationRow = { id: string; student: string; university: string; reference: string | null; status: string; next_action: string | null };
+type ApplicationRow = { id: string; student: string; university: string; reference: string | null; status: string; next_action: string | null; is_agency?: boolean };
 
 // DATA_MODEL.md #6.2's contract-fixed enum -- kept in this order so "later stages" can
 // be offered as the only valid `to_status` choices for a given row (OVS-003-AC02:
@@ -86,13 +86,15 @@ export default function CounselorEvaluationPanel() {
       <div className="grid two" style={{ marginTop: 16 }}>
         {rows.map((row) => {
           const currentIndex = STAGES.indexOf(row.status);
-          const nextStages = STAGES.slice(currentIndex + 1);
+          // AGN-023 (DEC-SCOPE-090 H12): an agency application is enrolled by the agency's Master only (DEC-SCOPE-054); not offered here.
+          const nextStages = STAGES.slice(currentIndex + 1).filter((stage) => !(row.is_agency && stage === "enrolled"));
           return (
             <div className="card" key={row.id}>
               <span className="badge">{label(row.status)}</span>
               <h4 style={{ marginTop: 10 }}>{row.student}</h4>
               <p className="muted" style={{ fontSize: 13 }}>{row.university}</p>
               {row.next_action && <p className="muted" style={{ fontSize: 13 }}>{row.next_action}</p>}
+              {row.is_agency && <p className="muted" style={{ fontSize: 13 }}>Enrollment is confirmed by the agency.</p>}
               {nextStages.length === 0 ? (
                 <p className="muted" style={{ fontSize: 13 }}>No further stage to advance to.</p>
               ) : openId === row.id ? (

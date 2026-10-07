@@ -224,9 +224,10 @@ async def test_a_counselor_advance_tells_the_assignee_and_still_the_student(db_s
 
 @pytest.mark.asyncio
 async def test_a_counselor_patch_of_only_the_next_action_notifies_no_agency_member(db_session, world):
-    counselor = await mk_user(db_session, role="counselor", full_name="Apps Counselor")
-    app = await _agency_app(db_session, world, counselor=counselor)
-    async with client_for(counselor.email) as c:
+    # AGN-023 (final review C1): a counselor's generic PATCH of an agency application is now refused, so the Overseas Admin's is used
+    admin = await mk_user(db_session, role="overseas_admin", full_name="Apps Admin")
+    app = await _agency_app(db_session, world)
+    async with client_for(admin.email) as c:
         assert (await c.patch(f"{LEGACY}/{app.id}", json={"next_action": "Send the transcript"})).status_code == 200
         assert (await c.patch(f"{LEGACY}/{app.id}", json={"status": "offer"})).status_code == 200
     assert [n.title for n in await notices(db_session, world["staff"]["user"])] == [STATUS]
@@ -283,10 +284,11 @@ async def test_an_offer_correction_at_the_offer_stage_or_by_the_assignee_notifie
 @pytest.mark.asyncio
 async def test_enrolling_an_unassigned_students_application_gives_each_master_one_notice(db_session, world):
     record = await mk_record(db_session, agent=world["master"], full_name="Unassigned")
-    counselor = await mk_user(db_session, role="counselor", full_name="Apps Counselor")
-    app = await _agency_app(db_session, world, record=record, status="status_tracking", counselor=counselor)
-    async with client_for(counselor.email) as c:
-        assert (await c.post(f"{LEGACY}/{app.id}/advance", json={"to_status": "enrolled"})).status_code == 200
+    # AGN-023 (DEC-SCOPE-090 H4): a counselor never enrols an agency application, so the Overseas Admin's generic PATCH enrols it here
+    admin = await mk_user(db_session, role="overseas_admin", full_name="Apps Admin")
+    app = await _agency_app(db_session, world, record=record, status="status_tracking")
+    async with client_for(admin.email) as c:
+        assert (await c.patch(f"{LEGACY}/{app.id}", json={"status": "enrolled"})).status_code == 200
     assert [n.title for n in await notices(db_session, world["master"])] == [COMMISSION]  # not also the status notice (AC3)
 
 

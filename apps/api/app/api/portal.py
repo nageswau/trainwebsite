@@ -5,13 +5,14 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.rbac import REPORTS_REFUSED, agent_denial_reason, agent_may, is_agent_staff
 from app.models import User
+from app.services import application_filters
 from app.services.portal import section_payload
 
 router = APIRouter(prefix="/portal", tags=["portal"])
 
 
 @router.get("/{division}/{role}/{section}")
-async def portal(division: str, role: str, section: str, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def portal(division: str, role: str, section: str, agency: str | None = None, counselor: str | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     route_role = {
         "student": "it_student" if division == "it" else "overseas_student",
         "trainer": "trainer",
@@ -37,7 +38,9 @@ async def portal(division: str, role: str, section: str, user: User = Depends(ge
     # AGN-003 (DEC-SCOPE-044 P1): Reports is an optional §6 row -- off for staff until their Master switches it on.
     if section == "reports" and user.role == "agent" and not agent_may(user, "can_view_reports"):
         raise HTTPException(403, REPORTS_REFUSED)
-    payload = await section_payload(db, user, section)
+    # AGN-023 (DEC-SCOPE-090 H11): optional list filters; a filter on the wrong section or role is a 422, never ignored.
+    filters = await application_filters.parse(db, user, section, agency, counselor)
+    payload = await section_payload(db, user, section, filters=filters)
     if payload is None:
         raise HTTPException(404, "Workspace not found")
     return payload

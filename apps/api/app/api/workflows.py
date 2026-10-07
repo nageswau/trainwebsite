@@ -23,6 +23,7 @@ from app.core.identifiers import uuid_reference
 from app.core.rbac import REVIEW_MASTER_ONLY, REVIEW_REASON_REQUIRED, VERIFY_REFUSED, agent_denial_reason, agent_may, is_agent_staff
 from app.models import (
     AgentCommission,
+    AgentOrgMember,
     AgentStudent,
     Agreement,
     ApplicationStatusHistory,
@@ -86,12 +87,14 @@ from app.schemas import (
     CommissionAmountUpdate,
     CommissionCreate,
     CommissionReportOut,
+    CounselorAgencyVisaUpdate,
     CourseFeedbackCreate,
     EnrollmentCreate,
     EnrollmentProgressUpdate,
     LearningResourceCreate,
     NotificationUnreadCount,
     OverseasApplicationAdvance,
+    OverseasApplicationCounselorAssign,
     OverseasApplicationCreate,
     OverseasApplicationUpdate,
     ProfileDocumentCreate,
@@ -104,16 +107,24 @@ from app.schemas import (
     VisaCaseCreate,
 )
 from app.services import agent_notifications as agency_notices
-from app.services.agent_applications import DEFAULT_NEXT_ACTION, OVERSEAS_APPLICATION_STAGES, WITHDRAWN, owned, with_owner
+from app.services.agent_applications import ARCHIVED, DEFAULT_NEXT_ACTION, OFFER_STAGES_ON, OVERSEAS_APPLICATION_STAGES, WITHDRAWN, WITHDRAWN_REFUSED, owned, with_owner
 from app.services.agent_documents import add_event, in_scope
 from app.services.agent_orgs import lock_org, notification_recipients, org_member_ids
 from app.services.agent_students import application_scope, student_scope
-from app.services.agent_visa import VISA_CASE_STAGES, VISA_DECISION_DISCLAIMER
+from app.services.agent_visa import VISA_CASE_STAGES, VISA_DECIDED, VISA_DECISION_DISCLAIMER, VISA_ENROLLED, VISA_OFFER_NEEDED, update_case
 from app.services.certificates import generate_certificate_pdf
 from app.services.storage import storage
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
 logger = logging.getLogger("app.workflows")
+COUNSELOR_REFUSED_ON_UPDATE = "Use Assign counselor to change the counselor"  # AGN-023 (DEC-SCOPE-090 H10)
+APPLICATION_CLOSED = "This application is closed"
+CHOOSE_ACTIVE_COUNSELOR = "Choose an active overseas counselor"
+MASTER_ENROLLS = "Only the agency's Master confirms enrollment"  # AGN-023 (DEC-SCOPE-090 H4), DEC-SCOPE-054 E1
+AGENCY_VISA_STARTS_AT_CHECKLIST = "A visa case starts at the checklist stage"
+AGENCY_RECORDS_VISA_DECISION = "The visa decision is recorded by the agency"
+AGENCY_USE_ADVANCE = "Use Advance stage to move an agency application"  # AGN-023 (DEC-SCOPE-090 H4): the generic PATCH has no agency rules
+OUTSIDE_SCOPE = "Application is outside your assigned scope"
 
 
 def _require(user: User, roles: set[str], division: str | None = None):
@@ -1900,7 +1911,14 @@ async def update_overseas_application(application_id: UUID, payload: OverseasApp
     item = await _assigned_application(db, user, application_id)
     # AGN-008 (final review): re-read under the row lock so the guard below sees an agent's committed withdraw.
     await db.refresh(item, with_for_update=True)
+    # AGN-023 (DEC-SCOPE-090 H4, final review C1): a counselor moves an agency application only through `/advance` (forward, never
+    # `enrolled`); the generic PATCH has neither rule and could trigger the commission, so it refuses them before any field is applied.
+    if user.role == "counselor" and item.agent_id is not None:
+        raise HTTPException(403, AGENCY_USE_ADVANCE)
     changes = payload.model_dump(exclude_unset=True)
+    # AGN-023 (DEC-SCOPE-090 H10): after creation only the Admin's assign route changes the counselor (audited, notified).
+    if "counselor_id" in changes:
+        raise HTTPException(422, COUNSELOR_REFUSED_ON_UPDATE)
     # AGN-008 (A1): `withdrawn` is terminal -- no generic status write revives it (nothing set it before AGN-008).
     if "status" in changes and item.status == WITHDRAWN:
         raise HTTPException(409, "This application is withdrawn")
@@ -1915,11 +1933,9 @@ async def update_overseas_application(application_id: UUID, payload: OverseasApp
     # forward-only `/advance` endpoint below is the confirmed way to change stage.
     if "status" in changes and changes["status"] not in OVERSEAS_APPLICATION_STAGES:
         raise HTTPException(422, f"'{changes['status']}' is not a supported application stage yet -- rejection/waitlist/deferral outcomes are an open item (see docs/product/PRD_OPEN_ITEMS.md), not a status this endpoint can set.")
-    if changes.get("counselor_id"):
-        await _require_overseas_counselor(db, changes["counselor_id"])
     old_status = item.status
     old_next_action = item.next_action
-    allowed = {"counselor_id", "intake", "status", "application_reference", "offer_letter_url"}
+    allowed = {"intake", "status", "application_reference", "offer_letter_url"}
     allowed.add("next_action")
     for k, v in changes.items():
         if k in allowed:
@@ -1941,6 +1957,51 @@ async def update_overseas_application(application_id: UUID, payload: OverseasApp
     await _audit(db, user, "overseas.application.update", "overseas_application", item.id, changes)
     await db.commit()
     return {"id": item.id, "status": item.status, "next_action": item.next_action}
+
+
+async def _owner_name(db: AsyncSession, item: OverseasApplication) -> str:
+    """The application's student for an internal counselor notice: the account, else the agency record, else the school record."""
+    for model, key in ((User, item.student_id), (AgentStudent, item.agent_student_id), (SchoolStudent, item.school_student_id)):
+        if key is not None:
+            name = await db.scalar(select(model.full_name).where(model.id == key))
+            if name:
+                return name
+    return "A student"
+
+
+@router.put("/overseas/applications/{application_id}/counselor")
+async def assign_overseas_counselor(
+    application_id: UUID, payload: OverseasApplicationCounselorAssign, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    """AGN-023 (DEC-SCOPE-090 §3.1): the Overseas Admin assigns or swaps an application's EduSphere counselor (H2, H8). Not
+    super_admin, which `_require` would wave through."""
+    if user.role != "overseas_admin" or user.division != "overseas":
+        raise HTTPException(403, "Only the Overseas Admin can assign a counselor")
+    item = await db.get(OverseasApplication, application_id, with_for_update=True)
+    if item is None:
+        raise HTTPException(404, "Application not found")
+    if item.status in {WITHDRAWN, "enrolled"}:
+        raise HTTPException(409, APPLICATION_CLOSED)
+    counselor = await db.get(User, payload.counselor_id)
+    if counselor is None or counselor.role != "counselor" or counselor.division != "overseas" or not counselor.active:
+        raise HTTPException(422, CHOOSE_ACTIVE_COUNSELOR)
+    result = {"id": item.id, "counselor_id": counselor.id, "counselor_name": counselor.full_name}
+    if item.counselor_id == counselor.id:
+        return {**result, "changed": False}
+    previous_id = item.counselor_id
+    item.counselor_id = counselor.id
+    note = "EduSphere counsellor changed" if previous_id else "EduSphere counsellor assigned"
+    db.add(ApplicationStatusHistory(application_id=item.id, from_status=item.status, to_status=item.status, next_action=item.next_action, notes=note, changed_by_id=user.id))
+    await _audit(db, user, "overseas.application.counselor_assign", "overseas_application", item.id, {"from_counselor_id": str(previous_id) if previous_id else None, "to_counselor_id": str(counselor.id)})
+    university = await db.scalar(select(University.name).where(University.id == item.university_id))
+    await _notify_user(db, counselor, "Application assigned to you", f"{await _owner_name(db, item)} — {university}", "/overseas/counselor/applications")
+    previous = await db.get(User, previous_id) if previous_id else None
+    if previous is not None and previous.active:
+        await _notify_user(db, previous, "Application reassigned", "An application has moved to another counselor.", "/overseas/counselor/applications")
+    if item.agent_id is not None:
+        await agency_notices.counselor_assigned(db, item, user, changed=previous_id is not None)
+    await db.commit()
+    return {**result, "changed": True}
 
 
 @router.post("/overseas/university-rep/applications/{application_id}/updates", status_code=201)
@@ -1976,8 +2037,13 @@ async def advance_overseas_application(application_id: UUID, payload: OverseasAp
     _require(user, {"counselor"}, "overseas")
     item = await _assigned_application(db, user, application_id)
     await db.refresh(item, with_for_update=True)  # AGN-008 (final review): the guard must see a committed withdraw
+    _recheck_counselor_scope(user, item)  # AGN-023 (final review I4): a swap committed after the scope read
     if item.status == WITHDRAWN:  # AGN-008 (A1): otherwise index -1 would let any target revive it
         raise HTTPException(409, "This application is withdrawn")
+    if item.agent_id is not None and await _agency_record_archived(db, item):  # AGN-023 (final review I1): the agency's A15 rule
+        raise HTTPException(409, ARCHIVED)
+    if item.agent_id is not None and payload.to_status == "enrolled":
+        raise HTTPException(403, MASTER_ENROLLS)
     if payload.to_status not in OVERSEAS_APPLICATION_STAGES:
         raise HTTPException(422, f"'{payload.to_status}' is not a supported application stage yet -- rejection/waitlist/deferral outcomes are an open item (see docs/product/PRD_OPEN_ITEMS.md), not a status this endpoint can set.")
     current_index = OVERSEAS_APPLICATION_STAGES.index(item.status) if item.status in OVERSEAS_APPLICATION_STAGES else -1
@@ -2197,17 +2263,22 @@ async def get_visa_checklist(application_id: UUID, user: User = Depends(get_curr
     _require(user, {"overseas_student", "counselor", "overseas_admin"}, "overseas")
     application = await _assigned_application(db, user, application_id)
     case = await db.scalar(select(VisaCase).where(VisaCase.application_id == application.id))
+    # AGN-023 (DEC-SCOPE-090 H12): agency cases tell the counselor's screen why nothing can be changed any more.
+    locked_reason = None
+    if application.agent_id is not None:
+        locked_reason = VISA_ENROLLED if application.status == "enrolled" else VISA_DECIDED if case is not None and case.decision is not None else None
     if not case:
         # No visa case has been started yet -- an honest empty state, not an error or a
         # fabricated one (the case is created by a Counselor once the application is far
         # enough along; not every application has reached that point).
-        return {"exists": False, "status": None, "checklist": [], "appointment_date": None, "tracking_reference": None}
+        return {"exists": False, "status": None, "checklist": [], "appointment_date": None, "tracking_reference": None, "locked_reason": locked_reason}
     return {
         "exists": True,
         "id": case.id,
         "status": case.status,
         "appointment_date": case.appointment_date,
         "tracking_reference": case.tracking_reference,
+        "locked_reason": locked_reason,
         "checklist": [{"item": item, "verification_status": status} for item, status in (await _checklist_verification(db, application.id, case.checklist)).items()],
     }
 
@@ -2260,6 +2331,71 @@ async def get_visa_status(application_id: UUID, user: User = Depends(get_current
     }
 
 
+def _recheck_counselor_scope(user: User, application: OverseasApplication) -> None:
+    """AGN-023 (DEC-SCOPE-090, final review I4): `_assigned_application` reads the counselor before the row lock; a swap committed in
+    between would otherwise let the previous counselor write, so the write re-checks the counselor on the locked row."""
+    if user.role == "counselor" and application.counselor_id != user.id:
+        raise HTTPException(403, OUTSIDE_SCOPE)
+
+
+async def _agency_record_archived(db: AsyncSession, application: OverseasApplication) -> bool:
+    """AGN-023 (final review I1): the agency route's A15 rule -- an archived student's applications are read-only. The application's
+    own record (AGN-008), else -- an application made before AGN-008 -- the agency organisation's record of the same logged-in
+    student. Column reads, so the status is the committed one rather than a stale identity-map copy."""
+    if application.agent_student_id is not None:
+        return await db.scalar(select(AgentStudent.status).where(AgentStudent.id == application.agent_student_id)) == "archived"
+    if application.student_id is None:
+        return False
+    org = select(AgentOrgMember.org_id).where(AgentOrgMember.user_id == application.agent_id).scalar_subquery()
+    members = select(AgentOrgMember.user_id).where(AgentOrgMember.org_id == org)
+    stmt = select(AgentStudent.status).where(AgentStudent.student_id == application.student_id, AgentStudent.agent_id.in_(members)).order_by(AgentStudent.created_at).limit(1)
+    return await db.scalar(stmt) == "archived"
+
+
+async def _refuse_closed_agency_application(db: AsyncSession, application: OverseasApplication) -> None:
+    """AGN-023 (final review I1): the agency's own closed-application refusals, with its messages, for a counselor's agency visa write."""
+    if application.status == WITHDRAWN:
+        raise HTTPException(409, WITHDRAWN_REFUSED)
+    if await _agency_record_archived(db, application):
+        raise HTTPException(409, ARCHIVED)
+
+
+async def _update_agency_visa(db: AsyncSession, user: User, application: OverseasApplication, case: VisaCase, payload: dict) -> dict:
+    """AGN-023 (DEC-SCOPE-090 H4, spec §4): a counselor's change to an agency visa case goes through the agency's own rules
+    (agent_visa.update_case: decided lock, forward only, checklist lock, checklist gate). Lock order matches the agency route:
+    the application, then the case; the expected stage is the one read under that lock. The decision stays with the agency."""
+    await db.refresh(application, with_for_update=True)
+    _recheck_counselor_scope(user, application)
+    await _refuse_closed_agency_application(db, application)
+    await db.refresh(case, with_for_update=True)
+    if application.status == "enrolled":
+        raise HTTPException(409, VISA_ENROLLED)
+    if "decision" in payload:
+        raise HTTPException(422, AGENCY_RECORDS_VISA_DECISION)
+    # Final review I2: a typed body (the agency's checklist limits, a real date, the column's length) -- a bad body is 422, never 500.
+    try:
+        body = CounselorAgencyVisaUpdate.model_validate(payload)
+    except ValidationError as exc:
+        raise RequestValidationError([{**e, "loc": ("body", *e["loc"])} for e in exc.errors(include_url=False)]) from exc
+    sent = body.model_fields_set
+    changes: dict = {"expected_stage": case.status}
+    target = body.status
+    if target is not None and target != case.status:
+        if target not in VISA_CASE_STAGES:
+            raise HTTPException(422, f"'{target}' is not a supported visa case stage -- must be one of {VISA_CASE_STAGES}.")
+        changes["to_stage"] = target
+    if "checklist" in sent:
+        changes["checklist"] = body.checklist
+    if body.appointment_date is not None:
+        changes["appointment_date"] = body.appointment_date
+    if case.decision is None and "tracking_reference" in sent:
+        case.tracking_reference = body.tracking_reference
+    await update_case(db, case, changes)
+    await _audit(db, user, "visa.update", "visa_case", case.id, body.model_dump(mode="json", exclude_unset=True))
+    await db.commit()
+    return {"id": case.id, "status": case.status}
+
+
 @router.patch("/overseas/visa/{visa_id}")
 async def update_visa(visa_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require(user, {"counselor", "overseas_admin"}, "overseas")
@@ -2268,6 +2404,8 @@ async def update_visa(visa_id: UUID, payload: dict, user: User = Depends(get_cur
         raise HTTPException(404, "Visa case not found")
     application = await _assigned_application(db, user, item.application_id)
     await _require_bridged_visa_entitlement(db, user, application, grandfathered_since=item.created_at)
+    if application.agent_id is not None:
+        return await _update_agency_visa(db, user, application, item, payload)
     if "status" in payload:
         if payload["status"] not in VISA_CASE_STAGES:
             raise HTTPException(422, f"'{payload['status']}' is not a supported visa case stage -- must be one of {VISA_CASE_STAGES}.")
@@ -2294,6 +2432,16 @@ async def create_visa_case(payload: VisaCaseCreate, user: User = Depends(get_cur
     if payload.status not in VISA_CASE_STAGES:
         raise HTTPException(422, f"'{payload.status}' is not a supported visa case stage -- must be one of {VISA_CASE_STAGES}.")
     application = await _assigned_application(db, user, payload.application_id)
+    if application.agent_id is not None:  # AGN-023 (DEC-SCOPE-090 H4): the agency's AGN-012 start rules, under the same lock order
+        await db.refresh(application, with_for_update=True)
+        _recheck_counselor_scope(user, application)
+        await _refuse_closed_agency_application(db, application)  # final review I1: before the enrolled and offer checks
+        if application.status == "enrolled":
+            raise HTTPException(409, VISA_ENROLLED)
+        if application.status not in OFFER_STAGES_ON:
+            raise HTTPException(422, VISA_OFFER_NEEDED)
+        if payload.status != "checklist":
+            raise HTTPException(422, AGENCY_VISA_STARTS_AT_CHECKLIST)
     await _require_bridged_visa_entitlement(db, user, application)
     existing = await db.scalar(select(VisaCase).where(VisaCase.application_id == application.id))
     if existing:
