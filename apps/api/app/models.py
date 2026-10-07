@@ -1041,16 +1041,21 @@ LEAD_MESSAGE_CHECKS = {
     "ck_lead_messages_body": "length(body) BETWEEN 1 AND 5000",
     "ck_lead_messages_whatsapp": "channel <> 'whatsapp' OR (subject IS NULL AND delivery_status IS NULL)",
 }
+# tel-014 (DEC-SCOPE-106 E5): an email row has a subject and a delivery status. Migration 0097 repeats it (test_tel_014_migration).
+LEAD_EMAIL_STATUSES = ("queued", "sending", "retrying", "sent", "failed")
+LEAD_MESSAGE_EMAIL_CHECK = {
+    "ck_lead_messages_email": f"channel <> 'email' OR (subject IS NOT NULL AND delivery_status IS NOT NULL AND delivery_status IN ({', '.join(repr(s) for s in LEAD_EMAIL_STATUSES)}))",
+}
 
 
 class LeadMessage(Base, TimestampMixin):
     """tel-013 (DEC-SCOPE-100): a message sent to a lead -- WhatsApp via wa.me (T8; the row is the telecaller's confirmation, WA1 keeps the
-    full text) and, from tel-014, email (subject + delivery status). It belongs to the lead, so its scope is the lead's. `template_name`
-    is the template's name when sent (D6), so a rename never rewrites history."""
+    full text) and, from tel-014, email (subject + delivery status; `attempt_count` counts SMTP attempts, DEC-SCOPE-106 E5). It belongs to
+    the lead, so its scope is the lead's. `template_name` is the template's name when sent (D6), so a rename never rewrites history."""
 
     __tablename__ = "lead_messages"
     __table_args__ = (
-        *(CheckConstraint(sql, name=name) for name, sql in LEAD_MESSAGE_CHECKS.items()),
+        *(CheckConstraint(sql, name=name) for name, sql in (LEAD_MESSAGE_CHECKS | LEAD_MESSAGE_EMAIL_CHECK).items()),
         Index("ix_lead_messages_lead_sent", "lead_id", "sent_at"),
         Index("ix_lead_messages_sender_sent", "sender_user_id", "sent_at"),
     )
@@ -1063,6 +1068,7 @@ class LeadMessage(Base, TimestampMixin):
     subject: Mapped[str | None] = mapped_column(String(200), nullable=True)
     body: Mapped[str] = mapped_column(Text)
     delivery_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    attempt_count: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
     sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
@@ -1617,6 +1623,7 @@ class BdmOrganization(Base, TimestampMixin):
         Index("ix_bdm_organizations_duplicate_key", "bdm_type", "name_key", "city_key"),
         Index("ix_bdm_organizations_type_stage", "bdm_type", "pipeline_stage"),
         UniqueConstraint("school_id", name="uq_bdm_organizations_school"),
+        UniqueConstraint("agent_org_id", name="uq_bdm_organizations_agent_org"),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     code: Mapped[str] = mapped_column(String(20))
@@ -1653,6 +1660,8 @@ class BdmOrganization(Base, TimestampMixin):
     lost_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     # bdm-018 (DEC-SCOPE-085 H1): the onboarded School; one organization <-> at most one School. The School's BDM is derived from it.
     school_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id", ondelete="RESTRICT"), nullable=True)
+    # bdm-019 (DEC-SCOPE-107): the onboarded Agent Organization; one organization <-> at most one agency. The live Agent stages read it.
+    agent_org_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_orgs.id", ondelete="RESTRICT"), nullable=True)
 
 
 class BdmOrganizationContact(Base, TimestampMixin):
@@ -1778,12 +1787,14 @@ class BdmMouEvent(Base):
 
 # bdm-018 (DEC-SCOPE-085, spec §3): the onboarding handover. `kind` is 'school' only; bdm-019 widens it for agents.
 BDM_ONBOARDING_STATUSES = ("pending", "completed", "rejected")
-BDM_ONBOARDING_CHECKS = {  # migration 0084 repeats these strings; test_bdm_018_migration asserts they stay identical
-    "ck_bdm_onboarding_requests_kind": "kind IN ('school')",
+BDM_ONBOARDING_CHECKS = {  # migrations 0084 and 0098 (bdm-019) repeat these strings; test_bdm_018/019_migration pin them
+    "ck_bdm_onboarding_requests_kind": "kind IN ('school', 'agent')",
     "ck_bdm_onboarding_requests_status": _in_list("status", BDM_ONBOARDING_STATUSES),
     "ck_bdm_onboarding_requests_resolution": "resolution IS NULL OR resolution IN ('created', 'linked')",
     "ck_bdm_onboarding_requests_resolved": "(status = 'pending') = (resolved_at IS NULL)",
-    "ck_bdm_onboarding_requests_completed": "status <> 'completed' OR (school_id IS NOT NULL AND resolution IS NOT NULL)",
+    "ck_bdm_onboarding_requests_completed": "status <> 'completed' OR (resolution IS NOT NULL AND (school_id IS NOT NULL OR agent_org_id IS NOT NULL))",
+    # bdm-019: a request names only its own kind's target (a School, or an Agent Organization)
+    "ck_bdm_onboarding_requests_target": "(kind = 'school' AND agent_org_id IS NULL) OR (kind = 'agent' AND school_id IS NULL)",
     "ck_bdm_onboarding_requests_rejected": "status <> 'rejected' OR reject_reason IS NOT NULL",
 }
 
@@ -1809,6 +1820,7 @@ class BdmOnboardingRequest(Base, TimestampMixin):
     resolution: Mapped[str | None] = mapped_column(String(20), nullable=True)
     school_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id", ondelete="RESTRICT"), nullable=True)
     reject_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    agent_org_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_orgs.id", ondelete="RESTRICT"), nullable=True)  # bdm-019
 
 
 # bdm-006 (DEC-SCOPE-068, spec §4.1): appointment catalogues. Stable keys; the CHECKs accept every key, the service validates each value

@@ -25,7 +25,7 @@ export default async function AdminTelecallerPage({ roles, nav, roleLabel, login
           <div>
             <div className="eyebrow">Workspace</div>
             <h2>Telecallers</h2>
-            <p className="muted">Create telecallers, set their reporting manager and keep their profiles current. Each new telecaller gets an emailed set-password link. Telecaller Managers are created from Users.</p>
+            <p className="muted">Create telecallers, set their reporting manager and keep their profiles current. Each new telecaller gets an emailed set-password link. Deactivating or moving a telecaller hands their open leads to a teammate or the team queue. Telecaller Managers are created from Users.</p>
           </div>
         </div>
       </div>

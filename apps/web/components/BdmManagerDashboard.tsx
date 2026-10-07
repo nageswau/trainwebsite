@@ -3,7 +3,7 @@ import Link from "next/link";
 import { alertHref, alertListHref, alertWhen, type ManagerDashboard, TONE } from "@/lib/bdmManagerDashboard";
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
 
-// bdm-023 (DEC-SCOPE-104 §6): the management dashboard -- the §13 overview tiles, then the alerts that have records. A plain function
+// bdm-023 (DEC-SCOPE-108 §6): the management dashboard -- the §13 overview tiles, then the alerts that have records. A plain function
 // of its data (no client state). Every alert carries a text word beside its colour (AC4); a resolved alert simply isn't listed (AC2).
 const LIST = { listStyle: "none", padding: 0, margin: "8px 0 0" } as const;
 const ROW = { display: "flex", flexWrap: "wrap", gap: 8, alignItems: "baseline", padding: "8px 0", borderTop: "1px solid var(--line, #e5e7eb)" } as const;

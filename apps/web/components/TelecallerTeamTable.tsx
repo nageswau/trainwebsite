@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import type { Page } from "@/lib/apiErrors";
+import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import { TEAM_LABEL, statusLabel, type TelecallerTeamRow } from "@/lib/telecaller";
 
 const TEAM_PATH = "/telecaller/manager/team";
@@ -14,7 +15,7 @@ export default function TelecallerTeamTable({ page }: { page: Page<TelecallerTea
         <table>
           <caption className="visually-hidden">Telecallers who report to you</caption>
           <thead>
-            <tr><th scope="col">Name</th><th scope="col">Employee ID</th><th scope="col">Team</th><th scope="col">Mobile</th><th scope="col">Status</th></tr>
+            <tr><th scope="col">Name</th><th scope="col">Employee ID</th><th scope="col">Team</th><th scope="col">Mobile</th><th scope="col">Status</th><th scope="col">Activity</th></tr>
           </thead>
           <tbody>
             {page.items.map((r) => (
@@ -24,6 +25,10 @@ export default function TelecallerTeamTable({ page }: { page: Page<TelecallerTea
                 <td>{TEAM_LABEL[r.team]}</td>
                 <td>{r.phone ?? "—"}</td>
                 <td><span className="badge">{statusLabel(r.active)}</span></td>
+                <td>
+                  {/* tel-021 (DB6): the report's daily activity */}
+                  <Link href={`${TEAM_PATH}/${encodeURIComponent(r.id)}/activity`} aria-label={`Activity for ${r.full_name}`} style={LINK_STYLE}>View</Link>
+                </td>
               </tr>
             ))}
           </tbody>

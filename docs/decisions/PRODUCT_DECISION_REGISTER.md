@@ -4541,15 +4541,153 @@ recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). 
 `api/bdm_targets.py`; pages `/bdm/manager/targets`, `/bdm/manager/targets/[bdmId]`; a "Monthly targets" card on My Day; components
 `BdmTargetsEditor`, `BdmTargetsCopy`, `BdmTargetsCard`. **Feature ID:** `bdm-016`. **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-016.
 
+### DEC-SCOPE-104 — Telecaller deactivation, team move and bulk reassignment (`tel-025`)
 
-### DEC-SCOPE-104 — BDM management dashboard: overview + alerts (`bdm-023`)
+**Evidence:** `EVID-019` §13 ("when staff changes"); `DEC-SCOPE-073` T21, T22, T23; `DEC-SCOPE-087` (tel-007 assignment); `DEC-SCOPE-094`
+F3 (follow-ups belong to the lead); `DEC-SCOPE-095` (lead appointments); `DEC-SCOPE-101` (handover); the bdm-025 precedent
+(`DEC-SCOPE-082`); owner answers in-session 2026-10-07.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option) for
+LC1–LC4; D1–D6 are recorded defaults. **MERGED** to `main` as PR #122 @ `692ffa78` (2026-10-07). **No migration.** API contract §12Y, RBAC §2.31. Spec
+`docs/superpowers/specs/2026-10-07-tel-025-telecaller-lifecycle-design.md`. Number reserved on `main` (bdm-012 102, bdm-016 103 and tel-021 105 merged first).
+
+| # | Question | Answer |
+|---|---|---|
+| LC1 | Who may deactivate / move a telecaller | **Admins only**: `super_admin` any team, `it_admin` / `overseas_admin` their own team (tel-001 `CREATOR_TEAMS`). A team move needs both teams in scope (so `super_admin`). Only `super_admin` deactivates a `telecaller_manager`. Telecaller managers have no lifecycle power |
+| LC2 | What is open work | Leads of the telecaller **not closed and not Converted**, handed-over ones included (the counselor stays owner, a later return reaches an active telecaller). Open follow-ups and appointments ride with their lead. Closed / converted leads, calls, stage history and audit rows keep the original actor |
+| LC3 | Target | Required when open work exists: an **active telecaller of the same team** (`target=telecaller`, `reassign_to`) or the **team's unassigned queue** (`target=queue`). No "keep with them" |
+| LC4 | Reactivation; legacy inactive telecallers with leads | Reactivation allowed (moved work does not come back). An inactive telecaller's remaining open leads move via `POST /admin/telecallers/{id}/handover` |
+
+Recorded defaults: D1 deactivation increments `session_version` (the session ends at once) and revokes open welcome links. D2 a team move
+changes `team` and `users.division` together and increments `session_version`. D3 the telecaller's tel-007 distribution rules are deleted
+(audited `telecaller.rule_delete`) on deactivation and team move. D4 a manager with reports is deactivated only with an active replacement
+manager; every report moves. D5 `PATCH /admin/users` `active:false` is `422` for a telecaller with open leads and for a manager with reports;
+otherwise it also ends the session. D6 the receiving telecaller gets an in-app + email notice.
+
+**Consequences:** service `services/telecaller_lifecycle.py`; routes `api/telecaller_lifecycle.py`; `GET /admin/telecaller-managers` gains
+`telecaller_count`; components `AdminTelecallerLifecycle`, `AdminTelecallerManagersCard`; `AdminTelecallerRow` loses the plain confirm.
+**New Feature ID authorized:** `tel-025`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-025.
+
+### DEC-SCOPE-105 — Telecaller dashboard + daily activity (`tel-021`)
+
+**Evidence:** `EVID-019` §1 (10 tiles), §14 (13 counts), §15 "Dashboard should show"; `DEC-SCOPE-073` T5, T23, T24, T27; backlog
+Appendix B (B1–B10, D1–D13, K1–K6); `DEC-SCOPE-080` (targets), `DEC-SCOPE-096` (calls), `DEC-SCOPE-094` (follow-ups), `DEC-SCOPE-095` /
+`DEC-SCOPE-098` (appointments), `DEC-SCOPE-100` (WhatsApp), `DEC-SCOPE-101` HO2 (unlink); owner answers in-session 2026-10-07.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — two structured questions, each answered with the recommended option) for
+DB1–DB2; DB3–DB8 are recorded defaults. **MERGED** to `main` as PR #118 @ `89e1c4eb` (2026-10-07). **No migration.** API contract §12X, RBAC §2.30. Spec
+`docs/superpowers/specs/2026-10-07-tel-021-dashboard-design.md`. (102 went to bdm-012 and 103 to bdm-016, both merged first; 104 is held by tel-025.)
+
+| # | Question | Answer |
+|---|---|---|
+| DB1 | B9 "Overdue": the not-contacted threshold (tel-020's, not built) | A fixed **24 hours** in First Call Pending (`stage_changed_at`) until tel-020 brings the team's threshold |
+| DB2 | Q-18 part 1: conversion credit | The lead's telecaller **at the moment conversion was first recorded** (first `converted` stage row); a later reassignment does not move it. A lead no longer `converted` (HO2 unlink) does not count |
+
+Recorded defaults: DB3 the tiles are today's (IST); the daily activity takes `?date=` up to today (future → `422`); the backlog's
+`/telecaller/dashboard?date=` is dropped. DB4 the point-in-time counts (D1, D6, D12) are rebuilt as of the end of the day (now, for
+today) from `lead.assign` / `lead.priority_change` audit rows, `lead_stage_history` and the follow-up timestamps. DB5 "open" = not in a
+closed stage; tiles B2/B4/B9 also leave out handed-over leads (T19). DB6 a `telecaller_manager` reads a direct report's activity and
+`super_admin` any telecaller's (`404` otherwise; a telecaller naming another user `403`); division admins are left to tel-023/024. DB7
+appointments exclude `cancelled`; counselling by `booked_by_user_id`, BDM meetings by my accepted requests' `starts_at`. DB8 B1 = leads that
+became mine today (a `lead.assign` to me, or my own already-assigned `lead.create`) and are still mine.
+
+**Consequences:** service `services/telecaller_metrics.py` (the single source tel-023/024 reuse); routes `api/telecaller_dashboard.py`;
+components `TelecallerDashboardTiles`, `TelecallerAppointmentsCard`, `TelecallerActivityPanel`; `TelecallerTargetsCard` gains achieved
+figures; page `/telecaller/manager/team/[id]/activity`; the Team table links each report's activity.
+**New Feature ID authorized:** `tel-021`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-021.
+
+### DEC-SCOPE-106 — Email to a lead + send log (`tel-014`)
+
+**Evidence:**
+- `EVID-019` §12 (L454–L472: seven email kinds, "stored under the student's timeline").
+- `DEC-SCOPE-073` T9 (email via SMTP; a library of manager-edited templates).
+- `DEC-SCOPE-083` C1/C2 (brochure links, the render route).
+- `DEC-SCOPE-100` WA1–WA4 / D1–D9 (`lead_messages`, its gate, D9 reserving email for tel-014).
+- `DEC-SCOPE-084` D1 (read-only after handover).
+- Backlog open question Q-16 (sender identity).
+- Owner answers in-session 2026-10-07.
+
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option)
+for EM1–EM4; E1–E10 are recorded defaults. **MERGED** to `main` as PR #120 @ `becb70c5` (2026-10-07). Migration `0097_lead_message_email` (after bdm-016's `0096_bdm_targets`), API
+contract §12Z, RBAC §2.32. Spec `docs/superpowers/specs/2026-10-07-tel-014-email-design.md`. Drafted as `0096` / `DEC-SCOPE-102` / §12W / 2.29; tel-018 (`DEC-SCOPE-101`, no migration), bdm-012 (`DEC-SCOPE-102`),
+bdm-016 (`0096_bdm_targets` / `DEC-SCOPE-103` / §12W / 2.29) and tel-021 (`DEC-SCOPE-105` / §12X / 2.30, no migration) merged first
+and tel-025 holds `DEC-SCOPE-104` / §12Y / 2.31, so it is renumbered.
+
+| # | Question | Answer |
+|---|---|---|
+| EM1 | Q-16: who an email appears to come from | **The telecaller via the system address**: From `"<telecaller> via EduSphere" <SMTP_FROM_EMAIL>`, Reply-To the telecaller's login email. Replies reach the telecaller and are not tracked in the CRM |
+| EM2 | Undo a sent email | **Never.** An email row records a real system send, so it stays as evidence (`DELETE` → `409`). WhatsApp keeps WA3 |
+| EM3 | Daily cap | **100 emails per telecaller per IST day → `429`**, separate from WhatsApp's 300 (`409`), which now counts WhatsApp only |
+| EM4 | Must an email start from a template | **No**, as WA4. A template fills the subject and body, both editable; a free email is "Custom message" |
+
+Recorded defaults:
+- **E1** WA2's gate: the lead's telecaller, open lead, before handover.
+- **E2** No address: the action is disabled; the API refuses with `409`.
+- **E3** SMTP unset: `503` with nothing stored.
+- **E4** Asynchronous: the row is stored `queued` and published to `deliver_lead_email_task` after the commit.
+- **E5** Delivery: claim → `sending` → `sent` | `retrying` (60 s / 5 min / 25 min, at most four attempts; transient = connection, timeout,
+  4xx) | `failed` (5xx, refused recipient, malformed address, SMTP unset, address removed). A 5-minute sweeper republishes stale queued rows
+  and fails rows stuck in `sending` (never resent).
+- **E6** Content: plain text plus an escaped HTML part with linked URLs. The subject's CR/LF become spaces. Subject ≤ 200 characters,
+  body ≤ 5000.
+- **E7** The recipient is the lead's current address, read at send time.
+- **E8** Templates: active email ones only; another product's template is a warning.
+- **E9** No stage effect.
+- **E10** Logs and audit carry ids, the channel, the status and the error type only.
+
+**Consequences:**
+- Data: `lead_messages.attempt_count` and the check `ck_lead_messages_email`.
+- Backend: the schemas `LeadWhatsAppCreate` / `LeadEmailCreate`, `mailer.lead_email_message`, the worker `notifications/lead_email.py`
+  (`deliver_lead_email`, `sweep_stale_lead_emails`), `dispatch.enqueue_lead_email`, and the beat job `tel014-sweep-stale-lead-emails`.
+- Web: `EmailComposer`; `LeadMessages` gains Send email and the email rows; the lead header gets an "Email" button.
+- Downstream: tel-015 shows the rows and tel-021 counts them.
+- Still open: consent and retention for emailed leads (`PRD_OPEN_ITEMS.md` row 85). SMTP throughput is shared with system emails (one
+  account).
+
+**New Feature ID authorized:** `tel-014`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-014.
+
+### DEC-SCOPE-107 — Agent onboarding handover + Agent Organization link (`bdm-019`)
+
+**Evidence:** `EVID-016` Agent §E (`BDM_CRM_BACKLOG.md` Appendix A L685–L741) and the agent database fields (L593 Master Login, L595 Number
+of Staff); `DEC-SCOPE-055` D7 (Overseas Admin creates or approves the Agent Organization; the BDM never creates logins), D32 (Active Agent
+= linked organization with status active); `DEC-SCOPE-071` S3 (live stages are never stored), S4 (Inactive = linked organization suspended
+or rejected); `DEC-SCOPE-085` (bdm-018, the School handover this mirrors); `DEC-SCOPE-038` (AGN-001: organizations, approval,
+admin-created agents D11); `DEC-SCOPE-064` (AGN-022 `org_counts`). Dependencies verified on `main` @ `b1495fa2`: bdm-004, bdm-005, AGN-001
+(`0046_agent_orgs`), AGN-002 (`0047_agent_org_staff`), bdm-018 (`0084_bdm_onboarding`). The backlog's "ang-001 … Not built" capability
+row predates AGN-001 and is stale.
+**Status:** A1–A10 are the **recommended answers**, used under the owner's standing direction for this session to proceed with
+recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). Migration `0098_bdm_agent_link` (after
+`0097_lead_message_email`), API contract §12AA, RBAC §2.33. Drafted as `DEC-SCOPE-100` / `0095_bdm_agent_link` / §12U / §2.27 and renumbered on merging `main` @ `89e1c4eb` (tel-013 took `DEC-SCOPE-100` / `0095_lead_messages` / §12U / §2.27; tel-018 101; bdm-012 102; bdm-016 103 / `0096_bdm_targets`; tel-025 holds 104; tel-021 105), then again on merging `main` @ `692ffa78` as `DEC-SCOPE-107` / `0098_bdm_agent_link` / §12AA / §2.33 (it had been `DEC-SCOPE-106` / `0097_bdm_agent_link` / §12Y / §2.31; tel-025 took 104 / §12Y / §2.31, tel-014 took `DEC-SCOPE-106` / `0097_lead_message_email` / §12Z / §2.32). Spec `docs/superpowers/specs/2026-10-07-bdm-019-agent-onboarding-handover-design.md`.
+
+| # | Question | Recommended answer (used) |
+|---|---|---|
+| A1 | How Overseas Admin resolves an agent request | Link an **existing** Agent Organization by its code (`agent_orgs.prefix`), or reject. Agencies are created by the existing paths (self-registration; admin-created agent, AGN-001 D11) and approved by AGN-001's Approve, which is unchanged. |
+| A2 | "A request needs Agreement Signed" | The stored manual stage is `agreement_signed` (bdm-005 M5 moves there on a Signed MoU); otherwise `422`. |
+| A3 | Live Agent stages | Per-step evidence: Agent Onboarding = linked; Master Login Created = an active Master member; Staff Logins Created = an active staff member; Active Agent = organization `active`. A pending request alone: Agent Onboarding current. |
+| A4 | Volume steps | Once linked, Students / Applications / Enrollments carry AGN-022 `org_counts` (the agency dashboard's definitions); done when > 0. |
+| A5 | Agent status | Linked organization suspended or rejected → Inactive; otherwise Onboarding until Active Agent → Active. No request → the stored-stage mapping. |
+| A6 | Commission once linked (bdm-003 P10) | **Not exposed** to any BDM route; the profile says "Not shown to BDMs (awaiting a decision)". Remains `NEEDS_CONFIRMATION` (bdm-022). |
+| A7 | What a BDM sees of the agency | Name, code, status, Master exists, active staff count, three aggregate counts. No member or student row (AC4, tested). |
+| A8 | Notices | In-app only: Overseas Admins "Agent onboarding requested" (→ `/overseas/admin/agents`); the BDM "Agent onboarded" / "Agent onboarding not approved". |
+| A9 | Linking a rejected / suspended agency | Allowed (the pipeline shows Inactive). An agency linked elsewhere `409 agent_org_linked` (1:1). |
+| A10 | Unlink; T-A6 (bdm-014) / M-15 (bdm-015) | Out of scope; follow-ups. |
+
+**Consequences:** migration `0098_bdm_agent_link` (`bdm_organizations.agent_org_id` unique, `bdm_onboarding_requests.agent_org_id`, the
+`kind` CHECK widened to `school, agent`, the completed CHECK accepting an agency, a new target CHECK); `services/bdm_onboarding.py` (agent
+rule, `agency_by_code`, `complete_agent`, kind-filtered queue); `POST /overseas-admin/bdm-onboarding-requests/{id}/link-agent`; the
+queue's `kind` filter (default `school`, so bdm-018 callers are unchanged); `bdm_pipeline.agency_snapshot` / live Agent stages / step
+`count`; web: the onboarding card for Agent organizations, the agent queue on `/overseas/admin/agents`, the pipeline count, the live staff
+count and commission note. Unchanged: AGN-001's approve / reject / suspend / reinstate, every `/overseas-admin/agent-orgs/*` and agency
+route, the stage-move rules. **Feature ID:** `bdm-019`. **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-019.
+
+### DEC-SCOPE-108 — BDM management dashboard: overview + alerts (`bdm-023`)
+
+**ID note:** drafted as `DEC-SCOPE-104` / API §12X / RBAC §2.30. tel-025, tel-021, tel-014 and bdm-019 reached `main` first (`DEC-SCOPE-104`–`107`, §12X–§12AA, §2.30–§2.33), so on merging `main` (2026-10-07) this entry became **`DEC-SCOPE-108`**, §12AB, §2.34. No migration.
 
 **Evidence:** `EVID-016` §13 lines 413–434 (`DERIVED_BLUEPRINT`; `BDM_CRM_BACKLOG.md` Appendix A rows 413–434); `DEC-SCOPE-055` D1
 (scope), D4 (manager = reporting manager; super_admin all), D19 (MoU follow-up every 5 days), D22 / Q-13 (daily report not enforced;
 "not submitted" is a manager alert); `DEC-SCOPE-070` (bdm-007 AL-6 rule `pending_filter`); `DEC-SCOPE-080` G1 (no working-day
 calendar); Appendix B.4 T-M01…T-M08, AL-1…AL-7.
 **Status:** R1–R10 are the **recommended answers**, used under the owner's standing direction for this session to proceed with
-recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). No migration. API contract §12X, RBAC §2.30. Dependency
+recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). No migration. API contract §12AB, RBAC §2.34. Dependency
 gate (2026-10-07): bdm-005 / 006 / 008 merged with verified QA evidence (counted complete under `DEC-SCOPE-082` L1), bdm-010 COMPLETE,
 bdm-016 merged (PR #117; target progress is optional for this item and not shown).
 

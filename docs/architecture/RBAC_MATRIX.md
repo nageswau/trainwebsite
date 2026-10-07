@@ -753,7 +753,53 @@ appointment.
 | `super_admin` | as a manager, and **past months** too | all BDMs | `bdm-016` |
 | every other role | none → `403` | — | `bdm-016` |
 
-### 2.30 BDM management dashboard *(net-new, added 2026-10-07 — `DEC-SCOPE-104`, `bdm-023`)*
+### 2.30 Telecaller dashboard + daily activity *(net-new, added 2026-10-07 — `DEC-SCOPE-105`, `tel-021`)*
+
+The same inline pattern as §2.19. Read-only; the subject comes from the session (`telecaller_context`) or, for a manager, from
+`telecaller_targets.telecaller_in_scope` (tel-022's direct-report rule).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | read own dashboard; read own daily activity for any day up to today | self; another `user_id` is `403` | `tel-021` |
+| `telecaller_manager` | read a report's daily activity (`user_id` required) | direct reports; anyone else `404` | `tel-021` |
+| `super_admin` | read any telecaller's daily activity | all telecallers | `tel-021` |
+| every other role | `403` (the dashboard is the telecaller's only) | — | `tel-021` |
+
+### 2.31 Telecaller deactivation, team move and handover *(net-new, added 2026-10-07 — `DEC-SCOPE-104`, `tel-025`)*
+
+Inline: `ensure_admin`, then the team scope (`services/telecaller.require_creator_may`), then the write. Locks: the source's open leads →
+its profile → its user (FOR UPDATE) → the target (FOR SHARE).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `super_admin` | preview, deactivate, hand over, move team, deactivate a telecaller manager | all teams | `tel-025` |
+| `it_admin` / `overseas_admin` | preview, deactivate, hand over | own team (`403` otherwise); move team `403` | `tel-025` |
+| `telecaller_manager`, `telecaller`, every other role | none (`403`) | — | `tel-025` |
+
+### 2.32 Lead email *(net-new, added 2026-10-07 — `DEC-SCOPE-106`, `tel-014`)*
+
+§2.27's gate, on the same routes (`lead_pipeline.scope`, the lead lock, the role and `telecaller_leads.require_writable`). The recipient is
+always the lead's own address, never one from the request.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | send an email to an open lead before handover (100 per IST day); read the log; never delete an email | own leads; another's is `404` | `tel-014` |
+| `telecaller_manager` / `super_admin` | read the log and delivery status; `403` on send | §2.19's | `tel-014` |
+| every other role | `403` | — | `tel-014` |
+
+### 2.33 Agent onboarding handover *(net-new, added 2026-10-07 — `DEC-SCOPE-107`, `bdm-019`)*
+
+The BDM route resolves the organization through `load_scoped` (out of scope `404`) and `can_edit`; the admin routes check the role
+before any lookup. The link grants **no** access to the agency's tenant: a BDM or manager reads aggregates only (AC4, tested).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `bdm` (Agent type) | request onboarding of an own Agent organization at Agreement Signed; read the linked agency's name, code, status, Master exists, staff count, student / application / enrollment counts | assigned organizations | `bdm-019` |
+| `bdm_manager` | read the same (no request) | team | `bdm-019` |
+| `overseas_admin`, `super_admin` | read the agent queue (`kind=agent`); **link** a request to an Agent Organization by code; **reject** | all requests | `bdm-019` |
+| `bdm`, `bdm_manager` | agency students / applications / members, `/overseas-admin/agent-orgs/*`, `/agent/*` → `403` / `404` | — | `bdm-019` |
+
+### 2.34 BDM management dashboard *(net-new, added 2026-10-07 — `DEC-SCOPE-108`, `bdm-023`)*
 
 `require_manager` + `team_filter` gate the route; the only parameter (`manager_user_id`) is super_admin-only, so a manager can never
 widen scope. Read-only, like the other BDM manager reads (no audit row).

@@ -4,7 +4,7 @@ import BdmManagerDashboard from "@/components/BdmManagerDashboard";
 import type { DashboardAlert, ManagerDashboard } from "@/lib/bdmManagerDashboard";
 import { elements, text } from "@/tests/helpers/elementTree";
 
-// bdm-023 (DEC-SCOPE-104): the dashboard view is a plain function of its data, so it is called directly.
+// bdm-023 (DEC-SCOPE-108): the dashboard view is a plain function of its data, so it is called directly.
 const TILES: [string, string, number][] = [
   ["T-M01", "Total BDMs", 8], ["T-M02", "Today's Appointments", 14], ["T-M03", "Upcoming Appointments", 36], ["T-M04", "BDMs Travelling", 4],
   ["T-M05", "Trips This Month", 18], ["T-M06", "Meetings Completed", 86], ["T-M07", "MoUs in Progress", 21], ["T-M08", "MoUs Signed", 9],

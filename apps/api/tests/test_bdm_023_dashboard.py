@@ -1,4 +1,4 @@
-"""bdm-023 (DEC-SCOPE-104) -- GET /bdm/manager/dashboard: the 8 overview tiles (T-M01...T-M08) and the alert list (AL-1...AL-7) of
+"""bdm-023 (DEC-SCOPE-108) -- GET /bdm/manager/dashboard: the 8 overview tiles (T-M01...T-M08) and the alert list (AL-1...AL-7) of
 Appendix B.4, for a manager's team (super_admin: all teams, or one manager's).
 
 Each test builds a fresh manager and team, so team-scoped figures are exact even on the shared test database. Every seeded rule has a

@@ -1,6 +1,6 @@
 # bdm-023 — Management dashboard: overview + alerts (design)
 
-Decision: `DEC-SCOPE-104` (R1–R10 below). Backlog: `BDM_CRM_BACKLOG.md` §bdm-023; definitions Appendix B.4 (T-M01…T-M08,
+Decision: `DEC-SCOPE-108` (R1–R10 below). Backlog: `BDM_CRM_BACKLOG.md` §bdm-023; definitions Appendix B.4 (T-M01…T-M08,
 AL-1…AL-7). Evidence: `EVID-016` §13 lines 413–434 (`DERIVED_BLUEPRINT`); scope approved under `DEC-SCOPE-055` D1.
 
 **Status of the R-answers:** agent-recommended defaults, **not** `EXPLICIT_APPROVAL`. The owner told this session to "proceed with

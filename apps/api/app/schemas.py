@@ -3941,6 +3941,7 @@ class BdmPipelineStepOut(BaseModel):
     label: str
     kind: Literal["manual", "live", "volume"]
     state: Literal["done", "current", "upcoming", "awaiting_handover", "not_tracked"]
+    count: int | None = None  # bdm-019 A4: a volume step's live count once an agency is linked
 
 
 class BdmPipelineLost(BaseModel):
@@ -3970,9 +3971,27 @@ class BdmOnboardingSchoolRef(BaseModel):
     school_code: str | None
 
 
+class BdmOnboardingAgentCounts(BaseModel):
+    students: int
+    applications: int
+    enrollments: int
+
+
+class BdmOnboardingAgentRef(BaseModel):
+    """bdm-019 A7: a linked agency as a BDM sees it -- aggregates only, never a member or student (AC4)."""
+
+    name: str
+    prefix: str
+    status: str
+    master_login: bool
+    staff_count: int
+    counts: BdmOnboardingAgentCounts
+
+
 class BdmOrgOnboardingOut(BaseModel):
     request: BdmOnboardingRequestRef | None  # the latest request
     school: BdmOnboardingSchoolRef | None
+    agent: BdmOnboardingAgentRef | None = None  # bdm-019: Agent organizations
     can_request: bool
 
 
@@ -4002,7 +4021,7 @@ class BdmOrganizationOut(BdmOrganizationRow):
     student_count: int | None
     profile: BdmOrgProfileOut | None  # null for corporate / training_institute / other (spec §5.1)
     pipeline: BdmOrgPipelineOut  # bdm-004: detail only; list rows are unchanged
-    onboarding: BdmOrgOnboardingOut | None = None  # bdm-018: School organizations only
+    onboarding: BdmOrgOnboardingOut | None = None  # bdm-018: School organizations; bdm-019: Agent organizations too
     contacts: list[BdmContactOut]
     created_by_name: str
     archived_at: datetime | None
@@ -5337,7 +5356,7 @@ class BdmMyDayOut(BaseModel):
     tiles: list[BdmMyDayTile]
 
 
-# --- bdm-023 (DEC-SCOPE-104): the management dashboard -- Appendix B.4 tiles and alerts ----------------------------------------------
+# --- bdm-023 (DEC-SCOPE-108): the management dashboard -- Appendix B.4 tiles and alerts ----------------------------------------------
 class BdmDashboardTile(BaseModel):
     key: str  # T-M01 ... T-M08
     label: str
@@ -5498,7 +5517,7 @@ class LeadStageHistoryPage(BaseModel):
 
 
 # --- bdm-018 (DEC-SCOPE-085, spec §5): the school onboarding handover --------------------------------------------------------------
-_ONBOARDING_LABELS = {"note": "Note", "reason": "Reason", "school_code": "School ID"}
+_ONBOARDING_LABELS = {"note": "Note", "reason": "Reason", "school_code": "School ID", "agent_code": "Agent code"}
 BdmOnboardingNote = Annotated[
     Annotated[Annotated[str, _trimmed(1000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, _ONBOARDING_LABELS))],
     BeforeValidator(_bdm_newlines),
@@ -5508,6 +5527,7 @@ BdmOnboardingReason = Annotated[
 ]
 BdmOnboardingSchoolCode = Annotated[Annotated[str, _trimmed(8)], AfterValidator(_trip_text(_BDM_CONTROL, True, _ONBOARDING_LABELS))]
 BdmOnboardingStatus = Literal["pending", "completed", "rejected"]
+BdmOnboardingKind = Literal["school", "agent"]  # bdm-019
 
 
 class BdmOnboardingRequestIn(BaseModel):
@@ -5523,6 +5543,13 @@ class BdmOnboardingRejectIn(BaseModel):
 class BdmOnboardingLinkIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     school_code: BdmOnboardingSchoolCode
+
+
+class BdmOnboardingLinkAgentIn(BaseModel):
+    """bdm-019 A1: the Agent Organization's code (`agent_orgs.prefix`), matched case-insensitively."""
+
+    model_config = ConfigDict(extra="forbid")
+    agent_code: BdmOnboardingSchoolCode  # the same 1-8 character, control-free text as a School ID
 
 
 class BdmOnboardingOrgPrefill(BaseModel):
@@ -5559,6 +5586,13 @@ class BdmOnboardingSchool(BaseModel):
     school_code: str | None
 
 
+class BdmOnboardingAgentOrg(BaseModel):
+    id: UUID
+    name: str
+    prefix: str
+    status: str
+
+
 class BdmOnboardingItem(BaseModel):
     id: UUID
     status: BdmOnboardingStatus
@@ -5573,6 +5607,8 @@ class BdmOnboardingItem(BaseModel):
     primary_contact: BdmOnboardingContact | None
     mou: BdmOnboardingMou | None
     school: BdmOnboardingSchool | None
+    kind: BdmOnboardingKind  # bdm-019
+    agent_org: BdmOnboardingAgentOrg | None  # bdm-019: the linked agency (agent requests only)
 
 
 class BdmOnboardingPage(BaseModel):
@@ -6056,13 +6092,32 @@ class LeadCallCreate(BaseModel):
     next_follow_up: LeadFollowUpCreate | None = None
 
 
-class LeadMessageCreate(BaseModel):
-    """tel-013: D9 WhatsApp only (email arrives with tel-014); WA4 the template is optional; WA1 the text as sent (tel-012's limit)."""
+class LeadWhatsAppCreate(BaseModel):
+    """tel-013: WA4 the template is optional; WA1 the text as sent (tel-012's limit)."""
 
     model_config = ConfigDict(extra="forbid")
     channel: Literal["whatsapp"]
     template_id: UUID | None = None
     body: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
+
+
+def _one_line(value):
+    """tel-014 E6: a subject is one header line -- CR/LF become spaces (header injection)."""
+    return re.sub(r"[\r\n]+", " ", value) if isinstance(value, str) else value
+
+
+class LeadEmailCreate(BaseModel):
+    """tel-014 (DEC-SCOPE-106): EM4 the template is optional; E6 tel-012's email limits. The recipient is always the lead's address (E7),
+    never the caller's."""
+
+    model_config = ConfigDict(extra="forbid")
+    channel: Literal["email"]
+    template_id: UUID | None = None
+    subject: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200), BeforeValidator(_one_line)]
+    body: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=5000)]
+
+
+LeadMessageCreate = Annotated[LeadWhatsAppCreate | LeadEmailCreate, Field(discriminator="channel")]
 
 
 class LeadCallUpdate(BaseModel):
@@ -6145,3 +6200,78 @@ class LeadReturnIn(BaseModel):
 class LeadStudentLinkIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     student_id: UUID
+
+
+# --- tel-025 (DEC-SCOPE-104, spec §2): telecaller deactivation, team move, handover and manager deactivation --------------------------
+
+TelecallerReassignTarget = Literal["telecaller", "queue"]
+
+
+class TelecallerReassign(BaseModel):
+    """LC3: who takes over the open leads -- an active telecaller of the same team, or the team's unassigned queue. Whether a target is
+    required at all depends on the open work, which only the route knows (AC3)."""
+
+    model_config = ConfigDict(extra="forbid")
+    target: TelecallerReassignTarget | None = None
+    reassign_to: UUID | None = None
+
+    @model_validator(mode="after")
+    def _target_matches(self):
+        if self.target == "telecaller" and self.reassign_to is None:
+            raise ValueError("Choose the telecaller who takes over")
+        if self.target != "telecaller" and self.reassign_to is not None:
+            raise ValueError("Only a telecaller target takes reassign_to")
+        return self
+
+
+class TelecallerTeamMove(TelecallerReassign):
+    team: Literal["it", "overseas"]
+    reporting_manager_user_id: UUID | None = None
+
+
+class TelecallerOpenWork(BaseModel):
+    leads: int
+    follow_ups: int
+    appointments: int
+
+
+class TelecallerHandoverOut(BaseModel):
+    id: UUID
+    target: TelecallerReassignTarget | None
+    moved: TelecallerOpenWork
+
+
+class TelecallerDeactivateOut(TelecallerHandoverOut):
+    active: bool
+    rules_removed: int
+
+
+class TelecallerTeamMoveOut(TelecallerHandoverOut):
+    team: str
+    rules_removed: int
+
+
+class TelecallerManagerDeactivate(BaseModel):
+    """D4: `reassign_to` is required only while telecallers report to the manager (checked by the route)."""
+
+    model_config = ConfigDict(extra="forbid")
+    reassign_to: UUID | None = None
+
+
+class TelecallerManagerRow(BdmManagerOption):
+    """The reporting-manager picker and the Telecaller managers card: every telecaller reporting to this manager, active or not (D4)."""
+
+    telecaller_count: int
+
+
+class TelecallerManagerPage(BaseModel):
+    items: list[TelecallerManagerRow]
+    total: int
+    limit: int
+    offset: int
+
+
+class TelecallerManagerDeactivateOut(BaseModel):
+    id: UUID
+    active: bool
+    moved_telecallers: int

@@ -20,6 +20,11 @@ describe("TelecallerTeamTable (tel-001 AC4)", () => {
     expect(screen.queryByRole("navigation", { name: "Team pages" })).toBeNull();
   });
 
+  it("links each report to their daily activity (tel-021 DB6)", () => {
+    render(<TelecallerTeamTable page={{ items: [row(1)], total: 1, limit: 50, offset: 0 }} />);
+    expect(screen.getByRole("link", { name: "Activity for Caller 1" })).toHaveAttribute("href", "/telecaller/manager/team/t1/activity");
+  });
+
   it("pages with links that keep the offset in the URL", () => {
     render(<TelecallerTeamTable page={{ items: [row(51)], total: 120, limit: 50, offset: 50 }} />);
     const pager = within(screen.getByRole("navigation", { name: "Team pages" }));

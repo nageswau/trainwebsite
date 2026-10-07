@@ -4,7 +4,7 @@ import {
   alertHref, alertListHref, alertWhen, dashboardUrl, isManagerDashboard, TONE, type DashboardAlert, type DashboardAlertItem,
 } from "@/lib/bdmManagerDashboard";
 
-// bdm-023 (DEC-SCOPE-104): the management dashboard's helpers -- links (R9), the time line per alert, and the tone's text word (AC4).
+// bdm-023 (DEC-SCOPE-108): the management dashboard's helpers -- links (R9), the time line per alert, and the tone's text word (AC4).
 const item = (over: Partial<DashboardAlertItem> = {}): DashboardAlertItem => ({
   id: "r1", title: "APT-1 · Sunrise College", bdm: { id: "b1", full_name: "Asha" }, at: "2026-10-08T04:30:00Z", organization_id: "o1", ...over,
 });

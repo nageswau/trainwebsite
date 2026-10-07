@@ -22,7 +22,7 @@ function teamSummary(team: Page<BdmTeamRow>): string {
     : `${team.total} BDM${team.total === 1 ? " reports" : "s report"} to you: ${active} active, ${inactive} inactive${team.total > team.items.length ? " on the first page" : ""}.`;
 }
 
-// bdm-001 (AC05, B2): the manager landing page -- team counts. bdm-023 (DEC-SCOPE-104): the management dashboard below them -- the
+// bdm-001 (AC05, B2): the manager landing page -- team counts. bdm-023 (DEC-SCOPE-108): the management dashboard below them -- the
 // §13 overview tiles and the alerts. A super_admin (R1, R2) keeps the admin navigation and may narrow to one manager's team; a dashboard
 // that can't be read after the gate is shown inline with "Try again".
 export default async function BdmManagerDashboardPage({ searchParams }: { searchParams: Promise<{ manager?: string }> }) {

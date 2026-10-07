@@ -23,7 +23,7 @@ Focused tests only; the full suites are the dedicated regression session's.
 gets the access card; phone width without horizontal overflow.
 
 ## Task 5 — Docs
-API contract §12X, RBAC §2.30, `DEC-SCOPE-104`, ROLE_NAVIGATION line, backlog status, RTM row, browser QA log
+API contract §12AB, RBAC §2.34, `DEC-SCOPE-108`, ROLE_NAVIGATION line, backlog status, RTM row, browser QA log
 `docs/quality/BDM-023_BROWSER_QA_2026-10-07.md`.
 
 ## Phase 3 review notes (API / frontend / security)

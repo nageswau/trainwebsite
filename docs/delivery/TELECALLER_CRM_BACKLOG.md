@@ -658,6 +658,12 @@ from tel-008. The rendered text is plain, so this item URL-encodes it for wa.me.
 
 ### tel-014 — Email to lead + send log
 
+**Status (2026-10-07):** **merged** to `main` as PR #120 @ `becb70c5`: `DEC-SCOPE-106` (EM1–EM4 plus defaults E1–E10), migration
+`0097_lead_message_email` (after bdm-016's `0096_bdm_targets`), API §12Z, RBAC §2.32. Drafted as `0096` / `DEC-SCOPE-102`, then renumbered
+after bdm-012, bdm-016 and tel-021 (tel-025 holds `DEC-SCOPE-104` / §12Y / §2.31). Q-16 is answered by EM1. The cap is 429 at 100 emails a day. Email rows are never deleted.
+Spec `docs/superpowers/specs/2026-10-07-tel-014-email-design.md`. QA report `docs/quality/TEL-014_EXPLORATORY_QA_2026-10-07.md`. Consent
+and retention remain open (`PRD_OPEN_ITEMS.md` row 85).
+
 - **Business requirement:** §12, T9.
 - **Existing behavior:** SMTP mailer for system emails only.
 - **Expected behavior:**
@@ -913,6 +919,9 @@ the type, or the type's pool; first accept wins); a decline is final (MR2); no w
 
 ### tel-021 — Telecaller dashboard + daily activity
 
+**Status (2026-10-07):** **merged** to `main` as PR #118 @ `89e1c4eb` (`DEC-SCOPE-105` DB1–DB2 + DB3–DB8, no migration, API §12X, RBAC §2.30). Spec
+`docs/superpowers/specs/2026-10-07-tel-021-dashboard-design.md`. Overdue's not-contacted part uses a fixed 24 h until tel-020 (DB1).
+
 - **Business requirement:** §1 (10 tiles), §14 (13 counts), §15 "dashboard should show"; T27.
 - **Existing behavior:** none.
 - **Expected behavior:**
@@ -1032,6 +1041,10 @@ the type, or the type's pool; first accept wins); a decline is final (MR2); no w
 - **Complexity:** large · **Risk:** medium
 
 ### tel-025 — Deactivation, team move, bulk reassignment
+
+**Status (2026-10-07):** **merged** to `main` as PR #122 @ `692ffa78` (`DEC-SCOPE-104` LC1–LC4 + D1–D6; no migration; API §12Y; RBAC §2.31).
+Spec `docs/superpowers/specs/2026-10-07-tel-025-telecaller-lifecycle-design.md`; QA report `docs/quality/TEL-025_EXPLORATORY_QA_2026-10-07.md`.
+Reactivation: allowed (LC4).
 
 - **Business requirement:** T21, T22; §13 "when staff changes".
 - **Existing behavior:** user deactivation exists (`active=false`, `session_version`), with no lead handling.
@@ -1192,7 +1205,11 @@ that as `0090_lead_follow_ups` / `DEC-SCOPE-094` / §12P. tel-016 (PR #103 @ `92
 `DEC-SCOPE-096` / §12R / RBAC §2.24. bdm-014 (PR #108) took `DEC-SCOPE-097` (no migration), and tel-019 (PR #109 @ `f8f599ee`)
 `0093_bdm_meeting_requests` / `DEC-SCOPE-098` / §12S / RBAC §2.25, then bdm-015 (PR #111 @ `b1495fa2`) `0094_bdm_daily_reports` /
 `DEC-SCOPE-099` / §12T / RBAC §2.26, and tel-013 (PR #112 @ `a0b5ee31`) `0095_lead_messages` / `DEC-SCOPE-100` / §12U / RBAC §2.27.
-tel-018 (PR #114 @ `f37ebea8`, no migration) then took `DEC-SCOPE-101` / §12V / RBAC §2.28. `main` is at `0095`; the next telecaller item chains after it with `0096` / `DEC-SCOPE-102` / §12W / RBAC §2.29. Each item takes the
+tel-018 (PR #114 @ `f37ebea8`, no migration) then took `DEC-SCOPE-101` / §12V / RBAC §2.28. bdm-012 (`DEC-SCOPE-102`) and bdm-016
+(`0096_bdm_targets` / `DEC-SCOPE-103` / §12W / RBAC §2.29) followed. tel-021 then took `DEC-SCOPE-105` / §12X / RBAC §2.30 (no
+migration), and tel-025 holds `DEC-SCOPE-104` / §12Y / RBAC §2.31. tel-014 (PR #120 @ `becb70c5`) took `0097_lead_message_email` /
+`DEC-SCOPE-106` / §12Z / RBAC §2.32. `main` is at `0097`, so the next telecaller item chains after it with `0098` / `DEC-SCOPE-107` / the
+next API addendum / RBAC §2.33. Each item takes the
 next free head when it merges, following the existing re-chain notes idiom.
 
 | Item | Migration content |

@@ -7,7 +7,7 @@ import { SUPER_ADMIN_NAV } from "@/lib/navigation";
 import ManagerDashboard from "@/app/bdm/manager/dashboard/page";
 import { elements, text } from "@/tests/helpers/elementTree";
 
-// bdm-023 (DEC-SCOPE-104): the management dashboard page -- the manager's team, super_admin's all-teams view with a manager filter (R2),
+// bdm-023 (DEC-SCOPE-108): the management dashboard page -- the manager's team, super_admin's all-teams view with a manager filter (R2),
 // the inline error when the dashboard can't be read after the gate.
 vi.mock("next/navigation", () => ({ redirect: vi.fn(), useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }), usePathname: () => "/", useSearchParams: () => new URLSearchParams() }));
 vi.mock("@/lib/api", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/api")>()), serverApi: vi.fn() }));

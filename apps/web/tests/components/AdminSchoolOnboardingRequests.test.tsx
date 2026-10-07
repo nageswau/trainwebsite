@@ -10,7 +10,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const item = (over: Partial<OnboardingItem> = {}): OnboardingItem => ({
-  id: "r1", status: "pending", note: "Ready from June", created_at: "2026-10-06T05:00:00Z", resolved_at: null, resolution: null, reject_reason: null,
+  id: "r1", kind: "school", agent_org: null, status: "pending", note: "Ready from June", created_at: "2026-10-06T05:00:00Z", resolved_at: null, resolution: null, reject_reason: null,
   requested_by: { id: "b1", full_name: "Asha" }, assigned_bdm: { id: "b1", full_name: "Asha", active: true },
   organization: {
     id: "o1", code: "ORG-000001", name: "St Mary School", city: "Kochi", state: "Kerala", address: "1 Hill Road", phone: "0484 000", email: "office@stmary.local",

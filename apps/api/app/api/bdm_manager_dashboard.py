@@ -1,4 +1,4 @@
-"""bdm-023 (DEC-SCOPE-104, spec §3-§5): the management dashboard -- the 8 overview tiles and the alert list of Appendix B.4 for a
+"""bdm-023 (DEC-SCOPE-108, spec §3-§5): the management dashboard -- the 8 overview tiles and the alert list of Appendix B.4 for a
 manager's team; super_admin reads all teams, or one manager's with `manager_user_id` (R2). Read-only: no write, no audit, no log line.
 
 A fixed number of statements whatever the team size: the database clock, one SELECT of scalar subqueries (every tile and every alert

@@ -1,7 +1,7 @@
 import { timeText, tripDateText } from "@/lib/bdmMyDay";
 import { SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 
-// bdm-023 (DEC-SCOPE-104): the management dashboard's types and wording. The API computes every figure and names every tile and
+// bdm-023 (DEC-SCOPE-108): the management dashboard's types and wording. The API computes every figure and names every tile and
 // alert; the web owns the links (R9) and the words around the times.
 const URL = "/api/v1/bdm/manager/dashboard";
 
