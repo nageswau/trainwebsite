@@ -69,13 +69,12 @@ async def test_day_before_fires_at_0900_ist_with_the_source_content_and_no_conta
 @pytest.mark.asyncio
 async def test_a_confirmed_appointment_is_not_asked_to_confirm_again(db_session, w):
     bdm, organization = w
-    appt = await appointment(db_session, bdm, organization, TOMORROW_TEN, status="confirmed")
+    await appointment(db_session, bdm, organization, TOMORROW_TEN, status="confirmed")
     await run(db_session, NINE)
     (note,) = await reminders(db_session, bdm)
     assert "Please confirm" not in note.body
     (email,) = await deliveries(db_session, note)
     assert [link["label"] for link in email.context["links"]] == ["Reschedule", "Cancel"]
-    assert appt.id
 
 
 @pytest.mark.asyncio
@@ -278,7 +277,7 @@ async def test_closed_tasks_never_fire(db_session, w, status):
 @pytest.mark.parametrize(("days", "fires"), [(4, False), (5, True), (7, False), (10, True), (15, True)])
 async def test_a_proposal_reminds_every_five_days_while_it_stays_sent(db_session, w, days, fires):
     bdm, organization = w
-    m = await mou(db_session, organization, status="proposal_sent", changed=ist(D - timedelta(days=days), 17))
+    await mou(db_session, organization, status="proposal_sent", changed=ist(D - timedelta(days=days), 17))
     await run(db_session, NINE)
     notes = await reminders(db_session, bdm)
     if not fires:
@@ -286,7 +285,7 @@ async def test_a_proposal_reminds_every_five_days_while_it_stays_sent(db_session
         return
     (note,) = notes
     assert (note.title, note.body) == ("MoU follow-up", f"{organization.name}: the proposal was sent {days} days ago. Follow up with the contact person.")
-    assert note.action_url == f"/bdm/organizations/{organization.id}#org-mou" and m.id
+    assert note.action_url == f"/bdm/organizations/{organization.id}#org-mou"
 
 
 @pytest.mark.asyncio

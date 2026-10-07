@@ -11,7 +11,7 @@ The owner is read at fire time and must be active (R6). Bodies carry no contact 
 
 import logging
 from collections.abc import AsyncIterator, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 from typing import Any
 from uuid import UUID, uuid4
@@ -44,7 +44,7 @@ class Reminder:
     title: str
     body: str
     url: str
-    links: list[dict] = field(default_factory=list)
+    links: list[dict]
 
     @property
     def dedupe_key(self) -> str:
