@@ -13,7 +13,7 @@ Dependencies: tel-001 … tel-025, all merged to `main` (checked against the bac
 Acceptance criteria: (AC1) every route × role cell has an expected status and a passing test; (AC2) every §22 denied line has a 403 test;
 (AC3) no lead delete endpoint exists. Frontend: nav visibility checks only.
 
-## 2. Decisions taken with the recommended answer (no owner question was needed)
+## 2. Decisions taken with the recommended answer (owner-confirmed after merge, 2026-10-07)
 
 | # | Point | Decision |
 |---|---|---|

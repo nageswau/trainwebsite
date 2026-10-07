@@ -4907,12 +4907,12 @@ the `created` entry.
 **Evidence:** `EVID-019` §22 (L688–L713: ten "Telecaller can" lines, seven "Telecaller should not" lines); `TELECALLER_CRM_BACKLOG.md`
 §tel-026 (AC1–AC3); the per-item grants `RBAC_MATRIX.md` §2.14–§2.40 (`DEC-SCOPE-073` … `-114`). Dependencies tel-001 … tel-025 verified
 merged on `main` @ `050e6671`.
-**Status:** recommended answers applied under the user's standing instruction for this session (2026-10-07: "proceed with recommended
-answers"); no structured owner question was needed because the item changes no behaviour. `NEEDS_CONFIRMATION` of PM1–PM5 at merge.
-**No migration, no API change.** RBAC §2.41. Spec `docs/superpowers/specs/2026-10-07-tel-026-permission-matrix-design.md`; QA report
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07, after merge: "mark PM1-PM5 confirmed") for PM1–PM5, which were first
+applied as the recommended answers under the user's standing instruction for the build session. **MERGED** to `main` as PR #137 @
+`42b95e24` (2026-10-07). **No migration, no API change.** RBAC §2.41. Spec `docs/superpowers/specs/2026-10-07-tel-026-permission-matrix-design.md`; QA report
 `docs/quality/TEL-026_EXPLORATORY_QA_2026-10-07.md`.
 
-| # | Point | Answer (recommended) |
+| # | Point | Answer (confirmed) |
 |---|---|---|
 | PM1 | "Telecaller-reachable routes" | Every route under `/telecaller/*`, `/counselor/leads*`, `/counselor/appointments`, `/lead-appointments/*`, `/admin/telecallers*`, `/admin/telecaller-managers*`, `/admin/leads*`, `/bdm/meeting-requests*`, `/public/telecaller-assets/*`; an inventory test fails on a route without a matrix row, so the suite grows with later items |
 | PM2 | Backlog edge "super_admin passes everywhere" | Recorded as built: super_admin is read-only on the telecaller's own work (calls, follow-ups, messages, email, bookings — `DEC-SCOPE-094` F2, `-096`, `-100`, `-106`, `-095`) |
