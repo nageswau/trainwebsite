@@ -7,7 +7,7 @@ import BdmAppointmentForm from "@/components/BdmAppointmentForm";
 import BdmAppointmentHistory from "@/components/BdmAppointmentHistory";
 import BdmMeetingReportSection from "@/components/BdmMeetingReportSection";
 import type { BdmType } from "@/lib/bdm";
-import { type Appointment, type AppointmentTrip, formatInr, STATUS_CLASS, STATUS_LABEL, TYPE_LABEL, whenText } from "@/lib/bdmAppointments";
+import { type Appointment, type AppointmentTrip, formatInr, type ReminderAction, STATUS_CLASS, STATUS_LABEL, TYPE_LABEL, whenText } from "@/lib/bdmAppointments";
 import { display, LINK_STYLE } from "@/lib/bdmOrganizations";
 import { tripPagePath, type TripRow } from "@/lib/bdmTravel";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
@@ -40,20 +40,29 @@ function TripCell({ trip, view }: { trip: AppointmentTrip; view: "owner" | "mana
   );
 }
 
+const DONE_WORD: Record<ReminderAction, string> = { confirm: "confirmed", reschedule: "rescheduled", cancel: "cancelled" };
+
+// bdm-012 (DEC-SCOPE-102 R10): what a reminder button's action means for this appointment now.
+function reminderNotice(appt: Appointment, action: ReminderAction): string | null {
+  if (appt.permissions[`can_${action}`]) return action === "confirm" ? "Check the details, then select Confirm." : null;
+  if (action === "confirm" && appt.status === "confirmed") return "This appointment is already confirmed.";
+  return `This appointment is ${STATUS_LABEL[appt.status]}, so it can no longer be ${DONE_WORD[action]}.`;
+}
+
 // bdm-006 (spec §6.2, §12.2): one appointment. Every write re-renders from the appointment the API returns. Actions render from
-// `permissions` only; a manager (bdmType null) sees no actions.
-export default function BdmAppointmentDetail({ initial, basePath, bdmType, created = false, trips, tripsUnavailable }: {
-  initial: Appointment; basePath: string; bdmType: BdmType | null; created?: boolean; trips?: TripRow[]; tripsUnavailable?: boolean;
+// `permissions` only; a manager (bdmType null) sees no actions. bdm-012: `action` (a reminder button) opens that action once.
+export default function BdmAppointmentDetail({ initial, basePath, bdmType, created = false, action = null, trips, tripsUnavailable }: {
+  initial: Appointment; basePath: string; bdmType: BdmType | null; created?: boolean; action?: ReminderAction | null; trips?: TripRow[]; tripsUnavailable?: boolean;
 }) {
   const [appt, setAppt] = useState(initial);
   const [editing, setEditing] = useState(false);
-  const [notice, setNotice] = useState<string | null>(created ? `Appointment ${initial.code} booked.` : null);
+  const [notice, setNotice] = useState<string | null>(created ? `Appointment ${initial.code} booked.` : action && reminderNotice(initial, action));
   const focus = useFocusAfterRender();
   const statusId = `appt-${appt.id}-status`;
   const editId = `appt-${appt.id}-edit`;
   useEffect(() => {
-    if (created) window.history.replaceState(null, "", `${basePath}/${initial.id}`);
-  }, [created, basePath, initial.id]);
+    if (created || action) window.history.replaceState(null, "", `${basePath}/${initial.id}`);
+  }, [created, action, basePath, initial.id]);
   const manager = basePath.startsWith("/bdm/manager");
   const orgHref = `${manager ? "/bdm/manager/organizations" : "/bdm/organizations"}/${appt.organization.id}`;
   const changed = (next: Appointment, text: string) => {
@@ -146,7 +155,7 @@ export default function BdmAppointmentDetail({ initial, basePath, bdmType, creat
         </section>
       )}
       <BdmMeetingReportSection appointment={appt} bdmType={bdmType} onChanged={changed} />
-      {!showEditor && <BdmAppointmentActions appointment={appt} bdmType={bdmType} onChanged={changed} />}
+      {!showEditor && <BdmAppointmentActions appointment={appt} bdmType={bdmType} onChanged={changed} initialAction={action && initial.permissions[`can_${action}`] ? action : null} />}
       <BdmAppointmentHistory events={appt.events} />
     </>
   );

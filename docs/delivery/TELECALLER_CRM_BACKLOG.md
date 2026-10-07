@@ -913,6 +913,9 @@ the type, or the type's pool; first accept wins); a decline is final (MR2); no w
 
 ### tel-021 — Telecaller dashboard + daily activity
 
+**Status (2026-10-07):** **merged** to `main` as PR #118 @ `89e1c4eb` (`DEC-SCOPE-105` DB1–DB2 + DB3–DB8, no migration, API §12X, RBAC §2.30). Spec
+`docs/superpowers/specs/2026-10-07-tel-021-dashboard-design.md`. Overdue's not-contacted part uses a fixed 24 h until tel-020 (DB1).
+
 - **Business requirement:** §1 (10 tiles), §14 (13 counts), §15 "dashboard should show"; T27.
 - **Existing behavior:** none.
 - **Expected behavior:**
@@ -1033,7 +1036,7 @@ the type, or the type's pool; first accept wins); a decline is final (MR2); no w
 
 ### tel-025 — Deactivation, team move, bulk reassignment
 
-**Status (2026-10-07):** **built** on `feature/tel-025` (`DEC-SCOPE-104` LC1–LC4 + D1–D6, provisional; no migration; API §12Y; RBAC §2.31).
+**Status (2026-10-07):** **built** on `feature/tel-025` (`DEC-SCOPE-104` LC1–LC4 + D1–D6, reserved on `main`; no migration; API §12Y; RBAC §2.31).
 Spec `docs/superpowers/specs/2026-10-07-tel-025-telecaller-lifecycle-design.md`; QA report `docs/quality/TEL-025_EXPLORATORY_QA_2026-10-07.md`.
 Reactivation: allowed (LC4).
 

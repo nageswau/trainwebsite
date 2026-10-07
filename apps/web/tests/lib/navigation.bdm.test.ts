@@ -17,6 +17,7 @@ describe("bdm-001 navigation", () => {
     expect(BDM_MANAGER_NAV.map((x) => x.href)).toEqual([
       "/bdm/manager/dashboard", "/bdm/manager/team", "/bdm/manager/organizations", "/bdm/manager/pipeline", "/bdm/manager/mous", "/bdm/manager/appointments",
       "/bdm/manager/meeting-requests", "/bdm/manager/follow-ups", "/bdm/manager/calendar", "/bdm/manager/activities", "/bdm/manager/daily-reports",
+      "/bdm/manager/targets", // bdm-016
       "/bdm/manager/approvals", "/bdm/manager/notifications",
     ]);
     expect(BDM_SIGN_IN).toBe("/bdm/sign-in");
