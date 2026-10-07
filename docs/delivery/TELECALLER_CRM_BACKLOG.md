@@ -509,7 +509,7 @@ to tel-018 (QF3).
 
 ### tel-010 — Call logging
 
-**Status (2026-10-07):** **built** on `feature/tel-010`, not yet merged (`DEC-SCOPE-096` CL1–CL4 + D1–D10, migration `0092_lead_calls`,
+**Status (2026-10-07):** **merged** to `main` as PR #106 @ `7e3ab62a` (`DEC-SCOPE-096` CL1–CL4 + D1–D10, migration `0092_lead_calls`,
 API contract §12R, RBAC §2.24; re-chained after tel-016's `0091` / `DEC-SCOPE-095` / §12Q / RBAC 2.23, merged first as PR #103). Spec
 `docs/superpowers/specs/2026-10-07-tel-010-call-logging-design.md`. AC2 confirmed (bdm-009 bounds). The tel-005 duplicate panel's "Last
 contact" is not added here (it waits for tel-013 too); a Duplicate Lead merge stays deferred (CL3).
@@ -1174,8 +1174,9 @@ graph TD
 
 Numbers are **provisional**. `main` is at `0085_tel_distribution` (tel-007, merged 2026-10-06; tel-001 took `0075`, tel-002 `0076`, bdm-008 `0077`, tel-003 `0078`, bdm-005 `0079`, tel-022 `0080`, tel-004 `0081`, bdm-025 `0082`, tel-012 `0083`, bdm-018 `0084`; tel-017 and tel-008 have none; bdm-005/bdm-013/tel-022/tel-004/bdm-025/tel-012/tel-008/bdm-018/bdm-021/tel-007 took `DEC-SCOPE-078`–`087`), so the next telecaller migration will be `0086` or later, and the next decision `DEC-SCOPE-088` or later. tel-005 (merged 2026-10-06 as PR #92, re-chained after tel-007) took `0086_lead_enquiries` / `DEC-SCOPE-088` / §12L, `main` then took bdm-020 (`DEC-SCOPE-089`, no migration). tel-006 (merged 2026-10-06 as PR #96 @ `126b454b`) took `0087_lead_import_batches` / `DEC-SCOPE-091` / §12N (090 / §12M are claimed by the open AGN-023 branch), so `main` was at `0087`; bdm-011 (PR #89) then took `0088_bdm_appointment_trip` / `DEC-SCOPE-092`, so tel-009 (PR #98) chained after it as `0089_lead_qualifications` / `DEC-SCOPE-093` / §12O, and tel-011 (PR #100 @ `8f9f1676`) after
 that as `0090_lead_follow_ups` / `DEC-SCOPE-094` / §12P. tel-016 (PR #103 @ `92946a8a`) then took
-`0091_lead_appointments` / `DEC-SCOPE-095` / §12Q / RBAC §2.23. `main` is at `0091`; the next telecaller item chains after it with
-`DEC-SCOPE-096` / §12R (tel-010's open branch claims `0092` / 096 / §12R / RBAC §2.24). Each item takes the next free head when it merges, following the existing re-chain notes idiom.
+`0091_lead_appointments` / `DEC-SCOPE-095` / §12Q / RBAC §2.23, and tel-010 (PR #106 @ `7e3ab62a`) `0092_lead_calls` /
+`DEC-SCOPE-096` / §12R / RBAC §2.24. `main` is at `0092`; the next telecaller item chains after it with `0093` / `DEC-SCOPE-097` /
+§12S / RBAC §2.25. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
 
 | Item | Migration content |
 |---|---|
@@ -1187,7 +1188,7 @@ that as `0090_lead_follow_ups` / `DEC-SCOPE-094` / §12P. tel-016 (PR #103 @ `92
 | tel-006 | `lead_import_batches` |
 | tel-007 | `tel_distribution_rules`, `tel_round_robin_cursors` |
 | tel-009 | `lead_qualifications` |
-| tel-010 | `lead_calls` |
+| tel-010 | `lead_calls` (`0092`, merged PR #106 @ `7e3ab62a`) |
 | tel-011 | `lead_follow_ups` (`0090`, merged PR #100 @ `8f9f1676`) |
 | tel-012 | `tel_scripts`, `tel_message_templates`, `tel_assets` (+ seeds) |
 | tel-013 | `lead_messages` |

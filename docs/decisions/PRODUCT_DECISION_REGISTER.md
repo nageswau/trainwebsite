@@ -4299,8 +4299,8 @@ counselor's, a manager's request) is `404` — the backlog's "403" for another c
 **Evidence:** `EVID-019` §5 (L198–L252); `DEC-SCOPE-073` T5, T7, T13, T19, T23 and Appendix B B6/B7; `DEC-SCOPE-081` (tel-004 pipeline
 events `call_connected` / `call_unconnected`); `DEC-SCOPE-094` (tel-011 F4, F8); `DEC-SCOPE-069` (bdm-009 V4/V9/V10 time rules); owner
 answers in-session 2026-10-07.
-**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07) for CL1–CL4; D1–D10 are recorded defaults. Branch `feature/tel-010`, not
-yet merged. Migration `0092_lead_calls` (re-chained after tel-016's `0091_lead_appointments` / `DEC-SCOPE-095` / §12Q / RBAC 2.23,
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07) for CL1–CL4; D1–D10 are recorded defaults. **MERGED** to `main` as PR #106 @
+`7e3ab62a` (2026-10-07). Migration `0092_lead_calls` (re-chained after tel-016's `0091_lead_appointments` / `DEC-SCOPE-095` / §12Q / RBAC 2.23,
 which merged first as PR #103), API contract §12R, RBAC §2.24. Spec `docs/superpowers/specs/2026-10-07-tel-010-call-logging-design.md`.
 
 | # | Question | Answer |
