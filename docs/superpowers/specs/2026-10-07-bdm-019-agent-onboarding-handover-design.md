@@ -1,6 +1,6 @@
 # bdm-019 — Agent onboarding handover + Agent Organization link (design)
 
-- **Feature ID:** bdm-019 · **Decision:** `DEC-SCOPE-106` · **Migration:** `0097_bdm_agent_link` (after `0096_bdm_targets`) · **API:** 12Y · **RBAC:** 2.31
+- **Feature ID:** bdm-019 · **Decision:** `DEC-SCOPE-107` · **Migration:** `0098_bdm_agent_link` (after `0096_bdm_targets`) · **API:** 12AA · **RBAC:** 2.33
 - **Backlog:** `docs/delivery/BDM_CRM_BACKLOG.md` §4 bdm-019 (`DERIVED_BLUEPRINT`); `DEC-SCOPE-055` D7, D32; `DEC-SCOPE-071` S3/S4; `DEC-SCOPE-085` (bdm-018, the template).
 - **Dependencies (verified on `main` @ `b1495fa2`):** bdm-004 (COMPLETE, `0073`), bdm-005 (merged, `0079`; open items are owner-level only, as bdm-018 recorded), AGN-001 (`0046_agent_orgs`), AGN-002 (`0047_agent_org_staff`), bdm-018 (`0084_bdm_onboarding`). The backlog's "ang-001 … Not built" line (§1 table) is stale: AGN-001 shipped as `DEC-SCOPE-038`.
 
@@ -25,7 +25,7 @@
 
 **Out:** creating agencies from a request; unlinking; commission/revenue (bdm-022); T-A6 / M-15 counts.
 
-## 3. Data — migration `0097_bdm_agent_link` (additive + CHECK widening)
+## 3. Data — migration `0098_bdm_agent_link` (additive + CHECK widening)
 
 - `bdm_organizations.agent_org_id` uuid NULL FK `agent_orgs.id` RESTRICT, unique `uq_bdm_organizations_agent_org`.
 - `bdm_onboarding_requests.agent_org_id` uuid NULL FK `agent_orgs.id` RESTRICT.

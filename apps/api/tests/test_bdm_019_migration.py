@@ -1,4 +1,4 @@
-"""bdm-019 -- migration 0097_bdm_agent_link (spec §3). Round trip and the downgrade refusal run in a throwaway database (the bdm-018
+"""bdm-019 -- migration 0098_bdm_agent_link (spec §3). Round trip and the downgrade refusal run in a throwaway database (the bdm-018
 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -14,17 +14,17 @@ from alembic import command
 from app.core.config import settings
 from tests.test_bdm_018_migration import VERSIONS, _config, _sql
 
-BASE, HEAD = "0096_bdm_targets", "0097_bdm_agent_link"
+BASE, HEAD = "0097_lead_message_email", "0098_bdm_agent_link"
 
 
 def _migration():
-    spec = importlib.util.spec_from_file_location("_bdm_019_migration_0097", VERSIONS / f"{HEAD}.py")
+    spec = importlib.util.spec_from_file_location("_bdm_019_migration_0098", VERSIONS / f"{HEAD}.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
-def test_chains_after_0096_and_is_the_single_head():
+def test_chains_after_0097_and_is_the_single_head():
     migration = _migration()
     assert (migration.revision, migration.down_revision) == (HEAD, BASE)
     script = ScriptDirectory.from_config(_config())

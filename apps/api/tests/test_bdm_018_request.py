@@ -84,7 +84,7 @@ async def test_only_school_organizations_have_onboarding(client, db_session):
     w = await school_world(client, db_session)
     detail = (await client.get(f"{ORGS}/{w['org']['id']}")).json()["organization"]
     assert detail["onboarding"] == {"request": None, "school": None, "agent": None, "can_request": True}  # bdm-019 added `agent`
-    # bdm-019 (DEC-SCOPE-106) gave Agent organizations their own handover (test_bdm_019_request); College ones still have none.
+    # bdm-019 (DEC-SCOPE-107) gave Agent organizations their own handover (test_bdm_019_request); College ones still have none.
     other = await school_world_of(client, db_session, "college")
     detail = (await client.get(f"{ORGS}/{other['id']}")).json()["organization"]
     assert detail["onboarding"] is None

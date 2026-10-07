@@ -1,6 +1,6 @@
 # tel-021 — Telecaller dashboard + daily activity (design)
 
-Status: design for `feature/tel-021` (2026-10-07). Decision `DEC-SCOPE-105` (bdm-012 took 102, bdm-016 103, tel-025 holds 104), API §12X, RBAC §2.30.
+Status: merged to `main` as PR #118 @ `89e1c4eb` (2026-10-07). Decision `DEC-SCOPE-105` (bdm-012 took 102, bdm-016 103, tel-025 holds 104), API §12X, RBAC §2.30.
 No migration. Source: `docs/delivery/TELECALLER_CRM_BACKLOG.md` tel-021, Appendix B (B1–B10, D1–D13, K1–K6), T5, T24, T27.
 
 ## 1. Owner answers (2026-10-07)

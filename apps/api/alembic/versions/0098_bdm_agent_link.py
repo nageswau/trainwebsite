@@ -1,9 +1,9 @@
 """bdm-019 -- agent onboarding handover: the Agent Organization link and agent requests.
 
-Revision ID: 0097_bdm_agent_link
-Revises: 0096_bdm_targets
+Revision ID: 0098_bdm_agent_link
+Revises: 0097_lead_message_email
 
-docs/superpowers/specs/2026-10-07-bdm-019-agent-onboarding-handover-design.md §3 (DEC-SCOPE-106). Two nullable FK columns
+docs/superpowers/specs/2026-10-07-bdm-019-agent-onboarding-handover-design.md §3 (DEC-SCOPE-107). Two nullable FK columns
 (`bdm_organizations.agent_org_id`, unique; `bdm_onboarding_requests.agent_org_id`) and three CHECKs replaced or added, so a request may
 be for an Agent organization and complete with an agency. No row is read or written: every existing request is a School one with no
 agency, which the new CHECKs accept. 0001 builds a fresh database from the current models, which already carry all of it, so each step is
@@ -11,9 +11,11 @@ guarded. CHECKS must stay a subset of app.models.BDM_ONBOARDING_CHECKS (test_bdm
 request or agent link exists, then restores 0084's rules.
 
 Re-chained 2026-10-07 on merging `main` @ `89e1c4eb`: drafted as `0095_bdm_agent_link` on `0094_bdm_daily_reports` (DEC-SCOPE-100), but
-tel-013's `0095_lead_messages` (DEC-SCOPE-100) and bdm-016's `0096_bdm_targets` (DEC-SCOPE-103) merged first, so this is `0097` after
-`0096_bdm_targets` and the decision is DEC-SCOPE-106. A database stamped at `0095_bdm_agent_link` is re-stamped with
-`alembic stamp --purge 0094_bdm_daily_reports` then `upgrade head` (every step here is guarded).
+tel-013's `0095_lead_messages` (DEC-SCOPE-100) and bdm-016's `0096_bdm_targets` (DEC-SCOPE-103) merged first, so it became `0097` after
+`0096_bdm_targets` (DEC-SCOPE-106). Re-chained again on merging `main` @ `692ffa78`: tel-014's `0097_lead_message_email` (DEC-SCOPE-106)
+merged first, so this is `0098` after `0097_lead_message_email` and the decision is DEC-SCOPE-107. A database stamped at
+`0095_bdm_agent_link` or `0097_bdm_agent_link` is re-stamped with `alembic stamp --purge 0094_bdm_daily_reports` then `upgrade head`
+(every step here is guarded).
 """
 
 import sqlalchemy as sa
@@ -21,8 +23,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0097_bdm_agent_link"
-down_revision = "0096_bdm_targets"
+revision = "0098_bdm_agent_link"
+down_revision = "0097_lead_message_email"
 branch_labels = None
 depends_on = None
 
@@ -74,7 +76,7 @@ def downgrade() -> None:
     if not op.get_context().as_sql:
         bind = op.get_bind()
         if bind.execute(sa.text(f"SELECT 1 FROM {REQUESTS} WHERE kind <> 'school' LIMIT 1")).first() or bind.execute(sa.text(f"SELECT 1 FROM {ORGS} WHERE agent_org_id IS NOT NULL LIMIT 1")).first():
-            raise RuntimeError("Cannot downgrade 0097_bdm_agent_link: agent onboarding data exists. Clear it deliberately first.")
+            raise RuntimeError("Cannot downgrade 0098_bdm_agent_link: agent onboarding data exists. Clear it deliberately first.")
     for name in CHECKS:
         op.drop_constraint(name, REQUESTS, type_="check")
     for name, sql in SCHOOL_ONLY.items():

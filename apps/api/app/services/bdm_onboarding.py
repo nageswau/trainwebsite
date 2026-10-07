@@ -1,5 +1,5 @@
 """bdm-018 (DEC-SCOPE-085, spec §5): the school onboarding handover -- request rules, resolution, queue and output. bdm-019
-(DEC-SCOPE-106): the same handover for Agent organizations, resolved by linking an existing Agent Organization by its code.
+(DEC-SCOPE-107): the same handover for Agent organizations, resolved by linking an existing Agent Organization by its code.
 
 Functions only; nothing here commits -- the route owns the transaction (bdm-002's rule). Lock order is always organization -> request
 -> school or agency (spec §5). Audit metadata and logs carry ids only, never the note, the reason or any name."""

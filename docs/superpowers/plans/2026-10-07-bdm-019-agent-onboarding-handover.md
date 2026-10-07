@@ -4,14 +4,14 @@ Spec: `docs/superpowers/specs/2026-10-07-bdm-019-agent-onboarding-handover-desig
 
 ## Tasks
 
-1. **Migration + model.** `0097_bdm_agent_link`: two nullable FK columns, unique link, the three CHECK strings (§3), a guarded downgrade. Model: columns and `BDM_ONBOARDING_CHECKS`. Tests: `test_bdm_019_migration.py` (chain/head, CHECK parity, round trip, downgrade refusal). Update `test_bdm_018_migration.test_checks_equal_the_model` to compare 0084's frozen strings with the model plus 0097's replacements, and add `agent_org_id` to its FK map.
+1. **Migration + model.** `0098_bdm_agent_link`: two nullable FK columns, unique link, the three CHECK strings (§3), a guarded downgrade. Model: columns and `BDM_ONBOARDING_CHECKS`. Tests: `test_bdm_019_migration.py` (chain/head, CHECK parity, round trip, downgrade refusal). Update `test_bdm_018_migration.test_checks_equal_the_model` to compare 0084's frozen strings with the model plus 0098's replacements, and add `agent_org_id` to its FK map.
 2. **Request rule per kind.** `bdm_onboarding.check_request` / `add_request` / `org_onboarding_out`. Tests: `test_bdm_019_request.py` (agent before Agreement Signed → 422; at it → 201 with `kind='agent'`; college 422; pending / linked 409; manager 403; out of scope 404; admin notice text).
 3. **Admin queue + link-agent + reject.** `queue_page(kind)`, `items_out` (`kind`, `agent_org`), `lock_pending(kind)`, `agent_by_code`, `complete` for agent orgs, `outcome_notice` per kind; routes `link-agent`, the `/link` and School-create kind guard. Tests: `test_bdm_019_admin.py` (default queue school-only, `kind=agent`, every link refusal, the 1:1 rule, reject notice, non-admin 403, audit row).
 4. **Live stages.** `bdm_pipeline.live_status` (agent), `pipeline_out` (counts, Inactive). Tests: `test_bdm_019_live.py` (pending only; linked pending org; Master; staff; active; suspended → Inactive; counts from `org_counts`; unlinked unchanged).
 5. **AC4.** `test_bdm_019_pii.py`: a BDM and a manager get 403/404 on every agency student path, and no agency student name or email appears in the detail, list or queue responses.
 6. **Web.** `lib/bdmOnboarding.ts` types; `BdmOrganizationOnboarding` (agent states); `AdminSchoolOnboardingRequests` `kind` prop; mount on `WorkflowPanel` `agents`; `BdmOrganizationPipeline` count; `BdmOrganizationProfileDetails` live staff + commission note. Vitest for each.
 7. **E2E.** `tests/e2e/bdm-019-agent-onboarding.spec.ts`: request → admin links by code → the BDM sees the live steps.
-8. **Docs.** `DEC-SCOPE-106`, API 12Y, RBAC 2.31, DATA_MODEL, backlog status, QA record.
+8. **Docs.** `DEC-SCOPE-107`, API 12AA, RBAC 2.33, DATA_MODEL, backlog status, QA record.
 
 ## Phase 3 review notes (applied to the tasks above)
 

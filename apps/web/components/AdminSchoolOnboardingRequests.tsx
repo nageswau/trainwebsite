@@ -11,7 +11,7 @@ const UNABLE = "Unable to load onboarding requests.";
 
 // bdm-018 (spec §6): BDM requests to onboard a signed School, oldest first. "Use for new school" hands one to the create form; a School
 // that already exists is linked by its School ID; a rejection needs a reason, which the BDM is told. The server re-checks every rule.
-// bdm-019 (DEC-SCOPE-106 A1): `kind="agent"` is the Agents page's queue -- an agency is never created here, only linked by its code.
+// bdm-019 (DEC-SCOPE-107 A1): `kind="agent"` is the Agents page's queue -- an agency is never created here, only linked by its code.
 const TEXT = {
   school: { title: "School onboarding requests", link: "Link existing school", field: "School ID", submit: "Link school", url: "link", body: "school_code" },
   agent: { title: "Agent onboarding requests", link: "Link agent organization", field: "Agent code", submit: "Link agent", url: "link-agent", body: "agent_code" },

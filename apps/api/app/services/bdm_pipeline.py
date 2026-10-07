@@ -75,7 +75,7 @@ def _agent_live(agency: dict) -> dict:
 
 
 async def live_status(db: AsyncSession, org: BdmOrganization) -> dict | None:
-    """S3, filled by bdm-018 for School organizations (DEC-SCOPE-085 H2, spec §4) and bdm-019 for Agent ones (DEC-SCOPE-106 A3-A5):
+    """S3, filled by bdm-018 for School organizations (DEC-SCOPE-085 H2, spec §4) and bdm-019 for Agent ones (DEC-SCOPE-107 A3-A5):
     each live step's own evidence from the linked partner record; a pending request alone means nothing is reached yet. None (no request,
     no link) keeps "Awaiting handover". Agent volume steps map to counts; the `INACTIVE` key is not a step."""
     if org.bdm_type not in _LIVE_KEYS:

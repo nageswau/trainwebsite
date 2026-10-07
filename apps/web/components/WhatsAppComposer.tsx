@@ -3,7 +3,7 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import { sendJson } from "@/lib/apiErrors";
 import type { Template } from "@/lib/telecallerContent";
-import { BODY_MAX, activeWhatsAppTemplates, createMessageUrl, isRenderedTemplate, renderUrl, waHref } from "@/lib/telecallerMessages";
+import { BODY_MAX, activeTemplates, createMessageUrl, isRenderedTemplate, renderUrl, waHref } from "@/lib/telecallerMessages";
 
 /** tel-013 (spec §4; D3-D5, WA4): pick a template (rendered with the lead's values) or write a custom message, edit it, open wa.me, then
  *  confirm. Only "Yes, record as sent" writes the log -- wa.me can't report delivery, and "Not sent" keeps the text. */
@@ -26,7 +26,7 @@ export default function WhatsAppComposer({ leadId, to, onRecorded, onCancel }: {
   useEffect(() => {
     picker.current?.focus(); // QA-02: the composer may open far from the button that opened it
     const controller = new AbortController();
-    activeWhatsAppTemplates(controller.signal).then(setTemplates).catch(() => controller.signal.aborted || setTemplates("failed"));
+    activeTemplates("whatsapp", controller.signal).then(setTemplates).catch(() => controller.signal.aborted || setTemplates("failed"));
     return () => {
       controller.abort();
       renderAbort.current?.abort();

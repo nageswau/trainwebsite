@@ -6059,13 +6059,32 @@ class LeadCallCreate(BaseModel):
     next_follow_up: LeadFollowUpCreate | None = None
 
 
-class LeadMessageCreate(BaseModel):
-    """tel-013: D9 WhatsApp only (email arrives with tel-014); WA4 the template is optional; WA1 the text as sent (tel-012's limit)."""
+class LeadWhatsAppCreate(BaseModel):
+    """tel-013: WA4 the template is optional; WA1 the text as sent (tel-012's limit)."""
 
     model_config = ConfigDict(extra="forbid")
     channel: Literal["whatsapp"]
     template_id: UUID | None = None
     body: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
+
+
+def _one_line(value):
+    """tel-014 E6: a subject is one header line -- CR/LF become spaces (header injection)."""
+    return re.sub(r"[\r\n]+", " ", value) if isinstance(value, str) else value
+
+
+class LeadEmailCreate(BaseModel):
+    """tel-014 (DEC-SCOPE-106): EM4 the template is optional; E6 tel-012's email limits. The recipient is always the lead's address (E7),
+    never the caller's."""
+
+    model_config = ConfigDict(extra="forbid")
+    channel: Literal["email"]
+    template_id: UUID | None = None
+    subject: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200), BeforeValidator(_one_line)]
+    body: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=5000)]
+
+
+LeadMessageCreate = Annotated[LeadWhatsAppCreate | LeadEmailCreate, Field(discriminator="channel")]
 
 
 class LeadCallUpdate(BaseModel):
@@ -6148,3 +6167,78 @@ class LeadReturnIn(BaseModel):
 class LeadStudentLinkIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     student_id: UUID
+
+
+# --- tel-025 (DEC-SCOPE-104, spec §2): telecaller deactivation, team move, handover and manager deactivation --------------------------
+
+TelecallerReassignTarget = Literal["telecaller", "queue"]
+
+
+class TelecallerReassign(BaseModel):
+    """LC3: who takes over the open leads -- an active telecaller of the same team, or the team's unassigned queue. Whether a target is
+    required at all depends on the open work, which only the route knows (AC3)."""
+
+    model_config = ConfigDict(extra="forbid")
+    target: TelecallerReassignTarget | None = None
+    reassign_to: UUID | None = None
+
+    @model_validator(mode="after")
+    def _target_matches(self):
+        if self.target == "telecaller" and self.reassign_to is None:
+            raise ValueError("Choose the telecaller who takes over")
+        if self.target != "telecaller" and self.reassign_to is not None:
+            raise ValueError("Only a telecaller target takes reassign_to")
+        return self
+
+
+class TelecallerTeamMove(TelecallerReassign):
+    team: Literal["it", "overseas"]
+    reporting_manager_user_id: UUID | None = None
+
+
+class TelecallerOpenWork(BaseModel):
+    leads: int
+    follow_ups: int
+    appointments: int
+
+
+class TelecallerHandoverOut(BaseModel):
+    id: UUID
+    target: TelecallerReassignTarget | None
+    moved: TelecallerOpenWork
+
+
+class TelecallerDeactivateOut(TelecallerHandoverOut):
+    active: bool
+    rules_removed: int
+
+
+class TelecallerTeamMoveOut(TelecallerHandoverOut):
+    team: str
+    rules_removed: int
+
+
+class TelecallerManagerDeactivate(BaseModel):
+    """D4: `reassign_to` is required only while telecallers report to the manager (checked by the route)."""
+
+    model_config = ConfigDict(extra="forbid")
+    reassign_to: UUID | None = None
+
+
+class TelecallerManagerRow(BdmManagerOption):
+    """The reporting-manager picker and the Telecaller managers card: every telecaller reporting to this manager, active or not (D4)."""
+
+    telecaller_count: int
+
+
+class TelecallerManagerPage(BaseModel):
+    items: list[TelecallerManagerRow]
+    total: int
+    limit: int
+    offset: int
+
+
+class TelecallerManagerDeactivateOut(BaseModel):
+    id: UUID
+    active: bool
+    moved_telecallers: int

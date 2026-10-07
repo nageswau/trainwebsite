@@ -156,6 +156,7 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
   const [stageNotice, setStageNotice] = useState<Notice>(null);
   const [callSignal, setCallSignal] = useState(0);
   const [whatsAppSignal, setWhatsAppSignal] = useState(0);
+  const [emailSignal, setEmailSignal] = useState(0);
   const [followUpsVersion, setFollowUpsVersion] = useState(0);
   const call = telHref(lead.phone);
   // tel-010 / tel-011 (D8, F2, F4): only the lead's telecaller logs calls and adds follow-ups (a manager reads); never on a closed lead
@@ -214,6 +215,10 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
         {telecallerWrites && lead.whatsapp_to && (
           <button type="button" className="btn secondary small" aria-label={`WhatsApp ${lead.name}`} onClick={() => setWhatsAppSignal((n) => n + 1)}>WhatsApp</button>
         )}
+        {/* tel-014: opens the email composer (E1 as WA2; AC3: the lead has an email address) */}
+        {telecallerWrites && lead.email && (
+          <button type="button" className="btn secondary small" aria-label={`Email ${lead.name}`} onClick={() => setEmailSignal((n) => n + 1)}>Email</button>
+        )}
         {!lead.read_only && (
           <div>
             <LeadStageControl lead={lead} canReopen={canReopen} move={moveStage} onMessage={(m) => setStageNotice({ text: m.text, failed: m.failed })}
@@ -259,7 +264,8 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
           else if (result.follow_up_id) setFollowUpsVersion((n) => n + 1);
         }} />
 
-      <LeadMessages leadId={lead.id} whatsappTo={lead.whatsapp_to} canWrite={telecallerWrites} openSignal={whatsAppSignal} />
+      <LeadMessages leadId={lead.id} whatsappTo={lead.whatsapp_to} email={lead.email} canWrite={telecallerWrites} openSignal={whatsAppSignal}
+        emailSignal={emailSignal} />
 
       <LeadFollowUps leadId={lead.id} leadStage={lead.status} canWrite={telecallerWrites} refresh={followUpsVersion} onStageChanged={stageChanged} />
 
