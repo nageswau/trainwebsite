@@ -640,6 +640,20 @@ The same inline pattern as §2.19 (`lead_pipeline.scope`, then `telecaller_leads
 | `counselor` | none yet → `403`; the read after handover is tel-018's (QF3) | — | `tel-009` |
 | every other role | none → `403` | — | `tel-009` |
 
+### 2.23 Lead counselling appointments *(net-new, added 2026-10-07 — `DEC-SCOPE-095`, `tel-016`)*
+
+The same inline pattern as §2.19 for the lead routes (`lead_pipeline.scope`, then `telecaller_leads.require_writable` on a booking). The
+action routes resolve scope from the session: the appointment's counselor, or the telecaller of its lead; anything else is `404`. Locks:
+lead → counselor user → appointment.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | read the lead's appointments and the booking options; **book**; reschedule / cancel an open appointment | own leads; none once handed over (`403`) | `tel-016` |
+| `telecaller_manager` | read only (book `403`; actions `404`) | §2.19's | `tel-016` |
+| `super_admin` | read only, as a manager | all leads | `tel-016` |
+| `counselor` (IT or overseas) | list own lead appointments; confirm, complete, no-show (after the start), reschedule, cancel | `staff_id` = self; another counselor's is `404` | `tel-016` |
+| every other role | none → `403` on the lead routes and the counselor list, `404` on an action | — | `tel-016` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

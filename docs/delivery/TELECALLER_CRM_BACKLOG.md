@@ -713,6 +713,10 @@ from tel-008. The rendered text is plain, so this item URL-encodes it for wa.me.
 
 ### tel-016 — Counselor appointment booking for leads
 
+**Status (2026-10-07):** **implemented** on `feature/tel-016` (`DEC-SCOPE-095` AP1–AP4 + AP5–AP14, migration `0091_lead_appointments`, API
+contract §12Q, RBAC §2.23). Spec `docs/superpowers/specs/2026-10-07-tel-016-lead-appointments-design.md`. Q-11 → AP1 (refuse, 60 min);
+Q-12 → AP4 (any active counselor of the division; not a handover).
+
 - **Business requirement:** §9 counselor types and fields, statuses; T10.
 - **Existing behavior:** `appointments` requires an overseas student user; there's no lead link and no IT.
 - **Expected behavior:**
