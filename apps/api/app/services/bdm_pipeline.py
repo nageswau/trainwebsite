@@ -10,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bdm_stages import AGENT_STATUS, LIVE, MANUAL, PIPELINES, VOLUME
 from app.models import (
+    AgentOrg,
+    AgentOrgMember,
     BdmOnboardingRequest,
     BdmOrganization,
     BdmPipelineEvent,
@@ -23,10 +25,13 @@ from app.models import (
     User,
 )
 from app.schemas import BdmStageMove
+from app.services.agent_network import org_counts
 from app.services.bdm import bdm_context, person_ref
 
 _LATER_STATE = {MANUAL: "upcoming", LIVE: "awaiting_handover", VOLUME: "not_tracked"}
-_SCHOOL_LIVE = tuple(s.key for s in PIPELINES["school"] if s.kind == LIVE)
+_LIVE_KEYS = {t: tuple(s.key for s in PIPELINES[t] if s.kind == LIVE) for t in ("school", "agent")}
+_AGENT_VOLUME = tuple(s.key for s in PIPELINES["agent"] if s.kind == VOLUME)
+INACTIVE = "inactive"  # bdm-019 A5: the linked agency is suspended or rejected
 STAGE_UNKNOWN = "Choose a stage of this organization's pipeline"
 STAGE_LIVE = "This stage is set by the onboarding handover"
 STAGE_VOLUME = "This step is counted from live records, not set by hand"
@@ -41,15 +46,46 @@ def label_of(bdm_type: str, key: str) -> str:
     return next((s.label for s in PIPELINES[bdm_type] if s.key == key), key)
 
 
-async def live_status(db: AsyncSession, org: BdmOrganization) -> dict[str, bool] | None:
-    """S3, filled by bdm-018 for School organizations (DEC-SCOPE-085 H2, spec §4): each live step's own evidence from the linked
-    School, in one query of EXISTS checks; a pending request alone means nothing is reached yet. None (no request, no link) keeps
-    "Awaiting handover". Agent organizations wait for bdm-019."""
-    if org.bdm_type != "school":
+async def agency_snapshot(db: AsyncSession, agent_org_id) -> dict:
+    """bdm-019 (A7): what a BDM may see of a linked Agent Organization -- its name, code and status, whether an active Master exists,
+    and aggregate counts from AGN-022's `org_counts` (the agency dashboard's definitions). No member or student row leaves here."""
+    agency = await db.get_one(AgentOrg, agent_org_id)
+    master = exists().where(AgentOrgMember.org_id == agency.id, AgentOrgMember.role == "master", AgentOrgMember.status == "active")
+    counts = (await org_counts(db, [agency.id]))[agency.id]
+    return {
+        "name": agency.name,
+        "prefix": agency.prefix,
+        "status": agency.status,
+        "master_login": bool(await db.scalar(select(master))),
+        "staff_count": counts["staff_count"],
+        "counts": {k: counts[k] for k in _AGENT_VOLUME},
+    }
+
+
+def _agent_live(agency: dict) -> dict:
+    """bdm-019 A3-A5: each live Agent step on its own evidence, the volume counts, and whether the agency is suspended or rejected."""
+    return {
+        "agent_onboarding": True,
+        "master_login_created": agency["master_login"],
+        "staff_logins_created": agency["staff_count"] > 0,
+        "active_agent": agency["status"] == "active",
+        **agency["counts"],
+        INACTIVE: agency["status"] in ("suspended", "rejected"),
+    }
+
+
+async def live_status(db: AsyncSession, org: BdmOrganization) -> dict | None:
+    """S3, filled by bdm-018 for School organizations (DEC-SCOPE-085 H2, spec §4) and bdm-019 for Agent ones (DEC-SCOPE-100 A3-A5):
+    each live step's own evidence from the linked partner record; a pending request alone means nothing is reached yet. None (no request,
+    no link) keeps "Awaiting handover". Agent volume steps map to counts; the `INACTIVE` key is not a step."""
+    if org.bdm_type not in _LIVE_KEYS:
         return None
-    if org.school_id is None:
+    link = org.school_id if org.bdm_type == "school" else org.agent_org_id
+    if link is None:
         pending = exists().where(BdmOnboardingRequest.organization_id == org.id, BdmOnboardingRequest.status == "pending")
-        return dict.fromkeys(_SCHOOL_LIVE, False) if await db.scalar(select(pending)) else None
+        return dict.fromkeys(_LIVE_KEYS[org.bdm_type], False) if await db.scalar(select(pending)) else None
+    if org.bdm_type == "agent":
+        return _agent_live(await agency_snapshot(db, link))
     students = select(SchoolStudent.id).where(SchoolStudent.school_id == org.school_id)
     checks = {
         "school_onboarding": true(),
@@ -72,26 +108,44 @@ async def live_status(db: AsyncSession, org: BdmOrganization) -> dict[str, bool]
     return {key: bool(value) for key, value in row._mapping.items()}
 
 
-def pipeline_out(org: BdmOrganization, live: dict[str, bool] | None = None) -> dict:
+def _agent_status(org: BdmOrganization, live: dict | None) -> str | None:
+    """S4 (D13), completed by bdm-019 A5: the stored-stage mapping until a request exists; then Onboarding, Active once the agency is
+    active, Inactive while it is suspended or rejected."""
+    if org.bdm_type != "agent":
+        return None
+    if live is None:
+        return AGENT_STATUS[org.pipeline_stage]
+    if live.get(INACTIVE):
+        return "Inactive"
+    return "Active" if live["active_agent"] else "Onboarding"
+
+
+def pipeline_out(org: BdmOrganization, live: dict | None = None) -> dict:
     """bdm-018 (spec §4): with `live`, manual steps up to the stored stage are done, live steps are done on their own evidence and the
-    first one without it is current. `stage` stays the stored manual stage (H11)."""
+    first one without it is current. bdm-019 A4: a counted volume step carries its count and is done once it is above zero. `stage`
+    stays the stored manual stage (H11)."""
     steps = PIPELINES[org.bdm_type]
     current = next(i for i, s in enumerate(steps) if s.key == org.pipeline_stage)
     first_open = next((s.key for s in steps if s.kind == LIVE and not live[s.key]), None) if live is not None else None
+
+    def count(step) -> int | None:
+        return live.get(step.key) if live is not None and step.kind == VOLUME else None
 
     def state(i: int, step) -> str:
         if live is not None and step.kind == LIVE:
             return "done" if live[step.key] else "current" if step.key == first_open else "upcoming"
         if live is not None and step.kind == MANUAL:
             return "done" if i <= current else "upcoming"
+        if count(step) is not None:
+            return "done" if count(step) > 0 else "upcoming"
         return "done" if i < current else "current" if i == current else _LATER_STATE[step.kind]
 
     return {
         "stage": org.pipeline_stage,
         "stage_label": steps[current].label,
         "lost": {"at": org.lost_at, "reason": org.lost_reason} if org.lost_at else None,
-        "agent_status": AGENT_STATUS[org.pipeline_stage] if org.bdm_type == "agent" else None,
-        "steps": [{"key": s.key, "label": s.label, "kind": s.kind, "state": state(i, s)} for i, s in enumerate(steps)],
+        "agent_status": _agent_status(org, live),
+        "steps": [{"key": s.key, "label": s.label, "kind": s.kind, "state": state(i, s), "count": count(s)} for i, s in enumerate(steps)],
     }
 
 

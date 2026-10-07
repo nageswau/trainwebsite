@@ -3,7 +3,7 @@
 from app.models import BdmOnboardingRequest, BdmOrganization, School
 from app.services.bdm_onboarding import outcome_notice
 
-ORG = BdmOrganization(code="ORG-000001", name="St Mary")
+ORG = BdmOrganization(code="ORG-000001", name="St Mary", bdm_type="school")  # bdm-019: the rejection title follows the type
 
 
 def test_a_school_with_the_organizations_name_is_not_named_twice():

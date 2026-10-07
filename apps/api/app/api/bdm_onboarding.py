@@ -1,4 +1,4 @@
-"""bdm-018 (DEC-SCOPE-085, spec §5): the school onboarding handover.
+"""bdm-018 (DEC-SCOPE-085, spec §5): the school onboarding handover; bdm-019 (DEC-SCOPE-100) adds the agent handover (`link-agent`).
 
 The BDM side resolves `{org_id}` through `services.bdm_organizations.load_scoped` (out of scope = 404) and writes under the organization
 row lock. The admin side is Overseas Admin / super_admin only (403 otherwise) and never reads a BDM organization except through a
@@ -13,9 +13,11 @@ from app.api.bdm import LIMIT, OFFSET
 from app.api.deps import get_current_user
 from app.api.workflows import _notify_user
 from app.core.database import get_db
-from app.models import BdmOnboardingRequest, BdmOrganization, School, User
+from app.models import AgentOrg, BdmOnboardingRequest, BdmOrganization, School, User
 from app.schemas import (
     BdmOnboardingItem,
+    BdmOnboardingKind,
+    BdmOnboardingLinkAgentIn,
     BdmOnboardingLinkIn,
     BdmOnboardingPage,
     BdmOnboardingRejectIn,
@@ -32,28 +34,37 @@ admin_router = APIRouter(prefix="/overseas-admin", tags=["bdm-onboarding"])
 
 @router.post("/organizations/{org_id}/onboarding-request", status_code=201, response_model=BdmOrganizationEnvelope)
 async def request_onboarding(org_id: UUID, payload: BdmOnboardingRequestIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """AC1 / H5-H6: the assigned BDM or super_admin, a School organization whose MoU reads Signed or Active, no link, none pending."""
+    """AC1 / H5-H6: the assigned BDM or super_admin, a School organization whose MoU reads Signed or Active -- or (bdm-019 A2) an Agent
+    organization at Agreement Signed -- with no link and none pending."""
     org = await org_svc.load_scoped(db, user, org_id, lock=True)
     org_svc.require(user, org, "can_edit", "onboarding_request")
     await svc.check_request(db, org)
     request = await svc.add_request(db, user, org, payload.note)
+    title = f"{svc.LABEL[org.bdm_type]} onboarding requested"
     for admin in await svc.overseas_admins(db):
-        await _notify_user(db, admin, "School onboarding requested", f"{org.code} · {org.name} is ready for onboarding.", svc.ADMIN_URL, channels=[])
+        await _notify_user(db, admin, title, f"{org.code} · {org.name} is ready for onboarding.", svc.ADMIN_URL[org.bdm_type], channels=[])
     await db.commit()
     svc.log("bdm_onboarding_requested", user, request)
     return {"organization": await org_svc.organization_out(db, user, org)}
 
 
 @admin_router.get("/bdm-onboarding-requests", response_model=BdmOnboardingPage)
-async def onboarding_queue(status: BdmOnboardingStatus = "pending", limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Spec §5.2: the queue with each organization's details, which prefill the School create form."""
+async def onboarding_queue(
+    status: BdmOnboardingStatus = "pending",
+    kind: BdmOnboardingKind = "school",
+    limit: int = LIMIT,
+    offset: int = OFFSET,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Spec §5.2: one kind's queue (bdm-019; School unless asked) with each organization's details, which prefill the School create form."""
     svc.require_admin(user)
-    return await svc.queue_page(db, status, limit, offset)
+    return await svc.queue_page(db, kind, status, limit, offset)
 
 
-async def notify_outcome(db: AsyncSession, request: BdmOnboardingRequest, org: BdmOrganization, school: School | None) -> None:
+async def notify_outcome(db: AsyncSession, request: BdmOnboardingRequest, org: BdmOrganization, school: School | None, agency: AgentOrg | None = None) -> None:
     """H7, in the resolving transaction: the organization's assigned BDM learns the outcome."""
-    title, body = svc.outcome_notice(org, request, school)
+    title, body = svc.outcome_notice(org, request, school, agency)
     await _notify_user(db, await db.get_one(User, org.assigned_bdm_user_id), title, body, f"/bdm/organizations/{org.id}", channels=[])
 
 
@@ -76,10 +87,23 @@ async def reject_request(request_id: UUID, payload: BdmOnboardingRejectIn, user:
 async def link_school(request_id: UUID, payload: BdmOnboardingLinkIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """H3: a School onboarded before this feature (or without the request) is linked through the BDM's request."""
     svc.require_admin(user)
-    request, org = await svc.lock_pending(db, request_id)
+    request, org = await svc.lock_pending(db, request_id, svc.SCHOOL)
     school = await svc.school_by_code(db, payload.school_code)
     await svc.complete(db, user, request, org, school, "linked")
     await notify_outcome(db, request, org, school)
     await db.commit()
     svc.log("bdm_onboarding_linked", user, request, school_id=str(school.id))
+    return await _item(db, request)
+
+
+@admin_router.post("/bdm-onboarding-requests/{request_id}/link-agent", response_model=BdmOnboardingItem)
+async def link_agent(request_id: UUID, payload: BdmOnboardingLinkAgentIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """bdm-019 A1: an agent request is resolved with an existing Agent Organization, found by its code; approving it stays AGN-001's."""
+    svc.require_admin(user)
+    request, org = await svc.lock_pending(db, request_id, svc.AGENT)
+    agency = await svc.agency_by_code(db, payload.agent_code)
+    await svc.complete_agent(db, user, request, org, agency)
+    await notify_outcome(db, request, org, None, agency)
+    await db.commit()
+    svc.log("bdm_onboarding_linked", user, request, agent_org_id=str(agency.id))
     return await _item(db, request)

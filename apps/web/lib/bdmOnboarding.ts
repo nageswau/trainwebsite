@@ -2,15 +2,26 @@ import type { OrgPerson } from "@/lib/bdmOrganizations";
 
 // bdm-018 (DEC-SCOPE-085): the school onboarding handover. The API owns every rule (who may request, MoU Signed/Active, one pending,
 // one School per organization); these types only read its responses.
+// bdm-019 (DEC-SCOPE-100): Agent organizations hand over the same way and are linked to an Agent Organization by its code; the BDM sees
+// that agency as aggregates only (A7).
 export type OnboardingStatus = "pending" | "completed" | "rejected";
+export type OnboardingKind = "school" | "agent";
+export type AgentLink = {
+  name: string; prefix: string; status: string; master_login: boolean; staff_count: number;
+  counts: { students: number; applications: number; enrollments: number };
+};
 export type OrgOnboarding = {
   request: { id: string; status: OnboardingStatus; created_at: string; resolved_at: string | null; reject_reason: string | null } | null;
   school: { name: string; school_code: string | null } | null;
+  agent?: AgentLink | null;
   can_request: boolean;
 };
 
+/** The linked agency's AGN-001 status, worded for the BDM (who only reads it). */
+export const AGENCY_STATUS: Record<string, string> = { pending: "Pending approval", active: "Active", suspended: "Suspended", rejected: "Rejected" };
+
 export type OnboardingItem = {
-  id: string; status: OnboardingStatus; note: string | null; created_at: string; resolved_at: string | null; resolution: "created" | "linked" | null;
+  id: string; kind: OnboardingKind; status: OnboardingStatus; note: string | null; created_at: string; resolved_at: string | null; resolution: "created" | "linked" | null;
   reject_reason: string | null; requested_by: { id: string; full_name: string }; assigned_bdm: OrgPerson;
   organization: {
     id: string; code: string; name: string; city: string; state: string | null; address: string | null; phone: string | null; email: string | null;
@@ -19,6 +30,7 @@ export type OnboardingItem = {
   primary_contact: { name: string; email: string | null; phone: string | null } | null;
   mou: { reference: string | null; signed_on: string | null } | null;
   school: { id: string; name: string; school_code: string | null } | null;
+  agent_org: { id: string; name: string; prefix: string; status: string } | null;
 };
 
 export const QUEUE_URL = "/api/v1/overseas-admin/bdm-onboarding-requests";

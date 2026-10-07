@@ -712,6 +712,18 @@ routes (a BDM outside the team is `404`).
 | `super_admin` | as a manager | all BDMs | `bdm-015` |
 | every other role | none → `403` | — | `bdm-015` |
 
+### 2.27 Agent onboarding handover *(net-new, added 2026-10-07 — `DEC-SCOPE-100`, `bdm-019`)*
+
+The BDM route resolves the organization through `load_scoped` (out of scope `404`) and `can_edit`; the admin routes check the role
+before any lookup. The link grants **no** access to the agency's tenant: a BDM or manager reads aggregates only (AC4, tested).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `bdm` (Agent type) | request onboarding of an own Agent organization at Agreement Signed; read the linked agency's name, code, status, Master exists, staff count, student / application / enrollment counts | assigned organizations | `bdm-019` |
+| `bdm_manager` | read the same (no request) | team | `bdm-019` |
+| `overseas_admin`, `super_admin` | read the agent queue (`kind=agent`); **link** a request to an Agent Organization by code; **reject** | all requests | `bdm-019` |
+| `bdm`, `bdm_manager` | agency students / applications / members, `/overseas-admin/agent-orgs/*`, `/agent/*` → `403` / `404` | — | `bdm-019` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

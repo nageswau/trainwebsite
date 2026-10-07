@@ -2,7 +2,7 @@
 import { type FormEvent, useState } from "react";
 
 import { sendJson } from "@/lib/apiErrors";
-import { onboardingMessage, requestUrl } from "@/lib/bdmOnboarding";
+import { AGENCY_STATUS, onboardingMessage, requestUrl } from "@/lib/bdmOnboarding";
 import { isOrganizationBody, type Organization } from "@/lib/bdmOrganizations";
 import { formatSchoolDateTime } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
@@ -39,17 +39,25 @@ export default function BdmOrganizationOnboarding({ organization, onRequested }:
     focus(ids.open);
   };
 
+  // bdm-019 (DEC-SCOPE-100): an Agent organization is linked to an existing Agent Organization; the BDM sees its summary only.
+  const isAgent = organization.bdm_type === "agent";
+  const agent = onboarding.agent ?? null;
+  const linked = Boolean(school || agent);
+  const title = isAgent ? "Agent onboarding" : "School onboarding";
   let status: string;
   if (school) status = `Onboarded as ${school.name}${school.school_code ? ` (School ID ${school.school_code})` : ""}.`;
-  else if (request?.status === "pending") status = `Requested on ${formatSchoolDateTime(request.created_at, true)}. Waiting for Overseas Admin to create or link the School.`;
+  else if (agent) status = `Linked to ${agent.name} (code ${agent.prefix}). Status: ${AGENCY_STATUS[agent.status] ?? agent.status}.`;
+  else if (request?.status === "pending") status = `Requested on ${formatSchoolDateTime(request.created_at, true)}. ${isAgent ? "Waiting for Overseas Admin to link the agent organization." : "Waiting for Overseas Admin to create or link the School."}`;
   else if (request?.status === "rejected") status = `Not approved on ${formatSchoolDateTime(request.resolved_at, true)}. Reason: ${request.reject_reason}`;
-  else if (can_request) status = "Ready to hand over: Overseas Admin will create the School, or link one that already exists.";
-  else status = organization.permissions.can_edit ? "Available once the MoU is Signed or Active." : "Not requested yet.";
+  else if (can_request) status = isAgent ? "Ready to hand over: Overseas Admin will link the agent organization once the agency is registered." : "Ready to hand over: Overseas Admin will create the School, or link one that already exists.";
+  else if (!organization.permissions.can_edit) status = "Not requested yet.";
+  else status = isAgent ? "Available once the agreement is signed." : "Available once the MoU is Signed or Active.";
 
   return (
-    <section className="action-card wide" aria-label="School onboarding">
-      <h3>School onboarding</h3>
-      <p className={request?.status === "rejected" && !school ? "form-message" : undefined}>{status}</p>
+    <section className="action-card wide" aria-label={title}>
+      <h3>{title}</h3>
+      <p className={request?.status === "rejected" && !linked ? "form-message" : undefined}>{status}</p>
+      {agent && <p className="muted">Master login: {agent.master_login ? "Created" : "Not yet"} · Staff logins: {agent.staff_count}</p>}
       {can_request && !open && (
         <button id={ids.open} type="button" className="btn small" onClick={() => setOpen(true)}>
           {request?.status === "rejected" ? "Request again" : "Request onboarding"}
