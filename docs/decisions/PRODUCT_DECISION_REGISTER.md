@@ -4480,3 +4480,32 @@ converts the lead at once.
 `services/lead_handover.py`; routes `api/lead_handover.py`; timeline rows gain `event`; telecaller lead detail gains `milestones`; components
 `LeadHandoverForm`, `LeadMilestones`, `CounselorLeadsPanel`, `CounselorLeadDetail`; pages `/{it|overseas}/counselor/leads/[id]`.
 **New Feature ID authorized:** `tel-018`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-018.
+
+### DEC-SCOPE-102 — BDM reminder engine (`bdm-012`)
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md` §6 Appointment reminders L198–L227, §7 Travel reminder L229–L248, §10 MoU L339–L369,
+§4 Common reminders L1254–L1334; `DERIVED_BLUEPRINT`) → `BDM_CRM_BACKLOG.md` §bdm-012 (AC1–AC6); `DEC-SCOPE-055` D6 (in-app + email,
+deep links need login, no WhatsApp), D18 (Q-09 timings), D19 (Q-10 MoU timings), D29 (nothing to organization contacts).
+**Status:** R1–R12 are **agent-recommended defaults** (the owner asked the session to proceed on recommended answers); owner confirmation
+pending. **No migration** (R1). No new API route; the BDM appointment page accepts `?action=`. Spec
+`docs/superpowers/specs/2026-10-07-bdm-012-reminder-engine-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| R1 | "Exactly once" store | AGN-017's `notifications.dedupe_key` (partial unique index), key `bdm012:{kind}:{entity_id}:{fire_key}`, `ON CONFLICT DO NOTHING` — not the backlog's `bdm_reminders_sent` table, which would duplicate it |
+| R2 | Cadence | Beat `bdm012-reminders` every 300 s → `app.worker.send_bdm_reminders_task` |
+| R3 | Kinds and times (IST) | Appointment 09:00 the day before + exactly 1 h before; trip 09:00 the day before `travel_date`; follow-up / task 09:00 on `due_on`; MoU follow-up 09:00 on day 5, 10, 15… after `status_changed_at` while Proposal Sent / Draft Shared; MoU renewal 09:00 on `valid_until − 30` for an Active MoU |
+| R4 | Catch-up | A 09:00 reminder can still go out later the same IST day; the hour-before one until the start; after that it is not sent (per-run counts are logged) |
+| R5 | Which records fire | Appointments scheduled / confirmed / rescheduled; trips approved + planned; tasks open; current MoUs of non-archived organizations |
+| R6 | Recipient | The owner at fire time (appointment / trip BDM, task assignee, the organization's assigned BDM), active users only; never managers or contacts; a reminder already sent is not re-sent after a reassignment |
+| R7 | Rescheduling | The key carries the event time, so a new time is a new reminder |
+| R8 | Channels | In-app + email only, even for users opted in to WhatsApp / SMS |
+| R9 | Email | SMTP (`mailer.send_bdm_reminder_email`, delivery context `bdm_reminder`); unset SMTP → `not_configured`, no webhook fallback; SMTP errors use ENH-014 retries, then `failed` with the error |
+| R10 | Deep links | `/bdm/appointments/{id}?action=confirm\|reschedule\|cancel` (Reschedule / Cancel open the form; Confirm focuses the button — a link never changes data); `/bdm/travel/{id}#trip-appointments\|#trip-costs\|#trip-remarks`; `/bdm/organizations/{org}#org-mou`; `/bdm/follow-ups?kind=` — no token in any link |
+| R11 | Already confirmed | No "Please confirm" line or Confirm button |
+| R12 | Bounds and failures | Keyset chunks of 200, committed per chunk; each reminder in a savepoint — a failure is counted and logged with ids only |
+
+**Consequences:** service `app/services/bdm_reminders.py`; task `send_bdm_reminders_task` + beat entry in `app/worker.py`;
+`mailer.send_bdm_reminder_email`; `delivery._send_email` routes `bdm_reminder`; web `?action=` on `app/bdm/appointments/[id]`
+(`BdmAppointmentDetail`, `BdmAppointmentActions`, `lib/bdmAppointments.reminderAction`); `id="org-mou"` on `BdmOrganizationMou`.
+**Not done (owner):** a manager digest; reminder preferences. **New Feature ID authorized:** none. **Status:** see `BDM_CRM_BACKLOG.md` §bdm-012.

@@ -52,6 +52,7 @@ describe("bdm-010 QA10-01 notifications for BDMs and managers", () => {
     expect(list.props.notifications).toEqual([notice]);
     expect(list.props.readBeforeOpen).toBe(true);
     expect(badgeOn(tree, BDM_NOTIFICATIONS_HREF)).toBe(1);
+    expect(list.props.emptyText).toMatch(/reminders/); // bdm-012: reminders land here too
   });
 
   it("the manager's notifications page is for BDM managers", async () => {
