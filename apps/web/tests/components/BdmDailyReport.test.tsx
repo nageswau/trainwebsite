@@ -103,6 +103,16 @@ describe("bdm-015 daily report", () => {
     expect(shown.textContent).toContain("Meera");
   });
 
+  it("a blank comment is refused without a request (QA15-01)", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    render(<BdmDailyReport initial={submitted()} mode="manager" />);
+    fireEvent.change(screen.getByLabelText("Your comment"), { target: { value: "   " } });
+    fireEvent.click(screen.getByRole("button", { name: "Save comment" }));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("Write a comment first."));
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("the manager sees a draft as not submitted, with no comment form", () => {
     render(<BdmDailyReport initial={report()} mode="manager" />);
     expect(screen.getByText("Not submitted yet. These counts are a live preview.")).toBeTruthy();

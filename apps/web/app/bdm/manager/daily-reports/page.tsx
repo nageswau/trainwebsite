@@ -28,6 +28,7 @@ export default async function ManagerDailyReportsPage({ searchParams }: { search
     return accessUnavailable(e, "/admin/login");
   }
   const page = (to: number) => `${PATH}?date=${day}&offset=${to}`;
+  const newestFirst = <T,>(items: T[]) => [...items].reverse(); // QA15-02: on a phone the chosen day is in view without scrolling
   return (
     <PortalShell nav={await nav} roleLabel={user.role === "super_admin" ? "Super Admin" : "BDM Manager"} userName={user.full_name}>
       <div className="portal-content">
@@ -55,14 +56,14 @@ export default async function ManagerDailyReportsPage({ searchParams }: { search
               <thead>
                 <tr>
                   <th scope="col">BDM</th>
-                  {grid.dates.map((d) => <th scope="col" key={d}>{formatCalendarDate(d)}</th>)}
+                  {newestFirst(grid.dates).map((d) => <th scope="col" key={d}>{formatCalendarDate(d)}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {grid.items.map((row) => (
                   <tr key={row.bdm.id}>
                     <th scope="row">{row.bdm.full_name}<span className="kpi-note muted">{BDM_TYPE_LABEL[row.bdm_type]} BDM</span></th>
-                    {row.days.map((cell) => (
+                    {newestFirst(row.days).map((cell) => (
                       <td key={cell.report_date}>
                         {cell.status === "not_started" ? (
                           <span aria-label="Not started">{GRID_STATUS_LABEL.not_started}</span>

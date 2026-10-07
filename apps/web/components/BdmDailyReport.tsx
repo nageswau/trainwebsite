@@ -50,9 +50,14 @@ export default function BdmDailyReport({ initial, mode }: { initial: DailyReport
 
   async function saveComment(e: FormEvent) {
     e.preventDefault();
+    setNotice(null);
+    if (!comment.trim()) { // QA15-01: `required` lets spaces through; refuse here instead of a 422 round trip
+      setError("Write a comment first.");
+      focus("daily-report-error");
+      return;
+    }
     setBusy(true);
     setError(null);
-    setNotice(null);
     const outcome = await sendJson(commentUrl(report.bdm.id, day), "PUT", { comment });
     setBusy(false);
     if (outcome.ok && isDailyReport(outcome.data)) {

@@ -57,6 +57,12 @@ describe("bdm-015 daily report pages", () => {
     expect(screen.getAllByRole("link", { name: "Missing" })).toHaveLength(5);
     expect(screen.getByLabelText("Not started").textContent).toBe("—");
     expect(screen.getByText("School BDM")).toBeTruthy();
+    // QA15-02: the newest day comes first, so a phone shows today without scrolling
+    const headings = screen.getAllByRole("columnheader").map((h) => h.textContent);
+    expect(headings).toEqual(["BDM", "05 Oct 2026", "04 Oct 2026", "03 Oct 2026", "02 Oct 2026", "01 Oct 2026", "30 Sept 2026", "29 Sept 2026"]);
+    const cells = screen.getAllByRole("cell").map((c) => c.textContent);
+    expect(cells[0]).toContain("Submitted");
+    expect(cells[6]).toBe("—");
   });
 
   it("an empty team says so; a BDM is refused the team pages", async () => {

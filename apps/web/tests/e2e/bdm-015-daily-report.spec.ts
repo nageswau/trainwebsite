@@ -77,10 +77,10 @@ test("BDM daily report: preview, submit, lock, manager grid and comment", async 
   await signIn(page, "admin", manager.email, E2E_PASSWORD, "/bdm/manager/dashboard");
   await page.goto("/bdm/manager/daily-reports");
   const rowOf = (name: string) => page.getByRole("row").filter({ has: page.getByRole("rowheader", { name: new RegExp(name) }) });
-  await expect(rowOf(`E2E BDM ${stamp}`).getByRole("cell").last()).toContainText("Submitted");
-  await expect(rowOf(`E2E Quiet ${stamp}`).getByRole("cell").last()).toHaveText("Missing");
+  await expect(rowOf(`E2E BDM ${stamp}`).getByRole("cell").first()).toContainText("Submitted"); // today is the first column (QA15-02)
+  await expect(rowOf(`E2E Quiet ${stamp}`).getByRole("cell").first()).toHaveText("Missing");
   await noOverflow(page);
-  await rowOf(`E2E BDM ${stamp}`).getByRole("cell").last().getByRole("link").click();
+  await rowOf(`E2E BDM ${stamp}`).getByRole("cell").first().getByRole("link").click();
   await page.waitForURL(`**/bdm/manager/daily-reports/${bdm.id}?date=${today}`);
   await expect(tile(page, "Calls made")).toHaveText("1");
   await page.getByLabel("Your comment").fill("Good coverage");
