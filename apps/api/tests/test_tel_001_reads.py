@@ -136,6 +136,6 @@ async def test_manager_picker_lists_active_managers_only(client, db_session):
     ids = await _all_ids(client, MANAGERS)
     assert str(active.id) in ids and str(inactive.id) not in ids
     hit = (await client.get(MANAGERS, params={"q": active.email})).json()["items"]
-    assert hit == [{"id": str(active.id), "full_name": "Picker Active", "email": active.email}]
+    assert hit == [{"id": str(active.id), "full_name": "Picker Active", "email": active.email, "telecaller_count": 0}]  # tel-025 adds the count
     await login(client, await make_user(db_session, "telecaller", "it"))
     assert (await client.get(MANAGERS)).status_code == 403

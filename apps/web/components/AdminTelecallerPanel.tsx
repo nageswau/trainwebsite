@@ -3,6 +3,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import AdminTelecallerCreateForm from "@/components/AdminTelecallerCreateForm";
+import AdminTelecallerManagersCard from "@/components/AdminTelecallerManagersCard";
 import AdminTelecallerRow from "@/components/AdminTelecallerRow";
 import CreateJumpLink from "@/components/CreateJumpLink";
 import { isPage, type Page } from "@/lib/apiErrors";
@@ -123,7 +124,7 @@ export default function AdminTelecallerPanel({ role }: { role: string }) {
                 </thead>
                 <tbody>
                   {data.items.map((r) => (
-                    <AdminTelecallerRow key={r.id} row={r} onChanged={(text) => { setNotice(text); reload(); }} />
+                    <AdminTelecallerRow key={r.id} row={r} role={role} onChanged={(text) => { setNotice(text); reload(); }} />
                   ))}
                 </tbody>
               </table>
@@ -138,6 +139,7 @@ export default function AdminTelecallerPanel({ role }: { role: string }) {
           </>
         )}
       </div>
+      {role === "super_admin" && <AdminTelecallerManagersCard onChanged={(text) => { setNotice(text); reload(); }} />}
     </>
   );
 }

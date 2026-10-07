@@ -16,7 +16,6 @@ from app.schemas import (
     TelecallerHandoverOut,
     TelecallerManagerDeactivate,
     TelecallerManagerDeactivateOut,
-    TelecallerManagerOpenWork,
     TelecallerOpenWork,
     TelecallerReassign,
     TelecallerTeamMove,
@@ -107,15 +106,6 @@ async def move_team(user_id: UUID, payload: TelecallerTeamMove, user: User = Dep
 def _super_admin_only(user: User) -> None:
     if user.role != "super_admin":
         raise HTTPException(403, "Only a Super Administrator can deactivate a telecaller manager")
-
-
-@router.get("/telecaller-managers/{manager_id}/open-work", response_model=TelecallerManagerOpenWork)
-async def manager_open_work(manager_id: UUID, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
-    _super_admin_only(user)
-    manager = await db.get(User, manager_id)
-    if manager is None or manager.role != "telecaller_manager":
-        raise HTTPException(404, "Telecaller manager not found")
-    return {"telecallers": await svc.team_size(db, manager_id)}
 
 
 @router.post("/telecaller-managers/{manager_id}/deactivate", response_model=TelecallerManagerDeactivateOut)

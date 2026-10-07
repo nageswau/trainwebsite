@@ -110,7 +110,8 @@ async def test_manager_with_reports_needs_a_replacement(client, db_session):
     replacement = await make_tl_manager(db_session)
     admin = await make_user(db_session, "super_admin", "global")
     await as_user(client, admin)
-    assert (await client.get(f"{MANAGERS}/{manager.id}/open-work")).json() == {"telecallers": 2}
+    listed = (await client.get(MANAGERS, params={"q": manager.email})).json()["items"]
+    assert [(x["id"], x["telecaller_count"]) for x in listed] == [(str(manager.id), 2)]
     refused = await post(client, f"{MANAGERS}/{manager.id}/deactivate", {})
     assert refused.status_code == 422 and (await fresh(db_session, User, manager.id)).active is True
     for bad in (manager.id, a.id, uuid.uuid4(), (await make_tl_manager(db_session, active=False)).id):

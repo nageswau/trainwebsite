@@ -6088,8 +6088,17 @@ class TelecallerManagerDeactivate(BaseModel):
     reassign_to: UUID | None = None
 
 
-class TelecallerManagerOpenWork(BaseModel):
-    telecallers: int
+class TelecallerManagerRow(BdmManagerOption):
+    """The reporting-manager picker and the Telecaller managers card: every telecaller reporting to this manager, active or not (D4)."""
+
+    telecaller_count: int
+
+
+class TelecallerManagerPage(BaseModel):
+    items: list[TelecallerManagerRow]
+    total: int
+    limit: int
+    offset: int
 
 
 class TelecallerManagerDeactivateOut(BaseModel):
