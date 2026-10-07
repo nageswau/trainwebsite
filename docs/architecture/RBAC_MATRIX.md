@@ -741,6 +741,18 @@ appointment.
 | `it_admin` / `overseas_admin` | link / unlink (a converted lead too) by the same rules | own division (`403` otherwise) | `tel-018` |
 | every other role | `403` on the counselor routes and the handover | — | `tel-018` |
 
+### 2.30 Telecaller dashboard + daily activity *(net-new, added 2026-10-07 — `DEC-SCOPE-103`, `tel-021`)*
+
+The same inline pattern as §2.19. Read-only; the subject comes from the session (`telecaller_context`) or, for a manager, from
+`telecaller_targets.telecaller_in_scope` (tel-022's direct-report rule).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | read own dashboard; read own daily activity for any day up to today | self; another `user_id` is `403` | `tel-021` |
+| `telecaller_manager` | read a report's daily activity (`user_id` required) | direct reports; anyone else `404` | `tel-021` |
+| `super_admin` | read any telecaller's daily activity | all telecallers | `tel-021` |
+| every other role | `403` (the dashboard is the telecaller's only) | — | `tel-021` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
