@@ -9,7 +9,7 @@ from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import Date, and_, cast, distinct, exists, func, or_, select, union
+from sqlalchemy import Date, Select, and_, cast, distinct, exists, func, or_, select, union
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.payments import PAID_STATUSES
@@ -119,8 +119,13 @@ def _activities(bdm, start, end, channel: str, direction: str | None = None):
     return _count(BdmActivity, *where)
 
 
+def _owned(column, bdm):
+    """`bdm` is one BDM's id, or (bdm-023) a sub-select of a team's BDM ids."""
+    return column.in_(bdm) if isinstance(bdm, Select) else column == bdm
+
+
 def _completed(bdm, start, end) -> list:
-    return [BdmAppointment.bdm_user_id == bdm, BdmAppointment.status == "completed", BdmAppointment.starts_at >= start, BdmAppointment.starts_at < end]
+    return [_owned(BdmAppointment.bdm_user_id, bdm), BdmAppointment.status == "completed", BdmAppointment.starts_at >= start, BdmAppointment.starts_at < end]
 
 
 def _meetings(*types: str):
@@ -159,7 +164,7 @@ def _mou_moved_to(status: str, org_type: str | None = None):
     """M-09 / M-11: MoU events by the BDM that moved a MoU into `status` (an event that kept it there is not a transition); bdm-016's
     K-A04 limits M-11 to agent organizations."""
     def build(bdm, start, end):
-        where = [BdmMouEvent.actor_user_id == bdm, BdmMouEvent.to_status == status, BdmMouEvent.from_status.is_distinct_from(status),
+        where = [_owned(BdmMouEvent.actor_user_id, bdm), BdmMouEvent.to_status == status, BdmMouEvent.from_status.is_distinct_from(status),
                  BdmMouEvent.created_at >= start, BdmMouEvent.created_at < end]
         if org_type:
             where.append(BdmMouEvent.mou_id.in_(select(BdmMou.id).where(BdmMou.organization_id.in_(_of_type(org_type)))))

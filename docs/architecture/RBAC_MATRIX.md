@@ -753,6 +753,17 @@ appointment.
 | `super_admin` | as a manager, and **past months** too | all BDMs | `bdm-016` |
 | every other role | none → `403` | — | `bdm-016` |
 
+### 2.30 BDM management dashboard *(net-new, added 2026-10-07 — `DEC-SCOPE-104`, `bdm-023`)*
+
+`require_manager` + `team_filter` gate the route; the only parameter (`manager_user_id`) is super_admin-only, so a manager can never
+widen scope. Read-only, like the other BDM manager reads (no audit row).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `bdm_manager` | read the overview tiles and alerts | BDMs reporting to them | `bdm-023` |
+| `super_admin` | the same, for all teams or one chosen manager's team | all BDMs | `bdm-023` |
+| `bdm` and every other role | none → `403` | — | `bdm-023` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

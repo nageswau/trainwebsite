@@ -1311,6 +1311,15 @@ past|current|future, editable, bdm: {id, full_name}, bdm_type, kpis: [{key, labe
 | `PUT /bdm/manager/targets` | Manager roles. Body `{month, items: [{bdm_user_id, kpi_key, target: 0–100000 \| null}]}` (1–200 items, one per BDM and KPI, unknown keys `422`). All or nothing: a KPI outside the BDM's type `422` (named), outside the team `404`, inactive BDM `422`, a past month by a manager `422`, more than 12 months ahead `422`. `200 {month, changed}`; `null` clears; unchanged values are not written; audit `bdm_target.set {month, changes: [{kpi, from, to}]}` per BDM |
 | `POST /bdm/manager/targets/copy` | Manager roles. Body `{month}`; same month rules. Copies the previous month's targets of active team BDMs where none is set yet. `200 {month, copied}`; audit `bdm_target.copied {month, from_month, kpis}` per BDM |
 
+## 12X. BDM management dashboard (`bdm-023`) — addendum, 2026-10-07
+
+`DEC-SCOPE-104`; design spec `docs/superpowers/specs/2026-10-07-bdm-023-management-dashboard-design.md` §4–§5. No migration. Read-only
+(no write, no audit, no log line). Signed out `401`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /bdm/manager/dashboard?manager_user_id=` | `bdm_manager` (own team) / `super_admin` (all teams), else `403` "BDM manager role required". `manager_user_id` (UUID, malformed `422`) is super_admin only: a manager sending it `422` "Only a super admin can choose a manager"; not a `bdm_manager` user `404` "Manager not found". `200 {today, month, manager: {id, full_name} \| null, tiles: [{key T-M01…T-M08, label, definition, value}], alerts: [{key AL-1…AL-7, label, tone: danger\|warning\|success, record: appointment\|trip\|task\|mou\|daily_report, count, items (first 10): [{id, title, bdm: {id, full_name}, at, organization_id}]}]}`. Rules: Appendix B.4 as tightened by the spec §4. Constant statement count |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

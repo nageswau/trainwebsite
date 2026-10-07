@@ -4541,3 +4541,33 @@ recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). 
 `api/bdm_targets.py`; pages `/bdm/manager/targets`, `/bdm/manager/targets/[bdmId]`; a "Monthly targets" card on My Day; components
 `BdmTargetsEditor`, `BdmTargetsCopy`, `BdmTargetsCard`. **Feature ID:** `bdm-016`. **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-016.
 
+
+### DEC-SCOPE-104 — BDM management dashboard: overview + alerts (`bdm-023`)
+
+**Evidence:** `EVID-016` §13 lines 413–434 (`DERIVED_BLUEPRINT`; `BDM_CRM_BACKLOG.md` Appendix A rows 413–434); `DEC-SCOPE-055` D1
+(scope), D4 (manager = reporting manager; super_admin all), D19 (MoU follow-up every 5 days), D22 / Q-13 (daily report not enforced;
+"not submitted" is a manager alert); `DEC-SCOPE-070` (bdm-007 AL-6 rule `pending_filter`); `DEC-SCOPE-080` G1 (no working-day
+calendar); Appendix B.4 T-M01…T-M08, AL-1…AL-7.
+**Status:** R1–R10 are the **recommended answers**, used under the owner's standing direction for this session to proceed with
+recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). No migration. API contract §12X, RBAC §2.30. Dependency
+gate (2026-10-07): bdm-005 / 006 / 008 merged with verified QA evidence (counted complete under `DEC-SCOPE-082` L1), bdm-010 COMPLETE,
+bdm-016 merged (PR #117; target progress is optional for this item and not shown).
+
+| # | Question | Recommended answer (used) |
+|---|---|---|
+| R1 | Who reads | `bdm_manager` (own team), `super_admin` (all teams); others `403` |
+| R2 | Manager filter | `manager_user_id`, super_admin only; a manager sending it `422`; not a `bdm_manager` user `404` (an inactive manager's team is still readable) |
+| R3 | Team | BDMs reporting to the manager, active or not, for record counts; T-M01 and AL-7 count active BDMs only |
+| R4 | Clock | The database clock, read once per request; today and this month in IST |
+| R5 | AL-5 "completed today" | The appointment's move to `completed` happened today (IST), whenever the meeting started |
+| R6 | AL-7 "previous working day" | No working-day calendar (as G1): yesterday (IST); a BDM whose profile is newer than that day is not listed |
+| R7 | AL-4 threshold | Current MoU in Proposal Sent / Draft Shared with `status_changed_at` ≥ 5 days ago (D19); archived organizations excluded |
+| R8 | Alert size | Each alert: full count + the first 10 items, most urgent first; "Showing 10 of N" + "View all" |
+| R9 | Links | Built by the web: appointment, trip, organization (follow-up with one; MoU), team follow-ups, the BDM's daily report for that date |
+| R10 | Target progress | Not shown (backlog: optional) |
+
+**Consequences:** route `api/bdm_manager_dashboard.py` (one SELECT of scalar subqueries for tiles and alert counts, then one query per
+alert list); `services/bdm_metrics._owned` lets the M-06 / M-11 builders take a team sub-select (daily and monthly meanings unchanged);
+schemas `BdmManagerDashboardOut` and parts; web `lib/bdmManagerDashboard.ts`, `components/BdmManagerDashboard.tsx`, the
+`/bdm/manager/dashboard` page (team summary kept; super_admin manager picker) and its `loading.tsx`; "BDM Dashboard" in
+`SUPER_ADMIN_NAV`. **Feature ID:** `bdm-023`. **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-023.
