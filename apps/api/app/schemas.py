@@ -6030,3 +6030,69 @@ class LeadReturnIn(BaseModel):
 class LeadStudentLinkIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     student_id: UUID
+
+
+# --- tel-025 (DEC-SCOPE-104, spec §2): telecaller deactivation, team move, handover and manager deactivation --------------------------
+
+TelecallerReassignTarget = Literal["telecaller", "queue"]
+
+
+class TelecallerReassign(BaseModel):
+    """LC3: who takes over the open leads -- an active telecaller of the same team, or the team's unassigned queue. Whether a target is
+    required at all depends on the open work, which only the route knows (AC3)."""
+
+    model_config = ConfigDict(extra="forbid")
+    target: TelecallerReassignTarget | None = None
+    reassign_to: UUID | None = None
+
+    @model_validator(mode="after")
+    def _target_matches(self):
+        if self.target == "telecaller" and self.reassign_to is None:
+            raise ValueError("Choose the telecaller who takes over")
+        if self.target != "telecaller" and self.reassign_to is not None:
+            raise ValueError("Only a telecaller target takes reassign_to")
+        return self
+
+
+class TelecallerTeamMove(TelecallerReassign):
+    team: Literal["it", "overseas"]
+    reporting_manager_user_id: UUID | None = None
+
+
+class TelecallerOpenWork(BaseModel):
+    leads: int
+    follow_ups: int
+    appointments: int
+
+
+class TelecallerHandoverOut(BaseModel):
+    id: UUID
+    target: TelecallerReassignTarget | None
+    moved: TelecallerOpenWork
+
+
+class TelecallerDeactivateOut(TelecallerHandoverOut):
+    active: bool
+    rules_removed: int
+
+
+class TelecallerTeamMoveOut(TelecallerHandoverOut):
+    team: str
+    rules_removed: int
+
+
+class TelecallerManagerDeactivate(BaseModel):
+    """D4: `reassign_to` is required only while telecallers report to the manager (checked by the route)."""
+
+    model_config = ConfigDict(extra="forbid")
+    reassign_to: UUID | None = None
+
+
+class TelecallerManagerOpenWork(BaseModel):
+    telecallers: int
+
+
+class TelecallerManagerDeactivateOut(BaseModel):
+    id: UUID
+    active: bool
+    moved_telecallers: int

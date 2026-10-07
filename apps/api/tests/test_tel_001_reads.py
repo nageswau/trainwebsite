@@ -121,7 +121,10 @@ async def test_admin_list_filters_and_searches(client, db_session):
 @pytest.mark.asyncio
 async def test_admin_list_flags_inactive_manager(client, db_session):
     m1, _, a, _, _ = await _teams(client, db_session)
-    assert (await client.patch(f"/api/v1/admin/users/{m1.id}", json={"active": False})).status_code == 200
+    # tel-025 D5: a manager with reports is no longer deactivated by a plain PATCH (that moves them first); the flag still covers legacy rows
+    assert (await client.patch(f"/api/v1/admin/users/{m1.id}", json={"active": False})).status_code == 422
+    m1.active = False
+    await db_session.commit()
     found = (await client.get(ADMIN_LIST, params={"q": a["telecaller_profile"]["employee_id"]})).json()["items"][0]
     assert found["manager_active"] is False and found["reporting_manager"]["active"] is False
 
