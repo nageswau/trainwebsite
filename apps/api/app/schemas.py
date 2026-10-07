@@ -4729,6 +4729,30 @@ class BdmBusinessOut(BaseModel):
     revenue: BdmBusinessRevenue | None = Field(description="Null unless the caller is the assigned BDM, a manager or super_admin (B3).")
 
 
+# bdm-022 (DEC-SCOPE-110): a linked Agent organization's performance -- the agency's own aggregates, never a student, member or money
+# figure (AC4). An untracked step is `tracked: false` with a null count, never a 0.
+class BdmAgentAgency(BaseModel):
+    name: str
+    prefix: str
+    status: str
+
+
+class BdmAgentStageCount(BaseModel):
+    key: str
+    label: str
+    count: int
+
+
+class BdmAgentPerformanceOut(BaseModel):
+    organization_id: UUID
+    linked: bool
+    agency: BdmAgentAgency | None
+    steps: list[BdmBusinessStage]
+    applications_by_stage: list[BdmAgentStageCount]
+    visa_applications: int | None
+    as_of: datetime
+
+
 class AdminLeadConversionIn(BaseModel):
     """The student account's email, typed by the admin and matched exactly (never inferred from the lead's own email)."""
 
@@ -5477,7 +5501,7 @@ class TelTargetEffectiveOut(BaseModel):
     monthly: list[TelTargetValue]
 
 
-# tel-020 (DEC-SCOPE-110 AL1, AL11; API §12AD): a team's alert thresholds, whole hours 1-168 (a string or a fraction is refused).
+# tel-020 (DEC-SCOPE-111 AL1, AL11; API §12AE): a team's alert thresholds, whole hours 1-168 (a string or a fraction is refused).
 TEL_SETTING_FIELD_LABELS = {"not_contacted_hours": "Lead not contacted after (hours)", "hot_pending_hours": "Hot lead pending after (hours)"}
 TelSettingHours = Annotated[StrictInt, Field(ge=1, le=168)]
 

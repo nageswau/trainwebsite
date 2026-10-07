@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { E2E_PASSWORD, activateWithToken } from "./helpers/welcome";
 
-// tel-020 (DEC-SCOPE-110): an assignment alerts the telecaller -- Notifications nav with an unread badge, the notice opens the lead -- and a
+// tel-020 (DEC-SCOPE-111): an assignment alerts the telecaller -- Notifications nav with an unread badge, the notice opens the lead -- and a
 // telecaller manager edits a team's alert thresholds. The thresholds are shared by the whole database, so the spec puts the defaults back.
 
 async function account(page: Page, stamp: string) {

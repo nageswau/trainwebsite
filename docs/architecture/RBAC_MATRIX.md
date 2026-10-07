@@ -823,7 +823,20 @@ EVID-019 §22 "telecaller should not view confidential management reports"; T24 
 
 A `team` / `product_id` / `campaign_id` / `source` filter is ANDed with the scope, so it can only narrow.
 
-### 2.36 Telecaller alerts *(net-new, added 2026-10-07 — `DEC-SCOPE-110`, `tel-020`)*
+### 2.36 Agent performance drill-down *(net-new, added 2026-10-07 — `DEC-SCOPE-110`, `bdm-022`)*
+
+`load_scoped` gates the route (out of scope = `404`, as every BDM organization read). Aggregates only: no student, application, member
+or money row reaches a BDM route (bdm-019 A7 / AC4).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `bdm` (Agent module) | read a linked Agent organization's performance | the module's organizations (Q-02) | `bdm-022` |
+| `bdm_manager` | the same | their team's organizations | `bdm-022` |
+| `super_admin` | the same | all | `bdm-022` |
+| a `bdm` of another module | none → `404` | — | `bdm-022` |
+| every other role | none → `403` | — | `bdm-022` |
+
+### 2.37 Telecaller alerts *(net-new, added 2026-10-07 — `DEC-SCOPE-111`, `tel-020`)*
 
 | Role | Actions | Scope | Feature |
 |---|---|---|---|

@@ -1,8 +1,8 @@
 # tel-020 — Telecaller alerts & notifications (design)
 
 - **Feature:** tel-020 (`docs/delivery/TELECALLER_CRM_BACKLOG.md` → tel-020; EVID-019 §20 lines 638–650; T14)
-- **Decision:** `DEC-SCOPE-110` (AL1–AL4 owner answers 2026-10-07, `EXPLICIT_APPROVAL`; defaults AL5–AL12 below)
-- **Numbers:** migration `0099_tel_settings` (after bdm-019's `0098_bdm_agent_link`), API contract §12AD, RBAC §2.36
+- **Decision:** `DEC-SCOPE-111` (AL1–AL4 owner answers 2026-10-07, `EXPLICIT_APPROVAL`; defaults AL5–AL12 below)
+- **Numbers:** migration `0099_tel_settings` (after bdm-019's `0098_bdm_agent_link`), API contract §12AE, RBAC §2.37
 - **Dependencies (all merged):** tel-007 (PR #90), tel-011 (PR #100), tel-016 (PR #103), tel-018 (PR #114)
 
 ## 1. Intent
@@ -58,7 +58,7 @@ The title is the kind's label. The body carries the lead's name (cleaned and cap
 includes a phone number, an email address or free text such as a return reason or follow-up notes. The links are app paths with no token:
 `/telecaller/leads/{id}` for lead-level alerts, `/telecaller/follow-ups` for follow-up alerts. Logs carry counts and ids only.
 
-## 4. API (§12AD)
+## 4. API (§12AE)
 
 | Method | Path | Who | Result |
 |---|---|---|---|

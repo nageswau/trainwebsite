@@ -1289,7 +1289,7 @@ Additive only: two tables and one sequence (`bdm_appointment_code_seq`, also on 
   attributed leads (`enquiries`, L1).
 - `0068_bdm_trips` downgrade also drops `bdm_appointments.trip_id` when a database built by `0001` from newer models has it.
 
-## Telecaller alert settings (`tel-020`, `DEC-SCOPE-110`; migration `0099_tel_settings`, after `0098_bdm_agent_link`)
+## Telecaller alert settings (`tel-020`, `DEC-SCOPE-111`; migration `0099_tel_settings`, after `0098_bdm_agent_link`)
 
 - **`tel_settings`** — one row per team. `team` VARCHAR(20) PK CHECK `ck_tel_settings_team` (`it`, `overseas`); `not_contacted_hours`
   and `hot_pending_hours` INT NOT NULL CHECK 1–168 (`ck_tel_settings_not_contacted_hours`, `ck_tel_settings_hot_pending_hours`);

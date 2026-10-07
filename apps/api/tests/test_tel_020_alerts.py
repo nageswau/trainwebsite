@@ -1,4 +1,4 @@
-"""tel-020 (DEC-SCOPE-110; EVID-019 §20, T14) AC1-AC4 -- the nine telecaller alerts. Event alerts ride the write's transaction; the six
+"""tel-020 (DEC-SCOPE-111; EVID-019 §20, T14) AC1-AC4 -- the nine telecaller alerts. Event alerts ride the write's transaction; the six
 time-based ones come from the 15-minute beat, each once per (kind, object, user, event time). Beat rows are dated 2033, so other tests'
 rows (the database is shared and never truncated) stay out of the windows; every assertion is about this test's own telecaller."""
 

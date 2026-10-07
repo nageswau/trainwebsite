@@ -4739,7 +4739,37 @@ Recorded defaults:
 - **R5** Leads without a product / campaign show as "No product" / "No campaign"; a handed-over lead without a telecaller as "Unassigned".
 - **R6** No index or rollup added: queries are grouped and bounded; revisit only if measured slow.
 
-### DEC-SCOPE-110 — Telecaller alerts & notifications (`tel-020`)
+### DEC-SCOPE-110 — Agent performance drill-down (`bdm-022`)
+
+**Evidence:** `EVID-016` Agent §F (`BDM_CRM_BACKLOG.md` Appendix A L743–L757: "Agent → Students → Applications → Offers → Visa →
+Enrollments → Revenue", example ABC Overseas 80 / 65 / 42 / 30 / 25 / ₹XX) and Appendix B.5 rows A-01…A-06 (`DERIVED_BLUEPRINT`);
+`DEC-SCOPE-107` (bdm-019: the Agent Organization link, A6 commission not exposed); `DEC-SCOPE-062` (AGN-018 headline definitions);
+`DEC-SCOPE-064` (AGN-022 org scoping); `DEC-SCOPE-056` O5 (offer rule); D17 (deposits pass-through). Dependencies verified on `main` @
+`f4a13514`: bdm-019, AGN-004, AGN-008, AGN-012, AGN-013, AGN-014 merged.
+**Status:** B1–B10 are the **recommended answers**, used under the owner's standing direction for this session to proceed with
+recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). No migration. API contract §12AD, RBAC §2.36. Drafted as `DEC-SCOPE-109` / §12AC / §2.35 and renumbered on merging `main` @
+`97b27deb` (tel-024 took `DEC-SCOPE-109` / §12AC / §2.35). Spec
+`docs/superpowers/specs/2026-10-07-bdm-022-agent-performance-design.md`.
+
+| # | Question | Recommended answer (used) |
+|---|---|---|
+| B1 | Who reads it | `load_scoped`: Agent-module BDMs (Q-02), a manager's team, super_admin. The same readers as bdm-019's counts. |
+| B2 | A non-Agent organization | `404` "Agent performance is only for Agent organizations". |
+| B3 | "Counts equal the Agent CRM's own funnel" | The agency Master dashboard's headline definitions, through one shared builder (`agent_dashboard.funnel_columns`) scoped to the org's members as AGN-022 does: students active; applications not withdrawn; offers by `offer_clause()`; visa = applications with an approved case; enrolled. |
+| B4 | Offer miscount | Not reintroduced (`offer_clause()`); the legacy `services/portal._agent` miscount is left to its own item. |
+| B5 | Revenue (A-06, Q-08) | **Not tracked** (`tracked: false`, null). No money figure reaches a BDM; commission stays `NEEDS_CONFIRMATION`. |
+| B6 | Drill-down levels | Applications by stage (seven confirmed stages, Withdrawn, then "Earlier stage names" when a legacy status exists) and visa applications beside approvals. Never a student, application or member row. |
+| B7 | Unlinked | `200 {linked: false}` → "Not onboarded yet". |
+| B8 | Suspended / rejected agency | Figures shown, with a text flag (members cannot sign in, so they do not move). |
+| B9 | "In the manager drill-down" | The panel is on both organization pages; bdm-024's drill-down links to them (not built here). |
+| B10 | Audit | Read-only aggregates: an ids-only info log, no audit row. |
+
+**Consequences:** `services/agent_dashboard.funnel_columns` (AGN-018's `headline_counts` builds on it — same SQL, same payload);
+`services/bdm_metrics.agent_performance`; `GET /bdm/organizations/{id}/agent-performance`; schemas `BdmAgentPerformanceOut`; web
+`lib/bdmAgentPerformance.ts`, `components/BdmOrganizationAgentPerformance.tsx` on both organization pages. **Feature ID:** `bdm-022`.
+**Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-022.
+
+### DEC-SCOPE-111 — Telecaller alerts & notifications (`tel-020`)
 
 **Evidence:**
 - `EVID-019` §20 (L638–L650: nine alerts the CRM "should automatically notify the telecaller" of).
@@ -4750,8 +4780,8 @@ Recorded defaults:
 - Owner answers in-session 2026-10-07.
 
 **Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option)
-for AL1–AL4; AL5–AL12 are recorded defaults. Migration `0099_tel_settings` (after bdm-019's `0098_bdm_agent_link`), API contract §12AD, RBAC
-§2.36. Spec `docs/superpowers/specs/2026-10-07-tel-020-alerts-design.md`. Drafted as `0098` / `DEC-SCOPE-107` / §12AA / 2.33; bdm-019 (`0098_bdm_agent_link` / 107 / §12AA / 2.33) and bdm-023 (108 / §12AB / 2.34) merged first, then tel-024 (no migration / 109 / §12AC / 2.35), so it is renumbered again (the migration stays `0099`).
+for AL1–AL4; AL5–AL12 are recorded defaults. Migration `0099_tel_settings` (after bdm-019's `0098_bdm_agent_link`), API contract §12AE, RBAC
+§2.37. Spec `docs/superpowers/specs/2026-10-07-tel-020-alerts-design.md`. Drafted as `0098` / `DEC-SCOPE-107` / §12AA / 2.33; bdm-019 (`0098_bdm_agent_link` / 107 / §12AA / 2.33) and bdm-023 (108 / §12AB / 2.34) merged first, then tel-024 (no migration / 109 / §12AC / 2.35) and bdm-022 (no migration / 110 / §12AD / 2.36), so it is renumbered again (the migration stays `0099`).
 
 | # | Question | Answer |
 |---|---|---|
