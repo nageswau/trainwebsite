@@ -4580,7 +4580,7 @@ figures; page `/telecaller/manager/team/[id]/activity`; the Team table links eac
 - Owner answers in-session 2026-10-07.
 
 **Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option)
-for EM1–EM4; E1–E10 are recorded defaults. Branch `feature/tel-014`. Migration `0097_lead_message_email` (after bdm-016's `0096_bdm_targets`), API
+for EM1–EM4; E1–E10 are recorded defaults. **MERGED** to `main` as PR #120 @ `becb70c5` (2026-10-07). Migration `0097_lead_message_email` (after bdm-016's `0096_bdm_targets`), API
 contract §12Z, RBAC §2.32. Spec `docs/superpowers/specs/2026-10-07-tel-014-email-design.md`. Drafted as `0096` / `DEC-SCOPE-102` / §12W / 2.29; tel-018 (`DEC-SCOPE-101`, no migration), bdm-012 (`DEC-SCOPE-102`),
 bdm-016 (`0096_bdm_targets` / `DEC-SCOPE-103` / §12W / 2.29) and tel-021 (`DEC-SCOPE-105` / §12X / 2.30, no migration) merged first
 and tel-025 holds `DEC-SCOPE-104` / §12Y / 2.31, so it is renumbered.
