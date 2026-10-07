@@ -3,7 +3,10 @@ WhatsApp send log (wa.me can't report delivery, so a row is the telecaller's con
 
 A message belongs to its lead: reads go through the lead's scope (`lead_pipeline.scope`), so a message on a lead the caller can't see is the
 same 404 as a missing one. Only the lead's telecaller sends (WA2), and only the sender deletes, on its IST day. Writes lock the lead first.
-Functions only; nothing here commits. Logs and audit carry ids, the channel and the template id -- never the text or a number (WA1)."""
+Functions only; nothing here commits. Logs and audit carry ids, the channel and the template id -- never the text or a number (WA1).
+
+tel-014 (DEC-SCOPE-102) adds email: the row is stored `queued` and the caller publishes it after the commit (E4); the worker
+(`notifications/lead_email`) sends it. An email row is never deleted (EM2) and has its own daily cap (EM3, 429)."""
 
 import logging
 from datetime import datetime
@@ -14,8 +17,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.lead_stages import CLOSED
+from app.core.config import settings
 from app.models import LEAD_APPOINTMENT_OPEN, Appointment, AuditLog, Enquiry, LeadMessage, TelAsset, TelMessageTemplate, TelProduct, User
-from app.schemas import LeadMessageCreate
+from app.schemas import LeadEmailCreate, LeadWhatsAppCreate
 from app.services import lead_pipeline, telecaller_content, telecaller_leads
 from app.services.bdm_activities import day_range
 from app.services.bdm_appointments import IST, today_ist
@@ -23,7 +27,8 @@ from app.services.lead_appointments import invalid
 
 logger = logging.getLogger("app.leads")
 
-DAILY_CAP = 300  # D8: an abuse bound, far above real use
+DAILY_CAP = 300  # D8: an abuse bound, far above real use (WhatsApp sends)
+EMAIL_DAILY_CAP = 100  # EM3: emails per sender per IST day; also guards the shared SMTP account
 MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct", "Nov", "Dec")  # the app's en-GB short months
 
 NOT_FOUND = "Message not found"
@@ -34,6 +39,11 @@ LEAD_CLOSED = "This lead is closed. A manager can reopen it before a message is 
 NO_NUMBER = "This lead has no WhatsApp or mobile number"
 TEMPLATE_UNUSABLE = "Choose an active WhatsApp template"
 CAP_REACHED = f"You've sent {DAILY_CAP} messages today"
+NO_EMAIL = "This lead has no email address"
+EMAIL_TEMPLATE_UNUSABLE = "Choose an active email template"
+EMAIL_CAP_REACHED = f"You've sent {EMAIL_DAILY_CAP} emails today"
+EMAIL_NOT_CONFIGURED = "Email is not set up. Ask an administrator to configure SMTP."
+EMAIL_NO_DELETE = "A sent email can't be deleted"
 NOT_TODAY = "Only today's messages can be deleted"
 
 
@@ -71,7 +81,7 @@ async def render(db: AsyncSession, lead: Enquiry, template: TelMessageTemplate) 
 
 
 def can_delete(user: User, lead: Enquiry, message: LeadMessage, now: datetime) -> bool:
-    return (user.role == "telecaller" and message.sender_user_id == user.id and not telecaller_leads.read_only(user, lead)
+    return (message.channel == "whatsapp" and user.role == "telecaller" and message.sender_user_id == user.id and not telecaller_leads.read_only(user, lead)
             and today_ist(message.sent_at) == today_ist(now))
 
 
@@ -79,7 +89,7 @@ def out(user: User, lead: Enquiry, message: LeadMessage, sender: User, now: date
     return {
         "id": message.id, "lead_id": message.lead_id, "channel": message.channel,
         "template": {"id": message.template_id, "name": message.template_name} if message.template_id else None,
-        "subject": message.subject, "body": message.body, "sent_at": message.sent_at, "sender": {"id": sender.id, "full_name": sender.full_name},
+        "subject": message.subject, "body": message.body, "delivery_status": message.delivery_status, "sent_at": message.sent_at, "sender": {"id": sender.id, "full_name": sender.full_name},
         "can_delete": can_delete(user, lead, message, now),
     }
 
@@ -93,22 +103,34 @@ async def lead_page(db: AsyncSession, user: User, lead: Enquiry, now: datetime, 
     return {"items": [out(user, lead, message, sender, now) for message, sender in rows], "total": total or 0, "limit": limit, "offset": offset}
 
 
-async def create(db: AsyncSession, user: User, lead: Enquiry, payload: LeadMessageCreate, now: datetime) -> LeadMessage:
-    """The caller locked the lead and checked role and handover. WA2 closed -> 409; D2 no number -> 409; D4 the template; D8 cap."""
+def smtp_configured() -> bool:
+    return bool(settings.smtp_host and settings.smtp_from_email)
+
+
+async def create(db: AsyncSession, user: User, lead: Enquiry, payload: LeadWhatsAppCreate | LeadEmailCreate, now: datetime) -> LeadMessage:
+    """The caller locked the lead and checked role and handover. WA2 closed -> 409. WhatsApp: D2 no number -> 409; D4 the template; D8 cap
+    409. Email: E3 SMTP unset -> 503; E2 no address -> 409; E8 the template; EM3 cap 429. An email is stored `queued` (E5)."""
     if lead.status in CLOSED:
         raise HTTPException(409, LEAD_CLOSED)
-    if telecaller_leads.whatsapp_to(lead) is None:
+    is_email = payload.channel == "email"
+    if is_email and not smtp_configured():
+        raise HTTPException(503, EMAIL_NOT_CONFIGURED)
+    if is_email and not lead.email:
+        raise HTTPException(409, NO_EMAIL)
+    if not is_email and telecaller_leads.whatsapp_to(lead) is None:
         raise HTTPException(409, NO_NUMBER)
     template = await db.get(TelMessageTemplate, payload.template_id) if payload.template_id else None
     if payload.template_id and (template is None or not template.active or template.channel != payload.channel):
-        raise invalid("template_id", TEMPLATE_UNUSABLE, str(payload.template_id))
+        raise invalid("template_id", EMAIL_TEMPLATE_UNUSABLE if is_email else TEMPLATE_UNUSABLE, str(payload.template_id))
     start, end = day_range(today_ist(now))
     count = await db.scalar(select(func.count()).select_from(LeadMessage).where(
-        LeadMessage.sender_user_id == user.id, LeadMessage.sent_at >= start, LeadMessage.sent_at < end))
-    if (count or 0) >= DAILY_CAP:
-        raise HTTPException(409, CAP_REACHED)
+        LeadMessage.sender_user_id == user.id, LeadMessage.channel == payload.channel, LeadMessage.sent_at >= start, LeadMessage.sent_at < end))
+    cap, status, detail = (EMAIL_DAILY_CAP, 429, EMAIL_CAP_REACHED) if is_email else (DAILY_CAP, 409, CAP_REACHED)
+    if (count or 0) >= cap:
+        raise HTTPException(status, detail)
     message = LeadMessage(lead_id=lead.id, sender_user_id=user.id, channel=payload.channel, template_id=payload.template_id,
-                          template_name=template.name if template else None, body=payload.body, sent_at=now)
+                          template_name=template.name if template else None, subject=payload.subject if is_email else None, body=payload.body,
+                          delivery_status="queued" if is_email else None, sent_at=now)
     db.add(message)
     await db.flush()
     audit(db, user, "create", message.id, {"lead_id": str(lead.id), "channel": message.channel,
@@ -117,7 +139,7 @@ async def create(db: AsyncSession, user: User, lead: Enquiry, payload: LeadMessa
 
 
 async def load_for_delete(db: AsyncSession, user: User, message_id: UUID, scope: list, now: datetime) -> LeadMessage:
-    """In scope (404) -> lead lock -> telecaller and the sender (403) -> handover (403) -> its IST day (409)."""
+    """In scope (404) -> lead lock -> telecaller and the sender (403) -> handover (403) -> an email (409, EM2) -> its IST day (409)."""
     lead_id = await db.scalar(select(LeadMessage.lead_id).join(Enquiry, Enquiry.id == LeadMessage.lead_id).where(LeadMessage.id == message_id, *scope))
     if lead_id is None:
         raise HTTPException(404, NOT_FOUND)
@@ -128,6 +150,8 @@ async def load_for_delete(db: AsyncSession, user: User, message_id: UUID, scope:
     if user.role != "telecaller" or message.sender_user_id != user.id:
         raise HTTPException(403, SENDER_ONLY)
     telecaller_leads.require_writable(user, lead)
+    if message.channel == "email":
+        raise HTTPException(409, EMAIL_NO_DELETE)
     if today_ist(message.sent_at) != today_ist(now):
         raise HTTPException(409, NOT_TODAY)
     return message

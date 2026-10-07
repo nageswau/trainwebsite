@@ -77,15 +77,26 @@ def enqueue(delivery_id: UUID | str, countdown: int = 0) -> bool:
     """Never raises: a broker outage must not fail the request that already committed. The row stays queued/retrying and
     the stale sweeper (delivery.sweep_stale_deliveries) publishes it again. Returns False when the publish failed, timed
     out, or was skipped because the broker failed within the last BROKER_BACKOFF_SECONDS."""
+    # `_publish` is looked up at call time (tests replace it).
+    return _submit(lambda: _publish(str(delivery_id), countdown), delivery_id)
+
+
+def enqueue_lead_email(message_id: UUID | str, countdown: int = 0) -> bool:
+    """tel-014 (DEC-SCOPE-102 E4): publish a queued lead email (a `lead_messages` row) with `enqueue`'s bounded wait and shared back-off. A
+    failure leaves the row queued/retrying for `lead_email.sweep_stale_lead_emails`."""
+    return _submit(lambda: _publish_lead_email(str(message_id), countdown), message_id)
+
+
+def _submit(publish, ref) -> bool:
     global _broker_unavailable_until  # noqa: PLW0603 -- process-wide back-off state
     if time.monotonic() < _broker_unavailable_until:
         return False
     try:
-        # `_publish` is looked up at call time (tests replace it). A publisher thread busy with a hung publish times out too.
-        _publisher.submit(lambda: _publish(str(delivery_id), countdown)).result(timeout=PUBLISH_WAIT_SECONDS)
-    except Exception as exc:  # noqa: BLE001 -- see docstring; includes the wait's TimeoutError
+        # A publisher thread busy with a hung publish times out too.
+        _publisher.submit(publish).result(timeout=PUBLISH_WAIT_SECONDS)
+    except Exception as exc:  # noqa: BLE001 -- see enqueue; includes the wait's TimeoutError
         _broker_unavailable_until = time.monotonic() + BROKER_BACKOFF_SECONDS
-        logger.warning("notification_enqueue_failed", extra={"extra_fields": {"delivery_id": str(delivery_id), "error_type": type(exc).__name__}})
+        logger.warning("notification_enqueue_failed", extra={"extra_fields": {"delivery_id": str(ref), "error_type": type(exc).__name__}})
         return False
     return True
 
@@ -102,3 +113,10 @@ def _publish(delivery_id: str, countdown: int) -> None:
     # it first makes the Redis result backend reconnect (~19 s when refused, unbounded when the host is unreachable).
     with celery.connection_for_write(transport_options=PUBLISH_TRANSPORT_OPTIONS) as conn:
         deliver_notification_task.apply_async((delivery_id,), countdown=countdown, retry=False, ignore_result=True, connection=conn)
+
+
+def _publish_lead_email(message_id: str, countdown: int) -> None:
+    from app.worker import celery, deliver_lead_email_task  # noqa: PLC0415 -- the worker module imports this package
+
+    with celery.connection_for_write(transport_options=PUBLISH_TRANSPORT_OPTIONS) as conn:
+        deliver_lead_email_task.apply_async((message_id,), countdown=countdown, retry=False, ignore_result=True, connection=conn)

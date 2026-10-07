@@ -1041,16 +1041,21 @@ LEAD_MESSAGE_CHECKS = {
     "ck_lead_messages_body": "length(body) BETWEEN 1 AND 5000",
     "ck_lead_messages_whatsapp": "channel <> 'whatsapp' OR (subject IS NULL AND delivery_status IS NULL)",
 }
+# tel-014 (DEC-SCOPE-102 E5): an email row has a subject and a delivery status. Migration 0096 repeats it (test_tel_014_migration).
+LEAD_EMAIL_STATUSES = ("queued", "sending", "retrying", "sent", "failed")
+LEAD_MESSAGE_EMAIL_CHECK = {
+    "ck_lead_messages_email": f"channel <> 'email' OR (subject IS NOT NULL AND delivery_status IS NOT NULL AND delivery_status IN ({', '.join(repr(s) for s in LEAD_EMAIL_STATUSES)}))",
+}
 
 
 class LeadMessage(Base, TimestampMixin):
     """tel-013 (DEC-SCOPE-100): a message sent to a lead -- WhatsApp via wa.me (T8; the row is the telecaller's confirmation, WA1 keeps the
-    full text) and, from tel-014, email (subject + delivery status). It belongs to the lead, so its scope is the lead's. `template_name`
-    is the template's name when sent (D6), so a rename never rewrites history."""
+    full text) and, from tel-014, email (subject + delivery status; `attempt_count` counts SMTP attempts, DEC-SCOPE-102 E5). It belongs to
+    the lead, so its scope is the lead's. `template_name` is the template's name when sent (D6), so a rename never rewrites history."""
 
     __tablename__ = "lead_messages"
     __table_args__ = (
-        *(CheckConstraint(sql, name=name) for name, sql in LEAD_MESSAGE_CHECKS.items()),
+        *(CheckConstraint(sql, name=name) for name, sql in (LEAD_MESSAGE_CHECKS | LEAD_MESSAGE_EMAIL_CHECK).items()),
         Index("ix_lead_messages_lead_sent", "lead_id", "sent_at"),
         Index("ix_lead_messages_sender_sent", "sender_user_id", "sent_at"),
     )
@@ -1063,6 +1068,7 @@ class LeadMessage(Base, TimestampMixin):
     subject: Mapped[str | None] = mapped_column(String(200), nullable=True)
     body: Mapped[str] = mapped_column(Text)
     delivery_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    attempt_count: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
     sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 

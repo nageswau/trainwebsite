@@ -14,6 +14,7 @@ from app.api.bdm import LIMIT, OFFSET
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import Enquiry, User
+from app.notifications import dispatch
 from app.schemas import LeadMessageCreate
 from app.services import lead_messages as svc
 from app.services import lead_pipeline, telecaller_leads
@@ -45,7 +46,8 @@ async def lead_messages(lead_id: UUID, limit: int = LIMIT, offset: int = OFFSET,
 
 @router.post("/leads/{lead_id}/messages", status_code=201)
 async def record_message(lead_id: UUID, payload: LeadMessageCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """AC2: the telecaller confirms a WhatsApp send (D3). Not idempotent -- each confirm is one send; the daily cap bounds a retry."""
+    """AC2: the telecaller confirms a WhatsApp send (D3), or (tel-014) sends an email: stored `queued` and published only after the commit,
+    so the worker never looks for an uncommitted row (E4). Not idempotent -- each call is one send; the daily caps bound a retry."""
     _, scope = lead_pipeline.scope(user)
     lead = await lead_pipeline.locked_lead(db, lead_id, *scope)
     if user.role != "telecaller":
@@ -54,6 +56,8 @@ async def record_message(lead_id: UUID, payload: LeadMessageCreate, user: User =
     now = await db_now(db)
     message = await svc.create(db, user, lead, payload, now)
     await db.commit()
+    if message.channel == "email":
+        dispatch.enqueue_lead_email(message.id)
     svc.log("lead_message_sent", user, message.id, lead_id=str(lead_id), channel=message.channel)
     return await svc.one(db, user, message.id, now)
 
