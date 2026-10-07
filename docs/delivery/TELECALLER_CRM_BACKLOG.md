@@ -695,7 +695,7 @@ and retention remain open (`PRD_OPEN_ITEMS.md` row 85).
 
 ### tel-015 — Lead timeline
 
-**Status (2026-10-07):** built on `feature/tel-015` (`DEC-SCOPE-114` TM1–TM3 + D1–D8, API §12AH, RBAC §2.40, no migration). Spec
+**Status (2026-10-07):** **merged** to `main` as PR #134 @ `c97b8a8c` (`DEC-SCOPE-114` TM1–TM3 + D1–D8, API §12AH, RBAC §2.40, no migration; QA15-01…03 fixed, `docs/quality/TEL-015_EXPLORATORY_QA_2026-10-07.md`). Spec
 `docs/superpowers/specs/2026-10-07-tel-015-lead-timeline-design.md`; plan `docs/superpowers/plans/2026-10-07-tel-015-lead-timeline.md`.
 The reader is `services/lead_timeline.py` (one `UNION ALL`); the web `LeadTimeline` is shared by the telecaller / manager detail, the
 counselor's lead and the admin History (TM1).

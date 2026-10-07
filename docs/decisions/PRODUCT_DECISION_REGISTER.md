@@ -4879,7 +4879,7 @@ information from being lost when staff changes"); `TELECALLER_CRM_BACKLOG.md` §
 endpoint it extends), `DEC-SCOPE-088` (tel-005 repeat enquiries), `DEC-SCOPE-094` / `-095` / `-096` / `-100` / `-101` / `-106` (the event
 tables of tel-011, tel-016, tel-010, tel-013, tel-018, tel-014). Dependencies verified merged on `main` @ `cca01447`.
 **Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — three structured questions, each answered with the recommended option)
-for TM1–TM3. **No migration.** API contract §12AH, RBAC §2.40. Spec `docs/superpowers/specs/2026-10-07-tel-015-lead-timeline-design.md`.
+for TM1–TM3. **MERGED** to `main` as PR #134 @ `c97b8a8c` (2026-10-07). **No migration.** API contract §12AH, RBAC §2.40. Spec `docs/superpowers/specs/2026-10-07-tel-015-lead-timeline-design.md`.
 Numbered after bdm-024 (`DEC-SCOPE-113` / §12AG / §2.39), merged first.
 
 | # | Question | Answer |
