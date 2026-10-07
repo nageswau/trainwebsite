@@ -126,7 +126,7 @@ def _alerts(team: Select, now: datetime, today: date) -> dict[str, tuple[Select,
     submitted = select(BdmDailyReport.id).where(BdmDailyReport.bdm_user_id == User.id, BdmDailyReport.report_date == yesterday)
     return {
         "AL-1": (_appointments(team, BdmAppointment.status.in_(("scheduled", "rescheduled")), BdmAppointment.starts_at > now,
-                               BdmAppointment.starts_at <= now + timedelta(hours=24)), (BdmAppointment.starts_at, BdmAppointment.id)),
+                               BdmAppointment.starts_at <= now + timedelta(hours=24)), (BdmAppointment.starts_at, BdmAppointment.code)),
         "AL-2": (_row(BdmTrip.id, func.concat(BdmTrip.code, SEP, BdmTrip.from_place, " → ", BdmTrip.to_place), Owner.id, Owner.full_name,
                       BdmTrip.travel_date, null())
                  .join(Owner, Owner.id == BdmTrip.bdm_user_id)
@@ -136,7 +136,7 @@ def _alerts(team: Select, now: datetime, today: date) -> dict[str, tuple[Select,
                       BdmTask.organization_id)
                  .outerjoin(BdmOrganization, BdmOrganization.id == BdmTask.organization_id).join(Owner, Owner.id == BdmTask.assignee_user_id)
                  .where(BdmTask.assignee_user_id.in_(team), BdmTask.kind == "follow_up", BdmTask.status == "open", BdmTask.due_on < today),
-                 (BdmTask.due_on, BdmTask.id)),
+                 (BdmTask.due_on, BdmTask.created_at, BdmTask.id)),
         "AL-4": (_row(BdmMou.id, func.concat(BdmOrganization.name, SEP, status_label), Owner.id, Owner.full_name, BdmMou.status_changed_at,
                       BdmMou.organization_id)
                  .join(BdmOrganization, BdmOrganization.id == BdmMou.organization_id).join(Owner, Owner.id == BdmOrganization.assigned_bdm_user_id)
@@ -147,7 +147,7 @@ def _alerts(team: Select, now: datetime, today: date) -> dict[str, tuple[Select,
                  .join(BdmAppointmentEvent, (BdmAppointmentEvent.appointment_id == BdmAppointment.id)
                        & (BdmAppointmentEvent.to_status == "completed")),
                  (completed.desc(), BdmAppointment.id)),
-        "AL-6": (_appointments(team, pending_filter(True)), (BdmAppointment.starts_at, BdmAppointment.id)),
+        "AL-6": (_appointments(team, pending_filter(True)), (BdmAppointment.starts_at, BdmAppointment.code)),
         "AL-7": (_row(User.id, User.full_name, User.id, User.full_name, literal(yesterday), null())
                  .join(BdmProfile, BdmProfile.user_id == User.id)
                  .where(User.id.in_(team), User.active.is_(True), BdmProfile.created_at < day_start, ~exists(submitted)),

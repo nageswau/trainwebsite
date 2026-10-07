@@ -79,6 +79,17 @@ describe("bdm-023 management dashboard page", () => {
     expect(tree.some((el) => el.props.href === "/bdm/manager/dashboard")).toBe(true);
   });
 
+  it("a super_admin whose chosen manager can't be read gets a way back to all teams (QA23-02)", async () => {
+    answer({
+      "/api/v1/auth/me": { full_name: "Root", role: "super_admin" }, "/api/v1/admin/bdm-managers?limit=100": { items: [], total: 0, limit: 100, offset: 0 },
+      [`/api/v1/bdm/manager/dashboard?manager_user_id=${M1}`]: new ApiError("Manager not found", 404),
+    });
+    const tree = await render({ manager: M1 });
+    expect(allText(tree)).toContain("Unable to load the dashboard.");
+    const back = tree.find((el) => text(el) === "Show all teams");
+    expect(back!.props.href).toBe("/bdm/manager/dashboard");
+  });
+
   it("another role keeps the Access unavailable card", async () => {
     answer({ "/api/v1/auth/me": { full_name: "Asha", role: "bdm" }, "/api/v1/bdm/manager/team?limit=50": new ApiError("BDM manager role required", 403) });
     const card = (await render()).find((el) => typeof el.props.message === "string");

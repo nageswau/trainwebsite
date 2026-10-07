@@ -28,6 +28,7 @@ const TILES = ["Total BDMs", "Today's Appointments", "Upcoming Appointments", "B
   "MoUs in Progress", "MoUs Signed"];
 
 test("management dashboard: tiles, an alert that links to its record and clears when resolved, roles, widths", async ({ page }) => {
+  test.setTimeout(90_000); // seven sign-ins
   const stamp = Date.now();
   await superAdmin(page);
   const manager = await (await page.request.post("/api/v1/admin/users", {

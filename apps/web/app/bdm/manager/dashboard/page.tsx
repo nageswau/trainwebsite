@@ -78,7 +78,11 @@ export default async function BdmManagerDashboardPage({ searchParams }: { search
         ) : (
           <div className="card" role="alert">
             <p className="form-error">Unable to load the dashboard.</p>
-            <a href={managerId && superAdmin ? `${PATH}?manager=${managerId}` : PATH} className="btn secondary small">Try again</a>
+            <div className="actions">
+              <a href={managerId && superAdmin ? `${PATH}?manager=${managerId}` : PATH} className="btn secondary small">Try again</a>
+              {/* QA23-02: a manager id that can't be read (e.g. an old link) must not trap super_admin on the error */}
+              {managerId && superAdmin && <a href={PATH} className="btn secondary small">Show all teams</a>}
+            </div>
           </div>
         )}
       </div>

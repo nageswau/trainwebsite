@@ -90,10 +90,11 @@ team sub-select as well as one BDM id (one helper `_owned`), so T-M06/T-M08 reus
   and text word (`danger` "Urgent" / `warning` "Attention" / `success` "Done") — colour is never the only signal (AC4).
 - `components/BdmManagerDashboard.tsx`: the tiles (`kpi-grid` / `kpi-tile`, as My Day and `SchoolKpiBoard`), then "Alerts": one
   section per non-empty kind with a heading, a text status chip, the count, up to 10 linked items (BDM name + time) and "View all".
-  Empty: "No alerts right now." A team with no BDMs: "No BDMs report to you yet." and no alert section.
+  Empty: "No alerts right now." A team with no BDMs: the summary "No BDMs report to you yet.", zero tiles and "No alerts right now."
 - Page `app/bdm/manager/dashboard/page.tsx`: keeps the existing team summary + "View team" for a manager; super_admin gets the
   admin sidebar, "All teams" or the chosen manager, and a GET form with a manager `<select>` (from `/admin/bdm-managers`). A
-  dashboard that fails to load after the gate shows an inline alert with "Try again" (My Day pattern). `loading.tsx` added.
+  dashboard that fails to load after the gate shows an inline alert with "Try again" (My Day pattern), plus "Show all teams" when
+  super_admin had chosen a manager (QA23-02). `loading.tsx` added.
 - `SUPER_ADMIN_NAV`: "BDM Dashboard" → `/bdm/manager/dashboard`.
 
 ## 7. Security

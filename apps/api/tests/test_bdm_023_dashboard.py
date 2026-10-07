@@ -323,6 +323,21 @@ async def test_each_alert_shows_the_first_ten_and_the_full_count(client, db_sess
     assert [i["id"] for i in overdue["items"]] == [str(t.id) for t in tasks[:10]]  # oldest due first
 
 
+@pytest.mark.asyncio
+async def test_alerts_due_the_same_day_keep_the_order_they_were_created(client, db_session):
+    """Browser QA23-01: follow-ups due on the same day are listed in a stable, creation order (not by random id)."""
+    manager = await make_manager(db_session)
+    bdm = await make_bdm(db_session, manager)
+    tasks = []
+    for n in range(6):
+        task = await insert_task(db_session, bdm.id, due_on=ist_day(-2), title=f"Call back {n}")
+        await db_session.execute(update(BdmTask).where(BdmTask.id == task.id).values(created_at=now() - timedelta(minutes=10 - n)))
+        tasks.append(task)
+    await db_session.commit()
+    await login(client, manager)
+    assert ids(await read(client), "AL-3") == [str(t.id) for t in tasks]
+
+
 # --- performance --------------------------------------------------------------------------------------------------------------------
 
 
