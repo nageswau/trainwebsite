@@ -4259,3 +4259,33 @@ most 20 open follow-ups per lead (`409`).
 cancels open follow-ups on a close; `GET /telecaller/leads` gains `follow_up`. Web: the lead-detail Follow-ups section, `/telecaller/follow-ups`
 and `/telecaller/manager/follow-ups` ("Follow-ups" in both navs), the dashboard "Today's follow-ups" card, My Leads "Due follow-up" filter.
 **New Feature ID authorized:** `tel-011`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-011.
+
+### DEC-SCOPE-096 — Lead call logging (`tel-010`)
+
+**Evidence:** `EVID-019` §5 (L198–L252); `DEC-SCOPE-073` T5, T7, T13, T19, T23 and Appendix B B6/B7; `DEC-SCOPE-081` (tel-004 pipeline
+events `call_connected` / `call_unconnected`); `DEC-SCOPE-094` (tel-011 F4, F8); `DEC-SCOPE-069` (bdm-009 V4/V9/V10 time rules); owner
+answers in-session 2026-10-07.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07) for CL1–CL4; D1–D10 are recorded defaults. Branch `feature/tel-010`, not
+yet merged. Migration `0092_lead_calls` (chains to `0090_lead_follow_ups`; `0091` / `DEC-SCOPE-095` / §12Q / RBAC 2.23 are held by tel-016
+in parallel — whichever merges second re-chains), API contract §12R, RBAC §2.24. Spec `docs/superpowers/specs/2026-10-07-tel-010-call-logging-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| CL1 (Q-08) | Call types | **`outgoing` / `incoming`.** A requested call-back is the outcome "Call Back Requested", not a type |
+| CL2 | A call on a closed lead | **Refused (`409`)**; a manager reopens the lead first (as tel-011 F4) |
+| CL3 | "Duplicate Lead" | **Recorded only**, remarks required (name the other lead); no stage change. A merge is deferred |
+| CL4 | Edit / delete | **Same IST day only, by the caller.** The outcome is locked (delete and log again); a delete never reverses a stage move or a follow-up the call created |
+
+Recorded defaults: D1 13 selectable outcomes, "Converted" never offered (T5). D2 not connected = Busy, No Answer, Switched Off, Wrong Number
+(B7); every other outcome is connected (B6). D3 connected → `call_connected`; Busy / No Answer / Switched Off → `call_unconnected`; Connected
+– Interested then moves to Interested when before it (never backwards); Not Interested / Wrong Number / Already Joined Elsewhere / Not Eligible
+close the lead (`not_interested` / `wrong_number` / `lost` / `not_eligible`, reason = the outcome label; open follow-ups cancelled, F4);
+Appointment Fixed only reaches `contacted` (booking is tel-016's). D4 Follow-up Required and Call Back Requested need a next follow-up; a
+closing outcome takes none. D5 the next follow-up is tel-011's create, in the same transaction. D6 `occurred_at` defaults to now; > 5 min
+ahead or > 7 IST days back `422`. D7 duration 0–14400 s. D8 only the lead's telecaller logs (managers / super_admin read). D9 300 calls per
+caller per IST day (`409`). D10 the follow-up item's lead gains `last_call` (tel-011 F8).
+
+**Consequences:** table `lead_calls`; `services/lead_calls.py`; router `api/telecaller_calls.py`; `lead_follow_ups` list items gain
+`lead.last_call`. Web: the lead-detail Calls section (`LeadCalls`, `CallLogForm`; the header "Call" opens the dialer and the form) and the
+§7 card's "Last call". The day counts (`GET /telecaller/calls/day-counts`) feed tel-021's B6/B7 tiles.
+**New Feature ID authorized:** `tel-010`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-010.

@@ -656,6 +656,19 @@ follow-up belongs to its lead (F3), so a reassignment moves it. Every write is a
 | every other role | none → `403` "Telecaller role required" | — | `tel-011` |
 | system (a closing stage move) | cancels the lead's open follow-ups ("Lead closed", F4) | the lead being closed | `tel-011` |
 
+### 2.24 Lead call logging *(net-new, added 2026-10-07 — `DEC-SCOPE-096`, `tel-010`; §2.23 is held by tel-016)*
+
+Inline pattern: scope (tel-004 `lead_pipeline.scope`, joined through the call's lead; out of scope `404`), the lead lock, then the role
+(`lead_calls.require_telecaller`), the caller (`caller_user_id` = self, for edit/delete) and handover (`telecaller_leads.require_writable`),
+then the call's IST day. Every write is audited (`lead_call.*`, ids / outcome / field names — never remarks).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | list a lead's calls; log a call; edit / delete their own calls of the same IST day; day counts of their own calls | calls on leads where `telecaller_user_id` = self; **read-only** on a handed-over lead (`403`); no new call on a closed lead (`409`); a reassigned lead's earlier calls are visible but not changeable (`403`) | `tel-010` |
+| `telecaller_manager` | read a lead's calls; day counts of their direct reports' calls; writes `403` | direct reports' leads + their teams' unassigned leads (T23) | `tel-010` |
+| `super_admin` | read; day counts of all calls (writes `403`) | all leads | `tel-010` |
+| every other role | none → `403` "Telecaller role required" | — | `tel-010` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
