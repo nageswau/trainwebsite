@@ -72,31 +72,35 @@ def show_revenue(user: User, org: BdmOrganization) -> bool:
     return user.role in ("bdm_manager", "super_admin") or org.assigned_bdm_user_id == user.id
 
 
-async def college_business(db: AsyncSession, org: BdmOrganization, with_revenue: bool) -> dict:
-    """One SELECT of scalar subqueries over `S` -- a constant query count whatever the organization's size."""
-    students = select(Enquiry.converted_user_id).where(Enquiry.bdm_organization_id == org.id, Enquiry.converted_user_id.is_not(None))
+def college_columns(org_id) -> dict:
+    """The funnel and fee figures of one College organization as scalar subqueries over `S`. `org_id` is a value, or (bdm-024's master
+    view) the correlated `BdmOrganization.id` of an outer SELECT, so the panel and the master view run the same SQL."""
+    students = select(Enquiry.converted_user_id).where(Enquiry.bdm_organization_id == org_id, Enquiry.converted_user_id.is_not(None))
 
     def distinct_students(column, *where):
         return select(func.count(distinct(column))).where(column.in_(students), *where).scalar_subquery()
 
-    query = select(
-        select(func.count()).select_from(Enquiry).where(Enquiry.bdm_organization_id == org.id).scalar_subquery(),
-        distinct_students(Enquiry.converted_user_id, Enquiry.bdm_organization_id == org.id),
-        distinct_students(Enrollment.student_id, Enrollment.status != "withdrawn"),
-        distinct_students(Certificate.student_id, Certificate.status == "issued"),
-        select(func.count(distinct(JobApplication.student_id)))
+    return {
+        "leads": select(func.count()).select_from(Enquiry).where(Enquiry.bdm_organization_id == org_id).scalar_subquery(),
+        "registrations": distinct_students(Enquiry.converted_user_id, Enquiry.bdm_organization_id == org_id),
+        "training": distinct_students(Enrollment.student_id, Enrollment.status != "withdrawn"),
+        "certification": distinct_students(Certificate.student_id, Certificate.status == "issued"),
+        "placement": select(func.count(distinct(JobApplication.student_id)))
         .join(JobOffer, JobOffer.application_id == JobApplication.id)
         .where(JobApplication.student_id.in_(students), JobOffer.status.in_(ACCEPTED_OFFER))
         .scalar_subquery(),
-        select(func.coalesce(func.sum(Payment.amount), 0))
-        .where(
-            Payment.user_id.in_(students),
-            Payment.status.in_(PAID_STATUSES),
-            Payment.currency == CURRENCY,
-            Payment.reference_type != AGENT_DEPOSIT,
-        )
-        .scalar_subquery(),
-    )
+        "fees": select(func.coalesce(func.sum(Payment.amount), 0)).where(Payment.user_id.in_(students), *fee_filter()).scalar_subquery(),
+    }
+
+
+def fee_filter() -> list:
+    """R-1 (D17): paid INR payments, never an agent deposit (pass-through)."""
+    return [Payment.status.in_(PAID_STATUSES), Payment.currency == CURRENCY, Payment.reference_type != AGENT_DEPOSIT]
+
+
+async def college_business(db: AsyncSession, org: BdmOrganization, with_revenue: bool) -> dict:
+    """One SELECT of scalar subqueries over `S` -- a constant query count whatever the organization's size."""
+    query = select(*college_columns(org.id).values())
     leads, registrations, training, certification, placement, fees = (await db.execute(query)).one()
     counts = {"contacted": leads, "leads": leads, "registrations": registrations, "training": training, "certification": certification, "placement": placement}
     funnel = [{"key": k, "label": label, "definition": d, "tracked": k in counts, "count": counts.get(k)} for k, label, d in STAGES]
