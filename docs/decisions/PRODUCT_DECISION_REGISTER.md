@@ -4266,8 +4266,9 @@ and `/telecaller/manager/follow-ups` ("Follow-ups" in both navs), the dashboard 
 lead link, booked straight to the counselor), T19 (read-only after handover); `DEC-SCOPE-081` (the stage engine); `DEC-SCOPE-076` C1 (IT
 counselor workspace); owner answers in-session 2026-10-07.
 **Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option)
-for AP1–AP4 and AP15 (2026-10-07, after the tel-011 merge); AP5–AP14 are recorded defaults. Migration `0091_lead_appointments` (after tel-011's `0090_lead_follow_ups`; drafted on
-`0089` and re-chained when tel-011 merged, `main` @ `88680cb1`), API contract §12Q, RBAC §2.23. Numbers re-chain at merge if `main` moves. Spec
+for AP1–AP4 and AP15 (2026-10-07, after the tel-011 merge); AP5–AP14 are recorded defaults. **MERGED** to `main` as PR #103 @
+`92946a8a` (2026-10-07). Migration `0091_lead_appointments` (after tel-011's `0090_lead_follow_ups`; drafted on
+`0089` and re-chained when tel-011 merged, `main` @ `88680cb1`), API contract §12Q, RBAC §2.23. Spec
 `docs/superpowers/specs/2026-10-07-tel-016-lead-appointments-design.md`.
 
 | # | Question | Answer |

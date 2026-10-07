@@ -1,10 +1,10 @@
 # tel-016 — Counselor appointment booking for leads (design)
 
-**Status:** approved in session 2026-10-07. Owner answers AP1–AP4 are `EXPLICIT_APPROVAL`; AP5–AP14 are defaults recorded in
+**Status:** approved in session 2026-10-07. Owner answers AP1–AP4 and AP15 are `EXPLICIT_APPROVAL`; AP5–AP14 are defaults recorded in
 `DEC-SCOPE-095`. **Evidence:** `EVID-019` §9 (L332–L384); backlog `docs/delivery/TELECALLER_CRM_BACKLOG.md` tel-016; T10 (extend
 `appointments` with a lead link, booked straight to the counselor). **Dependencies (all merged):** tel-004 (stage engine), tel-008 (lead
 workspace), tel-017 (IT counselors).
-**Numbers (re-check at merge):** migration `0091_lead_appointments` (after tel-011's `0090_lead_follow_ups`), `DEC-SCOPE-095`, API §12Q,
+**Merged** to `main` as PR #103 @ `92946a8a`. **Numbers:** migration `0091_lead_appointments` (after tel-011's `0090_lead_follow_ups`), `DEC-SCOPE-095`, API §12Q,
 RBAC §2.23.
 
 ## 1. Owner answers (2026-10-07)
