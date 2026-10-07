@@ -61,8 +61,9 @@ function MessageItem({ message, onDeleted, onRefused }: { message: LeadMessage; 
  *  closed) offers Send WhatsApp and Send email, each disabled with its reason when the lead has no usable number / address (AC3). A bump of
  *  `openSignal` / `emailSignal` (the page's WhatsApp / Email button) opens that composer. While an email is queued or sending, the list
  *  refreshes so its status moves on. */
-export default function LeadMessages({ leadId, whatsappTo, email = null, canWrite, openSignal, emailSignal = 0 }: {
+export default function LeadMessages({ leadId, whatsappTo, email = null, canWrite, openSignal, emailSignal = 0, onChanged }: {
   leadId: string; whatsappTo: string | null; email?: string | null; canWrite: boolean; openSignal: number; emailSignal?: number;
+  onChanged?: () => void; // tel-015: a send or delete -- the page's timeline re-reads
 }) {
   const [data, setData] = useState<Page<LeadMessage> | null>(null);
   const [failed, setFailed] = useState(false);
@@ -111,6 +112,7 @@ export default function LeadMessages({ leadId, whatsappTo, email = null, canWrit
   const done = (text: string) => {
     setNotice({ text, failed: false });
     reload();
+    onChanged?.();
   };
 
   return (

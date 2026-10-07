@@ -15,10 +15,6 @@ export type TelecallerLead = {
 // tel-013 D1: `whatsapp_to` is the wa.me number (the WhatsApp number, else the mobile, as E.164 digits) or null; tel-018: the linked
 // student's milestones
 export type TelecallerLeadDetail = TelecallerLead & { message: string; whatsapp_to: string | null; milestones?: Milestones };
-export type TimelineRow = {
-  id: string; kind: "stage" | "priority" | "enquiry"; at: string; actor: PersonRef | null; from_value: string; from_label: string; to_value: string;
-  to_label: string; reason: string | null; event?: string | null; // tel-018: a stage row's pipeline event
-};
 
 /** tel-005 (R2): one lead of the §18 duplicate panel -- never its phone, email or messages. */
 export type DuplicateMatch = {
@@ -26,17 +22,9 @@ export type DuplicateMatch = {
   last_contact_at: string | null; matched_on: ("phone" | "email")[]; enquiries: { subject: string; source: string; at: string }[]; in_scope: boolean;
 };
 
-/** One activity row's title. tel-018 QA-03: a counselor's return is named, not shown as "Follow-up -> Follow-up". */
-export function activityTitle(row: TimelineRow): string {
-  if (row.kind === "enquiry") return `New enquiry: ${row.to_label}`;
-  if (row.event === "returned") return "Returned to the telecaller";
-  return `${row.kind === "priority" ? "Priority" : "Stage"}: ${row.from_label} → ${row.to_label}`;
-}
-
 export const LEADS_URL = "/api/v1/telecaller/leads";
 export const DUPLICATE_CHECK_URL = `${LEADS_URL}/duplicate-check`;
 export const leadUrl = (id: string, suffix = "") => `${LEADS_URL}/${encodeURIComponent(id)}${suffix}`;
-export const TIMELINE_LIMIT = 50;
 export const LEAD_LIST_FILTERS = ["status", "priority", "product_id", "campaign_id", "follow_up"] as const; // tel-011 F9: follow_up
 export type LeadListFilter = (typeof LEAD_LIST_FILTERS)[number];
 export const FOLLOW_UP_FILTERS = [{ key: "today", label: "Due today" }, { key: "overdue", label: "Overdue" }] as const;

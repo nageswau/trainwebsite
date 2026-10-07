@@ -2,7 +2,8 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import LeadDetailPanel from "@/components/LeadDetailPanel";
-import type { TelecallerLeadDetail, TimelineRow } from "@/lib/telecallerLeads";
+import type { TimelineRow } from "@/lib/leadTimeline";
+import type { TelecallerLeadDetail } from "@/lib/telecallerLeads";
 
 // tel-008 (spec §3, AC3/AC4, D1/D2/D4): the lead detail -- §2 fields, priority with the activity list, the contact edit, Call and the
 // stage control; a handed-over lead is read-only.
@@ -282,7 +283,8 @@ describe("LeadDetailPanel (tel-008)", () => {
     render(<LeadDetailPanel initial={detail()} timeline={pageOf([enquiry])} canReopen={false} />);
     const activity = screen.getByRole("list", { name: "Lead activity" });
     expect(within(activity).getByText("New enquiry: Weekend batch")).toBeTruthy();
-    expect(within(activity).getByText(/Website form · Website/)).toBeTruthy();
+    expect(within(activity).getByText(/^Website form ·/)).toBeTruthy();
+    expect(within(activity).getByText("Source: Website")).toBeTruthy();
     expect(within(activity).getByText("Please call after 6")).toBeTruthy();
   });
 

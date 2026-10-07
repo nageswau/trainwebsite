@@ -10,14 +10,16 @@ import LeadHandoverForm from "@/components/LeadHandoverForm";
 import LeadMessages from "@/components/LeadMessages";
 import LeadMilestones from "@/components/LeadMilestones";
 import LeadQualificationForm from "@/components/LeadQualificationForm";
+import LeadTimeline from "@/components/LeadTimeline";
 import ProductOptions from "@/components/TelecallerProductOptions";
 import { isRequestBody, sendJson, type Page } from "@/lib/apiErrors";
 import { formatDate } from "@/lib/formatDate";
 import { isClosed, stageLabel } from "@/lib/leadStages";
+import type { TimelineRow } from "@/lib/leadTimeline";
 import { SOURCE_LABEL, activeProducts, getPage, type Product } from "@/lib/telecallerCatalogue";
 import { SCRIPTS_URL, type Script } from "@/lib/telecallerContent";
 import {
-  PRIORITIES, PRIORITY_LABEL, TIMELINE_LIMIT, activityTitle, leadUrl, moveStage, telHref, type Priority, type TelecallerLeadDetail, type TimelineRow,
+  PRIORITIES, PRIORITY_LABEL, leadUrl, moveStage, telHref, type Priority, type TelecallerLeadDetail,
 } from "@/lib/telecallerLeads";
 
 type Notice = { text: string; failed: boolean } | null;
@@ -144,10 +146,10 @@ function LeadScriptPanel({ product }: { product: { id: string; name: string } | 
 }
 
 /** tel-008 (spec §3; AC3, AC4; D1, D4): one lead -- the EVID-019 §2 fields, Call, the stage control, the priority (§8) and the activity
- *  list (stage + priority changes, W1). `read_only` (handed over to a counselor) shows the lead without any control. */
+ *  timeline (W1; tel-015: every event kind, `LeadTimeline`). `read_only` (handed over to a counselor) shows the lead without any control. */
 export default function LeadDetailPanel({ initial, timeline, canReopen }: { initial: TelecallerLeadDetail; timeline: Page<TimelineRow> | null; canReopen: boolean }) {
   const [lead, setLead] = useState(initial);
-  const [activity, setActivity] = useState(timeline);
+  const [activityVersion, setActivityVersion] = useState(0); // tel-015: a bump re-reads the timeline
   const [priority, setPriority] = useState<Priority>(initial.priority);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -166,11 +168,10 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
   const canHandover = !lead.read_only && !isClosed(lead.status) && !["application_enrollment", "converted"].includes(lead.status);
   const [handoverNotice, setHandoverNotice] = useState<Notice>(null);
 
-  const reloadActivity = () =>
-    getPage<TimelineRow>(leadUrl(lead.id, `/timeline?limit=${TIMELINE_LIMIT}`)).then(setActivity, () => setActivity(null));
+  const reloadActivity = () => setActivityVersion((n) => n + 1);
   const stageChanged = (status: string) => {
     setLead((l) => ({ ...l, status, status_label: stageLabel(status) }));
-    void reloadActivity();
+    reloadActivity();
   };
 
   async function savePriority(event: FormEvent) {
@@ -181,7 +182,7 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
     if (!outcome.ok || !isRequestBody(outcome.data)) return setPriorityNotice({ text: outcome.ok ? "Unable to save the priority." : outcome.message, failed: true });
     setLead(outcome.data as unknown as TelecallerLeadDetail);
     setPriorityNotice({ text: "Priority updated.", failed: false });
-    void reloadActivity();
+    reloadActivity();
   }
 
   const fields: [string, React.ReactNode][] = [
@@ -222,7 +223,7 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
         {!lead.read_only && (
           <div>
             <LeadStageControl lead={lead} canReopen={canReopen} move={moveStage} onMessage={(m) => setStageNotice({ text: m.text, failed: m.failed })}
-              onChanged={(status) => { setLead((l) => ({ ...l, status, status_label: stageLabel(status) })); void reloadActivity(); }} />
+              onChanged={(status) => { setLead((l) => ({ ...l, status, status_label: stageLabel(status) })); reloadActivity(); }} />
             <NoticeLine notice={stageNotice} />
           </div>
         )}
@@ -230,7 +231,7 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
           <LeadHandoverForm lead={lead} onDone={(next) => {
             setLead(next);
             setHandoverNotice({ text: `Handed over to ${next.counselor?.full_name ?? "the counselor"}.`, failed: false });
-            void reloadActivity();
+            reloadActivity();
           }} />
         )}
       </div>
@@ -262,12 +263,13 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
         onLogged={(result) => {
           if (result.lead.status !== lead.status) stageChanged(result.lead.status); // the follow-ups re-read on a stage change (F4)
           else if (result.follow_up_id) setFollowUpsVersion((n) => n + 1);
-        }} />
+        }} onChanged={reloadActivity} />
 
       <LeadMessages leadId={lead.id} whatsappTo={lead.whatsapp_to} email={lead.email} canWrite={telecallerWrites} openSignal={whatsAppSignal}
-        emailSignal={emailSignal} />
+        emailSignal={emailSignal} onChanged={reloadActivity} />
 
-      <LeadFollowUps leadId={lead.id} leadStage={lead.status} canWrite={telecallerWrites} refresh={followUpsVersion} onStageChanged={stageChanged} />
+      <LeadFollowUps leadId={lead.id} leadStage={lead.status} canWrite={telecallerWrites} refresh={followUpsVersion} onStageChanged={stageChanged}
+        onChanged={reloadActivity} />
 
       <LeadScriptPanel product={lead.product} />
 
@@ -301,9 +303,8 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
       {/* tel-016: only the lead's telecaller books (`canReopen` marks the manager's page); the API is the gate either way */}
       <LeadAppointmentsSection leadId={lead.id} stage={lead.status} canBook={!canReopen && !lead.read_only}
         onStage={(status, label) => {
-          if (status === lead.status) return;
-          setLead((l) => ({ ...l, status, status_label: label }));
-          void reloadActivity();
+          reloadActivity(); // tel-015: every appointment change is on the timeline, a stage move or not
+          if (status !== lead.status) setLead((l) => ({ ...l, status, status_label: label }));
         }} />
 
       {lead.milestones && <LeadMilestones milestones={lead.milestones} status={lead.status} />}
@@ -316,27 +317,7 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
 
       <section aria-labelledby="lead-activity-heading">
         <h3 id="lead-activity-heading" style={{ margin: 0 }}>Activity</h3>
-        {activity === null ? (
-          <p className="form-error" role="alert" style={{ fontSize: 13 }}>Unable to load the activity.</p>
-        ) : activity.items.length === 0 ? (
-          <p className="muted" style={{ fontSize: 13 }}>No activity yet.</p>
-        ) : (
-          <ol aria-label="Lead activity" style={{ margin: "6px 0 0", paddingLeft: 18, display: "grid", gap: 6 }}>
-            {activity.items.map((row) => (
-              <li key={`${row.kind}-${row.id}`}>
-                <strong style={{ overflowWrap: "anywhere" }}>{activityTitle(row)}</strong>
-                <div className="muted" style={{ fontSize: 13 }}>
-                  {row.actor ? row.actor.full_name : row.kind === "enquiry" ? "Website form" : "System"}
-                  {row.kind === "enquiry" && ` · ${SOURCE_LABEL[row.from_value] ?? row.from_value}`} · {formatDate(row.at, true)}
-                </div>
-                {row.reason && <div style={{ fontSize: 13, overflowWrap: "anywhere", whiteSpace: "pre-wrap" }}>{row.reason}</div>}
-              </li>
-            ))}
-          </ol>
-        )}
-        {activity && activity.total > activity.items.length && (
-          <p className="muted" style={{ fontSize: 13 }}>Showing the latest {activity.items.length} of {activity.total} entries.</p>
-        )}
+        <LeadTimeline url={leadUrl(lead.id, "/timeline")} initial={timeline} version={activityVersion} />
       </section>
     </div>
   );

@@ -6,10 +6,10 @@ import { type FormEvent, useCallback, useEffect, useId, useState } from "react";
 import BdmConfirm from "@/components/BdmConfirm";
 import LocalTime from "@/components/LocalTime";
 import LeadMilestones from "@/components/LeadMilestones";
-import { isPage, isRequestBody, sendJson, sendRequest, type Page, type SendOutcome } from "@/lib/apiErrors";
+import LeadTimeline from "@/components/LeadTimeline";
+import { isRequestBody, sendJson, sendRequest, type SendOutcome } from "@/lib/apiErrors";
 import { counselorLeadUrl, type CounselorLeadDetail as Detail, type StudentSuggestion } from "@/lib/leadHandover";
 import { SOURCE_LABEL } from "@/lib/telecallerCatalogue";
-import { TIMELINE_LIMIT, activityTitle, type TimelineRow } from "@/lib/telecallerLeads";
 
 type Notice = { text: string; failed: boolean } | null;
 
@@ -148,27 +148,18 @@ function LinkStudentPanel({ lead, onLinked }: { lead: Detail; onLinked: (outcome
 export default function CounselorLeadDetail({ initial }: { initial: Detail }) {
   const [lead, setLead] = useState(initial);
   const [returned, setReturned] = useState(false);
-  const [activity, setActivity] = useState<Page<TimelineRow> | "failed" | null>(null);
+  const [activityVersion, setActivityVersion] = useState(0); // tel-015: a bump re-reads the timeline
   const [unlinking, setUnlinking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
   const listHref = `/${lead.division === "overseas" ? "overseas" : "it"}/counselor/leads`;
 
-  const loadActivity = useCallback(() => {
-    fetch(counselorLeadUrl(lead.id, `/timeline?limit=${TIMELINE_LIMIT}`))
-      .then(async (r) => {
-        const data = r.ok ? await r.json() : null;
-        setActivity(isPage<TimelineRow>(data) ? data : "failed");
-      })
-      .catch(() => setActivity("failed"));
-  }, [lead.id]);
-  useEffect(() => { loadActivity(); }, [loadActivity]);
 
   function applied(outcome: SendOutcome, text: string) {
     if (!outcome.ok || !isRequestBody(outcome.data)) return setNotice({ text: outcome.ok ? "Unable to update the lead." : outcome.message, failed: true });
     setLead(outcome.data as unknown as Detail);
     setNotice({ text, failed: false });
-    loadActivity();
+    setActivityVersion((n) => n + 1);
   }
 
   async function unlink() {
@@ -242,23 +233,7 @@ export default function CounselorLeadDetail({ initial }: { initial: Detail }) {
 
       <section aria-labelledby="lead-activity-heading">
         <h3 id="lead-activity-heading" style={{ margin: 0 }}>Activity</h3>
-        {activity === null ? (
-          <p className="muted" role="status" style={{ fontSize: 13 }}>Loading the activity…</p>
-        ) : activity === "failed" ? (
-          <p className="form-error" style={{ fontSize: 13 }}>Unable to load the activity.</p>
-        ) : activity.items.length === 0 ? (
-          <p className="muted" style={{ fontSize: 13 }}>No activity yet.</p>
-        ) : (
-          <ol aria-label="Lead activity" style={{ margin: "6px 0 0", paddingLeft: 18, display: "grid", gap: 6 }}>
-            {activity.items.map((row) => (
-              <li key={`${row.kind}-${row.id}`}>
-                <strong style={{ overflowWrap: "anywhere" }}>{activityTitle(row)}</strong>
-                <div className="muted" style={{ fontSize: 13 }}>{row.actor ? row.actor.full_name : row.kind === "enquiry" ? "Website form" : "System"} · <LocalTime value={row.at} time /></div>
-                {row.reason && <div style={{ fontSize: 13, overflowWrap: "anywhere", whiteSpace: "pre-wrap" }}>{row.reason}</div>}
-              </li>
-            ))}
-          </ol>
-        )}
+        <LeadTimeline url={counselorLeadUrl(lead.id, "/timeline")} version={activityVersion} />
       </section>
     </div>
   );

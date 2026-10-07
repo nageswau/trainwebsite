@@ -12,7 +12,8 @@ import type { Page } from "@/lib/apiErrors";
 import { TELECALLER_MANAGER_NAV, TELECALLER_SIGN_IN, type NavItem } from "@/lib/navigation";
 import { teamRoleLabel, type TelecallerMe } from "@/lib/telecaller";
 import { telecallerNav } from "@/lib/telecallerNav";
-import { TIMELINE_LIMIT, leadUrl, type TelecallerLeadDetail, type TimelineRow } from "@/lib/telecallerLeads";
+import { TIMELINE_LIMIT, type TimelineRow } from "@/lib/leadTimeline";
+import { leadUrl, type TelecallerLeadDetail } from "@/lib/telecallerLeads";
 import type { User } from "@/lib/types";
 
 // tel-008 (spec §3, D5): My Leads and the lead detail, for a telecaller (/telecaller/leads) and a manager (/telecaller/manager/leads).

@@ -65,8 +65,9 @@ function CallItem({ call, leadId, leadStage, onEdited, onDeleted, onRefused }: {
 /** tel-010 (spec §5): the lead page's calls, newest first. `canWrite` (the lead's telecaller, lead not handed over or closed) offers Log call;
  *  a bump of `openSignal` (the page's Call button) opens the form too. A logged call's result -- the stage after its effect and any
  *  follow-up it created -- is handed up so the page header, follow-ups and activity follow. */
-export default function LeadCalls({ leadId, leadStage, canWrite, openSignal, onLogged }: {
+export default function LeadCalls({ leadId, leadStage, canWrite, openSignal, onLogged, onChanged }: {
   leadId: string; leadStage: string; canWrite: boolean; openSignal: number; onLogged: (result: LogCallResult) => void;
+  onChanged?: () => void; // tel-015: a log, edit or delete -- the page's timeline re-reads
 }) {
   const [data, setData] = useState<Page<LeadCall> | null>(null);
   const [failed, setFailed] = useState(false);
@@ -92,6 +93,7 @@ export default function LeadCalls({ leadId, leadStage, canWrite, openSignal, onL
   const done = (text: string) => {
     setNotice({ text, failed: false });
     reload();
+    onChanged?.();
   };
 
   return (
