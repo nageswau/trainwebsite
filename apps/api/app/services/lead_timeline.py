@@ -36,7 +36,6 @@ EXCERPT = 200
 # D4: one transaction's rows share `at`; the rank puts them in causal order (newest first shows a stage move above its cause).
 RANK = {"created": 0, "enquiry": 1, "assignment": 2, "handover": 2, "student_link": 2, "stage": 4}
 OTHER_RANK = 3
-SERVER_LABELLED = ("stage", "priority")
 
 
 def _excerpt(column):

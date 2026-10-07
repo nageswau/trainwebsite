@@ -20,7 +20,7 @@ export type TimelineEntry = {
 };
 
 export const TIMELINE_LIMIT = 50;
-export const EXCERPT = 200; // TM2: the API cuts free text here; the full text stays in the Calls / Messages / Follow-ups sections
+const EXCERPT = 200; // TM2: the API cuts free text here; the full text stays in the Calls / Messages / Follow-ups sections
 
 const TONE = { stage: "var(--blue)", contact: "var(--green)", plan: "var(--amber)", owner: "var(--navy)", stop: "var(--red)" };
 const METHOD: Record<string, string> = { manual: "Manual", round_robin: "Round robin", product_rule: "Product rule", location_rule: "Location rule" };
