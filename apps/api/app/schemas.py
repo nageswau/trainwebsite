@@ -5854,6 +5854,73 @@ class LeadFollowUpUpdate(BaseModel):
         return self
 
 
+# bdm-015 (DEC-SCOPE-099, spec §5): the daily activity report.
+BDM_DAILY_REPORT_LABELS = {"note": "Note", "comment": "Comment"}
+DailyReportNote = Annotated[Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, BDM_DAILY_REPORT_LABELS))]
+DailyReportComment = Annotated[Annotated[str, _trimmed(1000)], AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, True, BDM_DAILY_REPORT_LABELS))]
+
+
+class BdmDailyReportSubmit(BaseModel):
+    """R4: the optional end-of-day note. Counts, owner and times are server-owned (unknown fields → 422)."""
+
+    model_config = ConfigDict(extra="forbid")
+    note: DailyReportNote = None
+
+
+class BdmDailyReportCommentIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    comment: DailyReportComment
+
+
+class BdmDailyReportCount(BaseModel):
+    key: str
+    label: str
+    definition: str
+    tracked: bool
+    count: int | None
+
+
+class BdmDailyReportManagerComment(BaseModel):
+    text: str
+    by: BdmPersonRef
+    at: datetime
+
+
+class BdmDailyReportOut(BaseModel):
+    """`status` draft = a live preview (nothing stored); submitted = the snapshot taken at `submitted_at`."""
+
+    report_date: date
+    bdm: BdmPersonRef
+    bdm_type: Literal["agent", "school", "college"]
+    status: Literal["draft", "submitted"]
+    submitted_at: datetime | None
+    note: str | None
+    counts: list[BdmDailyReportCount]
+    can_submit: bool
+    submit_window_days: int
+    manager_comment: BdmDailyReportManagerComment | None
+
+
+class BdmDailyReportDay(BaseModel):
+    report_date: date
+    status: Literal["submitted", "missing", "not_started"]
+    submitted_at: datetime | None
+
+
+class BdmDailyReportTeamRow(BaseModel):
+    bdm: BdmPersonRef
+    bdm_type: Literal["agent", "school", "college"]
+    days: list[BdmDailyReportDay]
+
+
+class BdmDailyReportGrid(BaseModel):
+    dates: list[date]
+    items: list[BdmDailyReportTeamRow]
+    total: int
+    limit: int
+    offset: int
+
+
 # tel-010 (DEC-SCOPE-096): a call on a lead. The caller, lead and timestamps are server-owned (unknown fields here); the outcome rules that
 # need the lead (closed, follow-up required, duplicate remarks) are the service's.
 LeadCallType = Literal[LEAD_CALL_TYPES]
@@ -5872,6 +5939,15 @@ class LeadCallCreate(BaseModel):
     outcome: LeadCallOutcome
     remarks: LeadCallRemarks = None
     next_follow_up: LeadFollowUpCreate | None = None
+
+
+class LeadMessageCreate(BaseModel):
+    """tel-013: D9 WhatsApp only (email arrives with tel-014); WA4 the template is optional; WA1 the text as sent (tel-012's limit)."""
+
+    model_config = ConfigDict(extra="forbid")
+    channel: Literal["whatsapp"]
+    template_id: UUID | None = None
+    body: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
 
 
 class LeadCallUpdate(BaseModel):
@@ -5940,7 +6016,7 @@ class MeetingRequestDecline(BaseModel):
     model_config = ConfigDict(extra="forbid")
     reason: BdmApptReason
 
-# --- tel-018 (DEC-SCOPE-099, spec §3.3): handover, return and the counselor's student link ----------------------------------------
+# --- tel-018 (DEC-SCOPE-101, spec §3.3): handover, return and the counselor's student link ----------------------------------------
 class LeadHandoverIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     counselor_id: UUID

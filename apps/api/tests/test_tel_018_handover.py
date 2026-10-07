@@ -1,4 +1,4 @@
-"""tel-018 -- handover to a counselor (spec §3.2; DEC-SCOPE-099 HO4) and the counselor's lead list/detail (AC1). The shared test
+"""tel-018 -- handover to a counselor (spec §3.2; DEC-SCOPE-101 HO4) and the counselor's lead list/detail (AC1). The shared test
 database is never truncated, so every test builds its own people and leads."""
 
 import uuid

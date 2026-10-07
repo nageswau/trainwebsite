@@ -1235,9 +1235,49 @@ permissions: {can_accept, can_decline}}`. Lists are `{items, total, limit, offse
 
 Audit rows and logs carry ids, codes, types and statuses only — never the person, phone, email or free text.
 
-## 12T. Lead handover, return and student link (`tel-018`) — addendum, 2026-10-07
+## 12T. BDM daily activity report (`bdm-015`) — addendum, 2026-10-07
 
-`DEC-SCOPE-099`; design spec `docs/superpowers/specs/2026-10-07-tel-018-handover-design.md` §3. No migration. Signed out `401`. The
+`DEC-SCOPE-099`; design spec `docs/superpowers/specs/2026-10-07-bdm-015-daily-activity-report-design.md` §5. Migration
+`0094_bdm_daily_reports`. Signed out `401`. Dates are IST calendar days (`YYYY-MM-DD`; a malformed one is `422`). The report shape:
+`{report_date, bdm: {id, full_name}, bdm_type, status: draft|submitted, submitted_at, note, counts: [{key, label, definition, tracked,
+count}], can_submit, submit_window_days: 7, manager_comment: {text, by: {id, full_name}, at} | null}` — a not-tracked count has
+`tracked: false, count: null`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /bdm/daily-reports/{report_date}` | `bdm` only (else `403`). Own report: the live preview (`draft`, nothing stored) or the submitted snapshot. Future `422` |
+| `POST /bdm/daily-reports/{report_date}/submit` | `bdm` only (a manager or any other role `403` — no one submits for another BDM). Body `{note?}` (≤ 2000, control characters `422`, unknown keys `422`). Future or more than 7 days back `422`; already submitted `409`. `201` the shape; audit `bdm_daily_report.submitted {report_date}` |
+| `GET /bdm/manager/daily-reports?date=&limit=&offset=` | `bdm_manager` (team) / `super_admin` (all), else `403`. `{dates: [7 days ending at date], items: [{bdm, bdm_type, days: [{report_date, status: submitted\|missing\|not_started, submitted_at}]}], total, limit, offset}` — active BDMs, by name. Future `422` |
+| `GET /bdm/manager/daily-reports/{bdm_user_id}/{report_date}` | Manager roles. The shape, `can_submit: false`. A BDM outside the team `404` |
+| `PUT /bdm/manager/daily-reports/{bdm_user_id}/{report_date}/comment` | Manager roles. Body `{comment}` (1–1000). Not submitted `409`; outside the team `404`. Replaces any earlier comment; audit `bdm_daily_report.commented` |
+
+Changed (bdm-009): `POST /bdm/activities` with `occurred_at` on a submitted day, and `PATCH` / `DELETE /bdm/activities/{id}` on a
+submitted day's activity, are `409` "This day's report has been submitted, so its activities can't be changed"; `permissions.can_change`
+is `false` for them. No other field or code changes.
+
+## 12U. Lead messages — WhatsApp click-to-chat (`tel-013`) — addendum, 2026-10-07
+
+`DEC-SCOPE-100`; design spec `docs/superpowers/specs/2026-10-07-tel-013-whatsapp-design.md` §3. Migration `0095_lead_messages`. Reads use
+the lead's scope (`lead_pipeline.scope`; other roles `403`, signed out `401`, out of scope `404`). Only the lead's telecaller records a send
+(`403` for managers / super_admin); a handed-over lead is `403` for its telecaller; a closed lead `409`. (§12S is tel-019's; §12T is
+claimed by the open tel-018 branch.)
+
+Message item: `{id, lead_id, channel: whatsapp|email, template: {id, name} | null, subject, body, sent_at, sender: {id, full_name},
+can_delete}`. `template.name` is the name when sent (D6); `null` = a custom message (WA4).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/leads/{id}/render?template_id=` | `200 {template: {id, name, channel, kind}, subject, body, brochure_link: {url, expires_at} \| null, product_mismatch}` — an active WhatsApp or email template rendered with the lead's name, its product (else the template's), a fresh 7-day brochure link (active brochure only) and its open counselling appointment ("Mon 14 Sept 2026, 10:30 AM" IST). Missing values render empty. `404` inactive / unknown template. Read-only, so a manager may call it too (tel-012 C2) |
+| `GET /telecaller/leads/{id}/messages?limit=&offset=` | `200` page of the lead's messages, newest first |
+| `POST /telecaller/leads/{id}/messages` | `{channel: "whatsapp", template_id?, body (1–1000, trimmed)}` → `201` item; `sent_at` = now. `422` an email channel (tel-014), an empty / too long body, or a `template_id` that is unknown, inactive or not WhatsApp (on the field). `409` closed lead, no usable WhatsApp / mobile number, or 300 sends that IST day. No stage effect. Not idempotent (each confirm is one send). Audit `lead_message.create` (lead id, channel, template id) |
+| `DELETE /telecaller/messages/{id}` | `204`. Only the sender (`403`), lead not handed over (`403`), the send's IST day only (`409`). Audit `lead_message.delete` |
+
+`GET /telecaller/leads/{id}` gains `whatsapp_to`: the wa.me number (digits of the E.164 WhatsApp number, else of the mobile; `+91` default
+for a 10-digit Indian mobile) or `null`.
+
+## 12V. Lead handover, return and student link (`tel-018`) — addendum, 2026-10-07
+
+`DEC-SCOPE-101`; design spec `docs/superpowers/specs/2026-10-07-tel-018-handover-design.md` §3. No migration. Signed out `401`. The
 counselor lead shape is §12J's lead row (with `converted_user`) plus `message`, `milestones: {student: {id, full_name, email} | null,
 items: [{kind: enrollment|application|visa, label, status, reference, at}]}` and `permissions: {return, link, unlink}`.
 

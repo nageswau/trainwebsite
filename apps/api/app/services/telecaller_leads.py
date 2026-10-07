@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.lead_stages import label as stage_label
 from app.models import AuditLog, Enquiry, LeadEnquiry, LeadStageHistory, User
+from app.notifications.phone import normalise_phone
 from app.services import bdm_leads, lead_handover, lead_pipeline
 from app.services.telecaller_catalogue import locked_active_product
 
@@ -35,6 +36,13 @@ def require_writable(user: User, lead: Enquiry) -> None:
         raise HTTPException(403, HANDED_OVER)
 
 
+def whatsapp_to(lead: Enquiry) -> str | None:
+    """tel-013 D1 / AC1: the wa.me number -- the WhatsApp number, else the mobile, as E.164 digits without the `+` (ENH-014's +91 default);
+    an unusable WhatsApp number falls back to the mobile. None when neither is usable (AC3)."""
+    number = normalise_phone(lead.whatsapp_number) or normalise_phone(lead.phone)
+    return number.lstrip("+") if number else None
+
+
 def row_out(user: User, row) -> dict:
     return {**bdm_leads.admin_out(row), "read_only": read_only(user, row[0])}
 
@@ -51,7 +59,8 @@ async def detail(db: AsyncSession, user: User, lead_id: UUID, filters: list) -> 
     row = (await db.execute(bdm_leads.admin_rows().where(Enquiry.id == lead_id, *filters).execution_options(populate_existing=True))).one_or_none()
     if row is None:
         raise HTTPException(404, lead_pipeline.LEAD_NOT_FOUND)
-    return {**row_out(user, row), "message": row[0].message, "milestones": await lead_handover.milestones(db, row[0])}
+    return {**row_out(user, row), "message": row[0].message, "whatsapp_to": whatsapp_to(row[0]),
+            "milestones": await lead_handover.milestones(db, row[0])}
 
 
 async def apply_update(db: AsyncSession, user: User, lead: Enquiry, changes: dict) -> None:

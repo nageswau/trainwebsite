@@ -700,7 +700,33 @@ organization → appointment (then bdm-006's own).
 | `super_admin` | list / read only (accept / decline `403`) | all | `tel-019` |
 | every other role (incl. `telecaller_manager`) | none → `403` | — | `tel-019` |
 
-### 2.26 Lead handover, return and student link *(net-new, added 2026-10-07 — `DEC-SCOPE-099`, `tel-018`)*
+### 2.26 BDM daily activity report *(net-new, added 2026-10-07 — `DEC-SCOPE-099`, `bdm-015`)*
+
+`bdm_context` gates the BDM routes (own report only — no route names another BDM); `require_manager` + `team_filter` gate the manager
+routes (a BDM outside the team is `404`).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `bdm` | read the day's preview / snapshot; **submit** (today or up to 7 days back, once); read the manager's comment | own | `bdm-015` |
+| `bdm_manager` | team grid (submitted / missing); read a team BDM's report; **comment** on a submitted one | BDMs reporting to them | `bdm-015` |
+| `super_admin` | as a manager | all BDMs | `bdm-015` |
+| every other role | none → `403` | — | `bdm-015` |
+
+### 2.27 Lead WhatsApp messages *(net-new, added 2026-10-07 — `DEC-SCOPE-100`, `tel-013`)*
+
+Inline pattern as §2.24: scope (tel-004 `lead_pipeline.scope`, joined through the message's lead; out of scope `404`), the lead lock, then
+the role (`telecaller`), the sender (`sender_user_id` = self, for delete) and handover (`telecaller_leads.require_writable`), then the send's
+IST day. Every write is audited (`lead_message.*`, ids / channel / template id — never the text or a number). §2.25 is tel-019's; §2.26
+is claimed by the open tel-018 branch.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | render a template for a lead; list a lead's messages; record a WhatsApp send; delete their own send of the same IST day | messages on leads where `telecaller_user_id` = self; **read-only** on a handed-over lead (`403`); no send on a closed lead or one without a number (`409`) | `tel-013` |
+| `telecaller_manager` | render; read a lead's messages; writes `403` | direct reports' leads + their teams' unassigned leads (T23) | `tel-013` |
+| `super_admin` | render; read (writes `403`) | all leads | `tel-013` |
+| every other role | none → `403` "Telecaller role required" | — | `tel-013` |
+
+### 2.28 Lead handover, return and student link *(net-new, added 2026-10-07 — `DEC-SCOPE-101`, `tel-018`)*
 
 The same inline pattern as §2.19. The handover uses `lead_pipeline.scope` then `telecaller_leads.require_writable`; the counselor routes
 filter by `owner_id` = self **and** the counselor's division (`lead_handover.counselor_scope`). Locks: lead → counselor / student →

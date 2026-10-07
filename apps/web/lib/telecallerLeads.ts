@@ -12,7 +12,9 @@ export type TelecallerLead = {
   product: { id: string; name: string } | null; campaign: { id: string; name: string } | null; telecaller: PersonRef | null; counselor: PersonRef | null;
   read_only: boolean;
 };
-export type TelecallerLeadDetail = TelecallerLead & { message: string; milestones?: Milestones }; // tel-018: the linked student's milestones
+// tel-013 D1: `whatsapp_to` is the wa.me number (the WhatsApp number, else the mobile, as E.164 digits) or null; tel-018: the linked
+// student's milestones
+export type TelecallerLeadDetail = TelecallerLead & { message: string; whatsapp_to: string | null; milestones?: Milestones };
 export type TimelineRow = {
   id: string; kind: "stage" | "priority" | "enquiry"; at: string; actor: PersonRef | null; from_value: string; from_label: string; to_value: string;
   to_label: string; reason: string | null; event?: string | null; // tel-018: a stage row's pipeline event

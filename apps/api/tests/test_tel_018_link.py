@@ -1,4 +1,4 @@
-"""tel-018 -- the counselor's student link, the computed conversion (T5, T20, T29; DEC-SCOPE-099 HO1-HO3; AC3-AC5), suggestions and
+"""tel-018 -- the counselor's student link, the computed conversion (T5, T20, T29; DEC-SCOPE-101 HO1-HO3; AC3-AC5), suggestions and
 the read-only milestones."""
 
 import pytest

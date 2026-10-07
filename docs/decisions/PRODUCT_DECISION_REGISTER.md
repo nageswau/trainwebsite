@@ -4388,14 +4388,78 @@ appointment); `api/bdm_appointments.book_appointment` (the bdm-006 create body, 
 "BDM requests", BDM and BDM-manager "Requests". **New Feature ID authorized:** `tel-019`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4
 tel-019.
 
-### DEC-SCOPE-099 — Handover to counselor, return, student link, computed conversion (`tel-018`)
+### DEC-SCOPE-099 — BDM daily activity report (`bdm-015`)
+
+**Evidence:** `EVID-016` §11, Agent §G, School §G (`BDM_CRM_BACKLOG.md` Appendix A L371–L397, L759–L781, L1000–L1022);
+`DEC-SCOPE-055` D9 (derived + activity log + note + submit), D22 / Q-13 (not enforced; submitting snapshots and locks the report and that
+day's activity edits; the manager can comment), D31 (School daily sessions); Appendix B M-rows; bdm-009 V6 ("Calls made" = outbound calls).
+**Status:** R1–R10 are the **recommended answers**, used under the owner's standing direction for this session to proceed with
+recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). Drafted as `DEC-SCOPE-096` / `0092` / §12R / RBAC 2.24 and
+renumbered on merging `main` @ `3d7dd99a` (tel-010 took `DEC-SCOPE-096` / `0092_lead_calls` / §12R / 2.24; bdm-014 took `DEC-SCOPE-097`),
+then again on merging `main` @ `649f32fa` (tel-019 took `DEC-SCOPE-098` / `0093_bdm_meeting_requests` / §12S / 2.25).
+Migration `0094_bdm_daily_reports` (after `0093_bdm_meeting_requests`), API contract §12T, RBAC §2.26. Spec
+`docs/superpowers/specs/2026-10-07-bdm-015-daily-activity-report-design.md`.
+
+| # | Question | Recommended answer (used) |
+|---|---|---|
+| R1 | Counts per type | The source lists: College = §11 (11), Agent §G (11), School §G (11), each one Appendix B M-row |
+| R2 | "Calls made" | Outbound calls (bdm-009 V6), so the report equals the Activities tile |
+| R3 | Late submission | Today or up to 7 IST days back; older days are a read-only preview; a future day is `422` |
+| R4 | Note | Optional, ≤ 2000 characters |
+| R5 | What submitting locks | That day's activities: create (backdated), edit and delete → `409`. Other records are not locked |
+| R6 | Resubmit / unsubmit | Neither; a second submit is `409` |
+| R7 | Manager comment (D22) | One per submitted report, replaceable, ≤ 1000, team scope or super_admin, audited; a missing report → `409` |
+| R8 | Team view | Active team BDMs × the 7 days up to the chosen date: Submitted / Missing / "—" before the BDM's profile existed |
+| R9 | Whose count | The record's BDM column; a submitted snapshot never changes after a bdm-025 handover |
+| R10 | Not tracked | Labelled with its reason, never 0: New agents (bdm-019), Applications / Enrollments generated (Agent CRM link) |
+
+**Consequences:** table `bdm_daily_reports` (unique `(bdm_user_id, report_date)`); `services/bdm_metrics.daily_counts` + the M-row
+builders bdm-016 / 023 / 024 reuse; `services/bdm_daily_reports.py`; routes in `api/bdm_daily_reports.py`; bdm-009's `editable()` gains
+the report lock and activity writes take the day's advisory lock; pages `/bdm/daily-report`, `/bdm/manager/daily-reports`,
+`/bdm/manager/daily-reports/[bdmId]`; component `BdmDailyReport`. **Feature ID:** `bdm-015`. **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-015.
+
+### DEC-SCOPE-100 — WhatsApp click-to-chat + send log (`tel-013`)
+
+**Evidence:** `EVID-019` §11 (L416–L452); `DEC-SCOPE-073` T8 (wa.me, an editable template, "WhatsApp sent – date/time – template", no API /
+approval / consent model now), T9, T19, T23 and Appendix B D10; `DEC-SCOPE-083` C1 (signed 7-day brochure links) and C2 (the lead render
+route moves to tel-013); `DEC-SCOPE-084` D1 (handover = read-only); `DEC-SCOPE-096` CL2 / CL4 (closed lead, same-day change); owner
+answers in-session 2026-10-07.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option)
+for WA1–WA4; D1–D9 are recorded defaults. Branch `feature/tel-013`, not yet merged. Migration `0095_lead_messages` (drafted as
+`0094` / `DEC-SCOPE-099` on `0092_lead_calls`; bdm-014 took `DEC-SCOPE-097` (PR #108, no migration), tel-019 (PR #109)
+`0093_bdm_meeting_requests` / `DEC-SCOPE-098` / §12S / RBAC 2.25 and bdm-015 (PR #111) `0094_bdm_daily_reports` / `DEC-SCOPE-099` / §12T /
+RBAC 2.26, so this item is renumbered to `0095` / `DEC-SCOPE-100`, after `0094_bdm_daily_reports`), API contract §12U, RBAC §2.27. Spec
+`docs/superpowers/specs/2026-10-07-tel-013-whatsapp-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| WA1 (Q-21, part) | What a send log keeps of the text | **The full text as sent** (1–1000 characters). Logs and audit never carry it |
+| WA2 | Who records a send, on which leads | **Only the lead's telecaller, before handover**; a closed lead is refused (`409`) until a manager reopens it. Managers / super_admin read |
+| WA3 | Undo a mistaken "Sent" | **The sender deletes their own row on its IST day** (audited); no edit |
+| WA4 | Must a message start from a template | **No.** A template is rendered and editable; a free message is logged as "Custom message" |
+
+Recorded defaults: D1 the wa.me number is the WhatsApp number, else the mobile (`notifications/phone.normalise_phone`, `+91` default),
+an unusable WhatsApp number falling back to the mobile. D2 no usable number → the action is disabled; the API refuses with `409`. D3 wa.me
+can't confirm delivery, so nothing is logged until the telecaller confirms ("Not sent" / cancel logs nothing). D4 active WhatsApp templates
+only; another product's template is a warning, not a refusal. D5 render values: name, the lead's product else the template's, a fresh
+brochure link, the open counselling appointment (IST). D6 the template's name is kept as sent. D7 no stage effect. D8 300 sends per sender
+per IST day (`409`). D9 `lead_messages` carries `channel` / `subject` / `delivery_status` for tel-014; this item accepts WhatsApp only.
+
+**Consequences:** table `lead_messages`; `services/lead_messages.py`; router `api/telecaller_messages.py`
+(`GET /telecaller/leads/{id}/render`, the messages list / create, `DELETE /telecaller/messages/{id}`); the lead detail gains `whatsapp_to`.
+Web: the lead-detail Messages section (`LeadMessages`, `WhatsAppComposer`; the header "WhatsApp" opens the composer). tel-015 reads the rows
+for the timeline; tel-021 counts them (Appendix B D10). Consent capture and retention for messaged leads (the rest of Q-21) stay open:
+`PRD_OPEN_ITEMS.md` row 85.
+**New Feature ID authorized:** `tel-013`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-013.
+
+### DEC-SCOPE-101 — Handover to counselor, return, student link, computed conversion (`tel-018`)
 
 **Evidence:** `EVID-019` §10 (L386–L414) and §13 (Counselor Assigned → Application/Enrollment → Converted); `DEC-SCOPE-073` T4, T5, T19,
 T20, T29 (supersedes `DEC-SCOPE-072` L2/L7 for leads in the telecaller pipeline); `DEC-SCOPE-081` (the stage engine); `DEC-SCOPE-084` D1
 (read-only after handover); `DEC-SCOPE-095` (booking options); owner answers in-session 2026-10-07.
 **Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option) for
-HO1–HO4; HO5–HO9 are recorded defaults. Branch `feature/tel-018`. **No migration.** API contract §12T, RBAC §2.26. Spec
-`docs/superpowers/specs/2026-10-07-tel-018-handover-design.md`. (tel-010 holds 096, bdm-014 097 and tel-019 098.)
+HO1–HO4; HO5–HO9 are recorded defaults. Branch `feature/tel-018`. **No migration.** API contract §12V, RBAC §2.28. Spec
+`docs/superpowers/specs/2026-10-07-tel-018-handover-design.md`. (tel-010 096, bdm-014 097, tel-019 098, bdm-015 099 and tel-013 100 merged first.)
 
 | # | Question | Answer |
 |---|---|---|

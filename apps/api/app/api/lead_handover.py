@@ -1,4 +1,4 @@
-"""tel-018 (DEC-SCOPE-099, spec §3.3; API §12T): the counselor handover, the counselor's leads, the return and the student link.
+"""tel-018 (DEC-SCOPE-101, spec §3.3; API §12V): the counselor handover, the counselor's leads, the return and the student link.
 
 - POST /telecaller/leads/{id}/handover: the lead's telecaller (tel-004 scope; 403 once handed over), their manager or super_admin.
 - /counselor/leads/...: the assigned counselor only -- the list, the detail (milestones, permissions), the timeline, the return, the

@@ -16,6 +16,7 @@ from app.core.database import get_db
 from app.models import BdmActivity, User
 from app.schemas import BdmActivityChannel, BdmActivityCreate, BdmActivityDayPage, BdmActivityOut, BdmActivityPage, BdmActivityUpdate
 from app.services import bdm_activities as svc
+from app.services import bdm_daily_reports as reports
 from app.services import bdm_organizations as org_svc
 from app.services.bdm import bdm_context, require_manager, team_filter
 from app.services.bdm_appointments import db_now
@@ -54,6 +55,7 @@ async def log_activity(payload: BdmActivityCreate, user: User = Depends(get_curr
     now = await db_now(db)
     occurred_at = svc.check_time(payload.occurred_at, now)  # V9: clamped to now when slightly ahead
     await svc.check_daily_cap(db, user.id, svc.india_date(occurred_at))
+    await reports.check_day_open(db, user.id, svc.india_date(occurred_at))  # bdm-015 R5: a backdated log onto a submitted day -> 409
     activity = BdmActivity(
         bdm_user_id=user.id, organization_id=org.id, contact_id=contact.id if contact else None,
         contact_name=contact.name if contact else None, channel=payload.channel, direction=payload.direction,
@@ -68,7 +70,8 @@ async def log_activity(payload: BdmActivityCreate, user: User = Depends(get_curr
 
 
 async def _owned(db: AsyncSession, user: User, activity_id: UUID, route: str):
-    """Scope (404) and owner (403) before any lock; then organization, then activity (spec §5.5); then the day gate (409)."""
+    """Scope (404) and owner (403) before any lock; then organization, then activity (spec §5.5); then the day gate (409); then
+    bdm-015's report lock for that day (409)."""
     current = await svc.load_readable(db, user, activity_id)
     if current.bdm_user_id != user.id:
         raise svc.refused(user, route, 403, svc.OWNER_ONLY, activity_id=activity_id)
@@ -77,6 +80,7 @@ async def _owned(db: AsyncSession, user: User, activity_id: UUID, route: str):
     now = await db_now(db)
     if not svc.editable(activity, now):
         raise HTTPException(409, svc.NOT_TODAY)
+    await reports.check_day_open(db, user.id, svc.india_date(activity.occurred_at))
     return org, activity, now
 
 

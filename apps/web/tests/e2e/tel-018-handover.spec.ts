@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { E2E_PASSWORD, activateWithToken } from "./helpers/welcome";
 
-// tel-018 (DEC-SCOPE-099): an IT telecaller hands a lead to an IT counselor (HO4) and can then only read it (AC1). The counselor finds it
+// tel-018 (DEC-SCOPE-101): an IT telecaller hands a lead to an IT counselor (HO4) and can then only read it (AC1). The counselor finds it
 // under Leads, links the suggested student (same email) -- Application/Enrollment (AC3) -- unlinks it, and returns the lead with a
 // reason (AC2): the telecaller works it again and sees the return in the activity. Throwaway accounts; phone width has no sideways scroll.
 test.describe.configure({ timeout: 180_000 });

@@ -1,4 +1,4 @@
-"""tel-018 (DEC-SCOPE-099, spec §3.2): the counselor handover, the return, the student link and the computed conversion (T4, T5, T19,
+"""tel-018 (DEC-SCOPE-101, spec §3.2): the counselor handover, the return, the student link and the computed conversion (T4, T5, T19,
 T20, T29; HO1-HO4).
 
 Functions only; nothing here commits except the conversion observers, which own their own small transaction. Every write runs on a lead

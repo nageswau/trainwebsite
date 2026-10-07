@@ -117,7 +117,7 @@ def send_daily_reminders_task():
 
 @celery.task
 def sweep_lead_conversions_task():
-    """tel-018 (DEC-SCOPE-099, T5): every 15 minutes via beat -- linked leads whose student has since enrolled become Converted."""
+    """tel-018 (DEC-SCOPE-101, T5): every 15 minutes via beat -- linked leads whose student has since enrolled become Converted."""
     from app.core.database import SessionLocal
     from app.services.lead_handover import sweep_conversions
 

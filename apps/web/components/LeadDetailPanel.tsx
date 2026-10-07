@@ -7,6 +7,7 @@ import LeadAppointmentsSection from "@/components/LeadAppointmentsSection";
 import LeadCalls from "@/components/LeadCalls";
 import LeadFollowUps from "@/components/LeadFollowUps";
 import LeadHandoverForm from "@/components/LeadHandoverForm";
+import LeadMessages from "@/components/LeadMessages";
 import LeadMilestones from "@/components/LeadMilestones";
 import LeadQualificationForm from "@/components/LeadQualificationForm";
 import ProductOptions from "@/components/TelecallerProductOptions";
@@ -154,6 +155,7 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
   const [detailsNotice, setDetailsNotice] = useState<Notice>(null);
   const [stageNotice, setStageNotice] = useState<Notice>(null);
   const [callSignal, setCallSignal] = useState(0);
+  const [whatsAppSignal, setWhatsAppSignal] = useState(0);
   const [followUpsVersion, setFollowUpsVersion] = useState(0);
   const call = telHref(lead.phone);
   // tel-010 / tel-011 (D8, F2, F4): only the lead's telecaller logs calls and adds follow-ups (a manager reads); never on a closed lead
@@ -208,6 +210,10 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-start" }}>
         {/* tel-010: the dialer opens, and so does the call log form */}
         {call && <a className="btn small" href={call} aria-label={`Call ${lead.name}`} onClick={() => setCallSignal((n) => n + 1)}>Call</a>}
+        {/* tel-013: opens the WhatsApp composer in the Messages section (WA2: the lead's telecaller, open lead; AC3: a usable number) */}
+        {telecallerWrites && lead.whatsapp_to && (
+          <button type="button" className="btn secondary small" aria-label={`WhatsApp ${lead.name}`} onClick={() => setWhatsAppSignal((n) => n + 1)}>WhatsApp</button>
+        )}
         {!lead.read_only && (
           <div>
             <LeadStageControl lead={lead} canReopen={canReopen} move={moveStage} onMessage={(m) => setStageNotice({ text: m.text, failed: m.failed })}
@@ -252,6 +258,8 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
           if (result.lead.status !== lead.status) stageChanged(result.lead.status); // the follow-ups re-read on a stage change (F4)
           else if (result.follow_up_id) setFollowUpsVersion((n) => n + 1);
         }} />
+
+      <LeadMessages leadId={lead.id} whatsappTo={lead.whatsapp_to} canWrite={telecallerWrites} openSignal={whatsAppSignal} />
 
       <LeadFollowUps leadId={lead.id} leadStage={lead.status} canWrite={telecallerWrites} refresh={followUpsVersion} onStageChanged={stageChanged} />
 

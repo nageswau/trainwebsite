@@ -616,6 +616,13 @@ after tel-003 `0078`, bdm-005 `0079`, tel-022 `0080`, tel-004 `0081` and bdm-025
 
 ### tel-013 — WhatsApp click-to-chat + send log
 
+**Status (2026-10-07):** **built** on `feature/tel-013`, not yet merged (`DEC-SCOPE-100` WA1–WA4 + D1–D9, migration `0095_lead_messages`,
+API contract §12U, RBAC §2.27; drafted as `0094` / `DEC-SCOPE-099`, renumbered after bdm-015's `0094_bdm_daily_reports` /
+`DEC-SCOPE-099`, merged first as PR #111). Spec
+`docs/superpowers/specs/2026-10-07-tel-013-whatsapp-design.md`; QA report `docs/quality/TEL-013_EXPLORATORY_QA_2026-10-07.md`. Q-21 →
+WA1 (full text kept); consent and retention stay open (`PRD_OPEN_ITEMS.md` row 85). The tel-005 duplicate panel's "Last contact" is not
+added here (tel-015 owns the merged contact history).
+
 **Inherited from tel-012 (`DEC-SCOPE-083` C2):** `GET /telecaller/leads/{id}/render?template_id=`. It renders through
 `services/telecaller_content.render` with the lead's values, using `asset_link` for `{brochure_link}`. The owning-telecaller check comes
 from tel-008. The rendered text is plain, so this item URL-encodes it for wa.me.
@@ -800,7 +807,7 @@ division-change edge case does not apply: `User.division` cannot change after cr
 
 ### tel-018 — Handover to counselor, return, student link, computed conversion
 
-**Status (2026-10-07):** **built** on `feature/tel-018` (`DEC-SCOPE-099` HO1–HO4 + HO5–HO9, no migration, API §12T, RBAC §2.26). Spec
+**Status (2026-10-07):** **built** on `feature/tel-018` (`DEC-SCOPE-101` HO1–HO4 + HO5–HO9, no migration, API §12V, RBAC §2.28). Spec
 `docs/superpowers/specs/2026-10-07-tel-018-handover-design.md`. The alerts (counselor alerted, "Lead Returned") stay with tel-020.
 
 - **Business requirement:** §10, §13 (Counselor Assigned → Application/Enrollment → Converted), T4, T5, T19, T20, T29.
@@ -1183,8 +1190,9 @@ Numbers are **provisional**. `main` is at `0085_tel_distribution` (tel-007, merg
 that as `0090_lead_follow_ups` / `DEC-SCOPE-094` / §12P. tel-016 (PR #103 @ `92946a8a`) then took
 `0091_lead_appointments` / `DEC-SCOPE-095` / §12Q / RBAC §2.23, and tel-010 (PR #106 @ `7e3ab62a`) `0092_lead_calls` /
 `DEC-SCOPE-096` / §12R / RBAC §2.24. bdm-014 (PR #108) took `DEC-SCOPE-097` (no migration), and tel-019 (PR #109 @ `f8f599ee`)
-`0093_bdm_meeting_requests` / `DEC-SCOPE-098` / §12S / RBAC §2.25. `main` is at `0093`; the next telecaller item chains after it with
-`0094` / `DEC-SCOPE-099` / §12T / RBAC §2.26. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
+`0093_bdm_meeting_requests` / `DEC-SCOPE-098` / §12S / RBAC §2.25, then bdm-015 (PR #111 @ `b1495fa2`) `0094_bdm_daily_reports` /
+`DEC-SCOPE-099` / §12T / RBAC §2.26. `main` is at `0094`; tel-013 (open branch) chains after it with `0095_lead_messages` /
+`DEC-SCOPE-100` / §12U / RBAC §2.27. Each item takes the next free head when it merges, following the existing re-chain notes idiom.
 
 | Item | Migration content |
 |---|---|
@@ -1199,7 +1207,7 @@ that as `0090_lead_follow_ups` / `DEC-SCOPE-094` / §12P. tel-016 (PR #103 @ `92
 | tel-010 | `lead_calls` (`0092`, merged PR #106 @ `7e3ab62a`) |
 | tel-011 | `lead_follow_ups` (`0090`, merged PR #100 @ `8f9f1676`) |
 | tel-012 | `tel_scripts`, `tel_message_templates`, `tel_assets` (+ seeds) |
-| tel-013 | `lead_messages` |
+| tel-013 | `lead_messages` (`0095`, on `feature/tel-013`) |
 | tel-016 | `appointments` + lead_id, appointment_code, duration_minutes, purpose, meeting_link, location, remarks, booked_by; CHECK student-or-lead; `appointment_events`; `appointment_code_seq` (`0091`, merged PR #103 @ `92946a8a`) |
 | tel-018 | possibly `enquiries.handed_over_at` (decided in-item) |
 | tel-019 | `bdm_meeting_requests` + `bdm_meeting_request_code_seq` (`0093`, merged PR #109 @ `f8f599ee`) |
