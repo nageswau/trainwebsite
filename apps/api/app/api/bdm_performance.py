@@ -17,9 +17,9 @@ from app.api.bdm_manager_dashboard import team_scope
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import BdmOrganization, BdmProfile, BdmTrip, User
-from app.schemas import BdmPerformanceBdmOut, BdmPerformanceOut
+from app.schemas import BdmHierarchyOut, BdmPerformanceBdmOut, BdmPerformanceOut
 from app.services.bdm_appointments import db_now, today_ist
-from app.services.bdm_performance import TYPES, figures, period, team_members, total, trip_filter
+from app.services.bdm_performance import TYPES, figures, hierarchy, period, team_members, total, trip_filter
 
 router = APIRouter(prefix="/bdm/manager", tags=["bdm-performance"])
 BdmType = Literal["agent", "school", "college"]
@@ -117,4 +117,15 @@ async def bdm_performance(
         "organizations": [{"id": o.id, "code": o.code, "name": o.name, "figures": {**total([by_org[o.id]], bdm.bdm_type), "trips": None}}
                           for o in orgs],
         "trips": trips,
+    }
+
+
+@router.get("/hierarchy", response_model=BdmHierarchyOut)
+async def master_view(manager_user_id: UUID | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """§6 master view (P10): live, all time -- the organization panels' own figures, summed per BDM and per type."""
+    team, manager = await team_scope(db, user, manager_user_id)
+    return {
+        "manager": {"id": manager.id, "full_name": manager.full_name} if manager else None,
+        "as_of": await db_now(db),
+        "types": await hierarchy(db, team),
     }

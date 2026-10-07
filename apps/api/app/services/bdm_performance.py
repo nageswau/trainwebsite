@@ -23,12 +23,16 @@ from app.models import (
     BdmProfile,
     BdmTrip,
     Enquiry,
+    OverseasApplication,
     Payment,
     SchoolStudent,
     User,
 )
+from app.api.school_analytics import student_indicators, students_in
+from app.services.agent_dashboard import funnel_columns
+from app.services.agent_network import NETWORK_APPLICATION, members_of
 from app.services.bdm_appointments import IST
-from app.services.bdm_metrics import _completed, fee_filter, month_range
+from app.services.bdm_metrics import _completed, college_columns, fee_filter, month_range
 
 TYPES = ("agent", "school", "college")
 FIGURES = ("meetings", "trips", "new_organizations", "mous", "leads", "students", "revenue")
@@ -131,4 +135,109 @@ def total(rows, bdm_type: str) -> dict:
                 out[figure] += value
     if out["revenue"] is not None:
         out["revenue"] = Decimal(out["revenue"]).quantize(CENTS)
+    return out
+
+
+# The master view (spec §3 P10/P11): type -> BDMs -> linked organizations -> value chain (Appendix B.6 V-A / V-S / V-C), live and all
+# time. Each organization's figures run the same SQL as its own panels (bdm-020/021/022), one statement per module for every
+# organization in scope; the BDM and type figures are sums of them.
+# type -> ((key, label, definition, source figure; None = not tracked), ...)
+CHAINS: dict[str, tuple[tuple[str, str, str, str | None], ...]] = {
+    "agent": (
+        ("students", "Students", "Active students of the linked agency.", "students"),
+        ("applications", "Applications", "The agency's applications, except withdrawn ones.", "applications"),
+        ("enrollment", "Enrollment", "Applications at the Enrolled stage.", "enrollments"),
+        ("revenue", "Revenue", "Not tracked: deposits pass through to universities and commission is not BDM revenue.", None),
+    ),
+    "school": (
+        ("students", "Students", "Students of the linked school.", "students"),
+        ("profile_building", "Profile Building", "Not tracked: the School module has no profile completion figure.", None),
+        ("career_university", "Career/University", "Students with a career guidance session completed.", "career_guidance"),
+        ("future_student", "Future Student", "Students with an overseas application.", "future_students"),
+    ),
+    "college": (
+        ("students", "Students", "Students whose account is linked to one of the organization's leads.", "registrations"),
+        ("training", "Training", "Those students with at least one enrollment that is not withdrawn.", "training"),
+        ("internship", "Internship", "Not tracked: internships are not recorded in EduSphere.", None),
+        ("placement", "Placement", "Those students with an accepted or joined job offer.", "placement"),
+        ("revenue", "Revenue", "Paid INR fees of those students (agent deposits excluded).", "fees"),
+    ),
+}
+
+
+async def _college(db: AsyncSession, ids: list[UUID]) -> dict[UUID, dict]:
+    columns = college_columns(BdmOrganization.id)  # correlated: one row per organization, the bdm-021 panel's SQL
+    stmt = select(BdmOrganization.id, *(c.label(k) for k, c in columns.items())).where(BdmOrganization.id.in_(ids))
+    return {row.id: {**row._mapping, "fees": Decimal(row.fees).quantize(CENTS)} for row in (await db.execute(stmt)).all()}
+
+
+async def _agent(db: AsyncSession, ids: list[UUID]) -> dict[UUID, dict]:
+    members = members_of(BdmOrganization.agent_org_id).correlate(BdmOrganization)  # nested two levels deep: correlate explicitly
+    columns = funnel_columns([AgentStudent.agent_id.in_(members)], [OverseasApplication.agent_id.in_(members), NETWORK_APPLICATION])
+    stmt = select(BdmOrganization.id, *(c.label(k) for k, c in columns.items())).where(BdmOrganization.id.in_(ids))
+    return {row.id: dict(row._mapping) for row in (await db.execute(stmt)).all()}
+
+
+async def _school(db: AsyncSession, schools: dict[UUID, UUID]) -> dict[UUID, dict]:
+    """organization -> figures of its school (`schools`: organization -> school). Career guidance is the School module's own indicator
+    (bdm-020 A1), computed once over every school's students and split by school."""
+    if not schools:
+        return {}
+    school_ids = list(set(schools.values()))
+    of_school = dict((await db.execute(select(SchoolStudent.id, SchoolStudent.school_id).where(SchoolStudent.school_id.in_(school_ids)))).all())
+    guided = (await student_indicators(db, students_in(school_ids)))["guidance"]
+    future = set((await db.scalars(select(OverseasApplication.school_student_id).where(
+        OverseasApplication.school_student_id.in_(list(of_school))).distinct())).all())
+    per_school = {s: {"students": 0, "career_guidance": 0, "future_students": 0} for s in school_ids}
+    for student, school in of_school.items():
+        per_school[school]["students"] += 1
+        per_school[school]["career_guidance"] += student in guided
+        per_school[school]["future_students"] += student in future
+    return {org: per_school[school] for org, school in schools.items()}
+
+
+def _chain(bdm_type: str, rows: list[dict]) -> list:
+    """The chain's figures summed over organization figures; None for a step that is not tracked."""
+    return [None if source is None else sum((r[source] for r in rows), Decimal("0.00") if source == "fees" else 0)
+            for _key, _label, _definition, source in CHAINS[bdm_type]]
+
+
+async def hierarchy(db: AsyncSession, team: Select) -> list[dict]:
+    """P10: non-archived organizations of the BDM's own module; Agent / School ones only once linked (the rest are counted)."""
+    members = await team_members(db, team)
+    orgs = (await db.execute(
+        select(BdmOrganization.id, BdmOrganization.code, BdmOrganization.name, BdmOrganization.assigned_bdm_user_id, BdmOrganization.bdm_type,
+               BdmOrganization.school_id, BdmOrganization.agent_org_id)
+        .join(BdmProfile, BdmProfile.user_id == BdmOrganization.assigned_bdm_user_id)
+        .where(BdmOrganization.assigned_bdm_user_id.in_(team), BdmOrganization.archived_at.is_(None), BdmOrganization.bdm_type == BdmProfile.bdm_type)
+        .order_by(BdmOrganization.name, BdmOrganization.id))).all()
+    link = {"agent": lambda o: o.agent_org_id, "school": lambda o: o.school_id, "college": lambda o: o.id}
+    linked = [o for o in orgs if link[o.bdm_type](o) is not None]
+    figures_of = {
+        **await _college(db, [o.id for o in linked if o.bdm_type == "college"]),
+        **await _agent(db, [o.id for o in linked if o.bdm_type == "agent"]),
+        **await _school(db, {o.id: o.school_id for o in linked if o.bdm_type == "school"}),
+    }
+    out = []
+    for bdm_type in TYPES:
+        bdms = []
+        for m in members:
+            if m.bdm_type != bdm_type:
+                continue
+            own = [o for o in linked if o.assigned_bdm_user_id == m.id]
+            bdms.append({
+                "id": m.id, "full_name": m.full_name, "active": m.active, "organization_count": len(own),
+                "not_linked": sum(1 for o in orgs if o.assigned_bdm_user_id == m.id) - len(own),
+                "totals": _chain(bdm_type, [figures_of[o.id] for o in own]),
+                "organizations": [{"id": o.id, "code": o.code, "name": o.name, "counts": _chain(bdm_type, [figures_of[o.id]])} for o in own],
+            })
+        ids = {b["id"] for b in bdms}
+        out.append({
+            "type": bdm_type, "label": f"{bdm_type.capitalize()} BDM",
+            "chain": [{"key": k, "label": label, "definition": d, "tracked": s is not None} for k, label, d, s in CHAINS[bdm_type]],
+            "bdm_count": sum(1 for b in bdms if b["active"]), "organization_count": sum(b["organization_count"] for b in bdms),
+            "not_linked": sum(b["not_linked"] for b in bdms),
+            "totals": _chain(bdm_type, [figures_of[o.id] for o in linked if o.assigned_bdm_user_id in ids]),
+            "bdms": bdms,
+        })
     return out

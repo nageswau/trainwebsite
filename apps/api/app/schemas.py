@@ -5491,6 +5491,50 @@ class BdmPerformanceBdmOut(BaseModel):
     trips: list[BdmPerformanceTrip]
 
 
+ChainCount = int | Decimal | None  # Decimal = INR revenue; null = a step that is not tracked
+
+
+class BdmChainStep(BaseModel):
+    key: str
+    label: str
+    definition: str
+    tracked: bool
+
+
+class BdmHierarchyOrganization(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    counts: list[ChainCount]  # one per chain step, in chain order
+
+
+class BdmHierarchyBdm(BaseModel):
+    id: UUID
+    full_name: str
+    active: bool
+    organization_count: int  # linked organizations (listed)
+    not_linked: int  # Agent / School organizations not onboarded yet (counted, not listed)
+    totals: list[ChainCount]
+    organizations: list[BdmHierarchyOrganization]
+
+
+class BdmHierarchyType(BaseModel):
+    type: BdmTypeName
+    label: str
+    chain: list[BdmChainStep]
+    bdm_count: int  # active BDMs
+    organization_count: int
+    not_linked: int
+    totals: list[ChainCount]
+    bdms: list[BdmHierarchyBdm]
+
+
+class BdmHierarchyOut(BaseModel):
+    manager: BdmPersonRef | None
+    as_of: datetime
+    types: list[BdmHierarchyType]
+
+
 # --- tel-022 (DEC-SCOPE-080): daily + monthly targets ------------------------------------------------------------------------
 TelTargetPeriod = Literal["daily", "monthly"]
 TelTargetKpi = Literal[TEL_TARGET_KPIS]

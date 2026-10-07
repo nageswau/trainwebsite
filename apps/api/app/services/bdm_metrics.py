@@ -75,7 +75,8 @@ def show_revenue(user: User, org: BdmOrganization) -> bool:
 def college_columns(org_id) -> dict:
     """The funnel and fee figures of one College organization as scalar subqueries over `S`. `org_id` is a value, or (bdm-024's master
     view) the correlated `BdmOrganization.id` of an outer SELECT, so the panel and the master view run the same SQL."""
-    students = select(Enquiry.converted_user_id).where(Enquiry.bdm_organization_id == org_id, Enquiry.converted_user_id.is_not(None))
+    students = select(Enquiry.converted_user_id).where(Enquiry.bdm_organization_id == org_id, Enquiry.converted_user_id.is_not(None)).correlate(
+        BdmOrganization)  # nested two levels deep: an outer SELECT over organizations must correlate explicitly
 
     def distinct_students(column, *where):
         return select(func.count(distinct(column))).where(column.in_(students), *where).scalar_subquery()
