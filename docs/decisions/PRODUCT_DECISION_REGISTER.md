@@ -4451,3 +4451,32 @@ Web: the lead-detail Messages section (`LeadMessages`, `WhatsAppComposer`; the h
 for the timeline; tel-021 counts them (Appendix B D10). Consent capture and retention for messaged leads (the rest of Q-21) stay open:
 `PRD_OPEN_ITEMS.md` row 85.
 **New Feature ID authorized:** `tel-013`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-013.
+
+### DEC-SCOPE-101 — Handover to counselor, return, student link, computed conversion (`tel-018`)
+
+**Evidence:** `EVID-019` §10 (L386–L414) and §13 (Counselor Assigned → Application/Enrollment → Converted); `DEC-SCOPE-073` T4, T5, T19,
+T20, T29 (supersedes `DEC-SCOPE-072` L2/L7 for leads in the telecaller pipeline); `DEC-SCOPE-081` (the stage engine); `DEC-SCOPE-084` D1
+(read-only after handover); `DEC-SCOPE-095` (booking options); owner answers in-session 2026-10-07.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option) for
+HO1–HO4; HO5–HO9 are recorded defaults. Branch `feature/tel-018`. **No migration.** API contract §12V, RBAC §2.28. Spec
+`docs/superpowers/specs/2026-10-07-tel-018-handover-design.md`. (tel-010 096, bdm-014 097, tel-019 098, bdm-015 099 and tel-013 100 merged first.)
+
+| # | Question | Answer |
+|---|---|---|
+| HO1 | Q-22: who may undo the student link | The **division admin** at any time (the bdm-017 route) and the **assigned counselor** while the lead is not Converted. The telecaller manager may not |
+| HO2 | Unlinking a Converted lead | **Only an admin**; the lead goes back to Follow-up and no longer counts as converted |
+| HO3 | T5 evidence; Q-18 part 2 | An IT `Enrollment` with status **`active`** (not `pending_consent`) or an `OverseasApplication` with status **`enrolled`** of the linked student. An enrolment that **predates** the lead or the link counts. Q-18 part 1 (conversion credit) is deferred to tel-024 |
+| HO4 | Handover / return rules | Handover from any open stage before Application/Enrollment (closed or linked → `409`) by the lead's telecaller or their manager; a manager may re-hand to another counselor (same one → `409`); handover cancels open follow-ups ("Handed over to counselor"), the stage stays. Return needs a reason, only before the link (`409`), moves the lead to Follow-up and cancels the counselor's open appointment. The alerts (counselor alerted; "Lead Returned") are tel-020's |
+
+Recorded defaults: HO5 `converted_at` keeps its bdm-017 meaning (the link time); the conversion moment is the system's `converted`
+stage-history row. HO6 conversion is observed at link time, on the counselor's and the telecaller's lead detail reads, and by the
+`tel018-conversion-sweep` beat job every 15 minutes (500 a batch, `SKIP LOCKED`). HO7 every return is written to the stage history (event
+`returned`, Follow-up → Follow-up included) with its reason; audit rows carry ids only. HO8 link suggestions: active students of the lead's
+division whose email or last ten mobile digits equal the lead's; a search (≥ 3 characters) over name, email or mobile; at most 10; each says
+whether another lead holds it. HO9 the admin link shares the counselor's rules (`lead_handover.link_student`), so a student already enrolled
+converts the lead at once.
+
+**Consequences:** stage events `returned` (new) and `student_unlinked` from `converted`; `lead_pipeline.apply_event(..., reason)`; service
+`services/lead_handover.py`; routes `api/lead_handover.py`; timeline rows gain `event`; telecaller lead detail gains `milestones`; components
+`LeadHandoverForm`, `LeadMilestones`, `CounselorLeadsPanel`, `CounselorLeadDetail`; pages `/{it|overseas}/counselor/leads/[id]`.
+**New Feature ID authorized:** `tel-018`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-018.

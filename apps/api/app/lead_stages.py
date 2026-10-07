@@ -43,7 +43,8 @@ EVENTS: dict[str, tuple[frozenset[str], str]] = {
     "appointment_completed": (_through("counselling_scheduled"), "counselling_completed"),
     "appointment_released": (frozenset({"counselling_scheduled"}), "follow_up"),  # tel-016 AP3: a no-show or a cancel
     "student_linked": (_through("counselling_completed"), "application_enrollment"),
-    "student_unlinked": (frozenset({"application_enrollment"}), "follow_up"),
+    "student_unlinked": (frozenset({"application_enrollment", "converted"}), "follow_up"),  # tel-018 HO2: only the admin unlinks a converted lead
+    "returned": (_through("counselling_completed"), "follow_up"),  # tel-018 HO4: Follow-up included, so every return is in the history
     "converted": (frozenset({"application_enrollment"}), "converted"),
 }
 

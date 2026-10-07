@@ -1275,6 +1275,27 @@ can_delete}`. `template.name` is the name when sent (D6); `null` = a custom mess
 `GET /telecaller/leads/{id}` gains `whatsapp_to`: the wa.me number (digits of the E.164 WhatsApp number, else of the mobile; `+91` default
 for a 10-digit Indian mobile) or `null`.
 
+## 12V. Lead handover, return and student link (`tel-018`) — addendum, 2026-10-07
+
+`DEC-SCOPE-101`; design spec `docs/superpowers/specs/2026-10-07-tel-018-handover-design.md` §3. No migration. Signed out `401`. The
+counselor lead shape is §12J's lead row (with `converted_user`) plus `message`, `milestones: {student: {id, full_name, email} | null,
+items: [{kind: enrollment|application|visa, label, status, reference, at}]}` and `permissions: {return, link, unlink}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `POST /telecaller/leads/{id}/handover` | Body `{counselor_id}`. §12J's roles and scope. In order: `404` scope; `403` a telecaller on a handed-over lead; `409` closed lead; `409` at or past Application/Enrollment; `422` not an active counselor of the lead's division; `409` same counselor. `200` the §12J detail; open follow-ups cancelled ("Handed over to counselor"); audit `lead.handover {counselor_id, from_counselor_id}` |
+| `GET /counselor/leads?limit=&offset=` | `counselor` only (else `403`). Own leads (`owner_id` = self, own division), newest first. `{items, total, limit, offset}` |
+| `GET /counselor/leads/{id}` | `404` outside scope. A lead whose linked student has enrolled turns Converted first |
+| `GET /counselor/leads/{id}/timeline` | §12J's timeline shape |
+| `POST /counselor/leads/{id}/return` | Body `{reason}` (required, ≤ 500). `409` linked. Stage event `returned` (→ Follow-up, reason kept); `owner_id` cleared; the open appointment cancelled ("Returned to telecaller"); audit `lead.return {counselor_id}`. `200` the lead (now outside the counselor's scope) |
+| `GET /counselor/leads/{id}/link-suggestions?q=` | `{items: [{id, full_name, email, phone, linked_elsewhere}]}`; no `q` → the lead's email / mobile match; `q` 3–200 characters (else `422`) |
+| `POST /counselor/leads/{id}/student-link` | Body `{student_id}`. `409` already linked; `422` "Enter the email of an active student account in this lead's division" (any invalid target); `409` student linked to another lead (also the unique-index race). Stage event `student_linked`; `converted` at once when HO3 evidence exists; audit `lead.convert`. `200` the shape above |
+| `DELETE /counselor/leads/{id}/student-link` | `409` not linked; `409` "Only an admin can unlink a converted lead". Stage event `student_unlinked` → Follow-up; audit `lead.unconvert` |
+
+Changed: `POST/DELETE /admin/leads/{id}/conversion` keep their contract and now share these rules — a link may answer `status: converted`, and
+an unlink of a converted lead returns it to Follow-up (HO2). `GET /telecaller/leads/{id}` (and the PATCH answer) gains `milestones`.
+Timeline rows gain `event` (a stage row's pipeline event, else `null`).
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

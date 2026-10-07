@@ -67,13 +67,14 @@ async def _record(db: AsyncSession, lead: Enquiry, to_stage: str, event: str, ac
         "lead_id": str(lead.id), "from_stage": from_stage, "to_stage": to_stage, "event": event, "actor_id": str(actor_id) if actor_id else None}})
 
 
-async def apply_event(db: AsyncSession, lead: Enquiry, event: str, actor: User | None = None) -> bool:
+async def apply_event(db: AsyncSession, lead: Enquiry, event: str, actor: User | None = None, reason: str | None = None) -> bool:
     """Spec §2: move the lead if it is in the event's from-set; otherwise (already past it, or closed) leave it. Returns whether it
-    moved, so a repeated event never fires twice (AC1). An unknown event is a KeyError: a caller bug, not user input."""
+    moved, so a repeated event never fires twice (AC1). An unknown event is a KeyError: a caller bug, not user input. `reason`: a
+    person's text kept in the history (tel-018's return)."""
     sources, to_stage = EVENTS[event]
     if lead.status not in sources:
         return False
-    await _record(db, lead, to_stage, event, actor.id if actor else None, None)
+    await _record(db, lead, to_stage, event, actor.id if actor else None, reason)
     return True
 
 
@@ -102,15 +103,16 @@ async def person_move(db: AsyncSession, lead: Enquiry, actor: User, kind: Kind, 
         raise _invalid("reason", REASON_CLOSED, reason)
     await _record(db, lead, to_stage, "manual", actor.id, reason)
     if to_stage in CLOSED:
-        await _cancel_open_follow_ups(db, lead)
-        await _cancel_open_appointments(db, lead, actor)
+        await cancel_open_follow_ups(db, lead, FOLLOW_UPS_CLOSED)
+        await cancel_open_appointments(db, lead, actor, APPOINTMENTS_CLOSED, "lead_closed")
 
 
-async def _cancel_open_follow_ups(db: AsyncSession, lead: Enquiry) -> None:
-    """tel-011 F4: a closed lead keeps no open follow-up. The caller holds the lead lock, and follow-up writes take it first too."""
+async def cancel_open_follow_ups(db: AsyncSession, lead: Enquiry, reason: str) -> None:
+    """tel-011 F4: a closed lead keeps no open follow-up (tel-018: nor a handed-over one). The caller holds the lead lock, and
+    follow-up writes take it first too."""
     cancelled = (await db.scalars(
         update(LeadFollowUp).where(LeadFollowUp.lead_id == lead.id, LeadFollowUp.status == "open")
-        .values(status="cancelled", cancelled_at=func.now(), cancel_reason=FOLLOW_UPS_CLOSED, updated_at=func.now())
+        .values(status="cancelled", cancelled_at=func.now(), cancel_reason=reason, updated_at=func.now())
         .returning(LeadFollowUp.id).execution_options(synchronize_session=False)
     )).all()
     if cancelled:
@@ -118,17 +120,18 @@ async def _cancel_open_follow_ups(db: AsyncSession, lead: Enquiry) -> None:
 
 
 
-async def _cancel_open_appointments(db: AsyncSession, lead: Enquiry, actor: User) -> None:
-    """tel-016 AP15 (DEC-SCOPE-095): a closed lead keeps no open counselling appointment, so the counselor's slot frees up. Each one gets
-    its history row and audit row, as a cancel does; the lead stays closed (no release to Follow-up). Lock order lead -> appointment, as
-    every appointment write."""
+async def cancel_open_appointments(db: AsyncSession, lead: Enquiry, actor: User, reason: str, audit_reason: str) -> None:
+    """tel-016 AP15 (DEC-SCOPE-095): a closed lead keeps no open counselling appointment, so the counselor's slot frees up (tel-018: nor
+    a returned one). Each one gets its history row and audit row, as a cancel does; the caller sets the stage (no release event).
+    Lock order lead -> appointment, as every appointment write."""
     stmt = select(Appointment).where(Appointment.lead_id == lead.id, Appointment.status.in_(LEAD_APPOINTMENT_OPEN)).with_for_update()
     for appt in (await db.scalars(stmt.execution_options(populate_existing=True))).all():
         from_status, appt.status = appt.status, "cancelled"
-        db.add(AppointmentEvent(appointment_id=appt.id, actor_user_id=actor.id, from_status=from_status, to_status="cancelled", reason=APPOINTMENTS_CLOSED))
+        db.add(AppointmentEvent(appointment_id=appt.id, actor_user_id=actor.id, from_status=from_status, to_status="cancelled", reason=reason))
         db.add(AuditLog(user_id=actor.id, action="lead_appointment.cancel", entity_type="appointment", entity_id=str(appt.id),
-                        metadata_json={"lead_id": str(lead.id), "from": from_status, "to": "cancelled", "reason": "lead_closed"}))
+                        metadata_json={"lead_id": str(lead.id), "from": from_status, "to": "cancelled", "reason": audit_reason}))
         logger.info("lead_appt_cancelled_on_close", extra={"extra_fields": {"lead_id": str(lead.id), "appointment_id": str(appt.id)}})
+
 
 def stage_out(lead: Enquiry) -> dict:
     return {"id": lead.id, "status": lead.status, "status_label": label(lead.status), "stage_changed_at": lead.stage_changed_at}

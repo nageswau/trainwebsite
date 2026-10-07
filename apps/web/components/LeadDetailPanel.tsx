@@ -6,7 +6,9 @@ import { LeadStageControl } from "@/components/AdminLeadStage";
 import LeadAppointmentsSection from "@/components/LeadAppointmentsSection";
 import LeadCalls from "@/components/LeadCalls";
 import LeadFollowUps from "@/components/LeadFollowUps";
+import LeadHandoverForm from "@/components/LeadHandoverForm";
 import LeadMessages from "@/components/LeadMessages";
+import LeadMilestones from "@/components/LeadMilestones";
 import LeadQualificationForm from "@/components/LeadQualificationForm";
 import ProductOptions from "@/components/TelecallerProductOptions";
 import { isRequestBody, sendJson, type Page } from "@/lib/apiErrors";
@@ -15,7 +17,7 @@ import { isClosed, stageLabel } from "@/lib/leadStages";
 import { SOURCE_LABEL, activeProducts, getPage, type Product } from "@/lib/telecallerCatalogue";
 import { SCRIPTS_URL, type Script } from "@/lib/telecallerContent";
 import {
-  PRIORITIES, PRIORITY_LABEL, TIMELINE_LIMIT, leadUrl, moveStage, telHref, type Priority, type TelecallerLeadDetail, type TimelineRow,
+  PRIORITIES, PRIORITY_LABEL, TIMELINE_LIMIT, activityTitle, leadUrl, moveStage, telHref, type Priority, type TelecallerLeadDetail, type TimelineRow,
 } from "@/lib/telecallerLeads";
 
 type Notice = { text: string; failed: boolean } | null;
@@ -159,6 +161,10 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
   // tel-010 / tel-011 (D8, F2, F4): only the lead's telecaller logs calls and adds follow-ups (a manager reads); never on a closed lead
   const telecallerWrites = !canReopen && !lead.read_only && !isClosed(lead.status);
 
+  // tel-018 HO4: a workable lead before the student link; a manager (never read-only) may also change the counselor
+  const canHandover = !lead.read_only && !isClosed(lead.status) && !["application_enrollment", "converted"].includes(lead.status);
+  const [handoverNotice, setHandoverNotice] = useState<Notice>(null);
+
   const reloadActivity = () =>
     getPage<TimelineRow>(leadUrl(lead.id, `/timeline?limit=${TIMELINE_LIMIT}`)).then(setActivity, () => setActivity(null));
   const stageChanged = (status: string) => {
@@ -200,6 +206,7 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
         )}
       </div>
 
+      {(call || !lead.read_only) && ( // QA-01: a handed-over lead with no phone has no action row (no empty gap)
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-start" }}>
         {/* tel-010: the dialer opens, and so does the call log form */}
         {call && <a className="btn small" href={call} aria-label={`Call ${lead.name}`} onClick={() => setCallSignal((n) => n + 1)}>Call</a>}
@@ -214,7 +221,16 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
             <NoticeLine notice={stageNotice} />
           </div>
         )}
+        {canHandover && (
+          <LeadHandoverForm lead={lead} onDone={(next) => {
+            setLead(next);
+            setHandoverNotice({ text: `Handed over to ${next.counselor?.full_name ?? "the counselor"}.`, failed: false });
+            void reloadActivity();
+          }} />
+        )}
       </div>
+      )}
+      <NoticeLine notice={handoverNotice} />
 
       {!lead.read_only && (
         <form onSubmit={savePriority}>
@@ -284,6 +300,8 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
           void reloadActivity();
         }} />
 
+      {lead.milestones && <LeadMilestones milestones={lead.milestones} status={lead.status} />}
+
       <section aria-labelledby="lead-enquiry-heading">
         <h3 id="lead-enquiry-heading" style={{ margin: 0 }}>Enquiry</h3>
         <p style={{ margin: "6px 0 0" }}><strong>{lead.subject}</strong></p>
@@ -300,11 +318,7 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
           <ol aria-label="Lead activity" style={{ margin: "6px 0 0", paddingLeft: 18, display: "grid", gap: 6 }}>
             {activity.items.map((row) => (
               <li key={`${row.kind}-${row.id}`}>
-                {row.kind === "enquiry" ? (
-                  <strong style={{ overflowWrap: "anywhere" }}>New enquiry: {row.to_label}</strong>
-                ) : (
-                  <strong>{row.kind === "priority" ? "Priority" : "Stage"}: {row.from_label} → {row.to_label}</strong>
-                )}
+                <strong style={{ overflowWrap: "anywhere" }}>{activityTitle(row)}</strong>
                 <div className="muted" style={{ fontSize: 13 }}>
                   {row.actor ? row.actor.full_name : row.kind === "enquiry" ? "Website form" : "System"}
                   {row.kind === "enquiry" && ` · ${SOURCE_LABEL[row.from_value] ?? row.from_value}`} · {formatDate(row.at, true)}

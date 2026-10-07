@@ -807,6 +807,9 @@ division-change edge case does not apply: `User.division` cannot change after cr
 
 ### tel-018 — Handover to counselor, return, student link, computed conversion
 
+**Status (2026-10-07):** **built** on `feature/tel-018` (`DEC-SCOPE-101` HO1–HO4 + HO5–HO9, no migration, API §12V, RBAC §2.28). Spec
+`docs/superpowers/specs/2026-10-07-tel-018-handover-design.md`. The alerts (counselor alerted, "Lead Returned") stay with tel-020.
+
 - **Business requirement:** §10, §13 (Counselor Assigned → Application/Enrollment → Converted), T4, T5, T19, T20, T29.
 - **Existing behavior:** the admin sets `owner_id`; bdm-017 lets an admin link a student and sets `converted`.
 - **Expected behavior:**

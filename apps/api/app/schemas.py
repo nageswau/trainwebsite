@@ -5683,6 +5683,7 @@ class LeadTimelineRow(BaseModel):
     to_value: str
     to_label: str
     reason: str | None
+    event: str | None = None  # tel-018: the stage row's pipeline event
 
 
 class LeadTimelinePage(BaseModel):
@@ -6014,3 +6015,18 @@ class MeetingRequestCreate(BaseModel):
 class MeetingRequestDecline(BaseModel):
     model_config = ConfigDict(extra="forbid")
     reason: BdmApptReason
+
+# --- tel-018 (DEC-SCOPE-101, spec §3.3): handover, return and the counselor's student link ----------------------------------------
+class LeadHandoverIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    counselor_id: UUID
+
+
+class LeadReturnIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: BdmApptReason
+
+
+class LeadStudentLinkIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    student_id: UUID

@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.lead_stages import label as stage_label
 from app.models import AuditLog, Enquiry, LeadEnquiry, LeadStageHistory, User
 from app.notifications.phone import normalise_phone
-from app.services import bdm_leads, lead_pipeline
+from app.services import bdm_leads, lead_handover, lead_pipeline
 from app.services.telecaller_catalogue import locked_active_product
 
 logger = logging.getLogger("app.leads")
@@ -54,10 +54,13 @@ async def page(db: AsyncSession, user: User, filters: list, limit: int, offset: 
 
 
 async def detail(db: AsyncSession, user: User, lead_id: UUID, filters: list) -> dict:
+    """tel-018: a lead that has just converted moves first, and the linked student's milestones come along (read only, T4)."""
+    await lead_handover.observe_conversion(db, lead_id)
     row = (await db.execute(bdm_leads.admin_rows().where(Enquiry.id == lead_id, *filters).execution_options(populate_existing=True))).one_or_none()
     if row is None:
         raise HTTPException(404, lead_pipeline.LEAD_NOT_FOUND)
-    return {**row_out(user, row), "message": row[0].message, "whatsapp_to": whatsapp_to(row[0])}
+    return {**row_out(user, row), "message": row[0].message, "whatsapp_to": whatsapp_to(row[0]),
+            "milestones": await lead_handover.milestones(db, row[0])}
 
 
 async def apply_update(db: AsyncSession, user: User, lead: Enquiry, changes: dict) -> None:
@@ -90,15 +93,15 @@ async def timeline_page(db: AsyncSession, lead_id: UUID, limit: int, offset: int
     stages = select(
         LeadStageHistory.id, literal("stage").label("kind"), LeadStageHistory.created_at.label("at"), LeadStageHistory.position.label("seq"),
         LeadStageHistory.actor_user_id.label("actor_id"), LeadStageHistory.from_stage.label("from_value"),
-        LeadStageHistory.to_stage.label("to_value"), LeadStageHistory.reason.label("reason"),
+        LeadStageHistory.to_stage.label("to_value"), LeadStageHistory.reason.label("reason"), LeadStageHistory.event.label("event"),
     ).where(LeadStageHistory.lead_id == lead_id)
     priorities = select(
         AuditLog.id, literal("priority"), AuditLog.created_at, literal(0), AuditLog.user_id,
-        AuditLog.metadata_json["from"].as_string(), AuditLog.metadata_json["to"].as_string(), cast(null(), String),
+        AuditLog.metadata_json["from"].as_string(), AuditLog.metadata_json["to"].as_string(), cast(null(), String), cast(null(), String),
     ).where(AuditLog.entity_type == "enquiry", AuditLog.entity_id == str(lead_id), AuditLog.action == PRIORITY_CHANGE)
     enquiries = select(
         LeadEnquiry.id, literal("enquiry"), LeadEnquiry.created_at, literal(0), LeadEnquiry.created_by_user_id, LeadEnquiry.source,
-        LeadEnquiry.subject, cast(LeadEnquiry.message, String),
+        LeadEnquiry.subject, cast(LeadEnquiry.message, String), cast(null(), String),
     ).where(LeadEnquiry.lead_id == lead_id)
     events = union_all(stages, priorities, enquiries).subquery()
     total = await db.scalar(select(func.count()).select_from(events))
@@ -108,7 +111,7 @@ async def timeline_page(db: AsyncSession, lead_id: UUID, limit: int, offset: int
         {
             "id": r.id, "kind": r.kind, "at": r.at, "actor": {"id": r.actor_id, "full_name": r.full_name} if r.actor_id else None,
             "from_value": r.from_value, "from_label": _label(r.kind, r.from_value), "to_value": r.to_value, "to_label": _label(r.kind, r.to_value),
-            "reason": r.reason,
+            "reason": r.reason, "event": r.event,  # tel-018 QA-03: a stage row's event (e.g. "returned"); null for the other kinds
         }
         for r in rows
     ]
