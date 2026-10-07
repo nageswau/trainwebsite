@@ -1337,6 +1337,19 @@ Delivery (worker, not HTTP): the claim moves `queued` / `retrying` to `sending`.
 address removed) → `failed`. A 5-minute sweeper republishes stale queued rows and fails rows stuck in `sending`. The mail is From
 `"<telecaller> via EduSphere" <SMTP_FROM_EMAIL>` with Reply-To the telecaller, as plain text plus an escaped HTML part.
 
+## 12AA. Telecaller alert settings (`tel-020`) — addendum, 2026-10-07
+
+`DEC-SCOPE-107`; design spec `docs/superpowers/specs/2026-10-07-tel-020-alerts-design.md` §4. Migration `0098_tel_settings`. Signed out `401`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/settings` | `telecaller_manager` / `super_admin`; every other role `403`. `200` `{items: [{team, team_label, not_contacted_hours, hot_pending_hours, updated_at, updated_by: {id, full_name} \| null}]}`, both teams in order `it`, `overseas` |
+| `PUT /telecaller/settings/{team}` | Same roles. Unknown team `404` "Team not found". Body `{not_contacted_hours, hot_pending_hours}`: whole numbers 1–168 (strings and fractions refused), both required, extra fields `422` with a readable sentence. `200` the item (an idempotent replace); audit `tel.settings.update {from, to}` (entity = the team). The beat uses the new values from its next run |
+
+Alerts themselves (no new endpoint): rows in `notifications` read through the existing `GET /workflows/notifications` and
+`/workflows/notifications/unread-count`; each also queues one email delivery (`context.kind = "tel_alert"`, SMTP only). The beat job
+`tel020-alerts` runs every 15 minutes.
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

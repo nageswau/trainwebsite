@@ -776,6 +776,14 @@ always the lead's own address, never one from the request.
 | `telecaller_manager` / `super_admin` | read the log and delivery status; `403` on send | §2.19's | `tel-014` |
 | every other role | `403` | — | `tel-014` |
 
+### 2.33 Telecaller alerts *(net-new, added 2026-10-07 — `DEC-SCOPE-107`, `tel-020`)*
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | receives the nine §20 alerts (in-app + email) and reads them on `/telecaller/notifications`; `403` on the settings | own notifications only (the shared feed is per user); only while active | `tel-020` |
+| `telecaller_manager` / `super_admin` | read and set both teams' alert thresholds | both teams (AL11) | `tel-020` |
+| every other role | `403` on the settings | — | `tel-020` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
