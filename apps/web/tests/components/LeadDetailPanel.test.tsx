@@ -259,4 +259,12 @@ describe("LeadDetailPanel (tel-008)", () => {
       milestones: { student: { id: "s1", full_name: "Asha Rao", email: "asha@example.com" }, items: [] } })} timeline={pageOf([])} canReopen={false} />);
     expect(screen.getByRole("region", { name: "Student and milestones" })).toHaveTextContent("Linked student: Asha Rao (asha@example.com)");
   });
+  it("names a counselor's return in the activity instead of Follow-up -> Follow-up (tel-018 QA-03)", () => {
+    const returned: TimelineRow = { ...priorityRow, id: "h9", kind: "stage", from_value: "follow_up", from_label: "Follow-up", to_value: "follow_up",
+      to_label: "Follow-up", reason: "Fees first", event: "returned", actor: { id: "c1", full_name: "Cara Counselor" } };
+    render(<LeadDetailPanel initial={detail()} timeline={pageOf([returned])} canReopen={false} />);
+    const activity = screen.getByRole("list", { name: "Lead activity" });
+    expect(within(activity).getByText("Returned to the telecaller")).toBeTruthy();
+    expect(within(activity).queryByText(/Follow-up → Follow-up/)).toBeNull();
+  });
 });

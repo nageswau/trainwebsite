@@ -5614,6 +5614,7 @@ class LeadTimelineRow(BaseModel):
     to_value: str
     to_label: str
     reason: str | None
+    event: str | None = None  # tel-018: the stage row's pipeline event
 
 
 class LeadTimelinePage(BaseModel):

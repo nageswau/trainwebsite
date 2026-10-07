@@ -33,6 +33,10 @@ async def test_a_return_reopens_the_lead_for_the_telecaller(client, db_session):
     detail = (await client.get(f"/api/v1/telecaller/leads/{lead.id}")).json()
     assert (detail["read_only"], detail["counselor"]) == (False, None)
     assert (await client.patch(f"/api/v1/telecaller/leads/{lead.id}", json={"priority": "hot"})).status_code == 200
+    rows = (await client.get(f"/api/v1/telecaller/leads/{lead.id}/timeline")).json()["items"]
+    returned = next(r for r in rows if r["kind"] == "stage" and r["event"] == "returned")  # QA-03: the client names the return
+    assert returned["reason"] == "Needs a fee discussion first"
+    assert next(r for r in rows if r["kind"] == "priority")["event"] is None
 
 
 @pytest.mark.asyncio

@@ -9,7 +9,7 @@ import LeadMilestones from "@/components/LeadMilestones";
 import { isPage, isRequestBody, sendJson, sendRequest, type Page, type SendOutcome } from "@/lib/apiErrors";
 import { counselorLeadUrl, type CounselorLeadDetail as Detail, type StudentSuggestion } from "@/lib/leadHandover";
 import { SOURCE_LABEL } from "@/lib/telecallerCatalogue";
-import { TIMELINE_LIMIT, type TimelineRow } from "@/lib/telecallerLeads";
+import { TIMELINE_LIMIT, activityTitle, type TimelineRow } from "@/lib/telecallerLeads";
 
 type Notice = { text: string; failed: boolean } | null;
 
@@ -252,7 +252,7 @@ export default function CounselorLeadDetail({ initial }: { initial: Detail }) {
           <ol aria-label="Lead activity" style={{ margin: "6px 0 0", paddingLeft: 18, display: "grid", gap: 6 }}>
             {activity.items.map((row) => (
               <li key={`${row.kind}-${row.id}`}>
-                <strong>{row.kind === "enquiry" ? `New enquiry: ${row.to_label}` : `${row.kind === "priority" ? "Priority" : "Stage"}: ${row.from_label} → ${row.to_label}`}</strong>
+                <strong style={{ overflowWrap: "anywhere" }}>{activityTitle(row)}</strong>
                 <div className="muted" style={{ fontSize: 13 }}>{row.actor ? row.actor.full_name : row.kind === "enquiry" ? "Website form" : "System"} · <LocalTime value={row.at} time /></div>
                 {row.reason && <div style={{ fontSize: 13, overflowWrap: "anywhere", whiteSpace: "pre-wrap" }}>{row.reason}</div>}
               </li>

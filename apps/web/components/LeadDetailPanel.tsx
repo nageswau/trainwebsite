@@ -15,7 +15,7 @@ import { isClosed, stageLabel } from "@/lib/leadStages";
 import { SOURCE_LABEL, activeProducts, getPage, type Product } from "@/lib/telecallerCatalogue";
 import { SCRIPTS_URL, type Script } from "@/lib/telecallerContent";
 import {
-  PRIORITIES, PRIORITY_LABEL, TIMELINE_LIMIT, leadUrl, moveStage, telHref, type Priority, type TelecallerLeadDetail, type TimelineRow,
+  PRIORITIES, PRIORITY_LABEL, TIMELINE_LIMIT, activityTitle, leadUrl, moveStage, telHref, type Priority, type TelecallerLeadDetail, type TimelineRow,
 } from "@/lib/telecallerLeads";
 
 type Notice = { text: string; failed: boolean } | null;
@@ -194,6 +194,7 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
         )}
       </div>
 
+      {(call || !lead.read_only) && ( // QA-01: a handed-over lead with no phone has no action row (no empty gap)
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-start" }}>
         {call && <a className="btn small" href={call} aria-label={`Call ${lead.name}`}>Call</a>}
         {!lead.read_only && (
@@ -211,6 +212,7 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
           }} />
         )}
       </div>
+      )}
       <NoticeLine notice={handoverNotice} />
 
       {!lead.read_only && (
@@ -293,11 +295,7 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
           <ol aria-label="Lead activity" style={{ margin: "6px 0 0", paddingLeft: 18, display: "grid", gap: 6 }}>
             {activity.items.map((row) => (
               <li key={`${row.kind}-${row.id}`}>
-                {row.kind === "enquiry" ? (
-                  <strong style={{ overflowWrap: "anywhere" }}>New enquiry: {row.to_label}</strong>
-                ) : (
-                  <strong>{row.kind === "priority" ? "Priority" : "Stage"}: {row.from_label} → {row.to_label}</strong>
-                )}
+                <strong style={{ overflowWrap: "anywhere" }}>{activityTitle(row)}</strong>
                 <div className="muted" style={{ fontSize: 13 }}>
                   {row.actor ? row.actor.full_name : row.kind === "enquiry" ? "Website form" : "System"}
                   {row.kind === "enquiry" && ` · ${SOURCE_LABEL[row.from_value] ?? row.from_value}`} · {formatDate(row.at, true)}

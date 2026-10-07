@@ -15,7 +15,7 @@ export type TelecallerLead = {
 export type TelecallerLeadDetail = TelecallerLead & { message: string; milestones?: Milestones }; // tel-018: the linked student's milestones
 export type TimelineRow = {
   id: string; kind: "stage" | "priority" | "enquiry"; at: string; actor: PersonRef | null; from_value: string; from_label: string; to_value: string;
-  to_label: string; reason: string | null;
+  to_label: string; reason: string | null; event?: string | null; // tel-018: a stage row's pipeline event
 };
 
 /** tel-005 (R2): one lead of the §18 duplicate panel -- never its phone, email or messages. */
@@ -23,6 +23,13 @@ export type DuplicateMatch = {
   id: string; lead_code: string; name: string; status: string; status_label: string; telecaller: PersonRef | null; counselor: PersonRef | null;
   last_contact_at: string | null; matched_on: ("phone" | "email")[]; enquiries: { subject: string; source: string; at: string }[]; in_scope: boolean;
 };
+
+/** One activity row's title. tel-018 QA-03: a counselor's return is named, not shown as "Follow-up -> Follow-up". */
+export function activityTitle(row: TimelineRow): string {
+  if (row.kind === "enquiry") return `New enquiry: ${row.to_label}`;
+  if (row.event === "returned") return "Returned to the telecaller";
+  return `${row.kind === "priority" ? "Priority" : "Stage"}: ${row.from_label} → ${row.to_label}`;
+}
 
 export const LEADS_URL = "/api/v1/telecaller/leads";
 export const DUPLICATE_CHECK_URL = `${LEADS_URL}/duplicate-check`;

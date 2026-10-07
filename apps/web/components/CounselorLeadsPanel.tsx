@@ -5,6 +5,7 @@ import { useEffect, useId, useState } from "react";
 
 import LocalTime from "@/components/LocalTime";
 import { isPage, type Page } from "@/lib/apiErrors";
+import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import { COUNSELOR_LEADS_URL, counselorLeadHref, type CounselorLead } from "@/lib/leadHandover";
 
 const PAGE_SIZE = 20;
@@ -46,7 +47,7 @@ export default function CounselorLeadsPanel({ division }: { division: "it" | "ov
             <tbody>
               {page.items.map((lead) => (
                 <tr key={lead.id}>
-                  <td><Link href={counselorLeadHref(division, lead.id)}>{lead.lead_code}</Link></td>
+                  <th scope="row"><Link href={counselorLeadHref(division, lead.id)} style={LINK_STYLE}>{lead.lead_code}</Link></th>
                   <td>{lead.name}</td>
                   <td>{lead.subject}</td>
                   <td>{lead.status_label}</td>
