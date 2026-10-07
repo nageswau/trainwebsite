@@ -12,12 +12,13 @@ from uuid import UUID
 from fastapi import HTTPException
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy import case, exists, func, select
+from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.lead_stages import CLOSED
 from app.lead_stages import label as stage_label
-from app.models import AuditLog, Enquiry, LeadFollowUp, TelProduct, User
+from app.models import AuditLog, Enquiry, LeadCall, LeadFollowUp, TelProduct, User
 from app.schemas import LeadFollowUpCreate
 from app.services import lead_pipeline, telecaller_leads
 from app.services.bdm_activities import day_range
@@ -59,14 +60,25 @@ def can_change(user: User, lead: Enquiry, fu: LeadFollowUp) -> bool:
     return user.role == "telecaller" and not telecaller_leads.read_only(user, lead) and fu.status == "open"
 
 
-def _out(user: User, now: datetime, fu: LeadFollowUp, lead: Enquiry, product: TelProduct | None, caller, creator, completer) -> dict:
+async def _last_calls(db: AsyncSession, lead_ids: set[UUID]) -> dict[UUID, dict]:
+    """tel-010 D10 (tel-011 F8): each lead's newest call, for the §7 card's "Last Call" -- one query for the page."""
+    if not lead_ids:
+        return {}
+    rows = (await db.execute(
+        select(LeadCall.lead_id, LeadCall.occurred_at, LeadCall.outcome).where(LeadCall.lead_id.in_(lead_ids))
+        .order_by(LeadCall.lead_id, LeadCall.occurred_at.desc()).ext(distinct_on(LeadCall.lead_id))
+    )).all()
+    return {lead_id: {"occurred_at": at, "outcome": outcome} for lead_id, at, outcome in rows}
+
+
+def _out(user: User, now: datetime, last_calls: dict, fu: LeadFollowUp, lead: Enquiry, product: TelProduct | None, caller, creator, completer) -> dict:
     return {
         "id": fu.id, "due_at": fu.due_at, "reason": fu.reason, "notes": fu.notes, "next_action": fu.next_action, "status": fu.status,
         "overdue": fu.status == "open" and fu.due_at < now,  # F1
         "lead": {
             "id": lead.id, "lead_code": lead.lead_code, "name": lead.name, "priority": lead.priority, "status": lead.status,
             "status_label": stage_label(lead.status), "product": None if product is None else {"id": product.id, "name": product.name},
-            "telecaller": _person(caller),
+            "telecaller": _person(caller), "last_call": last_calls.get(lead.id),
         },
         "created_by": _person(creator), "created_at": fu.created_at, "completed_at": fu.completed_at, "completed_by": _person(completer),
         "cancelled_at": fu.cancelled_at, "cancel_reason": fu.cancel_reason, "can_change": can_change(user, lead, fu),
@@ -76,7 +88,8 @@ def _out(user: User, now: datetime, fu: LeadFollowUp, lead: Enquiry, product: Te
 async def _page(db: AsyncSession, user: User, now: datetime, where: list, order: tuple, limit: int, offset: int) -> dict:
     total = await db.scalar(select(func.count()).select_from(LeadFollowUp).join(Enquiry, Enquiry.id == LeadFollowUp.lead_id).where(*where))
     rows = (await db.execute(_rows().where(*where).order_by(*order).limit(limit).offset(offset))).tuples().all()
-    return {"items": [_out(user, now, *row) for row in rows], "total": total or 0, "limit": limit, "offset": offset}
+    last_calls = await _last_calls(db, {row[1].id for row in rows})
+    return {"items": [_out(user, now, last_calls, *row) for row in rows], "total": total or 0, "limit": limit, "offset": offset}
 
 
 def in_day(day: date):
@@ -111,7 +124,7 @@ async def lead_page(db: AsyncSession, user: User, lead_id: UUID, now: datetime, 
 
 async def one(db: AsyncSession, user: User, fu_id: UUID, now: datetime) -> dict:
     row = (await db.execute(_rows().where(LeadFollowUp.id == fu_id).execution_options(populate_existing=True))).tuples().one()
-    return _out(user, now, *row)
+    return _out(user, now, await _last_calls(db, {row[1].id}), *row)
 
 
 def due_filter(kind: str, now: datetime):
