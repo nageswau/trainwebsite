@@ -70,6 +70,7 @@ async def test_counselor_advance_waits_for_a_withdraw_and_is_refused(db_session,
 @pytest.mark.parametrize("who", ["counselor", "admin"])
 async def test_patch_status_waits_for_a_withdraw_and_is_refused(db_session, world, who):
     r = await _race(world, world[who].email, lambda c: c.patch(f"{LEGACY}/{world['app'].id}", json={"status": "enrolled"}))
-    assert r.status_code == 409, r.text
-    assert r.json()["detail"] == "This application is withdrawn"
+    # AGN-023 (DEC-SCOPE-090 H4, final review C1): after the same row lock, a counselor's generic PATCH of an agency application is refused
+    expected = (403, "Use Advance stage to move an agency application") if who == "counselor" else (409, "This application is withdrawn")
+    assert (r.status_code, r.json()["detail"]) == expected, r.text
     await _assert_still_withdrawn(db_session, world)

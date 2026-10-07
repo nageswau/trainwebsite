@@ -145,6 +145,18 @@ async def status_changed(db: AsyncSession, application: OverseasApplication, old
     await notify(db, users, "Application status changed", body, APPLICATIONS_URL)
 
 
+async def counselor_assigned(db: AsyncSession, application: OverseasApplication, actor: User, *, changed: bool) -> None:
+    """AGN-023 (DEC-SCOPE-090 H5): an EduSphere counselor was assigned to, or changed on, an agency application. AGN-017 recipients;
+    no person names in the body (the counselor's name is on the application detail, H7)."""
+    if application.agent_student_id is None:
+        return
+    record = await db.get(AgentStudent, application.agent_student_id)
+    users = await recipients(db, record, actor) if record else []
+    university = clean_text(await db.scalar(select(University.name).where(University.id == application.university_id)))
+    title = "EduSphere counsellor changed" if changed else "EduSphere counsellor assigned"
+    await notify(db, users, title, f"{university}: an EduSphere counsellor is now supporting this application.", APPLICATIONS_URL)
+
+
 def ist_date(value: date | datetime) -> str:
     return (value.astimezone(INDIA) if isinstance(value, datetime) else value).strftime("%d %b %Y")
 

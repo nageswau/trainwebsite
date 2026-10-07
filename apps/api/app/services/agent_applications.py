@@ -181,6 +181,8 @@ async def detail(db: AsyncSession, user: User, app: OverseasApplication, *, reco
         "university_student_id": found.university_student_id,
         "enrollment_confirmed_at": found.enrollment_confirmed_at,
         "enrollment_check": enrollment_check(found, datetime.now(UTC).date()),
+        # AGN-023 (DEC-SCOPE-090 H7): the EduSphere counselor's name only -- never their email or phone.
+        "counselor_name": await db.scalar(select(User.full_name).where(User.id == found.counselor_id)) if found.counselor_id else None,
         "visa": await visa_block(db, found.id),  # AGN-012 (DEC-SCOPE-057): agency-only, single-application detail only
         "history": [{"from_status": h.from_status, "to_status": h.to_status, "next_action": h.next_action, "notes": h.notes, "changed_by": name, "created_at": h.created_at} for h, name in history],
         **await _offer_parts(db, user, found),

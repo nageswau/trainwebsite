@@ -18,7 +18,7 @@ no-shows, reschedules or cancels it. The lead's stage follows these actions.
 
 ## Global Constraints
 
-- Migration `0091_lead_appointments`, revises `0089_lead_qualifications`. Re-chain at merge if tel-011's 0090 lands first.
+- Migration `0091_lead_appointments`, revises `0090_lead_follow_ups` (re-chained from `0089` when tel-011 merged).
 - Register the decision as `DEC-SCOPE-095`, the API as §12Q and RBAC as §2.23. Re-check these numbers at merge.
 - Lead appointment status values: `scheduled`, `confirmed`, `rescheduled`, `completed`, `cancelled`, `no_show`. Open = the first three.
 - Mode values: `Online`, `Phone`, `In person`. Fixed duration: 60 minutes. Booking horizon: 366 days.

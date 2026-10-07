@@ -1,7 +1,7 @@
 """tel-016 -- `appointments` gains a lead link; `appointment_events` + `appointment_code_seq` (EVID-019 §9).
 
 Revision ID: 0091_lead_appointments
-Revises: 0089_lead_qualifications
+Revises: 0090_lead_follow_ups
 
 docs/superpowers/specs/2026-10-07-tel-016-lead-appointments-design.md §2 (DEC-SCOPE-095). Every new column is nullable (or has a server
 default), so no existing row changes; legacy free-text statuses are left as stored (AP12). Every legacy row has a student (the API and the
@@ -15,7 +15,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0091_lead_appointments"
-down_revision = "0089_lead_qualifications"
+down_revision = "0090_lead_follow_ups"
 branch_labels = None
 depends_on = None
 

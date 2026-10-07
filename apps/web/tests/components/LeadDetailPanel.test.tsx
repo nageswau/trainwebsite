@@ -46,6 +46,8 @@ beforeEach(() => {
     if (init?.method === "PATCH") return Promise.resolve(patchReply(JSON.parse(String(init.body))));
     if (init?.method === "POST") return Promise.resolve(res({ id: "L1", status: "qualified", status_label: "Qualified", stage_changed_at: "x" }));
     if (url.startsWith("/api/v1/telecaller/leads/L1/timeline")) return Promise.resolve(res(pageOf(timeline)));
+    if (url.startsWith("/api/v1/telecaller/leads/L1/follow-ups")) return Promise.resolve(res(pageOf([]))); // tel-011's section
+    if (url === "/api/v1/telecaller/leads/L1/appointments") return Promise.resolve(res({ items: [] })); // tel-016's section
     if (url.startsWith("/api/v1/telecaller/products")) return Promise.resolve(res(products));
     if (url.startsWith("/api/v1/telecaller/scripts")) return Promise.resolve(scripts());
     if (url === "/api/v1/telecaller/leads/L1/qualification") return Promise.resolve(res(init?.method === "PUT" ? { ...qual, ...JSON.parse(String(init.body)) } : qual));
@@ -59,6 +61,34 @@ afterEach(() => {
 });
 
 describe("LeadDetailPanel (tel-008)", () => {
+  it("shows the follow-ups section, with Add only for the lead's telecaller on an open lead (tel-011)", async () => {
+    render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen={false} />);
+    expect(await screen.findByText("No follow-ups yet.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add follow-up" })).toBeTruthy();
+    cleanup();
+    render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen />); // a manager reads only (F2)
+    expect(await screen.findByText("No follow-ups yet.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Add follow-up" })).toBeNull();
+    cleanup();
+    render(<LeadDetailPanel initial={detail({ status: "lost", status_label: "Lost" })} timeline={pageOf([])} canReopen={false} />); // F4
+    expect(await screen.findByText("No follow-ups yet.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Add follow-up" })).toBeNull();
+  });
+
+  it("shows the counselling appointments, with Book only for the lead's telecaller on an open lead (tel-016)", async () => {
+    render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen={false} />);
+    expect(await screen.findByText("No counselling appointments yet.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Book counselling" })).toBeTruthy();
+    cleanup();
+    render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen />); // a manager reads only (AP2)
+    expect(await screen.findByText("No counselling appointments yet.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Book counselling" })).toBeNull();
+    cleanup();
+    render(<LeadDetailPanel initial={detail({ status: "lost", status_label: "Lost" })} timeline={pageOf([])} canReopen={false} />); // AP11
+    expect(await screen.findByText("No counselling appointments yet.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Book counselling" })).toBeNull();
+  });
+
   it("shows the §2 lead fields, the enquiry and a Call link", () => {
     render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen={false} />);
     for (const text of ["LD-000042", "Hyderabad", "Telangana", "B.Tech", "2024", "JNTU", "Instagram", "Sep 2026", "Cyber Security", "Tara Caller", "Please call after 6pm"]) {

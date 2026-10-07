@@ -119,9 +119,9 @@ here.
 | Role | Actions | Scope | Feature |
 |---|---|---|---|
 | `overseas_student` (same identity as Student) | submit/track own applications, upload documents, apply scholarships, register events | Self — **applies only to a self-authenticating applicant** (EduSphere-direct or self-registered). An Agent-referred applicant has no login at all (`DEC-ROLE-004`, 2026-09-14) and is entirely outside this row's scope — see §2.8's note. | `OVS-002`–`007` |
-| `counselor` | evaluate eligibility, verify documents, manage visa cases/appointments | **Assigned students only** — explicit deny on any student not assigned to that Counselor, even via direct record ID (`CNS-001-AC02`) | `OVS-003`, `OVS-005`, `VISA-001`–`003`, `CNS-001` |
+| `counselor` | evaluate eligibility, verify documents, manage visa cases/appointments; on an agency application (`agent_id` set): advance except to `enrolled`, visa under AGN-012 rules with a typed body, no visa decision; the generic application PATCH is `403 "Use Advance stage to move an agency application"`; a withdrawn application or an archived agency student record is `409` on the visa routes (and archived on advance), with the agency's own messages (`AGN-023`, `DEC-SCOPE-090`) | **Assigned students only** — explicit deny on any student not assigned to that Counselor, even via direct record ID (`CNS-001-AC02`); advance and the agency visa writes re-check the assignment under the row lock (`AGN-023`) | `OVS-003`, `OVS-005`, `VISA-001`–`003`, `CNS-001` |
 | `university_rep` | review/update applications, post updates | **Own institution only**, filtered server-side by `university_id` (`DATA_MODEL.md` §6.10) | `UNI-001` |
-| `overseas_admin` | manage users/students/counselors/universities/applications/leads/payments; approve agents; approve commission payouts | Overseas division | `ADM` (Overseas), `AGT-001`, `AGT-004` |
+| `overseas_admin` | manage users/students/counselors/universities/applications/leads/payments; approve agents; approve commission payouts; assign/change an application's EduSphere counselor on every open overseas application, school-bridged ones included (the control is absent on withdrawn/enrolled rows) (`AGN-023`) | Overseas division | `ADM` (Overseas), `AGT-001`, `AGT-004` |
 | Visitor | browse destinations/universities/courses/scholarships/events (read-only) | Public | `OVS-001`, `OVS-006`, `OVS-007` |
 
 ### 2.8 Agent
@@ -269,6 +269,8 @@ Counselor, admin and university_rep keep their existing endpoints and now see ag
 they get `409` when they try to move a `withdrawn` application. Staff-activity actions `overseas.application.update`, `.advance` and
 `.withdraw` are readable by the Master through `AGN-021`. Proved by `test_agn_008_security.py`, `test_agn_008_create.py`,
 `test_agn_008_edit.py`, `test_agn_008_status.py`, `test_agn_008_read.py`, `test_agn_003_matrix.py`, `test_agn_021_activity.py`.
+
+**AGN-023 (`DEC-SCOPE-090`):** `counselor_id` is set only by `PUT …/counselor` (Overseas Admin; not super_admin); the generic PATCH refuses it for every role, and refuses a counselor on an agency application outright (`403 "Use Advance stage to move an agency application"`). On agency applications the counselor visa routes refuse a withdrawn application (`409 "This application is withdrawn"`) or an archived agency student record (`409 "Unarchive this student first"`, also on advance), validate the visa PATCH body with the agency's limits (`422`), and re-check the counselor's assignment under the row lock. The Overseas Admin's `school-applications` rows carry the assign column; closed (withdrawn/enrolled) rows carry `assign: null` and no control. Proved by `test_agn_023_assign.py`, `test_agn_023_counselor_scope.py`, `test_agn_023_filters.py`, `test_agn_023_final_review.py`, `test_tel_017_it_counselor.py`.
 
 **`DEC-ROLE-004` (2026-09-14) — Agent on-behalf-of a referred student, NOT YET BUILT:** the
 approved Agent row above is read-only (view roster/commissions, claim). Since an Agent-referred
@@ -639,6 +641,20 @@ The same inline pattern as §2.19 (`lead_pipeline.scope`, then `telecaller_leads
 | `super_admin` | the same as a manager | all leads | `tel-009` |
 | `counselor` | none yet → `403`; the read after handover is tel-018's (QF3) | — | `tel-009` |
 | every other role | none → `403` | — | `tel-009` |
+
+### 2.22 Lead follow-ups *(net-new, added 2026-10-06 — `DEC-SCOPE-094`, `tel-011`)*
+
+Inline pattern: scope (tel-004 `lead_pipeline.scope`, joined through the follow-up's lead; out of scope `404`), the lead lock, then the role
+(`lead_follow_ups.require_telecaller`, F2) and handover (`telecaller_leads.require_writable`), then the follow-up lock and its state. A
+follow-up belongs to its lead (F3), so a reassignment moves it. Every write is audited (`lead_follow_up.*`, ids / reason key / field names).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | list the day / overdue lists and a lead's follow-ups; create, reschedule/edit, complete, cancel | follow-ups on leads where `telecaller_user_id` = self; **read-only** on a handed-over lead (`403`); none on a closed lead (`409`) | `tel-011` |
+| `telecaller_manager` | read the same lists and a lead's follow-ups; writes `403` (F2) | direct reports' leads + their teams' unassigned leads (T23) | `tel-011` |
+| `super_admin` | read (writes `403`) | all leads | `tel-011` |
+| every other role | none → `403` "Telecaller role required" | — | `tel-011` |
+| system (a closing stage move) | cancels the lead's open follow-ups ("Lead closed", F4) | the lead being closed | `tel-011` |
 
 ### 2.23 Lead counselling appointments *(net-new, added 2026-10-07 — `DEC-SCOPE-095`, `tel-016`)*
 

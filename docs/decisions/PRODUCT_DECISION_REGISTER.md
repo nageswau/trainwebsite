@@ -4107,6 +4107,41 @@ spec `docs/superpowers/specs/2026-10-06-bdm-020-school-activity-design.md` §1):
 `/bdm/organizations/[id]` and `/bdm/manager/organizations/[id]`. No migration, no write, no change to `/school/*` or `school_analytics`.
 **New Feature ID authorized:** `bdm-020`. **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-020.
 
+### DEC-SCOPE-090 — EduSphere counselor assignment and agency hand-off (`AGN-023`)
+
+**ID note:** drafted as `DEC-SCOPE-089`; bdm-020 took `089` on `main` @ `4e5730ee`, so this entry is **`DEC-SCOPE-090`**. No migration.
+
+**Question:** `PRD_OPEN_ITEMS.md` item 84 -- who assigns an EduSphere counselor to an (agency) application, when, who is told, what the
+agency and the counselor see, and who owns the application afterwards.
+
+**Evidence:** `PRD_OPEN_ITEMS.md` item 84; `DEC-SCOPE-050` A6 (visibility), `DEC-SCOPE-054` E1/E4 (Master-only enrollment), `DEC-SCOPE-057`
+(agency visa, AGN-012), `DEC-SCOPE-059` (agency notices, AGN-017), `DEC-SCOPE-076` (`_require_overseas_counselor`); impact analysis
+2026-10-06 (graphify-led).
+
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for H1-H12; built on `feature/agn-023`. **Resolves:** `PRD_OPEN_ITEMS.md`
+item 84. **Spec:** `docs/superpowers/specs/2026-10-06-agn-023-counselor-assignment-design.md`.
+
+- **H1** The counselor supports the agency; the agency keeps ownership.
+- **H2** The Overseas Admin assigns (`PUT /workflows/overseas/applications/{id}/counselor`), and can change the counselor.
+- **H3** At any open stage; `withdrawn`/`enrolled` -> 409.
+- **H4** On an agency application the counselor advances (never `enrolled`, which stays with the Master, `DEC-SCOPE-054` E1), runs the
+  visa case under the AGN-012 rules, and verifies documents. The visa decision stays with the agency.
+- **H5** Notices: the new counselor, the previous counselor on a change (only while their account is active), the agency (AGN-017 recipients, no names).
+- **H6** The counselor sees the application only -- no agency counseling, budget, shortlist, email or phone.
+- **H7** The agency sees the counselor's name only.
+- **H8** Swap only; a counselor cannot be cleared.
+- **H9** The assign action covers every overseas application; H4/H6 apply to agency applications only.
+- **H10** The generic `PATCH /workflows/overseas/applications/{id}` refuses `counselor_id` (422).
+- **H11** Students/Applications filters: Admin by agency and counselor, counselor by agency; server-side, before the row cap.
+- **H12** On agency applications the counselor's screens hide **Enrolled** and locked or backward visa stages.
+
+**Consequences:** narrows `DEC-SCOPE-054` E4's tolerance for the counselor only (the Admin and university_rep generic update is
+otherwise unchanged); `tel-017`'s PATCH-based counselor check moves to the assign route. The generic PATCH now answers a university_rep's
+`counselor_id` with 422 (was 403). The agency visa rules on `POST`/`PATCH /workflows/overseas/visa` key on `agent_id`, not role, so they bind
+the Overseas Admin too, and no decision is accepted on those routes. Filters, the new columns and row keys, and the `filters` payload appear
+only on the `students` and `applications` sections; admission-updates and offer-letters keep their payload. API: `API_CONTRACT.md` §12M.
+No migration. **New Feature ID authorized:** `AGN-023`. **Status of the build:** see `AGENT_CRM_BACKLOG.md` (AGN-023 row) and `RTM.md`.
+
 ### DEC-SCOPE-091 — CSV lead import per campaign (`tel-006`)
 
 **Evidence:** `EVID-019` §2 (lead sources and fields); `DEC-SCOPE-073` T12, T15; `DEC-SCOPE-074` (campaigns); `DEC-SCOPE-087` (tel-007
@@ -4182,7 +4217,7 @@ never move); the report is the trip detail behind a "completed" gate (409 before
 **Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06 — three structured questions, each answered with the recommended option) for
 QF1–QF3; QD1–QD4 are recorded defaults. Migration `0089_lead_qualifications` (after bdm-011's `0088_bdm_appointment_trip`), API contract
 §12O. Drafted as `DEC-SCOPE-092` / `0088`; bdm-011 merged first with both (main @ `a0e16080`), so this entry re-chained. `§12M` is still
-claimed by the open AGN-023 branch; numbers re-chain at merge if `main` moves. Spec
+claimed by the open AGN-023 branch. **Merged** to `main` as PR #98 @ `d328a705` (2026-10-07). Spec
 `docs/superpowers/specs/2026-10-06-tel-009-qualification-form-design.md`.
 
 | # | Question | Answer |
@@ -4200,14 +4235,39 @@ apply is `422`; the other group's stored values are untouched. QD3 changed value
 /telecaller/leads/{id}/qualification`; component `LeadQualificationForm` in the lead detail (telecaller and manager pages). **New Feature ID
 authorized:** `tel-009`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-009.
 
+### DEC-SCOPE-094 — Lead follow-ups (`tel-011`)
+
+**Evidence:** `EVID-019` §7 (L266–L312); `DEC-SCOPE-073` T13, T19, T23; `DEC-SCOPE-081` (tel-004 pipeline); `DEC-SCOPE-084` (tel-008
+workspace, D1); owner answers in-session 2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for F1–F4; F5–F10 are recorded defaults. **MERGED** to `main` as PR #100 @ `8f9f1676`
+(2026-10-07). Migration `0090_lead_follow_ups` (re-chained after tel-009's `0089_lead_qualifications` / `DEC-SCOPE-093` / §12O, which merged
+first), API contract §12P. Spec `docs/superpowers/specs/2026-10-06-tel-011-follow-ups-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| F1 (Q-10) | When is a follow-up overdue; does a call complete it? | **Overdue = open and `due_at` < now** (to the minute). Logging a call (tel-010) never auto-completes a follow-up |
+| F2 | Who writes | **Only the lead's telecaller** creates, reschedules, completes, cancels. `telecaller_manager` / `super_admin` read their scope; writes `403` |
+| F3 | Reassignment | Follow-ups **move with the lead**: scope is the lead's, so the new telecaller has them and the old one gets `404`. No `telecaller_user_id` column |
+| F4 | Closed / handed-over leads | No new follow-up on a closed lead (`409`) or, for a telecaller, a handed-over lead (`403`). A move to a closed stage cancels the lead's open follow-ups in the same transaction (`cancel_reason` "Lead closed"); cancel on handover stays with tel-018 |
+
+Recorded defaults: F5 the stage moves to Follow-up only when the telecaller ticks it (tel-004 rules apply). F6 `due_at` timezone-aware, in
+the future at create and on a changed reschedule, within 366 days; IST day windows. F7 `PATCH` + `POST …/complete` + `POST …/cancel`
+(reason required); done/cancelled `409`. F8 the §7 card's "Last Call" arrives with tel-010. F9 My Leads `follow_up=today|overdue`. F10 at
+most 20 open follow-ups per lead (`409`).
+
+**Consequences:** table `lead_follow_ups`; `services/lead_follow_ups.py`; router `api/telecaller_follow_ups.py`; `lead_pipeline.person_move`
+cancels open follow-ups on a close; `GET /telecaller/leads` gains `follow_up`. Web: the lead-detail Follow-ups section, `/telecaller/follow-ups`
+and `/telecaller/manager/follow-ups` ("Follow-ups" in both navs), the dashboard "Today's follow-ups" card, My Leads "Due follow-up" filter.
+**New Feature ID authorized:** `tel-011`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-011.
+
 ### DEC-SCOPE-095 — Counselor appointment booking for leads (`tel-016`)
 
 **Evidence:** `EVID-019` §9 (`Telecaller Functionalities.md` L332–L384, Appendix A); `DEC-SCOPE-073` T10 (extend `appointments` with a
 lead link, booked straight to the counselor), T19 (read-only after handover); `DEC-SCOPE-081` (the stage engine); `DEC-SCOPE-076` C1 (IT
 counselor workspace); owner answers in-session 2026-10-07.
 **Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option)
-for AP1–AP4; AP5–AP14 are recorded defaults. Migration `0091_lead_appointments` (after `0089_lead_qualifications`; tel-011's unmerged
-branch holds `0090` / `DEC-SCOPE-094` / §12P / RBAC §2.22), API contract §12Q, RBAC §2.23. Numbers re-chain at merge if `main` moves. Spec
+for AP1–AP4; AP5–AP14 are recorded defaults. Migration `0091_lead_appointments` (after tel-011's `0090_lead_follow_ups`; drafted on
+`0089` and re-chained when tel-011 merged, `main` @ `88680cb1`), API contract §12Q, RBAC §2.23. Numbers re-chain at merge if `main` moves. Spec
 `docs/superpowers/specs/2026-10-07-tel-016-lead-appointments-design.md`.
 
 | # | Question | Answer |

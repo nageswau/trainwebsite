@@ -4,7 +4,7 @@
 `DEC-SCOPE-095`. **Evidence:** `EVID-019` §9 (L332–L384); backlog `docs/delivery/TELECALLER_CRM_BACKLOG.md` tel-016; T10 (extend
 `appointments` with a lead link, booked straight to the counselor). **Dependencies (all merged):** tel-004 (stage engine), tel-008 (lead
 workspace), tel-017 (IT counselors).
-**Numbers (re-check at merge):** migration `0091_lead_appointments` (tel-011 holds an unmerged `0090`), `DEC-SCOPE-095`, API §12Q,
+**Numbers (re-check at merge):** migration `0091_lead_appointments` (after tel-011's `0090_lead_follow_ups`), `DEC-SCOPE-095`, API §12Q,
 RBAC §2.23.
 
 ## 1. Owner answers (2026-10-07)
@@ -49,7 +49,7 @@ New table `appointment_events`:
 - `id`, `appointment_id` (FK, RESTRICT), `actor_user_id`, `from_status` (NULL on create), `to_status`, `old_scheduled_at`, `new_scheduled_at`, `reason` (500), `created_at`, and `position` (identity, orders rows).
 - Index on `(appointment_id, position)`.
 
-The upgrade is guarded the way 0074 and 0089 are (0001 builds from current models). Downgrade drops the new objects; it is refused (`RuntimeError`) if lead appointments exist, so lead rows are never silently orphaned. The CHECK must hold for existing rows: every legacy row has a `student_id` (the seed and the API both require one). The migration asserts this, and the test checks it.
+The upgrade is guarded the way 0074 and 0089 are (0001 builds from current models). Downgrade drops the new objects; it is refused (`RuntimeError`) if lead appointments exist, so lead rows are never silently orphaned. The CHECK must hold for existing rows: every legacy row has a `student_id` (the seed and the API both require one); adding the CHECK would fail on any row without one, and the migration test upgrades over a legacy row.
 
 `lead_stages.EVENTS` gains `appointment_released: ({counselling_scheduled}, follow_up)`.
 

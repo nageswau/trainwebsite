@@ -53,10 +53,12 @@ from app.models import (
     User,
     VisaCase,
 )
+from app.services import application_filters
 from app.services.agent_applications import WITHDRAWN, counts_as_offer, owned, stage_label, with_owner
+from app.services.agent_dashboard import headline_counts
 from app.services.agent_orgs import org_masters, org_member_ids
 from app.services.agent_students import application_scope, student_scope
-from app.services.agent_dashboard import headline_counts
+from app.services.application_filters import ApplicationFilters
 from app.services.provisioning import provisioning_statuses, user_ids_with_status
 
 logger = logging.getLogger("app.portal")
@@ -95,6 +97,17 @@ def _payload(title, subtitle, columns=(), rows=(), metrics=(), actions=(), panel
         "columns": [{"key": column[0], "label": column[1], **({"type": column[2]} if len(column) > 2 else {})} for column in columns],
         "rows": list(rows),
         "panels": list(panels),
+    }
+
+
+def _counselor_cells(application, counselors: dict) -> dict:
+    """AGN-023 (DEC-SCOPE-090 §6): the Overseas Admin's counsellor cells. `assign` is null on a closed (withdrawn or enrolled) row --
+    the assign route refuses those (409) -- so the table draws no control there (final review M1)."""
+    closed = application.status in {WITHDRAWN, "enrolled"}
+    return {
+        "counselor": counselors.get(application.counselor_id) or "Not assigned",
+        "counselor_id": str(application.counselor_id) if application.counselor_id else None,
+        "assign": None if closed else application.id,
     }
 
 
@@ -832,7 +845,7 @@ async def _agent(db: AsyncSession, user: User, section: str):
         return _payload("Agent Reports", "Application summary." if staff else "Application and commission summary.", (("metric", "Metric"), ("value", "Value")), rows)
 
 
-async def _operations(db: AsyncSession, user: User, section: str):
+async def _operations(db: AsyncSession, user: User, section: str, *, filters: ApplicationFilters | None = None):
     if user.role in {"placement_team", "hr_team"}:
         if section == "dashboard":
             jobs = (await db.execute(select(Job, Company).join(Company, Company.id == Job.company_id).where(Job.status == "open"))).all()
@@ -990,6 +1003,8 @@ async def _operations(db: AsyncSession, user: User, section: str):
             stmt = stmt.where(OverseasApplication.counselor_id == user.id)
         elif user.role == "university_rep":
             stmt = stmt.where(OverseasApplication.university_id == uuid_reference(user.profile.get("university_id"), "university reference", required=False))
+        if filters is not None:  # AGN-023 (DEC-SCOPE-090 H11): SQL-side, before the row cap; parse() admits only students/applications
+            stmt = application_filters.apply(stmt, filters)
         applications = owned((await db.execute(stmt.order_by(OverseasApplication.updated_at.desc()).limit(500))).all())
         app_ids = [a.id for a, _, _ in applications]
         if section == "dashboard":
@@ -1025,17 +1040,33 @@ async def _operations(db: AsyncSession, user: User, section: str):
                 ),
             )
         if section in {"students", "applications", "admission-updates", "offer-letters"}:
-            return _payload(
-                "Application Tracking",
-                "Assigned applications and next actions.",
-                (("id", "reference"), ("student", "Student"), ("university", "University"), ("reference", "Reference"), ("status", "Status"), ("next_action", "Next action")),
-                ({"id": a.id, "student_id": s.id, "student": s.full_name, "university": u.name, "reference": a.application_reference, "status": a.status, "next_action": a.next_action} for a, u, s in applications),
-            )
+            columns = [("id", "reference"), ("student", "Student"), ("university", "University"), ("reference", "Reference"), ("status", "Status"), ("next_action", "Next action")]
+            rows = [{"id": a.id, "student_id": s.id, "student": s.full_name, "university": u.name, "reference": a.application_reference, "status": a.status, "next_action": a.next_action} for a, u, s in applications]
+            agn023 = user.role in {"overseas_admin", "counselor"} and section in application_filters.FILTER_SECTIONS  # AGN-023 (DEC-SCOPE-090 §3.3): students/applications only; university_rep and the other sections unchanged
+            if agn023:
+                agencies, counselors = await application_filters.row_labels(db, [a for a, _, _ in applications])
+                for row, (a, _, _) in zip(rows, applications, strict=True):
+                    row |= {"is_agency": a.agent_id is not None, "agency": agencies.get(a.agent_id)}
+                    if user.role == "overseas_admin":
+                        row |= _counselor_cells(a, counselors)
+                columns.insert(2, ("agency", "Agency"))
+                if user.role == "overseas_admin":
+                    columns.insert(4, ("counselor", "EduSphere counsellor"))
+                    columns.append(("assign", "", "assign_counselor"))
+            payload = _payload("Application Tracking", "Assigned applications and next actions.", columns, rows)
+            if agn023:
+                payload["filters"] = await application_filters.payload_part(db, user, filters or ApplicationFilters())
+            return payload
         if section == "documents":
             docs = (
                 (
                     await db.execute(
-                        select(StudentDocument, User).join(User, User.id == StudentDocument.student_id).where(StudentDocument.application_id.in_(app_ids)).order_by(StudentDocument.updated_at.desc())
+                        # AGN-023 (DEC-SCOPE-090 §4): outer joins, so a no-login agency student's documents are listed; still scoped to app_ids.
+                        select(StudentDocument, func.coalesce(User.full_name, AgentStudent.full_name, "A student"))
+                        .outerjoin(User, User.id == StudentDocument.student_id)
+                        .outerjoin(AgentStudent, AgentStudent.id == StudentDocument.agent_student_id)
+                        .where(StudentDocument.application_id.in_(app_ids))
+                        .order_by(StudentDocument.updated_at.desc())
                     )
                 ).all()
                 if app_ids
@@ -1045,7 +1076,7 @@ async def _operations(db: AsyncSession, user: User, section: str):
                 "Document Verification",
                 "Admission and visa document review queue.",
                 (("id", "reference"), ("student", "Student"), ("document", "Document"), ("status", "Status"), ("notes", "Notes")),
-                ({"id": d.id, "student": s.full_name, "document": d.document_type, "status": d.verification_status, "notes": d.reviewer_notes} for d, s in docs),
+                ({"id": d.id, "student": name, "document": d.document_type, "status": d.verification_status, "notes": d.reviewer_notes} for d, name in docs),
             )
         if section == "visa":
             visas = (
@@ -1239,11 +1270,18 @@ async def _operations(db: AsyncSession, user: User, section: str):
             if user.role == "counselor":
                 stmt = stmt.where(OverseasApplication.counselor_id == user.id)
             rows = (await db.execute(stmt)).all()
+            columns = [("id", "reference"), ("student", "Student"), ("student_code", "Student ID"), ("university", "University"), ("status", "Status")]
+            table = [{"id": a.id, "student": s.full_name, "student_code": s.student_code, "university": u.name, "status": a.status} for a, s, u in rows]
+            if user.role == "overseas_admin":  # AGN-023 (H9, final review I3): the assign control covers school-bridged applications too
+                _, counselors = await application_filters.row_labels(db, [a for a, _, _ in rows])
+                for row, (a, _, _) in zip(table, rows, strict=True):
+                    row |= _counselor_cells(a, counselors)
+                columns += [("counselor", "EduSphere counsellor"), ("assign", "", "assign_counselor")]
             return _payload(
                 "School-Linked Overseas Applications",
                 "Overseas applications started for School-affiliated students. Start a new one below by Student ID.",
-                (("id", "reference"), ("student", "Student"), ("student_code", "Student ID"), ("university", "University"), ("status", "Status")),
-                ({"id": a.id, "student": s.full_name, "student_code": s.student_code, "university": u.name, "status": a.status} for a, s, u in rows),
+                columns,
+                table,
             )
     if user.role in {"it_admin", "overseas_admin", "super_admin"}:
         division = user.division if user.role != "super_admin" else None
@@ -1597,7 +1635,7 @@ async def _it_counselor(db: AsyncSession, user: User, section: str):
     )
 
 
-async def section_payload(db: AsyncSession, user: User, section: str) -> dict | None:
+async def section_payload(db: AsyncSession, user: User, section: str, *, filters: ApplicationFilters | None = None) -> dict | None:
     if user.role == "it_student":
         result = await _it_student(db, user, section)
     elif user.role == "trainer":
@@ -1609,5 +1647,5 @@ async def section_payload(db: AsyncSession, user: User, section: str) -> dict | 
     elif user.role == "counselor" and user.division == "it":
         result = await _it_counselor(db, user, section)
     else:
-        result = await _operations(db, user, section)
+        result = await _operations(db, user, section, filters=filters)
     return result

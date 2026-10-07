@@ -79,11 +79,14 @@ export const BDM_SIGN_IN = "/bdm/sign-in";
 // /overseas, managers at /admin). Later tel items add their pages here.
 // tel-008: My Leads (telecaller) and Leads (manager).
 export const TELECALLER_NAV: NavItem[] = [
-  { label: "Dashboard", href: "/telecaller/dashboard" }, { label: "My Leads", href: "/telecaller/leads" }, { label: "Profile", href: "/telecaller/profile" },
+  { label: "Dashboard", href: "/telecaller/dashboard" }, { label: "My Leads", href: "/telecaller/leads" },
+  { label: "Follow-ups", href: "/telecaller/follow-ups" }, // tel-011
+  { label: "Profile", href: "/telecaller/profile" },
 ];
 // tel-002: Products and Campaigns (the catalogue the manager maintains); tel-022: Targets; tel-007: Lead assignment and Distribution rules.
 export const TELECALLER_MANAGER_NAV: NavItem[] = [
   { label: "Team", href: "/telecaller/manager/team" }, { label: "Leads", href: "/telecaller/manager/leads" },
+  { label: "Follow-ups", href: "/telecaller/manager/follow-ups" }, // tel-011
   { label: "Lead assignment", href: "/telecaller/manager/assignment" }, { label: "Distribution rules", href: "/telecaller/manager/distribution" },
   { label: "Lead import", href: "/telecaller/manager/imports" }, // tel-006
   { label: "Targets", href: "/telecaller/manager/targets" },

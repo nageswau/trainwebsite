@@ -137,6 +137,7 @@ export type AgentApplicationDetail = AgentApplicationItem & {
   enrollment_date: string | null;
   university_student_id: string | null;
   enrollment_confirmed_at: string | null;
+  counselor_name: string | null; // AGN-023 (DEC-SCOPE-090 H7): the EduSphere counselor's name only
   enrollment_check: EnrollmentCheck;
   visa?: Visa | null; // AGN-012: null until a case is started; absent in fixtures written before it
   history: HistoryEntry[];

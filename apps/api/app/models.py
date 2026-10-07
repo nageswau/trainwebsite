@@ -959,6 +959,47 @@ class LeadImportBatch(Base, TimestampMixin):
     results_json: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
 
 
+# tel-011 (DEC-SCOPE-094): the EVID-019 §7 follow-up reasons (L284-L302) and states; migration 0090 repeats LEAD_FOLLOW_UP_CHECKS
+# (test_tel_011_migration asserts they stay identical). Labels live in the web client.
+LEAD_FOLLOW_UP_REASONS = (
+    "discuss_with_parents", "course_details", "fee_details", "waiting_salary", "waiting_documents", "comparing_courses", "next_month",
+    "next_intake", "university_information", "counselor_call",
+)
+LEAD_FOLLOW_UP_STATUSES = ("open", "done", "cancelled")
+LEAD_FOLLOW_UP_CHECKS = {
+    "ck_lead_follow_ups_reason": f"reason IN ({', '.join(repr(r) for r in LEAD_FOLLOW_UP_REASONS)})",
+    "ck_lead_follow_ups_status": f"status IN ({', '.join(repr(s) for s in LEAD_FOLLOW_UP_STATUSES)})",
+    "ck_lead_follow_ups_state": (
+        "(status = 'done') = (completed_at IS NOT NULL) AND (completed_at IS NULL) = (completed_by_user_id IS NULL) "
+        "AND (status = 'cancelled') = (cancelled_at IS NOT NULL) AND (cancelled_at IS NULL) = (cancel_reason IS NULL)"
+    ),
+}
+
+
+class LeadFollowUp(Base, TimestampMixin):
+    """tel-011 (DEC-SCOPE-094): a follow-up on a lead. It belongs to the lead (F3): whoever has the lead in scope sees it, so a
+    reassignment moves it with no rewrite; `created_by` / `completed_by` keep who did what. A closing stage move cancels the open ones (F4)."""
+
+    __tablename__ = "lead_follow_ups"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in LEAD_FOLLOW_UP_CHECKS.items()),
+        Index("ix_lead_follow_ups_lead", "lead_id", "status", "due_at"),
+        Index("ix_lead_follow_ups_open_due", "due_at", postgresql_where=text("status = 'open'")),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    lead_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="RESTRICT"))
+    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    reason: Mapped[str] = mapped_column(String(40))
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    next_action: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="open", server_default=text("'open'"))
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+
 class ContentPage(Base, TimestampMixin):
     __tablename__ = "content_pages"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
