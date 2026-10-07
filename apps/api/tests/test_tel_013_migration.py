@@ -50,7 +50,8 @@ def _sql(url: str, sql: str, params: dict | None = None, *, autocommit: bool = F
 def test_migration_chains_after_0094_and_there_is_one_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     script = ScriptDirectory.from_config(_config())
-    assert script.get_heads() == [HEAD]
+    # bdm-016's 0096_bdm_targets chains after this one, so it is in the chain under a single head (the bdm-015 test's form).
+    assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
 
 
 def test_model_matches_the_migration():

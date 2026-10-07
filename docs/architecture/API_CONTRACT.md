@@ -1296,6 +1296,21 @@ Changed: `POST/DELETE /admin/leads/{id}/conversion` keep their contract and now 
 an unlink of a converted lead returns it to Follow-up (HO2). `GET /telecaller/leads/{id}` (and the PATCH answer) gains `milestones`.
 Timeline rows gain `event` (a stage row's pipeline event, else `null`).
 
+## 12W. BDM monthly targets (`bdm-016`) — addendum, 2026-10-07
+
+`DEC-SCOPE-103`; design spec `docs/superpowers/specs/2026-10-07-bdm-016-monthly-targets-design.md` §5. Migration `0096_bdm_targets`.
+Signed out `401`. `month` is an IST month `YYYY-MM` (default the current one; malformed `422`). The sheet shape: `{month, month_status:
+past|current|future, editable, bdm: {id, full_name}, bdm_type, kpis: [{key, label, definition, tracked, target, achieved, percent}]}` —
+`achieved` is null when not tracked or before the month starts; `percent` is also null with no target or a target of 0.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /bdm/targets?month=` | `bdm` only (else `403`). The BDM's own sheet, `editable: false` |
+| `GET /bdm/manager/targets?month=&limit=&offset=` | `bdm_manager` (team) / `super_admin` (all), else `403`. `{month, month_status, editable, items: [{bdm, bdm_type, targets_set, kpi_count}], total, limit, offset}` — active BDMs, by name |
+| `GET /bdm/manager/targets/{bdm_user_id}?month=` | Manager roles. The sheet; `editable` when the month is editable for the caller and the BDM is active. Outside the team `404` |
+| `PUT /bdm/manager/targets` | Manager roles. Body `{month, items: [{bdm_user_id, kpi_key, target: 0–100000 \| null}]}` (1–200 items, one per BDM and KPI, unknown keys `422`). All or nothing: a KPI outside the BDM's type `422` (named), outside the team `404`, inactive BDM `422`, a past month by a manager `422`, more than 12 months ahead `422`. `200 {month, changed}`; `null` clears; unchanged values are not written; audit `bdm_target.set {month, changes: [{kpi, from, to}]}` per BDM |
+| `POST /bdm/manager/targets/copy` | Manager roles. Body `{month}`; same month rules. Copies the previous month's targets of active team BDMs where none is set yet. `200 {month, copied}`; audit `bdm_target.copied {month, from_month, kpis}` per BDM |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

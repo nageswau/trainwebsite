@@ -37,6 +37,7 @@ from app.models import (
     BDM_MOU_SETTABLE,
     BDM_MOU_STATUSES,
     BDM_STAFF_MAX,
+    BDM_TARGET_MAX,
     GENDERS,
     LEAD_APPOINTMENT_TYPE_LABELS,
     LEAD_CALL_MAX_SECONDS,
@@ -5919,6 +5920,87 @@ class BdmDailyReportGrid(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# bdm-016 (DEC-SCOPE-103, spec §5): monthly targets. The month is `YYYY-MM` (IST); the setter and times are server-owned.
+BDM_TARGET_MONTH_PATTERN = r"^\d{4}-(0[1-9]|1[0-2])$"
+BdmTargetMonth = Annotated[str, StringConstraints(pattern=BDM_TARGET_MONTH_PATTERN)]
+BDM_TARGET_BATCH_MAX = 200
+
+
+class BdmTargetItem(BaseModel):
+    """R4: a whole number 0-100000, or null to clear the target. The KPI is checked against the BDM's catalogue in the service."""
+
+    model_config = ConfigDict(extra="forbid")
+    bdm_user_id: UUID
+    kpi_key: str = Field(min_length=1, max_length=40)
+    target: Annotated[StrictInt, Field(ge=0, le=BDM_TARGET_MAX)] | None
+
+
+class BdmTargetsPut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    month: BdmTargetMonth
+    items: list[BdmTargetItem] = Field(min_length=1, max_length=BDM_TARGET_BATCH_MAX)
+
+    @model_validator(mode="after")
+    def _one_value_per_kpi(self):
+        pairs = [(i.bdm_user_id, i.kpi_key) for i in self.items]
+        if len(set(pairs)) != len(pairs):
+            raise ValueError("Each BDM's KPI can appear only once")
+        return self
+
+
+class BdmTargetsCopy(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    month: BdmTargetMonth
+
+
+class BdmTargetKpi(BaseModel):
+    """`achieved` is null when not tracked or the month hasn't started; `percent` also when no target or a target of 0 (R5)."""
+
+    key: str
+    label: str
+    definition: str
+    tracked: bool
+    target: int | None
+    achieved: int | None
+    percent: int | None
+
+
+class BdmTargetSheet(BaseModel):
+    month: str
+    month_status: Literal["past", "current", "future"]
+    editable: bool
+    bdm: BdmPersonRef
+    bdm_type: Literal["agent", "school", "college"]
+    kpis: list[BdmTargetKpi]
+
+
+class BdmTargetTeamRow(BaseModel):
+    bdm: BdmPersonRef
+    bdm_type: Literal["agent", "school", "college"]
+    targets_set: int
+    kpi_count: int
+
+
+class BdmTargetTeam(BaseModel):
+    month: str
+    month_status: Literal["past", "current", "future"]
+    editable: bool
+    items: list[BdmTargetTeamRow]
+    total: int
+    limit: int
+    offset: int
+
+
+class BdmTargetsSaved(BaseModel):
+    month: str
+    changed: int
+
+
+class BdmTargetsCopied(BaseModel):
+    month: str
+    copied: int
 
 
 # tel-010 (DEC-SCOPE-096): a call on a lead. The caller, lead and timestamps are server-owned (unknown fields here); the outcome rules that
