@@ -36,6 +36,7 @@ from app.models import (
     BDM_MOU_STATUSES,
     BDM_STAFF_MAX,
     GENDERS,
+    LEAD_FOLLOW_UP_REASONS,
     LEAD_PRIORITIES,
     QUAL_MODES,
     QUAL_PASSPORT,
@@ -390,6 +391,12 @@ class OverseasApplicationUpdate(BaseModel):
     next_action: str | None = Field(default=None, max_length=5000)
     notes: str | None = Field(default=None, max_length=10000)
     notify_channels: list[str] = Field(default_factory=lambda: ["email"])
+
+
+class OverseasApplicationCounselorAssign(BaseModel):
+    """AGN-023 (DEC-SCOPE-090 H8): swap only -- a counselor is required; null or missing is a 422."""
+
+    counselor_id: UUID
 
 
 class OverseasApplicationAdvance(BaseModel):
@@ -901,6 +908,27 @@ class AgentVisaUpdate(_AgentVisaDates):
         if value is None:
             raise PydanticCustomError("not_clearable", "A recorded decision cannot be cleared")
         return value
+
+
+class CounselorAgencyVisaUpdate(BaseModel):
+    """AGN-023 (DEC-SCOPE-090 H4, final review I2): an EduSphere counselor's change to an agency visa case (PATCH /overseas/visa/{id}),
+    typed so a bad body is a 422 and never a stored string. The checklist has the agency's limits (`AgentVisaUpdate`); the reference
+    has the VisaCase column's length. `decision` is refused by the route before this model (the agency records it)."""
+
+    status: str | None = Field(default=None, max_length=50)
+    checklist: list[AgentDocumentType] | None = Field(default=None, max_length=8)
+    appointment_date: date | None = None
+    tracking_reference: str | None = Field(default=None, max_length=120)
+
+    @field_validator("checklist")
+    @classmethod
+    def _checklist(cls, value):
+        return _visa_checklist(value)
+
+    @field_validator("appointment_date")
+    @classmethod
+    def _appointment_date(cls, value):
+        return _application_date(value)
 
 
 # --- AGN-010: offer details (DEC-SCOPE-056; docs/superpowers/specs/2026-10-02-agn-010-offer-details-design.md §4.1) ---
@@ -5679,3 +5707,39 @@ class TelLeadAssign(BaseModel):
 class TelLeadAssignOut(BaseModel):
     assigned: int
     unchanged: int
+
+
+# --- tel-011 (DEC-SCOPE-094, spec §3): follow-ups on a lead ---------------------------------------------------------------------
+LEAD_FOLLOW_UP_LABELS = {"notes": "Notes", "next_action": "Next action"}
+LeadFollowUpReason = Literal[LEAD_FOLLOW_UP_REASONS]
+LeadFollowUpNotes = Annotated[Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, LEAD_FOLLOW_UP_LABELS))]
+LeadFollowUpAction = Annotated[Annotated[str, _trimmed(200)] | None, AfterValidator(_trip_text(_BDM_CONTROL, False, LEAD_FOLLOW_UP_LABELS))]
+
+
+class LeadFollowUpCreate(BaseModel):
+    """F5/F6: the due instant (with its offset; the web sends IST), the §7 reason, notes and next action, and the optional move of the
+    lead to Follow-up. Creator, status and timestamps are server-owned (unknown fields here)."""
+
+    model_config = ConfigDict(extra="forbid")
+    due_at: AwareDatetime
+    reason: LeadFollowUpReason
+    notes: LeadFollowUpNotes = None
+    next_action: LeadFollowUpAction = None
+    move_to_follow_up: bool = False
+
+
+class LeadFollowUpUpdate(BaseModel):
+    """Reschedule / edit an open follow-up: only the keys sent are considered (due time and reason can't be cleared)."""
+
+    model_config = ConfigDict(extra="forbid")
+    due_at: AwareDatetime | None = None
+    reason: LeadFollowUpReason | None = None
+    notes: LeadFollowUpNotes = None
+    next_action: LeadFollowUpAction = None
+
+    @model_validator(mode="after")
+    def _required_stay_set(self):
+        for key, label in (("due_at", "Due time"), ("reason", "Reason")):
+            if key in self.model_fields_set and getattr(self, key) is None:
+                raise ValueError(f"{label} can't be removed")
+        return self

@@ -1069,6 +1069,46 @@ Roles are §12H's (`telecaller`, `telecaller_manager`, `super_admin`); other rol
 | `GET /telecaller/leads/{id}/timeline` | §12J, plus `kind: "enquiry"` rows: `from_value` = source, `to_value` = subject, `reason` = notes, `actor` null for the website |
 | `POST /public/enquiries` | Unchanged request and keys. A known person's enquiry attaches to their newest lead (a `lead_enquiries` row; no new lead, no CRM webhook). The reply is `{id, lead_code}` of that lead with `status: "new"` and `crm_sync_status: "pending"`, identical in shape and constant values to a new lead's |
 
+## 12M. EduSphere counselor assignment (`AGN-023`) — addendum, 2026-10-06
+
+`DEC-SCOPE-090`; design spec `docs/superpowers/specs/2026-10-06-agn-023-counselor-assignment-design.md`. No migration
+(`overseas_applications.counselor_id` exists). FastAPI validates the body before the role check, so a non-admin sending an invalid body
+to the assign route gets `422`, not `403`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `PUT /workflows/overseas/applications/{id}/counselor` | Body `{counselor_id: UUID}` (required; `null` or missing is `422`: swap only, H8). Overseas Admin only (`role == overseas_admin` and `division == overseas`; `super_admin` and every other role `403 "Only the Overseas Admin can assign a counselor"`). Order of checks: body `422`; role `403`; `404 "Application not found"`; `409 "This application is closed"` (`withdrawn` or `enrolled`); `422 "Choose an active overseas counselor"` (unknown, not a `counselor`, not overseas, or inactive). `200 {id, counselor_id, counselor_name, changed}`; the same counselor again is `changed: false` with no history, audit or notice. A real change writes an `ApplicationStatusHistory` row (`from_status == to_status`, notes `EduSphere counsellor assigned` / `EduSphere counsellor changed`), audit `overseas.application.counselor_assign` (`from_counselor_id`, `to_counselor_id`), a notice to the new counselor ("Application assigned to you"), a notice to the previous counselor ("Application reassigned") only while their account is active, and, on an agency application (`agent_id` set), an AGN-017 agency notice titled `EduSphere counsellor assigned` / `EduSphere counsellor changed` (no person names) |
+| `PATCH /workflows/overseas/applications/{id}` | A `counselor` on an agency application (`agent_id` set) is refused outright, after the row lock and before any field is applied: `403 "Use Advance stage to move an agency application"` (no status, intake, reference or offer-link change, no commission). Otherwise, any body containing `counselor_id` (even `null`) is `422 "Use Assign counselor to change the counselor"` for every caller. A `university_rep` now gets this `422` where it previously got `403`. Admin and university_rep behaviour on agency applications, and a counselor's on non-agency applications, are unchanged |
+| `POST /workflows/overseas/applications/{id}/advance` | Re-checks the counselor's assignment under the row lock (`403 "Application is outside your assigned scope"` if swapped meanwhile). On an agency application a counselor may advance, but `409 "Unarchive this student first"` when the agency's student record is archived, and `to_status: "enrolled"` is `403 "Only the agency's Master confirms enrollment"`; non-agency applications unchanged |
+| `POST /workflows/overseas/visa` | On an agency application (`agent_id` set; **any** caller, the Overseas Admin included), in this order after the row lock: counselor scope re-check `403 "Application is outside your assigned scope"`; `409 "This application is withdrawn"`; `409 "Unarchive this student first"` (archived agency student record); `409 "This application is enrolled, so its visa case can no longer be changed"`; `422 "An offer is needed before a visa case"`; `422 "A visa case starts at the checklist stage"` (`status` must be `checklist`). No decision is accepted |
+| `PATCH /workflows/overseas/visa/{id}` | On an agency application (any caller), after the application row lock: counselor scope re-check `403`; withdrawn `409` and archived `409` (same texts as above); enrolled `409`; `422 "The visa decision is recorded by the agency"` when the body has `decision`; then a typed body — `status: str \| null` (≤50), `checklist: list \| null` (the agency's named document types, at most 8, each once; `null` cannot clear it), `appointment_date: date \| null` (2000–2100), `tracking_reference: str \| null` (≤120) — where a bad body is `422` (never `500`, never stored); then the AGN-012 rules (`agent_visa.update_case`: decided lock, forward-only stage, checklist lock and gate). Returns `{id, status}`. Non-agency cases unchanged (untyped body, as before) |
+| `GET /workflows/overseas/applications/{id}/visa-checklist` | Gains `locked_reason` on **both** the no-case response (`{exists: false, status: null, checklist: [], appointment_date: null, tracking_reference: null, locked_reason}`) and the case response. Non-null only on an agency application: `"This application is enrolled, so its visa case can no longer be changed"` or `"The visa decision is recorded, so this case can no longer be changed"`; otherwise `null` |
+| `GET /workflows/overseas/agent/crm/applications/{id}` | `application` gains `counselor_name` (`null` when unassigned): the counselor's name only (H7), never an id, email or phone |
+
+**Portal list filters.** `GET /portal/{division}/{role}/{section}?agency=&counselor=` for `overseas_admin` and `counselor` (overseas), sections
+`students` and `applications` only. `agency` = an agency organisation id, `any` or `none`. `counselor` = an overseas counselor id or `none`
+(Overseas Admin only). Filters narrow the caller's existing scope in SQL before the row cap. `422 "Filter not available"`: any filter on another
+section or role, or `counselor` from a counselor. `422 "Unknown filter value"`: a malformed value, an unknown agency or counselor, and an
+**empty** value (`?agency=`); "all" means omitting the parameter.
+
+**Rows and `filters` payload** (`students` and `applications` sections only; admission-updates, offer-letters and every other section keep
+their pre-AGN-023 payload). Each row gains `is_agency` (bool) and `agency` (name or null); the Overseas Admin's rows also gain `counselor`
+(name, or `"Not assigned"`), `counselor_id` (string or null) and `assign` (the application id, for the Assign/Change control). Columns
+`Agency`, (Admin) `EduSphere counsellor` and an `assign_counselor` action column are added to match. The payload gains
+`filters: {agency, counselor, agencies: [{value, label}], counselors?: [{value, label}]}`: the applied values (`null` when none), the agency
+options (a counselor's are only the agencies on their own applications) and, for the Admin only, every overseas counselor, inactive ones
+labelled `"<name> (inactive)"`.
+
+**School-applications (Overseas Admin).** The Admin's `school-applications` section (school-bridged rows) also carries `counselor`,
+`counselor_id` and `assign` per row and the `EduSphere counsellor` and `assign_counselor` columns (H9: the assign action covers every overseas
+application). No filters there; the counselor's `school-applications` payload is unchanged.
+
+**Closed rows.** On a `withdrawn` or `enrolled` row (students/applications and school-applications) `assign` is `null`, and the web table
+draws no Assign/Change control for it (the assign route would refuse it with `409`).
+
+**Web behaviour.** The pages forward `agency`/`counselor` only on the overseas admin and counselor pages. When a filtered request gets `422`,
+the page shows the unfiltered list with the message `"<detail> -- showing all applications."`.
+
 ## 12N. Lead import (`tel-006`) — addendum, 2026-10-06
 
 `DEC-SCOPE-091`; design spec `docs/superpowers/specs/2026-10-06-tel-006-lead-import-design.md` §3. Migration `0087_lead_import_batches`.
@@ -1094,6 +1134,31 @@ missing or out of scope `404`. Basic fields = `qualification`, `current_org`, `p
 |---|---|
 | `GET /telecaller/leads/{id}/qualification` | `200 {lead_id, product: {id, name, group} \| null, product_group: it\|overseas\|other\|null, <every field above>, read_only, updated_by: {id, full_name} \| null, updated_at \| null}`. All stored values, the hidden group's included; `qualification`/`passing_year`/`city`/`state` are the lead's columns |
 | `PUT /telecaller/leads/{id}/qualification` | Body any of the fields that apply to the lead's product group (basic always; IT or overseas by group); an applicable field left out is cleared. `422`: another key, a field that doesn't apply ("These fields don't apply to this lead's product: …"), an out-of-range value (`academic_percentage` 0–100 with ≤ 2 decimals, `passing_year` 1950–2100, `work_experience_years` 0–50, the select values, text lengths, control characters). `403` for a telecaller on a handed-over lead. `200` returns the GET shape. Audit `lead.qualification_update {fields}` (names only) when something changed; the stage never moves |
+
+## 12P. Lead follow-ups (`tel-011`) — addendum, 2026-10-06
+
+`DEC-SCOPE-094`; design spec `docs/superpowers/specs/2026-10-06-tel-011-follow-ups-design.md` §3. Migration `0090_lead_follow_ups`. Scope is
+the lead's (`lead_pipeline.scope`): a telecaller their leads, a manager their reports' leads and their teams' unassigned queue, super_admin
+all; other roles `403`, signed out `401`, out of scope `404`. Only the lead's telecaller writes (`403` for managers); a handed-over lead is
+`403` for its telecaller. (§12O is tel-009's.)
+
+Follow-up item: `{id, due_at, reason, notes, next_action, status: open|done|cancelled, overdue, lead: {id, lead_code, name, priority, status,
+status_label, product, telecaller}, created_by, created_at, completed_at, completed_by, cancelled_at, cancel_reason, can_change}`. `reason` is
+one of `discuss_with_parents, course_details, fee_details, waiting_salary, waiting_documents, comparing_courses, next_month, next_intake,
+university_information, counselor_call`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/follow-ups?view=day\|overdue&day=YYYY-MM-DD&limit=&offset=` | `200 {items, total, limit, offset, day, counts: {day, overdue}}`. `day` (default): open follow-ups due in that IST day (default today), oldest first. `overdue`: every open follow-up past its due time, oldest first. `422` for an unknown view or a malformed day |
+| `GET /telecaller/leads/{id}/follow-ups?limit=&offset=` | `200` page of the lead's follow-ups: open by due time, then done/cancelled newest first |
+| `POST /telecaller/leads/{id}/follow-ups` | `{due_at (with offset), reason, notes?, next_action?, move_to_follow_up?}` → `201` item. `409` closed lead or 20 open follow-ups; `422` a past time / beyond 366 days (on `due_at`), or a stage move tel-004 refuses. Not idempotent. Audit `lead_follow_up.create` |
+| `PATCH /telecaller/follow-ups/{id}` | `{due_at?, reason?, notes?, next_action?}` → `200`; only changed values written (audit `lead_follow_up.update` with field names); a changed `due_at` must be in the future; `409` done/cancelled |
+| `POST /telecaller/follow-ups/{id}/complete` | `200`; `409 "This follow-up is already done"` / cancelled. Audit `lead_follow_up.complete` |
+| `POST /telecaller/follow-ups/{id}/cancel` | `{reason}` (required, ≤ 500) → `200`; `409` done/cancelled. Audit `lead_follow_up.cancel` |
+| `GET /telecaller/leads?follow_up=today\|overdue` | tel-008's list narrowed to leads with an open follow-up due today (IST) / overdue |
+
+A move to a closed stage (`POST /telecaller/leads/{id}/stage`, `PATCH /admin/leads` stage) cancels the lead's open follow-ups with
+`cancel_reason` "Lead closed".
 
 ## 13. Traceability check
 

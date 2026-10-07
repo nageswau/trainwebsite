@@ -100,8 +100,9 @@ async def test_counselor_cannot_revive_a_withdrawn_application(db_session, world
         advance = await c.post(f"/api/v1/workflows/overseas/applications/{world['app'].id}/advance", json={"to_status": "offer"})
         patch = await c.patch(f"/api/v1/workflows/overseas/applications/{world['app'].id}", json={"status": "offer"})
         notes_only = await c.patch(f"/api/v1/workflows/overseas/applications/{world['app'].id}", json={"next_action": "Archive the file"})
-    assert (advance.status_code, patch.status_code) == (409, 409)
-    assert notes_only.status_code == 200  # only a status change is refused
+    assert advance.status_code == 409
+    # AGN-023 (DEC-SCOPE-090 H4, final review C1): a counselor's generic PATCH of an agency application is refused outright
+    assert (patch.status_code, notes_only.status_code) == (403, 403)
     assert (await db_session.get(OverseasApplication, world["app"].id, populate_existing=True)).status == "withdrawn"
 
 

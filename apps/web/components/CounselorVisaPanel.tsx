@@ -8,7 +8,7 @@ import { sendJson } from "@/lib/apiErrors";
 
 type ApplicationRow = { id: string; student: string; university: string };
 type ChecklistItem = { item: string; verification_status: string };
-type Checklist = { exists: boolean; id?: string; status: string | null; checklist: ChecklistItem[] };
+type Checklist = { exists: boolean; id?: string; status: string | null; checklist: ChecklistItem[]; locked_reason?: string | null };
 type VisaStatus = { exists: boolean; status: string | null; appointment_date: string | null; tracking_reference: string | null; disclaimer: string };
 
 const STAGES = ["checklist", "documentation", "interview_prep", "tracking", "decision"];
@@ -137,7 +137,9 @@ export default function CounselorVisaPanel() {
                       <li key={item.item}>{item.item} — <span className="muted">{item.verification_status.replaceAll("_", " ")}</span></li>
                     ))}
                   </ul>
-                  {nextStages.length > 0 && (
+                  {/* AGN-023 (DEC-SCOPE-090 H12): a decided or enrolled agency case offers no stage; the server would refuse it. */}
+                  {checklist.locked_reason && <p className="muted" style={{ fontSize: 13 }}>{checklist.locked_reason}</p>}
+                  {!checklist.locked_reason && nextStages.length > 0 && (
                     <div style={{ marginTop: 8 }}>
                       {nextStages.map((stage) => (
                         <button key={stage} className="btn small" style={{ marginRight: 6, marginTop: 6 }} disabled={busyId === row.id} onClick={() => advance(row.id, checklist.id!, stage)}>
