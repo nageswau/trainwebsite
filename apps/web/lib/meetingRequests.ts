@@ -60,9 +60,6 @@ export function requestBody(draft: RequestDraft): Record<string, string> {
   return body;
 }
 
-export const isRequestPage = (data: unknown): data is RequestPage =>
-  !!data && typeof data === "object" && Array.isArray((data as { items?: unknown }).items);
-
 /** A list page's `?status=&offset=` -> the status filter (unknown values dropped) and the API query string. */
 export function listParams(params: { status?: string; offset?: string }): { status: RequestStatus | null; query: string } {
   const status = REQUEST_STATUSES.find((s) => s === params.status) ?? null;

@@ -80,12 +80,9 @@ async def next_code(db: AsyncSession) -> str:
     return f"MRQ-{await db.scalar(select(BDM_MEETING_REQUEST_CODE_SEQ.next_value())):06d}"
 
 
-def _pool(bdm_type=None):
-    """MR1: unassigned requests are always pending (ck_bdm_meeting_requests_decided)."""
-    conditions = [BdmMeetingRequest.bdm_user_id.is_(None)]
-    if bdm_type is not None:
-        conditions.append(BdmMeetingRequest.bdm_type == bdm_type)
-    return and_(*conditions)
+def _pool():
+    """MR1: the unassigned requests -- always pending (ck_bdm_meeting_requests_decided)."""
+    return BdmMeetingRequest.bdm_user_id.is_(None)
 
 
 async def scope_filters(db: AsyncSession, user: User) -> list:
