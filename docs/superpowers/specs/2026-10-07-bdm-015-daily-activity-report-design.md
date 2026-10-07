@@ -1,8 +1,8 @@
 # bdm-015 — Daily activity report (derived + note + submit) — design
 
 - **Feature:** bdm-015 (`docs/delivery/BDM_CRM_BACKLOG.md` §4 bdm-015; Appendix B M-rows)
-- **Decision:** `DEC-SCOPE-096` (drafted; renumbered on merge if another item takes it). Migration `0092_bdm_daily_reports` after
-  `0091_lead_appointments`.
+- **Decision:** `DEC-SCOPE-098`. Migration `0093_bdm_daily_reports` after `0092_lead_calls`; API §12S; RBAC §2.25. Drafted as
+  `DEC-SCOPE-096` / `0092` / §12R / 2.24 and renumbered on merging `main` @ `3d7dd99a` (tel-010 and bdm-014 merged first).
 - **Evidence:** `DEC-SCOPE-055` D9 (derived + log + note + submit), D22 / Q-13 (not enforced; submitting snapshots and locks the report
   and that day's activity edits; the manager can comment), D31 (School daily sessions = the BDM's completed presentation appointments).
 - **Dependencies:** bdm-007, bdm-009, bdm-010 (all on `main`); bdm-005 (MoU events) and bdm-017 (lead attribution) are on `main`, so
@@ -69,7 +69,7 @@ month window.
 
 ## 4. Data
 
-`bdm_daily_reports` (migration `0092_bdm_daily_reports`, additive, guarded create, downgrade refuses while rows exist):
+`bdm_daily_reports` (migration `0093_bdm_daily_reports`, additive, guarded create, downgrade refuses while rows exist):
 
 | Column | Type | Notes |
 |---|---|---|

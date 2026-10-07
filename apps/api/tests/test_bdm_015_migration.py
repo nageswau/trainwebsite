@@ -1,4 +1,4 @@
-"""bdm-015 -- migration 0092_bdm_daily_reports (spec §4). The round trip and the downgrade refusal run in a throwaway database (the
+"""bdm-015 -- migration 0093_bdm_daily_reports (spec §4). The round trip and the downgrade refusal run in a throwaway database (the
 bdm-009 pattern); a downgrade never runs against the shared test database."""
 
 import asyncio
@@ -19,11 +19,11 @@ from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_bdm_015_migration_0092", VERSIONS / "0092_bdm_daily_reports.py")
+_spec = importlib.util.spec_from_file_location("_bdm_015_migration_0093", VERSIONS / "0093_bdm_daily_reports.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0091_lead_appointments", "0092_bdm_daily_reports"
+BASE, HEAD = "0092_lead_calls", "0093_bdm_daily_reports"
 TABLE = "bdm_daily_reports"
 
 

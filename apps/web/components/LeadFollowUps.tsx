@@ -10,8 +10,8 @@ import type { Page } from "@/lib/apiErrors";
 /** tel-011 (spec §4; F2, F4, F5): the lead page's follow-ups -- open ones by due time, then done / cancelled. `canWrite` (the lead's
  *  telecaller, lead not handed over or closed) offers Add; each item's own `can_change` offers its actions. A stage move made with a new
  *  follow-up is reported up, so the page header and activity follow. */
-export default function LeadFollowUps({ leadId, leadStage, canWrite, onStageChanged }: {
-  leadId: string; leadStage: string; canWrite: boolean; onStageChanged: (stage: string) => void;
+export default function LeadFollowUps({ leadId, leadStage, canWrite, refresh = 0, onStageChanged }: {
+  leadId: string; leadStage: string; canWrite: boolean; refresh?: number; onStageChanged: (stage: string) => void;
 }) {
   const [data, setData] = useState<Page<FollowUp> | null>(null);
   const [failed, setFailed] = useState(false);
@@ -25,7 +25,7 @@ export default function LeadFollowUps({ leadId, leadStage, canWrite, onStageChan
     setFailed(false);
     getPage<FollowUp>(leadFollowUpsUrl(leadId), controller.signal).then(setData).catch(() => controller.signal.aborted || setFailed(true));
     return () => controller.abort();
-  }, [leadId, leadStage, version]); // a stage change elsewhere on the page (closing cancels open follow-ups, F4) re-reads the list
+  }, [leadId, leadStage, version, refresh]); // a stage change elsewhere (closing cancels open follow-ups, F4) or a call's follow-up re-reads
 
   const changed = (fu: FollowUp, text: string) => {
     setNotice({ text, failed: false });

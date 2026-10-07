@@ -1,4 +1,4 @@
-"""bdm-015 (DEC-SCOPE-096, spec §5): daily report rules, the day lock, the report shape and audit.
+"""bdm-015 (DEC-SCOPE-098, spec §5): daily report rules, the day lock, the report shape and audit.
 
 Functions only; nothing here commits -- the route owns the transaction. A report row exists only once submitted; before that the report
 is a live preview of `bdm_metrics.daily_counts`. Submitting and every activity write for the same BDM and IST day take one advisory

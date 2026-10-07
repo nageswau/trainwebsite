@@ -904,6 +904,7 @@ The routes write in one transaction:
 | Method/Path | Auth | Roles | Notes / status codes |
 |---|---|---|---|
 | `GET /bdm/calendar` | Authenticated | `bdm` (own), `bdm_manager` (a BDM reporting to them), `super_admin` (any BDM) | Query `date_from`, `date_to` (required, inclusive IST dates; `date_from > date_to` → `422` "date_from must be on or before date_to"; more than 31 days → `422` "The calendar shows at most 31 days"), `bdm_user_id` (a `bdm` sending it → `422` "bdm_user_id is only for managers"; a manager / super_admin omitting it → `422` "Choose a BDM"; outside the team or not a BDM → `404` "BDM not found"). Other roles `403` "BDM role required"; a BDM without a profile `403`. Response `{bdm: {id, full_name, active}, date_from, date_to, today, truncated, appointments: [{id, code, day, starts_at, duration_minutes, appointment_type, status, seminar, organization: {id, code, name, archived}}], trips: [{id, code, travel_date, return_date, from_place, to_place, mode, approval_status, travel_status}], tasks: [{id, kind, title, due_on, status, overdue, organization \| null}]}`. Excludes cancelled appointments, cancelled or rejected trips, cancelled tasks; a trip is included when it overlaps the range. `day` = the IST date of `starts_at`; `seminar` = type `seminar_workshop`, `seminar`, `workshop` or `student_seminar`. At most 500 rows per list (`truncated: true` when cut) |
+| `GET /bdm/my-day` | Authenticated | `bdm` (own) | No parameters (own scope from the session). Other roles `403` "BDM role required"; a BDM without a profile `403`. Response `{today, bdm_type, appointments: {count, truncated, items: [{id, code, starts_at, duration_minutes, appointment_type, status, organization: {id, code, name, org_type, archived}}]}, trips: {total, items: [{id, code, travel_date, return_date, from_place, to_place, approval_status, travel_status, appointment_count}]}, follow_ups: {total, groups: [{key, count}]}, tiles: [{key, label, tracked, value, note}]}`. `bdm-014`, `DEC-SCOPE-097`: today = IST; appointments exclude cancelled (at most 50 listed, `count` exact); trips start after today, not cancelled / rejected (next 5, `total` exact), `appointment_count` = non-cancelled linked appointments; follow-ups = open `follow_up` tasks due ≤ today, grouped by organization type, `none` (no organization) or `mou` (source `mou`); `tiles` = the BDM type's eight Appendix B.2 tiles in order, `value: null` with a `note` when not tracked (T-A6, T-K7). Read-only; a fixed number of statements |
 
 ## 12C. Telecaller roles (`tel-001`) — addendum, 2026-10-05
 
@@ -1193,10 +1194,31 @@ or marking a no-show, or acting on a handed-over lead; `409` "Appointment is alr
 A stage move that closes the lead (`POST /telecaller/leads/{id}/stage`, the admin move) also cancels its open appointment: an event row with reason "Lead closed" and an audit row `lead_appointment.cancel {reason: lead_closed}`; the lead stays closed (AP15). `PATCH /workflows/overseas/appointments/{id}` is `404` for a lead appointment (AP12); its student behaviour is unchanged. `GET
 /portal/it/counselor/appointments` returns a header-only payload (AP14).
 
-## 12R. BDM daily activity report (`bdm-015`) — addendum, 2026-10-07
+## 12R. Lead call logging (`tel-010`) — addendum, 2026-10-07
 
-`DEC-SCOPE-096`; design spec `docs/superpowers/specs/2026-10-07-bdm-015-daily-activity-report-design.md` §5. Migration
-`0092_bdm_daily_reports`. Signed out `401`. Dates are IST calendar days (`YYYY-MM-DD`; a malformed one is `422`). The report shape:
+`DEC-SCOPE-096`; design spec `docs/superpowers/specs/2026-10-07-tel-010-call-logging-design.md` §4. Migration `0092_lead_calls`. Reads use
+the lead's scope (`lead_pipeline.scope`; other roles `403`, signed out `401`, out of scope `404`). Only the lead's telecaller logs (`403`
+for managers / super_admin); a handed-over lead is `403` for its telecaller; a closed lead `409`. (§12Q is tel-016's.)
+
+Call item: `{id, lead_id, occurred_at, duration_seconds, call_type: outgoing|incoming, outcome, outcome_label, connected, remarks, caller:
+{id, full_name}, created_at, can_change}`. `outcome` is one of `interested, need_information, follow_up_required, appointment_fixed,
+not_interested, wrong_number, busy, no_answer, switched_off, call_back_requested, already_joined, duplicate_lead, not_eligible`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/leads/{id}/calls?limit=&offset=` | `200` page of the lead's calls, newest first |
+| `POST /telecaller/leads/{id}/calls` | `{occurred_at? (with offset, default now), duration_seconds (0–14400), call_type, outcome, remarks? (≤ 2000), next_follow_up? (§12P create body)}` → `201 {call, lead: {id, status, status_label, stage_changed_at}, follow_up_id}`. The outcome's pipeline effect applies (DEC-SCOPE-096 D3). `422` on the field: a time > 5 min ahead or > 7 IST days back (`occurred_at`), Duplicate Lead without `remarks`, Follow-up Required / Call Back Requested without `next_follow_up`, a closing outcome with one, an invalid next follow-up (nothing is written). `409` closed lead or 300 calls that IST day. Not idempotent. Audit `lead_call.create` (lead id, outcome, follow-up id) |
+| `PATCH /telecaller/calls/{id}` | `{occurred_at?, duration_seconds?, call_type?, remarks?}` (`outcome` → `422`) → `200` item. Only the caller (`403`), lead not handed over (`403`), the call's IST day only (`409`); a moved time must stay in today (`422`); a Duplicate Lead keeps its remarks (`422`). Audit `lead_call.update` with field names |
+| `DELETE /telecaller/calls/{id}` | `204`; same gates as `PATCH`. Never reverses a stage move or a follow-up. Audit `lead_call.delete` |
+| `GET /telecaller/calls/day-counts?day=YYYY-MM-DD` | `200 {day, total, connected, not_connected, by_outcome: {<every outcome>: n}}` for calls *made* that IST day (default today) by a telecaller (own), a manager's direct reports, or anyone (super_admin); other roles `403` |
+
+`GET /telecaller/follow-ups` and `GET /telecaller/leads/{id}/follow-ups` items gain `lead.last_call: {occurred_at, outcome} | null` (the
+lead's newest call; tel-011 F8).
+
+## 12S. BDM daily activity report (`bdm-015`) — addendum, 2026-10-07
+
+`DEC-SCOPE-098`; design spec `docs/superpowers/specs/2026-10-07-bdm-015-daily-activity-report-design.md` §5. Migration
+`0093_bdm_daily_reports`. Signed out `401`. Dates are IST calendar days (`YYYY-MM-DD`; a malformed one is `422`). The report shape:
 `{report_date, bdm: {id, full_name}, bdm_type, status: draft|submitted, submitted_at, note, counts: [{key, label, definition, tracked,
 count}], can_submit, submit_window_days: 7, manager_comment: {text, by: {id, full_name}, at} | null}` — a not-tracked count has
 `tracked: false, count: null`.

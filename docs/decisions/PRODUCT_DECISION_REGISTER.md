@@ -4294,14 +4294,72 @@ counselor's, a manager's request) is `404` — the backlog's "403" for another c
 `LeadAppointmentCard`, `CounselorAppointmentsPanel`. **New Feature ID authorized:** `tel-016`. **Status:** see `TELECALLER_CRM_BACKLOG.md`
 §4 tel-016.
 
-### DEC-SCOPE-096 — BDM daily activity report (`bdm-015`)
+### DEC-SCOPE-096 — Lead call logging (`tel-010`)
+
+**Evidence:** `EVID-019` §5 (L198–L252); `DEC-SCOPE-073` T5, T7, T13, T19, T23 and Appendix B B6/B7; `DEC-SCOPE-081` (tel-004 pipeline
+events `call_connected` / `call_unconnected`); `DEC-SCOPE-094` (tel-011 F4, F8); `DEC-SCOPE-069` (bdm-009 V4/V9/V10 time rules); owner
+answers in-session 2026-10-07.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07) for CL1–CL4; D1–D10 are recorded defaults. **MERGED** to `main` as PR #106 @
+`7e3ab62a` (2026-10-07). Migration `0092_lead_calls` (re-chained after tel-016's `0091_lead_appointments` / `DEC-SCOPE-095` / §12Q / RBAC 2.23,
+which merged first as PR #103), API contract §12R, RBAC §2.24. Spec `docs/superpowers/specs/2026-10-07-tel-010-call-logging-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| CL1 (Q-08) | Call types | **`outgoing` / `incoming`.** A requested call-back is the outcome "Call Back Requested", not a type |
+| CL2 | A call on a closed lead | **Refused (`409`)**; a manager reopens the lead first (as tel-011 F4) |
+| CL3 | "Duplicate Lead" | **Recorded only**, remarks required (name the other lead); no stage change. A merge is deferred |
+| CL4 | Edit / delete | **Same IST day only, by the caller.** The outcome is locked (delete and log again); a delete never reverses a stage move or a follow-up the call created |
+
+Recorded defaults: D1 13 selectable outcomes, "Converted" never offered (T5). D2 not connected = Busy, No Answer, Switched Off, Wrong Number
+(B7); every other outcome is connected (B6). D3 connected → `call_connected`; Busy / No Answer / Switched Off → `call_unconnected`; Connected
+– Interested then moves to Interested when before it (never backwards); Not Interested / Wrong Number / Already Joined Elsewhere / Not Eligible
+close the lead (`not_interested` / `wrong_number` / `lost` / `not_eligible`, reason = the outcome label; open follow-ups cancelled, F4);
+Appointment Fixed only reaches `contacted` (booking is tel-016's). D4 Follow-up Required and Call Back Requested need a next follow-up; a
+closing outcome takes none. D5 the next follow-up is tel-011's create, in the same transaction. D6 `occurred_at` defaults to now; > 5 min
+ahead or > 7 IST days back `422`. D7 duration 0–14400 s. D8 only the lead's telecaller logs (managers / super_admin read). D9 300 calls per
+caller per IST day (`409`). D10 the follow-up item's lead gains `last_call` (tel-011 F8).
+
+**Consequences:** table `lead_calls`; `services/lead_calls.py`; router `api/telecaller_calls.py`; `lead_follow_ups` list items gain
+`lead.last_call`. Web: the lead-detail Calls section (`LeadCalls`, `CallLogForm`; the header "Call" opens the dialer and the form) and the
+§7 card's "Last call". The day counts (`GET /telecaller/calls/day-counts`) feed tel-021's B6/B7 tiles.
+**New Feature ID authorized:** `tel-010`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-010.
+
+### DEC-SCOPE-097 — My Day + type-specific BDM dashboard (`bdm-014`)
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md` §15 My Day L476–L506; Agent §A L528–L546, School §A L793–L811, College §A L1032–L1050;
+`DERIVED_BLUEPRINT`) → `BDM_CRM_BACKLOG.md` §bdm-014 (AC1–AC4) and Appendix B.2 (T-C01…T-C03, T-A1…T-A8, T-S1…T-S8, T-K1…T-K8);
+`DEC-SCOPE-055` D30 (School activities), D21 (written definitions); bdm-001 B2 (My Day shell).
+**Status:** drafted as `DEC-SCOPE-096`, renumbered on merging `main` (tel-010 took 096). K1–K12 are **agent-recommended defaults** (the owner asked the session to proceed on recommended answers); owner confirmation
+pending. No migration. API contract §12B (`GET /bdm/my-day`), RBAC (BDM My Day paragraph). Spec
+`docs/superpowers/specs/2026-10-07-bdm-014-my-day-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| K1 | Endpoint and roles | `GET /bdm/my-day`, `bdm` only (`bdm_context`); other roles `403` "BDM role required"; no profile `403`. No `bdm_user_id` (managers have bdm-023) |
+| K2 | Where tile labels live | In the response (`key` = the Appendix B.2 ID, `label`, `tracked`, `value`, `note`), so page and definition can't drift |
+| K3 | "Agent / school / college organizations" | The literal `org_type`; a `university` is not a college organization for T-K1 |
+| K4 | Seminar types | T-S8 and T-K5 also count the common `seminar_workshop` (bdm-013 K5 does too) |
+| K5 | T-A6 Agents awaiting onboarding | **Not tracked** — onboarding requests are School-only (`kind IN ('school')`); agent onboarding is bdm-019 |
+| K6 | T-K7 MoU follow-ups | **Not tracked** — no feature creates `source = 'mou'` follow-ups yet; T-C03 still shows an MoU group when one exists |
+| K7 | Archived organizations | Left out of the MoU-state tiles (T-A5, T-S6, T-S7); appointment, task and activity tiles count the BDM's records as defined |
+| K8 | List sizes | Today's appointments up to 50 (`truncated`), exact count; upcoming trips the next 5 with an exact `total` |
+| K9 | "Today" | The database clock in IST (as bdm-008 / bdm-013) |
+| K10 | A manager opening `/bdm/my-day` | Redirected to `/bdm/manager/dashboard`; any other refused role keeps the "Access unavailable" card |
+| K11 | bdm-001's profile card | Replaced by one line (Employee ID · territory · View profile); the card stays on `/bdm/profile` |
+| K12 | Query count | Fixed (AC4): the gate, the clock, one SELECT of scalar subqueries, today's appointments, upcoming trips (correlated counts), follow-up groups |
+
+**Consequences:** route `app/api/bdm_my_day.py`; schemas `BdmMyDay*`; page `app/bdm/my-day` (+ `loading.tsx`); component `BdmMyDay`;
+helpers `lib/bdmMyDay.ts`. **New Feature ID authorized:** none (bdm-014 is in the backlog). **Status:** see `BDM_CRM_BACKLOG.md` §bdm-014.
+
+### DEC-SCOPE-098 — BDM daily activity report (`bdm-015`)
 
 **Evidence:** `EVID-016` §11, Agent §G, School §G (`BDM_CRM_BACKLOG.md` Appendix A L371–L397, L759–L781, L1000–L1022);
 `DEC-SCOPE-055` D9 (derived + activity log + note + submit), D22 / Q-13 (not enforced; submitting snapshots and locks the report and that
 day's activity edits; the manager can comment), D31 (School daily sessions); Appendix B M-rows; bdm-009 V6 ("Calls made" = outbound calls).
 **Status:** R1–R10 are the **recommended answers**, used under the owner's standing direction for this session to proceed with
-recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). Drafted as `DEC-SCOPE-096`; renumbered on merge if another
-item takes it. Migration `0092_bdm_daily_reports` (after `0091_lead_appointments`), API contract §12R, RBAC §2.24. Spec
+recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). Drafted as `DEC-SCOPE-096` / `0092` / §12R / RBAC 2.24 and
+renumbered on merging `main` @ `3d7dd99a` (tel-010 took `DEC-SCOPE-096` / `0092_lead_calls` / §12R / 2.24; bdm-014 took `DEC-SCOPE-097`).
+Migration `0093_bdm_daily_reports` (after `0092_lead_calls`), API contract §12S, RBAC §2.25. Spec
 `docs/superpowers/specs/2026-10-07-bdm-015-daily-activity-report-design.md`.
 
 | # | Question | Recommended answer (used) |

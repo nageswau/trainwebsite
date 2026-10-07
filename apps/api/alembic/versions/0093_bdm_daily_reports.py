@@ -1,11 +1,15 @@
 """bdm-015 -- bdm_daily_reports.
 
-Revision ID: 0092_bdm_daily_reports
-Revises: 0091_lead_appointments
+Revision ID: 0093_bdm_daily_reports
+Revises: 0092_lead_calls
 
-docs/superpowers/specs/2026-10-07-bdm-015-daily-activity-report-design.md §4 (DEC-SCOPE-096). Additive: one table; no existing row is
+docs/superpowers/specs/2026-10-07-bdm-015-daily-activity-report-design.md §4 (DEC-SCOPE-098). Additive: one table; no existing row is
 read or written. 0001 builds a fresh database from the current models, which already carry it, so creation is guarded (0071's idiom).
 downgrade() refuses while reports exist: each is the only record of what a BDM submitted for that day.
+
+Re-chained 2026-10-07 on merging `main` @ `3d7dd99a`: drafted as `0092_bdm_daily_reports` on `0091_lead_appointments` (DEC-SCOPE-096),
+but tel-010's `0092_lead_calls` (DEC-SCOPE-096) reached `main` first, so this is `0093` after it (DEC-SCOPE-098). A database stamped at
+`0092_bdm_daily_reports` is re-stamped with `alembic stamp --purge 0091_lead_appointments` then `upgrade head` (the create here is guarded).
 """
 
 import sqlalchemy as sa
@@ -13,8 +17,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0092_bdm_daily_reports"
-down_revision = "0091_lead_appointments"
+revision = "0093_bdm_daily_reports"
+down_revision = "0092_lead_calls"
 branch_labels = None
 depends_on = None
 
@@ -51,5 +55,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {TABLE} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0092_bdm_daily_reports: BDM daily reports exist. Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0093_bdm_daily_reports: BDM daily reports exist. Remove them deliberately first.")
     op.drop_table(TABLE)

@@ -1,7 +1,7 @@
 import type { BdmType } from "@/lib/bdm";
 import type { PersonRef } from "@/lib/bdmTravel";
 
-// bdm-015 (DEC-SCOPE-096): the daily activity report's types, endpoints and words. The API computes every count and decides every rule
+// bdm-015 (DEC-SCOPE-098): the daily activity report's types, endpoints and words. The API computes every count and decides every rule
 // (window, already submitted, team scope); `can_submit` only tells the page whether to offer Submit.
 export type DailyCount = { key: string; label: string; definition: string; tracked: boolean; count: number | null };
 export type DailyReport = {
