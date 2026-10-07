@@ -36,6 +36,7 @@ from app.models import (
     BDM_MOU_STATUSES,
     BDM_STAFF_MAX,
     GENDERS,
+    LEAD_FOLLOW_UP_REASONS,
     LEAD_PRIORITIES,
     QUAL_MODES,
     QUAL_PASSPORT,
@@ -5679,3 +5680,39 @@ class TelLeadAssign(BaseModel):
 class TelLeadAssignOut(BaseModel):
     assigned: int
     unchanged: int
+
+
+# --- tel-011 (DEC-SCOPE-094, spec §3): follow-ups on a lead ---------------------------------------------------------------------
+LEAD_FOLLOW_UP_LABELS = {"notes": "Notes", "next_action": "Next action"}
+LeadFollowUpReason = Literal[LEAD_FOLLOW_UP_REASONS]
+LeadFollowUpNotes = Annotated[Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, LEAD_FOLLOW_UP_LABELS))]
+LeadFollowUpAction = Annotated[Annotated[str, _trimmed(200)] | None, AfterValidator(_trip_text(_BDM_CONTROL, False, LEAD_FOLLOW_UP_LABELS))]
+
+
+class LeadFollowUpCreate(BaseModel):
+    """F5/F6: the due instant (with its offset; the web sends IST), the §7 reason, notes and next action, and the optional move of the
+    lead to Follow-up. Creator, status and timestamps are server-owned (unknown fields here)."""
+
+    model_config = ConfigDict(extra="forbid")
+    due_at: AwareDatetime
+    reason: LeadFollowUpReason
+    notes: LeadFollowUpNotes = None
+    next_action: LeadFollowUpAction = None
+    move_to_follow_up: bool = False
+
+
+class LeadFollowUpUpdate(BaseModel):
+    """Reschedule / edit an open follow-up: only the keys sent are considered (due time and reason can't be cleared)."""
+
+    model_config = ConfigDict(extra="forbid")
+    due_at: AwareDatetime | None = None
+    reason: LeadFollowUpReason | None = None
+    notes: LeadFollowUpNotes = None
+    next_action: LeadFollowUpAction = None
+
+    @model_validator(mode="after")
+    def _required_stay_set(self):
+        for key, label in (("due_at", "Due time"), ("reason", "Reason")):
+            if key in self.model_fields_set and getattr(self, key) is None:
+                raise ValueError(f"{label} can't be removed")
+        return self

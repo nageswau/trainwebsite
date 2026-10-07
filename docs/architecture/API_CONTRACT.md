@@ -1095,6 +1095,31 @@ missing or out of scope `404`. Basic fields = `qualification`, `current_org`, `p
 | `GET /telecaller/leads/{id}/qualification` | `200 {lead_id, product: {id, name, group} \| null, product_group: it\|overseas\|other\|null, <every field above>, read_only, updated_by: {id, full_name} \| null, updated_at \| null}`. All stored values, the hidden group's included; `qualification`/`passing_year`/`city`/`state` are the lead's columns |
 | `PUT /telecaller/leads/{id}/qualification` | Body any of the fields that apply to the lead's product group (basic always; IT or overseas by group); an applicable field left out is cleared. `422`: another key, a field that doesn't apply ("These fields don't apply to this lead's product: …"), an out-of-range value (`academic_percentage` 0–100 with ≤ 2 decimals, `passing_year` 1950–2100, `work_experience_years` 0–50, the select values, text lengths, control characters). `403` for a telecaller on a handed-over lead. `200` returns the GET shape. Audit `lead.qualification_update {fields}` (names only) when something changed; the stage never moves |
 
+## 12P. Lead follow-ups (`tel-011`) — addendum, 2026-10-06
+
+`DEC-SCOPE-094`; design spec `docs/superpowers/specs/2026-10-06-tel-011-follow-ups-design.md` §3. Migration `0090_lead_follow_ups`. Scope is
+the lead's (`lead_pipeline.scope`): a telecaller their leads, a manager their reports' leads and their teams' unassigned queue, super_admin
+all; other roles `403`, signed out `401`, out of scope `404`. Only the lead's telecaller writes (`403` for managers); a handed-over lead is
+`403` for its telecaller. (§12O is tel-009's.)
+
+Follow-up item: `{id, due_at, reason, notes, next_action, status: open|done|cancelled, overdue, lead: {id, lead_code, name, priority, status,
+status_label, product, telecaller}, created_by, created_at, completed_at, completed_by, cancelled_at, cancel_reason, can_change}`. `reason` is
+one of `discuss_with_parents, course_details, fee_details, waiting_salary, waiting_documents, comparing_courses, next_month, next_intake,
+university_information, counselor_call`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/follow-ups?view=day\|overdue&day=YYYY-MM-DD&limit=&offset=` | `200 {items, total, limit, offset, day, counts: {day, overdue}}`. `day` (default): open follow-ups due in that IST day (default today), oldest first. `overdue`: every open follow-up past its due time, oldest first. `422` for an unknown view or a malformed day |
+| `GET /telecaller/leads/{id}/follow-ups?limit=&offset=` | `200` page of the lead's follow-ups: open by due time, then done/cancelled newest first |
+| `POST /telecaller/leads/{id}/follow-ups` | `{due_at (with offset), reason, notes?, next_action?, move_to_follow_up?}` → `201` item. `409` closed lead or 20 open follow-ups; `422` a past time / beyond 366 days (on `due_at`), or a stage move tel-004 refuses. Not idempotent. Audit `lead_follow_up.create` |
+| `PATCH /telecaller/follow-ups/{id}` | `{due_at?, reason?, notes?, next_action?}` → `200`; only changed values written (audit `lead_follow_up.update` with field names); a changed `due_at` must be in the future; `409` done/cancelled |
+| `POST /telecaller/follow-ups/{id}/complete` | `200`; `409 "This follow-up is already done"` / cancelled. Audit `lead_follow_up.complete` |
+| `POST /telecaller/follow-ups/{id}/cancel` | `{reason}` (required, ≤ 500) → `200`; `409` done/cancelled. Audit `lead_follow_up.cancel` |
+| `GET /telecaller/leads?follow_up=today\|overdue` | tel-008's list narrowed to leads with an open follow-up due today (IST) / overdue |
+
+A move to a closed stage (`POST /telecaller/leads/{id}/stage`, `PATCH /admin/leads` stage) cancels the lead's open follow-ups with
+`cancel_reason` "Lead closed".
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

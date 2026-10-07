@@ -539,6 +539,10 @@ to tel-018 (QF3).
 
 ### tel-011 — Follow-ups
 
+**Status (2026-10-06):** **built** on `feature/tel-011` (`DEC-SCOPE-094` F1–F4 + F5–F10, migration `0090_lead_follow_ups`, API contract §12P;
+re-chained after tel-009's `0089_lead_qualifications` / `DEC-SCOPE-093` / §12O; not yet merged). Spec `docs/superpowers/specs/2026-10-06-tel-011-follow-ups-design.md`. The §7 card's "Last
+Call" arrives with tel-010 (F8); a follow-up moves with its lead (F3), so tel-025 has nothing to rewrite.
+
 - **Business requirement:** §7 ("one of the most important functions").
 - **Existing behavior:** none for leads (bdm-008 for organizations).
 - **Expected behavior:**
@@ -1171,7 +1175,7 @@ Numbers are **provisional**. `main` is at `0085_tel_distribution` (tel-007, merg
 | tel-007 | `tel_distribution_rules`, `tel_round_robin_cursors` |
 | tel-009 | `lead_qualifications` |
 | tel-010 | `lead_calls` |
-| tel-011 | `lead_follow_ups` |
+| tel-011 | `lead_follow_ups` (`0090`, built on `feature/tel-011`) |
 | tel-012 | `tel_scripts`, `tel_message_templates`, `tel_assets` (+ seeds) |
 | tel-013 | `lead_messages` |
 | tel-016 | `appointments` + lead_id, purpose, meeting_link, location, remarks, booked_by, code; CHECK student-or-lead |
