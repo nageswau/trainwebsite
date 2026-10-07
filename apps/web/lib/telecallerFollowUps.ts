@@ -26,7 +26,7 @@ export type FollowUp = {
   id: string; due_at: string; reason: FollowUpReason; notes: string | null; next_action: string | null; status: "open" | "done" | "cancelled";
   overdue: boolean;
   lead: { id: string; lead_code: string; name: string; priority: Priority; status: string; status_label: string; product: { id: string; name: string } | null;
-    telecaller: PersonRef | null };
+    telecaller: PersonRef | null; last_call?: { occurred_at: string; outcome: string } | null }; // tel-010 D10 (F8): the §7 "Last Call"
   created_by: PersonRef; created_at: string; completed_at: string | null; completed_by: PersonRef | null; cancelled_at: string | null;
   cancel_reason: string | null; can_change: boolean;
 };

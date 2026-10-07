@@ -3,6 +3,7 @@
 import { type FormEvent, useEffect, useState } from "react";
 
 import { LeadStageControl } from "@/components/AdminLeadStage";
+import LeadCalls from "@/components/LeadCalls";
 import LeadFollowUps from "@/components/LeadFollowUps";
 import LeadQualificationForm from "@/components/LeadQualificationForm";
 import ProductOptions from "@/components/TelecallerProductOptions";
@@ -149,10 +150,18 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
   const [priorityNotice, setPriorityNotice] = useState<Notice>(null);
   const [detailsNotice, setDetailsNotice] = useState<Notice>(null);
   const [stageNotice, setStageNotice] = useState<Notice>(null);
+  const [callSignal, setCallSignal] = useState(0);
+  const [followUpsVersion, setFollowUpsVersion] = useState(0);
   const call = telHref(lead.phone);
+  // tel-010 / tel-011 (D8, F2, F4): only the lead's telecaller logs calls and adds follow-ups (a manager reads); never on a closed lead
+  const telecallerWrites = !canReopen && !lead.read_only && !isClosed(lead.status);
 
   const reloadActivity = () =>
     getPage<TimelineRow>(leadUrl(lead.id, `/timeline?limit=${TIMELINE_LIMIT}`)).then(setActivity, () => setActivity(null));
+  const stageChanged = (status: string) => {
+    setLead((l) => ({ ...l, status, status_label: stageLabel(status) }));
+    void reloadActivity();
+  };
 
   async function savePriority(event: FormEvent) {
     event.preventDefault();
@@ -189,7 +198,8 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
       </div>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-start" }}>
-        {call && <a className="btn small" href={call} aria-label={`Call ${lead.name}`}>Call</a>}
+        {/* tel-010: the dialer opens, and so does the call log form */}
+        {call && <a className="btn small" href={call} aria-label={`Call ${lead.name}`} onClick={() => setCallSignal((n) => n + 1)}>Call</a>}
         {!lead.read_only && (
           <div>
             <LeadStageControl lead={lead} canReopen={canReopen} move={moveStage} onMessage={(m) => setStageNotice({ text: m.text, failed: m.failed })}
@@ -220,9 +230,13 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
         </form>
       )}
 
-      {/* tel-011 (F2, F4): only the lead's telecaller adds follow-ups (a manager reads); never on a closed lead */}
-      <LeadFollowUps leadId={lead.id} leadStage={lead.status} canWrite={!canReopen && !lead.read_only && !isClosed(lead.status)}
-        onStageChanged={(status) => { setLead((l) => ({ ...l, status, status_label: stageLabel(status) })); void reloadActivity(); }} />
+      <LeadCalls leadId={lead.id} leadStage={lead.status} canWrite={telecallerWrites} openSignal={callSignal}
+        onLogged={(result) => {
+          if (result.lead.status !== lead.status) stageChanged(result.lead.status); // the follow-ups re-read on a stage change (F4)
+          else if (result.follow_up_id) setFollowUpsVersion((n) => n + 1);
+        }} />
+
+      <LeadFollowUps leadId={lead.id} leadStage={lead.status} canWrite={telecallerWrites} refresh={followUpsVersion} onStageChanged={stageChanged} />
 
       <LeadScriptPanel product={lead.product} />
 
