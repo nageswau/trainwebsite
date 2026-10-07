@@ -213,7 +213,7 @@ async def test_email_channel_and_unusable_templates_are_refused(client, db_sessi
     _, tel, _ = await team(db_session)
     row = await lead(db_session, tel)
     await as_user(client, tel)
-    assert (await send(client, row, channel="email")).status_code == 422  # D9: tel-014
+    assert (await send(client, row, channel="email")).status_code == 422  # tel-014: an email needs a subject
     for tpl_id in ((await template(db_session, active=False)).id, (await template(db_session, channel="email")).id, uuid.uuid4()):
         response = await send(client, row, template_id=str(tpl_id))
         assert response.status_code == 422, response.text

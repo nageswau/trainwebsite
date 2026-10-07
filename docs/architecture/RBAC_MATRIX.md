@@ -765,6 +765,17 @@ The same inline pattern as §2.19. Read-only; the subject comes from the session
 | `super_admin` | read any telecaller's daily activity | all telecallers | `tel-021` |
 | every other role | `403` (the dashboard is the telecaller's only) | — | `tel-021` |
 
+### 2.32 Lead email *(net-new, added 2026-10-07 — `DEC-SCOPE-106`, `tel-014`)*
+
+§2.27's gate, on the same routes (`lead_pipeline.scope`, the lead lock, the role and `telecaller_leads.require_writable`). The recipient is
+always the lead's own address, never one from the request.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | send an email to an open lead before handover (100 per IST day); read the log; never delete an email | own leads; another's is `404` | `tel-014` |
+| `telecaller_manager` / `super_admin` | read the log and delivery status; `403` on send | §2.19's | `tel-014` |
+| every other role | `403` | — | `tel-014` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

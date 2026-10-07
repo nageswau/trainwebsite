@@ -12,9 +12,11 @@ error), "sent", or "failed".
 """
 
 import asyncio
+import re
 import smtplib
 from datetime import UTC, datetime
 from email.message import EmailMessage
+from email.utils import formataddr
 from html import escape
 
 from app.core.config import settings
@@ -362,3 +364,39 @@ async def send_bdm_reminder_email(*, to_email: str, recipient_name: str, title: 
         return "sent", None
     except Exception as exc:
         return "failed", str(exc)[:500]
+
+
+# --- tel-014 / DEC-SCOPE-106: a telecaller's email to a lead ------------------------------------------------------------------
+
+def smtp_configured() -> bool:
+    """E3: a lead email needs both the host and the verified From address."""
+    return bool(settings.smtp_host and settings.smtp_from_email)
+
+
+_LINK = re.compile(r"https?://[^\s<>\"']+")
+
+
+def _lead_email_html(*, body: str, sender_name: str) -> str:
+    """E6: everything is escaped first, so a link can only wrap already-escaped text (no quote can close its attribute); the newlines stay."""
+    text = _LINK.sub(lambda m: f'<a href="{m.group(0)}" style="color:#1554d8;">{m.group(0)}</a>', escape(body))
+    return f"""<!doctype html>
+<html>
+  <body style="margin:0;padding:24px;font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#0f2850;font-size:15px;line-height:1.6;">
+    <div style="white-space:pre-wrap;max-width:640px;">{text}</div>
+    <p style="font-size:12px;color:#60738b;margin:24px 0 0;">Sent by {escape(sender_name)} via EduSphere.</p>
+  </body>
+</html>"""
+
+
+def lead_email_message(*, to_email: str, subject: str, body: str, sender_name: str, sender_email: str) -> EmailMessage:
+    """EM1: the technical From is the verified SMTP account (providers reject anything else); the display name and Reply-To carry the
+    telecaller, so a reply reaches them (not tracked in the CRM). `formataddr` quotes any specials in a name. A malformed address raises
+    ValueError, which the worker records as a permanent failure. The subject arrives single-line (schemas.LeadEmailCreate)."""
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = formataddr((f"{sender_name} via EduSphere", settings.smtp_from_email or ""))
+    msg["To"] = to_email
+    msg["Reply-To"] = formataddr((sender_name, sender_email))
+    msg.set_content(f"{body}\n\n--\nSent by {sender_name} via EduSphere.\n")
+    msg.add_alternative(_lead_email_html(body=body, sender_name=sender_name), subtype="html")
+    return msg
