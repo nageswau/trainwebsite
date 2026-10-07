@@ -4266,7 +4266,7 @@ and `/telecaller/manager/follow-ups` ("Follow-ups" in both navs), the dashboard 
 lead link, booked straight to the counselor), T19 (read-only after handover); `DEC-SCOPE-081` (the stage engine); `DEC-SCOPE-076` C1 (IT
 counselor workspace); owner answers in-session 2026-10-07.
 **Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option)
-for AP1–AP4; AP5–AP14 are recorded defaults. Migration `0091_lead_appointments` (after tel-011's `0090_lead_follow_ups`; drafted on
+for AP1–AP4 and AP15 (2026-10-07, after the tel-011 merge); AP5–AP14 are recorded defaults. Migration `0091_lead_appointments` (after tel-011's `0090_lead_follow_ups`; drafted on
 `0089` and re-chained when tel-011 merged, `main` @ `88680cb1`), API contract §12Q, RBAC §2.23. Numbers re-chain at merge if `main` moves. Spec
 `docs/superpowers/specs/2026-10-07-tel-016-lead-appointments-design.md`.
 
@@ -4275,6 +4275,7 @@ for AP1–AP4; AP5–AP14 are recorded defaults. Migration `0091_lead_appointmen
 | AP1 | Q-11: counselor clash and length | **Refuse with `409`** (`counselor_busy`, the busy times listed) when the time overlaps any open appointment of the counselor — a lead's or a student's. **Fixed 60 minutes.** No override |
 | AP2 | Who acts after booking | **Counselor** (the assigned one): confirm, complete, no-show, reschedule, cancel. **The lead's telecaller:** reschedule and cancel while open. **Managers / super_admin:** read only |
 | AP3 | Stage on no-show / cancel | Back to **Follow-up** (system event `appointment_released`) when the lead is still at Counselling Scheduled; a reschedule never moves it |
+| AP15 | Closing a lead with an open appointment (asked after the tel-011 merge) | **Cancel it** (reason "Lead closed", the closer as actor, an audit row) in the same transaction as the close — as tel-011 F4 does for follow-ups; the lead stays closed; finished appointments are untouched; a reopen does not restore it |
 | AP4 | Q-12: counselors and types | **Any active counselor of the lead's division**, no application needed; booking is not a handover (`owner_id` untouched, tel-018). IT lead → Career, IT course counselling; overseas lead → Career, Overseas, University counselling |
 
 Recorded defaults: AP5 one open appointment per lead (`409`; partial unique index). AP6 `CAP-000001` codes from `appointment_code_seq`,

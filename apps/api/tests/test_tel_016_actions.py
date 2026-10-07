@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import pytest
 from sqlalchemy import select, update
 
-from app.models import Appointment, Enquiry, LeadStageHistory
+from app.models import Appointment, AuditLog, Enquiry, LeadStageHistory
 from tests.tel016_helpers import COUNSELOR_LIST, action_url, as_user, at, book, make_counselor, setup
 
 
@@ -159,6 +159,37 @@ async def test_only_counselors_read_the_counselor_list(client, db_session):
     _, tel, _, _ = await setup(db_session)
     await as_user(client, tel)
     assert (await client.get(COUNSELOR_LIST)).status_code == 403
+
+
+# --- AP15: closing a lead cancels its open appointment (owner answer 2026-10-07, as tel-011 F4 does for follow-ups) -----------------
+@pytest.mark.asyncio
+async def test_closing_a_lead_cancels_its_open_appointment(client, db_session):
+    _, tel, counselor, lead, out = await booked(client, db_session)
+    await as_user(client, tel)
+    response = await client.post(f"/api/v1/telecaller/leads/{lead.id}/stage", json={"to_stage": "not_interested", "reason": "Joined elsewhere"})
+    assert response.status_code == 200, response.text
+    assert await stage(db_session, lead) == "not_interested"  # the close stands -- no release back to Follow-up
+    items = (await client.get(f"/api/v1/telecaller/leads/{lead.id}/appointments")).json()["items"]
+    assert items[0]["status"] == "cancelled"
+    last = items[0]["events"][-1]
+    assert (last["from_status"], last["to_status"], last["reason"], last["actor_name"]) == ("scheduled", "cancelled", "Lead closed", tel.full_name)
+    assert items[0]["permissions"]["can_cancel"] is False
+    audit = await db_session.scalar(select(AuditLog).where(AuditLog.entity_id == out["id"], AuditLog.action == "lead_appointment.cancel"))
+    assert audit is not None and audit.metadata_json["reason"] == "lead_closed"
+    await as_user(client, counselor)  # the counselor's slot is free again
+    assert (await client.get(f"{COUNSELOR_LIST}?status=cancelled")).json()["items"][0]["id"] == out["id"]
+
+
+@pytest.mark.asyncio
+async def test_closing_a_lead_leaves_finished_appointments_alone(client, db_session):
+    _, tel, counselor, lead, out = await booked(client, db_session)
+    await as_user(client, counselor)
+    await started(db_session, out["id"])
+    assert (await client.post(action_url(out["id"], "complete"))).status_code == 200
+    await as_user(client, tel)
+    assert (await client.post(f"/api/v1/telecaller/leads/{lead.id}/stage", json={"to_stage": "lost", "reason": "No budget"})).status_code == 200
+    items = (await client.get(f"/api/v1/telecaller/leads/{lead.id}/appointments")).json()["items"]
+    assert items[0]["status"] == "completed" and len(items[0]["events"]) == 2
 
 
 # --- AP12: the legacy overseas PATCH cannot touch a lead appointment ---------------------------------------------------------------------

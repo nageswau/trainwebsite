@@ -15,6 +15,7 @@ RBAC §2.23.
 | AP2 | Who acts after booking | **Counselor** (the assigned one): confirm, complete, no-show, reschedule, cancel. **The lead's telecaller:** reschedule and cancel while the appointment is open. **Managers and super_admin:** read only |
 | AP3 | Stage on no-show/cancel | The lead returns to **Follow-up** (system event `appointment_released`) if it is still at Counselling Scheduled. A reschedule never moves the stage |
 | AP4 | Counselors and types (Q-12) | **Any active counselor in the lead's division**, with no application needed. Booking is **not** a handover (`owner_id` untouched; tel-018). Types: IT lead → Career counselling, IT course counselling; overseas lead → Career, Overseas, University counselling |
+| AP15 | Closing a lead with an open appointment (asked after the tel-011 merge) | **Cancel it** in the closing transaction (`lead_pipeline.person_move`, next to tel-011's follow-up cancel): an event row "Lead closed" by the closer, an audit row; the lead stays closed; finished appointments untouched; a reopen does not restore it |
 
 Defaults:
 - **AP5:** a lead has at most one open appointment (`scheduled`, `confirmed`, `rescheduled`). A second booking is 409, backed by a partial unique index.

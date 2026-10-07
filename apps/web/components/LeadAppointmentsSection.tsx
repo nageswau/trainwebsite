@@ -19,6 +19,7 @@ export default function LeadAppointmentsSection({ leadId, stage, canBook, onStag
   const [attempt, setAttempt] = useState(0);
   const [booking, setBooking] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const closed = CLOSED.has(stage); // AP15: closing a lead cancels its open booking, so the list is re-read when the lead closes or reopens
 
   useEffect(() => {
     const controller = new AbortController();
@@ -29,7 +30,7 @@ export default function LeadAppointmentsSection({ leadId, stage, canBook, onStag
       })
       .catch(() => controller.signal.aborted || setItems("failed"));
     return () => controller.abort();
-  }, [leadId, attempt]);
+  }, [leadId, attempt, closed]);
 
   function changed(next: LeadAppointment) {
     setItems((list) => (Array.isArray(list) ? list.map((a) => (a.id === next.id ? next : a)) : list));
@@ -45,7 +46,7 @@ export default function LeadAppointmentsSection({ leadId, stage, canBook, onStag
 
   const list = Array.isArray(items) ? items : [];
   const hasOpen = list.some((a) => OPEN_STATUSES.includes(a.status));
-  const bookable = canBook && Array.isArray(items) && !hasOpen && !CLOSED.has(stage);
+  const bookable = canBook && Array.isArray(items) && !hasOpen && !closed;
   let body: React.ReactNode;
   if (items === null) body = <p className="muted" role="status" style={{ fontSize: 13 }}>Loading appointments…</p>;
   else if (items === "failed") {
@@ -64,7 +65,7 @@ export default function LeadAppointmentsSection({ leadId, stage, canBook, onStag
         {bookable && !booking && <button type="button" className="btn small" onClick={() => { setBooking(true); setNotice(null); }}>Book counselling</button>}
       </div>
       {canBook && hasOpen && <p className="muted" style={{ margin: 0, fontSize: 13 }}>This lead has an open appointment. Reschedule or cancel it to book another.</p>}
-      {canBook && CLOSED.has(stage) && <p className="muted" style={{ margin: 0, fontSize: 13 }}>This lead is closed. A manager can reopen it before a booking.</p>}
+      {canBook && closed && <p className="muted" style={{ margin: 0, fontSize: 13 }}>This lead is closed. A manager can reopen it before a booking.</p>}
       {notice && <p className="form-message" role="status" style={{ margin: 0, fontSize: 13 }}>{notice}</p>}
       {booking && <BookCounsellingForm leadId={leadId} onBooked={booked} onCancel={() => setBooking(false)} />}
       {body}

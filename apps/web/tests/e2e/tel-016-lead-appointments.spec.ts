@@ -116,4 +116,17 @@ test("a telecaller books IT course counselling for a lead and the IT counselor c
   await page.reload();
   await expect(page.getByRole("heading", { name: "Lead appointments" })).toBeVisible();
   expect(await noSideScroll(page)).toBe(true);
+
+  // AP15: the telecaller closes the lead; its open (confirmed) appointment is cancelled and says why
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.request.post("/api/v1/auth/logout");
+  await signIn(page, "it", caller.email, E2E_PASSWORD, "/telecaller/dashboard");
+  const closed = await page.request.post(`/api/v1/telecaller/leads/${id}/stage`, { data: { to_stage: "not_interested", reason: "Joined elsewhere" } });
+  expect(closed.status(), await closed.text()).toBe(200);
+  await page.goto(`/telecaller/leads/${id}`);
+  const after = page.getByRole("region", { name: "Counselling appointments" }).getByRole("article");
+  await expect(after.getByText("Cancelled", { exact: true })).toBeVisible();
+  await after.getByText(/History/).click();
+  await expect(after.getByText("Lead closed")).toBeVisible();
+  await expect(page.getByText("This lead is closed. A manager can reopen it before a booking.")).toBeVisible();
 });

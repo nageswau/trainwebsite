@@ -1183,7 +1183,7 @@ created_at}], permissions: {can_confirm, can_complete, can_no_show, can_cancel, 
 Every action: `404` outside scope (another counselor's appointment, a manager, any other role); `403` a telecaller confirming, completing
 or marking a no-show, or acting on a handed-over lead; `409` "Appointment is already …" on a finished one. Each writes an
 `appointment_events` row and an audit row `lead_appointment.<action>` (ids, statuses and times only) and returns `200` with the shape above.
-`PATCH /workflows/overseas/appointments/{id}` is `404` for a lead appointment (AP12); its student behaviour is unchanged. `GET
+A stage move that closes the lead (`POST /telecaller/leads/{id}/stage`, the admin move) also cancels its open appointment: an event row with reason "Lead closed" and an audit row `lead_appointment.cancel {reason: lead_closed}`; the lead stays closed (AP15). `PATCH /workflows/overseas/appointments/{id}` is `404` for a lead appointment (AP12); its student behaviour is unchanged. `GET
 /portal/it/counselor/appointments` returns a header-only payload (AP14).
 
 ## 13. Traceability check
