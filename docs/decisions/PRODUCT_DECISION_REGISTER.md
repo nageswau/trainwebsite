@@ -4547,7 +4547,7 @@ recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). 
 Appendix B (B1–B10, D1–D13, K1–K6); `DEC-SCOPE-080` (targets), `DEC-SCOPE-096` (calls), `DEC-SCOPE-094` (follow-ups), `DEC-SCOPE-095` /
 `DEC-SCOPE-098` (appointments), `DEC-SCOPE-100` (WhatsApp), `DEC-SCOPE-101` HO2 (unlink); owner answers in-session 2026-10-07.
 **Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — two structured questions, each answered with the recommended option) for
-DB1–DB2; DB3–DB8 are recorded defaults. **No migration.** API contract §12X, RBAC §2.30. Spec
+DB1–DB2; DB3–DB8 are recorded defaults. **MERGED** to `main` as PR #118 @ `89e1c4eb` (2026-10-07). **No migration.** API contract §12X, RBAC §2.30. Spec
 `docs/superpowers/specs/2026-10-07-tel-021-dashboard-design.md`. (102 went to bdm-012 and 103 to bdm-016, both merged first; 104 is held by tel-025.)
 
 | # | Question | Answer |
