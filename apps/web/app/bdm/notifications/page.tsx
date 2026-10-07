@@ -6,7 +6,7 @@ import { BDM_TYPE_LABEL, type BdmMe } from "@/lib/bdm";
 import { bdmNav } from "@/lib/bdmNav";
 import { BDM_SIGN_IN } from "@/lib/navigation";
 
-// bdm-010 (QA10-01): the BDM's own in-app notices -- a trip approved or not approved. Same feed and list as the other portals; opening
+// bdm-010 (QA10-01): the BDM's own in-app notices -- a trip approved or not approved; bdm-012 adds the reminders. Same feed and list as the other portals; opening
 // an unread notice marks it read before it navigates, so the sidebar badge is already right on the next page (AGN-017 QA17-01).
 export default async function BdmNotificationsPage() {
   const nav = bdmNav(); // the unread badge, read alongside the page's own data (never rejects)
@@ -30,7 +30,7 @@ export default async function BdmNotificationsPage() {
         </div>
         <div className="card">
           <SchoolNotificationList notifications={notifications} readBeforeOpen
-            emptyText="No notifications yet. You will be told here when your manager approves a trip or sends it back." />
+            emptyText="No notifications yet. Your reminders (appointments, travel, MoUs, follow-ups) and trip decisions appear here." />
         </div>
       </div>
     </PortalShell>

@@ -655,6 +655,19 @@ Conventions used below:
 
 ### bdm-012 — Reminder engine (first Celery `beat_schedule`)
 
+> **Status (2026-10-07):** implemented on `worktree-bdm-012` (`DEC-SCOPE-102` R1–R12, agent-recommended defaults pending owner
+> confirmation). **No migration:** AGN-017's `notifications.dedupe_key` is the "sent" record (R1), not a `bdm_reminders_sent` table; AGN-017
+> landed first, so bdm-012 adds the `bdm012-reminders` entry to the existing `beat_schedule` (beside tel-018's sweep). Drafted as
+> `DEC-SCOPE-098`, renumbered to 102 on merging `main` (tel-019, bdm-015, tel-013, tel-018 took 098–101). **COMPLETE WITH DEFERRED FULL
+> REGRESSION.** Fresh evidence after merging `main` @ `59881580`: backend lite (bdm-012, AGN-017, ENH-014 delivery/worker/sweeper, mailer,
+> tel-018 link, bdm-005/006/008/010/011/025 neighbours) 196 passed, 1 failed — `test_agn_017_reminders::…partial_deadline_indexes…`, a
+> planner-statistics EXPLAIN check on `overseas_applications` (untouched here) that passes alone and in order with bdm-012's tests, on the
+> base and on this branch; ruff clean and formatted; mypy 510 = base 510 (none in bdm-012 code); one alembic head `0095_lead_messages`
+> (no migration); web BDM set 645 passed (75 files); `tsc` 0; eslint 0; `next build` 0; Playwright bdm-012 (real beat + worker) / 006 /
+> 005 3 passed; browser QA `docs/quality/BDM-012_BROWSER_QA_2026-10-07.md` (no defects; isolated Playwright Chromium — Browser Use is
+> not installed). **Open for the owner:** confirm R1–R12; the full backend / web regression (mandatory after bdm-012, R3); a manager digest.
+> Spec `docs/superpowers/specs/2026-10-07-bdm-012-reminder-engine-design.md`; plan `docs/superpowers/plans/2026-10-07-bdm-012-reminder-engine.md`.
+
 - **Business requirement:** automatic reminders.
   - **Appointments (§6):** 1 day before, with Confirm / Reschedule / Cancel; and 1 hour before.
   - **Travel (§7):** the day before, with View Appointments / Expenses / Add Remarks.
