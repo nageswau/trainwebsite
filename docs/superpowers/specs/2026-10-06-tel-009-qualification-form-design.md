@@ -2,7 +2,7 @@
 
 Backlog: `docs/delivery/TELECALLER_CRM_BACKLOG.md` tel-009 (EVID-019 §4, Appendix A L144–L196). Dependency tel-008 is merged (PR #85).
 The branch is `feature/tel-009`, cut from `main` @ `126b454b` (tel-006 merged). Decision `DEC-SCOPE-093`, migration `0089_lead_qualifications`
-(after bdm-011's `0088_bdm_appointment_trip`), API contract §12O. §12M is still claimed by the open AGN-023 branch.
+(after bdm-011's `0088_bdm_appointment_trip`), API contract §12O. §12M is still claimed by the open AGN-023 branch. **Merged** to `main` as PR #98 @ `d328a705` (2026-10-07).
 
 ## 1. Owner answers (2026-10-06, `EXPLICIT_APPROVAL`, in-session) and recorded defaults
 

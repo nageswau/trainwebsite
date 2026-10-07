@@ -4217,7 +4217,7 @@ never move); the report is the trip detail behind a "completed" gate (409 before
 **Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06 — three structured questions, each answered with the recommended option) for
 QF1–QF3; QD1–QD4 are recorded defaults. Migration `0089_lead_qualifications` (after bdm-011's `0088_bdm_appointment_trip`), API contract
 §12O. Drafted as `DEC-SCOPE-092` / `0088`; bdm-011 merged first with both (main @ `a0e16080`), so this entry re-chained. `§12M` is still
-claimed by the open AGN-023 branch; numbers re-chain at merge if `main` moves. Spec
+claimed by the open AGN-023 branch. **Merged** to `main` as PR #98 @ `d328a705` (2026-10-07). Spec
 `docs/superpowers/specs/2026-10-06-tel-009-qualification-form-design.md`.
 
 | # | Question | Answer |
