@@ -11,7 +11,8 @@ import type { DailyReport, TeamGrid } from "@/lib/bdmDailyReports";
 import { indiaToday } from "@/lib/bdmTravel";
 import { elements } from "@/tests/helpers/elementTree";
 
-vi.mock("@/lib/api", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/api")>()), serverApi: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), refresh: vi.fn(), push: vi.fn() }), usePathname: () => "/bdm/manager/daily-reports" }));
+vi.mock("@/lib/api",async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/api")>()), serverApi: vi.fn() }));
 
 const B1 = "00000000-0000-4000-8000-0000000000b1";
 const me = {

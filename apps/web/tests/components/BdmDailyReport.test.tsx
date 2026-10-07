@@ -98,8 +98,9 @@ describe("bdm-015 daily report", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save comment" }));
     await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Comment saved."));
     expect(fetchMock).toHaveBeenCalledWith(`/api/v1/bdm/manager/daily-reports/b1/${DAY}/comment`, expect.objectContaining({ method: "PUT" }));
-    expect(screen.getByText("Good work")).toBeTruthy();
-    expect(screen.getByText(/Meera/)).toBeTruthy();
+    const shown = screen.getByRole("region", { name: "Submitted report" });
+    expect(shown.textContent).toContain("Good work");
+    expect(shown.textContent).toContain("Meera");
   });
 
   it("the manager sees a draft as not submitted, with no comment form", () => {

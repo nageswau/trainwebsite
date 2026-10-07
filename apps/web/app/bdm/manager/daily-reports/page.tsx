@@ -6,12 +6,10 @@ import { BDM_TYPE_LABEL } from "@/lib/bdm";
 import { GRID_STATUS_LABEL, TEAM_PAGE, TEAM_REPORTS_URL, type TeamGrid, teamReportHref } from "@/lib/bdmDailyReports";
 import { bdmManagerNav } from "@/lib/bdmNav";
 import { indiaToday } from "@/lib/bdmTravel";
-import { formatSchoolDateTime } from "@/lib/formatDate";
+import { formatCalendarDate, formatSchoolDateTime } from "@/lib/formatDate";
 import type { User } from "@/lib/types";
 
 const PATH = "/bdm/manager/daily-reports";
-// A grid column heading: weekday + day + month of a calendar date (formatted in UTC, the formatCalendarDate rule).
-const columnDate = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short", timeZone: "UTC" });
 
 // bdm-015 (spec §6, R8): who has submitted the daily report -- the team's active BDMs × the seven days ending on the chosen date.
 // Submitted and Missing are words, not colours; each opens that report. "—" is a day before the BDM's profile existed.
@@ -57,7 +55,7 @@ export default async function ManagerDailyReportsPage({ searchParams }: { search
               <thead>
                 <tr>
                   <th scope="col">BDM</th>
-                  {grid.dates.map((d) => <th scope="col" key={d}>{columnDate(d)}</th>)}
+                  {grid.dates.map((d) => <th scope="col" key={d}>{formatCalendarDate(d)}</th>)}
                 </tr>
               </thead>
               <tbody>
