@@ -121,7 +121,7 @@ here.
 | `overseas_student` (same identity as Student) | submit/track own applications, upload documents, apply scholarships, register events | Self — **applies only to a self-authenticating applicant** (EduSphere-direct or self-registered). An Agent-referred applicant has no login at all (`DEC-ROLE-004`, 2026-09-14) and is entirely outside this row's scope — see §2.8's note. | `OVS-002`–`007` |
 | `counselor` | evaluate eligibility, verify documents, manage visa cases/appointments; on an agency application (`agent_id` set): advance except to `enrolled`, visa under AGN-012 rules with a typed body, no visa decision; the generic application PATCH is `403 "Use Advance stage to move an agency application"`; a withdrawn application or an archived agency student record is `409` on the visa routes (and archived on advance), with the agency's own messages (`AGN-023`, `DEC-SCOPE-090`) | **Assigned students only** — explicit deny on any student not assigned to that Counselor, even via direct record ID (`CNS-001-AC02`); advance and the agency visa writes re-check the assignment under the row lock (`AGN-023`) | `OVS-003`, `OVS-005`, `VISA-001`–`003`, `CNS-001` |
 | `university_rep` | review/update applications, post updates | **Own institution only**, filtered server-side by `university_id` (`DATA_MODEL.md` §6.10) | `UNI-001` |
-| `overseas_admin` | manage users/students/counselors/universities/applications/leads/payments; approve agents; approve commission payouts; assign/change an application's EduSphere counselor on every open overseas application, school-bridged ones included (the control is absent on withdrawn/enrolled rows) (`AGN-023`) | Overseas division | `ADM` (Overseas), `AGT-001`, `AGT-004` |
+| `overseas_admin` | manage users/students/counselors/universities/applications/leads/payments; approve agents; approve commission payouts; assign/change an application's EduSphere counselor on every open overseas application, school-bridged ones included (the control is absent on withdrawn/enrolled rows), and may search active overseas counselors by name (name + id only, `GET /lookups/overseas-counselors`) to pick one (`AGN-023`) | Overseas division | `ADM` (Overseas), `AGT-001`, `AGT-004` |
 | Visitor | browse destinations/universities/courses/scholarships/events (read-only) | Public | `OVS-001`, `OVS-006`, `OVS-007` |
 
 ### 2.8 Agent
@@ -543,6 +543,9 @@ An appointment stays with its BDM when the organization is reassigned. `bdm_user
 `bdm_manager`: one BDM who reports to them (`bdm_user_id` required; anyone else `404`). `super_admin`: any BDM (`404` if not a BDM).
 Every other role `403`. No write path.
 
+**BDM My Day (`bdm-014`, `DEC-SCOPE-097`).** Read-only `GET /bdm/my-day`. `bdm`: own records only, from the session (no id parameter).
+Every other role `403` (the page sends a `bdm_manager` to `/bdm/manager/dashboard`). No write path.
+
 ### 2.14 Telecaller CRM *(net-new, added 2026-10-05 — `DEC-SCOPE-073`, `tel-001`)*
 Authorization follows the inline pattern (`User.role` check → `services/telecaller.py` scope helper → write); no `require_*` dependency. Permission bundles: `telecaller` → `telecaller:self`, `telecaller_manager` → `telecaller:team` (coarse; scope is enforced in the query layer).
 
@@ -670,7 +673,20 @@ lead → counselor user → appointment.
 | `counselor` (IT or overseas) | list own lead appointments; confirm, complete, no-show (after the start), reschedule, cancel | `staff_id` = self; another counselor's is `404` | `tel-016` |
 | every other role | none → `403` on the lead routes and the counselor list, `404` on an action | — | `tel-016` |
 
-### 2.25 BDM meeting requests *(net-new, added 2026-10-07 — `DEC-SCOPE-097`, `tel-019`)*
+### 2.24 Lead call logging *(net-new, added 2026-10-07 — `DEC-SCOPE-096`, `tel-010`)*
+
+Inline pattern: scope (tel-004 `lead_pipeline.scope`, joined through the call's lead; out of scope `404`), the lead lock, then the role
+(`lead_calls.require_telecaller`), the caller (`caller_user_id` = self, for edit/delete) and handover (`telecaller_leads.require_writable`),
+then the call's IST day. Every write is audited (`lead_call.*`, ids / outcome / field names — never remarks).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | list a lead's calls; log a call; edit / delete their own calls of the same IST day; day counts of their own calls | calls on leads where `telecaller_user_id` = self; **read-only** on a handed-over lead (`403`); no new call on a closed lead (`409`); a reassigned lead's earlier calls are visible but not changeable (`403`) | `tel-010` |
+| `telecaller_manager` | read a lead's calls; day counts of their direct reports' calls; writes `403` | direct reports' leads + their teams' unassigned leads (T23) | `tel-010` |
+| `super_admin` | read; day counts of all calls (writes `403`) | all leads | `tel-010` |
+| every other role | none → `403` "Telecaller role required" | — | `tel-010` |
+
+### 2.25 BDM meeting requests *(net-new, added 2026-10-07 — `DEC-SCOPE-098`, `tel-019`)*
 
 The inline pattern: `telecaller_context` on the telecaller routes, `services.bdm_meeting_requests.scope_filters` on the BDM routes (§2.24
 is tel-010's). An id outside scope is `404`; accept and decline re-check the scope under the request's row lock. Lock order: request →

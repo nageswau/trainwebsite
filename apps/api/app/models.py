@@ -1000,6 +1000,41 @@ class LeadFollowUp(Base, TimestampMixin):
     cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
+# tel-010 (DEC-SCOPE-096): the EVID-019 §5 call types (CL1) and the 13 selectable outcomes (L226-L250; "Converted" is computed, T5).
+# Migration 0092 repeats LEAD_CALL_CHECKS (test_tel_010_migration asserts they stay identical). Labels and effects: services/lead_calls.py.
+LEAD_CALL_TYPES = ("outgoing", "incoming")
+LEAD_CALL_OUTCOMES = (
+    "interested", "need_information", "follow_up_required", "appointment_fixed", "not_interested", "wrong_number", "busy", "no_answer",
+    "switched_off", "call_back_requested", "already_joined", "duplicate_lead", "not_eligible",
+)
+LEAD_CALL_MAX_SECONDS = 14400  # D7: 4 hours
+LEAD_CALL_CHECKS = {
+    "ck_lead_calls_call_type": f"call_type IN ({', '.join(repr(t) for t in LEAD_CALL_TYPES)})",
+    "ck_lead_calls_outcome": f"outcome IN ({', '.join(repr(o) for o in LEAD_CALL_OUTCOMES)})",
+    "ck_lead_calls_duration": f"duration_seconds BETWEEN 0 AND {LEAD_CALL_MAX_SECONDS}",
+}
+
+
+class LeadCall(Base, TimestampMixin):
+    """tel-010 (DEC-SCOPE-096): a call logged on a lead (T7: manual, beside a `tel:` link). Like a follow-up it belongs to the lead, so its
+    scope is the lead's; `caller_user_id` keeps who made it (the daily counts and the edit/delete gate)."""
+
+    __tablename__ = "lead_calls"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in LEAD_CALL_CHECKS.items()),
+        Index("ix_lead_calls_caller_occurred", "caller_user_id", "occurred_at"),
+        Index("ix_lead_calls_lead_occurred", "lead_id", "occurred_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    lead_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="RESTRICT"))
+    caller_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    duration_seconds: Mapped[int] = mapped_column(Integer)
+    call_type: Mapped[str] = mapped_column(String(16))
+    outcome: Mapped[str] = mapped_column(String(32))
+    remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
 class ContentPage(Base, TimestampMixin):
     __tablename__ = "content_pages"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -1847,7 +1882,7 @@ class BdmAppointmentEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-# tel-019 (DEC-SCOPE-097): a telecaller's request for a BDM meeting. Corporate meetings go to college BDMs (T26).
+# tel-019 (DEC-SCOPE-098): a telecaller's request for a BDM meeting. Corporate meetings go to college BDMs (T26).
 BDM_MEETING_REQUEST_TYPES = ("college", "agent", "school", "corporate")
 BDM_MEETING_REQUEST_BDM_TYPE = {"college": "college", "agent": "agent", "school": "school", "corporate": "college"}
 BDM_MEETING_REQUEST_STATUSES = ("pending", "accepted", "declined")
@@ -1855,7 +1890,7 @@ BDM_MEETING_REQUEST_CODE_SEQ = Sequence("bdm_meeting_request_code_seq", metadata
 
 
 class BdmMeetingRequest(Base, TimestampMixin):
-    """tel-019 (DEC-SCOPE-097): filed by a telecaller for a BDM of `bdm_type` -- a named one (`bdm_user_id` set while pending) or the
+    """tel-019 (DEC-SCOPE-098): filed by a telecaller for a BDM of `bdm_type` -- a named one (`bdm_user_id` set while pending) or the
     type's pool (NULL while pending; MR1). A BDM accepts it into exactly one `bdm_appointments` row or declines it with a reason; either is
     final (MR2), and `bdm_user_id` is then whoever decided. Never deleted."""
 

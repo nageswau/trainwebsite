@@ -1,4 +1,4 @@
-"""tel-019 -- a telecaller files a BDM meeting request (spec §3; DEC-SCOPE-097 MR1, MR5-MR8): options, create and the telecaller's own
+"""tel-019 -- a telecaller files a BDM meeting request (spec §3; DEC-SCOPE-098 MR1, MR5-MR8): options, create and the telecaller's own
 list. The shared test database is never truncated."""
 
 import uuid

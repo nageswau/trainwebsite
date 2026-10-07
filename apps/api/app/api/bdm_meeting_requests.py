@@ -1,4 +1,4 @@
-"""tel-019 (DEC-SCOPE-097, spec §3; API §12S): BDM meeting requests.
+"""tel-019 (DEC-SCOPE-098, spec §3; API §12S): BDM meeting requests.
 
 - /telecaller/meeting-requests: a telecaller files a request and lists their own (MR12).
 - /bdm/meeting-requests: the BDM inbox (a BDM, a BDM manager, super_admin read; only a BDM accepts or declines).

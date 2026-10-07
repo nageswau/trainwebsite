@@ -266,7 +266,7 @@ either yet.*
 
 Signs in at `/it/login` (College BDM, division `it`) or `/overseas/login` (Agent / School BDM, division `overseas`); lands on `/bdm/my-day`.
 
-- /bdm/my-day — My Day (minimal shell in bdm-001: welcome + profile summary; content arrives with bdm-014).
+- /bdm/my-day — My Day (`bdm-014`): welcome + one-line profile summary; Today's appointments (time — organization), Upcoming travel (date — route, appointments scheduled), Follow-ups due today or overdue by organization type; then the type's eight "Today's overview" tiles ("Not tracked yet" where there is no source). Empty sections offer Book an appointment / Plan a trip / View follow-ups. A BDM manager opening it is sent to `/bdm/manager/dashboard`.
 - /bdm/profile — read-only §1 profile.
 - /bdm/organizations — Organization CRM (`bdm-002`): every organization of the BDM's module, filters (name/code, city, type, assigned to me, show archived); `/bdm/organizations/new` (add, ≥1 contact, duplicate warning); `/bdm/organizations/{id}` (details, contacts, edit/archive when assigned). Sidebar: My Day · Organizations · Appointments · Travel · Notifications · Profile.
 - /bdm/appointments — Appointments (`bdm-006`): the BDM's own, filters date range (default today onward), status, type, organization; `/bdm/appointments/new` (book; `?organization=` preselects, opened by "Add appointment" on an assigned, non-archived organization); `/bdm/appointments/{id}` (details, outcome, history; edit, confirm, reschedule, cancel, no-show, complete).

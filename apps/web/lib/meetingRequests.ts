@@ -1,4 +1,4 @@
-// tel-019 (DEC-SCOPE-097, API §12S): BDM meeting requests -- a telecaller files one, a BDM of the type accepts it into an appointment or
+// tel-019 (DEC-SCOPE-098, API §12S): BDM meeting requests -- a telecaller files one, a BDM of the type accepts it into an appointment or
 // declines it with a reason.
 import { istInputToIso } from "@/lib/bdmAppointments";
 import type { BdmType } from "@/lib/bdm";

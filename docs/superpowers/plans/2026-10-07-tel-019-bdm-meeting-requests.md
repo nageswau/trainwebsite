@@ -15,8 +15,8 @@ declines it with a reason; the telecaller sees the status.
 
 ## Global Constraints
 
-- Migration `0093_bdm_meeting_requests`, `down_revision = "0091_lead_appointments"` (re-chain to `0092` if tel-010 merges first).
-- `DEC-SCOPE-097`, API §12S, RBAC §2.25.
+- Migration `0093_bdm_meeting_requests`, `down_revision = "0092_lead_calls"` (drafted on `0091`; re-chained when tel-010 merged).
+- `DEC-SCOPE-098`, API §12S, RBAC §2.25.
 - Out of scope = 404; role that may not act = 403; every write one transaction with audit in it; logs/audit carry no PII or free text.
 - Codes `MRQ-000001`; statuses `pending` / `accepted` / `declined`; corporate → college BDMs.
 - Times shown in IST; datetime-local inputs use `istInputToIso` / `isoToIstInput` from `lib/bdmAppointments`.
@@ -104,7 +104,7 @@ Tests: accept form prefilled (type, start, purpose) and posts to the accept URL;
 
 ### Task 7: E2E + docs
 
-**Files:** Create `apps/web/e2e/tel-019-meeting-requests.spec.ts`; Modify `docs/decisions/PRODUCT_DECISION_REGISTER.md` (DEC-SCOPE-097), `docs/architecture/API_CONTRACT.md` (§12S), `docs/architecture/RBAC_MATRIX.md` (§2.25), `docs/delivery/TELECALLER_CRM_BACKLOG.md` (tel-019 status line).
+**Files:** Create `apps/web/e2e/tel-019-meeting-requests.spec.ts`; Modify `docs/decisions/PRODUCT_DECISION_REGISTER.md` (DEC-SCOPE-098), `docs/architecture/API_CONTRACT.md` (§12S), `docs/architecture/RBAC_MATRIX.md` (§2.25), `docs/delivery/TELECALLER_CRM_BACKLOG.md` (tel-019 status line).
 
 - [ ] E2E: telecaller files a school request → school BDM sees it on My Day → accepts → telecaller sees Accepted with the appointment code; a corporate request declined with a reason shows it to the telecaller.
 - [ ] Docs; commit.

@@ -1,6 +1,6 @@
 """tel-019 -- migration 0093_bdm_meeting_requests (spec §2). The round trip runs in a throwaway database (the tel-016 pattern); a downgrade
 never runs against the shared test database. 0001 builds a fresh database from the current models, so each test first downgrades to
-0091_lead_appointments to reach the real pre-tel-019 shape."""
+0092_lead_calls to reach the real pre-tel-019 shape."""
 
 import asyncio
 import importlib.util
@@ -25,7 +25,7 @@ _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
 NOW = datetime(2026, 10, 7, tzinfo=UTC)
-BASE, HEAD = "0091_lead_appointments", "0093_bdm_meeting_requests"
+BASE, HEAD = "0092_lead_calls", "0093_bdm_meeting_requests"
 
 
 def _config() -> Config:
@@ -47,7 +47,7 @@ def _sql(url: str, sql: str, params: dict | None = None, *, autocommit: bool = F
     return asyncio.run(_inner())
 
 
-def test_migration_chains_after_0091_and_there_is_one_head():
+def test_migration_chains_after_0092_and_there_is_one_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

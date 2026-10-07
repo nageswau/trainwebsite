@@ -28,6 +28,14 @@ describe("counselor limits on agency applications (H12)", () => {
     expect(Array.from((within(direct).getByLabelText("Advance to") as HTMLSelectElement).options).map((o) => o.value)).toEqual(["enrolled"]);
   });
 
+  it("offers every later stage but Enrolled on an agency application at Offer", async () => {  // T16
+    vi.stubGlobal("fetch", vi.fn(() => json({ rows: [{ ...ROWS[0], status: "offer" }] })));
+    render(<CounselorEvaluationPanel />);
+    const agency = (await screen.findByRole("heading", { name: "Priya" })).closest(".card") as HTMLElement;
+    fireEvent.click(within(agency).getByRole("button", { name: "Advance stage" }));
+    expect(Array.from((within(agency).getByLabelText("Advance to") as HTMLSelectElement).options).map((o) => o.value)).toEqual(["visa_documentation", "status_tracking"]);
+  });
+
   it("offers no visa stage once the agency case is locked, and shows the reason", async () => {  // AC21
     const locked = "The visa decision is recorded, so this case can no longer be changed";
     vi.stubGlobal("fetch", vi.fn((url: string) => {

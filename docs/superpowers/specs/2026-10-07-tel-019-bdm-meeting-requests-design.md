@@ -1,11 +1,11 @@
 # tel-019 — BDM meeting requests (design)
 
 **Status:** approved in session 2026-10-07. Owner answers MR1–MR4 are `EXPLICIT_APPROVAL`; MR5–MR14 are defaults recorded in
-`DEC-SCOPE-097`. **Evidence:** `EVID-019` §9 (L332–L384, BDM meeting types L346–L354); backlog `docs/delivery/TELECALLER_CRM_BACKLOG.md`
+`DEC-SCOPE-098`. **Evidence:** `EVID-019` §9 (L332–L384, BDM meeting types L346–L354); backlog `docs/delivery/TELECALLER_CRM_BACKLOG.md`
 tel-019; T10 (the telecaller files a meeting request, the BDM accepts it into `bdm_appointments`), T26 (corporate → college BDMs).
 **Dependencies (both merged):** tel-008 (lead workspace / telecaller portal), bdm-006 (`bdm_appointments`).
-**Numbers (re-check at merge):** migration `0093_bdm_meeting_requests` chained after main's `0091_lead_appointments` (tel-010, pushed but
-unmerged, holds `0092` / `DEC-SCOPE-096` / §12R / RBAC 2.24; whichever merges second re-chains), `DEC-SCOPE-097`, API §12S, RBAC §2.25.
+**Numbers (re-check at merge):** migration `0093_bdm_meeting_requests` chained after tel-010's `0092_lead_calls` (drafted on `0091`,
+re-chained at the `main` @ `3d7dd99a` merge), `DEC-SCOPE-098` (bdm-014 took 097), API §12S, RBAC §2.25.
 
 ## 1. Owner answers (2026-10-07)
 

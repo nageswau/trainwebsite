@@ -1,11 +1,11 @@
 """tel-019 -- `bdm_meeting_requests` + `bdm_meeting_request_code_seq` (EVID-019 §9 BDM meeting types).
 
 Revision ID: 0093_bdm_meeting_requests
-Revises: 0091_lead_appointments
+Revises: 0092_lead_calls
 
-docs/superpowers/specs/2026-10-07-tel-019-bdm-meeting-requests-design.md §2 (DEC-SCOPE-097). A new table touches no existing row. 0001
+docs/superpowers/specs/2026-10-07-tel-019-bdm-meeting-requests-design.md §2 (DEC-SCOPE-098). A new table touches no existing row. 0001
 builds a fresh database from the current models, which already carry the table, so the upgrade is guarded (0074's idiom). The downgrade
-refuses while requests exist. tel-010 (unmerged) holds 0092: whichever of the two merges second re-chains its down_revision.
+refuses while requests exist. Drafted on 0091 and re-chained after tel-010's 0092_lead_calls when it merged.
 """
 
 import sqlalchemy as sa
@@ -14,7 +14,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0093_bdm_meeting_requests"
-down_revision = "0091_lead_appointments"
+down_revision = "0092_lead_calls"
 branch_labels = None
 depends_on = None
 

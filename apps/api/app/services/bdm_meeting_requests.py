@@ -1,4 +1,4 @@
-"""tel-019 (DEC-SCOPE-097, spec §3): BDM meeting requests -- who sees which request (MR1, MR3, MR11), the named target (MR8), the code
+"""tel-019 (DEC-SCOPE-098, spec §3): BDM meeting requests -- who sees which request (MR1, MR3, MR11), the named target (MR8), the code
 (MR6) and the output.
 
 Functions only; nothing here commits -- the route owns the transaction. Every BDM-side route resolves a request through `load_scoped`, so

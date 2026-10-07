@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { E2E_PASSWORD, activateWithToken } from "./helpers/welcome";
 
-// tel-019 (DEC-SCOPE-097): an IT telecaller files a school meeting request for the school BDMs' pool; a school BDM finds it on My Day,
+// tel-019 (DEC-SCOPE-098): an IT telecaller files a school meeting request for the school BDMs' pool; a school BDM finds it on My Day,
 // accepts it into a bdm-006 appointment (AC2) and the telecaller sees it Accepted. A corporate request, named for a college BDM (AC1:
 // corporate lists college BDMs), is declined with a reason (AC3). Throwaway accounts; phone width has no sideways scroll.
 test.describe.configure({ timeout: 180_000 });

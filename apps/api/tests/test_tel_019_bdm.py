@@ -1,4 +1,4 @@
-"""tel-019 -- the BDM side of meeting requests (spec §3; DEC-SCOPE-097 MR1-MR3, MR9, MR11, MR12): scope, accept into exactly one
+"""tel-019 -- the BDM side of meeting requests (spec §3; DEC-SCOPE-098 MR1-MR3, MR9, MR11, MR12): scope, accept into exactly one
 bdm-006 appointment, decline with a reason. Pool requests from other tests are visible too, so assertions use the ids a test made."""
 
 import uuid

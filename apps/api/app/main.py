@@ -29,6 +29,7 @@ from app.api import (
     bdm_meeting_requests,
     bdm_metrics,
     bdm_mous,
+    bdm_my_day,
     bdm_onboarding,
     bdm_organizations,
     bdm_pipeline,
@@ -61,6 +62,7 @@ from app.api import (
     schools,
     student_360,
     telecaller,
+    telecaller_calls,
     telecaller_catalogue,
     telecaller_content,
     telecaller_distribution,
@@ -92,7 +94,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="EduSphere API", version="1.0.0", lifespan=lifespan)
 app.add_middleware(RequestIdMiddleware)
 app.add_middleware(CORSMiddleware, allow_origins=[settings.frontend_url], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
-for r in (auth.router, public.router, portal.router, admin.router, admin.agents_router, files.router, workflows.router, agent_team.router, agent_students.router, agent_shortlist.router, agent_applications.router, agent_deposits.router, agent_deposits.admin_router, agent_documents.router, agent_tasks.router, agent_dashboard.router, agent_performance.router, agent_reports.router, lookups.router, payments.router, cms.router, communications.router, inbound.router, account.router, employer.router, schools.router, school_transfers.coordinator_router, school_transfers.admin_router, portfolio.router, portfolio_certificates.router, school_skills.router, student_360.router, school_feedback.coordinator_router, school_feedback.admin_router, school_student_profile.router, school_analytics.school_router, school_analytics.admin_router, school_global_education.router, school_reports.router, school_attendance.router, school_bulk.router, school_funding.router, school_onboarding_bulk.router, bdm.router, bdm.admin_router, bdm_organizations.router, bdm_pipeline.router, bdm_travel.router, bdm_appointments.router, bdm_activities.router, bdm_calendar.router, bdm_tasks.router, bdm_leads.router, bdm_lifecycle.router, bdm_metrics.router, bdm_mous.router, bdm_onboarding.router, bdm_onboarding.admin_router, bdm_school_activity.router, telecaller_distribution.router, telecaller_import.router, telecaller.router, telecaller.admin_router, telecaller_catalogue.router, telecaller_targets.router, telecaller_content.router, telecaller_content.public_router, telecaller_follow_ups.router, lead_appointments.telecaller_router, lead_appointments.counselor_router, lead_appointments.router, bdm_meeting_requests.telecaller_router, bdm_meeting_requests.router):
+for r in (auth.router, public.router, portal.router, admin.router, admin.agents_router, files.router, workflows.router, agent_team.router, agent_students.router, agent_shortlist.router, agent_applications.router, agent_deposits.router, agent_deposits.admin_router, agent_documents.router, agent_tasks.router, agent_dashboard.router, agent_performance.router, agent_reports.router, lookups.router, payments.router, cms.router, communications.router, inbound.router, account.router, employer.router, schools.router, school_transfers.coordinator_router, school_transfers.admin_router, portfolio.router, portfolio_certificates.router, school_skills.router, student_360.router, school_feedback.coordinator_router, school_feedback.admin_router, school_student_profile.router, school_analytics.school_router, school_analytics.admin_router, school_global_education.router, school_reports.router, school_attendance.router, school_bulk.router, school_funding.router, school_onboarding_bulk.router, bdm.router, bdm.admin_router, bdm_organizations.router, bdm_pipeline.router, bdm_travel.router, bdm_appointments.router, bdm_activities.router, bdm_calendar.router, bdm_my_day.router, bdm_tasks.router, bdm_leads.router, bdm_lifecycle.router, bdm_metrics.router, bdm_mous.router, bdm_onboarding.router, bdm_onboarding.admin_router, bdm_school_activity.router, telecaller_distribution.router, telecaller_import.router, telecaller.router, telecaller.admin_router, telecaller_catalogue.router, telecaller_targets.router, telecaller_content.router, telecaller_content.public_router, telecaller_follow_ups.router, lead_appointments.telecaller_router, lead_appointments.counselor_router, lead_appointments.router, telecaller_calls.router, bdm_meeting_requests.telecaller_router, bdm_meeting_requests.router):
     app.include_router(r, prefix="/api/v1")
 app.mount("/local-files", StaticFiles(directory=settings.local_upload_dir, check_dir=False), name="local-files")
 
