@@ -712,6 +712,20 @@ routes (a BDM outside the team is `404`).
 | `super_admin` | as a manager | all BDMs | `bdm-015` |
 | every other role | none → `403` | — | `bdm-015` |
 
+### 2.27 Lead WhatsApp messages *(net-new, added 2026-10-07 — `DEC-SCOPE-100`, `tel-013`)*
+
+Inline pattern as §2.24: scope (tel-004 `lead_pipeline.scope`, joined through the message's lead; out of scope `404`), the lead lock, then
+the role (`telecaller`), the sender (`sender_user_id` = self, for delete) and handover (`telecaller_leads.require_writable`), then the send's
+IST day. Every write is audited (`lead_message.*`, ids / channel / template id — never the text or a number). §2.25 is tel-019's; §2.26
+is claimed by the open tel-018 branch.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | render a template for a lead; list a lead's messages; record a WhatsApp send; delete their own send of the same IST day | messages on leads where `telecaller_user_id` = self; **read-only** on a handed-over lead (`403`); no send on a closed lead or one without a number (`409`) | `tel-013` |
+| `telecaller_manager` | render; read a lead's messages; writes `403` | direct reports' leads + their teams' unassigned leads (T23) | `tel-013` |
+| `super_admin` | render; read (writes `403`) | all leads | `tel-013` |
+| every other role | none → `403` "Telecaller role required" | — | `tel-013` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

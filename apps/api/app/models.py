@@ -1035,6 +1035,37 @@ class LeadCall(Base, TimestampMixin):
     remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+# Migration 0095 repeats LEAD_MESSAGE_CHECKS (test_tel_013_migration asserts they stay identical).
+LEAD_MESSAGE_CHECKS = {
+    "ck_lead_messages_channel": "channel IN ('whatsapp', 'email')",
+    "ck_lead_messages_body": "length(body) BETWEEN 1 AND 5000",
+    "ck_lead_messages_whatsapp": "channel <> 'whatsapp' OR (subject IS NULL AND delivery_status IS NULL)",
+}
+
+
+class LeadMessage(Base, TimestampMixin):
+    """tel-013 (DEC-SCOPE-100): a message sent to a lead -- WhatsApp via wa.me (T8; the row is the telecaller's confirmation, WA1 keeps the
+    full text) and, from tel-014, email (subject + delivery status). It belongs to the lead, so its scope is the lead's. `template_name`
+    is the template's name when sent (D6), so a rename never rewrites history."""
+
+    __tablename__ = "lead_messages"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in LEAD_MESSAGE_CHECKS.items()),
+        Index("ix_lead_messages_lead_sent", "lead_id", "sent_at"),
+        Index("ix_lead_messages_sender_sent", "sender_user_id", "sent_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    lead_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="RESTRICT"))
+    sender_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    channel: Mapped[str] = mapped_column(String(16))
+    template_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("tel_message_templates.id", ondelete="RESTRICT"), nullable=True)
+    template_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    subject: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    body: Mapped[str] = mapped_column(Text)
+    delivery_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class ContentPage(Base, TimestampMixin):
     __tablename__ = "content_pages"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)

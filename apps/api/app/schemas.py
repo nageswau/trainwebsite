@@ -5940,6 +5940,15 @@ class LeadCallCreate(BaseModel):
     next_follow_up: LeadFollowUpCreate | None = None
 
 
+class LeadMessageCreate(BaseModel):
+    """tel-013: D9 WhatsApp only (email arrives with tel-014); WA4 the template is optional; WA1 the text as sent (tel-012's limit)."""
+
+    model_config = ConfigDict(extra="forbid")
+    channel: Literal["whatsapp"]
+    template_id: UUID | None = None
+    body: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
+
+
 class LeadCallUpdate(BaseModel):
     """CL4: same-day details only -- the outcome is locked (an unknown field here). Time, duration and type can't be cleared."""
 
