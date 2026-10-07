@@ -918,8 +918,10 @@ class AgentVisaUpdate(_AgentVisaDates):
 class CounselorAgencyVisaUpdate(BaseModel):
     """AGN-023 (DEC-SCOPE-090 H4, final review I2): an EduSphere counselor's change to an agency visa case (PATCH /overseas/visa/{id}),
     typed so a bad body is a 422 and never a stored string. The checklist has the agency's limits (`AgentVisaUpdate`); the reference
-    has the VisaCase column's length. `decision` is refused by the route before this model (the agency records it)."""
+    has the VisaCase column's length. `decision` is refused by the route before this model (the agency records it); any other unknown
+    key is a 422. As on the agency route an absent key is unchanged and an explicit null clears the appointment date."""
 
+    model_config = {"extra": "forbid"}
     status: str | None = Field(default=None, max_length=50)
     checklist: list[AgentDocumentType] | None = Field(default=None, max_length=8)
     appointment_date: date | None = None

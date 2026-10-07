@@ -136,3 +136,52 @@ async def test_a_university_rep_counselor_filter_is_refused(db_session, world): 
     async with client_for(rep.email) as c:
         r = await c.get(PORTAL.format("university", "applications"), params={"counselor": str(world["counselor"].id)})
     assert r.status_code == 422 and r.json()["detail"] == "Filter not available"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("param", ["agency", "counselor"])
+async def test_a_repeated_filter_parameter_is_refused(world, param):  # B7: never silently use one of two values
+    other = str(world["org"].id) if param == "agency" else str(world["counselor"].id)
+    async with client_for(world["admin"].email) as c:
+        r = await c.get(PORTAL.format("admin", "applications") + f"?{param}={other}&{param}={other}")
+    assert r.status_code == 422 and r.json()["detail"] == "Unknown filter value"
+
+
+@pytest.mark.asyncio
+async def test_a_repeated_counselor_filter_from_a_counselor_is_not_available(world):  # availability is checked before repetition
+    async with client_for(world["counselor"].email) as c:
+        r = await c.get(PORTAL.format("counselor", "applications") + "?counselor=x&counselor=y")
+    assert r.status_code == 422 and r.json()["detail"] == "Filter not available"
+
+
+@pytest.mark.asyncio
+async def test_a_repeated_filter_on_a_non_filter_section_is_not_available(world):  # availability is checked before repetition
+    async with client_for(world["admin"].email) as c:
+        r = await c.get(PORTAL.format("admin", "admission-updates") + "?agency=any&agency=none")
+    assert r.status_code == 422 and r.json()["detail"] == "Filter not available"
+
+
+@pytest.mark.asyncio
+async def test_a_repeated_filter_on_an_available_section_is_unknown_value(world):  # repetition comes second, only once the filter is available
+    async with client_for(world["admin"].email) as c:
+        r = await c.get(PORTAL.format("admin", "students") + "?agency=any&agency=none")
+    assert r.status_code == 422 and r.json()["detail"] == "Unknown filter value"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("section", ["applications", "students"])
+async def test_a_counselor_filters_return_only_their_own_matching_rows(world, section):  # T15
+    async with client_for(world["admin"].email) as c:
+        assert (await c.put(ASSIGN.format(world["direct_app"].id), json={"counselor_id": str(world["counselor"].id)})).status_code == 200
+        assert (await c.put(ASSIGN.format(world["other_app"].id), json={"counselor_id": str(world["counselor2"].id)})).status_code == 200
+    a, direct, other = str(world["app"].id), str(world["direct_app"].id), str(world["other_app"].id)
+    async with client_for(world["counselor"].email) as c:
+        _, ids = await _ids(c, "counselor", section, agency=str(world["org"].id))
+        assert ids == {a}
+        _, ids = await _ids(c, "counselor", section, agency=str(world["other"]["org"].id))
+        assert ids == set()  # the other agency's application is counselor2's, never this counselor's
+        _, ids = await _ids(c, "counselor", section, agency="any")
+        assert ids == {a}
+        _, ids = await _ids(c, "counselor", section, agency="none")
+        assert ids == {direct}
+        assert other not in (await _ids(c, "counselor", section))[1]

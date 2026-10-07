@@ -19,7 +19,8 @@ export default function ApplicationFilterBar({ filters, error }: { filters: Appl
     router.push(query ? `${pathname}?${query}` : pathname);
   }
 
-  const applied = Boolean(filters.agency || filters.counselor);
+  // A refused filter falls back to the unfiltered list (nothing applied), but the URL still carries the bad value, so keep the way out.
+  const applied = Boolean(filters.agency || filters.counselor || error);
   return (
     <form className="form filter-bar" aria-label="Filter applications" onSubmit={(event) => event.preventDefault()} style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "end", marginBottom: 12 }}>
       <div className="field">
