@@ -238,4 +238,25 @@ describe("LeadDetailPanel (tel-008)", () => {
     expect(await screen.findByText("IT training requirement")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Edit qualification" })).toBeNull();
   });
+  it("offers Assign to counselor on a workable lead, not on a closed, linked or handed-over one (tel-018 HO4)", () => {
+    const { unmount } = render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen={false} />);
+    expect(screen.getByRole("button", { name: "Assign to counselor" })).toBeTruthy();
+    unmount();
+    for (const over of [{ status: "lost" }, { status: "application_enrollment" }, { read_only: true, counselor: { id: "c1", full_name: "Cara" } }]) {
+      const view = render(<LeadDetailPanel initial={detail(over)} timeline={pageOf([])} canReopen={false} />);
+      expect(screen.queryByRole("button", { name: /counselor$/ })).toBeNull();
+      view.unmount();
+    }
+  });
+
+  it("a manager can change the counselor of a handed-over lead (tel-018 HO4)", () => {
+    render(<LeadDetailPanel initial={detail({ counselor: { id: "c1", full_name: "Cara" } })} timeline={pageOf([])} canReopen />);
+    expect(screen.getByRole("button", { name: "Change counselor" })).toBeTruthy();
+  });
+
+  it("shows the linked student's milestones (tel-018 T4)", () => {
+    render(<LeadDetailPanel initial={detail({ read_only: true, status: "converted", status_label: "Converted",
+      milestones: { student: { id: "s1", full_name: "Asha Rao", email: "asha@example.com" }, items: [] } })} timeline={pageOf([])} canReopen={false} />);
+    expect(screen.getByRole("region", { name: "Student and milestones" })).toHaveTextContent("Linked student: Asha Rao (asha@example.com)");
+  });
 });

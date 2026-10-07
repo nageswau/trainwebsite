@@ -115,7 +115,21 @@ def send_daily_reminders_task():
     return _run_with_fresh_pool(run_daily_reminders)
 
 
+@celery.task
+def sweep_lead_conversions_task():
+    """tel-018 (DEC-SCOPE-098, T5): every 15 minutes via beat -- linked leads whose student has since enrolled become Converted."""
+    from app.core.database import SessionLocal
+    from app.services.lead_handover import sweep_conversions
+
+    async def run():
+        async with SessionLocal() as db:
+            return await sweep_conversions(db)
+
+    return _run_with_fresh_pool(run)
+
+
 celery.conf.beat_schedule = {
     "enh014-sweep-stale-deliveries": {"task": "app.worker.sweep_stale_deliveries_task", "schedule": 300.0},
     "agn017-daily-reminders": {"task": "app.worker.send_daily_reminders_task", "schedule": crontab(hour=2, minute=30)},  # UTC = 08:00 IST
+    "tel018-conversion-sweep": {"task": "app.worker.sweep_lead_conversions_task", "schedule": 900.0},
 }

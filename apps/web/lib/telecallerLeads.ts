@@ -1,6 +1,7 @@
 // tel-008 (DEC-SCOPE-084): the telecaller lead workspace -- types, labels and endpoints shared by My Leads and the lead detail. Labels
 // are display only; the API decides scope, editability (`read_only`) and every rule.
 import { sendJson, type SendOutcome } from "@/lib/apiErrors";
+import type { Milestones } from "@/lib/leadHandover";
 
 export type Priority = "hot" | "warm" | "cold";
 export type PersonRef = { id: string; full_name: string };
@@ -11,7 +12,7 @@ export type TelecallerLead = {
   product: { id: string; name: string } | null; campaign: { id: string; name: string } | null; telecaller: PersonRef | null; counselor: PersonRef | null;
   read_only: boolean;
 };
-export type TelecallerLeadDetail = TelecallerLead & { message: string };
+export type TelecallerLeadDetail = TelecallerLead & { message: string; milestones?: Milestones }; // tel-018: the linked student's milestones
 export type TimelineRow = {
   id: string; kind: "stage" | "priority" | "enquiry"; at: string; actor: PersonRef | null; from_value: string; from_label: string; to_value: string;
   to_label: string; reason: string | null;

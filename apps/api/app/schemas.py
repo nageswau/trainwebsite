@@ -5782,3 +5782,19 @@ class LeadFollowUpUpdate(BaseModel):
             if key in self.model_fields_set and getattr(self, key) is None:
                 raise ValueError(f"{label} can't be removed")
         return self
+
+
+# --- tel-018 (DEC-SCOPE-098, spec §3.3): handover, return and the counselor's student link ----------------------------------------
+class LeadHandoverIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    counselor_id: UUID
+
+
+class LeadReturnIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: BdmApptReason
+
+
+class LeadStudentLinkIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    student_id: UUID

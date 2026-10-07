@@ -158,10 +158,11 @@ async def locked_for_admin(db: AsyncSession, user: User, lead_id: UUID) -> Enqui
     return lead
 
 
-async def locked_student(db: AsyncSession, lead: Enquiry, email: str) -> User:
+async def locked_student(db: AsyncSession, lead: Enquiry, match) -> User:
     """L2: an active `<division>_student` of the lead's division, FOR SHARE so a deactivation in the same instant waits for this commit.
-    One message for every invalid target, so the route can't be used to probe accounts."""
-    student = await db.scalar(select(User).where(func.lower(User.email) == email).with_for_update(read=True))
+    One message for every invalid target, so the route can't be used to probe accounts. `match` finds the account (the admin by email,
+    tel-018's counselor by id)."""
+    student = await db.scalar(select(User).where(match).with_for_update(read=True))
     if student is None or not student.active or student.role != f"{lead.division}_student" or student.division != lead.division:
         raise HTTPException(422, INVALID_STUDENT)
     return student

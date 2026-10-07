@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.lead_stages import label as stage_label
 from app.models import AuditLog, Enquiry, LeadEnquiry, LeadStageHistory, User
-from app.services import bdm_leads, lead_pipeline
+from app.services import bdm_leads, lead_handover, lead_pipeline
 from app.services.telecaller_catalogue import locked_active_product
 
 logger = logging.getLogger("app.leads")
@@ -46,10 +46,12 @@ async def page(db: AsyncSession, user: User, filters: list, limit: int, offset: 
 
 
 async def detail(db: AsyncSession, user: User, lead_id: UUID, filters: list) -> dict:
+    """tel-018: a lead that has just converted moves first, and the linked student's milestones come along (read only, T4)."""
+    await lead_handover.observe_conversion(db, lead_id)
     row = (await db.execute(bdm_leads.admin_rows().where(Enquiry.id == lead_id, *filters).execution_options(populate_existing=True))).one_or_none()
     if row is None:
         raise HTTPException(404, lead_pipeline.LEAD_NOT_FOUND)
-    return {**row_out(user, row), "message": row[0].message}
+    return {**row_out(user, row), "message": row[0].message, "milestones": await lead_handover.milestones(db, row[0])}
 
 
 async def apply_update(db: AsyncSession, user: User, lead: Enquiry, changes: dict) -> None:

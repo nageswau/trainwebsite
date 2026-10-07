@@ -5,6 +5,8 @@ import { type FormEvent, useEffect, useState } from "react";
 import { LeadStageControl } from "@/components/AdminLeadStage";
 import LeadAppointmentsSection from "@/components/LeadAppointmentsSection";
 import LeadFollowUps from "@/components/LeadFollowUps";
+import LeadHandoverForm from "@/components/LeadHandoverForm";
+import LeadMilestones from "@/components/LeadMilestones";
 import LeadQualificationForm from "@/components/LeadQualificationForm";
 import ProductOptions from "@/components/TelecallerProductOptions";
 import { isRequestBody, sendJson, type Page } from "@/lib/apiErrors";
@@ -151,6 +153,9 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
   const [detailsNotice, setDetailsNotice] = useState<Notice>(null);
   const [stageNotice, setStageNotice] = useState<Notice>(null);
   const call = telHref(lead.phone);
+  // tel-018 HO4: a workable lead before the student link; a manager (never read-only) may also change the counselor
+  const canHandover = !lead.read_only && !isClosed(lead.status) && !["application_enrollment", "converted"].includes(lead.status);
+  const [handoverNotice, setHandoverNotice] = useState<Notice>(null);
 
   const reloadActivity = () =>
     getPage<TimelineRow>(leadUrl(lead.id, `/timeline?limit=${TIMELINE_LIMIT}`)).then(setActivity, () => setActivity(null));
@@ -198,7 +203,15 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
             <NoticeLine notice={stageNotice} />
           </div>
         )}
+        {canHandover && (
+          <LeadHandoverForm lead={lead} onDone={(next) => {
+            setLead(next);
+            setHandoverNotice({ text: `Handed over to ${next.counselor?.full_name ?? "the counselor"}.`, failed: false });
+            void reloadActivity();
+          }} />
+        )}
       </div>
+      <NoticeLine notice={handoverNotice} />
 
       {!lead.read_only && (
         <form onSubmit={savePriority}>
@@ -261,6 +274,8 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
           setLead((l) => ({ ...l, status, status_label: label }));
           void reloadActivity();
         }} />
+
+      {lead.milestones && <LeadMilestones milestones={lead.milestones} status={lead.status} />}
 
       <section aria-labelledby="lead-enquiry-heading">
         <h3 id="lead-enquiry-heading" style={{ margin: 0 }}>Enquiry</h3>
