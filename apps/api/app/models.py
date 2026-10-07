@@ -1484,6 +1484,25 @@ class TelTarget(Base, TimestampMixin):
     set_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
+TEL_SETTING_DEFAULTS = {"not_contacted_hours": 24, "hot_pending_hours": 4}  # DEC-SCOPE-107 AL1; migration 0098 seeds both teams with them
+TEL_SETTING_MAX_HOURS = 168
+
+
+class TelSetting(Base, TimestampMixin):
+    """tel-020 (DEC-SCOPE-107, T14): a team's alert thresholds -- Lead Not Contacted and Hot Lead Pending, in whole hours. One row per team,
+    seeded; any telecaller manager edits both (AL11) and the beat reads them on every run (AC4)."""
+
+    __tablename__ = "tel_settings"
+    __table_args__ = (
+        CheckConstraint("team IN ('it', 'overseas')", name="ck_tel_settings_team"),
+        *(CheckConstraint(f"{col} BETWEEN 1 AND {TEL_SETTING_MAX_HOURS}", name=f"ck_tel_settings_{col}") for col in TEL_SETTING_DEFAULTS),
+    )
+    team: Mapped[str] = mapped_column(String(20), primary_key=True)
+    not_contacted_hours: Mapped[int] = mapped_column(Integer, default=TEL_SETTING_DEFAULTS["not_contacted_hours"])
+    hot_pending_hours: Mapped[int] = mapped_column(Integer, default=TEL_SETTING_DEFAULTS["hot_pending_hours"])
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
 # bdm-010 (DEC-SCOPE-063, T6): TRV-000123 codes. On the metadata so 0001's create_all makes it on a fresh database; 0068 makes it
 # on an upgraded one. A rolled-back create skips a number; codes stay unique and increasing.
 BDM_TRIP_CODE_SEQ = Sequence("bdm_trip_code_seq", metadata=Base.metadata)

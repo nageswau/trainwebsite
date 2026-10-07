@@ -13,7 +13,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AuditLog, Enquiry, TelDistributionRule, TelecallerProfile, TelProduct, TelRoundRobinCursor, User
-from app.services import lead_pipeline
+from app.services import lead_pipeline, telecaller_alerts
 from app.services.telecaller import TEAM_LABEL, TEAMS
 
 logger = logging.getLogger("app.leads")
@@ -77,6 +77,8 @@ async def assign(db: AsyncSession, lead: Enquiry, telecaller_id: UUID, method: s
                     metadata_json={"from": str(before) if before else None, "to": str(telecaller_id), "method": method}))
     logger.info("lead_assigned", extra={"extra_fields": {
         "lead_id": str(lead.id), "telecaller_id": str(telecaller_id), "method": method, "actor_id": str(actor_id) if actor_id else None}})
+    if before != telecaller_id:
+        await telecaller_alerts.notify_assigned(db, lead, actor)  # tel-020: New Lead Assigned, in this transaction
 
 
 async def distribute(db: AsyncSession, lead: Enquiry) -> str | None:

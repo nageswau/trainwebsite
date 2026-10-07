@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.lead_stages import CLOSED, MANUAL_BEFORE, ORDER
 from app.models import AuditLog, Batch, Enquiry, Enrollment, OverseasApplication, University, User, VisaCase
-from app.services import bdm_leads, lead_appointments, lead_pipeline
+from app.services import bdm_leads, lead_appointments, lead_pipeline, telecaller_alerts
 
 logger = logging.getLogger("app.leads")
 
@@ -77,6 +77,7 @@ async def return_lead(db: AsyncSession, user: User, lead: Enquiry, reason: str) 
     lead.owner_id = None
     await lead_pipeline.cancel_open_appointments(db, lead, user, RETURNED, "lead_returned")
     db.add(AuditLog(user_id=user.id, action="lead.return", entity_type="enquiry", entity_id=str(lead.id), metadata_json={"counselor_id": str(user.id)}))
+    await telecaller_alerts.notify_returned(db, lead, user)
     _log("lead_returned", user, lead.id)
 
 
