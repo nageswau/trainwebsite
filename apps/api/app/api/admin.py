@@ -1516,7 +1516,7 @@ async def create_school(payload: SchoolCreateIn, user: User = Depends(get_curren
     # bdm-018 (DEC-SCOPE-085 §5.5): a request is locked and checked first, so a refusal arrives before anything is created; the School,
     # its Coordinator, the link and the completed request then commit together.
     request_id = payload.bdm_onboarding_request_id
-    request, org = await onboarding_svc.lock_pending(db, request_id) if request_id else (None, None)
+    request, org = await onboarding_svc.lock_pending(db, request_id, onboarding_svc.SCHOOL) if request_id else (None, None)  # bdm-019: not an agent's
     school, coordinator, issued = await _provision_school(db, payload, user)
     if request and org:
         await onboarding_svc.complete(db, user, request, org, school, "created")

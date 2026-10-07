@@ -2,7 +2,7 @@
 
 - **Backlog:** `docs/delivery/TELECALLER_CRM_BACKLOG.md` tel-023 (EVID-019 §16; T23, T24; Appendix B P1–P6). Depends on tel-021 (merged, PR #118).
 - **Decision:** `DEC-SCOPE-109` (PF1–PF4, owner answers 2026-10-07, all recommended). API §12AC, RBAC §2.35. **No migration.**
-- Numbering: tel-020 (in flight) holds 0098 / 107 / §12AA / 2.33 and tel-024 (in flight) holds 108 / §12AB / 2.34, so tel-023 takes the next numbers.
+- Numbering: main has bdm-019 (0098 / 107 / §12AA / 2.33) and bdm-023 (108 / §12AB / 2.34); tel-020 and tel-024 (in flight, drafted as 107 / 108) renumber after tel-023.
 
 ## 1. Owner answers (DEC-SCOPE-109)
 

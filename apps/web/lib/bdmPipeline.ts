@@ -6,7 +6,8 @@ import { ORGS_URL, type OrgPerson, type OrgType } from "@/lib/bdmOrganizations";
 // and every rule; these helpers only shape requests and read responses.
 export type StepKind = "manual" | "live" | "volume";
 export type StepState = "done" | "current" | "upcoming" | "awaiting_handover" | "not_tracked";
-export type PipelineStep = { key: string; label: string; kind: StepKind; state: StepState };
+// bdm-019 A4: a volume step carries its live count once an agency is linked.
+export type PipelineStep = { key: string; label: string; kind: StepKind; state: StepState; count?: number | null };
 export type Pipeline = { stage: string; stage_label: string; lost: { at: string; reason: string } | null; agent_status: string | null; steps: PipelineStep[] };
 export type StageEvent = {
   id: string; kind: "move" | "lost" | "revived"; from_stage: string; from_label: string; to_stage: string; to_label: string;

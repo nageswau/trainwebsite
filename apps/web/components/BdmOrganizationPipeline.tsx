@@ -118,6 +118,7 @@ export default function BdmOrganizationPipeline({ organization: org, onChanged, 
           <li key={s.key} className={`jny-step jny-${s.state}`} aria-current={s.state === "current" ? "step" : undefined}>
             <span className="jny-glyph" aria-hidden="true">{GLYPH[s.state]}</span>
             <span className="jny-name">{s.label}</span>
+            {s.count != null && <span className="jny-count">{s.count}</span>}
             <span className="jny-state">{STATE_TEXT[s.state]}</span>
           </li>
         ))}

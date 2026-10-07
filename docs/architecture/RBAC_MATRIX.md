@@ -787,6 +787,29 @@ always the lead's own address, never one from the request.
 | `telecaller_manager` / `super_admin` | read the log and delivery status; `403` on send | §2.19's | `tel-014` |
 | every other role | `403` | — | `tel-014` |
 
+### 2.33 Agent onboarding handover *(net-new, added 2026-10-07 — `DEC-SCOPE-107`, `bdm-019`)*
+
+The BDM route resolves the organization through `load_scoped` (out of scope `404`) and `can_edit`; the admin routes check the role
+before any lookup. The link grants **no** access to the agency's tenant: a BDM or manager reads aggregates only (AC4, tested).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `bdm` (Agent type) | request onboarding of an own Agent organization at Agreement Signed; read the linked agency's name, code, status, Master exists, staff count, student / application / enrollment counts | assigned organizations | `bdm-019` |
+| `bdm_manager` | read the same (no request) | team | `bdm-019` |
+| `overseas_admin`, `super_admin` | read the agent queue (`kind=agent`); **link** a request to an Agent Organization by code; **reject** | all requests | `bdm-019` |
+| `bdm`, `bdm_manager` | agency students / applications / members, `/overseas-admin/agent-orgs/*`, `/agent/*` → `403` / `404` | — | `bdm-019` |
+
+### 2.34 BDM management dashboard *(net-new, added 2026-10-07 — `DEC-SCOPE-108`, `bdm-023`)*
+
+`require_manager` + `team_filter` gate the route; the only parameter (`manager_user_id`) is super_admin-only, so a manager can never
+widen scope. Read-only, like the other BDM manager reads (no audit row).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `bdm_manager` | read the overview tiles and alerts | BDMs reporting to them | `bdm-023` |
+| `super_admin` | the same, for all teams or one chosen manager's team | all BDMs | `bdm-023` |
+| `bdm` and every other role | none → `403` | — | `bdm-023` |
+
 ### 2.35 Telecaller performance comparison *(net-new, added 2026-10-07 — `DEC-SCOPE-109`, `tel-023`)*
 
 Inline: `telecaller_performance.scope` — the role, then the team rule (a manager's `team_filter`, an admin's `admin_team_filter`). Read-only
