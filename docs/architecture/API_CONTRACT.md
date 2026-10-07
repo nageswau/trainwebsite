@@ -1160,6 +1160,32 @@ university_information, counselor_call`.
 A move to a closed stage (`POST /telecaller/leads/{id}/stage`, `PATCH /admin/leads` stage) cancels the lead's open follow-ups with
 `cancel_reason` "Lead closed".
 
+## 12Q. Lead counselling appointments (`tel-016`) — addendum, 2026-10-07
+
+`DEC-SCOPE-095`; design spec `docs/superpowers/specs/2026-10-07-tel-016-lead-appointments-design.md` §3. Migration `0091_lead_appointments`.
+Signed out `401`. The appointment shape: `{id, code, lead: {id, lead_code, name, phone, email, status, status_label}, appointment_type,
+type_label, counselor: {id, full_name}, booked_by: {id, full_name}, scheduled_at, duration_minutes: 60, mode, meeting_link, location,
+purpose, remarks, status, created_at, events: [{from_status, to_status, old_scheduled_at, new_scheduled_at, reason, actor_name,
+created_at}], permissions: {can_confirm, can_complete, can_no_show, can_cancel, can_reschedule}}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/leads/{id}/appointment-options` | §12J's roles and scope. `200 {types: [{key, label}], counselors: [{id, full_name}], modes, duration_minutes}` — the lead's division decides both (AP4) |
+| `GET /telecaller/leads/{id}/appointments` | §12J's roles and scope. `200 {items}`, newest booking first |
+| `POST /telecaller/leads/{id}/appointments` | `telecaller` only (manager / super_admin `403`). Body `{appointment_type, counselor_id, scheduled_at, mode, meeting_link?, location?, purpose?, remarks?}`. In order: `404` scope; `403` handed over; `409` closed lead; `422` type not offered for the division, past / beyond 366 days, counselor not an active counselor of the division, bad mode, non-http(s) link, lengths, control characters; `409` the lead already has an open appointment; `409 {message, code: "counselor_busy", matches: [{scheduled_at, duration_minutes}]}`. `201` the shape above; stage event `appointment_booked`; audit `lead_appointment.create` |
+| `GET /counselor/appointments?status=&limit=&offset=` | `counselor` only (else `403`). Own lead appointments, open first (soonest first), then the rest (latest first). `{items, total, limit, offset}`; a bad `status` is `422` |
+| `POST /lead-appointments/{id}/confirm` | counselor. `scheduled`/`rescheduled` → `confirmed` |
+| `POST /lead-appointments/{id}/complete` | counselor, after the start (`422` before). → `completed`; stage event `appointment_completed` |
+| `POST /lead-appointments/{id}/no-show` | counselor, after the start. → `no_show`; stage event `appointment_released` |
+| `POST /lead-appointments/{id}/cancel` | counselor or the lead's telecaller. Body `{reason}` (required, ≤ 500). → `cancelled`; stage event `appointment_released` |
+| `POST /lead-appointments/{id}/reschedule` | counselor or the lead's telecaller. Body `{scheduled_at, reason?}`; future / horizon `422`; clash `409 counselor_busy` (itself excluded). → `rescheduled`; the stage never moves |
+
+Every action: `404` outside scope (another counselor's appointment, a manager, any other role); `403` a telecaller confirming, completing
+or marking a no-show, or acting on a handed-over lead; `409` "Appointment is already …" on a finished one. Each writes an
+`appointment_events` row and an audit row `lead_appointment.<action>` (ids, statuses and times only) and returns `200` with the shape above.
+A stage move that closes the lead (`POST /telecaller/leads/{id}/stage`, the admin move) also cancels its open appointment: an event row with reason "Lead closed" and an audit row `lead_appointment.cancel {reason: lead_closed}`; the lead stays closed (AP15). `PATCH /workflows/overseas/appointments/{id}` is `404` for a lead appointment (AP12); its student behaviour is unchanged. `GET
+/portal/it/counselor/appointments` returns a header-only payload (AP14).
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

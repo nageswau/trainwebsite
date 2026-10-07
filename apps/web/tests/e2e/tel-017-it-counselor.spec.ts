@@ -45,7 +45,7 @@ test("IT admin creates an IT counselor, who lands on the IT workspace and sees t
   await activateWithToken(page.request, counselor.development_welcome_token);
   await signIn(page, "it", counselor.email, E2E_PASSWORD, "/it/counselor/dashboard");
   const nav = page.getByRole("navigation").filter({ has: page.getByRole("link", { name: "Leads" }) });
-  await expect(nav.getByRole("link")).toHaveText(["Dashboard", "Leads"]);
+  await expect(nav.getByRole("link")).toHaveText(["Dashboard", "Leads", "Appointments"]); // tel-016 AP14 added Appointments
   await expect(page.getByText("Leads routed to you", { exact: true })).toBeVisible();
   await expect(page.getByText(`E2E Lead ${stamp}`)).toBeVisible(); // the dashboard's recent-leads table
 

@@ -47,6 +47,7 @@ beforeEach(() => {
     if (init?.method === "POST") return Promise.resolve(res({ id: "L1", status: "qualified", status_label: "Qualified", stage_changed_at: "x" }));
     if (url.startsWith("/api/v1/telecaller/leads/L1/timeline")) return Promise.resolve(res(pageOf(timeline)));
     if (url.startsWith("/api/v1/telecaller/leads/L1/follow-ups")) return Promise.resolve(res(pageOf([]))); // tel-011's section
+    if (url === "/api/v1/telecaller/leads/L1/appointments") return Promise.resolve(res({ items: [] })); // tel-016's section
     if (url.startsWith("/api/v1/telecaller/products")) return Promise.resolve(res(products));
     if (url.startsWith("/api/v1/telecaller/scripts")) return Promise.resolve(scripts());
     if (url === "/api/v1/telecaller/leads/L1/qualification") return Promise.resolve(res(init?.method === "PUT" ? { ...qual, ...JSON.parse(String(init.body)) } : qual));
@@ -72,6 +73,20 @@ describe("LeadDetailPanel (tel-008)", () => {
     render(<LeadDetailPanel initial={detail({ status: "lost", status_label: "Lost" })} timeline={pageOf([])} canReopen={false} />); // F4
     expect(await screen.findByText("No follow-ups yet.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Add follow-up" })).toBeNull();
+  });
+
+  it("shows the counselling appointments, with Book only for the lead's telecaller on an open lead (tel-016)", async () => {
+    render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen={false} />);
+    expect(await screen.findByText("No counselling appointments yet.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Book counselling" })).toBeTruthy();
+    cleanup();
+    render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen />); // a manager reads only (AP2)
+    expect(await screen.findByText("No counselling appointments yet.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Book counselling" })).toBeNull();
+    cleanup();
+    render(<LeadDetailPanel initial={detail({ status: "lost", status_label: "Lost" })} timeline={pageOf([])} canReopen={false} />); // AP11
+    expect(await screen.findByText("No counselling appointments yet.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Book counselling" })).toBeNull();
   });
 
   it("shows the §2 lead fields, the enquiry and a Call link", () => {
