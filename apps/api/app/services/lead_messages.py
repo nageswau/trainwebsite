@@ -16,8 +16,8 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.lead_stages import CLOSED
 from app.core.config import settings
+from app.lead_stages import CLOSED
 from app.models import LEAD_APPOINTMENT_OPEN, Appointment, AuditLog, Enquiry, LeadMessage, TelAsset, TelMessageTemplate, TelProduct, User
 from app.schemas import LeadEmailCreate, LeadWhatsAppCreate
 from app.services import lead_pipeline, telecaller_content, telecaller_leads

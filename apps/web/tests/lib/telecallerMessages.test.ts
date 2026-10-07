@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { isRenderedTemplate, leadMessagesUrl, renderUrl, sentLabel, waHref } from "@/lib/telecallerMessages";
+import { isPending, isRenderedTemplate, leadMessagesUrl, messageTitle, renderUrl, sentLabel, waHref } from "@/lib/telecallerMessages";
+import { emailMessage, message } from "@/tests/helpers/messages";
 
 // tel-013 (DEC-SCOPE-100): wa.me links, the "WhatsApp sent" line and the endpoints.
 describe("telecallerMessages (tel-013)", () => {
@@ -20,5 +21,22 @@ describe("telecallerMessages (tel-013)", () => {
     expect(renderUrl("L1", "T1")).toBe("/api/v1/telecaller/leads/L1/render?template_id=T1");
     expect(isRenderedTemplate({ body: "Hi", product_mismatch: false })).toBe(true);
     expect(isRenderedTemplate({ detail: "Template not found" })).toBe(false);
+  });
+});
+
+// tel-014 (DEC-SCOPE-102 E5): an email's line names its delivery status; only queued/sending rows are polled.
+describe("telecallerMessages (tel-014)", () => {
+  it("titles a WhatsApp send as before and an email by its delivery status", () => {
+    expect(messageTitle(message())).toBe("WhatsApp sent – 13 Sept 2026 – 10:35 AM");
+    expect(messageTitle(emailMessage())).toBe("Email sent – 13 Sept 2026 – 10:35 AM");
+    expect(messageTitle(emailMessage({ delivery_status: "queued" }))).toBe("Email sending – 13 Sept 2026 – 10:35 AM");
+    expect(messageTitle(emailMessage({ delivery_status: "sending" }))).toBe("Email sending – 13 Sept 2026 – 10:35 AM");
+    expect(messageTitle(emailMessage({ delivery_status: "retrying" }))).toBe("Email delayed – 13 Sept 2026 – 10:35 AM");
+    expect(messageTitle(emailMessage({ delivery_status: "failed" }))).toBe("Email failed – 13 Sept 2026 – 10:35 AM");
+  });
+
+  it("treats only queued and sending emails as pending", () => {
+    expect([null, "queued", "sending", "retrying", "sent", "failed"].map((s) => isPending(emailMessage({ delivery_status: s as never }))))
+      .toEqual([false, true, true, false, false, false]);
   });
 });
