@@ -8,6 +8,7 @@ import { BDM_TYPE_LABEL } from "@/lib/bdm";
 import { bdmManagerNav } from "@/lib/bdmNav";
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import { chosenMonth, currentMonth, MANAGER_TARGETS_PATH, monthLabel, type TargetSheet, teamTargetUrl } from "@/lib/bdmTargets";
+import { isUuid } from "@/lib/bdmTravel";
 import type { User } from "@/lib/types";
 
 // bdm-016 (spec §6): one team BDM's month -- target, achieved and achievement % per KPI of their type, editable when the month is.
@@ -19,7 +20,8 @@ export default async function ManagerMemberTargetsPage({ params, searchParams }:
   try {
     user = await serverApi<User>("/api/v1/auth/me");
     if (user.role !== "bdm_manager" && user.role !== "super_admin") return accessDenied(user, "This page is for BDM managers.");
-    sheet = await serverApi<TargetSheet>(teamTargetUrl(encodeURIComponent(bdmId), month));
+    if (!isUuid(bdmId)) return accessDenied(user, "BDM not found"); // QA16-01: the API's 422 for a malformed id is not a sentence
+    sheet = await serverApi<TargetSheet>(teamTargetUrl(bdmId, month));
   } catch (e) {
     return accessUnavailable(e, "/admin/login");
   }

@@ -5,7 +5,11 @@ import BdmTargetsCard from "@/components/BdmTargetsCard";
 import BdmTargetsCopy from "@/components/BdmTargetsCopy";
 import BdmTargetsEditor from "@/components/BdmTargetsEditor";
 import PortalShell from "@/components/PortalShell";
+import PortalLoading from "@/components/PortalLoading";
+import MemberLoading from "@/app/bdm/manager/targets/[bdmId]/loading";
 import MemberTargets from "@/app/bdm/manager/targets/[bdmId]/page";
+import TeamLoading from "@/app/bdm/manager/targets/loading";
+import { BDM_MANAGER_NAV } from "@/lib/navigation";
 import TeamTargetsPage from "@/app/bdm/manager/targets/page";
 import MyDay from "@/app/bdm/my-day/page";
 import { ApiError, serverApi } from "@/lib/api";
@@ -75,6 +79,22 @@ describe("bdm-016 targets pages", () => {
     answer({ "/api/v1/auth/me": manager, [`/api/v1/bdm/manager/targets/${B1}`]: new ApiError("BDM not found", 404) });
     const missing = elements(await MemberTargets({ params: Promise.resolve({ bdmId: B1 }), searchParams: Promise.resolve({}) }));
     expect(missing.find((el) => typeof el.props.message === "string")!.props.message).toBe("BDM not found");
+  });
+
+  it("QA16-02: both targets pages show the manager portal's loading state while they load", () => {
+    for (const Loading of [TeamLoading, MemberLoading]) {
+      const loading = Loading();
+      expect(loading.type).toBe(PortalLoading);
+      expect(loading.props.nav).toBe(BDM_MANAGER_NAV);
+      expect(loading.props.label).toMatch(/targets/);
+    }
+  });
+
+  it("QA16-01: a member id that isn't a UUID is 'BDM not found' without calling the API", async () => {
+    answer({ "/api/v1/auth/me": manager });
+    const tree = elements(await MemberTargets({ params: Promise.resolve({ bdmId: "not-a-uuid" }), searchParams: Promise.resolve({}) }));
+    expect(tree.find((el) => typeof el.props.message === "string")!.props.message).toBe("BDM not found");
+    expect(serverApi).toHaveBeenCalledTimes(2); // auth/me and the nav badge only
   });
 
   it("My Day shows the month's targets card, and still renders when targets can't be read", async () => {
