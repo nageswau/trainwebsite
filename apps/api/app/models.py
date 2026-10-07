@@ -1882,6 +1882,54 @@ class BdmAppointmentEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+# tel-019 (DEC-SCOPE-098): a telecaller's request for a BDM meeting. Corporate meetings go to college BDMs (T26).
+BDM_MEETING_REQUEST_TYPES = ("college", "agent", "school", "corporate")
+BDM_MEETING_REQUEST_BDM_TYPE = {"college": "college", "agent": "agent", "school": "school", "corporate": "college"}
+BDM_MEETING_REQUEST_STATUSES = ("pending", "accepted", "declined")
+BDM_MEETING_REQUEST_CODE_SEQ = Sequence("bdm_meeting_request_code_seq", metadata=Base.metadata)
+
+
+class BdmMeetingRequest(Base, TimestampMixin):
+    """tel-019 (DEC-SCOPE-098): filed by a telecaller for a BDM of `bdm_type` -- a named one (`bdm_user_id` set while pending) or the
+    type's pool (NULL while pending; MR1). A BDM accepts it into exactly one `bdm_appointments` row or declines it with a reason; either is
+    final (MR2), and `bdm_user_id` is then whoever decided. Never deleted."""
+
+    __tablename__ = "bdm_meeting_requests"
+    __table_args__ = (
+        UniqueConstraint("code", name="uq_bdm_meeting_requests_code"),
+        UniqueConstraint("bdm_appointment_id", name="uq_bdm_meeting_requests_appointment"),
+        CheckConstraint(_in_list("request_type", BDM_MEETING_REQUEST_TYPES), name="ck_bdm_meeting_requests_type"),
+        CheckConstraint("bdm_type IN ('agent', 'school', 'college')", name="ck_bdm_meeting_requests_bdm_type"),
+        CheckConstraint(_in_list("mode", APPOINTMENT_MODES), name="ck_bdm_meeting_requests_mode"),
+        CheckConstraint(_in_list("status", BDM_MEETING_REQUEST_STATUSES), name="ck_bdm_meeting_requests_status"),
+        CheckConstraint("(status = 'accepted') = (bdm_appointment_id IS NOT NULL)", name="ck_bdm_meeting_requests_accepted"),
+        CheckConstraint("(status = 'declined') = (decline_reason IS NOT NULL)", name="ck_bdm_meeting_requests_declined"),
+        CheckConstraint("status = 'pending' OR (bdm_user_id IS NOT NULL AND decided_at IS NOT NULL)", name="ck_bdm_meeting_requests_decided"),
+        Index("ix_bdm_meeting_requests_type_status", "bdm_type", "status"),
+        Index("ix_bdm_meeting_requests_bdm", "bdm_user_id"),
+        Index("ix_bdm_meeting_requests_requester", "requester_user_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    code: Mapped[str] = mapped_column(String(20))
+    requester_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    request_type: Mapped[str] = mapped_column(String(20))
+    bdm_type: Mapped[str] = mapped_column(String(20))
+    organization_name: Mapped[str] = mapped_column(String(200))
+    person_name: Mapped[str] = mapped_column(String(200))
+    contact_phone: Mapped[str] = mapped_column(String(30))
+    contact_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    proposed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    mode: Mapped[str] = mapped_column(String(20))
+    location: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    purpose: Mapped[str] = mapped_column(String(1000))
+    remarks: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="pending", server_default=text("'pending'"))
+    bdm_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    bdm_appointment_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_appointments.id", ondelete="RESTRICT"), nullable=True)
+    decline_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 BDM_TASK_KINDS = ("follow_up", "task")
 BDM_TASK_SOURCES = ("appointment_outcome", "mou", "manual")
 BDM_TASK_STATUSES = ("open", "done", "cancelled")

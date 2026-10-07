@@ -33,6 +33,7 @@ from app.models import (
     BDM_APPOINTMENT_STATUSES,
     BDM_GRADE_MAX,
     BDM_GRADE_MIN,
+    BDM_MEETING_REQUEST_TYPES,
     BDM_MOU_SETTABLE,
     BDM_MOU_STATUSES,
     BDM_STAFF_MAX,
@@ -5887,3 +5888,53 @@ class LeadCallUpdate(BaseModel):
             if key in self.model_fields_set and getattr(self, key) is None:
                 raise ValueError(f"{label} can't be removed")
         return self
+
+
+# --- tel-019 (DEC-SCOPE-098, spec §3): BDM meeting requests ----------------------------------------------------------------------------
+MEETING_REQUEST_LABELS = {
+    "organization_name": "Organization", "person_name": "Person", "contact_phone": "Phone", "contact_email": "Email", "location": "Location",
+    "purpose": "Purpose", "remarks": "Remarks",
+}
+_MEETING_PHONE = re.compile(r"^\+?[0-9 ()-]{7,30}$")
+_MEETING_EMAIL = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")  # LoginRequest's rule: `.local` demo addresses stay valid
+
+
+def _meeting_text(max_length: int, required: bool, multiline: bool = False):
+    pattern = _BDM_MULTILINE_CONTROL if multiline else _BDM_CONTROL
+    text = Annotated[str, _trimmed(max_length)] if required else Annotated[str, _trimmed(max_length)] | None
+    return Annotated[text, AfterValidator(_trip_text(pattern, required, MEETING_REQUEST_LABELS))]
+
+
+def _meeting_phone(value: str) -> str:
+    if not _MEETING_PHONE.fullmatch(value):
+        raise ValueError("Phone must be 7 to 30 characters: digits, spaces and + - ( )")
+    return value
+
+
+def _meeting_email(value: str | None) -> str | None:
+    if value and not _MEETING_EMAIL.fullmatch(value):
+        raise ValueError("Enter a valid email address")
+    return value or None
+
+
+class MeetingRequestCreate(BaseModel):
+    """MR7: what the telecaller knows. The BDM type follows from the request type (MR5); a named BDM is checked in the service (MR8).
+    Server-owned fields (code, status, the deciding BDM, the appointment) are unknown fields here."""
+
+    model_config = ConfigDict(extra="forbid")
+    request_type: Literal[BDM_MEETING_REQUEST_TYPES]
+    bdm_user_id: UUID | None = None
+    organization_name: _meeting_text(200, True)
+    person_name: _meeting_text(200, True)
+    contact_phone: Annotated[str, _trimmed(30), AfterValidator(_meeting_phone)]
+    contact_email: Annotated[Annotated[str, _trimmed(255)] | None, AfterValidator(_meeting_email)] = None
+    proposed_at: BdmApptStart
+    mode: Literal[APPOINTMENT_MODES]
+    location: _meeting_text(255, False) = None
+    purpose: _meeting_text(1000, True, multiline=True)
+    remarks: _meeting_text(2000, False, multiline=True) = None
+
+
+class MeetingRequestDecline(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: BdmApptReason
