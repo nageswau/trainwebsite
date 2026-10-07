@@ -4358,7 +4358,8 @@ helpers `lib/bdmMyDay.ts`. **New Feature ID authorized:** none (bdm-014 is in th
 telecaller files a meeting request; the BDM accepts it into `bdm_appointments`), T26 (corporate meetings → college BDMs);
 `DEC-SCOPE-068` (bdm-006 appointments); owner answers in-session 2026-10-07.
 **Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option) for
-MR1–MR4; MR5–MR14 are recorded defaults. Migration `0093_bdm_meeting_requests` (after tel-010's `0092_lead_calls`; drafted on `0091` and re-chained at the
+MR1–MR4; MR5–MR14 are recorded defaults. **MERGED** to `main` as PR #109 @ `f8f599ee` (2026-10-07). Migration
+`0093_bdm_meeting_requests` (after tel-010's `0092_lead_calls`; drafted on `0091` and re-chained at the
 `main` @ `3d7dd99a` merge, where bdm-014 had taken `DEC-SCOPE-097`), API contract §12S, RBAC §2.25. Spec
 `docs/superpowers/specs/2026-10-07-tel-019-bdm-meeting-requests-design.md`.
 

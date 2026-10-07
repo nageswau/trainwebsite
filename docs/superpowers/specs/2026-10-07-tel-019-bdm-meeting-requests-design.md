@@ -4,7 +4,7 @@
 `DEC-SCOPE-098`. **Evidence:** `EVID-019` §9 (L332–L384, BDM meeting types L346–L354); backlog `docs/delivery/TELECALLER_CRM_BACKLOG.md`
 tel-019; T10 (the telecaller files a meeting request, the BDM accepts it into `bdm_appointments`), T26 (corporate → college BDMs).
 **Dependencies (both merged):** tel-008 (lead workspace / telecaller portal), bdm-006 (`bdm_appointments`).
-**Numbers (re-check at merge):** migration `0093_bdm_meeting_requests` chained after tel-010's `0092_lead_calls` (drafted on `0091`,
+**Merged** to `main` as PR #109 @ `f8f599ee`. **Numbers:** migration `0093_bdm_meeting_requests` chained after tel-010's `0092_lead_calls` (drafted on `0091`,
 re-chained at the `main` @ `3d7dd99a` merge), `DEC-SCOPE-098` (bdm-014 took 097), API §12S, RBAC §2.25.
 
 ## 1. Owner answers (2026-10-07)
