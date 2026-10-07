@@ -3,6 +3,7 @@
 import { type FormEvent, useEffect, useState } from "react";
 
 import { LeadStageControl } from "@/components/AdminLeadStage";
+import LeadAppointmentsSection from "@/components/LeadAppointmentsSection";
 import LeadQualificationForm from "@/components/LeadQualificationForm";
 import ProductOptions from "@/components/TelecallerProductOptions";
 import { isRequestBody, sendJson, type Page } from "@/lib/apiErrors";
@@ -247,6 +248,14 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
       {/* tel-009: QD1 -- a save writes the shared answers to the lead, so Lead details shows them at once */}
       <LeadQualificationForm leadId={lead.id} productId={lead.product?.id ?? null} readOnly={lead.read_only}
         onSaved={(q) => setLead((l) => ({ ...l, qualification: q.qualification, passing_year: q.passing_year, city: q.city, state: q.state }))} />
+
+      {/* tel-016: only the lead's telecaller books (`canReopen` marks the manager's page); the API is the gate either way */}
+      <LeadAppointmentsSection leadId={lead.id} stage={lead.status} canBook={!canReopen && !lead.read_only}
+        onStage={(status, label) => {
+          if (status === lead.status) return;
+          setLead((l) => ({ ...l, status, status_label: label }));
+          void reloadActivity();
+        }} />
 
       <section aria-labelledby="lead-enquiry-heading">
         <h3 id="lead-enquiry-heading" style={{ margin: 0 }}>Enquiry</h3>
