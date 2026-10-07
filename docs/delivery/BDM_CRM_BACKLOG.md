@@ -742,6 +742,8 @@ Conventions used below:
 
 ### bdm-014 — My Day + type-specific BDM dashboard
 
+> **Status (2026-10-07):** **COMPLETE WITH DEFERRED FULL REGRESSION** on `worktree-bdm-014` (`DEC-SCOPE-097` K1–K12, agent-recommended defaults pending owner confirmation; no migration). Dependencies bdm-006, bdm-008, bdm-010, bdm-011 merged on `main`. Fresh evidence: backend LITE (bdm-001/006/008/010/011/013/014 + `test_rbac`) **398 passed, 0 failed**; ruff clean on bdm-014 files; mypy 508 = `main`'s 508 (none in bdm-014); single alembic head `0091_lead_appointments` (no migration); web BDM set **558 passed** (60 files); `tsc` 0; eslint 0; `next build` 0; Playwright bdm-014 / 001 / 006 / 008 / 013 **11 passed**; exploratory browser QA `docs/quality/BDM-014_BROWSER_QA_2026-10-07.md` (no defects; isolated Playwright Chromium, since Browser Use is not installed). **Open for the owner:** K1–K12 confirmation (notably K5/K6: T-A6 and T-K7 shown as "not tracked"); the full backend / web suites. Spec: `docs/superpowers/specs/2026-10-07-bdm-014-my-day-design.md`; plan: `docs/superpowers/plans/2026-10-07-bdm-014-my-day.md`.
+
 - **Business requirement:**
   - **My Day (§15):** today's appointments, upcoming travel with appointment counts, and follow-ups grouped by organization type.
   - **Type dashboards (Agent/School/College §A, "Today's Overview"):** e.g. new agent leads, pending agreements, agents awaiting onboarding, principal meetings, MoUs pending, placement-cell meetings, and so on.
