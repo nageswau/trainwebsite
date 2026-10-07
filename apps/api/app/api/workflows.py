@@ -1915,6 +1915,7 @@ async def update_overseas_application(application_id: UUID, payload: OverseasApp
     # `enrolled`); the generic PATCH has neither rule and could trigger the commission, so it refuses them before any field is applied.
     if user.role == "counselor" and item.agent_id is not None:
         raise HTTPException(403, AGENCY_USE_ADVANCE)
+    _recheck_counselor_scope(user, item)  # a direct application's counselor swapped between the scope read and the lock
     changes = payload.model_dump(exclude_unset=True)
     # AGN-023 (DEC-SCOPE-090 H10): after creation only the Admin's assign route changes the counselor (audited, notified).
     if "counselor_id" in changes:
@@ -2386,12 +2387,14 @@ async def _update_agency_visa(db: AsyncSession, user: User, application: Oversea
         changes["to_stage"] = target
     if "checklist" in sent:
         changes["checklist"] = body.checklist
-    if body.appointment_date is not None:
+    if "appointment_date" in sent:  # an explicit null clears the date, as on the agency route
         changes["appointment_date"] = body.appointment_date
-    if case.decision is None and "tracking_reference" in sent:
+    outcome = await update_case(db, case, changes)  # refuses a decided case, so the reference below is only set on an open one
+    reference_changed = "tracking_reference" in sent and body.tracking_reference != case.tracking_reference
+    if reference_changed:
         case.tracking_reference = body.tracking_reference
-    await update_case(db, case, changes)
-    await _audit(db, user, "visa.update", "visa_case", case.id, body.model_dump(mode="json", exclude_unset=True))
+    if outcome is not None or reference_changed:
+        await _audit(db, user, "visa.update", "visa_case", case.id, body.model_dump(mode="json", exclude_unset=True))
     await db.commit()
     return {"id": case.id, "status": case.status}
 
