@@ -30,3 +30,9 @@ Defaults restored afterwards (`PUT` 24 / 4 for both teams → 200).
 | — | observation | shared `TelecallerCataloguePage` | Large gap between the intro and the first card on mobile | Pre-existing layout shared by every manager page; out of tel-020 scope |
 
 No tel-020 defects open.
+
+## Re-run after merging `main` @ `f4a13514` (tel-025, bdm-019, bdm-023)
+
+Rebuilt `tel020` stack at `0099_tel_settings (head)`, reseeded. Playwright `tel-020-alerts`, `tel-021-dashboard`, `tel-022-targets` and
+`tel-025-telecaller-lifecycle`: 4 passed. The merge surfaced one interaction (tel-025's per-lead moves would also have sent per-lead
+"New lead assigned" alerts beside its D6 summary); fixed as AL13 with `test_a_lifecycle_move_sends_no_per_lead_alert`.
