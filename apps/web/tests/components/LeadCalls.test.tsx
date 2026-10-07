@@ -121,6 +121,17 @@ describe("LeadCalls (tel-010)", () => {
     expect(sent("PATCH")).toEqual({ url: "/api/v1/telecaller/calls/C1", body: { remarks: "Edited" } });
   });
 
+  it("sends one call when Save is pressed twice before the form re-renders (QA-02)", async () => {
+    render(<LeadCalls leadId="L1" leadStage="contacted" canWrite openSignal={0} onLogged={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Log call" }));
+    const form = screen.getByRole("form", { name: "Log call" });
+    fireEvent.change(within(form).getByLabelText("Outcome (required)"), { target: { value: "busy" } });
+    fireEvent.submit(form); // Enter in a field submits even while the Save button is disabled
+    fireEvent.submit(form);
+    expect(await screen.findByText("Call logged.")).toBeTruthy();
+    expect(fetchMock.mock.calls.filter(([, i]) => i?.method === "POST")).toHaveLength(1);
+  });
+
   it("deletes a call after confirming", async () => {
     render(<LeadCalls leadId="L1" leadStage="contacted" canWrite openSignal={0} onLogged={vi.fn()} />);
     fireEvent.click(await screen.findByRole("button", { name: "Delete" }));

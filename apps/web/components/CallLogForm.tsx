@@ -1,5 +1,5 @@
 "use client";
-import { type ChangeEvent, type FormEvent, useId, useState } from "react";
+import { type ChangeEvent, type FormEvent, useId, useRef, useState } from "react";
 
 import ReturnToLoginLink from "@/components/ReturnToLoginLink";
 import { sendJson, type SendOutcome } from "@/lib/apiErrors";
@@ -16,6 +16,8 @@ import { useLeaveGuard } from "@/lib/useLeaveGuard";
 
 type Values = { when: string; minutes: string; seconds: string; call_type: string; outcome: string; remarks: string; due: string; reason: string;
   next_action: string };
+// QA-01: a fieldset legend reads like the `.field label` text beside it
+const LEGEND = { fontWeight: 800, fontSize: 13, padding: 0, marginBottom: 7 } as const;
 const BACKDATE_DAYS = 7; // D6: the API's bound; the picker's min is a hint only
 
 function earliestInput(): string {
@@ -40,6 +42,7 @@ export default function CallLogForm({ leadId, leadStage, call, onLogged, onEdite
   const [addFollowUp, setAddFollowUp] = useState(false);
   const [move, setMove] = useState(false);
   const [busy, setBusy] = useState(false);
+  const inFlight = useRef(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState<string | null>(null);
   const [sessionEnded, setSessionEnded] = useState(false);
@@ -89,13 +92,16 @@ export default function CallLogForm({ leadId, leadStage, call, onLogged, onEdite
     const seconds = toSeconds(v.minutes, v.seconds);
     const missing = check(seconds);
     if (Object.keys(missing).length || seconds === null) return setErrors(missing);
+    if (inFlight.current) return; // QA-02: Enter submits even while Save is disabled; a call is not idempotent
     const request = send(seconds);
     if (!request) return onCancel();
+    inFlight.current = true;
     setBusy(true);
     setErrors({});
     setFailure(null);
     setSessionEnded(false);
     const result = await request;
+    inFlight.current = false;
     setBusy(false);
     if (result.ok) {
       if (!call && isLogCallResult(result.data)) return onLogged?.(result.data);
@@ -136,14 +142,14 @@ export default function CallLogForm({ leadId, leadStage, call, onLogged, onEdite
           {error("occurred_at")}
         </div>
         <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }} aria-describedby={errors.duration_seconds ? `${fid("duration_seconds")}-error` : undefined}>
-          <legend>Duration</legend>
+          <legend style={LEGEND}>Duration</legend>
           <div style={{ display: "flex", gap: 8 }}>
-            <label style={{ display: "grid", gap: 2, flex: 1 }}>
+            <label style={{ display: "grid", gap: 2, flex: 1, fontWeight: 400 }}>
               <span className="muted" style={{ fontSize: 13 }}>Minutes</span>
               <input type="number" inputMode="numeric" min={0} max={240} step={1} placeholder="0" value={v.minutes} onChange={set("minutes")}
                 aria-invalid={errors.duration_seconds ? true : undefined} />
             </label>
-            <label style={{ display: "grid", gap: 2, flex: 1 }}>
+            <label style={{ display: "grid", gap: 2, flex: 1, fontWeight: 400 }}>
               <span className="muted" style={{ fontSize: 13 }}>Seconds</span>
               <input type="number" inputMode="numeric" min={0} max={59} step={1} placeholder="0" value={v.seconds} onChange={set("seconds")}
                 aria-invalid={errors.duration_seconds ? true : undefined} />
@@ -174,7 +180,7 @@ export default function CallLogForm({ leadId, leadStage, call, onLogged, onEdite
       )}
       {withFollowUp && (
         <fieldset style={{ border: 0, padding: 0, margin: "0 0 8px" }}>
-          <legend style={{ fontWeight: 600 }}>Next follow-up{required ? " (required for this outcome)" : ""}</legend>
+          <legend style={{ ...LEGEND, fontSize: 14, marginBottom: 8 }}>Next follow-up{required ? " (required for this outcome)" : ""}</legend>
           {error("next_follow_up")}
           <div className="form-grid" style={grid}>
             <div className="field">
