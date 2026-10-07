@@ -410,6 +410,8 @@ function specsFor(user: User, section: string): ActionSpec[] {
   if (user.role === "trainer") return trainerSpecs(section);
   if (["placement_team", "hr_team"].includes(user.role)) return placementSpecs(section);
   if (user.role === "agent") return agentSpecs(section);
+  // tel-016: an IT counselor works leads only (tel-017 C1) -- the overseas student appointment forms would only ever 403 for them.
+  if (user.role === "counselor" && user.division === "it") return [];
   if (["counselor", "university_rep"].includes(user.role)) return overseasOperationsSpecs(user.role, section);
   if (["it_admin", "overseas_admin", "super_admin"].includes(user.role)) {
     const operational = user.role === "overseas_admin" ? overseasOperationsSpecs(user.role, section) : [];

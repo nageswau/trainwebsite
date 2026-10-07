@@ -14,7 +14,7 @@ from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.lead_stages import CLOSED, EVENTS, MANUAL, MANUAL_BEFORE, ORDER, REOPEN_TO, STAGE_LABELS, label
-from app.models import Enquiry, LeadFollowUp, LeadStageHistory, TelecallerProfile, User
+from app.models import LEAD_APPOINTMENT_OPEN, Appointment, AppointmentEvent, AuditLog, Enquiry, LeadFollowUp, LeadStageHistory, TelecallerProfile, User
 
 logger = logging.getLogger("app.leads")
 
@@ -29,6 +29,7 @@ REOPEN_FORBIDDEN = "Only a manager can reopen a closed lead"
 REASON_CLOSED = "Add a reason for closing the lead"
 REASON_REOPEN = "Add a reason for reopening the lead"
 FOLLOW_UPS_CLOSED = "Lead closed"  # tel-011 F4: the cancel reason on follow-ups a closing move cancelled
+APPOINTMENTS_CLOSED = FOLLOW_UPS_CLOSED  # tel-016 AP15: and on the counselling appointment it cancelled
 
 Kind = Literal["telecaller", "manager"]
 
@@ -102,6 +103,7 @@ async def person_move(db: AsyncSession, lead: Enquiry, actor: User, kind: Kind, 
     await _record(db, lead, to_stage, "manual", actor.id, reason)
     if to_stage in CLOSED:
         await _cancel_open_follow_ups(db, lead)
+        await _cancel_open_appointments(db, lead, actor)
 
 
 async def _cancel_open_follow_ups(db: AsyncSession, lead: Enquiry) -> None:
@@ -114,6 +116,19 @@ async def _cancel_open_follow_ups(db: AsyncSession, lead: Enquiry) -> None:
     if cancelled:
         logger.info("lead_follow_ups_cancelled", extra={"extra_fields": {"lead_id": str(lead.id), "count": len(cancelled)}})
 
+
+
+async def _cancel_open_appointments(db: AsyncSession, lead: Enquiry, actor: User) -> None:
+    """tel-016 AP15 (DEC-SCOPE-095): a closed lead keeps no open counselling appointment, so the counselor's slot frees up. Each one gets
+    its history row and audit row, as a cancel does; the lead stays closed (no release to Follow-up). Lock order lead -> appointment, as
+    every appointment write."""
+    stmt = select(Appointment).where(Appointment.lead_id == lead.id, Appointment.status.in_(LEAD_APPOINTMENT_OPEN)).with_for_update()
+    for appt in (await db.scalars(stmt.execution_options(populate_existing=True))).all():
+        from_status, appt.status = appt.status, "cancelled"
+        db.add(AppointmentEvent(appointment_id=appt.id, actor_user_id=actor.id, from_status=from_status, to_status="cancelled", reason=APPOINTMENTS_CLOSED))
+        db.add(AuditLog(user_id=actor.id, action="lead_appointment.cancel", entity_type="appointment", entity_id=str(appt.id),
+                        metadata_json={"lead_id": str(lead.id), "from": from_status, "to": "cancelled", "reason": "lead_closed"}))
+        logger.info("lead_appt_cancelled_on_close", extra={"extra_fields": {"lead_id": str(lead.id), "appointment_id": str(appt.id)}})
 
 def stage_out(lead: Enquiry) -> dict:
     return {"id": lead.id, "status": lead.status, "status_label": label(lead.status), "stage_changed_at": lead.stage_changed_at}

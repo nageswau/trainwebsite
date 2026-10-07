@@ -1,10 +1,10 @@
 """tel-010 -- `lead_calls`: calls logged on a lead.
 
 Revision ID: 0092_lead_calls
-Revises: 0090_lead_follow_ups
+Revises: 0091_lead_appointments
 
-docs/superpowers/specs/2026-10-07-tel-010-call-logging-design.md §3 (DEC-SCOPE-096). Numbered 0092 because tel-016 (in parallel) holds
-0091_lead_appointments; it chains to main's head 0090, and whichever of the two merges second re-chains. 0001 builds a fresh database from
+docs/superpowers/specs/2026-10-07-tel-010-call-logging-design.md §3 (DEC-SCOPE-096). Re-chained after tel-016's
+0091_lead_appointments (DEC-SCOPE-095), which merged first. 0001 builds a fresh database from
 the current models, which already carry the table, so the upgrade is guarded (0074's idiom). CHECKS repeats models.LEAD_CALL_CHECKS
 (test_tel_010_migration asserts they stay identical).
 """
@@ -15,7 +15,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0092_lead_calls"
-down_revision = "0090_lead_follow_ups"
+down_revision = "0091_lead_appointments"
 branch_labels = None
 depends_on = None
 

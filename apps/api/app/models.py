@@ -631,8 +631,33 @@ class ScholarshipApplication(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(40), default="submitted")
 
 
+# tel-016 (DEC-SCOPE-095): a lead's counselling appointment. Statuses EVID-019 §9; open = still to happen (AP5: one per lead).
+LEAD_APPOINTMENT_STATUSES = ("scheduled", "confirmed", "rescheduled", "completed", "cancelled", "no_show")
+LEAD_APPOINTMENT_OPEN = ("scheduled", "confirmed", "rescheduled")
+LEAD_APPOINTMENT_TYPE_LABELS = {
+    "career_counselling": "Career counselling", "it_course_counselling": "IT course counselling",
+    "overseas_counselling": "Overseas counselling", "university_counselling": "University counselling",
+}
+LEAD_APPOINTMENT_TYPES = {  # AP4: by the lead's division
+    "it": ("career_counselling", "it_course_counselling"),
+    "overseas": ("career_counselling", "overseas_counselling", "university_counselling"),
+}
+APPOINTMENT_MODES = ("Online", "Phone", "In person")  # the student flow's own values (AP7)
+APPOINTMENT_CODE_SEQ = Sequence("appointment_code_seq", metadata=Base.metadata)
+
+
 class Appointment(Base, TimestampMixin):
+    """A counselling appointment: a student's (the overseas flow; free-text status, AP12) or, since tel-016, a lead's (`lead_id`, a
+    `CAP-` code and the EVID-019 §9 lifecycle). Every row has a student or a lead."""
+
     __tablename__ = "appointments"
+    __table_args__ = (
+        CheckConstraint("student_id IS NOT NULL OR lead_id IS NOT NULL", name="ck_appointments_subject"),
+        Index("ix_appointments_staff_scheduled", "staff_id", "scheduled_at"),
+        Index("ix_appointments_lead", "lead_id"),
+        Index("uq_appointments_lead_open", "lead_id", unique=True,
+              postgresql_where=text("lead_id IS NOT NULL AND status IN ('scheduled', 'confirmed', 'rescheduled')")),
+    )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     division: Mapped[str] = mapped_column(String(30), index=True)
     student_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
@@ -641,6 +666,32 @@ class Appointment(Base, TimestampMixin):
     appointment_type: Mapped[str] = mapped_column(String(80))
     mode: Mapped[str] = mapped_column(String(40), default="Online")
     status: Mapped[str] = mapped_column(String(30), default="scheduled")
+    lead_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="RESTRICT"), nullable=True)
+    appointment_code: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True)
+    duration_minutes: Mapped[int] = mapped_column(Integer, default=60, server_default="60")
+    purpose: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    meeting_link: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    location: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    remarks: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    booked_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+
+
+class AppointmentEvent(Base):
+    """tel-016 (AP10): one row per lead-appointment transition (creation: from_status NULL). Append-only; `position` orders rows made in
+    one transaction. A reschedule keeps the old and the new time."""
+
+    __tablename__ = "appointment_events"
+    __table_args__ = (Index("ix_appointment_events_appointment", "appointment_id", "position"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    appointment_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("appointments.id", ondelete="RESTRICT"))
+    actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    from_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    to_status: Mapped[str] = mapped_column(String(20))
+    old_scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    new_scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class EMISchedule(Base, TimestampMixin):

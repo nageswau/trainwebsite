@@ -1,6 +1,6 @@
 """tel-010 -- migration 0092_lead_calls (spec §3). The round trip runs in a throwaway database (the tel-004/005/006/011 pattern); a downgrade
 never runs against the shared test database. 0001 builds a fresh database from the current models, so each test first downgrades to
-0090_lead_follow_ups (tel-011) to reach the real pre-tel-010 shape."""
+0091_lead_appointments (tel-016) to reach the real pre-tel-010 shape."""
 
 import asyncio
 import importlib.util
@@ -23,7 +23,7 @@ _spec = importlib.util.spec_from_file_location("_tel_010_migration_0092", VERSIO
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0090_lead_follow_ups", "0092_lead_calls"
+BASE, HEAD = "0091_lead_appointments", "0092_lead_calls"
 COLUMNS = {"id", "lead_id", "caller_user_id", "occurred_at", "duration_seconds", "call_type", "outcome", "remarks", "created_at", "updated_at"}
 
 
@@ -46,7 +46,7 @@ def _sql(url: str, sql: str, params: dict | None = None, *, autocommit: bool = F
     return asyncio.run(_inner())
 
 
-def test_migration_chains_after_0090_and_there_is_one_head():
+def test_migration_chains_after_0091_and_there_is_one_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
@@ -90,7 +90,7 @@ ROW = ("INSERT INTO lead_calls (id, lead_id, caller_user_id, occurred_at, durati
        "VALUES (:id, :lead, :user, now(), :duration, :type, :outcome)")
 
 
-def test_downgrade_to_0090_has_no_table(base_db):
+def test_downgrade_to_0091_has_no_table(base_db):
     assert _sql(base_db["url"], EXISTS) == [(None,)]
 
 

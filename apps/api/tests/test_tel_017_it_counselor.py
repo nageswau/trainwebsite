@@ -131,8 +131,9 @@ async def test_it_counselor_with_no_leads_gets_empty_sections(client, db_session
     assert {m["label"]: m["value"] for m in dash.json()["metrics"]} == {"Leads routed to you": 0, "New leads": 0}
 
 
+# tel-016 (DEC-SCOPE-095 AP14) gives the IT counselor its own Appointments section (lead bookings), so it is no longer listed here.
 @pytest.mark.asyncio
-@pytest.mark.parametrize("section", ["students", "documents", "applications", "school-applications", "visa", "appointments", "counselor-chat", "reports"])
+@pytest.mark.parametrize("section", ["students", "documents", "applications", "school-applications", "visa", "counselor-chat", "reports"])
 async def test_it_counselor_has_no_overseas_sections(client, db_session, section):
     await login(client, await make_user(db_session, "counselor", "it"))
     assert (await client.get(f"/api/v1/portal/it/counselor/{section}")).status_code == 404

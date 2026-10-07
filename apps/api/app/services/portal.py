@@ -1616,12 +1616,14 @@ def _leads_payload(rows: list[Enquiry]):
 
 
 async def _it_counselor(db: AsyncSession, user: User, section: str):
-    """tel-017 (DEC-SCOPE-076 C1): an IT counselor works leads only -- Dashboard and My Leads (tel-016 adds Appointments, tel-018 the
-    student link). Every overseas section stays the overseas counselor's, so anything else is a 404 here."""
-    if section not in {"dashboard", "leads"}:
+    """tel-017 (DEC-SCOPE-076 C1): an IT counselor works leads only -- Dashboard, My Leads and (tel-016) Appointments; tel-018 adds the
+    student link. Every overseas section stays the overseas counselor's, so anything else is a 404 here."""
+    if section not in {"dashboard", "leads", "appointments"}:
         return None
     if section == "leads":
         return _leads_payload(await _routed_leads(db, user))
+    if section == "appointments":  # tel-016 AP14: header only -- the page's panel reads /counselor/appointments
+        return _payload("Appointments", "Counselling appointments booked for your leads.")
     total = await db.scalar(_routed(user, func.count()))
     new = await db.scalar(_routed(user, func.count()).where(Enquiry.status == "new"))
     return _payload(

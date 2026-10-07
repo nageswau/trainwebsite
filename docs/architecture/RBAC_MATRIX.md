@@ -656,7 +656,21 @@ follow-up belongs to its lead (F3), so a reassignment moves it. Every write is a
 | every other role | none → `403` "Telecaller role required" | — | `tel-011` |
 | system (a closing stage move) | cancels the lead's open follow-ups ("Lead closed", F4) | the lead being closed | `tel-011` |
 
-### 2.24 Lead call logging *(net-new, added 2026-10-07 — `DEC-SCOPE-096`, `tel-010`; §2.23 is held by tel-016)*
+### 2.23 Lead counselling appointments *(net-new, added 2026-10-07 — `DEC-SCOPE-095`, `tel-016`)*
+
+The same inline pattern as §2.19 for the lead routes (`lead_pipeline.scope`, then `telecaller_leads.require_writable` on a booking). The
+action routes resolve scope from the session: the appointment's counselor, or the telecaller of its lead; anything else is `404`. Locks:
+lead → counselor user → appointment.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | read the lead's appointments and the booking options; **book**; reschedule / cancel an open appointment | own leads; none once handed over (`403`) | `tel-016` |
+| `telecaller_manager` | read only (book `403`; actions `404`) | §2.19's | `tel-016` |
+| `super_admin` | read only, as a manager | all leads | `tel-016` |
+| `counselor` (IT or overseas) | list own lead appointments; confirm, complete, no-show (after the start), reschedule, cancel | `staff_id` = self; another counselor's is `404` | `tel-016` |
+| every other role | none → `403` on the lead routes and the counselor list, `404` on an action | — | `tel-016` |
+
+### 2.24 Lead call logging *(net-new, added 2026-10-07 — `DEC-SCOPE-096`, `tel-010`)*
 
 Inline pattern: scope (tel-004 `lead_pipeline.scope`, joined through the call's lead; out of scope `404`), the lead lock, then the role
 (`lead_calls.require_telecaller`), the caller (`caller_user_id` = self, for edit/delete) and handover (`telecaller_leads.require_writable`),

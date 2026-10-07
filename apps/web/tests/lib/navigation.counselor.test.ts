@@ -12,10 +12,12 @@ describe("tel-017 IT counselor navigation", () => {
     expect(dashboardPathFor({ role: "nobody" })).toBe("/");
   });
 
-  it("gives the IT counselor Dashboard and Leads only", () => {
+  // tel-016 (DEC-SCOPE-095 AP14) adds Appointments (the lead bookings).
+  it("gives the IT counselor Dashboard, Leads and Appointments only", () => {
     expect(PORTAL_NAV["it/counselor"]).toEqual([
       { label: "Dashboard", href: "/it/counselor/dashboard" },
       { label: "Leads", href: "/it/counselor/leads" },
+      { label: "Appointments", href: "/it/counselor/appointments" },
     ]);
   });
 

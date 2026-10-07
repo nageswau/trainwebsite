@@ -4260,14 +4260,48 @@ cancels open follow-ups on a close; `GET /telecaller/leads` gains `follow_up`. W
 and `/telecaller/manager/follow-ups` ("Follow-ups" in both navs), the dashboard "Today's follow-ups" card, My Leads "Due follow-up" filter.
 **New Feature ID authorized:** `tel-011`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-011.
 
+### DEC-SCOPE-095 — Counselor appointment booking for leads (`tel-016`)
+
+**Evidence:** `EVID-019` §9 (`Telecaller Functionalities.md` L332–L384, Appendix A); `DEC-SCOPE-073` T10 (extend `appointments` with a
+lead link, booked straight to the counselor), T19 (read-only after handover); `DEC-SCOPE-081` (the stage engine); `DEC-SCOPE-076` C1 (IT
+counselor workspace); owner answers in-session 2026-10-07.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option)
+for AP1–AP4 and AP15 (2026-10-07, after the tel-011 merge); AP5–AP14 are recorded defaults. **MERGED** to `main` as PR #103 @
+`92946a8a` (2026-10-07). Migration `0091_lead_appointments` (after tel-011's `0090_lead_follow_ups`; drafted on
+`0089` and re-chained when tel-011 merged, `main` @ `88680cb1`), API contract §12Q, RBAC §2.23. Spec
+`docs/superpowers/specs/2026-10-07-tel-016-lead-appointments-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| AP1 | Q-11: counselor clash and length | **Refuse with `409`** (`counselor_busy`, the busy times listed) when the time overlaps any open appointment of the counselor — a lead's or a student's. **Fixed 60 minutes.** No override |
+| AP2 | Who acts after booking | **Counselor** (the assigned one): confirm, complete, no-show, reschedule, cancel. **The lead's telecaller:** reschedule and cancel while open. **Managers / super_admin:** read only |
+| AP3 | Stage on no-show / cancel | Back to **Follow-up** (system event `appointment_released`) when the lead is still at Counselling Scheduled; a reschedule never moves it |
+| AP15 | Closing a lead with an open appointment (asked after the tel-011 merge) | **Cancel it** (reason "Lead closed", the closer as actor, an audit row) in the same transaction as the close — as tel-011 F4 does for follow-ups; the lead stays closed; finished appointments are untouched; a reopen does not restore it |
+| AP4 | Q-12: counselors and types | **Any active counselor of the lead's division**, no application needed; booking is not a handover (`owner_id` untouched, tel-018). IT lead → Career, IT course counselling; overseas lead → Career, Overseas, University counselling |
+
+Recorded defaults: AP5 one open appointment per lead (`409`; partial unique index). AP6 `CAP-000001` codes from `appointment_code_seq`,
+lead bookings only. AP7 modes `Online` / `Phone` / `In person`; optional http(s) meeting link (≤ 500), location (≤ 200), purpose (≤ 500),
+remarks (≤ 1000). AP8 future and within 366 days (`422`). AP9 complete / no-show only after the start (`422`); a cancel needs a reason.
+AP10 append-only `appointment_events` (a reschedule keeps old and new times). AP11 no booking on a handed-over (`403`) or closed (`409`)
+lead. AP12 legacy student statuses untouched; `PATCH /overseas/appointments/{id}` is `404` for a lead appointment. AP13 the counselor sees
+the lead's name, Lead ID, mobile and email on their own appointments only. AP14 the IT counselor nav gains Appointments; the overseas
+counselor's Appointments page shows the lead bookings above the unchanged student table. An out-of-scope appointment id (another
+counselor's, a manager's request) is `404` — the backlog's "403" for another counselor follows the project's IDOR rule instead.
+
+**Consequences:** `appointments` + `lead_id`, `appointment_code`, `duration_minutes`, `purpose`, `meeting_link`, `location`, `remarks`,
+`booked_by_user_id`, CHECK `ck_appointments_subject`; table `appointment_events`; stage event `appointment_released`; service
+`services/lead_appointments.py`; routes in `api/lead_appointments.py`; components `LeadAppointmentsSection`, `BookCounsellingForm`,
+`LeadAppointmentCard`, `CounselorAppointmentsPanel`. **New Feature ID authorized:** `tel-016`. **Status:** see `TELECALLER_CRM_BACKLOG.md`
+§4 tel-016.
+
 ### DEC-SCOPE-096 — Lead call logging (`tel-010`)
 
 **Evidence:** `EVID-019` §5 (L198–L252); `DEC-SCOPE-073` T5, T7, T13, T19, T23 and Appendix B B6/B7; `DEC-SCOPE-081` (tel-004 pipeline
 events `call_connected` / `call_unconnected`); `DEC-SCOPE-094` (tel-011 F4, F8); `DEC-SCOPE-069` (bdm-009 V4/V9/V10 time rules); owner
 answers in-session 2026-10-07.
 **Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07) for CL1–CL4; D1–D10 are recorded defaults. Branch `feature/tel-010`, not
-yet merged. Migration `0092_lead_calls` (chains to `0090_lead_follow_ups`; `0091` / `DEC-SCOPE-095` / §12Q / RBAC 2.23 are held by tel-016
-in parallel — whichever merges second re-chains), API contract §12R, RBAC §2.24. Spec `docs/superpowers/specs/2026-10-07-tel-010-call-logging-design.md`.
+yet merged. Migration `0092_lead_calls` (re-chained after tel-016's `0091_lead_appointments` / `DEC-SCOPE-095` / §12Q / RBAC 2.23,
+which merged first as PR #103), API contract §12R, RBAC §2.24. Spec `docs/superpowers/specs/2026-10-07-tel-010-call-logging-design.md`.
 
 | # | Question | Answer |
 |---|---|---|
