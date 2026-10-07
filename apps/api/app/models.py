@@ -2069,6 +2069,32 @@ class BdmDailyReport(Base, TimestampMixin):
     manager_commented_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+BDM_TARGET_MAX = 100_000  # R4: the tel-022 bound
+BDM_TARGET_CHECKS = {  # migration 0095 repeats these strings; test_bdm_016_migration asserts they stay identical
+    "ck_bdm_targets_month_start": "EXTRACT(DAY FROM month) = 1",
+    "ck_bdm_targets_target_range": f"target >= 0 AND target <= {BDM_TARGET_MAX}",
+}
+
+
+class BdmTarget(Base, TimestampMixin):
+    """bdm-016 (DEC-SCOPE-100): a manager-set monthly target for one KPI of one BDM. `month` is the month's first day; `kpi_key` is a key
+    of the BDM type's catalogue (`services/bdm_metrics.TARGET_KPIS`, checked in the service). Achieved is never stored: it is computed
+    live from the month's records (`bdm_metrics.monthly_counts`). Clearing a target deletes the row."""
+
+    __tablename__ = "bdm_targets"
+    __table_args__ = (
+        UniqueConstraint("bdm_user_id", "month", "kpi_key", name="uq_bdm_targets_bdm_month_kpi"),
+        *(CheckConstraint(sql, name=name) for name, sql in BDM_TARGET_CHECKS.items()),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    bdm_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    month: Mapped[date] = mapped_column(Date)
+    kpi_key: Mapped[str] = mapped_column(String(40))
+    target: Mapped[int] = mapped_column(Integer)
+    set_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    set_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class LiveSession(Base, TimestampMixin):
     __tablename__ = "live_sessions"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
