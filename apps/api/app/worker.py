@@ -115,7 +115,17 @@ def send_daily_reminders_task():
     return _run_with_fresh_pool(run_daily_reminders)
 
 
+@celery.task
+def send_bdm_reminders_task():
+    """bdm-012 (DEC-SCOPE-098 R2): every 5 minutes via beat. Idempotent per reminder (notifications.dedupe_key), so a rerun or an
+    overlapping run creates nothing new."""
+    from app.services.bdm_reminders import run_bdm_reminders
+
+    return _run_with_fresh_pool(run_bdm_reminders)
+
+
 celery.conf.beat_schedule = {
     "enh014-sweep-stale-deliveries": {"task": "app.worker.sweep_stale_deliveries_task", "schedule": 300.0},
     "agn017-daily-reminders": {"task": "app.worker.send_daily_reminders_task", "schedule": crontab(hour=2, minute=30)},  # UTC = 08:00 IST
+    "bdm012-reminders": {"task": "app.worker.send_bdm_reminders_task", "schedule": 300.0},
 }
