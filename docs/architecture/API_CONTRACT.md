@@ -1354,6 +1354,23 @@ Delivery (worker, not HTTP): the claim moves `queued` / `retrying` to `sending`.
 address removed) → `failed`. A 5-minute sweeper republishes stale queued rows and fails rows stuck in `sending`. The mail is From
 `"<telecaller> via EduSphere" <SMTP_FROM_EMAIL>` with Reply-To the telecaller, as plain text plus an escaped HTML part.
 
+## 12AA. Agent onboarding handover (`bdm-019`) — addendum, 2026-10-07
+
+`DEC-SCOPE-107`; design spec `docs/superpowers/specs/2026-10-07-bdm-019-agent-onboarding-handover-design.md` §4. Migration
+`0098_bdm_agent_link`. Signed out `401`. Every write is one transaction with its audit row and in-app notice.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `POST /bdm/organizations/{id}/onboarding-request` | **Changed:** an Agent organization may request at stored stage `agreement_signed` (else `422` "The agreement must be signed to request onboarding"); a College one `422` "Onboarding requests are for School or Agent organizations". School rules unchanged. The row's `kind` is the organization's type. |
+| `GET /overseas-admin/bdm-onboarding-requests?kind=school\|agent` | **Changed:** `kind` (default `school`, so existing callers see the same queue; another value `422`). Items gain `kind` and `agent_org: {id, name, prefix, status} \| null`. |
+| `POST /overseas-admin/bdm-onboarding-requests/{id}/link-agent` | **New.** `overseas_admin` / `super_admin` (else `403`). Body `{agent_code}` (1–8, case-insensitive; unknown keys `422`). Unknown request `404`; a School request `422`; resolved `409 request_resolved`; organization linked `409 already_linked`; no such code `422` "No agent organization has that code"; agency linked elsewhere `409 agent_org_linked`. `200` the item; audit `bdm_onboarding_request.linked` `{organization_id, agent_org_id}`; notice "Agent onboarded" to the assigned BDM. |
+| `POST /overseas-admin/bdm-onboarding-requests/{id}/link`, `POST /overseas-admin/schools` (`bdm_onboarding_request_id`) | **Changed:** an agent request `422` "This request is for an Agent organization". |
+| `POST /overseas-admin/bdm-onboarding-requests/{id}/reject` | Both kinds; the notice title follows the type ("Agent onboarding not approved"). |
+
+`BdmOrganizationOut.onboarding` is also returned for Agent organizations and gains `agent: {name, prefix, status, master_login,
+staff_count, counts: {students, applications, enrollments}} | null` (`null` for School ones). `pipeline.steps[]` gain `count: int | null`
+(a volume step's live count once linked); `pipeline.agent_status` follows `DEC-SCOPE-107` A5. No commission or money figure is returned.
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

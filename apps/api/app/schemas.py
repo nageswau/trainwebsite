@@ -3941,6 +3941,7 @@ class BdmPipelineStepOut(BaseModel):
     label: str
     kind: Literal["manual", "live", "volume"]
     state: Literal["done", "current", "upcoming", "awaiting_handover", "not_tracked"]
+    count: int | None = None  # bdm-019 A4: a volume step's live count once an agency is linked
 
 
 class BdmPipelineLost(BaseModel):
@@ -3970,9 +3971,27 @@ class BdmOnboardingSchoolRef(BaseModel):
     school_code: str | None
 
 
+class BdmOnboardingAgentCounts(BaseModel):
+    students: int
+    applications: int
+    enrollments: int
+
+
+class BdmOnboardingAgentRef(BaseModel):
+    """bdm-019 A7: a linked agency as a BDM sees it -- aggregates only, never a member or student (AC4)."""
+
+    name: str
+    prefix: str
+    status: str
+    master_login: bool
+    staff_count: int
+    counts: BdmOnboardingAgentCounts
+
+
 class BdmOrgOnboardingOut(BaseModel):
     request: BdmOnboardingRequestRef | None  # the latest request
     school: BdmOnboardingSchoolRef | None
+    agent: BdmOnboardingAgentRef | None = None  # bdm-019: Agent organizations
     can_request: bool
 
 
@@ -4002,7 +4021,7 @@ class BdmOrganizationOut(BdmOrganizationRow):
     student_count: int | None
     profile: BdmOrgProfileOut | None  # null for corporate / training_institute / other (spec §5.1)
     pipeline: BdmOrgPipelineOut  # bdm-004: detail only; list rows are unchanged
-    onboarding: BdmOrgOnboardingOut | None = None  # bdm-018: School organizations only
+    onboarding: BdmOrgOnboardingOut | None = None  # bdm-018: School organizations; bdm-019: Agent organizations too
     contacts: list[BdmContactOut]
     created_by_name: str
     archived_at: datetime | None
@@ -5465,7 +5484,7 @@ class LeadStageHistoryPage(BaseModel):
 
 
 # --- bdm-018 (DEC-SCOPE-085, spec §5): the school onboarding handover --------------------------------------------------------------
-_ONBOARDING_LABELS = {"note": "Note", "reason": "Reason", "school_code": "School ID"}
+_ONBOARDING_LABELS = {"note": "Note", "reason": "Reason", "school_code": "School ID", "agent_code": "Agent code"}
 BdmOnboardingNote = Annotated[
     Annotated[Annotated[str, _trimmed(1000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, _ONBOARDING_LABELS))],
     BeforeValidator(_bdm_newlines),
@@ -5475,6 +5494,7 @@ BdmOnboardingReason = Annotated[
 ]
 BdmOnboardingSchoolCode = Annotated[Annotated[str, _trimmed(8)], AfterValidator(_trip_text(_BDM_CONTROL, True, _ONBOARDING_LABELS))]
 BdmOnboardingStatus = Literal["pending", "completed", "rejected"]
+BdmOnboardingKind = Literal["school", "agent"]  # bdm-019
 
 
 class BdmOnboardingRequestIn(BaseModel):
@@ -5490,6 +5510,13 @@ class BdmOnboardingRejectIn(BaseModel):
 class BdmOnboardingLinkIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     school_code: BdmOnboardingSchoolCode
+
+
+class BdmOnboardingLinkAgentIn(BaseModel):
+    """bdm-019 A1: the Agent Organization's code (`agent_orgs.prefix`), matched case-insensitively."""
+
+    model_config = ConfigDict(extra="forbid")
+    agent_code: BdmOnboardingSchoolCode  # the same 1-8 character, control-free text as a School ID
 
 
 class BdmOnboardingOrgPrefill(BaseModel):
@@ -5526,6 +5553,13 @@ class BdmOnboardingSchool(BaseModel):
     school_code: str | None
 
 
+class BdmOnboardingAgentOrg(BaseModel):
+    id: UUID
+    name: str
+    prefix: str
+    status: str
+
+
 class BdmOnboardingItem(BaseModel):
     id: UUID
     status: BdmOnboardingStatus
@@ -5540,6 +5574,8 @@ class BdmOnboardingItem(BaseModel):
     primary_contact: BdmOnboardingContact | None
     mou: BdmOnboardingMou | None
     school: BdmOnboardingSchool | None
+    kind: BdmOnboardingKind  # bdm-019
+    agent_org: BdmOnboardingAgentOrg | None  # bdm-019: the linked agency (agent requests only)
 
 
 class BdmOnboardingPage(BaseModel):

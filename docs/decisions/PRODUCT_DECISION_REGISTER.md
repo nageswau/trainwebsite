@@ -4643,3 +4643,37 @@ Recorded defaults:
   account).
 
 **New Feature ID authorized:** `tel-014`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-014.
+
+### DEC-SCOPE-107 — Agent onboarding handover + Agent Organization link (`bdm-019`)
+
+**Evidence:** `EVID-016` Agent §E (`BDM_CRM_BACKLOG.md` Appendix A L685–L741) and the agent database fields (L593 Master Login, L595 Number
+of Staff); `DEC-SCOPE-055` D7 (Overseas Admin creates or approves the Agent Organization; the BDM never creates logins), D32 (Active Agent
+= linked organization with status active); `DEC-SCOPE-071` S3 (live stages are never stored), S4 (Inactive = linked organization suspended
+or rejected); `DEC-SCOPE-085` (bdm-018, the School handover this mirrors); `DEC-SCOPE-038` (AGN-001: organizations, approval,
+admin-created agents D11); `DEC-SCOPE-064` (AGN-022 `org_counts`). Dependencies verified on `main` @ `b1495fa2`: bdm-004, bdm-005, AGN-001
+(`0046_agent_orgs`), AGN-002 (`0047_agent_org_staff`), bdm-018 (`0084_bdm_onboarding`). The backlog's "ang-001 … Not built" capability
+row predates AGN-001 and is stale.
+**Status:** A1–A10 are the **recommended answers**, used under the owner's standing direction for this session to proceed with
+recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). Migration `0098_bdm_agent_link` (after
+`0097_lead_message_email`), API contract §12AA, RBAC §2.33. Drafted as `DEC-SCOPE-100` / `0095_bdm_agent_link` / §12U / §2.27 and renumbered on merging `main` @ `89e1c4eb` (tel-013 took `DEC-SCOPE-100` / `0095_lead_messages` / §12U / §2.27; tel-018 101; bdm-012 102; bdm-016 103 / `0096_bdm_targets`; tel-025 holds 104; tel-021 105), then again on merging `main` @ `692ffa78` as `DEC-SCOPE-107` / `0098_bdm_agent_link` / §12AA / §2.33 (it had been `DEC-SCOPE-106` / `0097_bdm_agent_link` / §12Y / §2.31; tel-025 took 104 / §12Y / §2.31, tel-014 took `DEC-SCOPE-106` / `0097_lead_message_email` / §12Z / §2.32). Spec `docs/superpowers/specs/2026-10-07-bdm-019-agent-onboarding-handover-design.md`.
+
+| # | Question | Recommended answer (used) |
+|---|---|---|
+| A1 | How Overseas Admin resolves an agent request | Link an **existing** Agent Organization by its code (`agent_orgs.prefix`), or reject. Agencies are created by the existing paths (self-registration; admin-created agent, AGN-001 D11) and approved by AGN-001's Approve, which is unchanged. |
+| A2 | "A request needs Agreement Signed" | The stored manual stage is `agreement_signed` (bdm-005 M5 moves there on a Signed MoU); otherwise `422`. |
+| A3 | Live Agent stages | Per-step evidence: Agent Onboarding = linked; Master Login Created = an active Master member; Staff Logins Created = an active staff member; Active Agent = organization `active`. A pending request alone: Agent Onboarding current. |
+| A4 | Volume steps | Once linked, Students / Applications / Enrollments carry AGN-022 `org_counts` (the agency dashboard's definitions); done when > 0. |
+| A5 | Agent status | Linked organization suspended or rejected → Inactive; otherwise Onboarding until Active Agent → Active. No request → the stored-stage mapping. |
+| A6 | Commission once linked (bdm-003 P10) | **Not exposed** to any BDM route; the profile says "Not shown to BDMs (awaiting a decision)". Remains `NEEDS_CONFIRMATION` (bdm-022). |
+| A7 | What a BDM sees of the agency | Name, code, status, Master exists, active staff count, three aggregate counts. No member or student row (AC4, tested). |
+| A8 | Notices | In-app only: Overseas Admins "Agent onboarding requested" (→ `/overseas/admin/agents`); the BDM "Agent onboarded" / "Agent onboarding not approved". |
+| A9 | Linking a rejected / suspended agency | Allowed (the pipeline shows Inactive). An agency linked elsewhere `409 agent_org_linked` (1:1). |
+| A10 | Unlink; T-A6 (bdm-014) / M-15 (bdm-015) | Out of scope; follow-ups. |
+
+**Consequences:** migration `0098_bdm_agent_link` (`bdm_organizations.agent_org_id` unique, `bdm_onboarding_requests.agent_org_id`, the
+`kind` CHECK widened to `school, agent`, the completed CHECK accepting an agency, a new target CHECK); `services/bdm_onboarding.py` (agent
+rule, `agency_by_code`, `complete_agent`, kind-filtered queue); `POST /overseas-admin/bdm-onboarding-requests/{id}/link-agent`; the
+queue's `kind` filter (default `school`, so bdm-018 callers are unchanged); `bdm_pipeline.agency_snapshot` / live Agent stages / step
+`count`; web: the onboarding card for Agent organizations, the agent queue on `/overseas/admin/agents`, the pipeline count, the live staff
+count and commission note. Unchanged: AGN-001's approve / reject / suspend / reinstate, every `/overseas-admin/agent-orgs/*` and agency
+route, the stage-move rules. **Feature ID:** `bdm-019`. **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-019.
