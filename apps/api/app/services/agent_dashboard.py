@@ -3,6 +3,7 @@
 Every count is SQL over the existing scope helpers, so a Master counts the agency and a staff member only their assigned students
 (G4) with no new scope logic. Read-only: nothing here writes, locks or commits."""
 
+from collections.abc import Sequence
 from datetime import UTC, datetime
 
 from sqlalchemy import ColumnElement, Select, and_, case, distinct, func, or_, select
@@ -41,13 +42,13 @@ def _count(model, *where):
     return select(func.count()).select_from(model).where(*where).scalar_subquery()
 
 
-def _visa(apps: list[ColumnElement], *extra):
+def _visa(apps: Sequence[ColumnElement[bool]], *extra):
     """Distinct applications with a visa case -- a second case on one application is not a second visa application."""
     stmt = select(func.count(distinct(VisaCase.application_id))).join(OverseasApplication, OverseasApplication.id == VisaCase.application_id)
     return stmt.where(*apps, *extra).scalar_subquery()
 
 
-def funnel_columns(students: list[ColumnElement], apps: list[ColumnElement]) -> dict:
+def funnel_columns(students: Sequence[ColumnElement[bool]], apps: Sequence[ColumnElement[bool]]) -> dict:
     """The six student-to-enrollment KPIs as scalar subqueries over the given student and application scopes. Shared by this
     dashboard and bdm-022's agent performance (DEC-SCOPE-109 B3), so an agency's own figures and the BDM's cannot disagree."""
     return {
