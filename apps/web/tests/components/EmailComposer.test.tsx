@@ -5,7 +5,7 @@ import LeadMessages from "@/components/LeadMessages";
 import type { LeadMessage } from "@/lib/telecallerMessages";
 import { emailMessage, message } from "@/tests/helpers/messages";
 
-// tel-014 (DEC-SCOPE-102, spec §5): Send email from the lead's Messages -- the composer (template render, subject, body, send) and the
+// tel-014 (DEC-SCOPE-104, spec §5): Send email from the lead's Messages -- the composer (template render, subject, body, send) and the
 // email rows with their delivery status.
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const pageOf = (items: unknown[]) => ({ items, total: items.length, limit: 100, offset: 0 });

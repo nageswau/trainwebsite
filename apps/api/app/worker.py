@@ -117,6 +117,15 @@ def send_daily_reminders_task():
 
 
 @celery.task
+def send_bdm_reminders_task():
+    """bdm-012 (DEC-SCOPE-102 R2): every 5 minutes via beat. Idempotent per reminder (notifications.dedupe_key), so a rerun or an
+    overlapping run creates nothing new."""
+    from app.services.bdm_reminders import run_bdm_reminders
+
+    return _run_with_fresh_pool(run_bdm_reminders)
+
+
+@celery.task
 def sweep_lead_conversions_task():
     """tel-018 (DEC-SCOPE-101, T5): every 15 minutes via beat -- linked leads whose student has since enrolled become Converted."""
     from app.core.database import SessionLocal
@@ -131,7 +140,7 @@ def sweep_lead_conversions_task():
 
 @celery.task
 def deliver_lead_email_task(message_id: str):
-    """tel-014 (DEC-SCOPE-102 E4/E5): send one queued lead email; retries are re-enqueued by `deliver_lead_email` itself."""
+    """tel-014 (DEC-SCOPE-104 E4/E5): send one queued lead email; retries are re-enqueued by `deliver_lead_email` itself."""
     from app.notifications.lead_email import deliver_lead_email
 
     return _run_with_fresh_pool(lambda: deliver_lead_email(UUID(message_id)))
@@ -148,6 +157,7 @@ def sweep_stale_lead_emails_task():
 celery.conf.beat_schedule = {
     "enh014-sweep-stale-deliveries": {"task": "app.worker.sweep_stale_deliveries_task", "schedule": 300.0},
     "agn017-daily-reminders": {"task": "app.worker.send_daily_reminders_task", "schedule": crontab(hour=2, minute=30)},  # UTC = 08:00 IST
+    "bdm012-reminders": {"task": "app.worker.send_bdm_reminders_task", "schedule": 300.0},
     "tel018-conversion-sweep": {"task": "app.worker.sweep_lead_conversions_task", "schedule": 900.0},
     "tel014-sweep-stale-lead-emails": {"task": "app.worker.sweep_stale_lead_emails_task", "schedule": 300.0},
 }

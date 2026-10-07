@@ -1,6 +1,6 @@
-"""tel-014 -- migration 0096_lead_message_email (spec §2). The round trip runs in a throwaway database (the tel-013 pattern); a downgrade never
+"""tel-014 -- migration 0097_lead_message_email (spec §2). The round trip runs in a throwaway database (the tel-013 pattern); a downgrade never
 runs against the shared test database. 0001 builds a fresh database from the current models, so each test first downgrades to
-0095_lead_messages to reach the real pre-tel-014 shape."""
+0096_bdm_targets (bdm-016) to reach the real pre-tel-014 shape."""
 
 import importlib.util
 import uuid
@@ -14,15 +14,15 @@ from alembic import command
 from app.core.config import settings
 from tests.test_tel_013_migration import ROW, SEED, VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_tel_014_migration_0096", VERSIONS / "0096_lead_message_email.py")
+_spec = importlib.util.spec_from_file_location("_tel_014_migration_0097", VERSIONS / "0097_lead_message_email.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0095_lead_messages", "0096_lead_message_email"
+BASE, HEAD = "0096_bdm_targets", "0097_lead_message_email"
 COLUMN = "SELECT column_name FROM information_schema.columns WHERE table_name = 'lead_messages' AND column_name = 'attempt_count'"
 
 
-def test_migration_chains_after_0095_and_there_is_one_head():
+def test_migration_chains_after_0096_and_there_is_one_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     assert ScriptDirectory.from_config(_config()).get_heads() == [HEAD]
 
@@ -61,7 +61,7 @@ def _seed(url) -> dict:
     return {"lead": lead, "user": user, "channel": "email", "subject": "Brochure", "body": "Hello", "status": "queued"}
 
 
-def test_downgrade_to_0095_has_no_column(base_db):
+def test_downgrade_to_0096_has_no_column(base_db):
     assert _sql(base_db["url"], COLUMN) == []
 
 
@@ -87,4 +87,4 @@ def test_downgrade_drops_the_column_and_check(base_db):
     command.downgrade(cfg, BASE)
     assert _sql(url, COLUMN) == []
     row = _seed(url)
-    _sql(url, ROW, {"id": uuid.uuid4(), **row, "status": "delivered"})  # the 0095 shape has no email check
+    _sql(url, ROW, {"id": uuid.uuid4(), **row, "status": "delivered"})  # the 0096 shape has no email check

@@ -1041,7 +1041,7 @@ LEAD_MESSAGE_CHECKS = {
     "ck_lead_messages_body": "length(body) BETWEEN 1 AND 5000",
     "ck_lead_messages_whatsapp": "channel <> 'whatsapp' OR (subject IS NULL AND delivery_status IS NULL)",
 }
-# tel-014 (DEC-SCOPE-102 E5): an email row has a subject and a delivery status. Migration 0096 repeats it (test_tel_014_migration).
+# tel-014 (DEC-SCOPE-104 E5): an email row has a subject and a delivery status. Migration 0097 repeats it (test_tel_014_migration).
 LEAD_EMAIL_STATUSES = ("queued", "sending", "retrying", "sent", "failed")
 LEAD_MESSAGE_EMAIL_CHECK = {
     "ck_lead_messages_email": f"channel <> 'email' OR (subject IS NOT NULL AND delivery_status IS NOT NULL AND delivery_status IN ({', '.join(repr(s) for s in LEAD_EMAIL_STATUSES)}))",
@@ -1050,7 +1050,7 @@ LEAD_MESSAGE_EMAIL_CHECK = {
 
 class LeadMessage(Base, TimestampMixin):
     """tel-013 (DEC-SCOPE-100): a message sent to a lead -- WhatsApp via wa.me (T8; the row is the telecaller's confirmation, WA1 keeps the
-    full text) and, from tel-014, email (subject + delivery status; `attempt_count` counts SMTP attempts, DEC-SCOPE-102 E5). It belongs to
+    full text) and, from tel-014, email (subject + delivery status; `attempt_count` counts SMTP attempts, DEC-SCOPE-104 E5). It belongs to
     the lead, so its scope is the lead's. `template_name` is the template's name when sent (D6), so a rename never rewrites history."""
 
     __tablename__ = "lead_messages"
@@ -2104,6 +2104,32 @@ class BdmDailyReport(Base, TimestampMixin):
     manager_comment: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     manager_comment_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     manager_commented_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+BDM_TARGET_MAX = 100_000  # R4: the tel-022 bound
+BDM_TARGET_CHECKS = {  # migration 0096 repeats these strings; test_bdm_016_migration asserts they stay identical
+    "ck_bdm_targets_month_start": "EXTRACT(DAY FROM month) = 1",
+    "ck_bdm_targets_target_range": f"target >= 0 AND target <= {BDM_TARGET_MAX}",
+}
+
+
+class BdmTarget(Base, TimestampMixin):
+    """bdm-016 (DEC-SCOPE-103): a manager-set monthly target for one KPI of one BDM. `month` is the month's first day; `kpi_key` is a key
+    of the BDM type's catalogue (`services/bdm_metrics.TARGET_KPIS`, checked in the service). Achieved is never stored: it is computed
+    live from the month's records (`bdm_metrics.monthly_counts`). Clearing a target deletes the row."""
+
+    __tablename__ = "bdm_targets"
+    __table_args__ = (
+        UniqueConstraint("bdm_user_id", "month", "kpi_key", name="uq_bdm_targets_bdm_month_kpi"),
+        *(CheckConstraint(sql, name=name) for name, sql in BDM_TARGET_CHECKS.items()),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    bdm_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    month: Mapped[date] = mapped_column(Date)
+    kpi_key: Mapped[str] = mapped_column(String(40))
+    target: Mapped[int] = mapped_column(Integer)
+    set_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    set_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class LiveSession(Base, TimestampMixin):

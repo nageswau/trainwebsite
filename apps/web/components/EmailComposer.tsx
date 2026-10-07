@@ -5,7 +5,7 @@ import { sendJson } from "@/lib/apiErrors";
 import type { Template } from "@/lib/telecallerContent";
 import { EMAIL_BODY_MAX, SUBJECT_MAX, activeTemplates, createMessageUrl, isRenderedTemplate, renderUrl } from "@/lib/telecallerMessages";
 
-/** tel-014 (DEC-SCOPE-102, spec §5; EM4, E8): pick an email template (subject and body rendered with the lead's values) or write a custom
+/** tel-014 (DEC-SCOPE-104, spec §5; EM4, E8): pick an email template (subject and body rendered with the lead's values) or write a custom
  *  email, edit both, and send. The API queues it and the worker delivers it to the lead's address; a refusal keeps what was typed. */
 export default function EmailComposer({ leadId, onSent, onCancel }: { leadId: string; onSent: () => void; onCancel: () => void }) {
   const [templates, setTemplates] = useState<Template[] | "failed" | null>(null);

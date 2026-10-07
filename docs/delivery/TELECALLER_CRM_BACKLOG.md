@@ -658,8 +658,9 @@ from tel-008. The rendered text is plain, so this item URL-encodes it for wa.me.
 
 ### tel-014 — Email to lead + send log
 
-**Status (2026-10-07):** **built** on `feature/tel-014`: `DEC-SCOPE-102` (EM1–EM4 plus defaults E1–E10), migration
-`0096_lead_message_email`, API §12W, RBAC §2.29. Q-16 is answered by EM1. The cap is 429 at 100 emails a day. Email rows are never deleted.
+**Status (2026-10-07):** **built** on `feature/tel-014`: `DEC-SCOPE-104` (EM1–EM4 plus defaults E1–E10), migration
+`0097_lead_message_email` (after bdm-016's `0096_bdm_targets`), API §12X, RBAC §2.30. Drafted as `0096` / `DEC-SCOPE-102`, then renumbered
+after bdm-012 and bdm-016. Q-16 is answered by EM1. The cap is 429 at 100 emails a day. Email rows are never deleted.
 Spec `docs/superpowers/specs/2026-10-07-tel-014-email-design.md`. QA report `docs/quality/TEL-014_EXPLORATORY_QA_2026-10-07.md`. Consent
 and retention remain open (`PRD_OPEN_ITEMS.md` row 85).
 
@@ -812,7 +813,7 @@ division-change edge case does not apply: `User.division` cannot change after cr
 
 ### tel-018 — Handover to counselor, return, student link, computed conversion
 
-**Status (2026-10-07):** **built** on `feature/tel-018` (`DEC-SCOPE-101` HO1–HO4 + HO5–HO9, no migration, API §12V, RBAC §2.28). Spec
+**Status (2026-10-07):** **merged** to `main` as PR #114 @ `f37ebea8` (`DEC-SCOPE-101` HO1–HO4 + HO5–HO9, no migration, API §12V, RBAC §2.28). Spec
 `docs/superpowers/specs/2026-10-07-tel-018-handover-design.md`. The alerts (counselor alerted, "Lead Returned") stay with tel-020.
 
 - **Business requirement:** §10, §13 (Counselor Assigned → Application/Enrollment → Converted), T4, T5, T19, T20, T29.
@@ -1197,7 +1198,9 @@ that as `0090_lead_follow_ups` / `DEC-SCOPE-094` / §12P. tel-016 (PR #103 @ `92
 `DEC-SCOPE-096` / §12R / RBAC §2.24. bdm-014 (PR #108) took `DEC-SCOPE-097` (no migration), and tel-019 (PR #109 @ `f8f599ee`)
 `0093_bdm_meeting_requests` / `DEC-SCOPE-098` / §12S / RBAC §2.25, then bdm-015 (PR #111 @ `b1495fa2`) `0094_bdm_daily_reports` /
 `DEC-SCOPE-099` / §12T / RBAC §2.26, and tel-013 (PR #112 @ `a0b5ee31`) `0095_lead_messages` / `DEC-SCOPE-100` / §12U / RBAC §2.27.
-`main` is at `0095`; the next telecaller item chains after it with `0096` / `DEC-SCOPE-101` / §12V / RBAC §2.28. Each item takes the
+tel-018 (PR #114 @ `f37ebea8`, no migration) then took `DEC-SCOPE-101` / §12V / RBAC §2.28. bdm-012 (`DEC-SCOPE-102`) and bdm-016
+(`0096_bdm_targets` / `DEC-SCOPE-103` / §12W / RBAC §2.29) followed. tel-014 takes `0097_lead_message_email` / `DEC-SCOPE-104` / §12X /
+RBAC §2.30, so the next telecaller item chains after it with `0098` / `DEC-SCOPE-105` / §12Y / RBAC §2.31. Each item takes the
 next free head when it merges, following the existing re-chain notes idiom.
 
 | Item | Migration content |
@@ -1215,7 +1218,7 @@ next free head when it merges, following the existing re-chain notes idiom.
 | tel-012 | `tel_scripts`, `tel_message_templates`, `tel_assets` (+ seeds) |
 | tel-013 | `lead_messages` (`0095`, merged PR #112 @ `a0b5ee31`) |
 | tel-016 | `appointments` + lead_id, appointment_code, duration_minutes, purpose, meeting_link, location, remarks, booked_by; CHECK student-or-lead; `appointment_events`; `appointment_code_seq` (`0091`, merged PR #103 @ `92946a8a`) |
-| tel-018 | possibly `enquiries.handed_over_at` (decided in-item) |
+| tel-018 | none (HO5: derived from stage history; merged PR #114 @ `f37ebea8`) |
 | tel-019 | `bdm_meeting_requests` + `bdm_meeting_request_code_seq` (`0093`, merged PR #109 @ `f8f599ee`) |
 | tel-020 | `tel_alert_log`, `tel_settings` |
 | tel-022 | `tel_targets` |

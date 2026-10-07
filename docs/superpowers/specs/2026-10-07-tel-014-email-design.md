@@ -2,8 +2,13 @@
 
 - **Backlog:** `docs/delivery/TELECALLER_CRM_BACKLOG.md` § tel-014 (EVID-019 §12, L454–L472; T9). Dependencies tel-008 (PR #85), tel-012
   (PR #83) and tel-013 (PR #112) are merged. It writes to tel-013's `lead_messages`.
-- **Decision:** `DEC-SCOPE-102` (EM1–EM4 owner answers 2026-10-07; E1–E10 defaults). Migration `0096_lead_message_email`, API contract
-  §12W, RBAC §2.29. tel-018 merged first with `DEC-SCOPE-101` / §12V / 2.28 and no migration.
+- **Decision:** `DEC-SCOPE-104` (EM1–EM4 owner answers 2026-10-07; E1–E10 defaults). Migration `0097_lead_message_email`, API contract
+  §12X, RBAC §2.30. The item was drafted as `0096` / `DEC-SCOPE-102` / §12W / 2.29. Three items merged first:
+  - tel-018: `DEC-SCOPE-101` / §12V / 2.28, no migration.
+  - bdm-012: `DEC-SCOPE-102`.
+  - bdm-016: `0096_bdm_targets` / `DEC-SCOPE-103` / §12W / 2.29.
+
+  So the item is renumbered to `0097` after `0096_bdm_targets`.
 
 ## 1. Decisions
 
@@ -24,17 +29,17 @@
 | E9 | Pipeline | No stage effect (D7). tel-015 shows the rows on the timeline; tel-021 counts them |
 | E10 | Logs / audit | Logs and audit carry ids, the channel, the status and the error type, never an address, subject or body (WA1) |
 
-## 2. Data — migration `0096_lead_message_email`
+## 2. Data — migration `0097_lead_message_email`
 
 - `lead_messages.attempt_count` int NOT NULL, default 0.
 - Check `ck_lead_messages_email`:
   `channel <> 'email' OR (subject IS NOT NULL AND delivery_status IS NOT NULL AND delivery_status IN ('queued', 'sending', 'retrying', 'sent', 'failed'))`.
 - Guarded like 0095: 0001 builds a fresh database from the current models, so the upgrade skips when the column already exists.
 - Existing rows are WhatsApp, so the default 0 is correct and the new check holds.
-- `models.LEAD_MESSAGE_CHECKS` stays the 0095 set. The new check is `LEAD_MESSAGE_EMAIL_CHECK`, repeated by 0096, and a test asserts the two
+- `models.LEAD_MESSAGE_CHECKS` stays the 0095 set. The new check is `LEAD_MESSAGE_EMAIL_CHECK`, repeated by 0097, and a test asserts the two
   are identical.
 
-## 3. API (§12W)
+## 3. API (§12X)
 
 | Route | Change |
 |---|---|
@@ -107,9 +112,9 @@
 
 ## 8. Implementation plan
 
-1. Migration 0096, the model column and check, and the migration test.
+1. Migration 0097, the model column and check, and the migration test.
 2. Schemas union and the service email branch, with the API tests (RED → GREEN).
 3. Mailer builder, `lead_email.py` worker, dispatch, worker task and beat, with the worker tests.
 4. Web lib, `EmailComposer`, `LeadMessages`, `LeadDetailPanel`, with the vitest tests.
 5. Playwright spec; QA in a `tel014` stack with Mailpit.
-6. Docs: DEC-SCOPE-102, API §12W, RBAC §2.29, backlog status, QA report.
+6. Docs: DEC-SCOPE-104, API §12X, RBAC §2.30, backlog status, QA report.

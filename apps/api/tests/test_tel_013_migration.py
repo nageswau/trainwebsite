@@ -50,14 +50,15 @@ def _sql(url: str, sql: str, params: dict | None = None, *, autocommit: bool = F
 def test_migration_chains_after_0094_and_there_is_one_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     script = ScriptDirectory.from_config(_config())
-    assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}  # tel-014 0096 follows
+    # bdm-016's 0096_bdm_targets chains after this one, so it is in the chain under a single head (the bdm-015 test's form).
+    assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
 
 
 def test_model_matches_the_migration():
     from app.models import LEAD_MESSAGE_CHECKS, LeadMessage
 
     table = LeadMessage.__table__
-    assert {c.name for c in table.columns} == COLUMNS | {"attempt_count"}  # tel-014 0096 adds attempt_count and ck_lead_messages_email
+    assert {c.name for c in table.columns} == COLUMNS | {"attempt_count"}  # tel-014 0097 adds attempt_count and ck_lead_messages_email
     assert {c.name for c in table.columns if c.nullable} == {"template_id", "template_name", "subject", "delivery_status"}
     assert {fk.parent.name: fk.column.table.name for fk in table.foreign_keys} == {
         "lead_id": "enquiries", "sender_user_id": "users", "template_id": "tel_message_templates"}

@@ -153,7 +153,7 @@ export default function BdmOrganizationMou({ orgId, initial, onNotice, onPipelin
   }
 
   return (
-    <section className="action-card wide" aria-label="MoU">
+    <section id="org-mou" className="action-card wide" aria-label="MoU">
       <h3>MoU</h3>
       {readOnlyNote && <p className="muted">{readOnlyNote}</p>}
       {failure && <p className="form-error" role="alert">{failure}</p>}

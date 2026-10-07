@@ -741,7 +741,19 @@ appointment.
 | `it_admin` / `overseas_admin` | link / unlink (a converted lead too) by the same rules | own division (`403` otherwise) | `tel-018` |
 | every other role | `403` on the counselor routes and the handover | — | `tel-018` |
 
-### 2.29 Lead email *(net-new, added 2026-10-07 — `DEC-SCOPE-102`, `tel-014`)*
+### 2.29 BDM monthly targets *(net-new, added 2026-10-07 — `DEC-SCOPE-103`, `bdm-016`)*
+
+`bdm_context` gates the BDM route (own sheet only); `require_manager` + `team_filter` gate the manager routes (a BDM outside the team is
+`404`).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `bdm` | read own monthly targets, achieved and % (My Day card) | own | `bdm-016` |
+| `bdm_manager` | team list; read a team BDM's sheet; **set / clear** targets; **copy** last month — current month and up to 12 ahead | active BDMs reporting to them | `bdm-016` |
+| `super_admin` | as a manager, and **past months** too | all BDMs | `bdm-016` |
+| every other role | none → `403` | — | `bdm-016` |
+
+### 2.30 Lead email *(net-new, added 2026-10-07 — `DEC-SCOPE-104`, `tel-014`)*
 
 §2.27's gate, on the same routes (`lead_pipeline.scope`, the lead lock, the role and `telecaller_leads.require_writable`). The recipient is
 always the lead's own address, never one from the request.
