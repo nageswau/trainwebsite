@@ -4709,3 +4709,32 @@ alert list); `services/bdm_metrics._owned` lets the M-06 / M-11 builders take a 
 schemas `BdmManagerDashboardOut` and parts; web `lib/bdmManagerDashboard.ts`, `components/BdmManagerDashboard.tsx`, the
 `/bdm/manager/dashboard` page (team summary kept; super_admin manager picker) and its `loading.tsx`; "BDM Dashboard" in
 `SUPER_ADMIN_NAV`. **Feature ID:** `bdm-023`. **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-023.
+
+### DEC-SCOPE-109 — Telecaller management reports + CSV export (`tel-024`)
+
+**Evidence:**
+- `EVID-019` §21 (L652–L686: five reports, the Instagram Cyber Security funnel, the Ad → Lead → Telecaller → Counselor → Enrollment chain) and §22 (L712: telecallers may not view management reports).
+- `DEC-SCOPE-073` T24 (report visibility), Appendix B R1–R5 of the Telecaller backlog.
+- `DEC-SCOPE-105` DB2 (conversion credit) and `services/telecaller_metrics.py` (the single source of counts).
+- Backlog open question Q-20 (masking in exports).
+- Owner answers in-session 2026-10-07.
+
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option)
+for RP1–RP4; R1–R6 are recorded defaults. Built on `feature/tel-024`; no migration; API contract §12AC, RBAC §2.35. Spec
+`docs/superpowers/specs/2026-10-07-tel-024-management-reports-design.md`. Drafted as `DEC-SCOPE-108` / §12AB / 2.34; bdm-019 (`0098_bdm_agent_link` / `DEC-SCOPE-107` / §12AA / 2.33) and bdm-023
+(`DEC-SCOPE-108` / §12AB / 2.34) merged first, so it is renumbered.
+
+| # | Question | Answer |
+|---|---|---|
+| RP1 | R3 Telecaller report basis | **Activity in the range** (Appendix B P2–P6): calls, connected, qualified (explicit moves), appointments and conversions (DB2) logged in the range — the tel-021 daily activity summed |
+| RP2 | When a lead is Enrolled | **Still converted now** (DB2); the earlier funnel columns use the stage ever reached, so every funnel is monotonic |
+| RP3 | R1 source / R2 course columns | **Leads + Connected, Qualified, Counselling, Enrolled**, the same cohort query as the campaign report |
+| RP4 | R4 counselor handover basis | Leads created in the range **currently with a counselor**, grouped by the lead's telecaller × that counselor; a returned lead drops out |
+
+Recorded defaults:
+- **R1** Cohort = leads created in the range (IST days); default range the 1st of this month → today; at most 366 days.
+- **R2** Scope = the caller's Leads list (manager `/telecaller/leads`, division admin `/admin/leads`); filters only narrow.
+- **R3** Q-20 does not arise: reports are aggregates, so no lead PII is ever shown or exported. Formula-looking names are neutralised in CSV.
+- **R4** Exports are audited (`telecaller_report.export`, filter names and row count); reads are not. No export throttle (aggregate, bounded).
+- **R5** Leads without a product / campaign show as "No product" / "No campaign"; a handed-over lead without a telecaller as "Unassigned".
+- **R6** No index or rollup added: queries are grouped and bounded; revisit only if measured slow.
