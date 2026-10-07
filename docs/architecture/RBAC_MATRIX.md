@@ -543,6 +543,9 @@ An appointment stays with its BDM when the organization is reassigned. `bdm_user
 `bdm_manager`: one BDM who reports to them (`bdm_user_id` required; anyone else `404`). `super_admin`: any BDM (`404` if not a BDM).
 Every other role `403`. No write path.
 
+**BDM My Day (`bdm-014`, `DEC-SCOPE-096`).** Read-only `GET /bdm/my-day`. `bdm`: own records only, from the session (no id parameter).
+Every other role `403` (the page sends a `bdm_manager` to `/bdm/manager/dashboard`). No write path.
+
 ### 2.14 Telecaller CRM *(net-new, added 2026-10-05 — `DEC-SCOPE-073`, `tel-001`)*
 Authorization follows the inline pattern (`User.role` check → `services/telecaller.py` scope helper → write); no `require_*` dependency. Permission bundles: `telecaller` → `telecaller:self`, `telecaller_manager` → `telecaller:team` (coarse; scope is enforced in the query layer).
 

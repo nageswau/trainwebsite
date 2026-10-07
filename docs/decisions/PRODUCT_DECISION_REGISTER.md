@@ -4294,3 +4294,29 @@ counselor's, a manager's request) is `404` — the backlog's "403" for another c
 `LeadAppointmentCard`, `CounselorAppointmentsPanel`. **New Feature ID authorized:** `tel-016`. **Status:** see `TELECALLER_CRM_BACKLOG.md`
 §4 tel-016.
 
+### DEC-SCOPE-096 — My Day + type-specific BDM dashboard (`bdm-014`)
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md` §15 My Day L476–L506; Agent §A L528–L546, School §A L793–L811, College §A L1032–L1050;
+`DERIVED_BLUEPRINT`) → `BDM_CRM_BACKLOG.md` §bdm-014 (AC1–AC4) and Appendix B.2 (T-C01…T-C03, T-A1…T-A8, T-S1…T-S8, T-K1…T-K8);
+`DEC-SCOPE-055` D30 (School activities), D21 (written definitions); bdm-001 B2 (My Day shell).
+**Status:** K1–K12 are **agent-recommended defaults** (the owner asked the session to proceed on recommended answers); owner confirmation
+pending. No migration. API contract §12B (`GET /bdm/my-day`), RBAC (BDM My Day paragraph). Spec
+`docs/superpowers/specs/2026-10-07-bdm-014-my-day-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| K1 | Endpoint and roles | `GET /bdm/my-day`, `bdm` only (`bdm_context`); other roles `403` "BDM role required"; no profile `403`. No `bdm_user_id` (managers have bdm-023) |
+| K2 | Where tile labels live | In the response (`key` = the Appendix B.2 ID, `label`, `tracked`, `value`, `note`), so page and definition can't drift |
+| K3 | "Agent / school / college organizations" | The literal `org_type`; a `university` is not a college organization for T-K1 |
+| K4 | Seminar types | T-S8 and T-K5 also count the common `seminar_workshop` (bdm-013 K5 does too) |
+| K5 | T-A6 Agents awaiting onboarding | **Not tracked** — onboarding requests are School-only (`kind IN ('school')`); agent onboarding is bdm-019 |
+| K6 | T-K7 MoU follow-ups | **Not tracked** — no feature creates `source = 'mou'` follow-ups yet; T-C03 still shows an MoU group when one exists |
+| K7 | Archived organizations | Left out of the MoU-state tiles (T-A5, T-S6, T-S7); appointment, task and activity tiles count the BDM's records as defined |
+| K8 | List sizes | Today's appointments up to 50 (`truncated`), exact count; upcoming trips the next 5 with an exact `total` |
+| K9 | "Today" | The database clock in IST (as bdm-008 / bdm-013) |
+| K10 | A manager opening `/bdm/my-day` | Redirected to `/bdm/manager/dashboard`; any other refused role keeps the "Access unavailable" card |
+| K11 | bdm-001's profile card | Replaced by one line (Employee ID · territory · View profile); the card stays on `/bdm/profile` |
+| K12 | Query count | Fixed (AC4): the gate, the clock, one SELECT of scalar subqueries, today's appointments, upcoming trips (correlated counts), follow-up groups |
+
+**Consequences:** route `app/api/bdm_my_day.py`; schemas `BdmMyDay*`; page `app/bdm/my-day` (+ `loading.tsx`); component `BdmMyDay`;
+helpers `lib/bdmMyDay.ts`. **New Feature ID authorized:** none (bdm-014 is in the backlog). **Status:** see `BDM_CRM_BACKLOG.md` §bdm-014.
