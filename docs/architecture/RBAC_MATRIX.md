@@ -627,6 +627,19 @@ Inline pattern: role (`require_manager`), then scope (tel-004 `lead_pipeline.sco
 | every other role (incl. `it_admin`, `overseas_admin`, `counselor`) | none → `403` (admins keep `/admin/leads`) | — | `tel-007` |
 | system (website / BDM intake) | distributes a new lead: product rule → city rule → round robin among the team's active telecallers → unassigned | the lead's division | `tel-007` |
 
+### 2.21 Lead qualification *(net-new, added 2026-10-06 — `DEC-SCOPE-093`, `tel-009`)*
+
+The same inline pattern as §2.19 (`lead_pipeline.scope`, then `telecaller_leads.require_writable` on the PUT). The lead row is locked
+`FOR UPDATE` within scope. A field that does not apply to the lead's product group is `422`.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | read / replace the lead's qualification | own leads; **read-only** once handed over (PUT `403`) | `tel-009` |
+| `telecaller_manager` | the same, including on handed-over leads | §2.19's | `tel-009` |
+| `super_admin` | the same as a manager | all leads | `tel-009` |
+| `counselor` | none yet → `403`; the read after handover is tel-018's (QF3) | — | `tel-009` |
+| every other role | none → `403` | — | `tel-009` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
