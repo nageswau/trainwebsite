@@ -1380,9 +1380,46 @@ staff_count, counts: {students, applications, enrollments}} | null` (`null` for 
 |---|---|
 | `GET /bdm/manager/dashboard?manager_user_id=` | `bdm_manager` (own team) / `super_admin` (all teams), else `403` "BDM manager role required". `manager_user_id` (UUID, malformed `422`) is super_admin only: a manager sending it `422` "Only a super admin can choose a manager"; not a `bdm_manager` user `404` "Manager not found". `200 {today, month, manager: {id, full_name} \| null, tiles: [{key T-M01…T-M08, label, definition, value}], alerts: [{key AL-1…AL-7, label, tone: danger\|warning\|success, record: appointment\|trip\|task\|mou\|daily_report, count, items (first 10): [{id, title, bdm: {id, full_name}, at, organization_id}]}]}`. Rules: Appendix B.4 as tightened by the spec §4. Constant statement count |
 
-## 12AC. Telecaller performance comparison (`tel-023`) — addendum, 2026-10-07
+## 12AC. Telecaller management reports (`tel-024`) — addendum, 2026-10-07
 
-`DEC-SCOPE-109`; design spec `docs/superpowers/specs/2026-10-07-tel-023-performance-design.md` §3. No migration. Signed out `401`.
+`DEC-SCOPE-109`; design spec `docs/superpowers/specs/2026-10-07-tel-024-management-reports-design.md` §3. No migration. Read-only; signed
+out `401`. `{kind}` is `source` | `product` | `telecaller` | `handover` | `campaign`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/reports/{kind}` | Query strings, all optional: `date_from`, `date_to` (ISO; default the 1st of the current IST month → today), `team` (`it`/`overseas`), `product_id`, `campaign_id`, `source` (the last three ignored by `telecaller`). In order: `403` "Telecaller reports are for managers and administrators" (any role but `telecaller_manager`, `it_admin`, `overseas_admin`, `super_admin`); `404` "Report not found"; `422` a sentence naming the form field (bad date, `'From' must be on or before 'To'`, a span over 366 days, unknown team/source, malformed id). `200` `{kind, title, date_from, date_to, columns: [{key, label}], items, totals, options: {teams, sources, products, campaigns}}`, `Cache-Control: private, no-store`. Not audited |
+| `GET /telecaller/reports/{kind}.csv` | Same checks and query. `200` `text/csv` (UTF-8 BOM, the on-screen labels as header, Total row last, formula-looking cells prefixed `'`), `attachment; filename="telecaller-{kind}-{from}-to-{to}.csv"`; audit `telecaller_report.export {filters: [names set], rows}` committed before the file |
+
+Cohort reports (`source`, `product`, `campaign`, `handover`) count leads created in the range within the caller's Leads-list scope; a lead
+counts in every column up to the furthest stage it has reached; Enrolled = still `converted`. `handover` counts leads currently with a
+counselor, per telecaller × counselor. `telecaller` counts the activity logged in the range (tel-021 flow counts). Aggregates only: no
+lead name, mobile or email appears in a response or an export.
+
+## 12AD. Agent performance drill-down (`bdm-022`) — addendum, 2026-10-07
+
+`DEC-SCOPE-110`; design spec `docs/superpowers/specs/2026-10-07-bdm-022-agent-performance-design.md` §2. No migration. Read-only (an
+ids-only info log, no audit row). Signed out `401`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /bdm/organizations/{id}/agent-performance` | `bdm` / `bdm_manager` / `super_admin` through `load_scoped`, else `403` "BDM role required"; out of scope or unknown `404`; malformed id `422`; not an Agent organization `404` "Agent performance is only for Agent organizations". Unlinked `200 {organization_id, linked: false, agency: null, steps: [], applications_by_stage: [], visa_applications: null, as_of}`. Linked `200 {organization_id, linked: true, agency: {name, prefix, status}, steps: [{key students\|applications\|offers\|visa\|enrolled\|revenue, label, definition, tracked, count \| null}], applications_by_stage: [{key, label, count}], visa_applications, as_of}`. Revenue `tracked: false`, `count: null`. Aggregates only. Constant statement count |
+
+## 12AE. Telecaller alert settings (`tel-020`) — addendum, 2026-10-07
+
+`DEC-SCOPE-111`; design spec `docs/superpowers/specs/2026-10-07-tel-020-alerts-design.md` §4. Migration `0099_tel_settings`. Signed out `401`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/settings` | `telecaller_manager` / `super_admin`; every other role `403`. `200` `{items: [{team, team_label, not_contacted_hours, hot_pending_hours, updated_at, updated_by: {id, full_name} \| null}]}`, both teams in order `it`, `overseas` |
+| `PUT /telecaller/settings/{team}` | Same roles. Unknown team `404` "Team not found". Body `{not_contacted_hours, hot_pending_hours}`: whole numbers 1–168 (strings and fractions refused), both required, extra fields `422` with a readable sentence. `200` the item (an idempotent replace); audit `tel.settings.update {from, to}` (entity = the team). The beat uses the new values from its next run |
+
+Alerts themselves (no new endpoint): rows in `notifications` read through the existing `GET /workflows/notifications` and
+`/workflows/notifications/unread-count`; each also queues one email delivery (`context.kind = "tel_alert"`, SMTP only). The beat job
+`tel020-alerts` runs every 15 minutes.
+
+## 12AF. Telecaller performance comparison (`tel-023`) — addendum, 2026-10-07
+
+`DEC-SCOPE-112`; design spec `docs/superpowers/specs/2026-10-07-tel-023-performance-design.md` §3. No migration. Signed out `401`.
 Query (all optional): `date_from`, `date_to` (ISO; default the 1st of `date_to`'s month → today, IST), `team` (`it`/`overseas`), `sort`
 (`name`/`leads`/`calls`/`connected`/`qualified`/`appointments`/`conversions`, default `calls`), `dir` (`asc`/`desc`, default `desc`; ties by name).
 Malformed values `422` (FastAPI list); then the role (`403` "Telecaller performance is for managers and administrators"; a division admin's

@@ -884,6 +884,11 @@ the type, or the type's pool; first accept wins); a decline is final (MR2); no w
 
 ### tel-020 — Alerts & notifications
 
+**Status (2026-10-07):** built on `feature/tel-020` (`DEC-SCOPE-111` AL1–AL13, migration `0099_tel_settings`, API §12AE, RBAC §2.37; drafted as 0098 / 107 / §12AA / 2.33, renumbered after bdm-019, bdm-023, tel-024 and bdm-022).
+Spec `docs/superpowers/specs/2026-10-07-tel-020-alerts-design.md`. Q-14 → AL1 (24 h / 4 h), AL2 (per alert, in-app + email), AL3 (no
+quiet hours); AL4 timing (Missed 1 h after due; Appointment Tomorrow from 18:00 IST). The `tel_alert_log` below is replaced by
+`notifications.dedupe_key` (AL6). tel-021's DB1 now uses the team threshold (AL12).
+
 - **Business requirement:** §20 (9 kinds), T14.
 - **Existing behavior:** `Notification` + deliveries outbox; the beat runs the AGN-017 daily job.
 - **Expected behavior:**
@@ -985,7 +990,7 @@ the type, or the type's pool; first accept wins); a decline is final (MR2); no w
 
 ### tel-023 — Manager performance comparison
 
-**Status (2026-10-07):** built on `feature/tel-023` (`DEC-SCOPE-109`, API §12AC, RBAC §2.35, no migration); owner answers PF1–PF4
+**Status (2026-10-07):** built on `feature/tel-023` (`DEC-SCOPE-112`, API §12AF, RBAC §2.38, no migration); owner answers PF1–PF4
 (Q-19 answered by PF3). The API takes `date_from` / `date_to` (as tel-024), not `from` / `to`. Spec
 `docs/superpowers/specs/2026-10-07-tel-023-performance-design.md`.
 
@@ -1015,6 +1020,10 @@ the type, or the type's pool; first accept wins); a decline is final (MR2); no w
 - **Complexity:** medium · **Risk:** medium
 
 ### tel-024 — Management reports (5) + CSV export
+
+**Status (2026-10-07):** **merged** to `main` as PR #126 @ `6d85b4d7` (`DEC-SCOPE-109` RP1–RP4 + R1–R6; no migration; API §12AC; RBAC §2.35).
+Spec `docs/superpowers/specs/2026-10-07-tel-024-management-reports-design.md`; QA report `docs/quality/TEL-024_EXPLORATORY_QA_2026-10-07.md`.
+Q-20 does not arise (aggregates only).
 
 - **Business requirement:** §21 (Lead Source, Course, Telecaller, Counselor Handover, Campaign); the Ad → Lead → Telecaller → Counselor → Enrollment chain.
 - **Existing behavior:** `admin /reports/summary` counts leads per division only.

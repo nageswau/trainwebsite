@@ -1,10 +1,10 @@
 # tel-023 — Manager performance comparison — design
 
 - **Backlog:** `docs/delivery/TELECALLER_CRM_BACKLOG.md` tel-023 (EVID-019 §16; T23, T24; Appendix B P1–P6). Depends on tel-021 (merged, PR #118).
-- **Decision:** `DEC-SCOPE-109` (PF1–PF4, owner answers 2026-10-07, all recommended). API §12AC, RBAC §2.35. **No migration.**
-- Numbering: main has bdm-019 (0098 / 107 / §12AA / 2.33) and bdm-023 (108 / §12AB / 2.34); tel-020 and tel-024 (in flight, drafted as 107 / 108) renumber after tel-023.
+- **Decision:** `DEC-SCOPE-112` (PF1–PF4, owner answers 2026-10-07, all recommended). API §12AF, RBAC §2.38. **No migration.**
+- Numbering: main has bdm-019 (0098 / 107 / §12AA / 2.33) and bdm-023 (108 / §12AB / 2.34); tel-024 (109 / §12AC / 2.35), bdm-022 (110 / §12AD / 2.36) and tel-020 (0099 / 111 / §12AE / 2.37) merged before tel-023, so tel-023 is 112 / §12AF / 2.38.
 
-## 1. Owner answers (DEC-SCOPE-109)
+## 1. Owner answers (DEC-SCOPE-112)
 
 | # | Question | Answer |
 |---|---|---|
@@ -28,10 +28,9 @@ P2–P6 are `telecaller_metrics.flow_counts` over the whole range (one instant r
 flow counts are additive over half-open IST-day ranges, each equals the sum of the tel-021 daily figures (AC1). P1 is a new
 `telecaller_metrics.leads_received(db, user_id, start, end)`, the B1 expression without B1's "still mine now" condition; `tiles()` reuses it.
 
-`flow_counts` is called once per telecaller (no grouped variant): tel-024, in flight, adds `flow_counts_by_user` to the same module, so
-tel-023 leaves that code untouched to avoid a conflict. Follow-up once tel-024 merges: switch to the grouped call.
+P2–P6 come from tel-024's grouped `flow_counts_by_user` (one query per count for the whole scope); P1 stays one `leads_received` per row.
 
-## 3. API (§12AC)
+## 3. API (§12AF)
 
 `GET /api/v1/telecaller/manager/performance` and `GET /api/v1/telecaller/manager/performance.csv` (`.csv` registered first), in the
 existing `telecaller_dashboard` router.
@@ -56,7 +55,7 @@ Reads are not audited. The CSV reuses `agent_reports.to_csv` (BOM, on-screen lab
 writes one `AuditLog` `telecaller_performance.export` (entity `telecaller_performance` / `performance`; metadata: filters, sort, rows)
 committed before the file is returned. Filename `telecaller-performance-{from}-to-{to}.csv`.
 
-## 4. Scope (T23, T24, RBAC §2.35)
+## 4. Scope (T23, T24, RBAC §2.38)
 
 | Role | Telecallers listed |
 |---|---|
@@ -88,7 +87,6 @@ committed before the file is returned. Filename `telecaller-performance-{from}-t
 
 ## 7. Risks
 
-- Per-telecaller loop: ~8 queries per row. A manager's direct reports are tens at most; super_admin "all" is bounded by staff size. Switch to
-  tel-024's grouped counts after it merges.
+- P1 is one query per row; a manager's direct reports are tens at most; super_admin "all" is bounded by staff size.
 - `tiles()` now calls `leads_received` — guarded by the tel-021 metrics tests.
-- `navigation.ts` will conflict textually with tel-024's nav entries; resolve at merge.
+- `navigation.ts`: Performance sits between Targets and tel-024's Reports (resolved at merge).

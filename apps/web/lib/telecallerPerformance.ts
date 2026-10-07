@@ -1,4 +1,4 @@
-// tel-023 (DEC-SCOPE-109, API §12AC): the manager performance comparison -- types, the columns, and the URL rules. Every figure is
+// tel-023 (DEC-SCOPE-112, API §12AF): the manager performance comparison -- types, the columns, and the URL rules. Every figure is
 // computed by the API (services/telecaller_performance.py on tel-021's metrics); the page only lays it out.
 import { dayParam } from "@/lib/telecallerMetrics";
 

@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { E2E_PASSWORD, activateWithToken } from "./helpers/welcome";
 
-// tel-023 (DEC-SCOPE-109): a manager compares their two telecallers (one IT, one Overseas) for today -- leads received and a logged call --
+// tel-023 (DEC-SCOPE-112): a manager compares their two telecallers (one IT, one Overseas) for today -- leads received and a logged call --
 // sorts, filters by team, follows a name to the daily activity, downloads the CSV and is refused a range over 366 days. Another manager's
 // telecaller never appears. The IT admin sees IT telecallers only, without activity links; a telecaller is refused the page.
 

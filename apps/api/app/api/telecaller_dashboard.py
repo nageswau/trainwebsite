@@ -4,7 +4,7 @@
 Scope (DB6, T24): a telecaller reads only their own figures (another user id → 403); a manager reads a direct report's activity and
 super_admin any telecaller's (an id out of scope → 404, as tel-022). Every other role → 403.
 
-tel-023 (DEC-SCOPE-109, API §12AC): the performance comparison and its CSV, for managers, division admins and super_admin (PF1)."""
+tel-023 (DEC-SCOPE-112, API §12AF): the performance comparison and its CSV, for managers, division admins and super_admin (PF1)."""
 
 from datetime import date
 from typing import Literal

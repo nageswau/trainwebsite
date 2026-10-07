@@ -1,4 +1,4 @@
-"""tel-023 (DEC-SCOPE-109, API §12AC): the manager performance comparison -- P1-P6 over a date range per telecaller in scope (PF1-PF4),
+"""tel-023 (DEC-SCOPE-112, API §12AF): the manager performance comparison -- P1-P6 over a date range per telecaller in scope (PF1-PF4),
 the CSV export and its audit row. The shared test database is never truncated, so each test reads only the rows of users it created."""
 
 import csv

@@ -8,7 +8,7 @@ import {
 
 const FIELD = { display: "grid", gap: 4 } as const;
 
-// tel-023 (EVID-019 §16, DEC-SCOPE-109): Leads, Calls, Connected, Qualified, Appointments and Conversions per telecaller over a range.
+// tel-023 (EVID-019 §16, DEC-SCOPE-112): Leads, Calls, Connected, Qualified, Appointments and Conversions per telecaller over a range.
 // The range, team and sort are a plain GET form and header links, so it needs no client JS and a view can be shared. `activityBase`
 // (PF1) is set only for viewers who may open a telecaller's daily activity; division admins see plain names.
 export default function TelecallerPerformancePanel({ data, error, params, base, teams, today, activityBase }: {

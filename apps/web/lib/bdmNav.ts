@@ -3,7 +3,7 @@ import { BDM_MANAGER_NAV, BDM_MANAGER_NOTIFICATIONS_HREF, BDM_NAV, BDM_NOTIFICAT
 
 // bdm-010 (QA10-01): the BDM and BDM-manager sidebars with the unread count on Notifications (AGN-017's endpoint and badge). A page
 // that can't read the count still renders, just without the badge -- the count is a hint, never a reason to fail a page.
-async function unread(): Promise<number | null> {
+export async function unread(): Promise<number | null> {
   try {
     const data = await serverApi<{ unread?: unknown }>("/api/v1/workflows/notifications/unread-count");
     return typeof data?.unread === "number" ? data.unread : null;

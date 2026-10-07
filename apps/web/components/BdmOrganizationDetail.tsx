@@ -3,6 +3,7 @@ import Link from "next/link";
 import { type ReactNode, useEffect, useState } from "react";
 
 import BdmActivityTimeline from "@/components/BdmActivityTimeline";
+import BdmOrganizationAgentPerformance from "@/components/BdmOrganizationAgentPerformance";
 import BdmConfirm from "@/components/BdmConfirm";
 import BdmOrganizationBusiness from "@/components/BdmOrganizationBusiness";
 import BdmOrganizationContacts from "@/components/BdmOrganizationContacts";
@@ -18,6 +19,7 @@ import BdmOrganizationTasks from "@/components/BdmOrganizationTasks";
 import BdmStageHistory from "@/components/BdmStageHistory";
 import { type Page, sendRequest } from "@/lib/apiErrors";
 import type { Activity } from "@/lib/bdmActivities";
+import type { AgentPerformance } from "@/lib/bdmAgentPerformance";
 import type { Business } from "@/lib/bdmBusiness";
 import type { Lead } from "@/lib/bdmLeads";
 import type { OrgMou } from "@/lib/bdmMous";
@@ -36,9 +38,10 @@ function mouReadOnlyNote(org: Organization): string | undefined {
 
 // bdm-002 (spec §6.2, §12.2): one organization. Actions render from `permissions` only -- the server enforces every rule (AC3-AC5).
 // Every write re-renders from the organization the API returns (no refetch). Last/Next meeting come from bdm-006 appointments ("—" when none).
-export default function BdmOrganizationDetail({ initial, basePath, created = false, activities, leads, stageHistory, tasks, mou, business, schoolActivity }: {
+export default function BdmOrganizationDetail({ initial, basePath, created = false, activities, leads, stageHistory, tasks, mou, business, schoolActivity, agentPerformance }: {
   initial: Organization; basePath: string; created?: boolean; activities?: Page<Activity> | null; leads?: Page<Lead> | null;
   stageHistory?: Page<StageEvent> | null; tasks?: TaskPage | null; mou?: OrgMou | null; business?: Business | null; schoolActivity?: SchoolActivity | null;
+  agentPerformance?: AgentPerformance | null;
 }) {
   const [org, setOrg] = useState(initial);
   const [historyVersion, setHistoryVersion] = useState(0); // bdm-004: bumped by each pipeline write, which reloads the stage history
@@ -208,6 +211,7 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
         }}
       />
       {schoolActivity !== undefined && org.bdm_type === "school" && <BdmOrganizationSchoolActivity orgId={org.id} initial={schoolActivity} />}
+      {agentPerformance !== undefined && org.bdm_type === "agent" && <BdmOrganizationAgentPerformance orgId={org.id} initial={agentPerformance} />}
       {showEditor ? (
         <section className="action-card wide" aria-label="Edit details">
           <h3>Edit details</h3>

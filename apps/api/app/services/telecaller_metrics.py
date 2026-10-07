@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.lead_stages import CLOSED
 from app.models import (
+    TEL_SETTING_DEFAULTS,
     TEL_TARGET_KPIS,
     Appointment,
     AuditLog,
@@ -24,6 +25,7 @@ from app.models import (
     LeadFollowUp,
     LeadMessage,
     LeadStageHistory,
+    TelSetting,
 )
 from app.services.bdm_activities import day_range
 from app.services.bdm_appointments import today_ist
@@ -37,7 +39,6 @@ ACTIVITY_KEYS = (
 )
 # Appendix B K1-K6: each target KPI is one daily-activity count.
 KPI_COUNTS = dict(zip(TEL_TARGET_KPIS, ("calls", "connected_calls", "qualified_leads", "follow_ups_completed", "counselor_appointments", "converted_leads"), strict=True))
-NOT_CONTACTED_AFTER = timedelta(hours=24)  # DB1: until tel-020 brings the team's threshold
 FIRST_CALL = ("assigned", "first_call_pending")
 CANCELLED = "cancelled"  # DB7: every other status is on the day's list
 
@@ -111,37 +112,56 @@ def _in(column, start, end) -> list:
     return [column >= start, column < end]
 
 
-async def conversions(db: AsyncSession, user_id: UUID, start: datetime, end: datetime) -> int:
-    """D13 (DB2): leads still converted whose conversion was first recorded in the range while the lead was the telecaller's."""
+def _group(rows) -> dict:
+    return {key: count for key, count in rows}
+
+
+async def conversions_by_user(db: AsyncSession, user_ids: list[UUID], start: datetime, end: datetime) -> dict[UUID, int]:
+    """D13 (DB2) per telecaller: leads still converted whose conversion was first recorded in the range, credited to whoever owned the
+    lead at that instant. The owner is computed in an inner select so the outer query groups on a plain column."""
     first = (
         select(LeadStageHistory.lead_id, func.min(LeadStageHistory.created_at).label("at"))
         .where(LeadStageHistory.to_stage == "converted").group_by(LeadStageHistory.lead_id).subquery()
     )
-    return await db.scalar(select(func.count()).select_from(Enquiry).join(first, first.c.lead_id == Enquiry.id).where(
-        Enquiry.status == "converted", *_in(first.c.at, start, end), _ever_mine(user_id), owner_at(first.c.at) == user_id))
+    owners = select(owner_at(first.c.at).label("owner")).select_from(Enquiry).join(first, first.c.lead_id == Enquiry.id).where(
+        Enquiry.status == "converted", *_in(first.c.at, start, end)).subquery()
+    return _group(await db.execute(select(owners.c.owner, func.count()).where(owners.c.owner.in_(user_ids)).group_by(owners.c.owner)))
+
+
+async def _by_actor(db: AsyncSession, actor, user_ids: list[UUID], *where) -> dict[UUID, int]:
+    return _group(await db.execute(select(actor, func.count()).where(actor.in_(user_ids), *where).group_by(actor)))
+
+
+async def flow_counts_by_user(db: AsyncSession, user_ids: list[UUID], start: datetime, end: datetime) -> dict[UUID, dict]:
+    """Every count that is a number of events in [start, end), for several telecallers at once -- one grouped query per count, so a
+    report over a whole team costs the same as one telecaller (tel-024 R3). Users with no events get zeros."""
+    ids = list(user_ids)
+    calls = {key: (total, missed) for key, total, missed in await db.execute(
+        select(LeadCall.caller_user_id, func.count(), func.count().filter(LeadCall.outcome.in_(NOT_CONNECTED)))
+        .where(LeadCall.caller_user_id.in_(ids), *_in(LeadCall.occurred_at, start, end)).group_by(LeadCall.caller_user_id))}
+    counselor = await _by_actor(db, Appointment.booked_by_user_id, ids, Appointment.lead_id.is_not(None), *_in(Appointment.created_at, start, end))
+    bdm = await _by_actor(db, BdmMeetingRequest.requester_user_id, ids, *_in(BdmMeetingRequest.created_at, start, end))
+    completed = await _by_actor(db, LeadFollowUp.completed_by_user_id, ids, *_in(LeadFollowUp.completed_at, start, end))
+    whatsapp = await _by_actor(db, LeadMessage.sender_user_id, ids, LeadMessage.channel == "whatsapp", *_in(LeadMessage.sent_at, start, end))
+    qualified = await _by_actor(db, LeadStageHistory.actor_user_id, ids, LeadStageHistory.to_stage == "qualified", *_in(LeadStageHistory.created_at, start, end))
+    converted = await conversions_by_user(db, ids, start, end)
+    out = {}
+    for user_id in ids:
+        total, missed = calls.get(user_id, (0, 0))
+        out[user_id] = {
+            "calls": total, "connected_calls": total - missed, "not_connected": missed,
+            "follow_ups_completed": completed.get(user_id, 0),
+            "counselor_appointments": counselor.get(user_id, 0), "bdm_appointments": bdm.get(user_id, 0),
+            "new_appointments": counselor.get(user_id, 0) + bdm.get(user_id, 0),
+            "whatsapp_messages": whatsapp.get(user_id, 0), "qualified_leads": qualified.get(user_id, 0),
+            "converted_leads": converted.get(user_id, 0),
+        }
+    return out
 
 
 async def flow_counts(db: AsyncSession, user_id: UUID, start: datetime, end: datetime) -> dict:
-    """Every count that is a number of events in [start, end)."""
-    calls = (await db.execute(
-        select(func.count(), func.count().filter(LeadCall.outcome.in_(NOT_CONNECTED)))
-        .where(LeadCall.caller_user_id == user_id, *_in(LeadCall.occurred_at, start, end))
-    )).one()
-    counselor = await db.scalar(select(func.count()).select_from(Appointment).where(
-        Appointment.booked_by_user_id == user_id, Appointment.lead_id.is_not(None), *_in(Appointment.created_at, start, end)))
-    bdm = await db.scalar(select(func.count()).select_from(BdmMeetingRequest).where(
-        BdmMeetingRequest.requester_user_id == user_id, *_in(BdmMeetingRequest.created_at, start, end)))
-    return {
-        "calls": calls[0], "connected_calls": calls[0] - calls[1], "not_connected": calls[1],
-        "follow_ups_completed": await db.scalar(select(func.count()).select_from(LeadFollowUp).where(
-            LeadFollowUp.completed_by_user_id == user_id, *_in(LeadFollowUp.completed_at, start, end))),
-        "counselor_appointments": counselor, "bdm_appointments": bdm, "new_appointments": counselor + bdm,
-        "whatsapp_messages": await db.scalar(select(func.count()).select_from(LeadMessage).where(
-            LeadMessage.sender_user_id == user_id, LeadMessage.channel == "whatsapp", *_in(LeadMessage.sent_at, start, end))),
-        "qualified_leads": await db.scalar(select(func.count()).select_from(LeadStageHistory).where(
-            LeadStageHistory.actor_user_id == user_id, LeadStageHistory.to_stage == "qualified", *_in(LeadStageHistory.created_at, start, end))),
-        "converted_leads": await conversions(db, user_id, start, end),
-    }
+    """Every count that is a number of events in [start, end), for one telecaller."""
+    return (await flow_counts_by_user(db, [user_id], start, end))[user_id]
 
 
 async def daily_activity(db: AsyncSession, user_id: UUID, day: date, now: datetime) -> dict:
@@ -199,6 +219,12 @@ async def leads_received(db: AsyncSession, user_id: UUID, start: datetime, end: 
     return await db.scalar(select(func.count()).select_from(Enquiry).where(_became_mine(user_id, start, end)))
 
 
+async def _not_contacted_after(db: AsyncSession, team: str) -> timedelta:
+    """DB1 / DEC-SCOPE-111 AL12: the team's Lead Not Contacted hours (tel-020), the default for a team without a row."""
+    hours = await db.scalar(select(TelSetting.not_contacted_hours).where(TelSetting.team == team))
+    return timedelta(hours=hours or TEL_SETTING_DEFAULTS["not_contacted_hours"])
+
+
 async def tiles(db: AsyncSession, user_id: UUID, team: str, now: datetime) -> dict:
     """§1: the ten tiles for today (Appendix B B1-B10)."""
     today = today_ist(now)
@@ -219,7 +245,7 @@ async def tiles(db: AsyncSession, user_id: UUID, team: str, now: datetime) -> di
         "converted": flow["converted_leads"],
         "overdue": await db.scalar(_own_open_follow_ups(user_id).where(LeadFollowUp.due_at < now)) + await db.scalar(
             select(func.count()).select_from(Enquiry).where(
-                *_own_open(user_id), Enquiry.status == "first_call_pending", Enquiry.stage_changed_at < now - NOT_CONTACTED_AFTER)),
+                *_own_open(user_id), Enquiry.status == "first_call_pending", Enquiry.stage_changed_at < now - await _not_contacted_after(db, team))),
         "daily_target": {"achieved": flow["calls"], "target": daily_calls["value"]},
     }
 

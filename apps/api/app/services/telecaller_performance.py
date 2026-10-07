@@ -1,8 +1,8 @@
-"""tel-023 (DEC-SCOPE-109, spec §2-§4): the manager performance comparison -- Appendix B P1-P6 per telecaller in scope over a date range.
+"""tel-023 (DEC-SCOPE-112, spec §2-§4): the manager performance comparison -- Appendix B P1-P6 per telecaller in scope over a date range.
 
 Every figure comes from `telecaller_metrics` (P2-P6 are tel-021's flow counts over the whole range, so each equals the sum of the daily
-figures; P1 is `leads_received`). One `flow_counts` call per telecaller: tel-024 brings a grouped variant to that module, to switch to
-once it merges. Reads only; the CSV route owns its audit write."""
+figures; P1 is `leads_received`). P2-P6 come from tel-024's grouped `flow_counts_by_user`, one query per count for the whole scope.
+Reads only; the CSV route owns its audit write."""
 
 from datetime import date
 
@@ -51,8 +51,7 @@ def date_range(date_from: date | None, date_to: date | None, today: date) -> tup
     return first, last
 
 
-async def _row(db: AsyncSession, person: User, team: str, start, end) -> dict:
-    flow = await metrics.flow_counts(db, person.id, start, end)
+async def _row(db: AsyncSession, person: User, team: str, flow: dict, start, end) -> dict:
     return {
         "user_id": person.id, "full_name": person.full_name, "team": TEAM_LABEL[team], "active": person.active,
         "status": "Active" if person.active else "Inactive", "leads": await metrics.leads_received(db, person.id, start, end),
@@ -67,7 +66,8 @@ async def performance(db: AsyncSession, scoped: tuple[list, list[str]], *, team:
     people = (await db.execute(
         select(User, TelecallerProfile.team).join(TelecallerProfile, TelecallerProfile.user_id == User.id).where(User.role == "telecaller", *filters)
     )).all()
-    items = [await _row(db, person, person_team, start, end) for person, person_team in people]
+    flows = await metrics.flow_counts_by_user(db, [person.id for person, _ in people], start, end)
+    items = [await _row(db, person, person_team, flows[person.id], start, end) for person, person_team in people]
     items.sort(key=lambda row: row["full_name"].casefold())  # ties stay in name order: both sorts are stable
     if sort != "name":
         items.sort(key=lambda row: row[sort], reverse=direction == "desc")
