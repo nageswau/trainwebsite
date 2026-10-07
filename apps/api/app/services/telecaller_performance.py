@@ -60,8 +60,9 @@ async def _row(db: AsyncSession, person: User, team: str, start, end) -> dict:
     }
 
 
-async def performance(db: AsyncSession, user: User, *, team: str | None, first: date, last: date, sort: str, direction: str) -> dict:
-    filters, teams = scope(user, team)
+async def performance(db: AsyncSession, scoped: tuple[list, list[str]], *, team: str | None, first: date, last: date, sort: str, direction: str) -> dict:
+    """`scoped` is `scope(...)`'s result: the route checks the role before the range rules, then hands it on."""
+    filters, teams = scoped
     start, end = day_range(first)[0], day_range(last)[1]
     people = (await db.execute(
         select(User, TelecallerProfile.team).join(TelecallerProfile, TelecallerProfile.user_id == User.id).where(User.role == "telecaller", *filters)

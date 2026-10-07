@@ -1354,6 +1354,19 @@ Delivery (worker, not HTTP): the claim moves `queued` / `retrying` to `sending`.
 address removed) → `failed`. A 5-minute sweeper republishes stale queued rows and fails rows stuck in `sending`. The mail is From
 `"<telecaller> via EduSphere" <SMTP_FROM_EMAIL>` with Reply-To the telecaller, as plain text plus an escaped HTML part.
 
+## 12AC. Telecaller performance comparison (`tel-023`) — addendum, 2026-10-07
+
+`DEC-SCOPE-109`; design spec `docs/superpowers/specs/2026-10-07-tel-023-performance-design.md` §3. No migration. Signed out `401`.
+Query (all optional): `date_from`, `date_to` (ISO; default the 1st of `date_to`'s month → today, IST), `team` (`it`/`overseas`), `sort`
+(`name`/`leads`/`calls`/`connected`/`qualified`/`appointments`/`conversions`, default `calls`), `dir` (`asc`/`desc`, default `desc`; ties by name).
+Malformed values `422` (FastAPI list); then the role (`403` "Telecaller performance is for managers and administrators"; a division admin's
+other `team` `403`); then the range (`422`: start after end, end in the future, over 366 days).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/manager/performance` | `telecaller_manager` (direct reports), `it_admin`/`overseas_admin` (own team), `super_admin` (all). `200 {date_from, date_to, team, sort, dir, teams, columns: [{key, label}], items: [{user_id, full_name, team, active, status, leads, calls, connected, qualified, appointments, conversions}], totals: {full_name: "Total", ...}}`; inactive telecallers included. `Cache-Control: private, no-store` |
+| `GET /telecaller/manager/performance.csv` | Same query and checks. `text/csv` (UTF-8 BOM, the `columns` labels, the rows in the same order, Total last; formula cells neutralised). Audit `telecaller_performance.export` (filters, sort, rows) committed before the file. `attachment; filename="telecaller-performance-{from}-to-{to}.csv"` |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

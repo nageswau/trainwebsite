@@ -787,6 +787,18 @@ always the lead's own address, never one from the request.
 | `telecaller_manager` / `super_admin` | read the log and delivery status; `403` on send | §2.19's | `tel-014` |
 | every other role | `403` | — | `tel-014` |
 
+### 2.35 Telecaller performance comparison *(net-new, added 2026-10-07 — `DEC-SCOPE-109`, `tel-023`)*
+
+Inline: `telecaller_performance.scope` — the role, then the team rule (a manager's `team_filter`, an admin's `admin_team_filter`). Read-only
+apart from the CSV's audit row. No lead name, mobile or email appears; rows are staff names and counts.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller_manager` | read and export the comparison; open a report's daily activity from it | direct reports; `team` only narrows | `tel-023` |
+| `it_admin` / `overseas_admin` | read and export the comparison (no activity link) | their team's telecallers; another `team` is `403` | `tel-023` |
+| `super_admin` | read and export; open any telecaller's daily activity | all telecallers; `team` only narrows | `tel-023` |
+| `telecaller` and every other role | `403` | — | `tel-023` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

@@ -82,9 +82,9 @@ async def _performance(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> tuple[User, dict]:
-    performance.scope(user, team)  # 403 before the range rules
+    scoped = performance.scope(user, team)  # 403 before the range rules
     first, last = performance.date_range(date_from, date_to, today_ist(await db_now(db)))
-    return user, await performance.performance(db, user, team=team, first=first, last=last, sort=sort, direction=direction)
+    return user, await performance.performance(db, scoped, team=team, first=first, last=last, sort=sort, direction=direction)
 
 
 # Registered before the JSON route, as the reports routers do.

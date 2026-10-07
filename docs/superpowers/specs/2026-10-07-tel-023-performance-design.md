@@ -36,11 +36,11 @@ tel-023 leaves that code untouched to avoid a conflict. Follow-up once tel-024 m
 `GET /api/v1/telecaller/manager/performance` and `GET /api/v1/telecaller/manager/performance.csv` (`.csv` registered first), in the
 existing `telecaller_dashboard` router.
 
-Query: `date_from`, `date_to` (ISO dates; default 1st of the IST month → today), `team` (`it`/`overseas`), `sort`
+Query: `date_from`, `date_to` (ISO dates; default the 1st of `date_to`'s month → today, IST), `team` (`it`/`overseas`), `sort`
 (`name`|`leads`|`calls`|`connected`|`qualified`|`appointments`|`conversions`, default `calls`), `dir` (`asc`|`desc`, default `desc`).
 
-Order of checks: authenticated → role allowed (else **403** "Telecaller performance is for managers and administrators") → a division
-admin's `team` must be their own (else **403**, `admin_team_filter`) → inputs (**422**: malformed date/team/sort/dir, `date_from > date_to`,
+Order of checks: malformed values (FastAPI **422** list — the page passes only well-formed ones) → authenticated → role allowed (else **403** "Telecaller performance is for managers and administrators") → a division
+admin's `team` must be their own (else **403**, `admin_team_filter`) → the range (**422**: `date_from > date_to`,
 `date_to` after today, a span over 366 days).
 
 ```json

@@ -79,7 +79,7 @@ describe("TelecallerPerformancePanel (tel-023 §16)", () => {
     panel({ params: { sort: "leads", dir: "asc" } });
     expect(screen.getByLabelText("From")).toHaveValue("2026-09-01");
     expect(screen.getByLabelText("To")).toHaveAttribute("max", "2026-10-07");
-    expect(screen.getByLabelText("Team")).toHaveValue("");
+    expect(screen.getByRole("combobox", { name: "Team" })).toHaveValue(""); // QA-02: named "Team", not "TeamAll teamsIT…"
     const form = screen.getByLabelText("From").closest("form")!;
     expect(form).toHaveAttribute("action", BASE);
     expect(form.querySelector('input[name="sort"]')).toHaveValue("leads");

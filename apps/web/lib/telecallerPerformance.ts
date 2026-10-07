@@ -43,8 +43,11 @@ export function performanceQuery(params: PerformanceParams): string {
 }
 
 /** A header link: the current column flips direction; another column starts high-to-low (names A-Z). */
+export const nextDir = (data: Performance, key: SortKey): SortDir =>
+  data.sort === key ? (data.dir === "desc" ? "asc" : "desc") : key === "name" ? "asc" : "desc";
+
 export function sortHref(base: string, data: Performance, key: SortKey): string {
-  const dir: SortDir = data.sort === key ? (data.dir === "desc" ? "asc" : "desc") : key === "name" ? "asc" : "desc";
+  const dir = nextDir(data, key);
   return base + performanceQuery({ date_from: data.date_from, date_to: data.date_to, team: data.team ?? undefined, sort: key, dir });
 }
 

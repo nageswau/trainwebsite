@@ -2,9 +2,11 @@ import Link from "next/link";
 
 import ReportDownloadButton from "@/components/ReportDownloadButton";
 import {
-  COUNT_COLUMNS, PERFORMANCE_URL, TEAM_LABEL, ariaSort, csvFilename, performanceQuery, sortHref,
+  COUNT_COLUMNS, PERFORMANCE_URL, TEAM_LABEL, ariaSort, csvFilename, nextDir, performanceQuery, sortHref,
   type Performance, type PerformanceParams, type SortKey,
 } from "@/lib/telecallerPerformance";
+
+const FIELD = { display: "grid", gap: 4 } as const;
 
 // tel-023 (EVID-019 §16, DEC-SCOPE-109): Leads, Calls, Connected, Qualified, Appointments and Conversions per telecaller over a range.
 // The range, team and sort are a plain GET form and header links, so it needs no client JS and a view can be shared. `activityBase`
@@ -17,22 +19,23 @@ export default function TelecallerPerformancePanel({ data, error, params, base, 
     <section className="card" aria-labelledby="performance-title" style={{ marginTop: 16 }}>
       <h3 id="performance-title">Telecaller performance</h3>
       <form method="get" action={base} style={{ display: "flex", flexWrap: "wrap", alignItems: "end", gap: 8, margin: "8px 0 12px" }}>
-        <label style={{ display: "grid", gap: 4 }}>
-          From
-          <input className="input" type="date" name="date_from" defaultValue={shown.date_from} max={today} />
-        </label>
-        <label style={{ display: "grid", gap: 4 }}>
-          To
-          <input className="input" type="date" name="date_to" defaultValue={shown.date_to} max={today} />
-        </label>
+        {/* QA-02: explicit labels -- a select wrapped in its label is named after its options too ("Team All teams"). */}
+        <div style={FIELD}>
+          <label htmlFor="performance-from">From</label>
+          <input id="performance-from" className="input" type="date" name="date_from" defaultValue={shown.date_from} max={today} />
+        </div>
+        <div style={FIELD}>
+          <label htmlFor="performance-to">To</label>
+          <input id="performance-to" className="input" type="date" name="date_to" defaultValue={shown.date_to} max={today} />
+        </div>
         {teams.length > 1 && (
-          <label style={{ display: "grid", gap: 4 }}>
-            Team
-            <select className="input" name="team" defaultValue={shown.team ?? ""}>
+          <div style={FIELD}>
+            <label htmlFor="performance-team">Team</label>
+            <select id="performance-team" className="input" name="team" defaultValue={shown.team ?? ""}>
               <option value="">All teams</option>
               {teams.map((t) => <option key={t} value={t}>{TEAM_LABEL[t] ?? t}</option>)}
             </select>
-          </label>
+          </div>
         )}
         {params.sort && <input type="hidden" name="sort" value={params.sort} />}
         {params.dir && <input type="hidden" name="dir" value={params.dir} />}
@@ -44,7 +47,7 @@ export default function TelecallerPerformancePanel({ data, error, params, base, 
         <p className="empty" role="status">No telecallers in your scope yet.</p>
       ) : (
         <>
-          <div className="table-wrap" role="region" aria-labelledby="performance-title" tabIndex={0}>
+          <div className="table-wrap" role="region" aria-label="Performance by telecaller" tabIndex={0}>
             <table className="table">
               <caption className="visually-hidden">Performance from {data.date_from} to {data.date_to}, sorted by {data.sort} {data.dir === "asc" ? "ascending" : "descending"}</caption>
               <thead>
@@ -87,9 +90,10 @@ export default function TelecallerPerformancePanel({ data, error, params, base, 
 
 function SortHeader({ data, base, sortKey, label }: { data: Performance; base: string; sortKey: SortKey; label: string }) {
   const sorted = data.sort === sortKey;
+  const next = nextDir(data, sortKey) === "asc" ? (sortKey === "name" ? "A to Z" : "lowest first") : sortKey === "name" ? "Z to A" : "highest first";
   return (
     <th scope="col" aria-sort={ariaSort(data, sortKey)}>
-      <Link href={sortHref(base, data, sortKey)} aria-label={`${label}: sort ${sorted && data.dir === "desc" ? "ascending" : sorted ? "descending" : sortKey === "name" ? "A to Z" : "highest first"}`}>
+      <Link href={sortHref(base, data, sortKey)} aria-label={`${label}: sort ${next}`}>
         {label}
         <span aria-hidden="true">{sorted ? (data.dir === "asc" ? " ↑" : " ↓") : " ↕"}</span>
       </Link>
