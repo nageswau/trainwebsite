@@ -1,4 +1,4 @@
-"""tel-011 (DEC-SCOPE-093, spec §3): follow-ups on a lead -- the day / overdue lists, a lead's follow-ups, create, reschedule/edit,
+"""tel-011 (DEC-SCOPE-094, spec §3): follow-ups on a lead -- the day / overdue lists, a lead's follow-ups, create, reschedule/edit,
 complete and cancel.
 
 Scope is the lead's (tel-004 `lead_pipeline.scope`; other roles 403, out of scope 404). Every write is one transaction -- scope, the lead

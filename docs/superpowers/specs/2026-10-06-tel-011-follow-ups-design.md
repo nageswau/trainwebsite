@@ -1,9 +1,9 @@
 # tel-011 — Lead follow-ups: design
 
 NO-ASSUMPTION MODE. Source: `docs/delivery/TELECALLER_CRM_BACKLOG.md` §4 tel-011, Appendix A L266–L312, Appendix B B3/B9; `EVID-019` §7.
-The branch is `feature/tel-011`, cut from `main` @ `515e6c13` (tel-006 merged). Decision `DEC-SCOPE-093`, migration `0089_lead_follow_ups`
-(re-chained after bdm-011's `0088_bdm_appointment_trip` / `DEC-SCOPE-092`), API contract §12P. The open tel-009 branch claims a `0088` / §12O, so whichever
-of tel-009 and tel-011 merges second re-chains its migration onto the other.
+The branch is `feature/tel-011`, cut from `main` @ `515e6c13` (tel-006 merged). Decision `DEC-SCOPE-094`, migration `0090_lead_follow_ups`
+(re-chained after tel-009's `0089_lead_qualifications` / `DEC-SCOPE-093` / §12O, which merged first), API contract §12P. Earlier drafts of this spec said
+093 / 0089.
 
 ## 1. Decisions
 

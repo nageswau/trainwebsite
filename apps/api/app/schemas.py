@@ -38,6 +38,10 @@ from app.models import (
     GENDERS,
     LEAD_FOLLOW_UP_REASONS,
     LEAD_PRIORITIES,
+    QUAL_MODES,
+    QUAL_PASSPORT,
+    QUAL_SKILL_LEVELS,
+    QUAL_STUDY_LEVELS,
     TEL_TARGET_KPIS,
 )
 from app.notifications.phone import normalise_phone
@@ -4580,7 +4584,10 @@ class BdmActivityDayPage(BdmActivityPage):
 # `enquiries` columns'. Source, division, status, attribution and conversion are server-owned: `extra="forbid"` answers 422.
 BDM_LEAD_LABELS = {"name": "Student name", "email": "Email", "student_email": "Email", "phone": "Phone", "interest": "Interest", "note": "Note",
                    "whatsapp_number": "WhatsApp number", "city": "City", "state": "State",  # these three: tel-008's lead edit
-                   "qualification": "Qualification", "institution": "College/University", "subject": "Enquiry subject", "message": "Notes"}  # tel-005
+                   "qualification": "Qualification", "institution": "College/University", "subject": "Enquiry subject", "message": "Notes",  # tel-005
+                   "current_org": "Current college/company", "career_objective": "Career objective", "preferred_batch": "Preferred batch",
+                   "budget_range": "Budget range", "preferred_course": "Preferred course", "intake": "Intake",
+                   "english_test_status": "IELTS/PTE status"}  # tel-009
 
 
 def _bdm_lead_text(pattern: re.Pattern, required: bool):
@@ -5519,6 +5526,35 @@ class LeadEnquiryCreate(BaseModel):
     campaign_id: UUID | None = None
 
 
+
+def _qual_text(max_length: int):
+    return Annotated[Annotated[str, _trimmed(max_length)] | None, AfterValidator(_bdm_lead_text(_BDM_CONTROL, False))]
+
+
+class LeadQualificationIn(BaseModel):
+    """tel-009 (DEC-SCOPE-093, QD2): the PUT body -- every field optional. Which fields apply depends on the lead's product group, which
+    only the service knows; an applicable field left out is cleared. Ranges are the table's CHECKs (QF2)."""
+
+    model_config = ConfigDict(extra="forbid")
+    qualification: LeadPlace = None
+    passing_year: int | None = Field(default=None, ge=1950, le=2100)
+    city: LeadPlace = None
+    state: LeadPlace = None
+    current_org: _qual_text(200) = None
+    work_experience_years: int | None = Field(default=None, ge=0, le=50)
+    it_skill_level: Literal[QUAL_SKILL_LEVELS] | None = None
+    career_objective: _qual_text(500) = None
+    preferred_batch: _qual_text(120) = None
+    budget_range: _qual_text(120) = None
+    preferred_mode: Literal[QUAL_MODES] | None = None
+    study_level: Literal[QUAL_STUDY_LEVELS] | None = None
+    preferred_course: _qual_text(200) = None
+    intake: _qual_text(40) = None
+    academic_percentage: Decimal | None = Field(default=None, ge=0, le=100, max_digits=5, decimal_places=2)
+    english_test_status: _qual_text(120) = None
+    passport_status: Literal[QUAL_PASSPORT] | None = None
+
+
 class LeadImportRow(BaseModel):
     """tel-006 (IM1): one CSV row -- tel-005's lead fields; the campaign gives the source, product and team."""
 
@@ -5646,7 +5682,7 @@ class TelLeadAssignOut(BaseModel):
     unchanged: int
 
 
-# --- tel-011 (DEC-SCOPE-093, spec §3): follow-ups on a lead ---------------------------------------------------------------------
+# --- tel-011 (DEC-SCOPE-094, spec §3): follow-ups on a lead ---------------------------------------------------------------------
 LEAD_FOLLOW_UP_LABELS = {"notes": "Notes", "next_action": "Next action"}
 LeadFollowUpReason = Literal[LEAD_FOLLOW_UP_REASONS]
 LeadFollowUpNotes = Annotated[Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, LEAD_FOLLOW_UP_LABELS))]

@@ -1,4 +1,4 @@
-"""tel-011 (DEC-SCOPE-093, spec §3): follow-ups on a lead -- rules, the day / overdue / per-lead lists and the output.
+"""tel-011 (DEC-SCOPE-094, spec §3): follow-ups on a lead -- rules, the day / overdue / per-lead lists and the output.
 
 A follow-up belongs to its lead (F3): every read and write goes through the lead's scope (`lead_pipeline.scope`), so another
 telecaller's follow-up is the same 404 as a missing one and a reassigned lead's follow-ups move with it. Only the lead's telecaller

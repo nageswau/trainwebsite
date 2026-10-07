@@ -1082,12 +1082,25 @@ AGN-023 branch.)
 | `GET /telecaller/imports?limit=&offset=` | `200 {items: [{id, campaign, division, uploaded_by: {id, full_name}, total_rows, created_count, attached_count, rejected_count, created_at}], total, limit, offset}`, newest first; a manager's own imports, super_admin all |
 | `GET /telecaller/imports/{id}` | `200` the report above; `404 "Import not found"` for another manager's import |
 
+## 12O. Lead qualification (`tel-009`) — addendum, 2026-10-06
+
+`DEC-SCOPE-093`; design spec `docs/superpowers/specs/2026-10-06-tel-009-qualification-form-design.md` §3. Migration `0089_lead_qualifications`.
+Roles and scope are §12J's: `telecaller` (own leads), `telecaller_manager`, `super_admin`. Other roles get `403`, signed out `401`, and
+missing or out of scope `404`. Basic fields = `qualification`, `current_org`, `passing_year`, `work_experience_years`, `city`, `state`; IT =
+`it_skill_level`, `career_objective`, `preferred_batch`, `budget_range`, `preferred_mode`; overseas = `study_level`, `preferred_course`,
+`intake`, `academic_percentage`, `english_test_status`, `passport_status`, `budget_range`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/leads/{id}/qualification` | `200 {lead_id, product: {id, name, group} \| null, product_group: it\|overseas\|other\|null, <every field above>, read_only, updated_by: {id, full_name} \| null, updated_at \| null}`. All stored values, the hidden group's included; `qualification`/`passing_year`/`city`/`state` are the lead's columns |
+| `PUT /telecaller/leads/{id}/qualification` | Body any of the fields that apply to the lead's product group (basic always; IT or overseas by group); an applicable field left out is cleared. `422`: another key, a field that doesn't apply ("These fields don't apply to this lead's product: …"), an out-of-range value (`academic_percentage` 0–100 with ≤ 2 decimals, `passing_year` 1950–2100, `work_experience_years` 0–50, the select values, text lengths, control characters). `403` for a telecaller on a handed-over lead. `200` returns the GET shape. Audit `lead.qualification_update {fields}` (names only) when something changed; the stage never moves |
+
 ## 12P. Lead follow-ups (`tel-011`) — addendum, 2026-10-06
 
-`DEC-SCOPE-093`; design spec `docs/superpowers/specs/2026-10-06-tel-011-follow-ups-design.md` §3. Migration `0089_lead_follow_ups`. Scope is
+`DEC-SCOPE-094`; design spec `docs/superpowers/specs/2026-10-06-tel-011-follow-ups-design.md` §3. Migration `0090_lead_follow_ups`. Scope is
 the lead's (`lead_pipeline.scope`): a telecaller their leads, a manager their reports' leads and their teams' unassigned queue, super_admin
 all; other roles `403`, signed out `401`, out of scope `404`. Only the lead's telecaller writes (`403` for managers); a handed-over lead is
-`403` for its telecaller. (§12O is claimed by the open tel-009 branch.)
+`403` for its telecaller. (§12O is tel-009's.)
 
 Follow-up item: `{id, due_at, reason, notes, next_action, status: open|done|cancelled, overdue, lead: {id, lead_code, name, priority, status,
 status_label, product, telecaller}, created_by, created_at, completed_at, completed_by, cancelled_at, cancel_reason, can_change}`. `reason` is

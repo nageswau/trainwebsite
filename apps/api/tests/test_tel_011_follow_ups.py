@@ -1,4 +1,4 @@
-"""tel-011 -- follow-ups on a lead (spec §3; DEC-SCOPE-093 F1-F10): create, the lead's list, reschedule/edit, complete, cancel, the
+"""tel-011 -- follow-ups on a lead (spec §3; DEC-SCOPE-094 F1-F10): create, the lead's list, reschedule/edit, complete, cancel, the
 day / overdue lists, the close cancel (F4) and My Leads' `follow_up` filter (F9). The shared test database is never truncated, so every
 list assertion narrows to telecallers created by the test."""
 

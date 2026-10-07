@@ -5,7 +5,7 @@ Focused tests only (per [test-regression-cadence]); tel e2e with `--workers=1`.
 
 | # | Task | Tests first | Files |
 |---|---|---|---|
-| 1 | Model `LeadFollowUp` + `LEAD_FOLLOW_UP_REASONS` + migration `0089_lead_follow_ups` | `test_tel_011_migration.py` (chain, model = migration, upgrade/CHECK/downgrade in a throwaway DB) | `models.py`, `alembic/versions/0089_lead_follow_ups.py` |
+| 1 | Model `LeadFollowUp` + `LEAD_FOLLOW_UP_REASONS` + migration `0090_lead_follow_ups` | `test_tel_011_migration.py` (chain, model = migration, upgrade/CHECK/downgrade in a throwaway DB) | `models.py`, `alembic/versions/0090_lead_follow_ups.py` |
 | 2 | Schemas `LeadFollowUpCreate/Update/Cancel` (aware datetime, reason literal, lengths, extra forbidden) | in task 3 tests (422s) | `schemas.py` |
 | 3 | Service `lead_follow_ups.py` + routes create / list-for-lead (scope 404, manager 403, handed-over 403, closed 409, past/far 422, stage tick, audit) | `test_tel_011_follow_ups.py` | `services/lead_follow_ups.py`, `api/telecaller_follow_ups.py`, `main.py` |
 | 4 | PATCH / complete / cancel (open only 409, changed-due future 422, other telecaller 404, reassigned lead moves) | same file | same |
@@ -14,4 +14,4 @@ Focused tests only (per [test-regression-cadence]); tel e2e with `--workers=1`.
 | 7 | Web lib + `FollowUpForm` + `LeadFollowUps` on the lead detail | vitest `telecallerFollowUps.test.ts`, `FollowUpForm.test.tsx`, `LeadFollowUps.test.tsx` | `lib/telecallerFollowUps.ts`, components, `LeadDetailPanel.tsx`, `TelecallerLeadPages.tsx` |
 | 8 | `TodayFollowUps` pages + nav + dashboard card + My Leads filter | vitest `TodayFollowUps.test.tsx`, `TelecallerLeadTable` test | `app/telecaller/follow-ups`, `app/telecaller/manager/follow-ups`, `navigation.ts`, dashboard, `TelecallerLeadTable.tsx` |
 | 9 | Playwright `tel-011-follow-ups.spec.ts` + browser QA (desktop/tablet/mobile) | e2e | `apps/web/e2e/` |
-| 10 | Docs: `DEC-SCOPE-093`, API §12P, backlog status, RBAC matrix rows | — | `docs/decisions`, `docs/architecture/API_CONTRACT.md`, backlog |
+| 10 | Docs: `DEC-SCOPE-094`, API §12P, backlog status, RBAC matrix rows | — | `docs/decisions`, `docs/architecture/API_CONTRACT.md`, backlog |

@@ -1,4 +1,4 @@
-// tel-011 (DEC-SCOPE-093): follow-ups on a lead -- types, the EVID-019 §7 reason labels and the endpoints. The API decides scope, every
+// tel-011 (DEC-SCOPE-094): follow-ups on a lead -- types, the EVID-019 §7 reason labels and the endpoints. The API decides scope, every
 // rule and `can_change` (only the lead's telecaller, on an open follow-up of a lead not handed over); the UI only offers what it allows.
 import { isPage, type Page } from "@/lib/apiErrors";
 import { personTargets } from "@/lib/leadStages";

@@ -21,6 +21,7 @@ from app.models import LEAD_PRIORITIES, AuditLog, Enquiry, TelecallerProfile, Us
 from app.schemas import (
     BdmManagerPage,
     LeadEnquiryCreate,
+    LeadQualificationIn,
     LeadStageHistoryPage,
     LeadStageMove,
     LeadStageOut,
@@ -31,7 +32,7 @@ from app.schemas import (
     TelecallerMeOut,
     TelecallerTeamPage,
 )
-from app.services import lead_follow_ups, lead_intake, lead_pipeline, telecaller_leads
+from app.services import lead_follow_ups, lead_intake, lead_pipeline, lead_qualification, telecaller_leads
 from app.services.bdm_appointments import db_now
 from app.services.telecaller import admin_team_filter, parse_self_update, person_ref, profile_out, require_manager, team_filter, telecaller_context
 from app.worker import sync_enquiry_to_crm_task
@@ -181,6 +182,30 @@ async def lead_timeline(lead_id: UUID, limit: int = LIMIT, offset: int = OFFSET,
     if await db.scalar(select(Enquiry.id).where(Enquiry.id == lead_id, *filters)) is None:
         raise HTTPException(404, lead_pipeline.LEAD_NOT_FOUND)
     return await telecaller_leads.timeline_page(db, lead_id, limit, offset)
+
+
+@router.get("/leads/{lead_id}/qualification")
+async def qualification(lead_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """tel-009 (spec §3): the qualification of a lead in scope -- every stored value (the hidden group's too, AC3) and the product group
+    that decides the sections; `read_only` as the detail's (D1)."""
+    _, filters = lead_pipeline.scope(user)
+    lead = await db.scalar(select(Enquiry).where(Enquiry.id == lead_id, *filters))
+    if lead is None:
+        raise HTTPException(404, lead_pipeline.LEAD_NOT_FOUND)
+    return await lead_qualification.read(db, user, lead)
+
+
+@router.put("/leads/{lead_id}/qualification")
+async def save_qualification(lead_id: UUID, payload: LeadQualificationIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """tel-009 (QD2-QD4): replace the fields that apply to the lead's product. The lead is locked within scope (a lead reassigned while
+    the form was open is 404); a telecaller on a handed-over lead is 403; the stage never moves."""
+    _, filters = lead_pipeline.scope(user)
+    lead = await lead_pipeline.locked_lead(db, lead_id, *filters)
+    telecaller_leads.require_writable(user, lead)
+    await lead_qualification.replace(db, user, lead, payload.model_dump(exclude_unset=True))
+    await db.commit()
+    lead = await db.scalar(select(Enquiry).where(Enquiry.id == lead_id).execution_options(populate_existing=True))
+    return await lead_qualification.read(db, user, lead)
 
 
 @router.post("/leads/{lead_id}/stage", response_model=LeadStageOut)

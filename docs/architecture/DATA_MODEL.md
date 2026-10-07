@@ -476,6 +476,15 @@ covers the commission-specific piece).
   already a lead (T12). Duplicate matching uses the existing `ix_enquiries_phone_normalized` and `ix_enquiries_email_lower` indexes.
   The downgrade writes `''` into a null email, then restores NOT NULL and drops the table.
 
+- **Addendum, 2026-10-06 (`tel-009`, `DEC-SCOPE-093`; migration `0089_lead_qualifications`, chained after `0088_bdm_appointment_trip`) —
+  lead qualification.** New `lead_qualifications` (PK `lead_id` FK `enquiries` CASCADE, one row per lead): `current_org` String(200);
+  `work_experience_years` SmallInteger 0–50; IT `it_skill_level` beginner/intermediate/advanced, `career_objective` String(500),
+  `preferred_batch` String(120), `preferred_mode` online/offline; overseas `study_level` ug/masters, `preferred_course` String(200),
+  `intake` String(40), `academic_percentage` Numeric(5,2) 0–100, `english_test_status` String(120), `passport_status`
+  none/applied/valid; shared `budget_range` String(120); `updated_by_user_id` FK `users` RESTRICT; timestamps. All answers nullable,
+  each range/value set a named CHECK (`ck_lead_qualifications_*`). The shared answers (qualification, passing year, city, state) stay on
+  `enquiries` (QD1). Additive; the downgrade drops the table.
+
 ### 6.3 Commission trigger mapping — `ADR-012` resolution
 **Resolution:** the automatic commission-accrual trigger (`AGT-003`, `DEC-SCOPE-005`) fires when an
 `ApplicationStatusHistory` row is written with `to_status='enrolled'` **for an application that has
