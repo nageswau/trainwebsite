@@ -76,10 +76,20 @@ async def test_line_breaks_in_the_subject_become_spaces(client, db_session, smtp
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("over", [
-    {"subject": ""}, {"subject": "  "}, {"subject": "\r\n"}, {"subject": "x" * 201}, {"subject": None},
-    {"body": ""}, {"body": "x" * 5001}, {"body": None}, {"to": "someone@example.com"},
-])
+@pytest.mark.parametrize(
+    "over",
+    [
+        {"subject": ""},
+        {"subject": "  "},
+        {"subject": "\r\n"},
+        {"subject": "x" * 201},
+        {"subject": None},
+        {"body": ""},
+        {"body": "x" * 5001},
+        {"body": None},
+        {"to": "someone@example.com"},
+    ],
+)
 async def test_the_subject_and_body_are_validated_and_the_recipient_is_never_the_callers(client, db_session, smtp_on, over):
     _, tel, _ = await team(db_session)
     row = await lead(db_session, tel)

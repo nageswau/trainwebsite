@@ -26,11 +26,14 @@ EMAIL = LeadMessage.channel == "email"
 
 async def deliver_lead_email(message_id: UUID) -> str | None:
     async with SessionLocal() as db:
-        claimed = (await db.execute(
-            update(LeadMessage).where(LeadMessage.id == message_id, EMAIL, LeadMessage.delivery_status.in_(CLAIMABLE))
-            .values(delivery_status="sending", attempt_count=LeadMessage.attempt_count + 1)
-            .returning(LeadMessage.attempt_count, LeadMessage.lead_id, LeadMessage.sender_user_id, LeadMessage.subject, LeadMessage.body)
-        )).one_or_none()
+        claimed = (
+            await db.execute(
+                update(LeadMessage)
+                .where(LeadMessage.id == message_id, EMAIL, LeadMessage.delivery_status.in_(CLAIMABLE))
+                .values(delivery_status="sending", attempt_count=LeadMessage.attempt_count + 1)
+                .returning(LeadMessage.attempt_count, LeadMessage.lead_id, LeadMessage.sender_user_id, LeadMessage.subject, LeadMessage.body)
+            )
+        ).one_or_none()
         await db.commit()
         if claimed is None:
             return None
@@ -44,8 +47,11 @@ async def deliver_lead_email(message_id: UUID) -> str | None:
     if status == "retry":
         status = "retrying" if attempt < MAX_ATTEMPTS else "failed"
     async with SessionLocal() as db:
-        await db.execute(update(LeadMessage).where(LeadMessage.id == message_id, LeadMessage.delivery_status == "sending")  # the sweeper may have given up
-                         .values(delivery_status=status))
+        await db.execute(
+            update(LeadMessage)
+            .where(LeadMessage.id == message_id, LeadMessage.delivery_status == "sending")  # the sweeper may have given up
+            .values(delivery_status=status)
+        )
         await db.commit()
     if status == "retrying":
         enqueue_lead_email(message_id, countdown=RETRY_COUNTDOWNS[attempt])
@@ -79,14 +85,14 @@ async def sweep_stale_lead_emails(now: datetime | None = None) -> dict[str, int]
     `sending` has an unknown outcome, so it is failed, never resent -- a duplicate email to a lead is worse than a visible failure."""
     now = now or datetime.now(UTC)
     async with SessionLocal() as db:
-        requeue = (await db.scalars(
-            update(LeadMessage).where(EMAIL, LeadMessage.delivery_status.in_(CLAIMABLE), LeadMessage.updated_at < now - STALE_QUEUED)
-            .values(updated_at=now).returning(LeadMessage.id)
-        )).all()
-        interrupted = (await db.scalars(
-            update(LeadMessage).where(EMAIL, LeadMessage.delivery_status == "sending", LeadMessage.updated_at < now - STALE_SENDING)
-            .values(delivery_status="failed").returning(LeadMessage.id)
-        )).all()
+        requeue = (
+            await db.scalars(update(LeadMessage).where(EMAIL, LeadMessage.delivery_status.in_(CLAIMABLE), LeadMessage.updated_at < now - STALE_QUEUED).values(updated_at=now).returning(LeadMessage.id))
+        ).all()
+        interrupted = (
+            await db.scalars(
+                update(LeadMessage).where(EMAIL, LeadMessage.delivery_status == "sending", LeadMessage.updated_at < now - STALE_SENDING).values(delivery_status="failed").returning(LeadMessage.id)
+            )
+        ).all()
         await db.commit()
     for message_id in requeue:
         if not enqueue_lead_email(message_id):  # the broker is down: the next sweep retries the rest

@@ -658,6 +658,11 @@ from tel-008. The rendered text is plain, so this item URL-encodes it for wa.me.
 
 ### tel-014 — Email to lead + send log
 
+**Status (2026-10-07):** **built** on `feature/tel-014`: `DEC-SCOPE-102` (EM1–EM4 plus defaults E1–E10), migration
+`0096_lead_message_email`, API §12W, RBAC §2.29. Q-16 is answered by EM1. The cap is 429 at 100 emails a day. Email rows are never deleted.
+Spec `docs/superpowers/specs/2026-10-07-tel-014-email-design.md`. QA report `docs/quality/TEL-014_EXPLORATORY_QA_2026-10-07.md`. Consent
+and retention remain open (`PRD_OPEN_ITEMS.md` row 85).
+
 - **Business requirement:** §12, T9.
 - **Existing behavior:** SMTP mailer for system emails only.
 - **Expected behavior:**

@@ -44,8 +44,7 @@ def outbox(monkeypatch):
 async def queued(db, *, status="queued", attempts=0, **lead_over) -> tuple[LeadMessage, object, object]:
     _, tel, _ = await team(db)
     row = await lead(db, tel, **lead_over)
-    message = LeadMessage(lead_id=row.id, sender_user_id=tel.id, channel="email", subject="Your brochure", body="Hi Priya",
-                          delivery_status=status, attempt_count=attempts, sent_at=datetime.now(UTC))
+    message = LeadMessage(lead_id=row.id, sender_user_id=tel.id, channel="email", subject="Your brochure", body="Hi Priya", delivery_status=status, attempt_count=attempts, sent_at=datetime.now(UTC))
     db.add(message)
     await db.commit()
     return message, row, tel
@@ -58,16 +57,14 @@ async def reread(db, message: LeadMessage) -> LeadMessage:
 
 # --- the message (EM1, E6) -------------------------------------------------------------------------------------------------------
 def test_the_message_comes_from_the_system_address_in_the_telecallers_name_with_their_reply_to(smtp_on):
-    msg = mailer.lead_email_message(to_email="lead@example.com", subject="Your brochure", body="Hi", sender_name="Asha Rao",
-                                    sender_email="asha@edusphere.local")
+    msg = mailer.lead_email_message(to_email="lead@example.com", subject="Your brochure", body="Hi", sender_name="Asha Rao", sender_email="asha@edusphere.local")
     assert msg["From"] == "Asha Rao via EduSphere <noreply@edusphere.local>"
     assert msg["Reply-To"] == "Asha Rao <asha@edusphere.local>"
     assert (msg["To"], msg["Subject"]) == ("lead@example.com", "Your brochure")
 
 
 def test_a_display_name_with_specials_is_quoted_not_parsed_as_addresses(smtp_on):
-    msg = mailer.lead_email_message(to_email="lead@example.com", subject="S", body="Hi", sender_name='Rao, "Asha" <x@evil.test>',
-                                    sender_email="asha@edusphere.local")
+    msg = mailer.lead_email_message(to_email="lead@example.com", subject="S", body="Hi", sender_name='Rao, "Asha" <x@evil.test>', sender_email="asha@edusphere.local")
     assert [a.addr_spec for a in msg["From"].addresses] == ["noreply@edusphere.local"]
     assert [a.addr_spec for a in msg["Reply-To"].addresses] == ["asha@edusphere.local"]
 
@@ -104,8 +101,7 @@ async def test_a_whatsapp_row_is_never_claimed(db_session, smtp_on, outbox):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("error", [smtplib.SMTPServerDisconnected("gone"), ConnectionRefusedError(), TimeoutError(),
-                                   smtplib.SMTPResponseException(421, b"try later")])
+@pytest.mark.parametrize("error", [smtplib.SMTPServerDisconnected("gone"), ConnectionRefusedError(), TimeoutError(), smtplib.SMTPResponseException(421, b"try later")])
 async def test_a_transient_failure_retries_with_the_countdown(db_session, smtp_on, outbox, lead_emails_enqueued, error):
     message, _, _ = await queued(db_session)
     outbox.fail(error)
@@ -116,8 +112,9 @@ async def test_a_transient_failure_retries_with_the_countdown(db_session, smtp_o
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("error", [smtplib.SMTPRecipientsRefused({"x@example.com": (550, b"no such user")}),
-                                   smtplib.SMTPResponseException(554, b"rejected"), smtplib.SMTPAuthenticationError(535, b"bad login")])
+@pytest.mark.parametrize(
+    "error", [smtplib.SMTPRecipientsRefused({"x@example.com": (550, b"no such user")}), smtplib.SMTPResponseException(554, b"rejected"), smtplib.SMTPAuthenticationError(535, b"bad login")]
+)
 async def test_a_permanent_failure_fails_at_once(db_session, smtp_on, outbox, lead_emails_enqueued, error):
     message, _, _ = await queued(db_session)
     outbox.fail(error)
@@ -142,7 +139,9 @@ async def test_an_address_removed_or_smtp_unset_before_sending_fails(db_session,
 
 
 @pytest.mark.asyncio
-async def test_logs_carry_no_address_subject_or_body(db_session, smtp_on, outbox, caplog):
+async def test_logs_carry_no_address_subject_or_body(db_session, smtp_on, outbox, caplog, monkeypatch):
+    # alembic's env.py fileConfig() (run in-process by the migration tests) disables every existing logger; the app never runs both
+    monkeypatch.setattr(lead_email.logger, "disabled", False)
     message, row, _ = await queued(db_session)
     outbox.fail(smtplib.SMTPRecipientsRefused({row.email: (550, b"no such user " + row.email.encode())}))
     with caplog.at_level("INFO"):

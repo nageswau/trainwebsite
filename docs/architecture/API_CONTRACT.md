@@ -1296,6 +1296,22 @@ Changed: `POST/DELETE /admin/leads/{id}/conversion` keep their contract and now 
 an unlink of a converted lead returns it to Follow-up (HO2). `GET /telecaller/leads/{id}` (and the PATCH answer) gains `milestones`.
 Timeline rows gain `event` (a stage row's pipeline event, else `null`).
 
+## 12W. Lead messages — email to a lead (`tel-014`) — addendum, 2026-10-07
+
+`DEC-SCOPE-102`; design spec `docs/superpowers/specs/2026-10-07-tel-014-email-design.md` §3. Migration `0096_lead_message_email`. Extends
+§12U; signed out `401`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `POST /telecaller/leads/{id}/messages` | The body is a union on `channel`. WhatsApp is unchanged (§12U). Email: `{channel: "email", template_id?, subject, body}`. Subject CR/LF become spaces and it must be 1–200 characters after trimming; body 1–5000; extra fields `422`. In order: `404` scope; `403` not the lead's telecaller / handed over; `409` closed lead; `503` "Email is not set up. Ask an administrator to configure SMTP." (nothing stored); `409` "This lead has no email address"; `422` `template_id` (not an active email template); `429` "You've sent 100 emails today" (per sender per IST day, failed included). `201` the item with `delivery_status: "queued"`, published to the worker after the commit; audit `lead_message.create {lead_id, channel, template_id}` |
+| `GET /telecaller/leads/{id}/messages` | Items gain `delivery_status`: `null` (WhatsApp) or `queued` / `sending` / `retrying` / `sent` / `failed`. An email's `can_delete` is always `false` |
+| `DELETE /telecaller/messages/{id}` | An email → `409` "A sent email can't be deleted" (after scope `404`, sender `403` and handover `403`) |
+
+Delivery (worker, not HTTP): the claim moves `queued` / `retrying` to `sending`. A transient SMTP failure (connection, timeout, 4xx) →
+`retrying` after 60 s / 5 min / 25 min, at most four attempts. A permanent failure (5xx, refused recipient, malformed address, SMTP unset,
+address removed) → `failed`. A 5-minute sweeper republishes stale queued rows and fails rows stuck in `sending`. The mail is From
+`"<telecaller> via EduSphere" <SMTP_FROM_EMAIL>` with Reply-To the telecaller, as plain text plus an escaped HTML part.
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
