@@ -1042,7 +1042,7 @@ the type, or the type's pool; first accept wins); a decline is final (MR2); no w
 
 ### tel-025 — Deactivation, team move, bulk reassignment
 
-**Status (2026-10-07):** **built** on `feature/tel-025` (`DEC-SCOPE-104` LC1–LC4 + D1–D6, reserved on `main`; no migration; API §12Y; RBAC §2.31).
+**Status (2026-10-07):** **merged** to `main` as PR #122 @ `692ffa78` (`DEC-SCOPE-104` LC1–LC4 + D1–D6; no migration; API §12Y; RBAC §2.31).
 Spec `docs/superpowers/specs/2026-10-07-tel-025-telecaller-lifecycle-design.md`; QA report `docs/quality/TEL-025_EXPLORATORY_QA_2026-10-07.md`.
 Reactivation: allowed (LC4).
 

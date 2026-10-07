@@ -1,7 +1,7 @@
 # tel-025 — Telecaller deactivation, team move and bulk reassignment — design
 
 **Date:** 2026-10-07 · **Backlog item:** `tel-025` (`docs/delivery/TELECALLER_CRM_BACKLOG.md`) · **Business rules:** T21, T22, T23; EVID-019 §13 "when staff changes".
-**Decision:** `DEC-SCOPE-104` (LC1–LC4, owner answers of 2026-10-07; number reserved on `main`).
+**Status:** merged to `main` as PR #122 @ `692ffa78` (2026-10-07). **Decision:** `DEC-SCOPE-104` (LC1–LC4, owner answers of 2026-10-07).
 **Dependencies (all merged):** tel-007 (PR #90), tel-011 (PR #100), tel-016 (PR #103), tel-018 (PR #114). **Migration:** none.
 
 ## 1. Owner answers

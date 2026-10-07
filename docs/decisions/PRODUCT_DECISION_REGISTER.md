@@ -4547,7 +4547,7 @@ recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). 
 F3 (follow-ups belong to the lead); `DEC-SCOPE-095` (lead appointments); `DEC-SCOPE-101` (handover); the bdm-025 precedent
 (`DEC-SCOPE-082`); owner answers in-session 2026-10-07.
 **Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option) for
-LC1–LC4; D1–D6 are recorded defaults. **Not yet merged** (branch `feature/tel-025`). **No migration.** API contract §12Y, RBAC §2.31. Spec
+LC1–LC4; D1–D6 are recorded defaults. **MERGED** to `main` as PR #122 @ `692ffa78` (2026-10-07). **No migration.** API contract §12Y, RBAC §2.31. Spec
 `docs/superpowers/specs/2026-10-07-tel-025-telecaller-lifecycle-design.md`. Number reserved on `main` (bdm-012 102, bdm-016 103 and tel-021 105 merged first).
 
 | # | Question | Answer |
