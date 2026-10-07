@@ -4351,15 +4351,53 @@ pending. No migration. API contract §12B (`GET /bdm/my-day`), RBAC (BDM My Day 
 **Consequences:** route `app/api/bdm_my_day.py`; schemas `BdmMyDay*`; page `app/bdm/my-day` (+ `loading.tsx`); component `BdmMyDay`;
 helpers `lib/bdmMyDay.ts`. **New Feature ID authorized:** none (bdm-014 is in the backlog). **Status:** see `BDM_CRM_BACKLOG.md` §bdm-014.
 
-### DEC-SCOPE-098 — BDM daily activity report (`bdm-015`)
+
+### DEC-SCOPE-098 — BDM meeting requests (`tel-019`)
+
+**Evidence:** `EVID-019` §9 BDM meeting types (`Telecaller Functionalities.md` L346–L384, Appendix A); `DEC-SCOPE-073` T10 (the
+telecaller files a meeting request; the BDM accepts it into `bdm_appointments`), T26 (corporate meetings → college BDMs);
+`DEC-SCOPE-068` (bdm-006 appointments); owner answers in-session 2026-10-07.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option) for
+MR1–MR4; MR5–MR14 are recorded defaults. **MERGED** to `main` as PR #109 @ `f8f599ee` (2026-10-07). Migration
+`0093_bdm_meeting_requests` (after tel-010's `0092_lead_calls`; drafted on `0091` and re-chained at the
+`main` @ `3d7dd99a` merge, where bdm-014 had taken `DEC-SCOPE-097`), API contract §12S, RBAC §2.25. Spec
+`docs/superpowers/specs/2026-10-07-tel-019-bdm-meeting-requests-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| MR1 | Q-13: routing | The telecaller **may name an active BDM of the type**; left blank, the request goes to the type's **pool** — every active BDM of that type sees it and the first to accept takes it. No manager triage |
+| MR2 | Decline | A reason is required; a decline is **final** (the telecaller files a new request) |
+| MR3 | Read-only viewers | `bdm_manager`: their team's requests plus the open pool; `super_admin`: all. No telecaller-manager view in this item |
+| MR4 | Withdraw | **No.** Statuses `pending` / `accepted` / `declined` only |
+
+Recorded defaults: MR5 request type → BDM type: college → college, agent → agent, school → school, corporate → college. MR6 `MRQ-000001`
+codes from `bdm_meeting_request_code_seq`. MR7 organization (≤ 200), person (≤ 200), phone (7–30 of digits, spaces, `+ - ( )`), optional
+email, proposed time (future, ≤ 366 days), mode `Online` / `Phone` / `In person`, optional link-or-location (≤ 255), purpose (≤ 1000),
+optional remarks (≤ 2000). MR8 a named BDM must be an active `bdm` of the type (`422`). MR9 accept takes the bdm-006 create body and applies
+every bdm-006 rule unchanged (one organization assigned to the BDM, its contact, a future start — so a request accepted after its proposed
+time just takes a new start); the UI starts from the request (time, `college_meeting` / `agent_meeting` / `school_meeting` /
+`corporate_meeting`, location, purpose, remarks). MR10 the organization must exist (the accept form links to Organizations). MR11 a BDM
+sees their type's pool plus the requests that are theirs; a pool request taken by another BDM reads as `404`. MR12 managers and
+super_admin never accept or decline (`403`); a telecaller sees only their own. MR13 no notifications here (tel-020); a request named for a
+BDM later deactivated stays pending (follow-up for tel-025 / BDM deactivation). MR14 no lead link.
+
+**Consequences:** table `bdm_meeting_requests` (CHECKs: accepted ⇔ appointment, declined ⇔ reason, decided ⇒ BDM + time; unique
+appointment); `api/bdm_appointments.book_appointment` (the bdm-006 create body, shared, no behaviour change); service
+`services/bdm_meeting_requests.py`; routes in `api/bdm_meeting_requests.py`; components `MeetingRequestForm`, `MeetingRequestList`,
+`MeetingRequestDecide`, `MeetingRequestsCard`; `BdmAppointmentForm` gains an optional `request` (prefill + accept URL). Navs: telecaller
+"BDM requests", BDM and BDM-manager "Requests". **New Feature ID authorized:** `tel-019`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4
+tel-019.
+
+### DEC-SCOPE-099 — BDM daily activity report (`bdm-015`)
 
 **Evidence:** `EVID-016` §11, Agent §G, School §G (`BDM_CRM_BACKLOG.md` Appendix A L371–L397, L759–L781, L1000–L1022);
 `DEC-SCOPE-055` D9 (derived + activity log + note + submit), D22 / Q-13 (not enforced; submitting snapshots and locks the report and that
 day's activity edits; the manager can comment), D31 (School daily sessions); Appendix B M-rows; bdm-009 V6 ("Calls made" = outbound calls).
 **Status:** R1–R10 are the **recommended answers**, used under the owner's standing direction for this session to proceed with
 recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). Drafted as `DEC-SCOPE-096` / `0092` / §12R / RBAC 2.24 and
-renumbered on merging `main` @ `3d7dd99a` (tel-010 took `DEC-SCOPE-096` / `0092_lead_calls` / §12R / 2.24; bdm-014 took `DEC-SCOPE-097`).
-Migration `0093_bdm_daily_reports` (after `0092_lead_calls`), API contract §12S, RBAC §2.25. Spec
+renumbered on merging `main` @ `3d7dd99a` (tel-010 took `DEC-SCOPE-096` / `0092_lead_calls` / §12R / 2.24; bdm-014 took `DEC-SCOPE-097`),
+then again on merging `main` @ `649f32fa` (tel-019 took `DEC-SCOPE-098` / `0093_bdm_meeting_requests` / §12S / 2.25).
+Migration `0094_bdm_daily_reports` (after `0093_bdm_meeting_requests`), API contract §12T, RBAC §2.26. Spec
 `docs/superpowers/specs/2026-10-07-bdm-015-daily-activity-report-design.md`.
 
 | # | Question | Recommended answer (used) |

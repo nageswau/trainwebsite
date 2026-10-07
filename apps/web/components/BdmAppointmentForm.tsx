@@ -19,8 +19,11 @@ import type { TripRow } from "@/lib/bdmTravel";
 // field change clears the overlap warning, and the warning keeps the exact body that was checked: "Save anyway" resends that body, never
 // the current fields (an edit made while the request was pending cannot be confirmed unchecked).
 // bdm-011: `trips` are the BDM's open trips (read once by the page); `tripsUnavailable` says that read failed.
+// tel-019 (MR9): `request` books by accepting a meeting request -- the fields start from it and the form posts to its accept URL (the API
+// applies every bdm-006 rule there and answers with the same `{appointment}` body).
+export type FromRequest = { acceptUrl: string; prefill: Partial<Pick<FieldValues, "when" | "type" | "location" | "purpose" | "remarks">> };
 type Props = (
-  | { mode: "create"; bdmType: BdmType; initialOrganization: Organization | null }
+  | { mode: "create"; bdmType: BdmType; initialOrganization: Organization | null; request?: FromRequest }
   | { mode: "edit"; bdmType: BdmType; appointment: Appointment; onSaved: (a: Appointment, saved: boolean) => void; onCancel: () => void }
 ) & { trips?: TripRow[]; tripsUnavailable?: boolean };
 
@@ -56,7 +59,10 @@ function initialValues(props: Props): FieldValues {
       purpose: text(a.purpose), remarks: text(a.remarks), leads: a.expected_leads === null ? "" : String(a.expected_leads), revenue: text(a.expected_revenue),
     };
   }
-  return { contactId: primaryOf(props.initialOrganization?.contacts ?? []), when: "", duration: 60, type: "", location: "", purpose: "", remarks: "", leads: "", revenue: "" };
+  return {
+    contactId: primaryOf(props.initialOrganization?.contacts ?? []), when: "", duration: 60, type: "", location: "", purpose: "", remarks: "", leads: "", revenue: "",
+    ...props.request?.prefill,
+  };
 }
 
 export default function BdmAppointmentForm(props: Props) {
@@ -114,7 +120,7 @@ export default function BdmAppointmentForm(props: Props) {
       setBusy(false);
       return handle(outcome, body, (a) => edit.onSaved(a, true));
     }
-    const outcome = await sendJson(APPOINTMENTS_URL, "POST", { ...body, confirm_overlap: confirmOverlap });
+    const outcome = await sendJson(props.mode === "create" && props.request ? props.request.acceptUrl : APPOINTMENTS_URL, "POST", { ...body, confirm_overlap: confirmOverlap });
     setBusy(false);
     handle(outcome, body, (a) => router.push(`/bdm/appointments/${a.id}?created=1`));
   }
@@ -188,7 +194,7 @@ export default function BdmAppointmentForm(props: Props) {
       {warning && <BdmOverlapAlert overlap={warning.overlap} busy={busy} onConfirm={() => void send(warning.body, true)} onCancel={() => setWarning(null)} />}
       <div className="actions">
         <button type="submit" className="btn" disabled={busy || warning !== null || (!editing && (!orgId || !values.contactId))}>
-          {busy ? "Saving…" : editing ? "Save changes" : "Book appointment"}
+          {busy ? "Saving…" : editing ? "Save changes" : props.mode === "create" && props.request ? "Accept and book" : "Book appointment"}
         </button>
         {edit && (
           <button type="button" className="btn secondary" onClick={edit.onCancel}>

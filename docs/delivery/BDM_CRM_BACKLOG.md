@@ -781,9 +781,9 @@ Conventions used below:
 
 ### bdm-015 — Daily activity report (derived + note + submit)
 
-> **Status (2026-10-07):** **COMPLETE WITH DEFERRED FULL REGRESSION** on `feature/bdm-015` (`DEC-SCOPE-098` R1–R10 — the
-> recommended answers under the owner's standing direction, `NEEDS_CONFIRMATION` at sign-off; migration `0093_bdm_daily_reports` after
-> `0092_lead_calls`; API §12S; RBAC §2.25). Dependencies bdm-007 / 009 / 010 (and 005 / 017) on `main`. Fresh evidence on the final
+> **Status (2026-10-07):** **COMPLETE WITH DEFERRED FULL REGRESSION** on `feature/bdm-015` (`DEC-SCOPE-099` R1–R10 — the
+> recommended answers under the owner's standing direction, `NEEDS_CONFIRMATION` at sign-off; migration `0094_bdm_daily_reports` after
+> `0093_bdm_meeting_requests`; API §12T; RBAC §2.26). Dependencies bdm-007 / 009 / 010 (and 005 / 017) on `main`. Fresh evidence on the final
 > commit: backend focused (bdm-015 ×6 files, bdm-009 ×6, bdm-021) **98 passed, 0 failed**; one alembic head; offline SQL = one `CREATE
 > TABLE`; ruff clean on changed files; mypy 0 in bdm-015 modules; web (bdm-015 + bdm-009 components, nav, MoU nav) **81 passed**; `tsc` 0;
 > eslint 0; `next build` compiled (Docker web image); `dateZoneSweep` lists only pre-existing entries (none in bdm-015 files); Playwright
@@ -793,6 +793,9 @@ Conventions used below:
 > merged first; this item, drafted as 096 / `0092`, is now `DEC-SCOPE-098` / `0093_bdm_daily_reports` / §12S / RBAC 2.25): backend
 > (bdm-015, bdm-009, bdm-021, bdm-014, tel-010) **148 passed, 0 failed**; one head `0093_bdm_daily_reports`; web **92 passed**; `tsc` 0;
 > eslint 0; `next build` compiled; Playwright bdm-015 + bdm-009 + bdm-014 **3 passed**.
+> Re-verified on `main` @ `649f32fa` merged (tel-019 took `DEC-SCOPE-098` / `0093_bdm_meeting_requests` / §12S / 2.25, so this item is now
+> `DEC-SCOPE-099` / `0094_bdm_daily_reports` / §12T / RBAC 2.26): backend (bdm-015, bdm-009, bdm-014, tel-019) **118 passed, 0 failed**;
+> one head `0094_bdm_daily_reports`; web (bdm-015, activities, nav) **42 passed**; `tsc` 0; eslint 0. Playwright was not re-run for this merge.
 > **Deferred:** full backend + web + E2E regression (dedicated session). Spec:
 > `docs/superpowers/specs/2026-10-07-bdm-015-daily-activity-report-design.md`; plan: `docs/superpowers/plans/2026-10-07-bdm-015-daily-activity-report.md`.
 

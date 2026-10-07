@@ -1,8 +1,9 @@
 # bdm-015 — Daily activity report (derived + note + submit) — design
 
 - **Feature:** bdm-015 (`docs/delivery/BDM_CRM_BACKLOG.md` §4 bdm-015; Appendix B M-rows)
-- **Decision:** `DEC-SCOPE-098`. Migration `0093_bdm_daily_reports` after `0092_lead_calls`; API §12S; RBAC §2.25. Drafted as
-  `DEC-SCOPE-096` / `0092` / §12R / 2.24 and renumbered on merging `main` @ `3d7dd99a` (tel-010 and bdm-014 merged first).
+- **Decision:** `DEC-SCOPE-099`. Migration `0094_bdm_daily_reports` after `0093_bdm_meeting_requests`; API §12T; RBAC §2.26.
+  Drafted as `DEC-SCOPE-096` / `0092` / §12R / 2.24; renumbered to 098 / `0093` / §12S / 2.25 on merging `main` @ `3d7dd99a` (tel-010,
+  bdm-014), then to 099 / `0094` / §12T / 2.26 on merging `main` @ `649f32fa` (tel-019).
 - **Evidence:** `DEC-SCOPE-055` D9 (derived + log + note + submit), D22 / Q-13 (not enforced; submitting snapshots and locks the report
   and that day's activity edits; the manager can comment), D31 (School daily sessions = the BDM's completed presentation appointments).
 - **Dependencies:** bdm-007, bdm-009, bdm-010 (all on `main`); bdm-005 (MoU events) and bdm-017 (lead attribution) are on `main`, so
@@ -69,7 +70,7 @@ month window.
 
 ## 4. Data
 
-`bdm_daily_reports` (migration `0093_bdm_daily_reports`, additive, guarded create, downgrade refuses while rows exist):
+`bdm_daily_reports` (migration `0094_bdm_daily_reports`, additive, guarded create, downgrade refuses while rows exist):
 
 | Column | Type | Notes |
 |---|---|---|

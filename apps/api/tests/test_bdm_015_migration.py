@@ -1,4 +1,4 @@
-"""bdm-015 -- migration 0093_bdm_daily_reports (spec §4). The round trip and the downgrade refusal run in a throwaway database (the
+"""bdm-015 -- migration 0094_bdm_daily_reports (spec §4). The round trip and the downgrade refusal run in a throwaway database (the
 bdm-009 pattern); a downgrade never runs against the shared test database."""
 
 import asyncio
@@ -19,11 +19,11 @@ from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_bdm_015_migration_0093", VERSIONS / "0093_bdm_daily_reports.py")
+_spec = importlib.util.spec_from_file_location("_bdm_015_migration_0094", VERSIONS / "0094_bdm_daily_reports.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0092_lead_calls", "0093_bdm_daily_reports"
+BASE, HEAD = "0093_bdm_meeting_requests", "0094_bdm_daily_reports"
 TABLE = "bdm_daily_reports"
 
 
@@ -33,7 +33,7 @@ def _config() -> Config:
     return cfg
 
 
-def test_migration_chains_after_0091_and_is_the_single_head():
+def test_migration_chains_after_0093_and_is_the_single_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
@@ -85,7 +85,7 @@ def _sql(url: str, sql: str, params: dict | None = None, *, autocommit: bool = F
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0091 with one BDM user."""
+    """A fresh database at BASE with one BDM user."""
     cfg = _config()
     original = settings.database_url
     name = f"bdm015_migration_{uuid.uuid4().hex[:8]}"

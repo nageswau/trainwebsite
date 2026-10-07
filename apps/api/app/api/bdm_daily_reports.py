@@ -1,4 +1,4 @@
-"""bdm-015 (DEC-SCOPE-098, spec §5): the BDM daily activity report.
+"""bdm-015 (DEC-SCOPE-099, spec §5): the BDM daily activity report.
 
 A BDM reads and submits only their own report (`bdm_context`; no route names another BDM, so "submitting for another BDM" is the 403
 of every non-BDM caller). Managers read their team's reports and comment (`require_manager` + `team_filter`; a BDM outside the team

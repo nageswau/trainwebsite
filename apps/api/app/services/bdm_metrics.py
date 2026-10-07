@@ -94,7 +94,7 @@ async def college_business(db: AsyncSession, org: BdmOrganization, with_revenue:
     return {"organization_id": org.id, "currency": CURRENCY, "funnel": funnel, "revenue": revenue}
 
 
-# bdm-015 (DEC-SCOPE-098, spec §3): the daily activity report's counts -- Appendix B M-rows for one BDM and one IST day. Every builder
+# bdm-015 (DEC-SCOPE-099, spec §3): the daily activity report's counts -- Appendix B M-rows for one BDM and one IST day. Every builder
 # returns a scalar subquery over a half-open instant window [start, end), so a monthly window (bdm-016/023/024) can reuse them as is.
 # A not-tracked count has no builder: it is labelled, never 0 (R10).
 
