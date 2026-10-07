@@ -616,6 +616,12 @@ after tel-003 `0078`, bdm-005 `0079`, tel-022 `0080`, tel-004 `0081` and bdm-025
 
 ### tel-013 — WhatsApp click-to-chat + send log
 
+**Status (2026-10-07):** **built** on `feature/tel-013`, not yet merged (`DEC-SCOPE-099` WA1–WA4 + D1–D9, migration `0094_lead_messages`,
+API contract §12U, RBAC §2.27; chained to `main`'s `0092`, re-chained at merge if tel-019's `0093` lands first). Spec
+`docs/superpowers/specs/2026-10-07-tel-013-whatsapp-design.md`; QA report `docs/quality/TEL-013_EXPLORATORY_QA_2026-10-07.md`. Q-21 →
+WA1 (full text kept); consent and retention stay open (`PRD_OPEN_ITEMS.md` row 85). The tel-005 duplicate panel's "Last contact" is not
+added here (tel-015 owns the merged contact history).
+
 **Inherited from tel-012 (`DEC-SCOPE-083` C2):** `GET /telecaller/leads/{id}/render?template_id=`. It renders through
 `services/telecaller_content.render` with the lead's values, using `asset_link` for `{brochure_link}`. The owning-telecaller check comes
 from tel-008. The rendered text is plain, so this item URL-encodes it for wa.me.
@@ -1191,7 +1197,7 @@ that as `0090_lead_follow_ups` / `DEC-SCOPE-094` / §12P. tel-016 (PR #103 @ `92
 | tel-010 | `lead_calls` (`0092`, merged PR #106 @ `7e3ab62a`) |
 | tel-011 | `lead_follow_ups` (`0090`, merged PR #100 @ `8f9f1676`) |
 | tel-012 | `tel_scripts`, `tel_message_templates`, `tel_assets` (+ seeds) |
-| tel-013 | `lead_messages` |
+| tel-013 | `lead_messages` (`0094`, on `feature/tel-013`) |
 | tel-016 | `appointments` + lead_id, appointment_code, duration_minutes, purpose, meeting_link, location, remarks, booked_by; CHECK student-or-lead; `appointment_events`; `appointment_code_seq` (`0091`, merged PR #103 @ `92946a8a`) |
 | tel-018 | possibly `enquiries.handed_over_at` (decided in-item) |
 | tel-019 | `bdm_meeting_requests` |

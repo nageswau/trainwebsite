@@ -2,7 +2,7 @@
 
 - **Backlog:** `docs/delivery/TELECALLER_CRM_BACKLOG.md` § tel-013 (EVID-019 §11, L416–L452; T8). Dependencies tel-008 (PR #85) and
   tel-012 (PR #83) are merged. Inherits tel-012 C2: `GET /telecaller/leads/{id}/render`.
-- **Status:** built on `feature/tel-013`.
+- **Status:** built on `feature/tel-013`, not yet merged. QA: `docs/quality/TEL-013_EXPLORATORY_QA_2026-10-07.md` (QA-01–QA-04 fixed).
 - **Decision:** `DEC-SCOPE-099` (WA1–WA4 owner answers 2026-10-07; D1–D9 defaults). Migration `0094_lead_messages`, API contract §12U,
   RBAC §2.27. tel-019 (`0093` / 097 / §12S / 2.25) and tel-018 (098 / §12T / 2.26) are built in parallel and unmerged, so `0094` chains to
   main's `0092_lead_calls` and is re-chained at merge if either lands first.

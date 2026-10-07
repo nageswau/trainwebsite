@@ -4323,3 +4323,36 @@ caller per IST day (`409`). D10 the follow-up item's lead gains `last_call` (tel
 `lead.last_call`. Web: the lead-detail Calls section (`LeadCalls`, `CallLogForm`; the header "Call" opens the dialer and the form) and the
 §7 card's "Last call". The day counts (`GET /telecaller/calls/day-counts`) feed tel-021's B6/B7 tiles.
 **New Feature ID authorized:** `tel-010`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-010.
+
+### DEC-SCOPE-099 — WhatsApp click-to-chat + send log (`tel-013`)
+
+**Evidence:** `EVID-019` §11 (L416–L452); `DEC-SCOPE-073` T8 (wa.me, an editable template, "WhatsApp sent – date/time – template", no API /
+approval / consent model now), T9, T19, T23 and Appendix B D10; `DEC-SCOPE-083` C1 (signed 7-day brochure links) and C2 (the lead render
+route moves to tel-013); `DEC-SCOPE-084` D1 (handover = read-only); `DEC-SCOPE-096` CL2 / CL4 (closed lead, same-day change); owner
+answers in-session 2026-10-07.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option)
+for WA1–WA4; D1–D9 are recorded defaults. Branch `feature/tel-013`, not yet merged. Migration `0094_lead_messages` (chained to `main`'s
+`0092_lead_calls`; tel-019's open branch claims `0093` / `DEC-SCOPE-097` / §12S / RBAC 2.25 and tel-018's `DEC-SCOPE-098` / §12T / RBAC
+2.26, so `0094` re-chains at merge if `0093` lands first), API contract §12U, RBAC §2.27. Spec
+`docs/superpowers/specs/2026-10-07-tel-013-whatsapp-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| WA1 (Q-21, part) | What a send log keeps of the text | **The full text as sent** (1–1000 characters). Logs and audit never carry it |
+| WA2 | Who records a send, on which leads | **Only the lead's telecaller, before handover**; a closed lead is refused (`409`) until a manager reopens it. Managers / super_admin read |
+| WA3 | Undo a mistaken "Sent" | **The sender deletes their own row on its IST day** (audited); no edit |
+| WA4 | Must a message start from a template | **No.** A template is rendered and editable; a free message is logged as "Custom message" |
+
+Recorded defaults: D1 the wa.me number is the WhatsApp number, else the mobile (`notifications/phone.normalise_phone`, `+91` default),
+an unusable WhatsApp number falling back to the mobile. D2 no usable number → the action is disabled; the API refuses with `409`. D3 wa.me
+can't confirm delivery, so nothing is logged until the telecaller confirms ("Not sent" / cancel logs nothing). D4 active WhatsApp templates
+only; another product's template is a warning, not a refusal. D5 render values: name, the lead's product else the template's, a fresh
+brochure link, the open counselling appointment (IST). D6 the template's name is kept as sent. D7 no stage effect. D8 300 sends per sender
+per IST day (`409`). D9 `lead_messages` carries `channel` / `subject` / `delivery_status` for tel-014; this item accepts WhatsApp only.
+
+**Consequences:** table `lead_messages`; `services/lead_messages.py`; router `api/telecaller_messages.py`
+(`GET /telecaller/leads/{id}/render`, the messages list / create, `DELETE /telecaller/messages/{id}`); the lead detail gains `whatsapp_to`.
+Web: the lead-detail Messages section (`LeadMessages`, `WhatsAppComposer`; the header "WhatsApp" opens the composer). tel-015 reads the rows
+for the timeline; tel-021 counts them (Appendix B D10). Consent capture and retention for messaged leads (the rest of Q-21) stay open:
+`PRD_OPEN_ITEMS.md` row 85.
+**New Feature ID authorized:** `tel-013`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-013.
