@@ -1,4 +1,4 @@
-"""tel-014 -- email to a lead (spec §1-§3; DEC-SCOPE-104 EM1-EM4, E1-E10): the request side -- validation, the rules, the queued row, the
+"""tel-014 -- email to a lead (spec §1-§3; DEC-SCOPE-106 EM1-EM4, E1-E10): the request side -- validation, the rules, the queued row, the
 publish after commit, the caps and the no-delete rule. The worker side is test_tel_014_delivery. The shared test database is never truncated,
 so every assertion narrows to rows the test made."""
 

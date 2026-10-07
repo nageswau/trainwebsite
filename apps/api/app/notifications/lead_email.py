@@ -1,4 +1,4 @@
-"""tel-014 (DEC-SCOPE-104 E4-E7, E10; spec §4): the worker side of a telecaller's email to a lead -- ENH-014's delivery pattern on a
+"""tel-014 (DEC-SCOPE-106 E4-E7, E10; spec §4): the worker side of a telecaller's email to a lead -- ENH-014's delivery pattern on a
 `lead_messages` row. Claim the row atomically (`queued`/`retrying` -> `sending`), so a duplicate task, a redelivered message or a
 concurrent worker can never send twice; send through the existing SMTP mailer with no transaction open; record `sent`, `retrying` (re-enqueued
 with the D11 countdowns) or `failed`. Logs carry the message id, the status and the error type -- never an address, subject or body."""

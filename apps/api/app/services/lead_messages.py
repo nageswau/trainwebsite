@@ -5,7 +5,7 @@ A message belongs to its lead: reads go through the lead's scope (`lead_pipeline
 same 404 as a missing one. Only the lead's telecaller sends (WA2), and only the sender deletes, on its IST day. Writes lock the lead first.
 Functions only; nothing here commits. Logs and audit carry ids, the channel and the template id -- never the text or a number (WA1).
 
-tel-014 (DEC-SCOPE-104) adds email: the row is stored `queued` and the caller publishes it after the commit (E4); the worker
+tel-014 (DEC-SCOPE-106) adds email: the row is stored `queued` and the caller publishes it after the commit (E4); the worker
 (`notifications/lead_email`) sends it. An email row is never deleted (EM2) and has its own daily cap (EM3, 429)."""
 
 import logging

@@ -753,7 +753,19 @@ appointment.
 | `super_admin` | as a manager, and **past months** too | all BDMs | `bdm-016` |
 | every other role | none → `403` | — | `bdm-016` |
 
-### 2.30 Lead email *(net-new, added 2026-10-07 — `DEC-SCOPE-104`, `tel-014`)*
+### 2.30 Telecaller dashboard + daily activity *(net-new, added 2026-10-07 — `DEC-SCOPE-105`, `tel-021`)*
+
+The same inline pattern as §2.19. Read-only; the subject comes from the session (`telecaller_context`) or, for a manager, from
+`telecaller_targets.telecaller_in_scope` (tel-022's direct-report rule).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | read own dashboard; read own daily activity for any day up to today | self; another `user_id` is `403` | `tel-021` |
+| `telecaller_manager` | read a report's daily activity (`user_id` required) | direct reports; anyone else `404` | `tel-021` |
+| `super_admin` | read any telecaller's daily activity | all telecallers | `tel-021` |
+| every other role | `403` (the dashboard is the telecaller's only) | — | `tel-021` |
+
+### 2.31 Lead email *(net-new, added 2026-10-07 — `DEC-SCOPE-106`, `tel-014`)*
 
 §2.27's gate, on the same routes (`lead_pipeline.scope`, the lead lock, the role and `telecaller_leads.require_writable`). The recipient is
 always the lead's own address, never one from the request.

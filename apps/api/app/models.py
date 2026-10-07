@@ -1041,7 +1041,7 @@ LEAD_MESSAGE_CHECKS = {
     "ck_lead_messages_body": "length(body) BETWEEN 1 AND 5000",
     "ck_lead_messages_whatsapp": "channel <> 'whatsapp' OR (subject IS NULL AND delivery_status IS NULL)",
 }
-# tel-014 (DEC-SCOPE-104 E5): an email row has a subject and a delivery status. Migration 0097 repeats it (test_tel_014_migration).
+# tel-014 (DEC-SCOPE-106 E5): an email row has a subject and a delivery status. Migration 0097 repeats it (test_tel_014_migration).
 LEAD_EMAIL_STATUSES = ("queued", "sending", "retrying", "sent", "failed")
 LEAD_MESSAGE_EMAIL_CHECK = {
     "ck_lead_messages_email": f"channel <> 'email' OR (subject IS NOT NULL AND delivery_status IS NOT NULL AND delivery_status IN ({', '.join(repr(s) for s in LEAD_EMAIL_STATUSES)}))",
@@ -1050,7 +1050,7 @@ LEAD_MESSAGE_EMAIL_CHECK = {
 
 class LeadMessage(Base, TimestampMixin):
     """tel-013 (DEC-SCOPE-100): a message sent to a lead -- WhatsApp via wa.me (T8; the row is the telecaller's confirmation, WA1 keeps the
-    full text) and, from tel-014, email (subject + delivery status; `attempt_count` counts SMTP attempts, DEC-SCOPE-104 E5). It belongs to
+    full text) and, from tel-014, email (subject + delivery status; `attempt_count` counts SMTP attempts, DEC-SCOPE-106 E5). It belongs to
     the lead, so its scope is the lead's. `template_name` is the template's name when sent (D6), so a rename never rewrites history."""
 
     __tablename__ = "lead_messages"

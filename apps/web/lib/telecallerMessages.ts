@@ -1,5 +1,5 @@
 // tel-013 (DEC-SCOPE-100): messages to a lead -- types, the endpoints, wa.me links and the "WhatsApp sent" line. The API decides scope, every
-// rule and `can_delete` (the sender, on the send's IST day, lead not handed over); the UI only offers what it allows. tel-014 (DEC-SCOPE-104)
+// rule and `can_delete` (the sender, on the send's IST day, lead not handed over); the UI only offers what it allows. tel-014 (DEC-SCOPE-106)
 // adds email: a subject and a delivery status the worker moves on (queued -> sending -> sent | retrying | failed); never deletable.
 import { SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 import { CATALOGUE_PAGE_SIZE, getPage } from "@/lib/telecallerCatalogue";

@@ -1311,9 +1311,19 @@ past|current|future, editable, bdm: {id, full_name}, bdm_type, kpis: [{key, labe
 | `PUT /bdm/manager/targets` | Manager roles. Body `{month, items: [{bdm_user_id, kpi_key, target: 0–100000 \| null}]}` (1–200 items, one per BDM and KPI, unknown keys `422`). All or nothing: a KPI outside the BDM's type `422` (named), outside the team `404`, inactive BDM `422`, a past month by a manager `422`, more than 12 months ahead `422`. `200 {month, changed}`; `null` clears; unchanged values are not written; audit `bdm_target.set {month, changes: [{kpi, from, to}]}` per BDM |
 | `POST /bdm/manager/targets/copy` | Manager roles. Body `{month}`; same month rules. Copies the previous month's targets of active team BDMs where none is set yet. `200 {month, copied}`; audit `bdm_target.copied {month, from_month, kpis}` per BDM |
 
-## 12X. Lead messages — email to a lead (`tel-014`) — addendum, 2026-10-07
+## 12X. Telecaller dashboard + daily activity (`tel-021`) — addendum, 2026-10-07
 
-`DEC-SCOPE-104`; design spec `docs/superpowers/specs/2026-10-07-tel-014-email-design.md` §3. Migration `0097_lead_message_email`. Extends
+`DEC-SCOPE-105`; design spec `docs/superpowers/specs/2026-10-07-tel-021-dashboard-design.md` §2–§3. No migration. Signed out `401`. All
+days are IST; every figure is computed by `services/telecaller_metrics.py` (backlog Appendix B).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/dashboard` | `telecaller` only (else `403`). `200 {day, tiles: {new_leads, calls_today: {done, to_do}, follow_ups_due, hot_leads, appointments, connected, not_connected, converted, overdue, daily_target: {achieved, target}}, targets: {daily: [{kpi, achieved, target}], monthly: [...]}, appointments: [{kind: counselling\|bdm, id, code, title, scheduled_at, status, lead_id}]}`; `target` is `null` when none is set |
+| `GET /telecaller/activity?date=&user_id=` | `date` defaults to today; a future day `422`. Telecaller: own only (`user_id` other than self `403`). Manager / `super_admin`: `user_id` required (`422`), out of scope `404`. Other roles `403`. `200 {day, user: {id, full_name}, counts: {leads_assigned, calls, connected_calls, not_connected, follow_ups_completed, follow_ups_pending, new_appointments, counselor_appointments, bdm_appointments, whatsapp_messages, qualified_leads, hot_leads, converted_leads}, targets: [{kpi, achieved, target}]}` (that day's daily targets) |
+
+## 12Y. Lead messages — email to a lead (`tel-014`) — addendum, 2026-10-07
+
+`DEC-SCOPE-106`; design spec `docs/superpowers/specs/2026-10-07-tel-014-email-design.md` §3. Migration `0097_lead_message_email`. Extends
 §12U; signed out `401`.
 
 | Method/Path | Notes / status codes |

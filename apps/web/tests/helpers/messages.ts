@@ -7,7 +7,7 @@ export const message = (over: Partial<LeadMessage> = {}): LeadMessage => ({
   can_delete: true, ...over,
 });
 
-// tel-014: an email row (DEC-SCOPE-104 -- never deletable, with a delivery status).
+// tel-014: an email row (DEC-SCOPE-106 -- never deletable, with a delivery status).
 export const emailMessage = (over: Partial<LeadMessage> = {}): LeadMessage =>
   message({ id: "E1", channel: "email", template: { id: "TE", name: "Course brochure" }, subject: "Your Python brochure", body: "Dear Priya",
     delivery_status: "sent", can_delete: false, ...over });

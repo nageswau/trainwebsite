@@ -6038,7 +6038,7 @@ def _one_line(value):
 
 
 class LeadEmailCreate(BaseModel):
-    """tel-014 (DEC-SCOPE-104): EM4 the template is optional; E6 tel-012's email limits. The recipient is always the lead's address (E7),
+    """tel-014 (DEC-SCOPE-106): EM4 the template is optional; E6 tel-012's email limits. The recipient is always the lead's address (E7),
     never the caller's."""
 
     model_config = ConfigDict(extra="forbid")

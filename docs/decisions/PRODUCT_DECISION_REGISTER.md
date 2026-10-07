@@ -4541,7 +4541,34 @@ recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). 
 `api/bdm_targets.py`; pages `/bdm/manager/targets`, `/bdm/manager/targets/[bdmId]`; a "Monthly targets" card on My Day; components
 `BdmTargetsEditor`, `BdmTargetsCopy`, `BdmTargetsCard`. **Feature ID:** `bdm-016`. **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-016.
 
-### DEC-SCOPE-104 — Email to a lead + send log (`tel-014`)
+### DEC-SCOPE-105 — Telecaller dashboard + daily activity (`tel-021`)
+
+**Evidence:** `EVID-019` §1 (10 tiles), §14 (13 counts), §15 "Dashboard should show"; `DEC-SCOPE-073` T5, T23, T24, T27; backlog
+Appendix B (B1–B10, D1–D13, K1–K6); `DEC-SCOPE-080` (targets), `DEC-SCOPE-096` (calls), `DEC-SCOPE-094` (follow-ups), `DEC-SCOPE-095` /
+`DEC-SCOPE-098` (appointments), `DEC-SCOPE-100` (WhatsApp), `DEC-SCOPE-101` HO2 (unlink); owner answers in-session 2026-10-07.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — two structured questions, each answered with the recommended option) for
+DB1–DB2; DB3–DB8 are recorded defaults. **No migration.** API contract §12X, RBAC §2.30. Spec
+`docs/superpowers/specs/2026-10-07-tel-021-dashboard-design.md`. (102 went to bdm-012 and 103 to bdm-016, both merged first; 104 is held by tel-025.)
+
+| # | Question | Answer |
+|---|---|---|
+| DB1 | B9 "Overdue": the not-contacted threshold (tel-020's, not built) | A fixed **24 hours** in First Call Pending (`stage_changed_at`) until tel-020 brings the team's threshold |
+| DB2 | Q-18 part 1: conversion credit | The lead's telecaller **at the moment conversion was first recorded** (first `converted` stage row); a later reassignment does not move it. A lead no longer `converted` (HO2 unlink) does not count |
+
+Recorded defaults: DB3 the tiles are today's (IST); the daily activity takes `?date=` up to today (future → `422`); the backlog's
+`/telecaller/dashboard?date=` is dropped. DB4 the point-in-time counts (D1, D6, D12) are rebuilt as of the end of the day (now, for
+today) from `lead.assign` / `lead.priority_change` audit rows, `lead_stage_history` and the follow-up timestamps. DB5 "open" = not in a
+closed stage; tiles B2/B4/B9 also leave out handed-over leads (T19). DB6 a `telecaller_manager` reads a direct report's activity and
+`super_admin` any telecaller's (`404` otherwise; a telecaller naming another user `403`); division admins are left to tel-023/024. DB7
+appointments exclude `cancelled`; counselling by `booked_by_user_id`, BDM meetings by my accepted requests' `starts_at`. DB8 B1 = leads that
+became mine today (a `lead.assign` to me, or my own already-assigned `lead.create`) and are still mine.
+
+**Consequences:** service `services/telecaller_metrics.py` (the single source tel-023/024 reuse); routes `api/telecaller_dashboard.py`;
+components `TelecallerDashboardTiles`, `TelecallerAppointmentsCard`, `TelecallerActivityPanel`; `TelecallerTargetsCard` gains achieved
+figures; page `/telecaller/manager/team/[id]/activity`; the Team table links each report's activity.
+**New Feature ID authorized:** `tel-021`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-021.
+
+### DEC-SCOPE-106 — Email to a lead + send log (`tel-014`)
 
 **Evidence:**
 - `EVID-019` §12 (L454–L472: seven email kinds, "stored under the student's timeline").
@@ -4554,8 +4581,9 @@ recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). 
 
 **Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option)
 for EM1–EM4; E1–E10 are recorded defaults. Branch `feature/tel-014`. Migration `0097_lead_message_email` (after bdm-016's `0096_bdm_targets`), API
-contract §12X, RBAC §2.30. Spec `docs/superpowers/specs/2026-10-07-tel-014-email-design.md`. Drafted as `0096` / `DEC-SCOPE-102` / §12W / 2.29; tel-018 (`DEC-SCOPE-101`, no migration), bdm-012 (`DEC-SCOPE-102`)
-and bdm-016 (`0096_bdm_targets` / `DEC-SCOPE-103` / §12W / 2.29) merged first, so it is renumbered.
+contract §12Y, RBAC §2.31. Spec `docs/superpowers/specs/2026-10-07-tel-014-email-design.md`. Drafted as `0096` / `DEC-SCOPE-102` / §12W / 2.29; tel-018 (`DEC-SCOPE-101`, no migration), bdm-012 (`DEC-SCOPE-102`),
+bdm-016 (`0096_bdm_targets` / `DEC-SCOPE-103` / §12W / 2.29) and tel-021 (`DEC-SCOPE-105` / §12X / 2.30, no migration) merged first
+and tel-025 holds `DEC-SCOPE-104`, so it is renumbered.
 
 | # | Question | Answer |
 |---|---|---|

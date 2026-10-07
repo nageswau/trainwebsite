@@ -140,7 +140,7 @@ def sweep_lead_conversions_task():
 
 @celery.task
 def deliver_lead_email_task(message_id: str):
-    """tel-014 (DEC-SCOPE-104 E4/E5): send one queued lead email; retries are re-enqueued by `deliver_lead_email` itself."""
+    """tel-014 (DEC-SCOPE-106 E4/E5): send one queued lead email; retries are re-enqueued by `deliver_lead_email` itself."""
     from app.notifications.lead_email import deliver_lead_email
 
     return _run_with_fresh_pool(lambda: deliver_lead_email(UUID(message_id)))

@@ -658,9 +658,9 @@ from tel-008. The rendered text is plain, so this item URL-encodes it for wa.me.
 
 ### tel-014 — Email to lead + send log
 
-**Status (2026-10-07):** **built** on `feature/tel-014`: `DEC-SCOPE-104` (EM1–EM4 plus defaults E1–E10), migration
-`0097_lead_message_email` (after bdm-016's `0096_bdm_targets`), API §12X, RBAC §2.30. Drafted as `0096` / `DEC-SCOPE-102`, then renumbered
-after bdm-012 and bdm-016. Q-16 is answered by EM1. The cap is 429 at 100 emails a day. Email rows are never deleted.
+**Status (2026-10-07):** **built** on `feature/tel-014`: `DEC-SCOPE-106` (EM1–EM4 plus defaults E1–E10), migration
+`0097_lead_message_email` (after bdm-016's `0096_bdm_targets`), API §12Y, RBAC §2.31. Drafted as `0096` / `DEC-SCOPE-102`, then renumbered
+after bdm-012, bdm-016 and tel-021 (tel-025 holds `DEC-SCOPE-104`). Q-16 is answered by EM1. The cap is 429 at 100 emails a day. Email rows are never deleted.
 Spec `docs/superpowers/specs/2026-10-07-tel-014-email-design.md`. QA report `docs/quality/TEL-014_EXPLORATORY_QA_2026-10-07.md`. Consent
 and retention remain open (`PRD_OPEN_ITEMS.md` row 85).
 
@@ -918,6 +918,9 @@ the type, or the type's pool; first accept wins); a decline is final (MR2); no w
 - **Complexity:** large · **Risk:** high
 
 ### tel-021 — Telecaller dashboard + daily activity
+
+**Status (2026-10-07):** **built** on `feature/tel-021` (`DEC-SCOPE-105` DB1–DB2 + DB3–DB8, no migration, API §12X, RBAC §2.30). Spec
+`docs/superpowers/specs/2026-10-07-tel-021-dashboard-design.md`. Overdue's not-contacted part uses a fixed 24 h until tel-020 (DB1).
 
 - **Business requirement:** §1 (10 tiles), §14 (13 counts), §15 "dashboard should show"; T27.
 - **Existing behavior:** none.
@@ -1199,8 +1202,9 @@ that as `0090_lead_follow_ups` / `DEC-SCOPE-094` / §12P. tel-016 (PR #103 @ `92
 `0093_bdm_meeting_requests` / `DEC-SCOPE-098` / §12S / RBAC §2.25, then bdm-015 (PR #111 @ `b1495fa2`) `0094_bdm_daily_reports` /
 `DEC-SCOPE-099` / §12T / RBAC §2.26, and tel-013 (PR #112 @ `a0b5ee31`) `0095_lead_messages` / `DEC-SCOPE-100` / §12U / RBAC §2.27.
 tel-018 (PR #114 @ `f37ebea8`, no migration) then took `DEC-SCOPE-101` / §12V / RBAC §2.28. bdm-012 (`DEC-SCOPE-102`) and bdm-016
-(`0096_bdm_targets` / `DEC-SCOPE-103` / §12W / RBAC §2.29) followed. tel-014 takes `0097_lead_message_email` / `DEC-SCOPE-104` / §12X /
-RBAC §2.30, so the next telecaller item chains after it with `0098` / `DEC-SCOPE-105` / §12Y / RBAC §2.31. Each item takes the
+(`0096_bdm_targets` / `DEC-SCOPE-103` / §12W / RBAC §2.29) followed. tel-021 then took `DEC-SCOPE-105` / §12X / RBAC §2.30 (no
+migration), and tel-025 holds `DEC-SCOPE-104`. tel-014 takes `0097_lead_message_email` / `DEC-SCOPE-106` / §12Y / RBAC §2.31, so the next
+telecaller item chains after it with `0098` / `DEC-SCOPE-107` / §12Z / RBAC §2.32. Each item takes the
 next free head when it merges, following the existing re-chain notes idiom.
 
 | Item | Migration content |

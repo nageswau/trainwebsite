@@ -3,7 +3,7 @@
 Revision ID: 0097_lead_message_email
 Revises: 0096_bdm_targets
 
-docs/superpowers/specs/2026-10-07-tel-014-email-design.md §2 (DEC-SCOPE-104). Drafted as 0096 on 0095_lead_messages; bdm-016 merged first
+docs/superpowers/specs/2026-10-07-tel-014-email-design.md §2 (DEC-SCOPE-106). Drafted as 0096 on 0095_lead_messages; bdm-016 merged first
 with 0096_bdm_targets, so it is renumbered to 0097 after it. 0001 builds a fresh database from the current models, which
 already carry the column and the check, so the upgrade is guarded (0095's idiom). CHECK_SQL repeats models.LEAD_MESSAGE_EMAIL_CHECK
 (test_tel_014_migration asserts they stay identical). Every existing row is WhatsApp, so the default 0 and the new check hold.

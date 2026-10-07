@@ -24,7 +24,7 @@ describe("telecallerMessages (tel-013)", () => {
   });
 });
 
-// tel-014 (DEC-SCOPE-104 E5): an email's line names its delivery status; only queued/sending rows are polled.
+// tel-014 (DEC-SCOPE-106 E5): an email's line names its delivery status; only queued/sending rows are polled.
 describe("telecallerMessages (tel-014)", () => {
   it("titles a WhatsApp send as before and an email by its delivery status", () => {
     expect(messageTitle(message())).toBe("WhatsApp sent – 13 Sept 2026 – 10:35 AM");

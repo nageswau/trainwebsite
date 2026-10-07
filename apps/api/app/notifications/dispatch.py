@@ -82,7 +82,7 @@ def enqueue(delivery_id: UUID | str, countdown: int = 0) -> bool:
 
 
 def enqueue_lead_email(message_id: UUID | str, countdown: int = 0) -> bool:
-    """tel-014 (DEC-SCOPE-104 E4): publish a queued lead email (a `lead_messages` row) with `enqueue`'s bounded wait and shared back-off. A
+    """tel-014 (DEC-SCOPE-106 E4): publish a queued lead email (a `lead_messages` row) with `enqueue`'s bounded wait and shared back-off. A
     failure leaves the row queued/retrying for `lead_email.sweep_stale_lead_emails`."""
     return _submit(lambda: _publish_lead_email(str(message_id), countdown), message_id)
 

@@ -366,7 +366,7 @@ async def send_bdm_reminder_email(*, to_email: str, recipient_name: str, title: 
         return "failed", str(exc)[:500]
 
 
-# --- tel-014 / DEC-SCOPE-104: a telecaller's email to a lead ------------------------------------------------------------------
+# --- tel-014 / DEC-SCOPE-106: a telecaller's email to a lead ------------------------------------------------------------------
 
 def smtp_configured() -> bool:
     """E3: a lead email needs both the host and the verified From address."""
