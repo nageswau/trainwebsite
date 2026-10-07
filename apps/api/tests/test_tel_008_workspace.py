@@ -156,8 +156,9 @@ async def test_priority_change_is_saved_audited_and_on_the_timeline(client, db_s
     assert [(a.user_id, a.metadata_json) for a in rows] == [(tel.id, {"from": "warm", "to": "hot"})]
 
     timeline = (await client.get(url(row.id, "/timeline"))).json()
-    assert timeline["total"] == 2
-    newest, oldest = timeline["items"]
+    assert timeline["total"] == 3  # tel-015: and the lead's own creation, last
+    newest, oldest, created = timeline["items"]
+    assert created["kind"] == "created"
     assert (newest["kind"], newest["from_value"], newest["to_value"], newest["to_label"]) == ("stage", "contacted", "qualified", "Qualified")
     assert (oldest["kind"], oldest["from_label"], oldest["to_label"], oldest["actor"]["id"]) == ("priority", "Warm", "Hot", str(tel.id))
     assert newest["at"] >= oldest["at"]
@@ -170,7 +171,7 @@ async def test_same_priority_is_a_no_op_without_audit(client, db_session):
     await as_user(client, tel)
     assert (await client.patch(url(row.id), json={"priority": "warm"})).status_code == 200
     assert await audits(db_session, row, "lead.priority_change") == []
-    assert (await client.get(url(row.id, "/timeline"))).json()["total"] == 0
+    assert [r["kind"] for r in (await client.get(url(row.id, "/timeline"))).json()["items"]] == ["created"]  # tel-015
 
 
 # --- D2: contact fields ---------------------------------------------------------------------------------------------------------

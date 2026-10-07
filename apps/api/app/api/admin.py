@@ -57,6 +57,7 @@ from app.schemas import (
     BatchCreate,
     LeadStageHistoryPage,
     LeadStageMove,
+    LeadTimelinePage,
     SchoolCreate,
     SchoolCreateIn,
     SchoolLinkedBdm,
@@ -68,7 +69,7 @@ from app.schemas import (
 )
 from app.services import bdm as bdm_rules
 from app.services import bdm_leads as lead_rules
-from app.services import bdm_lifecycle, lead_handover, lead_pipeline, telecaller_lifecycle
+from app.services import bdm_lifecycle, lead_handover, lead_pipeline, lead_timeline, telecaller_lifecycle
 from app.services import telecaller as tel_rules
 from app.services.agent_applications import owned, with_owner
 from app.services.agent_network import APPLICATION_FILTERS, org_applications, org_counts, org_money, org_students
@@ -470,12 +471,24 @@ async def update_lead(lead_id: UUID, payload: dict, user: User = Depends(ensure_
 async def lead_stage_history(lead_id: UUID, limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0), user: User = Depends(ensure_admin),
                              db: AsyncSession = Depends(get_db)):
     """tel-004 AC5: a lead's stage changes, oldest first, in the admin's division (404 / 403 as the other admin lead routes)."""
+    await _admin_lead(db, user, lead_id)
+    return await lead_pipeline.history_page(db, lead_id, limit, offset)
+
+
+@router.get("/leads/{lead_id}/timeline", response_model=LeadTimelinePage)
+async def lead_timeline_admin(lead_id: UUID, limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0), user: User = Depends(ensure_admin),
+                              db: AsyncSession = Depends(get_db)):
+    """tel-015 TM1: the merged timeline, newest first, with the same 404 / 403 as stage-history."""
+    await _admin_lead(db, user, lead_id)
+    return await lead_timeline.page(db, lead_id, limit, offset)
+
+
+async def _admin_lead(db: AsyncSession, user: User, lead_id: UUID) -> None:
     division = await db.scalar(select(Enquiry.division).where(Enquiry.id == lead_id))
     if division is None:
         raise HTTPException(404, lead_rules.LEAD_NOT_FOUND)
     if user.role != "super_admin" and division != user.division:
         raise HTTPException(403, lead_rules.WRONG_DIVISION)
-    return await lead_pipeline.history_page(db, lead_id, limit, offset)
 
 
 @router.get("/reports/summary")

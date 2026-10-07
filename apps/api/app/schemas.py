@@ -5914,8 +5914,12 @@ class LeadImportRow(BaseModel):
 
 
 class LeadTimelineRow(BaseModel):
+    """tel-015 (DEC-SCOPE-114 D3/D5): `id` is the source row's id, so a follow-up's scheduled / done / cancelled entries share it (`event`
+    tells them apart). The optional fields are null where they do not apply."""
+
     id: UUID
-    kind: Literal["stage", "priority", "enquiry"]
+    kind: Literal["created", "enquiry", "stage", "priority", "assignment", "handover", "student_link", "call", "message", "follow_up",
+                  "appointment", "milestone"]
     at: datetime
     actor: LeadStageActor | None
     from_value: str
@@ -5923,7 +5927,11 @@ class LeadTimelineRow(BaseModel):
     to_value: str
     to_label: str
     reason: str | None
-    event: str | None = None  # tel-018: the stage row's pipeline event
+    event: str | None = None  # tel-018: the stage row's pipeline event; tel-015: the sub-kind (method, linked, scheduled, type...)
+    subject: str | None = None
+    status: str | None = None
+    duration_seconds: int | None = None
+    scheduled_for: datetime | None = None
 
 
 class LeadTimelinePage(BaseModel):
