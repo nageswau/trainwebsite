@@ -4425,7 +4425,7 @@ approval / consent model now), T9, T19, T23 and Appendix B D10; `DEC-SCOPE-083` 
 route moves to tel-013); `DEC-SCOPE-084` D1 (handover = read-only); `DEC-SCOPE-096` CL2 / CL4 (closed lead, same-day change); owner
 answers in-session 2026-10-07.
 **Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option)
-for WA1–WA4; D1–D9 are recorded defaults. Branch `feature/tel-013`, not yet merged. Migration `0095_lead_messages` (drafted as
+for WA1–WA4; D1–D9 are recorded defaults. **MERGED** to `main` as PR #112 @ `a0b5ee31` (2026-10-07). Migration `0095_lead_messages` (drafted as
 `0094` / `DEC-SCOPE-099` on `0092_lead_calls`; bdm-014 took `DEC-SCOPE-097` (PR #108, no migration), tel-019 (PR #109)
 `0093_bdm_meeting_requests` / `DEC-SCOPE-098` / §12S / RBAC 2.25 and bdm-015 (PR #111) `0094_bdm_daily_reports` / `DEC-SCOPE-099` / §12T /
 RBAC 2.26, so this item is renumbered to `0095` / `DEC-SCOPE-100`, after `0094_bdm_daily_reports`), API contract §12U, RBAC §2.27. Spec
