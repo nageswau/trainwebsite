@@ -4720,7 +4720,7 @@ schemas `BdmManagerDashboardOut` and parts; web `lib/bdmManagerDashboard.ts`, `c
 - Owner answers in-session 2026-10-07.
 
 **Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option)
-for RP1–RP4; R1–R6 are recorded defaults. Built on `feature/tel-024`; no migration; API contract §12AC, RBAC §2.35. Spec
+for RP1–RP4; R1–R6 are recorded defaults. **MERGED** to `main` as PR #126 @ `6d85b4d7` (2026-10-07); no migration; API contract §12AC, RBAC §2.35. Spec
 `docs/superpowers/specs/2026-10-07-tel-024-management-reports-design.md`. Drafted as `DEC-SCOPE-108` / §12AB / 2.34; bdm-019 (`0098_bdm_agent_link` / `DEC-SCOPE-107` / §12AA / 2.33) and bdm-023
 (`DEC-SCOPE-108` / §12AB / 2.34) merged first, so it is renumbered.
 
