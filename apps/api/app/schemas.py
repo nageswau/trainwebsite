@@ -5270,6 +5270,71 @@ class BdmCalendarOut(BaseModel):
     tasks: list[BdmCalendarTask]
 
 
+# --- bdm-014 (DEC-SCOPE-097): My Day ---------------------------------------------------------------------------------------------
+class BdmMyDayOrgRef(BdmAppointmentOrgRef):
+    org_type: str
+
+
+class BdmMyDayAppointment(BaseModel):
+    id: UUID
+    code: str
+    starts_at: datetime
+    duration_minutes: int
+    appointment_type: str
+    status: str
+    organization: BdmMyDayOrgRef
+
+
+class BdmMyDayAppointments(BaseModel):
+    count: int
+    truncated: bool
+    items: list[BdmMyDayAppointment]
+
+
+class BdmMyDayTrip(BaseModel):
+    id: UUID
+    code: str
+    travel_date: date
+    return_date: date
+    from_place: str
+    to_place: str
+    approval_status: str
+    travel_status: str
+    appointment_count: int
+
+
+class BdmMyDayTrips(BaseModel):
+    total: int
+    items: list[BdmMyDayTrip]
+
+
+class BdmMyDayFollowUpGroup(BaseModel):
+    key: str  # an org_type, "mou" (source = mou) or "none" (no organization)
+    count: int
+
+
+class BdmMyDayFollowUps(BaseModel):
+    total: int
+    groups: list[BdmMyDayFollowUpGroup]
+
+
+class BdmMyDayTile(BaseModel):
+    key: str  # the Appendix B.2 ID, e.g. "T-A1"
+    label: str
+    tracked: bool
+    value: int | None  # null when not tracked -- never a fabricated 0
+    note: str | None
+
+
+class BdmMyDayOut(BaseModel):
+    today: date
+    bdm_type: str
+    appointments: BdmMyDayAppointments
+    trips: BdmMyDayTrips
+    follow_ups: BdmMyDayFollowUps
+    tiles: list[BdmMyDayTile]
+
+
 # --- tel-022 (DEC-SCOPE-080): daily + monthly targets ------------------------------------------------------------------------
 TelTargetPeriod = Literal["daily", "monthly"]
 TelTargetKpi = Literal[TEL_TARGET_KPIS]
