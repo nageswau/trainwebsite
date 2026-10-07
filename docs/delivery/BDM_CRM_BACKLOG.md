@@ -779,6 +779,17 @@ Conventions used below:
 
 ### bdm-015 — Daily activity report (derived + note + submit)
 
+> **Status (2026-10-07):** **COMPLETE WITH DEFERRED FULL REGRESSION** on `feature/bdm-015` (`DEC-SCOPE-096` R1–R10 — the
+> recommended answers under the owner's standing direction, `NEEDS_CONFIRMATION` at sign-off; migration `0092_bdm_daily_reports` after
+> `0091_lead_appointments`; API §12R; RBAC §2.24). Dependencies bdm-007 / 009 / 010 (and 005 / 017) on `main`. Fresh evidence on the final
+> commit: backend focused (bdm-015 ×6 files, bdm-009 ×6, bdm-021) **98 passed, 0 failed**; one alembic head; offline SQL = one `CREATE
+> TABLE`; ruff clean on changed files; mypy 0 in bdm-015 modules; web (bdm-015 + bdm-009 components, nav, MoU nav) **81 passed**; `tsc` 0;
+> eslint 0; `next build` compiled (Docker web image); `dateZoneSweep` lists only pre-existing entries (none in bdm-015 files); Playwright
+> bdm-015 + bdm-009 + bdm-021 **3 passed**. Browser QA (isolated Playwright Chromium; Browser Use not installed): QA15-01 / QA15-02 fixed
+> test-first and re-verified — `docs/quality/BDM-015_BROWSER_QA_2026-10-07.md`. bdm-009 AC4's "report submitted" lock is now in place.
+> **Deferred:** full backend + web + E2E regression (dedicated session). Spec:
+> `docs/superpowers/specs/2026-10-07-bdm-015-daily-activity-report-design.md`; plan: `docs/superpowers/plans/2026-10-07-bdm-015-daily-activity-report.md`.
+
 - **Business requirement:** an end-of-day report.
   - **Common (§11):** Calls Made, Colleges Contacted, Agents Contacted, Meetings Completed, Appointments Fixed, Travel Completed, Proposals Sent, MoUs Discussed, MoUs Signed, Student Leads Generated, Follow-ups Completed.
   - **Type variants:** Agent §G, School §G and College (common).
