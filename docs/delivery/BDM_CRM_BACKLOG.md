@@ -836,6 +836,14 @@ Conventions used below:
 
 ### bdm-016 — Monthly targets (manager-set, achieved computed)
 
+> **Status (2026-10-07):** implemented on `worktree-bdm-016` (from `main` @ `b1495fa2`, bdm-015 merged). `DEC-SCOPE-100`, migration
+> `0095_bdm_targets`, API §12U, RBAC §2.27; R1–R12 are recommended answers (`NEEDS_CONFIRMATION` at sign-off). Spec
+> `docs/superpowers/specs/2026-10-07-bdm-016-monthly-targets-design.md`. **Verified with fresh evidence:** focused backend set (bdm-016,
+> bdm-015, bdm-014, bdm-009 activities, bdm-021) 96/96; `ruff` clean; web `tsc` + `eslint` clean; BDM + lib vitest 100/101 files (the one
+> failure is the pre-existing `dateZoneSweep`, none of its 18 files touched here); `next build` pass; Playwright bdm-016 + bdm-015 +
+> bdm-014 3/3 (twice; one bdm-014 failure on the first run right after a container restart, not reproduced in 5 later runs); browser QA
+> `docs/quality/BDM-016_BROWSER_QA_2026-10-07.md` (QA16-01/02 fixed). **Full regression deferred** to the regression session.
+
 - **Business requirement:** management sets monthly targets (§12), shown as Target → Actual → Achievement % (§4 Common), with a KPI table per type (Agent §A 8 KPIs, School §A 9, College §A 9).
 - **Existing behavior:** none.
 - **Expected behavior:**
