@@ -1,4 +1,4 @@
-"""bdm-012 (DEC-SCOPE-098) AC1-AC4 + R4-R8, R11, R12 -- the reminder job: each kind fires once at its IST time, to the owner at fire
+"""bdm-012 (DEC-SCOPE-102) AC1-AC4 + R4-R8, R11, R12 -- the reminder job: each kind fires once at its IST time, to the owner at fire
 time, never for a closed record, never twice; a new time is a new reminder; one failure never stops the run."""
 
 import asyncio

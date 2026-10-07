@@ -686,6 +686,61 @@ then the call's IST day. Every write is audited (`lead_call.*`, ids / outcome / 
 | `super_admin` | read; day counts of all calls (writes `403`) | all leads | `tel-010` |
 | every other role | none → `403` "Telecaller role required" | — | `tel-010` |
 
+### 2.25 BDM meeting requests *(net-new, added 2026-10-07 — `DEC-SCOPE-098`, `tel-019`)*
+
+The inline pattern: `telecaller_context` on the telecaller routes, `services.bdm_meeting_requests.scope_filters` on the BDM routes (§2.24
+is tel-010's). An id outside scope is `404`; accept and decline re-check the scope under the request's row lock. Lock order: request →
+organization → appointment (then bdm-006's own).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | read the options; **file** a request (pool, or a named active BDM of the type); list own | own requests only | `tel-019` |
+| `bdm` | list / read; **accept** (books a bdm-006 appointment on one of their organizations) or **decline** with a reason, while pending | their type's open pool + requests named for or decided by them; another type's or a taken pool request is `404` | `tel-019` |
+| `bdm_manager` | list / read only (accept / decline `403`) | their team's requests + the whole open pool | `tel-019` |
+| `super_admin` | list / read only (accept / decline `403`) | all | `tel-019` |
+| every other role (incl. `telecaller_manager`) | none → `403` | — | `tel-019` |
+
+### 2.26 BDM daily activity report *(net-new, added 2026-10-07 — `DEC-SCOPE-099`, `bdm-015`)*
+
+`bdm_context` gates the BDM routes (own report only — no route names another BDM); `require_manager` + `team_filter` gate the manager
+routes (a BDM outside the team is `404`).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `bdm` | read the day's preview / snapshot; **submit** (today or up to 7 days back, once); read the manager's comment | own | `bdm-015` |
+| `bdm_manager` | team grid (submitted / missing); read a team BDM's report; **comment** on a submitted one | BDMs reporting to them | `bdm-015` |
+| `super_admin` | as a manager | all BDMs | `bdm-015` |
+| every other role | none → `403` | — | `bdm-015` |
+
+### 2.27 Lead WhatsApp messages *(net-new, added 2026-10-07 — `DEC-SCOPE-100`, `tel-013`)*
+
+Inline pattern as §2.24: scope (tel-004 `lead_pipeline.scope`, joined through the message's lead; out of scope `404`), the lead lock, then
+the role (`telecaller`), the sender (`sender_user_id` = self, for delete) and handover (`telecaller_leads.require_writable`), then the send's
+IST day. Every write is audited (`lead_message.*`, ids / channel / template id — never the text or a number). §2.25 is tel-019's; §2.26
+is claimed by the open tel-018 branch.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | render a template for a lead; list a lead's messages; record a WhatsApp send; delete their own send of the same IST day | messages on leads where `telecaller_user_id` = self; **read-only** on a handed-over lead (`403`); no send on a closed lead or one without a number (`409`) | `tel-013` |
+| `telecaller_manager` | render; read a lead's messages; writes `403` | direct reports' leads + their teams' unassigned leads (T23) | `tel-013` |
+| `super_admin` | render; read (writes `403`) | all leads | `tel-013` |
+| every other role | none → `403` "Telecaller role required" | — | `tel-013` |
+
+### 2.28 Lead handover, return and student link *(net-new, added 2026-10-07 — `DEC-SCOPE-101`, `tel-018`)*
+
+The same inline pattern as §2.19. The handover uses `lead_pipeline.scope` then `telecaller_leads.require_writable`; the counselor routes
+filter by `owner_id` = self **and** the counselor's division (`lead_handover.counselor_scope`). Locks: lead → counselor / student →
+appointment.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | hand over to an active counselor of the lead's division; then read only (`403` on writes) | own leads | `tel-018` |
+| `telecaller_manager` | hand over and change the counselor | §2.19's | `tel-018` |
+| `super_admin` | as a manager; admin link / unlink | all leads | `tel-018` |
+| `counselor` (IT or overseas) | list / read own leads (milestones), return with a reason, link a student, unlink before conversion | `owner_id` = self, own division; another's is `404` | `tel-018` |
+| `it_admin` / `overseas_admin` | link / unlink (a converted lead too) by the same rules | own division (`403` otherwise) | `tel-018` |
+| every other role | `403` on the counselor routes and the handover | — | `tel-018` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

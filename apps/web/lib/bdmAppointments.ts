@@ -103,7 +103,7 @@ export function isAppointmentBody(data: unknown): data is { appointment: Appoint
   return !!a && typeof a.id === "string";
 }
 
-// bdm-012 (DEC-SCOPE-098 R10): the reminder buttons' `?action=`. Anything else is ignored.
+// bdm-012 (DEC-SCOPE-102 R10): the reminder buttons' `?action=`. Anything else is ignored.
 const REMINDER_ACTIONS = ["confirm", "reschedule", "cancel"] as const;
 export type ReminderAction = (typeof REMINDER_ACTIONS)[number];
 export const reminderAction = (value: string | undefined): ReminderAction | null =>

@@ -7,7 +7,7 @@ import { serverApi } from "@/lib/api";
 import { type Appointment, reminderAction } from "@/lib/bdmAppointments";
 import { elements } from "@/tests/helpers/elementTree";
 
-// bdm-012 (DEC-SCOPE-098 R10, AC6): a reminder's button opens the appointment with ?action=. Reschedule / Cancel open their form;
+// bdm-012 (DEC-SCOPE-102 R10, AC6): a reminder's button opens the appointment with ?action=. Reschedule / Cancel open their form;
 // Confirm only focuses its button (a link never changes data); an action that is no longer possible says so. The query is dropped.
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
 vi.mock("@/lib/api", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/api")>()), serverApi: vi.fn() }));

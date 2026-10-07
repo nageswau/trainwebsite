@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { E2E_PASSWORD, activateWithToken } from "./helpers/welcome";
 
-// bdm-012 (DEC-SCOPE-098, AC1 / AC6): the real beat + worker. A meeting booked ~30 minutes ahead gets its "Appointment in 1 hour"
+// bdm-012 (DEC-SCOPE-102, AC1 / AC6): the real beat + worker. A meeting booked ~30 minutes ahead gets its "Appointment in 1 hour"
 // reminder on the next 5-minute run; the notice opens the appointment. The email buttons' links open the matching dialog only after
 // sign-in and never act by themselves; an unknown action is ignored; a signed-out visitor is sent to sign in.
 

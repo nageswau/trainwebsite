@@ -42,7 +42,7 @@ function TripCell({ trip, view }: { trip: AppointmentTrip; view: "owner" | "mana
 
 const DONE_WORD: Record<ReminderAction, string> = { confirm: "confirmed", reschedule: "rescheduled", cancel: "cancelled" };
 
-// bdm-012 (DEC-SCOPE-098 R10): what a reminder button's action means for this appointment now.
+// bdm-012 (DEC-SCOPE-102 R10): what a reminder button's action means for this appointment now.
 function reminderNotice(appt: Appointment, action: ReminderAction): string | null {
   if (appt.permissions[`can_${action}`]) return action === "confirm" ? "Check the details, then select Confirm." : null;
   if (action === "confirm" && appt.status === "confirmed") return "This appointment is already confirmed.";

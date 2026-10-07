@@ -1,4 +1,4 @@
-"""bdm-012 (DEC-SCOPE-098): the BDM reminder engine, run by beat every 5 minutes.
+"""bdm-012 (DEC-SCOPE-102): the BDM reminder engine, run by beat every 5 minutes.
 
 Six kinds, IST (D18/D19): an appointment at 09:00 the day before and exactly 1 h before; a trip at 09:00 the day before; a follow-up or
 task at 09:00 on its due day; an MoU follow-up every 5 days while Proposal Sent / Draft Shared; an MoU renewal 30 days before an Active

@@ -1,6 +1,6 @@
 # bdm-012 implementation plan
 
-Spec: `docs/superpowers/specs/2026-10-07-bdm-012-reminder-engine-design.md` (`DEC-SCOPE-098`, no migration).
+Spec: `docs/superpowers/specs/2026-10-07-bdm-012-reminder-engine-design.md` (`DEC-SCOPE-102`, no migration).
 
 Test command (isolated stack `bdm012`, code bind-mounted):
 
@@ -31,4 +31,4 @@ Lite tests only: bdm-012 files + AGN-017 reminders + ENH-014 delivery/worker + b
 4. `worker.py` — task + beat entry; beat test.
 5. Web — `?action=` on the appointment page; `org-mou` anchor; notifications empty text. Vitest first.
 6. Playwright — a seeded reminder's deep link opens the Reschedule form.
-7. Docs — decision register `DEC-SCOPE-098`, backlog status line, API contract note, RTM line.
+7. Docs — decision register `DEC-SCOPE-102`, backlog status line, RTM line (no API change, so no API contract addendum).

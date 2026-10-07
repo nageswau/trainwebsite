@@ -33,6 +33,7 @@ from app.models import (
     BDM_APPOINTMENT_STATUSES,
     BDM_GRADE_MAX,
     BDM_GRADE_MIN,
+    BDM_MEETING_REQUEST_TYPES,
     BDM_MOU_SETTABLE,
     BDM_MOU_STATUSES,
     BDM_STAFF_MAX,
@@ -5682,6 +5683,7 @@ class LeadTimelineRow(BaseModel):
     to_value: str
     to_label: str
     reason: str | None
+    event: str | None = None  # tel-018: the stage row's pipeline event
 
 
 class LeadTimelinePage(BaseModel):
@@ -5852,6 +5854,73 @@ class LeadFollowUpUpdate(BaseModel):
         return self
 
 
+# bdm-015 (DEC-SCOPE-099, spec §5): the daily activity report.
+BDM_DAILY_REPORT_LABELS = {"note": "Note", "comment": "Comment"}
+DailyReportNote = Annotated[Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, BDM_DAILY_REPORT_LABELS))]
+DailyReportComment = Annotated[Annotated[str, _trimmed(1000)], AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, True, BDM_DAILY_REPORT_LABELS))]
+
+
+class BdmDailyReportSubmit(BaseModel):
+    """R4: the optional end-of-day note. Counts, owner and times are server-owned (unknown fields → 422)."""
+
+    model_config = ConfigDict(extra="forbid")
+    note: DailyReportNote = None
+
+
+class BdmDailyReportCommentIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    comment: DailyReportComment
+
+
+class BdmDailyReportCount(BaseModel):
+    key: str
+    label: str
+    definition: str
+    tracked: bool
+    count: int | None
+
+
+class BdmDailyReportManagerComment(BaseModel):
+    text: str
+    by: BdmPersonRef
+    at: datetime
+
+
+class BdmDailyReportOut(BaseModel):
+    """`status` draft = a live preview (nothing stored); submitted = the snapshot taken at `submitted_at`."""
+
+    report_date: date
+    bdm: BdmPersonRef
+    bdm_type: Literal["agent", "school", "college"]
+    status: Literal["draft", "submitted"]
+    submitted_at: datetime | None
+    note: str | None
+    counts: list[BdmDailyReportCount]
+    can_submit: bool
+    submit_window_days: int
+    manager_comment: BdmDailyReportManagerComment | None
+
+
+class BdmDailyReportDay(BaseModel):
+    report_date: date
+    status: Literal["submitted", "missing", "not_started"]
+    submitted_at: datetime | None
+
+
+class BdmDailyReportTeamRow(BaseModel):
+    bdm: BdmPersonRef
+    bdm_type: Literal["agent", "school", "college"]
+    days: list[BdmDailyReportDay]
+
+
+class BdmDailyReportGrid(BaseModel):
+    dates: list[date]
+    items: list[BdmDailyReportTeamRow]
+    total: int
+    limit: int
+    offset: int
+
+
 # tel-010 (DEC-SCOPE-096): a call on a lead. The caller, lead and timestamps are server-owned (unknown fields here); the outcome rules that
 # need the lead (closed, follow-up required, duplicate remarks) are the service's.
 LeadCallType = Literal[LEAD_CALL_TYPES]
@@ -5872,6 +5941,15 @@ class LeadCallCreate(BaseModel):
     next_follow_up: LeadFollowUpCreate | None = None
 
 
+class LeadMessageCreate(BaseModel):
+    """tel-013: D9 WhatsApp only (email arrives with tel-014); WA4 the template is optional; WA1 the text as sent (tel-012's limit)."""
+
+    model_config = ConfigDict(extra="forbid")
+    channel: Literal["whatsapp"]
+    template_id: UUID | None = None
+    body: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
+
+
 class LeadCallUpdate(BaseModel):
     """CL4: same-day details only -- the outcome is locked (an unknown field here). Time, duration and type can't be cleared."""
 
@@ -5887,3 +5965,68 @@ class LeadCallUpdate(BaseModel):
             if key in self.model_fields_set and getattr(self, key) is None:
                 raise ValueError(f"{label} can't be removed")
         return self
+
+
+# --- tel-019 (DEC-SCOPE-098, spec §3): BDM meeting requests ----------------------------------------------------------------------------
+MEETING_REQUEST_LABELS = {
+    "organization_name": "Organization", "person_name": "Person", "contact_phone": "Phone", "contact_email": "Email", "location": "Location",
+    "purpose": "Purpose", "remarks": "Remarks",
+}
+_MEETING_PHONE = re.compile(r"^\+?[0-9 ()-]{7,30}$")
+_MEETING_EMAIL = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")  # LoginRequest's rule: `.local` demo addresses stay valid
+
+
+def _meeting_text(max_length: int, required: bool, multiline: bool = False):
+    pattern = _BDM_MULTILINE_CONTROL if multiline else _BDM_CONTROL
+    text = Annotated[str, _trimmed(max_length)] if required else Annotated[str, _trimmed(max_length)] | None
+    return Annotated[text, AfterValidator(_trip_text(pattern, required, MEETING_REQUEST_LABELS))]
+
+
+def _meeting_phone(value: str) -> str:
+    if not _MEETING_PHONE.fullmatch(value):
+        raise ValueError("Phone must be 7 to 30 characters: digits, spaces and + - ( )")
+    return value
+
+
+def _meeting_email(value: str | None) -> str | None:
+    if value and not _MEETING_EMAIL.fullmatch(value):
+        raise ValueError("Enter a valid email address")
+    return value or None
+
+
+class MeetingRequestCreate(BaseModel):
+    """MR7: what the telecaller knows. The BDM type follows from the request type (MR5); a named BDM is checked in the service (MR8).
+    Server-owned fields (code, status, the deciding BDM, the appointment) are unknown fields here."""
+
+    model_config = ConfigDict(extra="forbid")
+    request_type: Literal[BDM_MEETING_REQUEST_TYPES]
+    bdm_user_id: UUID | None = None
+    organization_name: _meeting_text(200, True)
+    person_name: _meeting_text(200, True)
+    contact_phone: Annotated[str, _trimmed(30), AfterValidator(_meeting_phone)]
+    contact_email: Annotated[Annotated[str, _trimmed(255)] | None, AfterValidator(_meeting_email)] = None
+    proposed_at: BdmApptStart
+    mode: Literal[APPOINTMENT_MODES]
+    location: _meeting_text(255, False) = None
+    purpose: _meeting_text(1000, True, multiline=True)
+    remarks: _meeting_text(2000, False, multiline=True) = None
+
+
+class MeetingRequestDecline(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: BdmApptReason
+
+# --- tel-018 (DEC-SCOPE-101, spec §3.3): handover, return and the counselor's student link ----------------------------------------
+class LeadHandoverIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    counselor_id: UUID
+
+
+class LeadReturnIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: BdmApptReason
+
+
+class LeadStudentLinkIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    student_id: UUID

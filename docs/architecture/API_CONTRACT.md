@@ -1215,6 +1215,87 @@ not_interested, wrong_number, busy, no_answer, switched_off, call_back_requested
 `GET /telecaller/follow-ups` and `GET /telecaller/leads/{id}/follow-ups` items gain `lead.last_call: {occurred_at, outcome} | null` (the
 lead's newest call; tel-011 F8).
 
+## 12S. BDM meeting requests (`tel-019`) — addendum, 2026-10-07
+
+`DEC-SCOPE-098`; design spec `docs/superpowers/specs/2026-10-07-tel-019-bdm-meeting-requests-design.md` §3. Migration
+`0093_bdm_meeting_requests` (§12R is tel-010's). Signed out `401`. The request shape: `{id, code, request_type, type_label, bdm_type,
+organization_name, person_name, contact_phone, contact_email, proposed_at, mode, location, purpose, remarks, status, requester: {id,
+full_name}, bdm: {id, full_name} | null, appointment: {id, code, starts_at, status} | null, decline_reason, decided_at, created_at,
+permissions: {can_accept, can_decline}}`. Lists are `{items, total, limit, offset}` (`limit` ≤ 100); a bad `status` is `422`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/meeting-requests/options` | `telecaller` only (else `403`). `200 {types: [{key, label, bdm_type}], bdms: {college, agent, school: [{id, full_name}]}, modes}` — active BDMs by name |
+| `POST /telecaller/meeting-requests` | `telecaller` only. Body `{request_type, bdm_user_id?, organization_name, person_name, contact_phone, contact_email?, proposed_at, mode, location?, purpose, remarks?}`. `422` fields, lengths, control characters, phone / email format, past / beyond 366 days, a named BDM that is not an active BDM of the type (corporate → college). `201` the shape above (`pending`); audit `bdm_meeting_request.create`. **Not idempotent** (as bdm-006 R-A5): a retry files a second request; the form disables its button while sending |
+| `GET /telecaller/meeting-requests?status=&limit=&offset=` | `telecaller` only. Own requests, newest first |
+| `GET /bdm/meeting-requests?status=&limit=&offset=` | `bdm`: their type's pool + theirs; `bdm_manager`: their team's + the whole pool; `super_admin`: all; else `403`. Pending first — those named for the caller ahead of the pool (QA-02), then soonest proposed first — then decided (latest first) |
+| `GET /bdm/meeting-requests/{id}` | Same scope; `404` outside it |
+| `POST /bdm/meeting-requests/{id}/accept` | `bdm` only (`403` manager / super_admin). Body = `POST /bdm/appointments` (§12-bdm-006). In order: `403` role / profile; `404` scope (re-checked under the row lock — a pool request another BDM took is `404`); `409` "This request is already accepted/declined"; then every bdm-006 create rule (`404` organization out of type, `403` not assigned, `422` archived / foreign contact / type / past, `409 possible_overlap` unless `confirm_overlap`). A refusal rolls the whole accept back (the request stays pending). `200 {appointment: <bdm-006 detail>, meeting_request: <shape>}`; audits `bdm_appointment.create` and `bdm_meeting_request.accept`. Safe to retry: a second accept is `409`, never a second appointment |
+| `POST /bdm/meeting-requests/{id}/decline` | `bdm` only. Body `{reason}` (required, ≤ 500). Same `403` / `404` / `409` order. `200` the shape (`declined`, final); audit `bdm_meeting_request.decline` (no reason text) |
+
+Audit rows and logs carry ids, codes, types and statuses only — never the person, phone, email or free text.
+
+## 12T. BDM daily activity report (`bdm-015`) — addendum, 2026-10-07
+
+`DEC-SCOPE-099`; design spec `docs/superpowers/specs/2026-10-07-bdm-015-daily-activity-report-design.md` §5. Migration
+`0094_bdm_daily_reports`. Signed out `401`. Dates are IST calendar days (`YYYY-MM-DD`; a malformed one is `422`). The report shape:
+`{report_date, bdm: {id, full_name}, bdm_type, status: draft|submitted, submitted_at, note, counts: [{key, label, definition, tracked,
+count}], can_submit, submit_window_days: 7, manager_comment: {text, by: {id, full_name}, at} | null}` — a not-tracked count has
+`tracked: false, count: null`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /bdm/daily-reports/{report_date}` | `bdm` only (else `403`). Own report: the live preview (`draft`, nothing stored) or the submitted snapshot. Future `422` |
+| `POST /bdm/daily-reports/{report_date}/submit` | `bdm` only (a manager or any other role `403` — no one submits for another BDM). Body `{note?}` (≤ 2000, control characters `422`, unknown keys `422`). Future or more than 7 days back `422`; already submitted `409`. `201` the shape; audit `bdm_daily_report.submitted {report_date}` |
+| `GET /bdm/manager/daily-reports?date=&limit=&offset=` | `bdm_manager` (team) / `super_admin` (all), else `403`. `{dates: [7 days ending at date], items: [{bdm, bdm_type, days: [{report_date, status: submitted\|missing\|not_started, submitted_at}]}], total, limit, offset}` — active BDMs, by name. Future `422` |
+| `GET /bdm/manager/daily-reports/{bdm_user_id}/{report_date}` | Manager roles. The shape, `can_submit: false`. A BDM outside the team `404` |
+| `PUT /bdm/manager/daily-reports/{bdm_user_id}/{report_date}/comment` | Manager roles. Body `{comment}` (1–1000). Not submitted `409`; outside the team `404`. Replaces any earlier comment; audit `bdm_daily_report.commented` |
+
+Changed (bdm-009): `POST /bdm/activities` with `occurred_at` on a submitted day, and `PATCH` / `DELETE /bdm/activities/{id}` on a
+submitted day's activity, are `409` "This day's report has been submitted, so its activities can't be changed"; `permissions.can_change`
+is `false` for them. No other field or code changes.
+
+## 12U. Lead messages — WhatsApp click-to-chat (`tel-013`) — addendum, 2026-10-07
+
+`DEC-SCOPE-100`; design spec `docs/superpowers/specs/2026-10-07-tel-013-whatsapp-design.md` §3. Migration `0095_lead_messages`. Reads use
+the lead's scope (`lead_pipeline.scope`; other roles `403`, signed out `401`, out of scope `404`). Only the lead's telecaller records a send
+(`403` for managers / super_admin); a handed-over lead is `403` for its telecaller; a closed lead `409`. (§12S is tel-019's; §12T is
+claimed by the open tel-018 branch.)
+
+Message item: `{id, lead_id, channel: whatsapp|email, template: {id, name} | null, subject, body, sent_at, sender: {id, full_name},
+can_delete}`. `template.name` is the name when sent (D6); `null` = a custom message (WA4).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/leads/{id}/render?template_id=` | `200 {template: {id, name, channel, kind}, subject, body, brochure_link: {url, expires_at} \| null, product_mismatch}` — an active WhatsApp or email template rendered with the lead's name, its product (else the template's), a fresh 7-day brochure link (active brochure only) and its open counselling appointment ("Mon 14 Sept 2026, 10:30 AM" IST). Missing values render empty. `404` inactive / unknown template. Read-only, so a manager may call it too (tel-012 C2) |
+| `GET /telecaller/leads/{id}/messages?limit=&offset=` | `200` page of the lead's messages, newest first |
+| `POST /telecaller/leads/{id}/messages` | `{channel: "whatsapp", template_id?, body (1–1000, trimmed)}` → `201` item; `sent_at` = now. `422` an email channel (tel-014), an empty / too long body, or a `template_id` that is unknown, inactive or not WhatsApp (on the field). `409` closed lead, no usable WhatsApp / mobile number, or 300 sends that IST day. No stage effect. Not idempotent (each confirm is one send). Audit `lead_message.create` (lead id, channel, template id) |
+| `DELETE /telecaller/messages/{id}` | `204`. Only the sender (`403`), lead not handed over (`403`), the send's IST day only (`409`). Audit `lead_message.delete` |
+
+`GET /telecaller/leads/{id}` gains `whatsapp_to`: the wa.me number (digits of the E.164 WhatsApp number, else of the mobile; `+91` default
+for a 10-digit Indian mobile) or `null`.
+
+## 12V. Lead handover, return and student link (`tel-018`) — addendum, 2026-10-07
+
+`DEC-SCOPE-101`; design spec `docs/superpowers/specs/2026-10-07-tel-018-handover-design.md` §3. No migration. Signed out `401`. The
+counselor lead shape is §12J's lead row (with `converted_user`) plus `message`, `milestones: {student: {id, full_name, email} | null,
+items: [{kind: enrollment|application|visa, label, status, reference, at}]}` and `permissions: {return, link, unlink}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `POST /telecaller/leads/{id}/handover` | Body `{counselor_id}`. §12J's roles and scope. In order: `404` scope; `403` a telecaller on a handed-over lead; `409` closed lead; `409` at or past Application/Enrollment; `422` not an active counselor of the lead's division; `409` same counselor. `200` the §12J detail; open follow-ups cancelled ("Handed over to counselor"); audit `lead.handover {counselor_id, from_counselor_id}` |
+| `GET /counselor/leads?limit=&offset=` | `counselor` only (else `403`). Own leads (`owner_id` = self, own division), newest first. `{items, total, limit, offset}` |
+| `GET /counselor/leads/{id}` | `404` outside scope. A lead whose linked student has enrolled turns Converted first |
+| `GET /counselor/leads/{id}/timeline` | §12J's timeline shape |
+| `POST /counselor/leads/{id}/return` | Body `{reason}` (required, ≤ 500). `409` linked. Stage event `returned` (→ Follow-up, reason kept); `owner_id` cleared; the open appointment cancelled ("Returned to telecaller"); audit `lead.return {counselor_id}`. `200` the lead (now outside the counselor's scope) |
+| `GET /counselor/leads/{id}/link-suggestions?q=` | `{items: [{id, full_name, email, phone, linked_elsewhere}]}`; no `q` → the lead's email / mobile match; `q` 3–200 characters (else `422`) |
+| `POST /counselor/leads/{id}/student-link` | Body `{student_id}`. `409` already linked; `422` "Enter the email of an active student account in this lead's division" (any invalid target); `409` student linked to another lead (also the unique-index race). Stage event `student_linked`; `converted` at once when HO3 evidence exists; audit `lead.convert`. `200` the shape above |
+| `DELETE /counselor/leads/{id}/student-link` | `409` not linked; `409` "Only an admin can unlink a converted lead". Stage event `student_unlinked` → Follow-up; audit `lead.unconvert` |
+
+Changed: `POST/DELETE /admin/leads/{id}/conversion` keep their contract and now share these rules — a link may answer `status: converted`, and
+an unlink of a converted lead returns it to Follow-up (HO2). `GET /telecaller/leads/{id}` (and the PATCH answer) gains `milestones`.
+Timeline rows gain `event` (a stage row's pipeline event, else `null`).
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

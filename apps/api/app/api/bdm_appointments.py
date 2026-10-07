@@ -121,9 +121,10 @@ async def list_appointments(
     return {"items": [svc.row_out(a, o, u, now) for a, o, u in rows], "total": total or 0, "limit": limit, "offset": offset}
 
 
-@router.post("", status_code=201, response_model=BdmAppointmentEnvelope)
-async def create_appointment(payload: BdmAppointmentCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """spec §5.5, in this order so each refusal is exactly one rule. Not idempotent: a retry meets the overlap warning (R-A5)."""
+async def book_appointment(db: AsyncSession, user: User, payload: BdmAppointmentCreate) -> tuple[BdmAppointment, bool]:
+    """spec §5.5, in this order so each refusal is exactly one rule. Returns the new appointment with its event and audit rows, not
+    committed, and whether an overlap was overridden (for the caller's log after its commit). tel-019 accepts a meeting request through
+    this too, inside its own transaction (lock order request -> organization)."""
     profile = await bdm_context(db, user)
     org = await org_svc.load_scoped(db, user, payload.organization_id, lock=True)  # out of type scope -> 404; serializes with archive
     if org.assigned_bdm_user_id != user.id:
@@ -160,8 +161,15 @@ async def create_appointment(payload: BdmAppointmentCreate, user: User = Depends
     )
     if overlaps:
         svc.audit(db, user, "overlap_override", appt.id, {"match_count": overlaps})
+    return appt, bool(overlaps)
+
+
+@router.post("", status_code=201, response_model=BdmAppointmentEnvelope)
+async def create_appointment(payload: BdmAppointmentCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Not idempotent: a retry meets the overlap warning (R-A5)."""
+    appt, overridden = await book_appointment(db, user, payload)
     await db.commit()
-    svc.log("bdm_appt_created", user, appt.id, organization_id=str(org.id), overlap_override=bool(overlaps))
+    svc.log("bdm_appt_created", user, appt.id, organization_id=str(appt.organization_id), overlap_override=overridden)
     return await _envelope(db, user, appt)
 
 

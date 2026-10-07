@@ -1,6 +1,6 @@
 # bdm-012 — Reminder engine (design)
 
-Decision: `DEC-SCOPE-098` (R1–R12, agent-recommended defaults; the owner asked the session to proceed on recommended answers —
+Decision: `DEC-SCOPE-102` (R1–R12, agent-recommended defaults; the owner asked the session to proceed on recommended answers —
 owner confirmation pending). Evidence: `EVID-016` §6 (L198–227), §7 (L229–248), §10 (L339–369), §4 Common (L1254–1334) →
 `BDM_CRM_BACKLOG.md` §bdm-012 (AC1–AC6); `DEC-SCOPE-055` D6 (in-app + email, deep links need login, no WhatsApp), D18 (Q-09 timings),
 D19 (Q-10 MoU timings), D29 (nothing to organization contacts).
@@ -17,7 +17,7 @@ the organization MoU section; the BDM notifications page's empty text.
 **Out:** manager digests; WhatsApp / SMS (D6); reminders to organization contacts (D29); a reminder settings UI; external calendars;
 any new API route; any change to the appointment / trip / MoU / task rules.
 
-## 2. Decisions (DEC-SCOPE-098)
+## 2. Decisions (DEC-SCOPE-102)
 
 | # | Question | Recommended answer |
 |---|---|---|

@@ -298,7 +298,7 @@ async def send_welcome_email(
         return "failed", str(exc)[:500]
 
 
-# --- bdm-012 / DEC-SCOPE-098 R9: a BDM reminder (appointment, travel, MoU, follow-up) with its deep-link buttons ------------
+# --- bdm-012 / DEC-SCOPE-102 R9: a BDM reminder (appointment, travel, MoU, follow-up) with its deep-link buttons ------------
 
 
 def _bdm_reminder_html(*, recipient_name: str, title: str, body: str, links: list[tuple[str, str]]) -> str:

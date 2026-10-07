@@ -1,4 +1,4 @@
-"""bdm-012 (DEC-SCOPE-098 R9, AC5) -- the BDM reminder email: SMTP only (never the webhook), absolute deep links without tokens, every
+"""bdm-012 (DEC-SCOPE-102 R9, AC5) -- the BDM reminder email: SMTP only (never the webhook), absolute deep links without tokens, every
 value escaped, and every outcome (not configured, sent, failed then retried) recorded on the delivery row."""
 
 import pytest

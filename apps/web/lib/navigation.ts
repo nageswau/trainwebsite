@@ -61,15 +61,19 @@ export const BDM_NAV: NavItem[] = [
   { label: "My Day", href: "/bdm/my-day" }, { label: "Calendar", href: "/bdm/calendar" }, { label: "Organizations", href: "/bdm/organizations" },
   { label: "Pipeline", href: "/bdm/pipeline" },
   { label: "MoUs", href: "/bdm/mous" }, { label: "Appointments", href: "/bdm/appointments" }, { label: "Follow-ups", href: "/bdm/follow-ups" },
-  { label: "Activities", href: "/bdm/activities" }, { label: "Travel", href: "/bdm/travel" },
+  { label: "Requests", href: "/bdm/meeting-requests" }, // tel-019
+  { label: "Activities", href: "/bdm/activities" }, { label: "Daily report", href: "/bdm/daily-report" }, // bdm-015
+  { label: "Travel", href: "/bdm/travel" },
   { label: "Notifications", href: BDM_NOTIFICATIONS_HREF }, { label: "Profile", href: "/bdm/profile" },
 ];
 export const BDM_MANAGER_NAV: NavItem[] = [
   { label: "Dashboard", href: "/bdm/manager/dashboard" }, { label: "Team", href: "/bdm/manager/team" },
   { label: "Organizations", href: "/bdm/manager/organizations" }, { label: "Pipeline", href: "/bdm/manager/pipeline" },
   { label: "MoUs", href: "/bdm/manager/mous" }, { label: "Appointments", href: "/bdm/manager/appointments" },
+  { label: "Requests", href: "/bdm/manager/meeting-requests" }, // tel-019
   { label: "Follow-ups", href: "/bdm/manager/follow-ups" },
   { label: "Calendar", href: "/bdm/manager/calendar" }, { label: "Activities", href: "/bdm/manager/activities" },
+  { label: "Daily reports", href: "/bdm/manager/daily-reports" }, // bdm-015
   { label: "Approvals", href: "/bdm/manager/approvals" },
   { label: "Notifications", href: BDM_MANAGER_NOTIFICATIONS_HREF },
 ];
@@ -81,6 +85,7 @@ export const BDM_SIGN_IN = "/bdm/sign-in";
 export const TELECALLER_NAV: NavItem[] = [
   { label: "Dashboard", href: "/telecaller/dashboard" }, { label: "My Leads", href: "/telecaller/leads" },
   { label: "Follow-ups", href: "/telecaller/follow-ups" }, // tel-011
+  { label: "BDM requests", href: "/telecaller/meeting-requests" }, // tel-019
   { label: "Profile", href: "/telecaller/profile" },
 ];
 // tel-002: Products and Campaigns (the catalogue the manager maintains); tel-022: Targets; tel-007: Lead assignment and Distribution rules.

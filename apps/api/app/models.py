@@ -1035,6 +1035,37 @@ class LeadCall(Base, TimestampMixin):
     remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+# Migration 0095 repeats LEAD_MESSAGE_CHECKS (test_tel_013_migration asserts they stay identical).
+LEAD_MESSAGE_CHECKS = {
+    "ck_lead_messages_channel": "channel IN ('whatsapp', 'email')",
+    "ck_lead_messages_body": "length(body) BETWEEN 1 AND 5000",
+    "ck_lead_messages_whatsapp": "channel <> 'whatsapp' OR (subject IS NULL AND delivery_status IS NULL)",
+}
+
+
+class LeadMessage(Base, TimestampMixin):
+    """tel-013 (DEC-SCOPE-100): a message sent to a lead -- WhatsApp via wa.me (T8; the row is the telecaller's confirmation, WA1 keeps the
+    full text) and, from tel-014, email (subject + delivery status). It belongs to the lead, so its scope is the lead's. `template_name`
+    is the template's name when sent (D6), so a rename never rewrites history."""
+
+    __tablename__ = "lead_messages"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in LEAD_MESSAGE_CHECKS.items()),
+        Index("ix_lead_messages_lead_sent", "lead_id", "sent_at"),
+        Index("ix_lead_messages_sender_sent", "sender_user_id", "sent_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    lead_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="RESTRICT"))
+    sender_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    channel: Mapped[str] = mapped_column(String(16))
+    template_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("tel_message_templates.id", ondelete="RESTRICT"), nullable=True)
+    template_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    subject: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    body: Mapped[str] = mapped_column(Text)
+    delivery_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class ContentPage(Base, TimestampMixin):
     __tablename__ = "content_pages"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -1882,6 +1913,54 @@ class BdmAppointmentEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+# tel-019 (DEC-SCOPE-098): a telecaller's request for a BDM meeting. Corporate meetings go to college BDMs (T26).
+BDM_MEETING_REQUEST_TYPES = ("college", "agent", "school", "corporate")
+BDM_MEETING_REQUEST_BDM_TYPE = {"college": "college", "agent": "agent", "school": "school", "corporate": "college"}
+BDM_MEETING_REQUEST_STATUSES = ("pending", "accepted", "declined")
+BDM_MEETING_REQUEST_CODE_SEQ = Sequence("bdm_meeting_request_code_seq", metadata=Base.metadata)
+
+
+class BdmMeetingRequest(Base, TimestampMixin):
+    """tel-019 (DEC-SCOPE-098): filed by a telecaller for a BDM of `bdm_type` -- a named one (`bdm_user_id` set while pending) or the
+    type's pool (NULL while pending; MR1). A BDM accepts it into exactly one `bdm_appointments` row or declines it with a reason; either is
+    final (MR2), and `bdm_user_id` is then whoever decided. Never deleted."""
+
+    __tablename__ = "bdm_meeting_requests"
+    __table_args__ = (
+        UniqueConstraint("code", name="uq_bdm_meeting_requests_code"),
+        UniqueConstraint("bdm_appointment_id", name="uq_bdm_meeting_requests_appointment"),
+        CheckConstraint(_in_list("request_type", BDM_MEETING_REQUEST_TYPES), name="ck_bdm_meeting_requests_type"),
+        CheckConstraint("bdm_type IN ('agent', 'school', 'college')", name="ck_bdm_meeting_requests_bdm_type"),
+        CheckConstraint(_in_list("mode", APPOINTMENT_MODES), name="ck_bdm_meeting_requests_mode"),
+        CheckConstraint(_in_list("status", BDM_MEETING_REQUEST_STATUSES), name="ck_bdm_meeting_requests_status"),
+        CheckConstraint("(status = 'accepted') = (bdm_appointment_id IS NOT NULL)", name="ck_bdm_meeting_requests_accepted"),
+        CheckConstraint("(status = 'declined') = (decline_reason IS NOT NULL)", name="ck_bdm_meeting_requests_declined"),
+        CheckConstraint("status = 'pending' OR (bdm_user_id IS NOT NULL AND decided_at IS NOT NULL)", name="ck_bdm_meeting_requests_decided"),
+        Index("ix_bdm_meeting_requests_type_status", "bdm_type", "status"),
+        Index("ix_bdm_meeting_requests_bdm", "bdm_user_id"),
+        Index("ix_bdm_meeting_requests_requester", "requester_user_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    code: Mapped[str] = mapped_column(String(20))
+    requester_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    request_type: Mapped[str] = mapped_column(String(20))
+    bdm_type: Mapped[str] = mapped_column(String(20))
+    organization_name: Mapped[str] = mapped_column(String(200))
+    person_name: Mapped[str] = mapped_column(String(200))
+    contact_phone: Mapped[str] = mapped_column(String(30))
+    contact_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    proposed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    mode: Mapped[str] = mapped_column(String(20))
+    location: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    purpose: Mapped[str] = mapped_column(String(1000))
+    remarks: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="pending", server_default=text("'pending'"))
+    bdm_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    bdm_appointment_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_appointments.id", ondelete="RESTRICT"), nullable=True)
+    decline_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 BDM_TASK_KINDS = ("follow_up", "task")
 BDM_TASK_SOURCES = ("appointment_outcome", "mou", "manual")
 BDM_TASK_STATUSES = ("open", "done", "cancelled")
@@ -1989,6 +2068,36 @@ class BdmActivity(Base, TimestampMixin):
     direction: Mapped[str | None] = mapped_column(String(10), nullable=True)
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+BDM_DAILY_REPORT_CHECKS = {  # migration 0092 repeats these strings; test_bdm_015_migration asserts they stay identical
+    "ck_bdm_daily_reports_bdm_type": "bdm_type IN ('agent', 'school', 'college')",
+    "ck_bdm_daily_reports_comment": "(manager_comment IS NULL) = (manager_comment_by_user_id IS NULL) "
+    "AND (manager_comment IS NULL) = (manager_commented_at IS NULL)",
+}
+
+
+class BdmDailyReport(Base, TimestampMixin):
+    """bdm-015 (DEC-SCOPE-099): a BDM's submitted end-of-day report. A row exists only once submitted (the draft is a live preview);
+    `counts` is the snapshot of the day's metrics at submission (`services/bdm_metrics.daily_counts`), so later record edits never
+    rewrite it. The manager's comment (D22) is the only later write."""
+
+    __tablename__ = "bdm_daily_reports"
+    __table_args__ = (
+        UniqueConstraint("bdm_user_id", "report_date", name="uq_bdm_daily_reports_bdm_date"),
+        *(CheckConstraint(sql, name=name) for name, sql in BDM_DAILY_REPORT_CHECKS.items()),
+    )
+    __mapper_args__ = {"eager_defaults": True}  # the INSERT returns submitted_at: no lazy load on an async session
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    bdm_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    report_date: Mapped[date] = mapped_column(Date)
+    bdm_type: Mapped[str] = mapped_column(String(20))
+    counts: Mapped[list] = mapped_column(JSON, default=list)
+    note: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    manager_comment: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    manager_comment_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    manager_commented_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class LiveSession(Base, TimestampMixin):
