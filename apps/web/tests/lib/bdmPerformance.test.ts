@@ -51,7 +51,7 @@ describe("bdm-024 performance lib", () => {
   });
 
   it("names the period's inclusive dates", () => {
-    expect(periodText("2026-10-01", "2026-10-31")).toBe("1 Oct 2026 – 31 Oct 2026");
+    expect(periodText("2026-10-01", "2026-10-31")).toBe("01 Oct 2026 – 31 Oct 2026");
   });
 
   it("guards the three response shapes and the type parameter", () => {

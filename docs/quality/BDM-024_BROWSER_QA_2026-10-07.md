@@ -34,3 +34,20 @@ each (one with a very long name); three College leads; plus a manager with no BD
 
 Not an issue: an unknown type or malformed BDM id shows Next's 404 page, as the other manager detail pages do (`notFound()`). The keyboard
 check on the master view in this pass ran before the page had loaded (a script timing bug), so it is repeated in the re-check below.
+
+## Fixes (test-first) and re-check
+
+| ID | Fix | Test (RED then GREEN) | Browser re-check (images rebuilt from `d62c004e`) |
+|---|---|---|---|
+| QA24-01 | The Team label and `<select>` are capped at the form's width (`maxWidth: 100%`) | `BdmPerformance.test.tsx` "keeps the team picker within the screen on a phone" | super_admin at 375 px: overflow 0 (`qa2/sa-L1-375.png`) |
+| QA24-02 | Captions use the app's `visually-hidden` class | three "hides … caption visually" tests | No stray caption text at any width |
+| QA24-03 | The error offers "Show all teams" (super_admin with a team) or "Show this month", hidden only when it is the failing link | "offers a way out of an error …" + page test "super_admin with a team that can't be read is offered all teams" | `?manager=<a BDM's id>` → "Manager not found · Try again · Show all teams" |
+| QA24-04 | "No active BDMs in this team yet." above an all-zero table | "says why every figure is 0 …" | Empty-team manager sees the note (`qa2/empty-L1-1280.png`) |
+
+Re-check of the whole first-pass list: every page at 1280 / 768 / 375 has no horizontal page scroll; no console errors; no failed
+requests; no broken images. Keyboard: Tab to a BDM's `<summary>` in the master view, then Enter opens it (`open` set). Playwright:
+`bdm-024-performance` passed, and `bdm-020`, `bdm-021`, `bdm-022` and `bdm-023` re-ran green. Two selector mistakes in the new spec were
+fixed in the spec, not the product: Next's route announcer is also `role=alert`, and a BDM's name is in both the summary and the hidden
+caption.
+
+**Open issues:** none.

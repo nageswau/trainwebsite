@@ -1,4 +1,5 @@
 import { isUuid } from "@/lib/bdmTravel";
+import { formatCalendarDate } from "@/lib/formatDate";
 
 // bdm-024 (DEC-SCOPE-111): management performance by BDM type, its drill-down and the master view. The API computes and defines every
 // figure; the web owns the links between levels (P8), which always carry the period and, for super_admin, the chosen manager.
@@ -92,11 +93,8 @@ export function valueText(value: Value): string {
   return value.toLocaleString("en-IN");
 }
 
-/** "1 Oct 2026 – 31 Oct 2026" for the period's inclusive IST dates. */
-export function periodText(from: string, to: string): string {
-  const day = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
-  return `${day(from)} – ${day(to)}`;
-}
+/** "01 Oct 2026 – 31 Oct 2026" for the period's inclusive IST dates (calendar dates: no zone shift). */
+export const periodText = (from: string, to: string): string => `${formatCalendarDate(from)} – ${formatCalendarDate(to)}`;
 
 const isObject = (v: unknown): v is Record<string, unknown> => Boolean(v) && typeof v === "object";
 

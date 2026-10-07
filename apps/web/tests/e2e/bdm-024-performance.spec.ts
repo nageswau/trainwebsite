@@ -84,13 +84,14 @@ test("performance by type: table, drill-down that agrees, period filter, master 
   await page.goto("/bdm/manager/performance?from=2025-03-01&to=2025-03-31");
   await expect(page.getByRole("link", { name: "College BDM Leads: 0. View the BDMs" })).toBeVisible();
   await page.goto("/bdm/manager/performance?from=2025-03-31&to=2025-03-01");
-  await expect(page.getByRole("alert")).toContainText("The period must start on or before its end");
+  // The card, not Next's route announcer (also role=alert).
+  await expect(page.locator(".card[role=alert]")).toContainText("The period must start on or before its end");
 
   // Master view: College BDM -> the BDM -> the organization with its value chain.
   await page.goto("/bdm/manager/hierarchy");
   const collegeBranch = page.getByRole("region", { name: "College BDM" });
   await expect(collegeBranch.getByText("Students → Training → Internship → Placement → Revenue")).toBeVisible();
-  await collegeBranch.getByText(`E2E Perf BDM ${stamp}`).click();
+  await collegeBranch.locator("summary", { hasText: `E2E Perf BDM ${stamp}` }).click();
   await expect(collegeBranch.getByRole("link", { name: college.name })).toHaveAttribute("href", `/bdm/manager/organizations/${college.id}`);
 
   // AC5: no sideways page scroll on a phone or a tablet (the tables scroll inside their box).

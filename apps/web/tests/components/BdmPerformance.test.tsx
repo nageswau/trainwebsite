@@ -26,7 +26,7 @@ describe("bdm-024 performance table (L1)", () => {
   it("is a captioned table of KPIs x BDM types", () => {
     const table = tree.find((el) => el.type === "table")!;
     expect(table).toBeTruthy();
-    expect(text(tree.find((el) => el.type === "caption")!)).toContain("1 Oct 2026 – 31 Oct 2026");
+    expect(text(tree.find((el) => el.type === "caption")!)).toContain("01 Oct 2026 – 31 Oct 2026");
     expect(tree.filter((el) => el.type === "th" && el.props.scope === "col").map((el) => text(el))).toEqual(["KPI", "Agent BDM", "School BDM", "College BDM"]);
     expect(tree.filter((el) => el.type === "th" && el.props.scope === "row").map((el) => text(el))).toEqual(["BDMs", "Meetings", "Revenue"]);
   });
