@@ -35,8 +35,8 @@ def _school_invite_html(*, recipient_name: str, role_label: str, school_name: st
         <td align="center">
           <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 18px rgba(15,40,80,.08);">
             <tr>
-              <td style="background:#0a1e3f;padding:28px 32px;">
-                <img src="{logo_url}" alt="EduSphere" height="40" style="display:block;">
+              <td style="background:#ffffff;padding:24px 32px;border-bottom:1px solid #edf1f6;">
+                <img src="{logo_url}" alt="EduSphere" width="180" height="78" style="display:block;">
               </td>
             </tr>
             <tr>
@@ -150,8 +150,8 @@ def _parent_notification_html(*, recipient_name: str, school_name: str, title: s
         <td align="center">
           <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 18px rgba(15,40,80,.08);">
             <tr>
-              <td style="background:#0a1e3f;padding:28px 32px;">
-                <img src="{logo_url}" alt="EduSphere" height="40" style="display:block;">
+              <td style="background:#ffffff;padding:24px 32px;border-bottom:1px solid #edf1f6;">
+                <img src="{logo_url}" alt="EduSphere" width="180" height="78" style="display:block;">
               </td>
             </tr>
             <tr>
@@ -217,8 +217,8 @@ def _welcome_html(*, recipient_name: str, role_label: str, set_password_url: str
         <td align="center">
           <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 18px rgba(15,40,80,.08);">
             <tr>
-              <td style="background:#0a1e3f;padding:28px 32px;">
-                <img src="{logo_url}" alt="EduSphere" height="40" style="display:block;">
+              <td style="background:#ffffff;padding:24px 32px;border-bottom:1px solid #edf1f6;">
+                <img src="{logo_url}" alt="EduSphere" width="180" height="78" style="display:block;">
               </td>
             </tr>
             <tr>
@@ -321,8 +321,8 @@ def _bdm_reminder_html(*, recipient_name: str, title: str, body: str, links: lis
         <td align="center">
           <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 18px rgba(15,40,80,.08);">
             <tr>
-              <td style="background:#0a1e3f;padding:28px 32px;">
-                <img src="{logo_url}" alt="EduSphere" height="40" style="display:block;">
+              <td style="background:#ffffff;padding:24px 32px;border-bottom:1px solid #edf1f6;">
+                <img src="{logo_url}" alt="EduSphere" width="180" height="78" style="display:block;">
               </td>
             </tr>
             <tr>

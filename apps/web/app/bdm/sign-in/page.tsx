@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { safeNextPath } from "@/lib/safeNext";
+import BrandLogoLink from "@/components/BrandLogoLink";
 
 // bdm-001 (B9, AC12): a signed-out BDM picks their portal -- College BDMs belong to the IT division, Agent/School BDMs to Overseas,
 // managers to Administration. `next` passes through only when it is a same-origin path.
@@ -10,6 +11,7 @@ export default async function BdmSignInPage({ searchParams }: { searchParams: Pr
   return (
     <div className="auth-form-wrap" style={{ minHeight: "100vh" }}>
       <div className="auth-card">
+        <BrandLogoLink />
         <Link href="/" className="muted">← Corporate website</Link>
         <h1 style={{ marginTop: 22, fontSize: 28 }}>BDM sign-in</h1>
         <p className="muted">Choose the portal for your module. BDM Managers sign in at <Link href={`/admin/login${suffix}`}>Administration</Link>.</p>

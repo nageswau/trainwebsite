@@ -1,3 +1,4 @@
+import BrandLogoLink from "@/components/BrandLogoLink";
 import DataPrivacyPanel from "@/components/DataPrivacyPanel";
 import { serverApi } from "@/lib/api";
 import type { User } from "@/lib/types";
@@ -14,6 +15,7 @@ export default async function AccountPrivacyPage() {
     return (
       <div className="section">
         <div className="container card">
+          <BrandLogoLink />
           <h1>Sign in required</h1>
           <p className="muted">You need to be signed in to manage your data.</p>
           <div className="field" style={{ flexDirection: "row", gap: 12 }}>
@@ -27,6 +29,7 @@ export default async function AccountPrivacyPage() {
   return (
     <div className="section">
       <div className="container">
+        <BrandLogoLink />
         <h1>Privacy &amp; your data</h1>
         <p className="muted">Signed in as {user.full_name} ({user.email}).</p>
         <DataPrivacyPanel />
