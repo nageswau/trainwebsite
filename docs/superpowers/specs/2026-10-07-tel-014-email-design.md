@@ -2,6 +2,7 @@
 
 - **Backlog:** `docs/delivery/TELECALLER_CRM_BACKLOG.md` § tel-014 (EVID-019 §12, L454–L472; T9). Dependencies tel-008 (PR #85), tel-012
   (PR #83) and tel-013 (PR #112) are merged. It writes to tel-013's `lead_messages`.
+- **Status:** merged to `main` as PR #120 @ `becb70c5` (2026-10-07). QA: `docs/quality/TEL-014_EXPLORATORY_QA_2026-10-07.md` (QA-01 fixed).
 - **Decision:** `DEC-SCOPE-106` (EM1–EM4 owner answers 2026-10-07; E1–E10 defaults). Migration `0097_lead_message_email`, API contract
   §12Z, RBAC §2.32. The item was drafted as `0096` / `DEC-SCOPE-102` / §12W / 2.29. Four items merged first:
   - tel-018: `DEC-SCOPE-101` / §12V / 2.28, no migration.
