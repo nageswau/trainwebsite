@@ -29,7 +29,7 @@ async function setup(page: Page, stamp: number) {
   });
   expect(template.status()).toBe(201);
   const leads: { id: string; email: string }[] = [];
-  for (const [i, name] of [`Mail Lead ${stamp}`, `No Email Lead ${stamp}`, `Bounce Lead ${stamp}`].entries()) {
+  for (const [i, name] of [`Mail Lead ${stamp}`, `Bounce Lead ${stamp}`].entries()) {
     const email = `tel014-${i}-${stamp}@example.com`;
     const created = await page.request.post("/api/v1/public/enquiries", {
       data: { division: "it", name, email, phone: `9${String(stamp + i).slice(-9)}`, subject: "Python", message: "Please email me." },
@@ -39,8 +39,6 @@ async function setup(page: Page, stamp: number) {
   }
   const assigned = await page.request.post("/api/v1/telecaller/leads/assign", { data: { lead_ids: leads.map((l) => l.id), telecaller_user_id: caller.id } });
   expect(assigned.status()).toBe(200);
-  const cleared = await page.request.patch(`/api/v1/telecaller/leads/${leads[1].id}`, { data: { email: null } });
-  expect(cleared.status()).toBe(200);
   await page.request.post("/api/v1/auth/logout");
   await activateWithToken(page.request, manager.development_welcome_token);
   await activateWithToken(page.request, caller.development_welcome_token);
@@ -87,12 +85,18 @@ test("a telecaller's email composer renders a template; no address disables it; 
   await composer.getByRole("button", { name: "Cancel" }).click();
   await expect(section.getByRole("button", { name: "Send email" })).toBeFocused();
 
-  // AC3: no address -- disabled with its reason, no header button, and the API refuses
-  await page.goto(`/telecaller/leads/${leads[1].id}`);
+  // AC3: a lead entered without an email (tel-005 I1) -- disabled with its reason, no header button, and the API refuses
+  const products = (await (await page.request.get("/api/v1/telecaller/products?group=it&active=true&limit=100")).json()).items;
+  const entered = await page.request.post("/api/v1/telecaller/leads", {
+    data: { name: `No Email Lead ${stamp}`, phone: `8${String(stamp).slice(-9)}`, product_id: products[0].id, source: "walk_in" },
+  });
+  expect(entered.status(), await entered.text()).toBe(201);
+  const noEmail = (await entered.json()).id as string;
+  await page.goto(`/telecaller/leads/${noEmail}`);
   await expect(section.getByRole("button", { name: "Send email" })).toBeDisabled();
   await expect(section.getByText("No email address on this lead.")).toBeVisible();
   await expect(page.getByRole("button", { name: `Email No Email Lead ${stamp}` })).toHaveCount(0);
-  const refused = await page.request.post(`/api/v1/telecaller/leads/${leads[1].id}/messages`, { data: { channel: "email", subject: "Hi", body: "Hi" } });
+  const refused = await page.request.post(`/api/v1/telecaller/leads/${noEmail}/messages`, { data: { channel: "email", subject: "Hi", body: "Hi" } });
   expect([409, 503]).toContain(refused.status()); // 409 no address; 503 first where the stack has no SMTP (E3)
 
   // E1: the manager reads the lead without Send email
@@ -149,7 +153,7 @@ test("@external an email is delivered through SMTP and its row reaches Email sen
   const chaos = await page.request.put(`${MAILPIT}/api/v1/chaos`, { data: { Recipient: { ErrorCode: 550, Probability: 100 } } });
   expect(chaos.ok(), "Mailpit must run with MP_ENABLE_CHAOS=true").toBe(true);
   try {
-    await page.goto(`/telecaller/leads/${leads[2].id}`);
+    await page.goto(`/telecaller/leads/${leads[1].id}`);
     await section.getByRole("button", { name: "Send email" }).click();
     await composer.getByLabel("Subject").fill("Your brochure");
     await composer.getByLabel("Message").fill("Hi, here is the brochure.");

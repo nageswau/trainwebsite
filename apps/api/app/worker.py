@@ -71,7 +71,8 @@ def sync_enquiry_to_crm_task(self, enquiry_id: str):
                 # stuck on a stale "pending" while retries are in flight.
                 raise RuntimeError("CRM webhook delivery failed")
 
-    asyncio.run(_run())
+    # tel-014 QA-01: a bare asyncio.run left pooled connections on this run's closed loop, crashing the next task on the process
+    _run_with_fresh_pool(_run)
 
 
 def _run_with_fresh_pool(make_coro):

@@ -3,6 +3,7 @@ stale sweeper. SMTP itself is replaced by a recorder on `mailer._send_sync`; the
 
 import smtplib
 from datetime import UTC, datetime, timedelta
+from uuid import uuid4
 from email.message import EmailMessage
 
 import pytest
@@ -164,3 +165,13 @@ async def test_the_sweeper_republishes_stale_queued_emails_and_fails_interrupted
     assert (str(stale.id), 0) in lead_emails_enqueued and str(fresh.id) not in {m for m, _ in lead_emails_enqueued}
     assert (await reread(db_session, stuck)).delivery_status == "failed"
     assert (await reread(db_session, stale)).delivery_status == "queued"
+
+
+# --- the worker process (QA-01) --------------------------------------------------------------------------------------------------
+def test_a_crm_sync_run_leaves_no_connection_that_breaks_the_next_email_task():
+    """A public enquiry's CRM sync ran before an email on the same worker process and left pooled connections bound to its closed event
+    loop, so the email task crashed ("attached to a different loop") and the row stayed queued until the sweeper."""
+    from app.worker import deliver_lead_email_task, sync_enquiry_to_crm_task
+
+    sync_enquiry_to_crm_task(str(uuid4()))
+    assert deliver_lead_email_task(str(uuid4())) is None
