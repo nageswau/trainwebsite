@@ -1,7 +1,7 @@
 # tel-024 — Telecaller management reports (5) + CSV export — design
 
 - **Feature:** tel-024 (`docs/delivery/TELECALLER_CRM_BACKLOG.md`), EVID-019 §21 (source lines 652–686), T24, Appendix B R1–R5.
-- **Decision:** `DEC-SCOPE-109` (RP1–RP4, owner answers 2026-10-07, all recommended). API §12AC, RBAC §2.35. **No migration.**
+- **Decision:** `DEC-SCOPE-109` (RP1–RP4, owner answers 2026-10-07, all recommended). API §12AC, RBAC §2.35. **No migration.** **Merged** to `main` as PR #126 @ `6d85b4d7` (2026-10-07).
 - **Dependencies:** tel-018 (handover/conversion, PR #114) and tel-021 (`services/telecaller_metrics.py`, PR #118) — both merged.
 - Numbering: drafted as DEC-SCOPE-108 / §12AB / 2.34; bdm-019 (0098 / DEC-SCOPE-107 / §12AA / 2.33) and bdm-023 (DEC-SCOPE-108 /
   §12AB / 2.34) merged first, so tel-024 is renumbered.
