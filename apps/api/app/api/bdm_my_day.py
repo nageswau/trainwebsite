@@ -4,7 +4,7 @@
 A fixed number of statements whatever the data volume (AC4, K12): every count is a scalar subquery of one SELECT, plus one query each
 for today's appointments, the upcoming trips (their appointment counts correlated) and the follow-up groups."""
 
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import case, distinct, func, select
@@ -50,23 +50,33 @@ ORG_OF_APPT = BdmOrganization.id == BdmAppointment.organization_id
 ORG_OF_TASK = BdmOrganization.id == BdmTask.organization_id
 
 
-def _counts(user: User, today) -> dict:
+# The filters both the counts and the lists use, so a tile and its list can't disagree.
+def _appointments_today(user: User, start: datetime, end: datetime) -> tuple:
+    return (BdmAppointment.bdm_user_id == user.id, BdmAppointment.status != "cancelled", BdmAppointment.starts_at >= start, BdmAppointment.starts_at < end)
+
+
+def _live_trips(user: User) -> tuple:
+    return (BdmTrip.bdm_user_id == user.id, BdmTrip.travel_status != "cancelled", BdmTrip.approval_status != "rejected")
+
+
+def _open_due(user: User, kind: str, today: date) -> tuple:
+    return (BdmTask.assignee_user_id == user.id, BdmTask.kind == kind, BdmTask.status == "open", BdmTask.due_on <= today)
+
+
+def _counts(user: User, today: date, start: datetime, end: datetime) -> dict:
     """Every count My Day can show, as scalar subqueries keyed by tile ID (plus the section totals)."""
-    start = datetime.combine(today, time(), IST)
-    end = start + timedelta(days=1)
 
     def appts(*where, org_type: str | None = None):
         stmt = select(func.count()).select_from(BdmAppointment)
         if org_type:
             stmt = stmt.join(BdmOrganization, ORG_OF_APPT).where(BdmOrganization.org_type == org_type)
-        return stmt.where(BdmAppointment.bdm_user_id == user.id, BdmAppointment.status != "cancelled",
-                          BdmAppointment.starts_at >= start, BdmAppointment.starts_at < end, *where).scalar_subquery()
+        return stmt.where(*_appointments_today(user, start, end), *where).scalar_subquery()
 
     def of_type(*types):
         return BdmAppointment.appointment_type.in_(types)
 
     def open_due(kind: str):
-        return (BdmTask.assignee_user_id == user.id, BdmTask.kind == kind, BdmTask.status == "open", BdmTask.due_on <= today)
+        return _open_due(user, kind, today)
 
     def tasks_at(kind: str, org_type: str, counted=None):
         return (select(func.count(counted if counted is not None else BdmTask.id)).select_from(BdmTask).join(BdmOrganization, ORG_OF_TASK)
@@ -78,7 +88,7 @@ def _counts(user: User, today) -> dict:
                 .where(BdmOrganization.assigned_bdm_user_id == user.id, BdmOrganization.org_type == org_type,
                        BdmOrganization.archived_at.is_(None), BdmMou.status.in_(statuses)).scalar_subquery())
 
-    live_trip = (BdmTrip.bdm_user_id == user.id, BdmTrip.travel_status != "cancelled", BdmTrip.approval_status != "rejected")
+    live_trip = _live_trips(user)
     return {
         "appointments": appts(),
         "trips": select(func.count()).select_from(BdmTrip).where(*live_trip, BdmTrip.travel_date > today).scalar_subquery(),
@@ -117,18 +127,18 @@ async def my_day(user: User = Depends(get_current_user), db: AsyncSession = Depe
     profile = await bdm_context(db, user)
     today = today_ist(await db_now(db))
     start = datetime.combine(today, time(), IST)
+    end = start + timedelta(days=1)
     tiles = TILES[profile.bdm_type]
 
     wanted = ["appointments", "trips", *(key for key, _, note in tiles if note is None and key != "T-A1")]
-    available = _counts(user, today)
+    available = _counts(user, today, start, end)
     row = (await db.execute(select(*(available[k] for k in wanted)))).one()
     counts: dict[str, int] = dict(zip(wanted, row.tuple(), strict=True))
     counts["T-A1"] = counts["appointments"]  # T-A1 = T-C01
 
     appts = (await db.execute(
         select(BdmAppointment, BdmOrganization).join(BdmOrganization, ORG_OF_APPT)
-        .where(BdmAppointment.bdm_user_id == user.id, BdmAppointment.status != "cancelled",
-               BdmAppointment.starts_at >= start, BdmAppointment.starts_at < start + timedelta(days=1))
+        .where(*_appointments_today(user, start, end))
         .order_by(BdmAppointment.starts_at, BdmAppointment.id).limit(APPOINTMENT_LIMIT)
     )).all()
 
@@ -136,15 +146,14 @@ async def my_day(user: User = Depends(get_current_user), db: AsyncSession = Depe
               .where(BdmAppointment.trip_id == BdmTrip.id, BdmAppointment.status != "cancelled").correlate(BdmTrip).scalar_subquery())
     trips = (await db.execute(
         select(BdmTrip, linked)
-        .where(BdmTrip.bdm_user_id == user.id, BdmTrip.travel_status != "cancelled", BdmTrip.approval_status != "rejected",
-               BdmTrip.travel_date > today)
+        .where(*_live_trips(user), BdmTrip.travel_date > today)
         .order_by(BdmTrip.travel_date, BdmTrip.code).limit(TRIP_LIMIT)
     ))
 
     group = case((BdmTask.source == "mou", "mou"), else_=func.coalesce(BdmOrganization.org_type, "none"))
     found: dict[str, int] = dict((await db.execute(
         select(group, func.count()).select_from(BdmTask).outerjoin(BdmOrganization, ORG_OF_TASK)
-        .where(BdmTask.assignee_user_id == user.id, BdmTask.kind == "follow_up", BdmTask.status == "open", BdmTask.due_on <= today)
+        .where(*_open_due(user, "follow_up", today))
         .group_by(group)
     )).all())
     groups = [{"key": key, "count": found[key]} for key in (*BDM_ORG_TYPES, "none", "mou") if found.get(key)]
