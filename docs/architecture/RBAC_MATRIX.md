@@ -670,6 +670,20 @@ lead → counselor user → appointment.
 | `counselor` (IT or overseas) | list own lead appointments; confirm, complete, no-show (after the start), reschedule, cancel | `staff_id` = self; another counselor's is `404` | `tel-016` |
 | every other role | none → `403` on the lead routes and the counselor list, `404` on an action | — | `tel-016` |
 
+### 2.25 BDM meeting requests *(net-new, added 2026-10-07 — `DEC-SCOPE-097`, `tel-019`)*
+
+The inline pattern: `telecaller_context` on the telecaller routes, `services.bdm_meeting_requests.scope_filters` on the BDM routes (§2.24
+is tel-010's). An id outside scope is `404`; accept and decline re-check the scope under the request's row lock. Lock order: request →
+organization → appointment (then bdm-006's own).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | read the options; **file** a request (pool, or a named active BDM of the type); list own | own requests only | `tel-019` |
+| `bdm` | list / read; **accept** (books a bdm-006 appointment on one of their organizations) or **decline** with a reason, while pending | their type's open pool + requests named for or decided by them; another type's or a taken pool request is `404` | `tel-019` |
+| `bdm_manager` | list / read only (accept / decline `403`) | their team's requests + the whole open pool | `tel-019` |
+| `super_admin` | list / read only (accept / decline `403`) | all | `tel-019` |
+| every other role (incl. `telecaller_manager`) | none → `403` | — | `tel-019` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

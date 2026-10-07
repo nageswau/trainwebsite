@@ -828,6 +828,10 @@ division-change edge case does not apply: `User.division` cannot change after cr
 
 ### tel-019 — BDM meeting requests
 
+**Status (2026-10-07):** **implemented** on `feature/tel-019` (`DEC-SCOPE-097` MR1–MR4 + MR5–MR14, migration `0093_bdm_meeting_requests`,
+API contract §12S, RBAC §2.25). Spec `docs/superpowers/specs/2026-10-07-tel-019-bdm-meeting-requests-design.md`. Q-13 → MR1 (a named BDM of
+the type, or the type's pool; first accept wins); a decline is final (MR2); no withdraw (MR4).
+
 - **Business requirement:** §9 BDM meeting types; T10, T26.
 - **Existing behavior:** bdm-006 appointments are created only by the BDM on their own organization.
 - **Expected behavior:**
