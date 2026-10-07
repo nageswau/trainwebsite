@@ -64,4 +64,3 @@ export function clashText(detail: unknown): string | null {
   return times ? `${d.message}. Busy: ${times}.` : `${d.message}.`;
 }
 
-export const whenText = (iso: string, minutes: number) => `${formatSchoolDateTime(iso, true)} · ${minutes} min`;

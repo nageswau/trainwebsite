@@ -2,12 +2,12 @@
 
 import { type FormEvent, useId, useState } from "react";
 
-import { isoToIstInput, istInputToIso, nowIstInput } from "@/lib/bdmAppointments";
+import { isoToIstInput, istInputToIso, nowIstInput, whenText } from "@/lib/bdmAppointments";
 import { fieldErrors } from "@/lib/bdmTravel";
 import { isRequestBody, sendJson } from "@/lib/apiErrors";
 import { formatSchoolDateTime } from "@/lib/formatDate";
 import {
-  ACTION_LABEL, STATUS_LABEL, actionUrl, clashText, safeLink, whenText, type AppointmentAction, type LeadAppointment,
+  ACTION_LABEL, STATUS_LABEL, actionUrl, clashText, safeLink, type AppointmentAction, type LeadAppointment,
 } from "@/lib/leadAppointments";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
