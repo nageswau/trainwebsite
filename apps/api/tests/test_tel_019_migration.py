@@ -54,7 +54,7 @@ def test_migration_chains_after_0091_and_there_is_one_head():
 
 
 def test_model_matches_the_migration():
-    from app.models import BDM_MEETING_REQUEST_STATUSES, BDM_MEETING_REQUEST_TYPES, APPOINTMENT_MODES, BdmMeetingRequest
+    from app.models import APPOINTMENT_MODES, BDM_MEETING_REQUEST_STATUSES, BDM_MEETING_REQUEST_TYPES, BdmMeetingRequest
 
     table = BdmMeetingRequest.__table__
     checks = {c.name: str(c.sqltext) for c in table.constraints if isinstance(c, sa.CheckConstraint)}
