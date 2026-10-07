@@ -83,6 +83,13 @@ describe("bdm-019 pipeline counts and profile", () => {
     expect(screen.getByText("5")).toBeInTheDocument();
     expect(screen.getByText("Commission: Available after onboarding")).toBeInTheDocument();
   });
+
+  it("QA19-02: a linked agency's live staff count shows even when no agent details were entered", () => {
+    const empty = { kind: "agent" as const, country: null, territory: null, source: null, staff_count: null };
+    render(<BdmOrganizationProfileDetails organization={org({ request: null, school: null, agent: agency, can_request: false }, { profile: empty })} />);
+    expect(screen.queryByText(/No agent details yet/)).toBeNull();
+    expect(screen.getByText("3 live")).toBeInTheDocument();
+  });
 });
 
 describe("bdm-019 admin agent queue", () => {

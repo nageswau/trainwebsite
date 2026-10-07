@@ -46,7 +46,7 @@ function rowsOf(profile: OrgProfile, liveStaff: number | null): [string, ReactNo
         [PROFILE_LABEL.territory, display(profile.territory)],
         [PROFILE_LABEL.source, labelOf(SOURCE_LABEL, profile.source)],
         // bdm-019: once linked, the agency's live staff count, with the value the BDM entered kept beside it
-        [PROFILE_LABEL.staff_count, liveStaff === null ? display(profile.staff_count) : `${liveStaff} live (${display(profile.staff_count)} entered)`],
+        [PROFILE_LABEL.staff_count, liveStaff === null ? display(profile.staff_count) : `${liveStaff} live${profile.staff_count === null ? "" : ` (${profile.staff_count} entered)`}`],
       ];
     case "school":
       return [
@@ -68,7 +68,8 @@ export default function BdmOrganizationProfileDetails({ organization: org }: { o
   if (!group) return null;
   const name = PROFILE_GROUP_LABEL[group];
   const agent = org.onboarding?.agent ?? null;
-  const filled = org.profile && Object.entries(org.profile).some(([key, value]) => key !== "kind" && value !== null) ? org.profile : null;
+  // QA19-02: a linked agency always has a live staff count to show, even when no details were entered
+  const filled = org.profile && (agent || Object.entries(org.profile).some(([key, value]) => key !== "kind" && value !== null)) ? org.profile : null;
   return (
     <>
       <h4 style={{ margin: "16px 0 8px" }}>{name} details</h4>

@@ -63,11 +63,17 @@ test("Agent handover: request at Agreement Signed, admin links by code, live ste
   await page.goto("/overseas/admin/agents");
   const queue = page.getByRole("region", { name: "Agent onboarding requests" });
   const entry = queue.getByRole("listitem").filter({ hasText: org.code });
+  await expect(queue.getByRole("list", { name: "Onboarding requests" })).toBeVisible();
+  // Oldest first, 20 a page: a shared test database holds older requests, so page on as an admin would.
+  await expect(async () => {
+    if (!(await entry.count())) await queue.getByRole("button", { name: "Show more" }).click({ timeout: 2_000 });
+    await expect(entry).toHaveCount(1, { timeout: 2_000 });
+  }).toPass({ timeout: 60_000 });
   await expect(entry).toContainText("Signed last week");
   await expect(entry.getByRole("button", { name: "Use for new school" })).toHaveCount(0);
   await entry.getByRole("button", { name: "Link agent organization" }).click();
   await entry.getByLabel("Agent code").fill(agency.prefix);
-  await entry.getByRole("button", { name: "Link agent" }).click();
+  await entry.getByRole("button", { name: "Link agent", exact: true }).click();
   await expect(queue.getByRole("status")).toContainText(`${org.code} is now linked to E2E Globe ${stamp} (${agency.prefix}).`);
   await expect(entry).toHaveCount(0);
 
