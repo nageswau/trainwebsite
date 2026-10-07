@@ -670,6 +670,21 @@ lead → counselor user → appointment.
 | `counselor` (IT or overseas) | list own lead appointments; confirm, complete, no-show (after the start), reschedule, cancel | `staff_id` = self; another counselor's is `404` | `tel-016` |
 | every other role | none → `403` on the lead routes and the counselor list, `404` on an action | — | `tel-016` |
 
+### 2.26 Lead handover, return and student link *(net-new, added 2026-10-07 — `DEC-SCOPE-098`, `tel-018`)*
+
+The same inline pattern as §2.19. The handover uses `lead_pipeline.scope` then `telecaller_leads.require_writable`; the counselor routes
+filter by `owner_id` = self **and** the counselor's division (`lead_handover.counselor_scope`). Locks: lead → counselor / student →
+appointment.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | hand over to an active counselor of the lead's division; then read only (`403` on writes) | own leads | `tel-018` |
+| `telecaller_manager` | hand over and change the counselor | §2.19's | `tel-018` |
+| `super_admin` | as a manager; admin link / unlink | all leads | `tel-018` |
+| `counselor` (IT or overseas) | list / read own leads (milestones), return with a reason, link a student, unlink before conversion | `owner_id` = self, own division; another's is `404` | `tel-018` |
+| `it_admin` / `overseas_admin` | link / unlink (a converted lead too) by the same rules | own division (`403` otherwise) | `tel-018` |
+| every other role | `403` on the counselor routes and the handover | — | `tel-018` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

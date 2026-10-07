@@ -13,7 +13,7 @@ from sqlalchemy import exists, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.lead_stages import CLOSED, ORDER
+from app.lead_stages import CLOSED, MANUAL_BEFORE, ORDER
 from app.models import AuditLog, Batch, Enquiry, Enrollment, OverseasApplication, University, User, VisaCase
 from app.services import bdm_leads, lead_appointments, lead_pipeline
 
@@ -27,7 +27,6 @@ RETURN_LINKED = "Unlink the student before returning the lead"
 UNLINK_CONVERTED = "Only an admin can unlink a converted lead"
 HANDED_OVER = "Handed over to counselor"  # the cancel reason on the follow-ups a handover cancelled
 RETURNED = "Returned to telecaller"  # and on the counselling appointment a return cancelled
-LINKED_FROM = ORDER.index("application_enrollment")
 SWEEP_BATCH = 500
 MAX_SUGGESTIONS = 10
 
@@ -43,7 +42,7 @@ async def handover(db: AsyncSession, user: User, lead: Enquiry, counselor_id: UU
     of its division. The stage stays; open follow-ups are cancelled -- the telecaller no longer works the lead (T19)."""
     if lead.status in CLOSED:
         raise HTTPException(409, HANDOVER_CLOSED)
-    if ORDER.index(lead.status) >= LINKED_FROM:
+    if ORDER.index(lead.status) >= MANUAL_BEFORE:  # Application/Enrollment onwards: the counselor's link is in place
         raise HTTPException(409, HANDOVER_PAST)
     counselor = await lead_appointments.lock_counselor(db, counselor_id, lead.division)
     if lead.owner_id == counselor.id:

@@ -48,8 +48,9 @@ test("handover, student link and return between an IT telecaller and an IT couns
   const products = (await (await page.request.get("/api/v1/telecaller/products?group=it&active=true&limit=100")).json()).items;
   expect(products.length).toBeGreaterThan(0);
   const name = `HO Lead ${stamp}`;
+  const phone = `8${String(Math.floor(Math.random() * 1e9)).padStart(9, "0")}`; // random: parallel specs derive phones from the same clock
   const created = await page.request.post("/api/v1/telecaller/leads", {
-    data: { name, email: student.email, phone: `9${String(stamp).slice(-9)}`, product_id: products[0].id, source: "walk_in" },
+    data: { name, email: student.email, phone, product_id: products[0].id, source: "walk_in" },
   });
   expect(created.status(), await created.text()).toBe(201);
   const id = (await created.json()).id as string;
