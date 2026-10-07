@@ -3,6 +3,7 @@
 Every count is SQL over the existing scope helpers, so a Master counts the agency and a staff member only their assigned students
 (G4) with no new scope logic. Read-only: nothing here writes, locks or commits."""
 
+from collections.abc import Sequence
 from datetime import UTC, datetime
 
 from sqlalchemy import ColumnElement, Select, and_, case, distinct, func, or_, select
@@ -41,22 +42,29 @@ def _count(model, *where):
     return select(func.count()).select_from(model).where(*where).scalar_subquery()
 
 
-def _visa(user: User, *extra):
+def _visa(apps: Sequence[ColumnElement[bool]], *extra):
     """Distinct applications with a visa case -- a second case on one application is not a second visa application."""
     stmt = select(func.count(distinct(VisaCase.application_id))).join(OverseasApplication, OverseasApplication.id == VisaCase.application_id)
-    return stmt.where(*agency_applications(user), *extra).scalar_subquery()
+    return stmt.where(*apps, *extra).scalar_subquery()
+
+
+def funnel_columns(students: Sequence[ColumnElement[bool]], apps: Sequence[ColumnElement[bool]]) -> dict:
+    """The six student-to-enrollment KPIs as scalar subqueries over the given student and application scopes. Shared by this
+    dashboard and bdm-022's agent performance (DEC-SCOPE-110 B3), so an agency's own figures and the BDM's cannot disagree."""
+    return {
+        "students": _count(AgentStudent, *students, AgentStudent.status == "active"),
+        "applications": _count(OverseasApplication, *apps, OverseasApplication.status != WITHDRAWN),
+        "offers": _count(OverseasApplication, *apps, offer_clause()),
+        "visa_applications": _visa(apps),
+        "visa_approvals": _visa(apps, VisaCase.decision == "approved"),
+        "enrollments": _count(OverseasApplication, *apps, OverseasApplication.status == "enrolled"),
+    }
 
 
 async def headline_counts(db: AsyncSession, user: User) -> dict[str, int]:
     """The eight headline KPIs (spec §4) as scalar subqueries of ONE statement, so they come from one snapshot."""
-    apps = agency_applications(user)
     columns = {
-        "students": _count(AgentStudent, *student_scope(user), AgentStudent.status == "active"),
-        "applications": _count(OverseasApplication, *apps, OverseasApplication.status != WITHDRAWN),
-        "offers": _count(OverseasApplication, *apps, offer_clause()),
-        "visa_applications": _visa(user),
-        "visa_approvals": _visa(user, VisaCase.decision == "approved"),
-        "enrollments": _count(OverseasApplication, *apps, OverseasApplication.status == "enrolled"),
+        **funnel_columns(student_scope(user), agency_applications(user)),
         "pending_documents": _count(StudentDocument, *document_scope(user), StudentDocument.verification_status == "pending"),
         "pending_actions": pending_stmt(user).scalar_subquery(),
     }

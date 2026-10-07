@@ -1395,6 +1395,15 @@ counts in every column up to the furthest stage it has reached; Enrolled = still
 counselor, per telecaller × counselor. `telecaller` counts the activity logged in the range (tel-021 flow counts). Aggregates only: no
 lead name, mobile or email appears in a response or an export.
 
+## 12AD. Agent performance drill-down (`bdm-022`) — addendum, 2026-10-07
+
+`DEC-SCOPE-110`; design spec `docs/superpowers/specs/2026-10-07-bdm-022-agent-performance-design.md` §2. No migration. Read-only (an
+ids-only info log, no audit row). Signed out `401`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /bdm/organizations/{id}/agent-performance` | `bdm` / `bdm_manager` / `super_admin` through `load_scoped`, else `403` "BDM role required"; out of scope or unknown `404`; malformed id `422`; not an Agent organization `404` "Agent performance is only for Agent organizations". Unlinked `200 {organization_id, linked: false, agency: null, steps: [], applications_by_stage: [], visa_applications: null, as_of}`. Linked `200 {organization_id, linked: true, agency: {name, prefix, status}, steps: [{key students\|applications\|offers\|visa\|enrolled\|revenue, label, definition, tracked, count \| null}], applications_by_stage: [{key, label, count}], visa_applications, as_of}`. Revenue `tracked: false`, `count: null`. Aggregates only. Constant statement count |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

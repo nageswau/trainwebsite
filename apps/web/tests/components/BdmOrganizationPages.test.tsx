@@ -79,7 +79,7 @@ describe("bdm-002 organization detail pages", () => {
     vi.mocked(serverApi).mockImplementation(async (path: string) => (path === "/api/v1/bdm/me" ? me : { organization }) as never);
     const tree = elements(await BdmOrganization({ params: params(), searchParams: Promise.resolve({ created: "1" }) }));
     expect(serverApi).toHaveBeenCalledWith("/api/v1/bdm/organizations/o1");
-    expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props).toEqual({ initial: organization, basePath: "/bdm/organizations", created: true, activities: null, leads: null, stageHistory: null, tasks: null, mou: null, schoolActivity: null });
+    expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props).toEqual({ initial: organization, basePath: "/bdm/organizations", created: true, activities: null, leads: null, stageHistory: null, tasks: null, mou: null, schoolActivity: null, agentPerformance: null });
   });
 
   it("bdm-005: both detail pages read the MoU card alongside the organization", async () => {
@@ -112,6 +112,22 @@ describe("bdm-002 organization detail pages", () => {
     expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props.schoolActivity).toEqual(activity);
     tree = elements(await ManagerOrganization({ params: params(id) }));
     expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props.schoolActivity).toEqual(activity);
+  });
+
+  it("bdm-022: both detail pages read the Agent performance panel alongside the organization", async () => {
+    const id = "6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b";
+    const figures = { organization_id: id, linked: false, agency: null, steps: [], applications_by_stage: [], visa_applications: null, as_of: "2026-10-07T10:00:00Z" };
+    vi.mocked(serverApi).mockImplementation(async (path: string) => {
+      if (path === "/api/v1/bdm/me") return me as never;
+      if (path === "/api/v1/auth/me") return { id: "m1", full_name: "Meera", role: "bdm_manager" } as never;
+      if (path === `/api/v1/bdm/organizations/${id}/agent-performance`) return figures as never;
+      if (path === `/api/v1/bdm/organizations/${id}`) return { organization } as never;
+      throw new ApiError("x", 500);
+    });
+    let tree = elements(await BdmOrganization({ params: params(id), searchParams: noQuery }));
+    expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props.agentPerformance).toEqual(figures);
+    tree = elements(await ManagerOrganization({ params: params(id) }));
+    expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props.agentPerformance).toEqual(figures);
   });
 
   it("bdm-021: both detail pages pass the business figures for a College organization only", async () => {
@@ -152,7 +168,7 @@ describe("bdm-002 organization detail pages", () => {
     vi.mocked(serverApi).mockReset();
     vi.mocked(serverApi).mockImplementation(async (path: string) => (path === "/api/v1/auth/me" ? { id: "m1", full_name: "Meera", role: "bdm_manager" } : { organization }) as never);
     tree = elements(await ManagerOrganization({ params: params() }));
-    expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props).toEqual({ initial: organization, basePath: "/bdm/manager/organizations", activities: null, leads: null, stageHistory: null, tasks: null, mou: null, schoolActivity: null });
+    expect(tree.find((el) => el.type === BdmOrganizationDetail)!.props).toEqual({ initial: organization, basePath: "/bdm/manager/organizations", activities: null, leads: null, stageHistory: null, tasks: null, mou: null, schoolActivity: null, agentPerformance: null });
     vi.mocked(serverApi).mockReset();
     refuse("/api/v1/auth/me", new ApiError("Not authenticated", 401));
     tree = elements(await ManagerOrganization({ params: params() }));

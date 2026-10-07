@@ -74,6 +74,22 @@ describe("BdmOrganizationDetail -- bdm-020 school activity", () => {
   });
 });
 
+describe("BdmOrganizationDetail -- bdm-022 agent performance", () => {
+  const figures = { organization_id: "o1", linked: false, agency: null, steps: [], applications_by_stage: [], visa_applications: null, as_of: "2026-10-07T10:00:00Z" };
+
+  it("shows the agent performance panel after the onboarding card, for Agent organizations the page read it for", () => {
+    const agent = org({ org_type: "agent", bdm_type: "agent", onboarding: { request: null, school: null, agent: null, can_request: false } });
+    render(<BdmOrganizationDetail initial={agent} basePath="/bdm/organizations" agentPerformance={figures} />);
+    expect(screen.getByRole("region", { name: "Agent onboarding" }).nextElementSibling).toBe(screen.getByRole("region", { name: "Agent performance" }));
+    cleanup();
+    render(<BdmOrganizationDetail initial={agent} basePath="/bdm/organizations" />);
+    expect(screen.queryByRole("region", { name: "Agent performance" })).toBeNull();
+    cleanup();
+    render(<BdmOrganizationDetail initial={org({ onboarding: null })} basePath="/bdm/organizations" agentPerformance={figures} />);
+    expect(screen.queryByRole("region", { name: "Agent performance" })).toBeNull();
+  });
+});
+
 describe("BdmOrganizationDetail -- bdm-021 business", () => {
   const figures = { organization_id: "o1", currency: "INR" as const, funnel: [{ key: "leads", label: "Leads", definition: "Attributed.", tracked: true, count: 3 }], revenue: null };
 
