@@ -250,22 +250,22 @@ async def test_the_default_range_is_this_month_to_date(client, db_session):
     assert {"teams", "sources", "products", "campaigns"} <= set(body["options"])
 
 
-@pytest.mark.parametrize(("params", "field"), [
-    ({"date_from": "2026-13-01"}, "date_from"),
-    ({"date_to": "yesterday"}, "date_to"),
-    ({"date_from": "2026-05-02", "date_to": "2026-05-01"}, "date_from"),
-    ({"date_from": "2025-01-01", "date_to": "2026-05-01"}, "date_from"),
-    ({"team": "sales"}, "team"),
-    ({"source": "tv"}, "source"),
-    ({"product_id": "abc"}, "product_id"),
-    ({"campaign_id": "abc"}, "campaign_id"),
+@pytest.mark.parametrize(("params", "message"), [
+    ({"date_from": "2026-13-01"}, "'From' is not a valid date"),
+    ({"date_to": "yesterday"}, "'To' is not a valid date"),
+    ({"date_from": "2026-05-02", "date_to": "2026-05-01"}, "'From' must be on or before 'To'"),
+    ({"date_from": "2025-01-01", "date_to": "2026-05-01"}, "Choose a range of at most 366 days"),
+    ({"team": "sales"}, "Choose a team from the list"),
+    ({"source": "tv"}, "Choose a source from the list"),
+    ({"product_id": "abc"}, "Choose a course from the list"),
+    ({"campaign_id": "abc"}, "Choose a campaign from the list"),
 ])
-async def test_bad_inputs_are_422_naming_the_field(client, db_session, params, field):
+async def test_bad_inputs_are_422_with_a_readable_message(client, db_session, params, message):
     manager, _, _ = await team(db_session)
     await as_user(client, manager)
     response = await client.get(f"{REPORTS}/source", params=params)
     assert response.status_code == 422, response.text
-    assert response.json()["detail"][0]["loc"] == ["query", field]
+    assert response.json()["detail"] == message
 
 
 # --- CSV ---------------------------------------------------------------------------------------------------------------------------

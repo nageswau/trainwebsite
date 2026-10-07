@@ -1,7 +1,7 @@
 """tel-024 (DEC-SCOPE-108, API §12AB, RBAC §2.34): the five Telecaller CRM management reports and their CSV export.
 
 Checks run in the AGN-020 order -- role (a telecaller and every other role → 403, EVID-019 §22), then the kind (unknown → 404), then
-the inputs (422 naming the param) -- so a refused caller never learns which kinds exist. Query parameters are plain strings validated
+the inputs (422, a sentence naming the form's field, as the other telecaller routes) -- so a refused caller never learns which kinds exist. Query parameters are plain strings validated
 after authorization. Reads are not audited; an export is, and the audit row commits before the file is returned (fail closed)."""
 
 import logging
@@ -34,7 +34,7 @@ async def _report(db: AsyncSession, user: User, kind: str, raw: dict[str, str | 
     try:
         filters = reports.parse_filters(raw, today_ist(await db_now(db)))
     except reports.ReportInputError as error:
-        raise HTTPException(422, [{"loc": ["query", error.param], "msg": error.message, "type": "value_error"}]) from None
+        raise HTTPException(422, str(error)) from None
     return await reports.report(db, user, kind, filters), filters
 
 

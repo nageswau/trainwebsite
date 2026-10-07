@@ -55,9 +55,7 @@ LEAD_FILTERS = ("product_id", "campaign_id", "source")  # cohort reports only; t
 
 
 class ReportInputError(Exception):
-    def __init__(self, param: str, message: str):
-        super().__init__(message)
-        self.param, self.message = param, message
+    """A refused input; the message names the form's field, as the page shows it (the 422 detail)."""
 
 
 @dataclass(frozen=True)
@@ -71,38 +69,38 @@ class Filters:
     given: tuple[str, ...] = field(default=())  # which filters the caller set (the audit names them, never their values)
 
 
-def _date(raw: str | None, param: str, default: date) -> date:
+def _date(raw: str | None, label: str, default: date) -> date:
     if not raw:
         return default
     try:
         return date.fromisoformat(raw)
     except ValueError:
-        raise ReportInputError(param, "Enter a valid date (YYYY-MM-DD)") from None
+        raise ReportInputError(f"'{label}' is not a valid date") from None
 
 
-def _uuid(raw: str | None, param: str) -> UUID | None:
+def _uuid(raw: str | None, what: str) -> UUID | None:
     if not raw:
         return None
     try:
         return UUID(raw)
     except ValueError:
-        raise ReportInputError(param, "Choose a value from the list") from None
+        raise ReportInputError(f"Choose a {what} from the list") from None
 
 
 def parse_filters(raw: dict[str, str | None], today: date) -> Filters:
     """Defaults: the 1st of the current IST month to today. A range is at most 366 days (bounded queries, backlog performance note)."""
-    start = _date(raw.get("date_from"), "date_from", today.replace(day=1))
-    end = _date(raw.get("date_to"), "date_to", today)
+    start = _date(raw.get("date_from"), "From", today.replace(day=1))
+    end = _date(raw.get("date_to"), "To", today)
     if start > end:
-        raise ReportInputError("date_from", "The start date must be on or before the end date")
+        raise ReportInputError("'From' must be on or before 'To'")
     if (end - start).days >= MAX_DAYS:
-        raise ReportInputError("date_from", f"Choose a range of at most {MAX_DAYS} days")
+        raise ReportInputError(f"Choose a range of at most {MAX_DAYS} days")
     team, source = raw.get("team") or None, raw.get("source") or None
     if team is not None and team not in TEAMS:
-        raise ReportInputError("team", "Choose IT or Overseas")
+        raise ReportInputError("Choose a team from the list")
     if source is not None and source not in TEL_SOURCES:
-        raise ReportInputError("source", "Choose a source from the list")
-    product_id, campaign_id = _uuid(raw.get("product_id"), "product_id"), _uuid(raw.get("campaign_id"), "campaign_id")
+        raise ReportInputError("Choose a source from the list")
+    product_id, campaign_id = _uuid(raw.get("product_id"), "course"), _uuid(raw.get("campaign_id"), "campaign")
     given = tuple(k for k in ("date_from", "date_to", "team", *LEAD_FILTERS) if raw.get(k))
     return Filters(start, end, team, product_id, campaign_id, source, given)
 
