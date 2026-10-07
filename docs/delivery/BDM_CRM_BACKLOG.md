@@ -655,6 +655,11 @@ Conventions used below:
 
 ### bdm-012 — Reminder engine (first Celery `beat_schedule`)
 
+> **Status (2026-10-07):** implemented on `worktree-bdm-012` (`DEC-SCOPE-098` R1–R12, agent-recommended defaults pending owner
+> confirmation). **No migration:** AGN-017's `notifications.dedupe_key` is the "sent" record (R1), not a `bdm_reminders_sent` table; AGN-017
+> landed first, so bdm-012 adds the `bdm012-reminders` entry to the existing `beat_schedule`. Evidence: see the RTM line `bdm-012`.
+> Spec `docs/superpowers/specs/2026-10-07-bdm-012-reminder-engine-design.md`; plan `docs/superpowers/plans/2026-10-07-bdm-012-reminder-engine.md`.
+
 - **Business requirement:** automatic reminders.
   - **Appointments (§6):** 1 day before, with Confirm / Reschedule / Cancel; and 1 hour before.
   - **Travel (§7):** the day before, with View Appointments / Expenses / Add Remarks.
