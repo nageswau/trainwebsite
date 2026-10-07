@@ -5413,6 +5413,84 @@ class BdmManagerDashboardOut(BaseModel):
     alerts: list[BdmDashboardAlert]
 
 
+# --- bdm-024 (DEC-SCOPE-111): performance by BDM type (Appendix B.6 P-rows) + drill-down, and the master view (V-chains) --------------
+BdmTypeName = Literal["agent", "school", "college"]
+
+
+class BdmPerformanceFigures(BaseModel):
+    meetings: int
+    trips: int | None  # null on an organization row: trips belong to the BDM
+    new_organizations: int
+    mous: int
+    leads: int
+    students: int
+    revenue: Decimal | None  # INR; null = not tracked (Agent / School, D17)
+
+
+class BdmPerformanceCell(BaseModel):
+    type: BdmTypeName
+    tracked: bool
+    value: int | Decimal | None  # Decimal = INR revenue; null when not tracked
+    definition: str
+
+
+class BdmPerformanceRow(BaseModel):
+    key: str  # P-01 ... P-08
+    label: str
+    cells: list[BdmPerformanceCell]
+
+
+class BdmPerformanceBdm(BaseModel):
+    id: UUID
+    full_name: str
+    active: bool
+    figures: BdmPerformanceFigures
+
+
+class BdmPerformanceOut(BaseModel):
+    from_: date = Field(serialization_alias="from")
+    to: date
+    manager: BdmPersonRef | None
+    type: BdmTypeName | None
+    rows: list[BdmPerformanceRow]
+    bdms: list[BdmPerformanceBdm]  # the BDMs of `type`, by name; empty without `type`
+
+
+class BdmPerformanceBdmRef(BaseModel):
+    id: UUID
+    full_name: str
+    active: bool
+    bdm_type: BdmTypeName
+
+
+class BdmPerformanceOrganization(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    figures: BdmPerformanceFigures
+
+
+class BdmPerformanceTrip(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    code: str
+    from_place: str
+    to_place: str
+    travel_date: date
+    approval_status: str
+    travel_status: str
+
+
+class BdmPerformanceBdmOut(BaseModel):
+    from_: date = Field(serialization_alias="from")
+    to: date
+    bdm: BdmPerformanceBdmRef
+    totals: BdmPerformanceFigures
+    organizations: list[BdmPerformanceOrganization]
+    trips: list[BdmPerformanceTrip]
+
+
 # --- tel-022 (DEC-SCOPE-080): daily + monthly targets ------------------------------------------------------------------------
 TelTargetPeriod = Literal["daily", "monthly"]
 TelTargetKpi = Literal[TEL_TARGET_KPIS]
