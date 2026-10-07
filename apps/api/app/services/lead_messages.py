@@ -54,7 +54,8 @@ async def active_template(db: AsyncSession, template_id: UUID) -> TelMessageTemp
 async def render(db: AsyncSession, lead: Enquiry, template: TelMessageTemplate) -> dict:
     """D5: the lead's name; its product, else the template's; a fresh 7-day brochure link while the brochure is active (tel-012 C1); the
     lead's open counselling appointment. A missing value renders empty. D4: another product's template is a warning, never a refusal."""
-    product = await db.get(TelProduct, lead.product_id or template.product_id) if (lead.product_id or template.product_id) else None
+    product_id = lead.product_id or template.product_id
+    product = await db.get(TelProduct, product_id) if product_id else None
     asset = await db.get(TelAsset, template.asset_id) if template.asset_id else None
     link = telecaller_content.asset_link(asset) if asset and asset.active else None
     appointment_at = await db.scalar(select(Appointment.scheduled_at).where(

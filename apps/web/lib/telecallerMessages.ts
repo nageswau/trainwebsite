@@ -32,11 +32,6 @@ export function sentLabel(sentAt: string): string {
   return `WhatsApp sent – ${day} – ${time}`;
 }
 
-export function isLeadMessage(data: unknown): data is LeadMessage {
-  const d = data as Partial<LeadMessage> | null;
-  return !!d && typeof d.id === "string" && typeof d.sent_at === "string" && typeof d.body === "string" && typeof d.can_delete === "boolean";
-}
-
 export function isRenderedTemplate(data: unknown): data is RenderedTemplate {
   const d = data as Partial<RenderedTemplate> | null;
   return !!d && typeof d.body === "string" && typeof d.product_mismatch === "boolean";

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isLeadMessage, leadMessagesUrl, renderUrl, sentLabel, waHref } from "@/lib/telecallerMessages";
-import { message } from "@/tests/helpers/messages";
+import { isRenderedTemplate, leadMessagesUrl, renderUrl, sentLabel, waHref } from "@/lib/telecallerMessages";
 
 // tel-013 (DEC-SCOPE-099): wa.me links, the "WhatsApp sent" line and the endpoints.
 describe("telecallerMessages (tel-013)", () => {
@@ -16,10 +15,10 @@ describe("telecallerMessages (tel-013)", () => {
     expect(sentLabel("2026-09-13T12:30:00Z")).toBe("WhatsApp sent – 13 Sept 2026 – 6:00 PM");
   });
 
-  it("knows the endpoints and recognises a message", () => {
+  it("knows the endpoints and recognises a rendered template", () => {
     expect(leadMessagesUrl("L 1")).toBe("/api/v1/telecaller/leads/L%201/messages?limit=50");
     expect(renderUrl("L1", "T1")).toBe("/api/v1/telecaller/leads/L1/render?template_id=T1");
-    expect(isLeadMessage(message())).toBe(true);
-    expect(isLeadMessage({ id: "x" })).toBe(false);
+    expect(isRenderedTemplate({ body: "Hi", product_mismatch: false })).toBe(true);
+    expect(isRenderedTemplate({ detail: "Template not found" })).toBe(false);
   });
 });
