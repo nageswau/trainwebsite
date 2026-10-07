@@ -41,22 +41,29 @@ def _count(model, *where):
     return select(func.count()).select_from(model).where(*where).scalar_subquery()
 
 
-def _visa(user: User, *extra):
+def _visa(apps: list[ColumnElement], *extra):
     """Distinct applications with a visa case -- a second case on one application is not a second visa application."""
     stmt = select(func.count(distinct(VisaCase.application_id))).join(OverseasApplication, OverseasApplication.id == VisaCase.application_id)
-    return stmt.where(*agency_applications(user), *extra).scalar_subquery()
+    return stmt.where(*apps, *extra).scalar_subquery()
+
+
+def funnel_columns(students: list[ColumnElement], apps: list[ColumnElement]) -> dict:
+    """The six student-to-enrollment KPIs as scalar subqueries over the given student and application scopes. Shared by this
+    dashboard and bdm-022's agent performance (DEC-SCOPE-109 B3), so an agency's own figures and the BDM's cannot disagree."""
+    return {
+        "students": _count(AgentStudent, *students, AgentStudent.status == "active"),
+        "applications": _count(OverseasApplication, *apps, OverseasApplication.status != WITHDRAWN),
+        "offers": _count(OverseasApplication, *apps, offer_clause()),
+        "visa_applications": _visa(apps),
+        "visa_approvals": _visa(apps, VisaCase.decision == "approved"),
+        "enrollments": _count(OverseasApplication, *apps, OverseasApplication.status == "enrolled"),
+    }
 
 
 async def headline_counts(db: AsyncSession, user: User) -> dict[str, int]:
     """The eight headline KPIs (spec §4) as scalar subqueries of ONE statement, so they come from one snapshot."""
-    apps = agency_applications(user)
     columns = {
-        "students": _count(AgentStudent, *student_scope(user), AgentStudent.status == "active"),
-        "applications": _count(OverseasApplication, *apps, OverseasApplication.status != WITHDRAWN),
-        "offers": _count(OverseasApplication, *apps, offer_clause()),
-        "visa_applications": _visa(user),
-        "visa_approvals": _visa(user, VisaCase.decision == "approved"),
-        "enrollments": _count(OverseasApplication, *apps, OverseasApplication.status == "enrolled"),
+        **funnel_columns(student_scope(user), agency_applications(user)),
         "pending_documents": _count(StudentDocument, *document_scope(user), StudentDocument.verification_status == "pending"),
         "pending_actions": pending_stmt(user).scalar_subquery(),
     }

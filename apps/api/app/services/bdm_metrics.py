@@ -5,7 +5,7 @@ L9 makes it one lead per student, so a student counts for one organization only)
 definition (B6). Only aggregates leave this module (AC3).
 """
 
-from datetime import date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from uuid import UUID
 
@@ -14,6 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.payments import PAID_STATUSES
 from app.models import (
+    AgentOrg,
+    AgentStudent,
     BdmActivity,
     BdmAppointment,
     BdmAppointmentEvent,
@@ -27,6 +29,7 @@ from app.models import (
     Enrollment,
     JobApplication,
     JobOffer,
+    OverseasApplication,
     Payment,
     PlacementProfile,
     School,
@@ -36,7 +39,10 @@ from app.models import (
     User,
 )
 from app.schemas import COUNTED_CAREER_STATUSES
+from app.services.agent_applications import OVERSEAS_APPLICATION_STAGES, WITHDRAWN
+from app.services.agent_dashboard import funnel_columns
 from app.services.agent_deposits import REFERENCE_TYPE as AGENT_DEPOSIT
+from app.services.agent_network import NETWORK_APPLICATION, members_of
 from app.services.bdm_activities import day_range
 from app.services.bdm_appointments import IST
 
@@ -99,6 +105,55 @@ async def college_business(db: AsyncSession, org: BdmOrganization, with_revenue:
         amounts = {"training": Decimal(str(fees)).quantize(Decimal("0.01"))}
         revenue = {"lines": [{"key": k, "label": label, "definition": d, "tracked": k in amounts, "amount": amounts.get(k)} for k, label, d in REVENUE_LINES]}
     return {"organization_id": org.id, "currency": CURRENCY, "funnel": funnel, "revenue": revenue}
+
+
+# bdm-022 (DEC-SCOPE-109, spec §1-§3): a linked Agent organization's Agent -> Students -> ... -> Revenue chain (Appendix B A-01...A-06).
+# The figures are the agency Master dashboard's (`funnel_columns`), scoped to the organization's members as AGN-022 scopes it (B3).
+AGENT_STEPS = (
+    ("students", "Students", "Active students of the agency.", "students"),
+    ("applications", "Applications", "The agency's applications, except withdrawn ones.", "applications"),
+    ("offers", "Offers", "Applications that reached the offer stage or have an offer recorded, including ones withdrawn after the offer.",
+     "offers"),
+    ("visa", "Visa", "Applications with an approved visa.", "visa_approvals"),
+    ("enrolled", "Enrolled", "Applications at the Enrolled stage.", "enrollments"),
+    ("revenue", "Revenue", "Not tracked: deposits pass through to universities and commission is not shown to BDMs (awaiting a decision).",
+     None),
+)
+EARLIER_STAGES = "earlier_stage_names"  # B6: a legacy status (e.g. `offer_received`) still counts, under its own row
+
+
+def _stage_label(status: str) -> str:
+    """The agency screens' wording (`stageLabel` in lib/agentApplications.ts): underscores to spaces, first letter capital."""
+    return status.replace("_", " ").capitalize()
+
+
+async def agent_performance(db: AsyncSession, org: BdmOrganization) -> dict:
+    """Unlinked: `linked: false` and nothing else. Linked: the agency, one SELECT of the shared scalar subqueries and one grouped count
+    of applications by stage -- a constant query count whatever the agency's size. Only aggregates leave (AC4)."""
+    now = datetime.now(UTC)
+    if org.agent_org_id is None:
+        return {"organization_id": org.id, "linked": False, "agency": None, "steps": [], "applications_by_stage": [], "visa_applications": None,
+                "as_of": now}
+    agency = await db.get_one(AgentOrg, org.agent_org_id)
+    members = members_of(agency.id)
+    apps = [OverseasApplication.agent_id.in_(members), NETWORK_APPLICATION]
+    columns = funnel_columns([AgentStudent.agent_id.in_(members)], apps)
+    figures = (await db.execute(select(*(column.label(key) for key, column in columns.items())))).one()._mapping
+    by_status = dict((await db.execute(select(OverseasApplication.status, func.count()).where(*apps).group_by(OverseasApplication.status))).all())
+    stages = [{"key": s, "label": _stage_label(s), "count": by_status.pop(s, 0)} for s in (*OVERSEAS_APPLICATION_STAGES, WITHDRAWN)]
+    if by_status:
+        stages.append({"key": EARLIER_STAGES, "label": "Earlier stage names", "count": sum(by_status.values())})
+    steps = [{"key": key, "label": label, "definition": definition, "tracked": source is not None, "count": figures[source] if source else None}
+             for key, label, definition, source in AGENT_STEPS]
+    return {
+        "organization_id": org.id,
+        "linked": True,
+        "agency": {"name": agency.name, "prefix": agency.prefix, "status": agency.status},
+        "steps": steps,
+        "applications_by_stage": stages,
+        "visa_applications": figures["visa_applications"],
+        "as_of": now,
+    }
 
 
 # bdm-015 (DEC-SCOPE-099, spec §3): the daily activity report's counts -- Appendix B M-rows for one BDM and one IST day. Every builder
