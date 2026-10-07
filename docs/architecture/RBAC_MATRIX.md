@@ -810,7 +810,20 @@ widen scope. Read-only, like the other BDM manager reads (no audit row).
 | `super_admin` | the same, for all teams or one chosen manager's team | all BDMs | `bdm-023` |
 | `bdm` and every other role | none → `403` | — | `bdm-023` |
 
-### 2.35 Agent performance drill-down *(net-new, added 2026-10-07 — `DEC-SCOPE-109`, `bdm-022`)*
+### 2.35 Telecaller management reports *(net-new, added 2026-10-07 — `DEC-SCOPE-109`, `tel-024`)*
+
+EVID-019 §22 "telecaller should not view confidential management reports"; T24 visibility. Read-only; exports audited.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller_manager` | read the five reports; export CSV | leads of their direct reports + their teams' unassigned leads (as `/telecaller/leads`); telecallers: their direct reports | `tel-024` |
+| `it_admin` / `overseas_admin` | read; export | their own division's leads (as `/admin/leads`); that team's telecallers | `tel-024` |
+| `super_admin` | read; export | all (optional `team`) | `tel-024` |
+| `telecaller` and every other role | `403` on every report and export | — | `tel-024` |
+
+A `team` / `product_id` / `campaign_id` / `source` filter is ANDed with the scope, so it can only narrow.
+
+### 2.36 Agent performance drill-down *(net-new, added 2026-10-07 — `DEC-SCOPE-110`, `bdm-022`)*
 
 `load_scoped` gates the route (out of scope = `404`, as every BDM organization read). Aggregates only: no student, application, member
 or money row reaches a BDM route (bdm-019 A7 / AC4).

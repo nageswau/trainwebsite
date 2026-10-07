@@ -4729,7 +4729,7 @@ class BdmBusinessOut(BaseModel):
     revenue: BdmBusinessRevenue | None = Field(description="Null unless the caller is the assigned BDM, a manager or super_admin (B3).")
 
 
-# bdm-022 (DEC-SCOPE-109): a linked Agent organization's performance -- the agency's own aggregates, never a student, member or money
+# bdm-022 (DEC-SCOPE-110): a linked Agent organization's performance -- the agency's own aggregates, never a student, member or money
 # figure (AC4). An untracked step is `tracked: false` with a null count, never a 0.
 class BdmAgentAgency(BaseModel):
     name: str

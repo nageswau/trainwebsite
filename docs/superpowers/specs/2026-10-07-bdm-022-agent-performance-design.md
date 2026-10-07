@@ -1,6 +1,6 @@
 # bdm-022 — Agent performance drill-down (design)
 
-- **Feature ID:** bdm-022 · **Decision:** `DEC-SCOPE-109` · **Migration:** none · **API:** 12AC · **RBAC:** 2.35
+- **Feature ID:** bdm-022 · **Decision:** `DEC-SCOPE-110` · **Migration:** none · **API:** 12AD · **RBAC:** 2.36 (drafted as `DEC-SCOPE-109` / 12AC / 2.35; renumbered on merging `main` @ `97b27deb`, where tel-024 holds them)
 - **Backlog:** `docs/delivery/BDM_CRM_BACKLOG.md` §4 bdm-022 and Appendix B.5 rows A-01…A-06 (`DERIVED_BLUEPRINT`); source Agent §F
   (L743–L757, `EVID-016`).
 - **Dependencies (verified on `main` @ `f4a13514`):** bdm-019 (`DEC-SCOPE-107`, `0098_bdm_agent_link`, merged PR #123); AGN-004

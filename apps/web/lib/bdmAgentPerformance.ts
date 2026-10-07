@@ -1,4 +1,4 @@
-// bdm-022 (DEC-SCOPE-109): a linked Agent organization's performance -- the agency's own aggregates, never a student or a money figure.
+// bdm-022 (DEC-SCOPE-110): a linked Agent organization's performance -- the agency's own aggregates, never a student or a money figure.
 // The API owns every rule (scope, definitions, which steps are tracked).
 export type AgentPerformanceStep = { key: string; label: string; definition: string; tracked: boolean; count: number | null };
 export type AgentPerformance = {

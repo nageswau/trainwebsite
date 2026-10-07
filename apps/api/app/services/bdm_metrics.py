@@ -107,7 +107,7 @@ async def college_business(db: AsyncSession, org: BdmOrganization, with_revenue:
     return {"organization_id": org.id, "currency": CURRENCY, "funnel": funnel, "revenue": revenue}
 
 
-# bdm-022 (DEC-SCOPE-109, spec §1-§3): a linked Agent organization's Agent -> Students -> ... -> Revenue chain (Appendix B A-01...A-06).
+# bdm-022 (DEC-SCOPE-110, spec §1-§3): a linked Agent organization's Agent -> Students -> ... -> Revenue chain (Appendix B A-01...A-06).
 # The figures are the agency Master dashboard's (`funnel_columns`), scoped to the organization's members as AGN-022 scopes it (B3).
 AGENT_STEPS = (
     ("students", "Students", "Active students of the agency.", "students"),

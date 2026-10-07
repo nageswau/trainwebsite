@@ -50,7 +50,7 @@ def _visa(apps: Sequence[ColumnElement[bool]], *extra):
 
 def funnel_columns(students: Sequence[ColumnElement[bool]], apps: Sequence[ColumnElement[bool]]) -> dict:
     """The six student-to-enrollment KPIs as scalar subqueries over the given student and application scopes. Shared by this
-    dashboard and bdm-022's agent performance (DEC-SCOPE-109 B3), so an agency's own figures and the BDM's cannot disagree."""
+    dashboard and bdm-022's agent performance (DEC-SCOPE-110 B3), so an agency's own figures and the BDM's cannot disagree."""
     return {
         "students": _count(AgentStudent, *students, AgentStudent.status == "active"),
         "applications": _count(OverseasApplication, *apps, OverseasApplication.status != WITHDRAWN),

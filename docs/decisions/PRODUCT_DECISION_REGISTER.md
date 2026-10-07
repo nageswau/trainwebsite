@@ -4710,7 +4710,36 @@ schemas `BdmManagerDashboardOut` and parts; web `lib/bdmManagerDashboard.ts`, `c
 `/bdm/manager/dashboard` page (team summary kept; super_admin manager picker) and its `loading.tsx`; "BDM Dashboard" in
 `SUPER_ADMIN_NAV`. **Feature ID:** `bdm-023`. **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-023.
 
-### DEC-SCOPE-109 — Agent performance drill-down (`bdm-022`)
+### DEC-SCOPE-109 — Telecaller management reports + CSV export (`tel-024`)
+
+**Evidence:**
+- `EVID-019` §21 (L652–L686: five reports, the Instagram Cyber Security funnel, the Ad → Lead → Telecaller → Counselor → Enrollment chain) and §22 (L712: telecallers may not view management reports).
+- `DEC-SCOPE-073` T24 (report visibility), Appendix B R1–R5 of the Telecaller backlog.
+- `DEC-SCOPE-105` DB2 (conversion credit) and `services/telecaller_metrics.py` (the single source of counts).
+- Backlog open question Q-20 (masking in exports).
+- Owner answers in-session 2026-10-07.
+
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option)
+for RP1–RP4; R1–R6 are recorded defaults. **MERGED** to `main` as PR #126 @ `6d85b4d7` (2026-10-07); no migration; API contract §12AC, RBAC §2.35. Spec
+`docs/superpowers/specs/2026-10-07-tel-024-management-reports-design.md`. Drafted as `DEC-SCOPE-108` / §12AB / 2.34; bdm-019 (`0098_bdm_agent_link` / `DEC-SCOPE-107` / §12AA / 2.33) and bdm-023
+(`DEC-SCOPE-108` / §12AB / 2.34) merged first, so it is renumbered.
+
+| # | Question | Answer |
+|---|---|---|
+| RP1 | R3 Telecaller report basis | **Activity in the range** (Appendix B P2–P6): calls, connected, qualified (explicit moves), appointments and conversions (DB2) logged in the range — the tel-021 daily activity summed |
+| RP2 | When a lead is Enrolled | **Still converted now** (DB2); the earlier funnel columns use the stage ever reached, so every funnel is monotonic |
+| RP3 | R1 source / R2 course columns | **Leads + Connected, Qualified, Counselling, Enrolled**, the same cohort query as the campaign report |
+| RP4 | R4 counselor handover basis | Leads created in the range **currently with a counselor**, grouped by the lead's telecaller × that counselor; a returned lead drops out |
+
+Recorded defaults:
+- **R1** Cohort = leads created in the range (IST days); default range the 1st of this month → today; at most 366 days.
+- **R2** Scope = the caller's Leads list (manager `/telecaller/leads`, division admin `/admin/leads`); filters only narrow.
+- **R3** Q-20 does not arise: reports are aggregates, so no lead PII is ever shown or exported. Formula-looking names are neutralised in CSV.
+- **R4** Exports are audited (`telecaller_report.export`, filter names and row count); reads are not. No export throttle (aggregate, bounded).
+- **R5** Leads without a product / campaign show as "No product" / "No campaign"; a handed-over lead without a telecaller as "Unassigned".
+- **R6** No index or rollup added: queries are grouped and bounded; revisit only if measured slow.
+
+### DEC-SCOPE-110 — Agent performance drill-down (`bdm-022`)
 
 **Evidence:** `EVID-016` Agent §F (`BDM_CRM_BACKLOG.md` Appendix A L743–L757: "Agent → Students → Applications → Offers → Visa →
 Enrollments → Revenue", example ABC Overseas 80 / 65 / 42 / 30 / 25 / ₹XX) and Appendix B.5 rows A-01…A-06 (`DERIVED_BLUEPRINT`);
@@ -4718,7 +4747,8 @@ Enrollments → Revenue", example ABC Overseas 80 / 65 / 42 / 30 / 25 / ₹XX) a
 `DEC-SCOPE-064` (AGN-022 org scoping); `DEC-SCOPE-056` O5 (offer rule); D17 (deposits pass-through). Dependencies verified on `main` @
 `f4a13514`: bdm-019, AGN-004, AGN-008, AGN-012, AGN-013, AGN-014 merged.
 **Status:** B1–B10 are the **recommended answers**, used under the owner's standing direction for this session to proceed with
-recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). No migration. API contract §12AC, RBAC §2.35. Spec
+recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). No migration. API contract §12AD, RBAC §2.36. Drafted as `DEC-SCOPE-109` / §12AC / §2.35 and renumbered on merging `main` @
+`97b27deb` (tel-024 took `DEC-SCOPE-109` / §12AC / §2.35). Spec
 `docs/superpowers/specs/2026-10-07-bdm-022-agent-performance-design.md`.
 
 | # | Question | Recommended answer (used) |

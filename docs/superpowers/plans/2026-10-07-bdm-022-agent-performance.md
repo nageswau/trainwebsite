@@ -1,6 +1,6 @@
 # bdm-022 Agent performance drill-down — implementation plan
 
-Spec: `docs/superpowers/specs/2026-10-07-bdm-022-agent-performance-design.md` (DEC-SCOPE-109). TDD per task; focused tests only.
+Spec: `docs/superpowers/specs/2026-10-07-bdm-022-agent-performance-design.md` (DEC-SCOPE-110). TDD per task; focused tests only.
 
 ## Phase 3 review notes (folded in)
 
@@ -24,4 +24,4 @@ Spec: `docs/superpowers/specs/2026-10-07-bdm-022-agent-performance-design.md` (D
    `lib/bdmAgentPerformanceServer.ts`, the component.
 4. **Wire pages:** both organization pages + `BdmOrganizationDetail` prop `agentPerformance`.
 5. **E2E:** `tests/e2e/bdm-022-agent-performance.spec.ts`.
-6. **Docs:** DEC-SCOPE-109, API 12AC, RBAC 2.35, backlog status, RTM row.
+6. **Docs:** DEC-SCOPE-110, API 12AD, RBAC 2.36, backlog status, RTM row.

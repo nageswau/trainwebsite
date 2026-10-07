@@ -3,7 +3,7 @@
 Scope is `load_scoped`'s (an organization the caller can't read is the same 404 as a missing one); an organization of another module
 has no business view and is that same 404 (B1). Revenue is null unless the caller may see it (B3).
 
-bdm-022 (DEC-SCOPE-109, spec §2): an Agent organization's performance, on the same scope; aggregates only (AC4)."""
+bdm-022 (DEC-SCOPE-110, spec §2): an Agent organization's performance, on the same scope; aggregates only (AC4)."""
 
 from uuid import UUID
 

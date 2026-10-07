@@ -1,4 +1,4 @@
-"""bdm-022 (DEC-SCOPE-109) -- a linked Agent organization's performance: the agency's own figures (AC1), offers by the confirmed rule
+"""bdm-022 (DEC-SCOPE-110) -- a linked Agent organization's performance: the agency's own figures (AC1), offers by the confirmed rule
 (AC2), revenue not tracked (AC3), aggregates only (AC4), the unlinked and suspended cases and the read scope (spec §1-§2)."""
 
 import pytest

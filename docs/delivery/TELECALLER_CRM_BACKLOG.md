@@ -1012,6 +1012,10 @@ the type, or the type's pool; first accept wins); a decline is final (MR2); no w
 
 ### tel-024 — Management reports (5) + CSV export
 
+**Status (2026-10-07):** **merged** to `main` as PR #126 @ `6d85b4d7` (`DEC-SCOPE-109` RP1–RP4 + R1–R6; no migration; API §12AC; RBAC §2.35).
+Spec `docs/superpowers/specs/2026-10-07-tel-024-management-reports-design.md`; QA report `docs/quality/TEL-024_EXPLORATORY_QA_2026-10-07.md`.
+Q-20 does not arise (aggregates only).
+
 - **Business requirement:** §21 (Lead Source, Course, Telecaller, Counselor Handover, Campaign); the Ad → Lead → Telecaller → Counselor → Enrollment chain.
 - **Existing behavior:** `admin /reports/summary` counts leads per division only.
 - **Expected behavior:**
