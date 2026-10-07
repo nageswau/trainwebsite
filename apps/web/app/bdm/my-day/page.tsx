@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { accessUnavailable } from "@/components/AccessUnavailable";
 import BdmMyDay from "@/components/BdmMyDay";
+import BdmTargetsCard from "@/components/BdmTargetsCard";
 import MeetingRequestsCard from "@/components/MeetingRequestsCard";
 import PortalShell from "@/components/PortalShell";
 import { ApiError, serverApi } from "@/lib/api";
@@ -10,6 +11,7 @@ import { BDM_TYPE_LABEL, type BdmMe } from "@/lib/bdm";
 import { isMyDay, MY_DAY_URL, type MyDay } from "@/lib/bdmMyDay";
 import { bdmNav } from "@/lib/bdmNav";
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
+import { isTargetSheet, TARGETS_URL, type TargetSheet } from "@/lib/bdmTargets";
 import { BDM_REQUESTS_URL, type RequestPage } from "@/lib/meetingRequests";
 import { BDM_SIGN_IN, dashboardPathFor } from "@/lib/navigation";
 import type { User } from "@/lib/types";
@@ -27,6 +29,8 @@ export default async function BdmMyDayPage() {
   const nav = bdmNav(); // the unread badge, read alongside the page's own data (never rejects)
   // tel-019: the meeting-request inbox card, likewise read alongside (never rejects; null = couldn't read)
   const requests = serverApi<RequestPage>(`${BDM_REQUESTS_URL}?status=pending&limit=5`).catch(() => null);
+  // bdm-016: this month's targets card, likewise read alongside (never rejects; null = couldn't read)
+  const targets = serverApi<TargetSheet>(TARGETS_URL).then((s) => (isTargetSheet(s) ? s : null), () => null);
   let me: BdmMe;
   try {
     me = await serverApi<BdmMe>("/api/v1/bdm/me");
@@ -59,6 +63,7 @@ export default async function BdmMyDayPage() {
             <Link href="/bdm/my-day" className="btn secondary small">Try again</Link>
           </div>
         )}
+        <BdmTargetsCard sheet={await targets} />
         <MeetingRequestsCard page={await requests} />
       </div>
     </PortalShell>

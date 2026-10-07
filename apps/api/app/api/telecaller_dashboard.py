@@ -1,4 +1,4 @@
-"""tel-021 (DEC-SCOPE-103, API §12X): the telecaller dashboard and the daily activity -- every figure computed by
+"""tel-021 (DEC-SCOPE-105, API §12X): the telecaller dashboard and the daily activity -- every figure computed by
 `services/telecaller_metrics.py` (T27: nothing typed). Read-only routes; each is one request for the page that shows it.
 
 Scope (DB6, T24): a telecaller reads only their own figures (another user id → 403); a manager reads a direct report's activity and

@@ -1,6 +1,6 @@
 # tel-021 — Telecaller dashboard + daily activity (design)
 
-Status: design for `feature/tel-021` (2026-10-07). Decision `DEC-SCOPE-103` (bdm-012 took 102), API §12X, RBAC §2.30.
+Status: design for `feature/tel-021` (2026-10-07). Decision `DEC-SCOPE-105` (bdm-012 took 102, bdm-016 103, tel-025 holds 104), API §12X, RBAC §2.30.
 No migration. Source: `docs/delivery/TELECALLER_CRM_BACKLOG.md` tel-021, Appendix B (B1–B10, D1–D13, K1–K6), T5, T24, T27.
 
 ## 1. Owner answers (2026-10-07)
@@ -11,7 +11,7 @@ No migration. Source: `docs/delivery/TELECALLER_CRM_BACKLOG.md` tel-021, Appendi
   recorded** (the first `lead_stage_history` row to `converted`). A later reassignment does not move it. Per tel-018 HO2, a lead an
   admin has unlinked (no longer `converted`) no longer counts.
 
-Defaults taken without a question (recorded in DEC-SCOPE-103):
+Defaults taken without a question (recorded in DEC-SCOPE-105):
 
 - **DB3:** the dashboard tiles are always "today" (IST). The daily activity panel takes `?date=` for any IST day up to today; a
   future day → 422. The backlog's `GET /telecaller/dashboard?date=` is dropped: tiles such as Overdue are "now" figures.

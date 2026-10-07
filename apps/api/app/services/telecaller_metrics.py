@@ -1,4 +1,4 @@
-"""tel-021 (DEC-SCOPE-103, spec §2): the single source of every Telecaller CRM count -- the daily activity D1-D13, the dashboard tiles
+"""tel-021 (DEC-SCOPE-105, spec §2): the single source of every Telecaller CRM count -- the daily activity D1-D13, the dashboard tiles
 B1-B10 and target progress (EVID-019 §1, §14, §15; backlog Appendix B). tel-023 and tel-024 reuse it.
 
 Days are IST calendar days as half-open instant ranges (`bdm_activities.day_range`). Flow counts (calls, completions, ...) take any

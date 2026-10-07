@@ -1,4 +1,4 @@
-"""tel-021 (DEC-SCOPE-103 DB3/DB6, API §12X): the dashboard and daily activity routes -- who may read whose figures, the date rule and
+"""tel-021 (DEC-SCOPE-105 DB3/DB6, API §12X): the dashboard and daily activity routes -- who may read whose figures, the date rule and
 the response shape. The figures themselves are covered in test_tel_021_metrics.py."""
 
 from datetime import timedelta

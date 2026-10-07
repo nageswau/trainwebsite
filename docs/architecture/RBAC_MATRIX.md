@@ -741,7 +741,19 @@ appointment.
 | `it_admin` / `overseas_admin` | link / unlink (a converted lead too) by the same rules | own division (`403` otherwise) | `tel-018` |
 | every other role | `403` on the counselor routes and the handover | — | `tel-018` |
 
-### 2.30 Telecaller dashboard + daily activity *(net-new, added 2026-10-07 — `DEC-SCOPE-103`, `tel-021`)*
+### 2.29 BDM monthly targets *(net-new, added 2026-10-07 — `DEC-SCOPE-103`, `bdm-016`)*
+
+`bdm_context` gates the BDM route (own sheet only); `require_manager` + `team_filter` gate the manager routes (a BDM outside the team is
+`404`).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `bdm` | read own monthly targets, achieved and % (My Day card) | own | `bdm-016` |
+| `bdm_manager` | team list; read a team BDM's sheet; **set / clear** targets; **copy** last month — current month and up to 12 ahead | active BDMs reporting to them | `bdm-016` |
+| `super_admin` | as a manager, and **past months** too | all BDMs | `bdm-016` |
+| every other role | none → `403` | — | `bdm-016` |
+
+### 2.30 Telecaller dashboard + daily activity *(net-new, added 2026-10-07 — `DEC-SCOPE-105`, `tel-021`)*
 
 The same inline pattern as §2.19. Read-only; the subject comes from the session (`telecaller_context`) or, for a manager, from
 `telecaller_targets.telecaller_in_scope` (tel-022's direct-report rule).

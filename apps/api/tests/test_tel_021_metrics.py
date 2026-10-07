@@ -1,4 +1,4 @@
-"""tel-021 (DEC-SCOPE-103, spec §2): every Appendix B count on fixture data -- the daily activity D1-D13, the dashboard tiles B1-B10 and
+"""tel-021 (DEC-SCOPE-105, spec §2): every Appendix B count on fixture data -- the daily activity D1-D13, the dashboard tiles B1-B10 and
 target progress. The shared test database is never truncated, so each test counts only for users it created."""
 
 import uuid

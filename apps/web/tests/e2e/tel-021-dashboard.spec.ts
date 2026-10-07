@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { E2E_PASSWORD, activateWithToken } from "./helpers/welcome";
 
-// tel-021 (DEC-SCOPE-103): a telecaller with two leads assigned today logs a not-connected call; the dashboard's tiles, target progress
+// tel-021 (DEC-SCOPE-105): a telecaller with two leads assigned today logs a not-connected call; the dashboard's tiles, target progress
 // and daily activity show it, an earlier day is all zeros, a future day is refused. The manager opens the report's activity from the
 // Team table; another manager's telecaller reads as "not one of your reports".
 

@@ -1,4 +1,4 @@
-// tel-021 (DEC-SCOPE-103): the telecaller dashboard and daily activity -- types, endpoints and labels. Every figure is computed by the
+// tel-021 (DEC-SCOPE-105): the telecaller dashboard and daily activity -- types, endpoints and labels. Every figure is computed by the
 // API (services/telecaller_metrics.py, backlog Appendix B); the browser only lays them out.
 
 export type KpiProgress = { kpi: string; achieved: number; target: number | null };
