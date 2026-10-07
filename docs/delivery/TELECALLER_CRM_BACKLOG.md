@@ -717,8 +717,9 @@ from tel-008. The rendered text is plain, so this item URL-encodes it for wa.me.
 
 ### tel-016 — Counselor appointment booking for leads
 
-**Status (2026-10-07):** **implemented** on `feature/tel-016` (`DEC-SCOPE-095` AP1–AP4 + AP5–AP14, migration `0091_lead_appointments`, API
-contract §12Q, RBAC §2.23). Spec `docs/superpowers/specs/2026-10-07-tel-016-lead-appointments-design.md`. Q-11 → AP1 (refuse, 60 min);
+**Status (2026-10-07):** **merged** to `main` as PR #103 @ `92946a8a` (`DEC-SCOPE-095` AP1–AP4 + AP15 + AP5–AP14, migration
+`0091_lead_appointments`, API contract §12Q, RBAC §2.23; re-chained after tel-011's `0090_lead_follow_ups`). AP15: closing a lead cancels
+its open appointment. Spec `docs/superpowers/specs/2026-10-07-tel-016-lead-appointments-design.md`. Q-11 → AP1 (refuse, 60 min);
 Q-12 → AP4 (any active counselor of the division; not a handover).
 
 - **Business requirement:** §9 counselor types and fields, statuses; T10.
@@ -1167,8 +1168,9 @@ graph TD
 ### 5.4 Migrations
 
 Numbers are **provisional**. `main` is at `0085_tel_distribution` (tel-007, merged 2026-10-06; tel-001 took `0075`, tel-002 `0076`, bdm-008 `0077`, tel-003 `0078`, bdm-005 `0079`, tel-022 `0080`, tel-004 `0081`, bdm-025 `0082`, tel-012 `0083`, bdm-018 `0084`; tel-017 and tel-008 have none; bdm-005/bdm-013/tel-022/tel-004/bdm-025/tel-012/tel-008/bdm-018/bdm-021/tel-007 took `DEC-SCOPE-078`–`087`), so the next telecaller migration will be `0086` or later, and the next decision `DEC-SCOPE-088` or later. tel-005 (merged 2026-10-06 as PR #92, re-chained after tel-007) took `0086_lead_enquiries` / `DEC-SCOPE-088` / §12L, `main` then took bdm-020 (`DEC-SCOPE-089`, no migration). tel-006 (merged 2026-10-06 as PR #96 @ `126b454b`) took `0087_lead_import_batches` / `DEC-SCOPE-091` / §12N (090 / §12M are claimed by the open AGN-023 branch), so `main` was at `0087`; bdm-011 (PR #89) then took `0088_bdm_appointment_trip` / `DEC-SCOPE-092`, so tel-009 (PR #98) chained after it as `0089_lead_qualifications` / `DEC-SCOPE-093` / §12O, and tel-011 (PR #100 @ `8f9f1676`) after
-that as `0090_lead_follow_ups` / `DEC-SCOPE-094` / §12P. `main` is at `0090`; the next telecaller item chains after it with
-`DEC-SCOPE-095` / §12Q (claimed by tel-016 as `0091_lead_appointments` / RBAC §2.23, on `feature/tel-016`). Each item takes the next free head when it merges, following the existing re-chain notes idiom.
+that as `0090_lead_follow_ups` / `DEC-SCOPE-094` / §12P. tel-016 (PR #103 @ `92946a8a`) then took
+`0091_lead_appointments` / `DEC-SCOPE-095` / §12Q / RBAC §2.23. `main` is at `0091`; the next telecaller item chains after it with
+`DEC-SCOPE-096` / §12R (tel-010's open branch claims `0092` / 096 / §12R / RBAC §2.24). Each item takes the next free head when it merges, following the existing re-chain notes idiom.
 
 | Item | Migration content |
 |---|---|
@@ -1184,7 +1186,7 @@ that as `0090_lead_follow_ups` / `DEC-SCOPE-094` / §12P. `main` is at `0090`; t
 | tel-011 | `lead_follow_ups` (`0090`, merged PR #100 @ `8f9f1676`) |
 | tel-012 | `tel_scripts`, `tel_message_templates`, `tel_assets` (+ seeds) |
 | tel-013 | `lead_messages` |
-| tel-016 | `appointments` + lead_id, appointment_code, duration_minutes, purpose, meeting_link, location, remarks, booked_by; CHECK student-or-lead; `appointment_events`; `appointment_code_seq` (`0091_lead_appointments`, on `feature/tel-016`) |
+| tel-016 | `appointments` + lead_id, appointment_code, duration_minutes, purpose, meeting_link, location, remarks, booked_by; CHECK student-or-lead; `appointment_events`; `appointment_code_seq` (`0091`, merged PR #103 @ `92946a8a`) |
 | tel-018 | possibly `enquiries.handed_over_at` (decided in-item) |
 | tel-019 | `bdm_meeting_requests` |
 | tel-020 | `tel_alert_log`, `tel_settings` |
