@@ -2,6 +2,7 @@
 
 - **Backlog:** `docs/delivery/TELECALLER_CRM_BACKLOG.md` § tel-010 (EVID-019 §5, L198–L252; T5, T7). Dependencies tel-008 (PR #85) and
   tel-011 (PR #100) are merged.
+- **Status:** merged to `main` as PR #106 @ `7e3ab62a` (2026-10-07).
 - **Decision:** `DEC-SCOPE-096` (CL1–CL4 owner answers 2026-10-07; D1–D10 defaults). Migration `0092_lead_calls`, API contract §12R,
   RBAC §2.24. tel-016 (built in parallel) merged first with `0091` / `DEC-SCOPE-095` / §12Q / RBAC 2.23, so `0092` chains after
   `0091_lead_appointments`.
