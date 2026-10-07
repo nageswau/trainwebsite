@@ -5,7 +5,8 @@ import MeetingRequestList from "@/components/MeetingRequestList";
 import PortalShell from "@/components/PortalShell";
 import { serverApi } from "@/lib/api";
 import { listParams, type RequestPage, TEL_REQUESTS_URL } from "@/lib/meetingRequests";
-import { TELECALLER_NAV, TELECALLER_SIGN_IN } from "@/lib/navigation";
+import { TELECALLER_SIGN_IN } from "@/lib/navigation";
+import { telecallerNav } from "@/lib/telecallerNav";
 import { teamRoleLabel, type TelecallerMe } from "@/lib/telecaller";
 
 // tel-019 (MR12): the telecaller's own BDM meeting requests and what became of them. The API is the gate.
@@ -20,7 +21,7 @@ export default async function TelecallerMeetingRequestsPage({ searchParams }: { 
     return accessUnavailable(e, TELECALLER_SIGN_IN);
   }
   return (
-    <PortalShell nav={TELECALLER_NAV} roleLabel={teamRoleLabel(me.telecaller_profile.team)} userName={me.full_name}>
+    <PortalShell nav={await telecallerNav()} roleLabel={teamRoleLabel(me.telecaller_profile.team)} userName={me.full_name}>
       <div className="portal-content">
         <div className="portal-title">
           <div>
