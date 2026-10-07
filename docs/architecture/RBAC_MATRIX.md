@@ -836,6 +836,14 @@ or money row reaches a BDM route (bdm-019 A7 / AC4).
 | a `bdm` of another module | none → `404` | — | `bdm-022` |
 | every other role | none → `403` | — | `bdm-022` |
 
+### 2.37 Telecaller alerts *(net-new, added 2026-10-07 — `DEC-SCOPE-111`, `tel-020`)*
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | receives the nine §20 alerts (in-app + email) and reads them on `/telecaller/notifications`; `403` on the settings | own notifications only (the shared feed is per user); only while active | `tel-020` |
+| `telecaller_manager` / `super_admin` | read and set both teams' alert thresholds | both teams (AL11) | `tel-020` |
+| every other role | `403` on the settings | — | `tel-020` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

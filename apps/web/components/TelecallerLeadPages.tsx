@@ -9,8 +9,9 @@ import TelecallerLeadTable from "@/components/TelecallerLeadTable";
 import TodayFollowUps from "@/components/TodayFollowUps";
 import { ApiError, serverApi } from "@/lib/api";
 import type { Page } from "@/lib/apiErrors";
-import { TELECALLER_MANAGER_NAV, TELECALLER_NAV, TELECALLER_SIGN_IN, type NavItem } from "@/lib/navigation";
+import { TELECALLER_MANAGER_NAV, TELECALLER_SIGN_IN, type NavItem } from "@/lib/navigation";
 import { teamRoleLabel, type TelecallerMe } from "@/lib/telecaller";
+import { telecallerNav } from "@/lib/telecallerNav";
 import { TIMELINE_LIMIT, leadUrl, type TelecallerLeadDetail, type TimelineRow } from "@/lib/telecallerLeads";
 import type { User } from "@/lib/types";
 
@@ -21,8 +22,8 @@ type Shell = { nav: NavItem[]; roleLabel: string; userName: string };
 async function shellFor(manager: boolean): Promise<Shell | React.ReactElement> {
   if (!manager) {
     try {
-      const me = await serverApi<TelecallerMe>("/api/v1/telecaller/me");
-      return { nav: TELECALLER_NAV, roleLabel: teamRoleLabel(me.telecaller_profile.team), userName: me.full_name };
+      const [me, nav] = await Promise.all([serverApi<TelecallerMe>("/api/v1/telecaller/me"), telecallerNav()]); // tel-020: the unread badge
+      return { nav, roleLabel: teamRoleLabel(me.telecaller_profile.team), userName: me.full_name };
     } catch (e) {
       return accessUnavailable(e, TELECALLER_SIGN_IN);
     }

@@ -4768,3 +4768,50 @@ recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). 
 `services/bdm_metrics.agent_performance`; `GET /bdm/organizations/{id}/agent-performance`; schemas `BdmAgentPerformanceOut`; web
 `lib/bdmAgentPerformance.ts`, `components/BdmOrganizationAgentPerformance.tsx` on both organization pages. **Feature ID:** `bdm-022`.
 **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-022.
+
+### DEC-SCOPE-111 — Telecaller alerts & notifications (`tel-020`)
+
+**Evidence:**
+- `EVID-019` §20 (L638–L650: nine alerts the CRM "should automatically notify the telecaller" of).
+- `DEC-SCOPE-073` T14 (in-app + email; event alerts on the write, time-based alerts from a 15-minute beat, each once; manager-set thresholds).
+- `DEC-SCOPE-094` F1 (overdue follow-up), `DEC-SCOPE-095` (lead appointments), `DEC-SCOPE-101` HO4 (return), `DEC-SCOPE-087` (assignment).
+- `DEC-SCOPE-102` R1 (bdm-012: `notifications.dedupe_key` as the once-only record) and `DEC-SCOPE-105` DB1 (the 24 h that waited for tel-020).
+- Backlog open question Q-14 (threshold defaults, quiet hours, digest vs per-event email).
+- Owner answers in-session 2026-10-07.
+
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option)
+for AL1–AL4; AL5–AL12 are recorded defaults. Migration `0099_tel_settings` (after bdm-019's `0098_bdm_agent_link`), API contract §12AE, RBAC
+§2.37. Spec `docs/superpowers/specs/2026-10-07-tel-020-alerts-design.md`. Drafted as `0098` / `DEC-SCOPE-107` / §12AA / 2.33; bdm-019 (`0098_bdm_agent_link` / 107 / §12AA / 2.33) and bdm-023 (108 / §12AB / 2.34) merged first, then tel-024 (no migration / 109 / §12AC / 2.35) and bdm-022 (no migration / 110 / §12AD / 2.36), so it is renumbered again (the migration stays `0099`).
+
+| # | Question | Answer |
+|---|---|---|
+| AL1 | Q-14a: default thresholds | **Lead Not Contacted 24 h, Hot Lead Pending 4 h** per team; whole hours 1–168, set by a manager |
+| AL2 | Q-14b: digest or per event | **Per alert, in-app + email**, as bdm-012 |
+| AL3 | Q-14c: quiet hours | **None** |
+| AL4 | Timing | **Follow-up Due** in the 15 min before the due time; **Missed Follow-up** when still open 1 h after it; **Appointment Tomorrow** once, from 18:00 IST the day before |
+
+Recorded defaults:
+- **AL5** The recipient is the lead's telecaller (`enquiries.telecaller_user_id`), only while an active `telecaller`; the actor never alerts themselves.
+- **AL6** Once-only via `notifications.dedupe_key` `tel020:{kind}:{object}:{user}:{event time}` (no `tel_alert_log` table): a rerun or a
+  late run is a no-op, and a new due time, appointment time, stage time or call re-arms the alert.
+- **AL7** Event alerts (New Lead Assigned — only when the telecaller changes, Counselor Appointment Completed, Lead Returned) are written in the
+  caller's transaction; a rolled-back write leaves nothing and the outbox publishes after commit.
+- **AL8** Lead Not Contacted: own open lead, not handed over, in Assigned / First Call Pending, `stage_changed_at` at least the team's hours ago.
+- **AL9** Hot Lead Pending: own open hot lead, not handed over, no call for the team's hours (from its latest call, else its creation).
+- **AL10** Catch-up windows: Due `now − 1 h < due ≤ now + 15 min`; Missed `now − 25 h < due ≤ now − 1 h`; in 1 hour `now < start ≤ now + 1 h`.
+- **AL11** Any `telecaller_manager` and `super_admin` read and set both teams (tel-022 G3's rule); the change applies from the next run; audited
+  `tel.settings.update` with the old and new values.
+- **AL12** tel-021's B9 Overdue uses the team's `not_contacted_hours` instead of the fixed 24 h (DB1).
+- **AL13** tel-025's lifecycle moves (deactivation, team move, handover) keep their single D6 summary notice to the new telecaller and send
+  no per-lead "New lead assigned" (`lead_distribution.assign(..., notify=False)`), so a bulk move is never N extra emails.
+- Bodies carry the lead's name, Lead ID and a time only; links are app paths (`/telecaller/leads/{id}`, `/telecaller/follow-ups`) needing a session.
+
+**Consequences:**
+- Data: `tel_settings` (seeded `it` and `overseas` with 24 / 4).
+- Backend: `services/telecaller_alerts.py`; hooks in `lead_distribution.assign`, the lead-appointment `complete` action and
+  `lead_handover.return_lead`; the beat job `tel020-alerts` (900 s); the email kind `tel_alert` (SMTP via `send_bdm_reminder_email`);
+  `GET/PUT /telecaller/settings`.
+- Web: `/telecaller/notifications` with the unread badge on every telecaller page; the manager's `/telecaller/manager/alerts`.
+- Volume: a CSV import of N leads sends N "New lead assigned" emails (AL2 accepted).
+
+**New Feature ID authorized:** `tel-020`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-020.

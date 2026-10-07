@@ -884,6 +884,11 @@ the type, or the type's pool; first accept wins); a decline is final (MR2); no w
 
 ### tel-020 — Alerts & notifications
 
+**Status (2026-10-07):** built on `feature/tel-020` (`DEC-SCOPE-111` AL1–AL13, migration `0099_tel_settings`, API §12AE, RBAC §2.37; drafted as 0098 / 107 / §12AA / 2.33, renumbered after bdm-019, bdm-023, tel-024 and bdm-022).
+Spec `docs/superpowers/specs/2026-10-07-tel-020-alerts-design.md`. Q-14 → AL1 (24 h / 4 h), AL2 (per alert, in-app + email), AL3 (no
+quiet hours); AL4 timing (Missed 1 h after due; Appointment Tomorrow from 18:00 IST). The `tel_alert_log` below is replaced by
+`notifications.dedupe_key` (AL6). tel-021's DB1 now uses the team threshold (AL12).
+
 - **Business requirement:** §20 (9 kinds), T14.
 - **Existing behavior:** `Notification` + deliveries outbox; the beat runs the AGN-017 daily job.
 - **Expected behavior:**

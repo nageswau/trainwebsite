@@ -1288,3 +1288,14 @@ Additive only: two tables and one sequence (`bdm_appointment_code_seq`, also on 
 - Nothing is stored for the metrics: they are computed per request from the linked appointments, the expense lines (D15) and the
   attributed leads (`enquiries`, L1).
 - `0068_bdm_trips` downgrade also drops `bdm_appointments.trip_id` when a database built by `0001` from newer models has it.
+
+## Telecaller alert settings (`tel-020`, `DEC-SCOPE-111`; migration `0099_tel_settings`, after `0098_bdm_agent_link`)
+
+- **`tel_settings`** — one row per team. `team` VARCHAR(20) PK CHECK `ck_tel_settings_team` (`it`, `overseas`); `not_contacted_hours`
+  and `hot_pending_hours` INT NOT NULL CHECK 1–168 (`ck_tel_settings_not_contacted_hours`, `ck_tel_settings_hot_pending_hours`);
+  `updated_by_user_id` FK `users` NULL (NULL = never changed); `created_at`, `updated_at`.
+- Seeded by the migration with 24 / 4 for both teams (`ON CONFLICT DO NOTHING`, so a database built by `0001` is seeded too). The
+  downgrade drops the table.
+- Alerts are not a table: each is a `notifications` row (event alerts without a key; beat alerts with `dedupe_key`
+  `tel020:{kind}:{object}:{user}:{event time}` on the existing unique partial index `ux_notifications_dedupe_key`) plus one
+  `notification_deliveries` email row.
