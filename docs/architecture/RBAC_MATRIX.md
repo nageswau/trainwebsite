@@ -867,6 +867,20 @@ outside the team reads as `404`. Aggregates and organization / trip identities o
 | `super_admin` | the same, optionally narrowed to one manager's team | all | `bdm-024` |
 | `bdm` and every other role | none → `403` | — | `bdm-024` |
 
+### 2.40 Lead timeline *(net-new, added 2026-10-07 — `DEC-SCOPE-114`, `tel-015`)*
+
+Read only. Each route applies its own lead scope before the shared reader runs; an id outside it reads as `404` (an admin's other
+division `403`, as `stage-history`). The timeline shows the lead's own records only; free text is a 200-character excerpt.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | read a lead's timeline | their current leads (a reassigned lead leaves their scope; its history stays with the lead) | `tel-015` |
+| `telecaller_manager` | read | their reports' leads and their teams' unassigned leads | `tel-015` |
+| `counselor` | read | the leads handed to them | `tel-015` |
+| `it_admin` / `overseas_admin` | read (History on the admin leads list) | their division's leads | `tel-015` |
+| `super_admin` | read | all leads | `tel-015` |
+| every other role | `403` | — | `tel-015` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

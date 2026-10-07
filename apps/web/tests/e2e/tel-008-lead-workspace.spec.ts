@@ -68,7 +68,7 @@ test("a manager opens a queue lead, sets its priority and stage, edits it, and f
   await expect(page.getByRole("heading", { name })).toBeVisible();
   await expect(page.getByText("Call me after 6pm.")).toBeVisible();
   await expect(page.getByRole("link", { name: `Call ${name}` })).toHaveAttribute("href", `tel:${mobile}`);
-  await expect(page.getByRole("list", { name: "Lead activity" }).getByRole("listitem")).toHaveCount(1); // tel-007: the assignment
+  await expect(page.getByRole("list", { name: "Lead activity" }).getByRole("listitem")).toHaveCount(3); // tel-015: the creation, the tel-007 assignment and its stage move
   await expect(page.getByRole("list", { name: "Lead activity" })).toContainText("Stage: New Lead → Assigned");
   await expect(page.getByText("Set the lead's product interest to see its call script.")).toBeVisible(); // a website lead has no product
 
@@ -100,7 +100,7 @@ test("a manager opens a queue lead, sets its priority and stage, edits it, and f
   await page.reload(); // stored, not just shown
   await expect(page.getByText("Hyderabad")).toBeVisible();
   await expect(page.getByText(/Stage: Qualified · Priority: Hot/)).toBeVisible();
-  await expect(page.getByRole("list", { name: "Lead activity" }).getByRole("listitem")).toHaveCount(3); // assignment, priority, stage
+  await expect(page.getByRole("list", { name: "Lead activity" }).getByRole("listitem")).toHaveCount(5); // + priority, stage
   for (const width of [375, 768]) {
     await page.setViewportSize({ width, height: 900 });
     expect(await noSideScroll(page), `no side scroll at ${width}px`).toBe(true);
