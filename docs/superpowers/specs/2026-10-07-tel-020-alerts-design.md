@@ -1,7 +1,8 @@
 # tel-020 — Telecaller alerts & notifications (design)
 
 - **Feature:** tel-020 (`docs/delivery/TELECALLER_CRM_BACKLOG.md` → tel-020; EVID-019 §20 lines 638–650; T14)
-- **Decision:** `DEC-SCOPE-111` (AL1–AL4 owner answers 2026-10-07, `EXPLICIT_APPROVAL`; defaults AL5–AL12 below)
+- **Status:** **merged** to `main` as PR #129 @ `d6097548` (2026-10-07)
+- **Decision:** `DEC-SCOPE-111` (AL1–AL4 owner answers 2026-10-07, `EXPLICIT_APPROVAL`; defaults AL5–AL13 below)
 - **Numbers:** migration `0099_tel_settings` (after bdm-019's `0098_bdm_agent_link`), API contract §12AE, RBAC §2.37
 - **Dependencies (all merged):** tel-007 (PR #90), tel-011 (PR #100), tel-016 (PR #103), tel-018 (PR #114)
 
