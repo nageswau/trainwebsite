@@ -913,6 +913,9 @@ the type, or the type's pool; first accept wins); a decline is final (MR2); no w
 
 ### tel-021 — Telecaller dashboard + daily activity
 
+**Status (2026-10-07):** **built** on `feature/tel-021` (`DEC-SCOPE-105` DB1–DB2 + DB3–DB8, no migration, API §12X, RBAC §2.30). Spec
+`docs/superpowers/specs/2026-10-07-tel-021-dashboard-design.md`. Overdue's not-contacted part uses a fixed 24 h until tel-020 (DB1).
+
 - **Business requirement:** §1 (10 tiles), §14 (13 counts), §15 "dashboard should show"; T27.
 - **Existing behavior:** none.
 - **Expected behavior:**
