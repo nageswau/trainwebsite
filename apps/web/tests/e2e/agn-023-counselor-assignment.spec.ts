@@ -45,7 +45,8 @@ test("admin assigns a counsellor to an agency application; counsellor advances (
   await admin.getByLabel("Search records").fill(name);
   const row = admin.getByRole("row", { name: new RegExp(name) });
   await row.getByRole("button", { name: "Assign counsellor" }).click();
-  await row.getByLabel("EduSphere counsellor").selectOption({ label: counselorName });
+  // Type-ahead: search by the counsellor's name (the shared DB holds ~1800 counsellors) and choose the matching option.
+  await pickFromList(row.getByRole("combobox", { name: "EduSphere counsellor" }), counselorName, new RegExp(`^${counselorName}$`));
   await row.getByRole("button", { name: "Save" }).click();
   await expect(admin.getByText(`${counselorName} assigned.`)).toBeVisible();
 

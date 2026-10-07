@@ -1,118 +1,119 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import AssignCounselorButton, { clearCounselorListCache } from "@/components/AssignCounselorButton";
+import AssignCounselorButton from "@/components/AssignCounselorButton";
 
 const refresh = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 
 afterEach(() => {
   cleanup();
-  clearCounselorListCache();
   vi.unstubAllGlobals();
   refresh.mockReset();
 });
 
 const json = (status: number, body: unknown) => Promise.resolve({ ok: status < 400, status, json: async () => body });
-const USERS = [
-  { id: "c1", name: "Asha Rao", division: "overseas", active: true },
-  { id: "c2", name: "Old Hand", division: "overseas", active: false },
-  { id: "c3", name: "IT Person", division: "it", active: true },
-];
+const LOOKUP = "/api/v1/lookups/overseas-counselors";
+const PAGE = { items: [{ id: "c1", label: "Asha Rao", detail: null }], truncated: false };
 
-function stub(put: () => Promise<unknown>) {
-  const fetchMock = vi.fn((url: string, init?: RequestInit) => (init?.method === "PUT" ? put() : json(200, USERS)));
+function stub(put: () => Promise<unknown>, lookup: () => Promise<unknown> = () => json(200, PAGE)) {
+  const fetchMock = vi.fn((url: string, init?: RequestInit) => (init?.method === "PUT" ? put() : lookup()));
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
 }
 
+// Type into the type-ahead and choose the matching option, as a user would.
+async function choose(name = "Asha") {
+  const input = await screen.findByRole("combobox", { name: "EduSphere counsellor" });
+  fireEvent.change(input, { target: { value: name } });
+  fireEvent.click(await screen.findByRole("option", { name: /Asha Rao/ }));
+}
+
 describe("AssignCounselorButton", () => {
-  it("lists active overseas counselors only and assigns one", async () => {
+  it("searches the overseas-counselors lookup as the admin types and assigns the chosen one", async () => {
     const fetchMock = stub(() => json(200, { id: "a1", counselor_id: "c1", counselor_name: "Asha Rao", changed: true }));
     render(<AssignCounselorButton applicationId="a1" currentId={null} />);
     fireEvent.click(screen.getByRole("button", { name: "Assign counsellor" }));
-    const select = (await screen.findByLabelText("EduSphere counsellor")) as HTMLSelectElement;
-    expect(Array.from(select.options).map((o) => o.textContent)).toEqual(["Choose…", "Asha Rao"]);
-    fireEvent.change(select, { target: { value: "c1" } });
+    await choose();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).startsWith(`${LOOKUP}?`) && String(url).includes("q=Asha"))).toBe(true);
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/admin/users"))).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByRole("status")).toHaveTextContent("Asha Rao assigned.");
     expect(fetchMock).toHaveBeenCalledWith("/api/v1/workflows/overseas/applications/a1/counselor", expect.objectContaining({ method: "PUT", body: JSON.stringify({ counselor_id: "c1" }) }));
     expect(refresh).toHaveBeenCalled();
   });
 
-  it("reads Change counsellor when one is set, with no clear option", async () => {
+  it("keeps Save disabled until a counsellor is chosen", async () => {
     stub(() => json(200, {}));
+    render(<AssignCounselorButton applicationId="a1" currentId={null} />);
+    fireEvent.click(screen.getByRole("button", { name: "Assign counsellor" }));
+    const input = await screen.findByRole("combobox", { name: "EduSphere counsellor" });
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    fireEvent.change(input, { target: { value: "Ash" } });
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    fireEvent.click(await screen.findByRole("option", { name: /Asha Rao/ }));
+    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+    fireEvent.change(input, { target: { value: "Ash" } }); // editing the text drops the pick again
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
+  it("reads Change counsellor when one is set, starts empty and has no clear option", async () => {
+    const fetchMock = stub(() => json(200, {}));
     render(<AssignCounselorButton applicationId="a1" currentId="c1" />);
     fireEvent.click(screen.getByRole("button", { name: "Change counsellor" }));
-    const select = (await screen.findByLabelText("EduSphere counsellor")) as HTMLSelectElement;
-    expect(select.value).toBe("c1");
-    expect(Array.from(select.options).some((o) => o.value === "" && o.textContent !== "Choose…")).toBe(false);
+    const input = (await screen.findByRole("combobox", { name: "EduSphere counsellor" })) as HTMLInputElement;
+    expect(input.value).toBe("");
+    expect(screen.queryByRole("option", { name: /none|clear|unassign/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /clear|remove|unassign/i })).toBeNull();
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PUT")).toBe(false);
   });
 
   it("shows the API's refusal", async () => {
     stub(() => json(409, { detail: "This application is closed" }));
     render(<AssignCounselorButton applicationId="a1" currentId={null} />);
     fireEvent.click(screen.getByRole("button", { name: "Assign counsellor" }));
-    fireEvent.change(await screen.findByLabelText("EduSphere counsellor"), { target: { value: "c1" } });
+    await choose();
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("This application is closed");
     expect(refresh).not.toHaveBeenCalled();
   });
 
-  it("shows an alert, disables Save and sends no PUT when the list fails to load", async () => {
-    const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<unknown>>(() => json(500, {}));
-    vi.stubGlobal("fetch", fetchMock);
+  it("says the search failed, keeps Save disabled and sends no PUT when the lookup fails", async () => {
+    const fetchMock = stub(() => json(200, {}), () => json(500, {}));
     render(<AssignCounselorButton applicationId="a1" currentId={null} />);
     fireEvent.click(screen.getByRole("button", { name: "Assign counsellor" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't load the counsellors -- try again.");
-    expect(screen.queryByLabelText("EduSphere counsellor")).toBeNull();
+    expect(await screen.findByText("Could not load the counsellors.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
     expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PUT")).toBe(false);
   });
 
-  it("says so when there are no active overseas counsellors", async () => {
-    vi.stubGlobal("fetch", vi.fn(() => json(200, [])));
-    render(<AssignCounselorButton applicationId="a1" currentId={null} />);
-    fireEvent.click(screen.getByRole("button", { name: "Assign counsellor" }));
-    expect(await screen.findByText("No active overseas counsellors.")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
-  });
-
-  it("names the counsellor from the API response, not the loaded list", async () => {  // F3
+  it("names the counsellor from the API response, not the picked label", async () => {  // F3
     stub(() => json(200, { id: "a1", counselor_id: "c1", counselor_name: "Asha R. Rao", changed: true }));
     render(<AssignCounselorButton applicationId="a1" currentId={null} />);
     fireEvent.click(screen.getByRole("button", { name: "Assign counsellor" }));
-    fireEvent.change(await screen.findByLabelText("EduSphere counsellor"), { target: { value: "c1" } });
+    await choose();
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByRole("status")).toHaveTextContent("Asha R. Rao assigned.");
   });
 
-  it("focuses the select on open, and Cancel closes and refocuses the button", async () => {  // F2
+  it("focuses the search field on open, and Cancel closes and refocuses the button", async () => {  // F2
     stub(() => json(200, {}));
     render(<AssignCounselorButton applicationId="a1" currentId={null} />);
     fireEvent.click(screen.getByRole("button", { name: "Assign counsellor" }));
-    const select = await screen.findByLabelText("EduSphere counsellor");
-    await waitFor(() => expect(document.activeElement).toBe(select));
+    const input = await screen.findByRole("combobox", { name: "EduSphere counsellor" });
+    await waitFor(() => expect(document.activeElement).toBe(input));
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(screen.queryByLabelText("EduSphere counsellor")).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "EduSphere counsellor" })).toBeNull();
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Assign counsellor" }));
-  });
-
-  it("focuses the alert when the list fails to load", async () => {  // F2
-    vi.stubGlobal("fetch", vi.fn(() => json(500, {})));
-    render(<AssignCounselorButton applicationId="a1" currentId={null} />);
-    fireEvent.click(screen.getByRole("button", { name: "Assign counsellor" }));
-    const alert = await screen.findByRole("alert");
-    await waitFor(() => expect(document.activeElement).toBe(alert));
   });
 
   it("Escape closes the form and refocuses the button", async () => {  // F2
     stub(() => json(200, {}));
     render(<AssignCounselorButton applicationId="a1" currentId="c1" />);
     fireEvent.click(screen.getByRole("button", { name: "Change counsellor" }));
-    const select = await screen.findByLabelText("EduSphere counsellor");
-    fireEvent.keyDown(select, { key: "Escape" });
-    expect(screen.queryByLabelText("EduSphere counsellor")).toBeNull();
+    const input = await screen.findByRole("combobox", { name: "EduSphere counsellor" });
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(screen.queryByRole("combobox", { name: "EduSphere counsellor" })).toBeNull();
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Change counsellor" }));
   });
 
@@ -121,55 +122,14 @@ describe("AssignCounselorButton", () => {
     stub(() => new Promise((resolve) => { finish = resolve; }));
     render(<AssignCounselorButton applicationId="a1" currentId={null} />);
     fireEvent.click(screen.getByRole("button", { name: "Assign counsellor" }));
-    const select = await screen.findByLabelText("EduSphere counsellor");
-    fireEvent.change(select, { target: { value: "c1" } });
+    await choose();
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await screen.findByRole("button", { name: "Saving…" });
-    fireEvent.keyDown(select, { key: "Escape" });
-    expect(screen.getByLabelText("EduSphere counsellor")).toBeInTheDocument();
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "EduSphere counsellor" }), { key: "Escape" });
+    expect(screen.getByRole("combobox", { name: "EduSphere counsellor" })).toBeInTheDocument();
     finish(await json(200, { id: "a1", counselor_id: "c1", counselor_name: "Asha Rao", changed: true }));
     await screen.findByRole("status");
-    expect(screen.queryByLabelText("EduSphere counsellor")).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "EduSphere counsellor" })).toBeNull();
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Assign counsellor" })));
-  });
-
-  it("fetches the counsellor list once for two buttons", async () => {  // F5
-    const fetchMock = stub(() => json(200, {}));
-    render(<><AssignCounselorButton applicationId="a1" currentId={null} /><AssignCounselorButton applicationId="a2" currentId={null} /></>);
-    const [first, second] = screen.getAllByRole("button", { name: "Assign counsellor" });
-    fireEvent.click(first);
-    await screen.findByLabelText("EduSphere counsellor");
-    fireEvent.click(second);
-    await waitFor(() => expect(screen.getAllByLabelText("EduSphere counsellor")).toHaveLength(2));
-    expect(fetchMock.mock.calls.filter(([url]) => url === "/api/v1/admin/users?role=counselor")).toHaveLength(1);
-  });
-
-  it("retries a failed load on the next open", async () => {  // F5
-    let calls = 0;
-    const fetchMock = vi.fn(() => (++calls === 1 ? json(500, {}) : json(200, USERS)));
-    vi.stubGlobal("fetch", fetchMock);
-    render(<AssignCounselorButton applicationId="a1" currentId={null} />);
-    fireEvent.click(screen.getByRole("button", { name: "Assign counsellor" }));
-    await screen.findByRole("alert");
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    fireEvent.click(screen.getByRole("button", { name: "Assign counsellor" }));
-    expect(await screen.findByLabelText("EduSphere counsellor")).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-  });
-
-  it("a slow first load that resolves after close does not overwrite a reopened form", async () => {  // F5
-    let release: (value: unknown) => void = () => {};
-    let calls = 0;
-    vi.stubGlobal("fetch", vi.fn(() => (++calls === 1 ? new Promise((resolve) => { release = resolve; }) : json(200, [USERS[0]]))));
-    render(<AssignCounselorButton applicationId="a1" currentId={null} />);
-    fireEvent.click(screen.getByRole("button", { name: "Assign counsellor" }));
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    clearCounselorListCache();
-    fireEvent.click(screen.getByRole("button", { name: "Assign counsellor" }));
-    const select = (await screen.findByLabelText("EduSphere counsellor")) as HTMLSelectElement;
-    expect(Array.from(select.options).map((o) => o.textContent)).toEqual(["Choose…", "Asha Rao"]);
-    release(await json(200, [{ id: "c9", name: "Stale One", division: "overseas", active: true }]));
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(Array.from((screen.getByLabelText("EduSphere counsellor") as HTMLSelectElement).options).map((o) => o.textContent)).toEqual(["Choose…", "Asha Rao"]);
   });
 });
