@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { accessUnavailable } from "@/components/AccessUnavailable";
 import BdmHierarchy from "@/components/BdmHierarchy";
-import { PerformanceFilters, PerformanceLoadError } from "@/components/BdmPerformanceControls";
+import { PerformanceFilters, PerformanceLoadError, resetTo } from "@/components/BdmPerformanceControls";
 import PortalShell from "@/components/PortalShell";
 import { ApiError, serverApi } from "@/lib/api";
 import { HIERARCHY_PATH, hierarchyUrl, isHierarchy, performancePath, readFilters } from "@/lib/bdmPerformance";
@@ -37,7 +37,7 @@ export default async function BdmHierarchyPage({ searchParams }: { searchParams:
           <Link href={performancePath({ manager: filters.manager })} style={LINK_STYLE}>Performance by period</Link>
         </div>
         {managers && <PerformanceFilters action={HIERARCHY_PATH} filters={filters} period={null} managers={managers} />}
-        {ok ? <BdmHierarchy data={data} /> : <PerformanceLoadError message={failureText(data)} retryHref={here} resetHref={here} />}
+        {ok ? <BdmHierarchy data={data} /> : <PerformanceLoadError message={failureText(data)} retryHref={here} reset={resetTo(HIERARCHY_PATH, filters.manager)} />}
       </div>
     </PortalShell>
   );

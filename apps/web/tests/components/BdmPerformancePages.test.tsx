@@ -42,7 +42,8 @@ function answer(map: Record<string, unknown>) {
 }
 const sp = <T,>(value: T) => Promise.resolve(value);
 const allText = (tree: ReturnType<typeof elements>) => tree.map((el) => text(el)).join(" ");
-const failure = (tree: ReturnType<typeof elements>) => tree.find((el) => el.type === PerformanceLoadError)?.props as { message: string; retryHref: string; resetHref: string } | undefined;
+const failure = (tree: ReturnType<typeof elements>) =>
+  tree.find((el) => el.type === PerformanceLoadError)?.props as { message: string; retryHref: string; reset: { href: string; label: string } } | undefined;
 const filtersOf = (tree: ReturnType<typeof elements>) => tree.find((el) => el.type === PerformanceFilters)!.props as { managers?: unknown[]; period: unknown };
 
 describe("bdm-024 performance pages", () => {
@@ -72,7 +73,7 @@ describe("bdm-024 performance pages", () => {
     answer({ "/api/v1/auth/me": MANAGER, "/api/v1/bdm/manager/performance?from=2026-10-31&to=2026-10-01": new ApiError("The period must start on or before its end", 422) });
     const tree = elements(await PerformancePage({ searchParams: sp({ from: "2026-10-31", to: "2026-10-01" }) }));
     expect(failure(tree)).toEqual({ message: "The period must start on or before its end",
-      retryHref: "/bdm/manager/performance?from=2026-10-31&to=2026-10-01", resetHref: "/bdm/manager/performance" });
+      retryHref: "/bdm/manager/performance?from=2026-10-31&to=2026-10-01", reset: { href: "/bdm/manager/performance", label: "Show this month" } });
     expect(filtersOf(tree).period).toBeNull();
   });
 
@@ -82,6 +83,14 @@ describe("bdm-024 performance pages", () => {
     answer({ "/api/v1/auth/me": { full_name: "Asha", role: "bdm" }, "/api/v1/bdm/manager/performance": new ApiError("BDM manager role required", 403) });
     const card = (await PerformancePage({ searchParams: sp({}) })) as { props: { message: string } };
     expect(card.props.message).toBe("BDM manager role required"); // the access card, not an inline error
+  });
+
+  it("super_admin with a team that can't be read is offered all teams (QA24-03)", async () => {
+    answer({ "/api/v1/auth/me": ROOT, [`/api/v1/bdm/manager/performance?manager_user_id=${M1}`]: new ApiError("Manager not found", 404) });
+    expect(failure(elements(await PerformancePage({ searchParams: sp({ manager: M1 }) })))).toEqual({
+      message: "Manager not found", retryHref: `/bdm/manager/performance?manager=${M1}`, reset: { href: "/bdm/manager/performance", label: "Show all teams" } });
+    answer({ "/api/v1/auth/me": ROOT, [`/api/v1/bdm/manager/hierarchy?manager_user_id=${M1}`]: new ApiError("Manager not found", 404) });
+    expect(failure(elements(await HierarchyPage({ searchParams: sp({ manager: M1 }) })))!.reset).toEqual({ href: "/bdm/manager/hierarchy", label: "Show all teams" });
   });
 
   it("the type page asks for that type's BDMs and refuses an unknown type", async () => {

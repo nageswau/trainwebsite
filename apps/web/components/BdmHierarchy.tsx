@@ -54,7 +54,7 @@ export default function BdmHierarchy({ data }: { data: Hierarchy }) {
                 ) : (
                   <div className="table-scroll">
                     <table className="table">
-                      <caption className="sr-only">{`${b.full_name}'s organizations`}</caption>
+                      <caption className="visually-hidden">{`${b.full_name}'s organizations`}</caption>
                       <thead>
                         <tr>
                           <th scope="col">Organization</th>

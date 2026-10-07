@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import BdmHierarchy from "@/components/BdmHierarchy";
+import { PerformanceFilters, PerformanceLoadError } from "@/components/BdmPerformanceControls";
 import BdmPerformanceFigures from "@/components/BdmPerformanceFigures";
 import BdmPerformanceTable from "@/components/BdmPerformanceTable";
 import type { Figures, Hierarchy, Performance } from "@/lib/bdmPerformance";
@@ -53,6 +54,16 @@ describe("bdm-024 performance table (L1)", () => {
   it("scrolls inside its container on a phone", () => {
     expect(tree.some((el) => el.type === "div" && String(el.props.className).includes("table-scroll"))).toBe(true);
   });
+
+  it("hides the caption visually with the app's own class (QA24-02)", () => {
+    expect(tree.find((el) => el.type === "caption")!.props.className).toBe("visually-hidden");
+  });
+
+  it("says why every figure is 0 when the team has no active BDMs (QA24-04)", () => {
+    expect(allText(tree)).not.toContain("No active BDMs");
+    const none = elements(BdmPerformanceTable({ data: { ...performance, rows: [row("P-01", "BDMs", [0, 0, 0]), row("P-02", "Meetings", [0, 0, 0])] }, filters: F }));
+    expect(allText(none)).toContain("No active BDMs in this team yet.");
+  });
 });
 
 const figures = (over: Partial<Figures> = {}): Figures => ({
@@ -83,6 +94,10 @@ describe("bdm-024 figures table (L2 / L3)", () => {
     expect(leads.props.href).toBe("/bdm/manager/performance/bdms/b1");
     expect(allText(tree)).toContain("Not tracked");
     expect(links(tree).some((el) => text(el) === "—" || text(el) === "Not tracked")).toBe(false);
+  });
+
+  it("hides its caption visually (QA24-02)", () => {
+    expect(tree.find((el) => el.type === "caption")!.props.className).toBe("visually-hidden");
   });
 
   it("shows the empty message instead of an empty table", () => {
@@ -122,10 +137,29 @@ describe("bdm-024 master view", () => {
     expect(links(tree).find((el) => text(el) === "ABC Overseas")!.props.href).toBe("/bdm/manager/organizations/o1");
   });
 
+  it("hides its captions visually (QA24-02)", () => {
+    expect(tree.filter((el) => el.type === "caption").map((el) => el.props.className)).toEqual(["visually-hidden"]);
+  });
+
   it("marks inactive BDMs and empty branches in words", () => {
     expect(allText(tree)).toContain("Ravi (inactive)");
     expect(allText(tree)).toContain("No linked organizations yet.");
     expect(allText(tree)).toContain("No School BDMs in this team.");
     expect(allText(tree)).toContain("Not tracked");
+  });
+});
+
+describe("bdm-024 controls", () => {
+  it("keeps the team picker within the screen on a phone (QA24-01)", () => {
+    const tree = elements(PerformanceFilters({ action: "/x", filters: {}, period: null, managers: [{ id: "m", full_name: "A very long manager name", email: "someone@example.local" }] }));
+    const select = tree.find((el) => el.type === "select")!;
+    expect(select.props.style).toMatchObject({ maxWidth: "100%" });
+    expect(tree.find((el) => el.type === "label")!.props.style).toMatchObject({ maxWidth: "100%", minWidth: 0 });
+  });
+
+  it("offers a way out of an error that is not the failing link itself (QA24-03)", () => {
+    const tree = elements(PerformanceLoadError({ message: "Manager not found", retryHref: "/p?manager=m", reset: { href: "/p", label: "Show all teams" } }));
+    expect(tree.filter((el) => typeof el.props.href === "string").map((el) => [el.props.href, text(el)])).toEqual([
+      ["/p?manager=m", "Try again"], ["/p", "Show all teams"]]);
   });
 });

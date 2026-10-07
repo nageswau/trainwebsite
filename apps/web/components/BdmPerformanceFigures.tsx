@@ -25,7 +25,7 @@ export default function BdmPerformanceFigures({ caption, first, rows, total, emp
   return (
     <div className="table-scroll">
       <table className="table">
-        <caption className="sr-only">{caption}</caption>
+        <caption className="visually-hidden">{caption}</caption>
         <thead>
           <tr>
             <th scope="col">{first}</th>

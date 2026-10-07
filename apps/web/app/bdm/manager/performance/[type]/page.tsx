@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { accessUnavailable } from "@/components/AccessUnavailable";
-import { PerformanceFilters, PerformanceLoadError } from "@/components/BdmPerformanceControls";
+import { PerformanceFilters, PerformanceLoadError, resetTo } from "@/components/BdmPerformanceControls";
 import BdmPerformanceFigures from "@/components/BdmPerformanceFigures";
 import PortalShell from "@/components/PortalShell";
 import { ApiError, serverApi } from "@/lib/api";
@@ -56,7 +56,7 @@ export default async function BdmPerformanceTypePage({ params, searchParams }: {
             />
           </section>
         ) : (
-          <PerformanceLoadError message={failureText(data)} retryHref={typePath(type, filters)} resetHref={typePath(type, { manager: filters.manager })} />
+          <PerformanceLoadError message={failureText(data)} retryHref={typePath(type, filters)} reset={resetTo(action, filters.manager)} />
         )}
       </div>
     </PortalShell>
