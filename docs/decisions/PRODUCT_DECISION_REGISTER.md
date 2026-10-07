@@ -4418,3 +4418,34 @@ builders bdm-016 / 023 / 024 reuse; `services/bdm_daily_reports.py`; routes in `
 the report lock and activity writes take the day's advisory lock; pages `/bdm/daily-report`, `/bdm/manager/daily-reports`,
 `/bdm/manager/daily-reports/[bdmId]`; component `BdmDailyReport`. **Feature ID:** `bdm-015`. **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-015.
 
+### DEC-SCOPE-100 — BDM monthly targets (`bdm-016`)
+
+**Evidence:** `EVID-016` §12, Agent / School / College §A KPI tables (`BDM_CRM_BACKLOG.md` Appendix A L399–L411, L548–L559 and the School /
+College §A rows); `DEC-SCOPE-055` D4 (manager = reporting manager; super_admin all), D21 / Q-12 (fixed catalogue per type with written
+definitions; monthly only), D31 (School Career Guidance / Psychometric KPIs = students served in linked schools), D32 (Active / New
+Agents and Active Schools from linked partner records); Appendix B.3 K-rows → B.1 M-rows.
+**Status:** R1–R12 are the **recommended answers**, used under the owner's standing direction for this session to proceed with
+recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). Migration `0095_bdm_targets` (after
+`0094_bdm_daily_reports`), API contract §12U, RBAC §2.27. Spec `docs/superpowers/specs/2026-10-07-bdm-016-monthly-targets-design.md`.
+
+| # | Question | Recommended answer (used) |
+|---|---|---|
+| R1 | KPIs per type | The type's §A list, then the §12 common list; a common KPI identical to one listed (same metric and filter) is shown once. Agent 13, School 15, College 14 |
+| R2 | Month | `YYYY-MM`, the IST calendar month; default the current one |
+| R3 | Editable months | Current and up to 12 ahead; a past month only by `super_admin` (a manager `422`); beyond 12 ahead `422` |
+| R4 | Target value | Whole number 0–100000; `null` clears it |
+| R5 | Achievement % | `round(achieved × 100 ÷ target)`; no target, 0 or not tracked → "—"; may exceed 100 |
+| R6 | Future month | Achieved and % are null ("Month not started") |
+| R7 | Not-tracked KPIs | Target may be set; achieved labelled "Not tracked" with its reason, never 0 |
+| R8 | Copy last month | Into the chosen month for the actor's active team BDMs, only (BDM, KPI) pairs not yet set, catalogue KPIs only; audited |
+| R9 | Scope | Manager team / super_admin all; outside the team `404`; inactive BDM write `422`; a BDM reads only their own; other roles `403` |
+| R10 | Whose count | bdm-015 R9 (the record's BDM column); attributed users = students converted from the BDM's leads; achieved is live (no snapshot) |
+| R11 | Dating M-23 / M-24 | Career guidance: completed (ENH-026 C5) `guidance_session`, by `completed_on` else `created_at`; psychometric: `completed`, by `test_date` else `created_at` |
+| R12 | Active Schools (M-17) | Linked Schools with a tier and `tier_valid_until` NULL or ≥ the month's last day (today for the current month) |
+
+**Consequences:** table `bdm_targets` (unique `(bdm_user_id, month, kpi_key)`; CHECK month starts on the 1st and 0 ≤ target ≤ 100000);
+`services/bdm_metrics.TARGET_METRICS` / `TARGET_KPIS` / `monthly_counts` (one SELECT; the bdm-015 builders reused, `_new_prospects` and
+`_mou_moved_to` generalized by organization type with the daily definitions unchanged); `services/bdm_targets.py`; routes in
+`api/bdm_targets.py`; pages `/bdm/manager/targets`, `/bdm/manager/targets/[bdmId]`; a "Monthly targets" card on My Day; components
+`BdmTargetsEditor`, `BdmTargetsCopy`, `BdmTargetsCard`. **Feature ID:** `bdm-016`. **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-016.
+

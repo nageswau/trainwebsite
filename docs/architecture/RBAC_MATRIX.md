@@ -712,6 +712,18 @@ routes (a BDM outside the team is `404`).
 | `super_admin` | as a manager | all BDMs | `bdm-015` |
 | every other role | none → `403` | — | `bdm-015` |
 
+### 2.27 BDM monthly targets *(net-new, added 2026-10-07 — `DEC-SCOPE-100`, `bdm-016`)*
+
+`bdm_context` gates the BDM route (own sheet only); `require_manager` + `team_filter` gate the manager routes (a BDM outside the team is
+`404`).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `bdm` | read own monthly targets, achieved and % (My Day card) | own | `bdm-016` |
+| `bdm_manager` | team list; read a team BDM's sheet; **set / clear** targets; **copy** last month — current month and up to 12 ahead | active BDMs reporting to them | `bdm-016` |
+| `super_admin` | as a manager, and **past months** too | all BDMs | `bdm-016` |
+| every other role | none → `403` | — | `bdm-016` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
