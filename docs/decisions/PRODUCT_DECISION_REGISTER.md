@@ -4821,7 +4821,7 @@ Recorded defaults:
 **Evidence:** `EVID-019` §16 (the 6-column comparison); `DEC-SCOPE-073` T23, T24; backlog Appendix B P1–P6 and open question Q-19;
 `DEC-SCOPE-105` (tel-021 metrics, DB2, DB6, DB8); owner answers in-session 2026-10-07.
 **Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option)
-for PF1–PF4. **No migration.** API contract §12AF, RBAC §2.38. Spec `docs/superpowers/specs/2026-10-07-tel-023-performance-design.md`.
+for PF1–PF4. **MERGED** to `main` as PR #131 @ `2059b26d` (2026-10-07). **No migration.** API contract §12AF, RBAC §2.38. Spec `docs/superpowers/specs/2026-10-07-tel-023-performance-design.md`.
 Numbered after bdm-019 (`DEC-SCOPE-107` / §12AA / 2.33, migration `0098`), bdm-023 (`DEC-SCOPE-108` / §12AB / 2.34), tel-024 (`DEC-SCOPE-109` / §12AC / 2.35), bdm-022 / tel-020 (`DEC-SCOPE-110`–`111` / §12AD–§12AE / 2.36–2.37, migration `0099_tel_settings`), all merged first.
 
 | # | Question | Answer |

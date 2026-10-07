@@ -990,7 +990,7 @@ quiet hours); AL4 timing (Missed 1 h after due; Appointment Tomorrow from 18:00 
 
 ### tel-023 — Manager performance comparison
 
-**Status (2026-10-07):** built on `feature/tel-023` (`DEC-SCOPE-112`, API §12AF, RBAC §2.38, no migration); owner answers PF1–PF4
+**Status (2026-10-07):** **merged** to `main` as PR #131 @ `2059b26d` (`DEC-SCOPE-112`, API §12AF, RBAC §2.38, no migration); owner answers PF1–PF4
 (Q-19 answered by PF3). The API takes `date_from` / `date_to` (as tel-024), not `from` / `to`. Spec
 `docs/superpowers/specs/2026-10-07-tel-023-performance-design.md`.
 
