@@ -5413,6 +5413,128 @@ class BdmManagerDashboardOut(BaseModel):
     alerts: list[BdmDashboardAlert]
 
 
+# --- bdm-024 (DEC-SCOPE-113): performance by BDM type (Appendix B.6 P-rows) + drill-down, and the master view (V-chains) --------------
+BdmTypeName = Literal["agent", "school", "college"]
+
+
+class BdmPerformanceFigures(BaseModel):
+    meetings: int
+    trips: int | None  # null on an organization row: trips belong to the BDM
+    new_organizations: int
+    mous: int
+    leads: int
+    students: int
+    revenue: Decimal | None  # INR; null = not tracked (Agent / School, D17)
+
+
+class BdmPerformanceCell(BaseModel):
+    type: BdmTypeName
+    tracked: bool
+    value: int | Decimal | None  # Decimal = INR revenue; null when not tracked
+    definition: str
+
+
+class BdmPerformanceRow(BaseModel):
+    key: str  # P-01 ... P-08
+    label: str
+    cells: list[BdmPerformanceCell]
+
+
+class BdmPerformanceBdm(BaseModel):
+    id: UUID
+    full_name: str
+    active: bool
+    figures: BdmPerformanceFigures
+
+
+class BdmPerformanceOut(BaseModel):
+    from_: date = Field(serialization_alias="from")
+    to: date
+    manager: BdmPersonRef | None
+    type: BdmTypeName | None
+    rows: list[BdmPerformanceRow]
+    bdms: list[BdmPerformanceBdm]  # the BDMs of `type`, by name; empty without `type`
+
+
+class BdmPerformanceBdmRef(BaseModel):
+    id: UUID
+    full_name: str
+    active: bool
+    bdm_type: BdmTypeName
+
+
+class BdmPerformanceOrganization(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    figures: BdmPerformanceFigures
+
+
+class BdmPerformanceTrip(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    code: str
+    from_place: str
+    to_place: str
+    travel_date: date
+    approval_status: str
+    travel_status: str
+
+
+class BdmPerformanceBdmOut(BaseModel):
+    from_: date = Field(serialization_alias="from")
+    to: date
+    bdm: BdmPerformanceBdmRef
+    totals: BdmPerformanceFigures
+    organizations: list[BdmPerformanceOrganization]
+    trips: list[BdmPerformanceTrip]
+
+
+ChainCount = int | Decimal | None  # Decimal = INR revenue; null = a step that is not tracked
+
+
+class BdmChainStep(BaseModel):
+    key: str
+    label: str
+    definition: str
+    tracked: bool
+
+
+class BdmHierarchyOrganization(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    counts: list[ChainCount]  # one per chain step, in chain order
+
+
+class BdmHierarchyBdm(BaseModel):
+    id: UUID
+    full_name: str
+    active: bool
+    organization_count: int  # linked organizations (listed)
+    not_linked: int  # Agent / School organizations not onboarded yet (counted, not listed)
+    totals: list[ChainCount]
+    organizations: list[BdmHierarchyOrganization]
+
+
+class BdmHierarchyType(BaseModel):
+    type: BdmTypeName
+    label: str
+    chain: list[BdmChainStep]
+    bdm_count: int  # active BDMs
+    organization_count: int
+    not_linked: int
+    totals: list[ChainCount]
+    bdms: list[BdmHierarchyBdm]
+
+
+class BdmHierarchyOut(BaseModel):
+    manager: BdmPersonRef | None
+    as_of: datetime
+    types: list[BdmHierarchyType]
+
+
 # --- tel-022 (DEC-SCOPE-080): daily + monthly targets ------------------------------------------------------------------------
 TelTargetPeriod = Literal["daily", "monthly"]
 TelTargetKpi = Literal[TEL_TARGET_KPIS]

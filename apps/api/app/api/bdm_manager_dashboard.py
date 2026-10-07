@@ -63,7 +63,7 @@ ALERTS = {
 }
 
 
-async def _scope(db: AsyncSession, user: User, manager_user_id: UUID | None) -> tuple[Select, User | None]:
+async def team_scope(db: AsyncSession, user: User, manager_user_id: UUID | None) -> tuple[Select, User | None]:
     """The team's BDM ids as a sub-select (R1-R3), and the chosen manager when super_admin picked one."""
     require_manager(user)
     if manager_user_id is None:
@@ -157,7 +157,7 @@ def _alerts(team: Select, now: datetime, today: date) -> dict[str, tuple[Select,
 
 @router.get("", response_model=BdmManagerDashboardOut)
 async def manager_dashboard(manager_user_id: UUID | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    team, manager = await _scope(db, user, manager_user_id)
+    team, manager = await team_scope(db, user, manager_user_id)
     now = await db_now(db)
     today = today_ist(now)
     tiles = _tiles(team, today)

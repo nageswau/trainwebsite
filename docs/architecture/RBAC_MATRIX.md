@@ -856,6 +856,17 @@ apart from the CSV's audit row. No lead name, mobile or email appears; rows are 
 | `super_admin` | read and export; open any telecaller's daily activity | all telecallers; `team` only narrows | `tel-023` |
 | `telecaller` and every other role | `403` | — | `tel-023` |
 
+### 2.39 BDM performance by type + master view *(net-new, added 2026-10-07 — `DEC-SCOPE-113`, `bdm-024`)*
+
+Scope comes from the session (bdm-023 `team_scope`); the only parameter that changes it, `manager_user_id`, is super_admin's. A BDM id
+outside the team reads as `404`. Aggregates and organization / trip identities only: no student, contact or payment row.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `bdm_manager` | read performance by type, the BDM drill-down and the master view | their team (`reporting_manager_user_id`) | `bdm-024` |
+| `super_admin` | the same, optionally narrowed to one manager's team | all | `bdm-024` |
+| `bdm` and every other role | none → `403` | — | `bdm-024` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

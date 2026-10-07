@@ -1430,6 +1430,19 @@ other `team` `403`); then the range (`422`: start after end, end in the future, 
 | `GET /telecaller/manager/performance` | `telecaller_manager` (direct reports), `it_admin`/`overseas_admin` (own team), `super_admin` (all). `200 {date_from, date_to, team, sort, dir, teams, columns: [{key, label}], items: [{user_id, full_name, team, active, status, leads, calls, connected, qualified, appointments, conversions}], totals: {full_name: "Total", ...}}`; inactive telecallers included. `Cache-Control: private, no-store` |
 | `GET /telecaller/manager/performance.csv` | Same query and checks. `text/csv` (UTF-8 BOM, the `columns` labels, the rows in the same order, Total last; formula cells neutralised). Audit `telecaller_performance.export` (filters, sort, rows) committed before the file. `attachment; filename="telecaller-performance-{from}-to-{to}.csv"` |
 
+## 12AG. BDM performance by type + master view (`bdm-024`) — addendum, 2026-10-07
+
+`DEC-SCOPE-113`; design spec `docs/superpowers/specs/2026-10-07-bdm-024-performance-master-design.md` §4. No migration. Read-only (no
+log line, no audit row). Signed out `401`; a role other than `bdm_manager` / `super_admin` `403` "BDM manager role required";
+`manager_user_id` from a `bdm_manager` `422` "Only a super admin can choose a manager", an id that is not a manager `404` "Manager not
+found" (bdm-023 `team_scope`).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /bdm/manager/performance?from=&to=&type=&manager_user_id=` | `from` / `to` IST dates, inclusive, each defaulting to the current IST month; `from > to` `422` "The period must start on or before its end"; over 366 days `422` "The period can be at most 366 days"; malformed date or `type` ∉ agent/school/college `422`. `200 {from, to, manager \| null, type \| null, rows: [{key P-01…P-08, label, cells: [{type, tracked, value int \| decimal-string \| null, definition}]}], bdms: [{id, full_name, active, figures: {meetings, trips, new_organizations, mous, leads, students, revenue \| null}}]}`. `bdms` only with `type` (that type's BDMs by name; their sums equal the cells). Revenue `tracked: false` for Agent / School. Constant statement count |
+| `GET /bdm/manager/performance/bdms/{bdm_user_id}?from=&to=` | A BDM outside the caller's team (or not a BDM) `404` "BDM not found"; malformed id `422`; period as above. `200 {from, to, bdm: {id, full_name, active, bdm_type}, totals: figures, organizations: [{id, code, name, figures (trips null)}], trips: [{id, code, from_place, to_place, travel_date, approval_status, travel_status}]}`. Organizations with a figure in the period, by name; totals equal the BDM's row of the type list |
+| `GET /bdm/manager/hierarchy?manager_user_id=` | Live, all time. `200 {manager \| null, as_of, types: [{type, label, chain: [{key, label, definition, tracked}], bdm_count, organization_count, not_linked, totals, bdms: [{id, full_name, active, organization_count, not_linked, totals, organizations: [{id, code, name, counts}]}]}]}`. Counts follow the chain's order (int, INR decimal-string, or null when not tracked); each organization's counts equal its bdm-020/021/022 panel. Aggregates only |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

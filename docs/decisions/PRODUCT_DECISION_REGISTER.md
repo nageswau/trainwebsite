@@ -4837,3 +4837,36 @@ pages `/telecaller/manager/performance`, `/it/admin/telecaller-performance`, `/o
 `/admin/telecaller-performance`; nav "Performance" / "Telecaller Performance". P2–P6 use tel-024's grouped
 `flow_counts_by_user` (one query per count for the whole scope).
 **New Feature ID authorized:** `tel-023`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-023.
+
+### DEC-SCOPE-113 — BDM performance by type + drill-down + master dashboard (`bdm-024`)
+
+**Evidence:** `EVID-016` §5 Management view and §6 Master dashboard (`BDM_CRM_BACKLOG.md` Appendix A L1336–L1420: the KPI × BDM-type
+table "BDMs / Meetings / Travel Trips / New Organizations / MoUs / Leads / Students / Revenue", "click any number and drill down",
+the BDM master hierarchy and the three value chains) and Appendix B.6 rows P-01…P-08, V-A / V-S / V-C (`DERIVED_BLUEPRINT`);
+`DEC-SCOPE-108` (bdm-023 team scope), `DEC-SCOPE-086` (bdm-021 college funnel / revenue, B4 "bdm-024 owns periods"),
+`DEC-SCOPE-089` (bdm-020, A1), `DEC-SCOPE-110` (bdm-022), `DEC-SCOPE-018` (the `school_student_id` bridge), D17. Dependencies
+verified on `main` @ `8b6d4dbe`: bdm-020, bdm-021, bdm-022, bdm-023 merged with verified evidence.
+**Status:** P1–P12 are the **recommended answers**, used under the owner's standing direction for this session to proceed with
+recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). No migration. API contract §12AG, RBAC §2.39. Drafted as `DEC-SCOPE-111` / §12AE / §2.37 and renumbered on merging `main` @ `68b87639` (tel-020 took 111 / §12AE / §2.37, tel-023 112 / §12AF / §2.38). Spec
+`docs/superpowers/specs/2026-10-07-bdm-024-performance-master-design.md`.
+
+| # | Question | Recommended answer (used) |
+|---|---|---|
+| P1 | Who reads | `bdm_manager` (own team), `super_admin` (all teams, or one via `manager_user_id`); bdm-023's `team_scope` (403 / 422 / 404 unchanged). |
+| P2 | Period | `from` / `to` IST dates, inclusive; default the current IST month; `from > to` → 422; more than 366 days → 422. |
+| P3 | Type / manager changes in the period | No history exists: the BDM's **current** type and manager apply. Records count for their owner (appointment / trip BDM, MoU event actor, lead BDM, organization creator). The backlog's "as of each record's date" needs a history table first (`NEEDS_CONFIRMATION`). |
+| P4 | Deactivated BDMs | Their records count; P-01 counts active BDMs; the BDM list shows them as "Inactive". |
+| P5 | Students (P-07) | Period-bound, through the organizations assigned to the BDM now, by the organization's module: Agent = active agent students added in the period; School = M-22; College = attributed users converted in the period. |
+| P6 | Revenue (P-08) | College: R-1's rule over payments recorded in the period (`payments.created_at`); Agent / School "Not tracked" (D17). |
+| P7 | P-02…P-06 | M-06; trips travelling in the period, not cancelled / rejected (T-M05); M-14 any type; M-11; M-12. |
+| P8 | Drill-down | Type table → the type's BDMs → one BDM's organizations and trips → the organization page / trip page. Figures are computed once per (BDM, organization) and summed, so the levels agree by construction. |
+| P9 | Organization page period | All-time (the bdm-020/021/022 panels); the BDM level says its rows count the period only. |
+| P10 | Master view | Live, all time. Type → BDMs → linked, non-archived organizations of the BDM's module (College: all); unlinked ones counted ("not onboarded yet"), not listed. |
+| P11 | Value chains | V-A Students → Applications → Enrollment → Revenue (not tracked); V-S Students → Profile Building (not tracked) → Career/University (bdm-020 Career Guidance) → Future Student; V-C Students → Training → Internship (not tracked) → Placement → Revenue (R-1). Same SQL as the panels. |
+| P12 | Navigation | Manager: "Performance", "Master view"; super_admin: "BDM Performance", "BDM Master View". |
+
+**Consequences:** `services/bdm_performance.py` (new); `bdm_metrics.college_columns` / `fee_filter` extracted from `college_business`
+(same SQL, same payload); `bdm_manager_dashboard._scope` renamed `team_scope`; `GET /bdm/manager/performance`,
+`GET /bdm/manager/performance/bdms/{id}`, `GET /bdm/manager/hierarchy`; web `lib/bdmPerformance.ts`, `lib/bdmPerformancePage.ts`,
+`components/BdmPerformanceTable.tsx`, `BdmPerformanceFigures.tsx`, `BdmPerformanceControls.tsx`, `BdmHierarchy.tsx`, four pages.
+**Feature ID:** `bdm-024`. **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-024.
