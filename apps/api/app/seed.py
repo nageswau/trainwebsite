@@ -834,6 +834,26 @@ async def main():
                 db.add(ApplicationStatusHistory(application_id=bridged_app.id, from_status="enquiry", to_status="eligibility_evaluation", next_action=bridged_app.next_action, changed_by_id=us["counselor"].id))
                 db.add(VisaCase(application_id=bridged_app.id, status="checklist", checklist=["Passport", "Offer letter", "Financial evidence", "Visa form"]))
 
+        # bdm-001 (DEC-SCOPE-055) / tel-001 (DEC-SCOPE-073) demo accounts: managers are global, each BDM/telecaller gets the
+        # 1:1 profile the admin create-user path would write (division follows bdm_type / team), reporting to the demo manager.
+        bdm_manager = await user(db, "bdm.manager@edusphere.local", "Sanjay BDM Manager", "bdm_manager", "global")
+        for email, name, bdm_type, division, employee_id, territory in [
+            ("bdm.agent@edusphere.local", "Rahul Agent BDM", "agent", "overseas", "BDM-DEMO-001", "Hyderabad"),
+            ("bdm.school@edusphere.local", "Kavya School BDM", "school", "overseas", "BDM-DEMO-002", "Bengaluru"),
+            ("bdm.college@edusphere.local", "Vivek College BDM", "college", "it", "BDM-DEMO-003", "Chennai"),
+        ]:
+            bdm = await user(db, email, name, "bdm", division)
+            if not await db.scalar(select(BdmProfile.id).where(BdmProfile.user_id == bdm.id)):
+                db.add(BdmProfile(user_id=bdm.id, bdm_type=bdm_type, employee_id=employee_id, designation="Business Development Manager", department="Business Development", territory=territory, reporting_manager_user_id=bdm_manager.id))
+        tel_manager = await user(db, "telecaller.manager@edusphere.local", "Lakshmi Telecaller Manager", "telecaller_manager", "global")
+        for email, name, team, employee_id in [
+            ("telecaller.it@edusphere.local", "Pooja IT Telecaller", "it", "TEL-DEMO-001"),
+            ("telecaller.overseas@edusphere.local", "Imran Overseas Telecaller", "overseas", "TEL-DEMO-002"),
+        ]:
+            telecaller = await user(db, email, name, "telecaller", team)
+            if not await db.scalar(select(TelecallerProfile.id).where(TelecallerProfile.user_id == telecaller.id)):
+                db.add(TelecallerProfile(user_id=telecaller.id, team=team, employee_id=employee_id, reporting_manager_user_id=tel_manager.id))
+
         await db.commit()
     print("Seed complete; demo password:", PASSWORD)
 
