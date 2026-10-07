@@ -5,14 +5,15 @@ import { sendJson } from "@/lib/apiErrors";
 import { achievedText, isTargetSheet, parseTarget, percentText, TARGET_MAX, TEAM_TARGETS_URL, teamTargetUrl, type TargetSheet } from "@/lib/bdmTargets";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
-const inputValue = (target: number | null) => (target === null ? "" : String(target));
+// One text input per KPI: its target, or blank when none is set.
+const draftsOf = (sheet: TargetSheet): Record<string, string> => Object.fromEntries(sheet.kpis.map((k) => [k.key, k.target === null ? "" : String(k.target)]));
 
 // bdm-016 (spec §6): one BDM's month -- each KPI's target (an input when the month is editable), achieved (computed by the API; an
 // untracked KPI says so, never 0) and achievement %. Save sends only the targets that changed (a blank input clears one), then re-reads
 // the sheet. The API decides every rule; a refusal is shown as its own sentence.
 export default function BdmTargetsEditor({ initial }: { initial: TargetSheet }) {
   const [sheet, setSheet] = useState(initial);
-  const [drafts, setDrafts] = useState<Record<string, string>>(() => Object.fromEntries(initial.kpis.map((k) => [k.key, inputValue(k.target)])));
+  const [drafts, setDrafts] = useState(() => draftsOf(initial));
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +55,7 @@ export default function BdmTargetsEditor({ initial }: { initial: TargetSheet }) 
       const fresh = response.ok ? await response.json() : null;
       if (isTargetSheet(fresh)) {
         setSheet(fresh);
-        setDrafts(Object.fromEntries(fresh.kpis.map((k) => [k.key, inputValue(k.target)])));
+        setDrafts(draftsOf(fresh));
       }
     } catch {
       // saved; the figures refresh on the next load

@@ -25,7 +25,6 @@ PAST_LOCKED = "Past months' targets can only be changed by a super admin"
 TOO_FAR = f"Targets can be set up to {MONTHS_AHEAD} months ahead"
 INACTIVE = "This BDM is inactive, so their targets can't be changed"
 BDM_NOT_FOUND = "BDM not found"
-TYPE_LABEL = {"agent": "Agent", "school": "School", "college": "College"}
 
 
 def parse_month(raw: str | None, current: date) -> date:
@@ -105,7 +104,7 @@ def _check_kpi(item: BdmTargetItem, bdm_type: str) -> None:
     """AC2: a KPI outside the BDM type's catalogue is refused by name."""
     if item.kpi_key not in TARGET_KPIS[bdm_type]:
         name = TARGET_METRICS[item.kpi_key][0] if item.kpi_key in TARGET_METRICS else item.kpi_key
-        raise HTTPException(422, f"{name} is not a target KPI for {TYPE_LABEL[bdm_type]} BDMs")
+        raise HTTPException(422, f"{name} is not a target KPI for {bdm_type.capitalize()} BDMs")
 
 
 async def save(db: AsyncSession, actor: User, month: date, items: list[BdmTargetItem]) -> int:
