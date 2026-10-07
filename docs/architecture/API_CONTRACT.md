@@ -1321,6 +1321,23 @@ days are IST; every figure is computed by `services/telecaller_metrics.py` (back
 | `GET /telecaller/dashboard` | `telecaller` only (else `403`). `200 {day, tiles: {new_leads, calls_today: {done, to_do}, follow_ups_due, hot_leads, appointments, connected, not_connected, converted, overdue, daily_target: {achieved, target}}, targets: {daily: [{kpi, achieved, target}], monthly: [...]}, appointments: [{kind: counselling\|bdm, id, code, title, scheduled_at, status, lead_id}]}`; `target` is `null` when none is set |
 | `GET /telecaller/activity?date=&user_id=` | `date` defaults to today; a future day `422`. Telecaller: own only (`user_id` other than self `403`). Manager / `super_admin`: `user_id` required (`422`), out of scope `404`. Other roles `403`. `200 {day, user: {id, full_name}, counts: {leads_assigned, calls, connected_calls, not_connected, follow_ups_completed, follow_ups_pending, new_appointments, counselor_appointments, bdm_appointments, whatsapp_messages, qualified_leads, hot_leads, converted_leads}, targets: [{kpi, achieved, target}]}` (that day's daily targets) |
 
+## 12Y. Telecaller deactivation, team move and handover (`tel-025`) — addendum, 2026-10-07
+
+`DEC-SCOPE-104`; design spec `docs/superpowers/specs/2026-10-07-tel-025-telecaller-lifecycle-design.md` §2. No migration. Signed out `401`;
+non-admin `403` (`ensure_admin`). Body `{target?: "telecaller"|"queue", reassign_to?}`: `reassign_to` only with `target=telecaller`
+(else `422`). `moved` = `{leads, follow_ups, appointments}` (the open work before the move; follow-ups and appointments ride with their lead).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /admin/telecallers/{id}/open-work` | `{leads, follow_ups, appointments}`. `404` not a telecaller; `403` another team |
+| `POST /admin/telecallers/{id}/deactivate` | `409` already inactive; `422` open leads and no `target`; `422` "Choose an active telecaller of the same team" (any invalid target). Leads move (`lead.assign` audit per lead, method `deactivation`), rules deleted, `active=false`, `session_version`+1. `200 {id, active, target, moved, rules_removed}`; audit `telecaller.deactivate` |
+| `POST /admin/telecallers/{id}/handover` | `409` still active; `409` no open leads; `422` no / invalid target. Method `handover`. `200 {id, target, moved}`; audit `telecaller.handover` |
+| `POST /admin/telecallers/{id}/move-team` | Body adds `team` (`it`/`overseas`) and optional `reporting_manager_user_id`. `403` unless the actor manages both teams; `422` same team; `422` inactive manager; target must be on the **old** team. `team` + `division` change, `session_version`+1. `200 {id, team, target, moved, rules_removed}`; audit `telecaller.move_team` |
+| `POST /admin/telecaller-managers/{id}/deactivate` | `super_admin` only (`403`). Body `{reassign_to?}`, required while the manager has reports (`422`, also for an inactive / non-manager / self target). `409` already inactive. `200 {id, active, moved_telecallers}`; audit `telecaller_manager.deactivate` |
+
+Changed: `GET /admin/telecaller-managers` items gain `telecaller_count` (reports, active or not). `PATCH /admin/users/{id}` with
+`active:false` answers `422` for a telecaller with open leads or a manager with reports (D5).
+
 ## 12Z. Lead messages — email to a lead (`tel-014`) — addendum, 2026-10-07
 
 `DEC-SCOPE-106`; design spec `docs/superpowers/specs/2026-10-07-tel-014-email-design.md` §3. Migration `0097_lead_message_email`. Extends

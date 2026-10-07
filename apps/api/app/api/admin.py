@@ -68,7 +68,7 @@ from app.schemas import (
 )
 from app.services import bdm as bdm_rules
 from app.services import bdm_leads as lead_rules
-from app.services import bdm_lifecycle, lead_handover, lead_pipeline
+from app.services import bdm_lifecycle, lead_handover, lead_pipeline, telecaller_lifecycle
 from app.services import telecaller as tel_rules
 from app.services.agent_applications import owned, with_owner
 from app.services.agent_network import APPLICATION_FILTERS, org_applications, org_counts, org_money, org_students
@@ -625,6 +625,8 @@ async def update_user(user_id: UUID, payload: dict, user: User = Depends(ensure_
     # 409 -- the Users page reads a 409 as the trainer "confirm cascade" prompt, which must never bypass this.
     if payload.get("active") is False and item.active:
         await bdm_lifecycle.refuse_plain_deactivation(db, item)
+        # tel-025 (DEC-SCOPE-104 D5): the same rule for telecallers with open leads and managers with reports; otherwise it ends the session.
+        await telecaller_lifecycle.plain_deactivation(db, user, item)
     # ADM-001-AC02: deactivating a trainer with active/upcoming assigned batches is
     # blocked unless explicitly confirmed -- never a silent operation that would strand
     # those batches without a trainer.

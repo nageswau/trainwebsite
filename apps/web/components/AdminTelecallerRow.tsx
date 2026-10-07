@@ -1,17 +1,21 @@
 "use client";
 import { useState } from "react";
 
+import AdminTelecallerLifecycle from "@/components/AdminTelecallerLifecycle";
 import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson } from "@/lib/apiErrors";
-import { TEAM_LABEL, USERS_URL, formOptional, formText, managerSearch, statusLabel, type TelecallerAdminRow } from "@/lib/telecaller";
+import { TEAM_LABEL, USERS_URL, canMoveTeams, formOptional, formText, managerSearch, statusLabel, type TelecallerAdminRow } from "@/lib/telecaller";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
-// tel-001 (spec §6.3): one telecaller -- view, inline edit (team read-only, TL7; Esc cancels), and activate/deactivate with an inline
-// confirm. The list refreshes only after the server says yes. Focus returns to the row's controls on success and moves to the
-// message on error. The manager picker starts on the current manager, so an unrelated edit never silently reassigns the reporting line.
-export default function AdminTelecallerRow({ row, onChanged }: { row: TelecallerAdminRow; onChanged: (notice: string) => void }) {
+type Lifecycle = "deactivate" | "handover" | "move";
+
+// tel-001 (spec §6.3): one telecaller -- view, inline edit (team read-only, TL7; Esc cancels) and reactivate. tel-025: Deactivate, Move
+// team and (inactive rows) Reassign open work open AdminTelecallerLifecycle, which hands the open leads over. The list refreshes only
+// after the server says yes. Focus returns to the row's controls on success and moves to the message on error. The manager picker
+// starts on the current manager, so an unrelated edit never silently reassigns the reporting line.
+export default function AdminTelecallerRow({ row, role, onChanged }: { row: TelecallerAdminRow; role: string; onChanged: (notice: string) => void }) {
   const [editing, setEditing] = useState(false);
-  const [confirming, setConfirming] = useState(false);
+  const [lifecycle, setLifecycle] = useState<Lifecycle | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const focus = useFocusAfterRender();
@@ -45,15 +49,25 @@ export default function AdminTelecallerRow({ row, onChanged }: { row: Telecaller
     onChanged(`Saved ${fullName}.`); // QA-03: the name as saved, not as it was before the edit
   }
 
-  async function setActive(active: boolean) {
+  async function reactivate() {
     setError(null);
     setBusy(true);
-    const outcome = await sendJson(`${USERS_URL}/${row.id}`, "PATCH", { active });
+    const outcome = await sendJson(`${USERS_URL}/${row.id}`, "PATCH", { active: true });
     setBusy(false);
-    setConfirming(false);
     if (!outcome.ok) return fail(outcome.message, id("status-error"));
-    focus(active ? id("deactivate") : id("reactivate"), id("edit"));
-    onChanged(`${active ? "Reactivated" : "Deactivated"} ${row.full_name}.`);
+    focus(id("deactivate"), id("edit"));
+    onChanged(`Reactivated ${row.full_name}.`);
+  }
+
+  function start(kind: Lifecycle) {
+    setError(null);
+    setLifecycle(kind);
+  }
+
+  function endLifecycle() {
+    const trigger = lifecycle;
+    setLifecycle(null);
+    if (trigger) focus(id(trigger));
   }
 
   if (editing) {
@@ -88,16 +102,15 @@ export default function AdminTelecallerRow({ row, onChanged }: { row: Telecaller
       <td data-label="Actions">
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           <button id={id("edit")} type="button" className="btn secondary small" aria-label={`Edit ${row.full_name}`} onClick={() => { setError(null); setEditing(true); }} disabled={busy}>Edit</button>
-          {row.active && !confirming && <button id={id("deactivate")} type="button" className="btn secondary small" aria-label={`Deactivate ${row.full_name}`} onClick={() => { setError(null); setConfirming(true); focus(id("confirm")); }} disabled={busy}>Deactivate</button>}
-          {!row.active && <button id={id("reactivate")} type="button" className="btn secondary small" aria-label={`Reactivate ${row.full_name}`} onClick={() => setActive(true)} disabled={busy}>Reactivate</button>}
+          {lifecycle === null && (row.active ? <>
+            <button id={id("deactivate")} type="button" className="btn secondary small" aria-label={`Deactivate ${row.full_name}`} onClick={() => start("deactivate")} disabled={busy}>Deactivate</button>
+            {canMoveTeams(role) && <button id={id("move")} type="button" className="btn secondary small" aria-label={`Move ${row.full_name} to another team`} onClick={() => start("move")} disabled={busy}>Move team</button>}
+          </> : <>
+            <button id={id("reactivate")} type="button" className="btn secondary small" aria-label={`Reactivate ${row.full_name}`} onClick={() => void reactivate()} disabled={busy}>Reactivate</button>
+            <button id={id("handover")} type="button" className="btn secondary small" aria-label={`Reassign ${row.full_name}'s open leads`} onClick={() => start("handover")} disabled={busy}>Reassign open work</button>
+          </>)}
         </div>
-        {confirming && (
-          <div role="group" aria-label={`Confirm deactivating ${row.full_name}`} style={{ marginTop: 6 }}>
-            <p className="muted" style={{ fontSize: 13 }}>Their reporting line and data stay; they can no longer sign in.</p>
-            <button id={id("confirm")} type="button" className="btn small" onClick={() => setActive(false)} disabled={busy}>Confirm deactivate</button>{" "}
-            <button type="button" className="btn secondary small" onClick={() => { setConfirming(false); focus(id("deactivate")); }} disabled={busy}>Keep active</button>
-          </div>
-        )}
+        {lifecycle && <AdminTelecallerLifecycle row={row} mode={lifecycle} onCancel={endLifecycle} onDone={(notice) => { setLifecycle(null); onChanged(notice); }} />}
         {error && <p id={id("status-error")} tabIndex={-1} className="form-error" role="alert">{error}</p>}
       </td>
     </tr>

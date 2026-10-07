@@ -765,6 +765,17 @@ The same inline pattern as §2.19. Read-only; the subject comes from the session
 | `super_admin` | read any telecaller's daily activity | all telecallers | `tel-021` |
 | every other role | `403` (the dashboard is the telecaller's only) | — | `tel-021` |
 
+### 2.31 Telecaller deactivation, team move and handover *(net-new, added 2026-10-07 — `DEC-SCOPE-104`, `tel-025`)*
+
+Inline: `ensure_admin`, then the team scope (`services/telecaller.require_creator_may`), then the write. Locks: the source's open leads →
+its profile → its user (FOR UPDATE) → the target (FOR SHARE).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `super_admin` | preview, deactivate, hand over, move team, deactivate a telecaller manager | all teams | `tel-025` |
+| `it_admin` / `overseas_admin` | preview, deactivate, hand over | own team (`403` otherwise); move team `403` | `tel-025` |
+| `telecaller_manager`, `telecaller`, every other role | none (`403`) | — | `tel-025` |
+
 ### 2.32 Lead email *(net-new, added 2026-10-07 — `DEC-SCOPE-106`, `tel-014`)*
 
 §2.27's gate, on the same routes (`lead_pipeline.scope`, the lead lock, the role and `telecaller_leads.require_writable`). The recipient is
