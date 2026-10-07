@@ -4901,3 +4901,28 @@ component (`.jtl`) with Show older paging and a re-read after any change on the 
 the admin `LeadStageHistory` render it; `LeadCalls` / `LeadMessages` / `LeadFollowUps` gain `onChanged`. The W1 page's `total` now counts
 the `created` entry.
 **New Feature ID authorized:** `tel-015`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §tel-015.
+
+### DEC-SCOPE-115 — §22 permission matrix + cross-role sweep (`tel-026`)
+
+**Evidence:** `EVID-019` §22 (L688–L713: ten "Telecaller can" lines, seven "Telecaller should not" lines); `TELECALLER_CRM_BACKLOG.md`
+§tel-026 (AC1–AC3); the per-item grants `RBAC_MATRIX.md` §2.14–§2.40 (`DEC-SCOPE-073` … `-114`). Dependencies tel-001 … tel-025 verified
+merged on `main` @ `050e6671`.
+**Status:** recommended answers applied under the user's standing instruction for this session (2026-10-07: "proceed with recommended
+answers"); no structured owner question was needed because the item changes no behaviour. `NEEDS_CONFIRMATION` of PM1–PM5 at merge.
+**No migration, no API change.** RBAC §2.41. Spec `docs/superpowers/specs/2026-10-07-tel-026-permission-matrix-design.md`; QA report
+`docs/quality/TEL-026_EXPLORATORY_QA_2026-10-07.md`.
+
+| # | Point | Answer (recommended) |
+|---|---|---|
+| PM1 | "Telecaller-reachable routes" | Every route under `/telecaller/*`, `/counselor/leads*`, `/counselor/appointments`, `/lead-appointments/*`, `/admin/telecallers*`, `/admin/telecaller-managers*`, `/admin/leads*`, `/bdm/meeting-requests*`, `/public/telecaller-assets/*`; an inventory test fails on a route without a matrix row, so the suite grows with later items |
+| PM2 | Backlog edge "super_admin passes everywhere" | Recorded as built: super_admin is read-only on the telecaller's own work (calls, follow-ups, messages, email, bookings — `DEC-SCOPE-094` F2, `-096`, `-100`, `-106`, `-095`) |
+| PM3 | A cell's expected status | The route's own decision: 2xx allowed (fresh fixture world per cell), 403 role refused, 404 out of scope, 401 signed out; a 422 where a manager must name the subject (`/telecaller/activity`, `/telecaller/targets/effective`) |
+| PM4 | A gap found by the sweep | Fixed inside tel-026 if it breaks §22 or the documented matrix. **None found** (106 routes in 108 rows × 11 roles) |
+| PM5 | §22 denied lines outside the telecaller routes | Tested on the real routes: `/admin/payments*`, `/workflows/overseas/documents*`, overseas / agent application status, the counselor writes and `PATCH /admin/users/{counselor}`, `/telecaller/reports/*` and `/telecaller/manager/performance*`, `POST /telecaller/targets`; "delete leads" = no `DELETE …/leads/{id}` route exists (405) |
+
+Recorded as-built findings (not gaps): tel-005 I5 lets any telecaller or manager append an enquiry to **any** lead (append-only, grants no
+read); a manager's booking on any lead is `403` before scope (§2.23); a manager's import report is their own uploads only (tel-006 R11).
+
+**Consequences:** `apps/api/tests/test_tel_026_matrix.py` + `tel026_helpers.py` (tests only); web `navigation.telecaller.test.ts` case and
+`tests/e2e/tel-026-permission-matrix.spec.ts`; `RBAC_MATRIX.md` §2.41.
+**New Feature ID authorized:** `tel-026`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §tel-026.
