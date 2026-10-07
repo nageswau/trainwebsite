@@ -10,9 +10,10 @@ The owner is read at fire time and must be active (R6). Bodies carry no contact 
 """
 
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta
+from typing import Any
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
@@ -72,7 +73,7 @@ def _link(label: str, path: str) -> dict:
     return {"label": label, "path": path}
 
 
-async def _chunks(db: AsyncSession, query: Select, id_column) -> AsyncIterator[list]:
+async def _chunks(db: AsyncSession, query: Select, id_column) -> AsyncIterator[Sequence[Any]]:
     """Keyset pages of `query` by `id_column`; the caller commits after each page."""
     last = None
     while True:
@@ -161,12 +162,7 @@ def trip_reminder(trip: BdmTrip, user: User, appointments: int) -> Reminder:
 
 
 async def _trip_reminders(db: AsyncSession, counts: dict, today: date) -> None:
-    linked = (
-        select(func.count())
-        .where(BdmAppointment.trip_id == BdmTrip.id, BdmAppointment.status != "cancelled")
-        .correlate(BdmTrip)
-        .scalar_subquery()
-    )
+    linked = select(func.count()).where(BdmAppointment.trip_id == BdmTrip.id, BdmAppointment.status != "cancelled").correlate(BdmTrip).scalar_subquery()
     query = (
         select(BdmTrip, User, linked)
         .join(User, User.id == BdmTrip.bdm_user_id)
@@ -225,10 +221,10 @@ def mou_follow_up(mou: BdmMou, org_name: str, days: int) -> Reminder:
     return Reminder("mou_follow_up", mou.id, key, "MoU follow-up", body, url, [_link("View MoU", url)])
 
 
-def mou_renewal(mou: BdmMou, org_name: str) -> Reminder:
+def mou_renewal(mou: BdmMou, org_name: str, valid_until: date) -> Reminder:
     url = f"/bdm/organizations/{mou.organization_id}#org-mou"
-    body = f"{clean(org_name)}: the MoU is valid until {_day(mou.valid_until)}. Plan the renewal with the contact person."
-    return Reminder("mou_renewal", mou.id, mou.valid_until.isoformat(), "MoU renewal due", body, url, [_link("View MoU", url)])
+    body = f"{clean(org_name)}: the MoU is valid until {_day(valid_until)}. Plan the renewal with the contact person."
+    return Reminder("mou_renewal", mou.id, valid_until.isoformat(), "MoU renewal due", body, url, [_link("View MoU", url)])
 
 
 async def _mou_reminders(db: AsyncSession, counts: dict, today: date) -> None:
@@ -239,10 +235,10 @@ async def _mou_reminders(db: AsyncSession, counts: dict, today: date) -> None:
             if days % MOU_EVERY_DAYS == 0:
                 await _remind(db, counts, mou_follow_up(mou, org_name, days), user)
         await db.commit()
-    renewing = _mous(BdmMou.status == "active", BdmMou.valid_until == today + timedelta(days=RENEWAL_DAYS))
-    async for rows in _chunks(db, renewing, BdmMou.id):
+    valid_until = today + timedelta(days=RENEWAL_DAYS)
+    async for rows in _chunks(db, _mous(BdmMou.status == "active", BdmMou.valid_until == valid_until), BdmMou.id):
         for mou, org_name, user in rows:
-            await _remind(db, counts, mou_renewal(mou, org_name), user)
+            await _remind(db, counts, mou_renewal(mou, org_name, valid_until), user)
         await db.commit()
 
 

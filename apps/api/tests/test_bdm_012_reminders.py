@@ -12,7 +12,7 @@ from app.core.database import SessionLocal
 from app.models import BdmAppointment, BdmMou, User
 from app.services import bdm_reminders
 from tests.bdm002_helpers import make_bdm
-from tests.bdm012_helpers import D, NINE, appointment, deliveries, ist, mou, reminders, run, task, trip, world
+from tests.bdm012_helpers import NINE, D, appointment, deliveries, ist, mou, reminders, run, task, trip, world
 from tests.bdm025_helpers import org
 
 TOMORROW_TEN = ist(D + timedelta(days=1), 10)
@@ -52,16 +52,18 @@ async def test_day_before_fires_at_0900_ist_with_the_source_content_and_no_conta
     await run(db_session, NINE)
     (note,) = await reminders(db_session, bdm)
     assert note.title == "Appointment reminder"
-    assert note.body == (f"Tomorrow at 10:00 AM. Organization: {organization.name}. Contact: Mr. XYZ. Purpose: Edusphere Course Promotion. "
-                         "Location: Vijayawada. Please confirm your appointment.")
+    assert note.body == (f"Tomorrow at 10:00 AM. Organization: {organization.name}. Contact: Mr. XYZ. Purpose: Edusphere Course Promotion. Location: Vijayawada. Please confirm your appointment.")
     assert "9876543210" not in note.body and "xyz@abc.example" not in note.body
     assert note.action_url == f"/bdm/appointments/{appt.id}"
     (email,) = await deliveries(db_session, note)
-    assert email.channel == "email" and email.context == {"kind": "bdm_reminder", "links": [
-        {"label": "Confirmed", "path": f"/bdm/appointments/{appt.id}?action=confirm"},
-        {"label": "Reschedule", "path": f"/bdm/appointments/{appt.id}?action=reschedule"},
-        {"label": "Cancel", "path": f"/bdm/appointments/{appt.id}?action=cancel"},
-    ]}
+    assert email.channel == "email" and email.context == {
+        "kind": "bdm_reminder",
+        "links": [
+            {"label": "Confirmed", "path": f"/bdm/appointments/{appt.id}?action=confirm"},
+            {"label": "Reschedule", "path": f"/bdm/appointments/{appt.id}?action=reschedule"},
+            {"label": "Cancel", "path": f"/bdm/appointments/{appt.id}?action=cancel"},
+        ],
+    }
 
 
 @pytest.mark.asyncio

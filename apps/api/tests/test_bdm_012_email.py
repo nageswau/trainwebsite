@@ -55,7 +55,7 @@ async def test_the_email_carries_absolute_token_free_buttons(smtp_on, outbox):
 
 @pytest.mark.asyncio
 async def test_html_escapes_every_value(smtp_on, outbox):
-    await _send(title="<b>x</b>", body="<script>alert(1)</script>", recipient_name="<i>n</i>", links=[{"label": "<x>", "path": "/a?b=\"c\""}])
+    await _send(title="<b>x</b>", body="<script>alert(1)</script>", recipient_name="<i>n</i>", links=[{"label": "<x>", "path": '/a?b="c"'}])
     html = outbox[0].get_body(preferencelist=("html",)).get_content()
     assert "<script>" not in html and "<b>x</b>" not in html and "<i>n</i>" not in html and "<x>" not in html
     assert "&lt;script&gt;" in html

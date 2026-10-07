@@ -31,37 +31,73 @@ async def world(db, bdm_type: str = "college"):
 
 
 async def appointment(db, owner: User, organization, starts_at: datetime, *, status: str = "scheduled", **over) -> BdmAppointment:
-    fields = dict(contact_name="Mr. XYZ", contact_phone="9876543210", contact_email="xyz@abc.example", location="Vijayawada",
-                  purpose="Edusphere Course Promotion", appointment_type="college_meeting", outcome="interested" if status == "completed" else None)
-    return await add(db, BdmAppointment(code=f"APT-T{tag()}", bdm_user_id=owner.id, organization_id=organization.id, starts_at=starts_at,
-                                        status=status, **{**fields, **over}))
+    fields = dict(
+        contact_name="Mr. XYZ",
+        contact_phone="9876543210",
+        contact_email="xyz@abc.example",
+        location="Vijayawada",
+        purpose="Edusphere Course Promotion",
+        appointment_type="college_meeting",
+        outcome="interested" if status == "completed" else None,
+    )
+    return await add(db, BdmAppointment(code=f"APT-T{tag()}", bdm_user_id=owner.id, organization_id=organization.id, starts_at=starts_at, status=status, **{**fields, **over}))
 
 
 async def trip(db, owner: User, travel_date: date, *, approval: str = "approved", travel: str = "planned") -> BdmTrip:
-    return await add(db, BdmTrip(
-        code=f"TRV-T{tag()}", bdm_user_id=owner.id, travel_date=travel_date, return_date=travel_date + timedelta(days=1), from_place="Hyderabad",
-        to_place="Vijayawada", purpose="College visits", mode="train", estimated_cost=Decimal("100.00"), approval_status=approval,
-        travel_status=travel, submitted_at=datetime.now(UTC) if approval != "draft" else None,
-        decided_at=datetime.now(UTC) if approval in ("approved", "rejected") else None,
-    ))
+    return await add(
+        db,
+        BdmTrip(
+            code=f"TRV-T{tag()}",
+            bdm_user_id=owner.id,
+            travel_date=travel_date,
+            return_date=travel_date + timedelta(days=1),
+            from_place="Hyderabad",
+            to_place="Vijayawada",
+            purpose="College visits",
+            mode="train",
+            estimated_cost=Decimal("100.00"),
+            approval_status=approval,
+            travel_status=travel,
+            submitted_at=datetime.now(UTC) if approval != "draft" else None,
+            decided_at=datetime.now(UTC) if approval in ("approved", "rejected") else None,
+        ),
+    )
 
 
 async def task(db, owner: User, due_on: date, *, kind: str = "follow_up", status: str = "open", organization=None, title: str = "Call the principal") -> BdmTask:
     now = datetime.now(UTC)
-    return await add(db, BdmTask(
-        kind=kind, title=title, due_on=due_on, organization_id=organization.id if organization else None, source="manual", assignee_user_id=owner.id,
-        status=status, completed_at=now if status == "done" else None, cancelled_at=now if status == "cancelled" else None,
-        cancel_reason="Seeded" if status == "cancelled" else None,
-    ))
+    return await add(
+        db,
+        BdmTask(
+            kind=kind,
+            title=title,
+            due_on=due_on,
+            organization_id=organization.id if organization else None,
+            source="manual",
+            assignee_user_id=owner.id,
+            status=status,
+            completed_at=now if status == "done" else None,
+            cancelled_at=now if status == "cancelled" else None,
+            cancel_reason="Seeded" if status == "cancelled" else None,
+        ),
+    )
 
 
 async def mou(db, organization, *, status: str, changed: datetime, valid_until: date | None = None, current: bool = True) -> BdmMou:
     signed = status in ("signed", "active")
-    return await add(db, BdmMou(
-        organization_id=organization.id, created_by_user_id=organization.assigned_bdm_user_id, status=status, status_changed_at=changed,
-        signed_on=D - timedelta(days=300) if signed else None, valid_from=D - timedelta(days=300) if status == "active" else None,
-        valid_until=valid_until, is_current=current,
-    ))
+    return await add(
+        db,
+        BdmMou(
+            organization_id=organization.id,
+            created_by_user_id=organization.assigned_bdm_user_id,
+            status=status,
+            status_changed_at=changed,
+            signed_on=D - timedelta(days=300) if signed else None,
+            valid_from=D - timedelta(days=300) if status == "active" else None,
+            valid_until=valid_until,
+            is_current=current,
+        ),
+    )
 
 
 async def run(db, now: datetime) -> dict:
