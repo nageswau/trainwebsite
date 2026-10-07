@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from app.models import AuditLog, Enquiry, LeadCall
+from app.models import AuditLog, Enquiry, LeadCall, LeadMessage
 from tests.tel004_helpers import make_telecaller, make_tl_manager, make_user
 from tests.tel016_helpers import as_user, body, book_url, make_counselor
 from tests.tel018_helpers import c_url, enrol, handover_url, make_student
@@ -205,6 +205,47 @@ async def test_a_call_is_placed_at_when_it_happened(client, db_session):
     rows = await items(client, t_url(row.id))
     assert [r["kind"] for r in rows] == ["created", "call"]  # the call is older than the lead row written just now
     assert rows[1]["reason"] is None and rows[1]["from_value"] == "incoming"
+
+
+@pytest.mark.asyncio
+async def test_an_email_entry_carries_its_subject_and_delivery_status(client, db_session):
+    """QA15-03: tel-014 email rows (SMTP is off on the QA stack, so written directly): subject, status and template name, body excerpted."""
+    _, tel, _ = await team(db_session)
+    row = await new_lead(db_session, telecaller=tel, status="contacted")
+    db_session.add(LeadMessage(lead_id=row.id, sender_user_id=tel.id, channel="email", template_name="Fee details", subject="Fees for May",
+                               body="b" * 300, delivery_status="failed", sent_at=datetime.now(UTC)))
+    await db_session.commit()
+    await as_user(client, tel)
+    email = next(r for r in await items(client, t_url(row.id)) if r["kind"] == "message")
+    assert (email["from_value"], email["to_value"], email["subject"], email["status"], len(email["reason"])) == (
+        "email", "Fee details", "Fees for May", "failed", 200)
+
+
+@pytest.mark.asyncio
+async def test_a_call_logged_at_the_current_minute_lists_after_the_lead_was_created(client, db_session):
+    """QA15-01: the form sends the call time to the minute, so it can fall seconds before the lead's own creation; a call recorded within
+    that minute is placed when it was recorded."""
+    _, tel, _ = await team(db_session)
+    row = await new_lead(db_session, telecaller=tel, status="assigned")
+    await as_user(client, tel)
+    minute = datetime.now(UTC).replace(second=0, microsecond=0).isoformat()
+    await call(client, row, outcome="busy", occurred_at=minute)
+    rows = await items(client, t_url(row.id))
+    assert [r["kind"] for r in rows][-1] == "created"
+    assert [r["kind"] for r in rows].index("call") < len(rows) - 1
+
+
+@pytest.mark.asyncio
+async def test_a_telecallers_own_lead_says_it_was_assigned_to_them(client, db_session):
+    """QA15-02: a telecaller's own lead is assigned at creation without a `lead.assign` row; the creation entry says so."""
+    _, tel, _ = await team(db_session)
+    row = await new_lead(db_session, telecaller=tel, status="assigned")
+    db_session.add(AuditLog(user_id=tel.id, action="lead.create", entity_type="enquiry", entity_id=str(row.id),
+                            metadata_json={"source": "walk_in", "assigned": True}))
+    await db_session.commit()
+    await as_user(client, tel)
+    created = next(r for r in await items(client, t_url(row.id)) if r["kind"] == "created")
+    assert (created["event"], created["actor"]["id"]) == ("self_assigned", str(tel.id))
 
 
 @pytest.mark.asyncio

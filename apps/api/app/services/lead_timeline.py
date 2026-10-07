@@ -5,6 +5,7 @@ module only sees a lead id. Read only; nothing is logged.
 Each branch yields the same columns. Keys, not labels, for calls / messages / follow-ups / appointments (the web client owns those
 labels); stage and priority keep tel-008's server labels. Free text is an excerpt (TM2)."""
 
+from datetime import timedelta
 from uuid import UUID
 
 from sqlalchemy import BigInteger, DateTime, Integer, String, Uuid, case, cast, func, literal, null, select, union_all
@@ -67,13 +68,18 @@ def _sources(lead_id: UUID) -> list:
     From, To = aliased(User), aliased(User)
     meta = AuditLog.metadata_json
     created_by = select(AuditLog.user_id).where(*_audits(lead_id, "lead.create")).order_by(AuditLog.created_at).limit(1).scalar_subquery()
+    # QA15-02: a telecaller's own lead is theirs from creation (tel-005: `assigned`, no `lead.assign` row) -- the creation entry says so
+    self_assigned = select(AuditLog.metadata_json["assigned"].as_string()).where(*_audits(lead_id, "lead.create")).limit(1).scalar_subquery()
+    # QA15-01: the call form sends its time to the minute, so a call logged now can read seconds before the lead's creation; within that
+    # minute the call is placed when it was recorded. A call dated earlier (CL4: earlier today) keeps its own time.
+    call_at = case((LeadCall.created_at < LeadCall.occurred_at + timedelta(minutes=1), LeadCall.created_at), else_=LeadCall.occurred_at)
     cancelled_by = (select(AuditLog.user_id).where(AuditLog.entity_type == "lead_follow_up", AuditLog.entity_id == cast(LeadFollowUp.id, String),
                                                    AuditLog.action == "lead_follow_up.cancel").limit(1).scalar_subquery())
     student = select(Enquiry.converted_user_id).where(Enquiry.id == lead_id).scalar_subquery()
     fu = LeadFollowUp
     return [
         _branch(Enquiry.id, "created", Enquiry.created_at, actor=func.coalesce(created_by, Enquiry.bdm_user_id), from_value=Enquiry.source,
-                to_value=Enquiry.subject).where(Enquiry.id == lead_id),
+                to_value=Enquiry.subject, event=case((self_assigned == "true", "self_assigned"))).where(Enquiry.id == lead_id),
         _branch(LeadEnquiry.id, "enquiry", LeadEnquiry.created_at, actor=LeadEnquiry.created_by_user_id, from_value=LeadEnquiry.source,
                 to_value=LeadEnquiry.subject, reason=_excerpt(LeadEnquiry.message)).where(LeadEnquiry.lead_id == lead_id),
         _branch(LeadStageHistory.id, "stage", LeadStageHistory.created_at, seq=LeadStageHistory.position, actor=LeadStageHistory.actor_user_id,
@@ -92,7 +98,7 @@ def _sources(lead_id: UUID) -> list:
         _branch(AuditLog.id, "student_link", AuditLog.created_at, actor=AuditLog.user_id, to_value=meta["converted_user_id"].as_string(),
                 to_name=To.full_name, event=case((AuditLog.action == "lead.convert", "linked"), else_="unlinked"))
         .outerjoin(To, To.id == cast(meta["converted_user_id"].as_string(), Uuid)).where(*_audits(lead_id, "lead.convert", "lead.unconvert")),
-        _branch(LeadCall.id, "call", LeadCall.occurred_at, actor=LeadCall.caller_user_id, from_value=LeadCall.call_type, to_value=LeadCall.outcome,
+        _branch(LeadCall.id, "call", call_at, actor=LeadCall.caller_user_id, from_value=LeadCall.call_type, to_value=LeadCall.outcome,
                 reason=_excerpt(LeadCall.remarks), duration=LeadCall.duration_seconds).where(LeadCall.lead_id == lead_id),
         _branch(LeadMessage.id, "message", LeadMessage.sent_at, actor=LeadMessage.sender_user_id, from_value=LeadMessage.channel,
                 to_value=LeadMessage.template_name, subject=LeadMessage.subject, status=LeadMessage.delivery_status,

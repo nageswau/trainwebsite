@@ -67,7 +67,9 @@ export function timelineEntry(row: TimelineRow): TimelineEntry {
   const base = { meta: [] as string[], when: null, detail: row.reason ? (row.reason.length >= EXCERPT ? `${row.reason}…` : row.reason) : null };
   switch (row.kind) {
     case "created":
-      return { ...base, badge: "Lead", tone: TONE.owner, title: "Lead created", meta: compact([`Source: ${source(row.from_value)}`, row.to_value]) };
+      return { ...base, badge: "Lead", tone: TONE.owner, title: "Lead created", meta: compact([`Source: ${source(row.from_value)}`, row.to_value,
+        // QA15-02: a telecaller's own lead is theirs from creation (no separate assignment entry)
+        row.event === "self_assigned" && row.actor && `Assigned to ${row.actor.full_name}`]) };
     case "enquiry":
       return { ...base, badge: "Enquiry", tone: TONE.owner, title: `New enquiry: ${row.to_label}`, meta: [`Source: ${source(row.from_value)}`] };
     case "stage":

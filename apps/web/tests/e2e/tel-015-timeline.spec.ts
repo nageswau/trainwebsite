@@ -64,6 +64,7 @@ test("the lead timeline for the telecaller, the counselor and the admin", async 
   await expect(activity.getByText("Hello! Here are the Cyber Security batch dates.")).toBeVisible();
   await expect(activity.getByRole("listitem").last()).toContainText("Lead created");
   await expect(activity.getByRole("listitem").last()).toContainText(callerName);
+  await expect(activity.getByRole("listitem").last()).toContainText(`Assigned to ${callerName}`); // QA15-02
 
   // a call logged on the page appears at once (D8: the timeline re-reads on a change)
   const calls = page.locator("section", { has: page.getByRole("heading", { name: "Calls", exact: true }) });
@@ -73,8 +74,9 @@ test("the lead timeline for the telecaller, the counselor and the admin", async 
   await form.getByLabel("Remarks").fill("Keen on the weekend batch");
   await form.getByRole("button", { name: "Save call" }).click();
   await expect(calls.getByText("Call logged.")).toBeVisible();
-  await expect(activity.getByText("Outgoing call: Interested")).toBeVisible();
+  await expect(activity.getByText("Outgoing call: Connected – Interested")).toBeVisible();
   await expect(activity.getByText("Keen on the weekend batch")).toBeVisible();
+  await expect(activity.getByRole("listitem").last()).toContainText("Lead created"); // QA15-01: the call lists after the creation
   for (const width of [390, 768]) {
     await page.setViewportSize({ width, height: 900 });
     expect(await noSideScroll(page)).toBe(true);
@@ -92,7 +94,7 @@ test("the lead timeline for the telecaller, the counselor and the admin", async 
   await signIn(page, "it", counselor.email, E2E_PASSWORD, "/it/counselor/dashboard");
   await page.goto(`/it/counselor/leads/${id}`);
   const counselorView = page.getByRole("list", { name: "Lead activity" });
-  await expect(counselorView.getByText("Outgoing call: Interested")).toBeVisible();
+  await expect(counselorView.getByText("Outgoing call: Connected – Interested")).toBeVisible();
   await expect(counselorView.getByText(`Handed over to ${counselorName}`)).toBeVisible();
 
   // the IT admin's History shows the merged timeline
@@ -101,7 +103,7 @@ test("the lead timeline for the telecaller, the counselor and the admin", async 
   const row = page.locator("tr", { hasText: name });
   await row.getByRole("button", { name: `History for ${name}` }).click();
   const history = row.getByRole("list", { name: `History for ${name}` });
-  await expect(history.getByText("Outgoing call: Interested")).toBeVisible();
+  await expect(history.getByText("Outgoing call: Connected – Interested")).toBeVisible();
   await expect(history.getByRole("listitem").last()).toContainText("Lead created");
 
   expect(consoleErrors).toEqual([]);

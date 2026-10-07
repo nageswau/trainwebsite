@@ -13,6 +13,8 @@ describe("timelineEntry", () => {
   it("reads the creation, enquiries and actors", () => {
     expect(timelineEntry(row({ kind: "created", from_value: "walk_in", to_value: "Cyber Security" }))).toMatchObject({
       title: "Lead created", meta: ["Source: Walk-in", "Cyber Security"] });
+    expect(timelineEntry(row({ kind: "created", from_value: "walk_in", to_value: "Python", event: "self_assigned", actor: tara })).meta)
+      .toEqual(["Source: Walk-in", "Python", "Assigned to Tara Caller"]); // QA15-02
     expect(actorName(row({ kind: "created", from_value: "website" }))).toBe("Website form");
     expect(actorName(row({ kind: "created", from_value: "walk_in" }))).toBe("System");
     expect(actorName(row({ kind: "enquiry", from_value: "google" }))).toBe("Website form");
