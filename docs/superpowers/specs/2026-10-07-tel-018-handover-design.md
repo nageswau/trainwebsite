@@ -3,7 +3,7 @@
 - **Backlog item:** `docs/delivery/TELECALLER_CRM_BACKLOG.md` → tel-018 (§10, §13; T4, T5, T19, T20, T29; Q-18 part 2, Q-22).
 - **Dependencies (all merged):** tel-004 (PR #81), tel-008 (PR #85), tel-016 (PR #103), tel-017 (PR #73), bdm-017 (`7de5d44f`).
 - **Decision:** `DEC-SCOPE-101` (tel-010 096, bdm-014 097, tel-019 098, bdm-015 099, tel-013 100 merged first; re-numbered twice). API contract §12V, RBAC §2.28 (bdm-015 took §12T / §2.26, tel-013 §12U / §2.27). **No migration.**
-- **Branch:** `feature/tel-018` from `origin/main` @ `0261cfc3`.
+- **Branch:** `feature/tel-018` from `origin/main` @ `0261cfc3`; **merged** to `main` as PR #114 @ `f37ebea8` (2026-10-07).
 
 ## 1. Owner answers (2026-10-07, `EXPLICIT_APPROVAL`)
 

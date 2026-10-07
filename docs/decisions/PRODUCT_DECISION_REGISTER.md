@@ -4458,7 +4458,7 @@ for the timeline; tel-021 counts them (Appendix B D10). Consent capture and rete
 T20, T29 (supersedes `DEC-SCOPE-072` L2/L7 for leads in the telecaller pipeline); `DEC-SCOPE-081` (the stage engine); `DEC-SCOPE-084` D1
 (read-only after handover); `DEC-SCOPE-095` (booking options); owner answers in-session 2026-10-07.
 **Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option) for
-HO1–HO4; HO5–HO9 are recorded defaults. Branch `feature/tel-018`. **No migration.** API contract §12V, RBAC §2.28. Spec
+HO1–HO4; HO5–HO9 are recorded defaults. **MERGED** to `main` as PR #114 @ `f37ebea8` (2026-10-07). **No migration.** API contract §12V, RBAC §2.28. Spec
 `docs/superpowers/specs/2026-10-07-tel-018-handover-design.md`. (tel-010 096, bdm-014 097, tel-019 098, bdm-015 099 and tel-013 100 merged first.)
 
 | # | Question | Answer |
