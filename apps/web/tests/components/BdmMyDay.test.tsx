@@ -4,7 +4,7 @@ import BdmMyDay from "@/components/BdmMyDay";
 import type { MyDay } from "@/lib/bdmMyDay";
 import { elements, text } from "@/tests/helpers/elementTree";
 
-// bdm-014 (DEC-SCOPE-096): the My Day view is a plain function of its data, so it is called directly.
+// bdm-014 (DEC-SCOPE-097): the My Day view is a plain function of its data, so it is called directly.
 const org = (name: string) => ({ id: `o-${name}`, code: "ORG-1", name, org_type: "college", archived: false });
 const appt = (id: string, startsAt: string, name: string, status = "scheduled") => ({
   id, code: `APT-${id}`, starts_at: startsAt, duration_minutes: 60, appointment_type: "college_meeting", status, organization: org(name),

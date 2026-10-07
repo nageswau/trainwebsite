@@ -1,4 +1,4 @@
-"""bdm-014 (DEC-SCOPE-096) -- GET /bdm/my-day: the §15 common section and each type's "Today's overview" tiles (Appendix B.2).
+"""bdm-014 (DEC-SCOPE-097) -- GET /bdm/my-day: the §15 common section and each type's "Today's overview" tiles (Appendix B.2).
 
 Every row here is "today" by the IST clock, so each test uses fresh BDMs and only counts its own BDM's records (own scope)."""
 

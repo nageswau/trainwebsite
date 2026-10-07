@@ -1,7 +1,7 @@
 # bdm-014 — My Day + type-specific BDM dashboard (design)
 
 - **Feature:** bdm-014 (`docs/delivery/BDM_CRM_BACKLOG.md` §bdm-014; tiles in Appendix B.2 T-C*, T-A*, T-S*, T-K*)
-- **Decision:** `DEC-SCOPE-096` (drafted; renumber on merge if `main` has taken it)
+- **Decision:** `DEC-SCOPE-097` (drafted as `096`; renumbered on merging `main`, where tel-010 took `096`)
 - **Dependencies (merged on `main`):** bdm-006 (PR #58), bdm-008 (PR #71), bdm-010 (PR #53), bdm-011 (PR #89). Tiles that
   read bdm-005 (MoUs), bdm-009 (activities) and bdm-017 (lead attribution) are all on `main`, so they are live.
 - **Migration:** none. **Status:** K1–K12 are agent-recommended defaults pending owner confirmation (the owner asked the session to

@@ -5,7 +5,7 @@ import { STATUS_CLASS, STATUS_LABEL, type AppointmentStatus } from "@/lib/bdmApp
 import { followUpText, type MyDay, timeText, tripAppointmentsText, tripDateText } from "@/lib/bdmMyDay";
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
 
-// bdm-014 (DEC-SCOPE-096 §6): My Day -- the §15 common section, then the type's "Today's overview" tiles. A plain function of its
+// bdm-014 (DEC-SCOPE-097 §6): My Day -- the §15 common section, then the type's "Today's overview" tiles. A plain function of its
 // data (no client state); the sections stack on a phone and sit side by side on wider screens. Untracked tiles say so in words, as
 // SchoolKpiBoard does -- never a fabricated 0 (AC3).
 const SECTIONS = { display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))", marginBottom: 16 } as const;

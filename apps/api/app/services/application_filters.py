@@ -31,12 +31,15 @@ def _uuid(value: str) -> UUID:
         raise HTTPException(422, UNKNOWN_VALUE) from None
 
 
-async def parse(db: AsyncSession, user: User, section: str, agency: str | None, counselor: str | None) -> ApplicationFilters:
+async def parse(db: AsyncSession, user: User, section: str, agency: str | None, counselor: str | None, repeated: frozenset[str] = frozenset()) -> ApplicationFilters:
+    """`repeated` names the filter keys the request sent more than once."""
     if agency is None and counselor is None:
         return ApplicationFilters()
     available = user.division == "overseas" and user.role in {"overseas_admin", "counselor"} and section in FILTER_SECTIONS
     if not available or (counselor is not None and user.role != "overseas_admin"):
         raise HTTPException(422, NOT_AVAILABLE)
+    if repeated:  # B7: a repeated key is ambiguous -- refused only after availability, so a filter that is not available says so
+        raise HTTPException(422, UNKNOWN_VALUE)
     parsed_agency: UUID | str | None = None
     if agency is not None:
         if agency in {"any", "none"}:

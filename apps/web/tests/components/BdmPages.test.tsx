@@ -40,7 +40,7 @@ beforeEach(() => {
 });
 
 describe("bdm-001 BDM pages", () => {
-  // bdm-014 (DEC-SCOPE-096): My Day reads its data after the profile gate and keeps a one-line profile summary (K11).
+  // bdm-014 (DEC-SCOPE-097): My Day reads its data after the profile gate and keeps a one-line profile summary (K11).
   const myDay = { today: "2026-09-13", bdm_type: "college", appointments: { count: 0, truncated: false, items: [] }, trips: { total: 0, items: [] }, follow_ups: { total: 0, groups: [] }, tiles: [] };
   function answerMyDay(data: unknown) {
     vi.mocked(serverApi).mockImplementation(async (path: string) => {

@@ -1,4 +1,4 @@
-"""bdm-014 (DEC-SCOPE-096, spec §3-§5): the BDM's My Day -- today's appointments, upcoming travel, follow-ups due, and the BDM type's
+"""bdm-014 (DEC-SCOPE-097, spec §3-§5): the BDM's My Day -- today's appointments, upcoming travel, follow-ups due, and the BDM type's
 "Today's overview" tiles (Appendix B.2). Own records only, from the session. Read-only: no write, no audit, no log line.
 
 A fixed number of statements whatever the data volume (AC4, K12): every count is a scalar subquery of one SELECT, plus one query each

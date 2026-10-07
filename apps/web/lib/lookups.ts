@@ -2,7 +2,7 @@
 // SearchableSelect. The server decides what each role may see; this only builds the request.
 export type PickOption = { id: string; label: string; detail?: string | null };
 export type LookupPage = { items: PickOption[]; truncated: boolean };
-export type LookupName = "overseas-students" | "overseas-applications" | "it-job-applications" | "schools" | "school-students";
+export type LookupName = "overseas-students" | "overseas-applications" | "overseas-counselors" | "it-job-applications" | "schools" | "school-students";
 
 export function optionText(option: PickOption): string {
   return option.detail ? `${option.label} — ${option.detail}` : option.label;

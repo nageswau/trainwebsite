@@ -38,6 +38,9 @@ from app.models import (
     BDM_STAFF_MAX,
     GENDERS,
     LEAD_APPOINTMENT_TYPE_LABELS,
+    LEAD_CALL_MAX_SECONDS,
+    LEAD_CALL_OUTCOMES,
+    LEAD_CALL_TYPES,
     LEAD_FOLLOW_UP_REASONS,
     LEAD_PRIORITIES,
     QUAL_MODES,
@@ -915,8 +918,10 @@ class AgentVisaUpdate(_AgentVisaDates):
 class CounselorAgencyVisaUpdate(BaseModel):
     """AGN-023 (DEC-SCOPE-090 H4, final review I2): an EduSphere counselor's change to an agency visa case (PATCH /overseas/visa/{id}),
     typed so a bad body is a 422 and never a stored string. The checklist has the agency's limits (`AgentVisaUpdate`); the reference
-    has the VisaCase column's length. `decision` is refused by the route before this model (the agency records it)."""
+    has the VisaCase column's length. `decision` is refused by the route before this model (the agency records it); any other unknown
+    key is a 422. As on the agency route an absent key is unchanged and an explicit null clears the appointment date."""
 
+    model_config = {"extra": "forbid"}
     status: str | None = Field(default=None, max_length=50)
     checklist: list[AgentDocumentType] | None = Field(default=None, max_length=8)
     appointment_date: date | None = None
@@ -5265,7 +5270,7 @@ class BdmCalendarOut(BaseModel):
     tasks: list[BdmCalendarTask]
 
 
-# --- bdm-014 (DEC-SCOPE-096): My Day ---------------------------------------------------------------------------------------------
+# --- bdm-014 (DEC-SCOPE-097): My Day ---------------------------------------------------------------------------------------------
 class BdmMyDayOrgRef(BdmAppointmentOrgRef):
     org_type: str
 
@@ -5842,6 +5847,43 @@ class LeadFollowUpUpdate(BaseModel):
     @model_validator(mode="after")
     def _required_stay_set(self):
         for key, label in (("due_at", "Due time"), ("reason", "Reason")):
+            if key in self.model_fields_set and getattr(self, key) is None:
+                raise ValueError(f"{label} can't be removed")
+        return self
+
+
+# tel-010 (DEC-SCOPE-096): a call on a lead. The caller, lead and timestamps are server-owned (unknown fields here); the outcome rules that
+# need the lead (closed, follow-up required, duplicate remarks) are the service's.
+LeadCallType = Literal[LEAD_CALL_TYPES]
+LeadCallOutcome = Literal[LEAD_CALL_OUTCOMES]
+LeadCallDuration = Annotated[int, Field(ge=0, le=LEAD_CALL_MAX_SECONDS)]
+LeadCallRemarks = Annotated[Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, {"remarks": "Remarks"}))]
+
+
+class LeadCallCreate(BaseModel):
+    """D6: `occurred_at` defaults to now. D5: `next_follow_up` is tel-011's create body."""
+
+    model_config = ConfigDict(extra="forbid")
+    occurred_at: AwareDatetime | None = None
+    duration_seconds: LeadCallDuration
+    call_type: LeadCallType
+    outcome: LeadCallOutcome
+    remarks: LeadCallRemarks = None
+    next_follow_up: LeadFollowUpCreate | None = None
+
+
+class LeadCallUpdate(BaseModel):
+    """CL4: same-day details only -- the outcome is locked (an unknown field here). Time, duration and type can't be cleared."""
+
+    model_config = ConfigDict(extra="forbid")
+    occurred_at: AwareDatetime | None = None
+    duration_seconds: LeadCallDuration | None = None
+    call_type: LeadCallType | None = None
+    remarks: LeadCallRemarks = None
+
+    @model_validator(mode="after")
+    def _required_stay_set(self):
+        for key, label in (("occurred_at", "Call time"), ("duration_seconds", "Duration"), ("call_type", "Call type")):
             if key in self.model_fields_set and getattr(self, key) is None:
                 raise ValueError(f"{label} can't be removed")
         return self

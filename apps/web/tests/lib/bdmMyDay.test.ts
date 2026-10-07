@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { followUpText, isMyDay, MY_DAY_URL, timeText, tripAppointmentsText, tripDateText } from "@/lib/bdmMyDay";
 
-// bdm-014 (DEC-SCOPE-096): the My Day helpers -- the §15 wording ("10:00 AM", "18 Sep", "3 appointments scheduled", "4 College follow-ups").
+// bdm-014 (DEC-SCOPE-097): the My Day helpers -- the §15 wording ("10:00 AM", "18 Sep", "3 appointments scheduled", "4 College follow-ups").
 describe("bdm-014 My Day helpers", () => {
   it("reads the API path", () => {
     expect(MY_DAY_URL).toBe("/api/v1/bdm/my-day");

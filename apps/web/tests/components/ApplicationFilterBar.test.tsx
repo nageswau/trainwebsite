@@ -51,4 +51,9 @@ describe("ApplicationFilterBar", () => {
     render(<ApplicationFilterBar filters={ADMIN} error="Unknown filter value" />);
     expect(screen.getByRole("alert")).toHaveTextContent("Unknown filter value -- showing all applications.");
   });
+
+  it("offers Clear filters after a refused filter, even though the fallback payload has none applied", () => {
+    render(<ApplicationFilterBar filters={ADMIN} error="Unknown filter value" />);
+    expect(screen.getByRole("link", { name: "Clear filters" })).toHaveAttribute("href", "/overseas/admin/applications");
+  });
 });

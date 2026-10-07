@@ -19,7 +19,7 @@ async function managerHome(error: unknown): Promise<string | null> {
   return user?.role === "bdm_manager" ? dashboardPathFor(user) : null;
 }
 
-// bdm-014 (DEC-SCOPE-096): the BDM landing page -- today's appointments, upcoming travel, follow-ups and the type's overview tiles.
+// bdm-014 (DEC-SCOPE-097): the BDM landing page -- today's appointments, upcoming travel, follow-ups and the type's overview tiles.
 // `/bdm/me` is the gate (bdm-001); a day that can't be read after it loaded is shown inline with "Try again".
 export default async function BdmMyDayPage() {
   const nav = bdmNav(); // the unread badge, read alongside the page's own data (never rejects)

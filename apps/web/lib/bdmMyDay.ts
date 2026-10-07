@@ -1,7 +1,7 @@
 import { ORG_TYPE_LABEL, type OrgType } from "@/lib/bdmOrganizations";
 import { SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 
-// bdm-014 (DEC-SCOPE-096): My Day's types and its §15 wording. The API computes every figure and names every tile (K2).
+// bdm-014 (DEC-SCOPE-097): My Day's types and its §15 wording. The API computes every figure and names every tile (K2).
 export const MY_DAY_URL = "/api/v1/bdm/my-day";
 
 export type MyDayAppointment = {
