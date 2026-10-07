@@ -34,6 +34,7 @@ from app.schemas import (
 )
 from app.services import lead_follow_ups, lead_intake, lead_pipeline, lead_qualification, telecaller_leads
 from app.services.bdm_appointments import db_now
+from app.services.lead_timeline import page as timeline_page
 from app.services.telecaller import admin_team_filter, parse_self_update, person_ref, profile_out, require_manager, team_filter, telecaller_context
 from app.worker import sync_enquiry_to_crm_task
 
@@ -177,11 +178,11 @@ async def update_lead(lead_id: UUID, payload: TelecallerLeadUpdate, user: User =
 
 @router.get("/leads/{lead_id}/timeline", response_model=LeadTimelinePage)
 async def lead_timeline(lead_id: UUID, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """W1: stage and priority changes of a lead in scope, newest first (tel-015 adds the other sources)."""
+    """tel-015: the merged timeline of a lead in scope, newest first (W1 + every event kind, `services/lead_timeline.py`)."""
     _, filters = lead_pipeline.scope(user)
     if await db.scalar(select(Enquiry.id).where(Enquiry.id == lead_id, *filters)) is None:
         raise HTTPException(404, lead_pipeline.LEAD_NOT_FOUND)
-    return await telecaller_leads.timeline_page(db, lead_id, limit, offset)
+    return await timeline_page(db, lead_id, limit, offset)
 
 
 @router.get("/leads/{lead_id}/qualification")

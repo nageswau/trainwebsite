@@ -37,8 +37,10 @@ const sent = (method: string) => {
   return found ? { url: found[0] as string, body: JSON.parse((found[1] as RequestInit).body as string || "null") } : null;
 };
 
+const onChanged = vi.fn(); // tel-015: the page's timeline re-reads after a send or delete
 async function openComposer() {
-  render(<LeadMessages leadId="L1" whatsappTo="919876543210" canWrite openSignal={0} />);
+  onChanged.mockClear();
+  render(<LeadMessages leadId="L1" whatsappTo="919876543210" canWrite openSignal={0} onChanged={onChanged} />);
   fireEvent.click(await screen.findByRole("button", { name: "Send WhatsApp" }));
   await screen.findByRole("option", { name: TEMPLATE.name });
 }
@@ -100,6 +102,7 @@ describe("LeadMessages (tel-013)", () => {
     expect(sent("POST")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Yes, record as sent" }));
     await screen.findByText("WhatsApp send recorded.");
+    expect(onChanged).toHaveBeenCalledTimes(1);
     expect(sent("POST")).toEqual({ url: "/api/v1/telecaller/leads/L1/messages",
       body: { channel: "whatsapp", template_id: "T1", body: "Hi Priya Sharma, see the brochure" } });
     await waitFor(() => expect(fetchMock.mock.calls.filter(([u]) => String(u).startsWith("/api/v1/telecaller/leads/L1/messages?")).length).toBe(2));

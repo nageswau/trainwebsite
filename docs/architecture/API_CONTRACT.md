@@ -1443,6 +1443,17 @@ found" (bdm-023 `team_scope`).
 | `GET /bdm/manager/performance/bdms/{bdm_user_id}?from=&to=` | A BDM outside the caller's team (or not a BDM) `404` "BDM not found"; malformed id `422`; period as above. `200 {from, to, bdm: {id, full_name, active, bdm_type}, totals: figures, organizations: [{id, code, name, figures (trips null)}], trips: [{id, code, from_place, to_place, travel_date, approval_status, travel_status}]}`. Organizations with a figure in the period, by name; totals equal the BDM's row of the type list |
 | `GET /bdm/manager/hierarchy?manager_user_id=` | Live, all time. `200 {manager \| null, as_of, types: [{type, label, chain: [{key, label, definition, tracked}], bdm_count, organization_count, not_linked, totals, bdms: [{id, full_name, active, organization_count, not_linked, totals, organizations: [{id, code, name, counts}]}]}]}`. Counts follow the chain's order (int, INR decimal-string, or null when not tracked); each organization's counts equal its bdm-020/021/022 panel. Aggregates only |
 
+## 12AH. Lead timeline (`tel-015`) — addendum, 2026-10-07
+
+`DEC-SCOPE-114`; design spec `docs/superpowers/specs/2026-10-07-tel-015-lead-timeline-design.md` §3. No migration. Read only (no log
+line, no audit row). `limit` 1–100 (default 50), `offset` ≥ 0 (`422` otherwise). Signed out `401`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/leads/{id}/timeline` | Unchanged path (tel-008 W1). tel-004 scope: a telecaller's own leads, a manager's reports' leads, super_admin all; out of scope or unknown `404`; other roles `403`. `200 {items, total, limit, offset}`, newest first; `items[]`: `{id, kind, at, actor {id, full_name} \| null, from_value, from_label, to_value, to_label, reason, event, subject, status, duration_seconds, scheduled_for}` (the last four new, nullable). `kind` ∈ `created`, `enquiry`, `stage`, `priority`, `assignment`, `handover`, `student_link`, `call`, `message`, `follow_up`, `appointment`, `milestone`. `id` is the source row's id (a follow-up's scheduled / done / cancelled entries share it; `event` tells them apart). Order `at DESC, rank, seq, id` — total, so pages never overlap. Free text ≤ 200 characters |
+| `GET /counselor/leads/{id}/timeline` | Unchanged path (tel-018). The assigned counselor only; otherwise `404`. Same body |
+| `GET /admin/leads/{id}/timeline` | New. `it_admin` / `overseas_admin` (own division) and `super_admin`; unknown `404` "Lead not found", another division `403`; other roles `403`. Same body |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

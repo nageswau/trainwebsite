@@ -2,17 +2,12 @@
 
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 
+import LeadTimeline from "@/components/LeadTimeline";
 import { sendJson, type SendOutcome } from "@/lib/apiErrors";
-import { formatDate } from "@/lib/formatDate";
 import { isClosed, needsReason, personTargets, stageLabel } from "@/lib/leadStages";
-import { getPage } from "@/lib/telecallerCatalogue";
 
 type Lead = { id: string; name: string; status: string };
 type Message = { id: string; text: string; failed: boolean };
-type HistoryRow = {
-  id: string; from_stage: string; from_label: string; to_stage: string; to_label: string; event: string;
-  actor: { id: string; full_name: string } | null; reason: string | null; created_at: string;
-};
 
 const adminMove = (id: string, target: string, reason: string) =>
   sendJson(`/api/v1/admin/leads/${id}`, "PATCH", reason ? { status: target, reason } : { status: target });
@@ -92,41 +87,16 @@ export function LeadStageControl({ lead, onChanged, onMessage, move = adminMove,
   );
 }
 
-// tel-004 AC5: the lead's stage changes, oldest first; automatic changes are by "System". Loaded when opened, not with the list.
+// tel-004 AC5, tel-015 TM1: the lead's merged timeline (stage changes and every other event), newest first; automatic changes are by
+// "System". Loaded when opened, not with the list.
 export function LeadStageHistory({ lead }: { lead: Lead }) {
-  const [rows, setRows] = useState<HistoryRow[] | null>(null);
   const [open, setOpen] = useState(false);
-  const [failed, setFailed] = useState(false);
-  const label = `Stage history for ${lead.name}`;
-
-  function toggle() {
-    if (open) return setOpen(false);
-    setOpen(true);
-    setFailed(false);
-    setRows(null);
-    getPage<HistoryRow>(`/api/v1/admin/leads/${lead.id}/stage-history?limit=100`).then((page) => setRows(page.items), () => setFailed(true));
-  }
+  const label = `History for ${lead.name}`;
 
   return (
-    <div style={{ marginTop: 4 }}>
-      <button type="button" className="btn secondary small" aria-label={label} aria-expanded={open} onClick={toggle}>History</button>
-      {open && (failed ? (
-        <p className="form-error" role="alert" style={{ fontSize: 13 }}>Unable to load the history.</p>
-      ) : rows === null ? (
-        <p className="muted" style={{ fontSize: 13 }}>Loading…</p>
-      ) : rows.length === 0 ? (
-        <p className="muted" style={{ fontSize: 13 }}>No stage changes yet.</p>
-      ) : (
-        <ol aria-label={label} style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 13, minWidth: "9rem" }}>
-          {rows.map((h) => (
-            <li key={h.id}>
-              <strong>{h.from_label} → {h.to_label}</strong>
-              <div className="muted">{h.actor ? h.actor.full_name : "System"} · {formatDate(h.created_at, true)}</div>
-              {h.reason && <div>{h.reason}</div>}
-            </li>
-          ))}
-        </ol>
-      ))}
+    <div style={{ marginTop: 4, minWidth: "min(18rem, 70vw)" }}>
+      <button type="button" className="btn secondary small" aria-label={label} aria-expanded={open} onClick={() => setOpen((o) => !o)}>History</button>
+      {open && <LeadTimeline url={`/api/v1/admin/leads/${encodeURIComponent(lead.id)}/timeline`} version={0} label={label} />}
     </div>
   );
 }

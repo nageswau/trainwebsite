@@ -264,23 +264,29 @@ describe("AdminLeadManagementPanel (ADM-002, bdm-017 spec §6, tel-003 spec §5)
     expect(within(tr).queryByRole("button", { name: "Change stage for Lead v1" })).toBeNull();
   });
 
-  it("lists the stage history in order, System for automatic changes", async () => {
+  it("lists the lead's merged timeline newest first, System for automatic changes (tel-015 TM1)", async () => {
     render(<AdminLeadManagementPanel />);
     const tr = await tableRow("Lead w1");
+    const row = (over: object) => ({ from_value: "", from_label: "", to_value: "", to_label: "", reason: null, event: null, subject: null, status: null,
+      duration_seconds: null, scheduled_for: null, ...over });
     fetchMock.mockImplementationOnce(() => Promise.resolve(res(pageOf([
-      { id: "h1", from_stage: "new", from_label: "New Lead", to_stage: "assigned", to_label: "Assigned", event: "assigned", actor: null, reason: null, created_at: "2026-10-06T05:00:00Z" },
-      { id: "h2", from_stage: "assigned", from_label: "Assigned", to_stage: "lost", to_label: "Lost", event: "manual", actor: { id: "a1", full_name: "Ira Admin" }, reason: "Duplicate", created_at: "2026-10-06T06:00:00Z" },
+      row({ id: "h2", kind: "stage", at: "2026-10-06T06:00:00Z", from_value: "assigned", from_label: "Assigned", to_value: "lost", to_label: "Lost",
+        event: "manual", actor: { id: "a1", full_name: "Ira Admin" }, reason: "Duplicate" }),
+      row({ id: "c1", kind: "call", at: "2026-10-06T05:30:00Z", from_value: "outgoing", to_value: "busy", actor: { id: "t1", full_name: "Tara" }, duration_seconds: 20 }),
+      row({ id: "h1", kind: "stage", at: "2026-10-06T05:00:00Z", from_value: "new", from_label: "New Lead", to_value: "assigned", to_label: "Assigned",
+        event: "assigned", actor: null }),
     ]))));
-    fireEvent.click(within(tr).getByRole("button", { name: "Stage history for Lead w1" }));
-    const list = await within(tr).findByRole("list", { name: "Stage history for Lead w1" });
+    fireEvent.click(within(tr).getByRole("button", { name: "History for Lead w1" }));
+    const list = await within(tr).findByRole("list", { name: "History for Lead w1" });
     const items = within(list).getAllByRole("listitem").map((li) => li.textContent);
-    expect(items[0]).toContain("New Lead → Assigned");
-    expect(items[0]).toContain("System");
-    expect(items[1]).toContain("Assigned → Lost");
-    expect(items[1]).toContain("Ira Admin");
-    expect(items[1]).toContain("Duplicate");
-    expect(String(fetchMock.mock.calls.at(-1)?.[0])).toBe("/api/v1/admin/leads/w1/stage-history?limit=100");
-    fireEvent.click(within(tr).getByRole("button", { name: "Stage history for Lead w1" }));
-    expect(within(tr).queryByRole("list", { name: "Stage history for Lead w1" })).toBeNull();
+    expect(items[0]).toContain("Stage: Assigned → Lost");
+    expect(items[0]).toContain("Ira Admin");
+    expect(items[0]).toContain("Duplicate");
+    expect(items[1]).toContain("Outgoing call");
+    expect(items[2]).toContain("Stage: New Lead → Assigned");
+    expect(items[2]).toContain("System");
+    expect(String(fetchMock.mock.calls.at(-1)?.[0])).toBe("/api/v1/admin/leads/w1/timeline?limit=50&offset=0");
+    fireEvent.click(within(tr).getByRole("button", { name: "History for Lead w1" }));
+    expect(within(tr).queryByRole("list", { name: "History for Lead w1" })).toBeNull();
   });
 });

@@ -70,14 +70,16 @@ describe("LeadFollowUps (tel-011)", () => {
 
   it("adds a follow-up and reports a stage move", async () => {
     const onStageChanged = vi.fn();
+    const onChanged = vi.fn(); // tel-015: the page's timeline re-reads
     postReply = () => res(followUp({ id: "F3", lead: { ...followUp().lead, status: "follow_up", status_label: "Follow-up" } }), 201);
-    render(<LeadFollowUps leadId="L1" leadStage="contacted" canWrite onStageChanged={onStageChanged} />);
+    render(<LeadFollowUps leadId="L1" leadStage="contacted" canWrite onStageChanged={onStageChanged} onChanged={onChanged} />);
     fireEvent.click(await screen.findByRole("button", { name: "Add follow-up" }));
     fireEvent.change(screen.getByLabelText(/Due date and time/), { target: { value: "2026-10-08T16:00" } });
     fireEvent.change(screen.getByLabelText("Reason (required)"), { target: { value: "fee_details" } });
     fireEvent.click(within(screen.getByRole("form", { name: "Add follow-up" })).getByRole("button", { name: "Add follow-up" }));
     await waitFor(() => expect(onStageChanged).toHaveBeenCalledWith("follow_up"));
     expect(screen.getByText("Follow-up added.")).toBeTruthy();
+    expect(onChanged).toHaveBeenCalledTimes(1);
   });
 
   it("is read only without write access (the API's can_change is false too)", async () => {

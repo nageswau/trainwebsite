@@ -58,7 +58,8 @@ describe("LeadCalls (tel-010)", () => {
 
   it("logs a call-back with its required next follow-up and reports the result", async () => {
     const onLogged = vi.fn();
-    render(<LeadCalls leadId="L1" leadStage="contacted" canWrite openSignal={0} onLogged={onLogged} />);
+    const onChanged = vi.fn(); // tel-015: the page's timeline re-reads
+    render(<LeadCalls leadId="L1" leadStage="contacted" canWrite openSignal={0} onLogged={onLogged} onChanged={onChanged} />);
     fireEvent.click(await screen.findByRole("button", { name: "Log call" }));
     const form = screen.getByRole("form", { name: "Log call" });
     fireEvent.click(within(form).getByRole("button", { name: "Save call" }));
@@ -79,6 +80,7 @@ describe("LeadCalls (tel-010)", () => {
     expect(post?.body.occurred_at).toMatch(/\+05:30$/);
     expect(onLogged.mock.calls[0][0].follow_up_id).toBe("F9");
     expect(await screen.findByText("Call logged.")).toBeTruthy();
+    expect(onChanged).toHaveBeenCalledTimes(1);
   });
 
   it("warns that a closing outcome closes the lead and offers no follow-up", async () => {

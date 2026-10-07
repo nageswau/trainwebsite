@@ -56,14 +56,16 @@ test("admin closes a lead with a reason, reopens it, and reads the history", asy
   await page.reload(); // the stage is stored, not just shown
   const reloaded = await leadRow(page, name);
   await expect(reloaded).toContainText("Follow-up");
-  await reloaded.getByRole("button", { name: `Stage history for ${name}` }).click();
-  const items = reloaded.getByRole("list", { name: `Stage history for ${name}` }).getByRole("listitem");
-  const skip = assigned ? 1 : 0;
-  await expect(items).toHaveCount(2 + skip);
-  if (assigned) await expect(items.nth(0)).toContainText("New Lead → Assigned");
-  await expect(items.nth(skip)).toContainText(`${first} → Not Interested`);
-  await expect(items.nth(skip)).toContainText("Chose a different course");
-  await expect(items.nth(skip + 1)).toContainText("Not Interested → Follow-up");
+  // tel-015 TM1: History is the merged timeline, newest first -- the stage rows among the other entries
+  await reloaded.getByRole("button", { name: `History for ${name}` }).click();
+  const list = reloaded.getByRole("list", { name: `History for ${name}` });
+  const stages = list.getByRole("listitem").filter({ hasText: "Stage:" });
+  await expect(stages).toHaveCount(assigned ? 3 : 2);
+  await expect(stages.nth(0)).toContainText("Not Interested → Follow-up");
+  await expect(stages.nth(1)).toContainText(`${first} → Not Interested`);
+  await expect(stages.nth(1)).toContainText("Chose a different course");
+  if (assigned) await expect(stages.nth(2)).toContainText("New Lead → Assigned");
+  await expect(list.getByRole("listitem").last()).toContainText("Lead created");
 });
 
 test("the Stage filter lists the pipeline by label", async ({ page }) => {

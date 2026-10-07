@@ -19,6 +19,7 @@ from app.core.database import get_db
 from app.models import Enquiry, User
 from app.schemas import LeadHandoverIn, LeadReturnIn, LeadStudentLinkIn, LeadTimelinePage
 from app.services import bdm_leads, lead_handover, lead_pipeline, telecaller_leads
+from app.services.lead_timeline import page as timeline_page
 
 telecaller_router = APIRouter(prefix="/telecaller/leads", tags=["lead-handover"])
 counselor_router = APIRouter(prefix="/counselor/leads", tags=["lead-handover"])
@@ -50,7 +51,7 @@ async def lead_timeline(lead_id: UUID, limit: int = LIMIT, offset: int = OFFSET,
     filters = lead_handover.counselor_scope(user)
     if await db.scalar(select(Enquiry.id).where(Enquiry.id == lead_id, *filters)) is None:
         raise HTTPException(404, lead_pipeline.LEAD_NOT_FOUND)
-    return await telecaller_leads.timeline_page(db, lead_id, limit, offset)
+    return await timeline_page(db, lead_id, limit, offset)
 
 
 @counselor_router.post("/{lead_id}/return")

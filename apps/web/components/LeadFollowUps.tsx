@@ -10,8 +10,9 @@ import type { Page } from "@/lib/apiErrors";
 /** tel-011 (spec §4; F2, F4, F5): the lead page's follow-ups -- open ones by due time, then done / cancelled. `canWrite` (the lead's
  *  telecaller, lead not handed over or closed) offers Add; each item's own `can_change` offers its actions. A stage move made with a new
  *  follow-up is reported up, so the page header and activity follow. */
-export default function LeadFollowUps({ leadId, leadStage, canWrite, refresh = 0, onStageChanged }: {
+export default function LeadFollowUps({ leadId, leadStage, canWrite, refresh = 0, onStageChanged, onChanged }: {
   leadId: string; leadStage: string; canWrite: boolean; refresh?: number; onStageChanged: (stage: string) => void;
+  onChanged?: () => void; // tel-015: an add, edit, done or cancel -- the page's timeline re-reads
 }) {
   const [data, setData] = useState<Page<FollowUp> | null>(null);
   const [failed, setFailed] = useState(false);
@@ -29,6 +30,7 @@ export default function LeadFollowUps({ leadId, leadStage, canWrite, refresh = 0
 
   const changed = (fu: FollowUp, text: string) => {
     setNotice({ text, failed: false });
+    onChanged?.();
     if (fu.lead.status !== leadStage) onStageChanged(fu.lead.status); // the new stage re-reads the list
     else reload();
   };

@@ -4870,3 +4870,34 @@ recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). 
 `GET /bdm/manager/performance/bdms/{id}`, `GET /bdm/manager/hierarchy`; web `lib/bdmPerformance.ts`, `lib/bdmPerformancePage.ts`,
 `components/BdmPerformanceTable.tsx`, `BdmPerformanceFigures.tsx`, `BdmPerformanceControls.tsx`, `BdmHierarchy.tsx`, four pages.
 **Feature ID:** `bdm-024`. **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-024.
+
+### DEC-SCOPE-114 — Lead timeline (`tel-015`)
+
+**Evidence:** `EVID-019` §13 (L474–L496: "Each student should have a complete history" — Lead Created, Assigned to Telecaller, Call
+Made, WhatsApp Sent, Follow-up Scheduled, Counselling Appointment, Counselor Assigned, Application/Enrollment, Converted; "This prevents
+information from being lost when staff changes"); `TELECALLER_CRM_BACKLOG.md` §tel-015 (AC1–AC3); `DEC-SCOPE-084` W1 (the timeline
+endpoint it extends), `DEC-SCOPE-088` (tel-005 repeat enquiries), `DEC-SCOPE-094` / `-095` / `-096` / `-100` / `-101` / `-106` (the event
+tables of tel-011, tel-016, tel-010, tel-013, tel-018, tel-014). Dependencies verified merged on `main` @ `cca01447`.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — three structured questions, each answered with the recommended option)
+for TM1–TM3. **No migration.** API contract §12AH, RBAC §2.40. Spec `docs/superpowers/specs/2026-10-07-tel-015-lead-timeline-design.md`.
+Numbered after bdm-024 (`DEC-SCOPE-113` / §12AG / §2.39), merged first.
+
+| # | Question | Answer |
+|---|---|---|
+| TM1 | How do division admins read it | `GET /admin/leads/{id}/timeline` (the `stage-history` route's 404 / 403); the admin leads list's "History" toggle shows the merged timeline. `stage-history` is unchanged |
+| TM2 | Free text on the timeline | A summary plus an excerpt (first 200 characters) of call remarks, message bodies, follow-up notes / cancel reasons, appointment reasons and enquiry messages; the full text stays in the Calls / Messages / Follow-ups sections |
+| TM3 | Downstream milestones (T4) | Yes: once a student is linked, each IT enrolment / overseas application / visa case is a "System" entry at its creation time with its current status, read live (an unlink removes them) |
+
+Design decisions (spec §3): D1 one reader (`services/lead_timeline.py`) behind three scoped routes; D2 derived by one `UNION ALL`, no new
+table; D3 the event catalogue (created, enquiry, stage, priority, assignment, handover, student link, call, message, follow-up
+scheduled / done / cancelled, appointment event, milestone; the return and the conversion stay their stage rows); D4 order `at DESC,
+rank DESC, seq DESC, id DESC` (AC3; a stage move lists above the action that caused it); D5 additive row (`subject`, `status`,
+`duration_seconds`, `scheduled_for`; keys for calls / messages / follow-ups / appointments, labelled by the web client); D6 events keep
+their own actor, so a reassignment loses nothing (AC2); D7 only the lead's readers, excerpts, nothing logged; D8 one `LeadTimeline`
+component (`.jtl`) with Show older paging and a re-read after any change on the page.
+
+**Consequences:** `services/lead_timeline.py` (new; the W1 reader moves out of `telecaller_leads.py`); `LeadTimelineRow` widened;
+`GET /admin/leads/{id}/timeline`; web `lib/leadTimeline.ts`, `components/LeadTimeline.tsx`; `LeadDetailPanel`, `CounselorLeadDetail` and
+the admin `LeadStageHistory` render it; `LeadCalls` / `LeadMessages` / `LeadFollowUps` gain `onChanged`. The W1 page's `total` now counts
+the `created` entry.
+**New Feature ID authorized:** `tel-015`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §tel-015.
