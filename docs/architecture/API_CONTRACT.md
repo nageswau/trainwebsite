@@ -904,6 +904,7 @@ The routes write in one transaction:
 | Method/Path | Auth | Roles | Notes / status codes |
 |---|---|---|---|
 | `GET /bdm/calendar` | Authenticated | `bdm` (own), `bdm_manager` (a BDM reporting to them), `super_admin` (any BDM) | Query `date_from`, `date_to` (required, inclusive IST dates; `date_from > date_to` → `422` "date_from must be on or before date_to"; more than 31 days → `422` "The calendar shows at most 31 days"), `bdm_user_id` (a `bdm` sending it → `422` "bdm_user_id is only for managers"; a manager / super_admin omitting it → `422` "Choose a BDM"; outside the team or not a BDM → `404` "BDM not found"). Other roles `403` "BDM role required"; a BDM without a profile `403`. Response `{bdm: {id, full_name, active}, date_from, date_to, today, truncated, appointments: [{id, code, day, starts_at, duration_minutes, appointment_type, status, seminar, organization: {id, code, name, archived}}], trips: [{id, code, travel_date, return_date, from_place, to_place, mode, approval_status, travel_status}], tasks: [{id, kind, title, due_on, status, overdue, organization \| null}]}`. Excludes cancelled appointments, cancelled or rejected trips, cancelled tasks; a trip is included when it overlaps the range. `day` = the IST date of `starts_at`; `seminar` = type `seminar_workshop`, `seminar`, `workshop` or `student_seminar`. At most 500 rows per list (`truncated: true` when cut) |
+| `GET /bdm/my-day` | Authenticated | `bdm` (own) | No parameters (own scope from the session). Other roles `403` "BDM role required"; a BDM without a profile `403`. Response `{today, bdm_type, appointments: {count, truncated, items: [{id, code, starts_at, duration_minutes, appointment_type, status, organization: {id, code, name, org_type, archived}}]}, trips: {total, items: [{id, code, travel_date, return_date, from_place, to_place, approval_status, travel_status, appointment_count}]}, follow_ups: {total, groups: [{key, count}]}, tiles: [{key, label, tracked, value, note}]}`. `bdm-014`, `DEC-SCOPE-097`: today = IST; appointments exclude cancelled (at most 50 listed, `count` exact); trips start after today, not cancelled / rejected (next 5, `total` exact), `appointment_count` = non-cancelled linked appointments; follow-ups = open `follow_up` tasks due ≤ today, grouped by organization type, `none` (no organization) or `mou` (source `mou`); `tiles` = the BDM type's eight Appendix B.2 tiles in order, `value: null` with a `note` when not tracked (T-A6, T-K7). Read-only; a fixed number of statements |
 
 ## 12C. Telecaller roles (`tel-001`) — addendum, 2026-10-05
 
@@ -1193,9 +1194,50 @@ or marking a no-show, or acting on a handed-over lead; `409` "Appointment is alr
 A stage move that closes the lead (`POST /telecaller/leads/{id}/stage`, the admin move) also cancels its open appointment: an event row with reason "Lead closed" and an audit row `lead_appointment.cancel {reason: lead_closed}`; the lead stays closed (AP15). `PATCH /workflows/overseas/appointments/{id}` is `404` for a lead appointment (AP12); its student behaviour is unchanged. `GET
 /portal/it/counselor/appointments` returns a header-only payload (AP14).
 
+## 12R. Lead call logging (`tel-010`) — addendum, 2026-10-07
+
+`DEC-SCOPE-096`; design spec `docs/superpowers/specs/2026-10-07-tel-010-call-logging-design.md` §4. Migration `0092_lead_calls`. Reads use
+the lead's scope (`lead_pipeline.scope`; other roles `403`, signed out `401`, out of scope `404`). Only the lead's telecaller logs (`403`
+for managers / super_admin); a handed-over lead is `403` for its telecaller; a closed lead `409`. (§12Q is tel-016's.)
+
+Call item: `{id, lead_id, occurred_at, duration_seconds, call_type: outgoing|incoming, outcome, outcome_label, connected, remarks, caller:
+{id, full_name}, created_at, can_change}`. `outcome` is one of `interested, need_information, follow_up_required, appointment_fixed,
+not_interested, wrong_number, busy, no_answer, switched_off, call_back_requested, already_joined, duplicate_lead, not_eligible`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/leads/{id}/calls?limit=&offset=` | `200` page of the lead's calls, newest first |
+| `POST /telecaller/leads/{id}/calls` | `{occurred_at? (with offset, default now), duration_seconds (0–14400), call_type, outcome, remarks? (≤ 2000), next_follow_up? (§12P create body)}` → `201 {call, lead: {id, status, status_label, stage_changed_at}, follow_up_id}`. The outcome's pipeline effect applies (DEC-SCOPE-096 D3). `422` on the field: a time > 5 min ahead or > 7 IST days back (`occurred_at`), Duplicate Lead without `remarks`, Follow-up Required / Call Back Requested without `next_follow_up`, a closing outcome with one, an invalid next follow-up (nothing is written). `409` closed lead or 300 calls that IST day. Not idempotent. Audit `lead_call.create` (lead id, outcome, follow-up id) |
+| `PATCH /telecaller/calls/{id}` | `{occurred_at?, duration_seconds?, call_type?, remarks?}` (`outcome` → `422`) → `200` item. Only the caller (`403`), lead not handed over (`403`), the call's IST day only (`409`); a moved time must stay in today (`422`); a Duplicate Lead keeps its remarks (`422`). Audit `lead_call.update` with field names |
+| `DELETE /telecaller/calls/{id}` | `204`; same gates as `PATCH`. Never reverses a stage move or a follow-up. Audit `lead_call.delete` |
+| `GET /telecaller/calls/day-counts?day=YYYY-MM-DD` | `200 {day, total, connected, not_connected, by_outcome: {<every outcome>: n}}` for calls *made* that IST day (default today) by a telecaller (own), a manager's direct reports, or anyone (super_admin); other roles `403` |
+
+`GET /telecaller/follow-ups` and `GET /telecaller/leads/{id}/follow-ups` items gain `lead.last_call: {occurred_at, outcome} | null` (the
+lead's newest call; tel-011 F8).
+
+## 12S. BDM meeting requests (`tel-019`) — addendum, 2026-10-07
+
+`DEC-SCOPE-098`; design spec `docs/superpowers/specs/2026-10-07-tel-019-bdm-meeting-requests-design.md` §3. Migration
+`0093_bdm_meeting_requests` (§12R is tel-010's). Signed out `401`. The request shape: `{id, code, request_type, type_label, bdm_type,
+organization_name, person_name, contact_phone, contact_email, proposed_at, mode, location, purpose, remarks, status, requester: {id,
+full_name}, bdm: {id, full_name} | null, appointment: {id, code, starts_at, status} | null, decline_reason, decided_at, created_at,
+permissions: {can_accept, can_decline}}`. Lists are `{items, total, limit, offset}` (`limit` ≤ 100); a bad `status` is `422`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/meeting-requests/options` | `telecaller` only (else `403`). `200 {types: [{key, label, bdm_type}], bdms: {college, agent, school: [{id, full_name}]}, modes}` — active BDMs by name |
+| `POST /telecaller/meeting-requests` | `telecaller` only. Body `{request_type, bdm_user_id?, organization_name, person_name, contact_phone, contact_email?, proposed_at, mode, location?, purpose, remarks?}`. `422` fields, lengths, control characters, phone / email format, past / beyond 366 days, a named BDM that is not an active BDM of the type (corporate → college). `201` the shape above (`pending`); audit `bdm_meeting_request.create`. **Not idempotent** (as bdm-006 R-A5): a retry files a second request; the form disables its button while sending |
+| `GET /telecaller/meeting-requests?status=&limit=&offset=` | `telecaller` only. Own requests, newest first |
+| `GET /bdm/meeting-requests?status=&limit=&offset=` | `bdm`: their type's pool + theirs; `bdm_manager`: their team's + the whole pool; `super_admin`: all; else `403`. Pending first — those named for the caller ahead of the pool (QA-02), then soonest proposed first — then decided (latest first) |
+| `GET /bdm/meeting-requests/{id}` | Same scope; `404` outside it |
+| `POST /bdm/meeting-requests/{id}/accept` | `bdm` only (`403` manager / super_admin). Body = `POST /bdm/appointments` (§12-bdm-006). In order: `403` role / profile; `404` scope (re-checked under the row lock — a pool request another BDM took is `404`); `409` "This request is already accepted/declined"; then every bdm-006 create rule (`404` organization out of type, `403` not assigned, `422` archived / foreign contact / type / past, `409 possible_overlap` unless `confirm_overlap`). A refusal rolls the whole accept back (the request stays pending). `200 {appointment: <bdm-006 detail>, meeting_request: <shape>}`; audits `bdm_appointment.create` and `bdm_meeting_request.accept`. Safe to retry: a second accept is `409`, never a second appointment |
+| `POST /bdm/meeting-requests/{id}/decline` | `bdm` only. Body `{reason}` (required, ≤ 500). Same `403` / `404` / `409` order. `200` the shape (`declined`, final); audit `bdm_meeting_request.decline` (no reason text) |
+
+Audit rows and logs carry ids, codes, types and statuses only — never the person, phone, email or free text.
+
 ## 12T. Lead handover, return and student link (`tel-018`) — addendum, 2026-10-07
 
-`DEC-SCOPE-098`; design spec `docs/superpowers/specs/2026-10-07-tel-018-handover-design.md` §3. No migration. Signed out `401`. The
+`DEC-SCOPE-099`; design spec `docs/superpowers/specs/2026-10-07-tel-018-handover-design.md` §3. No migration. Signed out `401`. The
 counselor lead shape is §12J's lead row (with `converted_user`) plus `message`, `milestones: {student: {id, full_name, email} | null,
 items: [{kind: enrollment|application|visa, label, status, reference, at}]}` and `permissions: {return, link, unlink}`.
 

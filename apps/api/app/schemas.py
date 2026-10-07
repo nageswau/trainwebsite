@@ -33,11 +33,15 @@ from app.models import (
     BDM_APPOINTMENT_STATUSES,
     BDM_GRADE_MAX,
     BDM_GRADE_MIN,
+    BDM_MEETING_REQUEST_TYPES,
     BDM_MOU_SETTABLE,
     BDM_MOU_STATUSES,
     BDM_STAFF_MAX,
     GENDERS,
     LEAD_APPOINTMENT_TYPE_LABELS,
+    LEAD_CALL_MAX_SECONDS,
+    LEAD_CALL_OUTCOMES,
+    LEAD_CALL_TYPES,
     LEAD_FOLLOW_UP_REASONS,
     LEAD_PRIORITIES,
     QUAL_MODES,
@@ -5267,6 +5271,71 @@ class BdmCalendarOut(BaseModel):
     tasks: list[BdmCalendarTask]
 
 
+# --- bdm-014 (DEC-SCOPE-097): My Day ---------------------------------------------------------------------------------------------
+class BdmMyDayOrgRef(BdmAppointmentOrgRef):
+    org_type: str
+
+
+class BdmMyDayAppointment(BaseModel):
+    id: UUID
+    code: str
+    starts_at: datetime
+    duration_minutes: int
+    appointment_type: str
+    status: str
+    organization: BdmMyDayOrgRef
+
+
+class BdmMyDayAppointments(BaseModel):
+    count: int
+    truncated: bool
+    items: list[BdmMyDayAppointment]
+
+
+class BdmMyDayTrip(BaseModel):
+    id: UUID
+    code: str
+    travel_date: date
+    return_date: date
+    from_place: str
+    to_place: str
+    approval_status: str
+    travel_status: str
+    appointment_count: int
+
+
+class BdmMyDayTrips(BaseModel):
+    total: int
+    items: list[BdmMyDayTrip]
+
+
+class BdmMyDayFollowUpGroup(BaseModel):
+    key: str  # an org_type, "mou" (source = mou) or "none" (no organization)
+    count: int
+
+
+class BdmMyDayFollowUps(BaseModel):
+    total: int
+    groups: list[BdmMyDayFollowUpGroup]
+
+
+class BdmMyDayTile(BaseModel):
+    key: str  # the Appendix B.2 ID, e.g. "T-A1"
+    label: str
+    tracked: bool
+    value: int | None  # null when not tracked -- never a fabricated 0
+    note: str | None
+
+
+class BdmMyDayOut(BaseModel):
+    today: date
+    bdm_type: str
+    appointments: BdmMyDayAppointments
+    trips: BdmMyDayTrips
+    follow_ups: BdmMyDayFollowUps
+    tiles: list[BdmMyDayTile]
+
+
 # --- tel-022 (DEC-SCOPE-080): daily + monthly targets ------------------------------------------------------------------------
 TelTargetPeriod = Literal["daily", "monthly"]
 TelTargetKpi = Literal[TEL_TARGET_KPIS]
@@ -5785,7 +5854,93 @@ class LeadFollowUpUpdate(BaseModel):
         return self
 
 
-# --- tel-018 (DEC-SCOPE-098, spec §3.3): handover, return and the counselor's student link ----------------------------------------
+# tel-010 (DEC-SCOPE-096): a call on a lead. The caller, lead and timestamps are server-owned (unknown fields here); the outcome rules that
+# need the lead (closed, follow-up required, duplicate remarks) are the service's.
+LeadCallType = Literal[LEAD_CALL_TYPES]
+LeadCallOutcome = Literal[LEAD_CALL_OUTCOMES]
+LeadCallDuration = Annotated[int, Field(ge=0, le=LEAD_CALL_MAX_SECONDS)]
+LeadCallRemarks = Annotated[Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, {"remarks": "Remarks"}))]
+
+
+class LeadCallCreate(BaseModel):
+    """D6: `occurred_at` defaults to now. D5: `next_follow_up` is tel-011's create body."""
+
+    model_config = ConfigDict(extra="forbid")
+    occurred_at: AwareDatetime | None = None
+    duration_seconds: LeadCallDuration
+    call_type: LeadCallType
+    outcome: LeadCallOutcome
+    remarks: LeadCallRemarks = None
+    next_follow_up: LeadFollowUpCreate | None = None
+
+
+class LeadCallUpdate(BaseModel):
+    """CL4: same-day details only -- the outcome is locked (an unknown field here). Time, duration and type can't be cleared."""
+
+    model_config = ConfigDict(extra="forbid")
+    occurred_at: AwareDatetime | None = None
+    duration_seconds: LeadCallDuration | None = None
+    call_type: LeadCallType | None = None
+    remarks: LeadCallRemarks = None
+
+    @model_validator(mode="after")
+    def _required_stay_set(self):
+        for key, label in (("occurred_at", "Call time"), ("duration_seconds", "Duration"), ("call_type", "Call type")):
+            if key in self.model_fields_set and getattr(self, key) is None:
+                raise ValueError(f"{label} can't be removed")
+        return self
+
+
+# --- tel-019 (DEC-SCOPE-098, spec §3): BDM meeting requests ----------------------------------------------------------------------------
+MEETING_REQUEST_LABELS = {
+    "organization_name": "Organization", "person_name": "Person", "contact_phone": "Phone", "contact_email": "Email", "location": "Location",
+    "purpose": "Purpose", "remarks": "Remarks",
+}
+_MEETING_PHONE = re.compile(r"^\+?[0-9 ()-]{7,30}$")
+_MEETING_EMAIL = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")  # LoginRequest's rule: `.local` demo addresses stay valid
+
+
+def _meeting_text(max_length: int, required: bool, multiline: bool = False):
+    pattern = _BDM_MULTILINE_CONTROL if multiline else _BDM_CONTROL
+    text = Annotated[str, _trimmed(max_length)] if required else Annotated[str, _trimmed(max_length)] | None
+    return Annotated[text, AfterValidator(_trip_text(pattern, required, MEETING_REQUEST_LABELS))]
+
+
+def _meeting_phone(value: str) -> str:
+    if not _MEETING_PHONE.fullmatch(value):
+        raise ValueError("Phone must be 7 to 30 characters: digits, spaces and + - ( )")
+    return value
+
+
+def _meeting_email(value: str | None) -> str | None:
+    if value and not _MEETING_EMAIL.fullmatch(value):
+        raise ValueError("Enter a valid email address")
+    return value or None
+
+
+class MeetingRequestCreate(BaseModel):
+    """MR7: what the telecaller knows. The BDM type follows from the request type (MR5); a named BDM is checked in the service (MR8).
+    Server-owned fields (code, status, the deciding BDM, the appointment) are unknown fields here."""
+
+    model_config = ConfigDict(extra="forbid")
+    request_type: Literal[BDM_MEETING_REQUEST_TYPES]
+    bdm_user_id: UUID | None = None
+    organization_name: _meeting_text(200, True)
+    person_name: _meeting_text(200, True)
+    contact_phone: Annotated[str, _trimmed(30), AfterValidator(_meeting_phone)]
+    contact_email: Annotated[Annotated[str, _trimmed(255)] | None, AfterValidator(_meeting_email)] = None
+    proposed_at: BdmApptStart
+    mode: Literal[APPOINTMENT_MODES]
+    location: _meeting_text(255, False) = None
+    purpose: _meeting_text(1000, True, multiline=True)
+    remarks: _meeting_text(2000, False, multiline=True) = None
+
+
+class MeetingRequestDecline(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: BdmApptReason
+
+# --- tel-018 (DEC-SCOPE-099, spec §3.3): handover, return and the counselor's student link ----------------------------------------
 class LeadHandoverIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     counselor_id: UUID

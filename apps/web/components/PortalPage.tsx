@@ -37,7 +37,7 @@ const main=agentApplications?<AgentApplicationsSection user={user}/>:agentDocume
 // AGN-020 (DEC-SCOPE-067 R8): agency members get the tabbed reports (the Universities precedent: the panel is the page). The payload
 // is still the page's gate -- staff without Reports get its 403 card above -- and its old summary table is no longer shown.
 :agent&&section==="reports"&&user.role==="agent"?<AgentReportsPanel memberRole={user.agent_member_role}/>
-// tel-018 (DEC-SCOPE-098): the counselor's leads read their own paged API, each linking to the lead (return, student link).
+// tel-018 (DEC-SCOPE-099): the counselor's leads read their own paged API, each linking to the lead (return, student link).
 :role==="counselor"&&section==="leads"?<CounselorLeadsPanel division={division}/>
 :role==="counselor"&&section==="appointments"?<>
 {/* tel-016 (DEC-SCOPE-095 AP14): lead bookings first; the overseas counselor keeps the student appointment table below, the IT payload is header-only */}

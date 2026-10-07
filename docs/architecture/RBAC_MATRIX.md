@@ -543,6 +543,9 @@ An appointment stays with its BDM when the organization is reassigned. `bdm_user
 `bdm_manager`: one BDM who reports to them (`bdm_user_id` required; anyone else `404`). `super_admin`: any BDM (`404` if not a BDM).
 Every other role `403`. No write path.
 
+**BDM My Day (`bdm-014`, `DEC-SCOPE-097`).** Read-only `GET /bdm/my-day`. `bdm`: own records only, from the session (no id parameter).
+Every other role `403` (the page sends a `bdm_manager` to `/bdm/manager/dashboard`). No write path.
+
 ### 2.14 Telecaller CRM *(net-new, added 2026-10-05 — `DEC-SCOPE-073`, `tel-001`)*
 Authorization follows the inline pattern (`User.role` check → `services/telecaller.py` scope helper → write); no `require_*` dependency. Permission bundles: `telecaller` → `telecaller:self`, `telecaller_manager` → `telecaller:team` (coarse; scope is enforced in the query layer).
 
@@ -670,7 +673,34 @@ lead → counselor user → appointment.
 | `counselor` (IT or overseas) | list own lead appointments; confirm, complete, no-show (after the start), reschedule, cancel | `staff_id` = self; another counselor's is `404` | `tel-016` |
 | every other role | none → `403` on the lead routes and the counselor list, `404` on an action | — | `tel-016` |
 
-### 2.26 Lead handover, return and student link *(net-new, added 2026-10-07 — `DEC-SCOPE-098`, `tel-018`)*
+### 2.24 Lead call logging *(net-new, added 2026-10-07 — `DEC-SCOPE-096`, `tel-010`)*
+
+Inline pattern: scope (tel-004 `lead_pipeline.scope`, joined through the call's lead; out of scope `404`), the lead lock, then the role
+(`lead_calls.require_telecaller`), the caller (`caller_user_id` = self, for edit/delete) and handover (`telecaller_leads.require_writable`),
+then the call's IST day. Every write is audited (`lead_call.*`, ids / outcome / field names — never remarks).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | list a lead's calls; log a call; edit / delete their own calls of the same IST day; day counts of their own calls | calls on leads where `telecaller_user_id` = self; **read-only** on a handed-over lead (`403`); no new call on a closed lead (`409`); a reassigned lead's earlier calls are visible but not changeable (`403`) | `tel-010` |
+| `telecaller_manager` | read a lead's calls; day counts of their direct reports' calls; writes `403` | direct reports' leads + their teams' unassigned leads (T23) | `tel-010` |
+| `super_admin` | read; day counts of all calls (writes `403`) | all leads | `tel-010` |
+| every other role | none → `403` "Telecaller role required" | — | `tel-010` |
+
+### 2.25 BDM meeting requests *(net-new, added 2026-10-07 — `DEC-SCOPE-098`, `tel-019`)*
+
+The inline pattern: `telecaller_context` on the telecaller routes, `services.bdm_meeting_requests.scope_filters` on the BDM routes (§2.24
+is tel-010's). An id outside scope is `404`; accept and decline re-check the scope under the request's row lock. Lock order: request →
+organization → appointment (then bdm-006's own).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | read the options; **file** a request (pool, or a named active BDM of the type); list own | own requests only | `tel-019` |
+| `bdm` | list / read; **accept** (books a bdm-006 appointment on one of their organizations) or **decline** with a reason, while pending | their type's open pool + requests named for or decided by them; another type's or a taken pool request is `404` | `tel-019` |
+| `bdm_manager` | list / read only (accept / decline `403`) | their team's requests + the whole open pool | `tel-019` |
+| `super_admin` | list / read only (accept / decline `403`) | all | `tel-019` |
+| every other role (incl. `telecaller_manager`) | none → `403` | — | `tel-019` |
+
+### 2.26 Lead handover, return and student link *(net-new, added 2026-10-07 — `DEC-SCOPE-099`, `tel-018`)*
 
 The same inline pattern as §2.19. The handover uses `lead_pipeline.scope` then `telecaller_leads.require_writable`; the counselor routes
 filter by `owner_id` = self **and** the counselor's division (`lead_handover.counselor_scope`). Locks: lead → counselor / student →

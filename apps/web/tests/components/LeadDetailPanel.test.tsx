@@ -43,6 +43,12 @@ beforeEach(() => {
   scripts = () => res(pageOf([]));
   patchReply = (body) => res({ ...detail(), ...body });
   fetchMock = vi.fn((url: string, init?: RequestInit) => {
+    if (url.startsWith("/api/v1/telecaller/leads/L1/calls")) { // tel-010's section
+      return Promise.resolve(init?.method === "POST" ? res({ call: { id: "C1", lead_id: "L1", occurred_at: "2026-10-07T05:30:00Z", duration_seconds: 60,
+        call_type: "outgoing", outcome: "already_joined", outcome_label: "Already Joined Elsewhere", connected: true, remarks: null,
+        caller: { id: "t1", full_name: "Tara Caller" }, created_at: "2026-10-07T05:31:00Z", can_change: true },
+        lead: { id: "L1", status: "lost", status_label: "Lost" }, follow_up_id: null }, 201) : res(pageOf([])));
+    }
     if (init?.method === "PATCH") return Promise.resolve(patchReply(JSON.parse(String(init.body))));
     if (init?.method === "POST") return Promise.resolve(res({ id: "L1", status: "qualified", status_label: "Qualified", stage_changed_at: "x" }));
     if (url.startsWith("/api/v1/telecaller/leads/L1/timeline")) return Promise.resolve(res(pageOf(timeline)));
@@ -73,6 +79,36 @@ describe("LeadDetailPanel (tel-008)", () => {
     render(<LeadDetailPanel initial={detail({ status: "lost", status_label: "Lost" })} timeline={pageOf([])} canReopen={false} />); // F4
     expect(await screen.findByText("No follow-ups yet.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Add follow-up" })).toBeNull();
+  });
+
+  it("offers Log call only to the lead's telecaller on an open lead (tel-010 D8, CL2)", async () => {
+    render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen={false} />);
+    expect(await screen.findByText("No calls logged yet.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Log call" })).toBeTruthy();
+    cleanup();
+    render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen />);
+    expect(await screen.findByText("No calls logged yet.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Log call" })).toBeNull();
+    cleanup();
+    render(<LeadDetailPanel initial={detail({ status: "lost", status_label: "Lost" })} timeline={pageOf([])} canReopen={false} />);
+    expect(await screen.findByText("No calls logged yet.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Log call" })).toBeNull();
+  });
+
+  it("opens the call log from Call, and a closing outcome updates the stage and re-reads the follow-ups (tel-010)", async () => {
+    render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen={false} />);
+    await screen.findByText("No calls logged yet.");
+    const link = screen.getByRole("link", { name: "Call Asha Rao" });
+    link.addEventListener("click", (e) => e.preventDefault()); // jsdom can't follow tel:
+    fireEvent.click(link);
+    const form = screen.getByRole("form", { name: "Log call" });
+    fireEvent.change(within(form).getByLabelText("Outcome (required)"), { target: { value: "already_joined" } });
+    const followUpReads = () => fetchMock.mock.calls.filter(([u]) => String(u).startsWith("/api/v1/telecaller/leads/L1/follow-ups")).length;
+    const before = followUpReads();
+    fireEvent.click(within(form).getByRole("button", { name: "Save call" }));
+    expect(await screen.findByText("Call logged.")).toBeTruthy();
+    await waitFor(() => expect(screen.getByText("Lost", { selector: "strong" })).toBeTruthy());
+    await waitFor(() => expect(followUpReads()).toBeGreaterThan(before));
   });
 
   it("shows the counselling appointments, with Book only for the lead's telecaller on an open lead (tel-016)", async () => {

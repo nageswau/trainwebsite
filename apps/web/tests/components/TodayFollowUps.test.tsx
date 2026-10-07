@@ -52,6 +52,17 @@ describe("TodayFollowUps (tel-011)", () => {
     expect(screen.getByRole("button", { name: "Overdue (1)" })).toBeTruthy();
   });
 
+  it("shows the card's Last Call (tel-010 D10) and says when there is none", async () => {
+    listReply = () => res(page([followUp({ lead: { ...followUp().lead, last_call: { occurred_at: "2026-10-06T08:30:00Z", outcome: "busy" } } }),
+      followUp({ id: "F2", lead: { ...followUp().lead, id: "L2", last_call: null } })]));
+    render(<TodayFollowUps leadBasePath="/telecaller/leads" showTelecaller={false} />);
+    const cards = within(await screen.findByRole("list", { name: "Follow-ups" })).getAllByRole("listitem");
+    expect(cards[0].textContent).toContain("Last call");
+    expect(cards[0].textContent).toContain("Busy");
+    expect(cards[0].textContent).toContain("14:00");
+    expect(cards[1].textContent).toContain("No calls yet");
+  });
+
   it("switches to the overdue view and another day through the URL", async () => {
     render(<TodayFollowUps leadBasePath="/telecaller/leads" showTelecaller={false} />);
     fireEvent.click(await screen.findByRole("button", { name: "Overdue (1)" }));

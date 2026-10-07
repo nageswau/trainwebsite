@@ -1,4 +1,4 @@
-"""tel-018 -- the counselor returns a lead (spec §3.2; T19; DEC-SCOPE-098 HO4; AC2)."""
+"""tel-018 -- the counselor returns a lead (spec §3.2; T19; DEC-SCOPE-099 HO4; AC2)."""
 
 from datetime import UTC, datetime, timedelta
 

@@ -1,4 +1,4 @@
-// tel-018 (DEC-SCOPE-098, API §12T): the counselor handover, the counselor's leads, the return and the student link. Labels are display
+// tel-018 (DEC-SCOPE-099, API §12T): the counselor handover, the counselor's leads, the return and the student link. Labels are display
 // only; the API decides scope, `permissions` and every rule.
 import type { PersonRef, TelecallerLead } from "@/lib/telecallerLeads";
 
