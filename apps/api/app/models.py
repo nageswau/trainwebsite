@@ -843,6 +843,112 @@ class LeadEnquiry(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+QUAL_SKILL_LEVELS = ("beginner", "intermediate", "advanced")
+QUAL_MODES = ("online", "offline")
+QUAL_STUDY_LEVELS = ("ug", "masters")
+QUAL_PASSPORT = ("none", "applied", "valid")
+
+
+def _in(column: str, values: tuple[str, ...]) -> str:
+    return f"{column} IS NULL OR {column} IN ({', '.join(repr(v) for v in values)})"
+
+
+class LeadQualification(Base, TimestampMixin):
+    """tel-009 (DEC-SCOPE-093, EVID-019 §4): a lead's qualification -- the basic answers plus the IT or overseas requirement. One row per
+    lead; the shared answers (qualification, passing year, city, state) stay on `enquiries` (QD1). The group not shown for the lead's
+    current product keeps its values (AC3)."""
+
+    __tablename__ = "lead_qualifications"
+    __table_args__ = (
+        CheckConstraint("work_experience_years IS NULL OR work_experience_years BETWEEN 0 AND 50", name="ck_lead_qualifications_experience"),
+        CheckConstraint("academic_percentage IS NULL OR academic_percentage BETWEEN 0 AND 100", name="ck_lead_qualifications_percentage"),
+        CheckConstraint(_in("it_skill_level", QUAL_SKILL_LEVELS), name="ck_lead_qualifications_skill_level"),
+        CheckConstraint(_in("preferred_mode", QUAL_MODES), name="ck_lead_qualifications_mode"),
+        CheckConstraint(_in("study_level", QUAL_STUDY_LEVELS), name="ck_lead_qualifications_study_level"),
+        CheckConstraint(_in("passport_status", QUAL_PASSPORT), name="ck_lead_qualifications_passport"),
+    )
+    lead_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="CASCADE"), primary_key=True)
+    current_org: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    work_experience_years: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    it_skill_level: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    career_objective: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    preferred_batch: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    budget_range: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    preferred_mode: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    study_level: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    preferred_course: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    intake: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    academic_percentage: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    english_test_status: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    passport_status: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+class LeadImportBatch(Base, TimestampMixin):
+    """tel-006 (DEC-SCOPE-091, IM1): one CSV lead import for a campaign. The file is never stored (R9): only its hash, the counts and each
+    row's outcome {row_number, status, lead_id, error} -- no names, phones or emails. The Idempotency-Key is scoped to the uploader (R8)."""
+
+    __tablename__ = "lead_import_batches"
+    __table_args__ = (
+        UniqueConstraint("uploaded_by_user_id", "idempotency_key", name="uq_lead_import_batches_key"),
+        CheckConstraint("division IN ('it', 'overseas')", name="ck_lead_import_batches_division"),
+        CheckConstraint("created_count + attached_count + rejected_count = total_rows", name="ck_lead_import_batches_counts"),
+        Index("ix_lead_import_batches_uploader", "uploaded_by_user_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    campaign_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("tel_campaigns.id"))
+    division: Mapped[str] = mapped_column(String(20))
+    uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    idempotency_key: Mapped[str] = mapped_column(String(120))
+    file_sha256: Mapped[str] = mapped_column(String(64))
+    total_rows: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    created_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    attached_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    rejected_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    results_json: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+
+
+# tel-011 (DEC-SCOPE-094): the EVID-019 §7 follow-up reasons (L284-L302) and states; migration 0090 repeats LEAD_FOLLOW_UP_CHECKS
+# (test_tel_011_migration asserts they stay identical). Labels live in the web client.
+LEAD_FOLLOW_UP_REASONS = (
+    "discuss_with_parents", "course_details", "fee_details", "waiting_salary", "waiting_documents", "comparing_courses", "next_month",
+    "next_intake", "university_information", "counselor_call",
+)
+LEAD_FOLLOW_UP_STATUSES = ("open", "done", "cancelled")
+LEAD_FOLLOW_UP_CHECKS = {
+    "ck_lead_follow_ups_reason": f"reason IN ({', '.join(repr(r) for r in LEAD_FOLLOW_UP_REASONS)})",
+    "ck_lead_follow_ups_status": f"status IN ({', '.join(repr(s) for s in LEAD_FOLLOW_UP_STATUSES)})",
+    "ck_lead_follow_ups_state": (
+        "(status = 'done') = (completed_at IS NOT NULL) AND (completed_at IS NULL) = (completed_by_user_id IS NULL) "
+        "AND (status = 'cancelled') = (cancelled_at IS NOT NULL) AND (cancelled_at IS NULL) = (cancel_reason IS NULL)"
+    ),
+}
+
+
+class LeadFollowUp(Base, TimestampMixin):
+    """tel-011 (DEC-SCOPE-094): a follow-up on a lead. It belongs to the lead (F3): whoever has the lead in scope sees it, so a
+    reassignment moves it with no rewrite; `created_by` / `completed_by` keep who did what. A closing stage move cancels the open ones (F4)."""
+
+    __tablename__ = "lead_follow_ups"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in LEAD_FOLLOW_UP_CHECKS.items()),
+        Index("ix_lead_follow_ups_lead", "lead_id", "status", "due_at"),
+        Index("ix_lead_follow_ups_open_due", "due_at", postgresql_where=text("status = 'open'")),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    lead_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="RESTRICT"))
+    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    reason: Mapped[str] = mapped_column(String(40))
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    next_action: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="open", server_default=text("'open'"))
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+
 class ContentPage(Base, TimestampMixin):
     __tablename__ = "content_pages"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -1643,6 +1749,7 @@ class BdmAppointment(Base, TimestampMixin):
         Index("ix_bdm_appointments_bdm_starts", "bdm_user_id", "starts_at"),
         Index("ix_bdm_appointments_org_starts", "organization_id", "starts_at"),
         Index("ix_bdm_appointments_contact", "contact_id"),
+        Index("ix_bdm_appointments_trip", "trip_id"),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     code: Mapped[str] = mapped_column(String(20))
@@ -1664,6 +1771,8 @@ class BdmAppointment(Base, TimestampMixin):
     next_follow_up_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     expected_leads: Mapped[int | None] = mapped_column(Integer, nullable=True)
     expected_revenue: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    # bdm-011 (DEC-SCOPE-092): the trip this meeting is part of -- the BDM's own, covering its IST date (services/bdm_travel).
+    trip_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_trips.id", ondelete="RESTRICT"), nullable=True)
 
 
 class BdmAppointmentEvent(Base):

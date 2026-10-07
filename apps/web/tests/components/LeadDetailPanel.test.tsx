@@ -25,6 +25,14 @@ const products = pageOf([{ id: "p1", group: "it", name: "Cyber Security", team: 
 const script = { id: "s1", product: { id: "p1", name: "Cyber Security", group: "it", active: true }, name: "Cyber Security call", active: true,
   steps: [{ title: "Greet", notes: "Introduce yourself" }, { title: "Ask about background", notes: null }] };
 
+// tel-009: the qualification section the panel reads on open (its own behaviour is LeadQualificationForm.test.tsx's)
+const qual = {
+  lead_id: "L1", product: { id: "p1", name: "Cyber Security", group: "it" }, product_group: "it", qualification: "B.Tech", passing_year: 2024,
+  city: "Hyderabad", state: "Telangana", current_org: null, work_experience_years: null, it_skill_level: null, career_objective: null,
+  preferred_batch: null, budget_range: null, preferred_mode: null, study_level: null, preferred_course: null, intake: null,
+  academic_percentage: null, english_test_status: null, passport_status: null, read_only: false, updated_by: null, updated_at: null,
+};
+
 let fetchMock: ReturnType<typeof vi.fn>;
 let patchReply: (body: Record<string, unknown>) => Response;
 let timeline: TimelineRow[];
@@ -38,8 +46,10 @@ beforeEach(() => {
     if (init?.method === "PATCH") return Promise.resolve(patchReply(JSON.parse(String(init.body))));
     if (init?.method === "POST") return Promise.resolve(res({ id: "L1", status: "qualified", status_label: "Qualified", stage_changed_at: "x" }));
     if (url.startsWith("/api/v1/telecaller/leads/L1/timeline")) return Promise.resolve(res(pageOf(timeline)));
+    if (url.startsWith("/api/v1/telecaller/leads/L1/follow-ups")) return Promise.resolve(res(pageOf([]))); // tel-011's section
     if (url.startsWith("/api/v1/telecaller/products")) return Promise.resolve(res(products));
     if (url.startsWith("/api/v1/telecaller/scripts")) return Promise.resolve(scripts());
+    if (url === "/api/v1/telecaller/leads/L1/qualification") return Promise.resolve(res(init?.method === "PUT" ? { ...qual, ...JSON.parse(String(init.body)) } : qual));
     return Promise.resolve(res({}, 404));
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -50,6 +60,20 @@ afterEach(() => {
 });
 
 describe("LeadDetailPanel (tel-008)", () => {
+  it("shows the follow-ups section, with Add only for the lead's telecaller on an open lead (tel-011)", async () => {
+    render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen={false} />);
+    expect(await screen.findByText("No follow-ups yet.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add follow-up" })).toBeTruthy();
+    cleanup();
+    render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen />); // a manager reads only (F2)
+    expect(await screen.findByText("No follow-ups yet.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Add follow-up" })).toBeNull();
+    cleanup();
+    render(<LeadDetailPanel initial={detail({ status: "lost", status_label: "Lost" })} timeline={pageOf([])} canReopen={false} />); // F4
+    expect(await screen.findByText("No follow-ups yet.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Add follow-up" })).toBeNull();
+  });
+
   it("shows the §2 lead fields, the enquiry and a Call link", () => {
     render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen={false} />);
     for (const text of ["LD-000042", "Hyderabad", "Telangana", "B.Tech", "2024", "JNTU", "Instagram", "Sep 2026", "Cyber Security", "Tara Caller", "Please call after 6pm"]) {
@@ -181,5 +205,22 @@ describe("LeadDetailPanel (tel-008)", () => {
     render(<LeadDetailPanel initial={detail({ email: null })} timeline={pageOf([])} canReopen={false} />);
     fireEvent.click(screen.getByRole("button", { name: "Edit details" }));
     expect(screen.getByLabelText("Email").getAttribute("aria-required")).toBeNull();
+  });
+
+  it("shows the qualification section and a save updates the shared Lead details (tel-009 QD1)", async () => {
+    render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen={false} />);
+    const section = screen.getByRole("region", { name: "Qualification" });
+    fireEvent.click(await within(section).findByRole("button", { name: "Edit qualification" }));
+    expect(within(section).getByRole("group", { name: "IT training requirement" })).toBeTruthy();
+    fireEvent.change(within(section).getByLabelText("City"), { target: { value: "Pune" } });
+    fireEvent.click(within(section).getByRole("button", { name: "Save qualification" }));
+    expect(await within(section).findByText("Qualification saved.")).toBeTruthy();
+    expect(within(screen.getByRole("region", { name: "Lead details" })).getByText("Pune")).toBeTruthy();
+  });
+
+  it("a handed-over lead's qualification has no edit button (tel-009 AC6)", async () => {
+    render(<LeadDetailPanel initial={detail({ read_only: true })} timeline={pageOf([])} canReopen={false} />);
+    expect(await screen.findByText("IT training requirement")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Edit qualification" })).toBeNull();
   });
 });

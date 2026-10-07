@@ -32,6 +32,7 @@ from app.schemas import (
 )
 from app.services import bdm_appointments as svc
 from app.services import bdm_organizations as org_svc
+from app.services import bdm_travel as travel
 from app.services.bdm import bdm_context
 
 router = APIRouter(prefix="/bdm/appointments", tags=["bdm-appointments"])
@@ -132,8 +133,11 @@ async def create_appointment(payload: BdmAppointmentCreate, user: User = Depends
     contact = await _contact_of(db, org, payload.contact_id)
     _type_allowed(profile.bdm_type, payload.appointment_type)
     svc.require_future(payload.starts_at, await svc.db_now(db))
+    if payload.trip_id is not None:
+        await travel.linkable_trip(db, user, payload.trip_id, payload.starts_at)
     overlaps = await _check_overlap(db, user, payload.starts_at, payload.duration_minutes, payload.confirm_overlap)
     appt = BdmAppointment(
+        trip_id=payload.trip_id,
         code=await svc.next_code(db),
         bdm_user_id=user.id,
         organization_id=org.id,
@@ -186,6 +190,8 @@ async def update_appointment(appt_id: UUID, payload: BdmAppointmentUpdate, user:
     changed = sorted(k for k, v in changes.items() if getattr(appt, k) != v)
     if "appointment_type" in changed:
         _type_allowed((await bdm_context(db, user)).bdm_type, changes["appointment_type"])
+    if "trip_id" in changed and changes["trip_id"] is not None:  # bdm-011 L2; unlinking (null) is always allowed while open
+        await travel.linkable_trip(db, user, changes["trip_id"], appt.starts_at)
     overlaps = 0
     if "duration_minutes" in changed and changes["duration_minutes"] > appt.duration_minutes:  # shrinking cannot create a new clash
         overlaps = await _check_overlap(db, user, appt.starts_at, changes["duration_minutes"], payload.confirm_overlap, exclude_id=appt.id)
@@ -240,6 +246,7 @@ async def reschedule_appointment(appt_id: UUID, payload: BdmAppointmentReschedul
     overlaps = await _check_overlap(db, user, payload.starts_at, duration, payload.confirm_overlap, exclude_id=appt.id)
     old = appt.starts_at
     appt.starts_at, appt.duration_minutes = payload.starts_at, duration
+    await svc.unlink_if_outside_trip(db, user, appt)
     if overlaps:
         svc.audit(db, user, "overlap_override", appt.id, {"match_count": overlaps})
     return await _move(

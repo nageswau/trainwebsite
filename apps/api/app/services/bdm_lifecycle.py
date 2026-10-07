@@ -85,7 +85,10 @@ async def move_portfolio(db: AsyncSession, actor: User, source: User, target: Us
     """One bulk UPDATE per entity plus one history row per moved item (AC2). Returns the moved counts."""
     moved = {}
     for key, (entity, model, owner, filters) in PORTFOLIO.items():
-        stmt = update(model).where(owner == source.id, *filters()).values({owner.key: target.id}).returning(model.id)
+        values: dict[str, UUID | None] = {owner.key: target.id}
+        if model is BdmAppointment:
+            values["trip_id"] = None  # bdm-011: trips never move, and an appointment's trip must be its own BDM's
+        stmt = update(model).where(owner == source.id, *filters()).values(values).returning(model.id)
         ids = (await db.execute(stmt.execution_options(synchronize_session=False))).scalars().all()
         db.add_all(BdmAssignmentHistory(entity_type=entity, entity_id=i, from_user_id=source.id, to_user_id=target.id, actor_user_id=actor.id,
                                         reason=reason) for i in ids)

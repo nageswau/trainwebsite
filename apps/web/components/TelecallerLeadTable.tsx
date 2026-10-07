@@ -11,7 +11,7 @@ import { formatDate } from "@/lib/formatDate";
 import { STAGES } from "@/lib/leadStages";
 import { pageOffset } from "@/lib/telecaller";
 import { activeCampaigns, activeProducts, getPage, type Campaign, type Product } from "@/lib/telecallerCatalogue";
-import { LEAD_LIST_FILTERS, LEADS_URL, PRIORITIES, PRIORITY_LABEL, type LeadListFilter, type TelecallerLead } from "@/lib/telecallerLeads";
+import { FOLLOW_UP_FILTERS, LEAD_LIST_FILTERS, LEADS_URL, PRIORITIES, PRIORITY_LABEL, type LeadListFilter, type TelecallerLead } from "@/lib/telecallerLeads";
 
 const PAGE_SIZE = 50;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -21,6 +21,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function validFilter(key: LeadListFilter, value: string): string {
   if (key === "priority") return PRIORITIES.some((p) => p.key === value) ? value : "";
   if (key === "product_id" || key === "campaign_id") return UUID.test(value) ? value : "";
+  if (key === "follow_up") return FOLLOW_UP_FILTERS.some((f) => f.key === value) ? value : "";
   return value;
 }
 
@@ -103,6 +104,7 @@ export default function TelecallerLeadTable({ basePath, showTelecaller = false }
         {select("priority", "Priority", "All priorities", PRIORITIES.map((p) => <option key={p.key} value={p.key}>{p.label}</option>))}
         {select("product_id", "Product", "All products", <ProductOptions products={products} />)}
         {select("campaign_id", "Campaign", "All campaigns", campaigns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>))}
+        {select("follow_up", "Due follow-up", "Any", FOLLOW_UP_FILTERS.map((f) => <option key={f.key} value={f.key}>{f.label}</option>))}
       </div>
       {loadFailed ? (
         <div style={{ marginTop: 12 }}>

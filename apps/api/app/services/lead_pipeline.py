@@ -10,11 +10,11 @@ from uuid import UUID
 
 from fastapi import HTTPException
 from fastapi.exceptions import RequestValidationError
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.lead_stages import CLOSED, EVENTS, MANUAL, MANUAL_BEFORE, ORDER, REOPEN_TO, STAGE_LABELS, label
-from app.models import Enquiry, LeadStageHistory, TelecallerProfile, User
+from app.models import Enquiry, LeadFollowUp, LeadStageHistory, TelecallerProfile, User
 
 logger = logging.getLogger("app.leads")
 
@@ -28,6 +28,7 @@ CLOSED_REOPEN_ONLY = "A closed lead can only be reopened to Follow-up"
 REOPEN_FORBIDDEN = "Only a manager can reopen a closed lead"
 REASON_CLOSED = "Add a reason for closing the lead"
 REASON_REOPEN = "Add a reason for reopening the lead"
+FOLLOW_UPS_CLOSED = "Lead closed"  # tel-011 F4: the cancel reason on follow-ups a closing move cancelled
 
 Kind = Literal["telecaller", "manager"]
 
@@ -99,6 +100,19 @@ async def person_move(db: AsyncSession, lead: Enquiry, actor: User, kind: Kind, 
     if to_stage in CLOSED and reason is None:
         raise _invalid("reason", REASON_CLOSED, reason)
     await _record(db, lead, to_stage, "manual", actor.id, reason)
+    if to_stage in CLOSED:
+        await _cancel_open_follow_ups(db, lead)
+
+
+async def _cancel_open_follow_ups(db: AsyncSession, lead: Enquiry) -> None:
+    """tel-011 F4: a closed lead keeps no open follow-up. The caller holds the lead lock, and follow-up writes take it first too."""
+    cancelled = (await db.scalars(
+        update(LeadFollowUp).where(LeadFollowUp.lead_id == lead.id, LeadFollowUp.status == "open")
+        .values(status="cancelled", cancelled_at=func.now(), cancel_reason=FOLLOW_UPS_CLOSED, updated_at=func.now())
+        .returning(LeadFollowUp.id).execution_options(synchronize_session=False)
+    )).all()
+    if cancelled:
+        logger.info("lead_follow_ups_cancelled", extra={"extra_fields": {"lead_id": str(lead.id), "count": len(cancelled)}})
 
 
 def stage_out(lead: Enquiry) -> dict:

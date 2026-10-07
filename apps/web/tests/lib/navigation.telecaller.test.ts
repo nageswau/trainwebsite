@@ -9,13 +9,13 @@ describe("tel-001 navigation", () => {
   });
 
   it("has a telecaller nav, a manager nav and the sign-in chooser path", () => {
-    // tel-008 adds My Leads after Dashboard, and the manager's Leads after Team.
-    expect(TELECALLER_NAV.map((x) => x.href)).toEqual(["/telecaller/dashboard", "/telecaller/leads", "/telecaller/profile"]);
+    // tel-008 adds My Leads after Dashboard, and the manager's Leads after Team; tel-011 Follow-ups after them.
+    expect(TELECALLER_NAV.map((x) => x.href)).toEqual(["/telecaller/dashboard", "/telecaller/leads", "/telecaller/follow-ups", "/telecaller/profile"]);
     // tel-002 adds the catalogue pages after Team; tel-022 Targets after Team; tel-007 Lead assignment and Distribution rules after
-    // Leads; tel-012 the content library at the end.
+    // Leads; tel-006 Lead import after them; tel-012 the content library at the end.
     expect(TELECALLER_MANAGER_NAV.map((x) => x.href)).toEqual([
-      "/telecaller/manager/team", "/telecaller/manager/leads", "/telecaller/manager/assignment", "/telecaller/manager/distribution",
-      "/telecaller/manager/targets", "/telecaller/manager/products", "/telecaller/manager/campaigns", "/telecaller/manager/scripts",
+      "/telecaller/manager/team", "/telecaller/manager/leads", "/telecaller/manager/follow-ups", "/telecaller/manager/assignment", "/telecaller/manager/distribution",
+      "/telecaller/manager/imports", "/telecaller/manager/targets", "/telecaller/manager/products", "/telecaller/manager/campaigns", "/telecaller/manager/scripts",
       "/telecaller/manager/templates", "/telecaller/manager/brochures",
     ]);
     expect(TELECALLER_SIGN_IN).toBe("/telecaller/sign-in");

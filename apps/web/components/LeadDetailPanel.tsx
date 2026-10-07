@@ -3,10 +3,12 @@
 import { type FormEvent, useEffect, useState } from "react";
 
 import { LeadStageControl } from "@/components/AdminLeadStage";
+import LeadFollowUps from "@/components/LeadFollowUps";
+import LeadQualificationForm from "@/components/LeadQualificationForm";
 import ProductOptions from "@/components/TelecallerProductOptions";
 import { isRequestBody, sendJson, type Page } from "@/lib/apiErrors";
 import { formatDate } from "@/lib/formatDate";
-import { stageLabel } from "@/lib/leadStages";
+import { isClosed, stageLabel } from "@/lib/leadStages";
 import { SOURCE_LABEL, activeProducts, getPage, type Product } from "@/lib/telecallerCatalogue";
 import { SCRIPTS_URL, type Script } from "@/lib/telecallerContent";
 import {
@@ -218,6 +220,10 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
         </form>
       )}
 
+      {/* tel-011 (F2, F4): only the lead's telecaller adds follow-ups (a manager reads); never on a closed lead */}
+      <LeadFollowUps leadId={lead.id} leadStage={lead.status} canWrite={!canReopen && !lead.read_only && !isClosed(lead.status)}
+        onStageChanged={(status) => { setLead((l) => ({ ...l, status, status_label: stageLabel(status) })); void reloadActivity(); }} />
+
       <LeadScriptPanel product={lead.product} />
 
       <section aria-labelledby="lead-details-heading">
@@ -242,6 +248,10 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
         )}
         <NoticeLine notice={detailsNotice} />
       </section>
+
+      {/* tel-009: QD1 -- a save writes the shared answers to the lead, so Lead details shows them at once */}
+      <LeadQualificationForm leadId={lead.id} productId={lead.product?.id ?? null} readOnly={lead.read_only}
+        onSaved={(q) => setLead((l) => ({ ...l, qualification: q.qualification, passing_year: q.passing_year, city: q.city, state: q.state }))} />
 
       <section aria-labelledby="lead-enquiry-heading">
         <h3 id="lead-enquiry-heading" style={{ margin: 0 }}>Enquiry</h3>

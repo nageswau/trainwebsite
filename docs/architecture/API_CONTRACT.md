@@ -1109,6 +1109,57 @@ draws no Assign/Change control for it (the assign route would refuse it with `40
 **Web behaviour.** The pages forward `agency`/`counselor` only on the overseas admin and counselor pages. When a filtered request gets `422`,
 the page shows the unfiltered list with the message `"<detail> -- showing all applications."`.
 
+## 12N. Lead import (`tel-006`) — addendum, 2026-10-06
+
+`DEC-SCOPE-091`; design spec `docs/superpowers/specs/2026-10-06-tel-006-lead-import-design.md` §3. Migration `0087_lead_import_batches`.
+Roles `telecaller_manager` and `super_admin`; other roles get `403`, and a signed-out caller gets `401`. (§12M is claimed by the open
+AGN-023 branch.)
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/imports/template` | `200 text/csv`: the header row `name,phone,email,whatsapp_number,city,state,qualification,passing_year,institution,priority,subject,message` |
+| `POST /telecaller/imports` | Multipart `file` (UTF-8 CSV, BOM allowed, headers case-insensitive), `campaign_id` (active, active product), `division?` (only for a product without a team); header `Idempotency-Key` (required, 1–120 of `A-Za-z0-9._:-`). `201 {id, campaign: {id, name}, division, total_rows, created_count, attached_count, rejected_count, created_at, rows: [{row_number, status: created\|attached\|rejected, lead_id, lead_code, error}]}`. `413` > 1 MB; `422` before any row for a missing/unknown/repeated column, no rows, > 500 rows, an inactive campaign, a missing/contradicting division, a missing key or a key reused for a different file; `409` while another import (or the same key) is still running. Same key + same file replays the stored report. Audit `lead.import`; CRM queued after commit per created lead |
+| `GET /telecaller/imports?limit=&offset=` | `200 {items: [{id, campaign, division, uploaded_by: {id, full_name}, total_rows, created_count, attached_count, rejected_count, created_at}], total, limit, offset}`, newest first; a manager's own imports, super_admin all |
+| `GET /telecaller/imports/{id}` | `200` the report above; `404 "Import not found"` for another manager's import |
+
+## 12O. Lead qualification (`tel-009`) — addendum, 2026-10-06
+
+`DEC-SCOPE-093`; design spec `docs/superpowers/specs/2026-10-06-tel-009-qualification-form-design.md` §3. Migration `0089_lead_qualifications`.
+Roles and scope are §12J's: `telecaller` (own leads), `telecaller_manager`, `super_admin`. Other roles get `403`, signed out `401`, and
+missing or out of scope `404`. Basic fields = `qualification`, `current_org`, `passing_year`, `work_experience_years`, `city`, `state`; IT =
+`it_skill_level`, `career_objective`, `preferred_batch`, `budget_range`, `preferred_mode`; overseas = `study_level`, `preferred_course`,
+`intake`, `academic_percentage`, `english_test_status`, `passport_status`, `budget_range`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/leads/{id}/qualification` | `200 {lead_id, product: {id, name, group} \| null, product_group: it\|overseas\|other\|null, <every field above>, read_only, updated_by: {id, full_name} \| null, updated_at \| null}`. All stored values, the hidden group's included; `qualification`/`passing_year`/`city`/`state` are the lead's columns |
+| `PUT /telecaller/leads/{id}/qualification` | Body any of the fields that apply to the lead's product group (basic always; IT or overseas by group); an applicable field left out is cleared. `422`: another key, a field that doesn't apply ("These fields don't apply to this lead's product: …"), an out-of-range value (`academic_percentage` 0–100 with ≤ 2 decimals, `passing_year` 1950–2100, `work_experience_years` 0–50, the select values, text lengths, control characters). `403` for a telecaller on a handed-over lead. `200` returns the GET shape. Audit `lead.qualification_update {fields}` (names only) when something changed; the stage never moves |
+
+## 12P. Lead follow-ups (`tel-011`) — addendum, 2026-10-06
+
+`DEC-SCOPE-094`; design spec `docs/superpowers/specs/2026-10-06-tel-011-follow-ups-design.md` §3. Migration `0090_lead_follow_ups`. Scope is
+the lead's (`lead_pipeline.scope`): a telecaller their leads, a manager their reports' leads and their teams' unassigned queue, super_admin
+all; other roles `403`, signed out `401`, out of scope `404`. Only the lead's telecaller writes (`403` for managers); a handed-over lead is
+`403` for its telecaller. (§12O is tel-009's.)
+
+Follow-up item: `{id, due_at, reason, notes, next_action, status: open|done|cancelled, overdue, lead: {id, lead_code, name, priority, status,
+status_label, product, telecaller}, created_by, created_at, completed_at, completed_by, cancelled_at, cancel_reason, can_change}`. `reason` is
+one of `discuss_with_parents, course_details, fee_details, waiting_salary, waiting_documents, comparing_courses, next_month, next_intake,
+university_information, counselor_call`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/follow-ups?view=day\|overdue&day=YYYY-MM-DD&limit=&offset=` | `200 {items, total, limit, offset, day, counts: {day, overdue}}`. `day` (default): open follow-ups due in that IST day (default today), oldest first. `overdue`: every open follow-up past its due time, oldest first. `422` for an unknown view or a malformed day |
+| `GET /telecaller/leads/{id}/follow-ups?limit=&offset=` | `200` page of the lead's follow-ups: open by due time, then done/cancelled newest first |
+| `POST /telecaller/leads/{id}/follow-ups` | `{due_at (with offset), reason, notes?, next_action?, move_to_follow_up?}` → `201` item. `409` closed lead or 20 open follow-ups; `422` a past time / beyond 366 days (on `due_at`), or a stage move tel-004 refuses. Not idempotent. Audit `lead_follow_up.create` |
+| `PATCH /telecaller/follow-ups/{id}` | `{due_at?, reason?, notes?, next_action?}` → `200`; only changed values written (audit `lead_follow_up.update` with field names); a changed `due_at` must be in the future; `409` done/cancelled |
+| `POST /telecaller/follow-ups/{id}/complete` | `200`; `409 "This follow-up is already done"` / cancelled. Audit `lead_follow_up.complete` |
+| `POST /telecaller/follow-ups/{id}/cancel` | `{reason}` (required, ≤ 500) → `200`; `409` done/cancelled. Audit `lead_follow_up.cancel` |
+| `GET /telecaller/leads?follow_up=today\|overdue` | tel-008's list narrowed to leads with an open follow-up due today (IST) / overdue |
+
+A move to a closed stage (`POST /telecaller/leads/{id}/stage`, `PATCH /admin/leads` stage) cancels the lead's open follow-ups with
+`cancel_reason` "Lead closed".
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
@@ -1128,3 +1179,23 @@ unspecified pending open decisions — not a gap in this traceability check, a d
 **GATE-08 APPROVED** (user, in-session, 2026-09-01 — approved as drafted, no changes requested)
 alongside the other four contract documents. `prompts/10_TEST_CATALOG_AUDIT_AND_REBUILD.md` may now
 proceed.
+
+**Addendum, 2026-10-06 (`bdm-011`, `DEC-SCOPE-092`): trip ↔ appointment linking, itinerary, productivity, travel report.**
+
+Sources: design spec `docs/superpowers/specs/2026-10-06-bdm-011-trip-appointments-design.md` §4; migration `0088_bdm_appointment_trip`.
+Every change is **additive**: new optional request fields, new response fields and new GET routes; no existing field changes meaning.
+
+| Method + path | Change | Refusals |
+|---|---|---|
+| `POST /bdm/appointments` | optional `trip_id` | 404 "Trip not found" (not the caller's); 409 "This trip is cancelled and can't take appointments" (or completed); 422 "This appointment is on 18 Sep 2026, outside TRV-000123 (20 Sep 2026 – 21 Sep 2026)" |
+| `PATCH /bdm/appointments/{id}` | optional `trip_id`; `null` unlinks; omitted = unchanged | as above; the existing owner (403) and open (409) rules apply first |
+| `POST /bdm/appointments/{id}/reschedule` | a linked appointment moved outside its trip's dates is unlinked (audit `bdm_appointment.trip_unlinked`) | unchanged |
+| every appointment envelope | `appointment.trip`: `{id, code, from_place, to_place, travel_date, return_date, approval_status, travel_status}` or `null` | — |
+| `GET /bdm/trips` | `linkable=true`: the caller's planned / in-progress trips whose return date is today (IST) or later | unchanged |
+| `GET /bdm/trips/{id}`, `GET /bdm/manager/trips/{id}` and every trip write | `itinerary[]` (`{id, code, starts_at, duration_minutes, appointment_type, status, organization: {id, name}, expected_leads, expected_revenue}`, by start) and `metrics` (`meetings_planned, meetings_completed, estimated_cost, actual_cost, cost_per_completed_meeting, expected_leads, expected_revenue, actual_leads, actual_revenue`; null = nothing to compute from; `actual_revenue` always null = not tracked) | — |
+| `PATCH /bdm/trips/{id}` | a date change that would leave an open linked appointment outside → **422** "N linked appointment(s) fall(s) outside the new dates — unlink or reschedule … first"; closed ones are unlinked (named in the `bdm.trip_update` audit) | — |
+| `GET /bdm/trips/{id}/report` (new) | the trip (`BdmTripOut`) once completed | 409 "The travel report is available once the trip is completed"; 404 out of scope |
+| `GET /bdm/manager/trips/{id}/report` (new) | the same, team scope | 409 / 404 as above |
+| `POST /admin/bdms/{id}/deactivate`, `/handover` (bdm-025) | a moved appointment's `trip_id` is cleared (trips never move) | unchanged |
+
+Deep-link targets for the travel reminder (bdm-012): `/bdm/travel/{id}#trip-appointments`, `#trip-costs`, `#trip-remarks`.

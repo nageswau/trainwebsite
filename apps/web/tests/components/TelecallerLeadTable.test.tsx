@@ -110,6 +110,20 @@ describe("TelecallerLeadTable (tel-008)", () => {
     expect(Object.fromEntries(new URLSearchParams(leadCalls()[0].split("?")[1]))).toEqual({ status: "qualified", limit: "50", offset: "0" });
   });
 
+  it("filters by a due follow-up (tel-011 F9) and ignores an unknown value", async () => {
+    search = "follow_up=today";
+    render(<TelecallerLeadTable basePath="/telecaller/leads" />);
+    await screen.findByRole("link", { name: "Lead 1" });
+    expect(Object.fromEntries(new URLSearchParams(leadCalls()[0].split("?")[1]))).toEqual({ follow_up: "today", limit: "50", offset: "0" });
+    fireEvent.change(screen.getByLabelText("Due follow-up"), { target: { value: "overdue" } });
+    expect(pushedQuery().get("follow_up")).toBe("overdue");
+    cleanup();
+    search = "follow_up=soon";
+    render(<TelecallerLeadTable basePath="/telecaller/leads" />);
+    await screen.findByRole("link", { name: "Lead 1" });
+    expect(Object.fromEntries(new URLSearchParams(leadCalls().at(-1)!.split("?")[1]))).toEqual({ limit: "50", offset: "0" });
+  });
+
   it("marks a lead that is with the counselor and styles the name as a link (QA-01, QA-04)", async () => {
     leadsPage = () => Promise.resolve(res(pageOf([lead("9", { counselor: { id: "c1", full_name: "Kiran" } })])));
     render(<TelecallerLeadTable basePath="/telecaller/leads" />);

@@ -4141,3 +4141,121 @@ otherwise unchanged); `tel-017`'s PATCH-based counselor check moves to the assig
 the Overseas Admin too, and no decision is accepted on those routes. Filters, the new columns and row keys, and the `filters` payload appear
 only on the `students` and `applications` sections; admission-updates and offer-letters keep their payload. API: `API_CONTRACT.md` §12M.
 No migration. **New Feature ID authorized:** `AGN-023`. **Status of the build:** see `AGENT_CRM_BACKLOG.md` (AGN-023 row) and `RTM.md`.
+
+### DEC-SCOPE-091 — CSV lead import per campaign (`tel-006`)
+
+**Evidence:** `EVID-019` §2 (lead sources and fields); `DEC-SCOPE-073` T12, T15; `DEC-SCOPE-074` (campaigns); `DEC-SCOPE-087` (tel-007
+distribution); `DEC-SCOPE-088` (tel-005 intake, I4–I6, R5–R7); owner answer in-session 2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for IM1; R1–R12 are recorded defaults. **MERGED** to `main` as PR #96 @ `126b454b` (2026-10-06), no re-chain. Migration
+`0087_lead_import_batches` (after tel-005's `0086_lead_enquiries`), API contract §12N. `DEC-SCOPE-090` / §12M are claimed by the open
+AGN-023 branch, so this entry is 091 / §12N; numbers re-chain at merge if `main` moves. Spec
+`docs/superpowers/specs/2026-10-06-tel-006-lead-import-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| IM1 (Q-06) | CSV columns, cap, failure behaviour | **Per-row report.** One active campaign per upload (source, product, team). Columns `name`*, `phone`*, `email`, `whatsapp_number`, `city`, `state`, `qualification`, `passing_year`, `institution`, `priority`, `subject`, `message`; ≤ 1 MB, ≤ 500 filled-in rows. A bad file is `422` and nothing is created; otherwise each row is created, attached (T12, including an earlier row of the same file) or rejected with its line and reason. Idempotency-Key replays the report |
+
+Recorded defaults: R1 `telecaller_manager` / `super_admin` only. R2 the campaign and its product must be active; division = the product's
+team, or a `division` field for an `other` product without one. R3 source/product/campaign from the campaign; subject defaults to the
+product name, message `""`, priority `warm`. R4 an imported lead is a manager's lead → `lead_distribution.on_intake`. R5 an attached row is a
+`lead_enquiries` row (campaign source/id, uploader); the stage never moves. R6 the CRM webhook is queued after the commit per created lead
+only. R7 one transaction with a SAVEPOINT per row; tel-005's per-person advisory locks; a lock timeout or deadlock rejects only that row.
+R7b imports serialise on one advisory lock (`409` past `lock_timeout`). R8 unique `(uploader, key)`; same key + same file/campaign/division
+replays, anything else `422`. R9 the file is never stored; the batch keeps counts, the SHA-256 and `{row_number, status, lead_id, error}`
+only. R10 `metadata_json.import_batch_id` on created leads and attached enquiries; one audit row `lead.import`. R11 history: own imports
+(super_admin all); another manager's report `404`. R12 the report is on-screen JSON; CSV-export escaping is tel-024's.
+
+**Consequences:** table `lead_import_batches`; `lead_intake.lead_team` / `import_row`; router `api/telecaller_import.py`
+(`GET /telecaller/imports/template`, `POST /telecaller/imports`, `GET /telecaller/imports`, `GET /telecaller/imports/{id}`); web page
+`/telecaller/manager/imports` ("Lead import" in the manager nav). **New Feature ID authorized:** `tel-006`. **Status:** see
+`TELECALLER_CRM_BACKLOG.md` §4 tel-006.
+
+### DEC-SCOPE-092 — Trip ↔ appointment linking, itinerary, productivity, travel report (`bdm-011`)
+
+**ID note (2026-10-06):** drafted as `DEC-SCOPE-079` with migration `0080_bdm_appointment_trip` on `main` @ `230a043f`. On merging `main`
+@ `3986958c` (bdm-013 `DEC-SCOPE-079`, tel-022 `080` / `0080_tel_targets`, tel-004 `081` / `0081_lead_stage_pipeline`) it became
+`DEC-SCOPE-082` / `0082`; on merging `main` @ `4ec7a22b` (bdm-025 `DEC-SCOPE-082` / `0082_bdm_assignment_history`) it became
+`DEC-SCOPE-083` / `0083`; on merging `main` @ `50838192` (tel-012 `DEC-SCOPE-083` / `0083_tel_content`) it became `DEC-SCOPE-084`
+/ `0084`; on merging `main` @ `b76c92f7` (tel-008 `DEC-SCOPE-084`, no migration) it became `DEC-SCOPE-085` (migration
+unchanged); on merging `main` @ `9b395aaf` (bdm-018 `DEC-SCOPE-085` / `0084_bdm_onboarding`) it became `DEC-SCOPE-086` / `0085`;
+on merging `main` @ `a36b5b63` (bdm-021 `DEC-SCOPE-086`, no migration) it became `DEC-SCOPE-087`
+(migration unchanged); on merging `main` @ `2b22158b` (tel-007 `DEC-SCOPE-087` / `0085_tel_distribution`, tel-005 `DEC-SCOPE-088` /
+`0086_lead_enquiries`) it became `DEC-SCOPE-089` / `0087`; on merging `main` @ `4e5730ee` (bdm-020 `DEC-SCOPE-089`, no migration) it became
+`DEC-SCOPE-090` (migration unchanged); on merging `main` @ `515e6c13` (tel-006 `DEC-SCOPE-091` / `0087_lead_import_batches`; tel-006
+records `DEC-SCOPE-090` as claimed by the open AGN-023 branch) it is **`DEC-SCOPE-092`** with migration **`0088_bdm_appointment_trip`**,
+chained after `0087_lead_import_batches`.
+
+**Question:** how do appointments link to trips (`BDM_CRM_BACKLOG.md` §4 bdm-011): which trips and appointments can be linked, which
+appointments count as planned, how "actual leads" is defined now that bdm-017 attributes leads, and what a cancelled trip does to its links?
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md`, `DERIVED_BLUEPRINT`) §4 Travel + Appointment Linking (149–170), Agent §D
+(655–683), School §F (982–998), College §F (1224–1252), §7 Travel Reminder buttons (229–248); `DEC-SCOPE-055` D14 (Q-05), D15 (Q-06),
+D16 (Q-07), D17 (Q-08); bdm-017 lead attribution (`enquiries.bdm_organization_id`, `bdm_user_id`).
+
+**Resolution:** owner, in-session 2026-10-06, `EXPLICIT_APPROVAL` through structured questions; the owner picked the recommended option
+each time. Design spec: `docs/superpowers/specs/2026-10-06-bdm-011-trip-appointments-design.md` §2.
+
+- **L1** Actual leads: leads the trip's BDM attributed to organizations met in the trip's **completed** linked appointments, created
+  from the travel date 00:00 IST to the end of return date + 7 days (IST).
+- **L2** Link rules: link / unlink only while the appointment is open (the existing PATCH rule), to the BDM's own trip that is planned
+  or in progress (any approval state; not approved yet shows "Trip not approved yet"); the appointment's IST date must lie within the
+  trip dates, else 422.
+- **L3** Meetings planned = linked appointments not cancelled (no-shows count as planned); expected leads / revenue sum the same set.
+- **L4** A cancelled trip keeps its links as the record; it takes no new ones; the BDM can still unlink.
+
+**Consequences (spec decisions, no new product choice):** actual revenue shows "Not tracked yet" (D17); a trip date edit that would
+leave an open linked appointment outside the new dates is refused (422), closed ones are unlinked and named in the trip's audit row; a
+reschedule outside the trip unlinks it (audited, on-screen notice); bdm-025's handover clears the link of a moved appointment (trips
+never move); the report is the trip detail behind a "completed" gate (409 before).
+
+**Status:** `EXPLICIT_APPROVAL` for L1–L4. Implemented on `worktree-bdm-011`; the verification status is in the backlog entry and the RTM row.
+
+### DEC-SCOPE-093 — Lead qualification form (`tel-009`)
+
+**Evidence:** `EVID-019` §4 (`Telecaller Functionalities.md` L144–L196, Appendix A); `DEC-SCOPE-073` T19 (read-only after handover);
+`DEC-SCOPE-084` D1, D2 (tel-008 workspace; the product is edited in Lead details); owner answers in-session 2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06 — three structured questions, each answered with the recommended option) for
+QF1–QF3; QD1–QD4 are recorded defaults. Migration `0089_lead_qualifications` (after bdm-011's `0088_bdm_appointment_trip`), API contract
+§12O. Drafted as `DEC-SCOPE-092` / `0088`; bdm-011 merged first with both (main @ `a0e16080`), so this entry re-chained. `§12M` is still
+claimed by the open AGN-023 branch; numbers re-chain at merge if `main` moves. Spec
+`docs/superpowers/specs/2026-10-06-tel-009-qualification-form-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| QF1 | Where are "Course interested in" / "Destination" (the lead's product) picked? | **Lead details only.** The form shows the product read-only; the IT/overseas section follows the saved product; the other group's values are kept but hidden |
+| QF2 | Field types | **Selects + free text.** Selects: skill level beginner/intermediate/advanced, mode online/offline, study level UG/Masters, passport none/applied/valid. Free text: IELTS/PTE status, batch, budget, intake, course, objective, current college/company. Experience 0–50 whole years; percentage 0–100 (2 dp); passing year 1950–2100 |
+| QF3 | Counselor read after handover | **Deferred to tel-018** (no counselor lead screen exists yet) |
+
+Recorded defaults: QD1 the shared answers (qualification, passing year, city, state) are written to `enquiries`; name is edited in Lead
+details. QD2 the PUT replaces the fields that apply to the lead's product group (basic always, plus IT or overseas); a field that does not
+apply is `422`; the other group's stored values are untouched. QD3 changed values only, one `lead.qualification_update {fields}` audit row
+(names only); the stage never moves. QD4 the lead row is locked `FOR UPDATE` within scope.
+
+**Consequences:** table `lead_qualifications`; service `services/lead_qualification.py`; routes `GET`/`PUT
+/telecaller/leads/{id}/qualification`; component `LeadQualificationForm` in the lead detail (telecaller and manager pages). **New Feature ID
+authorized:** `tel-009`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-009.
+
+### DEC-SCOPE-094 — Lead follow-ups (`tel-011`)
+
+**Evidence:** `EVID-019` §7 (L266–L312); `DEC-SCOPE-073` T13, T19, T23; `DEC-SCOPE-081` (tel-004 pipeline); `DEC-SCOPE-084` (tel-008
+workspace, D1); owner answers in-session 2026-10-06.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-06) for F1–F4; F5–F10 are recorded defaults. **MERGED** to `main` as PR #100 @ `8f9f1676`
+(2026-10-07). Migration `0090_lead_follow_ups` (re-chained after tel-009's `0089_lead_qualifications` / `DEC-SCOPE-093` / §12O, which merged
+first), API contract §12P. Spec `docs/superpowers/specs/2026-10-06-tel-011-follow-ups-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| F1 (Q-10) | When is a follow-up overdue; does a call complete it? | **Overdue = open and `due_at` < now** (to the minute). Logging a call (tel-010) never auto-completes a follow-up |
+| F2 | Who writes | **Only the lead's telecaller** creates, reschedules, completes, cancels. `telecaller_manager` / `super_admin` read their scope; writes `403` |
+| F3 | Reassignment | Follow-ups **move with the lead**: scope is the lead's, so the new telecaller has them and the old one gets `404`. No `telecaller_user_id` column |
+| F4 | Closed / handed-over leads | No new follow-up on a closed lead (`409`) or, for a telecaller, a handed-over lead (`403`). A move to a closed stage cancels the lead's open follow-ups in the same transaction (`cancel_reason` "Lead closed"); cancel on handover stays with tel-018 |
+
+Recorded defaults: F5 the stage moves to Follow-up only when the telecaller ticks it (tel-004 rules apply). F6 `due_at` timezone-aware, in
+the future at create and on a changed reschedule, within 366 days; IST day windows. F7 `PATCH` + `POST …/complete` + `POST …/cancel`
+(reason required); done/cancelled `409`. F8 the §7 card's "Last Call" arrives with tel-010. F9 My Leads `follow_up=today|overdue`. F10 at
+most 20 open follow-ups per lead (`409`).
+
+**Consequences:** table `lead_follow_ups`; `services/lead_follow_ups.py`; router `api/telecaller_follow_ups.py`; `lead_pipeline.person_move`
+cancels open follow-ups on a close; `GET /telecaller/leads` gains `follow_up`. Web: the lead-detail Follow-ups section, `/telecaller/follow-ups`
+and `/telecaller/manager/follow-ups` ("Follow-ups" in both navs), the dashboard "Today's follow-ups" card, My Leads "Due follow-up" filter.
+**New Feature ID authorized:** `tel-011`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-011.

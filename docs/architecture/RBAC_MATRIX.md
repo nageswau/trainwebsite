@@ -629,6 +629,33 @@ Inline pattern: role (`require_manager`), then scope (tel-004 `lead_pipeline.sco
 | every other role (incl. `it_admin`, `overseas_admin`, `counselor`) | none → `403` (admins keep `/admin/leads`) | — | `tel-007` |
 | system (website / BDM intake) | distributes a new lead: product rule → city rule → round robin among the team's active telecallers → unassigned | the lead's division | `tel-007` |
 
+### 2.21 Lead qualification *(net-new, added 2026-10-06 — `DEC-SCOPE-093`, `tel-009`)*
+
+The same inline pattern as §2.19 (`lead_pipeline.scope`, then `telecaller_leads.require_writable` on the PUT). The lead row is locked
+`FOR UPDATE` within scope. A field that does not apply to the lead's product group is `422`.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | read / replace the lead's qualification | own leads; **read-only** once handed over (PUT `403`) | `tel-009` |
+| `telecaller_manager` | the same, including on handed-over leads | §2.19's | `tel-009` |
+| `super_admin` | the same as a manager | all leads | `tel-009` |
+| `counselor` | none yet → `403`; the read after handover is tel-018's (QF3) | — | `tel-009` |
+| every other role | none → `403` | — | `tel-009` |
+
+### 2.22 Lead follow-ups *(net-new, added 2026-10-06 — `DEC-SCOPE-094`, `tel-011`)*
+
+Inline pattern: scope (tel-004 `lead_pipeline.scope`, joined through the follow-up's lead; out of scope `404`), the lead lock, then the role
+(`lead_follow_ups.require_telecaller`, F2) and handover (`telecaller_leads.require_writable`), then the follow-up lock and its state. A
+follow-up belongs to its lead (F3), so a reassignment moves it. Every write is audited (`lead_follow_up.*`, ids / reason key / field names).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller` | list the day / overdue lists and a lead's follow-ups; create, reschedule/edit, complete, cancel | follow-ups on leads where `telecaller_user_id` = self; **read-only** on a handed-over lead (`403`); none on a closed lead (`409`) | `tel-011` |
+| `telecaller_manager` | read the same lists and a lead's follow-ups; writes `403` (F2) | direct reports' leads + their teams' unassigned leads (T23) | `tel-011` |
+| `super_admin` | read (writes `403`) | all leads | `tel-011` |
+| every other role | none → `403` "Telecaller role required" | — | `tel-011` |
+| system (a closing stage move) | cancels the lead's open follow-ups ("Lead closed", F4) | the lead being closed | `tel-011` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
@@ -734,3 +761,11 @@ either a grant scope (§2) or an explicit deny rule (§4).
 **GATE-08 APPROVED** (user, in-session, 2026-09-01 — approved as drafted, no changes requested)
 alongside the other four contract documents. `prompts/10_TEST_CATALOG_AUDIT_AND_REBUILD.md` may now
 proceed.
+
+**bdm-011 trip ↔ appointment links and travel report (`DEC-SCOPE-092`, added 2026-10-06).** Same inline pattern; scope in the SQL `WHERE`.
+
+| Role | Routes | Scope | Item |
+|---|---|---|---|
+| `bdm` | `trip_id` on `POST /bdm/appointments`, `PATCH /bdm/appointments/{id}`; `GET /bdm/trips?linkable=true`; `GET /bdm/trips/{id}/report` | **Own appointments and own trips only**: the trip is loaded with `bdm_user_id` = caller, so another BDM's trip is `404`; another BDM's appointment stays `404` (bdm-006) | `bdm-011` |
+| `bdm_manager` | `GET /bdm/manager/trips/{id}` (itinerary + metrics), `GET /bdm/manager/trips/{id}/report` | **Team scope**, read-only; a manager never links (`PATCH` stays owner-only, `403`) | `bdm-011` |
+| `super_admin` | the manager routes above | Reads every trip; never links | `bdm-011` |
