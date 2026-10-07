@@ -1095,6 +1095,8 @@ Conventions used below:
 
 ### bdm-022 — Agent performance drill-down
 
+> **Status (2026-10-07):** **COMPLETE WITH DEFERRED FULL REGRESSION** on `feature/bdm-022` (`DEC-SCOPE-109` B1–B10 — recommended answers used under the owner's standing direction, `NEEDS_CONFIRMATION` at sign-off; no migration; API §12AC, RBAC §2.35). Dependencies verified on `main` @ `f4a13514`: bdm-019, AGN-004/008/012/013/014. Revenue (A-06) is shown as not tracked; commission stays `NEEDS_CONFIRMATION`. Evidence: backend lite 138 passed (bdm-022/019/020/021, AGN-018/019/022; 15 files) + 33 after the final typing edit; ruff clean; mypy no new errors in changed modules (repo baseline unchanged); no migration; web BDM + lib set 1411 passed, 1 failed = `dateZoneSweep` (pre-existing on `main`, 28 unzoned dates in older files, none in bdm-022 code); `tsc` 0; eslint 0 on changed files; `next build` 0 (web image); Playwright bdm-022/019/020/021 4 passed; browser QA `docs/quality/BDM-022_BROWSER_QA_2026-10-07.md` (QA22-01…03 fixed test-first and re-verified). Browser Use is not installed here (isolated Playwright Chromium used). Full backend / web suites deferred to the regression session. Spec `docs/superpowers/specs/2026-10-07-bdm-022-agent-performance-design.md`; plan `docs/superpowers/plans/2026-10-07-bdm-022-agent-performance.md`.
+
 - **Business requirement:** management clicks Agent → Students → Applications → Offers → Visa → Enrollments → Revenue (Agent §F). The Agent KPIs include Active Agents, Agent Students, Applications and Enrollments.
 - **Existing behavior:** agent data lives in the Agent CRM (ang-004/008/012/013/014, not built).
 - **Expected behavior:**
