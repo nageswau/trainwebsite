@@ -700,6 +700,18 @@ organization → appointment (then bdm-006's own).
 | `super_admin` | list / read only (accept / decline `403`) | all | `tel-019` |
 | every other role (incl. `telecaller_manager`) | none → `403` | — | `tel-019` |
 
+### 2.26 BDM daily activity report *(net-new, added 2026-10-07 — `DEC-SCOPE-099`, `bdm-015`)*
+
+`bdm_context` gates the BDM routes (own report only — no route names another BDM); `require_manager` + `team_filter` gate the manager
+routes (a BDM outside the team is `404`).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `bdm` | read the day's preview / snapshot; **submit** (today or up to 7 days back, once); read the manager's comment | own | `bdm-015` |
+| `bdm_manager` | team grid (submitted / missing); read a team BDM's report; **comment** on a submitted one | BDMs reporting to them | `bdm-015` |
+| `super_admin` | as a manager | all BDMs | `bdm-015` |
+| every other role | none → `403` | — | `bdm-015` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
