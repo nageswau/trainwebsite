@@ -16,6 +16,7 @@ describe("BdmOrganizationMou (bdm-005 §8)", () => {
   it("offers Start MoU when there is none and the caller may start one", () => {
     card({ current: null, can_start: true });
     expect(screen.getByText("No MoU yet.")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "MoU" })).toHaveAttribute("id", "org-mou"); // bdm-012: the MoU reminders' link target
     fireEvent.click(screen.getByRole("button", { name: "Start MoU" }));
     expect(screen.getByRole("form", { name: "Start MoU" })).toBeInTheDocument();
   });

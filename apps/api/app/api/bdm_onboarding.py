@@ -1,4 +1,4 @@
-"""bdm-018 (DEC-SCOPE-085, spec §5): the school onboarding handover; bdm-019 (DEC-SCOPE-100) adds the agent handover (`link-agent`).
+"""bdm-018 (DEC-SCOPE-085, spec §5): the school onboarding handover; bdm-019 (DEC-SCOPE-106) adds the agent handover (`link-agent`).
 
 The BDM side resolves `{org_id}` through `services.bdm_organizations.load_scoped` (out of scope = 404) and writes under the organization
 row lock. The admin side is Overseas Admin / super_admin only (403 otherwise) and never reads a BDM organization except through a

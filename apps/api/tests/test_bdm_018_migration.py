@@ -46,12 +46,12 @@ def test_chains_after_0083_and_is_the_single_head():
 def test_checks_equal_the_model():
     from app.models import BDM_ONBOARDING_CHECKS, BdmOnboardingRequest, BdmOrganization
 
-    # bdm-019's 0095 widened two of 0084's strings and added one; 0084's frozen copy is what 0095 downgrades back to.
-    later = importlib.util.spec_from_file_location("_bdm_019_migration_0095", VERSIONS / "0095_bdm_agent_link.py")
-    m0095 = importlib.util.module_from_spec(later)
-    later.loader.exec_module(m0095)
-    assert _migration().CHECKS == {**{k: v for k, v in BDM_ONBOARDING_CHECKS.items() if k not in m0095.CHECKS}, **m0095.SCHOOL_ONLY}
-    assert {k: v for k, v in BDM_ONBOARDING_CHECKS.items() if k in m0095.CHECKS} == m0095.CHECKS
+    # bdm-019's 0097 widened two of 0084's strings and added one; 0084's frozen copy is what 0097 downgrades back to.
+    later = importlib.util.spec_from_file_location("_bdm_019_migration_0097", VERSIONS / "0097_bdm_agent_link.py")
+    m0097 = importlib.util.module_from_spec(later)
+    later.loader.exec_module(m0097)
+    assert _migration().CHECKS == {**{k: v for k, v in BDM_ONBOARDING_CHECKS.items() if k not in m0097.CHECKS}, **m0097.SCHOOL_ONLY}
+    assert {k: v for k, v in BDM_ONBOARDING_CHECKS.items() if k in m0097.CHECKS} == m0097.CHECKS
     model_checks = {c.name: str(c.sqltext) for c in BdmOnboardingRequest.__table__.constraints if isinstance(c, CheckConstraint)}
     assert BDM_ONBOARDING_CHECKS.items() <= model_checks.items()
     assert {"uq_bdm_onboarding_requests_pending", "ix_bdm_onboarding_requests_status"} <= {i.name for i in BdmOnboardingRequest.__table__.indexes}

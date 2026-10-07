@@ -1035,6 +1035,37 @@ class LeadCall(Base, TimestampMixin):
     remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+# Migration 0095 repeats LEAD_MESSAGE_CHECKS (test_tel_013_migration asserts they stay identical).
+LEAD_MESSAGE_CHECKS = {
+    "ck_lead_messages_channel": "channel IN ('whatsapp', 'email')",
+    "ck_lead_messages_body": "length(body) BETWEEN 1 AND 5000",
+    "ck_lead_messages_whatsapp": "channel <> 'whatsapp' OR (subject IS NULL AND delivery_status IS NULL)",
+}
+
+
+class LeadMessage(Base, TimestampMixin):
+    """tel-013 (DEC-SCOPE-100): a message sent to a lead -- WhatsApp via wa.me (T8; the row is the telecaller's confirmation, WA1 keeps the
+    full text) and, from tel-014, email (subject + delivery status). It belongs to the lead, so its scope is the lead's. `template_name`
+    is the template's name when sent (D6), so a rename never rewrites history."""
+
+    __tablename__ = "lead_messages"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in LEAD_MESSAGE_CHECKS.items()),
+        Index("ix_lead_messages_lead_sent", "lead_id", "sent_at"),
+        Index("ix_lead_messages_sender_sent", "sender_user_id", "sent_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    lead_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="RESTRICT"))
+    sender_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    channel: Mapped[str] = mapped_column(String(16))
+    template_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("tel_message_templates.id", ondelete="RESTRICT"), nullable=True)
+    template_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    subject: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    body: Mapped[str] = mapped_column(Text)
+    delivery_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class ContentPage(Base, TimestampMixin):
     __tablename__ = "content_pages"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -1623,7 +1654,7 @@ class BdmOrganization(Base, TimestampMixin):
     lost_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     # bdm-018 (DEC-SCOPE-085 H1): the onboarded School; one organization <-> at most one School. The School's BDM is derived from it.
     school_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id", ondelete="RESTRICT"), nullable=True)
-    # bdm-019 (DEC-SCOPE-100): the onboarded Agent Organization; one organization <-> at most one agency. The live Agent stages read it.
+    # bdm-019 (DEC-SCOPE-106): the onboarded Agent Organization; one organization <-> at most one agency. The live Agent stages read it.
     agent_org_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_orgs.id", ondelete="RESTRICT"), nullable=True)
 
 
@@ -1750,7 +1781,7 @@ class BdmMouEvent(Base):
 
 # bdm-018 (DEC-SCOPE-085, spec §3): the onboarding handover. `kind` is 'school' only; bdm-019 widens it for agents.
 BDM_ONBOARDING_STATUSES = ("pending", "completed", "rejected")
-BDM_ONBOARDING_CHECKS = {  # migrations 0084 and 0095 (bdm-019) repeat these strings; test_bdm_018/019_migration pin them
+BDM_ONBOARDING_CHECKS = {  # migrations 0084 and 0097 (bdm-019) repeat these strings; test_bdm_018/019_migration pin them
     "ck_bdm_onboarding_requests_kind": "kind IN ('school', 'agent')",
     "ck_bdm_onboarding_requests_status": _in_list("status", BDM_ONBOARDING_STATUSES),
     "ck_bdm_onboarding_requests_resolution": "resolution IS NULL OR resolution IN ('created', 'linked')",
@@ -2073,6 +2104,32 @@ class BdmDailyReport(Base, TimestampMixin):
     manager_comment: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     manager_comment_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     manager_commented_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+BDM_TARGET_MAX = 100_000  # R4: the tel-022 bound
+BDM_TARGET_CHECKS = {  # migration 0096 repeats these strings; test_bdm_016_migration asserts they stay identical
+    "ck_bdm_targets_month_start": "EXTRACT(DAY FROM month) = 1",
+    "ck_bdm_targets_target_range": f"target >= 0 AND target <= {BDM_TARGET_MAX}",
+}
+
+
+class BdmTarget(Base, TimestampMixin):
+    """bdm-016 (DEC-SCOPE-103): a manager-set monthly target for one KPI of one BDM. `month` is the month's first day; `kpi_key` is a key
+    of the BDM type's catalogue (`services/bdm_metrics.TARGET_KPIS`, checked in the service). Achieved is never stored: it is computed
+    live from the month's records (`bdm_metrics.monthly_counts`). Clearing a target deletes the row."""
+
+    __tablename__ = "bdm_targets"
+    __table_args__ = (
+        UniqueConstraint("bdm_user_id", "month", "kpi_key", name="uq_bdm_targets_bdm_month_kpi"),
+        *(CheckConstraint(sql, name=name) for name, sql in BDM_TARGET_CHECKS.items()),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    bdm_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    month: Mapped[date] = mapped_column(Date)
+    kpi_key: Mapped[str] = mapped_column(String(40))
+    target: Mapped[int] = mapped_column(Integer)
+    set_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    set_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class LiveSession(Base, TimestampMixin):

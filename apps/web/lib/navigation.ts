@@ -74,6 +74,7 @@ export const BDM_MANAGER_NAV: NavItem[] = [
   { label: "Follow-ups", href: "/bdm/manager/follow-ups" },
   { label: "Calendar", href: "/bdm/manager/calendar" }, { label: "Activities", href: "/bdm/manager/activities" },
   { label: "Daily reports", href: "/bdm/manager/daily-reports" }, // bdm-015
+  { label: "Targets", href: "/bdm/manager/targets" }, // bdm-016
   { label: "Approvals", href: "/bdm/manager/approvals" },
   { label: "Notifications", href: BDM_MANAGER_NOTIFICATIONS_HREF },
 ];

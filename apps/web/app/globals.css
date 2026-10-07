@@ -332,3 +332,11 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
 @media (max-width: 640px) { .agent-network .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 /* bdm-004 QA4-03: on phones the pipeline's stage tiles sit two per row, so the organization list is not ~1,900 px down (QA22-10's rule). */
 @media (max-width: 640px) { .metric-grid.pipeline-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* tel-021: the ten §1 dashboard tiles -- five across on a wide screen, then three, then two on tablets and phones; a hint under each
+   figure. The daily activity table reuses .tel-targets (short columns, row headers as labels). */
+.metric-grid.tel-tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); list-style: none; padding: 0; margin: 0 0 24px; }
+.tel-tiles .metric small { display: block; margin-top: 4px; font-size: 12px; color: var(--muted); }
+@media (max-width: 1200px) { .metric-grid.tel-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 980px) { .metric-grid.tel-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* tel-021 browser QA-01: the day picker and its button are 44px touch targets on phones. */
+@media (max-width: 640px) { .tel-day-form .input, .tel-day-form .btn { min-height: 44px; } }

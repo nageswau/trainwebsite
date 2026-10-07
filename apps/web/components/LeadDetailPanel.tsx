@@ -6,6 +6,9 @@ import { LeadStageControl } from "@/components/AdminLeadStage";
 import LeadAppointmentsSection from "@/components/LeadAppointmentsSection";
 import LeadCalls from "@/components/LeadCalls";
 import LeadFollowUps from "@/components/LeadFollowUps";
+import LeadHandoverForm from "@/components/LeadHandoverForm";
+import LeadMessages from "@/components/LeadMessages";
+import LeadMilestones from "@/components/LeadMilestones";
 import LeadQualificationForm from "@/components/LeadQualificationForm";
 import ProductOptions from "@/components/TelecallerProductOptions";
 import { isRequestBody, sendJson, type Page } from "@/lib/apiErrors";
@@ -14,7 +17,7 @@ import { isClosed, stageLabel } from "@/lib/leadStages";
 import { SOURCE_LABEL, activeProducts, getPage, type Product } from "@/lib/telecallerCatalogue";
 import { SCRIPTS_URL, type Script } from "@/lib/telecallerContent";
 import {
-  PRIORITIES, PRIORITY_LABEL, TIMELINE_LIMIT, leadUrl, moveStage, telHref, type Priority, type TelecallerLeadDetail, type TimelineRow,
+  PRIORITIES, PRIORITY_LABEL, TIMELINE_LIMIT, activityTitle, leadUrl, moveStage, telHref, type Priority, type TelecallerLeadDetail, type TimelineRow,
 } from "@/lib/telecallerLeads";
 
 type Notice = { text: string; failed: boolean } | null;
@@ -152,10 +155,15 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
   const [detailsNotice, setDetailsNotice] = useState<Notice>(null);
   const [stageNotice, setStageNotice] = useState<Notice>(null);
   const [callSignal, setCallSignal] = useState(0);
+  const [whatsAppSignal, setWhatsAppSignal] = useState(0);
   const [followUpsVersion, setFollowUpsVersion] = useState(0);
   const call = telHref(lead.phone);
   // tel-010 / tel-011 (D8, F2, F4): only the lead's telecaller logs calls and adds follow-ups (a manager reads); never on a closed lead
   const telecallerWrites = !canReopen && !lead.read_only && !isClosed(lead.status);
+
+  // tel-018 HO4: a workable lead before the student link; a manager (never read-only) may also change the counselor
+  const canHandover = !lead.read_only && !isClosed(lead.status) && !["application_enrollment", "converted"].includes(lead.status);
+  const [handoverNotice, setHandoverNotice] = useState<Notice>(null);
 
   const reloadActivity = () =>
     getPage<TimelineRow>(leadUrl(lead.id, `/timeline?limit=${TIMELINE_LIMIT}`)).then(setActivity, () => setActivity(null));
@@ -198,9 +206,14 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
         )}
       </div>
 
+      {(call || !lead.read_only) && ( // QA-01: a handed-over lead with no phone has no action row (no empty gap)
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-start" }}>
         {/* tel-010: the dialer opens, and so does the call log form */}
         {call && <a className="btn small" href={call} aria-label={`Call ${lead.name}`} onClick={() => setCallSignal((n) => n + 1)}>Call</a>}
+        {/* tel-013: opens the WhatsApp composer in the Messages section (WA2: the lead's telecaller, open lead; AC3: a usable number) */}
+        {telecallerWrites && lead.whatsapp_to && (
+          <button type="button" className="btn secondary small" aria-label={`WhatsApp ${lead.name}`} onClick={() => setWhatsAppSignal((n) => n + 1)}>WhatsApp</button>
+        )}
         {!lead.read_only && (
           <div>
             <LeadStageControl lead={lead} canReopen={canReopen} move={moveStage} onMessage={(m) => setStageNotice({ text: m.text, failed: m.failed })}
@@ -208,7 +221,16 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
             <NoticeLine notice={stageNotice} />
           </div>
         )}
+        {canHandover && (
+          <LeadHandoverForm lead={lead} onDone={(next) => {
+            setLead(next);
+            setHandoverNotice({ text: `Handed over to ${next.counselor?.full_name ?? "the counselor"}.`, failed: false });
+            void reloadActivity();
+          }} />
+        )}
       </div>
+      )}
+      <NoticeLine notice={handoverNotice} />
 
       {!lead.read_only && (
         <form onSubmit={savePriority}>
@@ -236,6 +258,8 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
           if (result.lead.status !== lead.status) stageChanged(result.lead.status); // the follow-ups re-read on a stage change (F4)
           else if (result.follow_up_id) setFollowUpsVersion((n) => n + 1);
         }} />
+
+      <LeadMessages leadId={lead.id} whatsappTo={lead.whatsapp_to} canWrite={telecallerWrites} openSignal={whatsAppSignal} />
 
       <LeadFollowUps leadId={lead.id} leadStage={lead.status} canWrite={telecallerWrites} refresh={followUpsVersion} onStageChanged={stageChanged} />
 
@@ -276,6 +300,8 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
           void reloadActivity();
         }} />
 
+      {lead.milestones && <LeadMilestones milestones={lead.milestones} status={lead.status} />}
+
       <section aria-labelledby="lead-enquiry-heading">
         <h3 id="lead-enquiry-heading" style={{ margin: 0 }}>Enquiry</h3>
         <p style={{ margin: "6px 0 0" }}><strong>{lead.subject}</strong></p>
@@ -292,11 +318,7 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
           <ol aria-label="Lead activity" style={{ margin: "6px 0 0", paddingLeft: 18, display: "grid", gap: 6 }}>
             {activity.items.map((row) => (
               <li key={`${row.kind}-${row.id}`}>
-                {row.kind === "enquiry" ? (
-                  <strong style={{ overflowWrap: "anywhere" }}>New enquiry: {row.to_label}</strong>
-                ) : (
-                  <strong>{row.kind === "priority" ? "Priority" : "Stage"}: {row.from_label} → {row.to_label}</strong>
-                )}
+                <strong style={{ overflowWrap: "anywhere" }}>{activityTitle(row)}</strong>
                 <div className="muted" style={{ fontSize: 13 }}>
                   {row.actor ? row.actor.full_name : row.kind === "enquiry" ? "Website form" : "System"}
                   {row.kind === "enquiry" && ` · ${SOURCE_LABEL[row.from_value] ?? row.from_value}`} · {formatDate(row.at, true)}

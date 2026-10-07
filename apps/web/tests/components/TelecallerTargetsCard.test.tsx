@@ -24,7 +24,7 @@ describe("TelecallerTargetsCard (tel-022 G4)", () => {
     expect(within(calls).getByText("90")).toBeInTheDocument();
     expect(within(within(card).getByText("Conversions").closest("tr")!).getByText("60")).toBeInTheDocument();
     expect(within(within(card).getByText("Follow-ups").closest("tr")!).getAllByText("Not set")).toHaveLength(2);
-    expect(within(card).getByText(/Achieved figures will appear here/)).toBeInTheDocument();
+    expect(within(card).getByText("Set by your manager.")).toBeInTheDocument(); // no achieved figures without tel-021's progress
   });
 
   it("says so when the targets could not be loaded", () => {

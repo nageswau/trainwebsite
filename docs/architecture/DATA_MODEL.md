@@ -468,7 +468,7 @@ covers the commission-specific piece).
   created_at)`. Live pipeline stages are still never stored (H11), so `ck_bdm_organizations_pipeline_stage` is **not** widened (the
   bdm-004 note above anticipated it). Additive; the downgrade refuses while any request or link exists.
 
-- **Addendum, 2026-10-07 (`bdm-019`, `DEC-SCOPE-100`; migration `0095_bdm_agent_link`, chained after `0094_bdm_daily_reports`) — agent
+- **Addendum, 2026-10-07 (`bdm-019`, `DEC-SCOPE-106`; migration `0097_bdm_agent_link`, chained after `0096_bdm_targets`) — agent
   onboarding handover.** `bdm_organizations` gains `agent_org_id` (nullable FK `agent_orgs` `ON DELETE RESTRICT`, unique
   `uq_bdm_organizations_agent_org`: one organization ↔ at most one Agent Organization). `bdm_onboarding_requests` gains `agent_org_id`
   (nullable FK `agent_orgs` RESTRICT); `ck_bdm_onboarding_requests_kind` becomes `kind IN ('school', 'agent')`;

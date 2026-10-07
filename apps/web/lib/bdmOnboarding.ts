@@ -2,7 +2,7 @@ import type { OrgPerson } from "@/lib/bdmOrganizations";
 
 // bdm-018 (DEC-SCOPE-085): the school onboarding handover. The API owns every rule (who may request, MoU Signed/Active, one pending,
 // one School per organization); these types only read its responses.
-// bdm-019 (DEC-SCOPE-100): Agent organizations hand over the same way and are linked to an Agent Organization by its code; the BDM sees
+// bdm-019 (DEC-SCOPE-106): Agent organizations hand over the same way and are linked to an Agent Organization by its code; the BDM sees
 // that agency as aggregates only (A7).
 export type OnboardingStatus = "pending" | "completed" | "rejected";
 export type OnboardingKind = "school" | "agent";

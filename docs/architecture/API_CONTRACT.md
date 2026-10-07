@@ -1255,10 +1255,76 @@ Changed (bdm-009): `POST /bdm/activities` with `occurred_at` on a submitted day,
 submitted day's activity, are `409` "This day's report has been submitted, so its activities can't be changed"; `permissions.can_change`
 is `false` for them. No other field or code changes.
 
-## 12U. Agent onboarding handover (`bdm-019`) — addendum, 2026-10-07
+## 12U. Lead messages — WhatsApp click-to-chat (`tel-013`) — addendum, 2026-10-07
 
-`DEC-SCOPE-100`; design spec `docs/superpowers/specs/2026-10-07-bdm-019-agent-onboarding-handover-design.md` §4. Migration
-`0095_bdm_agent_link`. Signed out `401`. Every write is one transaction with its audit row and in-app notice.
+`DEC-SCOPE-100`; design spec `docs/superpowers/specs/2026-10-07-tel-013-whatsapp-design.md` §3. Migration `0095_lead_messages`. Reads use
+the lead's scope (`lead_pipeline.scope`; other roles `403`, signed out `401`, out of scope `404`). Only the lead's telecaller records a send
+(`403` for managers / super_admin); a handed-over lead is `403` for its telecaller; a closed lead `409`. (§12S is tel-019's; §12T is
+claimed by the open tel-018 branch.)
+
+Message item: `{id, lead_id, channel: whatsapp|email, template: {id, name} | null, subject, body, sent_at, sender: {id, full_name},
+can_delete}`. `template.name` is the name when sent (D6); `null` = a custom message (WA4).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/leads/{id}/render?template_id=` | `200 {template: {id, name, channel, kind}, subject, body, brochure_link: {url, expires_at} \| null, product_mismatch}` — an active WhatsApp or email template rendered with the lead's name, its product (else the template's), a fresh 7-day brochure link (active brochure only) and its open counselling appointment ("Mon 14 Sept 2026, 10:30 AM" IST). Missing values render empty. `404` inactive / unknown template. Read-only, so a manager may call it too (tel-012 C2) |
+| `GET /telecaller/leads/{id}/messages?limit=&offset=` | `200` page of the lead's messages, newest first |
+| `POST /telecaller/leads/{id}/messages` | `{channel: "whatsapp", template_id?, body (1–1000, trimmed)}` → `201` item; `sent_at` = now. `422` an email channel (tel-014), an empty / too long body, or a `template_id` that is unknown, inactive or not WhatsApp (on the field). `409` closed lead, no usable WhatsApp / mobile number, or 300 sends that IST day. No stage effect. Not idempotent (each confirm is one send). Audit `lead_message.create` (lead id, channel, template id) |
+| `DELETE /telecaller/messages/{id}` | `204`. Only the sender (`403`), lead not handed over (`403`), the send's IST day only (`409`). Audit `lead_message.delete` |
+
+`GET /telecaller/leads/{id}` gains `whatsapp_to`: the wa.me number (digits of the E.164 WhatsApp number, else of the mobile; `+91` default
+for a 10-digit Indian mobile) or `null`.
+
+## 12V. Lead handover, return and student link (`tel-018`) — addendum, 2026-10-07
+
+`DEC-SCOPE-101`; design spec `docs/superpowers/specs/2026-10-07-tel-018-handover-design.md` §3. No migration. Signed out `401`. The
+counselor lead shape is §12J's lead row (with `converted_user`) plus `message`, `milestones: {student: {id, full_name, email} | null,
+items: [{kind: enrollment|application|visa, label, status, reference, at}]}` and `permissions: {return, link, unlink}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `POST /telecaller/leads/{id}/handover` | Body `{counselor_id}`. §12J's roles and scope. In order: `404` scope; `403` a telecaller on a handed-over lead; `409` closed lead; `409` at or past Application/Enrollment; `422` not an active counselor of the lead's division; `409` same counselor. `200` the §12J detail; open follow-ups cancelled ("Handed over to counselor"); audit `lead.handover {counselor_id, from_counselor_id}` |
+| `GET /counselor/leads?limit=&offset=` | `counselor` only (else `403`). Own leads (`owner_id` = self, own division), newest first. `{items, total, limit, offset}` |
+| `GET /counselor/leads/{id}` | `404` outside scope. A lead whose linked student has enrolled turns Converted first |
+| `GET /counselor/leads/{id}/timeline` | §12J's timeline shape |
+| `POST /counselor/leads/{id}/return` | Body `{reason}` (required, ≤ 500). `409` linked. Stage event `returned` (→ Follow-up, reason kept); `owner_id` cleared; the open appointment cancelled ("Returned to telecaller"); audit `lead.return {counselor_id}`. `200` the lead (now outside the counselor's scope) |
+| `GET /counselor/leads/{id}/link-suggestions?q=` | `{items: [{id, full_name, email, phone, linked_elsewhere}]}`; no `q` → the lead's email / mobile match; `q` 3–200 characters (else `422`) |
+| `POST /counselor/leads/{id}/student-link` | Body `{student_id}`. `409` already linked; `422` "Enter the email of an active student account in this lead's division" (any invalid target); `409` student linked to another lead (also the unique-index race). Stage event `student_linked`; `converted` at once when HO3 evidence exists; audit `lead.convert`. `200` the shape above |
+| `DELETE /counselor/leads/{id}/student-link` | `409` not linked; `409` "Only an admin can unlink a converted lead". Stage event `student_unlinked` → Follow-up; audit `lead.unconvert` |
+
+Changed: `POST/DELETE /admin/leads/{id}/conversion` keep their contract and now share these rules — a link may answer `status: converted`, and
+an unlink of a converted lead returns it to Follow-up (HO2). `GET /telecaller/leads/{id}` (and the PATCH answer) gains `milestones`.
+Timeline rows gain `event` (a stage row's pipeline event, else `null`).
+
+## 12W. BDM monthly targets (`bdm-016`) — addendum, 2026-10-07
+
+`DEC-SCOPE-103`; design spec `docs/superpowers/specs/2026-10-07-bdm-016-monthly-targets-design.md` §5. Migration `0096_bdm_targets`.
+Signed out `401`. `month` is an IST month `YYYY-MM` (default the current one; malformed `422`). The sheet shape: `{month, month_status:
+past|current|future, editable, bdm: {id, full_name}, bdm_type, kpis: [{key, label, definition, tracked, target, achieved, percent}]}` —
+`achieved` is null when not tracked or before the month starts; `percent` is also null with no target or a target of 0.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /bdm/targets?month=` | `bdm` only (else `403`). The BDM's own sheet, `editable: false` |
+| `GET /bdm/manager/targets?month=&limit=&offset=` | `bdm_manager` (team) / `super_admin` (all), else `403`. `{month, month_status, editable, items: [{bdm, bdm_type, targets_set, kpi_count}], total, limit, offset}` — active BDMs, by name |
+| `GET /bdm/manager/targets/{bdm_user_id}?month=` | Manager roles. The sheet; `editable` when the month is editable for the caller and the BDM is active. Outside the team `404` |
+| `PUT /bdm/manager/targets` | Manager roles. Body `{month, items: [{bdm_user_id, kpi_key, target: 0–100000 \| null}]}` (1–200 items, one per BDM and KPI, unknown keys `422`). All or nothing: a KPI outside the BDM's type `422` (named), outside the team `404`, inactive BDM `422`, a past month by a manager `422`, more than 12 months ahead `422`. `200 {month, changed}`; `null` clears; unchanged values are not written; audit `bdm_target.set {month, changes: [{kpi, from, to}]}` per BDM |
+| `POST /bdm/manager/targets/copy` | Manager roles. Body `{month}`; same month rules. Copies the previous month's targets of active team BDMs where none is set yet. `200 {month, copied}`; audit `bdm_target.copied {month, from_month, kpis}` per BDM |
+
+## 12X. Telecaller dashboard + daily activity (`tel-021`) — addendum, 2026-10-07
+
+`DEC-SCOPE-105`; design spec `docs/superpowers/specs/2026-10-07-tel-021-dashboard-design.md` §2–§3. No migration. Signed out `401`. All
+days are IST; every figure is computed by `services/telecaller_metrics.py` (backlog Appendix B).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/dashboard` | `telecaller` only (else `403`). `200 {day, tiles: {new_leads, calls_today: {done, to_do}, follow_ups_due, hot_leads, appointments, connected, not_connected, converted, overdue, daily_target: {achieved, target}}, targets: {daily: [{kpi, achieved, target}], monthly: [...]}, appointments: [{kind: counselling\|bdm, id, code, title, scheduled_at, status, lead_id}]}`; `target` is `null` when none is set |
+| `GET /telecaller/activity?date=&user_id=` | `date` defaults to today; a future day `422`. Telecaller: own only (`user_id` other than self `403`). Manager / `super_admin`: `user_id` required (`422`), out of scope `404`. Other roles `403`. `200 {day, user: {id, full_name}, counts: {leads_assigned, calls, connected_calls, not_connected, follow_ups_completed, follow_ups_pending, new_appointments, counselor_appointments, bdm_appointments, whatsapp_messages, qualified_leads, hot_leads, converted_leads}, targets: [{kpi, achieved, target}]}` (that day's daily targets) |
+
+## 12Y. Agent onboarding handover (`bdm-019`) — addendum, 2026-10-07
+
+`DEC-SCOPE-106`; design spec `docs/superpowers/specs/2026-10-07-bdm-019-agent-onboarding-handover-design.md` §4. Migration
+`0097_bdm_agent_link`. Signed out `401`. Every write is one transaction with its audit row and in-app notice.
 
 | Method/Path | Notes / status codes |
 |---|---|
@@ -1270,7 +1336,7 @@ is `false` for them. No other field or code changes.
 
 `BdmOrganizationOut.onboarding` is also returned for Agent organizations and gains `agent: {name, prefix, status, master_login,
 staff_count, counts: {students, applications, enrollments}} | null` (`null` for School ones). `pipeline.steps[]` gain `count: int | null`
-(a volume step's live count once linked); `pipeline.agent_status` follows `DEC-SCOPE-100` A5. No commission or money figure is returned.
+(a volume step's live count once linked); `pipeline.agent_status` follows `DEC-SCOPE-106` A5. No commission or money figure is returned.
 
 ## 13. Traceability check
 

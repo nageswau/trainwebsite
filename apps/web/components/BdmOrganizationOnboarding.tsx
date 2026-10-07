@@ -39,7 +39,7 @@ export default function BdmOrganizationOnboarding({ organization, onRequested }:
     focus(ids.open);
   };
 
-  // bdm-019 (DEC-SCOPE-100): an Agent organization is linked to an existing Agent Organization; the BDM sees its summary only.
+  // bdm-019 (DEC-SCOPE-106): an Agent organization is linked to an existing Agent Organization; the BDM sees its summary only.
   const isAgent = organization.bdm_type === "agent";
   const agent = onboarding.agent ?? null;
   const linked = Boolean(school || agent);
