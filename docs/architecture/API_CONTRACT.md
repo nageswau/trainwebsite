@@ -1321,7 +1321,7 @@ days are IST; every figure is computed by `services/telecaller_metrics.py` (back
 | `GET /telecaller/dashboard` | `telecaller` only (else `403`). `200 {day, tiles: {new_leads, calls_today: {done, to_do}, follow_ups_due, hot_leads, appointments, connected, not_connected, converted, overdue, daily_target: {achieved, target}}, targets: {daily: [{kpi, achieved, target}], monthly: [...]}, appointments: [{kind: counselling\|bdm, id, code, title, scheduled_at, status, lead_id}]}`; `target` is `null` when none is set |
 | `GET /telecaller/activity?date=&user_id=` | `date` defaults to today; a future day `422`. Telecaller: own only (`user_id` other than self `403`). Manager / `super_admin`: `user_id` required (`422`), out of scope `404`. Other roles `403`. `200 {day, user: {id, full_name}, counts: {leads_assigned, calls, connected_calls, not_connected, follow_ups_completed, follow_ups_pending, new_appointments, counselor_appointments, bdm_appointments, whatsapp_messages, qualified_leads, hot_leads, converted_leads}, targets: [{kpi, achieved, target}]}` (that day's daily targets) |
 
-## 12Y. Lead messages — email to a lead (`tel-014`) — addendum, 2026-10-07
+## 12Z. Lead messages — email to a lead (`tel-014`) — addendum, 2026-10-07
 
 `DEC-SCOPE-106`; design spec `docs/superpowers/specs/2026-10-07-tel-014-email-design.md` §3. Migration `0097_lead_message_email`. Extends
 §12U; signed out `401`.

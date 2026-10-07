@@ -659,8 +659,8 @@ from tel-008. The rendered text is plain, so this item URL-encodes it for wa.me.
 ### tel-014 — Email to lead + send log
 
 **Status (2026-10-07):** **built** on `feature/tel-014`: `DEC-SCOPE-106` (EM1–EM4 plus defaults E1–E10), migration
-`0097_lead_message_email` (after bdm-016's `0096_bdm_targets`), API §12Y, RBAC §2.31. Drafted as `0096` / `DEC-SCOPE-102`, then renumbered
-after bdm-012, bdm-016 and tel-021 (tel-025 holds `DEC-SCOPE-104`). Q-16 is answered by EM1. The cap is 429 at 100 emails a day. Email rows are never deleted.
+`0097_lead_message_email` (after bdm-016's `0096_bdm_targets`), API §12Z, RBAC §2.32. Drafted as `0096` / `DEC-SCOPE-102`, then renumbered
+after bdm-012, bdm-016 and tel-021 (tel-025 holds `DEC-SCOPE-104` / §12Y / §2.31). Q-16 is answered by EM1. The cap is 429 at 100 emails a day. Email rows are never deleted.
 Spec `docs/superpowers/specs/2026-10-07-tel-014-email-design.md`. QA report `docs/quality/TEL-014_EXPLORATORY_QA_2026-10-07.md`. Consent
 and retention remain open (`PRD_OPEN_ITEMS.md` row 85).
 
@@ -1203,8 +1203,8 @@ that as `0090_lead_follow_ups` / `DEC-SCOPE-094` / §12P. tel-016 (PR #103 @ `92
 `DEC-SCOPE-099` / §12T / RBAC §2.26, and tel-013 (PR #112 @ `a0b5ee31`) `0095_lead_messages` / `DEC-SCOPE-100` / §12U / RBAC §2.27.
 tel-018 (PR #114 @ `f37ebea8`, no migration) then took `DEC-SCOPE-101` / §12V / RBAC §2.28. bdm-012 (`DEC-SCOPE-102`) and bdm-016
 (`0096_bdm_targets` / `DEC-SCOPE-103` / §12W / RBAC §2.29) followed. tel-021 then took `DEC-SCOPE-105` / §12X / RBAC §2.30 (no
-migration), and tel-025 holds `DEC-SCOPE-104`. tel-014 takes `0097_lead_message_email` / `DEC-SCOPE-106` / §12Y / RBAC §2.31, so the next
-telecaller item chains after it with `0098` / `DEC-SCOPE-107` / §12Z / RBAC §2.32. Each item takes the
+migration), and tel-025 holds `DEC-SCOPE-104` / §12Y / RBAC §2.31. tel-014 takes `0097_lead_message_email` / `DEC-SCOPE-106` / §12Z /
+RBAC §2.32, so the next telecaller item chains after it with `0098` / `DEC-SCOPE-107` / the next API addendum / RBAC §2.33. Each item takes the
 next free head when it merges, following the existing re-chain notes idiom.
 
 | Item | Migration content |

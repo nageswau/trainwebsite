@@ -3,13 +3,13 @@
 - **Backlog:** `docs/delivery/TELECALLER_CRM_BACKLOG.md` § tel-014 (EVID-019 §12, L454–L472; T9). Dependencies tel-008 (PR #85), tel-012
   (PR #83) and tel-013 (PR #112) are merged. It writes to tel-013's `lead_messages`.
 - **Decision:** `DEC-SCOPE-106` (EM1–EM4 owner answers 2026-10-07; E1–E10 defaults). Migration `0097_lead_message_email`, API contract
-  §12Y, RBAC §2.31. The item was drafted as `0096` / `DEC-SCOPE-102` / §12W / 2.29. Four items merged first:
+  §12Z, RBAC §2.32. The item was drafted as `0096` / `DEC-SCOPE-102` / §12W / 2.29. Four items merged first:
   - tel-018: `DEC-SCOPE-101` / §12V / 2.28, no migration.
   - bdm-012: `DEC-SCOPE-102`.
   - bdm-016: `0096_bdm_targets` / `DEC-SCOPE-103` / §12W / 2.29.
   - tel-021: `DEC-SCOPE-105` / §12X / 2.30, no migration.
 
-  tel-025 holds `DEC-SCOPE-104`. So the item is renumbered to `0097` after `0096_bdm_targets`, and to `DEC-SCOPE-106`.
+  tel-025 holds `DEC-SCOPE-104` / §12Y / 2.31. So the item is renumbered to `0097` after `0096_bdm_targets`, and to `DEC-SCOPE-106`.
 
 ## 1. Decisions
 
@@ -40,7 +40,7 @@
 - `models.LEAD_MESSAGE_CHECKS` stays the 0095 set. The new check is `LEAD_MESSAGE_EMAIL_CHECK`, repeated by 0097, and a test asserts the two
   are identical.
 
-## 3. API (§12Y)
+## 3. API (§12Z)
 
 | Route | Change |
 |---|---|
@@ -118,4 +118,4 @@
 3. Mailer builder, `lead_email.py` worker, dispatch, worker task and beat, with the worker tests.
 4. Web lib, `EmailComposer`, `LeadMessages`, `LeadDetailPanel`, with the vitest tests.
 5. Playwright spec; QA in a `tel014` stack with Mailpit.
-6. Docs: DEC-SCOPE-106, API §12Y, RBAC §2.31, backlog status, QA report.
+6. Docs: DEC-SCOPE-106, API §12Z, RBAC §2.32, backlog status, QA report.
