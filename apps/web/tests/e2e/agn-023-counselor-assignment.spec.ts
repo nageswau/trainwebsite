@@ -24,6 +24,7 @@ async function agencyApplication(page: Page, name: string) {
 }
 
 test("admin assigns a counsellor to an agency application; counsellor advances (no Enrolled); agency sees the name", async ({ browser }) => {
+  test.setTimeout(60_000); // three sign-ins, an application, a table search, a type-ahead search and three page checks: 15-17 s on a fresh stack
   const name = `E2E Handoff ${stamp()}`;
   const agency = await browser.newPage();
   await signIn(agency, "agent@edusphere.local", "Demo@123");
