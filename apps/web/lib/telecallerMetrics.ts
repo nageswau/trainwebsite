@@ -61,8 +61,11 @@ export function tileValue(tiles: DashboardTiles, key: keyof DashboardTiles): str
   return String(value);
 }
 
-/** The `?date=` a page passes on: a well-formed YYYY-MM-DD only (the API rules on the rest, e.g. a future day). */
-export const dayParam = (raw: string | undefined) => (raw && /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : undefined);
+/** The `?date=` a page passes on: a real calendar day as YYYY-MM-DD only, else today (QA-02); the API rules on the rest (a future day). */
+export const dayParam = (raw: string | undefined) =>
+  raw && /^\d{4}-\d{2}-\d{2}$/.test(raw) && !Number.isNaN(Date.parse(`${raw}T00:00:00Z`)) && new Date(`${raw}T00:00:00Z`).toISOString().startsWith(raw)
+    ? raw
+    : undefined;
 
 export function activityUrl(day?: string, userId?: string): string {
   const params = new URLSearchParams();

@@ -100,6 +100,9 @@ describe("telecallerMetrics helpers", () => {
   it("passes only a well-formed date and builds the activity URL", () => {
     expect(dayParam("2026-10-06")).toBe("2026-10-06");
     expect(dayParam("06/10/2026")).toBeUndefined();
+    expect(dayParam("2026-13-45")).toBeUndefined(); // QA-02: well-formed but not a calendar day
+    expect(dayParam("2026-02-30")).toBeUndefined();
+    expect(dayParam("2024-02-29")).toBe("2024-02-29");
     expect(activityUrl("2026-10-06", "u1")).toBe("/api/v1/telecaller/activity?date=2026-10-06&user_id=u1");
     expect(activityUrl()).toBe("/api/v1/telecaller/activity");
     expect(activityError({ status: 422, message: "future" })).toBe("future");

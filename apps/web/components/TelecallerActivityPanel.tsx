@@ -12,7 +12,7 @@ export default function TelecallerActivityPanel({ activity, error, day, today }:
   return (
     <section className="card tel-targets" aria-labelledby="daily-activity-title" role="region" style={{ marginTop: 16 }}>
       <h3 id="daily-activity-title">Daily activity</h3>
-      <form method="get" style={{ display: "flex", flexWrap: "wrap", alignItems: "end", gap: 8, margin: "8px 0 12px" }}>
+      <form method="get" className="tel-day-form" style={{ display: "flex", flexWrap: "wrap", alignItems: "end", gap: 8, margin: "8px 0 12px" }}>
         <label style={{ display: "grid", gap: 4 }}>
           Day
           <input className="input" type="date" name="date" defaultValue={day} max={today} required />

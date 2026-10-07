@@ -79,15 +79,20 @@ test("the telecaller's dashboard and daily activity, and the manager's view of a
   await expect(count(page, "Total calls")).toContainText("1");
   await expect(count(page, "Not connected")).toContainText("1");
   await expect(count(page, "Total leads assigned")).toContainText("2");
-  await page.getByLabel("Day").fill(istDay(-1));
+  await page.getByLabel("Day", { exact: true }).fill(istDay(-1));
   await page.getByRole("button", { name: "Show" }).click();
   await page.waitForURL(`**/telecaller/dashboard?date=${istDay(-1)}`);
   await expect(count(page, "Total calls")).toContainText("0");
   await expect(count(page, "Total leads assigned")).toContainText("0");
   await page.goto(`/telecaller/dashboard?date=${istDay(2)}`);
-  await expect(page.getByRole("alert")).toContainText("can't be shown for a future date");
+  await expect(page.getByRole("region", { name: "Daily activity" }).getByRole("alert")).toContainText("can't be shown for a future date");
   // Another user's activity is refused (403).
   expect((await page.request.get(`/api/v1/telecaller/activity?user_id=${manager.id}`)).status()).toBe(403);
+  // QA-02: a well-formed but impossible day falls back to today; QA-03: the manager's page is not the telecaller's, even for their own id.
+  await page.goto("/telecaller/dashboard?date=2026-13-45");
+  await expect(count(page, "Total calls")).toContainText("1");
+  await page.goto(`/telecaller/manager/team/${caller.id}/activity`);
+  await expect(page.getByText("Telecaller manager role required")).toBeVisible();
 
   // Tablet and phone: no sideways scroll.
   for (const width of [820, 390]) {
@@ -106,6 +111,8 @@ test("the telecaller's dashboard and daily activity, and the manager's view of a
   await expect(page.getByRole("heading", { name: `E2E Dash Telecaller ${stamp}` })).toBeVisible();
   await expect(count(page, "Total calls")).toContainText("1");
   await page.goto(`/telecaller/manager/team/${stranger.id}/activity`);
+  await expect(page.getByText("This telecaller is not one of your reports.")).toBeVisible();
+  await page.goto("/telecaller/manager/team/not-a-uuid/activity"); // QA-04: a malformed id reads the same, never "[object Object]"
   await expect(page.getByText("This telecaller is not one of your reports.")).toBeVisible();
   expect(errors.filter((e) => !/403|404|422|Forbidden|Not Found|Unprocessable/.test(e))).toEqual([]);
 });
