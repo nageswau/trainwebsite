@@ -468,6 +468,14 @@ covers the commission-specific piece).
   created_at)`. Live pipeline stages are still never stored (H11), so `ck_bdm_organizations_pipeline_stage` is **not** widened (the
   bdm-004 note above anticipated it). Additive; the downgrade refuses while any request or link exists.
 
+- **Addendum, 2026-10-07 (`bdm-019`, `DEC-SCOPE-107`; migration `0098_bdm_agent_link`, chained after `0097_lead_message_email`) — agent
+  onboarding handover.** `bdm_organizations` gains `agent_org_id` (nullable FK `agent_orgs` `ON DELETE RESTRICT`, unique
+  `uq_bdm_organizations_agent_org`: one organization ↔ at most one Agent Organization). `bdm_onboarding_requests` gains `agent_org_id`
+  (nullable FK `agent_orgs` RESTRICT); `ck_bdm_onboarding_requests_kind` becomes `kind IN ('school', 'agent')`;
+  `ck_bdm_onboarding_requests_completed` accepts a School **or** an agency; new `ck_bdm_onboarding_requests_target` keeps each kind to its
+  own target. No row is written (every existing request is a School one). Live Agent stages, counts and status are read from the linked
+  agency, never stored. The downgrade refuses while any agent request or agent link exists, then restores 0084's CHECKs.
+
 - **Addendum, 2026-10-06 (`tel-005`, `DEC-SCOPE-088`; migration `0086_lead_enquiries`, chained after `0085_tel_distribution`) — lead
   intake.** `enquiries.email` becomes **nullable** (I1: a manual lead may have a mobile only; the website form still requires one).
   New `lead_enquiries` (UUID PK; `lead_id` FK `enquiries` RESTRICT; `subject` String(180); `message` Text; `source` String(30) CHECK

@@ -279,7 +279,7 @@ Signs in at `/it/login` (College BDM, division `it`) or `/overseas/login` (Agent
 
 Division `global`; signs in at `/admin/login` (heading "Administration sign-in"); lands on `/bdm/manager/dashboard`. Password recovery stays in the admin portal (QA-05, B11): "Forgot your password?" on `/admin/login` → public `/admin/forgot-password`; the welcome/reset link opens public `/admin/reset-password`, whose links point to `/admin/login`; after a reset the form also follows the API's `login_portal`.
 
-- /bdm/manager/dashboard — team counts (minimal shell; bdm-023 adds the management dashboard).
+- /bdm/manager/dashboard — team counts, then the management dashboard (bdm-023, `DEC-SCOPE-108`): 8 overview tiles and the alert list, each alert linking to its record. super_admin reaches it from "BDM Dashboard" in the admin sidebar (all teams, or one manager's).
 - /bdm/manager/team — the BDMs who report to this manager (paged).
 - /bdm/manager/organizations — the team's organizations (`bdm-002`), read-only except reassign and restore; `/bdm/manager/organizations/{id}`. Sidebar: Dashboard · Team · Organizations · Appointments · Approvals · Notifications.
 - /bdm/manager/appointments — the team's appointments (`bdm-006`), read-only with a BDM filter; `/bdm/manager/appointments/{id}` (details and history, no actions).

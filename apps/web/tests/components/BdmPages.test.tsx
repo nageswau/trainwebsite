@@ -117,7 +117,7 @@ describe("bdm-001 BDM pages", () => {
 describe("bdm-001 manager pages", () => {
   it("dashboard counts active and inactive and links to the team (AC05)", async () => {
     answerByPath(page([row("a"), row("b", false)]));
-    const tree = elements(await ManagerDashboard());
+    const tree = elements(await ManagerDashboard({ searchParams: Promise.resolve({}) }));
     expect(serverApi).toHaveBeenCalledWith("/api/v1/auth/me");
     expect(serverApi).toHaveBeenCalledWith("/api/v1/bdm/manager/team?limit=50");
     expect(tree.find((el) => el.type === PortalShell)!.props.userName).toBe("Meera");
@@ -127,7 +127,7 @@ describe("bdm-001 manager pages", () => {
 
   it("dashboard says so when nobody reports yet, with no team link", async () => {
     answerByPath(page([]));
-    const tree = elements(await ManagerDashboard());
+    const tree = elements(await ManagerDashboard({ searchParams: Promise.resolve({}) }));
     expect(allText(tree)).toContain("No BDMs report to you yet.");
     expect(hrefs(tree)).not.toContain("/bdm/manager/team");
   });

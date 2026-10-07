@@ -203,7 +203,7 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
       <BdmOrganizationOnboarding
         organization={org}
         onRequested={(o) => {
-          changed(o, "Onboarding requested. Overseas Admin will create or link the School.");
+          changed(o, o.bdm_type === "agent" ? "Onboarding requested. Overseas Admin will link the agent organization." : "Onboarding requested. Overseas Admin will create or link the School.");
           focus(statusId); // the form that was used is gone
         }}
       />

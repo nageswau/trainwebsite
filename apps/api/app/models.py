@@ -1623,6 +1623,7 @@ class BdmOrganization(Base, TimestampMixin):
         Index("ix_bdm_organizations_duplicate_key", "bdm_type", "name_key", "city_key"),
         Index("ix_bdm_organizations_type_stage", "bdm_type", "pipeline_stage"),
         UniqueConstraint("school_id", name="uq_bdm_organizations_school"),
+        UniqueConstraint("agent_org_id", name="uq_bdm_organizations_agent_org"),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     code: Mapped[str] = mapped_column(String(20))
@@ -1659,6 +1660,8 @@ class BdmOrganization(Base, TimestampMixin):
     lost_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     # bdm-018 (DEC-SCOPE-085 H1): the onboarded School; one organization <-> at most one School. The School's BDM is derived from it.
     school_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id", ondelete="RESTRICT"), nullable=True)
+    # bdm-019 (DEC-SCOPE-107): the onboarded Agent Organization; one organization <-> at most one agency. The live Agent stages read it.
+    agent_org_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_orgs.id", ondelete="RESTRICT"), nullable=True)
 
 
 class BdmOrganizationContact(Base, TimestampMixin):
@@ -1784,12 +1787,14 @@ class BdmMouEvent(Base):
 
 # bdm-018 (DEC-SCOPE-085, spec §3): the onboarding handover. `kind` is 'school' only; bdm-019 widens it for agents.
 BDM_ONBOARDING_STATUSES = ("pending", "completed", "rejected")
-BDM_ONBOARDING_CHECKS = {  # migration 0084 repeats these strings; test_bdm_018_migration asserts they stay identical
-    "ck_bdm_onboarding_requests_kind": "kind IN ('school')",
+BDM_ONBOARDING_CHECKS = {  # migrations 0084 and 0098 (bdm-019) repeat these strings; test_bdm_018/019_migration pin them
+    "ck_bdm_onboarding_requests_kind": "kind IN ('school', 'agent')",
     "ck_bdm_onboarding_requests_status": _in_list("status", BDM_ONBOARDING_STATUSES),
     "ck_bdm_onboarding_requests_resolution": "resolution IS NULL OR resolution IN ('created', 'linked')",
     "ck_bdm_onboarding_requests_resolved": "(status = 'pending') = (resolved_at IS NULL)",
-    "ck_bdm_onboarding_requests_completed": "status <> 'completed' OR (school_id IS NOT NULL AND resolution IS NOT NULL)",
+    "ck_bdm_onboarding_requests_completed": "status <> 'completed' OR (resolution IS NOT NULL AND (school_id IS NOT NULL OR agent_org_id IS NOT NULL))",
+    # bdm-019: a request names only its own kind's target (a School, or an Agent Organization)
+    "ck_bdm_onboarding_requests_target": "(kind = 'school' AND agent_org_id IS NULL) OR (kind = 'agent' AND school_id IS NULL)",
     "ck_bdm_onboarding_requests_rejected": "status <> 'rejected' OR reject_reason IS NOT NULL",
 }
 
@@ -1815,6 +1820,7 @@ class BdmOnboardingRequest(Base, TimestampMixin):
     resolution: Mapped[str | None] = mapped_column(String(20), nullable=True)
     school_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id", ondelete="RESTRICT"), nullable=True)
     reject_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    agent_org_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_orgs.id", ondelete="RESTRICT"), nullable=True)  # bdm-019
 
 
 # bdm-006 (DEC-SCOPE-068, spec §4.1): appointment catalogues. Stable keys; the CHECKs accept every key, the service validates each value

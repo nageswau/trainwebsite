@@ -1012,7 +1012,7 @@ the type, or the type's pool; first accept wins); a decline is final (MR2); no w
 
 ### tel-024 — Management reports (5) + CSV export
 
-**Status (2026-10-07):** **built** on `feature/tel-024` (`DEC-SCOPE-108` RP1–RP4 + R1–R6; no migration; API §12AB; RBAC §2.34).
+**Status (2026-10-07):** **built** on `feature/tel-024` (`DEC-SCOPE-109` RP1–RP4 + R1–R6; no migration; API §12AC; RBAC §2.35).
 Spec `docs/superpowers/specs/2026-10-07-tel-024-management-reports-design.md`; QA report `docs/quality/TEL-024_EXPLORATORY_QA_2026-10-07.md`.
 Q-20 does not arise (aggregates only).
 
@@ -1046,7 +1046,7 @@ Q-20 does not arise (aggregates only).
 
 ### tel-025 — Deactivation, team move, bulk reassignment
 
-**Status (2026-10-07):** **built** on `feature/tel-025` (`DEC-SCOPE-104` LC1–LC4 + D1–D6, reserved on `main`; no migration; API §12Y; RBAC §2.31).
+**Status (2026-10-07):** **merged** to `main` as PR #122 @ `692ffa78` (`DEC-SCOPE-104` LC1–LC4 + D1–D6; no migration; API §12Y; RBAC §2.31).
 Spec `docs/superpowers/specs/2026-10-07-tel-025-telecaller-lifecycle-design.md`; QA report `docs/quality/TEL-025_EXPLORATORY_QA_2026-10-07.md`.
 Reactivation: allowed (LC4).
 

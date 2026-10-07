@@ -1,4 +1,4 @@
-"""tel-024 (DEC-SCOPE-108, API §12AB, RBAC §2.34): the five Telecaller CRM management reports and their CSV export.
+"""tel-024 (DEC-SCOPE-109, API §12AC, RBAC §2.35): the five Telecaller CRM management reports and their CSV export.
 
 Checks run in the AGN-020 order -- role (a telecaller and every other role → 403, EVID-019 §22), then the kind (unknown → 404), then
 the inputs (422, a sentence naming the form's field, as the other telecaller routes) -- so a refused caller never learns which kinds exist. Query parameters are plain strings validated

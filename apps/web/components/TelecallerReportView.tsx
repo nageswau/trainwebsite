@@ -9,7 +9,7 @@ const EMPTY: Partial<Record<ReportKind, string>> = { telecaller: "No telecallers
 
 const show = (value: string | number | undefined) => (value === undefined || value === "" ? "—" : String(value));
 
-// tel-024 (DEC-SCOPE-108, EVID-019 §21): one management report -- a strip of report links (each report is its own address, so a view
+// tel-024 (DEC-SCOPE-109, EVID-019 §21): one management report -- a strip of report links (each report is its own address, so a view
 // can be shared and Back works), a plain GET filter form (no client JS), the table and its CSV. The columns, labels and options are the
 // server's; counts are text nodes only. On a phone the table stacks into labelled blocks (`.table.stack`). `report` null + `error` =
 // the read failed or the API refused the inputs; the form stays so the inputs can be corrected.

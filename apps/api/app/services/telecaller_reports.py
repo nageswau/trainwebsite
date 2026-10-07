@@ -1,4 +1,4 @@
-"""tel-024 (DEC-SCOPE-108, spec docs/superpowers/specs/2026-10-07-tel-024-management-reports-design.md): the five EVID-019 §21
+"""tel-024 (DEC-SCOPE-109, spec docs/superpowers/specs/2026-10-07-tel-024-management-reports-design.md): the five EVID-019 §21
 management reports. Reads only; aggregates only (no lead name, mobile or email ever leaves here, so Q-20 masking does not arise).
 
 The cohort reports (source, product, campaign, handover) count leads CREATED in the range, in the caller's scope -- the same scope as
@@ -105,7 +105,7 @@ def parse_filters(raw: dict[str, str | None], today: date) -> Filters:
     return Filters(start, end, team, product_id, campaign_id, source, given)
 
 
-# --- scope (T24, RBAC §2.34) -------------------------------------------------------------------------------------------------------
+# --- scope (T24, RBAC §2.35) -------------------------------------------------------------------------------------------------------
 
 def lead_scope(user: User) -> list:
     """Exactly the Leads list the caller works from: a manager's `/telecaller/leads` scope, a division admin's `/admin/leads` division."""

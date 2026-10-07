@@ -69,6 +69,6 @@ describe("bdm-010 QA10-01 notifications for BDMs and managers", () => {
     expect(badgeOn(elements(await MyTrips({ searchParams: Promise.resolve({}) })), BDM_NOTIFICATIONS_HREF)).toBe(2);
     expect(badgeOn(elements(await MyDay()), BDM_NOTIFICATIONS_HREF)).toBe(2);
     answer({ "/api/v1/auth/me": { full_name: "Meera" }, "/api/v1/workflows/notifications/unread-count": { unread: 4 }, "/api/v1/bdm/manager/team": { items: [], total: 0, limit: 50, offset: 0 } });
-    expect(badgeOn(elements(await ManagerDashboard()), BDM_MANAGER_NOTIFICATIONS_HREF)).toBe(4);
+    expect(badgeOn(elements(await ManagerDashboard({ searchParams: Promise.resolve({}) })), BDM_MANAGER_NOTIFICATIONS_HREF)).toBe(4);
   });
 });

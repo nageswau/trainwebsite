@@ -4,7 +4,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { E2E_PASSWORD, activateWithToken } from "./helpers/welcome";
 
-// tel-024 (DEC-SCOPE-108): a manager's campaign with three leads, one of them reached by a connected call. The manager reads the
+// tel-024 (DEC-SCOPE-109): a manager's campaign with three leads, one of them reached by a connected call. The manager reads the
 // Campaign, Lead Source and Telecaller reports (filters kept across the report links), downloads the CSV, sees a refused range as a
 // message, and the page holds at tablet and phone widths. A telecaller is refused; the IT admin reads their division's figures.
 

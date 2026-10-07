@@ -1,11 +1,12 @@
 # tel-024 — Telecaller management reports (5) + CSV export — design
 
 - **Feature:** tel-024 (`docs/delivery/TELECALLER_CRM_BACKLOG.md`), EVID-019 §21 (source lines 652–686), T24, Appendix B R1–R5.
-- **Decision:** `DEC-SCOPE-108` (RP1–RP4, owner answers 2026-10-07, all recommended). API §12AB, RBAC §2.34. **No migration.**
+- **Decision:** `DEC-SCOPE-109` (RP1–RP4, owner answers 2026-10-07, all recommended). API §12AC, RBAC §2.35. **No migration.**
 - **Dependencies:** tel-018 (handover/conversion, PR #114) and tel-021 (`services/telecaller_metrics.py`, PR #118) — both merged.
-- Numbering: tel-020 is in flight with 0098 / DEC-SCOPE-107 / §12AA / RBAC 2.33, so tel-024 takes the next numbers.
+- Numbering: drafted as DEC-SCOPE-108 / §12AB / 2.34; bdm-019 (0098 / DEC-SCOPE-107 / §12AA / 2.33) and bdm-023 (DEC-SCOPE-108 /
+  §12AB / 2.34) merged first, so tel-024 is renumbered.
 
-## 1. Owner answers (DEC-SCOPE-108)
+## 1. Owner answers (DEC-SCOPE-109)
 
 | # | Question | Answer |
 |---|---|---|
@@ -32,7 +33,7 @@ scope and the filters. A lead's *reached index* is the highest `lead_stages.ORDE
 
 Every report returns a **Total** row. Rows are ordered by the first count descending, then label.
 
-## 3. API (§12AB)
+## 3. API (§12AC)
 
 `GET /api/v1/telecaller/reports/{kind}` and `GET /api/v1/telecaller/reports/{kind}.csv` (`.csv` registered first).
 
@@ -56,7 +57,7 @@ through `_safe_cell` against CSV injection — `agent_reports.to_csv` reused) wr
 (entity `telecaller_report` / kind; metadata: which filters were set and the row count) committed before the file is returned.
 Filename `telecaller-{kind}-{from}-to-{to}.csv`.
 
-## 4. Scope (T24, RBAC §2.34)
+## 4. Scope (T24, RBAC §2.35)
 
 | Role | Leads counted (cohort) | Telecallers listed (R3) |
 |---|---|---|

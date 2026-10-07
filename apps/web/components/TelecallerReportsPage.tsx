@@ -8,7 +8,7 @@ import type { User } from "@/lib/types";
 
 const UNAVAILABLE = "This report is unavailable right now. Please try again.";
 
-// tel-024 (DEC-SCOPE-108, T24): the one body behind the manager's /telecaller/manager/reports and the admins' telecaller-reports pages.
+// tel-024 (DEC-SCOPE-109, T24): the one body behind the manager's /telecaller/manager/reports and the admins' telecaller-reports pages.
 // The API decides the scope (a manager's reports, an admin's division, everything for super_admin); the role check here only spares
 // other roles a screen that can only fail. A 422 (bad dates) is shown above the form; a 403 is the access card.
 export default async function TelecallerReportsPage({ roles, nav, roleLabel, loginHref, basePath, searchParams }: {

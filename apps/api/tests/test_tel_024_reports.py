@@ -1,4 +1,4 @@
-"""tel-024 (DEC-SCOPE-108, API §12AB, RBAC §2.34): the five management reports and their CSV export -- figures, scope, refusals and
+"""tel-024 (DEC-SCOPE-109, API §12AC, RBAC §2.35): the five management reports and their CSV export -- figures, scope, refusals and
 inputs. The shared test database is never truncated, so every test isolates its rows with a fresh campaign / product / manager."""
 
 import uuid

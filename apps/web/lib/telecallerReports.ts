@@ -1,4 +1,4 @@
-// tel-024 (DEC-SCOPE-108): the five Telecaller CRM management reports -- types, tabs and URLs. Every figure, column label and option
+// tel-024 (DEC-SCOPE-109): the five Telecaller CRM management reports -- types, tabs and URLs. Every figure, column label and option
 // comes from the API (services/telecaller_reports.py); the browser only lays them out, so the screen and the CSV always agree.
 
 export type ReportKind = "source" | "product" | "telecaller" | "handover" | "campaign";
