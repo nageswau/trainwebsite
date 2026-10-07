@@ -881,6 +881,38 @@ division `403`, as `stage-history`). The timeline shows the lead's own records o
 | `super_admin` | read | all leads | `tel-015` |
 | every other role | `403` | — | `tel-015` |
 
+### 2.41 Telecaller CRM permission matrix — EVID-019 §22 *(added 2026-10-07 — `DEC-SCOPE-115`, `tel-026`)*
+
+The consolidated view of §2.14–§2.40 against the source's §22. No grant changes here: every cell below is the as-built rule of the item
+that owns the route, proven route × role by `apps/api/tests/test_tel_026_matrix.py` (`MATRIX`: every route under the telecaller-CRM
+prefixes, called as a telecaller / manager / counselor with the records **and** one of the same role without them, both division admins,
+`super_admin`, a student and signed out; an inventory test fails on any new route without a row). Out of scope is always `404` (no IDOR
+oracle); a role outside the route is `403`; signed out is `401`; the public brochure link needs no session.
+
+| §22 line | Telecaller | Routes (owning item) | Proof |
+|---|---|---|---|
+| View assigned leads | ✅ own leads only; another telecaller's lead `404` | `GET /telecaller/leads[/{id}]`, `/timeline`, `/qualification`, `/stage-history` (tel-008/009/015/004) | `MATRIX` |
+| Call leads / add call notes | ✅ log, edit / delete own same-day calls | `/telecaller/leads/{id}/calls`, `/telecaller/calls/{id}` (tel-010) | `MATRIX` |
+| Schedule follow-ups | ✅ | `/telecaller/leads/{id}/follow-ups`, `/telecaller/follow-ups/*` (tel-011) | `MATRIX` |
+| Send WhatsApp / send email | ✅ | `/telecaller/leads/{id}/render`, `/messages`, `DELETE /telecaller/messages/{id}` (tel-013/014) | `MATRIX` |
+| Fix appointments | ✅ book; reschedule / cancel an open one | `/telecaller/leads/{id}/appointments`, `/lead-appointments/{id}/cancel` and `/reschedule` (tel-016); BDM: `/telecaller/meeting-requests` (tel-019) | `MATRIX` |
+| Assign to counselor | ✅ hand over, then read only | `POST /telecaller/leads/{id}/handover` (tel-018) | `MATRIX` |
+| Update lead status | ✅ telecaller stages (tel-004 rules) | `POST /telecaller/leads/{id}/stage`, `PATCH /telecaller/leads/{id}` (tel-004/008) | `MATRIX` |
+| View own performance | ✅ own dashboard, daily activity, targets in effect | `/telecaller/dashboard`, `/telecaller/activity`, `/telecaller/targets/effective` (tel-021/022) | `MATRIX` |
+| ❌ Edit financial records | `403` | `/admin/payments`, `/admin/payments/{id}/discount`, `/admin/payments/emi-schedule` | `DENIED_22` |
+| ❌ Modify application documents | `403` | `POST /workflows/overseas/documents`, `PATCH …/documents/{id}/verify` | `DENIED_22` |
+| ❌ Change university application status | `403` | `PATCH /workflows/overseas/applications/{id}`, `…/advance`, agent CRM `…/status` | `DENIED_22` |
+| ❌ Change counselor records | `403` | `PATCH /admin/users/{counselor}`, `PUT …/applications/{id}/counselor`, `/counselor/leads/{id}/return` and `/student-link`, `/lead-appointments/{id}/confirm`, `/complete` and `/no-show` | `DENIED_22`, `MATRIX` |
+| ❌ Delete leads | no route (`405`) | no `DELETE …/leads/{id}` or `…/enquiries/{id}` exists anywhere | `test_no_lead_delete_route`, `test_a_lead_cannot_be_deleted_through_its_routes` |
+| ❌ View confidential management reports | `403` | `/telecaller/reports/*` (tel-024), `/telecaller/manager/performance[.csv]` (tel-023) | `DENIED_22`, `MATRIX` |
+| ❌ Modify employee targets | `403` (reads only their own in effect) | `POST/GET /telecaller/targets` (tel-022) | `DENIED_22`, `MATRIX` |
+
+**As-built notes (not gaps):** "Add enquiry to this lead" (`POST /telecaller/leads/{id}/enquiries`, tel-005 I5) accepts **any** lead for a
+telecaller or manager — append-only, it grants no read; a manager booking a counselling appointment is refused on the role before the
+scope (`403` for any lead); a manager reads only their own import reports (tel-006 R11); `super_admin` is read-only on calls, follow-ups,
+messages, email and bookings (`DEC-SCOPE-115` PM2). Web: the telecaller sidebar holds no manager page, and every
+`/telecaller/manager/*` page shows the access card to a telecaller (`tests/e2e/tel-026-permission-matrix.spec.ts`).
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

@@ -1095,6 +1095,11 @@ Reactivation: allowed (LC4).
 
 ### tel-026 — §22 permission matrix + cross-role 403/404 test sweep
 
+**Status (2026-10-07):** built on `feature/tel-026` (`DEC-SCOPE-115` PM1–PM5; tests and docs only, no migration, no API change; RBAC §2.41).
+Spec `docs/superpowers/specs/2026-10-07-tel-026-permission-matrix-design.md`; QA report `docs/quality/TEL-026_EXPLORATORY_QA_2026-10-07.md`.
+The sweep found no permission gap. The edge case below ("`super_admin` passes everywhere") does not hold as built: super_admin is read-only on
+the telecaller's own work (PM2).
+
 - **Business requirement:** §22 allowed (10) and denied (7).
 - **Existing behavior:** each item adds its own checks.
 - **Expected behavior:**

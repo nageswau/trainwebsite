@@ -24,6 +24,15 @@ describe("tel-001 navigation", () => {
     expect(TELECALLER_SIGN_IN).toBe("/telecaller/sign-in");
   });
 
+  it("shows a telecaller no §22-denied page (tel-026): no reports, targets, team performance or any manager page", () => {
+    const hrefs = TELECALLER_NAV.map((x) => x.href);
+    expect(hrefs.filter((h) => h.startsWith("/telecaller/manager"))).toEqual([]);
+    expect(hrefs.filter((h) => /reports|targets|performance|payments|documents|applications/.test(h))).toEqual([]);
+    // The manager's sidebar is all manager pages, and holds the reports and targets the telecaller may not see.
+    expect(TELECALLER_MANAGER_NAV.every((x) => x.href.startsWith("/telecaller/manager/"))).toBe(true);
+    expect(TELECALLER_MANAGER_NAV.map((x) => x.href)).toEqual(expect.arrayContaining(["/telecaller/manager/reports", "/telecaller/manager/targets"]));
+  });
+
   it("gives each admin a Telecallers entry", () => {
     expect(SUPER_ADMIN_NAV).toContainEqual({ label: "Telecallers", href: "/admin/telecallers" });
     expect(PORTAL_NAV["it/admin"]).toContainEqual({ label: "Telecallers", href: "/it/admin/telecallers" });
