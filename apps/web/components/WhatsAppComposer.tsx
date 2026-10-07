@@ -19,9 +19,12 @@ export default function WhatsAppComposer({ leadId, to, onRecorded, onCancel }: {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const renderAbort = useRef<AbortController | null>(null);
+  const recording = useRef(false); // QA-03: a second activation before the re-render must not record twice
+  const picker = useRef<HTMLSelectElement>(null);
   const id = useId();
 
   useEffect(() => {
+    picker.current?.focus(); // QA-02: the composer may open far from the button that opened it
     const controller = new AbortController();
     activeWhatsAppTemplates(controller.signal).then(setTemplates).catch(() => controller.signal.aborted || setTemplates("failed"));
     return () => {
@@ -53,9 +56,12 @@ export default function WhatsAppComposer({ leadId, to, onRecorded, onCancel }: {
   }
 
   async function record() {
+    if (recording.current) return;
+    recording.current = true;
     setBusy(true);
     setError(null);
     const outcome = await sendJson(createMessageUrl(leadId), "POST", { channel: "whatsapp", ...(templateId ? { template_id: templateId } : {}), body: text.trim() });
+    recording.current = false;
     setBusy(false);
     if (outcome.ok) return onRecorded();
     setConfirming(false);
@@ -67,7 +73,7 @@ export default function WhatsAppComposer({ leadId, to, onRecorded, onCancel }: {
     <div className="action-card" style={{ display: "grid", gap: 8, marginTop: 8 }} aria-label="WhatsApp message" role="group">
       <div className="field">
         <label htmlFor={`${id}-template`}>Template</label>
-        <select id={`${id}-template`} value={templateId} disabled={busy || templates === null} onChange={(e) => void choose(e.target.value)}>
+        <select ref={picker} id={`${id}-template`} value={templateId} disabled={busy} onChange={(e) => void choose(e.target.value)}>
           <option value="">Custom message</option>
           {Array.isArray(templates) && templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
         </select>
@@ -76,7 +82,7 @@ export default function WhatsAppComposer({ leadId, to, onRecorded, onCancel }: {
       {rendering === "loading" && <p className="muted" role="status" style={{ fontSize: 13, margin: 0 }}>Preparing the message…</p>}
       {rendering === "failed" && <p className="form-error" role="alert" style={{ fontSize: 13, margin: 0 }}>Unable to load the template. Choose it again or write a custom message.</p>}
       {mismatch && (
-        <p className="form-message" role="note" style={{ fontSize: 13, margin: 0 }}>This template was made for another product. Check the text before sending.</p>
+        <p className="form-warning" role="note" style={{ fontSize: 13, margin: 0 }}>This template was made for another product. Check the text before sending.</p>
       )}
       <div className="field">
         <label htmlFor={`${id}-text`}>Message</label>

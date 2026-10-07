@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import WhatsAppComposer from "@/components/WhatsAppComposer";
 import { sendRequest, type Page } from "@/lib/apiErrors";
@@ -58,8 +58,15 @@ export default function LeadMessages({ leadId, whatsappTo, canWrite, openSignal 
   const [composing, setComposing] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
   const reasonId = useId();
+  const sendButton = useRef<HTMLButtonElement>(null);
+  const wasComposing = useRef(false);
   const reload = () => setVersion((n) => n + 1);
   const canSend = canWrite && !!whatsappTo;
+
+  useEffect(() => {
+    if (wasComposing.current && !composing) sendButton.current?.focus(); // QA-04: the closed composer took the focus with it
+    wasComposing.current = composing;
+  }, [composing]);
 
   useEffect(() => {
     if (openSignal > 0 && canSend) {
@@ -85,7 +92,7 @@ export default function LeadMessages({ leadId, whatsappTo, canWrite, openSignal 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
         <h3 id="lead-messages-heading" style={{ margin: 0 }}>Messages</h3>
         {canWrite && !composing && (
-          <button type="button" className="btn secondary small" disabled={!whatsappTo} aria-describedby={whatsappTo ? undefined : reasonId}
+          <button ref={sendButton} type="button" className="btn secondary small" disabled={!whatsappTo} aria-describedby={whatsappTo ? undefined : reasonId}
             onClick={() => { setComposing(true); setNotice(null); }}>Send WhatsApp</button>
         )}
       </div>

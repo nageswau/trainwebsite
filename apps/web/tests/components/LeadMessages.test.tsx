@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import LeadMessages from "@/components/LeadMessages";
@@ -135,6 +135,36 @@ describe("LeadMessages (tel-013)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Yes, record as sent" }));
     expect(await screen.findByText(/This lead is closed/)).toBeTruthy();
     expect(screen.getByDisplayValue("Hello")).toBeTruthy();
+  });
+
+  it("records one send however quickly the confirm is activated twice (QA-03)", async () => {
+    await openComposer();
+    fireEvent.change(screen.getByLabelText("Message"), { target: { value: "Hello" } });
+    fireEvent.click(screen.getByRole("link", { name: /Open WhatsApp/ }));
+    const yes = screen.getByRole("button", { name: "Yes, record as sent" });
+    act(() => {
+      yes.click();
+      yes.click();
+    });
+    await screen.findByText("WhatsApp send recorded.");
+    expect(fetchMock.mock.calls.filter(([, i]) => i?.method === "POST")).toHaveLength(1);
+  });
+
+  it("styles another product's template as a warning (QA-01)", async () => {
+    rendered = { ...rendered, product_mismatch: true };
+    await openComposer();
+    fireEvent.change(screen.getByLabelText("Template"), { target: { value: "T1" } });
+    expect((await screen.findByText(/made for another product/)).className).toBe("form-warning");
+  });
+
+  it("moves focus into the composer when it opens and back to Send WhatsApp when it closes (QA-02, QA-04)", async () => {
+    await openComposer();
+    expect(document.activeElement).toBe(screen.getByLabelText("Template"));
+    fireEvent.change(screen.getByLabelText("Message"), { target: { value: "Hello" } });
+    fireEvent.click(screen.getByRole("link", { name: /Open WhatsApp/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, record as sent" }));
+    await screen.findByText("WhatsApp send recorded.");
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Send WhatsApp" }));
   });
 
   it("deletes a send after confirming", async () => {
