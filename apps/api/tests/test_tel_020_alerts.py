@@ -289,6 +289,18 @@ async def test_a_rolled_back_assignment_sends_nothing_and_an_inactive_or_acting_
 
 
 @pytest.mark.asyncio
+async def test_a_lifecycle_move_sends_no_per_lead_alert(db_session, tel):
+    """AL13: tel-025's deactivation / team move tells the new telecaller once (its D6 summary), never once per moved lead."""
+    from app.services import telecaller_lifecycle
+
+    other = await make_telecaller(db_session, await make_tl_manager(db_session))
+    leads = [await mk_lead(db_session, other, status="contacted") for _ in range(2)]
+    await telecaller_lifecycle.move_leads(db_session, other, leads, tel, "deactivation")
+    await db_session.commit()
+    assert await notes(db_session, tel, "New lead assigned") == []
+
+
+@pytest.mark.asyncio
 async def test_the_counselor_completing_an_appointment_alerts_the_telecaller(client, db_session):
     _, tel, counselor, lead = await setup(db_session)
     out = (await book(client, tel, lead, counselor)).json()

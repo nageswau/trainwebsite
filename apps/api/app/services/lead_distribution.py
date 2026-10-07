@@ -67,8 +67,9 @@ async def _choose(db: AsyncSession, lead: Enquiry) -> tuple[UUID | None, str | N
     return chosen, "round_robin" if chosen else None
 
 
-async def assign(db: AsyncSession, lead: Enquiry, telecaller_id: UUID, method: str, actor: User | None) -> None:
-    """D4: the telecaller, the `assigned` stage event (new leads only) and one audit row per change."""
+async def assign(db: AsyncSession, lead: Enquiry, telecaller_id: UUID, method: str, actor: User | None, *, notify: bool = True) -> None:
+    """D4: the telecaller, the `assigned` stage event (new leads only) and one audit row per change. `notify=False` (tel-025's lifecycle
+    moves, DEC-SCOPE-109 AL13) skips tel-020's per-lead alert: the caller tells the new telecaller once."""
     before = lead.telecaller_user_id
     lead.telecaller_user_id = telecaller_id
     await lead_pipeline.apply_event(db, lead, "assigned", actor)
@@ -77,7 +78,7 @@ async def assign(db: AsyncSession, lead: Enquiry, telecaller_id: UUID, method: s
                     metadata_json={"from": str(before) if before else None, "to": str(telecaller_id), "method": method}))
     logger.info("lead_assigned", extra={"extra_fields": {
         "lead_id": str(lead.id), "telecaller_id": str(telecaller_id), "method": method, "actor_id": str(actor_id) if actor_id else None}})
-    if before != telecaller_id:
+    if notify and before != telecaller_id:
         await telecaller_alerts.notify_assigned(db, lead, actor)  # tel-020: New Lead Assigned, in this transaction
 
 

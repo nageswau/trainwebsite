@@ -26,6 +26,7 @@ and a missed beat run catches up without duplicates.
 | AL9 | **Hot Lead Pending:** own open hot lead (not handed over, not closed) with no call logged in the team's `hot_pending_hours`. The reference time is the latest `lead_calls.occurred_at`, or the lead's `created_at` if there is no call. `fire_key` = that reference time |
 | AL10 | Catch-up windows: Due covers `now − 1 h < due ≤ now + 15 min`. Missed covers `now − 25 h < due ≤ now − 1 h`, so the first run never alerts about follow-ups older than a day. Appointment in 1 Hour covers `now < start ≤ now + 1 h`. Tomorrow covers the next IST day, from 18:00 IST |
 | AL11 | Any `telecaller_manager` (and `super_admin`) reads and sets the thresholds of both teams, as tel-022 G3 does for team targets. A change applies from the next beat run (AC4). Audited `tel.settings.update` with the old and new values |
+| AL13 | tel-025's lifecycle moves keep their one D6 summary notice to the new telecaller; `assign(..., notify=False)` skips the per-lead alert (added when merging main with tel-025) |
 | AL12 | tel-021's B9 "Overdue" uses the team's `not_contacted_hours` in place of the fixed 24 h (DB1 said "until tel-020"); its stage filter is unchanged |
 
 ## 3. Architecture

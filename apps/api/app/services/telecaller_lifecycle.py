@@ -89,7 +89,7 @@ async def move_leads(db: AsyncSession, actor: User, leads: list[Enquiry], target
     event); to the queue the lead just loses its telecaller and keeps its stage."""
     for lead in leads:
         if target is not None:
-            await lead_distribution.assign(db, lead, target.id, method, actor)
+            await lead_distribution.assign(db, lead, target.id, method, actor, notify=False)  # D6 tells the target once (tel-020 AL13)
             continue
         before, lead.telecaller_user_id = lead.telecaller_user_id, None
         db.add(AuditLog(user_id=actor.id, action="lead.assign", entity_type="enquiry", entity_id=str(lead.id),
