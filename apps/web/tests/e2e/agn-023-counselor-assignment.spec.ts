@@ -37,8 +37,8 @@ test("admin assigns a counsellor to an agency application; counsellor advances (
   const admin = await browser.newPage();
   await signIn(admin, "overseasadmin@edusphere.local", "Demo@123", "/overseas/admin/dashboard");
   await admin.goto("/overseas/admin/applications?agency=any&counselor=none");
-  await expect(admin.getByLabel("Agency")).toHaveValue("any");
-  await expect(admin.getByLabel("Counsellor")).toHaveValue("none");
+  await expect(admin.getByLabel("Agency", { exact: true })).toHaveValue("any");
+  await expect(admin.getByLabel("Counsellor", { exact: true })).toHaveValue("none");
   // The shared E2E database holds many rows and DataTable pages them, so narrow with the table's own search first.
   await admin.getByLabel("Search records").fill(name);
   const row = admin.getByRole("row", { name: new RegExp(name) });
