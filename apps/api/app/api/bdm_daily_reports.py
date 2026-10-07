@@ -108,8 +108,8 @@ async def team_report(bdm_user_id: UUID, report_date: date, user: User = Depends
     member, profile = await _member(db, user, bdm_user_id)
     today = india_date(await db_now(db))
     svc.check_not_future(report_date, today)
-    out = await svc.report_out(db, member, profile.bdm_type, report_date, today, await svc.submitted(db, member.id, report_date))
-    return {**out, "can_submit": False}  # only the BDM submits
+    report = await svc.submitted(db, member.id, report_date)
+    return await svc.report_out(db, member, profile.bdm_type, report_date, today, report, submitter=False)
 
 
 @router.put("/manager/daily-reports/{bdm_user_id}/{report_date}/comment", response_model=BdmDailyReportOut)
@@ -125,5 +125,4 @@ async def comment_report(bdm_user_id: UUID, report_date: date, payload: BdmDaily
     svc.audit(db, user, "commented", report)
     await db.commit()
     svc.log("bdm_daily_report_commented", user, report)
-    out = await svc.report_out(db, member, profile.bdm_type, report_date, india_date(now), report)
-    return {**out, "can_submit": False}
+    return await svc.report_out(db, member, profile.bdm_type, report_date, india_date(now), report, submitter=False)

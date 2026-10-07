@@ -55,7 +55,8 @@ async def check_day_open(db: AsyncSession, bdm_user_id: UUID, day: date) -> None
         raise HTTPException(409, DAY_LOCKED)
 
 
-async def report_out(db: AsyncSession, bdm: User, bdm_type: str, day: date, today: date, report: BdmDailyReport | None) -> dict:
+async def report_out(db: AsyncSession, bdm: User, bdm_type: str, day: date, today: date, report: BdmDailyReport | None, *, submitter: bool = True) -> dict:
+    """`submitter` is False for a manager's read: only the BDM submits, so `can_submit` is never offered there."""
     comment = None
     if report and report.manager_comment:
         author = (await db.execute(select(User).where(User.id == report.manager_comment_by_user_id))).scalar_one()
@@ -68,7 +69,7 @@ async def report_out(db: AsyncSession, bdm: User, bdm_type: str, day: date, toda
         "submitted_at": report.submitted_at if report else None,
         "note": report.note if report else None,
         "counts": report.counts if report else await daily_counts(db, bdm.id, bdm_type, day),
-        "can_submit": report is None and can_submit(day, today),
+        "can_submit": submitter and report is None and can_submit(day, today),
         "submit_window_days": SUBMIT_WINDOW_DAYS,
         "manager_comment": comment,
     }
