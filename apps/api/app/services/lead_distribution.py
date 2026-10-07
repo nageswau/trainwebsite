@@ -69,7 +69,7 @@ async def _choose(db: AsyncSession, lead: Enquiry) -> tuple[UUID | None, str | N
 
 async def assign(db: AsyncSession, lead: Enquiry, telecaller_id: UUID, method: str, actor: User | None, *, notify: bool = True) -> None:
     """D4: the telecaller, the `assigned` stage event (new leads only) and one audit row per change. `notify=False` (tel-025's lifecycle
-    moves, DEC-SCOPE-109 AL13) skips tel-020's per-lead alert: the caller tells the new telecaller once."""
+    moves, DEC-SCOPE-110 AL13) skips tel-020's per-lead alert: the caller tells the new telecaller once."""
     before = lead.telecaller_user_id
     lead.telecaller_user_id = telecaller_id
     await lead_pipeline.apply_event(db, lead, "assigned", actor)

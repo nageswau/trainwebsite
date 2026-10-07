@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { NOT_COMPLETED, detailMessage, sendJson } from "@/lib/apiErrors";
 import { toneClass, type Feedback } from "@/lib/welcomeLink";
 
-// tel-020 (DEC-SCOPE-109 AL1, AL11; API §12AC): each team's alert thresholds. The API checks every rule (whole hours 1-168, who may save);
+// tel-020 (DEC-SCOPE-110 AL1, AL11; API §12AD): each team's alert thresholds. The API checks every rule (whole hours 1-168, who may save);
 // the inputs only mirror the range. The beat reads the values on its next run (AC4).
 export const SETTINGS_URL = "/api/v1/telecaller/settings";
 const FIELDS = [

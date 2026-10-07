@@ -1,4 +1,4 @@
-"""tel-020 (DEC-SCOPE-109; EVID-019 §20, T14): the nine telecaller alerts, each one in-app notice plus one email (AL2), to the lead's telecaller
+"""tel-020 (DEC-SCOPE-110; EVID-019 §20, T14): the nine telecaller alerts, each one in-app notice plus one email (AL2), to the lead's telecaller
 while that user is an active telecaller (AL5). No quiet hours (AL3).
 
 - Event alerts (New Lead Assigned, Counselor Appointment Completed, Lead Returned) are added in the caller's transaction and never commit

@@ -1,4 +1,4 @@
-"""tel-020 (DEC-SCOPE-109 AL1, AL11; API §12AC): each team's alert thresholds -- Lead Not Contacted and Hot Lead Pending, in whole hours.
+"""tel-020 (DEC-SCOPE-110 AL1, AL11; API §12AD): each team's alert thresholds -- Lead Not Contacted and Hot Lead Pending, in whole hours.
 Any telecaller manager or super_admin reads and sets both teams (the tel-022 G3 rule for team defaults); every other role is 403. The beat
 reads the rows on every run, so a change applies from the next run (AC4).
 

@@ -238,6 +238,9 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
    the CSV beside it (wraps on phones), right-aligned tabular numbers, and a dimmed table while a newer report loads. */
 .report-tablist { display: flex; gap: 4px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; padding-bottom: 4px; margin: 8px 0 12px; border-bottom: 1px solid var(--line); }
 .report-tablist .s360-tab { flex: 0 0 auto; scroll-snap-align: start; white-space: nowrap; }
+/* tel-024: the same strip as links (one GET page per report): the current one is aria-current. */
+.report-tablist a.s360-tab { text-decoration: none; }
+.report-tablist .s360-tab[aria-current="page"] { background: var(--soft); border-color: var(--line); color: var(--blue); }
 .report-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin: 12px 0 8px; }
 .report-skeleton { min-height: 36px; margin-top: 8px; border-radius: 8px; }
 .num { text-align: right; font-variant-numeric: tabular-nums; }

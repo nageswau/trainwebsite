@@ -1,4 +1,4 @@
-"""tel-020 -- GET/PUT /telecaller/settings (API §12AC; DEC-SCOPE-109 AL1, AL11): any telecaller manager or super_admin reads and sets both
+"""tel-020 -- GET/PUT /telecaller/settings (API §12AD; DEC-SCOPE-110 AL1, AL11): any telecaller manager or super_admin reads and sets both
 teams' alert thresholds; every other role is 403. The two rows are shared by the whole test database, so each test starts from the
 defaults (`restore`) and puts them back when it passes."""
 

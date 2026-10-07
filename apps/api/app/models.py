@@ -1484,12 +1484,12 @@ class TelTarget(Base, TimestampMixin):
     set_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
-TEL_SETTING_DEFAULTS = {"not_contacted_hours": 24, "hot_pending_hours": 4}  # DEC-SCOPE-109 AL1; migration 0099 seeds both teams with them
+TEL_SETTING_DEFAULTS = {"not_contacted_hours": 24, "hot_pending_hours": 4}  # DEC-SCOPE-110 AL1; migration 0099 seeds both teams with them
 TEL_SETTING_MAX_HOURS = 168
 
 
 class TelSetting(Base, TimestampMixin):
-    """tel-020 (DEC-SCOPE-109, T14): a team's alert thresholds -- Lead Not Contacted and Hot Lead Pending, in whole hours. One row per team,
+    """tel-020 (DEC-SCOPE-110, T14): a team's alert thresholds -- Lead Not Contacted and Hot Lead Pending, in whole hours. One row per team,
     seeded; any telecaller manager edits both (AL11) and the beat reads them on every run (AC4)."""
 
     __tablename__ = "tel_settings"

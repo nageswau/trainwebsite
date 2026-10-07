@@ -1,4 +1,4 @@
-"""tel-020 -- migration 0099_tel_settings (spec §3; DEC-SCOPE-109 AL1). Round trip, the seeded 24 h / 4 h defaults and the 1-168 checks run
+"""tel-020 -- migration 0099_tel_settings (spec §3; DEC-SCOPE-110 AL1). Round trip, the seeded 24 h / 4 h defaults and the 1-168 checks run
 in a throwaway database built from scratch (the tel-001 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util

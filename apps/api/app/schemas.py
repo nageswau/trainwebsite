@@ -5477,7 +5477,7 @@ class TelTargetEffectiveOut(BaseModel):
     monthly: list[TelTargetValue]
 
 
-# tel-020 (DEC-SCOPE-109 AL1, AL11; API §12AC): a team's alert thresholds, whole hours 1-168 (a string or a fraction is refused).
+# tel-020 (DEC-SCOPE-110 AL1, AL11; API §12AD): a team's alert thresholds, whole hours 1-168 (a string or a fraction is refused).
 TEL_SETTING_FIELD_LABELS = {"not_contacted_hours": "Lead not contacted after (hours)", "hot_pending_hours": "Hot lead pending after (hours)"}
 TelSettingHours = Annotated[StrictInt, Field(ge=1, le=168)]
 

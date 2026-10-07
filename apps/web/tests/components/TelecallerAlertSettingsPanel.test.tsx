@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import TelecallerAlertSettingsPanel from "@/components/TelecallerAlertSettingsPanel";
 import { NOT_COMPLETED } from "@/lib/apiErrors";
 
-// tel-020 (DEC-SCOPE-109 AL1, AL11; API §12AC): the manager's alert thresholds, one card per team.
+// tel-020 (DEC-SCOPE-110 AL1, AL11; API §12AD): the manager's alert thresholds, one card per team.
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const row = (team: string, label: string, over: Record<string, unknown> = {}) => ({
   team, team_label: label, not_contacted_hours: 24, hot_pending_hours: 4, updated_at: "2026-10-07T05:00:00Z", updated_by: null, ...over,
