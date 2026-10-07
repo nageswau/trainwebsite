@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type FormEvent, useEffect, useId, useState } from "react";
+import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 
 import { BDM_TYPE_LABEL } from "@/lib/bdm";
 import { nowIstInput } from "@/lib/bdmAppointments";
@@ -31,6 +31,7 @@ export default function MeetingRequestForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const sending = useRef(false); // QA-01: a second submit in the same tick, before `busy` re-renders the button, must not send again
   useLeaveGuard(JSON.stringify(draft) !== JSON.stringify(EMPTY_DRAFT) && !busy, "Discard this request?");
 
   useEffect(() => {
@@ -63,10 +64,13 @@ export default function MeetingRequestForm() {
     event.preventDefault();
     const local = Object.fromEntries(REQUIRED.filter(([key]) => !draft[key].trim()).map(([, field, message]) => [field, message]));
     if (Object.keys(local).length) return refuse(local, "Check the highlighted fields.");
+    if (sending.current) return;
+    sending.current = true;
     setErrors({});
     setFailure(null);
     setBusy(true);
     const outcome = await sendJson(TEL_REQUESTS_URL, "POST", requestBody(draft));
+    sending.current = false;
     setBusy(false);
     if (!outcome.ok) {
       const mapped = fieldErrors(outcome.detail);

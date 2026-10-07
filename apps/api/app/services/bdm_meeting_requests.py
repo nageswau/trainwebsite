@@ -118,11 +118,13 @@ def require_pending(request: BdmMeetingRequest) -> None:
         raise HTTPException(409, f"This request is already {request.status}")
 
 
-def inbox_order() -> tuple:
-    """Pending first, soonest proposed time first; then decided ones, latest decision first."""
+def inbox_order(user: User) -> tuple:
+    """Pending first -- those named for the caller ahead of the pool (QA-02), then soonest proposed first; then decided ones, latest
+    decision first."""
     pending = BdmMeetingRequest.status == "pending"
-    return (case((pending, 0), else_=1), case((pending, BdmMeetingRequest.proposed_at)), BdmMeetingRequest.decided_at.desc(),
-            BdmMeetingRequest.id)
+    named_for_me = and_(pending, BdmMeetingRequest.bdm_user_id == user.id)
+    return (case((pending, 0), else_=1), case((named_for_me, 0), else_=1), case((pending, BdmMeetingRequest.proposed_at)),
+            BdmMeetingRequest.decided_at.desc(), BdmMeetingRequest.id)
 
 
 def permissions(user: User, request: BdmMeetingRequest) -> dict[str, bool]:

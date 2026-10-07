@@ -84,6 +84,21 @@ describe("MeetingRequestForm (tel-019)", () => {
     });
   });
 
+  it("sends once on a double submit (QA-01)", async () => {
+    let release: (r: Response) => void = () => {};
+    const fetch = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>((url) =>
+      String(url).endsWith("/options") ? Promise.resolve(res(options)) : new Promise<Response>((resolve) => { release = resolve; }));
+    vi.stubGlobal("fetch", fetch);
+    render(<MeetingRequestForm />);
+    await fill();
+    const form = screen.getByRole("form", { name: "Request a BDM meeting" });
+    fireEvent.submit(form);
+    fireEvent.submit(form);
+    release(res({ id: "r1", code: "MRQ-000008" }, 201));
+    await waitFor(() => expect(router.push).toHaveBeenCalledTimes(1));
+    expect(fetch.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(1);
+  });
+
   it("shows the API's field message and keeps the entry", async () => {
     route(res({ detail: [{ type: "value_error", loc: ["body", "proposed_at"], msg: "Choose a time in the future" }] }, 422));
     render(<MeetingRequestForm />);

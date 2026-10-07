@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type FormEvent, useId, useState } from "react";
+import { type FormEvent, useId, useRef, useState } from "react";
 
 import BdmAppointmentForm from "@/components/BdmAppointmentForm";
 import type { BdmType } from "@/lib/bdm";
@@ -25,6 +25,7 @@ export default function MeetingRequestDecide({ request, bdmType, initialOrganiza
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const sending = useRef(false); // QA-01: one decline per click burst
   if (!request.permissions.can_accept && !request.permissions.can_decline) return null;
 
   const passed = new Date(request.proposed_at).getTime() <= Date.now(); // the edge case: the BDM picks a new time
@@ -39,9 +40,12 @@ export default function MeetingRequestDecide({ request, bdmType, initialOrganiza
       setError("Enter the reason for declining.");
       return focus(`${idp}-reason`);
     }
+    if (sending.current) return;
+    sending.current = true;
     setError(null);
     setBusy(true);
     const outcome = await sendJson(declineUrl(request.id), "POST", { reason: reason.trim() });
+    sending.current = false;
     setBusy(false);
     if (!outcome.ok) {
       setError((outcome.status ?? 0) >= 500 ? "We couldn't decline the request. Please try again." : outcome.message);

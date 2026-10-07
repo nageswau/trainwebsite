@@ -71,7 +71,7 @@ async def inbox(status: Status | None = None, limit: int = LIMIT, offset: int = 
     filters = await svc.scope_filters(db, user)
     if status is not None:
         filters.append(BdmMeetingRequest.status == status)
-    return await svc.page(db, user, filters, svc.inbox_order(), limit, offset)
+    return await svc.page(db, user, filters, svc.inbox_order(user), limit, offset)
 
 
 @router.get("/{request_id}")

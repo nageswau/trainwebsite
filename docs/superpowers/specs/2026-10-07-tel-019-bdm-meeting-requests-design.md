@@ -67,7 +67,7 @@ scope = 404; a role that may not act = 403.
 | `GET /telecaller/meeting-requests/options` | `telecaller` | `{types:[{key,label,bdm_type}], bdms:{college:[{id,full_name}],agent:[…],school:[…]}, modes}` — active BDMs by name |
 | `POST /telecaller/meeting-requests` | `telecaller` | Body per MR7 (`bdm_user_id` optional). 422 on validation / bad target. 201 with the request. Audit `bdm_meeting_request.create` |
 | `GET /telecaller/meeting-requests?status=&limit=&offset=` | `telecaller` | Their own, newest first |
-| `GET /bdm/meeting-requests?status=&limit=&offset=` | `bdm` / `bdm_manager` / `super_admin` | Scope per MR3/MR11; pending first (soonest proposed first), then decided (latest decision first) |
+| `GET /bdm/meeting-requests?status=&limit=&offset=` | `bdm` / `bdm_manager` / `super_admin` | Scope per MR3/MR11; pending first (named for the caller ahead of the pool — QA-02 — then soonest proposed first), then decided (latest decision first) |
 | `GET /bdm/meeting-requests/{id}` | same | One request, with `permissions {can_accept, can_decline}` |
 | `POST /bdm/meeting-requests/{id}/accept` | `bdm` | Body = bdm-006 `BdmAppointmentCreate`. Order: 403 role/profile; 404 scope (locked, re-checked); 409 not pending; then bdm-006's rules (MR9). On success the request is `accepted` (taker, appointment, `decided_at`), returns `{appointment, meeting_request}`. Audits `bdm_appointment.create` (bdm-006's) and `bdm_meeting_request.accept` |
 | `POST /bdm/meeting-requests/{id}/decline` `{reason}` | `bdm` | 403 / 404 / 409 as above; reason 1–500 chars required (422). `declined` + taker + `decided_at`. Audit `bdm_meeting_request.decline` |

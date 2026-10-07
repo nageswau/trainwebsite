@@ -3,8 +3,8 @@ import { expect, test, type Page } from "@playwright/test";
 import { E2E_PASSWORD, activateWithToken } from "./helpers/welcome";
 
 // tel-019 (DEC-SCOPE-097): an IT telecaller files a school meeting request for the school BDMs' pool; a school BDM finds it on My Day,
-// accepts it into a bdm-006 appointment (AC2) and the telecaller sees it Accepted. A corporate request goes to the college BDMs (AC1) and
-// is declined with a reason (AC3). Throwaway accounts; phone width has no sideways scroll.
+// accepts it into a bdm-006 appointment (AC2) and the telecaller sees it Accepted. A corporate request, named for a college BDM (AC1:
+// corporate lists college BDMs), is declined with a reason (AC3). Throwaway accounts; phone width has no sideways scroll.
 test.describe.configure({ timeout: 180_000 });
 
 async function signIn(page: Page, portal: "it" | "overseas" | "admin", email: string, password: string, landing: string) {
@@ -43,10 +43,11 @@ async function accounts(page: Page, stamp: number) {
 const at11 = (days: number) => `${new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date(Date.now() + days * 86_400_000))}T11:00`;
 const noSideScroll = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
 
-async function fileRequest(page: Page, type: string, org: string, purpose: string) {
+async function fileRequest(page: Page, type: string, org: string, purpose: string, bdmId?: string) {
   await page.goto("/telecaller/meeting-requests/new");
   const form = page.getByRole("form", { name: "Request a BDM meeting" });
   await form.getByLabel("Meeting type").selectOption({ label: type });
+  if (bdmId) await form.getByLabel("BDM").selectOption(bdmId);
   await form.getByLabel("Organization").fill(org);
   await form.getByLabel("Person to meet").fill("Ms Iyer");
   await form.getByLabel("Phone").fill("+91 98765 43210");
@@ -79,7 +80,8 @@ test("a school request is accepted into an appointment; a corporate request is d
   const schoolOrg = `St Mary ${stamp}`;
   const schoolCode = await fileRequest(page, "School meeting", schoolOrg, "Career guidance talk for grade 12");
   await expect(page.getByText(`Request ${schoolCode} sent.`)).toBeVisible();
-  const corporateCode = await fileRequest(page, "Corporate meeting", `Infosys ${stamp}`, "Campus hiring tie-up");
+  // named for the college BDM (MR1): it leads their inbox even with a busy pool (QA-02)
+  const corporateCode = await fileRequest(page, "Corporate meeting", `Infosys ${stamp}`, "Campus hiring tie-up", college.id);
   const row = (code: string) => page.getByRole("row").filter({ hasText: code });
   await expect(row(schoolCode).getByText("Pending", { exact: true })).toBeVisible();
   await expect(row(schoolCode).getByText("Any School BDM")).toBeVisible();
@@ -101,7 +103,7 @@ test("a school request is accepted into an appointment; a corporate request is d
   await expect(page.getByText("Career guidance talk for grade 12").first()).toBeVisible();
   await expect(page.getByLabel("Type (required)")).toHaveValue("school_meeting"); // MR9: started from the request
   await expect(page.getByLabel("Date and time (IST) (required)")).toHaveValue(at11(2));
-  const picker = page.getByLabel("Organization (required)");
+  const picker = page.getByRole("combobox", { name: "Organization (required)" });
   await picker.fill(schoolOrg);
   await page.getByRole("option", { name: new RegExp(schoolOrg) }).first().click();
   await expect(page.getByLabel(/Contact person/)).not.toHaveValue("");

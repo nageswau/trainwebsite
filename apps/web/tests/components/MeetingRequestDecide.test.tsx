@@ -64,6 +64,20 @@ describe("MeetingRequestDecide (tel-019)", () => {
     expect(JSON.parse(String(fetch.mock.calls[0][1]?.body))).toEqual({ reason: "Out of my territory" });
   });
 
+  it("declines once on a double submit (QA-01)", async () => {
+    let release: (r: Response) => void = () => {};
+    const fetch = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(() => new Promise<Response>((resolve) => { release = resolve; }));
+    vi.stubGlobal("fetch", fetch);
+    render(<MeetingRequestDecide request={request()} bdmType="school" initialOrganization={null} />);
+    fireEvent.change(screen.getByLabelText("Reason for declining"), { target: { value: "Out of my territory" } });
+    const button = screen.getByRole("button", { name: "Decline request" });
+    fireEvent.submit(button.closest("form") as HTMLFormElement);
+    fireEvent.submit(button.closest("form") as HTMLFormElement);
+    release(res(request({ status: "declined" })));
+    await waitFor(() => expect(router.refresh).toHaveBeenCalledTimes(1));
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it("shows the API's refusal on a decline (e.g. someone else took it)", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res({ detail: "This request is already accepted" }, 409))));
     render(<MeetingRequestDecide request={request()} bdmType="school" initialOrganization={null} />);

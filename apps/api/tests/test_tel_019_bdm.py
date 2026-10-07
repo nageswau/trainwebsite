@@ -119,6 +119,20 @@ async def test_the_inbox_lists_pending_first_soonest_first(client, db_session):
     assert sooner["id"] not in await _ids(client, status="pending")
 
 
+@pytest.mark.asyncio
+async def test_requests_named_for_the_bdm_come_first_among_the_pending(client, db_session):
+    """QA-02: a request a telecaller addressed to this BDM never sits behind the type's pool."""
+    tel = await telecaller(db_session)
+    bdm = await make_bdm(db_session, await make_manager(db_session), "school")
+    pool = await file_request(client, tel, request_type="school", proposed_at=at(hours=1, days=0))
+    named = await file_request(client, tel, request_type="school", bdm_user_id=str(bdm.id), proposed_at=at(days=30))
+    await as_user(client, bdm)
+    first = (await client.get(BDM, params={"status": "pending", "limit": 1})).json()["items"]
+    assert [r["id"] for r in first] == [named["id"]]
+    items = await _ordered(client)
+    assert items.index(named["id"]) < items.index(pool["id"])
+
+
 # --- accept (AC2, MR9) ---------------------------------------------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_a_school_bdm_accepts_a_school_request_into_exactly_one_appointment(client, db_session):
