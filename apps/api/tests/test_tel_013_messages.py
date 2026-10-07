@@ -1,4 +1,4 @@
-"""tel-013 -- WhatsApp click-to-chat + send log (spec §1-§3; DEC-SCOPE-099 WA1-WA4, D1-D9): the lead render, the send log, same-day
+"""tel-013 -- WhatsApp click-to-chat + send log (spec §1-§3; DEC-SCOPE-100 WA1-WA4, D1-D9): the lead render, the send log, same-day
 delete and the lead detail's `whatsapp_to`. The shared test database is never truncated, so every assertion narrows to rows the test made."""
 
 import logging

@@ -1,4 +1,4 @@
-"""tel-013 (DEC-SCOPE-099, spec §1-§3): messages sent to a lead -- a library template rendered with the lead's values (tel-012 C2), the
+"""tel-013 (DEC-SCOPE-100, spec §1-§3): messages sent to a lead -- a library template rendered with the lead's values (tel-012 C2), the
 WhatsApp send log (wa.me can't report delivery, so a row is the telecaller's confirmation, T8) and the sender's same-day delete (WA3).
 
 A message belongs to its lead: reads go through the lead's scope (`lead_pipeline.scope`), so a message on a lead the caller can't see is the

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { isRenderedTemplate, leadMessagesUrl, renderUrl, sentLabel, waHref } from "@/lib/telecallerMessages";
 
-// tel-013 (DEC-SCOPE-099): wa.me links, the "WhatsApp sent" line and the endpoints.
+// tel-013 (DEC-SCOPE-100): wa.me links, the "WhatsApp sent" line and the endpoints.
 describe("telecallerMessages (tel-013)", () => {
   it("builds a wa.me link with the number's digits and the URL-encoded text", () => {
     expect(waHref("919876543210", "Hi Priya & co?\nLink: https://x.test/a?b=1#c"))

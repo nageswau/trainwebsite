@@ -3,9 +3,10 @@
 - **Backlog:** `docs/delivery/TELECALLER_CRM_BACKLOG.md` § tel-013 (EVID-019 §11, L416–L452; T8). Dependencies tel-008 (PR #85) and
   tel-012 (PR #83) are merged. Inherits tel-012 C2: `GET /telecaller/leads/{id}/render`.
 - **Status:** built on `feature/tel-013`, not yet merged. QA: `docs/quality/TEL-013_EXPLORATORY_QA_2026-10-07.md` (QA-01–QA-04 fixed).
-- **Decision:** `DEC-SCOPE-099` (WA1–WA4 owner answers 2026-10-07; D1–D9 defaults). Migration `0094_lead_messages`, API contract §12U,
-  RBAC §2.27. bdm-014 took 097 (no migration) and tel-019 merged first with `0093_bdm_meeting_requests` / 098 / §12S / 2.25, so `0094`
-  (drafted on `0092`) is re-chained after `0093`. §12T / 2.26 stay claimed by tel-018's open branch.
+- **Decision:** `DEC-SCOPE-100` (WA1–WA4 owner answers 2026-10-07; D1–D9 defaults). Migration `0095_lead_messages`, API contract §12U,
+  RBAC §2.27. Drafted as `0094` / `DEC-SCOPE-099`. bdm-014 took 097 (no migration), tel-019 merged with `0093_bdm_meeting_requests` /
+  098 / §12S / 2.25 and bdm-015 with `0094_bdm_daily_reports` / 099 / §12T / 2.26, so this item is renumbered to `0095` / `DEC-SCOPE-100`
+  after `0094_bdm_daily_reports`.
 
 ## 1. Decisions
 

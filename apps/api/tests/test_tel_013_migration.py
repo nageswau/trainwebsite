@@ -1,6 +1,6 @@
-"""tel-013 -- migration 0094_lead_messages (spec §2). The round trip runs in a throwaway database (the tel-010 pattern); a downgrade never runs
+"""tel-013 -- migration 0095_lead_messages (spec §2). The round trip runs in a throwaway database (the tel-010 pattern); a downgrade never runs
 against the shared test database. 0001 builds a fresh database from the current models, so each test first downgrades to
-0093_bdm_meeting_requests (tel-019) to reach the real pre-tel-013 shape."""
+0094_bdm_daily_reports (bdm-015) to reach the real pre-tel-013 shape."""
 
 import asyncio
 import importlib.util
@@ -19,11 +19,11 @@ from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_tel_013_migration_0094", VERSIONS / "0094_lead_messages.py")
+_spec = importlib.util.spec_from_file_location("_tel_013_migration_0095", VERSIONS / "0095_lead_messages.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0093_bdm_meeting_requests", "0094_lead_messages"
+BASE, HEAD = "0094_bdm_daily_reports", "0095_lead_messages"
 COLUMNS = {"id", "lead_id", "sender_user_id", "channel", "template_id", "template_name", "subject", "body", "delivery_status", "sent_at",
            "created_at", "updated_at"}
 
@@ -47,7 +47,7 @@ def _sql(url: str, sql: str, params: dict | None = None, *, autocommit: bool = F
     return asyncio.run(_inner())
 
 
-def test_migration_chains_after_0093_and_there_is_one_head():
+def test_migration_chains_after_0094_and_there_is_one_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     script = ScriptDirectory.from_config(_config())
     assert script.get_heads() == [HEAD]
@@ -92,7 +92,7 @@ ROW = ("INSERT INTO lead_messages (id, lead_id, sender_user_id, channel, subject
        "VALUES (:id, :lead, :user, :channel, :subject, :body, :status, now())")
 
 
-def test_downgrade_to_0093_has_no_table(base_db):
+def test_downgrade_to_0094_has_no_table(base_db):
     assert _sql(base_db["url"], EXISTS) == [(None,)]
 
 

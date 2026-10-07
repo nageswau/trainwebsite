@@ -1,4 +1,4 @@
-"""tel-013 (DEC-SCOPE-099, spec §3): messages to a lead -- render a library template with the lead's values, the lead's send log, record
+"""tel-013 (DEC-SCOPE-100, spec §3): messages to a lead -- render a library template with the lead's values, the lead's send log, record
 a WhatsApp send and the sender's same-day delete.
 
 Scope is the lead's (tel-004 `lead_pipeline.scope`; other roles 403, out of scope 404). Every write is one transaction -- scope, the lead
