@@ -1,7 +1,7 @@
 # bdm-016 — Browser QA (2026-10-07)
 
 - **Build:** `worktree-bdm-016`, Docker Compose project `bdm016` (api 127.0.0.1:18016, web 127.0.0.1:13016), migration head
-  `0095_bdm_targets`, seeded with `python -m app.seed`.
+  `0096_bdm_targets`, seeded with `python -m app.seed`.
 - **Tool:** isolated Playwright Chromium. Browser Use is not installed on this machine (as in the earlier BDM sessions); the scripted
   exploratory pass stands in for it until the owner accepts or runs it.
 - **Accounts:** created and activated through the admin API per run: a manager with a School, an Agent and a College BDM; a manager with

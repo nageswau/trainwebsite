@@ -1,7 +1,7 @@
 # bdm-016 — Monthly targets (manager-set, achieved computed) — design
 
 - **Feature:** bdm-016 (`docs/delivery/BDM_CRM_BACKLOG.md` §4 bdm-016; Appendix B.3 K-rows → B.1 M-rows)
-- **Decision:** `DEC-SCOPE-100`. Migration `0095_bdm_targets` after `0094_bdm_daily_reports`; API §12U; RBAC §2.27.
+- **Decision:** `DEC-SCOPE-103`. Migration `0096_bdm_targets` after `0095_lead_messages`; API §12W; RBAC §2.29 (drafted as `DEC-SCOPE-100` / `0095` / §12U / 2.27; renumbered on merging `main` @ `851eae1a`).
 - **Branch:** `worktree-bdm-016` from `origin/main` @ `b1495fa2` (bdm-015 merged, PR #111).
 - **Evidence:** `DEC-SCOPE-055` D4 (manager = reporting manager, team scope; super_admin all), D21 / Q-12 (fixed catalogue per type, each
   with a written metric definition, monthly only), D31 (School Career Guidance / Psychometric KPIs = students served in linked
@@ -80,7 +80,7 @@ query count). The daily builders take an instant window, so they are reused as i
 
 ## 4. Data
 
-`bdm_targets` (migration `0095_bdm_targets`, additive, guarded create, downgrade refuses while rows exist):
+`bdm_targets` (migration `0096_bdm_targets`, additive, guarded create, downgrade refuses while rows exist):
 
 | Column | Type | Notes |
 |---|---|---|

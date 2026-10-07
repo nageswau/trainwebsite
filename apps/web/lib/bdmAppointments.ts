@@ -103,6 +103,12 @@ export function isAppointmentBody(data: unknown): data is { appointment: Appoint
   return !!a && typeof a.id === "string";
 }
 
+// bdm-012 (DEC-SCOPE-102 R10): the reminder buttons' `?action=`. Anything else is ignored.
+const REMINDER_ACTIONS = ["confirm", "reschedule", "cancel"] as const;
+export type ReminderAction = (typeof REMINDER_ACTIONS)[number];
+export const reminderAction = (value: string | undefined): ReminderAction | null =>
+  (REMINDER_ACTIONS as readonly unknown[]).includes(value) ? (value as ReminderAction) : null;
+
 // India has one fixed offset (+05:30, no DST), so a datetime-local value is sent with it and read back in Asia/Kolkata.
 const IST_PARTS = new Intl.DateTimeFormat("en-CA", { timeZone: SCHOOL_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 export function isoToIstInput(iso: string): string {

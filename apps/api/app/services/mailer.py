@@ -296,3 +296,69 @@ async def send_welcome_email(
         return "sent", None
     except Exception as exc:
         return "failed", str(exc)[:500]
+
+
+# --- bdm-012 / DEC-SCOPE-102 R9: a BDM reminder (appointment, travel, MoU, follow-up) with its deep-link buttons ------------
+
+
+def _bdm_reminder_html(*, recipient_name: str, title: str, body: str, links: list[tuple[str, str]]) -> str:
+    logo_url = f"{settings.frontend_url.rstrip('/')}/brand/logo-dark.png"
+    # Organization names, contact names and task titles are BDM-typed text: escaped like every other template here.
+    recipient_name, title, body = escape(recipient_name), escape(title), escape(body)
+    buttons = "".join(
+        f"""<td style="border-radius:12px;background:#1554d8;">
+                    <a href="{escape(url, quote=True)}" style="display:inline-block;padding:12px 20px;color:#ffffff;font-weight:700;font-size:14px;text-decoration:none;">{escape(label)}</a>
+                  </td><td style="width:8px;"></td>"""
+        for label, url in links
+    )
+    return f"""<!doctype html>
+<html>
+  <body style="margin:0;padding:0;background:#f4f7fb;font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#0f2850;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7fb;padding:32px 0;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 18px rgba(15,40,80,.08);">
+            <tr>
+              <td style="background:#0a1e3f;padding:28px 32px;">
+                <img src="{logo_url}" alt="EduSphere" height="40" style="display:block;">
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px;">
+                <h1 style="font-size:20px;margin:0 0 16px;">{title}</h1>
+                <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Hi {recipient_name},</p>
+                <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">{body}</p>
+                <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0;"><tr>{buttons}</tr></table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 32px;background:#f8fafc;border-top:1px solid #edf1f6;">
+                <p style="font-size:12px;color:#60738b;margin:0;">An automatic EduSphere BDM reminder. The buttons open EduSphere; sign in to act.</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>"""
+
+
+async def send_bdm_reminder_email(*, to_email: str, recipient_name: str, title: str, body: str, links: list[dict]) -> tuple[str, str | None]:
+    """`links` are `{label, path}` app paths; each becomes FRONTEND_URL + path. They carry no token: opening one needs a session and
+    the page never acts on its own (D6). Same (status, error) contract as the mailers above; no webhook fallback (R9)."""
+    if not settings.smtp_host or not settings.smtp_from_email:
+        return "not_configured", None
+    base = settings.frontend_url.rstrip("/")
+    absolute = [(str(link["label"]), f"{base}{link['path']}") for link in links]
+    try:
+        msg = EmailMessage()
+        msg["Subject"] = f"{title} -- EduSphere"
+        msg["From"] = f"EduSphere <{settings.smtp_from_email}>"
+        msg["To"] = to_email
+        msg.set_content(f"Hi {recipient_name},\n\n{title}\n\n{body}\n\n" + "".join(f"{label}: {url}\n" for label, url in absolute))
+        msg.add_alternative(_bdm_reminder_html(recipient_name=recipient_name, title=title, body=body, links=absolute), subtype="html")
+        await asyncio.to_thread(_send_sync, msg)
+        return "sent", None
+    except Exception as exc:
+        return "failed", str(exc)[:500]

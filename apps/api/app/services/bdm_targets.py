@@ -1,4 +1,4 @@
-"""bdm-016 (DEC-SCOPE-100, spec §2, §5): monthly target rules, the target sheet, the batch save and the copy.
+"""bdm-016 (DEC-SCOPE-103, spec §2, §5): monthly target rules, the target sheet, the batch save and the copy.
 
 Functions only; nothing here commits -- the route owns the transaction. Achieved is never stored: the sheet reads it live from
 `bdm_metrics.monthly_counts`. Every change is audited in the same transaction, one row per BDM, with KPI keys and numbers only."""

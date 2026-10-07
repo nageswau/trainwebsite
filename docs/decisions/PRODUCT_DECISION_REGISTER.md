@@ -4418,15 +4418,107 @@ builders bdm-016 / 023 / 024 reuse; `services/bdm_daily_reports.py`; routes in `
 the report lock and activity writes take the day's advisory lock; pages `/bdm/daily-report`, `/bdm/manager/daily-reports`,
 `/bdm/manager/daily-reports/[bdmId]`; component `BdmDailyReport`. **Feature ID:** `bdm-015`. **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-015.
 
-### DEC-SCOPE-100 — BDM monthly targets (`bdm-016`)
+### DEC-SCOPE-100 — WhatsApp click-to-chat + send log (`tel-013`)
+
+**Evidence:** `EVID-019` §11 (L416–L452); `DEC-SCOPE-073` T8 (wa.me, an editable template, "WhatsApp sent – date/time – template", no API /
+approval / consent model now), T9, T19, T23 and Appendix B D10; `DEC-SCOPE-083` C1 (signed 7-day brochure links) and C2 (the lead render
+route moves to tel-013); `DEC-SCOPE-084` D1 (handover = read-only); `DEC-SCOPE-096` CL2 / CL4 (closed lead, same-day change); owner
+answers in-session 2026-10-07.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option)
+for WA1–WA4; D1–D9 are recorded defaults. **MERGED** to `main` as PR #112 @ `a0b5ee31` (2026-10-07). Migration `0095_lead_messages` (drafted as
+`0094` / `DEC-SCOPE-099` on `0092_lead_calls`; bdm-014 took `DEC-SCOPE-097` (PR #108, no migration), tel-019 (PR #109)
+`0093_bdm_meeting_requests` / `DEC-SCOPE-098` / §12S / RBAC 2.25 and bdm-015 (PR #111) `0094_bdm_daily_reports` / `DEC-SCOPE-099` / §12T /
+RBAC 2.26, so this item is renumbered to `0095` / `DEC-SCOPE-100`, after `0094_bdm_daily_reports`), API contract §12U, RBAC §2.27. Spec
+`docs/superpowers/specs/2026-10-07-tel-013-whatsapp-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| WA1 (Q-21, part) | What a send log keeps of the text | **The full text as sent** (1–1000 characters). Logs and audit never carry it |
+| WA2 | Who records a send, on which leads | **Only the lead's telecaller, before handover**; a closed lead is refused (`409`) until a manager reopens it. Managers / super_admin read |
+| WA3 | Undo a mistaken "Sent" | **The sender deletes their own row on its IST day** (audited); no edit |
+| WA4 | Must a message start from a template | **No.** A template is rendered and editable; a free message is logged as "Custom message" |
+
+Recorded defaults: D1 the wa.me number is the WhatsApp number, else the mobile (`notifications/phone.normalise_phone`, `+91` default),
+an unusable WhatsApp number falling back to the mobile. D2 no usable number → the action is disabled; the API refuses with `409`. D3 wa.me
+can't confirm delivery, so nothing is logged until the telecaller confirms ("Not sent" / cancel logs nothing). D4 active WhatsApp templates
+only; another product's template is a warning, not a refusal. D5 render values: name, the lead's product else the template's, a fresh
+brochure link, the open counselling appointment (IST). D6 the template's name is kept as sent. D7 no stage effect. D8 300 sends per sender
+per IST day (`409`). D9 `lead_messages` carries `channel` / `subject` / `delivery_status` for tel-014; this item accepts WhatsApp only.
+
+**Consequences:** table `lead_messages`; `services/lead_messages.py`; router `api/telecaller_messages.py`
+(`GET /telecaller/leads/{id}/render`, the messages list / create, `DELETE /telecaller/messages/{id}`); the lead detail gains `whatsapp_to`.
+Web: the lead-detail Messages section (`LeadMessages`, `WhatsAppComposer`; the header "WhatsApp" opens the composer). tel-015 reads the rows
+for the timeline; tel-021 counts them (Appendix B D10). Consent capture and retention for messaged leads (the rest of Q-21) stay open:
+`PRD_OPEN_ITEMS.md` row 85.
+**New Feature ID authorized:** `tel-013`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-013.
+
+### DEC-SCOPE-101 — Handover to counselor, return, student link, computed conversion (`tel-018`)
+
+**Evidence:** `EVID-019` §10 (L386–L414) and §13 (Counselor Assigned → Application/Enrollment → Converted); `DEC-SCOPE-073` T4, T5, T19,
+T20, T29 (supersedes `DEC-SCOPE-072` L2/L7 for leads in the telecaller pipeline); `DEC-SCOPE-081` (the stage engine); `DEC-SCOPE-084` D1
+(read-only after handover); `DEC-SCOPE-095` (booking options); owner answers in-session 2026-10-07.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option) for
+HO1–HO4; HO5–HO9 are recorded defaults. **MERGED** to `main` as PR #114 @ `f37ebea8` (2026-10-07). **No migration.** API contract §12V, RBAC §2.28. Spec
+`docs/superpowers/specs/2026-10-07-tel-018-handover-design.md`. (tel-010 096, bdm-014 097, tel-019 098, bdm-015 099 and tel-013 100 merged first.)
+
+| # | Question | Answer |
+|---|---|---|
+| HO1 | Q-22: who may undo the student link | The **division admin** at any time (the bdm-017 route) and the **assigned counselor** while the lead is not Converted. The telecaller manager may not |
+| HO2 | Unlinking a Converted lead | **Only an admin**; the lead goes back to Follow-up and no longer counts as converted |
+| HO3 | T5 evidence; Q-18 part 2 | An IT `Enrollment` with status **`active`** (not `pending_consent`) or an `OverseasApplication` with status **`enrolled`** of the linked student. An enrolment that **predates** the lead or the link counts. Q-18 part 1 (conversion credit) is deferred to tel-024 |
+| HO4 | Handover / return rules | Handover from any open stage before Application/Enrollment (closed or linked → `409`) by the lead's telecaller or their manager; a manager may re-hand to another counselor (same one → `409`); handover cancels open follow-ups ("Handed over to counselor"), the stage stays. Return needs a reason, only before the link (`409`), moves the lead to Follow-up and cancels the counselor's open appointment. The alerts (counselor alerted; "Lead Returned") are tel-020's |
+
+Recorded defaults: HO5 `converted_at` keeps its bdm-017 meaning (the link time); the conversion moment is the system's `converted`
+stage-history row. HO6 conversion is observed at link time, on the counselor's and the telecaller's lead detail reads, and by the
+`tel018-conversion-sweep` beat job every 15 minutes (500 a batch, `SKIP LOCKED`). HO7 every return is written to the stage history (event
+`returned`, Follow-up → Follow-up included) with its reason; audit rows carry ids only. HO8 link suggestions: active students of the lead's
+division whose email or last ten mobile digits equal the lead's; a search (≥ 3 characters) over name, email or mobile; at most 10; each says
+whether another lead holds it. HO9 the admin link shares the counselor's rules (`lead_handover.link_student`), so a student already enrolled
+converts the lead at once.
+
+**Consequences:** stage events `returned` (new) and `student_unlinked` from `converted`; `lead_pipeline.apply_event(..., reason)`; service
+`services/lead_handover.py`; routes `api/lead_handover.py`; timeline rows gain `event`; telecaller lead detail gains `milestones`; components
+`LeadHandoverForm`, `LeadMilestones`, `CounselorLeadsPanel`, `CounselorLeadDetail`; pages `/{it|overseas}/counselor/leads/[id]`.
+**New Feature ID authorized:** `tel-018`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-018.
+
+### DEC-SCOPE-102 — BDM reminder engine (`bdm-012`)
+
+**Evidence:** `EVID-016` (`BDM Functionalities.md` §6 Appointment reminders L198–L227, §7 Travel reminder L229–L248, §10 MoU L339–L369,
+§4 Common reminders L1254–L1334; `DERIVED_BLUEPRINT`) → `BDM_CRM_BACKLOG.md` §bdm-012 (AC1–AC6); `DEC-SCOPE-055` D6 (in-app + email,
+deep links need login, no WhatsApp), D18 (Q-09 timings), D19 (Q-10 MoU timings), D29 (nothing to organization contacts).
+**Status:** R1–R12 are **agent-recommended defaults** (the owner asked the session to proceed on recommended answers); owner confirmation
+pending. **No migration** (R1). No new API route; the BDM appointment page accepts `?action=`. Spec
+`docs/superpowers/specs/2026-10-07-bdm-012-reminder-engine-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| R1 | "Exactly once" store | AGN-017's `notifications.dedupe_key` (partial unique index), key `bdm012:{kind}:{entity_id}:{fire_key}`, `ON CONFLICT DO NOTHING` — not the backlog's `bdm_reminders_sent` table, which would duplicate it |
+| R2 | Cadence | Beat `bdm012-reminders` every 300 s → `app.worker.send_bdm_reminders_task` |
+| R3 | Kinds and times (IST) | Appointment 09:00 the day before + exactly 1 h before; trip 09:00 the day before `travel_date`; follow-up / task 09:00 on `due_on`; MoU follow-up 09:00 on day 5, 10, 15… after `status_changed_at` while Proposal Sent / Draft Shared; MoU renewal 09:00 on `valid_until − 30` for an Active MoU |
+| R4 | Catch-up | A 09:00 reminder can still go out later the same IST day; the hour-before one until the start; after that it is not sent (per-run counts are logged) |
+| R5 | Which records fire | Appointments scheduled / confirmed / rescheduled; trips approved + planned; tasks open; current MoUs of non-archived organizations |
+| R6 | Recipient | The owner at fire time (appointment / trip BDM, task assignee, the organization's assigned BDM), active users only; never managers or contacts; a reminder already sent is not re-sent after a reassignment |
+| R7 | Rescheduling | The key carries the event time, so a new time is a new reminder |
+| R8 | Channels | In-app + email only, even for users opted in to WhatsApp / SMS |
+| R9 | Email | SMTP (`mailer.send_bdm_reminder_email`, delivery context `bdm_reminder`); unset SMTP → `not_configured`, no webhook fallback; SMTP errors use ENH-014 retries, then `failed` with the error |
+| R10 | Deep links | `/bdm/appointments/{id}?action=confirm\|reschedule\|cancel` (Reschedule / Cancel open the form; Confirm focuses the button — a link never changes data); `/bdm/travel/{id}#trip-appointments\|#trip-costs\|#trip-remarks`; `/bdm/organizations/{org}#org-mou`; `/bdm/follow-ups?kind=` — no token in any link |
+| R11 | Already confirmed | No "Please confirm" line or Confirm button |
+| R12 | Bounds and failures | Keyset chunks of 200, committed per chunk; each reminder in a savepoint — a failure is counted and logged with ids only |
+
+**Consequences:** service `app/services/bdm_reminders.py`; task `send_bdm_reminders_task` + beat entry in `app/worker.py`;
+`mailer.send_bdm_reminder_email`; `delivery._send_email` routes `bdm_reminder`; web `?action=` on `app/bdm/appointments/[id]`
+(`BdmAppointmentDetail`, `BdmAppointmentActions`, `lib/bdmAppointments.reminderAction`); `id="org-mou"` on `BdmOrganizationMou`.
+**Not done (owner):** a manager digest; reminder preferences. **New Feature ID authorized:** none. **Status:** see `BDM_CRM_BACKLOG.md` §bdm-012.
+
+### DEC-SCOPE-103 — BDM monthly targets (`bdm-016`)
 
 **Evidence:** `EVID-016` §12, Agent / School / College §A KPI tables (`BDM_CRM_BACKLOG.md` Appendix A L399–L411, L548–L559 and the School /
 College §A rows); `DEC-SCOPE-055` D4 (manager = reporting manager; super_admin all), D21 / Q-12 (fixed catalogue per type with written
 definitions; monthly only), D31 (School Career Guidance / Psychometric KPIs = students served in linked schools), D32 (Active / New
 Agents and Active Schools from linked partner records); Appendix B.3 K-rows → B.1 M-rows.
 **Status:** R1–R12 are the **recommended answers**, used under the owner's standing direction for this session to proceed with
-recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). Migration `0095_bdm_targets` (after
-`0094_bdm_daily_reports`), API contract §12U, RBAC §2.27. Spec `docs/superpowers/specs/2026-10-07-bdm-016-monthly-targets-design.md`.
+recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). Migration `0096_bdm_targets` (after
+`0095_lead_messages`), API contract §12W, RBAC §2.29. Drafted as `DEC-SCOPE-100` / `0095_bdm_targets` / §12U / RBAC 2.27 and renumbered on merging `main` @ `851eae1a` (tel-013 took `DEC-SCOPE-100` / `0095_lead_messages` / §12U / 2.27; tel-018 `DEC-SCOPE-101` / §12V / 2.28; bdm-012 `DEC-SCOPE-102`). Spec `docs/superpowers/specs/2026-10-07-bdm-016-monthly-targets-design.md`.
 
 | # | Question | Recommended answer (used) |
 |---|---|---|

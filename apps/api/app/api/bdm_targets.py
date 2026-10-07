@@ -1,4 +1,4 @@
-"""bdm-016 (DEC-SCOPE-100, spec §5): BDM monthly targets.
+"""bdm-016 (DEC-SCOPE-103, spec §5): BDM monthly targets.
 
 A BDM reads only their own sheet (`bdm_context`). Managers read and set their team's targets (`require_manager` + `team_filter`; a BDM
 outside the team is the same 404 as a missing one); super_admin all and, alone, past months (AC4). Every write is one transaction:

@@ -13,7 +13,7 @@ const detail = (over: Partial<TelecallerLeadDetail> = {}): TelecallerLeadDetail 
   city: "Hyderabad", state: "Telangana", qualification: "B.Tech", passing_year: 2024, institution: "JNTU", division: "it", subject: "Python",
   status: "contacted", status_label: "Contacted", source: "instagram", priority: "warm", created_at: "2026-10-06T05:00:00Z",
   stage_changed_at: "2026-10-06T05:00:00Z", product: { id: "p1", name: "Cyber Security" }, campaign: { id: "c1", name: "Sep 2026" },
-  telecaller: { id: "t1", full_name: "Tara Caller" }, counselor: null, read_only: false, message: "Please call after 6pm", ...over,
+  telecaller: { id: "t1", full_name: "Tara Caller" }, counselor: null, read_only: false, message: "Please call after 6pm", whatsapp_to: "919876543210", ...over,
 });
 const priorityRow: TimelineRow = {
   id: "a1", kind: "priority", at: "2026-10-06T06:00:00Z", actor: { id: "t1", full_name: "Tara Caller" }, from_value: "warm", from_label: "Warm",
@@ -49,6 +49,8 @@ beforeEach(() => {
         caller: { id: "t1", full_name: "Tara Caller" }, created_at: "2026-10-07T05:31:00Z", can_change: true },
         lead: { id: "L1", status: "lost", status_label: "Lost" }, follow_up_id: null }, 201) : res(pageOf([])));
     }
+    if (url.startsWith("/api/v1/telecaller/leads/L1/messages")) return Promise.resolve(res(pageOf([]))); // tel-013's section
+    if (url.startsWith("/api/v1/telecaller/templates")) return Promise.resolve(res(pageOf([])));
     if (init?.method === "PATCH") return Promise.resolve(patchReply(JSON.parse(String(init.body))));
     if (init?.method === "POST") return Promise.resolve(res({ id: "L1", status: "qualified", status_label: "Qualified", stage_changed_at: "x" }));
     if (url.startsWith("/api/v1/telecaller/leads/L1/timeline")) return Promise.resolve(res(pageOf(timeline)));
@@ -109,6 +111,22 @@ describe("LeadDetailPanel (tel-008)", () => {
     expect(await screen.findByText("Call logged.")).toBeTruthy();
     await waitFor(() => expect(screen.getByText("Lost", { selector: "strong" })).toBeTruthy());
     await waitFor(() => expect(followUpReads()).toBeGreaterThan(before));
+  });
+
+  it("shows the messages with Send WhatsApp only for the lead's telecaller, and the header WhatsApp opens the composer (tel-013)", async () => {
+    render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen={false} />);
+    expect(await screen.findByText("No messages sent yet.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "WhatsApp Asha Rao" }));
+    expect(await screen.findByLabelText("Message")).toBeTruthy();
+    cleanup();
+    render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen />); // a manager reads only (WA2)
+    expect(await screen.findByText("No messages sent yet.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Send WhatsApp" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "WhatsApp Asha Rao" })).toBeNull();
+    cleanup();
+    render(<LeadDetailPanel initial={detail({ whatsapp_to: null })} timeline={pageOf([])} canReopen={false} />); // AC3
+    expect(await screen.findByText("No WhatsApp or mobile number on this lead.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "WhatsApp Asha Rao" })).toBeNull();
   });
 
   it("shows the counselling appointments, with Book only for the lead's telecaller on an open lead (tel-016)", async () => {
@@ -273,5 +291,34 @@ describe("LeadDetailPanel (tel-008)", () => {
     render(<LeadDetailPanel initial={detail({ read_only: true })} timeline={pageOf([])} canReopen={false} />);
     expect(await screen.findByText("IT training requirement")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Edit qualification" })).toBeNull();
+  });
+  it("offers Assign to counselor on a workable lead, not on a closed, linked or handed-over one (tel-018 HO4)", () => {
+    const { unmount } = render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen={false} />);
+    expect(screen.getByRole("button", { name: "Assign to counselor" })).toBeTruthy();
+    unmount();
+    for (const over of [{ status: "lost" }, { status: "application_enrollment" }, { read_only: true, counselor: { id: "c1", full_name: "Cara" } }]) {
+      const view = render(<LeadDetailPanel initial={detail(over)} timeline={pageOf([])} canReopen={false} />);
+      expect(screen.queryByRole("button", { name: /counselor$/ })).toBeNull();
+      view.unmount();
+    }
+  });
+
+  it("a manager can change the counselor of a handed-over lead (tel-018 HO4)", () => {
+    render(<LeadDetailPanel initial={detail({ counselor: { id: "c1", full_name: "Cara" } })} timeline={pageOf([])} canReopen />);
+    expect(screen.getByRole("button", { name: "Change counselor" })).toBeTruthy();
+  });
+
+  it("shows the linked student's milestones (tel-018 T4)", () => {
+    render(<LeadDetailPanel initial={detail({ read_only: true, status: "converted", status_label: "Converted",
+      milestones: { student: { id: "s1", full_name: "Asha Rao", email: "asha@example.com" }, items: [] } })} timeline={pageOf([])} canReopen={false} />);
+    expect(screen.getByRole("region", { name: "Student and milestones" })).toHaveTextContent("Linked student: Asha Rao (asha@example.com)");
+  });
+  it("names a counselor's return in the activity instead of Follow-up -> Follow-up (tel-018 QA-03)", () => {
+    const returned: TimelineRow = { ...priorityRow, id: "h9", kind: "stage", from_value: "follow_up", from_label: "Follow-up", to_value: "follow_up",
+      to_label: "Follow-up", reason: "Fees first", event: "returned", actor: { id: "c1", full_name: "Cara Counselor" } };
+    render(<LeadDetailPanel initial={detail()} timeline={pageOf([returned])} canReopen={false} />);
+    const activity = screen.getByRole("list", { name: "Lead activity" });
+    expect(within(activity).getByText("Returned to the telecaller")).toBeTruthy();
+    expect(within(activity).queryByText(/Follow-up → Follow-up/)).toBeNull();
   });
 });

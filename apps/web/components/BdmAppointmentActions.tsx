@@ -1,12 +1,12 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import BdmAppointmentReasonForm from "@/components/BdmAppointmentReasonForm";
 import BdmAppointmentRescheduleForm from "@/components/BdmAppointmentRescheduleForm";
 import BdmMeetingReportForm from "@/components/BdmMeetingReportForm";
 import { sendJson } from "@/lib/apiErrors";
 import type { BdmType } from "@/lib/bdm";
-import { type Appointment, APPOINTMENTS_URL, isAppointmentBody, type Overlap, overlap as readOverlap, STATUS_LABEL } from "@/lib/bdmAppointments";
+import { type Appointment, APPOINTMENTS_URL, isAppointmentBody, type Overlap, overlap as readOverlap, type ReminderAction, STATUS_LABEL } from "@/lib/bdmAppointments";
 import { fieldErrors } from "@/lib/bdmTravel";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
@@ -17,8 +17,12 @@ const CHANGED_ELSEWHERE = "This appointment changed elsewhere — copy your note
 
 // bdm-006 (spec §6.2, R-F4, R-F7): the status actions, from `permissions` only (the API enforces every rule). One inline group is open
 // at a time; Escape or Cancel closes it and focus returns to its button. A 409 means the appointment changed elsewhere: refetch and say so.
-export default function BdmAppointmentActions({ appointment, bdmType, onChanged }: { appointment: Appointment; bdmType: BdmType | null; onChanged: (a: Appointment, text: string) => void }) {
-  const [open, setOpen] = useState<Group | null>(null);
+// bdm-012: `initialAction` (a reminder button, already checked against `permissions`) opens Reschedule / Cancel, or focuses Confirm --
+// it never sends anything by itself.
+export default function BdmAppointmentActions({ appointment, bdmType, onChanged, initialAction = null }: {
+  appointment: Appointment; bdmType: BdmType | null; onChanged: (a: Appointment, text: string) => void; initialAction?: ReminderAction | null;
+}) {
+  const [open, setOpen] = useState<Group | null>(initialAction === "confirm" ? null : initialAction);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [fieldErrs, setFieldErrs] = useState<Record<string, string>>({});
@@ -28,6 +32,9 @@ export default function BdmAppointmentActions({ appointment, bdmType, onChanged 
   const p = appointment.permissions;
   const buttonId = (g: string) => `appt-${appointment.id}-${g}`;
   const failureId = buttonId("failure");
+  useEffect(() => {
+    if (initialAction === "confirm") focus(`appt-${appointment.id}-confirm`); // once: these values don't change on this page
+  }, [initialAction, focus, appointment.id]);
   // QA7-01: the report's Edit button lives in BdmMeetingReportSection, so `can_edit_report` alone is no reason for this bar.
   if (!Object.entries(p).some(([key, allowed]) => allowed && key !== "can_edit_report")) return null;
 

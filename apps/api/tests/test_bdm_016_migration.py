@@ -1,4 +1,4 @@
-"""bdm-016 -- migration 0095_bdm_targets (spec §4). The round trip and the downgrade refusal run in a throwaway database (the bdm-015
+"""bdm-016 -- migration 0096_bdm_targets (spec §4). The round trip and the downgrade refusal run in a throwaway database (the bdm-015
 pattern); a downgrade never runs against the shared test database."""
 
 import asyncio
@@ -19,11 +19,11 @@ from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_bdm_016_migration_0095", VERSIONS / "0095_bdm_targets.py")
+_spec = importlib.util.spec_from_file_location("_bdm_016_migration_0096", VERSIONS / "0096_bdm_targets.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0094_bdm_daily_reports", "0095_bdm_targets"
+BASE, HEAD = "0095_lead_messages", "0096_bdm_targets"
 TABLE = "bdm_targets"
 
 
@@ -33,7 +33,7 @@ def _config() -> Config:
     return cfg
 
 
-def test_migration_chains_after_0094_and_is_the_single_head():
+def test_migration_chains_after_0095_and_is_the_single_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

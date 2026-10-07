@@ -259,7 +259,7 @@ async def daily_counts(db: AsyncSession, bdm_user_id: UUID, bdm_type: str, day: 
             for key, label in rows]
 
 
-# bdm-016 (DEC-SCOPE-100, spec §3): the monthly KPI catalogue for targets -- Appendix B.3 K-rows, each one M-row over the IST month. The
+# bdm-016 (DEC-SCOPE-103, spec §3): the monthly KPI catalogue for targets -- Appendix B.3 K-rows, each one M-row over the IST month. The
 # bdm-015 builders take any half-open instant window, so they are reused as is; the rows below are the M-rows only a month needs.
 
 def month_range(month: date) -> tuple[datetime, datetime]:

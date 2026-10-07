@@ -68,7 +68,7 @@ from app.schemas import (
 )
 from app.services import bdm as bdm_rules
 from app.services import bdm_leads as lead_rules
-from app.services import bdm_lifecycle, lead_pipeline
+from app.services import bdm_lifecycle, lead_handover, lead_pipeline
 from app.services import telecaller as tel_rules
 from app.services.agent_applications import owned, with_owner
 from app.services.agent_network import APPLICATION_FILTERS, org_applications, org_counts, org_money, org_students
@@ -428,39 +428,20 @@ async def leads(division: str | None = None, status: str | None = None, source: 
 
 @router.post("/leads/{lead_id}/conversion")
 async def convert_lead(lead_id: UUID, payload: AdminLeadConversionIn, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
-    """bdm-017 AC3 (L1, L2, L9): link a lead to exactly one student account, explicitly. Lead locked (404 / 403 / 409), student locked
-    (one 422), student free (409; the partial unique index is the backstop for two admins at once), status 'converted', audit, commit."""
+    """bdm-017 AC3 (L1, L2, L9), tel-018 AC5: link a lead to exactly one student account, explicitly, by the counselor's rules
+    (`lead_handover.link_student`). Lead locked (404 / 403 / 409), student locked (one 422), student free (409; the partial unique index
+    is the backstop for two people at once), Application/Enrollment -- or Converted at once when the student is already enrolled (T29)."""
     lead = await lead_rules.locked_for_admin(db, user, lead_id)
-    if lead.converted_user_id is not None:
-        raise HTTPException(409, lead_rules.ALREADY_LINKED)
-    student = await lead_rules.locked_student(db, lead, payload.student_email)
-    await lead_rules.check_student_free(db, student)
-    # tel-004 PL4 (T29): the link moves the lead to Application/Enrollment (a closed lead keeps its stage). The event runs first: its
-    # read autoflushes, and an autoflush must never see a half-set link (ck_enquiries_conversion) or raise the unique-student error early.
-    await lead_pipeline.apply_event(db, lead, "student_linked", user)
-    now = await db.scalar(select(func.now()))
-    lead.converted_user_id, lead.converted_at, lead.converted_by_user_id = student.id, now, user.id
-    lead_rules.audit_conversion(db, user, lead, "lead.convert", student.id)
-    actor_id = str(user.id)  # a rollback expires every loaded row, the caller included
-    try:
-        await db.commit()
-    except IntegrityError:
-        await db.rollback()
-        logger.warning("lead_convert_conflict", extra={"extra_fields": {"actor_id": actor_id, "lead_id": str(lead_id)}})
-        raise HTTPException(409, lead_rules.STUDENT_TAKEN) from None
-    lead_rules.log("lead_converted", user, lead_id)
+    await lead_handover.link_student(db, user, lead, func.lower(User.email) == payload.student_email)
+    await lead_handover.commit_link(db, user, lead_id)
     return await lead_rules.admin_one(db, lead_id)
 
 
 @router.delete("/leads/{lead_id}/conversion")
 async def unconvert_lead(lead_id: UUID, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
-    """bdm-017 (L2): undo a mistaken link. tel-004 PL4: Application/Enrollment goes back to Follow-up (supersedes L7)."""
+    """bdm-017 (L2): undo a mistaken link. tel-004 PL4 / tel-018 HO2: back to Follow-up, from Application/Enrollment or Converted."""
     lead = await lead_rules.locked_for_admin(db, user, lead_id)
-    if lead.converted_user_id is None:
-        raise HTTPException(409, lead_rules.NOT_LINKED)
-    await lead_pipeline.apply_event(db, lead, "student_unlinked", user)
-    lead_rules.audit_conversion(db, user, lead, "lead.unconvert", lead.converted_user_id)
-    lead.converted_user_id = lead.converted_at = lead.converted_by_user_id = None
+    await lead_handover.unlink_student(db, user, lead, admin=True)
     await db.commit()
     lead_rules.log("lead_unconverted", user, lead_id)
     return await lead_rules.admin_one(db, lead_id)

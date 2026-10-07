@@ -5684,6 +5684,7 @@ class LeadTimelineRow(BaseModel):
     to_value: str
     to_label: str
     reason: str | None
+    event: str | None = None  # tel-018: the stage row's pipeline event
 
 
 class LeadTimelinePage(BaseModel):
@@ -5921,7 +5922,7 @@ class BdmDailyReportGrid(BaseModel):
     offset: int
 
 
-# bdm-016 (DEC-SCOPE-100, spec §5): monthly targets. The month is `YYYY-MM` (IST); the setter and times are server-owned.
+# bdm-016 (DEC-SCOPE-103, spec §5): monthly targets. The month is `YYYY-MM` (IST); the setter and times are server-owned.
 BDM_TARGET_MONTH_PATTERN = r"^\d{4}-(0[1-9]|1[0-2])$"
 BdmTargetMonth = Annotated[str, StringConstraints(pattern=BDM_TARGET_MONTH_PATTERN)]
 BDM_TARGET_BATCH_MAX = 200
@@ -6022,6 +6023,15 @@ class LeadCallCreate(BaseModel):
     next_follow_up: LeadFollowUpCreate | None = None
 
 
+class LeadMessageCreate(BaseModel):
+    """tel-013: D9 WhatsApp only (email arrives with tel-014); WA4 the template is optional; WA1 the text as sent (tel-012's limit)."""
+
+    model_config = ConfigDict(extra="forbid")
+    channel: Literal["whatsapp"]
+    template_id: UUID | None = None
+    body: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
+
+
 class LeadCallUpdate(BaseModel):
     """CL4: same-day details only -- the outcome is locked (an unknown field here). Time, duration and type can't be cleared."""
 
@@ -6087,3 +6097,18 @@ class MeetingRequestCreate(BaseModel):
 class MeetingRequestDecline(BaseModel):
     model_config = ConfigDict(extra="forbid")
     reason: BdmApptReason
+
+# --- tel-018 (DEC-SCOPE-101, spec §3.3): handover, return and the counselor's student link ----------------------------------------
+class LeadHandoverIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    counselor_id: UUID
+
+
+class LeadReturnIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: BdmApptReason
+
+
+class LeadStudentLinkIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    student_id: UUID

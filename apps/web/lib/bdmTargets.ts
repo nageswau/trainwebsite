@@ -2,7 +2,7 @@ import type { BdmType } from "@/lib/bdm";
 import type { PersonRef } from "@/lib/bdmTravel";
 import { indiaToday } from "@/lib/bdmTravel";
 
-// bdm-016 (DEC-SCOPE-100): monthly targets' types, endpoints and words. The API computes achieved and percent and decides every rule
+// bdm-016 (DEC-SCOPE-103): monthly targets' types, endpoints and words. The API computes achieved and percent and decides every rule
 // (which months are editable, team scope, the type's KPIs); `editable` only tells the page whether to offer inputs.
 export type MonthStatus = "past" | "current" | "future";
 export type TargetKpi = { key: string; label: string; definition: string; tracked: boolean; target: number | null; achieved: number | null; percent: number | null };
