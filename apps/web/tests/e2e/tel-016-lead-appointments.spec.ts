@@ -42,8 +42,12 @@ test("a telecaller books IT course counselling for a lead and the IT counselor c
   const stamp = Date.now();
   const { caller, counselor } = await accounts(page, stamp);
   await signIn(page, "it", caller.email, E2E_PASSWORD, "/telecaller/dashboard");
+  const products = (await (await page.request.get("/api/v1/telecaller/products?group=it&active=true&limit=100")).json()).items;
+  expect(products.length).toBeGreaterThan(0);
   const lead = async (name: string, suffix: string) => {
-    const created = await page.request.post("/api/v1/telecaller/leads", { data: { name, phone: `9${String(stamp).slice(-8)}${suffix}`, source: "walk_in" } });
+    const created = await page.request.post("/api/v1/telecaller/leads", {
+      data: { name, phone: `9${String(stamp).slice(-8)}${suffix}`, product_id: products[0].id, source: "walk_in" },
+    });
     expect(created.status(), await created.text()).toBe(201);
     return (await created.json()).id as string;
   };
@@ -66,7 +70,8 @@ test("a telecaller books IT course counselling for a lead and the IT counselor c
   // AP4: an IT lead offers the IT types only
   await expect(form.getByLabel("Appointment type").locator("option")).toHaveText(["Choose a type", "Career counselling", "IT course counselling"]);
   await form.getByLabel("Appointment type").selectOption({ label: "IT course counselling" });
-  await form.getByLabel("Counselor").selectOption({ label: counselor.full_name });
+  await form.getByLabel("Counselor").selectOption(counselor.id);
+  await expect(form.getByLabel("Counselor")).toHaveValue(counselor.id);
   await form.getByLabel("Date and time (IST)").fill(tomorrowAt11());
   await form.getByLabel("Meeting link").fill("https://meet.example.com/tel016");
   await form.getByLabel("Purpose").fill("Course fit and batch timing");
@@ -87,7 +92,7 @@ test("a telecaller books IT course counselling for a lead and the IT counselor c
   await other.getByRole("button", { name: "Book counselling" }).click();
   const otherForm = other.getByRole("form", { name: "Book counselling" });
   await otherForm.getByLabel("Appointment type").selectOption({ label: "Career counselling" });
-  await otherForm.getByLabel("Counselor").selectOption({ label: counselor.full_name });
+  await otherForm.getByLabel("Counselor").selectOption(counselor.id);
   await otherForm.getByLabel("Date and time (IST)").fill(tomorrowAt11());
   await otherForm.getByRole("button", { name: "Book appointment" }).click();
   await expect(otherForm.getByRole("alert")).toContainText("The counselor already has an appointment at this time. Busy:");
