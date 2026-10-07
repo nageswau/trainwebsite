@@ -121,14 +121,14 @@ export default function LeadAppointmentCard({ appointment: a, showLead, onChange
             <div className="field">
               <label htmlFor={`${idp}-reschedule-input`}>New date and time (IST)</label>
               <input id={`${idp}-reschedule-input`} type="datetime-local" min={nowIstInput()} value={when} disabled={busy} required
-                aria-invalid={fieldError ? true : undefined} aria-describedby={fieldError ? `${idp}-error` : undefined} onChange={(e) => setWhen(e.target.value)} />
+                aria-invalid={fieldError ? true : undefined} aria-describedby={fieldError ? `${idp}-error` : undefined} onChange={(e) => { setWhen(e.target.value); setFieldError(null); }} />
             </div>
           )}
           <div className="field">
             <label htmlFor={reasonId}>{open === "cancel" ? "Reason for cancelling" : "Reason (optional)"}</label>
             <textarea id={reasonId} rows={2} maxLength={500} value={reason} disabled={busy}
               aria-invalid={open === "cancel" && fieldError ? true : undefined} aria-describedby={fieldError ? `${idp}-error` : undefined}
-              onChange={(e) => setReason(e.target.value)} />
+              onChange={(e) => { setReason(e.target.value); setFieldError(null); }} />
           </div>
           {fieldError && <p id={`${idp}-error`} className="form-error" style={{ margin: 0 }}>{fieldError}</p>}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>

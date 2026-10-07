@@ -41,7 +41,12 @@ export default function BookCounsellingForm({ leadId, onBooked, onCancel }: {
   }, [leadId, attempt]);
 
   const id = (key: string) => `${idp}-${key}`;
-  const set = (key: keyof BookingDraft, value: string) => setDraft((d) => ({ ...d, [key]: value }));
+  const set = (key: keyof BookingDraft, value: string) => {
+    setDraft((d) => ({ ...d, [key]: value }));
+    // QA-01: a corrected field drops its own error (the date input reports as the API's `scheduled_at`)
+    const field = key === "when" ? "scheduled_at" : key;
+    setErrors((e) => (e[field] ? Object.fromEntries(Object.entries(e).filter(([k]) => k !== field)) : e));
+  };
 
   function refuse(found: Record<string, string>, message: string) {
     setErrors(found);
