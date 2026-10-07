@@ -990,6 +990,10 @@ quiet hours); AL4 timing (Missed 1 h after due; Appointment Tomorrow from 18:00 
 
 ### tel-023 — Manager performance comparison
 
+**Status (2026-10-07):** built on `feature/tel-023` (`DEC-SCOPE-112`, API §12AF, RBAC §2.38, no migration); owner answers PF1–PF4
+(Q-19 answered by PF3). The API takes `date_from` / `date_to` (as tel-024), not `from` / `to`. Spec
+`docs/superpowers/specs/2026-10-07-tel-023-performance-design.md`.
+
 - **Business requirement:** §16.
 - **Existing behavior:** none.
 - **Expected behavior:** a table per telecaller with Leads, Calls, Connected, Qualified, Appointments and Conversions (Appendix B P1–P6) for a date range, sortable and with CSV export (T24). Rows link to that telecaller's activity.

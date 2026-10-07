@@ -4815,3 +4815,25 @@ Recorded defaults:
 - Volume: a CSV import of N leads sends N "New lead assigned" emails (AL2 accepted).
 
 **New Feature ID authorized:** `tel-020`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-020.
+
+### DEC-SCOPE-112 — Telecaller performance comparison (`tel-023`)
+
+**Evidence:** `EVID-019` §16 (the 6-column comparison); `DEC-SCOPE-073` T23, T24; backlog Appendix B P1–P6 and open question Q-19;
+`DEC-SCOPE-105` (tel-021 metrics, DB2, DB6, DB8); owner answers in-session 2026-10-07.
+**Status:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-07 — four structured questions, each answered with the recommended option)
+for PF1–PF4. **No migration.** API contract §12AF, RBAC §2.38. Spec `docs/superpowers/specs/2026-10-07-tel-023-performance-design.md`.
+Numbered after bdm-019 (`DEC-SCOPE-107` / §12AA / 2.33, migration `0098`), bdm-023 (`DEC-SCOPE-108` / §12AB / 2.34), tel-024 (`DEC-SCOPE-109` / §12AC / 2.35), bdm-022 / tel-020 (`DEC-SCOPE-110`–`111` / §12AD–§12AE / 2.36–2.37, migration `0099_tel_settings`), all merged first.
+
+| # | Question | Answer |
+|---|---|---|
+| PF1 | Who sees it; where rows link | `telecaller_manager` (direct reports), `it_admin` / `overseas_admin` (their team), `super_admin` (all). Names link to the tel-021 daily activity only for viewers who may open it (manager, super_admin); division admins see plain rows, so DB6 is unchanged |
+| PF2 | P1 "Leads" | Distinct leads that **became the telecaller's in the range** (DB8's rule: a `lead.assign` to them, or their own already-assigned `lead.create`), whether or not still theirs |
+| PF3 | Q-19: credit after reassignment | **Whoever did it**: calls, connected, qualified and appointments are tel-021's actor-based flow counts; conversions per DB2 |
+| PF4 | Rows, sort, defaults | Every telecaller in scope, inactive ones marked; a Total row; default the 1st of the month → today (IST); sort by column-header links (default Calls, high-to-low; ties by name), the CSV in the same order; at most 366 days |
+
+**Consequences:** `telecaller_metrics.leads_received` (B1 now reuses the same expression); `services/telecaller_performance.py`; routes
+`GET /telecaller/manager/performance(.csv)` in `api/telecaller_dashboard.py`; `TelecallerPerformancePanel` / `TelecallerPerformancePage`;
+pages `/telecaller/manager/performance`, `/it/admin/telecaller-performance`, `/overseas/admin/telecaller-performance`,
+`/admin/telecaller-performance`; nav "Performance" / "Telecaller Performance". P2–P6 use tel-024's grouped
+`flow_counts_by_user` (one query per count for the whole scope).
+**New Feature ID authorized:** `tel-023`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §4 tel-023.
