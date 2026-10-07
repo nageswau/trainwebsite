@@ -1956,6 +1956,36 @@ class BdmActivity(Base, TimestampMixin):
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+BDM_DAILY_REPORT_CHECKS = {  # migration 0092 repeats these strings; test_bdm_015_migration asserts they stay identical
+    "ck_bdm_daily_reports_bdm_type": "bdm_type IN ('agent', 'school', 'college')",
+    "ck_bdm_daily_reports_comment": "(manager_comment IS NULL) = (manager_comment_by_user_id IS NULL) "
+    "AND (manager_comment IS NULL) = (manager_commented_at IS NULL)",
+}
+
+
+class BdmDailyReport(Base, TimestampMixin):
+    """bdm-015 (DEC-SCOPE-096): a BDM's submitted end-of-day report. A row exists only once submitted (the draft is a live preview);
+    `counts` is the snapshot of the day's metrics at submission (`services/bdm_metrics.daily_counts`), so later record edits never
+    rewrite it. The manager's comment (D22) is the only later write."""
+
+    __tablename__ = "bdm_daily_reports"
+    __table_args__ = (
+        UniqueConstraint("bdm_user_id", "report_date", name="uq_bdm_daily_reports_bdm_date"),
+        *(CheckConstraint(sql, name=name) for name, sql in BDM_DAILY_REPORT_CHECKS.items()),
+    )
+    __mapper_args__ = {"eager_defaults": True}  # the INSERT returns submitted_at: no lazy load on an async session
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    bdm_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    report_date: Mapped[date] = mapped_column(Date)
+    bdm_type: Mapped[str] = mapped_column(String(20))
+    counts: Mapped[list] = mapped_column(JSON, default=list)
+    note: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    manager_comment: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    manager_comment_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    manager_commented_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class LiveSession(Base, TimestampMixin):
     __tablename__ = "live_sessions"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)

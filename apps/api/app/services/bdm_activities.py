@@ -13,7 +13,16 @@ from sqlalchemy import and_, distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.models import BDM_ACTIVITY_CHANNELS, AuditLog, BdmActivity, BdmOrganization, BdmOrganizationContact, BdmProfile, User
+from app.models import (
+    BDM_ACTIVITY_CHANNELS,
+    AuditLog,
+    BdmActivity,
+    BdmDailyReport,
+    BdmOrganization,
+    BdmOrganizationContact,
+    BdmProfile,
+    User,
+)
 from app.schemas import activity_direction_error
 from app.services.bdm_appointments import IST  # bdm-006's IST zone and IST day
 from app.services.bdm_appointments import today_ist as india_date
@@ -74,9 +83,16 @@ def refused(user: User, route: str, status: int, detail: str, **ids) -> HTTPExce
     return HTTPException(status, detail)
 
 
-def editable(activity: BdmActivity, now: datetime) -> bool:
-    """AC4: the single gate for PATCH and DELETE. bdm-015 adds "and that day's report is not submitted" here."""
-    return india_date(activity.occurred_at) == india_date(now)
+def editable(activity: BdmActivity, now: datetime, *, day_submitted: bool = False) -> bool:
+    """AC4: the single gate for PATCH and DELETE -- today's activity, and (bdm-015) today's report not submitted. The routes re-check the
+    report under its day lock (`bdm_daily_reports.check_day_open`); `day_submitted` keeps `can_change` honest in the lists."""
+    return not day_submitted and india_date(activity.occurred_at) == india_date(now)
+
+
+async def today_submitted(db: AsyncSession, user: User, now: datetime) -> bool:
+    """bdm-015: whether the caller submitted today's report -- the only day whose activities can still be `can_change`."""
+    return bool(await db.scalar(select(BdmDailyReport.id).where(BdmDailyReport.bdm_user_id == user.id,
+                                                                BdmDailyReport.report_date == india_date(now))))
 
 
 def check_direction(channel: str, direction: str | None) -> None:
@@ -114,7 +130,7 @@ def _rows(filters: list):
     )
 
 
-def _out(activity: BdmActivity, org: BdmOrganization, logger_name: str, user: User, now: datetime) -> dict:
+def _out(activity: BdmActivity, org: BdmOrganization, logger_name: str, user: User, now: datetime, day_submitted: bool) -> dict:
     return {
         "id": activity.id,
         "organization": {"id": org.id, "code": org.code, "name": org.name, "org_type": org.org_type},
@@ -128,7 +144,7 @@ def _out(activity: BdmActivity, org: BdmOrganization, logger_name: str, user: Us
         "note": activity.note,
         "created_at": activity.created_at,
         "updated_at": activity.updated_at,
-        "permissions": {"can_change": user.id == activity.bdm_user_id and editable(activity, now)},
+        "permissions": {"can_change": user.id == activity.bdm_user_id and editable(activity, now, day_submitted=day_submitted)},
     }
 
 
@@ -138,12 +154,13 @@ async def page(db: AsyncSession, filters: list, limit: int, offset: int, user: U
     if total is None:
         total = await db.scalar(select(func.count()).select_from(stmt.subquery()))
     result = (await db.execute(stmt.order_by(*NEWEST).limit(limit).offset(offset).execution_options(populate_existing=True))).tuples().all()
-    return {"items": [_out(a, o, n, user, now) for a, o, n in result], "total": total or 0, "limit": limit, "offset": offset}
+    submitted = await today_submitted(db, user, now)
+    return {"items": [_out(a, o, n, user, now, submitted) for a, o, n in result], "total": total or 0, "limit": limit, "offset": offset}
 
 
 async def one(db: AsyncSession, user: User, activity_id: UUID, now: datetime) -> dict:
     row = (await db.execute(_rows([BdmActivity.id == activity_id]).execution_options(populate_existing=True))).one()
-    return _out(row[0], row[1], row[2], user, now)
+    return _out(row[0], row[1], row[2], user, now, await today_submitted(db, user, now))
 
 
 async def day_counts(db: AsyncSession, filters: list, day: date) -> dict:

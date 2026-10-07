@@ -5782,3 +5782,70 @@ class LeadFollowUpUpdate(BaseModel):
             if key in self.model_fields_set and getattr(self, key) is None:
                 raise ValueError(f"{label} can't be removed")
         return self
+
+
+# bdm-015 (DEC-SCOPE-096, spec §5): the daily activity report.
+BDM_DAILY_REPORT_LABELS = {"note": "Note", "comment": "Comment"}
+DailyReportNote = Annotated[Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, BDM_DAILY_REPORT_LABELS))]
+DailyReportComment = Annotated[Annotated[str, _trimmed(1000)], AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, True, BDM_DAILY_REPORT_LABELS))]
+
+
+class BdmDailyReportSubmit(BaseModel):
+    """R4: the optional end-of-day note. Counts, owner and times are server-owned (unknown fields → 422)."""
+
+    model_config = ConfigDict(extra="forbid")
+    note: DailyReportNote = None
+
+
+class BdmDailyReportCommentIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    comment: DailyReportComment
+
+
+class BdmDailyReportCount(BaseModel):
+    key: str
+    label: str
+    definition: str
+    tracked: bool
+    count: int | None
+
+
+class BdmDailyReportManagerComment(BaseModel):
+    text: str
+    by: BdmPersonRef
+    at: datetime
+
+
+class BdmDailyReportOut(BaseModel):
+    """`status` draft = a live preview (nothing stored); submitted = the snapshot taken at `submitted_at`."""
+
+    report_date: date
+    bdm: BdmPersonRef
+    bdm_type: Literal["agent", "school", "college"]
+    status: Literal["draft", "submitted"]
+    submitted_at: datetime | None
+    note: str | None
+    counts: list[BdmDailyReportCount]
+    can_submit: bool
+    submit_window_days: int
+    manager_comment: BdmDailyReportManagerComment | None
+
+
+class BdmDailyReportDay(BaseModel):
+    report_date: date
+    status: Literal["submitted", "missing", "not_started"]
+    submitted_at: datetime | None
+
+
+class BdmDailyReportTeamRow(BaseModel):
+    bdm: BdmPersonRef
+    bdm_type: Literal["agent", "school", "college"]
+    days: list[BdmDailyReportDay]
+
+
+class BdmDailyReportGrid(BaseModel):
+    dates: list[date]
+    items: list[BdmDailyReportTeamRow]
+    total: int
+    limit: int
+    offset: int
