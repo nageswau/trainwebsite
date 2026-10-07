@@ -26,6 +26,7 @@ from pydantic import (
 from pydantic_core import PydanticCustomError
 
 from app.models import (
+    APPOINTMENT_MODES,
     BDM_ACTIVITY_DIRECTIONAL,
     BDM_APPOINTMENT_ALL_OUTCOMES,
     BDM_APPOINTMENT_ALL_TYPES,
@@ -36,6 +37,7 @@ from app.models import (
     BDM_MOU_STATUSES,
     BDM_STAFF_MAX,
     GENDERS,
+    LEAD_APPOINTMENT_TYPE_LABELS,
     LEAD_PRIORITIES,
     QUAL_MODES,
     QUAL_PASSPORT,
@@ -5679,3 +5681,40 @@ class TelLeadAssign(BaseModel):
 class TelLeadAssignOut(BaseModel):
     assigned: int
     unchanged: int
+
+
+# --- tel-016 (DEC-SCOPE-095, spec §3): lead counselling appointments ---------------------------------------------------------------------
+def _lead_appt_link(value: str | None) -> str | None:
+    """AP7 / spec §5: a meeting link is an http(s) URL -- never `javascript:` or another scheme that would run when clicked."""
+    if value is not None and not value.lower().startswith(("http://", "https://")):
+        raise ValueError("Meeting link must start with http:// or https://")
+    return value
+
+
+LeadApptLink = Annotated[_bdm_appt_optional(500), AfterValidator(_lead_appt_link)]
+
+
+class LeadAppointmentCreate(BaseModel):
+    """The type must fit the lead's division and the counselor must be one of its active counselors -- checked in the service (AP4).
+    Server-owned fields (code, status, duration, booked_by) are unknown fields here."""
+
+    model_config = ConfigDict(extra="forbid")
+    appointment_type: Literal[tuple(LEAD_APPOINTMENT_TYPE_LABELS)]
+    counselor_id: UUID
+    scheduled_at: BdmApptStart
+    mode: Literal[APPOINTMENT_MODES]
+    meeting_link: LeadApptLink = None
+    location: _bdm_appt_optional(200) = None
+    purpose: _bdm_appt_optional(500) = None
+    remarks: _bdm_appt_optional(1000) = None
+
+
+class LeadAppointmentReschedule(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    scheduled_at: BdmApptStart
+    reason: _bdm_appt_optional(500) = None
+
+
+class LeadAppointmentCancel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: BdmApptReason

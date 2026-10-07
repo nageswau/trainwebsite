@@ -2341,7 +2341,8 @@ async def create_appointment(payload: AppointmentCreate, user: User = Depends(ge
 async def update_appointment(appointment_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require(user, {"counselor", "overseas_admin"}, "overseas")
     item = await db.get(Appointment, appointment_id)
-    if not item or item.division != "overseas":
+    # tel-016 AP12: a lead's appointment moves only through /lead-appointments (its lifecycle and the lead's stage), never this PATCH.
+    if not item or item.division != "overseas" or item.lead_id is not None:
         raise HTTPException(404, "Appointment not found")
     if user.role == "counselor" and item.staff_id != user.id:
         raise HTTPException(403, "Appointment is outside your assigned scope")
