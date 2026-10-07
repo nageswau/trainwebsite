@@ -810,6 +810,19 @@ widen scope. Read-only, like the other BDM manager reads (no audit row).
 | `super_admin` | the same, for all teams or one chosen manager's team | all BDMs | `bdm-023` |
 | `bdm` and every other role | none → `403` | — | `bdm-023` |
 
+### 2.35 Agent performance drill-down *(net-new, added 2026-10-07 — `DEC-SCOPE-109`, `bdm-022`)*
+
+`load_scoped` gates the route (out of scope = `404`, as every BDM organization read). Aggregates only: no student, application, member
+or money row reaches a BDM route (bdm-019 A7 / AC4).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `bdm` (Agent module) | read a linked Agent organization's performance | the module's organizations (Q-02) | `bdm-022` |
+| `bdm_manager` | the same | their team's organizations | `bdm-022` |
+| `super_admin` | the same | all | `bdm-022` |
+| a `bdm` of another module | none → `404` | — | `bdm-022` |
+| every other role | none → `403` | — | `bdm-022` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

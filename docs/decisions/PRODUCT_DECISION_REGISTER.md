@@ -4709,3 +4709,32 @@ alert list); `services/bdm_metrics._owned` lets the M-06 / M-11 builders take a 
 schemas `BdmManagerDashboardOut` and parts; web `lib/bdmManagerDashboard.ts`, `components/BdmManagerDashboard.tsx`, the
 `/bdm/manager/dashboard` page (team summary kept; super_admin manager picker) and its `loading.tsx`; "BDM Dashboard" in
 `SUPER_ADMIN_NAV`. **Feature ID:** `bdm-023`. **Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-023.
+
+### DEC-SCOPE-109 — Agent performance drill-down (`bdm-022`)
+
+**Evidence:** `EVID-016` Agent §F (`BDM_CRM_BACKLOG.md` Appendix A L743–L757: "Agent → Students → Applications → Offers → Visa →
+Enrollments → Revenue", example ABC Overseas 80 / 65 / 42 / 30 / 25 / ₹XX) and Appendix B.5 rows A-01…A-06 (`DERIVED_BLUEPRINT`);
+`DEC-SCOPE-107` (bdm-019: the Agent Organization link, A6 commission not exposed); `DEC-SCOPE-062` (AGN-018 headline definitions);
+`DEC-SCOPE-064` (AGN-022 org scoping); `DEC-SCOPE-056` O5 (offer rule); D17 (deposits pass-through). Dependencies verified on `main` @
+`f4a13514`: bdm-019, AGN-004, AGN-008, AGN-012, AGN-013, AGN-014 merged.
+**Status:** B1–B10 are the **recommended answers**, used under the owner's standing direction for this session to proceed with
+recommendations (`NEEDS_CONFIRMATION` at sign-off — not `EXPLICIT_APPROVAL`). No migration. API contract §12AC, RBAC §2.35. Spec
+`docs/superpowers/specs/2026-10-07-bdm-022-agent-performance-design.md`.
+
+| # | Question | Recommended answer (used) |
+|---|---|---|
+| B1 | Who reads it | `load_scoped`: Agent-module BDMs (Q-02), a manager's team, super_admin. The same readers as bdm-019's counts. |
+| B2 | A non-Agent organization | `404` "Agent performance is only for Agent organizations". |
+| B3 | "Counts equal the Agent CRM's own funnel" | The agency Master dashboard's headline definitions, through one shared builder (`agent_dashboard.funnel_columns`) scoped to the org's members as AGN-022 does: students active; applications not withdrawn; offers by `offer_clause()`; visa = applications with an approved case; enrolled. |
+| B4 | Offer miscount | Not reintroduced (`offer_clause()`); the legacy `services/portal._agent` miscount is left to its own item. |
+| B5 | Revenue (A-06, Q-08) | **Not tracked** (`tracked: false`, null). No money figure reaches a BDM; commission stays `NEEDS_CONFIRMATION`. |
+| B6 | Drill-down levels | Applications by stage (seven confirmed stages, Withdrawn, then "Earlier stage names" when a legacy status exists) and visa applications beside approvals. Never a student, application or member row. |
+| B7 | Unlinked | `200 {linked: false}` → "Not onboarded yet". |
+| B8 | Suspended / rejected agency | Figures shown, with a text flag (members cannot sign in, so they do not move). |
+| B9 | "In the manager drill-down" | The panel is on both organization pages; bdm-024's drill-down links to them (not built here). |
+| B10 | Audit | Read-only aggregates: an ids-only info log, no audit row. |
+
+**Consequences:** `services/agent_dashboard.funnel_columns` (AGN-018's `headline_counts` builds on it — same SQL, same payload);
+`services/bdm_metrics.agent_performance`; `GET /bdm/organizations/{id}/agent-performance`; schemas `BdmAgentPerformanceOut`; web
+`lib/bdmAgentPerformance.ts`, `components/BdmOrganizationAgentPerformance.tsx` on both organization pages. **Feature ID:** `bdm-022`.
+**Status:** see `BDM_CRM_BACKLOG.md` §4 bdm-022.

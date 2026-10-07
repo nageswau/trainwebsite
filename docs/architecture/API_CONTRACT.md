@@ -1380,6 +1380,15 @@ staff_count, counts: {students, applications, enrollments}} | null` (`null` for 
 |---|---|
 | `GET /bdm/manager/dashboard?manager_user_id=` | `bdm_manager` (own team) / `super_admin` (all teams), else `403` "BDM manager role required". `manager_user_id` (UUID, malformed `422`) is super_admin only: a manager sending it `422` "Only a super admin can choose a manager"; not a `bdm_manager` user `404` "Manager not found". `200 {today, month, manager: {id, full_name} \| null, tiles: [{key T-M01…T-M08, label, definition, value}], alerts: [{key AL-1…AL-7, label, tone: danger\|warning\|success, record: appointment\|trip\|task\|mou\|daily_report, count, items (first 10): [{id, title, bdm: {id, full_name}, at, organization_id}]}]}`. Rules: Appendix B.4 as tightened by the spec §4. Constant statement count |
 
+## 12AC. Agent performance drill-down (`bdm-022`) — addendum, 2026-10-07
+
+`DEC-SCOPE-109`; design spec `docs/superpowers/specs/2026-10-07-bdm-022-agent-performance-design.md` §2. No migration. Read-only (an
+ids-only info log, no audit row). Signed out `401`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /bdm/organizations/{id}/agent-performance` | `bdm` / `bdm_manager` / `super_admin` through `load_scoped`, else `403` "BDM role required"; out of scope or unknown `404`; malformed id `422`; not an Agent organization `404` "Agent performance is only for Agent organizations". Unlinked `200 {organization_id, linked: false, agency: null, steps: [], applications_by_stage: [], visa_applications: null, as_of}`. Linked `200 {organization_id, linked: true, agency: {name, prefix, status}, steps: [{key students\|applications\|offers\|visa\|enrolled\|revenue, label, definition, tracked, count \| null}], applications_by_stage: [{key, label, count}], visa_applications, as_of}`. Revenue `tracked: false`, `count: null`. Aggregates only. Constant statement count |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
