@@ -1128,6 +1128,8 @@ Conventions used below:
 
 ### bdm-023 — Management dashboard: overview + alerts
 
+> **Status (2026-10-07):** **COMPLETE WITH DEFERRED FULL REGRESSION** on `worktree-bdm-023` (`DEC-SCOPE-108` R1–R10 — recommended answers used under the owner's standing direction, `NEEDS_CONFIRMATION` at sign-off; no migration; API §12AB, RBAC §2.34). Dependencies: bdm-005/006/008 merged with verified QA (`DEC-SCOPE-082` L1), bdm-010 COMPLETE, bdm-016 merged (target progress not shown, R10). Evidence: backend lite 63 passed; ruff clean; mypy no new errors in changed modules; web BDM set 577 passed; `tsc` 0; eslint 0; `next build` 0; Playwright bdm-023/014/016 3 passed; browser QA `docs/quality/BDM-023_BROWSER_QA_2026-10-07.md` (QA23-01, QA23-02 fixed). Browser Use is not installed here (isolated Playwright Chromium used). Full backend / web suites are deferred to the regression session. Spec `docs/superpowers/specs/2026-10-07-bdm-023-management-dashboard-design.md`; plan `docs/superpowers/plans/2026-10-07-bdm-023-management-dashboard.md`. **Post-merge (main @ 2af5eb1e, IDs renumbered to DEC-SCOPE-108 / §12AB / §2.34):** backend lite 55 passed (bdm-023/014/015/016); ruff clean; single head `0098_bdm_agent_link`; web BDM set 586 passed; `tsc` 0; eslint 0; `next build` 0; Playwright bdm-023/014/016 3 passed.
+
 - **Business requirement:**
   - **Overview (§13):** Total BDMs, Today's Appointments, Upcoming Appointments, BDMs Travelling, Trips This Month, Meetings Completed, MoUs in Progress, MoUs Signed.
   - **Alerts:** Appointment not confirmed, Travel approval pending, Follow-up overdue, MoU pending, Appointment completed.

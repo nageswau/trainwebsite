@@ -5356,6 +5356,39 @@ class BdmMyDayOut(BaseModel):
     tiles: list[BdmMyDayTile]
 
 
+# --- bdm-023 (DEC-SCOPE-108): the management dashboard -- Appendix B.4 tiles and alerts ----------------------------------------------
+class BdmDashboardTile(BaseModel):
+    key: str  # T-M01 ... T-M08
+    label: str
+    definition: str
+    value: int
+
+
+class BdmDashboardAlertItem(BaseModel):
+    id: UUID  # the record's id (a BDM's user id for a missing daily report)
+    title: str
+    bdm: BdmPersonRef
+    at: datetime | date  # the item's time: start, travel date, due date, waiting since, completed at or report date
+    organization_id: UUID | None
+
+
+class BdmDashboardAlert(BaseModel):
+    key: str  # AL-1 ... AL-7
+    label: str
+    tone: Literal["danger", "warning", "success"]
+    record: Literal["appointment", "trip", "task", "mou", "daily_report"]
+    count: int
+    items: list[BdmDashboardAlertItem]  # the first 10 (R8)
+
+
+class BdmManagerDashboardOut(BaseModel):
+    today: date
+    month: date
+    manager: BdmPersonRef | None  # the super_admin's chosen manager; null for a manager's own team or all teams
+    tiles: list[BdmDashboardTile]
+    alerts: list[BdmDashboardAlert]
+
+
 # --- tel-022 (DEC-SCOPE-080): daily + monthly targets ------------------------------------------------------------------------
 TelTargetPeriod = Literal["daily", "monthly"]
 TelTargetKpi = Literal[TEL_TARGET_KPIS]

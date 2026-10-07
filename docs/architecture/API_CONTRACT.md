@@ -1371,6 +1371,15 @@ address removed) → `failed`. A 5-minute sweeper republishes stale queued rows 
 staff_count, counts: {students, applications, enrollments}} | null` (`null` for School ones). `pipeline.steps[]` gain `count: int | null`
 (a volume step's live count once linked); `pipeline.agent_status` follows `DEC-SCOPE-107` A5. No commission or money figure is returned.
 
+## 12AB. BDM management dashboard (`bdm-023`) — addendum, 2026-10-07
+
+`DEC-SCOPE-108`; design spec `docs/superpowers/specs/2026-10-07-bdm-023-management-dashboard-design.md` §4–§5. No migration. Read-only
+(no write, no audit, no log line). Signed out `401`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /bdm/manager/dashboard?manager_user_id=` | `bdm_manager` (own team) / `super_admin` (all teams), else `403` "BDM manager role required". `manager_user_id` (UUID, malformed `422`) is super_admin only: a manager sending it `422` "Only a super admin can choose a manager"; not a `bdm_manager` user `404` "Manager not found". `200 {today, month, manager: {id, full_name} \| null, tiles: [{key T-M01…T-M08, label, definition, value}], alerts: [{key AL-1…AL-7, label, tone: danger\|warning\|success, record: appointment\|trip\|task\|mou\|daily_report, count, items (first 10): [{id, title, bdm: {id, full_name}, at, organization_id}]}]}`. Rules: Appendix B.4 as tightened by the spec §4. Constant statement count |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

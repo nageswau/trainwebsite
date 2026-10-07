@@ -799,6 +799,17 @@ before any lookup. The link grants **no** access to the agency's tenant: a BDM o
 | `overseas_admin`, `super_admin` | read the agent queue (`kind=agent`); **link** a request to an Agent Organization by code; **reject** | all requests | `bdm-019` |
 | `bdm`, `bdm_manager` | agency students / applications / members, `/overseas-admin/agent-orgs/*`, `/agent/*` → `403` / `404` | — | `bdm-019` |
 
+### 2.34 BDM management dashboard *(net-new, added 2026-10-07 — `DEC-SCOPE-108`, `bdm-023`)*
+
+`require_manager` + `team_filter` gate the route; the only parameter (`manager_user_id`) is super_admin-only, so a manager can never
+widen scope. Read-only, like the other BDM manager reads (no audit row).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `bdm_manager` | read the overview tiles and alerts | BDMs reporting to them | `bdm-023` |
+| `super_admin` | the same, for all teams or one chosen manager's team | all BDMs | `bdm-023` |
+| `bdm` and every other role | none → `403` | — | `bdm-023` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
