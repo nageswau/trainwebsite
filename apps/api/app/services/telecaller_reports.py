@@ -120,25 +120,23 @@ def _telecaller_scope(user: User) -> list:
     return [] if user.role == "super_admin" else [TelecallerProfile.reporting_manager_user_id == user.id]
 
 
-def _teams(user: User):
+async def _teams(db: AsyncSession, user: User) -> list[str]:
     """The teams the caller reports on: an admin's division, a manager's reports' teams, every team for super_admin."""
     if user.role in DIVISION_ADMINS:
         return [user.division]
     if user.role == "super_admin":
         return list(TEAMS)
-    return select(TelecallerProfile.team).where(TelecallerProfile.reporting_manager_user_id == user.id)
+    return sorted(set(await db.scalars(select(TelecallerProfile.team).where(TelecallerProfile.reporting_manager_user_id == user.id))))
 
 
 async def options(db: AsyncSession, user: User) -> dict:
     """The filter pickers: products and campaigns of the caller's teams, inactive ones too (old leads keep them)."""
-    in_teams = or_(TelProduct.team.in_(_teams(user)), TelProduct.team.is_(None))  # an Other product with no team routes to the queue
+    teams = await _teams(db, user)
+    in_teams = or_(TelProduct.team.in_(teams), TelProduct.team.is_(None))  # an Other product with no team routes to the queue
     products = (await db.execute(select(TelProduct.id, TelProduct.name).where(in_teams).order_by(TelProduct.name))).all()
     campaigns = (await db.execute(
         select(TelCampaign.id, TelCampaign.name).join(TelProduct, TelProduct.id == TelCampaign.product_id).where(in_teams).order_by(TelCampaign.name)
     )).all()
-    teams = _teams(user)
-    if not isinstance(teams, list):
-        teams = sorted(set(await db.scalars(teams)))
     return {
         "teams": teams,
         "sources": [{"key": key, "label": SOURCE_LABELS[key]} for key in TEL_SOURCES],

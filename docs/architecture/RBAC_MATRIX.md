@@ -787,6 +787,19 @@ always the lead's own address, never one from the request.
 | `telecaller_manager` / `super_admin` | read the log and delivery status; `403` on send | §2.19's | `tel-014` |
 | every other role | `403` | — | `tel-014` |
 
+### 2.34 Telecaller management reports *(net-new, added 2026-10-07 — `DEC-SCOPE-108`, `tel-024`)*
+
+EVID-019 §22 "telecaller should not view confidential management reports"; T24 visibility. Read-only; exports audited.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `telecaller_manager` | read the five reports; export CSV | leads of their direct reports + their teams' unassigned leads (as `/telecaller/leads`); telecallers: their direct reports | `tel-024` |
+| `it_admin` / `overseas_admin` | read; export | their own division's leads (as `/admin/leads`); that team's telecallers | `tel-024` |
+| `super_admin` | read; export | all (optional `team`) | `tel-024` |
+| `telecaller` and every other role | `403` on every report and export | — | `tel-024` |
+
+A `team` / `product_id` / `campaign_id` / `source` filter is ANDed with the scope, so it can only narrow.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

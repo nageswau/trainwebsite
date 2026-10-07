@@ -41,8 +41,8 @@ the 1st of the current IST month → today), `team` (`it`/`overseas`), `product_
 only `team` (other filters are ignored for it: activity is per actor, not per lead).
 
 Order of checks: authenticated → role allowed (else **403** "Telecaller reports are for managers and administrators") → kind known
-(else **404** "Report not found") → inputs (**422**, FastAPI list shape naming the param: bad date, `date_from > date_to`, a span over
-366 days, unknown team/source, malformed UUID).
+(else **404** "Report not found") → inputs (**422**, a string detail naming the form field, as the other telecaller routes — the
+server-rendered page shows it as written: bad date, `'From' must be on or before 'To'`, a span over 366 days, unknown team/source, malformed id).
 
 Response:
 ```json

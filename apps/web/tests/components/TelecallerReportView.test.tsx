@@ -90,6 +90,15 @@ describe("TelecallerReportView (tel-024 §21)", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("'From' must be on or before 'To'");
     expect(screen.getByLabelText("From")).toHaveValue("2026-10-09");
     expect(screen.queryByRole("table")).toBeNull();
+    // QA-01: the heading is the report's name even without a response; QA-02: no empty Team picker when the options are unknown.
+    expect(screen.getByRole("heading", { name: "Lead Source Report" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Team")).toBeNull();
+  });
+
+  it("keeps a chosen team in the form when the read failed", () => {
+    render(<TelecallerReportView kind="handover" report={null} error="Unavailable" params={{ team: "overseas" }} basePath={BASE} />);
+    expect(screen.getByRole("heading", { name: "Counselor Handover Report" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Team")).toHaveValue("overseas");
   });
 
   it("downloads the same report as CSV", () => {

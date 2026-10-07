@@ -1354,6 +1354,21 @@ Delivery (worker, not HTTP): the claim moves `queued` / `retrying` to `sending`.
 address removed) → `failed`. A 5-minute sweeper republishes stale queued rows and fails rows stuck in `sending`. The mail is From
 `"<telecaller> via EduSphere" <SMTP_FROM_EMAIL>` with Reply-To the telecaller, as plain text plus an escaped HTML part.
 
+## 12AB. Telecaller management reports (`tel-024`) — addendum, 2026-10-07
+
+`DEC-SCOPE-108`; design spec `docs/superpowers/specs/2026-10-07-tel-024-management-reports-design.md` §3. No migration. Read-only; signed
+out `401`. `{kind}` is `source` | `product` | `telecaller` | `handover` | `campaign`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /telecaller/reports/{kind}` | Query strings, all optional: `date_from`, `date_to` (ISO; default the 1st of the current IST month → today), `team` (`it`/`overseas`), `product_id`, `campaign_id`, `source` (the last three ignored by `telecaller`). In order: `403` "Telecaller reports are for managers and administrators" (any role but `telecaller_manager`, `it_admin`, `overseas_admin`, `super_admin`); `404` "Report not found"; `422` a sentence naming the form field (bad date, `'From' must be on or before 'To'`, a span over 366 days, unknown team/source, malformed id). `200` `{kind, title, date_from, date_to, columns: [{key, label}], items, totals, options: {teams, sources, products, campaigns}}`, `Cache-Control: private, no-store`. Not audited |
+| `GET /telecaller/reports/{kind}.csv` | Same checks and query. `200` `text/csv` (UTF-8 BOM, the on-screen labels as header, Total row last, formula-looking cells prefixed `'`), `attachment; filename="telecaller-{kind}-{from}-to-{to}.csv"`; audit `telecaller_report.export {filters: [names set], rows}` committed before the file |
+
+Cohort reports (`source`, `product`, `campaign`, `handover`) count leads created in the range within the caller's Leads-list scope; a lead
+counts in every column up to the furthest stage it has reached; Enrolled = still `converted`. `handover` counts leads currently with a
+counselor, per telecaller × counselor. `telecaller` counts the activity logged in the range (tel-021 flow counts). Aggregates only: no
+lead name, mobile or email appears in a response or an export.
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

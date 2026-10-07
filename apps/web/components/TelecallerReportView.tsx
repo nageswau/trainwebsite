@@ -44,7 +44,7 @@ export default function TelecallerReportView({ kind, report, error, params, base
           <Link key={t.key} className="s360-tab" href={tabHref(basePath, t.key, params)} aria-current={t.key === kind ? "page" : undefined}>{t.label}</Link>
         ))}
       </nav>
-      <h3>{report?.title ?? REPORT_TABS.find((t) => t.key === kind)?.label}</h3>
+      <h3>{`${REPORT_TABS.find((t) => t.key === kind)?.label} Report`}</h3>
       {error && <p className="form-error" role="alert">{error}</p>}
       <form method="get" action={basePath} aria-label="Report filters" className="analytics-form">
         <input type="hidden" name="report" value={kind} />
@@ -54,7 +54,8 @@ export default function TelecallerReportView({ kind, report, error, params, base
             <input id={`report-${name}`} className="input" type="date" name={name} defaultValue={params[name] ?? report?.[name] ?? ""} />
           </div>
         ))}
-        {(options?.teams.length ?? 2) > 1 && select("team", "Team", "All teams", (options?.teams ?? []).map((t) => ({ value: t, label: TEAM_LABEL[t] ?? t })))}
+        {/* A team to pick only when there is a choice; without options (a failed read) only a team already chosen is kept. */}
+        {(options ? options.teams.length > 1 : Boolean(params.team)) && select("team", "Team", "All teams", (options?.teams ?? []).map((t) => ({ value: t, label: TEAM_LABEL[t] ?? t })))}
         {leadReport && select("product_id", "Course", "All courses", (options?.products ?? []).map((p) => ({ value: p.id, label: p.name })))}
         {leadReport && select("campaign_id", "Campaign", "All campaigns", (options?.campaigns ?? []).map((c) => ({ value: c.id, label: c.name })))}
         {leadReport && select("source", "Source", "All sources", (options?.sources ?? []).map((s) => ({ value: s.key, label: s.label })))}

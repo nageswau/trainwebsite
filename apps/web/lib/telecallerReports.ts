@@ -28,7 +28,6 @@ export const TEAM_LABEL: Record<string, string> = { it: "IT", overseas: "Oversea
 export const REPORTS_URL = "/api/v1/telecaller/reports";
 
 export const reportKind = (raw: string | undefined): ReportKind => REPORT_TABS.find((t) => t.key === raw)?.key ?? "source";
-export const isLeadFilter = (key: string) => LEAD_FILTERS.has(key);
 
 /** The page's own filters, from the address (anything else, or a repeated value, is ignored). */
 export function reportParams(search: Record<string, string | string[] | undefined>): ReportParams {
