@@ -21,6 +21,7 @@ export default function AssignCounselorButton({ applicationId, currentId }: { ap
   const fieldRef = useRef<HTMLDivElement>(null);
   const search = useMemo(() => lookupSearch("overseas-counselors"), []);
   const refocusButton = useRef(false);
+  const refocusField = useRef(false);
   const selectId = `assign-counselor-${applicationId}`;
 
   // Focus follows the picker: the search field once it renders, the button once the form closes.
@@ -31,6 +32,14 @@ export default function AssignCounselorButton({ applicationId, currentId }: { ap
       buttonRef.current?.focus();
     }
   }, [open]);
+
+  // After a failed save the field is enabled again (the focused Save button was disabled while saving), so focus returns to the search.
+  useEffect(() => {
+    if (!busy && refocusField.current) {
+      refocusField.current = false;
+      fieldRef.current?.querySelector<HTMLInputElement>("input[role=combobox]")?.focus();
+    }
+  }, [busy]);
 
   function close() {
     refocusButton.current = true;
@@ -44,7 +53,7 @@ export default function AssignCounselorButton({ applicationId, currentId }: { ap
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLFormElement>) {
-    if (event.key === "Escape" && !busy) close();
+    if (event.key === "Escape" && !busy && !event.defaultPrevented) close(); // an Escape the list already handled only closes the list
   }
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -55,6 +64,7 @@ export default function AssignCounselorButton({ applicationId, currentId }: { ap
     setBusy(false);
     if (!result.ok) {
       setMessage({ text: result.message, failed: true });
+      refocusField.current = true;
       return;
     }
     setMessage({ text: `${String(result.data.counselor_name)} assigned.`, failed: false });

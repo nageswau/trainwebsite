@@ -112,6 +112,7 @@ describe("AssignCounselorButton", () => {
     render(<AssignCounselorButton applicationId="a1" currentId="c1" />);
     fireEvent.click(screen.getByRole("button", { name: "Change counsellor" }));
     const input = await screen.findByRole("combobox", { name: "EduSphere counsellor" });
+    fireEvent.keyDown(input, { key: "Escape" }); // the focused field's list is open and takes this one
     fireEvent.keyDown(input, { key: "Escape" });
     expect(screen.queryByRole("combobox", { name: "EduSphere counsellor" })).toBeNull();
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Change counsellor" }));
@@ -131,5 +132,42 @@ describe("AssignCounselorButton", () => {
     await screen.findByRole("status");
     expect(screen.queryByRole("combobox", { name: "EduSphere counsellor" })).toBeNull();
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Assign counsellor" })));
+  });
+
+  it("the first Escape closes only the suggestions list; the second closes the form and refocuses the button", async () => {
+    stub(() => json(200, {}));
+    render(<AssignCounselorButton applicationId="a1" currentId="c1" />);
+    fireEvent.click(screen.getByRole("button", { name: "Change counsellor" }));
+    const input = await screen.findByRole("combobox", { name: "EduSphere counsellor" });
+    fireEvent.change(input, { target: { value: "Ash" } });
+    await screen.findByRole("option", { name: /Asha Rao/ });
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(screen.queryByRole("option", { name: /Asha Rao/ })).toBeNull();
+    expect(screen.getByRole("combobox", { name: "EduSphere counsellor" })).toBeInTheDocument();
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(screen.queryByRole("combobox", { name: "EduSphere counsellor" })).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Change counsellor" })));
+  });
+
+  it("says No matching counsellors. and keeps Save disabled when the lookup returns nothing", async () => {
+    stub(() => json(200, {}), () => json(200, { items: [], truncated: false }));
+    render(<AssignCounselorButton applicationId="a1" currentId={null} />);
+    fireEvent.click(screen.getByRole("button", { name: "Assign counsellor" }));
+    const input = await screen.findByRole("combobox", { name: "EduSphere counsellor" });
+    fireEvent.change(input, { target: { value: "Zzz" } });
+    expect(await screen.findByText("No matching counsellors.")).toBeTruthy();
+    expect(screen.queryByRole("option")).toBeNull();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
+  it("returns focus to the search field after a failed save", async () => {
+    stub(() => json(409, { detail: "This application is closed" }));
+    render(<AssignCounselorButton applicationId="a1" currentId={null} />);
+    fireEvent.click(screen.getByRole("button", { name: "Assign counsellor" }));
+    await choose();
+    screen.getByRole("button", { name: "Save" }).focus(); // clicking Save focuses it, and it is disabled while saving
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await screen.findByRole("alert");
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("combobox", { name: "EduSphere counsellor" })));
   });
 });

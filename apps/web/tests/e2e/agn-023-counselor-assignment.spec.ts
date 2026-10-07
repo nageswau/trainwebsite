@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { signIn } from "./helpers/agency";
-import { pickFromList } from "./helpers/pick";
+import { pickByValue, pickFromList } from "./helpers/pick";
 
 // AGN-023 -- the Overseas Admin filters to agency applications with no counsellor and assigns one; the counsellor is not offered
 // Enrolled and advances; the agency sees the counsellor's name. Unique names per run (shared E2E DB).
@@ -32,7 +32,9 @@ test("admin assigns a counsellor to an agency application; counsellor advances (
   // The seeded counsellor is the one who signs in below, so assign that account by its name.
   const counselor = await browser.newPage();
   await signIn(counselor, "counselor@edusphere.local", "Demo@123", "/overseas/counselor/dashboard");
-  const counselorName: string = (await (await counselor.request.get("/api/v1/auth/me")).json()).full_name;
+  const me = await (await counselor.request.get("/api/v1/auth/me")).json();
+  const counselorName: string = me.full_name;
+  const counselorId: string = me.id;
 
   const admin = await browser.newPage();
   await signIn(admin, "overseasadmin@edusphere.local", "Demo@123", "/overseas/admin/dashboard");
@@ -45,8 +47,9 @@ test("admin assigns a counsellor to an agency application; counsellor advances (
   await admin.getByLabel("Search records").fill(name);
   const row = admin.getByRole("row", { name: new RegExp(name) });
   await row.getByRole("button", { name: "Assign counsellor" }).click();
-  // Type-ahead: search by the counsellor's name (the shared DB holds ~1800 counsellors) and choose the matching option.
-  await pickFromList(row.getByRole("combobox", { name: "EduSphere counsellor" }), counselorName, new RegExp(`^${counselorName}$`));
+  // Type-ahead: search by the counsellor's name (the shared DB holds ~1800 counsellors), then choose the option carrying their id
+  // (names can collide, so never the first match by text).
+  await pickByValue(row.getByRole("combobox", { name: "EduSphere counsellor" }), counselorId, counselorName);
   await row.getByRole("button", { name: "Save" }).click();
   await expect(admin.getByText(`${counselorName} assigned.`)).toBeVisible();
 

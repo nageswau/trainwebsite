@@ -148,6 +148,27 @@ async def test_a_repeated_filter_parameter_is_refused(world, param):  # B7: neve
 
 
 @pytest.mark.asyncio
+async def test_a_repeated_counselor_filter_from_a_counselor_is_not_available(world):  # availability is checked before repetition
+    async with client_for(world["counselor"].email) as c:
+        r = await c.get(PORTAL.format("counselor", "applications") + "?counselor=x&counselor=y")
+    assert r.status_code == 422 and r.json()["detail"] == "Filter not available"
+
+
+@pytest.mark.asyncio
+async def test_a_repeated_filter_on_a_non_filter_section_is_not_available(world):  # availability is checked before repetition
+    async with client_for(world["admin"].email) as c:
+        r = await c.get(PORTAL.format("admin", "admission-updates") + "?agency=any&agency=none")
+    assert r.status_code == 422 and r.json()["detail"] == "Filter not available"
+
+
+@pytest.mark.asyncio
+async def test_a_repeated_filter_on_an_available_section_is_unknown_value(world):  # repetition comes second, only once the filter is available
+    async with client_for(world["admin"].email) as c:
+        r = await c.get(PORTAL.format("admin", "students") + "?agency=any&agency=none")
+    assert r.status_code == 422 and r.json()["detail"] == "Unknown filter value"
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("section", ["applications", "students"])
 async def test_a_counselor_filters_return_only_their_own_matching_rows(world, section):  # T15
     async with client_for(world["admin"].email) as c:

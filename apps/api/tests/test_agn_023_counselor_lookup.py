@@ -51,6 +51,26 @@ async def test_other_roles_are_refused(client, db_session, role):
 
 
 @pytest.mark.asyncio
+async def test_an_admin_outside_the_overseas_division_is_refused(client, db_session):
+    admin = await mk_user(db_session, role="overseas_admin", division="it")
+    await login(client, admin.email, division="it")
+    response = await client.get(URL)
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Wrong EduSphere division"
+
+
+@pytest.mark.asyncio
+async def test_super_admin_may_use_the_lookup(client, db_session):  # documented in 12M: the shared _allow admits super_admin
+    tag = uniq("c23")
+    counselor = await mk_user(db_session, role="counselor", full_name=f"{tag} Seen")
+    boss = await mk_user(db_session, role="super_admin")
+    await login(client, boss.email)
+    response = await client.get(URL, params={"q": tag})
+    assert response.status_code == 200, response.text
+    assert [item["id"] for item in response.json()["items"]] == [str(counselor.id)]
+
+
+@pytest.mark.asyncio
 async def test_truncated_when_more_than_limit_match_and_ordered_by_name(client, db_session):
     tag = uniq("c23")
     for i in range(3):
@@ -80,3 +100,13 @@ async def test_empty_q_returns_a_first_page_and_limit_is_validated(client, db_se
     assert (await client.get(URL, params={"limit": 0})).status_code == 422
     assert (await client.get(URL, params={"limit": 51})).status_code == 422
     assert (await client.get(URL, params={"q": "x" * 101})).status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_empty_q_returns_rows_in_alphabetical_order(client, db_session):
+    tag = uniq("c23")
+    for suffix in ("c", "a", "b"):  # created out of order
+        await mk_user(db_session, role="counselor", full_name=f"AAA {tag} {suffix}")
+    await admin_client(client, db_session)
+    items = (await client.get(URL, params={"limit": 50})).json()["items"]
+    assert [item["label"] for item in items if tag in item["label"]] == [f"AAA {tag} {s}" for s in "abc"]

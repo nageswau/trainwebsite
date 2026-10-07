@@ -39,10 +39,9 @@ async def portal(division: str, role: str, section: str, request: Request, agenc
     if section == "reports" and user.role == "agent" and not agent_may(user, "can_view_reports"):
         raise HTTPException(403, REPORTS_REFUSED)
     # AGN-023 (DEC-SCOPE-090 H11): optional list filters; a filter on the wrong section or role is a 422, never ignored.
-    # A repeated filter key would otherwise keep only the last value silently (B7).
-    if any(len(request.query_params.getlist(key)) > 1 for key in ("agency", "counselor")):
-        raise HTTPException(422, "Unknown filter value")
-    filters = await application_filters.parse(db, user, section, agency, counselor)
+    # A repeated filter key would otherwise keep only the last value silently (B7); parse refuses it once availability is settled.
+    repeated = frozenset(key for key in ("agency", "counselor") if len(request.query_params.getlist(key)) > 1)
+    filters = await application_filters.parse(db, user, section, agency, counselor, repeated)
     payload = await section_payload(db, user, section, filters=filters)
     if payload is None:
         raise HTTPException(404, "Workspace not found")
