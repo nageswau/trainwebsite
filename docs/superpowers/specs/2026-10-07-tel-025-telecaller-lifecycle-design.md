@@ -31,7 +31,6 @@ Every route uses `ensure_admin`, then the team scope (403), then the write. Each
 | `POST /admin/telecallers/{id}/deactivate` | `{target?: "telecaller"\|"queue", reassign_to?}` | `{id, active:false, target, moved:{…}, rules_removed}` |
 | `POST /admin/telecallers/{id}/handover` | `{target, reassign_to?}` | `{id, target, moved}`. Returns 409 if the telecaller is active or holds nothing. |
 | `POST /admin/telecallers/{id}/move-team` | `{team, target?, reassign_to?, reporting_manager_user_id?}` | `{id, team, target, moved, rules_removed}` |
-| `GET /admin/telecaller-managers/{id}/open-work` | — | `{telecallers}` (super_admin) |
 | `POST /admin/telecaller-managers/{id}/deactivate` | `{reassign_to?}` | `{id, active:false, moved_telecallers}` (super_admin) |
 
 Errors:
@@ -50,12 +49,12 @@ The service is functions only and never commits. Lock order: the source's open l
 
 ## 4. Frontend
 
-- `AdminTelecallerLifecycle.tsx` follows the `AdminBdmHandover` pattern: an inline group with focus management and Escape to cancel. It has three modes: `deactivate`, `handover` and `move`. It loads the open-work counts first, then offers a radio choice between "Another telecaller" (a server-search picker of active same-team telecallers, excluding the source) and "Unassigned queue". In move mode it also has a team select and an optional new-manager picker.
+- `AdminTelecallerLifecycle.tsx` follows the `AdminBdmHandover` pattern: an inline group with focus management and Escape to cancel. It has three modes: `deactivate`, `handover` and `move`. It loads the open-work counts first, then offers a radio choice between "Another telecaller" (a server-search picker of active same-team telecallers, excluding the source) and "Unassigned queue". In move mode it names the other team (there are two) and offers an optional new-manager picker.
 - `AdminTelecallerRow`:
   - **Deactivate** opens the group; the old inline confirm goes.
   - **Move team** shows only when the actor can manage both teams.
   - **Reassign open work** shows on inactive rows.
-- `AdminTelecallerManagersCard` (super_admin only, on the Telecallers page) lists active managers. Deactivate shows the report count and requires a replacement when there are reports.
+- `AdminTelecallerManagersCard` (super_admin only, on the Telecallers page) lists active managers with `telecaller_count` (added to `GET /admin/telecaller-managers`). Deactivate shows the report count and requires a replacement when there are reports.
 
 ## 5. Acceptance criteria → tests
 

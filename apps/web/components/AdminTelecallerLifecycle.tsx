@@ -58,10 +58,7 @@ export default function AdminTelecallerLifecycle({ row, mode, onDone, onCancel }
   const open = counts !== null && counts.leads > 0;
   const ready = counts !== null && (!open || choice === "queue" || (choice === "telecaller" && picked !== null));
 
-  function leadsTo(moved: OpenWork): string {
-    if (!moved.leads) return "";
-    return choice === "telecaller" ? `now with ${picked?.label}` : `moved to the ${team} unassigned queue`;
-  }
+  const destination = () => (choice === "telecaller" ? `now with ${picked?.label}` : `moved to the ${team} unassigned queue`);
 
   async function submit() {
     if (!ready || busy) return;
@@ -81,8 +78,8 @@ export default function AdminTelecallerLifecycle({ row, mode, onDone, onCancel }
       return;
     }
     const moved = (outcome.data.moved as OpenWork | undefined) ?? { leads: 0, follow_ups: 0, appointments: 0 };
-    const leads = moved.leads ? ` ${plural(moved.leads, "open lead")} ${leadsTo(moved)}.` : "";
-    if (mode === "handover") return onDone(`${plural(moved.leads, "open lead")} from ${row.full_name} ${leadsTo(moved)}.`);
+    const leads = moved.leads ? ` ${plural(moved.leads, "open lead")} ${destination()}.` : "";
+    if (mode === "handover") return onDone(`${plural(moved.leads, "open lead")} from ${row.full_name} ${destination()}.`);
     if (mode === "move") return onDone(`Moved ${row.full_name} to the ${TEAM_LABEL[newTeam]} team; they sign in again there.${leads}`);
     onDone(`Deactivated ${row.full_name}.${leads}`);
   }
