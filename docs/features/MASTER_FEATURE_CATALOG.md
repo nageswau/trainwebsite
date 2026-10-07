@@ -2107,7 +2107,7 @@ single-Counselor-role model with five specialized internal roles. `SCH-001`'s de
 - **Actors:** primary — Overseas Admin; secondary — Counselor, Agency (name only)
 - **Traces to:** `PRD_OPEN_ITEMS.md` item 84 · Decisions `DEC-SCOPE-090` (H1–H12) · API `API_CONTRACT.md` §12M
 - **Scope/Priority/MoSCoW/Release:** CURRENT
-- **Implementation status:** IMPLEMENTED (2026-10-06, `feature/agn-023`; no migration) · **Test status:** VERIFIED, full regression deferred (lite backend set and vitest green; e2e spec pending, Task 7)
+- **Implementation status:** IMPLEMENTED (2026-10-06, `feature/agn-023`; no migration) · **Test status:** VERIFIED, full regression deferred (lite backend set and vitest green; e2e spec `agn-023-counselor-assignment.spec.ts` ran and passed)
 - **Acceptance Criteria:** AC01–AC21 in `docs/superpowers/specs/2026-10-06-agn-023-counselor-assignment-design.md`
 
 ---
