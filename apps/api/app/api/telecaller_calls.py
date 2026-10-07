@@ -14,7 +14,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.bdm import LIMIT, OFFSET
 from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.lead_stages import label
 from app.models import Enquiry, User
 from app.schemas import LeadCallCreate, LeadCallUpdate
 from app.services import lead_calls as svc
@@ -50,7 +49,7 @@ async def log_call(lead_id: UUID, payload: LeadCallCreate, user: User = Depends(
     telecaller_leads.require_writable(user, lead)
     now = await db_now(db)
     call, follow_up_id = await svc.create(db, user, lead, payload, now)
-    stage = {"id": lead.id, "status": lead.status, "status_label": label(lead.status), "stage_changed_at": lead.stage_changed_at}
+    stage = lead_pipeline.stage_out(lead)
     await db.commit()
     svc.log("lead_call_logged", user, call.id, lead_id=str(lead_id), outcome=payload.outcome, follow_up=follow_up_id is not None)
     return {"call": await svc.one(db, user, call.id, now), "lead": stage, "follow_up_id": follow_up_id}
