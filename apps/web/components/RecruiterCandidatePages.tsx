@@ -58,7 +58,7 @@ export async function CandidateListPage() {
         {s.writes && <Link className="btn" href={`${CANDIDATES_PATH}/new`}>+ Add candidate</Link>}
       </div>
       <Suspense fallback={<p className="muted" role="status">Loading candidates…</p>}>
-        <RecruiterCandidateList />
+        <RecruiterCandidateList sourceFilter={s.writes} />
       </Suspense>
     </Frame>
   );

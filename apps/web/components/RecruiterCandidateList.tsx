@@ -15,9 +15,10 @@ import { getPage } from "@/lib/telecallerCatalogue";
 const PAGE_SIZE = 50;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** rec-009 (spec §6; AC2, S2-§13): the candidate list -- the source on every row. Search, filters and page live in the URL, so refresh
+/** rec-009 (spec §6; AC2, S2-§13): the candidate list -- the source on every row. The source picker reads the recruiter catalogue,
+ *  which is closed to hr_team (rec-002 C3), so a read-only role gets no picker (QA-03). Search, filters and page live in the URL, so refresh
  *  keeps the place and Back returns to the previous view (the tel-008 list idiom). A hand-edited value the API would refuse is ignored. */
-export default function RecruiterCandidateList() {
+export default function RecruiterCandidateList({ sourceFilter }: { sourceFilter: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -46,10 +47,11 @@ export default function RecruiterCandidateList() {
   }, [requestUrl, version]);
 
   useEffect(() => {
+    if (!sourceFilter) return;
     const controller = new AbortController(); // a picker that fails to load leaves just "All sources"; the rest keeps working
     activeValues("candidate-sources", controller.signal).then(setSources).catch(() => undefined);
     return () => controller.abort();
-  }, []);
+  }, [sourceFilter]);
 
   /** A new filter or search starts again from the first page; only the pager passes an offset. */
   function go(changes: Record<string, string>, nextOffset = 0) {
@@ -75,13 +77,13 @@ export default function RecruiterCandidateList() {
         {query && <button type="button" className="btn secondary small" onClick={() => go({ q: "" })}>Clear search</button>}
       </form>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 8, alignItems: "flex-end" }}>
-        <div className="field" style={{ flex: "1 1 10rem" }}>
+        {sourceFilter && <div className="field" style={{ flex: "1 1 10rem" }}>
           <label htmlFor="cand-filter-source">Source</label>
           <select id="cand-filter-source" value={sourceId} onChange={(e) => go({ source_id: e.target.value })}>
             <option value="">All sources</option>
             {sources.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
-        </div>
+        </div>}
         <div className="field" style={{ flex: "1 1 10rem" }}>
           <label htmlFor="cand-filter-status">Status</label>
           <select id="cand-filter-status" value={status} onChange={(e) => go({ status: e.target.value })}>

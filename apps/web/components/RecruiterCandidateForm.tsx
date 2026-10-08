@@ -87,7 +87,7 @@ export default function RecruiterCandidateForm({ initial, onSaved, onCancel }: P
     if (outcome.ok && typeof outcome.data.id === "string") {
       setMatches([]);
       if (onSaved) return onSaved(outcome.data as unknown as CandidateDetail);
-      return router.push(`${CANDIDATES_PATH}/${encodeURIComponent(outcome.data.id)}`);
+      return router.replace(`${CANDIDATES_PATH}/${encodeURIComponent(outcome.data.id)}`); // QA-05: Back goes to the list, not a stale form
     }
     const detail = outcome.ok ? null : (outcome.detail as { code?: string; message?: string; matches?: CandidateMatch[] } | undefined);
     if (detail?.code === "duplicate_candidate" && Array.isArray(detail.matches)) {
@@ -101,11 +101,12 @@ export default function RecruiterCandidateForm({ initial, onSaved, onCancel }: P
   const input = ({ key, label, type, max, min, numMax, hint }: (typeof FIELDS)[number]) => (
     <div className="field" key={key}>
       <label htmlFor={`cand-${key}`}>{label}{key === "name" && " *"}</label>
-      {hint && <span id={`cand-${key}-hint`} className="muted" style={{ fontSize: 13 }}>{hint}</span>}
       <input id={`cand-${key}`} type={type} value={values[key]} disabled={busy} maxLength={type === "number" ? undefined : max}
         min={min} max={numMax} step={key.endsWith("salary") ? "0.01" : type === "number" ? 1 : undefined} inputMode={type === "number" ? "numeric" : undefined}
         aria-required={key === "name" || undefined} aria-describedby={hint ? `cand-${key}-hint` : undefined}
         onChange={(e) => set(key, e.target.value)} onBlur={key === "mobile" || key === "email" ? () => void checkDuplicates() : undefined} />
+      {/* QA-04: the hint sits under the input, so the inputs of one row line up */}
+      {hint && <span id={`cand-${key}-hint`} className="muted" style={{ fontSize: 13 }}>{hint}</span>}
     </div>
   );
 
@@ -114,7 +115,7 @@ export default function RecruiterCandidateForm({ initial, onSaved, onCancel }: P
       {matches.length > 0 && <DuplicatePanel matches={matches} focusRequest={focusRequest} />}
       <form onSubmit={submit} noValidate className="action-card" style={{ display: "grid", gap: 12 }}>
         <p className="muted" style={{ margin: 0, fontSize: 13 }}>* Required. Enter a mobile number or an email (or both).</p>
-        <div className="form-grid" style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))" }}>
+        <div className="form-grid" style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))", alignItems: "start" }}>
           {FIELDS.map(input)}
           <div className="field">
             <label htmlFor="cand-source_id">Source *</label>
@@ -125,9 +126,9 @@ export default function RecruiterCandidateForm({ initial, onSaved, onCancel }: P
           </div>
           <div className="field">
             <label htmlFor="cand-source_detail">Source detail</label>
-            <span id="cand-source_detail-hint" className="muted" style={{ fontSize: 13 }}>e.g. the course, college or referrer</span>
             <input id="cand-source_detail" maxLength={200} aria-describedby="cand-source_detail-hint" value={values.source_detail} disabled={busy}
               onChange={(e) => set("source_detail", e.target.value)} />
+            <span id="cand-source_detail-hint" className="muted" style={{ fontSize: 13 }}>e.g. the course, college or referrer</span>
           </div>
           <div className="field">
             <label htmlFor="cand-status">Status</label>

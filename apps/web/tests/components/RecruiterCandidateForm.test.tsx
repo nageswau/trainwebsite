@@ -5,8 +5,9 @@ import RecruiterCandidateForm from "@/components/RecruiterCandidateForm";
 import type { CandidateMatch } from "@/lib/recruiterCandidates";
 
 // rec-009 (spec §6; AC2, AC3, Q-07): the candidate create form, its required check and the duplicate panel.
+// QA-05: the new candidate replaces the form in history, so Back returns to the list rather than to a stale blank form.
 const push = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push, refresh: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: push, push: vi.fn(), refresh: vi.fn() }) }));
 
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const sources = { items: [{ id: "s1", name: "Referral", active: true, sort_order: 1 }, { id: "s2", name: "Edusphere students", active: true, sort_order: 2 }], total: 2, limit: 100, offset: 0 };

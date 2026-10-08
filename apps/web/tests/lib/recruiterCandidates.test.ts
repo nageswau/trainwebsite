@@ -29,6 +29,10 @@ describe("rec-009 candidate form mapping", () => {
     expect(missingRequired(EMPTY_FORM)).toBe("Enter the name, source and a mobile number or an email.");
     expect(missingRequired({ ...EMPTY_FORM, name: "R", source_id: "s", email: "r@x.com" })).toBeNull();
     expect(missingRequired({ ...EMPTY_FORM, name: "R", mobile: "9" })).toBe("Enter the source.");
+    // QA-01: never "the a mobile number" when only the contact is missing
+    expect(missingRequired({ ...EMPTY_FORM, name: "R", source_id: "s" })).toBe("Enter a mobile number or an email.");
+    expect(missingRequired({ ...EMPTY_FORM, source_id: "s" })).toBe("Enter the name and a mobile number or an email.");
+    expect(missingRequired({ ...EMPTY_FORM, email: "r@x.com" })).toBe("Enter the name and source.");
   });
 
   it("round-trips a detail into the edit form", () => {

@@ -6679,11 +6679,32 @@ def _places(value: list[str]) -> list[str]:
     return out
 
 
+def _whole(label: str, low: int, high: int):
+    """A whole number in range; the error is one plain sentence (browser QA-02), not pydantic's wording."""
+
+    def check(value: int | None) -> int | None:
+        if value is not None and not low <= value <= high:
+            raise ValueError(f"{label} must be between {low} and {high}")
+        return value
+
+    return Annotated[StrictInt | None, AfterValidator(check)]
+
+
+def _salary(label: str):
+    """A yearly amount: finite, 0 to 9,999,999,999.99, at most 2 decimal places (numeric(12,2))."""
+
+    def check(value: Decimal | None) -> Decimal | None:
+        if value is not None and (not value.is_finite() or value < 0 or value > Decimal("9999999999.99") or value.as_tuple().exponent < -2):
+            raise ValueError(f"{label} must be a positive amount (at most 2 decimal places)")
+        return value
+
+    return Annotated[Decimal | None, AfterValidator(check)]
+
+
 CandidateName = _tel_name(160)
 CandidateMobile = Annotated[_candidate_text("Mobile", 40), AfterValidator(_candidate_mobile)]
 CandidateEmail = Annotated[str | None, AfterValidator(_candidate_email)]
 CandidateLinkedin = Annotated[_candidate_text("LinkedIn", 300), AfterValidator(_linkedin)]
-CandidateSalary = Annotated[Decimal | None, Field(ge=0, le=Decimal("9999999999.99"), max_digits=12, decimal_places=2)]
 
 
 class _CandidateFields(BaseModel):
@@ -6695,12 +6716,12 @@ class _CandidateFields(BaseModel):
     location: _candidate_text("Location", 120) = None
     qualification: _candidate_text("Qualification", 120) = None
     college: _candidate_text("College", 200) = None
-    passing_year: Annotated[StrictInt, Field(ge=1950, le=2100)] | None = None
-    experience_months: Annotated[StrictInt, Field(ge=0, le=600)] | None = None
+    passing_year: _whole("Passing year", 1950, 2100) = None
+    experience_months: _whole("Total experience (months)", 0, 600) = None
     current_company: _candidate_text("Current company", 200) = None
-    current_salary: CandidateSalary = None
-    expected_salary: CandidateSalary = None
-    notice_days: Annotated[StrictInt, Field(ge=0, le=365)] | None = None
+    current_salary: _salary("Current salary") = None
+    expected_salary: _salary("Expected salary") = None
+    notice_days: _whole("Notice period (days)", 0, 365) = None
     preferred_locations: Annotated[list[str], AfterValidator(_places)] = Field(default_factory=list)
     preferred_role: _candidate_text("Preferred role", 120) = None
     linkedin: CandidateLinkedin = None

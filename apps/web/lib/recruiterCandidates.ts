@@ -82,10 +82,11 @@ export function candidateBody(form: CandidateForm, mode: "create" | "edit"): Rec
 
 /** The form's own required check, so an incomplete form sends nothing. Null when complete. */
 export function missingRequired(form: CandidateForm): string | null {
-  const missing = [!form.name.trim() && "name", !form.source_id && "source", !form.mobile.trim() && !form.email.trim() && "a mobile number or an email"].filter(Boolean) as string[];
-  if (!missing.length) return null;
-  const listed = missing.length > 1 ? `${missing.slice(0, -1).join(", ")} and ${missing.at(-1)}` : missing[0];
-  return `Enter the ${listed}.`;
+  const contact = !form.mobile.trim() && !form.email.trim();
+  const fields = [!form.name.trim() && "name", !form.source_id && "source"].filter(Boolean) as string[];
+  // "the name, source and a mobile …", "the name and source", "a mobile …" -- never "the a mobile" (QA-01)
+  const items = [...(fields.length ? [`the ${fields.join(contact ? ", " : " and ")}`] : []), ...(contact ? ["a mobile number or an email"] : [])];
+  return items.length ? `Enter ${items.join(" and ")}.` : null;
 }
 
 export function formFromDetail(c: CandidateDetail): CandidateForm {
