@@ -1161,6 +1161,21 @@ Meetings take the company's scope (§2.47), so a meeting of a company outside th
 | `bdm` (assigned) | read only (R10); every write `403`; the picker `403` | companies whose Assigned BDM is them | `rec-028` |
 | `hr_team`, `it_admin`, `employer`, every other role | `403` | — | `rec-028` |
 
+### 2.61 Candidate + Requirement tracking *(net-new, added 2026-10-08 — `DEC-SCOPE-135`, `rec-017`)*
+
+Applications take the requirement's scope (§2.55), so an application or requirement outside the caller's scope is `404`, the same as an
+unknown id. Writes follow rec-007's `can_edit` holders. A candidate must be in the pool (rec-009) to be added. The legacy student, employer
+and HR routes keep their own rules.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` (with a profile) | list, add, change status, history; the candidate's applications | requirements assigned to them or on their companies | `rec-017` |
+| `placement_manager` | read only (lists, history, applications); writes `403` | direct reports' requirements + the unassigned queue | `rec-017` |
+| `super_admin` | everything | all | `rec-017` |
+| `bdm` (assigned) | read only (R10); writes `403` | requirements of companies whose Assigned BDM is them | `rec-017` |
+| `hr_team` | the candidate's applications only (`in_scope` false); the requirement routes `403` | — | `rec-017` |
+| `it_student`, `employer`, every other role | `403` | — | `rec-017` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

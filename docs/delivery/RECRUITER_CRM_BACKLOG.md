@@ -878,6 +878,10 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-017 — Candidate + Requirement tracking
+- **Status (2026-10-08):** built on `feature/rec-017`. `DEC-SCOPE-135` (A1–A4 owner answers, UNVERIFIED); migration
+  `0120_job_application_tracking` (after rec-028's `0119_recruiter_meetings`), API §12BC, RBAC §2.61. `drive_id` moves to rec-029 (A4).
+  Drafted as `0119` / 134 / §12BB / §2.60; rec-028 merged first. The next rec item takes `0121`, `DEC-SCOPE-136`, §12BD and §2.62
+  (re-check `main`). Run the full backend suite after this item.
 - **Business requirement:** §12 "Candidate ID + Requirement ID" with status Sourced → Screened → Shortlisted → Profile Shared → Interview
   → Selected → Joined / Rejected; S2-§14 "maintained against each Job Requirement" (R6).
 - **Existing behavior:** `job_applications` (`student_id`, an app-validated status set, no unique key, no history). Staff PATCH at

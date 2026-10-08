@@ -5523,3 +5523,39 @@ those numbers. Spec
 - Audit `recruiter_meeting.{create,update,complete,cancel}` carries ids, keys, counts and field names only.
 - "Last contacted" (rec-004 C6) and the dashboard's "Meetings Scheduled" (rec-032) can now read meetings; neither is changed here.
 - **New Feature ID authorized:** `rec-028`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-028.
+
+### DEC-SCOPE-135 — Candidate + Requirement tracking (`rec-017`)
+
+**Evidence:**
+- `EVID-018` §12 (lines 532–554): "Candidate ID + Requirement ID" with the statuses Sourced → Screened → Shortlisted → Profile Shared →
+  Interview → Selected → Joined / Rejected; "a candidate can have different statuses for different companies"; "don't keep only one global
+  candidate status". S2-§14 (lines 1563–1583) says the same.
+- `RECRUITER_CRM_BACKLOG.md` §rec-017: AC1–AC4, Q-17, and the edge cases (existing duplicate rows, a withdrawn application).
+- Module scope: `DEC-SCOPE-116` (R6: `job_applications.candidate_id`, the backfill creates candidates for existing students, marked not
+  opted in). Candidates: `DEC-SCOPE-122` (rec-009). Requirements: `DEC-SCOPE-129` (rec-007). Pipeline: `DEC-SCOPE-127` (rec-005).
+
+**Status:** Owner answers A1–A4 were given on 2026-10-08, taking the recommended option each time. They are recorded as **`UNVERIFIED`** until
+the owner confirms this entry.
+
+**Numbering:** migration `0120_job_application_tracking` (after rec-028's `0119_recruiter_meetings`), API §12BC and RBAC §2.61. Drafted as
+`0119` / `DEC-SCOPE-134` / §12BB / §2.60; rec-028 merged first and took those numbers. Spec `docs/superpowers/specs/2026-10-08-rec-017-candidate-requirement-tracking-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| A1 (Q-17a) | Statuses and legacy map | The 8 §12 statuses + `withdrawn`; no `on_hold` (rec-018's Hold is a flag). applied→sourced, screening→screened, shortlisted, interview_scheduled→interview, offer_received→selected, hired→joined, rejected, withdrawn |
+| A2 (Q-17b) | Transitions | Free moves among sourced / screened / shortlisted / profile_shared / interview; any of them → selected / rejected / withdrawn; selected → joined / rejected / withdrawn; **Joined only from Selected** (`409`); rejected / withdrawn reopen to sourced; joined is terminal. Interview result selected → Selected (was Shortlisted), rejected → Rejected; offer created → Selected; offer accepted / joined → Joined. Legacy side effects move only when the move is allowed |
+| A3 | Backfill collision | A student whose email or mobile already belongs to an external candidate is linked to it, and it stays in the pool (`opted_in` true); other students get a new candidate with `opted_in` false. The runtime create-or-link does the same |
+| A4 | Scope cuts | `drive_id` moves to rec-029 (it owns `recruitment_drives`). Student self-apply and the employer shortlist create or link the student's candidate (`opted_in` false); the opt-in prompt stays in rec-010. History table `job_application_status_history` (overseas owns `application_status_history`) |
+
+**Consequences:**
+- `job_applications` gains `candidate_id` (NOT NULL after the backfill), `stage_changed_at`, `added_by_user_id`, the status CHECK, unique
+  `(candidate_id, job_id)` and indexes `(job_id, status)` / `(candidate_id)`. `student_id` becomes nullable (external candidates). New
+  `job_application_status_history`. The migration refuses on duplicate `(job_id, student_id)` rows (none are expected; a merge would
+  re-point interviews and offers, so a person decides).
+- `services/applications.py` is the only status writer. The recruiter routes (§12BC) and the legacy `/workflows/it` and `/employer` routes
+  call it, so every change is in the history. Adding a candidate fires rec-005's `candidates_sourcing`.
+- The legacy routes keep their paths and payloads; their responses gain `status_label`, and the student portal and the application picker
+  show the label. `HIRED_APPLICATION_STATUSES` is `("joined",)`.
+- The requirement page gains a Candidates section; the candidate page gains an Applications section.
+- Audit `recruiter_application.{add,status}` carries ids and statuses only.
+- **New Feature ID authorized:** `rec-017`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-017.
