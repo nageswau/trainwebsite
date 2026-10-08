@@ -1,4 +1,4 @@
-"""rec-004 -- migration 0109_company_contacts (spec §2). Round trip and downgrade refusal run in a throwaway database built from scratch
+"""rec-004 -- migration 0110_company_contacts (spec §2). Round trip and downgrade refusal run in a throwaway database built from scratch
 (the rec-003 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -14,11 +14,11 @@ from app.core.config import settings
 from tests.test_tel_001_migration import _config, _sql
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_rec_004_migration_0109", VERSIONS / "0109_company_contacts.py")
+_spec = importlib.util.spec_from_file_location("_rec_004_migration_0110", VERSIONS / "0110_company_contacts.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0108_university_contacts", "0109_company_contacts"
+BASE, HEAD = "0109_university_duplicates", "0110_company_contacts"
 COLUMNS = {
     "id",
     "company_id",
@@ -41,7 +41,7 @@ COLUMNS = {
 }
 
 
-def test_migration_chains_after_0108_and_there_is_a_single_head():
+def test_migration_chains_after_0109_and_there_is_a_single_head():
     assert _migration.revision == HEAD
     assert _migration.down_revision == BASE
     assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1

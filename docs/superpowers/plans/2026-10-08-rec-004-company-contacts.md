@@ -16,7 +16,7 @@ its first contact created in one step).
 
 ## Global Constraints
 - Inline RBAC on `User.role` plus rec-003's scope helpers. No `require_*` dependencies.
-- Numbering: migration `0109_company_contacts` (down revision `0108_university_contacts`), `DEC-SCOPE-124`, §12AR, RBAC §2.50.
+- Numbering: migration `0110_company_contacts` (down revision `0109_university_duplicates`), `DEC-SCOPE-125`, §12AS, RBAC §2.51.
 - No new dependencies. Logs and audit rows carry ids and field names only. They never carry names, phones or emails.
 
 ## Review Focus
@@ -30,7 +30,7 @@ its first contact created in one step).
 ## Tasks
 
 ### Task 1 — Model and migration
-- Add `CompanyContact` and `COMPANY_CONTACT_CHECKS` to `models.py`. Create `0109_company_contacts.py`.
+- Add `CompanyContact` and `COMPANY_CONTACT_CHECKS` to `models.py`. Create `0110_company_contacts.py`.
 - Test file: `test_rec_004_migration.py`. It checks the chain and single head, that the models match the migration (columns, checks and
   indexes), and that downgrade refuses when rows exist (the rec-003 throwaway-database pattern).
 
@@ -59,4 +59,4 @@ its first contact created in one step).
 
 ### Task 5 — E2E and docs
 - `tests/e2e/rec-004-contacts.spec.ts`.
-- Docs: DEC-SCOPE-124, API_CONTRACT §12AR, RBAC §2.50, DATA_MODEL, and the backlog status.
+- Docs: DEC-SCOPE-125, API_CONTRACT §12AS, RBAC §2.51, DATA_MODEL, and the backlog status.

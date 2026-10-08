@@ -29,6 +29,7 @@ from sqlalchemy.sql import func
 
 from app.bdm_stages import FIRST_STAGE as BDM_FIRST_STAGE
 from app.bdm_stages import MANUAL_STAGES as BDM_MANUAL_STAGES
+from app.core.identifiers import normalize_key
 from app.lead_stages import STAGES as LEAD_STAGES
 from app.notifications.phone import normalise_phone
 from app.tel_content_kinds import ASSET_KINDS as TEL_ASSET_KINDS
@@ -382,7 +383,7 @@ class CompanyAssignmentHistory(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-# rec-004 (DEC-SCOPE-124): migration 0109 repeats COMPANY_CONTACT_CHECKS (test_rec_004_migration asserts they stay identical).
+# rec-004 (DEC-SCOPE-125): migration 0110 repeats COMPANY_CONTACT_CHECKS (test_rec_004_migration asserts they stay identical).
 COMPANY_CONTACT_CHANNELS = ("call", "whatsapp", "email")
 COMPANY_CONTACT_CHECKS = {
     "ck_company_contacts_channel": f"preferred_channel IS NULL OR preferred_channel IN ({', '.join(repr(c) for c in COMPANY_CONTACT_CHANNELS)})",
@@ -566,6 +567,9 @@ UNIVERSITY_CHECKS = {
 UNIVERSITY_RELATIONSHIP_CHECK = _one_of("relationship_strength", RELATIONSHIP_STRENGTHS)
 
 
+UNIVERSITY_NAME_KEY_LENGTH = 200  # = len(University.name)
+
+
 class University(Base, TimestampMixin):
     """upc-003 (U5): the single source of truth for every institution. `catalogue_visible` + `active` decide what the public catalogue
     shows (public_visible); applications, shortlists and university_rep keep their FKs to these same rows."""
@@ -578,11 +582,13 @@ class University(Base, TimestampMixin):
         Index("ix_universities_primary_manager", "primary_manager_user_id"),
         Index("ix_universities_backup_manager", "backup_manager_user_id"),
         Index("ix_universities_priority", "priority"),
+        Index("ix_universities_duplicate_key", "country_id", "name_key"),  # upc-004 UD1; not unique (overrides, legacy rows)
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     country_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("countries.id"), index=True)
     slug: Mapped[str] = mapped_column(String(140), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(200))
+    name_key: Mapped[str] = mapped_column(String(UNIVERSITY_NAME_KEY_LENGTH))  # upc-004: normalize_key(name), kept by _derive_name_key
     city: Mapped[str] = mapped_column(String(120))
     overview: Mapped[str] = mapped_column(Text)
     eligibility: Mapped[str] = mapped_column(Text)
@@ -607,6 +613,12 @@ class University(Base, TimestampMixin):
     catalogue_visible: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
     relationship_strength: Mapped[str | None] = mapped_column(String(12), nullable=True)  # upc-006 CT11: set by hand (CT1)
     country = relationship("Country")
+
+    @validates("name")
+    def _derive_name_key(self, _key: str, name: str) -> str:
+        """upc-004 UD1: every writer (master, legacy admin create, seed) keeps the duplicate key in step with the name."""
+        self.name_key = normalize_key(name, UNIVERSITY_NAME_KEY_LENGTH)
+        return name
 
 
 class UniversityRanking(Base):
@@ -1848,6 +1860,7 @@ BDM_PROFILE_FIELDS = {
     "school": ("board", "school_type", "grade_from", "grade_to"),
     "college": ("affiliation", "college_type", "courses"),
 }
+BDM_UNIVERSITY_LINK_SQL = "university_id IS NULL OR org_type = 'university'"  # upc-004 UD7
 # bdm-002: on the metadata so 0001's create_all builds it for a fresh database; 0066 creates it IF NOT EXISTS.
 BDM_ORGANIZATION_CODE_SEQ = Sequence("bdm_organization_code_seq", metadata=Base.metadata)
 
@@ -1907,6 +1920,8 @@ class BdmOrganization(Base, TimestampMixin):
         Index("ix_bdm_organizations_type_assignee", "bdm_type", "assigned_bdm_user_id"),
         Index("ix_bdm_organizations_duplicate_key", "bdm_type", "name_key", "city_key"),
         Index("ix_bdm_organizations_type_stage", "bdm_type", "pipeline_stage"),
+        Index("ix_bdm_organizations_university", "university_id"),
+        CheckConstraint(BDM_UNIVERSITY_LINK_SQL, name="ck_bdm_organizations_university_link"),
         UniqueConstraint("school_id", name="uq_bdm_organizations_school"),
         UniqueConstraint("agent_org_id", name="uq_bdm_organizations_agent_org"),
     )
@@ -1947,6 +1962,8 @@ class BdmOrganization(Base, TimestampMixin):
     school_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id", ondelete="RESTRICT"), nullable=True)
     # bdm-019 (DEC-SCOPE-107): the onboarded Agent Organization; one organization <-> at most one agency. The live Agent stages read it.
     agent_org_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_orgs.id", ondelete="RESTRICT"), nullable=True)
+    # upc-004 (U13, UD7): a University organization's record in the Global University Master; optional, never merged.
+    university_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"), nullable=True)
 
 
 class BdmOrganizationContact(Base, TimestampMixin):

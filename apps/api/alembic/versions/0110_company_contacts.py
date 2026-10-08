@@ -1,9 +1,9 @@
 """rec-004 -- company_contacts: many people per company, at most one primary.
 
-Revision ID: 0109_company_contacts
-Revises: 0108_university_contacts
+Revision ID: 0110_company_contacts
+Revises: 0109_university_duplicates
 
-docs/superpowers/specs/2026-10-08-rec-004-company-contacts-design.md §2 (DEC-SCOPE-124). A new table only; no existing row changes. Drafted as 0107 after 0106_rec_companies; rec-009's 0107_candidates and upc-006's 0108_university_contacts reached main first.
+docs/superpowers/specs/2026-10-08-rec-004-company-contacts-design.md §2 (DEC-SCOPE-125). A new table only; no existing row changes. Drafted as 0107 after 0106_rec_companies; rec-009's 0107_candidates, upc-006's 0108_university_contacts and upc-004's 0109_university_duplicates reached main first.
 0001 builds a fresh database from the current models, which already carry this table, so it is created only when missing (0069's
 idiom). downgrade() refuses while any contact exists: entered data is never dropped silently.
 """
@@ -13,8 +13,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0109_company_contacts"
-down_revision = "0108_university_contacts"
+revision = "0110_company_contacts"
+down_revision = "0109_university_duplicates"
 branch_labels = None
 depends_on = None
 
@@ -60,5 +60,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {TABLE} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0109_company_contacts: company contacts exist. Clear them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0110_company_contacts: company contacts exist. Clear them deliberately first.")
     op.drop_table(TABLE)

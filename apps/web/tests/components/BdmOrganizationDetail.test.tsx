@@ -371,3 +371,21 @@ describe("BdmOrganizationDetail leads (bdm-017 L6)", () => {
     expect(screen.queryByRole("heading", { name: /^Leads/ })).toBeNull();
   });
 });
+
+describe("BdmOrganizationDetail University Master link (upc-004 UD10)", () => {
+  const university = { id: "u1", university_code: "UNV-000012", name: "ABC University", country_name: "United Kingdom", city: "London", primary_manager_name: "Rahul" };
+  const masterRow = () => within(screen.getByRole("region", { name: "Details" })).queryByText("University Master");
+
+  it("shows the linked record for a University organization, and Not linked without one", () => {
+    render(<BdmOrganizationDetail initial={org({ org_type: "university", university })} basePath="/bdm/organizations" />);
+    expect(masterRow()!.nextElementSibling).toHaveTextContent("UNV-000012 · ABC University, United Kingdom");
+    cleanup();
+    render(<BdmOrganizationDetail initial={org({ org_type: "university", university: null })} basePath="/bdm/organizations" />);
+    expect(masterRow()!.nextElementSibling).toHaveTextContent("Not linked");
+  });
+
+  it("says nothing about the master for other organization types", () => {
+    render(<BdmOrganizationDetail initial={org()} basePath="/bdm/organizations" />);
+    expect(masterRow()).toBeNull();
+  });
+});

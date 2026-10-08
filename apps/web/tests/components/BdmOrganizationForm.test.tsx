@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import BdmOrganizationForm from "@/components/BdmOrganizationForm";
@@ -177,6 +177,29 @@ describe("BdmOrganizationForm (bdm-002 AC1, AC2, §12.2 F5)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add contact" }));
     expect(screen.queryByText("Contact name is required")).toBeNull();
     expect(screen.getAllByLabelText("Contact name (required)")[1]).not.toHaveAttribute("aria-invalid");
+  });
+
+  it("shows the University Master's matches and links on save (upc-004 AC2)", async () => {
+    const match = {
+      id: "u1", university_code: "UNV-000012", name: "St Mary University", country: { id: "gb", name: "United Kingdom" }, city: "London",
+      active: true, catalogue_visible: true, existing_relationship: "existing", primary_manager: { id: "m1", full_name: "Rahul Nair", active: true }, backup_manager: null,
+    };
+    const dup = { code: "possible_duplicate", message: "This university is already in the University Master", total: 0, matches: [], university_matches: [match], university_total: 1 };
+    const mock = serve(res({ detail: dup }, 409), res({ organization: ORG }, 201));
+    const onSaved = vi.fn();
+    render(<BdmOrganizationForm mode="create" onSaved={onSaved} onCancel={vi.fn()} />);
+    fillRequired();
+    fireEvent.change(screen.getByLabelText("Type (required)"), { target: { value: "university" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save organization" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("This university is already in the University Master");
+    expect(within(alert).queryByText("Already in the University Master")).toBeNull(); // QA-03: no repeated heading without BDM matches
+    expect(alert).toHaveTextContent("Rahul Nair (primary)");
+    expect(alert.querySelector("a")).toBeNull(); // BDMs cannot open master records
+    expect(screen.getByRole("button", { name: "Save without linking" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Link to UNV-000012 and save" }));
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
+    expect(body(mock, 1)).toMatchObject({ org_type: "university", university_id: "u1", confirm_duplicate: true });
   });
 
   it("says '1 more similar organization' in the singular", async () => {

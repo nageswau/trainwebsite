@@ -1,4 +1,4 @@
-"""rec-004 (DEC-SCOPE-124, spec §1-§3): a company's contacts -- the primary rule, the role check and the output.
+"""rec-004 (DEC-SCOPE-125, spec §1-§3): a company's contacts -- the primary rule, the role check and the output.
 
 Functions only; nothing here commits -- the route owns the transaction. Scope and write rights are the company's (rec-003's
 `load_scoped` and `can_edit`, C1), so a contact of a company outside the caller's scope is the same 404 as a missing one. Every write
