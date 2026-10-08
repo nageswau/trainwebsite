@@ -1889,6 +1889,33 @@ can_complete, can_follow_up, can_close}, editable_fields, created_at, updated_at
 | `PUT /recruiter/requirements/{id}/jd/file` | multipart `file`: PDF/DOCX by bytes. Empty → `422`, > 5 MB → `413`, other → `415`. → `201` with the GET shape; the current fields (or the requirement's) carry forward. The stored object is discarded when the write fails |
 | `GET /recruiter/requirements/{id}/jd/{version}/file` | The bytes, `attachment; filename="JD-000001-v2.pdf"`, `nosniff`, `no-store`; audited before sending. Unknown version or a version without a file → `404` |
 
+## 12BA. Recruiter calls (`rec-025`) — addendum, 2026-10-08
+
+- **Basis:** `DEC-SCOPE-133` (CA1–CA9). Design spec `docs/superpowers/specs/2026-10-08-rec-025-recruiter-calls-design.md` §3. Migration `0118`.
+- **Common rules:**
+  - A call is on exactly one party: a company contact or a candidate.
+  - A contact call takes the company's scope (§12AO). A contact or call outside the caller's scope is `404`. Writers hold the company's
+    `can_edit`; any other reader → `403`. An archived company → `409` "Restore this company first"; an inactive contact → `409`.
+  - A candidate call follows the pool (§12AP, R11). `placement_team`, `placement_manager` and `super_admin` log; `hr_team` reads; other
+    roles → `403`. Outside the pool → `404`; an archived candidate → `409` "Restore this candidate first".
+  - Bodies refuse unknown keys (`422`).
+  - Every write locks the party (the company or the candidate row) and then the call, commits once, and writes an audit row
+    `recruiter_call.{create,update,delete}` with ids, the outcome and field names only (never notes).
+- **Item:**
+  - `{id, kind (contact|candidate), company_id, contact {id, name}|null, candidate {id, name, code}|null, occurred_at, duration_seconds|null,
+    direction (outgoing|incoming), outcome, outcome_label, connected, notes, caller {id, full_name}, created_at, can_change}`.
+  - Outcomes: `connected`, `call_back_requested` (both connected), `busy`, `no_answer`, `switched_off`, `wrong_number`.
+  - `can_change`: the caller, on the call's IST day, while they can still write to the party.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `POST /recruiter/calls` | `{contact_id \| candidate_id (exactly one, else 422 on contact_id), outcome, occurred_at? (default now; future or > 7 days back → 422), direction? (default outgoing), duration_seconds? (0–14400), notes? (≤ 2000), next_follow_up? {due_at, reason, notes?}}` → `201 {call, follow_up_id}`. `next_follow_up` creates a rec-024 follow-up on the call's contact (§12AY rules; a refusal there rolls the call back). On a candidate call → `422` on `next_follow_up`. 300 calls per caller per IST day → `409`. Not idempotent |
+| `GET /recruiter/companies/{id}/calls` | The company's contact calls, newest first; `limit`, `offset` |
+| `GET /recruiter/candidates/{id}/calls` | The candidate's calls, newest first; `limit`, `offset` |
+| `PATCH /recruiter/calls/{id}` | Partial: `occurred_at` (moved only within today, else `422`), `duration_seconds`, `direction`, `notes`. The outcome and the party are locked (`422`). Another person → `403`; a call from an earlier IST day → `409` |
+| `DELETE /recruiter/calls/{id}` | `204`. Same rules as PATCH. A follow-up the call created stays |
+| `GET /recruiter/companies/{id}/contacts` (§12AS) | **Changed value:** `last_contacted_at` is the contact's latest call (was always null) |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
