@@ -4,12 +4,12 @@ import { PARTNERSHIP_HEAD_NAV, PARTNERSHIP_NAV, PORTAL_NAV, SUPER_ADMIN_NAV, typ
 import { ROLE_LABEL } from "@/lib/partnership";
 import type { ManagerOption, ManagerRef } from "@/lib/telecaller";
 
-export type UniversityPermissions = { can_edit: boolean; can_assign: boolean; can_publish: boolean; can_deactivate: boolean };
+export type UniversityPermissions = { can_edit: boolean; can_assign: boolean; can_publish: boolean; can_deactivate: boolean; can_edit_contacts: boolean };
 export type UniversityCountry = { id: string; name: string; iso2: string | null; region: string | null; catalogue_visible: boolean };
 export type Ranking = { system: string; other_name: string | null; year: number; rank: string };
 export type UniversityRow = {
   id: string; university_code: string; slug: string; name: string; institution_type: string; country: UniversityCountry; city: string;
-  priority: string | null; partnership_potential: string | null; primary_manager: ManagerRef | null; backup_manager: ManagerRef | null;
+  priority: string | null; partnership_potential: string | null; relationship_strength: string | null; primary_manager: ManagerRef | null; backup_manager: ManagerRef | null;
   catalogue_visible: boolean; active: boolean; permissions: UniversityPermissions;
 };
 export type University = UniversityRow & {
@@ -35,6 +35,11 @@ export const PRIORITIES = ["A", "B", "C"];
 export const POTENTIALS: Record<string, string> = { high: "High", medium: "Medium", low: "Low" };
 export const COURSE_LEVELS = ["UG", "PG", "PhD", "Diploma", "Foundation"];
 export const RANKING_SYSTEMS = ["QS", "THE", "ARWU", "Other"];
+// upc-006 (DEC-SCOPE-123): §11's relationship status exactly (CT4) and the channels a contact record holds (CT3).
+export const RELATIONSHIP_STRENGTHS: Record<string, string> = {
+  new: "New", developing: "Developing", good: "Good", strong: "Strong", strategic: "Strategic", at_risk: "At Risk", dormant: "Dormant",
+};
+export const CONTACT_CHANNELS: Record<string, string> = { email: "Email", phone: "Phone", whatsapp: "WhatsApp", linkedin: "LinkedIn" };
 export const REGIONS = ["UK", "Europe", "North America", "Latin America & Caribbean", "Middle East", "Asia", "Oceania", "Africa", "Antarctica"];
 
 export const label = (words: Record<string, string>, key: string | null | undefined) => (key ? words[key] ?? key : "—");
@@ -51,7 +56,9 @@ export function shellFor(role: string): { nav: NavItem[]; roleLabel: string } {
 }
 
 // The list's filters travel in the page URL (shareable, no client state); only these keys are passed on to the API.
-export const FILTER_KEYS = ["q", "region", "institution_type", "priority", "partnership_potential", "manager", "visibility", "include_inactive"] as const;
+export const FILTER_KEYS = [
+  "q", "region", "institution_type", "priority", "partnership_potential", "relationship_strength", "manager", "visibility", "include_inactive",
+] as const;
 export type Filters = Partial<Record<(typeof FILTER_KEYS)[number] | "offset", string>>;
 
 function filterParams(filters: Filters): URLSearchParams {
@@ -95,3 +102,15 @@ export async function managerSearch(q: string, signal: AbortSignal): Promise<Loo
   const page = (await response.json()) as { items: ManagerOption[]; total: number };
   return { items: page.items.map((m) => ({ id: m.id, label: m.full_name, detail: m.email })), truncated: page.total > page.items.length };
 }
+
+// --- upc-006: a university's contacts (§10). `notes` is null for readers outside the partnership team (CT14).
+export type ContactRole = { code: string; label: string };
+export type UniversityContact = {
+  id: string; university_id: string; name: string; designation: string | null; department: string | null; role: ContactRole | null;
+  email: string | null; phone: string | null; whatsapp: string | null; linkedin: string | null; preferred_channel: string | null;
+  relationship_strength: string | null; notes: string | null; is_primary: boolean; shareable: boolean; created_at: string; updated_at: string;
+};
+export const MAX_CONTACTS = 50;
+export const CONTACT_ROLES_URL = "/api/v1/partnership/contact-roles";
+export const contactsUrl = (universityId: string) => universityUrl(universityId, "contacts");
+export const contactUrl = (contactId: string) => `/api/v1/partnership/contacts/${contactId}`;

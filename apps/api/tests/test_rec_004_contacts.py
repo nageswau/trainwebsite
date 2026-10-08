@@ -1,4 +1,4 @@
-"""rec-004 -- company contacts (spec §1-§3; DEC-SCOPE-123 C1-C7). Names are unique per test (shared database)."""
+"""rec-004 -- company contacts (spec §1-§3; DEC-SCOPE-124 C1-C7). Names are unique per test (shared database)."""
 
 import asyncio
 import uuid

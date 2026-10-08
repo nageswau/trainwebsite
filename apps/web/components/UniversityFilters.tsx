@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { type Filters, INSTITUTION_TYPES, POTENTIALS, PRIORITIES, REGIONS, UNIVERSITIES_PATH } from "@/lib/universities";
+import { type Filters, INSTITUTION_TYPES, POTENTIALS, PRIORITIES, REGIONS, RELATIONSHIP_STRENGTHS, UNIVERSITIES_PATH } from "@/lib/universities";
 
 // upc-003: the list's filters as a plain GET form -- the URL holds them, so Back, Refresh and a shared link all keep the view, and it
 // works without client JS. Every filter only narrows; the API applies the same names.
@@ -29,6 +29,7 @@ export default function UniversityFilters({ filters, isManager }: { filters: Fil
         <Choice id="uf-type" name="institution_type" text="Institution type" value={filters.institution_type} options={Object.entries(INSTITUTION_TYPES)} />
         <Choice id="uf-priority" name="priority" text="Priority" value={filters.priority} options={PRIORITIES.map((p) => [p, p])} />
         <Choice id="uf-potential" name="partnership_potential" text="Potential" value={filters.partnership_potential} options={Object.entries(POTENTIALS)} />
+        <Choice id="uf-relationship" name="relationship_strength" text="Relationship" value={filters.relationship_strength} options={Object.entries(RELATIONSHIP_STRENGTHS)} />
         <Choice id="uf-manager" name="manager" text="Manager" value={filters.manager} options={managerOptions} />
         <Choice id="uf-visibility" name="visibility" text="Catalogue" value={filters.visibility} options={[["public", "Public"], ["internal", "Internal"]]} />
       </div>

@@ -1008,7 +1008,18 @@ who has not opted in, rec-010) is `404`, the same as an unknown id.
 | `hr_team` | list, read, download resumes; every write and the duplicate check are `403` | the whole pool | `rec-009` |
 | `employer`, `it_admin`, students, every other role | `403` (employers see only EMP-003's masked view, R12) | — | `rec-009` |
 
-### 2.49 Company contacts *(net-new, added 2026-10-08 — `DEC-SCOPE-123`, `rec-004`; drafted as §2.48)*
+### 2.49 University contacts *(net-new, added 2026-10-08 — `DEC-SCOPE-123`, `upc-006`)*
+
+Enforced inline in `services/partnership_universities.py` (`can_edit_contacts`) and `services/university_contacts.py` (slice). Contacts
+are PII: audit and logs carry ids only.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Read a university's contacts | ✅ all, with notes | ✅ all, with notes | shareable only, no notes | ✅ all, with notes | `403` (counselors: upc-030) |
+| Add / edit / make primary / delete | own (primary or backup) | unowned + team-owned | `403` | ✅ | `403` |
+| Set university relationship strength | as §2.46 Edit |||||
+
+### 2.50 Company contacts *(net-new, added 2026-10-08 — `DEC-SCOPE-124`, `rec-004`; drafted as §2.48)*
 
 Contacts take the company's scope (§2.47). A contact of a company outside the caller's scope is `404`. Writes follow the company's
 `can_edit` (C1, UNVERIFIED default). An archived company's contacts are read-only (`409`).

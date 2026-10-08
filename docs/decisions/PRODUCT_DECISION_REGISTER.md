@@ -5125,7 +5125,39 @@ Spec `docs/superpowers/specs/2026-10-08-rec-009-candidate-master-design.md`.
 - A "Candidate Master" sidebar entry for recruiters, managers, super admin and HR.
 - **New Feature ID authorized:** `rec-009`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-009.
 
-### DEC-SCOPE-123 — Company contacts (`rec-004`)
+### DEC-SCOPE-123 — University contacts + relationship strength (`upc-006`)
+
+**Evidence:** `EVID-020` §1 contact rows (L20–L25), §10 (contacts: 7 example roles, 11 fields) and §11 (relationship status, 7 values);
+`UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U14 (`EXPLICIT_APPROVAL`, 2026-10-08) and §4 upc-006.
+**Status:** CT1–CT14 are the recommended answers to backlog Q-15 plus design-level rules, applied under the owner's standing instruction
+for the build session ("proceed with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed:
+`NEEDS_CONFIRMATION` at sign-off. Migration `0108_university_contacts`, API contract §12AQ, RBAC §2.49. Drafted as `DEC-SCOPE-121` /
+`0106` / §12AO / §2.47 and renumbered on merging `main` @ `035c99ad` (rec-003) and again @ `a62ad9d7` (rec-009, which took `DEC-SCOPE-122` / `0107` / §12AP / §2.48): both merged first.
+Spec: `docs/superpowers/specs/2026-10-08-upc-006-university-contacts-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| CT1 | Q-15 auto-suggest Dormant / At Risk | No; set by hand (no interactions are recorded yet) |
+| CT2 | Contact roles | Seeded catalogue `university_contact_roles`: the §10 roles and §1 contact rows (12; International Director once); read-only; optional, one per contact |
+| CT3 | Preferred communication | email, phone, whatsapp, linkedin |
+| CT4 | Relationship values | New, Developing, Good, Strong, Strategic, At Risk, Dormant (§11 exactly); optional on university and contact |
+| CT5 | Who writes contacts | `partnership_manager` (own), `partnership_head` (unowned + team), `super_admin`; `overseas_admin` reads the shareable slice only; counselors via upc-030 |
+| CT6 | Primary | At most one; the first contact becomes primary; moving it is `is_primary: true` on another; unsetting is `422`; deleting it while others remain `409` |
+| CT7 | Delete | Hard delete (PII), audited with ids only |
+| CT8 | Limits | ≤ 50 per university; one email once per university (`409`); one person at two universities is two rows |
+| CT9 | Last interaction / next follow-up | Deferred to upc-009/012/013 and upc-020 |
+| CT10 | Inactive university | Contacts read-only (`409`) |
+| CT11 | University relationship strength | `universities.relationship_strength`, edited with the master (`can_edit`); list column, filter, detail badge |
+| CT12 | `shareable` default | false |
+| CT13 | LinkedIn | http(s) URL; bare domain gets `https://` |
+| CT14 | Notes | Internal: `null` in the shareable slice |
+
+**Consequences:** `universities.relationship_strength`; tables `university_contact_roles` (seeded) and `university_contacts`; routes
+`/partnership/contact-roles`, `/partnership/universities/{id}/contacts`, `/partnership/contacts/{id}`; `permissions.can_edit_contacts`;
+a Contacts section on `/partnership/universities/[id]`.
+**New Feature ID authorized:** `upc-006`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-006.
+
+### DEC-SCOPE-124 — Company contacts (`rec-004`)
 
 **Evidence:**
 - `EVID-018`: §2, the person fields (lines 84–98) and the quick action "+ Add Recruiter" (line 43); §3 Business Details (lines 150–164);
@@ -5137,8 +5169,8 @@ Spec `docs/superpowers/specs/2026-10-08-rec-009-candidate-master-design.md`.
 **Status:** built on `feature/rec-004`. The backlog item has no Q-xx questions, so C1–C7 below are **recommended defaults**, taken on the
 user's standing instruction to proceed with the recommended answers. Their status is `UNVERIFIED` until the owner confirms them.
 
-**Numbering:** migration `0108_company_contacts` (after rec-009's `0107_candidates`), API §12AQ and RBAC §2.49. rec-004 was drafted as
-`0107` / `DEC-SCOPE-122` / §12AP / §2.48, but rec-009 merged first. Spec `docs/superpowers/specs/2026-10-08-rec-004-company-contacts-design.md`.
+**Numbering:** migration `0109_company_contacts` (after upc-006's `0108_university_contacts`), API §12AR and RBAC §2.50. rec-004 was drafted as
+`0107` / `DEC-SCOPE-122` / §12AP / §2.48, but rec-009 (`0107` / 122) and upc-006 (`0108` / 123) merged first. Spec `docs/superpowers/specs/2026-10-08-rec-004-company-contacts-design.md`.
 
 | # | Point | Answer (UNVERIFIED default) |
 |---|---|---|
@@ -5151,7 +5183,7 @@ user's standing instruction to proceed with the recommended answers. Their statu
 | C7 | "+ Add Recruiter" | `POST /recruiter/companies` takes an optional `contact`, so the company and its first contact (primary) are created in one transaction. The UI is `/recruiter/companies/new?with=contact` |
 
 **Consequences:**
-- `company_contacts` (`0108`): a partial unique index on the primary contact, and a CHECK that a primary contact is active.
+- `company_contacts` (`0109`): a partial unique index on the primary contact, and a CHECK that a primary contact is active.
 - `services/recruiter_contacts.py` and `api/recruiter_contacts.py`.
 - A Contacts section on the company page, and an "Add recruiter" quick action on the companies list.
 - Contact PII: no export, and logs and audit rows carry ids and field names only.

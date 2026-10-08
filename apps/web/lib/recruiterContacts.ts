@@ -1,4 +1,4 @@
-// rec-004 (DEC-SCOPE-123): a company's contacts -- types, endpoints and the pure helpers the Contacts section and the "+ Add Recruiter"
+// rec-004 (DEC-SCOPE-124): a company's contacts -- types, endpoints and the pure helpers the Contacts section and the "+ Add Recruiter"
 // form share. The API scopes every list and decides `can_edit`; nothing here filters for security.
 import { detailMessage } from "@/lib/apiErrors";
 import { COMPANIES_URL, type Ref } from "@/lib/recruiterCompanies";

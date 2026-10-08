@@ -1,4 +1,4 @@
-"""rec-004 (DEC-SCOPE-123, spec §3): a company's contacts. Scope and write rights are the company's (C1): out of scope = 404, the wrong
+"""rec-004 (DEC-SCOPE-124, spec §3): a company's contacts. Scope and write rights are the company's (C1): out of scope = 404, the wrong
 role = 403, an archived company = 409. Every write is one transaction -- company lock, change, audit, one commit here -- and returns the
 company's whole list, because a primary change touches two rows."""
 
