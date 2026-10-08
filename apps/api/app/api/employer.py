@@ -103,7 +103,7 @@ def _job_out(job: Job) -> dict:
         "location": job.location,
         "description": job.description,
         "skills": job.skills,
-        # rec-007 (DEC-SCOPE-123 J3): `status` keeps the draft/open/closed words this API has always used; the §6 requirement status
+        # rec-007 (DEC-SCOPE-125 J3): `status` keeps the draft/open/closed words this API has always used; the §6 requirement status
         # and its label are alongside.
         "status": requirements.legacy_word(job.status),
         "requirement_status": job.status,

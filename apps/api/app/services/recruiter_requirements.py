@@ -1,4 +1,4 @@
-"""rec-007 (DEC-SCOPE-123, spec §2-§4): the Job Requirement's statuses, legacy shim, skills, scope, permissions and output.
+"""rec-007 (DEC-SCOPE-125, spec §2-§4): the Job Requirement's statuses, legacy shim, skills, scope, permissions and output.
 
 Functions only; nothing here commits -- the route owns the transaction. Every `{requirement_id}` resolves through `load_scoped`, so an id
 outside the caller's scope is the same 404 as a missing one (the rec-003 pattern). The employer and /workflows/it/jobs routes reuse the

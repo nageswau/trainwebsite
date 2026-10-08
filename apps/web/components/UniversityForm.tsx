@@ -13,6 +13,7 @@ import {
   POTENTIALS,
   PRIORITIES,
   RANKING_SYSTEMS,
+  RELATIONSHIP_STRENGTHS,
   RELATIONSHIPS,
   type University,
   UNIVERSITIES_URL,
@@ -86,6 +87,7 @@ export default function UniversityForm({ university }: { university?: University
       popular_programs: text(form, "popular_programs").split(",").map((p) => p.trim()).filter(Boolean),
       international_office: optional(form, "international_office"), existing_relationship: optional(form, "existing_relationship"),
       priority: optional(form, "priority"), partnership_potential: optional(form, "partnership_potential"),
+      relationship_strength: optional(form, "relationship_strength"),
       overview: text(form, "overview"), eligibility: text(form, "eligibility"),
       rankings: rankings.map((r) => ({ system: r.system, other_name: r.system === "Other" ? r.other_name.trim() || null : null, year: Number(r.year), rank: r.rank.trim() })),
     };
@@ -154,6 +156,9 @@ export default function UniversityForm({ university }: { university?: University
           </Field>
           <Field id="uni-partnership_potential" label="Partnership potential" error={errors.partnership_potential}>
             <Select id="uni-partnership_potential" name="partnership_potential" value={u?.partnership_potential} words={POTENTIALS} blank="Not set" />
+          </Field>
+          <Field id="uni-relationship_strength" label="Relationship strength" error={errors.relationship_strength}>
+            <Select id="uni-relationship_strength" name="relationship_strength" value={u?.relationship_strength} words={RELATIONSHIP_STRENGTHS} blank="Not assessed" />
           </Field>
         </div>
         <fieldset style={{ border: 0, padding: 0, margin: 0 }} aria-describedby={errors.course_levels ? "uni-course_levels-error" : undefined}>

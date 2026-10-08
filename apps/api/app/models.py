@@ -394,7 +394,7 @@ class EmployerProfile(Base, TimestampMixin):
     registration_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
 
-# rec-007 (DEC-SCOPE-123 J1): the 11 EVID-018 §6 requirement statuses. `JOB_OPEN_STATUSES` is what students see and can apply to
+# rec-007 (DEC-SCOPE-125 J1): the 11 EVID-018 §6 requirement statuses. `JOB_OPEN_STATUSES` is what students see and can apply to
 # (while `closes_on` has not passed) -- every `status == "open"` reader uses it now.
 JOB_STATUSES = (
     "new", "requirement_received", "sourcing", "shortlisting", "profiles_shared", "interviewing", "selected", "joined", "on_hold", "closed", "cancelled",
@@ -411,7 +411,7 @@ def _in(column: str, values) -> str:
     return f"{column} IS NULL OR {column} IN (" + ", ".join(f"'{v}'" for v in values) + ")"
 
 
-JOB_CHECKS = {  # migration 0108 repeats these strings; test_rec_007_migration asserts they stay identical
+JOB_CHECKS = {  # migration 0109 repeats these strings; test_rec_007_migration asserts they stay identical
     "ck_jobs_status": "status IN (" + ", ".join(f"'{s}'" for s in JOB_STATUSES) + ")",
     "ck_jobs_work_mode": _in("work_mode", JOB_WORK_MODES),
     "ck_jobs_shift": _in("shift", JOB_SHIFTS),
@@ -425,7 +425,7 @@ JOB_CHECKS = {  # migration 0108 repeats these strings; test_rec_007_migration a
 
 
 class Job(Base, TimestampMixin):
-    """rec-007 (DEC-SCOPE-123, R5): the job is the Job Requirement. `requirement_code` comes from the server default on every insert path
+    """rec-007 (DEC-SCOPE-125, R5): the job is the Job Requirement. `requirement_code` comes from the server default on every insert path
     (employer, /workflows/it/jobs, the recruiter API). `skills` (JSON) is a derived mirror of `job_skills`, rewritten by
     services.recruiter_requirements.set_skills, so the legacy readers keep their shape (J7)."""
 
@@ -487,7 +487,7 @@ class JobSkill(Base):
 
 
 class JobStatusHistory(Base):
-    """rec-007: append-only. `from_status` NULL = created; `changed_by_user_id` NULL = migration 0108's legacy mapping (the note keeps
+    """rec-007: append-only. `from_status` NULL = created; `changed_by_user_id` NULL = migration 0109's legacy mapping (the note keeps
     the original value). These rows are the requirement events rec-005 drives the company stage from."""
 
     __tablename__ = "job_status_history"
@@ -591,6 +591,9 @@ UNIVERSITY_PRIORITIES = ("A", "B", "C")
 PARTNERSHIP_POTENTIALS = ("high", "medium", "low")
 COURSE_LEVELS = ("UG", "PG", "PhD", "Diploma", "Foundation")
 RANKING_SYSTEMS = ("QS", "THE", "ARWU", "Other")
+# upc-006 (DEC-SCOPE-123): §11's relationship status, exactly (CT4), and the channels a contact record holds (CT3).
+RELATIONSHIP_STRENGTHS = ("new", "developing", "good", "strong", "strategic", "at_risk", "dormant")
+CONTACT_CHANNELS = ("email", "phone", "whatsapp", "linkedin")
 UNIVERSITY_CODE_SEQ = Sequence("university_code_seq", metadata=Base.metadata)
 UNIVERSITY_CODE_DEFAULT = "'UNV-' || translate(format('%6s', nextval('university_code_seq')), ' ', '0')"
 
@@ -608,6 +611,8 @@ UNIVERSITY_CHECKS = {
     "ck_universities_partnership_potential": _one_of("partnership_potential", PARTNERSHIP_POTENTIALS),
     "ck_universities_backup_needs_primary": "backup_manager_user_id IS NULL OR (primary_manager_user_id IS NOT NULL AND backup_manager_user_id <> primary_manager_user_id)",
 }
+# upc-006: added by migration 0108 (kept out of UNIVERSITY_CHECKS, which mirrors 0105).
+UNIVERSITY_RELATIONSHIP_CHECK = _one_of("relationship_strength", RELATIONSHIP_STRENGTHS)
 
 
 class University(Base, TimestampMixin):
@@ -618,6 +623,7 @@ class University(Base, TimestampMixin):
     __table_args__ = (
         UniqueConstraint("university_code", name="uq_universities_code"),
         *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_CHECKS.items()),
+        CheckConstraint(UNIVERSITY_RELATIONSHIP_CHECK, name="ck_universities_relationship_strength"),
         Index("ix_universities_primary_manager", "primary_manager_user_id"),
         Index("ix_universities_backup_manager", "backup_manager_user_id"),
         Index("ix_universities_priority", "priority"),
@@ -648,6 +654,7 @@ class University(Base, TimestampMixin):
     active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
     # UM5: true by default so the existing rows and the legacy admin create stay public; the master creates every row as false.
     catalogue_visible: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    relationship_strength: Mapped[str | None] = mapped_column(String(12), nullable=True)  # upc-006 CT11: set by hand (CT1)
     country = relationship("Country")
 
 
@@ -685,6 +692,65 @@ class UniversityAssignmentHistory(Base):
     to_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# upc-006 (DEC-SCOPE-123, spec §2): the contact role catalogue (CT2) -- §10's example roles and §1's contact rows, International
+# Director once. Migration 0108 seeds it (ROLE_SEED) and repeats UNIVERSITY_CONTACT_CHECKS; test_upc_006_migration keeps them identical.
+UNIVERSITY_CONTACT_ROLE_SEED = (
+    ("international_director", "International Director"),
+    ("international_recruitment_manager", "International Recruitment Manager"),
+    ("regional_manager", "Regional Manager"),
+    ("admissions_manager", "Admissions Manager"),
+    ("marketing_manager", "Marketing Manager"),
+    ("application_officer", "Application Officer"),
+    ("finance_contact", "Finance Contact"),
+    ("international_office", "International Office"),
+    ("partnership_contact", "Partnership Contact"),
+    ("recruitment_contact", "Recruitment Contact"),
+    ("application_contact", "Application Contact"),
+    ("country_manager", "Country Manager"),
+)
+UNIVERSITY_CONTACT_CHECKS = {
+    "ck_university_contacts_preferred_channel": _one_of("preferred_channel", CONTACT_CHANNELS),
+    "ck_university_contacts_relationship_strength": _one_of("relationship_strength", RELATIONSHIP_STRENGTHS),
+}
+
+
+class UniversityContactRole(Base):
+    """upc-006 CT2: a seeded, read-only catalogue (no admin UI in this item)."""
+
+    __tablename__ = "university_contact_roles"
+    code: Mapped[str] = mapped_column(String(40), primary_key=True)
+    label: Mapped[str] = mapped_column(String(80))
+    position: Mapped[int] = mapped_column(SmallInteger)
+
+
+class UniversityContact(Base, TimestampMixin):
+    """upc-006 (§10): a named person at a university. At most one primary per university (CT6); one email once per university (CT8);
+    the same person at two universities is two rows. Contact PII: audit and logs carry ids only."""
+
+    __tablename__ = "university_contacts"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_CONTACT_CHECKS.items()),
+        Index("ix_university_contacts_university", "university_id"),
+        Index("uq_university_contacts_primary", "university_id", unique=True, postgresql_where=text("is_primary")),
+        Index("uq_university_contacts_email", "university_id", text("lower(email)"), unique=True, postgresql_where=text("email IS NOT NULL")),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"))
+    name: Mapped[str] = mapped_column(String(200))
+    designation: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    department: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    role_code: Mapped[str | None] = mapped_column(String(40), ForeignKey("university_contact_roles.code", ondelete="RESTRICT"), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    whatsapp: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    linkedin: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    preferred_channel: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    relationship_strength: Mapped[str | None] = mapped_column(String(12), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_primary: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    shareable: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
 
 class OverseasCourse(Base, TimestampMixin):

@@ -1,10 +1,10 @@
 """rec-007 -- the Job Requirement: §6 columns on `jobs`, the REQ- code (with backfill), the §6 statuses (legacy values mapped, with
 history), job_skills (the skills JSON moved into rows) and job_status_history.
 
-Revision ID: 0108_job_requirements
-Revises: 0107_candidates
+Revision ID: 0109_job_requirements
+Revises: 0108_university_contacts
 
-docs/superpowers/specs/2026-10-08-rec-007-job-requirement-design.md §1, §3 (DEC-SCOPE-123). Every new `jobs` column is nullable except
+docs/superpowers/specs/2026-10-08-rec-007-job-requirement-design.md §1, §3 (DEC-SCOPE-125). Drafted as 0108 after 0107_candidates; upc-006 (PR #157) took 0108 and DEC-SCOPE-125 first, and rec-004 claims DEC-SCOPE-124. Every new `jobs` column is nullable except
 `requirement_code`, which existing rows get in `created_at`, `id` order; new rows get it from the server default, so the employer and
 /workflows/it/jobs insert paths are unchanged. J1: draft -> new, open -> requirement_received, closed stays, anything else -> on_hold;
 each remapped row gets a job_status_history row (changed_by NULL) whose note keeps the original value. J7: each skills JSON value is
@@ -19,8 +19,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0108_job_requirements"
-down_revision = "0107_candidates"
+revision = "0109_job_requirements"
+down_revision = "0108_university_contacts"
 branch_labels = None
 depends_on = None
 
@@ -183,7 +183,7 @@ def downgrade() -> None:
         bind = op.get_bind()
         by_user = bind.execute(sa.text(f"SELECT 1 FROM {HISTORY} WHERE changed_by_user_id IS NOT NULL LIMIT 1")).first()
         if by_user or bind.execute(sa.text(f"SELECT 1 FROM {TABLE} WHERE {filled} LIMIT 1")).first():
-            raise RuntimeError("Cannot downgrade 0108_job_requirements: job requirement data exists. Clear it deliberately first.")
+            raise RuntimeError("Cannot downgrade 0109_job_requirements: job requirement data exists. Clear it deliberately first.")
     for name in INDEXES:
         op.drop_index(name, table_name=TABLE)
     for name in CHECKS:

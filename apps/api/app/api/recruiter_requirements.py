@@ -1,4 +1,4 @@
-"""rec-007 (DEC-SCOPE-123, spec §5): the Job Requirement -- `jobs` extended (R5), §6 fields, required/preferred skills, statuses + history.
+"""rec-007 (DEC-SCOPE-125, spec §5): the Job Requirement -- `jobs` extended (R5), §6 fields, required/preferred skills, statuses + history.
 
 Every `{requirement_id}` resolves through `services.recruiter_requirements.load_scoped` (out of scope = 404); every write is one
 transaction -- scope, row lock, change, history/audit, one commit here. Lists are {items, total, limit, offset}, newest first."""
