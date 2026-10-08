@@ -5,6 +5,7 @@ Bodies are untyped dicts parsed by services/telecaller._parse, so a 422 is one s
 is one transaction: role, row lock, rules, change, audit row, one commit here, then the log line. `duplicate-check` is declared before
 `/{candidate_id}` so it never reaches the id routes."""
 
+import re
 from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID
@@ -26,6 +27,7 @@ from app.services import candidates as svc
 from app.services.telecaller import _parse
 
 router = APIRouter(prefix="/recruiter/candidates", tags=["recruiter-candidates"])
+PHONE_DIGITS = re.compile(r"[0-9]+")  # ASCII only, like notifications.phone
 
 
 def _body(model, payload):
@@ -43,14 +45,15 @@ async def list_candidates(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Newest first. `q` matches the name, code or email, or the mobile's digits (S2-§13: the source is on every row)."""
+    """Newest first. `q` matches the name, code or email; a phone-shaped `q` (digits with + - ( ) . or spaces) also matches the mobile's
+    digits, so a name or code that holds digits never matches phone numbers (S2-§13: the source is on every row)."""
     svc.require_reader(user)
     filters = [*svc.pool_filter(), Candidate.archived_at.is_not(None) if archived else Candidate.archived_at.is_(None)]
     pattern = like_pattern(q)
     if pattern:
-        digits = "".join(ch for ch in q if ch.isdigit())
+        digits = re.sub(r"[\s+().-]", "", q)
         columns = [Candidate.name.ilike(pattern, escape="\\"), Candidate.candidate_code.ilike(pattern, escape="\\"), Candidate.email.ilike(pattern, escape="\\")]
-        if len(digits) >= 4:
+        if len(digits) >= 4 and PHONE_DIGITS.fullmatch(digits):
             columns.append(Candidate.mobile_normalized.contains(digits, autoescape=True))
         filters.append(or_(*columns))
     if source_id:

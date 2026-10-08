@@ -270,8 +270,18 @@ async def test_list_shows_the_source_and_filters(client, db_session):
     assert [i["id"] for i in (await client.get(BASE, params={"q": tag, "status": "placed"})).json()["items"]] == [b["id"]]
     by_source = await client.get(BASE, params={"q": tag, "source_id": a["source"]["id"]})
     assert [i["id"] for i in by_source.json()["items"]] == [a["id"]]
-    for q in (a["candidate_code"], a["email"].upper(), a["mobile"][-6:]):
+    for q in (a["candidate_code"], a["email"].upper(), a["mobile"][-6:], f"{a['mobile'][:5]} {a['mobile'][5:]}"):
         assert [i["id"] for i in (await client.get(BASE, params={"q": q})).json()["items"]] == [a["id"]]
+
+
+@pytest.mark.asyncio
+async def test_digits_inside_a_word_never_match_a_mobile(client, db_session):
+    """Only a phone-shaped query (digits and + - ( ) . spaces) searches mobiles; "Arch 1a2b3c4d" must not match a mobile holding 1234."""
+    await as_recruiter(client, db_session)
+    digits = "".join(random.choices("0123456789", k=4))
+    phone = await create(client, db_session, mobile=f"9{digits}" + "".join(random.choices("0123456789", k=5)), email=None)
+    query = f"zz{digits[0]}q{digits[1]}q{digits[2]}q{digits[3]}"  # the same digits, inside a word
+    assert phone["id"] not in [i["id"] for i in (await client.get(BASE, params={"q": query})).json()["items"]]
 
 
 @pytest.mark.asyncio
