@@ -1045,7 +1045,18 @@ Contacts take the company's scope (§2.47). A contact of a company outside the c
 | `bdm` | read only (R10); every write is `403` | companies whose Assigned BDM is them | `rec-004` |
 | `hr_team`, `it_admin`, `employer`, every other role | `403` | — | `rec-004` |
 
-### 2.52 Company pipeline *(net-new, added 2026-10-08 — `DEC-SCOPE-126`, `rec-005`)*
+### 2.52 Partnership stage engine *(net-new, added 2026-10-08 — `DEC-SCOPE-126`, `upc-007`)*
+
+Enforced in `services/partnership_universities.py` (`can_move_stage`, `can_reopen`: role → team scope → state) before the single writer
+`services/partnership_pipeline.py` runs.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Read stage, history, Kanban board | ✅ | ✅ | ✅ | ✅ | `403` |
+| Move stage, mark lost | own (primary or backup) | unowned + team-owned | `403` | ✅ | `403` |
+| Reopen a lost university | `403` | unowned + team-owned | `403` | ✅ | `403` |
+
+### 2.53 Company pipeline *(net-new, added 2026-10-08 — `DEC-SCOPE-127`, `rec-005`)*
 
 Scope is the §2.47 company scope (out of scope = `404`). The role check for each action runs on the locked row.
 

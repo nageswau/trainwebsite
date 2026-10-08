@@ -1,9 +1,9 @@
 """rec-005 -- the company B2B pipeline: `companies.stage` (+ when it changed, the Lost flag) and company_stage_history.
 
-Revision ID: 0111_company_pipeline
-Revises: 0110_company_contacts
+Revision ID: 0112_company_pipeline
+Revises: 0111_university_pipeline
 
-docs/superpowers/specs/2026-10-08-rec-005-company-pipeline-design.md §3 (DEC-SCOPE-126). Drafted as 0108 / DEC-SCOPE-123; upc-006 (0108), upc-004 (0109) and rec-004 (0110) reached main first. Existing companies start at New Lead through the
+docs/superpowers/specs/2026-10-08-rec-005-company-pipeline-design.md §3 (DEC-SCOPE-127). Drafted as 0108 / DEC-SCOPE-123; upc-006 (0108), upc-004 (0109), rec-004 (0110) and upc-007 (0111) reached main first. Existing companies start at New Lead through the
 column default, changed when they were created; every other insert path (EMP-001, /workflows/it/jobs) keeps working through the server
 defaults. 0001 builds a fresh database from the current models, which already carry all of this, so every object is created only when
 missing (0069's idiom). downgrade() refuses while pipeline data exists (a history row, a company past New Lead, or a Lost one).
@@ -14,8 +14,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0111_company_pipeline"
-down_revision = "0110_company_contacts"
+revision = "0112_company_pipeline"
+down_revision = "0111_university_pipeline"
 branch_labels = None
 depends_on = None
 
@@ -79,7 +79,7 @@ def downgrade() -> None:
         bind = op.get_bind()
         used = f"SELECT 1 FROM {TABLE} WHERE stage <> '{STAGES[0]}' OR lost_at IS NOT NULL LIMIT 1"
         if bind.execute(sa.text(f"SELECT 1 FROM {HISTORY} LIMIT 1")).first() or bind.execute(sa.text(used)).first():
-            raise RuntimeError("Cannot downgrade 0111_company_pipeline: company pipeline data exists. Clear it deliberately first.")
+            raise RuntimeError("Cannot downgrade 0112_company_pipeline: company pipeline data exists. Clear it deliberately first.")
     op.drop_table(HISTORY)
     op.drop_index(INDEX, table_name=TABLE)
     for name in CHECKS:

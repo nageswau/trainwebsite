@@ -1,4 +1,4 @@
-"""rec-005 -- the company B2B pipeline (spec §2/§4; AC1-AC4; DEC-SCOPE-126 P1-P8). Names are unique per test (shared database)."""
+"""rec-005 -- the company B2B pipeline (spec §2/§4; AC1-AC4; DEC-SCOPE-127 P1-P8). Names are unique per test (shared database)."""
 
 import uuid
 

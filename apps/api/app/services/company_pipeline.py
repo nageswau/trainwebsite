@@ -1,4 +1,4 @@
-"""rec-005 (DEC-SCOPE-126, spec §4): the company B2B pipeline -- the only writer of `companies.stage`.
+"""rec-005 (DEC-SCOPE-127, spec §4): the company B2B pipeline -- the only writer of `companies.stage`.
 
 Requirement-side items call `apply_event`; people call `person_move`, `mark_lost` and `reopen`. All work on a row the caller locked
 (`recruiter_companies.load_scoped(lock=True)`), so concurrent changes serialise. Functions only; nothing here commits -- the route owns

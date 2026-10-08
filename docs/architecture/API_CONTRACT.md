@@ -1712,10 +1712,26 @@ primary_manager, backup_manager}`.
 | `PATCH /recruiter/contacts/{contact_id}` | Partial. Null clears an optional field; null on `name`, `is_primary` or `active` → `422`. `is_primary: true` moves the primary; `is_primary: false` on the primary → `422` "Choose another primary contact instead". `active: false` on the primary while another contact is active → `409` "Make another contact primary first". `is_primary: true` on an inactive contact → `409` "Reactivate this contact first". Reactivating when the company has no primary makes this contact primary |
 | `POST /recruiter/companies` (§12AO) | Adds an optional `contact` (the POST body above): "+ Add Recruiter". The company and its primary contact are created in one transaction; a contact `422` (`loc ["body","contact",…]`) creates nothing |
 
-## 12AT. Company B2B pipeline (`rec-005`) — addendum, 2026-10-08
+## 12AT. Partnership stage engine + Kanban (`upc-007`) — addendum, 2026-10-08
 
-- **Basis:** `DEC-SCOPE-126`. Design spec `docs/superpowers/specs/2026-10-08-rec-005-company-pipeline-design.md` §4. Migration `0111`.
-  Drafted as §12AQ; upc-006, upc-004 and rec-004 merged first and took §12AQ–§12AS.
+`DEC-SCOPE-126`; design spec `docs/superpowers/specs/2026-10-08-upc-007-partnership-pipeline-design.md` §3. Migration `0111_university_pipeline`. Same read roles, `403`/`404`/`409 inactive` rules and
+write discipline as §12AN (row lock, audit `university.stage_changed|lost|reopened` with stage keys and flags only — never the note or
+reason text — one commit). **Changed (additive):** every university row gains `stage`, `stage_label`, `lost`; the detail gains `pipeline
+{stage, stage_label, column, column_label, changed_at, lost: {at, reason}|null, stages: [{key, label, column}]}`; `permissions` gains
+`can_move_stage`, `can_reopen`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `POST /partnership/universities/{id}/stage` | `can_move_stage` (owner manager, head in team scope, `super_admin`; `overseas_admin` `403`). `{from_stage, to_stage, note?}` (extra keys `422`). Lost `409 {code: "university_lost"}`; `from_stage` ≠ stored `409 {code: "stage_changed", current_stage}`; unknown / same stage `422` (`to_stage`); backward without a note `422` (`note`). `200 {university}` |
+| `POST /partnership/universities/{id}/lost` | `can_move_stage`. `{reason}` required (blank `422`). Already lost `409 university_lost`. The stage is kept |
+| `POST /partnership/universities/{id}/reopen` | `can_reopen` (head in team scope, `super_admin`; a manager `403`). `{reason}` required. Not lost `409 university_not_lost` |
+| `GET /partnership/universities/{id}/stage-history` | Read roles; `limit`, `offset`; `{items: [{id, kind move/lost/reopened, from_stage, from_label, to_stage, to_label, note, actor {id, full_name}, created_at}], total, limit, offset}` newest first |
+| `GET /partnership/pipeline` | Read roles. `column` (one of the 9 Kanban keys or `lost`; other `422`), `manager` (`me`/`none`/uuid; other `422`), `limit`, `offset`. `{columns: [{key, label, stages, count}], lost_count, items: [{id, university_code, name, city, country_name, stage, stage_label, column, lost, primary_manager}], total, limit, offset}`. Active universities only; lost ones only in `lost_count` / `column=lost` |
+
+## 12AU. Company B2B pipeline (`rec-005`) — addendum, 2026-10-08
+
+- **Basis:** `DEC-SCOPE-127`. Design spec `docs/superpowers/specs/2026-10-08-rec-005-company-pipeline-design.md` §4. Migration `0112`.
+  Drafted as §12AQ; upc-006, upc-004, rec-004 and upc-007 merged first and took §12AQ–§12AT.
 - **Common rules:**
   - Every `{id}` resolves through the §12AO company scope: outside it is `404` "Company not found", like an unknown id.
   - Writes lock the company row; the change, its `company_stage_history` row and the audit row (`recruiter_company.stage_changed` /
