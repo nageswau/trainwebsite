@@ -17,6 +17,7 @@ from pydantic import (
     StrictBool,
     StrictInt,
     StringConstraints,
+    TypeAdapter,
     ValidationError,
     ValidationInfo,
     WrapValidator,
@@ -38,6 +39,7 @@ from app.models import (
     BDM_MOU_STATUSES,
     BDM_STAFF_MAX,
     BDM_TARGET_MAX,
+    CANDIDATE_STATUSES,
     GENDERS,
     LEAD_APPOINTMENT_TYPE_LABELS,
     LEAD_CALL_MAX_SECONDS,
@@ -6602,3 +6604,181 @@ class RecCampaignPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# --- rec-009 (DEC-SCOPE-120, spec §3/§5): the candidate master ------------------------------------------------------------------
+CandidateStatus = Literal[CANDIDATE_STATUSES]
+CANDIDATE_FIELD_LABELS = {
+    "name": "Name", "mobile": "Mobile", "email": "Email", "location": "Location", "qualification": "Qualification", "college": "College",
+    "passing_year": "Passing year", "experience_months": "Total experience (months)", "current_company": "Current company",
+    "current_salary": "Current salary", "expected_salary": "Expected salary", "notice_days": "Notice period (days)",
+    "preferred_locations": "Preferred locations", "preferred_role": "Preferred role", "linkedin": "LinkedIn", "source_id": "Source",
+    "source_detail": "Source detail", "status": "Status",
+}
+NO_CONTACT = "Enter a mobile number or an email"
+_LINKEDIN = re.compile(r"https?://\S+", re.IGNORECASE)
+
+
+def _candidate_text(label: str, max_length: int):
+    """Optional text: trimmed, blank = null, capped, no control characters; the error names the field."""
+
+    def check(value: str | None) -> str | None:
+        value = (value or "").strip()
+        if not value:
+            return None
+        if len(value) > max_length:
+            raise ValueError(f"{label} must be at most {max_length} characters")
+        if _BDM_CONTROL.search(value):
+            raise ValueError(f"{label} contains invalid characters")
+        return value
+
+    return Annotated[str | None, AfterValidator(check)]
+
+
+def _candidate_mobile(value: str | None) -> str | None:
+    if value is not None and normalise_phone(value) is None:
+        raise ValueError("Enter a valid mobile number (10 digits, or + and the country code)")
+    return value
+
+
+_EMAIL = TypeAdapter(EmailStr)
+
+
+def _candidate_email(value: str | None) -> str | None:
+    """Blank = null; otherwise a valid address, stored lower-cased (Q-07 matches emails case-insensitively)."""
+    value = (value or "").strip()
+    if not value:
+        return None
+    if len(value) > 255:
+        raise ValueError("Email must be at most 255 characters")
+    try:
+        return _EMAIL.validate_python(value).lower()
+    except ValidationError:
+        raise ValueError("Enter a valid email address") from None
+
+
+def _linkedin(value: str | None) -> str | None:
+    """http(s) only, so the profile link can never be a javascript: URL."""
+    if value is not None and not _LINKEDIN.fullmatch(value):
+        raise ValueError("LinkedIn must be a link starting with https://")
+    return value
+
+
+def _places(value: list[str]) -> list[str]:
+    """Up to 10 places, each 1-80 characters; blanks dropped and repeats (any case) removed, first spelling kept."""
+    out: list[str] = []
+    for raw in value:
+        place = raw.strip()
+        if not place or place.lower() in {p.lower() for p in out}:
+            continue
+        if len(place) > 80 or _BDM_CONTROL.search(place):
+            raise ValueError("Each preferred location must be at most 80 characters")
+        out.append(place)
+    if len(out) > 10:
+        raise ValueError("Enter at most 10 preferred locations")
+    return out
+
+
+CandidateName = _tel_name(160)
+CandidateMobile = Annotated[_candidate_text("Mobile", 40), AfterValidator(_candidate_mobile)]
+CandidateEmail = Annotated[str | None, AfterValidator(_candidate_email)]
+CandidateLinkedin = Annotated[_candidate_text("LinkedIn", 300), AfterValidator(_linkedin)]
+CandidateSalary = Annotated[Decimal | None, Field(ge=0, le=Decimal("9999999999.99"), max_digits=12, decimal_places=2)]
+
+
+class _CandidateFields(BaseModel):
+    """The optional §8 fields, shared by create and edit; null or blank clears one."""
+
+    model_config = ConfigDict(extra="forbid")
+    mobile: CandidateMobile = None
+    email: CandidateEmail = None
+    location: _candidate_text("Location", 120) = None
+    qualification: _candidate_text("Qualification", 120) = None
+    college: _candidate_text("College", 200) = None
+    passing_year: Annotated[StrictInt, Field(ge=1950, le=2100)] | None = None
+    experience_months: Annotated[StrictInt, Field(ge=0, le=600)] | None = None
+    current_company: _candidate_text("Current company", 200) = None
+    current_salary: CandidateSalary = None
+    expected_salary: CandidateSalary = None
+    notice_days: Annotated[StrictInt, Field(ge=0, le=365)] | None = None
+    preferred_locations: Annotated[list[str], AfterValidator(_places)] = Field(default_factory=list)
+    preferred_role: _candidate_text("Preferred role", 120) = None
+    linkedin: CandidateLinkedin = None
+    source_detail: _candidate_text("Source detail", 200) = None
+
+
+class CandidateCreate(_CandidateFields):
+    name: CandidateName
+    source_id: UUID
+    status: CandidateStatus = "available"
+
+    @model_validator(mode="after")
+    def _contact(self):
+        if self.mobile is None and self.email is None:
+            raise ValueError(NO_CONTACT)
+        return self
+
+
+class CandidateUpdate(_CandidateFields):
+    """PATCH: omitted = unchanged (model_dump(exclude_unset=True)); name, source and status cannot be null. The service checks that the
+    merged row still has a mobile or an email."""
+
+    name: CandidateName = None
+    source_id: UUID = None
+    status: CandidateStatus = None
+    preferred_locations: Annotated[list[str], AfterValidator(_places)] = None
+
+
+class PersonRefOut(BaseModel):
+    id: UUID
+    full_name: str
+
+
+class CandidateResumeOut(BaseModel):
+    version: int
+    file_name: str | None
+    content_type: str
+    size_bytes: int
+    uploaded_by: PersonRefOut | None
+    created_at: datetime
+
+
+class CandidateItem(BaseModel):
+    id: UUID
+    candidate_code: str
+    name: str
+    location: str | None
+    experience_months: int | None
+    preferred_role: str | None
+    source: RecLeadSourceRef
+    source_detail: str | None
+    status: CandidateStatus
+    archived: bool
+    created_at: datetime
+
+
+class CandidatePage(BaseModel):
+    items: list[CandidateItem]
+    total: int
+    limit: int
+    offset: int
+
+
+class CandidateDetail(CandidateItem):
+    mobile: str | None
+    email: str | None
+    qualification: str | None
+    college: str | None
+    passing_year: int | None
+    current_company: str | None
+    current_salary: Decimal | None
+    expected_salary: Decimal | None
+    notice_days: int | None
+    preferred_locations: list[str]
+    linkedin: str | None
+    archived_at: datetime | None
+    created_by: PersonRefOut | None
+    updated_by: PersonRefOut | None
+    updated_at: datetime
+    resumes: list[CandidateResumeOut]
+    can_edit: bool
