@@ -4,7 +4,8 @@ Backlog: `docs/delivery/RECRUITER_CRM_BACKLOG.md` rec-003. Source: EVID-018 §1 
 Depends on rec-001 (merged PR #143) and rec-002 (merged PR #146). Numbering: `DEC-SCOPE-121`, migration `0106_rec_companies`, API
 §12AO, RBAC §2.47. upc-001 (PR #149) took `DEC-SCOPE-118`, §12AL, RBAC §2.44 and `0103`; rec-006 (PR #150) took `DEC-SCOPE-119`, §12AM, RBAC §2.45
 and `0104`; upc-003 (PR #151) took `DEC-SCOPE-120`, §12AN, RBAC §2.46 and `0105`. So rec-003 is `DEC-SCOPE-121`,
-`0106_rec_companies`, §12AO and RBAC §2.47 (drafted as 119 / `0103` / §12AM / §2.45).
+`0106_rec_companies`, §12AO and RBAC §2.47 (drafted as 119 / `0103` / §12AM / §2.45). **Status: MERGED** as PR #152 @ `22319014`
+(2026-10-08).
 
 ## 1. Answers used (2026-10-08)
 The user instructed this session to proceed with the recommended answer for each open question. These are recorded in
