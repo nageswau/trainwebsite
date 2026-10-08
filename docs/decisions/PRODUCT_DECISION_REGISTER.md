@@ -5532,7 +5532,7 @@ those numbers. Spec
 - Module scope: `DEC-SCOPE-116` (R8 masking, R11, R13). Company scope: `DEC-SCOPE-121`. Contacts: `DEC-SCOPE-125` (C6). Candidates:
   `DEC-SCOPE-122`. Calls: `DEC-SCOPE-133` (CA7). Engine copied from tel-012/013/014: `DEC-SCOPE-083`, `DEC-SCOPE-100`, `DEC-SCOPE-106`.
 
-**Status:** built on `feature/rec-026`. Every answer below is a **recommended default, `UNVERIFIED`**. The owner told the session to proceed
+**Status:** **MERGED** to `main` as PR #176 @ `98d94a66` (2026-10-08). Every answer below is a **recommended default, `UNVERIFIED`**. The owner told the session to proceed
 with the recommended answers; the backlog lists no Q-xx for this item.
 
 **Numbering:** migration `0120_recruiter_messages` (after rec-028's `0119_recruiter_meetings`), API §12BC and RBAC §2.61. It was drafted as
