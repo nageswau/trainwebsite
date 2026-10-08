@@ -28,7 +28,7 @@ from app.schemas import (
     RecCompanyUpdate,
 )
 from app.services import recruiter_companies as svc
-from app.services.recruiter import ROLE
+from app.services.recruiter import ROLE, recruiter_context
 
 router = APIRouter(prefix="/recruiter/companies", tags=["recruiter-companies"])
 Recruiter = aliased(User)
@@ -120,7 +120,7 @@ async def create_company(payload: RecCompanyCreate, user: User = Depends(get_cur
     A likely duplicate is a 409 the user must acknowledge with confirm_duplicate (D2)."""
     svc.require_creator(user)
     if user.role == ROLE:
-        await svc.caller_scope(db, user)  # the recruiter profile gate
+        await recruiter_context(db, user)  # a recruiter without a profile is 403
         if payload.assigned_recruiter_user_id not in (None, user.id):
             raise HTTPException(403, "Only a placement manager can choose the recruiter")
     values = payload.model_dump(include=set(REC_COMPANY_FIELDS))
@@ -129,7 +129,7 @@ async def create_company(payload: RecCompanyCreate, user: User = Depends(get_cur
     if user.role != ROLE and payload.assigned_recruiter_user_id:
         target = await svc.locked_recruiter_target(db, user, payload.assigned_recruiter_user_id)
     overrides = await svc.check_name(db, payload.name, payload.confirm_duplicate)
-    company = Company(**values, partner_type="recruiter", owner_type="internal", created_by_user_id=user.id)
+    company = Company(**values, created_by_user_id=user.id)
     if user.role == ROLE:
         company.assigned_recruiter_user_id = user.id
     db.add(company)
