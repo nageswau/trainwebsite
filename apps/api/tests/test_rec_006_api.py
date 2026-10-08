@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy import select
 
 from app.models import AuditLog
-from tests.rec001_helpers import as_role, make_pm, make_recruiter, login
+from tests.rec001_helpers import as_role, login, make_pm, make_recruiter
 
 CATS, SKILLS = "/api/v1/recruiter/skill-categories", "/api/v1/recruiter/skills"
 

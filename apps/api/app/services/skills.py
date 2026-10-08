@@ -83,8 +83,8 @@ async def locked_active_categories(db: AsyncSession, ids) -> dict:
     return {c.id: c for c in rows}
 
 
-def ref(row, name: str | None = None) -> dict:
-    return {"id": row.id, "name": name or row.name, "active": row.active}
+def ref(row) -> dict:
+    return {"id": row.id, "name": row.name, "active": row.active}
 
 
 async def skills_out(db: AsyncSession, skills: list[Skill], *, active_only: bool) -> list[dict]:

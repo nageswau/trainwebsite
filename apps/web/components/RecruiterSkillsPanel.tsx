@@ -89,10 +89,6 @@ export default function RecruiterSkillsPanel({ canEdit }: { canEdit: boolean }) 
     go({ q: formText(form, "q"), category: formText(form, "category"), offset: 0 });
   }
 
-  function open(skill: Skill) {
-    setSelected(skill);
-  }
-
   function close() {
     const id = selected?.id;
     setSelected(null);
@@ -169,7 +165,7 @@ export default function RecruiterSkillsPanel({ canEdit }: { canEdit: boolean }) 
                       <td data-label="Status"><span className="badge">{statusLabel(s.active)}</span></td>
                       {canEdit && (
                         <td data-label="Actions">
-                          <button id={`skill-manage-${s.id}`} type="button" className="btn secondary small" aria-label={`Manage ${s.name}`} onClick={() => open(s)}>Manage</button>
+                          <button id={`skill-manage-${s.id}`} type="button" className="btn secondary small" aria-label={`Manage ${s.name}`} onClick={() => setSelected(s)}>Manage</button>
                         </td>
                       )}
                     </tr>
