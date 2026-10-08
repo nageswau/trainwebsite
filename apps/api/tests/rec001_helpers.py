@@ -5,7 +5,7 @@ from sqlalchemy import select
 from app.models import RecruiterProfile, User
 from tests.bdm001_helpers import PASSWORD, USERS, email, emp, login, make_user
 
-__all__ = ["PASSWORD", "USERS", "as_role", "create_recruiter", "email", "emp", "login", "make_pm", "make_recruiter", "make_user", "profile_of", "rec_payload"]
+__all__ = ["PASSWORD", "USERS", "as_role", "email", "emp", "login", "make_pm", "make_recruiter", "make_user", "profile_of", "rec_payload"]
 
 
 async def make_pm(db, *, active: bool = True, name: str | None = None) -> User:
@@ -29,10 +29,6 @@ def rec_payload(manager_id, **overrides) -> dict:
     return payload
 
 
-async def create_recruiter(client, manager_id, **overrides):
-    return await client.post(USERS, json=rec_payload(manager_id, **overrides))
-
-
 async def as_role(client, db, role: str, division: str) -> User:
     actor = await make_user(db, role, division)
     await login(client, actor)
@@ -40,5 +36,5 @@ async def as_role(client, db, role: str, division: str) -> User:
 
 
 async def profile_of(db, user_id) -> RecruiterProfile | None:
-    db.expire_all()
-    return await db.scalar(select(RecruiterProfile).where(RecruiterProfile.user_id == user_id))
+    """Fresh from the database (the API wrote it in another session) without expiring the test's other objects."""
+    return await db.scalar(select(RecruiterProfile).where(RecruiterProfile.user_id == user_id).execution_options(populate_existing=True))

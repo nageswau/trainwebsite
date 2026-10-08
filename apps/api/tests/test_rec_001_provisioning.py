@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy import func, select
 
 from app.models import AuditLog, PasswordResetToken, RecruiterProfile, User
-from tests.rec001_helpers import USERS, as_role, create_recruiter, emp, make_pm, make_recruiter, make_user, profile_of, rec_payload
+from tests.rec001_helpers import USERS, as_role, emp, make_pm, make_recruiter, make_user, profile_of, rec_payload
 
 
 @pytest.fixture(autouse=True)
