@@ -21,6 +21,7 @@ from app.schemas import (
     InstitutionType,
     PartnershipHeadPage,
     PartnershipPotential,
+    RelationshipStrength,
     UniversityAssign,
     UniversityCreate,
     UniversityDeactivate,
@@ -56,6 +57,7 @@ async def list_universities(
     institution_type: InstitutionType | None = None,
     priority: UniversityPriority | None = None,
     partnership_potential: PartnershipPotential | None = None,
+    relationship_strength: RelationshipStrength | None = None,
     manager: str | None = Query(None, max_length=36),
     visibility: Literal["public", "internal"] | None = None,
     include_inactive: bool = False,
@@ -75,6 +77,7 @@ async def list_universities(
         (University.institution_type, institution_type),
         (University.priority, priority),
         (University.partnership_potential, partnership_potential),
+        (University.relationship_strength, relationship_strength),
     ):
         if value is not None:
             filters.append(column == value)
