@@ -1032,7 +1032,31 @@ panel fields (no commission, for every role).
 | Link / unlink a University org to the master | — | — | — | ✅ | assigned BDM (`can_edit`) | `403`/`404` per bdm-002 scope |
 | See an org's linked university / a university's linked orgs | — | ✅ / ✅ | — / ✅ | ✅ / ✅ | ✅ (own scope) / — | — |
 
-### 2.51 University CSV import *(net-new, added 2026-10-08 — `DEC-SCOPE-125`, `upc-005`)*
+### 2.51 Company contacts *(net-new, added 2026-10-08 — `DEC-SCOPE-125`, `rec-004`; drafted as §2.48)*
+
+Contacts take the company's scope (§2.47). A contact of a company outside the caller's scope is `404`. Writes follow the company's
+`can_edit` (C1, UNVERIFIED default). An archived company's contacts are read-only (`409`).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` (with a profile) | read; add, edit, make primary, deactivate/reactivate; "+ Add Recruiter" | companies assigned to them | `rec-004` |
+| `placement_manager` | read; "+ Add Recruiter" (create only). Every contact write is `403` | direct reports' companies + the unassigned queue | `rec-004` |
+| `super_admin` | everything | all companies | `rec-004` |
+| `bdm` | read only (R10); every write is `403` | companies whose Assigned BDM is them | `rec-004` |
+| `hr_team`, `it_admin`, `employer`, every other role | `403` | — | `rec-004` |
+
+### 2.52 Partnership stage engine *(net-new, added 2026-10-08 — `DEC-SCOPE-126`, `upc-007`)*
+
+Enforced in `services/partnership_universities.py` (`can_move_stage`, `can_reopen`: role → team scope → state) before the single writer
+`services/partnership_pipeline.py` runs.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Read stage, history, Kanban board | ✅ | ✅ | ✅ | ✅ | `403` |
+| Move stage, mark lost | own (primary or backup) | unowned + team-owned | `403` | ✅ | `403` |
+| Reopen a lost university | `403` | unowned + team-owned | `403` | ✅ | `403` |
+
+### 2.53 University CSV import *(net-new, added 2026-10-08 — `DEC-SCOPE-127`, `upc-005`)*
 
 Enforced inline in `api/university_import.py` (`_require_importer`, `_scope`). The rows obey §2.46 (created unowned and internal) and §2.50
 (duplicates are reported; an import never overrides).

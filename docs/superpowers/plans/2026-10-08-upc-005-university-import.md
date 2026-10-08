@@ -29,13 +29,13 @@ Spec: `docs/superpowers/specs/2026-10-08-upc-005-university-import-design.md`. B
 
 ## Tasks
 
-1. **Model + migration** — `UniversityImportBatch` in `models.py`; `0110_university_imports` (guarded create, downgrade refusal). Tests:
+1. **Model + migration** — `UniversityImportBatch` in `models.py`; `0112_university_imports` (guarded create, downgrade refusal). Tests:
    `test_upc_005_migration.py` (chain/single head, model parity, round trip in a throwaway DB, refusal).
 2. **Service** — `services/university_import.py`: `COLUMNS`/`REQUIRED`, `parse_row` (label normalisation → `UniversityCreate`),
    `resolve_country`, `run(db, user, batch, filled)` (set-based: countries, key locks, existing matches, in-file duplicates, codes,
    slugs, insert, audits), `report`, `report_csv`. `partnership_universities.duplicate_lock_key` is shared with `check_duplicates`.
 3. **API** — `api/university_import.py`: template, import, history, report, report.csv; `main.py` registration. Tests:
    `test_upc_005_import.py` (every behaviour in spec §5 pytest).
-4. **Web lib + panel + history + page + list link** — vitest `UniversityImportPanel.test.tsx`, `UniversityImportHistory.test.tsx`.
+4. **Web lib + panel + history + page + list link** — vitest `UniversityImportPanel.test.tsx` (the panel renders the history, so it covers both).
 5. **Playwright** — `tests/e2e/upc-005-university-import.spec.ts` (AC1, AC2, manager without the link).
-6. **Docs** — DEC-SCOPE-125, API §12AS, RBAC §2.51, DATA_MODEL addendum, backlog status.
+6. **Docs** — DEC-SCOPE-127, API §12AU, RBAC §2.53, DATA_MODEL addendum, backlog status.

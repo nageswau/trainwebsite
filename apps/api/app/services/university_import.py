@@ -1,4 +1,4 @@
-"""upc-005 (DEC-SCOPE-125, spec §1): the University CSV import's rows -- parse, check for duplicates, create, report.
+"""upc-005 (DEC-SCOPE-127, spec §1): the University CSV import's rows -- parse, check for duplicates, create, report.
 
 Functions only; nothing here commits -- the route owns the transaction. Every row goes through `UniversityCreate`, so an import accepts
 exactly what a manual create accepts (IM2). The work is set-based (spec §3): one query each for the countries, the key locks, the existing

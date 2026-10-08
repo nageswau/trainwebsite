@@ -4,8 +4,8 @@
   "Total Universities: 1,250". Scope authority U15 (`EXPLICIT_APPROVAL`, 2026-10-08): "Manual create and edit + CSV import (per-row
   report, duplicate check on name + country, idempotent) by `partnership_head` / `overseas_admin`".
 - **Dependencies:** upc-003 (`DEC-SCOPE-120`, PR #151) and upc-004 (`DEC-SCOPE-124`, PR #158) are merged on `main` @ `5b7c1fd5`.
-  upc-007 (the stage) has not landed. Imported rows get the "Target" stage when upc-007 adds the column (IM4).
-- **Numbering (provisional, re-chained at merge):** `DEC-SCOPE-125`, migration `0110_university_imports`, API §12AS, RBAC §2.51.
+  upc-007 (the stage) merged first: imported rows start at its first stage, Target University (IM4).
+- **Numbering (renumbered on merging `main` @ `f5f6822d`):** `DEC-SCOPE-127`, migration `0112_university_imports`, API §12AU, RBAC §2.53.
 - **Status of answers:** IM1–IM12 are the recommended answers, applied under the owner's standing instruction for the build session
   ("proceed with the recommended answers; ask only if genuinely blocking"). They are **not** separately confirmed, so they stay
   `NEEDS_CONFIRMATION` at sign-off.
@@ -17,7 +17,7 @@
 | IM1 | Columns | Required: `name`, `country`, `city`, `institution_type`. Optional: `ownership_type`, `state_region`, `website`, `course_levels`, `popular_programs`, `international_office`, `existing_relationship`, `priority`, `partnership_potential`, `overview`. `city` is required because the master requires it (NOT NULL, upc-003). A missing required column, or an unknown or repeated column, rejects the whole file with `422` (ENH-029 `known` mode). Rankings, managers, relationship strength and publishing are not imported: they are per-record decisions |
 | IM2 | Values | Every row goes through `UniversityCreate`, the same validation as a manual create. Value lists accept the code or the label in any case (`Language School` = `language_school`, `a` = `A`, `phd` = `PhD`). `course_levels` and `popular_programs` are `;`-separated |
 | IM3 | Country | An ISO-2 code (`GB`) or the country name (`United Kingdom`), compared after NFKC + casefold. Anything else makes the row invalid: "Unknown country: …". Internal (non-catalogue) countries are allowed, as in a manual create |
-| IM4 | Imported rows | Unowned (no managers), internal (`catalogue_visible = false`), active, with a new `UNV-` code and a slug by upc-003's rule (UM14). "Stage Target" is applied by upc-007's default when it adds the stage; nothing is stored here |
+| IM4 | Imported rows | Unowned (no managers), internal (`catalogue_visible = false`), active, with a new `UNV-` code and a slug by upc-003's rule (UM14). the stage is upc-007's default, "Target University" (the first stage), as for a manual create |
 | IM5 | Duplicates | upc-004's key (normalised name + country). A row matching the master (inactive rows included) **or an earlier row of the same file** is reported `duplicate` with the matching codes or row number. An import never overrides: a head adds a deliberate duplicate by hand (UD2) |
 | IM6 | Idempotency | `Idempotency-Key` header required, scoped to the uploader (tel-006 R8). The same key with the same file replays the first report and creates nothing. The same key with a different file is `422`. Re-uploading the same file under a new key creates nothing either: every row is now a `duplicate` (AC2) |
 | IM7 | Caps | 1 MB and 5,000 filled-in rows (shared ENH-028 reader: UTF-8 with or without BOM; NUL or malformed is `422`; too large is `413`) |
@@ -27,7 +27,7 @@
 | IM11 | Audit | One `university.import` row for the batch (counts + file hash) and one `university.create` row per created university (`{code, import_batch_id}`), all in the import's transaction |
 | IM12 | UI | `/partnership/universities/import`: the template download, the column reference, the upload, the result (counts + the rows that were not created) and the report download, plus the caller's import history. The list page gets an "Import universities" link for the creator roles |
 
-## 2. Data (migration `0110_university_imports`)
+## 2. Data (migration `0112_university_imports`)
 
 `university_import_batches`: `id` UUID PK, `uploaded_by_user_id` FK `users`, `idempotency_key` VARCHAR(120), `file_sha256` VARCHAR(64),
 `total_rows`, `created_count`, `duplicate_count`, `invalid_count` (INT, default 0), `results_json` JSON (default `[]`),
@@ -35,7 +35,7 @@
 `created_count + duplicate_count + invalid_count = total_rows`, index `(uploaded_by_user_id, created_at)`. Guarded like 0108 (0001 builds
 from the models). `downgrade()` refuses while any batch exists (import history would be lost).
 
-## 3. API (§12AS)
+## 3. API (§12AU)
 
 - `GET /partnership/universities/imports/template`: the header row as CSV.
 - `POST /partnership/universities/import` (multipart `file`, header `Idempotency-Key`): `201` with the report

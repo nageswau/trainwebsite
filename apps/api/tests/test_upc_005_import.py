@@ -77,6 +77,7 @@ async def test_rows_are_created_unowned_internal_and_audited(client, db_session)
     assert uni.course_levels == ["UG", "PhD"] and uni.popular_programs == ["Business", "Law"] and uni.existing_relationship == "new"
     assert uni.website and uni.overview == "An overview"
     assert (uni.primary_manager_user_id, uni.backup_manager_user_id, uni.catalogue_visible, uni.active) == (None, None, False, True)
+    assert uni.stage == "target_university"  # IM4: upc-007's first stage, as for a manual create
     second = await db_session.get(University, uuid.UUID(beta["university_id"]))
     await db_session.refresh(second)
     assert second.country_id == jp.id and second.institution_type == "language_school"

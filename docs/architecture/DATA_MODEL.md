@@ -329,7 +329,14 @@ primary and differs from it), `priority` (A/B/C, indexed), `partnership_potentia
 unique per university, system, name, year; cascade delete) and `university_assignment_history` (append-only, one row per changed manager
 slot). **Migration `0105_university_master`** backfills codes for existing rows in `created_at, slug` order and keeps them public;
 `downgrade()` refuses while rankings, assignment history or internal universities exist. Public reads show only published, active rows
-(API §12AN). `stage` is upc-007's; contacts are upc-006's.
+(API §12AN). Contacts are upc-006's.
+
+**upc-007 (`DEC-SCOPE-126`):** `universities` gains `stage` (one of the 15 EVID-020 §3 keys, CHECK, indexed, default
+`target_university`), `stage_changed_at` (set on every move), `lost_at` + `lost_reason` (CHECK both or neither: the Lost/Closed flag on top
+of the kept stage). New table `university_stage_history` (append-only: kind move / lost / reopened, from/to stage, note, actor,
+`position` identity; no stage CHECK so history survives a catalogue change). **Migration `0111_university_pipeline`** sets every existing
+row to `target_university` with `stage_changed_at = created_at`; `downgrade()` refuses while history, a lost or a moved university exists.
+The Kanban column, map group and probability are fixed groupings in `app/partnership_stages.py` (backlog Appendix B), never stored.
 
 **Addendum, 2026-10-08 (`upc-006`, `DEC-SCOPE-123` — University contacts + relationship strength):** `universities.relationship_strength`
 (nullable; CHECK new / developing / good / strong / strategic / at_risk / dormant, §11). New tables: `university_contact_roles` (`code` PK,
@@ -346,10 +353,10 @@ normalised name, kept by the model's `name` validator) with the non-unique index
 organizations only). **Migration `0109_university_duplicates`** backfills the key and logs (never merges or links) the existing duplicate
 groups and the unlinked BDM University organizations that match a master name; `downgrade()` refuses while any organization is linked.
 
-**Addendum, 2026-10-08 (`upc-005`, `DEC-SCOPE-125`, U15 — University CSV import):** `university_import_batches` (uploader FK,
+**Addendum, 2026-10-08 (`upc-005`, `DEC-SCOPE-127`, U15 — University CSV import):** `university_import_batches` (uploader FK,
 `idempotency_key` unique per uploader, `file_sha256`, `total_rows`/`created_count`/`duplicate_count`/`invalid_count` with CHECK
 `ck_university_import_batches_counts`, `results_json` per-row outcomes; index `(uploaded_by_user_id, created_at)`). The file is never
-stored. **Migration `0110_university_imports`**; `downgrade()` refuses while any batch exists (API §12AS).
+stored. **Migration `0112_university_imports`**; `downgrade()` refuses while any batch exists (API §12AU).
 
 ### 6.2 `OverseasApplication`, `ApplicationStatusHistory`
 **Carries over**, status vocabulary **extended** — this is part of the `ADR-012` resolution (§6.3
@@ -1367,3 +1374,28 @@ registration and `/workflows/it/jobs` keep writing only name, website and owners
 `company_assignment_history`: `id`, `company_id` FK, `from_user_id` (NULL = was unassigned), `to_user_id`, `changed_by_user_id`,
 `created_at`; `ix_company_assignment_history_company`. Append-only. `downgrade()` refuses while any history row or any new-column value
 exists.
+
+## Company contacts (`rec-004`, `DEC-SCOPE-125`; migration `0110_company_contacts`, after `0109_university_duplicates`)
+
+`company_contacts` holds many people per company (R3; EVID-018 §4). Contacts are never deleted, only deactivated (C2).
+
+| Column | Type / rule |
+|---|---|
+| `id` | uuid PK |
+| `company_id` | FK `companies` (RESTRICT); `ix_company_contacts_company` |
+| `position` | bigint identity (insertion order) |
+| `name` | varchar(200) NOT NULL |
+| `designation`, `department` | varchar(120) |
+| `role_id` | FK `rec_contact_roles` (it must be active when set or changed: app rule) |
+| `mobile` | varchar(40) |
+| `mobile_normalized` | varchar(20), derived from `mobile` (E.164; `ix_company_contacts_mobile`) |
+| `email` | varchar(255), lower-cased |
+| `linkedin_url` | varchar(300), http/https only |
+| `preferred_channel` | varchar(16), `ck_company_contacts_channel` `call`/`whatsapp`/`email` |
+| `notes` | varchar(2000) |
+| `is_primary` | bool; `uq_company_contacts_primary` (partial unique on `company_id` WHERE `is_primary`) |
+| `active` | bool; `ck_company_contacts_primary_active`: `NOT is_primary OR active` |
+| `created_by_user_id` | FK users |
+| `created_at`, `updated_at` | timestamptz |
+
+`downgrade()` refuses while any row exists.

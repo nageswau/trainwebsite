@@ -395,11 +395,11 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-005 — University CSV import
-- **Status (2026-10-08):** built on `feature/upc-005` under `DEC-SCOPE-125`, with migration `0110_university_imports`, API §12AS and
-  RBAC §2.51. Spec: `docs/superpowers/specs/2026-10-08-upc-005-university-import-design.md`.
+- **Status (2026-10-08):** built on `feature/upc-005` under `DEC-SCOPE-127`, with migration `0112_university_imports`, API §12AU and
+  RBAC §2.53. Spec: `docs/superpowers/specs/2026-10-08-upc-005-university-import-design.md`.
   - The design-level rules are answered by the recommended defaults IM1–IM12 (`NEEDS_CONFIRMATION`): city is required (the master
     requires it); ISO-2 or name countries; imports never override a duplicate; 5,000-row cap.
-  - "Stage Target" for imported rows lands with upc-007's stage default (no stage column yet).
+  - Imported rows start at upc-007's first stage, Target University (the model default), like a manual create.
 - **Business requirement:** §25 "all universities globally"; §22 "Total Universities: 1,250" (U15).
 - **Existing behavior:** none.
 - **Expected behavior:**
@@ -467,6 +467,11 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-007 — Partnership stage engine + history + Kanban
+- **Status (2026-10-08):** built on `feature/upc-007` under `DEC-SCOPE-126`, with migration `0111_university_pipeline`, API §12AT and
+  RBAC §2.52. Spec: `docs/superpowers/specs/2026-10-08-upc-007-partnership-pipeline-design.md`.
+  - PS1–PS12 are recommended defaults (`NEEDS_CONFIRMATION`): 15 stored stages (the source lists 15; "14" below miscounts); existing rows
+    start at Target University (Q-08 backfill); Agreement Signed counts as "In Progress" (G2); `overseas_admin` reads only; reopen by the
+    head or `super_admin`; Lost and Reopen need a reason.
 - **Business requirement:** §3 (14 statuses), §4 Kanban (9 columns), §2 status colours (U7).
 - **Existing behavior:** none.
 - **Expected behavior:**

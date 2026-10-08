@@ -22,6 +22,7 @@ from sqlalchemy import (
     Uuid,
     false,
     text,
+    true,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column, relationship, validates
 from sqlalchemy.sql import func
@@ -31,6 +32,8 @@ from app.bdm_stages import MANUAL_STAGES as BDM_MANUAL_STAGES
 from app.core.identifiers import normalize_key
 from app.lead_stages import STAGES as LEAD_STAGES
 from app.notifications.phone import normalise_phone
+from app.partnership_stages import FIRST_STAGE as UNIVERSITY_FIRST_STAGE
+from app.partnership_stages import STAGE_KEYS as UNIVERSITY_STAGE_KEYS
 from app.tel_content_kinds import ASSET_KINDS as TEL_ASSET_KINDS
 from app.tel_content_kinds import EMAIL_KINDS as TEL_EMAIL_KINDS
 from app.tel_content_kinds import WHATSAPP_KINDS as TEL_WHATSAPP_KINDS
@@ -382,6 +385,49 @@ class CompanyAssignmentHistory(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+# rec-004 (DEC-SCOPE-125): migration 0110 repeats COMPANY_CONTACT_CHECKS (test_rec_004_migration asserts they stay identical).
+COMPANY_CONTACT_CHANNELS = ("call", "whatsapp", "email")
+COMPANY_CONTACT_CHECKS = {
+    "ck_company_contacts_channel": f"preferred_channel IS NULL OR preferred_channel IN ({', '.join(repr(c) for c in COMPANY_CONTACT_CHANNELS)})",
+    "ck_company_contacts_primary_active": "NOT is_primary OR active",
+}
+
+
+class CompanyContact(Base, TimestampMixin):
+    """rec-004 (EVID-018 §4, R3): a person at a company -- the §2 "recruiter" and the §3 HR / TA / Hiring-Manager contacts. Never
+    deleted, only deactivated (C2); at most one primary per company (the partial unique index). `position` keeps insertion order;
+    `mobile_normalized` follows `mobile` for later lookups (calls, duplicate checks)."""
+
+    __tablename__ = "company_contacts"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in COMPANY_CONTACT_CHECKS.items()),
+        Index("ix_company_contacts_company", "company_id"),
+        Index("uq_company_contacts_primary", "company_id", unique=True, postgresql_where=text("is_primary")),
+        Index("ix_company_contacts_mobile", "mobile_normalized"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"))
+    position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    name: Mapped[str] = mapped_column(String(200))
+    designation: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    department: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    role_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_contact_roles.id"), nullable=True)
+    mobile: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    mobile_normalized: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    linkedin_url: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    preferred_channel: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    notes: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    is_primary: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+    @validates("mobile")
+    def _derive_mobile_normalized(self, _key: str, mobile: str | None) -> str | None:
+        self.mobile_normalized = normalise_phone(mobile)
+        return mobile
+
+
 class EmployerProfile(Base, TimestampMixin):
     """EMP-001 -- DATA_MODEL.md #5.2, net-new. `registration_status` exists but is
     deliberately unenforced/nullable: whether registration requires Admin approval before
@@ -519,6 +565,19 @@ UNIVERSITY_CHECKS = {
     "ck_universities_partnership_potential": _one_of("partnership_potential", PARTNERSHIP_POTENTIALS),
     "ck_universities_backup_needs_primary": "backup_manager_user_id IS NULL OR (primary_manager_user_id IS NOT NULL AND backup_manager_user_id <> primary_manager_user_id)",
 }
+# upc-007 (DEC-SCOPE-126, spec §2): the stored partnership stage and the Lost flag. Migration 0111 repeats both dicts;
+# test_upc_007_migration asserts they stay identical.
+UNIVERSITY_STAGE_EVENT_KINDS = ("move", "lost", "reopened")
+UNIVERSITY_PIPELINE_CHECKS = {
+    "ck_universities_stage": _one_of("stage", UNIVERSITY_STAGE_KEYS, nullable=False),
+    "ck_universities_lost": "(lost_at IS NULL) = (lost_reason IS NULL)",
+}
+UNIVERSITY_STAGE_HISTORY_CHECKS = {
+    "ck_university_stage_history_kind": _one_of("kind", UNIVERSITY_STAGE_EVENT_KINDS, nullable=False),
+    "ck_university_stage_history_note": "kind = 'move' OR note IS NOT NULL",
+}
+
+
 # upc-006: added by migration 0108 (kept out of UNIVERSITY_CHECKS, which mirrors 0105).
 UNIVERSITY_RELATIONSHIP_CHECK = _one_of("relationship_strength", RELATIONSHIP_STRENGTHS)
 
@@ -534,6 +593,8 @@ class University(Base, TimestampMixin):
     __table_args__ = (
         UniqueConstraint("university_code", name="uq_universities_code"),
         *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_CHECKS.items()),
+        *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_PIPELINE_CHECKS.items()),
+        Index("ix_universities_stage", "stage"),
         CheckConstraint(UNIVERSITY_RELATIONSHIP_CHECK, name="ck_universities_relationship_strength"),
         Index("ix_universities_primary_manager", "primary_manager_user_id"),
         Index("ix_universities_backup_manager", "backup_manager_user_id"),
@@ -567,6 +628,11 @@ class University(Base, TimestampMixin):
     active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
     # UM5: true by default so the existing rows and the legacy admin create stay public; the master creates every row as false.
     catalogue_visible: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    # upc-007: written only by services/partnership_pipeline (single writer). Lost is a flag on top of the kept stage (PS1).
+    stage: Mapped[str] = mapped_column(String(40), default=UNIVERSITY_FIRST_STAGE, server_default=UNIVERSITY_FIRST_STAGE)
+    stage_changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    lost_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    lost_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     relationship_strength: Mapped[str | None] = mapped_column(String(12), nullable=True)  # upc-006 CT11: set by hand (CT1)
     country = relationship("Country")
 
@@ -614,9 +680,9 @@ class UniversityAssignmentHistory(Base):
 
 
 class UniversityImportBatch(Base, TimestampMixin):
-    """upc-005 (DEC-SCOPE-125, IM6/IM10): one CSV import into the University Master. The file is never stored: only its hash, the counts
+    """upc-005 (DEC-SCOPE-127, IM6/IM10): one CSV import into the University Master. The file is never stored: only its hash, the counts
     and each row's outcome {row_number, status, name, country, university_id, university_code, matches, reason}. The Idempotency-Key is
-    scoped to the uploader. Migration 0110 repeats the constraints (test_upc_005_migration)."""
+    scoped to the uploader. Migration 0112 repeats the constraints (test_upc_005_migration)."""
 
     __tablename__ = "university_import_batches"
     __table_args__ = (
@@ -633,6 +699,26 @@ class UniversityImportBatch(Base, TimestampMixin):
     duplicate_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     invalid_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     results_json: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+
+
+class UniversityStageHistory(Base):
+    """upc-007 (spec PS9): one row per stage move, Lost or Reopen. Append-only. `from_stage` = `to_stage` for lost / reopened; `note` is
+    the move note or the required reason. No stage CHECK: history must survive a future catalogue change. `position` orders rows."""
+
+    __tablename__ = "university_stage_history"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_STAGE_HISTORY_CHECKS.items()),
+        Index("ix_university_stage_history_university", "university_id", "position"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"))
+    actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    kind: Mapped[str] = mapped_column(String(10))
+    from_stage: Mapped[str] = mapped_column(String(40))
+    to_stage: Mapped[str] = mapped_column(String(40))
+    note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 # upc-006 (DEC-SCOPE-123, spec §2): the contact role catalogue (CT2) -- §10's example roles and §1's contact rows, International

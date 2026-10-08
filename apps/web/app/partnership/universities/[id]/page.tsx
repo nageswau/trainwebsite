@@ -2,12 +2,15 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { accessUnavailable } from "@/components/AccessUnavailable";
+import BdmStageHistory from "@/components/BdmStageHistory";
 import PortalShell from "@/components/PortalShell";
 import UniversityActions from "@/components/UniversityActions";
 import UniversityAssignForm from "@/components/UniversityAssignForm";
 import UniversityContacts from "@/components/UniversityContacts";
+import UniversityStagePanel from "@/components/UniversityStagePanel";
 import { serverApi } from "@/lib/api";
 import type { Page } from "@/lib/apiErrors";
+import type { StageEvent } from "@/lib/bdmPipeline";
 import type { User } from "@/lib/types";
 import {
   CONTACT_ROLES_URL,
@@ -25,12 +28,13 @@ import {
   type UniversityContact,
   UNIVERSITIES_PATH,
   universityPath,
+  universityUrl,
   visibilityLabel,
 } from "@/lib/universities";
-import { loadUniversity } from "@/lib/universitiesServer";
+import { firstStageHistory, loadUniversity } from "@/lib/universitiesServer";
 
 // upc-003: one university's master record -- the §1 fields, rankings, ownership (§27) and catalogue status. Later upc items add their
-// own sections (contacts, pipeline, agreements, courses ...) to this page.
+// own sections (contacts, pipeline, agreements, courses ...) to this page. upc-007: the partnership stage and its history.
 function Facts({ rows }: { rows: [string, ReactNode][] }) {
   return (
     <dl style={{ display: "grid", gridTemplateColumns: "minmax(120px, max-content) 1fr", gap: "6px 16px", margin: 0 }}>
@@ -44,9 +48,9 @@ function Facts({ rows }: { rows: [string, ReactNode][] }) {
 
 export default async function UniversityPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  let user: User, u: University, contacts: Page<UniversityContact>, roles: ContactRole[];
+  let user: User, u: University, history: Page<StageEvent> | null, contacts: Page<UniversityContact>, roles: ContactRole[];
   try {
-    [user, u] = await Promise.all([serverApi<User>("/api/v1/auth/me"), loadUniversity(id)]);
+    [user, u, history] = await Promise.all([serverApi<User>("/api/v1/auth/me"), loadUniversity(id), firstStageHistory(id)]);
     // upc-006: the contacts this reader may see (the API slices them), and the role list only for those who can edit.
     [contacts, roles] = await Promise.all([
       serverApi<Page<UniversityContact>>(`${contactsUrl(u.id)}?limit=50`),
@@ -90,6 +94,9 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
               ["Applications", String(u.application_count)],
             ]} />
           </section>
+          <UniversityStagePanel university={u} />
+          {/* remounted after each stage change (the page refreshes), so it starts from the new first page */}
+          <BdmStageHistory key={`${u.pipeline.changed_at}|${u.pipeline.lost?.at ?? ""}`} orgId={u.id} initial={history} version={0} url={universityUrl(u.id, "stage-history")} />
           <UniversityContacts universityId={u.id} contacts={contacts.items} roles={roles} canEdit={u.permissions.can_edit_contacts} />
           <section className="action-card" aria-labelledby="uni-rankings">
             <h3 id="uni-rankings">Rankings</h3>

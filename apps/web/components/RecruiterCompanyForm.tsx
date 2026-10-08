@@ -1,6 +1,7 @@
 "use client";
 import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
+import RecruiterContactFields from "@/components/RecruiterContactFields";
 import SearchableSelect from "@/components/SearchableSelect";
 import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
 import { plural } from "@/lib/plural";
@@ -22,13 +23,15 @@ import {
   TEXT_FIELDS,
   valuesOf,
 } from "@/lib/recruiterCompanies";
+import { contactBody, contactErrorsOf, type ContactErrors, contactValuesOf, RECRUITER_FIELDS } from "@/lib/recruiterContacts";
 import { readAll } from "@/lib/telecallerCatalogue";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 import { useLeaveGuard } from "@/lib/useLeaveGuard";
 
 // rec-003 (spec §6): add or edit a company (EVID-018 §2/§3, the company side; contacts arrive with rec-004). A likely duplicate is the
 // server's 409; the user decides, and "Save anyway" resends the same entry with confirm_duplicate (the BdmOrganizationForm pattern). The
-// entry is never cleared on an error, and every rule is the server's -- the checks here only save a round trip.
+// entry is never cleared on an error, and every rule is the server's -- the checks here only save a round trip. rec-004 "+ Add Recruiter"
+// (`withContact`): the company and its first contact -- the §2 person fields -- are created in one request.
 const LEAVE_PROMPT = "You have unsaved changes to this company. Leave without saving?";
 const ALL_FIELDS: FormField[] = [...TEXT_FIELDS, ...PICK_FIELDS];
 type Text = { label: string; max: number; multiline?: boolean; type?: string; hint?: string };
@@ -66,11 +69,14 @@ export default function RecruiterCompanyForm({
   mode,
   company,
   canChooseRecruiter,
+  withContact = false,
   onSaved,
   onCancel,
 }: {
   mode: "create" | "edit";
   company?: Company;
+  /** rec-004 "+ Add Recruiter" (create only): ask for the first contact too. */
+  withContact?: boolean;
   /** Managers and super admin may hand a new company to a recruiter (else it is unassigned); a recruiter's is always their own. */
   canChooseRecruiter: boolean;
   /** `saved` is false when there was nothing to change. */
@@ -88,10 +94,15 @@ export default function RecruiterCompanyForm({
   const [sizes, setSizes] = useState<CatalogueValue[]>([]);
   const [sources, setSources] = useState<CatalogueValue[]>([]);
   const [campaigns, setCampaigns] = useState<RecCampaign[]>([]);
+  const [contactRoles, setContactRoles] = useState<CatalogueValue[]>([]);
+  const [contact, setContact] = useState(contactValuesOf);
+  const [contactErrors, setContactErrors] = useState<ContactErrors>({});
   const [pickersFailed, setPickersFailed] = useState(false);
   const focus = useFocusAfterRender();
   const idPrefix = mode === "create" ? "company-new" : `company-${company?.id}`;
-  const dirty = ALL_FIELDS.some((k) => values[k] !== original.current[k]) || recruiter !== null;
+  const contactPrefix = `${idPrefix}-contact`;
+  const askContact = withContact && mode === "create";
+  const dirty = ALL_FIELDS.some((k) => values[k] !== original.current[k]) || recruiter !== null || (askContact && RECRUITER_FIELDS.some((k) => contact[k] !== ""));
   const searchRecruiters = useMemo(() => recruiterSearch(null), []);
   useLeaveGuard(dirty, LEAVE_PROMPT);
 
@@ -107,6 +118,14 @@ export default function RecruiterCompanyForm({
       .catch(() => !abort.signal.aborted && setPickersFailed(true));
     return () => abort.abort();
   }, []);
+  useEffect(() => {
+    if (!askContact) return;
+    const abort = new AbortController();
+    activeValues("contact-roles", abort.signal)
+      .then(setContactRoles)
+      .catch(() => !abort.signal.aborted && setPickersFailed(true));
+    return () => abort.abort();
+  }, [askContact]);
 
   const set = (key: FormField, value: string) => setValues((prev) => ({ ...prev, [key]: value }));
   // A campaign belongs to one lead source: choosing one fills its source; changing the source drops a campaign of another source.
@@ -132,10 +151,13 @@ export default function RecruiterCompanyForm({
     if (!values.name.trim()) found.name = "Company name is required";
     const count = values.employee_count.trim();
     if (count && !/^\d+$/.test(count)) found.employee_count = "Number of employees must be a whole number";
+    const contactName = askContact && !contact.name.trim();
     setErrors(found);
+    setContactErrors(contactName ? { name: "Contact name is required" } : {});
     const first = ALL_FIELDS.find((k) => found[k]);
-    if (first) focus(`${idPrefix}-${first}`);
-    return !first;
+    if (contactName) focus(`${contactPrefix}-name`); // the contact section comes first on screen
+    else if (first) focus(`${idPrefix}-${first}`);
+    return !first && !contactName;
   }
 
   async function save(confirm = false) {
@@ -143,6 +165,7 @@ export default function RecruiterCompanyForm({
     const body = companyBody(values, mode === "edit" ? original.current : undefined);
     if (mode === "edit" && Object.keys(body).length === 0) return onSaved(company!, false);
     if (mode === "create" && recruiter) body.assigned_recruiter_user_id = recruiter;
+    if (askContact) body.contact = contactBody(contact);
     setBusy(true);
     setFailure(null);
     try {
@@ -159,9 +182,13 @@ export default function RecruiterCompanyForm({
       }
       const dup = response.status === 409 ? duplicateOf(data?.detail) : null;
       const onFields = response.status === 422 ? fieldErrors(data?.detail) : null;
+      const onContact = response.status === 422 && askContact ? contactErrorsOf(data?.detail, ["body", "contact"]) : null;
       if (dup) {
         setDuplicate(dup);
         focus(`${idPrefix}-duplicate`);
+      } else if (onContact) {
+        setContactErrors(onContact);
+        focus(`${contactPrefix}-${RECRUITER_FIELDS.find((k) => onContact[k]) ?? "name"}`);
       } else if (onFields) {
         setErrors(onFields);
         focus(`${idPrefix}-${ALL_FIELDS.find((k) => onFields[k])}`);
@@ -247,6 +274,22 @@ export default function RecruiterCompanyForm({
         <p className="form-error" role="alert">
           Some lists could not be loaded. Reload the page to choose an industry, size, lead source or campaign.
         </p>
+      )}
+      {askContact && (
+        <fieldset className="form-section">
+          <legend>Recruiter contact</legend>
+          <p className="muted field-help" style={{ marginTop: 0 }}>
+            The person you deal with at the company. They become its primary contact; add more people from the company page.
+          </p>
+          <RecruiterContactFields
+            idPrefix={contactPrefix}
+            fields={RECRUITER_FIELDS}
+            values={contact}
+            errors={contactErrors}
+            roles={contactRoles}
+            onChange={(k, v) => setContact((prev) => ({ ...prev, [k]: v }))}
+          />
+        </fieldset>
       )}
       <fieldset className="form-section">
         <legend>Company details</legend>

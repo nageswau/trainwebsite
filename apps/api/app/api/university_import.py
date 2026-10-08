@@ -1,4 +1,4 @@
-"""upc-005 (DEC-SCOPE-125, spec §3): University CSV import -- a head, overseas_admin or super_admin uploads one file; each row is created,
+"""upc-005 (DEC-SCOPE-127, spec §3): University CSV import -- a head, overseas_admin or super_admin uploads one file; each row is created,
 reported as a duplicate (upc-004's key, against the master and earlier rows) or reported invalid with its reason.
 
 The bounded read and the CSV parser are ENH-028's (`school_bulk`). One request = one transaction; imports run one at a time (IM9). The
