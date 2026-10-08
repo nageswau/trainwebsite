@@ -5,6 +5,7 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
 import BdmConfirm from "@/components/BdmConfirm";
 import { DetailList, multiline } from "@/components/BdmOrganizationProfileDetails";
 import LocalTime from "@/components/LocalTime";
+import RecruiterCalls from "@/components/RecruiterCalls";
 import RecruiterCompanyContacts from "@/components/RecruiterCompanyContacts";
 import RecruiterCompanyFollowUps from "@/components/RecruiterCompanyFollowUps";
 import RecruiterCompanyForm from "@/components/RecruiterCompanyForm";
@@ -100,6 +101,7 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
   const [notice, setNotice] = useState<string | null>(created ? `Company ${initial.code} created.` : null);
   const [failure, setFailure] = useState<string | null>(null);
   const [followUpChanges, setFollowUpChanges] = useState(0);
+  const [callFollowUps, setCallFollowUps] = useState(0); // rec-025: a call that added a follow-up re-reads the follow-ups
   const focus = useFocusAfterRender();
   // "created" is said once: the flag leaves the address, so a refresh or a shared link doesn't repeat it (BdmOrganizationDetail's rule).
   useEffect(() => {
@@ -230,9 +232,15 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
           <DetailList rows={rows} />
         </section>
       )}
-      {/* Re-keyed on archive/restore (the list's `can_edit` follows the company's state) and on a follow-up change (each contact's next one). */}
+      {/* Re-keyed on archive/restore (the list's `can_edit` follows the company's state) and on a follow-up or call change (each contact's
+          next follow-up and Last contacted). */}
       <RecruiterCompanyContacts key={`${company.id}-${company.archived}-${followUpChanges}`} companyId={company.id} />
-      <RecruiterCompanyFollowUps key={`${company.id}-${company.archived}`} companyId={company.id} canWrite={p.can_edit} onChanged={() => void followUpChanged()} />
+      <RecruiterCalls key={`calls-${company.id}-${company.archived}`} party={{ kind: "contact", companyId: company.id }} canWrite={p.can_edit}
+        onChanged={(result) => {
+          if (result?.follow_up_id) setCallFollowUps((n) => n + 1);
+          void followUpChanged();
+        }} />
+      <RecruiterCompanyFollowUps key={`follow-ups-${company.id}-${company.archived}-${callFollowUps}`} companyId={company.id} canWrite={p.can_edit} onChanged={() => void followUpChanged()} />
       <RecruiterCompanyPipeline
         company={company}
         onChanged={(c, text) => {

@@ -9,6 +9,7 @@ import { sendJson } from "@/lib/apiErrors";
 import { display } from "@/lib/bdmOrganizations";
 import { formatSchoolDateTime } from "@/lib/formatDate";
 import { activeValues, type CatalogueValue } from "@/lib/recruiterCatalogue";
+import { telHref } from "@/lib/recruiterCalls";
 import { safeLink } from "@/lib/recruiterCompanies";
 import {
   businessContacts,
@@ -28,17 +29,18 @@ import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // rec-004 (spec §4; EVID-018 §3-§4): a company's contacts. The §3 Business Details are read from the contacts (C5); the list is cards (not
 // a table) so it reads well on a phone. With `can_edit` a contact can be added, edited, made primary, deactivated (confirmed first) or
-// reactivated; every success re-renders from the list the API returns. Phones and emails are plain text (no tel:/mailto: until rec-025/026).
+// reactivated; every success re-renders from the list the API returns. The mobile is a `tel:` link (rec-025); emails stay plain text until rec-026.
 const MAX_CONTACTS = 50;
 const names = (list: Contact[]) => (list.length ? list.map((c) => c.name).join(", ") : "—");
 
 function details(c: Contact): [string, ReactNode][] {
   const link = safeLink(c.linkedin_url);
+  const tel = telHref(c.mobile);
   const rows: [string, ReactNode][] = [
     ["Designation", c.designation],
     ["Department", c.department],
     ["Role", c.role ? `${c.role.name}${c.role.active ? "" : " (inactive)"}` : null],
-    ["Mobile", c.mobile],
+    ["Mobile", tel ? <a href={tel}>{c.mobile}<span className="visually-hidden"> (call {c.name})</span></a> : c.mobile], // rec-025
     ["Email", c.email],
     [
       "LinkedIn",
