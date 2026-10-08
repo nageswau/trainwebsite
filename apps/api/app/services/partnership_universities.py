@@ -14,10 +14,24 @@ import unicodedata
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import func, or_, select
+from fastapi.encoders import jsonable_encoder
+from sqlalchemy import func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
-from app.models import UNIVERSITY_CODE_SEQ, AuditLog, Country, OverseasApplication, PartnershipProfile, University, UniversityRanking, User
+from app.core.identifiers import normalize_key
+from app.models import (
+    UNIVERSITY_CODE_SEQ,
+    UNIVERSITY_NAME_KEY_LENGTH,
+    AuditLog,
+    BdmOrganization,
+    Country,
+    OverseasApplication,
+    PartnershipProfile,
+    University,
+    UniversityRanking,
+    User,
+)
 from app.partnership_stages import label_of
 from app.services.partnership import partnership_context
 from app.services.partnership_pipeline import pipeline_out
@@ -31,6 +45,7 @@ READ_ROLES = frozenset({"partnership_manager", "partnership_head", "overseas_adm
 CATALOGUE_ROLES = frozenset({"partnership_head", "overseas_admin", "super_admin"})  # create, publish, deactivate (UM5, UM7, UM8)
 ASSIGN_ROLES = frozenset({"partnership_head", "super_admin"})  # UM3, UM7; also reopen a lost university (upc-007 PS6)
 STAGE_ROLES = frozenset({"partnership_manager", "partnership_head", "super_admin"})  # upc-007 PS5: overseas_admin reads only
+CONTACT_ROLES = frozenset({"partnership_manager", "partnership_head", "super_admin"})  # upc-006 CT5: write contacts, read them in full
 ROLE_REFUSALS = {
     "can_edit": "Only the university's partnership managers can edit it",
     "can_assign": "Only a partnership head can assign managers",
@@ -38,8 +53,12 @@ ROLE_REFUSALS = {
     "can_deactivate": "Your role cannot deactivate universities",
     "can_move_stage": "Only the university's partnership managers or their head can change its stage",
     "can_reopen": "Only a partnership head can reopen a lost university",
+    "can_edit_contacts": "Only the university's partnership managers can edit its contacts",
 }
 TEAM_REFUSAL = "This university belongs to another partnership team"
+OVERRIDE_ROLES = frozenset({"partnership_head", "super_admin"})  # upc-004 UD2: may add a duplicate, with a reason
+MAX_MATCHES = 10
+DUPLICATE_MESSAGE = "This university is already in the University Master"
 INACTIVE = "Reactivate this university first"
 
 
@@ -77,7 +96,13 @@ def _in_scope(user: User, uni: University, team: frozenset[UUID]) -> bool:
     return user.id in owners
 
 
-_ACTION_ROLES = {"can_edit": READ_ROLES, "can_assign": ASSIGN_ROLES, "can_reopen": ASSIGN_ROLES, "can_move_stage": STAGE_ROLES}
+_ACTION_ROLES = {
+    "can_edit": READ_ROLES,
+    "can_assign": ASSIGN_ROLES,
+    "can_reopen": ASSIGN_ROLES,
+    "can_move_stage": STAGE_ROLES,
+    "can_edit_contacts": CONTACT_ROLES,
+}
 
 
 def _role_allows(user: User, action: str) -> bool:
@@ -204,6 +229,7 @@ def row_out(user: User, uni: University, country: Country, primary: User | None,
         "city": uni.city,
         "priority": uni.priority,
         "partnership_potential": uni.partnership_potential,
+        "relationship_strength": uni.relationship_strength,
         "primary_manager": person_ref(primary) if primary else None,
         "backup_manager": person_ref(backup) if backup else None,
         "catalogue_visible": uni.catalogue_visible,
@@ -244,7 +270,76 @@ async def detail_out(db: AsyncSession, user: User, uni: University, team: frozen
         "rankings": [{"system": r.system, "other_name": r.other_name, "year": r.year, "rank": r.rank} for r in await rankings_of(db, uni.id)],
         "application_count": await application_count(db, uni.id),
         "pipeline": pipeline_out(uni),
+        "linked_bdm_organizations": await linked_bdm_organizations(db, uni.id),
     }
+
+
+def name_key_of(name: str) -> str:
+    return normalize_key(name, UNIVERSITY_NAME_KEY_LENGTH)
+
+
+def match_out(uni: University, country: Country, primary: User | None, backup: User | None) -> dict:
+    """upc-004 UD5: the panel's fields. Stage, last contact and next follow-up join when upc-007/006/020 add them."""
+    return {
+        "id": uni.id,
+        "university_code": uni.university_code,
+        "name": uni.name,
+        "country": {"id": country.id, "name": country.name},
+        "city": uni.city,
+        "active": uni.active,
+        "catalogue_visible": uni.catalogue_visible,
+        "existing_relationship": uni.existing_relationship,
+        "primary_manager": person_ref(primary) if primary else None,
+        "backup_manager": person_ref(backup) if backup else None,
+    }
+
+
+async def find_duplicates(db: AsyncSession, name_key: str, country_id: UUID | None = None, exclude_id: UUID | None = None) -> tuple[list[dict], int]:
+    """UD1: same normalized name (+ the country when given; a BDM organization has none), inactive rows included. Ordered by code, at
+    most MAX_MATCHES, on ix_universities_duplicate_key."""
+    conditions = [University.name_key == name_key]
+    if country_id is not None:
+        conditions.append(University.country_id == country_id)
+    if exclude_id is not None:
+        conditions.append(University.id != exclude_id)
+    total = await db.scalar(select(func.count()).select_from(University).where(*conditions))
+    if not total:
+        return [], 0
+    primary, backup = aliased(User), aliased(User)
+    stmt = (
+        select(University, Country, primary, backup)
+        .join(Country, Country.id == University.country_id)
+        .outerjoin(primary, primary.id == University.primary_manager_user_id)
+        .outerjoin(backup, backup.id == University.backup_manager_user_id)
+        .where(*conditions)
+        .order_by(University.university_code)
+        .limit(MAX_MATCHES)
+    )
+    return [match_out(*row) for row in (await db.execute(stmt)).all()], total
+
+
+async def check_duplicates(db: AsyncSession, user: User, name: str, country_id: UUID, reason: str | None, exclude_id: UUID | None = None) -> int:
+    """UD2/UD4: the number of matches an override accepted (0 when none). A transaction lock on the key serializes two writes of the same
+    name + country, so the second sees the first. Matches without an override from OVERRIDE_ROLES are a 409 carrying the panel."""
+    key = name_key_of(name)
+    await db.execute(text("SELECT pg_advisory_xact_lock(hashtextextended(:k, 0))"), {"k": f"university:{country_id}:{key}"})
+    matches, total = await find_duplicates(db, key, country_id, exclude_id)
+    if not total:
+        return 0
+    can_override = user.role in OVERRIDE_ROLES
+    if reason and can_override:
+        return total
+    log("university_duplicate_blocked", user, exclude_id or "-", match_count=total)
+    raise HTTPException(409, {"message": DUPLICATE_MESSAGE, "code": "university_duplicate", "matches": jsonable_encoder(matches), "total": total, "can_override": can_override})
+
+
+async def linked_bdm_organizations(db: AsyncSession, university_id: UUID) -> list[dict]:
+    """UD11: the BDM organizations linked to this university, as text (partnership roles cannot open BDM records)."""
+    stmt = select(BdmOrganization, User.full_name).join(User, User.id == BdmOrganization.assigned_bdm_user_id).where(BdmOrganization.university_id == university_id).order_by(BdmOrganization.code)
+    return [
+        {"id": o.id, "code": o.code, "name": o.name, "city": o.city, "bdm_type": o.bdm_type, "assigned_bdm_name": bdm_name, "archived": o.archived_at is not None}
+        for o, bdm_name in (await db.execute(stmt)).all()
+    ]
 
 
 def audit(db: AsyncSession, user: User, action: str, university_id: UUID, metadata: dict | None = None) -> None:

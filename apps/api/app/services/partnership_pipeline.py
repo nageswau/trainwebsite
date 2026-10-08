@@ -1,4 +1,4 @@
-"""upc-007 (DEC-SCOPE-123, spec §3): the partnership stage engine -- the single writer of `universities.stage` and the Lost flag, the stage
+"""upc-007 (DEC-SCOPE-125, spec §3): the partnership stage engine -- the single writer of `universities.stage` and the Lost flag, the stage
 history and the Kanban board.
 
 Functions only; nothing here commits -- the route owns the transaction (upc-003's rule). Every write runs on the row locked by

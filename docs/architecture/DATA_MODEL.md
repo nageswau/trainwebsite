@@ -331,12 +331,27 @@ slot). **Migration `0105_university_master`** backfills codes for existing rows 
 `downgrade()` refuses while rankings, assignment history or internal universities exist. Public reads show only published, active rows
 (API §12AN). Contacts are upc-006's.
 
-**upc-007 (`DEC-SCOPE-123`):** `universities` gains `stage` (one of the 15 EVID-020 §3 keys, CHECK, indexed, default
+**upc-007 (`DEC-SCOPE-125`):** `universities` gains `stage` (one of the 15 EVID-020 §3 keys, CHECK, indexed, default
 `target_university`), `stage_changed_at` (set on every move), `lost_at` + `lost_reason` (CHECK both or neither: the Lost/Closed flag on top
 of the kept stage). New table `university_stage_history` (append-only: kind move / lost / reopened, from/to stage, note, actor,
-`position` identity; no stage CHECK so history survives a catalogue change). **Migration `0108_university_pipeline`** sets every existing
+`position` identity; no stage CHECK so history survives a catalogue change). **Migration `0110_university_pipeline`** sets every existing
 row to `target_university` with `stage_changed_at = created_at`; `downgrade()` refuses while history, a lost or a moved university exists.
 The Kanban column, map group and probability are fixed groupings in `app/partnership_stages.py` (backlog Appendix B), never stored.
+
+**Addendum, 2026-10-08 (`upc-006`, `DEC-SCOPE-123` — University contacts + relationship strength):** `universities.relationship_strength`
+(nullable; CHECK new / developing / good / strong / strategic / at_risk / dormant, §11). New tables: `university_contact_roles` (`code` PK,
+`label`, `position`; 12 seeded rows, read-only) and `university_contacts` (FK `universities` RESTRICT; `name` NOT NULL, `designation`,
+`department`, `role_code` FK roles, `email`, `phone`, `whatsapp`, `linkedin`, `preferred_channel` CHECK email/phone/whatsapp/linkedin,
+`relationship_strength` CHECK as above, `notes`, `is_primary`, `shareable` (both default false), timestamps). Partial unique indexes: one
+primary per university, and `lower(email)` once per university. Contact PII never goes into audit metadata or logs. **Migration
+`0108_university_contacts`** seeds the roles (`ON CONFLICT DO NOTHING`); `downgrade()` refuses while contacts or relationship strengths
+exist (API §12AQ).
+
+**Addendum, 2026-10-08 (`upc-004`, `DEC-SCOPE-124`, U13 — duplicate prevention + BDM link):** `universities.name_key` (NOT NULL; the
+normalised name, kept by the model's `name` validator) with the non-unique index `ix_universities_duplicate_key (country_id, name_key)`.
+`bdm_organizations.university_id` (nullable FK `universities`, indexed) with CHECK `ck_bdm_organizations_university_link` (University
+organizations only). **Migration `0109_university_duplicates`** backfills the key and logs (never merges or links) the existing duplicate
+groups and the unlinked BDM University organizations that match a master name; `downgrade()` refuses while any organization is linked.
 
 ### 6.2 `OverseasApplication`, `ApplicationStatusHistory`
 **Carries over**, status vocabulary **extended** — this is part of the `ADR-012` resolution (§6.3

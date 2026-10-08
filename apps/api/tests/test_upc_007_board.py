@@ -1,6 +1,8 @@
 """upc-007 -- the Kanban board (spec PS11, PS12; AC2). The shared test database is never truncated, so every count here is narrowed to one
 fresh manager (`manager=<id>` or `me`)."""
 
+import uuid
+
 import pytest
 
 from app.partnership_stages import COLUMNS, column_of
@@ -17,7 +19,7 @@ SPREAD = [
 
 async def _spread(client, db):
     """One manager owning a university per SPREAD row plus one inactive one; the client ends signed in as the manager."""
-    head, pm, first = await owned_university(client, db, name="Board Aardvark University")
+    head, pm, first = await owned_university(client, db, name=f"Board Aardvark University {uuid.uuid4().hex[:8]}")  # unique: upc-004 blocks duplicates
     country = (await catalogue_country(db)).id
     await login(client, head)
     unis = [first]

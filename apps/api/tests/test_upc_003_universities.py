@@ -75,7 +75,8 @@ async def test_same_name_gets_a_distinct_slug(client, db_session):
     await as_role(client, db_session, "super_admin", "global")
     country = await catalogue_country(db_session)
     name = f"Twin University {uuid.uuid4().hex[:6]}"
-    first, second = await create(client, country.id, name=name), await create(client, country.id, name=name)
+    # upc-004: the same name + country is a duplicate, so the second one is a super_admin override
+    first, second = await create(client, country.id, name=name), await create(client, country.id, name=name, duplicate_reason="A separate campus, same name")
     assert first["slug"] != second["slug"] and second["slug"].endswith(second["university_code"].lower())
 
 
@@ -327,5 +328,6 @@ async def test_existing_catalogue_row_is_editable_and_keeps_its_slug(client, db_
     assert legacy.status_code == 201
     body = (await client.get(url(legacy.json()["id"]))).json()["university"]
     assert body["catalogue_visible"] is True and body["university_code"].startswith("UNV-") and body["institution_type"] == "university"
-    edited = (await client.patch(url(body["id"]), json={"name": "Legacy University"})).json()["university"]
+    # unique: the shared database keeps every earlier run's rows, and upc-004 refuses a rename into an existing name
+    edited = (await client.patch(url(body["id"]), json={"name": f"Legacy University {uuid.uuid4().hex[:8]}"})).json()["university"]
     assert edited["slug"] == legacy.json()["slug"]

@@ -1,17 +1,19 @@
 """upc-007 -- partnership stage engine: stored stage, Lost flag, stage history.
 
-Revision ID: 0108_university_pipeline
-Revises: 0107_candidates
+Revision ID: 0110_university_pipeline
+Revises: 0109_university_duplicates
 
-docs/superpowers/specs/2026-10-08-upc-007-partnership-pipeline-design.md §2 (DEC-SCOPE-123). Every existing university starts at
+docs/superpowers/specs/2026-10-08-upc-007-partnership-pipeline-design.md §2 (DEC-SCOPE-125). Every existing university starts at
 `target_university` with `stage_changed_at = created_at` (PS2: no partner status is invented); no history rows are written. 0001 builds a
 fresh database from the current models, which already carry all of this, so each step is guarded. CHECKS / HISTORY_CHECKS repeat
 app.models.UNIVERSITY_PIPELINE_CHECKS / UNIVERSITY_STAGE_HISTORY_CHECKS (test_upc_007_migration). downgrade() refuses while stage history,
 a lost university or one past `target_university` exists: dropping the columns would lose that pipeline state.
 
 Re-chained 2026-10-08 on merging `main` @ `a62ad9d7`: drafted as `0106_university_pipeline` on `0105_university_master`, but rec-003
-(`0106_rec_companies`) and rec-009 (`0107_candidates`) merged first, so this is `0108` after them (DEC-SCOPE-123, API §12AQ, RBAC §2.49).
-A database stamped at `0106_university_pipeline` is re-stamped with `alembic stamp --purge 0105_university_master`, then `upgrade head`
+(`0106_rec_companies`) and rec-009 (`0107_candidates`) merged first, so this was `0108` after them; on merging `main` @ `5b7c1fd5` upc-006 (`0108_university_contacts`) and upc-004
+(`0109_university_duplicates`) had merged first, so this is `0110` (DEC-SCOPE-125, API §12AS, RBAC §2.51).
+A database stamped at `0106_university_pipeline` or `0108_university_pipeline` is re-stamped with
+`alembic stamp --purge 0105_university_master`, then `upgrade head`
 (every step here is guarded).
 """
 
@@ -20,8 +22,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0108_university_pipeline"
-down_revision = "0107_candidates"
+revision = "0110_university_pipeline"
+down_revision = "0109_university_duplicates"
 branch_labels = None
 depends_on = None
 
@@ -91,7 +93,7 @@ def downgrade() -> None:
     if not op.get_context().as_sql:
         found = op.get_bind().execute(sa.text(f"SELECT 1 FROM {HISTORY} UNION ALL SELECT 1 FROM {TABLE} WHERE lost_at IS NOT NULL OR stage <> '{FIRST}' LIMIT 1")).first()
         if found:
-            raise RuntimeError("Cannot downgrade 0108_university_pipeline: stage history, lost or moved universities exist. Remove them deliberately first.")
+            raise RuntimeError("Cannot downgrade 0110_university_pipeline: stage history, lost or moved universities exist. Remove them deliberately first.")
     op.drop_table(HISTORY)
     op.drop_index(INDEX, table_name=TABLE)
     for name in CHECKS:

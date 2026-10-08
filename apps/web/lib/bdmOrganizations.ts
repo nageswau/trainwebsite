@@ -3,6 +3,7 @@ import type { OrgOnboarding } from "@/lib/bdmOnboarding";
 import type { Pipeline } from "@/lib/bdmPipeline";
 import { formatSchoolDateTime } from "@/lib/formatDate";
 import type { LookupPage } from "@/lib/lookups";
+import type { UniversityMatch } from "@/lib/universities";
 
 // bdm-002 (DEC-SCOPE-060): types and helpers for the Organization CRM. The API decides scope and permissions; `permissions` on each
 // organization only tells the UI which actions to show.
@@ -38,14 +39,21 @@ export type Organization = OrgRow & {
   phone: string | null; email: string | null; website: string | null; address: string | null; courses_interested: string | null; student_count: number | null;
   profile: OrgProfile | null; pipeline: Pipeline; contacts: OrgContact[]; created_by_name: string; archived_at: string | null; created_at: string; updated_at: string;
   onboarding?: OrgOnboarding | null; // bdm-018: School organizations; bdm-019: Agent ones too
+  university?: OrgUniversity | null; // upc-004 UD10: the linked University Master record, read-only
 };
 export type OrgDuplicateMatch = { id: string; code: string; name: string; city: string; archived: boolean; assigned_bdm_name: string };
-export type OrgDuplicate = { message: string; matches: OrgDuplicateMatch[]; total: number };
+export type OrgUniversity = { id: string; university_code: string; name: string; country_name: string; city: string; primary_manager_name: string | null };
+// upc-004 UD8: a University organization's matches in the Global University Master come in the same warning.
+export type OrgDuplicate = { message: string; matches: OrgDuplicateMatch[]; total: number; university_matches: UniversityMatch[]; university_total: number };
 
 export function orgDuplicate(detail: unknown): OrgDuplicate | null {
   const d = detail as (Partial<OrgDuplicate> & { code?: string }) | null;
   if (!d || typeof d !== "object" || d.code !== "possible_duplicate" || !Array.isArray(d.matches)) return null;
-  return { message: String(d.message ?? ""), matches: d.matches, total: Number(d.total ?? d.matches.length) };
+  const university_matches = Array.isArray(d.university_matches) ? d.university_matches : [];
+  return {
+    message: String(d.message ?? ""), matches: d.matches, total: Number(d.total ?? d.matches.length),
+    university_matches, university_total: Number(d.university_total ?? university_matches.length),
+  };
 }
 
 export function isOrganizationBody(data: unknown): data is { organization: Organization } {

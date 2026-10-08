@@ -6,20 +6,26 @@ import BdmStageHistory from "@/components/BdmStageHistory";
 import PortalShell from "@/components/PortalShell";
 import UniversityActions from "@/components/UniversityActions";
 import UniversityAssignForm from "@/components/UniversityAssignForm";
+import UniversityContacts from "@/components/UniversityContacts";
 import UniversityStagePanel from "@/components/UniversityStagePanel";
 import { serverApi } from "@/lib/api";
 import type { Page } from "@/lib/apiErrors";
 import type { StageEvent } from "@/lib/bdmPipeline";
 import type { User } from "@/lib/types";
 import {
+  CONTACT_ROLES_URL,
+  type ContactRole,
+  contactsUrl,
   INSTITUTION_TYPES,
   label,
   OWNERSHIP_TYPES,
   POTENTIALS,
   rankingText,
+  RELATIONSHIP_STRENGTHS,
   RELATIONSHIPS,
   shellFor,
   type University,
+  type UniversityContact,
   UNIVERSITIES_PATH,
   universityPath,
   universityUrl,
@@ -42,9 +48,14 @@ function Facts({ rows }: { rows: [string, ReactNode][] }) {
 
 export default async function UniversityPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  let user: User, u: University, history: Page<StageEvent> | null;
+  let user: User, u: University, history: Page<StageEvent> | null, contacts: Page<UniversityContact>, roles: ContactRole[];
   try {
     [user, u, history] = await Promise.all([serverApi<User>("/api/v1/auth/me"), loadUniversity(id), firstStageHistory(id)]);
+    // upc-006: the contacts this reader may see (the API slices them), and the role list only for those who can edit.
+    [contacts, roles] = await Promise.all([
+      serverApi<Page<UniversityContact>>(`${contactsUrl(u.id)}?limit=50`),
+      u.permissions.can_edit_contacts ? serverApi<{ items: ContactRole[] }>(CONTACT_ROLES_URL).then((r) => r.items) : Promise.resolve([]),
+    ]);
   } catch (e) {
     return accessUnavailable(e, "/overseas/login");
   }
@@ -56,7 +67,8 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
           <div>
             <div className="eyebrow"><Link href={UNIVERSITIES_PATH}>University Master</Link> · {u.university_code}</div>
             <h2>{u.name}</h2>
-            <p className="muted">{[u.city, u.country.name].filter(Boolean).join(", ")} · <span className="badge">{visibilityLabel(u)}</span></p>
+            <p className="muted">{[u.city, u.country.name].filter(Boolean).join(", ")} · <span className="badge">{visibilityLabel(u)}</span>
+              {u.relationship_strength && <> <span className="badge">Relationship: {label(RELATIONSHIP_STRENGTHS, u.relationship_strength)}</span></>}</p>
           </div>
           {u.permissions.can_edit && <Link className="btn" href={universityPath(u.id, true)}>Edit</Link>}
         </div>
@@ -78,12 +90,14 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
               ["Existing relationship", label(RELATIONSHIPS, u.existing_relationship)],
               ["Priority", u.priority],
               ["Partnership potential", label(POTENTIALS, u.partnership_potential)],
+              ["Relationship strength", u.relationship_strength && label(RELATIONSHIP_STRENGTHS, u.relationship_strength)],
               ["Applications", String(u.application_count)],
             ]} />
           </section>
           <UniversityStagePanel university={u} />
           {/* remounted after each stage change (the page refreshes), so it starts from the new first page */}
           <BdmStageHistory key={`${u.pipeline.changed_at}|${u.pipeline.lost?.at ?? ""}`} orgId={u.id} initial={history} version={0} url={universityUrl(u.id, "stage-history")} />
+          <UniversityContacts universityId={u.id} contacts={contacts.items} roles={roles} canEdit={u.permissions.can_edit_contacts} />
           <section className="action-card" aria-labelledby="uni-rankings">
             <h3 id="uni-rankings">Rankings</h3>
             {u.rankings.length ? <ul className="list-clean">{u.rankings.map((r) => <li key={rankingText(r)}>{rankingText(r)}</li>)}</ul>
@@ -106,6 +120,19 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
             </p>
             {u.overview ? <p style={{ whiteSpace: "pre-line" }}>{u.overview}</p> : <p className="muted">No overview yet (needed to publish).</p>}
             <UniversityActions university={u} />
+          </section>
+          <section className="action-card" aria-labelledby="uni-bdm-links">
+            <h3 id="uni-bdm-links">Linked BDM organizations</h3>
+            {/* upc-004 UD11: text only -- BDM records open in the BDM workspace, not here */}
+            {u.linked_bdm_organizations.length ? (
+              <ul className="list-clean">
+                {u.linked_bdm_organizations.map((o) => (
+                  <li key={o.id}>
+                    {o.code} · {o.name}, {o.city} · BDM {o.assigned_bdm_name}{o.archived ? " · Archived" : ""}
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="muted">No BDM organization is linked to this university.</p>}
           </section>
         </div>
       </div>

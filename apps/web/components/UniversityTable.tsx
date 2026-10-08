@@ -1,7 +1,17 @@
 import Link from "next/link";
 
 import type { Page } from "@/lib/apiErrors";
-import { INSTITUTION_TYPES, label, pageHref, POTENTIALS, type Filters, universityPath, type UniversityRow, visibilityLabel } from "@/lib/universities";
+import {
+  INSTITUTION_TYPES,
+  label,
+  pageHref,
+  POTENTIALS,
+  RELATIONSHIP_STRENGTHS,
+  type Filters,
+  universityPath,
+  type UniversityRow,
+  visibilityLabel,
+} from "@/lib/universities";
 
 // upc-003: the University Master list. Server-rendered; paging is a link that keeps the filters, so a page can be shared. Below 640 px
 // each row is a card of labelled lines (globals.css .telecaller-list reads each cell's data-label).
@@ -15,7 +25,8 @@ export default function UniversityTable({ page, filters }: { page: Page<Universi
           <thead>
             <tr>
               <th scope="col">Name</th><th scope="col">Code</th><th scope="col">Type</th><th scope="col">Country</th><th scope="col">City</th>
-              <th scope="col">Priority</th><th scope="col">Potential</th><th scope="col">Primary manager</th><th scope="col">Stage</th><th scope="col">Status</th>
+              <th scope="col">Priority</th><th scope="col">Potential</th><th scope="col">Relationship</th><th scope="col">Primary manager</th>
+              <th scope="col">Stage</th><th scope="col">Status</th>
             </tr>
           </thead>
           <tbody>
@@ -28,6 +39,7 @@ export default function UniversityTable({ page, filters }: { page: Page<Universi
                 <td data-label="City">{u.city || "—"}</td>
                 <td data-label="Priority">{u.priority ?? "—"}</td>
                 <td data-label="Potential">{label(POTENTIALS, u.partnership_potential)}</td>
+                <td data-label="Relationship">{label(RELATIONSHIP_STRENGTHS, u.relationship_strength)}</td>
                 <td data-label="Primary manager">{u.primary_manager?.full_name ?? "Unassigned"}</td>
                 <td data-label="Stage">{u.stage_label}{u.lost && <> <span className="badge">Lost</span></>}</td>
                 <td data-label="Status"><span className="badge">{visibilityLabel(u)}</span></td>
