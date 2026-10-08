@@ -10,6 +10,7 @@ from tests.bdm001_helpers import login, make_manager, make_user
 from tests.bdm002_helpers import create_org, make_bdm
 from tests.bdm009_helpers import bdm_with_org
 from tests.bdm017_helpers import as_user, student_email
+from tests.rec017_helpers import student_application
 
 
 def business(org_id) -> str:
@@ -81,7 +82,7 @@ async def offer(db, student: User, status: str) -> None:
     job = Job(company_id=company.id, title="Engineer", location="Remote", description="", skills=[], status="requirement_received")
     db.add(job)
     await db.flush()
-    application = JobApplication(job_id=job.id, student_id=student.id, status="applied")
+    application = await student_application(db, job.id, student, "sourced")
     db.add(application)
     await db.flush()
     db.add(JobOffer(application_id=application.id, status=status))

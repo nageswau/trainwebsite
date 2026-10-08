@@ -54,6 +54,7 @@ from app.models import (
     User,
     VisaCase,
 )
+from app.services import applications as job_applications
 from app.services import application_filters
 from app.services.agent_applications import WITHDRAWN, counts_as_offer, owned, stage_label, with_owner
 from app.services.agent_dashboard import headline_counts
@@ -378,7 +379,7 @@ async def _it_student(db: AsyncSession, user: User, section: str):
             "Job Applications",
             "Applications, interviews, offers, and joining status.",
             (("role", "Role"), ("company", "Company"), ("location", "Location"), ("status", "Status")),
-            ({"role": j.title, "company": c.name, "location": j.location, "status": a.status} for a, j, c in rows),
+            ({"role": j.title, "company": c.name, "location": j.location, "status": job_applications.label(a.status)} for a, j, c in rows),
             panels=({"title": "Open jobs", "items": [f"Job reference {j.id}: {c.name} / {j.title} / {j.location}" for j, c in open_jobs]},),
         )
     if section == "downloads":

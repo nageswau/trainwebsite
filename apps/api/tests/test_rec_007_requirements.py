@@ -8,6 +8,7 @@ from sqlalchemy import select
 
 from app.models import AuditLog, Company, CompanyStageHistory, Job, JobApplication, JobSkill, JobStatusHistory, RecJobCategory, Skill, SkillAlias, SkillCategory
 from app.services.recruiter_requirements import ist_today
+from tests.rec017_helpers import student_application
 from tests.rec001_helpers import as_role, login, make_pm, make_recruiter, make_user
 from tests.test_emp_002_job_posting import _register_employer
 
@@ -155,7 +156,8 @@ async def test_vacancies_cannot_drop_below_the_joined_count(client, db_session):
     _, _, company = await _team(client, db_session)
     req = (await _create(client, company, vacancies=3)).json()["requirement"]
     students = [await make_user(db_session, "it_student", "it") for _ in range(2)]
-    db_session.add_all(JobApplication(job_id=uuid.UUID(req["id"]), student_id=s.id, status="hired") for s in students)
+    for s in students:
+        await student_application(db_session, uuid.UUID(req["id"]), s, "joined")
     await db_session.commit()
     response = await client.patch(f"{BASE}/{req['id']}", json={"vacancies": 1})
     assert response.status_code == 409 and "2" in response.json()["detail"]

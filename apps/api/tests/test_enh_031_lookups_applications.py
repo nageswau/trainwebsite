@@ -6,6 +6,7 @@ from app.models import Company, Job, JobApplication
 from tests.agn001_helpers import login, mk_active_org, mk_user, uniq
 from tests.enh016_helpers import make_school, make_student
 from tests.enh031_helpers import mk_application, mk_course, mk_university
+from tests.rec017_helpers import student_application
 
 APPS = "/api/v1/lookups/overseas-applications"
 JOBS = "/api/v1/lookups/it-job-applications"
@@ -135,7 +136,7 @@ async def test_applications_lookup_refuses_other_roles(client, db_session, role,
     assert (await client.get(APPS)).status_code == 403
 
 
-async def job_application(db, tag, *, candidate_name, title, company_name, status="applied"):
+async def job_application(db, tag, *, candidate_name, title, company_name, status="sourced"):
     candidate = await mk_user(db, role="it_student", division="it", full_name=candidate_name)
     company = Company(name=f"{company_name} {uniq('co')}")
     db.add(company)
@@ -143,7 +144,7 @@ async def job_application(db, tag, *, candidate_name, title, company_name, statu
     job = Job(company_id=company.id, title=title, location="Remote", description="", skills=[], status="requirement_received")
     db.add(job)
     await db.flush()
-    application = JobApplication(job_id=job.id, student_id=candidate.id, status=status)
+    application = await student_application(db, job.id, candidate, status)
     db.add(application)
     await db.commit()
     return application, company
@@ -157,7 +158,7 @@ async def test_it_team_sees_job_applications_with_title_company_status(client, d
     user = await mk_user(db_session, role=role, division="it")
     await login(client, user.email, "it")
     items = (await client.get(JOBS, params={"q": tag})).json()["items"]
-    assert items == [{"id": str(application.id), "label": f"{tag} Candidate", "detail": f"Backend Engineer · {company.name} · applied"}]
+    assert items == [{"id": str(application.id), "label": f"{tag} Candidate", "detail": f"Backend Engineer · {company.name} · Sourced"}]  # rec-017: the status label
 
 
 @pytest.mark.asyncio

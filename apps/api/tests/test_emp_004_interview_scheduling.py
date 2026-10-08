@@ -18,6 +18,7 @@ import pytest
 
 from app.core.security import hash_password
 from app.models import Company, EmployerProfile, Job, JobApplication, User
+from tests.rec017_helpers import student_application
 
 
 async def _create_employer(db_session) -> tuple[User, Company]:
@@ -98,7 +99,7 @@ async def test_employer_schedules_an_interview_for_a_shortlisted_candidate(clien
     employer, company = await _create_employer(db_session)
     job = await _create_job(db_session, company)
     student = await _create_student(db_session)
-    application = JobApplication(job_id=job.id, student_id=student.id, status="shortlisted")
+    application = await student_application(db_session, job.id, student, "shortlisted")
     db_session.add(application)
     await db_session.commit()
 
@@ -113,8 +114,8 @@ async def test_a_scheduling_conflict_for_the_same_candidate_is_flagged_not_doubl
     job_a = await _create_job(db_session, company)
     job_b = await _create_job(db_session, company)
     student = await _create_student(db_session)
-    application_a = JobApplication(job_id=job_a.id, student_id=student.id, status="shortlisted")
-    application_b = JobApplication(job_id=job_b.id, student_id=student.id, status="shortlisted")
+    application_a = await student_application(db_session, job_a.id, student, "shortlisted")
+    application_b = await student_application(db_session, job_b.id, student, "shortlisted")
     db_session.add_all([application_a, application_b])
     await db_session.commit()
 
@@ -131,7 +132,7 @@ async def test_employer_cannot_schedule_an_interview_for_another_employers_appli
     _, other_company = await _create_employer(db_session)
     other_job = await _create_job(db_session, other_company)
     student = await _create_student(db_session)
-    other_application = JobApplication(job_id=other_job.id, student_id=student.id, status="shortlisted")
+    other_application = await student_application(db_session, other_job.id, student, "shortlisted")
     db_session.add(other_application)
     await db_session.commit()
 
@@ -146,7 +147,7 @@ async def test_employer_only_sees_their_own_scheduled_interviews(client, db_sess
     employer, company = await _create_employer(db_session)
     job = await _create_job(db_session, company)
     student = await _create_student(db_session)
-    application = JobApplication(job_id=job.id, student_id=student.id, status="shortlisted")
+    application = await student_application(db_session, job.id, student, "shortlisted")
     db_session.add(application)
     await db_session.commit()
 

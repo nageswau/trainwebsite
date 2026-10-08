@@ -9,6 +9,7 @@ from app.core.database import SessionLocal, engine
 from app.core.identifiers import unique_student_code
 from app.core.security import hash_password
 from app.models import *
+from app.services import applications
 from app.services import recruiter_requirements as requirements
 from app.services.agent_orgs import ensure_agent_org
 
@@ -286,9 +287,11 @@ async def main():
         await db.flush()
         job = await db.scalar(select(Job).order_by(Job.id))
         if job and not await db.scalar(select(JobApplication).where(JobApplication.student_id == us["it_student"].id)):
-            ja = JobApplication(job_id=job.id, student_id=us["it_student"].id, status="interview_scheduled", resume_url="/demo/arjun-resume.pdf")
+            candidate = await applications.candidate_for_student(db, us["it_student"])  # rec-017: every application has a candidate
+            ja = JobApplication(job_id=job.id, student_id=us["it_student"].id, candidate_id=candidate.id, status="interview", resume_url="/demo/arjun-resume.pdf")
             db.add(ja)
             await db.flush()
+            db.add(JobApplicationStatusHistory(application_id=ja.id, to_status="interview", note="Demo data"))
             db.add(Interview(application_id=ja.id, scheduled_at=datetime.now(UTC) + timedelta(days=3), mode="Online", meeting_url="https://meet.google.com/demo-edusphere"))
         # VISA-002: the actual interview-prep content is a confirmed open item
         # (PRODUCT_DECISION_REGISTER.md DEC-DATA-001/DEC-SCOPE-006) -- illustrative

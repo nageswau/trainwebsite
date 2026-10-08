@@ -27,6 +27,7 @@ from pydantic import (
 from pydantic_core import PydanticCustomError
 
 from app.models import (
+    APPLICATION_STATUSES,
     APPOINTMENT_MODES,
     BDM_ACTIVITY_DIRECTIONAL,
     BDM_APPOINTMENT_ALL_OUTCOMES,
@@ -8254,3 +8255,17 @@ class RecCallUpdate(BaseModel):
             if key in self.model_fields_set and getattr(self, key) is None:
                 raise ValueError(f"{label} can't be removed")
         return self
+
+
+# --- rec-017 (DEC-SCOPE-134): a candidate on a requirement and its status (services/applications) -----------------------------------
+class RecApplicationCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    candidate_id: UUID
+    status: Literal["sourced", "screened", "shortlisted"] = "sourced"  # applications.INITIAL
+    note: _rec_requirement_text_type(500, multiline=True) = None
+
+
+class RecApplicationStatusChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: Literal[APPLICATION_STATUSES]
+    note: _rec_requirement_text_type(500, multiline=True) = None

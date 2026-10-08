@@ -18,6 +18,7 @@ import pytest
 
 from app.core.security import hash_password
 from app.models import Company, Job, JobApplication, User
+from tests.rec017_helpers import student_application
 
 
 async def _create_staff(db_session, *, role: str = "hr_team") -> User:
@@ -93,7 +94,7 @@ async def test_requirement_shortlist_lists_applicants(db_session, client):
     hr = await _create_staff(db_session)
     job = await _create_job(db_session)
     student = await _create_student(db_session)
-    db_session.add(JobApplication(job_id=job.id, student_id=student.id, status="shortlisted"))
+    await student_application(db_session, job.id, student, "shortlisted")
     await db_session.commit()
     await _login(client, hr.email)
 
