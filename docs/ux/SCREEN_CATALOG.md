@@ -3291,3 +3291,17 @@ Design spec `docs/superpowers/specs/2026-10-08-rec-024-recruiter-follow-ups-desi
   - The list shows open follow-ups by due time, then done and cancelled ones.
   - Details gain "Next follow-up". Each contact shows its own next follow-up.
 - **Company list** (`/recruiter/companies`): a "Next follow-up" column.
+
+## rec-025 addendum (2026-10-08, `DEC-SCOPE-132`) — Recruiter calls
+
+Design spec `docs/superpowers/specs/2026-10-08-rec-025-recruiter-calls-design.md` §4.
+
+- **Company detail** (`/recruiter/companies/[id]`): a Calls section under Contacts.
+  - Log call (the company's `can_edit`): contact (active contacts), outcome, date and time (IST), direction, optional duration, notes, and
+    an optional next follow-up (due, reason, notes).
+  - The list is newest first: outcome, Connected / Not connected badge, contact, time, duration, direction, caller and notes. Edit and
+    Delete (confirmed) show only for the caller's calls from today.
+  - Loading, empty, error and Retry states. A logged call refreshes the contacts' Last contacted and, when it added one, the Follow-ups.
+  - Each contact's mobile is a `tel:` link.
+- **Candidate detail** (`/recruiter/candidates/[id]`): the same Calls section without the contact picker or the follow-up; the mobile is a
+  `tel:` link. Read-only for `hr_team` and while the candidate is archived.

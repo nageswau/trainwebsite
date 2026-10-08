@@ -67,6 +67,8 @@ It is a new table only. The upgrade is guarded (0110's idiom). The downgrade ref
 | PATCH | `/recruiter/calls/{id}` | CA4. Returns the call. |
 | DELETE | `/recruiter/calls/{id}` | CA4. Returns 204. |
 
+Result of QA: QA-01 (cosmetic) -- the form grid aligns items to the start so a select is not stretched.
+
 The error order on a write is:
 1. role (403);
 2. party in scope (404);
@@ -77,7 +79,7 @@ The error order on a write is:
 7. write, audit, commit, log.
 
 Each call in a response carries:
-- `id`, `party` (`kind`, contact `{id, name}` or candidate `{id, name, code}`) and `company_id`
+- `id`, `kind` (`contact` or `candidate`), `company_id`, `contact` (`{id, name}` or null) and `candidate` (`{id, name, code}` or null)
 - `occurred_at`, `duration_seconds`, `direction`, `outcome`, `outcome_label`, `connected` and `notes`
 - `caller {id, full_name}`, `created_at` and `can_change`
 

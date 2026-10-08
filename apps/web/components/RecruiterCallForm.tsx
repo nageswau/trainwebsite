@@ -17,7 +17,7 @@ type Values = { contact_id: string; outcome: string; when: string; direction: st
   reason: string; fu_notes: string };
 const LEGEND = { fontWeight: 800, fontSize: 13, padding: 0, marginBottom: 7 } as const; // reads like the `.field label` beside it (tel-010 QA-01)
 const BACKDATE_DAYS = 7; // CA5: the API's bound; the picker's min is a hint only
-const GRID = { display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))" } as const;
+const GRID = { display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))", alignItems: "start" } as const; // QA-01: a select is not stretched to the duration row
 
 function earliestInput(): string {
   return `${isoToIstInput(new Date(Date.now() - BACKDATE_DAYS * 86_400_000).toISOString()).slice(0, 10)}T00:00`;
