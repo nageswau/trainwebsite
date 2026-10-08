@@ -353,10 +353,10 @@ normalised name, kept by the model's `name` validator) with the non-unique index
 organizations only). **Migration `0109_university_duplicates`** backfills the key and logs (never merges or links) the existing duplicate
 groups and the unlinked BDM University organizations that match a master name; `downgrade()` refuses while any organization is linked.
 
-**Addendum, 2026-10-08 (`upc-005`, `DEC-SCOPE-127`, U15 — University CSV import):** `university_import_batches` (uploader FK,
+**Addendum, 2026-10-08 (`upc-005`, `DEC-SCOPE-128`, U15 — University CSV import):** `university_import_batches` (uploader FK,
 `idempotency_key` unique per uploader, `file_sha256`, `total_rows`/`created_count`/`duplicate_count`/`invalid_count` with CHECK
 `ck_university_import_batches_counts`, `results_json` per-row outcomes; index `(uploaded_by_user_id, created_at)`). The file is never
-stored. **Migration `0112_university_imports`**; `downgrade()` refuses while any batch exists (API §12AU).
+stored. **Migration `0113_university_imports`**; `downgrade()` refuses while any batch exists (API §12AV).
 
 ### 6.2 `OverseasApplication`, `ApplicationStatusHistory`
 **Carries over**, status vocabulary **extended** — this is part of the `ADR-012` resolution (§6.3
@@ -1399,3 +1399,15 @@ exists.
 | `created_at`, `updated_at` | timestamptz |
 
 `downgrade()` refuses while any row exists.
+
+## Company B2B pipeline (`rec-005`, `DEC-SCOPE-127`; migration `0112_company_pipeline`, after `0111_university_pipeline`)
+
+`companies` gains `stage` varchar(30) NOT NULL default `new_lead` (CHECK `ck_companies_stage`: the 13 keys of `app/recruiter_stages.py`,
+frozen in the migration), `stage_changed_at` timestamptz NOT NULL default `now()` (existing rows backfilled from `created_at`), `lost_at`
+and `lost_reason` varchar(500) (CHECK `ck_companies_lost`: both or neither) and `ix_companies_stage_recruiter (stage,
+assigned_recruiter_user_id)`. Every insert path keeps working through the defaults.
+
+`company_stage_history`: `id`, `company_id` FK RESTRICT, `from_stage`, `to_stage`, `event` (`manual`, `lost`, `reopen` or an engine
+event), `actor_user_id` (NULL = system), `reason` varchar(500), `position` identity, `created_at`; `ix_company_stage_history_company
+(company_id, position)`. Append-only, no stage CHECK. `services/company_pipeline.py` is the only writer of `stage`. `downgrade()` refuses
+while any history row exists or any company is past New Lead or Lost.

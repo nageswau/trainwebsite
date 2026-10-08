@@ -5,7 +5,7 @@
   report, duplicate check on name + country, idempotent) by `partnership_head` / `overseas_admin`".
 - **Dependencies:** upc-003 (`DEC-SCOPE-120`, PR #151) and upc-004 (`DEC-SCOPE-124`, PR #158) are merged on `main` @ `5b7c1fd5`.
   upc-007 (the stage) merged first: imported rows start at its first stage, Target University (IM4).
-- **Numbering (renumbered on merging `main` @ `f5f6822d`):** `DEC-SCOPE-127`, migration `0112_university_imports`, API §12AU, RBAC §2.53.
+- **Numbering (renumbered on merging `main` @ `f5f6822d`, then @ `ada23b4d`):** `DEC-SCOPE-128`, migration `0113_university_imports`, API §12AV, RBAC §2.54.
 - **Status of answers:** IM1–IM12 are the recommended answers, applied under the owner's standing instruction for the build session
   ("proceed with the recommended answers; ask only if genuinely blocking"). They are **not** separately confirmed, so they stay
   `NEEDS_CONFIRMATION` at sign-off.
@@ -27,7 +27,7 @@
 | IM11 | Audit | One `university.import` row for the batch (counts + file hash) and one `university.create` row per created university (`{code, import_batch_id}`), all in the import's transaction |
 | IM12 | UI | `/partnership/universities/import`: the template download, the column reference, the upload, the result (counts + the rows that were not created) and the report download, plus the caller's import history. The list page gets an "Import universities" link for the creator roles |
 
-## 2. Data (migration `0112_university_imports`)
+## 2. Data (migration `0113_university_imports`)
 
 `university_import_batches`: `id` UUID PK, `uploaded_by_user_id` FK `users`, `idempotency_key` VARCHAR(120), `file_sha256` VARCHAR(64),
 `total_rows`, `created_count`, `duplicate_count`, `invalid_count` (INT, default 0), `results_json` JSON (default `[]`),
@@ -35,7 +35,7 @@
 `created_count + duplicate_count + invalid_count = total_rows`, index `(uploaded_by_user_id, created_at)`. Guarded like 0108 (0001 builds
 from the models). `downgrade()` refuses while any batch exists (import history would be lost).
 
-## 3. API (§12AU)
+## 3. API (§12AV)
 
 - `GET /partnership/universities/imports/template`: the header row as CSV.
 - `POST /partnership/universities/import` (multipart `file`, header `Idempotency-Key`): `201` with the report

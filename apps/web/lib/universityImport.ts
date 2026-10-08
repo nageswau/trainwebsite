@@ -1,4 +1,4 @@
-// upc-005 (DEC-SCOPE-127): University CSV import -- endpoints, the template's column reference and the report types.
+// upc-005 (DEC-SCOPE-128): University CSV import -- endpoints, the template's column reference and the report types.
 // The server is the authority on every rule; the column descriptions only document the template for the person filling it in.
 import type { BulkColumn } from "@/lib/bulkEntry";
 import { UNIVERSITIES_PATH, UNIVERSITIES_URL } from "@/lib/universities";

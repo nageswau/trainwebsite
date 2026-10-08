@@ -1,4 +1,4 @@
-"""upc-005 -- migration 0112_university_imports (spec §2). The round trip and the downgrade refusal run in a throwaway database (the upc-001
+"""upc-005 -- migration 0113_university_imports (spec §2). The round trip and the downgrade refusal run in a throwaway database (the upc-001
 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -13,14 +13,14 @@ from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_upc_005_migration_0110", VERSIONS / "0112_university_imports.py")
+_spec = importlib.util.spec_from_file_location("_upc_005_migration_0110", VERSIONS / "0113_university_imports.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0111_university_pipeline", "0112_university_imports"
+BASE, HEAD = "0112_company_pipeline", "0113_university_imports"
 
 
-def test_migration_chains_after_0111_and_there_is_one_head():
+def test_migration_chains_after_0112_and_there_is_one_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

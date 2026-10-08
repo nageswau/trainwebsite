@@ -5253,15 +5253,41 @@ those numbers and merged first. Renumbered a third time from `DEC-SCOPE-125` / `
 the University Master list; "Partnership Pipeline" goes live in the §32 menu and the head's sidebar.
 **New Feature ID authorized:** `upc-007`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-007.
 
-### DEC-SCOPE-127 — University CSV import (`upc-005`)
+### DEC-SCOPE-127 — Company B2B pipeline (`rec-005`)
+
+**Evidence:** `EVID-018` §5 (lines 218–270), lead field "Status" (116), "genuine prospect" (122); `RECRUITER_CRM_BACKLOG.md` §rec-005
+(AC1–AC4). Module scope: `DEC-SCOPE-116` (R1–R15); company scope and permissions: `DEC-SCOPE-121` (rec-003, D6).
+**Status:** built on `feature/rec-005` (2026-10-08). Every answer below is a **recommended default, `UNVERIFIED`**: the owner told the
+session to proceed with the recommended answers, and Q-06 was not asked. **Numbering (provisional):** migration `0112_company_pipeline`,
+API §12AU, RBAC §2.53 (drafted as `0108` / `DEC-SCOPE-123` / §12AQ / §2.49; upc-006, upc-004, rec-004 and upc-007 merged first); re-check on `main` before merge. Spec `docs/superpowers/specs/2026-10-08-rec-005-company-pipeline-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| P1 | Stage count | The source lists **13** stages; the backlog's "14" is a miscount. Lost is a flag, not a stage |
+| P2 (Q-06) | Stages after Requirement Received | Driven by requirement events only, forward along the order: the company sits at its furthest-progressed requirement. Callers decide when an event fires (e.g. `requirement_closed` only when no open requirement is left). Never set by hand |
+| P3 (Q-06) | Going back | Among the four manual stages, with a reason. Once at a driven stage, no manual move. The one system path back: a new requirement on a Requirement Closed company returns it to Requirement Received |
+| P4 | Manual stages | Contacted, Interested, Meeting Scheduled, Requirement Discussion. New Lead is the start, never chosen |
+| P5 | Lost / reopen | Lost is a flag with a reason on top of the kept stage. The assigned recruiter (or super_admin) marks lost; only a placement manager or super_admin reopens, with a reason, back at the same stage. Events never move a Lost or archived company |
+| P6 | Who moves | rec-003's `can_edit` holders (assigned recruiter, super_admin). The manager does not move (D6) but reopens. The assigned BDM reads only (R10) |
+| P7 | Board | `/recruiter/pipeline` in the caller's company scope; archived left out, Lost counted apart |
+| P8 | Engine events | `call_logged`, `meeting_scheduled`, `requirement_received`, `jd_received`, `candidates_sourcing`, `profiles_shared`, `interview_scheduled`, `candidate_selected`, `candidate_joined`, `requirement_closed`. No caller yet; rec-007/008/017/019/020/022/023/024/028 wire them |
+
+**Consequences:**
+- `app/recruiter_stages.py`, `services/company_pipeline.py` (`apply_event` is the single writer; its API is frozen once merged — later
+  items only add events), `api/recruiter_pipeline.py`, migration `0112`.
+- The company detail gains the Pipeline and Stage history sections; the list a Stage column; a new `/recruiter/pipeline` board and nav
+  entries for recruiters, managers and super admin.
+- **New Feature ID authorized:** `rec-005`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-005.
+
+### DEC-SCOPE-128 — University CSV import (`upc-005`)
 
 **Evidence:** `EVID-020` §25 ("all universities globally") and §22 ("Total Universities: 1,250"); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md`
 §3.1 U15 (`EXPLICIT_APPROVAL`, 2026-10-08: "CSV import (per-row report, duplicate check on name + country, idempotent) by
 `partnership_head` / `overseas_admin`") and §4 upc-005.
 **Status:** IM1–IM12 are the recommended answers to the design-level questions, applied under the owner's standing instruction for the
 build session ("proceed with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed:
-`NEEDS_CONFIRMATION` at sign-off. Migration `0112_university_imports`, API contract §12AU, RBAC §2.53.
-Drafted as `DEC-SCOPE-125` / `0110` / §12AS / §2.51 and renumbered on merging `main` @ `f5f6822d`: rec-004 took `DEC-SCOPE-125` / `0110` / §12AS / §2.51 and upc-007 took `DEC-SCOPE-126` / `0111` / §12AT / §2.52.
+`NEEDS_CONFIRMATION` at sign-off. Migration `0113_university_imports`, API contract §12AV, RBAC §2.54.
+Drafted as `DEC-SCOPE-125` / `0110` / §12AS / §2.51 and renumbered on merging `main` @ `f5f6822d`: rec-004 took `DEC-SCOPE-125` / `0110` / §12AS / §2.51 upc-007 took `DEC-SCOPE-126` / `0111` / §12AT / §2.52, then, on merging `main` @ `ada23b4d`, rec-005 took `DEC-SCOPE-127` / `0112` / §12AU / §2.53.
 Spec: `docs/superpowers/specs/2026-10-08-upc-005-university-import-design.md`.
 
 | # | Question | Answer |

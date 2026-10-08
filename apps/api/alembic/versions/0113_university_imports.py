@@ -1,14 +1,14 @@
 """upc-005 -- University CSV import batches.
 
-Revision ID: 0112_university_imports
-Revises: 0111_university_pipeline
+Revision ID: 0113_university_imports
+Revises: 0112_company_pipeline
 
-docs/superpowers/specs/2026-10-08-upc-005-university-import-design.md §2 (DEC-SCOPE-127). Adds `university_import_batches`: one row per
+docs/superpowers/specs/2026-10-08-upc-005-university-import-design.md §2 (DEC-SCOPE-128). Adds `university_import_batches`: one row per
 import with the file hash, the counts and each row's outcome (never the file). 0001 builds a fresh database from the current models, which
 already carry this table, so the create is guarded. COUNTS_SQL repeats app.models (test_upc_005_migration). downgrade() refuses while any
 batch exists: it would drop the import history.
 
-Drafted as `0110_university_imports` on `0109_university_duplicates` and re-chained on merging `main` @ `f5f6822d`: rec-004 took `DEC-SCOPE-125` / `0110` / §12AS / §2.51 and upc-007 took `DEC-SCOPE-126` / `0111` / §12AT / §2.52.
+Drafted as `0110_university_imports` on `0109_university_duplicates` and re-chained on merging `main` @ `f5f6822d`: rec-004 took `DEC-SCOPE-125` / `0110` / §12AS / §2.51 upc-007 took `DEC-SCOPE-126` / `0111` / §12AT / §2.52, then, on merging `main` @ `ada23b4d`, rec-005 took `DEC-SCOPE-127` / `0112` / §12AU / §2.53.
 """
 
 import sqlalchemy as sa
@@ -16,8 +16,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0112_university_imports"
-down_revision = "0111_university_pipeline"
+revision = "0113_university_imports"
+down_revision = "0112_company_pipeline"
 branch_labels = None
 depends_on = None
 
@@ -50,5 +50,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {TABLE} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0112_university_imports: university import history exists. Remove it deliberately first.")
+        raise RuntimeError("Cannot downgrade 0113_university_imports: university import history exists. Remove it deliberately first.")
     op.drop_table(TABLE)

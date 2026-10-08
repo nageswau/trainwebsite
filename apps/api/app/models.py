@@ -34,6 +34,8 @@ from app.lead_stages import STAGES as LEAD_STAGES
 from app.notifications.phone import normalise_phone
 from app.partnership_stages import FIRST_STAGE as UNIVERSITY_FIRST_STAGE
 from app.partnership_stages import STAGE_KEYS as UNIVERSITY_STAGE_KEYS
+from app.recruiter_stages import FIRST_STAGE as COMPANY_FIRST_STAGE
+from app.recruiter_stages import ORDER as COMPANY_STAGES
 from app.tel_content_kinds import ASSET_KINDS as TEL_ASSET_KINDS
 from app.tel_content_kinds import EMAIL_KINDS as TEL_EMAIL_KINDS
 from app.tel_content_kinds import WHATSAPP_KINDS as TEL_WHATSAPP_KINDS
@@ -325,6 +327,11 @@ COMPANY_CHECKS = {
     "ck_companies_priority": "priority IS NULL OR priority IN ('hot', 'warm', 'cold')",
     "ck_companies_employee_count": "employee_count IS NULL OR employee_count BETWEEN 0 AND 10000000",
 }
+# rec-005 (DEC-SCOPE-127): the pipeline stage and the Lost flag (both or neither); migration 0108 keeps a frozen copy.
+COMPANY_PIPELINE_CHECKS = {
+    "ck_companies_stage": "stage IN (" + ", ".join(f"'{s}'" for s in COMPANY_STAGES) + ")",
+    "ck_companies_lost": "(lost_at IS NULL) = (lost_reason IS NULL)",
+}
 
 
 class Company(Base, TimestampMixin):
@@ -336,7 +343,9 @@ class Company(Base, TimestampMixin):
     __table_args__ = (
         UniqueConstraint("company_code", name="uq_companies_code"),
         *(CheckConstraint(sql, name=name) for name, sql in COMPANY_CHECKS.items()),
+        *(CheckConstraint(sql, name=name) for name, sql in COMPANY_PIPELINE_CHECKS.items()),
         Index("ix_companies_assigned_recruiter", "assigned_recruiter_user_id"),
+        Index("ix_companies_stage_recruiter", "stage", "assigned_recruiter_user_id"),  # rec-005: the pipeline board
         Index("ix_companies_assigned_bdm", "assigned_bdm_user_id"),
         Index("ix_companies_name_key", text(COMPANY_NAME_KEY_SQL)),  # the duplicate check (services/recruiter_companies.NAME_KEY)
     )
@@ -370,6 +379,29 @@ class Company(Base, TimestampMixin):
     assigned_bdm_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # rec-005 (DEC-SCOPE-127): written only by services/company_pipeline; the server defaults cover every other insert path (EMP-001).
+    stage: Mapped[str] = mapped_column(String(30), default=COMPANY_FIRST_STAGE, server_default=COMPANY_FIRST_STAGE)
+    stage_changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    lost_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    lost_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+
+class CompanyStageHistory(Base):
+    """rec-005 (DEC-SCOPE-127, spec §3): one row per stage change, Lost and reopen. Append-only. `event` is `manual`, `lost`, `reopen` or
+    an engine event (recruiter_stages.EVENTS); `actor_user_id` is NULL for the system. No stage CHECK: history must survive a future
+    catalogue change. `position` orders rows created in one transaction."""
+
+    __tablename__ = "company_stage_history"
+    __table_args__ = (Index("ix_company_stage_history_company", "company_id", "position"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"))
+    from_stage: Mapped[str] = mapped_column(String(30))
+    to_stage: Mapped[str] = mapped_column(String(30))
+    event: Mapped[str] = mapped_column(String(30))
+    actor_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class CompanyAssignmentHistory(Base):
@@ -680,9 +712,9 @@ class UniversityAssignmentHistory(Base):
 
 
 class UniversityImportBatch(Base, TimestampMixin):
-    """upc-005 (DEC-SCOPE-127, IM6/IM10): one CSV import into the University Master. The file is never stored: only its hash, the counts
+    """upc-005 (DEC-SCOPE-128, IM6/IM10): one CSV import into the University Master. The file is never stored: only its hash, the counts
     and each row's outcome {row_number, status, name, country, university_id, university_code, matches, reason}. The Idempotency-Key is
-    scoped to the uploader. Migration 0112 repeats the constraints (test_upc_005_migration)."""
+    scoped to the uploader. Migration 0113 repeats the constraints (test_upc_005_migration)."""
 
     __tablename__ = "university_import_batches"
     __table_args__ = (

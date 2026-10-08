@@ -3214,3 +3214,14 @@ own sidebar); the API decides every action. Signed out → `/overseas/login`.
   Yes / Cancel, focus moved into and back out of the reason; Saving… and one request per submit; success in `role="status"`; a refusal or
   someone else's change in `role="alert"`, the page refreshed, the entry kept) and "Stage history" (newest first, Show more, Try again).
 - **Extended:** `/partnership/universities` gains a Stage column (with a Lost badge).
+
+## rec-005 addendum (2026-10-08, `DEC-SCOPE-127`) — Company pipeline
+
+Design spec `docs/superpowers/specs/2026-10-08-rec-005-company-pipeline-design.md` §5.
+
+- **Company detail** (`/recruiter/companies/[id]`): a Pipeline section (13-stage stepper, state as text; Lost banner; Move form with the
+  four manual stages, reason required when moving back; Mark lost / Reopen with a reason) and a Stage history section (newest first,
+  Show more). Driven stages show "The stage now moves with its job requirements" and no Move form.
+- **Company list** (`/recruiter/companies`): a Stage column with a Lost badge.
+- **Pipeline board** (`/recruiter/pipeline`): a count tile per stage plus Lost, then one page of companies (code, company, city,
+  priority, stage, recruiter). Filters live in the address; an invalid filter says so with a way back.
