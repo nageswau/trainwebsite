@@ -1,4 +1,4 @@
-// rec-024 (DEC-SCOPE-127): recruiter follow-ups -- types, the EVID-018 §18 reason labels and the endpoints. The API decides scope, every
+// rec-024 (DEC-SCOPE-131): recruiter follow-ups -- types, the EVID-018 §18 reason labels and the endpoints. The API decides scope, every
 // rule and `can_change` (the company's assigned recruiter or super admin, on an open follow-up of an active company); the UI only offers
 // what it allows.
 import { isPage, type Page } from "@/lib/apiErrors";

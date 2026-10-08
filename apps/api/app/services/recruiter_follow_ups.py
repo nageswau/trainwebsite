@@ -1,4 +1,4 @@
-"""rec-024 (DEC-SCOPE-127, spec §1-§3): recruiter follow-ups on a company -- rules, the Today / Overdue / Upcoming lists and the output.
+"""rec-024 (DEC-SCOPE-131, spec §1-§3): recruiter follow-ups on a company -- rules, the Today / Overdue / Upcoming lists and the output.
 
 A follow-up belongs to its company (FU4): every read and write goes through rec-003's company scope (`caller_scope` / `load_scoped`), so
 another recruiter's follow-up is the same 404 as a missing one and a reassigned company's follow-ups move with it. Writes need the

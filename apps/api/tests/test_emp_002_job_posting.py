@@ -154,7 +154,7 @@ async def test_an_employer_cannot_update_another_employers_job_even_via_direct_i
 
     job = await db_session.get(Job, job_id)
     await db_session.refresh(job)
-    assert job.status == "draft"
+    assert job.status == "new"  # rec-007 J1: the stored §6 status behind the API's "draft"
 
 
 @pytest.mark.asyncio

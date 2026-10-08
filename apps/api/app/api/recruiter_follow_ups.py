@@ -1,4 +1,4 @@
-"""rec-024 (DEC-SCOPE-127, spec §3): recruiter follow-ups -- the Today / Overdue / Upcoming lists, a company's follow-ups, create,
+"""rec-024 (DEC-SCOPE-131, spec §3): recruiter follow-ups -- the Today / Overdue / Upcoming lists, a company's follow-ups, create,
 reschedule/edit, complete and cancel.
 
 Scope is the company's (rec-003 `caller_scope`; other roles 403, out of scope 404). Every write is one transaction -- scope, the company

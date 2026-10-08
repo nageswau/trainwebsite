@@ -1,17 +1,17 @@
 """rec-024 -- recruiter_follow_ups: follow-ups on a company (and optionally a contact, requirement or application).
 
-Revision ID: 0114_recruiter_follow_ups
-Revises: 0113_university_imports
+Revision ID: 0116_recruiter_follow_ups
+Revises: 0115_university_visits
 
-docs/superpowers/specs/2026-10-08-rec-024-recruiter-follow-ups-design.md §2 (DEC-SCOPE-127). A new table only; no existing row changes.
+docs/superpowers/specs/2026-10-08-rec-024-recruiter-follow-ups-design.md §2 (DEC-SCOPE-131). A new table only; no existing row changes.
 0001 builds a fresh database from the current models, which already carry this table, so it is created only when missing (0110's idiom).
 CHECKS repeats app.models.RECRUITER_FOLLOW_UP_CHECKS (test_rec_024_migration). downgrade() refuses while any follow-up exists: entered data
 is never dropped silently.
 
 Re-chained 2026-10-08 on merging `main` @ `8345c1fc`: drafted as `0112_recruiter_follow_ups` on `0111_university_pipeline`, but rec-005
-(`0112_company_pipeline`, DEC-SCOPE-127) and then upc-005 (`0113_university_imports`, DEC-SCOPE-128) merged first, so this is
-`0114` (DEC-SCOPE-129, API §12AW, RBAC §2.55). A database stamped at the
-draft is re-stamped with `alembic stamp --purge 0112_company_pipeline` (or `0111_university_pipeline` for the first draft), then `upgrade head` (the table step is guarded).
+(`0112_company_pipeline`, DEC-SCOPE-127) and then upc-005 (`0113_university_imports`), rec-007 (`0114_job_requirements`) and upc-010
+(`0115_university_visits`) merged first, so this is `0116` (DEC-SCOPE-131, API §12AY, RBAC §2.57). A database stamped at the
+draft is re-stamped with `alembic stamp --purge` at the draft's parent (`0111_university_pipeline`, `0112_company_pipeline` or `0113_university_imports`), then `upgrade head` (the table step is guarded).
 """
 
 import sqlalchemy as sa
@@ -19,8 +19,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0114_recruiter_follow_ups"
-down_revision = "0113_university_imports"
+revision = "0116_recruiter_follow_ups"
+down_revision = "0115_university_visits"
 branch_labels = None
 depends_on = None
 
@@ -76,5 +76,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {TABLE} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0114_recruiter_follow_ups: recruiter follow-ups exist. Clear them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0116_recruiter_follow_ups: recruiter follow-ups exist. Clear them deliberately first.")
     op.drop_table(TABLE)

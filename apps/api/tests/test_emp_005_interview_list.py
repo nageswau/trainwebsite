@@ -58,7 +58,7 @@ async def _login(client, email: str) -> None:
 @pytest.mark.asyncio
 async def test_a_cancelled_interview_remains_visible_in_the_employers_list(db_session, client):
     employer, company = await _create_employer_with_company(db_session)
-    job = Job(company_id=company.id, title="Backend Engineer", location="Remote", description="", skills=[], status="open")
+    job = Job(company_id=company.id, title="Backend Engineer", location="Remote", description="", skills=[], status="requirement_received")
     db_session.add(job)
     await db_session.flush()
     student = await _create_user(db_session, role="it_student")
@@ -80,7 +80,7 @@ async def test_a_cancelled_interview_remains_visible_in_the_employers_list(db_se
 @pytest.mark.asyncio
 async def test_interviews_with_no_result_yet_are_also_returned(db_session, client):
     employer, company = await _create_employer_with_company(db_session)
-    job = Job(company_id=company.id, title="Frontend Engineer", location="Remote", description="", skills=[], status="open")
+    job = Job(company_id=company.id, title="Frontend Engineer", location="Remote", description="", skills=[], status="requirement_received")
     db_session.add(job)
     await db_session.flush()
     student = await _create_user(db_session, role="it_student")

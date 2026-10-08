@@ -44,6 +44,11 @@ from app.models import (
     COURSE_LEVELS,
     GENDERS,
     INSTITUTION_TYPES,
+    JOB_EMPLOYMENT_TYPES,
+    JOB_PRIORITIES,
+    JOB_SHIFTS,
+    JOB_STATUSES,
+    JOB_WORK_MODES,
     LEAD_APPOINTMENT_TYPE_LABELS,
     LEAD_CALL_MAX_SECONDS,
     LEAD_CALL_OUTCOMES,
@@ -7159,6 +7164,188 @@ class UniversityContactPage(BaseModel):
     offset: int
 
 
+# --- upc-010 (DEC-SCOPE-130): university visits (§8). Limits per VS18; participants and contacts per VS11/VS12 ------------------------
+VISIT_MAX_PARTICIPANTS = 10
+VISIT_MAX_CONTACTS = 20
+VisitPurpose = _university_str(1000, required=True, multiline=True)
+VisitLong = _university_str(2000, multiline=True)
+VisitNotes = _university_str(1000, multiline=True)
+VisitCity = _university_str(120)
+VisitReason = _university_str(1000, required=True, multiline=True)
+VisitStatus = Literal["planned", "approved", "travel_booked", "visit_completed", "follow_up", "closed"]  # = UNIVERSITY_VISIT_STATUSES (§8)
+
+
+def _unique_ids(values: list[UUID] | None) -> list[UUID] | None:
+    """A repeated pick is one pick (order kept)."""
+    return None if values is None else list(dict.fromkeys(values))
+
+
+VisitParticipants = Annotated[list[UUID], Field(max_length=VISIT_MAX_PARTICIPANTS), AfterValidator(_unique_ids)]
+VisitContacts = Annotated[list[UUID], Field(max_length=VISIT_MAX_CONTACTS), AfterValidator(_unique_ids)]
+
+
+class UniversityVisitIn(BaseModel):
+    """`lead_user_id` defaults to the caller; `city` to the university's city (VS1)."""
+
+    model_config = ConfigDict(extra="forbid")
+    university_id: UUID
+    lead_user_id: UUID | None = None
+    city: VisitCity = None
+    purpose: VisitPurpose
+    proposed_date: date
+    confirmed_date: date | None = None
+    travel_required: StrictBool = False
+    travel_notes: VisitNotes = None
+    hotel_required: StrictBool = False
+    hotel_notes: VisitNotes = None
+    agenda: VisitLong = None
+    expected_outcome: VisitLong = None
+    participant_user_ids: VisitParticipants = []
+    contact_ids: VisitContacts = []
+
+
+class UniversityVisitUpdate(BaseModel):
+    """PATCH: omitted = unchanged; null clears an optional field and fails a required one. The university never changes (create a new
+    visit); which fields may change depends on the status (VS9, decided by the service)."""
+
+    model_config = ConfigDict(extra="forbid")
+    lead_user_id: UUID = None
+    city: UniversityCity = None
+    purpose: VisitPurpose = None
+    proposed_date: date = None
+    confirmed_date: date | None = None
+    travel_required: StrictBool = None
+    travel_notes: VisitNotes = None
+    hotel_required: StrictBool = None
+    hotel_notes: VisitNotes = None
+    agenda: VisitLong = None
+    expected_outcome: VisitLong = None
+    follow_up_date: date | None = None
+    participant_user_ids: VisitParticipants = None
+    contact_ids: VisitContacts = None
+
+
+class UniversityVisitComplete(BaseModel):
+    """AC3: completing a visit asks for the follow-up date."""
+
+    model_config = ConfigDict(extra="forbid")
+    follow_up_date: date
+
+
+class UniversityVisitReject(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: VisitReason
+
+
+class UniversityVisitClose(BaseModel):
+    """VS5: the reason is required when a visit is closed before it happened (checked by the service)."""
+
+    model_config = ConfigDict(extra="forbid")
+    reason: VisitNotes = None
+
+
+class VisitPerson(BaseModel):
+    id: UUID
+    full_name: str
+    active: bool
+
+
+class VisitCountryRef(BaseModel):
+    id: UUID
+    name: str
+
+
+class VisitUniversityRef(BaseModel):
+    id: UUID
+    name: str
+    university_code: str
+    city: str
+    country: VisitCountryRef
+
+
+class VisitContactRef(BaseModel):
+    id: UUID
+    name: str
+    designation: str | None
+
+
+class VisitEventOut(BaseModel):
+    action: str
+    from_status: str | None
+    to_status: str | None
+    actor: VisitPerson
+    reason: str | None
+    created_at: datetime
+
+
+class VisitPermissions(BaseModel):
+    can_edit: bool
+    can_submit: bool
+    can_decide: bool
+    can_book: bool
+    can_complete: bool
+    can_follow_up: bool
+    can_close: bool
+
+
+class UniversityVisitRow(BaseModel):
+    id: UUID
+    code: str
+    university: VisitUniversityRef
+    city: str
+    lead: VisitPerson
+    proposed_date: date
+    confirmed_date: date | None
+    status: str
+    approval_state: Literal["draft", "waiting", "returned"] | None  # only while planned (VS2)
+    submitted_at: datetime | None
+
+
+class UniversityVisitOut(UniversityVisitRow):
+    purpose: str
+    created_by: VisitPerson
+    travel_required: bool
+    travel_notes: str | None
+    hotel_required: bool
+    hotel_notes: str | None
+    agenda: str | None
+    expected_outcome: str | None
+    follow_up_date: date | None
+    rejection_reason: str | None
+    decided_by: VisitPerson | None
+    decided_at: datetime | None
+    close_reason: str | None
+    participants: list[VisitPerson]
+    contacts: list[VisitContactRef]
+    events: list[VisitEventOut]
+    permissions: VisitPermissions
+    editable_fields: list[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class UniversityVisitEnvelope(BaseModel):
+    visit: UniversityVisitOut
+
+
+class UniversityVisitPage(BaseModel):
+    items: list[UniversityVisitRow]
+    total: int
+    limit: int
+    offset: int
+
+
+class VisitOption(BaseModel):
+    id: UUID
+    label: str
+    detail: str | None
+
+
+class VisitOptionPage(BaseModel):
+    items: list[VisitOption]
+    total: int
+
+
 # --- rec-006 (DEC-SCOPE-119): the recruiter Skills Master ------------------------------------------------------------------------
 SKILL_FIELD_LABELS = {
     "name": "Name", "alias": "Alias", "active": "Active", "category_id": "Category", "tag_category_ids": "Other categories", "skill_id": "Related skill",
@@ -7851,7 +8038,100 @@ class CandidateDetail(CandidateItem):
     can_edit: bool
 
 
-# --- rec-024 (DEC-SCOPE-127, spec §3): recruiter follow-ups ----------------------------------------------------------------------
+# --- rec-007 (DEC-SCOPE-129): the Job Requirement ----------------------------------------------------------------------------------
+REC_REQUIREMENT_LABELS = {
+    "title": "Job title", "location": "Job location", "description": "Job description", "department": "Department",
+    "qualification": "Qualification", "joining_requirement": "Joining requirement", "note": "Note",
+}
+REC_REQUIREMENT_MULTILINE = frozenset({"description", "note"})
+REC_REQUIREMENT_FIELDS = (  # the `jobs` columns a create or edit may write; code, status, assignee and creator are server-owned
+    "title", "location", "description", "department", "job_category_id", "vacancies", "qualification", "experience_min_months",
+    "experience_max_months", "salary_min", "salary_max", "work_mode", "shift", "employment_type", "joining_requirement", "closes_on",
+    "requirement_date", "priority",
+)
+
+
+def _rec_requirement_text(value: str | None, info: ValidationInfo) -> str | None:
+    """bdm-002's rule: no control characters (a line break only in a multi-line field); blank -> None."""
+    label = REC_REQUIREMENT_LABELS.get(info.field_name, "Skill")
+    control = _BDM_CONTROL_MULTILINE if info.field_name in REC_REQUIREMENT_MULTILINE else _BDM_CONTROL
+    if value is not None and control.search(value):
+        raise ValueError(f"{label} contains invalid characters")
+    return value or None
+
+
+def _rec_requirement_text_type(max_length: int, *, multiline: bool = False):
+    text = Annotated[Annotated[str, StringConstraints(strip_whitespace=True, max_length=max_length)] | None, AfterValidator(_rec_requirement_text)]
+    return Annotated[text, BeforeValidator(_bdm_newlines)] if multiline else text
+
+
+def _rec_required_text(value: str | None, info: ValidationInfo) -> str:
+    if value is None:
+        raise ValueError(f"{REC_REQUIREMENT_LABELS[info.field_name]} is required")
+    return value
+
+
+RecRequirementTitle = Annotated[_rec_requirement_text_type(180), AfterValidator(_rec_required_text)]
+RecRequirementLocation = Annotated[_rec_requirement_text_type(120), AfterValidator(_rec_required_text)]
+RecSkillName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
+RecMonths = Annotated[int | None, Field(ge=0, le=600)]
+RecMoney = Annotated[Decimal | None, Field(ge=0, max_digits=12, decimal_places=2)]
+
+
+class RecRequirementUpdate(BaseModel):
+    """PATCH: omitted = unchanged, null = clear (title and location cannot be cleared). Sending `required_skills` / `preferred_skills`
+    replaces that list; each name resolves through the Skills Master (J7). Min > max is a 422 here when both are sent, and in the
+    service against the stored values."""
+
+    model_config = ConfigDict(extra="forbid")
+    title: RecRequirementTitle = None
+    location: RecRequirementLocation = None
+    description: _rec_requirement_text_type(10000, multiline=True) = None
+    department: _rec_requirement_text_type(120) = None
+    job_category_id: UUID | None = None
+    vacancies: Annotated[int | None, Field(ge=1, le=10000)] = None
+    qualification: _rec_requirement_text_type(300) = None
+    experience_min_months: RecMonths = None
+    experience_max_months: RecMonths = None
+    salary_min: RecMoney = None
+    salary_max: RecMoney = None
+    work_mode: Literal[JOB_WORK_MODES] | None = None
+    shift: Literal[JOB_SHIFTS] | None = None
+    employment_type: Literal[JOB_EMPLOYMENT_TYPES] | None = None
+    joining_requirement: _rec_requirement_text_type(300) = None
+    closes_on: date | None = None
+    requirement_date: date | None = None
+    priority: Literal[JOB_PRIORITIES] | None = None
+    required_skills: list[RecSkillName] | None = Field(default=None, max_length=30)
+    preferred_skills: list[RecSkillName] | None = Field(default=None, max_length=30)
+
+    @model_validator(mode="after")
+    def _ranges(self):
+        for low, high, label in (("experience_min_months", "experience_max_months", "experience"), ("salary_min", "salary_max", "salary")):
+            a, b = getattr(self, low), getattr(self, high)
+            if a is not None and b is not None and a > b:
+                raise ValueError(f"Minimum {label} cannot be more than the maximum")
+        return self
+
+
+class RecRequirementCreate(RecRequirementUpdate):
+    company_id: UUID
+    title: RecRequirementTitle
+    location: RecRequirementLocation
+    assigned_recruiter_user_id: UUID | None = None  # managers and super_admin only (services/recruiter_requirements)
+
+
+class RecRequirementStatusChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: Literal[JOB_STATUSES]
+    note: _rec_requirement_text_type(500, multiline=True) = None
+
+
+class RecRequirementAssign(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    recruiter_user_id: UUID
+
+# --- rec-024 (DEC-SCOPE-131, spec §3): recruiter follow-ups ----------------------------------------------------------------------
 REC_FOLLOW_UP_LABELS = {"notes": "Notes", "outcome": "Outcome"}
 RecFollowUpReason = Literal[RECRUITER_FOLLOW_UP_REASONS]
 RecFollowUpNotes = Annotated[Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, REC_FOLLOW_UP_LABELS))]

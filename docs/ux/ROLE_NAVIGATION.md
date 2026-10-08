@@ -353,8 +353,8 @@ A user's nav never crosses `it` / `overseas` / `global` divisions except for **S
 - `placement_team` and `placement_manager`: a "Pipeline" entry (`/recruiter/pipeline`) after "Candidate Master".
 - `super_admin`: "Recruiter Pipeline" (`/recruiter/pipeline`) after "Recruiter Companies".
 
-## rec-024 addendum (2026-10-08, `DEC-SCOPE-129`)
+## rec-024 addendum (2026-10-08, `DEC-SCOPE-131`)
 
-- `placement_team` and `placement_manager`: a "Follow-ups" entry (`/recruiter/follow-ups`) after "Pipeline". The manager's lists are read
+- `placement_team` and `placement_manager`: a "Follow-ups" entry (`/recruiter/follow-ups`) after "Job Requirements". The manager's lists are read
   only.
 - `super_admin` gets no new entry: they reach follow-ups from each company page.

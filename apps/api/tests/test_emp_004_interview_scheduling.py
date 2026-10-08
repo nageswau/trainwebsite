@@ -35,7 +35,7 @@ async def _create_employer(db_session) -> tuple[User, Company]:
     return user, company
 
 
-async def _create_job(db_session, company: Company, status="open") -> Job:
+async def _create_job(db_session, company: Company, status="requirement_received") -> Job:
     job = Job(company_id=company.id, title="Test Role", location="Remote", description="", skills=[], status=status)
     db_session.add(job)
     await db_session.commit()

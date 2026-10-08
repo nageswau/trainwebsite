@@ -22,6 +22,7 @@ from app.core.database import get_db
 from app.core.identifiers import uuid_reference
 from app.core.rbac import REVIEW_MASTER_ONLY, REVIEW_REASON_REQUIRED, VERIFY_REFUSED, agent_denial_reason, agent_may, is_agent_staff
 from app.models import (
+    JOB_OPEN_STATUSES,
     AgentCommission,
     AgentOrgMember,
     AgentStudent,
@@ -107,6 +108,7 @@ from app.schemas import (
     VisaCaseCreate,
 )
 from app.services import agent_notifications as agency_notices
+from app.services import recruiter_requirements as requirements
 from app.services.agent_applications import ARCHIVED, DEFAULT_NEXT_ACTION, OFFER_STAGES_ON, OVERSEAS_APPLICATION_STAGES, WITHDRAWN, WITHDRAWN_REFUSED, owned, with_owner
 from app.services.agent_documents import add_event, in_scope
 from app.services.agent_orgs import lock_org, notification_recipients, org_member_ids
@@ -1473,7 +1475,7 @@ async def open_jobs(user: User = Depends(get_current_user), db: AsyncSession = D
     # the Employer never explicitly closed it -- `status` alone was previously trusted.
     rows = (
         await db.execute(
-            select(Job, Company).join(Company).where(Job.status == "open", or_(Job.closes_on.is_(None), Job.closes_on >= date.today())).order_by(Job.created_at.desc())
+            select(Job, Company).join(Company).where(Job.status.in_(JOB_OPEN_STATUSES), or_(Job.closes_on.is_(None), Job.closes_on >= date.today())).order_by(Job.created_at.desc())
         )
     ).all()
     return [
@@ -1487,7 +1489,7 @@ async def all_jobs(user: User = Depends(get_current_user), db: AsyncSession = De
     # a requirement (any status, not just currently-open ones) to review its shortlist.
     _require(user, {"placement_team", "hr_team", "it_admin"}, "it")
     rows = (await db.execute(select(Job, Company).join(Company).order_by(Job.created_at.desc()))).all()
-    return [{"id": job.id, "company": company.name, "title": job.title, "status": job.status} for job, company in rows]
+    return [{"id": job.id, "company": company.name, "title": job.title, "status": job.status, "status_label": requirements.STATUS_LABELS[job.status]} for job, company in rows]
 
 
 @router.get("/it/jobs/{job_id}/shortlist")
@@ -1545,12 +1547,16 @@ async def create_job(payload: dict, user: User = Depends(get_current_user), db: 
         title=payload["title"],
         location=payload.get("location", "Remote"),
         description=payload.get("description", ""),
-        skills=payload.get("skills", []),
-        status="open",
+        skills=[],
+        status="requirement_received",  # rec-007 J1: the legacy "open"; this staff route still publishes immediately
         closes_on=date.fromisoformat(payload["closes_on"]) if payload.get("closes_on") else None,
+        requirement_date=requirements.ist_today(),
+        created_by_user_id=user.id,
     )
     db.add(job)
     await db.flush()
+    await requirements.set_legacy_skills(db, job, payload.get("skills") or [])
+    await requirements.record_created(db, user, job)
     await _audit(db, user, "job.create", "job", job.id)
     await db.commit()
     await db.refresh(job)
@@ -1563,7 +1569,7 @@ async def apply_job(job_id: UUID, payload: dict, user: User = Depends(get_curren
     job = await db.get(Job, job_id)
     # EMP-002-AC02: a posting past its own closing date is not open, even if the
     # Employer never explicitly closed it -- applies here too, not just to the listing.
-    if not job or job.status != "open" or (job.closes_on and job.closes_on < date.today()):
+    if not job or job.status not in JOB_OPEN_STATUSES or (job.closes_on and job.closes_on < date.today()):
         raise HTTPException(404, "Open job not found")
     existing = await db.scalar(select(JobApplication).where(JobApplication.job_id == job_id, JobApplication.student_id == user.id))
     if existing:
@@ -1583,9 +1589,20 @@ async def update_job(job_id: UUID, payload: dict, user: User = Depends(get_curre
     job = await db.get(Job, job_id)
     if not job:
         raise HTTPException(404, "Job not found")
-    for key in {"title", "location", "description", "skills", "status"}:
+    for key in {"title", "location", "description"}:
         if key in payload:
             setattr(job, key, payload[key])
+    if "skills" in payload:
+        await requirements.set_legacy_skills(db, job, payload["skills"] or [])
+    if payload.get("status"):
+        # rec-007 (J3): a §6 status, or a legacy draft/open/closed word mapped onto one; the move is validated and kept in history.
+        status = payload["status"]
+        if status in requirements.LEGACY_WORDS:
+            status = requirements.legacy_target(job.status, status)
+        elif status not in requirements.STATUS_LABELS:
+            raise HTTPException(422, "Unknown requirement status")
+        if status:
+            await requirements.change_status(db, user, job, status)
     if "closes_on" in payload:
         job.closes_on = date.fromisoformat(payload["closes_on"]) if payload["closes_on"] else None
     await _audit(db, user, "job.update", "job", job.id, payload)

@@ -1764,10 +1764,86 @@ reason text — one commit). **Changed (additive):** every university row gains 
 | `GET /partnership/universities/imports/{id}` | **New.** The report; another person's batch `404` |
 | `GET /partnership/universities/imports/{id}/report.csv` | **New.** `row_number, status, name, country, university_code, reason`; formula cells escaped (`'=`); `404` as above |
 
-## 12AW. Recruiter follow-ups (`rec-024`) — addendum, 2026-10-08
+## 12AW. Job Requirement (`rec-007`) — addendum, 2026-10-08
 
-- **Basis:** `DEC-SCOPE-129` (FU1–FU10). Design spec `docs/superpowers/specs/2026-10-08-rec-024-recruiter-follow-ups-design.md` §3.
-  Migration `0114`. Drafted as §12AU, then §12AV; rec-005 and upc-005 merged first.
+- **Basis:** `DEC-SCOPE-129`. Design spec `docs/superpowers/specs/2026-10-08-rec-007-job-requirement-design.md` §5. Migration `0114`.
+  Drafted as §12AQ; upc-006 merged first and took it, and rec-004 claims §12AR.
+- **Common rules:**
+  - Readers:
+    - `placement_team` with a profile: requirements assigned to me, or of a company assigned to me.
+    - `placement_manager`: direct reports' requirements and companies, plus unassigned requirements of unassigned companies.
+    - `super_admin`: all.
+    - `bdm`: requirements of companies where they are the Assigned BDM.
+  - Any other role is `403`. An id outside the scope is `404` "Job requirement not found", like an unknown id.
+  - Writers:
+    - Edit and status: `placement_team` (in scope) and `super_admin`.
+    - Create: those two plus `placement_manager`.
+    - Assign: `placement_manager` and `super_admin`.
+  - Role refusals are `403`. A cancelled requirement is `409`.
+  - Bodies refuse unknown keys (`422`). Lists use the §12AI paging rules.
+  - Audit rows `recruiter_requirement.create` / `update` / `status` / `assign` carry ids, field names and statuses only.
+- **Statuses** (§6): `new`, `requirement_received`, `sourcing`, `shortlisting`, `profiles_shared`, `interviewing`, `selected`, `joined`,
+  `on_hold`, `closed`, `cancelled`.
+  - The **open set** (students list and apply) is `requirement_received` … `interviewing`, while `closes_on` has not passed.
+  - The moves are the spec §2 table, served by `GET …/statuses`. A move outside it, or to the current status, is `409`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/requirements/statuses` | `{statuses[{key,label,open,next[]}], vocabularies{work_mode,shift,employment_type,priority}, expiring_days: 7}` |
+| `GET /recruiter/requirements` | Filters `q` (title, code or company name), `status`, `company_id`, `assigned` (`me` / `unassigned` / uuid), `priority`, `job_category_id`, `deadline` (`expiring` = open and due within 7 IST days; `expired` = open and past due). Newest first. `items[]`: `{id, code, title, company{id,code,name}, location, status, status_label, priority, vacancies, closes_on, requirement_date, deadline_state, assigned_recruiter, permissions}` |
+| `POST /recruiter/requirements` | `{company_id, title, location, description?, department?, job_category_id? (active), vacancies? (1–10000), qualification?, experience_min_months?/experience_max_months? (0–600, min ≤ max), salary_min?/salary_max? (≥ 0, min ≤ max), work_mode?, shift?, employment_type?, joining_requirement?, closes_on?, requirement_date? (default today IST), priority?, required_skills?[], preferred_skills?[] (≤ 30 each), assigned_recruiter_user_id? (managers)}` → `201 {requirement}`, status `new`. The company must be in the caller's company scope (`404`) and not archived (`409`). A recruiter naming another recruiter is `403` |
+| `GET /recruiter/requirements/{id}` | `{requirement}`: every field, plus `skills[{name, kind, weight, skill_id, matched}]` (`matched` false = free text, not in the Skills Master), `joined_count`, `allowed_statuses[]`, `status_history[]` (newest first; `changed_by` null = migration), `created_by` |
+| `PATCH /recruiter/requirements/{id}` | Only the fields sent. A min/max pair is checked against the stored value (`422`). Vacancies below the hired/joined applications → `409`. Sending a skills list replaces that kind |
+| `POST /recruiter/requirements/{id}/status` | `{status, note? (≤ 500)}` → `{requirement}`. A history row is written in the same transaction. Reaching `requirement_received` fires rec-005's `requirement_received` company event; closing or cancelling the company's last live requirement fires `requirement_closed` (§12AU). The employer and `/workflows/it/jobs` writes do the same |
+| `POST /recruiter/requirements/{id}/assign` | `{recruiter_user_id}`: an active recruiter on the caller's team (super_admin: any). The same recruiter → `409` |
+
+**Legacy shim (J3):** the existing contracts keep their words, and the Employer contract (`/employer/jobs`) keeps its shape.
+- **Employer `status`:** stays `draft` / `open` / `closed`. Each response also gains `requirement_status`, `status_label` and
+  `requirement_code`.
+- **Employer writes:**
+  - `draft` → `new`, or `on_hold` once the job has left `new`.
+  - `open` → `requirement_received`, or a no-op when it is already open.
+  - `closed` → `closed`, or a no-op when it is closed, cancelled or joined.
+- **`/workflows/it/jobs`:**
+  - `POST` creates at `requirement_received`.
+  - `PATCH` takes a §6 key or a legacy word: an unknown value is `422`, a disallowed move is `409`.
+  - `GET` rows gain `status_label`.
+- **Skills mirror:** every writer keeps `jobs.skills` as the mirror of `job_skills`.
+
+## 12AX. University visits + approval (`upc-010`) — addendum, 2026-10-08
+
+`DEC-SCOPE-130`; design spec `docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.md` §3. Migration `0115_university_visits`. Readers: `partnership_manager` (with a profile),
+`partnership_head`, `super_admin` read **every** visit; other roles `403`. Planners: `partnership_manager` (leads their own) and
+`partnership_head` (leads, or picks an active direct report); the university must be active (`409`) and in the planner's university edit
+scope (`403`). The lead or the planner edits and runs the commands (else `403`). The approver is the lead's reporting head; any active
+`super_admin` only when that head is inactive, is the lead, planned the visit or travels on it; nobody decides a visit they planned, lead
+or join (`403`). Commands outside the §8 flow `409`. Every write: visit row `FOR UPDATE` (decisions also lock the lead's profile and head
+`FOR SHARE`), a `university_visit_events` row, audit `university_visit.<action>` (ids, code, statuses, field names), in-app notices
+(`channels=[]`), one commit. Unknown visit `404`. A visit is the row `{id, code, university: {id, name, university_code, city, country:
+{id, name}}, city, lead, proposed_date, confirmed_date, status, approval_state: draft|waiting|returned|null, submitted_at}` plus `purpose,
+created_by, travel_required, travel_notes, hotel_required, hotel_notes, agenda, expected_outcome, follow_up_date, rejection_reason,
+decided_by, decided_at, close_reason, participants, contacts, events, permissions {can_edit, can_submit, can_decide, can_book,
+can_complete, can_follow_up, can_close}, editable_fields, created_at, updated_at`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/visits` | `{items, total, limit, offset}`; filters `status` (the six §8 values, else `422`), `university_id`, `mine` (lead, planner or participant); newest proposed date first |
+| `GET /partnership/visits/approvals` | Waiting visits this caller may decide, oldest submission first; head / super_admin only (else `403`) |
+| `GET /partnership/visits/university-options` · `lead-options` · `employee-options` | `{items: [{id, label, detail}], total}`, `q`, `limit` ≤ 100. Universities in the planner's scope; the head and their active direct reports; active partnership managers and heads |
+| `POST /partnership/visits` | `university_id`, `purpose` (≤ 1000), `proposed_date` (today or later, IST) required; `lead_user_id`, `city` (defaults to the university's), `confirmed_date` (today or later), `travel_required`/`hotel_required` + notes (≤ 1000), `agenda`/`expected_outcome` (≤ 2000), `participant_user_ids` (≤ 10, active partnership staff, not the lead), `contact_ids` (≤ 20, this university's) — else `422`. `201 {visit}`, status `planned` (draft) |
+| `GET /partnership/visits/{id}` | `200 {visit}` |
+| `PATCH /partnership/visits/{id}` | Sent fields only; `university_id`/`status` are unknown fields (`422`). Draft/returned: all fields; waiting: none (`409`); approved/travel booked: confirmed date, notes, agenda, expected outcome, contacts (plan fields `409`); completed/follow-up: follow-up date; closed: `409` |
+| `POST /partnership/visits/{id}/submit` | draft/returned → waiting; notifies the approver(s) |
+| `POST /partnership/visits/{id}/approve` · `reject {reason}` | Waiting only (`409`). Reject returns the visit for editing with the reason; both notify the lead and planner |
+| `POST /partnership/visits/{id}/book` | approved → travel_booked; needs a confirmed date (`422`) |
+| `POST /partnership/visits/{id}/complete {follow_up_date}` | travel_booked → visit_completed; before the confirmed date `422`; follow-up date required, today or later |
+| `POST /partnership/visits/{id}/follow-up` | visit_completed → follow_up |
+| `POST /partnership/visits/{id}/close {reason?}` | follow_up → closed; from planned/approved/travel_booked only with a reason (closed without visiting, `422` without) |
+
+## 12AY. Recruiter follow-ups (`rec-024`) — addendum, 2026-10-08
+
+- **Basis:** `DEC-SCOPE-131` (FU1–FU10). Design spec `docs/superpowers/specs/2026-10-08-rec-024-recruiter-follow-ups-design.md` §3.
+  Migration `0116`. Drafted as §12AU, §12AV, then §12AW; rec-005, upc-005, rec-007 and upc-010 merged first.
 - **Common rules:**
   - Scope is the company's (§12AO). A follow-up or company outside the caller's scope is `404` "Follow-up not found" or "Company not
     found", the same as an unknown id. Roles outside the recruiter scope → `403`.

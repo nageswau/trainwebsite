@@ -120,7 +120,7 @@ async def test_withdrawal_does_not_touch_historical_job_application_records(db_s
     company = Company(name=f"Company {uuid.uuid4().hex[:6]}", partner_type="recruiter")
     db_session.add(company)
     await db_session.flush()
-    job = Job(company_id=company.id, title=f"Backend Developer {uuid.uuid4().hex[:6]}", location="Remote", description="Test", status="open")
+    job = Job(company_id=company.id, title=f"Backend Developer {uuid.uuid4().hex[:6]}", location="Remote", description="Test", status="requirement_received")
     db_session.add(job)
     await db_session.flush()
     application = JobApplication(job_id=job.id, student_id=candidate.id, status="shortlisted")

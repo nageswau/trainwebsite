@@ -5308,7 +5308,76 @@ Spec: `docs/superpowers/specs/2026-10-08-upc-005-university-import-design.md`.
 **Consequences:** new table `university_import_batches`; five new routes under `/partnership/universities/import(s)`; a new page.
 **New Feature ID authorized:** `upc-005`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-005.
 
-### DEC-SCOPE-129 — Recruiter follow-ups + automatic daily list (`rec-024`)
+### DEC-SCOPE-129 — Job Requirement (`rec-007`)
+
+**Evidence:** `EVID-018` §6 (lines 272–348), §1 quick action "+ Add Job Requirement" (45), S2-§6 required/preferred skills;
+`RECRUITER_CRM_BACKLOG.md` §rec-007 (AC1–AC4). Module scope: `DEC-SCOPE-116`. Also R5 (`jobs` becomes the Job Requirement) and
+FEATURE_QUESTIONS #1 / Q-04 (the employer mediation question, still open).
+
+**Status:** **BUILT** on `feature/rec-007` (2026-10-08), not merged.
+- J1–J7 are **recommended defaults (`UNVERIFIED`)**. The user told the session to proceed with the recommended answers, so Q-04 and Q-05
+  were **not** put to the owner. They can be revised.
+- **Numbering:** migration `0114_job_requirements` (after upc-005's `0113_university_imports`), API §12AW, RBAC §2.55. rec-007 was
+  drafted as `0108` / 123 / §12AQ / §2.49. upc-006 (`0108` / 123), upc-004 (`0109` / 124), rec-004 (`0110` / 125), upc-007 (`0111` /
+  126), rec-005 (`0112` / 127) and upc-005 (PR #164: `0113` / 128 / §12AV / §2.54) merged first.
+- Spec: `docs/superpowers/specs/2026-10-08-rec-007-job-requirement-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| J1 (Q-04) | Status mapping | One `jobs.status` holds the 11 §6 statuses (CHECK). Migration: `draft` → `new`, `open` → `requirement_received`, `closed` stays, anything else → `on_hold`; each remapped row gets a history row whose note keeps the old value. The open set is `requirement_received` … `interviewing` |
+| J2 (Q-04) | Employer acceptance | None: an employer posting starts `new` and the employer publishes it as before (EMP-002's "no invented approval gate") |
+| J3 | Legacy shim | The employer API keeps `draft` / `open` / `closed` and gains `requirement_status` and `status_label`. `/workflows/it/jobs` accepts a §6 key or a legacy word. Every write is validated and kept in history |
+| J4 (Q-05) | Expiring / requirement date | "About to expire" = open with the deadline within 7 days (IST); "expired" = open past the deadline. Both are computed, not statuses. Requirement Date = the date received (default today) |
+| J5 | Scope split | The §6 "Recruiter" (company contact) field ships with rec-004's `company_contacts`. The Candidates / JD / Interviews tabs belong to rec-017 / rec-008 / rec-018. **Company stage:** rec-007 fires rec-005's (`DEC-SCOPE-127`) `requirement_received` when a requirement reaches Requirement Received, and `requirement_closed` when the company's last live requirement is closed or cancelled. The company row is locked first. The later driven stages come from rec-017–rec-023 |
+| J6 | Vocabularies | Work mode: on-site / remote / hybrid. Shift: day / night / rotational / flexible. Employment type: full / part time, contract, internship, temporary. Priority: high / medium / low. Salary: annual INR. Experience: stored in months |
+| J7 | Skills | `job_skills` (required/preferred, weight 1–10, required default 2 and preferred 1, pending Q-14) is the authority. Names resolve through the rec-006 aliases, and unmatched ones are kept as free text and flagged. `jobs.skills` JSON stays as a mirror, so the legacy readers are unchanged |
+
+**Consequences:**
+- **Schema:** the `jobs` §6 columns, `requirement_code_seq` (`REQ-000001`), `job_skills` and `job_status_history`.
+- **Code:** `services/recruiter_requirements.py` and `api/recruiter_requirements.py`. Every `status == "open"` reader now uses
+  `JOB_OPEN_STATUSES`.
+- **Pages:** `/recruiter/requirements`, `/new` and `/[id]`, a Requirements section on the company page, and nav entries for recruiters,
+  managers and super admin.
+- **Tests:** the Job fixtures in the EMP-004/005, ADM-007/008, BDM-021, ENH-031 and RPT-001 tests move from `open` to
+  `requirement_received`.
+- **New Feature ID authorized:** `rec-007`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-007.
+
+### DEC-SCOPE-130 — University visits + approval (`upc-010`)
+
+**Evidence:** `EVID-020` §8 (L314–L350: "separate from normal meetings", 14 planning fields, Planned → Approved → Travel Booked → Visit
+Completed → Follow-up → Closed); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U9 (`EXPLICIT_APPROVAL`, 2026-10-08) and §4 upc-010.
+**Status:** VS1–VS18 are the recommended answers to backlog Q-13 plus design-level rules, applied under the owner's standing instruction
+for the build session ("proceed with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed:
+`NEEDS_CONFIRMATION` at sign-off. Migration `0115_university_visits`, API contract §12AX, RBAC §2.56.
+Spec: `docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| VS1 | Universities per visit | One; country from the university; city defaults to the university's |
+| VS2 | Statuses | The six §8 statuses; a planned visit is a draft, waiting for approval or returned |
+| VS3 | Transitions | submit; approve/reject (reason); book (needs a confirmed date); complete (on/after the confirmed date, with the follow-up date); follow-up; close |
+| VS4 | Q-13a approver | The lead's reporting head; any active super_admin when that head is inactive, leads, planned or joins the visit; nobody decides a visit they planned, lead or join |
+| VS5 | Q-13b cancel after booking | No un-approving; a visit called off before it happened is closed early with a required reason |
+| VS6 | Who plans | Managers (lead themselves, own universities) and heads (lead or pick a direct report; unowned + team universities); active university |
+| VS7 | Who reads | Partnership managers, heads and super_admin read every visit; others `403` |
+| VS8 | Who acts | The lead or the planner |
+| VS9 | Editable per state | Draft/returned: all; waiting: none; approved/booked: dates, notes, agenda, outcome, contacts; after the visit: follow-up date; closed: none |
+| VS10 | Dates | IST; proposed/confirmed/follow-up today or later when set |
+| VS11 | Other employees | Active partnership managers/heads, not the lead, ≤ 10 |
+| VS12 | Meeting contacts | This university's upc-006 contacts, ≤ 20; deleting a contact removes it from visits |
+| VS13 | Travel and hotel | Requirement flags + notes; no booking integration, no expenses (U9) |
+| VS14 | History | `university_visit_events`, append-only, plus audit rows |
+| VS15 | Notifications | In-app: submit → approver(s); approve/return → lead and planner |
+| VS16 | Follow-up date | Stored; upc-020 turns it into a task later |
+| VS17 | Codes | `VIS-000001` |
+| VS18 | Limits | Purpose ≤ 1000; agenda/outcome ≤ 2000; notes and reasons ≤ 1000; city ≤ 120 |
+
+**Consequences:** tables `university_visits`, `university_visit_participants`, `university_visit_contacts`, `university_visit_events` and
+`university_visit_code_seq`; routes `/partnership/visits…`; pages `/partnership/visits`, `/new`, `/[id]`, `/[id]/edit`, `/approvals`; a
+Visits section on `/partnership/universities/[id]`; the manager menu's University Visits goes live; head and super admin nav entries.
+**New Feature ID authorized:** `upc-010`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-010.
+
+### DEC-SCOPE-131 — Recruiter follow-ups + automatic daily list (`rec-024`)
 
 **Evidence:**
 - `EVID-018`: §18 (lines 732–756), with the 9 reasons and "CRM should automatically generate the daily follow-up list". "Next Follow-up"
@@ -5320,8 +5389,9 @@ Spec: `docs/superpowers/specs/2026-10-08-upc-005-university-import-design.md`.
 **Status:** built on `feature/rec-024`. Every answer below is a **recommended default, `UNVERIFIED`**. The owner told the session to
 proceed with the recommended answers, so Q-23 was not asked.
 
-**Numbering:** migration `0114_recruiter_follow_ups`, API §12AW and RBAC §2.55. It was drafted as `0112` / `DEC-SCOPE-127` / §12AU /
-§2.53, then re-chained to `0113` / `DEC-SCOPE-128` / §12AV / §2.54; rec-005 and upc-005 merged first and took those numbers. Spec `docs/superpowers/specs/2026-10-08-rec-024-recruiter-follow-ups-design.md`.
+**Numbering:** migration `0116_recruiter_follow_ups`, API §12AY and RBAC §2.57. It was drafted as `0112` / `DEC-SCOPE-127` / §12AU /
+§2.53, then re-chained to `0113` / `DEC-SCOPE-128` / §12AV / §2.54 and `0114` / `DEC-SCOPE-129` / §12AW / §2.55; rec-005, upc-005, rec-007 and
+upc-010 merged first and took those numbers. Spec `docs/superpowers/specs/2026-10-08-rec-024-recruiter-follow-ups-design.md`.
 
 | # | Point | Answer |
 |---|---|---|
@@ -5337,7 +5407,7 @@ proceed with the recommended answers, so Q-23 was not asked.
 | FU10 | Reasons | The 9 §18 values in source order and wording; notes ≤ 2000 |
 
 **Consequences:**
-- `recruiter_follow_ups` (`0114`): reason, status and state CHECKs, and indexes on `(company_id, status, due_at)`, open `due_at` and
+- `recruiter_follow_ups` (`0116`): reason, status and state CHECKs, and indexes on `(company_id, status, due_at)`, open `due_at` and
   `contact_id`.
 - `services/recruiter_follow_ups.py` and `api/recruiter_follow_ups.py`.
 - A `/recruiter/follow-ups` page (Today / Overdue / Upcoming), with nav entries for recruiters and managers.

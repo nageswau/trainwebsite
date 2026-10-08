@@ -1,4 +1,4 @@
-"""rec-024 -- recruiter follow-ups (spec §1-§3; DEC-SCOPE-127 FU1-FU10): create, the company's list, the Today / Overdue / Upcoming lists,
+"""rec-024 -- recruiter follow-ups (spec §1-§3; DEC-SCOPE-131 FU1-FU10): create, the company's list, the Today / Overdue / Upcoming lists,
 edit / reschedule, complete, cancel, links, the cap and the derived next follow-up. The shared test database is never truncated, so every
 list assertion uses a recruiter created by the test."""
 

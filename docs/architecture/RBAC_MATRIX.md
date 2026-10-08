@@ -1078,7 +1078,33 @@ Enforced inline in `api/university_import.py` (`_require_importer`, `_scope`). T
 | Download the template, import a file | `403` | ✅ | ✅ (overseas division; else `403`) | ✅ | `403` |
 | See import history and reports | `403` | own imports (`404` for others) | own imports (`404` for others) | all | `403` |
 
-### 2.55 Recruiter follow-ups *(net-new, added 2026-10-08 — `DEC-SCOPE-129`, `rec-024`; drafted as §2.53, then §2.54)*
+### 2.55 Job Requirement *(net-new, added 2026-10-08 — `DEC-SCOPE-129`, `rec-007`; drafted as §2.49)*
+
+Enforced inline in `services/recruiter_requirements.py` (`caller_scope`, `require`), the rec-003 pattern. The role check runs before
+anything is read, and an id outside the scope is `404`. Salary is returned only to these roles and to the owning employer, never on
+student or public job lists.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` (with a profile) | list, read, create (for an own company, assigned to self), edit, change status | requirements assigned to me, or of a company assigned to me | `rec-007` |
+| `placement_manager` | list, read, create (any team company; optional assignee from the team), assign; **no edit or status change** | direct reports' requirements and companies, plus unassigned requirements of unassigned companies | `rec-007` |
+| `super_admin` | every action | all | `rec-007` |
+| `bdm` | list, read; writes `403` (R10) | requirements of companies where they are the Assigned BDM | `rec-007` |
+| `employer` | their own postings through `/employer/jobs` only (legacy words, status history written) | own company | `rec-007` / EMP-002 |
+| `hr_team`, `it_admin`, students, every other role | `403` on `/recruiter/requirements`; the legacy `/workflows/it/jobs` access is unchanged | — | `rec-007` |
+
+### 2.56 University visits *(net-new, added 2026-10-08 — `DEC-SCOPE-130`, `upc-010`)*
+
+Enforced inline in `services/university_visits.py` (role, lead/planner, approver resolved per request). Audit and logs carry ids only.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Read visits and the visit list | ✅ all | ✅ all | `403` | ✅ all | `403` |
+| Plan a visit | own universities; leads it | unowned + team universities; leads or picks a direct report | `403` | `403` | `403` |
+| Edit / submit / book / complete / follow-up / close | as lead or planner | as lead or planner | `403` | `403` | `403` |
+| Approve / return | `403` (AC1) | their direct reports' visits, unless they planned, lead or join it | `403` | only when the head is inactive or took part, and not their own | `403` |
+
+### 2.57 Recruiter follow-ups *(net-new, added 2026-10-08 — `DEC-SCOPE-131`, `rec-024`; drafted as §2.53, §2.54, then §2.55)*
 
 Follow-ups take the company's scope (§2.47), so a follow-up of a company outside the caller's scope is `404`. A reassigned company's
 follow-ups move with it. Writes follow the company's `can_edit` (FU3, an UNVERIFIED default). An archived company's follow-ups are
