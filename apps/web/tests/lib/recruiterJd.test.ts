@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isJd, jdBody, jdValues, type JdVersion, requirementChangesFromJd } from "@/lib/recruiterJd";
+import { closingDateDiffers, isJd, jdBody, jdValues, type JdVersion, requirementChangesFromJd } from "@/lib/recruiterJd";
 import type { Requirement } from "@/lib/recruiterRequirements";
 
 const requirement = {
@@ -63,6 +63,14 @@ describe("requirementChangesFromJd", () => {
   it("never clears a requirement field from an empty JD field", () => {
     const { patch } = requirementChangesFromJd({ ...version, role: "Python Developer", location: null, openings: null, closing_date: null, description: null }, requirement);
     expect(patch).toEqual({});
+  });
+});
+
+describe("closingDateDiffers", () => {
+  it("compares against the requirement as it is now, so the warning clears once the deadline is copied over", () => {
+    expect(closingDateDiffers({ ...version, closing_date: "2026-11-15" }, requirement)).toBe(true);
+    expect(closingDateDiffers({ ...version, closing_date: "2026-11-15" }, { ...requirement, closes_on: "2026-11-15" })).toBe(false);
+    expect(closingDateDiffers({ ...version, closing_date: null }, requirement)).toBe(false);
   });
 });
 

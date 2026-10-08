@@ -87,6 +87,12 @@ export function requirementChangesFromJd(v: JdVersion, r: Requirement): { change
   return { changes, patch };
 }
 
+/** JD8's warning, against the requirement as the page holds it now: the API's `closing_date_differs` was computed when the JD was
+ * read, so it goes stale once "Update requirement from JD" copies the closing date over. */
+export function closingDateDiffers(v: JdVersion, r: Requirement): boolean {
+  return v.closing_date != null && v.closing_date !== r.closes_on;
+}
+
 export function isJd(data: unknown): data is Jd {
   return Array.isArray((data as Jd | null)?.versions);
 }

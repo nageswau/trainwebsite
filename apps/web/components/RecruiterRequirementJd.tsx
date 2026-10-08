@@ -10,6 +10,7 @@ import { formatCalendarDate } from "@/lib/formatDate";
 import { fileSize } from "@/lib/recruiterCandidates";
 import { contactsOf, isContactList } from "@/lib/recruiterContacts";
 import {
+  closingDateDiffers,
   isJd,
   type Jd,
   JD_ACCEPT,
@@ -287,7 +288,7 @@ export default function RecruiterRequirementJd({ requirement, initial, onRequire
       ) : (
         <>
           {!current && <p className="muted" style={{ margin: 0 }}>No JD yet.{jd.can_edit ? " Create one from this requirement or upload a PDF/DOCX file." : ""}</p>}
-          {current?.closing_date_differs && (
+          {current && closingDateDiffers(current, r) && (
             <p className="status pending" role="note" style={{ margin: 0, display: "inline-block" }}>
               The JD closing date ({formatCalendarDate(current.closing_date!)}) differs from the requirement&apos;s application deadline (
               {r.closes_on ? formatCalendarDate(r.closes_on) : "not set"}).
