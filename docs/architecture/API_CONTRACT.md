@@ -1454,6 +1454,25 @@ line, no audit row). `limit` 1–100 (default 50), `offset` ≥ 0 (`422` otherwi
 | `GET /counselor/leads/{id}/timeline` | Unchanged path (tel-018). The assigned counselor only; otherwise `404`. Same body |
 | `GET /admin/leads/{id}/timeline` | New. `it_admin` / `overseas_admin` (own division) and `super_admin`; unknown `404` "Lead not found", another division `403`; other roles `403`. Same body |
 
+## 12AI. Partnership roles (`upc-001`) — addendum, 2026-10-08
+
+`DEC-SCOPE-116`; design spec `docs/superpowers/specs/2026-10-08-upc-001-partnership-roles-design.md` §5. Migration
+`0100_partnership_profiles`. Lists: `limit` 1–100 (default 50), `offset` ≥ 0 (`422` otherwise), `{items, total, limit, offset}`, ordered
+by name then id. Signed out `401`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `POST /admin/users` (`role: "partnership_manager"`) | Body adds `partnership_profile: {employee_id, reporting_head_user_id}` (required). `super_admin` / `overseas_admin` only (`403` "Your role cannot manage partnership managers"; `it_admin` gets the existing cross-division `403`). Division defaults to `overseas`; anything else `422`. Head missing, inactive or not a `partnership_head` `422`; duplicate Employee ID (any case) `409`; invalid or unknown profile field `422` naming the field. `partnership_profile` on another role `422` |
+| `POST /admin/users` (`role: "partnership_head"`) | Division `global`, no profile; only `super_admin` (`403` "Only a Super Admin can create partnership heads"). The welcome / reset link opens `/admin/reset-password`; `POST /auth/reset-password` returns `login_portal: "admin"` |
+| `POST /admin/users` response | Adds `partnership_profile` (`{employee_id, reporting_head: {id, full_name, active}}`, or `null` for every other role). Backward compatible |
+| `PATCH /admin/users/{id}` | Adds `partnership_profile` (partial; explicit null `422`). The head is re-checked only when it changes. Audit `user.update` gains `partnership_profile_before/after` |
+| `GET /partnership/me` | `partnership_manager` with a profile: `{id, full_name, email, phone, active, division, partnership_profile}`. Other roles `403` "Partnership manager role required"; no profile `403` |
+| `PATCH /partnership/profile` | Manager: `{phone}` only (any other key `422`); returns the `/me` shape; audit `partnership.profile_update` `{"fields": ["phone"]}` |
+| `PATCH /auth/me` | A `partnership_manager` changing name or profile `403` "Partnership managers can change only their phone number — contact your administrator" |
+| `GET /partnership/head/team` | `partnership_head` (direct reports, inactive included) or `super_admin` (all); `q` (name, email, Employee ID). Items `{id, full_name, email, phone, active, employee_id}`. Others `403` "Partnership head role required" |
+| `GET /admin/partnership-managers` | `super_admin`, `overseas_admin`; `active`, `q`. Items add `reporting_head {id, full_name, active}`, `head_active`. Other roles `403` |
+| `GET /admin/partnership-heads` | `super_admin`, `overseas_admin`: active heads `{id, full_name, email}`; `q`. Other roles `403` |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

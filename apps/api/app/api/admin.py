@@ -39,6 +39,7 @@ from app.models import (
     NotificationDelivery,
     NotificationPreference,
     OverseasApplication,
+    PartnershipProfile,
     Payment,
     Program,
     School,
@@ -70,6 +71,7 @@ from app.schemas import (
 from app.services import bdm as bdm_rules
 from app.services import bdm_leads as lead_rules
 from app.services import bdm_lifecycle, lead_handover, lead_pipeline, lead_timeline, telecaller_lifecycle
+from app.services import partnership as pm_rules
 from app.services import telecaller as tel_rules
 from app.services.agent_applications import owned, with_owner
 from app.services.agent_network import APPLICATION_FILTERS, org_applications, org_counts, org_money, org_students
@@ -539,14 +541,28 @@ async def create_user(payload: dict, user: User = Depends(ensure_admin), db: Asy
         raise HTTPException(422, "Only a telecaller has a telecaller profile")
     elif role == "telecaller_manager" and user.role != "super_admin":
         raise HTTPException(403, "Only a Super Admin can create telecaller managers")
+    # upc-001 (spec §5): the same placement and order -- profile (422), then creator (403), then division (422). A manager is always
+    # Overseas (PU7); only super_admin creates a head (AC2). Every other role skips it (bar a stray profile).
+    pm_input = None
+    if role == "partnership_manager":
+        pm_input = pm_rules.parse_profile_create(payload.get("partnership_profile"))
+        pm_rules.require_creator_may(user, USERS_ROUTE)
+        if "division" not in payload:
+            division = "overseas"
+        elif division != "overseas":
+            raise HTTPException(422, "Division must be overseas for a partnership manager")
+    elif "partnership_profile" in payload:
+        raise HTTPException(422, "Only a partnership manager has a partnership profile")
+    elif role == "partnership_head" and user.role != "super_admin":
+        raise HTTPException(403, "Only a Super Admin can create partnership heads")
     if user.role != "super_admin" and division != user.division:
         raise HTTPException(403, "Cannot create users in another division")
     _reject_supplied_password(payload, user, USERS_ROUTE, "password")
     allowed_by_division = {
         # tel-017 (DEC-SCOPE-076, T3): a counselor belongs to IT or Overseas.
         "it": {"it_student", "trainer", "placement_team", "hr_team", "it_admin", "bdm", "telecaller", "counselor"},
-        "overseas": {"overseas_student", "counselor", "university_rep", "agent", "overseas_admin", "bdm", "telecaller"},
-        "global": {"super_admin", "bdm_manager", "telecaller_manager"},
+        "overseas": {"overseas_student", "counselor", "university_rep", "agent", "overseas_admin", "bdm", "telecaller", "partnership_manager"},
+        "global": {"super_admin", "bdm_manager", "telecaller_manager", "partnership_head"},
     }
     if role not in allowed_by_division.get(division, set()):
         raise HTTPException(422, "Role is not valid for the selected division")
@@ -585,12 +601,21 @@ async def create_user(payload: dict, user: User = Depends(ensure_admin), db: Asy
         tel_profile = TelecallerProfile(user_id=item.id, **tel_input.model_dump())
         db.add(tel_profile)
         await tel_rules.flush_profile(db)
+    pm_profile = pm_head = None
+    if pm_input is not None:
+        # Same transaction as the user, token and audit row; the head row is locked against a concurrent deactivation.
+        pm_head = await pm_rules.locked_active_head(db, pm_input.reporting_head_user_id)
+        pm_profile = PartnershipProfile(user_id=item.id, **pm_input.model_dump())
+        db.add(pm_profile)
+        await pm_rules.flush_profile(db)
     issued = await issue_welcome_token(db, user=item, issued_by=user)
     metadata = {"role": role, "division": division}
     if profile is not None:
         metadata["bdm_profile"] = bdm_rules.profile_snapshot(profile)
     if tel_profile is not None:
         metadata["telecaller_profile"] = tel_rules.profile_snapshot(tel_profile)
+    if pm_profile is not None:
+        metadata["partnership_profile"] = pm_rules.profile_snapshot(pm_profile)
     db.add(AuditLog(user_id=user.id, action="user.create", entity_type="user", entity_id=str(item.id), metadata_json=metadata))
     await db.commit()
     delivery = await deliver_welcome_link(user=item, issued=issued, issued_by=user)
@@ -598,6 +623,7 @@ async def create_user(payload: dict, user: User = Depends(ensure_admin), db: Asy
         "id": item.id, "email": item.email, "role": item.role, "division": item.division, **delivery,
         "bdm_profile": bdm_rules.profile_out(profile, manager) if profile is not None else None,
         "telecaller_profile": tel_rules.profile_out(tel_profile, tel_manager) if tel_profile is not None else None,
+        "partnership_profile": pm_rules.profile_out(pm_profile, pm_head) if pm_profile is not None else None,
     }
 
 
@@ -634,6 +660,17 @@ async def update_user(user_id: UUID, payload: dict, user: User = Depends(ensure_
         if tel_profile is None:
             raise HTTPException(422, "Only a telecaller has a telecaller profile")
         tel_before, tel_after = await tel_rules.apply_profile_update(db, tel_profile, payload["telecaller_profile"])
+    # upc-001 (spec §5): the same shape again; the head is re-checked only when it changes.
+    pm_profile = None
+    if item.role == "partnership_manager":
+        pm_profile = await db.scalar(select(PartnershipProfile).where(PartnershipProfile.user_id == item.id).with_for_update())
+        if pm_profile is not None:
+            pm_rules.require_creator_may(user, f"{USERS_ROUTE}/{{id}}")
+    pm_before = pm_after = None
+    if "partnership_profile" in payload:
+        if pm_profile is None:
+            raise HTTPException(422, "Only a partnership manager has a partnership profile")
+        pm_before, pm_after = await pm_rules.apply_profile_update(db, pm_profile, payload["partnership_profile"])
     # bdm-025 (spec §5.7): a BDM is deactivated only with a handover choice, and a manager only once their BDMs have moved. 422, not
     # 409 -- the Users page reads a 409 as the trainer "confirm cascade" prompt, which must never bypass this.
     if payload.get("active") is False and item.active:
@@ -661,6 +698,8 @@ async def update_user(user_id: UUID, payload: dict, user: User = Depends(ensure_
         metadata.update(bdm_profile_before=profile_before, bdm_profile_after=profile_after)
     if tel_before is not None:
         metadata.update(telecaller_profile_before=tel_before, telecaller_profile_after=tel_after)
+    if pm_before is not None:
+        metadata.update(partnership_profile_before=pm_before, partnership_profile_after=pm_after)
     db.add(AuditLog(user_id=user.id, action="user.update", entity_type="user", entity_id=str(item.id), metadata_json=metadata))
     await db.commit()
     return {"ok": True}

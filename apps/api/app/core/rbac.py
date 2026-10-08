@@ -53,6 +53,9 @@ PERMISSIONS: dict[str, set[str]] = {
     # tel-001 (DEC-SCOPE-073): coarse bundles; self/team scope is enforced in services/telecaller.py.
     "telecaller": {"telecaller:self"},
     "telecaller_manager": {"telecaller:team"},
+    # upc-001 (DEC-SCOPE-116): coarse bundles; self/team scope is enforced in services/partnership.py.
+    "partnership_manager": {"partnership:self"},
+    "partnership_head": {"partnership:team"},
 }
 
 

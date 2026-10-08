@@ -4926,3 +4926,39 @@ read); a manager's booking on any lead is `403` before scope (§2.23); a manager
 **Consequences:** `apps/api/tests/test_tel_026_matrix.py` + `tel026_helpers.py` (tests only); web `navigation.telecaller.test.ts` case and
 `tests/e2e/tel-026-permission-matrix.spec.ts`; `RBAC_MATRIX.md` §2.41.
 **New Feature ID authorized:** `tel-026`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §tel-026.
+
+### DEC-SCOPE-116 — University Partnership CRM scope + partnership roles (`upc-001`)
+
+**Evidence:** `EVID-020` (`functionalities/edusphere_markdown/University Partnership CRM.md`, `DERIVED_BLUEPRINT`), §4, §7, §19, §21,
+§22, §27, §31, §32 (L1060–L1100) and L1129; `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 (U0–U15) and §4 upc-001.
+**Status:**
+- **U0–U15:** `EXPLICIT_APPROVAL` (owner, in-session, 2026-10-08), as recorded in the backlog §3.1. The backlog requires them to be
+  registered here when upc-001 starts. U2 is as amended by Management M3 (`MANAGEMENT_COMMAND_CENTER_BACKLOG.md`): the future `partner`
+  role also sees commission data, and `accountant` does not.
+- **PU1–PU11:** the recommended answers, applied under the owner's standing instruction for the build session ("proceed with the
+  recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off.
+
+Lifts `PRD_OPEN_ITEMS.md` item 69 and `CONFLICT_MATRIX.md` C-10 for `EVID-020` (U1). Migration `0100_partnership_profiles`, API contract
+§12AI, RBAC §2.42 (the Recruiter backlog's provisional reservation for rec-001 was never registered; rec-001 re-chains at merge, the
+existing idiom). Spec: `docs/superpowers/specs/2026-10-08-upc-001-partnership-roles-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| U0–U15 | Module scope, roles, commission visibility, master vs catalogue, stages, funnel, visits, comms, alerts, map, BDM overlap, 360 view, data load | As `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 (not repeated here, so it cannot drift) |
+| PU1 | Workspace paths (backlog Q-29) | `/partnership/*` for managers (sign in at `/overseas/login`); `/partnership/head/*` for heads (sign in at `/admin/login`). Signed out: `/partnership/head*` → `/admin/login?next=…`, any other `/partnership/*` → `/overseas/login?next=…` |
+| PU2 | Where active status lives | `users.active` only; no `active` column on `partnership_profiles` (as tel-001 TL2) |
+| PU3 | What a manager edits about themselves | Phone only: `PATCH /partnership/profile`, and the same rule on `PATCH /auth/me` (as tel-001 TL8) |
+| PU4 | Approach | Nested `partnership_profile` on `POST/PATCH /admin/users` (as bdm-001/tel-001) |
+| PU5 | Does a head have a profile row? | No |
+| PU6 | Required profile fields | Employee ID and reporting head |
+| PU7 | Who creates a manager | `super_admin` and `overseas_admin` (the manager's division is Overseas); `it_admin` `403`. Only `super_admin` creates a head |
+| PU8 | §32 menu | 19 entries in source order, each naming its owning item; an entry is linked in the sidebar only once its item lands (today: Dashboard, plus Profile); the dashboard lists the rest as text |
+| PU9 | Commission helper in upc-001 | `partnership_access.can_see_commission(user)` only (`super_admin`, `partnership_manager`, `partnership_head`); `strip_commission` is upc-016's |
+| PU10 | Deactivation | The plain `PATCH active` for both roles; no reassignment (upc-032). A manager under an inactive head shows "No active head" |
+| PU11 | Employee ID uniqueness | Case-insensitive, unique within `partnership_profiles` |
+
+**Consequences:** roles `partnership_manager` (overseas) and `partnership_head` (global); table `partnership_profiles`; routes
+`GET /partnership/me`, `PATCH /partnership/profile`, `GET /partnership/head/team`, `GET /admin/partnership-managers`,
+`GET /admin/partnership-heads`; `provisioning.ADMIN_PORTAL_ROLES` gains `partnership_head`; web pages `/partnership/dashboard`,
+`/partnership/profile`, `/partnership/head/team`, `/admin/partnership-managers`, `/overseas/admin/partnership-managers`.
+**New Feature ID authorized:** `upc-001`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-001.

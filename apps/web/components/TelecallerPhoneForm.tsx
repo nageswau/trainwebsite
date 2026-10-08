@@ -9,8 +9,9 @@ import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 const MESSAGE_ID = "telecaller-phone-message";
 
 // tel-001 (TL3): the one field a telecaller edits about themselves. A failed save keeps what was typed and moves focus to the
-// server's message; success is announced, the field shows what was stored, and the server-rendered card refreshes.
-export default function TelecallerPhoneForm({ phone }: { phone: string | null }) {
+// server's message; success is announced, the field shows what was stored, and the server-rendered card refreshes. upc-001 (PU3) reuses
+// it for the partnership manager's own profile through `url`.
+export default function TelecallerPhoneForm({ phone, url = PROFILE_URL }: { phone: string | null; url?: string }) {
   const router = useRouter();
   const [value, setValue] = useState(phone ?? "");
   const [busy, setBusy] = useState(false);
@@ -24,7 +25,7 @@ export default function TelecallerPhoneForm({ phone }: { phone: string | null })
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
-    const outcome = await sendJson(PROFILE_URL, "PATCH", { phone: value.trim() || null });
+    const outcome = await sendJson(url, "PATCH", { phone: value.trim() || null });
     inFlight.current = false;
     setBusy(false);
     if (outcome.ok) {

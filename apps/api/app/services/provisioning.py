@@ -63,9 +63,9 @@ async def flush_unique_email(db: AsyncSession) -> None:
         raise HTTPException(409, "Email already exists") from None
 
 
-# bdm-001 QA-05 / tel-001 §5.6: the `global` manager roles sign in at /admin, so their set-password and reset pages are the admin
-# portal's own. auth.reset_password reads the same set for its `login_portal`.
-ADMIN_PORTAL_ROLES = frozenset({"bdm_manager", "telecaller_manager"})
+# bdm-001 QA-05 / tel-001 §5.6 / upc-001: the `global` manager roles sign in at /admin, so their set-password and reset pages are the
+# admin portal's own. auth.reset_password reads the same set for its `login_portal`.
+ADMIN_PORTAL_ROLES = frozenset({"bdm_manager", "telecaller_manager", "partnership_head"})
 
 
 def _set_password_url(user: User, raw: str) -> str:
