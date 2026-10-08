@@ -318,7 +318,7 @@ when an existing row already holds an ISO row's slug, and `downgrade()` refuses 
 `seed.py` turns the migration's placeholder into the catalogue row on a fresh database and never overwrites a row with content. Only
 catalogue-visible countries are public (API §12AJ).
 
-**Addendum, 2026-10-08 (`upc-003`, `DEC-SCOPE-119`, U5 — Global University Master):** `universities` becomes the single source of truth
+**Addendum, 2026-10-08 (`upc-003`, `DEC-SCOPE-120`, U5 — Global University Master):** `universities` becomes the single source of truth
 for every institution, extended in place (application, shortlist and `university_rep` FKs unchanged). New columns: `university_code`
 (`UNV-NNNNNN` from `university_code_seq`, NOT NULL, unique `uq_universities_code`), `institution_type` (NOT NULL, default `university`;
 university / college / institute / language_school / training_institution), `ownership_type` (public / private), `state_region`, `website`,
@@ -327,9 +327,9 @@ university / college / institute / language_school / training_institution), `own
 primary and differs from it), `priority` (A/B/C, indexed), `partnership_potential` (high/medium/low), `active` and `catalogue_visible`
 (both default `true`). Every value list is a CHECK. New tables: `university_rankings` (system QS/THE/ARWU/Other + name, year, rank text;
 unique per university, system, name, year; cascade delete) and `university_assignment_history` (append-only, one row per changed manager
-slot). **Migration `0104_university_master`** backfills codes for existing rows in `created_at, slug` order and keeps them public;
+slot). **Migration `0105_university_master`** backfills codes for existing rows in `created_at, slug` order and keeps them public;
 `downgrade()` refuses while rankings, assignment history or internal universities exist. Public reads show only published, active rows
-(API §12AM). `stage` is upc-007's; contacts are upc-006's.
+(API §12AN). `stage` is upc-007's; contacts are upc-006's.
 
 ### 6.2 `OverseasApplication`, `ApplicationStatusHistory`
 **Carries over**, status vocabulary **extended** — this is part of the `ADR-012` resolution (§6.3

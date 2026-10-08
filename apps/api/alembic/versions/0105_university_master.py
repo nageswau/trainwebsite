@@ -1,13 +1,17 @@
 """upc-003 -- Global University Master: code, master fields, ownership, publish flag, rankings, assignment history.
 
-Revision ID: 0104_university_master
-Revises: 0103_partnership_profiles
+Revision ID: 0105_university_master
+Revises: 0104_skills_master
 
-docs/superpowers/specs/2026-10-08-upc-003-university-master-design.md §2 (DEC-SCOPE-119). Extends `universities` in place (U5): every
+docs/superpowers/specs/2026-10-08-upc-003-university-master-design.md §2 (DEC-SCOPE-120). Extends `universities` in place (U5): every
 existing row keeps its slug and content, gets a `UNV-` code in (created_at, slug) order, and stays public (`catalogue_visible` and
 `active` default true). 0001 builds a fresh database from the current models, which already carry all of this, so each step is guarded.
 CHECKS repeats app.models.UNIVERSITY_CHECKS (test_upc_003_migration). downgrade() refuses while rankings, assignment history, or any
 internal (unpublished or inactive) university exist: dropping the flags would publish those rows.
+
+Re-chained 2026-10-08 on merging `main` @ `0ef88a98`: drafted as `0104_university_master` on `0103_partnership_profiles`, but rec-006's
+`0104_skills_master` merged first, so this is `0105` after it (DEC-SCOPE-120, API §12AN, RBAC §2.46). A database stamped at
+`0104_university_master` is re-stamped with `alembic stamp --purge 0103_partnership_profiles`, then `upgrade head` (every step here is guarded).
 """
 
 import sqlalchemy as sa
@@ -15,8 +19,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0104_university_master"
-down_revision = "0103_partnership_profiles"
+revision = "0105_university_master"
+down_revision = "0104_skills_master"
 branch_labels = None
 depends_on = None
 
@@ -134,7 +138,7 @@ def downgrade() -> None:
             .first()
         )
         if found:
-            raise RuntimeError("Cannot downgrade 0104_university_master: rankings, assignment history or internal universities exist. Remove or publish them deliberately first.")
+            raise RuntimeError("Cannot downgrade 0105_university_master: rankings, assignment history or internal universities exist. Remove or publish them deliberately first.")
     op.drop_table("university_assignment_history")
     op.drop_table("university_rankings")
     for name in INDEXES:

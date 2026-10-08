@@ -159,3 +159,13 @@ async def test_other_roles_are_refused(client, db_session, role, division):
     await as_role(client, db_session, role, division)
     assert (await client.get(CAMPAIGNS)).status_code == 403
     assert (await client.post(CAMPAIGNS, json={})).status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_the_campaign_list_is_a_page(client, db_session):
+    """Regression (rec-006 merge, 2026-10-08): the upc-001 merge on main dropped total/limit/offset from RecCampaignPage, so the
+    Campaigns panel's page check failed and it always showed "Unable to load campaigns"."""
+    await _manager(client, db_session)
+    body = (await client.get(CAMPAIGNS, params={"limit": 5, "offset": 0})).json()
+    assert set(body) == {"items", "total", "limit", "offset"}
+    assert body["limit"] == 5 and body["offset"] == 0 and body["total"] >= len(body["items"])

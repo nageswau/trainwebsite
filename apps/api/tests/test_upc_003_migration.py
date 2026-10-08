@@ -1,4 +1,4 @@
-"""upc-003 -- migration 0104_university_master (spec §2). Round trip, backfill and the downgrade refusal run in a throwaway database built
+"""upc-003 -- migration 0105_university_master (spec §2). Round trip, backfill and the downgrade refusal run in a throwaway database built
 from scratch (the upc-001 pattern); a downgrade never runs against the shared test database. Plain tests: alembic/env.py calls
 asyncio.run()."""
 
@@ -14,11 +14,11 @@ from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_upc_003_migration_0104", VERSIONS / "0104_university_master.py")
+_spec = importlib.util.spec_from_file_location("_upc_003_migration_0105", VERSIONS / "0105_university_master.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0103_partnership_profiles", "0104_university_master"
+BASE, HEAD = "0104_skills_master", "0105_university_master"
 NEW_COLUMNS = {
     "university_code",
     "institution_type",
@@ -39,7 +39,7 @@ NEW_COLUMNS = {
 CATALOGUE = "SELECT id, slug, name, country_id, city, overview FROM universities ORDER BY slug"
 
 
-def test_migration_chains_after_0103_and_is_the_single_head():
+def test_migration_chains_after_0104_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert script.get_heads() == [HEAD]

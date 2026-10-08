@@ -2,13 +2,14 @@
 
 **Status:** design written 2026-10-08. The owner's standing instruction for this session is "proceed with the recommended answers;
 ask only if genuinely blocking". So the item answers UM1–UM12 (§1) are **recommended defaults accepted under that instruction**
-(`NEEDS_CONFIRMATION` as separate per-question approvals) and are registered that way in `DEC-SCOPE-119`.
+(`NEEDS_CONFIRMATION` as separate per-question approvals) and are registered that way in `DEC-SCOPE-120`.
 
 **Branch:** `feature/upc-003`, cut from `origin/main` @ `3228bc20` (after #149, upc-001).
 **Backlog:** `docs/delivery/UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §4 upc-003. Dependencies upc-001 (`0103`, `DEC-SCOPE-118`) and
 upc-002 (`0101`) are merged on main — verified in code.
 **Source:** `EVID-020` §1 (lines 3–33, the 19 field rows), §27 (ownership), the closing note "central source of truth" (U5).
-**Numbering:** migration `0104_university_master`, `DEC-SCOPE-119`, API §12AM, RBAC §2.45 (renumbered at merge if another item lands first).
+**Numbering:** migration `0105_university_master`, `DEC-SCOPE-120`, API §12AN, RBAC §2.46. Drafted as `0104` / `DEC-SCOPE-119` / §12AM / §2.45; renumbered on merging `main` @ `0ef88a98`
+(rec-006 took those numbers first).
 **Gate:** `APPROVAL_GATES.md` GATE-09.
 
 ## 1. Decisions (recommended defaults)
@@ -30,7 +31,7 @@ upc-002 (`0101`) are merged on main — verified in code.
 | UM13 | Legacy `AdminUniversityCreatePanel` | Replaced in the Universities admin section by a link card to the master (backlog "replaced or redirected"). `POST /admin/universities` and `GET /admin/universities` stay unchanged for API compatibility |
 | UM14 | Slug | Generated server-side from the name (`abc-university`); if taken, `abc-university-unv-000012` (the code is unique). Never edited (AC2) |
 
-## 2. Data model — migration `0104_university_master`
+## 2. Data model — migration `0105_university_master`
 
 `universities` gains (all guarded, since 0001 builds from models):
 
@@ -118,7 +119,7 @@ Downgrade refuses while any ranking/history row or any non-public university exi
 4. Assign / publish / unpublish / deactivate / reactivate tests then code.
 5. Public leak closure tests then code; lookups countries roles.
 6. Frontend lib + nav + pages + components with vitest; WorkflowPanel link.
-7. Playwright `upc-003-university-master.spec.ts`; docs (DEC-SCOPE-119, API §12AM, RBAC §2.45, DATA_MODEL, SCREEN_CATALOG, backlog).
+7. Playwright `upc-003-university-master.spec.ts`; docs (DEC-SCOPE-120, API §12AN, RBAC §2.46, DATA_MODEL, SCREEN_CATALOG, backlog).
 
 ## 7. Regression set (lite)
 

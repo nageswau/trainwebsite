@@ -305,8 +305,8 @@ Common conventions:
 - **Complexity:** small · **Risk:** medium
 
 ### upc-003 — Global University Master
-- **Status (2026-10-08):** built on `feature/upc-003` under `DEC-SCOPE-119`, with migration `0104_university_master`, API §12AM and
-  RBAC §2.45. Spec: `docs/superpowers/specs/2026-10-08-upc-003-university-master-design.md`.
+- **Status (2026-10-08):** built on `feature/upc-003` under `DEC-SCOPE-120`, with migration `0105_university_master`, API §12AN and
+  RBAC §2.46. Spec: `docs/superpowers/specs/2026-10-08-upc-003-university-master-design.md`.
   - Q-01, Q-03, Q-04, Q-05, Q-28 and Q-33 are answered by the recommended defaults UM1–UM7 (`NEEDS_CONFIRMATION`): code `UNV-000001`;
     rankings QS/THE/ARWU/Other + year + rank text; only the head assigns; the backup edits like the primary; existing rows stay public and
     new ones start internal; `overseas_admin` keeps create/edit/publish but does not assign.

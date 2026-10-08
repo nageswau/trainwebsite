@@ -1,4 +1,4 @@
-"""upc-003 (DEC-SCOPE-119, spec §3): the Global University Master's access rules, scope, codes, slugs and output.
+"""upc-003 (DEC-SCOPE-120, spec §3): the Global University Master's access rules, scope, codes, slugs and output.
 
 Functions only; nothing here commits -- the route owns the transaction. Every read role reads every university (backlog convention:
 "a manager reads every university"; management visibility, §27); writes are scoped:

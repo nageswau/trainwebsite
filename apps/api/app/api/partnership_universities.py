@@ -1,4 +1,4 @@
-"""upc-003 (DEC-SCOPE-119, spec §3): the Global University Master -- list, create, detail, edit, assign, publish and deactivate.
+"""upc-003 (DEC-SCOPE-120, spec §3): the Global University Master -- list, create, detail, edit, assign, publish and deactivate.
 
 Every write is one transaction: the university row lock (FOR UPDATE), the scope check, the change, the audit row, one commit here, then a
 structured log. Lists are {items, total, limit, offset}, ordered by name then id, in one joined query (no N+1)."""

@@ -1,4 +1,4 @@
-// upc-003 (DEC-SCOPE-119): the Global University Master's types, words, URLs and pickers, shared by its pages and forms.
+// upc-003 (DEC-SCOPE-120): the Global University Master's types, words, URLs and pickers, shared by its pages and forms.
 import type { LookupPage } from "@/lib/lookups";
 import { PARTNERSHIP_HEAD_NAV, PARTNERSHIP_NAV, PORTAL_NAV, SUPER_ADMIN_NAV, type NavItem } from "@/lib/navigation";
 import { ROLE_LABEL } from "@/lib/partnership";

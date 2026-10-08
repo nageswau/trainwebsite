@@ -3142,7 +3142,7 @@ Accessibility for all: keyboard-navigable, visible focus, labelled controls, sta
   "Loading partnership managers…", "Unable to load partnership managers." + Retry, empty and no-match messages, past-the-end. **Responsive:**
   below 640 px each row is a card of labelled lines (`.telecaller-list`), no page side-scroll at 390 px.
 
-## upc-003 addendum (2026-10-08, `DEC-SCOPE-119`) — Global University Master
+## upc-003 addendum (2026-10-08, `DEC-SCOPE-120`) — Global University Master
 
 Four routes added by `upc-003` (design spec `docs/superpowers/specs/2026-10-08-upc-003-university-master-design.md` §4). No catalogue ID
 is invented. Visual-reference mapping: None — not inspected. Do not claim parity. Roles for all: `partnership_manager`,
