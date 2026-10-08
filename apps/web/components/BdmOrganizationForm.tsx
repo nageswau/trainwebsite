@@ -4,6 +4,7 @@ import { type FormEvent, useRef, useState } from "react";
 import BdmContactFields, { blankContact, type ContactValues } from "@/components/BdmContactFields";
 import BdmOrganizationFields, { ORG_FIELDS, type OrgField, type OrgValues } from "@/components/BdmOrganizationFields";
 import BdmOrganizationProfileFields, { filledFields, profileErrors, profilePayload, profileValuesOf, type ProfileValues } from "@/components/BdmOrganizationProfileFields";
+import UniversityMatchList from "@/components/UniversityMatchList";
 import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
 import {
   ALL_PROFILE_FIELDS,
@@ -25,6 +26,8 @@ import { plural } from "@/lib/plural";
 // bdm-002 (spec §6.2, §12.2): add or edit an organization. A likely duplicate is the server's 409; the BDM decides, and "Save
 // anyway" resends the same entry with confirm_duplicate (AC2, the AgentStudentForm pattern). The matches are plain text, so
 // following one can't lose the unsaved entry. The entry is never cleared on an error.
+// upc-004 (U13, UD8): a University organization's matches in the Global University Master come in the same warning; "Link to … and save"
+// resends with that university_id, "Save without linking" with confirm_duplicate only.
 const LEAVE_PROMPT = "You have unsaved changes to this organization. Leave without saving?";
 const REQUIRED: [OrgField, string][] = [
   ["org_type", "Choose a type"],
@@ -161,9 +164,10 @@ export default function BdmOrganizationForm({
     return !first;
   }
 
-  async function save(confirm = false) {
+  async function save(confirm = false, universityId?: string) {
     if (busy || !check()) return;
     const body = payload();
+    if (universityId) body.university_id = universityId;
     if (mode === "edit" && Object.keys(body).length === 0) return onSaved(organization!, false);
     setBusy(true);
     setFailure(null);
@@ -234,8 +238,22 @@ export default function BdmOrganizationForm({
             ))}
           </ul>
           {duplicate.total > duplicate.matches.length && <p>{plural(duplicate.total - duplicate.matches.length, "more similar organization", "more similar organizations")}.</p>}
+          {duplicate.university_matches.length > 0 && (
+            <>
+              <h5 style={{ margin: "8px 0 0" }}>Already in the University Master</h5>
+              <UniversityMatchList
+                matches={duplicate.university_matches}
+                total={duplicate.university_total}
+                action={(m) => (
+                  <button type="button" className="btn small" onClick={() => void save(true, m.id)} disabled={busy}>
+                    Link to {m.university_code} and save
+                  </button>
+                )}
+              />
+            </>
+          )}
           <button type="button" className="btn small" onClick={() => void save(true)} disabled={busy}>
-            Save anyway
+            {duplicate.university_matches.length > 0 ? "Save without linking" : "Save anyway"}
           </button>{" "}
           <button
             type="button"

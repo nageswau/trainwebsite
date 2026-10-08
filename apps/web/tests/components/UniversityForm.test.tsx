@@ -11,9 +11,15 @@ const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), 
 const countries = { items: [{ id: "gb", label: "United Kingdom", detail: "GB · UK" }], truncated: false };
 const saved = (id = "u1") => ({ university: { id } });
 
-function route(write: Response | (() => Promise<Response>)) {
+const NO_MATCHES = { items: [], total: 0 };
+const isWrite = ([url, init]: [string, RequestInit?]) => url.startsWith("/api/v1/partnership/universities") && init?.method !== undefined;
+
+// upc-004: the search-before-adding GET answers `matches` (none by default); every other non-country call is the write.
+function route(write: Response | (() => Promise<Response>), matches: unknown = NO_MATCHES) {
   const mock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>((url) =>
-    String(url).startsWith("/api/v1/lookups/countries") ? Promise.resolve(res(countries)) : typeof write === "function" ? write() : Promise.resolve(write));
+    String(url).startsWith("/api/v1/lookups/countries") ? Promise.resolve(res(countries))
+      : String(url).includes("/universities/duplicates?") ? Promise.resolve(res(matches))
+        : typeof write === "function" ? write() : Promise.resolve(write));
   vi.stubGlobal("fetch", mock);
   return mock;
 }
@@ -33,7 +39,7 @@ async function fillRequired() {
   fireEvent.change(screen.getByLabelText("City (required)"), { target: { value: "London" } });
 }
 
-const writeBody = (mock: ReturnType<typeof route>) => JSON.parse(String(mock.mock.calls.find(([url]) => url.startsWith("/api/v1/partnership/universities"))![1]!.body));
+const writeBody = (mock: ReturnType<typeof route>, i = 0) => JSON.parse(String(mock.mock.calls.filter(isWrite)[i][1]!.body));
 
 describe("UniversityForm (upc-003 AC1)", () => {
   it("creates with every master field and opens the new university", async () => {
@@ -84,7 +90,7 @@ describe("UniversityForm (upc-003 AC1)", () => {
     fireEvent.click(button);
     resolve(res({ detail: "Your role cannot add universities" }, 403));
     expect(await screen.findByRole("alert")).toHaveTextContent("Your role cannot add universities");
-    expect(mock.mock.calls.filter(([url]) => url.startsWith("/api/v1/partnership/universities"))).toHaveLength(1);
+    expect(mock.mock.calls.filter(isWrite)).toHaveLength(1);
   });
 
   it("edits with PATCH, prefilled, and returns to the detail page", async () => {
@@ -104,5 +110,59 @@ describe("UniversityForm (upc-003 AC1)", () => {
     expect(call[1]!.method).toBe("PATCH");
     expect(JSON.parse(String(call[1]!.body))).toMatchObject({ name: "New Name", country_id: "gb", course_levels: ["UG"], existing_relationship: "existing",
       rankings: [{ system: "Other", other_name: "Guardian", year: 2025, rank: "12" }] });
+  });
+});
+
+const MATCH = {
+  id: "u1", university_code: "UNV-000012", name: "ABC University", country: { id: "gb", name: "United Kingdom" }, city: "London",
+  active: true, catalogue_visible: true, existing_relationship: "existing", primary_manager: { id: "m1", full_name: "Rahul Nair", active: true }, backup_manager: null,
+};
+const duplicate = (can_override: boolean) => ({
+  detail: { code: "university_duplicate", message: "This university is already in the University Master", matches: [MATCH], total: 1, can_override },
+});
+
+describe("UniversityForm duplicates (upc-004 AC1, UD2, UD6)", () => {
+  it("searches before adding and shows the existing university", async () => {
+    const mock = route(res(saved(), 201), { items: [MATCH], total: 1 });
+    render(<UniversityForm />);
+    await fillRequired();
+    const panel = await screen.findByRole("status", {}, { timeout: 2000 });
+    expect(panel).toHaveTextContent("Already in the University Master");
+    expect(panel).toHaveTextContent("Rahul Nair (primary)");
+    expect(screen.getByRole("link", { name: "UNV-000012 · ABC University" })).toHaveAttribute("href", "/partnership/universities/u1");
+    const searched = mock.mock.calls.map(([url]) => url).find((url) => url.includes("/duplicates?"))!;
+    expect(new URL(searched, "http://x").searchParams.get("name")).toBe("ABC University");
+    expect(new URL(searched, "http://x").searchParams.get("country_id")).toBe("gb");
+  });
+
+  it("blocks a duplicate and lets a head add it anyway with a reason", async () => {
+    let calls = 0;
+    const mock = route(() => Promise.resolve(++calls === 1 ? res(duplicate(true), 409) : res(saved("dup2"), 201)));
+    render(<UniversityForm />);
+    await fillRequired();
+    fireEvent.click(screen.getByRole("button", { name: "Add university" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("This university is already in the University Master");
+    expect(alert).toHaveTextContent("UNV-000012");
+    expect(push).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText("Reason for adding it anyway (required)"), { target: { value: "Separate campus with its own office" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add anyway" }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/partnership/universities/dup2"));
+    expect(writeBody(mock, 0)).not.toHaveProperty("duplicate_reason");
+    expect(writeBody(mock, 1).duplicate_reason).toBe("Separate campus with its own office");
+  });
+
+  it("tells a role without the override to ask the head", async () => {
+    route(res(duplicate(false), 409));
+    render(<UniversityForm />);
+    await fillRequired();
+    fireEvent.click(screen.getByRole("button", { name: "Add university" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Ask your partnership head");
+    expect(screen.queryByLabelText("Reason for adding it anyway (required)")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add anyway" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Add university" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("University name (required)"), { target: { value: "ABC University Dubai" } });
+    expect(screen.queryByRole("alert")).toBeNull(); // a corrected name is re-checked on the next save
+    expect(screen.getByRole("button", { name: "Add university" })).toBeEnabled();
   });
 });

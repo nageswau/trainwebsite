@@ -99,6 +99,19 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
             {u.overview ? <p style={{ whiteSpace: "pre-line" }}>{u.overview}</p> : <p className="muted">No overview yet (needed to publish).</p>}
             <UniversityActions university={u} />
           </section>
+          <section className="action-card" aria-labelledby="uni-bdm-links">
+            <h3 id="uni-bdm-links">Linked BDM organizations</h3>
+            {/* upc-004 UD11: text only -- BDM records open in the BDM workspace, not here */}
+            {u.linked_bdm_organizations.length ? (
+              <ul className="list-clean">
+                {u.linked_bdm_organizations.map((o) => (
+                  <li key={o.id}>
+                    {o.code} · {o.name}, {o.city} · BDM {o.assigned_bdm_name}{o.archived ? " · Archived" : ""}
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="muted">No BDM organization is linked to this university.</p>}
+          </section>
         </div>
       </div>
     </PortalShell>

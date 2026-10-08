@@ -15,13 +15,36 @@ export type UniversityRow = {
 export type University = UniversityRow & {
   ownership_type: string | null; state_region: string | null; website: string | null; course_levels: string[]; popular_programs: string[];
   international_office: string | null; existing_relationship: string | null; overview: string; eligibility: string; rankings: Ranking[];
-  application_count: number; created_at: string; updated_at: string;
+  application_count: number; linked_bdm_organizations: LinkedBdmOrganization[]; created_at: string; updated_at: string;
 };
+// upc-004: a BDM University organization linked to this master record (text only: partnership roles cannot open BDM records).
+export type LinkedBdmOrganization = { id: string; code: string; name: string; city: string; bdm_type: string; assigned_bdm_name: string; archived: boolean };
+// upc-004 UD5: the duplicate panel's fields, the same for the master forms and the BDM create form.
+export type UniversityMatch = {
+  id: string; university_code: string; name: string; country: { id: string; name: string }; city: string; active: boolean; catalogue_visible: boolean;
+  existing_relationship: string | null; primary_manager: ManagerRef | null; backup_manager: ManagerRef | null;
+};
+export type UniversityMatchPage = { items: UniversityMatch[]; total: number };
+export type UniversityDuplicate = { message: string; matches: UniversityMatch[]; total: number; can_override: boolean };
 
 export const UNIVERSITIES_URL = "/api/v1/partnership/universities";
 export const UNIVERSITIES_PATH = "/partnership/universities";
 export const universityUrl = (id: string, action?: string) => `${UNIVERSITIES_URL}/${id}${action ? `/${action}` : ""}`;
 export const universityPath = (id: string, edit = false) => `${UNIVERSITIES_PATH}/${id}${edit ? "/edit" : ""}`;
+
+/** upc-004 UD6: search before adding. `excludeId` leaves out the university being edited. */
+export function duplicatesUrl(name: string, countryId: string, excludeId?: string): string {
+  const query = new URLSearchParams({ name, country_id: countryId });
+  if (excludeId) query.set("exclude_id", excludeId);
+  return `${UNIVERSITIES_URL}/duplicates?${query}`;
+}
+
+/** The 409 a save into an existing name + country answers (UD2), or null for any other detail. */
+export function universityDuplicate(detail: unknown): UniversityDuplicate | null {
+  const d = detail as (Partial<UniversityDuplicate> & { code?: string }) | null;
+  if (!d || typeof d !== "object" || d.code !== "university_duplicate" || !Array.isArray(d.matches)) return null;
+  return { message: String(d.message ?? ""), matches: d.matches, total: Number(d.total ?? d.matches.length), can_override: d.can_override === true };
+}
 
 // UM8: who may add a university (the API decides; this only hides the link).
 export const CREATOR_ROLES = new Set(["partnership_head", "overseas_admin", "super_admin"]);
