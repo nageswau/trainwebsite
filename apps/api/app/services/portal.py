@@ -54,8 +54,8 @@ from app.models import (
     User,
     VisaCase,
 )
-from app.services import applications as job_applications
 from app.services import application_filters
+from app.services import applications as job_applications
 from app.services.agent_applications import WITHDRAWN, counts_as_offer, owned, stage_label, with_owner
 from app.services.agent_dashboard import headline_counts
 from app.services.agent_orgs import org_masters, org_member_ids

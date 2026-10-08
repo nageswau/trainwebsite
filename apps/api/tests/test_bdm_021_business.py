@@ -5,7 +5,7 @@ from datetime import UTC, date, datetime
 
 import pytest
 
-from app.models import Batch, Certificate, Company, Enquiry, Enrollment, Job, JobApplication, JobOffer, Payment, Program, User
+from app.models import Batch, Certificate, Company, Enquiry, Enrollment, Job, JobOffer, Payment, Program, User
 from tests.bdm001_helpers import login, make_manager, make_user
 from tests.bdm002_helpers import create_org, make_bdm
 from tests.bdm009_helpers import bdm_with_org

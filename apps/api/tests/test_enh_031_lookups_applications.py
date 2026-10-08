@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.models import Company, Job, JobApplication
+from app.models import Company, Job
 from tests.agn001_helpers import login, mk_active_org, mk_user, uniq
 from tests.enh016_helpers import make_school, make_student
 from tests.enh031_helpers import mk_application, mk_course, mk_university

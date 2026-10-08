@@ -6,10 +6,10 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import select
 
-from app.models import AuditLog, Company, CompanyStageHistory, Job, JobApplication, JobSkill, JobStatusHistory, RecJobCategory, Skill, SkillAlias, SkillCategory
+from app.models import AuditLog, Company, CompanyStageHistory, Job, JobSkill, JobStatusHistory, RecJobCategory, Skill, SkillAlias, SkillCategory
 from app.services.recruiter_requirements import ist_today
-from tests.rec017_helpers import student_application
 from tests.rec001_helpers import as_role, login, make_pm, make_recruiter, make_user
+from tests.rec017_helpers import student_application
 from tests.test_emp_002_job_posting import _register_employer
 
 BASE = "/api/v1/recruiter/requirements"

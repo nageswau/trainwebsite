@@ -21,7 +21,7 @@ import pytest
 from sqlalchemy import select
 
 from app.core.security import hash_password
-from app.models import Company, EmployerProfile, Interview, Job, JobApplication, User
+from app.models import Company, EmployerProfile, Interview, Job, User
 from tests.rec017_helpers import student_application
 
 

@@ -107,8 +107,8 @@ from app.schemas import (
     SupportTicketUpdate,
     VisaCaseCreate,
 )
-from app.services import applications
 from app.services import agent_notifications as agency_notices
+from app.services import applications
 from app.services import recruiter_requirements as requirements
 from app.services.agent_applications import ARCHIVED, DEFAULT_NEXT_ACTION, OFFER_STAGES_ON, OVERSEAS_APPLICATION_STAGES, WITHDRAWN, WITHDRAWN_REFUSED, owned, with_owner
 from app.services.agent_documents import add_event, in_scope

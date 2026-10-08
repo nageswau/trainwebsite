@@ -17,7 +17,7 @@ import uuid
 import pytest
 
 from app.core.security import hash_password
-from app.models import Company, Job, JobApplication, User
+from app.models import Company, Job, User
 from tests.rec017_helpers import student_application
 
 

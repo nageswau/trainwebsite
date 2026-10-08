@@ -8,7 +8,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import select
 
-from app.models import AuditLog, Job, JobApplication, RecruiterFollowUp
+from app.models import AuditLog, Job, RecruiterFollowUp
 from app.services.bdm_activities import day_range
 from app.services.bdm_appointments import IST
 from tests.rec001_helpers import as_role, login, make_pm, make_recruiter, make_user
