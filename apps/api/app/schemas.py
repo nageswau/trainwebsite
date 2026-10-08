@@ -17,6 +17,7 @@ from pydantic import (
     StrictBool,
     StrictInt,
     StringConstraints,
+    TypeAdapter,
     ValidationError,
     ValidationInfo,
     WrapValidator,
@@ -38,6 +39,7 @@ from app.models import (
     BDM_MOU_STATUSES,
     BDM_STAFF_MAX,
     BDM_TARGET_MAX,
+    CANDIDATE_STATUSES,
     COURSE_LEVELS,
     GENDERS,
     INSTITUTION_TYPES,
@@ -7089,3 +7091,362 @@ class SkillPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# --- rec-003 (DEC-SCOPE-121): the company master ----------------------------------------------------------------------------------
+REC_COMPANY_LABELS = {
+    "name": "Company name", "website": "Website", "linkedin_url": "LinkedIn", "city": "City", "state": "State", "country": "Country",
+    "head_office": "Head office", "branches": "Branches", "description": "Company description",
+}
+REC_COMPANY_MULTILINE = frozenset({"branches", "description"})
+REC_COMPANY_URLS = frozenset({"website", "linkedin_url"})
+REC_COMPANY_FIELDS = (  # the columns a create or edit may write; everything else on `companies` is server-owned
+    "name", "website", "linkedin_url", "industry_id", "company_size_id", "employee_count", "city", "state", "country", "head_office",
+    "branches", "description", "lead_source_id", "campaign_id", "priority", "assigned_bdm_user_id",
+)
+
+
+def _rec_company_text(value: str | None, info: ValidationInfo) -> str | None:
+    """bdm-002's rules with this module's labels: no control characters (a line break only in a multi-line field), blank -> None, and
+    http(s) links only, so a stored value can never become a javascript:/data: href."""
+    label = REC_COMPANY_LABELS[info.field_name]
+    control = _BDM_CONTROL_MULTILINE if info.field_name in REC_COMPANY_MULTILINE else _BDM_CONTROL
+    if value is not None and control.search(value):
+        raise ValueError(f"{label} contains invalid characters")
+    if not value:
+        return None
+    if info.field_name in REC_COMPANY_URLS and not _BDM_WEBSITE.fullmatch(value):
+        raise ValueError(f"{label} must start with http:// or https://" if _BDM_SCHEME.match(value) else f"Enter a {label} link such as example.com")
+    return value
+
+
+def _rec_company_name(value: str, info: ValidationInfo) -> str:
+    value = _rec_company_text(value, info)
+    if value is None:
+        raise ValueError("Company name is required")
+    return value
+
+
+def _rec_company_optional(max_length: int, *, multiline: bool = False, url: bool = False):
+    text = Annotated[Annotated[str, StringConstraints(strip_whitespace=True, max_length=max_length)] | None, AfterValidator(_rec_company_text)]
+    if multiline:
+        text = Annotated[text, BeforeValidator(_bdm_newlines)]
+    return Annotated[text, BeforeValidator(_bdm_website_prefix)] if url else text
+
+
+RecCompanyName = Annotated[str, StringConstraints(strip_whitespace=True, max_length=180), AfterValidator(_rec_company_name)]
+RecCompanyShort = _rec_company_optional(120)
+RecCompanyUrl = _rec_company_optional(300, url=True)
+RecCompanyPlace = _rec_company_optional(300)
+RecCompanyBranches = _rec_company_optional(1000, multiline=True)
+RecCompanyDescription = _rec_company_optional(2000, multiline=True)
+RecEmployeeCount = _bdm_whole_number("Number of employees must be a whole number from 0 to 10,000,000", 0, 10_000_000)
+RecCompanyPriority = Literal["hot", "warm", "cold"]
+
+
+class RecCompanyUpdate(BaseModel):
+    """PATCH: omitted = unchanged, null = clear (a null name fails its type). Server-owned fields (code, assignee, archive, creator) are
+    unknown fields, so a client can never set them; the recruiter changes only through /assign."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: RecCompanyName = None
+    website: RecCompanyUrl = None
+    linkedin_url: RecCompanyUrl = None
+    industry_id: UUID | None = None
+    company_size_id: UUID | None = None
+    employee_count: RecEmployeeCount = None
+    city: RecCompanyShort = None
+    state: RecCompanyShort = None
+    country: RecCompanyShort = None
+    head_office: RecCompanyPlace = None
+    branches: RecCompanyBranches = None
+    description: RecCompanyDescription = None
+    lead_source_id: UUID | None = None
+    campaign_id: UUID | None = None
+    priority: RecCompanyPriority | None = None
+    assigned_bdm_user_id: UUID | None = None
+    confirm_duplicate: StrictBool = False
+
+
+class RecCompanyCreate(RecCompanyUpdate):
+    name: RecCompanyName
+    assigned_recruiter_user_id: UUID | None = None  # managers and super_admin only (services/recruiter_companies)
+
+
+class RecCompanyAssign(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    recruiter_user_id: UUID
+
+
+class RecPersonRef(BaseModel):
+    id: UUID
+    full_name: str
+    active: bool
+
+
+class RecCatalogueRef(BaseModel):
+    id: UUID
+    name: str
+    active: bool
+
+
+class RecCompanyPermissions(BaseModel):
+    can_edit: bool
+    can_archive: bool
+    can_restore: bool
+    can_reassign: bool
+
+
+class RecCompanyRow(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    city: str | None
+    priority: str | None
+    industry: RecCatalogueRef | None
+    lead_source: RecCatalogueRef | None
+    assigned_recruiter: RecPersonRef | None
+    archived: bool
+    permissions: RecCompanyPermissions
+
+
+class RecCompanyPage(BaseModel):
+    items: list[RecCompanyRow]
+    total: int
+    limit: int
+    offset: int
+
+
+class RecAssignmentOut(BaseModel):
+    from_user: RecPersonRef | None
+    to_user: RecPersonRef
+    changed_by: RecPersonRef
+    created_at: datetime
+
+
+class RecCompanyOut(RecCompanyRow):
+    website: str | None
+    linkedin_url: str | None
+    company_size: RecCatalogueRef | None
+    employee_count: int | None
+    state: str | None
+    country: str | None
+    head_office: str | None
+    branches: str | None
+    description: str | None
+    campaign: RecCatalogueRef | None
+    assigned_bdm: RecPersonRef | None
+    owner_type: str
+    created_by: RecPersonRef | None
+    assignment_history: list[RecAssignmentOut]
+    archived_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class RecCompanyEnvelope(BaseModel):
+    company: RecCompanyOut
+
+
+class RecBdmOption(BaseModel):
+    id: UUID
+    full_name: str
+
+
+class RecBdmOptionPage(BaseModel):
+    items: list[RecBdmOption]
+    total: int
+
+
+# --- rec-009 (DEC-SCOPE-122, spec §3/§5): the candidate master ------------------------------------------------------------------
+CandidateStatus = Literal[CANDIDATE_STATUSES]
+CANDIDATE_FIELD_LABELS = {
+    "name": "Name", "mobile": "Mobile", "email": "Email", "location": "Location", "qualification": "Qualification", "college": "College",
+    "passing_year": "Passing year", "experience_months": "Total experience (months)", "current_company": "Current company",
+    "current_salary": "Current salary", "expected_salary": "Expected salary", "notice_days": "Notice period (days)",
+    "preferred_locations": "Preferred locations", "preferred_role": "Preferred role", "linkedin": "LinkedIn", "source_id": "Source",
+    "source_detail": "Source detail", "status": "Status",
+}
+NO_CONTACT = "Enter a mobile number or an email"
+_LINKEDIN = re.compile(r"https?://\S+", re.IGNORECASE)
+
+
+def _candidate_text(label: str, max_length: int):
+    """Optional text: trimmed, blank = null, capped, no control characters; the error names the field."""
+
+    def check(value: str | None) -> str | None:
+        value = (value or "").strip()
+        if not value:
+            return None
+        if len(value) > max_length:
+            raise ValueError(f"{label} must be at most {max_length} characters")
+        if _BDM_CONTROL.search(value):
+            raise ValueError(f"{label} contains invalid characters")
+        return value
+
+    return Annotated[str | None, AfterValidator(check)]
+
+
+def _candidate_mobile(value: str | None) -> str | None:
+    if value is not None and normalise_phone(value) is None:
+        raise ValueError("Enter a valid mobile number (10 digits, or + and the country code)")
+    return value
+
+
+_EMAIL = TypeAdapter(EmailStr)
+
+
+def _candidate_email(value: str | None) -> str | None:
+    """Blank = null; otherwise a valid address, stored lower-cased (Q-07 matches emails case-insensitively)."""
+    value = (value or "").strip()
+    if not value:
+        return None
+    if len(value) > 255:
+        raise ValueError("Email must be at most 255 characters")
+    try:
+        return _EMAIL.validate_python(value).lower()
+    except ValidationError:
+        raise ValueError("Enter a valid email address") from None
+
+
+def _linkedin(value: str | None) -> str | None:
+    """http(s) only, so the profile link can never be a javascript: URL."""
+    if value is not None and not _LINKEDIN.fullmatch(value):
+        raise ValueError("LinkedIn must be a link starting with https://")
+    return value
+
+
+def _places(value: list[str]) -> list[str]:
+    """Up to 10 places, each 1-80 characters; blanks dropped and repeats (any case) removed, first spelling kept."""
+    out: list[str] = []
+    for raw in value:
+        place = raw.strip()
+        if not place or place.lower() in {p.lower() for p in out}:
+            continue
+        if len(place) > 80 or _BDM_CONTROL.search(place):
+            raise ValueError("Each preferred location must be at most 80 characters")
+        out.append(place)
+    if len(out) > 10:
+        raise ValueError("Enter at most 10 preferred locations")
+    return out
+
+
+def _whole(label: str, low: int, high: int):
+    """A whole number in range; the error is one plain sentence (browser QA-02), not pydantic's wording."""
+
+    def check(value: int | None) -> int | None:
+        if value is not None and not low <= value <= high:
+            raise ValueError(f"{label} must be between {low} and {high}")
+        return value
+
+    return Annotated[StrictInt | None, AfterValidator(check)]
+
+
+def _salary(label: str):
+    """A yearly amount: finite, 0 to 9,999,999,999.99, at most 2 decimal places (numeric(12,2))."""
+
+    def check(value: Decimal | None) -> Decimal | None:
+        if value is not None and (not value.is_finite() or value < 0 or value > Decimal("9999999999.99") or value.as_tuple().exponent < -2):
+            raise ValueError(f"{label} must be a positive amount (at most 2 decimal places)")
+        return value
+
+    return Annotated[Decimal | None, AfterValidator(check)]
+
+
+CandidateName = _tel_name(160)
+CandidateMobile = Annotated[_candidate_text("Mobile", 40), AfterValidator(_candidate_mobile)]
+CandidateEmail = Annotated[str | None, AfterValidator(_candidate_email)]
+CandidateLinkedin = Annotated[_candidate_text("LinkedIn", 300), AfterValidator(_linkedin)]
+
+
+class _CandidateFields(BaseModel):
+    """The optional §8 fields, shared by create and edit; null or blank clears one."""
+
+    model_config = ConfigDict(extra="forbid")
+    mobile: CandidateMobile = None
+    email: CandidateEmail = None
+    location: _candidate_text("Location", 120) = None
+    qualification: _candidate_text("Qualification", 120) = None
+    college: _candidate_text("College", 200) = None
+    passing_year: _whole("Passing year", 1950, 2100) = None
+    experience_months: _whole("Total experience (months)", 0, 600) = None
+    current_company: _candidate_text("Current company", 200) = None
+    current_salary: _salary("Current salary") = None
+    expected_salary: _salary("Expected salary") = None
+    notice_days: _whole("Notice period (days)", 0, 365) = None
+    preferred_locations: Annotated[list[str], AfterValidator(_places)] = Field(default_factory=list)
+    preferred_role: _candidate_text("Preferred role", 120) = None
+    linkedin: CandidateLinkedin = None
+    source_detail: _candidate_text("Source detail", 200) = None
+
+
+class CandidateCreate(_CandidateFields):
+    name: CandidateName
+    source_id: UUID
+    status: CandidateStatus = "available"
+
+    @model_validator(mode="after")
+    def _contact(self):
+        if self.mobile is None and self.email is None:
+            raise ValueError(NO_CONTACT)
+        return self
+
+
+class CandidateUpdate(_CandidateFields):
+    """PATCH: omitted = unchanged (model_dump(exclude_unset=True)); name, source and status cannot be null. The service checks that the
+    merged row still has a mobile or an email."""
+
+    name: CandidateName = None
+    source_id: UUID = None
+    status: CandidateStatus = None
+    preferred_locations: Annotated[list[str], AfterValidator(_places)] = None
+
+
+class CandidateResumeOut(BaseModel):
+    version: int
+    file_name: str | None
+    content_type: str
+    size_bytes: int
+    uploaded_by: BdmPersonRef | None
+    created_at: datetime
+
+
+class CandidateItem(BaseModel):
+    id: UUID
+    candidate_code: str
+    name: str
+    location: str | None
+    experience_months: int | None
+    preferred_role: str | None
+    source: RecLeadSourceRef
+    source_detail: str | None
+    status: CandidateStatus
+    archived: bool
+    created_at: datetime
+
+
+class CandidatePage(BaseModel):
+    items: list[CandidateItem]
+    total: int
+    limit: int
+    offset: int
+
+
+class CandidateDetail(CandidateItem):
+    mobile: str | None
+    email: str | None
+    qualification: str | None
+    college: str | None
+    passing_year: int | None
+    current_company: str | None
+    current_salary: Decimal | None
+    expected_salary: Decimal | None
+    notice_days: int | None
+    preferred_locations: list[str]
+    linkedin: str | None
+    archived_at: datetime | None
+    created_by: BdmPersonRef | None
+    updated_by: BdmPersonRef | None
+    updated_at: datetime
+    resumes: list[CandidateResumeOut]
+    can_edit: bool

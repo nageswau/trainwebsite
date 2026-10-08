@@ -356,8 +356,8 @@ Common conventions:
 - **Complexity:** large · **Risk:** high
 
 ### upc-004 — Duplicate prevention + BDM university-org link
-- **Status (2026-10-08):** built on `feature/upc-004` under `DEC-SCOPE-121`, with migration `0106_university_duplicates`, API §12AO and
-  RBAC §2.47. Spec: `docs/superpowers/specs/2026-10-08-upc-004-university-duplicates-design.md`.
+- **Status (2026-10-08):** built on `feature/upc-004` under `DEC-SCOPE-123`, with migration `0108_university_duplicates`, API §12AQ and
+  RBAC §2.49. Spec: `docs/superpowers/specs/2026-10-08-upc-004-university-duplicates-design.md`.
   - Q-02 is answered by the recommended defaults UD1–UD12 (`NEEDS_CONFIRMATION`): normalised name + country, no aliases; override by the
     head / `super_admin` with an audited reason; stage, last contact and next follow-up show "—" until upc-007/006/020.
   - Follow-up: a link control in the BDM edit form (the API already links and unlinks).

@@ -1,4 +1,4 @@
-"""upc-004 -- migration 0106_university_duplicates and the name key (spec §2). The round trip, backfill, report and downgrade refusal run in
+"""upc-004 -- migration 0108_university_duplicates and the name key (spec §2). The round trip, backfill, report and downgrade refusal run in
 a throwaway database (the upc-001 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -14,14 +14,14 @@ from app.core.config import settings
 from app.core.identifiers import normalize_key
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_upc_004_migration_0106", VERSIONS / "0106_university_duplicates.py")
+_spec = importlib.util.spec_from_file_location("_upc_004_migration_0108", VERSIONS / "0108_university_duplicates.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0105_university_master", "0106_university_duplicates"
+BASE, HEAD = "0107_candidates", "0108_university_duplicates"
 
 
-def test_migration_chains_after_0105_and_is_the_single_head():
+def test_migration_chains_after_0107_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     assert ScriptDirectory.from_config(_config()).get_heads() == [HEAD]
 
@@ -76,7 +76,7 @@ async def test_columns_and_indexes_exist_in_the_shared_database(db_session):
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0105 holding two same-named universities in one country and a matching BDM University org."""
+    """A fresh database at 0107 holding two same-named universities in one country and a matching BDM University org."""
     cfg = _config()
     original = settings.database_url
     name = f"upc004_migration_{uuid.uuid4().hex[:8]}"

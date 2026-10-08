@@ -983,7 +983,32 @@ by design (management visibility, §27); writes are scoped.
 | Publish / unpublish, deactivate / reactivate | `403` | unowned + team-owned | ✅ | ✅ | `403` |
 | Public catalogue | Shows only published, active universities, to everyone (unchanged otherwise) |||||
 
-### 2.47 University duplicate prevention + BDM link *(net-new, added 2026-10-08 — `DEC-SCOPE-121`, `upc-004`)*
+### 2.47 Recruiter company master *(net-new, added 2026-10-08 — `DEC-SCOPE-121`, `rec-003`)*
+
+Row scope first (out of scope = `404`), then the action's role (`403`), then the archived state (`409`). §2.44 is upc-001's, §2.45 rec-006's and §2.46 upc-003's.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` (with a profile) | read; create (assigned to self); edit and archive | companies assigned to them | `rec-003` |
+| `placement_manager` | read; create (unassigned, or for a direct report); restore; assign/reassign to an active direct report. No edit, no archive | direct reports' companies + the unassigned queue | `rec-003` |
+| `super_admin` | everything; assign to any active recruiter | all companies | `rec-003` |
+| `bdm` | read only (R10); every write and the BDM picker `403` | companies whose Assigned BDM is them | `rec-003` |
+| `hr_team`, `it_admin`, `employer`, every other role | `403` on every `/recruiter/companies` route. EMP-001…005 are unchanged | — | `rec-003` |
+
+### 2.48 Candidate master *(net-new, added 2026-10-08 — `DEC-SCOPE-122`, `rec-009`; drafted as §2.46)*
+
+One pool (R11): there is no ownership scope. The role check runs before anything is read. A candidate outside the pool (a linked student
+who has not opted in, rec-010) is `404`, the same as an unknown id.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` | list, read, duplicate check, create, edit, archive/restore, upload and download resumes | the whole pool | `rec-009` |
+| `placement_manager` | same as `placement_team` | the whole pool | `rec-009` |
+| `super_admin` | same as `placement_team` | the whole pool | `rec-009` |
+| `hr_team` | list, read, download resumes; every write and the duplicate check are `403` | the whole pool | `rec-009` |
+| `employer`, `it_admin`, students, every other role | `403` (employers see only EMP-003's masked view, R12) | — | `rec-009` |
+
+### 2.49 University duplicate prevention + BDM link *(net-new, added 2026-10-08 — `DEC-SCOPE-123`, `upc-004`)*
 
 Enforced inline in `services/partnership_universities.py` (`check_duplicates`) and `api/bdm_organizations.py`. Matches show only the §26
 panel fields (no commission, for every role).

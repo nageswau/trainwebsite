@@ -5070,13 +5070,69 @@ universities; `GET /lookups/countries` admits the partnership roles; web pages `
 `/[id]/edit`; "University Master" goes live in the §32 menu and the head's sidebar.
 **New Feature ID authorized:** `upc-003`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-003.
 
-### DEC-SCOPE-121 — University duplicate prevention + BDM university-org link (`upc-004`)
+### DEC-SCOPE-121 — Recruiter company master (`rec-003`)
+
+**Evidence:** `EVID-018` §1 quick actions (lines 40–42), §2 (50–118), §3 (120–174); `RECRUITER_CRM_BACKLOG.md` §rec-003 (AC1–AC5)
+and §3.2 Q-01–Q-03. Module scope: `DEC-SCOPE-116` (R3, R10).
+**Status:** `UNVERIFIED` — **recommended defaults applied on the owner's standing instruction** for this session (2026-10-08: "try to
+proceed with recommend answers always"). No per-question owner answer was given; each row can be revised. `DEC-SCOPE-118` is upc-001's, `DEC-SCOPE-119` rec-006's and
+`DEC-SCOPE-120` upc-003's. **MERGED** to `main` as PR #152 @ `22319014` (2026-10-08). Migration `0106_rec_companies`, API §12AO, RBAC §2.47. Spec `docs/superpowers/specs/2026-10-08-rec-003-company-master-design.md`.
+
+| # | Point | Answer applied |
+|---|---|---|
+| D1 (Q-01) | Company code | `CMP-000001`, server-assigned from `company_code_seq` (column default, so every insert path gets one); existing companies backfilled in creation order; never edited |
+| D2 (Q-02) | Name uniqueness and duplicates | `companies.name` stays globally unique (EMP-001 and `/workflows/it/jobs` rely on it). A normalised match (trimmed, whitespace collapsed, case-insensitive) is a warning the user confirms. Stage-mandatory fields move to rec-005 |
+| D3 (Q-03) | Employer self-registered companies | Lead source "Website", no recruiter (the managers' unassigned queue); the stage is rec-005's |
+| D4 | Scope split | §2 person fields and "+ Add Recruiter" (company + first contact) ship with rec-004 (`company_contacts`); Status → rec-005; Next Follow-up → rec-024; §3 agreement / MoU / commercial terms → rec-030. Account Manager = the assigned recruiter |
+| D5 | Industry vs Industry Type | One field, `rec_industries` |
+| D6 | Permissions | bdm-002 pattern: recruiter creates (own), edits and archives own; manager creates (unassigned or for a report), restores and reassigns within the team plus the unassigned queue; super admin everything; the assigned BDM reads only; every other role `403` |
+
+**Consequences:**
+- `companies` gains the lead/company columns, `company_code` (+ sequence, backfill) and `company_assignment_history` (`0103`).
+- `services/recruiter_companies.py`, `api/recruiter_companies.py`; `employer.register` sets the lead source.
+- Pages `/recruiter/companies`, `/new`, `/[id]`; "Companies" in the recruiter and manager menus, "Recruiter Companies" for super admin.
+- A BDM-side screen for the assigned BDM is a follow-up (API read only in this item).
+- **New Feature ID authorized:** `rec-003`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-003.
+
+### DEC-SCOPE-122 — Candidate master (`rec-009`)
+
+**Evidence:** `EVID-018` §8 (lines 390–434), §9 (436–473), quick action "+ Add Candidate" (46), S2-§13 (1541–1561), S2-§20 (1750, 1778);
+`RECRUITER_CRM_BACKLOG.md` §rec-009 (AC1–AC4). Module scope: `DEC-SCOPE-116`. R4 (new `candidates` table) and R11 (every recruiter edits the
+whole pool).
+**Status:** **MERGED** to `main` as PR #155 @ `e234f31f` (2026-10-08). Q-07 and Q-08 are `EXPLICIT_APPROVAL` (the owner answered in
+session on 2026-10-08). Q-09, Q-31 and Q-32 are recommended
+defaults, taken on the user's instruction to proceed with the recommended answers. The retention and erasure part of Q-09 stays
+`NEEDS_CONFIRMATION`. **Numbering:** migration `0107_candidates` (chained after rec-003's `0106_rec_companies`), API §12AP, RBAC
+§2.48. rec-009 was drafted as `0105` / `DEC-SCOPE-120` / §12AN / §2.46. Four items merged to `main` first and took the lower numbers:
+upc-001 (`0103` / 118), rec-006 (`0104` / 119), upc-003 (`0105` / 120) and rec-003 (`0106` / 121). Re-check if another item merges
+first.
+Spec `docs/superpowers/specs/2026-10-08-rec-009-candidate-master-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| Q-07 | Duplicate rule | A normalised mobile (E.164) **or** a lower-cased email that matches any candidate, archived ones included, **blocks** the create or edit with `409 duplicate_candidate` and a panel naming the existing candidate. Unique indexes are the backstop under a race. No merge tool |
+| Q-08 | Candidate Status | Set **by hand**: `available` (the default), `interviewing`, `placed`, `not_looking`, `do_not_contact`. rec-017 may later derive or suggest it |
+| Q-09 | Resume format and retention | *Recommended default:* PDF or DOCX, judged by the bytes, at most 5 MB (the `/public/career-upload` limit). Versioned; the newest is current. Every download is audited. **Retention and erasure: `NEEDS_CONFIRMATION`** (`DEC-PRIV-001`); nothing is deleted automatically |
+| Q-31 | `CareerApplication` intake | *Recommended default:* not in rec-009 |
+| Q-32 | Candidate CSV import | *Recommended default:* manual entry only |
+| Roles | Backlog rec-009 roles line | Writers: `placement_team`, `placement_manager`, `super_admin`. `hr_team` **reads** (list, detail, resume download); it is the first `/recruiter/*` screen open to `hr_team` (Q-28 left this to later items). Everyone else gets 403, employers included |
+
+**Consequences:**
+- `candidates`, `candidate_resumes` and `candidate_code_seq` (`0105`). The `CAN-000001` codes come from the sequence.
+- `user_id` and `opted_in` exist for rec-010. `services/candidates.pool_filter` hides a linked student who has not opted in.
+- `services/candidates.py` and `api/recruiter_candidates.py`.
+- The pages `/recruiter/candidates`, `/new` and `/[id]`.
+- A "Candidate Master" sidebar entry for recruiters, managers, super admin and HR.
+- **New Feature ID authorized:** `rec-009`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-009.
+
+### DEC-SCOPE-123 — University duplicate prevention + BDM university-org link (`upc-004`)
 
 **Evidence:** `EVID-020` §26 (L868–894: search before adding, the warning panel, "prevents two employees contacting the same
 university"); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U13 (`EXPLICIT_APPROVAL`, 2026-10-08) and §4 upc-004.
 **Status:** UD1–UD12 are the recommended answers to backlog Q-02 (plus design-level rules), applied under the owner's standing instruction
 for the build session ("proceed with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed:
-`NEEDS_CONFIRMATION` at sign-off. Migration `0106_university_duplicates`, API contract §12AO, RBAC §2.47 (provisional; re-chained at merge).
+`NEEDS_CONFIRMATION` at sign-off. Migration `0108_university_duplicates`, API contract §12AQ, RBAC §2.49. Drafted as `DEC-SCOPE-121` / `0106` /
+§12AO / §2.47 and renumbered on merging `main` @ `a62ad9d7`: rec-003 and rec-009 took those numbers and merged first.
 Spec: `docs/superpowers/specs/2026-10-08-upc-004-university-duplicates-design.md`.
 
 | # | Question | Answer |
