@@ -4977,3 +4977,27 @@ Spec `docs/superpowers/specs/2026-10-08-rec-002-recruiter-catalogues-design.md`.
 - The manager page `/recruiter/manager/catalogue/[kind]` and a "Catalogues" sidebar entry.
 - `services/telecaller._readable` words a bad non-manager id as "choose one from the list" (it said "choose a manager" for every id).
 - **New Feature ID authorized:** `rec-002`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-002.
+
+### DEC-SCOPE-119 — Recruiter company master (`rec-003`)
+
+**Evidence:** `EVID-018` §1 quick actions (lines 40–42), §2 (50–118), §3 (120–174); `RECRUITER_CRM_BACKLOG.md` §rec-003 (AC1–AC5)
+and §3.2 Q-01–Q-03. Module scope: `DEC-SCOPE-116` (R3, R10).
+**Status:** `UNVERIFIED` — **recommended defaults applied on the owner's standing instruction** for this session (2026-10-08: "try to
+proceed with recommend answers always"). No per-question owner answer was given; each row can be revised. `DEC-SCOPE-118` is rec-006's.
+Migration `0103_rec_companies`, API §12AM, RBAC §2.45. Spec `docs/superpowers/specs/2026-10-08-rec-003-company-master-design.md`.
+
+| # | Point | Answer applied |
+|---|---|---|
+| D1 (Q-01) | Company code | `CMP-000001`, server-assigned from `company_code_seq` (column default, so every insert path gets one); existing companies backfilled in creation order; never edited |
+| D2 (Q-02) | Name uniqueness and duplicates | `companies.name` stays globally unique (EMP-001 and `/workflows/it/jobs` rely on it). A normalised match (trimmed, whitespace collapsed, case-insensitive) is a warning the user confirms. Stage-mandatory fields move to rec-005 |
+| D3 (Q-03) | Employer self-registered companies | Lead source "Website", no recruiter (the managers' unassigned queue); the stage is rec-005's |
+| D4 | Scope split | §2 person fields and "+ Add Recruiter" (company + first contact) ship with rec-004 (`company_contacts`); Status → rec-005; Next Follow-up → rec-024; §3 agreement / MoU / commercial terms → rec-030. Account Manager = the assigned recruiter |
+| D5 | Industry vs Industry Type | One field, `rec_industries` |
+| D6 | Permissions | bdm-002 pattern: recruiter creates (own), edits and archives own; manager creates (unassigned or for a report), restores and reassigns within the team plus the unassigned queue; super admin everything; the assigned BDM reads only; every other role `403` |
+
+**Consequences:**
+- `companies` gains the lead/company columns, `company_code` (+ sequence, backfill) and `company_assignment_history` (`0103`).
+- `services/recruiter_companies.py`, `api/recruiter_companies.py`; `employer.register` sets the lead source.
+- Pages `/recruiter/companies`, `/new`, `/[id]`; "Companies" in the recruiter and manager menus, "Recruiter Companies" for super admin.
+- A BDM-side screen for the assigned BDM is a follow-up (API read only in this item).
+- **New Feature ID authorized:** `rec-003`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-003.

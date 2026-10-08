@@ -939,6 +939,18 @@ The lists are global (there is no row scope). The role checks run before anythin
 | `placement_team` | read **active** values and campaigns (pickers); every write and the manager page are `403` | all lists | `rec-002` |
 | `hr_team`, `it_admin`, every other role | `403` on read and write (C3) | — | `rec-002` |
 
+### 2.45 Recruiter company master *(net-new, added 2026-10-08 — `DEC-SCOPE-119`, `rec-003`)*
+
+Row scope first (out of scope = `404`), then the action's role (`403`), then the archived state (`409`). §2.44 is rec-006's.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` (with a profile) | read; create (assigned to self); edit and archive | companies assigned to them | `rec-003` |
+| `placement_manager` | read; create (unassigned, or for a direct report); restore; assign/reassign to an active direct report. No edit, no archive | direct reports' companies + the unassigned queue | `rec-003` |
+| `super_admin` | everything; assign to any active recruiter | all companies | `rec-003` |
+| `bdm` | read only (R10); every write and the BDM picker `403` | companies whose Assigned BDM is them | `rec-003` |
+| `hr_team`, `it_admin`, `employer`, every other role | `403` on every `/recruiter/companies` route. EMP-001…005 are unchanged | — | `rec-003` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

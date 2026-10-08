@@ -349,6 +349,10 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** small · **Risk:** low
 
 ### rec-003 — Company master + recruiter lead record
+- **Status (2026-10-08):** built on `feature/rec-003`. Numbering: `DEC-SCOPE-119`, migration `0103_rec_companies` (re-chained after
+  rec-006's `0103` if that merges first), API §12AM, RBAC §2.45. Q-01–Q-03 answered with the recommended defaults (D1–D6 in
+  `DEC-SCOPE-119`): `CMP-000001` codes; `name` stays unique plus a normalised-name warning; employer companies enter with source Website
+  and no recruiter. "+ Add Recruiter" and the §2 person fields move to rec-004.
 - **Business requirement:**
   - §2 "Every recruiter lead should have" (17 fields).
   - §3 Company Details (14) and Business Details (10).
