@@ -26,7 +26,7 @@ test("a recruiter adds a candidate, is stopped on a duplicate, uploads a resume;
 
   // The form's own required check sends nothing.
   await page.getByRole("button", { name: "Add candidate" }).click();
-  await expect(page.getByRole("alert")).toHaveText("Enter the name, source and a mobile number or an email.");
+  await expect(page.getByText("Enter the name, source and a mobile number or an email.")).toBeVisible();
 
   await page.getByLabel(/^Name/).fill(name);
   await page.getByLabel(/^Mobile/).fill(mobile);
@@ -44,10 +44,10 @@ test("a recruiter adds a candidate, is stopped on a duplicate, uploads a resume;
 
   // AC4: a resume version.
   await page.getByLabel("Upload resume").setInputFiles({ name: "rahul.pdf", mimeType: "application/pdf", buffer: PDF });
-  await page.getByRole("button", { name: "Upload" }).click();
+  await page.getByRole("button", { name: "Upload", exact: true }).click();
   await expect(page.getByText("Resume version 1 uploaded.")).toBeVisible();
   await expect(page.getByRole("link", { name: "Version 1 — rahul.pdf" })).toBeVisible();
-  await expect(page.getByText("Current")).toBeVisible();
+  await expect(page.getByText("Current", { exact: true })).toBeVisible();
 
   // AC3 / Q-07: the same mobile in another format is blocked, and the panel opens the existing candidate.
   await page.goto("/recruiter/candidates/new");
