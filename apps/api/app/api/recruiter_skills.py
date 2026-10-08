@@ -2,7 +2,8 @@
 and super_admin write; recruiters read active rows (S2, S3). The catalogue is global, so there is no row scope -- only the role checks.
 
 Bodies are untyped dicts parsed by services/telecaller._parse, so a 422 is one sentence naming the field (the tel-001 idiom). Each
-write has one commit and one audit row; skills and categories are deactivated, never deleted (no DELETE route -> 405)."""
+write has one commit and one audit row; skills and categories are deactivated, never deleted (no DELETE route -> 405) -- the one
+exception is rec-011's merge, which deletes the merged-away skill after re-pointing everything to the kept one."""
 
 from uuid import UUID
 
@@ -23,15 +24,18 @@ from app.schemas import (
     SkillCategoryPage,
     SkillCategoryUpdate,
     SkillCreate,
+    SkillMerge,
     SkillOut,
     SkillPage,
     SkillRelatedCreate,
     SkillUpdate,
 )
+from app.services import candidate_skills
 from app.services.skills import (
     ALIAS_INDEX,
     CATEGORY_NAME_INDEX,
     SKILL_NAME_INDEX,
+    absorb,
     active_filters,
     check_alias_free,
     check_name_free,
@@ -274,3 +278,25 @@ async def remove_related(skill_id: UUID, other_id: UUID, user: User = Depends(ge
     _audit(db, user, "recruiter.skill_related_remove", "skill", skill_id, {"related_skill_id": str(other_id)})
     await db.commit()
     return Response(status_code=204)
+
+
+# --- merge (rec-011 SK7, rec-006 S1) ----------------------------------------------------------------------------------------------
+@router.post("/skills/{skill_id}/merge", response_model=SkillOut)
+async def merge_skill(skill_id: UUID, payload: dict = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Merge this skill (active or not) into an active one, in one transaction under the term lock: candidate and requirement skills,
+    aliases and related links move, this skill is deleted and its name becomes an alias of the kept one. Answers the kept skill."""
+    require_writer(user)
+    into_id = _body(SkillMerge, payload).into_skill_id
+    await lock_terms(db)
+    source = await _locked(db, Skill, skill_id, "Skill")
+    if into_id == source.id:
+        raise HTTPException(422, "A skill cannot be merged into itself")
+    target = await db.scalar(select(Skill).where(Skill.id == into_id).with_for_update())
+    if target is None or not target.active:
+        raise HTTPException(422, "Choose an active skill to merge into")
+    moved, dropped = await candidate_skills.repoint(db, source.id, target.id)
+    counts = await absorb(db, source, target)
+    _audit(db, user, "recruiter.skill_merge", "skill", target.id, {**counts, "candidate_skills_moved": moved, "candidate_skills_dropped": dropped})
+    out = await _one_out(db, target, user)
+    await db.commit()
+    return out

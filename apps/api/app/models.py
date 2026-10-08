@@ -4073,6 +4073,45 @@ class CandidateResume(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+# rec-011 (DEC-SCOPE-135): EVID-018 S2-§3 levels (SK1), the six S2-§17 skill sources and the three statuses. Migration 0120 repeats
+# CANDIDATE_SKILL_CHECKS (test_rec_011_migration asserts they stay identical). Labels live in the web client.
+CANDIDATE_SKILL_LEVELS = ("beginner", "intermediate", "advanced", "expert")
+CANDIDATE_SKILL_SOURCES = ("resume", "interview_verified", "assessment_verified", "course_completed", "certification", "employer_verified")
+CANDIDATE_SKILL_STATUSES = ("claimed", "verified", "assessed")
+CANDIDATE_SKILL_CHECKS = {
+    "ck_candidate_skills_level": f"level IN ({', '.join(repr(v) for v in CANDIDATE_SKILL_LEVELS)})",
+    "ck_candidate_skills_source": f"source IN ({', '.join(repr(v) for v in CANDIDATE_SKILL_SOURCES)})",
+    "ck_candidate_skills_status": f"status IN ({', '.join(repr(v) for v in CANDIDATE_SKILL_STATUSES)})",
+    "ck_candidate_skills_verified": "(status = 'claimed') = (verified_at IS NULL) AND (verified_at IS NULL) = (verified_by_user_id IS NULL)",
+    "ck_candidate_skills_experience": "experience_months IS NULL OR experience_months BETWEEN 0 AND 600",
+    "ck_candidate_skills_last_used": "last_used_year IS NULL OR last_used_year >= 1950",
+}
+
+
+class CandidateSkill(Base, TimestampMixin):
+    """rec-011: one skill on a candidate's profile -- its own row, so it is searchable (S2-§1). `status` changes only through the status
+    route, which records who and when (AC3); `claimed` carries neither. A skill merge (SK7) re-points these rows before deleting a skill."""
+
+    __tablename__ = "candidate_skills"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in CANDIDATE_SKILL_CHECKS.items()),
+        UniqueConstraint("candidate_id", "skill_id", name="uq_candidate_skills_skill"),
+        Index("ix_candidate_skills_skill_candidate", "skill_id", "status", "candidate_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    candidate_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="RESTRICT"))
+    skill_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("skills.id", ondelete="RESTRICT"))
+    level: Mapped[str] = mapped_column(String(16))
+    experience_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    last_used_year: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    source: Mapped[str] = mapped_column(String(24), default="resume", server_default=text("'resume'"))
+    status: Mapped[str] = mapped_column(String(12), default="claimed", server_default=text("'claimed'"))
+    verified_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    added_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+
+
 # rec-028 (DEC-SCOPE-134): EVID-018 §20 company meetings -- the 7 types in source order (L800-L812), the states (MT6) and the events of the
 # append-only history. Migration 0119 repeats RECRUITER_MEETING_CHECKS (test_rec_028_migration asserts they stay identical). Labels live in
 # the web client.
