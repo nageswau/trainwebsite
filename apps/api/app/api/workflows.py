@@ -1556,7 +1556,7 @@ async def create_job(payload: dict, user: User = Depends(get_current_user), db: 
     db.add(job)
     await db.flush()
     await requirements.set_legacy_skills(db, job, payload.get("skills") or [])
-    requirements.record_created(db, user, job)
+    await requirements.record_created(db, user, job)
     await _audit(db, user, "job.create", "job", job.id)
     await db.commit()
     await db.refresh(job)
@@ -1602,7 +1602,7 @@ async def update_job(job_id: UUID, payload: dict, user: User = Depends(get_curre
         elif status not in requirements.STATUS_LABELS:
             raise HTTPException(422, "Unknown requirement status")
         if status:
-            requirements.change_status(db, user, job, status)
+            await requirements.change_status(db, user, job, status)
     if "closes_on" in payload:
         job.closes_on = date.fromisoformat(payload["closes_on"]) if payload["closes_on"] else None
     await _audit(db, user, "job.update", "job", job.id, payload)

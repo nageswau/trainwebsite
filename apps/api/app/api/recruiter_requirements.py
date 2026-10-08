@@ -119,7 +119,7 @@ async def create_requirement(payload: RecRequirementCreate, user: User = Depends
     db.add(job)
     await db.flush()
     await svc.set_skills(db, job, payload.required_skills or [], payload.preferred_skills or [])
-    svc.record_created(db, user, job)
+    await svc.record_created(db, user, job)
     svc.audit(db, user, "create", job.id, {"code": job.requirement_code, "company_id": str(company.id), "fields": sorted(k for k, v in values.items() if v not in (None, ""))})
     await db.commit()
     svc.log("recruiter_requirement_created", user, job.id)
@@ -166,7 +166,7 @@ async def change_requirement_status(requirement_id: UUID, payload: RecRequiremen
     """AC2: every move is a history row (actor, note) in the same transaction; a move not in the table is a 409."""
     job = await svc.load_scoped(db, user, requirement_id, lock=True)
     svc.require(user, job, "can_change_status", "status")
-    previous = svc.change_status(db, user, job, payload.status, payload.note)
+    previous = await svc.change_status(db, user, job, payload.status, payload.note)
     svc.audit(db, user, "status", job.id, {"from": previous, "to": payload.status})
     await db.commit()
     svc.log("recruiter_requirement_status_changed", user, job.id, from_status=previous, to_status=payload.status)

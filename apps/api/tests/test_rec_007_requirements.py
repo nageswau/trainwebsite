@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import select
 
-from app.models import AuditLog, Company, Job, JobApplication, JobSkill, JobStatusHistory, RecJobCategory, Skill, SkillAlias, SkillCategory
+from app.models import AuditLog, Company, CompanyStageHistory, Job, JobApplication, JobSkill, JobStatusHistory, RecJobCategory, Skill, SkillAlias, SkillCategory
 from app.services.recruiter_requirements import ist_today
 from tests.rec001_helpers import as_role, login, make_pm, make_recruiter, make_user
 from tests.test_emp_002_job_posting import _register_employer
@@ -64,7 +64,7 @@ async def test_recruiter_creates_a_requirement_with_every_field_and_three_requir
     tag = _tag()
     python = await _skill(db_session, f"Python{tag}", alias=f"py{tag}")
     sql = await _skill(db_session, f"SQL{tag}")
-    category = RecJobCategory(name=f"IT {tag}")
+    category = RecJobCategory(name=f"IT {tag}", sort_order=9999)  # after the seeded values (test_rec_002 checks their order)
     db_session.add(category)
     await db_session.commit()
     body = {
@@ -261,3 +261,44 @@ async def test_the_workflows_patch_validates_statuses(client, db_session):
     assert (await client.patch(f"/api/v1/workflows/it/jobs/{job_id}", json={"status": "closed"})).json()["status"] == "closed"
     listing = (await client.get("/api/v1/workflows/it/jobs")).json()
     assert any(j["id"] == job_id and j["status_label"] == "Closed" for j in listing)
+
+
+# --- the company stage (AC2; rec-005's EVENTS: rec-007 fires requirement_received / requirement_closed) -------------------------
+async def _stage(db, company_id):
+    company = await db.scalar(select(Company).where(Company.id == company_id).execution_options(populate_existing=True))
+    events = (await db.scalars(select(CompanyStageHistory.event).where(CompanyStageHistory.company_id == company_id).order_by(CompanyStageHistory.created_at))).all()
+    return company.stage, list(events)
+
+
+@pytest.mark.asyncio
+async def test_status_changes_drive_the_company_stage(client, db_session):
+    _, _, company = await _team(client, db_session)
+    first = (await _create(client, company)).json()["requirement"]
+    second = (await _create(client, company)).json()["requirement"]
+    assert (await _stage(db_session, company.id))[0] == "new_lead"  # a New requirement is not yet received
+    await _set_status(client, first["id"], "requirement_received")
+    assert await _stage(db_session, company.id) == ("requirement_received", ["requirement_received"])
+    await _set_status(client, second["id"], "requirement_received")  # already there: the event does not fire twice
+    await _set_status(client, first["id"], "closed")
+    assert (await _stage(db_session, company.id))[0] == "requirement_received"  # the second requirement is still open
+    await _set_status(client, second["id"], "cancelled")
+    assert await _stage(db_session, company.id) == ("requirement_closed", ["requirement_received", "requirement_closed"])
+    await _set_status(client, first["id"], "requirement_received")  # reopened: the one driven way back
+    assert await _stage(db_session, company.id) == ("requirement_received", ["requirement_received", "requirement_closed", "requirement_received"])
+
+
+@pytest.mark.asyncio
+async def test_legacy_writers_drive_the_company_stage_too(client, db_session):
+    await as_role(client, db_session, "placement_team", "it")
+    name = f"Wf Stage Co {_tag()}"
+    created = (await client.post("/api/v1/workflows/it/jobs", json={"company_name": name, "title": "Ops"})).json()
+    company = await db_session.scalar(select(Company).where(Company.name == name))
+    assert await _stage(db_session, company.id) == ("requirement_received", ["requirement_received"])
+    await client.patch(f"/api/v1/workflows/it/jobs/{created['id']}", json={"status": "closed"})
+    assert (await _stage(db_session, company.id))[0] == "requirement_closed"
+    await _register_employer(client)
+    job = (await client.post("/api/v1/employer/jobs", json={"title": f"Posted {_tag()}"})).json()
+    employer_company = (await db_session.get(Job, uuid.UUID(job["id"]))).company_id
+    assert (await _stage(db_session, employer_company))[0] == "new_lead"
+    await client.patch(f"/api/v1/employer/jobs/{job['id']}", json={"status": "open"})
+    assert (await _stage(db_session, employer_company))[0] == "requirement_received"

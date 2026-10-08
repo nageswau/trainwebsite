@@ -130,7 +130,7 @@ async def create_employer_job(payload: EmployerJobCreate, user: User = Depends(g
     db.add(job)
     await db.flush()
     await requirements.set_legacy_skills(db, job, payload.skills)
-    requirements.record_created(db, user, job, "Posted by the employer")
+    await requirements.record_created(db, user, job, "Posted by the employer")
     db.add(AuditLog(user_id=user.id, action="employer.job.create", entity_type="job", entity_id=str(job.id)))
     await db.commit()
     await db.refresh(job)
@@ -159,7 +159,7 @@ async def update_employer_job(job_id: UUID, payload: EmployerJobUpdate, user: Us
     for key, value in changes.items():
         if key == "status":  # rec-007 J3: the legacy word maps onto a validated §6 move (with history), or is a no-op
             if value and (target := requirements.legacy_target(job.status, value)):
-                requirements.change_status(db, user, job, target, "Changed by the employer")
+                await requirements.change_status(db, user, job, target, "Changed by the employer")
         elif key == "skills":
             await requirements.set_legacy_skills(db, job, value or [])
         else:

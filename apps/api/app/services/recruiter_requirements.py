@@ -29,6 +29,7 @@ from app.models import (
     RecruiterProfile,
     User,
 )
+from app.services import company_pipeline
 from app.services import skills as skills_master
 from app.services.bdm_appointments import IST
 from app.services.recruiter import MANAGER_ROLE, ROLE, recruiter_context
@@ -45,6 +46,7 @@ STATUS_LABELS = {
     "closed": "Closed", "cancelled": "Cancelled",
 }
 _ACTIVE = (*JOB_OPEN_STATUSES, "selected")
+ENDED = ("closed", "cancelled")  # a requirement no longer live for the company stage (rec-005's `requirement_closed`)
 TRANSITIONS = {  # spec §2; nothing ever returns to `new`, and `cancelled` is terminal
     "new": ("requirement_received", "on_hold", "closed", "cancelled"),
     **{s: (*(a for a in _ACTIVE if a != s), *(("joined",) if s == "selected" else ()), "on_hold", "closed", "cancelled") for s in _ACTIVE},
@@ -96,17 +98,38 @@ def check_transition(current: str, target: str) -> None:
         raise HTTPException(409, f"A requirement cannot move from {STATUS_LABELS[current]} to {STATUS_LABELS[target]}")
 
 
-def change_status(db: AsyncSession, user: User | None, job: Job, target: str, note: str | None = None) -> str:
-    """Validated move + history row; returns the previous status."""
+async def change_status(db: AsyncSession, user: User | None, job: Job, target: str, note: str | None = None) -> str:
+    """Validated move + history row + the company stage; returns the previous status."""
     check_transition(job.status, target)
     previous = job.status
     db.add(JobStatusHistory(job_id=job.id, from_status=previous, to_status=target, note=note, changed_by_user_id=user.id if user else None))
     job.status = target
+    await drive_company_stage(db, user, job)
     return previous
 
 
-def record_created(db: AsyncSession, user: User, job: Job, note: str = "Created") -> None:
+async def record_created(db: AsyncSession, user: User, job: Job, note: str = "Created") -> None:
     db.add(JobStatusHistory(job_id=job.id, from_status=None, to_status=job.status, note=note, changed_by_user_id=user.id))
+    await drive_company_stage(db, user, job)
+
+
+async def drive_company_stage(db: AsyncSession, user: User | None, job: Job) -> None:
+    """AC2 through rec-005's engine: a requirement reaching Requirement Received fires `requirement_received`; closing or cancelling the
+    company's last live requirement fires `requirement_closed`. The company row is locked first (company_pipeline's contract), so two
+    requirements closed at once serialise and the second one sees the first as closed. `apply_event` ignores a stage already past."""
+    if job.status == "requirement_received":
+        event = "requirement_received"
+    elif job.status in ENDED:
+        event = "requirement_closed"
+    else:
+        return
+    company = await db.scalar(select(Company).where(Company.id == job.company_id).with_for_update().execution_options(populate_existing=True))
+    if event == "requirement_closed":
+        await db.flush()  # this job's new status is visible to the count below
+        live = await db.scalar(select(func.count()).select_from(Job).where(Job.company_id == company.id, Job.id != job.id, Job.status.not_in(ENDED)))
+        if live:
+            return
+    await company_pipeline.apply_event(db, company, event, user)
 
 
 # --- skills (J7) --------------------------------------------------------------------------------------------------------------------

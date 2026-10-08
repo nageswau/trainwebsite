@@ -1435,8 +1435,8 @@ Extends §5.1 `Job` (R5: the job is the Job Requirement). Every new column is nu
   - It is unique on `(job_id, lower(name))`.
   - The migration moved each JSON value in, resolved by name, then alias.
 - **`job_status_history`:** `id`, `job_id` FK, `from_status` (NULL = created), `to_status`, `note` varchar(500), `changed_by_user_id`
-  (NULL = the migration's legacy mapping), `created_at`. Append-only; these rows are the requirement events rec-005 drives the company
-  stage from.
+  (NULL = the migration's legacy mapping), `created_at`. Append-only. The same status writer fires rec-005's `requirement_received` /
+  `requirement_closed` events onto `companies.stage` (`company_stage_history`).
 
 `downgrade()` refuses while any §6 value or any user-made status change exists. Otherwise it restores the legacy statuses, using the
 history notes.

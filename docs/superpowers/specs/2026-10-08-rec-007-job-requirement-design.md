@@ -26,7 +26,12 @@ records them as **recommended defaults (UNVERIFIED)**. The owner can revise them
   received; it defaults to today (IST).
 - **J5 (scope split):** the §6 "Recruiter" field (the company contact who gave the requirement) needs `company_contacts`, which is
   rec-004's table, so it ships with rec-004. The Candidates / JD / Interviews tabs are rec-017 / rec-008 / rec-018.
-  - The history rows are the events rec-005 will use to drive the company stage. rec-007 does not change the company stage.
+  - **Company stage (rec-005, merged as PR #162):** every status writer calls `drive_company_stage`, which fires rec-005's two events.
+    - A requirement reaching Requirement Received fires `requirement_received`.
+    - Closing or cancelling the company's last live requirement fires `requirement_closed`.
+    - The company row is locked first, so two concurrent closes serialise.
+    - rec-005's engine ignores a stage the company has already passed. The later stages (sourcing, profiles shared, interview, selected,
+      joined) are fired by rec-017–rec-023 from candidate progress, as `recruiter_stages.EVENTS` assigns them.
 - **J6 (vocabularies):**
   - Work mode is `onsite` / `remote` / `hybrid`.
   - Shift is `day` / `night` / `rotational` / `flexible`.
