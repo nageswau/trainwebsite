@@ -5610,8 +5610,9 @@ those numbers. Spec `docs/superpowers/specs/2026-10-08-rec-017-candidate-require
 - `DEC-SCOPE-119` (rec-006) S1: the skill merge moved to rec-011. `DEC-SCOPE-122` (rec-009): the candidate roles and pool.
   `DEC-SCOPE-116` R11: every recruiter edits the whole pool.
 
-**Status:** built on `feature/rec-011`. Every answer below is a **recommended default, `UNVERIFIED`**, taken on the owner's instruction
-to proceed with the recommended answers.
+**Status:** **MERGED** to `main` as PR #180 @ `010898a2` (2026-10-09). Every answer below is a **recommended default, `UNVERIFIED`**,
+taken on the owner's instruction to proceed with the recommended answers. The next rec item takes `0123`, `DEC-SCOPE-138`, §12BF and
+§2.64 (re-check `main`).
 
 **Numbering:** migration `0122_candidate_skills` (after rec-017's `0121_job_application_tracking`), API §12BE and RBAC §2.63. Drafted as
 `0120` / `DEC-SCOPE-135` / §12BC / §2.61; rec-026 and then rec-017 merged first and took those numbers. Spec

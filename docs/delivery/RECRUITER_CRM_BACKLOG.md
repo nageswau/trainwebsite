@@ -681,7 +681,7 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** large · **Risk:** high
 
 ### rec-011 — Candidate skill profile
-- **Status (2026-10-09):** **BUILT** on `feature/rec-011`, not merged. `DEC-SCOPE-137` (SK1–SK7 recommended defaults, UNVERIFIED; Q-12
+- **Status (2026-10-09):** **MERGED** to `main` as PR #180 @ `010898a2`. `DEC-SCOPE-137` (SK1–SK7 recommended defaults, UNVERIFIED; Q-12
   levels, Q-13 any writer verifies, SK7 the rec-006 S1 merge); migration `0122_candidate_skills` (after rec-017's
   `0121_job_application_tracking`), API §12BE, RBAC §2.63. Drafted as `0120` / `DEC-SCOPE-135` / §12BC / §2.61; rec-026 and rec-017
   merged first and took `0120`/`0121`, 135/136, §12BC/§12BD and §2.61/§2.62. The status route is `…/status` (the backlog said
@@ -885,8 +885,9 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 ### rec-017 — Candidate + Requirement tracking
 - **Status (2026-10-08):** **MERGED** to `main` as PR #178 @ `efd5d0cb`. `DEC-SCOPE-136` (A1–A4 owner answers, UNVERIFIED); migration
   `0121_job_application_tracking` (after rec-026's `0120_recruiter_messages`), API §12BD, RBAC §2.62. `drive_id` moves to rec-029 (A4).
-  Drafted as `0119` / 134 / §12BB / §2.60, then `0120` / 135 / §12BC / §2.61; rec-028 and rec-026 merged first. The next rec item takes
-  `0122`, `DEC-SCOPE-137`, §12BE and §2.63 (re-check `main`). Run the full backend suite after this item.
+  Drafted as `0119` / 134 / §12BB / §2.60, then `0120` / 135 / §12BC / §2.61; rec-028 and rec-026 merged first. rec-011 then took
+  `0122`, `DEC-SCOPE-137`, §12BE and §2.63; the next rec item takes `0123`, `DEC-SCOPE-138`, §12BF and §2.64 (re-check `main`). Run the
+  full backend suite after this item.
 - **Business requirement:** §12 "Candidate ID + Requirement ID" with status Sourced → Screened → Shortlisted → Profile Shared → Interview
   → Selected → Joined / Rejected; S2-§14 "maintained against each Job Requirement" (R6).
 - **Existing behavior:** `job_applications` (`student_id`, an app-validated status set, no unique key, no history). Staff PATCH at

@@ -3,6 +3,8 @@
 Backlog: `docs/delivery/RECRUITER_CRM_BACKLOG.md` rec-011. Source: EVID-018 S2-§1 (lines 1094–1124), S2-§3 (1218–1233), S2-§17
 (1645–1675). Depends on rec-006 (merged PR #150) and rec-009 (merged PR #155). rec-006's owner answer S1 moved the skill **merge** here.
 
+**Status: MERGED** as PR #180 @ `010898a2` (2026-10-09).
+
 **Numbering (re-chained 2026-10-09 after rec-026 and rec-017 merged; drafted as `0120` / DEC-SCOPE-135 / §12BC / §2.61):** `DEC-SCOPE-137`, migration `0122_candidate_skills` (after `0121_job_application_tracking`),
 API §12BE, RBAC §2.63. Re-check origin/main before the merge and re-chain if needed.
 
