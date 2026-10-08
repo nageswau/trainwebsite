@@ -3182,7 +3182,7 @@ is invented. Visual-reference mapping: None — not inspected. Do not claim pari
   EduSphere owner (primary/backup, the assign pickers for a head or Super Admin), Public catalogue (status sentence, overview, Publish /
   Remove from catalogue, Deactivate with an inline confirm naming the applications, Reactivate). Edit link when allowed.
 
-## upc-006 addendum (2026-10-08, `DEC-SCOPE-122`) — University contacts + relationship strength
+## upc-006 addendum (2026-10-08, `DEC-SCOPE-123`) — University contacts + relationship strength
 
 No new route (design spec `docs/superpowers/specs/2026-10-08-upc-006-university-contacts-design.md` §4). Visual-reference mapping: None —
 not inspected. Do not claim parity.

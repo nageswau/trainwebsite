@@ -2,14 +2,14 @@
 
 **Status:** design written 2026-10-08. The owner's standing instruction for this session is "proceed with the recommended answers;
 ask only if genuinely blocking". So the item answers CT1–CT14 (§1) are **recommended defaults accepted under that instruction**
-(`NEEDS_CONFIRMATION` as separate per-question approvals) and are registered that way in `DEC-SCOPE-122`.
+(`NEEDS_CONFIRMATION` as separate per-question approvals) and are registered that way in `DEC-SCOPE-123`.
 
 **Branch:** `feature/upc-006`, cut from `origin/main` @ `593e9b9c` (after #151, upc-003).
 **Backlog:** `docs/delivery/UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §4 upc-006. Dependency upc-003 (`0105`, `DEC-SCOPE-120`) is merged on
 main — verified in code (`University`, `services/partnership_universities.py`, `/partnership/universities/[id]`).
 **Source:** `EVID-020` §1 contact rows (lines 20–25), §10 (contacts: 7 example roles, 11 fields), §11 (relationship strength, 7 values).
-**Numbering:** migration `0107_university_contacts`, `DEC-SCOPE-122`, API §12AP, RBAC §2.48. Drafted as `0106` / `DEC-SCOPE-121` / §12AO /
-§2.47; renumbered on merging `main` @ `035c99ad` (rec-003 took those numbers first).
+**Numbering:** migration `0108_university_contacts`, `DEC-SCOPE-123`, API §12AQ, RBAC §2.49. Drafted as `0106` / `DEC-SCOPE-121` / §12AO /
+§2.47; renumbered on merging `main` @ `035c99ad` (rec-003) and again @ `a62ad9d7` (rec-009 took `0107` / `DEC-SCOPE-122` / §12AP / §2.48).
 **Gate:** `APPROVAL_GATES.md` GATE-09.
 
 ## 1. Decisions (recommended defaults)
@@ -31,7 +31,7 @@ main — verified in code (`University`, `services/partnership_universities.py`,
 | CT13 | LinkedIn | http(s) URL ≤ 300; a bare `linkedin.com/in/x` gets `https://` (the website idiom) — no `javascript:` hrefs |
 | CT14 | Notes | ≤ 2000, multi-line; **not returned** to the shareable slice (overseas_admin, later counselors) — internal remarks stay internal |
 
-## 2. Data model — migration `0107_university_contacts`
+## 2. Data model — migration `0108_university_contacts`
 
 - `universities.relationship_strength` String(12), nullable, CHECK `ck_universities_relationship_strength`.
 - `university_contact_roles` (`code` String(40) PK, `label` String(80) NOT NULL, `position` SmallInteger NOT NULL); seeded with
@@ -95,7 +95,7 @@ main — verified in code (`University`, `services/partnership_universities.py`,
 2. University `relationship_strength` in schemas/row/detail/filter + `can_edit_contacts` (extend upc-003 tests' expectations).
 3. Contact schemas + service + routes: read/slice tests, then create/patch/primary/delete/limits tests, then code.
 4. Frontend lib + page + `UniversityContacts` + form/table/filter, vitest.
-5. Playwright `upc-006-university-contacts.spec.ts`; docs (DEC-SCOPE-122, API §12AP, RBAC §2.48, DATA_MODEL, SCREEN_CATALOG, backlog).
+5. Playwright `upc-006-university-contacts.spec.ts`; docs (DEC-SCOPE-123, API §12AQ, RBAC §2.49, DATA_MODEL, SCREEN_CATALOG, backlog).
 
 ## 7. Regression set (lite)
 

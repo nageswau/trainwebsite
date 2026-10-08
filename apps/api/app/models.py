@@ -498,7 +498,7 @@ UNIVERSITY_PRIORITIES = ("A", "B", "C")
 PARTNERSHIP_POTENTIALS = ("high", "medium", "low")
 COURSE_LEVELS = ("UG", "PG", "PhD", "Diploma", "Foundation")
 RANKING_SYSTEMS = ("QS", "THE", "ARWU", "Other")
-# upc-006 (DEC-SCOPE-122): §11's relationship status, exactly (CT4), and the channels a contact record holds (CT3).
+# upc-006 (DEC-SCOPE-123): §11's relationship status, exactly (CT4), and the channels a contact record holds (CT3).
 RELATIONSHIP_STRENGTHS = ("new", "developing", "good", "strong", "strategic", "at_risk", "dormant")
 CONTACT_CHANNELS = ("email", "phone", "whatsapp", "linkedin")
 UNIVERSITY_CODE_SEQ = Sequence("university_code_seq", metadata=Base.metadata)
@@ -518,7 +518,7 @@ UNIVERSITY_CHECKS = {
     "ck_universities_partnership_potential": _one_of("partnership_potential", PARTNERSHIP_POTENTIALS),
     "ck_universities_backup_needs_primary": "backup_manager_user_id IS NULL OR (primary_manager_user_id IS NOT NULL AND backup_manager_user_id <> primary_manager_user_id)",
 }
-# upc-006: added by migration 0107 (kept out of UNIVERSITY_CHECKS, which mirrors 0105).
+# upc-006: added by migration 0108 (kept out of UNIVERSITY_CHECKS, which mirrors 0105).
 UNIVERSITY_RELATIONSHIP_CHECK = _one_of("relationship_strength", RELATIONSHIP_STRENGTHS)
 
 
@@ -601,8 +601,8 @@ class UniversityAssignmentHistory(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-# upc-006 (DEC-SCOPE-122, spec §2): the contact role catalogue (CT2) -- §10's example roles and §1's contact rows, International
-# Director once. Migration 0107 seeds it (ROLE_SEED) and repeats UNIVERSITY_CONTACT_CHECKS; test_upc_006_migration keeps them identical.
+# upc-006 (DEC-SCOPE-123, spec §2): the contact role catalogue (CT2) -- §10's example roles and §1's contact rows, International
+# Director once. Migration 0108 seeds it (ROLE_SEED) and repeats UNIVERSITY_CONTACT_CHECKS; test_upc_006_migration keeps them identical.
 UNIVERSITY_CONTACT_ROLE_SEED = (
     ("international_director", "International Director"),
     ("international_recruitment_manager", "International Recruitment Manager"),
@@ -3548,3 +3548,75 @@ class SkillRelated(Base):
     __table_args__ = (CheckConstraint("skill_a_id < skill_b_id", name="ck_skill_related_order"),)
     skill_a_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("skills.id", ondelete="CASCADE"), primary_key=True)
     skill_b_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("skills.id", ondelete="CASCADE"), primary_key=True)
+
+
+# rec-009 (DEC-SCOPE-122, spec §3): the central candidate master. Q-08: the status is set by hand, from these values.
+CANDIDATE_STATUSES = ("available", "interviewing", "placed", "not_looking", "do_not_contact")
+# On the metadata so 0001's create_all builds it for a fresh database; 0107 creates it IF NOT EXISTS.
+CANDIDATE_CODE_SEQ = Sequence("candidate_code_seq", metadata=Base.metadata)
+CANDIDATE_CHECKS = {  # migration 0107 repeats these strings; test_rec_009_migration asserts they stay identical
+    "ck_candidates_contact": "mobile IS NOT NULL OR email IS NOT NULL",
+    "ck_candidates_status": "status IN (" + ", ".join(f"'{s}'" for s in CANDIDATE_STATUSES) + ")",
+    "ck_candidates_passing_year": "passing_year IS NULL OR passing_year BETWEEN 1950 AND 2100",
+    "ck_candidates_experience": "experience_months IS NULL OR experience_months BETWEEN 0 AND 600",
+    "ck_candidates_notice": "notice_days IS NULL OR notice_days BETWEEN 0 AND 365",
+    "ck_candidates_salary": "(current_salary IS NULL OR current_salary >= 0) AND (expected_salary IS NULL OR expected_salary >= 0)",
+}
+
+
+class Candidate(Base, TimestampMixin):
+    """rec-009: one person in the recruiter pool -- external (no login) or, from rec-010, an IT student who opted in (`user_id`).
+    Q-07: one person is one candidate -- the normalised mobile and the lower-cased email are each unique. Archived, never deleted."""
+
+    __tablename__ = "candidates"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in CANDIDATE_CHECKS.items()),
+        Index("uq_candidates_mobile", "mobile_normalized", unique=True, postgresql_where=text("mobile_normalized IS NOT NULL")),
+        Index("uq_candidates_email", text("lower(email)"), unique=True, postgresql_where=text("email IS NOT NULL")),
+        Index("ix_candidates_source_id", "source_id"),
+        Index("ix_candidates_status", "status"),
+        Index("ix_candidates_created_at", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    candidate_code: Mapped[str] = mapped_column(String(12), unique=True)
+    name: Mapped[str] = mapped_column(String(160))
+    mobile: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    mobile_normalized: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    location: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    qualification: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    college: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    passing_year: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    experience_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    current_company: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    current_salary: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    expected_salary: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    notice_days: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    preferred_locations: Mapped[list] = mapped_column(JSON, default=list)
+    preferred_role: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    linkedin: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    source_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_candidate_sources.id"))
+    source_detail: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="available", server_default=text("'available'"))
+    user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), unique=True, nullable=True)
+    opted_in: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    archived_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class CandidateResume(Base):
+    """rec-009 (AC4): one uploaded resume version, append-only. The current resume is the candidate's highest version."""
+
+    __tablename__ = "candidate_resumes"
+    __table_args__ = (UniqueConstraint("candidate_id", "version", name="uq_candidate_resumes_version"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    candidate_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id"))
+    version: Mapped[int] = mapped_column(Integer)
+    storage_key: Mapped[str] = mapped_column(String(300))
+    content_type: Mapped[str] = mapped_column(String(120))
+    file_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

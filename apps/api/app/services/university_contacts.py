@@ -1,4 +1,4 @@
-"""upc-006 (DEC-SCOPE-122, spec §3): university contacts -- who sees which contacts, the primary rule, and output.
+"""upc-006 (DEC-SCOPE-123, spec §3): university contacts -- who sees which contacts, the primary rule, and output.
 
 Functions only; nothing here commits -- the route owns the transaction. Access reuses the University Master's (upc-003):
 - the partnership roles and super_admin (CONTACT_ROLES) read every contact in full and write within the master's edit scope;

@@ -995,7 +995,20 @@ Row scope first (out of scope = `404`), then the action's role (`403`), then the
 | `bdm` | read only (R10); every write and the BDM picker `403` | companies whose Assigned BDM is them | `rec-003` |
 | `hr_team`, `it_admin`, `employer`, every other role | `403` on every `/recruiter/companies` route. EMP-001…005 are unchanged | — | `rec-003` |
 
-### 2.48 University contacts *(net-new, added 2026-10-08 — `DEC-SCOPE-122`, `upc-006`)*
+### 2.48 Candidate master *(net-new, added 2026-10-08 — `DEC-SCOPE-122`, `rec-009`; drafted as §2.46)*
+
+One pool (R11): there is no ownership scope. The role check runs before anything is read. A candidate outside the pool (a linked student
+who has not opted in, rec-010) is `404`, the same as an unknown id.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` | list, read, duplicate check, create, edit, archive/restore, upload and download resumes | the whole pool | `rec-009` |
+| `placement_manager` | same as `placement_team` | the whole pool | `rec-009` |
+| `super_admin` | same as `placement_team` | the whole pool | `rec-009` |
+| `hr_team` | list, read, download resumes; every write and the duplicate check are `403` | the whole pool | `rec-009` |
+| `employer`, `it_admin`, students, every other role | `403` (employers see only EMP-003's masked view, R12) | — | `rec-009` |
+
+### 2.49 University contacts *(net-new, added 2026-10-08 — `DEC-SCOPE-123`, `upc-006`)*
 
 Enforced inline in `services/partnership_universities.py` (`can_edit_contacts`) and `services/university_contacts.py` (slice). Contacts
 are PII: audit and logs carry ids only.

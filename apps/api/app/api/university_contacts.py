@@ -1,4 +1,4 @@
-"""upc-006 (DEC-SCOPE-122, spec §3): university contacts -- the role catalogue, list, add, edit and delete.
+"""upc-006 (DEC-SCOPE-123, spec §3): university contacts -- the role catalogue, list, add, edit and delete.
 
 Every write is one transaction: the university row lock (FOR UPDATE, which serialises the primary, limit and email checks per
 university), the scope check (`can_edit_contacts`), the change, the audit row, one commit here, then a structured log (ids only)."""

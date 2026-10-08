@@ -5094,14 +5094,45 @@ proceed with recommend answers always"). No per-question owner answer was given;
 - A BDM-side screen for the assigned BDM is a follow-up (API read only in this item).
 - **New Feature ID authorized:** `rec-003`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-003.
 
-### DEC-SCOPE-122 — University contacts + relationship strength (`upc-006`)
+### DEC-SCOPE-122 — Candidate master (`rec-009`)
+
+**Evidence:** `EVID-018` §8 (lines 390–434), §9 (436–473), quick action "+ Add Candidate" (46), S2-§13 (1541–1561), S2-§20 (1750, 1778);
+`RECRUITER_CRM_BACKLOG.md` §rec-009 (AC1–AC4). Module scope: `DEC-SCOPE-116`. R4 (new `candidates` table) and R11 (every recruiter edits the
+whole pool).
+**Status:** **MERGED** to `main` as PR #155 @ `e234f31f` (2026-10-08). Q-07 and Q-08 are `EXPLICIT_APPROVAL` (the owner answered in
+session on 2026-10-08). Q-09, Q-31 and Q-32 are recommended
+defaults, taken on the user's instruction to proceed with the recommended answers. The retention and erasure part of Q-09 stays
+`NEEDS_CONFIRMATION`. **Numbering:** migration `0107_candidates` (chained after rec-003's `0106_rec_companies`), API §12AP, RBAC
+§2.48. rec-009 was drafted as `0105` / `DEC-SCOPE-120` / §12AN / §2.46. Four items merged to `main` first and took the lower numbers:
+upc-001 (`0103` / 118), rec-006 (`0104` / 119), upc-003 (`0105` / 120) and rec-003 (`0106` / 121). Re-check if another item merges
+first.
+Spec `docs/superpowers/specs/2026-10-08-rec-009-candidate-master-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| Q-07 | Duplicate rule | A normalised mobile (E.164) **or** a lower-cased email that matches any candidate, archived ones included, **blocks** the create or edit with `409 duplicate_candidate` and a panel naming the existing candidate. Unique indexes are the backstop under a race. No merge tool |
+| Q-08 | Candidate Status | Set **by hand**: `available` (the default), `interviewing`, `placed`, `not_looking`, `do_not_contact`. rec-017 may later derive or suggest it |
+| Q-09 | Resume format and retention | *Recommended default:* PDF or DOCX, judged by the bytes, at most 5 MB (the `/public/career-upload` limit). Versioned; the newest is current. Every download is audited. **Retention and erasure: `NEEDS_CONFIRMATION`** (`DEC-PRIV-001`); nothing is deleted automatically |
+| Q-31 | `CareerApplication` intake | *Recommended default:* not in rec-009 |
+| Q-32 | Candidate CSV import | *Recommended default:* manual entry only |
+| Roles | Backlog rec-009 roles line | Writers: `placement_team`, `placement_manager`, `super_admin`. `hr_team` **reads** (list, detail, resume download); it is the first `/recruiter/*` screen open to `hr_team` (Q-28 left this to later items). Everyone else gets 403, employers included |
+
+**Consequences:**
+- `candidates`, `candidate_resumes` and `candidate_code_seq` (`0105`). The `CAN-000001` codes come from the sequence.
+- `user_id` and `opted_in` exist for rec-010. `services/candidates.pool_filter` hides a linked student who has not opted in.
+- `services/candidates.py` and `api/recruiter_candidates.py`.
+- The pages `/recruiter/candidates`, `/new` and `/[id]`.
+- A "Candidate Master" sidebar entry for recruiters, managers, super admin and HR.
+- **New Feature ID authorized:** `rec-009`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-009.
+
+### DEC-SCOPE-123 — University contacts + relationship strength (`upc-006`)
 
 **Evidence:** `EVID-020` §1 contact rows (L20–L25), §10 (contacts: 7 example roles, 11 fields) and §11 (relationship status, 7 values);
 `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U14 (`EXPLICIT_APPROVAL`, 2026-10-08) and §4 upc-006.
 **Status:** CT1–CT14 are the recommended answers to backlog Q-15 plus design-level rules, applied under the owner's standing instruction
 for the build session ("proceed with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed:
-`NEEDS_CONFIRMATION` at sign-off. Migration `0107_university_contacts`, API contract §12AP, RBAC §2.48. Drafted as `DEC-SCOPE-121` /
-`0106` / §12AO / §2.47 and renumbered on merging `main` @ `035c99ad`: rec-003 took those numbers and merged first.
+`NEEDS_CONFIRMATION` at sign-off. Migration `0108_university_contacts`, API contract §12AQ, RBAC §2.49. Drafted as `DEC-SCOPE-121` /
+`0106` / §12AO / §2.47 and renumbered on merging `main` @ `035c99ad` (rec-003) and again @ `a62ad9d7` (rec-009, which took `DEC-SCOPE-122` / `0107` / §12AP / §2.48): both merged first.
 Spec: `docs/superpowers/specs/2026-10-08-upc-006-university-contacts-design.md`.
 
 | # | Question | Answer |

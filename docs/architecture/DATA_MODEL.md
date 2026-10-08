@@ -331,14 +331,14 @@ slot). **Migration `0105_university_master`** backfills codes for existing rows 
 `downgrade()` refuses while rankings, assignment history or internal universities exist. Public reads show only published, active rows
 (API §12AN). `stage` is upc-007's; contacts are upc-006's.
 
-**Addendum, 2026-10-08 (`upc-006`, `DEC-SCOPE-122` — University contacts + relationship strength):** `universities.relationship_strength`
+**Addendum, 2026-10-08 (`upc-006`, `DEC-SCOPE-123` — University contacts + relationship strength):** `universities.relationship_strength`
 (nullable; CHECK new / developing / good / strong / strategic / at_risk / dormant, §11). New tables: `university_contact_roles` (`code` PK,
 `label`, `position`; 12 seeded rows, read-only) and `university_contacts` (FK `universities` RESTRICT; `name` NOT NULL, `designation`,
 `department`, `role_code` FK roles, `email`, `phone`, `whatsapp`, `linkedin`, `preferred_channel` CHECK email/phone/whatsapp/linkedin,
 `relationship_strength` CHECK as above, `notes`, `is_primary`, `shareable` (both default false), timestamps). Partial unique indexes: one
 primary per university, and `lower(email)` once per university. Contact PII never goes into audit metadata or logs. **Migration
-`0107_university_contacts`** seeds the roles (`ON CONFLICT DO NOTHING`); `downgrade()` refuses while contacts or relationship strengths
-exist (API §12AP).
+`0108_university_contacts`** seeds the roles (`ON CONFLICT DO NOTHING`); `downgrade()` refuses while contacts or relationship strengths
+exist (API §12AQ).
 
 ### 6.2 `OverseasApplication`, `ApplicationStatusHistory`
 **Carries over**, status vocabulary **extended** — this is part of the `ADR-012` resolution (§6.3
