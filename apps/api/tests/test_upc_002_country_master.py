@@ -112,6 +112,29 @@ async def test_admin_cannot_create_a_catalogue_university_in_an_internal_country
 
 
 @pytest.mark.asyncio
+async def test_a_duplicate_university_slug_is_a_409_not_a_500(client, db_session):  # QA-01
+    from app.models import University
+
+    shown = await _country(db_session, visible=True)
+    admin = await mk_user(db_session, role="overseas_admin")
+    await login(client, admin.email)
+    body = {"slug": uniq("upc002-dup"), "name": "Upc University", "country_slug": shown.slug}
+    assert (await client.post("/api/v1/admin/universities", json=body)).status_code == 201
+    again = await client.post("/api/v1/admin/universities", json=body)
+    assert again.status_code == 409 and again.json()["detail"] == f"A university with the slug '{body['slug']}' already exists"
+    assert len((await db_session.scalars(select(University).where(University.slug == body["slug"]))).all()) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("q,code", [("United States", "US"), ("united arab", "AE"), ("UAE", "AE"), ("Great Britain", "GB"), ("UK", "GB"), ("Holland", "NL")])
+async def test_lookup_finds_a_country_by_its_common_alias(client, db_session, q, code):  # QA-02: catalogue names "USA", "Dubai (UAE)"
+    admin = await mk_user(db_session, role="overseas_admin")
+    await login(client, admin.email)
+    items = (await client.get(LOOKUP, params={"q": q})).json()["items"]
+    assert any(i["detail"] and i["detail"].startswith(f"{code} · ") for i in items), items
+
+
+@pytest.mark.asyncio
 async def test_seed_turns_a_migration_placeholder_into_the_catalogue_row(db_session):  # design C8: fresh database order
     from app.seed import catalogue_country
 

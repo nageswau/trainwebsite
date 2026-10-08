@@ -792,7 +792,11 @@ async def create_university(payload: dict, user: User = Depends(ensure_admin), d
         scholarships=payload.get("scholarships", []),
     )
     db.add(item)
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError:  # upc-002 QA-01: the unique slug, also under a concurrent create
+        await db.rollback()
+        raise HTTPException(409, f"A university with the slug '{payload['slug']}' already exists") from None
     db.add(AuditLog(user_id=user.id, action="university.create", entity_type="university", entity_id=str(item.id), metadata_json={"country": country.slug}))
     await db.commit()
     await db.refresh(item)

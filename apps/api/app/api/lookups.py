@@ -35,6 +35,17 @@ LINK_RATE_LIMIT = 30
 LINK_RATE_WINDOW = timedelta(minutes=1)
 LINK_AUDIT_ACTION = "lookup.agent_link_search"
 FORBIDDEN = "This role cannot use this lookup"
+# upc-002 QA-02: names a user may type that the stored name lacks. The catalogue keeps "USA" and "Dubai (UAE)" (AC1), and a few
+# countries are commonly known by another name. Matched as a case-insensitive substring, like the name itself.
+COUNTRY_ALIASES = {
+    "US": ("United States", "United States of America", "America"),
+    "AE": ("United Arab Emirates", "UAE", "Emirates"),
+    "GB": ("UK", "Great Britain", "Britain", "England", "Scotland", "Wales", "Northern Ireland"),
+    "NL": ("Holland",),
+    "KR": ("Korea, Republic of",),
+    "CZ": ("Czech Republic",),
+    "TR": ("Turkey",),
+}
 
 
 def _pattern(q: str | None) -> str | None:
@@ -237,13 +248,16 @@ async def countries(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """upc-002: every country, catalogue and internal ISO rows alike, by name or ISO code; an exact code ranks first."""
+    """upc-002: every country, catalogue and internal ISO rows alike, by name, ISO code or common alias; an exact code ranks first."""
     _allow(user, {"overseas_admin"}, "overseas")
     stmt = select(Country)
     pattern = _pattern(q)
     if pattern:
-        code = (q or "").strip().upper()
-        stmt = stmt.where(or_(_like(Country.name, pattern), Country.iso2 == code)).order_by((Country.iso2 == code).desc().nulls_last())
+        term = (q or "").strip()
+        code = term.upper()
+        aliased = [iso2 for iso2, names in COUNTRY_ALIASES.items() if any(term.lower() in name.lower() for name in names)]
+        stmt = stmt.where(or_(_like(Country.name, pattern), Country.iso2 == code, Country.iso2.in_(aliased)))
+        stmt = stmt.order_by((Country.iso2 == code).desc().nulls_last())
     stmt = stmt.order_by(Country.name, Country.id)
     return await _page(
         db, stmt, limit,

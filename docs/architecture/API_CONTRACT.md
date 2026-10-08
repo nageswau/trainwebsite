@@ -1482,8 +1482,8 @@ U12 (`UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1, `EXPLICIT_APPROVAL`); Q-06 r
 |---|---|
 | `GET /public/countries` | Unchanged body (`CountryOut`, no new fields). Now lists **catalogue-visible** countries only, so the ISO rows stay internal |
 | `GET /public/countries/{slug}` | An internal country is `404` "Country not found", the same as an unknown slug |
-| `POST /admin/universities` | `country_slug` must name a catalogue-visible country; an internal one is `422` "Unknown country" (universities stay public until upc-003) |
-| `GET /lookups/countries?q&limit` | New. `overseas_admin` (overseas division) and `super_admin`; signed out `401`, other roles or division `403`. `q` ≤ 100 (matches the name, or the ISO code exactly; an exact code ranks first), `limit` 1–50 (default 20). `200 {items, truncated}`, `items[]`: `{id, label: name, detail: "JP · Asia" \| null}`, catalogue and internal rows alike. One log line (counts only), no audit row |
+| `POST /admin/universities` | `country_slug` must name a catalogue-visible country; an internal one is `422` "Unknown country" (universities stay public until upc-003). A slug already taken is `409` "A university with the slug '…' already exists" (was an unhandled `500`; QA-01) |
+| `GET /lookups/countries?q&limit` | New. `overseas_admin` (overseas division) and `super_admin`; signed out `401`, other roles or division `403`. `q` ≤ 100 (matches the name, the ISO code exactly, or a common alias such as "United States", "United Arab Emirates", "UK", "Holland" (`lookups.COUNTRY_ALIASES`, QA-02); an exact code ranks first), `limit` 1–50 (default 20). `200 {items, truncated}`, `items[]`: `{id, label: name, detail: "JP · Asia" \| null}`, catalogue and internal rows alike. One log line (counts only), no audit row |
 
 ## 13. Traceability check
 
