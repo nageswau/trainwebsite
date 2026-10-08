@@ -568,7 +568,7 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 
 ### rec-009 — Candidate master
 - **Status (2026-10-08):** built on `feature/rec-009`.
-  - Numbering is provisional: `DEC-SCOPE-120`, migration `0105_candidates` (chained after `0102`), API §12AN, RBAC §2.46. rec-006 and
+  - Numbering is provisional: `DEC-SCOPE-120`, migration `0105_candidates` (chained after upc-001's `0103_partnership_profiles`), API §12AN, RBAC §2.46. rec-006 and
     rec-003 took the lower numbers in flight, so re-check on `main` at merge.
   - Owner answers:
     - **Q-07:** a duplicate mobile or email blocks the save, with a panel.

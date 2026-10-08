@@ -318,6 +318,26 @@ Division `global`; signs in at `/admin/login`; lands on `/telecaller/manager/tea
 
 **Admin entry points:** a "Telecallers" nav item for Super Admin (`/admin/telecallers`, both teams), IT Admin (`/it/admin/telecallers`, IT) and Overseas Admin (`/overseas/admin/telecallers`, Overseas). Telecaller Managers are created by a Super Admin from Users (division Global); telecallers are created on the Telecallers page.
 
+## Partnership Manager *(net-new, 2026-10-08, `DEC-SCOPE-118`, `upc-001`)*
+
+Division `overseas`; signs in at `/overseas/login`; lands on `/partnership/dashboard`. Sidebar: Dashboard · Profile. The EVID-020 §32
+menu (19 entries, `PARTNERSHIP_MENU` in `lib/navigation.ts`) joins the sidebar one entry at a time as each upc item lands (PU8).
+
+- /partnership/dashboard — greeting, a profile summary card (Employee ID, reporting head) and "Coming soon to your CRM" (the §32 areas not yet built, as text). upc-022 fills in the dashboard. A missing profile shows the 403 message.
+- /partnership/profile — read-only profile (name, Employee ID, mobile, email, reporting head, status) plus an editable mobile (PU3).
+- /partnership — redirects to `/partnership/dashboard`.
+
+## Partnership Head *(net-new, 2026-10-08, `DEC-SCOPE-118`, `upc-001`)*
+
+Division `global`; created only by a Super Admin from Users; signs in at `/admin/login`; lands on `/partnership/head/team`. Sidebar: Team. Password recovery stays in the admin portal (the welcome/reset link opens `/admin/reset-password`, and `login_portal` is `"admin"`).
+
+- /partnership/head/team — the partnership managers who report to this head (paged, inactive included). A Super Admin sees all of them.
+- /partnership/head — redirects to `/partnership/head/team`.
+
+**Signed-out `/partnership/*` (PU1):** `/partnership/head*` → `/admin/login?next=…`; any other `/partnership/*` → `/overseas/login?next=…`.
+
+**Admin entry points:** a "Partnership managers" nav item for Super Admin (`/admin/partnership-managers`) and Overseas Admin (`/overseas/admin/partnership-managers`). IT Admin has none (managers are Overseas).
+
 ## Division isolation (confirmed, `DEC-ARCH-001`)
 
 A user's nav never crosses `it` / `overseas` / `global` divisions except for **Super Admin**, the sole cross-division role. An `overseas_student` never sees `/it/*` nav items and vice versa, even though — per `DEC-ROLE-001` — both may be the *same person's* account. This is a navigation-visibility rule; the underlying identity-model question (one account, two role-assignments) is Architecture-phase work, tracked in `docs/features/FEATURE_QUESTIONS.md` item 3.

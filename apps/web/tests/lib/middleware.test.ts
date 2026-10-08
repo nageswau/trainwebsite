@@ -40,6 +40,26 @@ describe("middleware /bdm (bdm-001 AC12)", () => {
   });
 });
 
+describe("middleware /partnership (upc-001 PU1)", () => {
+  it("sends a signed-out head route to the admin sign-in, keeping next", () => {
+    expect(go("/partnership/head/team?offset=50")).toBe("http://localhost/admin/login?next=%2Fpartnership%2Fhead%2Fteam%3Foffset%3D50");
+    expect(go("/partnership/head")).toBe("http://localhost/admin/login?next=%2Fpartnership%2Fhead");
+  });
+
+  it("sends other signed-out /partnership routes to the overseas sign-in", () => {
+    expect(go("/partnership/dashboard")).toBe("http://localhost/overseas/login?next=%2Fpartnership%2Fdashboard");
+    expect(go("/partnership")).toBe("http://localhost/overseas/login?next=%2Fpartnership");
+    expect(go("/partnership/headline")).toBe("http://localhost/overseas/login?next=%2Fpartnership%2Fheadline");
+  });
+
+  it("leaves signed-in users and look-alike paths alone", () => {
+    expect(go("/partnershipx")).toBeNull();
+    expect(go("/partnership/dashboard", true)).toBeNull();
+    expect(go("/admin/partnership-managers")).toBe("http://localhost/admin/login?next=%2Fadmin%2Fpartnership-managers");
+    expect(config.matcher).toContain("/partnership/:path*");
+  });
+});
+
 describe("middleware /telecaller (tel-001 AC5, TL1)", () => {
   it("sends a signed-out manager route to the admin sign-in, keeping next", () => {
     expect(go("/telecaller/manager/team?offset=50")).toBe("http://localhost/admin/login?next=%2Ftelecaller%2Fmanager%2Fteam%3Foffset%3D50");

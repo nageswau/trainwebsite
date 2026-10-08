@@ -52,13 +52,15 @@ def _readable(error: dict, labels: dict[str, str]) -> str:
     if error["type"] == "value_error":
         return error["msg"].removeprefix("Value error, ")
     if error["type"] == "uuid_parsing":
-        return f"{label}: choose {'a manager' if field.endswith('manager_user_id') else 'one'} from the list"
+        # upc-001: a reporting head (partnership profile) is chosen as "a head".
+        noun = "a manager" if field.endswith("manager_user_id") else "a head" if field.endswith("head_user_id") else "one"
+        return f"{label}: choose {noun} from the list"
     return f"{label}: {error['msg']}"
 
 
 def _parse(model: type[BaseModel], raw, not_an_object: str, labels: dict[str, str] = TELECALLER_FIELD_LABELS):
     """The /admin/users payload is an untyped dict (existing contract), so nested objects are validated here; the first error becomes
-    a readable 422. tel-002 reuses it for the catalogue bodies with its own labels."""
+    a readable 422. tel-002 reuses it for the catalogue bodies with its own labels; upc-001 for the partnership profile."""
     if not isinstance(raw, dict):
         raise HTTPException(422, not_an_object)
     try:

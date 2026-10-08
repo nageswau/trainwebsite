@@ -65,7 +65,7 @@ async def flush_unique_email(db: AsyncSession) -> None:
 
 # bdm-001 QA-05 / tel-001 §5.6: the `global` manager roles sign in at /admin, so their set-password and reset pages are the admin
 # portal's own. auth.reset_password reads the same set for its `login_portal`.
-ADMIN_PORTAL_ROLES = frozenset({"bdm_manager", "telecaller_manager", "placement_manager"})  # rec-001: + placement managers
+ADMIN_PORTAL_ROLES = frozenset({"bdm_manager", "telecaller_manager", "placement_manager", "partnership_head"})  # rec-001, upc-001
 
 
 def _set_password_url(user: User, raw: str) -> str:

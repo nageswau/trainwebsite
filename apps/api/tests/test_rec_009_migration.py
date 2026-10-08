@@ -18,10 +18,10 @@ _spec = importlib.util.spec_from_file_location("_rec_009_migration_0105", VERSIO
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0102_rec_catalogues", "0105_candidates"
+BASE, HEAD = "0103_partnership_profiles", "0105_candidates"
 
 
-def test_migration_chains_after_the_catalogues_and_is_the_single_head():
+def test_migration_chains_after_upc_001_and_is_the_single_head():
     assert _migration.revision == HEAD
     assert _migration.down_revision == BASE
     assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1
@@ -79,7 +79,7 @@ def isolated_db():
     _sql(original, f'CREATE DATABASE "{name}"', autocommit=True)
     try:
         settings.database_url = url
-        # 0001's create_all builds today's models (these tables included); going to head and back down gives the real 0102 shape.
+        # 0001's create_all builds today's models (these tables included); going to head and back down gives the real 0103 shape.
         command.upgrade(cfg, "head")
         command.downgrade(cfg, BASE)
         yield {"cfg": cfg, "url": url}

@@ -1,7 +1,7 @@
 """rec-009 -- the candidate master: candidates + candidate_resumes + candidate_code_seq.
 
 Revision ID: 0105_candidates
-Revises: 0102_rec_catalogues
+Revises: 0103_partnership_profiles
 
 docs/superpowers/specs/2026-10-08-rec-009-candidate-master-design.md §3 (DEC-SCOPE-120, provisional numbering: re-chained to the real head
 at merge). Adds two tables and a sequence; no existing row is read or written. 0001 builds a fresh database from the current models, which
@@ -14,7 +14,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0105_candidates"
-down_revision = "0102_rec_catalogues"
+down_revision = "0103_partnership_profiles"  # re-chained after upc-001 (merged to main first)
 branch_labels = None
 depends_on = None
 
