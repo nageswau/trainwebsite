@@ -7158,7 +7158,7 @@ class UniversityContactPage(BaseModel):
     offset: int
 
 
-# --- upc-010 (DEC-SCOPE-127): university visits (§8). Limits per VS18; participants and contacts per VS11/VS12 ------------------------
+# --- upc-010 (DEC-SCOPE-128): university visits (§8). Limits per VS18; participants and contacts per VS11/VS12 ------------------------
 VISIT_MAX_PARTICIPANTS = 10
 VISIT_MAX_CONTACTS = 20
 VisitPurpose = _university_str(1000, required=True, multiline=True)
@@ -7667,6 +7667,9 @@ class RecCompanyRow(BaseModel):
     assigned_recruiter: RecPersonRef | None
     archived: bool
     permissions: RecCompanyPermissions
+    stage: str
+    stage_label: str
+    lost: bool
 
 
 class RecCompanyPage(BaseModel):
@@ -7681,6 +7684,98 @@ class RecAssignmentOut(BaseModel):
     to_user: RecPersonRef
     changed_by: RecPersonRef
     created_at: datetime
+
+
+# --- rec-005 (DEC-SCOPE-127, spec §4): the company pipeline ---------------------------------------------------------------------
+RecStageKey = Annotated[str, StringConstraints(pattern=r"^[a-z_]{1,30}$")]
+
+
+class RecPipelineStep(BaseModel):
+    key: str
+    label: str
+    kind: Literal["start", "manual", "driven"]
+    state: Literal["done", "current", "upcoming"]
+
+
+class RecLostOut(BaseModel):
+    at: datetime
+    reason: str
+
+
+class RecPipelineOut(BaseModel):
+    stage: str
+    stage_label: str
+    stage_changed_at: datetime
+    lost: RecLostOut | None
+    can_move: bool
+    can_reopen: bool
+    steps: list[RecPipelineStep]
+
+
+class RecStageMove(BaseModel):
+    """`from_stage` is the stage the form was showing -- a different stored stage is 409 `stage_changed`."""
+
+    model_config = ConfigDict(extra="forbid")
+    from_stage: RecStageKey
+    to_stage: RecStageKey
+    reason: BdmPipelineNote = None
+
+
+class RecStageReason(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: BdmPipelineReason
+
+
+class RecActorRef(BaseModel):
+    id: UUID
+    full_name: str
+
+
+class RecStageEventOut(BaseModel):
+    id: UUID
+    event: str
+    from_stage: str
+    from_label: str
+    to_stage: str
+    to_label: str
+    reason: str | None
+    actor: RecActorRef | None
+    created_at: datetime
+
+
+class RecStageEventPage(BaseModel):
+    items: list[RecStageEventOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class RecBoardStage(BaseModel):
+    key: str
+    label: str
+    kind: Literal["start", "manual", "driven"]
+    count: int
+
+
+class RecBoardItem(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    city: str | None
+    priority: str | None
+    assigned_recruiter: RecPersonRef | None
+    stage: str
+    stage_label: str
+    lost: bool
+
+
+class RecBoardOut(BaseModel):
+    stages: list[RecBoardStage]
+    lost_count: int
+    items: list[RecBoardItem]
+    total: int
+    limit: int
+    offset: int
 
 
 class RecCompanyOut(RecCompanyRow):
@@ -7698,6 +7793,7 @@ class RecCompanyOut(RecCompanyRow):
     owner_type: str
     created_by: RecPersonRef | None
     assignment_history: list[RecAssignmentOut]
+    pipeline: RecPipelineOut
     archived_at: datetime | None
     created_at: datetime
     updated_at: datetime

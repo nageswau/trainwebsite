@@ -438,6 +438,10 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-005 — Company B2B pipeline engine + stage history
+- **Status (2026-10-08):** **MERGED** to `main` as PR #162 @ `ada23b4d`. The next rec item takes the next migration after `0112`,
+  `DEC-SCOPE-128`, API §12AV and RBAC §2.54, re-checked on `main` first. Numbering: `DEC-SCOPE-127`, migration
+  `0112_company_pipeline` (re-chained after upc-007's `0111_university_pipeline`), API §12AU, RBAC §2.53. Q-06 answered with the recommended default (P2/P3 in `DEC-SCOPE-127`):
+  later stages are driven by events only, forward; the source has 13 stages, not 14 (P1).
 - **Business requirement:** §5 pipeline (14 stages, New Lead → Requirement Closed).
 - **Existing behavior:** none.
 - **Expected behavior:**

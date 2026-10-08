@@ -7,15 +7,19 @@ import { DetailList, multiline } from "@/components/BdmOrganizationProfileDetail
 import LocalTime from "@/components/LocalTime";
 import RecruiterCompanyContacts from "@/components/RecruiterCompanyContacts";
 import RecruiterCompanyForm from "@/components/RecruiterCompanyForm";
+import RecruiterCompanyPipeline from "@/components/RecruiterCompanyPipeline";
+import RecruiterStageHistory from "@/components/RecruiterStageHistory";
 import SearchableSelect from "@/components/SearchableSelect";
-import { sendJson, sendRequest } from "@/lib/apiErrors";
+import { type Page, sendJson, sendRequest } from "@/lib/apiErrors";
 import { display, LINK_STYLE } from "@/lib/bdmOrganizations";
 import type { PickOption } from "@/lib/lookups";
 import { type Company, COMPANIES_PATH, COMPANIES_URL, isCompanyBody, personName, PRIORITY_LABEL, recruiterSearch, safeLink } from "@/lib/recruiterCompanies";
+import type { StageEvent } from "@/lib/recruiterPipeline";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // rec-003 (spec §6): one company. Actions render from `permissions` only -- the server enforces every rule. Every write re-renders from
-// the company the API returns (no refetch). Contacts are rec-004's section; pipeline, follow-ups and contracts arrive with rec-005/024/030.
+// the company the API returns (no refetch). Contacts are rec-004's section; rec-005 adds the pipeline and its history (reloaded after
+// each pipeline write); follow-ups and contracts arrive with rec-024/030.
 function linkOrText(url: string | null) {
   const safe = safeLink(url);
   return safe ? (
@@ -84,8 +88,9 @@ function Reassign({ company, onChanged }: { company: Company; onChanged: (c: Com
   );
 }
 
-export default function RecruiterCompanyDetail({ initial, created = false }: { initial: Company; created?: boolean }) {
+export default function RecruiterCompanyDetail({ initial, created = false, history = null }: { initial: Company; created?: boolean; history?: Page<StageEvent> | null }) {
   const [company, setCompany] = useState(initial);
+  const [version, setVersion] = useState(0);
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -105,6 +110,10 @@ export default function RecruiterCompanyDetail({ initial, created = false }: { i
     setCompany(next);
     setNotice(text);
     setFailure(null);
+  };
+  const stageChanged = (next: Company) => {
+    setCompany(next);
+    setVersion((v) => v + 1); // only pipeline writes add history rows
   };
   const closeEditor = () => {
     setEditing(false);
@@ -210,6 +219,16 @@ export default function RecruiterCompanyDetail({ initial, created = false }: { i
       )}
       {/* Re-keyed on archive/restore: the list's `can_edit` follows the company's state. */}
       <RecruiterCompanyContacts key={`${company.id}-${company.archived}`} companyId={company.id} />
+      <RecruiterCompanyPipeline
+        company={company}
+        onChanged={(c, text) => {
+          changed(c, text);
+          stageChanged(c);
+          focus(statusId);
+        }}
+        onRefreshed={stageChanged}
+      />
+      <RecruiterStageHistory companyId={company.id} initial={history} version={version} />
       {p.can_reassign && (
         <Reassign
           company={company}

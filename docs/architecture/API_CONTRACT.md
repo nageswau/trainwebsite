@@ -1728,9 +1728,30 @@ reason text — one commit). **Changed (additive):** every university row gains 
 | `GET /partnership/universities/{id}/stage-history` | Read roles; `limit`, `offset`; `{items: [{id, kind move/lost/reopened, from_stage, from_label, to_stage, to_label, note, actor {id, full_name}, created_at}], total, limit, offset}` newest first |
 | `GET /partnership/pipeline` | Read roles. `column` (one of the 9 Kanban keys or `lost`; other `422`), `manager` (`me`/`none`/uuid; other `422`), `limit`, `offset`. `{columns: [{key, label, stages, count}], lost_count, items: [{id, university_code, name, city, country_name, stage, stage_label, column, lost, primary_manager}], total, limit, offset}`. Active universities only; lost ones only in `lost_count` / `column=lost` |
 
-## 12AU. University visits + approval (`upc-010`) — addendum, 2026-10-08
+## 12AU. Company B2B pipeline (`rec-005`) — addendum, 2026-10-08
 
-`DEC-SCOPE-127`; design spec `docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.md` §3. Migration `0112_university_visits`. Readers: `partnership_manager` (with a profile),
+- **Basis:** `DEC-SCOPE-127`. Design spec `docs/superpowers/specs/2026-10-08-rec-005-company-pipeline-design.md` §4. Migration `0112`.
+  Drafted as §12AQ; upc-006, upc-004, rec-004 and upc-007 merged first and took §12AQ–§12AT.
+- **Common rules:**
+  - Every `{id}` resolves through the §12AO company scope: outside it is `404` "Company not found", like an unknown id.
+  - Writes lock the company row; the change, its `company_stage_history` row and the audit row (`recruiter_company.stage_changed` /
+    `lost` / `reopened`, stage keys and flags only, never the reason text) commit together.
+  - Bodies refuse unknown keys. A reason is plain text, at most 500 characters; blank counts as missing.
+- **Company output (additive):** the §12AO detail gains `pipeline {stage, stage_label, stage_changed_at, lost {at, reason} | null,
+  can_move, can_reopen, steps[{key, label, kind: start|manual|driven, state: done|current|upcoming}]}`; list rows gain `stage`,
+  `stage_label`, `lost`. `permissions` is unchanged.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `POST /recruiter/companies/{id}/stage` | `{from_stage, to_stage, reason?}` → `200` detail. Not the assigned recruiter or super_admin → `403`; archived → `409` "Restore this company first"; Lost → `409 {code: "company_lost"}`; a stale `from_stage` → `409 {code: "stage_changed", current_stage}`. `422` (on `to_stage`) for an unknown stage, New Lead, a driven stage, the same stage, or any move once the company is at a driven stage; `422` (on `reason`) for a backward move without one |
+| `POST /recruiter/companies/{id}/lost` | `{reason}` (required) → `200` detail; the stage is kept. Same `403`/`409` as `/stage`; already Lost → `409 company_lost` |
+| `POST /recruiter/companies/{id}/reopen` | `{reason}` (required) → `200` detail, back at the stage it was lost at. Not `placement_manager`/super_admin → `403`; archived → `409`; not Lost → `409 {code: "company_not_lost"}` |
+| `GET /recruiter/companies/{id}/stage-history` | `limit`, `offset` → `{items[{id, event, from_stage, from_label, to_stage, to_label, reason, actor {id, full_name} | null, created_at}], total, limit, offset}`, newest first. `actor` null = a system event |
+| `GET /recruiter/pipeline` | `stage?` (a stage key or `lost`), `limit`, `offset` → `{stages[{key, label, kind, count}], lost_count, items[{id, code, name, city, priority, assigned_recruiter, stage, stage_label, lost}], total, limit, offset}`. The caller's company scope, archived left out, Lost counted only in `lost_count`. Unknown stage → `422`; roles outside the company scope → `403` |
+
+## 12AV. University visits + approval (`upc-010`) — addendum, 2026-10-08
+
+`DEC-SCOPE-128`; design spec `docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.md` §3. Migration `0113_university_visits`. Readers: `partnership_manager` (with a profile),
 `partnership_head`, `super_admin` read **every** visit; other roles `403`. Planners: `partnership_manager` (leads their own) and
 `partnership_head` (leads, or picks an active direct report); the university must be active (`409`) and in the planner's university edit
 scope (`403`). The lead or the planner edits and runs the commands (else `403`). The approver is the lead's reporting head; any active

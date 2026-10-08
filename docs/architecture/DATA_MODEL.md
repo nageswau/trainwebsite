@@ -353,14 +353,14 @@ normalised name, kept by the model's `name` validator) with the non-unique index
 organizations only). **Migration `0109_university_duplicates`** backfills the key and logs (never merges or links) the existing duplicate
 groups and the unlinked BDM University organizations that match a master name; `downgrade()` refuses while any organization is linked.
 
-**Addendum, 2026-10-08 (`upc-010`, `DEC-SCOPE-127` — University visits + approval):** sequence `university_visit_code_seq`
+**Addendum, 2026-10-08 (`upc-010`, `DEC-SCOPE-128` — University visits + approval):** sequence `university_visit_code_seq`
 (`VIS-000001`). `university_visits` (code unique; FK `universities` RESTRICT; `city`, `purpose`, `lead_user_id`, `created_by_user_id`,
 `proposed_date` NOT NULL; `confirmed_date`, `follow_up_date`; `travel_required`/`hotel_required` (default false) + notes; `agenda`,
 `expected_outcome`; `status` CHECK planned / approved / travel_booked / visit_completed / follow_up / closed (§8); `submitted_at`,
 `rejection_reason` (the planned sub-state), `decided_by_user_id`, `decided_at`, `close_reason`; timestamps; indexes on university, lead
 and waiting visits). `university_visit_participants` (visit CASCADE, user RESTRICT) and `university_visit_contacts` (visit CASCADE,
 `university_contacts` CASCADE: deleting contact PII removes it from visits). `university_visit_events` is the append-only history (action,
-from/to status, actor, reason). **Migration `0112_university_visits`**; `downgrade()` refuses while any visit exists (API §12AU).
+from/to status, actor, reason). **Migration `0113_university_visits`**; `downgrade()` refuses while any visit exists (API §12AV).
 
 ### 6.2 `OverseasApplication`, `ApplicationStatusHistory`
 **Carries over**, status vocabulary **extended** — this is part of the `ADR-012` resolution (§6.3
@@ -1403,3 +1403,15 @@ exists.
 | `created_at`, `updated_at` | timestamptz |
 
 `downgrade()` refuses while any row exists.
+
+## Company B2B pipeline (`rec-005`, `DEC-SCOPE-127`; migration `0112_company_pipeline`, after `0111_university_pipeline`)
+
+`companies` gains `stage` varchar(30) NOT NULL default `new_lead` (CHECK `ck_companies_stage`: the 13 keys of `app/recruiter_stages.py`,
+frozen in the migration), `stage_changed_at` timestamptz NOT NULL default `now()` (existing rows backfilled from `created_at`), `lost_at`
+and `lost_reason` varchar(500) (CHECK `ck_companies_lost`: both or neither) and `ix_companies_stage_recruiter (stage,
+assigned_recruiter_user_id)`. Every insert path keeps working through the defaults.
+
+`company_stage_history`: `id`, `company_id` FK RESTRICT, `from_stage`, `to_stage`, `event` (`manual`, `lost`, `reopen` or an engine
+event), `actor_user_id` (NULL = system), `reason` varchar(500), `position` identity, `created_at`; `ix_company_stage_history_company
+(company_id, position)`. Append-only, no stage CHECK. `services/company_pipeline.py` is the only writer of `stage`. `downgrade()` refuses
+while any history row exists or any company is past New Lead or Lost.
