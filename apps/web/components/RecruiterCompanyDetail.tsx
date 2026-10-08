@@ -17,7 +17,7 @@ import type { StageEvent } from "@/lib/recruiterPipeline";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // rec-003 (spec §6): one company. Actions render from `permissions` only -- the server enforces every rule. Every write re-renders from
-// the company the API returns (no refetch). rec-005 adds the pipeline and its history (reloaded after each write here); contacts,
+// the company the API returns (no refetch). rec-005 adds the pipeline and its history (reloaded after each pipeline write); contacts,
 // follow-ups and contracts arrive with rec-004/024/030.
 function linkOrText(url: string | null) {
   const safe = safeLink(url);
@@ -109,7 +109,10 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
     setCompany(next);
     setNotice(text);
     setFailure(null);
-    setVersion((v) => v + 1);
+  };
+  const stageChanged = (next: Company) => {
+    setCompany(next);
+    setVersion((v) => v + 1); // only pipeline writes add history rows
   };
   const closeEditor = () => {
     setEditing(false);
@@ -217,12 +220,10 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
         company={company}
         onChanged={(c, text) => {
           changed(c, text);
+          stageChanged(c);
           focus(statusId);
         }}
-        onRefreshed={(c) => {
-          setCompany(c);
-          setVersion((v) => v + 1);
-        }}
+        onRefreshed={stageChanged}
       />
       <RecruiterStageHistory companyId={company.id} initial={history} version={version} />
       {p.can_reassign && (
