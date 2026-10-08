@@ -7,13 +7,14 @@ import pytest
 from sqlalchemy import select
 
 from app.models import Country, OverseasCourse, University
-from tests.upc003_helpers import as_role, catalogue_country, create, login, make_head, make_pm, make_user, url
+from tests.upc003_helpers import as_role, create, login, make_head, make_pm, make_user, url
 
 PUBLIC = "/api/v1/public"
 
 
 async def _course(db, university_id, title: str) -> None:
-    db.add(OverseasCourse(university_id=university_id, title=title, level="PG", category="Business", duration="1 year", tuition_fee="GBP 20,000", intake="Sep"))
+    # The category is the title, so the listing can be narrowed to this course (the endpoint returns at most 100 unordered rows).
+    db.add(OverseasCourse(university_id=university_id, title=title, level="PG", category=title, duration="1 year", tuition_fee="GBP 20,000", intake="Sep"))
     await db.commit()
 
 
@@ -26,7 +27,7 @@ async def _visible_everywhere(client, db, uni: dict, course_title: str) -> dict[
     listed = {u["id"] for u in (await client.get(f"{PUBLIC}/universities", params={"q": uni["name"]})).json()}
     on_country = {u["id"] for u in (await client.get(f"{PUBLIC}/countries/{country.slug}")).json()["universities"]}
     searched = [x["title"] for x in (await client.get(f"{PUBLIC}/search", params={"q": uni["name"]})).json()["universities"]]
-    courses = [c["title"] for c in (await client.get(f"{PUBLIC}/overseas-courses")).json()]
+    courses = [c["title"] for c in (await client.get(f"{PUBLIC}/overseas-courses", params={"category": course_title})).json()]
     return {
         "list": uni["id"] in listed,
         "detail": (await client.get(f"{PUBLIC}/universities/{uni['slug']}")).status_code == 200,

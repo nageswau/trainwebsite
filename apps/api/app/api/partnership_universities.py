@@ -69,8 +69,13 @@ async def list_universities(
     filters = svc.search_filters(like_pattern(q)) + _manager_filter(user, manager)
     if not include_inactive:
         filters.append(University.active.is_(True))
-    for column, value in ((University.country_id, country_id), (Country.region, region), (University.institution_type, institution_type),
-                          (University.priority, priority), (University.partnership_potential, partnership_potential)):
+    for column, value in (
+        (University.country_id, country_id),
+        (Country.region, region),
+        (University.institution_type, institution_type),
+        (University.priority, priority),
+        (University.partnership_potential, partnership_potential),
+    ):
         if value is not None:
             filters.append(column == value)
     if visibility is not None:
@@ -89,8 +94,7 @@ async def list_universities(
     )
     team = await svc.team_of(db, user)
     rows = (await db.execute(stmt)).all()
-    return {"items": [svc.row_out(user, uni, country, primary, backup, team) for uni, country, primary, backup in rows], "total": total or 0,
-            "limit": limit, "offset": offset}
+    return {"items": [svc.row_out(user, uni, country, primary, backup, team) for uni, country, primary, backup in rows], "total": total or 0, "limit": limit, "offset": offset}
 
 
 @router.post("", status_code=201, response_model=UniversityEnvelope)
@@ -101,8 +105,7 @@ async def create_university(payload: UniversityCreate, user: User = Depends(get_
     await svc.country_or_422(db, payload.country_id)
     code = await svc.next_code(db)
     values = payload.model_dump(exclude={"rankings"})
-    uni = University(university_code=code, slug=await svc.free_slug(db, payload.name, code), catalogue_visible=False,
-                     requirements=[], deadlines=[], scholarships=[], **values)
+    uni = University(university_code=code, slug=await svc.free_slug(db, payload.name, code), catalogue_visible=False, requirements=[], deadlines=[], scholarships=[], **values)
     db.add(uni)
     try:
         await db.flush()
@@ -123,8 +126,11 @@ async def manager_options(q: str | None = SEARCH, limit: int = Query(20, ge=1, l
     apart."""
     if user.role not in svc.ASSIGN_ROLES:
         raise HTTPException(403, svc.ROLE_REFUSALS["can_assign"])
-    stmt = (select(User.id, User.full_name, User.email).join(PartnershipProfile, PartnershipProfile.user_id == User.id)
-            .where(*svc.manager_options_filter(user), *_matching(like_pattern(q), User.full_name, User.email)))
+    stmt = (
+        select(User.id, User.full_name, User.email)
+        .join(PartnershipProfile, PartnershipProfile.user_id == User.id)
+        .where(*svc.manager_options_filter(user), *_matching(like_pattern(q), User.full_name, User.email))
+    )
     return await _paged(db, stmt, limit, 0, lambda id_, full_name, email: {"id": id_, "full_name": full_name, "email": email})
 
 
@@ -159,7 +165,7 @@ async def update_university(university_id: UUID, payload: UniversityUpdate, user
             await svc.replace_rankings(db, uni, payload.rankings)
             changed = sorted([*changed, "rankings"])
     if uni.catalogue_visible and {"overview", "country_id"} & set(changed):
-        svc.check_publishable(uni, country or await db.get(Country, uni.country_id))
+        svc.check_publishable(uni, country if country is not None else await db.get_one(Country, uni.country_id))
     if changed:
         svc.audit(db, user, "update", uni.id, {"fields": changed})
     await db.commit()
@@ -177,12 +183,12 @@ async def assign_university(university_id: UUID, payload: UniversityAssign, user
     current = {"primary": uni.primary_manager_user_id, "backup": uni.backup_manager_user_id}
     changed = [slot for slot in ("primary", "backup") if wanted[slot] != current[slot]]
     for slot in changed:
-        if wanted[slot] is not None:
-            await svc.locked_manager(db, user, wanted[slot])
+        target = wanted[slot]
+        if target is not None:
+            await svc.locked_manager(db, user, target)
     if changed:
         uni.primary_manager_user_id, uni.backup_manager_user_id = wanted["primary"], wanted["backup"]
-        db.add_all(UniversityAssignmentHistory(university_id=uni.id, slot=slot, from_user_id=current[slot], to_user_id=wanted[slot], actor_user_id=user.id)
-                   for slot in changed)
+        db.add_all(UniversityAssignmentHistory(university_id=uni.id, slot=slot, from_user_id=current[slot], to_user_id=wanted[slot], actor_user_id=user.id) for slot in changed)
         svc.audit(db, user, "assign", uni.id, {slot: [str(current[slot]) if current[slot] else None, str(wanted[slot]) if wanted[slot] else None] for slot in changed})
     await db.commit()
     if changed:
@@ -196,7 +202,7 @@ async def _set_visible(university_id: UUID, user: User, db: AsyncSession, visibl
     if uni.catalogue_visible == visible:
         raise HTTPException(409, "Already published" if visible else "Already internal")
     if visible:
-        svc.check_publishable(uni, await db.get(Country, uni.country_id))
+        svc.check_publishable(uni, await db.get_one(Country, uni.country_id))
     uni.catalogue_visible = visible
     svc.audit(db, user, action, uni.id)
     await db.commit()
@@ -216,8 +222,7 @@ async def unpublish_university(university_id: UUID, user: User = Depends(get_cur
 
 
 @router.post("/{university_id}/deactivate", response_model=UniversityEnvelope)
-async def deactivate_university(university_id: UUID, payload: UniversityDeactivate | None = None, user: User = Depends(get_current_user),
-                                db: AsyncSession = Depends(get_db)):
+async def deactivate_university(university_id: UUID, payload: UniversityDeactivate | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """UM10: inactive = hidden from the catalogue and read-only. Existing applications keep working, but the caller confirms first."""
     uni, team = await _locked(db, user, university_id, "can_deactivate", "deactivate")
     if not uni.active:

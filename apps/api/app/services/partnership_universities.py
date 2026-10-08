@@ -145,8 +145,11 @@ async def replace_rankings(db: AsyncSession, uni: University, rankings: list) ->
 
 
 async def rankings_of(db: AsyncSession, university_id: UUID) -> list[UniversityRanking]:
-    stmt = (select(UniversityRanking).where(UniversityRanking.university_id == university_id)
-            .order_by(UniversityRanking.system, func.coalesce(UniversityRanking.other_name, ""), UniversityRanking.year.desc()))
+    stmt = (
+        select(UniversityRanking)
+        .where(UniversityRanking.university_id == university_id)
+        .order_by(UniversityRanking.system, func.coalesce(UniversityRanking.other_name, ""), UniversityRanking.year.desc())
+    )
     return list((await db.scalars(stmt)).all())
 
 
@@ -159,9 +162,9 @@ async def locked_manager(db: AsyncSession, user: User, manager_id: UUID) -> User
     the same instant waits for this commit. One message for every invalid target, so the route can't be used to probe users."""
     target = await db.scalar(select(User).where(User.id == manager_id).with_for_update(read=True))
     profile = await db.get(PartnershipProfile, manager_id) if target else None
-    valid = (target is not None and target.active and target.role == "partnership_manager" and profile is not None
-             and (user.role == "super_admin" or profile.reporting_head_user_id == user.id))
-    if not valid:
+    if target is None or profile is None or not target.active or target.role != "partnership_manager":
+        raise HTTPException(422, MANAGER_INVALID)
+    if user.role != "super_admin" and profile.reporting_head_user_id != user.id:
         raise HTTPException(422, MANAGER_INVALID)
     return target
 
@@ -186,10 +189,20 @@ def _country(country: Country) -> dict:
 
 def row_out(user: User, uni: University, country: Country, primary: User | None, backup: User | None, team: frozenset[UUID]) -> dict:
     return {
-        "id": uni.id, "university_code": uni.university_code, "slug": uni.slug, "name": uni.name, "institution_type": uni.institution_type,
-        "country": _country(country), "city": uni.city, "priority": uni.priority, "partnership_potential": uni.partnership_potential,
-        "primary_manager": person_ref(primary) if primary else None, "backup_manager": person_ref(backup) if backup else None,
-        "catalogue_visible": uni.catalogue_visible, "active": uni.active, "permissions": permissions(user, uni, team),
+        "id": uni.id,
+        "university_code": uni.university_code,
+        "slug": uni.slug,
+        "name": uni.name,
+        "institution_type": uni.institution_type,
+        "country": _country(country),
+        "city": uni.city,
+        "priority": uni.priority,
+        "partnership_potential": uni.partnership_potential,
+        "primary_manager": person_ref(primary) if primary else None,
+        "backup_manager": person_ref(backup) if backup else None,
+        "catalogue_visible": uni.catalogue_visible,
+        "active": uni.active,
+        "permissions": permissions(user, uni, team),
     }
 
 
@@ -198,13 +211,27 @@ async def detail_out(db: AsyncSession, user: User, uni: University, team: frozen
     if refresh:
         await db.refresh(uni)
     team = await team_of(db, user) if team is None else team
-    country = await db.get(Country, uni.country_id)
+    country = await db.get_one(Country, uni.country_id)  # NOT NULL FK
     primary = await db.get(User, uni.primary_manager_user_id) if uni.primary_manager_user_id else None
     backup = await db.get(User, uni.backup_manager_user_id) if uni.backup_manager_user_id else None
     return {
         **row_out(user, uni, country, primary, backup, team),
-        **{k: getattr(uni, k) for k in ("ownership_type", "state_region", "website", "course_levels", "popular_programs", "international_office",
-                                        "existing_relationship", "overview", "eligibility", "created_at", "updated_at")},
+        **{
+            k: getattr(uni, k)
+            for k in (
+                "ownership_type",
+                "state_region",
+                "website",
+                "course_levels",
+                "popular_programs",
+                "international_office",
+                "existing_relationship",
+                "overview",
+                "eligibility",
+                "created_at",
+                "updated_at",
+            )
+        },
         "rankings": [{"system": r.system, "other_name": r.other_name, "year": r.year, "rank": r.rank} for r in await rankings_of(db, uni.id)],
         "application_count": await application_count(db, uni.id),
     }

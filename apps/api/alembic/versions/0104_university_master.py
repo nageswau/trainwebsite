@@ -24,8 +24,7 @@ TABLE = "universities"
 SEQ = "university_code_seq"
 CODE_DEFAULT = f"'UNV-' || translate(format('%6s', nextval('{SEQ}')), ' ', '0')"
 UNIQUE = "uq_universities_code"
-INDEXES = {"ix_universities_primary_manager": "primary_manager_user_id", "ix_universities_backup_manager": "backup_manager_user_id",
-           "ix_universities_priority": "priority"}
+INDEXES = {"ix_universities_primary_manager": "primary_manager_user_id", "ix_universities_backup_manager": "backup_manager_user_id", "ix_universities_priority": "priority"}
 CHECKS = {
     "ck_universities_institution_type": "institution_type IN ('university', 'college', 'institute', 'language_school', 'training_institution')",
     "ck_universities_ownership_type": "ownership_type IS NULL OR ownership_type IN ('public', 'private')",
@@ -35,6 +34,8 @@ CHECKS = {
     "ck_universities_backup_needs_primary": "backup_manager_user_id IS NULL OR (primary_manager_user_id IS NOT NULL AND backup_manager_user_id <> primary_manager_user_id)",
 }
 UUID = postgresql.UUID(as_uuid=True)
+
+
 def _columns() -> list[sa.Column]:
     """Fresh Column objects per call: a Column binds to one table."""
     return [
@@ -69,16 +70,20 @@ def upgrade() -> None:
             op.add_column(TABLE, column)
 
     # One statement: nextval runs over the ordered sub-select, so codes follow (created_at, slug).
-    op.execute(sa.text(
-        f"UPDATE {TABLE} u SET university_code = 'UNV-' || translate(format('%6s', o.n), ' ', '0') "
-        f"FROM (SELECT id, nextval('{SEQ}') AS n FROM (SELECT id FROM {TABLE} WHERE university_code IS NULL ORDER BY created_at, slug) s) o "
-        "WHERE u.id = o.id"
-    ))
+    op.execute(
+        sa.text(
+            f"UPDATE {TABLE} u SET university_code = 'UNV-' || translate(format('%6s', o.n), ' ', '0') "
+            f"FROM (SELECT id, nextval('{SEQ}') AS n FROM (SELECT id FROM {TABLE} WHERE university_code IS NULL ORDER BY created_at, slug) s) o "
+            "WHERE u.id = o.id"
+        )
+    )
     op.alter_column(TABLE, "university_code", nullable=False, server_default=sa.text(CODE_DEFAULT))
 
-    names = set() if inspector is None else ({c["name"] for c in inspector.get_unique_constraints(TABLE)}
-                                             | {c["name"] for c in inspector.get_check_constraints(TABLE)}
-                                             | {i["name"] for i in inspector.get_indexes(TABLE)})
+    names = (
+        set()
+        if inspector is None
+        else ({c["name"] for c in inspector.get_unique_constraints(TABLE)} | {c["name"] for c in inspector.get_check_constraints(TABLE)} | {i["name"] for i in inspector.get_indexes(TABLE)})
+    )
     if UNIQUE not in names:
         op.create_unique_constraint(UNIQUE, TABLE, ["university_code"])
     for name, sql in CHECKS.items():
@@ -103,8 +108,7 @@ def upgrade() -> None:
             sa.CheckConstraint("(system = 'Other') = (other_name IS NOT NULL)", name="ck_university_rankings_other_name"),
             sa.CheckConstraint("year BETWEEN 1900 AND 2100", name="ck_university_rankings_year"),
         )
-        op.create_index("uq_university_rankings_entry", "university_rankings",
-                        ["university_id", "system", sa.text("coalesce(other_name, '')"), "year"], unique=True)
+        op.create_index("uq_university_rankings_entry", "university_rankings", ["university_id", "system", sa.text("coalesce(other_name, '')"), "year"], unique=True)
     if "university_assignment_history" not in tables:
         op.create_table(
             "university_assignment_history",
@@ -122,13 +126,15 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql:
-        found = op.get_bind().execute(sa.text(
-            "SELECT 1 FROM university_rankings UNION ALL SELECT 1 FROM university_assignment_history UNION ALL "
-            f"SELECT 1 FROM {TABLE} WHERE NOT catalogue_visible OR NOT active LIMIT 1"
-        )).first()
+        found = (
+            op.get_bind()
+            .execute(
+                sa.text(f"SELECT 1 FROM university_rankings UNION ALL SELECT 1 FROM university_assignment_history UNION ALL SELECT 1 FROM {TABLE} WHERE NOT catalogue_visible OR NOT active LIMIT 1")
+            )
+            .first()
+        )
         if found:
-            raise RuntimeError("Cannot downgrade 0104_university_master: rankings, assignment history or internal universities exist. "
-                               "Remove or publish them deliberately first.")
+            raise RuntimeError("Cannot downgrade 0104_university_master: rankings, assignment history or internal universities exist. Remove or publish them deliberately first.")
     op.drop_table("university_assignment_history")
     op.drop_table("university_rankings")
     for name in INDEXES:

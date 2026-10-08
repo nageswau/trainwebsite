@@ -42,8 +42,19 @@ async def test_head_creates_an_internal_university_with_every_master_field(clien
     assert body["catalogue_visible"] is False and body["active"] is True
     assert body["slug"].startswith("abc-university-")
     assert body["website"] == "https://abc.ac.uk"
-    for key in ("name", "city", "institution_type", "ownership_type", "state_region", "course_levels", "popular_programs",
-                "international_office", "existing_relationship", "priority", "partnership_potential"):
+    for key in (
+        "name",
+        "city",
+        "institution_type",
+        "ownership_type",
+        "state_region",
+        "course_levels",
+        "popular_programs",
+        "international_office",
+        "existing_relationship",
+        "priority",
+        "partnership_potential",
+    ):
         assert body[key] == sent[key], key
     assert body["country"]["id"] == str(country.id) and body["country"]["iso2"] == "GB" and body["country"]["region"] == "UK"
     assert [(r["system"], r["other_name"], r["year"], r["rank"]) for r in body["rankings"]] == [("Other", "Guardian", 2025, "201-250"), ("QS", None, 2026, "145")]
@@ -76,12 +87,21 @@ async def test_other_roles_cannot_create(client, db_session, role, division):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("override", [
-    {"institution_type": "school"}, {"website": "javascript:alert(1)"}, {"priority": "D"}, {"course_levels": ["Masters"]},
-    {"rankings": [{"system": "Other", "year": 2026, "rank": "1"}]}, {"rankings": [{"system": "QS", "other_name": "X", "year": 2026, "rank": "1"}]},
-    {"rankings": [{"system": "QS", "year": 2026, "rank": "1"}, {"system": "QS", "year": 2026, "rank": "2"}]},
-    {"rankings": [{"system": "QS", "year": 1800, "rank": "1"}]}, {"name": "   "}, {"unknown": 1},
-])
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"institution_type": "school"},
+        {"website": "javascript:alert(1)"},
+        {"priority": "D"},
+        {"course_levels": ["Masters"]},
+        {"rankings": [{"system": "Other", "year": 2026, "rank": "1"}]},
+        {"rankings": [{"system": "QS", "other_name": "X", "year": 2026, "rank": "1"}]},
+        {"rankings": [{"system": "QS", "year": 2026, "rank": "1"}, {"system": "QS", "year": 2026, "rank": "2"}]},
+        {"rankings": [{"system": "QS", "year": 1800, "rank": "1"}]},
+        {"name": "   "},
+        {"unknown": 1},
+    ],
+)
 async def test_invalid_input_is_422(client, db_session, override):
     await as_role(client, db_session, "super_admin", "global")
     assert (await client.post(BASE, json=payload((await catalogue_country(db_session)).id, **override))).status_code == 422
@@ -198,10 +218,14 @@ async def test_head_assigns_team_members_and_history_records_each_slot(client, d
     assert body["primary_manager"]["id"] == str(pm.id) and body["backup_manager"]["id"] == str(pm2.id)
     swapped = await client.post(url(uni["id"], "assign"), json={"primary_manager_user_id": str(pm2.id), "backup_manager_user_id": None})
     assert swapped.status_code == 200 and swapped.json()["university"]["backup_manager"] is None
-    rows = (await db_session.scalars(select(UniversityAssignmentHistory).where(UniversityAssignmentHistory.university_id == uuid.UUID(uni["id"]))
-                                    .order_by(UniversityAssignmentHistory.created_at, UniversityAssignmentHistory.slot.desc()))).all()
-    assert [(r.slot, r.from_user_id, r.to_user_id) for r in rows] == [
-        ("primary", None, pm.id), ("backup", None, pm2.id), ("primary", pm.id, pm2.id), ("backup", pm2.id, None)]
+    rows = (
+        await db_session.scalars(
+            select(UniversityAssignmentHistory)
+            .where(UniversityAssignmentHistory.university_id == uuid.UUID(uni["id"]))
+            .order_by(UniversityAssignmentHistory.created_at, UniversityAssignmentHistory.slot.desc())
+        )
+    ).all()
+    assert [(r.slot, r.from_user_id, r.to_user_id) for r in rows] == [("primary", None, pm.id), ("backup", None, pm2.id), ("primary", pm.id, pm2.id), ("backup", pm2.id, None)]
     assert all(r.actor_user_id == head.id for r in rows)
 
 

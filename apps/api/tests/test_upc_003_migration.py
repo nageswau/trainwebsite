@@ -20,9 +20,21 @@ _spec.loader.exec_module(_migration)
 
 BASE, HEAD = "0103_partnership_profiles", "0104_university_master"
 NEW_COLUMNS = {
-    "university_code", "institution_type", "ownership_type", "state_region", "website", "course_levels", "popular_programs",
-    "international_office", "existing_relationship", "primary_manager_user_id", "backup_manager_user_id", "priority",
-    "partnership_potential", "active", "catalogue_visible",
+    "university_code",
+    "institution_type",
+    "ownership_type",
+    "state_region",
+    "website",
+    "course_levels",
+    "popular_programs",
+    "international_office",
+    "existing_relationship",
+    "primary_manager_user_id",
+    "backup_manager_user_id",
+    "priority",
+    "partnership_potential",
+    "active",
+    "catalogue_visible",
 }
 CATALOGUE = "SELECT id, slug, name, country_id, city, overview FROM universities ORDER BY slug"
 
@@ -41,18 +53,19 @@ def test_model_matches_the_migration():
     assert not table.c.university_code.nullable and not table.c.institution_type.nullable
     assert UNIVERSITY_CHECKS == _migration.CHECKS  # the migration repeats the model's CHECK strings
     assert {c.name for c in UniversityRanking.__table__.columns} == {"id", "university_id", "system", "other_name", "year", "rank", "created_at"}
-    assert {c.name for c in UniversityAssignmentHistory.__table__.columns} == {
-        "id", "university_id", "slot", "from_user_id", "to_user_id", "actor_user_id", "created_at"}
+    assert {c.name for c in UniversityAssignmentHistory.__table__.columns} == {"id", "university_id", "slot", "from_user_id", "to_user_id", "actor_user_id", "created_at"}
 
 
 @pytest.mark.asyncio
 async def test_columns_and_indexes_exist_in_the_shared_database(db_session):
     conn = await db_session.connection()
-    columns, indexes, uniques = await conn.run_sync(lambda sync: (
-        {c["name"] for c in inspect(sync).get_columns("universities")},
-        {i["name"] for i in inspect(sync).get_indexes("universities")},
-        {u["name"] for u in inspect(sync).get_unique_constraints("universities")},
-    ))
+    columns, indexes, uniques = await conn.run_sync(
+        lambda sync: (
+            {c["name"] for c in inspect(sync).get_columns("universities")},
+            {i["name"] for i in inspect(sync).get_indexes("universities")},
+            {u["name"] for u in inspect(sync).get_unique_constraints("universities")},
+        )
+    )
     assert NEW_COLUMNS <= columns
     assert {"ix_universities_primary_manager", "ix_universities_backup_manager", "ix_universities_priority"} <= indexes
     assert "uq_universities_code" in uniques
@@ -72,9 +85,12 @@ def isolated_db():
         command.downgrade(cfg, BASE)
         country = _sql(url, "SELECT id FROM countries WHERE iso2 = 'GB'")[0][0]
         for slug in ("zeta-university", "alpha-university"):
-            _sql(url, "INSERT INTO universities (id, country_id, slug, name, city, overview, eligibility, requirements, deadlines, scholarships) "
-                      "VALUES (gen_random_uuid(), :country, :slug, :slug, 'London', 'An overview', '', '[]', '[]', '[]')",
-                 {"country": country, "slug": slug})
+            _sql(
+                url,
+                "INSERT INTO universities (id, country_id, slug, name, city, overview, eligibility, requirements, deadlines, scholarships) "
+                "VALUES (gen_random_uuid(), :country, :slug, :slug, 'London', 'An overview', '', '[]', '[]', '[]')",
+                {"country": country, "slug": slug},
+            )
         yield {"cfg": cfg, "url": url}
     finally:
         settings.database_url = original

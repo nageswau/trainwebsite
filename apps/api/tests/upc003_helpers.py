@@ -7,8 +7,7 @@ from sqlalchemy import select
 from app.models import Country, OverseasApplication, PartnershipProfile, User
 from tests.upc001_helpers import as_role, emp, login, make_head, make_user
 
-__all__ = ["BASE", "as_role", "catalogue_country", "create", "internal_country", "login", "make_application", "make_head", "make_pm",
-           "make_user", "payload", "url"]
+__all__ = ["BASE", "as_role", "catalogue_country", "create", "internal_country", "login", "make_application", "make_head", "make_pm", "make_user", "payload", "url"]
 
 BASE = "/api/v1/partnership/universities"
 
@@ -34,10 +33,19 @@ async def make_pm(db, head: User, *, active: bool = True, name: str | None = Non
 
 def payload(country_id, **overrides) -> dict:
     body = {
-        "name": f"ABC University {uuid.uuid4().hex[:8]}", "country_id": str(country_id), "city": "London", "institution_type": "university",
-        "ownership_type": "public", "state_region": "Greater London", "website": "abc.ac.uk", "course_levels": ["UG", "PG"],
-        "popular_programs": ["Business", "Engineering"], "international_office": "intl@abc.ac.uk, +44 20 0000 0000",
-        "existing_relationship": "new", "priority": "A", "partnership_potential": "high",
+        "name": f"ABC University {uuid.uuid4().hex[:8]}",
+        "country_id": str(country_id),
+        "city": "London",
+        "institution_type": "university",
+        "ownership_type": "public",
+        "state_region": "Greater London",
+        "website": "abc.ac.uk",
+        "course_levels": ["UG", "PG"],
+        "popular_programs": ["Business", "Engineering"],
+        "international_office": "intl@abc.ac.uk, +44 20 0000 0000",
+        "existing_relationship": "new",
+        "priority": "A",
+        "partnership_potential": "high",
         "rankings": [{"system": "QS", "year": 2026, "rank": "145"}, {"system": "Other", "other_name": "Guardian", "year": 2025, "rank": "201-250"}],
     }
     body.update(overrides)
