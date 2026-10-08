@@ -75,7 +75,8 @@ async def test_same_name_gets_a_distinct_slug(client, db_session):
     await as_role(client, db_session, "super_admin", "global")
     country = await catalogue_country(db_session)
     name = f"Twin University {uuid.uuid4().hex[:6]}"
-    first, second = await create(client, country.id, name=name), await create(client, country.id, name=name)
+    # upc-004: the same name + country is a duplicate, so the second one is a super_admin override
+    first, second = await create(client, country.id, name=name), await create(client, country.id, name=name, duplicate_reason="A separate campus, same name")
     assert first["slug"] != second["slug"] and second["slug"].endswith(second["university_code"].lower())
 
 

@@ -6772,6 +6772,10 @@ CourseLevels = Annotated[list[Literal[COURSE_LEVELS]], Field(max_length=len(COUR
 PopularPrograms = Annotated[list[Annotated[str, AfterValidator(_program)]], Field(max_length=UNIVERSITY_MAX_PROGRAMS), AfterValidator(_distinct)]
 
 
+# upc-004 UD2: why a head / super_admin adds a university that matches an existing one (audited; ignored when nothing matches).
+DuplicateReason = Annotated[str, StringConstraints(strip_whitespace=True, min_length=10, max_length=500)] | None
+
+
 class UniversityCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: UniversityName
@@ -6790,6 +6794,7 @@ class UniversityCreate(BaseModel):
     overview: UniversityBody = ""
     eligibility: UniversityBody = ""
     rankings: UniversityRankings = []
+    duplicate_reason: DuplicateReason = None
 
 
 class UniversityUpdate(BaseModel):
@@ -6813,6 +6818,7 @@ class UniversityUpdate(BaseModel):
     overview: UniversityBody = None
     eligibility: UniversityBody = None
     rankings: UniversityRankings = None
+    duplicate_reason: DuplicateReason = None
 
 
 class UniversityAssign(BaseModel):
@@ -6887,8 +6893,44 @@ class UniversityDetail(UniversityRow):
     eligibility: str
     rankings: list[UniversityRankingOut]
     application_count: int
+    linked_bdm_organizations: list["LinkedBdmOrganization"]  # upc-004 UD11
     created_at: datetime
     updated_at: datetime
+
+
+class LinkedBdmOrganization(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    city: str
+    bdm_type: str
+    assigned_bdm_name: str
+    archived: bool
+
+
+class UniversityMatchCountry(BaseModel):
+    id: UUID
+    name: str
+
+
+class UniversityMatch(BaseModel):
+    """upc-004 UD5: the duplicate panel's fields (no commission, for every role that sees it)."""
+
+    id: UUID
+    university_code: str
+    name: str
+    country: UniversityMatchCountry
+    city: str
+    active: bool
+    catalogue_visible: bool
+    existing_relationship: str | None
+    primary_manager: BdmManagerRef | None
+    backup_manager: BdmManagerRef | None
+
+
+class UniversityMatchPage(BaseModel):
+    items: list[UniversityMatch]
+    total: int
 
 
 class UniversityEnvelope(BaseModel):
