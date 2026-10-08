@@ -5015,6 +5015,28 @@ Renumbered again on merging `main` @ `060989ff`: rec-002 took `DEC-SCOPE-117` / 
 `/partnership/profile`, `/partnership/head/team`, `/admin/partnership-managers`, `/overseas/admin/partnership-managers`.
 **New Feature ID authorized:** `upc-001`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-001.
 
+### DEC-SCOPE-119 — Recruiter Skills Master (`rec-006`)
+
+**Evidence:** `EVID-018` S2-§2 (lines 1126–1216) and S2-§16 (lines 1607–1643); `RECRUITER_CRM_BACKLOG.md` §rec-006 (AC1–AC3).
+**Status:** `EXPLICIT_APPROVAL`. The owner answered S1 and S2 in session on 2026-10-08. They asked for the recommended answers on the
+remaining points (S3–S6), which follow the rec-002 C3 precedent. Migration `0104_skills_master`. API §12AM. RBAC §2.45.
+Spec `docs/superpowers/specs/2026-10-08-rec-006-skills-master-design.md`. Numbers follow upc-002 (`0101`, §12AJ), rec-002 (`DEC-SCOPE-117`, `0102`, §12AK, §2.43) and upc-001 (`DEC-SCOPE-118`, `0103`, §12AL, §2.44).
+
+| # | Point | Answer |
+|---|---|---|
+| S1 | Skill merge (backlog edge case) | **Deferred to rec-011**, which has candidate skills to re-point. Until then a duplicate is deactivated and its names are re-added as aliases |
+| S2 | Recruiter "suggest" | **Read-only.** Recruiters get the API and a read-only page. There is no suggestion queue; a recruiter asks their manager |
+| S3 | Readers / writers | Readers: `placement_team`, `placement_manager`, `super_admin`. Writers: `placement_manager`, `super_admin`. `hr_team`, `it_admin` and every other role get `403` |
+| S4 | Related skills | `skill_related` is built. "Core Java" is both a §2 skill and a §16 Java synonym, and an alias may not equal a skill name, so Java ⇄ Core Java is a seeded related pair |
+| S5 | JavaScript in two categories | One skill: primary category Programming plus a Frontend tag (`skill_category_tags`) |
+| S6 | Deletion | Skills and categories are deactivated, never deleted. Aliases, related links and tags are deleted (audited) |
+
+**Consequences:**
+- Five new tables, seeded with 5 categories, 37 skills, 9 aliases and 1 related pair. Nothing existing is read or written.
+- `services/skills.resolve()` is the single normaliser for rec-007, rec-011, rec-012 and rec-013.
+- New pages: `/recruiter/manager/skills` (edit) and `/recruiter/skills` (read-only).
+- **New Feature ID authorized:** `rec-006`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-006.
+
 ### DEC-SCOPE-120 — Candidate master (`rec-009`)
 
 **Evidence:** `EVID-018` §8 (lines 390–434), §9 (436–473), quick action "+ Add Candidate" (46), S2-§13 (1541–1561), S2-§20 (1750, 1778);
@@ -5023,7 +5045,7 @@ whole pool).
 **Status:** Q-07 and Q-08 are `EXPLICIT_APPROVAL` (the owner answered in session on 2026-10-08). Q-09, Q-31 and Q-32 are recommended
 defaults, taken on the user's instruction to proceed with the recommended answers. The retention and erasure part of Q-09 stays
 `NEEDS_CONFIRMATION`. **Numbering is provisional** (migration `0105_candidates`, API §12AN, RBAC §2.46), because the parallel rec-006
-(`0103`, `DEC-SCOPE-118`) and rec-003 (`DEC-SCOPE-119`) branches claimed the lower numbers. Since then upc-001 merged with `0103_partnership_profiles` / `DEC-SCOPE-118` / §12AL / §2.44, and `0105` is now chained after `0103_partnership_profiles`. Re-checked at merge.
+(`0103`, `DEC-SCOPE-118`) and rec-003 (`DEC-SCOPE-119`) branches claimed the lower numbers. Since then upc-001 merged with `0103_partnership_profiles` / `DEC-SCOPE-118` / §12AL / §2.44, and rec-006 merged with `0104_skills_master` / `DEC-SCOPE-119` / §12AM / §2.45. `0105` is now chained after `0104_skills_master`, and `DEC-SCOPE-120` / §12AN / §2.46 are the next free numbers on `main`. Re-check them if another item merges first.
 Spec `docs/superpowers/specs/2026-10-08-rec-009-candidate-master-design.md`.
 
 | # | Point | Answer |

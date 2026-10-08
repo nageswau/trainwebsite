@@ -119,12 +119,14 @@ export const TELECALLER_SIGN_IN = "/telecaller/sign-in";
 // placement manager's pages (managers sign in at /admin). Later rec items add their pages here.
 const LEGACY_PLACEMENT = ["candidates", "company-requirements", "interviews", "offers", "reports"];
 export const RECRUITER_NAV: NavItem[] = [
-  { label: "Dashboard", href: "/recruiter/dashboard" }, { label: "Profile", href: "/recruiter/profile" },
+  { label: "Dashboard", href: "/recruiter/dashboard" }, { label: "Profile", href: "/recruiter/profile" }, { label: "Skills Master", href: "/recruiter/skills" },
   { label: "Candidate Master", href: "/recruiter/candidates" }, // rec-009
   ...LEGACY_PLACEMENT.map((x) => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, (c) => c.toUpperCase()), href: `/it/placement/${x}` })),
 ];
-export const RECRUITER_MANAGER_NAV: NavItem[] = [{ label: "Team", href: "/recruiter/manager/team" }, { label: "Catalogues", href: "/recruiter/manager/catalogue" },
-  { label: "Candidate Master", href: "/recruiter/candidates" }]; // rec-009: shared with recruiters (R11)
+export const RECRUITER_MANAGER_NAV: NavItem[] = [
+  { label: "Team", href: "/recruiter/manager/team" }, { label: "Catalogues", href: "/recruiter/manager/catalogue" }, { label: "Skills Master", href: "/recruiter/manager/skills" },
+  { label: "Candidate Master", href: "/recruiter/candidates" }, // rec-009: shared with recruiters (R11)
+];
 
 // upc-001 (PU8): the EVID-020 §32 main menu, in source order, each entry naming the item that builds its page. An entry joins the
 // manager's sidebar once that item lands (it sets `live`); until then the dashboard lists it as coming soon, never as a dead link.
