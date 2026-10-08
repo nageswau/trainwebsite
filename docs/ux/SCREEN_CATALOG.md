@@ -2945,6 +2945,25 @@ Five screens (seven routes) added by `tel-001` (design spec `docs/superpowers/sp
 - **Route:** `/telecaller/manager/team`. **Role(s):** `telecaller_manager` (direct reports), `super_admin` (all). **Data:** `GET /telecaller/manager/team?offset=`. **Content:** table (name, Employee ID, team, mobile, status as a word in a badge) in a labelled, focusable scroll region with a `<caption>`; Previous / Next links. **States:** empty — "No telecallers report to you yet."; past-the-end offset — a message with "Go to the first page"; error — the access-unavailable block, sign-in link `/admin/login`. **Responsive:** the table scrolls horizontally inside its region; the page never does.
 - **Route:** `/admin/telecallers` (also `/it/admin/telecallers`, `/overseas/admin/telecallers`). **Role(s):** `super_admin` (both teams), `it_admin` (IT; also reachable by `super_admin`), `overseas_admin` (Overseas; also reachable by `super_admin`). **Data:** `GET /admin/telecallers`, `GET /admin/telecaller-managers`, `POST` / `PATCH /admin/users`. **Content:** create form (full name, email, mobile, team — fixed text for a division admin, a two-option select for `super_admin`, Employee ID, reporting manager via a server-search picker), list with row edit (name, mobile, Employee ID, manager; team read-only, TL7) and activate / deactivate with inline confirmation; "No active manager" badge when `manager_active` is false. **States:** loading — "Loading telecallers…"; empty — "No telecallers yet. Use the Create telecaller form to add the first one."; a search with no match — "No telecallers match “…”."; error — "Unable to load telecallers." with Retry; past the end of the list — "This page is past the end of the list." with "Go to the first page"; no active manager — "No active telecaller manager — a Super Admin must create one first", submit disabled; create success — the welcome-link feedback; server 403 / 409 / 422 messages inline; a save names the telecaller as saved ("Saved ⟨new name⟩."). A second click while a create is in flight sends nothing. **Responsive:** below 640px each row is a card — name and email, then labelled Employee ID / Team / Manager / Status lines, then Edit / Deactivate — so nothing sits off-screen; tablet and desktop keep the table (tel-001 QA-03/04/05). Up to 980px, where the list comes before the form, the list card starts with a "Create telecaller" link that scrolls to the form and focuses Full name.
 
+## rec-003 addendum (2026-10-08, `DEC-SCOPE-121`) — Recruiter company master
+
+Three screens (design spec `docs/superpowers/specs/2026-10-08-rec-003-company-master-design.md` §6), on the bdm-002 organization
+layout. Visual reference: none.
+
+- **Routes / roles:** `/recruiter/companies` (list), `/recruiter/companies/new` (add), `/recruiter/companies/[id]` (detail). Recruiter
+  ("Companies" in the recruiter menu), placement manager ("Companies" in the manager menu), super admin ("Recruiter Companies"), and the
+  Assigned BDM (read only, BDM menu). Other roles see "Recruiter role required"; signed out → `/it/login?next=…`.
+- **List:** per-role heading ("Your companies", "Your team's companies", "All companies", "Companies you are linked to"); filters in the
+  URL (name or code, city, priority, lead source, industry, recruiter incl. Unassigned for managers, Show archived); columns Code,
+  Company, City, Priority, Lead source, Industry, Recruiter; pager over 50. Below 980 px each row is a card of labelled lines.
+- **Add / edit form:** Company details (name required, website, LinkedIn, industry, size, employees, city, state, country, head office,
+  branches, description) and Lead (lead source, campaign filtered by source, priority, Assigned BDM server-search picker; on add, a
+  manager may pick a recruiter). Inactive stored values show as "(inactive)". Duplicate warning with "Save anyway" / "Go back".
+- **Detail:** code, name, Archived badge; Edit / Archive (recruiter) / Restore (manager); Details list (links only for http(s));
+  Assignment card with Assign/Reassign (manager); Assignment history.
+- **States:** loading, error with Retry, empty / no match / past the end, `role="status"` notices ("Company CMP-… created.", "Changes
+  saved.", "Company archived.", "Company assigned to …"), field errors with `aria-invalid`, double-submit guard, leave guard.
+
 ## rec-002 addendum (2026-10-08, `DEC-SCOPE-117`) — Recruiter catalogues
 
 One tabbed screen (design spec `docs/superpowers/specs/2026-10-08-rec-002-recruiter-catalogues-design.md` §5). It uses the tel-002 layout.
@@ -3163,7 +3182,7 @@ is invented. Visual-reference mapping: None — not inspected. Do not claim pari
   EduSphere owner (primary/backup, the assign pickers for a head or Super Admin), Public catalogue (status sentence, overview, Publish /
   Remove from catalogue, Deactivate with an inline confirm naming the applications, Reactivate). Edit link when allowed.
 
-## upc-007 addendum (2026-10-08, `DEC-SCOPE-121`) — Partnership stage + Kanban
+## upc-007 addendum (2026-10-08, `DEC-SCOPE-123`) — Partnership stage + Kanban
 
 One route added and two screens extended by `upc-007` (design spec `docs/superpowers/specs/2026-10-08-upc-007-partnership-pipeline-design.md` §4). No catalogue ID is invented. Visual-reference mapping:
 None — not inspected. Do not claim parity. Roles: `partnership_manager`, `partnership_head`, `overseas_admin`, `super_admin` (each in its

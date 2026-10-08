@@ -452,8 +452,8 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-007 — Partnership stage engine + history + Kanban
-- **Status (2026-10-08):** built on `feature/upc-007` under `DEC-SCOPE-121`, with migration `0106_university_pipeline`, API §12AO and
-  RBAC §2.47. Spec: `docs/superpowers/specs/2026-10-08-upc-007-partnership-pipeline-design.md`.
+- **Status (2026-10-08):** built on `feature/upc-007` under `DEC-SCOPE-123`, with migration `0108_university_pipeline`, API §12AQ and
+  RBAC §2.49. Spec: `docs/superpowers/specs/2026-10-08-upc-007-partnership-pipeline-design.md`.
   - PS1–PS12 are recommended defaults (`NEEDS_CONFIRMATION`): 15 stored stages (the source lists 15; "14" below miscounts); existing rows
     start at Target University (Q-08 backfill); Agreement Signed counts as "In Progress" (G2); `overseas_admin` reads only; reopen by the
     head or `super_admin`; Lost and Reopen need a reason.

@@ -1,4 +1,4 @@
-"""upc-007 -- migration 0106_university_pipeline (spec §2, M1). Round trip, backfill and the downgrade refusal run in a throwaway database
+"""upc-007 -- migration 0108_university_pipeline (spec §2, M1). Round trip, backfill and the downgrade refusal run in a throwaway database
 built from scratch (the upc-001 pattern); a downgrade never runs against the shared test database. Plain tests: alembic/env.py calls
 asyncio.run()."""
 
@@ -15,17 +15,17 @@ from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_upc_007_migration_0106", VERSIONS / "0106_university_pipeline.py")
+_spec = importlib.util.spec_from_file_location("_upc_007_migration_0108", VERSIONS / "0108_university_pipeline.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0105_university_master", "0106_university_pipeline"
+BASE, HEAD = "0107_candidates", "0108_university_pipeline"
 NEW_COLUMNS = {"stage", "stage_changed_at", "lost_at", "lost_reason"}
 HISTORY_COLUMNS = {"id", "university_id", "actor_user_id", "kind", "from_stage", "to_stage", "note", "position", "created_at"}
 CATALOGUE = "SELECT id, slug, name, university_code, catalogue_visible FROM universities ORDER BY slug"
 
 
-def test_migration_chains_after_0105_and_is_the_single_head():
+def test_migration_chains_after_0107_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
@@ -59,7 +59,7 @@ async def test_columns_and_indexes_exist_in_the_shared_database(db_session):
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0105 holding two universities."""
+    """A fresh database at 0107 holding two universities."""
     cfg = _config()
     original = settings.database_url
     name = f"upc007_migration_{uuid.uuid4().hex[:8]}"

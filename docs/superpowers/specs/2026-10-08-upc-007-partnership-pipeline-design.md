@@ -2,15 +2,16 @@
 
 **Status:** design written 2026-10-08. The owner's standing instruction for this session is "proceed with the recommended answers;
 ask only if genuinely blocking". So the item answers PS1–PS12 (§1) are **recommended defaults accepted under that instruction**
-(`NEEDS_CONFIRMATION` as separate per-question approvals) and are registered that way in `DEC-SCOPE-121`.
+(`NEEDS_CONFIRMATION` as separate per-question approvals) and are registered that way in `DEC-SCOPE-123`.
 
 **Branch:** `feature/upc-007`, cut from `origin/main` @ `593e9b9c` (after #151, upc-003).
 **Backlog:** `docs/delivery/UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §4 upc-007, §3.1 U7, Appendix B "Stage groupings". Dependency upc-003
 (`0105_university_master`, `DEC-SCOPE-120`) is merged on main — verified in code.
 **Source:** `EVID-020` §3 (L92–L154, 15 statuses; the backlog's "14" miscounts the source, which Appendix A (L98–L154) and Appendix B both list as 15), §4 (L156–L174, Kanban with 9 columns), §32 menu entry "Partnership Pipeline" (L1072),
 §33 record tab "Partnership status" (L1110).
-**Numbering:** migration `0106_university_pipeline`, `DEC-SCOPE-121`, API §12AO, RBAC §2.47 (renumbered at merge if another item lands
-first).
+**Numbering:** migration `0108_university_pipeline`, `DEC-SCOPE-123`, API §12AQ, RBAC §2.49 (renumbered at merge if another item lands
+first). Drafted as `0106` / `DEC-SCOPE-121` / §12AO / §2.47; renumbered on merging `main` @ `a62ad9d7` (rec-003 and rec-009 took
+`0106`–`0107`, `DEC-SCOPE-121`–`122`, §12AO–§12AP, §2.47–§2.48 first).
 **Gate:** `APPROVAL_GATES.md` GATE-09.
 **Template:** bdm-004 (`bdm_stages.py`, `services/bdm_pipeline.py`, `api/bdm_pipeline.py`, `BdmPipelineBoard.tsx`,
 `BdmOrganizationPipeline.tsx`, `BdmStageHistory.tsx`) — same rules (stale `from_stage` → 409, backward needs a note, Lost is a flag on
@@ -33,7 +34,7 @@ top of the kept stage), applied to `universities`.
 | PS11 | Board scope | `GET /partnership/pipeline` for every read role (managers read every row, UM9). Filters: `column` (K key or `lost`), `manager` (`me`/`none`/uuid, the list's rule). The page defaults managers to "Mine" with an "All" toggle; others see all. Inactive universities are excluded; lost ones are counted only in `lost_count` and listed only under `column=lost` (Appendix B: excluded from K) |
 | PS12 | Board shape | The `BdmPipelineBoard` pattern (backlog): 9 column tiles + Lost with counts as links, then a paged table of the chosen column (or every open university). Server-rendered; filters in the URL |
 
-## 2. Data model — migration `0106_university_pipeline`
+## 2. Data model — migration `0108_university_pipeline`
 
 `universities` gains (guarded, since 0001 builds from models):
 
@@ -108,7 +109,7 @@ commit), `api/partnership_pipeline.py`.
 2. Schemas + service + stage/lost/reopen routes with tests (rules, access, history, audit, concurrency).
 3. Board route tests then code; row/detail output fields.
 4. Frontend lib + components + pages + nav with vitest.
-5. Playwright `upc-007-partnership-pipeline.spec.ts`; docs (DEC-SCOPE-121, API §12AO, RBAC §2.47, DATA_MODEL, SCREEN_CATALOG, backlog).
+5. Playwright `upc-007-partnership-pipeline.spec.ts`; docs (DEC-SCOPE-123, API §12AQ, RBAC §2.49, DATA_MODEL, SCREEN_CATALOG, backlog).
 
 ## 7. Regression set (lite)
 

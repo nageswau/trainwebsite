@@ -316,8 +316,29 @@ class Certificate(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(30), default="issued")
 
 
+# rec-003 (DEC-SCOPE-121 D1): CMP-000001. MAXVALUE keeps lpad from ever truncating a code; uq_companies_code is the backstop.
+COMPANY_CODE_SEQ = Sequence("company_code_seq", maxvalue=999999, metadata=Base.metadata)
+COMPANY_NAME_KEY_SQL = r"lower(regexp_replace(btrim(name), '\s+', ' ', 'g'))"
+COMPANY_CHECKS = {
+    "ck_companies_priority": "priority IS NULL OR priority IN ('hot', 'warm', 'cold')",
+    "ck_companies_employee_count": "employee_count IS NULL OR employee_count BETWEEN 0 AND 10000000",
+}
+
+
 class Company(Base, TimestampMixin):
+    """rec-003 (DEC-SCOPE-121, R3): the recruiter lead and the company are one row; the lead ID is `company_code`, which every insert
+    path gets from the server default. The recruiter columns are nullable: EMP-001 registration and `/workflows/it/jobs` auto-create
+    still write only name/website/ownership, and NULL `assigned_recruiter_user_id` is the managers' unassigned queue."""
+
     __tablename__ = "companies"
+    __table_args__ = (
+        UniqueConstraint("company_code", name="uq_companies_code"),
+        *(CheckConstraint(sql, name=name) for name, sql in COMPANY_CHECKS.items()),
+        Index("ix_companies_assigned_recruiter", "assigned_recruiter_user_id"),
+        Index("ix_companies_assigned_bdm", "assigned_bdm_user_id"),
+        Index("ix_companies_name_key", text(COMPANY_NAME_KEY_SQL)),  # the duplicate check (services/recruiter_companies.NAME_KEY)
+    )
+    __mapper_args__ = {"eager_defaults": True}  # INSERT ... RETURNING company_code: no lazy load of the server default under asyncio
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(String(180), unique=True)
     website: Mapped[str | None] = mapped_column(String(300), nullable=True)
@@ -329,6 +350,37 @@ class Company(Base, TimestampMixin):
     # #1) -- a parallel table would force a premature answer.
     owner_type: Mapped[str] = mapped_column(String(30), default="internal")
     employer_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    company_code: Mapped[str] = mapped_column(String(20), server_default=text("'CMP-' || lpad(nextval('company_code_seq')::text, 6, '0')"))
+    linkedin_url: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    industry_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_industries.id"), nullable=True)
+    company_size_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_company_sizes.id"), nullable=True)
+    employee_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    city: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    state: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    country: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    head_office: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    branches: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    description: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    lead_source_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_lead_sources.id"), nullable=True)
+    campaign_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_campaigns.id"), nullable=True)
+    priority: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    assigned_recruiter_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    assigned_bdm_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class CompanyAssignmentHistory(Base):
+    """rec-003: one row per change of a company's recruiter. Append-only; `from_user_id` NULL = it was in the unassigned queue."""
+
+    __tablename__ = "company_assignment_history"
+    __table_args__ = (Index("ix_company_assignment_history_company", "company_id"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id"))
+    from_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    to_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    changed_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class EmployerProfile(Base, TimestampMixin):
@@ -465,7 +517,7 @@ UNIVERSITY_CHECKS = {
     "ck_universities_partnership_potential": _one_of("partnership_potential", PARTNERSHIP_POTENTIALS),
     "ck_universities_backup_needs_primary": "backup_manager_user_id IS NULL OR (primary_manager_user_id IS NOT NULL AND backup_manager_user_id <> primary_manager_user_id)",
 }
-# upc-007 (DEC-SCOPE-121, spec §2): the stored partnership stage and the Lost flag. Migration 0106 repeats both dicts;
+# upc-007 (DEC-SCOPE-123, spec §2): the stored partnership stage and the Lost flag. Migration 0108 repeats both dicts;
 # test_upc_007_migration asserts they stay identical.
 UNIVERSITY_STAGE_EVENT_KINDS = ("move", "lost", "reopened")
 UNIVERSITY_PIPELINE_CHECKS = {
@@ -3470,3 +3522,75 @@ class SkillRelated(Base):
     __table_args__ = (CheckConstraint("skill_a_id < skill_b_id", name="ck_skill_related_order"),)
     skill_a_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("skills.id", ondelete="CASCADE"), primary_key=True)
     skill_b_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("skills.id", ondelete="CASCADE"), primary_key=True)
+
+
+# rec-009 (DEC-SCOPE-122, spec §3): the central candidate master. Q-08: the status is set by hand, from these values.
+CANDIDATE_STATUSES = ("available", "interviewing", "placed", "not_looking", "do_not_contact")
+# On the metadata so 0001's create_all builds it for a fresh database; 0107 creates it IF NOT EXISTS.
+CANDIDATE_CODE_SEQ = Sequence("candidate_code_seq", metadata=Base.metadata)
+CANDIDATE_CHECKS = {  # migration 0107 repeats these strings; test_rec_009_migration asserts they stay identical
+    "ck_candidates_contact": "mobile IS NOT NULL OR email IS NOT NULL",
+    "ck_candidates_status": "status IN (" + ", ".join(f"'{s}'" for s in CANDIDATE_STATUSES) + ")",
+    "ck_candidates_passing_year": "passing_year IS NULL OR passing_year BETWEEN 1950 AND 2100",
+    "ck_candidates_experience": "experience_months IS NULL OR experience_months BETWEEN 0 AND 600",
+    "ck_candidates_notice": "notice_days IS NULL OR notice_days BETWEEN 0 AND 365",
+    "ck_candidates_salary": "(current_salary IS NULL OR current_salary >= 0) AND (expected_salary IS NULL OR expected_salary >= 0)",
+}
+
+
+class Candidate(Base, TimestampMixin):
+    """rec-009: one person in the recruiter pool -- external (no login) or, from rec-010, an IT student who opted in (`user_id`).
+    Q-07: one person is one candidate -- the normalised mobile and the lower-cased email are each unique. Archived, never deleted."""
+
+    __tablename__ = "candidates"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in CANDIDATE_CHECKS.items()),
+        Index("uq_candidates_mobile", "mobile_normalized", unique=True, postgresql_where=text("mobile_normalized IS NOT NULL")),
+        Index("uq_candidates_email", text("lower(email)"), unique=True, postgresql_where=text("email IS NOT NULL")),
+        Index("ix_candidates_source_id", "source_id"),
+        Index("ix_candidates_status", "status"),
+        Index("ix_candidates_created_at", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    candidate_code: Mapped[str] = mapped_column(String(12), unique=True)
+    name: Mapped[str] = mapped_column(String(160))
+    mobile: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    mobile_normalized: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    location: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    qualification: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    college: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    passing_year: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    experience_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    current_company: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    current_salary: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    expected_salary: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    notice_days: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    preferred_locations: Mapped[list] = mapped_column(JSON, default=list)
+    preferred_role: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    linkedin: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    source_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_candidate_sources.id"))
+    source_detail: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="available", server_default=text("'available'"))
+    user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), unique=True, nullable=True)
+    opted_in: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    archived_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class CandidateResume(Base):
+    """rec-009 (AC4): one uploaded resume version, append-only. The current resume is the candidate's highest version."""
+
+    __tablename__ = "candidate_resumes"
+    __table_args__ = (UniqueConstraint("candidate_id", "version", name="uq_candidate_resumes_version"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    candidate_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id"))
+    version: Mapped[int] = mapped_column(Integer)
+    storage_key: Mapped[str] = mapped_column(String(300))
+    content_type: Mapped[str] = mapped_column(String(120))
+    file_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
