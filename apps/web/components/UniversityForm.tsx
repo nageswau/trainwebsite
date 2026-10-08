@@ -4,6 +4,7 @@ import { type FormEvent, type ReactNode, useRef, useState } from "react";
 
 import SearchableSelect from "@/components/SearchableSelect";
 import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
+import { formOptional as optional, formText as text } from "@/lib/telecaller";
 import {
   COURSE_LEVELS,
   countrySearch,
@@ -25,8 +26,6 @@ type RankingRow = { key: number; system: string; other_name: string; year: strin
 type Errors = Record<string, string>;
 const MAX_RANKINGS = 10;
 
-const text = (form: FormData, name: string) => String(form.get(name) ?? "").trim();
-const optional = (form: FormData, name: string) => text(form, name) || null;
 
 function fieldErrors(detail: unknown): Errors | null {
   if (!Array.isArray(detail) || detail.length === 0) return null;
@@ -39,12 +38,16 @@ function fieldErrors(detail: unknown): Errors | null {
   return errors;
 }
 
+function ErrorText({ id, error }: { id?: string; error?: string }) {
+  return error ? <p className="field-error" id={id} style={{ color: "var(--red)", fontSize: 13, margin: "4px 0 0" }}>{error}</p> : null;
+}
+
 function Field({ id, label, error, children }: { id: string; label: string; error?: string; children: ReactNode }) {
   return (
     <div className="field">
       <label htmlFor={id}>{label}</label>
       {children}
-      {error && <p className="field-error" id={`${id}-error`} style={{ color: "var(--red)", fontSize: 13, margin: "4px 0 0" }}>{error}</p>}
+      <ErrorText id={`${id}-error`} error={error} />
     </div>
   );
 }
@@ -125,7 +128,7 @@ export default function UniversityForm({ university }: { university?: University
         <div>
           <SearchableSelect id="uni-country" name="country_id" label="Country (required)" noun="country" required search={countrySearch}
             initial={u ? { id: u.country.id, label: u.country.name, detail: [u.country.iso2, u.country.region].filter(Boolean).join(" · ") } : null} />
-          {errors.country_id && <p className="field-error" style={{ color: "var(--red)", fontSize: 13, margin: "4px 0 0" }}>{errors.country_id}</p>}
+          <ErrorText error={errors.country_id} />
         </div>
         <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
           <Field id="uni-city" label="City (required)" error={errors.city}>
@@ -162,7 +165,7 @@ export default function UniversityForm({ university }: { university?: University
               </label>
             ))}
           </div>
-          {errors.course_levels && <p id="uni-course_levels-error" style={{ color: "var(--red)", fontSize: 13, margin: "4px 0 0" }}>{errors.course_levels}</p>}
+          <ErrorText id="uni-course_levels-error" error={errors.course_levels} />
         </fieldset>
         <Field id="uni-popular_programs" label="Popular programme areas" error={errors.popular_programs}>
           <input id="uni-popular_programs" name="popular_programs" maxLength={1700} placeholder="IT, Business, Engineering, Healthcare"
@@ -206,7 +209,7 @@ export default function UniversityForm({ university }: { university?: University
               <button type="button" className="btn secondary small" aria-label={`Remove ranking ${i + 1}`} onClick={() => setRankings((rows) => rows.filter((x) => x.key !== r.key))}>Remove</button>
             </div>
           ))}
-          {errors.rankings && <p style={{ color: "var(--red)", fontSize: 13, margin: "4px 0 8px" }}>{errors.rankings}</p>}
+          <ErrorText error={errors.rankings} />
           {rankings.length < MAX_RANKINGS && (
             <button type="button" className="btn secondary small"
               onClick={() => setRankings((rows) => [...rows, { key: nextKey.current++, system: "QS", other_name: "", year: String(new Date().getFullYear()), rank: "" }])}>

@@ -54,21 +54,24 @@ export function shellFor(role: string): { nav: NavItem[]; roleLabel: string } {
 export const FILTER_KEYS = ["q", "region", "institution_type", "priority", "partnership_potential", "manager", "visibility", "include_inactive"] as const;
 export type Filters = Partial<Record<(typeof FILTER_KEYS)[number] | "offset", string>>;
 
-export function listQuery(filters: Filters, limit: number, offset: number): string {
-  const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-  for (const key of FILTER_KEYS) {
-    const value = filters[key]?.trim();
-    if (value) query.set(key, value);
-  }
-  return query.toString();
-}
-
-export function pageHref(filters: Filters, offset: number): string {
+function filterParams(filters: Filters): URLSearchParams {
   const query = new URLSearchParams();
   for (const key of FILTER_KEYS) {
     const value = filters[key]?.trim();
     if (value) query.set(key, value);
   }
+  return query;
+}
+
+export function listQuery(filters: Filters, limit: number, offset: number): string {
+  const query = filterParams(filters);
+  query.set("limit", String(limit));
+  query.set("offset", String(offset));
+  return query.toString();
+}
+
+export function pageHref(filters: Filters, offset: number): string {
+  const query = filterParams(filters);
   if (offset > 0) query.set("offset", String(offset));
   const text = query.toString();
   return text ? `${UNIVERSITIES_PATH}?${text}` : UNIVERSITIES_PATH;
