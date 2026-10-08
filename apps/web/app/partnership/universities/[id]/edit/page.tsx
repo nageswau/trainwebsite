@@ -5,17 +5,15 @@ import PortalShell from "@/components/PortalShell";
 import UniversityForm from "@/components/UniversityForm";
 import { serverApi } from "@/lib/api";
 import type { User } from "@/lib/types";
-import { shellFor, type University, universityPath, UNIVERSITIES_URL } from "@/lib/universities";
+import { shellFor, type University, universityPath } from "@/lib/universities";
+import { loadUniversity } from "@/lib/universitiesServer";
 
 // upc-003 (AC1, AC4): edit a university's master record. Only someone the API lets edit sees the form; the API re-checks on save.
 export default async function EditUniversityPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   let user: User, university: University;
   try {
-    [user, { university }] = await Promise.all([
-      serverApi<User>("/api/v1/auth/me"),
-      serverApi<{ university: University }>(`${UNIVERSITIES_URL}/${encodeURIComponent(id)}`),
-    ]);
+    [user, university] = await Promise.all([serverApi<User>("/api/v1/auth/me"), loadUniversity(id)]);
   } catch (e) {
     return accessUnavailable(e, "/overseas/login");
   }

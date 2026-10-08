@@ -17,10 +17,10 @@ import {
   shellFor,
   type University,
   UNIVERSITIES_PATH,
-  UNIVERSITIES_URL,
   universityPath,
   visibilityLabel,
 } from "@/lib/universities";
+import { loadUniversity } from "@/lib/universitiesServer";
 
 // upc-003: one university's master record -- the §1 fields, rankings, ownership (§27) and catalogue status. Later upc items add their
 // own sections (contacts, pipeline, agreements, courses ...) to this page.
@@ -39,15 +39,11 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
   const { id } = await params;
   let user: User, u: University;
   try {
-    [user, { university: u }] = await Promise.all([
-      serverApi<User>("/api/v1/auth/me"),
-      serverApi<{ university: University }>(`${UNIVERSITIES_URL}/${encodeURIComponent(id)}`),
-    ]);
+    [user, u] = await Promise.all([serverApi<User>("/api/v1/auth/me"), loadUniversity(id)]);
   } catch (e) {
     return accessUnavailable(e, "/overseas/login");
   }
   const { nav, roleLabel } = shellFor(user.role);
-  const region = [u.state_region, u.country.region].filter(Boolean).join(" · ");
   return (
     <PortalShell nav={nav} roleLabel={roleLabel} userName={user.full_name}>
       <div className="portal-content">
@@ -67,7 +63,8 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
               ["Institution type", label(INSTITUTION_TYPES, u.institution_type)],
               ["Public / private", label(OWNERSHIP_TYPES, u.ownership_type)],
               ["Country", u.country.name],
-              ["State / region", region],
+              ["World region", u.country.region],
+              ["State / region", u.state_region],
               ["City", u.city],
               ["Website", u.website && <a href={u.website} target="_blank" rel="noopener noreferrer">{u.website}</a>],
               ["Course levels", u.course_levels.join(", ")],
