@@ -328,5 +328,6 @@ async def test_existing_catalogue_row_is_editable_and_keeps_its_slug(client, db_
     assert legacy.status_code == 201
     body = (await client.get(url(legacy.json()["id"]))).json()["university"]
     assert body["catalogue_visible"] is True and body["university_code"].startswith("UNV-") and body["institution_type"] == "university"
-    edited = (await client.patch(url(body["id"]), json={"name": "Legacy University"})).json()["university"]
+    # unique: the shared database keeps every earlier run's rows, and upc-004 refuses a rename into an existing name
+    edited = (await client.patch(url(body["id"]), json={"name": f"Legacy University {uuid.uuid4().hex[:8]}"})).json()["university"]
     assert edited["slug"] == legacy.json()["slug"]

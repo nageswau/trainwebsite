@@ -3861,6 +3861,7 @@ class BdmOrganizationCreate(BaseModel):
     student_count: BdmStudentCount = None
     profile: BdmOrgProfileIn | None = None
     contacts: Annotated[list[BdmContactIn], AfterValidator(_bdm_contacts)]
+    university_id: UUID | None = None  # upc-004 UD8: University organizations only
     confirm_duplicate: StrictBool = False
 
 
@@ -3878,6 +3879,7 @@ class BdmOrganizationUpdate(BaseModel):
     courses_interested: BdmOrgCourses = None
     student_count: BdmStudentCount = None
     profile: BdmOrgProfileIn = None  # omitted = unchanged; an explicit null is a 422 (bdm-001's PATCH idiom)
+    university_id: UUID | None = None  # upc-004 UD9: omitted = unchanged; null unlinks
     confirm_duplicate: StrictBool = False
 
 
@@ -4030,10 +4032,20 @@ class BdmOrganizationOut(BdmOrganizationRow):
     pipeline: BdmOrgPipelineOut  # bdm-004: detail only; list rows are unchanged
     onboarding: BdmOrgOnboardingOut | None = None  # bdm-018: School organizations; bdm-019: Agent organizations too
     contacts: list[BdmContactOut]
+    university: "BdmOrgUniversityRef | None" = None  # upc-004 UD10: the linked master record, read-only
     created_by_name: str
     archived_at: datetime | None
     created_at: datetime
     updated_at: datetime
+
+
+class BdmOrgUniversityRef(BaseModel):
+    id: UUID
+    university_code: str
+    name: str
+    country_name: str
+    city: str
+    primary_manager_name: str | None
 
 
 class BdmOrganizationPage(BaseModel):
