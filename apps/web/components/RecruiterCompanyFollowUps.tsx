@@ -1,8 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 
-import type { ContactOption } from "@/components/RecruiterFollowUpForm";
-import RecruiterFollowUpForm from "@/components/RecruiterFollowUpForm";
+import RecruiterFollowUpForm, { type ContactOption } from "@/components/RecruiterFollowUpForm";
 import RecruiterFollowUpItem from "@/components/RecruiterFollowUpItem";
 import type { Page } from "@/lib/apiErrors";
 import { contactsOf, isContactList } from "@/lib/recruiterContacts";
