@@ -20,7 +20,6 @@ from app.services import candidates
 from app.services import recruiter_requirements as requirements
 
 router = APIRouter(prefix="/recruiter", tags=["recruiter-applications"])
-SCOPED_ROLES = ("placement_team", "placement_manager", "super_admin", "bdm")  # rec-007's caller_scope roles
 
 
 async def _item(db: AsyncSession, user: User, application: JobApplication) -> dict:
@@ -97,9 +96,13 @@ async def candidate_applications(candidate_id: UUID, user: User = Depends(get_cu
         )
     ).all()
     in_scope: set = set()
-    if rows and user.role in SCOPED_ROLES:
+    try:
+        scope = await requirements.caller_scope(db, user)
+    except HTTPException:  # a candidate reader with no requirement scope (hr_team) opens none of them
+        scope = None
+    if rows and scope is not None:
         ids = [job.id for _, job, _ in rows]
-        in_scope = set((await db.scalars(select(Job.id).where(Job.id.in_(ids), *await requirements.caller_scope(db, user)))).all())
+        in_scope = set((await db.scalars(select(Job.id).where(Job.id.in_(ids), *scope))).all())
     return {
         "items": [
             {

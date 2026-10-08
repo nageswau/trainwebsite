@@ -6,7 +6,7 @@ import { CANDIDATES_URL, type CandidateItem } from "@/lib/recruiterCandidates";
 import { REQUIREMENTS_URL } from "@/lib/recruiterRequirements";
 
 export type StatusOption = { key: string; label: string };
-export type ApplicationStatus = StatusOption & { next: string[]; initial: boolean };
+export type ApplicationStatus = StatusOption & { initial: boolean };
 export type RecApplication = {
   id: string; job_id: string; candidate: { id: string; code: string; name: string }; status: string; status_label: string;
   stage_changed_at: string; created_at: string; allowed_statuses: StatusOption[];

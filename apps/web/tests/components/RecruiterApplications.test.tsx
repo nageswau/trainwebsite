@@ -9,8 +9,8 @@ import type { CandidateApplication, RecApplication, RequirementCandidates } from
 // allowed statuses, history, the API's 409 shown as-is, read-only viewers) and the candidate's Applications section.
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const STATUSES = [
-  { key: "sourced", label: "Sourced", next: [], initial: true }, { key: "screened", label: "Screened", next: [], initial: true },
-  { key: "shortlisted", label: "Shortlisted", next: [], initial: true }, { key: "interview", label: "Interview", next: [], initial: false },
+  { key: "sourced", label: "Sourced", initial: true }, { key: "screened", label: "Screened", initial: true },
+  { key: "shortlisted", label: "Shortlisted", initial: true }, { key: "interview", label: "Interview", initial: false },
 ];
 const application = (over: Partial<RecApplication> = {}): RecApplication => ({
   id: "A1", job_id: "J1", candidate: { id: "C1", code: "CAN-000001", name: "Rahul Kumar" }, status: "sourced", status_label: "Sourced",

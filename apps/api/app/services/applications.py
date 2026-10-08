@@ -16,7 +16,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import APPLICATION_STATUSES, AuditLog, Candidate, Company, Job, JobApplication, JobApplicationStatusHistory, Notification, RecCandidateSource, User
 from app.notifications.dispatch import queue_deliveries
-from app.notifications.phone import normalise_phone
 from app.services import candidates, company_pipeline
 from app.services import recruiter_requirements as requirements
 from app.services.recruiter import ROLE
@@ -119,7 +118,7 @@ async def candidate_for_student(db: AsyncSession, student: User) -> Candidate:
         name=student.full_name[:160],
         email=None if email_taken else student.email,
         mobile=None if mobile_taken or not mobile_key else student.phone,
-        mobile_normalized=None if mobile_taken else normalise_phone(student.phone),
+        mobile_normalized=None if mobile_taken else mobile_key,
         preferred_locations=[],
         source_id=await _student_source(db),
         user_id=student.id,
@@ -242,4 +241,4 @@ async def history_out(db: AsyncSession, application_id: UUID) -> list[dict]:
 
 
 def catalogue() -> list[dict]:
-    return [{"key": s, "label": LABELS[s], "next": list(TRANSITIONS[s]), "initial": s in INITIAL} for s in APPLICATION_STATUSES]
+    return [{"key": s, "label": LABELS[s], "initial": s in INITIAL} for s in APPLICATION_STATUSES]
