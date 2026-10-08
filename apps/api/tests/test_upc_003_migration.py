@@ -42,7 +42,7 @@ CATALOGUE = "SELECT id, slug, name, country_id, city, overview FROM universities
 def test_migration_chains_after_0104_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
-    assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}  # upc-006's 0106 follows
+    assert len(script.get_heads()) == 1  # rec-003's 0106_rec_companies now follows this revision (the tel-001 convention)
 
 
 def test_model_matches_the_migration():

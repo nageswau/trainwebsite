@@ -1,4 +1,4 @@
-"""upc-006 -- migration 0106_university_contacts (spec §2). Round trip, the role seed and the downgrade refusal run in a throwaway
+"""upc-006 -- migration 0107_university_contacts (spec §2). Round trip, the role seed and the downgrade refusal run in a throwaway
 database built from scratch (the upc-001 pattern); a downgrade never runs against the shared test database. Plain tests:
 alembic/env.py calls asyncio.run()."""
 
@@ -14,11 +14,11 @@ from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_upc_006_migration_0106", VERSIONS / "0106_university_contacts.py")
+_spec = importlib.util.spec_from_file_location("_upc_006_migration_0107", VERSIONS / "0107_university_contacts.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0105_university_master", "0106_university_contacts"
+BASE, HEAD = "0106_rec_companies", "0107_university_contacts"
 ROLES = [
     "International Director",
     "International Recruitment Manager",
@@ -35,7 +35,7 @@ ROLES = [
 ]
 
 
-def test_migration_chains_after_0105_and_is_the_single_head():
+def test_migration_chains_after_0106_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
@@ -71,7 +71,7 @@ async def test_tables_indexes_and_seed_exist_in_the_shared_database(db_session):
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0105."""
+    """A fresh database at 0106."""
     cfg = _config()
     original = settings.database_url
     name = f"upc006_migration_{uuid.uuid4().hex[:8]}"

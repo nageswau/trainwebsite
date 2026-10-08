@@ -35,7 +35,7 @@ export const PRIORITIES = ["A", "B", "C"];
 export const POTENTIALS: Record<string, string> = { high: "High", medium: "Medium", low: "Low" };
 export const COURSE_LEVELS = ["UG", "PG", "PhD", "Diploma", "Foundation"];
 export const RANKING_SYSTEMS = ["QS", "THE", "ARWU", "Other"];
-// upc-006 (DEC-SCOPE-121): §11's relationship status exactly (CT4) and the channels a contact record holds (CT3).
+// upc-006 (DEC-SCOPE-122): §11's relationship status exactly (CT4) and the channels a contact record holds (CT3).
 export const RELATIONSHIP_STRENGTHS: Record<string, string> = {
   new: "New", developing: "Developing", good: "Good", strong: "Strong", strategic: "Strategic", at_risk: "At Risk", dormant: "Dormant",
 };

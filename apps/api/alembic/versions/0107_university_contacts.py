@@ -1,13 +1,17 @@
 """upc-006 -- University contacts + relationship strength.
 
-Revision ID: 0106_university_contacts
-Revises: 0105_university_master
+Revision ID: 0107_university_contacts
+Revises: 0106_rec_companies
 
-docs/superpowers/specs/2026-10-08-upc-006-university-contacts-design.md §2 (DEC-SCOPE-121). Adds `universities.relationship_strength`, the
+docs/superpowers/specs/2026-10-08-upc-006-university-contacts-design.md §2 (DEC-SCOPE-122). Adds `universities.relationship_strength`, the
 seeded `university_contact_roles` catalogue and `university_contacts`. 0001 builds a fresh database from the current models, which
 already carry all of this (with an empty catalogue), so each step is guarded and the seed is ON CONFLICT DO NOTHING. UNIVERSITY_CHECK,
 CONTACT_CHECKS and ROLE_SEED repeat app.models (test_upc_006_migration). downgrade() refuses while any contact or any relationship
 strength exists: it would drop contact PII and recorded assessments.
+
+Re-chained 2026-10-08 on merging `main` @ `035c99ad`: drafted as `0106_university_contacts` on `0105_university_master`, but rec-003's
+`0106_rec_companies` merged first, so this is `0107` after it (DEC-SCOPE-122, API §12AP, RBAC §2.48). A database stamped at
+`0106_university_contacts` is re-stamped with `alembic stamp --purge 0105_university_master`, then `upgrade head` (every step here is guarded).
 """
 
 import sqlalchemy as sa
@@ -15,8 +19,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0106_university_contacts"
-down_revision = "0105_university_master"
+revision = "0107_university_contacts"
+down_revision = "0106_rec_companies"
 branch_labels = None
 depends_on = None
 
@@ -100,7 +104,7 @@ def downgrade() -> None:
     if not op.get_context().as_sql:
         found = op.get_bind().execute(sa.text("SELECT 1 FROM university_contacts UNION ALL SELECT 1 FROM universities WHERE relationship_strength IS NOT NULL LIMIT 1")).first()
         if found:
-            raise RuntimeError("Cannot downgrade 0106_university_contacts: contacts or relationship strengths exist. Remove them deliberately first.")
+            raise RuntimeError("Cannot downgrade 0107_university_contacts: contacts or relationship strengths exist. Remove them deliberately first.")
     op.drop_table("university_contacts")
     op.drop_table("university_contact_roles")
     op.drop_constraint(UNIVERSITY_CHECK_NAME, "universities", type_="check")

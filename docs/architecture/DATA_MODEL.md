@@ -331,14 +331,14 @@ slot). **Migration `0105_university_master`** backfills codes for existing rows 
 `downgrade()` refuses while rankings, assignment history or internal universities exist. Public reads show only published, active rows
 (API §12AN). `stage` is upc-007's; contacts are upc-006's.
 
-**Addendum, 2026-10-08 (`upc-006`, `DEC-SCOPE-121` — University contacts + relationship strength):** `universities.relationship_strength`
+**Addendum, 2026-10-08 (`upc-006`, `DEC-SCOPE-122` — University contacts + relationship strength):** `universities.relationship_strength`
 (nullable; CHECK new / developing / good / strong / strategic / at_risk / dormant, §11). New tables: `university_contact_roles` (`code` PK,
 `label`, `position`; 12 seeded rows, read-only) and `university_contacts` (FK `universities` RESTRICT; `name` NOT NULL, `designation`,
 `department`, `role_code` FK roles, `email`, `phone`, `whatsapp`, `linkedin`, `preferred_channel` CHECK email/phone/whatsapp/linkedin,
 `relationship_strength` CHECK as above, `notes`, `is_primary`, `shareable` (both default false), timestamps). Partial unique indexes: one
 primary per university, and `lower(email)` once per university. Contact PII never goes into audit metadata or logs. **Migration
-`0106_university_contacts`** seeds the roles (`ON CONFLICT DO NOTHING`); `downgrade()` refuses while contacts or relationship strengths
-exist (API §12AO).
+`0107_university_contacts`** seeds the roles (`ON CONFLICT DO NOTHING`); `downgrade()` refuses while contacts or relationship strengths
+exist (API §12AP).
 
 ### 6.2 `OverseasApplication`, `ApplicationStatusHistory`
 **Carries over**, status vocabulary **extended** — this is part of the `ADR-012` resolution (§6.3
@@ -1331,3 +1331,28 @@ Additive only: two tables and one sequence (`bdm_appointment_code_seq`, also on 
 - Alerts are not a table: each is a `notifications` row (event alerts without a key; beat alerts with `dedupe_key`
   `tel020:{kind}:{object}:{user}:{event time}` on the existing unique partial index `ux_notifications_dedupe_key`) plus one
   `notification_deliveries` email row.
+
+## Recruiter company master (`rec-003`, `DEC-SCOPE-121`; migration `0106_rec_companies`, after `0105_university_master`)
+
+Extends §5.1 `Company` (R3: the recruiter lead and the company are one row). Every new column is nullable except the code; EMP-001
+registration and `/workflows/it/jobs` keep writing only name, website and ownership.
+
+| Column | Type / rule |
+|---|---|
+| `company_code` | varchar(20) NOT NULL, `uq_companies_code`; default `'CMP-' \|\| lpad(nextval('company_code_seq')::text, 6, '0')` (`MAXVALUE 999999`); existing rows backfilled in `created_at`, `id` order |
+| `linkedin_url`, `head_office` | varchar(300) |
+| `industry_id`, `company_size_id`, `lead_source_id`, `campaign_id` | FK → `rec_industries`, `rec_company_sizes`, `rec_lead_sources`, `rec_campaigns` (the campaign's source must equal `lead_source_id`: app rule) |
+| `employee_count` | int, `ck_companies_employee_count` 0–10,000,000 |
+| `city`, `state`, `country` | varchar(120), free text |
+| `branches`, `description` | varchar(1000), varchar(2000) |
+| `priority` | varchar(10), `ck_companies_priority` `hot`/`warm`/`cold` |
+| `assigned_recruiter_user_id` | FK users; NULL = the managers' unassigned queue; `ix_companies_assigned_recruiter` |
+| `assigned_bdm_user_id` | FK users (R10, read-only reference); `ix_companies_assigned_bdm` |
+| `created_by_user_id` | FK users; NULL for rows that predate rec-003 and for employer registrations |
+| `archived_at` | timestamptz; never hard-deleted |
+
+`ix_companies_name_key` indexes the duplicate key `lower(regexp_replace(btrim(name), '\s+', ' ', 'g'))`; `name` itself stays unique (D2).
+
+`company_assignment_history`: `id`, `company_id` FK, `from_user_id` (NULL = was unassigned), `to_user_id`, `changed_by_user_id`,
+`created_at`; `ix_company_assignment_history_company`. Append-only. `downgrade()` refuses while any history row or any new-column value
+exists.
