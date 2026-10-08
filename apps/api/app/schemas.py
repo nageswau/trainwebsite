@@ -6530,6 +6530,79 @@ class PlacementManagerPage(BaseModel):
     offset: int
 
 
+# --- rec-002 (DEC-SCOPE-117): recruiter managed lists and campaigns -----------------------------------------------------------------
+REC_CATALOGUE_FIELD_LABELS = {
+    "name": "Name", "active": "Active", "lead_source_id": "Lead source", "start_date": "Start date", "end_date": "End date",
+}
+
+
+class RecValueCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: TelProductName
+
+
+class RecValueUpdate(BaseModel):
+    """Omitted = unchanged; null is a 422 on either key."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: TelProductName = None
+    active: StrictBool = None
+
+
+class RecValueOut(BaseModel):
+    id: UUID
+    name: str
+    active: bool
+    sort_order: int
+
+
+class RecValuePage(BaseModel):
+    items: list[RecValueOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class RecCampaignCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: TelCampaignName
+    lead_source_id: UUID
+    start_date: date
+    end_date: date | None = None
+
+
+class RecCampaignUpdate(BaseModel):
+    """Omitted = unchanged; null clears only `end_date`. The date order is checked on the merged row."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: TelCampaignName = None
+    lead_source_id: UUID = None
+    start_date: date = None
+    end_date: date | None = None
+    active: StrictBool = None
+
+
+class RecLeadSourceRef(BaseModel):
+    id: UUID
+    name: str
+    active: bool
+
+
+class RecCampaignOut(BaseModel):
+    id: UUID
+    name: str
+    lead_source: RecLeadSourceRef
+    start_date: date
+    end_date: date | None
+    active: bool
+
+
+class RecCampaignPage(BaseModel):
+    items: list[RecCampaignOut]
+    total: int
+    limit: int
+    offset: int
+
 # --- rec-006 (DEC-SCOPE-118): the recruiter Skills Master ------------------------------------------------------------------------
 SKILL_FIELD_LABELS = {
     "name": "Name", "alias": "Alias", "active": "Active", "category_id": "Category", "tag_category_ids": "Other categories", "skill_id": "Related skill",
@@ -6568,7 +6641,7 @@ def _pick(noun: str):
     return Annotated[UUID, BeforeValidator(check)]
 
 
-SkillName, SkillAliasText = _skill_term("Name"), _skill_term("Alias")
+RecSkillName, SkillAliasText = _skill_term("Name"), _skill_term("Alias")
 SkillCategoryPick, SkillPick = _pick("a category"), _pick("a skill")
 
 
@@ -6585,20 +6658,20 @@ SkillTags = Annotated[list[SkillCategoryPick], AfterValidator(_distinct_tags)]
 
 class SkillCategoryCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    name: SkillName
+    name: RecSkillName
 
 
 class SkillCategoryUpdate(BaseModel):
     """Omitted = unchanged; an explicit null is a 422 (both are required on the row)."""
 
     model_config = ConfigDict(extra="forbid")
-    name: SkillName = None
+    name: RecSkillName = None
     active: StrictBool = None
 
 
 class SkillCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    name: SkillName
+    name: RecSkillName
     category_id: SkillCategoryPick
     tag_category_ids: SkillTags = []
 
@@ -6607,7 +6680,7 @@ class SkillUpdate(BaseModel):
     """Omitted = unchanged; `tag_category_ids` replaces the whole set ([] clears it)."""
 
     model_config = ConfigDict(extra="forbid")
-    name: SkillName = None
+    name: RecSkillName = None
     category_id: SkillCategoryPick = None
     tag_category_ids: SkillTags = None
     active: StrictBool = None

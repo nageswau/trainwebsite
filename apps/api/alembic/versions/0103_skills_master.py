@@ -1,7 +1,7 @@
 """rec-006 -- the recruiter Skills Master: skill_categories, skills, skill_category_tags, skill_aliases, skill_related (seeded).
 
-Revision ID: 0102_skills_master
-Revises: 0101_country_master
+Revision ID: 0103_skills_master
+Revises: 0102_rec_catalogues
 
 docs/superpowers/specs/2026-10-08-rec-006-skills-master-design.md §2 (DEC-SCOPE-118). Adds five tables; no existing row is read or
 written. 0001 builds a fresh database from the current models, which already carry these tables, so creation is guarded (0076's idiom)
@@ -16,8 +16,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0102_skills_master"
-down_revision = "0101_country_master"
+revision = "0103_skills_master"
+down_revision = "0102_rec_catalogues"
 branch_labels = None
 depends_on = None
 
@@ -150,6 +150,6 @@ def _matches_seed(bind) -> bool:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and not _matches_seed(op.get_bind()):
-        raise RuntimeError("Cannot downgrade 0102_skills_master: manager data exists (skills, categories or aliases differ from the seed). Remove it deliberately first.")
+        raise RuntimeError("Cannot downgrade 0103_skills_master: manager data exists (skills, categories or aliases differ from the seed). Remove it deliberately first.")
     for table in ("skill_related", "skill_aliases", "skill_category_tags", "skills", "skill_categories"):
         op.drop_table(table)

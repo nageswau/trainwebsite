@@ -12,11 +12,11 @@ worktree-api-test-mount-path).
 - Bodies are parsed with `services/telecaller._parse`.
 - Use the paging shape `{items,total,limit,offset}`.
 - The route owns the commit, with one `AuditLog` per write.
-- Numbering: 0102 / DEC-SCOPE-118 / §12AK / RBAC §2.44.
+- Numbering (final, after upc-002 and rec-002 merged): 0103 / DEC-SCOPE-118 / §12AL / RBAC §2.44.
 
 | # | Task | Tests first | Files |
 |---|---|---|---|
-| 1 | Models (5) + migration 0102 (guarded create, idempotent seed, guarded downgrade) | `test_rec_006_migration.py`: chain/head, model↔migration, seed 37/5/9/1 + JS tag, seed idempotent, downgrade refusal (throwaway DB) | `models.py`, `alembic/versions/0102_skills_master.py` |
+| 1 | Models (5) + migration 0103 (guarded create, idempotent seed, guarded downgrade) | `test_rec_006_migration.py`: chain/head, model↔migration, seed 37/5/9/1 + JS tag, seed idempotent, downgrade refusal (throwaway DB) | `models.py`, `alembic/versions/0103_skills_master.py` |
 | 2 | Schemas + `services/skills.py` (`normalise`, `resolve`, role helpers, term guards, batched shaping) | `test_rec_006_service.py`: resolve by name/alias/case/whitespace, inactive → None, name beats alias | `schemas.py`, `services/skills.py` |
 | 3 | `api/recruiter_skills.py` + `main.py`: categories GET/POST/PATCH | `test_rec_006_api.py` (categories) | as named |
 | 4 | Skills GET list/one, POST, PATCH (tags replace, category FOR SHARE, name ↔ alias 409) | `test_rec_006_api.py` (skills) | as named |

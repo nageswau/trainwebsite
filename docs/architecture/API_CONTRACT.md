@@ -1485,9 +1485,35 @@ U12 (`UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1, `EXPLICIT_APPROVAL`); Q-06 r
 | `POST /admin/universities` | `country_slug` must name a catalogue-visible country; an internal one is `422` "Unknown country" (universities stay public until upc-003). A slug already taken is `409` "A university with the slug '…' already exists" (was an unhandled `500`; QA-01) |
 | `GET /lookups/countries?q&limit` | New. `overseas_admin` (overseas division) and `super_admin`; signed out `401`, other roles or division `403`. `q` ≤ 100 (matches the name, the ISO code exactly, or a common alias such as "United States", "United Arab Emirates", "UK", "Holland" (`lookups.COUNTRY_ALIASES`, QA-02); an exact code ranks first), `limit` 1–50 (default 20). `200 {items, truncated}`, `items[]`: `{id, label: name, detail: "JP · Asia" \| null}`, catalogue and internal rows alike. One log line (counts only), no audit row |
 
-## 12AK. Recruiter Skills Master (`rec-006`) — addendum, 2026-10-08
+## 12AK. Recruiter catalogues (`rec-002`) — addendum, 2026-10-08
 
-- **Basis:** `DEC-SCOPE-118`. Design spec `docs/superpowers/specs/2026-10-08-rec-006-skills-master-design.md` §4. Migration `0102`.
+- **Basis:** `DEC-SCOPE-117`. Design spec `docs/superpowers/specs/2026-10-08-rec-002-recruiter-catalogues-design.md` §4. Migration `0102`. Drafted as §12AJ / `0101`; upc-002 merged first with §12AJ and `0101_country_master`, so this is §12AK and `0102`.
+- **Common rules:**
+  - Lists use the §12AI paging rules (`limit` 1–100, `offset`, `q` ≤ 200 matching the name).
+  - Readers are `placement_team`, `placement_manager` and `super_admin`; any other role is `403` "Your role cannot view the recruiter
+    catalogues".
+  - Writers are `placement_manager` and `super_admin`; any other role is `403` "Placement manager role required".
+  - A `placement_team` reader always gets active rows only, whatever `active` asks for.
+  - Bodies refuse unknown keys (`422` "Unknown field: …").
+  - Names are trimmed, required and capped, with no control characters: 120 characters for list values, 160 for campaigns.
+  - There is no DELETE (`405`).
+  - Every write is audited (`recruiter.catalogue_create`/`_update`, `entity_type` = table, field names only). A PATCH that changes
+    nothing writes no audit row.
+- `{kind}` ∈ `lead-sources`, `candidate-sources`, `industries`, `company-sizes`, `contact-roles`, `job-categories`. Any other kind
+  is `404` "Catalogue not found".
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/catalogue/{kind}` | Filters `active`, `q`. Ordered by list order (`sort_order`), then name. `items[]`: `{id, name, active, sort_order}` |
+| `POST /recruiter/catalogue/{kind}` | `{name}` → `201`; the value goes to the end of the list. A duplicate (case-insensitive, per list) is `409` "A value named “…” already exists in this list" |
+| `PATCH /recruiter/catalogue/{kind}/{id}` | `{name?, active?}` (null is `422`) → `200`. The id keeps its row on a rename. An unknown id, or an id from another list, is `404` "Value not found". A duplicate is `409` |
+| `GET /recruiter/catalogue/campaigns` | Filters `lead_source_id`, `active`, `q`. Ordered active first, then the newest start, then name. `items[]`: `{id, name, lead_source {id, name, active}, start_date, end_date, active}` |
+| `POST /recruiter/catalogue/campaigns` | `{name, lead_source_id, start_date, end_date?}` → `201`. A missing or inactive lead source is `422` "Choose an active lead source". An end date before the start is `422` "End date cannot be before the start date". A duplicate name is `409` "A campaign named “…” already exists" |
+| `PATCH /recruiter/catalogue/campaigns/{id}` | Any create field, plus `active`; `end_date: null` clears it. The dates are checked on the merged row. Moving to another lead source needs an active one; keeping a since-deactivated one is allowed. An unknown id is `404` |
+
+## 12AL. Recruiter Skills Master (`rec-006`) — addendum, 2026-10-08
+
+- **Basis:** `DEC-SCOPE-118`. Design spec `docs/superpowers/specs/2026-10-08-rec-006-skills-master-design.md` §4. Migration `0103`.
 - **Common rules:**
   - Lists take `limit` 1–100 (default 50), `offset` ≥ 0 and `q` ≤ 200 characters (a literal, case-insensitive substring).
   - A list returns `{items, total, limit, offset}`.

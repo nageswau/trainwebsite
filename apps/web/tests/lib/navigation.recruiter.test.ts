@@ -15,7 +15,7 @@ describe("rec-001 navigation", () => {
     expect(hrefs.slice(0, 3)).toEqual(["/recruiter/dashboard", "/recruiter/profile", "/recruiter/skills"]);
     expect(hrefs).toEqual(expect.arrayContaining(["/it/placement/candidates", "/it/placement/company-requirements", "/it/placement/reports"]));
     expect(hrefs.filter((h) => h.startsWith("/recruiter/manager"))).toEqual([]);
-    expect(RECRUITER_MANAGER_NAV.map((x) => x.href)).toEqual(["/recruiter/manager/team", "/recruiter/manager/skills"]); // rec-006
+    expect(RECRUITER_MANAGER_NAV.map((x) => x.href)).toEqual(["/recruiter/manager/team", "/recruiter/manager/catalogue", "/recruiter/manager/skills"]); // rec-002, rec-006
     expect(PORTAL_NAV["it/placement"]).toContainEqual({ label: "Recruiter Workspace", href: "/recruiter/dashboard" });
     expect(PORTAL_NAV["it/hr"].map((x) => x.href).filter((h) => h.startsWith("/recruiter"))).toEqual([]);
   });
