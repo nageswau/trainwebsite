@@ -1,4 +1,4 @@
-"""upc-010 -- migration 0109_university_visits (spec §2). Round trip and the downgrade refusal run in a throwaway database built from
+"""upc-010 -- migration 0111_university_visits (spec §2). Round trip and the downgrade refusal run in a throwaway database built from
 scratch (the upc-001 pattern); a downgrade never runs against the shared test database. Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -14,14 +14,14 @@ from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_upc_010_migration_0109", VERSIONS / "0109_university_visits.py")
+_spec = importlib.util.spec_from_file_location("_upc_010_migration_0111", VERSIONS / "0111_university_visits.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0108_university_contacts", "0109_university_visits"
+BASE, HEAD = "0110_company_contacts", "0111_university_visits"
 
 
-def test_migration_chains_after_0108_and_is_the_single_head():
+def test_migration_chains_after_0110_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
@@ -54,7 +54,7 @@ async def test_tables_and_indexes_exist_in_the_shared_database(db_session):
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0108."""
+    """A fresh database at 0110."""
     cfg = _config()
     original = settings.database_url
     name = f"upc010_migration_{uuid.uuid4().hex[:8]}"
@@ -79,8 +79,9 @@ def test_upgrade_round_trips_and_downgrade_refuses_while_visits_exist(isolated_d
     country = _sql(url, "SELECT id FROM countries WHERE iso2 = 'GB'")[0][0]
     uni = _sql(
         url,
-        "INSERT INTO universities (id, country_id, slug, name, city, overview, eligibility, requirements, deadlines, scholarships) "
-        "VALUES (gen_random_uuid(), :c, 'abc', 'ABC', 'London', '', '', '[]', '[]', '[]') RETURNING id",
+        # name_key: NOT NULL since upc-004's 0109 (the normalised name)
+        "INSERT INTO universities (id, country_id, slug, name, name_key, city, overview, eligibility, requirements, deadlines, scholarships) "
+        "VALUES (gen_random_uuid(), :c, 'abc', 'ABC', 'abc', 'London', '', '', '[]', '[]', '[]') RETURNING id",
         {"c": country},
     )[0][0]
     user = _sql(

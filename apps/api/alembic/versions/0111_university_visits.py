@@ -1,12 +1,17 @@
 """upc-010 -- University visits + approval.
 
-Revision ID: 0109_university_visits
-Revises: 0108_university_contacts
+Revision ID: 0111_university_visits
+Revises: 0110_company_contacts
 
-docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.md §2 (DEC-SCOPE-124). Adds `university_visit_code_seq`,
+docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.md §2 (DEC-SCOPE-126). Adds `university_visit_code_seq`,
 `university_visits`, its participants and contacts, and the append-only `university_visit_events`. 0001 builds a fresh database from
 the current models, which already carry all of this, so each step is guarded. STATUS_CHECK repeats app.models (test_upc_010_migration).
 downgrade() refuses while any visit exists: it would drop visit plans, approvals and their history.
+
+Re-chained 2026-10-08: drafted as `0109_university_visits` on `0108_university_contacts` (DEC-SCOPE-124, API §12AR, RBAC §2.50), but
+upc-004's `0109_university_duplicates` and rec-004's `0110_company_contacts` merged first (main @ `4043631f`), so this is `0111`
+(DEC-SCOPE-126, API §12AT, RBAC §2.52). A database stamped at `0109_university_visits` is re-stamped with `alembic stamp --purge
+0108_university_contacts`, then `upgrade head` (every step here is guarded).
 """
 
 import sqlalchemy as sa
@@ -14,8 +19,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0109_university_visits"
-down_revision = "0108_university_contacts"
+revision = "0111_university_visits"
+down_revision = "0110_company_contacts"
 branch_labels = None
 depends_on = None
 
@@ -92,7 +97,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text("SELECT 1 FROM university_visits LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0109_university_visits: visits exist. Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0111_university_visits: visits exist. Remove them deliberately first.")
     op.drop_table("university_visit_events")
     op.drop_table("university_visit_contacts")
     op.drop_table("university_visit_participants")

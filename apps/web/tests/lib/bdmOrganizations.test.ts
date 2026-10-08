@@ -56,7 +56,10 @@ describe("bdm-002 lib", () => {
 
   it("parses only the possible_duplicate 409", () => {
     const m = { id: "1", code: "ORG-000001", name: "A", city: "K", archived: true, assigned_bdm_name: "Asha" };
-    expect(orgDuplicate({ code: "possible_duplicate", message: "x", matches: [m], total: 3 })).toEqual({ message: "x", matches: [m], total: 3 });
+    expect(orgDuplicate({ code: "possible_duplicate", message: "x", matches: [m], total: 3 })).toEqual({ message: "x", matches: [m], total: 3, university_matches: [], university_total: 0 });
+    const u = { id: "u1", university_code: "UNV-000001" }; // upc-004 UD8: the master's matches ride along
+    expect(orgDuplicate({ code: "possible_duplicate", message: "y", matches: [], total: 0, university_matches: [u], university_total: 2 }))
+      .toEqual({ message: "y", matches: [], total: 0, university_matches: [u], university_total: 2 });
     expect(orgDuplicate("Already archived")).toBeNull();
     expect(orgDuplicate({ code: "other", matches: [] })).toBeNull();
   });

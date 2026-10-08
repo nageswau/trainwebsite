@@ -2,7 +2,7 @@
 
 **Status:** design written 2026-10-08. The owner's standing instruction for this session is "proceed with the recommended answers;
 ask only if genuinely blocking". The item answers VS1–VS18 (§1), including Q-13, are **recommended defaults accepted under that
-instruction** (`NEEDS_CONFIRMATION` as separate per-question approvals). They are registered that way in `DEC-SCOPE-124`.
+instruction** (`NEEDS_CONFIRMATION` as separate per-question approvals). They are registered that way in `DEC-SCOPE-126`.
 
 **Branch:** `feature/upc-010`, cut from `origin/main` @ `215e3e2e` (after #157, upc-006).
 **Backlog:** `docs/delivery/UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §4 upc-010 and U9.
@@ -10,7 +10,8 @@ instruction** (`NEEDS_CONFIRMATION` as separate per-question approvals). They ar
 `PartnershipProfile.reporting_head_user_id`, `services/partnership_universities.py` and `UniversityContact`.
 **Source:** `EVID-020` §8, lines 314–350. It contains "separate from normal meetings", 14 planning fields and the flow Planned → Approved →
 Travel Booked → Visit Completed → Follow-up → Closed.
-**Numbering (provisional, re-chained at merge):** migration `0109_university_visits`, `DEC-SCOPE-124`, API §12AR, RBAC §2.50.
+**Numbering:** migration `0111_university_visits`, `DEC-SCOPE-126`, API §12AT, RBAC §2.52. Drafted as `0109` / `DEC-SCOPE-124` / §12AR /
+§2.50; renumbered on merging `main` @ `4043631f` (upc-004 took `0109` / 124 / §12AR / §2.50, rec-004 `0110` / 125 / §12AS / §2.51).
 **Gate:** `APPROVAL_GATES.md` GATE-09.
 
 ## 1. Decisions (recommended defaults)
@@ -36,7 +37,7 @@ Travel Booked → Visit Completed → Follow-up → Closed.
 | VS17 | Codes | `VIS-000001` from `university_visit_code_seq` (the TRV idiom) |
 | VS18 | Text limits | Purpose is required, at most 1000. Agenda and expected outcome are at most 2000 each. Travel and hotel notes are at most 1000. City is at most 120. A reject or close reason is required, at most 1000 |
 
-## 2. Data model — migration `0109_university_visits`
+## 2. Data model — migration `0111_university_visits`
 
 - `university_visit_code_seq`.
 - `university_visits`:
@@ -134,7 +135,7 @@ idiom).
 3. Frontend: lib, `VisitForm`, `VisitActions`, the pages, the university page section, and nav, with vitest
    (`VisitActions.test.tsx`, `VisitForm.test.tsx`, nav test).
 4. Playwright `upc-010-university-visits.spec.ts`.
-5. Docs: DEC-SCOPE-124, API §12AR, RBAC §2.50, DATA_MODEL, SCREEN_CATALOG and the backlog status.
+5. Docs: DEC-SCOPE-126, API §12AT, RBAC §2.52, DATA_MODEL, SCREEN_CATALOG and the backlog status.
 
 ## 7. Regression set (lite)
 

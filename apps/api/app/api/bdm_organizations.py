@@ -31,6 +31,7 @@ from app.schemas import (
 )
 from app.services import bdm_organizations as svc
 from app.services import bdm_tasks as task_svc
+from app.services import partnership_universities as master
 from app.services.bdm import bdm_context
 
 router = APIRouter(prefix="/bdm/organizations", tags=["bdm-organizations"])
@@ -101,11 +102,16 @@ async def create_organization(payload: BdmOrganizationCreate, user: User = Depen
     bdm_profile = await bdm_context(db, user)
     sent = payload.profile.model_dump(exclude_unset=True) if payload.profile else {}
     svc.check_profile(payload.org_type, sent, None)
+    await svc.check_university_link(db, payload.org_type, payload.university_id)
     name_key, city_key = svc.org_keys(payload.name, payload.city)
     matches, total = await svc.find_duplicates(db, bdm_profile.bdm_type, name_key, city_key)
-    if total and not payload.confirm_duplicate:
-        svc.log("bdm_org_duplicate_warned", user, "-", match_count=total)
-        raise svc.duplicate_conflict(matches, total)
+    uni_matches: list[dict] = []
+    uni_total = 0
+    if payload.org_type == "university" and payload.university_id is None:  # upc-004 UD8: the master's panel, any country
+        uni_matches, uni_total = await master.find_duplicates(db, master.name_key_of(payload.name))
+    if (total or uni_total) and not payload.confirm_duplicate:
+        svc.log("bdm_org_duplicate_warned", user, "-", match_count=total, university_match_count=uni_total)
+        raise svc.duplicate_conflict(matches, total, uni_matches, uni_total)
     org = BdmOrganization(
         code=await svc.next_code(db),
         bdm_type=bdm_profile.bdm_type,
@@ -113,6 +119,7 @@ async def create_organization(payload: BdmOrganizationCreate, user: User = Depen
         city_key=city_key,
         assigned_bdm_user_id=user.id,
         created_by_user_id=user.id,
+        university_id=payload.university_id,
         **{k: getattr(payload, k) for k in BDM_ORG_FIELDS},
         **sent,
     )
@@ -131,7 +138,7 @@ async def create_organization(payload: BdmOrganizationCreate, user: User = Depen
             "code": org.code,
             "org_type": org.org_type,
             "bdm_type": org.bdm_type,
-            "fields": sorted([k for k in BDM_ORG_FIELDS if getattr(payload, k) not in (None, False)] + [k for k, v in sent.items() if v is not None]),
+            "fields": sorted([k for k in (*BDM_ORG_FIELDS, "university_id") if getattr(payload, k) not in (None, False)] + [k for k, v in sent.items() if v is not None]),
             "contact_count": len(payload.contacts),
         },
     )
@@ -162,6 +169,9 @@ async def update_organization(org_id: UUID, payload: BdmOrganizationUpdate, user
     svc.check_profile(new_type, sent, org)
     if new_type != org.org_type:
         svc.check_type_change(user, org, new_type)
+    await svc.check_university_link(db, new_type, changes.get("university_id"))
+    if new_type != "university" and "university_id" not in changes:
+        changes["university_id"] = None  # upc-004 UD9: only a University organization stays linked
     changes |= sent
     changed = sorted(k for k, v in changes.items() if getattr(org, k) != v)
     total = 0

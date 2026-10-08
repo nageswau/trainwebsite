@@ -3197,7 +3197,7 @@ not inspected. Do not claim parity.
   Relationship strength row. **Responsive:** blocks wrap, no side-scroll at 390 px.
 - **Route:** `/partnership/universities` gains a Relationship column and filter; the master form gains a Relationship strength select.
 
-## upc-010 addendum (2026-10-08, `DEC-SCOPE-124`) — University visits + approval
+## upc-010 addendum (2026-10-08, `DEC-SCOPE-126`) — University visits + approval
 
 Design spec `docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.md` §4. Visual-reference mapping: None — not inspected. Do not claim parity.
 

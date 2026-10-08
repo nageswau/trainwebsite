@@ -356,6 +356,11 @@ Common conventions:
 - **Complexity:** large · **Risk:** high
 
 ### upc-004 — Duplicate prevention + BDM university-org link
+- **Status (2026-10-08):** built on `feature/upc-004` under `DEC-SCOPE-124`, with migration `0109_university_duplicates`, API §12AR and
+  RBAC §2.50. Spec: `docs/superpowers/specs/2026-10-08-upc-004-university-duplicates-design.md`.
+  - Q-02 is answered by the recommended defaults UD1–UD12 (`NEEDS_CONFIRMATION`): normalised name + country, no aliases; override by the
+    head / `super_admin` with an audited reason; stage, last contact and next follow-up show "—" until upc-007/006/020.
+  - Follow-up: a link control in the BDM edit form (the API already links and unlinks).
 - **Business requirement:** §26 search before adding, the warning panel (5 fields), "prevents two employees contacting the same
   university" (U13).
 - **Existing behavior:** duplicate detection is by slug only. BDM `university` orgs are separate (`name_key`/`city_key` check within BDM).
@@ -550,8 +555,8 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-010 — University visits + approval
-- **Status (2026-10-08):** built on `feature/upc-010` under `DEC-SCOPE-124`, with migration `0109_university_visits`, API §12AR and
-  RBAC §2.50. Spec: `docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.md`.
+- **Status (2026-10-08):** built on `feature/upc-010` under `DEC-SCOPE-126`, with migration `0111_university_visits`, API §12AT and
+  RBAC §2.52. Spec: `docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.md`.
   - Q-13 and the design-level rules are answered by the recommended defaults VS1–VS18 (`NEEDS_CONFIRMATION`): one university per visit;
     the head approves, super_admin when the head is inactive or took part; no un-approving, an early close with a reason instead.
   - The follow-up date is stored; upc-020 turns it into a task. The calendar and overlap warning are upc-011's.

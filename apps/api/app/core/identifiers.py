@@ -1,4 +1,5 @@
 import secrets
+import unicodedata
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -45,3 +46,10 @@ def uuid_reference(value: object, label: str = "reference", *, required: bool = 
         if required:
             raise HTTPException(422, f"A valid {label} is required") from exc
         return None
+
+
+def normalize_key(value: str, limit: int) -> str:
+    """bdm-002 Q-18 / upc-004 UD1's "normalized name": NFKC (full-width and compatibility forms), whitespace collapsed, casefolded. NFKC
+    and casefold can lengthen text ("ß" -> "ss"), so the key is cut to its column length; two names that differ only past that point
+    still match, which a duplicate warning can afford."""
+    return " ".join(unicodedata.normalize("NFKC", value).split()).casefold()[:limit]

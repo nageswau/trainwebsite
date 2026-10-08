@@ -1019,7 +1019,33 @@ are PII: audit and logs carry ids only.
 | Add / edit / make primary / delete | own (primary or backup) | unowned + team-owned | `403` | ✅ | `403` |
 | Set university relationship strength | as §2.46 Edit |||||
 
-### 2.50 University visits *(net-new, added 2026-10-08 — `DEC-SCOPE-124`, `upc-010`)*
+### 2.50 University duplicate prevention + BDM link *(net-new, added 2026-10-08 — `DEC-SCOPE-124`, `upc-004`)*
+
+Enforced inline in `services/partnership_universities.py` (`check_duplicates`) and `api/bdm_organizations.py`. Matches show only the §26
+panel fields (no commission, for every role).
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | bdm | Other roles |
+|---|---|---|---|---|---|---|
+| Search before adding (`GET …/duplicates`) | ✅ | ✅ | ✅ | ✅ | `403` | `403` |
+| Add / rename into an existing name + country | — (cannot add) | ✅ with a reason (10–500, audited) | `409` | ✅ with a reason | — | `403` |
+| See master matches when creating a University org | — | — | — | — (BDMs create) | ✅ (own create only) | `403` |
+| Link / unlink a University org to the master | — | — | — | ✅ | assigned BDM (`can_edit`) | `403`/`404` per bdm-002 scope |
+| See an org's linked university / a university's linked orgs | — | ✅ / ✅ | — / ✅ | ✅ / ✅ | ✅ (own scope) / — | — |
+
+### 2.51 Company contacts *(net-new, added 2026-10-08 — `DEC-SCOPE-125`, `rec-004`; drafted as §2.48)*
+
+Contacts take the company's scope (§2.47). A contact of a company outside the caller's scope is `404`. Writes follow the company's
+`can_edit` (C1, UNVERIFIED default). An archived company's contacts are read-only (`409`).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` (with a profile) | read; add, edit, make primary, deactivate/reactivate; "+ Add Recruiter" | companies assigned to them | `rec-004` |
+| `placement_manager` | read; "+ Add Recruiter" (create only). Every contact write is `403` | direct reports' companies + the unassigned queue | `rec-004` |
+| `super_admin` | everything | all companies | `rec-004` |
+| `bdm` | read only (R10); every write is `403` | companies whose Assigned BDM is them | `rec-004` |
+| `hr_team`, `it_admin`, `employer`, every other role | `403` | — | `rec-004` |
+
+### 2.52 University visits *(net-new, added 2026-10-08 — `DEC-SCOPE-126`, `upc-010`)*
 
 Enforced inline in `services/university_visits.py` (role, lead/planner, approver resolved per request). Audit and logs carry ids only.
 
