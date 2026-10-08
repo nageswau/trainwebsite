@@ -47,7 +47,7 @@ def _invalid(field: str, msg: str, value) -> RequestValidationError:
     return RequestValidationError([{"type": "value_error", "loc": ("body", field), "msg": msg, "input": value}])
 
 
-def check_move(uni: University, payload: UniversityStageMove) -> bool:
+def _check_move(uni: University, payload: UniversityStageMove) -> bool:
     """PS4/PS8 on the locked row (the route already ran require: 403, inactive 409). Returns whether the move is backward."""
     if uni.lost_at is not None:
         raise HTTPException(409, LOST_CONFLICT)
@@ -69,7 +69,7 @@ def _record(db: AsyncSession, user: User, uni: University, kind: str, from_stage
 
 def move(db: AsyncSession, user: User, uni: University, payload: UniversityStageMove) -> bool:
     """Checks, then changes the stage and writes the history row. Returns whether the move was backward."""
-    backward = check_move(uni, payload)
+    backward = _check_move(uni, payload)
     from_stage = uni.stage
     uni.stage, uni.stage_changed_at = payload.to_stage, datetime.now(UTC)
     _record(db, user, uni, "move", from_stage, payload.to_stage, payload.note)

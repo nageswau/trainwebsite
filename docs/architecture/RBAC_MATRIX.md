@@ -983,6 +983,17 @@ by design (management visibility, §27); writes are scoped.
 | Publish / unpublish, deactivate / reactivate | `403` | unowned + team-owned | ✅ | ✅ | `403` |
 | Public catalogue | Shows only published, active universities, to everyone (unchanged otherwise) |||||
 
+### 2.47 Partnership stage engine *(net-new, added 2026-10-08 — `DEC-SCOPE-121`, `upc-007`)*
+
+Enforced in `services/partnership_universities.py` (`can_move_stage`, `can_reopen`: role → team scope → state) before the single writer
+`services/partnership_pipeline.py` runs.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Read stage, history, Kanban board | ✅ | ✅ | ✅ | ✅ | `403` |
+| Move stage, mark lost | own (primary or backup) | unowned + team-owned | `403` | ✅ | `403` |
+| Reopen a lost university | `403` | unowned + team-owned | `403` | ✅ | `403` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

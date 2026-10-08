@@ -78,10 +78,13 @@ commit), `api/partnership_pipeline.py`.
 - `components/UniversityStagePanel.tsx` (client): stage list as text (done/current/upcoming, never colour alone), column name, Lost
   banner, Move form (select + note, required when backward), Mark lost / Reopen with reason + Cancel; double-submit guard; stale move
   refreshes and explains; 422 field errors. `router.refresh()` after success (the detail page is server-rendered).
-- `components/UniversityStageHistory.tsx` (client): newest first, "Show more", retry on failure — the `BdmStageHistory` pattern.
+- Stage history: **reuses `components/BdmStageHistory.tsx`** (newest first, "Show more", retry on failure) with an optional `url` prop
+  (a string, so the server page can pass it) and a "Reopened at …" title; remounted (keyed on `changed_at` + `lost.at`) after each change.
+- QA fixes (Phase 5/6): QA7-01 board table uses the shared `.table` styling; QA7-02 the move form's select keeps its height; QA7-03 the
+  Lost/Reopen button is not stretched; QA7-04 long unbroken history notes wrap (`overflow-wrap: anywhere`).
 - `components/PartnershipPipelineBoard.tsx` (server): column tiles + Lost, the table (code, name, country, stage, primary manager),
   pager, empty/past-end states.
-- `/partnership/pipeline` page (+ `loading.tsx`): Mine/All toggle for managers, invalid filter → reset link.
+- `/partnership/pipeline` page (no `loading.tsx`: no partnership page has one): Mine/All toggle for managers, invalid filter → reset link.
 - University detail page: "Partnership stage" + "Stage history" sections. `UniversityTable`: a Stage column (with a Lost badge).
 - Nav: `PARTNERSHIP_MENU` "Partnership Pipeline" → live; `PARTNERSHIP_HEAD_NAV` gains it.
 

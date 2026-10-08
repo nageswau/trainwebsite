@@ -3162,3 +3162,21 @@ is invented. Visual-reference mapping: None — not inspected. Do not claim pari
 - **Route:** `/partnership/universities/[id]`. **Content:** Profile `<dl>` (University ID and the §1 fields, application count), Rankings,
   EduSphere owner (primary/backup, the assign pickers for a head or Super Admin), Public catalogue (status sentence, overview, Publish /
   Remove from catalogue, Deactivate with an inline confirm naming the applications, Reactivate). Edit link when allowed.
+
+## upc-007 addendum (2026-10-08, `DEC-SCOPE-121`) — Partnership stage + Kanban
+
+One route added and two screens extended by `upc-007` (design spec `docs/superpowers/specs/2026-10-08-upc-007-partnership-pipeline-design.md` §4). No catalogue ID is invented. Visual-reference mapping:
+None — not inspected. Do not claim parity. Roles: `partnership_manager`, `partnership_head`, `overseas_admin`, `super_admin` (each in its
+own sidebar); the API decides every action. Signed out → `/overseas/login`.
+
+- **Route:** `/partnership/pipeline`. **Data:** `GET /partnership/pipeline`. **Content:** managers get "My universities" / "All
+  universities" links; nine §4 column tiles + Lost, each a count link (`aria-current` on the chosen one); a table of the chosen column or
+  every open university (name link, code, city + country, stage with a Lost badge, primary manager); Previous/Next keep the filters.
+  **States:** "No universities in this column." / "No open universities yet."; past the end "This page is past the end of the list.";
+  a hand-edited filter "That filter isn't valid." with a reset link; error — access-unavailable block. **Responsive:** tiles in 2 columns
+  and table rows as labelled cards below 640 px; no side-scroll at 375 px.
+- **Extended:** `/partnership/universities/[id]` gains "Partnership stage" (Kanban column; the 15 stages with Done / Current / Upcoming as
+  text; Lost banner with date and reason; Move to + note — "Reason (required when moving back)"; Mark lost / Reopen with a required reason,
+  Yes / Cancel, focus moved into and back out of the reason; Saving… and one request per submit; success in `role="status"`; a refusal or
+  someone else's change in `role="alert"`, the page refreshed, the entry kept) and "Stage history" (newest first, Show more, Try again).
+- **Extended:** `/partnership/universities` gains a Stage column (with a Lost badge).
