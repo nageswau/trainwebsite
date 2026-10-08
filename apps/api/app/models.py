@@ -403,11 +403,25 @@ class JobOffer(Base, TimestampMixin):
     letter_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
+# upc-002 (U12, Q-06): the nine regions, in display order. Migration 0101_country_master repeats them (test_upc_002_migration asserts it).
+COUNTRY_REGIONS = ("UK", "Europe", "North America", "Latin America & Caribbean", "Middle East", "Asia", "Oceania", "Africa", "Antarctica")
+
+
 class Country(Base, TimestampMixin):
     __tablename__ = "countries"
+    __table_args__ = (
+        UniqueConstraint("iso2", name="uq_countries_iso2"),
+        CheckConstraint("iso2 ~ '^[A-Z]{2}$'", name="ck_countries_iso2"),
+        CheckConstraint("region IN (" + ", ".join(f"'{r}'" for r in COUNTRY_REGIONS) + ")", name="ck_countries_region"),
+    )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     slug: Mapped[str] = mapped_column(String(80), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(100))
+    # upc-002: every real country carries its ISO 3166-1 alpha-2 code and region (migration 0101 fills them). Nullable only so ad-hoc
+    # test rows need no code; the ISO rows are internal (catalogue_visible=false) until a country gets catalogue content.
+    iso2: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    region: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    catalogue_visible: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
     overview: Mapped[str] = mapped_column(Text)
     tuition: Mapped[str] = mapped_column(String(160))
     living_expenses: Mapped[str] = mapped_column(String(160))
@@ -3176,8 +3190,26 @@ class SchoolResultStatusHistory(Base, TimestampMixin):
     changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class RecruiterProfile(Base, TimestampMixin):
+    """rec-001 (DEC-SCOPE-116, R2): a recruiter's profile, 1:1 with a `placement_team` user. Name, email, mobile and active stay on
+    `users`. Employee ID and reporting manager are nullable only for rows that predate the Recruiter Staff page (the 0100 backfill)
+    or come from the generic Users form; that page requires both. The manager must be an active `placement_manager` -- a cross-table
+    rule, so `services/recruiter.py` enforces it under a row lock."""
+
+    __tablename__ = "recruiter_profiles"
+    __table_args__ = (
+        UniqueConstraint("user_id", name="uq_recruiter_profiles_user"),
+        Index("uq_recruiter_profiles_employee_id", text("lower(employee_id)"), unique=True),
+        Index("ix_recruiter_profiles_reporting_manager", "reporting_manager_user_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    employee_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    reporting_manager_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
 class PartnershipProfile(Base, TimestampMixin):
-    """upc-001 (DEC-SCOPE-116): a partnership manager's profile, 1:1 with a `partnership_manager` user (the user id is the key). Name,
+    """upc-001 (DEC-SCOPE-117): a partnership manager's profile, 1:1 with a `partnership_manager` user (the user id is the key). Name,
     email, mobile and active status stay on `users` (PU2). The reporting head must be an active `partnership_head`; that spans tables, so
     `services/partnership.py` enforces it under a row lock (no cross-table CHECK)."""
 

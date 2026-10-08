@@ -364,8 +364,11 @@ const ROLES_BY_DIVISION: Record<string, string[]> = {
   it: ["it_student", "trainer", "placement_team", "hr_team", "counselor", "it_admin"], // tel-017: counselors are IT or Overseas
   overseas: ["overseas_student", "counselor", "university_rep", "agent", "overseas_admin"],
   // bdm-001 / tel-001: managers have no profile, so this generic form creates them; a BDM or telecaller needs its own admin page
-  // (profile required). upc-001: likewise a partnership head here, a partnership manager on its own admin page.
-  global: ["super_admin", "bdm_manager", "telecaller_manager", "partnership_head"],
+  // (profile required).
+  // (profile required). rec-001: a placement manager likewise; a recruiter (placement_team, above) gets an empty profile here and
+  // its Employee ID and manager are set on Recruiter Staff.
+  // upc-001: likewise a partnership head here; a partnership manager on its own admin page (profile required).
+  global: ["super_admin", "bdm_manager", "telecaller_manager", "placement_manager", "partnership_head"],
 };
 
 // RAID.md I-31 (ADM-001 follow-up): `it_admin`/`overseas_admin` can never create outside

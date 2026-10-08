@@ -318,7 +318,7 @@ Division `global`; signs in at `/admin/login`; lands on `/telecaller/manager/tea
 
 **Admin entry points:** a "Telecallers" nav item for Super Admin (`/admin/telecallers`, both teams), IT Admin (`/it/admin/telecallers`, IT) and Overseas Admin (`/overseas/admin/telecallers`, Overseas). Telecaller Managers are created by a Super Admin from Users (division Global); telecallers are created on the Telecallers page.
 
-## Partnership Manager *(net-new, 2026-10-08, `DEC-SCOPE-116`, `upc-001`)*
+## Partnership Manager *(net-new, 2026-10-08, `DEC-SCOPE-117`, `upc-001`)*
 
 Division `overseas`; signs in at `/overseas/login`; lands on `/partnership/dashboard`. Sidebar: Dashboard · Profile. The EVID-020 §32
 menu (19 entries, `PARTNERSHIP_MENU` in `lib/navigation.ts`) joins the sidebar one entry at a time as each upc item lands (PU8).
@@ -327,7 +327,7 @@ menu (19 entries, `PARTNERSHIP_MENU` in `lib/navigation.ts`) joins the sidebar o
 - /partnership/profile — read-only profile (name, Employee ID, mobile, email, reporting head, status) plus an editable mobile (PU3).
 - /partnership — redirects to `/partnership/dashboard`.
 
-## Partnership Head *(net-new, 2026-10-08, `DEC-SCOPE-116`, `upc-001`)*
+## Partnership Head *(net-new, 2026-10-08, `DEC-SCOPE-117`, `upc-001`)*
 
 Division `global`; created only by a Super Admin from Users; signs in at `/admin/login`; lands on `/partnership/head/team`. Sidebar: Team. Password recovery stays in the admin portal (the welcome/reset link opens `/admin/reset-password`, and `login_portal` is `"admin"`).
 

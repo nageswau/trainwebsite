@@ -1,4 +1,4 @@
-// upc-001 (DEC-SCOPE-116): partnership manager types and endpoints shared by the partnership pages and the admin Partnership managers
+// upc-001 (DEC-SCOPE-117): partnership manager types and endpoints shared by the partnership pages and the admin Partnership managers
 // page. The form readers, paging and status words are tel-001's (lib/telecaller).
 import type { LookupPage } from "@/lib/lookups";
 import type { ManagerOption, ManagerRef } from "@/lib/telecaller";

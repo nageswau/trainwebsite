@@ -1454,10 +1454,41 @@ line, no audit row). `limit` 1–100 (default 50), `offset` ≥ 0 (`422` otherwi
 | `GET /counselor/leads/{id}/timeline` | Unchanged path (tel-018). The assigned counselor only; otherwise `404`. Same body |
 | `GET /admin/leads/{id}/timeline` | New. `it_admin` / `overseas_admin` (own division) and `super_admin`; unknown `404` "Lead not found", another division `403`; other roles `403`. Same body |
 
-## 12AI. Partnership roles (`upc-001`) — addendum, 2026-10-08
+## 12AI. Recruiter roles (`rec-001`) — addendum, 2026-10-08
 
-`DEC-SCOPE-116`; design spec `docs/superpowers/specs/2026-10-08-upc-001-partnership-roles-design.md` §5. Migration
-`0100_partnership_profiles`. Lists: `limit` 1–100 (default 50), `offset` ≥ 0 (`422` otherwise), `{items, total, limit, offset}`, ordered
+- **Basis:** `DEC-SCOPE-116`. Design spec `docs/superpowers/specs/2026-10-08-rec-001-recruiter-roles-design.md` §4. Migration `0100`.
+- **Common rules:**
+  - Lists take `limit` 1–100 (default 50) and `offset` ≥ 0 (otherwise `422`), and accept `q` ≤ 200 characters.
+  - A list returns `{items, total, limit, offset}`, ordered by name then id.
+  - A request without a session is `401`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `POST /admin/users` | Existing route. Role `placement_team`: the division defaults to `it`, and the optional nested `recruiter_profile {employee_id, reporting_manager_user_id}` requires both keys when sent. Without it, an empty profile is created. A reporting manager that is not an active `placement_manager` is `422` "Reporting manager must be an active placement manager". A duplicate Employee ID (case-insensitive) is `409` "Employee ID already exists". Unknown keys are `422`. Role `placement_manager` (division `global`): any role other than `super_admin` gets `403` "Only a Super Admin can create placement managers". A `recruiter_profile` on any other role is `422`. The response gains `recruiter_profile {employee_id, reporting_manager {id, full_name, active} \| null} \| null`. A placement manager's welcome link is `/admin/reset-password`, and `POST /auth/reset-password` returns `login_portal: "admin"` |
+| `PATCH /admin/users/{id}` | Existing route. `recruiter_profile` on a recruiter uses PATCH semantics: an omitted key is unchanged and an explicit null is `422`. The manager is re-checked only when it changes. A missing profile is created. On any other role it is `422`. The audit row records `recruiter_profile_before`/`_after` |
+| `GET /recruiter/me` | A `placement_team` user with a profile only; any other role, or a missing profile, is `403`. Returns `{id, full_name, email, phone, active, division, recruiter_profile}` |
+| `PATCH /recruiter/profile` | Body `{phone}` only (the tel-001 phone rule); any other key is `422`. Returns the `/me` body. Audit `recruiter.profile_update` names the field only |
+| `GET /recruiter/manager/team` | `placement_manager` (direct reports, inactive included) or `super_admin` (all); any other role is `403`. `q` matches name, email or Employee ID. `items[]`: `{id, full_name, email, phone, active, employee_id}` |
+| `GET /admin/recruiters` | `super_admin`, `it_admin`; any other role (including `overseas_admin`) is `403`. Filters `active` and `q`. `items[]`: the team row plus `reporting_manager \| null` |
+| `GET /admin/placement-managers` | Same roles. Active placement managers only, filtered by `q` on name or email. `items[]`: `{id, full_name, email, recruiter_count}` |
+
+## 12AJ. Country master (`upc-002`) — addendum, 2026-10-08
+
+U12 (`UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1, `EXPLICIT_APPROVAL`); Q-06 regions answered 2026-10-08; design spec
+`docs/superpowers/specs/2026-10-08-upc-002-country-master-design.md`. Migration `0101_country_master`. Drafted as §12AI / `0100`; rec-001 merged first with §12AI and
+`0100_recruiter_profiles`, so this is §12AJ and `0101`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /public/countries` | Unchanged body (`CountryOut`, no new fields). Now lists **catalogue-visible** countries only, so the ISO rows stay internal |
+| `GET /public/countries/{slug}` | An internal country is `404` "Country not found", the same as an unknown slug |
+| `POST /admin/universities` | `country_slug` must name a catalogue-visible country; an internal one is `422` "Unknown country" (universities stay public until upc-003). A slug already taken is `409` "A university with the slug '…' already exists" (was an unhandled `500`; QA-01) |
+| `GET /lookups/countries?q&limit` | New. `overseas_admin` (overseas division) and `super_admin`; signed out `401`, other roles or division `403`. `q` ≤ 100 (matches the name, the ISO code exactly, or a common alias such as "United States", "United Arab Emirates", "UK", "Holland" (`lookups.COUNTRY_ALIASES`, QA-02); an exact code ranks first), `limit` 1–50 (default 20). `200 {items, truncated}`, `items[]`: `{id, label: name, detail: "JP · Asia" \| null}`, catalogue and internal rows alike. One log line (counts only), no audit row |
+
+## 12AK. Partnership roles (`upc-001`) — addendum, 2026-10-08
+
+`DEC-SCOPE-117`; design spec `docs/superpowers/specs/2026-10-08-upc-001-partnership-roles-design.md` §5. Migration
+`0102_partnership_profiles`. Lists: `limit` 1–100 (default 50), `offset` ≥ 0 (`422` otherwise), `{items, total, limit, offset}`, ordered
 by name then id. Signed out `401`.
 
 | Method/Path | Notes / status codes |

@@ -82,6 +82,26 @@ describe("middleware /telecaller (tel-001 AC5, TL1)", () => {
   });
 });
 
+describe("middleware /recruiter (rec-001, Q-29)", () => {
+  it("sends a signed-out manager route to the admin sign-in, keeping next", () => {
+    expect(go("/recruiter/manager/team?offset=50")).toBe("http://localhost/admin/login?next=%2Frecruiter%2Fmanager%2Fteam%3Foffset%3D50");
+    expect(go("/recruiter/manager")).toBe("http://localhost/admin/login?next=%2Frecruiter%2Fmanager");
+  });
+
+  it("sends other signed-out /recruiter routes to the IT sign-in", () => {
+    expect(go("/recruiter/dashboard")).toBe("http://localhost/it/login?next=%2Frecruiter%2Fdashboard");
+    expect(go("/recruiter")).toBe("http://localhost/it/login?next=%2Frecruiter");
+    expect(go("/recruiter/managerial")).toBe("http://localhost/it/login?next=%2Frecruiter%2Fmanagerial");
+  });
+
+  it("leaves unrelated paths alone and lets signed-in visits through", () => {
+    expect(go("/recruiterx")).toBeNull();
+    expect(go("/recruiter/dashboard", true)).toBeNull();
+    expect(go("/admin/recruiter-staff")).toBe("http://localhost/admin/login?next=%2Fadmin%2Frecruiter-staff");
+    expect(config.matcher).toContain("/recruiter/:path*");
+  });
+});
+
 describe("middleware /it/counselor (tel-017)", () => {
   it("protects the IT counselor workspace like the other IT portals", () => {
     expect(go("/it/counselor/leads")).toBe("http://localhost/it/login?next=%2Fit%2Fcounselor%2Fleads");

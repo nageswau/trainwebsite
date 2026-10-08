@@ -24,7 +24,7 @@ test("Placement Team's Reports page loads with real job activity instead of 404i
   await page.fill("#login-email", "placement@edusphere.local");
   await page.fill("#login-password", "Demo@123");
   await page.click("button:has-text('Sign in securely')");
-  await page.waitForURL("**/it/placement/dashboard");
+  await page.waitForURL("**/recruiter/dashboard");
 
   await page.goto("/it/placement/reports");
   await expect(page.getByRole("heading", { name: "Placement Reports" })).toBeVisible();

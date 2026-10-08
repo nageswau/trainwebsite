@@ -3088,7 +3088,7 @@ portal card/table idiom (no Canva frame for this screen: `NEEDS_CONFIRMATION` fo
 - **Route:** `/telecaller/dashboard` — "My targets" card (KPI · Today · <Month>; "Not set" for gaps; "Targets are unavailable right now."
   if the read fails).
 
-## upc-001 addendum (2026-10-08, `DEC-SCOPE-116`) — Partnership roles
+## upc-001 addendum (2026-10-08, `DEC-SCOPE-117`) — Partnership roles
 
 Four screens (six routes) added by `upc-001` (design spec `docs/superpowers/specs/2026-10-08-upc-001-partnership-roles-design.md` §6).
 They carry no catalogue ID; none is invented here. Visual-reference mapping for all: None — not inspected. Do not claim parity.

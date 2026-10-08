@@ -1,4 +1,4 @@
-"""upc-001 (DEC-SCOPE-116, spec §5): partnership manager and head reads, the manager's phone self-edit (PU3), the admin list and the
+"""upc-001 (DEC-SCOPE-117, spec §5): partnership manager and head reads, the manager's phone self-edit (PU3), the admin list and the
 reporting-head picker.
 
 Scope always comes from the session -- no /partnership route takes a user id -- so there is no IDOR surface. Lists reuse bdm-001's

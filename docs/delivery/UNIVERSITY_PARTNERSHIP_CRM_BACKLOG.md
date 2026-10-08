@@ -182,7 +182,7 @@ NO-ASSUMPTION MODE. Prepared 2026-10-08 at the user's request. **No code was wri
 | Q-03 | Ranking fields: which systems (QS, THE, other free-text), year, rank or band | 003 |
 | Q-04 | Unowned (target) universities: may any manager claim one, or does only the head assign? | 003, 032 |
 | Q-05 | Backup manager: same edit rights as the primary, or read + act only when the primary is inactive? | 003 |
-| Q-06 | Region values. The source says "Asia, Europe, UK, North America, Middle East, Australia etc.", with UK separate from Europe. What is the complete list? | 002 |
+| Q-06 | Region values. The source says "Asia, Europe, UK, North America, Middle East, Australia etc.", with UK separate from Europe. What is the complete list? **Answered 2026-10-08 (upc-002):** nine regions, UK, Europe, North America, Latin America & Caribbean, Middle East, Asia, Oceania, Africa and Antarctica (assignments in the upc-002 design spec §1 C1) | 002 |
 | Q-07 | Map and search filter "Exclusive/Non-exclusive": derived from the current agreement's exclusivity? | 014, 024, 025 |
 | Q-08 | Partner-status grouping (Appendix B G1–G4): which stages count as Partner, In Progress, Target and Lost? Is "At Risk" the relationship strength? | 007, 022, 025 |
 | Q-09 | Probability for the §3 stages that §24 does not list (Researching, Contact Identified, Documents Shared…), and whether a manual override is allowed | 023 |
@@ -227,8 +227,8 @@ Common conventions:
 - API contract addenda and RBAC sections continue from §5.4.
 
 ### upc-001 — Partnership roles: profile, provisioning, sign-in, shell, menu
-- **Status (2026-10-08):** built on `feature/upc-001` under `DEC-SCOPE-116`, with migration `0100_partnership_profiles`, API §12AI and
-  RBAC §2.42. Spec: `docs/superpowers/specs/2026-10-08-upc-001-partnership-roles-design.md`.
+- **Status (2026-10-08):** built on `feature/upc-001` under `DEC-SCOPE-117`, with migration `0102_partnership_profiles`, API §12AK and
+  RBAC §2.43. Spec: `docs/superpowers/specs/2026-10-08-upc-001-partnership-roles-design.md`.
   - The U0–U15 answers are registered in `DEC-SCOPE-116`.
   - The PU1–PU11 answers are recommended defaults (`NEEDS_CONFIRMATION`). They include Q-29 (PU1) and "overseas_admin creates managers"
     (PU7).
