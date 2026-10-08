@@ -7250,6 +7250,82 @@ RecEmployeeCount = _bdm_whole_number("Number of employees must be a whole number
 RecCompanyPriority = Literal["hot", "warm", "cold"]
 
 
+# --- rec-004 (DEC-SCOPE-125): company contacts ------------------------------------------------------------------------------------
+REC_CONTACT_LABELS = {
+    "designation": "Designation", "department": "Department", "mobile": "Mobile", "email": "Email", "linkedin_url": "LinkedIn", "notes": "Notes",
+}
+REC_CONTACT_MAX = 50  # C4: active and inactive together; bounds the unpaginated list
+
+
+def _rec_contact_text(value: str | None, info: ValidationInfo) -> str | None:
+    """bdm-002's rules with this module's labels: no control characters (a line break only in notes), blank -> None, a mobile the
+    duplicate/call lookups can match (normalise_phone), a lower-cased email, and http(s) LinkedIn links only."""
+    field = info.field_name
+    label = REC_CONTACT_LABELS[field]
+    control = _BDM_CONTROL_MULTILINE if field == "notes" else _BDM_CONTROL
+    if value is not None and control.search(value):
+        raise ValueError(f"{label} contains invalid characters")
+    if not value:
+        return None
+    if field == "email":
+        if not _EMAIL_SHAPE.fullmatch(value):
+            raise ValueError("Enter a valid email address")
+        return value.lower()
+    if field == "mobile" and (not _BDM_PHONE.fullmatch(value) or normalise_phone(value) is None):
+        raise ValueError("Enter a valid mobile number")
+    if field == "linkedin_url" and not _BDM_WEBSITE.fullmatch(value):
+        raise ValueError("LinkedIn must start with http:// or https://" if _BDM_SCHEME.match(value) else "Enter a LinkedIn link such as linkedin.com/in/name")
+    return value
+
+
+def _rec_contact_optional(max_length: int, *, before=None):
+    text = Annotated[Annotated[str, StringConstraints(strip_whitespace=True, max_length=max_length)] | None, AfterValidator(_rec_contact_text)]
+    return Annotated[text, BeforeValidator(before)] if before else text
+
+
+RecContactShort = _rec_contact_optional(120)
+RecContactMobile = _rec_contact_optional(40)
+RecContactEmail = _rec_contact_optional(255)
+RecContactLinkedIn = _rec_contact_optional(300, before=_bdm_website_prefix)
+RecContactNotes = _rec_contact_optional(2000, before=_bdm_newlines)
+RecContactChannel = Literal["call", "whatsapp", "email"]
+
+
+class RecContactUpdate(BaseModel):
+    """PATCH: omitted = unchanged, null = clear; a sent null on name / is_primary / active fails the non-nullable type. `is_primary: true`
+    makes this the primary (false is refused: choose another); `active` deactivates or reactivates (C2)."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: BdmContactName = None
+    designation: RecContactShort = None
+    department: RecContactShort = None
+    role_id: UUID | None = None
+    mobile: RecContactMobile = None
+    email: RecContactEmail = None
+    linkedin_url: RecContactLinkedIn = None
+    preferred_channel: RecContactChannel | None = None
+    notes: RecContactNotes = None
+    is_primary: StrictBool = None
+    active: StrictBool = None
+
+
+class RecContactIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: BdmContactName
+    designation: RecContactShort = None
+    department: RecContactShort = None
+    role_id: UUID | None = None
+    mobile: RecContactMobile = None
+    email: RecContactEmail = None
+    linkedin_url: RecContactLinkedIn = None
+    preferred_channel: RecContactChannel | None = None
+    notes: RecContactNotes = None
+    is_primary: StrictBool = False
+
+
+REC_CONTACT_FIELDS = ("name", "designation", "department", "role_id", "mobile", "email", "linkedin_url", "preferred_channel", "notes")
+
+
 class RecCompanyUpdate(BaseModel):
     """PATCH: omitted = unchanged, null = clear (a null name fails its type). Server-owned fields (code, assignee, archive, creator) are
     unknown fields, so a client can never set them; the recruiter changes only through /assign."""
@@ -7277,6 +7353,7 @@ class RecCompanyUpdate(BaseModel):
 class RecCompanyCreate(RecCompanyUpdate):
     name: RecCompanyName
     assigned_recruiter_user_id: UUID | None = None  # managers and super_admin only (services/recruiter_companies)
+    contact: RecContactIn | None = None  # rec-004 C7 "+ Add Recruiter": the first contact, created as primary in the same transaction
 
 
 class RecCompanyAssign(BaseModel):
@@ -7352,6 +7429,29 @@ class RecCompanyOut(RecCompanyRow):
 
 class RecCompanyEnvelope(BaseModel):
     company: RecCompanyOut
+
+
+class RecContactOut(BaseModel):
+    id: UUID
+    name: str
+    designation: str | None
+    department: str | None
+    role: RecCatalogueRef | None
+    mobile: str | None
+    email: str | None
+    linkedin_url: str | None
+    preferred_channel: str | None
+    notes: str | None
+    is_primary: bool
+    active: bool
+    last_contacted_at: datetime | None  # C6: null until calls, messages and meetings exist (rec-025/026/028)
+    created_at: datetime
+    updated_at: datetime
+
+
+class RecContactList(BaseModel):
+    items: list[RecContactOut]
+    can_edit: bool
 
 
 class RecBdmOption(BaseModel):

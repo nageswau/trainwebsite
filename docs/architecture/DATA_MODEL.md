@@ -1362,3 +1362,28 @@ registration and `/workflows/it/jobs` keep writing only name, website and owners
 `company_assignment_history`: `id`, `company_id` FK, `from_user_id` (NULL = was unassigned), `to_user_id`, `changed_by_user_id`,
 `created_at`; `ix_company_assignment_history_company`. Append-only. `downgrade()` refuses while any history row or any new-column value
 exists.
+
+## Company contacts (`rec-004`, `DEC-SCOPE-125`; migration `0110_company_contacts`, after `0109_university_duplicates`)
+
+`company_contacts` holds many people per company (R3; EVID-018 §4). Contacts are never deleted, only deactivated (C2).
+
+| Column | Type / rule |
+|---|---|
+| `id` | uuid PK |
+| `company_id` | FK `companies` (RESTRICT); `ix_company_contacts_company` |
+| `position` | bigint identity (insertion order) |
+| `name` | varchar(200) NOT NULL |
+| `designation`, `department` | varchar(120) |
+| `role_id` | FK `rec_contact_roles` (it must be active when set or changed: app rule) |
+| `mobile` | varchar(40) |
+| `mobile_normalized` | varchar(20), derived from `mobile` (E.164; `ix_company_contacts_mobile`) |
+| `email` | varchar(255), lower-cased |
+| `linkedin_url` | varchar(300), http/https only |
+| `preferred_channel` | varchar(16), `ck_company_contacts_channel` `call`/`whatsapp`/`email` |
+| `notes` | varchar(2000) |
+| `is_primary` | bool; `uq_company_contacts_primary` (partial unique on `company_id` WHERE `is_primary`) |
+| `active` | bool; `ck_company_contacts_primary_active`: `NOT is_primary OR active` |
+| `created_by_user_id` | FK users |
+| `created_at`, `updated_at` | timestamptz |
+
+`downgrade()` refuses while any row exists.
