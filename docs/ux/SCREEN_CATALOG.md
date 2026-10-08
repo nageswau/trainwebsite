@@ -3291,3 +3291,11 @@ Design spec `docs/superpowers/specs/2026-10-08-rec-024-recruiter-follow-ups-desi
   - The list shows open follow-ups by due time, then done and cancelled ones.
   - Details gain "Next follow-up". Each contact shows its own next follow-up.
 - **Company list** (`/recruiter/companies`): a "Next follow-up" column.
+
+## rec-008 addendum (2026-10-08, `DEC-SCOPE-132`) — JD management
+
+Design spec `docs/superpowers/specs/2026-10-08-rec-008-jd-management-design.md` §4.
+
+| Screen | Route | Roles | Content |
+|---|---|---|---|
+| Requirement detail → **Job description (JD)** section | `/recruiter/requirements/{id}` | recruiter (write), manager / assigned BDM / super_admin (read) | **Empty:** "No JD yet" with Create JD and Upload JD. **Current version:** the JD number and version, the 14 §7 fields, the file download, and a closing-date warning (JD8). **Create/edit form:** prefilled from the current version or the requirement. **Upload:** PDF/DOCX ≤ 5 MB as a new version. **Update requirement from JD:** an inline confirm with the change list (JD6). **Versions:** a list with downloads. A failed JD read shows an alert while the rest of the page stays up |
