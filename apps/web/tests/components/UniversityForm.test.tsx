@@ -47,6 +47,7 @@ describe("UniversityForm (upc-003 AC1)", () => {
     fireEvent.change(screen.getByLabelText("Popular programme areas"), { target: { value: "Business, Engineering , " } });
     fireEvent.change(screen.getByLabelText("Priority"), { target: { value: "A" } });
     fireEvent.change(screen.getByLabelText("Partnership potential"), { target: { value: "high" } });
+    fireEvent.change(screen.getByLabelText("Relationship strength"), { target: { value: "at_risk" } }); // upc-006 CT11
     fireEvent.click(screen.getByRole("button", { name: "Add ranking" }));
     fireEvent.change(screen.getByLabelText("Ranking 1 system"), { target: { value: "QS" } });
     fireEvent.change(screen.getByLabelText("Ranking 1 year"), { target: { value: "2026" } });
@@ -57,6 +58,7 @@ describe("UniversityForm (upc-003 AC1)", () => {
     expect(body).toMatchObject({
       name: "ABC University", country_id: "gb", city: "London", institution_type: "college", ownership_type: "private", website: "abc.ac.uk",
       course_levels: ["PG"], popular_programs: ["Business", "Engineering"], priority: "A", partnership_potential: "high", state_region: null,
+      relationship_strength: "at_risk",
       rankings: [{ system: "QS", other_name: null, year: 2026, rank: "145" }],
     });
     expect(mock.mock.calls.find(([url]) => url === "/api/v1/partnership/universities")![1]!.method).toBe("POST");
