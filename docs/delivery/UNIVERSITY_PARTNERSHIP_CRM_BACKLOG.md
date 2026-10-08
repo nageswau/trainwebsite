@@ -356,6 +356,11 @@ Common conventions:
 - **Complexity:** large · **Risk:** high
 
 ### upc-004 — Duplicate prevention + BDM university-org link
+- **Status (2026-10-08):** built on `feature/upc-004` under `DEC-SCOPE-124`, with migration `0109_university_duplicates`, API §12AR and
+  RBAC §2.50. Spec: `docs/superpowers/specs/2026-10-08-upc-004-university-duplicates-design.md`.
+  - Q-02 is answered by the recommended defaults UD1–UD12 (`NEEDS_CONFIRMATION`): normalised name + country, no aliases; override by the
+    head / `super_admin` with an audited reason; stage, last contact and next follow-up show "—" until upc-007/006/020.
+  - Follow-up: a link control in the BDM edit form (the API already links and unlinks).
 - **Business requirement:** §26 search before adding, the warning panel (5 fields), "prevents two employees contacting the same
   university" (U13).
 - **Existing behavior:** duplicate detection is by slug only. BDM `university` orgs are separate (`name_key`/`city_key` check within BDM).
@@ -418,6 +423,11 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-006 — University contacts + relationship strength
+- **Status (2026-10-08):** built on `feature/upc-006` under `DEC-SCOPE-123`, with migration `0108_university_contacts`, API §12AQ and
+  RBAC §2.49. Spec: `docs/superpowers/specs/2026-10-08-upc-006-university-contacts-design.md`.
+  - Q-15 and the design-level rules are answered by the recommended defaults CT1–CT14 (`NEEDS_CONFIRMATION`): strength set by hand; a
+    seeded read-only role catalogue; overseas_admin reads the shareable slice without notes; first contact primary; delete added (PII).
+  - Last interaction and next follow-up are deferred to upc-009/012/013 and upc-020; the counselor slice (AC3) lands with upc-030.
 - **Business requirement:**
   - §10: many contacts, 7 example roles, 11 fields.
   - §1 contact rows: International Office, International Director, Partnership Contact, Recruitment Contact, Application Contact,

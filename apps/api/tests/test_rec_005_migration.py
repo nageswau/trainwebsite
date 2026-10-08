@@ -1,4 +1,4 @@
-"""rec-005 -- migration 0108_company_pipeline (spec §3). Round trip, backfill and downgrade refusal run in a throwaway database built from
+"""rec-005 -- migration 0110_company_pipeline (spec §3). Round trip, backfill and downgrade refusal run in a throwaway database built from
 scratch (the rec-003 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -16,15 +16,15 @@ from app.recruiter_stages import STAGES
 from tests.test_tel_001_migration import _config, _sql
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_rec_005_migration_0108", VERSIONS / "0108_company_pipeline.py")
+_spec = importlib.util.spec_from_file_location("_rec_005_migration_0110", VERSIONS / "0110_company_pipeline.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0107_candidates", "0108_company_pipeline"
+BASE, HEAD = "0109_university_duplicates", "0110_company_pipeline"
 NEW_COLUMNS = {"stage", "stage_changed_at", "lost_at", "lost_reason"}
 
 
-def test_migration_chains_after_0107_and_is_the_single_head():
+def test_migration_chains_after_0109_and_is_the_single_head():
     assert _migration.revision == HEAD
     assert _migration.down_revision == BASE
     assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1
@@ -60,7 +60,7 @@ def isolated_db():
     try:
         settings.database_url = url
         command.upgrade(cfg, "head")
-        command.downgrade(cfg, BASE)  # the real 0107 shape of `companies`
+        command.downgrade(cfg, BASE)  # the real 0109 shape of `companies`
         yield {"cfg": cfg, "url": url}
     finally:
         settings.database_url = original

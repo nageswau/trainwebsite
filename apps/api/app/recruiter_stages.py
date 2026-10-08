@@ -1,5 +1,5 @@
-"""rec-005 (DEC-SCOPE-123, spec §2): the EVID-018 §5 company B2B pipeline -- 13 stages in source order and wording, and the events that
-move a company. `services/company_pipeline.py` is the only writer; migration 0108 keeps a frozen copy of the keys.
+"""rec-005 (DEC-SCOPE-125, spec §2): the EVID-018 §5 company B2B pipeline -- 13 stages in source order and wording, and the events that
+move a company. `services/company_pipeline.py` is the only writer; migration 0110 keeps a frozen copy of the keys.
 
 kind: "start" -- where every company begins, never chosen; "manual" -- the recruiter's own moves (P4); "driven" -- set only by
 requirement events (P2). Lost is a flag on top of the stage, not a stage (P5)."""

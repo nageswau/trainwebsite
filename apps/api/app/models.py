@@ -28,6 +28,7 @@ from sqlalchemy.sql import func
 
 from app.bdm_stages import FIRST_STAGE as BDM_FIRST_STAGE
 from app.bdm_stages import MANUAL_STAGES as BDM_MANUAL_STAGES
+from app.core.identifiers import normalize_key
 from app.lead_stages import STAGES as LEAD_STAGES
 from app.notifications.phone import normalise_phone
 from app.recruiter_stages import FIRST_STAGE as COMPANY_FIRST_STAGE
@@ -323,7 +324,7 @@ COMPANY_CHECKS = {
     "ck_companies_priority": "priority IS NULL OR priority IN ('hot', 'warm', 'cold')",
     "ck_companies_employee_count": "employee_count IS NULL OR employee_count BETWEEN 0 AND 10000000",
 }
-# rec-005 (DEC-SCOPE-123): the pipeline stage and the Lost flag (both or neither); migration 0108 keeps a frozen copy.
+# rec-005 (DEC-SCOPE-125): the pipeline stage and the Lost flag (both or neither); migration 0108 keeps a frozen copy.
 COMPANY_PIPELINE_CHECKS = {
     "ck_companies_stage": "stage IN (" + ", ".join(f"'{s}'" for s in COMPANY_STAGES) + ")",
     "ck_companies_lost": "(lost_at IS NULL) = (lost_reason IS NULL)",
@@ -375,7 +376,7 @@ class Company(Base, TimestampMixin):
     assigned_bdm_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # rec-005 (DEC-SCOPE-123): written only by services/company_pipeline; the server defaults cover every other insert path (EMP-001).
+    # rec-005 (DEC-SCOPE-125): written only by services/company_pipeline; the server defaults cover every other insert path (EMP-001).
     stage: Mapped[str] = mapped_column(String(30), default=COMPANY_FIRST_STAGE, server_default=COMPANY_FIRST_STAGE)
     stage_changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     lost_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -383,7 +384,7 @@ class Company(Base, TimestampMixin):
 
 
 class CompanyStageHistory(Base):
-    """rec-005 (DEC-SCOPE-123, spec §3): one row per stage change, Lost and reopen. Append-only. `event` is `manual`, `lost`, `reopen` or
+    """rec-005 (DEC-SCOPE-125, spec §3): one row per stage change, Lost and reopen. Append-only. `event` is `manual`, `lost`, `reopen` or
     an engine event (recruiter_stages.EVENTS); `actor_user_id` is NULL for the system. No stage CHECK: history must survive a future
     catalogue change. `position` orders rows created in one transaction."""
 
@@ -530,6 +531,9 @@ UNIVERSITY_PRIORITIES = ("A", "B", "C")
 PARTNERSHIP_POTENTIALS = ("high", "medium", "low")
 COURSE_LEVELS = ("UG", "PG", "PhD", "Diploma", "Foundation")
 RANKING_SYSTEMS = ("QS", "THE", "ARWU", "Other")
+# upc-006 (DEC-SCOPE-123): §11's relationship status, exactly (CT4), and the channels a contact record holds (CT3).
+RELATIONSHIP_STRENGTHS = ("new", "developing", "good", "strong", "strategic", "at_risk", "dormant")
+CONTACT_CHANNELS = ("email", "phone", "whatsapp", "linkedin")
 UNIVERSITY_CODE_SEQ = Sequence("university_code_seq", metadata=Base.metadata)
 UNIVERSITY_CODE_DEFAULT = "'UNV-' || translate(format('%6s', nextval('university_code_seq')), ' ', '0')"
 
@@ -547,6 +551,11 @@ UNIVERSITY_CHECKS = {
     "ck_universities_partnership_potential": _one_of("partnership_potential", PARTNERSHIP_POTENTIALS),
     "ck_universities_backup_needs_primary": "backup_manager_user_id IS NULL OR (primary_manager_user_id IS NOT NULL AND backup_manager_user_id <> primary_manager_user_id)",
 }
+# upc-006: added by migration 0108 (kept out of UNIVERSITY_CHECKS, which mirrors 0105).
+UNIVERSITY_RELATIONSHIP_CHECK = _one_of("relationship_strength", RELATIONSHIP_STRENGTHS)
+
+
+UNIVERSITY_NAME_KEY_LENGTH = 200  # = len(University.name)
 
 
 class University(Base, TimestampMixin):
@@ -557,14 +566,17 @@ class University(Base, TimestampMixin):
     __table_args__ = (
         UniqueConstraint("university_code", name="uq_universities_code"),
         *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_CHECKS.items()),
+        CheckConstraint(UNIVERSITY_RELATIONSHIP_CHECK, name="ck_universities_relationship_strength"),
         Index("ix_universities_primary_manager", "primary_manager_user_id"),
         Index("ix_universities_backup_manager", "backup_manager_user_id"),
         Index("ix_universities_priority", "priority"),
+        Index("ix_universities_duplicate_key", "country_id", "name_key"),  # upc-004 UD1; not unique (overrides, legacy rows)
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     country_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("countries.id"), index=True)
     slug: Mapped[str] = mapped_column(String(140), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(200))
+    name_key: Mapped[str] = mapped_column(String(UNIVERSITY_NAME_KEY_LENGTH))  # upc-004: normalize_key(name), kept by _derive_name_key
     city: Mapped[str] = mapped_column(String(120))
     overview: Mapped[str] = mapped_column(Text)
     eligibility: Mapped[str] = mapped_column(Text)
@@ -587,7 +599,14 @@ class University(Base, TimestampMixin):
     active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
     # UM5: true by default so the existing rows and the legacy admin create stay public; the master creates every row as false.
     catalogue_visible: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    relationship_strength: Mapped[str | None] = mapped_column(String(12), nullable=True)  # upc-006 CT11: set by hand (CT1)
     country = relationship("Country")
+
+    @validates("name")
+    def _derive_name_key(self, _key: str, name: str) -> str:
+        """upc-004 UD1: every writer (master, legacy admin create, seed) keeps the duplicate key in step with the name."""
+        self.name_key = normalize_key(name, UNIVERSITY_NAME_KEY_LENGTH)
+        return name
 
 
 class UniversityRanking(Base):
@@ -624,6 +643,65 @@ class UniversityAssignmentHistory(Base):
     to_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# upc-006 (DEC-SCOPE-123, spec §2): the contact role catalogue (CT2) -- §10's example roles and §1's contact rows, International
+# Director once. Migration 0108 seeds it (ROLE_SEED) and repeats UNIVERSITY_CONTACT_CHECKS; test_upc_006_migration keeps them identical.
+UNIVERSITY_CONTACT_ROLE_SEED = (
+    ("international_director", "International Director"),
+    ("international_recruitment_manager", "International Recruitment Manager"),
+    ("regional_manager", "Regional Manager"),
+    ("admissions_manager", "Admissions Manager"),
+    ("marketing_manager", "Marketing Manager"),
+    ("application_officer", "Application Officer"),
+    ("finance_contact", "Finance Contact"),
+    ("international_office", "International Office"),
+    ("partnership_contact", "Partnership Contact"),
+    ("recruitment_contact", "Recruitment Contact"),
+    ("application_contact", "Application Contact"),
+    ("country_manager", "Country Manager"),
+)
+UNIVERSITY_CONTACT_CHECKS = {
+    "ck_university_contacts_preferred_channel": _one_of("preferred_channel", CONTACT_CHANNELS),
+    "ck_university_contacts_relationship_strength": _one_of("relationship_strength", RELATIONSHIP_STRENGTHS),
+}
+
+
+class UniversityContactRole(Base):
+    """upc-006 CT2: a seeded, read-only catalogue (no admin UI in this item)."""
+
+    __tablename__ = "university_contact_roles"
+    code: Mapped[str] = mapped_column(String(40), primary_key=True)
+    label: Mapped[str] = mapped_column(String(80))
+    position: Mapped[int] = mapped_column(SmallInteger)
+
+
+class UniversityContact(Base, TimestampMixin):
+    """upc-006 (§10): a named person at a university. At most one primary per university (CT6); one email once per university (CT8);
+    the same person at two universities is two rows. Contact PII: audit and logs carry ids only."""
+
+    __tablename__ = "university_contacts"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_CONTACT_CHECKS.items()),
+        Index("ix_university_contacts_university", "university_id"),
+        Index("uq_university_contacts_primary", "university_id", unique=True, postgresql_where=text("is_primary")),
+        Index("uq_university_contacts_email", "university_id", text("lower(email)"), unique=True, postgresql_where=text("email IS NOT NULL")),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"))
+    name: Mapped[str] = mapped_column(String(200))
+    designation: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    department: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    role_code: Mapped[str | None] = mapped_column(String(40), ForeignKey("university_contact_roles.code", ondelete="RESTRICT"), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    whatsapp: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    linkedin: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    preferred_channel: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    relationship_strength: Mapped[str | None] = mapped_column(String(12), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_primary: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    shareable: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
 
 class OverseasCourse(Base, TimestampMixin):
@@ -1770,6 +1848,7 @@ BDM_PROFILE_FIELDS = {
     "school": ("board", "school_type", "grade_from", "grade_to"),
     "college": ("affiliation", "college_type", "courses"),
 }
+BDM_UNIVERSITY_LINK_SQL = "university_id IS NULL OR org_type = 'university'"  # upc-004 UD7
 # bdm-002: on the metadata so 0001's create_all builds it for a fresh database; 0066 creates it IF NOT EXISTS.
 BDM_ORGANIZATION_CODE_SEQ = Sequence("bdm_organization_code_seq", metadata=Base.metadata)
 
@@ -1829,6 +1908,8 @@ class BdmOrganization(Base, TimestampMixin):
         Index("ix_bdm_organizations_type_assignee", "bdm_type", "assigned_bdm_user_id"),
         Index("ix_bdm_organizations_duplicate_key", "bdm_type", "name_key", "city_key"),
         Index("ix_bdm_organizations_type_stage", "bdm_type", "pipeline_stage"),
+        Index("ix_bdm_organizations_university", "university_id"),
+        CheckConstraint(BDM_UNIVERSITY_LINK_SQL, name="ck_bdm_organizations_university_link"),
         UniqueConstraint("school_id", name="uq_bdm_organizations_school"),
         UniqueConstraint("agent_org_id", name="uq_bdm_organizations_agent_org"),
     )
@@ -1869,6 +1950,8 @@ class BdmOrganization(Base, TimestampMixin):
     school_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id", ondelete="RESTRICT"), nullable=True)
     # bdm-019 (DEC-SCOPE-107): the onboarded Agent Organization; one organization <-> at most one agency. The live Agent stages read it.
     agent_org_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_orgs.id", ondelete="RESTRICT"), nullable=True)
+    # upc-004 (U13, UD7): a University organization's record in the Global University Master; optional, never merged.
+    university_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"), nullable=True)
 
 
 class BdmOrganizationContact(Base, TimestampMixin):

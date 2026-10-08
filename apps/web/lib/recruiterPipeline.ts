@@ -1,4 +1,4 @@
-// rec-005 (DEC-SCOPE-123): the company B2B pipeline. The API owns the catalogue (labels, kinds and states come with every company) and every
+// rec-005 (DEC-SCOPE-125): the company B2B pipeline. The API owns the catalogue (labels, kinds and states come with every company) and every
 // rule; these helpers only shape requests and read responses. Conflict and 422 readers are bdm-004's (`lib/bdmPipeline`).
 import type { Person } from "@/lib/recruiterCompanies";
 

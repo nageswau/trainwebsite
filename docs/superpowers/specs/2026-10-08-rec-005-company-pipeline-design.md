@@ -1,7 +1,7 @@
 # rec-005 — Company B2B pipeline engine + stage history (design)
 
-**Feature ID:** rec-005 · **Decision:** DEC-SCOPE-123 (provisional) · **Migration:** `0108_company_pipeline` (provisional) · **API:** §12AQ ·
-**RBAC:** §2.49 · **Depends on:** rec-003 (merged, PR #152).
+**Feature ID:** rec-005 · **Decision:** DEC-SCOPE-125 (provisional) · **Migration:** `0110_company_pipeline` (provisional) · **API:** §12AS ·
+**RBAC:** §2.51 · **Depends on:** rec-003 (merged, PR #152).
 **Evidence:** `EVID-018` §5 (lines 218–270), lead field "Status" (line 116), "genuine prospect" (line 122); `RECRUITER_CRM_BACKLOG.md`
 §rec-005 (AC1–AC4). Module scope `DEC-SCOPE-116` (R1–R15).
 
@@ -30,7 +30,7 @@ These are recommended defaults, **UNVERIFIED** until the owner confirms them (th
 | P7 | Board | `/recruiter/pipeline` for recruiters (own), managers (team + unassigned) and super_admin (all): a count tile per stage plus Lost, and one page of companies. Archived companies are left out |
 | P8 | Events defined now | `call_logged`, `meeting_scheduled`, `requirement_received`, `jd_received`, `candidates_sourcing`, `profiles_shared`, `interview_scheduled`, `candidate_selected`, `candidate_joined`, `requirement_closed`. No caller exists yet; later items wire them |
 
-## 3. Data (migration `0108_company_pipeline`)
+## 3. Data (migration `0110_company_pipeline`)
 
 `companies` gains:
 - `stage` varchar(30) NOT NULL, server default `'new_lead'`, CHECK `ck_companies_stage` (the 13 keys; frozen copy in the migration, parity
