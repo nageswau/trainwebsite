@@ -84,6 +84,7 @@ describe("PartnershipPipelineBoard", () => {
     const row = screen.getByRole("link", { name: "ABC University" });
     expect(row).toHaveAttribute("href", "/partnership/universities/u1");
     expect(screen.getByText("Researching")).toBeInTheDocument();
+    expect(screen.getByRole("table")).toHaveClass("table"); // QA7-01: the shared table styling (padding, header)
   });
 
   it("says when a column is empty or the page is past the end", () => {

@@ -40,7 +40,7 @@ export default function PartnershipPipelineBoard({ view, href, selected }: { vie
         ) : (
           <div className="telecaller-list">
             <div className="table-wrap" role="region" aria-label="Universities in the pipeline" tabIndex={0}>
-              <table>
+              <table className="table">
                 <thead>
                   <tr>
                     <th scope="col">Name</th>

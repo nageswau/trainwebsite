@@ -52,6 +52,9 @@ describe("UniversityStagePanel (upc-007 PS4-PS8)", () => {
     expect(screen.getByLabelText("Reason (required when moving back)")).toBeRequired();
     fireEvent.change(select, { target: { value: "meeting_scheduled" } });
     expect(screen.getByLabelText("Note (optional)")).not.toBeRequired();
+    // QA7-02 / QA7-03: the select keeps its own height; the Lost button is not stretched across the card
+    expect(screen.getByRole("form", { name: "Move stage" })).toHaveStyle({ alignItems: "start" });
+    expect(screen.getByRole("button", { name: "Mark lost" })).toHaveStyle({ justifySelf: "start" });
   });
 
   it("moves, says so and refreshes the page", async () => {

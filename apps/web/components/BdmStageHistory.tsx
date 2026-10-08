@@ -70,7 +70,7 @@ export default function BdmStageHistory({ orgId, initial, version, url }: {
                 <span className="jtl-date">{formatSchoolDateTime(e.created_at, true)}</span>
                 <p className="jtl-title">{title(e)}</p>
                 <p className="jtl-detail">By {e.actor.full_name}</p>
-                {e.note && <p className="jtl-detail" style={{ whiteSpace: "pre-line" }}>{e.kind === "move" ? "Note" : "Reason"}: {e.note}</p>}
+                {e.note && <p className="jtl-detail" style={{ whiteSpace: "pre-line", overflowWrap: "anywhere" }}>{e.kind === "move" ? "Note" : "Reason"}: {e.note}</p>}
               </div>
             </li>
           ))}

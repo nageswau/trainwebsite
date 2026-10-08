@@ -63,6 +63,7 @@ describe("BdmStageHistory (bdm-004 §8.2)", () => {
     render(<BdmStageHistory orgId="u1" url="/api/v1/partnership/universities/u1/stage-history" initial={page([event("e2", { kind: "reopened", to_label: "Interested", note: "They called" })], 2)} version={0} />);
     expect(screen.getByText("Reopened at Interested")).toBeInTheDocument();
     expect(screen.getByText("Reason: They called")).toBeInTheDocument();
+    expect(screen.getByText("Reason: They called")).toHaveStyle({ overflowWrap: "anywhere" }); // QA7-04: a long unbroken note wraps
     fireEvent.click(screen.getByRole("button", { name: "Show more" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/v1/partnership/universities/u1/stage-history?limit=20&offset=1"));
   });

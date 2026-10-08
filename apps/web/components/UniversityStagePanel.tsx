@@ -113,7 +113,7 @@ export default function UniversityStagePanel({ university: u }: { university: Un
       {notice && <p className="form-message" role="status">{notice}</p>}
       {failure && <p className="form-error" role="alert">{failure}</p>}
       {canMove && !p.lost && mode === null && (
-        <form className="form-grid" onSubmit={submitMove} aria-label="Move stage">
+        <form className="form-grid" onSubmit={submitMove} aria-label="Move stage" style={{ alignItems: "start" }}>
           <div className="field">
             <label htmlFor={id("to")}>Move to</label>
             <select id={id("to")} value={to} onChange={(e) => setTo(e.target.value)} required aria-describedby={errors.to_stage ? id("to_stage-error") : undefined}>
@@ -139,12 +139,12 @@ export default function UniversityStagePanel({ university: u }: { university: Un
         </form>
       )}
       {canFlag && mode === null && (
-        <button id={id("flag")} type="button" className="btn secondary small" onClick={openFlag} disabled={busy}>
+        <button id={id("flag")} type="button" className="btn secondary small" onClick={openFlag} disabled={busy} style={{ justifySelf: "start" }}>
           {p.lost ? "Reopen" : "Mark lost"}
         </button>
       )}
       {canFlag && mode !== null && (
-        <form className="form-grid" onSubmit={submitFlag} aria-label={mode === "lost" ? "Mark lost" : "Reopen"}>
+        <form className="form-grid" onSubmit={submitFlag} aria-label={mode === "lost" ? "Mark lost" : "Reopen"} style={{ alignItems: "start" }}>
           <div className="field">
             <label htmlFor={id("reason")}>Reason</label>
             <textarea id={id("reason")} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} rows={2} required aria-describedby={errors.reason ? id("reason-error") : undefined} />
