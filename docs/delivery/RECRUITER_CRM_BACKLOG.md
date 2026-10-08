@@ -472,7 +472,7 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** high (the shared engine used by later items)
 
 ### rec-006 — Skills Master + categories + aliases
-- **Status (2026-10-08):** built on `feature/rec-006`.
+- **Status (2026-10-08):** **MERGED** to `main` as PR #150 @ `0ef88a98`.
   - Numbering: `DEC-SCOPE-119`, migration `0104_skills_master` (after upc-001's `0103_partnership_profiles`), API §12AM, RBAC §2.45 (upc-002 took `0101` / §12AJ; rec-002 `0102` / 117 / §12AK / §2.43; upc-001 `0103` / 118 / §12AL / §2.44).
   - Owner answers: S1 merge deferred to rec-011; S2 recruiters read-only. S3–S6 took the recommended answers.
   - QA: `docs/quality/REC-006_EXPLORATORY_QA_2026-10-08.md`.

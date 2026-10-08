@@ -5018,7 +5018,7 @@ Renumbered again on merging `main` @ `060989ff`: rec-002 took `DEC-SCOPE-117` / 
 ### DEC-SCOPE-119 — Recruiter Skills Master (`rec-006`)
 
 **Evidence:** `EVID-018` S2-§2 (lines 1126–1216) and S2-§16 (lines 1607–1643); `RECRUITER_CRM_BACKLOG.md` §rec-006 (AC1–AC3).
-**Status:** `EXPLICIT_APPROVAL`. The owner answered S1 and S2 in session on 2026-10-08. They asked for the recommended answers on the
+**Status:** **MERGED** to `main` as PR #150 @ `0ef88a98` (2026-10-08). `EXPLICIT_APPROVAL`. The owner answered S1 and S2 in session on 2026-10-08. They asked for the recommended answers on the
 remaining points (S3–S6), which follow the rec-002 C3 precedent. Migration `0104_skills_master`. API §12AM. RBAC §2.45.
 Spec `docs/superpowers/specs/2026-10-08-rec-006-skills-master-design.md`. Numbers follow upc-002 (`0101`, §12AJ), rec-002 (`DEC-SCOPE-117`, `0102`, §12AK, §2.43) and upc-001 (`DEC-SCOPE-118`, `0103`, §12AL, §2.44).
 
