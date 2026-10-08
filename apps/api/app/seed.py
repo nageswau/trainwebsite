@@ -853,6 +853,12 @@ async def main():
             telecaller = await user(db, email, name, "telecaller", team)
             if not await db.scalar(select(TelecallerProfile.id).where(TelecallerProfile.user_id == telecaller.id)):
                 db.add(TelecallerProfile(user_id=telecaller.id, team=team, employee_id=employee_id, reporting_manager_user_id=tel_manager.id))
+        # rec-001 (DEC-SCOPE-116): the demo recruiter reports to a demo placement manager. A database that already had the recruiter
+        # keeps its 0100 backfilled profile (no manager) -- the AC5 state an admin then completes.
+        placement_manager = await user(db, "placement.manager@edusphere.local", "Nisha Placement Manager", "placement_manager", "global")
+        recruiter = await user(db, "placement@edusphere.local", "Kiran Placement", "placement_team", "it")
+        if not await db.scalar(select(RecruiterProfile.id).where(RecruiterProfile.user_id == recruiter.id)):
+            db.add(RecruiterProfile(user_id=recruiter.id, employee_id="REC-DEMO-001", reporting_manager_user_id=placement_manager.id))
 
         await db.commit()
     print("Seed complete; demo password:", PASSWORD)

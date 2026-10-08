@@ -913,6 +913,21 @@ scope (`403` for any lead); a manager reads only their own import reports (tel-0
 messages, email and bookings (`DEC-SCOPE-115` PM2). Web: the telecaller sidebar holds no manager page, and every
 `/telecaller/manager/*` page shows the access card to a telecaller (`tests/e2e/tel-026-permission-matrix.spec.ts`).
 
+### 2.42 Recruiter roles *(net-new, added 2026-10-08 — `DEC-SCOPE-116`, `rec-001`)*
+
+`placement_team` is the recruiter (R2). Its legacy `/workflows/it/*` grants are unchanged. Scope comes from the session, so no
+`/recruiter` route takes a user id.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` | read own profile; edit own phone | self (needs a `recruiter_profiles` row, otherwise `403`) | `rec-001` |
+| `placement_manager` (new, `global`) | read team | direct reports only; signs in at `/admin/login` | `rec-001` |
+| `super_admin` | create managers and recruiters; edit profiles; read every team; Recruiter Staff | all | `rec-001` |
+| `it_admin` | create and edit recruiters (IT); Recruiter Staff and manager picker; **not** a manager (`403`) | IT | `rec-001` |
+| `overseas_admin` | `403` on recruiter admin routes; cannot create a recruiter (division) | — | `rec-001` |
+| `hr_team` | unchanged legacy screens; `403` on every `/recruiter/*` route (Q-28) | — | `rec-001` |
+| every other role | `403` | — | `rec-001` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

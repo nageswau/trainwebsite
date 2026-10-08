@@ -7,7 +7,7 @@ import { E2E_PASSWORD, activateWithToken } from "./helpers/welcome";
 
 async function superAdmin(page: Page) {
   await page.goto("/admin/login");
-  await expect(page.getByText("For Super Admins, BDM Managers and Telecaller Managers.")).toBeVisible();
+  await expect(page.getByText("For Super Admins and BDM, Telecaller and Placement Managers.")).toBeVisible();
   await page.fill("#login-email", "superadmin@edusphere.local");
   await page.fill("#login-password", "Demo@123");
   await page.click("button:has-text('Sign in securely')");

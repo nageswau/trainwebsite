@@ -242,6 +242,13 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 §12AI onward; RBAC §2.42 onward.
 
 ### rec-001 — Recruiter scope for `placement_team` + new `placement_manager`: profile, provisioning, sign-in, shell
+- **Status (2026-10-08):** built on `feature/rec-001`.
+  - Numbering: `DEC-SCOPE-116`, migration `0100_recruiter_profiles`, API §12AI, RBAC §2.42.
+  - Owner answers:
+    - Q-29: `/recruiter/*` workspace.
+    - Q-28: `hr_team` unchanged.
+    - Admin page: `/admin/recruiter-staff`.
+  - QA: `docs/quality/REC-001_EXPLORATORY_QA_2026-10-08.md`.
 - **Business requirement:**
   - §1 "the recruiter should see"; §24 "Management should see"; §26 "CEO/Manager"; S2-§12 "with appropriate permissions" (R2).
   - Under your user-lifecycle convention, creating a user means the full lifecycle.
