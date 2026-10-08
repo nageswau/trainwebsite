@@ -2,7 +2,7 @@
 
 Backlog: `docs/delivery/RECRUITER_CRM_BACKLOG.md` rec-002. Source: EVID-018 §2 (lines 52–82, 108–110), §3 (102–104, 130, 146),
 §4 (184–192), §6 (290), §9 (432–462) and §26 (1029–1034). Depends on rec-001 (merged PR #143). Numbering: `DEC-SCOPE-117`,
-migration `0102_rec_catalogues`, API §12AK, RBAC §2.43.
+migration `0102_rec_catalogues`, API §12AK, RBAC §2.43. **Status: MERGED** as PR #146 @ `ea3e9189` (2026-10-08).
 
 ## 1. Owner answers (2026-10-08, `EXPLICIT_APPROVAL` in session)
 - **C1:** `rec_industries` starts **empty**. The source names "Industry" but lists no values, and none are invented.

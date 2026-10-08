@@ -304,7 +304,8 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** high
 
 ### rec-002 — Recruiter catalogues
-- **Status (2026-10-08):** built on `feature/rec-002`.
+- **Status (2026-10-08):** **MERGED** to `main` as PR #146 @ `ea3e9189`. The next rec item takes the next migration after `0102`,
+  `DEC-SCOPE-118`, API §12AL and RBAC §2.44, re-checked on `main` first.
   - Numbering: `DEC-SCOPE-117`, migration `0102_rec_catalogues` (re-chained after upc-002's `0101_country_master`), API §12AK (upc-002 took §12AJ), RBAC §2.43.
   - Owner answers:
     - C1: industries start empty.
