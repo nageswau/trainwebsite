@@ -17,7 +17,7 @@ proceeding on recommended answers.
 | C7 | **No frontend change.** The only country picker (`AdminUniversityCreatePanel`) creates *catalogue* universities, so per C5 it keeps the 12 visible countries, and a 12-item native select needs no search. The full-list `SearchableSelect` arrives with upc-003's target-university form, which consumes C6 | Deviation from the backlog's "pickers become searchable", recorded here |
 | C8 | Seed: `seed/countries.json` rows gain `iso2` + `region`. On a fresh database the migration has already created internal placeholders under the same slugs (`usa`, `dubai-uae` overrides), so the seed **upgrades a placeholder** (`catalogue_visible=false` and empty overview) to catalogue content and sets it visible. It never overwrites a row that already has content | Needed for the fresh-DB order `alembic upgrade` → `seed` |
 
-## 2. Migration `0100_country_master` (after `0099_tel_settings`)
+## 2. Migration `0101_country_master` (after `0100_recruiter_profiles`; drafted as `0100`, re-chained when rec-001 merged first)
 1. Guarded `add_column`: `iso2 VARCHAR(2) NULL`, `region VARCHAR(40) NULL`, `catalogue_visible BOOLEAN NOT NULL DEFAULT true`. 0001 builds
    from the current models, so each step checks first.
 2. Backfill the 12 catalogue rows by slug → ISO and region (`dubai-uae` → AE / Middle East, `united-kingdom` → GB / UK). Any other
@@ -45,4 +45,4 @@ proceeding on recommended answers.
 3. Tests and code: public list/detail visibility filter; admin create rejects an internal country.
 4. Tests and code: `GET /lookups/countries`.
 5. Seed: `countries.json` iso2/region and placeholder upgrade; tests.
-6. Docs: API_CONTRACT §12AI addendum, DATA_MODEL §6.1 addendum, RBAC note, backlog Q-06 answer.
+6. Docs: API_CONTRACT §12AJ addendum, DATA_MODEL §6.1 addendum, RBAC note, backlog Q-06 answer.

@@ -121,7 +121,7 @@ here.
 | `overseas_student` (same identity as Student) | submit/track own applications, upload documents, apply scholarships, register events | Self — **applies only to a self-authenticating applicant** (EduSphere-direct or self-registered). An Agent-referred applicant has no login at all (`DEC-ROLE-004`, 2026-09-14) and is entirely outside this row's scope — see §2.8's note. | `OVS-002`–`007` |
 | `counselor` | evaluate eligibility, verify documents, manage visa cases/appointments; on an agency application (`agent_id` set): advance except to `enrolled`, visa under AGN-012 rules with a typed body, no visa decision; the generic application PATCH is `403 "Use Advance stage to move an agency application"`; a withdrawn application or an archived agency student record is `409` on the visa routes (and archived on advance), with the agency's own messages (`AGN-023`, `DEC-SCOPE-090`) | **Assigned students only** — explicit deny on any student not assigned to that Counselor, even via direct record ID (`CNS-001-AC02`); advance and the agency visa writes re-check the assignment under the row lock (`AGN-023`) | `OVS-003`, `OVS-005`, `VISA-001`–`003`, `CNS-001` |
 | `university_rep` | review/update applications, post updates | **Own institution only**, filtered server-side by `university_id` (`DATA_MODEL.md` §6.10) | `UNI-001` |
-| `overseas_admin` | manage users/students/counselors/universities/applications/leads/payments; approve agents; approve commission payouts; assign/change an application's EduSphere counselor on every open overseas application, school-bridged ones included (the control is absent on withdrawn/enrolled rows), and may search active overseas counselors by name (name + id only, `GET /lookups/overseas-counselors`) to pick one (`AGN-023`); may search every country, catalogue and internal ISO rows (`GET /lookups/countries`, `upc-002`, API §12AI) | Overseas division | `ADM` (Overseas), `AGT-001`, `AGT-004` |
+| `overseas_admin` | manage users/students/counselors/universities/applications/leads/payments; approve agents; approve commission payouts; assign/change an application's EduSphere counselor on every open overseas application, school-bridged ones included (the control is absent on withdrawn/enrolled rows), and may search active overseas counselors by name (name + id only, `GET /lookups/overseas-counselors`) to pick one (`AGN-023`); may search every country, catalogue and internal ISO rows (`GET /lookups/countries`, `upc-002`, API §12AJ) | Overseas division | `ADM` (Overseas), `AGT-001`, `AGT-004` |
 | Visitor | browse destinations/universities/courses/scholarships/events (read-only) | Public | `OVS-001`, `OVS-006`, `OVS-007` |
 
 ### 2.8 Agent
@@ -912,6 +912,21 @@ telecaller or manager — append-only, it grants no read; a manager booking a co
 scope (`403` for any lead); a manager reads only their own import reports (tel-006 R11); `super_admin` is read-only on calls, follow-ups,
 messages, email and bookings (`DEC-SCOPE-115` PM2). Web: the telecaller sidebar holds no manager page, and every
 `/telecaller/manager/*` page shows the access card to a telecaller (`tests/e2e/tel-026-permission-matrix.spec.ts`).
+
+### 2.42 Recruiter roles *(net-new, added 2026-10-08 — `DEC-SCOPE-116`, `rec-001`)*
+
+`placement_team` is the recruiter (R2). Its legacy `/workflows/it/*` grants are unchanged. Scope comes from the session, so no
+`/recruiter` route takes a user id.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` | read own profile; edit own phone | self (needs a `recruiter_profiles` row, otherwise `403`) | `rec-001` |
+| `placement_manager` (new, `global`) | read team | direct reports only; signs in at `/admin/login` | `rec-001` |
+| `super_admin` | create managers and recruiters; edit profiles; read every team; Recruiter Staff | all | `rec-001` |
+| `it_admin` | create and edit recruiters (IT); Recruiter Staff and manager picker; **not** a manager (`403`) | IT | `rec-001` |
+| `overseas_admin` | `403` on recruiter admin routes; cannot create a recruiter (division) | — | `rec-001` |
+| `hr_team` | unchanged legacy screens; `403` on every `/recruiter/*` route (Q-28) | — | `rec-001` |
+| every other role | `403` | — | `rec-001` |
 
 ## 3. Support / admin audit controls
 

@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-// upc-002 -- country master. Migration 0100 seeds every ISO country as an internal row; the public catalogue still shows only the
+// upc-002 -- country master. Migration 0101 seeds every ISO country as an internal row; the public catalogue still shows only the
 // seeded catalogue countries, and the admin university form still offers only those. Requires the stack running via
 // `docker compose up` with `python -m app.seed` applied.
 

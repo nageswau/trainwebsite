@@ -51,7 +51,7 @@ async def user(db, email, name, role, division):
 
 
 async def catalogue_country(db, row: list, interview_prep: dict[str, str]) -> Country:
-    """One seed/countries.json row. upc-002: on a fresh database migration 0100 has already created this country as an internal ISO row
+    """One seed/countries.json row. upc-002: on a fresh database migration 0101 has already created this country as an internal ISO row
     under the same slug (no catalogue text, catalogue_visible=false); that placeholder becomes the catalogue row. A row that already has
     content is never overwritten."""
     slug, name, overview, tuition, living, iso2, region = row
@@ -861,6 +861,12 @@ async def main():
             telecaller = await user(db, email, name, "telecaller", team)
             if not await db.scalar(select(TelecallerProfile.id).where(TelecallerProfile.user_id == telecaller.id)):
                 db.add(TelecallerProfile(user_id=telecaller.id, team=team, employee_id=employee_id, reporting_manager_user_id=tel_manager.id))
+        # rec-001 (DEC-SCOPE-116): the demo recruiter reports to a demo placement manager. A database that already had the recruiter
+        # keeps its 0100 backfilled profile (no manager) -- the AC5 state an admin then completes.
+        placement_manager = await user(db, "placement.manager@edusphere.local", "Nisha Placement Manager", "placement_manager", "global")
+        recruiter = await user(db, "placement@edusphere.local", "Kiran Placement", "placement_team", "it")
+        if not await db.scalar(select(RecruiterProfile.id).where(RecruiterProfile.user_id == recruiter.id)):
+            db.add(RecruiterProfile(user_id=recruiter.id, employee_id="REC-DEMO-001", reporting_manager_user_id=placement_manager.id))
 
         await db.commit()
     print("Seed complete; demo password:", PASSWORD)

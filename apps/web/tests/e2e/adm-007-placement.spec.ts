@@ -22,7 +22,7 @@ test("placement team withdraws a candidate from the active pool (ADM-007-AC02)",
   await page.fill("#login-email", "placement@edusphere.local");
   await page.fill("#login-password", "Demo@123");
   await page.click("button:has-text('Sign in securely')");
-  await page.waitForURL("**/it/placement/dashboard");
+  await page.waitForURL("**/recruiter/dashboard");
 
   await page.goto("/it/placement/candidates");
   const panel = page.locator(".action-card", { has: page.getByRole("heading", { name: "Candidate pool" }) });

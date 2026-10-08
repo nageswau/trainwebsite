@@ -1,4 +1,4 @@
-"""upc-002 -- migration 0100_country_master (design §2; U12, Q-06). The ISO data, model parity, and a round trip in a throwaway database
+"""upc-002 -- migration 0101_country_master (design §2; U12, Q-06). The ISO data, model parity, and a round trip in a throwaway database
 built from scratch (the tel-001 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -16,15 +16,15 @@ from app.core.config import settings
 from tests.test_tel_001_migration import _config, _sql
 
 API = Path(__file__).resolve().parents[1]
-_spec = importlib.util.spec_from_file_location("_upc_002_migration_0100", API / "alembic" / "versions" / "0100_country_master.py")
+_spec = importlib.util.spec_from_file_location("_upc_002_migration_0101", API / "alembic" / "versions" / "0101_country_master.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0099_tel_settings", "0100_country_master"
+BASE, HEAD = "0100_recruiter_profiles", "0101_country_master"
 CATALOGUE_SEED = json.loads((API / "seed" / "countries.json").read_text())
 
 
-def test_migration_chains_after_0099_and_is_the_single_head():
+def test_migration_chains_after_0100_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

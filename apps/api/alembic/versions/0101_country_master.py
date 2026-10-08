@@ -1,7 +1,7 @@
 """upc-002 -- country master: ISO 3166-1 alpha-2 code, region, catalogue visibility, and every ISO country as an internal row.
 
-Revision ID: 0100_country_master
-Revises: 0099_tel_settings
+Revision ID: 0101_country_master
+Revises: 0100_recruiter_profiles
 
 docs/superpowers/specs/2026-10-08-upc-002-country-master-design.md §2 (U12; Q-06 regions answered 2026-10-08). Adds `countries.iso2`
 (unique, nullable so ad-hoc test rows need no code), `region` (one of REGIONS) and `catalogue_visible` (default true: every existing row
@@ -10,6 +10,10 @@ inserts each ISO country not yet present as an internal row (no catalogue text, 
 code fails loudly; an existing row that already holds an ISO row's slug fails before anything is inserted. 0001 builds a fresh database
 from the current models, which already carry the columns and constraints, so those steps are guarded. REGIONS repeats
 app.models.COUNTRY_REGIONS (test_upc_002_migration). downgrade() refuses while a university or scholarship uses an internal country.
+
+Re-chained 2026-10-08 on merging `main` @ `9e957bee`: drafted as `0100_country_master` on `0099_tel_settings`, but rec-001's
+`0100_recruiter_profiles` merged first, so this is `0101` after it. A database stamped at `0100_country_master` is re-stamped with
+`alembic stamp --purge 0099_tel_settings`, then `upgrade head` (every step here is guarded or skips rows already present).
 """
 
 import re
@@ -19,8 +23,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0100_country_master"
-down_revision = "0099_tel_settings"
+revision = "0101_country_master"
+down_revision = "0100_recruiter_profiles"
 branch_labels = None
 depends_on = None
 
@@ -141,11 +145,11 @@ def upgrade() -> None:
         present = {iso2 for _, iso2 in rows if iso2}
         unmapped = sorted(slug for slug, iso2 in rows if not iso2)
         if unmapped:
-            print(f"0100_country_master: {len(unmapped)} existing row(s) have no ISO code and stay as they are: {', '.join(unmapped)}")
+            print(f"0101_country_master: {len(unmapped)} existing row(s) have no ISO code and stay as they are: {', '.join(unmapped)}")
         taken = {slug for slug, iso2 in rows if not iso2}
         clashes = sorted(slug_for(code, name) for code, name, _ in ISO_COUNTRIES if code not in present and slug_for(code, name) in taken)
         if clashes:
-            raise RuntimeError(f"0100_country_master: existing country row(s) already use the slug of an ISO country: {', '.join(clashes)}. "
+            raise RuntimeError(f"0101_country_master: existing country row(s) already use the slug of an ISO country: {', '.join(clashes)}. "
                                "Give each its ISO code (or rename it) deliberately, then upgrade again.")
 
     for code, name, region in ISO_COUNTRIES:
@@ -172,7 +176,7 @@ def downgrade() -> None:
         internal = f"SELECT id FROM {TABLE} WHERE NOT catalogue_visible"
         if bind.execute(sa.text(f"SELECT 1 FROM universities WHERE country_id IN ({internal}) UNION ALL "
                                 f"SELECT 1 FROM scholarships WHERE country_id IN ({internal}) LIMIT 1")).first():
-            raise RuntimeError("Cannot downgrade 0100_country_master: a university or scholarship uses an internal country. Move it deliberately first.")
+            raise RuntimeError("Cannot downgrade 0101_country_master: a university or scholarship uses an internal country. Move it deliberately first.")
     op.execute(sa.text(f"DELETE FROM {TABLE} WHERE NOT catalogue_visible"))
     for name in CHECKS:
         op.drop_constraint(name, TABLE, type_="check")

@@ -11,7 +11,7 @@ export default function AdminForgotPassword() {
         <BrandLogoLink />
         <Link href="/admin/login" className="muted">← Back to sign in</Link>
         <h2 style={{ marginTop: 22 }}>Reset your password</h2>
-        <p className="muted">Enter the email on your administration, BDM Manager or Telecaller Manager account and we&apos;ll send reset instructions.</p>
+        <p className="muted">Enter the email on your administration, BDM Manager, Telecaller Manager or Placement Manager account and we&apos;ll send reset instructions.</p>
         <ForgotPasswordForm />
       </div>
     </div>
