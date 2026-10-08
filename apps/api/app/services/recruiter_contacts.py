@@ -11,9 +11,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Company, CompanyContact, RecContactRole, User
+from app.notifications.phone import wa_number
 from app.schemas import REC_CONTACT_FIELDS, REC_CONTACT_MAX, RecContactIn
 from app.services import recruiter_companies as companies
 from app.services.recruiter_follow_ups import contact_next
+from app.services.recruiter_messages import contact_last
 
 CONTACT_NOT_FOUND = "Contact not found"
 
@@ -117,6 +119,7 @@ async def list_out(db: AsyncSession, user: User, company: Company) -> dict:
     roles = {r.id: r for r in (await db.scalars(select(RecContactRole).where(RecContactRole.id.in_(role_ids)))).all()} if role_ids else {}
     contacts.sort(key=lambda c: (not c.is_primary, not c.active, c.position))
     next_due = await contact_next(db, company.id)
+    last_message = await contact_last(db, company.id)
     items = [
         {
             **{
@@ -124,8 +127,9 @@ async def list_out(db: AsyncSession, user: User, company: Company) -> dict:
                 for k in ("id", "name", "designation", "department", "mobile", "email", "linkedin_url", "preferred_channel", "notes", "is_primary", "active", "created_at", "updated_at")
             },
             "role": companies.ref(roles.get(c.role_id)),
-            "last_contacted_at": None,  # C6: computed once calls, messages and meetings exist (rec-025/026/028)
+            "last_contacted_at": last_message.get(c.id),  # C6 / rec-026 MS10: the latest message (calls and meetings join with rec-025/028)
             "next_follow_up_at": next_due.get(c.id),  # rec-024 FU9
+            "whatsapp_to": wa_number(c.mobile),  # rec-026 MS6
         }
         for c in contacts
     ]
