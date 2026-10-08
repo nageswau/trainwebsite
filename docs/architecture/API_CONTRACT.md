@@ -1530,10 +1530,42 @@ by name then id. Signed out `401`.
 | `GET /admin/partnership-managers` | `super_admin`, `overseas_admin`; `active`, `q`. Items add `reporting_head {id, full_name, active}`, `head_active`. Other roles `403` |
 | `GET /admin/partnership-heads` | `super_admin`, `overseas_admin`: active heads `{id, full_name, email}`; `q`. Other roles `403` |
 
-## 12AM. Recruiter company master (`rec-003`) — addendum, 2026-10-08
+## 12AM. Recruiter Skills Master (`rec-006`) — addendum, 2026-10-08
 
-- **Basis:** `DEC-SCOPE-119`. Design spec `docs/superpowers/specs/2026-10-08-rec-003-company-master-design.md` §5. Migration
-  `0104_rec_companies` (drafted as `0103`; upc-001 merged first with `0103_partnership_profiles` and §12AL, so this is `0104`).
+- **Basis:** `DEC-SCOPE-119`. Design spec `docs/superpowers/specs/2026-10-08-rec-006-skills-master-design.md` §4. Migration `0104`.
+- **Common rules:**
+  - Lists take `limit` 1–100 (default 50), `offset` ≥ 0 and `q` ≤ 200 characters (a literal, case-insensitive substring).
+  - A list returns `{items, total, limit, offset}`.
+  - A request without a session is `401`.
+- **Roles:**
+  - Readers are `placement_team`, `placement_manager` and `super_admin`. Writers are `placement_manager` and `super_admin`.
+  - Every other role is `403`, including `hr_team` and `it_admin`.
+  - A reader who is not a writer always gets active rows only, and their `active` parameter is ignored.
+- **Bodies:**
+  - Unknown keys are `422`, and each `422` is one sentence that names the field.
+  - Names and aliases are trimmed with inner spaces collapsed, required, at most 80 characters, and have no control characters.
+- **Writes:** each write has one commit and one `AuditLog` row (`recruiter.skill_*`); a PATCH that changes nothing writes none.
+  There is no DELETE for skills or categories (`405`).
+- **Skill item:** `{id, name, active, category {id,name,active}, tags [{id,name,active}], aliases [{id,alias}], related [{id,name,active}]}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/skill-categories` | Readers. Filters `active` and `q`. Ordered by sort order, then name. Item `{id, name, active, sort_order}` |
+| `POST /recruiter/skill-categories` | Writers. `{name}` → `201`, appended last. A duplicate name in any case is `409` |
+| `PATCH /recruiter/skill-categories/{id}` | Writers. `{name?, active?}`. An unknown id is `404`; a duplicate name is `409` |
+| `GET /recruiter/skills` | Readers. `q` matches a name or an alias (each skill listed once). `category_id` matches the primary category or a tag. Filter `active`. Ordered by name |
+| `GET /recruiter/skills/{id}` | Readers. An unknown id is `404`, and so is an inactive skill for a reader |
+| `POST /recruiter/skills` | Writers. `{name, category_id, tag_category_ids?}` → `201`. Every category must be active (`422` "Choose an active category"); the primary may not also be a tag (`422`); at most 10 tags, no repeats. A name equal to a skill (`409`) or to an alias (`409` "… is already an alias — remove the alias first") is refused |
+| `PATCH /recruiter/skills/{id}` | Writers. `{name?, category_id?, tag_category_ids?, active?}`. `tag_category_ids` replaces the set. A newly chosen category must be active, but a since-deactivated one may be kept. The same name rules as POST apply. A rename keeps the id |
+| `POST /recruiter/skills/{id}/aliases` | Writers. `{alias}` → `201` with the skill. A duplicate alias, or an alias equal to any skill's name, is `409`. The skill's own name is `422`. An unknown skill is `404`. Audit metadata holds the alias text |
+| `DELETE /recruiter/skills/{id}/aliases/{alias_id}` | Writers. `204`. An alias of another skill or an unknown alias is `404` |
+| `POST /recruiter/skills/{id}/related` | Writers. `{skill_id}` → `201` with the skill. The skill itself is `422`; an inactive or unknown skill is `422` "Choose an active skill"; an existing pair (in either direction) is `409` |
+| `DELETE /recruiter/skills/{id}/related/{other_id}` | Writers. `204`. A pair that is not related is `404` |
+
+## 12AN. Recruiter company master (`rec-003`) — addendum, 2026-10-08
+
+- **Basis:** `DEC-SCOPE-120`. Design spec `docs/superpowers/specs/2026-10-08-rec-003-company-master-design.md` §5. Migration
+  `0105_rec_companies` (drafted as `0103`; upc-001 (`0103`, §12AL) and rec-006 (`0104`, §12AN) merged first, so this is `0105` and §12AN).
 - **Common rules:**
   - Scope (any other role `403` "Recruiter role required"; a `placement_team` user without a profile `403`): a recruiter sees the
     companies assigned to them; a `placement_manager` sees their direct reports' companies plus the unassigned ones; `super_admin` sees

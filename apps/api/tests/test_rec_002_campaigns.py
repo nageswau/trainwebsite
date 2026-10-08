@@ -162,9 +162,9 @@ async def test_other_roles_are_refused(client, db_session, role, division):
 
 
 @pytest.mark.asyncio
-async def test_campaign_list_is_a_full_page(client, db_session):
-    """The {items, total, limit, offset} contract every picker's readAll relies on. rec-003 found it reduced to {items} on main after
-    upc-001's merge (1590a9e8), which broke the campaign tab and the company form's pickers."""
+async def test_the_campaign_list_is_a_page(client, db_session):
+    """Regression (rec-006 merge, 2026-10-08): the upc-001 merge on main dropped total/limit/offset from RecCampaignPage, so the
+    Campaigns panel's page check failed and it always showed "Unable to load campaigns"."""
     await _manager(client, db_session)
     body = (await client.get(CAMPAIGNS, params={"limit": 5, "offset": 0})).json()
     assert set(body) == {"items", "total", "limit", "offset"}

@@ -1,12 +1,13 @@
 """rec-003 -- the company master: recruiter lead columns on `companies`, the CMP- code (with backfill) and company_assignment_history.
 
-Revision ID: 0104_rec_companies
-Revises: 0103_partnership_profiles
+Revision ID: 0105_rec_companies
+Revises: 0104_skills_master
 
-docs/superpowers/specs/2026-10-08-rec-003-company-master-design.md §3 (DEC-SCOPE-119). Every new `companies` column is nullable except
+docs/superpowers/specs/2026-10-08-rec-003-company-master-design.md §3 (DEC-SCOPE-120). Every new `companies` column is nullable except
 `company_code`, which existing rows get in `created_at`, `id` order before NOT NULL is set; new rows get it from the server default, so
-no insert path (EMP-001, /workflows/it/jobs) changes. Drafted as 0103_rec_companies after 0102_rec_catalogues; upc-001's 0103_partnership_profiles reached main first, so this is
-0104. A database stamped at 0103_rec_companies is re-stamped with `alembic stamp --purge 0102_rec_catalogues` then `upgrade head`.
+no insert path (EMP-001, /workflows/it/jobs) changes. Drafted as 0103_rec_companies after 0102_rec_catalogues; upc-001's 0103_partnership_profiles and rec-006's 0104_skills_master reached
+main first, so this is 0105. A database stamped at an earlier rec_companies revision is re-stamped with `alembic stamp --purge
+0102_rec_catalogues` then `upgrade head` (every create here is guarded).
 0001 builds a fresh database from the current models, which already carry all of
 this, so every object is created only when missing (0069's idiom). downgrade() refuses while recruiter company data exists (any history
 row or any value in a new column other than the code): entered data is never dropped silently.
@@ -17,8 +18,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0104_rec_companies"
-down_revision = "0103_partnership_profiles"
+revision = "0105_rec_companies"
+down_revision = "0104_skills_master"
 branch_labels = None
 depends_on = None
 
@@ -106,7 +107,7 @@ def downgrade() -> None:
         filled = " OR ".join(f"{name} IS NOT NULL" for name, _, _ in COLUMNS)
         bind = op.get_bind()
         if bind.execute(sa.text(f"SELECT 1 FROM {HISTORY} LIMIT 1")).first() or bind.execute(sa.text(f"SELECT 1 FROM {TABLE} WHERE {filled} LIMIT 1")).first():
-            raise RuntimeError("Cannot downgrade 0104_rec_companies: recruiter company data exists. Clear it deliberately first.")
+            raise RuntimeError("Cannot downgrade 0105_rec_companies: recruiter company data exists. Clear it deliberately first.")
     op.drop_table(HISTORY)
     for name in INDEXES:
         op.drop_index(name, table_name=TABLE)

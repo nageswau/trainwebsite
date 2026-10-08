@@ -6673,8 +6673,142 @@ class PartnershipHeadPage(BaseModel):
     limit: int
     offset: int
 
+# --- rec-006 (DEC-SCOPE-119): the recruiter Skills Master ------------------------------------------------------------------------
+SKILL_FIELD_LABELS = {
+    "name": "Name", "alias": "Alias", "active": "Active", "category_id": "Category", "tag_category_ids": "Other categories", "skill_id": "Related skill",
+}
+_SPACES = re.compile(r" +")
 
-# --- rec-003 (DEC-SCOPE-119): the company master ----------------------------------------------------------------------------------
+
+def _skill_term(label: str, max_length: int = 80):
+    """Trimmed with inner spaces collapsed (services/skills.normalise, so the lower() indexes decide duplicates), required, capped, no
+    control characters; each failure names the field."""
+
+    def check(value: str) -> str:
+        value = _SPACES.sub(" ", value.strip())
+        if not value:
+            raise ValueError(f"{label} is required")
+        if len(value) > max_length:
+            raise ValueError(f"{label} must be at most {max_length} characters")
+        if _BDM_CONTROL.search(value):
+            raise ValueError(f"{label} contains invalid characters")
+        return value
+
+    return Annotated[str, AfterValidator(check)]
+
+
+def _pick(noun: str):
+    """A UUID chosen from a list; a malformed one reads as a sentence, not a pydantic error."""
+
+    def check(value):
+        if isinstance(value, UUID):
+            return value
+        try:
+            return UUID(str(value))
+        except ValueError:
+            raise ValueError(f"Choose {noun} from the list") from None
+
+    return Annotated[UUID, BeforeValidator(check)]
+
+
+RecSkillName, SkillAliasText = _skill_term("Name"), _skill_term("Alias")
+SkillCategoryPick, SkillPick = _pick("a category"), _pick("a skill")
+
+
+def _distinct_tags(value: list[UUID]) -> list[UUID]:
+    if len(set(value)) != len(value):
+        raise ValueError("Other categories must not repeat")
+    if len(value) > 10:
+        raise ValueError("Choose at most 10 other categories")
+    return value
+
+
+SkillTags = Annotated[list[SkillCategoryPick], AfterValidator(_distinct_tags)]
+
+
+class SkillCategoryCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: RecSkillName
+
+
+class SkillCategoryUpdate(BaseModel):
+    """Omitted = unchanged; an explicit null is a 422 (both are required on the row)."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: RecSkillName = None
+    active: StrictBool = None
+
+
+class SkillCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: RecSkillName
+    category_id: SkillCategoryPick
+    tag_category_ids: SkillTags = []
+
+
+class SkillUpdate(BaseModel):
+    """Omitted = unchanged; `tag_category_ids` replaces the whole set ([] clears it)."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: RecSkillName = None
+    category_id: SkillCategoryPick = None
+    tag_category_ids: SkillTags = None
+    active: StrictBool = None
+
+
+class SkillAliasCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    alias: SkillAliasText
+
+
+class SkillRelatedCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    skill_id: SkillPick
+
+
+class SkillCategoryOut(BaseModel):
+    id: UUID
+    name: str
+    active: bool
+    sort_order: int
+
+
+class SkillCategoryPage(BaseModel):
+    items: list[SkillCategoryOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class SkillRef(BaseModel):
+    id: UUID
+    name: str
+    active: bool
+
+
+class SkillAliasOut(BaseModel):
+    id: UUID
+    alias: str
+
+
+class SkillOut(BaseModel):
+    id: UUID
+    name: str
+    active: bool
+    category: SkillRef
+    tags: list[SkillRef]
+    aliases: list[SkillAliasOut]
+    related: list[SkillRef]
+
+
+class SkillPage(BaseModel):
+    items: list[SkillOut]
+    total: int
+    limit: int
+    offset: int
+
+
+# --- rec-003 (DEC-SCOPE-120): the company master ----------------------------------------------------------------------------------
 REC_COMPANY_LABELS = {
     "name": "Company name", "website": "Website", "linkedin_url": "LinkedIn", "city": "City", "state": "State", "country": "Country",
     "head_office": "Head office", "branches": "Branches", "description": "Company description",

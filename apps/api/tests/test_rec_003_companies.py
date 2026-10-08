@@ -1,4 +1,4 @@
-"""rec-003 -- the recruiter company master (spec §4-§5; AC1-AC7; DEC-SCOPE-119 D1-D6). Names are unique per test (shared database)."""
+"""rec-003 -- the recruiter company master (spec §4-§5; AC1-AC7; DEC-SCOPE-120 D1-D6). Names are unique per test (shared database)."""
 
 import uuid
 from datetime import date

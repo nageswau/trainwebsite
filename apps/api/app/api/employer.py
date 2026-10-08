@@ -43,7 +43,7 @@ async def register_employer(payload: EmployerRegistrationRequest, response: Resp
     db.add(user)
     await db.flush()
 
-    # rec-003 (DEC-SCOPE-119 D3): a self-registered company enters the recruiter master with lead source Website and no recruiter
+    # rec-003 (DEC-SCOPE-120 D3): a self-registered company enters the recruiter master with lead source Website and no recruiter
     # (the placement managers' unassigned queue); its CMP- code comes from the column default.
     company = Company(
         name=company_name, website=payload.company_website, partner_type="employer", owner_type="employer_self_service", employer_user_id=user.id,

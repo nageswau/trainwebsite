@@ -12,10 +12,10 @@ describe("rec-001 navigation", () => {
 
   it("gives the recruiter their workspace plus the legacy placement screens (Q-29), and the manager only manager pages", () => {
     const hrefs = RECRUITER_NAV.map((x) => x.href);
-    expect(hrefs.slice(0, 3)).toEqual(["/recruiter/dashboard", "/recruiter/companies", "/recruiter/profile"]); // rec-003: Companies
+    expect(hrefs.slice(0, 4)).toEqual(["/recruiter/dashboard", "/recruiter/companies", "/recruiter/profile", "/recruiter/skills"]); // rec-003: Companies
     expect(hrefs).toEqual(expect.arrayContaining(["/it/placement/candidates", "/it/placement/company-requirements", "/it/placement/reports"]));
     expect(hrefs.filter((h) => h.startsWith("/recruiter/manager"))).toEqual([]);
-    expect(RECRUITER_MANAGER_NAV.map((x) => x.href)).toEqual(["/recruiter/manager/team", "/recruiter/companies", "/recruiter/manager/catalogue"]); // rec-002, rec-003
+    expect(RECRUITER_MANAGER_NAV.map((x) => x.href)).toEqual(["/recruiter/manager/team", "/recruiter/companies", "/recruiter/manager/catalogue", "/recruiter/manager/skills"]); // rec-002, rec-003, rec-006
     expect(PORTAL_NAV["it/placement"]).toContainEqual({ label: "Recruiter Workspace", href: "/recruiter/dashboard" });
     expect(PORTAL_NAV["it/hr"].map((x) => x.href).filter((h) => h.startsWith("/recruiter"))).toEqual([]);
   });

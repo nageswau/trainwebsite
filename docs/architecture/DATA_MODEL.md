@@ -1310,7 +1310,7 @@ Additive only: two tables and one sequence (`bdm_appointment_code_seq`, also on 
   `tel020:{kind}:{object}:{user}:{event time}` on the existing unique partial index `ux_notifications_dedupe_key`) plus one
   `notification_deliveries` email row.
 
-## Recruiter company master (`rec-003`, `DEC-SCOPE-119`; migration `0104_rec_companies`, after `0103_partnership_profiles`)
+## Recruiter company master (`rec-003`, `DEC-SCOPE-120`; migration `0105_rec_companies`, after `0104_skills_master`)
 
 Extends §5.1 `Company` (R3: the recruiter lead and the company are one row). Every new column is nullable except the code; EMP-001
 registration and `/workflows/it/jobs` keep writing only name, website and ownership.

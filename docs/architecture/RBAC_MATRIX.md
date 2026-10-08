@@ -958,9 +958,20 @@ Bundles: `partnership_manager` → `partnership:self`, `partnership_head` → `p
 
 No `/partnership` route takes a user id (no IDOR surface).
 
-### 2.45 Recruiter company master *(net-new, added 2026-10-08 — `DEC-SCOPE-119`, `rec-003`)*
+### 2.45 Recruiter Skills Master *(net-new, added 2026-10-08 — `DEC-SCOPE-119`, `rec-006`)*
 
-Row scope first (out of scope = `404`), then the action's role (`403`), then the archived state (`409`). §2.44 is upc-001's.
+The catalogue is global, so there is no row scope; only the role checks below apply.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` | read active categories and skills (`/recruiter/skills`, read-only page); no profile row needed | all active | `rec-006` |
+| `placement_manager` | read all, including inactive; create and edit categories and skills; add and remove aliases and related skills; deactivate | all | `rec-006` |
+| `super_admin` | same as `placement_manager` | all | `rec-006` |
+| `hr_team`, `it_admin`, every other role | `403` | — | `rec-006` |
+
+### 2.46 Recruiter company master *(net-new, added 2026-10-08 — `DEC-SCOPE-120`, `rec-003`)*
+
+Row scope first (out of scope = `404`), then the action's role (`403`), then the archived state (`409`). §2.44 is upc-001's and §2.46 rec-006's.
 
 | Role | Actions | Scope | Feature |
 |---|---|---|---|
