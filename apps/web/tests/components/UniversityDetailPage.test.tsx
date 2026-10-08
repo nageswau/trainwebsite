@@ -28,10 +28,12 @@ describe("upc-007 university detail page", () => {
       if (p === "/api/v1/auth/me") return { role: "partnership_manager", full_name: "Rahul" } as never;
       if (p.includes("/stage-history")) return history as never;
       if (p.includes("/contacts")) return { items: [], total: 0, limit: 50, offset: 0 } as never; // upc-006
+      if (p.includes("/partnership/visits")) return { items: [], total: 0, limit: 5, offset: 0 } as never; // upc-010
       return { university } as never;
     });
     const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
     expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/universities/${ID}/stage-history?limit=20&offset=0`);
+    expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/visits?university_id=${ID}&limit=5`); // upc-010 Visits section
     expect(tree.find((el) => el.type === UniversityStagePanel)!.props.university).toEqual(university);
     const hist = tree.find((el) => el.type === BdmStageHistory)!.props;
     expect(hist).toMatchObject({ orgId: ID, initial: history, version: 0, url: `/api/v1/partnership/universities/${ID}/stage-history` });
@@ -42,6 +44,7 @@ describe("upc-007 university detail page", () => {
       if (p === "/api/v1/auth/me") return { role: "partnership_manager", full_name: "Rahul" } as never;
       if (p.includes("/stage-history")) throw new Error("down");
       if (p.includes("/contacts")) return { items: [], total: 0, limit: 50, offset: 0 } as never;
+      if (p.includes("/partnership/visits")) return { items: [], total: 0, limit: 5, offset: 0 } as never;
       return { university } as never;
     });
     const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));

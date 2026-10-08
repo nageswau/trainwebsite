@@ -7163,6 +7163,188 @@ class UniversityContactPage(BaseModel):
     offset: int
 
 
+# --- upc-010 (DEC-SCOPE-130): university visits (§8). Limits per VS18; participants and contacts per VS11/VS12 ------------------------
+VISIT_MAX_PARTICIPANTS = 10
+VISIT_MAX_CONTACTS = 20
+VisitPurpose = _university_str(1000, required=True, multiline=True)
+VisitLong = _university_str(2000, multiline=True)
+VisitNotes = _university_str(1000, multiline=True)
+VisitCity = _university_str(120)
+VisitReason = _university_str(1000, required=True, multiline=True)
+VisitStatus = Literal["planned", "approved", "travel_booked", "visit_completed", "follow_up", "closed"]  # = UNIVERSITY_VISIT_STATUSES (§8)
+
+
+def _unique_ids(values: list[UUID] | None) -> list[UUID] | None:
+    """A repeated pick is one pick (order kept)."""
+    return None if values is None else list(dict.fromkeys(values))
+
+
+VisitParticipants = Annotated[list[UUID], Field(max_length=VISIT_MAX_PARTICIPANTS), AfterValidator(_unique_ids)]
+VisitContacts = Annotated[list[UUID], Field(max_length=VISIT_MAX_CONTACTS), AfterValidator(_unique_ids)]
+
+
+class UniversityVisitIn(BaseModel):
+    """`lead_user_id` defaults to the caller; `city` to the university's city (VS1)."""
+
+    model_config = ConfigDict(extra="forbid")
+    university_id: UUID
+    lead_user_id: UUID | None = None
+    city: VisitCity = None
+    purpose: VisitPurpose
+    proposed_date: date
+    confirmed_date: date | None = None
+    travel_required: StrictBool = False
+    travel_notes: VisitNotes = None
+    hotel_required: StrictBool = False
+    hotel_notes: VisitNotes = None
+    agenda: VisitLong = None
+    expected_outcome: VisitLong = None
+    participant_user_ids: VisitParticipants = []
+    contact_ids: VisitContacts = []
+
+
+class UniversityVisitUpdate(BaseModel):
+    """PATCH: omitted = unchanged; null clears an optional field and fails a required one. The university never changes (create a new
+    visit); which fields may change depends on the status (VS9, decided by the service)."""
+
+    model_config = ConfigDict(extra="forbid")
+    lead_user_id: UUID = None
+    city: UniversityCity = None
+    purpose: VisitPurpose = None
+    proposed_date: date = None
+    confirmed_date: date | None = None
+    travel_required: StrictBool = None
+    travel_notes: VisitNotes = None
+    hotel_required: StrictBool = None
+    hotel_notes: VisitNotes = None
+    agenda: VisitLong = None
+    expected_outcome: VisitLong = None
+    follow_up_date: date | None = None
+    participant_user_ids: VisitParticipants = None
+    contact_ids: VisitContacts = None
+
+
+class UniversityVisitComplete(BaseModel):
+    """AC3: completing a visit asks for the follow-up date."""
+
+    model_config = ConfigDict(extra="forbid")
+    follow_up_date: date
+
+
+class UniversityVisitReject(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: VisitReason
+
+
+class UniversityVisitClose(BaseModel):
+    """VS5: the reason is required when a visit is closed before it happened (checked by the service)."""
+
+    model_config = ConfigDict(extra="forbid")
+    reason: VisitNotes = None
+
+
+class VisitPerson(BaseModel):
+    id: UUID
+    full_name: str
+    active: bool
+
+
+class VisitCountryRef(BaseModel):
+    id: UUID
+    name: str
+
+
+class VisitUniversityRef(BaseModel):
+    id: UUID
+    name: str
+    university_code: str
+    city: str
+    country: VisitCountryRef
+
+
+class VisitContactRef(BaseModel):
+    id: UUID
+    name: str
+    designation: str | None
+
+
+class VisitEventOut(BaseModel):
+    action: str
+    from_status: str | None
+    to_status: str | None
+    actor: VisitPerson
+    reason: str | None
+    created_at: datetime
+
+
+class VisitPermissions(BaseModel):
+    can_edit: bool
+    can_submit: bool
+    can_decide: bool
+    can_book: bool
+    can_complete: bool
+    can_follow_up: bool
+    can_close: bool
+
+
+class UniversityVisitRow(BaseModel):
+    id: UUID
+    code: str
+    university: VisitUniversityRef
+    city: str
+    lead: VisitPerson
+    proposed_date: date
+    confirmed_date: date | None
+    status: str
+    approval_state: Literal["draft", "waiting", "returned"] | None  # only while planned (VS2)
+    submitted_at: datetime | None
+
+
+class UniversityVisitOut(UniversityVisitRow):
+    purpose: str
+    created_by: VisitPerson
+    travel_required: bool
+    travel_notes: str | None
+    hotel_required: bool
+    hotel_notes: str | None
+    agenda: str | None
+    expected_outcome: str | None
+    follow_up_date: date | None
+    rejection_reason: str | None
+    decided_by: VisitPerson | None
+    decided_at: datetime | None
+    close_reason: str | None
+    participants: list[VisitPerson]
+    contacts: list[VisitContactRef]
+    events: list[VisitEventOut]
+    permissions: VisitPermissions
+    editable_fields: list[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class UniversityVisitEnvelope(BaseModel):
+    visit: UniversityVisitOut
+
+
+class UniversityVisitPage(BaseModel):
+    items: list[UniversityVisitRow]
+    total: int
+    limit: int
+    offset: int
+
+
+class VisitOption(BaseModel):
+    id: UUID
+    label: str
+    detail: str | None
+
+
+class VisitOptionPage(BaseModel):
+    items: list[VisitOption]
+    total: int
+
+
 # --- rec-006 (DEC-SCOPE-119): the recruiter Skills Master ------------------------------------------------------------------------
 SKILL_FIELD_LABELS = {
     "name": "Name", "alias": "Alias", "active": "Active", "category_id": "Category", "tag_category_ids": "Other categories", "skill_id": "Related skill",

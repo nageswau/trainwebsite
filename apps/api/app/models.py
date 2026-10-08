@@ -906,6 +906,80 @@ class UniversityContact(Base, TimestampMixin):
     shareable: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
 
+# upc-010 (DEC-SCOPE-130, spec §2): §8's visit flow, exactly (VS2). Migration 0109 repeats the check; test_upc_010_migration keeps them
+# identical. VIS-000123 codes (VS17): a rolled-back create skips a number.
+UNIVERSITY_VISIT_STATUSES = ("planned", "approved", "travel_booked", "visit_completed", "follow_up", "closed")
+UNIVERSITY_VISIT_STATUS_CHECK = _one_of("status", UNIVERSITY_VISIT_STATUSES, nullable=False)
+UNIVERSITY_VISIT_CODE_SEQ = Sequence("university_visit_code_seq", metadata=Base.metadata)
+
+
+class UniversityVisit(Base, TimestampMixin):
+    """upc-010 (§8): one visit to one university (VS1), separate from meetings. A planned visit is a draft, waiting for approval
+    (`submitted_at`) or returned (`rejection_reason`). Rules live in `services/university_visits.py`."""
+
+    __tablename__ = "university_visits"
+    __table_args__ = (
+        UniqueConstraint("code", name="uq_university_visits_code"),
+        CheckConstraint(UNIVERSITY_VISIT_STATUS_CHECK, name="ck_university_visits_status"),
+        Index("ix_university_visits_university", "university_id"),
+        Index("ix_university_visits_lead", "lead_user_id"),
+        Index("ix_university_visits_pending", "submitted_at", postgresql_where=text("status = 'planned' AND submitted_at IS NOT NULL")),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    code: Mapped[str] = mapped_column(String(20))
+    university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"))
+    city: Mapped[str] = mapped_column(String(120))
+    purpose: Mapped[str] = mapped_column(Text)
+    lead_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    proposed_date: Mapped[date] = mapped_column(Date)
+    confirmed_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    travel_required: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    travel_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    hotel_required: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    hotel_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    agenda: Mapped[str | None] = mapped_column(Text, nullable=True)
+    expected_outcome: Mapped[str | None] = mapped_column(Text, nullable=True)
+    follow_up_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="planned", server_default="planned")
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decided_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    close_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class UniversityVisitParticipant(Base):
+    """VS11: other EduSphere employees on the visit (active partnership users when added)."""
+
+    __tablename__ = "university_visit_participants"
+    visit_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("university_visits.id", ondelete="CASCADE"), primary_key=True)
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), primary_key=True)
+
+
+class UniversityVisitContact(Base):
+    """VS12: the university's contacts to meet. Deleting the contact (PII) removes it from the visit."""
+
+    __tablename__ = "university_visit_contacts"
+    visit_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("university_visits.id", ondelete="CASCADE"), primary_key=True)
+    contact_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("university_contacts.id", ondelete="CASCADE"), primary_key=True)
+
+
+class UniversityVisitEvent(Base):
+    """VS14: the append-only status history (create, edit, every transition), with the reject/close reason."""
+
+    __tablename__ = "university_visit_events"
+    __table_args__ = (Index("ix_university_visit_events_visit", "visit_id", "created_at"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    visit_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("university_visits.id", ondelete="CASCADE"))
+    action: Mapped[str] = mapped_column(String(20))
+    from_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    to_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class OverseasCourse(Base, TimestampMixin):
     __tablename__ = "overseas_courses"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)

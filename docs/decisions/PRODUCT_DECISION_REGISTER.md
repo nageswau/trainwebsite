@@ -5341,3 +5341,38 @@ FEATURE_QUESTIONS #1 / Q-04 (the employer mediation question, still open).
 - **Tests:** the Job fixtures in the EMP-004/005, ADM-007/008, BDM-021, ENH-031 and RPT-001 tests move from `open` to
   `requirement_received`.
 - **New Feature ID authorized:** `rec-007`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-007.
+
+### DEC-SCOPE-130 — University visits + approval (`upc-010`)
+
+**Evidence:** `EVID-020` §8 (L314–L350: "separate from normal meetings", 14 planning fields, Planned → Approved → Travel Booked → Visit
+Completed → Follow-up → Closed); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U9 (`EXPLICIT_APPROVAL`, 2026-10-08) and §4 upc-010.
+**Status:** VS1–VS18 are the recommended answers to backlog Q-13 plus design-level rules, applied under the owner's standing instruction
+for the build session ("proceed with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed:
+`NEEDS_CONFIRMATION` at sign-off. Migration `0115_university_visits`, API contract §12AX, RBAC §2.56.
+Spec: `docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| VS1 | Universities per visit | One; country from the university; city defaults to the university's |
+| VS2 | Statuses | The six §8 statuses; a planned visit is a draft, waiting for approval or returned |
+| VS3 | Transitions | submit; approve/reject (reason); book (needs a confirmed date); complete (on/after the confirmed date, with the follow-up date); follow-up; close |
+| VS4 | Q-13a approver | The lead's reporting head; any active super_admin when that head is inactive, leads, planned or joins the visit; nobody decides a visit they planned, lead or join |
+| VS5 | Q-13b cancel after booking | No un-approving; a visit called off before it happened is closed early with a required reason |
+| VS6 | Who plans | Managers (lead themselves, own universities) and heads (lead or pick a direct report; unowned + team universities); active university |
+| VS7 | Who reads | Partnership managers, heads and super_admin read every visit; others `403` |
+| VS8 | Who acts | The lead or the planner |
+| VS9 | Editable per state | Draft/returned: all; waiting: none; approved/booked: dates, notes, agenda, outcome, contacts; after the visit: follow-up date; closed: none |
+| VS10 | Dates | IST; proposed/confirmed/follow-up today or later when set |
+| VS11 | Other employees | Active partnership managers/heads, not the lead, ≤ 10 |
+| VS12 | Meeting contacts | This university's upc-006 contacts, ≤ 20; deleting a contact removes it from visits |
+| VS13 | Travel and hotel | Requirement flags + notes; no booking integration, no expenses (U9) |
+| VS14 | History | `university_visit_events`, append-only, plus audit rows |
+| VS15 | Notifications | In-app: submit → approver(s); approve/return → lead and planner |
+| VS16 | Follow-up date | Stored; upc-020 turns it into a task later |
+| VS17 | Codes | `VIS-000001` |
+| VS18 | Limits | Purpose ≤ 1000; agenda/outcome ≤ 2000; notes and reasons ≤ 1000; city ≤ 120 |
+
+**Consequences:** tables `university_visits`, `university_visit_participants`, `university_visit_contacts`, `university_visit_events` and
+`university_visit_code_seq`; routes `/partnership/visits…`; pages `/partnership/visits`, `/new`, `/[id]`, `/[id]/edit`, `/approvals`; a
+Visits section on `/partnership/universities/[id]`; the manager menu's University Visits goes live; head and super admin nav entries.
+**New Feature ID authorized:** `upc-010`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-010.
