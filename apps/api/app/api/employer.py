@@ -13,6 +13,7 @@ from app.core.database import get_db
 from app.core.security import hash_password
 from app.models import AuditLog, Batch, Company, EmployerProfile, Enrollment, Interview, Job, JobApplication, PlacementProfile, Program, User
 from app.schemas import EmployerInterviewCreate, EmployerJobCreate, EmployerJobUpdate, EmployerRegistrationRequest, EmployerShortlistCreate, UserOut
+from app.services import applications
 from app.services import recruiter_requirements as requirements
 from app.services.recruiter_companies import employer_lead_source_id
 
@@ -235,7 +236,10 @@ async def list_shortlist(user: User = Depends(get_current_user), db: AsyncSessio
             .order_by(JobApplication.created_at.desc())
         )
     ).all()
-    return [{"id": application.id, "candidate": student.full_name, "job_title": job.title, "status": application.status} for application, student, job in rows]
+    return [
+        {"id": application.id, "candidate": student.full_name, "job_title": job.title, "status": application.status, "status_label": applications.label(application.status)}
+        for application, student, job in rows
+    ]
 
 
 @router.post("/shortlist", status_code=201)
@@ -243,16 +247,14 @@ async def shortlist_candidate(payload: EmployerShortlistCreate, user: User = Dep
     # EMP-004-AC03: an Employer can only shortlist against their own posting, even via a
     # direct job id -- same IDOR discipline as the job-update endpoint above.
     _, company = await _own_profile(user, db)
-    await _own_job(payload.job_id, company, db)
+    job = await _own_job(payload.job_id, company, db)
     student = await db.get(User, payload.student_id)
     if not student or student.role != "it_student":
         raise HTTPException(422, "Valid student candidate is required")
-    existing = await db.scalar(select(JobApplication).where(JobApplication.job_id == payload.job_id, JobApplication.student_id == payload.student_id))
-    if existing:
+    candidate = await applications.candidate_for_student(db, student)  # rec-017 (R6, A4)
+    if await db.scalar(select(JobApplication.id).where(JobApplication.job_id == payload.job_id, JobApplication.candidate_id == candidate.id)):
         raise HTTPException(409, "This candidate is already shortlisted/applied for this posting")
-    item = JobApplication(job_id=payload.job_id, student_id=payload.student_id, status="shortlisted")
-    db.add(item)
-    await db.flush()
+    item = await applications.create(db, user, job, candidate, "shortlisted", "Shortlisted by the employer")
     db.add(AuditLog(user_id=user.id, action="employer.shortlist", entity_type="job_application", entity_id=str(item.id)))
     await db.commit()
     await db.refresh(item)
@@ -275,15 +277,15 @@ async def schedule_interview(payload: EmployerInterviewCreate, user: User = Depe
     conflict = await db.scalar(
         select(Interview.id)
         .join(JobApplication, JobApplication.id == Interview.application_id)
-        .where(JobApplication.student_id == application.student_id, Interview.scheduled_at == payload.scheduled_at)
+        .where(JobApplication.candidate_id == application.candidate_id, Interview.scheduled_at == payload.scheduled_at)
     )
     if conflict:
         raise HTTPException(409, "This candidate already has an interview scheduled at this time")
     item = Interview(application_id=application.id, scheduled_at=payload.scheduled_at, mode=payload.mode, meeting_url=payload.meeting_url)
     db.add(item)
     await db.flush()
-    if application.status == "applied":
-        application.status = "shortlisted"
+    if application.status == "sourced":  # the legacy applied -> shortlisted (rec-017 A1)
+        applications.follow(db, user, application, "shortlisted", "Interview scheduled by the employer")
     db.add(AuditLog(user_id=user.id, action="employer.interview.schedule", entity_type="interview", entity_id=str(item.id)))
     await db.commit()
     await db.refresh(item)

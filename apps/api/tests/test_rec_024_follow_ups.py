@@ -8,10 +8,11 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import select
 
-from app.models import AuditLog, Job, JobApplication, RecruiterFollowUp
+from app.models import AuditLog, Job, RecruiterFollowUp
 from app.services.bdm_activities import day_range
 from app.services.bdm_appointments import IST
 from tests.rec001_helpers import as_role, login, make_pm, make_recruiter, make_user
+from tests.rec017_helpers import student_application
 
 COMPANIES = "/api/v1/recruiter/companies"
 FOLLOW_UPS = "/api/v1/recruiter/follow-ups"
@@ -108,8 +109,8 @@ async def test_links_must_belong_to_the_company(client, db_session):
     job, foreign_job = await _job(db_session, company["id"]), await _job(db_session, other["id"])
     assert (await _create(client, company["id"], job_id=str(foreign_job.id))).status_code == 422
     student = await make_user(db_session, "it_student", "it")
-    application = JobApplication(job_id=job.id, student_id=student.id)
-    foreign_application = JobApplication(job_id=foreign_job.id, student_id=student.id)
+    application = await student_application(db_session, job.id, student)
+    foreign_application = await student_application(db_session, foreign_job.id, student)
     db_session.add_all([application, foreign_application])
     await db_session.commit()
     assert (await _create(client, company["id"], application_id=str(foreign_application.id))).status_code == 422

@@ -3,8 +3,8 @@
 Backlog: `docs/delivery/RECRUITER_CRM_BACKLOG.md` rec-011. Source: EVID-018 S2-§1 (lines 1094–1124), S2-§3 (1218–1233), S2-§17
 (1645–1675). Depends on rec-006 (merged PR #150) and rec-009 (merged PR #155). rec-006's owner answer S1 moved the skill **merge** here.
 
-**Numbering (drafted on `main` @ `7852882f`):** `DEC-SCOPE-135`, migration `0120_candidate_skills` (after `0119_recruiter_meetings`),
-API §12BC, RBAC §2.61. Re-check origin/main before the merge and re-chain if needed.
+**Numbering (re-chained 2026-10-09 after rec-026 and rec-017 merged; drafted as `0120` / DEC-SCOPE-135 / §12BC / §2.61):** `DEC-SCOPE-137`, migration `0122_candidate_skills` (after `0121_job_application_tracking`),
+API §12BE, RBAC §2.63. Re-check origin/main before the merge and re-chain if needed.
 
 ## 1. Answers (2026-10-08)
 The owner asked to proceed with the recommended answers, so nothing was asked. Every row below is **UNVERIFIED** (a recorded default).
@@ -22,7 +22,7 @@ The owner asked to proceed with the recommended answers, so nothing was asked. E
 Also: an archived candidate's skills are read-only (409 "Restore this candidate first", the rec-009 rule). A candidate outside the pool is
 404. `hr_team` reads (rec-009's roles line), and the Skills Master stays closed to it (rec-006 S3), so it sees names only.
 
-## 2. Data (migration `0120_candidate_skills`)
+## 2. Data (migration `0122_candidate_skills`)
 **`candidate_skills`**
 | Column | Type | Rule |
 |---|---|---|
@@ -51,7 +51,7 @@ and `services/skills.resolve`.
   waits for this commit (or the add sees the skill gone → 422).
 - `items_out(db, candidate)`: one query joining skill, category and the verifier/adder; ordered by `lower(skill.name)`.
 
-## 4. API (§12BC), prefix `/api/v1/recruiter/candidates/{candidate_id}/skills`
+## 4. API (§12BE), prefix `/api/v1/recruiter/candidates/{candidate_id}/skills`
 | Method | Path | Who | Result |
 |---|---|---|---|
 | GET | `` | readers | `{items, can_edit}` |

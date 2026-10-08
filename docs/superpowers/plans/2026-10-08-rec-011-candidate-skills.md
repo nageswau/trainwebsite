@@ -3,7 +3,7 @@
 Spec: `docs/superpowers/specs/2026-10-08-rec-011-candidate-skills-design.md`. Branch `feature/rec-011`. Each task uses TDD (red, then
 green, then refactor) and runs only the focused tests.
 
-1. **Data.** Add `CANDIDATE_SKILL_*` constants and the `CandidateSkill` model. Add migration `0120_candidate_skills`.
+1. **Data.** Add `CANDIDATE_SKILL_*` constants and the `CandidateSkill` model. Add migration `0122_candidate_skills`.
    - Test: `test_rec_011_migration.py` (CHECKs = model, indexes, single head, downgrade refusal).
 2. **Schemas.** Add `CandidateSkillCreate`, `CandidateSkillUpdate`, `CandidateSkillStatusChange` and their field labels.
 3. **Service and API.** Add `services/candidate_skills.py` and `api/recruiter_candidate_skills.py` (router in `main.py`).
@@ -17,5 +17,5 @@ green, then refactor) and runs only the focused tests.
    section to `RecruiterSkillDetail`.
    - vitest for the lib, the card and the merge section.
 6. **e2e.** Add `rec-011-candidate-skills.spec.ts`.
-7. **Docs.** API_CONTRACT §12BC, RBAC_MATRIX §2.61, DATA_MODEL, DEC-SCOPE-135, the backlog status, SCREEN_CATALOG.
+7. **Docs.** API_CONTRACT §12BE, RBAC_MATRIX §2.63, DATA_MODEL, DEC-SCOPE-137, the backlog status, SCREEN_CATALOG.
 8. **Checks.** Lite backend (rec-006/007/009/011), vitest, tsc, eslint, next build, then e2e and browser QA.

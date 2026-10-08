@@ -3332,7 +3332,41 @@ Design spec `docs/superpowers/specs/2026-10-08-rec-028-company-meetings-design.m
   - Each meeting shows its history: the schedule, each reschedule (old and new time, reason), the completion or the cancellation.
   - A change re-reads the company: the pipeline (Meeting Scheduled), stage history, follow-ups and contacts update.
 
-## rec-011 addendum (2026-10-08, `DEC-SCOPE-135`) — Candidate skills and the skill merge
+## rec-026 addendum (2026-10-08, `DEC-SCOPE-135`) — Recruiter message templates, WhatsApp and email
+
+Design spec `docs/superpowers/specs/2026-10-08-rec-026-recruiter-messages-design.md` §5.
+
+- **Message templates** (`/recruiter/manager/templates`, placement manager and super_admin; others see the access-denied page): the
+  tel-012 library layout. A create form (channel, kind, name, subject for email, message with the placeholder hint, a live character count
+  and an unknown-placeholder warning) and a list filtered by channel with inline Edit (channel fixed), Deactivate (confirmed) / Reactivate
+  and Preview (sample values). In the manager's sidebar as "Message templates".
+- **Company detail** (`/recruiter/companies/[id]`): a Messages section under Follow-ups. A "To" picker of active contacts, then Send
+  WhatsApp and Send email, each disabled with its reason when the contact has no usable mobile or no email.
+  - WhatsApp: the tel-013 composer (template or custom message, edit, Open WhatsApp, then "Did you send it?" → Yes records / Not sent keeps the text).
+  - Email: the tel-014 composer (template or custom, subject and message, Send email). The list polls while an email is sending.
+  - Each item: "WhatsApp sent / Email sending / sent / delayed / failed – date – time" (IST), recipient, template and sender, subject and
+    text. A failed email says so. Loading, empty and error (Retry) states. A send refreshes the contacts' Last contacted.
+  - When a template's placeholder had no value, the composer says "Check the text: {company} has no value for this recipient."
+- **Candidate detail** (`/recruiter/candidates/[id]`): the same section without the picker. Read-only for `hr_team` and while the
+  candidate is archived.
+
+## rec-017 addendum (2026-10-08, `DEC-SCOPE-136`) — Candidate + Requirement tracking
+
+Design spec `docs/superpowers/specs/2026-10-08-rec-017-candidate-requirement-tracking-design.md` §5.
+
+- **Requirement detail** (`/recruiter/requirements/[id]`): a Candidates section after the requirement's status history.
+  - Each candidate is a card: name (links to the candidate), status badge, code, "since" time, Change status (only the statuses the API
+    allows) and History (every change, with notes).
+  - Writers get Add candidate: a searchable pool picker, the starting status (Sourced / Screened / Shortlisted) and a note. A duplicate or
+    a refused move shows the API's message on the form.
+  - Loading, empty ("No candidates on this requirement yet."), error and retry states; notices in a live region. Readers see no write
+    controls.
+- **Candidate detail** (`/recruiter/candidates/[id]`): an Applications section after the resumes — one card per requirement with the
+  company, status badge, requirement (linked only when the viewer can open it), its code and status, and since when (AC1).
+- **Legacy panels:** the HR shortlist, the employer shortlist, the student's Job Applications and the application picker show the status
+  label.
+
+## rec-011 addendum (2026-10-08, `DEC-SCOPE-137`) — Candidate skills and the skill merge
 
 Design spec `docs/superpowers/specs/2026-10-08-rec-011-candidate-skills-design.md` §6.
 

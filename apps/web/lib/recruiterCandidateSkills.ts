@@ -1,4 +1,4 @@
-// rec-011 (DEC-SCOPE-135): a candidate's skills -- types, endpoints, labels (SK1 levels, the six S2-§17 sources, the three statuses)
+// rec-011 (DEC-SCOPE-137): a candidate's skills -- types, endpoints, labels (SK1 levels, the six S2-§17 sources, the three statuses)
 // and the form <-> body mapping. Labels are display only; the API decides who may write and every rule (duplicates, the Skills Master).
 import { CANDIDATES_URL } from "@/lib/recruiterCandidates";
 import type { SkillRef } from "@/lib/recruiterSkills";

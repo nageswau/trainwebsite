@@ -1,12 +1,17 @@
 """rec-011 -- candidate_skills.
 
-Revision ID: 0120_candidate_skills
-Revises: 0119_recruiter_meetings
+Revision ID: 0122_candidate_skills
+Revises: 0121_job_application_tracking
 
-docs/superpowers/specs/2026-10-08-rec-011-candidate-skills-design.md §2 (DEC-SCOPE-135). A new table only; no existing row changes. 0001
+docs/superpowers/specs/2026-10-08-rec-011-candidate-skills-design.md §2 (DEC-SCOPE-137). A new table only; no existing row changes. 0001
 builds a fresh database from the current models, which already carry this table, so it is created only when missing (0119's idiom). CHECKS
 repeats app.models.CANDIDATE_SKILL_CHECKS (test_rec_011_migration). downgrade() refuses while any row exists: entered data is never dropped
 silently.
+
+Re-chained on 2026-10-09: drafted as `0120_candidate_skills` (DEC-SCOPE-135, API §12BC, RBAC §2.61) on `0119_recruiter_meetings`;
+rec-026 (`0120_recruiter_messages`) and rec-017 (`0121_job_application_tracking`) merged first, so this is `0122` (DEC-SCOPE-137,
+§12BE, §2.63). A database stamped at the draft is re-stamped with `alembic stamp --purge 0119_recruiter_meetings`, then `upgrade head`
+(the table step is guarded).
 """
 
 import sqlalchemy as sa
@@ -14,8 +19,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0120_candidate_skills"
-down_revision = "0119_recruiter_meetings"
+revision = "0122_candidate_skills"
+down_revision = "0121_job_application_tracking"
 branch_labels = None
 depends_on = None
 
@@ -72,5 +77,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {TABLE} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0120_candidate_skills: candidate skills exist. Clear them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0122_candidate_skills: candidate skills exist. Clear them deliberately first.")
     op.drop_table(TABLE)

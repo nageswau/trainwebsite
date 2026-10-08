@@ -87,6 +87,12 @@ def enqueue_lead_email(message_id: UUID | str, countdown: int = 0) -> bool:
     return _submit(lambda: _publish_lead_email(str(message_id), countdown), message_id)
 
 
+def enqueue_recruiter_email(message_id: UUID | str, countdown: int = 0) -> bool:
+    """rec-026 (MS7): likewise for a queued recruiter email (a `recruiter_messages` row); a failure leaves it for
+    `recruiter_email.sweep_stale_recruiter_emails`."""
+    return _submit(lambda: _publish_recruiter_email(str(message_id), countdown), message_id)
+
+
 def _submit(publish, ref) -> bool:
     global _broker_unavailable_until  # noqa: PLW0603 -- process-wide back-off state
     if time.monotonic() < _broker_unavailable_until:
@@ -120,3 +126,10 @@ def _publish_lead_email(message_id: str, countdown: int) -> None:
 
     with celery.connection_for_write(transport_options=PUBLISH_TRANSPORT_OPTIONS) as conn:
         deliver_lead_email_task.apply_async((message_id,), countdown=countdown, retry=False, ignore_result=True, connection=conn)
+
+
+def _publish_recruiter_email(message_id: str, countdown: int) -> None:
+    from app.worker import celery, deliver_recruiter_email_task  # noqa: PLC0415 -- the worker module imports this package
+
+    with celery.connection_for_write(transport_options=PUBLISH_TRANSPORT_OPTIONS) as conn:
+        deliver_recruiter_email_task.apply_async((message_id,), countdown=countdown, retry=False, ignore_result=True, connection=conn)

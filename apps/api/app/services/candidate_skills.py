@@ -1,4 +1,4 @@
-"""rec-011 (DEC-SCOPE-135, spec §3-§4): a candidate's skills -- the rules and output shapes. Roles, the pool, the archived rule and the
+"""rec-011 (DEC-SCOPE-137, spec §3-§4): a candidate's skills -- the rules and output shapes. Roles, the pool, the archived rule and the
 audit/log helpers are rec-009's (services/candidates); the skill text resolves through the Skills Master (services/skills.resolve).
 
 Functions only; nothing here commits -- the route owns the transaction. Logs and audit rows carry ids, never a name."""

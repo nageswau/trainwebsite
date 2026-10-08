@@ -11,9 +11,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Company, CompanyContact, RecContactRole, User
+from app.notifications.phone import wa_number
 from app.schemas import REC_CONTACT_FIELDS, REC_CONTACT_MAX, RecContactIn
+from app.services import recruiter_calls, recruiter_messages
 from app.services import recruiter_companies as companies
-from app.services.recruiter_calls import contact_last
 from app.services.recruiter_follow_ups import contact_next
 
 CONTACT_NOT_FOUND = "Contact not found"
@@ -118,7 +119,8 @@ async def list_out(db: AsyncSession, user: User, company: Company) -> dict:
     roles = {r.id: r for r in (await db.scalars(select(RecContactRole).where(RecContactRole.id.in_(role_ids)))).all()} if role_ids else {}
     contacts.sort(key=lambda c: (not c.is_primary, not c.active, c.position))
     next_due = await contact_next(db, company.id)
-    last_call = await contact_last(db, company.id)
+    last_call = await recruiter_calls.contact_last(db, company.id)
+    last_message = await recruiter_messages.contact_last(db, company.id)
     items = [
         {
             **{
@@ -126,8 +128,10 @@ async def list_out(db: AsyncSession, user: User, company: Company) -> dict:
                 for k in ("id", "name", "designation", "department", "mobile", "email", "linkedin_url", "preferred_channel", "notes", "is_primary", "active", "created_at", "updated_at")
             },
             "role": companies.ref(roles.get(c.role_id)),
-            "last_contacted_at": last_call.get(c.id),  # C6 / rec-025 CA7: the latest call (rec-026/028 add messages and meetings)
+            # C6: the latest call (rec-025 CA7) or message (rec-026 MS10); rec-028 adds meetings
+            "last_contacted_at": max((t for t in (last_call.get(c.id), last_message.get(c.id)) if t), default=None),
             "next_follow_up_at": next_due.get(c.id),  # rec-024 FU9
+            "whatsapp_to": wa_number(c.mobile),  # rec-026 MS6
         }
         for c in contacts
     ]

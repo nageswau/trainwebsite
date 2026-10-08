@@ -710,13 +710,45 @@ class JobDescription(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+# rec-017 (DEC-SCOPE-136, A1): the §12 per-requirement statuses + withdrawn. Migration 0121 repeats them (test_rec_017_migration).
+APPLICATION_STATUSES = ("sourced", "screened", "shortlisted", "profile_shared", "interview", "selected", "joined", "rejected", "withdrawn")
+APPLICATION_CHECKS = {"ck_job_applications_status": "status IN (" + ", ".join(f"'{s}'" for s in APPLICATION_STATUSES) + ")"}
+
+
 class JobApplication(Base, TimestampMixin):
+    """rec-017 (R6): one candidate on one requirement. `student_id` mirrors the candidate's login (NULL for an external candidate), so the
+    legacy student/employer/HR readers that join `users` keep their shape. services/applications.py is the only status writer."""
+
     __tablename__ = "job_applications"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in APPLICATION_CHECKS.items()),
+        UniqueConstraint("candidate_id", "job_id", name="uq_job_applications_candidate_job"),
+        Index("ix_job_applications_job_status", "job_id", "status"),
+        Index("ix_job_applications_candidate", "candidate_id"),
+    )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id"), index=True)
-    student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
-    status: Mapped[str] = mapped_column(String(30), default="applied")
+    student_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True, nullable=True)
+    candidate_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id"))
+    status: Mapped[str] = mapped_column(String(30), default="sourced")
     resume_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    stage_changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    added_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class JobApplicationStatusHistory(Base):
+    """rec-017: append-only. `from_status` NULL = created; `changed_by_user_id` NULL = the system or migration 0121 (whose note keeps the
+    legacy value). No status CHECK: history must survive a future catalogue change."""
+
+    __tablename__ = "job_application_status_history"
+    __table_args__ = (Index("ix_job_application_status_history_application", "application_id", "created_at"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("job_applications.id", ondelete="RESTRICT"))
+    from_status: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    to_status: Mapped[str] = mapped_column(String(30))
+    note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    changed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class Interview(Base, TimestampMixin):
@@ -4073,7 +4105,7 @@ class CandidateResume(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-# rec-011 (DEC-SCOPE-135): EVID-018 S2-§3 levels (SK1), the six S2-§17 skill sources and the three statuses. Migration 0120 repeats
+# rec-011 (DEC-SCOPE-137): EVID-018 S2-§3 levels (SK1), the six S2-§17 skill sources and the three statuses. Migration 0122 repeats
 # CANDIDATE_SKILL_CHECKS (test_rec_011_migration asserts they stay identical). Labels live in the web client.
 CANDIDATE_SKILL_LEVELS = ("beginner", "intermediate", "advanced", "expert")
 CANDIDATE_SKILL_SOURCES = ("resume", "interview_verified", "assessment_verified", "course_completed", "certification", "employer_verified")
@@ -4206,3 +4238,72 @@ class RecruiterMeetingEvent(Base):
     actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# rec-026 (DEC-SCOPE-135): the EVID-018 §19 message kinds (WhatsApp L766-L776, email L778-L792, source order) and the message rules;
+# migration 0119 repeats them (test_rec_026_migration asserts they stay identical). Labels live in the web client.
+REC_WHATSAPP_KINDS = ("candidate_profiles", "jd_confirmation", "interview_reminder", "follow_up", "requirement_update")
+REC_EMAIL_KINDS = (
+    "company_introduction", "recruitment_proposal", "candidate_profiles", "jd_acknowledgement", "interview_confirmation", "offer_follow_up",
+    "joining_confirmation",
+)
+RECRUITER_TEMPLATE_CHECKS = {
+    "ck_recruiter_message_templates_channel": "channel IN ('whatsapp', 'email')",
+    "ck_recruiter_message_templates_kind": (
+        f"(channel = 'whatsapp' AND kind IN ({', '.join(repr(k) for k in REC_WHATSAPP_KINDS)})) OR "
+        f"(channel = 'email' AND kind IN ({', '.join(repr(k) for k in REC_EMAIL_KINDS)}))"
+    ),
+    "ck_recruiter_message_templates_subject": "(channel = 'email') = (subject IS NOT NULL)",
+}
+RECRUITER_MESSAGE_CHECKS = {
+    "ck_recruiter_messages_party": "(contact_id IS NULL) = (company_id IS NULL) AND (contact_id IS NULL) <> (candidate_id IS NULL)",
+    "ck_recruiter_messages_channel": "channel IN ('whatsapp', 'email')",
+    "ck_recruiter_messages_email": "(channel = 'email') = (delivery_status IS NOT NULL) AND (channel = 'email') = (subject IS NOT NULL)",
+    "ck_recruiter_messages_status": "delivery_status IS NULL OR delivery_status IN ('queued', 'sending', 'retrying', 'sent', 'failed')",
+}
+
+
+class RecruiterMessageTemplate(Base, TimestampMixin):
+    """rec-026 (MS1-MS3): a WhatsApp or email template of the placement manager's global library. Only email has a subject; placeholders
+    are checked on save; a name is unique per channel (case-insensitive). Never deleted, only deactivated."""
+
+    __tablename__ = "recruiter_message_templates"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in RECRUITER_TEMPLATE_CHECKS.items()),
+        Index("uq_recruiter_message_templates_channel_name", "channel", text("lower(name)"), unique=True),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    channel: Mapped[str] = mapped_column(String(20))
+    kind: Mapped[str] = mapped_column(String(40))
+    name: Mapped[str] = mapped_column(String(160))
+    subject: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    body: Mapped[str] = mapped_column(Text)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+
+
+class RecruiterMessage(Base, TimestampMixin):
+    """rec-026 (MS4-MS9): a message to one company contact (with its company, for scope) or one candidate -- WhatsApp via wa.me (the row is
+    the recruiter's confirmation) or email (queued for the worker; `attempt_count` counts SMTP attempts). Permanent: never edited or
+    deleted. `template_name` is the name when sent, so a rename never rewrites history."""
+
+    __tablename__ = "recruiter_messages"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in RECRUITER_MESSAGE_CHECKS.items()),
+        Index("ix_recruiter_messages_company_sent", "company_id", "sent_at"),
+        Index("ix_recruiter_messages_contact_sent", "contact_id", "sent_at"),
+        Index("ix_recruiter_messages_candidate_sent", "candidate_id", "sent_at"),
+        Index("ix_recruiter_messages_sender_sent", "sender_user_id", "sent_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    company_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"), nullable=True)
+    contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("company_contacts.id", ondelete="RESTRICT"), nullable=True)
+    candidate_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="RESTRICT"), nullable=True)
+    sender_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    channel: Mapped[str] = mapped_column(String(16))
+    template_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_message_templates.id", ondelete="RESTRICT"), nullable=True)
+    template_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    subject: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    body: Mapped[str] = mapped_column(Text)
+    delivery_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    attempt_count: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

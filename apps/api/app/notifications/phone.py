@@ -17,3 +17,9 @@ def normalise_phone(raw: str | None) -> str | None:
         return compact
     match = _INDIAN_MOBILE.fullmatch(compact)
     return f"+91{match.group(1)}" if match else None
+
+
+def wa_number(raw: str | None) -> str | None:
+    """rec-026 MS6: a wa.me number -- E.164 digits without the `+`; None when the phone is unusable."""
+    number = normalise_phone(raw)
+    return number.lstrip("+") if number else None

@@ -1,4 +1,4 @@
-"""rec-011 (DEC-SCOPE-135, spec §4): a candidate's skills. Readers and writers are rec-009's (hr_team reads); the role check runs before
+"""rec-011 (DEC-SCOPE-137, spec §4): a candidate's skills. Readers and writers are rec-009's (hr_team reads); the role check runs before
 anything is read, and a candidate outside the pool is a 404.
 
 Bodies are untyped dicts parsed by services/telecaller._parse, so a 422 is one sentence naming the field (the tel-002 idiom). Each write

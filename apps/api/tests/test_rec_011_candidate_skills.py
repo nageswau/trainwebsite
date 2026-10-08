@@ -1,4 +1,4 @@
-"""rec-011 -- a candidate's skills (spec §1-§4, §7 AC1-AC5; DEC-SCOPE-135 SK1-SK6): one row per skill, the duplicate 409, the Skills Master
+"""rec-011 -- a candidate's skills (spec §1-§4, §7 AC1-AC5; DEC-SCOPE-137 SK1-SK6): one row per skill, the duplicate 409, the Skills Master
 422, the status change with who and when, roles, the pool and archived rules. The shared test database is never truncated, so every
 assertion uses rows created by the test."""
 

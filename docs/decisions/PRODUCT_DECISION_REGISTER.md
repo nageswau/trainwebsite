@@ -5524,7 +5524,82 @@ those numbers. Spec
 - "Last contacted" (rec-004 C6) and the dashboard's "Meetings Scheduled" (rec-032) can now read meetings; neither is changed here.
 - **New Feature ID authorized:** `rec-028`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-028.
 
-### DEC-SCOPE-135 — Candidate skill profile and the skill merge (`rec-011`)
+### DEC-SCOPE-135 — Recruiter message templates, WhatsApp and email (`rec-026`)
+
+**Evidence:**
+- `EVID-018`: §19 "💬 WhatsApp" (5 kinds, lines 766–776) and "📧 Email" (7 kinds, lines 778–792). "Last contacted" on the contact (line 212).
+- `RECRUITER_CRM_BACKLOG.md` §rec-026 (AC1–AC3).
+- Module scope: `DEC-SCOPE-116` (R8 masking, R11, R13). Company scope: `DEC-SCOPE-121`. Contacts: `DEC-SCOPE-125` (C6). Candidates:
+  `DEC-SCOPE-122`. Calls: `DEC-SCOPE-133` (CA7). Engine copied from tel-012/013/014: `DEC-SCOPE-083`, `DEC-SCOPE-100`, `DEC-SCOPE-106`.
+
+**Status:** **MERGED** to `main` as PR #176 @ `98d94a66` (2026-10-08). Every answer below is a **recommended default, `UNVERIFIED`**. The owner told the session to proceed
+with the recommended answers; the backlog lists no Q-xx for this item.
+
+**Numbering:** migration `0120_recruiter_messages` (after rec-028's `0119_recruiter_meetings`), API §12BC and RBAC §2.61. It was drafted as
+`0120` / `DEC-SCOPE-135`, re-chained to `0119` / 134 after rec-025, then back to `0120` / 135 when rec-028 merged first. Spec
+`docs/superpowers/specs/2026-10-08-rec-026-recruiter-messages-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| MS1 | Kinds | Fixed in code in source order. WhatsApp: Candidate profiles, JD confirmation, Interview reminders, Follow-up, Requirement updates. Email: Company introduction, Recruitment proposal, Candidate profiles, JD acknowledgement, Interview confirmation, Offer follow-up, Joining confirmation. One active template per kind is seeded (12, AC1) |
+| MS2 | Placeholders | `{name}` (the recipient), `{company}` (the contact's company; empty for a candidate), `{recruiter}` (the sender). Any other `{...}` → `422` on save. A missing value renders empty and the composer names it ("Check the text: {company} has no value for this recipient", QA-02) |
+| MS3 | Library | Global. `placement_manager` and `super_admin` create, edit, deactivate and reactivate; never deleted. Recruiters read active templates. Name unique per channel (case-insensitive, `409`); only email has a subject; limits 1000 / 5000 / 200 |
+| MS4 | Party | Exactly one company contact (the contact's company is stored for scope) or one candidate (`CHECK`). Any template for either party |
+| MS5 | Who | Contact messages: the company's scope reads, its `can_edit` holder sends (archived company or inactive contact → `409`). Candidate messages: R11, the candidate writers send and `hr_team` reads (archived candidate → `409`) |
+| MS6 | WhatsApp | wa.me with the party's mobile as E.164 digits (+91 default); logged only on "Yes, record as sent" (AC3); no usable number → `409` |
+| MS7 | Email | Queued, published after the commit and delivered by the worker through the existing SMTP mailer (From the system address as "<recruiter> via EduSphere", Reply-To the recruiter); status queued → sending → sent / retrying / failed, with ENH-014's back-off and a 5-minute stale sweep (AC2). The address is the party's at delivery. No address → `409`; SMTP unset → `503` |
+| MS8 | Caps | 300 WhatsApp (`409`) and 100 emails (`429`) per sender per IST day |
+| MS9 | Permanence | No edit or delete of a message. Audit and logs carry ids, the channel and the template id, never the text, subject or address |
+| MS10 | Last contacted | A contact's latest message (failed emails excluded); with rec-025 it is the later of the latest call and the latest message |
+| MS11 | R8 masking | No placeholder reads candidate data, so a message to a company contact never carries a candidate's phone or email unless typed |
+
+**Consequences:**
+- `recruiter_message_templates` (+ 12 seeds) and `recruiter_messages` (`0120`), with kind, subject, party, channel, email-shape and status CHECKs.
+- `services/recruiter_messages.py`, `api/recruiter_messages.py`, `notifications/recruiter_email.py` (+ `dispatch.enqueue_recruiter_email`,
+  `worker.deliver_recruiter_email_task`, beat `rec026-sweep-stale-recruiter-emails`). tel-014's delivery code is unchanged.
+- The contacts list gains `whatsapp_to`; candidate detail gains `whatsapp_to`; `last_contacted_at` includes messages.
+- Web: a Messages section on the company page (contact picker) and the candidate page; `/recruiter/manager/templates`; the tel-013/014
+  composers now take a `target` (lead or recruiter party), with the lead behaviour unchanged.
+- **New Feature ID authorized:** `rec-026`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-026.
+
+### DEC-SCOPE-136 — Candidate + Requirement tracking (`rec-017`)
+
+**Evidence:**
+- `EVID-018` §12 (lines 532–554): "Candidate ID + Requirement ID" with the statuses Sourced → Screened → Shortlisted → Profile Shared →
+  Interview → Selected → Joined / Rejected; "a candidate can have different statuses for different companies"; "don't keep only one global
+  candidate status". S2-§14 (lines 1563–1583) says the same.
+- `RECRUITER_CRM_BACKLOG.md` §rec-017: AC1–AC4, Q-17, and the edge cases (existing duplicate rows, a withdrawn application).
+- Module scope: `DEC-SCOPE-116` (R6: `job_applications.candidate_id`, the backfill creates candidates for existing students, marked not
+  opted in). Candidates: `DEC-SCOPE-122` (rec-009). Requirements: `DEC-SCOPE-129` (rec-007). Pipeline: `DEC-SCOPE-127` (rec-005).
+
+**Status:** Owner answers A1–A4 were given on 2026-10-08, taking the recommended option each time. They are recorded as **`UNVERIFIED`** until
+the owner confirms this entry.
+
+**Numbering:** migration `0121_job_application_tracking` (after rec-026's `0120_recruiter_messages`), API §12BD and RBAC §2.62. Drafted as
+`0119` / `DEC-SCOPE-134` / §12BB / §2.60, then `0120` / `DEC-SCOPE-135` / §12BC / §2.61; rec-028 and then rec-026 merged first and took
+those numbers. Spec `docs/superpowers/specs/2026-10-08-rec-017-candidate-requirement-tracking-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| A1 (Q-17a) | Statuses and legacy map | The 8 §12 statuses + `withdrawn`; no `on_hold` (rec-018's Hold is a flag). applied→sourced, screening→screened, shortlisted, interview_scheduled→interview, offer_received→selected, hired→joined, rejected, withdrawn |
+| A2 (Q-17b) | Transitions | Free moves among sourced / screened / shortlisted / profile_shared / interview; any of them → selected / rejected / withdrawn; selected → joined / rejected / withdrawn; **Joined only from Selected** (`409`); rejected / withdrawn reopen to sourced; joined is terminal. Interview result selected → Selected (was Shortlisted), rejected → Rejected; offer created → Selected; offer accepted / joined → Joined. Legacy side effects move only when the move is allowed |
+| A3 | Backfill collision | A student whose email or mobile already belongs to an external candidate is linked to it, and it stays in the pool (`opted_in` true); other students get a new candidate with `opted_in` false. The runtime create-or-link does the same |
+| A4 | Scope cuts | `drive_id` moves to rec-029 (it owns `recruitment_drives`). Student self-apply and the employer shortlist create or link the student's candidate (`opted_in` false); the opt-in prompt stays in rec-010. History table `job_application_status_history` (overseas owns `application_status_history`) |
+
+**Consequences:**
+- `job_applications` gains `candidate_id` (NOT NULL after the backfill), `stage_changed_at`, `added_by_user_id`, the status CHECK, unique
+  `(candidate_id, job_id)` and indexes `(job_id, status)` / `(candidate_id)`. `student_id` becomes nullable (external candidates). New
+  `job_application_status_history`. The migration refuses on duplicate `(job_id, student_id)` rows (none are expected; a merge would
+  re-point interviews and offers, so a person decides).
+- `services/applications.py` is the only status writer. The recruiter routes (§12BD) and the legacy `/workflows/it` and `/employer` routes
+  call it, so every change is in the history. Adding a candidate fires rec-005's `candidates_sourcing`.
+- The legacy routes keep their paths and payloads; their responses gain `status_label`, and the student portal and the application picker
+  show the label. `HIRED_APPLICATION_STATUSES` is `("joined",)`.
+- The requirement page gains a Candidates section; the candidate page gains an Applications section.
+- Audit `recruiter_application.{add,status}` carries ids and statuses only.
+- **New Feature ID authorized:** `rec-017`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-017.
+
+### DEC-SCOPE-137 — Candidate skill profile and the skill merge (`rec-011`)
 
 **Evidence:**
 - `EVID-018` S2-§1 (lines 1094–1124): every skill is a separate searchable row. S2-§3 (1218–1233): Skill, Level, Experience, Last Used.
@@ -5537,7 +5612,8 @@ those numbers. Spec
 **Status:** built on `feature/rec-011`. Every answer below is a **recommended default, `UNVERIFIED`**, taken on the owner's instruction
 to proceed with the recommended answers.
 
-**Numbering:** migration `0120_candidate_skills` (after rec-028's `0119_recruiter_meetings`), API §12BC and RBAC §2.61. Spec
+**Numbering:** migration `0122_candidate_skills` (after rec-017's `0121_job_application_tracking`), API §12BE and RBAC §2.63. Drafted as
+`0120` / `DEC-SCOPE-135` / §12BC / §2.61; rec-026 and then rec-017 merged first and took those numbers. Spec
 `docs/superpowers/specs/2026-10-08-rec-011-candidate-skills-design.md`.
 
 | # | Point | Answer |
@@ -5551,7 +5627,7 @@ to proceed with the recommended answers.
 | SK7 (S1) | Merge | A Skills Master writer merges A into an active B: candidate skills (the stronger status wins a clash, B on a tie) and requirement skills move, aliases move, related links are re-made, A is deleted and A's name becomes an alias of B |
 
 **Consequences:**
-- `candidate_skills` (`0120`), `services/candidate_skills.py`, `api/recruiter_candidate_skills.py`; `services/skills.absorb` and
+- `candidate_skills` (`0122`), `services/candidate_skills.py`, `api/recruiter_candidate_skills.py`; `services/skills.absorb` and
   `POST /recruiter/skills/{id}/merge`.
 - The candidate page gains a Skills card; the manager's Skills Master detail gains "Merge into another skill".
 - rec-006 S6 ("skills are deactivated, never deleted") now has one exception: the merged-away skill is deleted, audited with its id and name.

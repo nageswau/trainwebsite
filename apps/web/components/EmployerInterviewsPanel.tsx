@@ -7,7 +7,7 @@ import LocalTime from "@/components/LocalTime";
 
 type JobOption = { id: string; title: string };
 type CandidateOption = { student_id: string; name: string };
-type ShortlistRow = { id: string; candidate: string; job_title: string; status: string };
+type ShortlistRow = { id: string; candidate: string; job_title: string; status: string; status_label: string };
 type InterviewRow = { id: string; candidate: string; job_title: string; scheduled_at: string; mode: string; result: string | null };
 
 function detailMessage(detail: unknown) {
@@ -109,7 +109,7 @@ export default function EmployerInterviewsPanel() {
         <div className="grid two">
           {shortlist.map((row) => (
             <div className="card" key={row.id}>
-              <span className="badge">{row.status}</span>
+              <span className="badge">{row.status_label}</span>
               <h4 style={{ marginTop: 10 }}>{row.candidate}</h4>
               <p className="muted" style={{ fontSize: 13 }}>{row.job_title}</p>
               <form className="form" onSubmit={(event) => scheduleInterview(event, row.id)}>

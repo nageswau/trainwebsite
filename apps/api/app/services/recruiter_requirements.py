@@ -39,7 +39,7 @@ logger = logging.getLogger("app.recruiter")
 
 NOT_FOUND = "Job requirement not found"
 EXPIRING_DAYS = 7  # J4 (Q-05)
-HIRED_APPLICATION_STATUSES = ("hired", "joined")  # workflows.update_job_offer marks an application hired on an accepted/joined offer
+HIRED_APPLICATION_STATUSES = ("joined",)  # rec-017 A1: the legacy "hired" is Joined (workflows.update_job_offer follows an accepted offer there)
 STATUS_LABELS = {
     "new": "New", "requirement_received": "Requirement Received", "sourcing": "Sourcing", "shortlisting": "Shortlisting",
     "profiles_shared": "Profiles Shared", "interviewing": "Interviewing", "selected": "Selected", "joined": "Joined", "on_hold": "On Hold",

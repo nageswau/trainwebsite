@@ -1,4 +1,4 @@
-"""rec-011 -- the skill merge rec-006 S1 moved here (spec §5, DEC-SCOPE-135 SK7, AC6): merging A into B re-points candidate skills (the
+"""rec-011 -- the skill merge rec-006 S1 moved here (spec §5, DEC-SCOPE-137 SK7, AC6): merging A into B re-points candidate skills (the
 stronger status wins a clash) and requirement skills, moves aliases and related links, deletes A and makes A's name an alias of B. Every
 skill and candidate is created by the test (the shared database is never truncated)."""
 

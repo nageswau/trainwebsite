@@ -2,19 +2,20 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 import { sendJson } from "@/lib/apiErrors";
-import type { Template } from "@/lib/telecallerContent";
-import { BODY_MAX, activeTemplates, createMessageUrl, isRenderedTemplate, renderUrl, waHref } from "@/lib/telecallerMessages";
+import { BODY_MAX, isRenderedTemplate, missingNote, waHref, type ComposerTarget } from "@/lib/telecallerMessages";
 
 /** tel-013 (spec §4; D3-D5, WA4): pick a template (rendered with the lead's values) or write a custom message, edit it, open wa.me, then
- *  confirm. Only "Yes, record as sent" writes the log -- wa.me can't report delivery, and "Not sent" keeps the text. */
-export default function WhatsAppComposer({ leadId, to, onRecorded, onCancel }: {
-  leadId: string; to: string; onRecorded: () => void; onCancel: () => void;
+ *  confirm. Only "Yes, record as sent" writes the log -- wa.me can't report delivery, and "Not sent" keeps the text.
+ *  rec-026: `target` names the endpoints -- a lead's (`leadTarget`) or a recruiter's contact / candidate (`recruiterTarget`). */
+export default function WhatsAppComposer({ target, to, onRecorded, onCancel }: {
+  target: ComposerTarget; to: string; onRecorded: () => void; onCancel: () => void;
 }) {
-  const [templates, setTemplates] = useState<Template[] | "failed" | null>(null);
+  const [templates, setTemplates] = useState<{ id: string; name: string }[] | "failed" | null>(null);
   const [templateId, setTemplateId] = useState("");
   const [text, setText] = useState("");
   const [rendering, setRendering] = useState<"idle" | "loading" | "failed">("idle");
   const [mismatch, setMismatch] = useState(false);
+  const [missing, setMissing] = useState<string[]>([]);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,19 +24,21 @@ export default function WhatsAppComposer({ leadId, to, onRecorded, onCancel }: {
   const picker = useRef<HTMLSelectElement>(null);
   const id = useId();
 
+  const { loadTemplates } = target; // a module function, so the picker loads once
   useEffect(() => {
     picker.current?.focus(); // QA-02: the composer may open far from the button that opened it
     const controller = new AbortController();
-    activeTemplates("whatsapp", controller.signal).then(setTemplates).catch(() => controller.signal.aborted || setTemplates("failed"));
+    loadTemplates("whatsapp", controller.signal).then(setTemplates).catch(() => controller.signal.aborted || setTemplates("failed"));
     return () => {
       controller.abort();
       renderAbort.current?.abort();
     };
-  }, []);
+  }, [loadTemplates]);
 
   async function choose(next: string) {
     setTemplateId(next);
     setMismatch(false);
+    setMissing([]);
     setConfirming(false);
     setError(null);
     renderAbort.current?.abort();
@@ -44,11 +47,12 @@ export default function WhatsAppComposer({ leadId, to, onRecorded, onCancel }: {
     renderAbort.current = controller;
     setRendering("loading");
     try {
-      const response = await fetch(renderUrl(leadId, next), { signal: controller.signal });
+      const response = await fetch(target.renderUrl(next), { signal: controller.signal });
       const body = await response.json().catch(() => null);
       if (!response.ok || !isRenderedTemplate(body)) throw new Error("render failed");
       setText(body.body);
-      setMismatch(body.product_mismatch);
+      setMismatch(body.product_mismatch === true);
+      setMissing(body.missing ?? []);
       setRendering("idle");
     } catch {
       if (!controller.signal.aborted) setRendering("failed");
@@ -60,7 +64,7 @@ export default function WhatsAppComposer({ leadId, to, onRecorded, onCancel }: {
     recording.current = true;
     setBusy(true);
     setError(null);
-    const outcome = await sendJson(createMessageUrl(leadId), "POST", { channel: "whatsapp", ...(templateId ? { template_id: templateId } : {}), body: text.trim() });
+    const outcome = await sendJson(target.createUrl, "POST", { ...target.payload, channel: "whatsapp", ...(templateId ? { template_id: templateId } : {}), body: text.trim() });
     recording.current = false;
     setBusy(false);
     if (outcome.ok) return onRecorded();
@@ -81,6 +85,7 @@ export default function WhatsAppComposer({ leadId, to, onRecorded, onCancel }: {
       </div>
       {rendering === "loading" && <p className="muted" role="status" style={{ fontSize: 13, margin: 0 }}>Preparing the message…</p>}
       {rendering === "failed" && <p className="form-error" role="alert" style={{ fontSize: 13, margin: 0 }}>Unable to load the template. Choose it again or write a custom message.</p>}
+      {missing.length > 0 && <p className="form-warning" role="note" style={{ fontSize: 13, margin: 0 }}>{missingNote(missing)}</p>}
       {mismatch && (
         <p className="form-warning" role="note" style={{ fontSize: 13, margin: 0 }}>This template was made for another product. Check the text before sending.</p>
       )}

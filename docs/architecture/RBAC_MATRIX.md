@@ -1161,7 +1161,36 @@ Meetings take the company's scope (§2.47), so a meeting of a company outside th
 | `bdm` (assigned) | read only (R10); every write `403`; the picker `403` | companies whose Assigned BDM is them | `rec-028` |
 | `hr_team`, `it_admin`, `employer`, every other role | `403` | — | `rec-028` |
 
-### 2.61 Candidate skills and the skill merge *(net-new, added 2026-10-08 — `DEC-SCOPE-135`, `rec-011`)*
+### 2.61 Recruiter message templates and messages *(net-new, added 2026-10-08 — `DEC-SCOPE-135`, `rec-026`)*
+
+The template library is global (MS3). A contact message takes the company's scope and write rights (§2.47, §2.57); a candidate message
+takes the pool's (§2.48, R11). Messages are never edited or deleted (MS9).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` (with a profile) | read active templates; send WhatsApp/email to contacts and candidates; read their messages | contacts of companies assigned to them; the whole candidate pool | `rec-026` |
+| `placement_manager` | create, edit, deactivate templates; read contact messages (every contact send `403`); send to and read candidates | the library; direct reports' companies + the unassigned queue; the pool | `rec-026` |
+| `super_admin` | everything | all | `rec-026` |
+| `bdm` (assigned) | read contact messages (R10); templates, sends and candidate messages `403` | companies whose Assigned BDM is them | `rec-026` |
+| `hr_team` | read candidate messages; templates, sends and contact messages `403` | the pool | `rec-026` |
+| `it_admin`, `employer`, `telecaller`, every other role | `403` | — | `rec-026` |
+
+### 2.62 Candidate + Requirement tracking *(net-new, added 2026-10-08 — `DEC-SCOPE-136`, `rec-017`)*
+
+Applications take the requirement's scope (§2.55), so an application or requirement outside the caller's scope is `404`, the same as an
+unknown id. Writes follow rec-007's `can_edit` holders. A candidate must be in the pool (rec-009) to be added. The legacy student, employer
+and HR routes keep their own rules.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` (with a profile) | list, add, change status, history; the candidate's applications | requirements assigned to them or on their companies | `rec-017` |
+| `placement_manager` | read only (lists, history, applications); writes `403` | direct reports' requirements + the unassigned queue | `rec-017` |
+| `super_admin` | everything | all | `rec-017` |
+| `bdm` (assigned) | read only (R10); writes `403` | requirements of companies whose Assigned BDM is them | `rec-017` |
+| `hr_team` | the candidate's applications only (`in_scope` false); the requirement routes `403` | — | `rec-017` |
+| `it_student`, `employer`, every other role | `403` | — | `rec-017` |
+
+### 2.63 Candidate skills and the skill merge *(net-new, added 2026-10-08 — `DEC-SCOPE-137`, `rec-011`)*
 
 Candidate skills take the candidate master's roles and pool (§2.48): every recruiter edits the whole opted-in pool (R11). The role check
 runs before anything is read; a candidate outside the pool is `404`, and an archived one is read only (`409`). SK4 (UNVERIFIED): any

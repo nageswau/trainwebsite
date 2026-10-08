@@ -19,6 +19,7 @@ import pytest
 
 from app.core.security import hash_password
 from app.models import Batch, Company, Enrollment, Job, JobApplication, PlacementProfile, Program, User
+from tests.rec017_helpers import student_application
 
 
 async def _create_placement_user(db_session, *, role: str = "placement_team") -> User:
@@ -123,7 +124,7 @@ async def test_withdrawal_does_not_touch_historical_job_application_records(db_s
     job = Job(company_id=company.id, title=f"Backend Developer {uuid.uuid4().hex[:6]}", location="Remote", description="Test", status="requirement_received")
     db_session.add(job)
     await db_session.flush()
-    application = JobApplication(job_id=job.id, student_id=candidate.id, status="shortlisted")
+    application = await student_application(db_session, job.id, candidate, "shortlisted")
     db_session.add(application)
     await db_session.commit()
 
