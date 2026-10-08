@@ -5257,9 +5257,9 @@ the University Master list; "Partnership Pipeline" goes live in the §32 menu an
 
 **Evidence:** `EVID-018` §5 (lines 218–270), lead field "Status" (116), "genuine prospect" (122); `RECRUITER_CRM_BACKLOG.md` §rec-005
 (AC1–AC4). Module scope: `DEC-SCOPE-116` (R1–R15); company scope and permissions: `DEC-SCOPE-121` (rec-003, D6).
-**Status:** built on `feature/rec-005` (2026-10-08). Every answer below is a **recommended default, `UNVERIFIED`**: the owner told the
-session to proceed with the recommended answers, and Q-06 was not asked. **Numbering (provisional):** migration `0112_company_pipeline`,
-API §12AU, RBAC §2.53 (drafted as `0108` / `DEC-SCOPE-123` / §12AQ / §2.49; upc-006, upc-004, rec-004 and upc-007 merged first); re-check on `main` before merge. Spec `docs/superpowers/specs/2026-10-08-rec-005-company-pipeline-design.md`.
+**Status:** **MERGED** to `main` as PR #162 @ `ada23b4d` (2026-10-08). Every answer below is a **recommended default, `UNVERIFIED`**: the owner told the
+session to proceed with the recommended answers, and Q-06 was not asked. **Numbering:** migration `0112_company_pipeline`,
+API §12AU, RBAC §2.53 (drafted as `0108` / `DEC-SCOPE-123` / §12AQ / §2.49; upc-006, upc-004, rec-004 and upc-007 merged first). Spec `docs/superpowers/specs/2026-10-08-rec-005-company-pipeline-design.md`.
 
 | # | Point | Answer |
 |---|---|---|
