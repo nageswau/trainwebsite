@@ -54,7 +54,7 @@ New nullable columns on `companies` (existing rows unchanged apart from the code
 | `created_by_user_id` | FK users | NULL for rows that predate rec-003 |
 | `archived_at` | timestamptz | |
 
-Indexes: `ix_companies_assigned_recruiter`, `ix_companies_assigned_bdm`, `ix_companies_name_lower` on `lower(name)`.
+Indexes: `ix_companies_assigned_recruiter`, `ix_companies_assigned_bdm`, `ix_companies_name_key` on the normalised name (trimmed, whitespace collapsed, lower-cased).
 
 New `company_assignment_history`: `id`, `company_id` FK, `from_user_id` (NULL = was unassigned), `to_user_id` NOT NULL,
 `changed_by_user_id` NOT NULL, `created_at`; index on `company_id`. Append-only.

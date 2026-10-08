@@ -6602,3 +6602,168 @@ class RecCampaignPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# --- rec-003 (DEC-SCOPE-119): the company master ----------------------------------------------------------------------------------
+REC_COMPANY_LABELS = {
+    "name": "Company name", "website": "Website", "linkedin_url": "LinkedIn", "city": "City", "state": "State", "country": "Country",
+    "head_office": "Head office", "branches": "Branches", "description": "Company description",
+}
+REC_COMPANY_MULTILINE = frozenset({"branches", "description"})
+REC_COMPANY_URLS = frozenset({"website", "linkedin_url"})
+REC_COMPANY_FIELDS = (  # the columns a create or edit may write; everything else on `companies` is server-owned
+    "name", "website", "linkedin_url", "industry_id", "company_size_id", "employee_count", "city", "state", "country", "head_office",
+    "branches", "description", "lead_source_id", "campaign_id", "priority", "assigned_bdm_user_id",
+)
+
+
+def _rec_company_text(value: str | None, info: ValidationInfo) -> str | None:
+    """bdm-002's rules with this module's labels: no control characters (a line break only in a multi-line field), blank -> None, and
+    http(s) links only, so a stored value can never become a javascript:/data: href."""
+    label = REC_COMPANY_LABELS[info.field_name]
+    control = _BDM_CONTROL_MULTILINE if info.field_name in REC_COMPANY_MULTILINE else _BDM_CONTROL
+    if value is not None and control.search(value):
+        raise ValueError(f"{label} contains invalid characters")
+    if not value:
+        return None
+    if info.field_name in REC_COMPANY_URLS and not _BDM_WEBSITE.fullmatch(value):
+        raise ValueError(f"{label} must start with http:// or https://" if _BDM_SCHEME.match(value) else f"Enter a {label} link such as example.com")
+    return value
+
+
+def _rec_company_name(value: str, info: ValidationInfo) -> str:
+    value = _rec_company_text(value, info)
+    if value is None:
+        raise ValueError("Company name is required")
+    return value
+
+
+def _rec_company_optional(max_length: int, *, multiline: bool = False, url: bool = False):
+    text = Annotated[Annotated[str, StringConstraints(strip_whitespace=True, max_length=max_length)] | None, AfterValidator(_rec_company_text)]
+    if multiline:
+        text = Annotated[text, BeforeValidator(_bdm_newlines)]
+    return Annotated[text, BeforeValidator(_bdm_website_prefix)] if url else text
+
+
+RecCompanyName = Annotated[str, StringConstraints(strip_whitespace=True, max_length=180), AfterValidator(_rec_company_name)]
+RecCompanyShort = _rec_company_optional(120)
+RecCompanyUrl = _rec_company_optional(300, url=True)
+RecCompanyPlace = _rec_company_optional(300)
+RecCompanyBranches = _rec_company_optional(1000, multiline=True)
+RecCompanyDescription = _rec_company_optional(2000, multiline=True)
+RecEmployeeCount = _bdm_whole_number("Number of employees must be a whole number from 0 to 10,000,000", 0, 10_000_000)
+RecCompanyPriority = Literal["hot", "warm", "cold"]
+
+
+class RecCompanyUpdate(BaseModel):
+    """PATCH: omitted = unchanged, null = clear (a null name fails its type). Server-owned fields (code, assignee, archive, creator) are
+    unknown fields, so a client can never set them; the recruiter changes only through /assign."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: RecCompanyName = None
+    website: RecCompanyUrl = None
+    linkedin_url: RecCompanyUrl = None
+    industry_id: UUID | None = None
+    company_size_id: UUID | None = None
+    employee_count: RecEmployeeCount = None
+    city: RecCompanyShort = None
+    state: RecCompanyShort = None
+    country: RecCompanyShort = None
+    head_office: RecCompanyPlace = None
+    branches: RecCompanyBranches = None
+    description: RecCompanyDescription = None
+    lead_source_id: UUID | None = None
+    campaign_id: UUID | None = None
+    priority: RecCompanyPriority | None = None
+    assigned_bdm_user_id: UUID | None = None
+    confirm_duplicate: StrictBool = False
+
+
+class RecCompanyCreate(RecCompanyUpdate):
+    name: RecCompanyName
+    assigned_recruiter_user_id: UUID | None = None  # managers and super_admin only (services/recruiter_companies)
+
+
+class RecCompanyAssign(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    recruiter_user_id: UUID
+
+
+class RecPersonRef(BaseModel):
+    id: UUID
+    full_name: str
+    active: bool
+
+
+class RecCatalogueRef(BaseModel):
+    id: UUID
+    name: str
+    active: bool
+
+
+class RecCompanyPermissions(BaseModel):
+    can_edit: bool
+    can_archive: bool
+    can_restore: bool
+    can_reassign: bool
+
+
+class RecCompanyRow(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    city: str | None
+    priority: str | None
+    industry: RecCatalogueRef | None
+    lead_source: RecCatalogueRef | None
+    assigned_recruiter: RecPersonRef | None
+    archived: bool
+    permissions: RecCompanyPermissions
+
+
+class RecCompanyPage(BaseModel):
+    items: list[RecCompanyRow]
+    total: int
+    limit: int
+    offset: int
+
+
+class RecAssignmentOut(BaseModel):
+    from_user: RecPersonRef | None
+    to_user: RecPersonRef
+    changed_by: RecPersonRef
+    created_at: datetime
+
+
+class RecCompanyOut(RecCompanyRow):
+    website: str | None
+    linkedin_url: str | None
+    company_size: RecCatalogueRef | None
+    employee_count: int | None
+    state: str | None
+    country: str | None
+    head_office: str | None
+    branches: str | None
+    description: str | None
+    campaign: RecCatalogueRef | None
+    assigned_bdm: RecPersonRef | None
+    owner_type: str
+    created_by: RecPersonRef | None
+    assignment_history: list[RecAssignmentOut]
+    archived_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class RecCompanyEnvelope(BaseModel):
+    company: RecCompanyOut
+
+
+class RecBdmOption(BaseModel):
+    id: UUID
+    full_name: str
+
+
+class RecBdmOptionPage(BaseModel):
+    items: list[RecBdmOption]
+    total: int

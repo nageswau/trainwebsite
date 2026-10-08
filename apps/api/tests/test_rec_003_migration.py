@@ -21,9 +21,24 @@ _spec.loader.exec_module(_migration)
 
 BASE, HEAD = "0102_rec_catalogues", "0103_rec_companies"
 NEW_COLUMNS = {
-    "company_code", "linkedin_url", "industry_id", "company_size_id", "employee_count", "city", "state", "country", "head_office",
-    "branches", "description", "lead_source_id", "campaign_id", "priority", "assigned_recruiter_user_id", "assigned_bdm_user_id",
-    "created_by_user_id", "archived_at",
+    "company_code",
+    "linkedin_url",
+    "industry_id",
+    "company_size_id",
+    "employee_count",
+    "city",
+    "state",
+    "country",
+    "head_office",
+    "branches",
+    "description",
+    "lead_source_id",
+    "campaign_id",
+    "priority",
+    "assigned_recruiter_user_id",
+    "assigned_bdm_user_id",
+    "created_by_user_id",
+    "archived_at",
 }
 
 

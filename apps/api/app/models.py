@@ -316,7 +316,7 @@ class Certificate(Base, TimestampMixin):
 
 # rec-003 (DEC-SCOPE-119 D1): CMP-000001. MAXVALUE keeps lpad from ever truncating a code; uq_companies_code is the backstop.
 COMPANY_CODE_SEQ = Sequence("company_code_seq", maxvalue=999999, metadata=Base.metadata)
-COMPANY_PRIORITIES = ("hot", "warm", "cold")
+COMPANY_NAME_KEY_SQL = r"lower(regexp_replace(btrim(name), '\s+', ' ', 'g'))"
 COMPANY_CHECKS = {
     "ck_companies_priority": "priority IS NULL OR priority IN ('hot', 'warm', 'cold')",
     "ck_companies_employee_count": "employee_count IS NULL OR employee_count BETWEEN 0 AND 10000000",
@@ -334,7 +334,7 @@ class Company(Base, TimestampMixin):
         *(CheckConstraint(sql, name=name) for name, sql in COMPANY_CHECKS.items()),
         Index("ix_companies_assigned_recruiter", "assigned_recruiter_user_id"),
         Index("ix_companies_assigned_bdm", "assigned_bdm_user_id"),
-        Index("ix_companies_name_lower", text("lower(name)")),
+        Index("ix_companies_name_key", text(COMPANY_NAME_KEY_SQL)),  # the duplicate check (services/recruiter_companies.NAME_KEY)
     )
     __mapper_args__ = {"eager_defaults": True}  # INSERT ... RETURNING company_code: no lazy load of the server default under asyncio
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)

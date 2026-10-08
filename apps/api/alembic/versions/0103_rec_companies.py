@@ -51,13 +51,10 @@ CHECKS = {  # must equal app.models.COMPANY_CHECKS (test_rec_003_migration)
 INDEXES = {
     "ix_companies_assigned_recruiter": ["assigned_recruiter_user_id"],
     "ix_companies_assigned_bdm": ["assigned_bdm_user_id"],
-    "ix_companies_name_lower": [sa.text("lower(name)")],
+    "ix_companies_name_key": [sa.text(r"lower(regexp_replace(btrim(name), '\s+', ' ', 'g'))")],
 }
 # Row numbers fix the order (the oldest company is CMP-000001); the sequence then continues after the last backfilled code.
-BACKFILL = (
-    f"UPDATE {TABLE} c SET company_code = 'CMP-' || lpad(o.n::text, 6, '0') "
-    f"FROM (SELECT id, row_number() OVER (ORDER BY created_at, id) AS n FROM {TABLE}) o WHERE c.id = o.id"
-)
+BACKFILL = f"UPDATE {TABLE} c SET company_code = 'CMP-' || lpad(o.n::text, 6, '0') FROM (SELECT id, row_number() OVER (ORDER BY created_at, id) AS n FROM {TABLE}) o WHERE c.id = o.id"
 ADVANCE = f"SELECT setval('{SEQ}', (SELECT count(*) FROM {TABLE})) WHERE EXISTS (SELECT 1 FROM {TABLE})"
 
 
