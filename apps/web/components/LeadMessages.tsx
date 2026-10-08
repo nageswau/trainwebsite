@@ -6,7 +6,7 @@ import WhatsAppComposer from "@/components/WhatsAppComposer";
 import { sendRequest, type Page } from "@/lib/apiErrors";
 import { SAVE_FAILED, writeFailure } from "@/lib/bdmTasks";
 import { getPage } from "@/lib/telecallerCatalogue";
-import { isPending, leadMessagesUrl, messageTitle, messageUrl, type LeadMessage } from "@/lib/telecallerMessages";
+import { isPending, leadMessagesUrl, leadTarget, messageTitle, messageUrl, type LeadMessage } from "@/lib/telecallerMessages";
 
 type Notice = { text: string; failed: boolean } | null;
 type Channel = "whatsapp" | "email";
@@ -134,11 +134,11 @@ export default function LeadMessages({ leadId, whatsappTo, email = null, canWrit
         {notice && <p className={notice.failed ? "form-error" : "form-message"} style={{ margin: "6px 0 0", fontSize: 13 }}>{notice.text}</p>}
       </div>
       {composing === "whatsapp" && canWhatsApp && whatsappTo && (
-        <WhatsAppComposer leadId={leadId} to={whatsappTo} onCancel={() => setComposing(null)}
+        <WhatsAppComposer target={leadTarget(leadId)} to={whatsappTo} onCancel={() => setComposing(null)}
           onRecorded={() => { setComposing(null); done("WhatsApp send recorded."); }} />
       )}
       {composing === "email" && canEmail && (
-        <EmailComposer leadId={leadId} onCancel={() => setComposing(null)} onSent={() => { setComposing(null); done("Email queued for sending."); }} />
+        <EmailComposer target={leadTarget(leadId)} onCancel={() => setComposing(null)} onSent={() => { setComposing(null); done("Email queued for sending."); }} />
       )}
       {failed ? (
         <div>

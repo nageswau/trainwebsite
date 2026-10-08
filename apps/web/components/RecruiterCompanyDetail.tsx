@@ -11,6 +11,7 @@ import RecruiterCompanyForm from "@/components/RecruiterCompanyForm";
 import RecruiterCompanyPipeline from "@/components/RecruiterCompanyPipeline";
 import RecruiterStageHistory from "@/components/RecruiterStageHistory";
 import RecruiterCompanyRequirements from "@/components/RecruiterCompanyRequirements";
+import RecruiterMessages from "@/components/RecruiterMessages";
 import SearchableSelect from "@/components/SearchableSelect";
 import { type Page, sendJson, sendRequest } from "@/lib/apiErrors";
 import { display, LINK_STYLE } from "@/lib/bdmOrganizations";
@@ -100,6 +101,7 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
   const [notice, setNotice] = useState<string | null>(created ? `Company ${initial.code} created.` : null);
   const [failure, setFailure] = useState<string | null>(null);
   const [followUpChanges, setFollowUpChanges] = useState(0);
+  const [messageChanges, setMessageChanges] = useState(0); // rec-026: a send moves the contact's Last contacted
   const focus = useFocusAfterRender();
   // "created" is said once: the flag leaves the address, so a refresh or a shared link doesn't repeat it (BdmOrganizationDetail's rule).
   useEffect(() => {
@@ -230,9 +232,12 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
           <DetailList rows={rows} />
         </section>
       )}
-      {/* Re-keyed on archive/restore (the list's `can_edit` follows the company's state) and on a follow-up change (each contact's next one). */}
-      <RecruiterCompanyContacts key={`${company.id}-${company.archived}-${followUpChanges}`} companyId={company.id} />
+      {/* Re-keyed on archive/restore (the list's `can_edit` follows the company's state) and on a follow-up change (each contact's next one)
+          or a message (each contact's Last contacted, rec-026). */}
+      <RecruiterCompanyContacts key={`${company.id}-${company.archived}-${followUpChanges}-${messageChanges}`} companyId={company.id} />
       <RecruiterCompanyFollowUps key={`${company.id}-${company.archived}`} companyId={company.id} canWrite={p.can_edit} onChanged={() => void followUpChanged()} />
+      <RecruiterMessages key={`messages-${company.id}-${company.archived}`} source={{ kind: "company", companyId: company.id }} canWrite={p.can_edit}
+        onChanged={() => setMessageChanges((n) => n + 1)} />
       <RecruiterCompanyPipeline
         company={company}
         onChanged={(c, text) => {

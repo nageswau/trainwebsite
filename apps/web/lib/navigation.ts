@@ -132,6 +132,7 @@ export const RECRUITER_MANAGER_NAV: NavItem[] = [
   { label: "Pipeline", href: "/recruiter/pipeline" }, // rec-005: team + unassigned
   { label: "Job Requirements", href: "/recruiter/requirements" }, // rec-007: the team's requirements
   { label: "Follow-ups", href: "/recruiter/follow-ups" }, // rec-024: the team's lists, read only
+  { label: "Message templates", href: "/recruiter/manager/templates" }, // rec-026
 ];
 
 // upc-001 (PU8): the EVID-020 §32 main menu, in source order, each entry naming the item that builds its page. An entry joins the

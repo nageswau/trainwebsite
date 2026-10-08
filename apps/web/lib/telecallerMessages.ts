@@ -13,7 +13,7 @@ export type LeadMessage = {
 };
 export type RenderedTemplate = {
   template: { id: string; name: string; channel: string; kind: string }; subject: string | null; body: string;
-  brochure_link: { url: string; expires_at: string } | null; product_mismatch: boolean;
+  brochure_link?: { url: string; expires_at: string } | null; product_mismatch?: boolean; // tel-013 only; rec-026's render has neither
 };
 
 export const BODY_MAX = 1000; // tel-012's WhatsApp limit
@@ -49,7 +49,7 @@ export const isPending = (m: LeadMessage) => m.delivery_status === "queued" || m
 
 export function isRenderedTemplate(data: unknown): data is RenderedTemplate {
   const d = data as Partial<RenderedTemplate> | null;
-  return !!d && typeof d.body === "string" && typeof d.product_mismatch === "boolean";
+  return !!d && typeof d.body === "string";
 }
 
 /** A composer's picker: every active template of the channel, page after page (tel-002 QA-01). */
@@ -61,3 +61,15 @@ export async function activeTemplates(channel: "whatsapp" | "email", signal?: Ab
     if (page.items.length === 0 || items.length >= page.total) return items;
   }
 }
+
+/** rec-026: where a composer reads its templates and render, and posts the send -- a lead's here, a recruiter party's in recruiterMessages.
+ *  `payload` is merged into the send body (e.g. the party id). */
+export type ComposerTarget = {
+  loadTemplates: (channel: "whatsapp" | "email", signal?: AbortSignal) => Promise<{ id: string; name: string }[]>;
+  renderUrl: (templateId: string) => string;
+  createUrl: string;
+  payload?: Record<string, unknown>;
+};
+export const leadTarget = (leadId: string): ComposerTarget => ({
+  loadTemplates: activeTemplates, renderUrl: (templateId) => renderUrl(leadId, templateId), createUrl: createMessageUrl(leadId),
+});
