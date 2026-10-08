@@ -100,11 +100,23 @@ async def test_every_section_8_field_is_captured(client, db_session):
     user = await as_recruiter(client, db_session)
     data = await body(
         db_session,
-        name="  Rahul Verma ", mobile="+91 98" + mobile()[2:], location="Hyderabad", qualification="B.Tech", college="JNTU",
-        passing_year=2022, experience_months=30, current_company="ABC Technologies", current_salary="450000", expected_salary=600000.5,
-        notice_days=30, preferred_locations=["Hyderabad", " Bengaluru ", "hyderabad", ""], preferred_role="Python Developer",
-        linkedin="https://www.linkedin.com/in/rahul", source_id=await source_id(db_session, "Edusphere students"),
-        source_detail="Edusphere Python Full Stack Course", status="available",
+        name="  Rahul Verma ",
+        mobile="+91 98" + mobile()[2:],
+        location="Hyderabad",
+        qualification="B.Tech",
+        college="JNTU",
+        passing_year=2022,
+        experience_months=30,
+        current_company="ABC Technologies",
+        current_salary="450000",
+        expected_salary=600000.5,
+        notice_days=30,
+        preferred_locations=["Hyderabad", " Bengaluru ", "hyderabad", ""],
+        preferred_role="Python Developer",
+        linkedin="https://www.linkedin.com/in/rahul",
+        source_id=await source_id(db_session, "Edusphere students"),
+        source_detail="Edusphere Python Full Stack Course",
+        status="available",
     )
     data["email"] = data["email"].upper()
     response = await client.post(BASE, json=data)
@@ -242,7 +254,17 @@ async def test_list_shows_the_source_and_filters(client, db_session):
     assert page["total"] == 2 and [i["id"] for i in page["items"]] == [b["id"], a["id"]]  # newest first
     assert page["items"][1]["source"]["name"] == "LinkedIn"
     assert set(page["items"][0]) == {
-        "id", "candidate_code", "name", "location", "experience_months", "preferred_role", "source", "source_detail", "status", "archived", "created_at",
+        "id",
+        "candidate_code",
+        "name",
+        "location",
+        "experience_months",
+        "preferred_role",
+        "source",
+        "source_detail",
+        "status",
+        "archived",
+        "created_at",
     }
     assert [i["id"] for i in (await client.get(BASE, params={"q": tag, "status": "placed"})).json()["items"]] == [b["id"]]
     by_source = await client.get(BASE, params={"q": tag, "source_id": a["source"]["id"]})
@@ -271,9 +293,7 @@ async def test_patch_changes_only_what_is_sent_and_audits_field_names(client, db
     out = response.json()
     assert response.status_code == 200 and out["location"] == "Chennai" and out["notice_days"] == 15 and out["name"] == created["name"]
     assert out["updated_by"]["id"] == str(user.id)
-    audit = await db_session.scalar(
-        select(AuditLog).where(AuditLog.action == "candidate.update", AuditLog.entity_id == created["id"]).order_by(AuditLog.created_at.desc())
-    )
+    audit = await db_session.scalar(select(AuditLog).where(AuditLog.action == "candidate.update", AuditLog.entity_id == created["id"]).order_by(AuditLog.created_at.desc()))
     assert audit.metadata_json == {"fields": ["location", "notice_days", "preferred_locations"]}
     assert created["email"] not in str(audit.metadata_json)
 
@@ -326,8 +346,14 @@ async def test_a_linked_student_who_has_not_opted_in_is_outside_the_pool(client,
     student = await make_user(db_session, "it_student", "it")
     tag = uuid.uuid4().hex[:8]
     row = Candidate(
-        candidate_code=f"T-{tag}", name=f"Student {tag}", email=mail(), source_id=uuid.UUID(await source_id(db_session)),
-        user_id=student.id, opted_in=False, created_by_user_id=recruiter.id, preferred_locations=[],
+        candidate_code=f"T-{tag}",
+        name=f"Student {tag}",
+        email=mail(),
+        source_id=uuid.UUID(await source_id(db_session)),
+        user_id=student.id,
+        opted_in=False,
+        created_by_user_id=recruiter.id,
+        preferred_locations=[],
     )
     db_session.add(row)
     await db_session.commit()

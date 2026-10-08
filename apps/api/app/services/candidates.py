@@ -95,7 +95,11 @@ async def find_matches(db: AsyncSession, mobile_key: str | None, email_key: str 
     return [
         {
             # str(): an HTTPException detail is not run through FastAPI's JSON encoder, so a UUID would fail to serialise.
-            "id": str(c.id), "candidate_code": c.candidate_code, "name": c.name, "source_name": source_name, "status": c.status,
+            "id": str(c.id),
+            "candidate_code": c.candidate_code,
+            "name": c.name,
+            "source_name": source_name,
+            "status": c.status,
             "archived": c.archived_at is not None,
             "matched_on": [k for k, hit in (("mobile", mobile_key and c.mobile_normalized == mobile_key), ("email", email_key and (c.email or "").lower() == email_key)) if hit],
         }
@@ -216,16 +220,34 @@ def _person(user: User | None) -> dict | None:
 
 def item_out(candidate: Candidate, source: RecCandidateSource) -> dict:
     return {
-        "id": candidate.id, "candidate_code": candidate.candidate_code, "name": candidate.name, "location": candidate.location,
-        "experience_months": candidate.experience_months, "preferred_role": candidate.preferred_role,
-        "source": {"id": source.id, "name": source.name, "active": source.active}, "source_detail": candidate.source_detail,
-        "status": candidate.status, "archived": candidate.archived_at is not None, "created_at": candidate.created_at,
+        "id": candidate.id,
+        "candidate_code": candidate.candidate_code,
+        "name": candidate.name,
+        "location": candidate.location,
+        "experience_months": candidate.experience_months,
+        "preferred_role": candidate.preferred_role,
+        "source": {"id": source.id, "name": source.name, "active": source.active},
+        "source_detail": candidate.source_detail,
+        "status": candidate.status,
+        "archived": candidate.archived_at is not None,
+        "created_at": candidate.created_at,
     }
 
 
 DETAIL_FIELDS = (
-    "mobile", "email", "qualification", "college", "passing_year", "current_company", "current_salary", "expected_salary", "notice_days",
-    "preferred_locations", "linkedin", "archived_at", "updated_at",
+    "mobile",
+    "email",
+    "qualification",
+    "college",
+    "passing_year",
+    "current_company",
+    "current_salary",
+    "expected_salary",
+    "notice_days",
+    "preferred_locations",
+    "linkedin",
+    "archived_at",
+    "updated_at",
 )
 
 
@@ -236,8 +258,7 @@ async def detail_out(db: AsyncSession, user: User, candidate: Candidate) -> dict
     ids = {candidate.created_by_user_id, candidate.updated_by_user_id} - {None}
     resumes = (
         await db.execute(
-            select(CandidateResume, User).outerjoin(User, User.id == CandidateResume.uploaded_by_user_id)
-            .where(CandidateResume.candidate_id == candidate.id).order_by(CandidateResume.version.desc())
+            select(CandidateResume, User).outerjoin(User, User.id == CandidateResume.uploaded_by_user_id).where(CandidateResume.candidate_id == candidate.id).order_by(CandidateResume.version.desc())
         )
     ).all()
     people = {u.id: u for u in (await db.scalars(select(User).where(User.id.in_(ids)))).all()} if ids else {}
@@ -247,8 +268,7 @@ async def detail_out(db: AsyncSession, user: User, candidate: Candidate) -> dict
         "created_by": _person(people.get(candidate.created_by_user_id)),
         "updated_by": _person(people.get(candidate.updated_by_user_id)),
         "resumes": [
-            {"version": r.version, "file_name": r.file_name, "content_type": r.content_type, "size_bytes": r.size_bytes,
-             "uploaded_by": _person(uploader), "created_at": r.created_at}
+            {"version": r.version, "file_name": r.file_name, "content_type": r.content_type, "size_bytes": r.size_bytes, "uploaded_by": _person(uploader), "created_at": r.created_at}
             for r, uploader in resumes
         ],
         "can_edit": user.role in WRITERS,

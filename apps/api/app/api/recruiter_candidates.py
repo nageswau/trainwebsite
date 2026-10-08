@@ -162,8 +162,13 @@ async def upload_resume(candidate_id: UUID, file: UploadFile = File(...), user: 
             raise HTTPException(409, svc.ARCHIVED)
         last = await db.scalar(select(func.max(CandidateResume.version)).where(CandidateResume.candidate_id == candidate.id))
         resume = CandidateResume(
-            candidate_id=candidate.id, version=(last or 0) + 1, storage_key=key, content_type=content_type, file_name=file_name,
-            size_bytes=len(data), uploaded_by_user_id=user.id,
+            candidate_id=candidate.id,
+            version=(last or 0) + 1,
+            storage_key=key,
+            content_type=content_type,
+            file_name=file_name,
+            size_bytes=len(data),
+            uploaded_by_user_id=user.id,
         )
         db.add(resume)
         candidate.updated_by_user_id = user.id
