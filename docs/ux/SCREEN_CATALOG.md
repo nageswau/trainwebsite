@@ -3118,3 +3118,26 @@ portal card/table idiom (no Canva frame for this screen: `NEEDS_CONFIRMATION` fo
   the message, Save disabled while nothing is entered or a save is in flight. **Responsive:** no page side-scroll at 390px; 44px checkbox rows.
 - **Route:** `/telecaller/dashboard` — "My targets" card (KPI · Today · <Month>; "Not set" for gaps; "Targets are unavailable right now."
   if the read fails).
+
+## upc-001 addendum (2026-10-08, `DEC-SCOPE-118`) — Partnership roles
+
+Four screens (six routes) added by `upc-001` (design spec `docs/superpowers/specs/2026-10-08-upc-001-partnership-roles-design.md` §6).
+They carry no catalogue ID; none is invented here. Visual-reference mapping for all: None — not inspected. Do not claim parity.
+Accessibility for all: keyboard-navigable, visible focus, labelled controls, state never conveyed by colour alone.
+
+- **Route:** `/partnership/dashboard` (and `/partnership` → redirect). **Role(s):** `partnership_manager`. **Data:** `GET /partnership/me`.
+  **Content:** greeting, profile card, "Coming soon to your CRM" (the §32 areas not yet built, text only, no links). **States:**
+  server-rendered; error — the access-unavailable block with the API's 403 message, sign-in link `/overseas/login`.
+- **Route:** `/partnership/profile`. **Role(s):** `partnership_manager`. **Data:** `GET/PATCH /partnership/profile`. **Content:** read-only
+  `<dl>` (name, Employee ID, mobile, email, reporting head, status) and the mobile form (Save disabled while saving, server error in an
+  `aria-live` region with focus moved to it, success announced).
+- **Route:** `/partnership/head/team` (and `/partnership/head` → redirect). **Role(s):** `partnership_head` (direct reports), `super_admin`
+  (all). **Content:** captioned table in a focusable region (name, Employee ID, email, mobile, status word); Previous/Next links via
+  `?offset=`. **States:** empty "No partnership managers report to you yet."; past the end "Go to the first page"; error — sign-in link
+  `/admin/login`.
+- **Route:** `/admin/partnership-managers` (super_admin), `/overseas/admin/partnership-managers` (overseas_admin, super_admin). **Content:**
+  Create partnership manager (full name, email, mobile, Employee ID, reporting-head search picker; disabled with "No active partnership
+  head — a Super Admin must create one first" when none exists; single submit; welcome-link feedback), a searchable paged list (name,
+  Employee ID, head with a "No active head" badge, status) with Edit (Esc cancels), Deactivate (inline confirm) and Reactivate. **States:**
+  "Loading partnership managers…", "Unable to load partnership managers." + Retry, empty and no-match messages, past-the-end. **Responsive:**
+  below 640 px each row is a card of labelled lines (`.telecaller-list`), no page side-scroll at 390 px.

@@ -3273,3 +3273,18 @@ class RecCampaign(Base, TimestampMixin):
     start_date: Mapped[date] = mapped_column(Date)
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+
+
+class PartnershipProfile(Base, TimestampMixin):
+    """upc-001 (DEC-SCOPE-118): a partnership manager's profile, 1:1 with a `partnership_manager` user (the user id is the key). Name,
+    email, mobile and active status stay on `users` (PU2). The reporting head must be an active `partnership_head`; that spans tables, so
+    `services/partnership.py` enforces it under a row lock (no cross-table CHECK)."""
+
+    __tablename__ = "partnership_profiles"
+    __table_args__ = (
+        Index("uq_partnership_profiles_employee_id", text("lower(employee_id)"), unique=True),
+        Index("ix_partnership_profiles_reporting_head", "reporting_head_user_id"),
+    )
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), primary_key=True)
+    employee_id: Mapped[str] = mapped_column(String(40))
+    reporting_head_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))

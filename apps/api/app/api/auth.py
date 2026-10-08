@@ -26,6 +26,7 @@ from app.services.provisioning import ADMIN_PORTAL_ROLES
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 logger = logging.getLogger("app.auth")
+PHONE_ONLY_ROLES = {"telecaller": "Telecallers", "partnership_manager": "Partnership managers"}
 PORTAL_SIGN_IN = {"it": "/it/login", "overseas": "/overseas/login", "global": "/admin/login"}
 
 CHANGE_PASSWORD_FAILED = "auth.change_password_failed"
@@ -205,12 +206,13 @@ async def update_me(payload: ProfileUpdate, user: User = Depends(get_current_use
             await db.commit()
             logger.warning("profile_update_denied", extra={"extra_fields": {"user_id": str(user.id), "field": key}})
             raise HTTPException(403, f"{key} cannot be changed here")
-    if user.role == "telecaller":
-        # tel-001 TL8: a telecaller changes only their phone (the generic account form resubmits the unchanged name, which is fine).
+    if user.role in PHONE_ONLY_ROLES:
+        # tel-001 TL8 / upc-001 PU3: these roles change only their phone (the generic account form resubmits the unchanged name, which
+        # is fine).
         name_changed = "full_name" in changes and changes["full_name"].strip() != user.full_name
         profile_changed = "profile" in changes and (changes["profile"] or {}) != (user.profile or {})
         if name_changed or profile_changed:
-            raise HTTPException(403, "Telecallers can change only their phone number — contact your administrator")
+            raise HTTPException(403, f"{PHONE_ONLY_ROLES[user.role]} can change only their phone number — contact your administrator")
         if "phone" in changes:
             changes["phone"] = parse_self_update({"phone": changes["phone"]}).phone
     if "full_name" in changes:
