@@ -116,10 +116,12 @@ export const TELECALLER_SIGN_IN = "/telecaller/sign-in";
 // placement manager's pages (managers sign in at /admin). Later rec items add their pages here.
 const LEGACY_PLACEMENT = ["candidates", "company-requirements", "interviews", "offers", "reports"];
 export const RECRUITER_NAV: NavItem[] = [
-  { label: "Dashboard", href: "/recruiter/dashboard" }, { label: "Profile", href: "/recruiter/profile" },
+  { label: "Dashboard", href: "/recruiter/dashboard" }, { label: "Companies", href: "/recruiter/companies" }, { label: "Profile", href: "/recruiter/profile" }, // rec-003
   ...LEGACY_PLACEMENT.map((x) => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, (c) => c.toUpperCase()), href: `/it/placement/${x}` })),
 ];
-export const RECRUITER_MANAGER_NAV: NavItem[] = [{ label: "Team", href: "/recruiter/manager/team" }, { label: "Catalogues", href: "/recruiter/manager/catalogue" }];
+export const RECRUITER_MANAGER_NAV: NavItem[] = [
+  { label: "Team", href: "/recruiter/manager/team" }, { label: "Companies", href: "/recruiter/companies" }, { label: "Catalogues", href: "/recruiter/manager/catalogue" },
+];
 
 // SCH-001/SCH-003 -- School roles use their own dedicated pages (bespoke forms/actions,
 // not the generic PortalPage/[section] `_payload()` dispatcher every other role's console
@@ -205,4 +207,4 @@ export function agentNavFor(nav: NavItem[], memberRole?: string | null, permissi
     .map((item) => (item.href === STAFF_STUDENTS.href ? STAFF_STUDENTS : item));
 }
 // ENH-016: the cross-school School Analytics page lives under /overseas/admin (D1: Overseas and Super Admins).
-export const SUPER_ADMIN_NAV:NavItem[] = [...["dashboard","users","students","staff","programs","batches","universities","recruiters","content","blogs","gallery","events","leads","applications","payments","reports","notifications","roles","settings","security-logs","backups"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:x==="dashboard"?"/admin":`/admin/${x}`})),{label:"BDMs",href:"/admin/bdms"},{label:"BDM Travel Approvals",href:"/admin/bdm-travel-approvals"},{label:"BDM Dashboard",href:"/bdm/manager/dashboard"},{label:"BDM Performance",href:"/bdm/manager/performance"},{label:"BDM Master View",href:"/bdm/manager/hierarchy"},{label:"Telecallers",href:"/admin/telecallers"},{label:"Telecaller Performance",href:"/admin/telecaller-performance"},{label:"Telecaller Reports",href:"/admin/telecaller-reports"},{label:"Recruiter Staff",href:"/admin/recruiter-staff"},{label:"School Analytics",href:"/overseas/admin/school-analytics"}];
+export const SUPER_ADMIN_NAV:NavItem[] = [...["dashboard","users","students","staff","programs","batches","universities","recruiters","content","blogs","gallery","events","leads","applications","payments","reports","notifications","roles","settings","security-logs","backups"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:x==="dashboard"?"/admin":`/admin/${x}`})),{label:"BDMs",href:"/admin/bdms"},{label:"BDM Travel Approvals",href:"/admin/bdm-travel-approvals"},{label:"BDM Dashboard",href:"/bdm/manager/dashboard"},{label:"BDM Performance",href:"/bdm/manager/performance"},{label:"BDM Master View",href:"/bdm/manager/hierarchy"},{label:"Telecallers",href:"/admin/telecallers"},{label:"Telecaller Performance",href:"/admin/telecaller-performance"},{label:"Telecaller Reports",href:"/admin/telecaller-reports"},{label:"Recruiter Staff",href:"/admin/recruiter-staff"},{label:"Recruiter Companies",href:"/recruiter/companies"},{label:"School Analytics",href:"/overseas/admin/school-analytics"}];
