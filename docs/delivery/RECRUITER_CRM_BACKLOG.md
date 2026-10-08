@@ -576,6 +576,20 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-009 — Candidate master
+- **Status (2026-10-08):** **MERGED** to `main` as PR #155 @ `e234f31f`. The next rec item takes the next migration after `0107`,
+  `DEC-SCOPE-123`, API §12AQ and RBAC §2.49, re-checked on `main` first.
+  - Numbering: `DEC-SCOPE-122`, migration `0107_candidates` (chained after rec-003's `0106_rec_companies`), API §12AP, RBAC §2.48. It
+    was drafted as `0105` / 120 / §12AN / §2.46; upc-001, rec-006, upc-003 and rec-003 merged first and took `0103`–`0106` and
+    118–121.
+  - Owner answers:
+    - **Q-07:** a duplicate mobile or email blocks the save, with a panel.
+    - **Q-08:** the status is set by hand, from five values.
+  - Recommended defaults:
+    - **Q-09:** PDF/DOCX up to 5 MB; retention stays `NEEDS_CONFIRMATION`.
+    - **Q-31:** no `CareerApplication` intake.
+    - **Q-32:** manual entry only.
+    - `hr_team` reads.
+  - Spec: `docs/superpowers/specs/2026-10-08-rec-009-candidate-master-design.md`.
 - **Business requirement:** §8 "one central Candidate Master" (20 fields); §9 "record candidate source"; quick action "+ Add Candidate";
   S2-§13 source visible.
 - **Existing behavior:** candidates are `users` with `PlacementProfile`. External people exist only as public `CareerApplication` rows.

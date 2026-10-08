@@ -1621,6 +1621,37 @@ can_deactivate}`, `rankings`, `application_count`, manager refs `{id, full_name,
 | `GET /recruiter/companies/bdm-options` | The creators only. `q`, `limit`: active `bdm` users `{items[] {id, full_name}, total}` for the Assigned BDM picker |
 | `POST /employer/register` (EMP-001) | Unchanged contract. The new company also gets lead source "Website" (when that value is active) and no recruiter, so it appears in the managers' unassigned queue |
 
+## 12AP. Candidate master (`rec-009`) — addendum, 2026-10-08
+
+- **Basis:** `DEC-SCOPE-122`. Design spec `docs/superpowers/specs/2026-10-08-rec-009-candidate-master-design.md` §5. Migration `0107`.
+  Drafted as §12AN; upc-001, rec-006, upc-003 and rec-003 merged first and took §12AL–§12AO.
+- **Common rules:**
+  - Readers are `placement_team`, `placement_manager`, `super_admin` and `hr_team`; any other role is `403` "Your role cannot view
+    candidates".
+  - Writers are the first three; `hr_team` and any other role is `403` "Your role cannot change candidates".
+  - The role check runs before anything is read.
+  - A candidate outside the pool (a linked student with `opted_in` false) is `404` "Candidate not found", like an unknown id.
+  - Bodies refuse unknown keys (`422` "Unknown field: …"); a `422` is one sentence naming the field.
+  - Lists use the §12AI paging rules (`limit` 1–100, `offset`, `q` ≤ 200).
+  - Audit rows `candidate.create`/`update`/`archive`/`restore`/`resume_upload`/`resume_download` carry field names, versions and
+    roles only. They never carry a name, mobile or email.
+- **Q-07 duplicate:** `409` with `detail` `{code: "duplicate_candidate", message: "This person is already a candidate", matches[]}`.
+  - Each `matches[]` row is `{id, candidate_code, name, source_name, status, archived, matched_on: ["mobile"|"email"]}`, at most 5.
+    Contact data is never echoed.
+  - A match is the same normalised mobile (E.164) or the same lower-cased email, across every candidate, archived ones included.
+  - Unique indexes back it under a race.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/candidates` | Filters `q` (name, code or email; a phone-shaped `q` — digits with `+ - ( ) .` or spaces, ≥ 4 digits — also matches the mobile), `source_id`, `status`, `archived` (default `false`: archived rows are hidden; `true` lists only archived). Newest first. `items[]`: `{id, candidate_code, name, location, experience_months, preferred_role, source {id, name, active}, source_detail, status, archived, created_at}` |
+| `GET /recruiter/candidates/duplicate-check` | Writers. `mobile?`, `email?`, `exclude_id?` → `{matches[]}`. An unparseable mobile matches nothing |
+| `POST /recruiter/candidates` | `{name, source_id, mobile?, email?, location?, qualification?, college?, passing_year? (1950–2100), experience_months? (0–600), current_company?, current_salary?, expected_salary? (≥ 0, 2 dp), notice_days? (0–365), preferred_locations? (≤ 10), preferred_role?, linkedin? (http/https), source_detail?, status? (default available)}` → `201` detail. Neither mobile nor email → `422` "Enter a mobile number or an email". Missing or inactive source → `422` "Choose an active candidate source". Duplicate → `409` |
+| `GET /recruiter/candidates/{id}` | Detail: every field, plus `created_by`, `updated_by` `{id, full_name}`, `archived_at`, `updated_at`, `resumes[]` (newest first; `{version, file_name, content_type, size_bytes, uploaded_by, created_at}`) and `can_edit` |
+| `PATCH /recruiter/candidates/{id}` | Partial; null clears an optional field (`name`, `source_id` and `status` cannot be null). An archived candidate is `409` "Restore this candidate first". Clearing both contacts is `422`. Moving to another source needs an active one, but keeping a since-deactivated source is allowed. Duplicate → `409` |
+| `POST /recruiter/candidates/{id}/archive` · `/restore` | → `200` detail. Already in that state → `409` |
+| `PUT /recruiter/candidates/{id}/resume` | Multipart `file` → `201` `{version, file_name, content_type, size_bytes}`. Each upload is a new version and is not idempotent. An empty file is `422`, over 5 MB is `413`, and a file that is not PDF or DOCX **by its bytes** is `415`. An archived candidate is `409` |
+| `GET /recruiter/candidates/{id}/resume/{version}` | The file as an attachment named `resume-CAN-000001-v2.pdf`, with `nosniff`, `no-store` and a sandbox CSP. The audit row is committed first. An unknown version is `404` |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

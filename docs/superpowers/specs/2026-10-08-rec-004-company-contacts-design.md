@@ -4,8 +4,8 @@
 - **Evidence:** EVID-018 §2 (the person fields Recruiter Name, Designation, Mobile, Email and LinkedIn Profile, plus the quick action
   "+ Add Recruiter"), §3 Business Details (HR Contact, Talent Acquisition Contact, Hiring Manager, HR Email, HR Phone) and §4 Recruiter
   Contact Management (lines 176–216). The owner's R3 answer: a new `company_contacts` table.
-- **Numbering:** `DEC-SCOPE-123`, migration `0107_company_contacts` (after `0106_rec_companies`), API §12AQ and RBAC §2.49. All of these
-  were re-checked on `origin/main` @ `035c99ad`.
+- **Numbering:** `DEC-SCOPE-123`, migration `0108_company_contacts` (after rec-009's `0107_candidates`), API §12AQ and RBAC §2.49. All of these
+  were re-checked on `origin/main` @ `a62ad9d7` (after rec-009 took `0107` / `DEC-SCOPE-122` / §12AP / §2.48).
 
 ## 1. Decisions (recommended defaults, UNVERIFIED)
 
@@ -54,7 +54,7 @@ following defaults are recorded in `DEC-SCOPE-123` as **UNVERIFIED**:
 
 ## 2. Data
 
-`company_contacts` (migration `0107_company_contacts`):
+`company_contacts` (migration `0108_company_contacts`):
 
 - `id`, `company_id` (FK companies, RESTRICT), `position` (identity: insertion order)
 - `name`, `designation`, `department`, `role_id` (FK rec_contact_roles), `mobile`, `mobile_normalized`, `email`, `linkedin_url`,
