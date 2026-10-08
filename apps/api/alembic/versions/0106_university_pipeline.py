@@ -84,11 +84,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql:
-        found = (
-            op.get_bind()
-            .execute(sa.text(f"SELECT 1 FROM {HISTORY} UNION ALL SELECT 1 FROM {TABLE} WHERE lost_at IS NOT NULL OR stage <> '{FIRST}' LIMIT 1"))
-            .first()
-        )
+        found = op.get_bind().execute(sa.text(f"SELECT 1 FROM {HISTORY} UNION ALL SELECT 1 FROM {TABLE} WHERE lost_at IS NOT NULL OR stage <> '{FIRST}' LIMIT 1")).first()
         if found:
             raise RuntimeError("Cannot downgrade 0106_university_pipeline: stage history, lost or moved universities exist. Remove them deliberately first.")
     op.drop_table(HISTORY)

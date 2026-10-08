@@ -6,9 +6,21 @@ from app.partnership_stages import COLUMN_LABELS, COLUMNS, FIRST_STAGE, GROUPS, 
 
 # EVID-020 §3 (L98-L154) and §4 (L164-L172), in source order and wording.
 SOURCE_STAGES = [
-    "Target University", "Researching", "Contact Identified", "Initial Contact", "Interested", "Meeting Scheduled", "Meeting Completed",
-    "Proposal Sent", "Commercial Discussion", "Documents Shared", "Agreement Under Review", "Agreement Signed", "Partner Activated",
-    "Student Recruitment Started", "Active Partner",
+    "Target University",
+    "Researching",
+    "Contact Identified",
+    "Initial Contact",
+    "Interested",
+    "Meeting Scheduled",
+    "Meeting Completed",
+    "Proposal Sent",
+    "Commercial Discussion",
+    "Documents Shared",
+    "Agreement Under Review",
+    "Agreement Signed",
+    "Partner Activated",
+    "Student Recruitment Started",
+    "Active Partner",
 ]
 SOURCE_COLUMNS = ["Target", "Contacted", "Interested", "Meeting Scheduled", "Proposal Sent", "Negotiation", "Agreement Pending", "Signed", "Active Partners"]
 # Appendix B "Stage groupings": stored stage -> (K column label, G group, P probability).

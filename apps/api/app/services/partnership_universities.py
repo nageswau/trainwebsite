@@ -18,7 +18,9 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import UNIVERSITY_CODE_SEQ, AuditLog, Country, OverseasApplication, PartnershipProfile, University, UniversityRanking, User
+from app.partnership_stages import label_of
 from app.services.partnership import partnership_context
+from app.services.partnership_pipeline import pipeline_out
 from app.services.telecaller import person_ref
 
 logger = logging.getLogger("app.partnership")
@@ -27,12 +29,15 @@ NOT_FOUND = "University not found"
 MANAGER_INVALID = "Choose an active partnership manager from your team"
 READ_ROLES = frozenset({"partnership_manager", "partnership_head", "overseas_admin", "super_admin"})
 CATALOGUE_ROLES = frozenset({"partnership_head", "overseas_admin", "super_admin"})  # create, publish, deactivate (UM5, UM7, UM8)
-ASSIGN_ROLES = frozenset({"partnership_head", "super_admin"})  # UM3, UM7
+ASSIGN_ROLES = frozenset({"partnership_head", "super_admin"})  # UM3, UM7; also reopen a lost university (upc-007 PS6)
+STAGE_ROLES = frozenset({"partnership_manager", "partnership_head", "super_admin"})  # upc-007 PS5: overseas_admin reads only
 ROLE_REFUSALS = {
     "can_edit": "Only the university's partnership managers can edit it",
     "can_assign": "Only a partnership head can assign managers",
     "can_publish": "Your role cannot publish universities",
     "can_deactivate": "Your role cannot deactivate universities",
+    "can_move_stage": "Only the university's partnership managers or their head can change its stage",
+    "can_reopen": "Only a partnership head can reopen a lost university",
 }
 TEAM_REFUSAL = "This university belongs to another partnership team"
 INACTIVE = "Reactivate this university first"
@@ -72,10 +77,11 @@ def _in_scope(user: User, uni: University, team: frozenset[UUID]) -> bool:
     return user.id in owners
 
 
+_ACTION_ROLES = {"can_edit": READ_ROLES, "can_assign": ASSIGN_ROLES, "can_reopen": ASSIGN_ROLES, "can_move_stage": STAGE_ROLES}
+
+
 def _role_allows(user: User, action: str) -> bool:
-    if action == "can_edit":
-        return user.role in READ_ROLES
-    return user.role in (ASSIGN_ROLES if action == "can_assign" else CATALOGUE_ROLES)
+    return user.role in _ACTION_ROLES.get(action, CATALOGUE_ROLES)
 
 
 def permissions(user: User, uni: University, team: frozenset[UUID]) -> dict[str, bool]:
@@ -202,6 +208,9 @@ def row_out(user: User, uni: University, country: Country, primary: User | None,
         "backup_manager": person_ref(backup) if backup else None,
         "catalogue_visible": uni.catalogue_visible,
         "active": uni.active,
+        "stage": uni.stage,
+        "stage_label": label_of(uni.stage),
+        "lost": uni.lost_at is not None,
         "permissions": permissions(user, uni, team),
     }
 
@@ -234,6 +243,7 @@ async def detail_out(db: AsyncSession, user: User, uni: University, team: frozen
         },
         "rankings": [{"system": r.system, "other_name": r.other_name, "year": r.year, "rank": r.rank} for r in await rankings_of(db, uni.id)],
         "application_count": await application_count(db, uni.id),
+        "pipeline": pipeline_out(uni),
     }
 
 
