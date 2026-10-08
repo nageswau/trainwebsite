@@ -5075,8 +5075,8 @@ universities; `GET /lookups/countries` admits the partnership roles; web pages `
 **Evidence:** `EVID-018` §1 quick actions (lines 40–42), §2 (50–118), §3 (120–174); `RECRUITER_CRM_BACKLOG.md` §rec-003 (AC1–AC5)
 and §3.2 Q-01–Q-03. Module scope: `DEC-SCOPE-116` (R3, R10).
 **Status:** `UNVERIFIED` — **recommended defaults applied on the owner's standing instruction** for this session (2026-10-08: "try to
-proceed with recommend answers always"). No per-question owner answer was given; each row can be revised. `DEC-SCOPE-118` is upc-001's and `DEC-SCOPE-121` rec-006's.
-Migration `0106_rec_companies`, API §12AO, RBAC §2.47. Spec `docs/superpowers/specs/2026-10-08-rec-003-company-master-design.md`.
+proceed with recommend answers always"). No per-question owner answer was given; each row can be revised. `DEC-SCOPE-118` is upc-001's, `DEC-SCOPE-119` rec-006's and
+`DEC-SCOPE-120` upc-003's. **MERGED** to `main` as PR #152 @ `22319014` (2026-10-08). Migration `0106_rec_companies`, API §12AO, RBAC §2.47. Spec `docs/superpowers/specs/2026-10-08-rec-003-company-master-design.md`.
 
 | # | Point | Answer applied |
 |---|---|---|

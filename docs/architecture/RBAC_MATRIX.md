@@ -985,7 +985,7 @@ by design (management visibility, §27); writes are scoped.
 
 ### 2.47 Recruiter company master *(net-new, added 2026-10-08 — `DEC-SCOPE-121`, `rec-003`)*
 
-Row scope first (out of scope = `404`), then the action's role (`403`), then the archived state (`409`). §2.44 is upc-001's and §2.47 rec-006's.
+Row scope first (out of scope = `404`), then the action's role (`403`), then the archived state (`409`). §2.44 is upc-001's, §2.45 rec-006's and §2.46 upc-003's.
 
 | Role | Actions | Scope | Feature |
 |---|---|---|---|
