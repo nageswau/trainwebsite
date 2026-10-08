@@ -14,7 +14,8 @@ import SignOutButton from "./SignOutButton";
 const AGENT_ACCOUNT_STATE_REASONS = new Set(["Agent registration is pending approval", "Your agency's account is suspended", "Your Master account is deactivated"]);
 // bdm-001 (review deferred minor): a BDM whose profile is missing is likewise ON its dashboard (/bdm/my-day); the message itself
 // already says whom to contact (text is services/bdm.py bdm_context's).
-const BDM_ACCOUNT_STATE_REASONS = new Set(["BDM profile not set up — contact your administrator"]);
+// rec-001: the same for a recruiter whose profile is missing (services/recruiter.py recruiter_context) -- its dashboard IS this page.
+const BDM_ACCOUNT_STATE_REASONS = new Set(["BDM profile not set up — contact your administrator", "Recruiter profile not set up — contact your administrator"]);
 
 function AccessUnavailableCard({ message, home, loginHref }: { message: string; home: string | null; loginHref: string }) {
   const agentAccountState = AGENT_ACCOUNT_STATE_REASONS.has(message);

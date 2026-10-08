@@ -6,11 +6,11 @@ import { sendJson } from "@/lib/apiErrors";
 import { PROFILE_URL } from "@/lib/telecaller";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
-const MESSAGE_ID = "telecaller-phone-message";
-
 // tel-001 (TL3): the one field a telecaller edits about themselves. A failed save keeps what was typed and moves focus to the
-// server's message; success is announced, the field shows what was stored, and the server-rendered card refreshes.
-export default function TelecallerPhoneForm({ phone }: { phone: string | null }) {
+// server's message; success is announced, the field shows what was stored, and the server-rendered card refreshes. rec-001 reuses it
+// for the recruiter's own profile (`url`, `idPrefix`).
+export default function TelecallerPhoneForm({ phone, url = PROFILE_URL, idPrefix = "telecaller" }: { phone: string | null; url?: string; idPrefix?: string }) {
+  const MESSAGE_ID = `${idPrefix}-phone-message`;
   const router = useRouter();
   const [value, setValue] = useState(phone ?? "");
   const [busy, setBusy] = useState(false);
@@ -24,7 +24,7 @@ export default function TelecallerPhoneForm({ phone }: { phone: string | null })
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
-    const outcome = await sendJson(PROFILE_URL, "PATCH", { phone: value.trim() || null });
+    const outcome = await sendJson(url, "PATCH", { phone: value.trim() || null });
     inFlight.current = false;
     setBusy(false);
     if (outcome.ok) {
@@ -42,8 +42,8 @@ export default function TelecallerPhoneForm({ phone }: { phone: string | null })
   return (
     <form className="card form" style={{ padding: 16, marginTop: 16 }} onSubmit={submit} aria-describedby={MESSAGE_ID}>
       <div className="field">
-        <label htmlFor="telecaller-phone">Mobile</label>
-        <input id="telecaller-phone" name="phone" type="tel" inputMode="tel" maxLength={40} value={value} onChange={(e) => setValue(e.target.value)} disabled={busy} />
+        <label htmlFor={`${idPrefix}-phone`}>Mobile</label>
+        <input id={`${idPrefix}-phone`} name="phone" type="tel" inputMode="tel" maxLength={40} value={value} onChange={(e) => setValue(e.target.value)} disabled={busy} />
       </div>
       <button className="btn small" disabled={busy} aria-label="Save mobile">{busy ? "Saving…" : "Save mobile"}</button>
       <div id={MESSAGE_ID} tabIndex={-1} className={message ? (message.error ? "form-error" : "form-message") : undefined} role="status" aria-live="polite" style={{ marginTop: 8 }}>

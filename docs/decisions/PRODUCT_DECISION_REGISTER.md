@@ -4926,3 +4926,33 @@ read); a manager's booking on any lead is `403` before scope (§2.23); a manager
 **Consequences:** `apps/api/tests/test_tel_026_matrix.py` + `tel026_helpers.py` (tests only); web `navigation.telecaller.test.ts` case and
 `tests/e2e/tel-026-permission-matrix.spec.ts`; `RBAC_MATRIX.md` §2.41.
 **New Feature ID authorized:** `tel-026`. **Status:** see `TELECALLER_CRM_BACKLOG.md` §tel-026.
+
+### DEC-SCOPE-116 — Recruiter CRM scope (`EVID-018`) + recruiter roles (`rec-001`)
+
+**Evidence:** `EVID-018` (`functionalities/edusphere_markdown/Recruiter Functionalities.md`, `DERIVED_BLUEPRINT`);
+`RECRUITER_CRM_BACKLOG.md` §3.1 R1–R15 and §rec-001 (AC1–AC6); `PRD_OPEN_ITEMS.md` item 69; `CONFLICT_MATRIX.md` C-10.
+**Status:** `EXPLICIT_APPROVAL`. The owner answered R1–R15 in session on 2026-10-07 (backlog merged as PR #140 @ `7e33f669`). The owner
+answered Q-28, Q-29 and the admin-page name in session on 2026-10-08. Migration `0100_recruiter_profiles`. API §12AI. RBAC §2.42.
+Spec `docs/superpowers/specs/2026-10-08-rec-001-recruiter-roles-design.md`.
+
+**Module scope (registered here for every rec item):** R1–R15 exactly as recorded in `RECRUITER_CRM_BACKLOG.md` §3.1.
+- **R1** lifts `PRD_OPEN_ITEMS.md` item 69 for `EVID-018`.
+- **R1** also answers `CONFLICT_MATRIX.md` C-10 ("extend Placement Team, or a separate concept?"): **extend**.
+- Every rec item stays behind GATE-09 and keeps its own §3.2 questions.
+
+**rec-001 answers:**
+
+| # | Point | Answer |
+|---|---|---|
+| R2 | Who operates | `placement_team` is the recruiter. New `placement_manager`: division `global`, created by `super_admin` only, signs in at `/admin/login`, sees direct reports. `super_admin` sees all |
+| Q-29 | Workspace path | A new `/recruiter/*` web workspace. Signed out, it goes to `/it/login`; `/recruiter/manager/*` goes to `/admin/login`. The legacy `/it/placement/*` screens stay linked from the recruiter sidebar. A manager owns no companies and has no profile |
+| Q-28 | `hr_team` | Unchanged in rec-001. Every `/recruiter/*` and recruiter admin route is `403` for `hr_team`. Later items or rec-038 decide whether that changes |
+| Admin page | Name | `/admin/recruiter-staff` and `/it/admin/recruiter-staff`, labelled "Recruiter Staff". The existing `/admin/recruiters` company list is untouched until rec-003 |
+| Profile | Rules (tel-001 precedent) | `recruiter_profiles` is 1:1 with a recruiter. Employee ID is unique case-insensitively. The reporting manager must be an active `placement_manager`. Both are nullable only for backfilled rows and rows from the generic Users form; the Recruiter Staff page requires both. The only active flag is `users.active`. A recruiter self-edits their phone only |
+
+**Consequences:**
+- `recruiter_profiles`, with a backfill for every existing `placement_team` user.
+- `services/recruiter.py`, `api/recruiter.py`, and the `admin.create_user`/`update_user` branches.
+- `placement_manager` added to `rbac.PERMISSIONS` and `provisioning.ADMIN_PORTAL_ROLES`.
+- Recruiter landing `/recruiter/dashboard`. This intentionally changes the `adm-007`/`rpt-001` e2e landing step.
+- **New Feature ID authorized:** `rec-001`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-001.

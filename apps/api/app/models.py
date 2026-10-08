@@ -3174,3 +3174,21 @@ class SchoolResultStatusHistory(Base, TimestampMixin):
     to_status: Mapped[str] = mapped_column(String(20))
     changed_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
     changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class RecruiterProfile(Base, TimestampMixin):
+    """rec-001 (DEC-SCOPE-116, R2): a recruiter's profile, 1:1 with a `placement_team` user. Name, email, mobile and active stay on
+    `users`. Employee ID and reporting manager are nullable only for rows that predate the Recruiter Staff page (the 0100 backfill)
+    or come from the generic Users form; that page requires both. The manager must be an active `placement_manager` -- a cross-table
+    rule, so `services/recruiter.py` enforces it under a row lock."""
+
+    __tablename__ = "recruiter_profiles"
+    __table_args__ = (
+        UniqueConstraint("user_id", name="uq_recruiter_profiles_user"),
+        Index("uq_recruiter_profiles_employee_id", text("lower(employee_id)"), unique=True),
+        Index("ix_recruiter_profiles_reporting_manager", "reporting_manager_user_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    employee_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    reporting_manager_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)

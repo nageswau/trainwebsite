@@ -6453,3 +6453,78 @@ class TelecallerManagerDeactivateOut(BaseModel):
     id: UUID
     active: bool
     moved_telecallers: int
+
+
+# --- rec-001 (DEC-SCOPE-116): recruiter profile -------------------------------------------------------------------------------
+RECRUITER_FIELD_LABELS = {"employee_id": "Employee ID", "reporting_manager_user_id": "Reporting manager", "phone": "Phone"}
+
+
+class RecruiterProfileCreate(BaseModel):
+    """spec §4: the Recruiter Staff page sends both, required. The generic Users form sends no profile (an empty one is created)."""
+
+    model_config = ConfigDict(extra="forbid")
+    employee_id: BdmEmployeeId
+    reporting_manager_user_id: UUID
+
+
+class RecruiterProfileUpdate(BaseModel):
+    """Omitted = unchanged; an explicit null fails (a value, once set, is never cleared here)."""
+
+    model_config = ConfigDict(extra="forbid")
+    employee_id: BdmEmployeeId = None
+    reporting_manager_user_id: UUID = None
+
+
+class RecruiterProfileOut(BaseModel):
+    employee_id: str | None
+    reporting_manager: BdmManagerRef | None
+
+
+class RecruiterMeOut(BaseModel):
+    id: UUID
+    full_name: str
+    email: str
+    phone: str | None
+    active: bool
+    division: str
+    recruiter_profile: RecruiterProfileOut
+
+
+class RecruiterTeamRow(BaseModel):
+    id: UUID
+    full_name: str
+    email: str
+    phone: str | None
+    active: bool
+    employee_id: str | None
+
+
+class RecruiterAdminRow(RecruiterTeamRow):
+    reporting_manager: BdmManagerRef | None
+
+
+class RecruiterTeamPage(BaseModel):
+    items: list[RecruiterTeamRow]
+    total: int
+    limit: int
+    offset: int
+
+
+class RecruiterAdminPage(BaseModel):
+    items: list[RecruiterAdminRow]
+    total: int
+    limit: int
+    offset: int
+
+
+class PlacementManagerRow(BdmManagerOption):
+    """The reporting-manager picker: every recruiter reporting to this manager, active or not."""
+
+    recruiter_count: int
+
+
+class PlacementManagerPage(BaseModel):
+    items: list[PlacementManagerRow]
+    total: int
+    limit: int
+    offset: int
