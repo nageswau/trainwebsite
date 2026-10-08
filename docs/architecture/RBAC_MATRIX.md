@@ -928,6 +928,17 @@ messages, email and bookings (`DEC-SCOPE-115` PM2). Web: the telecaller sidebar 
 | `hr_team` | unchanged legacy screens; `403` on every `/recruiter/*` route (Q-28) | — | `rec-001` |
 | every other role | `403` | — | `rec-001` |
 
+### 2.43 Recruiter catalogues *(net-new, added 2026-10-08 — `DEC-SCOPE-117`, `rec-002`)*
+
+The lists are global (there is no row scope). The role checks run before anything is read.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_manager` | read (inactive included); create, rename, deactivate/reactivate values and campaigns; manager catalogue page | all lists | `rec-002` |
+| `super_admin` | same as the manager | all lists | `rec-002` |
+| `placement_team` | read **active** values and campaigns (pickers); every write and the manager page are `403` | all lists | `rec-002` |
+| `hr_team`, `it_admin`, every other role | `403` on read and write (C3) | — | `rec-002` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

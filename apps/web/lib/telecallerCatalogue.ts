@@ -42,7 +42,7 @@ export async function getPage<T>(url: string, signal?: AbortSignal): Promise<Pag
 }
 
 /** Every row of a paged list, page after page (QA-01): a picker that stopped at the first 100 would silently hide the rest. */
-async function readAll<T>(url: string, signal?: AbortSignal): Promise<T[]> {
+export async function readAll<T>(url: string, signal?: AbortSignal): Promise<T[]> {
   const items: T[] = [];
   for (;;) {
     const page = await getPage<T>(`${url}?active=true&limit=${CATALOGUE_PAGE_SIZE}&offset=${items.length}`, signal);
