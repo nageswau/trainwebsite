@@ -4956,3 +4956,25 @@ Spec `docs/superpowers/specs/2026-10-08-rec-001-recruiter-roles-design.md`.
 - `placement_manager` added to `rbac.PERMISSIONS` and `provisioning.ADMIN_PORTAL_ROLES`.
 - Recruiter landing `/recruiter/dashboard`. This intentionally changes the `adm-007`/`rpt-001` e2e landing step.
 - **New Feature ID authorized:** `rec-001`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-001.
+
+### DEC-SCOPE-118 — Recruiter Skills Master (`rec-006`)
+
+**Evidence:** `EVID-018` S2-§2 (lines 1126–1216) and S2-§16 (lines 1607–1643); `RECRUITER_CRM_BACKLOG.md` §rec-006 (AC1–AC3).
+**Status:** `EXPLICIT_APPROVAL`. The owner answered S1 and S2 in session on 2026-10-08. They asked for the recommended answers on the
+remaining points (S3–S6), which follow the rec-002 C3 precedent. Migration `0102_skills_master`. API §12AK. RBAC §2.44.
+Spec `docs/superpowers/specs/2026-10-08-rec-006-skills-master-design.md`. The number follows rec-002's planned `DEC-SCOPE-117`.
+
+| # | Point | Answer |
+|---|---|---|
+| S1 | Skill merge (backlog edge case) | **Deferred to rec-011**, which has candidate skills to re-point. Until then a duplicate is deactivated and its names are re-added as aliases |
+| S2 | Recruiter "suggest" | **Read-only.** Recruiters get the API and a read-only page. There is no suggestion queue; a recruiter asks their manager |
+| S3 | Readers / writers | Readers: `placement_team`, `placement_manager`, `super_admin`. Writers: `placement_manager`, `super_admin`. `hr_team`, `it_admin` and every other role get `403` |
+| S4 | Related skills | `skill_related` is built. "Core Java" is both a §2 skill and a §16 Java synonym, and an alias may not equal a skill name, so Java ⇄ Core Java is a seeded related pair |
+| S5 | JavaScript in two categories | One skill: primary category Programming plus a Frontend tag (`skill_category_tags`) |
+| S6 | Deletion | Skills and categories are deactivated, never deleted. Aliases, related links and tags are deleted (audited) |
+
+**Consequences:**
+- Five new tables, seeded with 5 categories, 37 skills, 9 aliases and 1 related pair. Nothing existing is read or written.
+- `services/skills.resolve()` is the single normaliser for rec-007, rec-011, rec-012 and rec-013.
+- New pages: `/recruiter/manager/skills` (edit) and `/recruiter/skills` (read-only).
+- **New Feature ID authorized:** `rec-006`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-006.

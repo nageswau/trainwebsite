@@ -23,7 +23,7 @@ Defaults taken in session (the owner asked to proceed with the recommended answe
 | Table | Columns | Constraints |
 |---|---|---|
 | `skill_categories` | id, name varchar(80), active, sort_order, timestamps | `uq_skill_categories_name` on `lower(name)` |
-| `skills` | id, name varchar(80), category_id FK → skill_categories, active, timestamps | `uq_skills_name` on `lower(name)`; `ix_skills_category` |
+| `skills` | id, name varchar(80), category_id FK → skill_categories, active, sort_order (source order within the category), timestamps | `uq_skills_name` on `lower(name)`; `ix_skills_category` |
 | `skill_category_tags` | skill_id FK (cascade), category_id FK | PK (skill_id, category_id) |
 | `skill_aliases` | id, skill_id FK (cascade), alias varchar(80), created_at | `uq_skill_aliases_alias` on `lower(alias)`; `ix_skill_aliases_skill` |
 | `skill_related` | skill_a_id, skill_b_id (FK, cascade) | PK (a, b); `CHECK skill_a_id < skill_b_id` (one row per unordered pair) |
@@ -74,7 +74,7 @@ Skill item: `{id, name, active, category:{id,name,active}, tags:[{id,name,active
 **Rules**
 
 Readers and writers:
-- A reader who is not a writer only ever sees active rows, whatever `active` asks for. A reader's `related` list holds active
+- A reader who is not a writer only ever sees active rows; their `active` parameter is ignored. A reader's `related` list holds active
   skills only.
 
 Request bodies:

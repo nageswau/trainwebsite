@@ -928,6 +928,17 @@ messages, email and bookings (`DEC-SCOPE-115` PM2). Web: the telecaller sidebar 
 | `hr_team` | unchanged legacy screens; `403` on every `/recruiter/*` route (Q-28) | — | `rec-001` |
 | every other role | `403` | — | `rec-001` |
 
+### 2.44 Recruiter Skills Master *(net-new, added 2026-10-08 — `DEC-SCOPE-118`, `rec-006`)*
+
+The catalogue is global, so there is no row scope; only the role checks below apply.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` | read active categories and skills (`/recruiter/skills`, read-only page); no profile row needed | all active | `rec-006` |
+| `placement_manager` | read all, including inactive; create and edit categories and skills; add and remove aliases and related skills; deactivate | all | `rec-006` |
+| `super_admin` | same as `placement_manager` | all | `rec-006` |
+| `hr_team`, `it_admin`, every other role | `403` | — | `rec-006` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
