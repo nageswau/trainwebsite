@@ -3141,3 +3141,24 @@ Accessibility for all: keyboard-navigable, visible focus, labelled controls, sta
   Employee ID, head with a "No active head" badge, status) with Edit (Esc cancels), Deactivate (inline confirm) and Reactivate. **States:**
   "Loading partnership managers…", "Unable to load partnership managers." + Retry, empty and no-match messages, past-the-end. **Responsive:**
   below 640 px each row is a card of labelled lines (`.telecaller-list`), no page side-scroll at 390 px.
+
+## upc-003 addendum (2026-10-08, `DEC-SCOPE-119`) — Global University Master
+
+Four routes added by `upc-003` (design spec `docs/superpowers/specs/2026-10-08-upc-003-university-master-design.md` §4). No catalogue ID
+is invented. Visual-reference mapping: None — not inspected. Do not claim parity. Roles for all: `partnership_manager`,
+`partnership_head`, `overseas_admin`, `super_admin` (each in its own sidebar); the API decides every action. Signed out → `/overseas/login`.
+
+- **Route:** `/partnership/universities`. **Data:** `GET /partnership/universities`. **Content:** filters as a GET form (search, region,
+  institution type, priority, potential, manager — "Assigned to me" for managers / "Unassigned", catalogue public/internal, include
+  inactive) kept in the URL; a captioned table in a focusable region (name link, code, type, country, city, priority, potential, primary
+  manager, status word Public/Internal/Inactive); Previous/Next keep the filters; "Add university" for creators. **States:** empty "No
+  universities yet." / "No universities match these filters."; past the end "Go to the first page"; error — access-unavailable block.
+  **Responsive:** below 640 px rows become labelled cards (`.telecaller-list`), no side-scroll at 390 px.
+- **Route:** `/partnership/universities/new` and `/partnership/universities/[id]/edit`. **Content:** the master form — name, country
+  (searchable, every ISO country), city, state/region, institution type, public/private, website, existing relationship, priority,
+  potential, course-level checkboxes, programme areas (comma-separated), international office, overview, eligibility, rankings rows (add /
+  remove, ≤ 10). **States:** Saving… with the form disabled and one request per submit; a `422` shown under its field
+  (`aria-invalid`); other errors in a `role="alert"`; the entry is kept. A user without rights sees a text explanation, not the form.
+- **Route:** `/partnership/universities/[id]`. **Content:** Profile `<dl>` (University ID and the §1 fields, application count), Rankings,
+  EduSphere owner (primary/backup, the assign pickers for a head or Super Admin), Public catalogue (status sentence, overview, Publish /
+  Remove from catalogue, Deactivate with an inline confirm naming the applications, Reactivate). Edit link when allowed.
