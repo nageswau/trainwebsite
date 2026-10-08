@@ -4961,7 +4961,7 @@ Spec `docs/superpowers/specs/2026-10-08-rec-001-recruiter-roles-design.md`.
 
 **Evidence:** `EVID-018` §2 (lines 52–82, 108–110), §3 (102–104, 130, 146), §4 (184–192), §6 (290), §9 (432–462), §26 (1029–1034);
 `RECRUITER_CRM_BACKLOG.md` §rec-002 (AC1–AC3). Module scope: `DEC-SCOPE-116`.
-**Status:** `EXPLICIT_APPROVAL`. The owner answered C1–C3 in session on 2026-10-08. Migration `0102_rec_catalogues` (after upc-002's `0101_country_master`). API §12AK (upc-002 took §12AJ). RBAC §2.43.
+**Status:** `EXPLICIT_APPROVAL`. The owner answered C1–C3 in session on 2026-10-08. **MERGED** to `main` as PR #146 @ `ea3e9189` (2026-10-08). Migration `0102_rec_catalogues` (after upc-002's `0101_country_master`). API §12AK (upc-002 took §12AJ). RBAC §2.43.
 Spec `docs/superpowers/specs/2026-10-08-rec-002-recruiter-catalogues-design.md`.
 
 | # | Point | Answer |
