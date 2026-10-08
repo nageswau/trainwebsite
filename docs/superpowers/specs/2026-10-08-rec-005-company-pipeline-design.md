@@ -1,7 +1,8 @@
 # rec-005 — Company B2B pipeline engine + stage history (design)
 
-**Feature ID:** rec-005 · **Decision:** DEC-SCOPE-127 (provisional) · **Migration:** `0112_company_pipeline` (provisional) · **API:** §12AU ·
+**Feature ID:** rec-005 · **Decision:** DEC-SCOPE-127 · **Migration:** `0112_company_pipeline` · **API:** §12AU ·
 **RBAC:** §2.53 · **Depends on:** rec-003 (merged, PR #152).
+**Status: MERGED** as PR #162 @ `ada23b4d` (2026-10-08).
 **Evidence:** `EVID-018` §5 (lines 218–270), lead field "Status" (line 116), "genuine prospect" (line 122); `RECRUITER_CRM_BACKLOG.md`
 §rec-005 (AC1–AC4). Module scope `DEC-SCOPE-116` (R1–R15).
 
