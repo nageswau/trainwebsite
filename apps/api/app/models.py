@@ -473,7 +473,7 @@ class EmployerProfile(Base, TimestampMixin):
     registration_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
 
-# rec-007 (DEC-SCOPE-128 J1): the 11 EVID-018 §6 requirement statuses. `JOB_OPEN_STATUSES` is what students see and can apply to
+# rec-007 (DEC-SCOPE-129 J1): the 11 EVID-018 §6 requirement statuses. `JOB_OPEN_STATUSES` is what students see and can apply to
 # (while `closes_on` has not passed) -- every `status == "open"` reader uses it now.
 JOB_STATUSES = (
     "new", "requirement_received", "sourcing", "shortlisting", "profiles_shared", "interviewing", "selected", "joined", "on_hold", "closed", "cancelled",
@@ -491,7 +491,7 @@ def _in(column: str, values: tuple[str, ...]) -> str:
     return f"{column} IS NULL OR {column} IN ({', '.join(repr(v) for v in values)})"
 
 
-JOB_CHECKS = {  # migration 0113 repeats these strings; test_rec_007_migration asserts they stay identical
+JOB_CHECKS = {  # migration 0114 repeats these strings; test_rec_007_migration asserts they stay identical
     "ck_jobs_status": "status IN (" + ", ".join(f"'{s}'" for s in JOB_STATUSES) + ")",
     "ck_jobs_work_mode": _in("work_mode", JOB_WORK_MODES),
     "ck_jobs_shift": _in("shift", JOB_SHIFTS),
@@ -505,7 +505,7 @@ JOB_CHECKS = {  # migration 0113 repeats these strings; test_rec_007_migration a
 
 
 class Job(Base, TimestampMixin):
-    """rec-007 (DEC-SCOPE-128, R5): the job is the Job Requirement. `requirement_code` comes from the server default on every insert path
+    """rec-007 (DEC-SCOPE-129, R5): the job is the Job Requirement. `requirement_code` comes from the server default on every insert path
     (employer, /workflows/it/jobs, the recruiter API). `skills` (JSON) is a derived mirror of `job_skills`, rewritten by
     services.recruiter_requirements.set_skills, so the legacy readers keep their shape (J7)."""
 
@@ -567,7 +567,7 @@ class JobSkill(Base):
 
 
 class JobStatusHistory(Base):
-    """rec-007: append-only. `from_status` NULL = created; `changed_by_user_id` NULL = migration 0113's legacy mapping (the note keeps
+    """rec-007: append-only. `from_status` NULL = created; `changed_by_user_id` NULL = migration 0114's legacy mapping (the note keeps
     the original value). These rows are the requirement events rec-005 drives the company stage from."""
 
     __tablename__ = "job_status_history"
@@ -803,6 +803,28 @@ class UniversityAssignmentHistory(Base):
     to_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class UniversityImportBatch(Base, TimestampMixin):
+    """upc-005 (DEC-SCOPE-128, IM6/IM10): one CSV import into the University Master. The file is never stored: only its hash, the counts
+    and each row's outcome {row_number, status, name, country, university_id, university_code, matches, reason}. The Idempotency-Key is
+    scoped to the uploader. Migration 0113 repeats the constraints (test_upc_005_migration)."""
+
+    __tablename__ = "university_import_batches"
+    __table_args__ = (
+        UniqueConstraint("uploaded_by_user_id", "idempotency_key", name="uq_university_import_batches_key"),
+        CheckConstraint("created_count + duplicate_count + invalid_count = total_rows", name="ck_university_import_batches_counts"),
+        Index("ix_university_import_batches_uploader", "uploaded_by_user_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    idempotency_key: Mapped[str] = mapped_column(String(120))
+    file_sha256: Mapped[str] = mapped_column(String(64))
+    total_rows: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    created_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    duplicate_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    invalid_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    results_json: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
 
 
 class UniversityStageHistory(Base):

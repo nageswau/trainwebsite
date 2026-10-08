@@ -1,4 +1,4 @@
-"""rec-007 -- migration 0113_job_requirements (spec §3; AC6). Backfill, status mapping, skills JSON -> rows and the downgrade refusal run
+"""rec-007 -- migration 0114_job_requirements (spec §3; AC6). Backfill, status mapping, skills JSON -> rows and the downgrade refusal run
 in a throwaway database built from scratch (the rec-003 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -16,14 +16,14 @@ from app.core.config import settings
 from tests.test_tel_001_migration import _config, _sql
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_rec_007_migration_0113", VERSIONS / "0113_job_requirements.py")
+_spec = importlib.util.spec_from_file_location("_rec_007_migration_0114", VERSIONS / "0114_job_requirements.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0112_company_pipeline", "0113_job_requirements"
+BASE, HEAD = "0113_university_imports", "0114_job_requirements"
 
 
-def test_migration_chains_after_0112():
+def test_migration_chains_after_0113():
     assert _migration.revision == HEAD
     assert _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
@@ -54,7 +54,7 @@ def isolated_db():
     try:
         settings.database_url = url
         command.upgrade(cfg, "head")
-        command.downgrade(cfg, BASE)  # the real 0112 shape of `jobs`
+        command.downgrade(cfg, BASE)  # the real 0113 shape of `jobs`
         yield {"cfg": cfg, "url": url}
     finally:
         settings.database_url = original

@@ -5279,7 +5279,36 @@ API §12AU, RBAC §2.53 (drafted as `0108` / `DEC-SCOPE-123` / §12AQ / §2.49; 
   entries for recruiters, managers and super admin.
 - **New Feature ID authorized:** `rec-005`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-005.
 
-### DEC-SCOPE-128 — Job Requirement (`rec-007`)
+### DEC-SCOPE-128 — University CSV import (`upc-005`)
+
+**Evidence:** `EVID-020` §25 ("all universities globally") and §22 ("Total Universities: 1,250"); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md`
+§3.1 U15 (`EXPLICIT_APPROVAL`, 2026-10-08: "CSV import (per-row report, duplicate check on name + country, idempotent) by
+`partnership_head` / `overseas_admin`") and §4 upc-005.
+**Status:** IM1–IM12 are the recommended answers to the design-level questions, applied under the owner's standing instruction for the
+build session ("proceed with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed:
+`NEEDS_CONFIRMATION` at sign-off. Migration `0113_university_imports`, API contract §12AV, RBAC §2.54.
+Drafted as `DEC-SCOPE-125` / `0110` / §12AS / §2.51 and renumbered on merging `main` @ `f5f6822d`: rec-004 took `DEC-SCOPE-125` / `0110` / §12AS / §2.51 upc-007 took `DEC-SCOPE-126` / `0111` / §12AT / §2.52, then, on merging `main` @ `ada23b4d`, rec-005 took `DEC-SCOPE-127` / `0112` / §12AU / §2.53.
+Spec: `docs/superpowers/specs/2026-10-08-upc-005-university-import-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| IM1 | Columns | Required `name`, `country`, `city`, `institution_type` (city: the master requires it); ten optional master fields; unknown/repeated/missing columns reject the file |
+| IM2 | Values | `UniversityCreate` validation per row; codes or labels in any case; lists separated by `;` |
+| IM3 | Country | ISO-2 or country name; anything else is an invalid row |
+| IM4 | Imported rows | Unowned, internal, active, at upc-007's first stage (Target University) |
+| IM5 | Duplicates | upc-004's key against the master (inactive included) and earlier rows of the file; never overridden |
+| IM6 | Idempotency | `Idempotency-Key` per uploader; same file replays, another file `422`; a new key on the same file creates nothing (all duplicates) |
+| IM7 | Caps | 1 MB, 5,000 filled-in rows, UTF-8 with or without BOM |
+| IM8 | Roles | `partnership_head`, `overseas_admin` (overseas), `super_admin`; history is the caller's own (`super_admin` all) |
+| IM9 | Concurrency | One transaction; imports serialise; each key takes upc-004's per-key lock; bounded waits → `409` |
+| IM10 | Report | Per-row outcome stored on the batch (never the file); CSV download with formula escaping |
+| IM11 | Audit | `university.import` per batch, `university.create {code, import_batch_id}` per created university |
+| IM12 | UI | `/partnership/universities/import` (template, column reference, upload, result, report download, history); list link for creator roles |
+
+**Consequences:** new table `university_import_batches`; five new routes under `/partnership/universities/import(s)`; a new page.
+**New Feature ID authorized:** `upc-005`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-005.
+
+### DEC-SCOPE-129 — Job Requirement (`rec-007`)
 
 **Evidence:** `EVID-018` §6 (lines 272–348), §1 quick action "+ Add Job Requirement" (45), S2-§6 required/preferred skills;
 `RECRUITER_CRM_BACKLOG.md` §rec-007 (AC1–AC4). Module scope: `DEC-SCOPE-116`. Also R5 (`jobs` becomes the Job Requirement) and
@@ -5288,9 +5317,9 @@ FEATURE_QUESTIONS #1 / Q-04 (the employer mediation question, still open).
 **Status:** **BUILT** on `feature/rec-007` (2026-10-08), not merged.
 - J1–J7 are **recommended defaults (`UNVERIFIED`)**. The user told the session to proceed with the recommended answers, so Q-04 and Q-05
   were **not** put to the owner. They can be revised.
-- **Numbering:** migration `0113_job_requirements` (after rec-005's `0112_company_pipeline`), API §12AV, RBAC §2.54. rec-007 was
+- **Numbering:** migration `0114_job_requirements` (after upc-005's `0113_university_imports`), API §12AW, RBAC §2.55. rec-007 was
   drafted as `0108` / 123 / §12AQ / §2.49. upc-006 (`0108` / 123), upc-004 (`0109` / 124), rec-004 (`0110` / 125), upc-007 (`0111` /
-  126 / §12AT / §2.52) and rec-005 (PR #162: `0112` / 127 / §12AU / §2.53) merged first.
+  126), rec-005 (`0112` / 127) and upc-005 (PR #164: `0113` / 128 / §12AV / §2.54) merged first.
 - Spec: `docs/superpowers/specs/2026-10-08-rec-007-job-requirement-design.md`.
 
 | # | Point | Answer |

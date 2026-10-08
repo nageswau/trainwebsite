@@ -1068,7 +1068,17 @@ Scope is the §2.47 company scope (out of scope = `404`). The role check for eac
 | `bdm` (assigned) | read the pipeline, history and board; every write `403` (R10) | companies assigned to them | `rec-005` |
 | every other role | `403` | — | `rec-005` |
 
-### 2.54 Job Requirement *(net-new, added 2026-10-08 — `DEC-SCOPE-128`, `rec-007`; drafted as §2.49)*
+### 2.54 University CSV import *(net-new, added 2026-10-08 — `DEC-SCOPE-128`, `upc-005`)*
+
+Enforced inline in `api/university_import.py` (`_require_importer`, `_scope`). The rows obey §2.46 (created unowned and internal) and §2.50
+(duplicates are reported; an import never overrides).
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Download the template, import a file | `403` | ✅ | ✅ (overseas division; else `403`) | ✅ | `403` |
+| See import history and reports | `403` | own imports (`404` for others) | own imports (`404` for others) | all | `403` |
+
+### 2.55 Job Requirement *(net-new, added 2026-10-08 — `DEC-SCOPE-129`, `rec-007`; drafted as §2.49)*
 
 Enforced inline in `services/recruiter_requirements.py` (`caller_scope`, `require`), the rec-003 pattern. The role check runs before
 anything is read, and an id outside the scope is `404`. Salary is returned only to these roles and to the owning employer, never on

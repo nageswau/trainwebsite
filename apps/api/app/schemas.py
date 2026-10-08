@@ -7853,7 +7853,7 @@ class CandidateDetail(CandidateItem):
     can_edit: bool
 
 
-# --- rec-007 (DEC-SCOPE-128): the Job Requirement ----------------------------------------------------------------------------------
+# --- rec-007 (DEC-SCOPE-129): the Job Requirement ----------------------------------------------------------------------------------
 REC_REQUIREMENT_LABELS = {
     "title": "Job title", "location": "Job location", "description": "Job description", "department": "Department",
     "qualification": "Qualification", "joining_requirement": "Joining requirement", "note": "Note",

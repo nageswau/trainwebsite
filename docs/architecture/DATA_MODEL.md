@@ -353,6 +353,11 @@ normalised name, kept by the model's `name` validator) with the non-unique index
 organizations only). **Migration `0109_university_duplicates`** backfills the key and logs (never merges or links) the existing duplicate
 groups and the unlinked BDM University organizations that match a master name; `downgrade()` refuses while any organization is linked.
 
+**Addendum, 2026-10-08 (`upc-005`, `DEC-SCOPE-128`, U15 — University CSV import):** `university_import_batches` (uploader FK,
+`idempotency_key` unique per uploader, `file_sha256`, `total_rows`/`created_count`/`duplicate_count`/`invalid_count` with CHECK
+`ck_university_import_batches_counts`, `results_json` per-row outcomes; index `(uploaded_by_user_id, created_at)`). The file is never
+stored. **Migration `0113_university_imports`**; `downgrade()` refuses while any batch exists (API §12AV).
+
 ### 6.2 `OverseasApplication`, `ApplicationStatusHistory`
 **Carries over**, status vocabulary **extended** — this is part of the `ADR-012` resolution (§6.3
 covers the commission-specific piece).
@@ -1407,7 +1412,7 @@ event), `actor_user_id` (NULL = system), `reason` varchar(500), `position` ident
 (company_id, position)`. Append-only, no stage CHECK. `services/company_pipeline.py` is the only writer of `stage`. `downgrade()` refuses
 while any history row exists or any company is past New Lead or Lost.
 
-## Job Requirement (`rec-007`, `DEC-SCOPE-128`; migration `0113_job_requirements`, after `0112_company_pipeline`)
+## Job Requirement (`rec-007`, `DEC-SCOPE-129`; migration `0114_job_requirements`, after `0113_university_imports`)
 
 Extends §5.1 `Job` (R5: the job is the Job Requirement). Every new column is nullable except the code, so the employer and
 `/workflows/it/jobs` insert paths are unchanged.
