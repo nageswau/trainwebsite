@@ -1475,3 +1475,33 @@ history notes.
 - There is no assignee column. Scope comes from the company, so a reassignment moves the follow-ups.
 - `next_follow_up_at` on the company and on each contact is derived (min open `due_at`), never stored.
 - `downgrade()` refuses while any follow-up exists.
+
+## Recruiter company meetings (`rec-028`, `DEC-SCOPE-132`; migration `0117_recruiter_meetings`, after `0116_recruiter_follow_ups`)
+
+**`recruiter_meetings` columns:**
+- `id`, `meeting_code` varchar(20) unique (`MTG-000001` from `recruiter_meeting_code_seq`), `company_id` FK RESTRICT
+- `contact_id` → `company_contacts` (nullable FK RESTRICT): the primary contact
+- `meeting_type` varchar(40) (CHECK: the 7 §20 keys), `starts_at` timestamptz, `mode` varchar(20) (CHECK: Online/Phone/In person)
+- `location` varchar(200), `meeting_url` varchar(500), `purpose` varchar(1000)
+- `status` varchar(16), default `scheduled` (CHECK scheduled/completed/cancelled)
+- `outcome` text, `next_action` varchar(500), `follow_up_id` → `recruiter_follow_ups` (nullable FK RESTRICT)
+- `completed_at`, `completed_by_user_id`, `cancelled_at`, `cancel_reason` varchar(500), `created_by_user_id`, timestamps
+
+**`recruiter_meeting_participants`:**
+- `id`, `meeting_id`, and either `contact_id` or `user_id` (CHECK: exactly one).
+- Unique `(meeting_id, contact_id)` and `(meeting_id, user_id)`.
+
+**`recruiter_meeting_events`:** append-only.
+- `event` (CHECK scheduled/rescheduled/completed/cancelled), `old_starts_at`, `new_starts_at`, `reason`
+- `actor_user_id`, `position` (identity), `created_at`
+
+**Constraints and indexes:**
+- CHECK `ck_recruiter_meetings_state`:
+  - completed ⇔ completed_at/by and outcome set
+  - cancelled ⇔ cancelled_at and reason set
+  - next action and follow-up are set only on completed
+- Indexes: `(company_id, starts_at)`, `(status, starts_at)`, `(contact_id)` and events `(meeting_id, position)`.
+
+**Design notes:**
+- There is no assignee column. Scope comes from the company (rec-024's rule), so a reassignment moves the meetings.
+- Meetings are never deleted (cancelled instead). `downgrade()` refuses while any meeting exists.

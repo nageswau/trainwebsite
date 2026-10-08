@@ -45,7 +45,7 @@ async def recruiter_options(q: str | None = SEARCH, limit: int = LIMIT, user: Us
 
 @router.get("/meetings/{meeting_id}")
 async def get_meeting(meeting_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    await svc.load_scoped(db, user, meeting_id)
+    await svc.check_readable(db, user, meeting_id)
     return await svc.one(db, user, meeting_id, await db_now(db))
 
 

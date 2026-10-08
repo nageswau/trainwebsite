@@ -3291,3 +3291,21 @@ Design spec `docs/superpowers/specs/2026-10-08-rec-024-recruiter-follow-ups-desi
   - The list shows open follow-ups by due time, then done and cancelled ones.
   - Details gain "Next follow-up". Each contact shows its own next follow-up.
 - **Company list** (`/recruiter/companies`): a "Next follow-up" column.
+
+## rec-028 addendum (2026-10-08, `DEC-SCOPE-132`) — Recruiter company meetings
+
+Design spec `docs/superpowers/specs/2026-10-08-rec-028-company-meetings-design.md` §4.
+
+- **Meetings** (`/recruiter/meetings`):
+  - Upcoming / Awaiting outcome / Completed / Cancelled tabs with counts.
+  - Each card shows the company (linked) and its code, the meeting code, type, time in IST, mode, location, contact, participants, the
+    recruiter, the link (new tab), the purpose, and the outcome or cancel reason.
+  - Actions: Record outcome (once started), Reschedule / edit, Cancel (reason). They are offered only when the API says so.
+  - The tab and page live in the address. There are loading, empty, error and retry states.
+- **Company detail** (`/recruiter/companies/[id]`): a Meetings section after Follow-ups.
+  - Schedule meeting: type (the 7 §20 values), date and time (IST), mode, location, link, primary contact, participant contacts
+    (checkboxes of active contacts), recruiter participants (searchable picker), purpose.
+  - The outcome form takes the outcome and an optional next action, with a follow-up due time and reason. The form notes that the next
+    action is "added to the company's follow-ups".
+  - Each meeting shows its history: the schedule, each reschedule (old and new time, reason), the completion or the cancellation.
+  - A change re-reads the company: the pipeline (Meeting Scheduled), stage history, follow-ups and contacts update.

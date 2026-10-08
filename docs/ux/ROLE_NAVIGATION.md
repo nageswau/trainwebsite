@@ -358,3 +358,9 @@ A user's nav never crosses `it` / `overseas` / `global` divisions except for **S
 - `placement_team` and `placement_manager`: a "Follow-ups" entry (`/recruiter/follow-ups`) after "Job Requirements". The manager's lists are read
   only.
 - `super_admin` gets no new entry: they reach follow-ups from each company page.
+
+## rec-028 addendum (2026-10-08, `DEC-SCOPE-132`)
+
+- `placement_team` and `placement_manager`: a "Meetings" entry (`/recruiter/meetings`) after "Follow-ups". The manager's lists are read
+  only.
+- `super_admin` gets no new entry: they reach meetings from each company page.

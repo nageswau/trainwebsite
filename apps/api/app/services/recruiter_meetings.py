@@ -47,7 +47,6 @@ NEXT_ACTION_MISSING = "Describe the next action"
 NEXT_DUE_MISSING = "Choose when the next action is due"
 NEXT_REASON_MISSING = "Choose a follow-up reason"
 PEOPLE_ROLES = (ROLE, MANAGER_ROLE)
-VIEWS = ("upcoming", "awaiting_outcome", "completed", "cancelled")
 
 M = RecruiterMeeting
 P = RecruiterMeetingParticipant
@@ -168,7 +167,7 @@ async def one(db: AsyncSession, user: User, meeting_id: UUID, now: datetime) -> 
     return (await _items(db, user, now, [row]))[0]
 
 
-async def load_scoped(db: AsyncSession, user: User, meeting_id: UUID) -> None:
+async def check_readable(db: AsyncSession, user: User, meeting_id: UUID) -> None:
     """A read: in the caller's company scope, else 404 (other roles 403 from the scope)."""
     company_id = await db.scalar(select(M.company_id).where(M.id == meeting_id))
     if company_id is None:
@@ -302,8 +301,8 @@ async def record_outcome(db: AsyncSession, user: User, company: Company, meeting
         if payload.next_action_due_at is not None or payload.next_action_reason is not None:
             raise field_error("next_action", NEXT_ACTION_MISSING)
     else:
-        missing = [("next_action_due_at", NEXT_DUE_MISSING)] if payload.next_action_due_at is None else []
-        missing += [("next_action_reason", NEXT_REASON_MISSING)] if payload.next_action_reason is None else []
+        missing = [(f, msg) for f, msg, value in (("next_action_due_at", NEXT_DUE_MISSING, payload.next_action_due_at),
+                                                 ("next_action_reason", NEXT_REASON_MISSING, payload.next_action_reason)) if value is None]
         if missing:
             raise RequestValidationError([{"type": "value_error", "loc": ("body", f), "msg": msg, "input": None} for f, msg in missing])
         check_time("next_action_due_at", payload.next_action_due_at, now, DUE_PAST, DUE_FAR)

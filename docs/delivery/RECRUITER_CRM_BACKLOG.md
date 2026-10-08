@@ -1225,6 +1225,9 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** low
 
 ### rec-028 — Company meetings
+- **Status (2026-10-08):** **BUILT** on `feature/rec-028`, not merged. `DEC-SCOPE-132` (MT1–MT10 recommended defaults, UNVERIFIED);
+  migration `0117_recruiter_meetings` (after rec-024's `0116`), API §12AZ, RBAC §2.58. The next rec item takes `0118`, `DEC-SCOPE-133`,
+  §12BA and §2.59 (re-check `main`: rec-008 and rec-025 are in flight).
 - **Business requirement:** §20 (7 types, 11 fields); quick action "+ Schedule Meeting" (R10, R14).
 - **Existing behavior:** BDM appointments are BDM-only.
 - **Expected behavior:**
