@@ -49,8 +49,8 @@ test("manager maintains the Skills Master; recruiter reads it", async ({ page })
   await detail.getByRole("button", { name: "Add alias" }).click();
   await expect(detail.getByText("“core java” is already a skill name")).toBeVisible();
   // Related skill via the server-searched picker.
-  await detail.getByLabel("Related skill").fill("Kubern");
-  await page.getByRole("option", { name: /Kubernetes/ }).click();
+  await detail.getByRole("combobox", { name: "Related skill" }).fill("Kubern");
+  await detail.getByRole("listbox", { name: "Related skill" }).getByRole("option", { name: /Kubernetes/ }).click();
   await detail.getByRole("button", { name: "Add related skill" }).click();
   await expect(detail.getByText(`Related ${skill} to Kubernetes.`)).toBeVisible();
   await expect(detail.getByRole("button", { name: "Remove related skill Kubernetes" })).toBeVisible();
