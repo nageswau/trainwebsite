@@ -6,15 +6,19 @@ import BdmConfirm from "@/components/BdmConfirm";
 import { DetailList, multiline } from "@/components/BdmOrganizationProfileDetails";
 import LocalTime from "@/components/LocalTime";
 import RecruiterCompanyForm from "@/components/RecruiterCompanyForm";
+import RecruiterCompanyPipeline from "@/components/RecruiterCompanyPipeline";
+import RecruiterStageHistory from "@/components/RecruiterStageHistory";
 import SearchableSelect from "@/components/SearchableSelect";
-import { sendJson, sendRequest } from "@/lib/apiErrors";
+import { type Page, sendJson, sendRequest } from "@/lib/apiErrors";
 import { display, LINK_STYLE } from "@/lib/bdmOrganizations";
 import type { PickOption } from "@/lib/lookups";
 import { type Company, COMPANIES_PATH, COMPANIES_URL, isCompanyBody, personName, PRIORITY_LABEL, recruiterSearch, safeLink } from "@/lib/recruiterCompanies";
+import type { StageEvent } from "@/lib/recruiterPipeline";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // rec-003 (spec §6): one company. Actions render from `permissions` only -- the server enforces every rule. Every write re-renders from
-// the company the API returns (no refetch). Tabs for contacts, pipeline, follow-ups and contracts arrive with rec-004/005/024/030.
+// the company the API returns (no refetch). rec-005 adds the pipeline and its history (reloaded after each write here); contacts,
+// follow-ups and contracts arrive with rec-004/024/030.
 function linkOrText(url: string | null) {
   const safe = safeLink(url);
   return safe ? (
@@ -83,8 +87,9 @@ function Reassign({ company, onChanged }: { company: Company; onChanged: (c: Com
   );
 }
 
-export default function RecruiterCompanyDetail({ initial, created = false }: { initial: Company; created?: boolean }) {
+export default function RecruiterCompanyDetail({ initial, created = false, history = null }: { initial: Company; created?: boolean; history?: Page<StageEvent> | null }) {
   const [company, setCompany] = useState(initial);
+  const [version, setVersion] = useState(0);
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -104,6 +109,7 @@ export default function RecruiterCompanyDetail({ initial, created = false }: { i
     setCompany(next);
     setNotice(text);
     setFailure(null);
+    setVersion((v) => v + 1);
   };
   const closeEditor = () => {
     setEditing(false);
@@ -207,6 +213,18 @@ export default function RecruiterCompanyDetail({ initial, created = false }: { i
           <DetailList rows={rows} />
         </section>
       )}
+      <RecruiterCompanyPipeline
+        company={company}
+        onChanged={(c, text) => {
+          changed(c, text);
+          focus(statusId);
+        }}
+        onRefreshed={(c) => {
+          setCompany(c);
+          setVersion((v) => v + 1);
+        }}
+      />
+      <RecruiterStageHistory companyId={company.id} initial={history} version={version} />
       {p.can_reassign && (
         <Reassign
           company={company}
