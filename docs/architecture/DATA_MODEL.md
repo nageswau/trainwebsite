@@ -1536,3 +1536,23 @@ history notes.
 **Design notes:**
 - There is no assignee column. Scope comes from the company (rec-024's rule), so a reassignment moves the meetings.
 - Meetings are never deleted (cancelled instead). `downgrade()` refuses while any meeting exists.
+
+## Candidate skills (`rec-011`, `DEC-SCOPE-135`; migration `0120_candidate_skills`, after `0119_recruiter_meetings`)
+
+**`candidate_skills` columns:**
+- `id`, `candidate_id` → `candidates` (FK RESTRICT), `skill_id` → `skills` (FK RESTRICT)
+- `level` varchar(16) (CHECK beginner/intermediate/advanced/expert), `experience_months` int (CHECK 0–600), `last_used_year` smallint
+  (CHECK ≥ 1950; the upper bound, this year, is the schema's)
+- `source` varchar(24), default `resume` (CHECK: the six S2-§17 sources)
+- `status` varchar(12), default `claimed` (CHECK claimed/verified/assessed), `verified_by_user_id`, `verified_at`
+- `added_by_user_id`, `updated_by_user_id`, timestamps
+
+**Constraints and indexes:**
+- `uq_candidate_skills_skill` UNIQUE `(candidate_id, skill_id)`: one row per skill (AC1) and the duplicate backstop (AC2).
+- CHECK `ck_candidate_skills_verified`: who and when are set exactly when the status is not `claimed`.
+- `ix_candidate_skills_skill_candidate` `(skill_id, status, candidate_id)`: the rec-013 search index ("verified only").
+
+**Design notes:**
+- Rows are hard-deleted on remove (audited). The skill merge (SK7) re-points rows to the kept skill and deletes the loser of a clash
+  before it deletes the merged skill, so no row ever points at a deleted skill. The merge also re-points `job_skills.skill_id`.
+- `downgrade()` refuses while any row exists.

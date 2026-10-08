@@ -5523,3 +5523,37 @@ those numbers. Spec
 - Audit `recruiter_meeting.{create,update,complete,cancel}` carries ids, keys, counts and field names only.
 - "Last contacted" (rec-004 C6) and the dashboard's "Meetings Scheduled" (rec-032) can now read meetings; neither is changed here.
 - **New Feature ID authorized:** `rec-028`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-028.
+
+### DEC-SCOPE-135 — Candidate skill profile and the skill merge (`rec-011`)
+
+**Evidence:**
+- `EVID-018` S2-§1 (lines 1094–1124): every skill is a separate searchable row. S2-§3 (1218–1233): Skill, Level, Experience, Last Used.
+  S2-§17 (1645–1675): six skill sources and three statuses (Claimed, Verified, Assessed).
+- `RECRUITER_CRM_BACKLOG.md` §rec-011: AC1–AC3. The negative scenario is a skill not in the master (→ 422). The edge case is a skill
+  merged in rec-006 being re-pointed. Questions Q-12 (level values) and Q-13 (who verifies).
+- `DEC-SCOPE-119` (rec-006) S1: the skill merge moved to rec-011. `DEC-SCOPE-122` (rec-009): the candidate roles and pool.
+  `DEC-SCOPE-116` R11: every recruiter edits the whole pool.
+
+**Status:** built on `feature/rec-011`. Every answer below is a **recommended default, `UNVERIFIED`**, taken on the owner's instruction
+to proceed with the recommended answers.
+
+**Numbering:** migration `0120_candidate_skills` (after rec-028's `0119_recruiter_meetings`), API §12BC and RBAC §2.61. Spec
+`docs/superpowers/specs/2026-10-08-rec-011-candidate-skills-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| SK1 (Q-12) | Level values | `beginner`, `intermediate`, `advanced`, `expert`; required |
+| SK2 | Experience and last used | `experience_months` 0–600 and `last_used_year` 1950 to this year, both optional |
+| SK3 | Source | The six S2-§17 values; default `resume`; editable |
+| SK4 (Q-13) | Who verifies | Any candidate writer (recruiter, placement manager, super_admin), whatever the source. A new row is `claimed`; the status changes only through `POST …/status`, which records who and when; back to `claimed` clears them (the audit keeps the history) |
+| SK5 | Skill input | Text resolved by `services/skills.resolve` (name or alias, active only); not found → `422` naming it and how to get it added; the same skill again (by alias too) → `409` |
+| SK6 | Size | At most 100 skills per candidate; the list is not paged |
+| SK7 (S1) | Merge | A Skills Master writer merges A into an active B: candidate skills (the stronger status wins a clash, B on a tie) and requirement skills move, aliases move, related links are re-made, A is deleted and A's name becomes an alias of B |
+
+**Consequences:**
+- `candidate_skills` (`0120`), `services/candidate_skills.py`, `api/recruiter_candidate_skills.py`; `services/skills.absorb` and
+  `POST /recruiter/skills/{id}/merge`.
+- The candidate page gains a Skills card; the manager's Skills Master detail gains "Merge into another skill".
+- rec-006 S6 ("skills are deactivated, never deleted") now has one exception: the merged-away skill is deleted, audited with its id and name.
+- Archived candidates' skills are read only. `hr_team` reads candidate skills but still cannot read the Skills Master.
+- **New Feature ID authorized:** `rec-011`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-011.

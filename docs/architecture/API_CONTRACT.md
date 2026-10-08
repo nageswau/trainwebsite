@@ -1951,6 +1951,31 @@ can_complete, can_follow_up, can_close}, editable_fields, created_at, updated_at
 | `POST /recruiter/meetings/{id}/outcome` | **Body:** `{outcome (required, ≤ 2000), next_action? (≤ 500), next_action_due_at?, next_action_reason? (a §18 follow-up reason)}` → item `completed`. **Refusals:** before the start → `422`; a next action without a due time or a reason → `422` on each. **Effects:** a next action creates a rec-024 follow-up in the same transaction (AC2), under rec-024's rules (future due time; the 50-open cap → `409`) |
 | `POST /recruiter/meetings/{id}/cancel` | `{reason}` (required, ≤ 500) → item `cancelled` |
 
+## 12BC. Candidate skills and the skill merge (`rec-011`) — addendum, 2026-10-08
+
+- **Basis:** `DEC-SCOPE-135` (SK1–SK7). Design spec `docs/superpowers/specs/2026-10-08-rec-011-candidate-skills-design.md` §4–§5.
+  Migration `0120`.
+- **Common rules (candidate skills):**
+  - Readers are rec-009's (recruiters, placement managers, super_admin, `hr_team`); writers are the same without `hr_team`. Every
+    other role → `403` before anything is read. A candidate outside the pool or unknown → `404` "Candidate not found"; a skill row of
+    another candidate → `404` "Skill not found on this candidate".
+  - An archived candidate's skills are read only (`409` "Restore this candidate first").
+  - Bodies refuse unknown keys (`422` "Unknown field: …"); a `422` is one sentence naming the field.
+  - Every write locks the candidate row, commits once, and writes an audit row `candidate.skill_{add,update,remove,status}` with ids,
+    field names and statuses only.
+- **Item:** `{id, skill {id, name, active}, category {id, name}, level (beginner|intermediate|advanced|expert), experience_months,
+  last_used_year, source (resume|interview_verified|assessment_verified|course_completed|certification|employer_verified),
+  status (claimed|verified|assessed), verified_by {id, full_name}|null, verified_at, added_by, created_at, updated_at}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/candidates/{id}/skills` | → `{items, can_edit}`, ordered by skill name. `can_edit` = a writer and the candidate is not archived. Not paged (at most 100 rows) |
+| `POST /recruiter/candidates/{id}/skills` | **Body:** `{skill (text, resolved through the Skills Master by name or alias), level, experience_months? (0–600), last_used_year? (1950–this year), source? (default resume)}` → `201` item, status `claimed` (AC1). **Refusals:** a skill not in the master or inactive → `422` "“X” is not in the Skills Master. Pick a listed skill, or ask your manager to add it or an alias."; the same skill again (any case, or by an alias) → `409` "Java is already on this candidate's skills" (AC2, also under a race); more than 100 → `422` |
+| `PATCH /recruiter/candidates/{id}/skills/{sid}` | Partial `{level?, experience_months?, last_used_year?, source?}`; a null number clears it; null level or source → `422` "… is required"; `skill` and `status` are unknown fields. No change → no audit |
+| `DELETE /recruiter/candidates/{id}/skills/{sid}` | `204` |
+| `POST /recruiter/candidates/{id}/skills/{sid}/status` | `{status}` → item. `verified` / `assessed` set `verified_by` and `verified_at` (the caller, now); `claimed` clears them (AC3). The same status → `409`. The backlog named this route `…/verify`; it is `…/status` because it also sets `claimed` and `assessed` |
+| `POST /recruiter/skills/{id}/merge` | Skills Master writers only (placement manager, super_admin; recruiters `403`). `{into_skill_id}` → the kept skill (the §12AM skill item). This skill (active or not) is merged into an active one: candidate skills move (a candidate with both keeps the stronger status, the kept skill's row on a tie), requirement skills (`job_skills.skill_id`) move, aliases move, related links are re-made on the kept skill, this skill is **deleted** and its name becomes an alias of the kept one. **Refusals:** into itself → `422`; unknown or inactive target → `422` "Choose an active skill to merge into"; unknown skill → `404`. Audit `recruiter.skill_merge` (the merged id and name, counts) |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

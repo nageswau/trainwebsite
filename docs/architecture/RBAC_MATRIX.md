@@ -1161,6 +1161,20 @@ Meetings take the company's scope (§2.47), so a meeting of a company outside th
 | `bdm` (assigned) | read only (R10); every write `403`; the picker `403` | companies whose Assigned BDM is them | `rec-028` |
 | `hr_team`, `it_admin`, `employer`, every other role | `403` | — | `rec-028` |
 
+### 2.61 Candidate skills and the skill merge *(net-new, added 2026-10-08 — `DEC-SCOPE-135`, `rec-011`)*
+
+Candidate skills take the candidate master's roles and pool (§2.48): every recruiter edits the whole opted-in pool (R11). The role check
+runs before anything is read; a candidate outside the pool is `404`, and an archived one is read only (`409`). SK4 (UNVERIFIED): any
+writer may set Verified or Assessed; who and when are recorded.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` | read; add, edit, remove; change the status (claimed / verified / assessed) | the whole candidate pool | `rec-011` |
+| `placement_manager` | the same as `placement_team`; **merge** Skills Master skills | the whole pool; the global Skills Master | `rec-011` |
+| `super_admin` | everything, including merge | all | `rec-011` |
+| `hr_team` | read only (every write `403`; the Skills Master stays `403`) | the whole pool | `rec-011` |
+| `it_admin`, `employer`, `bdm`, students, every other role | `403` | — | `rec-011` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

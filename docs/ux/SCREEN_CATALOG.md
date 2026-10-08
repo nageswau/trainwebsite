@@ -3331,3 +3331,18 @@ Design spec `docs/superpowers/specs/2026-10-08-rec-028-company-meetings-design.m
     action is "added to the company's follow-ups".
   - Each meeting shows its history: the schedule, each reschedule (old and new time, reason), the completion or the cancellation.
   - A change re-reads the company: the pipeline (Meeting Scheduled), stage history, follow-ups and contacts update.
+
+## rec-011 addendum (2026-10-08, `DEC-SCOPE-135`) — Candidate skills and the skill merge
+
+Design spec `docs/superpowers/specs/2026-10-08-rec-011-candidate-skills-design.md` §6.
+
+- **Candidate detail** (`/recruiter/candidates/[id]`): a Skills card between the profile and the resume.
+  - A table on wide screens and stacked cards on phones. Columns: Skill (with category), Level, Experience, Last used, Source, Status
+    (with "by X · date" once verified or assessed), Actions.
+  - Writers: **Add skill** (a searchable picker over the Skills Master, level, experience in months, last used year, source); per row
+    a Status select (Claimed / Verified / Assessed), Edit (inline), and Remove with a confirm.
+  - Loading, empty ("No skills added yet."), error-with-Retry states. The server's sentence is shown for a 409/422 and the entry is
+    kept. Focus moves to the feedback line after a write.
+  - `hr_team` and an archived candidate see the table with no controls.
+- **Skills Master detail** (`/recruiter/manager/skills`, manager and super_admin): **Merge into another skill** — a picker (never the
+  skill itself), then a confirm naming what happens. On success the detail shows the kept skill with the merged name among its aliases.
