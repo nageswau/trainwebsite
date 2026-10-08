@@ -5314,7 +5314,7 @@ Spec: `docs/superpowers/specs/2026-10-08-upc-005-university-import-design.md`.
 `RECRUITER_CRM_BACKLOG.md` §rec-007 (AC1–AC4). Module scope: `DEC-SCOPE-116`. Also R5 (`jobs` becomes the Job Requirement) and
 FEATURE_QUESTIONS #1 / Q-04 (the employer mediation question, still open).
 
-**Status:** **BUILT** on `feature/rec-007` (2026-10-08), not merged.
+**Status:** **MERGED** to `main` as PR #166 @ `176b71b6` (2026-10-08). The next rec item takes `0116` / DEC-SCOPE-131 / §12AY / §2.57 (upc-010 took `0115` / 130 / §12AX / §2.56); re-check `main` first.
 - J1–J7 are **recommended defaults (`UNVERIFIED`)**. The user told the session to proceed with the recommended answers, so Q-04 and Q-05
   were **not** put to the owner. They can be revised.
 - **Numbering:** migration `0114_job_requirements` (after upc-005's `0113_university_imports`), API §12AW, RBAC §2.55. rec-007 was
