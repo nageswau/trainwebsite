@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  candidateSkillsUrl, EMPTY_SKILL_FORM, formOf, LEVELS, type SkillForm, SOURCES, statusActions, STATUS_LABEL, toBody,
+  candidateSkillsUrl, EMPTY_SKILL_FORM, formOf, LEVELS, type SkillForm, SOURCES, STATUS_LABEL, toBody,
 } from "@/lib/recruiterCandidateSkills";
 import { candidateSkill } from "@/tests/helpers/recruiterCandidateSkills";
 
@@ -18,12 +18,6 @@ describe("recruiterCandidateSkills (rec-011)", () => {
   it("builds the URLs", () => {
     expect(candidateSkillsUrl("C 1")).toBe("/api/v1/recruiter/candidates/C%201/skills");
     expect(candidateSkillsUrl("C1", "S1", "/status")).toBe("/api/v1/recruiter/candidates/C1/skills/S1/status");
-  });
-
-  it("offers the two other statuses, claimed last", () => {
-    expect(statusActions("claimed").map((a) => a.label)).toEqual(["Mark verified", "Mark assessed"]);
-    expect(statusActions("verified").map((a) => a.status)).toEqual(["assessed", "claimed"]);
-    expect(statusActions("assessed").map((a) => a.label)).toEqual(["Mark verified", "Back to claimed"]);
   });
 
   it("maps a form to a body: blanks are null, numbers are numbers, and an edit never sends the skill", () => {

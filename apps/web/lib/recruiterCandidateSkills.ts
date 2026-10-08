@@ -30,14 +30,6 @@ export const STATUS_LABEL: Record<SkillStatus, string> = { claimed: "Claimed", v
 export const LEVEL_LABEL: Record<string, string> = Object.fromEntries(LEVELS.map((l) => [l.key, l.label]));
 export const SOURCE_LABEL: Record<string, string> = Object.fromEntries(SOURCES.map((s) => [s.key, s.label]));
 
-/** SK4: the two moves from the current status -- verify or assess, and "Back to claimed" (which clears who and when) last. */
-export function statusActions(current: SkillStatus): { status: SkillStatus; label: string }[] {
-  const all: { status: SkillStatus; label: string }[] = [
-    { status: "verified", label: "Mark verified" }, { status: "assessed", label: "Mark assessed" }, { status: "claimed", label: "Back to claimed" },
-  ];
-  return all.filter((a) => a.status !== current);
-}
-
 export const EMPTY_SKILL_FORM: SkillForm = { skill: "", level: "", experience_months: "", last_used_year: "", source: "resume" };
 
 export const formOf = (s: CandidateSkill): SkillForm => ({

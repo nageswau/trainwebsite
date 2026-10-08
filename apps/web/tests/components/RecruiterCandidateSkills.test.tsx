@@ -114,7 +114,9 @@ describe("RecruiterCandidateSkills (rec-011)", () => {
   it("changes the status and removes after a confirm", async () => {
     writeReply = () => res(candidateSkill({ status: "verified" }));
     render(<RecruiterCandidateSkills candidateId="C1" />);
-    fireEvent.click(await screen.findByRole("button", { name: "Mark verified: Java" }));
+    const status = await screen.findByRole("combobox", { name: "Status of Java" });
+    expect(within(status).getAllByRole("option").map((o) => o.textContent)).toEqual(["Claimed", "Verified", "Assessed"]);
+    fireEvent.change(status, { target: { value: "verified" } });
     await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Java marked verified."));
     expect(sent("POST")).toEqual({ url: `${BASE}/S1/status`, body: { status: "verified" } });
     writeReply = () => res(null, 204);
@@ -129,7 +131,8 @@ describe("RecruiterCandidateSkills (rec-011)", () => {
     render(<RecruiterCandidateSkills candidateId="C1" />);
     await screen.findByRole("table", { name: "Skills" });
     expect(screen.queryByRole("button", { name: "Add skill" })).toBeNull();
-    expect(screen.queryByRole("button", { name: /Edit|Remove|Mark/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Edit|Remove/ })).toBeNull();
+    expect(screen.queryByRole("combobox", { name: /Status of/ })).toBeNull();
   });
 
   it("shows the empty state, and a load error with Retry", async () => {

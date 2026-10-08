@@ -7,7 +7,7 @@ import { sendJson, sendRequest, type SendOutcome } from "@/lib/apiErrors";
 import type { PickOption } from "@/lib/lookups";
 import {
   type CandidateSkill, type CandidateSkillList, candidateSkillsUrl, EMPTY_SKILL_FORM, formOf, LEVEL_LABEL, LEVELS, SOURCE_LABEL, SOURCES,
-  type SkillForm, statusActions, STATUS_LABEL, toBody,
+  type SkillForm, STATUS_LABEL, toBody,
 } from "@/lib/recruiterCandidateSkills";
 import { experienceLabel } from "@/lib/recruiterCandidates";
 import { skillSearch } from "@/lib/recruiterSkills";
@@ -176,8 +176,17 @@ export default function RecruiterCandidateSkills({ candidateId }: { candidateId:
                     <td data-label="Source">{SOURCE_LABEL[s.source] ?? s.source}</td>
                     <td data-label="Status">
                       <span>
-                        <span className="badge">{STATUS_LABEL[s.status]}</span>
-                        {s.verified_by && <span className="muted" style={{ fontSize: 12 }}> by {s.verified_by.full_name} · <LocalTime value={s.verified_at} /></span>}
+                        {canEdit ? (
+                          // QA-01: one labelled control per row keeps the actions to Edit and Remove; each change records who and when (AC3).
+                          <select aria-label={`Status of ${name}`} value={s.status} disabled={busy}
+                            onChange={(event) => {
+                              const status = event.target.value;
+                              void run(() => sendJson(candidateSkillsUrl(candidateId, s.id, "/status"), "POST", { status }), `${name} marked ${status}.`);
+                            }}>
+                            {Object.entries(STATUS_LABEL).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+                          </select>
+                        ) : <span className="badge">{STATUS_LABEL[s.status]}</span>}
+                        {s.verified_by && <span className="muted" style={{ fontSize: 12, display: "block" }}>by {s.verified_by.full_name} · <LocalTime value={s.verified_at} /></span>}
                       </span>
                     </td>
                     {canEdit && (
@@ -193,12 +202,6 @@ export default function RecruiterCandidateSkills({ candidateId }: { candidateId:
                           <div className="actions">
                             <button type="button" className="btn secondary small" aria-label={`Edit ${name}`} disabled={busy}
                               onClick={() => { setEditingId(s.id); setAdding(false); setNotice(null); }}>Edit</button>
-                            {statusActions(s.status).map((a) => (
-                              <button key={a.status} type="button" className="btn secondary small" aria-label={`${a.label}: ${name}`} disabled={busy}
-                                onClick={() => void run(() => sendJson(candidateSkillsUrl(candidateId, s.id, "/status"), "POST", { status: a.status }), `${name} marked ${a.status}.`)}>
-                                {a.label}
-                              </button>
-                            ))}
                             <button type="button" className="btn secondary small" aria-label={`Remove ${name}`} disabled={busy}
                               onClick={() => { setRemovingId(s.id); setNotice(null); }}>Remove</button>
                           </div>

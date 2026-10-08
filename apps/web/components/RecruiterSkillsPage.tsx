@@ -36,7 +36,7 @@ export default async function RecruiterSkillsPage({ edit }: { edit: boolean }) {
             <h2>Skills</h2>
             <p className="muted">
               {edit
-                ? "The skills recruiters search and tag candidates with. Add aliases so other spellings (J2EE, ReactJS) find the right skill. Deactivate a skill to hide it — it is never deleted."
+                ? "The skills recruiters search and tag candidates with. Add aliases so other spellings (J2EE, ReactJS) find the right skill. Deactivate a skill to hide it, or merge a duplicate into the skill to keep."
                 : "Every skill recruiters search and tag candidates with, with its other spellings. Ask your placement manager to add or change a skill."}
             </p>
           </div>

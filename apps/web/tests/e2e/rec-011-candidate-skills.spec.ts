@@ -56,7 +56,7 @@ test("a recruiter adds a skill, is stopped on a duplicate alias, verifies it; HR
   await card.getByRole("button", { name: "Cancel" }).click();
 
   // AC3: verified records who.
-  await card.getByRole("button", { name: "Mark verified: Java" }).click();
+  await card.getByRole("combobox", { name: "Status of Java" }).selectOption("verified");
   await expect(card.getByText("Java marked verified.")).toBeVisible();
   await expect(row).toContainText("Verified");
   await expect(row).toContainText("by Kiran Placement");
@@ -68,4 +68,5 @@ test("a recruiter adds a skill, is stopped on a duplicate alias, verifies it; HR
   const hrCard = page.getByRole("region", { name: "Skills" });
   await expect(hrCard.getByRole("row", { name: /Java/ })).toContainText("Verified");
   await expect(hrCard.getByRole("button")).toHaveCount(0);
+  await expect(hrCard.getByRole("combobox")).toHaveCount(0);
 });
