@@ -3,13 +3,13 @@ render, send (WhatsApp logged on confirm, email queued and published after the c
 contacted. The shared test database is never truncated, so every value is unique per test."""
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import select
 
 from app.core.config import settings
-from app.models import AuditLog, RecruiterMessage, RecruiterMessageTemplate
+from app.models import AuditLog, RecruiterCall, RecruiterMessage, RecruiterMessageTemplate
 from app.services import recruiter_messages
 from tests.rec001_helpers import as_role, login, make_pm, make_recruiter
 from tests.test_rec_009_candidates import body as candidate_body
@@ -341,6 +341,28 @@ async def test_a_failed_email_does_not_count_as_last_contacted(client, db_sessio
     await db_session.commit()
     contacts = (await client.get(f"{COMPANIES}/{company['id']}/contacts")).json()["items"]
     assert next(c for c in contacts if c["id"] == contact["id"])["last_contacted_at"] is None
+
+
+@pytest.mark.asyncio
+async def test_last_contacted_is_the_later_of_a_call_and_a_message(client, db_session):
+    """MS10 with rec-025 CA7: a contact's Last contacted is its latest call or message, whichever is later."""
+    _, recruiter = await _team(client, db_session)
+    company = await _company(client)
+    contact = await _contact(client, company["id"])
+    now = datetime.now(UTC)
+    ids = {"company_id": uuid.UUID(company["id"]), "contact_id": uuid.UUID(contact["id"])}
+    db_session.add(RecruiterMessage(**ids, sender_user_id=recruiter.id, channel="whatsapp", body="Hi", sent_at=now - timedelta(hours=2)))
+    db_session.add(RecruiterCall(**ids, caller_user_id=recruiter.id, occurred_at=now - timedelta(hours=1), direction="outgoing", outcome="connected"))
+    await db_session.commit()
+
+    async def last() -> datetime:
+        items = (await client.get(f"{COMPANIES}/{company['id']}/contacts")).json()["items"]
+        return datetime.fromisoformat(next(c for c in items if c["id"] == contact["id"])["last_contacted_at"])
+
+    assert abs(await last() - (now - timedelta(hours=1))) < timedelta(seconds=1)  # the call is later
+    db_session.add(RecruiterMessage(**ids, sender_user_id=recruiter.id, channel="whatsapp", body="Hi again", sent_at=now))
+    await db_session.commit()
+    assert abs(await last() - now) < timedelta(seconds=1)  # now the message is
 
 
 @pytest.mark.asyncio

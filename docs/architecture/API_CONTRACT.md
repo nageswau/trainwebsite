@@ -1916,6 +1916,33 @@ can_complete, can_follow_up, can_close}, editable_fields, created_at, updated_at
 | `DELETE /recruiter/calls/{id}` | `204`. Same rules as PATCH. A follow-up the call created stays |
 | `GET /recruiter/companies/{id}/contacts` (§12AS) | **Changed value:** `last_contacted_at` is the contact's latest call (was always null) |
 
+## 12BB. Recruiter message templates, WhatsApp and email (`rec-026`) — addendum, 2026-10-08
+
+- **Basis:** `DEC-SCOPE-134` (MS1–MS11). Design spec `docs/superpowers/specs/2026-10-08-rec-026-recruiter-messages-design.md` §3. Migration `0119`.
+- **Templates:** readers `placement_team` (active rows only, whatever `active` asks), `placement_manager`, `super_admin`; writers
+  `placement_manager`, `super_admin`; every other role → `403` before the body is read. Bodies are untyped objects with readable `422`s.
+  Item `{id, channel (whatsapp|email), kind, name, subject|null, body, active}`.
+- **Messages:** a message is on exactly one party. A contact message takes the company's scope (§12AO; `404` outside it; writers hold
+  `can_edit`, other readers `403`; archived company or inactive contact → `409`). A candidate message follows the pool (§12AP, R11;
+  `placement_team`, `placement_manager`, `super_admin` send; `hr_team` reads; others `403`; archived candidate → `409`). Every send locks the
+  party, counts the cap under the lock, commits once and writes an audit row `recruiter_message.create` with ids, the channel and the
+  template id only. Item `{id, kind (contact|candidate), company_id, contact {id, name}|null, candidate {id, name, code}|null, channel,
+  template {id, name}|null, subject, body, delivery_status (email: queued|sending|retrying|sent|failed; WhatsApp null), sent_at,
+  sender {id, full_name}}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/templates` | `channel?`, `active?`, `q?`, `limit`, `offset`; WhatsApp first, then the source kind order, then name |
+| `POST /recruiter/templates` | `{channel, kind, name, subject (email only, required), body}` → `201`. Kind not of the channel, a subject on WhatsApp, an over-long body or an unknown placeholder → `422`; a duplicate name in the channel → `409` |
+| `PATCH /recruiter/templates/{id}` | Partial (`kind`, `name`, `subject`, `body`, `active`); the merged row is re-checked; a channel change → `422` |
+| `GET /recruiter/templates/{id}/preview` | `{subject, body, missing}` with sample values (Priya Sharma, Acme Technologies, the caller). Inactive → `404` for a recruiter |
+| `GET /recruiter/messages/render?template_id=&contact_id=\|candidate_id=` | The party's scope first (`404`), then an active template (`404`). `{template {id, name, channel, kind}, subject, body, missing}`; `missing` lists the placeholders that had no value. Neither or both parties → `422` |
+| `POST /recruiter/messages` | `{contact_id \| candidate_id, channel: "whatsapp", template_id?, body (≤ 1000)}` or `{…, channel: "email", template_id?, subject (≤ 200, one line), body (≤ 5000)}` → `201` item. Email: SMTP unset → `503`, no address → `409`, stored `queued` and published after the commit. WhatsApp: no usable mobile → `409`. A template inactive or of the other channel → `422`. Caps → `409` (WhatsApp) / `429` (email). Not idempotent |
+| `GET /recruiter/companies/{id}/messages` | The company's contact messages, newest first; `limit`, `offset` |
+| `GET /recruiter/candidates/{id}/messages` | The candidate's messages, newest first; `limit`, `offset` |
+| `GET /recruiter/companies/{id}/contacts` (§12AS) | **Changed:** `last_contacted_at` is the later of the latest call and the latest message (failed emails excluded); **added** `whatsapp_to` |
+| `GET /recruiter/candidates/{id}` (§12AP) | **Added** `whatsapp_to` (E.164 digits or null) |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

@@ -1176,6 +1176,7 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** low
 
 ### rec-026 — Message template library + WhatsApp + email
+- **Status (2026-10-08):** built on `feature/rec-026`. Numbering: `DEC-SCOPE-134`, migration `0119_recruiter_messages` (re-chained after rec-025's `0118_recruiter_calls`; drafted as `0120` / 135), API §12BB, RBAC §2.60. MS1–MS11 are `UNVERIFIED` defaults.
 - **Business requirement:** §19 WhatsApp (5 kinds) and Email (7 kinds) (R13).
 - **Existing behavior:** none for recruiting (the telecaller library is lead-specific).
 - **Expected behavior:**
