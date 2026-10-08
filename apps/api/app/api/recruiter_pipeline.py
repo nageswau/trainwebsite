@@ -1,4 +1,4 @@
-"""rec-005 (DEC-SCOPE-125, spec §4): company stage moves, Lost / reopen, stage history and the pipeline board.
+"""rec-005 (DEC-SCOPE-126, spec §4): company stage moves, Lost / reopen, stage history and the pipeline board.
 
 Every `{company_id}` resolves through `recruiter_companies.load_scoped` (out of scope = 404); every write locks the row, changes it through
 `services.company_pipeline`, audits and commits here, in one transaction. Audits carry stage keys and flags, never the reason text."""

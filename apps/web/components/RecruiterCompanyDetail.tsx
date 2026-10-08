@@ -5,6 +5,7 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
 import BdmConfirm from "@/components/BdmConfirm";
 import { DetailList, multiline } from "@/components/BdmOrganizationProfileDetails";
 import LocalTime from "@/components/LocalTime";
+import RecruiterCompanyContacts from "@/components/RecruiterCompanyContacts";
 import RecruiterCompanyForm from "@/components/RecruiterCompanyForm";
 import RecruiterCompanyPipeline from "@/components/RecruiterCompanyPipeline";
 import RecruiterStageHistory from "@/components/RecruiterStageHistory";
@@ -17,8 +18,8 @@ import type { StageEvent } from "@/lib/recruiterPipeline";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // rec-003 (spec §6): one company. Actions render from `permissions` only -- the server enforces every rule. Every write re-renders from
-// the company the API returns (no refetch). rec-005 adds the pipeline and its history (reloaded after each pipeline write); contacts,
-// follow-ups and contracts arrive with rec-004/024/030.
+// the company the API returns (no refetch). Contacts are rec-004's section; rec-005 adds the pipeline and its history (reloaded after
+// each pipeline write); follow-ups and contracts arrive with rec-024/030.
 function linkOrText(url: string | null) {
   const safe = safeLink(url);
   return safe ? (
@@ -216,6 +217,8 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
           <DetailList rows={rows} />
         </section>
       )}
+      {/* Re-keyed on archive/restore: the list's `can_edit` follows the company's state. */}
+      <RecruiterCompanyContacts key={`${company.id}-${company.archived}`} companyId={company.id} />
       <RecruiterCompanyPipeline
         company={company}
         onChanged={(c, text) => {

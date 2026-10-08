@@ -348,7 +348,7 @@ A user's nav never crosses `it` / `overseas` / `global` divisions except for **S
 
 **School roles' division is `overseas` by proposed inference, not an explicit decision** (`RBAC_MATRIX.md` §1) — the four `/school/*` nav trees above are modeled under `overseas` for now; if that assignment is confirmed wrong, these nav entries move divisions along with the underlying RBAC change (`PRD_OPEN_ITEMS.md` item 72).
 
-## rec-005 addendum (2026-10-08, `DEC-SCOPE-125`)
+## rec-005 addendum (2026-10-08, `DEC-SCOPE-126`)
 
 - `placement_team` and `placement_manager`: a "Pipeline" entry (`/recruiter/pipeline`) after "Candidate Master".
 - `super_admin`: "Recruiter Pipeline" (`/recruiter/pipeline`) after "Recruiter Companies".

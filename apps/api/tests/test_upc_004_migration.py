@@ -21,10 +21,9 @@ _spec.loader.exec_module(_migration)
 BASE, HEAD = "0108_university_contacts", "0109_university_duplicates"
 
 
-def test_migration_chains_after_0108_and_is_the_single_head():
+def test_migration_chains_after_0108_and_there_is_a_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
-    script = ScriptDirectory.from_config(_config())
-    assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}  # rec-005's 0110 follows (tel-001 convention)
+    assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1  # a later migration may chain after this one (PR #153)
 
 
 def test_normalize_key_folds_case_spacing_and_width():

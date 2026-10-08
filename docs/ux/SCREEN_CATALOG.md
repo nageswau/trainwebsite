@@ -3197,7 +3197,7 @@ not inspected. Do not claim parity.
   Relationship strength row. **Responsive:** blocks wrap, no side-scroll at 390 px.
 - **Route:** `/partnership/universities` gains a Relationship column and filter; the master form gains a Relationship strength select.
 
-## rec-005 addendum (2026-10-08, `DEC-SCOPE-125`) — Company pipeline
+## rec-005 addendum (2026-10-08, `DEC-SCOPE-126`) — Company pipeline
 
 Design spec `docs/superpowers/specs/2026-10-08-rec-005-company-pipeline-design.md` §5.
 

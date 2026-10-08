@@ -1,4 +1,4 @@
-"""rec-005 -- the company B2B pipeline (spec §2/§4; AC1-AC4; DEC-SCOPE-125 P1-P8). Names are unique per test (shared database)."""
+"""rec-005 -- the company B2B pipeline (spec §2/§4; AC1-AC4; DEC-SCOPE-126 P1-P8). Names are unique per test (shared database)."""
 
 import uuid
 
@@ -324,8 +324,9 @@ async def test_board_counts_and_lists_by_stage_within_scope(client, db_session):
     assert [i["id"] for i in (await client.get(f"{BOARD}?stage=lost")).json()["items"]] == [lost["id"]]
     assert (await client.get(f"{BOARD}?stage=won")).status_code == 422
     await login(client, manager)
-    team_board = (await client.get(BOARD)).json()
-    assert {i["id"] for i in team_board["items"]} >= {first["id"], second["id"]}
+    # The manager's scope includes the whole unassigned queue (shared DB): look at the one stage this test controls.
+    team_board = (await client.get(f"{BOARD}?stage=contacted&limit=100")).json()
+    assert first["id"] in {i["id"] for i in team_board["items"]} and second["id"] not in {i["id"] for i in team_board["items"]}
     await _team(client, db_session)  # another recruiter sees none of these
     assert (await client.get(BOARD)).json()["total"] == 0
 
