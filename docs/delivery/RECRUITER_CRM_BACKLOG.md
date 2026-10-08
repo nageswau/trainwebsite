@@ -559,7 +559,7 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
   - `bdm_metrics` was unaffected: it counts offers, not job statuses.
 
 ### rec-008 — JD management
-- **Status (2026-10-08):** **BUILT** on `feature/rec-008`, not merged. `DEC-SCOPE-132` (JD1–JD9 recommended defaults, UNVERIFIED);
+- **Status (2026-10-08):** **MERGED** to `main` as PR #170 @ `09abb21e`. The next rec item takes `0118`, `DEC-SCOPE-133`, §12BA and §2.59 (re-check `main`). `DEC-SCOPE-132` (JD1–JD9 recommended defaults, UNVERIFIED);
   migration `0117_job_descriptions`, API §12AZ, RBAC §2.58. Spec `docs/superpowers/specs/2026-10-08-rec-008-jd-management-design.md`.
   - AC3: a non-PDF/DOCX file is `415` (rec-009's code), not `422` (JD5). The employer view is deferred (JD7). There is no automatic JD
     follow-up (JD9).
