@@ -10,10 +10,16 @@ const INTERNAL = ["Japan", "India", "United States", "United Arab Emirates", "An
 test("the public destination list still shows the catalogue countries and no internal ISO country (upc-002-AC1)", async ({ page }) => {
   await page.goto("/overseas/countries");
   await expect(page.getByRole("heading", { name: "Study Destinations" })).toBeVisible();
-  await page.getByLabel("Per page").selectOption("18"); // the list pages client-side (9 by default); one page holds the catalogue
-  await expect(page.getByText("Page 1 of 1")).toBeVisible();
-  for (const name of CATALOGUE) await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
-  for (const name of INTERNAL) await expect(page.getByRole("heading", { name, exact: true })).toHaveCount(0);
+  // Search for each name: the list pages client-side and can hold accumulated dev-DB test rows (RAID.md I-07).
+  const search = page.getByLabel("Search destinations");
+  for (const name of CATALOGUE) {
+    await search.fill(name);
+    await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+  }
+  for (const name of INTERNAL) {
+    await search.fill(name);
+    await expect(page.getByRole("heading", { name, exact: true })).toHaveCount(0);
+  }
 });
 
 test("a catalogue country keeps its guide; an internal one is the unavailable page (upc-002-AC1)", async ({ page }) => {

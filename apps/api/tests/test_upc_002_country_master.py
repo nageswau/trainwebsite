@@ -10,7 +10,7 @@ LOOKUP = "/api/v1/lookups/countries"
 
 
 async def _country(db, *, visible: bool, iso2: str | None = None, region: str | None = None, name: str | None = None) -> Country:
-    country = Country(slug=uniq("upc002-c"), name=name or uniq("Upc002land"), overview="" if not visible else "Guide", tuition="", living_expenses="",
+    country = Country(slug=uniq("upc002-c"), name=name or uniq("Upc002land"), overview="Guide" if visible else "", tuition="", living_expenses="",
                       visa_process=[], work_opportunities="", post_study_work="", pr_opportunities="", faq=[], iso2=iso2, region=region,
                       catalogue_visible=visible)
     db.add(country)

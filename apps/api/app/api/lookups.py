@@ -242,7 +242,7 @@ async def countries(
     stmt = select(Country)
     pattern = _pattern(q)
     if pattern:
-        code = q.strip().upper()
+        code = (q or "").strip().upper()
         stmt = stmt.where(or_(_like(Country.name, pattern), Country.iso2 == code)).order_by((Country.iso2 == code).desc().nulls_last())
     stmt = stmt.order_by(Country.name, Country.id)
     return await _page(
