@@ -30,6 +30,8 @@ overflow, full-page screenshots at 1366 / 820 / 390 px for recruiter, placement 
 | QA-03 | Low | super_admin | `/recruiter/companies` | Open as super admin | A heading for all companies | "Your team's companies" | Fixed: per-role heading and intro |
 | QA-04 | Low | bdm | `/recruiter/companies[/id]` | Open as the Assigned BDM | The BDM's own menu and a read-only intro | Empty sidebar; recruiter wording | Fixed: BDM menu, read-only intro |
 
+| QA-05 | High | all creators | `/recruiter/companies/new` (after merging `main` @ `3228bc20`) | Open Add company | Pickers list the active values | "Some lists could not be loaded"; every picker empty. Cause: upc-001's merge `1590a9e8` dropped `total/limit/offset` from `RecCampaignPage` on `main`, so the campaign list failed the page check (also breaks the rec-002 Campaigns tab) | Fixed in the rec-003 merge commit: fields restored, regression test `test_rec_002_campaigns.py::test_campaign_list_is_a_full_page` |
+
 After the fixes: rec-003 vitest 13/13, Playwright rec-003 3/3 and neighbours (rec-001, rec-002, EMP-001…005, ADM-007, RPT-001) 29/29.
 
 ## Not changed (outside rec-003)
