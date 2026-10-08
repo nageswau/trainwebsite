@@ -613,6 +613,28 @@ class UniversityAssignmentHistory(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class UniversityImportBatch(Base, TimestampMixin):
+    """upc-005 (DEC-SCOPE-125, IM6/IM10): one CSV import into the University Master. The file is never stored: only its hash, the counts
+    and each row's outcome {row_number, status, name, country, university_id, university_code, matches, reason}. The Idempotency-Key is
+    scoped to the uploader. Migration 0110 repeats the constraints (test_upc_005_migration)."""
+
+    __tablename__ = "university_import_batches"
+    __table_args__ = (
+        UniqueConstraint("uploaded_by_user_id", "idempotency_key", name="uq_university_import_batches_key"),
+        CheckConstraint("created_count + duplicate_count + invalid_count = total_rows", name="ck_university_import_batches_counts"),
+        Index("ix_university_import_batches_uploader", "uploaded_by_user_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    idempotency_key: Mapped[str] = mapped_column(String(120))
+    file_sha256: Mapped[str] = mapped_column(String(64))
+    total_rows: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    created_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    duplicate_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    invalid_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    results_json: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+
+
 # upc-006 (DEC-SCOPE-123, spec §2): the contact role catalogue (CT2) -- §10's example roles and §1's contact rows, International
 # Director once. Migration 0108 seeds it (ROLE_SEED) and repeats UNIVERSITY_CONTACT_CHECKS; test_upc_006_migration keeps them identical.
 UNIVERSITY_CONTACT_ROLE_SEED = (

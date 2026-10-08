@@ -304,11 +304,16 @@ async def find_duplicates(db: AsyncSession, name_key: str, country_id: UUID | No
     return [match_out(*row) for row in (await db.execute(stmt)).all()], total
 
 
+def duplicate_lock_key(country_id: UUID, name_key: str) -> str:
+    """UD4: the advisory lock text for one duplicate key, shared by a manual write and the CSV import (upc-005 IM9)."""
+    return f"university:{country_id}:{name_key}"
+
+
 async def check_duplicates(db: AsyncSession, user: User, name: str, country_id: UUID, reason: str | None, exclude_id: UUID | None = None) -> int:
     """UD2/UD4: the number of matches an override accepted (0 when none). A transaction lock on the key serializes two writes of the same
     name + country, so the second sees the first. Matches without an override from OVERRIDE_ROLES are a 409 carrying the panel."""
     key = name_key_of(name)
-    await db.execute(text("SELECT pg_advisory_xact_lock(hashtextextended(:k, 0))"), {"k": f"university:{country_id}:{key}"})
+    await db.execute(text("SELECT pg_advisory_xact_lock(hashtextextended(:k, 0))"), {"k": duplicate_lock_key(country_id, key)})
     matches, total = await find_duplicates(db, key, country_id, exclude_id)
     if not total:
         return 0
