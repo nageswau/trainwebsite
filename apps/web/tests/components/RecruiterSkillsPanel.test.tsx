@@ -9,7 +9,8 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: nav.push }), usePa
 
 const res = (body: unknown, status = 200) => new Response(status === 204 ? null : JSON.stringify(body), { status });
 const page = (items: unknown[], total = items.length) => ({ items, total, limit: 50, offset: 0 });
-const programming = { id: "c1", name: "Programming", active: true, sort_order: 1 };
+const C1 = "6f1c2a3b-0000-4000-8000-0000000000c1";
+const programming = { id: C1, name: "Programming", active: true, sort_order: 1 };
 const frontend = { id: "c2", name: "Frontend", active: true, sort_order: 3 };
 const retiredCat = { id: "c9", name: "Old", active: false, sort_order: 9 };
 const ref = (c: { id: string; name: string; active: boolean }) => ({ id: c.id, name: c.name, active: c.active });
@@ -73,14 +74,14 @@ describe("RecruiterSkillsPanel (rec-006)", () => {
 
   it("puts the search and category filter in the URL", async () => {
     const calls = serve(() => undefined);
-    nav.params = new URLSearchParams("q=java&category=c1");
+    nav.params = new URLSearchParams(`q=java&category=${C1}`);
     render(<RecruiterSkillsPanel canEdit={false} />);
     await screen.findByText("Java");
-    expect(calls.some((c) => c.url.includes("/skills?limit=50&offset=0&q=java&category_id=c1"))).toBe(true);
+    expect(calls.some((c) => c.url.includes(`/skills?limit=50&offset=0&q=java&category_id=${C1}`))).toBe(true);
     const search = screen.getByLabelText("Search skills or aliases");
     fireEvent.change(search, { target: { value: "react" } });
     fireEvent.submit(search.closest("form")!);
-    expect(nav.push).toHaveBeenCalledWith("/recruiter/manager/skills?q=react&category=c1", { scroll: false });
+    expect(nav.push).toHaveBeenCalledWith(`/recruiter/manager/skills?q=react&category=${C1}`, { scroll: false });
   });
 
   it("lets a manager create a category and see the inactive one", async () => {
@@ -100,21 +101,21 @@ describe("RecruiterSkillsPanel (rec-006)", () => {
     await screen.findByText("Java");
     const primary = screen.getByLabelText("Category (required)");
     expect(within(primary).queryByText("Old")).toBeNull();
-    fireEvent.change(primary, { target: { value: "c1" } });
+    fireEvent.change(primary, { target: { value: C1 } });
     const others = screen.getByRole("group", { name: "Other categories" });
     expect(within(others).queryByLabelText("Programming")).toBeNull();
     fireEvent.click(within(others).getByLabelText("Frontend"));
     fireEvent.change(screen.getByLabelText("Skill name (required)"), { target: { value: "TypeScript" } });
     fireEvent.click(screen.getByRole("button", { name: "Create skill" }));
     expect(await screen.findByText("Created TypeScript.")).toBeInTheDocument();
-    expect(JSON.parse(String(writes(calls)[0].init!.body))).toEqual({ name: "TypeScript", category_id: "c1", tag_category_ids: ["c2"] });
+    expect(JSON.parse(String(writes(calls)[0].init!.body))).toEqual({ name: "TypeScript", category_id: C1, tag_category_ids: ["c2"] });
   });
 
   it("shows the server's duplicate message when a skill name is taken", async () => {
     serve(({ init }) => (init?.method === "POST" ? res({ detail: "A skill named “Java” already exists" }, 409) : undefined));
     render(<RecruiterSkillsPanel canEdit />);
     await screen.findByText("Java");
-    fireEvent.change(screen.getByLabelText("Category (required)"), { target: { value: "c1" } });
+    fireEvent.change(screen.getByLabelText("Category (required)"), { target: { value: C1 } });
     fireEvent.change(screen.getByLabelText("Skill name (required)"), { target: { value: "java" } });
     fireEvent.click(screen.getByRole("button", { name: "Create skill" }));
     expect(await screen.findByText("A skill named “Java” already exists")).toBeInTheDocument();
@@ -157,7 +158,7 @@ describe("RecruiterSkillsPanel (rec-006)", () => {
     fireEvent.change(within(detail).getByLabelText("Skill name (required)"), { target: { value: "JavaScript ES" } });
     fireEvent.click(within(detail).getByRole("button", { name: "Save skill" }));
     await waitFor(() => expect(writes(calls).length).toBe(1));
-    expect(JSON.parse(String(writes(calls)[0].init!.body))).toEqual({ name: "JavaScript ES", category_id: "c1", tag_category_ids: ["c2"] });
+    expect(JSON.parse(String(writes(calls)[0].init!.body))).toEqual({ name: "JavaScript ES", category_id: C1, tag_category_ids: ["c2"] });
     fireEvent.click(within(detail).getByRole("button", { name: "Deactivate JavaScript" }));
     fireEvent.click(within(detail).getByRole("button", { name: "Confirm deactivate" }));
     await waitFor(() => expect(writes(calls).length).toBe(2));

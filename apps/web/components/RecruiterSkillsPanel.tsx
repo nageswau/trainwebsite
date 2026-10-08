@@ -7,7 +7,7 @@ import RecruiterSkillCategories from "@/components/RecruiterSkillCategories";
 import RecruiterSkillCategoryFields from "@/components/RecruiterSkillCategoryFields";
 import RecruiterSkillDetail from "@/components/RecruiterSkillDetail";
 import { sendJson, type Page } from "@/lib/apiErrors";
-import { categoryLabel, SKILL_CATEGORIES_URL, SKILLS_PAGE_SIZE, SKILLS_URL, skillsQuery, type Skill, type SkillCategory } from "@/lib/recruiterSkills";
+import { allCategories, categoryLabel, SKILLS_PAGE_SIZE, SKILLS_URL, skillsQuery, type Skill, type SkillCategory } from "@/lib/recruiterSkills";
 import { formText, pageOffset, statusLabel } from "@/lib/telecaller";
 import { getPage } from "@/lib/telecallerCatalogue";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
@@ -56,7 +56,7 @@ export default function RecruiterSkillsPanel({ canEdit }: { canEdit: boolean }) 
 
   useEffect(() => {
     const controller = new AbortController();
-    getPage<SkillCategory>(`${SKILL_CATEGORIES_URL}?limit=100`, controller.signal).then((p) => setCategories(p.items)).catch(() => controller.signal.aborted || setCategories([]));
+    allCategories(controller.signal).then(setCategories).catch(() => controller.signal.aborted || setCategories([]));
     return () => controller.abort();
   }, [categoryVersion]);
 
