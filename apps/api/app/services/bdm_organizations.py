@@ -5,7 +5,6 @@ so an id outside the caller's scope is the same 404 as a missing one. Logs carry
 """
 
 import logging
-import unicodedata
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -13,6 +12,7 @@ from fastapi.exceptions import RequestValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.identifiers import normalize_key  # upc-004: shared with University.name_key
 from app.models import (
     BDM_APPOINTMENT_OPEN,
     BDM_ORGANIZATION_CODE_SEQ,
@@ -56,13 +56,6 @@ ORG_TYPE_LABELS = {
     "training_institute": "Training Institute", "other": "Other",
 }
 GRADE_ORDER = "Lowest grade can't be above the highest grade"
-
-
-def normalize_key(value: str, limit: int) -> str:
-    """Q-18's "normalized name / city": NFKC (full-width and compatibility forms), whitespace collapsed, casefolded. NFKC and casefold
-    can lengthen text ("ß" -> "ss"), so the key is cut to its column length (final review M2); two names that differ only past that
-    point still match, which a warning can afford."""
-    return " ".join(unicodedata.normalize("NFKC", value).split()).casefold()[:limit]
 
 
 def org_keys(name: str, city: str) -> tuple[str, str]:
