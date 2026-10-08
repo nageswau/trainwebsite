@@ -117,7 +117,7 @@ test("the owning manager keeps contacts; overseas_admin sees the shareable slice
   // Phone width: contacts are blocks, no sideways scroll.
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(detail);
-  await expect(contacts.getByText("Priya Raman")).toBeVisible();
+  await expect(priya).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.request.post("/api/v1/auth/logout");
 
@@ -125,7 +125,7 @@ test("the owning manager keeps contacts; overseas_admin sees the shareable slice
   await page.setViewportSize({ width: 1280, height: 800 });
   await signIn(page, admin.email, "/overseas/admin/dashboard");
   await page.goto(detail);
-  await expect(contacts.getByText("Priya Raman")).toBeVisible();
+  await expect(priya).toBeVisible();
   await expect(contacts.getByText("Ben Finance")).toHaveCount(0);
   await expect(contacts.getByText("Internal remark")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Add contact" })).toHaveCount(0);

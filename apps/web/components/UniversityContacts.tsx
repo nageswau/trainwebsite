@@ -42,6 +42,7 @@ function bodyOf(draft: Draft, initial?: UniversityContact): Record<string, unkno
   return body;
 }
 
+const SAVE_FAILED = "The change could not be saved. Try again.";
 const LABELS: Record<string, string> = {
   name: "Name (required)", designation: "Designation", department: "Department", email: "Email", phone: "Phone", whatsapp: "WhatsApp",
   linkedin: "LinkedIn", notes: "Notes (internal)", role_code: "Role", preferred_channel: "Preferred communication", relationship_strength: "Relationship strength",
@@ -178,7 +179,9 @@ export default function UniversityContacts({ universityId, contacts, roles, canE
     }
     const mapped = outcome.status === 422 ? fieldErrors(outcome.detail) : {};
     setErrors(mapped);
-    setFailure(Object.keys(mapped).length ? "Check the highlighted fields." : outcome.message);
+    // QA-I1: a response without a readable detail (e.g. a 500) gets a plain sentence; a dropped request keeps NOT_COMPLETED.
+    const message = outcome.status !== undefined && outcome.detail === undefined ? SAVE_FAILED : outcome.message;
+    setFailure(Object.keys(mapped).length ? "Check the highlighted fields." : message);
   }
   const open = (id: string | null) => {
     setEditing(id);

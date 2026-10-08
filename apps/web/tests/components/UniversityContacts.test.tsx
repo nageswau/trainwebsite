@@ -90,6 +90,25 @@ describe("UniversityContacts (upc-006)", () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 
+  it("words a server error plainly and keeps the entry (QA-I1)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response("Internal Server Error", { status: 500 }))));
+    render(<UniversityContacts universityId="u1" contacts={[]} roles={roles} canEdit />);
+    fireEvent.click(screen.getByRole("button", { name: "Add contact" }));
+    fireEvent.change(screen.getByLabelText("Name (required)"), { target: { value: "Priya" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save contact" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("The change could not be saved. Try again.");
+    expect(screen.getByLabelText("Name (required)")).toHaveValue("Priya");
+  });
+
+  it("keeps the connection message when the request never completes", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new TypeError("offline"))));
+    render(<UniversityContacts universityId="u1" contacts={[]} roles={roles} canEdit />);
+    fireEvent.click(screen.getByRole("button", { name: "Add contact" }));
+    fireEvent.change(screen.getByLabelText("Name (required)"), { target: { value: "Priya" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save contact" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("The request did not complete");
+  });
+
   it("sends one request on a double click", async () => {
     let resolve: (r: Response) => void = () => {};
     const mock = vi.fn(() => new Promise<Response>((r) => { resolve = r; }));
