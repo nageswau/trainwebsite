@@ -7,7 +7,7 @@ export type Channel = "call" | "whatsapp" | "email";
 export type Contact = {
   id: string; name: string; designation: string | null; department: string | null; role: Ref | null; mobile: string | null;
   email: string | null; linkedin_url: string | null; preferred_channel: Channel | null; notes: string | null; is_primary: boolean;
-  active: boolean; last_contacted_at: string | null; created_at: string; updated_at: string;
+  active: boolean; last_contacted_at: string | null; next_follow_up_at?: string | null; created_at: string; updated_at: string;
 };
 export type ContactList = { items: Contact[]; can_edit: boolean };
 

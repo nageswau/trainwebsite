@@ -11,6 +11,7 @@ export type CompanyPermissions = { can_edit: boolean; can_archive: boolean; can_
 export type CompanyRow = {
   id: string; code: string; name: string; city: string | null; priority: Priority | null; industry: Ref | null; lead_source: Ref | null;
   assigned_recruiter: Person | null; archived: boolean; permissions: CompanyPermissions;
+  next_follow_up_at?: string | null; // rec-024 FU9: the earliest open follow-up (derived)
 };
 export type Assignment = { from_user: Person | null; to_user: Person; changed_by: Person; created_at: string };
 export type Company = CompanyRow & {

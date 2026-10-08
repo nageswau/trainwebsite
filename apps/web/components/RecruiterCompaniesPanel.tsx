@@ -5,6 +5,7 @@ import { type FormEvent, useEffect, useState } from "react";
 
 import { isPage, type Page } from "@/lib/apiErrors";
 import { CHECKBOX_ROW, display, LINK_STYLE } from "@/lib/bdmOrganizations";
+import { formatSchoolDateTime } from "@/lib/formatDate";
 import { activeValues, type CatalogueValue } from "@/lib/recruiterCatalogue";
 import { COMPANIES_PATH, COMPANIES_URL, type CompanyRow, personName, PRIORITIES, PRIORITY_LABEL } from "@/lib/recruiterCompanies";
 import { PAGE_SIZE } from "@/lib/telecaller";
@@ -238,6 +239,7 @@ export default function RecruiterCompaniesPanel({ canCreate, isManager = false }
                   <th scope="col">Lead source</th>
                   <th scope="col">Industry</th>
                   <th scope="col">Recruiter</th>
+                  <th scope="col">Next follow-up</th>
                 </tr>
               </thead>
               <tbody>
@@ -260,6 +262,7 @@ export default function RecruiterCompaniesPanel({ canCreate, isManager = false }
                     <td data-label="Lead source">{display(r.lead_source?.name)}</td>
                     <td data-label="Industry">{display(r.industry?.name)}</td>
                     <td data-label="Recruiter">{personName(r.assigned_recruiter)}</td>
+                    <td data-label="Next follow-up" style={{ whiteSpace: "nowrap" }}>{r.next_follow_up_at ? formatSchoolDateTime(r.next_follow_up_at) : "—"}</td>
                   </tr>
                 ))}
               </tbody>

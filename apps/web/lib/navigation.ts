@@ -121,11 +121,13 @@ const LEGACY_PLACEMENT = ["candidates", "company-requirements", "interviews", "o
 export const RECRUITER_NAV: NavItem[] = [
   { label: "Dashboard", href: "/recruiter/dashboard" }, { label: "Companies", href: "/recruiter/companies" }, { label: "Profile", href: "/recruiter/profile" }, { label: "Skills Master", href: "/recruiter/skills" },
   { label: "Candidate Master", href: "/recruiter/candidates" }, // rec-009
+  { label: "Follow-ups", href: "/recruiter/follow-ups" }, // rec-024
   ...LEGACY_PLACEMENT.map((x) => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, (c) => c.toUpperCase()), href: `/it/placement/${x}` })),
 ];
 export const RECRUITER_MANAGER_NAV: NavItem[] = [
   { label: "Team", href: "/recruiter/manager/team" }, { label: "Companies", href: "/recruiter/companies" }, { label: "Catalogues", href: "/recruiter/manager/catalogue" }, { label: "Skills Master", href: "/recruiter/manager/skills" },
   { label: "Candidate Master", href: "/recruiter/candidates" }, // rec-009: shared with recruiters (R11)
+  { label: "Follow-ups", href: "/recruiter/follow-ups" }, // rec-024: the team's lists, read only
 ];
 
 // upc-001 (PU8): the EVID-020 §32 main menu, in source order, each entry naming the item that builds its page. An entry joins the

@@ -6,16 +6,19 @@ import BdmConfirm from "@/components/BdmConfirm";
 import { DetailList, multiline } from "@/components/BdmOrganizationProfileDetails";
 import LocalTime from "@/components/LocalTime";
 import RecruiterCompanyContacts from "@/components/RecruiterCompanyContacts";
+import RecruiterCompanyFollowUps from "@/components/RecruiterCompanyFollowUps";
 import RecruiterCompanyForm from "@/components/RecruiterCompanyForm";
 import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson, sendRequest } from "@/lib/apiErrors";
 import { display, LINK_STYLE } from "@/lib/bdmOrganizations";
+import { formatSchoolDateTime } from "@/lib/formatDate";
 import type { PickOption } from "@/lib/lookups";
 import { type Company, COMPANIES_PATH, COMPANIES_URL, isCompanyBody, personName, PRIORITY_LABEL, recruiterSearch, safeLink } from "@/lib/recruiterCompanies";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // rec-003 (spec §6): one company. Actions render from `permissions` only -- the server enforces every rule. Every write re-renders from
-// the company the API returns (no refetch). Contacts are rec-004's section; pipeline, follow-ups and contracts arrive with rec-005/024/030.
+// the company the API returns (no refetch). Contacts are rec-004's section and follow-ups rec-024's; pipeline and contracts arrive with
+// rec-005/030.
 function linkOrText(url: string | null) {
   const safe = safeLink(url);
   return safe ? (
@@ -91,6 +94,7 @@ export default function RecruiterCompanyDetail({ initial, created = false }: { i
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(created ? `Company ${initial.code} created.` : null);
   const [failure, setFailure] = useState<string | null>(null);
+  const [followUpChanges, setFollowUpChanges] = useState(0);
   const focus = useFocusAfterRender();
   // "created" is said once: the flag leaves the address, so a refresh or a shared link doesn't repeat it (BdmOrganizationDetail's rule).
   useEffect(() => {
@@ -110,6 +114,14 @@ export default function RecruiterCompanyDetail({ initial, created = false }: { i
     setEditing(false);
     focus(editId);
   };
+
+  // rec-024: a follow-up added, done, rescheduled or cancelled moves the company's "Next follow-up" -- re-read the company (best effort:
+  // a failed read leaves the old value, the follow-ups section already shows the change).
+  async function followUpChanged() {
+    setFollowUpChanges((n) => n + 1);
+    const outcome = await sendRequest(`${COMPANIES_URL}/${company.id}`, { method: "GET" });
+    if (outcome.ok && isCompanyBody(outcome.data)) setCompany(outcome.data.company);
+  }
 
   async function act(path: "archive" | "restore") {
     setBusy(true);
@@ -138,6 +150,7 @@ export default function RecruiterCompanyDetail({ initial, created = false }: { i
     ["Lead source", display(company.lead_source?.name)],
     ["Campaign", display(company.campaign?.name)],
     ["Priority", company.priority ? PRIORITY_LABEL[company.priority] : "—"],
+    ["Next follow-up", company.next_follow_up_at ? formatSchoolDateTime(company.next_follow_up_at, true) : "None scheduled"], // rec-024 FU9
     ["Recruiter (account manager)", personName(company.assigned_recruiter)],
     ["Assigned BDM", personName(company.assigned_bdm, "—")],
     ["Registered by", company.owner_type === "employer_self_service" ? "The employer (self-registration)" : company.created_by ? <>{company.created_by.full_name} on <LocalTime value={company.created_at} /></> : "—"],
@@ -208,8 +221,9 @@ export default function RecruiterCompanyDetail({ initial, created = false }: { i
           <DetailList rows={rows} />
         </section>
       )}
-      {/* Re-keyed on archive/restore: the list's `can_edit` follows the company's state. */}
-      <RecruiterCompanyContacts key={`${company.id}-${company.archived}`} companyId={company.id} />
+      {/* Re-keyed on archive/restore (the list's `can_edit` follows the company's state) and on a follow-up change (each contact's next one). */}
+      <RecruiterCompanyContacts key={`${company.id}-${company.archived}-${followUpChanges}`} companyId={company.id} />
+      <RecruiterCompanyFollowUps key={`${company.id}-${company.archived}`} companyId={company.id} canWrite={p.can_edit} onChanged={() => void followUpChanged()} />
       {p.can_reassign && (
         <Reassign
           company={company}
