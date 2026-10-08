@@ -1652,6 +1652,30 @@ can_deactivate}`, `rankings`, `application_count`, manager refs `{id, full_name,
 | `PUT /recruiter/candidates/{id}/resume` | Multipart `file` → `201` `{version, file_name, content_type, size_bytes}`. Each upload is a new version and is not idempotent. An empty file is `422`, over 5 MB is `413`, and a file that is not PDF or DOCX **by its bytes** is `415`. An archived candidate is `409` |
 | `GET /recruiter/candidates/{id}/resume/{version}` | The file as an attachment named `resume-CAN-000001-v2.pdf`, with `nosniff`, `no-store` and a sandbox CSP. The audit row is committed first. An unknown version is `404` |
 
+## 12AQ. Company contacts (`rec-004`) — addendum, 2026-10-08
+
+- **Basis:** `DEC-SCOPE-123` (C1–C7). Design spec `docs/superpowers/specs/2026-10-08-rec-004-company-contacts-design.md` §3. Migration
+  `0108`. Drafted as §12AP, which rec-009 merged first and took.
+- **Common rules:**
+  - Scope is the company's (§12AO): a company or contact outside the caller's scope is `404` "Company not found" or "Contact not found",
+    the same as an unknown id.
+  - Writers are the people with the company's `can_edit` right. The wrong role is `403`, and an archived company is `409` "Restore this
+    company first".
+  - Bodies refuse unknown keys (`422`).
+  - Every write locks the company row and commits once, with an audit row `recruiter_company.contact_create` or `contact_update` that
+    carries `{contact_id, fields}` only.
+  - Every route returns the company's whole list, because a primary change touches two rows.
+- **List shape:** `{items[], can_edit}`. Items are ordered primary first, then active, then inactive, each in insertion order.
+  - Each item is `{id, name, designation, department, role {id, name, active}|null, mobile, email, linkedin_url, preferred_channel,
+    notes, is_primary, active, last_contacted_at (null until rec-025), created_at, updated_at}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/companies/{id}/contacts` | Readers of the company (rec-003 scope; the assigned BDM included). `hr_team` and other roles → `403` |
+| `POST /recruiter/companies/{id}/contacts` | `{name, designation?, department?, role_id?, mobile?, email?, linkedin_url?, preferred_channel? (call\|whatsapp\|email), notes? (≤ 2000), is_primary? (default false)}` → `201` list. The first contact, or `is_primary: true`, becomes primary. An invalid email, mobile or link → `422` on the field. An inactive or unknown role → `422` "Choose an active contact role". The 51st contact → `409` |
+| `PATCH /recruiter/contacts/{contact_id}` | Partial. Null clears an optional field; null on `name`, `is_primary` or `active` → `422`. `is_primary: true` moves the primary; `is_primary: false` on the primary → `422` "Choose another primary contact instead". `active: false` on the primary while another contact is active → `409` "Make another contact primary first". `is_primary: true` on an inactive contact → `409` "Reactivate this contact first". Reactivating when the company has no primary makes this contact primary |
+| `POST /recruiter/companies` (§12AO) | Adds an optional `contact` (the POST body above): "+ Add Recruiter". The company and its primary contact are created in one transaction; a contact `422` (`loc ["body","contact",…]`) creates nothing |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

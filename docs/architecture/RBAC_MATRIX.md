@@ -1008,6 +1008,19 @@ who has not opted in, rec-010) is `404`, the same as an unknown id.
 | `hr_team` | list, read, download resumes; every write and the duplicate check are `403` | the whole pool | `rec-009` |
 | `employer`, `it_admin`, students, every other role | `403` (employers see only EMP-003's masked view, R12) | — | `rec-009` |
 
+### 2.49 Company contacts *(net-new, added 2026-10-08 — `DEC-SCOPE-123`, `rec-004`; drafted as §2.48)*
+
+Contacts take the company's scope (§2.47). A contact of a company outside the caller's scope is `404`. Writes follow the company's
+`can_edit` (C1, UNVERIFIED default). An archived company's contacts are read-only (`409`).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` (with a profile) | read; add, edit, make primary, deactivate/reactivate; "+ Add Recruiter" | companies assigned to them | `rec-004` |
+| `placement_manager` | read; "+ Add Recruiter" (create only). Every contact write is `403` | direct reports' companies + the unassigned queue | `rec-004` |
+| `super_admin` | everything | all companies | `rec-004` |
+| `bdm` | read only (R10); every write is `403` | companies whose Assigned BDM is them | `rec-004` |
+| `hr_team`, `it_admin`, `employer`, every other role | `403` | — | `rec-004` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

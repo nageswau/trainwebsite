@@ -5124,3 +5124,35 @@ Spec `docs/superpowers/specs/2026-10-08-rec-009-candidate-master-design.md`.
 - The pages `/recruiter/candidates`, `/new` and `/[id]`.
 - A "Candidate Master" sidebar entry for recruiters, managers, super admin and HR.
 - **New Feature ID authorized:** `rec-009`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-009.
+
+### DEC-SCOPE-123 — Company contacts (`rec-004`)
+
+**Evidence:**
+- `EVID-018`: §2, the person fields (lines 84–98) and the quick action "+ Add Recruiter" (line 43); §3 Business Details (lines 150–164);
+  §4 Recruiter Contact Management (lines 176–216).
+- `RECRUITER_CRM_BACKLOG.md` §rec-004 (AC1–AC3).
+- R3: a new `company_contacts` table. R10: recruiters do every write.
+- Module scope: `DEC-SCOPE-116`. The company master is `DEC-SCOPE-121`.
+
+**Status:** built on `feature/rec-004`. The backlog item has no Q-xx questions, so C1–C7 below are **recommended defaults**, taken on the
+user's standing instruction to proceed with the recommended answers. Their status is `UNVERIFIED` until the owner confirms them.
+
+**Numbering:** migration `0108_company_contacts` (after rec-009's `0107_candidates`), API §12AQ and RBAC §2.49. rec-004 was drafted as
+`0107` / `DEC-SCOPE-122` / §12AP / §2.48, but rec-009 merged first. Spec `docs/superpowers/specs/2026-10-08-rec-004-company-contacts-design.md`.
+
+| # | Point | Answer (UNVERIFIED default) |
+|---|---|---|
+| C1 | Who writes contacts | Whoever holds the company's `can_edit`: the assigned recruiter or `super_admin` (rec-003 D6, R10). `placement_manager` and the assigned BDM read only. An archived company's contacts are read-only (`409`) |
+| C2 | Remove / primary | Contacts are deactivated, never deleted. The primary cannot be deactivated while another active contact exists (`409`); the last active contact can be, and it stops being primary. A new or reactivated contact becomes primary when the company has none. An inactive contact cannot be made primary |
+| C3 | Fields | Name (required), designation, department, role (an active `rec_contact_roles` value), mobile (it must normalise; stored with `mobile_normalized`), email (lower-cased), LinkedIn (http/https), preferred communication (call / WhatsApp / email) and notes |
+| C4 | Cap | At most 50 contacts per company, active and inactive together |
+| C5 | §3 HR / TA / Hiring Manager, HR email and phone | Read from the active contacts by their seeded role names, not stored. HR = HR Manager or HR Head. HR email and phone are the primary contact's when the primary has an HR role, otherwise the first HR contact's |
+| C6 | Last contacted | Returned as `null` until calls, messages and meetings exist (rec-025, rec-026, rec-028). AC3 is deferred to rec-025. Next follow-up is rec-024's |
+| C7 | "+ Add Recruiter" | `POST /recruiter/companies` takes an optional `contact`, so the company and its first contact (primary) are created in one transaction. The UI is `/recruiter/companies/new?with=contact` |
+
+**Consequences:**
+- `company_contacts` (`0108`): a partial unique index on the primary contact, and a CHECK that a primary contact is active.
+- `services/recruiter_contacts.py` and `api/recruiter_contacts.py`.
+- A Contacts section on the company page, and an "Add recruiter" quick action on the companies list.
+- Contact PII: no export, and logs and audit rows carry ids and field names only.
+- **New Feature ID authorized:** `rec-004`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-004.

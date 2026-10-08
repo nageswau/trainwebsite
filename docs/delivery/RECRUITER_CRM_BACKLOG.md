@@ -402,6 +402,10 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** large · **Risk:** high
 
 ### rec-004 — Company contacts
+- **Status (2026-10-08):** built on `feature/rec-004`. Numbering: `DEC-SCOPE-123`, migration `0108_company_contacts` (after rec-009's
+  `0107_candidates`), API §12AQ, RBAC §2.49. C1–C7 in `DEC-SCOPE-123` are recommended defaults (UNVERIFIED): writes follow the company's
+  `can_edit`, contacts are deactivated and never deleted, at most 50 per company, and §3 Business Details are read from the contact
+  roles. "+ Add Recruiter" ships here. AC3 (Last contacted after a logged call) waits for rec-025.
 - **Business requirement:** §4 "multiple contacts under one company" with 10 fields per contact. §3 HR Contact, Talent Acquisition
   Contact, Hiring Manager, HR Email, HR Phone.
 - **Existing behavior:** none. Employer users are the only people tied to a company.
