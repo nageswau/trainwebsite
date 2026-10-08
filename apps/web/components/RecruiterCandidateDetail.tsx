@@ -6,12 +6,14 @@ import LocalTime from "@/components/LocalTime";
 import RecruiterCalls from "@/components/RecruiterCalls";
 import RecruiterCandidateForm from "@/components/RecruiterCandidateForm";
 import RecruiterCandidateResumes from "@/components/RecruiterCandidateResumes";
+import RecruiterCandidateSkills from "@/components/RecruiterCandidateSkills";
 import { sendRequest } from "@/lib/apiErrors";
 import { telHref } from "@/lib/recruiterCalls";
 import { STATUS_LABEL, candidateUrl, experienceLabel, type CandidateDetail } from "@/lib/recruiterCandidates";
 
 // rec-009 (spec §6): one candidate -- the §8 profile, Edit (writers), Archive/Restore with a confirm, and the resume versions. hr_team reads
-// only (`can_edit` false). Calls (rec-025) sit under the resumes; skills, applications and the timeline arrive with rec-011, rec-017 and rec-026/027.
+// only (`can_edit` false). Skills (rec-011) sit above the resumes and calls (rec-025) under them; applications and the timeline arrive
+// with rec-017 and rec-026/027.
 const money = (v: string | null) => (v === null ? null : Number(v).toLocaleString("en-IN", { maximumFractionDigits: 2 }));
 
 export default function RecruiterCandidateDetail({ initial }: { initial: CandidateDetail }) {
@@ -91,6 +93,8 @@ export default function RecruiterCandidateDetail({ initial }: { initial: Candida
           </dl>
         </section>
       )}
+      {/* rec-011: re-keyed on archive/restore, so the card re-reads can_edit (an archived candidate's skills are read only). */}
+      <RecruiterCandidateSkills key={`skills-${candidate.id}-${archived}`} candidateId={candidate.id} />
       <RecruiterCandidateResumes candidateId={candidate.id} resumes={candidate.resumes} canUpload={canEdit} onUploaded={() => void reload()} />
       {/* rec-025: re-keyed on archive/restore, so Log call and each call's Edit follow the candidate's state. */}
       <RecruiterCalls key={`${candidate.id}-${archived}`} party={{ kind: "candidate", candidateId: candidate.id }} canWrite={canEdit} />

@@ -91,7 +91,7 @@ Writers of the Skills Master only (placement manager, `super_admin`). One transa
   - Loading, error-with-Retry and empty states. A ref guards double submits; focus moves to the feedback line after a write.
   - `hr_team` and an archived candidate see no write controls.
 - **`RecruiterSkillDetail`** (the manager Skills Master) gains **Merge into another skill**: a picker plus a confirm that names what
-  happens. On success the detail closes and the list reloads.
+  happens. On success the detail shows the kept skill (with the merged name among its aliases) and the list reloads.
 
 ## 7. Acceptance criteria
 1. Each skill is stored as its own row: adding Java (Advanced, 36 months, 2026, resume) answers 201 with status `claimed` (AC1).

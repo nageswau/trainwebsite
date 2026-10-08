@@ -24,6 +24,8 @@ export default function RecruiterSkillDetail({ skill, categories, onChanged, onC
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [related, setRelated] = useState<PickOption | null>(null);
   const [pickerKey, setPickerKey] = useState(0);
+  const [mergeInto, setMergeInto] = useState<PickOption | null>(null);
+  const [confirmingMerge, setConfirmingMerge] = useState(false);
   const inFlight = useRef(false);
   const focus = useFocusAfterRender();
   const id = (name: string) => `skill-${name}-${skill.id}`;
@@ -74,6 +76,23 @@ export default function RecruiterSkillDetail({ skill, categories, onChanged, onC
       setRelated(null);
       setPickerKey((k) => k + 1);
     }
+  }
+
+  function askMerge(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!mergeInto) {
+      setFeedback({ text: "Choose a skill from the list.", tone: "error" });
+      focus(id("feedback"));
+      return;
+    }
+    setConfirmingMerge(true);
+    focus(id("confirm-merge"));
+  }
+
+  // rec-011 SK7: the answer is the kept skill, which the panel then shows in place of this one.
+  async function merge(into: PickOption) {
+    setConfirmingMerge(false);
+    await run(() => sendJson(`${url}/merge`, "POST", { into_skill_id: into.id }), `Merged ${skill.name} into ${into.label}.`);
   }
 
   const remove = (path: string, success: string) => run(() => sendRequest(`${url}/${path}`, { method: "DELETE" }), success, true);
@@ -144,6 +163,25 @@ export default function RecruiterSkillDetail({ skill, categories, onChanged, onC
         )
       ) : (
         <button type="button" className="btn secondary small" aria-label={`Reactivate ${skill.name}`} onClick={() => run(() => sendJson(url, "PATCH", { active: true }), `Reactivated ${skill.name}.`)} disabled={busy}>Reactivate</button>
+      )}
+
+      <h4 style={{ marginTop: 16 }}>Merge into another skill</h4>
+      <p className="muted" style={{ fontSize: 13 }}>For a duplicate: candidates&apos; and requirements&apos; skills, aliases and related skills move to the kept skill.</p>
+      <form onSubmit={askMerge} style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-end" }}>
+        <div style={{ flex: "1 1 240px" }}>
+          <SearchableSelect id={id("merge")} label="Merge into" noun="skill" search={skillSearch(skill.id)}
+            onChange={(option) => { setMergeInto(option); setConfirmingMerge(false); }} disabled={busy} />
+        </div>
+        <button className="btn secondary small" aria-label={`Merge ${skill.name}`} disabled={busy}>Merge</button>
+      </form>
+      {confirmingMerge && mergeInto && (
+        <div role="group" aria-label={`Confirm merging ${skill.name}`} style={{ marginTop: 8 }}>
+          <p className="muted" style={{ fontSize: 13 }}>
+            {skill.name} is removed and its name becomes an alias of {mergeInto.label}. Candidates and requirements with {skill.name} move to {mergeInto.label}. This cannot be undone.
+          </p>
+          <button id={id("confirm-merge")} type="button" className="btn small" onClick={() => void merge(mergeInto)} disabled={busy}>Confirm merge</button>{" "}
+          <button type="button" className="btn secondary small" onClick={() => setConfirmingMerge(false)} disabled={busy}>Cancel</button>
+        </div>
       )}
     </section>
   );
