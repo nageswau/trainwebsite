@@ -17,15 +17,34 @@ import smtplib
 from datetime import UTC, datetime
 from email.message import EmailMessage
 from email.utils import formataddr
+from functools import cache
 from html import escape
+from pathlib import Path
 
 from app.core.config import settings
 
 ROLE_LABELS = {"school_principal": "Principal", "school_teacher": "Teacher", "school_parent": "Parent"}
 
+# The header logo travels inside each email as an inline (cid:) image. A URL on FRONTEND_URL fails whenever that host
+# is not publicly reachable (localhost, a private dev box): mail clients fetch remote images through their own proxies.
+LOGO_CID = "edusphere-logo"
+LOGO_SRC = f"cid:{LOGO_CID}"
+
+
+@cache
+def _logo_png() -> bytes:
+    return (Path(__file__).resolve().parent.parent / "assets" / "email-logo.png").read_bytes()
+
+
+def _attach_logo(msg: EmailMessage) -> None:
+    """Embed the logo the HTML part references as `LOGO_SRC` (turns that part into multipart/related)."""
+    html_part = msg.get_body(preferencelist=("html",))
+    if html_part is None:  # every caller adds its HTML alternative first
+        raise ValueError("email has no HTML part to embed the logo in")
+    html_part.add_related(_logo_png(), "image", "png", cid=f"<{LOGO_CID}>", filename="edusphere-logo.png", disposition="inline")
+
 
 def _school_invite_html(*, recipient_name: str, role_label: str, school_name: str, accept_url: str, coordinator_name: str, expires_at: datetime) -> str:
-    logo_url = f"{settings.frontend_url}/brand/logo-dark.png"
     expires_label = expires_at.strftime("%d %b %Y")
     return f"""<!doctype html>
 <html>
@@ -36,7 +55,7 @@ def _school_invite_html(*, recipient_name: str, role_label: str, school_name: st
           <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 18px rgba(15,40,80,.08);">
             <tr>
               <td style="background:#ffffff;padding:24px 32px;border-bottom:1px solid #edf1f6;">
-                <img src="{logo_url}" alt="EduSphere" width="180" height="78" style="display:block;">
+                <img src="{LOGO_SRC}" alt="EduSphere" width="180" height="78" style="display:block;">
               </td>
             </tr>
             <tr>
@@ -117,6 +136,7 @@ async def send_school_invite_email(
         subtype="html",
     )
     try:
+        _attach_logo(msg)
         await asyncio.to_thread(_send_sync, msg)
         return "sent", None
     except Exception as exc:
@@ -126,7 +146,6 @@ async def send_school_invite_email(
 # --- SCH-007: Parent Portal notifications -------------------------------------------------
 
 def _parent_notification_html(*, recipient_name: str, school_name: str, title: str, body: str, action_url: str | None) -> str:
-    logo_url = f"{settings.frontend_url}/brand/logo-dark.png"
     # Every value below is coordinator-, admin- or invite-controlled text (a student, parent or school name, a
     # notification title/body, a link). Escaped like `_welcome_html` does, so it can never become markup in a
     # parent's inbox (ENH-005 security review S1 / D9).
@@ -151,7 +170,7 @@ def _parent_notification_html(*, recipient_name: str, school_name: str, title: s
           <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 18px rgba(15,40,80,.08);">
             <tr>
               <td style="background:#ffffff;padding:24px 32px;border-bottom:1px solid #edf1f6;">
-                <img src="{logo_url}" alt="EduSphere" width="180" height="78" style="display:block;">
+                <img src="{LOGO_SRC}" alt="EduSphere" width="180" height="78" style="display:block;">
               </td>
             </tr>
             <tr>
@@ -194,6 +213,7 @@ async def send_parent_notification_email(*, to_email: str, recipient_name: str, 
     msg.set_content(text)
     msg.add_alternative(_parent_notification_html(recipient_name=recipient_name, school_name=school_name, title=title, body=body, action_url=action_url), subtype="html")
     try:
+        _attach_logo(msg)
         await asyncio.to_thread(_send_sync, msg)
         return "sent", None
     except Exception as exc:
@@ -206,7 +226,6 @@ WELCOME_EXPIRY_HOURS_LABEL = "72 hours"
 
 
 def _welcome_html(*, recipient_name: str, role_label: str, set_password_url: str, expires_label: str, invited_by_name: str) -> str:
-    logo_url = f"{settings.frontend_url}/brand/logo-dark.png"
     name, role, inviter = escape(recipient_name), escape(role_label), escape(invited_by_name)
     url = escape(set_password_url, quote=True)
     return f"""<!doctype html>
@@ -218,7 +237,7 @@ def _welcome_html(*, recipient_name: str, role_label: str, set_password_url: str
           <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 18px rgba(15,40,80,.08);">
             <tr>
               <td style="background:#ffffff;padding:24px 32px;border-bottom:1px solid #edf1f6;">
-                <img src="{logo_url}" alt="EduSphere" width="180" height="78" style="display:block;">
+                <img src="{LOGO_SRC}" alt="EduSphere" width="180" height="78" style="display:block;">
               </td>
             </tr>
             <tr>
@@ -294,6 +313,7 @@ async def send_welcome_email(
         fields = dict(recipient_name=recipient_name, role_label=role_label, set_password_url=set_password_url, expires_label=expires_label, invited_by_name=invited_by_name)
         msg.set_content(_welcome_text(**fields))
         msg.add_alternative(_welcome_html(**fields), subtype="html")
+        _attach_logo(msg)
         await asyncio.to_thread(_send_sync, msg)
         return "sent", None
     except Exception as exc:
@@ -304,7 +324,6 @@ async def send_welcome_email(
 
 
 def _bdm_reminder_html(*, recipient_name: str, title: str, body: str, links: list[tuple[str, str]]) -> str:
-    logo_url = f"{settings.frontend_url.rstrip('/')}/brand/logo-dark.png"
     # Organization names, contact names and task titles are BDM-typed text: escaped like every other template here.
     recipient_name, title, body = escape(recipient_name), escape(title), escape(body)
     buttons = "".join(
@@ -322,7 +341,7 @@ def _bdm_reminder_html(*, recipient_name: str, title: str, body: str, links: lis
           <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 18px rgba(15,40,80,.08);">
             <tr>
               <td style="background:#ffffff;padding:24px 32px;border-bottom:1px solid #edf1f6;">
-                <img src="{logo_url}" alt="EduSphere" width="180" height="78" style="display:block;">
+                <img src="{LOGO_SRC}" alt="EduSphere" width="180" height="78" style="display:block;">
               </td>
             </tr>
             <tr>
@@ -360,6 +379,7 @@ async def send_bdm_reminder_email(*, to_email: str, recipient_name: str, title: 
         msg["To"] = to_email
         msg.set_content(f"Hi {recipient_name},\n\n{title}\n\n{body}\n\n" + "".join(f"{label}: {url}\n" for label, url in absolute))
         msg.add_alternative(_bdm_reminder_html(recipient_name=recipient_name, title=title, body=body, links=absolute), subtype="html")
+        _attach_logo(msg)
         await asyncio.to_thread(_send_sync, msg)
         return "sent", None
     except Exception as exc:
