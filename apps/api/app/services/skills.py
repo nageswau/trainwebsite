@@ -50,6 +50,13 @@ def sees_inactive(user: User) -> bool:
     return user.role in WRITERS
 
 
+def active_filters(user: User, column, active: bool | None) -> list:
+    """`active` narrows for a writer; a reader always gets the active rows, and their `active` is ignored (spec §4)."""
+    if not sees_inactive(user):
+        return [column.is_(True)]
+    return [] if active is None else [column.is_(active)]
+
+
 async def lock_terms(db: AsyncSession) -> None:
     await db.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": TERM_LOCK})
 
