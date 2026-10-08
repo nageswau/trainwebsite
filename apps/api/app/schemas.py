@@ -6601,6 +6601,9 @@ class RecCampaignOut(BaseModel):
 
 class RecCampaignPage(BaseModel):
     items: list[RecCampaignOut]
+    total: int
+    limit: int
+    offset: int
 
 
 # --- upc-001 (DEC-SCOPE-118): partnership manager profile ---------------------------------------------------------------------
