@@ -1,4 +1,4 @@
-"""rec-028 (DEC-SCOPE-132, spec §3): recruiter meetings with a company -- the four lists, a company's meetings, the participant picker,
+"""rec-028 (DEC-SCOPE-133, spec §3): recruiter meetings with a company -- the four lists, a company's meetings, the participant picker,
 schedule, edit/reschedule, outcome and cancel.
 
 Scope is the company's (rec-003 `caller_scope`; other roles 403, out of scope 404). Every write is one transaction -- scope, the company

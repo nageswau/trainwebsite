@@ -6,12 +6,14 @@ import BdmConfirm from "@/components/BdmConfirm";
 import { DetailList, multiline } from "@/components/BdmOrganizationProfileDetails";
 import LocalTime from "@/components/LocalTime";
 import RecruiterRequirementForm from "@/components/RecruiterRequirementForm";
+import RecruiterRequirementJd from "@/components/RecruiterRequirementJd";
 import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson } from "@/lib/apiErrors";
 import { display, LINK_STYLE } from "@/lib/bdmOrganizations";
 import { formatCalendarDate } from "@/lib/formatDate";
 import type { PickOption } from "@/lib/lookups";
 import { COMPANIES_PATH, personName, recruiterSearch } from "@/lib/recruiterCompanies";
+import type { Jd } from "@/lib/recruiterJd";
 import {
   DEADLINE_LABEL,
   experienceText,
@@ -25,8 +27,8 @@ import {
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // rec-007 (spec §6): one requirement. Actions render from `permissions` and `allowed_statuses` only -- the server enforces every rule.
-// Every write re-renders from the requirement the API returns (no refetch). The Candidates / JD / Interviews tabs arrive with rec-017 /
-// rec-008 / rec-018.
+// Every write re-renders from the requirement the API returns (no refetch). The JD section is rec-008's; the Candidates / Interviews tabs
+// arrive with rec-017 / rec-018.
 type Changed = (r: Requirement, notice: string) => void;
 
 function StatusChange({ requirement, onChanged }: { requirement: Requirement; onChanged: Changed }) {
@@ -164,7 +166,7 @@ function skillItems(requirement: Requirement, kind: "required" | "preferred"): R
   );
 }
 
-export default function RecruiterRequirementDetail({ initial, created = false }: { initial: Requirement; created?: boolean }) {
+export default function RecruiterRequirementDetail({ initial, initialJd, created = false }: { initial: Requirement; initialJd: Jd | null; created?: boolean }) {
   const [requirement, setRequirement] = useState(initial);
   const [editing, setEditing] = useState(false);
   const [notice, setNotice] = useState<string | null>(created ? `Requirement ${initial.code} created.` : null);
@@ -255,6 +257,7 @@ export default function RecruiterRequirementDetail({ initial, created = false }:
           <DetailList rows={rows} />
         </section>
       )}
+      <RecruiterRequirementJd requirement={r} initial={initialJd} onRequirementChanged={changed} />
       {p.can_change_status && !showEditor && <StatusChange requirement={r} onChanged={changed} />}
       {p.can_reassign && <Reassign requirement={r} onChanged={changed} />}
       <section className="action-card wide" aria-labelledby={`requirement-${r.id}-history`}>

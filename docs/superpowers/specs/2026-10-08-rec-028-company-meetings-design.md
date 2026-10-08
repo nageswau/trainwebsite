@@ -6,10 +6,10 @@
   Location/Meeting Link, Purpose, Participants, Outcome and Next Action. Line 47 adds the "+ Schedule Meeting" quick action (rec-032 owns
   the dashboard). Line 234 is the pipeline stage "Meeting Scheduled" (rec-005).
 - **Module scope:** `DEC-SCOPE-116`. R10: recruiters do every meeting, and the BDM is read-only. R14: meeting links are typed in.
-- **Decision:** `DEC-SCOPE-132`. MT1–MT10 are **recommended defaults**, taken on the owner's standing instruction for build sessions
+- **Decision:** `DEC-SCOPE-133`. MT1–MT10 are **recommended defaults**, taken on the owner's standing instruction for build sessions
   ("proceed with the recommended answers; ask only if blocking"). They stay `UNVERIFIED` until the owner confirms them.
-- **Numbering (draft):** migration `0117_recruiter_meetings`, API §12AZ and RBAC §2.58. Re-check `origin/main` before the merge,
-  because rec-008 and rec-025 are in flight.
+- **Numbering (FINAL):** migration `0118_recruiter_meetings` (after rec-008's `0117_job_descriptions`), API §12BA and RBAC §2.59. Drafted
+  as `0117` / `DEC-SCOPE-132` / §12AZ / §2.58; rec-008 merged first and took those numbers.
 
 ## 1. Decisions (UNVERIFIED defaults)
 
@@ -26,7 +26,7 @@
 | MT9 | Who | Writes need the company's `can_edit`: the assigned recruiter or `super_admin`. `placement_manager` and the assigned BDM read only (`403`). An archived company's meetings are read-only (`409`). Reads use rec-003 `caller_scope`. Out of scope = `404` |
 | MT10 | Lists | `/recruiter/meetings` has four views with counts. **Upcoming** = scheduled with the start in the future, soonest first. **Awaiting outcome** = scheduled with the start passed, oldest first. **Completed** and **Cancelled** are newest first. A company's list shows scheduled meetings by start, then the rest newest first |
 
-## 2. Data (`0117`)
+## 2. Data (`0118`)
 
 - **`recruiter_meetings`:**
   - `id`, `meeting_code` (unique), `company_id`, and `contact_id` (nullable, FK `company_contacts`)
@@ -44,7 +44,7 @@
   - It also has `old_starts_at`, `new_starts_at`, `reason`, `actor_user_id`, `position` (identity) and `created_at`.
 - Every FK is RESTRICT. The guarded create follows the 0001 fresh-build idiom. `downgrade()` refuses while any meeting exists.
 
-## 3. API (§12AZ)
+## 3. API (§12BA)
 
 | Method/Path | Notes |
 |---|---|

@@ -1870,10 +1870,29 @@ can_complete, can_follow_up, can_close}, editable_fields, created_at, updated_at
 | `GET /recruiter/companies`, `GET /recruiter/companies/{id}` (§12AO) | **Additive:** each row and the detail gain `next_follow_up_at` (the earliest open follow-up, or null) |
 | `GET /recruiter/companies/{id}/contacts` (§12AS) | **Additive:** each contact gains `next_follow_up_at` (the earliest open follow-up linked to it, or null) |
 
-## 12AZ. Recruiter company meetings (`rec-028`) — addendum, 2026-10-08
+## 12AZ. JD management (`rec-008`) — addendum, 2026-10-08
 
-- **Basis:** `DEC-SCOPE-132` (MT1–MT10). Design spec `docs/superpowers/specs/2026-10-08-rec-028-company-meetings-design.md` §3.
-  Migration `0117`.
+- **Basis:** `DEC-SCOPE-132` (JD1–JD9). Design spec `docs/superpowers/specs/2026-10-08-rec-008-jd-management-design.md` §3. Migration `0117`. All routes are new; existing responses are unchanged.
+- **Common rules:**
+  - Every `{id}` resolves through the requirement's scope (§12AW): out of scope or unknown → `404` "Job requirement not found".
+    Roles outside the recruiter module → `403`.
+  - Writes need the requirement's `can_edit`: any other reader → `403`, a cancelled requirement → `409`.
+  - Each write locks the requirement row, adds one version, commits once and writes an audit row. It is not idempotent.
+- **Version:** `{version, is_current, role, experience, qualification, skills, salary, location, description, responsibilities, requirements,
+  openings, contact {id, name, active}|null, closing_date, closing_date_differs, file {name, content_type, size_bytes}|null, created_by,
+  created_at}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/requirements/{id}/jd` | → `{jd_number|null, versions[] (newest first; the first is current), can_edit}` |
+| `POST /recruiter/requirements/{id}/jd` | `{role (required, ≤ 180), experience?, qualification?, skills?, salary?, location?, description?, responsibilities?, requirements?, openings? (1–10000), contact_id?, closing_date?}`; unknown keys `422`. A contact that is not an active contact of the company → `422` "Choose an active contact of this company". → `201` with the GET shape; the current file carries forward |
+| `PUT /recruiter/requirements/{id}/jd/file` | multipart `file`: PDF/DOCX by bytes. Empty → `422`, > 5 MB → `413`, other → `415`. → `201` with the GET shape; the current fields (or the requirement's) carry forward. The stored object is discarded when the write fails |
+| `GET /recruiter/requirements/{id}/jd/{version}/file` | The bytes, `attachment; filename="JD-000001-v2.pdf"`, `nosniff`, `no-store`; audited before sending. Unknown version or a version without a file → `404` |
+
+## 12BA. Recruiter company meetings (`rec-028`) — addendum, 2026-10-08
+
+- **Basis:** `DEC-SCOPE-133` (MT1–MT10). Design spec `docs/superpowers/specs/2026-10-08-rec-028-company-meetings-design.md` §3.
+  Migration `0118`.
 - **Common rules:**
   - Scope is the company's (§12AO). A meeting or company outside the caller's scope is `404` "Meeting not found" or "Company not found",
     the same as an unknown id. Roles outside the recruiter scope → `403`.

@@ -1118,7 +1118,21 @@ read-only (`409`).
 | `bdm` (assigned) | read only (R10); every write `403` | companies whose Assigned BDM is them | `rec-024` |
 | `hr_team`, `it_admin`, `employer`, every other role | `403` | — | `rec-024` |
 
-### 2.58 Recruiter company meetings *(net-new, added 2026-10-08 — `DEC-SCOPE-132`, `rec-028`)*
+### 2.58 JD management *(net-new, added 2026-10-08 — `DEC-SCOPE-132`, `rec-008`)*
+
+The JD takes the requirement's scope (§2.55): a requirement outside the caller's scope is `404`. Writes follow the requirement's
+`can_edit` (JD7, an UNVERIFIED default). A cancelled requirement's JD is read-only (`409`).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` (with a profile) | read, create/edit (new version), upload, download | requirements assigned to me, or of a company assigned to me | `rec-008` |
+| `placement_manager` | read, download; writes `403` | as §2.55 | `rec-008` |
+| `super_admin` | everything | all | `rec-008` |
+| `bdm` (assigned) | read, download; writes `403` (R10) | requirements of companies where they are the Assigned BDM | `rec-008` |
+| `employer` | none yet: the employer view is deferred | — | `rec-008` |
+| `hr_team`, `it_admin`, every other role | `403` | — | `rec-008` |
+
+### 2.59 Recruiter company meetings *(net-new, added 2026-10-08 — `DEC-SCOPE-133`, `rec-028`)*
 
 Meetings take the company's scope (§2.47), so a meeting of a company outside the caller's scope is `404`, the same as an unknown id.
 - **Writes** follow the company's `can_edit` (MT9, an UNVERIFIED default). Under R10, recruiters do every meeting.

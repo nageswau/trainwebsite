@@ -1476,7 +1476,21 @@ history notes.
 - `next_follow_up_at` on the company and on each contact is derived (min open `due_at`), never stored.
 - `downgrade()` refuses while any follow-up exists.
 
-## Recruiter company meetings (`rec-028`, `DEC-SCOPE-132`; migration `0117_recruiter_meetings`, after `0116_recruiter_follow_ups`)
+## Job descriptions (`rec-008`, `DEC-SCOPE-132`; migration `0117_job_descriptions`, after `0116_recruiter_follow_ups`)
+
+**`job_descriptions` columns:** append-only versions of a requirement's JD.
+- `id`, `job_id` (FK `jobs`, RESTRICT), `jd_number` varchar(12) (`JD-` + `jd_number_seq`, shared by a requirement's versions), `version` int
+  (CHECK ≥ 1), `is_current` bool.
+- The §7 fields: `role` varchar(180) not null, `experience` (120), `qualification` (300), `skills` (1000), `salary` (120), `location` (120),
+  `description`, `responsibilities`, `requirements` (text), `openings` int (CHECK 1–10000), `contact_id` (FK `company_contacts`), and
+  `closing_date`.
+- The file: `storage_key` (300), `file_name` (255), `content_type` (120), `size_bytes`. CHECK `ck_job_descriptions_file`: the key, type and
+  size are all null or all set.
+- `created_by_user_id`, `created_at`.
+- Indexes: `uq_job_descriptions_version (job_id, version)`, partial unique `uq_job_descriptions_current (job_id) WHERE is_current`, and
+  `ix_job_descriptions_number`. `downgrade()` refuses while rows exist.
+
+## Recruiter company meetings (`rec-028`, `DEC-SCOPE-133`; migration `0118_recruiter_meetings`, after `0117_job_descriptions`)
 
 **`recruiter_meetings` columns:**
 - `id`, `meeting_code` varchar(20) unique (`MTG-000001` from `recruiter_meeting_code_seq`), `company_id` FK RESTRICT

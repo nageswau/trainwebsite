@@ -559,6 +559,10 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
   - `bdm_metrics` was unaffected: it counts offers, not job statuses.
 
 ### rec-008 — JD management
+- **Status (2026-10-08):** **BUILT** on `feature/rec-008`, not merged. `DEC-SCOPE-132` (JD1–JD9 recommended defaults, UNVERIFIED);
+  migration `0117_job_descriptions`, API §12AZ, RBAC §2.58. Spec `docs/superpowers/specs/2026-10-08-rec-008-jd-management-design.md`.
+  - AC3: a non-PDF/DOCX file is `415` (rec-009's code), not `422` (JD5). The employer view is deferred (JD7). There is no automatic JD
+    follow-up (JD9).
 - **Business requirement:** §7: upload or create a JD (14 fields), "📎 Upload JD and automatically connect it to the Job Requirement".
 - **Existing behavior:** `jobs.description` text only.
 - **Expected behavior:**
@@ -1225,9 +1229,10 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** low
 
 ### rec-028 — Company meetings
-- **Status (2026-10-08):** **BUILT** on `feature/rec-028`, not merged. `DEC-SCOPE-132` (MT1–MT10 recommended defaults, UNVERIFIED);
-  migration `0117_recruiter_meetings` (after rec-024's `0116`), API §12AZ, RBAC §2.58. The next rec item takes `0118`, `DEC-SCOPE-133`,
-  §12BA and §2.59 (re-check `main`: rec-008 and rec-025 are in flight).
+- **Status (2026-10-08):** **BUILT** on `feature/rec-028`, not merged. `DEC-SCOPE-133` (MT1–MT10 recommended defaults, UNVERIFIED);
+  migration `0118_recruiter_meetings` (after rec-008's `0117_job_descriptions`), API §12BA, RBAC §2.59. Drafted as `0117` /
+  `DEC-SCOPE-132` / §12AZ / §2.58; rec-008 merged first and took those numbers. The next rec item takes `0119`, `DEC-SCOPE-134`, §12BB
+  and §2.60 (re-check `main`: rec-025 is in flight).
 - **Business requirement:** §20 (7 types, 11 fields); quick action "+ Schedule Meeting" (R10, R14).
 - **Existing behavior:** BDM appointments are BDM-only.
 - **Expected behavior:**

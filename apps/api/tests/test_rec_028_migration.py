@@ -1,4 +1,4 @@
-"""rec-028 -- migration 0117_recruiter_meetings (spec §2). Round trip and downgrade refusal run in a throwaway database built from scratch
+"""rec-028 -- migration 0118_recruiter_meetings (spec §2). Round trip and downgrade refusal run in a throwaway database built from scratch
 (the rec-024 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -14,11 +14,11 @@ from app.core.config import settings
 from tests.test_tel_001_migration import _config, _sql
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_rec_028_migration_0117", VERSIONS / "0117_recruiter_meetings.py")
+_spec = importlib.util.spec_from_file_location("_rec_028_migration_0118", VERSIONS / "0118_recruiter_meetings.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0116_recruiter_follow_ups", "0117_recruiter_meetings"
+BASE, HEAD = "0117_job_descriptions", "0118_recruiter_meetings"
 MEETING_COLUMNS = {
     "id", "meeting_code", "company_id", "contact_id", "meeting_type", "starts_at", "mode", "location", "meeting_url", "purpose", "status",
     "outcome", "next_action", "follow_up_id", "completed_at", "completed_by_user_id", "cancelled_at", "cancel_reason", "created_by_user_id",
@@ -26,7 +26,7 @@ MEETING_COLUMNS = {
 }
 
 
-def test_migration_chains_after_0116_and_there_is_a_single_head():
+def test_migration_chains_after_0117_and_there_is_a_single_head():
     assert _migration.revision == HEAD
     assert _migration.down_revision == BASE
     assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1

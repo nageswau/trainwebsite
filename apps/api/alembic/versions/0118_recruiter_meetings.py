@@ -1,12 +1,17 @@
 """rec-028 -- recruiter_meetings + recruiter_meeting_participants + recruiter_meeting_events + recruiter_meeting_code_seq.
 
-Revision ID: 0117_recruiter_meetings
-Revises: 0116_recruiter_follow_ups
+Revision ID: 0118_recruiter_meetings
+Revises: 0117_job_descriptions
 
-docs/superpowers/specs/2026-10-08-rec-028-company-meetings-design.md §2 (DEC-SCOPE-132). New tables only; no existing row changes. 0001
+docs/superpowers/specs/2026-10-08-rec-028-company-meetings-design.md §2 (DEC-SCOPE-133). New tables only; no existing row changes. 0001
 builds a fresh database from the current models, which already carry these tables, so they are created only when missing (0116's idiom).
 CHECKS repeats app.models.RECRUITER_MEETING_CHECKS (test_rec_028_migration). downgrade() refuses while any meeting exists: entered data is
 never dropped silently.
+
+Re-chained 2026-10-08 on merging `main` @ `09abb21e`: drafted as `0117_recruiter_meetings` (DEC-SCOPE-132, API §12AZ, RBAC §2.58) on
+`0116_recruiter_follow_ups`, but rec-008 (`0117_job_descriptions`) merged first and took those numbers, so this is `0118` (DEC-SCOPE-133,
+API §12BA, RBAC §2.59). A database stamped at the draft is re-stamped with `alembic stamp --purge 0116_recruiter_follow_ups`, then
+`upgrade head` (the table step is guarded).
 """
 
 import sqlalchemy as sa
@@ -14,8 +19,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0117_recruiter_meetings"
-down_revision = "0116_recruiter_follow_ups"
+revision = "0118_recruiter_meetings"
+down_revision = "0117_job_descriptions"
 branch_labels = None
 depends_on = None
 
@@ -118,7 +123,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {MEETINGS} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0117_recruiter_meetings: recruiter meetings exist. Clear them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0118_recruiter_meetings: recruiter meetings exist. Clear them deliberately first.")
     op.drop_table(EVENTS)
     op.drop_table(PARTICIPANTS)
     op.drop_table(MEETINGS)
