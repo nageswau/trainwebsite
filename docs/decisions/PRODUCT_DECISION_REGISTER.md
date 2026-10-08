@@ -5572,7 +5572,8 @@ with the recommended answers; the backlog lists no Q-xx for this item.
 - Module scope: `DEC-SCOPE-116` (R6: `job_applications.candidate_id`, the backfill creates candidates for existing students, marked not
   opted in). Candidates: `DEC-SCOPE-122` (rec-009). Requirements: `DEC-SCOPE-129` (rec-007). Pipeline: `DEC-SCOPE-127` (rec-005).
 
-**Status:** Owner answers A1–A4 were given on 2026-10-08, taking the recommended option each time. They are recorded as **`UNVERIFIED`** until
+**Status:** **MERGED** to `main` as PR #178 @ `efd5d0cb` (2026-10-08). Owner answers A1–A4 were given on 2026-10-08, taking the recommended
+option each time. They are recorded as **`UNVERIFIED`** until
 the owner confirms this entry.
 
 **Numbering:** migration `0121_job_application_tracking` (after rec-026's `0120_recruiter_messages`), API §12BD and RBAC §2.62. Drafted as
