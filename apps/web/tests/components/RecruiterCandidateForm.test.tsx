@@ -90,7 +90,6 @@ describe("RecruiterCandidateForm", () => {
 
   it("sends one request for a double click", async () => {
     let release: (r: Response) => void = () => undefined;
-    createReply = () => new Response(null) as Response;
     fetchMock.mockImplementation((url: string, init?: RequestInit) => {
       if (url.startsWith("/api/v1/recruiter/catalogue/candidate-sources")) return Promise.resolve(res(sources));
       if (init?.method === "POST") return new Promise<Response>((resolve) => (release = resolve));

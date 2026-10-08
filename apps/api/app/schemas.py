@@ -6750,17 +6750,12 @@ class CandidateUpdate(_CandidateFields):
     preferred_locations: Annotated[list[str], AfterValidator(_places)] = None
 
 
-class PersonRefOut(BaseModel):
-    id: UUID
-    full_name: str
-
-
 class CandidateResumeOut(BaseModel):
     version: int
     file_name: str | None
     content_type: str
     size_bytes: int
-    uploaded_by: PersonRefOut | None
+    uploaded_by: BdmPersonRef | None
     created_at: datetime
 
 
@@ -6798,8 +6793,8 @@ class CandidateDetail(CandidateItem):
     preferred_locations: list[str]
     linkedin: str | None
     archived_at: datetime | None
-    created_by: PersonRefOut | None
-    updated_by: PersonRefOut | None
+    created_by: BdmPersonRef | None
+    updated_by: BdmPersonRef | None
     updated_at: datetime
     resumes: list[CandidateResumeOut]
     can_edit: bool

@@ -20,6 +20,7 @@ from app.api.portfolio_certificates import HEADERS
 from app.api.telecaller_catalogue import NOT_AN_OBJECT
 from app.core.database import get_db
 from app.models import Candidate, CandidateResume, RecCandidateSource, User
+from app.notifications.phone import normalise_phone
 from app.schemas import CANDIDATE_FIELD_LABELS, CandidateCreate, CandidateDetail, CandidatePage, CandidateStatus, CandidateUpdate
 from app.services import candidates as svc
 from app.services.telecaller import _parse
@@ -81,8 +82,7 @@ async def create_candidate(payload: dict = Body(...), user: User = Depends(get_c
     svc.require_writer(user)
     data = _body(CandidateCreate, payload).model_dump()
     await svc.active_source(db, data["source_id"])
-    candidate = Candidate(**data, mobile_normalized=None, created_by_user_id=user.id)
-    candidate.mobile_normalized, candidate.email = svc.keys(candidate.mobile, candidate.email)
+    candidate = Candidate(**data, mobile_normalized=normalise_phone(data["mobile"]), created_by_user_id=user.id)  # email: lower-cased by the schema
     await svc.block_duplicates(db, candidate)
     candidate.candidate_code = await svc.next_code(db)
     db.add(candidate)

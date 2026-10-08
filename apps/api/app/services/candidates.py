@@ -132,11 +132,10 @@ async def flush_candidate(db: AsyncSession, candidate: Candidate) -> None:
 
 
 def apply_fields(candidate: Candidate, values: dict) -> list[str]:
-    """Set each sent field; returns the names that changed (the audit form). The mobile's match key follows the mobile."""
+    """Set each sent field (the schema already trimmed them and lower-cased the email); returns the names that changed (the audit
+    form). The mobile's match key follows the mobile."""
     changed = []
     for key, value in values.items():
-        if key == "email" and value is not None:
-            value = value.lower()
         if getattr(candidate, key) != value:
             setattr(candidate, key, value)
             changed.append(key)
