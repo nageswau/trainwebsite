@@ -116,10 +116,10 @@ export const TELECALLER_SIGN_IN = "/telecaller/sign-in";
 // placement manager's pages (managers sign in at /admin). Later rec items add their pages here.
 const LEGACY_PLACEMENT = ["candidates", "company-requirements", "interviews", "offers", "reports"];
 export const RECRUITER_NAV: NavItem[] = [
-  { label: "Dashboard", href: "/recruiter/dashboard" }, { label: "Profile", href: "/recruiter/profile" },
+  { label: "Dashboard", href: "/recruiter/dashboard" }, { label: "Profile", href: "/recruiter/profile" }, { label: "Skills Master", href: "/recruiter/skills" },
   ...LEGACY_PLACEMENT.map((x) => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, (c) => c.toUpperCase()), href: `/it/placement/${x}` })),
 ];
-export const RECRUITER_MANAGER_NAV: NavItem[] = [{ label: "Team", href: "/recruiter/manager/team" }];
+export const RECRUITER_MANAGER_NAV: NavItem[] = [{ label: "Team", href: "/recruiter/manager/team" }, { label: "Skills Master", href: "/recruiter/manager/skills" }];
 
 // SCH-001/SCH-003 -- School roles use their own dedicated pages (bespoke forms/actions,
 // not the generic PortalPage/[section] `_payload()` dispatcher every other role's console
