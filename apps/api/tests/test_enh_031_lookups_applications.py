@@ -140,7 +140,7 @@ async def job_application(db, tag, *, candidate_name, title, company_name, statu
     company = Company(name=f"{company_name} {uniq('co')}")
     db.add(company)
     await db.flush()
-    job = Job(company_id=company.id, title=title, location="Remote", description="", skills=[], status="open")
+    job = Job(company_id=company.id, title=title, location="Remote", description="", skills=[], status="requirement_received")
     db.add(job)
     await db.flush()
     application = JobApplication(job_id=job.id, student_id=candidate.id, status=status)

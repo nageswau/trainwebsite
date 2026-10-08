@@ -9,6 +9,7 @@ from app.core.database import SessionLocal, engine
 from app.core.identifiers import unique_student_code
 from app.core.security import hash_password
 from app.models import *
+from app.services import recruiter_requirements as requirements
 from app.services.agent_orgs import ensure_agent_org
 
 PASSWORD = "Demo@123"
@@ -265,18 +266,23 @@ async def main():
                 await db.flush()
             companies.append(x)
         if not await db.scalar(select(Job).limit(1)):
+            seeded_jobs = []
             for i, c in enumerate(companies[:4]):
-                db.add(
+                seeded_jobs.append(
                     Job(
                         company_id=c.id,
                         title=["Python Developer", "Data Analyst", "Cloud Engineer", "DevOps Engineer"][i],
                         location=["Bengaluru", "Hyderabad", "Pune", "Remote/India"][i],
                         description="Hiring opportunity for screened EduSphere candidates.",
                         skills=[["Python", "FastAPI", "SQL"], ["SQL", "Power BI", "Excel"], ["AWS", "Linux", "Networking"], ["Docker", "CI/CD", "Kubernetes"]][i],
-                        status="open",
+                        status="requirement_received",  # rec-007: the §6 status of a published requirement
                         closes_on=date.today() + timedelta(days=30 + i * 5),
                     )
                 )
+            db.add_all(seeded_jobs)
+            await db.flush()
+            for seeded in seeded_jobs:  # job_skills rows behind the skills list (rec-007 J7)
+                await requirements.set_legacy_skills(db, seeded, seeded.skills)
         await db.flush()
         job = await db.scalar(select(Job).order_by(Job.id))
         if job and not await db.scalar(select(JobApplication).where(JobApplication.student_id == us["it_student"].id)):

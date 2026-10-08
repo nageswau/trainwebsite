@@ -43,6 +43,11 @@ from app.models import (
     COURSE_LEVELS,
     GENDERS,
     INSTITUTION_TYPES,
+    JOB_EMPLOYMENT_TYPES,
+    JOB_PRIORITIES,
+    JOB_SHIFTS,
+    JOB_STATUSES,
+    JOB_WORK_MODES,
     LEAD_APPOINTMENT_TYPE_LABELS,
     LEAD_CALL_MAX_SECONDS,
     LEAD_CALL_OUTCOMES,
@@ -7396,3 +7401,97 @@ class CandidateDetail(CandidateItem):
     updated_at: datetime
     resumes: list[CandidateResumeOut]
     can_edit: bool
+
+
+# --- rec-007 (DEC-SCOPE-123): the Job Requirement ----------------------------------------------------------------------------------
+REC_REQUIREMENT_LABELS = {
+    "title": "Job title", "location": "Job location", "description": "Job description", "department": "Department",
+    "qualification": "Qualification", "joining_requirement": "Joining requirement", "note": "Note",
+}
+REC_REQUIREMENT_MULTILINE = frozenset({"description", "note"})
+REC_REQUIREMENT_FIELDS = (  # the `jobs` columns a create or edit may write; code, status, assignee and creator are server-owned
+    "title", "location", "description", "department", "job_category_id", "vacancies", "qualification", "experience_min_months",
+    "experience_max_months", "salary_min", "salary_max", "work_mode", "shift", "employment_type", "joining_requirement", "closes_on",
+    "requirement_date", "priority",
+)
+
+
+def _rec_requirement_text(value: str | None, info: ValidationInfo) -> str | None:
+    """bdm-002's rule: no control characters (a line break only in a multi-line field); blank -> None."""
+    label = REC_REQUIREMENT_LABELS.get(info.field_name, "Skill")
+    control = _BDM_CONTROL_MULTILINE if info.field_name in REC_REQUIREMENT_MULTILINE else _BDM_CONTROL
+    if value is not None and control.search(value):
+        raise ValueError(f"{label} contains invalid characters")
+    return value or None
+
+
+def _rec_requirement_text_type(max_length: int, *, multiline: bool = False):
+    text = Annotated[Annotated[str, StringConstraints(strip_whitespace=True, max_length=max_length)] | None, AfterValidator(_rec_requirement_text)]
+    return Annotated[text, BeforeValidator(_bdm_newlines)] if multiline else text
+
+
+def _rec_required_text(value: str | None, info: ValidationInfo) -> str:
+    if value is None:
+        raise ValueError(f"{REC_REQUIREMENT_LABELS[info.field_name]} is required")
+    return value
+
+
+RecRequirementTitle = Annotated[_rec_requirement_text_type(180), AfterValidator(_rec_required_text)]
+RecRequirementLocation = Annotated[_rec_requirement_text_type(120), AfterValidator(_rec_required_text)]
+RecSkillName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
+RecMonths = Annotated[int | None, Field(ge=0, le=600)]
+RecMoney = Annotated[Decimal | None, Field(ge=0, max_digits=12, decimal_places=2)]
+
+
+class RecRequirementUpdate(BaseModel):
+    """PATCH: omitted = unchanged, null = clear (title and location cannot be cleared). Sending `required_skills` / `preferred_skills`
+    replaces that list; each name resolves through the Skills Master (J7). Min > max is a 422 here when both are sent, and in the
+    service against the stored values."""
+
+    model_config = ConfigDict(extra="forbid")
+    title: RecRequirementTitle = None
+    location: RecRequirementLocation = None
+    description: _rec_requirement_text_type(10000, multiline=True) = None
+    department: _rec_requirement_text_type(120) = None
+    job_category_id: UUID | None = None
+    vacancies: Annotated[int | None, Field(ge=1, le=10000)] = None
+    qualification: _rec_requirement_text_type(300) = None
+    experience_min_months: RecMonths = None
+    experience_max_months: RecMonths = None
+    salary_min: RecMoney = None
+    salary_max: RecMoney = None
+    work_mode: Literal[JOB_WORK_MODES] | None = None
+    shift: Literal[JOB_SHIFTS] | None = None
+    employment_type: Literal[JOB_EMPLOYMENT_TYPES] | None = None
+    joining_requirement: _rec_requirement_text_type(300) = None
+    closes_on: date | None = None
+    requirement_date: date | None = None
+    priority: Literal[JOB_PRIORITIES] | None = None
+    required_skills: list[RecSkillName] | None = Field(default=None, max_length=30)
+    preferred_skills: list[RecSkillName] | None = Field(default=None, max_length=30)
+
+    @model_validator(mode="after")
+    def _ranges(self):
+        for low, high, label in (("experience_min_months", "experience_max_months", "experience"), ("salary_min", "salary_max", "salary")):
+            a, b = getattr(self, low), getattr(self, high)
+            if a is not None and b is not None and a > b:
+                raise ValueError(f"Minimum {label} cannot be more than the maximum")
+        return self
+
+
+class RecRequirementCreate(RecRequirementUpdate):
+    company_id: UUID
+    title: RecRequirementTitle
+    location: RecRequirementLocation
+    assigned_recruiter_user_id: UUID | None = None  # managers and super_admin only (services/recruiter_requirements)
+
+
+class RecRequirementStatusChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: Literal[JOB_STATUSES]
+    note: _rec_requirement_text_type(500, multiline=True) = None
+
+
+class RecRequirementAssign(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    recruiter_user_id: UUID

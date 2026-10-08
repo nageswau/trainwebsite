@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_db
 from app.models import (
+    JOB_OPEN_STATUSES,
     BlogPost,
     CareerApplication,
     CareerPath,
@@ -184,7 +185,7 @@ async def jobs(db: AsyncSession = Depends(get_db)):
     # EMP-002-AC02: a posting past its own closing date is not shown as open, even if
     # the Employer never explicitly closed it -- `status` alone was previously trusted.
     rows = (
-        await db.execute(select(Job, Company).join(Company).where(Job.status == "open", or_(Job.closes_on.is_(None), Job.closes_on >= date.today())).order_by(Job.created_at.desc()))
+        await db.execute(select(Job, Company).join(Company).where(Job.status.in_(JOB_OPEN_STATUSES), or_(Job.closes_on.is_(None), Job.closes_on >= date.today())).order_by(Job.created_at.desc()))
     ).all()
     return [{"id": j.id, "title": j.title, "company": c.name, "location": j.location, "skills": j.skills, "closes_on": j.closes_on} for j, c in rows]
 
@@ -324,7 +325,7 @@ async def public_job_apply(job_id: UUID, payload: dict, db: AsyncSession = Depen
     job = await db.get(Job, job_id)
     # EMP-002-AC02: a posting past its own closing date is not open, even if the
     # Employer never explicitly closed it -- applies here too, not just to the listing.
-    if not job or job.status != "open" or (job.closes_on and job.closes_on < date.today()):
+    if not job or job.status not in JOB_OPEN_STATUSES or (job.closes_on and job.closes_on < date.today()):
         raise HTTPException(404, "Open job not found")
     for required in ("full_name", "email", "resume_url"):
         if not payload.get(required):

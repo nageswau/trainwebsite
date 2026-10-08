@@ -13,6 +13,7 @@ from app.core.database import get_db
 from app.core.security import hash_password
 from app.models import AuditLog, Batch, Company, EmployerProfile, Enrollment, Interview, Job, JobApplication, PlacementProfile, Program, User
 from app.schemas import EmployerInterviewCreate, EmployerJobCreate, EmployerJobUpdate, EmployerRegistrationRequest, EmployerShortlistCreate, UserOut
+from app.services import recruiter_requirements as requirements
 from app.services.recruiter_companies import employer_lead_source_id
 
 router = APIRouter(prefix="/employer", tags=["employer"])
@@ -102,12 +103,17 @@ def _job_out(job: Job) -> dict:
         "location": job.location,
         "description": job.description,
         "skills": job.skills,
-        "status": job.status,
+        # rec-007 (DEC-SCOPE-123 J3): `status` keeps the draft/open/closed words this API has always used; the §6 requirement status
+        # and its label are alongside.
+        "status": requirements.legacy_word(job.status),
+        "requirement_status": job.status,
+        "status_label": requirements.STATUS_LABELS[job.status],
+        "requirement_code": job.requirement_code,
         "closes_on": job.closes_on,
         # EMP-002-AC02: a posting past its own closing date is never shown to Students
         # as open, even if the Employer never explicitly closed it -- surfaced here too
         # so the Employer's own listing doesn't imply it's still visible when it isn't.
-        "visible_to_students": job.status == "open" and (job.closes_on is None or job.closes_on >= date.today()),
+        "visible_to_students": requirements.is_open(job, date.today()),
     }
 
 
@@ -119,9 +125,12 @@ async def create_employer_job(payload: EmployerJobCreate, user: User = Depends(g
     # themselves via the update endpoint below, same as EMP-001's own "no invented
     # approval gate" precedent.
     _, company = await _own_profile(user, db)
-    job = Job(company_id=company.id, title=payload.title, location=payload.location, description=payload.description, skills=payload.skills, status="draft", closes_on=payload.closes_on)
+    # rec-007 J2: "draft" is the §6 `new`; no recruiter acceptance is needed before the Employer publishes it.
+    job = Job(company_id=company.id, title=payload.title, location=payload.location, description=payload.description, skills=[], status="new", closes_on=payload.closes_on, requirement_date=requirements.ist_today())
     db.add(job)
     await db.flush()
+    await requirements.set_legacy_skills(db, job, payload.skills)
+    requirements.record_created(db, user, job, "Posted by the employer")
     db.add(AuditLog(user_id=user.id, action="employer.job.create", entity_type="job", entity_id=str(job.id)))
     await db.commit()
     await db.refresh(job)
@@ -148,7 +157,13 @@ async def update_employer_job(job_id: UUID, payload: EmployerJobUpdate, user: Us
         raise HTTPException(403, "Job is outside your own postings")
     changes = payload.model_dump(exclude_unset=True)
     for key, value in changes.items():
-        setattr(job, key, value)
+        if key == "status":  # rec-007 J3: the legacy word maps onto a validated §6 move (with history), or is a no-op
+            if value and (target := requirements.legacy_target(job.status, value)):
+                requirements.change_status(db, user, job, target, "Changed by the employer")
+        elif key == "skills":
+            await requirements.set_legacy_skills(db, job, value or [])
+        else:
+            setattr(job, key, value)
     # `date` values aren't JSON-serializable directly -- the JSON column's own
     # serializer would fail at commit time otherwise.
     audit_changes = {k: (v.isoformat() if isinstance(v, date) else v) for k, v in changes.items()}
