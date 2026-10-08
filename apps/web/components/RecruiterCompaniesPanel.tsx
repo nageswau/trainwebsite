@@ -134,10 +134,16 @@ export default function RecruiterCompaniesPanel({ canCreate, isManager = false }
     event.preventDefault();
     go({ q: draftQ.trim(), city: draftCity.trim() });
   };
+  // EVID-018 quick actions: "+ Add Recruiter" (a company and its first contact, rec-004) and "+ Add Company" (rec-003).
   const addLink = canCreate && (
-    <Link className="btn small" href={`${COMPANIES_PATH}/new`}>
-      Add company
-    </Link>
+    <div className="actions">
+      <Link className="btn small" href={`${COMPANIES_PATH}/new?with=contact`}>
+        Add recruiter
+      </Link>
+      <Link className="btn secondary small" href={`${COMPANIES_PATH}/new`}>
+        Add company
+      </Link>
+    </div>
   );
 
   return (
