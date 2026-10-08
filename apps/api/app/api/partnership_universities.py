@@ -26,6 +26,7 @@ from app.schemas import (
     UniversityCreate,
     UniversityDeactivate,
     UniversityEnvelope,
+    UniversityMatchPage,
     UniversityPage,
     UniversityPriority,
     UniversityUpdate,
@@ -106,8 +107,9 @@ async def create_university(payload: UniversityCreate, user: User = Depends(get_
     included -- publishing is what needs a catalogue country (UM6)."""
     svc.require_creator(user)
     await svc.country_or_422(db, payload.country_id)
+    overridden = await svc.check_duplicates(db, user, payload.name, payload.country_id, payload.duplicate_reason)  # upc-004 UD2
     code = await svc.next_code(db)
-    values = payload.model_dump(exclude={"rankings"})
+    values = payload.model_dump(exclude={"rankings", "duplicate_reason"})
     uni = University(university_code=code, slug=await svc.free_slug(db, payload.name, code), catalogue_visible=False, requirements=[], deadlines=[], scholarships=[], **values)
     db.add(uni)
     try:
@@ -118,9 +120,29 @@ async def create_university(payload: UniversityCreate, user: User = Depends(get_
     await svc.replace_rankings(db, uni, payload.rankings)
     sent = sorted(k for k, v in values.items() if v not in (None, "", []))
     svc.audit(db, user, "create", uni.id, {"code": code, "fields": sent + (["rankings"] if payload.rankings else [])})
+    if overridden:
+        svc.audit(db, user, "duplicate_override", uni.id, {"match_count": overridden, "reason": payload.duplicate_reason})
     await db.commit()
-    svc.log("university_created", user, uni.id, code=code)
+    svc.log("university_created", user, uni.id, code=code, duplicate_override=bool(overridden))
     return {"university": await svc.detail_out(db, user, uni)}
+
+
+@router.get("/duplicates", response_model=UniversityMatchPage)
+async def duplicates(
+    name: str = Query(..., max_length=200),
+    country_id: UUID | None = None,
+    exclude_id: UUID | None = None,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """upc-004 UD6: search before adding -- the universities a create (or an edit, with exclude_id) of this name would collide with.
+    Advisory; the write re-checks under a lock."""
+    await svc.require_reader(db, user)
+    key = svc.name_key_of(name)
+    if not key:
+        raise HTTPException(422, "Enter a university name")
+    matches, total = await svc.find_duplicates(db, key, country_id, exclude_id)
+    return {"items": matches, "total": total}
 
 
 @router.get("/manager-options", response_model=PartnershipHeadPage)
@@ -156,9 +178,12 @@ async def update_university(university_id: UUID, payload: UniversityUpdate, user
     """AC1/AC4: only the fields sent; a value equal to the stored one is not a change (no audit). A published university stays
     publishable (UM6), so it cannot lose its overview or move to an internal country."""
     uni, team = await _locked(db, user, university_id, "can_edit", "update")
-    changes = payload.model_dump(exclude_unset=True, exclude={"rankings"})
+    changes = payload.model_dump(exclude_unset=True, exclude={"rankings", "duplicate_reason"})
     changed = sorted(k for k, v in changes.items() if getattr(uni, k) != v)
     country = await svc.country_or_422(db, changes["country_id"]) if "country_id" in changed else None
+    overridden = 0
+    if {"name", "country_id"} & set(changed):  # upc-004 UD3
+        overridden = await svc.check_duplicates(db, user, changes.get("name", uni.name), changes.get("country_id", uni.country_id), payload.duplicate_reason, uni.id)
     for key in changed:
         setattr(uni, key, changes[key])
     if payload.rankings is not None:
@@ -171,6 +196,8 @@ async def update_university(university_id: UUID, payload: UniversityUpdate, user
         svc.check_publishable(uni, country if country is not None else await db.get_one(Country, uni.country_id))
     if changed:
         svc.audit(db, user, "update", uni.id, {"fields": changed})
+    if overridden:
+        svc.audit(db, user, "duplicate_override", uni.id, {"match_count": overridden, "reason": payload.duplicate_reason})
     await db.commit()
     if changed:
         svc.log("university_updated", user, uni.id, fields=changed)

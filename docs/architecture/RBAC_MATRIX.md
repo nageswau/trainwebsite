@@ -1019,6 +1019,19 @@ are PII: audit and logs carry ids only.
 | Add / edit / make primary / delete | own (primary or backup) | unowned + team-owned | `403` | ✅ | `403` |
 | Set university relationship strength | as §2.46 Edit |||||
 
+### 2.50 University duplicate prevention + BDM link *(net-new, added 2026-10-08 — `DEC-SCOPE-124`, `upc-004`)*
+
+Enforced inline in `services/partnership_universities.py` (`check_duplicates`) and `api/bdm_organizations.py`. Matches show only the §26
+panel fields (no commission, for every role).
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | bdm | Other roles |
+|---|---|---|---|---|---|---|
+| Search before adding (`GET …/duplicates`) | ✅ | ✅ | ✅ | ✅ | `403` | `403` |
+| Add / rename into an existing name + country | — (cannot add) | ✅ with a reason (10–500, audited) | `409` | ✅ with a reason | — | `403` |
+| See master matches when creating a University org | — | — | — | — (BDMs create) | ✅ (own create only) | `403` |
+| Link / unlink a University org to the master | — | — | — | ✅ | assigned BDM (`can_edit`) | `403`/`404` per bdm-002 scope |
+| See an org's linked university / a university's linked orgs | — | ✅ / ✅ | — / ✅ | ✅ / ✅ | ✅ (own scope) / — | — |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

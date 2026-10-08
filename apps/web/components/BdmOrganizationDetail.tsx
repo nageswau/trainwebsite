@@ -126,6 +126,10 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
       ),
     ],
     ["Existing partner", org.existing_partner ? "Yes" : "No"],
+    // upc-004 UD10: the linked University Master record (read-only for BDMs)
+    ...(org.org_type === "university"
+      ? ([["University Master", org.university ? `${org.university.university_code} · ${org.university.name}, ${org.university.country_name}` : "Not linked"]] as [string, string][])
+      : []),
     ["Courses interested", multiline(org.courses_interested)],
     ["Number of students", display(org.student_count)],
     ["Last meeting", meetingText(org.last_meeting_at)],

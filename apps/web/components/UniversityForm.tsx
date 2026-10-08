@@ -1,13 +1,16 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { type FormEvent, type ReactNode, useRef, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
 
 import SearchableSelect from "@/components/SearchableSelect";
+import UniversityMatchList from "@/components/UniversityMatchList";
 import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
 import { formOptional as optional, formText as text } from "@/lib/telecaller";
+import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 import {
   COURSE_LEVELS,
   countrySearch,
+  duplicatesUrl,
   INSTITUTION_TYPES,
   OWNERSHIP_TYPES,
   POTENTIALS,
@@ -17,15 +20,21 @@ import {
   RELATIONSHIPS,
   type University,
   UNIVERSITIES_URL,
+  universityDuplicate,
+  type UniversityDuplicate,
+  type UniversityMatchPage,
   universityPath,
   universityUrl,
 } from "@/lib/universities";
 
 // upc-003 (AC1): add or edit a university's master record (EVID-020 §1, minus the contact rows that upc-006 owns). A 422 lands on its
 // field; anything else is one alert. The entry is never cleared on an error, and a double click sends one request.
+// upc-004 (§26): while the name or country is being entered, the master is searched for the same name + country (advisory; UD6). A save
+// into one is a 409 with the same panel; a head / super_admin may add it anyway with a reason (UD2).
 type RankingRow = { key: number; system: string; other_name: string; year: string; rank: string };
 type Errors = Record<string, string>;
 const MAX_RANKINGS = 10;
+const SEARCH_DELAY_MS = 400;
 
 
 function fieldErrors(detail: unknown): Errors | null {
@@ -72,6 +81,30 @@ export default function UniversityForm({ university }: { university?: University
   const nextKey = useRef(university?.rankings.length ?? 0);
   const [rankings, setRankings] = useState<RankingRow[]>(() =>
     (university?.rankings ?? []).map((r, key) => ({ key, system: r.system, other_name: r.other_name ?? "", year: String(r.year), rank: r.rank })));
+  const [name, setName] = useState(university?.name ?? "");
+  const [countryId, setCountryId] = useState(university?.country.id ?? "");
+  const [existing, setExisting] = useState<UniversityMatchPage | null>(null);
+  const [duplicate, setDuplicate] = useState<UniversityDuplicate | null>(null);
+  const focus = useFocusAfterRender();
+
+  useEffect(() => {
+    const unchanged = editing && name.trim() === university.name && countryId === university.country.id;
+    if (name.trim().length < 2 || !countryId || unchanged) {
+      setExisting(null);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      fetch(duplicatesUrl(name.trim(), countryId, university?.id), { signal: controller.signal })
+        .then((r) => (r.ok ? (r.json() as Promise<UniversityMatchPage>) : null))
+        .then((page) => setExisting(page && page.total > 0 ? page : null))
+        .catch(() => {}); // advisory: the save re-checks on the server
+    }, SEARCH_DELAY_MS);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [name, countryId, editing, university]);
 
   const updateRanking = (key: number, change: Partial<RankingRow>) => setRankings((rows) => rows.map((r) => (r.key === key ? { ...r, ...change } : r)));
   const invalid = (name: string) => (errors[name] ? { "aria-invalid": true as const, "aria-describedby": `uni-${name}-error` } : {});
@@ -90,6 +123,7 @@ export default function UniversityForm({ university }: { university?: University
       relationship_strength: optional(form, "relationship_strength"),
       overview: text(form, "overview"), eligibility: text(form, "eligibility"),
       rankings: rankings.map((r) => ({ system: r.system, other_name: r.system === "Other" ? r.other_name.trim() || null : null, year: Number(r.year), rank: r.rank.trim() })),
+      ...(duplicate?.can_override ? { duplicate_reason: text(form, "duplicate_reason") } : {}),
     };
     sending.current = true;
     setBusy(true);
@@ -113,6 +147,13 @@ export default function UniversityForm({ university }: { university?: University
     }
     sending.current = false;
     setBusy(false);
+    const found = response.status === 409 ? universityDuplicate(data?.detail) : null;
+    if (found) {
+      setErrors({});
+      setDuplicate(found);
+      focus("uni-duplicate");
+      return;
+    }
     const mapped = response.status === 422 ? fieldErrors(data?.detail) : null;
     setErrors(mapped ?? {});
     setMessage(mapped ? "Check the highlighted fields." : detailMessage(data?.detail, "The university could not be saved. Try again."));
@@ -125,13 +166,35 @@ export default function UniversityForm({ university }: { university?: University
       <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0, display: "grid", gap: 12 }}>
         <legend className="visually-hidden">University details</legend>
         <Field id="uni-name" label="University name (required)" error={errors.name}>
-          <input id="uni-name" name="name" required maxLength={200} defaultValue={u?.name ?? ""} {...invalid("name")} />
+          <input id="uni-name" name="name" required maxLength={200} defaultValue={u?.name ?? ""} onChange={(e) => { setName(e.target.value); setDuplicate(null); }} {...invalid("name")} />
         </Field>
         <div>
           <SearchableSelect id="uni-country" name="country_id" label="Country (required)" noun="country" required search={countrySearch}
+            onChange={(option) => { setCountryId(option?.id ?? ""); setDuplicate(null); }}
             initial={u ? { id: u.country.id, label: u.country.name, detail: [u.country.iso2, u.country.region].filter(Boolean).join(" · ") } : null} />
           <ErrorText error={errors.country_id} />
         </div>
+        {existing && !duplicate && (
+          <div role="status" className="notice">
+            <strong>Already in the University Master</strong> — check these before adding another one.
+            <UniversityMatchList matches={existing.items} total={existing.total} linkable />
+          </div>
+        )}
+        {duplicate && (
+          <div role="alert" className="form-error">
+            <strong id="uni-duplicate" tabIndex={-1}>{duplicate.message}</strong>
+            <UniversityMatchList matches={duplicate.matches} total={duplicate.total} linkable />
+            {duplicate.can_override ? (
+              <Field id="uni-duplicate_reason" label="Reason for adding it anyway (required)" error={errors.duplicate_reason}>
+                <textarea id="uni-duplicate_reason" name="duplicate_reason" rows={2} required minLength={10} maxLength={500}
+                  aria-describedby="uni-duplicate_reason-hint" {...invalid("duplicate_reason")} />
+                <small id="uni-duplicate_reason-hint" className="muted">At least 10 characters. It is kept in the audit log.</small>
+              </Field>
+            ) : (
+              <p style={{ margin: 0 }}>Ask your partnership head to add it if this is a different university.</p>
+            )}
+          </div>
+        )}
         <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
           <Field id="uni-city" label="City (required)" error={errors.city}>
             <input id="uni-city" name="city" required maxLength={120} defaultValue={u?.city ?? ""} {...invalid("city")} />
@@ -224,7 +287,9 @@ export default function UniversityForm({ university }: { university?: University
         </fieldset>
       </fieldset>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
-        <button className="btn" type="submit" disabled={busy}>{busy ? "Saving…" : editing ? "Save changes" : "Add university"}</button>
+        <button className="btn" type="submit" disabled={busy || (duplicate !== null && !duplicate.can_override)}>
+          {busy ? "Saving…" : duplicate?.can_override ? (editing ? "Save anyway" : "Add anyway") : editing ? "Save changes" : "Add university"}
+        </button>
         <a className="btn secondary" href={editing ? universityPath(university.id) : "/partnership/universities"}>Cancel</a>
       </div>
     </form>

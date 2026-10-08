@@ -5,14 +5,16 @@ so an id outside the caller's scope is the same 404 as a missing one. Logs carry
 """
 
 import logging
-import unicodedata
 from uuid import UUID
 
 from fastapi import HTTPException
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
+from app.core.identifiers import normalize_key  # upc-004: shared with University.name_key
 from app.models import (
     BDM_APPOINTMENT_OPEN,
     BDM_ORGANIZATION_CODE_SEQ,
@@ -23,11 +25,14 @@ from app.models import (
     BdmOrganization,
     BdmOrganizationContact,
     BdmProfile,
+    Country,
+    University,
     User,
 )
 from app.schemas import BDM_ORG_LABELS
 from app.services.bdm import bdm_context, person_ref
 from app.services.bdm_pipeline import live_status, pipeline_out
+from app.services.partnership_universities import DUPLICATE_MESSAGE as MASTER_DUPLICATE_MESSAGE
 
 logger = logging.getLogger("app.bdm")
 
@@ -56,13 +61,7 @@ ORG_TYPE_LABELS = {
     "training_institute": "Training Institute", "other": "Other",
 }
 GRADE_ORDER = "Lowest grade can't be above the highest grade"
-
-
-def normalize_key(value: str, limit: int) -> str:
-    """Q-18's "normalized name / city": NFKC (full-width and compatibility forms), whitespace collapsed, casefolded. NFKC and casefold
-    can lengthen text ("ß" -> "ss"), so the key is cut to its column length (final review M2); two names that differ only past that
-    point still match, which a warning can afford."""
-    return " ".join(unicodedata.normalize("NFKC", value).split()).casefold()[:limit]
+LINK_TYPE_REFUSAL = "Only University organizations can be linked to the University Master"
 
 
 def org_keys(name: str, city: str) -> tuple[str, str]:
@@ -146,8 +145,37 @@ async def find_duplicates(db: AsyncSession, bdm_type: str, name_key: str, city_k
     return matches, total
 
 
-def duplicate_conflict(matches: list[dict], total: int) -> HTTPException:
-    return HTTPException(409, {"message": "A similar organization already exists in your module", "code": "possible_duplicate", "matches": matches, "total": total})
+def duplicate_conflict(matches: list[dict], total: int, university_matches: list[dict] | None = None, university_total: int = 0) -> HTTPException:
+    """upc-004 UD8: a University organization's matches in the Global University Master travel in the same warning."""
+    message = "A similar organization already exists in your module" if total else MASTER_DUPLICATE_MESSAGE
+    body = {"message": message, "code": "possible_duplicate", "matches": matches, "total": total}
+    return HTTPException(409, body | {"university_matches": jsonable_encoder(university_matches or []), "university_total": university_total})
+
+
+async def check_university_link(db: AsyncSession, org_type: str, university_id: UUID | None) -> None:
+    """upc-004 UD7-UD9: only a University organization links, and only to a university that exists."""
+    if university_id is None:
+        return
+    if org_type != "university":
+        raise HTTPException(422, LINK_TYPE_REFUSAL)
+    if await db.get(University, university_id) is None:
+        raise HTTPException(422, "Unknown university")
+
+
+async def university_out(db: AsyncSession, university_id: UUID | None) -> dict | None:
+    """upc-004 UD10: the linked master record as the BDM sees it (no commission, no ownership ids)."""
+    if university_id is None:
+        return None
+    manager = aliased(User)
+    uni, country_name, manager_name = (
+        await db.execute(
+            select(University, Country.name, manager.full_name)
+            .join(Country, Country.id == University.country_id)
+            .outerjoin(manager, manager.id == University.primary_manager_user_id)
+            .where(University.id == university_id)
+        )
+    ).one()
+    return {"id": uni.id, "university_code": uni.university_code, "name": uni.name, "country_name": country_name, "city": uni.city, "primary_manager_name": manager_name}
 
 
 async def contacts_of(db: AsyncSession, org_id: UUID) -> list[BdmOrganizationContact]:
@@ -307,6 +335,7 @@ async def organization_out(db: AsyncSession, user: User, org: BdmOrganization, *
         "pipeline": pipeline_out(org, await live_status(db, org)),  # bdm-004; live School stages from bdm-018
         "onboarding": await org_onboarding_out(db, user, org),  # bdm-018
         "contacts": [_contact(c) for c in ordered],
+        "university": await university_out(db, org.university_id),
         "created_by_name": people[org.created_by_user_id].full_name,
         "archived_at": org.archived_at,
         "created_at": org.created_at,

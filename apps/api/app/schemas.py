@@ -3865,6 +3865,7 @@ class BdmOrganizationCreate(BaseModel):
     student_count: BdmStudentCount = None
     profile: BdmOrgProfileIn | None = None
     contacts: Annotated[list[BdmContactIn], AfterValidator(_bdm_contacts)]
+    university_id: UUID | None = None  # upc-004 UD8: University organizations only
     confirm_duplicate: StrictBool = False
 
 
@@ -3882,6 +3883,7 @@ class BdmOrganizationUpdate(BaseModel):
     courses_interested: BdmOrgCourses = None
     student_count: BdmStudentCount = None
     profile: BdmOrgProfileIn = None  # omitted = unchanged; an explicit null is a 422 (bdm-001's PATCH idiom)
+    university_id: UUID | None = None  # upc-004 UD9: omitted = unchanged; null unlinks
     confirm_duplicate: StrictBool = False
 
 
@@ -4034,10 +4036,20 @@ class BdmOrganizationOut(BdmOrganizationRow):
     pipeline: BdmOrgPipelineOut  # bdm-004: detail only; list rows are unchanged
     onboarding: BdmOrgOnboardingOut | None = None  # bdm-018: School organizations; bdm-019: Agent organizations too
     contacts: list[BdmContactOut]
+    university: "BdmOrgUniversityRef | None" = None  # upc-004 UD10: the linked master record, read-only
     created_by_name: str
     archived_at: datetime | None
     created_at: datetime
     updated_at: datetime
+
+
+class BdmOrgUniversityRef(BaseModel):
+    id: UUID
+    university_code: str
+    name: str
+    country_name: str
+    city: str
+    primary_manager_name: str | None
 
 
 class BdmOrganizationPage(BaseModel):
@@ -6787,6 +6799,10 @@ CourseLevels = Annotated[list[Literal[COURSE_LEVELS]], Field(max_length=len(COUR
 PopularPrograms = Annotated[list[Annotated[str, AfterValidator(_program)]], Field(max_length=UNIVERSITY_MAX_PROGRAMS), AfterValidator(_distinct)]
 
 
+# upc-004 UD2: why a head / super_admin adds a university that matches an existing one (audited; ignored when nothing matches).
+DuplicateReason = Annotated[str, StringConstraints(strip_whitespace=True, min_length=10, max_length=500)] | None
+
+
 class UniversityCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: UniversityName
@@ -6806,6 +6822,7 @@ class UniversityCreate(BaseModel):
     overview: UniversityBody = ""
     eligibility: UniversityBody = ""
     rankings: UniversityRankings = []
+    duplicate_reason: DuplicateReason = None
 
 
 class UniversityUpdate(BaseModel):
@@ -6830,6 +6847,7 @@ class UniversityUpdate(BaseModel):
     overview: UniversityBody = None
     eligibility: UniversityBody = None
     rankings: UniversityRankings = None
+    duplicate_reason: DuplicateReason = None
 
 
 class UniversityAssign(BaseModel):
@@ -6906,8 +6924,44 @@ class UniversityDetail(UniversityRow):
     eligibility: str
     rankings: list[UniversityRankingOut]
     application_count: int
+    linked_bdm_organizations: list["LinkedBdmOrganization"]  # upc-004 UD11
     created_at: datetime
     updated_at: datetime
+
+
+class LinkedBdmOrganization(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    city: str
+    bdm_type: str
+    assigned_bdm_name: str
+    archived: bool
+
+
+class UniversityMatchCountry(BaseModel):
+    id: UUID
+    name: str
+
+
+class UniversityMatch(BaseModel):
+    """upc-004 UD5: the duplicate panel's fields (no commission, for every role that sees it)."""
+
+    id: UUID
+    university_code: str
+    name: str
+    country: UniversityMatchCountry
+    city: str
+    active: bool
+    catalogue_visible: bool
+    existing_relationship: str | None
+    primary_manager: BdmManagerRef | None
+    backup_manager: BdmManagerRef | None
+
+
+class UniversityMatchPage(BaseModel):
+    items: list[UniversityMatch]
+    total: int
 
 
 class UniversityEnvelope(BaseModel):
