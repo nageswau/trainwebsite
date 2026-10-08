@@ -462,6 +462,11 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-007 — Partnership stage engine + history + Kanban
+- **Status (2026-10-08):** built on `feature/upc-007` under `DEC-SCOPE-126`, with migration `0111_university_pipeline`, API §12AT and
+  RBAC §2.52. Spec: `docs/superpowers/specs/2026-10-08-upc-007-partnership-pipeline-design.md`.
+  - PS1–PS12 are recommended defaults (`NEEDS_CONFIRMATION`): 15 stored stages (the source lists 15; "14" below miscounts); existing rows
+    start at Target University (Q-08 backfill); Agreement Signed counts as "In Progress" (G2); `overseas_admin` reads only; reopen by the
+    head or `super_admin`; Lost and Reopen need a reason.
 - **Business requirement:** §3 (14 statuses), §4 Kanban (9 columns), §2 status colours (U7).
 - **Existing behavior:** none.
 - **Expected behavior:**
@@ -555,8 +560,8 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-010 — University visits + approval
-- **Status (2026-10-08):** built on `feature/upc-010` under `DEC-SCOPE-126`, with migration `0111_university_visits`, API §12AT and
-  RBAC §2.52. Spec: `docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.md`.
+- **Status (2026-10-08):** built on `feature/upc-010` under `DEC-SCOPE-127`, with migration `0112_university_visits`, API §12AU and
+  RBAC §2.53. Spec: `docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.md`.
   - Q-13 and the design-level rules are answered by the recommended defaults VS1–VS18 (`NEEDS_CONFIRMATION`): one university per visit;
     the head approves, super_admin when the head is inactive or took part; no un-approving, an early close with a reason instead.
   - The follow-up date is stored; upc-020 turns it into a task. The calendar and overlap warning are upc-011's.

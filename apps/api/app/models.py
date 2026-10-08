@@ -32,6 +32,8 @@ from app.bdm_stages import MANUAL_STAGES as BDM_MANUAL_STAGES
 from app.core.identifiers import normalize_key
 from app.lead_stages import STAGES as LEAD_STAGES
 from app.notifications.phone import normalise_phone
+from app.partnership_stages import FIRST_STAGE as UNIVERSITY_FIRST_STAGE
+from app.partnership_stages import STAGE_KEYS as UNIVERSITY_STAGE_KEYS
 from app.tel_content_kinds import ASSET_KINDS as TEL_ASSET_KINDS
 from app.tel_content_kinds import EMAIL_KINDS as TEL_EMAIL_KINDS
 from app.tel_content_kinds import WHATSAPP_KINDS as TEL_WHATSAPP_KINDS
@@ -563,6 +565,19 @@ UNIVERSITY_CHECKS = {
     "ck_universities_partnership_potential": _one_of("partnership_potential", PARTNERSHIP_POTENTIALS),
     "ck_universities_backup_needs_primary": "backup_manager_user_id IS NULL OR (primary_manager_user_id IS NOT NULL AND backup_manager_user_id <> primary_manager_user_id)",
 }
+# upc-007 (DEC-SCOPE-126, spec §2): the stored partnership stage and the Lost flag. Migration 0111 repeats both dicts;
+# test_upc_007_migration asserts they stay identical.
+UNIVERSITY_STAGE_EVENT_KINDS = ("move", "lost", "reopened")
+UNIVERSITY_PIPELINE_CHECKS = {
+    "ck_universities_stage": _one_of("stage", UNIVERSITY_STAGE_KEYS, nullable=False),
+    "ck_universities_lost": "(lost_at IS NULL) = (lost_reason IS NULL)",
+}
+UNIVERSITY_STAGE_HISTORY_CHECKS = {
+    "ck_university_stage_history_kind": _one_of("kind", UNIVERSITY_STAGE_EVENT_KINDS, nullable=False),
+    "ck_university_stage_history_note": "kind = 'move' OR note IS NOT NULL",
+}
+
+
 # upc-006: added by migration 0108 (kept out of UNIVERSITY_CHECKS, which mirrors 0105).
 UNIVERSITY_RELATIONSHIP_CHECK = _one_of("relationship_strength", RELATIONSHIP_STRENGTHS)
 
@@ -578,6 +593,8 @@ class University(Base, TimestampMixin):
     __table_args__ = (
         UniqueConstraint("university_code", name="uq_universities_code"),
         *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_CHECKS.items()),
+        *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_PIPELINE_CHECKS.items()),
+        Index("ix_universities_stage", "stage"),
         CheckConstraint(UNIVERSITY_RELATIONSHIP_CHECK, name="ck_universities_relationship_strength"),
         Index("ix_universities_primary_manager", "primary_manager_user_id"),
         Index("ix_universities_backup_manager", "backup_manager_user_id"),
@@ -611,6 +628,11 @@ class University(Base, TimestampMixin):
     active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
     # UM5: true by default so the existing rows and the legacy admin create stay public; the master creates every row as false.
     catalogue_visible: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    # upc-007: written only by services/partnership_pipeline (single writer). Lost is a flag on top of the kept stage (PS1).
+    stage: Mapped[str] = mapped_column(String(40), default=UNIVERSITY_FIRST_STAGE, server_default=UNIVERSITY_FIRST_STAGE)
+    stage_changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    lost_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    lost_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     relationship_strength: Mapped[str | None] = mapped_column(String(12), nullable=True)  # upc-006 CT11: set by hand (CT1)
     country = relationship("Country")
 
@@ -654,6 +676,26 @@ class UniversityAssignmentHistory(Base):
     from_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     to_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class UniversityStageHistory(Base):
+    """upc-007 (spec PS9): one row per stage move, Lost or Reopen. Append-only. `from_stage` = `to_stage` for lost / reopened; `note` is
+    the move note or the required reason. No stage CHECK: history must survive a future catalogue change. `position` orders rows."""
+
+    __tablename__ = "university_stage_history"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_STAGE_HISTORY_CHECKS.items()),
+        Index("ix_university_stage_history_university", "university_id", "position"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"))
+    actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    kind: Mapped[str] = mapped_column(String(10))
+    from_stage: Mapped[str] = mapped_column(String(40))
+    to_stage: Mapped[str] = mapped_column(String(40))
+    note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -716,7 +758,7 @@ class UniversityContact(Base, TimestampMixin):
     shareable: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
 
-# upc-010 (DEC-SCOPE-126, spec §2): §8's visit flow, exactly (VS2). Migration 0109 repeats the check; test_upc_010_migration keeps them
+# upc-010 (DEC-SCOPE-127, spec §2): §8's visit flow, exactly (VS2). Migration 0109 repeats the check; test_upc_010_migration keeps them
 # identical. VIS-000123 codes (VS17): a rolled-back create skips a number.
 UNIVERSITY_VISIT_STATUSES = ("planned", "approved", "travel_booked", "visit_completed", "follow_up", "closed")
 UNIVERSITY_VISIT_STATUS_CHECK = _one_of("status", UNIVERSITY_VISIT_STATUSES, nullable=False)

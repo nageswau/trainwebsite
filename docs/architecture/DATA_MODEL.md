@@ -329,7 +329,14 @@ primary and differs from it), `priority` (A/B/C, indexed), `partnership_potentia
 unique per university, system, name, year; cascade delete) and `university_assignment_history` (append-only, one row per changed manager
 slot). **Migration `0105_university_master`** backfills codes for existing rows in `created_at, slug` order and keeps them public;
 `downgrade()` refuses while rankings, assignment history or internal universities exist. Public reads show only published, active rows
-(API §12AN). `stage` is upc-007's; contacts are upc-006's.
+(API §12AN). Contacts are upc-006's.
+
+**upc-007 (`DEC-SCOPE-126`):** `universities` gains `stage` (one of the 15 EVID-020 §3 keys, CHECK, indexed, default
+`target_university`), `stage_changed_at` (set on every move), `lost_at` + `lost_reason` (CHECK both or neither: the Lost/Closed flag on top
+of the kept stage). New table `university_stage_history` (append-only: kind move / lost / reopened, from/to stage, note, actor,
+`position` identity; no stage CHECK so history survives a catalogue change). **Migration `0111_university_pipeline`** sets every existing
+row to `target_university` with `stage_changed_at = created_at`; `downgrade()` refuses while history, a lost or a moved university exists.
+The Kanban column, map group and probability are fixed groupings in `app/partnership_stages.py` (backlog Appendix B), never stored.
 
 **Addendum, 2026-10-08 (`upc-006`, `DEC-SCOPE-123` — University contacts + relationship strength):** `universities.relationship_strength`
 (nullable; CHECK new / developing / good / strong / strategic / at_risk / dormant, §11). New tables: `university_contact_roles` (`code` PK,
@@ -346,14 +353,14 @@ normalised name, kept by the model's `name` validator) with the non-unique index
 organizations only). **Migration `0109_university_duplicates`** backfills the key and logs (never merges or links) the existing duplicate
 groups and the unlinked BDM University organizations that match a master name; `downgrade()` refuses while any organization is linked.
 
-**Addendum, 2026-10-08 (`upc-010`, `DEC-SCOPE-126` — University visits + approval):** sequence `university_visit_code_seq`
+**Addendum, 2026-10-08 (`upc-010`, `DEC-SCOPE-127` — University visits + approval):** sequence `university_visit_code_seq`
 (`VIS-000001`). `university_visits` (code unique; FK `universities` RESTRICT; `city`, `purpose`, `lead_user_id`, `created_by_user_id`,
 `proposed_date` NOT NULL; `confirmed_date`, `follow_up_date`; `travel_required`/`hotel_required` (default false) + notes; `agenda`,
 `expected_outcome`; `status` CHECK planned / approved / travel_booked / visit_completed / follow_up / closed (§8); `submitted_at`,
 `rejection_reason` (the planned sub-state), `decided_by_user_id`, `decided_at`, `close_reason`; timestamps; indexes on university, lead
 and waiting visits). `university_visit_participants` (visit CASCADE, user RESTRICT) and `university_visit_contacts` (visit CASCADE,
 `university_contacts` CASCADE: deleting contact PII removes it from visits). `university_visit_events` is the append-only history (action,
-from/to status, actor, reason). **Migration `0111_university_visits`**; `downgrade()` refuses while any visit exists (API §12AT).
+from/to status, actor, reason). **Migration `0112_university_visits`**; `downgrade()` refuses while any visit exists (API §12AU).
 
 ### 6.2 `OverseasApplication`, `ApplicationStatusHistory`
 **Carries over**, status vocabulary **extended** — this is part of the `ADR-012` resolution (§6.3

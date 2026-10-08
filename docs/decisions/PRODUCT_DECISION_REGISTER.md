@@ -5219,13 +5219,47 @@ user's standing instruction to proceed with the recommended answers. Their statu
 - Contact PII: no export, and logs and audit rows carry ids and field names only.
 - **New Feature ID authorized:** `rec-004`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-004.
 
-### DEC-SCOPE-126 — University visits + approval (`upc-010`)
+### DEC-SCOPE-126 — Partnership stage engine + history + Kanban (`upc-007`)
+
+**Evidence:** `EVID-020` §3 (L92–L154, 15 statuses — the backlog's "14" miscounts the source), §4 (L156–L174, the 9-column Kanban), §32
+"Partnership Pipeline" (L1072); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U7 (`EXPLICIT_APPROVAL`, 2026-10-08), Appendix B stage
+groupings and §4 upc-007.
+**Status:** PS1–PS12 are the recommended answers to backlog Q-08 (backfill) and the item's design questions, applied under the owner's
+standing instruction for the build session ("proceed with the recommended answers; ask only if genuinely blocking"). **Not** separately
+confirmed: `NEEDS_CONFIRMATION` at sign-off. Migration `0111_university_pipeline`, API contract §12AT, RBAC §2.52. Spec: `docs/superpowers/specs/2026-10-08-upc-007-partnership-pipeline-design.md`. Drafted as `DEC-SCOPE-121` / `0106` / §12AO / §2.47 and renumbered on merging `main` @ `a62ad9d7`: rec-003 and rec-009 took those
+numbers and merged first. Renumbered again from `DEC-SCOPE-123` / `0108` / §12AQ / §2.49 on merging `main` @ `5b7c1fd5`: upc-006 and upc-004 took
+those numbers and merged first. Renumbered a third time from `DEC-SCOPE-125` / `0110` / §12AS / §2.51 on merging `main` @
+`721c23f7`: rec-004 took those numbers and merged first.
+
+| # | Question | Answer |
+|---|---|---|
+| PS1 | Stored stage | The 15 §3 statuses (source order and wording) in `app/partnership_stages.py`; Lost/Closed is a flag (`lost_at` + `lost_reason`) on top of the kept stage |
+| PS2 | Q-08 backfill | Every existing university starts at Target University, `stage_changed_at = created_at`; no partner status is invented, no history rows written |
+| PS3 | Groupings | Appendix B K (Kanban), G (map group) and P (probability) as catalogue constants; Agreement Signed → G2 "In Progress" (Q-08 alternative "Partner" stays open) |
+| PS4 | Moves | Any stage to any other; backward needs a note; same stage `422`; stale `from_stage` `409 stage_changed` (row lock + optimistic check) |
+| PS5 | Who moves / marks lost | Primary or backup manager; the head for unowned or team-owned universities; `super_admin`. `overseas_admin` reads only |
+| PS6 | Reopen | Head (team scope) and `super_admin` only; back at the stage it was lost at |
+| PS7 | Reasons | Lost and Reopen each need a reason (≤ 500, plain text) |
+| PS8 | Guards | A lost university cannot be moved or lost again (`409 university_lost`); reopen when not lost `409 university_not_lost`; inactive is read-only (`409`) |
+| PS9 | History | `university_stage_history` append-only (move / lost / reopened, note, actor, position); readable by every read role |
+| PS10 | `stage_changed_at` | Set on every move (not on lost / reopen) |
+| PS11 | Board scope | Every read role; filters `column` (K key or `lost`) and `manager` (`me`/`none`/uuid); managers default to their own universities; inactive excluded; lost counted apart |
+| PS12 | Board shape | The bdm-004 `BdmPipelineBoard` pattern: column count tiles + Lost, then a paged table of the chosen column |
+
+**Consequences:** `universities` gains `stage` (CHECK, indexed), `stage_changed_at`, `lost_at`, `lost_reason`; table
+`university_stage_history`; routes `POST /partnership/universities/{id}/stage|lost|reopen`, `GET …/stage-history`, `GET
+/partnership/pipeline`; university rows and details carry `stage`, `stage_label`, `lost`, `pipeline` and permissions `can_move_stage` /
+`can_reopen`; web page `/partnership/pipeline`, the university record's "Partnership stage" and "Stage history" sections, a Stage column in
+the University Master list; "Partnership Pipeline" goes live in the §32 menu and the head's sidebar.
+**New Feature ID authorized:** `upc-007`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-007.
+
+### DEC-SCOPE-127 — University visits + approval (`upc-010`)
 
 **Evidence:** `EVID-020` §8 (L314–L350: "separate from normal meetings", 14 planning fields, Planned → Approved → Travel Booked → Visit
 Completed → Follow-up → Closed); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U9 (`EXPLICIT_APPROVAL`, 2026-10-08) and §4 upc-010.
 **Status:** VS1–VS18 are the recommended answers to backlog Q-13 plus design-level rules, applied under the owner's standing instruction
 for the build session ("proceed with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed:
-`NEEDS_CONFIRMATION` at sign-off. Migration `0111_university_visits`, API contract §12AT, RBAC §2.52.
+`NEEDS_CONFIRMATION` at sign-off. Migration `0112_university_visits`, API contract §12AU, RBAC §2.53.
 Spec: `docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.md`.
 
 | # | Question | Answer |
