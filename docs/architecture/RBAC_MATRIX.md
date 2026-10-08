@@ -1032,6 +1032,16 @@ panel fields (no commission, for every role).
 | Link / unlink a University org to the master | — | — | — | ✅ | assigned BDM (`can_edit`) | `403`/`404` per bdm-002 scope |
 | See an org's linked university / a university's linked orgs | — | ✅ / ✅ | — / ✅ | ✅ / ✅ | ✅ (own scope) / — | — |
 
+### 2.51 University CSV import *(net-new, added 2026-10-08 — `DEC-SCOPE-125`, `upc-005`)*
+
+Enforced inline in `api/university_import.py` (`_require_importer`, `_scope`). The rows obey §2.46 (created unowned and internal) and §2.50
+(duplicates are reported; an import never overrides).
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Download the template, import a file | `403` | ✅ | ✅ (overseas division; else `403`) | ✅ | `403` |
+| See import history and reports | `403` | own imports (`404` for others) | own imports (`404` for others) | all | `403` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

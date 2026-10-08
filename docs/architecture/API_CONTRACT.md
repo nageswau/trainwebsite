@@ -1688,6 +1688,21 @@ primary_manager, backup_manager}`.
 | `PATCH /bdm/organizations/{id}` | **Changed:** `university_id` links (validated as above) or `null` unlinks; a type change away from University clears the link |
 | `GET /bdm/organizations/{id}` (every detail) | **Changed:** adds `university: {id, university_code, name, country_name, city, primary_manager_name}` or `null` |
 
+## 12AS. University CSV import (`upc-005`) — addendum, 2026-10-08
+
+`DEC-SCOPE-125`; design spec `docs/superpowers/specs/2026-10-08-upc-005-university-import-design.md` §3. Migration
+`0110_university_imports`. Roles: `partnership_head`, `overseas_admin` (overseas division) and `super_admin` (else `403`). A report is
+`{id, uploaded_by: {id, full_name}, total_rows, created_count, duplicate_count, invalid_count, created_at, rows}`, and each row is
+`{row_number, status: created|duplicate|invalid, name, country, university_id, university_code, matches, reason}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/universities/imports/template` | **New.** The header row as CSV (`name, country, city, institution_type` required; ten optional columns) |
+| `POST /partnership/universities/import` | **New.** Multipart `file` + `Idempotency-Key` header (required, `[A-Za-z0-9._:-]{1,120}`, else `422`). `201` with the report. Whole-file `422`: not UTF-8, malformed, a missing/unknown/repeated column, no filled-in rows, more than 5,000 rows; `413` over 1 MB. Each row goes through `UniversityCreate`; the country is an ISO-2 code or a name; value lists take codes or labels. Duplicates use §12AR's key against the master (inactive included) and earlier rows; never overridden. Created rows are unowned, internal and active, audited `university.create {code, import_batch_id}`; the batch is audited `university.import`. Same key + same file replays the first report; same key + another file `422`. `409` when a lock wait passes 5 s or a slug was taken in the same instant (nothing kept) |
+| `GET /partnership/universities/imports` | **New.** The caller's imports (`super_admin`: all), newest first; `{items, total, limit, offset}` (reports without `rows`) |
+| `GET /partnership/universities/imports/{id}` | **New.** The report; another person's batch `404` |
+| `GET /partnership/universities/imports/{id}/report.csv` | **New.** `row_number, status, name, country, university_code, reason`; formula cells escaped (`'=`); `404` as above |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

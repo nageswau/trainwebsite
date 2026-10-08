@@ -70,8 +70,9 @@ _CANONICAL = {field: {_fold(v): v for v in values} for field, values in CHOICES.
 
 
 def _choice(field: str, value: str) -> str:
-    """The stored value for a code or a label; anything else passes through for UniversityCreate to reject with its own message."""
-    return _CANONICAL[field].get(_fold(value), value)
+    """The stored value for a code or a label; anything else (and every free-text field) passes through unchanged, for UniversityCreate
+    to validate with its own message."""
+    return _CANONICAL[field].get(_fold(value), value) if field in _CANONICAL else value
 
 
 def country_index(countries: list[Country]) -> dict[str, Country]:
@@ -94,10 +95,9 @@ def parse_row(cells: dict[str, str], countries: dict[str, Country]) -> Universit
         if field == "country" or not value:
             continue
         if field in LIST_FIELDS:
-            parts = [part.strip() for part in value.split(";") if part.strip()]
-            values[field] = [_choice(field, part) for part in parts] if field in CHOICES else parts
+            values[field] = [_choice(field, part.strip()) for part in value.split(";") if part.strip()]
         else:
-            values[field] = _choice(field, value) if field in CHOICES else value
+            values[field] = _choice(field, value)
     try:
         return UniversityCreate.model_validate(values)
     except ValidationError as exc:
@@ -198,12 +198,13 @@ async def run(db: AsyncSession, user: User, batch: UniversityImportBatch, filled
     return results
 
 
-def counts(batch: UniversityImportBatch) -> dict:
-    return {"total_rows": batch.total_rows, "created_count": batch.created_count, "duplicate_count": batch.duplicate_count, "invalid_count": batch.invalid_count}
-
-
 def summary(batch: UniversityImportBatch, uploader: User) -> dict:
-    return {"id": batch.id, "uploaded_by": {"id": uploader.id, "full_name": uploader.full_name}, **counts(batch), "created_at": batch.created_at}
+    """A history row; the report adds `rows`."""
+    return {
+        "id": batch.id,
+        "uploaded_by": {"id": uploader.id, "full_name": uploader.full_name},
+        **{k: getattr(batch, k) for k in ("total_rows", "created_count", "duplicate_count", "invalid_count", "created_at")},
+    }
 
 
 def report_csv(batch: UniversityImportBatch) -> str:
