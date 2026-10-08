@@ -4071,3 +4071,99 @@ class CandidateResume(Base):
     size_bytes: Mapped[int] = mapped_column(Integer)
     uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# rec-028 (DEC-SCOPE-134): EVID-018 §20 company meetings -- the 7 types in source order (L800-L812), the states (MT6) and the events of the
+# append-only history. Migration 0119 repeats RECRUITER_MEETING_CHECKS (test_rec_028_migration asserts they stay identical). Labels live in
+# the web client.
+RECRUITER_MEETING_TYPES = (
+    "company_meeting", "hr_meeting", "requirement_discussion", "recruitment_presentation", "contract_discussion",
+    "campus_recruitment_discussion", "placement_drive_discussion",
+)
+RECRUITER_MEETING_STATUSES = ("scheduled", "completed", "cancelled")
+RECRUITER_MEETING_EVENTS = ("scheduled", "rescheduled", "completed", "cancelled")
+RECRUITER_MEETING_CODE_SEQ = Sequence("recruiter_meeting_code_seq", metadata=Base.metadata)
+RECRUITER_MEETING_CHECKS = {
+    "ck_recruiter_meetings_type": _in_list("meeting_type", RECRUITER_MEETING_TYPES),
+    "ck_recruiter_meetings_mode": _in_list("mode", APPOINTMENT_MODES),
+    "ck_recruiter_meetings_status": _in_list("status", RECRUITER_MEETING_STATUSES),
+    "ck_recruiter_meetings_state": (
+        "(status = 'completed') = (completed_at IS NOT NULL) AND (completed_at IS NULL) = (completed_by_user_id IS NULL) "
+        "AND (completed_at IS NULL) = (outcome IS NULL) AND (status = 'cancelled') = (cancelled_at IS NOT NULL) "
+        "AND (cancelled_at IS NULL) = (cancel_reason IS NULL) AND (status = 'completed' OR (next_action IS NULL AND follow_up_id IS NULL))"
+    ),
+    "ck_recruiter_meeting_participants_one": "(contact_id IS NULL) <> (user_id IS NULL)",
+    "ck_recruiter_meeting_events_event": _in_list("event", RECRUITER_MEETING_EVENTS),
+}
+
+
+def _meeting_checks(*names: str) -> tuple[CheckConstraint, ...]:
+    return tuple(CheckConstraint(RECRUITER_MEETING_CHECKS[name], name=name) for name in names)
+
+
+class RecruiterMeeting(Base, TimestampMixin):
+    """rec-028 (DEC-SCOPE-134): a recruiter's meeting with a company (§20). It belongs to the company, like rec-024's follow-ups: whoever
+    has the company in scope sees it. Never deleted: cancelled instead. The outcome's next action is a rec-024 follow-up (`follow_up_id`)."""
+
+    __tablename__ = "recruiter_meetings"
+    __table_args__ = (
+        UniqueConstraint("meeting_code", name="uq_recruiter_meetings_code"),
+        *_meeting_checks("ck_recruiter_meetings_type", "ck_recruiter_meetings_mode", "ck_recruiter_meetings_status", "ck_recruiter_meetings_state"),
+        Index("ix_recruiter_meetings_company_starts", "company_id", "starts_at"),
+        Index("ix_recruiter_meetings_status_starts", "status", "starts_at"),
+        Index("ix_recruiter_meetings_contact", "contact_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    meeting_code: Mapped[str] = mapped_column(String(20))
+    company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"))
+    contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("company_contacts.id", ondelete="RESTRICT"), nullable=True)
+    meeting_type: Mapped[str] = mapped_column(String(40))
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    mode: Mapped[str] = mapped_column(String(20))
+    location: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    meeting_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    purpose: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="scheduled", server_default=text("'scheduled'"))
+    outcome: Mapped[str | None] = mapped_column(Text, nullable=True)
+    next_action: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    follow_up_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_follow_ups.id", ondelete="RESTRICT"), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+class RecruiterMeetingParticipant(Base):
+    """rec-028 (MT5): one company contact or one recruiter per row; replaced as a set when the meeting is edited."""
+
+    __tablename__ = "recruiter_meeting_participants"
+    __table_args__ = (
+        *_meeting_checks("ck_recruiter_meeting_participants_one"),
+        UniqueConstraint("meeting_id", "contact_id", name="uq_recruiter_meeting_participants_contact"),
+        UniqueConstraint("meeting_id", "user_id", name="uq_recruiter_meeting_participants_user"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    meeting_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_meetings.id", ondelete="RESTRICT"))
+    contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("company_contacts.id", ondelete="RESTRICT"), nullable=True)
+    user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+
+
+class RecruiterMeetingEvent(Base):
+    """rec-028 (MT6): one row per schedule, reschedule (old and new time), completion and cancellation. Append-only; `position` orders rows
+    written in one transaction."""
+
+    __tablename__ = "recruiter_meeting_events"
+    __table_args__ = (
+        *_meeting_checks("ck_recruiter_meeting_events_event"),
+        Index("ix_recruiter_meeting_events_meeting", "meeting_id", "position"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    meeting_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_meetings.id", ondelete="RESTRICT"))
+    event: Mapped[str] = mapped_column(String(16))
+    old_starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    new_starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

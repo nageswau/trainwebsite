@@ -5482,3 +5482,44 @@ rec-008 merged first and took those numbers. Spec `docs/superpowers/specs/2026-1
   contacted after a logged call) is now met.
 - Audit `recruiter_call.{create,update,delete}` carries ids, the outcome and field names only, never notes.
 - **New Feature ID authorized:** `rec-025`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-025.
+
+### DEC-SCOPE-134 — Recruiter company meetings (`rec-028`)
+
+**Evidence:**
+- `EVID-018` §20 (lines 796–836) lists 7 meeting types and 11 fields: Meeting ID, Company, Contact, Date, Time, Mode, Location/Meeting
+  Link, Purpose, Participants, Outcome and Next Action.
+- `EVID-018` also has the "+ Schedule Meeting" quick action (line 47, rec-032) and the "Meeting Scheduled" stage (line 234, rec-005).
+- `RECRUITER_CRM_BACKLOG.md` §rec-028: AC1 and AC2. The negative scenario is a participant contact from another company (→ 422). The edge
+  case is the reschedule history.
+- Module scope: `DEC-SCOPE-116` (R10: recruiters do every meeting and the BDM reads; R14: links are typed in).
+- Company scope: `DEC-SCOPE-121` (rec-003). Contacts: `DEC-SCOPE-125` (rec-004). Pipeline: `DEC-SCOPE-127` (rec-005). Follow-ups:
+  `DEC-SCOPE-131` (rec-024).
+
+**Status:** built on `feature/rec-028`. The backlog lists no item-level question for rec-028. Every answer below is a **recommended
+default, `UNVERIFIED`**, taken on the owner's instruction to proceed with the recommended answers.
+
+**Numbering:** migration `0119_recruiter_meetings` (after rec-025's `0118_recruiter_calls`), API §12BB and RBAC §2.60. Drafted as
+`0117` / `DEC-SCOPE-132` / §12AZ / §2.58, then `0118` / `DEC-SCOPE-133` / §12BA / §2.59; rec-008 and then rec-025 merged first and took
+those numbers. Spec
+`docs/superpowers/specs/2026-10-08-rec-028-company-meetings-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| MT1 | Types | The 7 §20 values in source order and wording |
+| MT2 | Meeting ID | `MTG-000001` from `recruiter_meeting_code_seq`, unique, server-owned |
+| MT3 | Date and time | One `starts_at` (IST in the web, minutes only). Future and within 366 days at scheduling and on reschedule (`422` on `starts_at`). No duration |
+| MT4 | Mode, location, link | Mode `Online` / `Phone` / `In person` (the shared `APPOINTMENT_MODES`); optional location ≤ 200; optional typed link ≤ 500, `http(s)` only; optional purpose ≤ 1000 |
+| MT5 | Contact and participants | An optional primary contact. Participants are company contacts plus recruiters (active `placement_team` / `placement_manager`). A contact set or added must be an active contact of the same company, else `422`. The primary is always a participant. At most 20 of each. A stored one since deactivated stays |
+| MT6 | States and history | scheduled → completed (outcome) or cancelled (reason), both final. Reschedule = `PATCH starts_at`. Every schedule, reschedule (old and new time, optional reason), completion and cancellation is an append-only event |
+| MT7 | Outcome and next action | Allowed after the start only, and the outcome is required. A next action needs a due time and a §18 reason. It creates a rec-024 follow-up in the same transaction (AC2): notes = the next action, contact = the meeting's primary contact when still active. rec-024's rules (future due time, the 50-open cap → `409`) refuse the whole outcome |
+| MT8 | Pipeline | Scheduling fires rec-005's `meeting_scheduled`: the company moves only when it is earlier (AC1), never when Lost or archived. Reschedule, outcome and cancel never move the stage |
+| MT9 | Who | Writes = the company's `can_edit` (assigned recruiter, super_admin). Manager and assigned BDM read only (`403`); archived → `409`; out of scope → `404` |
+| MT10 | Lists | `/recruiter/meetings`: Upcoming (soonest first), Awaiting outcome (started, oldest first), Completed and Cancelled (newest first), with counts. A company's list: scheduled by start, then the rest newest first |
+
+**Consequences:**
+- `recruiter_meetings`, `recruiter_meeting_participants`, `recruiter_meeting_events` and `recruiter_meeting_code_seq` (`0119`).
+- `services/recruiter_meetings.py` and `api/recruiter_meetings.py`.
+- A `/recruiter/meetings` page, with nav entries for recruiters and managers. The company page gains a Meetings section.
+- Audit `recruiter_meeting.{create,update,complete,cancel}` carries ids, keys, counts and field names only.
+- "Last contacted" (rec-004 C6) and the dashboard's "Meetings Scheduled" (rec-032) can now read meetings; neither is changed here.
+- **New Feature ID authorized:** `rec-028`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-028.

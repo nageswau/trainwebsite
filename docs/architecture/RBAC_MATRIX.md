@@ -1146,6 +1146,21 @@ who logged a call edits or deletes it, on its IST day (CA4).
 | `hr_team` | read candidate calls; every write `403`; contact calls `403` | the pool | `rec-025` |
 | `it_admin`, `employer`, every other role | `403` | — | `rec-025` |
 
+### 2.60 Recruiter company meetings *(net-new, added 2026-10-08 — `DEC-SCOPE-134`, `rec-028`)*
+
+Meetings take the company's scope (§2.47), so a meeting of a company outside the caller's scope is `404`, the same as an unknown id.
+- **Writes** follow the company's `can_edit` (MT9, an UNVERIFIED default). Under R10, recruiters do every meeting.
+- **Read-only cases:** an archived company's meetings (`409`). A completed or cancelled meeting is final (`409`).
+- **The participant picker** (`/recruiter/meetings/recruiter-options`) is open to the roles that create companies.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` (with a profile) | read the lists and company meetings; schedule, edit/reschedule, record outcome, cancel | companies assigned to them | `rec-028` |
+| `placement_manager` | read only (the team's lists, company meetings, the picker); every write `403` | direct reports' companies + the unassigned queue | `rec-028` |
+| `super_admin` | everything | all companies | `rec-028` |
+| `bdm` (assigned) | read only (R10); every write `403`; the picker `403` | companies whose Assigned BDM is them | `rec-028` |
+| `hr_team`, `it_admin`, `employer`, every other role | `403` | — | `rec-028` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
