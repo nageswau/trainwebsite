@@ -14,7 +14,12 @@ export type LeadMessage = {
 export type RenderedTemplate = {
   template: { id: string; name: string; channel: string; kind: string }; subject: string | null; body: string;
   brochure_link?: { url: string; expires_at: string } | null; product_mismatch?: boolean; // tel-013 only; rec-026's render has neither
+  missing?: string[]; // rec-026 QA-02: the placeholders that had no value for this recipient
 };
+
+/** rec-026 QA-02: the composers' note when a placeholder rendered empty. */
+export const missingNote = (missing: string[]) =>
+  `Check the text: ${missing.map((p) => `{${p}}`).join(", ")} ${missing.length === 1 ? "has" : "have"} no value for this recipient.`;
 
 export const BODY_MAX = 1000; // tel-012's WhatsApp limit
 export const EMAIL_BODY_MAX = 5000; // tel-012's email limits

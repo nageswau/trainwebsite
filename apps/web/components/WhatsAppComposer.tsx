@@ -2,7 +2,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 import { sendJson } from "@/lib/apiErrors";
-import { BODY_MAX, isRenderedTemplate, waHref, type ComposerTarget } from "@/lib/telecallerMessages";
+import { BODY_MAX, isRenderedTemplate, missingNote, waHref, type ComposerTarget } from "@/lib/telecallerMessages";
 
 /** tel-013 (spec §4; D3-D5, WA4): pick a template (rendered with the lead's values) or write a custom message, edit it, open wa.me, then
  *  confirm. Only "Yes, record as sent" writes the log -- wa.me can't report delivery, and "Not sent" keeps the text.
@@ -15,6 +15,7 @@ export default function WhatsAppComposer({ target, to, onRecorded, onCancel }: {
   const [text, setText] = useState("");
   const [rendering, setRendering] = useState<"idle" | "loading" | "failed">("idle");
   const [mismatch, setMismatch] = useState(false);
+  const [missing, setMissing] = useState<string[]>([]);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +38,7 @@ export default function WhatsAppComposer({ target, to, onRecorded, onCancel }: {
   async function choose(next: string) {
     setTemplateId(next);
     setMismatch(false);
+    setMissing([]);
     setConfirming(false);
     setError(null);
     renderAbort.current?.abort();
@@ -50,6 +52,7 @@ export default function WhatsAppComposer({ target, to, onRecorded, onCancel }: {
       if (!response.ok || !isRenderedTemplate(body)) throw new Error("render failed");
       setText(body.body);
       setMismatch(body.product_mismatch === true);
+      setMissing(body.missing ?? []);
       setRendering("idle");
     } catch {
       if (!controller.signal.aborted) setRendering("failed");
@@ -82,6 +85,7 @@ export default function WhatsAppComposer({ target, to, onRecorded, onCancel }: {
       </div>
       {rendering === "loading" && <p className="muted" role="status" style={{ fontSize: 13, margin: 0 }}>Preparing the message…</p>}
       {rendering === "failed" && <p className="form-error" role="alert" style={{ fontSize: 13, margin: 0 }}>Unable to load the template. Choose it again or write a custom message.</p>}
+      {missing.length > 0 && <p className="form-warning" role="note" style={{ fontSize: 13, margin: 0 }}>{missingNote(missing)}</p>}
       {mismatch && (
         <p className="form-warning" role="note" style={{ fontSize: 13, margin: 0 }}>This template was made for another product. Check the text before sending.</p>
       )}

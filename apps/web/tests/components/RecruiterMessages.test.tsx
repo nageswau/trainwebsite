@@ -77,6 +77,20 @@ describe("rec-026 RecruiterMessages", () => {
     expect(JSON.parse(String(writes(calls)[0].init?.body))).toEqual({ candidate_id: "c1", channel: "email", subject: "Interview confirmation", body: "Dear Rahul" });
   });
 
+  it("says which placeholder had no value for this recipient (QA-02)", async () => {
+    const emailTemplate = { ...template, id: "t2", channel: "email", kind: "interview_confirmation", name: "Interview confirmation", subject: "Interview – {company}" };
+    serve((url) => {
+      if (url.includes("/templates")) return res(page([emailTemplate]));
+      if (url.includes("/render")) return res({ template: emailTemplate, subject: "Interview – ", body: "Your interview with  is confirmed.", missing: ["company"] });
+      return res(page([]));
+    });
+    render(<RecruiterMessages source={{ kind: "candidate", party: { kind: "candidate", id: "c1", name: "Rahul", whatsappTo: null, email: "r@x.test" } }} canWrite />);
+    fireEvent.click(await screen.findByRole("button", { name: "Send email" }));
+    fireEvent.change(await screen.findByLabelText("Template"), { target: { value: "t2" } });
+    expect(await screen.findByText("Check the text: {company} has no value for this recipient.")).toBeTruthy();
+    expect((screen.getByLabelText("Subject") as HTMLInputElement).value).toBe("Interview – ");
+  });
+
   it("disables email with its reason for a candidate with no email (edge case)", async () => {
     serve(() => res(page([])));
     render(<RecruiterMessages source={{ kind: "candidate", party: { kind: "candidate", id: "c1", name: "Rahul", whatsappTo: "919876543210", email: null } }} canWrite />);

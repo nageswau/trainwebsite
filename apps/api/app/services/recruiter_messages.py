@@ -106,7 +106,14 @@ def template_out(template: RecruiterMessageTemplate) -> dict:
 
 
 def rendered(template: RecruiterMessageTemplate, values: dict[str, str]) -> dict:
-    return {"subject": render(template.subject, values) if template.subject is not None else None, "body": render(template.body, values)}
+    """QA-02: `missing` names the placeholders the template uses that had no value (e.g. {company} for a candidate), so the composer can
+    ask the recruiter to check the text."""
+    used = check_placeholders(template.subject, template.body)
+    return {
+        "subject": render(template.subject, values) if template.subject is not None else None,
+        "body": render(template.body, values),
+        "missing": [p for p in PLACEHOLDERS if p in used and not values.get(p)],
+    }
 
 
 # --- the party (MS4, MS5) -------------------------------------------------------------------------------------------------------

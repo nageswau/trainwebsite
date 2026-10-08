@@ -2,7 +2,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 import { sendJson } from "@/lib/apiErrors";
-import { EMAIL_BODY_MAX, SUBJECT_MAX, isRenderedTemplate, type ComposerTarget } from "@/lib/telecallerMessages";
+import { EMAIL_BODY_MAX, SUBJECT_MAX, isRenderedTemplate, missingNote, type ComposerTarget } from "@/lib/telecallerMessages";
 
 /** tel-014 (DEC-SCOPE-106, spec §5; EM4, E8): pick an email template (subject and body rendered with the lead's values) or write a custom
  *  email, edit both, and send. The API queues it and the worker delivers it to the lead's address; a refusal keeps what was typed.
@@ -14,6 +14,7 @@ export default function EmailComposer({ target, onSent, onCancel }: { target: Co
   const [text, setText] = useState("");
   const [rendering, setRendering] = useState<"idle" | "loading" | "failed">("idle");
   const [mismatch, setMismatch] = useState(false);
+  const [missing, setMissing] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const renderAbort = useRef<AbortController | null>(null);
@@ -35,6 +36,7 @@ export default function EmailComposer({ target, onSent, onCancel }: { target: Co
   async function choose(next: string) {
     setTemplateId(next);
     setMismatch(false);
+    setMissing([]);
     setError(null);
     renderAbort.current?.abort();
     if (!next) return setRendering("idle"); // a custom email keeps whatever was typed
@@ -48,6 +50,7 @@ export default function EmailComposer({ target, onSent, onCancel }: { target: Co
       setSubject(body.subject ?? "");
       setText(body.body);
       setMismatch(body.product_mismatch === true);
+      setMissing(body.missing ?? []);
       setRendering("idle");
     } catch {
       if (!controller.signal.aborted) setRendering("failed");
@@ -81,6 +84,7 @@ export default function EmailComposer({ target, onSent, onCancel }: { target: Co
       </div>
       {rendering === "loading" && <p className="muted" role="status" style={{ fontSize: 13, margin: 0 }}>Preparing the email…</p>}
       {rendering === "failed" && <p className="form-error" role="alert" style={{ fontSize: 13, margin: 0 }}>Unable to load the template. Choose it again or write a custom email.</p>}
+      {missing.length > 0 && <p className="form-warning" role="note" style={{ fontSize: 13, margin: 0 }}>{missingNote(missing)}</p>}
       {mismatch && (
         <p className="form-warning" role="note" style={{ fontSize: 13, margin: 0 }}>This template was made for another product. Check the text before sending.</p>
       )}

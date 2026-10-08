@@ -134,6 +134,9 @@ async def test_a_duplicate_name_is_409_and_the_channel_is_fixed(client, db_sessi
     again = await client.post(TEMPLATES, json={"channel": "whatsapp", "kind": "follow_up", "name": name.upper(), "body": "Hi"})
     assert again.status_code == 409
     assert (await client.post(TEMPLATES, json={"channel": "email", "kind": "offer_follow_up", "name": name, "subject": "S", "body": "Hi"})).status_code == 201
+    email_again = await client.post(TEMPLATES, json={"channel": "email", "kind": "offer_follow_up", "name": name, "subject": "S", "body": "Hi"})
+    assert email_again.status_code == 409 and email_again.json()["detail"].startswith("An email template named")  # QA-01
+    assert again.json()["detail"].startswith("A WhatsApp template named")
     assert (await client.patch(f"{TEMPLATES}/{first['id']}", json={"channel": "email"})).status_code == 422
 
 
@@ -167,8 +170,10 @@ async def test_render_fills_the_contacts_values_and_leaves_company_empty_for_a_c
     assert response.status_code == 200, response.text
     assert response.json()["subject"] == f"About {company['name']}" and response.json()["body"] == f"Hi {contact['name']}, Asha Recruiter here."
     candidate = await _candidate(client, db_session, name="Rahul Verma")
+    assert response.json()["missing"] == []
     rendered = (await client.get(f"{MESSAGES}/render", params={"template_id": str(template.id), "candidate_id": candidate["id"]})).json()
     assert rendered["subject"] == "About " and rendered["body"] == "Hi Rahul Verma, Asha Recruiter here."
+    assert rendered["missing"] == ["company"]  # QA-02: the composer says which value was empty
     assert (await client.get(f"{MESSAGES}/render", params={"template_id": str(template.id)})).status_code == 422
 
 

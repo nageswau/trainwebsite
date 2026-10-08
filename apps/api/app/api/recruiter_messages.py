@@ -38,7 +38,7 @@ def _body(model, payload):
 
 
 def _taken(channel: str, name: str) -> str:
-    return f"A {svc.CHANNEL_LABEL[channel]} template named “{name}” already exists"
+    return f"{'A WhatsApp' if channel == 'whatsapp' else 'An email'} template named “{name}” already exists"  # QA-01
 
 
 # --- templates (MS1-MS3) --------------------------------------------------------------------------------------------------------
