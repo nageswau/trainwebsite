@@ -3,7 +3,7 @@
 > **For agentic workers:** executed inline (superpowers:executing-plans) by the session that wrote it. Steps use `- [ ]`.
 
 **Goal:** One central candidate master: `candidates` + versioned `candidate_resumes`, recruiter API, list/create/detail pages.
-**Architecture:** New tables (migration `0105_candidates`, provisional), `services/candidates.py` (roles, pool filter, validation,
+**Architecture:** New tables (migration `0107_candidates`; drafted as `0105`), `services/candidates.py` (roles, pool filter, validation,
 duplicates, storage), `api/recruiter_candidates.py` (inline role check → scope → write → audit → one commit), web pages under
 `/recruiter/candidates`.
 **Tech stack:** FastAPI + SQLAlchemy async + Alembic + Postgres; Next.js App Router + vitest + Playwright.
@@ -27,7 +27,7 @@ duplicates, storage), `api/recruiter_candidates.py` (inline role check → scope
 ---
 
 ### Task 1: Migration + models + schemas
-**Files:** create `apps/api/alembic/versions/0105_candidates.py`, `apps/api/tests/test_rec_009_migration.py`; modify
+**Files:** create `apps/api/alembic/versions/0107_candidates.py`, `apps/api/tests/test_rec_009_migration.py`; modify
 `apps/api/app/models.py` (Candidate, CandidateResume), `apps/api/app/schemas.py` (CandidateCreate/Update, labels, statuses).
 - [ ] RED: migration test asserts tables, `uq_candidates_mobile`, `uq_candidates_email`, `ck_candidates_contact`, the sequence,
   `uq_candidate_resumes_version`; downgrade refuses while a candidate exists.
@@ -67,7 +67,7 @@ duplicates, storage), `api/recruiter_candidates.py` (inline role check → scope
 
 ### Task 6: E2E + docs
 **Files:** create `apps/web/tests/e2e/rec-009-candidates.spec.ts`; modify `docs/decisions/PRODUCT_DECISION_REGISTER.md`
-(DEC-SCOPE-120), `docs/architecture/API_CONTRACT.md` (§12AN), `docs/architecture/RBAC_MATRIX.md` (§2.46),
+(DEC-SCOPE-122), `docs/architecture/API_CONTRACT.md` (§12AP), `docs/architecture/RBAC_MATRIX.md` (§2.48),
 `docs/delivery/RECRUITER_CRM_BACKLOG.md` (status).
 - [ ] e2e: recruiter creates Rahul (source Edusphere students, detail "Edusphere Python Full Stack Course"), duplicate blocked,
   uploads a PDF resume, list shows the source; hr_team sees no "Add candidate".

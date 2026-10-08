@@ -40,18 +40,25 @@ from app.models import (
     BDM_STAFF_MAX,
     BDM_TARGET_MAX,
     CANDIDATE_STATUSES,
+    COURSE_LEVELS,
     GENDERS,
+    INSTITUTION_TYPES,
     LEAD_APPOINTMENT_TYPE_LABELS,
     LEAD_CALL_MAX_SECONDS,
     LEAD_CALL_OUTCOMES,
     LEAD_CALL_TYPES,
     LEAD_FOLLOW_UP_REASONS,
     LEAD_PRIORITIES,
+    PARTNERSHIP_POTENTIALS,
     QUAL_MODES,
     QUAL_PASSPORT,
     QUAL_SKILL_LEVELS,
     QUAL_STUDY_LEVELS,
+    RANKING_SYSTEMS,
     TEL_TARGET_KPIS,
+    UNIVERSITY_OWNERSHIP_TYPES,
+    UNIVERSITY_PRIORITIES,
+    UNIVERSITY_RELATIONSHIPS,
 )
 from app.notifications.phone import normalise_phone
 from app.services.agent_visa import VISA_CASE_STAGES
@@ -6675,6 +6682,228 @@ class PartnershipHeadPage(BaseModel):
     limit: int
     offset: int
 
+
+# --- upc-003 Global University Master (DEC-SCOPE-120, spec §3) --------------------------------------------------------------
+UNIVERSITY_FIELD_LABELS = {
+    "name": "University name", "city": "City", "state_region": "State / region", "website": "Website", "international_office": "International office",
+    "overview": "Overview", "eligibility": "Eligibility", "other_name": "Ranking name", "rank": "Rank",
+}
+UNIVERSITY_MAX_RANKINGS = 10
+UNIVERSITY_MAX_PROGRAMS = 20
+
+
+def _university_text(multiline: bool, required: bool):
+    """bdm-001's text rule (no control characters; blank -> None) with this item's labels; the website must be http(s)."""
+
+    def check(value: str | None, info: ValidationInfo) -> str | None:
+        label = UNIVERSITY_FIELD_LABELS.get(info.field_name or "", info.field_name)
+        control = _BDM_CONTROL_MULTILINE if multiline else _BDM_CONTROL
+        if value is not None and control.search(value):
+            raise ValueError(f"{label} contains invalid characters")
+        if not value:
+            if required:
+                raise ValueError(f"{label} is required")
+            return None
+        if info.field_name == "website" and not _BDM_WEBSITE.fullmatch(value):  # http(s) only: no javascript:/data: hrefs
+            raise ValueError("Website must start with http:// or https://" if _BDM_SCHEME.match(value) else "Enter a website such as abc.ac.uk")
+        return value
+
+    return check
+
+
+def _university_str(max_length: int, *, required: bool = False, multiline: bool = False):
+    trimmed = Annotated[str, StringConstraints(strip_whitespace=True, max_length=max_length)]
+    text = Annotated[trimmed if required else trimmed | None, AfterValidator(_university_text(multiline, required))]
+    return Annotated[text, BeforeValidator(_bdm_newlines)] if multiline else text
+
+
+def _university_body(value: str, info: ValidationInfo) -> str:
+    """Catalogue text (overview, eligibility) sits in NOT NULL columns, so blank stays "" rather than None."""
+    return _university_text(True, False)(value, info) or ""
+
+
+UniversityName = _university_str(200, required=True)
+UniversityCity = _university_str(120, required=True)
+UniversityShort = _university_str(120)
+UniversityWebsite = Annotated[_university_str(300), BeforeValidator(_bdm_website_prefix)]
+UniversityOffice = _university_str(1000, multiline=True)
+UniversityBody = Annotated[str, BeforeValidator(_bdm_newlines), StringConstraints(strip_whitespace=True, max_length=5000), AfterValidator(_university_body)]
+InstitutionType = Literal[INSTITUTION_TYPES]
+UniversityOwnership = Literal[UNIVERSITY_OWNERSHIP_TYPES]
+UniversityRelationship = Literal[UNIVERSITY_RELATIONSHIPS]
+UniversityPriority = Literal[UNIVERSITY_PRIORITIES]
+PartnershipPotential = Literal[PARTNERSHIP_POTENTIALS]
+
+
+def _program(value: str) -> str:
+    value = value.strip()
+    if not value or len(value) > 80 or _BDM_CONTROL.search(value):
+        raise ValueError("Each programme area must be 1 to 80 plain characters")
+    return value
+
+
+def _distinct(values: list) -> list:
+    if len({v.casefold() for v in values}) != len(values):
+        raise ValueError("List each value once")
+    return values
+
+
+class UniversityRankingIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    system: Literal[RANKING_SYSTEMS]
+    other_name: _university_str(80) = None
+    year: Annotated[StrictInt, Field(ge=1900, le=2100)]
+    rank: _university_str(20, required=True)
+
+    @model_validator(mode="after")
+    def _other_name(self):
+        if (self.system == "Other") != (self.other_name is not None):
+            raise ValueError("Name the ranking system for an Other ranking, and only then")
+        return self
+
+
+def _rankings(values: list[UniversityRankingIn]) -> list[UniversityRankingIn]:
+    keys = [(r.system, (r.other_name or "").casefold(), r.year) for r in values]
+    if len(set(keys)) != len(keys):
+        raise ValueError("Each ranking system and year may appear once")
+    return values
+
+
+UniversityRankings = Annotated[list[UniversityRankingIn], Field(max_length=UNIVERSITY_MAX_RANKINGS), AfterValidator(_rankings)]
+CourseLevels = Annotated[list[Literal[COURSE_LEVELS]], Field(max_length=len(COURSE_LEVELS)), AfterValidator(_distinct)]
+PopularPrograms = Annotated[list[Annotated[str, AfterValidator(_program)]], Field(max_length=UNIVERSITY_MAX_PROGRAMS), AfterValidator(_distinct)]
+
+
+class UniversityCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: UniversityName
+    country_id: UUID
+    city: UniversityCity
+    institution_type: InstitutionType = "university"
+    ownership_type: UniversityOwnership | None = None
+    state_region: UniversityShort = None
+    website: UniversityWebsite = None
+    course_levels: CourseLevels = []
+    popular_programs: PopularPrograms = []
+    international_office: UniversityOffice = None
+    existing_relationship: UniversityRelationship | None = None
+    priority: UniversityPriority | None = None
+    partnership_potential: PartnershipPotential | None = None
+    overview: UniversityBody = ""
+    eligibility: UniversityBody = ""
+    rankings: UniversityRankings = []
+
+
+class UniversityUpdate(BaseModel):
+    """PATCH: omitted = unchanged; an explicit null on a required field fails its non-nullable type (bdm-001's idiom). The code, slug,
+    owners, visibility and active flag are server-owned, so sending them is a 422 (extra="forbid")."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: UniversityName = None
+    country_id: UUID = None
+    city: UniversityCity = None
+    institution_type: InstitutionType = None
+    ownership_type: UniversityOwnership | None = None
+    state_region: UniversityShort = None
+    website: UniversityWebsite = None
+    course_levels: CourseLevels = None
+    popular_programs: PopularPrograms = None
+    international_office: UniversityOffice = None
+    existing_relationship: UniversityRelationship | None = None
+    priority: UniversityPriority | None = None
+    partnership_potential: PartnershipPotential | None = None
+    overview: UniversityBody = None
+    eligibility: UniversityBody = None
+    rankings: UniversityRankings = None
+
+
+class UniversityAssign(BaseModel):
+    """The whole ownership, both slots: a missing or null slot is cleared."""
+
+    model_config = ConfigDict(extra="forbid")
+    primary_manager_user_id: UUID | None = None
+    backup_manager_user_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def _slots(self):
+        if self.backup_manager_user_id is not None and self.primary_manager_user_id is None:
+            raise ValueError("Choose a primary manager before a backup")
+        if self.backup_manager_user_id is not None and self.backup_manager_user_id == self.primary_manager_user_id:
+            raise ValueError("The backup manager must be a different person")
+        return self
+
+
+class UniversityDeactivate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    confirm: StrictBool = False
+
+
+class UniversityCountryRef(BaseModel):
+    id: UUID
+    name: str
+    iso2: str | None
+    region: str | None
+    catalogue_visible: bool
+
+
+class UniversityRankingOut(BaseModel):
+    system: str
+    other_name: str | None
+    year: int
+    rank: str
+
+
+class UniversityPermissions(BaseModel):
+    can_edit: bool
+    can_assign: bool
+    can_publish: bool
+    can_deactivate: bool
+
+
+class UniversityRow(BaseModel):
+    id: UUID
+    university_code: str
+    slug: str
+    name: str
+    institution_type: str
+    country: UniversityCountryRef
+    city: str
+    priority: str | None
+    partnership_potential: str | None
+    primary_manager: BdmManagerRef | None
+    backup_manager: BdmManagerRef | None
+    catalogue_visible: bool
+    active: bool
+    permissions: UniversityPermissions
+
+
+class UniversityDetail(UniversityRow):
+    ownership_type: str | None
+    state_region: str | None
+    website: str | None
+    course_levels: list[str]
+    popular_programs: list[str]
+    international_office: str | None
+    existing_relationship: str | None
+    overview: str
+    eligibility: str
+    rankings: list[UniversityRankingOut]
+    application_count: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class UniversityEnvelope(BaseModel):
+    university: UniversityDetail
+
+
+class UniversityPage(BaseModel):
+    items: list[UniversityRow]
+    total: int
+    limit: int
+    offset: int
+
+
 # --- rec-006 (DEC-SCOPE-119): the recruiter Skills Master ------------------------------------------------------------------------
 SKILL_FIELD_LABELS = {
     "name": "Name", "alias": "Alias", "active": "Active", "category_id": "Category", "tag_category_ids": "Other categories", "skill_id": "Related skill",
@@ -6810,7 +7039,172 @@ class SkillPage(BaseModel):
     offset: int
 
 
-# --- rec-009 (DEC-SCOPE-120, spec §3/§5): the candidate master ------------------------------------------------------------------
+# --- rec-003 (DEC-SCOPE-121): the company master ----------------------------------------------------------------------------------
+REC_COMPANY_LABELS = {
+    "name": "Company name", "website": "Website", "linkedin_url": "LinkedIn", "city": "City", "state": "State", "country": "Country",
+    "head_office": "Head office", "branches": "Branches", "description": "Company description",
+}
+REC_COMPANY_MULTILINE = frozenset({"branches", "description"})
+REC_COMPANY_URLS = frozenset({"website", "linkedin_url"})
+REC_COMPANY_FIELDS = (  # the columns a create or edit may write; everything else on `companies` is server-owned
+    "name", "website", "linkedin_url", "industry_id", "company_size_id", "employee_count", "city", "state", "country", "head_office",
+    "branches", "description", "lead_source_id", "campaign_id", "priority", "assigned_bdm_user_id",
+)
+
+
+def _rec_company_text(value: str | None, info: ValidationInfo) -> str | None:
+    """bdm-002's rules with this module's labels: no control characters (a line break only in a multi-line field), blank -> None, and
+    http(s) links only, so a stored value can never become a javascript:/data: href."""
+    label = REC_COMPANY_LABELS[info.field_name]
+    control = _BDM_CONTROL_MULTILINE if info.field_name in REC_COMPANY_MULTILINE else _BDM_CONTROL
+    if value is not None and control.search(value):
+        raise ValueError(f"{label} contains invalid characters")
+    if not value:
+        return None
+    if info.field_name in REC_COMPANY_URLS and not _BDM_WEBSITE.fullmatch(value):
+        raise ValueError(f"{label} must start with http:// or https://" if _BDM_SCHEME.match(value) else f"Enter a {label} link such as example.com")
+    return value
+
+
+def _rec_company_name(value: str, info: ValidationInfo) -> str:
+    value = _rec_company_text(value, info)
+    if value is None:
+        raise ValueError("Company name is required")
+    return value
+
+
+def _rec_company_optional(max_length: int, *, multiline: bool = False, url: bool = False):
+    text = Annotated[Annotated[str, StringConstraints(strip_whitespace=True, max_length=max_length)] | None, AfterValidator(_rec_company_text)]
+    if multiline:
+        text = Annotated[text, BeforeValidator(_bdm_newlines)]
+    return Annotated[text, BeforeValidator(_bdm_website_prefix)] if url else text
+
+
+RecCompanyName = Annotated[str, StringConstraints(strip_whitespace=True, max_length=180), AfterValidator(_rec_company_name)]
+RecCompanyShort = _rec_company_optional(120)
+RecCompanyUrl = _rec_company_optional(300, url=True)
+RecCompanyPlace = _rec_company_optional(300)
+RecCompanyBranches = _rec_company_optional(1000, multiline=True)
+RecCompanyDescription = _rec_company_optional(2000, multiline=True)
+RecEmployeeCount = _bdm_whole_number("Number of employees must be a whole number from 0 to 10,000,000", 0, 10_000_000)
+RecCompanyPriority = Literal["hot", "warm", "cold"]
+
+
+class RecCompanyUpdate(BaseModel):
+    """PATCH: omitted = unchanged, null = clear (a null name fails its type). Server-owned fields (code, assignee, archive, creator) are
+    unknown fields, so a client can never set them; the recruiter changes only through /assign."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: RecCompanyName = None
+    website: RecCompanyUrl = None
+    linkedin_url: RecCompanyUrl = None
+    industry_id: UUID | None = None
+    company_size_id: UUID | None = None
+    employee_count: RecEmployeeCount = None
+    city: RecCompanyShort = None
+    state: RecCompanyShort = None
+    country: RecCompanyShort = None
+    head_office: RecCompanyPlace = None
+    branches: RecCompanyBranches = None
+    description: RecCompanyDescription = None
+    lead_source_id: UUID | None = None
+    campaign_id: UUID | None = None
+    priority: RecCompanyPriority | None = None
+    assigned_bdm_user_id: UUID | None = None
+    confirm_duplicate: StrictBool = False
+
+
+class RecCompanyCreate(RecCompanyUpdate):
+    name: RecCompanyName
+    assigned_recruiter_user_id: UUID | None = None  # managers and super_admin only (services/recruiter_companies)
+
+
+class RecCompanyAssign(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    recruiter_user_id: UUID
+
+
+class RecPersonRef(BaseModel):
+    id: UUID
+    full_name: str
+    active: bool
+
+
+class RecCatalogueRef(BaseModel):
+    id: UUID
+    name: str
+    active: bool
+
+
+class RecCompanyPermissions(BaseModel):
+    can_edit: bool
+    can_archive: bool
+    can_restore: bool
+    can_reassign: bool
+
+
+class RecCompanyRow(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    city: str | None
+    priority: str | None
+    industry: RecCatalogueRef | None
+    lead_source: RecCatalogueRef | None
+    assigned_recruiter: RecPersonRef | None
+    archived: bool
+    permissions: RecCompanyPermissions
+
+
+class RecCompanyPage(BaseModel):
+    items: list[RecCompanyRow]
+    total: int
+    limit: int
+    offset: int
+
+
+class RecAssignmentOut(BaseModel):
+    from_user: RecPersonRef | None
+    to_user: RecPersonRef
+    changed_by: RecPersonRef
+    created_at: datetime
+
+
+class RecCompanyOut(RecCompanyRow):
+    website: str | None
+    linkedin_url: str | None
+    company_size: RecCatalogueRef | None
+    employee_count: int | None
+    state: str | None
+    country: str | None
+    head_office: str | None
+    branches: str | None
+    description: str | None
+    campaign: RecCatalogueRef | None
+    assigned_bdm: RecPersonRef | None
+    owner_type: str
+    created_by: RecPersonRef | None
+    assignment_history: list[RecAssignmentOut]
+    archived_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class RecCompanyEnvelope(BaseModel):
+    company: RecCompanyOut
+
+
+class RecBdmOption(BaseModel):
+    id: UUID
+    full_name: str
+
+
+class RecBdmOptionPage(BaseModel):
+    items: list[RecBdmOption]
+    total: int
+
+
+# --- rec-009 (DEC-SCOPE-122, spec §3/§5): the candidate master ------------------------------------------------------------------
 CandidateStatus = Literal[CANDIDATE_STATUSES]
 CANDIDATE_FIELD_LABELS = {
     "name": "Name", "mobile": "Mobile", "email": "Email", "location": "Location", "qualification": "Qualification", "college": "College",

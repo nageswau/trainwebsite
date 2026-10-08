@@ -326,6 +326,8 @@ menu (19 entries, `PARTNERSHIP_MENU` in `lib/navigation.ts`) joins the sidebar o
 - /partnership/dashboard — greeting, a profile summary card (Employee ID, reporting head) and "Coming soon to your CRM" (the §32 areas not yet built, as text). upc-022 fills in the dashboard. A missing profile shows the 403 message.
 - /partnership/profile — read-only profile (name, Employee ID, mobile, email, reporting head, status) plus an editable mobile (PU3).
 - /partnership — redirects to `/partnership/dashboard`.
+- /partnership/universities — *(upc-003, `DEC-SCOPE-120`)* the University Master, now a live sidebar entry (Dashboard · University
+  Master · Profile). Reads every university; edits those where the manager is primary or backup.
 
 ## Partnership Head *(net-new, 2026-10-08, `DEC-SCOPE-118`, `upc-001`)*
 
@@ -333,6 +335,8 @@ Division `global`; created only by a Super Admin from Users; signs in at `/admin
 
 - /partnership/head/team — the partnership managers who report to this head (paged, inactive included). A Super Admin sees all of them.
 - /partnership/head — redirects to `/partnership/head/team`.
+- /partnership/universities — *(upc-003)* University Master in the head's sidebar (Team · University Master): add, edit and publish
+  unowned or team-owned universities and assign their managers. Overseas Admin and Super Admin reach it from their Universities section.
 
 **Signed-out `/partnership/*` (PU1):** `/partnership/head*` → `/admin/login?next=…`; any other `/partnership/*` → `/overseas/login?next=…`.
 

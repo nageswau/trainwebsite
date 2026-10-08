@@ -1,10 +1,9 @@
 """rec-009 -- the candidate master: candidates + candidate_resumes + candidate_code_seq.
 
-Revision ID: 0105_candidates
-Revises: 0104_skills_master
+Revision ID: 0107_candidates
+Revises: 0106_rec_companies
 
-docs/superpowers/specs/2026-10-08-rec-009-candidate-master-design.md §3 (DEC-SCOPE-120, provisional numbering: re-chained to the real head
-at merge). Adds two tables and a sequence; no existing row is read or written. 0001 builds a fresh database from the current models, which
+docs/superpowers/specs/2026-10-08-rec-009-candidate-master-design.md §3 (DEC-SCOPE-122; renumbered at merge after upc-003 0105 and rec-003 0106). Adds two tables and a sequence; no existing row is read or written. 0001 builds a fresh database from the current models, which
 already carry these tables, so creation is guarded (0076's idiom). downgrade() refuses while any candidate exists.
 """
 
@@ -13,8 +12,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0105_candidates"
-down_revision = "0104_skills_master"  # re-chained after upc-001 (0103) and rec-006 (0104), merged to main first
+revision = "0107_candidates"
+down_revision = "0106_rec_companies"  # after upc-003 (0105) and rec-003 (0106), merged to main first
 branch_labels = None
 depends_on = None
 
@@ -98,7 +97,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text("SELECT 1 FROM candidates LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0105_candidates: candidates exist. Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0107_candidates: candidates exist. Remove them deliberately first.")
     op.drop_table("candidate_resumes")
     op.drop_table("candidates")
     op.execute(f"DROP SEQUENCE IF EXISTS {SEQ}")

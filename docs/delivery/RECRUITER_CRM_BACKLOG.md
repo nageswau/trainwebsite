@@ -349,6 +349,10 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** small · **Risk:** low
 
 ### rec-003 — Company master + recruiter lead record
+- **Status (2026-10-08):** built on `feature/rec-003`. Numbering: `DEC-SCOPE-121`, migration `0106_rec_companies` (re-chained after
+  upc-001's `0103`, rec-006's `0104` and upc-003's `0105_university_master`), API §12AO, RBAC §2.47. Q-01–Q-03 answered with the recommended defaults (D1–D6 in
+  `DEC-SCOPE-121`): `CMP-000001` codes; `name` stays unique plus a normalised-name warning; employer companies enter with source Website
+  and no recruiter. "+ Add Recruiter" and the §2 person fields move to rec-004.
 - **Business requirement:**
   - §2 "Every recruiter lead should have" (17 fields).
   - §3 Company Details (14) and Business Details (10).
@@ -572,8 +576,9 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 
 ### rec-009 — Candidate master
 - **Status (2026-10-08):** built on `feature/rec-009`.
-  - Numbering is provisional: `DEC-SCOPE-120`, migration `0105_candidates` (chained after rec-006's `0104_skills_master`, which follows upc-001's `0103`), API §12AN, RBAC §2.46. rec-006 and
-    rec-003 took the lower numbers in flight, so re-check on `main` at merge.
+  - Numbering: `DEC-SCOPE-122`, migration `0107_candidates` (chained after rec-003's `0106_rec_companies`), API §12AP, RBAC §2.48. It
+    was drafted as `0105` / 120 / §12AN / §2.46; upc-001, rec-006, upc-003 and rec-003 merged first and took `0103`–`0106` and
+    118–121.
   - Owner answers:
     - **Q-07:** a duplicate mobile or email blocks the save, with a panel.
     - **Q-08:** the status is set by hand, from five values.

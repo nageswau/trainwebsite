@@ -1,4 +1,4 @@
-// rec-009 (DEC-SCOPE-120): the candidate master -- types, endpoints, labels and the form <-> body mapping shared by the list, the create
+// rec-009 (DEC-SCOPE-122): the candidate master -- types, endpoints, labels and the form <-> body mapping shared by the list, the create
 // form and the detail. Labels are display only; the API decides who may read or write and every rule (Q-07 duplicates, Q-08 statuses).
 import type { PersonRef } from "@/lib/telecallerLeads";
 

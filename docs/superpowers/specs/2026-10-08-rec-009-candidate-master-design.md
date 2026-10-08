@@ -3,10 +3,9 @@
 Backlog: `docs/delivery/RECRUITER_CRM_BACKLOG.md` rec-009. Source: EVID-018 §8 (lines 390–434), §9 (436–473), quick action "+ Add
 Candidate" (46), S2-§13 (1541–1561), S2-§20 (1750, 1778). Depends on rec-001 (merged PR #143) and rec-002 (merged PR #146).
 
-**Numbering (provisional):** `DEC-SCOPE-120`, migration `0105_candidates`, API §12AN, RBAC §2.46. The parallel branches rec-006
-(`0103_skills_master`, `DEC-SCOPE-118`, §12AL, §2.44) and rec-003 (`0103_rec_companies`, `DEC-SCOPE-119`, §12AM, §2.45) had claimed
-the lower numbers when this branch started from `origin/main` @ `060989ff`. The migration chains after the head on this branch and
-is re-chained to the real head at merge time.
+**Numbering (final at merge, 2026-10-08):** `DEC-SCOPE-122`, migration `0107_candidates` (after rec-003's `0106_rec_companies`),
+API §12AP, RBAC §2.48. It was drafted as `0105` / `DEC-SCOPE-120` / §12AN / §2.46. upc-001, rec-006, upc-003 and rec-003 merged to
+`main` first.
 
 ## 1. Owner answers and recorded defaults
 | ID | Question | Answer | Authority |
@@ -38,7 +37,7 @@ Out of scope, each owned by a later item:
 
 The detail page shows only Profile and Resume. It has no empty tabs for later items.
 
-## 3. Data (migration `0105_candidates`)
+## 3. Data (migration `0107_candidates`)
 **`candidates`**
 | Column | Type | Rule |
 |---|---|---|
@@ -84,7 +83,7 @@ The migration creates its objects with guards (the 0076 idiom). `downgrade()` re
 - **Everyone else gets 403**, including `employer`, `it_admin` and students. The role check runs before anything is read (the
   inline RBAC convention).
 
-## 5. API (§12AN). Prefix `/api/v1/recruiter/candidates`
+## 5. API (§12AP). Prefix `/api/v1/recruiter/candidates`
 | Method | Path | Who | Result |
 |---|---|---|---|
 | GET | `` | readers | `q` (name, code, email, mobile digits), `source_id`, `status`, `archived` (default false), `limit`, `offset` → `{items,total,limit,offset}`, newest first. Item: `id, candidate_code, name, location, experience_months, preferred_role, source{id,name,active}, source_detail, status, archived, created_at` |

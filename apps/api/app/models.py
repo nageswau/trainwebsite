@@ -314,8 +314,29 @@ class Certificate(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(30), default="issued")
 
 
+# rec-003 (DEC-SCOPE-121 D1): CMP-000001. MAXVALUE keeps lpad from ever truncating a code; uq_companies_code is the backstop.
+COMPANY_CODE_SEQ = Sequence("company_code_seq", maxvalue=999999, metadata=Base.metadata)
+COMPANY_NAME_KEY_SQL = r"lower(regexp_replace(btrim(name), '\s+', ' ', 'g'))"
+COMPANY_CHECKS = {
+    "ck_companies_priority": "priority IS NULL OR priority IN ('hot', 'warm', 'cold')",
+    "ck_companies_employee_count": "employee_count IS NULL OR employee_count BETWEEN 0 AND 10000000",
+}
+
+
 class Company(Base, TimestampMixin):
+    """rec-003 (DEC-SCOPE-121, R3): the recruiter lead and the company are one row; the lead ID is `company_code`, which every insert
+    path gets from the server default. The recruiter columns are nullable: EMP-001 registration and `/workflows/it/jobs` auto-create
+    still write only name/website/ownership, and NULL `assigned_recruiter_user_id` is the managers' unassigned queue."""
+
     __tablename__ = "companies"
+    __table_args__ = (
+        UniqueConstraint("company_code", name="uq_companies_code"),
+        *(CheckConstraint(sql, name=name) for name, sql in COMPANY_CHECKS.items()),
+        Index("ix_companies_assigned_recruiter", "assigned_recruiter_user_id"),
+        Index("ix_companies_assigned_bdm", "assigned_bdm_user_id"),
+        Index("ix_companies_name_key", text(COMPANY_NAME_KEY_SQL)),  # the duplicate check (services/recruiter_companies.NAME_KEY)
+    )
+    __mapper_args__ = {"eager_defaults": True}  # INSERT ... RETURNING company_code: no lazy load of the server default under asyncio
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(String(180), unique=True)
     website: Mapped[str | None] = mapped_column(String(300), nullable=True)
@@ -327,6 +348,37 @@ class Company(Base, TimestampMixin):
     # #1) -- a parallel table would force a premature answer.
     owner_type: Mapped[str] = mapped_column(String(30), default="internal")
     employer_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    company_code: Mapped[str] = mapped_column(String(20), server_default=text("'CMP-' || lpad(nextval('company_code_seq')::text, 6, '0')"))
+    linkedin_url: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    industry_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_industries.id"), nullable=True)
+    company_size_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_company_sizes.id"), nullable=True)
+    employee_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    city: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    state: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    country: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    head_office: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    branches: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    description: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    lead_source_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_lead_sources.id"), nullable=True)
+    campaign_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_campaigns.id"), nullable=True)
+    priority: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    assigned_recruiter_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    assigned_bdm_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class CompanyAssignmentHistory(Base):
+    """rec-003: one row per change of a company's recruiter. Append-only; `from_user_id` NULL = it was in the unassigned queue."""
+
+    __tablename__ = "company_assignment_history"
+    __table_args__ = (Index("ix_company_assignment_history_company", "company_id"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id"))
+    from_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    to_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    changed_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class EmployerProfile(Base, TimestampMixin):
@@ -437,8 +489,46 @@ class Country(Base, TimestampMixin):
     interview_prep: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+# upc-003 (DEC-SCOPE-120, spec §2): the Global University Master's value lists (EVID-020 §1). Migration 0105 repeats UNIVERSITY_CHECKS;
+# test_upc_003_migration asserts they stay identical.
+INSTITUTION_TYPES = ("university", "college", "institute", "language_school", "training_institution")
+UNIVERSITY_OWNERSHIP_TYPES = ("public", "private")
+UNIVERSITY_RELATIONSHIPS = ("new", "existing")
+UNIVERSITY_PRIORITIES = ("A", "B", "C")
+PARTNERSHIP_POTENTIALS = ("high", "medium", "low")
+COURSE_LEVELS = ("UG", "PG", "PhD", "Diploma", "Foundation")
+RANKING_SYSTEMS = ("QS", "THE", "ARWU", "Other")
+UNIVERSITY_CODE_SEQ = Sequence("university_code_seq", metadata=Base.metadata)
+UNIVERSITY_CODE_DEFAULT = "'UNV-' || translate(format('%6s', nextval('university_code_seq')), ' ', '0')"
+
+
+def _one_of(column: str, values: tuple[str, ...], *, nullable: bool = True) -> str:
+    listed = f"{column} IN ({', '.join(repr(v) for v in values)})"
+    return f"{column} IS NULL OR {listed}" if nullable else listed
+
+
+UNIVERSITY_CHECKS = {
+    "ck_universities_institution_type": _one_of("institution_type", INSTITUTION_TYPES, nullable=False),
+    "ck_universities_ownership_type": _one_of("ownership_type", UNIVERSITY_OWNERSHIP_TYPES),
+    "ck_universities_existing_relationship": _one_of("existing_relationship", UNIVERSITY_RELATIONSHIPS),
+    "ck_universities_priority": _one_of("priority", UNIVERSITY_PRIORITIES),
+    "ck_universities_partnership_potential": _one_of("partnership_potential", PARTNERSHIP_POTENTIALS),
+    "ck_universities_backup_needs_primary": "backup_manager_user_id IS NULL OR (primary_manager_user_id IS NOT NULL AND backup_manager_user_id <> primary_manager_user_id)",
+}
+
+
 class University(Base, TimestampMixin):
+    """upc-003 (U5): the single source of truth for every institution. `catalogue_visible` + `active` decide what the public catalogue
+    shows (public_visible); applications, shortlists and university_rep keep their FKs to these same rows."""
+
     __tablename__ = "universities"
+    __table_args__ = (
+        UniqueConstraint("university_code", name="uq_universities_code"),
+        *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_CHECKS.items()),
+        Index("ix_universities_primary_manager", "primary_manager_user_id"),
+        Index("ix_universities_backup_manager", "backup_manager_user_id"),
+        Index("ix_universities_priority", "priority"),
+    )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     country_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("countries.id"), index=True)
     slug: Mapped[str] = mapped_column(String(140), unique=True, index=True)
@@ -449,7 +539,59 @@ class University(Base, TimestampMixin):
     requirements: Mapped[list] = mapped_column(JSON, default=list)
     deadlines: Mapped[list] = mapped_column(JSON, default=list)
     scholarships: Mapped[list] = mapped_column(JSON, default=list)
+    university_code: Mapped[str] = mapped_column(String(20), server_default=text(UNIVERSITY_CODE_DEFAULT))
+    institution_type: Mapped[str] = mapped_column(String(30), default="university", server_default=text("'university'"))
+    ownership_type: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    state_region: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    website: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    course_levels: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    popular_programs: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    international_office: Mapped[str | None] = mapped_column(Text, nullable=True)
+    existing_relationship: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    primary_manager_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    backup_manager_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    priority: Mapped[str | None] = mapped_column(String(1), nullable=True)
+    partnership_potential: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    # UM5: true by default so the existing rows and the legacy admin create stay public; the master creates every row as false.
+    catalogue_visible: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
     country = relationship("Country")
+
+
+class UniversityRanking(Base):
+    """upc-003 UM2: one row per ranking system and year; `rank` is text so a band ("201-250") fits. Replaced as a list on edit."""
+
+    __tablename__ = "university_rankings"
+    __table_args__ = (
+        CheckConstraint(_one_of("system", RANKING_SYSTEMS, nullable=False), name="ck_university_rankings_system"),
+        CheckConstraint("(system = 'Other') = (other_name IS NOT NULL)", name="ck_university_rankings_other_name"),
+        CheckConstraint("year BETWEEN 1900 AND 2100", name="ck_university_rankings_year"),
+        Index("uq_university_rankings_entry", "university_id", "system", text("coalesce(other_name, '')"), "year", unique=True),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="CASCADE"))
+    system: Mapped[str] = mapped_column(String(10))
+    other_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    year: Mapped[int] = mapped_column(Integer)
+    rank: Mapped[str] = mapped_column(String(20))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class UniversityAssignmentHistory(Base):
+    """upc-003 (§27): append-only; one row per manager slot that changed (primary or backup). Either side may be NULL (unassigned)."""
+
+    __tablename__ = "university_assignment_history"
+    __table_args__ = (
+        CheckConstraint("slot IN ('primary', 'backup')", name="ck_university_assignment_history_slot"),
+        Index("ix_university_assignment_history_university", "university_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"))
+    slot: Mapped[str] = mapped_column(String(10))
+    from_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    to_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class OverseasCourse(Base, TimestampMixin):
@@ -3342,11 +3484,11 @@ class SkillRelated(Base):
     skill_b_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("skills.id", ondelete="CASCADE"), primary_key=True)
 
 
-# rec-009 (DEC-SCOPE-120, spec §3): the central candidate master. Q-08: the status is set by hand, from these values.
+# rec-009 (DEC-SCOPE-122, spec §3): the central candidate master. Q-08: the status is set by hand, from these values.
 CANDIDATE_STATUSES = ("available", "interviewing", "placed", "not_looking", "do_not_contact")
-# On the metadata so 0001's create_all builds it for a fresh database; 0105 creates it IF NOT EXISTS.
+# On the metadata so 0001's create_all builds it for a fresh database; 0107 creates it IF NOT EXISTS.
 CANDIDATE_CODE_SEQ = Sequence("candidate_code_seq", metadata=Base.metadata)
-CANDIDATE_CHECKS = {  # migration 0105 repeats these strings; test_rec_009_migration asserts they stay identical
+CANDIDATE_CHECKS = {  # migration 0107 repeats these strings; test_rec_009_migration asserts they stay identical
     "ck_candidates_contact": "mobile IS NOT NULL OR email IS NOT NULL",
     "ck_candidates_status": "status IN (" + ", ".join(f"'{s}'" for s in CANDIDATE_STATUSES) + ")",
     "ck_candidates_passing_year": "passing_year IS NULL OR passing_year BETWEEN 1950 AND 2100",

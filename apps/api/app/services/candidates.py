@@ -1,4 +1,4 @@
-"""rec-009 (DEC-SCOPE-120, spec §4-§5): the candidate master -- who may read and write it, the pool filter, the Q-07 duplicate block,
+"""rec-009 (DEC-SCOPE-122, spec §4-§5): the candidate master -- who may read and write it, the pool filter, the Q-07 duplicate block,
 codes, resume files and the output shapes.
 
 Functions only; nothing here commits -- the route owns the transaction. Logs and audit rows carry ids and field names, never a name,

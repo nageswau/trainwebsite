@@ -1,4 +1,4 @@
-"""rec-009 (DEC-SCOPE-120, spec §5): the candidate master. Recruiters, placement managers and super_admin read and write the whole pool
+"""rec-009 (DEC-SCOPE-122, spec §5): the candidate master. Recruiters, placement managers and super_admin read and write the whole pool
 (R11); hr_team reads. The role check runs before anything is read; a candidate outside the pool (services/candidates.pool_filter) is a 404.
 
 Bodies are untyped dicts parsed by services/telecaller._parse, so a 422 is one sentence naming the field (the tel-002 idiom). Each write
