@@ -681,6 +681,11 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** large · **Risk:** high
 
 ### rec-011 — Candidate skill profile
+- **Status (2026-10-09):** **BUILT** on `feature/rec-011`, not merged. `DEC-SCOPE-137` (SK1–SK7 recommended defaults, UNVERIFIED; Q-12
+  levels, Q-13 any writer verifies, SK7 the rec-006 S1 merge); migration `0122_candidate_skills` (after rec-017's
+  `0121_job_application_tracking`), API §12BE, RBAC §2.63. Drafted as `0120` / `DEC-SCOPE-135` / §12BC / §2.61; rec-026 and rec-017
+  merged first and took `0120`/`0121`, 135/136, §12BC/§12BD and §2.61/§2.62. The status route is `…/status` (the backlog said
+  `…/verify`). The next rec item takes `0123`, `DEC-SCOPE-138`, §12BF and §2.64 (re-check `main`).
 - **Business requirement:** S2-§1 separate searchable skills; S2-§3 level, experience, last used; S2-§17 skill source (6) and status
   (Claimed/Verified/Assessed).
 - **Existing behavior:** `User.profile.skills` is a free list.

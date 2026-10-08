@@ -165,6 +165,27 @@ describe("RecruiterSkillsPanel (rec-006)", () => {
     expect(JSON.parse(String(writes(calls)[1].init!.body))).toEqual({ active: false });
   });
 
+  it("merges a skill into another after a confirm and then shows the kept skill (rec-011 SK7)", async () => {
+    const kept = { ...js, aliases: [{ id: "a9", alias: "Java" }] };
+    const calls = serve(({ url, init }) => (init?.method === "POST" && url.endsWith("/skills/s1/merge") ? res(kept) : undefined));
+    render(<RecruiterSkillsPanel canEdit />);
+    fireEvent.click(await screen.findByRole("button", { name: "Manage Java" }));
+    const detail = screen.getByRole("region", { name: "Java" });
+    fireEvent.click(within(detail).getByRole("button", { name: "Merge Java" }));
+    expect(await within(detail).findByText("Choose a skill from the list.")).toBeInTheDocument();
+    const picker = within(detail).getByRole("combobox", { name: /Merge into/ });
+    fireEvent.focus(picker);
+    fireEvent.change(picker, { target: { value: "Java" } });
+    fireEvent.click(await within(detail).findByRole("option", { name: /JavaScript/ }));
+    expect(within(detail).queryByRole("option", { name: /^Java\b(?!Script)/ })).toBeNull(); // never itself
+    fireEvent.click(within(detail).getByRole("button", { name: "Merge Java" }));
+    expect(within(detail).getByText(/Java is removed and its name becomes an alias of JavaScript/)).toBeInTheDocument();
+    fireEvent.click(within(detail).getByRole("button", { name: "Confirm merge" }));
+    const keptRegion = await screen.findByRole("region", { name: "JavaScript" });
+    expect(await within(keptRegion).findByText("Merged Java into JavaScript.")).toBeInTheDocument();
+    expect(JSON.parse(String(writes(calls)[0].init!.body))).toEqual({ into_skill_id: "s3" });
+  });
+
   it("closes the detail with Close", async () => {
     serve(() => undefined);
     render(<RecruiterSkillsPanel canEdit />);

@@ -3365,3 +3365,18 @@ Design spec `docs/superpowers/specs/2026-10-08-rec-017-candidate-requirement-tra
   company, status badge, requirement (linked only when the viewer can open it), its code and status, and since when (AC1).
 - **Legacy panels:** the HR shortlist, the employer shortlist, the student's Job Applications and the application picker show the status
   label.
+
+## rec-011 addendum (2026-10-08, `DEC-SCOPE-137`) — Candidate skills and the skill merge
+
+Design spec `docs/superpowers/specs/2026-10-08-rec-011-candidate-skills-design.md` §6.
+
+- **Candidate detail** (`/recruiter/candidates/[id]`): a Skills card between the profile and the resume.
+  - A table on wide screens and stacked cards on phones. Columns: Skill (with category), Level, Experience, Last used, Source, Status
+    (with "by X · date" once verified or assessed), Actions.
+  - Writers: **Add skill** (a searchable picker over the Skills Master, level, experience in months, last used year, source); per row
+    a Status select (Claimed / Verified / Assessed), Edit (inline), and Remove with a confirm.
+  - Loading, empty ("No skills added yet."), error-with-Retry states. The server's sentence is shown for a 409/422 and the entry is
+    kept. Focus moves to the feedback line after a write.
+  - `hr_team` and an archived candidate see the table with no controls.
+- **Skills Master detail** (`/recruiter/manager/skills`, manager and super_admin): **Merge into another skill** — a picker (never the
+  skill itself), then a confirm naming what happens. On success the detail shows the kept skill with the merged name among its aliases.

@@ -1578,3 +1578,23 @@ history notes.
   stays in the pool (A3); otherwise a new `CAN-` candidate from the `Edusphere students` source, `opted_in` false, created by the student.
 - The A1 map rewrites the statuses; each existing row gets a history row whose note keeps the legacy value. `downgrade()` restores them and
   refuses while tracking data exists (an external candidate's application, or a change by a user). Backfilled candidates are kept.
+
+## Candidate skills (`rec-011`, `DEC-SCOPE-137`; migration `0122_candidate_skills`, after `0121_job_application_tracking`)
+
+**`candidate_skills` columns:**
+- `id`, `candidate_id` → `candidates` (FK RESTRICT), `skill_id` → `skills` (FK RESTRICT)
+- `level` varchar(16) (CHECK beginner/intermediate/advanced/expert), `experience_months` int (CHECK 0–600), `last_used_year` smallint
+  (CHECK ≥ 1950; the upper bound, this year, is the schema's)
+- `source` varchar(24), default `resume` (CHECK: the six S2-§17 sources)
+- `status` varchar(12), default `claimed` (CHECK claimed/verified/assessed), `verified_by_user_id`, `verified_at`
+- `added_by_user_id`, `updated_by_user_id`, timestamps
+
+**Constraints and indexes:**
+- `uq_candidate_skills_skill` UNIQUE `(candidate_id, skill_id)`: one row per skill (AC1) and the duplicate backstop (AC2).
+- CHECK `ck_candidate_skills_verified`: who and when are set exactly when the status is not `claimed`.
+- `ix_candidate_skills_skill_candidate` `(skill_id, status, candidate_id)`: the rec-013 search index ("verified only").
+
+**Design notes:**
+- Rows are hard-deleted on remove (audited). The skill merge (SK7) re-points rows to the kept skill and deletes the loser of a clash
+  before it deletes the merged skill, so no row ever points at a deleted skill. The merge also re-points `job_skills.skill_id`.
+- `downgrade()` refuses while any row exists.

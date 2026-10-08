@@ -40,6 +40,9 @@ from app.models import (
     BDM_MOU_STATUSES,
     BDM_STAFF_MAX,
     BDM_TARGET_MAX,
+    CANDIDATE_SKILL_LEVELS,
+    CANDIDATE_SKILL_SOURCES,
+    CANDIDATE_SKILL_STATUSES,
     CANDIDATE_STATUSES,
     CONTACT_CHANNELS,
     COURSE_LEVELS,
@@ -7354,6 +7357,7 @@ class VisitOptionPage(BaseModel):
 # --- rec-006 (DEC-SCOPE-119): the recruiter Skills Master ------------------------------------------------------------------------
 SKILL_FIELD_LABELS = {
     "name": "Name", "alias": "Alias", "active": "Active", "category_id": "Category", "tag_category_ids": "Other categories", "skill_id": "Related skill",
+    "into_skill_id": "Merge into",
 }
 _SPACES = re.compile(r" +")
 
@@ -7442,6 +7446,13 @@ class SkillAliasCreate(BaseModel):
 class SkillRelatedCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     skill_id: SkillPick
+
+
+class SkillMerge(BaseModel):
+    """rec-011 SK7: merge this skill into another (the kept one)."""
+
+    model_config = ConfigDict(extra="forbid")
+    into_skill_id: SkillPick
 
 
 class SkillCategoryOut(BaseModel):
@@ -8320,7 +8331,6 @@ class RecMeetingOutcome(BaseModel):
     next_action_reason: RecFollowUpReason | None = None
 
 
-
 # --- rec-026 (DEC-SCOPE-135): recruiter message templates, WhatsApp and email --------------------------------------------------------
 class RecTemplateCreate(BaseModel):
     """MS3. `kind` is a string checked against the channel's list in the service, so the 422 names the channel (tel-012's shape)."""
@@ -8385,3 +8395,39 @@ class RecApplicationStatusChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
     status: Literal[APPLICATION_STATUSES]
     note: _rec_requirement_text_type(500, multiline=True) = None
+
+
+# --- rec-011 (DEC-SCOPE-137, spec §1/§4): a candidate's skills -------------------------------------------------------------------
+CANDIDATE_SKILL_LABELS = {"skill": "Skill", "level": "Level", "experience_months": "Experience (months)", "last_used_year": "Last used", "source": "Source", "status": "Status"}
+
+
+def _last_used(value: int | None) -> int | None:
+    """SK2: a year from 1950 to this year -- a skill cannot be last used in the future."""
+    this_year = datetime.now(UTC).year
+    if value is not None and not 1950 <= value <= this_year:
+        raise ValueError(f"Last used must be a year between 1950 and {this_year}")
+    return value
+
+
+class CandidateSkillUpdate(BaseModel):
+    """PATCH: omitted = unchanged; a null experience or last-used year clears it, level and source cannot be cleared (null is "required").
+    The skill and the status are unknown fields here: a different skill is a remove and an add, and the status has its own route (SK4)."""
+
+    model_config = ConfigDict(extra="forbid")
+    level: Literal[CANDIDATE_SKILL_LEVELS] = None
+    experience_months: _whole("Experience (months)", 0, 600) = None
+    last_used_year: Annotated[StrictInt | None, AfterValidator(_last_used)] = None
+    source: Literal[CANDIDATE_SKILL_SOURCES] = None
+
+
+class CandidateSkillCreate(CandidateSkillUpdate):
+    """SK5: `skill` is text resolved through the Skills Master (a name or an alias). A new row is always `claimed` (SK4)."""
+
+    skill: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
+    level: Literal[CANDIDATE_SKILL_LEVELS]
+    source: Literal[CANDIDATE_SKILL_SOURCES] = "resume"
+
+
+class CandidateSkillStatusChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: Literal[CANDIDATE_SKILL_STATUSES]

@@ -7,14 +7,15 @@ import RecruiterCalls from "@/components/RecruiterCalls";
 import RecruiterCandidateApplications from "@/components/RecruiterCandidateApplications";
 import RecruiterCandidateForm from "@/components/RecruiterCandidateForm";
 import RecruiterCandidateResumes from "@/components/RecruiterCandidateResumes";
+import RecruiterCandidateSkills from "@/components/RecruiterCandidateSkills";
 import RecruiterMessages from "@/components/RecruiterMessages";
 import { sendRequest } from "@/lib/apiErrors";
 import { telHref } from "@/lib/recruiterCalls";
 import { STATUS_LABEL, candidateUrl, experienceLabel, type CandidateDetail } from "@/lib/recruiterCandidates";
 
 // rec-009 (spec §6): one candidate -- the §8 profile, Edit (writers), Archive/Restore with a confirm, and the resume versions. hr_team reads
-// only (`can_edit` false). Applications (rec-017), Calls (rec-025) and messages (rec-026) sit under the resumes; skills and the
-// timeline arrive with rec-011 and rec-027; no empty tabs stand in.
+// only (`can_edit` false). Skills (rec-011) sit above the resumes; Applications (rec-017), Calls (rec-025) and messages (rec-026) sit
+// under them; the timeline arrives with rec-027; no empty tabs stand in.
 const money = (v: string | null) => (v === null ? null : Number(v).toLocaleString("en-IN", { maximumFractionDigits: 2 }));
 
 export default function RecruiterCandidateDetail({ initial }: { initial: CandidateDetail }) {
@@ -94,6 +95,8 @@ export default function RecruiterCandidateDetail({ initial }: { initial: Candida
           </dl>
         </section>
       )}
+      {/* rec-011: re-keyed on archive/restore, so the card re-reads can_edit (an archived candidate's skills are read only). */}
+      <RecruiterCandidateSkills key={`skills-${candidate.id}-${archived}`} candidateId={candidate.id} />
       <RecruiterCandidateResumes candidateId={candidate.id} resumes={candidate.resumes} canUpload={canEdit} onUploaded={() => void reload()} />
       <RecruiterCandidateApplications candidateId={candidate.id} />
       {/* rec-025: re-keyed on archive/restore, so Log call and each call's Edit follow the candidate's state. */}
