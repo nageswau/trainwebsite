@@ -8,6 +8,7 @@ import LocalTime from "@/components/LocalTime";
 import RecruiterCompanyContacts from "@/components/RecruiterCompanyContacts";
 import RecruiterCompanyFollowUps from "@/components/RecruiterCompanyFollowUps";
 import RecruiterCompanyForm from "@/components/RecruiterCompanyForm";
+import RecruiterCompanyMeetings from "@/components/RecruiterCompanyMeetings";
 import RecruiterCompanyPipeline from "@/components/RecruiterCompanyPipeline";
 import RecruiterStageHistory from "@/components/RecruiterStageHistory";
 import RecruiterCompanyRequirements from "@/components/RecruiterCompanyRequirements";
@@ -22,7 +23,7 @@ import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // rec-003 (spec §6): one company. Actions render from `permissions` only -- the server enforces every rule. Every write re-renders from
 // the company the API returns (no refetch). Contacts are rec-004's section; rec-005 adds the pipeline and its history (reloaded after
-// each pipeline write); rec-024 the follow-ups (a change re-reads the company's Next follow-up); contracts arrive with rec-030.
+// each pipeline write); rec-024 the follow-ups (a change re-reads the company's Next follow-up); rec-028 the meetings; contracts arrive with rec-030.
 function linkOrText(url: string | null) {
   const safe = safeLink(url);
   return safe ? (
@@ -100,6 +101,7 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
   const [notice, setNotice] = useState<string | null>(created ? `Company ${initial.code} created.` : null);
   const [failure, setFailure] = useState<string | null>(null);
   const [followUpChanges, setFollowUpChanges] = useState(0);
+  const [meetingChanges, setMeetingChanges] = useState(0);
   const focus = useFocusAfterRender();
   // "created" is said once: the flag leaves the address, so a refresh or a shared link doesn't repeat it (BdmOrganizationDetail's rule).
   useEffect(() => {
@@ -130,6 +132,14 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
     setFollowUpChanges((n) => n + 1);
     const outcome = await sendRequest(`${COMPANIES_URL}/${company.id}`, { method: "GET" });
     if (outcome.ok && isCompanyBody(outcome.data)) setCompany(outcome.data.company);
+  }
+
+  // rec-028: a meeting scheduled can move the stage (AC1) and an outcome can add a follow-up (AC2) -- re-read the company, then reload
+  // the stage history and the follow-ups (best effort, as above).
+  async function meetingChanged() {
+    setMeetingChanges((n) => n + 1);
+    const outcome = await sendRequest(`${COMPANIES_URL}/${company.id}`, { method: "GET" });
+    if (outcome.ok && isCompanyBody(outcome.data)) stageChanged(outcome.data.company);
   }
 
   async function act(path: "archive" | "restore") {
@@ -231,8 +241,9 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
         </section>
       )}
       {/* Re-keyed on archive/restore (the list's `can_edit` follows the company's state) and on a follow-up change (each contact's next one). */}
-      <RecruiterCompanyContacts key={`${company.id}-${company.archived}-${followUpChanges}`} companyId={company.id} />
-      <RecruiterCompanyFollowUps key={`${company.id}-${company.archived}`} companyId={company.id} canWrite={p.can_edit} onChanged={() => void followUpChanged()} />
+      <RecruiterCompanyContacts key={`${company.id}-${company.archived}-${followUpChanges}-${meetingChanges}`} companyId={company.id} />
+      <RecruiterCompanyFollowUps key={`${company.id}-${company.archived}-${meetingChanges}`} companyId={company.id} canWrite={p.can_edit} onChanged={() => void followUpChanged()} />
+      <RecruiterCompanyMeetings key={`${company.id}-${company.archived}`} companyId={company.id} canWrite={p.can_edit} onChanged={() => void meetingChanged()} />
       <RecruiterCompanyPipeline
         company={company}
         onChanged={(c, text) => {
