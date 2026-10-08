@@ -5457,7 +5457,7 @@ told the session to proceed with the recommended answers.
 - Module scope: `DEC-SCOPE-116` (R11, R13). Company scope: `DEC-SCOPE-121`. Contacts: `DEC-SCOPE-125` (C6). Candidates: `DEC-SCOPE-122`.
   Follow-ups: `DEC-SCOPE-131`. Call idiom: `DEC-SCOPE-096` (tel-010 CL4).
 
-**Status:** built on `feature/rec-025`. Every answer below is a **recommended default, `UNVERIFIED`**. The owner told the session to
+**Status:** **MERGED** to `main` as PR #172 @ `1353ca12` (2026-10-08). Every answer below is a **recommended default, `UNVERIFIED`**. The owner told the session to
 proceed with the recommended answers; the backlog lists no Q-xx for this item.
 
 **Numbering:** migration `0118_recruiter_calls`, API §12BA and RBAC §2.59. It was drafted as `0117` / `DEC-SCOPE-132` / §12AZ / §2.58;
