@@ -131,6 +131,14 @@ describe("UniversityImportPanel", () => {
     expect(posts()).toHaveLength(1);
   });
 
+  it("stacks the history into labelled cards on a phone, like the result (QA-01)", async () => {
+    history.push({ status: 200, body: HISTORY });
+    render(<UniversityImportPanel />);
+    const cell = await screen.findByText("Hema Head");
+    expect(cell.closest("table")).toHaveClass("bulk-report");
+    expect(cell).toHaveAttribute("data-label", "Uploaded by");
+  });
+
   it("offers a retry when the history cannot be loaded", async () => {
     history.push({ status: 500, body: {} }, { status: 200, body: HISTORY });
     render(<UniversityImportPanel />);

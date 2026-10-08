@@ -31,7 +31,7 @@ export default function UniversityImportHistory({ version }: { version: number }
         <p className="muted">No imports yet.</p>
       ) : (
         <div className="table-wrap">
-          <table className="table">
+          <table className="table bulk-report" aria-label="Past imports">
             <thead>
               <tr><th>When</th><th>Uploaded by</th><th>Rows</th><th>Result</th><th>Report</th></tr>
             </thead>
