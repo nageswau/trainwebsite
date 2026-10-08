@@ -29,19 +29,19 @@ test("a catalogue country keeps its guide; an internal one is the unavailable pa
   await expect(page.getByRole("heading", { name: "Country guide unavailable" })).toBeVisible();
 });
 
-test("an overseas admin creates universities only in catalogue countries, and can look up every country", async ({ page }) => {
+test("an overseas admin creates catalogue universities only in catalogue countries, and can look up every country", async ({ page }) => {
   await page.goto("/overseas/login");
   await page.fill("#login-email", "overseasadmin@edusphere.local");
   await page.fill("#login-password", "Demo@123");
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/overseas/admin/dashboard");
 
+  // upc-003 (UM13): the Universities section now opens the University Master (internal until published) instead of the old
+  // create-only panel; the legacy catalogue create API still refuses an internal country.
   await page.goto("/overseas/admin/universities");
-  const select = page.locator("#university-country");
-  await expect(select).toBeEnabled();
-  const options = await select.locator("option").allTextContents();
-  for (const name of CATALOGUE) expect(options).toContain(name);
-  for (const name of INTERNAL) expect(options).not.toContain(name);
+  await expect(page.getByRole("link", { name: "Open University Master" })).toHaveAttribute("href", "/partnership/universities");
+  const legacy = await page.request.post("/api/v1/admin/universities", { data: { country_slug: "japan", slug: `upc002-${Date.now()}`, name: "X" } });
+  expect(legacy.status()).toBe(422);
 
   const lookup = await page.request.get("/api/v1/lookups/countries", { params: { q: "jp" } });
   expect(lookup.status()).toBe(200);

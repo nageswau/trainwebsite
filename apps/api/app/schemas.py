@@ -38,18 +38,25 @@ from app.models import (
     BDM_MOU_STATUSES,
     BDM_STAFF_MAX,
     BDM_TARGET_MAX,
+    COURSE_LEVELS,
     GENDERS,
+    INSTITUTION_TYPES,
     LEAD_APPOINTMENT_TYPE_LABELS,
     LEAD_CALL_MAX_SECONDS,
     LEAD_CALL_OUTCOMES,
     LEAD_CALL_TYPES,
     LEAD_FOLLOW_UP_REASONS,
     LEAD_PRIORITIES,
+    PARTNERSHIP_POTENTIALS,
     QUAL_MODES,
     QUAL_PASSPORT,
     QUAL_SKILL_LEVELS,
     QUAL_STUDY_LEVELS,
+    RANKING_SYSTEMS,
     TEL_TARGET_KPIS,
+    UNIVERSITY_OWNERSHIP_TYPES,
+    UNIVERSITY_PRIORITIES,
+    UNIVERSITY_RELATIONSHIPS,
 )
 from app.notifications.phone import normalise_phone
 from app.services.agent_visa import VISA_CASE_STAGES
@@ -6672,6 +6679,228 @@ class PartnershipHeadPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# --- upc-003 Global University Master (DEC-SCOPE-120, spec §3) --------------------------------------------------------------
+UNIVERSITY_FIELD_LABELS = {
+    "name": "University name", "city": "City", "state_region": "State / region", "website": "Website", "international_office": "International office",
+    "overview": "Overview", "eligibility": "Eligibility", "other_name": "Ranking name", "rank": "Rank",
+}
+UNIVERSITY_MAX_RANKINGS = 10
+UNIVERSITY_MAX_PROGRAMS = 20
+
+
+def _university_text(multiline: bool, required: bool):
+    """bdm-001's text rule (no control characters; blank -> None) with this item's labels; the website must be http(s)."""
+
+    def check(value: str | None, info: ValidationInfo) -> str | None:
+        label = UNIVERSITY_FIELD_LABELS.get(info.field_name or "", info.field_name)
+        control = _BDM_CONTROL_MULTILINE if multiline else _BDM_CONTROL
+        if value is not None and control.search(value):
+            raise ValueError(f"{label} contains invalid characters")
+        if not value:
+            if required:
+                raise ValueError(f"{label} is required")
+            return None
+        if info.field_name == "website" and not _BDM_WEBSITE.fullmatch(value):  # http(s) only: no javascript:/data: hrefs
+            raise ValueError("Website must start with http:// or https://" if _BDM_SCHEME.match(value) else "Enter a website such as abc.ac.uk")
+        return value
+
+    return check
+
+
+def _university_str(max_length: int, *, required: bool = False, multiline: bool = False):
+    trimmed = Annotated[str, StringConstraints(strip_whitespace=True, max_length=max_length)]
+    text = Annotated[trimmed if required else trimmed | None, AfterValidator(_university_text(multiline, required))]
+    return Annotated[text, BeforeValidator(_bdm_newlines)] if multiline else text
+
+
+def _university_body(value: str, info: ValidationInfo) -> str:
+    """Catalogue text (overview, eligibility) sits in NOT NULL columns, so blank stays "" rather than None."""
+    return _university_text(True, False)(value, info) or ""
+
+
+UniversityName = _university_str(200, required=True)
+UniversityCity = _university_str(120, required=True)
+UniversityShort = _university_str(120)
+UniversityWebsite = Annotated[_university_str(300), BeforeValidator(_bdm_website_prefix)]
+UniversityOffice = _university_str(1000, multiline=True)
+UniversityBody = Annotated[str, BeforeValidator(_bdm_newlines), StringConstraints(strip_whitespace=True, max_length=5000), AfterValidator(_university_body)]
+InstitutionType = Literal[INSTITUTION_TYPES]
+UniversityOwnership = Literal[UNIVERSITY_OWNERSHIP_TYPES]
+UniversityRelationship = Literal[UNIVERSITY_RELATIONSHIPS]
+UniversityPriority = Literal[UNIVERSITY_PRIORITIES]
+PartnershipPotential = Literal[PARTNERSHIP_POTENTIALS]
+
+
+def _program(value: str) -> str:
+    value = value.strip()
+    if not value or len(value) > 80 or _BDM_CONTROL.search(value):
+        raise ValueError("Each programme area must be 1 to 80 plain characters")
+    return value
+
+
+def _distinct(values: list) -> list:
+    if len({v.casefold() for v in values}) != len(values):
+        raise ValueError("List each value once")
+    return values
+
+
+class UniversityRankingIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    system: Literal[RANKING_SYSTEMS]
+    other_name: _university_str(80) = None
+    year: Annotated[StrictInt, Field(ge=1900, le=2100)]
+    rank: _university_str(20, required=True)
+
+    @model_validator(mode="after")
+    def _other_name(self):
+        if (self.system == "Other") != (self.other_name is not None):
+            raise ValueError("Name the ranking system for an Other ranking, and only then")
+        return self
+
+
+def _rankings(values: list[UniversityRankingIn]) -> list[UniversityRankingIn]:
+    keys = [(r.system, (r.other_name or "").casefold(), r.year) for r in values]
+    if len(set(keys)) != len(keys):
+        raise ValueError("Each ranking system and year may appear once")
+    return values
+
+
+UniversityRankings = Annotated[list[UniversityRankingIn], Field(max_length=UNIVERSITY_MAX_RANKINGS), AfterValidator(_rankings)]
+CourseLevels = Annotated[list[Literal[COURSE_LEVELS]], Field(max_length=len(COURSE_LEVELS)), AfterValidator(_distinct)]
+PopularPrograms = Annotated[list[Annotated[str, AfterValidator(_program)]], Field(max_length=UNIVERSITY_MAX_PROGRAMS), AfterValidator(_distinct)]
+
+
+class UniversityCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: UniversityName
+    country_id: UUID
+    city: UniversityCity
+    institution_type: InstitutionType = "university"
+    ownership_type: UniversityOwnership | None = None
+    state_region: UniversityShort = None
+    website: UniversityWebsite = None
+    course_levels: CourseLevels = []
+    popular_programs: PopularPrograms = []
+    international_office: UniversityOffice = None
+    existing_relationship: UniversityRelationship | None = None
+    priority: UniversityPriority | None = None
+    partnership_potential: PartnershipPotential | None = None
+    overview: UniversityBody = ""
+    eligibility: UniversityBody = ""
+    rankings: UniversityRankings = []
+
+
+class UniversityUpdate(BaseModel):
+    """PATCH: omitted = unchanged; an explicit null on a required field fails its non-nullable type (bdm-001's idiom). The code, slug,
+    owners, visibility and active flag are server-owned, so sending them is a 422 (extra="forbid")."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: UniversityName = None
+    country_id: UUID = None
+    city: UniversityCity = None
+    institution_type: InstitutionType = None
+    ownership_type: UniversityOwnership | None = None
+    state_region: UniversityShort = None
+    website: UniversityWebsite = None
+    course_levels: CourseLevels = None
+    popular_programs: PopularPrograms = None
+    international_office: UniversityOffice = None
+    existing_relationship: UniversityRelationship | None = None
+    priority: UniversityPriority | None = None
+    partnership_potential: PartnershipPotential | None = None
+    overview: UniversityBody = None
+    eligibility: UniversityBody = None
+    rankings: UniversityRankings = None
+
+
+class UniversityAssign(BaseModel):
+    """The whole ownership, both slots: a missing or null slot is cleared."""
+
+    model_config = ConfigDict(extra="forbid")
+    primary_manager_user_id: UUID | None = None
+    backup_manager_user_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def _slots(self):
+        if self.backup_manager_user_id is not None and self.primary_manager_user_id is None:
+            raise ValueError("Choose a primary manager before a backup")
+        if self.backup_manager_user_id is not None and self.backup_manager_user_id == self.primary_manager_user_id:
+            raise ValueError("The backup manager must be a different person")
+        return self
+
+
+class UniversityDeactivate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    confirm: StrictBool = False
+
+
+class UniversityCountryRef(BaseModel):
+    id: UUID
+    name: str
+    iso2: str | None
+    region: str | None
+    catalogue_visible: bool
+
+
+class UniversityRankingOut(BaseModel):
+    system: str
+    other_name: str | None
+    year: int
+    rank: str
+
+
+class UniversityPermissions(BaseModel):
+    can_edit: bool
+    can_assign: bool
+    can_publish: bool
+    can_deactivate: bool
+
+
+class UniversityRow(BaseModel):
+    id: UUID
+    university_code: str
+    slug: str
+    name: str
+    institution_type: str
+    country: UniversityCountryRef
+    city: str
+    priority: str | None
+    partnership_potential: str | None
+    primary_manager: BdmManagerRef | None
+    backup_manager: BdmManagerRef | None
+    catalogue_visible: bool
+    active: bool
+    permissions: UniversityPermissions
+
+
+class UniversityDetail(UniversityRow):
+    ownership_type: str | None
+    state_region: str | None
+    website: str | None
+    course_levels: list[str]
+    popular_programs: list[str]
+    international_office: str | None
+    existing_relationship: str | None
+    overview: str
+    eligibility: str
+    rankings: list[UniversityRankingOut]
+    application_count: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class UniversityEnvelope(BaseModel):
+    university: UniversityDetail
+
+
+class UniversityPage(BaseModel):
+    items: list[UniversityRow]
+    total: int
+    limit: int
+    offset: int
+
 
 # --- rec-006 (DEC-SCOPE-119): the recruiter Skills Master ------------------------------------------------------------------------
 SKILL_FIELD_LABELS = {

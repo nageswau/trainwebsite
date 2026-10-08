@@ -10,8 +10,8 @@ import { type LookupPage, optionText, type PickOption } from "@/lib/lookups";
 // Validity uses the constraint API: an unpicked required field, or text that is not a pick, blocks the form's submit and
 // shows a field error. Status text uses aria-live (not role="status"): host pages already query their own status region.
 
-export type Noun = "student" | "application" | "school" | "candidate" | "manager" | "BDM" | "organization" | "telecaller" | "counsellor" | "head" | "skill";
-const PLURAL: Record<Noun, string> = { student: "students", application: "applications", school: "schools", candidate: "candidates", manager: "managers", BDM: "BDMs", organization: "organizations", telecaller: "telecallers", counsellor: "counsellors", head: "heads", skill: "skills" };
+export type Noun = "student" | "application" | "school" | "candidate" | "manager" | "BDM" | "organization" | "telecaller" | "counsellor" | "head" | "skill" | "country";
+const PLURAL: Record<Noun, string> = { student: "students", application: "applications", school: "schools", candidate: "candidates", manager: "managers", BDM: "BDMs", organization: "organizations", telecaller: "telecallers", counsellor: "counsellors", head: "heads", skill: "skills", country: "countries" };
 export const MAX_RENDERED = 50;
 export const DEBOUNCE_MS = 250;
 
