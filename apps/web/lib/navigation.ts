@@ -135,7 +135,7 @@ const menu = (label: string, path: string, item: string, live = false): Partners
 export const PARTNERSHIP_MENU: PartnershipMenuEntry[] = [
   menu("Dashboard", "dashboard", "upc-022", true), menu("Global University Database", "search", "upc-024"),
   menu("University Master", "universities", "upc-003", true), menu("Contact Management", "contacts", "upc-006"),
-  menu("Partnership Pipeline", "pipeline", "upc-007"), menu("Meetings", "meetings", "upc-009"), menu("University Visits", "visits", "upc-010"),
+  menu("Partnership Pipeline", "pipeline", "upc-007"), menu("Meetings", "meetings", "upc-009"), menu("University Visits", "visits", "upc-010", true),
   menu("MoU & Agreements", "agreements", "upc-014"), menu("Commercial Terms", "commercial-terms", "upc-016"),
   menu("Courses & Programs", "courses", "upc-017"), menu("Student Opportunities", "opportunities", "upc-018"),
   menu("University Performance", "performance", "upc-018"), menu("Follow-ups & Tasks", "tasks", "upc-020"), menu("Calendar", "calendar", "upc-011"),
@@ -146,7 +146,10 @@ export const PARTNERSHIP_NAV: NavItem[] = [
   ...PARTNERSHIP_MENU.filter((e) => e.live).map(({ label, href }) => ({ label, href })),
   { label: "Profile", href: "/partnership/profile" },
 ];
-export const PARTNERSHIP_HEAD_NAV: NavItem[] = [{ label: "Team", href: "/partnership/head/team" }, { label: "University Master", href: "/partnership/universities" }];
+export const PARTNERSHIP_HEAD_NAV: NavItem[] = [
+  { label: "Team", href: "/partnership/head/team" }, { label: "University Master", href: "/partnership/universities" },
+  { label: "University Visits", href: "/partnership/visits" }, { label: "Visit approvals", href: "/partnership/visits/approvals" }, // upc-010 (VS4)
+];
 
 // SCH-001/SCH-003 -- School roles use their own dedicated pages (bespoke forms/actions,
 // not the generic PortalPage/[section] `_payload()` dispatcher every other role's console
@@ -232,4 +235,4 @@ export function agentNavFor(nav: NavItem[], memberRole?: string | null, permissi
     .map((item) => (item.href === STAFF_STUDENTS.href ? STAFF_STUDENTS : item));
 }
 // ENH-016: the cross-school School Analytics page lives under /overseas/admin (D1: Overseas and Super Admins).
-export const SUPER_ADMIN_NAV:NavItem[] = [...["dashboard","users","students","staff","programs","batches","universities","recruiters","content","blogs","gallery","events","leads","applications","payments","reports","notifications","roles","settings","security-logs","backups"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:x==="dashboard"?"/admin":`/admin/${x}`})),{label:"BDMs",href:"/admin/bdms"},{label:"BDM Travel Approvals",href:"/admin/bdm-travel-approvals"},{label:"BDM Dashboard",href:"/bdm/manager/dashboard"},{label:"BDM Performance",href:"/bdm/manager/performance"},{label:"BDM Master View",href:"/bdm/manager/hierarchy"},{label:"Telecallers",href:"/admin/telecallers"},{label:"Telecaller Performance",href:"/admin/telecaller-performance"},{label:"Telecaller Reports",href:"/admin/telecaller-reports"},{label:"Recruiter Staff",href:"/admin/recruiter-staff"},{label:"Recruiter Companies",href:"/recruiter/companies"},{label:"Partnership managers",href:"/admin/partnership-managers"},{label:"Candidate Master",href:"/recruiter/candidates"},{label:"School Analytics",href:"/overseas/admin/school-analytics"}];
+export const SUPER_ADMIN_NAV:NavItem[] = [...["dashboard","users","students","staff","programs","batches","universities","recruiters","content","blogs","gallery","events","leads","applications","payments","reports","notifications","roles","settings","security-logs","backups"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:x==="dashboard"?"/admin":`/admin/${x}`})),{label:"BDMs",href:"/admin/bdms"},{label:"BDM Travel Approvals",href:"/admin/bdm-travel-approvals"},{label:"BDM Dashboard",href:"/bdm/manager/dashboard"},{label:"BDM Performance",href:"/bdm/manager/performance"},{label:"BDM Master View",href:"/bdm/manager/hierarchy"},{label:"Telecallers",href:"/admin/telecallers"},{label:"Telecaller Performance",href:"/admin/telecaller-performance"},{label:"Telecaller Reports",href:"/admin/telecaller-reports"},{label:"Recruiter Staff",href:"/admin/recruiter-staff"},{label:"Recruiter Companies",href:"/recruiter/companies"},{label:"Partnership managers",href:"/admin/partnership-managers"},{label:"Partnership Visit Approvals",href:"/partnership/visits/approvals"},{label:"Candidate Master",href:"/recruiter/candidates"},{label:"School Analytics",href:"/overseas/admin/school-analytics"}];
