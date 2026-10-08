@@ -3274,7 +3274,6 @@ class RecCampaign(Base, TimestampMixin):
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
 
-
 class PartnershipProfile(Base, TimestampMixin):
     """upc-001 (DEC-SCOPE-118): a partnership manager's profile, 1:1 with a `partnership_manager` user (the user id is the key). Name,
     email, mobile and active status stay on `users` (PU2). The reporting head must be an active `partnership_head`; that spans tables, so
@@ -3288,3 +3287,56 @@ class PartnershipProfile(Base, TimestampMixin):
     user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), primary_key=True)
     employee_id: Mapped[str] = mapped_column(String(40))
     reporting_head_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+class SkillCategory(Base, TimestampMixin):
+    """rec-006 (DEC-SCOPE-119, EVID-018 S2-§2): a Skills Master category. Never deleted: deactivating hides it from new picks while
+    skills keep the link."""
+
+    __tablename__ = "skill_categories"
+    __table_args__ = (Index("uq_skill_categories_name", text("lower(name)"), unique=True),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(80))
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+
+
+class Skill(Base, TimestampMixin):
+    """rec-006: one searchable skill with a primary category (secondary categories are `skill_category_tags`). A skill name and an
+    alias share one case-insensitive term space -- a cross-table rule, so services/skills.py enforces it under an advisory lock."""
+
+    __tablename__ = "skills"
+    __table_args__ = (Index("uq_skills_name", text("lower(name)"), unique=True), Index("ix_skills_category", "category_id"))
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(80))
+    category_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("skill_categories.id"))
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+
+
+class SkillCategoryTag(Base):
+    """rec-006 (S5): a skill's secondary category (JavaScript: Programming + Frontend)."""
+
+    __tablename__ = "skill_category_tags"
+    skill_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("skills.id", ondelete="CASCADE"), primary_key=True)
+    category_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("skill_categories.id"), primary_key=True)
+
+
+class SkillAlias(Base):
+    """rec-006 (S2-§16): another spelling that resolves to the skill ("J2EE" → Java). Unique case-insensitively across all skills."""
+
+    __tablename__ = "skill_aliases"
+    __table_args__ = (Index("uq_skill_aliases_alias", text("lower(alias)"), unique=True), Index("ix_skill_aliases_skill", "skill_id"))
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    skill_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("skills.id", ondelete="CASCADE"))
+    alias: Mapped[str] = mapped_column(String(80))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class SkillRelated(Base):
+    """rec-006 (S4): two related skills (Java ⇄ Core Java), stored once per unordered pair (a < b); search expansion reads both ways."""
+
+    __tablename__ = "skill_related"
+    __table_args__ = (CheckConstraint("skill_a_id < skill_b_id", name="ck_skill_related_order"),)
+    skill_a_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("skills.id", ondelete="CASCADE"), primary_key=True)
+    skill_b_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("skills.id", ondelete="CASCADE"), primary_key=True)
