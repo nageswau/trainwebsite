@@ -19,6 +19,7 @@ from app.models import (
     RecCompanySize,
     RecIndustry,
     RecLeadSource,
+    RecruiterFollowUp,
     RecruiterProfile,
     User,
 )
@@ -40,6 +41,13 @@ REFUSALS = {
     "can_reassign": "Only a placement manager can reassign this company",
 }
 STATE_REFUSALS = {"can_edit": "Restore this company first", "can_archive": "Already archived", "can_restore": "Already active", "can_reassign": "Restore this company first"}
+# rec-024 FU9: a company's next follow-up is its earliest open one -- derived, never stored (correlated, so the list stays one query).
+NEXT_FOLLOW_UP = (
+    select(func.min(RecruiterFollowUp.due_at))
+    .where(RecruiterFollowUp.company_id == Company.id, RecruiterFollowUp.status == "open")
+    .correlate(Company)
+    .scalar_subquery()
+)
 LOOKUPS = {  # field -> (model, the word in its 422)
     "industry_id": (RecIndustry, "industry"),
     "company_size_id": (RecCompanySize, "company size"),
@@ -174,7 +182,7 @@ def ref(row) -> dict | None:
     return {"id": row.id, "name": row.name, "active": row.active} if row else None
 
 
-def row_out(user: User, company: Company, industry, source, recruiter: User | None) -> dict:
+def row_out(user: User, company: Company, industry, source, recruiter: User | None, next_follow_up_at=None) -> dict:
     return {
         "id": company.id,
         "code": company.company_code,
@@ -186,6 +194,7 @@ def row_out(user: User, company: Company, industry, source, recruiter: User | No
         "assigned_recruiter": person(recruiter),
         "archived": company.archived_at is not None,
         "permissions": permissions(user, company),
+        "next_follow_up_at": next_follow_up_at,
     }
 
 
@@ -203,7 +212,11 @@ async def company_out(db: AsyncSession, user: User, company: Company, *, refresh
         return await db.get(model, value) if value else None
 
     return {
-        **row_out(user, company, await lookup(RecIndustry, company.industry_id), await lookup(RecLeadSource, company.lead_source_id), people.get(company.assigned_recruiter_user_id)),
+        **row_out(
+            user, company, await lookup(RecIndustry, company.industry_id), await lookup(RecLeadSource, company.lead_source_id),
+            people.get(company.assigned_recruiter_user_id),
+            await db.scalar(select(func.min(RecruiterFollowUp.due_at)).where(RecruiterFollowUp.company_id == company.id, RecruiterFollowUp.status == "open")),
+        ),
         "website": company.website,
         "linkedin_url": company.linkedin_url,
         "company_size": ref(await lookup(RecCompanySize, company.company_size_id)),

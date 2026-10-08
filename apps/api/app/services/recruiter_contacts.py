@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Company, CompanyContact, RecContactRole, User
 from app.schemas import REC_CONTACT_FIELDS, REC_CONTACT_MAX, RecContactIn
 from app.services import recruiter_companies as companies
+from app.services.recruiter_follow_ups import contact_next
 
 CONTACT_NOT_FOUND = "Contact not found"
 
@@ -115,6 +116,7 @@ async def list_out(db: AsyncSession, user: User, company: Company) -> dict:
     role_ids = {c.role_id for c in contacts} - {None}
     roles = {r.id: r for r in (await db.scalars(select(RecContactRole).where(RecContactRole.id.in_(role_ids)))).all()} if role_ids else {}
     contacts.sort(key=lambda c: (not c.is_primary, not c.active, c.position))
+    next_due = await contact_next(db, company.id)
     items = [
         {
             **{
@@ -123,6 +125,7 @@ async def list_out(db: AsyncSession, user: User, company: Company) -> dict:
             },
             "role": companies.ref(roles.get(c.role_id)),
             "last_contacted_at": None,  # C6: computed once calls, messages and meetings exist (rec-025/026/028)
+            "next_follow_up_at": next_due.get(c.id),  # rec-024 FU9
         }
         for c in contacts
     ]
