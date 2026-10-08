@@ -347,3 +347,8 @@ Division `global`; created only by a Super Admin from Users; signs in at `/admin
 A user's nav never crosses `it` / `overseas` / `global` divisions except for **Super Admin**, the sole cross-division role. An `overseas_student` never sees `/it/*` nav items and vice versa, even though — per `DEC-ROLE-001` — both may be the *same person's* account. This is a navigation-visibility rule; the underlying identity-model question (one account, two role-assignments) is Architecture-phase work, tracked in `docs/features/FEATURE_QUESTIONS.md` item 3.
 
 **School roles' division is `overseas` by proposed inference, not an explicit decision** (`RBAC_MATRIX.md` §1) — the four `/school/*` nav trees above are modeled under `overseas` for now; if that assignment is confirmed wrong, these nav entries move divisions along with the underlying RBAC change (`PRD_OPEN_ITEMS.md` item 72).
+
+## rec-005 addendum (2026-10-08, `DEC-SCOPE-123`)
+
+- `placement_team` and `placement_manager`: a "Pipeline" entry (`/recruiter/pipeline`) after "Candidate Master".
+- `super_admin`: "Recruiter Pipeline" (`/recruiter/pipeline`) after "Recruiter Companies".

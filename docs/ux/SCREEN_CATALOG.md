@@ -3181,3 +3181,14 @@ is invented. Visual-reference mapping: None — not inspected. Do not claim pari
 - **Route:** `/partnership/universities/[id]`. **Content:** Profile `<dl>` (University ID and the §1 fields, application count), Rankings,
   EduSphere owner (primary/backup, the assign pickers for a head or Super Admin), Public catalogue (status sentence, overview, Publish /
   Remove from catalogue, Deactivate with an inline confirm naming the applications, Reactivate). Edit link when allowed.
+
+## rec-005 addendum (2026-10-08, `DEC-SCOPE-123`) — Company pipeline
+
+Design spec `docs/superpowers/specs/2026-10-08-rec-005-company-pipeline-design.md` §5.
+
+- **Company detail** (`/recruiter/companies/[id]`): a Pipeline section (13-stage stepper, state as text; Lost banner; Move form with the
+  four manual stages, reason required when moving back; Mark lost / Reopen with a reason) and a Stage history section (newest first,
+  Show more). Driven stages show "The stage now moves with its job requirements" and no Move form.
+- **Company list** (`/recruiter/companies`): a Stage column with a Lost badge.
+- **Pipeline board** (`/recruiter/pipeline`): a count tile per stage plus Lost, then one page of companies (code, company, city,
+  priority, stage, recruiter). Filters live in the address; an invalid filter says so with a way back.

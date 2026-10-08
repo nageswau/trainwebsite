@@ -121,6 +121,14 @@ describe("RecruiterPipelineBoard", () => {
     expect(screen.getByRole("link", { name: "ABC" })).toHaveAttribute("href", "/recruiter/companies/c1");
     expect(screen.getByText("Unassigned")).toBeInTheDocument();
   });
+  it("words the empty state for the chosen stage or the whole pipeline (QA-01)", () => {
+    const empty = { ...view, items: [], total: 0 };
+    render(<RecruiterPipelineBoard view={empty} href={() => "/recruiter/pipeline"} selected={null} />);
+    expect(screen.getByRole("status")).toHaveTextContent("No open companies in your pipeline.");
+    cleanup();
+    render(<RecruiterPipelineBoard view={empty} href={() => "/recruiter/pipeline"} selected="contacted" />);
+    expect(screen.getByRole("status")).toHaveTextContent("No companies at this stage.");
+  });
 });
 
 describe("helpers and navigation", () => {

@@ -1008,6 +1008,18 @@ who has not opted in, rec-010) is `404`, the same as an unknown id.
 | `hr_team` | list, read, download resumes; every write and the duplicate check are `403` | the whole pool | `rec-009` |
 | `employer`, `it_admin`, students, every other role | `403` (employers see only EMP-003's masked view, R12) | — | `rec-009` |
 
+### 2.49 Company pipeline *(net-new, added 2026-10-08 — `DEC-SCOPE-123`, `rec-005`)*
+
+Scope is the §2.47 company scope (out of scope = `404`). The role check for each action runs on the locked row.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` | read the pipeline, history and board; move manual stages; mark lost | own assigned companies | `rec-005` |
+| `placement_manager` | read the pipeline, history and board; **reopen** a Lost company (`403` on move and mark lost, rec-003 D6) | direct reports' companies + unassigned | `rec-005` |
+| `super_admin` | everything above | all companies | `rec-005` |
+| `bdm` (assigned) | read the pipeline, history and board; every write `403` (R10) | companies assigned to them | `rec-005` |
+| every other role | `403` | — | `rec-005` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

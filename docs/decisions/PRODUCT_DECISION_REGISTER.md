@@ -5124,3 +5124,29 @@ Spec `docs/superpowers/specs/2026-10-08-rec-009-candidate-master-design.md`.
 - The pages `/recruiter/candidates`, `/new` and `/[id]`.
 - A "Candidate Master" sidebar entry for recruiters, managers, super admin and HR.
 - **New Feature ID authorized:** `rec-009`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-009.
+
+### DEC-SCOPE-123 — Company B2B pipeline (`rec-005`)
+
+**Evidence:** `EVID-018` §5 (lines 218–270), lead field "Status" (116), "genuine prospect" (122); `RECRUITER_CRM_BACKLOG.md` §rec-005
+(AC1–AC4). Module scope: `DEC-SCOPE-116` (R1–R15); company scope and permissions: `DEC-SCOPE-121` (rec-003, D6).
+**Status:** built on `feature/rec-005` (2026-10-08). Every answer below is a **recommended default, `UNVERIFIED`**: the owner told the
+session to proceed with the recommended answers, and Q-06 was not asked. **Numbering (provisional):** migration `0108_company_pipeline`,
+API §12AQ, RBAC §2.49; re-check on `main` before merge. Spec `docs/superpowers/specs/2026-10-08-rec-005-company-pipeline-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| P1 | Stage count | The source lists **13** stages; the backlog's "14" is a miscount. Lost is a flag, not a stage |
+| P2 (Q-06) | Stages after Requirement Received | Driven by requirement events only, forward along the order: the company sits at its furthest-progressed requirement. Callers decide when an event fires (e.g. `requirement_closed` only when no open requirement is left). Never set by hand |
+| P3 (Q-06) | Going back | Among the four manual stages, with a reason. Once at a driven stage, no manual move. The one system path back: a new requirement on a Requirement Closed company returns it to Requirement Received |
+| P4 | Manual stages | Contacted, Interested, Meeting Scheduled, Requirement Discussion. New Lead is the start, never chosen |
+| P5 | Lost / reopen | Lost is a flag with a reason on top of the kept stage. The assigned recruiter (or super_admin) marks lost; only a placement manager or super_admin reopens, with a reason, back at the same stage. Events never move a Lost or archived company |
+| P6 | Who moves | rec-003's `can_edit` holders (assigned recruiter, super_admin). The manager does not move (D6) but reopens. The assigned BDM reads only (R10) |
+| P7 | Board | `/recruiter/pipeline` in the caller's company scope; archived left out, Lost counted apart |
+| P8 | Engine events | `call_logged`, `meeting_scheduled`, `requirement_received`, `jd_received`, `candidates_sourcing`, `profiles_shared`, `interview_scheduled`, `candidate_selected`, `candidate_joined`, `requirement_closed`. No caller yet; rec-007/008/017/019/020/022/023/024/028 wire them |
+
+**Consequences:**
+- `app/recruiter_stages.py`, `services/company_pipeline.py` (`apply_event` is the single writer; its API is frozen once merged — later
+  items only add events), `api/recruiter_pipeline.py`, migration `0108`.
+- The company detail gains the Pipeline and Stage history sections; the list a Stage column; a new `/recruiter/pipeline` board and nav
+  entries for recruiters, managers and super admin.
+- **New Feature ID authorized:** `rec-005`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-005.

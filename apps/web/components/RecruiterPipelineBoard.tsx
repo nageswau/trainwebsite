@@ -35,7 +35,7 @@ export default function RecruiterPipelineBoard({ view, href, selected }: { view:
           </p>
         )}
         {view.items.length === 0 ? (
-          <p className="empty" role="status">{view.offset > 0 ? "This page is past the end of the list." : "No companies at this stage."}</p>
+          <p className="empty" role="status">{view.offset > 0 ? "This page is past the end of the list." : selected ? "No companies at this stage." : "No open companies in your pipeline."}</p>
         ) : (
           <div className="table-wrap" role="region" aria-label="Companies" tabIndex={0}>
             <table style={{ minWidth: 640 }}>
