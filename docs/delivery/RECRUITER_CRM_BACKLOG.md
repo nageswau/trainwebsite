@@ -576,7 +576,8 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-009 — Candidate master
-- **Status (2026-10-08):** built on `feature/rec-009`.
+- **Status (2026-10-08):** **MERGED** to `main` as PR #155 @ `e234f31f`. The next rec item takes the next migration after `0107`,
+  `DEC-SCOPE-123`, API §12AQ and RBAC §2.49, re-checked on `main` first.
   - Numbering: `DEC-SCOPE-122`, migration `0107_candidates` (chained after rec-003's `0106_rec_companies`), API §12AP, RBAC §2.48. It
     was drafted as `0105` / 120 / §12AN / §2.46; upc-001, rec-006, upc-003 and rec-003 merged first and took `0103`–`0106` and
     118–121.

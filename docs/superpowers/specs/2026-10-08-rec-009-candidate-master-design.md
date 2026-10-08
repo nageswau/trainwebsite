@@ -3,6 +3,7 @@
 Backlog: `docs/delivery/RECRUITER_CRM_BACKLOG.md` rec-009. Source: EVID-018 §8 (lines 390–434), §9 (436–473), quick action "+ Add
 Candidate" (46), S2-§13 (1541–1561), S2-§20 (1750, 1778). Depends on rec-001 (merged PR #143) and rec-002 (merged PR #146).
 
+**Status: MERGED** as PR #155 @ `e234f31f` (2026-10-08).
 **Numbering (final at merge, 2026-10-08):** `DEC-SCOPE-122`, migration `0107_candidates` (after rec-003's `0106_rec_companies`),
 API §12AP, RBAC §2.48. It was drafted as `0105` / `DEC-SCOPE-120` / §12AN / §2.46. upc-001, rec-006, upc-003 and rec-003 merged to
 `main` first.

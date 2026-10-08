@@ -5099,7 +5099,8 @@ proceed with recommend answers always"). No per-question owner answer was given;
 **Evidence:** `EVID-018` §8 (lines 390–434), §9 (436–473), quick action "+ Add Candidate" (46), S2-§13 (1541–1561), S2-§20 (1750, 1778);
 `RECRUITER_CRM_BACKLOG.md` §rec-009 (AC1–AC4). Module scope: `DEC-SCOPE-116`. R4 (new `candidates` table) and R11 (every recruiter edits the
 whole pool).
-**Status:** Q-07 and Q-08 are `EXPLICIT_APPROVAL` (the owner answered in session on 2026-10-08). Q-09, Q-31 and Q-32 are recommended
+**Status:** **MERGED** to `main` as PR #155 @ `e234f31f` (2026-10-08). Q-07 and Q-08 are `EXPLICIT_APPROVAL` (the owner answered in
+session on 2026-10-08). Q-09, Q-31 and Q-32 are recommended
 defaults, taken on the user's instruction to proceed with the recommended answers. The retention and erasure part of Q-09 stays
 `NEEDS_CONFIRMATION`. **Numbering:** migration `0107_candidates` (chained after rec-003's `0106_rec_companies`), API §12AP, RBAC
 §2.48. rec-009 was drafted as `0105` / `DEC-SCOPE-120` / §12AN / §2.46. Four items merged to `main` first and took the lower numbers:
