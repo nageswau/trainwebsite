@@ -28,6 +28,7 @@ from app.models import (
 )
 from app.schemas import CareerPathOut, CountryOut, EnquiryIn, ProgramOut, RealProjectOut, TestimonialOut, UniversityOut, WebinarRegistrationIn
 from app.services import lead_intake
+from app.services.partnership_universities import public_visible
 from app.worker import sync_enquiry_to_crm_task
 
 router = APIRouter(prefix="/public", tags=["public"])
@@ -127,7 +128,8 @@ async def country(slug: str, db: AsyncSession = Depends(get_db)):
     c = await db.scalar(select(Country).where(Country.slug == slug, Country.catalogue_visible.is_(True)))
     if not c:
         raise HTTPException(404, "Country not found")
-    us = (await db.scalars(select(University).where(University.country_id == c.id).limit(20))).all()
+    # upc-003: only published, active universities are public (U5); the master's internal rows never appear here.
+    us = (await db.scalars(select(University).where(University.country_id == c.id, *public_visible()).limit(20))).all()
     ss = (await db.scalars(select(Scholarship).where(Scholarship.country_id == c.id, Scholarship.active.is_(True)).limit(20))).all()
     return {
         "country": CountryOut.model_validate(c),
@@ -138,7 +140,7 @@ async def country(slug: str, db: AsyncSession = Depends(get_db)):
 
 @router.get("/universities", response_model=list[UniversityOut])
 async def universities(country: str | None = None, q: str | None = None, db: AsyncSession = Depends(get_db)):
-    stmt = select(University).join(Country)
+    stmt = select(University).join(Country).where(*public_visible())
     if country:
         stmt = stmt.where(Country.slug == country)
     if q:
@@ -148,8 +150,8 @@ async def universities(country: str | None = None, q: str | None = None, db: Asy
 
 @router.get("/universities/{slug}")
 async def university(slug: str, db: AsyncSession = Depends(get_db)):
-    u = await db.scalar(select(University).where(University.slug == slug))
-    if not u:
+    u = await db.scalar(select(University).where(University.slug == slug, *public_visible()))
+    if not u:  # an internal university is indistinguishable from an unknown one
         raise HTTPException(404, "University not found")
     cs = (await db.scalars(select(OverseasCourse).where(OverseasCourse.university_id == u.id))).all()
     return {
@@ -164,6 +166,7 @@ async def overseas_courses(category: str | None = None, level: str | None = None
         select(OverseasCourse, University, Country)
         .join(University, OverseasCourse.university_id == University.id)
         .join(Country, University.country_id == Country.id)
+        .where(*public_visible())
     )
     if category:
         stmt = stmt.where(OverseasCourse.category == category)
@@ -263,7 +266,7 @@ async def scholarships(db: AsyncSession = Depends(get_db)):
 @router.get("/search")
 async def search(q: str = Query(min_length=2), db: AsyncSession = Depends(get_db)):
     ps = (await db.scalars(select(Program).where(or_(Program.title.ilike(f"%{q}%"), Program.summary.ilike(f"%{q}%"))).limit(10))).all()
-    us = (await db.scalars(select(University).where(or_(University.name.ilike(f"%{q}%"), University.city.ilike(f"%{q}%"))).limit(10))).all()
+    us = (await db.scalars(select(University).where(or_(University.name.ilike(f"%{q}%"), University.city.ilike(f"%{q}%")), *public_visible()).limit(10))).all()
     bs = (await db.scalars(select(BlogPost).where(or_(BlogPost.title.ilike(f"%{q}%"), BlogPost.summary.ilike(f"%{q}%"))).limit(10))).all()
     return {
         "programs": [{"title": x.title, "href": f"/it/programs/{x.slug}"} for x in ps],

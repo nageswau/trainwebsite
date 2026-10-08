@@ -248,8 +248,11 @@ async def countries(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """upc-002: every country, catalogue and internal ISO rows alike, by name, ISO code or common alias; an exact code ranks first."""
-    _allow(user, {"overseas_admin"}, "overseas")
+    """upc-002: every country, catalogue and internal ISO rows alike, by name, ISO code or common alias; an exact code ranks first.
+    upc-003 (upc-002 C6): the partnership roles pick a university's country from the full list too; a head is division global, so the
+    overseas division check applies to overseas_admin only."""
+    if user.role not in ("partnership_head", "partnership_manager"):
+        _allow(user, {"overseas_admin"}, "overseas")
     stmt = select(Country)
     pattern = _pattern(q)
     if pattern:
