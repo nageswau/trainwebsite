@@ -1056,6 +1056,18 @@ Enforced in `services/partnership_universities.py` (`can_move_stage`, `can_reope
 | Move stage, mark lost | own (primary or backup) | unowned + team-owned | `403` | ✅ | `403` |
 | Reopen a lost university | `403` | unowned + team-owned | `403` | ✅ | `403` |
 
+### 2.53 Company pipeline *(net-new, added 2026-10-08 — `DEC-SCOPE-127`, `rec-005`)*
+
+Scope is the §2.47 company scope (out of scope = `404`). The role check for each action runs on the locked row.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` | read the pipeline, history and board; move manual stages; mark lost | own assigned companies | `rec-005` |
+| `placement_manager` | read the pipeline, history and board; **reopen** a Lost company (`403` on move and mark lost, rec-003 D6) | direct reports' companies + unassigned | `rec-005` |
+| `super_admin` | everything above | all companies | `rec-005` |
+| `bdm` (assigned) | read the pipeline, history and board; every write `403` (R10) | companies assigned to them | `rec-005` |
+| every other role | `403` | — | `rec-005` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

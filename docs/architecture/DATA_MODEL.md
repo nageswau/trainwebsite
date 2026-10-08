@@ -1394,3 +1394,15 @@ exists.
 | `created_at`, `updated_at` | timestamptz |
 
 `downgrade()` refuses while any row exists.
+
+## Company B2B pipeline (`rec-005`, `DEC-SCOPE-127`; migration `0112_company_pipeline`, after `0111_university_pipeline`)
+
+`companies` gains `stage` varchar(30) NOT NULL default `new_lead` (CHECK `ck_companies_stage`: the 13 keys of `app/recruiter_stages.py`,
+frozen in the migration), `stage_changed_at` timestamptz NOT NULL default `now()` (existing rows backfilled from `created_at`), `lost_at`
+and `lost_reason` varchar(500) (CHECK `ck_companies_lost`: both or neither) and `ix_companies_stage_recruiter (stage,
+assigned_recruiter_user_id)`. Every insert path keeps working through the defaults.
+
+`company_stage_history`: `id`, `company_id` FK RESTRICT, `from_stage`, `to_stage`, `event` (`manual`, `lost`, `reopen` or an engine
+event), `actor_user_id` (NULL = system), `reason` varchar(500), `position` identity, `created_at`; `ix_company_stage_history_company
+(company_id, position)`. Append-only, no stage CHECK. `services/company_pipeline.py` is the only writer of `stage`. `downgrade()` refuses
+while any history row exists or any company is past New Lead or Lost.
