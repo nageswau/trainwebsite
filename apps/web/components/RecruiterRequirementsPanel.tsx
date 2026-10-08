@@ -209,7 +209,8 @@ export default function RecruiterRequirementsPanel({ canCreate, isManager = fals
           <div className="table-wrap" role="region" aria-label="Job requirements" tabIndex={0} style={loading ? { opacity: 0.6 } : undefined}>
             <table style={{ width: "100%", overflowWrap: "anywhere" }}>
               <thead>
-                <tr>
+                {/* QA-01: headers never break mid-word (the table's overflowWrap is for long cell values) */}
+                <tr style={{ whiteSpace: "nowrap" }}>
                   <th scope="col">Code</th>
                   <th scope="col">Job title</th>
                   <th scope="col">Company</th>
@@ -231,7 +232,9 @@ export default function RecruiterRequirementsPanel({ canCreate, isManager = fals
                     </td>
                     <td data-label="Company">{r.company.name}</td>
                     <td data-label="Status">
-                      <span className="badge">{r.status_label}</span>
+                      <span className="badge" style={{ whiteSpace: "nowrap" }}>
+                        {r.status_label}
+                      </span>
                     </td>
                     <td data-label="Priority">{r.priority ? PRIORITY_LABEL[r.priority] : "—"}</td>
                     <td data-label="Vacancies">{display(r.vacancies)}</td>

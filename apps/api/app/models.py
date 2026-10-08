@@ -407,8 +407,9 @@ JOB_PRIORITIES = ("high", "medium", "low")
 REQUIREMENT_CODE_SEQ = Sequence("requirement_code_seq", maxvalue=999999, metadata=Base.metadata)
 
 
-def _in(column: str, values) -> str:
-    return f"{column} IS NULL OR {column} IN (" + ", ".join(f"'{v}'" for v in values) + ")"
+def _in(column: str, values: tuple[str, ...]) -> str:
+    """A nullable column limited to `values` (shared by the rec-007 job and tel-009 qualification CHECKs)."""
+    return f"{column} IS NULL OR {column} IN ({', '.join(repr(v) for v in values)})"
 
 
 JOB_CHECKS = {  # migration 0109 repeats these strings; test_rec_007_migration asserts they stay identical
@@ -1213,10 +1214,6 @@ QUAL_SKILL_LEVELS = ("beginner", "intermediate", "advanced")
 QUAL_MODES = ("online", "offline")
 QUAL_STUDY_LEVELS = ("ug", "masters")
 QUAL_PASSPORT = ("none", "applied", "valid")
-
-
-def _in(column: str, values: tuple[str, ...]) -> str:
-    return f"{column} IS NULL OR {column} IN ({', '.join(repr(v) for v in values)})"
 
 
 class LeadQualification(Base, TimestampMixin):
