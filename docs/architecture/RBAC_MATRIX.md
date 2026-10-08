@@ -1019,6 +1019,17 @@ are PII: audit and logs carry ids only.
 | Add / edit / make primary / delete | own (primary or backup) | unowned + team-owned | `403` | ✅ | `403` |
 | Set university relationship strength | as §2.46 Edit |||||
 
+### 2.50 University visits *(net-new, added 2026-10-08 — `DEC-SCOPE-124`, `upc-010`)*
+
+Enforced inline in `services/university_visits.py` (role, lead/planner, approver resolved per request). Audit and logs carry ids only.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Read visits and the visit list | ✅ all | ✅ all | `403` | ✅ all | `403` |
+| Plan a visit | own universities; leads it | unowned + team universities; leads or picks a direct report | `403` | `403` | `403` |
+| Edit / submit / book / complete / follow-up / close | as lead or planner | as lead or planner | `403` | `403` | `403` |
+| Approve / return | `403` (AC1) | their direct reports' visits, unless they planned, lead or join it | `403` | only when the head is inactive or took part, and not their own | `403` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

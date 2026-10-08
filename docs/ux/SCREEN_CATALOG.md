@@ -3196,3 +3196,21 @@ not inspected. Do not claim parity.
   overseas_admin sees only shareable contacts, without notes or controls. The header shows "Relationship: <value>" and the Profile list a
   Relationship strength row. **Responsive:** blocks wrap, no side-scroll at 390 px.
 - **Route:** `/partnership/universities` gains a Relationship column and filter; the master form gains a Relationship strength select.
+
+## upc-010 addendum (2026-10-08, `DEC-SCOPE-124`) — University visits + approval
+
+Design spec `docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.md` §4. Visual-reference mapping: None — not inspected. Do not claim parity.
+
+- **Route:** `/partnership/visits` — table (visit code link, university, country, city, lead, proposed, confirmed, status badge "Planned ·
+  Waiting for approval"); GET filter form (status, "Only my visits"), URL paging; "Plan a visit" for managers/heads; "Visit approvals" for
+  heads/super admin. **States:** "No visits planned yet." / "No visits match these filters." / past-the-end link; 403 → access card.
+- **Route:** `/partnership/visits/new[?university=<id>]` — the visit form: university (fixed, or a search picker), lead (heads), city,
+  proposed / confirmed date, purpose, travel and hotel flags + notes, other employees (search + removable chips), meeting contacts
+  (checkboxes of the university's contacts), agenda, expected outcome. Required-field errors before sending; a `422` under its field;
+  a sentence refusal in `role="alert"`; one request per save. Out of scope or inactive → a plain message.
+- **Route:** `/partnership/visits/[id]` — status card with the commands the API allows (Submit, Approve, Reject + reason, Mark travel
+  booked, Mark visit completed + follow-up date, Start follow-up, Close visit + reason when early), "Returned for changes" / "Closed" notes,
+  the visit plan, and the history. `/[id]/edit` — the same form with locked fields per status.
+- **Route:** `/partnership/visits/approvals` — the caller's queue, oldest first.
+- **Route:** `/partnership/universities/[id]` gains a **Visits** section (latest 5, "Plan a visit", "All N visits") for the partnership
+  roles and super admin. **Responsive:** tables become labelled cards; no side-scroll at 390 px.

@@ -1671,6 +1671,36 @@ shareable, created_at, updated_at}`.
 | `DELETE /partnership/contacts/{id}` | `204`; the primary while others remain `409` |
 | `GET/POST/PATCH /partnership/universities…` | **Changed (additive):** `relationship_strength` on create, PATCH, row and detail; list filter `relationship_strength`; `permissions.can_edit_contacts` |
 
+## 12AR. University visits + approval (`upc-010`) — addendum, 2026-10-08
+
+`DEC-SCOPE-124`; design spec `docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.md` §3. Migration `0109_university_visits`. Readers: `partnership_manager` (with a profile),
+`partnership_head`, `super_admin` read **every** visit; other roles `403`. Planners: `partnership_manager` (leads their own) and
+`partnership_head` (leads, or picks an active direct report); the university must be active (`409`) and in the planner's university edit
+scope (`403`). The lead or the planner edits and runs the commands (else `403`). The approver is the lead's reporting head; any active
+`super_admin` only when that head is inactive, is the lead, planned the visit or travels on it; nobody decides a visit they planned, lead
+or join (`403`). Commands outside the §8 flow `409`. Every write: visit row `FOR UPDATE` (decisions also lock the lead's profile and head
+`FOR SHARE`), a `university_visit_events` row, audit `university_visit.<action>` (ids, code, statuses, field names), in-app notices
+(`channels=[]`), one commit. Unknown visit `404`. A visit is the row `{id, code, university: {id, name, university_code, city, country:
+{id, name}}, city, lead, proposed_date, confirmed_date, status, approval_state: draft|waiting|returned|null, submitted_at}` plus `purpose,
+created_by, travel_required, travel_notes, hotel_required, hotel_notes, agenda, expected_outcome, follow_up_date, rejection_reason,
+decided_by, decided_at, close_reason, participants, contacts, events, permissions {can_edit, can_submit, can_decide, can_book,
+can_complete, can_follow_up, can_close}, editable_fields, created_at, updated_at`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/visits` | `{items, total, limit, offset}`; filters `status` (the six §8 values, else `422`), `university_id`, `mine` (lead, planner or participant); newest proposed date first |
+| `GET /partnership/visits/approvals` | Waiting visits this caller may decide, oldest submission first; head / super_admin only (else `403`) |
+| `GET /partnership/visits/university-options` · `lead-options` · `employee-options` | `{items: [{id, label, detail}], total}`, `q`, `limit` ≤ 100. Universities in the planner's scope; the head and their active direct reports; active partnership managers and heads |
+| `POST /partnership/visits` | `university_id`, `purpose` (≤ 1000), `proposed_date` (today or later, IST) required; `lead_user_id`, `city` (defaults to the university's), `confirmed_date` (today or later), `travel_required`/`hotel_required` + notes (≤ 1000), `agenda`/`expected_outcome` (≤ 2000), `participant_user_ids` (≤ 10, active partnership staff, not the lead), `contact_ids` (≤ 20, this university's) — else `422`. `201 {visit}`, status `planned` (draft) |
+| `GET /partnership/visits/{id}` | `200 {visit}` |
+| `PATCH /partnership/visits/{id}` | Sent fields only; `university_id`/`status` are unknown fields (`422`). Draft/returned: all fields; waiting: none (`409`); approved/travel booked: confirmed date, notes, agenda, expected outcome, contacts (plan fields `409`); completed/follow-up: follow-up date; closed: `409` |
+| `POST /partnership/visits/{id}/submit` | draft/returned → waiting; notifies the approver(s) |
+| `POST /partnership/visits/{id}/approve` · `reject {reason}` | Waiting only (`409`). Reject returns the visit for editing with the reason; both notify the lead and planner |
+| `POST /partnership/visits/{id}/book` | approved → travel_booked; needs a confirmed date (`422`) |
+| `POST /partnership/visits/{id}/complete {follow_up_date}` | travel_booked → visit_completed; before the confirmed date `422`; follow-up date required, today or later |
+| `POST /partnership/visits/{id}/follow-up` | visit_completed → follow_up |
+| `POST /partnership/visits/{id}/close {reason?}` | follow_up → closed; from planned/approved/travel_booked only with a reason (closed without visiting, `422` without) |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

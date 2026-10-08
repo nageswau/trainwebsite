@@ -550,6 +550,11 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-010 — University visits + approval
+- **Status (2026-10-08):** built on `feature/upc-010` under `DEC-SCOPE-124`, with migration `0109_university_visits`, API §12AR and
+  RBAC §2.50. Spec: `docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.md`.
+  - Q-13 and the design-level rules are answered by the recommended defaults VS1–VS18 (`NEEDS_CONFIRMATION`): one university per visit;
+    the head approves, super_admin when the head is inactive or took part; no un-approving, an early close with a reason instead.
+  - The follow-up date is stored; upc-020 turns it into a task. The calendar and overlap warning are upc-011's.
 - **Business requirement:** §8 ("separate from normal meetings"; 14 fields; Planned → Approved → Travel Booked → Visit Completed →
   Follow-up → Closed) (U9).
 - **Existing behavior:** BDM trips only.

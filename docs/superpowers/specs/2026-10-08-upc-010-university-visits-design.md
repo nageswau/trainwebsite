@@ -25,7 +25,7 @@ Travel Booked → Visit Completed → Follow-up → Closed.
 | VS6 | Who creates | `partnership_manager` (the lead is themselves) and `partnership_head` (the lead is themselves or an active direct report). The university must be active and in the caller's university edit scope (the upc-006 `can_edit_contacts` rule). `super_admin` reads every visit and approves as the fallback; it does not create |
 | VS7 | Who reads | `partnership_manager` (with a profile), `partnership_head` and `super_admin` read **every** visit (the backlog's "a manager reads every university"). Every other role gets a 403. overseas_admin is not in U9 |
 | VS8 | Who acts on a visit | The **lead or the creator** edits, submits, books, completes, starts the follow-up and closes. Any other caller gets a 403 |
-| VS9 | What stays editable | In draft or returned: every field. While waiting: nothing (409 "waiting for approval"). Once approved or booked, the approved scope (university, city, purpose, lead, participants, proposed date, travel and hotel requirements) is frozen. Confirmed date, travel and hotel notes, agenda, expected outcome and meeting contacts stay editable. After completion: only the follow-up date, until the visit is closed. Closed: read-only |
+| VS9 | What stays editable | The university never changes after create (plan a new visit). In draft or returned: every other field. While waiting: nothing (409 "waiting for approval"). Once approved or booked, the approved scope (university, city, purpose, lead, participants, proposed date, travel and hotel requirements) is frozen. Confirmed date, travel and hotel notes, agenda, expected outcome and meeting contacts stay editable. After completion: only the follow-up date, until the visit is closed. Closed: read-only |
 | VS10 | Dates (IST) | The proposed date is required and is today or later whenever it is set. The confirmed date is optional and is today or later whenever it changes. `complete` before the confirmed date is a 422 (N1). The follow-up date is required on `complete` and is today or later |
 | VS11 | Other EduSphere employees | Active `partnership_manager` / `partnership_head` users other than the lead, at most 10 (the people upc-011's calendar tracks). They come from `GET /partnership/visits/employee-options` |
 | VS12 | Meeting contacts | upc-006 contacts **of the visit's university** (any other contact is a 422), at most 20. Deleting a contact removes it from visits (FK CASCADE): contacts are PII and their deletion wins |
@@ -144,6 +144,7 @@ idiom).
 ## 8. Engineering review notes (Phase 3)
 
 - **API:**
+  - The detail also returns `editable_fields` (empty for non-actors), so the edit form locks exactly what VS9 locks.
   - The detail's `permissions` are `can_edit, can_submit, can_decide, can_book, can_complete, can_follow_up, can_close`.
   - They are computed from the same transition table and actor rules that the routes enforce. The UI only hides actions; the API
     decides.

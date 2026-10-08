@@ -340,6 +340,15 @@ primary per university, and `lower(email)` once per university. Contact PII neve
 `0108_university_contacts`** seeds the roles (`ON CONFLICT DO NOTHING`); `downgrade()` refuses while contacts or relationship strengths
 exist (API §12AQ).
 
+**Addendum, 2026-10-08 (`upc-010`, `DEC-SCOPE-124` — University visits + approval):** sequence `university_visit_code_seq`
+(`VIS-000001`). `university_visits` (code unique; FK `universities` RESTRICT; `city`, `purpose`, `lead_user_id`, `created_by_user_id`,
+`proposed_date` NOT NULL; `confirmed_date`, `follow_up_date`; `travel_required`/`hotel_required` (default false) + notes; `agenda`,
+`expected_outcome`; `status` CHECK planned / approved / travel_booked / visit_completed / follow_up / closed (§8); `submitted_at`,
+`rejection_reason` (the planned sub-state), `decided_by_user_id`, `decided_at`, `close_reason`; timestamps; indexes on university, lead
+and waiting visits). `university_visit_participants` (visit CASCADE, user RESTRICT) and `university_visit_contacts` (visit CASCADE,
+`university_contacts` CASCADE: deleting contact PII removes it from visits). `university_visit_events` is the append-only history (action,
+from/to status, actor, reason). **Migration `0109_university_visits`**; `downgrade()` refuses while any visit exists (API §12AR).
+
 ### 6.2 `OverseasApplication`, `ApplicationStatusHistory`
 **Carries over**, status vocabulary **extended** — this is part of the `ADR-012` resolution (§6.3
 covers the commission-specific piece).
