@@ -1584,6 +1584,25 @@ can_deactivate}`, `rankings`, `application_count`, manager refs `{id, full_name,
 | `GET /public/universities`, `/universities/{slug}`, `/countries/{slug}`, `/overseas-courses`, `/search` | **Changed:** list only published, active universities; an internal one's slug is `404` (indistinguishable from unknown). Response shapes unchanged |
 | `GET /lookups/countries` | **Changed:** also admits `partnership_manager` and `partnership_head` |
 
+## 12AO. University contacts + relationship strength (`upc-006`) — addendum, 2026-10-08
+
+`DEC-SCOPE-121`; design spec `docs/superpowers/specs/2026-10-08-upc-006-university-contacts-design.md` §3. Migration
+`0106_university_contacts`. Readers are §12AN's read roles (others `403`). The partnership roles and `super_admin` see every contact;
+`overseas_admin` sees `shareable` contacts only, with `notes: null`. Writes need `permissions.can_edit_contacts` (owner manager, head in
+team scope, `super_admin`; else `403`); an inactive university `409`; unknown university or contact `404`. Every write: university row
+lock, audit `university_contact.<action>` (ids and field names only), one commit. A contact is `{id, university_id, name, designation,
+department, role: {code, label} | null, email, phone, whatsapp, linkedin, preferred_channel, relationship_strength, notes, is_primary,
+shareable, created_at, updated_at}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/contact-roles` | `{items: [{code, label}]}` in catalogue order |
+| `GET /partnership/universities/{id}/contacts` | `{items, total, limit, offset}`; primary first, then name; `limit` 1–50 |
+| `POST /partnership/universities/{id}/contacts` | `name` required; `email` (lower-cased), `phone`/`whatsapp` (digits, spaces, `+-()`), `linkedin` (http(s); bare domain gets `https://`), `role_code` (catalogue), `preferred_channel` (email/phone/whatsapp/linkedin), `relationship_strength` (§11), `notes` ≤ 2000, `is_primary`, `shareable`; else `422`. The first contact becomes primary. More than 50 or a duplicate email at the university `409`. `201 {contact}` |
+| `PATCH /partnership/contacts/{id}` | Sent fields only; `is_primary: true` moves the primary, `false` `422`; duplicate email `409`. `200 {contact}` |
+| `DELETE /partnership/contacts/{id}` | `204`; the primary while others remain `409` |
+| `GET/POST/PATCH /partnership/universities…` | **Changed (additive):** `relationship_strength` on create, PATCH, row and detail; list filter `relationship_strength`; `permissions.can_edit_contacts` |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

@@ -983,6 +983,17 @@ by design (management visibility, §27); writes are scoped.
 | Publish / unpublish, deactivate / reactivate | `403` | unowned + team-owned | ✅ | ✅ | `403` |
 | Public catalogue | Shows only published, active universities, to everyone (unchanged otherwise) |||||
 
+### 2.47 University contacts *(net-new, added 2026-10-08 — `DEC-SCOPE-121`, `upc-006`)*
+
+Enforced inline in `services/partnership_universities.py` (`can_edit_contacts`) and `services/university_contacts.py` (slice). Contacts
+are PII: audit and logs carry ids only.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Read a university's contacts | ✅ all, with notes | ✅ all, with notes | shareable only, no notes | ✅ all, with notes | `403` (counselors: upc-030) |
+| Add / edit / make primary / delete | own (primary or backup) | unowned + team-owned | `403` | ✅ | `403` |
+| Set university relationship strength | as §2.46 Edit |||||
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

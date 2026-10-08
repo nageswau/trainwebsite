@@ -418,6 +418,11 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-006 — University contacts + relationship strength
+- **Status (2026-10-08):** built on `feature/upc-006` under `DEC-SCOPE-121`, with migration `0106_university_contacts`, API §12AO and
+  RBAC §2.47. Spec: `docs/superpowers/specs/2026-10-08-upc-006-university-contacts-design.md`.
+  - Q-15 and the design-level rules are answered by the recommended defaults CT1–CT14 (`NEEDS_CONFIRMATION`): strength set by hand; a
+    seeded read-only role catalogue; overseas_admin reads the shareable slice without notes; first contact primary; delete added (PII).
+  - Last interaction and next follow-up are deferred to upc-009/012/013 and upc-020; the counselor slice (AC3) lands with upc-030.
 - **Business requirement:**
   - §10: many contacts, 7 example roles, 11 fields.
   - §1 contact rows: International Office, International Director, Partnership Contact, Recruitment Contact, Application Contact,
