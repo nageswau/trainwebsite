@@ -1,4 +1,4 @@
-"""rec-017 -- candidate + requirement tracking (spec §2-§4; AC1, AC2; DEC-SCOPE-134 A1-A4). Names are unique per test (the database is
+"""rec-017 -- candidate + requirement tracking (spec §2-§4; AC1, AC2; DEC-SCOPE-135 A1-A4). Names are unique per test (the database is
 shared and never truncated)."""
 
 import uuid

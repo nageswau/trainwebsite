@@ -12,10 +12,10 @@ describe("rec-001 navigation", () => {
 
   it("gives the recruiter their workspace plus the legacy placement screens (Q-29), and the manager only manager pages", () => {
     const hrefs = RECRUITER_NAV.map((x) => x.href);
-    expect(hrefs.slice(0, 8)).toEqual(["/recruiter/dashboard", "/recruiter/companies", "/recruiter/profile", "/recruiter/skills", "/recruiter/candidates", "/recruiter/pipeline", "/recruiter/requirements", "/recruiter/follow-ups"]); // rec-003, rec-006, rec-009, rec-005, rec-007, rec-024
+    expect(hrefs.slice(0, 9)).toEqual(["/recruiter/dashboard", "/recruiter/companies", "/recruiter/profile", "/recruiter/skills", "/recruiter/candidates", "/recruiter/pipeline", "/recruiter/requirements", "/recruiter/follow-ups", "/recruiter/meetings"]); // rec-003, rec-006, rec-009, rec-005, rec-007, rec-024, rec-028
     expect(hrefs).toEqual(expect.arrayContaining(["/it/placement/candidates", "/it/placement/company-requirements", "/it/placement/reports"]));
     expect(hrefs.filter((h) => h.startsWith("/recruiter/manager"))).toEqual([]);
-    expect(RECRUITER_MANAGER_NAV.map((x) => x.href)).toEqual(["/recruiter/manager/team", "/recruiter/companies", "/recruiter/manager/catalogue", "/recruiter/manager/skills", "/recruiter/candidates", "/recruiter/pipeline", "/recruiter/requirements", "/recruiter/follow-ups"]); // rec-002, rec-003, rec-006, rec-009, rec-005 + rec-007, rec-024
+    expect(RECRUITER_MANAGER_NAV.map((x) => x.href)).toEqual(["/recruiter/manager/team", "/recruiter/companies", "/recruiter/manager/catalogue", "/recruiter/manager/skills", "/recruiter/candidates", "/recruiter/pipeline", "/recruiter/requirements", "/recruiter/follow-ups", "/recruiter/meetings"]); // rec-002, rec-003, rec-006, rec-009, rec-005 + rec-007, rec-024, rec-028
     expect(PORTAL_NAV["it/placement"]).toContainEqual({ label: "Recruiter Workspace", href: "/recruiter/dashboard" });
     expect(PORTAL_NAV["it/hr"].map((x) => x.href).filter((h) => h.startsWith("/recruiter"))).toEqual(["/recruiter/candidates"]); // rec-009: read only
   });

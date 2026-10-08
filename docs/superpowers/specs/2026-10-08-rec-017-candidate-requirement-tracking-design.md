@@ -2,9 +2,9 @@
 
 - **Backlog:** `docs/delivery/RECRUITER_CRM_BACKLOG.md` rec-017 (§12 lines 532–554, S2-§14 lines 1563–1583). Dependencies rec-007 (PR #166)
   and rec-009 (PR #155) are merged.
-- **Decision:** DEC-SCOPE-134. **Migration:** `0119_job_application_tracking`. **API:** §12BB. **RBAC:** §2.60. (Re-check on `origin/main`
+- **Decision:** DEC-SCOPE-135. **Migration:** `0120_job_application_tracking`. **API:** §12BC. **RBAC:** §2.61. (Re-check on `origin/main`
   before merging.)
-- **Owner answers (2026-10-08), recorded as UNVERIFIED until DEC-SCOPE-134 is confirmed:**
+- **Owner answers (2026-10-08), recorded as UNVERIFIED until DEC-SCOPE-135 is confirmed:**
   - **A1 (Q-17a):** the statuses are the 8 §12 statuses plus `withdrawn`. There is no `on_hold`; rec-018's Hold is a flag. The legacy values
     map directly: applied→sourced, screening→screened, shortlisted→shortlisted, interview_scheduled→interview,
     offer_received→selected, hired→joined, rejected→rejected, withdrawn→withdrawn.
@@ -19,7 +19,7 @@
     link the student's candidate with `opted_in=false`; the opt-in prompt stays in rec-010. The history table is
     `job_application_status_history`, because `application_status_history` already belongs to overseas applications.
 
-## 1. Data (migration 0119)
+## 1. Data (migration 0120)
 
 **Changes to `job_applications`:**
 
@@ -84,7 +84,7 @@ archived and never deleted (rec-009).
   The message uses the status label.
 - Output helpers: `application_row` and `history_out`.
 
-## 3. API (§12BB)
+## 3. API (§12BC)
 
 Router `api/recruiter_applications.py`. Every write is one transaction.
 
@@ -113,7 +113,7 @@ Router `api/recruiter_applications.py`. Every write is one transaction.
   - They add `status_label` where they return a status. The portal and lookups show the label in place of the raw key.
 - `recruiter_requirements.HIRED_APPLICATION_STATUSES` becomes `("joined",)`.
 
-## 4. RBAC (§2.60)
+## 4. RBAC (§2.61)
 
 - Writers are `placement_team` (in requirement scope) and `super_admin`. The manager, the BDM (R10) and `hr_team` read only; `hr_team`
   keeps its legacy screens. This matches rec-007's `can_edit` holders.

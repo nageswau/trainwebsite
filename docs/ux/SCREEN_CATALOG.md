@@ -3313,3 +3313,21 @@ Design spec `docs/superpowers/specs/2026-10-08-rec-025-recruiter-calls-design.md
   - Each contact's mobile is a `tel:` link.
 - **Candidate detail** (`/recruiter/candidates/[id]`): the same Calls section without the contact picker or the follow-up; the mobile is a
   `tel:` link. Read-only for `hr_team` and while the candidate is archived.
+
+## rec-028 addendum (2026-10-08, `DEC-SCOPE-134`) — Recruiter company meetings
+
+Design spec `docs/superpowers/specs/2026-10-08-rec-028-company-meetings-design.md` §4.
+
+- **Meetings** (`/recruiter/meetings`):
+  - Upcoming / Awaiting outcome / Completed / Cancelled tabs with counts.
+  - Each card shows the company (linked) and its code, the meeting code, type, time in IST, mode, location, contact, participants, the
+    recruiter, the link (new tab), the purpose, and the outcome or cancel reason.
+  - Actions: Record outcome (once started), Reschedule / edit, Cancel (reason). They are offered only when the API says so.
+  - The tab and page live in the address. There are loading, empty, error and retry states.
+- **Company detail** (`/recruiter/companies/[id]`): a Meetings section after Follow-ups.
+  - Schedule meeting: type (the 7 §20 values), date and time (IST), mode, location, link, primary contact, participant contacts
+    (checkboxes of active contacts), recruiter participants (searchable picker), purpose.
+  - The outcome form takes the outcome and an optional next action, with a follow-up due time and reason. The form notes that the next
+    action is "added to the company's follow-ups".
+  - Each meeting shows its history: the schedule, each reschedule (old and new time, reason), the completion or the cancellation.
+  - A change re-reads the company: the pipeline (Meeting Scheduled), stage history, follow-ups and contacts update.

@@ -1916,6 +1916,41 @@ can_complete, can_follow_up, can_close}, editable_fields, created_at, updated_at
 | `DELETE /recruiter/calls/{id}` | `204`. Same rules as PATCH. A follow-up the call created stays |
 | `GET /recruiter/companies/{id}/contacts` (§12AS) | **Changed value:** `last_contacted_at` is the contact's latest call (was always null) |
 
+## 12BB. Recruiter company meetings (`rec-028`) — addendum, 2026-10-08
+
+- **Basis:** `DEC-SCOPE-134` (MT1–MT10). Design spec `docs/superpowers/specs/2026-10-08-rec-028-company-meetings-design.md` §3.
+  Migration `0119`.
+- **Common rules:**
+  - Scope is the company's (§12AO). A meeting or company outside the caller's scope is `404` "Meeting not found" or "Company not found",
+    the same as an unknown id. Roles outside the recruiter scope → `403`.
+  - Writers hold the company's `can_edit` (the assigned recruiter or super_admin). Any other reader → `403`, an archived company → `409`
+    "Restore this company first", and a meeting that is not scheduled → `409`.
+  - Bodies refuse unknown keys (`422`). Service rules answer in the validation shape, placed on their field.
+  - Every write does the following:
+    - locks the company, then the meeting;
+    - appends a history event;
+    - commits once;
+    - writes an audit row `recruiter_meeting.{create,update,complete,cancel}` with ids, keys, counts and field names only (never
+      purpose, outcome or reasons).
+- **Item:**
+  - `{id, code (MTG-000001), meeting_type, starts_at, mode, location, meeting_url, purpose, status (scheduled|completed|cancelled), outcome,
+    next_action, company {id, code, name, assigned_recruiter}, contact {id, name}|null, participants {contacts [{id, name}], recruiters
+    [{id, full_name}]}, history [{event, old_starts_at, new_starts_at, reason, actor, created_at}], follow_up {id, due_at}|null,
+    created_by, created_at, completed_at, completed_by, cancelled_at, cancel_reason, can_change, can_record_outcome}`.
+  - Types: `company_meeting`, `hr_meeting`, `requirement_discussion`, `recruitment_presentation`, `contract_discussion`,
+    `campus_recruitment_discussion`, `placement_drive_discussion`. Modes: `Online`, `Phone`, `In person`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/meetings` | `view` is one of `upcoming`, `awaiting_outcome`, `completed` or `cancelled`; other values → `422`. **Upcoming** (default) = scheduled with the start in the future, soonest first. **Awaiting outcome** = scheduled and started. **Completed** and **Cancelled** are newest first. `limit`, `offset`. → `{items, total, limit, offset, counts {upcoming, awaiting_outcome, completed, cancelled}}` |
+| `GET /recruiter/meetings/recruiter-options` | `q`, `limit` → `{items [{id, full_name}], total}`: active `placement_team` / `placement_manager` users. Recruiters, managers, super_admin; others `403` |
+| `GET /recruiter/meetings/{id}` | One item |
+| `GET /recruiter/companies/{id}/meetings` | Scheduled by start, then completed/cancelled newest first; `limit`, `offset` |
+| `POST /recruiter/companies/{id}/meetings` | **Body:** `{meeting_type, starts_at (with offset), mode, location? (≤ 200), meeting_url? (http(s), ≤ 500), purpose? (≤ 1000), contact_id?, participant_contact_ids[] (≤ 20), participant_user_ids[] (≤ 20)}` → `201` item. **Refusals (`422`):** a past start, or one more than 366 days ahead, on `starts_at`; a contact that is not an active contact of the company, on `contact_id` / `participant_contact_ids`; a non-recruiter or inactive user, on `participant_user_ids`. **Effects:** the primary contact is stored as a participant. It fires rec-005's `meeting_scheduled` (AC1): the company moves to Meeting Scheduled only when it is earlier in the pipeline. Not idempotent |
+| `PATCH /recruiter/meetings/{id}` | Partial: the create fields plus `reschedule_reason? (≤ 500)`. A changed `starts_at` is a reschedule (history event with the old and new time). Participant lists replace the set; unsent lists stay. Null on `meeting_type`, `starts_at`, `mode` or a list → `422`. Equal values are not changes (no audit) |
+| `POST /recruiter/meetings/{id}/outcome` | **Body:** `{outcome (required, ≤ 2000), next_action? (≤ 500), next_action_due_at?, next_action_reason? (a §18 follow-up reason)}` → item `completed`. **Refusals:** before the start → `422`; a next action without a due time or a reason → `422` on each. **Effects:** a next action creates a rec-024 follow-up in the same transaction (AC2), under rec-024's rules (future due time; the 50-open cap → `409`) |
+| `POST /recruiter/meetings/{id}/cancel` | `{reason}` (required, ≤ 500) → item `cancelled` |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

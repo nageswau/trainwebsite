@@ -1,4 +1,4 @@
-// rec-017 (DEC-SCOPE-134): candidates on a requirement and their per-requirement status (§12) -- types, endpoints, guards and the
+// rec-017 (DEC-SCOPE-135): candidates on a requirement and their per-requirement status (§12) -- types, endpoints, guards and the
 // candidate picker. The API decides scope and every rule (A2 transitions, the Joined gate, duplicates); each item's `allowed_statuses`
 // and the list's `can_add` say what the viewer may do, so the UI never hard-codes a transition.
 import type { LookupPage } from "@/lib/lookups";

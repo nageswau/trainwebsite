@@ -1,4 +1,4 @@
-"""rec-017 test builders: since migration 0119 every job application belongs to a candidate (R6), so a test that writes a student's
+"""rec-017 test builders: since migration 0120 every job application belongs to a candidate (R6), so a test that writes a student's
 application directly goes through the student's candidate, as the student-apply and employer routes do."""
 
 from app.models import JobApplication, User

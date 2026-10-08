@@ -1,4 +1,4 @@
-"""rec-017 (DEC-SCOPE-134, spec §2): candidate + requirement tracking -- the only writer of `job_applications.status`.
+"""rec-017 (DEC-SCOPE-135, spec §2): candidate + requirement tracking -- the only writer of `job_applications.status`.
 
 Functions only; nothing here commits -- the route owns the transaction. The recruiter routes and the legacy workflows/employer routes all
 come through here, so every change writes `job_application_status_history`. Explicit status writes use `change_status` (a move that is
@@ -26,7 +26,7 @@ LABELS = {
     "sourced": "Sourced", "screened": "Screened", "shortlisted": "Shortlisted", "profile_shared": "Profile Shared", "interview": "Interview",
     "selected": "Selected", "joined": "Joined", "rejected": "Rejected", "withdrawn": "Withdrawn",
 }
-LEGACY = {  # A1: the words the legacy routes have always written; migration 0119 repeats this map (test_rec_017_migration)
+LEGACY = {  # A1: the words the legacy routes have always written; migration 0120 repeats this map (test_rec_017_migration)
     "applied": "sourced", "screening": "screened", "shortlisted": "shortlisted", "interview_scheduled": "interview",
     "offer_received": "selected", "hired": "joined", "rejected": "rejected", "withdrawn": "withdrawn",
 }
@@ -44,7 +44,7 @@ NOT_FOUND = "Job application not found"
 DUPLICATE = "This candidate is already on this requirement"
 JOINED_GATE = "Joined needs the candidate to be Selected (an offer) first"
 UNIQUE = "uq_job_applications_candidate_job"
-STUDENT_SOURCE = "Edusphere students"  # the source migration 0119 backfills students from
+STUDENT_SOURCE = "Edusphere students"  # the source migration 0120 backfills students from
 
 
 def label(status: str) -> str:
@@ -89,7 +89,7 @@ def follow(db: AsyncSession, actor: User | None, application: JobApplication, ta
 # --- candidates for students (R6, A3, A4) -------------------------------------------------------------------------------------------
 async def _student_source(db: AsyncSession) -> UUID:
     source_id = await db.scalar(select(RecCandidateSource.id).where(func.lower(RecCandidateSource.name) == STUDENT_SOURCE.lower()))
-    if source_id is None:  # renamed or removed since migration 0119 seeded it
+    if source_id is None:  # renamed or removed since migration 0120 seeded it
         source = RecCandidateSource(name=STUDENT_SOURCE)
         db.add(source)
         await db.flush()
