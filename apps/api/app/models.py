@@ -22,6 +22,7 @@ from sqlalchemy import (
     Uuid,
     false,
     text,
+    true,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column, relationship, validates
 from sqlalchemy.sql import func
@@ -379,6 +380,49 @@ class CompanyAssignmentHistory(Base):
     to_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
     changed_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# rec-004 (DEC-SCOPE-123): migration 0107 repeats COMPANY_CONTACT_CHECKS (test_rec_004_migration asserts they stay identical).
+COMPANY_CONTACT_CHANNELS = ("call", "whatsapp", "email")
+COMPANY_CONTACT_CHECKS = {
+    "ck_company_contacts_channel": f"preferred_channel IS NULL OR preferred_channel IN ({', '.join(repr(c) for c in COMPANY_CONTACT_CHANNELS)})",
+    "ck_company_contacts_primary_active": "NOT is_primary OR active",
+}
+
+
+class CompanyContact(Base, TimestampMixin):
+    """rec-004 (EVID-018 §4, R3): a person at a company -- the §2 "recruiter" and the §3 HR / TA / Hiring-Manager contacts. Never
+    deleted, only deactivated (C2); at most one primary per company (the partial unique index). `position` keeps insertion order;
+    `mobile_normalized` follows `mobile` for later lookups (calls, duplicate checks)."""
+
+    __tablename__ = "company_contacts"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in COMPANY_CONTACT_CHECKS.items()),
+        Index("ix_company_contacts_company", "company_id"),
+        Index("uq_company_contacts_primary", "company_id", unique=True, postgresql_where=text("is_primary")),
+        Index("ix_company_contacts_mobile", "mobile_normalized"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"))
+    position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    name: Mapped[str] = mapped_column(String(200))
+    designation: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    department: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    role_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_contact_roles.id"), nullable=True)
+    mobile: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    mobile_normalized: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    linkedin_url: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    preferred_channel: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    notes: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    is_primary: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+    @validates("mobile")
+    def _derive_mobile_normalized(self, _key: str, mobile: str | None) -> str | None:
+        self.mobile_normalized = normalise_phone(mobile)
+        return mobile
 
 
 class EmployerProfile(Base, TimestampMixin):
