@@ -776,7 +776,8 @@ async def create_university(payload: dict, user: User = Depends(ensure_admin), d
 
     if user.role not in {"super_admin", "overseas_admin"}:
         raise HTTPException(403, "Overseas administrator required")
-    country = await db.scalar(select(Country).where(Country.slug == payload["country_slug"]))
+    # upc-002: universities are all public until upc-003, so one may not sit in an internal (non-catalogue) country.
+    country = await db.scalar(select(Country).where(Country.slug == payload["country_slug"], Country.catalogue_visible.is_(True)))
     if not country:
         raise HTTPException(422, "Unknown country")
     item = University(
@@ -791,7 +792,11 @@ async def create_university(payload: dict, user: User = Depends(ensure_admin), d
         scholarships=payload.get("scholarships", []),
     )
     db.add(item)
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError:  # upc-002 QA-01: the unique slug, also under a concurrent create
+        await db.rollback()
+        raise HTTPException(409, f"A university with the slug '{payload['slug']}' already exists") from None
     db.add(AuditLog(user_id=user.id, action="university.create", entity_type="university", entity_id=str(item.id), metadata_json={"country": country.slug}))
     await db.commit()
     await db.refresh(item)

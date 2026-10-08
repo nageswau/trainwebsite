@@ -1,7 +1,7 @@
 # rec-006 — Skills Master, categories, aliases (design)
 
 Backlog: `docs/delivery/RECRUITER_CRM_BACKLOG.md` rec-006. Source: EVID-018 S2-§2 (lines 1126–1216) and S2-§16 (1607–1643).
-Depends on rec-001 (merged PR #143). Numbering (rec-002 holds 0101 / 117 / 12AJ / 2.43 in a parallel branch): `DEC-SCOPE-118`,
+Depends on rec-001 (merged PR #143). Numbering (upc-002 merged 0101 / §12AJ; rec-002 holds DEC-SCOPE-117 / RBAC 2.43 in a parallel branch): `DEC-SCOPE-118`,
 migration `0102_skills_master`, API §12AK, RBAC §2.44. Re-check origin/main before the merge and re-chain if needed.
 
 ## 1. Owner answers (2026-10-08, `EXPLICIT_APPROVAL` in session)

@@ -1,7 +1,7 @@
 """rec-006 -- the recruiter Skills Master: skill_categories, skills, skill_category_tags, skill_aliases, skill_related (seeded).
 
 Revision ID: 0102_skills_master
-Revises: 0100_recruiter_profiles
+Revises: 0101_country_master
 
 docs/superpowers/specs/2026-10-08-rec-006-skills-master-design.md §2 (DEC-SCOPE-118). Adds five tables; no existing row is read or
 written. 0001 builds a fresh database from the current models, which already carry these tables, so creation is guarded (0076's idiom)
@@ -17,7 +17,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0102_skills_master"
-down_revision = "0100_recruiter_profiles"
+down_revision = "0101_country_master"
 branch_labels = None
 depends_on = None
 

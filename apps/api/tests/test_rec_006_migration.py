@@ -22,7 +22,7 @@ _spec = importlib.util.spec_from_file_location("_rec_006_migration_0102", API_RO
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0100_recruiter_profiles", "0102_skills_master"
+BASE, HEAD = "0101_country_master", "0102_skills_master"
 SKILLS = "SELECT c.name, s.name FROM skills s JOIN skill_categories c ON c.id = s.category_id ORDER BY c.sort_order, s.sort_order"
 TAGS = "SELECT s.name, c.name FROM skill_category_tags t JOIN skills s ON s.id = t.skill_id JOIN skill_categories c ON c.id = t.category_id"
 ALIASES = "SELECT s.name, a.alias FROM skill_aliases a JOIN skills s ON s.id = a.skill_id ORDER BY s.name, a.alias"
@@ -57,7 +57,7 @@ def _sql(url: str, sql: str, params: dict | None = None, *, autocommit: bool = F
     return asyncio.run(_inner())
 
 
-def test_migration_chains_after_the_recruiter_profiles_and_is_the_single_head():
+def test_migration_chains_after_the_country_master_and_is_the_single_head():
     assert _migration.revision == HEAD
     assert _migration.down_revision == BASE
     assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1
@@ -79,7 +79,7 @@ def test_models_match_the_migration():
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0100 (the parent revision)."""
+    """A fresh database at 0101 (the parent revision)."""
     cfg = _config()
     original = settings.database_url
     name = f"rec006_migration_{uuid.uuid4().hex[:8]}"

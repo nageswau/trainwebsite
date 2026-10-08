@@ -242,7 +242,8 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 §12AI onward; RBAC §2.42 onward.
 
 ### rec-001 — Recruiter scope for `placement_team` + new `placement_manager`: profile, provisioning, sign-in, shell
-- **Status (2026-10-08):** built on `feature/rec-001`.
+- **Status (2026-10-08):** **MERGED** to `main` as PR #143 @ `9e957bee`. The next rec item takes the next migration after `0100`,
+  `DEC-SCOPE-117`, API §12AJ and RBAC §2.43, re-checked on `main` first.
   - Numbering: `DEC-SCOPE-116`, migration `0100_recruiter_profiles`, API §12AI, RBAC §2.42.
   - Owner answers:
     - Q-29: `/recruiter/*` workspace.
@@ -454,7 +455,7 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 
 ### rec-006 — Skills Master + categories + aliases
 - **Status (2026-10-08):** built on `feature/rec-006`.
-  - Numbering: `DEC-SCOPE-118`, migration `0102_skills_master`, API §12AK, RBAC §2.44 (after rec-002's planned 0101 / 117 / 12AJ / 2.43).
+  - Numbering: `DEC-SCOPE-118`, migration `0102_skills_master` (chained after upc-002's `0101_country_master`), API §12AK (upc-002 took §12AJ), RBAC §2.44, DEC-SCOPE-118 (after rec-002's planned 117 / 2.43).
   - Owner answers: S1 merge deferred to rec-011; S2 recruiters read-only. S3–S6 took the recommended answers.
   - QA: `docs/quality/REC-006_EXPLORATORY_QA_2026-10-08.md`.
 - **Business requirement:** S2-§2 (5 categories, 37 seed skills, "admin should be able to add/edit"); S2-§16 synonyms ("Skill → Related
