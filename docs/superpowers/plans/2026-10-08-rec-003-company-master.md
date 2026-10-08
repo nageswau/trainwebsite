@@ -4,9 +4,9 @@ Spec: `docs/superpowers/specs/2026-10-08-rec-003-company-master-design.md`. TDD 
 
 | # | Task | Files | Tests (written first) |
 |---|---|---|---|
-| 1 | Schema: `Company` columns, `COMPANY_CODE_SEQ`, `CompanyAssignmentHistory`; migration `0103_rec_companies` (guarded, backfill, refusing downgrade) | `models.py`, `alembic/versions/0103_rec_companies.py` | `test_rec_003_migration.py`: round trip in a throwaway DB, backfill order, NOT NULL, downgrade refusal |
+| 1 | Schema: `Company` columns, `COMPANY_CODE_SEQ`, `CompanyAssignmentHistory`; migration `0104_rec_companies` (guarded, backfill, refusing downgrade) | `models.py`, `alembic/versions/0104_rec_companies.py` | `test_rec_003_migration.py`: round trip in a throwaway DB, backfill order, NOT NULL, downgrade refusal |
 | 2 | Service: scope, permissions, duplicates, lookups (`FOR SHARE`), reassign target, output, audit | `services/recruiter_companies.py`, `schemas.py` | through task 3's API tests |
-| 3 | API: list/create/get/patch/archive/restore/assign/bdm-options; router registered | `api/recruiter_companies.py`, `main.py` | `test_rec_003_companies.py` (AC1–AC3, AC6, AC7), `test_rec_003_scope.py` (roles, BDM read, 404s) |
+| 3 | API: list/create/get/patch/archive/restore/assign/bdm-options; router registered | `api/recruiter_companies.py`, `main.py` | `test_rec_003_companies.py` (AC1–AC4, AC6, AC7, roles, BDM read, 404s) |
 | 4 | Employer registration sets lead source Website (D3) | `api/employer.py` | `test_rec_003_companies.py::employer` + existing `test_emp_001*` |
 | 5 | Web lib + components + pages + nav | `lib/recruiterCompanies.ts`, `components/RecruiterCompany*.tsx`, `app/recruiter/companies/**`, `lib/navigation.ts` | `tests/components/RecruiterCompanies.test.tsx`, `navigation.recruiter.test.ts` |
 | 6 | Playwright | `tests/e2e/rec-003-companies.spec.ts` | recruiter create → detail; manager reassign; mobile layout |

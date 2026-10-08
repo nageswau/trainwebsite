@@ -159,3 +159,13 @@ async def test_other_roles_are_refused(client, db_session, role, division):
     await as_role(client, db_session, role, division)
     assert (await client.get(CAMPAIGNS)).status_code == 403
     assert (await client.post(CAMPAIGNS, json={})).status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_campaign_list_is_a_full_page(client, db_session):
+    """The {items, total, limit, offset} contract every picker's readAll relies on. rec-003 found it reduced to {items} on main after
+    upc-001's merge (1590a9e8), which broke the campaign tab and the company form's pickers."""
+    await _manager(client, db_session)
+    body = (await client.get(CAMPAIGNS, params={"limit": 5, "offset": 0})).json()
+    assert set(body) == {"items", "total", "limit", "offset"}
+    assert body["limit"] == 5 and body["offset"] == 0 and body["total"] >= len(body["items"])

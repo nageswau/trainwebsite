@@ -1,9 +1,9 @@
 # rec-003 — Company master + recruiter lead record (design)
 
 Backlog: `docs/delivery/RECRUITER_CRM_BACKLOG.md` rec-003. Source: EVID-018 §1 quick actions (lines 40–42), §2 (50–118), §3 (120–174).
-Depends on rec-001 (merged PR #143) and rec-002 (merged PR #146). Numbering: `DEC-SCOPE-119`, migration `0103_rec_companies`, API
-§12AM, RBAC §2.45. rec-006 (in flight in a parallel worktree) holds `DEC-SCOPE-118`, §12AL, RBAC §2.44 and its own `0103`; whichever
-merges second re-chains its migration.
+Depends on rec-001 (merged PR #143) and rec-002 (merged PR #146). Numbering: `DEC-SCOPE-119`, migration `0104_rec_companies`, API
+§12AM, RBAC §2.45. upc-001 (merged PR #149) took `DEC-SCOPE-118`, §12AL, RBAC §2.44 and `0103_partnership_profiles`, so the migration is
+`0104_rec_companies` (drafted as `0103`).
 
 ## 1. Answers used (2026-10-08)
 The user instructed this session to proceed with the recommended answer for each open question. These are recorded in
@@ -32,7 +32,7 @@ detail pages for recruiters, placement managers and super admin. The assigned BD
 follow-up. Not built: contacts and Add Recruiter (rec-004), pipeline/status (rec-005), follow-ups (rec-024), contracts (rec-030),
 dashboard quick-action tiles (rec-032).
 
-## 3. Data (`0103_rec_companies`)
+## 3. Data (`0104_rec_companies`)
 New nullable columns on `companies` (existing rows unchanged apart from the code):
 
 | Column | Type | Notes |
@@ -122,5 +122,5 @@ unchanged.
 
 ## 8. Risks
 - `companies` is shared with EMP and the legacy placement screens: only nullable columns plus a defaulted code are added.
-- Migration number collides with rec-006 — re-chain at merge.
+- Migration numbers move with parallel items: re-chained to `0104` after upc-001; rec-006 re-chains after this one if it merges later.
 - Hot spots: `models.py`, `schemas.py`, `main.py`, `navigation.ts` (append-only edits).
