@@ -5196,7 +5196,7 @@ a duplicate master create/rename is `409` unless overridden; the BDM University 
 - R3: a new `company_contacts` table. R10: recruiters do every write.
 - Module scope: `DEC-SCOPE-116`. The company master is `DEC-SCOPE-121`.
 
-**Status:** built on `feature/rec-004`. The backlog item has no Q-xx questions, so C1–C7 below are **recommended defaults**, taken on the
+**Status:** **MERGED** to `main` as PR #160 @ `721c23f7` (2026-10-08). The backlog item has no Q-xx questions, so C1–C7 below are **recommended defaults**, taken on the
 user's standing instruction to proceed with the recommended answers. Their status is `UNVERIFIED` until the owner confirms them.
 
 **Numbering:** migration `0110_company_contacts` (after upc-004's `0109_university_duplicates`), API §12AS and RBAC §2.51. rec-004 was drafted as
