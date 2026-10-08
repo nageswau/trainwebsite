@@ -1,4 +1,4 @@
-"""rec-025 (DEC-SCOPE-132, spec §1-§3): calls logged on a company contact or a candidate -- the party rules, the lists, the same-day
+"""rec-025 (DEC-SCOPE-133, spec §1-§3): calls logged on a company contact or a candidate -- the party rules, the lists, the same-day
 edit/delete gate, the next follow-up and the contact's Last contacted.
 
 A contact call belongs to its company (CA3): reads and writes go through rec-003's company scope (`load_scoped`) and `can_edit`, so a

@@ -505,7 +505,7 @@ class RecruiterFollowUp(Base, TimestampMixin):
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
 
 
-# rec-025 (DEC-SCOPE-132 CA1/CA8): the call outcomes (the source names none -- UNVERIFIED default) and directions; migration 0117 repeats
+# rec-025 (DEC-SCOPE-133 CA1/CA8): the call outcomes (the source names none -- UNVERIFIED default) and directions; migration 0118 repeats
 # RECRUITER_CALL_CHECKS (test_rec_025_migration asserts they stay identical). Labels live in services/recruiter_calls and the web client.
 RECRUITER_CALL_OUTCOMES = ("connected", "call_back_requested", "busy", "no_answer", "switched_off", "wrong_number")
 RECRUITER_CALL_DIRECTIONS = ("outgoing", "incoming")
@@ -519,7 +519,7 @@ RECRUITER_CALL_CHECKS = {
 
 
 class RecruiterCall(Base, TimestampMixin):
-    """rec-025 (DEC-SCOPE-132): a call logged on a company contact or a candidate -- exactly one (CA2). A contact call also keeps the
+    """rec-025 (DEC-SCOPE-133): a call logged on a company contact or a candidate -- exactly one (CA2). A contact call also keeps the
     contact's company, so its scope and the company's call list are the company's (rec-003) with no join. `caller_user_id` keeps who
     made it (the same-day edit gate, CA4, and the daily cap, CA9)."""
 
@@ -660,6 +660,53 @@ class JobStatusHistory(Base):
     to_status: Mapped[str] = mapped_column(String(30))
     note: Mapped[str | None] = mapped_column(String(500), nullable=True)
     changed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# rec-008 (DEC-SCOPE-132): one JD number per requirement (JD2), shared by its versions; 0001's create_all builds the sequence, 0117 creates
+# it IF NOT EXISTS. Migration 0117 repeats JOB_DESCRIPTION_CHECKS (test_rec_008_migration asserts they stay identical).
+JD_NUMBER_SEQ = Sequence("jd_number_seq", maxvalue=999999, metadata=Base.metadata)
+JOB_DESCRIPTION_CHECKS = {
+    "ck_job_descriptions_version": "version >= 1",
+    "ck_job_descriptions_openings": "openings IS NULL OR openings BETWEEN 1 AND 10000",
+    "ck_job_descriptions_file": "(storage_key IS NULL) = (content_type IS NULL) AND (storage_key IS NULL) = (size_bytes IS NULL)",
+}
+
+
+class JobDescription(Base):
+    """rec-008 (R5, JD1): one version of a requirement's JD, append-only. Exactly one version per requirement is current (the partial
+    unique index); a create or edit carries the current file forward, an upload carries the current fields forward (JD4). The company is
+    the requirement's and is not stored again."""
+
+    __tablename__ = "job_descriptions"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in JOB_DESCRIPTION_CHECKS.items()),
+        UniqueConstraint("job_id", "version", name="uq_job_descriptions_version"),
+        Index("uq_job_descriptions_current", "job_id", unique=True, postgresql_where=text("is_current")),
+        Index("ix_job_descriptions_number", "jd_number"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="RESTRICT"))
+    jd_number: Mapped[str] = mapped_column(String(12))
+    version: Mapped[int] = mapped_column(Integer)
+    is_current: Mapped[bool] = mapped_column(Boolean)
+    role: Mapped[str] = mapped_column(String(180))
+    experience: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    qualification: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    skills: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    salary: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    location: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    responsibilities: Mapped[str | None] = mapped_column(Text, nullable=True)
+    requirements: Mapped[str | None] = mapped_column(Text, nullable=True)
+    openings: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("company_contacts.id", ondelete="RESTRICT"), nullable=True)
+    closing_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    storage_key: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    file_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    content_type: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

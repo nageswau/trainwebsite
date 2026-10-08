@@ -1,4 +1,4 @@
-"""rec-025 (DEC-SCOPE-132, spec §3): recruiter calls -- log a call on a company contact or a candidate (with an optional next follow-up),
+"""rec-025 (DEC-SCOPE-133, spec §3): recruiter calls -- log a call on a company contact or a candidate (with an optional next follow-up),
 a company's and a candidate's call lists, and the same-day edit and delete.
 
 A contact call's scope is its company's (rec-003 `load_scoped` / `can_edit`); a candidate call's is the pool's (rec-009, R11). Every write

@@ -17,7 +17,7 @@ contacted. Calls can be edited or deleted on the same IST day.
 **Spec:** `docs/superpowers/specs/2026-10-08-rec-025-recruiter-calls-design.md`
 
 ## Global Constraints
-- Numbering: migration `0117_recruiter_calls` (down `0116_recruiter_follow_ups`), `DEC-SCOPE-132`, API §12AZ, RBAC §2.58.
+- Numbering: migration `0118_recruiter_calls` (down `0117_job_descriptions`), `DEC-SCOPE-133`, API §12BA, RBAC §2.59.
 - Outcomes are `connected`, `call_back_requested`, `busy`, `no_answer`, `switched_off` and `wrong_number`. Directions are `outgoing` and `incoming`.
 - Duration is 0–14400 s and optional. Notes are up to 2000 characters. The cap is 300 calls per caller per IST day.
 - Audit and logs carry ids, the outcome and field names. They never carry notes.
@@ -33,7 +33,7 @@ contacted. Calls can be edited or deleted on the same IST day.
 ---
 
 ### Task 1: Model + migration
-**Files:** `apps/api/app/models.py` (RECRUITER_CALL_* + `RecruiterCall`), `apps/api/alembic/versions/0117_recruiter_calls.py`,
+**Files:** `apps/api/app/models.py` (RECRUITER_CALL_* + `RecruiterCall`), `apps/api/alembic/versions/0118_recruiter_calls.py`,
 `apps/api/tests/test_rec_025_migration.py`
 - [ ] Write the migration test: the migration's CHECKS equal `models.RECRUITER_CALL_CHECKS`; revision and down_revision. Run it (fails).
 - [ ] Add the model and migration. Run it (passes).
@@ -82,4 +82,4 @@ contacted. Calls can be edited or deleted on the same IST day.
 
 ### Task 5: E2E + docs
 - [ ] `apps/web/tests/e2e/rec-025-calls.spec.ts`: log a contact call with a follow-up, then check Last contacted and the follow-up listed; a candidate call; edit.
-- [ ] Docs: API_CONTRACT §12AZ, RBAC_MATRIX §2.58, DATA_MODEL, PRODUCT_DECISION_REGISTER DEC-SCOPE-132, the backlog status, SCREEN_CATALOG.
+- [ ] Docs: API_CONTRACT §12BA, RBAC_MATRIX §2.59, DATA_MODEL, PRODUCT_DECISION_REGISTER DEC-SCOPE-133, the backlog status, SCREEN_CATALOG.

@@ -552,13 +552,17 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Edge cases:** the deadline passes → expiring/expired (Appendix B D14); vacancies reduced below the joined count → 409.
 - **Regression risks:** EMP-002, ADM-007, ADM-008, student job lists, `bdm_metrics` placement counts (`bdm_metrics.py:50`).
 - **Complexity:** large · **Risk:** high
-- **Status (2026-10-08):** **BUILT** on `feature/rec-007`, not merged. `DEC-SCOPE-129` (J1–J7 recommended defaults, UNVERIFIED);
+- **Status (2026-10-08):** **MERGED** to `main` as PR #166 @ `176b71b6`. The next rec item takes the next migration after `0115` (upc-010), i.e. `0116` / DEC-SCOPE-131 / §12AY / §2.57. `DEC-SCOPE-129` (J1–J7 recommended defaults, UNVERIFIED);
   migration `0114_job_requirements`, API §12AW, RBAC §2.55.
   - **AC2:** status changes fire rec-005's `requirement_received` / `requirement_closed`.
   - The §6 "Recruiter" contact field is a follow-up on rec-004's `company_contacts`.
   - `bdm_metrics` was unaffected: it counts offers, not job statuses.
 
 ### rec-008 — JD management
+- **Status (2026-10-08):** **MERGED** to `main` as PR #170 @ `09abb21e`. The next rec item takes `0118`, `DEC-SCOPE-133`, §12BA and §2.59 (re-check `main`). `DEC-SCOPE-132` (JD1–JD9 recommended defaults, UNVERIFIED);
+  migration `0117_job_descriptions`, API §12AZ, RBAC §2.58. Spec `docs/superpowers/specs/2026-10-08-rec-008-jd-management-design.md`.
+  - AC3: a non-PDF/DOCX file is `415` (rec-009's code), not `422` (JD5). The employer view is deferred (JD7). There is no automatic JD
+    follow-up (JD9).
 - **Business requirement:** §7: upload or create a JD (14 fields), "📎 Upload JD and automatically connect it to the Job Requirement".
 - **Existing behavior:** `jobs.description` text only.
 - **Expected behavior:**
@@ -1140,8 +1144,8 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-025 — Call logging
-- **Status (2026-10-08):** built on `feature/rec-025`. Numbering: `DEC-SCOPE-132`, migration `0117_recruiter_calls` (after rec-024's
-  `0116_recruiter_follow_ups`), API §12AZ, RBAC §2.58. CA1–CA9 in `DEC-SCOPE-132` are recommended defaults (UNVERIFIED): a fixed outcome
+- **Status (2026-10-08):** built on `feature/rec-025`. Numbering: `DEC-SCOPE-133`, migration `0118_recruiter_calls` (re-chained after rec-008's
+  `0117_job_descriptions`), API §12BA, RBAC §2.59. CA1–CA9 in `DEC-SCOPE-133` are recommended defaults (UNVERIFIED): a fixed outcome
   list, exactly one party, the next follow-up only on contact calls, and Last contacted = the latest call (rec-004 AC3 is now met).
 - **Business requirement:** §19 "📞 Calls: Call history and notes" (R13).
 - **Existing behavior:** none for companies or candidates.

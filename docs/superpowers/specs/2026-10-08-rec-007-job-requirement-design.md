@@ -3,7 +3,7 @@
 Backlog: `docs/delivery/RECRUITER_CRM_BACKLOG.md` rec-007. Source: EVID-018 §6 (lines 272–348), S2-§6 required/preferred skills, §1 quick
 action "+ Add Job Requirement". Depends on rec-003 (merged PR #152) and rec-006 (merged PR #150). Numbering: `DEC-SCOPE-129`, migration `0114_job_requirements` (after upc-005's `0113_university_imports`), API §12AW, RBAC §2.55.
 It was drafted as 123 / `0108` / §12AQ / §2.49. upc-006, upc-004, rec-004, upc-007, rec-005 and upc-005 (`0108`–`0113`,
-DEC-SCOPE-123–128, §12AQ–§12AV, §2.49–§2.54) merged to `main` first. **Status: DRAFT** (branch `feature/rec-007`).
+DEC-SCOPE-123–128, §12AQ–§12AV, §2.49–§2.54) merged to `main` first. **Status: MERGED** as PR #166 @ `176b71b6` (2026-10-08).
 
 ## 1. Answers used (2026-10-08)
 The user told this session to proceed with the recommended answers. Q-04 and Q-05 were **not** put to the owner, so `DEC-SCOPE-129`

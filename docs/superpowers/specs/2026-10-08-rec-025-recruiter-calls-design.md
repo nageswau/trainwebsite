@@ -1,9 +1,9 @@
 # rec-025 — Recruiter call logging (design)
 
 - **Feature:** rec-025 (`docs/delivery/RECRUITER_CRM_BACKLOG.md` §rec-025), EVID-018 §19 "📞 Calls: Call history and notes" (R13).
-- **Decision:** `DEC-SCOPE-132` (CA1–CA9 are recommended defaults, **UNVERIFIED**; the owner said "proceed with recommended answers").
-- **Numbering (checked on `origin/main` @ `804853c1`):** migration `0117_recruiter_calls` (after `0116_recruiter_follow_ups`), API §12AZ,
-  RBAC §2.58.
+- **Decision:** `DEC-SCOPE-133` (CA1–CA9 are recommended defaults, **UNVERIFIED**; the owner said "proceed with recommended answers").
+- **Numbering (checked on `origin/main` @ `804853c1`):** migration `0118_recruiter_calls` (after rec-008's `0117_job_descriptions`; drafted as `0117` / `DEC-SCOPE-132` / §12AZ / §2.58 before rec-008 merged), API §12BA,
+  RBAC §2.59.
 - **Dependency:** rec-024 is MERGED (PR #168 @ `e92e2094`).
 
 ## Understanding
@@ -57,7 +57,7 @@ The indexes are:
 
 It is a new table only. The upgrade is guarded (0110's idiom). The downgrade refuses while any call exists.
 
-## 3. API (§12AZ)
+## 3. API (§12BA)
 
 | Method | Path | Notes |
 |---|---|---|

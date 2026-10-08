@@ -8045,8 +8045,11 @@ class CandidateDetail(CandidateItem):
 REC_REQUIREMENT_LABELS = {
     "title": "Job title", "location": "Job location", "description": "Job description", "department": "Department",
     "qualification": "Qualification", "joining_requirement": "Joining requirement", "note": "Note",
+    # rec-008's JD (the same text rules)
+    "role": "Job role", "experience": "Experience", "skills": "Skills", "salary": "Salary", "responsibilities": "Responsibilities",
+    "requirements": "Requirements",
 }
-REC_REQUIREMENT_MULTILINE = frozenset({"description", "note"})
+REC_REQUIREMENT_MULTILINE = frozenset({"description", "note", "skills", "responsibilities", "requirements"})
 REC_REQUIREMENT_FIELDS = (  # the `jobs` columns a create or edit may write; code, status, assignee and creator are server-owned
     "title", "location", "description", "department", "job_category_id", "vacancies", "qualification", "experience_min_months",
     "experience_max_months", "salary_min", "salary_max", "work_mode", "shift", "employment_type", "joining_requirement", "closes_on",
@@ -8134,6 +8137,31 @@ class RecRequirementAssign(BaseModel):
     model_config = ConfigDict(extra="forbid")
     recruiter_user_id: UUID
 
+
+# --- rec-008 (DEC-SCOPE-132 JD3): a JD version's fields; the company, number and version are server-owned ---------------------------
+REC_JD_FIELDS = (
+    "role", "experience", "qualification", "skills", "salary", "location", "description", "responsibilities", "requirements", "openings",
+    "contact_id", "closing_date",
+)
+
+
+class RecJdCreate(BaseModel):
+    """POST /recruiter/requirements/{id}/jd: the whole version (a new current one); omitted = empty."""
+
+    model_config = ConfigDict(extra="forbid")
+    role: Annotated[_rec_requirement_text_type(180), AfterValidator(_rec_required_text)]
+    experience: _rec_requirement_text_type(120) = None
+    qualification: _rec_requirement_text_type(300) = None
+    skills: _rec_requirement_text_type(1000, multiline=True) = None
+    salary: _rec_requirement_text_type(120) = None
+    location: _rec_requirement_text_type(120) = None
+    description: _rec_requirement_text_type(10000, multiline=True) = None
+    responsibilities: _rec_requirement_text_type(5000, multiline=True) = None
+    requirements: _rec_requirement_text_type(5000, multiline=True) = None
+    openings: Annotated[int | None, Field(ge=1, le=10000)] = None
+    contact_id: UUID | None = None
+    closing_date: date | None = None
+
 # --- rec-024 (DEC-SCOPE-131, spec §3): recruiter follow-ups ----------------------------------------------------------------------
 REC_FOLLOW_UP_LABELS = {"notes": "Notes", "outcome": "Outcome"}
 RecFollowUpReason = Literal[RECRUITER_FOLLOW_UP_REASONS]
@@ -8181,7 +8209,7 @@ class RecFollowUpComplete(BaseModel):
     outcome: RecFollowUpOutcome = None
 
 
-# --- rec-025 (DEC-SCOPE-132, spec §3): recruiter calls -----------------------------------------------------------------------------
+# --- rec-025 (DEC-SCOPE-133, spec §3): recruiter calls -----------------------------------------------------------------------------
 RecCallNotes = Annotated[Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, {"notes": "Notes"}))]
 RecCallDuration = Annotated[int, Field(ge=0, le=RECRUITER_CALL_MAX_SECONDS)]
 

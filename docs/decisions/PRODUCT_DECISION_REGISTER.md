@@ -5314,7 +5314,7 @@ Spec: `docs/superpowers/specs/2026-10-08-upc-005-university-import-design.md`.
 `RECRUITER_CRM_BACKLOG.md` §rec-007 (AC1–AC4). Module scope: `DEC-SCOPE-116`. Also R5 (`jobs` becomes the Job Requirement) and
 FEATURE_QUESTIONS #1 / Q-04 (the employer mediation question, still open).
 
-**Status:** **BUILT** on `feature/rec-007` (2026-10-08), not merged.
+**Status:** **MERGED** to `main` as PR #166 @ `176b71b6` (2026-10-08). The next rec item takes `0116` / DEC-SCOPE-131 / §12AY / §2.57 (upc-010 took `0115` / 130 / §12AX / §2.56); re-check `main` first.
 - J1–J7 are **recommended defaults (`UNVERIFIED`)**. The user told the session to proceed with the recommended answers, so Q-04 and Q-05
   were **not** put to the owner. They can be revised.
 - **Numbering:** migration `0114_job_requirements` (after upc-005's `0113_university_imports`), API §12AW, RBAC §2.55. rec-007 was
@@ -5416,7 +5416,40 @@ upc-010 merged first and took those numbers. Spec `docs/superpowers/specs/2026-1
   reasons.
 - **New Feature ID authorized:** `rec-024`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-024.
 
-### DEC-SCOPE-132 — Recruiter call logging (`rec-025`)
+### DEC-SCOPE-132 — JD management (`rec-008`)
+
+**Evidence:**
+- `EVID-018`: §7 JD Management (lines 350–388): "Recruiter should be able to upload or create a JD", 14 JD fields, "📎 Upload JD and
+  automatically connect it to the Job Requirement".
+- `RECRUITER_CRM_BACKLOG.md` §rec-008 (AC1–AC3).
+- Module scope: `DEC-SCOPE-116` (R5: `jobs` is the requirement with a versioned child `job_descriptions`).
+- Requirement scope and permissions: `DEC-SCOPE-129` (rec-007). Contacts: `DEC-SCOPE-125` (rec-004). Follow-ups: `DEC-SCOPE-131` FU1.
+
+**Status:** **MERGED** to `main` as PR #170 @ `09abb21e` (2026-10-08). Every answer below is a **recommended default, `UNVERIFIED`**. The owner
+told the session to proceed with the recommended answers.
+
+**Numbering:** migration `0117_job_descriptions`, API §12AZ and RBAC §2.58. Spec `docs/superpowers/specs/2026-10-08-rec-008-jd-management-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| JD1 | Versions | Every create, edit or upload writes a new version row. Rows are never edited or deleted. A partial unique index keeps one current version per requirement, and `(job_id, version)` is unique (AC2) |
+| JD2 | JD number | One `JD-000001` per requirement (`jd_number_seq`), kept by every version |
+| JD3 | Fields | The 14 §7 fields. Company is the requirement's. Experience and salary are free text. Skills is text, and the requirement's `job_skills` stay authoritative. The contact must be an active contact of the requirement's company (`422`); keeping a since-deactivated one is allowed |
+| JD4 | Create vs upload | A create or edit carries the current file forward. An upload carries the current fields forward, or the requirement's fields when there is no JD yet. The JD links to the requirement automatically (AC1) |
+| JD5 | Files | PDF or DOCX judged by the bytes, ≤ 5 MB. Too big → `413`, empty → `422`, another type → `415` (rec-009's code; the backlog AC3 says `422`, a recorded deviation). The download is authenticated and audited, which is the rec-009 meaning of a signed download |
+| JD6 | JD → requirement | Never silent. **Update requirement from JD** lists the differing title, location, qualification, vacancies, deadline and description. Only on confirmation does it send the existing `PATCH /recruiter/requirements/{id}` |
+| JD7 | Who | Read = the requirement's read scope. Write = the requirement's `can_edit`: other readers → `403`, cancelled → `409`. Employer view is **deferred** (the employer portal is unchanged). `hr_team` and others → `403` |
+| JD8 | Closing date | A closing date different from the deadline is allowed, flagged `closing_date_differs` and warned on the page. The page compares against the requirement as it holds it, so the warning clears after JD6 |
+| JD9 | Follow-ups | No automatic "JD pending" follow-up: rec-008 has no event to fire it from. The `jd` reason stays manual (amends FU1's rec-008 mention) |
+
+**Consequences:**
+- `job_descriptions` + `jd_number_seq` (`0117`). `services/job_descriptions.py` and `api/recruiter_job_descriptions.py`.
+- `services/candidates.read_pdf_or_docx` is shared by both modules; rec-009 behaviour is unchanged.
+- The requirement page gains a **Job description (JD)** section.
+- Audit `job_description.{create,upload,download}` carries ids, the version, field names, type and size only.
+- **New Feature ID authorized:** `rec-008`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-008.
+
+### DEC-SCOPE-133 — Recruiter call logging (`rec-025`)
 
 **Evidence:**
 - `EVID-018`: §19 "📞 Calls — Call history and notes" (lines 758–764). "Last contacted" on the contact (line 212).
@@ -5427,7 +5460,8 @@ upc-010 merged first and took those numbers. Spec `docs/superpowers/specs/2026-1
 **Status:** built on `feature/rec-025`. Every answer below is a **recommended default, `UNVERIFIED`**. The owner told the session to
 proceed with the recommended answers; the backlog lists no Q-xx for this item.
 
-**Numbering:** migration `0117_recruiter_calls`, API §12AZ and RBAC §2.58. Spec `docs/superpowers/specs/2026-10-08-rec-025-recruiter-calls-design.md`.
+**Numbering:** migration `0118_recruiter_calls`, API §12BA and RBAC §2.59. It was drafted as `0117` / `DEC-SCOPE-132` / §12AZ / §2.58;
+rec-008 merged first and took those numbers. Spec `docs/superpowers/specs/2026-10-08-rec-025-recruiter-calls-design.md`.
 
 | # | Point | Answer |
 |---|---|---|
@@ -5442,7 +5476,7 @@ proceed with the recommended answers; the backlog lists no Q-xx for this item.
 | CA9 | Cap | 300 calls per caller per IST day (`409`), an abuse bound |
 
 **Consequences:**
-- `recruiter_calls` (`0117`): outcome, direction, duration and party CHECKs, and indexes on `(company_id|contact_id|candidate_id|caller_user_id, occurred_at)`.
+- `recruiter_calls` (`0118`): outcome, direction, duration and party CHECKs, and indexes on `(company_id|contact_id|candidate_id|caller_user_id, occurred_at)`.
 - `services/recruiter_calls.py` and `api/recruiter_calls.py`.
 - The company page and the candidate page gain a Calls section; contact and candidate mobiles become `tel:` links. rec-004 AC3 (Last
   contacted after a logged call) is now met.

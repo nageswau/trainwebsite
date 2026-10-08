@@ -1,4 +1,4 @@
-// rec-025 (DEC-SCOPE-132): recruiter calls on a company contact or a candidate -- types, the CA1 outcomes (mirroring
+// rec-025 (DEC-SCOPE-133): recruiter calls on a company contact or a candidate -- types, the CA1 outcomes (mirroring
 // services/recruiter_calls.py), the endpoints and the `tel:` link. The API decides scope, every rule and `can_change` (the caller, on the
 // call's IST day, while they can still write to the party); the UI only offers what it allows.
 import { COMPANIES_URL } from "@/lib/recruiterCompanies";

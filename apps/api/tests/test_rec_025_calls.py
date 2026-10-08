@@ -1,4 +1,4 @@
-"""rec-025 -- recruiter calls (spec §1-§3; DEC-SCOPE-132 CA1-CA9): log a call on a company contact or a candidate, the lists, the
+"""rec-025 -- recruiter calls (spec §1-§3; DEC-SCOPE-133 CA1-CA9): log a call on a company contact or a candidate, the lists, the
 contact's Last contacted, the next follow-up, and the same-day edit / delete. The shared test database is never truncated, so every
 assertion uses rows created by the test."""
 
