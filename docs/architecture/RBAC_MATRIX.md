@@ -939,7 +939,26 @@ The lists are global (there is no row scope). The role checks run before anythin
 | `placement_team` | read **active** values and campaigns (pickers); every write and the manager page are `403` | all lists | `rec-002` |
 | `hr_team`, `it_admin`, every other role | `403` on read and write (C3) | — | `rec-002` |
 
-### 2.44 Recruiter Skills Master *(net-new, added 2026-10-08 — `DEC-SCOPE-118`, `rec-006`)*
+### 2.44 University Partnership CRM roles *(net-new, added 2026-10-08 — `DEC-SCOPE-118`, `upc-001`)*
+
+Bundles: `partnership_manager` → `partnership:self`, `partnership_head` → `partnership:team`. Scope is enforced inline in
+`services/partnership.py` (role → scope → write), not by the bundles.
+
+| Capability | partnership_manager | partnership_head | super_admin | overseas_admin | it_admin | Other roles |
+|---|---|---|---|---|---|---|
+| Sign in | `/overseas/login` | `/admin/login` | — | — | — | — |
+| Create a partnership manager | ❌ | ❌ | ✅ | ✅ | ❌ (cross-division `403`) | ❌ |
+| Create a partnership head | ❌ | ❌ | ✅ | ❌ `403` | ❌ `403` | ❌ |
+| Edit a manager's profile (`PATCH /admin/users`) | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |
+| Edit or deactivate a head | ❌ | ❌ | ✅ | ❌ (cross-division `403`) | ❌ | ❌ |
+| Read own profile / edit own phone | ✅ | — | — | — | — | `403` |
+| Team (`GET /partnership/head/team`) | `403` | direct reports | all | `403` | `403` | `403` |
+| Admin list and head picker | `403` | `403` | ✅ | ✅ | `403` | `403` |
+| See university commission data (U2, `can_see_commission`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ (the future `partner` role: ✅ per Management M3) |
+
+No `/partnership` route takes a user id (no IDOR surface).
+
+### 2.45 Recruiter Skills Master *(net-new, added 2026-10-08 — `DEC-SCOPE-119`, `rec-006`)*
 
 The catalogue is global, so there is no row scope; only the role checks below apply.
 

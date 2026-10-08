@@ -12,11 +12,11 @@ worktree-api-test-mount-path).
 - Bodies are parsed with `services/telecaller._parse`.
 - Use the paging shape `{items,total,limit,offset}`.
 - The route owns the commit, with one `AuditLog` per write.
-- Numbering (final, after upc-002 and rec-002 merged): 0103 / DEC-SCOPE-118 / §12AL / RBAC §2.44.
+- Numbering (final, after upc-002, rec-002 and upc-001 merged): 0104 / DEC-SCOPE-119 / §12AM / RBAC §2.45.
 
 | # | Task | Tests first | Files |
 |---|---|---|---|
-| 1 | Models (5) + migration 0103 (guarded create, idempotent seed, guarded downgrade) | `test_rec_006_migration.py`: chain/head, model↔migration, seed 37/5/9/1 + JS tag, seed idempotent, downgrade refusal (throwaway DB) | `models.py`, `alembic/versions/0103_skills_master.py` |
+| 1 | Models (5) + migration 0104 (guarded create, idempotent seed, guarded downgrade) | `test_rec_006_migration.py`: chain/head, model↔migration, seed 37/5/9/1 + JS tag, seed idempotent, downgrade refusal (throwaway DB) | `models.py`, `alembic/versions/0104_skills_master.py` |
 | 2 | Schemas + `services/skills.py` (`normalise`, `resolve`, role helpers, term guards, batched shaping) | `test_rec_006_service.py`: resolve by name/alias/case/whitespace, inactive → None, name beats alias | `schemas.py`, `services/skills.py` |
 | 3 | `api/recruiter_skills.py` + `main.py`: categories GET/POST/PATCH | `test_rec_006_api.py` (categories) | as named |
 | 4 | Skills GET list/one, POST, PATCH (tags replace, category FOR SHARE, name ↔ alias 409) | `test_rec_006_api.py` (skills) | as named |
@@ -25,7 +25,7 @@ worktree-api-test-mount-path).
 | 7 | Web: `lib/recruiterSkills.ts`, nav entries | `navigation.recruiter.test.ts`, `recruiterSkills.test.ts` | `lib/*` |
 | 8 | Web: `RecruiterSkillsPanel` (+ `RecruiterSkillCategories`, `RecruiterSkillDetail`), two pages | `RecruiterSkillsPanel.test.tsx` | `components/*`, `app/recruiter/skills`, `app/recruiter/manager/skills` |
 | 9 | e2e `rec-006-skills-master.spec.ts` (manager CRUD, alias 409, recruiter read-only, mobile) | e2e | `tests/e2e` |
-| 10 | Docs: DEC-SCOPE-118, API §12AK, RBAC §2.44, backlog status, QA report | — | `docs/**` |
+| 10 | Docs: DEC-SCOPE-119, API §12AM, RBAC §2.45, backlog status, QA report | — | `docs/**` |
 
 ## Review focus (tests pinned in the owning task)
 1. An alias that differs from an existing skill name only by case or spacing ("  core   JAVA ") → 409 (Task 5).

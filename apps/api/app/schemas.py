@@ -6599,11 +6599,78 @@ class RecCampaignOut(BaseModel):
 
 class RecCampaignPage(BaseModel):
     items: list[RecCampaignOut]
+
+
+# --- upc-001 (DEC-SCOPE-118): partnership manager profile ---------------------------------------------------------------------
+PARTNERSHIP_FIELD_LABELS = {"employee_id": "Employee ID", "reporting_head_user_id": "Reporting head", "phone": "Phone"}
+
+
+class PartnershipProfileCreate(BaseModel):
+    """spec §5 / PU6: Employee ID and reporting head, both required; nothing optional."""
+
+    model_config = ConfigDict(extra="forbid")
+    employee_id: BdmEmployeeId
+    reporting_head_user_id: UUID
+
+
+class PartnershipProfileUpdate(BaseModel):
+    """Omitted = unchanged. An explicit null fails (both are required on the row). `user_id` is not a field, so a profile never moves."""
+
+    model_config = ConfigDict(extra="forbid")
+    employee_id: BdmEmployeeId = None
+    reporting_head_user_id: UUID = None
+
+
+class PartnershipProfileOut(BaseModel):
+    employee_id: str
+    reporting_head: BdmManagerRef
+
+
+class PartnershipMeOut(BaseModel):
+    id: UUID
+    full_name: str
+    email: str
+    phone: str | None
+    active: bool
+    division: str
+    partnership_profile: PartnershipProfileOut
+
+
+class PartnershipTeamRow(BaseModel):
+    id: UUID
+    full_name: str
+    email: str
+    phone: str | None
+    active: bool
+    employee_id: str
+
+
+class PartnershipAdminRow(PartnershipTeamRow):
+    reporting_head: BdmManagerRef
+    head_active: bool
+
+
+class PartnershipTeamPage(BaseModel):
+    items: list[PartnershipTeamRow]
     total: int
     limit: int
     offset: int
 
-# --- rec-006 (DEC-SCOPE-118): the recruiter Skills Master ------------------------------------------------------------------------
+
+class PartnershipAdminPage(BaseModel):
+    items: list[PartnershipAdminRow]
+    total: int
+    limit: int
+    offset: int
+
+
+class PartnershipHeadPage(BaseModel):
+    items: list[BdmManagerOption]
+    total: int
+    limit: int
+    offset: int
+
+# --- rec-006 (DEC-SCOPE-119): the recruiter Skills Master ------------------------------------------------------------------------
 SKILL_FIELD_LABELS = {
     "name": "Name", "alias": "Alias", "active": "Active", "category_id": "Category", "tag_category_ids": "Other categories", "skill_id": "Related skill",
 }

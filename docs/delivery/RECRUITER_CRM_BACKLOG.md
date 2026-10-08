@@ -464,7 +464,7 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 
 ### rec-006 — Skills Master + categories + aliases
 - **Status (2026-10-08):** built on `feature/rec-006`.
-  - Numbering: `DEC-SCOPE-118`, migration `0103_skills_master` (after rec-002's `0102_rec_catalogues`), API §12AL, RBAC §2.44 (after rec-002's §12AK / §2.43 / DEC-SCOPE-117 and upc-002's `0101` / §12AJ).
+  - Numbering: `DEC-SCOPE-119`, migration `0104_skills_master` (after upc-001's `0103_partnership_profiles`), API §12AM, RBAC §2.45 (upc-002 took `0101` / §12AJ; rec-002 `0102` / 117 / §12AK / §2.43; upc-001 `0103` / 118 / §12AL / §2.44).
   - Owner answers: S1 merge deferred to rec-011; S2 recruiters read-only. S3–S6 took the recommended answers.
   - QA: `docs/quality/REC-006_EXPLORATORY_QA_2026-10-08.md`.
 - **Business requirement:** S2-§2 (5 categories, 37 seed skills, "admin should be able to add/edit"); S2-§16 synonyms ("Skill → Related

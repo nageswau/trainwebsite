@@ -1,8 +1,8 @@
 # rec-006 — Skills Master, categories, aliases (design)
 
 Backlog: `docs/delivery/RECRUITER_CRM_BACKLOG.md` rec-006. Source: EVID-018 S2-§2 (lines 1126–1216) and S2-§16 (1607–1643).
-Depends on rec-001 (merged PR #143). Numbering (upc-002 merged 0101 / §12AJ; rec-002 merged 0102 / DEC-SCOPE-117 / §12AK / RBAC 2.43): `DEC-SCOPE-118`,
-migration `0103_skills_master`, API §12AL, RBAC §2.44. Re-check origin/main before the merge and re-chain if needed.
+Depends on rec-001 (merged PR #143). Numbering (upc-002 merged 0101 / §12AJ; rec-002 merged 0102 / DEC-SCOPE-117 / §12AK / RBAC 2.43; upc-001 merged 0103 / DEC-SCOPE-118 /
+§12AL / RBAC 2.44): `DEC-SCOPE-119`, migration `0104_skills_master`, API §12AM, RBAC §2.45. Re-check origin/main before the merge and re-chain if needed.
 
 ## 1. Owner answers (2026-10-08, `EXPLICIT_APPROVAL` in session)
 - **S1 (merge):** no skill merge in rec-006. It moves to rec-011, where there are candidate skills to re-point. Until then a
@@ -19,7 +19,7 @@ Defaults taken in session (the owner asked to proceed with the recommended answe
 - **S6 (deletion):** skills and categories are deactivated, never deleted. Aliases, related links and tags are plain links with
   no dependants, so they are deleted (audited).
 
-## 2. Data (migration `0103_skills_master`)
+## 2. Data (migration `0104_skills_master`)
 | Table | Columns | Constraints |
 |---|---|---|
 | `skill_categories` | id, name varchar(80), active, sort_order, timestamps | `uq_skill_categories_name` on `lower(name)` |
@@ -54,7 +54,7 @@ Defaults taken in session (the owner asked to proceed with the recommended answe
 - Term-space guards: `lock_terms(db)`, `check_name_free(db, name, skill_id)` and `check_alias_free(db, alias, skill)`.
 - Shapes: `skill_out` and `category_out`. The page's aliases, tags and related skills load in 3 batched queries (no N+1).
 
-## 4. API (§12AL), prefix `/api/v1/recruiter`
+## 4. API (§12AM), prefix `/api/v1/recruiter`
 | Method | Path | Who | Notes |
 |---|---|---|---|
 | GET | `/skill-categories` | readers | `active`, `q`, `limit`, `offset`; ordered `sort_order, lower(name), id` |

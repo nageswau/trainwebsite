@@ -29,6 +29,16 @@ describe("TelecallerPhoneForm (tel-001 TL3)", () => {
     expect(refresh).toHaveBeenCalled();
   });
 
+  it("PATCHes the given url instead (upc-001 PU3: the partnership manager's profile)", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(res({ phone: "+91 98" }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<TelecallerPhoneForm phone={null} url="/api/v1/partnership/profile" />);
+    fireEvent.change(screen.getByLabelText("Mobile"), { target: { value: "+91 98" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save mobile" }));
+    expect(await screen.findByText("Mobile saved.")).toBeInTheDocument();
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/partnership/profile");
+  });
+
   it("sends null for an empty field (clears it)", async () => {
     const fetchMock = vi.fn().mockResolvedValue(res({ phone: null }));
     vi.stubGlobal("fetch", fetchMock);

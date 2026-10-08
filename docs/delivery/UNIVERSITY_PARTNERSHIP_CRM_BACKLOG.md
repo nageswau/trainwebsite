@@ -227,6 +227,13 @@ Common conventions:
 - API contract addenda and RBAC sections continue from §5.4.
 
 ### upc-001 — Partnership roles: profile, provisioning, sign-in, shell, menu
+- **Status (2026-10-08):** built on `feature/upc-001` under `DEC-SCOPE-118`, with migration `0103_partnership_profiles`, API §12AL and
+  RBAC §2.44. Spec: `docs/superpowers/specs/2026-10-08-upc-001-partnership-roles-design.md`.
+  - The U0–U15 answers are registered in `DEC-SCOPE-116`.
+  - The PU1–PU11 answers are recommended defaults (`NEEDS_CONFIRMATION`). They include Q-29 (PU1) and "overseas_admin creates managers"
+    (PU7).
+  - The `active` column is not added: `users.active` only (PU2).
+  - `strip_commission` and the university `scope(user)` move to upc-016 and upc-003.
 - **Business requirement:** "Partnership Manager" (§4, §7, §19, §27); "Management" (§21, §22, §31); §32 main menu (U3). Under your
   user-lifecycle convention, user creation means the full lifecycle.
 - **Existing behavior:** no partnership roles. Overseas roles are student, counselor, university_rep, agent, overseas_admin, bdm and

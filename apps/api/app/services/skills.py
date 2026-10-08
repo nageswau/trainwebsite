@@ -1,4 +1,4 @@
-"""rec-006 (DEC-SCOPE-118, spec §3): the Skills Master rules and `resolve`, the single normaliser rec-007/011/012/013 call.
+"""rec-006 (DEC-SCOPE-119, spec §3): the Skills Master rules and `resolve`, the single normaliser rec-007/011/012/013 call.
 
 Functions only; nothing here commits -- the route owns the transaction. A skill name and an alias share one case-insensitive term space:
 each table's unique index decides duplicates within it, and every write that sets a name or an alias first takes one advisory lock and

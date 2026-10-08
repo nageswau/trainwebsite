@@ -1,4 +1,4 @@
-// rec-006 (DEC-SCOPE-118): the recruiter Skills Master -- types, endpoints and the related-skill picker's data source. (lib/skills.ts is
+// rec-006 (DEC-SCOPE-119): the recruiter Skills Master -- types, endpoints and the related-skill picker's data source. (lib/skills.ts is
 // the unrelated School skills module.) Labels are display only -- the API decides who may read and write.
 import type { Page } from "@/lib/apiErrors";
 import type { LookupPage } from "@/lib/lookups";

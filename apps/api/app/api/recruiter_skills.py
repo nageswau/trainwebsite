@@ -1,4 +1,4 @@
-"""rec-006 (DEC-SCOPE-118, spec §4): the recruiter Skills Master -- categories, skills, aliases and related skills. Placement managers
+"""rec-006 (DEC-SCOPE-119, spec §4): the recruiter Skills Master -- categories, skills, aliases and related skills. Placement managers
 and super_admin write; recruiters read active rows (S2, S3). The catalogue is global, so there is no row scope -- only the role checks.
 
 Bodies are untyped dicts parsed by services/telecaller._parse, so a 422 is one sentence naming the field (the tel-001 idiom). Each

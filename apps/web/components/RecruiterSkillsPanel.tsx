@@ -15,7 +15,7 @@ import { toneClass, type Feedback } from "@/lib/welcomeLink";
 
 const FEEDBACK_ID = "skill-create-feedback";
 
-// rec-006 (DEC-SCOPE-118): the Skills Master. Recruiters (canEdit=false) read and search it; placement managers and super_admin also
+// rec-006 (DEC-SCOPE-119): the Skills Master. Recruiters (canEdit=false) read and search it; placement managers and super_admin also
 // manage categories, create skills and open a skill to edit it. The search, category filter and page live in the URL (?q=&category=
 // &offset=), so refresh keeps the place and Back returns to the previous view. The API decides who may write.
 export default function RecruiterSkillsPanel({ canEdit }: { canEdit: boolean }) {

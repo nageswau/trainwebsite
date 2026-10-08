@@ -26,7 +26,7 @@ async def _skill(db, name: str, *, active: bool = True, aliases: tuple[str, ...]
 
 @pytest.mark.asyncio
 async def test_seeded_aliases_resolve_to_their_skill_ignoring_case_and_spacing(db_session):
-    """AC2 against the 0103 seed."""
+    """AC2 against the 0104 seed."""
     java = await resolve(db_session, "Java")
     assert java is not None and java.name == "Java"
     assert (await resolve(db_session, "j2ee")).id == java.id

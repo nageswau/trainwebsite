@@ -43,6 +43,9 @@ export const ROLE_DASHBOARD_PATH: Record<string, string> = {
   // tel-001 (DEC-SCOPE-073): the Telecaller CRM roles. tel-021 fills the dashboard in; managers land on their team (T23).
   telecaller: "/telecaller/dashboard",
   telecaller_manager: "/telecaller/manager/team",
+  // upc-001 (DEC-SCOPE-118): the University Partnership CRM roles. upc-022 fills the dashboard in; heads land on their team (U3).
+  partnership_manager: "/partnership/dashboard",
+  partnership_head: "/partnership/head/team",
 };
 
 // tel-017 (DEC-SCOPE-076): a counselor belongs to IT or Overseas, so its landing depends on the division too. Every caller that
@@ -123,6 +126,26 @@ export const RECRUITER_MANAGER_NAV: NavItem[] = [
   { label: "Team", href: "/recruiter/manager/team" }, { label: "Catalogues", href: "/recruiter/manager/catalogue" }, { label: "Skills Master", href: "/recruiter/manager/skills" },
 ];
 
+// upc-001 (PU8): the EVID-020 §32 main menu, in source order, each entry naming the item that builds its page. An entry joins the
+// manager's sidebar once that item lands (it sets `live`); until then the dashboard lists it as coming soon, never as a dead link.
+export type PartnershipMenuEntry = { label: string; href: string; item: string; live: boolean };
+const menu = (label: string, path: string, item: string, live = false): PartnershipMenuEntry => ({ label, href: `/partnership/${path}`, item, live });
+export const PARTNERSHIP_MENU: PartnershipMenuEntry[] = [
+  menu("Dashboard", "dashboard", "upc-022", true), menu("Global University Database", "search", "upc-024"),
+  menu("University Master", "universities", "upc-003"), menu("Contact Management", "contacts", "upc-006"),
+  menu("Partnership Pipeline", "pipeline", "upc-007"), menu("Meetings", "meetings", "upc-009"), menu("University Visits", "visits", "upc-010"),
+  menu("MoU & Agreements", "agreements", "upc-014"), menu("Commercial Terms", "commercial-terms", "upc-016"),
+  menu("Courses & Programs", "courses", "upc-017"), menu("Student Opportunities", "opportunities", "upc-018"),
+  menu("University Performance", "performance", "upc-018"), menu("Follow-ups & Tasks", "tasks", "upc-020"), menu("Calendar", "calendar", "upc-011"),
+  menu("Documents", "documents", "upc-026"), menu("Alerts", "alerts", "upc-015"), menu("Targets & Forecast", "targets", "upc-021"),
+  menu("Global Partnership Map", "map", "upc-025"), menu("Reports", "reports", "upc-031"),
+];
+export const PARTNERSHIP_NAV: NavItem[] = [
+  ...PARTNERSHIP_MENU.filter((e) => e.live).map(({ label, href }) => ({ label, href })),
+  { label: "Profile", href: "/partnership/profile" },
+];
+export const PARTNERSHIP_HEAD_NAV: NavItem[] = [{ label: "Team", href: "/partnership/head/team" }];
+
 // SCH-001/SCH-003 -- School roles use their own dedicated pages (bespoke forms/actions,
 // not the generic PortalPage/[section] `_payload()` dispatcher every other role's console
 // uses) but still share PortalShell's chrome; this is their own nav source, separate from
@@ -178,7 +201,7 @@ export const PORTAL_NAV:Record<string,NavItem[]> = {
   "overseas/student": ["dashboard","profile","applications","documents","offer-letters","visa-status","scholarships","university-communication","payments","appointments","counselor-chat","downloads"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/student/${x}`})),
   "overseas/counselor": ["dashboard","students","leads","documents","applications","school-applications","visa","appointments","counselor-chat","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/counselor/${x}`})),
   "overseas/university": ["dashboard","applications","offer-letters","admission-updates","student-communication","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/university/${x}`})),
-  "overseas/admin": [...["dashboard","users","students","counselors","agents","commissions","universities","schools","school-staff","school-applications","school-transfers","activity-feedback","school-analytics","applications","leads","payments","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/admin/${x}`})),{label:"BDMs",href:"/overseas/admin/bdms"},{label:"Telecallers",href:"/overseas/admin/telecallers"},{label:"Telecaller Performance",href:"/overseas/admin/telecaller-performance"},{label:"Telecaller Reports",href:"/overseas/admin/telecaller-reports"},{label:"Agent deposits",href:"/overseas/admin/agent-deposits"},{label:"Agent network",href:"/overseas/admin/agent-network"}], // AGN-011: its own page (DEC-SCOPE-058); AGN-022: its own page (DEC-SCOPE-064)
+  "overseas/admin": [...["dashboard","users","students","counselors","agents","commissions","universities","schools","school-staff","school-applications","school-transfers","activity-feedback","school-analytics","applications","leads","payments","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/admin/${x}`})),{label:"BDMs",href:"/overseas/admin/bdms"},{label:"Telecallers",href:"/overseas/admin/telecallers"},{label:"Telecaller Performance",href:"/overseas/admin/telecaller-performance"},{label:"Telecaller Reports",href:"/overseas/admin/telecaller-reports"},{label:"Partnership managers",href:"/overseas/admin/partnership-managers"},{label:"Agent deposits",href:"/overseas/admin/agent-deposits"},{label:"Agent network",href:"/overseas/admin/agent-network"}], // AGN-011: its own page (DEC-SCOPE-058); AGN-022: its own page (DEC-SCOPE-064)
   // AGN-007 (DEC-SCOPE-049): Universities is the agency's own university list. AGN-008 (DEC-SCOPE-050 A7): Applications carries
   // the EVID-015 §4 sidebar filters as sub-links (same page, ?status=). AGN-016 (DEC-SCOPE-053 T5): Tasks, for Masters and staff,
   // after Documents (the EVID-015 §4 sidebar order). AGN-017 (DEC-SCOPE-059 N8): Notifications, for Masters and staff, after Tasks.
@@ -207,4 +230,4 @@ export function agentNavFor(nav: NavItem[], memberRole?: string | null, permissi
     .map((item) => (item.href === STAFF_STUDENTS.href ? STAFF_STUDENTS : item));
 }
 // ENH-016: the cross-school School Analytics page lives under /overseas/admin (D1: Overseas and Super Admins).
-export const SUPER_ADMIN_NAV:NavItem[] = [...["dashboard","users","students","staff","programs","batches","universities","recruiters","content","blogs","gallery","events","leads","applications","payments","reports","notifications","roles","settings","security-logs","backups"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:x==="dashboard"?"/admin":`/admin/${x}`})),{label:"BDMs",href:"/admin/bdms"},{label:"BDM Travel Approvals",href:"/admin/bdm-travel-approvals"},{label:"BDM Dashboard",href:"/bdm/manager/dashboard"},{label:"BDM Performance",href:"/bdm/manager/performance"},{label:"BDM Master View",href:"/bdm/manager/hierarchy"},{label:"Telecallers",href:"/admin/telecallers"},{label:"Telecaller Performance",href:"/admin/telecaller-performance"},{label:"Telecaller Reports",href:"/admin/telecaller-reports"},{label:"Recruiter Staff",href:"/admin/recruiter-staff"},{label:"School Analytics",href:"/overseas/admin/school-analytics"}];
+export const SUPER_ADMIN_NAV:NavItem[] = [...["dashboard","users","students","staff","programs","batches","universities","recruiters","content","blogs","gallery","events","leads","applications","payments","reports","notifications","roles","settings","security-logs","backups"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:x==="dashboard"?"/admin":`/admin/${x}`})),{label:"BDMs",href:"/admin/bdms"},{label:"BDM Travel Approvals",href:"/admin/bdm-travel-approvals"},{label:"BDM Dashboard",href:"/bdm/manager/dashboard"},{label:"BDM Performance",href:"/bdm/manager/performance"},{label:"BDM Master View",href:"/bdm/manager/hierarchy"},{label:"Telecallers",href:"/admin/telecallers"},{label:"Telecaller Performance",href:"/admin/telecaller-performance"},{label:"Telecaller Reports",href:"/admin/telecaller-reports"},{label:"Recruiter Staff",href:"/admin/recruiter-staff"},{label:"Partnership managers",href:"/admin/partnership-managers"},{label:"School Analytics",href:"/overseas/admin/school-analytics"}];

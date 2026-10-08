@@ -1,5 +1,5 @@
 """rec-006 -- the Skills Master API (spec §4; AC2-AC6). The test database is shared and never truncated, so every name is unique per test
-and lists are narrowed with `q`. The 0103 seed (Java, React, ...) is read but never edited here."""
+and lists are narrowed with `q`. The 0104 seed (Java, React, ...) is read but never edited here."""
 
 import uuid
 
