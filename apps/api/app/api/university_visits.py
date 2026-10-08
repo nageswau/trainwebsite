@@ -144,10 +144,7 @@ async def edit_visit(visit_id: UUID, payload: UniversityVisitUpdate, user: User 
     if not changed:
         return {"visit": await svc.detail_out(db, user, v)}
     if not set(changed) <= svc.editable_fields(v):
-        if not svc.RULES["edit"](v):
-            raise svc.refusal(v, "edit")
-        frozen = "Only the follow-up date can change after the visit" if v.status in ("visit_completed", "follow_up") else "An approved visit's plan can't be changed"
-        raise HTTPException(409, frozen if v.status != "planned" else "The follow-up date is set when the visit is completed")
+        raise HTTPException(409, svc.FROZEN[v.status]) if svc.RULES["edit"](v) else svc.refusal(v, "edit")
     lead_id = changes.get("lead_user_id", v.lead_user_id)
     if "lead_user_id" in changed:
         await svc.check_lead(db, user, lead_id)
@@ -161,7 +158,7 @@ async def edit_visit(visit_id: UUID, payload: UniversityVisitUpdate, user: User 
     for key in changed:
         if key not in current:
             setattr(v, key, changes[key])
-    await svc.replace_links(db, v, changes.get("participant_user_ids") if "participant_user_ids" in changed else None, changes.get("contact_ids") if "contact_ids" in changed else None)
+    await svc.replace_links(db, v, *(changes[k] if k in changed else None for k in current))  # participants, contacts
     svc.record(db, user, v, "edit", v.status, fields=changed)
     await db.commit()
     svc.log("university_visit_edited", user, v, fields=changed)

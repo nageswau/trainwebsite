@@ -46,6 +46,14 @@ SCOPE_FIELDS = frozenset({"lead_user_id", "city", "purpose", "proposed_date", "t
 PREP_FIELDS = frozenset({"confirmed_date", "travel_notes", "hotel_notes", "agenda", "expected_outcome", "contact_ids"})
 AFTER_FIELDS = frozenset({"follow_up_date"})
 EARLY_CLOSE = ("planned", "approved", "travel_booked")
+# The 409 for a field the status no longer allows (states where some other field is still editable).
+FROZEN = {
+    "planned": "The follow-up date is set when the visit is completed",
+    "approved": "An approved visit's plan can't be changed",
+    "travel_booked": "An approved visit's plan can't be changed",
+    "visit_completed": "Only the follow-up date can change after the visit",
+    "follow_up": "Only the follow-up date can change after the visit",
+}
 
 
 def approval_state(v: UniversityVisit) -> str | None:
@@ -141,20 +149,22 @@ async def reporting_head(db: AsyncSession, v: UniversityVisit, excluded: set[UUI
     return head if head is not None and head.active and head.id not in excluded else None
 
 
-def decider_may(user: User, head: User | None, excluded: set[UUID]) -> bool:
-    if user.id in excluded:  # nobody approves a visit they planned, lead or join (AC5)
-        return False
-    return user.id == head.id if head is not None else user.role == "super_admin"
+async def took_part(db: AsyncSession, v: UniversityVisit) -> set[UUID]:
+    """Who planned, leads or joins the visit -- none of them decides it (AC5)."""
+    return {v.created_by_user_id, v.lead_user_id} | await participant_ids(db, v.id)
 
 
 async def can_decide(db: AsyncSession, user: User, v: UniversityVisit, *, lock: bool = False) -> bool:
-    excluded = {v.created_by_user_id, v.lead_user_id} | await participant_ids(db, v.id)
-    return decider_may(user, await reporting_head(db, v, excluded, lock=lock), excluded)
+    excluded = await took_part(db, v)
+    if user.id in excluded:
+        return False
+    head = await reporting_head(db, v, excluded, lock=lock)
+    return user.id == head.id if head is not None else user.role == "super_admin"
 
 
 async def approvers(db: AsyncSession, v: UniversityVisit) -> list[User]:
     """Who is told a visit waits (VS15): the head, or every active super_admin outside the visit."""
-    excluded = {v.created_by_user_id, v.lead_user_id} | await participant_ids(db, v.id)
+    excluded = await took_part(db, v)
     head = await reporting_head(db, v, excluded)
     if head is not None:
         return [head]

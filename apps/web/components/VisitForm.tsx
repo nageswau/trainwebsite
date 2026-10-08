@@ -63,11 +63,13 @@ export default function VisitForm({ visit, university, canPickLead }: { visit?: 
 
   const set = (name: keyof Draft, value: string | boolean) => setDraft((d) => ({ ...d, [name]: value }));
   const a11y = (name: string) => (errors[name] ? { "aria-invalid": true as const, "aria-describedby": `visit-${name}-error` } : {});
+  const fieldError = (name: string) =>
+    errors[name] && <p className="field-error" id={`visit-${name}-error`} style={{ color: "var(--red)", fontSize: 13, margin: "4px 0 0" }}>{errors[name]}</p>;
   const field = (name: string, control: ReactNode) => (
     <div className="field" key={name}>
       <label htmlFor={`visit-${name}`}>{LABELS[name]}</label>
       {control}
-      {errors[name] && <p className="field-error" id={`visit-${name}-error`} style={{ color: "var(--red)", fontSize: 13, margin: "4px 0 0" }}>{errors[name]}</p>}
+      {fieldError(name)}
     </div>
   );
 
@@ -142,7 +144,7 @@ export default function VisitForm({ visit, university, canPickLead }: { visit?: 
           <div>
             <SearchableSelect id="visit-university_id" label="University" noun="university" search={universityOptions} disabled={busy}
               onChange={(option) => { setUni(option); setChosen([]); }} />
-            {errors.university_id && <p className="field-error" style={{ color: "var(--red)", fontSize: 13, margin: "4px 0 0" }}>{errors.university_id}</p>}
+            {fieldError("university_id")}
           </div>
         )}
         {canPickLead && (
@@ -150,7 +152,7 @@ export default function VisitForm({ visit, university, canPickLead }: { visit?: 
             <SearchableSelect id="visit-lead_user_id" label={LABELS.lead_user_id} noun="manager" search={leadOptions} initial={lead}
               disabled={busy || !enabled("lead_user_id")} onChange={setLead} />
             <p className="muted" style={{ margin: "4px 0 0", fontSize: 13 }}>Leave empty to lead the visit yourself.</p>
-            {errors.lead_user_id && <p className="field-error" style={{ color: "var(--red)", fontSize: 13, margin: "4px 0 0" }}>{errors.lead_user_id}</p>}
+            {fieldError("lead_user_id")}
           </div>
         )}
         {text("city")}
@@ -192,7 +194,7 @@ export default function VisitForm({ visit, university, canPickLead }: { visit?: 
               if (option) setPickerKey((k) => k + 1);
             }} />
         )}
-        {errors.participant_user_ids && <p className="field-error" style={{ color: "var(--red)", fontSize: 13, margin: 0 }}>{errors.participant_user_ids}</p>}
+        {fieldError("participant_user_ids")}
       </fieldset>
       <fieldset className="card" style={{ padding: 14, display: "grid", gap: 8 }} disabled={busy || !enabled("contact_ids")}>
         <legend>{LABELS.contact_ids}</legend>
@@ -206,7 +208,7 @@ export default function VisitForm({ visit, university, canPickLead }: { visit?: 
               {c.name}{c.designation ? ` — ${c.designation}` : ""}
             </label>
           ))}
-        {errors.contact_ids && <p className="field-error" style={{ color: "var(--red)", fontSize: 13, margin: 0 }}>{errors.contact_ids}</p>}
+        {fieldError("contact_ids")}
       </fieldset>
       <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
         {text("agenda")}
