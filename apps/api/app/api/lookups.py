@@ -19,7 +19,7 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.identifiers import uuid_reference
 from app.core.rbac import agent_denial_reason
-from app.models import AgentStudent, AuditLog, Company, Job, JobApplication, OverseasApplication, OverseasCourse, School, SchoolStudent, University, User
+from app.models import AgentStudent, AuditLog, Company, Country, Job, JobApplication, OverseasApplication, OverseasCourse, School, SchoolStudent, University, User
 from app.services.agent_orgs import org_member_ids
 from app.services.agent_students import application_scope, visible_student_user_ids
 
@@ -35,6 +35,17 @@ LINK_RATE_LIMIT = 30
 LINK_RATE_WINDOW = timedelta(minutes=1)
 LINK_AUDIT_ACTION = "lookup.agent_link_search"
 FORBIDDEN = "This role cannot use this lookup"
+# upc-002 QA-02: names a user may type that the stored name lacks. The catalogue keeps "USA" and "Dubai (UAE)" (AC1), and a few
+# countries are commonly known by another name. Matched as a case-insensitive substring, like the name itself.
+COUNTRY_ALIASES = {
+    "US": ("United States", "United States of America", "America"),
+    "AE": ("United Arab Emirates", "UAE", "Emirates"),
+    "GB": ("UK", "Great Britain", "Britain", "England", "Scotland", "Wales", "Northern Ireland"),
+    "NL": ("Holland",),
+    "KR": ("Korea, Republic of",),
+    "CZ": ("Czech Republic",),
+    "TR": ("Turkey",),
+}
 
 
 def _pattern(q: str | None) -> str | None:
@@ -227,6 +238,31 @@ async def it_job_applications(
         db, stmt, limit,
         lambda row: {"id": row[0].id, "label": row[1], "detail": _join(row[2], row[3], row[0].status)},
         "it-job-applications", user,
+    )
+
+
+@router.get("/countries")
+async def countries(
+    q: str | None = Query(None, max_length=100),
+    limit: int = Query(20, ge=1, le=50),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """upc-002: every country, catalogue and internal ISO rows alike, by name, ISO code or common alias; an exact code ranks first."""
+    _allow(user, {"overseas_admin"}, "overseas")
+    stmt = select(Country)
+    pattern = _pattern(q)
+    if pattern:
+        term = (q or "").strip()
+        code = term.upper()
+        aliased = [iso2 for iso2, names in COUNTRY_ALIASES.items() if any(term.lower() in name.lower() for name in names)]
+        stmt = stmt.where(or_(_like(Country.name, pattern), Country.iso2 == code, Country.iso2.in_(aliased)))
+        stmt = stmt.order_by((Country.iso2 == code).desc().nulls_last())
+    stmt = stmt.order_by(Country.name, Country.id)
+    return await _page(
+        db, stmt, limit,
+        lambda row: {"id": row[0].id, "label": row[0].name, "detail": _join(row[0].iso2, row[0].region) or None},
+        "countries", user,
     )
 
 
