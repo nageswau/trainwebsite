@@ -1584,6 +1584,43 @@ can_deactivate}`, `rankings`, `application_count`, manager refs `{id, full_name,
 | `GET /public/universities`, `/universities/{slug}`, `/countries/{slug}`, `/overseas-courses`, `/search` | **Changed:** list only published, active universities; an internal one's slug is `404` (indistinguishable from unknown). Response shapes unchanged |
 | `GET /lookups/countries` | **Changed:** also admits `partnership_manager` and `partnership_head` |
 
+## 12AO. Recruiter company master (`rec-003`) — addendum, 2026-10-08
+
+- **Basis:** `DEC-SCOPE-121`. Design spec `docs/superpowers/specs/2026-10-08-rec-003-company-master-design.md` §5. Migration
+  `0106_rec_companies` (drafted as `0103`; upc-001 (`0103`, §12AL), rec-006 (`0104`, §12AM) and upc-003 (`0105`, §12AN) merged first,
+  so this is `0106` and §12AO).
+- **Common rules:**
+  - Scope (any other role `403` "Recruiter role required"; a `placement_team` user without a profile `403`): a recruiter sees the
+    companies assigned to them; a `placement_manager` sees their direct reports' companies plus the unassigned ones; `super_admin` sees
+    all; a `bdm` sees the companies whose `assigned_bdm_user_id` is theirs (read only). An id outside the caller's scope is `404`
+    "Company not found", the same as a missing one.
+  - Writes: a role allowed to read but not to act is `403` (logged); the right role on the wrong state is `409` ("Restore this company
+    first", "Already archived", "Already active").
+  - Bodies are typed and refuse unknown keys (`422`), so `company_code`, the recruiter, the creator and `archived_at` cannot be sent.
+    Text is trimmed, capped and free of control characters (a line break only in Branches and Description). Website and LinkedIn are
+    http(s) only (a bare domain gets `https://`). `employee_count` is a whole number 0–10,000,000. `priority` ∈ `hot`/`warm`/`cold`.
+  - Catalogue values (industry, company size, lead source, campaign) and the Assigned BDM must be active when set or changed (`422`
+    "Choose an active …" / "Choose an active BDM"); keeping a since-deactivated one is allowed. A campaign alone brings its lead source;
+    a different lead source is `422` "The campaign belongs to another lead source".
+  - Every write is one transaction with an `AuditLog` row (`recruiter_company.create|update|archive|restore|assign|duplicate_override`,
+    `entity_type` `company`, ids and field names only). A PATCH that changes nothing writes no audit row.
+- Output `company`: `{id, code, name, city, priority, industry, lead_source, assigned_recruiter, archived, permissions {can_edit,
+  can_archive, can_restore, can_reassign}, website, linkedin_url, company_size, employee_count, state, country, head_office, branches,
+  description, campaign, assigned_bdm, owner_type, created_by, assignment_history[] {from_user, to_user, changed_by, created_at},
+  archived_at, created_at, updated_at}`. List rows carry the first ten fields.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/companies` | Filters `q` (name or code), `priority`, `lead_source_id`, `industry_id`, `city`, `assigned` (`me` for a recruiter, `unassigned`, or a recruiter id; anything else `422`), `include_archived`; `limit` 1–100, `offset`. Ordered by name, then id. `{items, total, limit, offset}` |
+| `POST /recruiter/companies` | `placement_team`, `placement_manager`, `super_admin` (others `403` "Your role cannot create companies"). `201 {company}`. A recruiter's company is assigned to them (sending another `assigned_recruiter_user_id` is `403`); a manager's goes to the named recruiter (an active one reporting to them, else `422` "Choose an active recruiter from your team") or stays unassigned. An exact existing name is `409` "A company with this name already exists"; a normalised match (trimmed, whitespace collapsed, case-insensitive) is `409 {code: "possible_duplicate", message, matches[≤10] {id, code, name, city, archived}, total}` until resent with `confirm_duplicate: true` |
+| `GET /recruiter/companies/{id}` | `{company}` |
+| `PATCH /recruiter/companies/{id}` | The assigned recruiter or `super_admin` (`403` otherwise, including the manager and the BDM); not archived (`409`). Fields sent only; `null` clears (a null name is `422`). A changed name re-runs the duplicate checks |
+| `POST /recruiter/companies/{id}/archive` | The assigned recruiter or `super_admin`. Hidden from the default list |
+| `POST /recruiter/companies/{id}/restore` | `placement_manager` (in scope) or `super_admin` |
+| `POST /recruiter/companies/{id}/assign` | `placement_manager` or `super_admin`; `{recruiter_user_id}`; not archived. The same recruiter is `409` "Already assigned to this recruiter"; an invalid target `422` (one message). Appends `company_assignment_history` |
+| `GET /recruiter/companies/bdm-options` | The creators only. `q`, `limit`: active `bdm` users `{items[] {id, full_name}, total}` for the Assigned BDM picker |
+| `POST /employer/register` (EMP-001) | Unchanged contract. The new company also gets lead source "Website" (when that value is active) and no recruiter, so it appears in the managers' unassigned queue |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
