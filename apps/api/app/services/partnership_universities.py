@@ -316,12 +316,7 @@ async def check_duplicates(db: AsyncSession, user: User, name: str, country_id: 
 
 async def linked_bdm_organizations(db: AsyncSession, university_id: UUID) -> list[dict]:
     """UD11: the BDM organizations linked to this university, as text (partnership roles cannot open BDM records)."""
-    stmt = (
-        select(BdmOrganization, User.full_name)
-        .join(User, User.id == BdmOrganization.assigned_bdm_user_id)
-        .where(BdmOrganization.university_id == university_id)
-        .order_by(BdmOrganization.code)
-    )
+    stmt = select(BdmOrganization, User.full_name).join(User, User.id == BdmOrganization.assigned_bdm_user_id).where(BdmOrganization.university_id == university_id).order_by(BdmOrganization.code)
     return [
         {"id": o.id, "code": o.code, "name": o.name, "city": o.city, "bdm_type": o.bdm_type, "assigned_bdm_name": bdm_name, "archived": o.archived_at is not None}
         for o, bdm_name in (await db.execute(stmt)).all()

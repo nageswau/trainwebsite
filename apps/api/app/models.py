@@ -28,8 +28,8 @@ from sqlalchemy.sql import func
 
 from app.bdm_stages import FIRST_STAGE as BDM_FIRST_STAGE
 from app.bdm_stages import MANUAL_STAGES as BDM_MANUAL_STAGES
-from app.lead_stages import STAGES as LEAD_STAGES
 from app.core.identifiers import normalize_key
+from app.lead_stages import STAGES as LEAD_STAGES
 from app.notifications.phone import normalise_phone
 from app.tel_content_kinds import ASSET_KINDS as TEL_ASSET_KINDS
 from app.tel_content_kinds import EMAIL_KINDS as TEL_EMAIL_KINDS

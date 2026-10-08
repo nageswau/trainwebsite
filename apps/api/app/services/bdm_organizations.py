@@ -32,6 +32,7 @@ from app.models import (
 from app.schemas import BDM_ORG_LABELS
 from app.services.bdm import bdm_context, person_ref
 from app.services.bdm_pipeline import live_status, pipeline_out
+from app.services.partnership_universities import DUPLICATE_MESSAGE as MASTER_DUPLICATE_MESSAGE
 
 logger = logging.getLogger("app.bdm")
 
@@ -144,11 +145,11 @@ async def find_duplicates(db: AsyncSession, bdm_type: str, name_key: str, city_k
     return matches, total
 
 
-def duplicate_conflict(matches: list[dict], total: int, university_matches: list[dict] = (), university_total: int = 0) -> HTTPException:
+def duplicate_conflict(matches: list[dict], total: int, university_matches: list[dict] | None = None, university_total: int = 0) -> HTTPException:
     """upc-004 UD8: a University organization's matches in the Global University Master travel in the same warning."""
-    message = "A similar organization already exists in your module" if total else "This university is already in the University Master"
+    message = "A similar organization already exists in your module" if total else MASTER_DUPLICATE_MESSAGE
     body = {"message": message, "code": "possible_duplicate", "matches": matches, "total": total}
-    return HTTPException(409, body | {"university_matches": jsonable_encoder(list(university_matches)), "university_total": university_total})
+    return HTTPException(409, body | {"university_matches": jsonable_encoder(university_matches or []), "university_total": university_total})
 
 
 async def check_university_link(db: AsyncSession, org_type: str, university_id: UUID | None) -> None:

@@ -47,12 +47,11 @@ def _backfill(bind) -> None:
 def _report(bind) -> None:
     groups = bind.execute(sa.text("SELECT count(*) FROM (SELECT 1 FROM universities GROUP BY country_id, name_key HAVING count(*) > 1) g")).scalar()
     candidates = bind.execute(
-        sa.text(
-            "SELECT count(*) FROM bdm_organizations o WHERE o.org_type = 'university' AND o.university_id IS NULL "
-            "AND EXISTS (SELECT 1 FROM universities u WHERE u.name_key = o.name_key)"
-        )
+        sa.text("SELECT count(*) FROM bdm_organizations o WHERE o.org_type = 'university' AND o.university_id IS NULL AND EXISTS (SELECT 1 FROM universities u WHERE u.name_key = o.name_key)")
     ).scalar()
-    logger.warning("upc-004 report: %s duplicate group(s) in universities (same country + name); %s unlinked BDM University organization(s) match a master name. Nothing was merged or linked.", groups, candidates)
+    logger.warning(
+        "upc-004 report: %s duplicate group(s) in universities (same country + name); %s unlinked BDM University organization(s) match a master name. Nothing was merged or linked.", groups, candidates
+    )
 
 
 def upgrade() -> None:
