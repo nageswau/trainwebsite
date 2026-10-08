@@ -5,12 +5,12 @@ implement, see it pass. Lite backend runs in the api-test container. Web runs in
 
 | # | Task | Tests first | Files |
 |---|---|---|---|
-| 1 | Models + migration 0101 (seven tables, idempotent seeds, guarded downgrade) | `test_rec_002_migration.py` | `models.py`, `alembic/versions/0101_rec_catalogues.py` |
+| 1 | Models + migration 0102 (seven tables, idempotent seeds, guarded downgrade) | `test_rec_002_migration.py` | `models.py`, `alembic/versions/0102_rec_catalogues.py` |
 | 2 | Schemas + `services/recruiter_catalogue.py` + `api/recruiter_catalogue.py` + main.py | `test_rec_002_catalogue.py`, `test_rec_002_campaigns.py` | `schemas.py`, services, api, `main.py` |
 | 3 | Web lib + navigation entry | `navigation.recruiter.test.ts` | `lib/recruiterCatalogue.ts`, `lib/navigation.ts` |
 | 4 | Web: catalogue shell + tabs + list panel + campaigns panel | `RecruiterCatalogueListPanel.test.tsx`, `RecruiterCampaignsPanel.test.tsx` | `app/recruiter/manager/catalogue/**`, components |
 | 5 | e2e `rec-002-catalogue.spec.ts` | e2e | `tests/e2e` |
-| 6 | Docs: DEC-SCOPE-117, API §12AJ, RBAC §2.43, backlog status, SCREEN_CATALOG, ROLE_NAVIGATION | — | `docs/**` |
+| 6 | Docs: DEC-SCOPE-117, API §12AK, RBAC §2.43, backlog status, SCREEN_CATALOG, ROLE_NAVIGATION | — | `docs/**` |
 
 ## Phase 3 review notes (folded into the tasks)
 - **API:**

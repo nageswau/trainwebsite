@@ -1472,9 +1472,22 @@ line, no audit row). `limit` 1–100 (default 50), `offset` ≥ 0 (`422` otherwi
 | `GET /admin/recruiters` | `super_admin`, `it_admin`; any other role (including `overseas_admin`) is `403`. Filters `active` and `q`. `items[]`: the team row plus `reporting_manager \| null` |
 | `GET /admin/placement-managers` | Same roles. Active placement managers only, filtered by `q` on name or email. `items[]`: `{id, full_name, email, recruiter_count}` |
 
-## 12AJ. Recruiter catalogues (`rec-002`) — addendum, 2026-10-08
+## 12AJ. Country master (`upc-002`) — addendum, 2026-10-08
 
-- **Basis:** `DEC-SCOPE-117`. Design spec `docs/superpowers/specs/2026-10-08-rec-002-recruiter-catalogues-design.md` §4. Migration `0101`.
+U12 (`UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1, `EXPLICIT_APPROVAL`); Q-06 regions answered 2026-10-08; design spec
+`docs/superpowers/specs/2026-10-08-upc-002-country-master-design.md`. Migration `0101_country_master`. Drafted as §12AI / `0100`; rec-001 merged first with §12AI and
+`0100_recruiter_profiles`, so this is §12AJ and `0101`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /public/countries` | Unchanged body (`CountryOut`, no new fields). Now lists **catalogue-visible** countries only, so the ISO rows stay internal |
+| `GET /public/countries/{slug}` | An internal country is `404` "Country not found", the same as an unknown slug |
+| `POST /admin/universities` | `country_slug` must name a catalogue-visible country; an internal one is `422` "Unknown country" (universities stay public until upc-003). A slug already taken is `409` "A university with the slug '…' already exists" (was an unhandled `500`; QA-01) |
+| `GET /lookups/countries?q&limit` | New. `overseas_admin` (overseas division) and `super_admin`; signed out `401`, other roles or division `403`. `q` ≤ 100 (matches the name, the ISO code exactly, or a common alias such as "United States", "United Arab Emirates", "UK", "Holland" (`lookups.COUNTRY_ALIASES`, QA-02); an exact code ranks first), `limit` 1–50 (default 20). `200 {items, truncated}`, `items[]`: `{id, label: name, detail: "JP · Asia" \| null}`, catalogue and internal rows alike. One log line (counts only), no audit row |
+
+## 12AK. Recruiter catalogues (`rec-002`) — addendum, 2026-10-08
+
+- **Basis:** `DEC-SCOPE-117`. Design spec `docs/superpowers/specs/2026-10-08-rec-002-recruiter-catalogues-design.md` §4. Migration `0102`. Drafted as §12AJ / `0101`; upc-002 merged first with §12AJ and `0101_country_master`, so this is §12AK and `0102`.
 - **Common rules:**
   - Lists use the §12AI paging rules (`limit` 1–100, `offset`, `q` ≤ 200 matching the name).
   - Readers are `placement_team`, `placement_manager` and `super_admin`; any other role is `403` "Your role cannot view the recruiter

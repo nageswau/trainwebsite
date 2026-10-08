@@ -2,7 +2,7 @@
 
 Backlog: `docs/delivery/RECRUITER_CRM_BACKLOG.md` rec-002. Source: EVID-018 §2 (lines 52–82, 108–110), §3 (102–104, 130, 146),
 §4 (184–192), §6 (290), §9 (432–462) and §26 (1029–1034). Depends on rec-001 (merged PR #143). Numbering: `DEC-SCOPE-117`,
-migration `0101_rec_catalogues`, API §12AJ, RBAC §2.43.
+migration `0102_rec_catalogues`, API §12AK, RBAC §2.43.
 
 ## 1. Owner answers (2026-10-08, `EXPLICIT_APPROVAL` in session)
 - **C1:** `rec_industries` starts **empty**. The source names "Industry" but lists no values, and none are invented.
@@ -38,12 +38,12 @@ Out of scope: industry type (rec-003 decides it), the candidate "source detail" 
   - `CHECK end_date IS NULL OR end_date >= start_date`.
   - `uq_rec_campaigns_name` on `lower(name)`, and `ix_rec_campaigns_lead_source`.
   - This is the tel-002 campaign shape. The source is a recruiter lead source, and there is no product.
-- **Migration `0101_rec_catalogues`:**
+- **Migration `0102_rec_catalogues`:**
   - Creation is guarded (the 0076 idiom: 0001 builds from the models).
   - The seed always runs and inserts only a missing `lower(name)`, so it is idempotent and never overwrites a manager's rename.
   - `downgrade()` refuses while manager data exists: any campaign, any industry, or any simple list whose rows differ from its seed.
 
-## 4. API (§12AJ). Prefix `/api/v1/recruiter/catalogue`
+## 4. API (§12AK). Prefix `/api/v1/recruiter/catalogue`
 | Method | Path | Who | Notes |
 |---|---|---|---|
 | GET | `/{kind}` | readers | `active`, `q`, `limit`, `offset`; `{items,total,limit,offset}` ordered by `sort_order`, `lower(name)`, `id`. Item `{id,name,active,sort_order}` |

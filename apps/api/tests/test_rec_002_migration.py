@@ -1,4 +1,4 @@
-"""rec-002 -- migration 0101_rec_catalogues (spec §3; AC1). Round trip, seed and downgrade refusal run in a throwaway database built from
+"""rec-002 -- migration 0102_rec_catalogues (spec §3; AC1). Round trip, seed and downgrade refusal run in a throwaway database built from
 scratch (the tel-002 pattern); a downgrade never runs against the shared test database. Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -16,11 +16,11 @@ from app.core.config import settings
 from tests.test_tel_001_migration import _config, _sql
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_rec_002_migration_0101", VERSIONS / "0101_rec_catalogues.py")
+_spec = importlib.util.spec_from_file_location("_rec_002_migration_0102", VERSIONS / "0102_rec_catalogues.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0100_recruiter_profiles", "0101_rec_catalogues"
+BASE, HEAD = "0101_country_master", "0102_rec_catalogues"
 # EVID-018, in source order (AC1: names and order exactly), plus the owner's C2 bands; industries start empty (C1).
 SEED = {
     "rec_lead_sources": [
@@ -66,7 +66,7 @@ def _seeded(url: str, table: str) -> list[str]:
     return [row[0] for row in _sql(url, f"SELECT name FROM {table} ORDER BY sort_order, lower(name)")]
 
 
-def test_migration_chains_after_0100_and_is_the_single_head():
+def test_migration_chains_after_0101_and_is_the_single_head():
     assert _migration.revision == HEAD
     assert _migration.down_revision == BASE
     assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1

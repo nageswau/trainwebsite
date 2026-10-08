@@ -1,7 +1,7 @@
 """rec-002 -- the recruiter managed lists (six simple lists, seeded) and rec_campaigns.
 
-Revision ID: 0101_rec_catalogues
-Revises: 0100_recruiter_profiles
+Revision ID: 0102_rec_catalogues
+Revises: 0101_country_master
 
 docs/superpowers/specs/2026-10-08-rec-002-recruiter-catalogues-design.md §3 (DEC-SCOPE-117). Adds seven tables; no existing row is read or
 written. 0001 builds a fresh database from the current models, which already carry these tables, so creation is guarded (0076's idiom) --
@@ -16,8 +16,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0101_rec_catalogues"
-down_revision = "0100_recruiter_profiles"
+revision = "0102_rec_catalogues"
+down_revision = "0101_country_master"
 branch_labels = None
 depends_on = None
 
@@ -116,7 +116,7 @@ def downgrade() -> None:
     if not op.get_context().as_sql:
         bind = op.get_bind()
         if bind.execute(sa.text("SELECT 1 FROM rec_campaigns LIMIT 1")).first() or not all(_is_seed(bind, table) for table in SEED):
-            raise RuntimeError("Cannot downgrade 0101_rec_catalogues: manager data exists (campaigns or edited lists). Remove it deliberately first.")
+            raise RuntimeError("Cannot downgrade 0102_rec_catalogues: manager data exists (campaigns or edited lists). Remove it deliberately first.")
     op.drop_table("rec_campaigns")
     for table in SEED:
         op.drop_table(table)

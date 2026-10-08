@@ -4932,7 +4932,7 @@ read); a manager's booking on any lead is `403` before scope (§2.23); a manager
 **Evidence:** `EVID-018` (`functionalities/edusphere_markdown/Recruiter Functionalities.md`, `DERIVED_BLUEPRINT`);
 `RECRUITER_CRM_BACKLOG.md` §3.1 R1–R15 and §rec-001 (AC1–AC6); `PRD_OPEN_ITEMS.md` item 69; `CONFLICT_MATRIX.md` C-10.
 **Status:** `EXPLICIT_APPROVAL`. The owner answered R1–R15 in session on 2026-10-07 (backlog merged as PR #140 @ `7e33f669`). The owner
-answered Q-28, Q-29 and the admin-page name in session on 2026-10-08. Migration `0100_recruiter_profiles`. API §12AI. RBAC §2.42.
+answered Q-28, Q-29 and the admin-page name in session on 2026-10-08. **MERGED** to `main` as PR #143 @ `9e957bee` (2026-10-08). Migration `0100_recruiter_profiles`. API §12AI. RBAC §2.42.
 Spec `docs/superpowers/specs/2026-10-08-rec-001-recruiter-roles-design.md`.
 
 **Module scope (registered here for every rec item):** R1–R15 exactly as recorded in `RECRUITER_CRM_BACKLOG.md` §3.1.
@@ -4961,7 +4961,7 @@ Spec `docs/superpowers/specs/2026-10-08-rec-001-recruiter-roles-design.md`.
 
 **Evidence:** `EVID-018` §2 (lines 52–82, 108–110), §3 (102–104, 130, 146), §4 (184–192), §6 (290), §9 (432–462), §26 (1029–1034);
 `RECRUITER_CRM_BACKLOG.md` §rec-002 (AC1–AC3). Module scope: `DEC-SCOPE-116`.
-**Status:** `EXPLICIT_APPROVAL`. The owner answered C1–C3 in session on 2026-10-08. Migration `0101_rec_catalogues`. API §12AJ. RBAC §2.43.
+**Status:** `EXPLICIT_APPROVAL`. The owner answered C1–C3 in session on 2026-10-08. Migration `0102_rec_catalogues` (after upc-002's `0101_country_master`). API §12AK (upc-002 took §12AJ). RBAC §2.43.
 Spec `docs/superpowers/specs/2026-10-08-rec-002-recruiter-catalogues-design.md`.
 
 | # | Point | Answer |
@@ -4972,7 +4972,7 @@ Spec `docs/superpowers/specs/2026-10-08-rec-002-recruiter-catalogues-design.md`.
 | Design | Lists (tel-002 precedent) | Six simple lists (lead sources, candidate sources, industries, company sizes, contact roles, job categories) seeded in source order, plus `rec_campaigns` under an active lead source. Deactivate, never delete. A rename keeps the id. Names are unique per list, case-insensitively |
 
 **Consequences:**
-- The seven tables and their seeds (`0101`).
+- The seven tables and their seeds (`0102`).
 - `services/recruiter_catalogue.py` and `api/recruiter_catalogue.py`.
 - The manager page `/recruiter/manager/catalogue/[kind]` and a "Catalogues" sidebar entry.
 - `services/telecaller._readable` words a bad non-manager id as "choose one from the list" (it said "choose a manager" for every id).

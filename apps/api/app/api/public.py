@@ -118,12 +118,13 @@ async def testimonial(testimonial_id: UUID, db: AsyncSession = Depends(get_db)):
 
 @router.get("/countries", response_model=list[CountryOut])
 async def countries(db: AsyncSession = Depends(get_db)):
-    return (await db.scalars(select(Country).order_by(Country.name))).all()
+    # upc-002: the ISO rows are internal; only catalogue countries are public.
+    return (await db.scalars(select(Country).where(Country.catalogue_visible.is_(True)).order_by(Country.name))).all()
 
 
 @router.get("/countries/{slug}")
 async def country(slug: str, db: AsyncSession = Depends(get_db)):
-    c = await db.scalar(select(Country).where(Country.slug == slug))
+    c = await db.scalar(select(Country).where(Country.slug == slug, Country.catalogue_visible.is_(True)))
     if not c:
         raise HTTPException(404, "Country not found")
     us = (await db.scalars(select(University).where(University.country_id == c.id).limit(20))).all()

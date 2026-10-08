@@ -242,7 +242,8 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 §12AI onward; RBAC §2.42 onward.
 
 ### rec-001 — Recruiter scope for `placement_team` + new `placement_manager`: profile, provisioning, sign-in, shell
-- **Status (2026-10-08):** built on `feature/rec-001`.
+- **Status (2026-10-08):** **MERGED** to `main` as PR #143 @ `9e957bee`. The next rec item takes the next migration after `0100`,
+  `DEC-SCOPE-117`, API §12AJ and RBAC §2.43, re-checked on `main` first.
   - Numbering: `DEC-SCOPE-116`, migration `0100_recruiter_profiles`, API §12AI, RBAC §2.42.
   - Owner answers:
     - Q-29: `/recruiter/*` workspace.
@@ -304,7 +305,7 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 
 ### rec-002 — Recruiter catalogues
 - **Status (2026-10-08):** built on `feature/rec-002`.
-  - Numbering: `DEC-SCOPE-117`, migration `0101_rec_catalogues`, API §12AJ, RBAC §2.43.
+  - Numbering: `DEC-SCOPE-117`, migration `0102_rec_catalogues` (re-chained after upc-002's `0101_country_master`), API §12AK (upc-002 took §12AJ), RBAC §2.43.
   - Owner answers:
     - C1: industries start empty.
     - C2: `rec_company_sizes` is a managed list seeded with 1-10 … 1001+.
@@ -1622,7 +1623,7 @@ head when it merges (the existing re-chain idiom), and API §12AI and RBAC §2.4
 | Item | Migration content |
 |---|---|
 | rec-001 | `recruiter_profiles` + backfill for existing `placement_team` users |
-| rec-002 | **`0101_rec_catalogues`:** `rec_lead_sources`, `rec_candidate_sources`, `rec_campaigns`, `rec_industries`, `rec_job_categories`, `rec_contact_roles`, `rec_company_sizes` (+ seeds) |
+| rec-002 | **`0102_rec_catalogues`:** `rec_lead_sources`, `rec_candidate_sources`, `rec_campaigns`, `rec_industries`, `rec_job_categories`, `rec_contact_roles`, `rec_company_sizes` (+ seeds) |
 | rec-003 | `companies` columns/CHECKs/indexes, `company_code_seq` + backfill, `company_assignment_history`, `name` uniqueness per Q-02 |
 | rec-004 | `company_contacts` (+ primary partial unique) |
 | rec-005 | `companies.stage` CHECK + backfill, `company_stage_history` |
