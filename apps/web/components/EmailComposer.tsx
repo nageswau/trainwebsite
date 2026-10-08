@@ -2,18 +2,19 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 import { sendJson } from "@/lib/apiErrors";
-import type { Template } from "@/lib/telecallerContent";
-import { EMAIL_BODY_MAX, SUBJECT_MAX, activeTemplates, createMessageUrl, isRenderedTemplate, renderUrl } from "@/lib/telecallerMessages";
+import { EMAIL_BODY_MAX, SUBJECT_MAX, isRenderedTemplate, missingNote, type ComposerTarget } from "@/lib/telecallerMessages";
 
 /** tel-014 (DEC-SCOPE-106, spec §5; EM4, E8): pick an email template (subject and body rendered with the lead's values) or write a custom
- *  email, edit both, and send. The API queues it and the worker delivers it to the lead's address; a refusal keeps what was typed. */
-export default function EmailComposer({ leadId, onSent, onCancel }: { leadId: string; onSent: () => void; onCancel: () => void }) {
-  const [templates, setTemplates] = useState<Template[] | "failed" | null>(null);
+ *  email, edit both, and send. The API queues it and the worker delivers it to the lead's address; a refusal keeps what was typed.
+ *  rec-026: `target` names the endpoints -- a lead's (`leadTarget`) or a recruiter's contact / candidate (`recruiterTarget`). */
+export default function EmailComposer({ target, onSent, onCancel }: { target: ComposerTarget; onSent: () => void; onCancel: () => void }) {
+  const [templates, setTemplates] = useState<{ id: string; name: string }[] | "failed" | null>(null);
   const [templateId, setTemplateId] = useState("");
   const [subject, setSubject] = useState("");
   const [text, setText] = useState("");
   const [rendering, setRendering] = useState<"idle" | "loading" | "failed">("idle");
   const [mismatch, setMismatch] = useState(false);
+  const [missing, setMissing] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const renderAbort = useRef<AbortController | null>(null);
@@ -21,19 +22,21 @@ export default function EmailComposer({ leadId, onSent, onCancel }: { leadId: st
   const picker = useRef<HTMLSelectElement>(null);
   const id = useId();
 
+  const { loadTemplates } = target; // a module function, so the picker loads once
   useEffect(() => {
     picker.current?.focus();
     const controller = new AbortController();
-    activeTemplates("email", controller.signal).then(setTemplates).catch(() => controller.signal.aborted || setTemplates("failed"));
+    loadTemplates("email", controller.signal).then(setTemplates).catch(() => controller.signal.aborted || setTemplates("failed"));
     return () => {
       controller.abort();
       renderAbort.current?.abort();
     };
-  }, []);
+  }, [loadTemplates]);
 
   async function choose(next: string) {
     setTemplateId(next);
     setMismatch(false);
+    setMissing([]);
     setError(null);
     renderAbort.current?.abort();
     if (!next) return setRendering("idle"); // a custom email keeps whatever was typed
@@ -41,12 +44,13 @@ export default function EmailComposer({ leadId, onSent, onCancel }: { leadId: st
     renderAbort.current = controller;
     setRendering("loading");
     try {
-      const response = await fetch(renderUrl(leadId, next), { signal: controller.signal });
+      const response = await fetch(target.renderUrl(next), { signal: controller.signal });
       const body = await response.json().catch(() => null);
       if (!response.ok || !isRenderedTemplate(body)) throw new Error("render failed");
       setSubject(body.subject ?? "");
       setText(body.body);
-      setMismatch(body.product_mismatch);
+      setMismatch(body.product_mismatch === true);
+      setMissing(body.missing ?? []);
       setRendering("idle");
     } catch {
       if (!controller.signal.aborted) setRendering("failed");
@@ -58,8 +62,8 @@ export default function EmailComposer({ leadId, onSent, onCancel }: { leadId: st
     sending.current = true;
     setBusy(true);
     setError(null);
-    const outcome = await sendJson(createMessageUrl(leadId), "POST",
-      { channel: "email", ...(templateId ? { template_id: templateId } : {}), subject: subject.trim(), body: text.trim() });
+    const outcome = await sendJson(target.createUrl, "POST",
+      { ...target.payload, channel: "email", ...(templateId ? { template_id: templateId } : {}), subject: subject.trim(), body: text.trim() });
     sending.current = false;
     setBusy(false);
     if (outcome.ok) return onSent();
@@ -80,6 +84,7 @@ export default function EmailComposer({ leadId, onSent, onCancel }: { leadId: st
       </div>
       {rendering === "loading" && <p className="muted" role="status" style={{ fontSize: 13, margin: 0 }}>Preparing the email…</p>}
       {rendering === "failed" && <p className="form-error" role="alert" style={{ fontSize: 13, margin: 0 }}>Unable to load the template. Choose it again or write a custom email.</p>}
+      {missing.length > 0 && <p className="form-warning" role="note" style={{ fontSize: 13, margin: 0 }}>{missingNote(missing)}</p>}
       {mismatch && (
         <p className="form-warning" role="note" style={{ fontSize: 13, margin: 0 }}>This template was made for another product. Check the text before sending.</p>
       )}

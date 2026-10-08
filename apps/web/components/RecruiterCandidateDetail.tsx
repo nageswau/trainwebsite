@@ -6,12 +6,14 @@ import LocalTime from "@/components/LocalTime";
 import RecruiterCalls from "@/components/RecruiterCalls";
 import RecruiterCandidateForm from "@/components/RecruiterCandidateForm";
 import RecruiterCandidateResumes from "@/components/RecruiterCandidateResumes";
+import RecruiterMessages from "@/components/RecruiterMessages";
 import { sendRequest } from "@/lib/apiErrors";
 import { telHref } from "@/lib/recruiterCalls";
 import { STATUS_LABEL, candidateUrl, experienceLabel, type CandidateDetail } from "@/lib/recruiterCandidates";
 
 // rec-009 (spec §6): one candidate -- the §8 profile, Edit (writers), Archive/Restore with a confirm, and the resume versions. hr_team reads
-// only (`can_edit` false). Calls (rec-025) sit under the resumes; skills, applications and the timeline arrive with rec-011, rec-017 and rec-026/027.
+// only (`can_edit` false). Calls (rec-025) and messages (rec-026) sit under the resumes; skills, applications and the timeline arrive
+// with rec-011, rec-017 and rec-027; no empty tabs stand in.
 const money = (v: string | null) => (v === null ? null : Number(v).toLocaleString("en-IN", { maximumFractionDigits: 2 }));
 
 export default function RecruiterCandidateDetail({ initial }: { initial: CandidateDetail }) {
@@ -94,6 +96,9 @@ export default function RecruiterCandidateDetail({ initial }: { initial: Candida
       <RecruiterCandidateResumes candidateId={candidate.id} resumes={candidate.resumes} canUpload={canEdit} onUploaded={() => void reload()} />
       {/* rec-025: re-keyed on archive/restore, so Log call and each call's Edit follow the candidate's state. */}
       <RecruiterCalls key={`${candidate.id}-${archived}`} party={{ kind: "candidate", candidateId: candidate.id }} canWrite={canEdit} />
+      {/* rec-026: re-keyed on archive/restore and on an edit of the mobile or email, so the buttons follow the candidate. */}
+      <RecruiterMessages key={`messages-${candidate.id}-${archived}-${candidate.whatsapp_to}-${candidate.email}`} canWrite={canEdit}
+        source={{ kind: "candidate", party: { kind: "candidate", id: candidate.id, name: candidate.name, whatsappTo: candidate.whatsapp_to ?? null, email: candidate.email } }} />
     </div>
   );
 }

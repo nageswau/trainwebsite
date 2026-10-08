@@ -4167,3 +4167,72 @@ class RecruiterMeetingEvent(Base):
     actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# rec-026 (DEC-SCOPE-135): the EVID-018 §19 message kinds (WhatsApp L766-L776, email L778-L792, source order) and the message rules;
+# migration 0119 repeats them (test_rec_026_migration asserts they stay identical). Labels live in the web client.
+REC_WHATSAPP_KINDS = ("candidate_profiles", "jd_confirmation", "interview_reminder", "follow_up", "requirement_update")
+REC_EMAIL_KINDS = (
+    "company_introduction", "recruitment_proposal", "candidate_profiles", "jd_acknowledgement", "interview_confirmation", "offer_follow_up",
+    "joining_confirmation",
+)
+RECRUITER_TEMPLATE_CHECKS = {
+    "ck_recruiter_message_templates_channel": "channel IN ('whatsapp', 'email')",
+    "ck_recruiter_message_templates_kind": (
+        f"(channel = 'whatsapp' AND kind IN ({', '.join(repr(k) for k in REC_WHATSAPP_KINDS)})) OR "
+        f"(channel = 'email' AND kind IN ({', '.join(repr(k) for k in REC_EMAIL_KINDS)}))"
+    ),
+    "ck_recruiter_message_templates_subject": "(channel = 'email') = (subject IS NOT NULL)",
+}
+RECRUITER_MESSAGE_CHECKS = {
+    "ck_recruiter_messages_party": "(contact_id IS NULL) = (company_id IS NULL) AND (contact_id IS NULL) <> (candidate_id IS NULL)",
+    "ck_recruiter_messages_channel": "channel IN ('whatsapp', 'email')",
+    "ck_recruiter_messages_email": "(channel = 'email') = (delivery_status IS NOT NULL) AND (channel = 'email') = (subject IS NOT NULL)",
+    "ck_recruiter_messages_status": "delivery_status IS NULL OR delivery_status IN ('queued', 'sending', 'retrying', 'sent', 'failed')",
+}
+
+
+class RecruiterMessageTemplate(Base, TimestampMixin):
+    """rec-026 (MS1-MS3): a WhatsApp or email template of the placement manager's global library. Only email has a subject; placeholders
+    are checked on save; a name is unique per channel (case-insensitive). Never deleted, only deactivated."""
+
+    __tablename__ = "recruiter_message_templates"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in RECRUITER_TEMPLATE_CHECKS.items()),
+        Index("uq_recruiter_message_templates_channel_name", "channel", text("lower(name)"), unique=True),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    channel: Mapped[str] = mapped_column(String(20))
+    kind: Mapped[str] = mapped_column(String(40))
+    name: Mapped[str] = mapped_column(String(160))
+    subject: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    body: Mapped[str] = mapped_column(Text)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+
+
+class RecruiterMessage(Base, TimestampMixin):
+    """rec-026 (MS4-MS9): a message to one company contact (with its company, for scope) or one candidate -- WhatsApp via wa.me (the row is
+    the recruiter's confirmation) or email (queued for the worker; `attempt_count` counts SMTP attempts). Permanent: never edited or
+    deleted. `template_name` is the name when sent, so a rename never rewrites history."""
+
+    __tablename__ = "recruiter_messages"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in RECRUITER_MESSAGE_CHECKS.items()),
+        Index("ix_recruiter_messages_company_sent", "company_id", "sent_at"),
+        Index("ix_recruiter_messages_contact_sent", "contact_id", "sent_at"),
+        Index("ix_recruiter_messages_candidate_sent", "candidate_id", "sent_at"),
+        Index("ix_recruiter_messages_sender_sent", "sender_user_id", "sent_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    company_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"), nullable=True)
+    contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("company_contacts.id", ondelete="RESTRICT"), nullable=True)
+    candidate_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="RESTRICT"), nullable=True)
+    sender_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    channel: Mapped[str] = mapped_column(String(16))
+    template_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_message_templates.id", ondelete="RESTRICT"), nullable=True)
+    template_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    subject: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    body: Mapped[str] = mapped_column(Text)
+    delivery_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    attempt_count: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

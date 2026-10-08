@@ -8,6 +8,7 @@ export type Contact = {
   id: string; name: string; designation: string | null; department: string | null; role: Ref | null; mobile: string | null;
   email: string | null; linkedin_url: string | null; preferred_channel: Channel | null; notes: string | null; is_primary: boolean;
   active: boolean; last_contacted_at: string | null; next_follow_up_at?: string | null; created_at: string; updated_at: string;
+  whatsapp_to?: string | null; // rec-026: the wa.me number (E.164 digits)
 };
 export type ContactList = { items: Contact[]; can_edit: boolean };
 

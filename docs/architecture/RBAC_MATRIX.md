@@ -1161,6 +1161,20 @@ Meetings take the company's scope (§2.47), so a meeting of a company outside th
 | `bdm` (assigned) | read only (R10); every write `403`; the picker `403` | companies whose Assigned BDM is them | `rec-028` |
 | `hr_team`, `it_admin`, `employer`, every other role | `403` | — | `rec-028` |
 
+### 2.61 Recruiter message templates and messages *(net-new, added 2026-10-08 — `DEC-SCOPE-135`, `rec-026`)*
+
+The template library is global (MS3). A contact message takes the company's scope and write rights (§2.47, §2.57); a candidate message
+takes the pool's (§2.48, R11). Messages are never edited or deleted (MS9).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` (with a profile) | read active templates; send WhatsApp/email to contacts and candidates; read their messages | contacts of companies assigned to them; the whole candidate pool | `rec-026` |
+| `placement_manager` | create, edit, deactivate templates; read contact messages (every contact send `403`); send to and read candidates | the library; direct reports' companies + the unassigned queue; the pool | `rec-026` |
+| `super_admin` | everything | all | `rec-026` |
+| `bdm` (assigned) | read contact messages (R10); templates, sends and candidate messages `403` | companies whose Assigned BDM is them | `rec-026` |
+| `hr_team` | read candidate messages; templates, sends and contact messages `403` | the pool | `rec-026` |
+| `it_admin`, `employer`, `telecaller`, every other role | `403` | — | `rec-026` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

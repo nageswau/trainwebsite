@@ -7827,8 +7827,9 @@ class RecContactOut(BaseModel):
     notes: str | None
     is_primary: bool
     active: bool
-    last_contacted_at: datetime | None  # C6: the latest call (rec-025); messages and meetings join with rec-026/028
+    last_contacted_at: datetime | None  # C6: the latest call (rec-025) or message (rec-026 MS10); meetings join with rec-028
     next_follow_up_at: datetime | None = None  # rec-024 FU9: the earliest open follow-up about this contact
+    whatsapp_to: str | None = None  # rec-026 MS6: the wa.me number (E.164 digits), None when the mobile is unusable
     created_at: datetime
     updated_at: datetime
 
@@ -8040,6 +8041,7 @@ class CandidateDetail(CandidateItem):
     updated_at: datetime
     resumes: list[CandidateResumeOut]
     can_edit: bool
+    whatsapp_to: str | None = None  # rec-026 MS6: the wa.me number (E.164 digits), None when the mobile is unusable
 
 
 # --- rec-007 (DEC-SCOPE-129): the Job Requirement ----------------------------------------------------------------------------------
@@ -8315,3 +8317,57 @@ class RecMeetingOutcome(BaseModel):
     next_action: RecMeetingNextAction = None
     next_action_due_at: AwareDatetime | None = None
     next_action_reason: RecFollowUpReason | None = None
+
+
+
+# --- rec-026 (DEC-SCOPE-135): recruiter message templates, WhatsApp and email --------------------------------------------------------
+class RecTemplateCreate(BaseModel):
+    """MS3. `kind` is a string checked against the channel's list in the service, so the 422 names the channel (tel-012's shape)."""
+
+    model_config = ConfigDict(extra="forbid")
+    channel: TelChannel
+    kind: str
+    name: TelContentName
+    subject: TelSubject = None
+    body: TelBody
+
+
+class RecTemplateUpdate(BaseModel):
+    """Omitted = unchanged. `channel` exists only so a change is refused with a sentence."""
+
+    model_config = ConfigDict(extra="forbid")
+    channel: TelChannel = None
+    kind: str = None
+    name: TelContentName = None
+    subject: TelSubject = None
+    body: TelBody = None
+    active: StrictBool = None
+
+
+class RecMessageParty(BaseModel):
+    """MS4: exactly one recipient -- a company contact or a candidate. The recipient's address is never a request field (MS7)."""
+
+    model_config = ConfigDict(extra="forbid")
+    contact_id: UUID | None = None
+    candidate_id: UUID | None = None
+    template_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def _one_party(self):
+        if (self.contact_id is None) == (self.candidate_id is None):
+            raise ValueError("Choose a contact or a candidate")
+        return self
+
+
+class RecWhatsAppCreate(RecMessageParty):
+    channel: Literal["whatsapp"]
+    body: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
+
+
+class RecEmailCreate(RecMessageParty):
+    channel: Literal["email"]
+    subject: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200), BeforeValidator(_one_line)]
+    body: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=5000)]
+
+
+RecMessageCreate = Annotated[RecWhatsAppCreate | RecEmailCreate, Field(discriminator="channel")]
