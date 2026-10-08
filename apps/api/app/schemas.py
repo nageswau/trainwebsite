@@ -61,6 +61,7 @@ from app.models import (
     QUAL_SKILL_LEVELS,
     QUAL_STUDY_LEVELS,
     RANKING_SYSTEMS,
+    RECRUITER_FOLLOW_UP_REASONS,
     RELATIONSHIP_STRENGTHS,
     TEL_TARGET_KPIS,
     UNIVERSITY_OWNERSHIP_TYPES,
@@ -7675,6 +7676,7 @@ class RecCompanyRow(BaseModel):
     stage: str
     stage_label: str
     lost: bool
+    next_follow_up_at: datetime | None = None  # rec-024 FU9: the earliest open follow-up (derived)
 
 
 class RecCompanyPage(BaseModel):
@@ -7822,6 +7824,7 @@ class RecContactOut(BaseModel):
     is_primary: bool
     active: bool
     last_contacted_at: datetime | None  # C6: null until calls, messages and meetings exist (rec-025/026/028)
+    next_follow_up_at: datetime | None = None  # rec-024 FU9: the earliest open follow-up about this contact
     created_at: datetime
     updated_at: datetime
 
@@ -8127,3 +8130,49 @@ class RecRequirementStatusChange(BaseModel):
 class RecRequirementAssign(BaseModel):
     model_config = ConfigDict(extra="forbid")
     recruiter_user_id: UUID
+
+# --- rec-024 (DEC-SCOPE-131, spec §3): recruiter follow-ups ----------------------------------------------------------------------
+REC_FOLLOW_UP_LABELS = {"notes": "Notes", "outcome": "Outcome"}
+RecFollowUpReason = Literal[RECRUITER_FOLLOW_UP_REASONS]
+RecFollowUpNotes = Annotated[Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, REC_FOLLOW_UP_LABELS))]
+RecFollowUpOutcome = Annotated[Annotated[str, _trimmed(500)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, REC_FOLLOW_UP_LABELS))]
+
+
+class RecFollowUpCreate(BaseModel):
+    """FU5/FU6/FU10: the due instant (with its offset; the web sends IST), the §18 reason, optional links and notes. Creator, status and
+    timestamps are server-owned (unknown fields here)."""
+
+    model_config = ConfigDict(extra="forbid")
+    due_at: AwareDatetime
+    reason: RecFollowUpReason
+    contact_id: UUID | None = None
+    job_id: UUID | None = None
+    application_id: UUID | None = None
+    notes: RecFollowUpNotes = None
+
+
+class RecFollowUpUpdate(BaseModel):
+    """Reschedule (`due_at`) or edit an open follow-up: only the keys sent are considered; null clears a link or the notes, never the due
+    time or the reason."""
+
+    model_config = ConfigDict(extra="forbid")
+    due_at: AwareDatetime | None = None
+    reason: RecFollowUpReason | None = None
+    contact_id: UUID | None = None
+    job_id: UUID | None = None
+    application_id: UUID | None = None
+    notes: RecFollowUpNotes = None
+
+    @model_validator(mode="after")
+    def _required_stay_set(self):
+        for key, label in (("due_at", "Due time"), ("reason", "Reason")):
+            if key in self.model_fields_set and getattr(self, key) is None:
+                raise ValueError(f"{label} can't be removed")
+        return self
+
+
+class RecFollowUpComplete(BaseModel):
+    """FU7: what came of it (optional)."""
+
+    model_config = ConfigDict(extra="forbid")
+    outcome: RecFollowUpOutcome = None

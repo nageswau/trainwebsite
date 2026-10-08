@@ -7,6 +7,7 @@ import LocalTime from "@/components/LocalTime";
 import RecruiterContactFields from "@/components/RecruiterContactFields";
 import { sendJson } from "@/lib/apiErrors";
 import { display } from "@/lib/bdmOrganizations";
+import { formatSchoolDateTime } from "@/lib/formatDate";
 import { activeValues, type CatalogueValue } from "@/lib/recruiterCatalogue";
 import { safeLink } from "@/lib/recruiterCompanies";
 import {
@@ -50,6 +51,7 @@ function details(c: Contact): [string, ReactNode][] {
     ],
     ["Preferred communication", c.preferred_channel && CHANNEL_LABEL[c.preferred_channel]],
     ["Last contacted", c.last_contacted_at ? <LocalTime value={c.last_contacted_at} time /> : "Not yet"],
+    ["Next follow-up", c.next_follow_up_at ? formatSchoolDateTime(c.next_follow_up_at, true) : "None scheduled"], // rec-024 FU9
     ["Notes", c.notes && multiline(c.notes)],
   ];
   return rows.filter(([, value]) => value);

@@ -3275,3 +3275,19 @@ Design spec `docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.
 - **Route:** `/partnership/visits/approvals` — the caller's queue, oldest first.
 - **Route:** `/partnership/universities/[id]` gains a **Visits** section (latest 5, "Plan a visit", "All N visits") for the partnership
   roles and super admin. **Responsive:** tables become labelled cards; no side-scroll at 390 px.
+
+## rec-024 addendum (2026-10-08, `DEC-SCOPE-131`) — Recruiter follow-ups
+
+Design spec `docs/superpowers/specs/2026-10-08-rec-024-recruiter-follow-ups-design.md` §4.
+
+- **Follow-ups** (`/recruiter/follow-ups`):
+  - Today / Overdue / Upcoming tabs with counts. Today = due today (IST) plus everything overdue.
+  - Cards are oldest due first. Each shows the company (linked) and its code, the reason, the due time in IST, the contact, the
+    requirement, the recruiter, the notes and an Overdue badge.
+  - Actions: Done (optional outcome), Reschedule, Cancel (reason). They are offered only when the API says so.
+  - The tab and page live in the address. There are loading, empty, error and retry states.
+- **Company detail** (`/recruiter/companies/[id]`): a Follow-ups section.
+  - Add follow-up: due date and time (IST), reason (the 9 §18 values), an active contact, notes.
+  - The list shows open follow-ups by due time, then done and cancelled ones.
+  - Details gain "Next follow-up". Each contact shows its own next follow-up.
+- **Company list** (`/recruiter/companies`): a "Next follow-up" column.

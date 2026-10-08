@@ -1455,3 +1455,23 @@ Extends §5.1 `Job` (R5: the job is the Job Requirement). Every new column is nu
 `downgrade()` refuses while any §6 value or any user-made status change exists. Otherwise it restores the legacy statuses, using the
 history notes.
 
+## Recruiter follow-ups (`rec-024`, `DEC-SCOPE-131`; migration `0116_recruiter_follow_ups`, after `0115_university_visits`)
+
+**`recruiter_follow_ups` columns:**
+- `id`, `company_id` FK RESTRICT
+- `contact_id` → `company_contacts`, `job_id` → `jobs` and `application_id` → `job_applications`, each a nullable FK RESTRICT
+- `reason` varchar(40) (CHECK `ck_recruiter_follow_ups_reason`: the 9 §18 keys)
+- `due_at` timestamptz, `notes` text
+- `status` varchar(16) default `open` (CHECK `ck_recruiter_follow_ups_status`: open/done/cancelled)
+- `outcome` varchar(500), `completed_at`, `completed_by_user_id`, `cancelled_at`, `cancel_reason` varchar(500)
+- `created_by_user_id`, timestamps
+
+**Constraints and indexes:**
+- CHECK `ck_recruiter_follow_ups_state` ties done to completed_at/by and cancelled to cancelled_at/reason (tel-011's).
+- Indexes: `ix_recruiter_follow_ups_company (company_id, status, due_at)`, the partial `ix_recruiter_follow_ups_open_due (due_at) WHERE
+  status = 'open'`, and `ix_recruiter_follow_ups_contact (contact_id)`.
+
+**Design notes:**
+- There is no assignee column. Scope comes from the company, so a reassignment moves the follow-ups.
+- `next_follow_up_at` on the company and on each contact is derived (min open `due_at`), never stored.
+- `downgrade()` refuses while any follow-up exists.

@@ -1104,6 +1104,20 @@ Enforced inline in `services/university_visits.py` (role, lead/planner, approver
 | Edit / submit / book / complete / follow-up / close | as lead or planner | as lead or planner | `403` | `403` | `403` |
 | Approve / return | `403` (AC1) | their direct reports' visits, unless they planned, lead or join it | `403` | only when the head is inactive or took part, and not their own | `403` |
 
+### 2.57 Recruiter follow-ups *(net-new, added 2026-10-08 — `DEC-SCOPE-131`, `rec-024`; drafted as §2.53, §2.54, then §2.55)*
+
+Follow-ups take the company's scope (§2.47), so a follow-up of a company outside the caller's scope is `404`. A reassigned company's
+follow-ups move with it. Writes follow the company's `can_edit` (FU3, an UNVERIFIED default). An archived company's follow-ups are
+read-only (`409`).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` (with a profile) | read the daily lists and company follow-ups; add, edit/reschedule, complete, cancel | companies assigned to them | `rec-024` |
+| `placement_manager` | read only (the team's daily lists, company follow-ups); every write `403` | direct reports' companies + the unassigned queue | `rec-024` |
+| `super_admin` | everything | all companies | `rec-024` |
+| `bdm` (assigned) | read only (R10); every write `403` | companies whose Assigned BDM is them | `rec-024` |
+| `hr_team`, `it_admin`, `employer`, every other role | `403` | — | `rec-024` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

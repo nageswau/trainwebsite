@@ -92,7 +92,7 @@ async def list_companies(
     filters += _assigned(user, assigned)
     total = await db.scalar(select(func.count()).select_from(Company).where(*filters))
     stmt = (
-        select(Company, RecIndustry, RecLeadSource, Recruiter)
+        select(Company, RecIndustry, RecLeadSource, Recruiter, svc.NEXT_FOLLOW_UP)
         .outerjoin(RecIndustry, RecIndustry.id == Company.industry_id)
         .outerjoin(RecLeadSource, RecLeadSource.id == Company.lead_source_id)
         .outerjoin(Recruiter, Recruiter.id == Company.assigned_recruiter_user_id)

@@ -5376,3 +5376,42 @@ Spec: `docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.md`.
 `university_visit_code_seq`; routes `/partnership/visits…`; pages `/partnership/visits`, `/new`, `/[id]`, `/[id]/edit`, `/approvals`; a
 Visits section on `/partnership/universities/[id]`; the manager menu's University Visits goes live; head and super admin nav entries.
 **New Feature ID authorized:** `upc-010`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-010.
+
+### DEC-SCOPE-131 — Recruiter follow-ups + automatic daily list (`rec-024`)
+
+**Evidence:**
+- `EVID-018`: §18 (lines 732–756), with the 9 reasons and "CRM should automatically generate the daily follow-up list". "Next Follow-up"
+  on the lead (line 118) and on the contact (line 214).
+- `RECRUITER_CRM_BACKLOG.md` §rec-024 (AC1–AC3).
+- Module scope: `DEC-SCOPE-116` (R10, R13).
+- Company scope and permissions: `DEC-SCOPE-121` (rec-003). Contacts: `DEC-SCOPE-125` (rec-004).
+
+**Status:** built on `feature/rec-024`. Every answer below is a **recommended default, `UNVERIFIED`**. The owner told the session to
+proceed with the recommended answers, so Q-23 was not asked.
+
+**Numbering:** migration `0116_recruiter_follow_ups`, API §12AY and RBAC §2.57. It was drafted as `0112` / `DEC-SCOPE-127` / §12AU /
+§2.53, then re-chained to `0113` / `DEC-SCOPE-128` / §12AV / §2.54 and `0114` / `DEC-SCOPE-129` / §12AW / §2.55; rec-005, upc-005, rec-007 and
+upc-010 merged first and took those numbers. Spec `docs/superpowers/specs/2026-10-08-rec-024-recruiter-follow-ups-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| FU1 (Q-23) | Automatic follow-ups | The daily list is computed on every read, so no batch job runs. The trigger events (JD pending, profile, interview feedback, offer, joining, contract) belong to records that don't exist yet: rec-008, 019, 021, 022, 023 and 030. Each of those items creates its follow-up through `services.recruiter_follow_ups.create` when it lands. rec-024 fires no automatic follow-up |
+| FU2 | The lists (IST) | **Today** = open and due before tonight's IST midnight, which is due today plus overdue (AC1). **Overdue** = open and past due. **Upcoming** = due from tomorrow (IST) onwards. Each list is oldest first and carries all three counts |
+| FU3 | Who writes | The company's `can_edit` holder: the assigned recruiter or `super_admin`. `placement_manager` and the assigned BDM read only (`403`). An archived company's follow-ups are read-only (`409`) |
+| FU4 | Scope / reassignment | A follow-up belongs to its company and has no assignee column. A company reassignment therefore moves its open follow-ups (the backlog edge case; rec-037 adds bulk moves). Out of scope = `404` |
+| FU5 | Due time | Future, at most 366 days ahead, with an offset (tel-011's `check_due`; `422` on `due_at`). Reschedule is `PATCH {due_at}`. Only a changed due time is checked |
+| FU6 | Links | Optional contact (same company, active when set or changed), requirement (`jobs` row of the company) and application (to one of the company's jobs, consistent with the requirement). A wrong link → `422`. The web form offers the contact. Requirement and application links stay API-only until rec-007 and rec-017 add their pages |
+| FU7 | Complete / cancel | Complete takes an optional outcome (≤ 500 characters). Cancel needs a reason (≤ 500). Neither works on a follow-up that isn't open (`409`) |
+| FU8 | Cap | 50 open follow-ups per company (`409`), counted under the company lock |
+| FU9 | Next follow-up | Derived, never stored. `next_follow_up_at` on the company list row and detail, and on each contact. AC2 holds by construction |
+| FU10 | Reasons | The 9 §18 values in source order and wording; notes ≤ 2000 |
+
+**Consequences:**
+- `recruiter_follow_ups` (`0116`): reason, status and state CHECKs, and indexes on `(company_id, status, due_at)`, open `due_at` and
+  `contact_id`.
+- `services/recruiter_follow_ups.py` and `api/recruiter_follow_ups.py`.
+- A `/recruiter/follow-ups` page (Today / Overdue / Upcoming), with nav entries for recruiters and managers.
+- The company page gains a Follow-ups section; the company list, the company Details and each contact show the next follow-up.
+- Audit `recruiter_follow_up.{create,update,complete,cancel}` carries ids, the reason key and field names only, never notes, outcomes or
+  reasons.
+- **New Feature ID authorized:** `rec-024`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-024.

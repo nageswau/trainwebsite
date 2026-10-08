@@ -123,6 +123,7 @@ export const RECRUITER_NAV: NavItem[] = [
   { label: "Candidate Master", href: "/recruiter/candidates" }, // rec-009
   { label: "Pipeline", href: "/recruiter/pipeline" }, // rec-005
   { label: "Job Requirements", href: "/recruiter/requirements" }, // rec-007
+  { label: "Follow-ups", href: "/recruiter/follow-ups" }, // rec-024
   ...LEGACY_PLACEMENT.map((x) => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, (c) => c.toUpperCase()), href: `/it/placement/${x}` })),
 ];
 export const RECRUITER_MANAGER_NAV: NavItem[] = [
@@ -130,6 +131,7 @@ export const RECRUITER_MANAGER_NAV: NavItem[] = [
   { label: "Candidate Master", href: "/recruiter/candidates" }, // rec-009: shared with recruiters (R11)
   { label: "Pipeline", href: "/recruiter/pipeline" }, // rec-005: team + unassigned
   { label: "Job Requirements", href: "/recruiter/requirements" }, // rec-007: the team's requirements
+  { label: "Follow-ups", href: "/recruiter/follow-ups" }, // rec-024: the team's lists, read only
 ];
 
 // upc-001 (PU8): the EVID-020 §32 main menu, in source order, each entry naming the item that builds its page. An entry joins the

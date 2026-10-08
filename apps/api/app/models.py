@@ -460,6 +460,51 @@ class CompanyContact(Base, TimestampMixin):
         return mobile
 
 
+# rec-024 (DEC-SCOPE-131): the EVID-018 §18 follow-up reasons (L738-L754, source order) and states; migration 0116 repeats
+# RECRUITER_FOLLOW_UP_CHECKS (test_rec_024_migration asserts they stay identical). Labels live in the web client.
+RECRUITER_FOLLOW_UP_REASONS = (
+    "new_requirement", "jd", "profile_feedback", "interview_feedback", "offer_status", "joining_confirmation", "new_openings",
+    "contract_mou", "payment_commercial",
+)
+RECRUITER_FOLLOW_UP_CHECKS = {
+    "ck_recruiter_follow_ups_reason": f"reason IN ({', '.join(repr(r) for r in RECRUITER_FOLLOW_UP_REASONS)})",
+    "ck_recruiter_follow_ups_status": "status IN ('open', 'done', 'cancelled')",
+    "ck_recruiter_follow_ups_state": (
+        "(status = 'done') = (completed_at IS NOT NULL) AND (completed_at IS NULL) = (completed_by_user_id IS NULL) "
+        "AND (status = 'cancelled') = (cancelled_at IS NOT NULL) AND (cancelled_at IS NULL) = (cancel_reason IS NULL)"
+    ),
+}
+
+
+class RecruiterFollowUp(Base, TimestampMixin):
+    """rec-024 (DEC-SCOPE-131): a recruiter follow-up on a company, optionally about one contact, requirement or application. It belongs
+    to the company (FU4): whoever has the company in scope sees it, so a reassignment moves it with no rewrite. The company's next
+    follow-up is derived from the open ones (FU9), never stored."""
+
+    __tablename__ = "recruiter_follow_ups"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in RECRUITER_FOLLOW_UP_CHECKS.items()),
+        Index("ix_recruiter_follow_ups_company", "company_id", "status", "due_at"),
+        Index("ix_recruiter_follow_ups_open_due", "due_at", postgresql_where=text("status = 'open'")),
+        Index("ix_recruiter_follow_ups_contact", "contact_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"))
+    contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("company_contacts.id", ondelete="RESTRICT"), nullable=True)
+    job_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="RESTRICT"), nullable=True)
+    application_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("job_applications.id", ondelete="RESTRICT"), nullable=True)
+    reason: Mapped[str] = mapped_column(String(40))
+    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="open", server_default=text("'open'"))
+    outcome: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
 class EmployerProfile(Base, TimestampMixin):
     """EMP-001 -- DATA_MODEL.md #5.2, net-new. `registration_status` exists but is
     deliberately unenforced/nullable: whether registration requires Admin approval before

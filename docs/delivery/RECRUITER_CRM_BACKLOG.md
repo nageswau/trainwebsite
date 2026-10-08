@@ -1104,6 +1104,11 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-024 — Recruiter follow-ups + automatic daily list
+- **Status (2026-10-08):** built on `feature/rec-024`. Numbering: `DEC-SCOPE-131`, migration `0116_recruiter_follow_ups` (re-chained after
+  rec-005's `0112_company_pipeline` upc-005's `0113_university_imports`, rec-007's `0114_job_requirements` and
+  upc-010's `0115_university_visits`), API §12AY, RBAC §2.57. Q-23 was answered with the recommended default (FU1): rec-024 provides the
+  engine and the computed daily list, and the triggering items create their own automatic follow-ups. The next rec item takes `0117`,
+  `DEC-SCOPE-132`, §12AZ and §2.58 (re-check `main`).
 - **Business requirement:** §18 (9 reasons; "automatically generate the daily follow-up list"); §2/§4 "Next Follow-up".
 - **Existing behavior:** none for companies.
 - **Expected behavior:**

@@ -1840,6 +1840,36 @@ can_complete, can_follow_up, can_close}, editable_fields, created_at, updated_at
 | `POST /partnership/visits/{id}/follow-up` | visit_completed → follow_up |
 | `POST /partnership/visits/{id}/close {reason?}` | follow_up → closed; from planned/approved/travel_booked only with a reason (closed without visiting, `422` without) |
 
+## 12AY. Recruiter follow-ups (`rec-024`) — addendum, 2026-10-08
+
+- **Basis:** `DEC-SCOPE-131` (FU1–FU10). Design spec `docs/superpowers/specs/2026-10-08-rec-024-recruiter-follow-ups-design.md` §3.
+  Migration `0116`. Drafted as §12AU, §12AV, then §12AW; rec-005, upc-005, rec-007 and upc-010 merged first.
+- **Common rules:**
+  - Scope is the company's (§12AO). A follow-up or company outside the caller's scope is `404` "Follow-up not found" or "Company not
+    found", the same as an unknown id. Roles outside the recruiter scope → `403`.
+  - Writers hold the company's `can_edit` (the assigned recruiter or super_admin). Any other reader → `403`, an archived company → `409`
+    "Restore this company first", and a follow-up that isn't open → `409`.
+  - Bodies refuse unknown keys (`422`).
+  - Every write locks the company and then the follow-up, commits once, and writes an audit row `recruiter_follow_up.{create,update,
+    complete,cancel}` with ids, the reason key and field names only.
+- **Item:**
+  - `{id, reason, due_at, notes, status (open|done|cancelled), outcome, overdue, company {id, code, name, assigned_recruiter}, contact
+    {id, name}|null, requirement {id, title}|null, application_id, created_by, created_at, completed_at, completed_by, cancelled_at,
+    cancel_reason, can_change}`.
+  - Reasons: `new_requirement`, `jd`, `profile_feedback`, `interview_feedback`, `offer_status`, `joining_confirmation`, `new_openings`,
+    `contract_mou`, `payment_commercial`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/follow-ups` | `due` = `today` (default: due before tonight's IST midnight, i.e. today + overdue) \| `overdue` \| `upcoming` (from tomorrow, IST); other values `422`. `limit`, `offset`. → `{items, total, limit, offset, day, counts {today, overdue, upcoming}}`, oldest due first |
+| `GET /recruiter/companies/{id}/follow-ups` | Open by due time, then done/cancelled newest first; `limit`, `offset` |
+| `POST /recruiter/companies/{id}/follow-ups` | `{due_at (with offset), reason, contact_id?, job_id?, application_id?, notes? (≤ 2000)}` → `201` item. A past time or one more than 366 days ahead → `422` on `due_at`. A contact that is not an active contact of the company → `422` "Choose an active contact of this company". A requirement or application outside the company, or an application for another requirement → `422`. The 51st open follow-up → `409`. Not idempotent |
+| `PATCH /recruiter/follow-ups/{id}` | Partial: `due_at` (reschedule; only a changed time is checked), `reason`, `contact_id`, `job_id`, `application_id`, `notes`. Null clears a link or the notes; null on `due_at` or `reason` → `422`. Equal values are not changes (no audit) |
+| `POST /recruiter/follow-ups/{id}/complete` | `{outcome? (≤ 500)}` → item `done`. The company's `next_follow_up_at` moves on by itself |
+| `POST /recruiter/follow-ups/{id}/cancel` | `{reason}` (required, ≤ 500) → item `cancelled` |
+| `GET /recruiter/companies`, `GET /recruiter/companies/{id}` (§12AO) | **Additive:** each row and the detail gain `next_follow_up_at` (the earliest open follow-up, or null) |
+| `GET /recruiter/companies/{id}/contacts` (§12AS) | **Additive:** each contact gains `next_follow_up_at` (the earliest open follow-up linked to it, or null) |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

@@ -92,7 +92,7 @@ describe("RecruiterCompaniesPanel", () => {
     await screen.findByRole("region", { name: "Companies" });
     expect(container.querySelector(".telecaller-list")).toBeTruthy();
     const labels = [...container.querySelectorAll("tbody td")].map((td) => td.getAttribute("data-label"));
-    expect(labels).toEqual(["Code", "Name", "City", "Priority", "Stage", "Lead source", "Industry", "Recruiter"]);
+    expect(labels).toEqual(["Code", "Name", "City", "Priority", "Stage", "Lead source", "Industry", "Recruiter", "Next follow-up"]); // rec-005, rec-024
   });
 
   it("shows the empty state, and an error with Retry", async () => {
