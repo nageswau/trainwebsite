@@ -2945,7 +2945,7 @@ Five screens (seven routes) added by `tel-001` (design spec `docs/superpowers/sp
 - **Route:** `/telecaller/manager/team`. **Role(s):** `telecaller_manager` (direct reports), `super_admin` (all). **Data:** `GET /telecaller/manager/team?offset=`. **Content:** table (name, Employee ID, team, mobile, status as a word in a badge) in a labelled, focusable scroll region with a `<caption>`; Previous / Next links. **States:** empty — "No telecallers report to you yet."; past-the-end offset — a message with "Go to the first page"; error — the access-unavailable block, sign-in link `/admin/login`. **Responsive:** the table scrolls horizontally inside its region; the page never does.
 - **Route:** `/admin/telecallers` (also `/it/admin/telecallers`, `/overseas/admin/telecallers`). **Role(s):** `super_admin` (both teams), `it_admin` (IT; also reachable by `super_admin`), `overseas_admin` (Overseas; also reachable by `super_admin`). **Data:** `GET /admin/telecallers`, `GET /admin/telecaller-managers`, `POST` / `PATCH /admin/users`. **Content:** create form (full name, email, mobile, team — fixed text for a division admin, a two-option select for `super_admin`, Employee ID, reporting manager via a server-search picker), list with row edit (name, mobile, Employee ID, manager; team read-only, TL7) and activate / deactivate with inline confirmation; "No active manager" badge when `manager_active` is false. **States:** loading — "Loading telecallers…"; empty — "No telecallers yet. Use the Create telecaller form to add the first one."; a search with no match — "No telecallers match “…”."; error — "Unable to load telecallers." with Retry; past the end of the list — "This page is past the end of the list." with "Go to the first page"; no active manager — "No active telecaller manager — a Super Admin must create one first", submit disabled; create success — the welcome-link feedback; server 403 / 409 / 422 messages inline; a save names the telecaller as saved ("Saved ⟨new name⟩."). A second click while a create is in flight sends nothing. **Responsive:** below 640px each row is a card — name and email, then labelled Employee ID / Team / Manager / Status lines, then Edit / Deactivate — so nothing sits off-screen; tablet and desktop keep the table (tel-001 QA-03/04/05). Up to 980px, where the list comes before the form, the list card starts with a "Create telecaller" link that scrolls to the form and focuses Full name.
 
-## rec-007 addendum (2026-10-08, `DEC-SCOPE-126`) — Job Requirement
+## rec-007 addendum (2026-10-08, `DEC-SCOPE-128`) — Job Requirement
 
 Three screens and a company-page section (design spec `docs/superpowers/specs/2026-10-08-rec-007-job-requirement-design.md` §6), on
 the rec-003 company layout. Visual reference: none.
@@ -3228,3 +3228,32 @@ not inspected. Do not claim parity.
   overseas_admin sees only shareable contacts, without notes or controls. The header shows "Relationship: <value>" and the Profile list a
   Relationship strength row. **Responsive:** blocks wrap, no side-scroll at 390 px.
 - **Route:** `/partnership/universities` gains a Relationship column and filter; the master form gains a Relationship strength select.
+
+## upc-007 addendum (2026-10-08, `DEC-SCOPE-126`) — Partnership stage + Kanban
+
+One route added and two screens extended by `upc-007` (design spec `docs/superpowers/specs/2026-10-08-upc-007-partnership-pipeline-design.md` §4). No catalogue ID is invented. Visual-reference mapping:
+None — not inspected. Do not claim parity. Roles: `partnership_manager`, `partnership_head`, `overseas_admin`, `super_admin` (each in its
+own sidebar); the API decides every action. Signed out → `/overseas/login`.
+
+- **Route:** `/partnership/pipeline`. **Data:** `GET /partnership/pipeline`. **Content:** managers get "My universities" / "All
+  universities" links; nine §4 column tiles + Lost, each a count link (`aria-current` on the chosen one); a table of the chosen column or
+  every open university (name link, code, city + country, stage with a Lost badge, primary manager); Previous/Next keep the filters.
+  **States:** "No universities in this column." / "No open universities yet."; past the end "This page is past the end of the list.";
+  a hand-edited filter "That filter isn't valid." with a reset link; error — access-unavailable block. **Responsive:** tiles in 2 columns
+  and table rows as labelled cards below 640 px; no side-scroll at 375 px.
+- **Extended:** `/partnership/universities/[id]` gains "Partnership stage" (Kanban column; the 15 stages with Done / Current / Upcoming as
+  text; Lost banner with date and reason; Move to + note — "Reason (required when moving back)"; Mark lost / Reopen with a required reason,
+  Yes / Cancel, focus moved into and back out of the reason; Saving… and one request per submit; success in `role="status"`; a refusal or
+  someone else's change in `role="alert"`, the page refreshed, the entry kept) and "Stage history" (newest first, Show more, Try again).
+- **Extended:** `/partnership/universities` gains a Stage column (with a Lost badge).
+
+## rec-005 addendum (2026-10-08, `DEC-SCOPE-127`) — Company pipeline
+
+Design spec `docs/superpowers/specs/2026-10-08-rec-005-company-pipeline-design.md` §5.
+
+- **Company detail** (`/recruiter/companies/[id]`): a Pipeline section (13-stage stepper, state as text; Lost banner; Move form with the
+  four manual stages, reason required when moving back; Mark lost / Reopen with a reason) and a Stage history section (newest first,
+  Show more). Driven stages show "The stage now moves with its job requirements" and no Move form.
+- **Company list** (`/recruiter/companies`): a Stage column with a Lost badge.
+- **Pipeline board** (`/recruiter/pipeline`): a count tile per stage plus Lost, then one page of companies (code, company, city,
+  priority, stage, recruiter). Filters live in the address; an invalid filter says so with a way back.

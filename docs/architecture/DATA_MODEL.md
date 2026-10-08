@@ -329,7 +329,14 @@ primary and differs from it), `priority` (A/B/C, indexed), `partnership_potentia
 unique per university, system, name, year; cascade delete) and `university_assignment_history` (append-only, one row per changed manager
 slot). **Migration `0105_university_master`** backfills codes for existing rows in `created_at, slug` order and keeps them public;
 `downgrade()` refuses while rankings, assignment history or internal universities exist. Public reads show only published, active rows
-(API §12AN). `stage` is upc-007's; contacts are upc-006's.
+(API §12AN). Contacts are upc-006's.
+
+**upc-007 (`DEC-SCOPE-126`):** `universities` gains `stage` (one of the 15 EVID-020 §3 keys, CHECK, indexed, default
+`target_university`), `stage_changed_at` (set on every move), `lost_at` + `lost_reason` (CHECK both or neither: the Lost/Closed flag on top
+of the kept stage). New table `university_stage_history` (append-only: kind move / lost / reopened, from/to stage, note, actor,
+`position` identity; no stage CHECK so history survives a catalogue change). **Migration `0111_university_pipeline`** sets every existing
+row to `target_university` with `stage_changed_at = created_at`; `downgrade()` refuses while history, a lost or a moved university exists.
+The Kanban column, map group and probability are fixed groupings in `app/partnership_stages.py` (backlog Appendix B), never stored.
 
 **Addendum, 2026-10-08 (`upc-006`, `DEC-SCOPE-123` — University contacts + relationship strength):** `universities.relationship_strength`
 (nullable; CHECK new / developing / good / strong / strategic / at_risk / dormant, §11). New tables: `university_contact_roles` (`code` PK,
@@ -1388,7 +1395,19 @@ exists.
 
 `downgrade()` refuses while any row exists.
 
-## Job Requirement (`rec-007`, `DEC-SCOPE-126`; migration `0111_job_requirements`, after `0110_company_contacts`)
+## Company B2B pipeline (`rec-005`, `DEC-SCOPE-127`; migration `0112_company_pipeline`, after `0111_university_pipeline`)
+
+`companies` gains `stage` varchar(30) NOT NULL default `new_lead` (CHECK `ck_companies_stage`: the 13 keys of `app/recruiter_stages.py`,
+frozen in the migration), `stage_changed_at` timestamptz NOT NULL default `now()` (existing rows backfilled from `created_at`), `lost_at`
+and `lost_reason` varchar(500) (CHECK `ck_companies_lost`: both or neither) and `ix_companies_stage_recruiter (stage,
+assigned_recruiter_user_id)`. Every insert path keeps working through the defaults.
+
+`company_stage_history`: `id`, `company_id` FK RESTRICT, `from_stage`, `to_stage`, `event` (`manual`, `lost`, `reopen` or an engine
+event), `actor_user_id` (NULL = system), `reason` varchar(500), `position` identity, `created_at`; `ix_company_stage_history_company
+(company_id, position)`. Append-only, no stage CHECK. `services/company_pipeline.py` is the only writer of `stage`. `downgrade()` refuses
+while any history row exists or any company is past New Lead or Lost.
+
+## Job Requirement (`rec-007`, `DEC-SCOPE-128`; migration `0113_job_requirements`, after `0112_company_pipeline`)
 
 Extends §5.1 `Job` (R5: the job is the Job Requirement). Every new column is nullable except the code, so the employer and
 `/workflows/it/jobs` insert paths are unchanged.

@@ -5018,7 +5018,7 @@ Renumbered again on merging `main` @ `060989ff`: rec-002 took `DEC-SCOPE-117` / 
 ### DEC-SCOPE-119 — Recruiter Skills Master (`rec-006`)
 
 **Evidence:** `EVID-018` S2-§2 (lines 1126–1216) and S2-§16 (lines 1607–1643); `RECRUITER_CRM_BACKLOG.md` §rec-006 (AC1–AC3).
-**Status:** `EXPLICIT_APPROVAL`. The owner answered S1 and S2 in session on 2026-10-08. They asked for the recommended answers on the
+**Status:** **MERGED** to `main` as PR #150 @ `0ef88a98` (2026-10-08). `EXPLICIT_APPROVAL`. The owner answered S1 and S2 in session on 2026-10-08. They asked for the recommended answers on the
 remaining points (S3–S6), which follow the rec-002 C3 precedent. Migration `0104_skills_master`. API §12AM. RBAC §2.45.
 Spec `docs/superpowers/specs/2026-10-08-rec-006-skills-master-design.md`. Numbers follow upc-002 (`0101`, §12AJ), rec-002 (`DEC-SCOPE-117`, `0102`, §12AK, §2.43) and upc-001 (`DEC-SCOPE-118`, `0103`, §12AL, §2.44).
 
@@ -5196,7 +5196,7 @@ a duplicate master create/rename is `409` unless overridden; the BDM University 
 - R3: a new `company_contacts` table. R10: recruiters do every write.
 - Module scope: `DEC-SCOPE-116`. The company master is `DEC-SCOPE-121`.
 
-**Status:** built on `feature/rec-004`. The backlog item has no Q-xx questions, so C1–C7 below are **recommended defaults**, taken on the
+**Status:** **MERGED** to `main` as PR #160 @ `721c23f7` (2026-10-08). The backlog item has no Q-xx questions, so C1–C7 below are **recommended defaults**, taken on the
 user's standing instruction to proceed with the recommended answers. Their status is `UNVERIFIED` until the owner confirms them.
 
 **Numbering:** migration `0110_company_contacts` (after upc-004's `0109_university_duplicates`), API §12AS and RBAC §2.51. rec-004 was drafted as
@@ -5219,7 +5219,67 @@ user's standing instruction to proceed with the recommended answers. Their statu
 - Contact PII: no export, and logs and audit rows carry ids and field names only.
 - **New Feature ID authorized:** `rec-004`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-004.
 
-### DEC-SCOPE-126 — Job Requirement (`rec-007`)
+### DEC-SCOPE-126 — Partnership stage engine + history + Kanban (`upc-007`)
+
+**Evidence:** `EVID-020` §3 (L92–L154, 15 statuses — the backlog's "14" miscounts the source), §4 (L156–L174, the 9-column Kanban), §32
+"Partnership Pipeline" (L1072); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U7 (`EXPLICIT_APPROVAL`, 2026-10-08), Appendix B stage
+groupings and §4 upc-007.
+**Status:** PS1–PS12 are the recommended answers to backlog Q-08 (backfill) and the item's design questions, applied under the owner's
+standing instruction for the build session ("proceed with the recommended answers; ask only if genuinely blocking"). **Not** separately
+confirmed: `NEEDS_CONFIRMATION` at sign-off. Migration `0111_university_pipeline`, API contract §12AT, RBAC §2.52. Spec: `docs/superpowers/specs/2026-10-08-upc-007-partnership-pipeline-design.md`. Drafted as `DEC-SCOPE-121` / `0106` / §12AO / §2.47 and renumbered on merging `main` @ `a62ad9d7`: rec-003 and rec-009 took those
+numbers and merged first. Renumbered again from `DEC-SCOPE-123` / `0108` / §12AQ / §2.49 on merging `main` @ `5b7c1fd5`: upc-006 and upc-004 took
+those numbers and merged first. Renumbered a third time from `DEC-SCOPE-125` / `0110` / §12AS / §2.51 on merging `main` @
+`721c23f7`: rec-004 took those numbers and merged first.
+
+| # | Question | Answer |
+|---|---|---|
+| PS1 | Stored stage | The 15 §3 statuses (source order and wording) in `app/partnership_stages.py`; Lost/Closed is a flag (`lost_at` + `lost_reason`) on top of the kept stage |
+| PS2 | Q-08 backfill | Every existing university starts at Target University, `stage_changed_at = created_at`; no partner status is invented, no history rows written |
+| PS3 | Groupings | Appendix B K (Kanban), G (map group) and P (probability) as catalogue constants; Agreement Signed → G2 "In Progress" (Q-08 alternative "Partner" stays open) |
+| PS4 | Moves | Any stage to any other; backward needs a note; same stage `422`; stale `from_stage` `409 stage_changed` (row lock + optimistic check) |
+| PS5 | Who moves / marks lost | Primary or backup manager; the head for unowned or team-owned universities; `super_admin`. `overseas_admin` reads only |
+| PS6 | Reopen | Head (team scope) and `super_admin` only; back at the stage it was lost at |
+| PS7 | Reasons | Lost and Reopen each need a reason (≤ 500, plain text) |
+| PS8 | Guards | A lost university cannot be moved or lost again (`409 university_lost`); reopen when not lost `409 university_not_lost`; inactive is read-only (`409`) |
+| PS9 | History | `university_stage_history` append-only (move / lost / reopened, note, actor, position); readable by every read role |
+| PS10 | `stage_changed_at` | Set on every move (not on lost / reopen) |
+| PS11 | Board scope | Every read role; filters `column` (K key or `lost`) and `manager` (`me`/`none`/uuid); managers default to their own universities; inactive excluded; lost counted apart |
+| PS12 | Board shape | The bdm-004 `BdmPipelineBoard` pattern: column count tiles + Lost, then a paged table of the chosen column |
+
+**Consequences:** `universities` gains `stage` (CHECK, indexed), `stage_changed_at`, `lost_at`, `lost_reason`; table
+`university_stage_history`; routes `POST /partnership/universities/{id}/stage|lost|reopen`, `GET …/stage-history`, `GET
+/partnership/pipeline`; university rows and details carry `stage`, `stage_label`, `lost`, `pipeline` and permissions `can_move_stage` /
+`can_reopen`; web page `/partnership/pipeline`, the university record's "Partnership stage" and "Stage history" sections, a Stage column in
+the University Master list; "Partnership Pipeline" goes live in the §32 menu and the head's sidebar.
+**New Feature ID authorized:** `upc-007`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-007.
+
+### DEC-SCOPE-127 — Company B2B pipeline (`rec-005`)
+
+**Evidence:** `EVID-018` §5 (lines 218–270), lead field "Status" (116), "genuine prospect" (122); `RECRUITER_CRM_BACKLOG.md` §rec-005
+(AC1–AC4). Module scope: `DEC-SCOPE-116` (R1–R15); company scope and permissions: `DEC-SCOPE-121` (rec-003, D6).
+**Status:** **MERGED** to `main` as PR #162 @ `ada23b4d` (2026-10-08). Every answer below is a **recommended default, `UNVERIFIED`**: the owner told the
+session to proceed with the recommended answers, and Q-06 was not asked. **Numbering:** migration `0112_company_pipeline`,
+API §12AU, RBAC §2.53 (drafted as `0108` / `DEC-SCOPE-123` / §12AQ / §2.49; upc-006, upc-004, rec-004 and upc-007 merged first). Spec `docs/superpowers/specs/2026-10-08-rec-005-company-pipeline-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| P1 | Stage count | The source lists **13** stages; the backlog's "14" is a miscount. Lost is a flag, not a stage |
+| P2 (Q-06) | Stages after Requirement Received | Driven by requirement events only, forward along the order: the company sits at its furthest-progressed requirement. Callers decide when an event fires (e.g. `requirement_closed` only when no open requirement is left). Never set by hand |
+| P3 (Q-06) | Going back | Among the four manual stages, with a reason. Once at a driven stage, no manual move. The one system path back: a new requirement on a Requirement Closed company returns it to Requirement Received |
+| P4 | Manual stages | Contacted, Interested, Meeting Scheduled, Requirement Discussion. New Lead is the start, never chosen |
+| P5 | Lost / reopen | Lost is a flag with a reason on top of the kept stage. The assigned recruiter (or super_admin) marks lost; only a placement manager or super_admin reopens, with a reason, back at the same stage. Events never move a Lost or archived company |
+| P6 | Who moves | rec-003's `can_edit` holders (assigned recruiter, super_admin). The manager does not move (D6) but reopens. The assigned BDM reads only (R10) |
+| P7 | Board | `/recruiter/pipeline` in the caller's company scope; archived left out, Lost counted apart |
+| P8 | Engine events | `call_logged`, `meeting_scheduled`, `requirement_received`, `jd_received`, `candidates_sourcing`, `profiles_shared`, `interview_scheduled`, `candidate_selected`, `candidate_joined`, `requirement_closed`. No caller yet; rec-007/008/017/019/020/022/023/024/028 wire them |
+
+**Consequences:**
+- `app/recruiter_stages.py`, `services/company_pipeline.py` (`apply_event` is the single writer; its API is frozen once merged — later
+  items only add events), `api/recruiter_pipeline.py`, migration `0112`.
+- The company detail gains the Pipeline and Stage history sections; the list a Stage column; a new `/recruiter/pipeline` board and nav
+  entries for recruiters, managers and super admin.
+- **New Feature ID authorized:** `rec-005`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-005.
+
+### DEC-SCOPE-128 — Job Requirement (`rec-007`)
 
 **Evidence:** `EVID-018` §6 (lines 272–348), §1 quick action "+ Add Job Requirement" (45), S2-§6 required/preferred skills;
 `RECRUITER_CRM_BACKLOG.md` §rec-007 (AC1–AC4). Module scope: `DEC-SCOPE-116`. Also R5 (`jobs` becomes the Job Requirement) and
@@ -5228,9 +5288,9 @@ FEATURE_QUESTIONS #1 / Q-04 (the employer mediation question, still open).
 **Status:** **BUILT** on `feature/rec-007` (2026-10-08), not merged.
 - J1–J7 are **recommended defaults (`UNVERIFIED`)**. The user told the session to proceed with the recommended answers, so Q-04 and Q-05
   were **not** put to the owner. They can be revised.
-- **Numbering:** migration `0111_job_requirements` (after rec-004's `0110_company_contacts`), API §12AT, RBAC §2.52. rec-007 was
-  drafted as `0108` / 123 / §12AQ / §2.49. upc-006 (PR #157: `0108` / 123), upc-004 (PR #158: `0109` / 124) and rec-004 (PR #160:
-  `0110` / 125 / §12AS / §2.51) merged first.
+- **Numbering:** migration `0113_job_requirements` (after rec-005's `0112_company_pipeline`), API §12AV, RBAC §2.54. rec-007 was
+  drafted as `0108` / 123 / §12AQ / §2.49. upc-006 (`0108` / 123), upc-004 (`0109` / 124), rec-004 (`0110` / 125), upc-007 (`0111` /
+  126 / §12AT / §2.52) and rec-005 (PR #162: `0112` / 127 / §12AU / §2.53) merged first.
 - Spec: `docs/superpowers/specs/2026-10-08-rec-007-job-requirement-design.md`.
 
 | # | Point | Answer |

@@ -56,4 +56,15 @@ describe("BdmStageHistory (bdm-004 §8.2)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(screen.getByText("College Prospect → Contacted")).toBeInTheDocument());
   });
+
+  it("upc-007: pages a university's history through its url and titles a reopen", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(res(page([event("e1")], 2, 1)));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<BdmStageHistory orgId="u1" url="/api/v1/partnership/universities/u1/stage-history" initial={page([event("e2", { kind: "reopened", to_label: "Interested", note: "They called" })], 2)} version={0} />);
+    expect(screen.getByText("Reopened at Interested")).toBeInTheDocument();
+    expect(screen.getByText("Reason: They called")).toBeInTheDocument();
+    expect(screen.getByText("Reason: They called")).toHaveStyle({ overflowWrap: "anywhere" }); // QA7-04: a long unbroken note wraps
+    fireEvent.click(screen.getByRole("button", { name: "Show more" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/v1/partnership/universities/u1/stage-history?limit=20&offset=1"));
+  });
 });

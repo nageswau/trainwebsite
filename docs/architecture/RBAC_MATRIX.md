@@ -1045,7 +1045,30 @@ Contacts take the company's scope (§2.47). A contact of a company outside the c
 | `bdm` | read only (R10); every write is `403` | companies whose Assigned BDM is them | `rec-004` |
 | `hr_team`, `it_admin`, `employer`, every other role | `403` | — | `rec-004` |
 
-### 2.52 Job Requirement *(net-new, added 2026-10-08 — `DEC-SCOPE-126`, `rec-007`; drafted as §2.49)*
+### 2.52 Partnership stage engine *(net-new, added 2026-10-08 — `DEC-SCOPE-126`, `upc-007`)*
+
+Enforced in `services/partnership_universities.py` (`can_move_stage`, `can_reopen`: role → team scope → state) before the single writer
+`services/partnership_pipeline.py` runs.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Read stage, history, Kanban board | ✅ | ✅ | ✅ | ✅ | `403` |
+| Move stage, mark lost | own (primary or backup) | unowned + team-owned | `403` | ✅ | `403` |
+| Reopen a lost university | `403` | unowned + team-owned | `403` | ✅ | `403` |
+
+### 2.53 Company pipeline *(net-new, added 2026-10-08 — `DEC-SCOPE-127`, `rec-005`)*
+
+Scope is the §2.47 company scope (out of scope = `404`). The role check for each action runs on the locked row.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` | read the pipeline, history and board; move manual stages; mark lost | own assigned companies | `rec-005` |
+| `placement_manager` | read the pipeline, history and board; **reopen** a Lost company (`403` on move and mark lost, rec-003 D6) | direct reports' companies + unassigned | `rec-005` |
+| `super_admin` | everything above | all companies | `rec-005` |
+| `bdm` (assigned) | read the pipeline, history and board; every write `403` (R10) | companies assigned to them | `rec-005` |
+| every other role | `403` | — | `rec-005` |
+
+### 2.54 Job Requirement *(net-new, added 2026-10-08 — `DEC-SCOPE-128`, `rec-007`; drafted as §2.49)*
 
 Enforced inline in `services/recruiter_requirements.py` (`caller_scope`, `require`), the rec-003 pattern. The role check runs before
 anything is read, and an id outside the scope is `404`. Salary is returned only to these roles and to the owning employer, never on

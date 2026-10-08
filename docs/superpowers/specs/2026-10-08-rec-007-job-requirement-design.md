@@ -1,12 +1,12 @@
 # rec-007 — Job Requirement (`jobs` extension) (design)
 
 Backlog: `docs/delivery/RECRUITER_CRM_BACKLOG.md` rec-007. Source: EVID-018 §6 (lines 272–348), S2-§6 required/preferred skills, §1 quick
-action "+ Add Job Requirement". Depends on rec-003 (merged PR #152) and rec-006 (merged PR #150). Numbering: `DEC-SCOPE-126`, migration `0111_job_requirements` (after rec-004's `0110_company_contacts`), API §12AT, RBAC §2.52.
-It was drafted as 123 / `0108` / §12AQ / §2.49. upc-006, upc-004 and rec-004 (`0108`–`0110`, DEC-SCOPE-123–125, §12AQ–§12AS,
-§2.49–§2.51) merged to `main` first. **Status: DRAFT** (branch `feature/rec-007`).
+action "+ Add Job Requirement". Depends on rec-003 (merged PR #152) and rec-006 (merged PR #150). Numbering: `DEC-SCOPE-128`, migration `0113_job_requirements` (after rec-005's `0112_company_pipeline`), API §12AV, RBAC §2.54.
+It was drafted as 123 / `0108` / §12AQ / §2.49. upc-006, upc-004, rec-004, upc-007 and rec-005 (`0108`–`0112`, DEC-SCOPE-123–127,
+§12AQ–§12AU, §2.49–§2.53) merged to `main` first. **Status: DRAFT** (branch `feature/rec-007`).
 
 ## 1. Answers used (2026-10-08)
-The user told this session to proceed with the recommended answers. Q-04 and Q-05 were **not** put to the owner, so `DEC-SCOPE-126`
+The user told this session to proceed with the recommended answers. Q-04 and Q-05 were **not** put to the owner, so `DEC-SCOPE-128`
 records them as **recommended defaults (UNVERIFIED)**. The owner can revise them.
 
 - **J1 (Q-04, status mapping):** one `jobs.status` column carries the 11 §6 statuses (`new`, `requirement_received`, `sourcing`,
@@ -52,7 +52,7 @@ records them as **recommended defaults (UNVERIFIED)**. The owner can revise them
 
 The same status again is a 409, and so is any move not in the table. No status ever returns to `new`.
 
-## 3. Data (`0111_job_requirements`)
+## 3. Data (`0113_job_requirements`)
 New nullable `jobs` columns:
 - `requirement_code`: NOT NULL, unique, server default `'REQ-' || lpad(nextval('requirement_code_seq')::text, 6, '0')`. Existing rows
   are backfilled in `created_at`, `id` order.
@@ -89,7 +89,7 @@ Every write follows the same steps: lock the row, check scope, apply the change,
 ids and field names only), commit once. The vacancies check is done under the lock: fewer than the job's hired/joined applications → 409.
 Salary is returned only by the recruiter API and the owning employer's API, never to students.
 
-## 5. API (§12AT) — `/api/v1/recruiter/requirements`
+## 5. API (§12AV) — `/api/v1/recruiter/requirements`
 - `GET ''`: filters `q` (title / code / company), `status`, `company_id`, `assigned` (`me` / `unassigned` / uuid), `priority`,
   `job_category_id`, `deadline` (`expiring` / `expired`), plus `limit` and `offset`. Returns `{items,total,limit,offset}` ordered
   `created_at desc, id`.

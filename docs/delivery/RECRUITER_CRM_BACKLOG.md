@@ -402,7 +402,7 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** large · **Risk:** high
 
 ### rec-004 — Company contacts
-- **Status (2026-10-08):** built on `feature/rec-004`. Numbering: `DEC-SCOPE-125`, migration `0110_company_contacts` (after upc-004's
+- **Status (2026-10-08):** **MERGED** to `main` as PR #160 @ `721c23f7`. The next rec item takes the next migration after `0110`, `DEC-SCOPE-126`, API §12AT and RBAC §2.52, re-checked on `main` first. Numbering: `DEC-SCOPE-125`, migration `0110_company_contacts` (after upc-004's
   `0109_university_duplicates`), API §12AS, RBAC §2.51. C1–C7 in `DEC-SCOPE-125` are recommended defaults (UNVERIFIED): writes follow the company's
   `can_edit`, contacts are deactivated and never deleted, at most 50 per company, and §3 Business Details are read from the contact
   roles. "+ Add Recruiter" ships here. AC3 (Last contacted after a logged call) waits for rec-025.
@@ -438,6 +438,10 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-005 — Company B2B pipeline engine + stage history
+- **Status (2026-10-08):** **MERGED** to `main` as PR #162 @ `ada23b4d`. The next rec item takes the next migration after `0112`,
+  `DEC-SCOPE-128`, API §12AV and RBAC §2.54, re-checked on `main` first. Numbering: `DEC-SCOPE-127`, migration
+  `0112_company_pipeline` (re-chained after upc-007's `0111_university_pipeline`), API §12AU, RBAC §2.53. Q-06 answered with the recommended default (P2/P3 in `DEC-SCOPE-127`):
+  later stages are driven by events only, forward; the source has 13 stages, not 14 (P1).
 - **Business requirement:** §5 pipeline (14 stages, New Lead → Requirement Closed).
 - **Existing behavior:** none.
 - **Expected behavior:**
@@ -472,7 +476,7 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** high (the shared engine used by later items)
 
 ### rec-006 — Skills Master + categories + aliases
-- **Status (2026-10-08):** built on `feature/rec-006`.
+- **Status (2026-10-08):** **MERGED** to `main` as PR #150 @ `0ef88a98`.
   - Numbering: `DEC-SCOPE-119`, migration `0104_skills_master` (after upc-001's `0103_partnership_profiles`), API §12AM, RBAC §2.45 (upc-002 took `0101` / §12AJ; rec-002 `0102` / 117 / §12AK / §2.43; upc-001 `0103` / 118 / §12AL / §2.44).
   - Owner answers: S1 merge deferred to rec-011; S2 recruiters read-only. S3–S6 took the recommended answers.
   - QA: `docs/quality/REC-006_EXPLORATORY_QA_2026-10-08.md`.
@@ -548,8 +552,8 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Edge cases:** the deadline passes → expiring/expired (Appendix B D14); vacancies reduced below the joined count → 409.
 - **Regression risks:** EMP-002, ADM-007, ADM-008, student job lists, `bdm_metrics` placement counts (`bdm_metrics.py:50`).
 - **Complexity:** large · **Risk:** high
-- **Status (2026-10-08):** **BUILT** on `feature/rec-007`, not merged. `DEC-SCOPE-126` (J1–J7 recommended defaults, UNVERIFIED);
-  migration `0111_job_requirements`, API §12AT, RBAC §2.52. The §6 "Recruiter" contact field ships with rec-004. `bdm_metrics` was
+- **Status (2026-10-08):** **BUILT** on `feature/rec-007`, not merged. `DEC-SCOPE-128` (J1–J7 recommended defaults, UNVERIFIED);
+  migration `0113_job_requirements`, API §12AV, RBAC §2.54. The §6 "Recruiter" contact field ships with rec-004. `bdm_metrics` was
   unaffected: it counts offers, not job statuses.
 
 ### rec-008 — JD management

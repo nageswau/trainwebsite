@@ -6896,6 +6896,8 @@ class UniversityPermissions(BaseModel):
     can_assign: bool
     can_publish: bool
     can_deactivate: bool
+    can_move_stage: bool  # upc-007 PS5
+    can_reopen: bool  # upc-007 PS6
     can_edit_contacts: bool  # upc-006 CT5
 
 
@@ -6914,7 +6916,33 @@ class UniversityRow(BaseModel):
     backup_manager: BdmManagerRef | None
     catalogue_visible: bool
     active: bool
+    stage: str
+    stage_label: str
+    lost: bool
     permissions: UniversityPermissions
+
+
+class UniversityStageRef(BaseModel):
+    key: str
+    label: str
+    column: str
+
+
+class UniversityLostOut(BaseModel):
+    at: datetime
+    reason: str
+
+
+class UniversityPipelineOut(BaseModel):
+    """upc-007: the stored stage, its Kanban column, the Lost flag and the catalogue (labels come from the API, not the client)."""
+
+    stage: str
+    stage_label: str
+    column: str
+    column_label: str
+    changed_at: datetime
+    lost: UniversityLostOut | None
+    stages: list[UniversityStageRef]
 
 
 class UniversityDetail(UniversityRow):
@@ -6932,6 +6960,7 @@ class UniversityDetail(UniversityRow):
     linked_bdm_organizations: list["LinkedBdmOrganization"]  # upc-004 UD11
     created_at: datetime
     updated_at: datetime
+    pipeline: UniversityPipelineOut
 
 
 class LinkedBdmOrganization(BaseModel):
@@ -6975,6 +7004,71 @@ class UniversityEnvelope(BaseModel):
 
 class UniversityPage(BaseModel):
     items: list[UniversityRow]
+    total: int
+    limit: int
+    offset: int
+
+
+# --- upc-007 (DEC-SCOPE-126, spec §3): stage moves, Lost / Reopen, stage history and the Kanban board -------------------------------
+class UniversityStageMove(BaseModel):
+    """PS4: `from_stage` is the stage the form was showing -- a different stored stage is 409 `stage_changed`."""
+
+    model_config = ConfigDict(extra="forbid")
+    from_stage: BdmStageKey
+    to_stage: BdmStageKey
+    note: BdmPipelineNote = None
+
+
+class UniversityStageReason(BaseModel):
+    """PS7: Lost and Reopen each need a reason."""
+
+    model_config = ConfigDict(extra="forbid")
+    reason: BdmPipelineReason
+
+
+class UniversityStageEventOut(BaseModel):
+    id: UUID
+    kind: Literal["move", "lost", "reopened"]
+    from_stage: str
+    from_label: str
+    to_stage: str
+    to_label: str
+    note: str | None
+    actor: BdmPersonRef
+    created_at: datetime
+
+
+class UniversityStageEventPage(BaseModel):
+    items: list[UniversityStageEventOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class UniversityPipelineColumn(BaseModel):
+    key: str
+    label: str
+    stages: list[str]
+    count: int
+
+
+class UniversityPipelineItem(BaseModel):
+    id: UUID
+    university_code: str
+    name: str
+    city: str
+    country_name: str
+    stage: str
+    stage_label: str
+    column: str
+    lost: bool
+    primary_manager: BdmManagerRef | None
+
+
+class UniversityPipelinePage(BaseModel):
+    columns: list[UniversityPipelineColumn]
+    lost_count: int
+    items: list[UniversityPipelineItem]
     total: int
     limit: int
     offset: int
@@ -7396,6 +7490,9 @@ class RecCompanyRow(BaseModel):
     assigned_recruiter: RecPersonRef | None
     archived: bool
     permissions: RecCompanyPermissions
+    stage: str
+    stage_label: str
+    lost: bool
 
 
 class RecCompanyPage(BaseModel):
@@ -7410,6 +7507,98 @@ class RecAssignmentOut(BaseModel):
     to_user: RecPersonRef
     changed_by: RecPersonRef
     created_at: datetime
+
+
+# --- rec-005 (DEC-SCOPE-127, spec §4): the company pipeline ---------------------------------------------------------------------
+RecStageKey = Annotated[str, StringConstraints(pattern=r"^[a-z_]{1,30}$")]
+
+
+class RecPipelineStep(BaseModel):
+    key: str
+    label: str
+    kind: Literal["start", "manual", "driven"]
+    state: Literal["done", "current", "upcoming"]
+
+
+class RecLostOut(BaseModel):
+    at: datetime
+    reason: str
+
+
+class RecPipelineOut(BaseModel):
+    stage: str
+    stage_label: str
+    stage_changed_at: datetime
+    lost: RecLostOut | None
+    can_move: bool
+    can_reopen: bool
+    steps: list[RecPipelineStep]
+
+
+class RecStageMove(BaseModel):
+    """`from_stage` is the stage the form was showing -- a different stored stage is 409 `stage_changed`."""
+
+    model_config = ConfigDict(extra="forbid")
+    from_stage: RecStageKey
+    to_stage: RecStageKey
+    reason: BdmPipelineNote = None
+
+
+class RecStageReason(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: BdmPipelineReason
+
+
+class RecActorRef(BaseModel):
+    id: UUID
+    full_name: str
+
+
+class RecStageEventOut(BaseModel):
+    id: UUID
+    event: str
+    from_stage: str
+    from_label: str
+    to_stage: str
+    to_label: str
+    reason: str | None
+    actor: RecActorRef | None
+    created_at: datetime
+
+
+class RecStageEventPage(BaseModel):
+    items: list[RecStageEventOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class RecBoardStage(BaseModel):
+    key: str
+    label: str
+    kind: Literal["start", "manual", "driven"]
+    count: int
+
+
+class RecBoardItem(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    city: str | None
+    priority: str | None
+    assigned_recruiter: RecPersonRef | None
+    stage: str
+    stage_label: str
+    lost: bool
+
+
+class RecBoardOut(BaseModel):
+    stages: list[RecBoardStage]
+    lost_count: int
+    items: list[RecBoardItem]
+    total: int
+    limit: int
+    offset: int
 
 
 class RecCompanyOut(RecCompanyRow):
@@ -7427,6 +7616,7 @@ class RecCompanyOut(RecCompanyRow):
     owner_type: str
     created_by: RecPersonRef | None
     assignment_history: list[RecAssignmentOut]
+    pipeline: RecPipelineOut
     archived_at: datetime | None
     created_at: datetime
     updated_at: datetime
@@ -7663,7 +7853,7 @@ class CandidateDetail(CandidateItem):
     can_edit: bool
 
 
-# --- rec-007 (DEC-SCOPE-126): the Job Requirement ----------------------------------------------------------------------------------
+# --- rec-007 (DEC-SCOPE-128): the Job Requirement ----------------------------------------------------------------------------------
 REC_REQUIREMENT_LABELS = {
     "title": "Job title", "location": "Job location", "description": "Job description", "department": "Department",
     "qualification": "Qualification", "joining_requirement": "Joining requirement", "note": "Note",
