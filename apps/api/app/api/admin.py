@@ -751,7 +751,8 @@ async def create_university(payload: dict, user: User = Depends(ensure_admin), d
 
     if user.role not in {"super_admin", "overseas_admin"}:
         raise HTTPException(403, "Overseas administrator required")
-    country = await db.scalar(select(Country).where(Country.slug == payload["country_slug"]))
+    # upc-002: universities are all public until upc-003, so one may not sit in an internal (non-catalogue) country.
+    country = await db.scalar(select(Country).where(Country.slug == payload["country_slug"], Country.catalogue_visible.is_(True)))
     if not country:
         raise HTTPException(422, "Unknown country")
     item = University(

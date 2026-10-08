@@ -19,7 +19,7 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.identifiers import uuid_reference
 from app.core.rbac import agent_denial_reason
-from app.models import AgentStudent, AuditLog, Company, Job, JobApplication, OverseasApplication, OverseasCourse, School, SchoolStudent, University, User
+from app.models import AgentStudent, AuditLog, Company, Country, Job, JobApplication, OverseasApplication, OverseasCourse, School, SchoolStudent, University, User
 from app.services.agent_orgs import org_member_ids
 from app.services.agent_students import application_scope, visible_student_user_ids
 
@@ -227,6 +227,28 @@ async def it_job_applications(
         db, stmt, limit,
         lambda row: {"id": row[0].id, "label": row[1], "detail": _join(row[2], row[3], row[0].status)},
         "it-job-applications", user,
+    )
+
+
+@router.get("/countries")
+async def countries(
+    q: str | None = Query(None, max_length=100),
+    limit: int = Query(20, ge=1, le=50),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """upc-002: every country, catalogue and internal ISO rows alike, by name or ISO code; an exact code ranks first."""
+    _allow(user, {"overseas_admin"}, "overseas")
+    stmt = select(Country)
+    pattern = _pattern(q)
+    if pattern:
+        code = q.strip().upper()
+        stmt = stmt.where(or_(_like(Country.name, pattern), Country.iso2 == code)).order_by((Country.iso2 == code).desc().nulls_last())
+    stmt = stmt.order_by(Country.name, Country.id)
+    return await _page(
+        db, stmt, limit,
+        lambda row: {"id": row[0].id, "label": row[0].name, "detail": _join(row[0].iso2, row[0].region) or None},
+        "countries", user,
     )
 
 

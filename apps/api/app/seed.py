@@ -50,6 +50,45 @@ async def user(db, email, name, role, division):
     return x
 
 
+async def catalogue_country(db, row: list, interview_prep: dict[str, str]) -> Country:
+    """One seed/countries.json row. upc-002: on a fresh database migration 0100 has already created this country as an internal ISO row
+    under the same slug (no catalogue text, catalogue_visible=false); that placeholder becomes the catalogue row. A row that already has
+    content is never overwritten."""
+    slug, name, overview, tuition, living, iso2, region = row
+    c = await db.scalar(select(Country).where(Country.slug == slug))
+    if c is None or (not c.catalogue_visible and not c.overview):
+        if c is None:
+            c = Country(slug=slug, iso2=iso2, region=region)
+            db.add(c)
+        c.name = name
+        c.overview = overview
+        c.tuition = tuition
+        c.living_expenses = living
+        c.visa_process = [
+            "Profile and document readiness",
+            "Admission/offer",
+            "Financial documentation",
+            "Visa form and appointment",
+            "Biometrics/interview where applicable",
+            "Decision and travel preparation",
+        ]
+        c.work_opportunities = "Part-time and graduate work depend on current visa rules."
+        c.post_study_work = "Post-study permission varies by destination and qualification."
+        c.pr_opportunities = "Permanent residence pathways are country-specific."
+        c.faq = [
+            {"q": "When should I apply?", "a": "Start profile evaluation 8–12 months before the intended intake where possible."},
+            {"q": "Do I need an English test?", "a": "Requirements vary by university and course."},
+        ]
+        c.interview_prep = interview_prep.get(slug)
+        c.catalogue_visible = True
+        await db.flush()
+    elif c.interview_prep is None and slug in interview_prep:
+        # Backfill for a country row that already existed before this field was
+        # added -- never overwrites real content, only fills a genuinely empty one.
+        c.interview_prep = interview_prep[slug]
+    return c
+
+
 async def main():
     async with engine.begin() as c:
         await c.run_sync(Base.metadata.create_all)
@@ -255,39 +294,8 @@ async def main():
             "united-kingdom": "Credibility interviews (where required) focus on your genuine intention to study, your chosen course and institution, and your financial arrangements. Be ready to explain your course choice and post-study plans clearly and consistently with your visa application.",
         }
         cmap = {}
-        for slug, name, overview, tuition, living in countries:
-            c = await db.scalar(select(Country).where(Country.slug == slug))
-            if not c:
-                c = Country(
-                    slug=slug,
-                    name=name,
-                    overview=overview,
-                    tuition=tuition,
-                    living_expenses=living,
-                    visa_process=[
-                        "Profile and document readiness",
-                        "Admission/offer",
-                        "Financial documentation",
-                        "Visa form and appointment",
-                        "Biometrics/interview where applicable",
-                        "Decision and travel preparation",
-                    ],
-                    work_opportunities="Part-time and graduate work depend on current visa rules.",
-                    post_study_work="Post-study permission varies by destination and qualification.",
-                    pr_opportunities="Permanent residence pathways are country-specific.",
-                    faq=[
-                        {"q": "When should I apply?", "a": "Start profile evaluation 8–12 months before the intended intake where possible."},
-                        {"q": "Do I need an English test?", "a": "Requirements vary by university and course."},
-                    ],
-                    interview_prep=interview_prep.get(slug),
-                )
-                db.add(c)
-                await db.flush()
-            elif c.interview_prep is None and slug in interview_prep:
-                # Backfill for a country row that already existed before this field was
-                # added -- never overwrites real content, only fills a genuinely empty one.
-                c.interview_prep = interview_prep[slug]
-            cmap[slug] = c
+        for row in countries:
+            cmap[row[0]] = await catalogue_country(db, row, interview_prep)
         umap = {}
         for cslug, slug, name, city in UNIVERSITIES:
             u = await db.scalar(select(University).where(University.slug == slug))

@@ -403,11 +403,25 @@ class JobOffer(Base, TimestampMixin):
     letter_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
+# upc-002 (U12, Q-06): the nine regions, in display order. Migration 0100_country_master repeats them (test_upc_002_migration asserts it).
+COUNTRY_REGIONS = ("UK", "Europe", "North America", "Latin America & Caribbean", "Middle East", "Asia", "Oceania", "Africa", "Antarctica")
+
+
 class Country(Base, TimestampMixin):
     __tablename__ = "countries"
+    __table_args__ = (
+        UniqueConstraint("iso2", name="uq_countries_iso2"),
+        CheckConstraint("iso2 ~ '^[A-Z]{2}$'", name="ck_countries_iso2"),
+        CheckConstraint("region IN (" + ", ".join(f"'{r}'" for r in COUNTRY_REGIONS) + ")", name="ck_countries_region"),
+    )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     slug: Mapped[str] = mapped_column(String(80), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(100))
+    # upc-002: every real country carries its ISO 3166-1 alpha-2 code and region (migration 0100 fills them). Nullable only so ad-hoc
+    # test rows need no code; the ISO rows are internal (catalogue_visible=false) until a country gets catalogue content.
+    iso2: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    region: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    catalogue_visible: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
     overview: Mapped[str] = mapped_column(Text)
     tuition: Mapped[str] = mapped_column(String(160))
     living_expenses: Mapped[str] = mapped_column(String(160))

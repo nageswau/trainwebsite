@@ -1454,6 +1454,19 @@ line, no audit row). `limit` 1–100 (default 50), `offset` ≥ 0 (`422` otherwi
 | `GET /counselor/leads/{id}/timeline` | Unchanged path (tel-018). The assigned counselor only; otherwise `404`. Same body |
 | `GET /admin/leads/{id}/timeline` | New. `it_admin` / `overseas_admin` (own division) and `super_admin`; unknown `404` "Lead not found", another division `403`; other roles `403`. Same body |
 
+## 12AI. Country master (`upc-002`) — addendum, 2026-10-08
+
+U12 (`UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1, `EXPLICIT_APPROVAL`); Q-06 regions answered 2026-10-08; design spec
+`docs/superpowers/specs/2026-10-08-upc-002-country-master-design.md`. Migration `0100_country_master`. Numbered §12AI provisionally (the
+Recruiter backlog's reservation is not registered); whichever item merges first takes it.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /public/countries` | Unchanged body (`CountryOut`, no new fields). Now lists **catalogue-visible** countries only, so the ISO rows stay internal |
+| `GET /public/countries/{slug}` | An internal country is `404` "Country not found", the same as an unknown slug |
+| `POST /admin/universities` | `country_slug` must name a catalogue-visible country; an internal one is `422` "Unknown country" (universities stay public until upc-003) |
+| `GET /lookups/countries?q&limit` | New. `overseas_admin` (overseas division) and `super_admin`; signed out `401`, other roles or division `403`. `q` ≤ 100 (matches the name, or the ISO code exactly; an exact code ranks first), `limit` 1–50 (default 20). `200 {items, truncated}`, `items[]`: `{id, label: name, detail: "JP · Asia" \| null}`, catalogue and internal rows alike. One log line (counts only), no audit row |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

@@ -308,6 +308,16 @@ provider integration).
   only the fields present — never a fabricated placeholder (`OVS-001-AC02`).
 - **Feature IDs:** `OVS-001`, `OVS-006`.
 
+**Addendum, 2026-10-08 (`upc-002`, U12 — country master):** `countries` gains `iso2` (`VARCHAR(2)`, unique `uq_countries_iso2`,
+`CHECK ck_countries_iso2` `^[A-Z]{2}$`), `region` (`VARCHAR(40)`, `CHECK ck_countries_region`: one of `UK`, `Europe`, `North America`,
+`Latin America & Caribbean`, `Middle East`, `Asia`, `Oceania`, `Africa`, `Antarctica`, which is Q-06 answered 2026-10-08 and
+`models.COUNTRY_REGIONS`) and `catalogue_visible` (boolean, default `true`). Both codes are nullable only so ad-hoc test rows need none.
+**Migration `0100_country_master`** (after `0099_tel_settings`) backfills the twelve catalogue slugs (`dubai-uae` → AE, `usa` → US), then
+inserts all 249 ISO 3166-1 countries not yet present as **internal** rows (no catalogue text, `catalogue_visible=false`). It fails loudly
+when an existing row already holds an ISO row's slug, and `downgrade()` refuses while a university or scholarship uses an internal row.
+`seed.py` turns the migration's placeholder into the catalogue row on a fresh database and never overwrites a row with content. Only
+catalogue-visible countries are public (API §12AI).
+
 ### 6.2 `OverseasApplication`, `ApplicationStatusHistory`
 **Carries over**, status vocabulary **extended** — this is part of the `ADR-012` resolution (§6.3
 covers the commission-specific piece).
