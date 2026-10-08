@@ -710,13 +710,45 @@ class JobDescription(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+# rec-017 (DEC-SCOPE-136, A1): the §12 per-requirement statuses + withdrawn. Migration 0121 repeats them (test_rec_017_migration).
+APPLICATION_STATUSES = ("sourced", "screened", "shortlisted", "profile_shared", "interview", "selected", "joined", "rejected", "withdrawn")
+APPLICATION_CHECKS = {"ck_job_applications_status": "status IN (" + ", ".join(f"'{s}'" for s in APPLICATION_STATUSES) + ")"}
+
+
 class JobApplication(Base, TimestampMixin):
+    """rec-017 (R6): one candidate on one requirement. `student_id` mirrors the candidate's login (NULL for an external candidate), so the
+    legacy student/employer/HR readers that join `users` keep their shape. services/applications.py is the only status writer."""
+
     __tablename__ = "job_applications"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in APPLICATION_CHECKS.items()),
+        UniqueConstraint("candidate_id", "job_id", name="uq_job_applications_candidate_job"),
+        Index("ix_job_applications_job_status", "job_id", "status"),
+        Index("ix_job_applications_candidate", "candidate_id"),
+    )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id"), index=True)
-    student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
-    status: Mapped[str] = mapped_column(String(30), default="applied")
+    student_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True, nullable=True)
+    candidate_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id"))
+    status: Mapped[str] = mapped_column(String(30), default="sourced")
     resume_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    stage_changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    added_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class JobApplicationStatusHistory(Base):
+    """rec-017: append-only. `from_status` NULL = created; `changed_by_user_id` NULL = the system or migration 0121 (whose note keeps the
+    legacy value). No status CHECK: history must survive a future catalogue change."""
+
+    __tablename__ = "job_application_status_history"
+    __table_args__ = (Index("ix_job_application_status_history_application", "application_id", "created_at"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("job_applications.id", ondelete="RESTRICT"))
+    from_status: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    to_status: Mapped[str] = mapped_column(String(30))
+    note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    changed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class Interview(Base, TimestampMixin):

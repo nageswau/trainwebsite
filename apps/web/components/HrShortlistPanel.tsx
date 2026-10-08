@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 type JobRow = { id: string; company: string; title: string; status: string; status_label: string };
-type ShortlistRow = { id: string; student: string; email: string; status: string; resume_url: string | null };
+type ShortlistRow = { id: string; student: string; email: string; status: string; status_label: string; resume_url: string | null };
 
 // ADM-008: "HR Team manages hiring requirements and shortlists." No way to view a
 // specific requirement's shortlist existed at all -- only a flat, job-agnostic candidate
@@ -65,7 +65,7 @@ export default function HrShortlistPanel() {
                 {shortlist.map((row) => (
                   <tr key={row.id}>
                     <th scope="row">{row.student}<br /><span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>{row.email}</span></th>
-                    <td>{row.status}</td>
+                    <td>{row.status_label}</td>
                     <td>{row.resume_url ? <a href={row.resume_url} target="_blank" rel="noreferrer">View</a> : "—"}</td>
                   </tr>
                 ))}

@@ -20,6 +20,7 @@ from app.core.database import get_db
 from app.core.identifiers import uuid_reference
 from app.core.rbac import agent_denial_reason
 from app.models import AgentStudent, AuditLog, Company, Country, Job, JobApplication, OverseasApplication, OverseasCourse, School, SchoolStudent, University, User
+from app.services import applications as job_applications
 from app.services.agent_orgs import org_member_ids
 from app.services.agent_students import application_scope, visible_student_user_ids
 
@@ -236,7 +237,7 @@ async def it_job_applications(
     stmt = stmt.order_by(User.full_name, JobApplication.id)
     return await _page(
         db, stmt, limit,
-        lambda row: {"id": row[0].id, "label": row[1], "detail": _join(row[2], row[3], row[0].status)},
+        lambda row: {"id": row[0].id, "label": row[1], "detail": _join(row[2], row[3], job_applications.label(row[0].status))},
         "it-job-applications", user,
     )
 

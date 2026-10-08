@@ -1978,6 +1978,36 @@ can_complete, can_follow_up, can_close}, editable_fields, created_at, updated_at
 | `GET /recruiter/companies/{id}/contacts` (§12AS) | **Changed:** `last_contacted_at` is the later of the latest call and the latest message (failed emails excluded); **added** `whatsapp_to` |
 | `GET /recruiter/candidates/{id}` (§12AP) | **Added** `whatsapp_to` (E.164 digits or null) |
 
+## 12BD. Candidate + Requirement tracking (`rec-017`) — addendum, 2026-10-08
+
+- **Basis:** `DEC-SCOPE-136` (A1–A4). Design spec `docs/superpowers/specs/2026-10-08-rec-017-candidate-requirement-tracking-design.md` §3.
+  Migration `0121`.
+- **Common rules:**
+  - A requirement or application resolves through the requirement scope (§12AW). Outside it → `404` "Job requirement not found" /
+    "Job application not found", the same as an unknown id. Roles outside the recruiter scope → `403`.
+  - Writers are `placement_team` (in scope) and `super_admin`; the manager and the assigned BDM read (`403` on writes).
+  - Bodies refuse unknown keys (`422`); notes are trimmed, ≤ 500.
+  - Every write locks the row, appends a `job_application_status_history` row, commits once and writes an audit row
+    `recruiter_application.{add,status}` (ids and statuses only).
+- **Item:** `{id, job_id, candidate {id, code, name}, status, status_label, stage_changed_at, created_at, allowed_statuses [{key, label}]}`.
+  `allowed_statuses` is empty for a reader.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/requirements/{id}/candidates` | `status?` (a §12 key, else `422`) → `{items, statuses [{key, label, initial}], can_add}`; newest change first |
+| `POST /recruiter/requirements/{id}/candidates` | `{candidate_id, status? (sourced\|screened\|shortlisted, default sourced), note?}` → `201 {application}`. A closed or cancelled requirement → `409`; a candidate outside the pool or archived → `422`; already on the requirement → `409` "This candidate is already on this requirement" (AC2; the unique index decides a race). Fires rec-005's `candidates_sourcing` |
+| `POST /recruiter/applications/{id}/status` | `{status, note?}` → `{application}`. A move outside A2 → `409` (to Joined from anything but Selected: "Joined needs the candidate to be Selected (an offer) first"); the same status → `409`; an unknown key → `422`. Notifies the student, when there is one |
+| `GET /recruiter/applications/{id}/history` | `{items [{from_status, from_label, to_status, to_label, note, changed_by, created_at}]}` newest first; `from_status` null = added |
+| `GET /recruiter/candidates/{id}/applications` | Candidate readers (rec-009, incl. `hr_team`). `{items [{id, requirement {id, code, title, status_label}, company {id, name}, status, status_label, stage_changed_at, in_scope}]}` — every requirement the candidate is on (AC1); `in_scope` = the caller can open it |
+
+**Legacy routes (paths and payloads unchanged):**
+- `POST /workflows/it/jobs/{id}/apply` creates or links the student's candidate and creates the application at `sourced` (was `applied`).
+- `PATCH /workflows/it/job-applications/{id}` accepts the legacy words or the §12 keys (A1), validates the move (A2: e.g. `hired` without
+  an offer → `409`), keeps the same status a no-op `200`, and returns `status_label`.
+- Interviews and offers follow A2 (`interview`, `selected`, `rejected`, `joined`) without ever failing on the status.
+- `POST /employer/shortlist` creates or links the candidate (`shortlisted`); `/employer/shortlist` and `/workflows/it/jobs/{id}/shortlist`
+  rows add `status_label`. The student portal and `/lookups/it-job-applications` show the label.
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

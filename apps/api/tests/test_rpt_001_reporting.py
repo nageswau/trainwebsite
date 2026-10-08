@@ -33,14 +33,14 @@ from app.models import (
     Batch,
     Certificate,
     Company,
-    Enrollment,
     Enquiry,
+    Enrollment,
     Job,
-    JobApplication,
     JobOffer,
     Program,
     User,
 )
+from tests.rec017_helpers import student_application
 
 
 async def _create_user(db_session, *, role: str, division: str, **overrides) -> User:
@@ -146,7 +146,7 @@ async def test_placement_team_reports_renders_real_job_activity_instead_of_404in
     db_session.add(job)
     await db_session.flush()
     student = await _create_user(db_session, role="it_student", division="it")
-    application = JobApplication(job_id=job.id, student_id=student.id, status="applied")
+    application = await student_application(db_session, job.id, student, "sourced")
     db_session.add(application)
     await db_session.flush()
     db_session.add(JobOffer(application_id=application.id, status="offered"))

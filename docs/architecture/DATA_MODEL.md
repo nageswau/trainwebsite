@@ -1559,3 +1559,22 @@ history notes.
 - A message is permanent (never edited or deleted); the recipient's address is read at delivery, never stored.
 - A contact's `last_contacted_at` is derived: the later of its latest call and its latest message (failed emails excluded).
 - `downgrade()` refuses while any message exists or any template differs from its seed.
+
+## Candidate + Requirement tracking (`rec-017`, `DEC-SCOPE-136`; migration `0121_job_application_tracking`, after `0120_recruiter_messages`)
+
+**`job_applications` (extended):**
+- `candidate_id` → `candidates` (NOT NULL after the backfill); `student_id` is now nullable and mirrors the candidate's login.
+- `status` CHECK `ck_job_applications_status`: sourced, screened, shortlisted, profile_shared, interview, selected, joined, rejected,
+  withdrawn (A1). Default `sourced`.
+- `stage_changed_at` timestamptz (default now), `added_by_user_id` → `users` (NULL for a student self-apply and migrated rows).
+- Unique `uq_job_applications_candidate_job (candidate_id, job_id)`; indexes `(job_id, status)` and `(candidate_id)`.
+
+**`job_application_status_history`:** append-only. `application_id` (FK RESTRICT), `from_status` (NULL = added), `to_status`, `note` (500),
+`changed_by_user_id` (NULL = system / migration), `created_at`; index `(application_id, created_at)`. No status CHECK.
+
+**Backfill (0121):**
+- Refuses while a `(job_id, student_id)` pair is duplicated.
+- Every student with an application or a placement profile gets a candidate: an unlinked candidate with their email or mobile is linked and
+  stays in the pool (A3); otherwise a new `CAN-` candidate from the `Edusphere students` source, `opted_in` false, created by the student.
+- The A1 map rewrites the statuses; each existing row gets a history row whose note keeps the legacy value. `downgrade()` restores them and
+  refuses while tracking data exists (an external candidate's application, or a change by a user). Backfilled candidates are kept.

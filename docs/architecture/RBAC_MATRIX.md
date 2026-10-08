@@ -1175,6 +1175,21 @@ takes the pool's (§2.48, R11). Messages are never edited or deleted (MS9).
 | `hr_team` | read candidate messages; templates, sends and contact messages `403` | the pool | `rec-026` |
 | `it_admin`, `employer`, `telecaller`, every other role | `403` | — | `rec-026` |
 
+### 2.62 Candidate + Requirement tracking *(net-new, added 2026-10-08 — `DEC-SCOPE-136`, `rec-017`)*
+
+Applications take the requirement's scope (§2.55), so an application or requirement outside the caller's scope is `404`, the same as an
+unknown id. Writes follow rec-007's `can_edit` holders. A candidate must be in the pool (rec-009) to be added. The legacy student, employer
+and HR routes keep their own rules.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` (with a profile) | list, add, change status, history; the candidate's applications | requirements assigned to them or on their companies | `rec-017` |
+| `placement_manager` | read only (lists, history, applications); writes `403` | direct reports' requirements + the unassigned queue | `rec-017` |
+| `super_admin` | everything | all | `rec-017` |
+| `bdm` (assigned) | read only (R10); writes `403` | requirements of companies whose Assigned BDM is them | `rec-017` |
+| `hr_team` | the candidate's applications only (`in_scope` false); the requirement routes `403` | — | `rec-017` |
+| `it_student`, `employer`, every other role | `403` | — | `rec-017` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

@@ -108,6 +108,7 @@ from app.schemas import (
     VisaCaseCreate,
 )
 from app.services import agent_notifications as agency_notices
+from app.services import applications
 from app.services import recruiter_requirements as requirements
 from app.services.agent_applications import ARCHIVED, DEFAULT_NEXT_ACTION, OFFER_STAGES_ON, OVERSEAS_APPLICATION_STAGES, WITHDRAWN, WITHDRAWN_REFUSED, owned, with_owner
 from app.services.agent_documents import add_event, in_scope
@@ -1506,7 +1507,7 @@ async def job_shortlist(job_id: UUID, user: User = Depends(get_current_user), db
             select(JobApplication, User).join(User, User.id == JobApplication.student_id).where(JobApplication.job_id == job_id).order_by(JobApplication.created_at.desc())
         )
     ).all()
-    return [{"id": a.id, "student": s.full_name, "email": s.email, "status": a.status, "resume_url": a.resume_url} for a, s in rows]
+    return [{"id": a.id, "student": s.full_name, "email": s.email, "status": a.status, "status_label": applications.label(a.status), "resume_url": a.resume_url} for a, s in rows]
 
 
 @router.get("/it/placement/candidates")
@@ -1571,12 +1572,13 @@ async def apply_job(job_id: UUID, payload: dict, user: User = Depends(get_curren
     # Employer never explicitly closed it -- applies here too, not just to the listing.
     if not job or job.status not in JOB_OPEN_STATUSES or (job.closes_on and job.closes_on < date.today()):
         raise HTTPException(404, "Open job not found")
-    existing = await db.scalar(select(JobApplication).where(JobApplication.job_id == job_id, JobApplication.student_id == user.id))
-    if existing:
+    # rec-017 (R6, A4): the application belongs to the student's candidate (created or linked here, outside the pool until rec-010's
+    # opt-in); "applied" is now Sourced.
+    candidate = await applications.candidate_for_student(db, user)
+    if await db.scalar(select(JobApplication.id).where(JobApplication.job_id == job_id, JobApplication.candidate_id == candidate.id)):
         raise HTTPException(409, "Already applied")
-    item = JobApplication(job_id=job_id, student_id=user.id, status="applied", resume_url=payload.get("resume_url") or user.profile.get("resume_url"))
-    db.add(item)
-    await db.flush()
+    resume_url = payload.get("resume_url") or user.profile.get("resume_url")
+    item = await applications.create(db, user, job, candidate, "sourced", "Applied from the student portal", resume_url=resume_url)
     await _audit(db, user, "job.apply", "job_application", item.id, {"job_id": job_id})
     await db.commit()
     await db.refresh(item)
@@ -1613,19 +1615,19 @@ async def update_job(job_id: UUID, payload: dict, user: User = Depends(get_curre
 @router.patch("/it/job-applications/{application_id}")
 async def update_job_application(application_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require(user, {"placement_team", "hr_team", "it_admin"}, "it")
-    item = await db.get(JobApplication, application_id)
+    item = await db.scalar(select(JobApplication).where(JobApplication.id == application_id).with_for_update())
     if not item:
         raise HTTPException(404, "Job application not found")
-    status = payload.get("status")
-    if status not in {"applied", "screening", "shortlisted", "interview_scheduled", "rejected", "offer_received", "hired", "withdrawn"}:
+    # rec-017 (A1/A2): a legacy word or a §12 key; the move is validated and kept in history. The same status stays a no-op 200.
+    status = applications.from_legacy(payload.get("status") or "")
+    if status is None:
         raise HTTPException(422, "Invalid application status")
-    item.status = status
-    student = await db.get(User, item.student_id)
-    if student:
-        await _notify_user(db, student, "Job application updated", f"Your application status is now {status.replace('_', ' ')}.", "/it/student/job-applications")
+    if status != item.status:
+        await applications.change_status(db, user, item, status)
+        await applications.notify_student(db, item)
     await _audit(db, user, "job_application.update", "job_application", item.id, {"status": status})
     await db.commit()
-    return {"id": item.id, "status": item.status}
+    return {"id": item.id, "status": item.status, "status_label": applications.label(item.status)}
 
 
 @router.post("/it/interviews", status_code=201)
@@ -1635,7 +1637,7 @@ async def schedule_interview(payload: dict, user: User = Depends(get_current_use
     if not application:
         raise HTTPException(404, "Application not found")
     item = Interview(application_id=application.id, scheduled_at=datetime.fromisoformat(payload["scheduled_at"]), mode=payload.get("mode", "Online"), meeting_url=payload.get("meeting_url"))
-    application.status = "interview_scheduled"
+    applications.follow(db, user, application, "interview", "Interview scheduled")
     db.add(item)
     await db.flush()
     await _audit(db, user, "interview.schedule", "interview", item.id)
@@ -1656,8 +1658,8 @@ async def update_interview(interview_id: UUID, payload: dict, user: User = Depen
     if payload.get("scheduled_at"):
         item.scheduled_at = datetime.fromisoformat(payload["scheduled_at"])
     application = await db.get(JobApplication, item.application_id)
-    if application and item.result in {"selected", "rejected"}:
-        application.status = "shortlisted" if item.result == "selected" else "rejected"
+    if application and item.result in {"selected", "rejected"}:  # rec-017 A2: a selected result now means Selected
+        applications.follow(db, user, application, item.result, f"Interview result: {item.result}")
     await _audit(db, user, "interview.update", "interview", item.id, payload)
     await db.commit()
     return {"id": item.id, "result": item.result}
@@ -1732,7 +1734,7 @@ async def create_job_offer(payload: dict, user: User = Depends(get_current_user)
         joining_date=joining,
         letter_url=payload.get("letter_url"),
     )
-    application.status = "offer_received"
+    applications.follow(db, user, application, "selected", "Offer recorded")
     db.add(item)
     await db.flush()
     student = await db.get(User, application.student_id)
@@ -1757,7 +1759,7 @@ async def update_job_offer(offer_id: UUID, payload: dict, user: User = Depends(g
         item.joining_date = date.fromisoformat(payload["joining_date"]) if payload["joining_date"] else None
     application = await db.get(JobApplication, item.application_id)
     if application and item.status in {"accepted", "joined"}:
-        application.status = "hired"
+        applications.follow(db, user, application, "joined", f"Offer {item.status}")
     await _audit(db, user, "placement.offer_update", "job_offer", item.id, payload)
     await db.commit()
     return {"id": item.id, "status": item.status}

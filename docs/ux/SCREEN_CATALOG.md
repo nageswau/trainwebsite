@@ -3349,3 +3349,19 @@ Design spec `docs/superpowers/specs/2026-10-08-rec-026-recruiter-messages-design
   - When a template's placeholder had no value, the composer says "Check the text: {company} has no value for this recipient."
 - **Candidate detail** (`/recruiter/candidates/[id]`): the same section without the picker. Read-only for `hr_team` and while the
   candidate is archived.
+
+## rec-017 addendum (2026-10-08, `DEC-SCOPE-136`) — Candidate + Requirement tracking
+
+Design spec `docs/superpowers/specs/2026-10-08-rec-017-candidate-requirement-tracking-design.md` §5.
+
+- **Requirement detail** (`/recruiter/requirements/[id]`): a Candidates section after the requirement's status history.
+  - Each candidate is a card: name (links to the candidate), status badge, code, "since" time, Change status (only the statuses the API
+    allows) and History (every change, with notes).
+  - Writers get Add candidate: a searchable pool picker, the starting status (Sourced / Screened / Shortlisted) and a note. A duplicate or
+    a refused move shows the API's message on the form.
+  - Loading, empty ("No candidates on this requirement yet."), error and retry states; notices in a live region. Readers see no write
+    controls.
+- **Candidate detail** (`/recruiter/candidates/[id]`): an Applications section after the resumes — one card per requirement with the
+  company, status badge, requirement (linked only when the viewer can open it), its code and status, and since when (AC1).
+- **Legacy panels:** the HR shortlist, the employer shortlist, the student's Job Applications and the application picker show the status
+  label.

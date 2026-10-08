@@ -27,6 +27,7 @@ from pydantic import (
 from pydantic_core import PydanticCustomError
 
 from app.models import (
+    APPLICATION_STATUSES,
     APPOINTMENT_MODES,
     BDM_ACTIVITY_DIRECTIONAL,
     BDM_APPOINTMENT_ALL_OUTCOMES,
@@ -8371,3 +8372,16 @@ class RecEmailCreate(RecMessageParty):
 
 
 RecMessageCreate = Annotated[RecWhatsAppCreate | RecEmailCreate, Field(discriminator="channel")]
+
+# --- rec-017 (DEC-SCOPE-136): a candidate on a requirement and its status (services/applications) -----------------------------------
+class RecApplicationCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    candidate_id: UUID
+    status: Literal["sourced", "screened", "shortlisted"] = "sourced"  # applications.INITIAL
+    note: _rec_requirement_text_type(500, multiline=True) = None
+
+
+class RecApplicationStatusChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: Literal[APPLICATION_STATUSES]
+    note: _rec_requirement_text_type(500, multiline=True) = None

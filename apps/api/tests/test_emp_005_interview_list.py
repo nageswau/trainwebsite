@@ -21,7 +21,8 @@ import pytest
 from sqlalchemy import select
 
 from app.core.security import hash_password
-from app.models import Company, EmployerProfile, Interview, Job, JobApplication, User
+from app.models import Company, EmployerProfile, Interview, Job, User
+from tests.rec017_helpers import student_application
 
 
 async def _create_user(db_session, *, role: str, division: str = "it", **overrides) -> User:
@@ -62,7 +63,7 @@ async def test_a_cancelled_interview_remains_visible_in_the_employers_list(db_se
     db_session.add(job)
     await db_session.flush()
     student = await _create_user(db_session, role="it_student")
-    application = JobApplication(job_id=job.id, student_id=student.id, status="shortlisted")
+    application = await student_application(db_session, job.id, student, "shortlisted")
     db_session.add(application)
     await db_session.flush()
     interview = Interview(application_id=application.id, scheduled_at=datetime.fromisoformat("2027-02-01T10:00:00+00:00"), mode="Online", result="cancelled")
@@ -84,7 +85,7 @@ async def test_interviews_with_no_result_yet_are_also_returned(db_session, clien
     db_session.add(job)
     await db_session.flush()
     student = await _create_user(db_session, role="it_student")
-    application = JobApplication(job_id=job.id, student_id=student.id, status="shortlisted")
+    application = await student_application(db_session, job.id, student, "shortlisted")
     db_session.add(application)
     await db_session.flush()
     interview = Interview(application_id=application.id, scheduled_at=datetime.fromisoformat("2027-03-01T10:00:00+00:00"), mode="Online")
