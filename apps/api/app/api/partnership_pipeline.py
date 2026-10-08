@@ -1,4 +1,4 @@
-"""upc-007 (DEC-SCOPE-125, spec §3): stage moves, Lost / Reopen, stage history and the Kanban board.
+"""upc-007 (DEC-SCOPE-126, spec §3): stage moves, Lost / Reopen, stage history and the Kanban board.
 
 Every write is one transaction, as upc-003's: the university row lock (FOR UPDATE), the scope check (`can_move_stage` / `can_reopen`: 403
 logged; inactive 409), the pipeline rules (services.partnership_pipeline, the single writer), change + history row + audit row, one commit

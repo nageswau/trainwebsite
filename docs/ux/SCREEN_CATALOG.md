@@ -3197,7 +3197,7 @@ not inspected. Do not claim parity.
   Relationship strength row. **Responsive:** blocks wrap, no side-scroll at 390 px.
 - **Route:** `/partnership/universities` gains a Relationship column and filter; the master form gains a Relationship strength select.
 
-## upc-007 addendum (2026-10-08, `DEC-SCOPE-125`) — Partnership stage + Kanban
+## upc-007 addendum (2026-10-08, `DEC-SCOPE-126`) — Partnership stage + Kanban
 
 One route added and two screens extended by `upc-007` (design spec `docs/superpowers/specs/2026-10-08-upc-007-partnership-pipeline-design.md` §4). No catalogue ID is invented. Visual-reference mapping:
 None — not inspected. Do not claim parity. Roles: `partnership_manager`, `partnership_head`, `overseas_admin`, `super_admin` (each in its

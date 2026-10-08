@@ -1,4 +1,4 @@
-"""upc-007 (DEC-SCOPE-125, spec PS1/PS3): the partnership stages, in source order and wording (EVID-020 §3, L98-L154), and their fixed
+"""upc-007 (DEC-SCOPE-126, spec PS1/PS3): the partnership stages, in source order and wording (EVID-020 §3, L98-L154), and their fixed
 groupings (backlog Appendix B, U7): the §4 Kanban column (K), the map / overview group (G) and the §24 probability (P).
 
 Constants only, with no app imports, so the model CHECK, the migration's parity test, the service and the schemas share one list.

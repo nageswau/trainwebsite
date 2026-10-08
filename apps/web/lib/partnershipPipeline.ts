@@ -1,4 +1,4 @@
-// upc-007 (DEC-SCOPE-125): the partnership stage engine and Kanban board. The API owns the catalogue (labels and columns come with every
+// upc-007 (DEC-SCOPE-126): the partnership stage engine and Kanban board. The API owns the catalogue (labels and columns come with every
 // university) and every rule; these helpers only shape requests and read responses.
 import type { ManagerRef } from "@/lib/telecaller";
 import { UNIVERSITIES_URL } from "@/lib/universities";

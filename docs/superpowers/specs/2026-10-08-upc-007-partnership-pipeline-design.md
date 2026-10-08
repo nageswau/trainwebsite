@@ -9,10 +9,11 @@ ask only if genuinely blocking". So the item answers PS1–PS12 (§1) are **reco
 (`0105_university_master`, `DEC-SCOPE-120`) is merged on main — verified in code.
 **Source:** `EVID-020` §3 (L92–L154, 15 statuses; the backlog's "14" miscounts the source, which Appendix A (L98–L154) and Appendix B both list as 15), §4 (L156–L174, Kanban with 9 columns), §32 menu entry "Partnership Pipeline" (L1072),
 §33 record tab "Partnership status" (L1110).
-**Numbering:** migration `0110_university_pipeline`, `DEC-SCOPE-125`, API §12AS, RBAC §2.51 (renumbered at merge if another item lands
+**Numbering:** migration `0111_university_pipeline`, `DEC-SCOPE-126`, API §12AT, RBAC §2.52 (renumbered at merge if another item lands
 first). Drafted as `0106` / `DEC-SCOPE-121` / §12AO / §2.47; renumbered on merging `main` @ `a62ad9d7` (rec-003 and rec-009 took
 `0106`–`0107`, `DEC-SCOPE-121`–`122`, §12AO–§12AP, §2.47–§2.48 first). Renumbered again from `0108` / `DEC-SCOPE-123` / §12AQ / §2.49 on merging `main` @ `5b7c1fd5`
-(upc-006 and upc-004 took `0108`–`0109`, `DEC-SCOPE-123`–`124`, §12AQ–§12AR, §2.49–§2.50 first).
+(upc-006 and upc-004 took `0108`–`0109`, `DEC-SCOPE-123`–`124`, §12AQ–§12AR, §2.49–§2.50 first). Renumbered a third time from `0110` / `DEC-SCOPE-125` / §12AS / §2.51 on merging `main` @
+`721c23f7` (rec-004 took them first).
 **Gate:** `APPROVAL_GATES.md` GATE-09.
 **Template:** bdm-004 (`bdm_stages.py`, `services/bdm_pipeline.py`, `api/bdm_pipeline.py`, `BdmPipelineBoard.tsx`,
 `BdmOrganizationPipeline.tsx`, `BdmStageHistory.tsx`) — same rules (stale `from_stage` → 409, backward needs a note, Lost is a flag on
