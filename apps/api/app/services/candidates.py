@@ -166,17 +166,22 @@ def _is_docx(data: bytes) -> bool:
         return False
 
 
-async def read_resume(file: UploadFile) -> tuple[bytes, str, str | None]:
-    """The type is decided by the bytes, never by the name or the client's Content-Type. Returns (bytes, content type, display name)."""
-    data = await file.read(MAX_RESUME_BYTES + 1)
+async def read_pdf_or_docx(file: UploadFile, max_bytes: int, too_big: str) -> tuple[bytes, str, str | None]:
+    """The type is decided by the bytes, never by the name or the client's Content-Type. Returns (bytes, content type, display name).
+    Shared with rec-008's JD upload."""
+    data = await file.read(max_bytes + 1)
     if not data:
         raise HTTPException(422, "The file is empty")
-    if len(data) > MAX_RESUME_BYTES:
-        raise HTTPException(413, "The resume must be at most 5 MB")
+    if len(data) > max_bytes:
+        raise HTTPException(413, too_big)
     content_type = PDF if data.startswith(b"%PDF-") else DOCX if _is_docx(data) else None
     if content_type is None:
         raise HTTPException(415, "Upload a PDF or DOCX file")
     return data, content_type, Path(file.filename or "").name[:255] or None
+
+
+async def read_resume(file: UploadFile) -> tuple[bytes, str, str | None]:
+    return await read_pdf_or_docx(file, MAX_RESUME_BYTES, "The resume must be at most 5 MB")
 
 
 def _digest(key: str) -> str:
