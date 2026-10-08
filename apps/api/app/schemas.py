@@ -6528,3 +6528,77 @@ class PlacementManagerPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# --- rec-002 (DEC-SCOPE-117): recruiter managed lists and campaigns -----------------------------------------------------------------
+REC_CATALOGUE_FIELD_LABELS = {
+    "name": "Name", "active": "Active", "lead_source_id": "Lead source", "start_date": "Start date", "end_date": "End date",
+}
+
+
+class RecValueCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: TelProductName
+
+
+class RecValueUpdate(BaseModel):
+    """Omitted = unchanged; null is a 422 on either key."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: TelProductName = None
+    active: StrictBool = None
+
+
+class RecValueOut(BaseModel):
+    id: UUID
+    name: str
+    active: bool
+    sort_order: int
+
+
+class RecValuePage(BaseModel):
+    items: list[RecValueOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class RecCampaignCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: TelCampaignName
+    lead_source_id: UUID
+    start_date: date
+    end_date: date | None = None
+
+
+class RecCampaignUpdate(BaseModel):
+    """Omitted = unchanged; null clears only `end_date`. The date order is checked on the merged row."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: TelCampaignName = None
+    lead_source_id: UUID = None
+    start_date: date = None
+    end_date: date | None = None
+    active: StrictBool = None
+
+
+class RecLeadSourceRef(BaseModel):
+    id: UUID
+    name: str
+    active: bool
+
+
+class RecCampaignOut(BaseModel):
+    id: UUID
+    name: str
+    lead_source: RecLeadSourceRef
+    start_date: date
+    end_date: date | None
+    active: bool
+
+
+class RecCampaignPage(BaseModel):
+    items: list[RecCampaignOut]
+    total: int
+    limit: int
+    offset: int

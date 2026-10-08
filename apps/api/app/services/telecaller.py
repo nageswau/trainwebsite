@@ -52,7 +52,7 @@ def _readable(error: dict, labels: dict[str, str]) -> str:
     if error["type"] == "value_error":
         return error["msg"].removeprefix("Value error, ")
     if error["type"] == "uuid_parsing":
-        return f"{label}: choose a manager from the list"
+        return f"{label}: choose {'a manager' if field.endswith('manager_user_id') else 'one'} from the list"
     return f"{label}: {error['msg']}"
 
 
