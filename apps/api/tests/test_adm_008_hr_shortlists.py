@@ -38,7 +38,7 @@ async def _create_job(db_session) -> Job:
     company = Company(name=f"Company {uuid.uuid4().hex[:6]}", partner_type="recruiter")
     db_session.add(company)
     await db_session.flush()
-    job = Job(company_id=company.id, title="Backend Developer", location="Remote", description="Test", status="open")
+    job = Job(company_id=company.id, title="Backend Developer", location="Remote", description="Test", status="requirement_received")
     db_session.add(job)
     await db_session.commit()
     await db_session.refresh(job)

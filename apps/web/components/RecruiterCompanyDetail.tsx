@@ -9,6 +9,7 @@ import RecruiterCompanyContacts from "@/components/RecruiterCompanyContacts";
 import RecruiterCompanyForm from "@/components/RecruiterCompanyForm";
 import RecruiterCompanyPipeline from "@/components/RecruiterCompanyPipeline";
 import RecruiterStageHistory from "@/components/RecruiterStageHistory";
+import RecruiterCompanyRequirements from "@/components/RecruiterCompanyRequirements";
 import SearchableSelect from "@/components/SearchableSelect";
 import { type Page, sendJson, sendRequest } from "@/lib/apiErrors";
 import { display, LINK_STYLE } from "@/lib/bdmOrganizations";
@@ -229,6 +230,8 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
         onRefreshed={stageChanged}
       />
       <RecruiterStageHistory companyId={company.id} initial={history} version={version} />
+      {/* rec-007: the recruiter who owns the company, a manager or super admin may add a requirement while it is active. */}
+      <RecruiterCompanyRequirements companyId={company.id} canAdd={!company.archived && (p.can_edit || p.can_reassign)} />
       {p.can_reassign && (
         <Reassign
           company={company}

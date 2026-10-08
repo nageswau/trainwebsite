@@ -12,10 +12,10 @@ describe("rec-001 navigation", () => {
 
   it("gives the recruiter their workspace plus the legacy placement screens (Q-29), and the manager only manager pages", () => {
     const hrefs = RECRUITER_NAV.map((x) => x.href);
-    expect(hrefs.slice(0, 5)).toEqual(["/recruiter/dashboard", "/recruiter/companies", "/recruiter/profile", "/recruiter/skills", "/recruiter/candidates"]); // rec-003, rec-006, rec-009
+    expect(hrefs.slice(0, 7)).toEqual(["/recruiter/dashboard", "/recruiter/companies", "/recruiter/profile", "/recruiter/skills", "/recruiter/candidates", "/recruiter/pipeline", "/recruiter/requirements"]); // rec-003, rec-006, rec-009, rec-005, rec-007
     expect(hrefs).toEqual(expect.arrayContaining(["/it/placement/candidates", "/it/placement/company-requirements", "/it/placement/reports"]));
     expect(hrefs.filter((h) => h.startsWith("/recruiter/manager"))).toEqual([]);
-    expect(RECRUITER_MANAGER_NAV.map((x) => x.href)).toEqual(["/recruiter/manager/team", "/recruiter/companies", "/recruiter/manager/catalogue", "/recruiter/manager/skills", "/recruiter/candidates", "/recruiter/pipeline"]); // rec-002, rec-003, rec-006, rec-009, rec-005
+    expect(RECRUITER_MANAGER_NAV.map((x) => x.href)).toEqual(["/recruiter/manager/team", "/recruiter/companies", "/recruiter/manager/catalogue", "/recruiter/manager/skills", "/recruiter/candidates", "/recruiter/pipeline", "/recruiter/requirements"]); // rec-002, rec-003, rec-006, rec-009, rec-005 + rec-007
     expect(PORTAL_NAV["it/placement"]).toContainEqual({ label: "Recruiter Workspace", href: "/recruiter/dashboard" });
     expect(PORTAL_NAV["it/hr"].map((x) => x.href).filter((h) => h.startsWith("/recruiter"))).toEqual(["/recruiter/candidates"]); // rec-009: read only
   });
@@ -24,6 +24,7 @@ describe("rec-001 navigation", () => {
     expect(SUPER_ADMIN_NAV).toContainEqual({ label: "Recruiter Staff", href: "/admin/recruiter-staff" });
     expect(SUPER_ADMIN_NAV).toContainEqual({ label: "Recruiters", href: "/admin/recruiters" });
     expect(SUPER_ADMIN_NAV).toContainEqual({ label: "Recruiter Companies", href: "/recruiter/companies" }); // rec-003
+    expect(SUPER_ADMIN_NAV).toContainEqual({ label: "Recruiter Requirements", href: "/recruiter/requirements" }); // rec-007
     expect(PORTAL_NAV["it/admin"]).toContainEqual({ label: "Recruiter Staff", href: "/it/admin/recruiter-staff" });
     expect(PORTAL_NAV["overseas/admin"].map((x) => x.href)).not.toContain("/overseas/admin/recruiter-staff");
   });

@@ -1764,6 +1764,52 @@ reason text — one commit). **Changed (additive):** every university row gains 
 | `GET /partnership/universities/imports/{id}` | **New.** The report; another person's batch `404` |
 | `GET /partnership/universities/imports/{id}/report.csv` | **New.** `row_number, status, name, country, university_code, reason`; formula cells escaped (`'=`); `404` as above |
 
+## 12AW. Job Requirement (`rec-007`) — addendum, 2026-10-08
+
+- **Basis:** `DEC-SCOPE-129`. Design spec `docs/superpowers/specs/2026-10-08-rec-007-job-requirement-design.md` §5. Migration `0114`.
+  Drafted as §12AQ; upc-006 merged first and took it, and rec-004 claims §12AR.
+- **Common rules:**
+  - Readers:
+    - `placement_team` with a profile: requirements assigned to me, or of a company assigned to me.
+    - `placement_manager`: direct reports' requirements and companies, plus unassigned requirements of unassigned companies.
+    - `super_admin`: all.
+    - `bdm`: requirements of companies where they are the Assigned BDM.
+  - Any other role is `403`. An id outside the scope is `404` "Job requirement not found", like an unknown id.
+  - Writers:
+    - Edit and status: `placement_team` (in scope) and `super_admin`.
+    - Create: those two plus `placement_manager`.
+    - Assign: `placement_manager` and `super_admin`.
+  - Role refusals are `403`. A cancelled requirement is `409`.
+  - Bodies refuse unknown keys (`422`). Lists use the §12AI paging rules.
+  - Audit rows `recruiter_requirement.create` / `update` / `status` / `assign` carry ids, field names and statuses only.
+- **Statuses** (§6): `new`, `requirement_received`, `sourcing`, `shortlisting`, `profiles_shared`, `interviewing`, `selected`, `joined`,
+  `on_hold`, `closed`, `cancelled`.
+  - The **open set** (students list and apply) is `requirement_received` … `interviewing`, while `closes_on` has not passed.
+  - The moves are the spec §2 table, served by `GET …/statuses`. A move outside it, or to the current status, is `409`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/requirements/statuses` | `{statuses[{key,label,open,next[]}], vocabularies{work_mode,shift,employment_type,priority}, expiring_days: 7}` |
+| `GET /recruiter/requirements` | Filters `q` (title, code or company name), `status`, `company_id`, `assigned` (`me` / `unassigned` / uuid), `priority`, `job_category_id`, `deadline` (`expiring` = open and due within 7 IST days; `expired` = open and past due). Newest first. `items[]`: `{id, code, title, company{id,code,name}, location, status, status_label, priority, vacancies, closes_on, requirement_date, deadline_state, assigned_recruiter, permissions}` |
+| `POST /recruiter/requirements` | `{company_id, title, location, description?, department?, job_category_id? (active), vacancies? (1–10000), qualification?, experience_min_months?/experience_max_months? (0–600, min ≤ max), salary_min?/salary_max? (≥ 0, min ≤ max), work_mode?, shift?, employment_type?, joining_requirement?, closes_on?, requirement_date? (default today IST), priority?, required_skills?[], preferred_skills?[] (≤ 30 each), assigned_recruiter_user_id? (managers)}` → `201 {requirement}`, status `new`. The company must be in the caller's company scope (`404`) and not archived (`409`). A recruiter naming another recruiter is `403` |
+| `GET /recruiter/requirements/{id}` | `{requirement}`: every field, plus `skills[{name, kind, weight, skill_id, matched}]` (`matched` false = free text, not in the Skills Master), `joined_count`, `allowed_statuses[]`, `status_history[]` (newest first; `changed_by` null = migration), `created_by` |
+| `PATCH /recruiter/requirements/{id}` | Only the fields sent. A min/max pair is checked against the stored value (`422`). Vacancies below the hired/joined applications → `409`. Sending a skills list replaces that kind |
+| `POST /recruiter/requirements/{id}/status` | `{status, note? (≤ 500)}` → `{requirement}`. A history row is written in the same transaction. Reaching `requirement_received` fires rec-005's `requirement_received` company event; closing or cancelling the company's last live requirement fires `requirement_closed` (§12AU). The employer and `/workflows/it/jobs` writes do the same |
+| `POST /recruiter/requirements/{id}/assign` | `{recruiter_user_id}`: an active recruiter on the caller's team (super_admin: any). The same recruiter → `409` |
+
+**Legacy shim (J3):** the existing contracts keep their words, and the Employer contract (`/employer/jobs`) keeps its shape.
+- **Employer `status`:** stays `draft` / `open` / `closed`. Each response also gains `requirement_status`, `status_label` and
+  `requirement_code`.
+- **Employer writes:**
+  - `draft` → `new`, or `on_hold` once the job has left `new`.
+  - `open` → `requirement_received`, or a no-op when it is already open.
+  - `closed` → `closed`, or a no-op when it is closed, cancelled or joined.
+- **`/workflows/it/jobs`:**
+  - `POST` creates at `requirement_received`.
+  - `PATCH` takes a §6 key or a legacy word: an unknown value is `422`, a disallowed move is `409`.
+  - `GET` rows gain `status_label`.
+- **Skills mirror:** every writer keeps `jobs.skills` as the mirror of `job_skills`.
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

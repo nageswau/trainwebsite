@@ -9,6 +9,7 @@ from app.core.identifiers import uuid_reference
 from app.core.rbac import PERMISSIONS, is_agent_staff
 from app.lead_stages import label as lead_stage_label
 from app.models import (
+    JOB_OPEN_STATUSES,
     AgentCommission,
     AgentOrg,
     AgentOrgMember,
@@ -372,7 +373,7 @@ async def _it_student(db: AsyncSession, user: User, section: str):
                 .order_by(JobApplication.created_at.desc())
             )
         ).all()
-        open_jobs = (await db.execute(select(Job, Company).join(Company, Company.id == Job.company_id).where(Job.status == "open").order_by(Job.created_at.desc()).limit(100))).all()
+        open_jobs = (await db.execute(select(Job, Company).join(Company, Company.id == Job.company_id).where(Job.status.in_(JOB_OPEN_STATUSES)).order_by(Job.created_at.desc()).limit(100))).all()
         return _payload(
             "Job Applications",
             "Applications, interviews, offers, and joining status.",
@@ -849,7 +850,7 @@ async def _agent(db: AsyncSession, user: User, section: str):
 async def _operations(db: AsyncSession, user: User, section: str, *, filters: ApplicationFilters | None = None):
     if user.role in {"placement_team", "hr_team"}:
         if section == "dashboard":
-            jobs = (await db.execute(select(Job, Company).join(Company, Company.id == Job.company_id).where(Job.status == "open"))).all()
+            jobs = (await db.execute(select(Job, Company).join(Company, Company.id == Job.company_id).where(Job.status.in_(JOB_OPEN_STATUSES)))).all()
             interviews = await db.scalar(select(func.count()).select_from(Interview)) or 0
             offers = await db.scalar(select(func.count()).select_from(JobOffer)) or 0
             return _payload(
@@ -981,7 +982,7 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
             company_rows = [
                 {
                     "company": name,
-                    "open_requirements": sum(1 for j, c in job_rows if c.name == name and j.status == "open"),
+                    "open_requirements": sum(1 for j, c in job_rows if c.name == name and j.status in JOB_OPEN_STATUSES),
                     "total_requirements": sum(1 for j, c in job_rows if c.name == name),
                 }
                 for name in company_names

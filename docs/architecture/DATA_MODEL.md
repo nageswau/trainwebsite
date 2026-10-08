@@ -1411,3 +1411,38 @@ assigned_recruiter_user_id)`. Every insert path keeps working through the defaul
 event), `actor_user_id` (NULL = system), `reason` varchar(500), `position` identity, `created_at`; `ix_company_stage_history_company
 (company_id, position)`. Append-only, no stage CHECK. `services/company_pipeline.py` is the only writer of `stage`. `downgrade()` refuses
 while any history row exists or any company is past New Lead or Lost.
+
+## Job Requirement (`rec-007`, `DEC-SCOPE-129`; migration `0114_job_requirements`, after `0113_university_imports`)
+
+Extends §5.1 `Job` (R5: the job is the Job Requirement). Every new column is nullable except the code, so the employer and
+`/workflows/it/jobs` insert paths are unchanged.
+
+| Column | Type / rule |
+|---|---|
+| `requirement_code` | varchar(20) NOT NULL, `uq_jobs_requirement_code`; default `'REQ-' \|\| lpad(nextval('requirement_code_seq')::text, 6, '0')` (`MAXVALUE 999999`); existing rows backfilled in `created_at`, `id` order |
+| `status` | varchar(30), `ck_jobs_status`: the 11 §6 statuses (J1); `ix_jobs_status`. Legacy `draft`/`open`/`closed`/other were mapped to `new`/`requirement_received`/`closed`/`on_hold` |
+| `department` | varchar(120) |
+| `job_category_id` | FK → `rec_job_categories` |
+| `vacancies` | int, `ck_jobs_vacancies` 1–10,000 |
+| `qualification`, `joining_requirement` | varchar(300) |
+| `experience_min_months`, `experience_max_months` | int 0–600, min ≤ max (`ck_jobs_experience`) |
+| `salary_min`, `salary_max` | numeric(12,2) ≥ 0, min ≤ max (`ck_jobs_salary`); annual INR |
+| `work_mode`, `shift`, `employment_type` | varchar(20), CHECKs (J6) |
+| `requirement_date` | date; the received date (Q-05) |
+| `priority` | varchar(10), `high`/`medium`/`low` |
+| `assigned_recruiter_user_id` | FK users; `ix_jobs_assigned_recruiter` |
+| `created_by_user_id` | FK users; NULL for rows that predate rec-007 and for employer postings |
+
+`ix_jobs_closes_on` supports the deadline filters. `jobs.skills` (JSON) stays as the mirror of `job_skills`; required names come first.
+
+- **`job_skills`:** `id`, `job_id` FK, `skill_id` FK `skills` (NULL = free text, flagged), `name` varchar(120), `kind`
+  (`required|preferred`), `weight` smallint 1–10, `position`.
+  - It is unique on `(job_id, lower(name))`.
+  - The migration moved each JSON value in, resolved by name, then alias.
+- **`job_status_history`:** `id`, `job_id` FK, `from_status` (NULL = created), `to_status`, `note` varchar(500), `changed_by_user_id`
+  (NULL = the migration's legacy mapping), `created_at`. Append-only. The same status writer fires rec-005's `requirement_received` /
+  `requirement_closed` events onto `companies.stage` (`company_stage_history`).
+
+`downgrade()` refuses while any §6 value or any user-made status change exists. Otherwise it restores the legacy statuses, using the
+history notes.
+
