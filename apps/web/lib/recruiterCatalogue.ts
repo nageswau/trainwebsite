@@ -11,18 +11,21 @@ export const CAMPAIGNS_URL = `${CATALOGUE_URL}/campaigns`;
 export const CATALOGUE_PATH = "/recruiter/manager/catalogue";
 
 type Tab = { label: string; noun: string; intro: string };
-// The six simple lists, in the order the EVID-018 sections introduce them; campaigns last (they hang off a lead source).
+// The six simple lists, in the order EVID-018 introduces them (§2, §9, §3, §3, §4, §6/§26); campaigns last (they hang off a lead
+// source). The intros speak to the manager, so they carry no section references (QA-01).
 export const VALUE_TABS = {
-  "lead-sources": { label: "Lead sources", noun: "lead source", intro: "Where a company lead came from (EVID-018 §2)." },
-  "candidate-sources": { label: "Candidate sources", noun: "candidate source", intro: "Where a candidate came from (§9)." },
-  industries: { label: "Industries", noun: "industry", intro: "A company's industry (§3). The list starts empty — add the industries you work with." },
-  "company-sizes": { label: "Company sizes", noun: "company size", intro: "A company's size band (§3)." },
-  "contact-roles": { label: "Contact roles", noun: "contact role", intro: "The role of a contact at a company (§4)." },
-  "job-categories": { label: "Job categories", noun: "job category", intro: "A requirement's job category (§6), also used in reports (§26)." },
+  "lead-sources": { label: "Lead sources", noun: "lead source", intro: "Where a company lead came from." },
+  "candidate-sources": { label: "Candidate sources", noun: "candidate source", intro: "Where a candidate came from." },
+  industries: { label: "Industries", noun: "industry", intro: "A company's industry. Add the industries you work with." },
+  "company-sizes": { label: "Company sizes", noun: "company size", intro: "A company's size band, by number of employees." },
+  "contact-roles": { label: "Contact roles", noun: "contact role", intro: "The role of a contact at a company." },
+  "job-categories": { label: "Job categories", noun: "job category", intro: "A requirement's job category, also used in reports." },
 } satisfies Record<string, Tab>;
 export type ValueKind = keyof typeof VALUE_TABS;
-export const CAMPAIGN_TAB: Tab = { label: "Campaigns", noun: "campaign", intro: "Each campaign names its lead source, for example LinkedIn → Q4 IT hiring push." };
-export const TABS: Record<ValueKind | "campaigns", Tab> = { ...VALUE_TABS, campaigns: CAMPAIGN_TAB };
+export const TABS: Record<ValueKind | "campaigns", Tab> = {
+  ...VALUE_TABS,
+  campaigns: { label: "Campaigns", noun: "campaign", intro: "Each campaign names its lead source, for example LinkedIn → Q4 IT hiring push." },
+};
 export const isTab = (kind: string): kind is ValueKind | "campaigns" => Object.hasOwn(TABS, kind);
 
 /** A picker's source: every active value of one list, page after page, in list order (the API orders them). */

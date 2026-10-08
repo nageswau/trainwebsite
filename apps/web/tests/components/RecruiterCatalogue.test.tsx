@@ -39,6 +39,10 @@ describe("tabs", () => {
     expect(isTab("campaigns") && isTab("industries")).toBe(true);
     expect(isTab("colours") || isTab("toString")).toBe(false);
   });
+
+  it("speaks to the manager, not in evidence references (QA-01)", () => {
+    for (const tab of Object.values(TABS)) expect(tab.intro).not.toMatch(/EVID|§|starts empty/);
+  });
 });
 
 describe("RecruiterCatalogueValuesPanel", () => {

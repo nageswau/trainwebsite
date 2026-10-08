@@ -1472,6 +1472,32 @@ line, no audit row). `limit` 1–100 (default 50), `offset` ≥ 0 (`422` otherwi
 | `GET /admin/recruiters` | `super_admin`, `it_admin`; any other role (including `overseas_admin`) is `403`. Filters `active` and `q`. `items[]`: the team row plus `reporting_manager \| null` |
 | `GET /admin/placement-managers` | Same roles. Active placement managers only, filtered by `q` on name or email. `items[]`: `{id, full_name, email, recruiter_count}` |
 
+## 12AJ. Recruiter catalogues (`rec-002`) — addendum, 2026-10-08
+
+- **Basis:** `DEC-SCOPE-117`. Design spec `docs/superpowers/specs/2026-10-08-rec-002-recruiter-catalogues-design.md` §4. Migration `0101`.
+- **Common rules:**
+  - Lists use the §12AI paging rules (`limit` 1–100, `offset`, `q` ≤ 200 matching the name).
+  - Readers are `placement_team`, `placement_manager` and `super_admin`; any other role is `403` "Your role cannot view the recruiter
+    catalogues".
+  - Writers are `placement_manager` and `super_admin`; any other role is `403` "Placement manager role required".
+  - A `placement_team` reader always gets active rows only, whatever `active` asks for.
+  - Bodies refuse unknown keys (`422` "Unknown field: …").
+  - Names are trimmed, required and capped, with no control characters: 120 characters for list values, 160 for campaigns.
+  - There is no DELETE (`405`).
+  - Every write is audited (`recruiter.catalogue_create`/`_update`, `entity_type` = table, field names only). A PATCH that changes
+    nothing writes no audit row.
+- `{kind}` ∈ `lead-sources`, `candidate-sources`, `industries`, `company-sizes`, `contact-roles`, `job-categories`. Any other kind
+  is `404` "Catalogue not found".
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/catalogue/{kind}` | Filters `active`, `q`. Ordered by list order (`sort_order`), then name. `items[]`: `{id, name, active, sort_order}` |
+| `POST /recruiter/catalogue/{kind}` | `{name}` → `201`; the value goes to the end of the list. A duplicate (case-insensitive, per list) is `409` "A value named “…” already exists in this list" |
+| `PATCH /recruiter/catalogue/{kind}/{id}` | `{name?, active?}` (null is `422`) → `200`. The id keeps its row on a rename. An unknown id, or an id from another list, is `404` "Value not found". A duplicate is `409` |
+| `GET /recruiter/catalogue/campaigns` | Filters `lead_source_id`, `active`, `q`. Ordered active first, then the newest start, then name. `items[]`: `{id, name, lead_source {id, name, active}, start_date, end_date, active}` |
+| `POST /recruiter/catalogue/campaigns` | `{name, lead_source_id, start_date, end_date?}` → `201`. A missing or inactive lead source is `422` "Choose an active lead source". An end date before the start is `422` "End date cannot be before the start date". A duplicate name is `409` "A campaign named “…” already exists" |
+| `PATCH /recruiter/catalogue/campaigns/{id}` | Any create field, plus `active`; `end_date: null` clears it. The dates are checked on the merged row. Moving to another lead source needs an active one; keeping a since-deactivated one is allowed. An unknown id is `404` |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
