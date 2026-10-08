@@ -1,13 +1,14 @@
 # rec-003 — Company master + recruiter lead record (design)
 
 Backlog: `docs/delivery/RECRUITER_CRM_BACKLOG.md` rec-003. Source: EVID-018 §1 quick actions (lines 40–42), §2 (50–118), §3 (120–174).
-Depends on rec-001 (merged PR #143) and rec-002 (merged PR #146). Numbering: `DEC-SCOPE-120`, migration `0105_rec_companies`, API
-§12AN, RBAC §2.46. upc-001 (PR #149) took `DEC-SCOPE-118`, §12AL, RBAC §2.44 and `0103`; rec-006 (PR #150) took `DEC-SCOPE-119`, §12AM, RBAC §2.45
-and `0104`. So rec-003 is `DEC-SCOPE-120`, `0105_rec_companies`, §12AN and RBAC §2.46 (drafted as 119 / `0103` / §12AM / §2.45).
+Depends on rec-001 (merged PR #143) and rec-002 (merged PR #146). Numbering: `DEC-SCOPE-121`, migration `0106_rec_companies`, API
+§12AO, RBAC §2.47. upc-001 (PR #149) took `DEC-SCOPE-118`, §12AL, RBAC §2.44 and `0103`; rec-006 (PR #150) took `DEC-SCOPE-119`, §12AM, RBAC §2.45
+and `0104`; upc-003 (PR #151) took `DEC-SCOPE-120`, §12AN, RBAC §2.46 and `0105`. So rec-003 is `DEC-SCOPE-121`,
+`0106_rec_companies`, §12AO and RBAC §2.47 (drafted as 119 / `0103` / §12AM / §2.45).
 
 ## 1. Answers used (2026-10-08)
 The user instructed this session to proceed with the recommended answer for each open question. These are recorded in
-`DEC-SCOPE-120` as **recommended defaults applied on the owner's standing instruction**, not as owner-chosen values, and can be revised.
+`DEC-SCOPE-121` as **recommended defaults applied on the owner's standing instruction**, not as owner-chosen values, and can be revised.
 
 - **D1 (Q-01):** the company code is `CMP-000001`: server-assigned from `company_code_seq` (`MAXVALUE 999999`, the unique constraint is
   the backstop), never edited. The migration backfills every existing company in `created_at`, `id` order. Every insert path (employer
@@ -32,7 +33,7 @@ detail pages for recruiters, placement managers and super admin. The assigned BD
 follow-up. Not built: contacts and Add Recruiter (rec-004), pipeline/status (rec-005), follow-ups (rec-024), contracts (rec-030),
 dashboard quick-action tiles (rec-032).
 
-## 3. Data (`0105_rec_companies`)
+## 3. Data (`0106_rec_companies`)
 New nullable columns on `companies` (existing rows unchanged apart from the code):
 
 | Column | Type | Notes |
@@ -84,7 +85,7 @@ Actions (role 403 first, then state 409 — the bdm-002 C15 rule):
 active when they are set or changed (locked `FOR SHARE`); keeping a since-deactivated value is allowed. Every write: row lock, change,
 `AuditLog` (`recruiter_company.<action>`, ids and field names only), one commit. Reassign also appends `company_assignment_history`.
 
-## 5. API (§12AN) — `/api/v1/recruiter/companies`
+## 5. API (§12AO) — `/api/v1/recruiter/companies`
 | Method | Path | Notes |
 |---|---|---|
 | GET | `` | `q` (name or code), `priority`, `lead_source_id`, `industry_id`, `city`, `assigned` (`me` / `unassigned` / uuid), `include_archived`, `limit`, `offset`; `{items,total,limit,offset}` by `lower(name)`, `id` |
@@ -122,5 +123,5 @@ unchanged.
 
 ## 8. Risks
 - `companies` is shared with EMP and the legacy placement screens: only nullable columns plus a defaulted code are added.
-- Migration numbers move with parallel items: re-chained to `0105` after upc-001 and rec-006.
+- Migration numbers move with parallel items: re-chained to `0106` after upc-001, rec-006 and upc-003.
 - Hot spots: `models.py`, `schemas.py`, `main.py`, `navigation.ts` (append-only edits).

@@ -5037,13 +5037,46 @@ Spec `docs/superpowers/specs/2026-10-08-rec-006-skills-master-design.md`. Number
 - New pages: `/recruiter/manager/skills` (edit) and `/recruiter/skills` (read-only).
 - **New Feature ID authorized:** `rec-006`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-006.
 
-### DEC-SCOPE-120 — Recruiter company master (`rec-003`)
+### DEC-SCOPE-120 — Global University Master (`upc-003`)
+
+**Evidence:** `EVID-020` §1 (L3–L33, the 19 field rows), §27 (ownership) and the closing note ("central source of truth");
+`UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U3, U5, U15 (`EXPLICIT_APPROVAL`, 2026-10-08) and §4 upc-003.
+**Status:** UM1–UM14 are the recommended answers to backlog Q-01, Q-03, Q-04, Q-05, Q-28 and Q-33 (plus design-level rules), applied
+under the owner's standing instruction for the build session ("proceed with the recommended answers; ask only if genuinely blocking").
+**Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. Migration `0105_university_master`, API contract §12AN, RBAC §2.46. Drafted as
+`DEC-SCOPE-119` / `0104` / §12AM / §2.45 and renumbered on merging `main` @ `0ef88a98`: rec-006 took those numbers and merged first.
+Spec: `docs/superpowers/specs/2026-10-08-upc-003-university-master-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| UM1 | Q-01 code format | `UNV-000001` from `university_code_seq` (server default); existing rows backfilled in `created_at, slug` order; never edited |
+| UM2 | Q-03 rankings | `university_rankings`: system QS / THE / ARWU / Other (+ name), year 1900–2100, rank text ≤ 20 (a band fits); ≤ 10; replaced as a list |
+| UM3 | Q-04 unowned universities | Only the head (direct reports) or `super_admin` (any active manager) assigns; managers do not claim |
+| UM4 | Q-05 backup rights | Same edit rights as the primary; a non-owner manager's edit is `403` (managers read every row, so not `404`) |
+| UM5 | Q-28 visibility | Existing rows stay public (`catalogue_visible` defaults true, legacy create unchanged); every master-created row starts internal. Publish/unpublish: head, `overseas_admin`, `super_admin` |
+| UM6 | Publish rule | Active, has an overview, and its country is a catalogue country (else `422`); also enforced when a published row is edited |
+| UM7 | Q-33 `overseas_admin` | Keeps create + edit (every row), publish and deactivate; does not assign managers |
+| UM8 | Who creates | `partnership_head`, `overseas_admin`, `super_admin` (U15) |
+| UM9 | Head write scope | Unowned rows, or rows whose primary or backup reports to the head; every read role reads every row |
+| UM10 | Deactivate | Inactive = unpublished + read-only; with applications → `409 has_applications` unless `confirm`; reactivate restores `active` only |
+| UM11 | `stage` | Not added; upc-007 adds it with its stage engine |
+| UM12 | Contact rows | upc-006; this item stores the "International office" contact text only |
+| UM13 | Legacy create panel | Replaced by a link to the master; `POST/GET /admin/universities` unchanged |
+| UM14 | Slug | From the name; name + code when taken; never edited |
+
+**Consequences:** `universities` gains the master columns; tables `university_rankings`, `university_assignment_history`; routes under
+`/partnership/universities`; the public catalogue, search, courses list and the student's catalogue panel show only published, active
+universities; `GET /lookups/countries` admits the partnership roles; web pages `/partnership/universities`, `/new`, `/[id]`,
+`/[id]/edit`; "University Master" goes live in the §32 menu and the head's sidebar.
+**New Feature ID authorized:** `upc-003`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-003.
+
+### DEC-SCOPE-121 — Recruiter company master (`rec-003`)
 
 **Evidence:** `EVID-018` §1 quick actions (lines 40–42), §2 (50–118), §3 (120–174); `RECRUITER_CRM_BACKLOG.md` §rec-003 (AC1–AC5)
 and §3.2 Q-01–Q-03. Module scope: `DEC-SCOPE-116` (R3, R10).
 **Status:** `UNVERIFIED` — **recommended defaults applied on the owner's standing instruction** for this session (2026-10-08: "try to
-proceed with recommend answers always"). No per-question owner answer was given; each row can be revised. `DEC-SCOPE-118` is upc-001's and `DEC-SCOPE-120` rec-006's.
-Migration `0105_rec_companies`, API §12AN, RBAC §2.46. Spec `docs/superpowers/specs/2026-10-08-rec-003-company-master-design.md`.
+proceed with recommend answers always"). No per-question owner answer was given; each row can be revised. `DEC-SCOPE-118` is upc-001's and `DEC-SCOPE-121` rec-006's.
+Migration `0106_rec_companies`, API §12AO, RBAC §2.47. Spec `docs/superpowers/specs/2026-10-08-rec-003-company-master-design.md`.
 
 | # | Point | Answer applied |
 |---|---|---|

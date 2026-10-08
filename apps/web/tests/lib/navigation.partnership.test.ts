@@ -18,10 +18,13 @@ describe("upc-001 navigation", () => {
     expect(new Set(PARTNERSHIP_MENU.map((e) => e.href)).size).toBe(19);
   });
 
-  it("links only the live entries, plus Profile", () => {
-    expect(PARTNERSHIP_MENU.filter((e) => e.live).map((e) => e.label)).toEqual(["Dashboard"]);
-    expect(PARTNERSHIP_NAV).toEqual([{ label: "Dashboard", href: "/partnership/dashboard" }, { label: "Profile", href: "/partnership/profile" }]);
-    expect(PARTNERSHIP_HEAD_NAV).toEqual([{ label: "Team", href: "/partnership/head/team" }]);
+  it("links only the live entries, plus Profile (upc-003 opens University Master)", () => {
+    expect(PARTNERSHIP_MENU.filter((e) => e.live).map((e) => e.label)).toEqual(["Dashboard", "University Master"]);
+    expect(PARTNERSHIP_NAV).toEqual([
+      { label: "Dashboard", href: "/partnership/dashboard" }, { label: "University Master", href: "/partnership/universities" },
+      { label: "Profile", href: "/partnership/profile" },
+    ]);
+    expect(PARTNERSHIP_HEAD_NAV).toEqual([{ label: "Team", href: "/partnership/head/team" }, { label: "University Master", href: "/partnership/universities" }]);
   });
 
   it("gives the Super Admin and Overseas Admin a Partnership managers entry", () => {

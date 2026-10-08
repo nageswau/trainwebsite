@@ -588,7 +588,8 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
             ),
         )
     if section == "applications":
-        universities = (await db.scalars(select(University).order_by(University.name).limit(200))).all()
+        # upc-003: the student's catalogue is the public one (published, active universities only).
+        universities = (await db.scalars(select(University).where(University.catalogue_visible.is_(True), University.active.is_(True)).order_by(University.name).limit(200))).all()
         return _payload(
             "Applications",
             "Application stages and required next actions.",

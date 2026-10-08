@@ -1,4 +1,4 @@
-"""rec-003 (DEC-SCOPE-120, spec §4): the company master's scope, permissions, duplicates, lookups and output.
+"""rec-003 (DEC-SCOPE-121, spec §4): the company master's scope, permissions, duplicates, lookups and output.
 
 Functions only; nothing here commits -- the route owns the transaction. Every `{company_id}` resolves through `load_scoped`, so an id
 outside the caller's scope is the same 404 as a missing one (the bdm-002 pattern). Logs carry ids, route and counts, never names."""

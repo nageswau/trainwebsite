@@ -969,9 +969,23 @@ The catalogue is global, so there is no row scope; only the role checks below ap
 | `super_admin` | same as `placement_manager` | all | `rec-006` |
 | `hr_team`, `it_admin`, every other role | `403` | — | `rec-006` |
 
-### 2.46 Recruiter company master *(net-new, added 2026-10-08 — `DEC-SCOPE-120`, `rec-003`)*
+### 2.46 Global University Master *(net-new, added 2026-10-08 — `DEC-SCOPE-120`, `upc-003`)*
 
-Row scope first (out of scope = `404`), then the action's role (`403`), then the archived state (`409`). §2.44 is upc-001's and §2.46 rec-006's.
+Enforced inline in `services/partnership_universities.py` (role → team scope → state). Every read role reads every university by id,
+by design (management visibility, §27); writes are scoped.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| List / read any university | ✅ | ✅ | ✅ | ✅ | `403` |
+| Add a university | `403` | ✅ | ✅ | ✅ | `403` |
+| Edit | own (primary or backup) | unowned + team-owned | ✅ | ✅ | `403` |
+| Assign primary / backup | `403` | unowned + team-owned, to active direct reports | `403` | ✅ any active manager | `403` |
+| Publish / unpublish, deactivate / reactivate | `403` | unowned + team-owned | ✅ | ✅ | `403` |
+| Public catalogue | Shows only published, active universities, to everyone (unchanged otherwise) |||||
+
+### 2.47 Recruiter company master *(net-new, added 2026-10-08 — `DEC-SCOPE-121`, `rec-003`)*
+
+Row scope first (out of scope = `404`), then the action's role (`403`), then the archived state (`409`). §2.44 is upc-001's and §2.47 rec-006's.
 
 | Role | Actions | Scope | Feature |
 |---|---|---|---|

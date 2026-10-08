@@ -1,4 +1,4 @@
-// rec-003 (DEC-SCOPE-120): the recruiter company master -- types, endpoints and the pure helpers its list, form and detail share. The
+// rec-003 (DEC-SCOPE-121): the recruiter company master -- types, endpoints and the pure helpers its list, form and detail share. The
 // API scopes every row and decides every permission; nothing here filters for security.
 import type { LookupPage } from "@/lib/lookups";
 import { BDM_NAV, RECRUITER_MANAGER_NAV, RECRUITER_NAV, SUPER_ADMIN_NAV, type NavItem } from "@/lib/navigation";

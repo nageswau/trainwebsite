@@ -1,4 +1,4 @@
-"""rec-003 (DEC-SCOPE-120, spec §5): the recruiter company master -- the lead and the company are one `companies` row (R3).
+"""rec-003 (DEC-SCOPE-121, spec §5): the recruiter company master -- the lead and the company are one `companies` row (R3).
 
 Every `{company_id}` resolves through `services.recruiter_companies.load_scoped` (out of scope = 404); every write is one transaction --
 scope, row lock, change, audit, one commit here. Lists are {items, total, limit, offset}, ordered by name then id."""

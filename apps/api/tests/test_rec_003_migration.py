@@ -1,4 +1,4 @@
-"""rec-003 -- migration 0105_rec_companies (spec §3; AC8). Round trip, backfill and downgrade refusal run in a throwaway database built
+"""rec-003 -- migration 0106_rec_companies (spec §3; AC8). Round trip, backfill and downgrade refusal run in a throwaway database built
 from scratch (the rec-002 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -15,11 +15,11 @@ from app.core.config import settings
 from tests.test_tel_001_migration import _config, _sql
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_rec_003_migration_0105", VERSIONS / "0105_rec_companies.py")
+_spec = importlib.util.spec_from_file_location("_rec_003_migration_0106", VERSIONS / "0106_rec_companies.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0104_skills_master", "0105_rec_companies"
+BASE, HEAD = "0105_university_master", "0106_rec_companies"
 NEW_COLUMNS = {
     "company_code",
     "linkedin_url",
@@ -42,7 +42,7 @@ NEW_COLUMNS = {
 }
 
 
-def test_migration_chains_after_0104_and_is_the_single_head():
+def test_migration_chains_after_0105_and_is_the_single_head():
     assert _migration.revision == HEAD
     assert _migration.down_revision == BASE
     assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1
@@ -73,7 +73,7 @@ def isolated_db():
     _sql(original, f'CREATE DATABASE "{name}"', autocommit=True)
     try:
         settings.database_url = url
-        # 0001's create_all builds today's models; going to head and back down gives the real 0104 shape of `companies`.
+        # 0001's create_all builds today's models; going to head and back down gives the real 0105 shape of `companies`.
         command.upgrade(cfg, "head")
         command.downgrade(cfg, BASE)
         yield {"cfg": cfg, "url": url}
@@ -89,7 +89,7 @@ def _company(url, name, created_at):
 def test_backfill_codes_existing_companies_in_creation_order(isolated_db):
     cfg, url = isolated_db["cfg"], isolated_db["url"]
     columns = {r[0] for r in _sql(url, "SELECT column_name FROM information_schema.columns WHERE table_name = 'companies'")}
-    assert not NEW_COLUMNS & columns  # the real 0104 shape
+    assert not NEW_COLUMNS & columns  # the real 0105 shape
     _company(url, "Second Ltd", datetime(2026, 2, 1, tzinfo=UTC))
     _company(url, "First Ltd", datetime(2026, 1, 1, tzinfo=UTC))
     command.upgrade(cfg, HEAD)
