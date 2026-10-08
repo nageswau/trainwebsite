@@ -9,7 +9,7 @@ const refresh = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh }) }));
 
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
-const all = { can_edit: true, can_assign: true, can_publish: true, can_deactivate: true };
+const all = { can_edit: true, can_assign: true, can_publish: true, can_deactivate: true, can_move_stage: true, can_reopen: true };
 const uni = (over: Partial<University> = {}) => ({ id: "u1", name: "ABC", active: true, catalogue_visible: false, application_count: 0, permissions: all,
   primary_manager: null, backup_manager: null, ...over }) as University;
 

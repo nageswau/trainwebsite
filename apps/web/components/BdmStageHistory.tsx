@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { isPage, type Page } from "@/lib/apiErrors";
 import { appendUnique } from "@/lib/bdmActivities";
-import { historyUrl, type StageEvent } from "@/lib/bdmPipeline";
+import { HISTORY_PAGE, historyUrl, type StageEvent } from "@/lib/bdmPipeline";
 import { formatSchoolDateTime } from "@/lib/formatDate";
 
 const UNABLE = "Unable to load the stage history.";
@@ -11,12 +11,16 @@ const UNABLE = "Unable to load the stage history.";
 function title(e: StageEvent): string {
   if (e.kind === "lost") return `Marked lost at ${e.to_label}`;
   if (e.kind === "revived") return `Revived at ${e.to_label}`;
+  if (e.kind === "reopened") return `Reopened at ${e.to_label}`;
   return `${e.from_label} → ${e.to_label}`;
 }
 
 // bdm-004 (spec §8.2, AC2): every move, Lost and Revive, newest first; the bdm-006 history look (.jtl). `version` changes after each
-// write on this page, which reloads the first page; only the newest request may update the list. Plain text only.
-export default function BdmStageHistory({ orgId, initial, version }: { orgId: string; initial: Page<StageEvent> | null; version: number }) {
+// write on this page, which reloads the first page; only the newest request may update the list. Plain text only. upc-007 reuses it for a
+// university's history (`url`: its stage-history endpoint, a string so a server page can pass it; and the "reopened" kind).
+export default function BdmStageHistory({ orgId, initial, version, url }: {
+  orgId: string; initial: Page<StageEvent> | null; version: number; url?: string;
+}) {
   const [items, setItems] = useState<StageEvent[]>(initial?.items ?? []);
   const [total, setTotal] = useState(initial?.total ?? 0);
   const [failed, setFailed] = useState(initial === null);
@@ -26,7 +30,7 @@ export default function BdmStageHistory({ orgId, initial, version }: { orgId: st
   const load = useCallback(async (offset: number) => {
     const ticket = ++latest.current;
     setLoading(true);
-    const response = await fetch(historyUrl(orgId, offset)).catch(() => null);
+    const response = await fetch(url ? `${url}?limit=${HISTORY_PAGE}&offset=${offset}` : historyUrl(orgId, offset)).catch(() => null);
     const data: unknown = response?.ok ? await response.json().catch(() => null) : null;
     if (ticket !== latest.current) return;
     setLoading(false);
@@ -37,7 +41,7 @@ export default function BdmStageHistory({ orgId, initial, version }: { orgId: st
     setFailed(false);
     setTotal(data.total);
     setItems((current) => (offset === 0 ? data.items : appendUnique(current, data.items)));
-  }, [orgId]);
+  }, [orgId, url]);
 
   useEffect(() => {
     if (version > 0) void load(0); // reload only when a write on this page bumps the version

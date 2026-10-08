@@ -133,7 +133,7 @@ const menu = (label: string, path: string, item: string, live = false): Partners
 export const PARTNERSHIP_MENU: PartnershipMenuEntry[] = [
   menu("Dashboard", "dashboard", "upc-022", true), menu("Global University Database", "search", "upc-024"),
   menu("University Master", "universities", "upc-003", true), menu("Contact Management", "contacts", "upc-006"),
-  menu("Partnership Pipeline", "pipeline", "upc-007"), menu("Meetings", "meetings", "upc-009"), menu("University Visits", "visits", "upc-010"),
+  menu("Partnership Pipeline", "pipeline", "upc-007", true), menu("Meetings", "meetings", "upc-009"), menu("University Visits", "visits", "upc-010"),
   menu("MoU & Agreements", "agreements", "upc-014"), menu("Commercial Terms", "commercial-terms", "upc-016"),
   menu("Courses & Programs", "courses", "upc-017"), menu("Student Opportunities", "opportunities", "upc-018"),
   menu("University Performance", "performance", "upc-018"), menu("Follow-ups & Tasks", "tasks", "upc-020"), menu("Calendar", "calendar", "upc-011"),
@@ -144,7 +144,10 @@ export const PARTNERSHIP_NAV: NavItem[] = [
   ...PARTNERSHIP_MENU.filter((e) => e.live).map(({ label, href }) => ({ label, href })),
   { label: "Profile", href: "/partnership/profile" },
 ];
-export const PARTNERSHIP_HEAD_NAV: NavItem[] = [{ label: "Team", href: "/partnership/head/team" }, { label: "University Master", href: "/partnership/universities" }];
+export const PARTNERSHIP_HEAD_NAV: NavItem[] = [
+  { label: "Team", href: "/partnership/head/team" }, { label: "University Master", href: "/partnership/universities" },
+  { label: "Partnership Pipeline", href: "/partnership/pipeline" },
+];
 
 // SCH-001/SCH-003 -- School roles use their own dedicated pages (bespoke forms/actions,
 // not the generic PortalPage/[section] `_payload()` dispatcher every other role's console
