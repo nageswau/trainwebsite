@@ -1144,6 +1144,9 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-025 — Call logging
+- **Status (2026-10-08):** **MERGED** to `main` as PR #172 @ `1353ca12`. The next rec item takes `0119`, `DEC-SCOPE-134`, §12BB and §2.60 (re-check `main`). Numbering: `DEC-SCOPE-133`, migration `0118_recruiter_calls` (re-chained after rec-008's
+  `0117_job_descriptions`), API §12BA, RBAC §2.59. CA1–CA9 in `DEC-SCOPE-133` are recommended defaults (UNVERIFIED): a fixed outcome
+  list, exactly one party, the next follow-up only on contact calls, and Last contacted = the latest call (rec-004 AC3 is now met).
 - **Business requirement:** §19 "📞 Calls: Call history and notes" (R13).
 - **Existing behavior:** none for companies or candidates.
 - **Expected behavior:**

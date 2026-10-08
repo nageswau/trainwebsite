@@ -165,7 +165,7 @@ def sweep_stale_lead_emails_task():
 
 @celery.task
 def deliver_recruiter_email_task(message_id: str):
-    """rec-026 (DEC-SCOPE-135 MS7): send one queued recruiter email; retries are re-enqueued by `deliver_recruiter_email` itself."""
+    """rec-026 (DEC-SCOPE-134 MS7): send one queued recruiter email; retries are re-enqueued by `deliver_recruiter_email` itself."""
     from app.notifications.recruiter_email import deliver_recruiter_email
 
     return _run_with_fresh_pool(lambda: deliver_recruiter_email(UUID(message_id)))

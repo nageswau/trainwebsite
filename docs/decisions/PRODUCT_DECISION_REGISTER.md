@@ -5448,3 +5448,37 @@ told the session to proceed with the recommended answers.
 - The requirement page gains a **Job description (JD)** section.
 - Audit `job_description.{create,upload,download}` carries ids, the version, field names, type and size only.
 - **New Feature ID authorized:** `rec-008`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-008.
+
+### DEC-SCOPE-133 — Recruiter call logging (`rec-025`)
+
+**Evidence:**
+- `EVID-018`: §19 "📞 Calls — Call history and notes" (lines 758–764). "Last contacted" on the contact (line 212).
+- `RECRUITER_CRM_BACKLOG.md` §rec-025 (AC1–AC3).
+- Module scope: `DEC-SCOPE-116` (R11, R13). Company scope: `DEC-SCOPE-121`. Contacts: `DEC-SCOPE-125` (C6). Candidates: `DEC-SCOPE-122`.
+  Follow-ups: `DEC-SCOPE-131`. Call idiom: `DEC-SCOPE-096` (tel-010 CL4).
+
+**Status:** **MERGED** to `main` as PR #172 @ `1353ca12` (2026-10-08). Every answer below is a **recommended default, `UNVERIFIED`**. The owner told the session to
+proceed with the recommended answers; the backlog lists no Q-xx for this item.
+
+**Numbering:** migration `0118_recruiter_calls`, API §12BA and RBAC §2.59. It was drafted as `0117` / `DEC-SCOPE-132` / §12AZ / §2.58;
+rec-008 merged first and took those numbers. Spec `docs/superpowers/specs/2026-10-08-rec-025-recruiter-calls-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| CA1 | Outcomes | The source names none. A fixed list in code: Connected, Call back requested, Busy, No answer, Switched off, Wrong number. The first two count as connected |
+| CA2 | Party | Exactly one of a company contact or a candidate (`CHECK`). A contact call also stores the contact's company |
+| CA3 | Who | Contact calls: the company's scope reads, its `can_edit` holder logs. Archived company or inactive contact → `409`. Candidate calls: R11, the candidate writers log and `hr_team` reads. Archived candidate → `409` |
+| CA4 | Same-day edit/delete | Only the caller, on the call's IST day, while they can still write to the party (an earlier day → `409`). Time, duration, direction and notes are editable; the outcome is locked (delete and log again) |
+| CA5 | Time | Defaults to now; not in the future; up to 7 days back (tel-010's `check_time`) |
+| CA6 | Next follow-up | Optional, contact calls only: rec-024's create body, on the call's contact, in the same transaction. A candidate call → `422` (rec-024 follow-ups belong to a company). Deleting a call keeps its follow-up |
+| CA7 | Last contacted | The contact's latest call, computed on read (rec-026 and rec-028 add messages and meetings) |
+| CA8 | Fields | Direction outgoing/incoming; optional duration 0–14400 s; notes ≤ 2000 |
+| CA9 | Cap | 300 calls per caller per IST day (`409`), an abuse bound |
+
+**Consequences:**
+- `recruiter_calls` (`0118`): outcome, direction, duration and party CHECKs, and indexes on `(company_id|contact_id|candidate_id|caller_user_id, occurred_at)`.
+- `services/recruiter_calls.py` and `api/recruiter_calls.py`.
+- The company page and the candidate page gain a Calls section; contact and candidate mobiles become `tel:` links. rec-004 AC3 (Last
+  contacted after a logged call) is now met.
+- Audit `recruiter_call.{create,update,delete}` carries ids, the outcome and field names only, never notes.
+- **New Feature ID authorized:** `rec-025`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-025.

@@ -1,4 +1,4 @@
-"""rec-026 (DEC-SCOPE-135 MS7, AC2; spec §4): the worker side of a recruiter's email to a company contact or a candidate -- tel-014's
+"""rec-026 (DEC-SCOPE-134 MS7, AC2; spec §4): the worker side of a recruiter's email to a company contact or a candidate -- tel-014's
 `lead_email` pattern on a `recruiter_messages` row (its SMTP classification `_send` and ENH-014's retry constants are reused; tel-014 itself
 is untouched). Claim the row atomically (`queued`/`retrying` -> `sending`), so a duplicate task can never send twice; send with no
 transaction open; record `sent`, `retrying` or `failed`. The address is the party's now (the tel-014 E7 rule). Logs carry the message id,

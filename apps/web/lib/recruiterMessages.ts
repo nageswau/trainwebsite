@@ -1,4 +1,4 @@
-// rec-026 (DEC-SCOPE-135): recruiter messages -- the template library's types and EVID-018 §19 kind labels, the endpoints, the composer
+// rec-026 (DEC-SCOPE-134): recruiter messages -- the template library's types and EVID-018 §19 kind labels, the endpoints, the composer
 // targets for a company contact or a candidate, and the message line. The API decides scope and every rule (MS4-MS9); the UI only offers
 // what it allows. A message is permanent (MS9): there is no edit or delete.
 import { CATALOGUE_PAGE_SIZE, getPage } from "@/lib/telecallerCatalogue";

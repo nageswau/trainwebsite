@@ -1,4 +1,4 @@
-"""rec-026 -- recruiter message templates, WhatsApp and email (spec §1-§3; DEC-SCOPE-135 MS1-MS11): the template library and its roles,
+"""rec-026 -- recruiter message templates, WhatsApp and email (spec §1-§3; DEC-SCOPE-134 MS1-MS11): the template library and its roles,
 render, send (WhatsApp logged on confirm, email queued and published after the commit), the party rules, the lists, the caps and Last
 contacted. The shared test database is never truncated, so every value is unique per test."""
 

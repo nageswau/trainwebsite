@@ -1,4 +1,4 @@
-"""rec-026 (DEC-SCOPE-135, spec §3): the recruiter message templates (the placement manager's global library, MS3) and messages to a company
+"""rec-026 (DEC-SCOPE-134, spec §3): the recruiter message templates (the placement manager's global library, MS3) and messages to a company
 contact or a candidate -- render, send (WhatsApp logged on confirm, email queued for the worker) and the company's and candidate's lists.
 
 Template bodies are untyped dicts parsed by services/telecaller._parse, so a 422 is one sentence naming the field (the tel-012 idiom); the
