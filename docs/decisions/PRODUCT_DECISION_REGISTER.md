@@ -5495,7 +5495,7 @@ rec-008 merged first and took those numbers. Spec `docs/superpowers/specs/2026-1
 - Company scope: `DEC-SCOPE-121` (rec-003). Contacts: `DEC-SCOPE-125` (rec-004). Pipeline: `DEC-SCOPE-127` (rec-005). Follow-ups:
   `DEC-SCOPE-131` (rec-024).
 
-**Status:** built on `feature/rec-028`. The backlog lists no item-level question for rec-028. Every answer below is a **recommended
+**Status:** **MERGED** to `main` as PR #174 @ `f34b4b42` (2026-10-08). The backlog lists no item-level question for rec-028. Every answer below is a **recommended
 default, `UNVERIFIED`**, taken on the owner's instruction to proceed with the recommended answers.
 
 **Numbering:** migration `0119_recruiter_meetings` (after rec-025's `0118_recruiter_calls`), API §12BB and RBAC §2.60. Drafted as
