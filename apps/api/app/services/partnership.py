@@ -1,4 +1,4 @@
-"""upc-001 (DEC-SCOPE-117, spec §5): partnership manager provisioning rules and the self/team gates later upc items call.
+"""upc-001 (DEC-SCOPE-118, spec §5): partnership manager provisioning rules and the self/team gates later upc items call.
 
 Functions only; nothing here commits -- the route owns the transaction. Logs carry ids and route, never email, phone or Employee ID.
 The university scope (`scope(user)`) arrives with upc-003, which adds the owner columns it filters on."""
@@ -29,11 +29,11 @@ def require_creator_may(actor: User, route: str) -> None:
 
 
 def parse_profile_create(raw) -> PartnershipProfileCreate:
-    return _parse(PartnershipProfileCreate, raw, "Partnership profile is required", PARTNERSHIP_FIELD_LABELS, "head")
+    return _parse(PartnershipProfileCreate, raw, "Partnership profile is required", PARTNERSHIP_FIELD_LABELS)
 
 
 def parse_profile_update(raw) -> PartnershipProfileUpdate:
-    return _parse(PartnershipProfileUpdate, raw, "partnership_profile must be an object", PARTNERSHIP_FIELD_LABELS, "head")
+    return _parse(PartnershipProfileUpdate, raw, "partnership_profile must be an object", PARTNERSHIP_FIELD_LABELS)
 
 
 async def locked_active_head(db: AsyncSession, head_id) -> User:

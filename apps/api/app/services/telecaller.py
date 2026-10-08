@@ -40,8 +40,8 @@ def require_creator_may(actor: User, team: str, route: str) -> None:
         raise _cannot_manage(team)
 
 
-def _readable(error: dict, labels: dict[str, str], picker: str = "manager") -> str:
-    """The admin sees a sentence naming the field, not a pydantic path (bdm-001 QA-08). `picker`: what a bad id should be chosen as."""
+def _readable(error: dict, labels: dict[str, str]) -> str:
+    """The admin sees a sentence naming the field, not a pydantic path (bdm-001 QA-08)."""
     field = str(error["loc"][0]) if error["loc"] else ""
     label = labels.get(field, field)
     if error["type"] == "extra_forbidden":
@@ -52,19 +52,21 @@ def _readable(error: dict, labels: dict[str, str], picker: str = "manager") -> s
     if error["type"] == "value_error":
         return error["msg"].removeprefix("Value error, ")
     if error["type"] == "uuid_parsing":
-        return f"{label}: choose a {picker} from the list"
+        # upc-001: a reporting head (partnership profile) is chosen as "a head".
+        noun = "a manager" if field.endswith("manager_user_id") else "a head" if field.endswith("head_user_id") else "one"
+        return f"{label}: choose {noun} from the list"
     return f"{label}: {error['msg']}"
 
 
-def _parse(model: type[BaseModel], raw, not_an_object: str, labels: dict[str, str] = TELECALLER_FIELD_LABELS, picker: str = "manager"):
+def _parse(model: type[BaseModel], raw, not_an_object: str, labels: dict[str, str] = TELECALLER_FIELD_LABELS):
     """The /admin/users payload is an untyped dict (existing contract), so nested objects are validated here; the first error becomes
-    a readable 422. tel-002 reuses it for the catalogue bodies with its own labels; upc-001 with its labels and picker ("head")."""
+    a readable 422. tel-002 reuses it for the catalogue bodies with its own labels; upc-001 for the partnership profile."""
     if not isinstance(raw, dict):
         raise HTTPException(422, not_an_object)
     try:
         return model.model_validate(raw)
     except ValidationError as exc:
-        raise HTTPException(422, _readable(exc.errors()[0], labels, picker)) from None
+        raise HTTPException(422, _readable(exc.errors()[0], labels)) from None
 
 
 def parse_profile_create(raw) -> TelecallerProfileCreate:

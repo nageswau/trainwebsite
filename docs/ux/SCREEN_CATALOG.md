@@ -2945,6 +2945,37 @@ Five screens (seven routes) added by `tel-001` (design spec `docs/superpowers/sp
 - **Route:** `/telecaller/manager/team`. **Role(s):** `telecaller_manager` (direct reports), `super_admin` (all). **Data:** `GET /telecaller/manager/team?offset=`. **Content:** table (name, Employee ID, team, mobile, status as a word in a badge) in a labelled, focusable scroll region with a `<caption>`; Previous / Next links. **States:** empty — "No telecallers report to you yet."; past-the-end offset — a message with "Go to the first page"; error — the access-unavailable block, sign-in link `/admin/login`. **Responsive:** the table scrolls horizontally inside its region; the page never does.
 - **Route:** `/admin/telecallers` (also `/it/admin/telecallers`, `/overseas/admin/telecallers`). **Role(s):** `super_admin` (both teams), `it_admin` (IT; also reachable by `super_admin`), `overseas_admin` (Overseas; also reachable by `super_admin`). **Data:** `GET /admin/telecallers`, `GET /admin/telecaller-managers`, `POST` / `PATCH /admin/users`. **Content:** create form (full name, email, mobile, team — fixed text for a division admin, a two-option select for `super_admin`, Employee ID, reporting manager via a server-search picker), list with row edit (name, mobile, Employee ID, manager; team read-only, TL7) and activate / deactivate with inline confirmation; "No active manager" badge when `manager_active` is false. **States:** loading — "Loading telecallers…"; empty — "No telecallers yet. Use the Create telecaller form to add the first one."; a search with no match — "No telecallers match “…”."; error — "Unable to load telecallers." with Retry; past the end of the list — "This page is past the end of the list." with "Go to the first page"; no active manager — "No active telecaller manager — a Super Admin must create one first", submit disabled; create success — the welcome-link feedback; server 403 / 409 / 422 messages inline; a save names the telecaller as saved ("Saved ⟨new name⟩."). A second click while a create is in flight sends nothing. **Responsive:** below 640px each row is a card — name and email, then labelled Employee ID / Team / Manager / Status lines, then Edit / Deactivate — so nothing sits off-screen; tablet and desktop keep the table (tel-001 QA-03/04/05). Up to 980px, where the list comes before the form, the list card starts with a "Create telecaller" link that scrolls to the form and focuses Full name.
 
+## rec-002 addendum (2026-10-08, `DEC-SCOPE-117`) — Recruiter catalogues
+
+One tabbed screen (design spec `docs/superpowers/specs/2026-10-08-rec-002-recruiter-catalogues-design.md` §5). It uses the tel-002 layout.
+No catalogue ID is invented. Visual reference: none.
+
+- **Route:** `/recruiter/manager/catalogue/[kind]`. `/recruiter/manager/catalogue` redirects to `lead-sources`, and an unknown kind is a
+  404.
+- **Role(s):** `placement_manager` (sidebar "Catalogues") and `super_admin` (same URL, Super Admin nav). Other signed-in roles see
+  "Placement manager role required"; signed out → `/admin/login?next=…`.
+- **Tabs:** links with `aria-current="page"`, wrapping on narrow screens. Lead sources · Candidate sources · Industries · Company sizes
+  · Contact roles · Job categories · Campaigns.
+- **Data:** `GET /recruiter/catalogue/{kind}?q=&limit=100&offset=`, and `POST`/`PATCH` to the same path.
+  - Campaigns: `GET /recruiter/catalogue/campaigns?…` and every active lead source (all pages).
+- **Content (six lists):** an "Add ⟨noun⟩" form (name) and a table (name, status, actions: Edit inline with Esc to cancel, Deactivate
+  with inline confirm, Reactivate).
+- **Content (Campaigns):** a create form and a table (name, lead source with a "Lead source inactive" badge, dates, status, actions).
+  - The form has a name, an active lead source, a start date and an optional end date. An end date before the start is refused in
+    the browser and by the API.
+  - Editing a campaign keeps a since-deactivated source, offered as "(inactive)".
+- **States:**
+  - Loading.
+  - Error with Retry ("Retry loading lead sources" for the picker).
+  - Empty ("No ⟨list⟩ yet.") and a search with no match ("No ⟨list⟩ match this filter.").
+  - A pager over 100 rows.
+  - `role="status"` notices, server sentences shown as written, and focus moved to the message.
+  - A double-submit guard.
+  - The search and page live in the URL (`?q=&offset=`).
+  - No active lead source → Create campaign is disabled, with a link to the Lead sources tab.
+- **Responsive:** below 980 px the list card links to the form. Below 640 px each row is a card of labelled lines, and the page never
+  scrolls sideways (QA at 390 / 820 / 1366 px).
+
 ## tel-002 addendum (2026-10-06, `DEC-SCOPE-074`) — Telecaller catalogue
 
 Two screens (design spec `docs/superpowers/specs/2026-10-06-tel-002-catalogue-design.md` §5). No catalogue ID is invented; visual reference
@@ -3088,7 +3119,7 @@ portal card/table idiom (no Canva frame for this screen: `NEEDS_CONFIRMATION` fo
 - **Route:** `/telecaller/dashboard` — "My targets" card (KPI · Today · <Month>; "Not set" for gaps; "Targets are unavailable right now."
   if the read fails).
 
-## upc-001 addendum (2026-10-08, `DEC-SCOPE-117`) — Partnership roles
+## upc-001 addendum (2026-10-08, `DEC-SCOPE-118`) — Partnership roles
 
 Four screens (six routes) added by `upc-001` (design spec `docs/superpowers/specs/2026-10-08-upc-001-partnership-roles-design.md` §6).
 They carry no catalogue ID; none is invented here. Visual-reference mapping for all: None — not inspected. Do not claim parity.

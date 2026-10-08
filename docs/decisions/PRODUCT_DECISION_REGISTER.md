@@ -4957,7 +4957,28 @@ Spec `docs/superpowers/specs/2026-10-08-rec-001-recruiter-roles-design.md`.
 - Recruiter landing `/recruiter/dashboard`. This intentionally changes the `adm-007`/`rpt-001` e2e landing step.
 - **New Feature ID authorized:** `rec-001`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-001.
 
-### DEC-SCOPE-117 — University Partnership CRM scope + partnership roles (`upc-001`)
+### DEC-SCOPE-117 — Recruiter catalogues (`rec-002`)
+
+**Evidence:** `EVID-018` §2 (lines 52–82, 108–110), §3 (102–104, 130, 146), §4 (184–192), §6 (290), §9 (432–462), §26 (1029–1034);
+`RECRUITER_CRM_BACKLOG.md` §rec-002 (AC1–AC3). Module scope: `DEC-SCOPE-116`.
+**Status:** `EXPLICIT_APPROVAL`. The owner answered C1–C3 in session on 2026-10-08. **MERGED** to `main` as PR #146 @ `ea3e9189` (2026-10-08). Migration `0102_rec_catalogues` (after upc-002's `0101_country_master`). API §12AK (upc-002 took §12AJ). RBAC §2.43.
+Spec `docs/superpowers/specs/2026-10-08-rec-002-recruiter-catalogues-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| C1 | Industry values (the source lists none) | `rec_industries` starts **empty**; the placement manager adds values. Nothing is invented |
+| C2 | Company size (the source lists no values) | A **managed, seeded list** `rec_company_sizes`: 1-10, 11-50, 51-200, 201-500, 501-1000, 1001+. These are the owner's bands, not source values |
+| C3 | Readers | `placement_team`, `placement_manager`, `super_admin`. Writers: `placement_manager`, `super_admin`. `hr_team`, `it_admin` and every other role: `403` |
+| Design | Lists (tel-002 precedent) | Six simple lists (lead sources, candidate sources, industries, company sizes, contact roles, job categories) seeded in source order, plus `rec_campaigns` under an active lead source. Deactivate, never delete. A rename keeps the id. Names are unique per list, case-insensitively |
+
+**Consequences:**
+- The seven tables and their seeds (`0102`).
+- `services/recruiter_catalogue.py` and `api/recruiter_catalogue.py`.
+- The manager page `/recruiter/manager/catalogue/[kind]` and a "Catalogues" sidebar entry.
+- `services/telecaller._readable` words a bad non-manager id as "choose one from the list" (it said "choose a manager" for every id).
+- **New Feature ID authorized:** `rec-002`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-002.
+
+### DEC-SCOPE-118 — University Partnership CRM scope + partnership roles (`upc-001`)
 
 **Evidence:** `EVID-020` (`functionalities/edusphere_markdown/University Partnership CRM.md`, `DERIVED_BLUEPRINT`), §4, §7, §19, §21,
 §22, §27, §31, §32 (L1060–L1100) and L1129; `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 (U0–U15) and §4 upc-001.
@@ -4968,9 +4989,10 @@ Spec `docs/superpowers/specs/2026-10-08-rec-001-recruiter-roles-design.md`.
 - **PU1–PU11:** the recommended answers, applied under the owner's standing instruction for the build session ("proceed with the
   recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off.
 
-Lifts `PRD_OPEN_ITEMS.md` item 69 and `CONFLICT_MATRIX.md` C-10 for `EVID-020` (U1). Migration `0102_partnership_profiles`, API contract
-§12AK, RBAC §2.43. Drafted as `DEC-SCOPE-116` / `0100` / §12AI / §2.42 and renumbered on merging `main` @ `d75c0ee4`: rec-001 took
-`DEC-SCOPE-116` / `0100_recruiter_profiles` / §12AI / §2.42 and upc-002 took `0101_country_master` / §12AJ, both merged first. Spec: `docs/superpowers/specs/2026-10-08-upc-001-partnership-roles-design.md`.
+Lifts `PRD_OPEN_ITEMS.md` item 69 and `CONFLICT_MATRIX.md` C-10 for `EVID-020` (U1). Migration `0103_partnership_profiles`, API contract
+§12AL, RBAC §2.44. Drafted as `DEC-SCOPE-116` / `0100` / §12AI / §2.42 and renumbered on merging `main` @ `d75c0ee4`: rec-001 took
+`DEC-SCOPE-116` / `0100_recruiter_profiles` / §12AI / §2.42 and upc-002 took `0101_country_master` / §12AJ, both merged first.
+Renumbered again on merging `main` @ `060989ff`: rec-002 took `DEC-SCOPE-117` / `0102_rec_catalogues` / §12AK / §2.43. Spec: `docs/superpowers/specs/2026-10-08-upc-001-partnership-roles-design.md`.
 
 | # | Question | Answer |
 |---|---|---|

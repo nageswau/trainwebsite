@@ -2,7 +2,7 @@
 
 **Status:** design written 2026-10-08. The owner's standing instruction for this session is "proceed with the recommended answers;
 ask only if genuinely blocking". So the item answers PU1–PU11 (§3) are the **recommended defaults, accepted under that instruction**.
-They are not separate per-question approvals, and they are recorded that way in `DEC-SCOPE-117`.
+They are not separate per-question approvals, and they are recorded that way in `DEC-SCOPE-118`.
 
 **Branch:** `feature/upc-001`, cut from `origin/main` @ `99ec1c38` (after #142).
 
@@ -16,15 +16,16 @@ rec-001. No rec-001 branch or worktree exists, and nothing is registered for it,
 
 Scope authority: the backlog's U0–U15 (`EXPLICIT_APPROVAL`, 2026-10-08), in particular U2 (commission visibility) and U3 (roles).
 
-**Decision record:** **`DEC-SCOPE-117`**, written in this change. It registers U0–U15 (the backlog says "registered as one DEC-SCOPE
+**Decision record:** **`DEC-SCOPE-118`**, written in this change. It registers U0–U15 (the backlog says "registered as one DEC-SCOPE
 when upc-001 starts") and PU1–PU11. Numbering:
-- migration `0102_partnership_profiles` (after `0101_country_master`);
-- API contract §12AK;
-- RBAC §2.43.
+- migration `0103_partnership_profiles` (after `0102_rec_catalogues`);
+- API contract §12AL;
+- RBAC §2.44.
 
 Drafted as `DEC-SCOPE-116` / `0100` / §12AI / §2.42. Renumbered on merging `main` @ `d75c0ee4`, because rec-001 (116 / `0100` / §12AI /
-§2.42) and upc-002 (`0101` / §12AJ) merged first. rec-001's role, `create_user`, middleware and navigation changes are merged alongside
-this item's.
+§2.42) and upc-002 (`0101` / §12AJ) merged first. Renumbered again on merging `main` @ `060989ff`, because rec-002 (117 / `0102` /
+§12AK / §2.43) merged first. rec-001's role, `create_user`, middleware and navigation changes, and rec-002's `_readable` noun rule
+(extended here for "a head"), are merged alongside this item's.
 
 **Gate:** `APPROVAL_GATES.md` GATE-09. **Template:** tel-001 (`2026-10-05-tel-001-telecaller-roles-design.md`, `DEC-SCOPE-073`). Where
 this spec says "as tel-001", that spec's section applies with telecaller → partnership manager and telecaller manager → partnership head.
@@ -91,7 +92,7 @@ permission sweep (upc-033); the `partner` role's commission access (Management M
 | PU10 | Deactivation | The existing plain `PATCH active` for both roles, with no reassignment (upc-032). A manager whose head is inactive shows **"No active head"** (`head_active: false`). |
 | PU11 | Employee ID uniqueness | Case-insensitive and unique within `partnership_profiles` (like `bdm_profiles` and `telecaller_profiles`, each separate). One person holds one `users.role`, so no cross-table rule is needed. |
 
-## 4. Data model — migration `0102_partnership_profiles`
+## 4. Data model — migration `0103_partnership_profiles`
 
 New table `partnership_profiles`, model `PartnershipProfile` with `TimestampMixin`:
 
@@ -234,9 +235,9 @@ All routes paginate with `limit` (default 50, max 100) and `offset`, sorted by n
 
 ## 10. Documentation (same change)
 
-- `PRODUCT_DECISION_REGISTER.md`: `DEC-SCOPE-117`.
-- `RBAC_MATRIX.md`: §2.43.
-- `API_CONTRACT.md`: §12AK.
+- `PRODUCT_DECISION_REGISTER.md`: `DEC-SCOPE-118`.
+- `RBAC_MATRIX.md`: §2.44.
+- `API_CONTRACT.md`: §12AL.
 - `ROLE_NAVIGATION.md`: Partnership Manager and Partnership Head sections.
 - `SCREEN_CATALOG.md`: the new screens.
 - The backlog's upc-001 status.

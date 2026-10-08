@@ -43,7 +43,7 @@ export const ROLE_DASHBOARD_PATH: Record<string, string> = {
   // tel-001 (DEC-SCOPE-073): the Telecaller CRM roles. tel-021 fills the dashboard in; managers land on their team (T23).
   telecaller: "/telecaller/dashboard",
   telecaller_manager: "/telecaller/manager/team",
-  // upc-001 (DEC-SCOPE-117): the University Partnership CRM roles. upc-022 fills the dashboard in; heads land on their team (U3).
+  // upc-001 (DEC-SCOPE-118): the University Partnership CRM roles. upc-022 fills the dashboard in; heads land on their team (U3).
   partnership_manager: "/partnership/dashboard",
   partnership_head: "/partnership/head/team",
 };
@@ -122,7 +122,7 @@ export const RECRUITER_NAV: NavItem[] = [
   { label: "Dashboard", href: "/recruiter/dashboard" }, { label: "Profile", href: "/recruiter/profile" },
   ...LEGACY_PLACEMENT.map((x) => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, (c) => c.toUpperCase()), href: `/it/placement/${x}` })),
 ];
-export const RECRUITER_MANAGER_NAV: NavItem[] = [{ label: "Team", href: "/recruiter/manager/team" }];
+export const RECRUITER_MANAGER_NAV: NavItem[] = [{ label: "Team", href: "/recruiter/manager/team" }, { label: "Catalogues", href: "/recruiter/manager/catalogue" }];
 
 // upc-001 (PU8): the EVID-020 §32 main menu, in source order, each entry naming the item that builds its page. An entry joins the
 // manager's sidebar once that item lands (it sets `live`); until then the dashboard lists it as coming soon, never as a dead link.

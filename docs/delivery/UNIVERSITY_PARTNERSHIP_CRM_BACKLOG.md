@@ -227,8 +227,8 @@ Common conventions:
 - API contract addenda and RBAC sections continue from §5.4.
 
 ### upc-001 — Partnership roles: profile, provisioning, sign-in, shell, menu
-- **Status (2026-10-08):** built on `feature/upc-001` under `DEC-SCOPE-117`, with migration `0102_partnership_profiles`, API §12AK and
-  RBAC §2.43. Spec: `docs/superpowers/specs/2026-10-08-upc-001-partnership-roles-design.md`.
+- **Status (2026-10-08):** built on `feature/upc-001` under `DEC-SCOPE-118`, with migration `0103_partnership_profiles`, API §12AL and
+  RBAC §2.44. Spec: `docs/superpowers/specs/2026-10-08-upc-001-partnership-roles-design.md`.
   - The U0–U15 answers are registered in `DEC-SCOPE-116`.
   - The PU1–PU11 answers are recommended defaults (`NEEDS_CONFIRMATION`). They include Q-29 (PU1) and "overseas_admin creates managers"
     (PU7).

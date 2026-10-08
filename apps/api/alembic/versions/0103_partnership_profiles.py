@@ -1,9 +1,9 @@
 """upc-001 -- partnership_profiles (1:1 with a `partnership_manager` user).
 
-Revision ID: 0102_partnership_profiles
-Revises: 0101_country_master
+Revision ID: 0103_partnership_profiles
+Revises: 0102_rec_catalogues
 
-docs/superpowers/specs/2026-10-08-upc-001-partnership-roles-design.md §4 (DEC-SCOPE-117). Adds one table; no existing row is read or
+docs/superpowers/specs/2026-10-08-upc-001-partnership-roles-design.md §4 (DEC-SCOPE-118). Adds one table; no existing row is read or
 written. 0001 builds a fresh database from the current models, which already carry this table, so creation is guarded (0061's idiom).
 downgrade() refuses while profiles exist: they are the only record of each manager's Employee ID and reporting head.
 """
@@ -13,8 +13,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0102_partnership_profiles"
-down_revision = "0101_country_master"
+revision = "0103_partnership_profiles"
+down_revision = "0102_rec_catalogues"
 branch_labels = None
 depends_on = None
 
@@ -38,5 +38,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {TABLE} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0102_partnership_profiles: partnership profiles exist. Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0103_partnership_profiles: partnership profiles exist. Remove them deliberately first.")
     op.drop_table(TABLE)

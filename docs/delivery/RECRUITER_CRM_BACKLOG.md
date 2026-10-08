@@ -304,6 +304,15 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** high
 
 ### rec-002 — Recruiter catalogues
+- **Status (2026-10-08):** **MERGED** to `main` as PR #146 @ `ea3e9189`. The next rec item takes the next migration after `0102`,
+  `DEC-SCOPE-118`, API §12AL and RBAC §2.44, re-checked on `main` first.
+  - Numbering: `DEC-SCOPE-117`, migration `0102_rec_catalogues` (re-chained after upc-002's `0101_country_master`), API §12AK (upc-002 took §12AJ), RBAC §2.43.
+  - Owner answers:
+    - C1: industries start empty.
+    - C2: `rec_company_sizes` is a managed list seeded with 1-10 … 1001+.
+    - C3: readers are the recruiter roles only.
+  - Page: `/recruiter/manager/catalogue/[kind]`.
+  - QA: `docs/quality/REC-002_EXPLORATORY_QA_2026-10-08.md`.
 - **Business requirement:**
   - §2: 15 lead sources and "Campaign". §9: 12 candidate sources.
   - §3: "Industry", "Company Size". §6: "Job Category". §26: "Top Job Categories". §4: contact roles.
@@ -1615,7 +1624,7 @@ head when it merges (the existing re-chain idiom), and API §12AI and RBAC §2.4
 | Item | Migration content |
 |---|---|
 | rec-001 | `recruiter_profiles` + backfill for existing `placement_team` users |
-| rec-002 | `rec_lead_sources`, `rec_candidate_sources`, `rec_campaigns`, `rec_industries`, `rec_job_categories`, `rec_contact_roles` (+ seeds) |
+| rec-002 | **`0102_rec_catalogues`:** `rec_lead_sources`, `rec_candidate_sources`, `rec_campaigns`, `rec_industries`, `rec_job_categories`, `rec_contact_roles`, `rec_company_sizes` (+ seeds) |
 | rec-003 | `companies` columns/CHECKs/indexes, `company_code_seq` + backfill, `company_assignment_history`, `name` uniqueness per Q-02 |
 | rec-004 | `company_contacts` (+ primary partial unique) |
 | rec-005 | `companies.stage` CHECK + backfill, `company_stage_history` |

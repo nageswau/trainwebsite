@@ -56,7 +56,7 @@ PERMISSIONS: dict[str, set[str]] = {
     # rec-001 (DEC-SCOPE-116, R2): `placement_team` is the recruiter (bundle above, unchanged); its manager's team scope is enforced
     # in services/recruiter.py.
     "placement_manager": {"placement:team"},
-    # upc-001 (DEC-SCOPE-117): coarse bundles; self/team scope is enforced in services/partnership.py.
+    # upc-001 (DEC-SCOPE-118): coarse bundles; self/team scope is enforced in services/partnership.py.
     "partnership_manager": {"partnership:self"},
     "partnership_head": {"partnership:team"},
 }

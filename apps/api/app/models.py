@@ -23,7 +23,7 @@ from sqlalchemy import (
     false,
     text,
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, validates
+from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column, relationship, validates
 from sqlalchemy.sql import func
 
 from app.bdm_stages import FIRST_STAGE as BDM_FIRST_STAGE
@@ -3208,8 +3208,75 @@ class RecruiterProfile(Base, TimestampMixin):
     reporting_manager_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
+class _RecCatalogueValue(TimestampMixin):
+    """rec-002 (DEC-SCOPE-117): one value of a recruiter managed list. Deactivated, never deleted; a rename keeps the id, so records
+    that point at it keep their link. Names are unique per list, case-insensitively; `sort_order` keeps the source order."""
+
+    @declared_attr.directive
+    def __table_args__(cls):
+        return (Index(f"uq_{cls.__tablename__}_name", text("lower(name)"), unique=True),)
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(120))
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+
+
+class RecLeadSource(_RecCatalogueValue, Base):
+    __tablename__ = "rec_lead_sources"  # EVID-018 §2
+
+
+class RecCandidateSource(_RecCatalogueValue, Base):
+    __tablename__ = "rec_candidate_sources"  # §9
+
+
+class RecIndustry(_RecCatalogueValue, Base):
+    __tablename__ = "rec_industries"  # §3; starts empty (C1)
+
+
+class RecJobCategory(_RecCatalogueValue, Base):
+    __tablename__ = "rec_job_categories"  # §6, §26
+
+
+class RecContactRole(_RecCatalogueValue, Base):
+    __tablename__ = "rec_contact_roles"  # §4
+
+
+class RecCompanySize(_RecCatalogueValue, Base):
+    __tablename__ = "rec_company_sizes"  # §3 Company Size; the owner's bands (C2)
+
+
+# The URL slug of each simple list (api/recruiter_catalogue.py).
+REC_CATALOGUE_MODELS = {
+    "lead-sources": RecLeadSource,
+    "candidate-sources": RecCandidateSource,
+    "industries": RecIndustry,
+    "job-categories": RecJobCategory,
+    "contact-roles": RecContactRole,
+    "company-sizes": RecCompanySize,
+}
+
+
+class RecCampaign(Base, TimestampMixin):
+    """rec-002 (§2 "Campaign"): a recruiter campaign under one lead source -- the tel-002 campaign shape without a product. The source
+    must be active when it is set (services/recruiter_catalogue)."""
+
+    __tablename__ = "rec_campaigns"
+    __table_args__ = (
+        CheckConstraint("end_date IS NULL OR end_date >= start_date", name="ck_rec_campaigns_dates"),
+        Index("uq_rec_campaigns_name", text("lower(name)"), unique=True),
+        Index("ix_rec_campaigns_lead_source", "lead_source_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(160))
+    lead_source_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_lead_sources.id"))
+    start_date: Mapped[date] = mapped_column(Date)
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+
+
 class PartnershipProfile(Base, TimestampMixin):
-    """upc-001 (DEC-SCOPE-117): a partnership manager's profile, 1:1 with a `partnership_manager` user (the user id is the key). Name,
+    """upc-001 (DEC-SCOPE-118): a partnership manager's profile, 1:1 with a `partnership_manager` user (the user id is the key). Name,
     email, mobile and active status stay on `users` (PU2). The reporting head must be an active `partnership_head`; that spans tables, so
     `services/partnership.py` enforces it under a row lock (no cross-table CHECK)."""
 

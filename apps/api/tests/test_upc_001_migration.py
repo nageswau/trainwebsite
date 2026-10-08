@@ -1,4 +1,4 @@
-"""upc-001 -- migration 0102_partnership_profiles (spec §4). Round trip and the downgrade refusal run in a throwaway database built from
+"""upc-001 -- migration 0103_partnership_profiles (spec §4). Round trip and the downgrade refusal run in a throwaway database built from
 scratch (the tel-001 pattern); a downgrade never runs against the shared test database. Plain tests: alembic/env.py calls asyncio.run()."""
 
 import asyncio
@@ -19,11 +19,11 @@ from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = API_ROOT / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_upc_001_migration_0102", VERSIONS / "0102_partnership_profiles.py")
+_spec = importlib.util.spec_from_file_location("_upc_001_migration_0103", VERSIONS / "0103_partnership_profiles.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0101_country_master", "0102_partnership_profiles"
+BASE, HEAD = "0102_rec_catalogues", "0103_partnership_profiles"
 USERS = "SELECT id, email, role, division FROM users ORDER BY id"
 
 
@@ -33,7 +33,7 @@ def _config() -> Config:
     return cfg
 
 
-def test_migration_chains_after_0101_and_is_the_single_head():
+def test_migration_chains_after_0102_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
@@ -72,7 +72,7 @@ def _sql(url: str, sql: str, params: dict | None = None, *, autocommit: bool = F
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0101 with one partnership_head and two other users."""
+    """A fresh database at 0102 with one partnership_head and two other users."""
     cfg = _config()
     original = settings.database_url
     name = f"upc001_migration_{uuid.uuid4().hex[:8]}"
