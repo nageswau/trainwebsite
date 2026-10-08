@@ -1,7 +1,8 @@
 # rec-001 — Recruiter scope for `placement_team` + new `placement_manager` (design)
 
 Date: 2026-10-08 · Branch: `feature/rec-001` from `origin/main@99ec1c38` · Decision: `DEC-SCOPE-116` · Migration `0100` ·
-API §12AI · RBAC §2.42 (all re-checked on `origin/main` at start; none taken by a parallel branch).
+API §12AI · RBAC §2.42 (all re-checked on `origin/main` at start; none taken by a parallel branch). **Status: MERGED** as PR #143 @
+`9e957bee` (2026-10-08).
 
 ## 1. Authority
 - `docs/delivery/RECRUITER_CRM_BACKLOG.md` §4 rec-001 (requirements, AC1–AC6, negatives, edge cases) and §3.1 R1–R15

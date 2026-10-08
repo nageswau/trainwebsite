@@ -4932,7 +4932,7 @@ read); a manager's booking on any lead is `403` before scope (§2.23); a manager
 **Evidence:** `EVID-018` (`functionalities/edusphere_markdown/Recruiter Functionalities.md`, `DERIVED_BLUEPRINT`);
 `RECRUITER_CRM_BACKLOG.md` §3.1 R1–R15 and §rec-001 (AC1–AC6); `PRD_OPEN_ITEMS.md` item 69; `CONFLICT_MATRIX.md` C-10.
 **Status:** `EXPLICIT_APPROVAL`. The owner answered R1–R15 in session on 2026-10-07 (backlog merged as PR #140 @ `7e33f669`). The owner
-answered Q-28, Q-29 and the admin-page name in session on 2026-10-08. Migration `0100_recruiter_profiles`. API §12AI. RBAC §2.42.
+answered Q-28, Q-29 and the admin-page name in session on 2026-10-08. **MERGED** to `main` as PR #143 @ `9e957bee` (2026-10-08). Migration `0100_recruiter_profiles`. API §12AI. RBAC §2.42.
 Spec `docs/superpowers/specs/2026-10-08-rec-001-recruiter-roles-design.md`.
 
 **Module scope (registered here for every rec item):** R1–R15 exactly as recorded in `RECRUITER_CRM_BACKLOG.md` §3.1.
