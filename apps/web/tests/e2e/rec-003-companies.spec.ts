@@ -33,7 +33,7 @@ test("a recruiter adds, edits and archives a company; a duplicate name warns", a
   await page.waitForURL(/\/recruiter\/companies\/[0-9a-f-]{36}$/);
   await expect(page.getByRole("status").filter({ hasText: /Company CMP-\d{6} created\./ })).toBeVisible();
   const details = page.getByRole("region", { name: "Details" });
-  await expect(details.getByText("Kiran Placement")).toBeVisible();
+  await expect(details.getByText("Kiran Placement", { exact: true })).toBeVisible(); // recruiter = self (AC1)
   await expect(details.getByRole("link", { name: /https:\/\/e2e-rec003\.example\.com/ })).toBeVisible();
   const detailUrl = page.url();
 
@@ -52,14 +52,15 @@ test("a recruiter adds, edits and archives a company; a duplicate name warns", a
   await page.getByLabel("City").fill("Mumbai");
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByText("Changes saved.")).toBeVisible();
-  await expect(details.getByText("Mumbai")).toBeVisible();
+  await expect(details.getByText("Mumbai", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Archive" }).click();
   await page.getByRole("button", { name: "Yes, archive" }).click();
   await expect(page.getByText("Company archived.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Edit" })).toHaveCount(0);
   await page.goto(`/recruiter/companies?q=${encodeURIComponent(name)}`);
   await expect(page.getByText("No companies match these filters.")).toBeVisible();
-  await page.getByLabel("Show archived").check();
+  await page.getByLabel("Show archived").click(); // URL-driven: it reads checked once the navigation lands
+  await expect(page.getByLabel("Show archived")).toBeChecked();
   await expect(page.getByRole("region", { name: "Companies" }).getByRole("link", { name })).toBeVisible();
 });
 
@@ -81,7 +82,7 @@ test("a placement manager adds an unassigned company and assigns it to a recruit
   await page.getByRole("option", { name: /Kiran Placement/ }).click();
   await page.getByRole("button", { name: "Assign", exact: true }).click();
   await page.getByRole("button", { name: "Yes, assign" }).click();
-  await expect(page.getByText("Assigned to Kiran Placement.")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Company assigned to Kiran Placement." })).toBeVisible();
   await expect(page.getByText(/Unassigned → Kiran Placement/)).toBeVisible();
 
   await page.goto(`/recruiter/companies?q=${encodeURIComponent(name)}`);

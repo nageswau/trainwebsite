@@ -46,7 +46,7 @@ function Reassign({ company, onChanged }: { company: Company; onChanged: (c: Com
     setConfirming(false);
     if (outcome.ok && isCompanyBody(outcome.data)) {
       setPicked(null);
-      onChanged(outcome.data.company, `Assigned to ${picked.label}.`);
+      onChanged(outcome.data.company, `Company assigned to ${picked.label}.`);
     } else setFailure(outcome.ok ? "Unable to reassign this company." : outcome.message);
   }
 

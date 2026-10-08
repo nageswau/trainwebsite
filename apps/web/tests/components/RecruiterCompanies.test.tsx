@@ -64,6 +64,7 @@ describe("helpers", () => {
     expect(companyShell("placement_team").roleLabel).toBe("Recruiter");
     expect(companyShell("placement_manager").roleLabel).toBe("Placement Manager");
     expect(companyShell("super_admin").roleLabel).toBe("Super Administrator");
+    expect(companyShell("bdm").nav.map((x) => x.href)).toContain("/bdm/organizations"); // QA-04: the BDM keeps their own menu
   });
 });
 
@@ -82,6 +83,15 @@ describe("RecruiterCompaniesPanel", () => {
     expect(url).toContain("assigned=unassigned");
     expect(url).toContain("include_archived=true");
     expect(screen.getAllByRole("link", { name: "Add company" })[0].getAttribute("href")).toBe("/recruiter/companies/new");
+  });
+
+  it("labels every cell, so the house card layout can stack each row below 980px (QA-02)", async () => {
+    serve(() => res(page([row])));
+    const { container } = render(<RecruiterCompaniesPanel canCreate />);
+    await screen.findByRole("region", { name: "Companies" });
+    expect(container.querySelector(".telecaller-list")).toBeTruthy();
+    const labels = [...container.querySelectorAll("tbody td")].map((td) => td.getAttribute("data-label"));
+    expect(labels).toEqual(["Code", "Name", "City", "Priority", "Lead source", "Industry", "Recruiter"]);
   });
 
   it("shows the empty state, and an error with Retry", async () => {

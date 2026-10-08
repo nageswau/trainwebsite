@@ -1,7 +1,7 @@
 // rec-003 (DEC-SCOPE-119): the recruiter company master -- types, endpoints and the pure helpers its list, form and detail share. The
 // API scopes every row and decides every permission; nothing here filters for security.
 import type { LookupPage } from "@/lib/lookups";
-import { RECRUITER_MANAGER_NAV, RECRUITER_NAV, SUPER_ADMIN_NAV, type NavItem } from "@/lib/navigation";
+import { BDM_NAV, RECRUITER_MANAGER_NAV, RECRUITER_NAV, SUPER_ADMIN_NAV, type NavItem } from "@/lib/navigation";
 import { PLACEMENT_MANAGER_LABEL, RECRUITER_ROLE_LABEL } from "@/lib/recruiter";
 
 export type Ref = { id: string; name: string; active: boolean };
@@ -33,7 +33,7 @@ export const CREATOR_ROLES = ["placement_team", "placement_manager", "super_admi
 export function companyShell(role: string): { nav: NavItem[]; roleLabel: string } {
   if (role === "super_admin") return { nav: SUPER_ADMIN_NAV, roleLabel: "Super Administrator" };
   if (role === "placement_manager") return { nav: RECRUITER_MANAGER_NAV, roleLabel: PLACEMENT_MANAGER_LABEL };
-  if (role === "bdm") return { nav: [], roleLabel: "BDM" }; // R10: an assigned BDM reads a company it was linked to
+  if (role === "bdm") return { nav: BDM_NAV, roleLabel: "BDM" }; // R10: an assigned BDM reads the companies linked to them (QA-04)
   return { nav: RECRUITER_NAV, roleLabel: RECRUITER_ROLE_LABEL };
 }
 

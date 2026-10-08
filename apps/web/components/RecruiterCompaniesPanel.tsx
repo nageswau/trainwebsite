@@ -11,7 +11,8 @@ import { PAGE_SIZE } from "@/lib/telecaller";
 
 // rec-003 (spec §6): the company list for a recruiter (their own), a manager (their team's plus the unassigned queue) or super admin.
 // The API scopes the rows. Filters and the page live in the URL (BdmOrganizationsPanel's pattern), so refresh keeps the place and Back
-// returns to the previous view; the current rows stay on screen while the next page loads.
+// returns to the previous view; the current rows stay on screen while the next page loads. Below 980px each row is a card of labelled
+// lines (the house `.telecaller-list` layout, QA-02).
 type Filters = { offset: number; q: string; city: string; priority: string; leadSource: string; industry: string; assigned: string; archived: boolean };
 type Team = { id: string; full_name: string; active: boolean }[];
 
@@ -140,7 +141,7 @@ export default function RecruiterCompaniesPanel({ canCreate, isManager = false }
   );
 
   return (
-    <div className="action-card wide" aria-busy={loading && !loadFailed}>
+    <div className="action-card wide telecaller-list" aria-busy={loading && !loadFailed}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
         <h3>Companies</h3>
         {addLink}
@@ -221,7 +222,7 @@ export default function RecruiterCompaniesPanel({ canCreate, isManager = false }
             </p>
           )}
           <div className="table-wrap" role="region" aria-label="Companies" tabIndex={0} style={loading ? { opacity: 0.6 } : undefined}>
-            <table style={{ overflowWrap: "anywhere" }}>
+            <table style={{ width: "100%", overflowWrap: "anywhere" }}>
               <thead>
                 <tr>
                   <th scope="col">Code</th>
@@ -236,8 +237,8 @@ export default function RecruiterCompaniesPanel({ canCreate, isManager = false }
               <tbody>
                 {data.items.map((r) => (
                   <tr key={r.id}>
-                    <td style={{ whiteSpace: "nowrap" }}>{r.code}</td>
-                    <td style={{ minWidth: 160 }}>
+                    <td data-label="Code" style={{ whiteSpace: "nowrap" }}>{r.code}</td>
+                    <td data-label="Name" style={{ minWidth: 160 }}>
                       <Link href={`${COMPANIES_PATH}/${r.id}`} style={LINK_STYLE}>
                         {r.name}
                       </Link>
@@ -248,11 +249,11 @@ export default function RecruiterCompaniesPanel({ canCreate, isManager = false }
                         </>
                       )}
                     </td>
-                    <td>{display(r.city)}</td>
-                    <td>{r.priority ? PRIORITY_LABEL[r.priority] : "—"}</td>
-                    <td>{display(r.lead_source?.name)}</td>
-                    <td>{display(r.industry?.name)}</td>
-                    <td>{personName(r.assigned_recruiter)}</td>
+                    <td data-label="City">{display(r.city)}</td>
+                    <td data-label="Priority">{r.priority ? PRIORITY_LABEL[r.priority] : "—"}</td>
+                    <td data-label="Lead source">{display(r.lead_source?.name)}</td>
+                    <td data-label="Industry">{display(r.industry?.name)}</td>
+                    <td data-label="Recruiter">{personName(r.assigned_recruiter)}</td>
                   </tr>
                 ))}
               </tbody>
