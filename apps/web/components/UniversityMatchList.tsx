@@ -23,7 +23,7 @@ export default function UniversityMatchList({ matches, total, linkable = false, 
         {matches.map((m) => {
           const title = `${m.university_code} · ${m.name}`;
           return (
-            <li key={m.id} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px", background: "#fff" }}>
+            <li key={m.id} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px", background: "#fff", color: "var(--ink)" }}>
               <strong>{linkable ? <Link href={universityPath(m.id)} style={{ color: "var(--blue)", textDecoration: "underline" }}>{title}</Link> : title}</strong>
               <div className="muted">{[m.country.name, m.city, visibilityLabel(m)].filter(Boolean).join(" · ")}</div>
               <dl style={{ display: "grid", gridTemplateColumns: "minmax(110px, max-content) 1fr", gap: "2px 12px", margin: "6px 0 0", fontSize: 14 }}>

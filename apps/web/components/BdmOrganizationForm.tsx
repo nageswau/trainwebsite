@@ -240,7 +240,7 @@ export default function BdmOrganizationForm({
           {duplicate.total > duplicate.matches.length && <p>{plural(duplicate.total - duplicate.matches.length, "more similar organization", "more similar organizations")}.</p>}
           {duplicate.university_matches.length > 0 && (
             <>
-              <h5 style={{ margin: "8px 0 0" }}>Already in the University Master</h5>
+              {duplicate.total > 0 && <h5 style={{ margin: "8px 0 0" }}>Already in the University Master</h5>}
               <UniversityMatchList
                 matches={duplicate.university_matches}
                 total={duplicate.university_total}

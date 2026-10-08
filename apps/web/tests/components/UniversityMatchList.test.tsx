@@ -21,6 +21,7 @@ describe("UniversityMatchList (upc-004 UD5)", () => {
     expect(item).toHaveTextContent("Existing relationshipExisting");
     expect(item).toHaveTextContent("Assigned managerRahul Nair (primary), Asha Rao (backup, inactive)");
     for (const term of ["Current stage", "Last contact", "Next follow-up"]) expect(item).toHaveTextContent(`${term}—`);
+    expect(item).toHaveStyle({ color: "var(--ink)" }); // QA-02: plain text even inside a red alert
   });
 
   it("names an unassigned university, counts hidden matches and renders an action without links", () => {

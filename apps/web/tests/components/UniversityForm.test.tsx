@@ -144,6 +144,7 @@ describe("UniversityForm duplicates (upc-004 AC1, UD2, UD6)", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("This university is already in the University Master");
     expect(alert).toHaveTextContent("UNV-000012");
+    await waitFor(() => expect(alert.contains(document.activeElement)).toBe(true)); // QA-01: focus moves to the panel
     expect(push).not.toHaveBeenCalled();
     fireEvent.change(screen.getByLabelText("Reason for adding it anyway (required)"), { target: { value: "Separate campus with its own office" } });
     fireEvent.click(screen.getByRole("button", { name: "Add anyway" }));

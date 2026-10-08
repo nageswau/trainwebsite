@@ -331,6 +331,12 @@ slot). **Migration `0105_university_master`** backfills codes for existing rows 
 `downgrade()` refuses while rankings, assignment history or internal universities exist. Public reads show only published, active rows
 (API §12AN). `stage` is upc-007's; contacts are upc-006's.
 
+**Addendum, 2026-10-08 (`upc-004`, `DEC-SCOPE-121`, U13 — duplicate prevention + BDM link):** `universities.name_key` (NOT NULL; the
+normalised name, kept by the model's `name` validator) with the non-unique index `ix_universities_duplicate_key (country_id, name_key)`.
+`bdm_organizations.university_id` (nullable FK `universities`, indexed) with CHECK `ck_bdm_organizations_university_link` (University
+organizations only). **Migration `0106_university_duplicates`** backfills the key and logs (never merges or links) the existing duplicate
+groups and the unlinked BDM University organizations that match a master name; `downgrade()` refuses while any organization is linked.
+
 ### 6.2 `OverseasApplication`, `ApplicationStatusHistory`
 **Carries over**, status vocabulary **extended** — this is part of the `ADR-012` resolution (§6.3
 covers the commission-specific piece).

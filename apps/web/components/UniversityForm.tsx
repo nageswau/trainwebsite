@@ -6,6 +6,7 @@ import SearchableSelect from "@/components/SearchableSelect";
 import UniversityMatchList from "@/components/UniversityMatchList";
 import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
 import { formOptional as optional, formText as text } from "@/lib/telecaller";
+import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 import {
   COURSE_LEVELS,
   countrySearch,
@@ -83,6 +84,7 @@ export default function UniversityForm({ university }: { university?: University
   const [countryId, setCountryId] = useState(university?.country.id ?? "");
   const [existing, setExisting] = useState<UniversityMatchPage | null>(null);
   const [duplicate, setDuplicate] = useState<UniversityDuplicate | null>(null);
+  const focus = useFocusAfterRender();
 
   useEffect(() => {
     const unchanged = editing && name.trim() === university.name && countryId === university.country.id;
@@ -147,6 +149,7 @@ export default function UniversityForm({ university }: { university?: University
     if (found) {
       setErrors({});
       setDuplicate(found);
+      focus("uni-duplicate");
       return;
     }
     const mapped = response.status === 422 ? fieldErrors(data?.detail) : null;
@@ -177,7 +180,7 @@ export default function UniversityForm({ university }: { university?: University
         )}
         {duplicate && (
           <div role="alert" className="form-error">
-            <strong>{duplicate.message}</strong>
+            <strong id="uni-duplicate" tabIndex={-1}>{duplicate.message}</strong>
             <UniversityMatchList matches={duplicate.matches} total={duplicate.total} linkable />
             {duplicate.can_override ? (
               <Field id="uni-duplicate_reason" label="Reason for adding it anyway (required)" error={errors.duplicate_reason}>

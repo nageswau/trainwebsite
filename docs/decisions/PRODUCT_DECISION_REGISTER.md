@@ -5069,3 +5069,31 @@ Spec: `docs/superpowers/specs/2026-10-08-upc-003-university-master-design.md`.
 universities; `GET /lookups/countries` admits the partnership roles; web pages `/partnership/universities`, `/new`, `/[id]`,
 `/[id]/edit`; "University Master" goes live in the §32 menu and the head's sidebar.
 **New Feature ID authorized:** `upc-003`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-003.
+
+### DEC-SCOPE-121 — University duplicate prevention + BDM university-org link (`upc-004`)
+
+**Evidence:** `EVID-020` §26 (L868–894: search before adding, the warning panel, "prevents two employees contacting the same
+university"); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U13 (`EXPLICIT_APPROVAL`, 2026-10-08) and §4 upc-004.
+**Status:** UD1–UD12 are the recommended answers to backlog Q-02 (plus design-level rules), applied under the owner's standing instruction
+for the build session ("proceed with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed:
+`NEEDS_CONFIRMATION` at sign-off. Migration `0106_university_duplicates`, API contract §12AO, RBAC §2.47 (provisional; re-chained at merge).
+Spec: `docs/superpowers/specs/2026-10-08-upc-004-university-duplicates-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| UD1 | Q-02 duplicate key | Normalised name (NFKC, whitespace collapsed, casefolded) + country; no city, no aliases; inactive rows count |
+| UD2 | Override | `409 university_duplicate`; only `partnership_head` / `super_admin`, with a 10–500 character reason, audited `university.duplicate_override` |
+| UD3 | Edit | A changed name or country re-runs the check (excluding itself) |
+| UD4 | Race | Same-key writes serialise on a transaction advisory lock |
+| UD5 | Panel | Code, name, country, city, state, existing relationship, managers; stage / last contact / next follow-up "—" until upc-007/006/020 |
+| UD6 | Search before adding | `GET /partnership/universities/duplicates` (read roles), debounced in the form; advisory |
+| UD7 | Link | `bdm_organizations.university_id` nullable FK, University organizations only (CHECK) |
+| UD8 | BDM create | Master matches by name (any country) join the `possible_duplicate` 409; link or save unlinked; never merged |
+| UD9 | BDM edit | PATCH links / unlinks; a type change away from University clears the link (edit-form control is a follow-up) |
+| UD10 | BDM read | Organization detail shows the linked record (code, name, country, city, primary manager name); no commission |
+| UD11 | Master read | University detail lists its linked BDM organizations (text only) |
+| UD12 | Existing data | Migration reports existing duplicates and link candidates; no merge, no auto-link |
+
+**Consequences:** `universities.name_key` + index; `bdm_organizations.university_id`; new route `GET /partnership/universities/duplicates`;
+a duplicate master create/rename is `409` unless overridden; the BDM University create warning carries the master's matches.
+**New Feature ID authorized:** `upc-004`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-004.

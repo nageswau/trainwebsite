@@ -1584,6 +1584,23 @@ can_deactivate}`, `rankings`, `application_count`, manager refs `{id, full_name,
 | `GET /public/universities`, `/universities/{slug}`, `/countries/{slug}`, `/overseas-courses`, `/search` | **Changed:** list only published, active universities; an internal one's slug is `404` (indistinguishable from unknown). Response shapes unchanged |
 | `GET /lookups/countries` | **Changed:** also admits `partnership_manager` and `partnership_head` |
 
+## 12AO. University duplicate prevention + BDM link (`upc-004`) — addendum, 2026-10-08
+
+`DEC-SCOPE-121`; design spec `docs/superpowers/specs/2026-10-08-upc-004-university-duplicates-design.md` §3. Migration
+`0106_university_duplicates`. The duplicate key is the normalised name (NFKC, whitespace collapsed, casefolded) + the country; inactive
+universities count. A match is `{id, university_code, name, country: {id, name}, city, active, catalogue_visible, existing_relationship,
+primary_manager, backup_manager}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/universities/duplicates` | **New.** Read roles of §12AN (else `403`). `name` (required, ≤ 200; blank after trimming `422`), `country_id` and `exclude_id` (optional). `{items (≤ 10, by code), total}`. Advisory search before adding |
+| `POST /partnership/universities` | **Changed:** a match is `409 {code: "university_duplicate", message, matches, total, can_override}`. `duplicate_reason` (10–500, trimmed; else `422`) overrides it for `partnership_head`/`super_admin` only (any other role still `409`), audited `university.duplicate_override {match_count, reason}`; ignored when nothing matches. Same-key writes serialise on a transaction advisory lock |
+| `PATCH /partnership/universities/{id}` | **Changed:** a changed `name` or `country_id` re-runs the check (excluding itself), same `409`/override |
+| `GET /partnership/universities/{id}` (every detail) | **Changed:** adds `linked_bdm_organizations: [{id, code, name, city, bdm_type, assigned_bdm_name, archived}]` |
+| `POST /bdm/organizations` | **Changed:** optional `university_id` (unknown `422` "Unknown university"; non-University type `422`). `org_type: university` without it: master matches by name (any country) join the `409 possible_duplicate` as `university_matches` + `university_total` (always present) unless `confirm_duplicate` |
+| `PATCH /bdm/organizations/{id}` | **Changed:** `university_id` links (validated as above) or `null` unlinks; a type change away from University clears the link |
+| `GET /bdm/organizations/{id}` (every detail) | **Changed:** adds `university: {id, university_code, name, country_name, city, primary_manager_name}` or `null` |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

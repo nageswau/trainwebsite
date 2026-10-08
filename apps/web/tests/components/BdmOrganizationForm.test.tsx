@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import BdmOrganizationForm from "@/components/BdmOrganizationForm";
@@ -192,7 +192,8 @@ describe("BdmOrganizationForm (bdm-002 AC1, AC2, §12.2 F5)", () => {
     fireEvent.change(screen.getByLabelText("Type (required)"), { target: { value: "university" } });
     fireEvent.click(screen.getByRole("button", { name: "Save organization" }));
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Already in the University Master");
+    expect(alert).toHaveTextContent("This university is already in the University Master");
+    expect(within(alert).queryByText("Already in the University Master")).toBeNull(); // QA-03: no repeated heading without BDM matches
     expect(alert).toHaveTextContent("Rahul Nair (primary)");
     expect(alert.querySelector("a")).toBeNull(); // BDMs cannot open master records
     expect(screen.getByRole("button", { name: "Save without linking" })).toBeInTheDocument();
