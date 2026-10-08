@@ -34,6 +34,7 @@ import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 type Notice = { text: string; failed: boolean } | null;
 type Props = { requirement: Requirement; initial: Jd | null; onRequirementChanged: (next: Requirement, notice: string) => void };
 type ContactOption = { id: string; name: string };
+const clip = (s: string) => (s.length > 80 ? `${s.slice(0, 80)}…` : s); // long descriptions in the JD6 change list
 
 function JdForm({ requirement, current, onSaved, onCancel }: { requirement: Requirement; current?: JdVersion; onSaved: (jd: Jd) => void; onCancel: () => void }) {
   const [values, setValues] = useState<JdValues>(() => jdValues(current, requirement));
@@ -211,7 +212,7 @@ function ApplyToRequirement({ requirement, current, onApplied }: { requirement: 
         <ul style={{ margin: 0, paddingLeft: 18 }} aria-label="Changes">
           {changes.map((c) => (
             <li key={c.label} style={{ overflowWrap: "anywhere" }}>
-              <strong>{c.label}:</strong> {c.from.length > 80 ? `${c.from.slice(0, 80)}…` : c.from} → {c.to.length > 80 ? `${c.to.slice(0, 80)}…` : c.to}
+              <strong>{c.label}:</strong> {clip(c.from)} → {clip(c.to)}
             </li>
           ))}
         </ul>

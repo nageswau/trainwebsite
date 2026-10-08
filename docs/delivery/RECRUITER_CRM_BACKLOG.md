@@ -559,6 +559,10 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
   - `bdm_metrics` was unaffected: it counts offers, not job statuses.
 
 ### rec-008 — JD management
+- **Status (2026-10-08):** **BUILT** on `feature/rec-008`, not merged. `DEC-SCOPE-132` (JD1–JD9 recommended defaults, UNVERIFIED);
+  migration `0117_job_descriptions`, API §12AZ, RBAC §2.58. Spec `docs/superpowers/specs/2026-10-08-rec-008-jd-management-design.md`.
+  - AC3: a non-PDF/DOCX file is `415` (rec-009's code), not `422` (JD5). The employer view is deferred (JD7). There is no automatic JD
+    follow-up (JD9).
 - **Business requirement:** §7: upload or create a JD (14 fields), "📎 Upload JD and automatically connect it to the Job Requirement".
 - **Existing behavior:** `jobs.description` text only.
 - **Expected behavior:**

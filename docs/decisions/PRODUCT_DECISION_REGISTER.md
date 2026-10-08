@@ -5415,3 +5415,36 @@ upc-010 merged first and took those numbers. Spec `docs/superpowers/specs/2026-1
 - Audit `recruiter_follow_up.{create,update,complete,cancel}` carries ids, the reason key and field names only, never notes, outcomes or
   reasons.
 - **New Feature ID authorized:** `rec-024`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-024.
+
+### DEC-SCOPE-132 — JD management (`rec-008`)
+
+**Evidence:**
+- `EVID-018`: §7 JD Management (lines 350–388): "Recruiter should be able to upload or create a JD", 14 JD fields, "📎 Upload JD and
+  automatically connect it to the Job Requirement".
+- `RECRUITER_CRM_BACKLOG.md` §rec-008 (AC1–AC3).
+- Module scope: `DEC-SCOPE-116` (R5: `jobs` is the requirement with a versioned child `job_descriptions`).
+- Requirement scope and permissions: `DEC-SCOPE-129` (rec-007). Contacts: `DEC-SCOPE-125` (rec-004). Follow-ups: `DEC-SCOPE-131` FU1.
+
+**Status:** **BUILT** on `feature/rec-008` (2026-10-08), not merged. Every answer below is a **recommended default, `UNVERIFIED`**. The owner
+told the session to proceed with the recommended answers.
+
+**Numbering:** migration `0117_job_descriptions`, API §12AZ and RBAC §2.58. Spec `docs/superpowers/specs/2026-10-08-rec-008-jd-management-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| JD1 | Versions | Every create, edit or upload writes a new version row. Rows are never edited or deleted. A partial unique index keeps one current version per requirement, and `(job_id, version)` is unique (AC2) |
+| JD2 | JD number | One `JD-000001` per requirement (`jd_number_seq`), kept by every version |
+| JD3 | Fields | The 14 §7 fields. Company is the requirement's. Experience and salary are free text. Skills is text, and the requirement's `job_skills` stay authoritative. The contact must be an active contact of the requirement's company (`422`); keeping a since-deactivated one is allowed |
+| JD4 | Create vs upload | A create or edit carries the current file forward. An upload carries the current fields forward, or the requirement's fields when there is no JD yet. The JD links to the requirement automatically (AC1) |
+| JD5 | Files | PDF or DOCX judged by the bytes, ≤ 5 MB. Too big → `413`, empty → `422`, another type → `415` (rec-009's code; the backlog AC3 says `422`, a recorded deviation). The download is authenticated and audited, which is the rec-009 meaning of a signed download |
+| JD6 | JD → requirement | Never silent. **Update requirement from JD** lists the differing title, location, qualification, vacancies, deadline and description. Only on confirmation does it send the existing `PATCH /recruiter/requirements/{id}` |
+| JD7 | Who | Read = the requirement's read scope. Write = the requirement's `can_edit`: other readers → `403`, cancelled → `409`. Employer view is **deferred** (the employer portal is unchanged). `hr_team` and others → `403` |
+| JD8 | Closing date | A closing date different from the deadline is allowed, flagged `closing_date_differs` and warned on the page. The page compares against the requirement as it holds it, so the warning clears after JD6 |
+| JD9 | Follow-ups | No automatic "JD pending" follow-up: rec-008 has no event to fire it from. The `jd` reason stays manual (amends FU1's rec-008 mention) |
+
+**Consequences:**
+- `job_descriptions` + `jd_number_seq` (`0117`). `services/job_descriptions.py` and `api/recruiter_job_descriptions.py`.
+- `services/candidates.read_pdf_or_docx` is shared by both modules; rec-009 behaviour is unchanged.
+- The requirement page gains a **Job description (JD)** section.
+- Audit `job_description.{create,upload,download}` carries ids, the version, field names, type and size only.
+- **New Feature ID authorized:** `rec-008`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-008.
