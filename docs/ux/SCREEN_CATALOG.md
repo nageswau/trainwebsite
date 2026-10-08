@@ -3181,3 +3181,18 @@ is invented. Visual-reference mapping: None — not inspected. Do not claim pari
 - **Route:** `/partnership/universities/[id]`. **Content:** Profile `<dl>` (University ID and the §1 fields, application count), Rankings,
   EduSphere owner (primary/backup, the assign pickers for a head or Super Admin), Public catalogue (status sentence, overview, Publish /
   Remove from catalogue, Deactivate with an inline confirm naming the applications, Reactivate). Edit link when allowed.
+
+## upc-006 addendum (2026-10-08, `DEC-SCOPE-123`) — University contacts + relationship strength
+
+No new route (design spec `docs/superpowers/specs/2026-10-08-upc-006-university-contacts-design.md` §4). Visual-reference mapping: None —
+not inspected. Do not claim parity.
+
+- **Route:** `/partnership/universities/[id]` gains a **Contacts** section (`GET /partnership/universities/{id}/contacts`): one block per
+  contact — name, Primary / relationship / Shareable-or-Internal badges, designation · department · role, email (mailto), phone, WhatsApp,
+  LinkedIn link (new tab), preferred channel, notes. With `can_edit_contacts`: Add contact, Edit, Make primary, Delete (inline confirm).
+  The editor has every §10 field, the role and channel/strength selects, "Visible to counsellors (shareable)" and, for a later contact,
+  "Make this the primary contact". **States:** "No contacts recorded yet."; Saving… with one request per save; a `422` under its field
+  (`aria-invalid`); other errors in `role="alert"`; success in `role="status"`; at 50 contacts Add is disabled with a note.
+  overseas_admin sees only shareable contacts, without notes or controls. The header shows "Relationship: <value>" and the Profile list a
+  Relationship strength row. **Responsive:** blocks wrap, no side-scroll at 390 px.
+- **Route:** `/partnership/universities` gains a Relationship column and filter; the master form gains a Relationship strength select.

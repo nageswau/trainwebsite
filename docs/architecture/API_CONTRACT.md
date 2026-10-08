@@ -1652,10 +1652,29 @@ can_deactivate}`, `rankings`, `application_count`, manager refs `{id, full_name,
 | `PUT /recruiter/candidates/{id}/resume` | Multipart `file` → `201` `{version, file_name, content_type, size_bytes}`. Each upload is a new version and is not idempotent. An empty file is `422`, over 5 MB is `413`, and a file that is not PDF or DOCX **by its bytes** is `415`. An archived candidate is `409` |
 | `GET /recruiter/candidates/{id}/resume/{version}` | The file as an attachment named `resume-CAN-000001-v2.pdf`, with `nosniff`, `no-store` and a sandbox CSP. The audit row is committed first. An unknown version is `404` |
 
-## 12AQ. University duplicate prevention + BDM link (`upc-004`) — addendum, 2026-10-08
+## 12AQ. University contacts + relationship strength (`upc-006`) — addendum, 2026-10-08
 
-`DEC-SCOPE-123`; design spec `docs/superpowers/specs/2026-10-08-upc-004-university-duplicates-design.md` §3. Migration
-`0108_university_duplicates`. The duplicate key is the normalised name (NFKC, whitespace collapsed, casefolded) + the country; inactive
+`DEC-SCOPE-123`; design spec `docs/superpowers/specs/2026-10-08-upc-006-university-contacts-design.md` §3. Migration
+`0108_university_contacts`. Readers are §12AN's read roles (others `403`). The partnership roles and `super_admin` see every contact;
+`overseas_admin` sees `shareable` contacts only, with `notes: null`. Writes need `permissions.can_edit_contacts` (owner manager, head in
+team scope, `super_admin`; else `403`); an inactive university `409`; unknown university or contact `404`. Every write: university row
+lock, audit `university_contact.<action>` (ids and field names only), one commit. A contact is `{id, university_id, name, designation,
+department, role: {code, label} | null, email, phone, whatsapp, linkedin, preferred_channel, relationship_strength, notes, is_primary,
+shareable, created_at, updated_at}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/contact-roles` | `{items: [{code, label}]}` in catalogue order |
+| `GET /partnership/universities/{id}/contacts` | `{items, total, limit, offset}`; primary first, then name; `limit` 1–50 |
+| `POST /partnership/universities/{id}/contacts` | `name` required; `email` (lower-cased), `phone`/`whatsapp` (digits, spaces, `+-()`), `linkedin` (http(s); bare domain gets `https://`), `role_code` (catalogue), `preferred_channel` (email/phone/whatsapp/linkedin), `relationship_strength` (§11), `notes` ≤ 2000, `is_primary`, `shareable`; else `422`. The first contact becomes primary. More than 50 or a duplicate email at the university `409`. `201 {contact}` |
+| `PATCH /partnership/contacts/{id}` | Sent fields only; `is_primary: true` moves the primary, `false` `422`; duplicate email `409`. `200 {contact}` |
+| `DELETE /partnership/contacts/{id}` | `204`; the primary while others remain `409` |
+| `GET/POST/PATCH /partnership/universities…` | **Changed (additive):** `relationship_strength` on create, PATCH, row and detail; list filter `relationship_strength`; `permissions.can_edit_contacts` |
+
+## 12AR. University duplicate prevention + BDM link (`upc-004`) — addendum, 2026-10-08
+
+`DEC-SCOPE-124`; design spec `docs/superpowers/specs/2026-10-08-upc-004-university-duplicates-design.md` §3. Migration
+`0109_university_duplicates`. The duplicate key is the normalised name (NFKC, whitespace collapsed, casefolded) + the country; inactive
 universities count. A match is `{id, university_code, name, country: {id, name}, city, active, catalogue_visible, existing_relationship,
 primary_manager, backup_manager}`.
 

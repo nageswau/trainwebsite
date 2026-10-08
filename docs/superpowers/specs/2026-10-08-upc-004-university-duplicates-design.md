@@ -5,7 +5,7 @@
   2026-10-08).
 - **Dependency:** upc-003 (`DEC-SCOPE-120`) is merged on `main` @ `593e9b9c` (PR #151). upc-006 (contacts), upc-007 (stage) and
   upc-020 (follow-ups) have not landed. The panel shows "—" for stage, last contact and next follow-up until they do (as the backlog says).
-- **Numbering (provisional, re-chained at merge):** `DEC-SCOPE-123`, migration `0108_university_duplicates`, API §12AQ, RBAC §2.49.
+- **Numbering (provisional, re-chained at merge):** `DEC-SCOPE-124`, migration `0109_university_duplicates`, API §12AR, RBAC §2.50.
 - **Status of answers:** UD1–UD12 are the recommended answers, applied under the owner's standing instruction for the build session
   ("proceed with the recommended answers; ask only if genuinely blocking"). They are **not** separately confirmed, so they stay
   `NEEDS_CONFIRMATION` at sign-off.
@@ -30,7 +30,7 @@
 The legacy `POST /admin/universities` is unchanged: its panel was replaced by a link to the master in upc-003. Its rows get `name_key`
 from the model, so they are found by later checks.
 
-## 2. Data (migration `0108_university_duplicates`)
+## 2. Data (migration `0109_university_duplicates`)
 
 - `universities.name_key VARCHAR(200) NOT NULL`. It is set by a `@validates("name")` hook on `University`, so every writer (master,
   legacy admin, seed, tests) keeps it in sync, and the migration backfills it in Python with the same function.
@@ -42,7 +42,7 @@ from the model, so they are found by later checks.
   same name.
 - `downgrade()` refuses while any BDM organisation is linked, because the link would be lost (the 0105 precedent).
 
-## 3. API (§12AQ)
+## 3. API (§12AR)
 
 - `GET /partnership/universities/duplicates`. Read roles (`require_reader`).
   - Parameters: `name` (1–200, required), `country_id` (optional), `exclude_id` (optional).

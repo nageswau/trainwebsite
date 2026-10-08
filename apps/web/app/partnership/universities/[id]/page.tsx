@@ -5,17 +5,24 @@ import { accessUnavailable } from "@/components/AccessUnavailable";
 import PortalShell from "@/components/PortalShell";
 import UniversityActions from "@/components/UniversityActions";
 import UniversityAssignForm from "@/components/UniversityAssignForm";
+import UniversityContacts from "@/components/UniversityContacts";
 import { serverApi } from "@/lib/api";
+import type { Page } from "@/lib/apiErrors";
 import type { User } from "@/lib/types";
 import {
+  CONTACT_ROLES_URL,
+  type ContactRole,
+  contactsUrl,
   INSTITUTION_TYPES,
   label,
   OWNERSHIP_TYPES,
   POTENTIALS,
   rankingText,
+  RELATIONSHIP_STRENGTHS,
   RELATIONSHIPS,
   shellFor,
   type University,
+  type UniversityContact,
   UNIVERSITIES_PATH,
   universityPath,
   visibilityLabel,
@@ -37,9 +44,14 @@ function Facts({ rows }: { rows: [string, ReactNode][] }) {
 
 export default async function UniversityPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  let user: User, u: University;
+  let user: User, u: University, contacts: Page<UniversityContact>, roles: ContactRole[];
   try {
     [user, u] = await Promise.all([serverApi<User>("/api/v1/auth/me"), loadUniversity(id)]);
+    // upc-006: the contacts this reader may see (the API slices them), and the role list only for those who can edit.
+    [contacts, roles] = await Promise.all([
+      serverApi<Page<UniversityContact>>(`${contactsUrl(u.id)}?limit=50`),
+      u.permissions.can_edit_contacts ? serverApi<{ items: ContactRole[] }>(CONTACT_ROLES_URL).then((r) => r.items) : Promise.resolve([]),
+    ]);
   } catch (e) {
     return accessUnavailable(e, "/overseas/login");
   }
@@ -51,7 +63,8 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
           <div>
             <div className="eyebrow"><Link href={UNIVERSITIES_PATH}>University Master</Link> · {u.university_code}</div>
             <h2>{u.name}</h2>
-            <p className="muted">{[u.city, u.country.name].filter(Boolean).join(", ")} · <span className="badge">{visibilityLabel(u)}</span></p>
+            <p className="muted">{[u.city, u.country.name].filter(Boolean).join(", ")} · <span className="badge">{visibilityLabel(u)}</span>
+              {u.relationship_strength && <> <span className="badge">Relationship: {label(RELATIONSHIP_STRENGTHS, u.relationship_strength)}</span></>}</p>
           </div>
           {u.permissions.can_edit && <Link className="btn" href={universityPath(u.id, true)}>Edit</Link>}
         </div>
@@ -73,9 +86,11 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
               ["Existing relationship", label(RELATIONSHIPS, u.existing_relationship)],
               ["Priority", u.priority],
               ["Partnership potential", label(POTENTIALS, u.partnership_potential)],
+              ["Relationship strength", u.relationship_strength && label(RELATIONSHIP_STRENGTHS, u.relationship_strength)],
               ["Applications", String(u.application_count)],
             ]} />
           </section>
+          <UniversityContacts universityId={u.id} contacts={contacts.items} roles={roles} canEdit={u.permissions.can_edit_contacts} />
           <section className="action-card" aria-labelledby="uni-rankings">
             <h3 id="uni-rankings">Rankings</h3>
             {u.rankings.length ? <ul className="list-clean">{u.rankings.map((r) => <li key={rankingText(r)}>{rankingText(r)}</li>)}</ul>

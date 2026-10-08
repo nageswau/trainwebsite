@@ -20,7 +20,7 @@ is a nullable FK with a CHECK. The web side reuses the existing forms plus one s
 - `409 university_duplicate {message, matches, total, can_override}`. The override needs `duplicate_reason` of 10–500 characters, from
   `partnership_head`/`super_admin` only.
 - BDM `409 possible_duplicate` keeps its existing keys and adds `university_matches` and `university_total`.
-- Migration `0108_university_duplicates` on top of `0107_candidates`. Every step is guarded (0001 `create_all` builds fresh
+- Migration `0109_university_duplicates` on top of `0108_university_contacts`. Every step is guarded (0001 `create_all` builds fresh
   databases).
 - No new dependencies.
 
@@ -36,7 +36,7 @@ is a nullable FK with a CHECK. The web side reuses the existing forms plus one s
 ### Task 1: Key + model + migration
 **Files:** `app/core/identifiers.py` (add `normalize_key`), `app/services/bdm_organizations.py` (import it), `app/models.py`
 (`University.name_key` + `@validates`, index; `BdmOrganization.university_id` + index + CHECK),
-`alembic/versions/0108_university_duplicates.py`, `tests/test_upc_004_migration.py`, `tests/test_upc_003_migration.py` (the head
+`alembic/versions/0109_university_duplicates.py`, `tests/test_upc_004_migration.py`, `tests/test_upc_003_migration.py` (the head
 assertion becomes the "single head + HEAD in walk" idiom).
 - [ ] RED: tests that `University(name="  ABC  University ")` sets `name_key == "abc university"`; the model columns, index and CHECK
   exist; the migration chains after 0105 and is the single head; an isolated database round trip backfills `name_key` and logs the
@@ -84,6 +84,6 @@ university matches), `tests/test_upc_004_bdm_link.py`.
 - [ ] GREEN, `tsc`, `eslint`, vitest, commit.
 
 ### Task 6: E2E + docs
-**Files:** `apps/web/tests/e2e/upc-004-university-duplicates.spec.ts`; docs: `PRODUCT_DECISION_REGISTER.md` DEC-SCOPE-123,
-`API_CONTRACT.md` §12AQ, `RBAC_MATRIX.md` §2.49, `DATA_MODEL.md`, the backlog upc-004 status.
+**Files:** `apps/web/tests/e2e/upc-004-university-duplicates.spec.ts`; docs: `PRODUCT_DECISION_REGISTER.md` DEC-SCOPE-124,
+`API_CONTRACT.md` §12AR, `RBAC_MATRIX.md` §2.50, `DATA_MODEL.md`, the backlog upc-004 status.
 - [ ] Playwright AC1/AC2 against the docker stack, commit.

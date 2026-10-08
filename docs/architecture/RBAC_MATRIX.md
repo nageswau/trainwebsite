@@ -1008,7 +1008,18 @@ who has not opted in, rec-010) is `404`, the same as an unknown id.
 | `hr_team` | list, read, download resumes; every write and the duplicate check are `403` | the whole pool | `rec-009` |
 | `employer`, `it_admin`, students, every other role | `403` (employers see only EMP-003's masked view, R12) | — | `rec-009` |
 
-### 2.49 University duplicate prevention + BDM link *(net-new, added 2026-10-08 — `DEC-SCOPE-123`, `upc-004`)*
+### 2.49 University contacts *(net-new, added 2026-10-08 — `DEC-SCOPE-123`, `upc-006`)*
+
+Enforced inline in `services/partnership_universities.py` (`can_edit_contacts`) and `services/university_contacts.py` (slice). Contacts
+are PII: audit and logs carry ids only.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Read a university's contacts | ✅ all, with notes | ✅ all, with notes | shareable only, no notes | ✅ all, with notes | `403` (counselors: upc-030) |
+| Add / edit / make primary / delete | own (primary or backup) | unowned + team-owned | `403` | ✅ | `403` |
+| Set university relationship strength | as §2.46 Edit |||||
+
+### 2.50 University duplicate prevention + BDM link *(net-new, added 2026-10-08 — `DEC-SCOPE-124`, `upc-004`)*
 
 Enforced inline in `services/partnership_universities.py` (`check_duplicates`) and `api/bdm_organizations.py`. Matches show only the §26
 panel fields (no commission, for every role).

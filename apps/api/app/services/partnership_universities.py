@@ -42,11 +42,13 @@ MANAGER_INVALID = "Choose an active partnership manager from your team"
 READ_ROLES = frozenset({"partnership_manager", "partnership_head", "overseas_admin", "super_admin"})
 CATALOGUE_ROLES = frozenset({"partnership_head", "overseas_admin", "super_admin"})  # create, publish, deactivate (UM5, UM7, UM8)
 ASSIGN_ROLES = frozenset({"partnership_head", "super_admin"})  # UM3, UM7
+CONTACT_ROLES = frozenset({"partnership_manager", "partnership_head", "super_admin"})  # upc-006 CT5: write contacts, read them in full
 ROLE_REFUSALS = {
     "can_edit": "Only the university's partnership managers can edit it",
     "can_assign": "Only a partnership head can assign managers",
     "can_publish": "Your role cannot publish universities",
     "can_deactivate": "Your role cannot deactivate universities",
+    "can_edit_contacts": "Only the university's partnership managers can edit its contacts",
 }
 TEAM_REFUSAL = "This university belongs to another partnership team"
 OVERRIDE_ROLES = frozenset({"partnership_head", "super_admin"})  # upc-004 UD2: may add a duplicate, with a reason
@@ -92,6 +94,8 @@ def _in_scope(user: User, uni: University, team: frozenset[UUID]) -> bool:
 def _role_allows(user: User, action: str) -> bool:
     if action == "can_edit":
         return user.role in READ_ROLES
+    if action == "can_edit_contacts":
+        return user.role in CONTACT_ROLES
     return user.role in (ASSIGN_ROLES if action == "can_assign" else CATALOGUE_ROLES)
 
 
@@ -215,6 +219,7 @@ def row_out(user: User, uni: University, country: Country, primary: User | None,
         "city": uni.city,
         "priority": uni.priority,
         "partnership_potential": uni.partnership_potential,
+        "relationship_strength": uni.relationship_strength,
         "primary_manager": person_ref(primary) if primary else None,
         "backup_manager": person_ref(backup) if backup else None,
         "catalogue_visible": uni.catalogue_visible,

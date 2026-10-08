@@ -1,9 +1,9 @@
 """upc-004 -- duplicate key on universities + the BDM University organization's link to the master.
 
-Revision ID: 0108_university_duplicates
-Revises: 0107_candidates
+Revision ID: 0109_university_duplicates
+Revises: 0108_university_contacts
 
-docs/superpowers/specs/2026-10-08-upc-004-university-duplicates-design.md §2 (DEC-SCOPE-123). `universities.name_key` is backfilled in
+docs/superpowers/specs/2026-10-08-upc-004-university-duplicates-design.md §2 (DEC-SCOPE-124). `universities.name_key` is backfilled in
 Python with the model's own normalize_key, then made NOT NULL and indexed with the country (not unique: an override may keep two rows).
 `bdm_organizations.university_id` is a nullable FK, University organizations only (CHECK). Existing duplicates are only reported (UD12):
 the duplicate groups in the master and the unlinked BDM University organizations whose name matches it are logged, never merged or
@@ -11,9 +11,9 @@ linked. 0001 builds a fresh database from the current models, which already carr
 refuses while any BDM organization is linked: dropping the column would lose the link.
 
 Re-chained 2026-10-08 on merging `main` @ `a62ad9d7`: drafted as `0106_university_duplicates` on `0105_university_master`, but
-rec-003's `0106_rec_companies` and rec-009's `0107_candidates` merged first, so this is `0108` after them (DEC-SCOPE-123, API §12AQ,
-RBAC §2.49). A database stamped at `0106_university_duplicates` is re-stamped with `alembic stamp --purge 0107_candidates`, then
-`upgrade head` (every step here is guarded).
+rec-003's `0106_rec_companies`, rec-009's `0107_candidates` and upc-006's `0108_university_contacts` merged first, so this is `0109`
+after them (DEC-SCOPE-124, API §12AR, RBAC §2.50). A database stamped at an earlier `*_university_duplicates` revision is re-stamped
+with `alembic stamp --purge 0105_university_master`, then `upgrade head` (every step here is guarded).
 """
 
 import logging
@@ -24,8 +24,8 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 from app.core.identifiers import normalize_key
 
-revision = "0108_university_duplicates"
-down_revision = "0107_candidates"
+revision = "0109_university_duplicates"
+down_revision = "0108_university_contacts"
 branch_labels = None
 depends_on = None
 
@@ -85,7 +85,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text("SELECT 1 FROM bdm_organizations WHERE university_id IS NOT NULL LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0108_university_duplicates: BDM organizations are linked to the University Master. Unlink them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0109_university_duplicates: BDM organizations are linked to the University Master. Unlink them deliberately first.")
     op.drop_constraint(LINK_CHECK, "bdm_organizations", type_="check")
     op.drop_index(LINK_INDEX, table_name="bdm_organizations")
     op.drop_column("bdm_organizations", "university_id")  # drops whichever FK constraint carries it (0001-built or LINK_FK)

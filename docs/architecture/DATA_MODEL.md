@@ -331,10 +331,19 @@ slot). **Migration `0105_university_master`** backfills codes for existing rows 
 `downgrade()` refuses while rankings, assignment history or internal universities exist. Public reads show only published, active rows
 (API §12AN). `stage` is upc-007's; contacts are upc-006's.
 
-**Addendum, 2026-10-08 (`upc-004`, `DEC-SCOPE-123`, U13 — duplicate prevention + BDM link):** `universities.name_key` (NOT NULL; the
+**Addendum, 2026-10-08 (`upc-006`, `DEC-SCOPE-123` — University contacts + relationship strength):** `universities.relationship_strength`
+(nullable; CHECK new / developing / good / strong / strategic / at_risk / dormant, §11). New tables: `university_contact_roles` (`code` PK,
+`label`, `position`; 12 seeded rows, read-only) and `university_contacts` (FK `universities` RESTRICT; `name` NOT NULL, `designation`,
+`department`, `role_code` FK roles, `email`, `phone`, `whatsapp`, `linkedin`, `preferred_channel` CHECK email/phone/whatsapp/linkedin,
+`relationship_strength` CHECK as above, `notes`, `is_primary`, `shareable` (both default false), timestamps). Partial unique indexes: one
+primary per university, and `lower(email)` once per university. Contact PII never goes into audit metadata or logs. **Migration
+`0108_university_contacts`** seeds the roles (`ON CONFLICT DO NOTHING`); `downgrade()` refuses while contacts or relationship strengths
+exist (API §12AQ).
+
+**Addendum, 2026-10-08 (`upc-004`, `DEC-SCOPE-124`, U13 — duplicate prevention + BDM link):** `universities.name_key` (NOT NULL; the
 normalised name, kept by the model's `name` validator) with the non-unique index `ix_universities_duplicate_key (country_id, name_key)`.
 `bdm_organizations.university_id` (nullable FK `universities`, indexed) with CHECK `ck_bdm_organizations_university_link` (University
-organizations only). **Migration `0108_university_duplicates`** backfills the key and logs (never merges or links) the existing duplicate
+organizations only). **Migration `0109_university_duplicates`** backfills the key and logs (never merges or links) the existing duplicate
 groups and the unlinked BDM University organizations that match a master name; `downgrade()` refuses while any organization is linked.
 
 ### 6.2 `OverseasApplication`, `ApplicationStatusHistory`
@@ -1329,7 +1338,7 @@ Additive only: two tables and one sequence (`bdm_appointment_code_seq`, also on 
   `tel020:{kind}:{object}:{user}:{event time}` on the existing unique partial index `ux_notifications_dedupe_key`) plus one
   `notification_deliveries` email row.
 
-## Recruiter company master (`rec-003`, `DEC-SCOPE-123`; migration `0106_rec_companies`, after `0105_university_master`)
+## Recruiter company master (`rec-003`, `DEC-SCOPE-121`; migration `0106_rec_companies`, after `0105_university_master`)
 
 Extends §5.1 `Company` (R3: the recruiter lead and the company are one row). Every new column is nullable except the code; EMP-001
 registration and `/workflows/it/jobs` keep writing only name, website and ownership.
