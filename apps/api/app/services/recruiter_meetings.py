@@ -1,4 +1,4 @@
-"""rec-028 (DEC-SCOPE-133, spec §1-§3): recruiter meetings with a company -- rules, the four lists, history and the output.
+"""rec-028 (DEC-SCOPE-134, spec §1-§3): recruiter meetings with a company -- rules, the four lists, history and the output.
 
 A meeting belongs to its company (rec-024's FU4 rule): every read and write goes through rec-003's company scope (`caller_scope` /
 `load_scoped`), so another recruiter's meeting is the same 404 as a missing one. Writes need the company's `can_edit` (MT9) and lock the

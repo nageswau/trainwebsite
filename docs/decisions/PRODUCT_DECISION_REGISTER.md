@@ -5314,7 +5314,7 @@ Spec: `docs/superpowers/specs/2026-10-08-upc-005-university-import-design.md`.
 `RECRUITER_CRM_BACKLOG.md` §rec-007 (AC1–AC4). Module scope: `DEC-SCOPE-116`. Also R5 (`jobs` becomes the Job Requirement) and
 FEATURE_QUESTIONS #1 / Q-04 (the employer mediation question, still open).
 
-**Status:** **BUILT** on `feature/rec-007` (2026-10-08), not merged.
+**Status:** **MERGED** to `main` as PR #166 @ `176b71b6` (2026-10-08). The next rec item takes `0116` / DEC-SCOPE-131 / §12AY / §2.57 (upc-010 took `0115` / 130 / §12AX / §2.56); re-check `main` first.
 - J1–J7 are **recommended defaults (`UNVERIFIED`)**. The user told the session to proceed with the recommended answers, so Q-04 and Q-05
   were **not** put to the owner. They can be revised.
 - **Numbering:** migration `0114_job_requirements` (after upc-005's `0113_university_imports`), API §12AW, RBAC §2.55. rec-007 was
@@ -5425,7 +5425,7 @@ upc-010 merged first and took those numbers. Spec `docs/superpowers/specs/2026-1
 - Module scope: `DEC-SCOPE-116` (R5: `jobs` is the requirement with a versioned child `job_descriptions`).
 - Requirement scope and permissions: `DEC-SCOPE-129` (rec-007). Contacts: `DEC-SCOPE-125` (rec-004). Follow-ups: `DEC-SCOPE-131` FU1.
 
-**Status:** **BUILT** on `feature/rec-008` (2026-10-08), not merged. Every answer below is a **recommended default, `UNVERIFIED`**. The owner
+**Status:** **MERGED** to `main` as PR #170 @ `09abb21e` (2026-10-08). Every answer below is a **recommended default, `UNVERIFIED`**. The owner
 told the session to proceed with the recommended answers.
 
 **Numbering:** migration `0117_job_descriptions`, API §12AZ and RBAC §2.58. Spec `docs/superpowers/specs/2026-10-08-rec-008-jd-management-design.md`.
@@ -5449,7 +5449,41 @@ told the session to proceed with the recommended answers.
 - Audit `job_description.{create,upload,download}` carries ids, the version, field names, type and size only.
 - **New Feature ID authorized:** `rec-008`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-008.
 
-### DEC-SCOPE-133 — Recruiter company meetings (`rec-028`)
+### DEC-SCOPE-133 — Recruiter call logging (`rec-025`)
+
+**Evidence:**
+- `EVID-018`: §19 "📞 Calls — Call history and notes" (lines 758–764). "Last contacted" on the contact (line 212).
+- `RECRUITER_CRM_BACKLOG.md` §rec-025 (AC1–AC3).
+- Module scope: `DEC-SCOPE-116` (R11, R13). Company scope: `DEC-SCOPE-121`. Contacts: `DEC-SCOPE-125` (C6). Candidates: `DEC-SCOPE-122`.
+  Follow-ups: `DEC-SCOPE-131`. Call idiom: `DEC-SCOPE-096` (tel-010 CL4).
+
+**Status:** **MERGED** to `main` as PR #172 @ `1353ca12` (2026-10-08). Every answer below is a **recommended default, `UNVERIFIED`**. The owner told the session to
+proceed with the recommended answers; the backlog lists no Q-xx for this item.
+
+**Numbering:** migration `0118_recruiter_calls`, API §12BA and RBAC §2.59. It was drafted as `0117` / `DEC-SCOPE-132` / §12AZ / §2.58;
+rec-008 merged first and took those numbers. Spec `docs/superpowers/specs/2026-10-08-rec-025-recruiter-calls-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| CA1 | Outcomes | The source names none. A fixed list in code: Connected, Call back requested, Busy, No answer, Switched off, Wrong number. The first two count as connected |
+| CA2 | Party | Exactly one of a company contact or a candidate (`CHECK`). A contact call also stores the contact's company |
+| CA3 | Who | Contact calls: the company's scope reads, its `can_edit` holder logs. Archived company or inactive contact → `409`. Candidate calls: R11, the candidate writers log and `hr_team` reads. Archived candidate → `409` |
+| CA4 | Same-day edit/delete | Only the caller, on the call's IST day, while they can still write to the party (an earlier day → `409`). Time, duration, direction and notes are editable; the outcome is locked (delete and log again) |
+| CA5 | Time | Defaults to now; not in the future; up to 7 days back (tel-010's `check_time`) |
+| CA6 | Next follow-up | Optional, contact calls only: rec-024's create body, on the call's contact, in the same transaction. A candidate call → `422` (rec-024 follow-ups belong to a company). Deleting a call keeps its follow-up |
+| CA7 | Last contacted | The contact's latest call, computed on read (rec-026 and rec-028 add messages and meetings) |
+| CA8 | Fields | Direction outgoing/incoming; optional duration 0–14400 s; notes ≤ 2000 |
+| CA9 | Cap | 300 calls per caller per IST day (`409`), an abuse bound |
+
+**Consequences:**
+- `recruiter_calls` (`0118`): outcome, direction, duration and party CHECKs, and indexes on `(company_id|contact_id|candidate_id|caller_user_id, occurred_at)`.
+- `services/recruiter_calls.py` and `api/recruiter_calls.py`.
+- The company page and the candidate page gain a Calls section; contact and candidate mobiles become `tel:` links. rec-004 AC3 (Last
+  contacted after a logged call) is now met.
+- Audit `recruiter_call.{create,update,delete}` carries ids, the outcome and field names only, never notes.
+- **New Feature ID authorized:** `rec-025`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-025.
+
+### DEC-SCOPE-134 — Recruiter company meetings (`rec-028`)
 
 **Evidence:**
 - `EVID-018` §20 (lines 796–836) lists 7 meeting types and 11 fields: Meeting ID, Company, Contact, Date, Time, Mode, Location/Meeting
@@ -5464,8 +5498,9 @@ told the session to proceed with the recommended answers.
 **Status:** built on `feature/rec-028`. The backlog lists no item-level question for rec-028. Every answer below is a **recommended
 default, `UNVERIFIED`**, taken on the owner's instruction to proceed with the recommended answers.
 
-**Numbering:** migration `0118_recruiter_meetings` (after rec-008's `0117_job_descriptions`), API §12BA and RBAC §2.59. Drafted as
-`0117` / `DEC-SCOPE-132` / §12AZ / §2.58; rec-008 merged first and took those numbers. Spec
+**Numbering:** migration `0119_recruiter_meetings` (after rec-025's `0118_recruiter_calls`), API §12BB and RBAC §2.60. Drafted as
+`0117` / `DEC-SCOPE-132` / §12AZ / §2.58, then `0118` / `DEC-SCOPE-133` / §12BA / §2.59; rec-008 and then rec-025 merged first and took
+those numbers. Spec
 `docs/superpowers/specs/2026-10-08-rec-028-company-meetings-design.md`.
 
 | # | Point | Answer |
@@ -5482,7 +5517,7 @@ default, `UNVERIFIED`**, taken on the owner's instruction to proceed with the re
 | MT10 | Lists | `/recruiter/meetings`: Upcoming (soonest first), Awaiting outcome (started, oldest first), Completed and Cancelled (newest first), with counts. A company's list: scheduled by start, then the rest newest first |
 
 **Consequences:**
-- `recruiter_meetings`, `recruiter_meeting_participants`, `recruiter_meeting_events` and `recruiter_meeting_code_seq` (`0118`).
+- `recruiter_meetings`, `recruiter_meeting_participants`, `recruiter_meeting_events` and `recruiter_meeting_code_seq` (`0119`).
 - `services/recruiter_meetings.py` and `api/recruiter_meetings.py`.
 - A `/recruiter/meetings` page, with nav entries for recruiters and managers. The company page gains a Meetings section.
 - Audit `recruiter_meeting.{create,update,complete,cancel}` carries ids, keys, counts and field names only.

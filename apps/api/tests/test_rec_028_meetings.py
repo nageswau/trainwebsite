@@ -1,4 +1,4 @@
-"""rec-028 -- company meetings (spec §1-§3; DEC-SCOPE-133 MT1-MT10): schedule, participants, the pipeline move (AC1), reschedule history,
+"""rec-028 -- company meetings (spec §1-§3; DEC-SCOPE-134 MT1-MT10): schedule, participants, the pipeline move (AC1), reschedule history,
 the outcome with a next action (AC2), cancel, the lists and the roles. The shared test database is never truncated, so every list
 assertion uses a recruiter created by the test."""
 

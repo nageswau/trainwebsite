@@ -1490,7 +1490,24 @@ history notes.
 - Indexes: `uq_job_descriptions_version (job_id, version)`, partial unique `uq_job_descriptions_current (job_id) WHERE is_current`, and
   `ix_job_descriptions_number`. `downgrade()` refuses while rows exist.
 
-## Recruiter company meetings (`rec-028`, `DEC-SCOPE-133`; migration `0118_recruiter_meetings`, after `0117_job_descriptions`)
+## Recruiter calls (`rec-025`, `DEC-SCOPE-133`; migration `0118_recruiter_calls`, after `0117_job_descriptions`)
+
+**`recruiter_calls` columns:**
+- `id`; `company_id` → `companies` and `contact_id` → `company_contacts` (nullable together); `candidate_id` → `candidates` (nullable); all FK RESTRICT
+- `caller_user_id` → `users`, `occurred_at` timestamptz, `duration_seconds` int (nullable)
+- `direction` varchar(16), `outcome` varchar(32), `notes` text, timestamps
+
+**Constraints and indexes:**
+- CHECKs: `ck_recruiter_calls_outcome` (the 6 CA1 keys), `ck_recruiter_calls_direction`, `ck_recruiter_calls_duration` (null or 0–14400),
+  `ck_recruiter_calls_party` (exactly one of contact+company or candidate).
+- Indexes `(company_id, occurred_at)`, `(contact_id, occurred_at)`, `(candidate_id, occurred_at)`, `(caller_user_id, occurred_at)`.
+
+**Design notes:**
+- A contact call stores its company, so its scope is the company's with no join.
+- A contact's `last_contacted_at` is derived (max `occurred_at` of its calls), never stored.
+- `downgrade()` refuses while any call exists.
+
+## Recruiter company meetings (`rec-028`, `DEC-SCOPE-134`; migration `0119_recruiter_meetings`, after `0118_recruiter_calls`)
 
 **`recruiter_meetings` columns:**
 - `id`, `meeting_code` varchar(20) unique (`MTG-000001` from `recruiter_meeting_code_seq`), `company_id` FK RESTRICT

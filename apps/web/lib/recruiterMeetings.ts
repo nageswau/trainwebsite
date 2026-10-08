@@ -1,4 +1,4 @@
-// rec-028 (DEC-SCOPE-133): recruiter meetings with a company -- types, the EVID-018 §20 type labels, the views and the endpoints. The API
+// rec-028 (DEC-SCOPE-134): recruiter meetings with a company -- types, the EVID-018 §20 type labels, the views and the endpoints. The API
 // decides scope, every rule, `can_change` (the company's assigned recruiter or super admin, on a scheduled meeting of an active company)
 // and `can_record_outcome` (the same, once the start has passed); the UI only offers what it allows.
 import { isPage, type Page } from "@/lib/apiErrors";

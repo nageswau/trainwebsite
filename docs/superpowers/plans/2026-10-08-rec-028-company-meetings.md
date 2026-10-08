@@ -4,7 +4,7 @@ Spec: `docs/superpowers/specs/2026-10-08-rec-028-company-meetings-design.md`. Br
 green, then refactor) and runs only the focused tests.
 
 1. **Data.** Add `RECRUITER_MEETING_*` constants, the `RecruiterMeeting`, `RecruiterMeetingParticipant` and `RecruiterMeetingEvent` models
-   and the code sequence. Add migration `0118_recruiter_meetings`.
+   and the code sequence. Add migration `0119_recruiter_meetings`.
    - Test: `test_rec_028_migration.py` (CHECKs = model, single head, round trip, downgrade refusal).
 2. **Schemas.** Add `RecMeetingCreate`, `RecMeetingUpdate`, `RecMeetingOutcome` and `RecMeetingCancel`. Reuse `BdmApptStart`,
    `LeadApptLink`, `_bdm_appt_optional`, the rec-024 multiline text type and `RecFollowUpReason`.
@@ -19,6 +19,6 @@ green, then refactor) and runs only the focused tests.
    - Wire the section into `RecruiterCompanyDetail` and add Meetings to the nav.
    - Tests: vitest for the lib, the section and the panel; update `navigation.recruiter.test.ts`.
 5. **e2e.** Add `rec-028-meetings.spec.ts`.
-6. **Docs.** Update API_CONTRACT §12BA, RBAC_MATRIX §2.59, DATA_MODEL, DEC-SCOPE-133, the backlog status, SCREEN_CATALOG and
+6. **Docs.** Update API_CONTRACT §12BB, RBAC_MATRIX §2.60, DATA_MODEL, DEC-SCOPE-134, the backlog status, SCREEN_CATALOG and
    ROLE_NAVIGATION.
 7. **Checks.** Run lite backend (rec-003/004/005/007/024/028), vitest, tsc, eslint, next build, then e2e and browser QA.

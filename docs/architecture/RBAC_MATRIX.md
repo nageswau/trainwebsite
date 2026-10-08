@@ -1132,7 +1132,21 @@ The JD takes the requirement's scope (§2.55): a requirement outside the caller'
 | `employer` | none yet: the employer view is deferred | — | `rec-008` |
 | `hr_team`, `it_admin`, every other role | `403` | — | `rec-008` |
 
-### 2.59 Recruiter company meetings *(net-new, added 2026-10-08 — `DEC-SCOPE-133`, `rec-028`)*
+### 2.59 Recruiter calls *(net-new, added 2026-10-08 — `DEC-SCOPE-133`, `rec-025`)*
+
+A contact call takes the company's scope and write rights (§2.47, §2.57). A candidate call takes the pool's (§2.48, R11). Only the person
+who logged a call edits or deletes it, on its IST day (CA4).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` (with a profile) | log contact calls (with a next follow-up), log candidate calls; edit/delete their own calls today | contacts of companies assigned to them; the whole candidate pool | `rec-025` |
+| `placement_manager` | read contact calls (every contact-call write `403`); log, edit and delete candidate calls | direct reports' companies + the unassigned queue; the pool | `rec-025` |
+| `super_admin` | everything | all | `rec-025` |
+| `bdm` (assigned) | read contact calls (R10); every write `403`; candidate calls `403` | companies whose Assigned BDM is them | `rec-025` |
+| `hr_team` | read candidate calls; every write `403`; contact calls `403` | the pool | `rec-025` |
+| `it_admin`, `employer`, every other role | `403` | — | `rec-025` |
+
+### 2.60 Recruiter company meetings *(net-new, added 2026-10-08 — `DEC-SCOPE-134`, `rec-028`)*
 
 Meetings take the company's scope (§2.47), so a meeting of a company outside the caller's scope is `404`, the same as an unknown id.
 - **Writes** follow the company's `can_edit` (MT9, an UNVERIFIED default). Under R10, recruiters do every meeting.
