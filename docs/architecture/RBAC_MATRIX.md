@@ -939,6 +939,19 @@ The lists are global (there is no row scope). The role checks run before anythin
 | `placement_team` | read **active** values and campaigns (pickers); every write and the manager page are `403` | all lists | `rec-002` |
 | `hr_team`, `it_admin`, every other role | `403` on read and write (C3) | — | `rec-002` |
 
+### 2.46 Candidate master *(net-new, added 2026-10-08 — `DEC-SCOPE-120`, `rec-009`; provisional number, re-checked at merge)*
+
+One pool (R11): there is no ownership scope. The role check runs before anything is read. A candidate outside the pool (a linked student
+who has not opted in, rec-010) is `404`, the same as an unknown id.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` | list, read, duplicate check, create, edit, archive/restore, upload and download resumes | the whole pool | `rec-009` |
+| `placement_manager` | same as `placement_team` | the whole pool | `rec-009` |
+| `super_admin` | same as `placement_team` | the whole pool | `rec-009` |
+| `hr_team` | list, read, download resumes; every write and the duplicate check are `403` | the whole pool | `rec-009` |
+| `employer`, `it_admin`, students, every other role | `403` (employers see only EMP-003's masked view, R12) | — | `rec-009` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

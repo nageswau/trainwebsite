@@ -4977,3 +4977,31 @@ Spec `docs/superpowers/specs/2026-10-08-rec-002-recruiter-catalogues-design.md`.
 - The manager page `/recruiter/manager/catalogue/[kind]` and a "Catalogues" sidebar entry.
 - `services/telecaller._readable` words a bad non-manager id as "choose one from the list" (it said "choose a manager" for every id).
 - **New Feature ID authorized:** `rec-002`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-002.
+
+### DEC-SCOPE-120 — Candidate master (`rec-009`)
+
+**Evidence:** `EVID-018` §8 (lines 390–434), §9 (436–473), quick action "+ Add Candidate" (46), S2-§13 (1541–1561), S2-§20 (1750, 1778);
+`RECRUITER_CRM_BACKLOG.md` §rec-009 (AC1–AC4). Module scope: `DEC-SCOPE-116`. R4 (new `candidates` table) and R11 (every recruiter edits the
+whole pool).
+**Status:** Q-07 and Q-08 are `EXPLICIT_APPROVAL` (the owner answered in session on 2026-10-08). Q-09, Q-31 and Q-32 are recommended
+defaults, taken on the user's instruction to proceed with the recommended answers. The retention and erasure part of Q-09 stays
+`NEEDS_CONFIRMATION`. **Numbering is provisional** (migration `0105_candidates`, API §12AN, RBAC §2.46), because the parallel rec-006
+(`0103`, `DEC-SCOPE-118`) and rec-003 (`DEC-SCOPE-119`) branches claimed the lower numbers. It is re-checked at merge.
+Spec `docs/superpowers/specs/2026-10-08-rec-009-candidate-master-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| Q-07 | Duplicate rule | A normalised mobile (E.164) **or** a lower-cased email that matches any candidate, archived ones included, **blocks** the create or edit with `409 duplicate_candidate` and a panel naming the existing candidate. Unique indexes are the backstop under a race. No merge tool |
+| Q-08 | Candidate Status | Set **by hand**: `available` (the default), `interviewing`, `placed`, `not_looking`, `do_not_contact`. rec-017 may later derive or suggest it |
+| Q-09 | Resume format and retention | *Recommended default:* PDF or DOCX, judged by the bytes, at most 5 MB (the `/public/career-upload` limit). Versioned; the newest is current. Every download is audited. **Retention and erasure: `NEEDS_CONFIRMATION`** (`DEC-PRIV-001`); nothing is deleted automatically |
+| Q-31 | `CareerApplication` intake | *Recommended default:* not in rec-009 |
+| Q-32 | Candidate CSV import | *Recommended default:* manual entry only |
+| Roles | Backlog rec-009 roles line | Writers: `placement_team`, `placement_manager`, `super_admin`. `hr_team` **reads** (list, detail, resume download); it is the first `/recruiter/*` screen open to `hr_team` (Q-28 left this to later items). Everyone else gets 403, employers included |
+
+**Consequences:**
+- `candidates`, `candidate_resumes` and `candidate_code_seq` (`0105`). The `CAN-000001` codes come from the sequence.
+- `user_id` and `opted_in` exist for rec-010. `services/candidates.pool_filter` hides a linked student who has not opted in.
+- `services/candidates.py` and `api/recruiter_candidates.py`.
+- The pages `/recruiter/candidates`, `/new` and `/[id]`.
+- A "Candidate Master" sidebar entry for recruiters, managers, super admin and HR.
+- **New Feature ID authorized:** `rec-009`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-009.
