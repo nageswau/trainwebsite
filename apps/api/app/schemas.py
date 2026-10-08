@@ -38,6 +38,7 @@ from app.models import (
     BDM_MOU_STATUSES,
     BDM_STAFF_MAX,
     BDM_TARGET_MAX,
+    CONTACT_CHANNELS,
     COURSE_LEVELS,
     GENDERS,
     INSTITUTION_TYPES,
@@ -53,6 +54,7 @@ from app.models import (
     QUAL_SKILL_LEVELS,
     QUAL_STUDY_LEVELS,
     RANKING_SYSTEMS,
+    RELATIONSHIP_STRENGTHS,
     TEL_TARGET_KPIS,
     UNIVERSITY_OWNERSHIP_TYPES,
     UNIVERSITY_PRIORITIES,
@@ -6685,6 +6687,9 @@ class PartnershipHeadPage(BaseModel):
 UNIVERSITY_FIELD_LABELS = {
     "name": "University name", "city": "City", "state_region": "State / region", "website": "Website", "international_office": "International office",
     "overview": "Overview", "eligibility": "Eligibility", "other_name": "Ranking name", "rank": "Rank",
+    # upc-006 contacts
+    "designation": "Designation", "department": "Department", "email": "Email", "phone": "Phone", "whatsapp": "WhatsApp", "linkedin": "LinkedIn",
+    "notes": "Notes",
 }
 UNIVERSITY_MAX_RANKINGS = 10
 UNIVERSITY_MAX_PROGRAMS = 20
@@ -6702,8 +6707,15 @@ def _university_text(multiline: bool, required: bool):
             if required:
                 raise ValueError(f"{label} is required")
             return None
-        if info.field_name == "website" and not _BDM_WEBSITE.fullmatch(value):  # http(s) only: no javascript:/data: hrefs
-            raise ValueError("Website must start with http:// or https://" if _BDM_SCHEME.match(value) else "Enter a website such as abc.ac.uk")
+        if info.field_name in ("website", "linkedin") and not _BDM_WEBSITE.fullmatch(value):  # http(s) only: no javascript:/data: hrefs
+            example = "a link such as linkedin.com/in/name" if info.field_name == "linkedin" else "a website such as abc.ac.uk"
+            raise ValueError(f"{label} must start with http:// or https://" if _BDM_SCHEME.match(value) else f"Enter {example}")
+        if info.field_name == "email":  # upc-006
+            if not _EMAIL_SHAPE.fullmatch(value):
+                raise ValueError("Enter a valid email address")
+            return value.lower()
+        if info.field_name in ("phone", "whatsapp") and not _BDM_PHONE.fullmatch(value):
+            raise ValueError(f"{label} may contain only digits, spaces and + - ( )")
         return value
 
     return check
@@ -6731,6 +6743,7 @@ UniversityOwnership = Literal[UNIVERSITY_OWNERSHIP_TYPES]
 UniversityRelationship = Literal[UNIVERSITY_RELATIONSHIPS]
 UniversityPriority = Literal[UNIVERSITY_PRIORITIES]
 PartnershipPotential = Literal[PARTNERSHIP_POTENTIALS]
+RelationshipStrength = Literal[RELATIONSHIP_STRENGTHS]  # upc-006 CT4: §11 exactly
 
 
 def _program(value: str) -> str:
@@ -6787,6 +6800,7 @@ class UniversityCreate(BaseModel):
     existing_relationship: UniversityRelationship | None = None
     priority: UniversityPriority | None = None
     partnership_potential: PartnershipPotential | None = None
+    relationship_strength: RelationshipStrength | None = None
     overview: UniversityBody = ""
     eligibility: UniversityBody = ""
     rankings: UniversityRankings = []
@@ -6810,6 +6824,7 @@ class UniversityUpdate(BaseModel):
     existing_relationship: UniversityRelationship | None = None
     priority: UniversityPriority | None = None
     partnership_potential: PartnershipPotential | None = None
+    relationship_strength: RelationshipStrength | None = None
     overview: UniversityBody = None
     eligibility: UniversityBody = None
     rankings: UniversityRankings = None
@@ -6856,6 +6871,7 @@ class UniversityPermissions(BaseModel):
     can_assign: bool
     can_publish: bool
     can_deactivate: bool
+    can_edit_contacts: bool  # upc-006 CT5
 
 
 class UniversityRow(BaseModel):
@@ -6868,6 +6884,7 @@ class UniversityRow(BaseModel):
     city: str
     priority: str | None
     partnership_potential: str | None
+    relationship_strength: str | None
     primary_manager: BdmManagerRef | None
     backup_manager: BdmManagerRef | None
     catalogue_visible: bool
@@ -6897,6 +6914,95 @@ class UniversityEnvelope(BaseModel):
 
 class UniversityPage(BaseModel):
     items: list[UniversityRow]
+    total: int
+    limit: int
+    offset: int
+
+
+# --- upc-006 University contacts (DEC-SCOPE-121, spec §3) --------------------------------------------------------------------
+UNIVERSITY_MAX_CONTACTS = 50
+ContactName = _university_str(200, required=True)
+ContactShort = _university_str(120)
+ContactPhone = _university_str(30)
+ContactEmail = _university_str(255)
+ContactLinkedIn = Annotated[_university_str(300), BeforeValidator(_bdm_website_prefix)]
+ContactNotes = _university_str(2000, multiline=True)
+ContactChannel = Literal[CONTACT_CHANNELS]
+ContactRoleCode = Annotated[str, StringConstraints(max_length=40)]  # checked against the catalogue by the service (422)
+
+
+class UniversityContactIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: ContactName
+    designation: ContactShort = None
+    department: ContactShort = None
+    role_code: ContactRoleCode | None = None
+    email: ContactEmail = None
+    phone: ContactPhone = None
+    whatsapp: ContactPhone = None
+    linkedin: ContactLinkedIn = None
+    preferred_channel: ContactChannel | None = None
+    relationship_strength: RelationshipStrength | None = None
+    notes: ContactNotes = None
+    is_primary: StrictBool = False
+    shareable: StrictBool = False
+
+
+class UniversityContactUpdate(BaseModel):
+    """PATCH: omitted = unchanged; null clears an optional field and fails `name`/`is_primary`/`shareable`. `is_primary: false` is refused
+    by the route (CT6: make another contact primary instead)."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: ContactName = None
+    designation: ContactShort = None
+    department: ContactShort = None
+    role_code: ContactRoleCode | None = None
+    email: ContactEmail = None
+    phone: ContactPhone = None
+    whatsapp: ContactPhone = None
+    linkedin: ContactLinkedIn = None
+    preferred_channel: ContactChannel | None = None
+    relationship_strength: RelationshipStrength | None = None
+    notes: ContactNotes = None
+    is_primary: StrictBool = None
+    shareable: StrictBool = None
+
+
+class UniversityContactRoleOut(BaseModel):
+    code: str
+    label: str
+
+
+class UniversityContactRolePage(BaseModel):
+    items: list[UniversityContactRoleOut]
+
+
+class UniversityContactOut(BaseModel):
+    id: UUID
+    university_id: UUID
+    name: str
+    designation: str | None
+    department: str | None
+    role: UniversityContactRoleOut | None
+    email: str | None
+    phone: str | None
+    whatsapp: str | None
+    linkedin: str | None
+    preferred_channel: str | None
+    relationship_strength: str | None
+    notes: str | None  # null in the shareable slice (CT14)
+    is_primary: bool
+    shareable: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class UniversityContactEnvelope(BaseModel):
+    contact: UniversityContactOut
+
+
+class UniversityContactPage(BaseModel):
+    items: list[UniversityContactOut]
     total: int
     limit: int
     offset: int
