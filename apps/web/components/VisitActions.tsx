@@ -8,7 +8,8 @@ import { indiaToday, type Visit, type VisitPermissions, visitUrl } from "@/lib/v
 
 // upc-010 (§8, VS3-VS5): a visit's commands. Only the actions the API's `permissions` allow are shown; the API decides again under a
 // lock. Reject, Complete and Close open an inline form (Reject and an early Close need a reason, Complete the follow-up date -- AC3);
-// Escape backs out. Every success re-reads the page.
+// Escape backs out. Every success re-reads the page; until the re-read visit arrives (a new `updated_at`) the old actions are hidden, so a
+// quick second click can't hit a stale state (QA-I1).
 type Simple = { action: string; flag: keyof VisitPermissions; label: string; done: string; secondary?: boolean };
 const SIMPLE: Simple[] = [
   { action: "submit", flag: "can_submit", label: "Submit for approval", done: "Submitted for approval." },
@@ -28,6 +29,8 @@ export default function VisitActions({ visit: v }: { visit: Visit }) {
   const [value, setValue] = useState("");
   const [invalid, setInvalid] = useState(false);
   const [message, setMessage] = useState<FormMessageState | null>(null);
+  const [staleAt, setStaleAt] = useState<string | null>(null);
+  const stale = staleAt === v.updated_at;
   const p = v.permissions;
   const simple = SIMPLE.filter((a) => p[a.flag]);
   if (!simple.length && !p.can_decide && !p.can_complete && !p.can_close && !message) return null;
@@ -44,6 +47,7 @@ export default function VisitActions({ visit: v }: { visit: Visit }) {
     if (outcome.ok) {
       setPrompt(null);
       setValue("");
+      setStaleAt(v.updated_at);
       setMessage({ text: done, failed: false });
       router.refresh();
       return;
@@ -78,7 +82,7 @@ export default function VisitActions({ visit: v }: { visit: Visit }) {
 
   return (
     <div>
-      {!prompt && (
+      {!prompt && !stale && (
         <div className="actions">
           {simple.map((a) => (
             <button key={a.action} type="button" className="btn" disabled={busy} onClick={() => void post(a.action, undefined, a.done)}>{a.label}</button>

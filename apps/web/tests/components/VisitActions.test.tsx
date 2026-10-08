@@ -42,6 +42,19 @@ describe("VisitActions (upc-010)", () => {
     expect(refresh).toHaveBeenCalled();
   });
 
+  it("QA-I1: after a success the stale actions are gone until the re-read visit arrives", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res({ visit: visit() }))));
+    const draft = visit({ permissions: { ...visit().permissions, can_submit: true, can_close: true } });
+    const { rerender } = render(<VisitActions visit={draft} />);
+    fireEvent.click(screen.getByRole("button", { name: "Submit for approval" }));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Submitted for approval."));
+    expect(screen.queryByRole("button", { name: "Submit for approval" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Close visit" })).not.toBeInTheDocument();
+    rerender(<VisitActions visit={visit({ approval_state: "waiting", updated_at: "2030-01-02T00:00:00Z", permissions: { ...visit().permissions, can_close: true } })} />);
+    expect(screen.getByRole("button", { name: "Close visit" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Submitted for approval.");
+  });
+
   it("a rejection needs a reason before anything is sent", async () => {
     const mock = vi.fn(() => Promise.resolve(res({ visit: visit() })));
     vi.stubGlobal("fetch", mock);
