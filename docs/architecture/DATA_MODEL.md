@@ -1394,3 +1394,36 @@ exists.
 | `created_at`, `updated_at` | timestamptz |
 
 `downgrade()` refuses while any row exists.
+
+## Company B2B pipeline (`rec-005`, `DEC-SCOPE-127`; migration `0112_company_pipeline`, after `0111_university_pipeline`)
+
+`companies` gains `stage` varchar(30) NOT NULL default `new_lead` (CHECK `ck_companies_stage`: the 13 keys of `app/recruiter_stages.py`,
+frozen in the migration), `stage_changed_at` timestamptz NOT NULL default `now()` (existing rows backfilled from `created_at`), `lost_at`
+and `lost_reason` varchar(500) (CHECK `ck_companies_lost`: both or neither) and `ix_companies_stage_recruiter (stage,
+assigned_recruiter_user_id)`. Every insert path keeps working through the defaults.
+
+`company_stage_history`: `id`, `company_id` FK RESTRICT, `from_stage`, `to_stage`, `event` (`manual`, `lost`, `reopen` or an engine
+event), `actor_user_id` (NULL = system), `reason` varchar(500), `position` identity, `created_at`; `ix_company_stage_history_company
+(company_id, position)`. Append-only, no stage CHECK. `services/company_pipeline.py` is the only writer of `stage`. `downgrade()` refuses
+while any history row exists or any company is past New Lead or Lost.
+
+## Recruiter follow-ups (`rec-024`, `DEC-SCOPE-128`; migration `0113_recruiter_follow_ups`, after `0112_company_pipeline`)
+
+**`recruiter_follow_ups` columns:**
+- `id`, `company_id` FK RESTRICT
+- `contact_id` → `company_contacts`, `job_id` → `jobs` and `application_id` → `job_applications`, each a nullable FK RESTRICT
+- `reason` varchar(40) (CHECK `ck_recruiter_follow_ups_reason`: the 9 §18 keys)
+- `due_at` timestamptz, `notes` text
+- `status` varchar(16) default `open` (CHECK `ck_recruiter_follow_ups_status`: open/done/cancelled)
+- `outcome` varchar(500), `completed_at`, `completed_by_user_id`, `cancelled_at`, `cancel_reason` varchar(500)
+- `created_by_user_id`, timestamps
+
+**Constraints and indexes:**
+- CHECK `ck_recruiter_follow_ups_state` ties done to completed_at/by and cancelled to cancelled_at/reason (tel-011's).
+- Indexes: `ix_recruiter_follow_ups_company (company_id, status, due_at)`, the partial `ix_recruiter_follow_ups_open_due (due_at) WHERE
+  status = 'open'`, and `ix_recruiter_follow_ups_contact (contact_id)`.
+
+**Design notes:**
+- There is no assignee column. Scope comes from the company, so a reassignment moves the follow-ups.
+- `next_follow_up_at` on the company and on each contact is derived (min open `due_at`), never stored.
+- `downgrade()` refuses while any follow-up exists.

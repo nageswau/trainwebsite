@@ -17,11 +17,12 @@ const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), 
 const page = (items: unknown[]) => ({ items, total: items.length, limit: 50, offset: 0 });
 const perms = { can_edit: true, can_archive: true, can_restore: false, can_reassign: false };
 const priya = { id: "u1", full_name: "Priya Recruiter", active: true };
-const row = { id: "c1", code: "CMP-000007", name: "ABC Technologies", city: "Pune", priority: "hot", industry: null, lead_source: { id: "s1", name: "LinkedIn", active: true }, assigned_recruiter: priya, archived: false, permissions: perms };
+const row = { id: "c1", code: "CMP-000007", name: "ABC Technologies", city: "Pune", priority: "hot", industry: null, lead_source: { id: "s1", name: "LinkedIn", active: true }, assigned_recruiter: priya, archived: false, permissions: perms, stage: "new_lead", stage_label: "New Lead", lost: false };
 const company: Company = {
   ...(row as Company), website: "https://abc.example.com", linkedin_url: "javascript:alert(1)", company_size: null, employee_count: 250, state: "MH",
   country: "India", head_office: null, branches: "Mumbai\nDelhi", description: null, campaign: null, assigned_bdm: null, owner_type: "internal",
-  created_by: priya, assignment_history: [], archived_at: null, created_at: "2026-10-08T10:00:00Z", updated_at: "2026-10-08T10:00:00Z",
+  created_by: priya, assignment_history: [], archived_at: null,
+  pipeline: { stage: "new_lead", stage_label: "New Lead", stage_changed_at: "2026-10-08T10:00:00Z", lost: null, can_move: false, can_reopen: false, steps: [{ key: "new_lead", label: "New Lead", kind: "start", state: "current" }] }, created_at: "2026-10-08T10:00:00Z", updated_at: "2026-10-08T10:00:00Z",
 };
 
 type Call = { url: string; init?: RequestInit };
@@ -91,7 +92,7 @@ describe("RecruiterCompaniesPanel", () => {
     await screen.findByRole("region", { name: "Companies" });
     expect(container.querySelector(".telecaller-list")).toBeTruthy();
     const labels = [...container.querySelectorAll("tbody td")].map((td) => td.getAttribute("data-label"));
-    expect(labels).toEqual(["Code", "Name", "City", "Priority", "Lead source", "Industry", "Recruiter", "Next follow-up"]); // rec-024
+    expect(labels).toEqual(["Code", "Name", "City", "Priority", "Stage", "Lead source", "Industry", "Recruiter", "Next follow-up"]); // rec-005, rec-024
   });
 
   it("shows the empty state, and an error with Retry", async () => {

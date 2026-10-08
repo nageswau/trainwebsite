@@ -3,7 +3,7 @@
 Spec: `docs/superpowers/specs/2026-10-08-rec-024-recruiter-follow-ups-design.md`. TDD per task: red, green, then refactor. Lite tests only.
 
 1. **Model + migration.** Add `RECRUITER_FOLLOW_UP_REASONS`, `RECRUITER_FOLLOW_UP_CHECKS` and `RecruiterFollowUp` in `models.py`, and
-   `0112_recruiter_follow_ups.py`. Test: `test_rec_024_migration.py` (CHECKs equal the model, a single head, the table and indexes
+   `0113_recruiter_follow_ups.py`. Test: `test_rec_024_migration.py` (CHECKs equal the model, a single head, the table and indexes
    exist).
 2. **Schemas.** `RecFollowUpCreate`, `RecFollowUpUpdate` (due_at and reason not nullable), `RecFollowUpComplete`. Cancel reuses
    `BdmAppointmentReason`.
@@ -18,7 +18,7 @@ Spec: `docs/superpowers/specs/2026-10-08-rec-024-recruiter-follow-ups-design.md`
    - Nav entries; "Next follow-up" in the details and contacts.
    - vitest.
 6. **e2e:** `rec-024-follow-ups.spec.ts`.
-7. **Docs.** DEC-SCOPE-127, API §12AU, RBAC §2.53, DATA_MODEL, SCREEN_CATALOG, the backlog status.
+7. **Docs.** DEC-SCOPE-128, API §12AV, RBAC §2.54, DATA_MODEL, SCREEN_CATALOG, the backlog status.
 
 **Regression watch:**
 - rec-003 and rec-004 tests: row and contact output gain a key.

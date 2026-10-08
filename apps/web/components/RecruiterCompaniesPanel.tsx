@@ -236,6 +236,7 @@ export default function RecruiterCompaniesPanel({ canCreate, isManager = false }
                   <th scope="col">Company</th>
                   <th scope="col">City</th>
                   <th scope="col">Priority</th>
+                  <th scope="col">Stage</th>
                   <th scope="col">Lead source</th>
                   <th scope="col">Industry</th>
                   <th scope="col">Recruiter</th>
@@ -259,6 +260,10 @@ export default function RecruiterCompaniesPanel({ canCreate, isManager = false }
                     </td>
                     <td data-label="City">{display(r.city)}</td>
                     <td data-label="Priority">{r.priority ? PRIORITY_LABEL[r.priority] : "—"}</td>
+                    <td data-label="Stage">
+                      {r.stage_label}
+                      {r.lost && <> <span className="badge">Lost</span></>}
+                    </td>
                     <td data-label="Lead source">{display(r.lead_source?.name)}</td>
                     <td data-label="Industry">{display(r.industry?.name)}</td>
                     <td data-label="Recruiter">{personName(r.assigned_recruiter)}</td>

@@ -3,6 +3,7 @@
 import type { LookupPage } from "@/lib/lookups";
 import { BDM_NAV, RECRUITER_MANAGER_NAV, RECRUITER_NAV, SUPER_ADMIN_NAV, type NavItem } from "@/lib/navigation";
 import { PLACEMENT_MANAGER_LABEL, RECRUITER_ROLE_LABEL } from "@/lib/recruiter";
+import type { Pipeline } from "@/lib/recruiterPipeline";
 
 export type Ref = { id: string; name: string; active: boolean };
 export type Person = { id: string; full_name: string; active: boolean };
@@ -11,13 +12,14 @@ export type CompanyPermissions = { can_edit: boolean; can_archive: boolean; can_
 export type CompanyRow = {
   id: string; code: string; name: string; city: string | null; priority: Priority | null; industry: Ref | null; lead_source: Ref | null;
   assigned_recruiter: Person | null; archived: boolean; permissions: CompanyPermissions;
+  stage: string; stage_label: string; lost: boolean; // rec-005: the lead's Status
   next_follow_up_at?: string | null; // rec-024 FU9: the earliest open follow-up (derived)
 };
 export type Assignment = { from_user: Person | null; to_user: Person; changed_by: Person; created_at: string };
 export type Company = CompanyRow & {
   website: string | null; linkedin_url: string | null; company_size: Ref | null; employee_count: number | null; state: string | null;
   country: string | null; head_office: string | null; branches: string | null; description: string | null; campaign: Ref | null;
-  assigned_bdm: Person | null; owner_type: string; created_by: Person | null; assignment_history: Assignment[]; archived_at: string | null;
+  assigned_bdm: Person | null; owner_type: string; created_by: Person | null; assignment_history: Assignment[]; pipeline: Pipeline; archived_at: string | null;
   created_at: string; updated_at: string;
 };
 export type DuplicateMatch = { id: string; code: string; name: string; city: string | null; archived: boolean };

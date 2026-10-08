@@ -3214,3 +3214,30 @@ own sidebar); the API decides every action. Signed out → `/overseas/login`.
   Yes / Cancel, focus moved into and back out of the reason; Saving… and one request per submit; success in `role="status"`; a refusal or
   someone else's change in `role="alert"`, the page refreshed, the entry kept) and "Stage history" (newest first, Show more, Try again).
 - **Extended:** `/partnership/universities` gains a Stage column (with a Lost badge).
+
+## rec-005 addendum (2026-10-08, `DEC-SCOPE-127`) — Company pipeline
+
+Design spec `docs/superpowers/specs/2026-10-08-rec-005-company-pipeline-design.md` §5.
+
+- **Company detail** (`/recruiter/companies/[id]`): a Pipeline section (13-stage stepper, state as text; Lost banner; Move form with the
+  four manual stages, reason required when moving back; Mark lost / Reopen with a reason) and a Stage history section (newest first,
+  Show more). Driven stages show "The stage now moves with its job requirements" and no Move form.
+- **Company list** (`/recruiter/companies`): a Stage column with a Lost badge.
+- **Pipeline board** (`/recruiter/pipeline`): a count tile per stage plus Lost, then one page of companies (code, company, city,
+  priority, stage, recruiter). Filters live in the address; an invalid filter says so with a way back.
+
+## rec-024 addendum (2026-10-08, `DEC-SCOPE-128`) — Recruiter follow-ups
+
+Design spec `docs/superpowers/specs/2026-10-08-rec-024-recruiter-follow-ups-design.md` §4.
+
+- **Follow-ups** (`/recruiter/follow-ups`):
+  - Today / Overdue / Upcoming tabs with counts. Today = due today (IST) plus everything overdue.
+  - Cards are oldest due first. Each shows the company (linked) and its code, the reason, the due time in IST, the contact, the
+    requirement, the recruiter, the notes and an Overdue badge.
+  - Actions: Done (optional outcome), Reschedule, Cancel (reason). They are offered only when the API says so.
+  - The tab and page live in the address. There are loading, empty, error and retry states.
+- **Company detail** (`/recruiter/companies/[id]`): a Follow-ups section.
+  - Add follow-up: due date and time (IST), reason (the 9 §18 values), an active contact, notes.
+  - The list shows open follow-ups by due time, then done and cancelled ones.
+  - Details gain "Next follow-up". Each contact shows its own next follow-up.
+- **Company list** (`/recruiter/companies`): a "Next follow-up" column.

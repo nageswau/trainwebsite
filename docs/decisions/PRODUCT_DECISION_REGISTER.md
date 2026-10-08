@@ -5252,3 +5252,67 @@ those numbers and merged first. Renumbered a third time from `DEC-SCOPE-125` / `
 `can_reopen`; web page `/partnership/pipeline`, the university record's "Partnership stage" and "Stage history" sections, a Stage column in
 the University Master list; "Partnership Pipeline" goes live in the §32 menu and the head's sidebar.
 **New Feature ID authorized:** `upc-007`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-007.
+
+### DEC-SCOPE-127 — Company B2B pipeline (`rec-005`)
+
+**Evidence:** `EVID-018` §5 (lines 218–270), lead field "Status" (116), "genuine prospect" (122); `RECRUITER_CRM_BACKLOG.md` §rec-005
+(AC1–AC4). Module scope: `DEC-SCOPE-116` (R1–R15); company scope and permissions: `DEC-SCOPE-121` (rec-003, D6).
+**Status:** **MERGED** to `main` as PR #162 @ `ada23b4d` (2026-10-08). Every answer below is a **recommended default, `UNVERIFIED`**: the owner told the
+session to proceed with the recommended answers, and Q-06 was not asked. **Numbering:** migration `0112_company_pipeline`,
+API §12AU, RBAC §2.53 (drafted as `0108` / `DEC-SCOPE-123` / §12AQ / §2.49; upc-006, upc-004, rec-004 and upc-007 merged first). Spec `docs/superpowers/specs/2026-10-08-rec-005-company-pipeline-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| P1 | Stage count | The source lists **13** stages; the backlog's "14" is a miscount. Lost is a flag, not a stage |
+| P2 (Q-06) | Stages after Requirement Received | Driven by requirement events only, forward along the order: the company sits at its furthest-progressed requirement. Callers decide when an event fires (e.g. `requirement_closed` only when no open requirement is left). Never set by hand |
+| P3 (Q-06) | Going back | Among the four manual stages, with a reason. Once at a driven stage, no manual move. The one system path back: a new requirement on a Requirement Closed company returns it to Requirement Received |
+| P4 | Manual stages | Contacted, Interested, Meeting Scheduled, Requirement Discussion. New Lead is the start, never chosen |
+| P5 | Lost / reopen | Lost is a flag with a reason on top of the kept stage. The assigned recruiter (or super_admin) marks lost; only a placement manager or super_admin reopens, with a reason, back at the same stage. Events never move a Lost or archived company |
+| P6 | Who moves | rec-003's `can_edit` holders (assigned recruiter, super_admin). The manager does not move (D6) but reopens. The assigned BDM reads only (R10) |
+| P7 | Board | `/recruiter/pipeline` in the caller's company scope; archived left out, Lost counted apart |
+| P8 | Engine events | `call_logged`, `meeting_scheduled`, `requirement_received`, `jd_received`, `candidates_sourcing`, `profiles_shared`, `interview_scheduled`, `candidate_selected`, `candidate_joined`, `requirement_closed`. No caller yet; rec-007/008/017/019/020/022/023/024/028 wire them |
+
+**Consequences:**
+- `app/recruiter_stages.py`, `services/company_pipeline.py` (`apply_event` is the single writer; its API is frozen once merged — later
+  items only add events), `api/recruiter_pipeline.py`, migration `0112`.
+- The company detail gains the Pipeline and Stage history sections; the list a Stage column; a new `/recruiter/pipeline` board and nav
+  entries for recruiters, managers and super admin.
+- **New Feature ID authorized:** `rec-005`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-005.
+
+### DEC-SCOPE-128 — Recruiter follow-ups + automatic daily list (`rec-024`)
+
+**Evidence:**
+- `EVID-018`: §18 (lines 732–756), with the 9 reasons and "CRM should automatically generate the daily follow-up list". "Next Follow-up"
+  on the lead (line 118) and on the contact (line 214).
+- `RECRUITER_CRM_BACKLOG.md` §rec-024 (AC1–AC3).
+- Module scope: `DEC-SCOPE-116` (R10, R13).
+- Company scope and permissions: `DEC-SCOPE-121` (rec-003). Contacts: `DEC-SCOPE-125` (rec-004).
+
+**Status:** built on `feature/rec-024`. Every answer below is a **recommended default, `UNVERIFIED`**. The owner told the session to
+proceed with the recommended answers, so Q-23 was not asked.
+
+**Numbering:** migration `0113_recruiter_follow_ups`, API §12AV and RBAC §2.54. It was drafted as `0112` / `DEC-SCOPE-127` / §12AU /
+§2.53, but rec-005 merged first and took those numbers. Spec `docs/superpowers/specs/2026-10-08-rec-024-recruiter-follow-ups-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| FU1 (Q-23) | Automatic follow-ups | The daily list is computed on every read, so no batch job runs. The trigger events (JD pending, profile, interview feedback, offer, joining, contract) belong to records that don't exist yet: rec-008, 019, 021, 022, 023 and 030. Each of those items creates its follow-up through `services.recruiter_follow_ups.create` when it lands. rec-024 fires no automatic follow-up |
+| FU2 | The lists (IST) | **Today** = open and due before tonight's IST midnight, which is due today plus overdue (AC1). **Overdue** = open and past due. **Upcoming** = due from tomorrow (IST) onwards. Each list is oldest first and carries all three counts |
+| FU3 | Who writes | The company's `can_edit` holder: the assigned recruiter or `super_admin`. `placement_manager` and the assigned BDM read only (`403`). An archived company's follow-ups are read-only (`409`) |
+| FU4 | Scope / reassignment | A follow-up belongs to its company and has no assignee column. A company reassignment therefore moves its open follow-ups (the backlog edge case; rec-037 adds bulk moves). Out of scope = `404` |
+| FU5 | Due time | Future, at most 366 days ahead, with an offset (tel-011's `check_due`; `422` on `due_at`). Reschedule is `PATCH {due_at}`. Only a changed due time is checked |
+| FU6 | Links | Optional contact (same company, active when set or changed), requirement (`jobs` row of the company) and application (to one of the company's jobs, consistent with the requirement). A wrong link → `422`. The web form offers the contact. Requirement and application links stay API-only until rec-007 and rec-017 add their pages |
+| FU7 | Complete / cancel | Complete takes an optional outcome (≤ 500 characters). Cancel needs a reason (≤ 500). Neither works on a follow-up that isn't open (`409`) |
+| FU8 | Cap | 50 open follow-ups per company (`409`), counted under the company lock |
+| FU9 | Next follow-up | Derived, never stored. `next_follow_up_at` on the company list row and detail, and on each contact. AC2 holds by construction |
+| FU10 | Reasons | The 9 §18 values in source order and wording; notes ≤ 2000 |
+
+**Consequences:**
+- `recruiter_follow_ups` (`0113`): reason, status and state CHECKs, and indexes on `(company_id, status, due_at)`, open `due_at` and
+  `contact_id`.
+- `services/recruiter_follow_ups.py` and `api/recruiter_follow_ups.py`.
+- A `/recruiter/follow-ups` page (Today / Overdue / Upcoming), with nav entries for recruiters and managers.
+- The company page gains a Follow-ups section; the company list, the company Details and each contact show the next follow-up.
+- Audit `recruiter_follow_up.{create,update,complete,cancel}` carries ids, the reason key and field names only, never notes, outcomes or
+  reasons.
+- **New Feature ID authorized:** `rec-024`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-024.

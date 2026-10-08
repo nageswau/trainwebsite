@@ -23,6 +23,7 @@ from app.models import (
     RecruiterProfile,
     User,
 )
+from app.recruiter_stages import label as stage_label
 from app.services.recruiter import MANAGER_ROLE, ROLE, recruiter_context
 
 logger = logging.getLogger("app.recruiter")
@@ -194,12 +195,17 @@ def row_out(user: User, company: Company, industry, source, recruiter: User | No
         "assigned_recruiter": person(recruiter),
         "archived": company.archived_at is not None,
         "permissions": permissions(user, company),
+        "stage": company.stage,  # rec-005: the lead's Status (EVID-018 line 116)
+        "stage_label": stage_label(company.stage),
+        "lost": company.lost_at is not None,
         "next_follow_up_at": next_follow_up_at,
     }
 
 
 async def company_out(db: AsyncSession, user: User, company: Company, *, refresh: bool = True) -> dict:
     """The detail every route returns. Refreshes first: server defaults (updated_at) are expired after a flush."""
+    from app.services.company_pipeline import pipeline_out  # local: company_pipeline imports this module
+
     if refresh:
         await db.refresh(company)
     history = (
@@ -233,6 +239,7 @@ async def company_out(db: AsyncSession, user: User, company: Company, *, refresh
         "assignment_history": [
             {"from_user": person(people.get(h.from_user_id)), "to_user": person(people[h.to_user_id]), "changed_by": person(people[h.changed_by_user_id]), "created_at": h.created_at} for h in history
         ],
+        "pipeline": pipeline_out(user, company),
         "archived_at": company.archived_at,
         "created_at": company.created_at,
         "updated_at": company.updated_at,
