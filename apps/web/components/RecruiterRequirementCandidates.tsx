@@ -1,0 +1,245 @@
+"use client";
+import Link from "next/link";
+import { type FormEvent, useEffect, useId, useState } from "react";
+
+import LocalTime from "@/components/LocalTime";
+import SearchableSelect from "@/components/SearchableSelect";
+import { sendJson } from "@/lib/apiErrors";
+import { LINK_STYLE } from "@/lib/bdmOrganizations";
+import type { PickOption } from "@/lib/lookups";
+import {
+  applicationUrl,
+  candidateSearch,
+  type HistoryEntry,
+  isApplicationBody,
+  isHistory,
+  isRequirementCandidates,
+  NOTE_MAX,
+  type RecApplication,
+  requirementCandidatesUrl,
+  type RequirementCandidates,
+} from "@/lib/recruiterApplications";
+import { CANDIDATES_PATH } from "@/lib/recruiterCandidates";
+
+type Notice = { text: string; failed: boolean } | null;
+const search = candidateSearch();
+
+function NoteField({ id, value, onChange }: { id: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <label htmlFor={id} style={{ display: "grid", gap: 4 }}>
+      Note (optional)
+      <textarea id={id} rows={2} maxLength={NOTE_MAX} value={value} onChange={(e) => onChange(e.target.value)} />
+    </label>
+  );
+}
+
+/** Add one pool candidate at Sourced / Screened / Shortlisted. A duplicate or a closed requirement comes back as the API's message. */
+function AddCandidate({ requirementId, data, onAdded, onCancel }: {
+  requirementId: string; data: RequirementCandidates; onAdded: (a: RecApplication) => void; onCancel: () => void;
+}) {
+  const [picked, setPicked] = useState<PickOption | null>(null);
+  const [status, setStatus] = useState("sourced");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const id = useId();
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!picked || busy) return;
+    setBusy(true);
+    setFailure(null);
+    const outcome = await sendJson(requirementCandidatesUrl(requirementId), "POST", { candidate_id: picked.id, status, ...(note.trim() ? { note: note.trim() } : {}) });
+    setBusy(false);
+    if (outcome.ok && isApplicationBody(outcome.data)) onAdded(outcome.data.application);
+    else setFailure(outcome.ok ? "Unable to add the candidate." : outcome.message);
+  }
+
+  return (
+    <form onSubmit={submit} className="action-card" style={{ gap: 10 }} aria-label="Add candidate">
+      <SearchableSelect label="Candidate" noun="candidate" required search={search} onChange={setPicked} />
+      <label htmlFor={`${id}-status`} style={{ display: "grid", gap: 4 }}>
+        Starting status
+        <select id={`${id}-status`} value={status} onChange={(e) => setStatus(e.target.value)}>
+          {data.statuses.filter((s) => s.initial).map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+        </select>
+      </label>
+      <NoteField id={`${id}-note`} value={note} onChange={setNote} />
+      {failure && <p className="form-error" role="alert" style={{ margin: 0 }}>{failure}</p>}
+      <div className="actions">
+        <button type="submit" className="btn small" disabled={busy || !picked}>{busy ? "Adding…" : "Add candidate"}</button>
+        <button type="button" className="btn secondary small" disabled={busy} onClick={onCancel}>Cancel</button>
+      </div>
+    </form>
+  );
+}
+
+/** The application's status changes, newest first, read when opened. */
+function History({ applicationId }: { applicationId: string }) {
+  const [items, setItems] = useState<HistoryEntry[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(applicationUrl(applicationId, "/history"), { signal: controller.signal })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((body) => (isHistory(body) ? setItems(body.items) : setFailed(true)))
+      .catch(() => controller.signal.aborted || setFailed(true));
+    return () => controller.abort();
+  }, [applicationId]);
+  if (failed) return <p className="form-error" role="alert" style={{ margin: 0, fontSize: 13 }}>Unable to load the history.</p>;
+  if (items === null) return <p className="muted" role="status" style={{ margin: 0, fontSize: 13 }}>Loading history…</p>;
+  return (
+    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
+      {items.map((h, i) => (
+        <li key={`${h.created_at}-${i}`}>
+          <LocalTime value={h.created_at} time />: {h.from_label ? `${h.from_label} → ${h.to_label}` : `Added as ${h.to_label}`}
+          {h.note && <> — <span style={{ overflowWrap: "anywhere" }}>{h.note}</span></>} <span className="muted">by {h.changed_by ? h.changed_by.full_name : "the system"}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function StatusForm({ application, onChanged, onCancel }: { application: RecApplication; onChanged: (a: RecApplication) => void; onCancel: () => void }) {
+  const [status, setStatus] = useState("");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const id = useId();
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!status || busy) return;
+    setBusy(true);
+    setFailure(null);
+    const outcome = await sendJson(applicationUrl(application.id, "/status"), "POST", { status, ...(note.trim() ? { note: note.trim() } : {}) });
+    setBusy(false);
+    if (outcome.ok && isApplicationBody(outcome.data)) onChanged(outcome.data.application);
+    else setFailure(outcome.ok ? "Unable to change the status." : outcome.message);
+  }
+
+  return (
+    <form onSubmit={submit} style={{ display: "grid", gap: 8 }} aria-label={`Change status of ${application.candidate.name}`}>
+      <label htmlFor={`${id}-status`} style={{ display: "grid", gap: 4 }}>
+        New status
+        <select id={`${id}-status`} required value={status} onChange={(e) => setStatus(e.target.value)}>
+          <option value="">Choose a status</option>
+          {application.allowed_statuses.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+        </select>
+      </label>
+      <NoteField id={`${id}-note`} value={note} onChange={setNote} />
+      {failure && <p className="form-error" role="alert" style={{ margin: 0 }}>{failure}</p>}
+      <div className="actions">
+        <button type="submit" className="btn small" disabled={busy || !status}>{busy ? "Saving…" : "Save status"}</button>
+        <button type="button" className="btn secondary small" disabled={busy} onClick={onCancel}>Cancel</button>
+      </div>
+    </form>
+  );
+}
+
+function ApplicationRow({ application, onChanged }: { application: RecApplication; onChanged: (a: RecApplication) => void }) {
+  const [open, setOpen] = useState<"none" | "status" | "history">("none");
+  const toggle = (panel: "status" | "history") => setOpen((current) => (current === panel ? "none" : panel));
+  return (
+    <>
+      <tr>
+        <td>
+          <Link href={`${CANDIDATES_PATH}/${application.candidate.id}`} style={{ ...LINK_STYLE, overflowWrap: "anywhere" }}>{application.candidate.name}</Link>
+          <div className="muted" style={{ fontSize: 12 }}>{application.candidate.code}</div>
+        </td>
+        <td><span className="badge">{application.status_label}</span></td>
+        <td><LocalTime value={application.stage_changed_at} time /></td>
+        <td>
+          <div className="actions" style={{ flexWrap: "wrap" }}>
+            {application.allowed_statuses.length > 0 && (
+              <button type="button" className="btn secondary small" aria-expanded={open === "status"} onClick={() => toggle("status")}>
+                Change status<span className="visually-hidden"> of {application.candidate.name}</span>
+              </button>
+            )}
+            <button type="button" className="btn secondary small" aria-expanded={open === "history"} onClick={() => toggle("history")}>
+              History<span className="visually-hidden"> of {application.candidate.name}</span>
+            </button>
+          </div>
+        </td>
+      </tr>
+      {open !== "none" && (
+        <tr>
+          <td colSpan={4}>
+            {open === "status" ? (
+              <StatusForm application={application} onCancel={() => setOpen("none")} onChanged={(next) => { setOpen("none"); onChanged(next); }} />
+            ) : (
+              <History applicationId={application.id} />
+            )}
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+/** rec-017 (spec §5): the requirement's candidates and each one's §12 status. Writers (the requirement's recruiter, super_admin) add
+ *  pool candidates and move statuses; managers and the assigned BDM read. Every write re-reads the list. */
+export default function RecruiterRequirementCandidates({ requirementId }: { requirementId: string }) {
+  const [data, setData] = useState<RequirementCandidates | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [version, setVersion] = useState(0);
+  const [adding, setAdding] = useState(false);
+  const [notice, setNotice] = useState<Notice>(null);
+  const headingId = `${useId()}-candidates`;
+  const reload = () => setVersion((n) => n + 1);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setFailed(false);
+    fetch(requirementCandidatesUrl(requirementId), { signal: controller.signal })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((body) => (isRequirementCandidates(body) ? setData(body) : setFailed(true)))
+      .catch(() => controller.signal.aborted || setFailed(true));
+    return () => controller.abort();
+  }, [requirementId, version]);
+
+  const done = (text: string) => {
+    setNotice({ text, failed: false });
+    reload();
+  };
+  return (
+    <section className="action-card wide" aria-labelledby={headingId}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
+        <h3 id={headingId} style={{ margin: 0 }}>Candidates{data ? ` (${data.items.length})` : ""}</h3>
+        {data?.can_add && !adding && (
+          <button type="button" className="btn secondary small" onClick={() => { setAdding(true); setNotice(null); }}>Add candidate</button>
+        )}
+      </div>
+      <div role="status" aria-live="polite">
+        {notice && <p className={notice.failed ? "form-error" : "form-message"} style={{ margin: "6px 0 0", fontSize: 13 }}>{notice.text}</p>}
+      </div>
+      {adding && data?.can_add && (
+        <AddCandidate requirementId={requirementId} data={data} onCancel={() => setAdding(false)}
+          onAdded={(a) => { setAdding(false); done(`${a.candidate.name} added as ${a.status_label}.`); }} />
+      )}
+      {failed ? (
+        <div>
+          <p className="form-error" role="alert" style={{ fontSize: 13 }}>Unable to load the candidates.</p>
+          <button type="button" className="btn secondary small" onClick={reload}>Retry</button>
+        </div>
+      ) : data === null ? (
+        <p className="muted" role="status" style={{ fontSize: 13 }}>Loading candidates…</p>
+      ) : data.items.length === 0 ? (
+        <p className="muted" style={{ fontSize: 13, margin: 0 }}>No candidates on this requirement yet.</p>
+      ) : (
+        <div className="table-wrap" role="region" aria-label="Candidates on this requirement" tabIndex={0}>
+          <table className="table">
+            <thead>
+              <tr><th scope="col">Candidate</th><th scope="col">Status</th><th scope="col">Since</th><th scope="col">Actions</th></tr>
+            </thead>
+            <tbody>
+              {data.items.map((application) => (
+                <ApplicationRow key={application.id} application={application} onChanged={(a) => done(`${a.candidate.name} is now ${a.status_label}.`)} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}

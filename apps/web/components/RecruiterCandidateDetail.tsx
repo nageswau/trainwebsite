@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 
 import LocalTime from "@/components/LocalTime";
 import RecruiterCalls from "@/components/RecruiterCalls";
+import RecruiterCandidateApplications from "@/components/RecruiterCandidateApplications";
 import RecruiterCandidateForm from "@/components/RecruiterCandidateForm";
 import RecruiterCandidateResumes from "@/components/RecruiterCandidateResumes";
 import { sendRequest } from "@/lib/apiErrors";
@@ -11,7 +12,8 @@ import { telHref } from "@/lib/recruiterCalls";
 import { STATUS_LABEL, candidateUrl, experienceLabel, type CandidateDetail } from "@/lib/recruiterCandidates";
 
 // rec-009 (spec §6): one candidate -- the §8 profile, Edit (writers), Archive/Restore with a confirm, and the resume versions. hr_team reads
-// only (`can_edit` false). Calls (rec-025) sit under the resumes; skills, applications and the timeline arrive with rec-011, rec-017 and rec-026/027.
+// only (`can_edit` false). Applications (rec-017) and Calls (rec-025) sit under the resumes; skills and the timeline arrive with rec-011 and
+// rec-026/027.
 const money = (v: string | null) => (v === null ? null : Number(v).toLocaleString("en-IN", { maximumFractionDigits: 2 }));
 
 export default function RecruiterCandidateDetail({ initial }: { initial: CandidateDetail }) {
@@ -92,6 +94,7 @@ export default function RecruiterCandidateDetail({ initial }: { initial: Candida
         </section>
       )}
       <RecruiterCandidateResumes candidateId={candidate.id} resumes={candidate.resumes} canUpload={canEdit} onUploaded={() => void reload()} />
+      <RecruiterCandidateApplications candidateId={candidate.id} />
       {/* rec-025: re-keyed on archive/restore, so Log call and each call's Edit follow the candidate's state. */}
       <RecruiterCalls key={`${candidate.id}-${archived}`} party={{ kind: "candidate", candidateId: candidate.id }} canWrite={canEdit} />
     </div>

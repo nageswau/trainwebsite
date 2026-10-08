@@ -6,6 +6,7 @@ import BdmConfirm from "@/components/BdmConfirm";
 import { DetailList, multiline } from "@/components/BdmOrganizationProfileDetails";
 import LocalTime from "@/components/LocalTime";
 import RecruiterRequirementForm from "@/components/RecruiterRequirementForm";
+import RecruiterRequirementCandidates from "@/components/RecruiterRequirementCandidates";
 import RecruiterRequirementJd from "@/components/RecruiterRequirementJd";
 import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson } from "@/lib/apiErrors";
@@ -27,8 +28,8 @@ import {
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // rec-007 (spec §6): one requirement. Actions render from `permissions` and `allowed_statuses` only -- the server enforces every rule.
-// Every write re-renders from the requirement the API returns (no refetch). The JD section is rec-008's; the Candidates / Interviews tabs
-// arrive with rec-017 / rec-018.
+// Every write re-renders from the requirement the API returns (no refetch). The JD section is rec-008's, Candidates is rec-017's; the
+// Interviews tab arrives with rec-020.
 type Changed = (r: Requirement, notice: string) => void;
 
 function StatusChange({ requirement, onChanged }: { requirement: Requirement; onChanged: Changed }) {
@@ -258,6 +259,7 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
         </section>
       )}
       <RecruiterRequirementJd requirement={r} initial={initialJd} onRequirementChanged={changed} />
+      <RecruiterRequirementCandidates requirementId={r.id} />
       {p.can_change_status && !showEditor && <StatusChange requirement={r} onChanged={changed} />}
       {p.can_reassign && <Reassign requirement={r} onChanged={changed} />}
       <section className="action-card wide" aria-labelledby={`requirement-${r.id}-history`}>
