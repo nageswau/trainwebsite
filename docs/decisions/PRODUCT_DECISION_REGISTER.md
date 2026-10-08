@@ -5386,7 +5386,7 @@ Visits section on `/partnership/universities/[id]`; the manager menu's Universit
 - Module scope: `DEC-SCOPE-116` (R10, R13).
 - Company scope and permissions: `DEC-SCOPE-121` (rec-003). Contacts: `DEC-SCOPE-125` (rec-004).
 
-**Status:** built on `feature/rec-024`. Every answer below is a **recommended default, `UNVERIFIED`**. The owner told the session to
+**Status:** **MERGED** to `main` as PR #168 @ `e92e2094` (2026-10-08). Every answer below is a **recommended default, `UNVERIFIED`**. The owner told the session to
 proceed with the recommended answers, so Q-23 was not asked.
 
 **Numbering:** migration `0116_recruiter_follow_ups`, API §12AY and RBAC §2.57. It was drafted as `0112` / `DEC-SCOPE-127` / §12AU /
