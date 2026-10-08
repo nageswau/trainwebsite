@@ -6891,6 +6891,8 @@ class UniversityPermissions(BaseModel):
     can_assign: bool
     can_publish: bool
     can_deactivate: bool
+    can_move_stage: bool  # upc-007 PS5
+    can_reopen: bool  # upc-007 PS6
     can_edit_contacts: bool  # upc-006 CT5
 
 
@@ -6909,7 +6911,33 @@ class UniversityRow(BaseModel):
     backup_manager: BdmManagerRef | None
     catalogue_visible: bool
     active: bool
+    stage: str
+    stage_label: str
+    lost: bool
     permissions: UniversityPermissions
+
+
+class UniversityStageRef(BaseModel):
+    key: str
+    label: str
+    column: str
+
+
+class UniversityLostOut(BaseModel):
+    at: datetime
+    reason: str
+
+
+class UniversityPipelineOut(BaseModel):
+    """upc-007: the stored stage, its Kanban column, the Lost flag and the catalogue (labels come from the API, not the client)."""
+
+    stage: str
+    stage_label: str
+    column: str
+    column_label: str
+    changed_at: datetime
+    lost: UniversityLostOut | None
+    stages: list[UniversityStageRef]
 
 
 class UniversityDetail(UniversityRow):
@@ -6927,6 +6955,7 @@ class UniversityDetail(UniversityRow):
     linked_bdm_organizations: list["LinkedBdmOrganization"]  # upc-004 UD11
     created_at: datetime
     updated_at: datetime
+    pipeline: UniversityPipelineOut
 
 
 class LinkedBdmOrganization(BaseModel):
@@ -6970,6 +6999,71 @@ class UniversityEnvelope(BaseModel):
 
 class UniversityPage(BaseModel):
     items: list[UniversityRow]
+    total: int
+    limit: int
+    offset: int
+
+
+# --- upc-007 (DEC-SCOPE-126, spec §3): stage moves, Lost / Reopen, stage history and the Kanban board -------------------------------
+class UniversityStageMove(BaseModel):
+    """PS4: `from_stage` is the stage the form was showing -- a different stored stage is 409 `stage_changed`."""
+
+    model_config = ConfigDict(extra="forbid")
+    from_stage: BdmStageKey
+    to_stage: BdmStageKey
+    note: BdmPipelineNote = None
+
+
+class UniversityStageReason(BaseModel):
+    """PS7: Lost and Reopen each need a reason."""
+
+    model_config = ConfigDict(extra="forbid")
+    reason: BdmPipelineReason
+
+
+class UniversityStageEventOut(BaseModel):
+    id: UUID
+    kind: Literal["move", "lost", "reopened"]
+    from_stage: str
+    from_label: str
+    to_stage: str
+    to_label: str
+    note: str | None
+    actor: BdmPersonRef
+    created_at: datetime
+
+
+class UniversityStageEventPage(BaseModel):
+    items: list[UniversityStageEventOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class UniversityPipelineColumn(BaseModel):
+    key: str
+    label: str
+    stages: list[str]
+    count: int
+
+
+class UniversityPipelineItem(BaseModel):
+    id: UUID
+    university_code: str
+    name: str
+    city: str
+    country_name: str
+    stage: str
+    stage_label: str
+    column: str
+    lost: bool
+    primary_manager: BdmManagerRef | None
+
+
+class UniversityPipelinePage(BaseModel):
+    columns: list[UniversityPipelineColumn]
+    lost_count: int
+    items: list[UniversityPipelineItem]
     total: int
     limit: int
     offset: int

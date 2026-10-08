@@ -9,8 +9,9 @@ export type StepState = "done" | "current" | "upcoming" | "awaiting_handover" | 
 // bdm-019 A4: a volume step carries its live count once an agency is linked.
 export type PipelineStep = { key: string; label: string; kind: StepKind; state: StepState; count?: number | null };
 export type Pipeline = { stage: string; stage_label: string; lost: { at: string; reason: string } | null; agent_status: string | null; steps: PipelineStep[] };
+// "reopened": upc-007 university history, which shares BdmStageHistory.
 export type StageEvent = {
-  id: string; kind: "move" | "lost" | "revived"; from_stage: string; from_label: string; to_stage: string; to_label: string;
+  id: string; kind: "move" | "lost" | "revived" | "reopened"; from_stage: string; from_label: string; to_stage: string; to_label: string;
   note: string | null; actor: { id: string; full_name: string }; created_at: string;
 };
 export type StageCount = { key: string; label: string; kind: StepKind; count: number | null };

@@ -329,7 +329,14 @@ primary and differs from it), `priority` (A/B/C, indexed), `partnership_potentia
 unique per university, system, name, year; cascade delete) and `university_assignment_history` (append-only, one row per changed manager
 slot). **Migration `0105_university_master`** backfills codes for existing rows in `created_at, slug` order and keeps them public;
 `downgrade()` refuses while rankings, assignment history or internal universities exist. Public reads show only published, active rows
-(API §12AN). `stage` is upc-007's; contacts are upc-006's.
+(API §12AN). Contacts are upc-006's.
+
+**upc-007 (`DEC-SCOPE-126`):** `universities` gains `stage` (one of the 15 EVID-020 §3 keys, CHECK, indexed, default
+`target_university`), `stage_changed_at` (set on every move), `lost_at` + `lost_reason` (CHECK both or neither: the Lost/Closed flag on top
+of the kept stage). New table `university_stage_history` (append-only: kind move / lost / reopened, from/to stage, note, actor,
+`position` identity; no stage CHECK so history survives a catalogue change). **Migration `0111_university_pipeline`** sets every existing
+row to `target_university` with `stage_changed_at = created_at`; `downgrade()` refuses while history, a lost or a moved university exists.
+The Kanban column, map group and probability are fixed groupings in `app/partnership_stages.py` (backlog Appendix B), never stored.
 
 **Addendum, 2026-10-08 (`upc-006`, `DEC-SCOPE-123` — University contacts + relationship strength):** `universities.relationship_strength`
 (nullable; CHECK new / developing / good / strong / strategic / at_risk / dormant, §11). New tables: `university_contact_roles` (`code` PK,
