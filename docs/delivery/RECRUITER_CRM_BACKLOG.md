@@ -544,6 +544,9 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Edge cases:** the deadline passes → expiring/expired (Appendix B D14); vacancies reduced below the joined count → 409.
 - **Regression risks:** EMP-002, ADM-007, ADM-008, student job lists, `bdm_metrics` placement counts (`bdm_metrics.py:50`).
 - **Complexity:** large · **Risk:** high
+- **Status (2026-10-08):** **BUILT** on `feature/rec-007`, not merged. `DEC-SCOPE-125` (J1–J7 recommended defaults, UNVERIFIED);
+  migration `0109_job_requirements`, API §12AS, RBAC §2.51. The §6 "Recruiter" contact field ships with rec-004. `bdm_metrics` was
+  unaffected: it counts offers, not job statuses.
 
 ### rec-008 — JD management
 - **Business requirement:** §7: upload or create a JD (14 fields), "📎 Upload JD and automatically connect it to the Job Requirement".
