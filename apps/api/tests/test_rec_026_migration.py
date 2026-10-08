@@ -1,4 +1,4 @@
-"""rec-026 -- migration 0119_recruiter_messages (spec §2). The round trip, the seed and the downgrade refusal run in a throwaway database
+"""rec-026 -- migration 0120_recruiter_messages (spec §2). The round trip, the seed and the downgrade refusal run in a throwaway database
 built from scratch (the rec-024 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -14,11 +14,11 @@ from app.core.config import settings
 from tests.test_tel_001_migration import _config, _sql
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_rec_026_migration_0119", VERSIONS / "0119_recruiter_messages.py")
+_spec = importlib.util.spec_from_file_location("_rec_026_migration_0120", VERSIONS / "0120_recruiter_messages.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0118_recruiter_calls", "0119_recruiter_messages"
+BASE, HEAD = "0119_recruiter_meetings", "0120_recruiter_messages"
 MESSAGE_COLUMNS = {
     "id",
     "company_id",
@@ -121,5 +121,5 @@ def test_round_trip_seeds_once_and_checks_the_party(isolated_db):
 def test_downgrade_refuses_while_a_template_was_edited(isolated_db):
     command.upgrade(isolated_db["cfg"], HEAD)
     _sql(isolated_db["url"], "UPDATE recruiter_message_templates SET body = body || ' edited' WHERE kind = 'follow_up'")
-    with pytest.raises(RuntimeError, match="0119_recruiter_messages"):
+    with pytest.raises(RuntimeError, match="0120_recruiter_messages"):
         command.downgrade(isolated_db["cfg"], BASE)

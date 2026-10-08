@@ -1,18 +1,18 @@
 """rec-026 -- recruiter_message_templates (+ 12 seeds, one per EVID-018 §19 kind) and recruiter_messages.
 
-Revision ID: 0119_recruiter_messages
-Revises: 0118_recruiter_calls
+Revision ID: 0120_recruiter_messages
+Revises: 0119_recruiter_meetings
 
-docs/superpowers/specs/2026-10-08-rec-026-recruiter-messages-design.md §2 (DEC-SCOPE-134). Two new tables; no existing row changes.
+docs/superpowers/specs/2026-10-08-rec-026-recruiter-messages-design.md §2 (DEC-SCOPE-135). Two new tables; no existing row changes.
 0001 builds a fresh database from the current models, which already carry these tables, so creation is guarded (0110's idiom) -- but the
 seed always runs and inserts only a (channel, name) that is missing, so it is idempotent and never overwrites a manager's edit.
 The kinds and CHECKS repeat app.models (test_rec_026_migration). downgrade() refuses while any message exists or any template is not
 exactly its seed: entered data is never dropped silently.
 
-Re-chained 2026-10-08 on merging `main` @ `41ee68fd`: drafted as `0120_recruiter_messages` on `0117_job_descriptions` (DEC-SCOPE-135, API
-§12BC, RBAC §2.61) while rec-025 and rec-028 were in flight; rec-025 (`0118_recruiter_calls`, DEC-SCOPE-133) merged first, so this is `0119`
-(DEC-SCOPE-134, API §12BB, RBAC §2.60). A database stamped at the draft is re-stamped with `alembic stamp --purge 0118_recruiter_calls`,
-then `upgrade head` (the table step is guarded and the seed is idempotent).
+Re-chained 2026-10-08 on merging `main` @ `7852882f`: drafted as `0120` on `0117_job_descriptions`, briefly `0119` on rec-025's
+`0118_recruiter_calls`; rec-028 (`0119_recruiter_meetings`, DEC-SCOPE-134) merged first, so this is `0120` on it (DEC-SCOPE-135, API §12BC,
+RBAC §2.61). A database stamped at a draft is re-stamped with `alembic stamp --purge 0118_recruiter_calls` (or `0117_job_descriptions`), then
+`upgrade head` (every table step is guarded and the seed is idempotent).
 """
 
 import uuid
@@ -22,8 +22,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0119_recruiter_messages"
-down_revision = "0118_recruiter_calls"
+revision = "0120_recruiter_messages"
+down_revision = "0119_recruiter_meetings"
 branch_labels = None
 depends_on = None
 
@@ -201,6 +201,6 @@ def downgrade() -> None:
         stored = {tuple(r) for r in bind.execute(sa.text(f"SELECT channel, kind, name, subject, body, active FROM {TEMPLATES}")).all()}
         seeded = {(s["channel"], s["kind"], s["name"], s["subject"], s["body"], True) for s in SEED}
         if bind.execute(sa.text(f"SELECT 1 FROM {MESSAGES} LIMIT 1")).first() or stored != seeded:
-            raise RuntimeError("Cannot downgrade 0119_recruiter_messages: recruiter messages or edited templates exist. Clear them deliberately first.")
+            raise RuntimeError("Cannot downgrade 0120_recruiter_messages: recruiter messages or edited templates exist. Clear them deliberately first.")
     op.drop_table(MESSAGES)
     op.drop_table(TEMPLATES)

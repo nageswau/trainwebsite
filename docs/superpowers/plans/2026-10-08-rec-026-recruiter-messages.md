@@ -8,7 +8,7 @@ Spec: `docs/superpowers/specs/2026-10-08-rec-026-recruiter-messages-design.md`. 
 1. **Model and migration.**
    - Add `REC_WHATSAPP_KINDS`, `REC_EMAIL_KINDS`, `RECRUITER_MESSAGE_CHECKS`, `RecruiterMessageTemplate` and `RecruiterMessage` to
      `models.py` (an append-only block).
-   - Add `0119_recruiter_messages`: guarded create, idempotent seed of 12 templates (inserting only a missing channel+name), and a
+   - Add `0120_recruiter_messages`: guarded create, idempotent seed of 12 templates (inserting only a missing channel+name), and a
      downgrade that refuses while any message exists or any template differs from its seed.
    - Test: `test_rec_026_migration.py` (the chain, the checks equal the models', the round trip, the downgrade refusal).
 2. **Templates API.**
@@ -64,7 +64,7 @@ Spec: `docs/superpowers/specs/2026-10-08-rec-026-recruiter-messages-design.md`. 
    - Add the nav entry.
    - Vitest for the lib and the components.
 8. **e2e** `rec-026-messages.spec.ts` and browser QA.
-9. **Docs:** DEC-SCOPE-134 in the register, API §12BB, RBAC §2.60, DATA_MODEL, SCREEN_CATALOG and the backlog status.
+9. **Docs:** DEC-SCOPE-135 in the register, API §12BC, RBAC §2.61, DATA_MODEL, SCREEN_CATALOG and the backlog status.
 
 ## Phase 3 review notes (applied to the tasks above)
 

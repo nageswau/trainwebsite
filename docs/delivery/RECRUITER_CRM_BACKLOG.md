@@ -1176,7 +1176,7 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** low
 
 ### rec-026 — Message template library + WhatsApp + email
-- **Status (2026-10-08):** built on `feature/rec-026`. Numbering: `DEC-SCOPE-134`, migration `0119_recruiter_messages` (re-chained after rec-025's `0118_recruiter_calls`; drafted as `0120` / 135), API §12BB, RBAC §2.60. MS1–MS11 are `UNVERIFIED` defaults.
+- **Status (2026-10-08):** built on `feature/rec-026`. Numbering: `DEC-SCOPE-135`, migration `0120_recruiter_messages` (after rec-028's `0119_recruiter_meetings`; briefly re-chained to `0119` / 134 after rec-025), API §12BC, RBAC §2.61. MS1–MS11 are `UNVERIFIED` defaults.
 - **Business requirement:** §19 WhatsApp (5 kinds) and Email (7 kinds) (R13).
 - **Existing behavior:** none for recruiting (the telecaller library is lead-specific).
 - **Expected behavior:**
@@ -1233,6 +1233,10 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** low
 
 ### rec-028 — Company meetings
+- **Status (2026-10-08):** **MERGED** to `main` as PR #174 @ `f34b4b42`. `DEC-SCOPE-134` (MT1–MT10 recommended defaults, UNVERIFIED);
+  migration `0119_recruiter_meetings` (after rec-025's `0118_recruiter_calls`), API §12BB, RBAC §2.60.
+  Drafted as `0117` / `DEC-SCOPE-132` / §12AZ / §2.58, then `0118` / 133 / §12BA / §2.59. rec-008 and then rec-025 merged first and took
+  those numbers. The next rec item takes `0120`, `DEC-SCOPE-135`, §12BC and §2.61 (re-check `main`).
 - **Business requirement:** §20 (7 types, 11 fields); quick action "+ Schedule Meeting" (R10, R14).
 - **Existing behavior:** BDM appointments are BDM-only.
 - **Expected behavior:**

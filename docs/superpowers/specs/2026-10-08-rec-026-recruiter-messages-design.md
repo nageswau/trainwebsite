@@ -2,11 +2,10 @@
 
 - **Feature:** rec-026 (`docs/delivery/RECRUITER_CRM_BACKLOG.md` §rec-026), EVID-018 §19 "💬 WhatsApp" (5 kinds, L766–776) and
   "📧 Email" (7 kinds, L778–792), R13 (telecaller pattern).
-- **Decision:** `DEC-SCOPE-134`. MS1–MS11 are recommended defaults and are **UNVERIFIED**. The owner said "proceed with recommended
+- **Decision:** `DEC-SCOPE-135`. MS1–MS11 are recommended defaults and are **UNVERIFIED**. The owner said "proceed with recommended
   answers".
-- **Numbering (re-chained on `origin/main` @ `41ee68fd`, after rec-025 merged at 0118 / 133):** migration `0119_recruiter_messages` (down
-  `0118_recruiter_calls`), API §12BB, RBAC §2.60. It was drafted as `0120` / 135 / §12BC / §2.61 while rec-025 and rec-028 were in flight.
-  rec-028 (unmerged) must re-chain after whichever of the two merges first.
+- **Numbering (re-chained on `origin/main` @ `7852882f`, after rec-025 (0118 / 133) and rec-028 (0119 / 134) merged):** migration
+  `0120_recruiter_messages` (down `0119_recruiter_meetings`), API §12BC, RBAC §2.61.
 - **Dependency:** rec-004 is MERGED (PR #160). rec-009 (candidates) is MERGED (PR #155).
 
 ## Understanding
@@ -47,7 +46,7 @@ Each send is recorded against the contact or the candidate. This is the tel-012/
 | MS10 | **Last contacted** (rec-004 C6) for a contact is the latest `sent_at` of its messages, excluding failed emails. It is computed on read in one grouped query. |
 | MS11 | **R8 masking.** No placeholder reads candidate data, so a message to a company contact never carries a candidate's phone or email unless the recruiter types it. |
 
-## 2. Data (migration 0119)
+## 2. Data (migration 0120)
 
 ### `recruiter_message_templates`
 
@@ -91,7 +90,7 @@ The checks are:
 The indexes are `(company_id, sent_at)`, `(contact_id, sent_at)`, `(candidate_id, sent_at)` and `(sender_user_id, sent_at)`. All FKs are
 `RESTRICT`. The upgrade is guarded (0110's idiom). The downgrade refuses while any message exists.
 
-## 3. API (§12BB)
+## 3. API (§12BC)
 
 | Method | Path | Notes |
 |---|---|---|

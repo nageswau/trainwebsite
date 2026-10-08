@@ -65,6 +65,7 @@ from app.models import (
     RECRUITER_CALL_MAX_SECONDS,
     RECRUITER_CALL_OUTCOMES,
     RECRUITER_FOLLOW_UP_REASONS,
+    RECRUITER_MEETING_TYPES,
     RELATIONSHIP_STRENGTHS,
     TEL_TARGET_KPIS,
     UNIVERSITY_OWNERSHIP_TYPES,
@@ -8257,8 +8258,69 @@ class RecCallUpdate(BaseModel):
                 raise ValueError(f"{label} can't be removed")
         return self
 
+# --- rec-028 (DEC-SCOPE-134, spec §3): company meetings ----------------------------------------------------------------------------
+REC_MEETING_LABELS = {"outcome": "Outcome", "next_action": "Next action", "purpose": "Purpose"}
+RecMeetingType = Literal[RECRUITER_MEETING_TYPES]
+RecMeetingMode = Literal[APPOINTMENT_MODES]
+RecMeetingPurpose = Annotated[Annotated[str, _trimmed(1000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, REC_MEETING_LABELS))]
+RecMeetingOutcomeText = Annotated[str, _trimmed(2000), AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, True, REC_MEETING_LABELS))]
+RecMeetingNextAction = Annotated[Annotated[str, _trimmed(500)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, REC_MEETING_LABELS))]
+RecMeetingPeople = Annotated[list[UUID], Field(max_length=20)]
 
-# --- rec-026 (DEC-SCOPE-134): recruiter message templates, WhatsApp and email --------------------------------------------------------
+
+class RecMeetingCreate(BaseModel):
+    """MT1-MT5: the §20 fields. Code, status, creator and timestamps are server-owned (unknown fields here). The primary contact is always
+    stored as a participant; contacts and recruiters are checked in the service (MT5)."""
+
+    model_config = ConfigDict(extra="forbid")
+    meeting_type: RecMeetingType
+    starts_at: BdmApptStart
+    mode: RecMeetingMode
+    location: _bdm_appt_optional(200) = None
+    meeting_url: LeadApptLink = None
+    purpose: RecMeetingPurpose = None
+    contact_id: UUID | None = None
+    participant_contact_ids: RecMeetingPeople = []
+    participant_user_ids: RecMeetingPeople = []
+
+
+class RecMeetingUpdate(BaseModel):
+    """Edit a scheduled meeting: only the keys sent are considered. A changed `starts_at` is a reschedule (MT6). Null clears an optional
+    field, never the type, start or mode."""
+
+    model_config = ConfigDict(extra="forbid")
+    meeting_type: RecMeetingType | None = None
+    starts_at: BdmApptStart | None = None
+    mode: RecMeetingMode | None = None
+    location: _bdm_appt_optional(200) = None
+    meeting_url: LeadApptLink = None
+    purpose: RecMeetingPurpose = None
+    contact_id: UUID | None = None
+    participant_contact_ids: RecMeetingPeople | None = None
+    participant_user_ids: RecMeetingPeople | None = None
+    reschedule_reason: _bdm_appt_optional(500) = None
+
+    @model_validator(mode="after")
+    def _required_stay_set(self):
+        for key in ("meeting_type", "starts_at", "mode", "participant_contact_ids", "participant_user_ids"):
+            if key in self.model_fields_set and getattr(self, key) is None:
+                raise ValueError(f"{key.replace('_', ' ').capitalize()} can't be removed")
+        return self
+
+
+class RecMeetingOutcome(BaseModel):
+    """MT7: the outcome, and optionally a next action that becomes a rec-024 follow-up (due time and reason checked in the service, so
+    each missing one is placed on its own field)."""
+
+    model_config = ConfigDict(extra="forbid")
+    outcome: RecMeetingOutcomeText
+    next_action: RecMeetingNextAction = None
+    next_action_due_at: AwareDatetime | None = None
+    next_action_reason: RecFollowUpReason | None = None
+
+
+
+# --- rec-026 (DEC-SCOPE-135): recruiter message templates, WhatsApp and email --------------------------------------------------------
 class RecTemplateCreate(BaseModel):
     """MS3. `kind` is a string checked against the channel's list in the service, so the 422 names the channel (tel-012's shape)."""
 

@@ -1,4 +1,4 @@
-"""rec-026 (DEC-SCOPE-134, spec §1-§3): the recruiter message engine -- the template library rules (MS1-MS3), rendering with a party's values
+"""rec-026 (DEC-SCOPE-135, spec §1-§3): the recruiter message engine -- the template library rules (MS1-MS3), rendering with a party's values
 (MS2), and messages to a company contact or a candidate (MS4-MS10). The tel-012/013/014 engine copied, not shared: `lead_messages` is bound
 to `enquiries`.
 
