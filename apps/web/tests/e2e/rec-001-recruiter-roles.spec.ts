@@ -85,11 +85,12 @@ test("Recruiter Staff: a recruiter from the generic form shows No manager until 
   const row = page.getByRole("region", { name: "Recruiters" }).locator("tbody tr").first();
   await expect(row.getByText("No manager")).toBeVisible();
   await row.getByRole("button", { name: `Edit E2E Legacy ${stamp}` }).click();
-  await page.getByLabel("Employee ID (required)").fill(`LEG-${stamp}`);
-  const combo = page.getByRole("combobox", { name: "Reporting manager (required)" });
+  // The edit form replaces the row; the create form above has fields with the same labels, so stay inside the row.
+  await row.getByLabel("Employee ID (required)").fill(`LEG-${stamp}`);
+  const combo = row.getByRole("combobox", { name: "Reporting manager (required)" });
   await combo.fill(`E2E PM2 ${stamp}`);
-  await page.getByRole("option", { name: new RegExp(`E2E PM2 ${stamp}`) }).click();
-  await page.getByRole("button", { name: "Save" }).click();
+  await row.getByRole("option", { name: new RegExp(`E2E PM2 ${stamp}`) }).click();
+  await row.getByRole("button", { name: "Save" }).click();
   await expect(page.getByText(`Saved E2E Legacy ${stamp}.`)).toBeVisible();
   await expect(row.getByText(`E2E PM2 ${stamp}`)).toBeVisible();
   await expect(row.getByText("No manager")).toHaveCount(0);

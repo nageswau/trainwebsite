@@ -6456,7 +6456,7 @@ class TelecallerManagerDeactivateOut(BaseModel):
 
 
 # --- rec-001 (DEC-SCOPE-116): recruiter profile -------------------------------------------------------------------------------
-RECRUITER_FIELD_LABELS = {"employee_id": "Employee ID", "reporting_manager_user_id": "Reporting manager", "phone": "Phone"}
+RECRUITER_FIELD_LABELS = {"employee_id": "Employee ID", "reporting_manager_user_id": "Reporting manager"}
 
 
 class RecruiterProfileCreate(BaseModel):
