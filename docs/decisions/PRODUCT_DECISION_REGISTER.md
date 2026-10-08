@@ -5425,7 +5425,7 @@ upc-010 merged first and took those numbers. Spec `docs/superpowers/specs/2026-1
 - Module scope: `DEC-SCOPE-116` (R5: `jobs` is the requirement with a versioned child `job_descriptions`).
 - Requirement scope and permissions: `DEC-SCOPE-129` (rec-007). Contacts: `DEC-SCOPE-125` (rec-004). Follow-ups: `DEC-SCOPE-131` FU1.
 
-**Status:** **BUILT** on `feature/rec-008` (2026-10-08), not merged. Every answer below is a **recommended default, `UNVERIFIED`**. The owner
+**Status:** **MERGED** to `main` as PR #170 @ `09abb21e` (2026-10-08). Every answer below is a **recommended default, `UNVERIFIED`**. The owner
 told the session to proceed with the recommended answers.
 
 **Numbering:** migration `0117_job_descriptions`, API §12AZ and RBAC §2.58. Spec `docs/superpowers/specs/2026-10-08-rec-008-jd-management-design.md`.
