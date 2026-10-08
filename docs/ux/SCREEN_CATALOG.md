@@ -2945,6 +2945,38 @@ Five screens (seven routes) added by `tel-001` (design spec `docs/superpowers/sp
 - **Route:** `/telecaller/manager/team`. **Role(s):** `telecaller_manager` (direct reports), `super_admin` (all). **Data:** `GET /telecaller/manager/team?offset=`. **Content:** table (name, Employee ID, team, mobile, status as a word in a badge) in a labelled, focusable scroll region with a `<caption>`; Previous / Next links. **States:** empty — "No telecallers report to you yet."; past-the-end offset — a message with "Go to the first page"; error — the access-unavailable block, sign-in link `/admin/login`. **Responsive:** the table scrolls horizontally inside its region; the page never does.
 - **Route:** `/admin/telecallers` (also `/it/admin/telecallers`, `/overseas/admin/telecallers`). **Role(s):** `super_admin` (both teams), `it_admin` (IT; also reachable by `super_admin`), `overseas_admin` (Overseas; also reachable by `super_admin`). **Data:** `GET /admin/telecallers`, `GET /admin/telecaller-managers`, `POST` / `PATCH /admin/users`. **Content:** create form (full name, email, mobile, team — fixed text for a division admin, a two-option select for `super_admin`, Employee ID, reporting manager via a server-search picker), list with row edit (name, mobile, Employee ID, manager; team read-only, TL7) and activate / deactivate with inline confirmation; "No active manager" badge when `manager_active` is false. **States:** loading — "Loading telecallers…"; empty — "No telecallers yet. Use the Create telecaller form to add the first one."; a search with no match — "No telecallers match “…”."; error — "Unable to load telecallers." with Retry; past the end of the list — "This page is past the end of the list." with "Go to the first page"; no active manager — "No active telecaller manager — a Super Admin must create one first", submit disabled; create success — the welcome-link feedback; server 403 / 409 / 422 messages inline; a save names the telecaller as saved ("Saved ⟨new name⟩."). A second click while a create is in flight sends nothing. **Responsive:** below 640px each row is a card — name and email, then labelled Employee ID / Team / Manager / Status lines, then Edit / Deactivate — so nothing sits off-screen; tablet and desktop keep the table (tel-001 QA-03/04/05). Up to 980px, where the list comes before the form, the list card starts with a "Create telecaller" link that scrolls to the form and focuses Full name.
 
+## rec-007 addendum (2026-10-08, `DEC-SCOPE-129`) — Job Requirement
+
+Three screens and a company-page section (design spec `docs/superpowers/specs/2026-10-08-rec-007-job-requirement-design.md` §6), on
+the rec-003 company layout. Visual reference: none.
+
+- **Routes / roles:** `/recruiter/requirements` (list), `/recruiter/requirements/new[?company_id=]` (add), and
+  `/recruiter/requirements/[id]` (detail).
+  - Menu entries: "Job Requirements" for recruiters and managers, and "Recruiter Requirements" for super admin.
+  - The Assigned BDM reads only. Other roles see the API's 403 message.
+- **List:**
+  - Per-role heading.
+  - URL filters: title, code or company; status; priority; deadline ("Deadline soon" / "Deadline passed"); recruiter for managers.
+  - Columns: Code, Job title, Company, Status, Priority, Vacancies, Deadline (with a soon/passed badge), Recruiter.
+  - Pager over 50. Below 980 px each row is a card.
+- **Add / edit form:**
+  - Company: a picker, or fixed when the user came from a company page. On add, a manager can choose the recruiter.
+  - Role: title, department, job category, vacancies, qualification, experience from/to in years, and the annual salary range.
+  - Work: location, work mode, shift, employment type, joining requirement, application deadline, requirement date and priority.
+  - Skills and description: required and preferred skills (one per comma or line) and the description.
+- **Detail:**
+  - Header: code, title, status badge and deadline badge.
+  - Edit (recruiter); a details list in which unmatched skills show "Not in Skills Master".
+  - Change status, offering only the allowed moves, with an optional note.
+  - Assign / Reassign (manager), and the status history.
+- **Company page:** a "Job requirements" section listing the company's requirements, with "Add job requirement" while the company is
+  active.
+- **Employer jobs panel:** each posting also shows its §6 status label.
+- **States:**
+  - Loading, error with Retry, and the empty / no match / past the end states.
+  - `role="status"` notices: "Requirement REQ-… created.", "Status changed to …", "Changes saved.".
+  - Field errors with `aria-invalid`, plus the double-submit guard and the leave guard.
+
 ## rec-003 addendum (2026-10-08, `DEC-SCOPE-121`) — Recruiter company master
 
 Three screens (design spec `docs/superpowers/specs/2026-10-08-rec-003-company-master-design.md` §6), on the bdm-002 organization
@@ -3226,7 +3258,7 @@ Design spec `docs/superpowers/specs/2026-10-08-rec-005-company-pipeline-design.m
 - **Pipeline board** (`/recruiter/pipeline`): a count tile per stage plus Lost, then one page of companies (code, company, city,
   priority, stage, recruiter). Filters live in the address; an invalid filter says so with a way back.
 
-## upc-010 addendum (2026-10-08, `DEC-SCOPE-129`) — University visits + approval
+## upc-010 addendum (2026-10-08, `DEC-SCOPE-130`) — University visits + approval
 
 Design spec `docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.md` §4. Visual-reference mapping: None — not inspected. Do not claim parity.
 

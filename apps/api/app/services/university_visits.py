@@ -1,4 +1,4 @@
-"""upc-010 (DEC-SCOPE-129, spec §1, §3): university visits -- who reads, plans and acts, the §8 flow, the approver, and output.
+"""upc-010 (DEC-SCOPE-130, spec §1, §3): university visits -- who reads, plans and acts, the §8 flow, the approver, and output.
 
 Functions only; nothing here commits -- the route owns the transaction. One transition table (`RULES`) drives both the 409s and the
 `permissions` flags. The approver is resolved now, never stored (VS4): the lead's reporting head, unless that head is inactive or took

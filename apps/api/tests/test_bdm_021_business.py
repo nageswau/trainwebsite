@@ -78,7 +78,7 @@ async def offer(db, student: User, status: str) -> None:
     company = Company(name=f"bdm-021 Co {uuid.uuid4().hex[:8]}", partner_type="recruiter")
     db.add(company)
     await db.flush()
-    job = Job(company_id=company.id, title="Engineer", location="Remote", description="", skills=[], status="open")
+    job = Job(company_id=company.id, title="Engineer", location="Remote", description="", skills=[], status="requirement_received")
     db.add(job)
     await db.flush()
     application = JobApplication(job_id=job.id, student_id=student.id, status="applied")

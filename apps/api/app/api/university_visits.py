@@ -1,4 +1,4 @@
-"""upc-010 (DEC-SCOPE-129, spec §3): university visits -- list, approval queue, option pickers, plan, edit and the §8 commands.
+"""upc-010 (DEC-SCOPE-130, spec §3): university visits -- list, approval queue, option pickers, plan, edit and the §8 commands.
 
 Every write is one transaction: the visit row lock (FOR UPDATE), the actor or approver check, the change, the history and audit rows,
 the in-app notices (`channels=[]`, VS15), one commit here, then a structured log (ids only). Lists are {items, total, limit, offset}."""

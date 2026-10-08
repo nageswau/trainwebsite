@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-type JobRow = { id: string; company: string; title: string; status: string };
+type JobRow = { id: string; company: string; title: string; status: string; status_label: string };
 type ShortlistRow = { id: string; student: string; email: string; status: string; resume_url: string | null };
 
 // ADM-008: "HR Team manages hiring requirements and shortlists." No way to view a
@@ -43,7 +43,7 @@ export default function HrShortlistPanel() {
         <select id="hr-shortlist-job" value={jobId} onChange={(event) => void selectJob(event.target.value)} disabled={!jobs}>
           <option value="">{jobs === null ? "Loading requirements…" : "Select a requirement"}</option>
           {(jobs || []).map((job) => (
-            <option key={job.id} value={job.id}>{job.title} · {job.company} · {job.status}</option>
+            <option key={job.id} value={job.id}>{job.title} · {job.company} · {job.status_label}</option>
           ))}
         </select>
       </div>

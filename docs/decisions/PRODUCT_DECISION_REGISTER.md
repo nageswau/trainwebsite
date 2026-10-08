@@ -5308,13 +5308,47 @@ Spec: `docs/superpowers/specs/2026-10-08-upc-005-university-import-design.md`.
 **Consequences:** new table `university_import_batches`; five new routes under `/partnership/universities/import(s)`; a new page.
 **New Feature ID authorized:** `upc-005`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-005.
 
-### DEC-SCOPE-129 — University visits + approval (`upc-010`)
+### DEC-SCOPE-129 — Job Requirement (`rec-007`)
+
+**Evidence:** `EVID-018` §6 (lines 272–348), §1 quick action "+ Add Job Requirement" (45), S2-§6 required/preferred skills;
+`RECRUITER_CRM_BACKLOG.md` §rec-007 (AC1–AC4). Module scope: `DEC-SCOPE-116`. Also R5 (`jobs` becomes the Job Requirement) and
+FEATURE_QUESTIONS #1 / Q-04 (the employer mediation question, still open).
+
+**Status:** **BUILT** on `feature/rec-007` (2026-10-08), not merged.
+- J1–J7 are **recommended defaults (`UNVERIFIED`)**. The user told the session to proceed with the recommended answers, so Q-04 and Q-05
+  were **not** put to the owner. They can be revised.
+- **Numbering:** migration `0114_job_requirements` (after upc-005's `0113_university_imports`), API §12AW, RBAC §2.55. rec-007 was
+  drafted as `0108` / 123 / §12AQ / §2.49. upc-006 (`0108` / 123), upc-004 (`0109` / 124), rec-004 (`0110` / 125), upc-007 (`0111` /
+  126), rec-005 (`0112` / 127) and upc-005 (PR #164: `0113` / 128 / §12AV / §2.54) merged first.
+- Spec: `docs/superpowers/specs/2026-10-08-rec-007-job-requirement-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| J1 (Q-04) | Status mapping | One `jobs.status` holds the 11 §6 statuses (CHECK). Migration: `draft` → `new`, `open` → `requirement_received`, `closed` stays, anything else → `on_hold`; each remapped row gets a history row whose note keeps the old value. The open set is `requirement_received` … `interviewing` |
+| J2 (Q-04) | Employer acceptance | None: an employer posting starts `new` and the employer publishes it as before (EMP-002's "no invented approval gate") |
+| J3 | Legacy shim | The employer API keeps `draft` / `open` / `closed` and gains `requirement_status` and `status_label`. `/workflows/it/jobs` accepts a §6 key or a legacy word. Every write is validated and kept in history |
+| J4 (Q-05) | Expiring / requirement date | "About to expire" = open with the deadline within 7 days (IST); "expired" = open past the deadline. Both are computed, not statuses. Requirement Date = the date received (default today) |
+| J5 | Scope split | The §6 "Recruiter" (company contact) field ships with rec-004's `company_contacts`. The Candidates / JD / Interviews tabs belong to rec-017 / rec-008 / rec-018. **Company stage:** rec-007 fires rec-005's (`DEC-SCOPE-127`) `requirement_received` when a requirement reaches Requirement Received, and `requirement_closed` when the company's last live requirement is closed or cancelled. The company row is locked first. The later driven stages come from rec-017–rec-023 |
+| J6 | Vocabularies | Work mode: on-site / remote / hybrid. Shift: day / night / rotational / flexible. Employment type: full / part time, contract, internship, temporary. Priority: high / medium / low. Salary: annual INR. Experience: stored in months |
+| J7 | Skills | `job_skills` (required/preferred, weight 1–10, required default 2 and preferred 1, pending Q-14) is the authority. Names resolve through the rec-006 aliases, and unmatched ones are kept as free text and flagged. `jobs.skills` JSON stays as a mirror, so the legacy readers are unchanged |
+
+**Consequences:**
+- **Schema:** the `jobs` §6 columns, `requirement_code_seq` (`REQ-000001`), `job_skills` and `job_status_history`.
+- **Code:** `services/recruiter_requirements.py` and `api/recruiter_requirements.py`. Every `status == "open"` reader now uses
+  `JOB_OPEN_STATUSES`.
+- **Pages:** `/recruiter/requirements`, `/new` and `/[id]`, a Requirements section on the company page, and nav entries for recruiters,
+  managers and super admin.
+- **Tests:** the Job fixtures in the EMP-004/005, ADM-007/008, BDM-021, ENH-031 and RPT-001 tests move from `open` to
+  `requirement_received`.
+- **New Feature ID authorized:** `rec-007`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-007.
+
+### DEC-SCOPE-130 — University visits + approval (`upc-010`)
 
 **Evidence:** `EVID-020` §8 (L314–L350: "separate from normal meetings", 14 planning fields, Planned → Approved → Travel Booked → Visit
 Completed → Follow-up → Closed); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U9 (`EXPLICIT_APPROVAL`, 2026-10-08) and §4 upc-010.
 **Status:** VS1–VS18 are the recommended answers to backlog Q-13 plus design-level rules, applied under the owner's standing instruction
 for the build session ("proceed with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed:
-`NEEDS_CONFIRMATION` at sign-off. Migration `0114_university_visits`, API contract §12AW, RBAC §2.55.
+`NEEDS_CONFIRMATION` at sign-off. Migration `0115_university_visits`, API contract §12AX, RBAC §2.56.
 Spec: `docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.md`.
 
 | # | Question | Answer |

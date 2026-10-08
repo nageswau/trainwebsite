@@ -473,17 +473,111 @@ class EmployerProfile(Base, TimestampMixin):
     registration_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
 
+# rec-007 (DEC-SCOPE-129 J1): the 11 EVID-018 §6 requirement statuses. `JOB_OPEN_STATUSES` is what students see and can apply to
+# (while `closes_on` has not passed) -- every `status == "open"` reader uses it now.
+JOB_STATUSES = (
+    "new", "requirement_received", "sourcing", "shortlisting", "profiles_shared", "interviewing", "selected", "joined", "on_hold", "closed", "cancelled",
+)
+JOB_OPEN_STATUSES = ("requirement_received", "sourcing", "shortlisting", "profiles_shared", "interviewing")
+JOB_WORK_MODES = ("onsite", "remote", "hybrid")
+JOB_SHIFTS = ("day", "night", "rotational", "flexible")
+JOB_EMPLOYMENT_TYPES = ("full_time", "part_time", "contract", "internship", "temporary")
+JOB_PRIORITIES = ("high", "medium", "low")
+REQUIREMENT_CODE_SEQ = Sequence("requirement_code_seq", maxvalue=999999, metadata=Base.metadata)
+
+
+def _in(column: str, values: tuple[str, ...]) -> str:
+    """A nullable column limited to `values` (shared by the rec-007 job and tel-009 qualification CHECKs)."""
+    return f"{column} IS NULL OR {column} IN ({', '.join(repr(v) for v in values)})"
+
+
+JOB_CHECKS = {  # migration 0114 repeats these strings; test_rec_007_migration asserts they stay identical
+    "ck_jobs_status": "status IN (" + ", ".join(f"'{s}'" for s in JOB_STATUSES) + ")",
+    "ck_jobs_work_mode": _in("work_mode", JOB_WORK_MODES),
+    "ck_jobs_shift": _in("shift", JOB_SHIFTS),
+    "ck_jobs_employment_type": _in("employment_type", JOB_EMPLOYMENT_TYPES),
+    "ck_jobs_priority": _in("priority", JOB_PRIORITIES),
+    "ck_jobs_vacancies": "vacancies IS NULL OR vacancies BETWEEN 1 AND 10000",
+    "ck_jobs_experience": "(experience_min_months IS NULL OR experience_min_months BETWEEN 0 AND 600) AND (experience_max_months IS NULL OR experience_max_months BETWEEN 0 AND 600)"
+    " AND (experience_min_months IS NULL OR experience_max_months IS NULL OR experience_min_months <= experience_max_months)",
+    "ck_jobs_salary": "(salary_min IS NULL OR salary_min >= 0) AND (salary_max IS NULL OR salary_max >= 0) AND (salary_min IS NULL OR salary_max IS NULL OR salary_min <= salary_max)",
+}
+
+
 class Job(Base, TimestampMixin):
+    """rec-007 (DEC-SCOPE-129, R5): the job is the Job Requirement. `requirement_code` comes from the server default on every insert path
+    (employer, /workflows/it/jobs, the recruiter API). `skills` (JSON) is a derived mirror of `job_skills`, rewritten by
+    services.recruiter_requirements.set_skills, so the legacy readers keep their shape (J7)."""
+
     __tablename__ = "jobs"
+    __table_args__ = (
+        UniqueConstraint("requirement_code", name="uq_jobs_requirement_code"),
+        *(CheckConstraint(sql, name=name) for name, sql in JOB_CHECKS.items()),
+        Index("ix_jobs_status", "status"),
+        Index("ix_jobs_assigned_recruiter", "assigned_recruiter_user_id"),
+        Index("ix_jobs_closes_on", "closes_on"),
+    )
+    __mapper_args__ = {"eager_defaults": True}  # INSERT ... RETURNING requirement_code
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id"), index=True)
     title: Mapped[str] = mapped_column(String(180))
     location: Mapped[str] = mapped_column(String(120))
     description: Mapped[str] = mapped_column(Text)
     skills: Mapped[list] = mapped_column(JSON, default=list)
-    status: Mapped[str] = mapped_column(String(30), default="open")
+    status: Mapped[str] = mapped_column(String(30), default="requirement_received")
     closes_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    requirement_code: Mapped[str] = mapped_column(String(20), server_default=text("'REQ-' || lpad(nextval('requirement_code_seq')::text, 6, '0')"))
+    department: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    job_category_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_job_categories.id"), nullable=True)
+    vacancies: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    qualification: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    experience_min_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    experience_max_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    salary_min: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    salary_max: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    work_mode: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    shift: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    employment_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    joining_requirement: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    requirement_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    priority: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    assigned_recruiter_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     company = relationship("Company")
+
+
+class JobSkill(Base):
+    """rec-007 (J7): one required or preferred skill of a requirement. `skill_id` NULL = free text that did not resolve against the
+    Skills Master (the "flagged" skills); `name` is the text as entered (or the skill's name when it resolved)."""
+
+    __tablename__ = "job_skills"
+    __table_args__ = (
+        CheckConstraint("kind IN ('required', 'preferred')", name="ck_job_skills_kind"),
+        CheckConstraint("weight BETWEEN 1 AND 10", name="ck_job_skills_weight"),
+        Index("uq_job_skills_name", "job_id", text("lower(name)"), unique=True),
+        Index("ix_job_skills_skill", "skill_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id"), index=True)
+    skill_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("skills.id"), nullable=True)
+    name: Mapped[str] = mapped_column(String(120))
+    kind: Mapped[str] = mapped_column(String(10))
+    weight: Mapped[int] = mapped_column(SmallInteger)
+    position: Mapped[int] = mapped_column(SmallInteger)
+
+
+class JobStatusHistory(Base):
+    """rec-007: append-only. `from_status` NULL = created; `changed_by_user_id` NULL = migration 0114's legacy mapping (the note keeps
+    the original value). These rows are the requirement events rec-005 drives the company stage from."""
+
+    __tablename__ = "job_status_history"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id"), index=True)
+    from_status: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    to_status: Mapped[str] = mapped_column(String(30))
+    note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    changed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class JobApplication(Base, TimestampMixin):
@@ -812,7 +906,7 @@ class UniversityContact(Base, TimestampMixin):
     shareable: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
 
-# upc-010 (DEC-SCOPE-129, spec §2): §8's visit flow, exactly (VS2). Migration 0109 repeats the check; test_upc_010_migration keeps them
+# upc-010 (DEC-SCOPE-130, spec §2): §8's visit flow, exactly (VS2). Migration 0109 repeats the check; test_upc_010_migration keeps them
 # identical. VIS-000123 codes (VS17): a rolled-back create skips a number.
 UNIVERSITY_VISIT_STATUSES = ("planned", "approved", "travel_booked", "visit_completed", "follow_up", "closed")
 UNIVERSITY_VISIT_STATUS_CHECK = _one_of("status", UNIVERSITY_VISIT_STATUSES, nullable=False)
@@ -1346,10 +1440,6 @@ QUAL_SKILL_LEVELS = ("beginner", "intermediate", "advanced")
 QUAL_MODES = ("online", "offline")
 QUAL_STUDY_LEVELS = ("ug", "masters")
 QUAL_PASSPORT = ("none", "applied", "valid")
-
-
-def _in(column: str, values: tuple[str, ...]) -> str:
-    return f"{column} IS NULL OR {column} IN ({', '.join(repr(v) for v in values)})"
 
 
 class LeadQualification(Base, TimestampMixin):

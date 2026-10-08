@@ -142,7 +142,7 @@ async def test_placement_team_reports_renders_real_job_activity_instead_of_404in
     company = Company(name=f"RPT-001 Test Co {uuid.uuid4().hex[:6]}", website=None, partner_type="recruiter")
     db_session.add(company)
     await db_session.flush()
-    job = Job(company_id=company.id, title="Backend Engineer", location="Remote", description="", skills=[], status="open")
+    job = Job(company_id=company.id, title="Backend Engineer", location="Remote", description="", skills=[], status="requirement_received")
     db_session.add(job)
     await db_session.flush()
     student = await _create_user(db_session, role="it_student", division="it")
