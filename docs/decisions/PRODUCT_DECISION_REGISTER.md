@@ -5157,7 +5157,69 @@ Spec: `docs/superpowers/specs/2026-10-08-upc-006-university-contacts-design.md`.
 a Contacts section on `/partnership/universities/[id]`.
 **New Feature ID authorized:** `upc-006`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-006.
 
-### DEC-SCOPE-125 — Job Requirement (`rec-007`)
+### DEC-SCOPE-124 — University duplicate prevention + BDM university-org link (`upc-004`)
+
+**Evidence:** `EVID-020` §26 (L868–894: search before adding, the warning panel, "prevents two employees contacting the same
+university"); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U13 (`EXPLICIT_APPROVAL`, 2026-10-08) and §4 upc-004.
+**Status:** UD1–UD12 are the recommended answers to backlog Q-02 (plus design-level rules), applied under the owner's standing instruction
+for the build session ("proceed with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed:
+`NEEDS_CONFIRMATION` at sign-off. Migration `0109_university_duplicates`, API contract §12AR, RBAC §2.50. Drafted as `DEC-SCOPE-121` / `0106` /
+§12AO / §2.47 and renumbered on merging `main` @ `a62ad9d7` (rec-003, rec-009 merged first), then again on merging `main` @ `215e3e2e`:
+upc-006 took `DEC-SCOPE-123` / `0108` / §12AQ / §2.49.
+Spec: `docs/superpowers/specs/2026-10-08-upc-004-university-duplicates-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| UD1 | Q-02 duplicate key | Normalised name (NFKC, whitespace collapsed, casefolded) + country; no city, no aliases; inactive rows count |
+| UD2 | Override | `409 university_duplicate`; only `partnership_head` / `super_admin`, with a 10–500 character reason, audited `university.duplicate_override` |
+| UD3 | Edit | A changed name or country re-runs the check (excluding itself) |
+| UD4 | Race | Same-key writes serialise on a transaction advisory lock |
+| UD5 | Panel | Code, name, country, city, state, existing relationship, managers; stage / last contact / next follow-up "—" until upc-007/006/020 |
+| UD6 | Search before adding | `GET /partnership/universities/duplicates` (read roles), debounced in the form; advisory |
+| UD7 | Link | `bdm_organizations.university_id` nullable FK, University organizations only (CHECK) |
+| UD8 | BDM create | Master matches by name (any country) join the `possible_duplicate` 409; link or save unlinked; never merged |
+| UD9 | BDM edit | PATCH links / unlinks; a type change away from University clears the link (edit-form control is a follow-up) |
+| UD10 | BDM read | Organization detail shows the linked record (code, name, country, city, primary manager name); no commission |
+| UD11 | Master read | University detail lists its linked BDM organizations (text only) |
+| UD12 | Existing data | Migration reports existing duplicates and link candidates; no merge, no auto-link |
+
+**Consequences:** `universities.name_key` + index; `bdm_organizations.university_id`; new route `GET /partnership/universities/duplicates`;
+a duplicate master create/rename is `409` unless overridden; the BDM University create warning carries the master's matches.
+**New Feature ID authorized:** `upc-004`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-004.
+
+### DEC-SCOPE-125 — Company contacts (`rec-004`)
+
+**Evidence:**
+- `EVID-018`: §2, the person fields (lines 84–98) and the quick action "+ Add Recruiter" (line 43); §3 Business Details (lines 150–164);
+  §4 Recruiter Contact Management (lines 176–216).
+- `RECRUITER_CRM_BACKLOG.md` §rec-004 (AC1–AC3).
+- R3: a new `company_contacts` table. R10: recruiters do every write.
+- Module scope: `DEC-SCOPE-116`. The company master is `DEC-SCOPE-121`.
+
+**Status:** built on `feature/rec-004`. The backlog item has no Q-xx questions, so C1–C7 below are **recommended defaults**, taken on the
+user's standing instruction to proceed with the recommended answers. Their status is `UNVERIFIED` until the owner confirms them.
+
+**Numbering:** migration `0110_company_contacts` (after upc-004's `0109_university_duplicates`), API §12AS and RBAC §2.51. rec-004 was drafted as
+`0107` / `DEC-SCOPE-122` / §12AP / §2.48, but rec-009 (`0107` / 122), upc-006 (`0108` / 123) and upc-004 (`0109` / 124) merged first. Spec `docs/superpowers/specs/2026-10-08-rec-004-company-contacts-design.md`.
+
+| # | Point | Answer (UNVERIFIED default) |
+|---|---|---|
+| C1 | Who writes contacts | Whoever holds the company's `can_edit`: the assigned recruiter or `super_admin` (rec-003 D6, R10). `placement_manager` and the assigned BDM read only. An archived company's contacts are read-only (`409`) |
+| C2 | Remove / primary | Contacts are deactivated, never deleted. The primary cannot be deactivated while another active contact exists (`409`); the last active contact can be, and it stops being primary. A new or reactivated contact becomes primary when the company has none. An inactive contact cannot be made primary |
+| C3 | Fields | Name (required), designation, department, role (an active `rec_contact_roles` value), mobile (it must normalise; stored with `mobile_normalized`), email (lower-cased), LinkedIn (http/https), preferred communication (call / WhatsApp / email) and notes |
+| C4 | Cap | At most 50 contacts per company, active and inactive together |
+| C5 | §3 HR / TA / Hiring Manager, HR email and phone | Read from the active contacts by their seeded role names, not stored. HR = HR Manager or HR Head. HR email and phone are the primary contact's when the primary has an HR role, otherwise the first HR contact's |
+| C6 | Last contacted | Returned as `null` until calls, messages and meetings exist (rec-025, rec-026, rec-028). AC3 is deferred to rec-025. Next follow-up is rec-024's |
+| C7 | "+ Add Recruiter" | `POST /recruiter/companies` takes an optional `contact`, so the company and its first contact (primary) are created in one transaction. The UI is `/recruiter/companies/new?with=contact` |
+
+**Consequences:**
+- `company_contacts` (`0110`): a partial unique index on the primary contact, and a CHECK that a primary contact is active.
+- `services/recruiter_contacts.py` and `api/recruiter_contacts.py`.
+- A Contacts section on the company page, and an "Add recruiter" quick action on the companies list.
+- Contact PII: no export, and logs and audit rows carry ids and field names only.
+- **New Feature ID authorized:** `rec-004`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-004.
+
+### DEC-SCOPE-126 — Job Requirement (`rec-007`)
 
 **Evidence:** `EVID-018` §6 (lines 272–348), §1 quick action "+ Add Job Requirement" (45), S2-§6 required/preferred skills;
 `RECRUITER_CRM_BACKLOG.md` §rec-007 (AC1–AC4). Module scope: `DEC-SCOPE-116`. Also R5 (`jobs` becomes the Job Requirement) and
@@ -5166,9 +5228,9 @@ FEATURE_QUESTIONS #1 / Q-04 (the employer mediation question, still open).
 **Status:** **BUILT** on `feature/rec-007` (2026-10-08), not merged.
 - J1–J7 are **recommended defaults (`UNVERIFIED`)**. The user told the session to proceed with the recommended answers, so Q-04 and Q-05
   were **not** put to the owner. They can be revised.
-- **Numbering:** migration `0109_job_requirements` (after upc-006's `0108`), API §12AS, RBAC §2.51. rec-007 was drafted as `0108` /
-  123 / §12AQ / §2.49. upc-006 (PR #157) took those, and rec-004 (PR pending) claims 124 / `0109` / §12AR / §2.50. Whichever of the two
-  merges second re-chains.
+- **Numbering:** migration `0111_job_requirements` (after rec-004's `0110_company_contacts`), API §12AT, RBAC §2.52. rec-007 was
+  drafted as `0108` / 123 / §12AQ / §2.49. upc-006 (PR #157: `0108` / 123), upc-004 (PR #158: `0109` / 124) and rec-004 (PR #160:
+  `0110` / 125 / §12AS / §2.51) merged first.
 - Spec: `docs/superpowers/specs/2026-10-08-rec-007-job-requirement-design.md`.
 
 | # | Point | Answer |

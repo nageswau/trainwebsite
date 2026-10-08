@@ -356,6 +356,11 @@ Common conventions:
 - **Complexity:** large · **Risk:** high
 
 ### upc-004 — Duplicate prevention + BDM university-org link
+- **Status (2026-10-08):** built on `feature/upc-004` under `DEC-SCOPE-124`, with migration `0109_university_duplicates`, API §12AR and
+  RBAC §2.50. Spec: `docs/superpowers/specs/2026-10-08-upc-004-university-duplicates-design.md`.
+  - Q-02 is answered by the recommended defaults UD1–UD12 (`NEEDS_CONFIRMATION`): normalised name + country, no aliases; override by the
+    head / `super_admin` with an audited reason; stage, last contact and next follow-up show "—" until upc-007/006/020.
+  - Follow-up: a link control in the BDM edit form (the API already links and unlinks).
 - **Business requirement:** §26 search before adding, the warning panel (5 fields), "prevents two employees contacting the same
   university" (U13).
 - **Existing behavior:** duplicate detection is by slug only. BDM `university` orgs are separate (`name_key`/`city_key` check within BDM).

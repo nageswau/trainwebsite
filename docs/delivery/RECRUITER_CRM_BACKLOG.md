@@ -402,6 +402,10 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** large · **Risk:** high
 
 ### rec-004 — Company contacts
+- **Status (2026-10-08):** built on `feature/rec-004`. Numbering: `DEC-SCOPE-125`, migration `0110_company_contacts` (after upc-004's
+  `0109_university_duplicates`), API §12AS, RBAC §2.51. C1–C7 in `DEC-SCOPE-125` are recommended defaults (UNVERIFIED): writes follow the company's
+  `can_edit`, contacts are deactivated and never deleted, at most 50 per company, and §3 Business Details are read from the contact
+  roles. "+ Add Recruiter" ships here. AC3 (Last contacted after a logged call) waits for rec-025.
 - **Business requirement:** §4 "multiple contacts under one company" with 10 fields per contact. §3 HR Contact, Talent Acquisition
   Contact, Hiring Manager, HR Email, HR Phone.
 - **Existing behavior:** none. Employer users are the only people tied to a company.
@@ -544,8 +548,8 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Edge cases:** the deadline passes → expiring/expired (Appendix B D14); vacancies reduced below the joined count → 409.
 - **Regression risks:** EMP-002, ADM-007, ADM-008, student job lists, `bdm_metrics` placement counts (`bdm_metrics.py:50`).
 - **Complexity:** large · **Risk:** high
-- **Status (2026-10-08):** **BUILT** on `feature/rec-007`, not merged. `DEC-SCOPE-125` (J1–J7 recommended defaults, UNVERIFIED);
-  migration `0109_job_requirements`, API §12AS, RBAC §2.51. The §6 "Recruiter" contact field ships with rec-004. `bdm_metrics` was
+- **Status (2026-10-08):** **BUILT** on `feature/rec-007`, not merged. `DEC-SCOPE-126` (J1–J7 recommended defaults, UNVERIFIED);
+  migration `0111_job_requirements`, API §12AT, RBAC §2.52. The §6 "Recruiter" contact field ships with rec-004. `bdm_metrics` was
   unaffected: it counts offers, not job statuses.
 
 ### rec-008 — JD management

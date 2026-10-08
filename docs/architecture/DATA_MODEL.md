@@ -340,6 +340,12 @@ primary per university, and `lower(email)` once per university. Contact PII neve
 `0108_university_contacts`** seeds the roles (`ON CONFLICT DO NOTHING`); `downgrade()` refuses while contacts or relationship strengths
 exist (API §12AQ).
 
+**Addendum, 2026-10-08 (`upc-004`, `DEC-SCOPE-124`, U13 — duplicate prevention + BDM link):** `universities.name_key` (NOT NULL; the
+normalised name, kept by the model's `name` validator) with the non-unique index `ix_universities_duplicate_key (country_id, name_key)`.
+`bdm_organizations.university_id` (nullable FK `universities`, indexed) with CHECK `ck_bdm_organizations_university_link` (University
+organizations only). **Migration `0109_university_duplicates`** backfills the key and logs (never merges or links) the existing duplicate
+groups and the unlinked BDM University organizations that match a master name; `downgrade()` refuses while any organization is linked.
+
 ### 6.2 `OverseasApplication`, `ApplicationStatusHistory`
 **Carries over**, status vocabulary **extended** — this is part of the `ADR-012` resolution (§6.3
 covers the commission-specific piece).
@@ -1357,7 +1363,32 @@ registration and `/workflows/it/jobs` keep writing only name, website and owners
 `created_at`; `ix_company_assignment_history_company`. Append-only. `downgrade()` refuses while any history row or any new-column value
 exists.
 
-## Job Requirement (`rec-007`, `DEC-SCOPE-125`; migration `0109_job_requirements`, after `0108_university_contacts`)
+## Company contacts (`rec-004`, `DEC-SCOPE-125`; migration `0110_company_contacts`, after `0109_university_duplicates`)
+
+`company_contacts` holds many people per company (R3; EVID-018 §4). Contacts are never deleted, only deactivated (C2).
+
+| Column | Type / rule |
+|---|---|
+| `id` | uuid PK |
+| `company_id` | FK `companies` (RESTRICT); `ix_company_contacts_company` |
+| `position` | bigint identity (insertion order) |
+| `name` | varchar(200) NOT NULL |
+| `designation`, `department` | varchar(120) |
+| `role_id` | FK `rec_contact_roles` (it must be active when set or changed: app rule) |
+| `mobile` | varchar(40) |
+| `mobile_normalized` | varchar(20), derived from `mobile` (E.164; `ix_company_contacts_mobile`) |
+| `email` | varchar(255), lower-cased |
+| `linkedin_url` | varchar(300), http/https only |
+| `preferred_channel` | varchar(16), `ck_company_contacts_channel` `call`/`whatsapp`/`email` |
+| `notes` | varchar(2000) |
+| `is_primary` | bool; `uq_company_contacts_primary` (partial unique on `company_id` WHERE `is_primary`) |
+| `active` | bool; `ck_company_contacts_primary_active`: `NOT is_primary OR active` |
+| `created_by_user_id` | FK users |
+| `created_at`, `updated_at` | timestamptz |
+
+`downgrade()` refuses while any row exists.
+
+## Job Requirement (`rec-007`, `DEC-SCOPE-126`; migration `0111_job_requirements`, after `0110_company_contacts`)
 
 Extends §5.1 `Job` (R5: the job is the Job Requirement). Every new column is nullable except the code, so the employer and
 `/workflows/it/jobs` insert paths are unchanged.

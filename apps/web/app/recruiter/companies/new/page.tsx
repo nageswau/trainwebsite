@@ -6,7 +6,9 @@ import { COMPANIES_URL, companyShell, CREATOR_ROLES, RECRUITER_SIGN_IN } from "@
 import type { User } from "@/lib/types";
 
 // rec-003 (EVID-018 quick action "+ Add Company"): a recruiter's new company is their own; a manager may hand it to a recruiter.
-export default async function RecruiterCompanyNewPage() {
+// rec-004 ("+ Add Recruiter", `?with=contact`): the same form, opened with the first contact's fields.
+export default async function RecruiterCompanyNewPage({ searchParams }: { searchParams: Promise<{ with?: string }> }) {
+  const withContact = (await searchParams).with === "contact";
   let user: User;
   try {
     [user] = await Promise.all([serverApi<User>("/api/v1/auth/me"), serverApi(`${COMPANIES_URL}?limit=1`)]);
@@ -22,12 +24,15 @@ export default async function RecruiterCompanyNewPage() {
         <div className="portal-title">
           <div>
             <div className="eyebrow">Companies</div>
-            <h2>Add company</h2>
-            <p className="muted">{recruiter ? "It will be assigned to you." : "Choose a recruiter, or leave it in the unassigned queue."}</p>
+            <h2>{withContact ? "Add recruiter" : "Add company"}</h2>
+            <p className="muted">
+              {withContact && "A company and the recruiter you deal with there, in one step. "}
+              {recruiter ? "It will be assigned to you." : "Choose a recruiter, or leave it in the unassigned queue."}
+            </p>
           </div>
         </div>
         <div className="action-card wide">
-          <RecruiterCompanyCreate canChooseRecruiter={!recruiter} />
+          <RecruiterCompanyCreate canChooseRecruiter={!recruiter} withContact={withContact} />
         </div>
       </div>
     </PortalShell>

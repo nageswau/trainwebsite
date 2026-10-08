@@ -1,4 +1,4 @@
-// rec-007 (DEC-SCOPE-125): the Job Requirement -- types, endpoints and the pure helpers its list, form and detail share. The API scopes
+// rec-007 (DEC-SCOPE-126): the Job Requirement -- types, endpoints and the pure helpers its list, form and detail share. The API scopes
 // every row, decides every permission and lists the allowed status moves; nothing here filters for security.
 import type { LookupPage } from "@/lib/lookups";
 import { COMPANIES_URL, type Person, type Ref } from "@/lib/recruiterCompanies";

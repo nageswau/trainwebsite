@@ -22,12 +22,14 @@ from sqlalchemy import (
     Uuid,
     false,
     text,
+    true,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column, relationship, validates
 from sqlalchemy.sql import func
 
 from app.bdm_stages import FIRST_STAGE as BDM_FIRST_STAGE
 from app.bdm_stages import MANUAL_STAGES as BDM_MANUAL_STAGES
+from app.core.identifiers import normalize_key
 from app.lead_stages import STAGES as LEAD_STAGES
 from app.notifications.phone import normalise_phone
 from app.tel_content_kinds import ASSET_KINDS as TEL_ASSET_KINDS
@@ -381,6 +383,49 @@ class CompanyAssignmentHistory(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+# rec-004 (DEC-SCOPE-125): migration 0110 repeats COMPANY_CONTACT_CHECKS (test_rec_004_migration asserts they stay identical).
+COMPANY_CONTACT_CHANNELS = ("call", "whatsapp", "email")
+COMPANY_CONTACT_CHECKS = {
+    "ck_company_contacts_channel": f"preferred_channel IS NULL OR preferred_channel IN ({', '.join(repr(c) for c in COMPANY_CONTACT_CHANNELS)})",
+    "ck_company_contacts_primary_active": "NOT is_primary OR active",
+}
+
+
+class CompanyContact(Base, TimestampMixin):
+    """rec-004 (EVID-018 §4, R3): a person at a company -- the §2 "recruiter" and the §3 HR / TA / Hiring-Manager contacts. Never
+    deleted, only deactivated (C2); at most one primary per company (the partial unique index). `position` keeps insertion order;
+    `mobile_normalized` follows `mobile` for later lookups (calls, duplicate checks)."""
+
+    __tablename__ = "company_contacts"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in COMPANY_CONTACT_CHECKS.items()),
+        Index("ix_company_contacts_company", "company_id"),
+        Index("uq_company_contacts_primary", "company_id", unique=True, postgresql_where=text("is_primary")),
+        Index("ix_company_contacts_mobile", "mobile_normalized"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"))
+    position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    name: Mapped[str] = mapped_column(String(200))
+    designation: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    department: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    role_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_contact_roles.id"), nullable=True)
+    mobile: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    mobile_normalized: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    linkedin_url: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    preferred_channel: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    notes: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    is_primary: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+    @validates("mobile")
+    def _derive_mobile_normalized(self, _key: str, mobile: str | None) -> str | None:
+        self.mobile_normalized = normalise_phone(mobile)
+        return mobile
+
+
 class EmployerProfile(Base, TimestampMixin):
     """EMP-001 -- DATA_MODEL.md #5.2, net-new. `registration_status` exists but is
     deliberately unenforced/nullable: whether registration requires Admin approval before
@@ -394,7 +439,7 @@ class EmployerProfile(Base, TimestampMixin):
     registration_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
 
-# rec-007 (DEC-SCOPE-125 J1): the 11 EVID-018 §6 requirement statuses. `JOB_OPEN_STATUSES` is what students see and can apply to
+# rec-007 (DEC-SCOPE-126 J1): the 11 EVID-018 §6 requirement statuses. `JOB_OPEN_STATUSES` is what students see and can apply to
 # (while `closes_on` has not passed) -- every `status == "open"` reader uses it now.
 JOB_STATUSES = (
     "new", "requirement_received", "sourcing", "shortlisting", "profiles_shared", "interviewing", "selected", "joined", "on_hold", "closed", "cancelled",
@@ -412,7 +457,7 @@ def _in(column: str, values: tuple[str, ...]) -> str:
     return f"{column} IS NULL OR {column} IN ({', '.join(repr(v) for v in values)})"
 
 
-JOB_CHECKS = {  # migration 0109 repeats these strings; test_rec_007_migration asserts they stay identical
+JOB_CHECKS = {  # migration 0111 repeats these strings; test_rec_007_migration asserts they stay identical
     "ck_jobs_status": "status IN (" + ", ".join(f"'{s}'" for s in JOB_STATUSES) + ")",
     "ck_jobs_work_mode": _in("work_mode", JOB_WORK_MODES),
     "ck_jobs_shift": _in("shift", JOB_SHIFTS),
@@ -426,7 +471,7 @@ JOB_CHECKS = {  # migration 0109 repeats these strings; test_rec_007_migration a
 
 
 class Job(Base, TimestampMixin):
-    """rec-007 (DEC-SCOPE-125, R5): the job is the Job Requirement. `requirement_code` comes from the server default on every insert path
+    """rec-007 (DEC-SCOPE-126, R5): the job is the Job Requirement. `requirement_code` comes from the server default on every insert path
     (employer, /workflows/it/jobs, the recruiter API). `skills` (JSON) is a derived mirror of `job_skills`, rewritten by
     services.recruiter_requirements.set_skills, so the legacy readers keep their shape (J7)."""
 
@@ -488,7 +533,7 @@ class JobSkill(Base):
 
 
 class JobStatusHistory(Base):
-    """rec-007: append-only. `from_status` NULL = created; `changed_by_user_id` NULL = migration 0109's legacy mapping (the note keeps
+    """rec-007: append-only. `from_status` NULL = created; `changed_by_user_id` NULL = migration 0111's legacy mapping (the note keeps
     the original value). These rows are the requirement events rec-005 drives the company stage from."""
 
     __tablename__ = "job_status_history"
@@ -616,6 +661,9 @@ UNIVERSITY_CHECKS = {
 UNIVERSITY_RELATIONSHIP_CHECK = _one_of("relationship_strength", RELATIONSHIP_STRENGTHS)
 
 
+UNIVERSITY_NAME_KEY_LENGTH = 200  # = len(University.name)
+
+
 class University(Base, TimestampMixin):
     """upc-003 (U5): the single source of truth for every institution. `catalogue_visible` + `active` decide what the public catalogue
     shows (public_visible); applications, shortlists and university_rep keep their FKs to these same rows."""
@@ -628,11 +676,13 @@ class University(Base, TimestampMixin):
         Index("ix_universities_primary_manager", "primary_manager_user_id"),
         Index("ix_universities_backup_manager", "backup_manager_user_id"),
         Index("ix_universities_priority", "priority"),
+        Index("ix_universities_duplicate_key", "country_id", "name_key"),  # upc-004 UD1; not unique (overrides, legacy rows)
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     country_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("countries.id"), index=True)
     slug: Mapped[str] = mapped_column(String(140), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(200))
+    name_key: Mapped[str] = mapped_column(String(UNIVERSITY_NAME_KEY_LENGTH))  # upc-004: normalize_key(name), kept by _derive_name_key
     city: Mapped[str] = mapped_column(String(120))
     overview: Mapped[str] = mapped_column(Text)
     eligibility: Mapped[str] = mapped_column(Text)
@@ -657,6 +707,12 @@ class University(Base, TimestampMixin):
     catalogue_visible: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
     relationship_strength: Mapped[str | None] = mapped_column(String(12), nullable=True)  # upc-006 CT11: set by hand (CT1)
     country = relationship("Country")
+
+    @validates("name")
+    def _derive_name_key(self, _key: str, name: str) -> str:
+        """upc-004 UD1: every writer (master, legacy admin create, seed) keeps the duplicate key in step with the name."""
+        self.name_key = normalize_key(name, UNIVERSITY_NAME_KEY_LENGTH)
+        return name
 
 
 class UniversityRanking(Base):
@@ -1894,6 +1950,7 @@ BDM_PROFILE_FIELDS = {
     "school": ("board", "school_type", "grade_from", "grade_to"),
     "college": ("affiliation", "college_type", "courses"),
 }
+BDM_UNIVERSITY_LINK_SQL = "university_id IS NULL OR org_type = 'university'"  # upc-004 UD7
 # bdm-002: on the metadata so 0001's create_all builds it for a fresh database; 0066 creates it IF NOT EXISTS.
 BDM_ORGANIZATION_CODE_SEQ = Sequence("bdm_organization_code_seq", metadata=Base.metadata)
 
@@ -1953,6 +2010,8 @@ class BdmOrganization(Base, TimestampMixin):
         Index("ix_bdm_organizations_type_assignee", "bdm_type", "assigned_bdm_user_id"),
         Index("ix_bdm_organizations_duplicate_key", "bdm_type", "name_key", "city_key"),
         Index("ix_bdm_organizations_type_stage", "bdm_type", "pipeline_stage"),
+        Index("ix_bdm_organizations_university", "university_id"),
+        CheckConstraint(BDM_UNIVERSITY_LINK_SQL, name="ck_bdm_organizations_university_link"),
         UniqueConstraint("school_id", name="uq_bdm_organizations_school"),
         UniqueConstraint("agent_org_id", name="uq_bdm_organizations_agent_org"),
     )
@@ -1993,6 +2052,8 @@ class BdmOrganization(Base, TimestampMixin):
     school_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id", ondelete="RESTRICT"), nullable=True)
     # bdm-019 (DEC-SCOPE-107): the onboarded Agent Organization; one organization <-> at most one agency. The live Agent stages read it.
     agent_org_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_orgs.id", ondelete="RESTRICT"), nullable=True)
+    # upc-004 (U13, UD7): a University organization's record in the Global University Master; optional, never merged.
+    university_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"), nullable=True)
 
 
 class BdmOrganizationContact(Base, TimestampMixin):

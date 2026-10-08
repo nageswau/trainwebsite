@@ -5,6 +5,7 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
 import BdmConfirm from "@/components/BdmConfirm";
 import { DetailList, multiline } from "@/components/BdmOrganizationProfileDetails";
 import LocalTime from "@/components/LocalTime";
+import RecruiterCompanyContacts from "@/components/RecruiterCompanyContacts";
 import RecruiterCompanyForm from "@/components/RecruiterCompanyForm";
 import RecruiterCompanyRequirements from "@/components/RecruiterCompanyRequirements";
 import SearchableSelect from "@/components/SearchableSelect";
@@ -15,7 +16,7 @@ import { type Company, COMPANIES_PATH, COMPANIES_URL, isCompanyBody, personName,
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // rec-003 (spec §6): one company. Actions render from `permissions` only -- the server enforces every rule. Every write re-renders from
-// the company the API returns (no refetch). Tabs for contacts, pipeline, follow-ups and contracts arrive with rec-004/005/024/030.
+// the company the API returns (no refetch). Contacts are rec-004's section; pipeline, follow-ups and contracts arrive with rec-005/024/030.
 function linkOrText(url: string | null) {
   const safe = safeLink(url);
   return safe ? (
@@ -208,6 +209,8 @@ export default function RecruiterCompanyDetail({ initial, created = false }: { i
           <DetailList rows={rows} />
         </section>
       )}
+      {/* Re-keyed on archive/restore: the list's `can_edit` follows the company's state. */}
+      <RecruiterCompanyContacts key={`${company.id}-${company.archived}`} companyId={company.id} />
       {/* rec-007: the recruiter who owns the company, a manager or super admin may add a requirement while it is active. */}
       <RecruiterCompanyRequirements companyId={company.id} canAdd={!company.archived && (p.can_edit || p.can_reassign)} />
       {p.can_reassign && (
