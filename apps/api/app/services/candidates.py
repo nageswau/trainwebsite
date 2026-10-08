@@ -17,7 +17,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import CANDIDATE_CODE_SEQ, AuditLog, Candidate, CandidateResume, RecCandidateSource, User
-from app.notifications.phone import normalise_phone
+from app.notifications.phone import normalise_phone, wa_number
 from app.schemas import NO_CONTACT
 from app.services.recruiter import MANAGER_ROLE, ROLE
 from app.services.storage import storage
@@ -276,4 +276,5 @@ async def detail_out(db: AsyncSession, user: User, candidate: Candidate) -> dict
             for r, uploader in resumes
         ],
         "can_edit": user.role in WRITERS,
+        "whatsapp_to": wa_number(candidate.mobile),  # rec-026 MS6
     }

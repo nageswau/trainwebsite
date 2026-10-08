@@ -1,4 +1,4 @@
-"""rec-017 (DEC-SCOPE-135, spec §3): candidates on a requirement, their per-requirement status and its history, and a candidate's
+"""rec-017 (DEC-SCOPE-136, spec §3): candidates on a requirement, their per-requirement status and its history, and a candidate's
 applications across requirements.
 
 A requirement or application id resolves through rec-007's requirement scope (out of scope = 404); every write is one transaction --

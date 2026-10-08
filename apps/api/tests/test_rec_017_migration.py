@@ -1,4 +1,4 @@
-"""rec-017 -- migration 0120_job_application_tracking (spec §1; AC3). The backfill (candidates for students, A3 linking), the A1 status
+"""rec-017 -- migration 0121_job_application_tracking (spec §1; AC3). The backfill (candidates for students, A3 linking), the A1 status
 mapping with history, the duplicate refusal and the downgrade refusal run in a throwaway database built from scratch (the rec-007
 pattern); a downgrade never runs against the shared test database."""
 
@@ -16,14 +16,14 @@ from app.core.config import settings
 from tests.test_tel_001_migration import _config, _sql
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_rec_017_migration_0120", VERSIONS / "0120_job_application_tracking.py")
+_spec = importlib.util.spec_from_file_location("_rec_017_migration_0121", VERSIONS / "0121_job_application_tracking.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0119_recruiter_meetings", "0120_job_application_tracking"
+BASE, HEAD = "0120_recruiter_messages", "0121_job_application_tracking"
 
 
-def test_migration_chains_after_0119():
+def test_migration_chains_after_0120():
     assert _migration.revision == HEAD
     assert _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
@@ -53,7 +53,7 @@ def isolated_db():
     try:
         settings.database_url = url
         command.upgrade(cfg, "head")
-        command.downgrade(cfg, BASE)  # the real 0119 shape of `job_applications`
+        command.downgrade(cfg, BASE)  # the real 0120 shape of `job_applications`
         yield {"cfg": cfg, "url": url}
     finally:
         settings.database_url = original

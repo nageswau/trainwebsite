@@ -1,10 +1,10 @@
 """rec-017 -- candidate + requirement tracking: `job_applications.candidate_id` (with the R6 candidate backfill), the §12 statuses (legacy
 values mapped, with history), `stage_changed_at`, `added_by_user_id`, unique (candidate, job) and job_application_status_history.
 
-Revision ID: 0120_job_application_tracking
-Revises: 0119_recruiter_meetings
+Revision ID: 0121_job_application_tracking
+Revises: 0120_recruiter_messages
 
-docs/superpowers/specs/2026-10-08-rec-017-candidate-requirement-tracking-design.md §1 (DEC-SCOPE-135).
+docs/superpowers/specs/2026-10-08-rec-017-candidate-requirement-tracking-design.md §1 (DEC-SCOPE-136).
 - Refuses first if a (job, student) pair is duplicated: a merge would re-point interviews and offers, so a person resolves it.
 - Every student with an application or a placement profile gets a candidate. A3: one whose email or mobile already belongs to an unlinked
   (external) candidate is linked to it and that candidate stays in the pool (opted_in true); everyone else gets a new candidate from the
@@ -16,8 +16,10 @@ while tracking data exists (an application without a student, or a status change
 from the history notes. Backfilled candidates are kept: candidates are archived, never deleted (rec-009).
 
 Re-chained 2026-10-08 on merging `main` @ `7852882f`: drafted as `0119_job_application_tracking` on `0118_recruiter_calls`, but rec-028
-(`0119_recruiter_meetings`, DEC-SCOPE-134, API §12BB, RBAC §2.60) merged first, so this is `0120` (DEC-SCOPE-135, API §12BC, RBAC §2.61).
-A database stamped at the draft is re-stamped with `alembic stamp --purge 0118_recruiter_calls`, then `upgrade head` (every step is
+(`0119_recruiter_meetings`, DEC-SCOPE-134, API §12BB, RBAC §2.60) merged first, so this was `0120` (DEC-SCOPE-135, API §12BC, RBAC §2.61).
+Re-chained again on merging `main` @ `98d94a66`: rec-026 (`0120_recruiter_messages`) took `0120` / DEC-SCOPE-135 / §12BC / §2.61, so this
+is `0121` (DEC-SCOPE-136, API §12BD, RBAC §2.62).
+A database stamped at the draft is re-stamped with `alembic stamp --purge 0118_recruiter_calls` (or `0119_recruiter_meetings`), then `upgrade head` (every step is
 guarded).
 """
 
@@ -29,8 +31,8 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 from app.notifications.phone import normalise_phone
 
-revision = "0120_job_application_tracking"
-down_revision = "0119_recruiter_meetings"
+revision = "0121_job_application_tracking"
+down_revision = "0120_recruiter_messages"
 branch_labels = None
 depends_on = None
 
@@ -130,7 +132,7 @@ def upgrade() -> None:
         duplicates = op.get_bind().execute(sa.text(DUPLICATES)).all()
         if duplicates:
             pairs = "; ".join(f"job {j} / student {s} ({n} rows)" for j, s, n in duplicates[:20])
-            raise RuntimeError(f"Cannot upgrade to 0120_job_application_tracking: duplicate job applications exist ({pairs}). Merge them first.")
+            raise RuntimeError(f"Cannot upgrade to 0121_job_application_tracking: duplicate job applications exist ({pairs}). Merge them first.")
     if "candidate_id" not in columns:
         op.add_column(TABLE, sa.Column("candidate_id", UUID, sa.ForeignKey("candidates.id"), nullable=True))
     if "stage_changed_at" not in columns:
@@ -172,7 +174,7 @@ def downgrade() -> None:
         external = bind.execute(sa.text(f"SELECT 1 FROM {TABLE} WHERE student_id IS NULL LIMIT 1")).first()
         by_user = bind.execute(sa.text(f"SELECT 1 FROM {HISTORY} WHERE changed_by_user_id IS NOT NULL LIMIT 1")).first()
         if external or by_user:
-            raise RuntimeError("Cannot downgrade 0120_job_application_tracking: application tracking data exists. Clear it deliberately first.")
+            raise RuntimeError("Cannot downgrade 0121_job_application_tracking: application tracking data exists. Clear it deliberately first.")
     for name in INDEXES:
         op.drop_index(name, table_name=TABLE)
     op.drop_constraint(UNIQUE, TABLE, type_="unique")

@@ -48,5 +48,5 @@ tests run in the `api-test` / `web-test` containers.
 6. **Web lib + components + vitest:** `recruiterApplications.ts`, `RecruiterRequirementCandidates`, `RecruiterCandidateApplications`, and
    the legacy panel labels.
 7. **e2e `rec-017-applications.spec.ts`.**
-8. **Docs:** API_CONTRACT §12BC, RBAC_MATRIX §2.61, DATA_MODEL, the DEC-SCOPE-135 register entry, SCREEN_CATALOG, and the backlog status
+8. **Docs:** API_CONTRACT §12BD, RBAC_MATRIX §2.62, DATA_MODEL, the DEC-SCOPE-136 register entry, SCREEN_CATALOG, and the backlog status
    line.

@@ -1537,7 +1537,30 @@ history notes.
 - There is no assignee column. Scope comes from the company (rec-024's rule), so a reassignment moves the meetings.
 - Meetings are never deleted (cancelled instead). `downgrade()` refuses while any meeting exists.
 
-## Candidate + Requirement tracking (`rec-017`, `DEC-SCOPE-135`; migration `0120_job_application_tracking`, after `0119_recruiter_meetings`)
+## Recruiter message templates and messages (`rec-026`, `DEC-SCOPE-135`; migration `0120_recruiter_messages`, after `0119_recruiter_meetings`)
+
+**`recruiter_message_templates` columns:** `id`, `channel` varchar(20), `kind` varchar(40), `name` varchar(160), `subject` varchar(200)
+(nullable), `body` text, `active` bool, timestamps.
+- CHECKs: `ck_recruiter_message_templates_channel`, `ck_recruiter_message_templates_kind` (the 5 WhatsApp / 7 email EVID-018 §19 kinds),
+  `ck_recruiter_message_templates_subject` (`(channel = 'email') = (subject IS NOT NULL)`). Unique index `(channel, lower(name))`.
+- Seeded with 12 rows, one per kind (idempotent: only a missing channel + name is inserted).
+
+**`recruiter_messages` columns:**
+- `id`; `company_id` → `companies` and `contact_id` → `company_contacts` (nullable together); `candidate_id` → `candidates` (nullable); all FK RESTRICT
+- `sender_user_id` → `users`; `channel` varchar(16); `template_id` → `recruiter_message_templates` (nullable) and `template_name` (the name at send time)
+- `subject` varchar(200), `body` text, `delivery_status` varchar(16), `attempt_count` int (default 0), `sent_at` timestamptz, timestamps
+
+**Constraints and indexes:**
+- CHECKs: `ck_recruiter_messages_party` (exactly one of contact+company or candidate), `ck_recruiter_messages_channel`,
+  `ck_recruiter_messages_email` (email ⇔ subject and delivery status), `ck_recruiter_messages_status`.
+- Indexes `(company_id, sent_at)`, `(contact_id, sent_at)`, `(candidate_id, sent_at)`, `(sender_user_id, sent_at)`.
+
+**Design notes:**
+- A message is permanent (never edited or deleted); the recipient's address is read at delivery, never stored.
+- A contact's `last_contacted_at` is derived: the later of its latest call and its latest message (failed emails excluded).
+- `downgrade()` refuses while any message exists or any template differs from its seed.
+
+## Candidate + Requirement tracking (`rec-017`, `DEC-SCOPE-136`; migration `0121_job_application_tracking`, after `0120_recruiter_messages`)
 
 **`job_applications` (extended):**
 - `candidate_id` → `candidates` (NOT NULL after the backfill); `student_id` is now nullable and mirrors the candidate's login.
@@ -1549,7 +1572,7 @@ history notes.
 **`job_application_status_history`:** append-only. `application_id` (FK RESTRICT), `from_status` (NULL = added), `to_status`, `note` (500),
 `changed_by_user_id` (NULL = system / migration), `created_at`; index `(application_id, created_at)`. No status CHECK.
 
-**Backfill (0120):**
+**Backfill (0121):**
 - Refuses while a `(job_id, student_id)` pair is duplicated.
 - Every student with an application or a placement profile gets a candidate: an unlinked candidate with their email or mobile is linked and
   stays in the pool (A3); otherwise a new `CAN-` candidate from the `Edusphere students` source, `opted_in` false, created by the student.
