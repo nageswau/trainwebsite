@@ -6,6 +6,7 @@ import BdmConfirm from "@/components/BdmConfirm";
 import { DetailList, multiline } from "@/components/BdmOrganizationProfileDetails";
 import LocalTime from "@/components/LocalTime";
 import RecruiterCompanyForm from "@/components/RecruiterCompanyForm";
+import RecruiterCompanyRequirements from "@/components/RecruiterCompanyRequirements";
 import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson, sendRequest } from "@/lib/apiErrors";
 import { display, LINK_STYLE } from "@/lib/bdmOrganizations";
@@ -207,6 +208,8 @@ export default function RecruiterCompanyDetail({ initial, created = false }: { i
           <DetailList rows={rows} />
         </section>
       )}
+      {/* rec-007: the recruiter who owns the company, a manager or super admin may add a requirement while it is active. */}
+      <RecruiterCompanyRequirements companyId={company.id} canAdd={!company.archived && (p.can_edit || p.can_reassign)} />
       {p.can_reassign && (
         <Reassign
           company={company}
