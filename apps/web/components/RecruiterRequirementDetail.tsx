@@ -259,7 +259,6 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
         </section>
       )}
       <RecruiterRequirementJd requirement={r} initial={initialJd} onRequirementChanged={changed} />
-      <RecruiterRequirementCandidates requirementId={r.id} />
       {p.can_change_status && !showEditor && <StatusChange requirement={r} onChanged={changed} />}
       {p.can_reassign && <Reassign requirement={r} onChanged={changed} />}
       <section className="action-card wide" aria-labelledby={`requirement-${r.id}-history`}>
@@ -273,6 +272,8 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
           ))}
         </ul>
       </section>
+      {/* rec-017: after the requirement's own status controls and history, so its two "Change status" forms never sit side by side (QA-02). */}
+      <RecruiterRequirementCandidates requirementId={r.id} />
     </>
   );
 }

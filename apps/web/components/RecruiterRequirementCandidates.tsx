@@ -137,43 +137,35 @@ function StatusForm({ application, onChanged, onCancel }: { application: RecAppl
   );
 }
 
-function ApplicationRow({ application, onChanged }: { application: RecApplication; onChanged: (a: RecApplication) => void }) {
+/** One candidate as a stacked item (the rec-025 Calls pattern), so the status and actions stay on screen at phone width (QA-03). */
+function ApplicationItem({ application, onChanged }: { application: RecApplication; onChanged: (a: RecApplication) => void }) {
   const [open, setOpen] = useState<"none" | "status" | "history">("none");
   const toggle = (panel: "status" | "history") => setOpen((current) => (current === panel ? "none" : panel));
+  const id = useId();
   return (
-    <>
-      <tr>
-        <td>
-          <Link href={`${CANDIDATES_PATH}/${application.candidate.id}`} style={{ ...LINK_STYLE, overflowWrap: "anywhere" }}>{application.candidate.name}</Link>
-          <div className="muted" style={{ fontSize: 12 }}>{application.candidate.code}</div>
-        </td>
-        <td><span className="badge">{application.status_label}</span></td>
-        <td><LocalTime value={application.stage_changed_at} time /></td>
-        <td>
-          <div className="actions" style={{ flexWrap: "wrap" }}>
-            {application.allowed_statuses.length > 0 && (
-              <button type="button" className="btn secondary small" aria-expanded={open === "status"} onClick={() => toggle("status")}>
-                Change status<span className="visually-hidden"> of {application.candidate.name}</span>
-              </button>
-            )}
-            <button type="button" className="btn secondary small" aria-expanded={open === "history"} onClick={() => toggle("history")}>
-              History<span className="visually-hidden"> of {application.candidate.name}</span>
-            </button>
-          </div>
-        </td>
-      </tr>
-      {open !== "none" && (
-        <tr>
-          <td colSpan={4}>
-            {open === "status" ? (
-              <StatusForm application={application} onCancel={() => setOpen("none")} onChanged={(next) => { setOpen("none"); onChanged(next); }} />
-            ) : (
-              <History applicationId={application.id} />
-            )}
-          </td>
-        </tr>
-      )}
-    </>
+    <li className="action-card" style={{ listStyle: "none", gap: 6 }} aria-labelledby={`${id}-name`}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "baseline" }}>
+        <Link id={`${id}-name`} href={`${CANDIDATES_PATH}/${application.candidate.id}`} style={{ ...LINK_STYLE, fontWeight: 600, overflowWrap: "anywhere" }}>
+          {application.candidate.name}
+        </Link>
+        <span className="badge">{application.status_label}</span>
+      </div>
+      <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+        {application.candidate.code} · since <LocalTime value={application.stage_changed_at} time />
+      </p>
+      <div className="actions" style={{ flexWrap: "wrap" }}>
+        {application.allowed_statuses.length > 0 && (
+          <button type="button" className="btn secondary small" aria-expanded={open === "status"} onClick={() => toggle("status")}>
+            Change status<span className="visually-hidden"> of {application.candidate.name}</span>
+          </button>
+        )}
+        <button type="button" className="btn secondary small" aria-expanded={open === "history"} onClick={() => toggle("history")}>
+          History<span className="visually-hidden"> of {application.candidate.name}</span>
+        </button>
+      </div>
+      {open === "status" && <StatusForm application={application} onCancel={() => setOpen("none")} onChanged={(next) => { setOpen("none"); onChanged(next); }} />}
+      {open === "history" && <History applicationId={application.id} />}
+    </li>
   );
 }
 
@@ -227,18 +219,11 @@ export default function RecruiterRequirementCandidates({ requirementId }: { requ
       ) : data.items.length === 0 ? (
         <p className="muted" style={{ fontSize: 13, margin: 0 }}>No candidates on this requirement yet.</p>
       ) : (
-        <div className="table-wrap" role="region" aria-label="Candidates on this requirement" tabIndex={0}>
-          <table className="table">
-            <thead>
-              <tr><th scope="col">Candidate</th><th scope="col">Status</th><th scope="col">Since</th><th scope="col">Actions</th></tr>
-            </thead>
-            <tbody>
-              {data.items.map((application) => (
-                <ApplicationRow key={application.id} application={application} onChanged={(a) => done(`${a.candidate.name} is now ${a.status_label}.`)} />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ul aria-label="Candidates on this requirement" style={{ padding: 0, margin: "8px 0 0", display: "grid", gap: 8 }}>
+          {data.items.map((application) => (
+            <ApplicationItem key={application.id} application={application} onChanged={(a) => done(`${a.candidate.name} is now ${a.status_label}.`)} />
+          ))}
+        </ul>
       )}
     </section>
   );

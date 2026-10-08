@@ -48,7 +48,7 @@ describe("RecruiterRequirementCandidates", () => {
   it("lists candidates with their status and offers Add to writers", async () => {
     render(<RecruiterRequirementCandidates requirementId="J1" />);
     expect(screen.getByText("Loading candidates…")).toBeTruthy();
-    const table = await screen.findByRole("region", { name: "Candidates on this requirement" });
+    const table = await screen.findByRole("list", { name: "Candidates on this requirement" });
     expect(within(table).getByRole("link", { name: "Rahul Kumar" }).getAttribute("href")).toBe("/recruiter/candidates/C1");
     expect(within(table).getByText("Sourced")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Candidates (1)" })).toBeTruthy();
@@ -65,7 +65,7 @@ describe("RecruiterRequirementCandidates", () => {
   it("hides Change status when the API allows no move", async () => {
     list = { items: [application({ allowed_statuses: [] })], statuses: STATUSES, can_add: false };
     render(<RecruiterRequirementCandidates requirementId="J1" />);
-    await screen.findByRole("region", { name: "Candidates on this requirement" });
+    await screen.findByRole("list", { name: "Candidates on this requirement" });
     expect(screen.queryByRole("button", { name: /Change status/ })).toBeNull();
     expect(screen.getByRole("button", { name: /History/ })).toBeTruthy();
   });
@@ -76,7 +76,7 @@ describe("RecruiterRequirementCandidates", () => {
     expect((await screen.findByRole("alert")).textContent).toBe("Unable to load the candidates.");
     listStatus = 200;
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-    expect(await screen.findByRole("region", { name: "Candidates on this requirement" })).toBeTruthy();
+    expect(await screen.findByRole("list", { name: "Candidates on this requirement" })).toBeTruthy();
   });
 
   it("changes a status from the allowed list with a note", async () => {
@@ -136,10 +136,10 @@ describe("RecruiterCandidateApplications", () => {
       row({}), row({ id: "A2", requirement: { id: "J2", code: "REQ-000002", title: "QA Engineer", status_label: "Interviewing" }, company: { id: "K2", name: "XYZ Corp" }, status: "rejected", status_label: "Rejected", in_scope: false }),
     ] })));
     render(<RecruiterCandidateApplications candidateId="C1" />);
-    const table = await screen.findByRole("region", { name: "Applications" });
-    const rows = within(table).getAllByRole("row").slice(1);
-    expect(rows.map((r) => within(r).getAllByRole("cell").map((c) => c.textContent?.split("REQ")[0]).slice(0, 3))).toEqual([
-      ["Java Developer", "ABC Ltd", "Interview"], ["QA Engineer", "XYZ Corp", "Rejected"],
+    const table = await screen.findByRole("list", { name: "Applications" });
+    const rows = within(table).getAllByRole("listitem");
+    expect(rows.map((r) => r.textContent)).toEqual([
+      expect.stringMatching(/^ABC Ltd\s*Interview\s*Java Developer/), expect.stringMatching(/^XYZ Corp\s*Rejected\s*QA Engineer/),
     ]);
     expect(within(table).getByRole("link", { name: "Java Developer" }).getAttribute("href")).toBe("/recruiter/requirements/J1");
     expect(within(table).queryByRole("link", { name: "QA Engineer" })).toBeNull();

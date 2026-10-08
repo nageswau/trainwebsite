@@ -38,30 +38,22 @@ export default function RecruiterCandidateApplications({ candidateId }: { candid
       ) : items.length === 0 ? (
         <p className="muted" style={{ fontSize: 13, margin: 0 }}>Not on any job requirement yet.</p>
       ) : (
-        <div className="table-wrap" role="region" aria-label="Applications" tabIndex={0}>
-          <table className="table">
-            <thead>
-              <tr><th scope="col">Requirement</th><th scope="col">Company</th><th scope="col">Status</th><th scope="col">Since</th></tr>
-            </thead>
-            <tbody>
-              {items.map((a) => (
-                <tr key={a.id}>
-                  <td>
-                    {a.in_scope ? (
-                      <Link href={`${REQUIREMENTS_PATH}/${a.requirement.id}`} style={{ ...LINK_STYLE, overflowWrap: "anywhere" }}>{a.requirement.title}</Link>
-                    ) : (
-                      <span style={{ overflowWrap: "anywhere" }}>{a.requirement.title}</span>
-                    )}
-                    <div className="muted" style={{ fontSize: 12 }}>{a.requirement.code} · {a.requirement.status_label}</div>
-                  </td>
-                  <td style={{ overflowWrap: "anywhere" }}>{a.company.name}</td>
-                  <td><span className="badge">{a.status_label}</span></td>
-                  <td><LocalTime value={a.stage_changed_at} time /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ul aria-label="Applications" style={{ padding: 0, margin: "8px 0 0", display: "grid", gap: 8 }}>
+          {items.map((a) => (
+            <li key={a.id} className="action-card" style={{ listStyle: "none", gap: 4 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "baseline" }}>
+                <strong style={{ overflowWrap: "anywhere" }}>{a.company.name}</strong>
+                <span className="badge">{a.status_label}</span>
+              </div>
+              <div style={{ overflowWrap: "anywhere" }}>
+                {a.in_scope ? <Link href={`${REQUIREMENTS_PATH}/${a.requirement.id}`} style={LINK_STYLE}>{a.requirement.title}</Link> : a.requirement.title}
+              </div>
+              <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+                {a.requirement.code} · requirement {a.requirement.status_label} · since <LocalTime value={a.stage_changed_at} time />
+              </p>
+            </li>
+          ))}
+        </ul>
       )}
     </section>
   );
