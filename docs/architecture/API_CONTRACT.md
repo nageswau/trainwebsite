@@ -1749,9 +1749,24 @@ reason text — one commit). **Changed (additive):** every university row gains 
 | `GET /recruiter/companies/{id}/stage-history` | `limit`, `offset` → `{items[{id, event, from_stage, from_label, to_stage, to_label, reason, actor {id, full_name} | null, created_at}], total, limit, offset}`, newest first. `actor` null = a system event |
 | `GET /recruiter/pipeline` | `stage?` (a stage key or `lost`), `limit`, `offset` → `{stages[{key, label, kind, count}], lost_count, items[{id, code, name, city, priority, assigned_recruiter, stage, stage_label, lost}], total, limit, offset}`. The caller's company scope, archived left out, Lost counted only in `lost_count`. Unknown stage → `422`; roles outside the company scope → `403` |
 
-## 12AV. University visits + approval (`upc-010`) — addendum, 2026-10-08
+## 12AV. University CSV import (`upc-005`) — addendum, 2026-10-08
 
-`DEC-SCOPE-128`; design spec `docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.md` §3. Migration `0113_university_visits`. Readers: `partnership_manager` (with a profile),
+`DEC-SCOPE-128`; design spec `docs/superpowers/specs/2026-10-08-upc-005-university-import-design.md` §3. Migration
+`0113_university_imports`. Roles: `partnership_head`, `overseas_admin` (overseas division) and `super_admin` (else `403`). A report is
+`{id, uploaded_by: {id, full_name}, total_rows, created_count, duplicate_count, invalid_count, created_at, rows}`, and each row is
+`{row_number, status: created|duplicate|invalid, name, country, university_id, university_code, matches, reason}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/universities/imports/template` | **New.** The header row as CSV (`name, country, city, institution_type` required; ten optional columns) |
+| `POST /partnership/universities/import` | **New.** Multipart `file` + `Idempotency-Key` header (required, `[A-Za-z0-9._:-]{1,120}`, else `422`). `201` with the report. Whole-file `422`: not UTF-8, malformed, a missing/unknown/repeated column, no filled-in rows, more than 5,000 rows; `413` over 1 MB. Each row goes through `UniversityCreate`; the country is an ISO-2 code or a name; value lists take codes or labels. Duplicates use §12AR's key against the master (inactive included) and earlier rows; never overridden. Created rows are unowned, internal and active, audited `university.create {code, import_batch_id}`; the batch is audited `university.import`. Same key + same file replays the first report; same key + another file `422`. `409` when a lock wait passes 5 s or a slug was taken in the same instant (nothing kept) |
+| `GET /partnership/universities/imports` | **New.** The caller's imports (`super_admin`: all), newest first; `{items, total, limit, offset}` (reports without `rows`) |
+| `GET /partnership/universities/imports/{id}` | **New.** The report; another person's batch `404` |
+| `GET /partnership/universities/imports/{id}/report.csv` | **New.** `row_number, status, name, country, university_code, reason`; formula cells escaped (`'=`); `404` as above |
+
+## 12AW. University visits + approval (`upc-010`) — addendum, 2026-10-08
+
+`DEC-SCOPE-129`; design spec `docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.md` §3. Migration `0114_university_visits`. Readers: `partnership_manager` (with a profile),
 `partnership_head`, `super_admin` read **every** visit; other roles `403`. Planners: `partnership_manager` (leads their own) and
 `partnership_head` (leads, or picks an active direct report); the university must be active (`409`) and in the planner's university edit
 scope (`403`). The lead or the planner edits and runs the commands (else `403`). The approver is the lead's reporting head; any active

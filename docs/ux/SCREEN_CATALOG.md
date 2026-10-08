@@ -3226,7 +3226,7 @@ Design spec `docs/superpowers/specs/2026-10-08-rec-005-company-pipeline-design.m
 - **Pipeline board** (`/recruiter/pipeline`): a count tile per stage plus Lost, then one page of companies (code, company, city,
   priority, stage, recruiter). Filters live in the address; an invalid filter says so with a way back.
 
-## upc-010 addendum (2026-10-08, `DEC-SCOPE-128`) — University visits + approval
+## upc-010 addendum (2026-10-08, `DEC-SCOPE-129`) — University visits + approval
 
 Design spec `docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.md` §4. Visual-reference mapping: None — not inspected. Do not claim parity.
 

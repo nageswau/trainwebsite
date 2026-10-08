@@ -1,9 +1,9 @@
 """upc-010 -- University visits + approval.
 
-Revision ID: 0113_university_visits
-Revises: 0112_company_pipeline
+Revision ID: 0114_university_visits
+Revises: 0113_university_imports
 
-docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.md §2 (DEC-SCOPE-128). Adds `university_visit_code_seq`,
+docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.md §2 (DEC-SCOPE-129). Adds `university_visit_code_seq`,
 `university_visits`, its participants and contacts, and the append-only `university_visit_events`. 0001 builds a fresh database from
 the current models, which already carry all of this, so each step is guarded. STATUS_CHECK repeats app.models (test_upc_010_migration).
 downgrade() refuses while any visit exists: it would drop visit plans, approvals and their history.
@@ -12,10 +12,11 @@ Re-chained 2026-10-08: drafted as `0109_university_visits` on `0108_university_c
 upc-004's `0109_university_duplicates` and rec-004's `0110_company_contacts` merged first (main @ `4043631f`), so this is `0111`
 (DEC-SCOPE-126, API §12AT, RBAC §2.52); then upc-007's `0111_university_pipeline` merged first (main @ `f5f6822d`), so this is `0112`
 (DEC-SCOPE-127, API §12AU, RBAC §2.53); then rec-005's `0112_company_pipeline` merged first (main @ `8345c1fc`), so this is `0113`
-(DEC-SCOPE-128, API §12AV, RBAC §2.54).
+(DEC-SCOPE-128, API §12AV, RBAC §2.54); then upc-005's `0113_university_imports` merged first (main @ `7581973a`), so this is
+`0114` (DEC-SCOPE-129, API §12AW, RBAC §2.55).
 A database stamped at an old revision is re-stamped at the one it was built on
 (`alembic stamp --purge 0108_university_contacts` for `0109_university_visits`, `0110_company_contacts` for `0111_university_visits`,
-`0111_university_pipeline` for `0112_university_visits`), then `upgrade head` (every step here is guarded).
+`0111_university_pipeline` for `0112_university_visits`, `0112_company_pipeline` for `0113_university_visits`), then `upgrade head` (every step here is guarded).
 """
 
 import sqlalchemy as sa
@@ -23,8 +24,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0113_university_visits"
-down_revision = "0112_company_pipeline"
+revision = "0114_university_visits"
+down_revision = "0113_university_imports"
 branch_labels = None
 depends_on = None
 
@@ -101,7 +102,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text("SELECT 1 FROM university_visits LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0113_university_visits: visits exist. Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0114_university_visits: visits exist. Remove them deliberately first.")
     op.drop_table("university_visit_events")
     op.drop_table("university_visit_contacts")
     op.drop_table("university_visit_participants")

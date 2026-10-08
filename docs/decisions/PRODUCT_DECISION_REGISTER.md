@@ -5279,13 +5279,42 @@ API §12AU, RBAC §2.53 (drafted as `0108` / `DEC-SCOPE-123` / §12AQ / §2.49; 
   entries for recruiters, managers and super admin.
 - **New Feature ID authorized:** `rec-005`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-005.
 
-### DEC-SCOPE-128 — University visits + approval (`upc-010`)
+### DEC-SCOPE-128 — University CSV import (`upc-005`)
+
+**Evidence:** `EVID-020` §25 ("all universities globally") and §22 ("Total Universities: 1,250"); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md`
+§3.1 U15 (`EXPLICIT_APPROVAL`, 2026-10-08: "CSV import (per-row report, duplicate check on name + country, idempotent) by
+`partnership_head` / `overseas_admin`") and §4 upc-005.
+**Status:** IM1–IM12 are the recommended answers to the design-level questions, applied under the owner's standing instruction for the
+build session ("proceed with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed:
+`NEEDS_CONFIRMATION` at sign-off. Migration `0113_university_imports`, API contract §12AV, RBAC §2.54.
+Drafted as `DEC-SCOPE-125` / `0110` / §12AS / §2.51 and renumbered on merging `main` @ `f5f6822d`: rec-004 took `DEC-SCOPE-125` / `0110` / §12AS / §2.51 upc-007 took `DEC-SCOPE-126` / `0111` / §12AT / §2.52, then, on merging `main` @ `ada23b4d`, rec-005 took `DEC-SCOPE-127` / `0112` / §12AU / §2.53.
+Spec: `docs/superpowers/specs/2026-10-08-upc-005-university-import-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| IM1 | Columns | Required `name`, `country`, `city`, `institution_type` (city: the master requires it); ten optional master fields; unknown/repeated/missing columns reject the file |
+| IM2 | Values | `UniversityCreate` validation per row; codes or labels in any case; lists separated by `;` |
+| IM3 | Country | ISO-2 or country name; anything else is an invalid row |
+| IM4 | Imported rows | Unowned, internal, active, at upc-007's first stage (Target University) |
+| IM5 | Duplicates | upc-004's key against the master (inactive included) and earlier rows of the file; never overridden |
+| IM6 | Idempotency | `Idempotency-Key` per uploader; same file replays, another file `422`; a new key on the same file creates nothing (all duplicates) |
+| IM7 | Caps | 1 MB, 5,000 filled-in rows, UTF-8 with or without BOM |
+| IM8 | Roles | `partnership_head`, `overseas_admin` (overseas), `super_admin`; history is the caller's own (`super_admin` all) |
+| IM9 | Concurrency | One transaction; imports serialise; each key takes upc-004's per-key lock; bounded waits → `409` |
+| IM10 | Report | Per-row outcome stored on the batch (never the file); CSV download with formula escaping |
+| IM11 | Audit | `university.import` per batch, `university.create {code, import_batch_id}` per created university |
+| IM12 | UI | `/partnership/universities/import` (template, column reference, upload, result, report download, history); list link for creator roles |
+
+**Consequences:** new table `university_import_batches`; five new routes under `/partnership/universities/import(s)`; a new page.
+**New Feature ID authorized:** `upc-005`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-005.
+
+### DEC-SCOPE-129 — University visits + approval (`upc-010`)
 
 **Evidence:** `EVID-020` §8 (L314–L350: "separate from normal meetings", 14 planning fields, Planned → Approved → Travel Booked → Visit
 Completed → Follow-up → Closed); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U9 (`EXPLICIT_APPROVAL`, 2026-10-08) and §4 upc-010.
 **Status:** VS1–VS18 are the recommended answers to backlog Q-13 plus design-level rules, applied under the owner's standing instruction
 for the build session ("proceed with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed:
-`NEEDS_CONFIRMATION` at sign-off. Migration `0113_university_visits`, API contract §12AV, RBAC §2.54.
+`NEEDS_CONFIRMATION` at sign-off. Migration `0114_university_visits`, API contract §12AW, RBAC §2.55.
 Spec: `docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.md`.
 
 | # | Question | Answer |

@@ -7158,7 +7158,7 @@ class UniversityContactPage(BaseModel):
     offset: int
 
 
-# --- upc-010 (DEC-SCOPE-128): university visits (§8). Limits per VS18; participants and contacts per VS11/VS12 ------------------------
+# --- upc-010 (DEC-SCOPE-129): university visits (§8). Limits per VS18; participants and contacts per VS11/VS12 ------------------------
 VISIT_MAX_PARTICIPANTS = 10
 VISIT_MAX_CONTACTS = 20
 VisitPurpose = _university_str(1000, required=True, multiline=True)

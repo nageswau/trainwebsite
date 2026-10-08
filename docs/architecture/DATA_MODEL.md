@@ -353,14 +353,19 @@ normalised name, kept by the model's `name` validator) with the non-unique index
 organizations only). **Migration `0109_university_duplicates`** backfills the key and logs (never merges or links) the existing duplicate
 groups and the unlinked BDM University organizations that match a master name; `downgrade()` refuses while any organization is linked.
 
-**Addendum, 2026-10-08 (`upc-010`, `DEC-SCOPE-128` — University visits + approval):** sequence `university_visit_code_seq`
+**Addendum, 2026-10-08 (`upc-005`, `DEC-SCOPE-128`, U15 — University CSV import):** `university_import_batches` (uploader FK,
+`idempotency_key` unique per uploader, `file_sha256`, `total_rows`/`created_count`/`duplicate_count`/`invalid_count` with CHECK
+`ck_university_import_batches_counts`, `results_json` per-row outcomes; index `(uploaded_by_user_id, created_at)`). The file is never
+stored. **Migration `0113_university_imports`**; `downgrade()` refuses while any batch exists (API §12AV).
+
+**Addendum, 2026-10-08 (`upc-010`, `DEC-SCOPE-129` — University visits + approval):** sequence `university_visit_code_seq`
 (`VIS-000001`). `university_visits` (code unique; FK `universities` RESTRICT; `city`, `purpose`, `lead_user_id`, `created_by_user_id`,
 `proposed_date` NOT NULL; `confirmed_date`, `follow_up_date`; `travel_required`/`hotel_required` (default false) + notes; `agenda`,
 `expected_outcome`; `status` CHECK planned / approved / travel_booked / visit_completed / follow_up / closed (§8); `submitted_at`,
 `rejection_reason` (the planned sub-state), `decided_by_user_id`, `decided_at`, `close_reason`; timestamps; indexes on university, lead
 and waiting visits). `university_visit_participants` (visit CASCADE, user RESTRICT) and `university_visit_contacts` (visit CASCADE,
 `university_contacts` CASCADE: deleting contact PII removes it from visits). `university_visit_events` is the append-only history (action,
-from/to status, actor, reason). **Migration `0113_university_visits`**; `downgrade()` refuses while any visit exists (API §12AV).
+from/to status, actor, reason). **Migration `0114_university_visits`**; `downgrade()` refuses while any visit exists (API §12AW).
 
 ### 6.2 `OverseasApplication`, `ApplicationStatusHistory`
 **Carries over**, status vocabulary **extended** — this is part of the `ADR-012` resolution (§6.3
