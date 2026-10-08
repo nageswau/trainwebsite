@@ -45,12 +45,13 @@ const EMAIL_STATUS: Record<DeliveryStatus, string> = {
   queued: "Email sending", sending: "Email sending", retrying: "Email delayed", sent: "Email sent", failed: "Email failed",
 };
 
-/** tel-014 E5: an email's line names where its delivery stands; the time is when it was sent from the CRM. */
-export const messageTitle = (m: LeadMessage) =>
+/** tel-014 E5: an email's line names where its delivery stands; the time is when it was sent from the CRM. rec-026 shares it (and
+ *  `isPending`) for recruiter messages, so they read only the fields both rows have. */
+export const messageTitle = (m: Pick<LeadMessage, "channel" | "delivery_status" | "sent_at">) =>
   sentLabel(m.sent_at, m.channel === "email" ? EMAIL_STATUS[m.delivery_status ?? "queued"] : "WhatsApp sent");
 
 /** The worker picks these up within seconds, so the list refreshes; a `retrying` email waits minutes and doesn't. */
-export const isPending = (m: LeadMessage) => m.delivery_status === "queued" || m.delivery_status === "sending";
+export const isPending = (m: Pick<LeadMessage, "delivery_status">) => m.delivery_status === "queued" || m.delivery_status === "sending";
 
 export function isRenderedTemplate(data: unknown): data is RenderedTemplate {
   const d = data as Partial<RenderedTemplate> | null;

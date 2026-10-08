@@ -2,7 +2,7 @@
 // targets for a company contact or a candidate, and the message line. The API decides scope and every rule (MS4-MS9); the UI only offers
 // what it allows. A message is permanent (MS9): there is no edit or delete.
 import { CATALOGUE_PAGE_SIZE, getPage } from "@/lib/telecallerCatalogue";
-import { sentLabel, type ComposerTarget, type DeliveryStatus } from "@/lib/telecallerMessages";
+import type { ComposerTarget, DeliveryStatus } from "@/lib/telecallerMessages";
 
 export type Channel = "whatsapp" | "email";
 export type RecTemplate = { id: string; channel: Channel; kind: string; name: string; subject: string | null; body: string; active: boolean };
@@ -64,10 +64,5 @@ export function recruiterTarget(party: Party): ComposerTarget {
   };
 }
 
-const EMAIL_STATUS: Record<DeliveryStatus, string> = {
-  queued: "Email sending", sending: "Email sending", retrying: "Email delayed", sent: "Email sent", failed: "Email failed",
-};
-/** "Email sent – 8 Oct 2026 – 10:35 AM" / "WhatsApp sent – …", in India time (tel-013's line). */
-export const messageTitle = (m: RecMessage) => sentLabel(m.sent_at, m.channel === "email" ? EMAIL_STATUS[m.delivery_status ?? "queued"] : "WhatsApp sent");
-/** The worker picks these up within seconds, so the list refreshes; a `retrying` email waits minutes and doesn't. */
-export const isPending = (m: RecMessage) => m.delivery_status === "queued" || m.delivery_status === "sending";
+/** tel-013/014's message line ("Email sent – 8 Oct 2026 – 10:35 AM", in India time) and its "still being delivered" test, shared. */
+export { isPending, messageTitle } from "@/lib/telecallerMessages";

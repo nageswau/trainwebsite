@@ -32,7 +32,6 @@ KINDS_BY_CHANNEL = {"whatsapp": REC_WHATSAPP_KINDS, "email": REC_EMAIL_KINDS}
 TEMPLATE_READERS = frozenset({ROLE, MANAGER_ROLE, "super_admin"})
 TEMPLATE_WRITERS = frozenset({MANAGER_ROLE, "super_admin"})
 TEMPLATE_NAME_INDEX = "uq_recruiter_message_templates_channel_name"
-CHANNEL_LABEL = {"whatsapp": "WhatsApp", "email": "email"}
 BODY_LIMIT = {"whatsapp": 1000, "email": 5000}
 PLACEHOLDERS = ("name", "company", "recruiter")
 _UNKNOWN = "Unknown placeholder {%s}. Use {name}, {company} or {recruiter}"
