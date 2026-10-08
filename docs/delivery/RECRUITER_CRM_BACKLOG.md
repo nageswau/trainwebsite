@@ -242,7 +242,8 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 §12AI onward; RBAC §2.42 onward.
 
 ### rec-001 — Recruiter scope for `placement_team` + new `placement_manager`: profile, provisioning, sign-in, shell
-- **Status (2026-10-08):** built on `feature/rec-001`.
+- **Status (2026-10-08):** **MERGED** to `main` as PR #143 @ `9e957bee`. The next rec item takes the next migration after `0100`,
+  `DEC-SCOPE-117`, API §12AJ and RBAC §2.43, re-checked on `main` first.
   - Numbering: `DEC-SCOPE-116`, migration `0100_recruiter_profiles`, API §12AI, RBAC §2.42.
   - Owner answers:
     - Q-29: `/recruiter/*` workspace.
