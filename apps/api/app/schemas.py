@@ -61,6 +61,9 @@ from app.models import (
     QUAL_SKILL_LEVELS,
     QUAL_STUDY_LEVELS,
     RANKING_SYSTEMS,
+    RECRUITER_CALL_DIRECTIONS,
+    RECRUITER_CALL_MAX_SECONDS,
+    RECRUITER_CALL_OUTCOMES,
     RECRUITER_FOLLOW_UP_REASONS,
     RELATIONSHIP_STRENGTHS,
     TEL_TARGET_KPIS,
@@ -7823,7 +7826,7 @@ class RecContactOut(BaseModel):
     notes: str | None
     is_primary: bool
     active: bool
-    last_contacted_at: datetime | None  # C6: null until calls, messages and meetings exist (rec-025/026/028)
+    last_contacted_at: datetime | None  # C6: the latest call (rec-025); messages and meetings join with rec-026/028
     next_follow_up_at: datetime | None = None  # rec-024 FU9: the earliest open follow-up about this contact
     created_at: datetime
     updated_at: datetime
@@ -8176,3 +8179,50 @@ class RecFollowUpComplete(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
     outcome: RecFollowUpOutcome = None
+
+
+# --- rec-025 (DEC-SCOPE-132, spec §3): recruiter calls -----------------------------------------------------------------------------
+RecCallNotes = Annotated[Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, {"notes": "Notes"}))]
+RecCallDuration = Annotated[int, Field(ge=0, le=RECRUITER_CALL_MAX_SECONDS)]
+
+
+class RecCallFollowUp(BaseModel):
+    """CA6: rec-024's create body without the links (the call's contact is the link)."""
+
+    model_config = ConfigDict(extra="forbid")
+    due_at: AwareDatetime
+    reason: RecFollowUpReason
+    notes: RecFollowUpNotes = None
+
+
+class RecCallCreate(BaseModel):
+    """CA2: exactly one party. CA5: `occurred_at` defaults to now. CA6: `next_follow_up` only on a contact call (checked in the service,
+    so the 422 names the field). Caller and timestamps are server-owned (unknown fields here)."""
+
+    model_config = ConfigDict(extra="forbid")
+    contact_id: UUID | None = None
+    candidate_id: UUID | None = None
+    occurred_at: AwareDatetime | None = None
+    duration_seconds: RecCallDuration | None = None
+    direction: Literal[RECRUITER_CALL_DIRECTIONS] = "outgoing"
+    outcome: Literal[RECRUITER_CALL_OUTCOMES]
+    notes: RecCallNotes = None
+    next_follow_up: RecCallFollowUp | None = None
+
+
+class RecCallUpdate(BaseModel):
+    """CA4: same-day details only -- the outcome and the party are locked (unknown fields here). Time and direction can't be cleared; a
+    null duration or notes clears them."""
+
+    model_config = ConfigDict(extra="forbid")
+    occurred_at: AwareDatetime | None = None
+    duration_seconds: RecCallDuration | None = None
+    direction: Literal[RECRUITER_CALL_DIRECTIONS] | None = None
+    notes: RecCallNotes = None
+
+    @model_validator(mode="after")
+    def _required_stay_set(self):
+        for key, label in (("occurred_at", "Call time"), ("direction", "Direction")):
+            if key in self.model_fields_set and getattr(self, key) is None:
+                raise ValueError(f"{label} can't be removed")
+        return self

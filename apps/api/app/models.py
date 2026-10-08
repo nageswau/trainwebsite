@@ -505,6 +505,44 @@ class RecruiterFollowUp(Base, TimestampMixin):
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
 
 
+# rec-025 (DEC-SCOPE-132 CA1/CA8): the call outcomes (the source names none -- UNVERIFIED default) and directions; migration 0117 repeats
+# RECRUITER_CALL_CHECKS (test_rec_025_migration asserts they stay identical). Labels live in services/recruiter_calls and the web client.
+RECRUITER_CALL_OUTCOMES = ("connected", "call_back_requested", "busy", "no_answer", "switched_off", "wrong_number")
+RECRUITER_CALL_DIRECTIONS = ("outgoing", "incoming")
+RECRUITER_CALL_MAX_SECONDS = 14400  # 4 hours, tel-010 D7
+RECRUITER_CALL_CHECKS = {
+    "ck_recruiter_calls_outcome": f"outcome IN ({', '.join(repr(o) for o in RECRUITER_CALL_OUTCOMES)})",
+    "ck_recruiter_calls_direction": f"direction IN ({', '.join(repr(d) for d in RECRUITER_CALL_DIRECTIONS)})",
+    "ck_recruiter_calls_duration": f"duration_seconds IS NULL OR duration_seconds BETWEEN 0 AND {RECRUITER_CALL_MAX_SECONDS}",
+    "ck_recruiter_calls_party": "(contact_id IS NULL) = (company_id IS NULL) AND (contact_id IS NULL) <> (candidate_id IS NULL)",
+}
+
+
+class RecruiterCall(Base, TimestampMixin):
+    """rec-025 (DEC-SCOPE-132): a call logged on a company contact or a candidate -- exactly one (CA2). A contact call also keeps the
+    contact's company, so its scope and the company's call list are the company's (rec-003) with no join. `caller_user_id` keeps who
+    made it (the same-day edit gate, CA4, and the daily cap, CA9)."""
+
+    __tablename__ = "recruiter_calls"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in RECRUITER_CALL_CHECKS.items()),
+        Index("ix_recruiter_calls_company_occurred", "company_id", "occurred_at"),
+        Index("ix_recruiter_calls_contact_occurred", "contact_id", "occurred_at"),
+        Index("ix_recruiter_calls_candidate_occurred", "candidate_id", "occurred_at"),
+        Index("ix_recruiter_calls_caller_occurred", "caller_user_id", "occurred_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    company_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"), nullable=True)
+    contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("company_contacts.id", ondelete="RESTRICT"), nullable=True)
+    candidate_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="RESTRICT"), nullable=True)
+    caller_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    duration_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    direction: Mapped[str] = mapped_column(String(16))
+    outcome: Mapped[str] = mapped_column(String(32))
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
 class EmployerProfile(Base, TimestampMixin):
     """EMP-001 -- DATA_MODEL.md #5.2, net-new. `registration_status` exists but is
     deliberately unenforced/nullable: whether registration requires Admin approval before
