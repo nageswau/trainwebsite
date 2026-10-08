@@ -460,7 +460,7 @@ class CompanyContact(Base, TimestampMixin):
         return mobile
 
 
-# rec-024 (DEC-SCOPE-127): the EVID-018 §18 follow-up reasons (L738-L754, source order) and states; migration 0113 repeats
+# rec-024 (DEC-SCOPE-127): the EVID-018 §18 follow-up reasons (L738-L754, source order) and states; migration 0114 repeats
 # RECRUITER_FOLLOW_UP_CHECKS (test_rec_024_migration asserts they stay identical). Labels live in the web client.
 RECRUITER_FOLLOW_UP_REASONS = (
     "new_requirement", "jd", "profile_feedback", "interview_feedback", "offer_status", "joining_confirmation", "new_openings",
@@ -754,6 +754,28 @@ class UniversityAssignmentHistory(Base):
     to_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class UniversityImportBatch(Base, TimestampMixin):
+    """upc-005 (DEC-SCOPE-128, IM6/IM10): one CSV import into the University Master. The file is never stored: only its hash, the counts
+    and each row's outcome {row_number, status, name, country, university_id, university_code, matches, reason}. The Idempotency-Key is
+    scoped to the uploader. Migration 0113 repeats the constraints (test_upc_005_migration)."""
+
+    __tablename__ = "university_import_batches"
+    __table_args__ = (
+        UniqueConstraint("uploaded_by_user_id", "idempotency_key", name="uq_university_import_batches_key"),
+        CheckConstraint("created_count + duplicate_count + invalid_count = total_rows", name="ck_university_import_batches_counts"),
+        Index("ix_university_import_batches_uploader", "uploaded_by_user_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    idempotency_key: Mapped[str] = mapped_column(String(120))
+    file_sha256: Mapped[str] = mapped_column(String(64))
+    total_rows: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    created_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    duplicate_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    invalid_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    results_json: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
 
 
 class UniversityStageHistory(Base):

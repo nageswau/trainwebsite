@@ -3,10 +3,11 @@
 - **Feature:** `rec-024` (`docs/delivery/RECRUITER_CRM_BACKLOG.md` §rec-024). **Dependencies:** rec-003 and rec-004, both merged.
 - **Evidence:** `EVID-018` §18 (lines 732–756): the 9 reasons and "CRM should automatically generate the daily follow-up list". §2 line 118
   and §4 line 214: "Next Follow-up" on the company and on the contact. Module scope: `DEC-SCOPE-116` (R1, R10, R13).
-- **Decision:** `DEC-SCOPE-128`. FU1–FU10 below are **recommended defaults**, taken on the owner's standing instruction for build
+- **Decision:** `DEC-SCOPE-129`. FU1–FU10 below are **recommended defaults**, taken on the owner's standing instruction for build
   sessions ("proceed with the recommended answers; ask only if blocking"). They stay `UNVERIFIED` until the owner confirms them.
-- **Numbering (FINAL):** migration `0113_recruiter_follow_ups`, API §12AV and RBAC §2.54. Drafted as `0112` / `DEC-SCOPE-127` /
-  §12AU / §2.53 on main @ `f5f6822d`; rec-005 (`0112_company_pipeline`) merged first and took those numbers.
+- **Numbering (FINAL):** migration `0114_recruiter_follow_ups`, API §12AW and RBAC §2.55. Drafted as `0112` / `DEC-SCOPE-127` /
+  §12AU / §2.53, then `0113` / `DEC-SCOPE-128` / §12AV / §2.54; rec-005 (`0112_company_pipeline`) and upc-005
+  (`0113_university_imports`) merged first and took those numbers.
 
 ## 1. Decisions (UNVERIFIED defaults)
 
@@ -25,7 +26,7 @@
 
 ## 2. Data
 
-`recruiter_follow_ups` (`0113`) has these columns:
+`recruiter_follow_ups` (`0114`) has these columns:
 - `id`, `company_id` (FK, RESTRICT)
 - `contact_id`, `job_id`, `application_id` (nullable FKs)
 - `reason` (CHECK on the 9), `due_at` timestamptz, `notes` text
@@ -42,7 +43,7 @@ Indexes:
 
 The migration is guarded for the 0001 fresh-build idiom. `downgrade()` refuses while rows exist.
 
-## 3. API (§12AV)
+## 3. API (§12AW)
 
 Every route uses rec-003 `caller_scope` / `load_scoped`. Writes lock the company and then the follow-up, audit
 `recruiter_follow_up.{create,update,complete,cancel}` (ids, the reason key and field names only), commit once, and log.

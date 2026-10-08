@@ -8,6 +8,7 @@ import { serverApi } from "@/lib/api";
 import type { Page } from "@/lib/apiErrors";
 import { PAGE_SIZE, pageOffset } from "@/lib/telecaller";
 import type { User } from "@/lib/types";
+import { IMPORT_PATH } from "@/lib/universityImport";
 import { CREATOR_ROLES, type Filters, listQuery, shellFor, UNIVERSITIES_PATH, UNIVERSITIES_URL, type UniversityRow } from "@/lib/universities";
 
 // upc-003: the University Master list for every role that reads it (partnership managers and heads, overseas_admin, super_admin). The
@@ -35,7 +36,12 @@ export default async function UniversitiesPage({ searchParams }: { searchParams:
             <h2>Universities and institutions</h2>
             <p className="muted">One record per institution, shared across EduSphere. Only published universities appear in the public catalogue.</p>
           </div>
-          {CREATOR_ROLES.has(user.role) && <Link className="btn" href={`${UNIVERSITIES_PATH}/new`}>Add university</Link>}
+          {CREATOR_ROLES.has(user.role) && (
+            <div className="actions">
+              <Link className="btn secondary" href={IMPORT_PATH}>Import universities</Link>
+              <Link className="btn" href={`${UNIVERSITIES_PATH}/new`}>Add university</Link>
+            </div>
+          )}
         </div>
         <UniversityFilters filters={filters} isManager={user.role === "partnership_manager"} />
         {page.total === 0 ? (

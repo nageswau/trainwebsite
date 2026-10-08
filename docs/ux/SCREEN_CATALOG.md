@@ -3226,7 +3226,7 @@ Design spec `docs/superpowers/specs/2026-10-08-rec-005-company-pipeline-design.m
 - **Pipeline board** (`/recruiter/pipeline`): a count tile per stage plus Lost, then one page of companies (code, company, city,
   priority, stage, recruiter). Filters live in the address; an invalid filter says so with a way back.
 
-## rec-024 addendum (2026-10-08, `DEC-SCOPE-128`) — Recruiter follow-ups
+## rec-024 addendum (2026-10-08, `DEC-SCOPE-129`) — Recruiter follow-ups
 
 Design spec `docs/superpowers/specs/2026-10-08-rec-024-recruiter-follow-ups-design.md` §4.
 
