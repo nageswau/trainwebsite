@@ -5999,8 +5999,9 @@ the role-sliced 360 view in upc-030 (U14).
 - `DEC-SCOPE-116` R14 (links typed in) and R8 (candidate contact details never shared). `DEC-SCOPE-136` (rec-017) is the application
   status engine. `DEC-SCOPE-127` (rec-005) reserved the `interview_scheduled` pipeline event for rec-020.
 
-**Status:** built on branch `feature/rec-020`. Every answer below is a **recommended default, `UNVERIFIED`**, taken on the owner's
-instruction to proceed with the recommended answers. IV9 answers Q-20.
+**Status:** **MERGED** to `main` as PR #193 @ `10da5148` (2026-10-09). Every answer below is a **recommended default, `UNVERIFIED`**,
+taken on the owner's instruction to proceed with the recommended answers. IV9 answers Q-20. The next rec item takes `0134`,
+`DEC-SCOPE-149`, §12BQ and §2.75 (re-check `main`).
 
 **Numbering (FINAL):** migration `0133_interview_management` (after `0132_university_courses`), API §12BP and RBAC §2.74. Drafted as
 `0124` / `DEC-SCOPE-139` / §12BG / §2.65, then `0126` / 141 / §12BI / §2.67: rec-010 (`0123`), upc-026 (`0124`), upc-012 (`0125`) and

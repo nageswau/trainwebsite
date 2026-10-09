@@ -1,5 +1,7 @@
 # rec-020 — Interview management (design)
 
+**Status: MERGED** as PR #193 @ `10da5148` (2026-10-09).
+
 - **Feature:** `rec-020` (`docs/delivery/RECRUITER_CRM_BACKLOG.md` §rec-020). **Dependency:** rec-017 (PR #178), merged.
 - **Evidence:** `EVID-018` §14 (lines 594–652). It lists 12 fields (Interview ID, Company, Requirement, Candidate, Round, Date, Time,
   Interview Mode, Meeting Link, Interviewer, Location, Status), 5 rounds and 8 statuses. Line 47 adds the "+ Schedule Interview" quick
