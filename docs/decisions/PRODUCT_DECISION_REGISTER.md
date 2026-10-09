@@ -6380,7 +6380,12 @@ Spec: `docs/superpowers/specs/2026-10-09-rec-022-offer-management-design.md`.
   - rec-015 then merged with `0141`, `DEC-SCOPE-159`, §12CA and §2.85, so the next rec item takes `0142`, `DEC-SCOPE-160`, §12CB and §2.86
     (re-check `main`).
 - JN1–JN10 are the recommended answers to Q-22 and to the item's open points. They were applied under the owner's standing instruction for the
-  build session ("proceed with recommended answers"). Every row is **UNVERIFIED** (`NEEDS_CONFIRMATION` at sign-off).
+  build session ("proceed with recommended answers").
+- **EXPLICIT_APPROVAL (2026-10-09):** after the merge, the owner confirmed every row as built.
+  - JN4: Joined needs the date plus a proof or a confirmer.
+  - JN7: the requirement closes automatically when its vacancies are filled.
+  - JN8: Did Not Join → Withdrawn.
+  - JN1–JN3, JN5, JN6, JN9 and JN10 were confirmed as written.
 - Spec: `docs/superpowers/specs/2026-10-09-rec-023-joining-management-design.md`.
 
 | # | Question | Answer |

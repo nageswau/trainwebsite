@@ -1134,7 +1134,7 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 
 ### rec-023 — Joining management + placement closure
 - **Status (2026-10-09):** **MERGED** to `main` as PR #213 @ `d3de75e6`. `DEC-SCOPE-158` (JN1–JN10, the recommended answers to Q-22;
-  UNVERIFIED). Migration `0140_joining_management`, API §12BZ, RBAC §2.84. rec-015 then merged with `0141`, `DEC-SCOPE-159`, §12CA and §2.85,
+  confirmed by the owner 2026-10-09). Migration `0140_joining_management`, API §12BZ, RBAC §2.84. rec-015 then merged with `0141`, `DEC-SCOPE-159`, §12CA and §2.85,
   so the next rec item takes `0142`, `DEC-SCOPE-160`, §12CB and §2.86 (re-check `main`). Spec `docs/superpowers/specs/2026-10-09-rec-023-joining-management-design.md`.
 - **Business requirement:** §17 (7 fields; Joined / Did Not Join; "selection is not the same as placement").
 - **Existing behavior:** `joining_date` + offer status `joined`.
