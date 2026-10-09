@@ -9467,7 +9467,7 @@ def _contract_fee(value):
     except (InvalidOperation, ValueError):
         raise PydanticCustomError("contract_fee", REC_CONTRACT_FEE_FORMAT) from None
     exponent = amount.as_tuple().exponent
-    if not amount.is_finite() or (isinstance(exponent, int) and exponent < -2) or isinstance(value, bool):
+    if not amount.is_finite() or (isinstance(exponent, int) and exponent < -2):
         raise PydanticCustomError("contract_fee", REC_CONTRACT_FEE_FORMAT)
     if amount < 0:
         raise PydanticCustomError("contract_fee", "The fee can't be negative")
