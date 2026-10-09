@@ -1254,6 +1254,19 @@ stage move or visit completion that triggers them, under that write's own permis
 | `overseas_admin` | the university's Next / Last Action summary only; task routes `403` | — | `upc-020` |
 | every other role | `403` | — | `upc-020` |
 
+### 2.68 University meetings *(net-new, added 2026-10-09 — `DEC-SCOPE-142`, `upc-009`)*
+
+Every partnership reader reads every meeting (MG14, the "a manager reads every university" convention). Scheduling needs the university
+edit scope (upc-006's `can_edit_contacts`); edit, reschedule, complete and cancel are for the responsible employee or the scheduler
+(MG15). The automatic stage move and follow-ups are written under that write's own permission.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `partnership_manager` | read; schedule (responsible themselves); edit, reschedule, record the outcome, cancel the meetings they are responsible for or scheduled | reads all; schedules on universities they own (primary/backup) | `upc-009` |
+| `partnership_head` | read; schedule (themselves or an active direct report responsible); the same actions on meetings they are responsible for or scheduled | reads all; schedules on unowned and team universities | `upc-009` |
+| `super_admin` | read only | all | `upc-009` |
+| `overseas_admin` and every other role | `403` | — | `upc-009` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
