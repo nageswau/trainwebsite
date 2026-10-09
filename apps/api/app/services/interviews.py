@@ -221,7 +221,7 @@ async def legacy_update(db: AsyncSession, user: User, interview: Interview, appl
             await reschedule(db, user, interview, application, scheduled_at, None, None)
         else:
             interview.scheduled_at = scheduled_at
-    if result in MOVES and result in allowed(interview, now):
+    if result in allowed(interview, now):
         previous = interview.status
         interview.status = result
         _event(db, interview, user, "status", from_status=previous)
@@ -239,13 +239,12 @@ def _details(interview: Interview, job: Job, company: Company) -> list[str]:
     return lines
 
 
-async def notify(db: AsyncSession, user: User, interview: Interview, job: Job, kind: str, enabled: bool) -> tuple[dict, list[UUID]]:
+async def notify(db: AsyncSession, user: User, interview: Interview, application: JobApplication, job: Job, kind: str, enabled: bool) -> tuple[dict, list[UUID]]:
     """On schedule and reschedule (`kind`): the candidate (in-app for a student, else a queued email) and the chosen contact (a queued
     email naming the candidate by name and code only -- R8). Returns the summary and the email ids to publish after the commit."""
     contact = await db.get(CompanyContact, interview.contact_id) if interview.contact_id else None
     if not enabled:
         return {"candidate": "off", "contact": "off" if contact else None}, []
-    application = await db.get(JobApplication, interview.application_id)
     candidate = await db.get(Candidate, application.candidate_id)
     company = await db.get(Company, job.company_id)
     title = f"Interview {kind}"

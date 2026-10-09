@@ -38,7 +38,6 @@ export const VIEW_TABS: [InterviewView, string][] = [["upcoming", "Upcoming"], [
 export type InterviewListPage = Page<RecInterview> & { counts: Record<InterviewView, number> };
 
 export const INTERVIEWS_URL = "/api/v1/recruiter/interviews";
-export const INTERVIEWS_PATH = "/recruiter/interviews";
 export const LIST_LIMIT = 50;
 export const NOTE_MAX = 500;
 export const interviewUrl = (id: string, action?: "reschedule" | "status") => `${INTERVIEWS_URL}/${encodeURIComponent(id)}${action ? `/${action}` : ""}`;
