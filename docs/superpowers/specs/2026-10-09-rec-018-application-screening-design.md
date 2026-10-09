@@ -1,5 +1,7 @@
 # rec-018 — Screening form + result (design)
 
+**Status: MERGED** as PR #195 @ `0d80aadf` (2026-10-09).
+
 - **Backlog:** `docs/delivery/RECRUITER_CRM_BACKLOG.md` rec-018. **Evidence:** `EVID-018` §13 (lines 556–592): 11 checklist items and 4
   results. **Dependency:** rec-017 (PR #178), merged. The module scope is `DEC-SCOPE-116`.
 - **Decision:** `DEC-SCOPE-149`. **Migration:** `0134_application_screenings` on `0133_interview_management`. **API:** §12BQ.
