@@ -2310,6 +2310,33 @@ currency} | null, permissions: {can_edit}}` — **`commission` is present for th
 | `GET /recruiter/applications/{id}/screening` | The requirement's readers → `{screening \| null, results [{key, label}], can_edit}`. `can_edit` = a writer and the application is open |
 | `PUT /recruiter/applications/{id}/screening` | Writers in scope (`placement_team`, `super_admin`; manager / BDM `403`). **Body:** the whole form, unknown keys refused; a field left out is cleared; `result` required. Ratings 1–5, notice 0–365, salary ≥ 0, text limits 200/120/2000 → otherwise `422`; Rejected without remarks → `422` "Remarks are required when the result is Rejected" (AC2). Not open → `409` "Only an open application can be screened. Reopen it first.". **Effect (SC3):** Shortlisted moves sourced/screened → shortlisted; Rejected → rejected; Hold / Need More Information keep the status. A move writes history (`Screening: <result>`) and notifies a student. → `{screening, application}`. Audit `recruiter_application.screening` (field names + result); an unchanged form writes no audit |
 
+## 12BR. Partnership calendar and events (`upc-011`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-150` (CL1–CL14, Q-14). Design spec `docs/superpowers/specs/2026-10-09-upc-011-partnership-calendar-design.md` §3. Migration `0135`.
+- **Common rules:** readers are `partnership_manager` (with a profile), `partnership_head` and `super_admin`; every other role → `403`
+  before anything is read. A missing event → `404` "Event not found". Event writes lock the event, then check the actor (the owner or the
+  creator; otherwise `403`, logged with ids only), then the state (`409` "This event was cancelled"), then validation (`422`, on the body
+  field). Bodies refuse unknown keys. Audit `partnership_event.{create,update,cancel}` with ids, code, kind, counts and field names (never
+  title, notes or reason).
+- **Overlap (`CalendarOverlap`):** `{employee {id, full_name, active}, item {source (meeting|visit|event), id, code, title}}` — the same
+  employee on two items whose times intersect (a visit = its whole IST day, confirmed else proposed date; an event = its whole days; a
+  meeting = 60 minutes from its start). Cancelled meetings and events and visits closed before they happened are ignored. Warning only.
+- **Event item (`{event}` envelope):** `{id, code (PEV-000001), kind (conference|education_fair|partner_meeting|mou_signing|webinar|
+  university_presentation), title, university {id, name}|null, starts_on, ends_on, location, notes, status (scheduled|cancelled), owner,
+  created_by, participants [person], cancelled_at, cancel_reason, overlaps [CalendarOverlap], permissions {can_edit, can_cancel},
+  created_at, updated_at}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/calendar` | `date_from`, `date_to` (inclusive IST dates; from ≤ to and ≤ 31 days, else `422`), `user_id?`. Without `user_id`: a manager → themselves, a head → themselves + direct reports, super_admin → everyone. `user_id` outside that set (a manager: anyone but themselves) → `404` "Employee not found". → `{date_from, date_to, today, employee|null, truncated, items [{source, kind (university_meeting|university_visit|<event kind>), id, code, title, starts_on, ends_on, starts_at (meetings only), status, university {id, name}|null, people [person], overlaps [CalendarOverlap]}]}` ordered by start; ≤ 500 rows per source (`truncated`). Overlaps are listed for the people in that set |
+| `GET /partnership/calendar/employees` | `{items: [person]}` — the people the caller may choose (a manager: themselves) |
+| `POST /partnership/events` | Managers and heads. `{kind, title (1–200), university_id?, starts_on, ends_on, location? (≤ 200), notes? (≤ 2000), owner_user_id?, participant_user_ids? (≤ 10)}` → `201`. A date before today (IST), an end before the start, or more than 31 days → `422`; an unknown or inactive university → `422`; an owner other than the caller or (for a head) an active direct report → `422`; an employee who is not active partnership staff, or is the owner → `422`. Not idempotent |
+| `GET /partnership/events/{id}` | The item |
+| `PATCH /partnership/events/{id}` | Scheduled only. Any create field; a changed date must be today or later; a sent null kind / title / date / owner → `422` |
+| `POST /partnership/events/{id}/cancel` | `{reason}` (1–1000) |
+
+- **Changed (additive):** the meeting item (§12BM) and the visit item (§12AX) gain `overlaps [CalendarOverlap]` for all their people.
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

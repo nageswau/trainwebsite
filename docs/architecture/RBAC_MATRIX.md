@@ -1356,6 +1356,18 @@ no employer, student or `hr_team` route reads a screening. SC8 (UNVERIFIED).
 | `bdm` | read only (save `403`) | requirements of companies assigned to them | `rec-018` |
 | `hr_team`, `it_admin`, `employer`, students, every other role | `403` | — | `rec-018` |
 
+### 2.76 Partnership calendar and events *(net-new, added 2026-10-09 — `DEC-SCOPE-150`, `upc-011`)*
+
+The calendar is read-only; whose items it shows is scoped by role (CL9). Every partnership reader reads every event (as meetings, §2.71);
+edit and cancel are for the event's owner or creator (CL7).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `partnership_manager` | read their own calendar; add events (owner themselves); edit / cancel the events they own or added; read any event | own calendar | `upc-011` |
+| `partnership_head` | read the team calendar or one direct report's; add events (themselves or an active direct report as owner); edit / cancel the events they own or added | self + direct reports | `upc-011` |
+| `super_admin` | read everyone's calendar or any partnership employee's; read events (no writes) | all | `upc-011` |
+| `overseas_admin` and every other role | `403` | — | `upc-011` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
