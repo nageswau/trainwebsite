@@ -34,6 +34,10 @@ from app.lead_stages import STAGES as LEAD_STAGES
 from app.notifications.phone import normalise_phone
 from app.partnership_stages import FIRST_STAGE as UNIVERSITY_FIRST_STAGE
 from app.partnership_stages import STAGE_KEYS as UNIVERSITY_STAGE_KEYS
+from app.partnership_task_rules import KINDS as PARTNERSHIP_TASK_KINDS
+from app.partnership_task_rules import PRIORITIES as PARTNERSHIP_TASK_PRIORITIES
+from app.partnership_task_rules import SOURCES as PARTNERSHIP_TASK_SOURCES
+from app.partnership_task_rules import STATUSES as PARTNERSHIP_TASK_STATUSES
 from app.recruiter_stages import FIRST_STAGE as COMPANY_FIRST_STAGE
 from app.recruiter_stages import ORDER as COMPANY_STAGES
 from app.tel_content_kinds import ASSET_KINDS as TEL_ASSET_KINDS
@@ -1140,6 +1144,46 @@ class UniversityVisitEvent(Base):
     actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+PARTNERSHIP_TASK_CHECKS = {
+    "ck_partnership_tasks_kind": _one_of("kind", PARTNERSHIP_TASK_KINDS, nullable=False),
+    "ck_partnership_tasks_priority": _one_of("priority", PARTNERSHIP_TASK_PRIORITIES, nullable=False),
+    "ck_partnership_tasks_status": _one_of("status", PARTNERSHIP_TASK_STATUSES, nullable=False),
+    "ck_partnership_tasks_source": _one_of("source", PARTNERSHIP_TASK_SOURCES, nullable=False),
+    "ck_partnership_tasks_rule": "(source = 'manual') = (rule IS NULL)",
+    "ck_partnership_tasks_completed": "(status = 'done') = (completed_at IS NOT NULL)",
+    "ck_partnership_tasks_cancelled": "(status = 'cancelled') = (cancelled_at IS NOT NULL)",
+    "ck_partnership_tasks_cancel_reason": "cancel_reason IS NULL OR status = 'cancelled'",
+}
+
+
+class PartnershipTask(Base, TimestampMixin):
+    """upc-020 (DEC-SCOPE-138): a university's follow-up or task (§19/§20), added by hand or by a Q-22 rule (`rule` names it:
+    `stage:<key>` or `visit:<id>`; at most one open task per rule and university, TK7). Rules live in `services/partnership_tasks.py`."""
+
+    __tablename__ = "partnership_tasks"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in PARTNERSHIP_TASK_CHECKS.items()),
+        Index("ix_partnership_tasks_assignee_status_due", "assignee_user_id", "status", "due_on"),
+        Index("ix_partnership_tasks_university_status_due", "university_id", "status", "due_on"),
+        Index("uq_partnership_tasks_open_rule", "university_id", "rule", unique=True, postgresql_where=text("status = 'open' AND rule IS NOT NULL")),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"))
+    kind: Mapped[str] = mapped_column(String(20))
+    title: Mapped[str] = mapped_column(String(200))
+    notes: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    assignee_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    due_on: Mapped[date] = mapped_column(Date)
+    priority: Mapped[str] = mapped_column(String(10), default="medium", server_default=text("'medium'"))
+    status: Mapped[str] = mapped_column(String(20), default="open", server_default=text("'open'"))
+    source: Mapped[str] = mapped_column(String(20))
+    rule: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
 class OverseasCourse(Base, TimestampMixin):
