@@ -3293,7 +3293,7 @@ Design spec `docs/superpowers/specs/2026-10-09-upc-020-partnership-tasks-design.
 - **Nav:** the manager menu's Follow-ups & Tasks goes live; the head and super admin navs gain it. **Responsive:** single column, no
   side-scroll at 390 px.
 
-## upc-009 addendum (2026-10-09, `DEC-SCOPE-142`) — Meetings
+## upc-009 addendum (2026-10-09, `DEC-SCOPE-143`) — Meetings
 
 Design spec `docs/superpowers/specs/2026-10-09-upc-009-university-meetings-design.md` §4. Visual-reference mapping: None — not inspected. Do not claim parity.
 
@@ -3473,3 +3473,21 @@ Design spec `docs/superpowers/specs/2026-10-09-upc-012-university-comms-design.m
     with its reason when the contact has no usable number / no email; the tel-013 / tel-014 composers; the list with each email's
     delivery status, polled while sending.
   - **Contacts:** each contact shows "Last interaction: <date, time IST>" once called or messaged.
+
+## upc-014 addendum (2026-10-09, `DEC-SCOPE-142`) — MoU / agreement management
+
+Design spec `docs/superpowers/specs/2026-10-09-upc-014-university-agreements-design.md` §4. Visual-reference mapping: None — not inspected. Do not claim parity.
+
+- **Route:** `/partnership/universities/[id]` gains an **Agreements** section (partnership roles and super admin only; overseas_admin
+  never sees it) — one card per agreement: MoU number with type, status (Expiring/Expired derived) and "Expires in n days" badges; period,
+  exclusivity, territory; "Renewal of / Renewed by" links; an "Agreement details" disclosure with the 17 fields (the document links to
+  its audited download); a "History (n)" disclosure. Buttons only for what the API offers: **Move to <status>** (an inline note form),
+  **Edit** (terms until approved, then the signing fields only), **Renew** (dates prefilled after the current expiry). With
+  `can_manage_agreements`: **New agreement** (type, exclusivity, dates, territory, four text terms, courses checklist or "All courses",
+  countries chips with a country search, signing fieldset: document select filtered by type, a searched EduSphere signatory, dates not in
+  the future, university signatory). Missing type/dates/order are caught before sending; API refusals in `.form-error[role=alert]` with the
+  form kept; notices in `p[role=status]` (rendered only when shown); buttons disabled while sending. **Empty:** "No agreements recorded yet."
+- **Route:** `/partnership/agreements` (manager menu "MoU & Agreements", head nav) — table (MoU number, university link + code, type,
+  status badge + expiry text, period, exclusivity), soonest expiry first; GET filter form (status incl. Expiring/Expired, type, search);
+  URL paging. **States:** "No agreements recorded yet." / "No agreements match these filters." / past-the-end link; 403 → access card.
+- **Responsive:** cards and form grids stack; the menu table becomes labelled cards below 640 px; no side-scroll at 390 px.

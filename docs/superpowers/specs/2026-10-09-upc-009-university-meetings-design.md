@@ -3,7 +3,7 @@
 **Status:** design written 2026-10-09. The owner's standing instruction for this session is "proceed with the recommended answers;
 ask only if genuinely blocking". The item answers MG1–MG16 (§1), including **Q-12** (does "Next meeting date" create a draft meeting or a
 follow-up?), are **recommended defaults accepted under that instruction** (`NEEDS_CONFIRMATION` as separate per-question approvals). They
-are registered that way in `DEC-SCOPE-142`.
+are registered that way in `DEC-SCOPE-143`.
 
 **Branch:** `feature/upc-009`, cut from `origin/main` @ `788b1636` (after #186, upc-020).
 **Backlog:** `docs/delivery/UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §4 upc-009, Q-12, Appendix A L244–L312.
@@ -11,8 +11,8 @@ are registered that way in `DEC-SCOPE-142`.
 `UniversityContact`, `services/partnership_tasks.py` (`_auto_create`, source `meeting` reserved by TK4), and the upc-007 stage engine.
 **Source:** `EVID-020` §7 (L244–L312): "The Partnership Manager should be able to schedule every interaction", 19 meeting fields and 12
 meeting types.
-**Numbering:** migration `0127_university_meetings`, `DEC-SCOPE-142`, API §12BJ, RBAC §2.68 (renumbered at merge if another item lands
-first).
+**Numbering:** migration `0128_university_meetings`, `DEC-SCOPE-143`, API §12BK, RBAC §2.69. Drafted as `0127` / `DEC-SCOPE-142` / §12BJ /
+§2.68; renumbered on merging `main` @ `7ba4cb36` (upc-014 took them first; this migration now follows `0127_university_agreements`).
 **Gate:** `APPROVAL_GATES.md` GATE-09.
 **Templates:** rec-028 (`recruiter_meetings`: type, one `starts_at`, mode, location, typed link, participants table, events with old/new
 times, outcome → follow-up) and upc-010 (`university_visits`: partnership roles, edit scope, lead rule, option pickers, page layout). Neither
@@ -43,7 +43,7 @@ Not in scope: the calendar and overlap warning (upc-011), the timeline (upc-013)
 appears in the assignee's task list), a meeting-provider integration (R14), and auto-closing "Schedule the next meeting" when the next
 meeting is booked (follow-up candidate).
 
-## 2. Data model — migration `0127_university_meetings`
+## 2. Data model — migration `0128_university_meetings`
 
 - `university_meeting_code_seq`.
 - `university_meetings`:
@@ -68,8 +68,8 @@ meeting is booked (follow-up candidate).
 ## 3. Backend
 
 `app/partnership_meeting_types.py` (constants), `services/university_meetings.py` (scope, rules, output; never commits),
-`api/university_meetings.py` (prefix `/partnership/meetings`, owns the transaction). `services/partnership_pipeline.py` gains
-`advance(db, user, uni, to_stage, note) -> bool` (forward-only, skips lost/inactive). `services/partnership_tasks.py` gains
+`api/university_meetings.py` (prefix `/partnership/meetings`, owns the transaction). The stage move reuses upc-014's forward-only
+`partnership_pipeline.advance_to` (the meeting service skips lost / inactive universities first). `services/partnership_tasks.py` gains
 `on_meeting_completed(db, actor, meeting, uni)`.
 
 | Route | Who | Notes |
@@ -129,7 +129,7 @@ upc-006 `GET /partnership/universities/{id}/contacts`.
    (`test_upc_009_meetings.py`).
 3. Frontend: lib, `MeetingForm`, `MeetingActions`, `MeetingTable`, pages, university section, nav, with vitest.
 4. Playwright `upc-009-university-meetings.spec.ts`.
-5. Docs: DEC-SCOPE-142, API §12BJ, RBAC §2.68, DATA_MODEL, SCREEN_CATALOG, backlog status.
+5. Docs: DEC-SCOPE-143, API §12BK, RBAC §2.69, DATA_MODEL, SCREEN_CATALOG, backlog status.
 
 ## 7. Regression set (lite)
 

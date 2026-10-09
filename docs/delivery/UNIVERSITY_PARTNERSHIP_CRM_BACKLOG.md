@@ -534,8 +534,8 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-009 — Meetings
-- **Status (2026-10-09):** built on `feature/upc-009` under `DEC-SCOPE-142`, with migration `0127_university_meetings`, API §12BJ and
-  RBAC §2.68. Spec: `docs/superpowers/specs/2026-10-09-upc-009-university-meetings-design.md`.
+- **Status (2026-10-09):** built on `feature/upc-009` under `DEC-SCOPE-143`, with migration `0128_university_meetings`, API §12BK and
+  RBAC §2.69. Spec: `docs/superpowers/specs/2026-10-09-upc-009-university-meetings-design.md`.
   - Q-12 is answered by the recommended default (MG12, `NEEDS_CONFIRMATION`): the next meeting date creates the follow-up "Schedule the
     next meeting", not a draft meeting. Completing a meeting moves the stage to Meeting Completed when earlier (MG13).
 - **Business requirement:** §7 (19 fields; 12 meeting types).
@@ -692,6 +692,8 @@ Common conventions:
 - **Complexity:** medium · **Risk:** low
 
 ### upc-014 — MoU / agreement management
+- **Status (2026-10-09):** built on `feature/upc-014` under `DEC-SCOPE-142` (Q-16 + AG1–AG18, recommended answers), with migration
+  `0127_university_agreements`, API §12BJ and RBAC §2.68. Spec: `docs/superpowers/specs/2026-10-09-upc-014-university-agreements-design.md`.
 - **Business requirement:** §13 ("a major module"; 17 fields; Draft → Sent → Under Review → Negotiation → Approved → Signed → Active →
   Expiring → Renewed).
 - **Existing behavior:** none for universities (`BdmMou` is BDM-only).

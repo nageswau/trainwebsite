@@ -2131,9 +2131,36 @@ content_type, size_bytes, uploaded_by: {id, full_name, active}, uploaded_at}] (n
   `UniversityEnvelope`) gains `follow_up {next_action {id, title, due_on, priority, band, assignee} | null, last_action {title, at} |
   null}`.
 
-## 12BJ. University meetings (`upc-009`) — addendum, 2026-10-09
+## 12BJ. MoU / agreement management (`upc-014`) — addendum, 2026-10-09
 
-- **Basis:** `DEC-SCOPE-142` (MG1–MG16, Q-12). Design spec `docs/superpowers/specs/2026-10-09-upc-009-university-meetings-design.md` §3. Migration `0127`.
+`DEC-SCOPE-142`; design spec `docs/superpowers/specs/2026-10-09-upc-014-university-agreements-design.md` §3. Migration
+`0127_university_agreements`. Readers: `partnership_manager` with a profile, `partnership_head`, `super_admin` (every university); other
+roles `403` (overseas_admin included, AG13). Writers: `can_manage_agreements` on the university (`403` role/team, `409` inactive);
+approval: `can_approve_agreements` (head in scope / super_admin). Every write locks the university row then the agreement, writes an
+event and an audit row `university_agreement.<create|update|status|renew>` (ids, number, statuses, field names), one commit.
+An agreement is `{id, mou_number, university: {id, name, university_code}, agreement_type, type_label, status (stored), effective_status,
+status_label, days_to_expiry, start_date, expiry_date, renewal_date, commercial_terms, exclusivity, territory, recruitment_rights,
+all_courses, courses: [{id, title, level}], countries: [{id, name}], payment_terms, marketing_rights, document: {id, title, kind,
+current_version} | null, edusphere_signatory: {id, full_name, active} | null, edusphere_signed_on, university_signatory_name,
+university_signed_on, previous / renewed_by: {id, mou_number, status, effective_status} | null, created_by, created_at, updated_at,
+permissions: {can_edit_terms, can_edit_signing, can_renew}, moves: [{to_status, label}], events?: [{kind, from_status, to_status, note,
+changed, actor, created_at}]}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/universities/{id}/agreements` | `{items, total, limit, offset}` newest first, with `events`; `limit` ≤ 50. Unknown university `404` |
+| `POST /partnership/universities/{id}/agreements` | JSON: `agreement_type`, `start_date`, `expiry_date`, `exclusivity` required; the other AG3 fields optional; unknown fields `422`. expiry ≤ start, renewal outside the window, foreign course, unknown country, wrong-kind/foreign document, non-staff signatory, future signing date → `422`. `201 {agreement}` (draft) |
+| `GET /partnership/universities/{id}/agreement-options` | `can_manage_agreements`: `{courses, documents}` (this university's courses; its documents of the three agreement kinds) |
+| `GET /partnership/agreement-signatories` | Readers: `{items: [{id, label, detail}], truncated}` — active partnership managers/heads and super admins by `q` (name or email), `limit` ≤ 50 |
+| `GET /partnership/agreements` | Every agreement, soonest expiry first, without `events`; `status` (the 10 effective statuses, else `422`), `agreement_type`, `q` (MoU number, university name or code), `limit` ≤ 50 |
+| `GET /partnership/agreements/{id}` | `{agreement}`; unknown `404` |
+| `PATCH /partnership/agreements/{id}` | Sent fields only (type, university and status never); an equal value is not a change. Terms after approval / anything after signing `409`; same `422`s as create. `200 {agreement}` |
+| `POST /partnership/agreements/{id}/status` | `{from_status, to_status, note?}`: stale `from_status` `409 status_changed`; a move outside AG5 `409`; `approved` by a manager `403`; `signed` without document + both signatories `422`, lost university `409`, overlapping signed/active agreement of the same type `409 agreement_overlap`. Signing advances the university to Agreement Signed and marks the renewed predecessor Renewed |
+| `POST /partnership/agreements/{id}/renew` | `{start_date, expiry_date, renewal_date?}` on a signed/active agreement without a renewal (else `409`); dates `422`. `201 {agreement}` (a new draft with `previous`) |
+
+## 12BK. University meetings (`upc-009`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-143` (MG1–MG16, Q-12). Design spec `docs/superpowers/specs/2026-10-09-upc-009-university-meetings-design.md` §3. Migration `0128`.
 - **Common rules:** readers are `partnership_manager` (with a profile), `partnership_head` and `super_admin`; every other role → `403`
   before anything is read. A missing meeting → `404` "Meeting not found". Writes lock (complete: the university, then the meeting;
   edit / cancel: the meeting), then check the actor (the responsible employee or the scheduler; otherwise `403`, logged with ids only),

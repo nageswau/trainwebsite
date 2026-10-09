@@ -1190,7 +1190,7 @@ class PartnershipTask(Base, TimestampMixin):
     cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
-# upc-009 (DEC-SCOPE-142, spec §2): university meetings (§7). Migration 0127 repeats these checks (test_upc_009_migration keeps them
+# upc-009 (DEC-SCOPE-143, spec §2): university meetings (§7). Migration 0128 repeats these checks (test_upc_009_migration keeps them
 # identical). The outcome fields are written only when the meeting is completed (MG10-MG12).
 UNIVERSITY_MEETING_CODE_SEQ = Sequence("university_meeting_code_seq", metadata=Base.metadata)
 UNIVERSITY_MEETING_CHECKS = {
@@ -1213,7 +1213,7 @@ def _university_meeting_checks(*names: str) -> tuple[CheckConstraint, ...]:
 
 
 class UniversityMeeting(Base, TimestampMixin):
-    """upc-009 (DEC-SCOPE-142): a meeting with a university (§7). Never deleted: cancelled instead. The contact person's name and
+    """upc-009 (DEC-SCOPE-143): a meeting with a university (§7). Never deleted: cancelled instead. The contact person's name and
     designation are copied when set (MG5), so the record keeps them after the contact changes or is deleted (FK SET NULL)."""
 
     __tablename__ = "university_meetings"
@@ -4615,3 +4615,85 @@ class UniversityDocumentVersion(Base):
     size_bytes: Mapped[int] = mapped_column(Integer)
     uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# upc-014 (DEC-SCOPE-142, spec §2): §13 MoU / agreement management. Types = the document centre's agreement kinds (AG2); the stored
+# statuses of §13's flow (AG4: Expiring and Expired are derived from the expiry date, never stored). Migration 0127 repeats these;
+# test_upc_014_migration keeps them identical. MOU-000123 numbers (AG1): a rolled-back create skips a number.
+UNIVERSITY_AGREEMENT_TYPES = ("mou", "partnership_agreement", "commission_agreement")
+UNIVERSITY_AGREEMENT_STATUSES = ("draft", "sent", "under_review", "negotiation", "approved", "signed", "active", "renewed")
+UNIVERSITY_AGREEMENT_EXCLUSIVITY = ("exclusive", "non_exclusive")
+UNIVERSITY_AGREEMENT_EVENT_KINDS = ("create", "update", "status", "renew")
+UNIVERSITY_AGREEMENT_CHECKS = {
+    "ck_university_agreements_type": _one_of("agreement_type", UNIVERSITY_AGREEMENT_TYPES, nullable=False),
+    "ck_university_agreements_status": _one_of("status", UNIVERSITY_AGREEMENT_STATUSES, nullable=False),
+    "ck_university_agreements_exclusivity": _one_of("exclusivity", UNIVERSITY_AGREEMENT_EXCLUSIVITY, nullable=False),
+    "ck_university_agreements_dates": "expiry_date > start_date",
+    "ck_university_agreements_renewal_window": "renewal_date IS NULL OR (renewal_date >= start_date AND renewal_date <= expiry_date)",
+    "ck_university_agreements_signed_complete": (
+        "status NOT IN ('signed', 'active', 'renewed') OR (document_id IS NOT NULL AND edusphere_signatory_user_id IS NOT NULL AND "
+        "edusphere_signed_on IS NOT NULL AND university_signatory_name IS NOT NULL AND university_signed_on IS NOT NULL)"
+    ),
+}
+UNIVERSITY_AGREEMENT_MOU_SEQ = Sequence("university_agreement_mou_seq", metadata=Base.metadata)
+
+
+class UniversityAgreement(Base, TimestampMixin):
+    """upc-014 (§13): one agreement with one university -- the 17 tracked fields (AG3; commission is upc-016's). A renewal is a new row
+    pointing at the one it renews (AG8, at most one successor). Rules live in `services/university_agreements.py`; the CHECKs are the
+    backstop (AC2: a signed row carries its document and both signatories)."""
+
+    __tablename__ = "university_agreements"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_AGREEMENT_CHECKS.items()),
+        UniqueConstraint("mou_number", name="uq_university_agreements_mou_number"),
+        Index("uq_university_agreements_previous", "previous_agreement_id", unique=True, postgresql_where=text("previous_agreement_id IS NOT NULL")),
+        Index("ix_university_agreements_university", "university_id", "created_at"),
+        Index("ix_university_agreements_expiry", "status", "expiry_date"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    mou_number: Mapped[str] = mapped_column(String(20))
+    university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"))
+    agreement_type: Mapped[str] = mapped_column(String(30))
+    status: Mapped[str] = mapped_column(String(20), default="draft", server_default="draft")
+    status_changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    start_date: Mapped[date] = mapped_column(Date)
+    expiry_date: Mapped[date] = mapped_column(Date)
+    renewal_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    commercial_terms: Mapped[str | None] = mapped_column(Text, nullable=True)
+    exclusivity: Mapped[str] = mapped_column(String(20))
+    territory: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    recruitment_rights: Mapped[str | None] = mapped_column(Text, nullable=True)
+    all_courses: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    course_ids: Mapped[list] = mapped_column(JSON, default=list)
+    country_ids: Mapped[list] = mapped_column(JSON, default=list)
+    payment_terms: Mapped[str | None] = mapped_column(Text, nullable=True)
+    marketing_rights: Mapped[str | None] = mapped_column(Text, nullable=True)
+    document_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("university_documents.id", ondelete="RESTRICT"), nullable=True)
+    edusphere_signatory_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    edusphere_signed_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    university_signatory_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    university_signed_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    previous_agreement_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("university_agreements.id", ondelete="RESTRICT"), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+class UniversityAgreementEvent(Base):
+    """upc-014: one row per agreement write, append-only -- create, edit (`changed` = field names), a status move (with its note) and a
+    renewal. Ordered by `position`."""
+
+    __tablename__ = "university_agreement_events"
+    __table_args__ = (
+        CheckConstraint(_in_list("kind", UNIVERSITY_AGREEMENT_EVENT_KINDS), name="ck_university_agreement_events_kind"),
+        Index("ix_university_agreement_events_agreement", "agreement_id", "position"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    agreement_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("university_agreements.id", ondelete="RESTRICT"))
+    kind: Mapped[str] = mapped_column(String(10))
+    from_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    to_status: Mapped[str] = mapped_column(String(20))
+    actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    changed: Mapped[list] = mapped_column(JSON, default=list)
+    position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -76,15 +76,15 @@ def move(db: AsyncSession, user: User, uni: University, payload: UniversityStage
     return backward
 
 
-def advance(db: AsyncSession, user: User, uni: University, to_stage: str, note: str) -> bool:
-    """upc-009 MG13: an event's automatic move -- forward only, never on a lost or inactive university. Runs on the caller's locked row;
-    returns whether the stage moved (the caller audits and fires the stage's upc-020 rule)."""
-    if uni.lost_at is not None or not uni.active or STAGE_KEYS.index(uni.stage) >= STAGE_KEYS.index(to_stage):
-        return False
+def advance_to(db: AsyncSession, user: User, uni: University, stage: str, note: str) -> str | None:
+    """upc-014 AG10 (the bdm-005 idiom): move a locked university forward to `stage` as one `move` row; at or past it, nothing. Returns
+    the stage it left, or None. The caller checks Lost and owns the audit row and the commit."""
+    if STAGE_KEYS.index(uni.stage) >= STAGE_KEYS.index(stage):
+        return None
     from_stage = uni.stage
-    uni.stage, uni.stage_changed_at = to_stage, datetime.now(UTC)
-    _record(db, user, uni, "move", from_stage, to_stage, note)
-    return True
+    uni.stage, uni.stage_changed_at = stage, datetime.now(UTC)
+    _record(db, user, uni, "move", from_stage, stage, note)
+    return from_stage
 
 
 def set_lost(db: AsyncSession, user: User, uni: University, reason: str, lost: bool) -> str:

@@ -1,4 +1,4 @@
-"""upc-009 (DEC-SCOPE-142, spec §1, §3): university meetings -- who reads, schedules and acts, the §7 record, the stage advance, the
+"""upc-009 (DEC-SCOPE-143, spec §1, §3): university meetings -- who reads, schedules and acts, the §7 record, the stage advance, the
 follow-ups, the four lists and output.
 
 Functions only; nothing here commits -- the route owns the transaction. Every partnership reader reads every meeting (MG14); only the
@@ -172,8 +172,10 @@ async def set_people(db: AsyncSession, meeting_id: UUID, contacts: set[UUID], us
 # --- writes -----------------------------------------------------------------------------------------------------------------------
 async def _advance(db: AsyncSession, user: User, uni: University, m: M, to_stage: str, verb: str) -> bool:
     """MG13 / AC3: forward-only, through the upc-007 engine, with the new stage's upc-020 rule and the university's audit row."""
-    from_stage = uni.stage
-    if not pipeline.advance(db, user, uni, to_stage, f"Automatic: meeting {m.code} {verb}"):
+    if uni.lost_at is not None or not uni.active:
+        return False
+    from_stage = pipeline.advance_to(db, user, uni, to_stage, f"Automatic: meeting {m.code} {verb}")
+    if from_stage is None:
         return False
     await tasks.on_stage_entered(db, user, uni)
     unis.audit(db, user, "stage_changed", uni.id, {"from": from_stage, "to": to_stage, "backward": False, "note": True, "source": "meeting"})

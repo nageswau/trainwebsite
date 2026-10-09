@@ -1,4 +1,4 @@
-// upc-009 (DEC-SCOPE-142): university meetings (§7) -- types, words, URLs and list helpers shared by the meeting pages and forms. The
+// upc-009 (DEC-SCOPE-143): university meetings (§7) -- types, words, URLs and list helpers shared by the meeting pages and forms. The
 // university, responsible-employee and employee pickers are upc-010's (`lib/visits`), which apply the same roles and scope.
 import type { ManagerRef } from "@/lib/telecaller";
 import type { VisitUniversity } from "@/lib/visits";

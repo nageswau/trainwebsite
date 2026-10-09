@@ -5786,15 +5786,52 @@ offers" are manual only.
   live; head and super admin nav entries.
 - **New Feature ID authorized:** `upc-020`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-020.
 
+### DEC-SCOPE-142 — MoU / agreement management (`upc-014`)
 
-### DEC-SCOPE-142 — University meetings (`upc-009`)
+**Evidence:** `EVID-020` §13 (L453–L497: "This should be a major module"; 18 tracked rows; "Draft → Sent → Under Review → Negotiation →
+Approved → Signed → Active → Expiring → Renewed"), §28 L489 (agreement document), §32 ("MoU & Agreements"), L1129;
+`UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U2 (`EXPLICIT_APPROVAL`, 2026-10-08), §3.2 Q-16 and §4 upc-014.
+**Status:** Q-16 and AG1–AG18 are recommended answers applied under the owner's standing instruction for the build session ("proceed
+with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off.
+Migration `0127_university_agreements`, API contract §12BJ, RBAC §2.68.
+Spec: `docs/superpowers/specs/2026-10-09-upc-014-university-agreements-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| AG1 | Q-16 MoU number | Server-generated `MOU-000001` (own sequence); a renewal gets its own number |
+| AG2 | Agreement type | MoU, Partnership agreement, Commission agreement (the document centre's agreement kinds) |
+| AG3 | Fields | §13's 18 rows minus Commission (upc-016): 17 stored and returned |
+| AG4 | Q-16 statuses | Stored: draft … active, renewed. Derived: Expiring (signed/active, expiry within 90 days, IST), Expired (past expiry) |
+| AG5 | Transitions | draft→sent; sent→under_review/negotiation; under_review↔negotiation; →approved; approved→signed/negotiation; signed→active; `from_status` guard (409) |
+| AG6 | Approval | Only a partnership head in scope or super_admin |
+| AG7 | Signing | Needs the agreement document (same university, kind = type) and both signatories with dates (not future); DB CHECK backstop |
+| AG8 | Q-16 renewal | A new linked draft copying the terms; the old row becomes Renewed when the new one is signed; one successor each |
+| AG9 | Overlap | Signing refused (409) when a signed/active agreement of the same type overlaps; the predecessor excluded |
+| AG10 | Stage | Signing moves the university forward to Agreement Signed (never back), raising upc-020's stage auto-task as a manual move does; a lost university cannot sign (409) |
+| AG11 | Editing | Terms until approved; signing fields until signed; nothing after |
+| AG12 | Validation | expiry > start (422), renewal date in the window, courses of this university, real countries, text limits |
+| AG13 | Readers | partnership_manager, partnership_head, super_admin; overseas_admin and every other role `403` |
+| AG14 | Writers | `can_manage_agreements` (the contacts rule); approval `can_approve_agreements` |
+| AG15 | Commission | Not stored here (upc-016); every reader is a commission role today |
+| AG16 | Delete | Not in this item |
+| AG17 | Audit | `university_agreement.create/update/status/renew`, ids, number, statuses, field names only |
+| AG18 | Menu page | `/partnership/agreements`: effective status, type and text filters, soonest expiry first, paged |
+
+**Consequences:** tables `university_agreements` and `university_agreement_events`, sequence `university_agreement_mou_seq`; routes
+`/partnership/universities/{id}/agreements|agreement-options`, `/partnership/agreements…`, `/partnership/agreement-signatories`;
+`permissions.can_manage_agreements` / `can_approve_agreements` on the university; an Agreements section on `/partnership/universities/[id]`;
+page `/partnership/agreements`; the manager menu's "MoU & Agreements" goes live and the head nav gains it. upc-015 reads the expiry dates;
+upc-016 hangs commission terms off agreements; upc-013 can show the agreement events.
+**New Feature ID authorized:** `upc-014`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-014.
+
+### DEC-SCOPE-143 — University meetings (`upc-009`)
 
 **Evidence:** `EVID-020` §7 (L244–L312: "The Partnership Manager should be able to schedule every interaction", 19 meeting fields, 12
 meeting types); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §4 upc-009 and Q-12.
 **Status:** MG1–MG16, including **Q-12** (a meeting's "Next meeting date" creates a follow-up, not a draft meeting), are the recommended
 answers applied under the owner's standing instruction for the build session ("proceed with the recommended answers; ask only if
-genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. Migration `0127_university_meetings`, API contract
-§12BJ, RBAC §2.68. Spec: `docs/superpowers/specs/2026-10-09-upc-009-university-meetings-design.md`.
+genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. Migration `0128_university_meetings`, API contract
+§12BK, RBAC §2.69. Spec: `docs/superpowers/specs/2026-10-09-upc-009-university-meetings-design.md`.
 
 | # | Question | Answer |
 |---|---|---|
@@ -5816,9 +5853,9 @@ genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign
 | MG16 | Lists | Upcoming, Awaiting outcome, Completed, Cancelled with counts; "Only my meetings"; university filter |
 
 **Consequences:**
-- `university_meetings`, `university_meeting_participants`, `university_meeting_events` (`0127`); `app/partnership_meeting_types.py`,
-  `services/university_meetings.py`, `api/university_meetings.py` (`/partnership/meetings…`); the upc-007 engine gains a forward-only
-  `advance`; upc-020 gains `on_meeting_completed` (rules `meeting:<id>` and `meeting:<id>:next`).
+- `university_meetings`, `university_meeting_participants`, `university_meeting_events` (`0128`); `app/partnership_meeting_types.py`,
+  `services/university_meetings.py`, `api/university_meetings.py` (`/partnership/meetings…`); the stage moves reuse upc-014's
+  forward-only `advance_to`; upc-020 gains `on_meeting_completed` (rules `meeting:<id>` and `meeting:<id>:next`).
 - Pages `/partnership/meetings`, `/new`, `/[id]`, `/[id]/edit`; a Meetings section on `/partnership/universities/[id]`; the manager menu's
   Meetings goes live; head and super admin nav entries.
 - **New Feature ID authorized:** `upc-009`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-009.

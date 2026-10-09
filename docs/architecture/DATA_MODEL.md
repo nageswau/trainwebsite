@@ -1665,7 +1665,33 @@ status, due_on)` and the partial unique `uq_partnership_tasks_open_rule (univers
 (one open auto-task per rule, TK7). No backfill. **Migration `0126_partnership_tasks`**; `downgrade()` refuses while any task exists
 (API §12BI).
 
-**Addendum, 2026-10-09 (`upc-009`, `DEC-SCOPE-142` — University meetings):** `university_meeting_code_seq` (`UMT-000001`);
+## University agreements (`upc-014`, `DEC-SCOPE-142`; migration `0127_university_agreements`, after `0126_partnership_tasks`)
+
+**`university_agreements` columns:**
+- `id`, `mou_number` varchar(20) (unique; `MOU-000001` from `university_agreement_mou_seq`), `university_id` → `universities` (FK RESTRICT),
+  `agreement_type` varchar(30) (CHECK: mou / partnership_agreement / commission_agreement), `status` varchar(20) (CHECK: the 8 stored
+  statuses; Expiring/Expired are derived), `status_changed_at`, `start_date`, `expiry_date`, `renewal_date` (nullable),
+  `commercial_terms` text, `exclusivity` varchar(20) (CHECK: exclusive / non_exclusive), `territory` varchar(500), `recruitment_rights`
+  text, `all_courses` bool, `course_ids` JSON (ids of this university's `overseas_courses`), `country_ids` JSON (ids of `countries`),
+  `payment_terms` text, `marketing_rights` text, `document_id` → `university_documents` (nullable), `edusphere_signatory_user_id` →
+  `users` (nullable), `edusphere_signed_on`, `university_signatory_name` varchar(200), `university_signed_on`, `previous_agreement_id` →
+  `university_agreements` (nullable; the agreement this one renews), `created_by_user_id` → `users`, timestamps
+
+**`university_agreement_events` columns:**
+- `id`, `agreement_id` → `university_agreements`, `kind` (CHECK: create / update / status / renew), `from_status`, `to_status`,
+  `actor_user_id` → `users`, `note` text, `changed` JSON (field names), `position` identity, `created_at`
+
+**Constraints and indexes:**
+- CHECKs `ck_university_agreements_dates` (expiry > start), `_renewal_window`, `_signed_complete` (a signed/active/renewed row has its
+  document and both signatories with dates — AC2 backstop), `_type`, `_status`, `_exclusivity`.
+- `uq_university_agreements_mou_number`; `uq_university_agreements_previous` UNIQUE partial (one renewal per agreement);
+  `ix_university_agreements_university (university_id, created_at)`; `ix_university_agreements_expiry (status, expiry_date)` (upc-015).
+
+**Design notes:**
+- Commission is not stored here (upc-016). Courses/countries are validated on write; a JSON id that later disappears is skipped on output.
+- Agreements and events are not deleted in this item; `downgrade()` refuses while any agreement exists.
+
+**Addendum, 2026-10-09 (`upc-009`, `DEC-SCOPE-143` — University meetings):** `university_meeting_code_seq` (`UMT-000001`);
 `university_meetings` (`code` unique; FK `universities` RESTRICT; `contact_id` FK `university_contacts` SET NULL with the copied
 `contact_name` / `contact_designation`; `meeting_type` CHECK the 12 §7 values; `starts_at`; `mode` CHECK online / offline; `location` ≤ 200;
 `meeting_url` ≤ 500; `agenda`, `notes`, `discussion_points`, `decisions`; `next_action` ≤ 200 with `next_action_due_on` (both or neither);
@@ -1674,4 +1700,4 @@ completed / cancelled; `completed_at` / `cancelled_at` + `cancel_reason` set exa
 completed; timestamps; indexes `(university_id, starts_at)`, `(status, starts_at)`, `(responsible_user_id)`).
 `university_meeting_participants` (one contact — FK CASCADE — or one user per row; unique per meeting). `university_meeting_events`
 (append-only: scheduled / edited / rescheduled with old and new start / completed / cancelled with reason; `position` identity). No
-backfill. **Migration `0127_university_meetings`**; `downgrade()` refuses while any meeting exists (API §12BJ).
+backfill. **Migration `0128_university_meetings`**; `downgrade()` refuses while any meeting exists (API §12BK).
