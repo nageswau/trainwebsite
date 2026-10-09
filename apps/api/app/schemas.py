@@ -6916,6 +6916,8 @@ class UniversityPermissions(BaseModel):
     can_reopen: bool  # upc-007 PS6
     can_edit_contacts: bool  # upc-006 CT5
     can_manage_documents: bool  # upc-026 DC8
+    can_manage_agreements: bool  # upc-014 AG14
+    can_approve_agreements: bool  # upc-014 AG6
 
 
 class UniversityRow(BaseModel):
@@ -8647,3 +8649,89 @@ class UniversityEmailCreate(_UniversityMessageBase):
 
 
 UniversityMessageCreate = Annotated[UniversityWhatsAppCreate | UniversityEmailCreate, Field(discriminator="channel")]
+
+# upc-014 (DEC-SCOPE-142): §13 agreements. Status never travels in a create or edit (AG5: only the commands move it); the service checks
+# the cross-field rules (dates, courses of this university, the document's kind) because they need the stored row.
+AgreementType = Literal["mou", "partnership_agreement", "commission_agreement"]  # = UNIVERSITY_AGREEMENT_TYPES (AG2)
+AgreementStatus = Literal["draft", "sent", "under_review", "negotiation", "approved", "signed", "active", "renewed"]  # stored (AG4)
+AgreementExclusivity = Literal["exclusive", "non_exclusive"]
+AgreementText = _university_str(2000, multiline=True)
+AgreementTerritory = _university_str(500, multiline=True)
+AGREEMENT_MAX_COURSES = 200
+AGREEMENT_MAX_COUNTRIES = 250
+AgreementCourses = Annotated[list[UUID], Field(max_length=AGREEMENT_MAX_COURSES), AfterValidator(_unique_ids)]
+AgreementCountries = Annotated[list[UUID], Field(max_length=AGREEMENT_MAX_COUNTRIES), AfterValidator(_unique_ids)]
+
+
+def _short_name(value: str | None) -> str | None:
+    if value is not None and len(value) < 2:
+        raise PydanticCustomError("signatory_name", "Enter the university signatory's name (2-200 characters)")
+    return value
+
+
+AgreementSignatoryName = Annotated[_university_str(200), AfterValidator(_short_name)]
+
+
+class UniversityAgreementIn(BaseModel):
+    """AG3: the terms of a new agreement (a draft). Signing fields may be filled now or later (AG11)."""
+
+    model_config = ConfigDict(extra="forbid")
+    agreement_type: AgreementType
+    start_date: date
+    expiry_date: date
+    renewal_date: date | None = None
+    commercial_terms: AgreementText = None
+    exclusivity: AgreementExclusivity
+    territory: AgreementTerritory = None
+    recruitment_rights: AgreementText = None
+    all_courses: StrictBool = False
+    course_ids: AgreementCourses = []
+    country_ids: AgreementCountries = []
+    payment_terms: AgreementText = None
+    marketing_rights: AgreementText = None
+    document_id: UUID | None = None
+    edusphere_signatory_user_id: UUID | None = None
+    edusphere_signed_on: date | None = None
+    university_signatory_name: AgreementSignatoryName = None
+    university_signed_on: date | None = None
+
+
+class UniversityAgreementUpdate(BaseModel):
+    """PATCH: omitted = unchanged; null clears an optional field and fails a required one. The type and the university never change."""
+
+    model_config = ConfigDict(extra="forbid")
+    start_date: date = None
+    expiry_date: date = None
+    renewal_date: date | None = None
+    commercial_terms: AgreementText = None
+    exclusivity: AgreementExclusivity = None
+    territory: AgreementTerritory = None
+    recruitment_rights: AgreementText = None
+    all_courses: StrictBool = None
+    course_ids: AgreementCourses = None
+    country_ids: AgreementCountries = None
+    payment_terms: AgreementText = None
+    marketing_rights: AgreementText = None
+    document_id: UUID | None = None
+    edusphere_signatory_user_id: UUID | None = None
+    edusphere_signed_on: date | None = None
+    university_signatory_name: AgreementSignatoryName = None
+    university_signed_on: date | None = None
+
+
+class UniversityAgreementMove(BaseModel):
+    """AG5: `from_status` is the status the screen was showing -- a different stored status is a 409."""
+
+    model_config = ConfigDict(extra="forbid")
+    from_status: AgreementStatus
+    to_status: AgreementStatus
+    note: AgreementText = None
+
+
+class UniversityAgreementRenew(BaseModel):
+    """AG8: the renewal's own dates; the terms are copied from the agreement it renews."""
+
+    model_config = ConfigDict(extra="forbid")
+    start_date: date
+    expiry_date: date
+    renewal_date: date | None = None
