@@ -44,7 +44,9 @@ export const RESPONSES: { key: ShareResponse; label: string }[] = [
   { key: "not_interested", label: "Not interested" },
   { key: "interview_requested", label: "Interview requested" },
 ];
-export const needsContact = (channel: ShareChannel) => channel === "email" || channel === "whatsapp";
+/** S4: application statuses the API refuses to share, so their rows offer no "select to share" checkbox. */
+export const UNSHAREABLE = ["rejected", "withdrawn", "joined"];
+export const needsContact =(channel: ShareChannel) => channel === "email" || channel === "whatsapp";
 
 export const SHARES_URL = "/api/v1/recruiter/shares";
 export const EMPLOYER_SHARES_URL = "/api/v1/employer/shared-profiles";

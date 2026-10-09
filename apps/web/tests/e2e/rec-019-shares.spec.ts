@@ -46,21 +46,29 @@ test("share: portal + repeat + email from the board, the employer answers, phone
 
   await signIn(page, "admin", MANAGER, "/recruiter/manager/team");
   await post(page, `/api/v1/recruiter/companies/${companyId}/assign`, { recruiter_user_id: recruiterId });
+  const categories = await (await page.request.get("/api/v1/recruiter/skill-categories?limit=100")).json();
+  const skill = `SJava ${stamp}`; // a skill of this run only, so Find Candidates lists just these two
+  await post(page, "/api/v1/recruiter/skills", { name: skill, category_id: categories.items.find((c: { name: string }) => c.name === "Programming").id });
   await page.request.post("/api/v1/auth/logout");
 
   await signIn(page, "it", RECRUITER, "/recruiter/dashboard");
   const contactEmail = `hr${stamp}@example.com`;
+  const mobile = `8${String(Math.floor(Math.random() * 1e9)).padStart(9, "7")}`; // independent of the stamp in the names
   await post(page, `/api/v1/recruiter/companies/${companyId}/contacts`, { name: "Meera Iyer", mobile: "98450 12345", email: contactEmail });
   const sources = await (await page.request.get("/api/v1/recruiter/catalogue/candidate-sources?limit=100")).json();
   const source = sources.items.find((s: { name: string }) => s.name === "Referral").id;
   const rahul = await post(page, "/api/v1/recruiter/candidates", {
-    name: `Rahul ${stamp}`, email: `rahul${stamp}@example.com`, mobile: `9${String(stamp).slice(-9)}`, source_id: source, qualification: "B.Tech", experience_months: 26,
+    name: `Rahul ${stamp}`, email: `rahul${stamp}@example.com`, mobile, source_id: source, qualification: "B.Tech", experience_months: 26,
   });
   const priya = await post(page, "/api/v1/recruiter/candidates", { name: `Priya ${stamp}`, email: `priya${stamp}@example.com`, source_id: source });
   const upload = await page.request.put(`/api/v1/recruiter/candidates/${rahul.id}/resume`, { multipart: { file: { name: "cv.pdf", mimeType: "application/pdf", buffer: PDF } } });
   expect(upload.ok()).toBeTruthy();
   const requirement = (await post(page, "/api/v1/recruiter/requirements", { company_id: companyId, title: `Java Developer ${stamp}`, location: "Pune" })).requirement;
-  for (const c of [rahul, priya]) await post(page, `/api/v1/recruiter/requirements/${requirement.id}/candidates`, { candidate_id: c.id, status: "shortlisted" });
+  await post(page, `/api/v1/recruiter/requirements/${requirement.id}/status`, { status: "requirement_received" }); // open, for the Find picker
+  for (const c of [rahul, priya]) {
+    await post(page, `/api/v1/recruiter/requirements/${requirement.id}/candidates`, { candidate_id: c.id, status: "shortlisted" });
+    await post(page, `/api/v1/recruiter/candidates/${c.id}/skills`, { skill, level: "advanced" });
+  }
 
   // AC4 + S8: share both on the Portal from the board; both move to Profile Shared.
   await page.goto(`/recruiter/requirements/${requirement.id}`);
@@ -96,7 +104,7 @@ test("share: portal + repeat + email from the board, the employer answers, phone
   expect(mail, "the share email reached Mailpit").not.toBeNull();
   expect(mail!.Text).toContain(`Rahul ${stamp} (${rahul.candidate_code})`);
   expect(mail!.Text).not.toContain(rahul.email);
-  expect(mail!.Text).not.toContain(String(stamp).slice(-9));
+  expect(mail!.Text).not.toContain(mobile.slice(-9));
   const link = mail!.Text.match(/https?:\/\/\S+\/api\/v1\/public\/shared-resume\/\S+/)![0];
   const resume = await page.request.get(link.replace(/^https?:\/\/[^/]+/, ""));
   expect(resume.status()).toBe(200);
@@ -120,6 +128,21 @@ test("share: portal + repeat + email from the board, the employer answers, phone
   await page.goto(`/recruiter/requirements/${requirement.id}`);
   await expect(page.getByRole("region", { name: /^Shared profiles/ }).getByText(/Response by Share Employer/)).toBeVisible();
 
+  // Find Candidates: choose the requirement, select Priya and share her again (Other) after the repeat warning.
+  await page.goto(`/recruiter/find-candidates?all=${encodeURIComponent(skill)}`);
+  await expect(page.getByRole("heading", { name: "2 candidates found" })).toBeVisible();
+  await page.getByRole("combobox", { name: "Shortlist into requirement" }).fill(`Java Developer ${stamp}`);
+  await page.getByRole("option", { name: new RegExp(`Java Developer ${stamp}`) }).click();
+  await page.getByRole("checkbox", { name: `Select Priya ${stamp} to share` }).check();
+  await page.getByRole("button", { name: "Share selected (1)" }).click();
+  await page.getByLabel(/^Other/).check();
+  await page.getByRole("button", { name: "Share 1 profile" }).click();
+  await page.getByRole("button", { name: "Share again" }).click();
+  await expect(page.getByText(new RegExp(`Shared 1 profile for Java Developer ${stamp} .*by Other with Meera Iyer\\.`))).toBeVisible();
+  await expect(page.getByRole("listitem", { name: new RegExp(`^Priya ${stamp}`) })).toBeVisible(); // QA-03: the card is named by the candidate
+  await expect(page.getByRole("checkbox", { name: `Select Priya ${stamp} to share` })).not.toBeChecked();
+  await page.goto(`/recruiter/requirements/${requirement.id}`);
+
   // Phone width: no sideways scroll on the requirement page with the dialog open.
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("region", { name: /^Candidates/ }).getByRole("checkbox", { name: `Select Priya ${stamp} to share` }).check();
@@ -128,5 +151,5 @@ test("share: portal + repeat + email from the board, the employer answers, phone
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
 
   expect(failedCalls).toEqual([]);
-  expect(consoleErrors.filter((e) => !e.includes("favicon"))).toEqual([]);
+  expect(consoleErrors.filter((e) => !e.includes("favicon") && !e.includes("status of 409"))).toEqual([]); // the repeat warning is a deliberate 409 (S5)
 });

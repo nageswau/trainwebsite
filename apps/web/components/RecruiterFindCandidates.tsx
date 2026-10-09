@@ -74,10 +74,10 @@ function Card({ c, writes, requirement, shortlisted, onShortlist, selected, onSe
   return (
     <li className="action-card" style={{ gap: 10 }} aria-labelledby={`card-${c.id}`}>
       <div>
+        {selected !== null && ( // QA-03: outside the heading, so the card's name stays the candidate's
+          <input type="checkbox" checked={selected} onChange={(e) => onSelect(e.target.checked)} aria-label={`Select ${c.name} to share`} style={{ float: "left", margin: "6px 8px 0 0" }} />
+        )}
         <h3 id={`card-${c.id}`} style={{ margin: 0, fontSize: 18 }}>
-          {selected !== null && (
-            <input type="checkbox" checked={selected} onChange={(e) => onSelect(e.target.checked)} aria-label={`Select ${c.name} to share`} style={{ marginRight: 8 }} />
-          )}
           <Link href={`${CANDIDATES_PATH}/${encodeURIComponent(c.id)}`} style={LINK_STYLE}>{c.name}</Link>{" "}
           <span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>{c.candidate_code}</span>
         </h3>

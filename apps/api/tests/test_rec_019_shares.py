@@ -273,7 +273,10 @@ async def test_repeat_share_warns_then_is_allowed(client, db_session):
     again = await _share(client, s, "other")
     assert again.status_code == 409
     detail = again.json()["detail"]
-    assert {d["code"] for d in detail["duplicates"]} == {c.candidate_code for c in s["candidates"]} and "already shared" in detail["message"]
+    assert {d["code"] for d in detail["duplicates"]} == {c.candidate_code for c in s["candidates"]}
+    assert detail["message"] == "2 of these candidates were already shared for this requirement. Share again?"
+    single = await _share(client, s, "other", candidate_ids=[str(s["candidates"][0].id)])
+    assert single.json()["detail"]["message"].startswith("1 of these candidates was already shared")  # QA-02
     assert (await _share(client, s, "other", repeat=True)).status_code == 201
 
 

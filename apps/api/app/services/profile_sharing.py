@@ -227,7 +227,7 @@ async def create(db: AsyncSession, user: User, payload: RecShareCreate, now: dat
         raise HTTPException(
             409,
             {
-                "message": f"{len(repeats)} of these candidates were already shared for this requirement. Share again?",
+                "message": f"{len(repeats)} of these candidates {'was' if len(repeats) == 1 else 'were'} already shared for this requirement. Share again?",  # QA-02
                 "duplicates": [{"id": str(c.id), "name": c.name, "code": c.candidate_code} for c in repeats],
             },
         )

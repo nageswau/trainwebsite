@@ -9,12 +9,11 @@ import { isApplicationBody, requirementCandidatesUrl } from "@/lib/recruiterAppl
 import { CANDIDATES_PATH, experienceLabel } from "@/lib/recruiterCandidates";
 import { type CriteriaSkill, isMatches, MATCH_PAGE_SIZE, type Matches, type MatchRow, matchesUrl, WEIGHT_MAX, WEIGHT_MIN, weightsUrl } from "@/lib/recruiterMatching";
 import { isRequirementBody, type Requirement } from "@/lib/recruiterRequirements";
+import { UNSHAREABLE } from "@/lib/recruiterShares";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 type Notice = { text: string; failed: boolean } | null;
 const WEIGHT_ERROR = `Each weight must be a whole number from ${WEIGHT_MIN} to ${WEIGHT_MAX}.`;
-const UNSHAREABLE = ["rejected", "withdrawn", "joined"]; // rec-019 S4: the API refuses these
-
 /** M1: one number per requirement skill; the API re-checks every rule (ids, range, who may edit). */
 function WeightsForm({ requirementId, skills, onSaved, onCancel }: {
   requirementId: string; skills: CriteriaSkill[]; onSaved: (r: Requirement) => void; onCancel: () => void;

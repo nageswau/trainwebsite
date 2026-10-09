@@ -26,10 +26,10 @@ import {
 } from "@/lib/recruiterApplications";
 import { CANDIDATES_PATH } from "@/lib/recruiterCandidates";
 import { contactsOf, isContactList } from "@/lib/recruiterContacts";
+import { UNSHAREABLE } from "@/lib/recruiterShares";
 
 type Notice = { text: string; failed: boolean } | null;
 const search = candidateSearch();
-const UNSHAREABLE = ["rejected", "withdrawn", "joined"]; // rec-019 S4: the API refuses these
 
 function NoteField({ id, value, onChange }: { id: string; value: string; onChange: (v: string) => void }) {
   return (
