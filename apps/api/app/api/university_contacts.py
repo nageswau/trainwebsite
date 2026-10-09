@@ -22,6 +22,7 @@ from app.schemas import (
     UniversityContactUpdate,
 )
 from app.services import partnership_universities as unis
+from app.services import university_comms
 from app.services import university_contacts as svc
 
 router = APIRouter(prefix="/partnership", tags=["partnership-universities"])
@@ -63,7 +64,8 @@ async def list_contacts(
         .offset(offset)
     )
     rows = (await db.execute(stmt)).all()
-    return {"items": [svc.contact_out(user, c, role) for c, role in rows], "total": total or 0, "limit": limit, "offset": offset}
+    last = await university_comms.last_interactions(db, [c.id for c, _ in rows]) if svc.full_view(user) else {}
+    return {"items": [svc.contact_out(user, c, role, last.get(c.id)) for c, role in rows], "total": total or 0, "limit": limit, "offset": offset}
 
 
 @router.post("/universities/{university_id}/contacts", status_code=201, response_model=UniversityContactEnvelope)
@@ -113,7 +115,8 @@ async def update_contact(contact_id: UUID, payload: UniversityContactUpdate, use
     await db.commit()
     if changed:
         svc.log("university_contact_updated", user, contact.id, uni.id, fields=changed)
-    return {"contact": await svc.detail_out(db, user, contact)}
+    last = (await university_comms.last_interactions(db, [contact.id])).get(contact.id)  # upc-012 UC10
+    return {"contact": await svc.detail_out(db, user, contact, last)}
 
 
 @router.delete("/contacts/{contact_id}", status_code=204)

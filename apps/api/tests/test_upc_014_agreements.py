@@ -1,4 +1,4 @@
-"""upc-014 -- MoU / agreement management (spec §1-§5; AC1-AC4, P1, N1, E1, S1, R1; DEC-SCOPE-140 AG1-AG18)."""
+"""upc-014 -- MoU / agreement management (spec §1-§5; AC1-AC4, P1, N1, E1, S1, R1; DEC-SCOPE-141 AG1-AG18)."""
 
 import re
 import uuid

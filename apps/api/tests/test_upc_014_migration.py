@@ -1,4 +1,4 @@
-"""upc-014 -- migration 0125_university_agreements (spec §2). Round trip, constraints and the downgrade refusal run in a throwaway database
+"""upc-014 -- migration 0126_university_agreements (spec §2). Round trip, constraints and the downgrade refusal run in a throwaway database
 built from scratch (the rec-008 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -16,11 +16,11 @@ from tests.test_tel_001_migration import _config, _sql
 from tests.test_upc_026_migration import _setup
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_upc_014_migration_0125", VERSIONS / "0125_university_agreements.py")
+_spec = importlib.util.spec_from_file_location("_upc_014_migration_0126", VERSIONS / "0126_university_agreements.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0124_university_documents", "0125_university_agreements"
+BASE, HEAD = "0125_university_comms", "0126_university_agreements"
 AGREEMENT_COLUMNS = {
     "id", "mou_number", "university_id", "agreement_type", "status", "status_changed_at", "start_date", "expiry_date", "renewal_date",
     "commercial_terms", "exclusivity", "territory", "recruitment_rights", "all_courses", "course_ids", "country_ids", "payment_terms",
@@ -30,7 +30,7 @@ AGREEMENT_COLUMNS = {
 EVENT_COLUMNS = {"id", "agreement_id", "kind", "from_status", "to_status", "actor_user_id", "note", "changed", "position", "created_at"}
 
 
-def test_migration_chains_after_0124_and_there_is_a_single_head():
+def test_migration_chains_after_0125_and_there_is_a_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1
 

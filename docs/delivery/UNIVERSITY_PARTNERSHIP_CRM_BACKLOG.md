@@ -631,6 +631,9 @@ Common conventions:
 - **Complexity:** medium · **Risk:** low
 
 ### upc-012 — Calls + message templates + WhatsApp + email
+- **Status (2026-10-09):** built on `feature/upc-012` under `DEC-SCOPE-140`, with migration `0125_university_comms`, API §12BH and
+  RBAC §2.66. Spec: `docs/superpowers/specs/2026-10-09-upc-012-university-comms-design.md`. UC1–UC10 are `UNVERIFIED` defaults: no
+  template kinds or seeds (the source names none); calls are permanent; contact deletes keep the history (`SET NULL`).
 - **Business requirement:** §12 "every email/call/WhatsApp/meeting should be stored against the university" (U10).
 - **Existing behavior:** none for universities.
 - **Expected behavior:**
@@ -685,8 +688,8 @@ Common conventions:
 - **Complexity:** medium · **Risk:** low
 
 ### upc-014 — MoU / agreement management
-- **Status (2026-10-09):** built on `feature/upc-014` under `DEC-SCOPE-140` (Q-16 + AG1–AG18, recommended answers), with migration
-  `0125_university_agreements`, API §12BH and RBAC §2.66. Spec: `docs/superpowers/specs/2026-10-09-upc-014-university-agreements-design.md`.
+- **Status (2026-10-09):** built on `feature/upc-014` under `DEC-SCOPE-141` (Q-16 + AG1–AG18, recommended answers), with migration
+  `0126_university_agreements`, API §12BI and RBAC §2.67. Spec: `docs/superpowers/specs/2026-10-09-upc-014-university-agreements-design.md`.
 - **Business requirement:** §13 ("a major module"; 17 fields; Draft → Sent → Under Review → Negotiation → Approved → Signed → Active →
   Expiring → Renewed).
 - **Existing behavior:** none for universities (`BdmMou` is BDM-only).

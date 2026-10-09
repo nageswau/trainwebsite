@@ -2,14 +2,14 @@
 
 **Status:** design written 2026-10-09. The owner's standing instruction for this session is "proceed with the recommended answers;
 ask only if genuinely blocking". So Q-16 and the item answers AG1–AG18 (§1) are **recommended defaults accepted under that instruction**
-(`NEEDS_CONFIRMATION` as separate per-question approvals) and are registered that way in `DEC-SCOPE-140`.
+(`NEEDS_CONFIRMATION` as separate per-question approvals) and are registered that way in `DEC-SCOPE-141`.
 
 **Branch:** `feature/upc-014`, cut from `origin/main` @ `e91932a3`.
 **Backlog:** `docs/delivery/UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §4 upc-014. Dependencies upc-003 (`0105`, PR #151) and upc-026 (`0124`,
 `DEC-SCOPE-139`, PR #184) are merged on main — verified in code (`University`, `UniversityDocument`, `services/university_documents.py`).
 **Source:** `EVID-020` §13 (lines 453–497: "This should be a major module"; 18 tracked rows; 9 statuses), §28 line 489 (agreement document
 in the document centre), §32 menu "MoU & Agreements", line 1129 + U2 (commission visibility).
-**Numbering:** migration `0125_university_agreements`, `DEC-SCOPE-140`, API §12BH, RBAC §2.66 (re-check at merge; parallel items race).
+**Numbering:** migration `0126_university_agreements`, `DEC-SCOPE-141`, API §12BI, RBAC §2.67 (drafted as `0125` / `DEC-SCOPE-140` / §12BH / §2.66; renumbered on merging `main` @ `a0725b6d`, where upc-012 took those).
 **Gate:** `APPROVAL_GATES.md` GATE-09.
 
 ## 1. Decisions (recommended defaults)
@@ -35,7 +35,7 @@ in the document centre), §32 menu "MoU & Agreements", line 1129 + U2 (commissio
 | AG17 | Audit / logs | `university_agreement.create|update|status|renew`, ids, MoU number, statuses, field names only; notes live in `university_agreement_events` |
 | AG18 | Menu page | `/partnership/agreements`: every agreement, filtered by effective status, type and a MoU-number/university search, soonest expiry first, paged 50 |
 
-## 2. Data model — migration `0125_university_agreements`
+## 2. Data model — migration `0126_university_agreements`
 
 - `university_agreement_mou_seq`.
 - `university_agreements`: id, mou_number String(20) unique, university_id FK RESTRICT, agreement_type String(30) CHECK, status String(20) CHECK,
@@ -96,7 +96,7 @@ Writes: university `FOR UPDATE`, then the agreement `FOR UPDATE` (the predecesso
 1. Migration + models + parity/round-trip test (`test_upc_014_migration.py`).
 2. Service + routes: create/read/validation tests, then status/approve/sign/stage, renew/overlap, menu, RBAC; then code. Permissions.
 3. Frontend lib + components + page wiring + menu page + nav, vitest.
-4. Playwright `upc-014-university-agreements.spec.ts`; docs (DEC-SCOPE-140, API §12BH, RBAC §2.66, DATA_MODEL, SCREEN_CATALOG, backlog).
+4. Playwright `upc-014-university-agreements.spec.ts`; docs (DEC-SCOPE-141, API §12BI, RBAC §2.67, DATA_MODEL, SCREEN_CATALOG, backlog).
 
 ## 7. Regression set (lite)
 

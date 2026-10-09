@@ -1,4 +1,4 @@
-"""upc-014 (DEC-SCOPE-140, spec §1-§3): §13 MoU / agreement management -- who reads and writes, the status flow, the derived Expiring /
+"""upc-014 (DEC-SCOPE-141, spec §1-§3): §13 MoU / agreement management -- who reads and writes, the status flow, the derived Expiring /
 Expired, signing, renewal, the overlap rule and output.
 
 Functions only; nothing here commits -- the route owns the transaction. Access reuses the University Master's (upc-003):

@@ -1,12 +1,16 @@
 """upc-014 -- university_agreements + university_agreement_events + university_agreement_mou_seq: §13 MoU / agreement management.
 
-Revision ID: 0125_university_agreements
-Revises: 0124_university_documents
+Revision ID: 0126_university_agreements
+Revises: 0125_university_comms
 
-docs/superpowers/specs/2026-10-09-upc-014-university-agreements-design.md §2 (DEC-SCOPE-140). New tables only; no existing row changes.
+docs/superpowers/specs/2026-10-09-upc-014-university-agreements-design.md §2 (DEC-SCOPE-141). New tables only; no existing row changes.
 0001 builds a fresh database from the current models, which already carry both tables and the sequence, so they are created only when
 missing (0117's idiom). TYPES / STATUSES / EVENT_KINDS / CHECKS repeat app.models (test_upc_014_migration). downgrade() refuses while any
 agreement exists: entered data is never dropped silently.
+
+Re-chained on 2026-10-09: drafted as `0125_university_agreements` (DEC-SCOPE-140, §12BH, §2.66) on `0124_university_documents`; upc-012
+(`0125_university_comms`) merged first. A database stamped at the draft is re-stamped with `alembic stamp --purge 0124_university_documents`,
+then `upgrade head` (the table steps are guarded).
 """
 
 import sqlalchemy as sa
@@ -14,8 +18,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0125_university_agreements"
-down_revision = "0124_university_documents"
+revision = "0126_university_agreements"
+down_revision = "0125_university_comms"
 branch_labels = None
 depends_on = None
 
@@ -108,7 +112,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {AGREEMENTS} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0125_university_agreements: university agreements exist. Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0126_university_agreements: university agreements exist. Remove them deliberately first.")
     op.drop_table(EVENTS)
     op.drop_table(AGREEMENTS)
     op.execute(sa.schema.DropSequence(sa.Sequence(SEQ)))

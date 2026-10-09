@@ -1228,7 +1228,19 @@ logs carry ids only.
 | Upload, new version, edit title / sharing | own universities (primary/backup) | unowned + team universities | `403` | ✅ all | `403` |
 | Delete | — (not in this item, DC9) | — | — | — | — |
 
-### 2.66 University agreements *(net-new, added 2026-10-09 — `DEC-SCOPE-140`, `upc-014`)*
+### 2.66 University calls, message templates and messages *(net-new, added 2026-10-09 — `DEC-SCOPE-140`, `upc-012`)*
+
+Calls and messages are kept on the university and follow upc-006's contacts (§2.49): reads are the full contact view, writes the
+university's `can_edit_contacts`. Neither is ever edited or deleted (UC1, UC9).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `partnership_manager` (with a profile) | read active templates; read every university's calls and messages; log calls and send WhatsApp/email | writes: universities they own (primary or backup) | `upc-012` |
+| `partnership_head` | everything a manager does; create, edit, deactivate templates | writes: universities of their team or unassigned | `upc-012` |
+| `super_admin` | everything | all | `upc-012` |
+| `overseas_admin`, `counselor`, every other role | `403` | — | `upc-012` |
+
+### 2.67 University agreements *(net-new, added 2026-10-09 — `DEC-SCOPE-141`, `upc-014`)*
 
 Enforced inline in `api/university_agreements.py` + `services/university_agreements.py` (`require_reader`, then the University Master's
 `can_manage_agreements` / `can_approve_agreements`). No commission field exists here (upc-016); every reader is a commission role today.
