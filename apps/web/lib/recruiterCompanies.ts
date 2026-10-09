@@ -21,6 +21,7 @@ export type Company = CompanyRow & {
   country: string | null; head_office: string | null; branches: string | null; description: string | null; campaign: Ref | null;
   assigned_bdm: Person | null; owner_type: string; created_by: Person | null; assignment_history: Assignment[]; pipeline: Pipeline; archived_at: string | null;
   created_at: string; updated_at: string;
+  contract?: { status: string; status_label: string } | null; // rec-030 CT10: the current contract's status
 };
 export type DuplicateMatch = { id: string; code: string; name: string; city: string | null; archived: boolean };
 export type Duplicate = { message: string; matches: DuplicateMatch[]; total: number };
