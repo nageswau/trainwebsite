@@ -3,7 +3,7 @@
 **Status:** design written 2026-10-09. The owner's standing instruction for this session is "proceed with the recommended answers;
 ask only if genuinely blocking". The item answers MG1–MG16 (§1), including **Q-12** (does "Next meeting date" create a draft meeting or a
 follow-up?), are **recommended defaults accepted under that instruction** (`NEEDS_CONFIRMATION` as separate per-question approvals). They
-are registered that way in `DEC-SCOPE-144`.
+are registered that way in `DEC-SCOPE-145`.
 
 **Branch:** `feature/upc-009`, cut from `origin/main` @ `788b1636` (after #186, upc-020).
 **Backlog:** `docs/delivery/UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §4 upc-009, Q-12, Appendix A L244–L312.
@@ -11,9 +11,10 @@ are registered that way in `DEC-SCOPE-144`.
 `UniversityContact`, `services/partnership_tasks.py` (`_auto_create`, source `meeting` reserved by TK4), and the upc-007 stage engine.
 **Source:** `EVID-020` §7 (L244–L312): "The Partnership Manager should be able to schedule every interaction", 19 meeting fields and 12
 meeting types.
-**Numbering:** migration `0129_university_meetings`, `DEC-SCOPE-144`, API §12BL, RBAC §2.70. Drafted as `0127` / `DEC-SCOPE-142` / §12BJ /
+**Numbering:** migration `0130_university_meetings`, `DEC-SCOPE-145`, API §12BM, RBAC §2.71. Drafted as `0127` / `DEC-SCOPE-142` / §12BJ /
 §2.68; renumbered on merging `main` @ `7ba4cb36` (upc-014 took them first), then from `0128` / `DEC-SCOPE-143` / §12BK / §2.69 on merging
-`main` @ `52646217` (upc-008 took them first; this migration now follows `0128_university_milestones`).
+`main` @ `52646217` (upc-008 took them first), and from `0129` / `DEC-SCOPE-144` / §12BL / §2.70 on merging `main` @ `362cf3ca` (upc-016
+took them first; this migration now follows `0129_university_commission_terms`).
 **Gate:** `APPROVAL_GATES.md` GATE-09.
 **Templates:** rec-028 (`recruiter_meetings`: type, one `starts_at`, mode, location, typed link, participants table, events with old/new
 times, outcome → follow-up) and upc-010 (`university_visits`: partnership roles, edit scope, lead rule, option pickers, page layout). Neither
@@ -44,7 +45,7 @@ Not in scope: the calendar and overlap warning (upc-011), the timeline (upc-013)
 appears in the assignee's task list), a meeting-provider integration (R14), and auto-closing "Schedule the next meeting" when the next
 meeting is booked (follow-up candidate).
 
-## 2. Data model — migration `0129_university_meetings`
+## 2. Data model — migration `0130_university_meetings`
 
 - `university_meeting_code_seq`.
 - `university_meetings`:
@@ -130,7 +131,7 @@ upc-006 `GET /partnership/universities/{id}/contacts`.
    (`test_upc_009_meetings.py`).
 3. Frontend: lib, `MeetingForm`, `MeetingActions`, `MeetingTable`, pages, university section, nav, with vitest.
 4. Playwright `upc-009-university-meetings.spec.ts`.
-5. Docs: DEC-SCOPE-144, API §12BL, RBAC §2.70, DATA_MODEL, SCREEN_CATALOG, backlog status.
+5. Docs: DEC-SCOPE-145, API §12BM, RBAC §2.71, DATA_MODEL, SCREEN_CATALOG, backlog status.
 
 ## 7. Regression set (lite)
 

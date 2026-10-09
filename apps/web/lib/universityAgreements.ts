@@ -1,5 +1,6 @@
 // upc-014 (DEC-SCOPE-142): §13 MoU / agreement management -- types, words, URLs and the menu list's query helpers. The API decides every
 // permission and move (`permissions`, `moves`); nothing here filters for security.
+import type { CommissionTerm } from "@/lib/commissionTerms";
 import type { LookupPage } from "@/lib/lookups";
 import type { ManagerRef } from "@/lib/telecaller";
 import { UNIVERSITIES_URL } from "@/lib/universities";
@@ -28,6 +29,7 @@ export type Agreement = {
   permissions: { can_edit_terms: boolean; can_edit_signing: boolean; can_renew: boolean };
   moves: { to_status: string; label: string }[];
   events?: AgreementEvent[];
+  commission_terms?: CommissionTerm[]; // upc-016: sent to the commission roles only (U2)
 };
 export type AgreementOptions = {
   courses: { id: string; title: string; level: string }[];

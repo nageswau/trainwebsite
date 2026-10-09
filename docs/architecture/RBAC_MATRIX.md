@@ -1278,7 +1278,20 @@ rule). Milestones and expected dates carry no commission data. Audit and logs ca
 | Edit expected dates, milestone target / achieved dates | own universities (primary/backup) | unowned + team universities | `403` | ✅ all | `403` |
 | Inactive university | `409` for every writer | | | | |
 
-### 2.70 University meetings *(net-new, added 2026-10-09 — `DEC-SCOPE-144`, `upc-009`)*
+### 2.70 University commission terms *(net-new, added 2026-10-09 — `DEC-SCOPE-144`, `upc-016`)*
+
+Enforced inline in `api/university_commission.py` + `services/university_commission.py` (`require_reader` = `partnership_access.
+can_see_commission`, then the University Master's `can_manage_agreements` and the agreement's freeze rule). **U2:** the fields are also
+removed server-side by `partnership_access.strip_commission` from every agreement payload for any other role. Audit and logs carry ids, the
+MoU number and field names only.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Read commission terms (agreement card, list, menu) | ✅ all | ✅ all | `403` | ✅ all | `403` (anonymous `401`) |
+| Add, edit, remove (agreement draft … negotiation) | own universities (primary/backup) | unowned + team universities | `403` | ✅ all | `403` |
+| Change after approval | `409` (renew) | `409` | `403` | `409` | `403` |
+
+### 2.71 University meetings *(net-new, added 2026-10-09 — `DEC-SCOPE-145`, `upc-009`)*
 
 Every partnership reader reads every meeting (MG14, the "a manager reads every university" convention). Scheduling needs the university
 edit scope (upc-006's `can_edit_contacts`); edit, reschedule, complete and cancel are for the responsible employee or the scheduler

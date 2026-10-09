@@ -1216,7 +1216,7 @@ class PartnershipTask(Base, TimestampMixin):
     cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
-# upc-009 (DEC-SCOPE-144, spec §2): university meetings (§7). Migration 0129 repeats these checks (test_upc_009_migration keeps them
+# upc-009 (DEC-SCOPE-145, spec §2): university meetings (§7). Migration 0130 repeats these checks (test_upc_009_migration keeps them
 # identical). The outcome fields are written only when the meeting is completed (MG10-MG12).
 UNIVERSITY_MEETING_CODE_SEQ = Sequence("university_meeting_code_seq", metadata=Base.metadata)
 UNIVERSITY_MEETING_CHECKS = {
@@ -1239,7 +1239,7 @@ def _university_meeting_checks(*names: str) -> tuple[CheckConstraint, ...]:
 
 
 class UniversityMeeting(Base, TimestampMixin):
-    """upc-009 (DEC-SCOPE-144): a meeting with a university (§7). Never deleted: cancelled instead. The contact person's name and
+    """upc-009 (DEC-SCOPE-145): a meeting with a university (§7). Never deleted: cancelled instead. The contact person's name and
     designation are copied when set (MG5), so the record keeps them after the contact changes or is deleted (FK SET NULL)."""
 
     __tablename__ = "university_meetings"
@@ -4723,3 +4723,42 @@ class UniversityAgreementEvent(Base):
     changed: Mapped[list] = mapped_column(JSON, default=list)
     position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# upc-016 (DEC-SCOPE-144, spec §2): §15 commercial / commission terms -- what a university pays EduSphere under one agreement, optionally
+# for some programmes / student countries (CM5). RESTRICTED (U2): only `partnership_access.COMMISSION_ROLES` ever see a row. Exactly one
+# rate per term, % or fixed (CM2); the currency list is the project's (CM3); the triggers answer Q-19 (CM1). Migration 0128 repeats
+# these; test_upc_016_migration keeps them identical.
+COMMISSION_TRIGGERS = ("enrolment", "visa_and_enrolment", "tuition_paid")
+COMMISSION_CURRENCIES = COUNSELING_CURRENCIES
+COMMISSION_TERM_CHECKS = {
+    "ck_university_commission_terms_one_rate": "(commission_percent IS NULL) <> (fixed_amount IS NULL)",
+    "ck_university_commission_terms_percent": "commission_percent IS NULL OR (commission_percent > 0 AND commission_percent <= 100)",
+    "ck_university_commission_terms_fixed": "fixed_amount IS NULL OR fixed_amount > 0",
+    "ck_university_commission_terms_currency": _in_list("currency", COMMISSION_CURRENCIES),
+    "ck_university_commission_terms_trigger": _in_list("trigger", COMMISSION_TRIGGERS),
+}
+
+
+class UniversityCommissionTerm(Base, TimestampMixin):
+    """upc-016 (§15): one commission term of an agreement -- the 9 terms. Empty `course_ids` = every programme, empty `country_ids` = every
+    student country. Rules live in `services/university_commission.py`; the CHECKs are the backstop."""
+
+    __tablename__ = "university_commission_terms"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in COMMISSION_TERM_CHECKS.items()),
+        Index("ix_university_commission_terms_agreement", "agreement_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    agreement_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("university_agreements.id", ondelete="RESTRICT"))
+    commission_percent: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    fixed_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    currency: Mapped[str] = mapped_column(String(3))
+    conditions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    course_ids: Mapped[list] = mapped_column(JSON, default=list)
+    country_ids: Mapped[list] = mapped_column(JSON, default=list)
+    payment_timeline: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    trigger: Mapped[str] = mapped_column(String(30))
+    payment_terms: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))

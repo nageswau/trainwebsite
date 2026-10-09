@@ -3293,7 +3293,7 @@ Design spec `docs/superpowers/specs/2026-10-09-upc-020-partnership-tasks-design.
 - **Nav:** the manager menu's Follow-ups & Tasks goes live; the head and super admin navs gain it. **Responsive:** single column, no
   side-scroll at 390 px.
 
-## upc-009 addendum (2026-10-09, `DEC-SCOPE-144`) — Meetings
+## upc-009 addendum (2026-10-09, `DEC-SCOPE-145`) — Meetings
 
 Design spec `docs/superpowers/specs/2026-10-09-upc-009-university-meetings-design.md` §4. Visual-reference mapping: None — not inspected. Do not claim parity.
 
@@ -3511,3 +3511,22 @@ Design spec `docs/superpowers/specs/2026-10-09-upc-008-partnership-timeline-desi
   sits under its field.
 - **Responsive:** at 390 px the milestone table sizes to its content (Status stays on screen) and the expected-timeline facts keep a
   readable value column; no page-level side-scroll (QA8-01..04).
+
+## upc-016 addendum (2026-10-09, `DEC-SCOPE-144`) — Commercial / commission terms (restricted)
+
+Design spec `docs/superpowers/specs/2026-10-09-upc-016-commission-terms-design.md` §4. Visual-reference mapping: None — not inspected. Do not claim parity.
+
+- **Route:** `/partnership/universities/[id]` — each agreement card gains a **Commission terms** block with a "Restricted" badge, rendered
+  only when the API sends `commission_terms` (partnership roles and super admin; never overseas_admin, counselors, BDMs, agents, the
+  university rep or the public). One row per term: the rate ("15%" or "GBP 1,500"), currency · trigger, "Applies to" (programmes ·
+  countries, or "All programmes · All countries"), conditions, payment timeline, payment terms. With edit rights (agreement still
+  negotiable): **Add commission term**, **Edit**, **Remove** (inline "Yes, remove" confirmation). The form: percentage / fixed amount
+  radio, the value, currency, trigger, payment timeline, conditions, payment terms, eligible programmes checklist, eligible countries chips
+  with a country search. Missing / out-of-range / > 2-decimal values are caught before sending; API refusals in `.form-error[role=alert]`
+  with the form kept; notices in `p[role=status]` (rendered only when shown); buttons disabled while sending; focus returns to Add.
+  **Empty:** "No commission terms recorded yet."
+- **Route:** `/partnership/commercial-terms` (manager menu "Commercial Terms", head nav) — table (university link + code, MoU number +
+  status, commission, trigger, applies to, payment timeline), newest first; GET filter form (trigger, currency, search); URL paging.
+  **States:** "No commission terms recorded yet." / "No commission terms match these filters." / past-the-end link; 403 → access card
+  ("Commission terms access required").
+- **Responsive:** the form grid stacks; the table becomes labelled cards below 640 px; no side-scroll at 820 px or 390 px.

@@ -1,9 +1,9 @@
 """upc-009 -- University meetings.
 
-Revision ID: 0129_university_meetings
-Revises: 0128_university_milestones
+Revision ID: 0130_university_meetings
+Revises: 0129_university_commission_terms
 
-docs/superpowers/specs/2026-10-09-upc-009-university-meetings-design.md §2 (DEC-SCOPE-144). Adds `university_meeting_code_seq`,
+docs/superpowers/specs/2026-10-09-upc-009-university-meetings-design.md §2 (DEC-SCOPE-145). Adds `university_meeting_code_seq`,
 `university_meetings`, `university_meeting_participants` and `university_meeting_events`. 0001 builds a fresh database from the current
 models, which already carry them, so each step is guarded. CHECKS repeats app.models (test_upc_009_migration). No backfill: existing
 universities have no recorded meetings. downgrade() refuses while any meeting exists: it would drop meeting records and their history.
@@ -14,8 +14,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0129_university_meetings"
-down_revision = "0128_university_milestones"
+revision = "0130_university_meetings"
+down_revision = "0129_university_commission_terms"
 branch_labels = None
 depends_on = None
 
@@ -118,7 +118,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text("SELECT 1 FROM university_meetings LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0129_university_meetings: university meetings exist. Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0130_university_meetings: university meetings exist. Remove them deliberately first.")
     op.drop_table("university_meeting_events")
     op.drop_table("university_meeting_participants")
     op.drop_table("university_meetings")

@@ -1,4 +1,4 @@
-"""upc-009 -- migration 0129_university_meetings (spec §2) and the §7 meeting catalogue (MG1, MG4). Round trip and the downgrade refusal
+"""upc-009 -- migration 0130_university_meetings (spec §2) and the §7 meeting catalogue (MG1, MG4). Round trip and the downgrade refusal
 run in a throwaway database built from scratch (the upc-001 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -15,14 +15,14 @@ from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_upc_009_migration_0129", VERSIONS / "0129_university_meetings.py")
+_spec = importlib.util.spec_from_file_location("_upc_009_migration_0130", VERSIONS / "0130_university_meetings.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0128_university_milestones", "0129_university_meetings"
+BASE, HEAD = "0129_university_commission_terms", "0130_university_meetings"
 
 
-def test_migration_chains_after_0128_and_is_the_single_head():
+def test_migration_chains_after_0129_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
@@ -74,7 +74,7 @@ async def test_tables_and_indexes_exist_in_the_shared_database(db_session):
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0128."""
+    """A fresh database at 0129."""
     cfg = _config()
     original = settings.database_url
     name = f"upc009_migration_{uuid.uuid4().hex[:8]}"
