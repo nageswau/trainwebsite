@@ -170,3 +170,19 @@ upc-006 `GET /partnership/universities/{id}/contacts`.
     described-by errors; Escape closes the inline outcome/cancel forms.
   - Loading ("Saving…"), empty (per view), past-the-end, error and access-refused states, as the visit pages.
   - Single column on mobile (`auto-fit` grids, table → cards below 640 px, long text `overflow-wrap: anywhere`).
+
+## 9. Browser QA (Phase 5/6)
+
+First pass (no code changes), Playwright against the isolated stack (`http://localhost:13209`), 1280 / 820 / 390 px. Passed: required
+fields, a past start and a `javascript:` link placed on their fields, a 500 → "The meeting could not be saved. Try again.", double-click
+schedules one meeting, the online-without-link warning, refresh and back keep the view, the form's Cancel discards, Escape closes the
+cancel form, a non-actor manager reads without actions and cannot schedule on another owner's university, overseas_admin gets the access
+card and no Meetings section, signed out → overseas sign-in, head nav, no horizontal overflow on list / detail / form / university page at
+820 and 390 px, no broken images. Console errors were only the deliberate 422 / 500 responses (plus cancelled Next prefetches).
+
+| ID | Severity | Role / page | Finding | Fix |
+|---|---|---|---|---|
+| QA-01 | Medium | manager / meeting edit → detail | After saving an edit, the detail page showed the pre-edit meeting until a reload (the database held the new values; Next's router cache served the page visited moments before) | `MeetingForm` calls `router.refresh()` after `router.push` (the `UniversityForm` idiom); vitest + e2e reschedule |
+| QA-02 | Medium | manager / meeting detail | "Outcome recorded." / "Meeting cancelled." could vanish: the actions card was rendered only while an action remained, so the re-read unmounted it (intermittent e2e failure) | The status card is always rendered (with the cancel reason, who recorded the outcome, or who may change it); vitest page test + e2e ×2 |
+| QA-03 | Low | all / form + detail | The "no link yet" warning was unstyled (`.notice` has no CSS) | `form-warning` (the existing amber style); vitest |
+| QA-04 | Low | manager / form | With an error under the link, the Location input stretched to the row height | The form's grids align items to the start; verified by screenshot |
