@@ -151,7 +151,8 @@ async def test_a_contact_without_an_email_or_number_cannot_be_messaged(client, d
 
 
 @pytest.mark.asyncio
-async def test_email_needs_smtp(client, db_session):
+async def test_email_needs_smtp(client, db_session, monkeypatch):
+    monkeypatch.setattr(settings, "smtp_host", None)  # whatever the environment configures
     _, _, _, _, person = await _setup(client, db_session)
     response = await client.post(MESSAGES, json={"contact_id": person["id"], "channel": "email", "subject": "S", "body": "B"})
     assert response.status_code == 503
