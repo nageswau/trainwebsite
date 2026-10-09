@@ -5670,3 +5670,42 @@ taken on the owner's instruction to proceed with the recommended answers. The ne
 - Opting out leaves applications, interviews and offers untouched. Recruiter reads of the candidate then return `404`, the pool rule
   already in place.
 - **New Feature ID authorized:** `rec-010`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-010.
+
+### DEC-SCOPE-141 — Find Candidates: skill AND/OR search, synonyms, filters, facets, result cards (`rec-013`)
+
+**Evidence:**
+- `EVID-018` user question (line 1092: "all Java-skilled people at one place"); S2-§5 exact skill search, §6 required/preferred skills, §7
+  AND / OR / grouped expressions, §9 one-click search with facets, §12 whole-database search, §13 source shown, §16 synonyms, §18 the search
+  screen, §19 the result card (lines 1287–1734). Appendix B F1–F3 (facet bands).
+- `DEC-SCOPE-116` R11 (every recruiter searches the whole opted-in + external pool). `DEC-SCOPE-119` (rec-006: aliases, related skills),
+  `DEC-SCOPE-122` (rec-009: the candidate master and pool filter), `DEC-SCOPE-137` (rec-011: one searchable row per candidate skill, the
+  `(skill_id, status, candidate_id)` index), `DEC-SCOPE-136` (rec-017: adding a candidate to a requirement).
+- `RECRUITER_CRM_BACKLOG.md` §rec-013: AC1–AC5 and question Q-15.
+
+**Status:** the owner asked to proceed with the recommended answers, so nothing was asked; every row below is **UNVERIFIED** (a recorded
+default) until confirmed.
+
+**Numbering:** `DEC-SCOPE-141`, API §12BI, RBAC §2.67, **no migration**. rec-020 (`0124` / DEC-SCOPE-139 / §12BG / §2.65) and rec-018
+(`0125` / DEC-SCOPE-140) were open in parallel when this was written; §12BH / §2.66 are left for rec-018. Spec:
+`docs/superpowers/specs/2026-10-09-rec-013-find-candidates-design.md`.
+
+| # | Point | Default |
+|---|---|---|
+| FS1 (Q-15) | AND/OR input | A chip builder, never a typed query: "Must have all of" (AND) plus up to 5 "at least one of" groups (OR inside, ANDed with the rest) |
+| FS2 | Synonyms | Each term resolves through the Skills Master (a name or an alias) and also matches the skill's related skills, both ways; the response lists the expansion |
+| FS3 | Unknown term | `422 {message, code: "unknown_skill", term, suggestions}` (up to 5 active skills whose name or alias contains the text) |
+| FS4 | Size | 1–20 terms, at most 5 groups of 1–10; otherwise `422` |
+| FS5 | Filters | Experience (months on the wire; the page takes whole years, a maximum year counting in full), current location and qualification (substring), availability bands, expected salary (INR/year; the page takes lakhs), source, status, verified only |
+| FS6 | Job type | Not offered: the candidate master has no job-type preference |
+| FS7 | Facets | F1 experience, F2 top-5 locations + Other + Not recorded, F3 availability (Immediate / 15 / 30 / 31–59 / 60+ / Not recorded), over the whole filtered set; each facet adds up to the total |
+| FS8 | Card | Name, preferred role, current company, experience, skills (matched first; verified marked), location, availability, expected salary, source + detail, status. Match % is rec-016 |
+| FS9 | Actions | View profile; Shortlist (writers, into a chosen requirement at `shortlisted` via rec-017); Contact (writers, the profile's call/message section). Share is rec-019 |
+| FS10 | Roles | `placement_team`, `placement_manager`, `super_admin`; `hr_team` reads (no Shortlist/Contact). Everyone else `403` |
+| FS11 | Order / paging | Newest first; 50 a page (≤ 100) |
+| FS12 | Pool | External + opted-in candidates, not archived (AC5) |
+
+**Consequences:**
+- New: `POST /recruiter/candidates/search`, `services/candidate_search.py` (six queries whatever the pool size; terms become skill ids
+  before any candidate is read), the `/recruiter/find-candidates` page and a "Find Candidates" nav entry for the four roles.
+- Changed: the candidate detail wraps its calls and messages cards in `#contact`.
+- **New Feature ID authorized:** `rec-013`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-013.

@@ -2053,6 +2053,17 @@ can_complete, can_follow_up, can_close}, editable_fields, created_at, updated_at
 | `GET /employer/candidates` (EMP-003, changed) | Same fields and `q`. The rows are now the opted-in, non-archived candidates of active IT students whose `PlacementProfile` is missing or not withdrawn; `availability` = candidate status `available` (R12) |
 | `POST /employer/shortlist` (EMP-004, changed) | A student who is not employer-visible (as above) → `422` "Valid student candidate is required". It no longer creates a candidate |
 
+## 12BI. Find Candidates — skill AND/OR search, filters, facets (`rec-013`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-141` (FS1–FS12). Spec: `docs/superpowers/specs/2026-10-09-rec-013-find-candidates-design.md` §3–§4. No migration.
+- **Roles:** `placement_team`, `placement_manager`, `super_admin`, `hr_team` (read). Anyone else → `403` "Your role cannot view
+  candidates", before the body is read. Signed out → `401`.
+- **Pool:** external candidates and opted-in students, never archived (R11, rec-010).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `POST /recruiter/candidates/search?limit=&offset=` | **Body** (unknown keys → `422`): `all: [skill]` (every one), `any: [[skill]]` (at least one of each group), `verified_only`, `experience_min_months`/`experience_max_months` (0–600), `location`, `qualification` (≤ 120, substring), `availability: [immediate\|d15\|d30\|d31_59\|d60_plus]`, `salary_min`/`salary_max` (INR/year, ≥ 0), `source_id`, `status`. 1–20 terms, ≤ 5 groups of 1–10, min ≤ max — else `422` (one sentence). A term that is no active skill name or alias → `422 {message, code: "unknown_skill", term, suggestions}`. Each term also matches the skill's related skills. **→ 200** `{items, total, limit, offset, facets: {experience: [{key, count}], location: [{value, count}], availability: [{key, count}]}, terms: [{term, skill: {id, name}, also: [name]}]}`; item = `id, candidate_code, name, preferred_role, current_company, experience_months, location, notice_days, expected_salary, source {id, name, active}, source_detail, status, skills: [{name, level, status, matched}]` — never mobile or email. Location facet values: a location, `"__other__"`, or `null` (not recorded). Newest first; `limit` ≤ 100 (default 50). Read only; logged as `candidate_search` with counts, never the text |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

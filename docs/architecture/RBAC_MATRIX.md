@@ -1215,6 +1215,16 @@ Consent is the gate to employer visibility (R4, R12). The routes carry no user i
 | `placement_team`, `placement_manager`, `super_admin`, `hr_team` | no change: the candidate master (§2.48) already shows opted-in students and returns `404` after an opt-out | the pool | `rec-010` |
 | every other role (staff, `overseas_student`, admins) | `/account/placement-pool*` → `403` | — | `rec-010` |
 
+### 2.67 Find Candidates *(net-new, added 2026-10-09 — `DEC-SCOPE-141`, `rec-013`)*
+
+Read only, over the whole pool (R11): there is no per-recruiter scope to search within. The role check runs before the body is read.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team`, `placement_manager`, `super_admin` | `POST /recruiter/candidates/search`; on a card, Shortlist (through rec-017's add route, so its requirement scope and rules apply) and Contact (the profile) | external + opted-in candidates, not archived | `rec-013` |
+| `hr_team` | the same search, read only (no Shortlist, no Contact, no source picker) | same | `rec-013` |
+| `employer`, `it_admin`, `it_student`, every other role | `403` | — | `rec-013` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
