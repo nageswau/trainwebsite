@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.identifiers import normalize_key
 from app.models import AuditLog, OverseasCourse, Scholarship, University, User
+from app.services import partnership_universities as unis
 from app.services.partnership_access import can_see_commission, strip_commission
 
 logger = logging.getLogger("app.partnership")
@@ -33,6 +34,14 @@ FIELDS = (
     "english_score", "scholarship_ids", "application_process", "deadline", "active", *COMMISSION_COLUMNS,
 )  # fmt: skip
 ORDER = (OverseasCourse.title, OverseasCourse.level, OverseasCourse.id)
+
+
+async def writable_university(db: AsyncSession, user: User, university_id: UUID, route: str) -> University:
+    """The read gate (403), the university row FOR UPDATE (404), then CO1's write rule (403 role/team, 409 inactive)."""
+    await unis.require_reader(db, user)
+    uni = await unis.load(db, university_id, lock=True)
+    unis.require(user, uni, await unis.team_of(db, user), "can_edit", route)
+    return uni
 
 
 async def load(db: AsyncSession, university_id: UUID, course_id: UUID) -> OverseasCourse:

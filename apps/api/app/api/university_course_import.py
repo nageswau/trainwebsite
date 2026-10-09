@@ -15,11 +15,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.api.school_bulk import IN_PROGRESS, KEY_REUSED, LOCK_TIMEOUT, _lock_timed_out, _read_csv, _read_upload
-from app.api.university_courses import _writable
 from app.core.database import get_db
 from app.models import AuditLog, CourseImportBatch, University, User
 from app.services import course_import as imp
 from app.services import partnership_universities as unis
+from app.services import university_courses as courses
 
 router = APIRouter(prefix="/partnership/universities", tags=["partnership-course-import"])
 TARGET = "course_import"  # the file-error log label shared with the ENH-028 parser
@@ -68,7 +68,7 @@ async def import_courses(
     filled = _read_csv(raw, target_type=TARGET, user=user, required=imp.REQUIRED, columns=imp.COLUMNS, max_rows=imp.MAX_ROWS, known=imp.COLUMNS)
     try:
         await db.execute(text("SELECT set_config('lock_timeout', :timeout, true)"), {"timeout": LOCK_TIMEOUT})
-        uni = await _writable(db, user, university_id, "course_import")
+        uni = await courses.writable_university(db, user, university_id, "course_import")
         batch, replay = await _claim(db, user, uni, key, hashlib.sha256(raw).hexdigest())
         if replay:
             return await _report(db, batch)

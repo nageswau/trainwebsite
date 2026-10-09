@@ -94,3 +94,20 @@ Refusal order (writes): 401 → 403 role → 404 university → 403 scope / 409 
 
 `test_ovs_001_discovery.py`, `test_ovs_002_application.py`, `test_upc_003_public.py`, `test_agn_007_*`, `test_agn_008_*`, `test_upc_016_*`,
 `test_upc_014_agreements.py`; `UniversityDetailPage.test.tsx`, `navigation.partnership.test.ts`; the upc-003 / upc-016 e2e specs.
+
+## 8. QA (Phase 5, 2026-10-09, `upc017` stack on :13017)
+
+Playwright `upc-017-course-master.spec.ts` passed, with the upc-001 / upc-003 / upc-016 / OVS-001 specs (OVS-001's country list failed
+once on the first ISR hit after `--build`, then passed — the known warm-up). An exploratory script (scratchpad) covered: empty state;
+client validation (required, > 2 decimals, half a currency pair, TOEFL > 120); a double click (one POST); the duplicate 409; cancel; an
+induced 500 ("could not be saved") and a dropped request (the shared "did not complete" text); a no-change save; reload; import (non-CSV
+precheck, wrong header 422 "Unknown column: name", mixed rows report); tablet (820 px) / phone (390 px) with the form open and on the menu,
+no side scroll; menu filtered-empty, past-end, level filter and back navigation; a non-owner manager (no buttons); a counselor (menu
+refused, API 403); signed out (login redirect); no broken images. Console / network errors were only the induced ones.
+
+| ID | Severity | Role / page | Found | Fix |
+|---|---|---|---|---|
+| QA-01 | Low (a11y) | manager, university page | After "Add course" / "Edit", focus fell to `<body>` (the button unmounts) | The form's title field takes focus (vitest + browser re-check) |
+| QA-02 | Low (copy) | manager, course form + API | "An TOEFL score cannot be above 120." / API "A IELTS score…" | "The {test} score cannot be above {max}." in both (vitest + browser re-check) |
+
+Pre-existing, not touched: `PartnershipTeamTable.test.tsx` ("17 areas still to come") fails on main already.

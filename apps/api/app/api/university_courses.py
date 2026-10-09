@@ -26,13 +26,6 @@ router = APIRouter(prefix="/partnership", tags=["partnership-courses"])
 PAGE = Query(50, ge=1, le=50)
 
 
-async def _writable(db: AsyncSession, user: User, university_id: UUID, route: str) -> University:
-    await unis.require_reader(db, user)
-    uni = await unis.load(db, university_id, lock=True)
-    unis.require(user, uni, await unis.team_of(db, user), "can_edit", route)
-    return uni
-
-
 async def _one(db: AsyncSession, user: User, course: OverseasCourse) -> dict:
     await db.refresh(course)  # server defaults (timestamps) are expired after a flush
     return {"course": (await svc.courses_out(db, user, [course], {course.university_id}))[0]}
@@ -69,7 +62,7 @@ async def course_options(university_id: UUID, user: User = Depends(get_current_u
 
 @router.post("/universities/{university_id}/courses", status_code=201)
 async def create_course(university_id: UUID, payload: CourseIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    uni = await _writable(db, user, university_id, "course_create")
+    uni = await svc.writable_university(db, user, university_id, "course_create")
     # The commission gate applies only when the field is sent: a non-commission role creates without ever naming it (CO2).
     values = svc.stored(user, payload.model_dump(exclude=set() if "commission" in payload.model_fields_set else {"commission"}))
     await svc.check_values(db, uni, values)
@@ -86,7 +79,7 @@ async def create_course(university_id: UUID, payload: CourseIn, user: User = Dep
 @router.patch("/universities/{university_id}/courses/{course_id}")
 async def update_course(university_id: UUID, course_id: UUID, payload: CourseUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Only the fields sent; an equal value is not a change. Deactivating keeps every application's course (CO11)."""
-    uni = await _writable(db, user, university_id, "course_update")
+    uni = await svc.writable_university(db, user, university_id, "course_update")
     changes = svc.stored(user, payload.model_dump(exclude_unset=True))
     course = await svc.load(db, uni.id, course_id)
     changed = sorted(k for k, v in changes.items() if getattr(course, k) != v)
