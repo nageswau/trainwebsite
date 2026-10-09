@@ -3491,3 +3491,20 @@ Design spec `docs/superpowers/specs/2026-10-09-upc-008-partnership-timeline-desi
   sits under its field.
 - **Responsive:** at 390 px the milestone table sizes to its content (Status stays on screen) and the expected-timeline facts keep a
   readable value column; no page-level side-scroll (QA8-01..04).
+
+## upc-021 addendum (2026-10-09, `DEC-SCOPE-144`) — Targets & Forecast (monthly targets vs actual)
+
+Design spec `docs/superpowers/specs/2026-10-09-upc-021-partnership-targets-design.md` §5. Visual-reference mapping: None — not inspected. Do not claim parity.
+
+- **Route `/partnership/targets`** (menu "Targets & Forecast" for managers and heads; "Partnership Targets" for super_admin). A month
+  select (a year back to a year ahead; a plain GET form, so it works without JavaScript; a malformed month falls back to this month with a
+  note). **Head / super_admin:** "Team targets — <Month>": a table with one row per manager (an inactive one is marked) and a **Team** row
+  in the footer, one column per §21 KPI, each cell "actual / target · achievement" ("Not tracked" for Meetings, "Not started" for a future
+  month, never 0); each row has **Set targets** (or **View** for a past month / inactive manager) to the manager's page. Empty: "No
+  partnership managers report to you yet." **Manager:** "My targets — <Month>", their own sheet, read-only.
+- **Route `/partnership/targets/[managerId]`**: "<Manager> — <Month>" with a link back to all team targets; the shared targets editor (the
+  bdm-016 table: KPI with its definition, Target input, Achieved, Achievement) with **Save targets** (sends only changed values; blank
+  clears; a second click is ignored), "Saved n targets." in `role=status`, a refusal or an invalid value in `.form-error[role=alert]`.
+  Past months and inactive managers are read-only with a note. A malformed id or a manager out of scope shows "Partnership manager not found".
+- **Responsive / a11y:** the comparison scrolls inside its focusable, labelled region; the page has no side-scroll at 375 px; KPI headers
+  carry their definition as a tooltip and the editor shows it inline; every input has a label.

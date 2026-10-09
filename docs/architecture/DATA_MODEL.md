@@ -1709,3 +1709,19 @@ on output (Q-10), never stored.
 - Proposal, Signed, First Application and First Admission are derived on read from `university_stage_history`, `university_agreements`,
   `overseas_applications` and `application_status_history` (MS4/MS5); a recorded `achieved_on` wins over the derived date.
 - `downgrade()` refuses while any milestone row or expected value exists.
+
+## Monthly partnership targets (`upc-021`, `DEC-SCOPE-144`; migration `0129_partnership_targets`, after `0128_university_milestones`)
+
+**`partnership_targets` columns:**
+- `id`, `manager_user_id` → `users` (FK RESTRICT), `month` date (CHECK first day of the month), `kpi_key` varchar(40) (CHECK: the 7 §21
+  keys, `app/partnership_target_kpis.py`), `target` integer (CHECK 0–100000), `set_by_user_id` → `users` (FK RESTRICT), `set_at`, timestamps.
+
+**Constraints and indexes:** `ck_partnership_targets_month_start`, `ck_partnership_targets_kpi`, `ck_partnership_targets_target_range`;
+`uq_partnership_targets_manager_month_kpi (manager_user_id, month, kpi_key)` (also the read path and the upsert key).
+
+**Design notes:**
+- Only targets are stored. Actuals are computed on read by `services/partnership_metrics.target_actuals` from the append-only
+  `university_assignment_history`, `university_stage_history` and `university_agreement_events`, credited to the primary manager at the
+  time of each event, so a closed month is never re-scored (TG8/TG9).
+- Clearing a target deletes its row; the history is the audit log (`partnership_target.set`).
+- `downgrade()` refuses while any target exists.

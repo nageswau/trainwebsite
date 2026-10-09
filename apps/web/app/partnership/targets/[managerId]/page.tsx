@@ -38,7 +38,7 @@ export default async function PartnershipManagerTargetsPage({ params, searchPara
             {!sheet.editable && <p className="muted">{sheet.month_status === "past" ? "Past months are read-only." : "These targets can't be changed."}</p>}
           </div>
         </div>
-        <TargetsEditor key={`${sheet.manager.id}-${sheet.month}`} initial={sheet} ownerId={sheet.manager.id} ownerField="manager_user_id" saveUrl={TARGETS_URL} sheetUrl={managerTargetUrl} />
+        <TargetsEditor key={`${sheet.manager.id}-${sheet.month}`} initial={sheet} ownerId={sheet.manager.id} ownerField="manager_user_id" saveUrl={TARGETS_URL} />
       </div>
     </PortalShell>
   );

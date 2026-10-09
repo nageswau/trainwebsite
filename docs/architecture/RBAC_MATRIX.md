@@ -1279,6 +1279,17 @@ rule). Milestones and expected dates carry no commission data. Audit and logs ca
 | Edit expected dates, milestone target / achieved dates | own universities (primary/backup) | unowned + team universities | `403` | ✅ all | `403` |
 | Inactive university | `409` for every writer | | | | |
 
+### 2.70 Monthly partnership targets *(net-new, added 2026-10-09 — `DEC-SCOPE-144`, `upc-021`)*
+
+Enforced inline in `api/partnership_targets.py` (`require_reader` / `require_setter`, then the manager scope: the caller themself, a head's
+direct reports, or every manager for `super_admin`). Targets carry no commission data. Audit and logs carry ids, KPI keys and numbers only.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Read targets vs actual | own only (another manager `404`) | direct reports + team row | `403` | ✅ all | `403` |
+| Set / clear targets | `403` (even their own) | direct reports; current month and up to 12 ahead | `403` | ✅ all, past months too | `403` |
+| Inactive manager | — | `422` on write | — | `422` on write | — |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

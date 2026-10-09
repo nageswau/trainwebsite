@@ -129,3 +129,17 @@ are neither written nor audited; one commit. Logs carry actor id, month and coun
 - **Frontend:** existing `portal-title`, `analytics-form`, `table-scroll` region and `table` idioms; numeric inputs with labels;
   `role=status`/`role=alert` messages; double-submit guard (the editor's `inFlight`); the wide comparison scrolls inside its focusable
   region on mobile.
+
+## 11. QA evidence (2026-10-09, Docker stack `upc021`, Chromium via Playwright)
+
+| ID | Severity | Role / page | Steps | Expected | Actual | Status |
+|---|---|---|---|---|---|---|
+| QA21-01 | High | Manager `/partnership/targets` (and every BDM target sheet via the shared editor) | Sign in as a manager, open Targets & Forecast | Own month, read-only | "Application error: a server-side exception"; web log: "Functions cannot be passed directly to Client Components … sheetUrl: function" | **Fixed**: the editor takes data-only props and re-reads `{saveUrl}/{ownerId}?month=`; unit tests assert no function props (partnership pages + `BdmTargetsEditor`); manager page and the BDM sheet re-verified in the browser, bdm-016 e2e green |
+
+Exploratory pass (all as expected after the fix): manager PUT → 403 "Only a partnership head can set targets"; manager → peer or
+malformed id → "Partnership manager not found"; head → another head's manager → same; other head's managers not listed; counselor →
+"Partnership targets access required"; signed out → `/overseas/login?next=/partnership/targets`; invalid target (-3, 4.5) refused in place;
+save, no-change save ("No target changed."), refresh keeps the value, blank clears ("Saved 1 target."), back returns to the list; past
+month read-only with only "View"; future month "Not started"; malformed month falls back with a note; team row sums (2 / 5 · 40% for two
+Proposal Sent moves); 820 px and 375 px have no page side-scroll (the table scrolls in its region); no console errors; no 5xx (only
+Next.js `_rsc` prefetches aborted by navigation). Super admin sees every manager (145 in the shared test DB) in one table — see risks.

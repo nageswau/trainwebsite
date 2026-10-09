@@ -10,8 +10,7 @@ type Props = {
   initial: EditableSheet;
   ownerId: string; // the person whose targets these are
   ownerField: string; // how the save body names them (`bdm_user_id`, `manager_user_id`)
-  saveUrl: string; // the batch PUT
-  sheetUrl: (ownerId: string, month: string) => string; // the sheet re-read after a save
+  saveUrl: string; // the batch PUT; the sheet is re-read from `${saveUrl}/${ownerId}?month=` (bdm-016 and upc-021 alike)
 };
 
 // One text input per KPI: its target, or blank when none is set.
@@ -19,8 +18,9 @@ const draftsOf = (sheet: EditableSheet): Record<string, string> => Object.fromEn
 
 // bdm-016 (spec §6), shared with upc-021: one person's month -- each KPI's target (an input when the month is editable), achieved
 // (computed by the API; an untracked KPI says so, never 0) and achievement %. Save sends only the targets that changed (a blank input
-// clears one), then re-reads the sheet. The API decides every rule; a refusal is shown as its own sentence.
-export default function TargetsEditor({ initial, ownerId, ownerField, saveUrl, sheetUrl }: Props) {
+// clears one), then re-reads the sheet. The API decides every rule; a refusal is shown as its own sentence. Props are plain data: server
+// pages render this client component, so no function can be passed (QA21-01).
+export default function TargetsEditor({ initial, ownerId, ownerField, saveUrl }: Props) {
   const [sheet, setSheet] = useState(initial);
   const [drafts, setDrafts] = useState(() => draftsOf(initial));
   const [busy, setBusy] = useState(false);
@@ -60,7 +60,7 @@ export default function TargetsEditor({ initial, ownerId, ownerField, saveUrl, s
     }
     const changed = Number((outcome.data as { changed?: number }).changed ?? items.length);
     try {
-      const response = await fetch(sheetUrl(ownerId, sheet.month));
+      const response = await fetch(`${saveUrl}/${ownerId}?month=${sheet.month}`);
       const fresh = response.ok ? await response.json() : null;
       if (isTargetSheet(fresh)) {
         setSheet(fresh);

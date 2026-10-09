@@ -59,7 +59,7 @@ export default async function PartnershipTargetsPage({ searchParams }: { searchP
           </div>
         </div>
         {own ? (
-          <TargetsEditor key={own.month} initial={own} ownerId={own.manager.id} ownerField="manager_user_id" saveUrl={TARGETS_URL} sheetUrl={managerTargetUrl} />
+          <TargetsEditor key={own.month} initial={own} ownerId={own.manager.id} ownerField="manager_user_id" saveUrl={TARGETS_URL} />
         ) : (
           <PartnershipTargetsTable team={team!} month={month} />
         )}

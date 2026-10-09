@@ -2178,6 +2178,20 @@ expected_recruitment_start}` and `permissions.can_edit_timeline`.
 | `PATCH /partnership/universities/{id}/milestones/{kind}` | JSON `{target_date?, achieved_on?}` (null clears; at least one field; unknown fields `422`); unknown `kind` `422`; `achieved_on` after today (IST) `422`. `200` the full page (statuses depend on each other) |
 | `PATCH /partnership/universities/{id}/expected` | JSON `{target_partnership_date?, expected_intake? (≤ 80, blank → null), expected_agreement_date?, expected_recruitment_start?}`; at least one field; unknown fields (incl. the derived month/quarter) `422`. `200 {university}` |
 
+## 12BL. Monthly partnership targets vs actual (`upc-021`) — addendum, 2026-10-09
+
+`DEC-SCOPE-144`; design spec `docs/superpowers/specs/2026-10-09-upc-021-partnership-targets-design.md` §4. Migration `0129_partnership_targets`. Checks run role → scope: a role with no access is `403`, a
+manager outside the caller's scope `404`. Readers: `partnership_manager` (with a profile; own figures only), `partnership_head` (direct
+reports), `super_admin` (all). Writer: `partnership_head` (direct reports) and `super_admin`. The month is `YYYY-MM` (IST; default the
+current month; malformed `422`). A KPI value is `{key, target, achieved, percent}`: `achieved` is null for Meetings (not tracked until
+upc-009) and before the month starts; `percent` is null without a target. GETs have no side effects; actuals are never stored.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/targets?month=` | `{month, month_status: past\|current\|future, editable, kpis: [{key, label, definition, tracked}], managers: [{manager {id, full_name}, active, kpis: [value]}], team: [value]}`. Managers in scope who existed by the month's end, active or holding a target that month, ordered by name. Not a list endpoint: no paging (constant query count) |
+| `GET /partnership/targets/{manager_user_id}?month=` | `{month, month_status, editable, manager, kpis: [{key, label, definition, tracked, target, achieved, percent}]}`; outside scope / unknown `404` |
+| `PUT /partnership/targets` | JSON `{month, items: [{manager_user_id, kpi_key, target: int 0–100000 \| null}]}` (1–200 items, one per manager + KPI; unknown fields `422`). `200 {month, changed}`. Manager or other role `403`; manager outside scope `404`; inactive manager `422`; past month by a head or > 12 months ahead `422`. All or nothing; unchanged values are neither written nor audited (`partnership_target.set`, `{month, changes: [{kpi, from, to}]}`). No ETags or idempotency keys: a repeated PUT changes nothing |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

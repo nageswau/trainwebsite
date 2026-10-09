@@ -87,6 +87,7 @@ describe("upc-021 targets pages", () => {
     expect(tree.find((el) => el.type === PortalShell)!.props.nav).toBe(PARTNERSHIP_NAV);
     const editor = tree.find((el) => el.type === TargetsEditor)!;
     expect((editor.props.initial as ManagerTargetSheet).editable).toBe(false);
+    expect(Object.values(editor.props).some((v) => typeof v === "function")).toBe(false); // QA21-01: a server page passes only data
   });
 
   it("another role is refused before the API is asked for targets", async () => {
@@ -100,6 +101,7 @@ describe("upc-021 targets pages", () => {
     const tree = elements(await ManagerTargetsPage({ params: Promise.resolve({ managerId: M1 }), searchParams: Promise.resolve({ month: "2026-09" }) }));
     const editor = tree.find((el) => el.type === TargetsEditor)!;
     expect(editor.props).toMatchObject({ ownerId: M1, ownerField: "manager_user_id", saveUrl: "/api/v1/partnership/targets" });
+    expect(Object.values(editor.props).some((v) => typeof v === "function")).toBe(false); // QA21-01
     expect(hrefs(tree)).toContain("/partnership/targets?month=2026-09");
   });
 
@@ -122,7 +124,7 @@ describe("upc-021 targets editor", () => {
       url === "/api/v1/partnership/targets" ? res({ month: "2026-09", changed: 1 }) : res(sheet({ kpis: [{ ...sheet().kpis[0], target: 6, percent: 17 }, sheet().kpis[1]] })),
     );
     vi.stubGlobal("fetch", fetchMock);
-    render(<TargetsEditor initial={sheet()} ownerId={M1} ownerField="manager_user_id" saveUrl="/api/v1/partnership/targets" sheetUrl={(id, month) => `/api/v1/partnership/targets/${id}?month=${month}`} />);
+    render(<TargetsEditor initial={sheet()} ownerId={M1} ownerField="manager_user_id" saveUrl="/api/v1/partnership/targets" />);
     fireEvent.change(screen.getByLabelText("Proposals target"), { target: { value: "6" } });
     fireEvent.click(screen.getByRole("button", { name: "Save targets" }));
     await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Saved 1 target."));
