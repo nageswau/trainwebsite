@@ -6916,6 +6916,7 @@ class UniversityPermissions(BaseModel):
     can_reopen: bool  # upc-007 PS6
     can_edit_contacts: bool  # upc-006 CT5
     can_manage_documents: bool  # upc-026 DC8
+    can_edit_timeline: bool  # upc-008 MS10
 
 
 class UniversityRow(BaseModel):
@@ -6979,6 +6980,7 @@ class UniversityDetail(UniversityRow):
     updated_at: datetime
     pipeline: UniversityPipelineOut
     follow_up: "UniversityFollowUpOut"  # upc-020 TK14/TK15
+    expected: "UniversityExpectedOut"  # upc-008 §5
 
 
 class LinkedBdmOrganization(BaseModel):
@@ -8647,3 +8649,60 @@ class UniversityEmailCreate(_UniversityMessageBase):
 
 
 UniversityMessageCreate = Annotated[UniversityWhatsAppCreate | UniversityEmailCreate, Field(discriminator="channel")]
+
+
+# --- upc-008 (DEC-SCOPE-142, spec §3): expected timeline + milestone tracker -------------------------------------------------------
+MilestoneKind = Literal[
+    "university_contacted", "meeting", "presentation", "proposal", "documents", "negotiation", "agreement", "signed", "onboarding",
+    "student_recruitment", "first_application", "first_admission", "active_partnership",
+]  # = partnership_milestones.MILESTONE_KEYS (test_upc_008_migration)  # fmt: skip
+MilestoneStatus = Literal["done", "in_progress", "pending", "delayed"]  # Q-11 (MS3)
+
+
+class _OneOrMore(BaseModel):
+    """A PATCH body: only the fields sent change (null clears one); an empty body is a 422."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def _not_empty(self):
+        if not self.model_fields_set:
+            raise ValueError("Send at least one field to change")
+        return self
+
+
+class UniversityMilestoneUpdate(_OneOrMore):
+    target_date: date | None = None
+    achieved_on: date | None = None  # not after today (IST), MS6: checked by the service
+
+
+class UniversityExpectedUpdate(_OneOrMore):
+    target_partnership_date: date | None = None
+    expected_intake: _university_str(80) = None
+    expected_agreement_date: date | None = None
+    expected_recruitment_start: date | None = None
+
+
+class UniversityExpectedOut(BaseModel):
+    target_partnership_date: date | None
+    expected_month: str | None  # YYYY-MM, derived (Q-10, MS8)
+    expected_quarter: str | None  # YYYY-Qn, calendar quarters, derived
+    expected_intake: str | None
+    expected_agreement_date: date | None
+    expected_recruitment_start: date | None
+
+
+class UniversityMilestoneOut(BaseModel):
+    kind: MilestoneKind
+    label: str
+    target_date: date | None
+    achieved_on: date | None
+    achieved_by: Literal["manual", "auto"] | None
+    auto_source: Literal["stage", "application", "admission"] | None  # the event that achieves it (MS4), when it has one
+    status: MilestoneStatus
+
+
+class UniversityMilestonePage(BaseModel):
+    items: list[UniversityMilestoneOut]
+    today: date  # IST, the day statuses were computed for
+    can_edit: bool
