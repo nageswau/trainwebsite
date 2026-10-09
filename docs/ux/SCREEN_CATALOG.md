@@ -3530,3 +3530,19 @@ Design spec `docs/superpowers/specs/2026-10-09-upc-016-commission-terms-design.m
   **States:** "No commission terms recorded yet." / "No commission terms match these filters." / past-the-end link; 403 → access card
   ("Commission terms access required").
 - **Responsive:** the form grid stacks; the table becomes labelled cards below 640 px; no side-scroll at 820 px or 390 px.
+
+## upc-021 addendum (2026-10-09, `DEC-SCOPE-146`) — Targets & Forecast (monthly targets vs actual)
+
+Design spec `docs/superpowers/specs/2026-10-09-upc-021-partnership-targets-design.md` §5. Visual-reference mapping: None — not inspected. Do not claim parity.
+
+- **Route `/partnership/targets`** (menu "Targets & Forecast" for managers and heads; "Partnership Targets" for super_admin). A month
+  select (a year back to a year ahead; a plain GET form, so it works without JavaScript; a malformed month falls back to this month with a
+  note). **Head / super_admin:** "Team targets — <Month>": a table with one row per manager (an inactive one is marked) and a **Team** row
+  in the footer, one column per §21 KPI, each cell "actual / target · achievement" ("Not started" for a future month, never 0); each row has **Set targets** (or **View** for a past month / inactive manager) to the manager's page. Empty: "No
+  partnership managers report to you yet." **Manager:** "My targets — <Month>", their own sheet, read-only.
+- **Route `/partnership/targets/[managerId]`**: "<Manager> — <Month>" with a link back to all team targets; the shared targets editor (the
+  bdm-016 table: KPI with its definition, Target input, Achieved, Achievement) with **Save targets** (sends only changed values; blank
+  clears; a second click is ignored), "Saved n targets." in `role=status`, a refusal or an invalid value in `.form-error[role=alert]`.
+  Past months and inactive managers are read-only with a note. A malformed id or a manager out of scope shows "Partnership manager not found".
+- **Responsive / a11y:** the comparison scrolls inside its focusable, labelled region; the page has no side-scroll at 375 px; KPI headers
+  carry their definition as a tooltip and the editor shows it inline; every input has a label.

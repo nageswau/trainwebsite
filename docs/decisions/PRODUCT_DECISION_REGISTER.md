@@ -5924,3 +5924,30 @@ genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign
 - Pages `/partnership/meetings`, `/new`, `/[id]`, `/[id]/edit`; a Meetings section on `/partnership/universities/[id]`; the manager menu's
   Meetings goes live; head and super admin nav entries.
 - **New Feature ID authorized:** `upc-009`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-009.
+
+### DEC-SCOPE-146 — Monthly partnership targets vs actual (`upc-021`)
+
+**Evidence:** `EVID-020` §21 (L695–L719: "Management can give the Partnership Manager monthly targets", the seven September KPIs —
+illustrative numbers — and "CRM automatically compares Target vs Actual"); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` U3 (`partnership_head`
+sets targets), §3.2 Q-23, §4 upc-021 and Appendix B T1–T7 / D6, D7, D9, D11, D12.
+**Status:** Q-23 and TG1–TG12 are recommended answers applied under the owner's standing instruction for the build session ("proceed with
+the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off.
+Migration `0131_partnership_targets`, API contract §12BN, RBAC §2.72. Spec: `docs/superpowers/specs/2026-10-09-upc-021-partnership-targets-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| TG1 | KPIs | The 7 §21 KPIs in source order (`app/partnership_target_kpis.py`): new universities identified, contacted, meetings, proposals, negotiations, MoUs, new active universities |
+| TG2–TG5 | Month, editable months, value, achievement | bdm-016's rules: IST month `YYYY-MM`; current month and up to 12 ahead, a past month only `super_admin`; whole number 0–100000, null clears; `round(actual × 100 / target)`, none without a target |
+| TG6 | Who sets | `partnership_head` for direct reports; `super_admin` any manager. A manager setting a target (even their own) → `403`; another head's manager → `404`; an inactive manager → `422` |
+| TG7 | Who reads | Manager: own only (another → `404`); head: direct reports; `super_admin`: all; every other role (incl. `overseas_admin`) → `403` |
+| TG8 | Attribution | The university's primary manager **at the time of the event**, from the append-only `university_assignment_history` (current primary when it was never reassigned); the backup is not credited |
+| TG9 | "Past months are never re-scored" | Actuals derive only from append-only history; a later reassignment, Lost, deactivation or backward move never changes a closed month. No snapshot table |
+| TG10 | Counting | T1 = first-ever primary assignment in the month (managers never create universities, upc-003 UM8); T2 = first entry into Initial Contact or later; T4/T5/T7 = distinct universities moved into Proposal Sent / Commercial Discussion / Partner Activated; T6 = agreements with a status event to Signed |
+| TG13 | Meetings (T3 = D7), after upc-009 merged | University meetings with status `completed` and `completed_at` in the month (completion is final in upc-009, so the date never moves), credited by TG8 at `completed_at`; scheduled and cancelled meetings never count |
+| TG11 | Joining mid-month | Listed from the month their account was created; credited only after becoming primary. Inactive managers are listed only for months where they hold a target |
+| TG12 | Team | Team target = Σ set targets; team actual = Σ listed managers' actuals |
+
+**Consequences:** table `partnership_targets`; routes `GET /partnership/targets`, `GET /partnership/targets/{manager_user_id}`,
+`PUT /partnership/targets`; `services/partnership_metrics.py` created (upc-018 adds the funnel to it); the "Targets & Forecast" menu entry is
+live for managers, heads and `super_admin`; T3 counts upc-009 meetings. upc-023 adds the forecast half of the page; upc-031 exports it.
+**New Feature ID authorized:** `upc-021`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-021.
