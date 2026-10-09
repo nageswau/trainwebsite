@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import BdmStageHistory from "@/components/BdmStageHistory";
 import PartnershipTasksPanel from "@/components/PartnershipTasksPanel";
 import UniversityAgreements from "@/components/UniversityAgreements";
+import UniversityCourses from "@/components/UniversityCourses";
 import UniversityFollowUp from "@/components/UniversityFollowUp";
 import UniversityDocuments from "@/components/UniversityDocuments";
 import UniversityCalls from "@/components/UniversityCalls";
@@ -81,6 +82,31 @@ describe("upc-007 university detail page", () => {
     const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
     expect(vi.mocked(serverApi).mock.calls.some(([p]) => String(p).includes("agreement"))).toBe(false);
     expect(tree.find((el) => el.type === UniversityAgreements)).toBeUndefined();
+  });
+
+  it("shows the course master to every reader; the form options only for writers (upc-017)", async () => {
+    const courses = { items: [], total: 0, limit: 50, offset: 0, can_edit: true };
+    const courseOptions = { scholarships: [] };
+    const serve = (role: string, canEdit: boolean) => vi.mocked(serverApi).mockImplementation(async (p: string) => {
+      if (p === "/api/v1/auth/me") return { role, full_name: "Asha" } as never;
+      if (p.includes("/stage-history")) return history as never;
+      if (p.includes("/milestones")) return milestones as never;
+      if (p.includes("/partnership/visits")) return { items: [], total: 0, limit: 5, offset: 0 } as never;
+      if (p.includes("/contacts")) return { items: [], total: 0, limit: 50, offset: 0 } as never;
+      if (p.includes("/course-options")) return courseOptions as never;
+      if (p.includes("/courses")) return courses as never;
+      if (p.includes("/documents")) return documents as never;
+      return { university: { ...university, permissions: { ...university.permissions, can_edit: canEdit, can_manage_agreements: false } } } as never;
+    });
+    serve("overseas_admin", true);
+    let section = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) })).find((el) => el.type === UniversityCourses)!.props;
+    expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/universities/${ID}/courses?include_inactive=true&limit=50`);
+    expect(section).toEqual({ universityId: ID, page: courses, options: courseOptions, canSetCommission: false }); // U2: no commission
+    vi.mocked(serverApi).mockReset();
+    serve("partnership_manager", false);
+    section = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) })).find((el) => el.type === UniversityCourses)!.props;
+    expect(section).toMatchObject({ options: null, canSetCommission: true });
+    expect(vi.mocked(serverApi).mock.calls.some(([p]) => String(p).includes("course-options"))).toBe(false);
   });
 
   it("a failed history read still shows the page, with Try again in the section", async () => {

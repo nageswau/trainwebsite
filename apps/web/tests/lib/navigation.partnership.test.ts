@@ -18,12 +18,13 @@ describe("upc-001 navigation", () => {
     expect(new Set(PARTNERSHIP_MENU.map((e) => e.href)).size).toBe(19);
   });
 
-  it("links only the live entries, plus Profile (upc-003 University Master, upc-007 Partnership Pipeline, upc-010 University Visits, upc-014 MoU & Agreements, upc-016 Commercial Terms, upc-020 Follow-ups & Tasks, upc-026 Documents)", () => {
-    expect(PARTNERSHIP_MENU.filter((e) => e.live).map((e) => e.label)).toEqual(["Dashboard", "University Master", "Partnership Pipeline", "University Visits", "MoU & Agreements", "Commercial Terms", "Follow-ups & Tasks", "Documents"]);
+  it("links only the live entries, plus Profile (upc-003 University Master, upc-007 Partnership Pipeline, upc-010 University Visits, upc-014 MoU & Agreements, upc-016 Commercial Terms, upc-017 Courses & Programs, upc-020 Follow-ups & Tasks, upc-026 Documents)", () => {
+    expect(PARTNERSHIP_MENU.filter((e) => e.live).map((e) => e.label)).toEqual(["Dashboard", "University Master", "Partnership Pipeline", "University Visits", "MoU & Agreements", "Commercial Terms", "Courses & Programs", "Follow-ups & Tasks", "Documents"]);
     expect(PARTNERSHIP_NAV).toEqual([
       { label: "Dashboard", href: "/partnership/dashboard" }, { label: "University Master", href: "/partnership/universities" },
       { label: "Partnership Pipeline", href: "/partnership/pipeline" }, { label: "University Visits", href: "/partnership/visits" },
       { label: "MoU & Agreements", href: "/partnership/agreements" }, { label: "Commercial Terms", href: "/partnership/commercial-terms" },
+      { label: "Courses & Programs", href: "/partnership/courses" },
       { label: "Follow-ups & Tasks", href: "/partnership/tasks" },
       { label: "Documents", href: "/partnership/documents" }, { label: "Profile", href: "/partnership/profile" },
     ]);
@@ -31,7 +32,7 @@ describe("upc-001 navigation", () => {
       { label: "Team", href: "/partnership/head/team" }, { label: "University Master", href: "/partnership/universities" },
       { label: "Partnership Pipeline", href: "/partnership/pipeline" }, { label: "University Visits", href: "/partnership/visits" },
       { label: "Visit approvals", href: "/partnership/visits/approvals" }, { label: "MoU & Agreements", href: "/partnership/agreements" },
-      { label: "Commercial Terms", href: "/partnership/commercial-terms" },
+      { label: "Commercial Terms", href: "/partnership/commercial-terms" }, { label: "Courses & Programs", href: "/partnership/courses" },
       { label: "Follow-ups & Tasks", href: "/partnership/tasks" }, { label: "Documents", href: "/partnership/documents" },
       { label: "Message templates", href: "/partnership/head/templates" },
     ]);

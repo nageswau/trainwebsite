@@ -332,7 +332,13 @@ async def main():
                 ("monash-university", "Master of Artificial Intelligence", "Masters", "Artificial Intelligence", "2 years", "AUD 53,000", "February/July"),
                 ("university-college-dublin", "MSc Business Analytics", "Masters", "Business", "1 year", "€24,000", "September"),
             ]:
-                db.add(OverseasCourse(university_id=umap[slug].id, title=title, level=level, category=cat, duration=dur, tuition_fee=fee, intake=intake))
+                # upc-017 (CO5): what migration 0130 parses from these legacy texts on an existing database
+                parsed = {
+                    "£31,000": (31000, "GBP"), "CAD 42,000": (42000, "CAD"), "AUD 53,000": (53000, "AUD"), "€24,000": (24000, "EUR"),
+                }.get(fee, (None, None))  # fmt: skip
+                months = {"September": ["Sep"], "February/July": ["Feb", "Jul"]}.get(intake, [])
+                course = dict(title=title, level=level, category=cat, duration=dur, tuition_fee=fee, intake=intake, tuition_amount=parsed[0], tuition_currency=parsed[1])
+                db.add(OverseasCourse(university_id=umap[slug].id, intakes=months, **course))
         await db.flush()
         course = await db.scalar(select(OverseasCourse).limit(1))
         if course and not await db.scalar(select(OverseasApplication).where(OverseasApplication.student_id == us["overseas_student"].id)):

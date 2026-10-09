@@ -10,6 +10,7 @@ import UniversityAgreements from "@/components/UniversityAgreements";
 import UniversityAssignForm from "@/components/UniversityAssignForm";
 import UniversityCalls from "@/components/UniversityCalls";
 import UniversityContacts from "@/components/UniversityContacts";
+import UniversityCourses from "@/components/UniversityCourses";
 import UniversityFollowUp from "@/components/UniversityFollowUp";
 import UniversityDocuments from "@/components/UniversityDocuments";
 import UniversityMessages from "@/components/UniversityMessages";
@@ -44,6 +45,7 @@ import type { MilestonePage } from "@/lib/partnershipMilestones";
 import { firstMilestones, firstStageHistory, loadUniversity } from "@/lib/universitiesServer";
 import { type Agreement, AGREEMENT_READERS, type AgreementOptions, agreementOptionsUrl, agreementsUrl } from "@/lib/universityAgreements";
 import { documentsUrl, type UniversityDocument } from "@/lib/universityDocuments";
+import { COMMISSION_ROLES, type CourseOptions, courseOptionsUrl, type CoursePage, coursesUrl } from "@/lib/courseMaster";
 import { newVisitPath, PLANNER_ROLES, VISIT_READERS, VISITS_PATH, VISITS_URL, type VisitRow } from "@/lib/visits";
 import { TASK_CREATORS, TASK_READERS, TASKS_PATH } from "@/lib/partnershipTasks";
 
@@ -68,20 +70,23 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
   const { id } = await params;
   let user: User, u: University, history: Page<StageEvent> | null, contacts: Page<UniversityContact>, roles: ContactRole[], visits: Page<VisitRow> | null,
     documents: Page<UniversityDocument>, agreements: Page<Agreement> | null, agreementOptions: AgreementOptions | null,
-    milestones: MilestonePage | null;
+    milestones: MilestonePage | null, courses: CoursePage, courseOptions: CourseOptions | null;
   try {
     [user, u, history, milestones] = await Promise.all([serverApi<User>("/api/v1/auth/me"), loadUniversity(id), firstStageHistory(id), firstMilestones(id)]);
     // upc-006: the contacts this reader may see (the API slices them), and the role list only for those who can edit.
     // upc-010: the latest visits, only for the roles that read visits (VS7; overseas_admin reads the master but not visits).
     // upc-026: the documents this reader may see (the API slices them: shareable only for overseas_admin, no commission agreement).
     // upc-014: agreements only for the roles that read them (AG13), and the form's options only for those who may write them.
-    [contacts, roles, visits, documents, agreements, agreementOptions] = await Promise.all([
+    // upc-017: the courses (inactive ones marked) for every reader; the form's scholarship options only for those who may write them.
+    [contacts, roles, visits, documents, agreements, agreementOptions, courses, courseOptions] = await Promise.all([
       serverApi<Page<UniversityContact>>(`${contactsUrl(u.id)}?limit=50`),
       u.permissions.can_edit_contacts ? serverApi<{ items: ContactRole[] }>(CONTACT_ROLES_URL).then((r) => r.items) : Promise.resolve([]),
       VISIT_READERS.has(user.role) ? serverApi<Page<VisitRow>>(`${VISITS_URL}?university_id=${u.id}&limit=5`) : Promise.resolve(null),
       serverApi<Page<UniversityDocument>>(documentsUrl(u.id)),
       AGREEMENT_READERS.has(user.role) ? serverApi<Page<Agreement>>(agreementsUrl(u.id)) : Promise.resolve(null),
       u.permissions.can_manage_agreements ? serverApi<AgreementOptions>(agreementOptionsUrl(u.id)) : Promise.resolve(null),
+      serverApi<CoursePage>(`${coursesUrl(u.id)}?include_inactive=true&limit=50`),
+      u.permissions.can_edit ? serverApi<CourseOptions>(courseOptionsUrl(u.id)) : Promise.resolve(null),
     ]);
   } catch (e) {
     return accessUnavailable(e, "/overseas/login");
@@ -138,6 +143,7 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
           {/* upc-008: remounted after each stage change, so a move into Proposal Sent shows Proposal achieved (MS4) */}
           <UniversityTimeline key={`timeline|${u.pipeline.changed_at}`} universityId={u.id} expected={u.expected} canEdit={u.permissions.can_edit_timeline} initial={milestones} />
           <UniversityContacts universityId={u.id} contacts={contacts.items} roles={roles} canEdit={u.permissions.can_edit_contacts} />
+          <UniversityCourses universityId={u.id} page={courses} options={courseOptions} canSetCommission={COMMISSION_ROLES.has(user.role)} />
           {agreements && (
             <UniversityAgreements universityId={u.id} agreements={agreements.items} options={agreementOptions} canManage={u.permissions.can_manage_agreements} />
           )}
