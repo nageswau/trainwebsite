@@ -1,12 +1,16 @@
 """upc-011 -- Partnership events (the §9 calendar's conferences, fairs, webinars, ...).
 
-Revision ID: 0135_partnership_events
-Revises: 0134_application_screenings
+Revision ID: 0136_partnership_events
+Revises: 0135_resume_extraction
 
-docs/superpowers/specs/2026-10-09-upc-011-partnership-calendar-design.md §2 (DEC-SCOPE-150). Adds `partnership_event_code_seq`,
+docs/superpowers/specs/2026-10-09-upc-011-partnership-calendar-design.md §2 (DEC-SCOPE-152). Adds `partnership_event_code_seq`,
 `partnership_events` and `partnership_event_participants`. New tables only; no existing row changes. 0001 builds a fresh database from
 the current models, which already carry them, so the table step is guarded. CHECKS repeats app.models (test_upc_011_migration).
 downgrade() refuses while any event exists: entered data is never dropped silently.
+
+Re-chained on 2026-10-09: drafted as `0135_partnership_events` (DEC-SCOPE-150, API §12BR, RBAC §2.76) on `0134_application_screenings`;
+rec-012 (`0135_resume_extraction`, DEC-SCOPE-150) and rec-013 (DEC-SCOPE-151, §12BS, §2.77) merged first. A database stamped at the draft
+is re-stamped with `alembic stamp --purge 0134_application_screenings`, then `upgrade head` (the table step is guarded).
 """
 
 import sqlalchemy as sa
@@ -14,8 +18,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0135_partnership_events"
-down_revision = "0134_application_screenings"
+revision = "0136_partnership_events"
+down_revision = "0135_resume_extraction"
 branch_labels = None
 depends_on = None
 
@@ -74,7 +78,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text("SELECT 1 FROM partnership_events LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0135_partnership_events: partnership events exist. Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0136_partnership_events: partnership events exist. Remove them deliberately first.")
     op.drop_table("partnership_event_participants")
     op.drop_table("partnership_events")
     op.execute("DROP SEQUENCE IF EXISTS partnership_event_code_seq")

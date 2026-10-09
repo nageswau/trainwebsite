@@ -1,4 +1,4 @@
-"""upc-011 (DEC-SCOPE-150, spec CL2-CL7, CL14): partnership events -- who reads, adds and acts, the dates, owner and employees, and output.
+"""upc-011 (DEC-SCOPE-152, spec CL2-CL7, CL14): partnership events -- who reads, adds and acts, the dates, owner and employees, and output.
 
 Functions only; nothing here commits -- the route owns the transaction. Every partnership reader reads every event; only the owner or the
 creator changes one, while it is scheduled. Audit rows carry ids, code, kind, counts and field names only -- never title, notes or reasons.

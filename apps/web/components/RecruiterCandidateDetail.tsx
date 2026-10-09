@@ -23,6 +23,7 @@ export default function RecruiterCandidateDetail({ initial }: { initial: Candida
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ text: string; failed: boolean } | null>(null);
+  const [skillsVersion, setSkillsVersion] = useState(0); // rec-012: Apply adds skills, so the Skills card re-reads
   const sending = useRef(false);
   const archived = candidate.archived_at !== null;
   const canEdit = candidate.can_edit && !archived;
@@ -96,14 +97,18 @@ export default function RecruiterCandidateDetail({ initial }: { initial: Candida
         </section>
       )}
       {/* rec-011: re-keyed on archive/restore, so the card re-reads can_edit (an archived candidate's skills are read only). */}
-      <RecruiterCandidateSkills key={`skills-${candidate.id}-${archived}`} candidateId={candidate.id} />
-      <RecruiterCandidateResumes candidateId={candidate.id} resumes={candidate.resumes} canUpload={canEdit} onUploaded={() => void reload()} />
+      <RecruiterCandidateSkills key={`skills-${candidate.id}-${archived}-${skillsVersion}`} candidateId={candidate.id} />
+      <RecruiterCandidateResumes candidateId={candidate.id} resumes={candidate.resumes} canUpload={canEdit} current={candidate}
+        onUploaded={() => void reload()} onApplied={() => { void reload(); setSkillsVersion((n) => n + 1); }} />
       <RecruiterCandidateApplications candidateId={candidate.id} />
-      {/* rec-025: re-keyed on archive/restore, so Log call and each call's Edit follow the candidate's state. */}
-      <RecruiterCalls key={`${candidate.id}-${archived}`} party={{ kind: "candidate", candidateId: candidate.id }} canWrite={canEdit} />
-      {/* rec-026: re-keyed on archive/restore and on an edit of the mobile or email, so the buttons follow the candidate. */}
-      <RecruiterMessages key={`messages-${candidate.id}-${archived}-${candidate.whatsapp_to}-${candidate.email}`} canWrite={canEdit}
-        source={{ kind: "candidate", party: { kind: "candidate", id: candidate.id, name: candidate.name, whatsappTo: candidate.whatsapp_to ?? null, email: candidate.email } }} />
+      {/* rec-013: Find Candidates' Contact links here (#contact). */}
+      <div id="contact" style={{ display: "grid", gap: 16, scrollMarginTop: 16 }}>
+        {/* rec-025: re-keyed on archive/restore, so Log call and each call's Edit follow the candidate's state. */}
+        <RecruiterCalls key={`${candidate.id}-${archived}`} party={{ kind: "candidate", candidateId: candidate.id }} canWrite={canEdit} />
+        {/* rec-026: re-keyed on archive/restore and on an edit of the mobile or email, so the buttons follow the candidate. */}
+        <RecruiterMessages key={`messages-${candidate.id}-${archived}-${candidate.whatsapp_to}-${candidate.email}`} canWrite={canEdit}
+          source={{ kind: "candidate", party: { kind: "candidate", id: candidate.id, name: candidate.name, whatsappTo: candidate.whatsapp_to ?? null, email: candidate.email } }} />
+      </div>
     </div>
   );
 }

@@ -1356,7 +1356,28 @@ no employer, student or `hr_team` route reads a screening. SC8 (UNVERIFIED).
 | `bdm` | read only (save `403`) | requirements of companies assigned to them | `rec-018` |
 | `hr_team`, `it_admin`, `employer`, students, every other role | `403` | — | `rec-018` |
 
-### 2.76 Partnership calendar and events *(net-new, added 2026-10-09 — `DEC-SCOPE-150`, `upc-011`)*
+### 2.76 Resume extraction *(net-new, added 2026-10-09 — `DEC-SCOPE-150`, `rec-012`)*
+
+Enforced inline in `api/recruiter_candidates.py` (`services/candidates.require_writer` before anything is read). Extract writes the
+resume row, so it is a write. EX10 (UNVERIFIED).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team`, `placement_manager`, `super_admin` | extract a resume version; apply the chosen suggestions | the whole candidate pool, active candidates (archived `409`) | `rec-012` |
+| `hr_team` | none (reads the candidate and downloads resumes as before; extract/apply `403`) | — | `rec-012` |
+| every other role | `403` | — | `rec-012` |
+
+### 2.77 Find Candidates *(net-new, added 2026-10-09 — `DEC-SCOPE-151`, `rec-013`)*
+
+Read only, over the whole pool (R11): there is no per-recruiter scope to search within. The role check runs before the body is read.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team`, `placement_manager`, `super_admin` | `POST /recruiter/candidates/search`; on a card, Shortlist (through rec-017's add route, so its requirement scope and rules apply) and Contact (the profile) | external + opted-in candidates, not archived | `rec-013` |
+| `hr_team` | the same search, read only (no Shortlist, no Contact, no source picker) | same | `rec-013` |
+| `employer`, `it_admin`, `it_student`, every other role | `403` | — | `rec-013` |
+
+### 2.78 Partnership calendar and events *(net-new, added 2026-10-09 — `DEC-SCOPE-152`, `upc-011`)*
 
 The calendar is read-only; whose items it shows is scoped by role (CL9). Every partnership reader reads every event (as meetings, §2.71);
 edit and cancel are for the event's owner or creator (CL7).

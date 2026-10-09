@@ -1814,3 +1814,24 @@ overlap). `downgrade()` refuses while any event exists.
 - Each save overwrites the row; the audit keeps field names and the result per save, and the status history keeps any move (SC3).
 - Salary and remarks are internal: only the recruiter routes read the table.
 - `downgrade()` refuses while any row exists.
+
+## Resume extraction (`rec-012`, `DEC-SCOPE-150`; migration `0135_resume_extraction`, after `0134_application_screenings`)
+
+**`candidate_resumes` gains three nullable columns:** `extracted_text` text (null until extracted; `''` when the file had no text),
+`extraction_json` json (the last suggestions: skill ids + matched text, qualification, experience_months, location, job_titles,
+certifications, industries, truncated), `extracted_at` timestamptz.
+
+**Design notes:** derived from the stored file and recomputed on every extraction; nothing reaches `candidates` or `candidate_skills`
+until Apply. rec-014 searches `extracted_text`. `downgrade()` drops the columns (recomputable data).
+
+## Partnership events (`upc-011`, `DEC-SCOPE-152`; migration `0136_partnership_events`, after `0135_resume_extraction`)
+
+The §9 calendar is a read-only union of `university_meetings` (`0130`), `university_visits` (`0115`) and the new events below; it adds
+no other table. `partnership_event_code_seq` (`PEV-000001`). `partnership_events` (`code` unique; `kind` CHECK in conference /
+education_fair / partner_meeting / mou_signing / webinar / university_presentation; `title` String(200); `university_id` FK
+`universities` RESTRICT, nullable; `starts_on`, `ends_on` Date, CHECK `ends_on >= starts_on`; `location` String(200) null; `notes` Text
+null; `owner_user_id`, `created_by_user_id` FK `users` RESTRICT; `status` CHECK scheduled / cancelled; `cancelled_at`, `cancel_reason`
+with CHECK `(status = cancelled) = (cancelled_at IS NOT NULL) AND (cancelled_at IS NULL) = (cancel_reason IS NULL)`; timestamps).
+Indexes `ix_partnership_events_dates (starts_on, ends_on)`, `ix_partnership_events_owner`, `ix_partnership_events_university`.
+`partnership_event_participants` (`event_id` FK CASCADE, `user_id` FK `users` RESTRICT; composite PK). New tables only; no backfill.
+`downgrade()` refuses while any event exists (API §12BT).

@@ -3,7 +3,7 @@
 **Status:** design written 2026-10-09. The owner's standing instruction for this session is "proceed with the recommended answers;
 ask only if genuinely blocking". The item answers CL1–CL14 (§1), including **Q-14** (conferences, fairs and webinars without a
 university — a new `partnership_events` record? what counts as an overlap?), are **recommended defaults accepted under that
-instruction** (`NEEDS_CONFIRMATION` as separate per-question approvals). They are registered that way in `DEC-SCOPE-150`.
+instruction** (`NEEDS_CONFIRMATION` as separate per-question approvals). They are registered that way in `DEC-SCOPE-152`.
 
 **Branch:** `feature/upc-011`, cut from `origin/main` @ `080c07b3` (after #196).
 **Backlog:** `docs/delivery/UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §4 upc-011, Q-14, Appendix A L352–L365 and L1090.
@@ -13,7 +13,9 @@ events), `services/university_visits.lead_filter`, `STAFF_ROLES`.
 **Source:** `EVID-020` §9 (L352–L365): "Management should see a calendar containing: University meetings, University visits,
 Conferences, Education fairs, Partner meetings, MoU signing, Webinars, University presentations. This prevents overlapping travel and
 meetings."
-**Numbering:** migration `0135_partnership_events`, `DEC-SCOPE-150`, API §12BR, RBAC §2.76 (re-check `main` at Phase 9).
+**Numbering:** migration `0136_partnership_events`, `DEC-SCOPE-152`, API §12BT, RBAC §2.78. Drafted as `0135` / `DEC-SCOPE-150` / §12BR /
+§2.76 on `0134_application_screenings`; renumbered on merging `main` @ `365fdd97` (rec-012 took `0135` / 150 / §12BR / §2.76, rec-013 151 /
+§12BS / §2.77 first; this migration now follows `0135_resume_extraction`).
 **Gate:** `APPROVAL_GATES.md` GATE-09.
 
 **Templates:** bdm-013 (`api/bdm_calendar.py`: ≤ 31-day read-only union, `truncated`, `components/BdmCalendar.tsx` list-of-days
@@ -24,7 +26,7 @@ changed except that the meeting and visit detail responses gain an additive `ove
 
 | Class | Files |
 |---|---|
-| MUST CHANGE | `models.py` (+`PartnershipEvent`, `PartnershipEventParticipant`, seq), `alembic/versions/0135_partnership_events.py`, new `partnership_event_kinds.py`, `services/partnership_calendar.py`, `services/partnership_events.py`, `api/partnership_calendar.py`, `api/partnership_events.py`, `main.py` (routers), `schemas.py`; web `lib/navigation.ts` (Calendar live + head nav), new `lib/partnershipCalendar.ts`, `components/PartnershipCalendar.tsx`, `components/PartnershipEventForm.tsx`, `components/OverlapNotice.tsx`, pages `/partnership/calendar`, `/partnership/events/new`, `/partnership/events/[id]`, `/[id]/edit`; docs (DEC, API, RBAC, backlog) |
+| MUST CHANGE | `models.py` (+`PartnershipEvent`, `PartnershipEventParticipant`, seq), `alembic/versions/0136_partnership_events.py`, new `partnership_event_kinds.py`, `services/partnership_calendar.py`, `services/partnership_events.py`, `api/partnership_calendar.py`, `api/partnership_events.py`, `main.py` (routers), `schemas.py`; web `lib/navigation.ts` (Calendar live + head nav), new `lib/partnershipCalendar.ts`, `components/PartnershipCalendar.tsx`, `components/PartnershipEventForm.tsx`, `components/OverlapNotice.tsx`, pages `/partnership/calendar`, `/partnership/events/new`, `/partnership/events/[id]`, `/[id]/edit`; docs (DEC, API, RBAC, backlog) |
 | MAY CHANGE | `services/university_meetings.detail_out`, `services/university_visits.detail_out` (+`overlaps`), their `*Out` schemas, meeting and visit detail pages (show `OverlapNotice`), web tests that count menu entries |
 | SHOULD NOT CHANGE | BDM calendar, meeting/visit rules and commands, stage engine, partnership tasks, commission stripping |
 | HIGH REGRESSION RISK | shared `models.py` / `schemas.py`; the meeting/visit detail payloads (additive only); `PartnershipMenuCard` "coming soon" counts |
@@ -53,7 +55,7 @@ Auth: inline role checks (`User.role`, `partnership_context` for managers) per t
 Not in scope: blocking overlaps, notifications, iCal export, drag-and-drop, an event list page (the calendar is the list), recurring
 events, overlap checks on the meeting / visit forms before saving (follow-up candidate).
 
-## 2. Data model — migration `0135_partnership_events`
+## 2. Data model — migration `0136_partnership_events`
 
 - `partnership_event_code_seq`.
 - `partnership_events`: id; code String(20) unique; kind String(30) CHECK in the six; title String(200); university_id FK
@@ -65,7 +67,7 @@ events, overlap checks on the meeting / visit forms before saving (follow-up can
 - `partnership_event_participants`: event_id FK CASCADE + user_id FK RESTRICT, composite PK.
 - Downgrade drops both tables and the sequence. No existing table changes; no data touched.
 
-## 3. API (§12BR)
+## 3. API (§12BT)
 
 | Method/Path | Notes |
 |---|---|
@@ -91,7 +93,7 @@ Meeting (§12BM) and visit (§12AX) detail items gain `overlaps` (CL11).
 4. **Detail overlaps** — event, meeting and visit detail `overlaps` (AC2 on create).
 5. **Web lib + calendar page** — `lib/partnershipCalendar.ts` (+ vitest), `PartnershipCalendar.tsx` (+ vitest), page, nav live.
 6. **Event pages** — form, detail (with `OverlapNotice`), edit, cancel; meeting/visit detail pages show `OverlapNotice`.
-7. **Playwright** `upc-011-partnership-calendar.spec.ts`; docs (DEC-SCOPE-150, §12BR, §2.76, backlog status).
+7. **Playwright** `upc-011-partnership-calendar.spec.ts`; docs (DEC-SCOPE-152, §12BT, §2.78, backlog status).
 
 ## 5. Acceptance criteria → tests
 

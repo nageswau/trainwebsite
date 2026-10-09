@@ -5,7 +5,7 @@ import {
   rangeDays, rangeOf, stepDate,
 } from "@/lib/partnershipCalendar";
 
-// upc-011 (DEC-SCOPE-150 CL1, CL13): the pure calendar helpers.
+// upc-011 (DEC-SCOPE-152 CL1, CL13): the pure calendar helpers.
 const item = (over: Partial<CalendarItem> = {}): CalendarItem => ({
   source: "event", id: "e1", code: "PEV-000001", title: "QS Fair", kind: "education_fair", starts_on: "2031-03-04", ends_on: "2031-03-06",
   starts_at: null, status: "scheduled", university: null, people: [], overlaps: [], ...over,

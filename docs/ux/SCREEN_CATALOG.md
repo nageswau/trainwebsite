@@ -3595,3 +3595,50 @@ Design spec `docs/superpowers/specs/2026-10-09-rec-018-application-screening-des
   - On save the board re-reads and announces "Screening saved — <name> is now <status>."; the API's 409/422 sentence is shown in the form.
   - Readers (manager, assigned BDM) and closed applications see a read-only summary, or "Not screened yet.".
   - Loading ("Loading screening…") and error ("Unable to load the screening.") states.
+
+## rec-012 addendum (2026-10-09, `DEC-SCOPE-150`) — Review extracted details
+
+Design spec `docs/superpowers/specs/2026-10-09-rec-012-resume-extraction-design.md` §5.
+
+- **Candidate detail → Resume card** (`/recruiter/candidates/[id]`, writers on an active candidate): an upload opens **Review extracted
+  details — version N**; **Review extracted details** on the current version reopens it.
+  - States: "Reading the resume…"; the server's sentence with Retry/Close (password-protected, unreadable); "No text found in this
+    resume — it may be a scanned image. Add the details by hand."; a note when a long resume was only partly read.
+  - **Skills found (N):** a checkbox per Skills Master skill (category, "found as …" when the text differs), ticked by default, with a
+    Level select (default Intermediate); "Already on profile" skills are shown locked.
+  - **Profile details:** qualification, total experience, location with "(current: …)"; ticked only when the candidate has no value.
+  - **Also in the resume:** job titles, certifications, industry (kept with the resume, not added to the profile).
+  - **Save selected** (disabled when nothing is ticked; double-submit guarded) and **Discard**. A refusal keeps the ticks; success
+    closes the panel, shows "Added N skills and updated …", and reloads the profile and the Skills card.
+  - Responsive: the Level select wraps under its skill on phones; no side-scroll. `hr_team` and archived candidates see no Review.
+
+## rec-013 addendum (2026-10-09, `DEC-SCOPE-151`) — Find Candidates
+
+Design spec: `docs/superpowers/specs/2026-10-09-rec-013-find-candidates-design.md` §5.
+
+**Find Candidates** (`/recruiter/find-candidates`; nav "Find Candidates" for recruiters, placement managers, super_admin and hr_team):
+- **Search form:**
+  - "Must have all of these skills": type a skill or another name for it, press Enter or Add; each chip has a "Remove <skill>" button.
+  - "+ Add an “at least one of” group" (up to 5 groups, each with "Remove group N").
+  - At most 20 skills in total (the boxes are disabled at the cap).
+  - "Verified skills only".
+  - Experience from/to (years), Location, Qualification, Expected salary from/to (₹ lakhs a year).
+  - Candidate source (writers only), Status, and Availability checkboxes (Immediate / 15 / 30 / 31–59 / 60+ days).
+  - "Search candidates" also takes a skill typed but not added. "Clear all" resets everything.
+- **Results:**
+  - "N candidates found" (live region), and what each term matched ("j2ee → Java, Core Java").
+  - A "Refine results" panel: Experience, Location (top 5, Other, Not recorded) and Availability counts. A count is a button that
+    narrows the search; Other and Not recorded are not.
+  - Cards: name (linked) + code, preferred role | experience, current company, skills (matched ones highlighted, verified/assessed
+    marked), location, availability, expected salary (₹ LPA), source + detail, status.
+  - Card actions: View profile; Contact (writers, to the profile's calls and messages); Shortlist (writers, after choosing a requirement
+    in "Shortlist into requirement"; adds them as Shortlisted, then shows the result under the card).
+  - A pager past 50 results.
+- **State:** the whole search is in the URL, so refresh keeps it and Back undoes the last change.
+- **Other states:**
+  - Before any skill: "Add at least one skill to search every candidate in the pool."
+  - No results: "No candidates match. Remove a skill or a filter to see more."
+  - Unknown skill: the server's sentence, plus "Use <skill>" buttons for its suggestions.
+  - Error: "Unable to search candidates." with Retry.
+- **Layout:** on phones the facets stack above the cards; nothing scrolls sideways.
+- **Candidate detail:** the calls and messages cards sit in a `#contact` section.

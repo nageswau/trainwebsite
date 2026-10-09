@@ -1,4 +1,4 @@
-"""upc-011 (DEC-SCOPE-150, spec CL8-CL10, §3): the read-only §9 calendar -- university meetings, university visits and partnership
+"""upc-011 (DEC-SCOPE-152, spec CL8-CL10, §3): the read-only §9 calendar -- university meetings, university visits and partnership
 events over at most 31 days, whose calendar it is, and the overlap warning per employee. No write, no audit, no log line (bdm-013)."""
 
 from datetime import date

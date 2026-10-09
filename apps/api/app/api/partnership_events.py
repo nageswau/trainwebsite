@@ -1,4 +1,4 @@
-"""upc-011 (DEC-SCOPE-150, spec §3): partnership events -- add, read, edit and cancel.
+"""upc-011 (DEC-SCOPE-152, spec §3): partnership events -- add, read, edit and cancel.
 
 Every write is one transaction: the event row lock, the actor check, the change and the audit row, one commit here, then a structured
 log (ids only). There is no list: the calendar (`/partnership/calendar`) is the list."""

@@ -6066,15 +6066,93 @@ the upc items through `0132` and rec-020 (`0133` / 148 / §12BP / §2.74) merged
 - The requirement board gains a Screening disclosure per candidate and a `Screening: <result>` badge.
 - **New Feature ID authorized:** `rec-018`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-018.
 
-### DEC-SCOPE-150 — Travel & visit calendar + partnership events (`upc-011`)
+### DEC-SCOPE-150 — Resume text + rule-based skill extraction (`rec-012`)
+
+**Evidence:**
+- `EVID-018` S2-§4 (lines 1235–1285): upload a CV → extract skills, technologies, qualification, experience, job titles, certifications,
+  tools, industry and location → the recruiter verifies/edits before saving; the example sentence yields Java, Spring Boot, Hibernate,
+  REST API and MySQL.
+- `RECRUITER_CRM_BACKLOG.md` §rec-012: AC1–AC3, the DOCX "3 years" positive case, the encrypted-PDF negative case, the "go" stop-word and
+  truncation edge cases. `DEC-SCOPE-116` R7: rule-based, in-house (`pypdf`, `python-docx`), no AI provider; R11: every recruiter edits
+  the pool. `DEC-SCOPE-122` (rec-009) resumes and roles; `DEC-SCOPE-137` (rec-011) candidate skills.
+
+**Status:** **MERGED** to `main` as PR #197 @ `87f7cfa4` (2026-10-09). Every answer below is a **recommended default, `UNVERIFIED`**,
+taken on the owner's instruction to proceed with the recommended answers. The next rec item takes `0136`, `DEC-SCOPE-151`, §12BS and
+§2.77 (re-check `main`).
+
+**Numbering (FINAL):** migration `0135_resume_extraction` (after `0134_application_screenings`), API §12BR and RBAC §2.76. Drafted as `0133` /
+`DEC-SCOPE-148` / §12BP / §2.74; rec-020 and then rec-018 merged first and took those numbers. Spec
+`docs/superpowers/specs/2026-10-09-rec-012-resume-extraction-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| EX1 | When extraction runs | Upload is unchanged; the client calls Extract for the new version, and writers can re-run it on the current version. Recomputed each time |
+| EX2 | What Extract stores | Only the resume row (`extracted_text`, `extraction_json`, `extracted_at`); nothing reaches the profile or skills until Apply (AC2) |
+| EX3 | Skills, technologies, tools | All matched against the Skills Master (names + aliases, active); the category tells them apart |
+| EX4 | Matching | One tokeniser for text and terms; leftmost-longest wins; trailing plural "s"; single letters and a stop-word list (go, spring, rest, …) need the master's casing |
+| EX5 | Other suggestions | Patterns: qualification (highest degree), experience (near "experience"), location ("Location:" line or known city), job titles, certifications, industry; ≤ 10 each |
+| EX6 | What Apply writes | Ticked skills as `resume` / `claimed` with the chosen level (default Intermediate); ticked qualification / experience / location overwrite; titles, certifications, industry stay with the resume |
+| EX7 | Apply rules | All or nothing; existing skill `409`; unknown/inactive/repeated/empty `422`; the 100-skill cap; not extracted `409` |
+| EX8 | Limits | 5 MB upload (rec-009); 30 PDF pages; 100,000 characters; DOCX ≤ 2,000 parts / 50 MB uncompressed; thread + 20 s; no Celery |
+| EX9 | Failures | Password-protected / unreadable / timeout `422` sentences; scanned or empty PDF `200` `no_text` (AC3) |
+| EX10 | Who | Writers (recruiter, placement manager, super_admin); `hr_team` `403`; archived `409`; outside the pool `404` |
+
+**Consequences:**
+- New pinned dependencies `pypdf` (BSD-3-Clause) and `python-docx` (MIT); the api image must be rebuilt.
+- `candidate_resumes` gains three columns (`0133`); `services/resume_extract.py` (pure), `services/resume_extraction.py`; two routes on
+  `api/recruiter_candidates.py`.
+- The candidate page's Resume card gains "Review extracted details".
+- **New Feature ID authorized:** `rec-012`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-012.
+
+### DEC-SCOPE-151 — Find Candidates: skill AND/OR search, synonyms, filters, facets, result cards (`rec-013`)
+
+**Evidence:**
+- `EVID-018` user question (line 1092: "all Java-skilled people at one place"); S2-§5 exact skill search, §6 required/preferred skills, §7
+  AND / OR / grouped expressions, §9 one-click search with facets, §12 whole-database search, §13 source shown, §16 synonyms, §18 the search
+  screen, §19 the result card (lines 1287–1734). Appendix B F1–F3 (facet bands).
+- `DEC-SCOPE-116` R11 (every recruiter searches the whole opted-in + external pool). `DEC-SCOPE-119` (rec-006: aliases, related skills),
+  `DEC-SCOPE-122` (rec-009: the candidate master and pool filter), `DEC-SCOPE-137` (rec-011: one searchable row per candidate skill, the
+  `(skill_id, status, candidate_id)` index), `DEC-SCOPE-136` (rec-017: adding a candidate to a requirement).
+- `RECRUITER_CRM_BACKLOG.md` §rec-013: AC1–AC5 and question Q-15.
+
+**Status:** **MERGED** to `main` as PR #199 @ `4b260e21` (2026-10-09). The owner asked to proceed with the recommended answers, so
+nothing was asked; every row below is **UNVERIFIED** (a recorded default) until confirmed. The next rec item takes `0136`,
+`DEC-SCOPE-152`, §12BT and §2.78 (re-check `main`).
+
+**Numbering (FINAL):** `DEC-SCOPE-151`, API §12BS, RBAC §2.77, **no migration**. Drafted as 141 / §12BI / §2.67 and re-chained as main moved; upc-026, upc-012, upc-020, upc-014, upc-008, upc-016, upc-009,
+upc-021, upc-017, rec-020, rec-018 and rec-012 merged first and hold 139–150 / §12BG–§12BR / §2.65–§2.76. Spec:
+`docs/superpowers/specs/2026-10-09-rec-013-find-candidates-design.md`.
+
+| # | Point | Default |
+|---|---|---|
+| FS1 (Q-15) | AND/OR input | A chip builder, never a typed query: "Must have all of" (AND) plus up to 5 "at least one of" groups (OR inside, ANDed with the rest) |
+| FS2 | Synonyms | Each term resolves through the Skills Master (a name or an alias) and also matches the skill's related skills, both ways; the response lists the expansion |
+| FS3 | Unknown term | `422 {message, code: "unknown_skill", term, suggestions}` (up to 5 active skills whose name or alias contains the text) |
+| FS4 | Size | 1–20 terms, at most 5 groups of 1–10; otherwise `422` |
+| FS5 | Filters | Experience (months on the wire; the page takes whole years, a maximum year counting in full), current location and qualification (substring), availability bands, expected salary (INR/year; the page takes lakhs), source, status, verified only |
+| FS6 | Job type | Not offered: the candidate master has no job-type preference |
+| FS7 | Facets | F1 experience, F2 top-5 locations + Other + Not recorded, F3 availability (Immediate / 15 / 30 / 31–59 / 60+ / Not recorded), over the whole filtered set; each facet adds up to the total |
+| FS8 | Card | Name, preferred role, current company, experience, skills (matched first; verified marked), location, availability, expected salary, source + detail, status. Match % is rec-016 |
+| FS9 | Actions | View profile; Shortlist (writers, into a chosen requirement at `shortlisted` via rec-017); Contact (writers, the profile's call/message section). Share is rec-019 |
+| FS10 | Roles | `placement_team`, `placement_manager`, `super_admin`; `hr_team` reads (no Shortlist/Contact). Everyone else `403` |
+| FS11 | Order / paging | Newest first; 50 a page (≤ 100) |
+| FS12 | Pool | External + opted-in candidates, not archived (AC5) |
+
+**Consequences:**
+- New: `POST /recruiter/candidates/search`, `services/candidate_search.py` (six queries whatever the pool size; terms become skill ids
+  before any candidate is read), the `/recruiter/find-candidates` page and a "Find Candidates" nav entry for the four roles.
+- Changed: the candidate detail wraps its calls and messages cards in `#contact`.
+- **New Feature ID authorized:** `rec-013`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-013.
+
+### DEC-SCOPE-152 — Travel & visit calendar + partnership events (`upc-011`)
 
 **Evidence:** `EVID-020` §9 (L352–L365: "Management should see a calendar containing: University meetings, University visits, Conferences,
 Education fairs, Partner meetings, MoU signing, Webinars, University presentations. This prevents overlapping travel and meetings.");
 `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §4 upc-011 and Q-14; U9 (the calendar is a read-only union with an overlap warning per employee).
 **Status:** CL1–CL14, including **Q-14** (a new `partnership_events` record; what counts as an overlap), are the recommended answers
 applied under the owner's standing instruction for the build session ("proceed with the recommended answers; ask only if genuinely
-blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. Migration `0135_partnership_events`, API contract §12BR, RBAC
-§2.76. Spec: `docs/superpowers/specs/2026-10-09-upc-011-partnership-calendar-design.md`.
+blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. Migration `0136_partnership_events`, API contract §12BT, RBAC
+§2.78. Spec: `docs/superpowers/specs/2026-10-09-upc-011-partnership-calendar-design.md`.
 
 | # | Question | Answer |
 |---|---|---|
@@ -6094,7 +6172,7 @@ blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. Migr
 | CL14 | Audit and logs | `partnership_event.{create,update,cancel}` (ids, code, kind, counts, field names); the calendar read writes nothing |
 
 **Consequences:**
-- `partnership_events`, `partnership_event_participants`, `partnership_event_code_seq` (`0135`); `app/partnership_event_kinds.py`,
+- `partnership_events`, `partnership_event_participants`, `partnership_event_code_seq` (`0136`); `app/partnership_event_kinds.py`,
   `services/partnership_calendar.py`, `services/partnership_events.py`, `api/partnership_calendar.py`, `api/partnership_events.py`.
 - The meeting (§12BM) and visit (§12AX) items gain `overlaps` (additive).
 - Pages `/partnership/calendar`, `/partnership/events/new`, `/[id]`, `/[id]/edit`; the overlap notice on meeting and visit pages; the

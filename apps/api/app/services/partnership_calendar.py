@@ -1,4 +1,4 @@
-"""upc-011 (DEC-SCOPE-150, spec CL8-CL12): the §9 calendar -- a read-only union of university meetings (upc-009), university visits
+"""upc-011 (DEC-SCOPE-152, spec CL8-CL12): the §9 calendar -- a read-only union of university meetings (upc-009), university visits
 (upc-010) and partnership events, whose calendar it is, and the per-employee overlap warning.
 
 Functions only; nothing here writes. Three range queries (each joined to its university), one people query per source and one user

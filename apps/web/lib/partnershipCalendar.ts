@@ -2,7 +2,7 @@ import { addDays, daysOf, weekStart } from "@/lib/bdmCalendar";
 import { isCalendarDate } from "@/lib/formatDate";
 import type { ManagerRef } from "@/lib/telecaller";
 
-// upc-011 (DEC-SCOPE-150): the §9 calendar's words, URLs, ranges and placing items on days, plus partnership events. Dates are
+// upc-011 (DEC-SCOPE-152): the §9 calendar's words, URLs, ranges and placing items on days, plus partnership events. Dates are
 // "YYYY-MM-DD" IST calendar dates (bdm-013's helpers do the arithmetic in UTC, so no viewer's zone can shift a day).
 
 // CL1: the eight §9 kinds, in source order and wording. The last six are `partnership_events.kind` (= app/partnership_event_kinds.py).
