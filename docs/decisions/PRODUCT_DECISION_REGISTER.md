@@ -6143,3 +6143,38 @@ upc-021, upc-017, rec-020, rec-018 and rec-012 merged first and hold 139–150 /
   before any candidate is read), the `/recruiter/find-candidates` page and a "Find Candidates" nav entry for the four roles.
 - Changed: the candidate detail wraps its calls and messages cards in `#contact`.
 - **New Feature ID authorized:** `rec-013`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-013.
+
+### DEC-SCOPE-152 — Travel & visit calendar + partnership events (`upc-011`)
+
+**Evidence:** `EVID-020` §9 (L352–L365: "Management should see a calendar containing: University meetings, University visits, Conferences,
+Education fairs, Partner meetings, MoU signing, Webinars, University presentations. This prevents overlapping travel and meetings.");
+`UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §4 upc-011 and Q-14; U9 (the calendar is a read-only union with an overlap warning per employee).
+**Status:** CL1–CL14, including **Q-14** (a new `partnership_events` record; what counts as an overlap), are the recommended answers
+applied under the owner's standing instruction for the build session ("proceed with the recommended answers; ask only if genuinely
+blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. Migration `0136_partnership_events`, API contract §12BT, RBAC
+§2.78. Spec: `docs/superpowers/specs/2026-10-09-upc-011-partnership-calendar-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| CL1 | The 8 §9 kinds | University meetings = upc-009; university visits = upc-010; Conference, Education fair, Partner meeting, MoU signing, Webinar, University presentation = `partnership_events.kind` |
+| CL2 | Q-14a: an event record | New `partnership_events` (`PEV-000001`): kind, title, optional active university, starts_on / ends_on (≤ 31 days), location, notes, owner, other employees, status |
+| CL3 | Dates | All-day date ranges; a new or changed date is today or later (IST) |
+| CL4 | Owner | A manager: themselves; a head: themselves or an active direct report (upc-010 lead rule) |
+| CL5 | Other employees | Active partnership managers / heads other than the owner, ≤ 10 |
+| CL6 | Statuses | scheduled → cancelled (reason); a past event is simply past |
+| CL7 | Who | Read: managers (with a profile), heads, super_admin; add: managers and heads; edit / cancel: owner or creator; others `403` |
+| CL8 | Range | ≤ 31 inclusive IST days; ≤ 500 rows per source with `truncated` |
+| CL9 | Whose calendar | Manager: own; head: team or one direct report; super_admin: everyone or anyone; out of scope `404` |
+| CL10 | Q-14b: overlap | The same employee on two items whose times intersect: visit = its whole day, event = its days, meeting = a 60-minute slot (meetings have no duration); cancelled / called-off items ignored; a warning, never a block |
+| CL11 | AC2 "on create and on the calendar" | Calendar items, and the event, meeting and visit detail responses, carry `overlaps` (the page reached after creating any of them shows it) |
+| CL12 | Window edge | Calendar overlaps are computed within the window; a detail computes over the item's own days |
+| CL13 | Views | Web week (every day) and month (days with items), plain links; employee choice for heads and super_admin |
+| CL14 | Audit and logs | `partnership_event.{create,update,cancel}` (ids, code, kind, counts, field names); the calendar read writes nothing |
+
+**Consequences:**
+- `partnership_events`, `partnership_event_participants`, `partnership_event_code_seq` (`0136`); `app/partnership_event_kinds.py`,
+  `services/partnership_calendar.py`, `services/partnership_events.py`, `api/partnership_calendar.py`, `api/partnership_events.py`.
+- The meeting (§12BM) and visit (§12AX) items gain `overlaps` (additive).
+- Pages `/partnership/calendar`, `/partnership/events/new`, `/[id]`, `/[id]/edit`; the overlap notice on meeting and visit pages; the
+  manager menu's Calendar goes live; head and super admin nav entries.
+- **New Feature ID authorized:** `upc-011`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-011.
