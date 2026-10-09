@@ -3380,3 +3380,17 @@ Design spec `docs/superpowers/specs/2026-10-08-rec-011-candidate-skills-design.m
   - `hr_team` and an archived candidate see the table with no controls.
 - **Skills Master detail** (`/recruiter/manager/skills`, manager and super_admin): **Merge into another skill** — a picker (never the
   skill itself), then a confirm naming what happens. On success the detail shows the kept skill with the merged name among its aliases.
+
+## rec-018 addendum (2026-10-09, `DEC-SCOPE-140`) — Screening form + result
+
+Design spec `docs/superpowers/specs/2026-10-09-rec-018-application-screening-design.md` §4.
+
+- **Requirement detail** (`/recruiter/requirements/[id]`), Candidates section: each candidate gains a **Screening** disclosure (next to
+  Change status and History) and, once screened, a `Screening: <result>` badge beside the status (SC2's Hold / Need More Information
+  flag).
+  - Writers on an open application get the form: three Verified checkboxes; Expected salary (per year); Notice period (days); Location
+    preference; Availability; Communication skills and Technical screening (Not rated, 1–5); Willing to relocate (Not asked / Yes / No);
+    Result (required); Recruiter remarks, marked "required for Rejected" and checked before sending. "Last saved by X on date".
+  - On save the board re-reads and announces "Screening saved — <name> is now <status>."; the API's 409/422 sentence is shown in the form.
+  - Readers (manager, assigned BDM) and closed applications see a read-only summary, or "Not screened yet.".
+  - Loading ("Loading screening…") and error ("Unable to load the screening.") states.

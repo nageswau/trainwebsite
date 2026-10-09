@@ -2033,6 +2033,22 @@ can_complete, can_follow_up, can_close}, editable_fields, created_at, updated_at
 | `POST /recruiter/candidates/{id}/skills/{sid}/status` | `{status}` → item. `verified` / `assessed` set `verified_by` and `verified_at` (the caller, now); `claimed` clears them (AC3). The same status → `409`. The backlog named this route `…/verify`; it is `…/status` because it also sets `claimed` and `assessed` |
 | `POST /recruiter/skills/{id}/merge` | Skills Master writers only (placement manager, super_admin; recruiters `403`). `{into_skill_id}` → the kept skill (the §12AM skill item). This skill (active or not) is merged into an active one: candidate skills move (a candidate with both keeps the stronger status, the kept skill's row on a tie), requirement skills (`job_skills.skill_id`) move, aliases move, related links are re-made on the kept skill, this skill is **deleted** and its name becomes an alias of the kept one. **Refusals:** into itself → `422`; unknown or inactive target → `422` "Choose an active skill to merge into"; unknown skill → `404`. Audit `recruiter.skill_merge` (the merged id and name, counts) |
 
+## 12BH. Application screening (`rec-018`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-140` (SC1–SC8). Design spec `docs/superpowers/specs/2026-10-09-rec-018-application-screening-design.md` §3.
+  Migration `0125`.
+- **Common rules:** the application resolves through rec-017's requirement scope (§12BD): another recruiter's application or an unknown
+  id → `404`; a role with no requirement scope (`hr_team`, students, the employer, …) → `403`; signed out → `401`.
+- **Screening:** `{qualification_verified, experience_verified, skills_verified, expected_salary (number|null), notice_days,
+  location_preference, communication_rating, technical_rating, availability, willing_to_relocate (bool|null), remarks, result
+  (shortlisted|hold|rejected|need_more_info), result_label, screened_by {id, full_name}, updated_at}`.
+- **The §12BD application item** gains `screening_result: {key, label} | null` on every route that returns it (additive).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/applications/{id}/screening` | The requirement's readers → `{screening \| null, results [{key, label}], can_edit}`. `can_edit` = a writer and the application is open |
+| `PUT /recruiter/applications/{id}/screening` | Writers in scope (`placement_team`, `super_admin`; manager / BDM `403`). **Body:** the whole form, unknown keys refused; a field left out is cleared; `result` required. Ratings 1–5, notice 0–365, salary ≥ 0, text limits 200/120/2000 → otherwise `422`; Rejected without remarks → `422` "Remarks are required when the result is Rejected" (AC2). Not open → `409` "Only an open application can be screened. Reopen it first.". **Effect (SC3):** Shortlisted moves sourced/screened → shortlisted; Rejected → rejected; Hold / Need More Information keep the status. A move writes history (`Screening: <result>`) and notifies a student. → `{screening, application}`. Audit `recruiter_application.screening` (field names + result); an unchanged form writes no audit |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

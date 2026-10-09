@@ -1598,3 +1598,20 @@ history notes.
 - Rows are hard-deleted on remove (audited). The skill merge (SK7) re-points rows to the kept skill and deletes the loser of a clash
   before it deletes the merged skill, so no row ever points at a deleted skill. The merge also re-points `job_skills.skill_id`.
 - `downgrade()` refuses while any row exists.
+
+## Application screenings (`rec-018`, `DEC-SCOPE-140`; migration `0125_application_screenings`, after `0122_candidate_skills`)
+
+**`application_screenings` columns:**
+- `application_id` PK → `job_applications` (FK RESTRICT): one current screening per application (SC5).
+- `qualification_verified`, `experience_verified`, `skills_verified` boolean NOT NULL default false
+- `expected_salary` numeric(12,2) (CHECK ≥ 0), `notice_days` smallint (CHECK 0–365), `location_preference` varchar(200)
+- `communication_rating`, `technical_rating` smallint (CHECK 1–5), `availability` varchar(120), `willing_to_relocate` boolean (NULL =
+  not asked), `remarks` varchar(2000)
+- `result` varchar(20) (CHECK shortlisted/hold/rejected/need_more_info), CHECK `ck_application_screenings_rejected_remarks` (Rejected
+  needs remarks)
+- `screened_by_user_id` → `users` (the last saver), timestamps
+
+**Design notes:**
+- Each save overwrites the row; the audit keeps field names and the result per save, and the status history keeps any move (SC3).
+- Salary and remarks are internal: only the recruiter routes read the table.
+- `downgrade()` refuses while any row exists.

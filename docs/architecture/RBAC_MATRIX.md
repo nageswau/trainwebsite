@@ -1204,6 +1204,19 @@ writer may set Verified or Assessed; who and when are recorded.
 | `hr_team` | read only (every write `403`; the Skills Master stays `403`) | the whole pool | `rec-011` |
 | `it_admin`, `employer`, `bdm`, students, every other role | `403` | — | `rec-011` |
 
+### 2.66 Application screening *(net-new, added 2026-10-09 — `DEC-SCOPE-140`, `rec-018`)*
+
+Screening follows rec-017's requirement scope (§2.62): the scope check runs first (outside it → `404`). Salary and remarks are internal:
+no employer, student or `hr_team` route reads a screening. SC8 (UNVERIFIED).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` | read; save the screening (moves the status per SC3) | own requirements | `rec-018` |
+| `placement_manager` | read only (save `403`) | the team's requirements | `rec-018` |
+| `super_admin` | read; save | all | `rec-018` |
+| `bdm` | read only (save `403`) | requirements of companies assigned to them | `rec-018` |
+| `hr_team`, `it_admin`, `employer`, students, every other role | `403` | — | `rec-018` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
