@@ -4992,3 +4992,76 @@ class PartnershipTarget(Base, TimestampMixin):
     target: Mapped[int] = mapped_column(Integer)
     set_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     set_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# rec-030 (DEC-SCOPE-153, spec §2): recruiter contracts / MoU (EVID-018 §22), the bdm-005 MoU pattern. The six stored statuses in source
+# order; Expired (CT2) is derived from end_date and never stored. Migration 0137 repeats these (test_rec_030_migration pins them).
+RECRUITER_CONTRACT_STATUSES = ("discussion", "proposal_sent", "negotiation", "contract_sent", "signed", "active")
+RECRUITER_CONTRACT_EXPIRING = ("signed", "active")
+RECRUITER_CONTRACT_FEE_BASES = ("fixed", "percent_of_ctc")
+RECRUITER_CONTRACT_EVENT_KINDS = ("created", "status", "updated", "document", "renewed")
+RECRUITER_CONTRACT_CHECKS = {
+    "ck_recruiter_contracts_status": _in_list("status", RECRUITER_CONTRACT_STATUSES),
+    "ck_recruiter_contracts_window": "start_date IS NULL OR end_date IS NULL OR end_date >= start_date",
+    "ck_recruiter_contracts_fee_pair": "(fee_basis IS NULL) = (fee_value IS NULL)",
+    "ck_recruiter_contracts_fee_basis": "fee_basis IS NULL OR " + _in_list("fee_basis", RECRUITER_CONTRACT_FEE_BASES),
+    "ck_recruiter_contracts_fee_value": "fee_value IS NULL OR (fee_value >= 0 AND (fee_basis <> 'percent_of_ctc' OR fee_value <= 100))",
+    "ck_recruiter_contracts_signed_document": "status NOT IN ('signed', 'active') OR contract_document_key IS NOT NULL",
+    "ck_recruiter_contracts_active_window": "status <> 'active' OR (start_date IS NOT NULL AND end_date IS NOT NULL)",
+    "ck_recruiter_contracts_contract_document": "(contract_document_key IS NULL) = (contract_document_content_type IS NULL)",
+    "ck_recruiter_contracts_mou_document": "(mou_document_key IS NULL) = (mou_document_content_type IS NULL)",
+}
+
+
+class RecruiterContract(Base, TimestampMixin):
+    """rec-030: a company's contract. At most one `is_current` row per company (CT7: a renewal is a new row; the old one is kept). The
+    document keys are server-generated and never returned or logged; the service owns every rule, the CHECKs are the backstop."""
+
+    __tablename__ = "recruiter_contracts"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in RECRUITER_CONTRACT_CHECKS.items()),
+        Index("uq_recruiter_contracts_current", "company_id", unique=True, postgresql_where=text("is_current")),
+        Index("ix_recruiter_contracts_company", "company_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"))
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    status: Mapped[str] = mapped_column(String(20), default="discussion", server_default="discussion")
+    status_changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    agreement_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    fee_basis: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    fee_value: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    payment_terms: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    replacement_policy: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    contract_document_key: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    contract_document_content_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    contract_document_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    contract_document_uploaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    mou_document_key: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    mou_document_content_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    mou_document_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    mou_document_uploaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    is_current: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+
+
+class RecruiterContractEvent(Base):
+    """rec-030: one row per contract write, append-only. `from_status` / `to_status` are effective statuses; `changed` lists field names
+    only. `document_key` is the replaced object's key on a `document` row; it is never returned."""
+
+    __tablename__ = "recruiter_contract_events"
+    __table_args__ = (
+        CheckConstraint(_in_list("kind", RECRUITER_CONTRACT_EVENT_KINDS), name="ck_recruiter_contract_events_kind"),
+        Index("ix_recruiter_contract_events_contract", "contract_id", "position"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    contract_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_contracts.id", ondelete="RESTRICT"))
+    actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    kind: Mapped[str] = mapped_column(String(10))
+    from_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    to_status: Mapped[str] = mapped_column(String(20))
+    changed: Mapped[list] = mapped_column(JSON, default=list)
+    document_key: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

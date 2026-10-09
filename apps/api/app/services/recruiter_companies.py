@@ -205,6 +205,7 @@ def row_out(user: User, company: Company, industry, source, recruiter: User | No
 async def company_out(db: AsyncSession, user: User, company: Company, *, refresh: bool = True) -> dict:
     """The detail every route returns. Refreshes first: server defaults (updated_at) are expired after a flush."""
     from app.services.company_pipeline import pipeline_out  # local: company_pipeline imports this module
+    from app.services.recruiter_contracts import company_contract_ref  # local: recruiter_contracts imports this module
 
     if refresh:
         await db.refresh(company)
@@ -240,6 +241,7 @@ async def company_out(db: AsyncSession, user: User, company: Company, *, refresh
             {"from_user": person(people.get(h.from_user_id)), "to_user": person(people[h.to_user_id]), "changed_by": person(people[h.changed_by_user_id]), "created_at": h.created_at} for h in history
         ],
         "pipeline": pipeline_out(user, company),
+        "contract": await company_contract_ref(db, company),  # rec-030 CT10
         "archived_at": company.archived_at,
         "created_at": company.created_at,
         "updated_at": company.updated_at,
