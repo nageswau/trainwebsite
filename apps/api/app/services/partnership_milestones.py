@@ -93,15 +93,22 @@ def _items(rows: dict[str, UniversityMilestone], derived: dict[str, date], today
     return items
 
 
+def _page(rows: dict[str, UniversityMilestone], derived: dict[str, date], today: date, can_edit: bool) -> dict:
+    return {"items": _items(rows, derived, today), "today": today, "can_edit": can_edit}
+
+
+def _iso(value: date | None) -> str | None:
+    return value.isoformat() if value else None
+
+
 async def page(db: AsyncSession, university_id: UUID, can_edit: bool) -> dict:
-    today = india_today()
-    return {"items": _items(await _rows(db, university_id), await _derived(db, university_id), today), "today": today, "can_edit": can_edit}
+    return _page(await _rows(db, university_id), await _derived(db, university_id), india_today(), can_edit)
 
 
-async def update(db: AsyncSession, user: User, uni: University, kind: str, payload: UniversityMilestoneUpdate, can_edit: bool) -> tuple[dict, dict | None]:
-    """On the university row the route has locked (so the select-then-insert cannot race; uq_university_milestones_kind is the
-    backstop). Returns the new page and the audit metadata (None when nothing changed). MS7: a moved target keeps from / to and
-    whether it was delayed."""
+async def update(db: AsyncSession, user: User, uni: University, kind: str, payload: UniversityMilestoneUpdate) -> tuple[dict, dict | None]:
+    """On the university row the route has locked after `can_edit_timeline` (so the select-then-insert cannot race;
+    uq_university_milestones_kind is the backstop). Returns the new page and the audit metadata (None when nothing changed). MS7: a moved
+    target keeps from / to and whether it was delayed."""
     today = india_today()
     changes = payload.model_dump(include=payload.model_fields_set)
     if changes.get("achieved_on") and changes["achieved_on"] > today:
@@ -111,7 +118,7 @@ async def update(db: AsyncSession, user: User, uni: University, kind: str, paylo
     old = {field: getattr(row, field) if row else None for field in changes}
     changed = sorted(field for field, value in changes.items() if old[field] != value)
     if not changed:
-        return {"items": _items(rows, derived, today), "today": today, "can_edit": can_edit}, None
+        return _page(rows, derived, today, True), None
     was_delayed = next(i["status"] for i in _items(rows, derived, today) if i["kind"] == kind) == "delayed"
     if row is None:
         row = rows[kind] = UniversityMilestone(university_id=uni.id, kind=kind, updated_by_user_id=user.id)
@@ -121,6 +128,5 @@ async def update(db: AsyncSession, user: User, uni: University, kind: str, paylo
     row.updated_by_user_id = user.id
     metadata: dict = {"kind": kind, "fields": changed}
     if "target_date" in changed:
-        new = changes["target_date"]
-        metadata |= {"target_date": {"from": old["target_date"] and old["target_date"].isoformat(), "to": new and new.isoformat()}, "was_delayed": was_delayed}
-    return {"items": _items(rows, derived, today), "today": today, "can_edit": can_edit}, metadata
+        metadata |= {"target_date": {"from": _iso(old["target_date"]), "to": _iso(changes["target_date"])}, "was_delayed": was_delayed}
+    return _page(rows, derived, today, True), metadata

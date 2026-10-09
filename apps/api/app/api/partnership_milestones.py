@@ -30,12 +30,10 @@ async def list_milestones(university_id: UUID, user: User = Depends(get_current_
 
 
 @router.patch("/{university_id}/milestones/{kind}", response_model=UniversityMilestonePage)
-async def update_milestone(
-    university_id: UUID, kind: MilestoneKind, payload: UniversityMilestoneUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
-):
+async def update_milestone(university_id: UUID, kind: MilestoneKind, payload: UniversityMilestoneUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """One milestone's target and / or achieved date (null clears); returns every milestone, since the statuses depend on each other."""
     uni, _ = await _locked(db, user, university_id, "can_edit_timeline", "milestone")
-    out, metadata = await milestones.update(db, user, uni, kind, payload, can_edit=True)
+    out, metadata = await milestones.update(db, user, uni, kind, payload)
     if metadata is not None:
         svc.audit(db, user, "milestone_updated", uni.id, metadata)
     await db.commit()

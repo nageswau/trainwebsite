@@ -8,7 +8,6 @@ import { formatCalendarDate } from "@/lib/formatDate";
 import {
   AUTO_LABEL,
   EXPECTED_FIELDS,
-  type ExpectedField,
   expectedUrl,
   isMilestonePage,
   type Milestone,
@@ -153,7 +152,7 @@ export default function UniversityTimeline({ universityId, expected, canEdit, in
       <h4 id={id("expected")} style={{ margin: "0 0 8px" }}>Expected timeline</h4>
       {editing === "expected" ? (
         <form className="form-grid" onSubmit={save} onKeyDown={onKeyDown} aria-label="Edit expected timeline" style={{ alignItems: "start" }}>
-          {EXPECTED_FIELDS.map((f) => field(f.key as ExpectedField, f.label, f.type, f.type === "text" ? { maxLength: 80 } : {}))}
+          {EXPECTED_FIELDS.map((f) => field(f.key, f.label, f.type, f.type === "text" ? { maxLength: 80 } : {}))}
           <p className="muted" style={{ margin: 0, fontSize: 13 }}>The expected month and quarter follow the target partnership date.</p>
           {buttons("Save expected timeline")}
         </form>
