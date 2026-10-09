@@ -2,17 +2,18 @@
 import Link from "next/link";
 import { type FormEvent, useEffect, useId, useState } from "react";
 
+import RecruiterShareDialog, { type ShareCandidate } from "@/components/RecruiterShareDialog";
 import { sendJson } from "@/lib/apiErrors";
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import { isApplicationBody, requirementCandidatesUrl } from "@/lib/recruiterApplications";
 import { CANDIDATES_PATH, experienceLabel } from "@/lib/recruiterCandidates";
 import { type CriteriaSkill, isMatches, MATCH_PAGE_SIZE, type Matches, type MatchRow, matchesUrl, WEIGHT_MAX, WEIGHT_MIN, weightsUrl } from "@/lib/recruiterMatching";
 import { isRequirementBody, type Requirement } from "@/lib/recruiterRequirements";
+import { UNSHAREABLE } from "@/lib/recruiterShares";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 type Notice = { text: string; failed: boolean } | null;
 const WEIGHT_ERROR = `Each weight must be a whole number from ${WEIGHT_MIN} to ${WEIGHT_MAX}.`;
-
 /** M1: one number per requirement skill; the API re-checks every rule (ids, range, who may edit). */
 function WeightsForm({ requirementId, skills, onSaved, onCancel }: {
   requirementId: string; skills: CriteriaSkill[]; onSaved: (r: Requirement) => void; onCancel: () => void;
@@ -65,13 +66,16 @@ function criteriaText(m: Matches): string {
   return parts.join(" · ");
 }
 
-function MatchItem({ m, writes, canShortlist, busy, onShortlist }: { m: MatchRow; writes: boolean; canShortlist: boolean; busy: boolean; onShortlist: () => void }) {
+function MatchItem({ m, writes, canShortlist, busy, selected, onSelect, onShortlist }: {
+  m: MatchRow; writes: boolean; canShortlist: boolean; busy: boolean; selected: boolean | null; onSelect: (on: boolean) => void; onShortlist: () => void;
+}) {
   const id = useId();
   const facts = [m.preferred_role, m.experience_months === null ? null : experienceLabel(m.experience_months), m.location].filter(Boolean).join(" | ");
   const profile = `${CANDIDATES_PATH}/${encodeURIComponent(m.id)}`;
   return (
     <li className="action-card" style={{ listStyle: "none", gap: 6 }} aria-labelledby={`${id}-name`}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "baseline" }}>
+        {selected !== null && <input type="checkbox" checked={selected} onChange={(e) => onSelect(e.target.checked)} aria-label={`Select ${m.name} to share`} />}
         <Link id={`${id}-name`} href={profile} style={{ ...LINK_STYLE, fontWeight: 600, overflowWrap: "anywhere" }}>{m.name}</Link>
         <span className="badge">{m.score}% match</span>
         {m.application ? <span className="badge">{m.application.status_label}</span> : <span className="muted" style={{ fontSize: 13 }}>Not on this requirement</span>}
@@ -100,9 +104,11 @@ function MatchItem({ m, writes, canShortlist, busy, onShortlist }: { m: MatchRow
 
 /** rec-016 (DEC-SCOPE-157): the requirement's matching candidates, ranked by the weighted score with each row's breakdown and its status on
  *  this requirement. Shortlist is rec-017's add at Shortlisted (one per candidate); writers adjust the skill weights. `version` (the
- *  requirement's updated_at) re-reads the ranking after the requirement's skills change. Share arrives with rec-019. */
-export default function RecruiterRequirementMatches({ requirementId, version, onShortlisted, onRequirementChanged }: {
-  requirementId: string; version?: string; onShortlisted?: () => void; onRequirementChanged?: (r: Requirement) => void;
+ *  requirement's updated_at) re-reads the ranking after the requirement's skills change. rec-019: writers select rows (kept across pages)
+ *  and share them with the company. */
+export default function RecruiterRequirementMatches({ requirementId, requirementLabel = "this requirement", companyId, version, onShortlisted, onShared, onRequirementChanged }: {
+  requirementId: string; requirementLabel?: string; companyId?: string; version?: string; onShortlisted?: () => void; onShared?: () => void;
+  onRequirementChanged?: (r: Requirement) => void;
 }) {
   const [data, setData] = useState<Matches | null>(null);
   const [failed, setFailed] = useState(false);
@@ -111,6 +117,8 @@ export default function RecruiterRequirementMatches({ requirementId, version, on
   const [editing, setEditing] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
+  const [selected, setSelected] = useState<Map<string, ShareCandidate>>(new Map());
+  const [sharing, setSharing] = useState<ShareCandidate[] | null>(null); // the selection when the dialog opened (QA-01)
   const headingId = `${useId()}-matches`;
   const adjustId = `${headingId}-adjust`;
   const focus = useFocusAfterRender();
@@ -143,15 +151,27 @@ export default function RecruiterRequirementMatches({ requirementId, version, on
     } else setNotice({ text: outcome.ok ? "Unable to shortlist the candidate." : outcome.message, failed: true });
   }
 
+  const shareable = (m: MatchRow) => !!data?.can_shortlist && !UNSHAREABLE.includes(m.application?.status ?? "");
+  const select = (m: MatchRow, on: boolean) => setSelected((current) => {
+    const next = new Map(current);
+    if (on) next.set(m.id, { id: m.id, name: m.name, code: m.candidate_code });
+    else next.delete(m.id);
+    return next;
+  });
   const writes = !!data && (data.can_shortlist || data.can_edit_weights);
   const unused = data?.criteria.skills.filter((s) => !s.in_master) ?? [];
   return (
     <section className="action-card wide" aria-labelledby={headingId}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
         <h3 id={headingId} style={{ margin: 0 }}>Matching candidates{data && !data.reason ? ` (${data.total})` : ""}</h3>
-        {data?.can_edit_weights && data.criteria.skills.length > 0 && !editing && (
-          <button id={adjustId} type="button" className="btn secondary small" onClick={() => { setEditing(true); setNotice(null); }}>Adjust weights</button>
-        )}
+        <div className="actions" style={{ flexWrap: "wrap", gap: 8 }}>
+          {selected.size > 0 && !sharing && (
+            <button type="button" className="btn small" onClick={() => { setSharing([...selected.values()]); setNotice(null); }}>Share selected ({selected.size})</button>
+          )}
+          {data?.can_edit_weights && data.criteria.skills.length > 0 && !editing && (
+            <button id={adjustId} type="button" className="btn secondary small" onClick={() => { setEditing(true); setNotice(null); }}>Adjust weights</button>
+          )}
+        </div>
       </div>
       {data && !data.reason && (
         <p className="muted" style={{ margin: 0, fontSize: 13 }}>Score out of 100: {criteriaText(data)}. Candidates must have every required skill.</p>
@@ -164,6 +184,10 @@ export default function RecruiterRequirementMatches({ requirementId, version, on
       <div role="status" aria-live="polite">
         {notice && <p className={notice.failed ? "form-error" : "form-message"} style={{ margin: "6px 0 0", fontSize: 13 }}>{notice.text}</p>}
       </div>
+      {sharing && (
+        <RecruiterShareDialog requirement={{ id: requirementId, label: requirementLabel }} companyId={companyId} candidates={sharing}
+          onClose={() => setSharing(null)} onShared={() => { setSelected(new Map()); reload(); onShared?.(); }} />
+      )}
       {editing && data && (
         <WeightsForm requirementId={requirementId} skills={data.criteria.skills} onCancel={closeWeights}
           onSaved={(r) => { closeWeights(); setNotice({ text: "Match weights saved.", failed: false }); onRequirementChanged?.(r); reload(); }} />
@@ -185,7 +209,8 @@ export default function RecruiterRequirementMatches({ requirementId, version, on
         <>
           <ul aria-label="Matching candidates" style={{ padding: 0, margin: "8px 0 0", display: "grid", gap: 8 }}>
             {data.items.map((m) => (
-              <MatchItem key={m.id} m={m} writes={writes} canShortlist={data.can_shortlist} busy={busyId === m.id} onShortlist={() => void shortlist(m)} />
+              <MatchItem key={m.id} m={m} writes={writes} canShortlist={data.can_shortlist} busy={busyId === m.id} onShortlist={() => void shortlist(m)}
+                selected={shareable(m) ? selected.has(m.id) : null} onSelect={(on) => select(m, on)} />
             ))}
           </ul>
           {data.total > MATCH_PAGE_SIZE && (

@@ -7,6 +7,7 @@ import RecruiterApplicationInterviews from "@/components/RecruiterApplicationInt
 import RecruiterApplicationOffer from "@/components/RecruiterApplicationOffer";
 import RecruiterApplicationScreening from "@/components/RecruiterApplicationScreening";
 import type { ContactOption } from "@/components/RecruiterInterviewForm";
+import RecruiterShareDialog, { type ShareCandidate } from "@/components/RecruiterShareDialog";
 import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson } from "@/lib/apiErrors";
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
@@ -25,6 +26,7 @@ import {
 } from "@/lib/recruiterApplications";
 import { CANDIDATES_PATH } from "@/lib/recruiterCandidates";
 import { contactsOf, isContactList } from "@/lib/recruiterContacts";
+import { UNSHAREABLE } from "@/lib/recruiterShares";
 
 type Notice = { text: string; failed: boolean } | null;
 const search = candidateSearch();
@@ -145,9 +147,9 @@ function StatusForm({ application, onChanged, onCancel }: { application: RecAppl
 /** One candidate as a stacked item (the rec-025 Calls pattern), so the status and actions stay on screen at phone width (QA-03). */
 type Panel = "none" | "status" | "history" | "interviews" | "screening" | "offer";
 
-function ApplicationItem({ application, contacts, onChanged, onInterview, onScreened }: {
-  application: RecApplication; contacts: ContactOption[]; onChanged: (a: RecApplication) => void; onInterview: (notice: string) => void;
-  onScreened: (a: RecApplication) => void;
+function ApplicationItem({ application, contacts, selected, onSelect, onChanged, onInterview, onScreened }: {
+  application: RecApplication; contacts: ContactOption[]; selected: boolean | null; onSelect: (on: boolean) => void;
+  onChanged: (a: RecApplication) => void; onInterview: (notice: string) => void; onScreened: (a: RecApplication) => void;
 }) {
   const [open, setOpen] = useState<Panel>("none");
   const toggle = (panel: Exclude<Panel, "none">) => setOpen((current) => (current === panel ? "none" : panel));
@@ -155,6 +157,9 @@ function ApplicationItem({ application, contacts, onChanged, onInterview, onScre
   return (
     <li className="action-card" style={{ listStyle: "none", gap: 6 }} aria-labelledby={`${id}-name`}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "baseline" }}>
+        {selected !== null && (
+          <input type="checkbox" checked={selected} onChange={(e) => onSelect(e.target.checked)} aria-label={`Select ${application.candidate.name} to share`} />
+        )}
         <Link id={`${id}-name`} href={`${CANDIDATES_PATH}/${application.candidate.id}`} style={{ ...LINK_STYLE, fontWeight: 600, overflowWrap: "anywhere" }}>
           {application.candidate.name}
         </Link>
@@ -200,7 +205,9 @@ function ApplicationItem({ application, contacts, onChanged, onInterview, onScre
 /** rec-017 (spec §5): the requirement's candidates and each one's §12 status. Writers (the requirement's recruiter, super_admin) add
  *  pool candidates and move statuses; managers and the assigned BDM read. Every write re-reads the list. rec-020: each row opens its
  *  interviews; the company's active contacts (when the caller can read them) feed the interview form. */
-export default function RecruiterRequirementCandidates({ requirementId, companyId, refreshKey = 0 }: { requirementId: string; companyId?: string; refreshKey?: number }) {
+export default function RecruiterRequirementCandidates({ requirementId, requirementLabel = "this requirement", companyId, refreshKey = 0, onShared }: {
+  requirementId: string; requirementLabel?: string; companyId?: string; refreshKey?: number; onShared?: () => void;
+}) {
   const [data, setData] = useState<RequirementCandidates | null>(null);
   const [failed, setFailed] = useState(false);
   const [version, setVersion] = useState(0);
@@ -209,6 +216,8 @@ export default function RecruiterRequirementCandidates({ requirementId, companyI
   const headingId = `${useId()}-candidates`;
   const reload = () => setVersion((n) => n + 1);
   const [contacts, setContacts] = useState<ContactOption[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [sharing, setSharing] = useState<ShareCandidate[] | null>(null); // the selection when the dialog opened (QA-01)
 
   useEffect(() => {
     const controller = new AbortController();
@@ -235,17 +244,35 @@ export default function RecruiterRequirementCandidates({ requirementId, companyI
     setNotice({ text, failed: false });
     reload();
   };
+  const shareable = (a: RecApplication) => !!data?.can_add && !UNSHAREABLE.includes(a.status); // rec-019: the requirement's writers
+  const picked = data?.items.filter((a) => selected.has(a.candidate.id) && shareable(a)) ?? [];
+  const select = (candidateId: string, on: boolean) => setSelected((current) => {
+    const next = new Set(current);
+    if (on) next.add(candidateId);
+    else next.delete(candidateId);
+    return next;
+  });
   return (
     <section className="action-card wide" aria-labelledby={headingId}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
         <h3 id={headingId} style={{ margin: 0 }}>Candidates{data ? ` (${data.items.length})` : ""}</h3>
-        {data?.can_add && !adding && (
-          <button type="button" className="btn secondary small" onClick={() => { setAdding(true); setNotice(null); }}>Add candidate</button>
-        )}
+        <div className="actions" style={{ flexWrap: "wrap", gap: 8 }}>
+          {picked.length > 0 && !sharing && (
+            <button type="button" className="btn small" onClick={() => { setSharing(picked.map((a) => a.candidate)); setNotice(null); }}>Share selected ({picked.length})</button>
+          )}
+          {data?.can_add && !adding && (
+            <button type="button" className="btn secondary small" onClick={() => { setAdding(true); setNotice(null); }}>Add candidate</button>
+          )}
+        </div>
       </div>
       <div role="status" aria-live="polite">
         {notice && <p className={notice.failed ? "form-error" : "form-message"} style={{ margin: "6px 0 0", fontSize: 13 }}>{notice.text}</p>}
       </div>
+      {sharing && (
+        <RecruiterShareDialog requirement={{ id: requirementId, label: requirementLabel }} companyId={companyId}
+          candidates={sharing} onClose={() => setSharing(null)}
+          onShared={() => { setSelected(new Set()); reload(); onShared?.(); }} />
+      )}
       {adding && data?.can_add && (
         <AddCandidate requirementId={requirementId} data={data} onCancel={() => setAdding(false)}
           onAdded={(a) => { setAdding(false); done(`${a.candidate.name} added as ${a.status_label}.`); }} />
@@ -263,6 +290,7 @@ export default function RecruiterRequirementCandidates({ requirementId, companyI
         <ul aria-label="Candidates on this requirement" style={{ padding: 0, margin: "8px 0 0", display: "grid", gap: 8 }}>
           {data.items.map((application) => (
             <ApplicationItem key={application.id} application={application} contacts={contacts} onInterview={done}
+              selected={shareable(application) ? selected.has(application.candidate.id) : null} onSelect={(on) => select(application.candidate.id, on)}
               onChanged={(a) => done(`${a.candidate.name} is now ${a.status_label}.`)}
               onScreened={(a) => done(`Screening saved — ${a.candidate.name} is now ${a.status_label}.`)} />
           ))}

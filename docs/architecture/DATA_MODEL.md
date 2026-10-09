@@ -1895,3 +1895,19 @@ Additive: no existing row is read or written. `downgrade()` refuses while any co
 Membership is never stored: it is computed on read from the rule through `services/candidate_search`. The migration seeds six example
 pools (P3) idempotently by name. Additive: no existing row is read or written. `downgrade()` refuses while a manager-made or
 manager-edited pool exists.
+
+
+## Profile sharing (`rec-019`, `DEC-SCOPE-160`; migration `0142_profile_shares`, after `0141_talent_pools`)
+
+**`profile_shares`** is one share: `job_id`, `company_id`, `contact_id` (nullable), `channel` (`email` / `whatsapp` / `portal` / `other`),
+`note` (≤ 500, internal), `message_id` (FK `recruiter_messages`, the rec-026 row an email / WhatsApp share wrote), `shared_by_user_id`,
+timestamps. The CHECKs are `PROFILE_SHARE_CHECKS`: the channel is one of the four; email and WhatsApp have a message and a contact, Portal
+and Other have no message; the note's length. Indexes `(job_id, created_at)` and `(company_id, created_at)`.
+
+**`profile_share_items`** is one candidate of a share: `share_id`, `candidate_id`, `application_id`, `resume_id` (the version current at
+share time, nullable), `token_hash` (SHA-256 of the 7-day resume-link token; the token itself is never stored) and `token_expires_at`
+(both set or both NULL), `response` (`pending` / `interested` / `not_interested` / `interview_requested`, default `pending`), `feedback`
+(≤ 1000), `responded_by_user_id`, `responded_at`, timestamps. `uq_profile_share_items_candidate` (share, candidate);
+`uq_profile_share_items_token` (partial unique); index on `candidate_id`.
+
+Every FK is RESTRICT; shares are permanent. Additive: no existing row is read or written. `downgrade()` refuses while any share exists.

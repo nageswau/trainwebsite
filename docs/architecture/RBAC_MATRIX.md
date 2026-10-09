@@ -1485,6 +1485,24 @@ The inline pattern. Routes are listed in §12CA. Pools are division-global, like
 - Member rows never include a candidate's phone number or email (R8).
 - Audit rows and logs carry ids, counts and field names only.
 
+### 2.86 Profile sharing *(net-new, added 2026-10-09 — `DEC-SCOPE-160`, `rec-019`)*
+
+The inline pattern, scope in the SQL `WHERE`. Routes are listed in §12CB.
+
+| Role | Share / record a response | Read shares | Employer portal ("Shared with you") |
+|---|---|---|---|
+| `placement_team` | Requirements in their scope (rec-007), unless closed or cancelled | Their requirements and companies | — |
+| `placement_manager` | None (`403`) | Their team's and unassigned requirements and companies | — |
+| `super_admin` | Every open requirement | Every requirement and company | — |
+| `bdm` (assigned BDM) | `403` | Their companies' requirements and companies (read only) | — |
+| `employer` | `403` (recruiter routes) | — | Their own company's **Portal** shares: read, download the shared resume, record a response |
+| anyone, no session | — | — | `GET /public/shared-resume/{token}` only: the 7-day random token of one email / WhatsApp item |
+| any other role, including `hr_team` | `403` | `403` | `403` |
+
+- Out of scope is `404`, the same as an unknown id (IDOR). Another company's portal item is `404`.
+- R8 is enforced server-side: no phone, email, LinkedIn or salary leaves in an email, a WhatsApp text or the portal.
+- Only the token's SHA-256 is stored; every resume download is audited; audit rows and logs carry ids only.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

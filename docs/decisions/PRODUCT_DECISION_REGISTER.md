@@ -6446,3 +6446,40 @@ Spec: `docs/superpowers/specs/2026-10-09-rec-022-offer-management-design.md`.
   are exported for reuse (`Card` gains `matchNote`).
 - Out of scope: manual pool membership, pool-based sharing or campaigns, and the four examples needing new skills.
 - **New Feature ID authorized:** `rec-015`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-015.
+
+### DEC-SCOPE-160 — Profile sharing (Email / WhatsApp / Portal / Other) + response tracking (`rec-019`)
+
+**Evidence:**
+- `EVID-018` §11 (lines 500–530: select multiple candidates → Share Profiles via Email / WhatsApp / Portal / Other; record candidate,
+  company, requirement, date shared, recruiter, response, recruiter feedback);
+- `DEC-SCOPE-116` R8 (email + signed resume link, wa.me, the employer portal or Other; candidate phone and email never shared), R11, R13;
+- `DEC-SCOPE-136` (rec-017 statuses, `profile_shared`), `DEC-SCOPE-135` (rec-026 messages, caps, worker), `DEC-SCOPE-127` (rec-005's
+  reserved `profiles_shared` event), `DEC-SCOPE-149` SC8 (salary never leaves the recruiter module);
+- `RECRUITER_CRM_BACKLOG.md` §rec-019 AC1–AC4 and Q-19.
+
+**Status:**
+- Built on `feature/rec-019`. Migration `0142_profile_shares`, API contract §12CB, RBAC §2.86. The next rec item takes `0143`,
+  `DEC-SCOPE-161`, §12CC and §2.87 (re-check `main`).
+- S1–S14 are the recommended answers to Q-19 and the item's open points, applied under the owner's standing instruction for the build
+  session ("proceed with the recommended answers; ask only if genuinely required"). Every row is **UNVERIFIED** (`NEEDS_CONFIRMATION` at
+  sign-off).
+- Spec: `docs/superpowers/specs/2026-10-09-rec-019-profile-sharing-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| S1 | Shape | One share = one requirement, one company, one channel, 1–20 candidates; from the Candidates board, Matching or Find Candidates |
+| S2 | Channels | Email: one queued `recruiter_messages` email to an active contact (SMTP required). WhatsApp: one logged message, recorded on confirm, then wa.me. Portal: the company's employer users (409 without one). Other: log only. The rec-026 daily caps apply |
+| S3 | Contact | An active contact of the requirement's company (another company's → 422; inactive → 409); required for Email / WhatsApp |
+| S4 | Candidates | Opted-in pool only, not archived (422). Applications move to Profile Shared from Sourced / Screened / Shortlisted, are added at Profile Shared when absent, later open stages stay; Rejected / Withdrawn / Joined refused (422) |
+| S5 | Repeat (backlog edge case) | Already shared for the requirement → 409 listing them, unless `repeat: true` ("Share again") |
+| S6 | What is shared (R8) | Summary allowlist only; never phone, email, LinkedIn or salary |
+| S7 | Resume link expiry (Q-19a) | 7 days; random token, SHA-256 stored; the version current at share time; every download audited; uniform 404 |
+| S8 | Portal visibility (Q-19b) | Every employer user of the company sees its Portal shares only |
+| S9 | Who records the response (Q-19c) | Both: the recruiter (response + feedback, any channel) and the employer (response, Portal); who/when kept; no automatic status move |
+| S10 | Who | Writers = the requirement's recruiter and `super_admin` (not on closed / cancelled); manager and assigned BDM read |
+| S11 | Pipeline | The company stage gets `profiles_shared` (forward only); the requirement status stays manual |
+| S12 | Note | Optional internal note, never sent |
+| S13 | Permanence | Shares are never edited or deleted; links expire (no revoke) |
+| S14 | Lists | "Shared profiles" on the requirement and company pages; "Shared with you" on the employer dashboard |
+
+- **New Feature ID authorized:** `rec-019`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-019.

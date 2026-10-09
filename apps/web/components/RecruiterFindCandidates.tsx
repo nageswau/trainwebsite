@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
 
+import RecruiterShareDialog, { type ShareCandidate } from "@/components/RecruiterShareDialog";
 import SearchableSelect from "@/components/SearchableSelect";
 import { detailMessage, sendJson } from "@/lib/apiErrors";
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
@@ -61,9 +62,10 @@ export function SkillChips({ id, label, hint, terms, text, room, onText, onChang
   );
 }
 
-export function Card({ c, writes, requirement, shortlisted, onShortlist, matchNote = "matches your search" }: {
+export function Card({ c, writes, requirement, shortlisted, onShortlist, matchNote = "matches your search", selected = null, onSelect }: {
   c: CandidateCard; writes: boolean; requirement: PickOption | null; shortlisted?: Shortlisted[string]; onShortlist: (c: CandidateCard) => void;
   matchNote?: string; // rec-015: a talent pool's page says "matches this pool"
+  selected?: boolean | null; onSelect?: (on: boolean) => void; // rec-019: select to share (null = not offered)
 }) {
   const role = [c.preferred_role, experienceLabel(c.experience_months) === "—" ? null : experienceLabel(c.experience_months)].filter(Boolean).join(" | ");
   const facts: [string, string][] = [
@@ -73,6 +75,9 @@ export function Card({ c, writes, requirement, shortlisted, onShortlist, matchNo
   return (
     <li className="action-card" style={{ gap: 10 }} aria-labelledby={`card-${c.id}`}>
       <div>
+        {selected !== null && ( // QA-03: outside the heading, so the card's name stays the candidate's
+          <input type="checkbox" checked={selected} onChange={(e) => onSelect?.(e.target.checked)} aria-label={`Select ${c.name} to share`} style={{ float: "left", margin: "6px 8px 0 0" }} />
+        )}
         <h3 id={`card-${c.id}`} style={{ margin: 0, fontSize: 18 }}>
           <Link href={`${CANDIDATES_PATH}/${encodeURIComponent(c.id)}`} style={LINK_STYLE}>{c.name}</Link>{" "}
           <span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>{c.candidate_code}</span>
@@ -144,6 +149,14 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
   const [sources, setSources] = useState<CatalogueValue[]>([]);
   const [requirement, setRequirement] = useState<PickOption | null>(null);
   const [shortlisted, setShortlisted] = useState<Shortlisted>({});
+  const [selected, setSelected] = useState<Map<string, ShareCandidate>>(new Map()); // rec-019: kept across pages until shared
+  const [sharing, setSharing] = useState<ShareCandidate[] | null>(null); // the selection when the dialog opened (QA-01)
+  const select = (c: CandidateCard, on: boolean) => setSelected((current) => {
+    const next = new Map(current);
+    if (on) next.set(c.id, { id: c.id, name: c.name, code: c.candidate_code });
+    else next.delete(c.id);
+    return next;
+  });
   const resultsRef = useRef<HTMLDivElement>(null);
   const jump = useRef(false); // QA-03: a Search from the form brings its results into view; a facet or a link does not
   const state = stateOf(new URLSearchParams(key));
@@ -347,17 +360,24 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
       ) : result === null ? (
         <p className="muted" role="status">Searching candidates…</p>
       ) : (
-        <Results result={result} state={state} loading={loading} writes={writes} requirement={requirement} shortlisted={shortlisted}
-          onRequirement={(r) => { setRequirement(r); setShortlisted({}); }} onShortlist={shortlist} narrow={narrow} page={(offset) => go({ ...state, offset })} />
+        <>
+          {sharing && requirement && (
+            <RecruiterShareDialog requirement={requirement} candidates={sharing} onClose={() => setSharing(null)} onShared={() => setSelected(new Map())} />
+          )}
+          <Results result={result} state={state} loading={loading} writes={writes} requirement={requirement} shortlisted={shortlisted}
+            onRequirement={(r) => { setRequirement(r); setShortlisted({}); setSelected(new Map()); setSharing(null); }} onShortlist={shortlist} narrow={narrow}
+            page={(offset) => go({ ...state, offset })} selected={selected} onSelect={select} onShare={() => setSharing([...selected.values()])} />
+        </>
       )}
       </div>
     </div>
   );
 }
 
-function Results({ result, state, loading, writes, requirement, shortlisted, onRequirement, onShortlist, narrow, page }: {
+function Results({ result, state, loading, writes, requirement, shortlisted, onRequirement, onShortlist, narrow, page, selected, onSelect, onShare }: {
   result: SearchResult; state: SearchState; loading: boolean; writes: boolean; requirement: PickOption | null; shortlisted: Shortlisted;
   onRequirement: (r: PickOption | null) => void; onShortlist: (c: CandidateCard) => void; narrow: (c: Partial<SearchState>) => void; page: (offset: number) => void;
+  selected: Map<string, ShareCandidate>; onSelect: (c: CandidateCard, on: boolean) => void; onShare: () => void;
 }) {
   const expanded = result.terms.filter((t) => t.also.length || t.skill.name.toLowerCase() !== t.term.toLowerCase());
   const facetButton = (label: string, count: number, onClick?: () => void, pressed = false) => count > 0 && ( // QA-04: empty rows are noise
@@ -399,8 +419,12 @@ function Results({ result, state, loading, writes, requirement, shortlisted, onR
         <div className="action-card" style={{ gap: 6 }}>
           <SearchableSelect label="Shortlist into requirement" noun="requirement" search={requirementSearch} onChange={onRequirement} initial={requirement} />
           <span className="muted" style={{ fontSize: 13 }}>
-            {requirement ? `Shortlist adds a candidate to ${requirement.label} as Shortlisted.` : "Choose one of your open requirements to shortlist candidates into it."}
+            {requirement ? `Shortlist adds a candidate to ${requirement.label} as Shortlisted; or select candidates and share their profiles with the company.`
+              : "Choose one of your open requirements to shortlist candidates into it or share their profiles."}
           </span>
+          {requirement && selected.size > 0 && (
+            <span><button type="button" className="btn small" onClick={onShare}>Share selected ({selected.size})</button></span>
+          )}
         </div>
       )}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-start" }}>
@@ -425,7 +449,8 @@ function Results({ result, state, loading, writes, requirement, shortlisted, onR
           ) : (
             <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 12 }}>
               {result.items.map((c) => (
-                <Card key={c.id} c={c} writes={writes} requirement={requirement} shortlisted={shortlisted[c.id]} onShortlist={onShortlist} />
+                <Card key={c.id} c={c} writes={writes} requirement={requirement} shortlisted={shortlisted[c.id]} onShortlist={onShortlist}
+                  selected={writes && requirement ? selected.has(c.id) : null} onSelect={(on) => onSelect(c, on)} />
               ))}
             </ul>
           )}

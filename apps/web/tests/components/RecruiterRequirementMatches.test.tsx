@@ -176,4 +176,21 @@ describe("RecruiterRequirementMatches", () => {
     expect((await screen.findByRole("alert")).textContent).toBe("Each weight must be a whole number from 1 to 10.");
     expect(sent("PUT")).toEqual([]);
   });
+
+  it("rec-019: selects shareable rows only and keeps the dialog's success after the selection clears (QA-01)", async () => {
+    postReply = () => res({ share: { id: "S1", channel: "other", channel_label: "Other", requirement: { id: "J1", code: "REQ-000001", title: "Java Dev" },
+      company_id: "CO1", contact: null, note: null, message: null, shared_by: { id: "U1", full_name: "Asha" }, created_at: "", can_respond: true, items: [] },
+      whatsapp_url: null }, 201);
+    const onShared = vi.fn();
+    render(<RecruiterRequirementMatches requirementId="J1" requirementLabel="Java Dev" companyId="CO1" onShared={onShared} />);
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Select Rahul Kumar to share" }));
+    expect(screen.queryByRole("checkbox", { name: "Select Priya Shah to share" })).toBeNull(); // Rejected on this requirement
+    fireEvent.click(screen.getByRole("button", { name: "Share selected (1)" }));
+    fireEvent.click(screen.getByLabelText(/^Other/));
+    fireEvent.click(screen.getByRole("button", { name: "Share 1 profile" }));
+    expect(await screen.findByText(/Shared 0 profiles for Java Dev by Other/)).toBeTruthy();
+    expect(onShared).toHaveBeenCalled();
+    expect(sent("POST")).toEqual([["/api/v1/recruiter/shares", { requirement_id: "J1", candidate_ids: ["C1"], channel: "other" }]]);
+    expect(screen.queryByRole("button", { name: /Share selected/ })).toBeNull();
+  });
 });

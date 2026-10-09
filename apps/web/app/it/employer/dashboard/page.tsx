@@ -3,6 +3,7 @@ import { serverApi } from "@/lib/api";
 import EmployerJobsPanel from "@/components/EmployerJobsPanel";
 import EmployerCandidateSearchPanel from "@/components/EmployerCandidateSearchPanel";
 import EmployerInterviewsPanel from "@/components/EmployerInterviewsPanel";
+import EmployerSharedProfilesPanel from "@/components/EmployerSharedProfilesPanel";
 
 type EmployerProfile = {
   full_name: string;
@@ -51,6 +52,9 @@ export default async function EmployerDashboardPage() {
         </div>
         <div style={{ marginTop: 24 }}>
           <EmployerCandidateSearchPanel />
+        </div>
+        <div style={{ marginTop: 24 }}>
+          <EmployerSharedProfilesPanel />
         </div>
         <div style={{ marginTop: 24 }}>
           <EmployerInterviewsPanel />

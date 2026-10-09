@@ -158,6 +158,15 @@ async def active_template(db: AsyncSession, template_id: UUID) -> RecruiterMessa
 
 
 # --- send and read --------------------------------------------------------------------------------------------------------------
+async def check_cap(db: AsyncSession, user: User, channel: str, now: datetime) -> None:
+    """MS8: the sender's per-IST-day cap for the channel (409 WhatsApp / 429 email). rec-019's shares count too."""
+    start, end = day_range(today_ist(now))
+    count = await db.scalar(select(func.count()).select_from(RM).where(RM.sender_user_id == user.id, RM.channel == channel, RM.sent_at >= start, RM.sent_at < end))
+    cap, status, detail = (EMAIL_DAILY_CAP, 429, EMAIL_CAP_REACHED) if channel == "email" else (DAILY_CAP, 409, CAP_REACHED)
+    if (count or 0) >= cap:
+        raise HTTPException(status, detail)
+
+
 async def create(db: AsyncSession, user: User, payload: RecWhatsAppCreate | RecEmailCreate, now: datetime) -> RecruiterMessage:
     """The error order of spec §3: role and scope, the party lock, the right and state; SMTP unset 503; no number / address 409; the
     template 422; the cap 409 / 429. An email is stored `queued`; the route publishes it after the commit (MS7)."""
@@ -173,11 +182,7 @@ async def create(db: AsyncSession, user: User, payload: RecWhatsAppCreate | RecE
     template = await db.get(RecruiterMessageTemplate, payload.template_id) if payload.template_id else None
     if payload.template_id and (template is None or not template.active or template.channel != payload.channel):
         raise HTTPException(422, TEMPLATE_UNUSABLE[payload.channel])
-    start, end = day_range(today_ist(now))
-    count = await db.scalar(select(func.count()).select_from(RM).where(RM.sender_user_id == user.id, RM.channel == payload.channel, RM.sent_at >= start, RM.sent_at < end))
-    cap, status, detail = (EMAIL_DAILY_CAP, 429, EMAIL_CAP_REACHED) if is_email else (DAILY_CAP, 409, CAP_REACHED)
-    if (count or 0) >= cap:
-        raise HTTPException(status, detail)
+    await check_cap(db, user, payload.channel, now)
     message = RM(
         company_id=company.id if company else None,
         contact_id=contact.id if contact else None,
