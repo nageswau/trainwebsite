@@ -4421,6 +4421,11 @@ class CandidateResume(Base):
     size_bytes: Mapped[int] = mapped_column(Integer)
     uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # rec-012 (DEC-SCOPE-148): the last extraction -- null until extracted, '' when the file had no text (a scan). Derived from the file,
+    # so recomputable; rec-014 searches the text. Nothing here reaches the candidate until the recruiter applies it (AC2).
+    extracted_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    extraction_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    extracted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 # rec-010 (DEC-SCOPE-138): migration 0123 repeats CANDIDATE_CONSENT_CHECKS (test_rec_010_migration asserts they stay identical).
