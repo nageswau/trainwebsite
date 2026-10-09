@@ -1884,3 +1884,14 @@ the effective from/to status, `changed` (field names only), the replaced documen
 
 Additive: no existing row is read or written. `downgrade()` refuses while any contract exists.
 
+## Talent pools (`rec-015`, `DEC-SCOPE-159`; migration `0141_talent_pools`, after `0140_joining_management`)
+
+**`talent_pools`** has these columns:
+- `name` varchar(80), unique on `lower(name)` (`uq_talent_pools_name`);
+- `all_terms` JSON (skill names, AND) and `any_terms` JSON (lists of skill names, each at least one of);
+- `experience_min_months`, `experience_max_months` (null = open; `ck_talent_pools_experience`: 0–600, min ≤ max);
+- `active`, `created_by_user_id` / `updated_by_user_id` (FK `users`, RESTRICT; null for the seed), plus timestamps.
+
+Membership is never stored: it is computed on read from the rule through `services/candidate_search`. The migration seeds six example
+pools (P3) idempotently by name. Additive: no existing row is read or written. `downgrade()` refuses while a manager-made or
+manager-edited pool exists.

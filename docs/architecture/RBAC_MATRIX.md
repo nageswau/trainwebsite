@@ -1469,6 +1469,22 @@ The inline pattern, scope in the SQL `WHERE`. Routes are listed in §12BZ.
 - The proof is PII. It is stored under a server-generated key that is never returned, and every download is audited.
 - Audit rows `recruiter_joining.*` carry field names, statuses and file type/size only — never the reason, a name or a file name.
 
+### 2.85 Talent pools *(net-new, added 2026-10-09 — `DEC-SCOPE-159`, `rec-015`)*
+
+The inline pattern. Routes are listed in §12CA. Pools are division-global, like the candidate pool (R11), so there is no per-owner scope.
+
+| Role | Read pools and members | Create / edit / deactivate |
+|---|---|---|
+| `placement_team` | Active pools | None (`403`) |
+| `placement_manager` | Every pool, inactive included | Every pool |
+| `super_admin` | Every pool, inactive included | Every pool |
+| `hr_team` | Active pools (read only) | None (`403`) |
+| any other role, including `bdm` and `employer` | `403` | `403` |
+
+- An inactive pool is `404` for a reader, the same as an unknown id.
+- Member rows never include a candidate's phone number or email (R8).
+- Audit rows and logs carry ids, counts and field names only.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
