@@ -1,5 +1,5 @@
 "use client";
-import { type FormEvent, useEffect, useId, useState } from "react";
+import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 
 import LocalTime from "@/components/LocalTime";
 import { sendJson } from "@/lib/apiErrors";
@@ -80,6 +80,7 @@ export default function RecruiterApplicationScreening({ applicationId, candidate
   const [draft, setDraft] = useState<Draft>(draftOf(null));
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const sending = useRef(false); // QA-01: a fast double click lands before `busy` re-renders the button disabled
   const id = useId();
   const label = `Screening of ${candidateName}`;
 
@@ -107,14 +108,16 @@ export default function RecruiterApplicationScreening({ applicationId, candidate
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (busy) return;
+    if (sending.current) return;
     if (rejected && !draft.remarks.trim()) {
       setFailure(REMARKS_NEEDED);
       return;
     }
+    sending.current = true;
     setBusy(true);
     setFailure(null);
     const outcome = await sendJson(applicationUrl(applicationId, "/screening"), "PUT", bodyOf(draft));
+    sending.current = false;
     setBusy(false);
     if (outcome.ok && isApplicationBody(outcome.data)) onSaved(outcome.data.application);
     else setFailure(outcome.ok ? "Unable to save the screening." : outcome.message);

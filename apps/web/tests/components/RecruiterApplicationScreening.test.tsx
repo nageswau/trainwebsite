@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import RecruiterApplicationScreening from "@/components/RecruiterApplicationScreening";
@@ -95,6 +95,18 @@ describe("RecruiterApplicationScreening", () => {
     fireEvent.click(within(form).getByRole("button", { name: "Save screening" }));
     expect((await within(form).findByRole("alert")).textContent).toBe("Remarks are required when the result is Rejected.");
     expect(puts()).toEqual([]);
+  });
+
+  it("QA-01: a double click sends one request", async () => {
+    renderForm();
+    const form = await screen.findByRole("form", { name: "Screening of Rahul Kumar" });
+    fireEvent.change(within(form).getByLabelText("Result"), { target: { value: "hold" } });
+    const save = within(form).getByRole("button", { name: "Save screening" });
+    act(() => { // both clicks land before React re-renders (the disabled button), as a real fast double click does
+      save.click();
+      save.click();
+    });
+    await vi.waitFor(() => expect(puts()).toHaveLength(1));
   });
 
   it("shows the API's message when the save is refused", async () => {
