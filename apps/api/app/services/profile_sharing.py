@@ -1,4 +1,4 @@
-"""rec-019 (DEC-SCOPE-158, spec §1-§4): profile sharing -- one share of 1-20 pool candidates for one requirement, to its company over Email,
+"""rec-019 (DEC-SCOPE-159, spec §1-§4): profile sharing -- one share of 1-20 pool candidates for one requirement, to its company over Email,
 WhatsApp, the employer Portal or Other, and the company's response per candidate.
 
 R8 is enforced here, server-side: the summary a company sees (the email, the WhatsApp text, the portal) is an allowlist that never holds a

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// rec-019 (AC1-AC4; DEC-SCOPE-158 S1-S14): a self-registered employer's company is assigned to the seeded recruiter, who adds two
+// rec-019 (AC1-AC4; DEC-SCOPE-159 S1-S14): a self-registered employer's company is assigned to the seeded recruiter, who adds two
 // candidates (one with a resume) to a requirement. From the Candidates board the recruiter shares both on the Portal (both move to
 // Profile Shared), is warned on a repeat and shares again by Email; the email (Mailpit) names them without their phone or email and its
 // resume link downloads the file. The employer sees the profiles under "Shared with you" and answers Interested, which the recruiter then

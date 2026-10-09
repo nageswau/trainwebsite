@@ -6365,7 +6365,46 @@ Spec: `docs/superpowers/specs/2026-10-09-rec-022-offer-management-design.md`.
 - **New Feature ID authorized:** `rec-016`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-016.
 
 
-### DEC-SCOPE-158 — Profile sharing (Email / WhatsApp / Portal / Other) + response tracking (`rec-019`)
+### DEC-SCOPE-158 — Joining management + placement closure (`rec-023`)
+
+**Evidence:**
+- `EVID-018` §17 (lines 704–730). It lists Expected Joining Date, Actual Joining Date, Joining Location, Reporting Manager, Joining Confirmation,
+  Proof/Confirmation and Joining Status. The final status is Joined or Did Not Join, because "selection is not the same as placement".
+- `DEC-SCOPE-155` OF6: Accepted keeps the application Selected, and rec-023's joining moves it to Joined.
+- `DEC-SCOPE-129`: requirement vacancies and statuses. `DEC-SCOPE-127`: the company stages `joined` and `requirement_closed`.
+- `RECRUITER_CRM_BACKLOG.md` §rec-023, AC1–AC3 and Q-22.
+
+**Status:**
+- Built on `feature/rec-023` (PR pending).
+  - Migration `0140_joining_management`, API contract §12BZ, RBAC §2.84.
+  - The next rec item takes `0141`, `DEC-SCOPE-159`, §12CA and §2.85 (re-check `main`).
+- JN1–JN10 are the recommended answers to Q-22 and to the item's open points. They were applied under the owner's standing instruction for the
+  build session ("proceed with recommended answers"). Every row is **UNVERIFIED** (`NEEDS_CONFIRMATION` at sign-off).
+- Spec: `docs/superpowers/specs/2026-10-09-rec-023-joining-management-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| JN1 | Where the joining lives | Columns on `job_offers`. There is one offer per application, so one joining per offer. The existing `job_offers.joining_date` is the Expected Joining Date, so it is not duplicated |
+| JN2 | When the joining starts | When the offer reaches Accepted, the joining is set to `pending`. Before that it is NULL and there is no Joining section |
+| JN3 | Statuses | `pending` moves to `joined` or `did_not_join`, and both of those are final (`409`). Tracking a replacement after a later exit is out of scope (Q-22c; the contract field covers it, rec-030) |
+| JN4 | What Joined needs (AC1, Q-22b) | The actual joining date, plus either a proof file or the name of whoever confirmed the joining ("Proof/Confirmation", L718). Without both → `422` |
+| JN5 | What Did Not Join needs (AC2, Q-22a) | A reason of 2–500 characters (`422`). A DB CHECK enforces it too |
+| JN6 | Dates | The actual date cannot be before the offer date or in the future (`422`). The expected date cannot be before the offer date. The confirmation date cannot be in the future |
+| JN7 | What Joined does | The application moves Selected → Joined (`409` if it is no longer Selected). The company gets rec-005's `candidate_joined`. When the requirement has vacancies and the joined count reaches them, the requirement moves to Closed ("All vacancies filled"), which fires `requirement_closed` on its last live requirement |
+| JN8 | What Did Not Join does | The application moves Selected → Withdrawn ("Did not join"), but only where that move is allowed |
+| JN9 | Bypass guard | rec-017's status route refuses Joined (`409`) when the application has an offer; without an offer it behaves as before. The legacy `/workflows` route keeps rec-022 AC3: accepted/joined → application Joined, with the joining marked `joined` |
+| JN10 | Roles | The writers are rec-017's: `placement_team` within scope, and `super_admin`. The manager, the assigned BDM and `super_admin` can read; other roles get `403`. Out of scope is `404`. Students and employers see nothing new |
+
+**Consequences:**
+- New code:
+  - `services/joinings.py` and `PUT /recruiter/offers/{id}/joining`;
+  - `PUT`/`GET /recruiter/offers/{id}/joining/proof` and `GET /recruiter/joinings`;
+  - the offer item gains `joining`.
+- Web: the Joining section on the offer panel, and the `/recruiter/joinings` page with its nav entry for the recruiter and the manager.
+- Revenue (rec-031, AC3) must count only `joining_status = 'joined'`; the field is ready.
+- **New Feature ID authorized:** `rec-023`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-023.
+
+### DEC-SCOPE-159 — Profile sharing (Email / WhatsApp / Portal / Other) + response tracking (`rec-019`)
 
 **Evidence:**
 - `EVID-018` §11 (lines 500–530: select multiple candidates → Share Profiles via Email / WhatsApp / Portal / Other; record candidate,
@@ -6376,8 +6415,8 @@ Spec: `docs/superpowers/specs/2026-10-09-rec-022-offer-management-design.md`.
 - `RECRUITER_CRM_BACKLOG.md` §rec-019 AC1–AC4 and Q-19.
 
 **Status:**
-- Built on `feature/rec-019`. Migration `0140_profile_shares`, API contract §12BZ, RBAC §2.84. The next rec item takes `0141`,
-  `DEC-SCOPE-159`, §12CA and §2.85 (re-check `main`).
+- Built on `feature/rec-019`. Migration `0141_profile_shares`, API contract §12CA, RBAC §2.85. The next rec item takes `0142`,
+  `DEC-SCOPE-160`, §12CB and §2.86 (re-check `main`).
 - S1–S14 are the recommended answers to Q-19 and the item's open points, applied under the owner's standing instruction for the build
   session ("proceed with the recommended answers; ask only if genuinely required"). Every row is **UNVERIFIED** (`NEEDS_CONFIRMATION` at
   sign-off).

@@ -1,4 +1,4 @@
-"""rec-019 -- profile sharing (spec §1-§3; AC1-AC4; DEC-SCOPE-158 S1-S14). The shared test database is never truncated, so every value is
+"""rec-019 -- profile sharing (spec §1-§3; AC1-AC4; DEC-SCOPE-159 S1-S14). The shared test database is never truncated, so every value is
 unique per test."""
 
 import uuid

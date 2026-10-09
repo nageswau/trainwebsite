@@ -1,9 +1,9 @@
 """rec-019 -- profile sharing: profile_shares and profile_share_items.
 
-Revision ID: 0140_profile_shares
-Revises: 0139_recruiter_contracts
+Revision ID: 0141_profile_shares
+Revises: 0140_joining_management
 
-docs/superpowers/specs/2026-10-09-rec-019-profile-sharing-design.md §2 (DEC-SCOPE-158). Additive: two new tables, no existing row read or
+docs/superpowers/specs/2026-10-09-rec-019-profile-sharing-design.md §2 (DEC-SCOPE-159). Additive: two new tables, no existing row read or
 written. 0001 builds a fresh database from the current models, which already carry both tables, so each is created only when missing.
 CHANNELS / RESPONSES / *_CHECKS are frozen copies of app.models.PROFILE_SHARE_* (test_rec_019_migration). downgrade() refuses while any
 share exists: what was sent to a company is never dropped silently.
@@ -14,8 +14,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0140_profile_shares"
-down_revision = "0139_recruiter_contracts"
+revision = "0141_profile_shares"
+down_revision = "0140_joining_management"
 branch_labels = None
 depends_on = None
 
@@ -101,6 +101,6 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {SHARES} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0140_profile_shares: profile shares exist. Clear them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0141_profile_shares: profile shares exist. Clear them deliberately first.")
     op.drop_table(ITEMS)
     op.drop_table(SHARES)

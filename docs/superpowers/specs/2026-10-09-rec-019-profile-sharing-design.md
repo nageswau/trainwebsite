@@ -1,8 +1,8 @@
 # rec-019 — Profile sharing (Email / WhatsApp / Portal / Other) + response tracking (design)
 
 - **Feature:** rec-019 (`docs/delivery/RECRUITER_CRM_BACKLOG.md`). Source: EVID-018 §11 (lines 500–530), R8, R13.
-- **Decision:** `DEC-SCOPE-158` (S1–S14 below are **recommended defaults, UNVERIFIED**; the owner said "proceed with recommended answers"
-  and had not answered Q-19). Migration `0140_profile_shares`, API §12BZ, RBAC §2.84.
+- **Decision:** `DEC-SCOPE-159` (S1–S14 below are **recommended defaults, UNVERIFIED**; the owner said "proceed with recommended answers"
+  and had not answered Q-19). Migration `0141_profile_shares`, API §12CA, RBAC §2.85.
 - **Dependencies (all merged):** rec-004 (PR #160), rec-017 (PR #178), rec-026 (PR #176).
 
 ## 1. Decisions (Q-19 and item-level; UNVERIFIED)
@@ -24,7 +24,7 @@
 | S13 | **Shares are permanent** (no edit or delete). Revoking a link is out of scope; links expire. |
 | S14 | **Lists.** "Shares" sections on the requirement page and the company page, newest first, 20 per page, each share with its items. The employer dashboard gets a "Shared with you" panel. |
 
-## 2. Data model (migration `0140_profile_shares`, down `0139_recruiter_contracts`)
+## 2. Data model (migration `0141_profile_shares`, down `0140_joining_management`)
 
 - `profile_shares`: `id`, `job_id` FK jobs, `company_id` FK companies, `contact_id` FK company_contacts NULL, `channel` CHECK
   (`email`,`whatsapp`,`portal`,`other`), `note` ≤ 500 NULL, `message_id` FK recruiter_messages NULL, `shared_by_user_id` FK users,

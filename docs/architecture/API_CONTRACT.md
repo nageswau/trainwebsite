@@ -2453,9 +2453,26 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `PUT /recruiter/requirements/{requirement_id}/skill-weights` | **Body:** `{weights: [{id (job skill), weight 1–10}]}` (1–60 items, distinct ids), `extra="forbid"`. **→ 200** `{requirement}` (§12AW). **422**: a weight out of range, a duplicate id, or an id that is not this requirement's skill ("Choose skills of this requirement"). Unchanged weights write nothing. A change writes one audit row `recruiter_requirement.weights` `{skills: [ids]}` |
 | `GET /recruiter/requirements/{requirement_id}` (§12AW) | `permissions` gains `can_view_matches` (additive): whether the caller may read the matches |
 
-## 12BZ. Profile sharing (`rec-019`) — addendum, 2026-10-09
+## 12BZ. Joining management + placement closure (`rec-023`) — addendum, 2026-10-09
 
-- **Basis:** `DEC-SCOPE-158` (S1–S14). Spec: `docs/superpowers/specs/2026-10-09-rec-019-profile-sharing-design.md` §3. Migration `0140_profile_shares`.
+- **Basis:** `DEC-SCOPE-158` (JN1–JN10). Spec: `docs/superpowers/specs/2026-10-09-rec-023-joining-management-design.md` §3. Migration
+  `0140_joining_management`.
+- **Scope:** each `{offer_id}` resolves through its application's requirement scope (§12BW). An id that is out of scope or unknown → `404`.
+- **Writers:** rec-017's writers (`placement_team` within scope, `super_admin`); a reader → `403`. **Readers:** the manager, the assigned BDM
+  and `super_admin`; any other role → `403`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `PUT /recruiter/offers/{offer_id}/joining` | **Body:** `{joining_status?: pending \| joined \| did_not_join, expected_joining_date, actual_joining_date, joining_location ≤160, reporting_manager ≤160, confirmed_by ≤160, confirmed_on, reason ≤500}` with `extra="forbid"`. The details are replaced as a whole, and an omitted field is cleared. An omitted status keeps the current one. **→ 200** `{offer}`. **409**: the offer is not Accepted, the joining is final, or Joined is requested for an application that is no longer Selected. **422** on its field: Joined without `actual_joining_date`; Joined without `confirmed_by` and with no proof uploaded; Did Not Join without a `reason` of at least 2 characters; an actual date in the future or before the offer date; an expected date before the offer date; a confirmation date in the future. Side effects (JN7/JN8): the application, the company `candidate_joined` event, and the requirement moving to Closed once its vacancies are filled. Audit `recruiter_joining.update` `{fields, status, from?}` |
+| `PUT /recruiter/offers/{offer_id}/joining/proof` | Multipart `file`: a PDF, JPG or PNG judged by its content, up to 20 MB (`415`/`413`/`422` as for the letter). **409** when there is no joining yet or it is Did Not Join. **→ 200** `{offer}`. The replaced object is kept, and its key goes on the history row |
+| `GET /recruiter/offers/{offer_id}/joining/proof` | Readers within scope. An attachment named `joining-proof-{candidate code}.{ext}`, with `nosniff`. The download is audited before any byte is sent. **404** when no proof is on file |
+| `GET /recruiter/joinings?view=due\|joined\|did_not_join&limit&offset` | **→ 200** `{items[], total, limit, offset, counts: {due, joined, did_not_join}}`. Each item is `{id (offer), position, offered_on, application, candidate, requirement, company, joining}`. `due` is sorted by expected date ascending, with nulls last |
+| Offer item (§12BW) | Gains `joining` (additive): `null` before Accepted. Otherwise `{status, status_label, expected_joining_date, actual_joining_date, location, reporting_manager, confirmed_by, confirmed_on, reason, proof {name, content_type, uploaded_at} \| null, overdue, allowed_statuses[], can_edit, can_upload_proof}`. The history gains `joining` (field names), `joined`, `did_not_join` (note = the reason) and `proof` |
+| `POST /recruiter/applications/{id}/status` (§12BD) | `joined` → **409** "Record the joining on the candidate's offer…" when the application has an offer (JN9). Unchanged without an offer |
+
+## 12CA. Profile sharing (`rec-019`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-159` (S1–S14). Spec: `docs/superpowers/specs/2026-10-09-rec-019-profile-sharing-design.md` §3. Migration `0141_profile_shares`.
 - **Scope:** the requirement's read scope (§12AW) for the share and the requirement list, the company's (§12AO) for the company list:
   out of scope or unknown → `404`. Writes need the requirement's writer (rec-017: its recruiter or `super_admin`; others `403`) and a
   requirement that is not closed or cancelled (`409`).

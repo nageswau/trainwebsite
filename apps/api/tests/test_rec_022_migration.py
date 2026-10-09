@@ -31,9 +31,9 @@ def test_migration_chains_and_there_is_a_single_head():
 def test_models_match_the_migration():
     from app.models import OFFER_CHECKS, OFFER_EVENT_CHECKS, OFFER_EVENTS, OFFER_STATUSES, JobOffer, JobOfferEvent
 
-    assert _migration.CHECKS == OFFER_CHECKS and _migration.EVENT_CHECKS == OFFER_EVENT_CHECKS
+    assert _migration.CHECKS == OFFER_CHECKS and set(OFFER_EVENT_CHECKS) == set(_migration.EVENT_CHECKS)
     assert _migration.STATUSES == OFFER_STATUSES == ("offer_pending", "offer_received", "accepted", "declined")
-    assert _migration.EVENTS == OFFER_EVENTS
+    assert OFFER_EVENTS[: len(_migration.EVENTS)] == _migration.EVENTS  # rec-023's 0140 appends the joining events (test_rec_023_migration)
     table = JobOffer.__table__
     assert not table.c.status.nullable and table.c.position.nullable and table.c.created_by_user_id.nullable
     names = {c.name for t in (table, JobOfferEvent.__table__) for c in t.constraints} | {i.name for i in JobOfferEvent.__table__.indexes}

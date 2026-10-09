@@ -1885,7 +1885,7 @@ the effective from/to status, `changed` (field names only), the replaced documen
 Additive: no existing row is read or written. `downgrade()` refuses while any contract exists.
 
 
-## Profile sharing (`rec-019`, `DEC-SCOPE-158`; migration `0140_profile_shares`, after `0139_recruiter_contracts`)
+## Profile sharing (`rec-019`, `DEC-SCOPE-159`; migration `0141_profile_shares`, after `0140_joining_management`)
 
 **`profile_shares`** is one share: `job_id`, `company_id`, `contact_id` (nullable), `channel` (`email` / `whatsapp` / `portal` / `other`),
 `note` (≤ 500, internal), `message_id` (FK `recruiter_messages`, the rec-026 row an email / WhatsApp share wrote), `shared_by_user_id`,

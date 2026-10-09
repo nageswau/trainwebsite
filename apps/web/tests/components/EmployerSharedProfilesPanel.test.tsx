@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import EmployerSharedProfilesPanel from "@/components/EmployerSharedProfilesPanel";
 import type { PortalItem } from "@/lib/recruiterShares";
 
-// rec-019 (DEC-SCOPE-158; S8, S9): the employer's "Shared with you" panel -- the summary only, the resume link and the response.
+// rec-019 (DEC-SCOPE-159; S8, S9): the employer's "Shared with you" panel -- the summary only, the resume link and the response.
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const item = (over: Partial<PortalItem> = {}): PortalItem => ({
   id: "I1", shared_at: "2026-10-09T05:00:00Z", requirement: { code: "REQ-000001", title: "Java Dev" }, has_resume: true, response: "pending", response_label: "Pending",

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import RecruiterShareDialog from "@/components/RecruiterShareDialog";
 import type { Share } from "@/lib/recruiterShares";
 
-// rec-019 (DEC-SCOPE-158; S1-S5): the share dialog -- the company's active contacts, the four channels, the repeat 409 and "Share again",
+// rec-019 (DEC-SCOPE-159; S1-S5): the share dialog -- the company's active contacts, the four channels, the repeat 409 and "Share again",
 // the WhatsApp result.
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const contact = (id: string, over: Record<string, unknown> = {}) => ({
