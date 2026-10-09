@@ -6332,7 +6332,9 @@ Spec: `docs/superpowers/specs/2026-10-09-rec-022-offer-management-design.md`.
 - `RECRUITER_CRM_BACKLOG.md` §rec-016 AC1–AC3 and Q-14.
 
 **Status:**
-- Built on `feature/rec-016` (2026-10-09). **No migration:** the weights already live on `job_skills.weight`. API contract §12BY, RBAC §2.83.
+- **MERGED** to `main` as PR #211 @ `ccfb66bb` (2026-10-09). The next rec item takes `0140`, `DEC-SCOPE-158`, §12BZ and §2.84 (re-check
+  `main`).
+- Built on `feature/rec-016`. **No migration:** the weights already live on `job_skills.weight`. API contract §12BY, RBAC §2.83.
 - M1–M8 are the recommended answers to Q-14 and the item's open points. They were applied under the owner's standing instruction for
   the build session ("proceed with the recommended answers; ask only if genuinely blocking"). Every row is **UNVERIFIED**
   (`NEEDS_CONFIRMATION` at sign-off).
