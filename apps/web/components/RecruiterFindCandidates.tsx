@@ -29,7 +29,7 @@ function SkillChips({ id, label, hint, terms, text, room, onText, onChange }: {
 }) {
   const add = () => {
     if (!text.trim() || !room) return;
-    onChange(distinctTerms([...terms, text], GROUP_TERMS * MAX_GROUPS));
+    onChange(distinctTerms([...terms, text]));
     onText("");
   };
   const onKey = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -145,16 +145,16 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
   }, [key]);
 
   useEffect(() => {
-    const body = searchBody(stateOf(new URLSearchParams(key)));
+    const current = stateOf(new URLSearchParams(key));
+    const body = searchBody(current);
     setFailure(null);
     if (!body) {
       setResult(null);
       return;
     }
     const controller = new AbortController();
-    const offset = stateOf(new URLSearchParams(key)).offset;
     setLoading(true);
-    fetch(`${SEARCH_URL}?limit=${PAGE_SIZE}&offset=${offset}`, {
+    fetch(`${SEARCH_URL}?limit=${PAGE_SIZE}&offset=${current.offset}`, {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: controller.signal,
     })
       .then(async (response) => {

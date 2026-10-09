@@ -50,7 +50,7 @@ const YEARS = /^\d{1,2}$/;
 const LAKHS = /^\d{1,7}(\.\d{1,2})?$/;
 
 /** Trimmed, blank-free and case-insensitively distinct, capped -- the API's own rule for one list of skills. */
-export function distinctTerms(values: string[], cap = GROUP_TERMS * MAX_GROUPS): string[] {
+export function distinctTerms(values: string[], cap = MAX_TERMS): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
   for (const raw of values) {

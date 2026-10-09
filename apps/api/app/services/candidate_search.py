@@ -67,9 +67,7 @@ async def resolve_terms(db: AsyncSession, body: CandidateSearch) -> dict[str, di
                          and_(SkillRelated.skill_b_id.in_(skill_ids), other.c.id == SkillRelated.skill_a_id)))
     )
     for a, b, other_id, other_name in pairs.all():
-        mine = a if other_id == b else b
-        if mine in related:
-            related[mine][other_id] = other_name
+        related[a if other_id == b else b][other_id] = other_name  # the joined side is the other skill; the pair's other end is ours
     out = {}
     for key, (skill_id, name) in found.items():
         also = sorted(related[skill_id].items(), key=lambda kv: kv[1].lower())

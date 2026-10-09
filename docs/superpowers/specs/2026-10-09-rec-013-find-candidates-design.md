@@ -77,3 +77,19 @@ facet, shortlists into a requirement; hr_team sees no Shortlist; mobile width ha
 ## 7. Out of scope
 Match % (rec-016), Share (rec-019), resume full text (rec-014), talent pools (rec-015), the dashboard search box (rec-032), job-type
 filter (FS6).
+
+## 8. Browser QA (2026-10-09, stack `rec013` web :3413 / api :8413)
+Independent pass with Browser Use (isolated Chrome) and Playwright, as recruiter, hr_team, trainer and signed out, at 1034 px, 768 px
+and 390 px. Working on the first pass: alias + related expansion, AND + OR group, facet narrowing, refresh / Back, shortlist (a double
+click makes one application; a duplicate shows rec-017's 409 sentence), the unknown-skill suggestion, signed-out redirect to
+`/it/login?next=…`, trainer "Your role cannot view candidates" (page) and 403 (API), hr_team read only, no sideways scroll.
+
+| ID | Sev | Issue | Fix |
+|---|---|---|---|
+| QA-01 | Low | No results still showed an all-zero facet panel, an empty Location heading and the shortlist picker | Only the count and "No candidates match" |
+| QA-02 | Low | A refused search (min salary above max, 422) offered Retry, which can never succeed | Retry only for a network error or a 5xx |
+| QA-03 | Medium | After Search (desktop) the results rendered ~900 px below the form; nothing visible changed | The results are scrolled into view and focused after a Search from the form (not after a facet or a link) |
+| QA-04 | Medium | On a phone the zero-count facet rows filled a screen before the first card | Zero-count rows (and empty facets) are hidden |
+| QA-05 | Low | No visible cue while a new search loaded over the old results | "Updating results…" under the count |
+| QA-06 | Low | The chip list shared its input's accessible name | The list is named "<label>: chosen" |
+| QA-07 | Low | A hand-edited offset past the end showed an empty list and "Showing 5001–5000" | "No candidates on this page" + "Go to the first page" |
