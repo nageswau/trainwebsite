@@ -6143,3 +6143,36 @@ upc-021, upc-017, rec-020, rec-018 and rec-012 merged first and hold 139–150 /
   before any candidate is read), the `/recruiter/find-candidates` page and a "Find Candidates" nav entry for the four roles.
 - Changed: the candidate detail wraps its calls and messages cards in `#contact`.
 - **New Feature ID authorized:** `rec-013`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-013.
+
+### DEC-SCOPE-152 — Student opportunity funnel + university performance (`upc-018`)
+
+**Evidence:**
+- `EVID-020` §17 (L581–L619: the 7-step funnel, the "ABC University" example, "Management can see the business value of every
+  partnership").
+- `EVID-020` §18 (L621–L637: the 9 performance metrics per active university). The figures in the source are illustrative.
+- `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U2, U4, U8 (`EXPLICIT_APPROVAL`, 2026-10-08), §4 upc-018 and Appendix B F1–F11.
+
+**Status:** PF1–PF10 are recommended answers, applied under the owner's standing instruction for the build session ("proceed with the
+recommended answers"). They are **not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. **No migration.** API contract §12BT,
+RBAC §2.78. Spec: `docs/superpowers/specs/2026-10-09-upc-018-student-funnel-performance-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| PF1 | Period | `from` / `to` as inclusive IST days. Default: this IST month to date. `from > to`, a span over 366 days, or an impossible date → `422` |
+| PF2 | Steps (source order) | Leads, Counselling, Students interested, Profiles eligible, Applications, Offers, Deposits, Visa approvals, Enrolled. Leads, Counselling and Eligible are **not tracked** (U8) and returned as `null` |
+| PF3 | Counting (event in period) | **Interested:** distinct agency students shortlisting the university. **Applications:** created, except withdrawn before submission. **Offers:** `offer_date`, else the first status-history entry into an offer-or-later status. **Deposits:** `paid_at`. **Visas:** distinct applications with a visa case `approved` at `decided_at`. **Enrolled:** status `enrolled`, timed by the first history entry into it, else `enrollment_confirmed_at`. Every owner kind counts: agency, self-service and School-bridged |
+| PF4 | Withdrawn | Counts at every step reached before withdrawal, and never later |
+| PF5 | Readers | The University Master's read roles. Anyone else → `403` (BDM, counselor, student, agent). The counselor's U14 slice stays with upc-030 |
+| PF6 | Scope | Ranking: manager = primary/backup universities; head = team + unowned; super_admin / overseas_admin = all. One university's funnel: every reader, as the master's read rule allows |
+| PF7 | Ranked rows | Active universities in scope that are partners (G1) or have any step in the period. Ordered by enrolled, then applications, then name. Paged (limit ≤ 100) |
+| PF8 | Totals | The sum of the per-university rows, over every ranked row (a student interested in two universities counts twice) |
+| PF9 | Commission | F10 / F11 are not in this item. upc-019 adds them for the commission roles through `strip_commission` |
+| PF10 | Privacy | Counts only. No student or application identifier in a response, a log or an audit row. Reads are not audited |
+
+- New:
+  - `services/partnership_metrics.funnel_counts` (one grouped query per step, a constant count) with `period` and `ist_range`.
+  - `api/partnership_performance.py`.
+  - The pages `/partnership/opportunities` and `/partnership/performance`.
+  - A "Student opportunities this month" card on the university page.
+- Changed: the §32 menu entries "Student Opportunities" and "University Performance" are live for managers, heads and super admin.
+- **New Feature ID authorized:** `upc-018`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-018.

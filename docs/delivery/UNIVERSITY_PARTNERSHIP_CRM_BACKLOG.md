@@ -831,6 +831,8 @@ Common conventions:
 - **Complexity:** large · **Risk:** high
 
 ### upc-018 — Student opportunity funnel + university performance
+- **Status (2026-10-09):** built on `feature/upc-018` under `DEC-SCOPE-152` (PF1–PF10, recommended answers), with **no migration**, API
+  §12BT and RBAC §2.78. Commission F10/F11 are left to upc-019. Spec: `docs/superpowers/specs/2026-10-09-upc-018-student-funnel-performance-design.md`.
 - **Business requirement:** §17 funnel (7 steps), §18 metrics (9) (U8, U4).
 - **Existing behavior:** per-university breakdowns exist only inside agency reports (`agent_dashboard.py:162`, `agent_reports.py:287`).
 - **Expected behavior:**

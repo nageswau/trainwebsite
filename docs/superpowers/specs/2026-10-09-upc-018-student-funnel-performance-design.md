@@ -32,7 +32,7 @@ existing tables. Nothing is stored, and no student is named.
 | PF2 | Step catalogue (source order) | `leads` (F1, not tracked), `counselling` (F2, not tracked), `interested` (F3), `eligible` (F4, not tracked), `applications` (F5), `offers` (F6), `deposits` (F7), `visas` (F8), `enrolled` (F9). A not-tracked step returns `null` and is shown as "Not tracked". |
 | PF3 | Counting: a step counts in the period in which it was **reached** (Appendix B is event-based) | **F3:** distinct agency students with a shortlist entry for the university created in the period. **F5:** applications created in the period, except those withdrawn before submission (`status = withdrawn AND submitted_on IS NULL`). **F6:** applications whose offer was reached in the period. The time is `offer_date` when recorded (AGN-010), else the first status-history entry into an offer-or-later status (`OFFER_COUNTED_STATUSES`). **F7:** deposits with `paid_at` in the period (a later remittance or refund does not un-count it). **F8:** distinct applications with a visa case `decision = approved` and `decided_at` in the period. **F9:** applications now `enrolled`, timed by their first status-history entry into `enrolled`, else `enrollment_confirmed_at`. All owners count: agency, student self-service and School-bridged. |
 | PF4 | Withdrawn applications (edge case) | Counted at every step they reached before withdrawal, and never at a later step (an application withdrawn after its offer stays in Offers, the O5 idiom). |
-| PF5 | Readers | The University Master readers: `partnership_manager` (with a profile), `partnership_head`, `overseas_admin` (overseas division) and `super_admin`. Every other role → 403 "University performance access required" (BDM → 403 is the backlog's negative scenario). The counselor's slice (U14) is the upc-030 360 view and is not opened here. |
+| PF5 | Readers | The University Master readers: `partnership_manager` (with a profile), `partnership_head`, `overseas_admin` (overseas division) and `super_admin`. Every other role → 403. The API reuses the master's `require_reader`, so its message is "University master access required". The pages refuse first with "University performance access required". (BDM → 403 is the backlog's negative scenario.) The counselor's slice (U14) is the upc-030 360 view and is not opened here. |
 | PF6 | Scope of the lists (Appendix B) | Manager: universities where they are primary or backup. Head: their team's and unowned universities. `super_admin` / `overseas_admin`: all. The per-university read follows the University Master's read rule (every reader reads every university, upc-003), and an unknown id → 404. |
 | PF7 | Which universities are ranked | Active (non-deactivated) universities in scope that are partners (stage group G1) **or** have any counted step in the period. Order: enrolled ↓, applications ↓, name, id. Paged `{items, total, limit, offset}` (limit 1–100, default 25). `totals` = Σ over every ranked row, not just the page. |
 | PF8 | Totals across universities | The sum of per-university figures. F3 can count one student under two universities, so the label says "per university". |
@@ -115,3 +115,42 @@ current IST date.
    tests, then GREEN. Register the router in `main.py`.
 3. Web: lib, `PartnershipFunnel`, the two pages, the university card and the nav, with vitest first.
 4. Playwright e2e. Docs: DEC-SCOPE-152, API §12BT, RBAC §2.78, SCREEN_CATALOG and the backlog status.
+
+## 10. Phase 3 reviews (applied above)
+
+- **API:**
+  - Only GETs, with no side effects. The list alone is paginated; the single-university read is not a list, so it takes no paging or
+    filter parameters.
+  - The period is validated server-side (`422`), and the `from` / `to` query names use aliases.
+  - No ETag or idempotency is assumed. Existing contracts are untouched.
+  - `partnership_metrics` gains functions and `target_actuals` (upc-021) is unchanged.
+- **Security:**
+  - Role first (`require_reader`: 403), then scope.
+  - The single-university read is open to every master reader by the upc-003 rule, so a guessed id leaks nothing that the university
+    page does not already show. An unknown id is a 404.
+  - Every query is ORM-bound. There is no PII: the response models list their count fields explicitly. No commission.
+  - CSRF does not apply (GET only). No new dependency.
+- **Frontend:**
+  - Reuses the AGN-019 funnel styles and the `portal-title`, `analytics-form` and `table-scroll` region idioms.
+  - The period is a GET form with labelled date inputs, and the table has a caption.
+  - Data-only components (the upc-021 lesson: no function props to client components); both pages render on the server.
+  - The empty state, refusal card and fallback note follow the existing pages.
+
+## 11. QA evidence (2026-10-09, Docker stack `upc018`, Chromium via Playwright)
+
+| ID | Severity | Role / page | Steps | Expected | Actual | Status |
+|---|---|---|---|---|---|---|
+| QA18-01 | Low | Every reader: Opportunities and the university card | Open the funnel | An untracked step looks different from a counted one | "Not tracked" was bold and dark like a count, over an empty bar track, so it read as a measured zero | **Fixed:** muted italic and no track. Unit test added; re-checked in the browser |
+
+**Exploratory pass (37 checks, all as expected after the fix):**
+- **API inputs:** super admin list `200`; unknown university `404`; non-UUID `422`; `limit` 0 / 101 and offset −1 `422`; future
+  `to` `200`; an unknown query parameter is ignored; POST `405`.
+- **Access:** a student is refused (`403`). Counselor and BDM pages show "University performance access required". Signed out →
+  `/overseas/login?next=/partnership/performance`.
+- **Manager view:** the manager sees only their university that has activity. An idle non-partner is not listed.
+- **Layout:** at 1366, 820 and 375 px the performance table, the funnel and the university card have no page side-scroll.
+- **Navigation:** the keyboard period submit works; the empty state shows for June 2024; refresh keeps the period; back works; an
+  impossible date falls back with a note.
+- **overseas_admin:** reads both the list and the card.
+- **Browser health:** no console errors and no 4xx/5xx on page loads. The only aborted requests are Next.js `_rsc` prefetches cancelled
+  by navigation.
