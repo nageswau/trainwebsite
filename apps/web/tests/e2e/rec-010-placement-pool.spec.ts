@@ -52,7 +52,21 @@ test("a student who never joined is not shown to employers (rec-010 AC1)", async
   expect(await employerSees(page, name)).toBe(false);
 });
 
-test("Placement Status requires a student session", async ({ page }) => {
+test("joining works from the keyboard alone", async ({ page }) => {
+  await signInStudent(page);
   await page.goto("/it/student/placement-status");
-  await expect(page.getByRole("heading", { name: "Sign in required" })).toBeVisible();
+  const agree = page.getByRole("checkbox", { name: "I agree to the consent text above" });
+  await agree.focus();
+  await page.keyboard.press("Space");
+  await expect(agree).toBeChecked();
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Join the pool" })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("You have joined the placement candidate pool.")).toBeVisible();
+  expect((await page.request.post("/api/v1/account/placement-pool/opt-out")).ok()).toBeTruthy(); // leave the seeded student as found
+});
+
+test("Placement Status sends a signed-out visitor to the IT login", async ({ page }) => {
+  await page.goto("/it/student/placement-status");
+  await expect(page).toHaveURL(/\/it\/login\?next=%2Fit%2Fstudent%2Fplacement-status/);
 });
