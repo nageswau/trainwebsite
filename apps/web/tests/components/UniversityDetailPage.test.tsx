@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import BdmStageHistory from "@/components/BdmStageHistory";
 import MeetingTable from "@/components/MeetingTable";
+import PartnershipFunnel from "@/components/PartnershipFunnel";
 import PartnershipTasksPanel from "@/components/PartnershipTasksPanel";
 import UniversityAgreements from "@/components/UniversityAgreements";
 import UniversityCourses from "@/components/UniversityCourses";
@@ -37,6 +38,11 @@ const milestones = { items: [], today: "2026-10-09", can_edit: true }; // upc-00
 const documents = { items: [{ id: "d1" }], total: 1, limit: 200, offset: 0 };
 const agreements = { items: [{ id: "a1" }], total: 1, limit: 50, offset: 0 }; // upc-014
 const options = { courses: [], documents: [] };
+const performance = { // upc-018: this month's funnel for the university
+  from: "2026-10-01", to: "2026-10-09", steps: [{ key: "leads", label: "Leads", tracked: false }, { key: "enrolled", label: "Enrolled", tracked: true }],
+  university: { id: ID, university_code: "UNV-000001", name: "ABC", country: "United Kingdom", stage: "interested", stage_label: "Interested", partner: false },
+  counts: { leads: null, counselling: null, interested: 0, eligible: null, applications: 3, offers: 1, deposits: 0, visas: 0, enrolled: 1 },
+};
 
 beforeEach(() => {
   vi.mocked(serverApi).mockReset();
@@ -54,6 +60,7 @@ describe("upc-007 university detail page", () => {
       if (p.includes("/documents")) return documents as never; // upc-026
       if (p.includes("/agreement-options")) return options as never; // upc-014
       if (p.includes("/agreements")) return agreements as never;
+      if (p.includes("/performance")) return performance as never; // upc-018
       return { university } as never;
     });
     const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
@@ -78,6 +85,10 @@ describe("upc-007 university detail page", () => {
     expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/universities/${ID}/agreements`);
     expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/universities/${ID}/agreement-options`);
     expect(tree.find((el) => el.type === UniversityAgreements)!.props).toEqual({ universityId: ID, agreements: agreements.items, options, canManage: true });
+    // upc-018: this IST month's student funnel, with a link to the university's Student Opportunities
+    expect(serverApi).toHaveBeenCalledWith(expect.stringMatching(new RegExp(`^/api/v1/partnership/universities/${ID}/performance\\?from=\\d{4}-\\d{2}-01&to=\\d{4}-\\d{2}-\\d{2}$`)));
+    expect(tree.find((el) => el.type === PartnershipFunnel)!.props).toEqual({ steps: performance.steps, counts: performance.counts, label: "Student funnel this month: ABC" });
+    expect(tree.some((el) => el.props?.href === `/partnership/opportunities?university_id=${ID}`)).toBe(true);
   });
 
   it("an overseas_admin never asks for agreements (upc-014 AG13)", async () => {
@@ -86,6 +97,7 @@ describe("upc-007 university detail page", () => {
       if (p.includes("/stage-history")) return history as never;
       if (p.includes("/contacts")) return { items: [], total: 0, limit: 50, offset: 0 } as never;
       if (p.includes("/documents")) return documents as never;
+      if (p.includes("/performance")) return performance as never; // upc-018
       return { university: { ...university, permissions: { ...university.permissions, can_manage_agreements: false } } } as never;
     });
     const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
@@ -106,6 +118,7 @@ describe("upc-007 university detail page", () => {
       if (p.includes("/course-options")) return courseOptions as never;
       if (p.includes("/courses")) return courses as never;
       if (p.includes("/documents")) return documents as never;
+      if (p.includes("/performance")) return performance as never; // upc-018
       return { university: { ...university, permissions: { ...university.permissions, can_edit: canEdit, can_manage_agreements: false } } } as never;
     });
     serve("overseas_admin", true);
@@ -129,6 +142,7 @@ describe("upc-007 university detail page", () => {
       if (p.includes("/documents")) return documents as never;
       if (p.includes("/agreement-options")) return options as never;
       if (p.includes("/agreements")) return agreements as never;
+      if (p.includes("/performance")) return performance as never; // upc-018
       return { university } as never;
     });
     const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
@@ -145,6 +159,7 @@ describe("upc-008 university detail page", () => {
     if (p.includes("/milestones")) return milestonesRead() as never;
     if (p.includes("/contacts")) return { items: [], total: 0, limit: 50, offset: 0 } as never;
     if (p.includes("/documents")) return documents as never;
+    if (p.includes("/performance")) return performance as never; // upc-018
     return { university: { ...university, expected, permissions: { ...university.permissions, can_edit_timeline: false } } } as never;
   });
 
@@ -173,6 +188,7 @@ describe("upc-012 university detail page", () => {
     if (p.includes("/contacts")) return { items: [contact], total: 1, limit: 50, offset: 0 } as never;
     if (p.includes("/partnership/visits")) return { items: [], total: 0, limit: 5, offset: 0 } as never;
     if (p.includes("/partnership/meetings")) return meetings as never;
+    if (p.includes("/performance")) return performance as never; // upc-018
     return { university: { ...university, permissions: { ...university.permissions, can_edit_contacts: canEditContacts } } } as never;
   });
 

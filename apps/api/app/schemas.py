@@ -9439,3 +9439,59 @@ class CandidateSearch(BaseModel):
         if None not in (self.salary_min, self.salary_max) and self.salary_min > self.salary_max:
             raise ValueError("The minimum salary cannot be above the maximum")
         return self
+
+
+# upc-018 (DEC-SCOPE-153, spec §4): the §17 funnel / §18 performance. Counts only -- the explicit fields keep any student identifier
+# or commission figure out (PF9, PF10). A not-tracked step (U8) is null.
+class PerformanceStep(BaseModel):
+    key: str
+    label: str
+    tracked: bool
+
+
+class PerformanceCounts(BaseModel):
+    leads: int | None
+    counselling: int | None
+    interested: int | None
+    eligible: int | None
+    applications: int | None
+    offers: int | None
+    deposits: int | None
+    visas: int | None
+    enrolled: int | None
+
+
+class PerformanceUniversity(BaseModel):
+    id: UUID
+    university_code: str
+    name: str
+    country: str
+    stage: str
+    stage_label: str
+    partner: bool
+
+
+class _PerformancePeriod(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    from_: date = Field(alias="from")
+    to: date
+    steps: list[PerformanceStep]
+
+
+class UniversityPerformanceRow(BaseModel):
+    rank: int
+    university: PerformanceUniversity
+    counts: PerformanceCounts
+
+
+class UniversityPerformancePage(_PerformancePeriod):
+    totals: PerformanceCounts
+    items: list[UniversityPerformanceRow]
+    total: int
+    limit: int
+    offset: int
+
+
+class UniversityPerformance(_PerformancePeriod):
+    university: PerformanceUniversity
+    counts: PerformanceCounts

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { accessUnavailable } from "@/components/AccessUnavailable";
 import BdmStageHistory from "@/components/BdmStageHistory";
 import MeetingTable from "@/components/MeetingTable";
+import PartnershipFunnel from "@/components/PartnershipFunnel";
 import PartnershipTasksPanel from "@/components/PartnershipTasksPanel";
 import PortalShell from "@/components/PortalShell";
 import UniversityActions from "@/components/UniversityActions";
@@ -50,6 +51,7 @@ import { MEETING_READERS, type MeetingPage, MEETINGS_PATH, MEETINGS_URL, newMeet
 import { COMMISSION_ROLES, type CourseOptions, courseOptionsUrl, type CoursePage, coursesUrl } from "@/lib/courseMaster";
 import { newVisitPath, PLANNER_ROLES, VISIT_READERS, VISITS_PATH, VISITS_URL, type VisitRow } from "@/lib/visits";
 import { TASK_CREATORS, TASK_READERS, TASKS_PATH } from "@/lib/partnershipTasks";
+import { chosenPeriod, opportunitiesHref, PERFORMANCE_READERS, type UniversityPerformance, universityPerformanceUrl } from "@/lib/partnershipPerformance";
 
 // upc-003: one university's master record -- the §1 fields, rankings, ownership (§27) and catalogue status. Later upc items add their
 // own sections (contacts, pipeline, agreements, courses ...) to this page. upc-007: the partnership stage and its history.
@@ -72,7 +74,8 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
   const { id } = await params;
   let user: User, u: University, history: Page<StageEvent> | null, contacts: Page<UniversityContact>, roles: ContactRole[], visits: Page<VisitRow> | null,
     documents: Page<UniversityDocument>, agreements: Page<Agreement> | null, agreementOptions: AgreementOptions | null,
-    milestones: MilestonePage | null, meetings: MeetingPage | null, courses: CoursePage, courseOptions: CourseOptions | null;
+    milestones: MilestonePage | null, meetings: MeetingPage | null, courses: CoursePage, courseOptions: CourseOptions | null,
+    performance: UniversityPerformance | null;
   try {
     [user, u, history, milestones] = await Promise.all([serverApi<User>("/api/v1/auth/me"), loadUniversity(id), firstStageHistory(id), firstMilestones(id)]);
     // upc-006: the contacts this reader may see (the API slices them), and the role list only for those who can edit.
@@ -80,7 +83,7 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
     // upc-026: the documents this reader may see (the API slices them: shareable only for overseas_admin, no commission agreement).
     // upc-014: agreements only for the roles that read them (AG13), and the form's options only for those who may write them.
     // upc-017: the courses (inactive ones marked) for every reader; the form's scholarship options only for those who may write them.
-    [contacts, roles, visits, documents, agreements, agreementOptions, meetings, courses, courseOptions] = await Promise.all([
+    [contacts, roles, visits, documents, agreements, agreementOptions, meetings, courses, courseOptions, performance] = await Promise.all([
       serverApi<Page<UniversityContact>>(`${contactsUrl(u.id)}?limit=50`),
       u.permissions.can_edit_contacts ? serverApi<{ items: ContactRole[] }>(CONTACT_ROLES_URL).then((r) => r.items) : Promise.resolve([]),
       VISIT_READERS.has(user.role) ? serverApi<Page<VisitRow>>(`${VISITS_URL}?university_id=${u.id}&limit=5`) : Promise.resolve(null),
@@ -90,6 +93,8 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
       MEETING_READERS.has(user.role) ? serverApi<MeetingPage>(`${MEETINGS_URL}?university_id=${u.id}&limit=5`) : Promise.resolve(null),
       serverApi<CoursePage>(`${coursesUrl(u.id)}?include_inactive=true&limit=50`),
       u.permissions.can_edit ? serverApi<CourseOptions>(courseOptionsUrl(u.id)) : Promise.resolve(null),
+      // upc-018: this IST month's student funnel (§17), for the performance readers.
+      PERFORMANCE_READERS.has(user.role) ? serverApi<UniversityPerformance>(universityPerformanceUrl(u.id, chosenPeriod(undefined, undefined).period)) : Promise.resolve(null),
     ]);
   } catch (e) {
     return accessUnavailable(e, "/overseas/login");
@@ -147,6 +152,13 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
           <UniversityTimeline key={`timeline|${u.pipeline.changed_at}`} universityId={u.id} expected={u.expected} canEdit={u.permissions.can_edit_timeline} initial={milestones} />
           <UniversityContacts universityId={u.id} contacts={contacts.items} roles={roles} canEdit={u.permissions.can_edit_contacts} />
           <UniversityCourses universityId={u.id} page={courses} options={courseOptions} canSetCommission={COMMISSION_ROLES.has(user.role)} />
+          {performance && (
+            <section className="action-card wide" aria-labelledby="uni-opportunities">
+              <h3 id="uni-opportunities">Student opportunities this month</h3>
+              <PartnershipFunnel steps={performance.steps} counts={performance.counts} label={`Student funnel this month: ${u.name}`} />
+              <div className="actions" style={{ marginTop: 12 }}><Link className="btn ghost small" href={opportunitiesHref(u.id)}>Another period</Link></div>
+            </section>
+          )}
           {agreements && (
             <UniversityAgreements universityId={u.id} agreements={agreements.items} options={agreementOptions} canManage={u.permissions.can_manage_agreements} />
           )}
