@@ -1,11 +1,11 @@
 """EMP-003 -- Candidate profile search.
 
-Net-new: `GET /employer/candidates`, per `API_CONTRACT.md` #6, reads `PlacementProfile`
-and returns only a conservative allowlist -- name, course, skills, availability -- never
-raw contact info (email/phone), pending confirmation of the exact GDPR-approved field set
-(`EMP-003-AC02`). Excludes only withdrawn candidates by default, the same "active pool"
-rule `ADM-007-AC02` already established; a student with no `PlacementProfile` at all
-(never entered the placement pipeline) is not a searchable candidate.
+`GET /employer/candidates`, per `API_CONTRACT.md` #6, returns only a conservative allowlist --
+name, course, skills, availability -- never raw contact info (email/phone) (`EMP-003-AC02`).
+
+rec-010 (DEC-SCOPE-138 OI4, R12 -- a deliberate change): the rows are the students who opted in to
+the placement candidate pool, not every `PlacementProfile`. A withdrawn profile still hides them
+(`ADM-007-AC02`), and `availability` is the candidate's status (`available`).
 """
 
 import datetime
@@ -14,7 +14,8 @@ import uuid
 import pytest
 
 from app.core.security import hash_password
-from app.models import Batch, Company, Enrollment, EmployerProfile, PlacementProfile, Program, User
+from app.models import Batch, Company, EmployerProfile, Enrollment, PlacementProfile, Program, User
+from app.services.applications import candidate_for_student
 
 
 async def _create_employer(db_session) -> User:
@@ -32,7 +33,7 @@ async def _create_employer(db_session) -> User:
     return user
 
 
-async def _create_candidate(db_session, *, skills=None, available=True, withdrawn=False, with_profile=True, with_enrollment=True) -> User:
+async def _create_candidate(db_session, *, skills=None, available=True, withdrawn=False, with_profile=True, with_enrollment=True, opted_in=True) -> User:
     candidate = User(
         email=f"emp003-candidate-{uuid.uuid4().hex[:8]}@example.local", password_hash=hash_password("Sup3r-Secret-Pass!"),
         full_name=f"Candidate {uuid.uuid4().hex[:6]}", role="it_student", division="it", active=True,
@@ -60,6 +61,9 @@ async def _create_candidate(db_session, *, skills=None, available=True, withdraw
         db_session.add(Enrollment(student_id=candidate.id, batch_id=batch.id, enrollment_code=f"EDU-TEST-{uuid.uuid4().hex[:6]}", status="active"))
     if with_profile:
         db_session.add(PlacementProfile(student_id=candidate.id, available=available, withdrawn=withdrawn))
+    pool_row = await candidate_for_student(db_session, candidate)  # rec-010: what POST /account/placement-pool/opt-in sets
+    pool_row.opted_in = opted_in
+    pool_row.status = "available" if available else "not_looking"
     await db_session.commit()
     return candidate
 
@@ -108,13 +112,23 @@ async def test_unavailable_but_not_withdrawn_candidate_is_still_shown(client, db
 
 
 @pytest.mark.asyncio
-async def test_a_student_with_no_placement_profile_is_not_a_candidate(client, db_session):
+async def test_a_student_who_has_not_opted_in_is_not_a_candidate_even_with_a_placement_profile(client, db_session):
+    employer = await _create_employer(db_session)
+    candidate = await _create_candidate(db_session, opted_in=False)
+
+    await _login(client, employer.email)
+    response = await client.get("/api/v1/employer/candidates")
+    assert not any(c["student_id"] == str(candidate.id) for c in response.json())
+
+
+@pytest.mark.asyncio
+async def test_an_opted_in_student_without_a_placement_profile_is_a_candidate(client, db_session):
     employer = await _create_employer(db_session)
     candidate = await _create_candidate(db_session, with_profile=False)
 
     await _login(client, employer.email)
     response = await client.get("/api/v1/employer/candidates")
-    assert not any(c["student_id"] == str(candidate.id) for c in response.json())
+    assert any(c["student_id"] == str(candidate.id) for c in response.json())
 
 
 @pytest.mark.asyncio
