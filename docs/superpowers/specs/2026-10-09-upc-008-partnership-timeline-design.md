@@ -144,3 +144,29 @@ and the upc-007 / upc-020 e2e specs (shared page).
 - **Frontend:** reuses the `.table`, `.badge`, `.form-grid` and `.field` styles, `sendJson` / `fieldErrors` and `useFocusAfterRender`.
   The table has a `<caption class="visually-hidden">`. The Edit buttons have an `aria-label` that includes the milestone name. Date
   inputs are native (keyboard and mobile pickers). The section wraps on mobile.
+
+## 9. Browser QA (Phase 5/6)
+
+The first pass made no code changes. It ran a Playwright script against the isolated stack (`http://localhost:13008`) at 1280 / 820 / 390 px,
+covering 19 scenarios, all passing. Passed:
+- empty state (13 milestones, the first In progress, "Not set" ×6) and Cancel discarding typed values;
+- keyboard: Enter on Edit focuses the target date, and Escape returns focus to Edit;
+- the expected timeline persists across refresh, and month / quarter are derived;
+- loading ("Saving…", disabled) and a double click sending one PATCH;
+- a 500 shows an alert with the form and value kept, and a dropped network says "did not complete";
+- back / forward, and clearing a target date un-delaying the milestone;
+- no page-level side-scroll at 820 / 390;
+- a non-owning manager reads with no Edit, and a direct PATCH from them is `403`;
+- the head edits, overseas_admin reads only, a counselor and a signed-out visitor see no timeline.
+
+The only console errors and failed responses were the deliberately injected 500 and network abort.
+
+| ID | Severity | Role / page | Finding | Fix |
+|---|---|---|---|---|
+| QA8-01 | Low | all / university page | Milestone names (row `th`) inherited the column-header style (uppercase, grey fill), reading like headings | `.milestone-table tbody th` resets it; e2e asserts `text-transform: none` |
+| QA8-02 | Medium | all / 390 px | The Status column, AC1's "Delayed", was off-screen (shared `.table` min-width 650 px) | `.milestone-table { min-width: 0 }` + compact cells below 640 px; e2e asserts the Status cell ends within 390 px |
+| QA8-03 | Low | all / 390 px | The long label "Expected student recruitment start date" squeezed the values, so "Febru/ary" broke mid-word | The value column keeps `minmax(9rem, 1fr)`; e2e asserts no word fragment |
+| QA8-04 | Low | all | "In progress" and "Pending" shared the amber badge | In progress uses the blue `.badge`, and badges never wrap; vitest |
+
+Phase 9 merged upc-014 (`main` @ `7ba4cb36`), so the Signed milestone now completes from the first signed agreement (MS4, test
+`test_the_first_signed_agreement_auto_marks_signed`).
