@@ -105,7 +105,7 @@ describe("CommissionTerms (upc-016)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Edit commission term 1" }));
     const form = screen.getByRole("form", { name: "Edit commission term 1" });
     fireEvent.click(within(form).getByLabelText("Fixed amount"));
-    fireEvent.change(within(form).getByLabelText("Amount"), { target: { value: "1500" } });
+    fireEvent.change(within(form).getByLabelText("Commission amount"), { target: { value: "1500" } });
     fireEvent.click(within(form).getByRole("button", { name: "Save term" }));
     await waitFor(() => expect(refresh).toHaveBeenCalled());
     const [url, init] = fetchMock.mock.calls[0];

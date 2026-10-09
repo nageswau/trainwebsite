@@ -102,7 +102,7 @@ export default function CommissionTermForm({ agreementId, options, term = null, 
         <div style={grid}>
           {kind === "percent"
             ? field("percent", "Commission %", <input id={`${prefix}-percent`} type="number" inputMode="decimal" min="0.01" max="100" step="0.01" value={values.percent} onChange={set("percent")} />)
-            : field("fixed", "Amount", <input id={`${prefix}-fixed`} type="number" inputMode="decimal" min="0.01" step="0.01" value={values.fixed} onChange={set("fixed")} />)}
+            : field("fixed", "Commission amount", <input id={`${prefix}-fixed`} type="number" inputMode="decimal" min="0.01" step="0.01" value={values.fixed} onChange={set("fixed")} />)}
           {field("currency", "Currency (required)", (
             <select id={`${prefix}-currency`} value={values.currency} onChange={set("currency")}>
               <option value="">Choose</option>
