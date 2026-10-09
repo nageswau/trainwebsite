@@ -2310,9 +2310,21 @@ currency} | null, permissions: {can_edit}}` — **`commission` is present for th
 | `GET /recruiter/applications/{id}/screening` | The requirement's readers → `{screening \| null, results [{key, label}], can_edit}`. `can_edit` = a writer and the application is open |
 | `PUT /recruiter/applications/{id}/screening` | Writers in scope (`placement_team`, `super_admin`; manager / BDM `403`). **Body:** the whole form, unknown keys refused; a field left out is cleared; `result` required. Ratings 1–5, notice 0–365, salary ≥ 0, text limits 200/120/2000 → otherwise `422`; Rejected without remarks → `422` "Remarks are required when the result is Rejected" (AC2). Not open → `409` "Only an open application can be screened. Reopen it first.". **Effect (SC3):** Shortlisted moves sourced/screened → shortlisted; Rejected → rejected; Hold / Need More Information keep the status. A move writes history (`Screening: <result>`) and notifies a student. → `{screening, application}`. Audit `recruiter_application.screening` (field names + result); an unchanged form writes no audit |
 
-## 12BR. Find Candidates — skill AND/OR search, filters, facets (`rec-013`) — addendum, 2026-10-09
+## 12BR. Resume text + rule-based extraction (`rec-012`) — addendum, 2026-10-09
 
-- **Basis:** `DEC-SCOPE-150` (FS1–FS12). Spec: `docs/superpowers/specs/2026-10-09-rec-013-find-candidates-design.md` §3–§4. No migration.
+`DEC-SCOPE-150`; design spec `docs/superpowers/specs/2026-10-09-rec-012-resume-extraction-design.md` §4. Migration `0135_resume_extraction`.
+Writers only: `placement_team`, `placement_manager`, `super_admin` (R11). `hr_team` and every other role `403` (anonymous `401`); a
+candidate outside the pool `404`; archived `409` "Restore this candidate first"; an unknown version `404`. No AI provider (R7): `pypdf` /
+`python-docx`, in a thread with a 20 s limit, the first 30 PDF pages, text cut at 100,000 characters, DOCX zip guard (2,000 parts / 50 MB).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `POST /recruiter/candidates/{id}/resume/{version}/extract` | No body. Stores `extracted_text`, `extraction_json`, `extracted_at` on the resume row only (AC2). `200 {version, no_text, truncated, text_chars, extracted_at, skills: [{skill{id,name,active}, category{id,name}, matched, on_profile}], qualification, experience_months, location, job_titles[], certifications[], industries[]}`. A scanned/empty PDF is `200` with `no_text: true` (AC3). Password-protected, unreadable or too slow → `422` with a sentence. Audit `candidate.resume_extract` (version, counts; never text) |
+| `POST /recruiter/candidates/{id}/resume/{version}/apply` | JSON `{skills: [{skill_id, level? (default intermediate)}] (≤ 100), qualification?, experience_months? (0–600), location?}`; unknown keys `422`. Nothing chosen, a repeated skill, an unknown or inactive skill, over the 100-skill cap → `422`; a skill already on the candidate → `409` naming it; not extracted yet → `409`. All or nothing. Each skill is added as `source=resume`, `status=claimed` (rec-011 audit `candidate.skill_add`); then `candidate.resume_apply` (version, skill ids, changed field names). `200 {skills_added, fields}` |
+
+## 12BS. Find Candidates — skill AND/OR search, filters, facets (`rec-013`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-151` (FS1–FS12). Spec: `docs/superpowers/specs/2026-10-09-rec-013-find-candidates-design.md` §3–§4. No migration.
 - **Roles:** `placement_team`, `placement_manager`, `super_admin`, `hr_team` (read). Anyone else → `403` "Your role cannot view
   candidates", before the body is read. Signed out → `401`.
 - **Pool:** external candidates and opted-in students, never archived (R11, rec-010).

@@ -1,4 +1,4 @@
-// rec-013 (DEC-SCOPE-150): Find Candidates -- types, the URL <-> search state <-> request body mapping, and the facet / card labels. The
+// rec-013 (DEC-SCOPE-151): Find Candidates -- types, the URL <-> search state <-> request body mapping, and the facet / card labels. The
 // API resolves every skill (aliases, related skills), applies the pool and decides who may search; nothing here filters for security.
 import type { LookupPage } from "@/lib/lookups";
 import { CANDIDATES_URL, STATUSES, type CandidateStatus, type SourceRef } from "@/lib/recruiterCandidates";

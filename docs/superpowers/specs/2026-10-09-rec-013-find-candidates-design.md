@@ -4,8 +4,8 @@ Backlog: `docs/delivery/RECRUITER_CRM_BACKLOG.md` rec-013. Source: EVID-018 user
 §7 (1329–1349), §9 (1381–1425), §12 (1503–1539), §13 (1541–1561), §16 (1607–1643), §18 (1677–1714), §19 (1716–1734); Appendix B F1–F3.
 Depends on rec-006 (merged PR #150), rec-009 (merged PR #155) and rec-011 (merged PR #180); all three are on `main`.
 
-**Numbering:** `DEC-SCOPE-150`, API §12BR, RBAC §2.76, **no migration**. Drafted as 141 / §12BI / §2.67 and re-chained as main moved; upc-026, upc-012, upc-020, upc-014, upc-008, upc-016, upc-009,
-upc-021, upc-017, rec-020 and rec-018 merged first and hold 139–149 / §12BG–§12BQ / §2.65–§2.75. Re-check
+**Numbering:** `DEC-SCOPE-151`, API §12BS, RBAC §2.77, **no migration**. Drafted as 141 / §12BI / §2.67 and re-chained as main moved; upc-026, upc-012, upc-020, upc-014, upc-008, upc-016, upc-009,
+upc-021, upc-017, rec-020, rec-018 and rec-012 merged first and hold 139–150 / §12BG–§12BR / §2.65–§2.76. Re-check
 origin/main before the merge and re-chain if needed.
 
 ## 1. Answers (2026-10-09)
@@ -42,7 +42,7 @@ Functions only, read-only, no commit.
 - `page(db, filters, limit, offset)` → the page's candidates with their source (one query) and all their skills (one batched query).
 - Fixed query count: 2 (terms) + 2 (facets) + 2 (page) = 6, whatever the page size or pool size.
 
-## 4. API (§12BR) `POST /api/v1/recruiter/candidates/search?limit=&offset=`
+## 4. API (§12BS) `POST /api/v1/recruiter/candidates/search?limit=&offset=`
 Body (`CandidateSearch`, extra fields forbidden): `all: [str]`, `any: [[str]]`, `verified_only: bool`, `experience_min_months`,
 `experience_max_months` (0–600), `location` (≤ 120), `availability: ["immediate"|"d15"|"d30"|"d31_59"|"d60_plus"]`, `qualification`
 (≤ 120), `salary_min`, `salary_max` (≥ 0), `source_id`, `status`. Parsed with the tel-002 `_parse` idiom, so a 422 is one sentence.

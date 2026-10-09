@@ -8829,6 +8829,25 @@ class CandidateSkillStatusChange(BaseModel):
     status: Literal[CANDIDATE_SKILL_STATUSES]
 
 
+# rec-012 (DEC-SCOPE-150, EX6/EX7): apply the suggestions the recruiter ticked. Skills arrive by id (from the extraction) with a level;
+# the profile fields reuse the candidate form's rules. An omitted field is unchanged.
+RESUME_APPLY_LABELS = {**CANDIDATE_FIELD_LABELS, "skills": "Each chosen skill"}  # a nested error is labelled by its top-level key
+
+
+class ResumeSkillPick(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    skill_id: UUID
+    level: Literal[CANDIDATE_SKILL_LEVELS] = "intermediate"  # EX6: the panel's default
+
+
+class ResumeApply(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    skills: Annotated[list[ResumeSkillPick], Field(max_length=100)] = Field(default_factory=list)
+    qualification: _candidate_text("Qualification", 120) = None
+    experience_months: _whole("Total experience (months)", 0, 600) = None
+    location: _candidate_text("Location", 120) = None
+
+
 # upc-026 (DEC-SCOPE-139): the document centre. Uploads are multipart (the route validates its form fields with the same rules); the
 # metadata PATCH is JSON. DC11: a title is 2-200 characters after trimming.
 UNIVERSITY_DOCUMENT_TITLE_MESSAGE = "Enter a title of 2-200 characters"
@@ -9231,7 +9250,7 @@ class CourseUpdate(BaseModel):
     active: bool | None = None
     commission: CourseCommissionIn | None = None
 
-# rec-013 (DEC-SCOPE-150): the Find Candidates expression and filters. FS1: skills come as chips (never a typed query), FS4 caps the
+# rec-013 (DEC-SCOPE-151): the Find Candidates expression and filters. FS1: skills come as chips (never a typed query), FS4 caps the
 # size, FS5 the filters (experience in months, salary in INR per year), F3 the availability bands. Labels live in the web client.
 CANDIDATE_SEARCH_MAX_TERMS, CANDIDATE_SEARCH_MAX_GROUPS, CANDIDATE_SEARCH_GROUP_TERMS = 20, 5, 10
 AVAILABILITY_BANDS = ("immediate", "d15", "d30", "d31_59", "d60_plus")

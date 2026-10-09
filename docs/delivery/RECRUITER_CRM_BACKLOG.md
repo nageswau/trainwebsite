@@ -758,13 +758,17 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Negative scenarios:** an encrypted PDF → a readable error, not a 500.
 - **Edge cases:** an alias collision ("Go" vs the word "go") goes on the stop-word list; very long resumes are truncated at the cap.
 - **Regression risks:** none (new path); container image size.
+- **Status (2026-10-09):** **BUILT** on `feature/rec-012`, not merged. `DEC-SCOPE-150` (EX1–EX10 recommended defaults, UNVERIFIED);
+  migration `0135_resume_extraction` (after `0134_application_screenings`), API §12BR, RBAC §2.76 (drafted as `0133` / 148 / §12BP /
+  §2.74; rec-020 and rec-018 merged first). Extraction runs in a thread (no Celery task). The next rec item takes `0136`,
+  `DEC-SCOPE-151`, §12BS and §2.77 (re-check `main`).
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-013 — Find Candidates: skill AND/OR search, filters, facets, result cards
-- **Status (2026-10-09):** built on `feature/rec-013` (not yet merged). `DEC-SCOPE-150` (FS1–FS12 recommended defaults, UNVERIFIED;
+- **Status (2026-10-09):** built on `feature/rec-013` (not yet merged). `DEC-SCOPE-151` (FS1–FS12 recommended defaults, UNVERIFIED;
   Q-15 = a chip builder with "all of" skills and up to 5 "at least one of" groups). **No migration** (rec-011's
-  `ix_candidate_skills_skill_candidate` serves the search; the 10k-candidate test stays under 2 s). API §12BR, RBAC §2.76 (drafted as
-  141 / §12BI / §2.67; the upc items, rec-020 and rec-018 merged first and hold 139–149 / §12BG–§12BQ / §2.65–§2.75 — re-check `main`
+  `ix_candidate_skills_skill_candidate` serves the search; the 10k-candidate test stays under 2 s). API §12BS, RBAC §2.77 (drafted as
+  141 / §12BI / §2.67; the upc items, rec-020, rec-018 and rec-012 merged first and hold 139–150 / §12BG–§12BR / §2.65–§2.76 — re-check `main`
   before the merge). Not built here: job-type filter (FS6, no candidate field), match % (rec-016), Share (rec-019).
 - **Business requirement:** user question at line 1092; S2-§5, §6, §7, §9, §12, §13, §18, §19.
 - **Existing behavior:** `/workflows/it/placement/candidates?q` does a name ILIKE; `/employer/candidates` does an in-Python substring

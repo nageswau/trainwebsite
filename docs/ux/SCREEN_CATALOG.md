@@ -3596,7 +3596,23 @@ Design spec `docs/superpowers/specs/2026-10-09-rec-018-application-screening-des
   - Readers (manager, assigned BDM) and closed applications see a read-only summary, or "Not screened yet.".
   - Loading ("Loading screening…") and error ("Unable to load the screening.") states.
 
-## rec-013 addendum (2026-10-09, `DEC-SCOPE-150`) — Find Candidates
+## rec-012 addendum (2026-10-09, `DEC-SCOPE-150`) — Review extracted details
+
+Design spec `docs/superpowers/specs/2026-10-09-rec-012-resume-extraction-design.md` §5.
+
+- **Candidate detail → Resume card** (`/recruiter/candidates/[id]`, writers on an active candidate): an upload opens **Review extracted
+  details — version N**; **Review extracted details** on the current version reopens it.
+  - States: "Reading the resume…"; the server's sentence with Retry/Close (password-protected, unreadable); "No text found in this
+    resume — it may be a scanned image. Add the details by hand."; a note when a long resume was only partly read.
+  - **Skills found (N):** a checkbox per Skills Master skill (category, "found as …" when the text differs), ticked by default, with a
+    Level select (default Intermediate); "Already on profile" skills are shown locked.
+  - **Profile details:** qualification, total experience, location with "(current: …)"; ticked only when the candidate has no value.
+  - **Also in the resume:** job titles, certifications, industry (kept with the resume, not added to the profile).
+  - **Save selected** (disabled when nothing is ticked; double-submit guarded) and **Discard**. A refusal keeps the ticks; success
+    closes the panel, shows "Added N skills and updated …", and reloads the profile and the Skills card.
+  - Responsive: the Level select wraps under its skill on phones; no side-scroll. `hr_team` and archived candidates see no Review.
+
+## rec-013 addendum (2026-10-09, `DEC-SCOPE-151`) — Find Candidates
 
 Design spec: `docs/superpowers/specs/2026-10-09-rec-013-find-candidates-design.md` §5.
 
