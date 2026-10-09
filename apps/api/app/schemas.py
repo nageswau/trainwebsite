@@ -6915,6 +6915,7 @@ class UniversityPermissions(BaseModel):
     can_move_stage: bool  # upc-007 PS5
     can_reopen: bool  # upc-007 PS6
     can_edit_contacts: bool  # upc-006 CT5
+    can_manage_documents: bool  # upc-026 DC8
 
 
 class UniversityRow(BaseModel):
@@ -8442,7 +8443,27 @@ class CandidateSkillStatusChange(BaseModel):
     status: Literal[CANDIDATE_SKILL_STATUSES]
 
 
-# --- upc-012 (DEC-SCOPE-139): university calls, partnership message templates, WhatsApp and email ------------------------------------
+# upc-026 (DEC-SCOPE-139): the document centre. Uploads are multipart (the route validates its form fields with the same rules); the
+# metadata PATCH is JSON. DC11: a title is 2-200 characters after trimming.
+UNIVERSITY_DOCUMENT_TITLE_MESSAGE = "Enter a title of 2-200 characters"
+
+
+def university_document_title(value: str) -> str:
+    value = value.strip()
+    if not 2 <= len(value) <= 200:
+        raise PydanticCustomError("document_title", UNIVERSITY_DOCUMENT_TITLE_MESSAGE)
+    return value
+
+
+class UniversityDocumentUpdate(BaseModel):
+    """PATCH: omitted = unchanged; null fails (title and shareable are required values)."""
+
+    model_config = ConfigDict(extra="forbid")
+    title: Annotated[str, AfterValidator(university_document_title)] = None
+    shareable: StrictBool = None
+
+
+# --- upc-012 (DEC-SCOPE-140): university calls, partnership message templates, WhatsApp and email ------------------------------------
 class PartnershipTemplateCreate(BaseModel):
     """UC4: no kind. The subject and body rules are checked in the service on the merged row, so the 422 names the channel."""
 

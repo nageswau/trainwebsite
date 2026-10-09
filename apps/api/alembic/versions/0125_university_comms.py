@@ -1,9 +1,9 @@
 """upc-012 -- partnership_message_templates, university_calls and university_messages.
 
-Revision ID: 0124_university_comms
-Revises: 0123_candidate_consents
+Revision ID: 0125_university_comms
+Revises: 0124_university_documents
 
-docs/superpowers/specs/2026-10-09-upc-012-university-comms-design.md §2 (DEC-SCOPE-139). Three new tables; no existing row changes and no
+docs/superpowers/specs/2026-10-09-upc-012-university-comms-design.md §2 (DEC-SCOPE-140). Three new tables; no existing row changes and no
 seed (UC4: the head writes the templates). 0001 builds a fresh database from the current models, which already carry these tables, so
 creation is guarded (0110's idiom). The CHECKS repeat app.models (test_upc_012_migration). downgrade() refuses while any template, call or
 message exists: entered data is never dropped silently.
@@ -14,8 +14,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0124_university_comms"
-down_revision = "0123_candidate_consents"
+revision = "0125_university_comms"
+down_revision = "0124_university_documents"
 branch_labels = None
 depends_on = None
 
@@ -109,7 +109,7 @@ def downgrade() -> None:
     if not op.get_context().as_sql:
         bind = op.get_bind()
         if any(bind.execute(sa.text(f"SELECT 1 FROM {table} LIMIT 1")).first() for table in (TEMPLATES, CALLS, MESSAGES)):
-            raise RuntimeError("Cannot downgrade 0124_university_comms: partnership templates, university calls or messages exist. Clear them deliberately first.")
+            raise RuntimeError("Cannot downgrade 0125_university_comms: partnership templates, university calls or messages exist. Clear them deliberately first.")
     op.drop_table(MESSAGES)
     op.drop_table(CALLS)
     op.drop_table(TEMPLATES)

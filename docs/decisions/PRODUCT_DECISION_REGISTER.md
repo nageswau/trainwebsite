@@ -5671,7 +5671,41 @@ taken on the owner's instruction to proceed with the recommended answers. The ne
   already in place.
 - **New Feature ID authorized:** `rec-010`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-010.
 
-### DEC-SCOPE-139 — University calls, message templates, WhatsApp and email (`upc-012`)
+### DEC-SCOPE-139 — University document centre (`upc-026`)
+
+**Evidence:** `EVID-020` §28 (L908–L936: 12 document kinds; "Everything related to that university should be in one place"), §13 L489
+(the agreement document lives here), §32 L1092 ("Documents"), L1129 ("Commissions should not be seen by anyone");
+`UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U2 and U14 (`EXPLICIT_APPROVAL`, 2026-10-08) and §4 upc-026.
+**Status:** DC1–DC15 are the recommended answers to backlog Q-26 plus design-level rules, applied under the owner's standing instruction
+for the build session ("proceed with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed:
+`NEEDS_CONFIRMATION` at sign-off. Migration `0124_university_documents`, API contract §12BG, RBAC §2.65.
+Spec: `docs/superpowers/specs/2026-10-09-upc-026-university-documents-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| DC1 | Kinds | The 12 of §28, in source order |
+| DC2 | Commission agreement | Stripped server-side for every role without commission access (lists, menu list, downloads); never shareable (422 + CHECK) |
+| DC3 | Q-26 shareable default | Shareable: brochure, course list, fee structure, entry requirements, scholarship information, marketing materials, application guidelines, training documents. Internal: MoU, partnership agreement, contact documents; commission agreement always. The uploader may override |
+| DC4 | Q-26 file types | By the bytes: PDF, DOCX, XLSX, PPTX, JPEG, PNG (image metadata stripped); anything else, executables included → `422` |
+| DC5 | Q-26 size | The platform cap (`max_upload_bytes`, 20 MB) → `413`; empty → `422` |
+| DC6 | Versions | A document has append-only versions; a new upload is current, older ones stay downloadable. ≤ 50 versions, ≤ 200 documents per university |
+| DC7 | Who reads | Partnership roles + super_admin: everything (DC2 by role); overseas_admin: shareable only; counselors via upc-030 |
+| DC8 | Who writes | `can_manage_documents` = the contacts rule (partnership roles + super_admin in the master's edit scope; active university) |
+| DC9 | Delete | Not in this item; a wrong file is superseded by a new version |
+| DC10 | "Signed download" | An authenticated, scoped, audited API download (`no-store`, `nosniff`, sandbox CSP, attachment named from code/kind/version); no public URL |
+| DC11 | Title | 2–200 characters, unique per university + kind (case-insensitive) → `409` |
+| DC12 | Menu page | `/partnership/documents`: the reader's slice across universities, kind + text filters, newest change first, paged |
+| DC13 | Audit | `university_document.upload/version/update/download`, ids, kind, version and field names only |
+| DC14 | Storage | Server-generated keys under `university-documents/`; stored before the lock, discarded when the write does not commit |
+| DC15 | Rate limit | None beyond the size cap (internal staff, scoped writes); recorded for upc-033 |
+
+**Consequences:** tables `university_documents` and `university_document_versions`; routes `/partnership/universities/{id}/documents…`
+and `/partnership/documents`; `permissions.can_manage_documents` on the university; a Documents section on
+`/partnership/universities/[id]`; page `/partnership/documents`; the manager menu's Documents goes live and the head nav gains it.
+upc-014 stores agreement documents here; upc-030 gives counselors the shareable slice.
+**New Feature ID authorized:** `upc-026`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-026.
+
+### DEC-SCOPE-140 — University calls, message templates, WhatsApp and email (`upc-012`)
 
 **Evidence:**
 - `EVID-020` §12 (lines 437–451): "Every email/call/WhatsApp/meeting should be stored against the university"; the timeline example.
@@ -5684,7 +5718,7 @@ taken on the owner's instruction to proceed with the recommended answers. The ne
 **Status:** built on `feature/upc-012`. Every answer below is a **recommended default, `UNVERIFIED`**, taken on the owner's instruction
 to proceed with the recommended answers.
 
-**Numbering:** migration `0124_university_comms` (after rec-010's `0123_candidate_consents`; drafted as `0123` / DEC-SCOPE-138 / §12BF / §2.64 before rec-010 merged), API §12BG and RBAC §2.65. Spec
+**Numbering:** migration `0125_university_comms` (after upc-026's `0124_university_documents`; drafted as `0123` / DEC-SCOPE-138, then `0124` / DEC-SCOPE-139, before rec-010 and upc-026 merged), API §12BH and RBAC §2.66. Spec
 `docs/superpowers/specs/2026-10-09-upc-012-university-comms-design.md`.
 
 | # | Point | Answer |
@@ -5701,7 +5735,7 @@ to proceed with the recommended answers.
 | UC10 | Last interaction | A contact's latest call or message (failed emails excluded), computed on read; meetings (upc-009) join later |
 
 **Consequences:**
-- `partnership_message_templates`, `university_calls`, `university_messages` (`0124`); `services/university_comms.py`,
+- `partnership_message_templates`, `university_calls`, `university_messages` (`0125`); `services/university_comms.py`,
   `api/university_comms.py`, `notifications/university_email.py` (+ dispatch, worker task and beat entry).
 - `UniversityContactOut` gains `whatsapp_to` and `last_interaction_at` (additive).
 - Web: Calls and Messages sections on the university page; `/partnership/head/templates` ("Message templates" in the head's sidebar).

@@ -1,4 +1,4 @@
-"""upc-012 -- migration 0124_university_comms (spec §2). The round trip and the downgrade refusal run in a throwaway database built from
+"""upc-012 -- migration 0125_university_comms (spec §2). The round trip and the downgrade refusal run in a throwaway database built from
 scratch (the rec-024 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -14,11 +14,11 @@ from app.core.config import settings
 from tests.test_tel_001_migration import _config, _sql
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_upc_012_migration_0124", VERSIONS / "0124_university_comms.py")
+_spec = importlib.util.spec_from_file_location("_upc_012_migration_0125", VERSIONS / "0125_university_comms.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0123_candidate_consents", "0124_university_comms"
+BASE, HEAD = "0124_university_documents", "0125_university_comms"
 TABLES = ("partnership_message_templates", "university_calls", "university_messages")
 
 
@@ -82,7 +82,7 @@ def test_round_trip_and_the_downgrade_refuses_while_history_exists(isolated_db):
     with pytest.raises(Exception, match="ck_partnership_message_templates_subject"):  # a WhatsApp template has no subject
         _sql(url, "INSERT INTO partnership_message_templates (id, channel, name, subject, body) VALUES (:id, 'whatsapp', 'W', 'S', 'Hi')", {"id": uuid.uuid4()})
     _sql(url, "INSERT INTO partnership_message_templates (id, channel, name, body) VALUES (:id, 'whatsapp', 'W', 'Hi')", {"id": uuid.uuid4()})
-    with pytest.raises(RuntimeError, match="0124_university_comms"):
+    with pytest.raises(RuntimeError, match="0125_university_comms"):
         command.downgrade(cfg, BASE)
     _sql(url, "DELETE FROM partnership_message_templates")
     command.downgrade(cfg, BASE)

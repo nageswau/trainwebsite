@@ -1,4 +1,4 @@
-"""upc-012 (DEC-SCOPE-139, spec §1-§3): calls, WhatsApp and email stored against the university (§12, U10) -- the partnership template
+"""upc-012 (DEC-SCOPE-140, spec §1-§3): calls, WhatsApp and email stored against the university (§12, U10) -- the partnership template
 library (UC4, UC5), the contact as the party (UC3), calls (UC1), messages (UC6-UC9) and a contact's last interaction (UC10). The rec-025 /
 rec-026 engine, copied: those tables are bound to companies and candidates.
 

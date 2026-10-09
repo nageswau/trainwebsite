@@ -1,4 +1,4 @@
-"""upc-012 (DEC-SCOPE-139, spec §3): the partnership message templates (the head's global library, UC4) and the calls and messages kept
+"""upc-012 (DEC-SCOPE-140, spec §3): the partnership message templates (the head's global library, UC4) and the calls and messages kept
 on a university -- render, send (WhatsApp logged on confirm, email queued for the worker), log a call, and the university's lists.
 
 Template bodies are untyped dicts parsed by services/telecaller._parse, so a 422 is one sentence naming the field (the tel-012 idiom); the
