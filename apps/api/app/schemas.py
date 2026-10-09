@@ -60,6 +60,8 @@ from app.models import (
     LEAD_FOLLOW_UP_REASONS,
     LEAD_PRIORITIES,
     PARTNERSHIP_POTENTIALS,
+    PARTNERSHIP_TARGET_KPI_KEYS,
+    PARTNERSHIP_TARGET_MAX,
     QUAL_MODES,
     QUAL_PASSPORT,
     QUAL_SKILL_LEVELS,
@@ -8795,3 +8797,65 @@ class UniversityMilestonePage(BaseModel):
     items: list[UniversityMilestoneOut]
     today: date  # IST, the day statuses were computed for
     can_edit: bool
+
+
+# upc-021 (DEC-SCOPE-144, spec §4): monthly partnership targets. The month and target rules are bdm-016's (TG2-TG4); the KPI is checked
+# against the §21 catalogue here, the owner and scope in the service. `achieved` is null when not tracked or the month hasn't started.
+PartnershipTargetKpiKey = Literal[PARTNERSHIP_TARGET_KPI_KEYS]
+
+
+class PartnershipTargetItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    manager_user_id: UUID
+    kpi_key: PartnershipTargetKpiKey
+    target: Annotated[StrictInt, Field(ge=0, le=PARTNERSHIP_TARGET_MAX)] | None
+
+
+class PartnershipTargetsPut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    month: BdmTargetMonth
+    items: list[PartnershipTargetItem] = Field(min_length=1, max_length=BDM_TARGET_BATCH_MAX)
+
+    @model_validator(mode="after")
+    def _one_value_per_kpi(self):
+        pairs = [(i.manager_user_id, i.kpi_key) for i in self.items]
+        if len(set(pairs)) != len(pairs):
+            raise ValueError("Each manager's KPI can appear only once")
+        return self
+
+
+class PartnershipTargetSheet(BaseModel):
+    month: str
+    month_status: Literal["past", "current", "future"]
+    editable: bool
+    manager: BdmPersonRef
+    kpis: list[BdmTargetKpi]
+
+
+class PartnershipTargetKpiDef(BaseModel):
+    key: str
+    label: str
+    definition: str
+    tracked: bool
+
+
+class PartnershipTargetValue(BaseModel):
+    key: str
+    target: int | None
+    achieved: int | None
+    percent: int | None
+
+
+class PartnershipTargetManagerRow(BaseModel):
+    manager: BdmPersonRef
+    active: bool
+    kpis: list[PartnershipTargetValue]
+
+
+class PartnershipTargetTeam(BaseModel):
+    month: str
+    month_status: Literal["past", "current", "future"]
+    editable: bool
+    kpis: list[PartnershipTargetKpiDef]
+    managers: list[PartnershipTargetManagerRow]
+    team: list[PartnershipTargetValue]
