@@ -1823,3 +1823,18 @@ certifications, industries, truncated), `extracted_at` timestamptz.
 
 **Design notes:** derived from the stored file and recomputed on every extraction; nothing reaches `candidates` or `candidate_skills`
 until Apply. rec-014 searches `extracted_text`. `downgrade()` drops the columns (recomputable data).
+
+## Offer management (`rec-022`, `DEC-SCOPE-152`; migration `0136_offer_management`, after `0135_resume_extraction`)
+
+**`job_offers` gains:** `position` varchar(160) (null on legacy rows), `letter_key` varchar(255), `letter_content_type` varchar(80),
+`letter_name` varchar(255) (display only), `letter_uploaded_at` timestamptz, `created_by_user_id` uuid FK `users` RESTRICT (null on legacy
+rows). `status` gets the server default `offer_received` and `ck_job_offers_status` (`offer_pending`, `offer_received`, `accepted`,
+`declined`). Existing statuses are mapped: offered → offer_received; accepted, joined → accepted; declined, rejected, withdrawn →
+declined; pending → offer_pending; anything else → offer_received.
+
+**`job_offer_events`** (append-only): `id`, `offer_id` FK RESTRICT, `event` (CHECK created / status / revised / letter), `from_status`,
+`to_status`, `fields` json (the revised field names), `note` varchar(500), `letter_key` (the replaced object, never returned),
+`actor_user_id` FK nullable, `position` identity, `created_at`. Index `(offer_id, position)`.
+
+**Design notes:** `services/offers.py` is the only writer (the legacy routes included). `downgrade()` refuses while history exists; it
+keeps the mapped statuses (the legacy column was free text).

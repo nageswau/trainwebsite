@@ -2333,6 +2333,37 @@ candidate outside the pool `404`; archived `409` "Restore this candidate first";
 |---|---|
 | `POST /recruiter/candidates/search?limit=&offset=` | **Body** (unknown keys → `422`): `all: [skill]` (every one), `any: [[skill]]` (at least one of each group), `verified_only`, `experience_min_months`/`experience_max_months` (0–600), `location`, `qualification` (≤ 120, substring), `availability: [immediate\|d15\|d30\|d31_59\|d60_plus]`, `salary_min`/`salary_max` (INR/year, ≥ 0), `source_id`, `status`. 1–20 terms, ≤ 5 groups of 1–10, min ≤ max — else `422` (one sentence). A term that is no active skill name or alias → `422 {message, code: "unknown_skill", term, suggestions}`. Each term also matches the skill's related skills. **→ 200** `{items, total, limit, offset, facets: {experience: [{key, count}], location: [{value, count}], availability: [{key, count}]}, terms: [{term, skill: {id, name}, also: [name]}]}`; item = `id, candidate_code, name, preferred_role, current_company, experience_months, location, notice_days, expected_salary, source {id, name, active}, source_detail, status, skills: [{name, level, status, matched}]` — never mobile or email. Location facet values: a location, `"__other__"`, or `null` (not recorded). Newest first; `limit` ≤ 100 (default 50). Read only; logged as `candidate_search` with counts, never the text |
 
+## 12BT. Offer management (`rec-022`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-152` (OF1–OF10). Design spec `docs/superpowers/specs/2026-10-09-rec-022-offer-management-design.md` §3.
+  Migration `0136`.
+- **Common rules:**
+  - Scope is rec-007's requirement scope through rec-017's `load_scoped`: out of scope or unknown → `404` "Offer not found" (or "Job
+    application not found"); a role without a recruiter scope → `403` before anything is read.
+  - Writers are `placement_team` (in scope) and `super_admin`; `placement_manager` and the assigned BDM → `403` on every write.
+  - Bodies refuse unknown keys (`422`). A date rule is a `422` on its field.
+  - Every write locks the application, then the offer; commits once; writes an audit row
+    `recruiter_offer.{create,update,status,letter,letter_downloaded}` with ids, keys and field names only (never the salary or a note).
+- **Item:** `{id, status, status_label, position, compensation, currency, offered_on, joining_date, letter {name, content_type,
+  uploaded_at}|null, letter_url (http(s) only, else null), application {id, status, status_label}, candidate {id, code, name},
+  requirement {id, code, title}, company {id, name}, history [{event (created|status|revised|letter), from_status, to_status, fields,
+  note, actor, created_at}], allowed_statuses [{key, label}], can_edit, can_upload}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/applications/{id}/offer` | `{offer: item\|null, can_create}`; with no offer also `suggested_position` (the requirement title) |
+| `POST /recruiter/applications/{id}/offer` | `{status? (offer_pending\|offer_received, default offer_pending), position (2–160), compensation? (> 0), currency? (3 letters, default INR), offered_on? (default today), joining_date?}` → `201 {offer}`. **Refusals:** the application is not Selected → `409` "An offer can be recorded only for a Selected candidate"; a second offer → `409`; an offer date in the future or a joining date before it → `422` on that field |
+| `PATCH /recruiter/offers/{id}` | Partial `{position?, compensation?, currency?, offered_on?, joining_date?}` → `{offer}`. Null position/currency/offer date → `422`; an accepted or declined offer → `409`. Equal values are not changes |
+| `POST /recruiter/offers/{id}/status` | `{status: offer_received\|accepted\|declined, note? (≤ 500)}` → `{offer}`. A move not allowed from the current status → `409`. Declined moves the application to Withdrawn |
+| `PUT /recruiter/offers/{id}/letter` | multipart `file` (PDF/JPG/PNG by content, ≤ 20 MB) → `{offer}`. Empty `422`, wrong type `415`, too large `413`, a declined offer `409` |
+| `GET /recruiter/offers/{id}/letter` | The file (`attachment; filename="offer-<candidate code>.<ext>"`, `nosniff`); none → `404`. Audited before the bytes leave |
+| `GET /workflows/it/student/offers` | `it_student` only (else `403`): `{items: [{id, company, requirement, position, status, status_label, compensation, currency, offered_on, joining_date, has_letter, letter_url}]}`, newest first, only their own |
+| `GET /workflows/it/student/offers/{id}/letter` | Their own offer's letter; anyone else's or none → `404` |
+
+**Changed (compatible):** `POST /workflows/it/offers` and `PATCH /workflows/it/offers/{id}` map a status word (offered → offer_received,
+pending → offer_pending, joined → accepted, rejected → declined) and return the key; any other word → `422`. Accepted/joined still
+moves the application to Joined (AC3). Every change writes offer history.
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
