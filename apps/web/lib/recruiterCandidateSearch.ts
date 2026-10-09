@@ -1,5 +1,6 @@
 // rec-013 (DEC-SCOPE-151): Find Candidates -- types, the URL <-> search state <-> request body mapping, and the facet / card labels. The
 // API resolves every skill (aliases, related skills), applies the pool and decides who may search; nothing here filters for security.
+// rec-014 (DEC-SCOPE-154): the resume search text rides along as `q` <-> `text`; a card's snippet arrives as plain-text segments.
 import type { LookupPage } from "@/lib/lookups";
 import { CANDIDATES_URL, STATUSES, type CandidateStatus, type SourceRef } from "@/lib/recruiterCandidates";
 import { REQUIREMENTS_URL, type RequirementRow } from "@/lib/recruiterRequirements";
@@ -7,19 +8,21 @@ import { REQUIREMENTS_URL, type RequirementRow } from "@/lib/recruiterRequiremen
 export type Band = "immediate" | "d15" | "d30" | "d31_59" | "d60_plus";
 export type ExperienceKey = "y0_1" | "y1_3" | "y3_5" | "y5_plus";
 export type CardSkill = { name: string; level: string; status: "claimed" | "verified" | "assessed"; matched: boolean };
+export type SnippetSegment = { text: string; hit: boolean };
 export type CandidateCard = {
   id: string; candidate_code: string; name: string; preferred_role: string | null; current_company: string | null; experience_months: number | null;
   location: string | null; notice_days: number | null; expected_salary: string | null; source: SourceRef; source_detail: string | null;
-  status: CandidateStatus; skills: CardSkill[];
+  status: CandidateStatus; skills: CardSkill[]; snippet?: SnippetSegment[] | null;
 };
 export type Facet = { key: string; count: number };
 export type SearchResult = {
   items: CandidateCard[]; total: number; limit: number; offset: number;
   facets: { experience: Facet[]; availability: Facet[]; location: { value: string | null; count: number }[] };
   terms: { term: string; skill: { id: string; name: string }; also: string[] }[];
+  notice?: string | null;
 };
 export type SearchState = {
-  all: string[]; any: string[][]; verified: boolean; expMin: string; expMax: string; location: string; availability: Band[]; qualification: string;
+  text: string; all: string[]; any: string[][]; verified: boolean; expMin: string; expMax: string; location: string; availability: Band[]; qualification: string;
   salMin: string; salMax: string; sourceId: string; status: string; offset: number;
 };
 
@@ -30,6 +33,7 @@ export const MAX_TERMS = 20;
 export const MAX_GROUPS = 5;
 export const GROUP_TERMS = 10;
 export const OTHER_LOCATION = "__other__";
+export const TEXT_MAX = 200;
 
 export const BANDS: { key: Band; label: string }[] = [
   { key: "immediate", label: "Immediate" }, { key: "d15", label: "15 days" }, { key: "d30", label: "30 days" },
@@ -41,13 +45,16 @@ export const BAND_LABEL: Record<string, string> = { ...Object.fromEntries(BANDS.
 const EXPERIENCE_YEARS: Record<ExperienceKey, [string, string]> = { y0_1: ["0", "0"], y1_3: ["1", "2"], y3_5: ["3", "4"], y5_plus: ["5", ""] };
 
 export const EMPTY_SEARCH: SearchState = {
-  all: [], any: [], verified: false, expMin: "", expMax: "", location: "", availability: [], qualification: "", salMin: "", salMax: "",
+  text: "", all: [], any: [], verified: false, expMin: "", expMax: "", location: "", availability: [], qualification: "", salMin: "", salMax: "",
   sourceId: "", status: "", offset: 0,
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const YEARS = /^\d{1,2}$/;
 const LAKHS = /^\d{1,7}(\.\d{1,2})?$/;
+
+/** The API's own rule for the resume search: whitespace collapsed and trimmed, at most TEXT_MAX characters. */
+export const searchText = (raw: string) => raw.replace(/\s+/g, " ").trim().slice(0, TEXT_MAX);
 
 /** Trimmed, blank-free and case-insensitively distinct, capped -- the API's own rule for one list of skills. */
 export function distinctTerms(values: string[], cap = MAX_TERMS): string[] {
@@ -74,6 +81,7 @@ export function stateOf(params: URLSearchParams): SearchState {
   }
   const offset = Number(params.get("offset"));
   return {
+    text: searchText(params.get("q") ?? ""),
     all: distinctTerms(params.getAll("all"), MAX_TERMS),
     any,
     verified: params.get("verified") === "1",
@@ -92,6 +100,7 @@ export function stateOf(params: URLSearchParams): SearchState {
 
 export function paramsOf(state: SearchState): URLSearchParams {
   const params = new URLSearchParams();
+  if (state.text) params.set("q", state.text);
   state.all.forEach((term) => params.append("all", term));
   state.any.filter((group) => group.length).forEach((group, i) => group.forEach((term) => params.append(`any${i + 1}`, term)));
   if (state.verified) params.set("verified", "1");
@@ -107,11 +116,12 @@ export function paramsOf(state: SearchState): URLSearchParams {
 
 const rupees = (lakhs: string) => Math.round(Number(lakhs) * 100000);
 
-/** The POST body (years → months, a maximum year counting in full; lakhs → rupees), or null when no skill is chosen yet. */
+/** The POST body (years → months, a maximum year counting in full; lakhs → rupees), or null with neither a skill nor resume words. */
 export function searchBody(state: SearchState): Record<string, unknown> | null {
   const any = state.any.filter((group) => group.length);
-  if (!state.all.length && !any.length) return null;
+  if (!state.all.length && !any.length && !state.text) return null;
   const body: Record<string, unknown> = {};
+  if (state.text) body.text = state.text;
   if (state.all.length) body.all = state.all;
   if (any.length) body.any = any;
   if (state.verified) body.verified_only = true;

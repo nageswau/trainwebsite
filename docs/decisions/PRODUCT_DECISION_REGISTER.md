@@ -6212,3 +6212,34 @@ RBAC §2.79. Spec: `docs/superpowers/specs/2026-10-09-upc-018-student-funnel-per
   - A "Student opportunities this month" card on the university page.
 - Changed: the §32 menu entries "Student Opportunities" and "University Performance" are live for managers, heads and super admin.
 - **New Feature ID authorized:** `upc-018`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-018.
+
+### DEC-SCOPE-154 — Resume full-text search on Find Candidates (`rec-014`)
+
+**Evidence:** `EVID-018` S2-§15 resume search (lines 1585–1605: "global resume search over structured skills, resume content, previous
+job titles, certifications and projects"); `DEC-SCOPE-116` R7 (Postgres `tsvector`); `DEC-SCOPE-150` (rec-012: `extracted_text` on the
+resume row); `DEC-SCOPE-151` (rec-013: the search endpoint, pool, roles, facets); `RECRUITER_CRM_BACKLOG.md` §rec-014 AC1–AC2.
+
+**Status:** FT1–FT10 are the recommended answers, applied under the owner's standing instruction for the build session ("proceed with the
+recommended answers; ask only if genuinely blocking"). Every row is **UNVERIFIED** (`NEEDS_CONFIRMATION` at sign-off). Migration
+`0137_resume_search` (after upc-011's `0136`), API contract §12BV, RBAC §2.80. Drafted as 0136 / 152 / §12BT / §2.78; upc-011 (0136 / 152)
+and upc-018 (153 / §12BU / §2.79) merged first. Spec: `docs/superpowers/specs/2026-10-09-rec-014-resume-full-text-search-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| FT1 | What is searched | The **current** resume's extracted text (the highest version). Titles, certifications, projects and skills written in the resume are part of it; the profile's structured skills stay rec-013's chips, and both combine (AC2) |
+| FT2 | Query syntax | `websearch_to_tsquery('english', text)`: all words (any order), `"phrase"`, `or`, `-exclude`; English stemming |
+| FT3 | Only stop words | `200`, no candidates, `notice` "Your resume search only has common words…" |
+| FT4 | Size | 1–200 characters after collapsing whitespace; blank = absent; control characters `422`; a search needs ≥ 1 skill **or** text |
+| FT5 | Order | With text: relevance (`ts_rank_cd`), then newest; without text unchanged |
+| FT6 | Snippet | Up to 2 fragments (8–20 words) around the hits, ≤ 300 characters, as `[{text, hit}]` segments (never HTML); `<mark>` on the page |
+| FT7 | No text | Scanned (`''`), never-extracted (`null`) and resume-less candidates never match the text; no backfill (re-run Extract) |
+| FT8 | Index | Generated stored `candidate_resumes.search_vector` + GIN `ix_candidate_resumes_search`, built normally (small append-only table) |
+| FT9 | Roles and logs | As rec-013 (hr_team reads); snippets only reach those readers, who can open the resume anyway; the log gains `text: bool`, never the text |
+| FT10 | Page | "Resume search" box at the top of Find Candidates; the URL keeps it as `q` |
+
+**Consequences:**
+- `0137_resume_search`; `models.RESUME_SEARCH_VECTOR`; `CandidateSearch.text`; `services/candidate_search.py` (text filter, rank,
+  `snippets`, `notice`). The response gains `notice` and each item `snippet` (additive).
+- Find Candidates gains the box, the card's "From the resume" snippet and the notice; the empty prompt becomes "Add a skill or a resume
+  search to search every candidate in the pool."
+- **New Feature ID authorized:** `rec-014`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-014.

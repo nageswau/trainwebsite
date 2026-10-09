@@ -3663,3 +3663,14 @@ inspected), so no parity is claimed.
 - **Route `/partnership/universities/[id]`:** a "Student opportunities this month" card (the funnel) with an "Another period" link.
 - **States:** a role without access gets the access card ("University performance access required"). Signed out → `/overseas/login?next=…`.
 - **Responsive:** no page side-scroll at 1366 px, 820 px or 375 px.
+
+## rec-014 addendum (2026-10-09, `DEC-SCOPE-154`) — Resume search on Find Candidates
+
+Design spec: `docs/superpowers/specs/2026-10-09-rec-014-resume-full-text-search-design.md` §5.
+- **Form:** a "Resume search" box first ("Words anywhere in the candidate's latest resume — job titles, certifications, projects. Use
+  "quotes" for a phrase."); Enter or "Search candidates" runs it, alone or with the skills; the URL keeps it as `q`.
+- **Cards:** "From the resume" with the matched words in `<mark>`.
+- **States:** before any skill or words: "Add a skill or a resume search to search every candidate in the pool."; only common words: the
+  server's notice in place of "No candidates match…".
+- **Intro:** "…or by words in their resume…".
+

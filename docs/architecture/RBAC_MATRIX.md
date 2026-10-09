@@ -1400,6 +1400,12 @@ pass through `strip_commission`).
 | University Performance ranking + Student Opportunities totals | own universities (primary/backup) | team + unowned | ✅ all | ✅ all | `403` (anonymous `401`) |
 | One university's funnel (university page card, Opportunities `?university_id=`) | ✅ any university | ✅ any | ✅ any | ✅ any | `403` |
 
+### 2.80 Resume search *(added 2026-10-09 — `DEC-SCOPE-154`, `rec-014`)*
+
+No new route or role: `text` is a field of §2.77's search, so §2.77's roles and pool apply unchanged. Resume snippets therefore reach
+`placement_team`, `placement_manager`, `super_admin` and `hr_team` (read), who may already open the resume itself (rec-009); every other
+role is `403` before the body is read.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

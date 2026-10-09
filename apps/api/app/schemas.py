@@ -9388,7 +9388,9 @@ CANDIDATE_SEARCH_LABELS = {
     "all": "Skills", "any": "Skills", "verified_only": "Verified only", "experience_min_months": "Minimum experience",
     "experience_max_months": "Maximum experience", "location": "Location", "availability": "Availability", "qualification": "Qualification",
     "salary_min": "Minimum salary", "salary_max": "Maximum salary", "source_id": "Candidate source", "status": "Status",
+    "text": "Resume search",
 }
+RESUME_SEARCH_MAX_CHARS = 200  # rec-014 FT4
 
 
 def _search_term(value: str) -> str:
@@ -9399,6 +9401,18 @@ def _search_term(value: str) -> str:
         raise ValueError("A skill is at most 120 characters")
     if _BDM_CONTROL.search(value):
         raise ValueError("A skill contains invalid characters")
+    return value
+
+
+def _resume_text(value: str | None) -> str | None:
+    """rec-014 (DEC-SCOPE-154, FT4): whitespace collapsed; blank is no text search."""
+    value = re.sub(r"\s+", " ", value).strip() if value is not None else None
+    if not value:
+        return None
+    if len(value) > RESUME_SEARCH_MAX_CHARS:
+        raise ValueError(f"The resume search is at most {RESUME_SEARCH_MAX_CHARS} characters")
+    if _BDM_CONTROL.search(value):
+        raise ValueError("The resume search contains invalid characters")
     return value
 
 
@@ -9422,6 +9436,7 @@ class CandidateSearch(BaseModel):
     salary_max: RecMoney = None
     source_id: UUID | None = None
     status: CandidateStatus | None = None
+    text: Annotated[StrictStr | None, AfterValidator(_resume_text)] = None  # rec-014: words in the current resume (websearch syntax)
 
     @model_validator(mode="after")
     def _limits(self):
@@ -9430,8 +9445,8 @@ class CandidateSearch(BaseModel):
         if any(not group or len(group) > CANDIDATE_SEARCH_GROUP_TERMS for group in self.any):
             raise ValueError(f"Each “at least one of” group holds 1 to {CANDIDATE_SEARCH_GROUP_TERMS} skills")
         terms = len(self.all) + sum(len(group) for group in self.any)
-        if terms == 0:
-            raise ValueError("Add at least one skill")
+        if terms == 0 and self.text is None:
+            raise ValueError("Add at least one skill or some resume search text")
         if terms > CANDIDATE_SEARCH_MAX_TERMS:
             raise ValueError(f"Search for at most {CANDIDATE_SEARCH_MAX_TERMS} skills at once")
         if None not in (self.experience_min_months, self.experience_max_months) and self.experience_min_months > self.experience_max_months:
