@@ -1,4 +1,4 @@
-"""rec-020 (DEC-SCOPE-139, spec §3): interviews -- the four lists, one interview, an application's interviews, schedule, edit, reschedule and
+"""rec-020 (DEC-SCOPE-141, spec §3): interviews -- the four lists, one interview, an application's interviews, schedule, edit, reschedule and
 status.
 
 Scope is the requirement's (rec-007 `caller_scope` through rec-017's `load_scoped`; other roles 403, out of scope 404). Every write is one

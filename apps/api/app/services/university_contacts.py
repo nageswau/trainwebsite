@@ -7,6 +7,7 @@ Contacts are PII: the audit and the logs carry ids and field names only.
 """
 
 import logging
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -14,6 +15,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AuditLog, UniversityContact, UniversityContactRole, User
+from app.notifications.phone import wa_number
 from app.services.partnership_universities import CONTACT_ROLES
 
 logger = logging.getLogger("app.partnership")
@@ -79,18 +81,26 @@ async def clear_primary(db: AsyncSession, university_id: UUID) -> None:
     await db.flush()
 
 
-def contact_out(user: User, contact: UniversityContact, role: UniversityContactRole | None) -> dict:
+def whatsapp_to(contact: UniversityContact) -> str | None:
+    """upc-012 UC6: the contact's WhatsApp number, else their phone, as wa.me digits; None when neither is usable."""
+    return wa_number(contact.whatsapp) or wa_number(contact.phone)
+
+
+def contact_out(user: User, contact: UniversityContact, role: UniversityContactRole | None, last_interaction: datetime | None = None) -> dict:
+    """upc-012 UC10: `last_interaction` is computed by the caller (university_comms.last_interactions) for the full view only."""
     return {
         **{k: getattr(contact, k) for k in ("id", "university_id", *FIELDS, "created_at", "updated_at") if k != "role_code"},
         "role": {"code": role.code, "label": role.label} if role else None,
         "notes": contact.notes if full_view(user) else None,
+        "whatsapp_to": whatsapp_to(contact),
+        "last_interaction_at": last_interaction if full_view(user) else None,
     }
 
 
-async def detail_out(db: AsyncSession, user: User, contact: UniversityContact) -> dict:
+async def detail_out(db: AsyncSession, user: User, contact: UniversityContact, last_interaction: datetime | None = None) -> dict:
     await db.refresh(contact)  # server defaults (timestamps) are expired after a flush
     role = await db.get(UniversityContactRole, contact.role_code) if contact.role_code else None
-    return contact_out(user, contact, role)
+    return contact_out(user, contact, role, last_interaction)
 
 
 def audit(db: AsyncSession, user: User, action: str, contact_id: UUID, university_id: UUID, fields: list[str] | None = None) -> None:

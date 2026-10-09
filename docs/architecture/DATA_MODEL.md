@@ -1599,7 +1599,64 @@ history notes.
   before it deletes the merged skill, so no row ever points at a deleted skill. The merge also re-points `job_skills.skill_id`.
 - `downgrade()` refuses while any row exists.
 
-## Interview management (`rec-020`, `DEC-SCOPE-139`; migration `0124_interview_management`, on `0122_candidate_skills`)
+## Candidate consents (`rec-010`, `DEC-SCOPE-138`; migration `0123_candidate_consents`, after `0122_candidate_skills`)
+
+**`candidate_consents` columns:** `id`; `candidate_id` → `candidates` (FK RESTRICT); `user_id` → `users` (FK RESTRICT; the student who
+acted); `action` varchar(10) (CHECK `ck_candidate_consents_action`: `opt_in` / `opt_out`); `consent_version` varchar(20); `ip_address`
+varchar(64) null; `created_at`.
+
+**Index:** `ix_candidate_consents_candidate (candidate_id, created_at)`, for the newest-first history.
+
+**Design notes:**
+- Append-only, following the `ConsentRecord` idiom: a row is written for each change of `candidates.opted_in` by the student, and never
+  for a no-op.
+- `candidates.opted_in` stays the gate that pool reads, EMP-003 and the EMP-004 shortlist follow.
+- `downgrade()` refuses while any row exists, so consent evidence is never dropped silently. Retention follows Q-09
+  (`NEEDS_CONFIRMATION`).
+
+## University documents (`upc-026`, `DEC-SCOPE-139`; migration `0124_university_documents`, after `0123_candidate_consents`)
+
+**`university_documents` columns:**
+- `id`, `university_id` → `universities` (FK RESTRICT), `kind` varchar(30) (CHECK: the 12 §28 kinds), `title` varchar(200),
+  `shareable` bool, `current_version` int (CHECK ≥ 1), `created_by_user_id` → `users`, timestamps (`updated_at` moves on every version)
+
+**`university_document_versions` columns:**
+- `id`, `document_id` → `university_documents` (FK RESTRICT), `version` int (CHECK ≥ 1), `storage_key` varchar(300) (server-generated,
+  `university-documents/<uuid>`), `file_name` varchar(255) (display only), `content_type` varchar(120), `size_bytes` int (CHECK > 0),
+  `uploaded_by_user_id` → `users`, `uploaded_at`
+
+**Constraints and indexes:**
+- CHECK `ck_university_documents_commission_internal`: a commission agreement is never shareable (DC2).
+- `uq_university_documents_title` UNIQUE `(university_id, kind, lower(title))` (DC11); `ix_university_documents_updated` (menu order).
+- `uq_university_document_versions_version` UNIQUE `(document_id, version)`; `uq_university_document_versions_key` UNIQUE `(storage_key)`.
+
+**Design notes:**
+- Versions are append-only (never updated or deleted); documents are not deleted in this item (DC9).
+- `downgrade()` refuses while any document exists.
+
+## University calls, partnership templates and messages (`upc-012`, `DEC-SCOPE-140`; migration `0125_university_comms`, after `0124_university_documents`)
+
+**`partnership_message_templates` columns:** `id`, `channel` varchar(20), `name` varchar(160), `subject` varchar(200) (nullable), `body`
+text, `active` bool, timestamps. CHECKs `ck_partnership_message_templates_channel`, `ck_partnership_message_templates_subject`
+(`(channel = 'email') = (subject IS NOT NULL)`). Unique index `(channel, lower(name))`. No seed.
+
+**`university_calls` columns:** `id`; `university_id` → `universities` (RESTRICT); `contact_id` → `university_contacts` (**SET NULL**,
+nullable); `caller_user_id` → `users`; `occurred_at`; `duration_seconds` (nullable); `direction`; `outcome`; `notes` (nullable);
+`next_follow_up_on` date (nullable); timestamps. CHECKs on outcome (rec-025's six), direction and duration (0–14400). Indexes
+`(university_id, occurred_at)`, `(contact_id, occurred_at)`, `(caller_user_id, occurred_at)`.
+
+**`university_messages` columns:** `id`; `university_id` → `universities`; `contact_id` → `university_contacts` (**SET NULL**, nullable);
+`sender_user_id` → `users`; `channel`; `template_id` → `partnership_message_templates` (nullable) and `template_name`; `subject`, `body`,
+`delivery_status`, `attempt_count`, `sent_at`, timestamps. CHECKs `ck_university_messages_channel`, `ck_university_messages_email` (email
+⇔ subject and delivery status), `ck_university_messages_status`. Indexes `(university_id, sent_at)`, `(contact_id, sent_at)`,
+`(sender_user_id, sent_at)`.
+
+**Design notes:**
+- Calls and messages are permanent; the recipient's number and address are read from the contact, never stored.
+- A contact's `last_interaction_at` is derived: its latest call or message (failed emails excluded).
+- `downgrade()` refuses while any template, call or message exists.
+
+## Interview management (`rec-020`, `DEC-SCOPE-141`; migration `0126_interview_management`, after `0125_university_comms`)
 
 **`interviews` gains:**
 - `interview_code` varchar(20) UNIQUE NOT NULL, default `'INT-' || to_char(nextval('interview_code_seq'), 'FM999999999000000')` (so every

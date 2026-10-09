@@ -631,6 +631,9 @@ Common conventions:
 - **Complexity:** medium · **Risk:** low
 
 ### upc-012 — Calls + message templates + WhatsApp + email
+- **Status (2026-10-09):** built on `feature/upc-012` under `DEC-SCOPE-140`, with migration `0125_university_comms`, API §12BH and
+  RBAC §2.66. Spec: `docs/superpowers/specs/2026-10-09-upc-012-university-comms-design.md`. UC1–UC10 are `UNVERIFIED` defaults: no
+  template kinds or seeds (the source names none); calls are permanent; contact deletes keep the history (`SET NULL`).
 - **Business requirement:** §12 "every email/call/WhatsApp/meeting should be stored against the university" (U10).
 - **Existing behavior:** none for universities.
 - **Expected behavior:**
@@ -1038,6 +1041,12 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-026 — University document centre
+- **Status (2026-10-09):** built on `feature/upc-026` under `DEC-SCOPE-139`, with migration `0124_university_documents`, API §12BG and
+  RBAC §2.65. Spec: `docs/superpowers/specs/2026-10-09-upc-026-university-documents-design.md`.
+  - Q-26 and the design-level rules are answered by the recommended defaults DC1–DC15 (`NEEDS_CONFIRMATION`): shareable by default for
+    the catalogue-style kinds, internal for MoU / partnership agreement / contact documents; the commission agreement is always internal
+    and stripped server-side for roles without commission access; PDF, DOCX, XLSX, PPTX, JPEG, PNG up to 20 MB; append-only versions.
+  - Counselors read the shareable slice via upc-030; deleting documents is not in this item.
 - **Business requirement:** §28 (12 document kinds; "everything related to that university in one place").
 - **Existing behavior:** none.
 - **Expected behavior:**

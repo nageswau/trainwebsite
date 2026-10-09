@@ -5,12 +5,12 @@
   Interview Mode, Meeting Link, Interviewer, Location, Status), 5 rounds and 8 statuses. Line 47 adds the "+ Schedule Interview" quick
   action (rec-032 owns the dashboard). §5's pipeline stage "Interview" (rec-005) is reached by scheduling.
 - **Module scope:** `DEC-SCOPE-116`. R14: interview links are typed in. R8: candidate phone and email are never shared with a company.
-- **Decision:** `DEC-SCOPE-139`. IV1–IV12 are **recommended defaults**, taken on the owner's standing instruction for build sessions
+- **Decision:** `DEC-SCOPE-141`. IV1–IV12 are **recommended defaults**, taken on the owner's standing instruction for build sessions
   ("proceed with the recommended answers; ask only if blocking"). They stay `UNVERIFIED` until the owner confirms them. IV9 answers the
   backlog's Q-20.
-- **Numbering (draft):** migration `0124_interview_management` on `0122_candidate_skills`, API §12BG and RBAC §2.65. rec-010 is in
-  progress in parallel and has planned `0123` / DEC-SCOPE-138 / §12BF / §2.64, so this item reserves the next set. Whichever merges second
-  re-chains `down_revision` only.
+- **Numbering (FINAL):** migration `0126_interview_management` on `0125_university_comms`, API §12BI and RBAC §2.67. Drafted as `0124` /
+  DEC-SCOPE-141 / §12BI / §2.67; rec-010 (0123 / 138 / §12BF / §2.64), upc-026 (0124 / 139 / §12BI / §2.67) and the 0125 / 140 / §12BH /
+  §2.66 item merged first.
 
 ## 1. Decisions (UNVERIFIED defaults)
 
@@ -29,7 +29,7 @@
 | IV11 | Legacy routes | `POST /workflows/it/interviews` and `POST /employer/interviews` delegate to `services/interviews.create_legacy` (code, `scheduled` event, the IV6 clash `409`). They stay without the IV5 future-time and open-application rules, so their contracts are unchanged. `PATCH /workflows/it/interviews/{id}`: a changed `scheduled_at` is recorded as a reschedule (event, status rescheduled), and a result of selected/rejected/on_hold also sets the status when the move is allowed. `result` is kept as is. Responses only gain fields |
 | IV12 | Lists | `/recruiter/interviews` has four views with counts. **Upcoming** = open with the time in the future, soonest first (the UI groups them by day: the calendar). **Awaiting update** = open with the time passed, or completed, oldest first. **On hold**, newest first. **Closed** = selected, rejected, no_show, newest first. An application's interviews are listed on the requirement's candidate row, newest first |
 
-## 2. Data (`0124`)
+## 2. Data (`0126`)
 
 - **`interviews`** gains:
   - `interview_code` (String 20, unique, NOT NULL after the backfill), `round` (String 20, nullable, CHECK the 5),
@@ -45,7 +45,7 @@
 - `downgrade()` refuses while any event exists: entered data is never dropped silently. The steps are guarded (0001 builds a fresh
   database from the current models).
 
-## 3. API (§12BG)
+## 3. API (§12BI)
 
 | Method/Path | Notes |
 |---|---|

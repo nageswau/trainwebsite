@@ -11,9 +11,9 @@ from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import hash_password
-from app.models import AuditLog, Batch, Company, EmployerProfile, Enrollment, Interview, Job, JobApplication, PlacementProfile, Program, User
+from app.models import AuditLog, Candidate, Company, EmployerProfile, Interview, Job, JobApplication, PlacementProfile, User
 from app.schemas import EmployerInterviewCreate, EmployerJobCreate, EmployerJobUpdate, EmployerRegistrationRequest, EmployerShortlistCreate, UserOut
-from app.services import applications, interviews
+from app.services import applications, interviews, placement_pool
 from app.services import recruiter_requirements as requirements
 from app.services.recruiter_companies import employer_lead_source_id
 
@@ -176,45 +176,33 @@ async def update_employer_job(job_id: UUID, payload: EmployerJobUpdate, user: Us
 
 @router.get("/candidates")
 async def search_candidates(q: str | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    # EMP-003-AC02/AC03: reads `PlacementProfile`, per API_CONTRACT.md #6, and returns
-    # only a conservative allowlist -- name, course, skills, availability -- never raw
-    # contact info (email/phone), pending confirmation of the exact GDPR-approved field
-    # set. Excludes only withdrawn candidates by default, the same "active pool" rule
-    # ADM-007-AC02 already established (`available=False` means temporarily unavailable,
-    # still an active candidate -- surfaced as a real field below, not filtered out).
+    # EMP-003-AC02/AC03: only a conservative allowlist -- name, course, skills, availability -- never raw contact info (email/phone).
+    # rec-010 (DEC-SCOPE-138 OI4, R12): the rows are the students who opted in to the placement candidate pool (consent is the gate to
+    # employer visibility), still minus a withdrawn PlacementProfile (ADM-007-AC02); `availability` is the candidate's status.
     if user.role != "employer":
         raise HTTPException(403, "Employer role required")
-    stmt = (
-        select(User, PlacementProfile)
-        .join(PlacementProfile, PlacementProfile.student_id == User.id)
-        .where(User.division == "it", User.role == "it_student", User.active.is_(True), PlacementProfile.withdrawn.is_(False))
-        .order_by(User.full_name)
-    )
-    rows = (await db.execute(stmt)).all()
-    student_ids = [student.id for student, _ in rows]
-    latest_course: dict[UUID, str] = {}
-    if student_ids:
-        enrollment_rows = (
-            await db.execute(
-                select(Enrollment.student_id, Program.title)
-                .join(Batch, Batch.id == Enrollment.batch_id)
-                .join(Program, Program.id == Batch.program_id)
-                .where(Enrollment.student_id.in_(student_ids))
-                .order_by(Enrollment.student_id, Enrollment.created_at.desc())
-            )
-        ).all()
-        for student_id, title in enrollment_rows:
-            latest_course.setdefault(student_id, title)
+    rows = (await db.execute(_visible_students().order_by(User.full_name))).all()
+    latest_course = await placement_pool.latest_courses(db, [student.id for student, _ in rows])
     results = []
-    for student, profile in rows:
+    for student, candidate in rows:
         skills = student.profile.get("skills", [])
         course = latest_course.get(student.id)
         if q:
             haystack = f"{student.full_name} {course or ''} {' '.join(skills)}".lower()
             if q.lower() not in haystack:
                 continue
-        results.append({"student_id": student.id, "name": student.full_name, "course": course, "skills": skills, "availability": profile.available})
+        results.append({"student_id": student.id, "name": student.full_name, "course": course, "skills": skills, "availability": candidate.status == "available"})
     return results
+
+
+def _visible_students():
+    """rec-010 (OI4): the students employers may see and shortlist, with their pool candidate."""
+    return (
+        select(User, Candidate)
+        .join(Candidate, Candidate.user_id == User.id)
+        .outerjoin(PlacementProfile, PlacementProfile.student_id == User.id)
+        .where(*placement_pool.employer_visible())
+    )
 
 
 async def _own_job(job_id, company: Company, db: AsyncSession) -> Job:
@@ -248,10 +236,10 @@ async def shortlist_candidate(payload: EmployerShortlistCreate, user: User = Dep
     # direct job id -- same IDOR discipline as the job-update endpoint above.
     _, company = await _own_profile(user, db)
     job = await _own_job(payload.job_id, company, db)
-    student = await db.get(User, payload.student_id)
-    if not student or student.role != "it_student":
+    found = (await db.execute(_visible_students().where(User.id == payload.student_id))).first()  # rec-010 (OI4): opted-in students only
+    if not found:
         raise HTTPException(422, "Valid student candidate is required")
-    candidate = await applications.candidate_for_student(db, student)  # rec-017 (R6, A4)
+    student, candidate = found
     if await db.scalar(select(JobApplication.id).where(JobApplication.job_id == payload.job_id, JobApplication.candidate_id == candidate.id)):
         raise HTTPException(409, "This candidate is already shortlisted/applied for this posting")
     item = await applications.create(db, user, job, candidate, "shortlisted", "Shortlisted by the employer")

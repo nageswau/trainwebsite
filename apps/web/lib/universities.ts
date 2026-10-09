@@ -6,7 +6,7 @@ import { ROLE_LABEL } from "@/lib/partnership";
 import type { ManagerOption, ManagerRef } from "@/lib/telecaller";
 
 export type UniversityPermissions = {
-  can_edit: boolean; can_assign: boolean; can_publish: boolean; can_deactivate: boolean; can_edit_contacts: boolean; can_move_stage: boolean;
+  can_edit: boolean; can_assign: boolean; can_publish: boolean; can_deactivate: boolean; can_edit_contacts: boolean; can_manage_documents: boolean; can_move_stage: boolean;
   can_reopen: boolean;
 };
 export type UniversityCountry = { id: string; name: string; iso2: string | null; region: string | null; catalogue_visible: boolean };
@@ -136,6 +136,7 @@ export type UniversityContact = {
   id: string; university_id: string; name: string; designation: string | null; department: string | null; role: ContactRole | null;
   email: string | null; phone: string | null; whatsapp: string | null; linkedin: string | null; preferred_channel: string | null;
   relationship_strength: string | null; notes: string | null; is_primary: boolean; shareable: boolean; created_at: string; updated_at: string;
+  whatsapp_to?: string | null; last_interaction_at?: string | null; // upc-012 UC6 / UC10
 };
 export const MAX_CONTACTS = 50;
 export const CONTACT_ROLES_URL = "/api/v1/partnership/contact-roles";

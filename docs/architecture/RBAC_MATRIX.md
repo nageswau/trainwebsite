@@ -1204,7 +1204,43 @@ writer may set Verified or Assessed; who and when are recorded.
 | `hr_team` | read only (every write `403`; the Skills Master stays `403`) | the whole pool | `rec-011` |
 | `it_admin`, `employer`, `bdm`, students, every other role | `403` | — | `rec-011` |
 
-### 2.65 Interview management *(net-new, added 2026-10-09 — `DEC-SCOPE-139`, `rec-020`)*
+### 2.64 Placement candidate pool opt-in *(net-new, added 2026-10-09 — `DEC-SCOPE-138`, `rec-010`)*
+
+Consent is the gate to employer visibility (R4, R12). The routes carry no user id, so the only scope is the caller.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `it_student` (IT division, active) | read their pool state and consent history; opt in (with the current consent version); opt out | themselves only | `rec-010` |
+| `employer` | EMP-003 search and EMP-004 shortlist see **only** opted-in, non-archived, non-withdrawn students; the fields are unchanged (no email, phone or resume) | opted-in pool | `rec-010` |
+| `placement_team`, `placement_manager`, `super_admin`, `hr_team` | no change: the candidate master (§2.48) already shows opted-in students and returns `404` after an opt-out | the pool | `rec-010` |
+| every other role (staff, `overseas_student`, admins) | `/account/placement-pool*` → `403` | — | `rec-010` |
+
+### 2.65 University documents *(net-new, added 2026-10-09 — `DEC-SCOPE-139`, `upc-026`)*
+
+Enforced inline in `api/university_documents.py` + `services/university_documents.py` (the University Master's `require_reader`, then
+the per-role slice, then `can_manage_documents`). The commission agreement is stripped server-side by `can_see_commission` (U2). Audit and
+logs carry ids only.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Read a university's documents + the Documents menu | ✅ all | ✅ all | shareable only | ✅ all | `403` |
+| See / download the commission agreement | ✅ | ✅ | `404` (never listed) | ✅ | `403` |
+| Upload, new version, edit title / sharing | own universities (primary/backup) | unowned + team universities | `403` | ✅ all | `403` |
+| Delete | — (not in this item, DC9) | — | — | — | — |
+
+### 2.66 University calls, message templates and messages *(net-new, added 2026-10-09 — `DEC-SCOPE-140`, `upc-012`)*
+
+Calls and messages are kept on the university and follow upc-006's contacts (§2.49): reads are the full contact view, writes the
+university's `can_edit_contacts`. Neither is ever edited or deleted (UC1, UC9).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `partnership_manager` (with a profile) | read active templates; read every university's calls and messages; log calls and send WhatsApp/email | writes: universities they own (primary or backup) | `upc-012` |
+| `partnership_head` | everything a manager does; create, edit, deactivate templates | writes: universities of their team or unassigned | `upc-012` |
+| `super_admin` | everything | all | `upc-012` |
+| `overseas_admin`, `counselor`, every other role | `403` | — | `upc-012` |
+
+### 2.67 Interview management *(net-new, added 2026-10-09 — `DEC-SCOPE-141`, `rec-020`)*
 
 Interviews take their application's scope (rec-007's requirement scope, §2.62). The role check runs before anything is read; out of scope
 is `404`.

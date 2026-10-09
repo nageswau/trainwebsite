@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import RecruiterTemplateRow, { RecruiterTemplateFields, templateBody } from "@/components/RecruiterTemplateRow";
 import TelecallerContentList from "@/components/TelecallerContentList";
 import { sendJson } from "@/lib/apiErrors";
-import { TEMPLATES_URL, type Channel, type RecTemplate } from "@/lib/recruiterMessages";
+import { RECRUITER_LIBRARY, type Channel, type MessageTemplate, type TemplateLibrary } from "@/lib/recruiterMessages";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 import { useUrlList } from "@/lib/useUrlList";
 import { toneClass, type Feedback } from "@/lib/welcomeLink";
@@ -13,9 +13,10 @@ const FEEDBACK_ID = "rtpl-create-feedback";
 const CHANNELS = ["whatsapp", "email"] as const;
 
 // rec-026 (MS1-MS3): the placement manager's WhatsApp and email templates (EVID-018 §19). Create form + list filtered by channel; each row
-// edits inline, deactivates / reactivates and previews with sample values. The tel-012 library layout, reused.
-export default function RecruiterTemplatesPanel() {
-  const list = useUrlList<RecTemplate>(TEMPLATES_URL, "channel", CHANNELS);
+// edits inline, deactivates / reactivates and previews with sample values. The tel-012 library layout, reused. upc-012: `library` serves the
+// partnership head's library too (no kinds).
+export default function RecruiterTemplatesPanel({ library = RECRUITER_LIBRARY }: { library?: TemplateLibrary }) {
+  const list = useUrlList<MessageTemplate>(library.url, "channel", CHANNELS);
   const [channel, setChannel] = useState<Channel>("whatsapp");
   const [formKey, setFormKey] = useState(0); // remounts the fields (and their controlled message) after a create
   const [busy, setBusy] = useState(false);
@@ -28,9 +29,9 @@ export default function RecruiterTemplatesPanel() {
     event.preventDefault();
     if (inFlight.current) return;
     inFlight.current = true;
-    const fields = templateBody(new FormData(event.currentTarget), channel);
+    const fields = templateBody(new FormData(event.currentTarget), channel, library);
     setBusy(true);
-    const outcome = await sendJson(TEMPLATES_URL, "POST", { channel, ...fields });
+    const outcome = await sendJson(library.url, "POST", { channel, ...fields });
     inFlight.current = false;
     setBusy(false);
     if (outcome.ok) {
@@ -47,7 +48,7 @@ export default function RecruiterTemplatesPanel() {
     <>
       <form className="action-card form" onSubmit={create} aria-describedby={FEEDBACK_ID}>
         <h3>Create template</h3>
-        <RecruiterTemplateFields key={formKey} idPrefix="rtpl-new" channel={channel} onChannel={setChannel} disabled={busy} />
+        <RecruiterTemplateFields key={formKey} idPrefix="rtpl-new" channel={channel} onChannel={setChannel} disabled={busy} library={library} />
         <button className="btn" disabled={busy}>{busy ? "Creating…" : "Create template"}</button>
         <div id={FEEDBACK_ID} tabIndex={-1} className={feedback ? toneClass[feedback.tone] : undefined} role="status" aria-live="polite" style={{ marginTop: 8, overflowWrap: "anywhere" }}>
           {feedback?.text}
@@ -60,7 +61,7 @@ export default function RecruiterTemplatesPanel() {
         notice={notice}
         createTargetId="rtpl-new-channel"
         createLabel="Create template"
-        headers={["Name", "Channel", "Kind", "Status"]}
+        headers={library.kinds ? ["Name", "Channel", "Kind", "Status"] : ["Name", "Channel", "Status"]}
         filter={
           <div className="field" style={{ maxWidth: 260 }}>
             <label htmlFor="rtpl-filter">Show</label>
@@ -70,7 +71,7 @@ export default function RecruiterTemplatesPanel() {
           </div>
         }
       >
-        {(items) => items.map((t) => <RecruiterTemplateRow key={t.id} row={t} onChanged={(text) => { setNotice(text); list.reload(); }} />)}
+        {(items) => items.map((t) => <RecruiterTemplateRow key={t.id} row={t} library={library} onChanged={(text) => { setNotice(text); list.reload(); }} />)}
       </TelecallerContentList>
     </>
   );

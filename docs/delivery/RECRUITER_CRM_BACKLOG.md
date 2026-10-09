@@ -641,6 +641,16 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** large · **Risk:** high
 
 ### rec-010 — IT-student opt-in to the candidate pool + EMP-003 re-pointed
+- **Status (2026-10-09):**
+  - **MERGED** to `main` as PR #182 @ `333a7706`. The next rec item takes `0124`, `DEC-SCOPE-139`, §12BG and §2.65 (re-check `main`).
+  - Numbers: `DEC-SCOPE-138`, migration `0123_candidate_consents` (after rec-011's `0122`), API §12BF, RBAC §2.64.
+  - Q-10 was answered by the owner in session (OI1–OI4, the recommended options):
+    - any active `it_student`;
+    - consent text `v1`;
+    - seed name/email/phone, the course as source detail, and Master-resolved profile skills, filling empty fields only;
+    - EMP-003 availability = candidate status, with withdrawn and archived students hidden; the EMP-004 shortlist is gated the same way.
+  - The new routes are `/account/placement-pool[/opt-in|/opt-out]`.
+  - Spec: `docs/superpowers/specs/2026-10-09-rec-010-placement-pool-opt-in-design.md`.
 - **Business requirement:** §27 "IT student … enters Recruiter Candidate Pool"; S2-§20 "after they opt into recruitment/placement
   services"; R4, R12.
 - **Existing behavior:**
@@ -997,8 +1007,9 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** large · **Risk:** high
 
 ### rec-020 — Interview management
-- **Status (2026-10-09):** built on `feature/rec-020`. `DEC-SCOPE-139` (IV1–IV12 recommended defaults, UNVERIFIED; IV9 answers Q-20); migration
-  `0124_interview_management` (on `0122`; rec-010 holds `0123` / 138 / §12BF / §2.64 in parallel), API §12BG, RBAC §2.65. The
+- **Status (2026-10-09):** built on `feature/rec-020`. `DEC-SCOPE-141` (IV1–IV12 recommended defaults, UNVERIFIED; IV9 answers Q-20); migration
+  `0126_interview_management` (after `0125_university_comms`), API §12BI, RBAC §2.67. Drafted as `0124` / 139 / §12BG / §2.65; rec-010,
+  upc-026 and the 0125 item merged first. The next rec item takes `0127`, `DEC-SCOPE-142`, §12BJ and §2.68 (re-check `main`). The
   status and reschedule routes are `POST …/status` and `POST …/reschedule` as planned.
 - **Business requirement:** §14 (12 fields, 5 rounds, 8 statuses); quick action "+ Schedule Interview"; R14.
 - **Existing behavior:** `interviews` (application, time, mode, link, free-text result); staff create at `workflows.py:1614`, employers at

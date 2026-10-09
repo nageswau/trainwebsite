@@ -1,16 +1,19 @@
 """rec-020 -- interview management: interviews gains code / round / status / interviewer / location / contact / creator; interview_events;
 interview_code_seq.
 
-Revision ID: 0124_interview_management
-Revises: 0122_candidate_skills
+Revision ID: 0126_interview_management
+Revises: 0125_university_comms
 
-docs/superpowers/specs/2026-10-09-rec-020-interview-management-design.md §2 (DEC-SCOPE-139). 0001 builds a fresh database from the current
+docs/superpowers/specs/2026-10-09-rec-020-interview-management-design.md §2 (DEC-SCOPE-141). 0001 builds a fresh database from the current
 models, which already carry these columns and the table, so every step is guarded. The backfill numbers existing interviews in creation
 order and maps the legacy free-text `result` onto a status (selected / rejected / on_hold kept; any other value -> on_hold; none ->
 scheduled). No events are backfilled. CHECKS repeats app.models.INTERVIEW_CHECKS (test_rec_020_migration). downgrade() refuses while any
 interview history exists: entered data is never dropped silently.
 
-Numbered 0124 while rec-010 holds 0123 in a parallel branch; whichever merges second re-chains `down_revision` only.
+Re-chained on 2026-10-09: drafted as `0126_interview_management` (DEC-SCOPE-141, API §12BI, RBAC §2.67) on `0122_candidate_skills`;
+rec-010 (`0123_candidate_consents`), upc-026 (`0124_university_documents`) and `0125_university_comms` merged first, so this is `0126`
+(DEC-SCOPE-141, §12BI, §2.67). A database stamped at the draft is re-stamped with `alembic stamp --purge 0122_candidate_skills`, then
+`upgrade head` (every step is guarded).
 """
 
 import sqlalchemy as sa
@@ -18,8 +21,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0124_interview_management"
-down_revision = "0122_candidate_skills"
+revision = "0126_interview_management"
+down_revision = "0125_university_comms"
 branch_labels = None
 depends_on = None
 
@@ -113,7 +116,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {EVENTS} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0124_interview_management: interview history exists. Clear it deliberately first.")
+        raise RuntimeError("Cannot downgrade 0126_interview_management: interview history exists. Clear it deliberately first.")
     op.drop_table(EVENTS)
     op.drop_index("ix_interviews_status_scheduled", table_name=TABLE)
     for name in CHECKS:

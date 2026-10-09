@@ -3381,7 +3381,63 @@ Design spec `docs/superpowers/specs/2026-10-08-rec-011-candidate-skills-design.m
 - **Skills Master detail** (`/recruiter/manager/skills`, manager and super_admin): **Merge into another skill** — a picker (never the
   skill itself), then a confirm naming what happens. On success the detail shows the kept skill with the merged name among its aliases.
 
-## rec-020 addendum (2026-10-09, `DEC-SCOPE-139`) — Interview management
+## rec-010 addendum (2026-10-09, `DEC-SCOPE-138`) — Placement candidate pool opt-in
+
+Design spec: `docs/superpowers/specs/2026-10-09-rec-010-placement-pool-opt-in-design.md` §5.
+
+**Student → Placement Status** (`/it/student/placement-status`) gets a card in the Actions area:
+- **Not in the pool:**
+  - The heading "Join the placement candidate pool", the consent text, and "Version v1".
+  - The required checkbox "I agree to the consent text above".
+  - The "Join the pool" button, disabled until the box is ticked and while saving ("Joining…").
+- **In the pool:**
+  - The badge "In the placement pool", and what employers see (never email or phone).
+  - "Leave the pool", with a confirmation: "Leave the pool? Employers will no longer find you; your applications continue." The buttons
+    are "Yes, leave" and "Cancel".
+- **History:** "Joined" or "Left", the date in the viewer's zone, and the consent version.
+- **States:**
+  - Loading: "Loading your placement pool status…".
+  - Load error: an alert with Retry.
+  - The server's message is shown on a failed save, for example a stale consent version.
+  - Success: a polite status message.
+
+The employer's **Search Candidates** and **Shortlist** panels are unchanged; their data now comes from the opted-in pool.
+
+## upc-026 addendum (2026-10-09, `DEC-SCOPE-139`) — University document centre
+
+Design spec `docs/superpowers/specs/2026-10-09-upc-026-university-documents-design.md` §4. Visual-reference mapping: None — not inspected. Do not claim parity.
+
+- **Route:** `/partnership/universities/[id]` gains a **Documents** section — one card per document (title; kind, "Version n" and
+  Shareable/Internal badges; current file name, size, uploader and date; "Earlier versions (n)" disclosure with a download per version;
+  Download). With `can_manage_documents`: **Upload document** (kind select that sets the sharing default, title, file with the accepted
+  types; the commission agreement's sharing box is disabled with "A commission agreement is always internal."), **New version**, **Edit**
+  (title + sharing). Missing kind/title/file and files over 20 MB are caught before sending; API refusals (wrong type, duplicate title) in
+  `role="alert"` with the form kept; success notices in `role="status"`; buttons disabled while sending. **Empty:** "No documents uploaded yet."
+- **Route:** `/partnership/documents` (manager menu "Documents", head nav "Documents") — the reader's documents across universities:
+  table (document, kind, university link + code, version, sharing badge, last upload, Download + size); GET filter form (kind, search);
+  URL paging. **States:** "No documents uploaded yet." / "No documents match these filters." / past-the-end link; 403 → access card.
+- **Responsive:** cards stack; the menu table becomes labelled cards below 640 px (QA-01: mixed cells stay on one line); no side-scroll
+  at 390 px.
+
+## upc-012 addendum (2026-10-09, `DEC-SCOPE-140`) — University calls, message templates, WhatsApp and email
+
+Design spec `docs/superpowers/specs/2026-10-09-upc-012-university-comms-design.md` §5.
+
+- **Message templates** (`/partnership/head/templates`, partnership head and super_admin; others see the access-denied page): rec-026's
+  library layout without a kind — create form (channel, name, subject for email, message with the `{name}` / `{university}` / `{manager}`
+  hint, a live count and an unknown-placeholder warning) and a list filtered by channel with inline Edit, Deactivate / Reactivate and
+  Preview (sample values). In the head's sidebar as "Message templates".
+- **University detail** (`/partnership/universities/[id]`), partnership roles only:
+  - **Calls** (full row, under Contacts): newest first — outcome, Connected / Not connected, the contact (or "a removed contact"), time
+    (IST), duration, direction, caller, notes and the next follow-up date. "Log call" (owner, team head, super_admin) opens a form:
+    contact (with a `tel:` link to their phone), outcome, date and time, direction, duration, next follow-up date, notes. Errors land on
+    the fields. Loading, empty and error (Retry) states; "Add a contact to log a call." when there is none.
+  - **Messages** (full row): rec-026's section — a "To" picker of the university's contacts, Send WhatsApp / Send email each disabled
+    with its reason when the contact has no usable number / no email; the tel-013 / tel-014 composers; the list with each email's
+    delivery status, polled while sending.
+  - **Contacts:** each contact shows "Last interaction: <date, time IST>" once called or messaged.
+
+## rec-020 addendum (2026-10-09, `DEC-SCOPE-141`) — Interview management
 
 Design spec `docs/superpowers/specs/2026-10-09-rec-020-interview-management-design.md` §4.
 
