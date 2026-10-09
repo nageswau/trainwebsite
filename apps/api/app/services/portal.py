@@ -61,6 +61,7 @@ from app.services.agent_dashboard import headline_counts
 from app.services.agent_orgs import org_masters, org_member_ids
 from app.services.agent_students import application_scope, student_scope
 from app.services.application_filters import ApplicationFilters
+from app.services.offers import status_label as offer_status_label
 from app.services.provisioning import provisioning_statuses, user_ids_with_status
 
 logger = logging.getLogger("app.portal")
@@ -336,16 +337,8 @@ async def _it_student(db: AsyncSession, user: User, section: str):
             ({"role": j.title, "company": c.name, "scheduled": i.scheduled_at, "mode": i.mode, "link": i.meeting_url, "result": i.result} for i, j, c in rows),
         )
     if section == "placement-status":
+        # rec-022 QA-04: the offers are the "My offers" card (GET /workflows/it/student/offers), with the letter; no text panel here.
         profile = await db.scalar(select(PlacementProfile).where(PlacementProfile.student_id == user.id))
-        offers = (
-            await db.execute(
-                select(JobOffer, Job, Company)
-                .join(JobApplication, JobApplication.id == JobOffer.application_id)
-                .join(Job, Job.id == JobApplication.job_id)
-                .join(Company, Company.id == Job.company_id)
-                .where(JobApplication.student_id == user.id)
-            )
-        ).all()
         rows = (
             ()
             if not profile
@@ -362,7 +355,6 @@ async def _it_student(db: AsyncSession, user: User, section: str):
             "Preparation stages, offers, and joining progress.",
             (("stage", "Stage"), ("status", "Status")),
             rows,
-            panels=({"title": "Offers", "items": [f"{c.name} - {j.title}: {o.status}" for o, j, c in offers]},),
         )
     if section == "job-applications":
         rows = (
@@ -963,7 +955,7 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                         "student": s.full_name,
                         "role": j.title,
                         "amount": f"{o.currency} {float(o.compensation):,.2f}" if o.compensation is not None else None,
-                        "status": o.status,
+                        "status": offer_status_label(o.status),
                         "joining": o.joining_date,
                     }
                     for o, a, j, s in rows

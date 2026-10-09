@@ -121,8 +121,8 @@ async def seeded(client, db):
     await certify(db, s4, "issued")  # a certificate without an enrollment still counts (B6)
     await certify(db, outsider, "issued")
     await offer(db, s1, "accepted")
-    await offer(db, s2, "offered")
-    await offer(db, s3, "joined")
+    await offer(db, s2, "offer_received")  # rec-022: the legacy "offered" is now Offer Received
+    await offer(db, s3, "accepted")  # rec-022: a legacy "joined" offer is mapped to Accepted (0136)
     await offer(db, outsider, "accepted")
 
     await pay(db, s1, "1000.00")

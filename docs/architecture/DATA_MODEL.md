@@ -1842,3 +1842,17 @@ Indexes `ix_partnership_events_dates (starts_on, ends_on)`, `ix_partnership_even
 STORED` + GIN index `ix_candidate_resumes_search`. Postgres fills it for existing rows on upgrade and refreshes it on every extraction; the
 ORM never loads it (deferred). Search matches only a candidate's highest version. `downgrade()` drops the index and the column (derived).
 
+## Offer management (`rec-022`, `DEC-SCOPE-155`; migration `0138_offer_management`, after `0137_resume_search`)
+
+**`job_offers` gains:** `position` varchar(160) (null on legacy rows), `letter_key` varchar(255), `letter_content_type` varchar(80),
+`letter_name` varchar(255) (display only), `letter_uploaded_at` timestamptz, `created_by_user_id` uuid FK `users` RESTRICT (null on legacy
+rows). `status` gets the server default `offer_received` and `ck_job_offers_status` (`offer_pending`, `offer_received`, `accepted`,
+`declined`). Existing statuses are mapped: offered → offer_received; accepted, joined → accepted; declined, rejected, withdrawn →
+declined; pending → offer_pending; anything else → offer_received.
+
+**`job_offer_events`** (append-only): `id`, `offer_id` FK RESTRICT, `event` (CHECK created / status / revised / letter), `from_status`,
+`to_status`, `fields` json (the revised field names), `note` varchar(500), `letter_key` (the replaced object, never returned),
+`actor_user_id` FK nullable, `position` identity, `created_at`. Index `(offer_id, position)`.
+
+**Design notes:** `services/offers.py` is the only writer (the legacy routes included). `downgrade()` refuses while history exists; it
+keeps the mapped statuses (the legacy column was free text).

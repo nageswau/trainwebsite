@@ -1406,6 +1406,21 @@ No new route or role: `text` is a field of §2.77's search, so §2.77's roles an
 `placement_team`, `placement_manager`, `super_admin` and `hr_team` (read), who may already open the resume itself (rec-009); every other
 role is `403` before the body is read.
 
+### 2.81 Offer management *(net-new, added 2026-10-09 — `DEC-SCOPE-155`, `rec-022`)*
+
+Offers take their application's scope (rec-007's requirement scope, §2.62). The role check runs before anything is read; out of scope is
+`404`.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` | read; record, revise, change status, upload and download the letter | requirements assigned to them or on their companies | `rec-022` |
+| `placement_manager` | read and download the letter (writes `403`) | the team's requirements and the unassigned queue | `rec-022` |
+| `bdm` | read only | requirements of companies where they are the assigned BDM (R10) | `rec-022` |
+| `super_admin` | everything | all | `rec-022` |
+| `it_student` | `GET /workflows/it/student/offers` and their own letter; `403` on `/recruiter/*` | their own applications | `rec-022` |
+| `hr_team`, `it_admin` | `403` on `/recruiter/*`; the legacy `/workflows/it/offers` routes as before (mapped statuses) | — | `rec-022` |
+| `employer`, every other role | `403` (EMP-006 not started) | — | `rec-022` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

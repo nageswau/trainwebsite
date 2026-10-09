@@ -6244,3 +6244,36 @@ and upc-018 (153 / §12BU / §2.79) merged first. Spec: `docs/superpowers/specs/
 - Find Candidates gains the box, the card's "From the resume" snippet and the notice; the empty prompt becomes "Add a skill or a resume
   search to search every candidate in the pool."
 - **New Feature ID authorized:** `rec-014`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-014.
+
+### DEC-SCOPE-155 — Offer management (`rec-022`)
+
+- `EVID-018` §16 (lines 676–702): 9 offer fields and the statuses "Offer Pending → Offer Received → Accepted → Declined", opening with
+  "Once selected". `DEC-SCOPE-127` (rec-005) reserved the `candidate_selected` pipeline event for rec-022.
+- `RECRUITER_CRM_BACKLOG.md` §rec-022: AC1 (an offer only for a Selected application), AC2 (status history kept), AC3 (the legacy
+  accepted/joined ⇒ hired behaviour preserved through the mapping), and question Q-21.
+
+**Status:** **BUILDING** on `feature/rec-022`. The owner asked to proceed with the recommended answers, so nothing was asked; every row
+below is **UNVERIFIED** (a recorded default) until confirmed.
+
+**Numbering (FINAL):** migration `0138_offer_management` (after rec-014's `0137_resume_search`), `DEC-SCOPE-155`, API §12BW, RBAC §2.81. Drafted as `0136` / 152 / §12BT / §2.78; upc-011 (152), upc-018 (153) and rec-014 (154) merged first.
+Spec: `docs/superpowers/specs/2026-10-09-rec-022-offer-management-design.md`.
+
+| # | Point | Default |
+|---|---|---|
+| OF1 | Statuses | `offer_pending`, `offer_received`, `accepted`, `declined` (source order), held by a CHECK; accepted and declined are final |
+| OF2 (Q-21a) | Meaning | Offer Pending: the company said yes, the offer has not reached the candidate. Offer Received: it has. The letter is not required for Offer Received |
+| OF3 | Moves | Pending → Received / Accepted / Declined; Received → Accepted / Declined; anything else `409`; optional note ≤ 500 |
+| OF4 | Record | Only for a Selected application (AC1, `409`); one per application (`409`). Position (required), salary, currency (3 letters, INR), offer date (default today, not future), joining date (not before the offer date). Fires rec-005 `candidate_selected` |
+| OF5 | Revise | Position, salary, currency and dates on a non-final offer; a `revised` history row names the changed fields, never the values |
+| OF6 (Q-21b) | Side effects | Declined → application Withdrawn; Accepted keeps it Selected (rec-023's joining moves it to Joined); reaching Offer Received notifies a student in-app |
+| OF7 (Q-21c) | Letter | The recruiter uploads it (PDF/JPG/PNG by content, 20 MB, metadata stripped); a replaced object is kept in the history; download audited, in scope. The legacy typed `letter_url` stays, shown only when http(s) |
+| OF8 (Q-21d) | Who | Writers: rec-017's (recruiter in scope, super_admin); manager and assigned BDM read; `it_student` reads their own offers and letter. Employers: nothing new; EMP-006 stays NOT_STARTED and is not superseded |
+| OF9 | Legacy routes | `/workflows/it/offers` map their words (offered → Offer Received, pending → Offer Pending, joined → Accepted, rejected → Declined; any other word `422`), keep their free moves and write history; accepted/joined still moves the application to Joined (AC3) |
+| OF10 | Data | Existing rows mapped the same way (withdrawn → declined; any other value → Offer Received); no history backfilled |
+
+**Consequences:**
+- New: `job_offers` columns (position, letter file, creator) + CHECK, `job_offer_events`, `services/offers.py`, `api/recruiter_offers.py`
+  (6 recruiter routes + 2 student routes), the Offer panel on the requirement's candidate row and the student's "My offers" card.
+- Changed: the legacy offer routes delegate to the service; the ADM-007 offers screen and the student placement-status panel show the
+  status labels; legacy audit metadata no longer carries the salary.
+- **New Feature ID authorized:** `rec-022`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-022.
