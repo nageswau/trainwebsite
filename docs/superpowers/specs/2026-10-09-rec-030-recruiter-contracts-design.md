@@ -4,7 +4,7 @@
   7 statuses) and §3 (Existing Agreement, MoU/Contract Status, Payment/Commercial Terms). `DERIVED_BLUEPRINT`, in scope by R1.
 - **Dependency:** rec-003 (company master), merged as PR #152.
 - **Pattern:** bdm-005 `bdm_mous` (clone; R9 "contracts follow the BDM MoU pattern").
-- **Decision:** DEC-SCOPE-155, migration `0138_recruiter_contracts`, API §12BW, RBAC §2.81 (to be re-checked on `origin/main` before
+- **Decision:** DEC-SCOPE-156, migration `0139_recruiter_contracts`, API §12BX, RBAC §2.82 (to be re-checked on `origin/main` before
   merge).
 - **Answers:** the owner said "proceed with recommended answers". CT1–CT10 below are the recommended defaults. They are
   **UNVERIFIED** until the owner confirms them.
@@ -24,7 +24,7 @@
 | CT9 | Roles | Read: the company's scope. That is the assigned recruiter; the manager for their team and unassigned companies; super_admin for all; the assigned BDM read-only (R10). Write: the company's `can_edit`, which is the assigned recruiter or super_admin. An archived company is a 409, and the manager has no edit (rec-003 D6). Commercial terms are never sent to the employer portal. |
 | CT10 | The company shows the status | The company detail gets an additive `contract` field (`{status, status_label}` or null) and a "Contract status" row in Details. The company list is unchanged. |
 
-## 2. Data model (migration 0138)
+## 2. Data model (migration 0139)
 
 `recruiter_contracts`: id, company_id (FK companies, RESTRICT), created_by_user_id, status (String 20, default `discussion`),
 status_changed_at, agreement_type, start_date, end_date, fee_basis, fee_value Numeric(12,2), payment_terms, replacement_policy,
@@ -46,7 +46,7 @@ Indexes: `uq_recruiter_contracts_current` (company_id WHERE is_current) and `ix_
 (effective), changed JSON (field names only), document_key (the replaced object's key, never returned), position Identity, created_at.
 The downgrade refuses while any contract exists.
 
-## 3. API (§12BW)
+## 3. API (§12BX)
 
 | Method | Path | Notes |
 |---|---|---|

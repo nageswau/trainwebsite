@@ -1,4 +1,4 @@
-"""rec-030 (DEC-SCOPE-155, spec §1-§3): recruiter contracts -- rules, history, audit and output (the bdm-005 MoU pattern).
+"""rec-030 (DEC-SCOPE-156, spec §1-§3): recruiter contracts -- rules, history, audit and output (the bdm-005 MoU pattern).
 
 Functions only; nothing here commits -- the route owns the transaction. Every write runs on the company row locked by
 `recruiter_companies.load_scoped(lock=True)` and then the current contract row. Audit metadata and logs carry ids, status keys and field

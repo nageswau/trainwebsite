@@ -1112,6 +1112,9 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
   1. An offer only for a Selected application.
   2. Status history kept.
   3. The legacy `accepted/joined ⇒ hired` behaviour is preserved through the mapping.
+- **Status (2026-10-09):** **MERGED** to `main` as PR #206 @ `27c41baa`; the next rec item takes `0139`, `DEC-SCOPE-156`, §12BX and §2.82 (re-check `main`). `DEC-SCOPE-155` (OF1–OF10 recommended defaults, UNVERIFIED; Q-21
+  answered by OF2, OF6–OF8); migration `0138_offer_management` (after rec-014's `0137`), API §12BW, RBAC §2.81 (drafted as 0136 / 152 / 12BT / 2.78). Spec
+  `docs/superpowers/specs/2026-10-09-rec-022-offer-management-design.md`.
 - **Positive scenarios:** Offer Received with a letter, then Accepted.
 - **Negative scenarios:** a second offer for one application → 409 (existing unique).
 - **Edge cases:** a revised offer (re-issue = update with history).
@@ -1338,10 +1341,10 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 
 ### rec-030 — Recruiter contracts / MoU
 - **Status (2026-10-09):** built on `feature/rec-030`.
-  - `DEC-SCOPE-155` (CT1–CT10 recommended defaults, UNVERIFIED).
-  - Migration `0138_recruiter_contracts`, API §12BW, RBAC §2.81. It was drafted as 0137 / 153 / §12BU / §2.79; upc-018 and rec-014
+  - `DEC-SCOPE-156` (CT1–CT10 recommended defaults, UNVERIFIED).
+  - Migration `0139_recruiter_contracts`, API §12BX, RBAC §2.82. It was drafted as 0137 / 153 / §12BU / §2.79; upc-018, rec-014 and rec-022
     merged first.
-  - The next rec item takes `0139`, `DEC-SCOPE-156`, §12BX and §2.82 (re-check `main`).
+  - The next rec item takes `0140`, `DEC-SCOPE-157`, §12BY and §2.83 (re-check `main`).
 - **Business requirement:** §22 (9 fields; Discussion → Proposal Sent → Negotiation → Contract Sent → Signed → Active → Expired); §3
   Existing Agreement, MoU/Contract Status, Payment/Commercial Terms.
 - **Existing behavior:** none for companies (`BdmMou` is BDM-only).

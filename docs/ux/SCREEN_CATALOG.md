@@ -3674,7 +3674,7 @@ Design spec: `docs/superpowers/specs/2026-10-09-rec-014-resume-full-text-search-
   server's notice in place of "No candidates match…".
 - **Intro:** "…or by words in their resume…".
 
-## rec-030 addendum (2026-10-09, `DEC-SCOPE-155`) — Contract / MoU on the company page
+## rec-030 addendum (2026-10-09, `DEC-SCOPE-156`) — Contract / MoU on the company page
 
 Design spec: `docs/superpowers/specs/2026-10-09-rec-030-recruiter-contracts-design.md` §4. On `/recruiter/companies/{id}`, after
 Meetings:

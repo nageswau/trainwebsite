@@ -879,16 +879,56 @@ class PlacementProfile(Base, TimestampMixin):
     withdrawn: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
+# rec-022 (DEC-SCOPE-155, OF1): the EVID-018 §16 offer statuses in source order (L700). Migration 0138 repeats them
+# (test_rec_022_migration). Labels live in services/offers.py and the web client.
+OFFER_STATUSES = ("offer_pending", "offer_received", "accepted", "declined")
+OFFER_EVENTS = ("created", "status", "revised", "letter")
+OFFER_CHECKS = {"ck_job_offers_status": "status IN (" + ", ".join(f"'{s}'" for s in OFFER_STATUSES) + ")"}
+OFFER_EVENT_CHECKS = {"ck_job_offer_events_event": "event IN (" + ", ".join(f"'{s}'" for s in OFFER_EVENTS) + ")"}
+
+
 class JobOffer(Base, TimestampMixin):
+    """One offer per application (the unique index). rec-022: services/offers.py is the only writer; `letter_url` is the legacy typed
+    link, `letter_key` the uploaded letter (OF7). `position` and `created_by_user_id` are NULL on legacy rows."""
+
     __tablename__ = "job_offers"
+    __table_args__ = tuple(CheckConstraint(sql, name=name) for name, sql in OFFER_CHECKS.items())
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("job_applications.id"), unique=True, index=True)
     offered_on: Mapped[date] = mapped_column(Date, default=date.today)
     compensation: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True)
     currency: Mapped[str] = mapped_column(String(10), default="INR")
-    status: Mapped[str] = mapped_column(String(30), default="offered")
+    status: Mapped[str] = mapped_column(String(30), default="offer_received", server_default=text("'offer_received'"))
     joining_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     letter_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    position: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    letter_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    letter_content_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    letter_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    letter_uploaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+
+
+class JobOfferEvent(Base):
+    """rec-022 (AC2): one row per record, status move, revision (field names only) and letter upload (`letter_key` = the replaced object,
+    never returned). Append-only; `position` orders rows written in one transaction. `actor_user_id` is NULL only for a system write."""
+
+    __tablename__ = "job_offer_events"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in OFFER_EVENT_CHECKS.items()),
+        Index("ix_job_offer_events_offer", "offer_id", "position"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    offer_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("job_offers.id", ondelete="RESTRICT"))
+    event: Mapped[str] = mapped_column(String(16))
+    from_status: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    to_status: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    fields: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    letter_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    actor_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 # upc-002 (U12, Q-06): the nine regions, in display order. Migration 0101_country_master repeats them (test_upc_002_migration asserts it).
@@ -5008,8 +5048,8 @@ class PartnershipTarget(Base, TimestampMixin):
     set_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-# rec-030 (DEC-SCOPE-155, spec §2): recruiter contracts / MoU (EVID-018 §22), the bdm-005 MoU pattern. The six stored statuses in source
-# order; Expired (CT2) is derived from end_date and never stored. Migration 0138 repeats these (test_rec_030_migration pins them).
+# rec-030 (DEC-SCOPE-156, spec §2): recruiter contracts / MoU (EVID-018 §22), the bdm-005 MoU pattern. The six stored statuses in source
+# order; Expired (CT2) is derived from end_date and never stored. Migration 0139 repeats these (test_rec_030_migration pins them).
 RECRUITER_CONTRACT_STATUSES = ("discussion", "proposal_sent", "negotiation", "contract_sent", "signed", "active")
 RECRUITER_CONTRACT_EXPIRING = ("signed", "active")
 RECRUITER_CONTRACT_FEE_BASES = ("fixed", "percent_of_ctc")

@@ -149,7 +149,7 @@ async def test_placement_team_reports_renders_real_job_activity_instead_of_404in
     application = await student_application(db_session, job.id, student, "sourced")
     db_session.add(application)
     await db_session.flush()
-    db_session.add(JobOffer(application_id=application.id, status="offered"))
+    db_session.add(JobOffer(application_id=application.id, status="offer_received"))  # rec-022: was the legacy "offered"
     await db_session.commit()
 
     await _login(client, placement.email, "it")

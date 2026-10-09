@@ -1,6 +1,6 @@
 import { COMPANIES_URL } from "@/lib/recruiterCompanies";
 
-// rec-030 (DEC-SCOPE-155): a company's contract / MoU. The API owns every rule (dates, fee, Expired, the document before Signed, scope);
+// rec-030 (DEC-SCOPE-156): a company's contract / MoU. The API owns every rule (dates, fee, Expired, the document before Signed, scope);
 // these helpers only shape requests and read responses. The statuses are the source's, in its order (EVID-018 §22; AC1).
 export type ContractStatus = "discussion" | "proposal_sent" | "negotiation" | "contract_sent" | "signed" | "active" | "expired";
 export type FeeBasis = "fixed" | "percent_of_ctc";

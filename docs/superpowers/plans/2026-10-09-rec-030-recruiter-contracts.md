@@ -3,7 +3,7 @@
 Spec: `docs/superpowers/specs/2026-10-09-rec-030-recruiter-contracts-design.md`. TDD for each task: write the test, see it fail, then implement it.
 
 1. **Migration and models.** Add `RECRUITER_CONTRACT_*` constants, `RecruiterContract` and `RecruiterContractEvent` in `models.py`, and
-   `0138_recruiter_contracts.py`. Test: `test_rec_030_migration.py` (chain, single head, CHECK parity, round trip, downgrade refusal).
+   `0139_recruiter_contracts.py`. Test: `test_rec_030_migration.py` (chain, single head, CHECK parity, round trip, downgrade refusal).
 2. **Schemas.** `RecContractCreate` / `Update` / `Out` / `Envelope` / `CompanyContracts` / `EventPage`. The `contract` field on the
    company detail.
 3. **Service** `services/recruiter_contracts.py`: effective status, rules (CT2–CT4, CT8), load current, store/discard/read document,
@@ -14,4 +14,4 @@ Spec: `docs/superpowers/specs/2026-10-09-rec-030-recruiter-contracts-design.md`.
 6. **Components:** `RecruiterCompanyContract`, `RecruiterContractForm`, `RecruiterContractDocument`, `RecruiterContractHistory`.
    Vitest for these.
 7. **Playwright** `rec-030-contracts.spec.ts`.
-8. **Docs:** DEC-SCOPE-155, API §12BW, RBAC §2.81, DATA_MODEL, SCREEN_CATALOG, and the backlog status.
+8. **Docs:** DEC-SCOPE-156, API §12BX, RBAC §2.82, DATA_MODEL, SCREEN_CATALOG, and the backlog status.
