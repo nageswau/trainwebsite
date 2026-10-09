@@ -10,7 +10,7 @@ export const STATUS_KEYS: readonly Status[] = [
   "new", "requirement_received", "sourcing", "shortlisting", "profiles_shared", "interviewing", "selected", "joined", "on_hold", "closed", "cancelled",
 ];
 export type Option = { key: string; label: string };
-export type RequirementPermissions = { can_edit: boolean; can_change_status: boolean; can_reassign: boolean };
+export type RequirementPermissions = { can_edit: boolean; can_change_status: boolean; can_reassign: boolean; can_view_matches: boolean };
 export type CompanyRef = { id: string; code: string; name: string };
 export type RequirementRow = {
   id: string; code: string; title: string; company: CompanyRef; location: string; status: Status; status_label: string; priority: string | null;

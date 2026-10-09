@@ -15,8 +15,9 @@ from app.api.bdm import LIMIT, OFFSET, SEARCH, _matching
 from app.api.deps import get_current_user
 from app.api.lookups import _pattern as like_pattern
 from app.core.database import get_db
-from app.models import JOB_PRIORITIES, JOB_STATUSES, Company, Job, User
-from app.schemas import REC_REQUIREMENT_FIELDS, RecRequirementAssign, RecRequirementCreate, RecRequirementStatusChange, RecRequirementUpdate
+from app.models import JOB_PRIORITIES, JOB_STATUSES, Company, Job, JobSkill, User
+from app.schemas import REC_REQUIREMENT_FIELDS, RecRequirementAssign, RecRequirementCreate, RecRequirementStatusChange, RecRequirementUpdate, RecSkillWeights
+from app.services import applications, candidates, matching
 from app.services import recruiter_companies as companies
 from app.services import recruiter_requirements as svc
 from app.services.recruiter import ROLE, recruiter_context
@@ -170,6 +171,45 @@ async def change_requirement_status(requirement_id: UUID, payload: RecRequiremen
     svc.audit(db, user, "status", job.id, {"from": previous, "to": payload.status})
     await db.commit()
     svc.log("recruiter_requirement_status_changed", user, job.id, from_status=previous, to_status=payload.status)
+    return {"requirement": await svc.requirement_out(db, user, job)}
+
+
+@router.get("/{requirement_id}/matches")
+async def requirement_matches(
+    requirement_id: UUID,
+    limit: int = Query(matching.PAGE_SIZE, ge=1, le=50),
+    offset: int = OFFSET,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """rec-016 (DEC-SCOPE-157 M7): candidate readers within the requirement's scope -- the role check first (403), then scope (404)."""
+    candidates.require_reader(user)
+    job = await svc.load_scoped(db, user, requirement_id)
+    result = await matching.matches(db, job, limit=limit, offset=offset)
+    matching.log(user, job, result["total"])
+    return {
+        **result,
+        "can_shortlist": applications.can_write(user) and job.status not in svc.ENDED,  # rec-017's add rules
+        "can_edit_weights": svc.permissions(user, job)["can_edit"],
+    }
+
+
+@router.put("/{requirement_id}/skill-weights")
+async def set_skill_weights(requirement_id: UUID, payload: RecSkillWeights, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """rec-016 (M1): one transaction -- scope, row lock, `can_edit`, the changed weights and one audit row (ids only), one commit."""
+    job = await svc.load_scoped(db, user, requirement_id, lock=True)
+    svc.require(user, job, "can_edit", "skill_weights")
+    rows = {r.id: r for r in (await db.scalars(select(JobSkill).where(JobSkill.job_id == job.id))).all()}
+    if any(w.id not in rows for w in payload.weights):
+        raise HTTPException(422, "Choose skills of this requirement")
+    changed = sorted(str(w.id) for w in payload.weights if rows[w.id].weight != w.weight)
+    for w in payload.weights:
+        rows[w.id].weight = w.weight
+    if changed:
+        svc.audit(db, user, "weights", job.id, {"skills": changed})
+    await db.commit()
+    if changed:
+        svc.log("recruiter_requirement_weights_changed", user, job.id, skills=len(changed))
     return {"requirement": await svc.requirement_out(db, user, job)}
 
 

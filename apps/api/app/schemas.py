@@ -8608,6 +8608,24 @@ class RecRequirementAssign(BaseModel):
     recruiter_user_id: UUID
 
 
+# --- rec-016 (DEC-SCOPE-157 M1): a requirement skill's match weight; ids must be this requirement's skills (checked in the route) -----
+class RecSkillWeight(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id: UUID
+    weight: int = Field(ge=1, le=10)
+
+
+class RecSkillWeights(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    weights: list[RecSkillWeight] = Field(min_length=1, max_length=60)
+
+    @model_validator(mode="after")
+    def _distinct(self):
+        if len({w.id for w in self.weights}) != len(self.weights):
+            raise ValueError("Each skill can appear only once")
+        return self
+
+
 # --- rec-008 (DEC-SCOPE-132 JD3): a JD version's fields; the company, number and version are server-owned ---------------------------
 REC_JD_FIELDS = (
     "role", "experience", "qualification", "skills", "salary", "location", "description", "responsibilities", "requirements", "openings",

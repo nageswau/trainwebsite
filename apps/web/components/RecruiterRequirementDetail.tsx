@@ -8,6 +8,7 @@ import LocalTime from "@/components/LocalTime";
 import RecruiterRequirementForm from "@/components/RecruiterRequirementForm";
 import RecruiterRequirementCandidates from "@/components/RecruiterRequirementCandidates";
 import RecruiterRequirementJd from "@/components/RecruiterRequirementJd";
+import RecruiterRequirementMatches from "@/components/RecruiterRequirementMatches";
 import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson } from "@/lib/apiErrors";
 import { display, LINK_STYLE } from "@/lib/bdmOrganizations";
@@ -28,8 +29,8 @@ import {
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // rec-007 (spec §6): one requirement. Actions render from `permissions` and `allowed_statuses` only -- the server enforces every rule.
-// Every write re-renders from the requirement the API returns (no refetch). The JD section is rec-008's, Candidates is rec-017's; the
-// Interviews tab arrives with rec-020.
+// Every write re-renders from the requirement the API returns (no refetch). The JD section is rec-008's, Candidates is rec-017's,
+// Matching candidates is rec-016's (a shortlist there re-reads Candidates); the Interviews tab arrives with rec-020.
 type Changed = (r: Requirement, notice: string) => void;
 
 function StatusChange({ requirement, onChanged }: { requirement: Requirement; onChanged: Changed }) {
@@ -171,6 +172,7 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
   const [requirement, setRequirement] = useState(initial);
   const [editing, setEditing] = useState(false);
   const [notice, setNotice] = useState<string | null>(created ? `Requirement ${initial.code} created.` : null);
+  const [shortlists, setShortlists] = useState(0);
   const focus = useFocusAfterRender();
   useEffect(() => {
     if (created) window.history.replaceState(null, "", `${REQUIREMENTS_PATH}/${initial.id}`);
@@ -273,7 +275,8 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
         </ul>
       </section>
       {/* rec-017: after the requirement's own status controls and history, so its two "Change status" forms never sit side by side (QA-02). */}
-      <RecruiterRequirementCandidates requirementId={r.id} companyId={r.company.id} />
+      <RecruiterRequirementCandidates requirementId={r.id} companyId={r.company.id} refreshKey={shortlists} />
+      {p.can_view_matches && <RecruiterRequirementMatches requirementId={r.id} version={r.updated_at} onRequirementChanged={setRequirement} onShortlisted={() => setShortlists((n) => n + 1)} />}
     </>
   );
 }

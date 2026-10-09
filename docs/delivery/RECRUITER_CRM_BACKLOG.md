@@ -872,6 +872,10 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** low
 
 ### rec-016 — Requirement → candidate matching + match score
+- **Status (2026-10-09):** **BUILT** on `feature/rec-016` (PR pending).
+  - `DEC-SCOPE-157` (M1–M8, the recommended answers to Q-14; UNVERIFIED).
+  - No migration. API §12BY, RBAC §2.83. The next rec item takes `0140`, `DEC-SCOPE-158`, §12BZ and §2.84 (re-check `main`).
+  - Share waits for rec-019.
 - **Business requirement:** §10 "when a new job requirement is created … CRM searches"; S2-§10 auto search + results table + actions;
   S2-§11 weighted score (R7).
 - **Existing behavior:** none.

@@ -200,7 +200,7 @@ function ApplicationItem({ application, contacts, onChanged, onInterview, onScre
 /** rec-017 (spec §5): the requirement's candidates and each one's §12 status. Writers (the requirement's recruiter, super_admin) add
  *  pool candidates and move statuses; managers and the assigned BDM read. Every write re-reads the list. rec-020: each row opens its
  *  interviews; the company's active contacts (when the caller can read them) feed the interview form. */
-export default function RecruiterRequirementCandidates({ requirementId, companyId }: { requirementId: string; companyId?: string }) {
+export default function RecruiterRequirementCandidates({ requirementId, companyId, refreshKey = 0 }: { requirementId: string; companyId?: string; refreshKey?: number }) {
   const [data, setData] = useState<RequirementCandidates | null>(null);
   const [failed, setFailed] = useState(false);
   const [version, setVersion] = useState(0);
@@ -218,7 +218,7 @@ export default function RecruiterRequirementCandidates({ requirementId, companyI
       .then((body) => (isRequirementCandidates(body) ? setData(body) : setFailed(true)))
       .catch(() => controller.signal.aborted || setFailed(true));
     return () => controller.abort();
-  }, [requirementId, version]);
+  }, [requirementId, version, refreshKey]); // refreshKey: rec-016's Shortlist added a candidate elsewhere on the page
 
   const canWrite = !!data && (data.can_add || data.items.some((a) => a.allowed_statuses.length > 0));
   useEffect(() => {

@@ -1437,6 +1437,22 @@ The inline pattern, scope in the SQL `WHERE`. Routes are listed in §12BX.
 - An archived company is read-only (`409`).
 - Audit rows `recruiter_contract.*` carry ids, status keys, field names and the document kind only, never the terms, fee or file name.
 
+### 2.83 Requirement → candidate matching *(net-new, added 2026-10-09 — `DEC-SCOPE-157`, `rec-016`)*
+
+The inline pattern, scope in the SQL `WHERE`. Routes are listed in §12BY.
+
+| Role | Read matches | Shortlist (rec-017 add) | Edit weights |
+|---|---|---|---|
+| `placement_team` | Requirements in their scope (rec-007) | The same, unless the requirement is closed or cancelled | The same, unless cancelled |
+| `placement_manager` | Their team's requirements and unassigned ones | None (`403`) | None (`403`) |
+| `super_admin` | Every requirement | Every open requirement | Every requirement not cancelled |
+| `bdm` (assigned BDM) | `403` (reads the requirement, not the pool; `can_view_matches` false) | `403` | `403` |
+| any other role, including `hr_team` and `employer` | `403` | `403` | `403` |
+
+- Out of scope is `404`, the same as an unknown id (IDOR).
+- Match rows never include a candidate's phone number or email (R8).
+- The weights audit row carries job-skill ids only.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

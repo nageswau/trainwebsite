@@ -6321,3 +6321,44 @@ Spec: `docs/superpowers/specs/2026-10-09-rec-022-offer-management-design.md`.
   - a cross-company contract list and expiry reminders (not in the backlog item).
 - **New Feature ID authorized:** `rec-030`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-030.
 
+### DEC-SCOPE-157 — Requirement → candidate matching + weighted match score (`rec-016`)
+
+**Evidence:**
+- `EVID-018` §10 (lines 475–498: "when a new job requirement is created … CRM searches"; a rule-based score);
+- S2-§10 (1427–1473: the requirement's required and preferred skills, an automatic search, a result table and actions);
+- S2-§11 (1475–1501: weighted skills plus experience: Java 30, Spring Boot 25, SQL 15, Microservices 10, AWS 10, Experience 10);
+- `DEC-SCOPE-116` R7 (rule-based, no AI provider) and R11 (the whole opted-in pool);
+- `DEC-SCOPE-129` J7 (`job_skills.weight`, 1–10);
+- `RECRUITER_CRM_BACKLOG.md` §rec-016 AC1–AC3 and Q-14.
+
+**Status:**
+- Built on `feature/rec-016` (2026-10-09). **No migration:** the weights already live on `job_skills.weight`. API contract §12BY, RBAC §2.83.
+- M1–M8 are the recommended answers to Q-14 and the item's open points. They were applied under the owner's standing instruction for
+  the build session ("proceed with the recommended answers; ask only if genuinely blocking"). Every row is **UNVERIFIED**
+  (`NEEDS_CONFIRMATION` at sign-off).
+- Spec: `docs/superpowers/specs/2026-10-09-rec-016-requirement-matching-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| M1 | Weights (Q-14) | Each requirement skill keeps its `job_skills.weight` (1–10; rec-007 defaults: required 2, preferred 1). The requirement's writers (`can_edit`) edit them per requirement from the Matching section. **Experience fit is worth 10 points and location fit 10 points** when they apply. The skills share the rest of the 100 in proportion to their weights |
+| M2 | Rounding (AC1, AC2) | Points are whole numbers, split by the largest remainder (a tie goes to the earlier skill). A full match is therefore exactly 100, and a breakdown always adds up to its score |
+| M3 | What matches a skill | The skill itself, or a skill related to it in the Skills Master. Aliases resolve to the skill (rec-013 FS2). Claimed skills count. A requirement skill that is not in the Skills Master is listed as "not used for matching" and is worth 0 points |
+| M4 | Who appears | The required skills are a filter: the candidate must hold every one of them (AND). Preferred skills, experience and location only add to the score. With no Skills-Master required skill, at least one preferred skill must match. With no Skills-Master skill at all, the response is `reason: "no_skills"` and the page shows an explanatory empty state |
+| M5 | Experience fit | The candidate's `experience_months` lies within the requirement's min–max (a missing bound is open). It applies only when a bound is set. An unknown experience earns 0 points |
+| M6 | Location fit (Q-14) | The requirement's location (trimmed, case-insensitive) equals the candidate's location or one of their preferred locations. It does not apply for `work_mode = remote` or a blank location. Availability does not score |
+| M7 | Roles | Candidate readers (rec-009) within the requirement's scope (rec-007): the recruiter, `placement_manager` (their team) and `super_admin`. The assigned BDM and `hr_team` get `403`. For them `permissions.can_view_matches` is false, so the page leaves the section out (browser QA-01). Shortlist is rec-017's `POST /requirements/{id}/candidates` at `shortlisted`, so its rules apply: writers only, not on a closed or cancelled requirement, and one application per candidate (`409`, AC3) |
+| M8 | Rows and actions | Rows cover the whole pool (R11, `pool_filter`), excluding archived candidates. They are ranked by score, then newest candidate first, 20 per page. Each row shows the per-item breakdown and the candidate's status on this requirement (a Rejected candidate is shown as Rejected). Actions are View, Contact (writers) and Shortlist. **Share waits for rec-019.** Rows never include a phone number or email (R8) |
+
+**Consequences:**
+- New code:
+  - `services/matching.py`. `allocate` is the pure scoring rule. `plan` and `matches` select each item's matched flag once, in SQL, and
+    order by the same flags.
+  - `GET /recruiter/requirements/{id}/matches` and `PUT /recruiter/requirements/{id}/skill-weights`.
+  - The `RecSkillWeight` and `RecSkillWeights` schemas.
+- Changed: rec-007's requirement `permissions` gains `can_view_matches` (additive).
+- Web:
+  - the requirement page gains the "Matching candidates" section (`RecruiterRequirementMatches`, `lib/recruiterMatching.ts`);
+  - the rec-017 Candidates section takes a `refreshKey`, so it re-reads after a Shortlist.
+- Out of scope: Share (rec-019), talent-pool matching (rec-015) and AI scoring (R7).
+- **New Feature ID authorized:** `rec-016`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-016.
+
