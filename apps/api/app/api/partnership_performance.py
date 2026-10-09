@@ -77,10 +77,7 @@ async def performance(first: str | None = FROM, last: str | None = TO, limit: in
     ranked = [(uni, country, found.get(uni.id, {})) for uni, country in rows if uni.id in found or _partner(uni)]
     ranked.sort(key=lambda r: (-r[2].get("enrolled", 0), -r[2].get("applications", 0), r[0].name.casefold(), str(r[0].id)))
     totals = {key: sum(counts.get(key, 0) for *_, counts in ranked) for key in FUNNEL}
-    items = [
-        {"rank": offset + i + 1, "university": _university(uni, country), "counts": _counts(counts)}
-        for i, (uni, country, counts) in enumerate(ranked[offset : offset + limit])
-    ]
+    items = [{"rank": offset + i + 1, "university": _university(uni, country), "counts": _counts(counts)} for i, (uni, country, counts) in enumerate(ranked[offset : offset + limit])]
     return {"from": first_day, "to": last_day, "steps": STEPS_OUT, "totals": _counts(totals), "items": items, "total": len(ranked), "limit": limit, "offset": offset}
 
 
@@ -89,7 +86,9 @@ async def university_performance(university_id: UUID, first: str | None = FROM, 
     """One university's funnel (§17), active or not; an unknown id is a 404."""
     await universities.require_reader(db, user)
     first_day, last_day = await _period(db, first, last)
-    uni = await universities.load(db, university_id)
-    country = await db.get(Country, uni.country_id)
+    row = (await db.execute(select(University, Country.name).join(Country, Country.id == University.country_id).where(University.id == university_id))).one_or_none()
+    if row is None:
+        raise HTTPException(404, universities.NOT_FOUND)
+    uni, country = row
     found = await funnel_counts(db, [uni.id], first_day, last_day)
-    return {"from": first_day, "to": last_day, "steps": STEPS_OUT, "university": _university(uni, country.name), "counts": _counts(found.get(uni.id))}
+    return {"from": first_day, "to": last_day, "steps": STEPS_OUT, "university": _university(uni, country), "counts": _counts(found.get(uni.id))}

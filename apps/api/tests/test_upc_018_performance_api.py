@@ -62,7 +62,9 @@ async def test_signed_out_is_401(client):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("params", [{"from": "2024-06-30", "to": "2024-06-01"}, {"from": "2023-01-01", "to": "2024-06-01"}, {"from": "2024-6-1"}, {"to": "June"}, {"from": "2025-02-30", "to": "2025-03-01"}])
+@pytest.mark.parametrize(
+    "params", [{"from": "2024-06-30", "to": "2024-06-01"}, {"from": "2023-01-01", "to": "2024-06-01"}, {"from": "2024-6-1"}, {"to": "June"}, {"from": "2025-02-30", "to": "2025-03-01"}]
+)
 async def test_bad_period_is_422(client, db_session, params):
     await as_role(client, db_session, "super_admin", "global")
     assert (await client.get(PERFORMANCE, params=params)).status_code == 422
@@ -88,7 +90,17 @@ async def test_one_university_funnel_with_untracked_steps_and_no_identifiers(cli
     body = response.json()
     assert [s["key"] for s in body["steps"]] == ["leads", "counselling", "interested", "eligible", *TRACKED[1:]]
     assert {s["key"] for s in body["steps"] if not s["tracked"]} == {"leads", "counselling", "eligible"}
-    assert body["counts"] == {"leads": None, "counselling": None, "eligible": None, "interested": 0, "applications": 3, "offers": 1, "deposits": 0, "visas": 0, "enrolled": 1}  # enrolled implies the offer stage
+    assert body["counts"] == {
+        "leads": None,
+        "counselling": None,
+        "eligible": None,
+        "interested": 0,
+        "applications": 3,
+        "offers": 1,
+        "deposits": 0,
+        "visas": 0,
+        "enrolled": 1,
+    }  # enrolled implies the offer stage
     assert body["university"]["id"] == str(uni.id) and (body["from"], body["to"]) == (JUNE["from"], JUNE["to"])
     text = response.text.lower()
     assert "commission" not in text and "student_id" not in text and "application_reference" not in text

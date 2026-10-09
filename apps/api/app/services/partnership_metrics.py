@@ -6,7 +6,7 @@ never re-scored). A constant number of queries whatever the team size."""
 
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta
-from typing import NamedTuple
+from typing import NamedTuple, cast
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -192,9 +192,7 @@ async def funnel_counts(db: AsyncSession, university_ids: list[UUID], first: dat
         .where(Shortlist.university_id.in_(university_ids), during(Shortlist.created_at))
         .group_by(Shortlist.university_id),
         # F5: created in the period, except those withdrawn before submission (PF3).
-        "applications": select(App.university_id, func.count())
-        .where(ours, during(App.created_at), not_(and_(App.status == WITHDRAWN, App.submitted_on.is_(None))))
-        .group_by(App.university_id),
+        "applications": select(App.university_id, func.count()).where(ours, during(App.created_at), not_(and_(App.status == WITHDRAWN, App.submitted_on.is_(None)))).group_by(App.university_id),
         # F6: the recorded offer date (AGN-010), else the first entry into an offer-or-later stage; a later withdrawal keeps it (PF4).
         "offers": select(App.university_id, func.count())
         .outerjoin(offered, offered.c.application_id == App.id)
@@ -219,5 +217,5 @@ async def funnel_counts(db: AsyncSession, university_ids: list[UUID], first: dat
     found: dict[UUID, dict[str, int]] = {}
     for step, stmt in queries.items():
         for university_id, n in (await db.execute(stmt)).all():
-            found.setdefault(university_id, dict.fromkeys(FUNNEL, 0))[step] = n
+            found.setdefault(cast(UUID, university_id), dict.fromkeys(FUNNEL, 0))[step] = n  # never null: filtered by `IN university_ids`
     return found
