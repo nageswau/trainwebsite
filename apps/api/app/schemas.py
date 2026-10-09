@@ -9405,7 +9405,7 @@ def _search_term(value: str) -> str:
 
 
 def _resume_text(value: str | None) -> str | None:
-    """rec-014 (DEC-SCOPE-152, FT4): whitespace collapsed; blank is no text search."""
+    """rec-014 (DEC-SCOPE-153, FT4): whitespace collapsed; blank is no text search."""
     value = re.sub(r"\s+", " ", value).strip() if value is not None else None
     if not value:
         return None

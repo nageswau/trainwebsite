@@ -5,13 +5,13 @@ focused tests only.
 
 ## Task 1 — Data
 - Test `tests/test_rec_014_migration.py`:
-  - 0136 chains after 0135 and is the single head.
+  - 0137 chains after 0136 (upc-011) and is the single head.
   - The model has a `search_vector` Computed column and a GIN index.
   - Round trip in a throwaway database: the column is generated (`is_generated = 'ALWAYS'`), the index is GIN, an existing row's vector
     is filled, and downgrade removes both while the rows remain.
 - Code:
   - `models.CandidateResume.search_vector` (Computed, deferred) + `Index(postgresql_using="gin")`.
-  - `alembic/versions/0136_resume_search.py`, guarded.
+  - `alembic/versions/0137_resume_search.py`, guarded.
 
 ## Task 2 — Schema
 - Test: `{}` → "at least one skill or some resume search text"; `{"text": "x"*201}` → 422; `{"text": "  "}` → the needs-one 422;
@@ -45,10 +45,10 @@ focused tests only.
 - Code: `lib/recruiterCandidateSearch.ts` (state/params/body/types), `RecruiterFindCandidates.tsx` (input, card snippet, notice).
 
 ## Task 5 — Docs
-- DEC-SCOPE-152 (FT1–FT10).
-- API §12BT.
-- RBAC §2.78 note.
-- DATA_MODEL 0136.
+- DEC-SCOPE-153 (FT1–FT10).
+- API §12BU.
+- RBAC §2.79 note.
+- DATA_MODEL 0137.
 - Backlog rec-014 status.
 
 ## Task 6 — Browser QA and Playwright e2e

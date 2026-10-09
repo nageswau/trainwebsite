@@ -6,8 +6,9 @@ skills, resume content, previous job titles, certifications and projects"; R7 (P
 
 **Status: DRAFT** on `feature/rec-014`.
 
-**Numbering:** migration `0136_resume_search`, `DEC-SCOPE-152`, API §12BT, RBAC §2.78 (a note only: the roles are rec-013's). Re-check
-origin/main before merging; a parallel rec-022 session may take the same numbers.
+**Numbering:** migration `0137_resume_search` (after upc-011's `0136_partnership_events`), `DEC-SCOPE-153`, API §12BU, RBAC §2.79 (a
+note only: the roles are rec-013's). Drafted as 0136 / 152 / §12BT / §2.78; upc-011 merged first (PR #202) and took them. Re-check
+origin/main before merging.
 
 ## 1. Answers (2026-10-09)
 The owner asked to proceed with the recommended answers, so nothing was asked. Every row below is **UNVERIFIED** (a recorded default).
@@ -25,7 +26,7 @@ The owner asked to proceed with the recommended answers, so nothing was asked. E
 | FT9 | Roles and logs | As rec-013: `placement_team`, `placement_manager`, `super_admin` and `hr_team` (read). The snippets show resume text only to those readers, who can already open the resume (rec-009). The log line gains `text: true/false`, never the text. |
 | FT10 | Page | A "Resume search" box at the top of the Find Candidates form; the URL keeps it as `q` (refresh/Back). |
 
-## 2. Data — migration `0136_resume_search`
+## 2. Data — migration `0137_resume_search`
 - `candidate_resumes.search_vector tsvector GENERATED ALWAYS AS (to_tsvector('english'::regconfig, coalesce(extracted_text, ''))) STORED`.
 - `CREATE INDEX ix_candidate_resumes_search ON candidate_resumes USING gin (search_vector)`.
 - Guarded like 0135, because 0001's `create_all` already builds both from the models on a fresh database. downgrade() drops the index and the

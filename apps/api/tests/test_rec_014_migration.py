@@ -1,4 +1,4 @@
-"""rec-014 -- migration 0136_resume_search (spec §2, FT8): a generated `search_vector` over the extracted text and its GIN index. The
+"""rec-014 -- migration 0137_resume_search (spec §2, FT8): a generated `search_vector` over the extracted text and its GIN index. The
 round trip runs in a throwaway database built from scratch (the tel-002 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -14,14 +14,14 @@ from app.core.config import settings
 from tests.test_tel_001_migration import _config, _sql
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_rec_014_migration_0136", VERSIONS / "0136_resume_search.py")
+_spec = importlib.util.spec_from_file_location("_rec_014_migration_0137", VERSIONS / "0137_resume_search.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0135_resume_extraction", "0136_resume_search"
+BASE, HEAD = "0136_partnership_events", "0137_resume_search"
 
 
-def test_migration_chains_after_rec_012_and_is_the_single_head():
+def test_migration_chains_after_upc_011_and_is_the_single_head():
     assert _migration.revision == HEAD
     assert _migration.down_revision == BASE
     assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1
@@ -46,7 +46,7 @@ def isolated_db():
     _sql(original, f'CREATE DATABASE "{name}"', autocommit=True)
     try:
         settings.database_url = url
-        # 0001's create_all builds today's models (the column included); going to head and back down gives the real 0135 shape.
+        # 0001's create_all builds today's models (the column included); going to head and back down gives the real 0136 shape.
         command.upgrade(cfg, "head")
         command.downgrade(cfg, BASE)
         yield {"cfg": cfg, "url": url}

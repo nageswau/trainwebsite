@@ -4,7 +4,7 @@ related skills (FS2), the S2-§18 filters (FS5), the F1-F3 facets (FS7) and the 
 Read only. Terms become skill ids before any candidate is read, and only ids and escaped patterns reach SQL as bound parameters (no
 expression is ever parsed into SQL). Six queries whatever the pool or page size: terms, related, counts, locations, page, page skills.
 
-rec-014 (DEC-SCOPE-152, FT1-FT6): an optional `text` matches the current resume's generated `search_vector` through
+rec-014 (DEC-SCOPE-153, FT1-FT6): an optional `text` matches the current resume's generated `search_vector` through
 websearch_to_tsquery('english', :text) -- the text is a bound parameter, never SQL -- ranks by relevance and adds `ts_headline`
 snippets. It adds two queries: the stop-word check and the page's snippets."""
 
