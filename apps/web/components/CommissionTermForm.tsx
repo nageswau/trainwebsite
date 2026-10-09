@@ -44,6 +44,7 @@ export default function CommissionTermForm({ agreementId, options, term = null, 
     const n = Number(rate);
     if (kind === "percent" && !(n > 0 && n <= 100)) return "The commission percentage must be between 0 and 100.";
     if (kind === "fixed" && !(n > 0)) return "The fixed amount must be more than 0.";
+    if (!/^\d+(\.\d{1,2})?$/.test(rate)) return "Use at most two decimal places."; // QA-01: the columns' scale (also "1e2")
     if (!values.currency) return "Choose the currency.";
     if (!values.trigger) return "Choose the commission trigger.";
     return null;

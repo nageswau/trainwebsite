@@ -81,6 +81,9 @@ describe("CommissionTerms (upc-016)", () => {
     fireEvent.change(within(form).getByLabelText("Commission %"), { target: { value: "120" } });
     fireEvent.click(within(form).getByRole("button", { name: "Save term" }));
     expect(within(form).getByRole("alert")).toHaveTextContent("between 0 and 100");
+    fireEvent.change(within(form).getByLabelText("Commission %"), { target: { value: "12.345" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save term" }));
+    expect(within(form).getByRole("alert")).toHaveTextContent("Use at most two decimal places."); // QA-01: not the validator's wording
     fireEvent.change(within(form).getByLabelText("Commission %"), { target: { value: "15" } });
     fireEvent.change(within(form).getByLabelText("Currency (required)"), { target: { value: "GBP" } });
     fireEvent.change(within(form).getByLabelText("Commission trigger (required)"), { target: { value: "visa_and_enrolment" } });
