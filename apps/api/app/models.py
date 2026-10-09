@@ -4307,3 +4307,59 @@ class RecruiterMessage(Base, TimestampMixin):
     delivery_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
     attempt_count: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
     sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+# upc-026 (DEC-SCOPE-138, spec §2): the §28 document centre. The 12 kinds in source order (DC1); the commission agreement is never
+# shareable (DC2). Migration 0123 repeats the checks; test_upc_026_migration keeps them identical.
+UNIVERSITY_DOCUMENT_KINDS = (
+    "mou", "partnership_agreement", "commission_agreement", "brochure", "course_list", "fee_structure", "entry_requirements",
+    "scholarship_information", "marketing_materials", "application_guidelines", "contact_documents", "training_documents",
+)  # fmt: skip
+UNIVERSITY_DOCUMENT_CHECKS = {
+    "ck_university_documents_kind": _one_of("kind", UNIVERSITY_DOCUMENT_KINDS, nullable=False),
+    "ck_university_documents_commission_internal": "kind <> 'commission_agreement' OR NOT shareable",
+    "ck_university_documents_current_version": "current_version >= 1",
+}
+UNIVERSITY_DOCUMENT_VERSION_CHECKS = {
+    "ck_university_document_versions_version": "version >= 1",
+    "ck_university_document_versions_size": "size_bytes > 0",
+}
+
+
+class UniversityDocument(Base, TimestampMixin):
+    """upc-026 (§28): one document of a university -- kind, title and who may see it. Its files are append-only versions (DC6); the title
+    is unique per university and kind (DC11). `updated_at` moves on every new version, for the menu list's order."""
+
+    __tablename__ = "university_documents"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_DOCUMENT_CHECKS.items()),
+        Index("uq_university_documents_title", "university_id", "kind", text("lower(title)"), unique=True),
+        Index("ix_university_documents_updated", "updated_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"))
+    kind: Mapped[str] = mapped_column(String(30))
+    title: Mapped[str] = mapped_column(String(200))
+    shareable: Mapped[bool] = mapped_column(Boolean)
+    current_version: Mapped[int] = mapped_column(Integer, default=1)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+class UniversityDocumentVersion(Base):
+    """upc-026 DC6: one stored file of a document, never changed or deleted. The key is server-generated (DC14)."""
+
+    __tablename__ = "university_document_versions"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_DOCUMENT_VERSION_CHECKS.items()),
+        UniqueConstraint("document_id", "version", name="uq_university_document_versions_version"),
+        UniqueConstraint("storage_key", name="uq_university_document_versions_key"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    document_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("university_documents.id", ondelete="RESTRICT"))
+    version: Mapped[int] = mapped_column(Integer)
+    storage_key: Mapped[str] = mapped_column(String(300))
+    file_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    content_type: Mapped[str] = mapped_column(String(120))
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
