@@ -642,7 +642,7 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 
 ### rec-010 — IT-student opt-in to the candidate pool + EMP-003 re-pointed
 - **Status (2026-10-09):**
-  - **BUILT** on `feature/rec-010`; not merged.
+  - **MERGED** to `main` as PR #182 @ `333a7706`. The next rec item takes `0124`, `DEC-SCOPE-139`, §12BG and §2.65 (re-check `main`).
   - Numbers: `DEC-SCOPE-138`, migration `0123_candidate_consents` (after rec-011's `0122`), API §12BF, RBAC §2.64.
   - Q-10 was answered by the owner in session (OI1–OI4, the recommended options):
     - any active `it_student`;

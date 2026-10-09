@@ -5647,8 +5647,9 @@ taken on the owner's instruction to proceed with the recommended answers. The ne
 - `DEC-SCOPE-122` (rec-009): `candidates.user_id` / `opted_in` and the pool filter. `DEC-SCOPE-136` (rec-017): `candidate_for_student`
   and the "Edusphere students" source.
 
-**Status:** answers given by the owner in session on 2026-10-09 (`EXPLICIT_APPROVAL`). All four are the recommended options. Built on
-`feature/rec-010`; not merged yet.
+**Status:** answers given by the owner in session on 2026-10-09 (`EXPLICIT_APPROVAL`). All four are the recommended options.
+**MERGED** to `main` as PR #182 @ `333a7706` (2026-10-09). The next rec item takes `0124`, `DEC-SCOPE-139`, §12BG and §2.65 (re-check
+`main`).
 
 **Numbering:** migration `0123_candidate_consents` (after rec-011's `0122_candidate_skills`), API §12BF, RBAC §2.64. Spec:
 `docs/superpowers/specs/2026-10-09-rec-010-placement-pool-opt-in-design.md`.
