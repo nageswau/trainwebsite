@@ -1,4 +1,4 @@
-"""rec-012 -- extract a resume's suggestions and apply the chosen ones (spec §1, §4, §6 AC1-AC8; DEC-SCOPE-148 EX1-EX10). The shared
+"""rec-012 -- extract a resume's suggestions and apply the chosen ones (spec §1, §4, §6 AC1-AC8; DEC-SCOPE-150 EX1-EX10). The shared
 test database is never truncated, so every assertion uses rows created by the test."""
 
 import asyncio

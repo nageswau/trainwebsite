@@ -2264,9 +2264,57 @@ currency} | null, permissions: {can_edit}}` — **`commission` is present for th
 | `POST /partnership/universities/{id}/courses/import` | Writers; multipart `file` + `Idempotency-Key` (missing/bad `422`); wrong / unknown / repeated columns `422`, > 1 MB `413`, > 1,000 rows `422`. `201 {id, university_id, uploaded_by, total_rows, created_count, duplicate_count, invalid_count, created_at, rows: [{row_number, status: created/duplicate/invalid, title, level, course_id, reason}]}`; same key + same file replays, same key + other file `422` |
 | `GET /partnership/courses` | Every course with `university: {id, name, university_code, country}`, by university then title; `level` (else `422`), `status` active (default) / inactive / all, `q` (title, university name or code), `limit` ≤ 50 |
 
-## 12BP. Resume text + rule-based extraction (`rec-012`) — addendum, 2026-10-09
+<<<<<<< HEAD
+## 12BP. Interview management (`rec-020`) — addendum, 2026-10-09
 
-`DEC-SCOPE-148`; design spec `docs/superpowers/specs/2026-10-09-rec-012-resume-extraction-design.md` §4. Migration `0133_resume_extraction`.
+- **Basis:** `DEC-SCOPE-148` (IV1–IV12). Design spec `docs/superpowers/specs/2026-10-09-rec-020-interview-management-design.md` §3.
+  Migration `0133`.
+- **Common rules:**
+  - Scope is rec-007's requirement scope through rec-017's `load_scoped`: out of scope or unknown → `404` "Interview not found" (or
+    "Job application not found"); a role without a recruiter scope → `403` before anything is read.
+  - Writers are `placement_team` (in scope) and `super_admin`; `placement_manager` and the assigned BDM → `403` on every write.
+  - Bodies refuse unknown keys (`422`). Times are minute-precision, timezone-aware; a time rule is a `422` on `scheduled_at`.
+  - Every write locks the application, then the candidate (when a time is set), then the interview; commits once; writes an audit row
+    `recruiter_interview.{create,update,reschedule,status}` with ids, keys and field names only; then publishes queued emails.
+- **Item:** `{id, code, round, round_label, scheduled_at, mode, meeting_url, interviewer, location, status, status_label, result,
+  application {id, status, status_label}, candidate {id, code, name}, requirement {id, code, title}, company {id, name},
+  contact {id, name}|null, history [{event (scheduled|rescheduled|status), from_status, to_status, old_scheduled_at, new_scheduled_at,
+  note, actor, created_at}], allowed_statuses [{key, label}], can_edit, can_reschedule}`.
+- **Notices:** `{candidate: in_app|queued|no_email|email_off|off, contact: queued|no_email|email_off|off|null}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/interviews?view=upcoming\|awaiting_update\|on_hold\|closed&limit&offset` | `{items, total, limit, offset, counts}` (IV12). Unknown view → `422` |
+| `GET /recruiter/interviews/{id}` | The item |
+| `GET /recruiter/applications/{id}/interviews` | `{items (newest first), can_schedule}` |
+| `POST /recruiter/interviews` | `{application_id, round, scheduled_at, mode, meeting_url?, interviewer? (≤160), location? (≤200), contact_id?, notify (default true)}` → `201 {interview, notifications}`. **Refusals:** past or > 366 days → `422`; a contact not active on the requirement's company → `422` on `contact_id`; a closed/cancelled requirement or an application that is not open → `409`; the same candidate already has an open interview at that minute → `409` "This candidate already has an interview scheduled at this time" |
+| `PATCH /recruiter/interviews/{id}` | Partial `{round?, mode?, meeting_url?, interviewer?, location?, contact_id?}` → the item. Null round or mode → `422`; `scheduled_at` is an unknown field; a selected/rejected interview → `409` |
+| `POST /recruiter/interviews/{id}/reschedule` | `{scheduled_at, reason? (≤500), notify}` → `{interview, notifications}`. From scheduled, confirmed, rescheduled, on hold or no show (else `409`). The same time, a past time or > 366 days → `422`; a clash → `409` |
+| `POST /recruiter/interviews/{id}/status` | `{status (confirmed\|completed\|no_show\|selected\|rejected\|on_hold), note?}` → `{interview}`. A move not in IV3 → `409`; Completed / No Show / Selected / Rejected before the scheduled time → `422` "You can mark this once the interview time has passed" |
+| `POST /workflows/it/interviews` *(legacy, changed)* | Response gains `code`. Now refuses the IV6 clash (`409`) |
+| `PATCH /workflows/it/interviews/{id}` *(legacy, changed)* | Response gains `status`. A changed `scheduled_at` is recorded as a reschedule (the clash applies) |
+| `POST /employer/interviews`, `GET /employer/interviews` *(changed)* | The clash now counts open interviews at the same minute; list items gain `code`, `round`, `status` |
+
+## 12BQ. Application screening (`rec-018`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-149` (SC1–SC8). Design spec `docs/superpowers/specs/2026-10-09-rec-018-application-screening-design.md` §3.
+  Migration `0134`.
+- **Common rules:** the application resolves through rec-017's requirement scope (§12BD): another recruiter's application or an unknown
+  id → `404`; a role with no requirement scope (`hr_team`, students, the employer, …) → `403`; signed out → `401`.
+- **Screening:** `{qualification_verified, experience_verified, skills_verified, expected_salary (number|null), notice_days,
+  location_preference, communication_rating, technical_rating, availability, willing_to_relocate (bool|null), remarks, result
+  (shortlisted|hold|rejected|need_more_info), result_label, screened_by {id, full_name}, updated_at}`.
+- **The §12BD application item** gains `screening_result: {key, label} | null` on every route that returns it (additive).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/applications/{id}/screening` | The requirement's readers → `{screening \| null, results [{key, label}], can_edit}`. `can_edit` = a writer and the application is open |
+| `PUT /recruiter/applications/{id}/screening` | Writers in scope (`placement_team`, `super_admin`; manager / BDM `403`). **Body:** the whole form, unknown keys refused; a field left out is cleared; `result` required. Ratings 1–5, notice 0–365, salary ≥ 0, text limits 200/120/2000 → otherwise `422`; Rejected without remarks → `422` "Remarks are required when the result is Rejected" (AC2). Not open → `409` "Only an open application can be screened. Reopen it first.". **Effect (SC3):** Shortlisted moves sourced/screened → shortlisted; Rejected → rejected; Hold / Need More Information keep the status. A move writes history (`Screening: <result>`) and notifies a student. → `{screening, application}`. Audit `recruiter_application.screening` (field names + result); an unchanged form writes no audit |
+>>>>>>> origin/main
+
+## 12BR. Resume text + rule-based extraction (`rec-012`) — addendum, 2026-10-09
+
+`DEC-SCOPE-150`; design spec `docs/superpowers/specs/2026-10-09-rec-012-resume-extraction-design.md` §4. Migration `0135_resume_extraction`.
 Writers only: `placement_team`, `placement_manager`, `super_admin` (R11). `hr_team` and every other role `403` (anonymous `401`); a
 candidate outside the pool `404`; archived `409` "Restore this candidate first"; an unknown version `404`. No AI provider (R7): `pypdf` /
 `python-docx`, in a thread with a 20 s limit, the first 30 PDF pages, text cut at 100,000 characters, DOCX zip guard (2,000 parts / 50 MB).
@@ -2275,7 +2323,7 @@ candidate outside the pool `404`; archived `409` "Restore this candidate first";
 |---|---|
 | `POST /recruiter/candidates/{id}/resume/{version}/extract` | No body. Stores `extracted_text`, `extraction_json`, `extracted_at` on the resume row only (AC2). `200 {version, no_text, truncated, text_chars, extracted_at, skills: [{skill{id,name,active}, category{id,name}, matched, on_profile}], qualification, experience_months, location, job_titles[], certifications[], industries[]}`. A scanned/empty PDF is `200` with `no_text: true` (AC3). Password-protected, unreadable or too slow → `422` with a sentence. Audit `candidate.resume_extract` (version, counts; never text) |
 | `POST /recruiter/candidates/{id}/resume/{version}/apply` | JSON `{skills: [{skill_id, level? (default intermediate)}] (≤ 100), qualification?, experience_months? (0–600), location?}`; unknown keys `422`. Nothing chosen, a repeated skill, an unknown or inactive skill, over the 100-skill cap → `422`; a skill already on the candidate → `409` naming it; not extracted yet → `409`. All or nothing. Each skill is added as `source=resume`, `status=claimed` (rec-011 audit `candidate.skill_add`); then `candidate.resume_apply` (version, skill ids, changed field names). `200 {skills_added, fields}` |
-
+=======
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

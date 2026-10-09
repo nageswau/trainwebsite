@@ -1328,7 +1328,35 @@ non-commission role, and only `COMMISSION_ROLES` may set it. Audit and logs carr
 | Read / set course commission | ✅ (write: own) | ✅ (write: unowned + team) | stripped / `403` | ✅ | stripped / `403` |
 | Public catalogue (active courses of published universities) | ✅ | ✅ | ✅ | ✅ | ✅ anonymous, never commission |
 
-### 2.74 Resume extraction *(net-new, added 2026-10-09 — `DEC-SCOPE-148`, `rec-012`)*
+### 2.74 Interview management *(net-new, added 2026-10-09 — `DEC-SCOPE-148`, `rec-020`)*
+
+Interviews take their application's scope (rec-007's requirement scope, §2.62). The role check runs before anything is read; out of scope
+is `404`.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` | read; schedule, edit, reschedule, change status | requirements assigned to them or on their companies | `rec-020` |
+| `placement_manager` | read only (writes `403`) | the team's requirements and the unassigned queue | `rec-020` |
+| `bdm` | read only | requirements of companies where they are the assigned BDM (R10) | `rec-020` |
+| `super_admin` | everything | all | `rec-020` |
+| `hr_team`, `it_admin` | `403` on `/recruiter/interviews*`; the legacy `/workflows/it/interviews` routes as before | — | `rec-020` |
+| `employer` | `403` on `/recruiter/*`; `/employer/interviews` for their own jobs as before | own jobs | `rec-020` |
+| students, every other role | `403` | — | `rec-020` |
+
+### 2.75 Application screening *(net-new, added 2026-10-09 — `DEC-SCOPE-149`, `rec-018`)*
+
+Screening follows rec-017's requirement scope (§2.62): the scope check runs first (outside it → `404`). Salary and remarks are internal:
+no employer, student or `hr_team` route reads a screening. SC8 (UNVERIFIED).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` | read; save the screening (moves the status per SC3) | own requirements | `rec-018` |
+| `placement_manager` | read only (save `403`) | the team's requirements | `rec-018` |
+| `super_admin` | read; save | all | `rec-018` |
+| `bdm` | read only (save `403`) | requirements of companies assigned to them | `rec-018` |
+| `hr_team`, `it_admin`, `employer`, students, every other role | `403` | — | `rec-018` |
+
+### 2.76 Resume extraction *(net-new, added 2026-10-09 — `DEC-SCOPE-150`, `rec-012`)*
 
 Enforced inline in `api/recruiter_candidates.py` (`services/candidates.require_writer` before anything is read). Extract writes the
 resume row, so it is a write. EX10 (UNVERIFIED).

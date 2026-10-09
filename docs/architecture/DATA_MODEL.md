@@ -1779,7 +1779,8 @@ backfill. **Migration `0130_university_meetings`**; `downgrade()` refuses while 
 - Duplicate title + level per university is an application rule (CO12), checked under the university row lock; no DB unique index, since
   legacy rows are not guaranteed distinct.
 
-## Resume extraction (`rec-012`, `DEC-SCOPE-148`; migration `0133_resume_extraction`, after `0132_university_courses`)
+<<<<<<< HEAD
+## Resume extraction (`rec-012`, `DEC-SCOPE-150`; migration `0135_resume_extraction`, after `0132_university_courses`)
 
 **`candidate_resumes` gains three nullable columns:** `extracted_text` text (null until extracted; `''` when the file had no text),
 `extraction_json` json (the last suggestions: skill ids + matched text, qualification, experience_months, location, job_titles,
@@ -1787,3 +1788,40 @@ certifications, industries, truncated), `extracted_at` timestamptz.
 
 **Design notes:** derived from the stored file and recomputed on every extraction; nothing reaches `candidates` or `candidate_skills`
 until Apply. rec-014 searches `extracted_text`. `downgrade()` drops the columns (recomputable data).
+=======
+## Interview management (`rec-020`, `DEC-SCOPE-148`; migration `0133_interview_management`, after `0132_university_courses`)
+
+**`interviews` gains:**
+- `interview_code` varchar(20) UNIQUE NOT NULL, default `'INT-' || to_char(nextval('interview_code_seq'), 'FM999999999000000')` (so every
+  creator, including the legacy routes, gets a code; existing rows backfilled in `created_at` order)
+- `round` varchar(20) NULL (CHECK `ck_interviews_round`: the 5 §14 rounds), `status` varchar(16) NOT NULL default `scheduled`
+  (CHECK `ck_interviews_status`: the 8 §14 statuses; backfilled from the legacy `result` — selected/rejected/on_hold kept, any other
+  value → on_hold, none → scheduled)
+- `interviewer` varchar(160), `location` varchar(200), `contact_id` → `company_contacts` (RESTRICT), `created_by_user_id` → `users`
+  (RESTRICT; NULL on legacy rows)
+- Index `ix_interviews_status_scheduled (status, scheduled_at)`. `result` stays (the legacy screens read it).
+
+**`interview_events`** (append-only): `id`, `interview_id` → `interviews` (RESTRICT), `event` (CHECK scheduled/rescheduled/status),
+`from_status`, `to_status`, `old_scheduled_at`, `new_scheduled_at`, `note` varchar(500), `actor_user_id` → `users` (nullable),
+`position` (identity), `created_at`. Index `(interview_id, position)`. Not backfilled.
+
+**Design notes:** the per-candidate clash is checked under a candidate row lock, not a constraint (no duration exists to define an
+overlap). `downgrade()` refuses while any event exists.
+
+## Application screenings (`rec-018`, `DEC-SCOPE-149`; migration `0134_application_screenings`, after `0133_interview_management`)
+
+**`application_screenings` columns:**
+- `application_id` PK → `job_applications` (FK RESTRICT): one current screening per application (SC5).
+- `qualification_verified`, `experience_verified`, `skills_verified` boolean NOT NULL default false
+- `expected_salary` numeric(12,2) (CHECK ≥ 0), `notice_days` smallint (CHECK 0–365), `location_preference` varchar(200)
+- `communication_rating`, `technical_rating` smallint (CHECK 1–5), `availability` varchar(120), `willing_to_relocate` boolean (NULL =
+  not asked), `remarks` varchar(2000)
+- `result` varchar(20) (CHECK shortlisted/hold/rejected/need_more_info), CHECK `ck_application_screenings_rejected_remarks` (Rejected
+  needs remarks)
+- `screened_by_user_id` → `users` (the last saver), timestamps
+
+**Design notes:**
+- Each save overwrites the row; the audit keeps field names and the result per save, and the status history keeps any move (SC3).
+- Salary and remarks are internal: only the recruiter routes read the table.
+- `downgrade()` refuses while any row exists.
+>>>>>>> origin/main

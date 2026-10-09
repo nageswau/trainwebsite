@@ -1,4 +1,4 @@
-// rec-012 (DEC-SCOPE-148): a resume version's extracted suggestions -- types, endpoints, the default ticks (EX6: skills not yet on the
+// rec-012 (DEC-SCOPE-150): a resume version's extracted suggestions -- types, endpoints, the default ticks (EX6: skills not yet on the
 // profile at Intermediate; a profile field only where the candidate has none) and the selection -> body mapping. The API decides every
 // rule (duplicates, the Skills Master, the field limits).
 import type { SkillLevel } from "@/lib/recruiterCandidateSkills";

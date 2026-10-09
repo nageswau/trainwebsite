@@ -3566,7 +3566,37 @@ Design spec `docs/superpowers/specs/2026-10-09-upc-017-course-master-design.md` 
 - **Public catalogue:** unchanged screens; inactive courses no longer appear.
 - **Responsive:** the form grid stacks; the table becomes labelled cards below 640 px; no side-scroll at 820 px or 390 px.
 
-## rec-012 addendum (2026-10-09, `DEC-SCOPE-148`) — Review extracted details
+## rec-020 addendum (2026-10-09, `DEC-SCOPE-148`) — Interview management
+
+Design spec `docs/superpowers/specs/2026-10-09-rec-020-interview-management-design.md` §4.
+
+- **Requirement detail** (`/recruiter/requirements/[id]`), each candidate row: an **Interviews** toggle next to History.
+  - The application's interviews, newest first: round, code, status badge, time (IST), mode, interviewer, location, contact, the
+    meeting link (opens in a new tab) and a History disclosure (scheduled, rescheduled old → new with the reason, each status move).
+  - **+ Schedule interview** (writers, open application, live requirement): round, date and time (IST), mode, link, interviewer,
+    location, company contact (the company's active contacts), "Notify the candidate (and the contact)".
+  - Per interview, only when the API allows: **Change status** (the moves allowed now, with a note), **Reschedule** (new time, reason,
+    notify) and **Edit** (details only).
+  - The reply's notices are spelled out ("Candidate: email queued."). The candidates list re-reads, so the application status follows.
+- **Interviews** (`/recruiter/interviews`, recruiter and manager navs): tabs Upcoming / Awaiting update / On hold / Closed with counts;
+  Upcoming is grouped by IST day (the calendar). Each card links the candidate to its requirement. Loading, empty, error-with-Retry.
+  Managers see no write control.
+
+## rec-018 addendum (2026-10-09, `DEC-SCOPE-149`) — Screening form + result
+
+Design spec `docs/superpowers/specs/2026-10-09-rec-018-application-screening-design.md` §4.
+
+- **Requirement detail** (`/recruiter/requirements/[id]`), Candidates section: each candidate gains a **Screening** disclosure (next to
+  Change status and History) and, once screened, a `Screening: <result>` badge beside the status (SC2's Hold / Need More Information
+  flag).
+  - Writers on an open application get the form: three Verified checkboxes; Expected salary (per year); Notice period (days); Location
+    preference; Availability; Communication skills and Technical screening (Not rated, 1–5); Willing to relocate (Not asked / Yes / No);
+    Result (required); Recruiter remarks, marked "required for Rejected" and checked before sending. "Last saved by X on date".
+  - On save the board re-reads and announces "Screening saved — <name> is now <status>."; the API's 409/422 sentence is shown in the form.
+  - Readers (manager, assigned BDM) and closed applications see a read-only summary, or "Not screened yet.".
+  - Loading ("Loading screening…") and error ("Unable to load the screening.") states.
+
+## rec-012 addendum (2026-10-09, `DEC-SCOPE-150`) — Review extracted details
 
 Design spec `docs/superpowers/specs/2026-10-09-rec-012-resume-extraction-design.md` §5.
 

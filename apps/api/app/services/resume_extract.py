@@ -1,4 +1,4 @@
-"""rec-012 (DEC-SCOPE-148, spec §3): rule-based resume extraction (R7: in-house, no AI provider). Pure: bytes in, text out; text and
+"""rec-012 (DEC-SCOPE-150, spec §3): rule-based resume extraction (R7: in-house, no AI provider). Pure: bytes in, text out; text and
 the Skills Master's terms in, suggestions out -- no database and no I/O, so the caller decides scope and what is stored.
 
 Untrusted files: both readers are pure Python and run nothing embedded. A PDF is read for its first MAX_PAGES pages only; a DOCX is

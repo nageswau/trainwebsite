@@ -13,8 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.models import APPLICATION_STATUSES, Candidate, Company, Job, JobApplication, User
-from app.schemas import RecApplicationCreate, RecApplicationStatusChange
+from app.models import APPLICATION_STATUSES, ApplicationScreening, Candidate, Company, Job, JobApplication, User
+from app.schemas import RecApplicationCreate, RecApplicationStatusChange, RecScreeningIn
+from app.services import application_screening as screening
 from app.services import applications as svc
 from app.services import candidates
 from app.services import recruiter_requirements as requirements
@@ -24,7 +25,8 @@ router = APIRouter(prefix="/recruiter", tags=["recruiter-applications"])
 
 async def _item(db: AsyncSession, user: User, application: JobApplication) -> dict:
     await db.refresh(application)
-    return svc.item_out(user, application, await db.get(Candidate, application.candidate_id))
+    result = await db.scalar(select(ApplicationScreening.result).where(ApplicationScreening.application_id == application.id))
+    return svc.item_out(user, application, await db.get(Candidate, application.candidate_id), screening.result_out(result))
 
 
 @router.get("/requirements/{requirement_id}/candidates")
@@ -38,9 +40,10 @@ async def list_requirement_candidates(
     stmt = select(JobApplication, Candidate).join(Candidate, Candidate.id == JobApplication.candidate_id).where(JobApplication.job_id == job.id)
     if status:
         stmt = stmt.where(JobApplication.status == status)
+    stmt = stmt.add_columns(ApplicationScreening.result).outerjoin(ApplicationScreening, ApplicationScreening.application_id == JobApplication.id)
     rows = (await db.execute(stmt.order_by(JobApplication.stage_changed_at.desc(), JobApplication.id))).all()
     return {
-        "items": [svc.item_out(user, a, c) for a, c in rows],
+        "items": [svc.item_out(user, a, c, screening.result_out(result)) for a, c, result in rows],
         "statuses": svc.catalogue(),
         "can_add": svc.can_write(user) and job.status not in requirements.ENDED,
     }
@@ -78,6 +81,27 @@ async def change_application_status(application_id: UUID, payload: RecApplicatio
 async def application_history(application_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     application, _job = await svc.load_scoped(db, user, application_id)
     return {"items": await svc.history_out(db, application.id)}
+
+
+@router.get("/applications/{application_id}/screening")
+async def application_screening(application_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """rec-018 (SC8): the requirement's readers; salary and remarks never leave the recruiter module."""
+    application, _job = await svc.load_scoped(db, user, application_id)
+    return await screening.read(db, user, application)
+
+
+@router.put("/applications/{application_id}/screening")
+async def save_application_screening(application_id: UUID, payload: RecScreeningIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """rec-018 (SC3-SC7): one transaction -- scope, row lock, the screening, any status move with its history and notice, one commit."""
+    application, _job = await svc.load_scoped(db, user, application_id, lock=True)
+    svc.require_writer(user, application.id, "save_application_screening")
+    sent = payload.model_dump()
+    previous = await screening.save(db, user, application, sent)
+    if previous:
+        await svc.notify_student(db, application)
+    await db.commit()
+    svc.log("recruiter_application_screened", user, application, result=sent["result"], from_status=previous, to_status=application.status if previous else None)
+    return {"screening": await screening.screening_out(db, await screening.current(db, application.id)), "application": await _item(db, user, application)}
 
 
 @router.get("/candidates/{candidate_id}/applications")

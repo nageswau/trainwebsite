@@ -203,7 +203,7 @@ async def download_resume(candidate_id: UUID, version: int, user: User = Depends
     return Response(content=data, media_type=resume.content_type, headers={**HEADERS, "Content-Disposition": f'attachment; filename="{filename}"'})
 
 
-# --- rec-012: extraction (DEC-SCOPE-148) ------------------------------------------------------------------------------------------
+# --- rec-012: extraction (DEC-SCOPE-150) ------------------------------------------------------------------------------------------
 @router.post("/{candidate_id}/resume/{version}/extract")
 async def extract_resume(candidate_id: UUID, version: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """EX1/EX2: suggestions from this version's text, stored on the resume row only -- the candidate and their skills are unchanged

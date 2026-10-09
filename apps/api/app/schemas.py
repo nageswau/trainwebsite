@@ -50,6 +50,7 @@ from app.models import (
     ENGLISH_TESTS,
     GENDERS,
     INSTITUTION_TYPES,
+    INTERVIEW_ROUNDS,
     JOB_EMPLOYMENT_TYPES,
     JOB_PRIORITIES,
     JOB_SHIFTS,
@@ -75,6 +76,7 @@ from app.models import (
     RECRUITER_FOLLOW_UP_REASONS,
     RECRUITER_MEETING_TYPES,
     RELATIONSHIP_STRENGTHS,
+    SCREENING_RESULTS,
     TEL_TARGET_KPIS,
     UNIVERSITY_OWNERSHIP_TYPES,
     UNIVERSITY_PRIORITIES,
@@ -8375,8 +8377,10 @@ REC_REQUIREMENT_LABELS = {
     # rec-008's JD (the same text rules)
     "role": "Job role", "experience": "Experience", "skills": "Skills", "salary": "Salary", "responsibilities": "Responsibilities",
     "requirements": "Requirements",
+    # rec-018's screening (the same text rules)
+    "location_preference": "Location preference", "availability": "Availability", "remarks": "Remarks",
 }
-REC_REQUIREMENT_MULTILINE = frozenset({"description", "note", "skills", "responsibilities", "requirements"})
+REC_REQUIREMENT_MULTILINE = frozenset({"description", "note", "skills", "responsibilities", "requirements", "remarks"})
 REC_REQUIREMENT_FIELDS = (  # the `jobs` columns a create or edit may write; code, status, assignee and creator are server-owned
     "title", "location", "description", "department", "job_category_id", "vacancies", "qualification", "experience_min_months",
     "experience_max_months", "salary_min", "salary_max", "work_mode", "shift", "employment_type", "joining_requirement", "closes_on",
@@ -8709,6 +8713,85 @@ class RecApplicationStatusChange(BaseModel):
     note: _rec_requirement_text_type(500, multiline=True) = None
 
 
+# --- rec-018 (DEC-SCOPE-149): an application's screening (services/application_screening) -----------------------------------------
+class RecScreeningIn(BaseModel):
+    """SC5-SC7: the whole form -- a field left out is cleared. The ranges are the table's CHECKs (app.models.SCREENING_CHECKS)."""
+
+    model_config = ConfigDict(extra="forbid")
+    qualification_verified: bool = False
+    experience_verified: bool = False
+    skills_verified: bool = False
+    expected_salary: Decimal | None = Field(default=None, ge=0, max_digits=12, decimal_places=2)
+    notice_days: int | None = Field(default=None, ge=0, le=365)
+    location_preference: _rec_requirement_text_type(200) = None
+    communication_rating: int | None = Field(default=None, ge=1, le=5)
+    technical_rating: int | None = Field(default=None, ge=1, le=5)
+    availability: _rec_requirement_text_type(120) = None
+    willing_to_relocate: bool | None = None
+    remarks: _rec_requirement_text_type(2000, multiline=True) = None
+    result: Literal[SCREENING_RESULTS]
+
+    @model_validator(mode="after")
+    def _rejected_needs_remarks(self):
+        if self.result == "rejected" and not self.remarks:
+            raise ValueError("Remarks are required when the result is Rejected")
+        return self
+
+
+# --- rec-020 (DEC-SCOPE-148, spec §1/§3): interviews -------------------------------------------------------------------------------
+RecInterviewRound = Literal[INTERVIEW_ROUNDS]
+RecInterviewMove = Literal["confirmed", "completed", "no_show", "selected", "rejected", "on_hold"]  # IV3: never scheduled / rescheduled
+
+
+class RecInterviewCreate(BaseModel):
+    """IV5 / IV7: the §14 fields. Code, status, creator and history are server-owned (unknown fields here); the time rules, the clash and
+    the contact are checked in the service."""
+
+    model_config = ConfigDict(extra="forbid")
+    application_id: UUID
+    round: RecInterviewRound
+    scheduled_at: BdmApptStart
+    mode: RecMeetingMode
+    meeting_url: LeadApptLink = None
+    interviewer: _bdm_appt_optional(160) = None
+    location: _bdm_appt_optional(200) = None
+    contact_id: UUID | None = None
+    notify: StrictBool = True
+
+
+class RecInterviewUpdate(BaseModel):
+    """Edit the details of a non-final interview: only the keys sent are considered; the time changes only through reschedule. Null
+    clears an optional field, never the round or the mode."""
+
+    model_config = ConfigDict(extra="forbid")
+    round: RecInterviewRound | None = None
+    mode: RecMeetingMode | None = None
+    meeting_url: LeadApptLink = None
+    interviewer: _bdm_appt_optional(160) = None
+    location: _bdm_appt_optional(200) = None
+    contact_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def _required_stay_set(self):
+        for key in ("round", "mode"):
+            if key in self.model_fields_set and getattr(self, key) is None:
+                raise ValueError(f"{key.capitalize()} can't be removed")
+        return self
+
+
+class RecInterviewReschedule(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    scheduled_at: BdmApptStart
+    reason: _bdm_appt_optional(500) = None
+    notify: StrictBool = True
+
+
+class RecInterviewStatusChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: RecInterviewMove
+    note: _rec_requirement_text_type(500, multiline=True) = None
+
+
 # --- rec-011 (DEC-SCOPE-137, spec §1/§4): a candidate's skills -------------------------------------------------------------------
 CANDIDATE_SKILL_LABELS = {"skill": "Skill", "level": "Level", "experience_months": "Experience (months)", "last_used_year": "Last used", "source": "Source", "status": "Status"}
 
@@ -8745,7 +8828,7 @@ class CandidateSkillStatusChange(BaseModel):
     status: Literal[CANDIDATE_SKILL_STATUSES]
 
 
-# rec-012 (DEC-SCOPE-148, EX6/EX7): apply the suggestions the recruiter ticked. Skills arrive by id (from the extraction) with a level;
+# rec-012 (DEC-SCOPE-150, EX6/EX7): apply the suggestions the recruiter ticked. Skills arrive by id (from the extraction) with a level;
 # the profile fields reuse the candidate form's rules. An omitted field is unchanged.
 RESUME_APPLY_LABELS = {**CANDIDATE_FIELD_LABELS, "skills": "Each chosen skill"}  # a nested error is labelled by its top-level key
 

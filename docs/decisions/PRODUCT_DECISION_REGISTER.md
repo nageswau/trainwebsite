@@ -5987,7 +5987,86 @@ Migration `0132_university_courses`, API contract §12BO, RBAC §2.73. Spec: `do
 the role-sliced 360 view in upc-030 (U14).
 **New Feature ID authorized:** `upc-017`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-017.
 
-### DEC-SCOPE-148 — Resume text + rule-based skill extraction (`rec-012`)
+### DEC-SCOPE-148 — Interview management (`rec-020`)
+
+**Evidence:**
+- `EVID-018` §14 (lines 594–652): 12 fields (Interview ID, Company, Requirement, Candidate, Round, Date, Time, Interview Mode, Meeting
+  Link, Interviewer, Location, Status), 5 rounds (HR, Technical, Manager, Final, Client) and 8 statuses (Scheduled, Confirmed, Completed,
+  Rescheduled, No Show, Selected, Rejected, On Hold). Line 47: the "+ Schedule Interview" quick action (rec-032 owns the dashboard).
+- `RECRUITER_CRM_BACKLOG.md` §rec-020: AC1 (a rescheduled interview keeps history), AC2 (No Show only after the scheduled time), AC3 (the
+  EMP-004/005 tests pass). The negative scenarios are a past time → 422 and an overlapping time for the same candidate → 409. Q-20 asks
+  about notifications to candidates and contacts.
+- `DEC-SCOPE-116` R14 (links typed in) and R8 (candidate contact details never shared). `DEC-SCOPE-136` (rec-017) is the application
+  status engine. `DEC-SCOPE-127` (rec-005) reserved the `interview_scheduled` pipeline event for rec-020.
+
+**Status:** **MERGED** to `main` as PR #193 @ `10da5148` (2026-10-09). Every answer below is a **recommended default, `UNVERIFIED`**,
+taken on the owner's instruction to proceed with the recommended answers. IV9 answers Q-20. The next rec item takes `0134`,
+`DEC-SCOPE-149`, §12BQ and §2.75 (re-check `main`).
+
+**Numbering (FINAL):** migration `0133_interview_management` (after `0132_university_courses`), API §12BP and RBAC §2.74. Drafted as
+`0124` / `DEC-SCOPE-139` / §12BG / §2.65, then `0126` / 141 / §12BI / §2.67: rec-010 (`0123`), upc-026 (`0124`), upc-012 (`0125`) and
+seven more upc items (`0126`–`0132`, DEC-SCOPE-141..147, §12BI–§12BO, §2.67–§2.73) merged first. The next rec item takes `0134`,
+`DEC-SCOPE-149`, §12BQ and §2.75 (re-check `main`). Spec `docs/superpowers/specs/2026-10-09-rec-020-interview-management-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| IV1 | Rounds | The 5 §14 values in source order. Required on the recruiter routes; NULL on legacy rows and the legacy/employer routes |
+| IV2 | Statuses | The 8 §14 values. Open = scheduled, confirmed, rescheduled |
+| IV3 | Moves | Confirmed ← scheduled/rescheduled. Completed and No Show ← open, **only after the scheduled time** (AC2, `422`). On Hold ← open or completed. Selected and Rejected ← completed or on hold, after the time; both final. Anything else `409` |
+| IV4 | Reschedule | From open, on hold or no show. The new time is in the future, within 366 days, and different; the status becomes Rescheduled; an event keeps old → new and an optional reason (AC1) |
+| IV5 | Schedule | Future time within 366 days (`422`). The application must be open and the requirement not closed or cancelled (`409`). Several rounds per application and per day are allowed |
+| IV6 | Clash | Another open interview of the same candidate (any requirement) at the same minute → `409`. No duration is invented (§14 has none). Every creator; the candidate row is locked |
+| IV7 | Fields | `INT-000001` (database default from `interview_code_seq`, so every creator gets one). Mode Online/Phone/In person; typed http(s) link; free-text interviewer and location; optional contact of the requirement's company |
+| IV8 | Side effects | Scheduling → application Interview (rec-017 `follow`) and company `interview_scheduled` (rec-005). Rejected → application Rejected. Selected → application Selected only on a Final or Client round |
+| IV9 (Q-20) | Notices | On schedule and reschedule, unless turned off: a student candidate gets the in-app notification (+ ENH-014 deliveries); an external candidate and the chosen contact get an email through rec-026's queue. The contact's email names the candidate by name and code only (R8). No SMTP or no address → still saved; the reply says which notices were skipped. The rec-026 daily cap does not apply |
+| IV10 | Who | Writers are rec-017's (`placement_team` in the requirement's scope, `super_admin`). `placement_manager` and the assigned BDM read. Out of scope `404`; other roles `403` |
+| IV11 | Legacy routes | `/workflows/it/interviews` and `/employer/interviews` keep their contracts and gain the code, the first event and the clash. The legacy PATCH records a changed time as a reschedule and sets the status from a known result when the move is allowed |
+| IV12 | Lists | Upcoming (by day), Awaiting update (time passed, or completed), On hold, Closed (selected, rejected, no show), with counts |
+
+**Consequences:**
+- `interviews` gains `interview_code`, `round`, `status`, `interviewer`, `location`, `contact_id`, `created_by_user_id`; new
+  `interview_events`; `interview_code_seq`. `services/interviews.py`, `api/recruiter_interviews.py`.
+- The requirement page's candidate rows gain an Interviews section; `/recruiter/interviews` is new in the recruiter and manager navs.
+- rec-021 (feedback) and rec-022 (offers) build on `interviews.status`.
+- **New Feature ID authorized:** `rec-020`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-020.
+
+### DEC-SCOPE-149 — Screening form and result (`rec-018`)
+
+**Evidence:**
+- `EVID-018` §13 (lines 556–592): a screening form with 11 checklist items (qualification, experience and skills verified; salary
+  expectation; notice period; location preference; communication skills; technical screening; availability; willingness to relocate;
+  recruiter remarks) and 4 results (Shortlisted, Hold, Rejected, Need More Information).
+- `RECRUITER_CRM_BACKLOG.md` §rec-018: AC1 (Shortlisted moves the status and writes history), AC2 (Rejected requires remarks). The
+  negative scenario is a rating out of range (→ 422). The edge case is re-screening after Hold. Question Q-18.
+- `DEC-SCOPE-136` (rec-017) A1: there is no `on_hold` status, so rec-018's Hold is a flag. A2: the permissive moves and the single
+  status writer.
+
+**Status:** **MERGED** to `main` as PR #195 @ `0d80aadf` (2026-10-09). Every answer below is a **recommended default, `UNVERIFIED`**,
+taken on the owner's instruction to proceed with the recommended answers. SC1 and SC2 answer Q-18. The next rec item takes `0135`,
+`DEC-SCOPE-150`, §12BR and §2.76 (re-check `main`).
+
+**Numbering (FINAL):** migration `0134_application_screenings` (after rec-020's `0133_interview_management`), API §12BQ, RBAC §2.75. Drafted
+as `0125` / `DEC-SCOPE-140` / §12BH / §2.66 on `0122_candidate_skills`, then `0126` / 141 / §12BI / §2.67; rec-010, upc-026, upc-012,
+the upc items through `0132` and rec-020 (`0133` / 148 / §12BP / §2.74) merged first. Spec `docs/superpowers/specs/2026-10-09-rec-018-application-screening-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| SC1 (Q-18a) | Is screening required before Shortlisted? | No. rec-017's direct moves and "add at Shortlisted" stay |
+| SC2 (Q-18b) | Does Hold / Need More Information pause the application? | No. The status stays; the board shows `Screening: <result>` as a flag |
+| SC3 | Result → status | Shortlisted → `shortlisted` from sourced or screened only (forward only); Rejected → `rejected`; Hold and Need More Information never move it. A move goes through `applications.change_status` with the note `Screening: <result>`, and notifies a student as the status route does |
+| SC4 | When can it be saved? | Only while the application is open (sourced … interview); otherwise `409` "Only an open application can be screened. Reopen it first." |
+| SC5 | Storage | One current screening per application, overwritten by each save (PUT replaces the form). Audit `recruiter_application.screening` with the changed field names and the result, never values; an unchanged form writes no audit |
+| SC6 | Field types | Three verified booleans; expected salary ≥ 0 (numeric 12,2); notice 0–365 days; location preference ≤ 200; communication and technical ratings 1–5, optional; availability ≤ 120 text; relocate yes / no / not asked; remarks ≤ 2000; result required |
+| SC7 | Rejected | Requires remarks (`422`; also a table CHECK) |
+| SC8 | Who | Readers are the requirement's readers (recruiter own, manager team, super_admin, assigned BDM); writers are rec-017's (`placement_team` in scope, `super_admin`). The employer, students and `hr_team` never see a screening |
+
+**Consequences:**
+- `application_screenings` (`0134`), `services/application_screening.py`, `GET`/`PUT /recruiter/applications/{id}/screening`.
+- The rec-017 application item gains `screening_result {key, label} | null` (additive).
+- The requirement board gains a Screening disclosure per candidate and a `Screening: <result>` badge.
+- **New Feature ID authorized:** `rec-018`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-018.
+
+### DEC-SCOPE-150 — Resume text + rule-based skill extraction (`rec-012`)
 
 **Evidence:**
 - `EVID-018` S2-§4 (lines 1235–1285): upload a CV → extract skills, technologies, qualification, experience, job titles, certifications,
@@ -6000,8 +6079,8 @@ the role-sliced 360 view in upc-030 (U14).
 **Status:** **BUILT** on `feature/rec-012`, not merged. Every answer below is a **recommended default, `UNVERIFIED`**, taken on the owner's
 instruction to proceed with the recommended answers.
 
-**Numbering:** migration `0133_resume_extraction` (after `0132_university_courses`), API §12BP, RBAC §2.74. rec-020 (unmerged) drafted
-the same numbers; whichever merges second re-chains (expected `0134` / `DEC-SCOPE-149` / §12BQ / §2.75). Spec
+**Numbering:** migration `0135_resume_extraction` (after `0134_application_screenings`), API §12BR and RBAC §2.76. Drafted as `0133` /
+`DEC-SCOPE-148` / §12BP / §2.74; rec-020 and then rec-018 merged first and took those numbers. Spec
 `docs/superpowers/specs/2026-10-09-rec-012-resume-extraction-design.md`.
 
 | # | Point | Answer |

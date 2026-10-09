@@ -1,4 +1,4 @@
-"""rec-012 (DEC-SCOPE-148, spec §3): the pure resume extractor -- bytes in, text out; text and terms in, suggestions out. No database."""
+"""rec-012 (DEC-SCOPE-150, spec §3): the pure resume extractor -- bytes in, text out; text and terms in, suggestions out. No database."""
 
 import io
 import zipfile

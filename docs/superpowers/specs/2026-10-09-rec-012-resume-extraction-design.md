@@ -4,9 +4,9 @@ Backlog: `docs/delivery/RECRUITER_CRM_BACKLOG.md` rec-012. Source: EVID-018 S2-�
 rule-based, in-house extraction with `pypdf` and `python-docx`, and no AI provider. Depends on rec-006 (merged PR #150), rec-009 (merged
 PR #155) and rec-011 (merged PR #180).
 
-**Numbering (drafted 2026-10-09 on origin/main @ `21ac2e88`):** `DEC-SCOPE-148`, migration `0133_resume_extraction` (after
-`0132_university_courses`), API §12BP, RBAC §2.74. rec-020 (pushed, not merged) drafted the same numbers. Whichever merges second
-re-chains (expected `0134` / `DEC-SCOPE-149` / §12BQ / §2.75). Re-check origin/main before the merge.
+**Numbering (re-chained 2026-10-09 after rec-020 and rec-018 merged; drafted as `0133` / DEC-SCOPE-148 / §12BP / §2.74):**
+`DEC-SCOPE-150`, migration `0135_resume_extraction` (after `0134_application_screenings`), API §12BR, RBAC §2.76. Re-check
+origin/main before the merge.
 
 ## 1. Answers (2026-10-09)
 The owner asked to proceed with the recommended answers, so nothing was asked. Every row below is **UNVERIFIED** (a recorded default).
@@ -24,7 +24,7 @@ The owner asked to proceed with the recommended answers, so nothing was asked. E
 | EX9 | Failures | A password-protected PDF → 422 "This PDF is password-protected …". An unreadable file → 422 "Could not read the text …". A timeout → 422. A scanned or empty PDF answers 200 with `no_text: true` (AC3) and stores the empty text. |
 | EX10 | Who | Extract and Apply are candidate **writers** (recruiter, placement manager, `super_admin`; R11). `hr_team` reads candidates but cannot extract (Extract writes to the resume row). Archived → 409; outside the pool → 404. |
 
-## 2. Data (migration `0133_resume_extraction`)
+## 2. Data (migration `0135_resume_extraction`)
 `candidate_resumes` gains three nullable columns. No existing row changes. Each step is guarded (the 0132 idiom).
 | Column | Type | Rule |
 |---|---|---|
@@ -45,7 +45,7 @@ Bytes and a term list go in, a dict comes out. No database and no I/O (the `repo
 The route builds the terms (one query), reads the file (`services/candidates.read_file`), runs `read_text` and `suggest` in a thread under
 `asyncio.wait_for`, stores the result, writes the audit row and commits.
 
-## 4. API (§12BP), prefix `/api/v1/recruiter/candidates/{candidate_id}/resume/{version}`
+## 4. API (§12BR), prefix `/api/v1/recruiter/candidates/{candidate_id}/resume/{version}`
 | Method | Path | Who | Result |
 |---|---|---|---|
 | POST | `/extract` | writers | 200 → the extraction (below). 404 unknown version; 409 archived; 422 encrypted, unreadable or timed out |

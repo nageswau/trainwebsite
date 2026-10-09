@@ -8,7 +8,7 @@ green, then refactor) and runs only the focused tests.
    - `test_rec_012_resume_extract.py`: AC1 sentence, plurals, longest match, stop words and casing, DOCX with tables, "3 years",
      scanned PDF → no text, encrypted PDF, corrupt file, the zip guard, the page and character caps, qualification, location, titles,
      certifications, industry.
-3. **Data.** Add three columns to `CandidateResume` and migration `0133_resume_extraction`.
+3. **Data.** Add three columns to `CandidateResume` and migration `0135_resume_extraction`.
    - `test_rec_012_migration.py`: the columns, single head, an upgrade that keeps existing resume rows.
 4. **Schemas and API.** Add `ResumeApply` (+ labels), the routes `POST …/resume/{v}/extract` and `…/apply` in `api/recruiter_candidates.py`,
    and the glue in `services/resume_extraction.py` (terms query, thread and timeout, output, apply).
@@ -19,5 +19,5 @@ green, then refactor) and runs only the focused tests.
    `RecruiterCandidateDetail` (reload the candidate and the Skills card after Apply).
    - vitest for the lib and the panel.
 6. **e2e.** Add `rec-012-resume-extraction.spec.ts`.
-7. **Docs.** API_CONTRACT §12BP, RBAC_MATRIX §2.74, DATA_MODEL, DEC-SCOPE-148, the backlog status, SCREEN_CATALOG.
+7. **Docs.** API_CONTRACT §12BR, RBAC_MATRIX §2.76, DATA_MODEL, DEC-SCOPE-150, the backlog status, SCREEN_CATALOG.
 8. **Checks.** Lite backend (rec-009, rec-011, rec-012), vitest, tsc, eslint, next build, then e2e and browser QA.

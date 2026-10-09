@@ -1,19 +1,24 @@
 """rec-012 -- candidate_resumes.extracted_text / extraction_json / extracted_at.
 
-Revision ID: 0133_resume_extraction
-Revises: 0132_university_courses
+Revision ID: 0135_resume_extraction
+Revises: 0134_application_screenings
 
-docs/superpowers/specs/2026-10-09-rec-012-resume-extraction-design.md §2 (DEC-SCOPE-148). Three nullable columns; no existing row changes.
+docs/superpowers/specs/2026-10-09-rec-012-resume-extraction-design.md §2 (DEC-SCOPE-150). Three nullable columns; no existing row changes.
 0001 builds a fresh database from the current models, which already carry them, so each column is added only when missing (0132's idiom).
 downgrade() drops them: their content is derived from the stored resume files and is recomputed by the next extraction.
+
+Re-chained on 2026-10-09: drafted as `0133_resume_extraction` (DEC-SCOPE-148, API §12BP, RBAC §2.74) on `0132_university_courses`;
+rec-020 (`0133_interview_management`) and rec-018 (`0134_application_screenings`) merged first, so this is `0135` (DEC-SCOPE-150,
+§12BR, §2.76). A database stamped at the draft is re-stamped with `alembic stamp --purge 0132_university_courses`, then `upgrade head`
+(every column step is guarded).
 """
 
 import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0133_resume_extraction"
-down_revision = "0132_university_courses"
+revision = "0135_resume_extraction"
+down_revision = "0134_application_screenings"
 branch_labels = None
 depends_on = None
 

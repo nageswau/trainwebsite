@@ -1,4 +1,4 @@
-"""rec-012 (DEC-SCOPE-148, spec §3-§4): extract a stored resume's suggestions and apply the ones the recruiter ticks. The parsing is
+"""rec-012 (DEC-SCOPE-150, spec §3-§4): extract a stored resume's suggestions and apply the ones the recruiter ticks. The parsing is
 services/resume_extract (pure); this module feeds it the Skills Master's terms, runs it off the event loop under a time limit, stores the
 result on the resume row and shapes the response. Roles, the pool, the archived rule and the audit/log helpers are rec-009's
 (services/candidates); adding a skill follows rec-011's rules (services/candidate_skills).

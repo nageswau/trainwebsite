@@ -1,4 +1,4 @@
-"""rec-012 -- migration 0133_resume_extraction (spec §2). The round trip runs in a throwaway database built from scratch (the tel-002
+"""rec-012 -- migration 0135_resume_extraction (spec §2). The round trip runs in a throwaway database built from scratch (the tel-002
 pattern); a downgrade never runs against the shared test database. Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -14,15 +14,15 @@ from app.core.config import settings
 from tests.test_tel_001_migration import _config, _sql
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_rec_012_migration_0133", VERSIONS / "0133_resume_extraction.py")
+_spec = importlib.util.spec_from_file_location("_rec_012_migration_0135", VERSIONS / "0135_resume_extraction.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0132_university_courses", "0133_resume_extraction"
+BASE, HEAD = "0134_application_screenings", "0135_resume_extraction"
 COLUMNS = {"extracted_text", "extraction_json", "extracted_at"}
 
 
-def test_migration_chains_after_upc_017_and_is_the_single_head():
+def test_migration_chains_after_rec_018_and_is_the_single_head():
     assert _migration.revision == HEAD
     assert _migration.down_revision == BASE
     assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1
@@ -44,7 +44,7 @@ def isolated_db():
     _sql(original, f'CREATE DATABASE "{name}"', autocommit=True)
     try:
         settings.database_url = url
-        # 0001's create_all builds today's models (these columns included); going to head and back down gives the real 0132 shape.
+        # 0001's create_all builds today's models (these columns included); going to head and back down gives the real 0134 shape.
         command.upgrade(cfg, "head")
         command.downgrade(cfg, BASE)
         yield {"cfg": cfg, "url": url}

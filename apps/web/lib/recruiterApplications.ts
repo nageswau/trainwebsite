@@ -10,6 +10,7 @@ export type ApplicationStatus = StatusOption & { initial: boolean };
 export type RecApplication = {
   id: string; job_id: string; candidate: { id: string; code: string; name: string }; status: string; status_label: string;
   stage_changed_at: string; created_at: string; allowed_statuses: StatusOption[];
+  screening_result: StatusOption | null; // rec-018: the current screening's result (the board's flag)
 };
 export type RequirementCandidates = { items: RecApplication[]; statuses: ApplicationStatus[]; can_add: boolean };
 export type HistoryEntry = {
@@ -21,9 +22,25 @@ export type CandidateApplication = {
   status: string; status_label: string; stage_changed_at: string; in_scope: boolean;
 };
 
+// rec-018 (DEC-SCOPE-149): an application's screening. The API decides the status move (SC3), whether the viewer may edit (SC4/SC8)
+// and every range; the form only mirrors the ranges so the browser can say so before a 422.
+export type ScreeningFields = {
+  qualification_verified: boolean; experience_verified: boolean; skills_verified: boolean; expected_salary: number | null;
+  notice_days: number | null; location_preference: string | null; communication_rating: number | null; technical_rating: number | null;
+  availability: string | null; willing_to_relocate: boolean | null; remarks: string | null; result: string;
+};
+export type Screening = ScreeningFields & { result_label: string; screened_by: { id: string; full_name: string }; updated_at: string };
+export type ScreeningRead = { screening: Screening | null; results: StatusOption[]; can_edit: boolean };
+
 export const NOTE_MAX = 500;
+export const SCREENING_LIMITS = { salaryMax: 9_999_999_999.99, noticeMax: 365, location: 200, availability: 120, remarks: 2000 } as const;
 export const requirementCandidatesUrl = (requirementId: string) => `${REQUIREMENTS_URL}/${encodeURIComponent(requirementId)}/candidates`;
-export const applicationUrl = (id: string, suffix: "/status" | "/history") => `/api/v1/recruiter/applications/${encodeURIComponent(id)}${suffix}`;
+export const applicationUrl = (id: string, suffix: "/status" | "/history" | "/screening") => `/api/v1/recruiter/applications/${encodeURIComponent(id)}${suffix}`;
+
+export function isScreeningRead(data: unknown): data is ScreeningRead {
+  const d = data as Partial<ScreeningRead> | null;
+  return !!d && Array.isArray(d.results) && typeof d.can_edit === "boolean" && (d.screening === null || typeof d.screening?.result === "string");
+}
 export const candidateApplicationsUrl = (candidateId: string) => `${CANDIDATES_URL}/${encodeURIComponent(candidateId)}/applications`;
 
 export function isRecApplication(data: unknown): data is RecApplication {

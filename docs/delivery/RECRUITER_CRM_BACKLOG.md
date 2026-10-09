@@ -758,9 +758,10 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Negative scenarios:** an encrypted PDF → a readable error, not a 500.
 - **Edge cases:** an alias collision ("Go" vs the word "go") goes on the stop-word list; very long resumes are truncated at the cap.
 - **Regression risks:** none (new path); container image size.
-- **Status (2026-10-09):** **BUILT** on `feature/rec-012`, not merged. `DEC-SCOPE-148` (EX1–EX10 recommended defaults, UNVERIFIED);
-  migration `0133_resume_extraction` (after `0132_university_courses`), API §12BP, RBAC §2.74. rec-020 drafted the same numbers; whichever
-  merges second re-chains. Extraction runs in a thread (no Celery task). The next rec item re-checks `main`.
+- **Status (2026-10-09):** **BUILT** on `feature/rec-012`, not merged. `DEC-SCOPE-150` (EX1–EX10 recommended defaults, UNVERIFIED);
+  migration `0135_resume_extraction` (after `0134_application_screenings`), API §12BR, RBAC §2.76 (drafted as `0133` / 148 / §12BP /
+  §2.74; rec-020 and rec-018 merged first). Extraction runs in a thread (no Celery task). The next rec item takes `0136`,
+  `DEC-SCOPE-151`, §12BS and §2.77 (re-check `main`).
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-013 — Find Candidates: skill AND/OR search, filters, facets, result cards
@@ -942,6 +943,11 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** large · **Risk:** high
 
 ### rec-018 — Screening form + result
+- **Status (2026-10-09):** **MERGED** to `main` as PR #195 @ `0d80aadf`. `DEC-SCOPE-149` (SC1–SC8 recommended defaults, UNVERIFIED; Q-18
+  answered: screening not required before Shortlisted, Hold / Need More Information do not pause and are a board flag); one current
+  screening per application, overwritten. Migration `0134_application_screenings` (after rec-020's `0133_interview_management`), API
+  §12BQ, RBAC §2.75. Drafted as `0125` / 140 / §12BH / §2.66, then `0126` / 141; rec-010, upc-026, upc-012, upc items to `0132` and
+  rec-020 merged first. The next rec item takes `0135`, `DEC-SCOPE-150`, §12BR and §2.76 (re-check `main`).
 - **Business requirement:** §13 checklist (11 items) and result (Shortlisted / Hold / Rejected / Need More Information).
 - **Existing behavior:** none (an application status "screening" exists).
 - **Expected behavior:**
@@ -1010,6 +1016,10 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** large · **Risk:** high
 
 ### rec-020 — Interview management
+- **Status (2026-10-09):** **MERGED** to `main` as PR #193 @ `10da5148`. `DEC-SCOPE-148` (IV1–IV12 recommended defaults, UNVERIFIED; IV9 answers Q-20); migration
+  `0133_interview_management` (after `0132_university_courses`), API §12BP, RBAC §2.74. Drafted as `0124` / 139 / §12BG / §2.65, then
+  `0126` / 141 / §12BI / §2.67; rec-010 and ten upc items merged first. rec-020 then took `0133`, `DEC-SCOPE-148`, §12BP and §2.74;
+  the next rec item takes `0134`, `DEC-SCOPE-149`, §12BQ and §2.75 (re-check `main`). The status and reschedule routes are `POST …/status` and `POST …/reschedule` as planned.
 - **Business requirement:** §14 (12 fields, 5 rounds, 8 statuses); quick action "+ Schedule Interview"; R14.
 - **Existing behavior:** `interviews` (application, time, mode, link, free-text result); staff create at `workflows.py:1614`, employers at
   `employer.py:241`; no notification.
