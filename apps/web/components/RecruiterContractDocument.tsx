@@ -4,7 +4,7 @@ import { type ChangeEvent, useState } from "react";
 import { sendRequest } from "@/lib/apiErrors";
 import { formatSchoolDateTime } from "@/lib/formatDate";
 import { refocus } from "@/lib/focus";
-import { companyContractsUrl, type Contract, contractDocumentUrl, DOCUMENT_LABEL, type DocumentKind, isContractBody } from "@/lib/recruiterContracts";
+import { companyContractsUrl, type Contract, contractDocumentUrl, DOCUMENT_LABEL, DOCUMENT_NOUN, type DocumentKind, isContractBody } from "@/lib/recruiterContracts";
 
 const MAX_BYTES = 20 * 1024 * 1024; // the API's max_upload_bytes; fast feedback only, the server re-checks by content
 const TYPES = ["application/pdf", "image/jpeg", "image/png"];
@@ -21,6 +21,7 @@ export default function RecruiterContractDocument({ companyId, contract, kind, o
   const inputId = `contract-${contract.id}-${kind}-file`;
   const doc = kind === "contract" ? contract.contract_document : contract.mou_document;
   const label = DOCUMENT_LABEL[kind];
+  const noun = DOCUMENT_NOUN[kind];
 
   async function upload(event: ChangeEvent<HTMLInputElement>) {
     const input = event.currentTarget;
@@ -46,15 +47,15 @@ export default function RecruiterContractDocument({ companyId, contract, kind, o
         <p style={{ margin: 0 }}>
           {label}: {doc.name ?? "on file"} · uploaded {formatSchoolDateTime(doc.uploaded_at, true)}{" "}
           <a className="btn ghost small" href={contractDocumentUrl(contract.id, kind)} download>
-            Download {label.toLowerCase()} ({doc.content_type === "application/pdf" ? "PDF" : "image"})
+            Download {noun} ({doc.content_type === "application/pdf" ? "PDF" : "image"})
           </a>
         </p>
       ) : (
-        <p className="muted" style={{ margin: 0 }}>No {label.toLowerCase()} on file.</p>
+        <p className="muted" style={{ margin: 0 }}>No {noun} on file.</p>
       )}
       {contract.permissions.can_upload && (
         <>
-          <label htmlFor={inputId}>{doc ? `Replace ${label.toLowerCase()}` : `Upload ${label.toLowerCase()}`} (PDF, JPEG or PNG, up to 20 MB)</label>
+          <label htmlFor={inputId}>{doc ? `Replace ${noun}` : `Upload ${noun}`} (PDF, JPEG or PNG, up to 20 MB)</label>
           <input id={inputId} type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" onChange={upload} disabled={busy} />
           {busy && <span className="muted" aria-live="polite">Uploading…</span>}
         </>

@@ -121,6 +121,22 @@ describe("RecruiterCompanyContract (rec-030)", () => {
     expect(screen.queryByRole("button", { name: "Start contract" })).toBeNull();
   });
 
+  it("QA-01: names the MoU as MoU (never lower-cased) in its empty state and upload label", async () => {
+    render(<RecruiterCompanyContract companyId="C1" onChanged={vi.fn()} />);
+    expect(await screen.findByText("No MoU on file.")).toBeTruthy();
+    expect(screen.getByLabelText("Upload MoU (PDF, JPEG or PNG, up to 20 MB)")).toBeTruthy();
+  });
+
+  it("QA-02: an overlapping renewal shows the server's message on the form", async () => {
+    read = () => res({ current: contract({ status: "signed", status_label: "Signed", permissions: { can_edit: true, can_upload: true, can_renew: true } }), previous: [], can_start: true });
+    write = () => res({ detail: { message: "These dates overlap a previous contract of this company", code: "contract_overlap" } }, 409);
+    render(<RecruiterCompanyContract companyId="C1" onChanged={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Start renewal" }));
+    const form = screen.getByRole("form", { name: "Start contract" });
+    fireEvent.click(within(form).getByRole("button", { name: "Start contract" }));
+    expect((await within(form).findByRole("alert")).textContent).toBe("These dates overlap a previous contract of this company");
+  });
+
   it("formats the fee for both bases", () => {
     expect(feeText({ fee_basis: "percent_of_ctc", fee_value: "8.33" })).toBe("8.33% of CTC");
     expect(feeText({ fee_basis: null, fee_value: null })).toBe("—");

@@ -21,6 +21,8 @@ export const FEE_BASES: { key: FeeBasis; label: string }[] = [
   { key: "percent_of_ctc", label: "Percentage of CTC" },
 ];
 export const DOCUMENT_LABEL: Record<DocumentKind, string> = { contract: "Contract document", mou: "MoU" };
+/** The same names mid-sentence (QA-01: "MoU" keeps its capitals). */
+export const DOCUMENT_NOUN: Record<DocumentKind, string> = { contract: "contract document", mou: "MoU" };
 
 export type ContractDocument = { name: string | null; content_type: string; uploaded_at: string };
 export type ContractPerson = { id: string; full_name: string; active: boolean };
@@ -76,4 +78,10 @@ export function contractConflict(detail: unknown): string | null {
   if (d.code === "contract_status_changed") return `${d.message}.`;
   if (d.code === "contract_changed") return `${d.message}. Check it and try again.`;
   return ["contract_expired", "contract_exists"].includes(String(d.code)) ? d.message : null;
+}
+
+/** QA-02: the overlap 409 (CT8) stays on the form, with the server's message (the dates are the user's to correct). */
+export function contractOverlap(detail: unknown): string | null {
+  const d = detail as { code?: unknown; message?: unknown } | null;
+  return d && typeof d === "object" && d.code === "contract_overlap" && typeof d.message === "string" ? d.message : null;
 }

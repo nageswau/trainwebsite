@@ -4,7 +4,7 @@ import { type FormEvent, useRef, useState } from "react";
 import { sendJson } from "@/lib/apiErrors";
 import { fieldErrors } from "@/lib/bdmPipeline";
 import {
-  companyContractsUrl, type Contract, contractConflict, type ContractFields, type ContractStatus, FEE_BASES, FIELD_LABEL, isContractBody,
+  companyContractsUrl, type Contract, contractConflict, type ContractFields, contractOverlap, type ContractStatus, FEE_BASES, FIELD_LABEL, isContractBody,
   SETTABLE_CONTRACT_STATUSES,
 } from "@/lib/recruiterContracts";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
@@ -64,7 +64,7 @@ export default function RecruiterContractForm({ companyId, contract, onSaved, on
         setErrors(found);
         return focus(id(Object.keys(found)[0]));
       }
-      setFailure(outcome.message);
+      setFailure(contractOverlap(outcome.detail) ?? outcome.message);
     } finally {
       inFlight.current = false;
       setBusy(false);
