@@ -541,6 +541,10 @@ Common conventions:
     a moved target keeps its history in the audit log (MS7).
 
 ### upc-009 — Meetings
+- **Status (2026-10-09):** built on `feature/upc-009` under `DEC-SCOPE-145`, with migration `0130_university_meetings`, API §12BM and
+  RBAC §2.71. Spec: `docs/superpowers/specs/2026-10-09-upc-009-university-meetings-design.md`.
+  - Q-12 is answered by the recommended default (MG12, `NEEDS_CONFIRMATION`): the next meeting date creates the follow-up "Schedule the
+    next meeting", not a draft meeting. Completing a meeting moves the stage to Meeting Completed when earlier (MG13).
 - **Business requirement:** §7 (19 fields; 12 meeting types).
 - **Existing behavior:** none for universities.
 - **Expected behavior:**

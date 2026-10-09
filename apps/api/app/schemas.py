@@ -77,6 +77,10 @@ from app.models import (
     UNIVERSITY_RELATIONSHIPS,
 )
 from app.notifications.phone import normalise_phone
+from app.partnership_meeting_types import MAX_CONTACTS as MEETING_MAX_CONTACTS
+from app.partnership_meeting_types import MAX_EMPLOYEES as MEETING_MAX_EMPLOYEES
+from app.partnership_meeting_types import MODES as MEETING_MODES
+from app.partnership_meeting_types import TYPES as MEETING_TYPES
 from app.services.agent_visa import VISA_CASE_STAGES
 from app.tel_content_kinds import ASSET_KINDS as TEL_ASSET_KINDS
 from app.tel_sources import TEL_SOURCES
@@ -7494,6 +7498,168 @@ class UniversityLastAction(BaseModel):
 class UniversityFollowUpOut(BaseModel):
     next_action: UniversityNextAction | None
     last_action: UniversityLastAction | None
+
+
+# --- upc-009 (DEC-SCOPE-145, spec §1-§3): university meetings (§7). Limits per MG4-MG12 ------------------------------------------
+UniversityMeetingType = Literal[MEETING_TYPES]
+UniversityMeetingMode = Literal[MEETING_MODES]
+UniversityMeetingView = Literal["upcoming", "awaiting_outcome", "completed", "cancelled"]  # MG16
+MeetingLocation = _university_str(200)
+MeetingText = _university_str(2000, multiline=True)
+MeetingDiscussion = _university_str(4000, multiline=True)
+MeetingNextAction = _university_str(200)  # becomes a upc-020 task title (≤ 200)
+MeetingReason = _university_str(1000, required=True, multiline=True)
+MeetingRescheduleReason = _university_str(500, multiline=True)
+MeetingContacts = Annotated[list[UUID], Field(max_length=MEETING_MAX_CONTACTS), AfterValidator(_unique_ids)]
+MeetingEmployees = Annotated[list[UUID], Field(max_length=MEETING_MAX_EMPLOYEES), AfterValidator(_unique_ids)]
+
+
+class UniversityMeetingIn(BaseModel):
+    """MG1-MG8: `responsible_user_id` defaults to the caller. Code, status and the outcome fields are server-owned or set on complete
+    (unknown fields here); contacts and employees are checked in the service."""
+
+    model_config = ConfigDict(extra="forbid")
+    university_id: UUID
+    meeting_type: UniversityMeetingType
+    starts_at: BdmApptStart
+    mode: UniversityMeetingMode
+    location: MeetingLocation = None
+    meeting_url: LeadApptLink = None
+    contact_id: UUID | None = None
+    responsible_user_id: UUID | None = None
+    agenda: MeetingText = None
+    notes: MeetingText = None
+    participant_contact_ids: MeetingContacts = []
+    participant_user_ids: MeetingEmployees = []
+
+
+class UniversityMeetingUpdate(BaseModel):
+    """Edit a scheduled meeting: omitted = unchanged; null clears an optional field and fails a required one. A changed `starts_at` is a
+    reschedule (MG9). The university never changes (schedule a new meeting)."""
+
+    model_config = ConfigDict(extra="forbid")
+    meeting_type: UniversityMeetingType = None
+    starts_at: BdmApptStart = None
+    mode: UniversityMeetingMode = None
+    location: MeetingLocation = None
+    meeting_url: LeadApptLink = None
+    contact_id: UUID | None = None
+    responsible_user_id: UUID = None
+    agenda: MeetingText = None
+    notes: MeetingText = None
+    participant_contact_ids: MeetingContacts = None
+    participant_user_ids: MeetingEmployees = None
+    reschedule_reason: MeetingRescheduleReason = None
+
+
+class UniversityMeetingComplete(BaseModel):
+    """MG10-MG12: the outcome. At least one of notes / discussion points / decisions; a next action needs its due date (the service)."""
+
+    model_config = ConfigDict(extra="forbid")
+    notes: MeetingText = None
+    discussion_points: MeetingDiscussion = None
+    decisions: MeetingText = None
+    next_action: MeetingNextAction = None
+    next_action_due_on: date | None = None
+    next_meeting_date: date | None = None
+
+
+class UniversityMeetingCancel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: MeetingReason
+
+
+class MeetingContactPerson(BaseModel):
+    """MG5: the contact person as copied when set; `id` is null once the contact was deleted."""
+
+    id: UUID | None
+    name: str | None
+    designation: str | None
+
+
+class MeetingParticipants(BaseModel):
+    contacts: list[VisitContactRef]
+    employees: list[VisitPerson]
+
+
+class MeetingEventOut(BaseModel):
+    event: str
+    old_starts_at: datetime | None
+    new_starts_at: datetime | None
+    reason: str | None
+    actor: VisitPerson
+    created_at: datetime
+
+
+class MeetingFollowUp(BaseModel):
+    """The upc-020 tasks this meeting created (MG11, MG12)."""
+
+    id: UUID
+    title: str
+    due_on: date
+    status: str
+    assignee: VisitPerson
+
+
+class MeetingPermissions(BaseModel):
+    can_edit: bool
+    can_complete: bool
+    can_cancel: bool
+
+
+class UniversityMeetingRow(BaseModel):
+    id: UUID
+    code: str
+    university: VisitUniversityRef
+    meeting_type: str
+    starts_at: datetime
+    mode: str
+    status: str
+    responsible: VisitPerson
+    contact: MeetingContactPerson | None
+    warnings: list[str]  # MG4: "link_missing" while an online meeting has no link
+
+
+class UniversityMeetingOut(UniversityMeetingRow):
+    location: str | None
+    meeting_url: str | None
+    agenda: str | None
+    notes: str | None
+    discussion_points: str | None
+    decisions: str | None
+    next_action: str | None
+    next_action_due_on: date | None
+    next_meeting_date: date | None
+    created_by: VisitPerson
+    completed_by: VisitPerson | None
+    completed_at: datetime | None
+    cancelled_at: datetime | None
+    cancel_reason: str | None
+    participants: MeetingParticipants
+    events: list[MeetingEventOut]
+    follow_ups: list[MeetingFollowUp]
+    permissions: MeetingPermissions
+    created_at: datetime
+    updated_at: datetime
+
+
+class UniversityMeetingEnvelope(BaseModel):
+    meeting: UniversityMeetingOut
+
+
+class MeetingCounts(BaseModel):
+    upcoming: int
+    awaiting_outcome: int
+    completed: int
+    cancelled: int
+
+
+class UniversityMeetingPage(BaseModel):
+    items: list[UniversityMeetingRow]
+    total: int
+    limit: int
+    offset: int
+    counts: MeetingCounts
 
 
 # --- rec-006 (DEC-SCOPE-119): the recruiter Skills Master ------------------------------------------------------------------------

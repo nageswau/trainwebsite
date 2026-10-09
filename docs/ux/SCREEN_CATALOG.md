@@ -3293,6 +3293,26 @@ Design spec `docs/superpowers/specs/2026-10-09-upc-020-partnership-tasks-design.
 - **Nav:** the manager menu's Follow-ups & Tasks goes live; the head and super admin navs gain it. **Responsive:** single column, no
   side-scroll at 390 px.
 
+## upc-009 addendum (2026-10-09, `DEC-SCOPE-145`) — Meetings
+
+Design spec `docs/superpowers/specs/2026-10-09-upc-009-university-meetings-design.md` §4. Visual-reference mapping: None — not inspected. Do not claim parity.
+
+- **Route:** `/partnership/meetings` — Upcoming / Awaiting outcome / Completed / Cancelled tabs (links, with counts; the view and paging
+  live in the URL), "Only my meetings", "Schedule a meeting" for managers and heads, and the list (meeting ID, university, type, when in
+  IST, mode with "no link yet", contact person, responsible, status; cards below 640 px). **States:** per-view empty text, past-the-end,
+  access card for other roles.
+- **Routes:** `/partnership/meetings/new?university=<id>` and `/partnership/meetings/[id]/edit` — the meeting form: university (fixed or
+  a search picker), responsible employee (heads), meeting type (12), date and time (IST), Online / Offline, location, meeting link (a
+  non-blocking "no link yet" note for an online meeting), contact person with its designation, university participants (the contact
+  person ticked and fixed), EduSphere participants (chips + picker), agenda, notes; on edit a changed time asks for an optional reason.
+  Required-field errors before sending; a `422` under its field.
+- **Route:** `/partnership/meetings/[id]` — the §7 facts, the link warning, Record outcome (notes, discussion points, decisions, next
+  action + due date, next meeting date; offered once the meeting has started) and Cancel meeting (reason) per `permissions`; the outcome
+  with the follow-ups it created; the history (reschedules show old → new time).
+- **Route:** `/partnership/universities/[id]` gains **Meetings** (latest 5, scheduled first; "Schedule a meeting"; "All N meetings").
+- **Nav:** the manager menu's Meetings goes live; the head nav and the super admin nav ("Partnership Meetings") gain it. **Responsive:**
+  single column, no side-scroll at 390 px.
+
 ## rec-024 addendum (2026-10-08, `DEC-SCOPE-131`) — Recruiter follow-ups
 
 Design spec `docs/superpowers/specs/2026-10-08-rec-024-recruiter-follow-ups-design.md` §4.

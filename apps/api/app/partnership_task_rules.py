@@ -47,3 +47,6 @@ STAGE_RULES: dict[str, Rule] = {
     "student_recruitment_started": Rule("task", "Send student applications", 14, "medium"),
 }
 VISIT_RULE = Rule("follow_up", "Follow up after visit", 0, "high")  # due on the visit's follow-up date (upc-010 VS16), not an offset
+# upc-009 MG11/MG12: a completed meeting's next action (its own title and due date) and its next meeting date (Q-12: a follow-up).
+MEETING_NEXT_ACTION_RULE = Rule("follow_up", "", 0, "high")  # the title is the meeting's next action
+NEXT_MEETING_RULE = Rule("follow_up", "Schedule the next meeting", 0, "medium")  # due on the next meeting date

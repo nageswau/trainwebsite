@@ -2199,6 +2199,35 @@ its terms into the new draft.
 | `DELETE /partnership/agreements/{id}/commission-terms/{term_id}` | `204` |
 | `GET /partnership/commission-terms` | Every term, newest first, each with `agreement: {id, mou_number, agreement_type, type_label, status, effective_status, status_label}` and `university: {id, name, university_code}`; `trigger`, `currency` (else `422`), `q` (MoU number, university name or code), `limit` ≤ 50 |
 
+## 12BM. University meetings (`upc-009`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-145` (MG1–MG16, Q-12). Design spec `docs/superpowers/specs/2026-10-09-upc-009-university-meetings-design.md` §3. Migration `0130`.
+- **Common rules:** readers are `partnership_manager` (with a profile), `partnership_head` and `super_admin`; every other role → `403`
+  before anything is read. A missing meeting → `404` "Meeting not found". Writes lock (complete: the university, then the meeting;
+  edit / cancel: the meeting), then check the actor (the responsible employee or the scheduler; otherwise `403`, logged with ids only),
+  then the state (`409` "This meeting's outcome is already recorded" / "This meeting was cancelled"), then validation (`422`, on the body
+  field where one applies). Bodies refuse unknown keys. Each write adds an audit row `university_meeting.{create,update,complete,cancel}`
+  with ids, code, type, mode, counts and field names (never agenda, notes, discussion points, decisions, next action or reasons).
+- **Item (`{meeting}` envelope):** `{id, code, university {id, name, university_code, city, country}, meeting_type, starts_at, mode
+  (online|offline), status (scheduled|completed|cancelled), responsible, contact {id|null, name, designation}|null, warnings
+  (["link_missing"] while an online meeting has no link), location, meeting_url, agenda, notes, discussion_points, decisions, next_action,
+  next_action_due_on, next_meeting_date, created_by, completed_by, completed_at, cancelled_at, cancel_reason, participants {contacts,
+  employees}, events [{event, old_starts_at, new_starts_at, reason, actor, created_at}], follow_ups [{id, title, due_on, status,
+  assignee}], permissions {can_edit, can_complete, can_cancel}, created_at, updated_at}`. List rows carry the fields up to `warnings`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/meetings` | `view` (`upcoming / awaiting_outcome / completed / cancelled`; omitted = every meeting, scheduled first by start), `university_id`, `mine` (responsible, scheduler or EduSphere participant), `limit`, `offset` → `{items, total, limit, offset, counts {upcoming, awaiting_outcome, completed, cancelled}}`. Counts use every filter but the view. Unknown view → `422` |
+| `POST /partnership/meetings` | Managers and heads. `{university_id, meeting_type, starts_at, mode, location?, meeting_url?, contact_id?, responsible_user_id?, agenda?, notes?, participant_contact_ids? (≤ 20), participant_user_ids? (≤ 10)}` → `201`. Unknown university `422`; outside the edit scope `403`; inactive `409`; a past start or one beyond 366 days `422`; a contact of another university `422`; an employee who is not active partnership staff, or is the responsible employee, `422`; a responsible employee other than the caller or (for a head) an active direct report `422`. Moves the university to Meeting Scheduled when earlier (not lost / inactive). Not idempotent |
+| `GET /partnership/meetings/{id}` | The item |
+| `PATCH /partnership/meetings/{id}` | Scheduled only. Any create field except `university_id`, plus `reschedule_reason?` (≤ 500); a changed `starts_at` is a reschedule (future, ≤ 366 days); a sent null type / start / mode / responsible `422` |
+| `POST /partnership/meetings/{id}/complete` | Once started (`422` before). `{notes?, discussion_points? (≤ 4000), decisions?, next_action? (≤ 200), next_action_due_on?, next_meeting_date?}`; at least one of notes / discussion points / decisions; a next action needs its due date and vice versa; dates today or later (IST). Creates the upc-020 follow-ups and moves the university to Meeting Completed when earlier |
+| `POST /partnership/meetings/{id}/cancel` | `{reason}` (1–1000) |
+
+- **Reused:** the pickers are `GET /partnership/visits/university-options | lead-options | employee-options` (§12AX), the contacts
+  `GET /partnership/universities/{id}/contacts` (§12AQ). **Changed:** none of their shapes; the stage history gains automatic `move`
+  rows with the note "Automatic: meeting UMT-… scheduled/completed", and `partnership_tasks.source = 'meeting'` rows appear.
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
