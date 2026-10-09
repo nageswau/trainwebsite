@@ -74,6 +74,8 @@ from app.models import (
     RECRUITER_CALL_DIRECTIONS,
     RECRUITER_CALL_MAX_SECONDS,
     RECRUITER_CALL_OUTCOMES,
+    RECRUITER_CONTRACT_FEE_BASES,
+    RECRUITER_CONTRACT_STATUSES,
     RECRUITER_FOLLOW_UP_REASONS,
     RECRUITER_MEETING_TYPES,
     RELATIONSHIP_STRENGTHS,
@@ -8246,6 +8248,11 @@ class RecBoardOut(BaseModel):
     offset: int
 
 
+class RecCompanyContractRef(BaseModel):
+    status: str
+    status_label: str
+
+
 class RecCompanyOut(RecCompanyRow):
     website: str | None
     linkedin_url: str | None
@@ -8262,6 +8269,7 @@ class RecCompanyOut(RecCompanyRow):
     created_by: RecPersonRef | None
     assignment_history: list[RecAssignmentOut]
     pipeline: RecPipelineOut
+    contract: RecCompanyContractRef | None = None  # rec-030 CT10: the current contract's (effective) status
     archived_at: datetime | None
     created_at: datetime
     updated_at: datetime
@@ -9520,6 +9528,138 @@ class CandidateSearch(BaseModel):
         if None not in (self.salary_min, self.salary_max) and self.salary_min > self.salary_max:
             raise ValueError("The minimum salary cannot be above the maximum")
         return self
+
+
+# --- rec-030 (DEC-SCOPE-156, spec §3): recruiter contracts / MoU -----------------------------------------------------------------------
+REC_CONTRACT_LABELS = {"agreement_type": "Agreement type", "payment_terms": "Payment terms", "replacement_policy": "Replacement policy"}
+RecContractStatusIn = Literal[RECRUITER_CONTRACT_STATUSES]  # CT2: `expired` is derived, never accepted
+RecContractStatus = Literal[(*RECRUITER_CONTRACT_STATUSES, "expired")]
+RecContractFeeBasis = Literal[RECRUITER_CONTRACT_FEE_BASES]
+REC_CONTRACT_FEE_FORMAT = "Enter the fee as a number with up to 2 decimals"
+REC_CONTRACT_FEE_MAX = Decimal("9999999999.99")  # Numeric(12, 2)
+
+
+def _contract_fee(value):
+    """CT4: a non-negative amount (or percentage; its 0-100 cap needs the basis, so the service checks it) with up to 2 decimals."""
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return None
+    try:
+        amount = Decimal(str(value).strip())
+    except (InvalidOperation, ValueError):
+        raise PydanticCustomError("contract_fee", REC_CONTRACT_FEE_FORMAT) from None
+    exponent = amount.as_tuple().exponent
+    if not amount.is_finite() or (isinstance(exponent, int) and exponent < -2):
+        raise PydanticCustomError("contract_fee", REC_CONTRACT_FEE_FORMAT)
+    if amount < 0:
+        raise PydanticCustomError("contract_fee", "The fee can't be negative")
+    if amount > REC_CONTRACT_FEE_MAX:
+        raise PydanticCustomError("contract_fee", "The fee is too large")
+    return amount
+
+
+RecContractAgreementType = Annotated[Annotated[str, _trimmed(100)] | None, AfterValidator(_trip_text(_BDM_CONTROL, False, REC_CONTRACT_LABELS))]
+RecContractTerms = Annotated[
+    Annotated[Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, REC_CONTRACT_LABELS))],
+    BeforeValidator(_bdm_newlines),
+]
+RecContractStartDate = Annotated[date | None, BeforeValidator(_mou_date("start date"))]
+RecContractEndDate = Annotated[date | None, BeforeValidator(_mou_date("end date"))]
+RecContractFee = Annotated[Decimal | None, BeforeValidator(_contract_fee)]
+
+
+class RecContractCreate(BaseModel):
+    """A first contract or a renewal (CT7). Company, owner, current flag and documents are server-owned (`extra="forbid"`); the status,
+    date and fee rules run in the service on the merged state."""
+
+    model_config = ConfigDict(extra="forbid")
+    status: RecContractStatusIn = "discussion"
+    agreement_type: RecContractAgreementType = None
+    start_date: RecContractStartDate = None
+    end_date: RecContractEndDate = None
+    fee_basis: RecContractFeeBasis | None = None
+    fee_value: RecContractFee = None
+    payment_terms: RecContractTerms = None
+    replacement_policy: RecContractTerms = None
+
+
+class RecContractUpdate(RecContractCreate):
+    """Partial: an omitted field is unchanged, `null` clears it. A status change carries `from_status` -- the (effective) status the
+    form was showing; a different one is 409 `contract_status_changed`."""
+
+    status: RecContractStatusIn | None = None
+    from_status: RecContractStatus | None = None
+    expected_updated_at: datetime | None = None  # the version the form showed; a newer stored one is 409 `contract_changed`
+
+    @model_validator(mode="after")
+    def _status_with_from_status(self):
+        if "status" in self.model_fields_set and self.status is None:
+            raise PydanticCustomError("contract_status", "Choose a status")
+        if self.status is not None and self.from_status is None:
+            raise PydanticCustomError("contract_from_status", "Send the status the form was showing")
+        return self
+
+
+class RecContractDocumentOut(BaseModel):
+    name: str | None
+    content_type: str
+    uploaded_at: datetime
+
+
+class RecContractPermissions(BaseModel):
+    can_edit: bool
+    can_upload: bool
+    can_renew: bool
+
+
+class RecContractOut(BaseModel):
+    id: UUID
+    status: RecContractStatus
+    status_label: str
+    status_changed_at: datetime
+    agreement_type: str | None
+    start_date: date | None
+    end_date: date | None
+    expired_on: date | None
+    fee_basis: RecContractFeeBasis | None
+    fee_value: Decimal | None
+    payment_terms: str | None
+    replacement_policy: str | None
+    contract_document: RecContractDocumentOut | None
+    mou_document: RecContractDocumentOut | None
+    is_current: bool
+    created_by: RecPersonRef
+    permissions: RecContractPermissions
+    created_at: datetime
+    updated_at: datetime
+
+
+class RecContractEnvelope(BaseModel):
+    contract: RecContractOut
+
+
+class RecCompanyContracts(BaseModel):
+    current: RecContractOut | None
+    previous: list[RecContractOut]
+    can_start: bool
+
+
+class RecContractEventOut(BaseModel):
+    id: UUID
+    kind: str
+    from_status: RecContractStatus | None
+    from_label: str | None
+    to_status: RecContractStatus
+    to_label: str
+    changed: list[str]
+    actor: RecPersonRef
+    created_at: datetime
+
+
+class RecContractEventPage(BaseModel):
+    items: list[RecContractEventOut]
+    total: int
+    limit: int
+    offset: int
 
 
 # upc-018 (DEC-SCOPE-153, spec §4): the §17 funnel / §18 performance. Counts only -- the explicit fields keep any student identifier

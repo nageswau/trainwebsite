@@ -1856,3 +1856,31 @@ declined; pending → offer_pending; anything else → offer_received.
 
 **Design notes:** `services/offers.py` is the only writer (the legacy routes included). `downgrade()` refuses while history exists; it
 keeps the mapped statuses (the legacy column was free text).
+
+## Recruiter contracts (`rec-030`, `DEC-SCOPE-156`; migration `0139_recruiter_contracts`, after `0138_offer_management`)
+
+**`recruiter_contracts`** has these columns:
+- `company_id` (FK `companies`, RESTRICT), `created_by_user_id`;
+- `status` (`discussion` / `proposal_sent` / `negotiation` / `contract_sent` / `signed` / `active`; Expired is derived from `end_date`, never stored), `status_changed_at`;
+- `agreement_type`, `start_date`, `end_date`;
+- `fee_basis` (`fixed` / `percent_of_ctc`), `fee_value` Numeric(12,2);
+- `payment_terms`, `replacement_policy`;
+- `contract_document_{key, content_type, name, uploaded_at}` and `mou_document_{…}`;
+- `is_current`, plus timestamps.
+
+The CHECKs are `RECRUITER_CONTRACT_CHECKS`:
+- the status is one of the six;
+- end ≥ start;
+- the fee basis and value are set together;
+- the fee is ≥ 0, and ≤ 100 for a percentage;
+- Signed or Active needs a contract document;
+- Active needs both dates;
+- each document has its key and content type together.
+
+`uq_recruiter_contracts_current` allows one current contract per company; a renewal is a new row.
+
+**`recruiter_contract_events`** is append-only, one row per write. Its `kind` is created, status, updated, document or renewed. It stores
+the effective from/to status, `changed` (field names only), the replaced document's key (never returned) and an identity `position`.
+
+Additive: no existing row is read or written. `downgrade()` refuses while any contract exists.
+

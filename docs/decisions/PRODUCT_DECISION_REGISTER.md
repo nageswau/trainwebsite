@@ -6278,3 +6278,44 @@ Spec: `docs/superpowers/specs/2026-10-09-rec-022-offer-management-design.md`.
 - Changed: the legacy offer routes delegate to the service; the ADM-007 offers screen and the student placement-status panel show the
   status labels; legacy audit metadata no longer carries the salary.
 - **New Feature ID authorized:** `rec-022`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-022.
+
+### DEC-SCOPE-156 — Recruiter contracts / MoU (`rec-030`)
+
+**Evidence:**
+- `EVID-018` §22 (lines 888–916: 9 fields; Discussion → Proposal Sent → Negotiation → Contract Sent → Signed → Active → Expired);
+- `EVID-018` §3 (Existing Agreement, MoU/Contract Status, Payment/Commercial Terms);
+- `DEC-SCOPE-116` R9 (contracts follow the BDM MoU pattern; revenue is tracked only) and R10 (the assigned BDM reads);
+- `DEC-SCOPE-121` D4 (MoU and terms → rec-030) and D6 (the manager has no edit);
+- `RECRUITER_CRM_BACKLOG.md` §rec-030 AC1–AC3.
+
+**Status:**
+- CT1–CT10 are the recommended answers, applied under the owner's standing instruction for the build session ("proceed with the
+  recommended answers; ask only if genuinely blocking"). Every row is **UNVERIFIED** (`NEEDS_CONFIRMATION` at sign-off).
+- Numbers: migration `0139_recruiter_contracts` (after rec-022's `0138_offer_management`), API contract §12BX, RBAC §2.82. It was drafted
+  as 0137 / 153 / §12BU / §2.79; upc-018 (153), rec-014 (0137 / 154) and rec-022 (0138 / 155) merged first.
+- Spec: `docs/superpowers/specs/2026-10-09-rec-030-recruiter-contracts-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| CT1 | Status order / skips (AC1) | Six stored statuses, drawn in source order. Any one can be chosen (skipping ahead, or correcting backwards); every change is in the history (the bdm-005 rule) |
+| CT2 | Expired (AC2) | Derived, never stored: Signed / Active with `end_date` before today (IST). The status is then locked (`409 contract_expired`, "start a renewal"), but the dates can be corrected |
+| CT3 | "Signed requires a document" (AC3) | Signed and Active need the **contract document** on file (`422` on `status`). Active also needs both dates. The MoU file is optional |
+| CT4 | Fee | `fee_basis` is `fixed` (INR per hire) or `percent_of_ctc` (0–100), with `fee_value` Numeric(12,2) ≥ 0, both set together. INR only. GST and per-requirement overrides are left to rec-031 (Q-24) |
+| CT5 | Agreement type | Free text ≤ 100. The source gives no list, so none is invented |
+| CT6 | Payment terms, replacement policy | Free multi-line text ≤ 2000 each |
+| CT7 | One current contract; renewal | At most one current row per company (partial unique index). A renewal is a new row, offered once the current one reads Signed, Active or Expired; the old row is kept under "Previous contracts" |
+| CT8 | Overlap (edge case) | The window may not overlap another contract of the company that has a start date (a missing end is open-ended): `409 contract_overlap`, checked under the company lock |
+| CT9 | Roles | Read is the company's scope (recruiter: own; manager: team + unassigned; super_admin: all; assigned BDM: read-only). Write is the company's `can_edit` (assigned recruiter or super_admin; archived `409`). Every other role is `403`: commercial terms are staff-only |
+| CT10 | The company shows the status | The company detail gains `contract: {status, status_label}` and a "Contract status" row in Details. The list is unchanged |
+
+**Consequences:**
+- Migration `0139_recruiter_contracts` adds `recruiter_contracts` and `recruiter_contract_events`.
+- New code: `services/recruiter_contracts.py`, `api/recruiter_contracts.py`, and the `Rec*Contract*` schemas.
+- Changed: `recruiter_companies.company_out` gains `contract`.
+- Web: the company page gains the "Contract / MoU" section (`RecruiterCompanyContract`, `RecruiterContractForm`,
+  `RecruiterContractDocument`, `RecruiterContractHistory`, `lib/recruiterContracts.ts`).
+- Out of scope:
+  - revenue, invoices and per-requirement fees (rec-031);
+  - a cross-company contract list and expiry reminders (not in the backlog item).
+- **New Feature ID authorized:** `rec-030`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-030.
+

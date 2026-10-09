@@ -7,6 +7,7 @@ import { DetailList, multiline } from "@/components/BdmOrganizationProfileDetail
 import LocalTime from "@/components/LocalTime";
 import RecruiterCalls from "@/components/RecruiterCalls";
 import RecruiterCompanyContacts from "@/components/RecruiterCompanyContacts";
+import RecruiterCompanyContract from "@/components/RecruiterCompanyContract";
 import RecruiterCompanyFollowUps from "@/components/RecruiterCompanyFollowUps";
 import RecruiterCompanyForm from "@/components/RecruiterCompanyForm";
 import RecruiterCompanyMeetings from "@/components/RecruiterCompanyMeetings";
@@ -25,7 +26,8 @@ import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // rec-003 (spec §6): one company. Actions render from `permissions` only -- the server enforces every rule. Every write re-renders from
 // the company the API returns (no refetch). Contacts are rec-004's section; rec-005 adds the pipeline and its history (reloaded after
-// each pipeline write); rec-024 the follow-ups (a change re-reads the company's Next follow-up); rec-028 the meetings; contracts arrive with rec-030.
+// each pipeline write); rec-024 the follow-ups (a change re-reads the company's Next follow-up); rec-028 the meetings; rec-030 the contract
+// (a write re-reads the company's Contract status).
 function linkOrText(url: string | null) {
   const safe = safeLink(url);
   return safe ? (
@@ -146,6 +148,14 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
     if (outcome.ok && isCompanyBody(outcome.data)) stageChanged(outcome.data.company);
   }
 
+  // rec-030: a contract write moves the company's Contract status -- announce it, then re-read the company (best effort, as above).
+  async function contractChanged(text: string) {
+    setNotice(text);
+    setFailure(null);
+    const outcome = await sendRequest(`${COMPANIES_URL}/${company.id}`, { method: "GET" });
+    if (outcome.ok && isCompanyBody(outcome.data)) setCompany(outcome.data.company);
+  }
+
   async function act(path: "archive" | "restore") {
     setBusy(true);
     setFailure(null);
@@ -174,6 +184,7 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
     ["Campaign", display(company.campaign?.name)],
     ["Priority", company.priority ? PRIORITY_LABEL[company.priority] : "—"],
     ["Next follow-up", company.next_follow_up_at ? formatSchoolDateTime(company.next_follow_up_at, true) : "None scheduled"], // rec-024 FU9
+    ["Contract status", company.contract ? company.contract.status_label : "No contract yet"], // rec-030 CT10
     ["Recruiter (account manager)", personName(company.assigned_recruiter)],
     ["Assigned BDM", personName(company.assigned_bdm, "—")],
     ["Registered by", company.owner_type === "employer_self_service" ? "The employer (self-registration)" : company.created_by ? <>{company.created_by.full_name} on <LocalTime value={company.created_at} /></> : "—"],
@@ -254,6 +265,7 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
         }} />
       <RecruiterCompanyFollowUps key={`follow-ups-${company.id}-${company.archived}-${callFollowUps}-${meetingChanges}`} companyId={company.id} canWrite={p.can_edit} onChanged={() => void followUpChanged()} />
       <RecruiterCompanyMeetings key={`meetings-${company.id}-${company.archived}`} companyId={company.id} canWrite={p.can_edit} onChanged={() => void meetingChanged()} />
+      <RecruiterCompanyContract key={`contract-${company.id}-${company.archived}`} companyId={company.id} onChanged={(text) => void contractChanged(text)} />
       <RecruiterMessages key={`messages-${company.id}-${company.archived}`} source={{ kind: "company", companyId: company.id }} canWrite={p.can_edit}
         onChanged={() => setMessageChanges((n) => n + 1)} />
       <RecruiterCompanyPipeline
