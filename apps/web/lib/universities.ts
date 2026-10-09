@@ -136,6 +136,7 @@ export type UniversityContact = {
   id: string; university_id: string; name: string; designation: string | null; department: string | null; role: ContactRole | null;
   email: string | null; phone: string | null; whatsapp: string | null; linkedin: string | null; preferred_channel: string | null;
   relationship_strength: string | null; notes: string | null; is_primary: boolean; shareable: boolean; created_at: string; updated_at: string;
+  whatsapp_to?: string | null; last_interaction_at?: string | null; // upc-012 UC6 / UC10
 };
 export const MAX_CONTACTS = 50;
 export const CONTACT_ROLES_URL = "/api/v1/partnership/contact-roles";

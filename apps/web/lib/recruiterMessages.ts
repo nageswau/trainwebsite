@@ -6,6 +6,8 @@ import type { ComposerTarget, DeliveryStatus } from "@/lib/telecallerMessages";
 
 export type Channel = "whatsapp" | "email";
 export type RecTemplate = { id: string; channel: Channel; kind: string; name: string; subject: string | null; body: string; active: boolean };
+/** A template of either library; upc-012's have no kind. */
+export type MessageTemplate = Omit<RecTemplate, "kind"> & { kind?: string };
 export type RecMessage = {
   id: string; kind: "contact" | "candidate"; company_id: string | null; contact: { id: string; name: string } | null;
   candidate: { id: string; name: string; code: string } | null; channel: Channel; template: { id: string; name: string } | null;
@@ -34,8 +36,9 @@ export const BODY_LIMIT: Record<Channel, number> = { whatsapp: 1000, email: 5000
 export const PLACEHOLDERS = ["name", "company", "recruiter"];
 export const PLACEHOLDER_HINT = "Placeholders: {name} (the recipient), {company} (the contact's company; empty for a candidate), {recruiter} (you).";
 
-/** The placeholders the API would refuse (MS2): any `{...}` that is not one of the three, spelled exactly. */
-export const unknownPlaceholders = (text: string) => [...new Set([...text.matchAll(/\{([^{}\n]*)\}/g)].map((m) => m[1]).filter((t) => !PLACEHOLDERS.includes(t)))].map((t) => `{${t}}`);
+/** The placeholders the API would refuse (MS2): any `{...}` that is not one of the library's, spelled exactly. */
+export const unknownPlaceholders = (text: string, allowed: readonly string[] = PLACEHOLDERS) =>
+  [...new Set([...text.matchAll(/\{([^{}\n]*)\}/g)].map((m) => m[1]).filter((t) => !allowed.includes(t)))].map((t) => `{${t}}`);
 
 export const TEMPLATES_URL = "/api/v1/recruiter/templates";
 export const MESSAGES_URL = "/api/v1/recruiter/messages";
@@ -43,15 +46,28 @@ export const LIST_LIMIT = 50;
 export const companyMessagesUrl = (companyId: string) => `/api/v1/recruiter/companies/${encodeURIComponent(companyId)}/messages?limit=${LIST_LIMIT}`;
 export const candidateMessagesUrl = (candidateId: string) => `/api/v1/recruiter/candidates/${encodeURIComponent(candidateId)}/messages?limit=${LIST_LIMIT}`;
 
-/** A composer's picker: every active template of the channel, page after page. */
-export async function activeTemplates(channel: Channel, signal?: AbortSignal): Promise<RecTemplate[]> {
-  const items: RecTemplate[] = [];
+/** A composer's picker: every active template of the channel at `url`, page after page (upc-012 reuses it for its own library). */
+export const templatesFrom = (url: string) => async (channel: Channel, signal?: AbortSignal): Promise<MessageTemplate[]> => {
+  const items: MessageTemplate[] = [];
   for (;;) {
-    const page = await getPage<RecTemplate>(`${TEMPLATES_URL}?channel=${channel}&active=true&limit=${CATALOGUE_PAGE_SIZE}&offset=${items.length}`, signal);
+    const page = await getPage<MessageTemplate>(`${url}?channel=${channel}&active=true&limit=${CATALOGUE_PAGE_SIZE}&offset=${items.length}`, signal);
     items.push(...page.items);
     if (page.items.length === 0 || items.length >= page.total) return items;
   }
-}
+};
+export const activeTemplates = templatesFrom(TEMPLATES_URL);
+
+/** upc-012: what the templates panel needs to know about a library -- the recruiter's (rec-026) or the partnership head's. `kinds` is null
+ *  when the library has none. */
+export type TemplateLibrary = {
+  url: string; kinds: Record<Channel, { key: string; label: string }[]> | null; placeholders: readonly string[]; placeholderHint: string;
+  sampleNote: string; deactivateHint: string;
+};
+export const RECRUITER_LIBRARY: TemplateLibrary = {
+  url: TEMPLATES_URL, kinds: KINDS, placeholders: PLACEHOLDERS, placeholderHint: PLACEHOLDER_HINT,
+  sampleNote: "Sample values: Priya Sharma at Acme Technologies, and your name as the recruiter.",
+  deactivateHint: "It disappears from the recruiters' pickers; messages already sent keep its name.",
+};
 
 /** The composers' endpoints for one party: the party id rides on the render query and the send body. */
 export function recruiterTarget(party: Party): ComposerTarget {

@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import BdmStageHistory from "@/components/BdmStageHistory";
+import UniversityCalls from "@/components/UniversityCalls";
+import UniversityMessages from "@/components/UniversityMessages";
 import UniversityStagePanel from "@/components/UniversityStagePanel";
 import { serverApi } from "@/lib/api";
 import UniversityPage from "@/app/partnership/universities/[id]/page";
@@ -49,5 +51,31 @@ describe("upc-007 university detail page", () => {
     });
     const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
     expect(tree.find((el) => el.type === BdmStageHistory)!.props.initial).toBeNull();
+  });
+});
+
+describe("upc-012 university detail page", () => {
+  const contact = { id: "K1", name: "Priya Raman", phone: null, whatsapp: "+91 98450 00000", email: "p@abc.ac.uk", whatsapp_to: "919845000000" };
+  const serve = (role: string, canEditContacts: boolean) => vi.mocked(serverApi).mockImplementation(async (p: string) => {
+    if (p === "/api/v1/auth/me") return { role, full_name: "Rahul" } as never;
+    if (p.includes("/stage-history")) return history as never;
+    if (p.includes("/contacts")) return { items: [contact], total: 1, limit: 50, offset: 0 } as never;
+    if (p.includes("/partnership/visits")) return { items: [], total: 0, limit: 5, offset: 0 } as never;
+    return { university: { ...university, permissions: { ...university.permissions, can_edit_contacts: canEditContacts } } } as never;
+  });
+
+  it("shows Calls and Messages to the partnership roles, with the contacts as recipients and the write right (UC3)", async () => {
+    serve("partnership_manager", true);
+    const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
+    const calls = tree.find((el) => el.type === UniversityCalls)!.props;
+    expect(calls).toMatchObject({ universityId: ID, canWrite: true, contacts: [{ id: "K1", name: "Priya Raman", phone: "+91 98450 00000" }] });
+    expect(tree.find((el) => el.type === UniversityMessages)!.props).toMatchObject({ universityId: ID, canWrite: true, contacts: [contact] });
+  });
+
+  it("hides them from overseas_admin, who reads the master only", async () => {
+    serve("overseas_admin", false);
+    const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
+    expect(tree.find((el) => el.type === UniversityCalls)).toBeUndefined();
+    expect(tree.find((el) => el.type === UniversityMessages)).toBeUndefined();
   });
 });

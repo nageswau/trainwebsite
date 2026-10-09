@@ -6,11 +6,14 @@ import BdmStageHistory from "@/components/BdmStageHistory";
 import PortalShell from "@/components/PortalShell";
 import UniversityActions from "@/components/UniversityActions";
 import UniversityAssignForm from "@/components/UniversityAssignForm";
+import UniversityCalls from "@/components/UniversityCalls";
 import UniversityContacts from "@/components/UniversityContacts";
+import UniversityMessages from "@/components/UniversityMessages";
 import UniversityStagePanel from "@/components/UniversityStagePanel";
 import VisitTable from "@/components/VisitTable";
 import { serverApi } from "@/lib/api";
 import type { Page } from "@/lib/apiErrors";
+import { COMMS_READERS } from "@/lib/partnershipComms";
 import type { StageEvent } from "@/lib/bdmPipeline";
 import type { User } from "@/lib/types";
 import {
@@ -102,6 +105,14 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
           {/* remounted after each stage change (the page refreshes), so it starts from the new first page */}
           <BdmStageHistory key={`${u.pipeline.changed_at}|${u.pipeline.lost?.at ?? ""}`} orgId={u.id} initial={history} version={0} url={universityUrl(u.id, "stage-history")} />
           <UniversityContacts universityId={u.id} contacts={contacts.items} roles={roles} canEdit={u.permissions.can_edit_contacts} />
+          {/* upc-012 (UC3): calls and messages, for the partnership roles only; the contacts are the recipients */}
+          {COMMS_READERS.has(user.role) && (
+            <>
+              <UniversityCalls universityId={u.id} canWrite={u.permissions.can_edit_contacts}
+                contacts={contacts.items.map((c) => ({ id: c.id, name: c.name, phone: c.phone ?? c.whatsapp }))} />
+              <UniversityMessages universityId={u.id} contacts={contacts.items} canWrite={u.permissions.can_edit_contacts} />
+            </>
+          )}
           {visits && (
             <section className="action-card wide" aria-labelledby="uni-visits">
               <h3 id="uni-visits">Visits</h3>
