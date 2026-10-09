@@ -1142,6 +1142,89 @@ class UniversityVisitEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+# upc-012 (DEC-SCOPE-140, spec §2): calls, WhatsApp and email stored against the university (§12, U10). Migration 0125 repeats these
+# checks (test_upc_012_migration keeps them identical). Call outcomes, directions and the duration bound are rec-025's (UC1).
+PARTNERSHIP_TEMPLATE_CHECKS = {
+    "ck_partnership_message_templates_channel": "channel IN ('whatsapp', 'email')",
+    "ck_partnership_message_templates_subject": "(channel = 'email') = (subject IS NOT NULL)",
+}
+UNIVERSITY_CALL_CHECKS = {
+    "ck_university_calls_outcome": f"outcome IN ({', '.join(repr(o) for o in RECRUITER_CALL_OUTCOMES)})",
+    "ck_university_calls_direction": f"direction IN ({', '.join(repr(d) for d in RECRUITER_CALL_DIRECTIONS)})",
+    "ck_university_calls_duration": f"duration_seconds IS NULL OR duration_seconds BETWEEN 0 AND {RECRUITER_CALL_MAX_SECONDS}",
+}
+UNIVERSITY_MESSAGE_CHECKS = {
+    "ck_university_messages_channel": "channel IN ('whatsapp', 'email')",
+    "ck_university_messages_email": "(channel = 'email') = (delivery_status IS NOT NULL) AND (channel = 'email') = (subject IS NOT NULL)",
+    "ck_university_messages_status": "delivery_status IS NULL OR delivery_status IN ('queued', 'sending', 'retrying', 'sent', 'failed')",
+}
+
+
+class PartnershipMessageTemplate(Base, TimestampMixin):
+    """upc-012 (UC4): a WhatsApp or email template of the partnership head's global library -- no kind (the source names none). Only
+    email has a subject; placeholders are checked on save; a name is unique per channel (case-insensitive). Never deleted."""
+
+    __tablename__ = "partnership_message_templates"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in PARTNERSHIP_TEMPLATE_CHECKS.items()),
+        Index("uq_partnership_message_templates_channel_name", "channel", text("lower(name)"), unique=True),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    channel: Mapped[str] = mapped_column(String(20))
+    name: Mapped[str] = mapped_column(String(160))
+    subject: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    body: Mapped[str] = mapped_column(Text)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+
+
+class UniversityCall(Base, TimestampMixin):
+    """upc-012 (UC1): a call with one university contact, kept on the university. Deleting the contact (upc-006 CT7, PII) nulls
+    `contact_id` and keeps the call (UC2). Permanent: no edit or delete. `next_follow_up_on` is picked up by upc-020."""
+
+    __tablename__ = "university_calls"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_CALL_CHECKS.items()),
+        Index("ix_university_calls_university_occurred", "university_id", "occurred_at"),
+        Index("ix_university_calls_contact_occurred", "contact_id", "occurred_at"),
+        Index("ix_university_calls_caller_occurred", "caller_user_id", "occurred_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"))
+    contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("university_contacts.id", ondelete="SET NULL"), nullable=True)
+    caller_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    duration_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    direction: Mapped[str] = mapped_column(String(16))
+    outcome: Mapped[str] = mapped_column(String(32))
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    next_follow_up_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+
+class UniversityMessage(Base, TimestampMixin):
+    """upc-012 (UC6-UC9): a WhatsApp (the row is the manager's confirmation) or an email (queued for the worker; `attempt_count` counts
+    SMTP attempts) to one university contact, kept on the university (UC2). Permanent. `template_name` is the name when sent."""
+
+    __tablename__ = "university_messages"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_MESSAGE_CHECKS.items()),
+        Index("ix_university_messages_university_sent", "university_id", "sent_at"),
+        Index("ix_university_messages_contact_sent", "contact_id", "sent_at"),
+        Index("ix_university_messages_sender_sent", "sender_user_id", "sent_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"))
+    contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("university_contacts.id", ondelete="SET NULL"), nullable=True)
+    sender_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    channel: Mapped[str] = mapped_column(String(16))
+    template_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("partnership_message_templates.id", ondelete="RESTRICT"), nullable=True)
+    template_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    subject: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    body: Mapped[str] = mapped_column(Text)
+    delivery_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    attempt_count: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class OverseasCourse(Base, TimestampMixin):
     __tablename__ = "overseas_courses"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -4330,3 +4413,59 @@ class RecruiterMessage(Base, TimestampMixin):
     delivery_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
     attempt_count: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
     sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+# upc-026 (DEC-SCOPE-139, spec §2): the §28 document centre. The 12 kinds in source order (DC1); the commission agreement is never
+# shareable (DC2). Migration 0123 repeats the checks; test_upc_026_migration keeps them identical.
+UNIVERSITY_DOCUMENT_KINDS = (
+    "mou", "partnership_agreement", "commission_agreement", "brochure", "course_list", "fee_structure", "entry_requirements",
+    "scholarship_information", "marketing_materials", "application_guidelines", "contact_documents", "training_documents",
+)  # fmt: skip
+UNIVERSITY_DOCUMENT_CHECKS = {
+    "ck_university_documents_kind": _one_of("kind", UNIVERSITY_DOCUMENT_KINDS, nullable=False),
+    "ck_university_documents_commission_internal": "kind <> 'commission_agreement' OR NOT shareable",
+    "ck_university_documents_current_version": "current_version >= 1",
+}
+UNIVERSITY_DOCUMENT_VERSION_CHECKS = {
+    "ck_university_document_versions_version": "version >= 1",
+    "ck_university_document_versions_size": "size_bytes > 0",
+}
+
+
+class UniversityDocument(Base, TimestampMixin):
+    """upc-026 (§28): one document of a university -- kind, title and who may see it. Its files are append-only versions (DC6); the title
+    is unique per university and kind (DC11). `updated_at` moves on every new version, for the menu list's order."""
+
+    __tablename__ = "university_documents"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_DOCUMENT_CHECKS.items()),
+        Index("uq_university_documents_title", "university_id", "kind", text("lower(title)"), unique=True),
+        Index("ix_university_documents_updated", "updated_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"))
+    kind: Mapped[str] = mapped_column(String(30))
+    title: Mapped[str] = mapped_column(String(200))
+    shareable: Mapped[bool] = mapped_column(Boolean)
+    current_version: Mapped[int] = mapped_column(Integer, default=1)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+class UniversityDocumentVersion(Base):
+    """upc-026 DC6: one stored file of a document, never changed or deleted. The key is server-generated (DC14)."""
+
+    __tablename__ = "university_document_versions"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_DOCUMENT_VERSION_CHECKS.items()),
+        UniqueConstraint("document_id", "version", name="uq_university_document_versions_version"),
+        UniqueConstraint("storage_key", name="uq_university_document_versions_key"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    document_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("university_documents.id", ondelete="RESTRICT"))
+    version: Mapped[int] = mapped_column(Integer)
+    storage_key: Mapped[str] = mapped_column(String(300))
+    file_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    content_type: Mapped[str] = mapped_column(String(120))
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

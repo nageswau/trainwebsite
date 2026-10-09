@@ -5671,7 +5671,78 @@ taken on the owner's instruction to proceed with the recommended answers. The ne
   already in place.
 - **New Feature ID authorized:** `rec-010`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-010.
 
-### DEC-SCOPE-141 — Find Candidates: skill AND/OR search, synonyms, filters, facets, result cards (`rec-013`)
+### DEC-SCOPE-139 — University document centre (`upc-026`)
+
+**Evidence:** `EVID-020` §28 (L908–L936: 12 document kinds; "Everything related to that university should be in one place"), §13 L489
+(the agreement document lives here), §32 L1092 ("Documents"), L1129 ("Commissions should not be seen by anyone");
+`UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U2 and U14 (`EXPLICIT_APPROVAL`, 2026-10-08) and §4 upc-026.
+**Status:** DC1–DC15 are the recommended answers to backlog Q-26 plus design-level rules, applied under the owner's standing instruction
+for the build session ("proceed with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed:
+`NEEDS_CONFIRMATION` at sign-off. Migration `0124_university_documents`, API contract §12BG, RBAC §2.65.
+Spec: `docs/superpowers/specs/2026-10-09-upc-026-university-documents-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| DC1 | Kinds | The 12 of §28, in source order |
+| DC2 | Commission agreement | Stripped server-side for every role without commission access (lists, menu list, downloads); never shareable (422 + CHECK) |
+| DC3 | Q-26 shareable default | Shareable: brochure, course list, fee structure, entry requirements, scholarship information, marketing materials, application guidelines, training documents. Internal: MoU, partnership agreement, contact documents; commission agreement always. The uploader may override |
+| DC4 | Q-26 file types | By the bytes: PDF, DOCX, XLSX, PPTX, JPEG, PNG (image metadata stripped); anything else, executables included → `422` |
+| DC5 | Q-26 size | The platform cap (`max_upload_bytes`, 20 MB) → `413`; empty → `422` |
+| DC6 | Versions | A document has append-only versions; a new upload is current, older ones stay downloadable. ≤ 50 versions, ≤ 200 documents per university |
+| DC7 | Who reads | Partnership roles + super_admin: everything (DC2 by role); overseas_admin: shareable only; counselors via upc-030 |
+| DC8 | Who writes | `can_manage_documents` = the contacts rule (partnership roles + super_admin in the master's edit scope; active university) |
+| DC9 | Delete | Not in this item; a wrong file is superseded by a new version |
+| DC10 | "Signed download" | An authenticated, scoped, audited API download (`no-store`, `nosniff`, sandbox CSP, attachment named from code/kind/version); no public URL |
+| DC11 | Title | 2–200 characters, unique per university + kind (case-insensitive) → `409` |
+| DC12 | Menu page | `/partnership/documents`: the reader's slice across universities, kind + text filters, newest change first, paged |
+| DC13 | Audit | `university_document.upload/version/update/download`, ids, kind, version and field names only |
+| DC14 | Storage | Server-generated keys under `university-documents/`; stored before the lock, discarded when the write does not commit |
+| DC15 | Rate limit | None beyond the size cap (internal staff, scoped writes); recorded for upc-033 |
+
+**Consequences:** tables `university_documents` and `university_document_versions`; routes `/partnership/universities/{id}/documents…`
+and `/partnership/documents`; `permissions.can_manage_documents` on the university; a Documents section on
+`/partnership/universities/[id]`; page `/partnership/documents`; the manager menu's Documents goes live and the head nav gains it.
+upc-014 stores agreement documents here; upc-030 gives counselors the shareable slice.
+**New Feature ID authorized:** `upc-026`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-026.
+
+### DEC-SCOPE-140 — University calls, message templates, WhatsApp and email (`upc-012`)
+
+**Evidence:**
+- `EVID-020` §12 (lines 437–451): "Every email/call/WhatsApp/meeting should be stored against the university"; the timeline example.
+- `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-012: AC1 (a sent email is visible with its delivery status), AC2 (WhatsApp is logged only
+  on confirm), AC3 (a call updates last interaction); the proposal-email positive, the unknown-placeholder negative (→ 422) and the
+  contact-without-an-email edge. Backlog decision U10 (telecaller pattern; templates maintained by `partnership_head`).
+- `DEC-SCOPE-123` (upc-006): contacts, their full view (CONTACT_ROLES) and the PII delete (CT7). `DEC-SCOPE-133` / `DEC-SCOPE-135`
+  (rec-025 / rec-026): the engine copied here.
+
+**Status:** built on `feature/upc-012`. Every answer below is a **recommended default, `UNVERIFIED`**, taken on the owner's instruction
+to proceed with the recommended answers.
+
+**Numbering:** migration `0125_university_comms` (after upc-026's `0124_university_documents`; drafted as `0123` / DEC-SCOPE-138, then `0124` / DEC-SCOPE-139, before rec-010 and upc-026 merged), API §12BH and RBAC §2.66. Spec
+`docs/superpowers/specs/2026-10-09-upc-012-university-comms-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| UC1 | Calls | One university contact, required; the university is read from the contact. rec-025's outcomes, direction, duration (0–14400 s), notes (≤ 2000) and time rules (≤ 60 s ahead, ≤ 7 days back). Optional `next_follow_up_on` (today … +365 days, IST) for upc-020. Permanent (no edit or delete). 300 calls per caller per IST day |
+| UC2 | Contact delete | `contact_id` is `ON DELETE SET NULL` on calls and messages: upc-006's PII delete still works and the history stays on the university ("a removed contact"); a queued email to a deleted contact fails |
+| UC3 | Who | Read: `partnership_manager` (with a profile), `partnership_head`, `super_admin` (upc-006's full contact view), any university. Write: the university's `can_edit_contacts` (`403`); an inactive university `409`. `overseas_admin` and every other role `403` |
+| UC4 | Templates | One global library; the head and `super_admin` create, edit, deactivate and reactivate (never delete); managers read active ones. Channel, name (unique per channel, case-insensitive → `409`), subject (email only), body (1000 / 5000). **No kind and no seed** — the source names no template kinds |
+| UC5 | Placeholders | `{name}` (the contact), `{university}`, `{manager}` (the sender); any other `{…}` → `422`. A render lists placeholders without a value |
+| UC6 | WhatsApp | wa.me to the contact's WhatsApp, else their phone (E.164 digits, `whatsapp_to`); none → `409`. Logged only on "Yes, record as sent" |
+| UC7 | Email | Queued, published after the commit; the worker sends from "<manager> via EduSphere" with Reply-To the manager; `sent` / `retrying` (5 attempts) / `failed`; a 5-minute beat sweep. The address is the contact's at delivery. No address → `409`; SMTP unset → `503` |
+| UC8 | Caps | Per sender per IST day: 300 WhatsApp (`409`), 100 email (`429`) |
+| UC9 | Permanence, audit | Messages are never edited or deleted. Audit and logs carry ids, channel, outcome and template id — never text, subject, number or address |
+| UC10 | Last interaction | A contact's latest call or message (failed emails excluded), computed on read; meetings (upc-009) join later |
+
+**Consequences:**
+- `partnership_message_templates`, `university_calls`, `university_messages` (`0125`); `services/university_comms.py`,
+  `api/university_comms.py`, `notifications/university_email.py` (+ dispatch, worker task and beat entry).
+- `UniversityContactOut` gains `whatsapp_to` and `last_interaction_at` (additive).
+- Web: Calls and Messages sections on the university page; `/partnership/head/templates` ("Message templates" in the head's sidebar).
+  rec-026's Messages section and templates panel are shared (`MessagesSection`, a `library` prop); recruiter behaviour is unchanged.
+- **New Feature ID authorized:** `upc-012`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-012.
+
+### DEC-SCOPE-142 — Find Candidates: skill AND/OR search, synonyms, filters, facets, result cards (`rec-013`)
 
 **Evidence:**
 - `EVID-018` user question (line 1092: "all Java-skilled people at one place"); S2-§5 exact skill search, §6 required/preferred skills, §7
@@ -5685,8 +5756,8 @@ taken on the owner's instruction to proceed with the recommended answers. The ne
 **Status:** the owner asked to proceed with the recommended answers, so nothing was asked; every row below is **UNVERIFIED** (a recorded
 default) until confirmed.
 
-**Numbering:** `DEC-SCOPE-141`, API §12BI, RBAC §2.67, **no migration**. rec-020 (`0124` / DEC-SCOPE-139 / §12BG / §2.65) and rec-018
-(`0125` / DEC-SCOPE-140) were open in parallel when this was written; §12BH / §2.66 are left for rec-018. Spec:
+**Numbering:** `DEC-SCOPE-142`, API §12BJ, RBAC §2.68, **no migration**. Drafted as 141 / §12BI / §2.67; upc-026 (139 / §12BG /
+§2.65) and upc-012 (140 / §12BH / §2.66) merged first, and rec-020 (unmerged) holds `0126` / 141 / §12BI / §2.67. Spec:
 `docs/superpowers/specs/2026-10-09-rec-013-find-candidates-design.md`.
 
 | # | Point | Default |

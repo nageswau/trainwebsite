@@ -24,5 +24,5 @@ Execution: inline, TDD, one task at a time; lite tests only (the user runs the f
 4. **Web page + component:** `FindCandidatesPage`, `app/recruiter/find-candidates/page.tsx`, `components/RecruiterFindCandidates.tsx`,
    nav entries, `id="contact"` on the detail; component vitest for the chip builder / states.
 5. **e2e:** `apps/web/e2e/rec-013-find-candidates.spec.ts`.
-6. **Docs:** DEC-SCOPE-141 in the register, API §12BI, RBAC §2.67, screen catalog, backlog status line, spec status.
+6. **Docs:** DEC-SCOPE-142 in the register, API §12BJ, RBAC §2.68, screen catalog, backlog status line, spec status.
 7. **Gates:** tsc, eslint, vitest (affected), `next build`, ruff, lite pytest, Playwright spec, browser QA.
