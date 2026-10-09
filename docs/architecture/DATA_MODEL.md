@@ -1613,3 +1613,23 @@ varchar(64) null; `created_at`.
 - `candidates.opted_in` stays the gate that pool reads, EMP-003 and the EMP-004 shortlist follow.
 - `downgrade()` refuses while any row exists, so consent evidence is never dropped silently. Retention follows Q-09
   (`NEEDS_CONFIRMATION`).
+
+## University documents (`upc-026`, `DEC-SCOPE-139`; migration `0124_university_documents`, after `0123_candidate_consents`)
+
+**`university_documents` columns:**
+- `id`, `university_id` → `universities` (FK RESTRICT), `kind` varchar(30) (CHECK: the 12 §28 kinds), `title` varchar(200),
+  `shareable` bool, `current_version` int (CHECK ≥ 1), `created_by_user_id` → `users`, timestamps (`updated_at` moves on every version)
+
+**`university_document_versions` columns:**
+- `id`, `document_id` → `university_documents` (FK RESTRICT), `version` int (CHECK ≥ 1), `storage_key` varchar(300) (server-generated,
+  `university-documents/<uuid>`), `file_name` varchar(255) (display only), `content_type` varchar(120), `size_bytes` int (CHECK > 0),
+  `uploaded_by_user_id` → `users`, `uploaded_at`
+
+**Constraints and indexes:**
+- CHECK `ck_university_documents_commission_internal`: a commission agreement is never shareable (DC2).
+- `uq_university_documents_title` UNIQUE `(university_id, kind, lower(title))` (DC11); `ix_university_documents_updated` (menu order).
+- `uq_university_document_versions_version` UNIQUE `(document_id, version)`; `uq_university_document_versions_key` UNIQUE `(storage_key)`.
+
+**Design notes:**
+- Versions are append-only (never updated or deleted); documents are not deleted in this item (DC9).
+- `downgrade()` refuses while any document exists.

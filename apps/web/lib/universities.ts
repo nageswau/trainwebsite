@@ -6,7 +6,7 @@ import { ROLE_LABEL } from "@/lib/partnership";
 import type { ManagerOption, ManagerRef } from "@/lib/telecaller";
 
 export type UniversityPermissions = {
-  can_edit: boolean; can_assign: boolean; can_publish: boolean; can_deactivate: boolean; can_edit_contacts: boolean; can_move_stage: boolean;
+  can_edit: boolean; can_assign: boolean; can_publish: boolean; can_deactivate: boolean; can_edit_contacts: boolean; can_manage_documents: boolean; can_move_stage: boolean;
   can_reopen: boolean;
 };
 export type UniversityCountry = { id: string; name: string; iso2: string | null; region: string | null; catalogue_visible: boolean };

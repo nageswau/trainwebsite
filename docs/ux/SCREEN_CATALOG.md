@@ -3402,3 +3402,19 @@ Design spec: `docs/superpowers/specs/2026-10-09-rec-010-placement-pool-opt-in-de
   - Success: a polite status message.
 
 The employer's **Search Candidates** and **Shortlist** panels are unchanged; their data now comes from the opted-in pool.
+
+## upc-026 addendum (2026-10-09, `DEC-SCOPE-139`) — University document centre
+
+Design spec `docs/superpowers/specs/2026-10-09-upc-026-university-documents-design.md` §4. Visual-reference mapping: None — not inspected. Do not claim parity.
+
+- **Route:** `/partnership/universities/[id]` gains a **Documents** section — one card per document (title; kind, "Version n" and
+  Shareable/Internal badges; current file name, size, uploader and date; "Earlier versions (n)" disclosure with a download per version;
+  Download). With `can_manage_documents`: **Upload document** (kind select that sets the sharing default, title, file with the accepted
+  types; the commission agreement's sharing box is disabled with "A commission agreement is always internal."), **New version**, **Edit**
+  (title + sharing). Missing kind/title/file and files over 20 MB are caught before sending; API refusals (wrong type, duplicate title) in
+  `role="alert"` with the form kept; success notices in `role="status"`; buttons disabled while sending. **Empty:** "No documents uploaded yet."
+- **Route:** `/partnership/documents` (manager menu "Documents", head nav "Documents") — the reader's documents across universities:
+  table (document, kind, university link + code, version, sharing badge, last upload, Download + size); GET filter form (kind, search);
+  URL paging. **States:** "No documents uploaded yet." / "No documents match these filters." / past-the-end link; 403 → access card.
+- **Responsive:** cards stack; the menu table becomes labelled cards below 640 px (QA-01: mixed cells stay on one line); no side-scroll
+  at 390 px.
