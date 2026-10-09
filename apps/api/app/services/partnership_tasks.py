@@ -1,4 +1,4 @@
-"""upc-020 (DEC-SCOPE-140, spec §3): partnership tasks and follow-ups -- scope, IST bands, the Q-22 auto-tasks, the university's Next /
+"""upc-020 (DEC-SCOPE-141, spec §3): partnership tasks and follow-ups -- scope, IST bands, the Q-22 auto-tasks, the university's Next /
 Last Action and output.
 
 Functions only; nothing here commits -- the route (or the stage / visit route whose event creates a task) owns the transaction. Every

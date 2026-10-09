@@ -631,6 +631,9 @@ Common conventions:
 - **Complexity:** medium · **Risk:** low
 
 ### upc-012 — Calls + message templates + WhatsApp + email
+- **Status (2026-10-09):** built on `feature/upc-012` under `DEC-SCOPE-140`, with migration `0125_university_comms`, API §12BH and
+  RBAC §2.66. Spec: `docs/superpowers/specs/2026-10-09-upc-012-university-comms-design.md`. UC1–UC10 are `UNVERIFIED` defaults: no
+  template kinds or seeds (the source names none); calls are permanent; contact deletes keep the history (`SET NULL`).
 - **Business requirement:** §12 "every email/call/WhatsApp/meeting should be stored against the university" (U10).
 - **Existing behavior:** none for universities.
 - **Expected behavior:**
@@ -901,8 +904,8 @@ Common conventions:
 - **Edge cases:** duplicate auto-task suppression.
 - **Regression risks:** none.
 - **Complexity:** medium · **Risk:** medium
-- **Status (2026-10-09):** built on `feature/upc-020` under `DEC-SCOPE-140`, with migration `0125_partnership_tasks`, API §12BH and RBAC
-  §2.66. Spec: `docs/superpowers/specs/2026-10-09-upc-020-partnership-tasks-design.md`.
+- **Status (2026-10-09):** built on `feature/upc-020` under `DEC-SCOPE-141`, with migration `0126_partnership_tasks`, API §12BI and RBAC
+  §2.67. Spec: `docs/superpowers/specs/2026-10-09-upc-020-partnership-tasks-design.md`.
   - Q-22 is answered by the recommended stage rules (TK4/TK5, `NEEDS_CONFIRMATION`); a completed visit's follow-up date becomes a task
     (upc-010 VS16). Meeting (upc-009) and agreement (upc-014) rules arrive with those items.
   - Next Action = the earliest open follow-up; Last Action = the latest completed task or stage move until upc-013's timeline.

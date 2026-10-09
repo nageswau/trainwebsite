@@ -5705,14 +5705,51 @@ and `/partnership/documents`; `permissions.can_manage_documents` on the universi
 upc-014 stores agreement documents here; upc-030 gives counselors the shareable slice.
 **New Feature ID authorized:** `upc-026`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-026.
 
-### DEC-SCOPE-140 — Partnership tasks + follow-ups, auto-generated (`upc-020`)
+### DEC-SCOPE-140 — University calls, message templates, WhatsApp and email (`upc-012`)
+
+**Evidence:**
+- `EVID-020` §12 (lines 437–451): "Every email/call/WhatsApp/meeting should be stored against the university"; the timeline example.
+- `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-012: AC1 (a sent email is visible with its delivery status), AC2 (WhatsApp is logged only
+  on confirm), AC3 (a call updates last interaction); the proposal-email positive, the unknown-placeholder negative (→ 422) and the
+  contact-without-an-email edge. Backlog decision U10 (telecaller pattern; templates maintained by `partnership_head`).
+- `DEC-SCOPE-123` (upc-006): contacts, their full view (CONTACT_ROLES) and the PII delete (CT7). `DEC-SCOPE-133` / `DEC-SCOPE-135`
+  (rec-025 / rec-026): the engine copied here.
+
+**Status:** built on `feature/upc-012`. Every answer below is a **recommended default, `UNVERIFIED`**, taken on the owner's instruction
+to proceed with the recommended answers.
+
+**Numbering:** migration `0125_university_comms` (after upc-026's `0124_university_documents`; drafted as `0123` / DEC-SCOPE-138, then `0124` / DEC-SCOPE-139, before rec-010 and upc-026 merged), API §12BH and RBAC §2.66. Spec
+`docs/superpowers/specs/2026-10-09-upc-012-university-comms-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| UC1 | Calls | One university contact, required; the university is read from the contact. rec-025's outcomes, direction, duration (0–14400 s), notes (≤ 2000) and time rules (≤ 60 s ahead, ≤ 7 days back). Optional `next_follow_up_on` (today … +365 days, IST) for upc-020. Permanent (no edit or delete). 300 calls per caller per IST day |
+| UC2 | Contact delete | `contact_id` is `ON DELETE SET NULL` on calls and messages: upc-006's PII delete still works and the history stays on the university ("a removed contact"); a queued email to a deleted contact fails |
+| UC3 | Who | Read: `partnership_manager` (with a profile), `partnership_head`, `super_admin` (upc-006's full contact view), any university. Write: the university's `can_edit_contacts` (`403`); an inactive university `409`. `overseas_admin` and every other role `403` |
+| UC4 | Templates | One global library; the head and `super_admin` create, edit, deactivate and reactivate (never delete); managers read active ones. Channel, name (unique per channel, case-insensitive → `409`), subject (email only), body (1000 / 5000). **No kind and no seed** — the source names no template kinds |
+| UC5 | Placeholders | `{name}` (the contact), `{university}`, `{manager}` (the sender); any other `{…}` → `422`. A render lists placeholders without a value |
+| UC6 | WhatsApp | wa.me to the contact's WhatsApp, else their phone (E.164 digits, `whatsapp_to`); none → `409`. Logged only on "Yes, record as sent" |
+| UC7 | Email | Queued, published after the commit; the worker sends from "<manager> via EduSphere" with Reply-To the manager; `sent` / `retrying` (5 attempts) / `failed`; a 5-minute beat sweep. The address is the contact's at delivery. No address → `409`; SMTP unset → `503` |
+| UC8 | Caps | Per sender per IST day: 300 WhatsApp (`409`), 100 email (`429`) |
+| UC9 | Permanence, audit | Messages are never edited or deleted. Audit and logs carry ids, channel, outcome and template id — never text, subject, number or address |
+| UC10 | Last interaction | A contact's latest call or message (failed emails excluded), computed on read; meetings (upc-009) join later |
+
+**Consequences:**
+- `partnership_message_templates`, `university_calls`, `university_messages` (`0125`); `services/university_comms.py`,
+  `api/university_comms.py`, `notifications/university_email.py` (+ dispatch, worker task and beat entry).
+- `UniversityContactOut` gains `whatsapp_to` and `last_interaction_at` (additive).
+- Web: Calls and Messages sections on the university page; `/partnership/head/templates` ("Message templates" in the head's sidebar).
+  rec-026's Messages section and templates panel are shared (`MessagesSection`, a `library` prop); recruiter behaviour is unchanged.
+- **New Feature ID authorized:** `upc-012`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-012.
+
+### DEC-SCOPE-141 — Partnership tasks + follow-ups, auto-generated (`upc-020`)
 
 **Evidence:** `EVID-020` §19 (L639–L671: "The CRM should automatically generate tasks", 12 example tasks, "Task → Employee → Due Date →
 Priority → Status") and §20 (L673–L693: "Next Action + Next Action Date", the XYZ example, Overdue / Due Today / Due Tomorrow /
 Upcoming); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U11, Q-22 and §4 upc-020.
 **Status:** TK1–TK16, including **Q-22** (which event creates which task, with what due offset), are the recommended answers applied under
 the owner's standing instruction for the build session ("proceed with the recommended answers; ask only if genuinely blocking").
-**Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. Migration `0125_partnership_tasks`, API contract §12BH, RBAC §2.66.
+**Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. Migration `0126_partnership_tasks`, API contract §12BI, RBAC §2.67.
 Spec: `docs/superpowers/specs/2026-10-09-upc-020-partnership-tasks-design.md`.
 
 | # | Question | Answer |
@@ -5742,7 +5779,7 @@ Recruitment Started → "Send student applications" (+14, medium). "Arrange univ
 offers" are manual only.
 
 **Consequences:**
-- `partnership_tasks` (`0123`), `app/partnership_task_rules.py`, `services/partnership_tasks.py`, `api/partnership_tasks.py`
+- `partnership_tasks` (`0126`), `app/partnership_task_rules.py`, `services/partnership_tasks.py`, `api/partnership_tasks.py`
   (`/partnership/tasks…`); the stage move (upc-007) and visit completion / follow-up-date edit (upc-010) call it in their transactions.
 - `UniversityDetail` gains `follow_up {next_action, last_action}` for every university reader.
 - Page `/partnership/tasks`; a Follow-ups & tasks section on `/partnership/universities/[id]`; the manager menu's Follow-ups & Tasks goes

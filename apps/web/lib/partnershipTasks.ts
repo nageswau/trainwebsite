@@ -1,7 +1,7 @@
 import { isPage, type Page } from "@/lib/apiErrors";
 import type { ManagerRef } from "@/lib/telecaller";
 
-// upc-020 (DEC-SCOPE-140): partnership follow-ups and tasks (§19/§20) -- types, words and URLs. The API decides every rule (TK8-TK13);
+// upc-020 (DEC-SCOPE-141): partnership follow-ups and tasks (§19/§20) -- types, words and URLs. The API decides every rule (TK8-TK13);
 // `permissions` only tells the UI which actions to offer.
 export const TASKS_URL = "/api/v1/partnership/tasks";
 export const TASKS_PATH = "/partnership/tasks";

@@ -1634,11 +1634,33 @@ varchar(64) null; `created_at`.
 - Versions are append-only (never updated or deleted); documents are not deleted in this item (DC9).
 - `downgrade()` refuses while any document exists.
 
-**Addendum, 2026-10-09 (`upc-020`, `DEC-SCOPE-140` — Partnership tasks + follow-ups):** `partnership_tasks` (FK `universities`
+## University calls, partnership templates and messages (`upc-012`, `DEC-SCOPE-140`; migration `0125_university_comms`, after `0124_university_documents`)
+
+**`partnership_message_templates` columns:** `id`, `channel` varchar(20), `name` varchar(160), `subject` varchar(200) (nullable), `body`
+text, `active` bool, timestamps. CHECKs `ck_partnership_message_templates_channel`, `ck_partnership_message_templates_subject`
+(`(channel = 'email') = (subject IS NOT NULL)`). Unique index `(channel, lower(name))`. No seed.
+
+**`university_calls` columns:** `id`; `university_id` → `universities` (RESTRICT); `contact_id` → `university_contacts` (**SET NULL**,
+nullable); `caller_user_id` → `users`; `occurred_at`; `duration_seconds` (nullable); `direction`; `outcome`; `notes` (nullable);
+`next_follow_up_on` date (nullable); timestamps. CHECKs on outcome (rec-025's six), direction and duration (0–14400). Indexes
+`(university_id, occurred_at)`, `(contact_id, occurred_at)`, `(caller_user_id, occurred_at)`.
+
+**`university_messages` columns:** `id`; `university_id` → `universities`; `contact_id` → `university_contacts` (**SET NULL**, nullable);
+`sender_user_id` → `users`; `channel`; `template_id` → `partnership_message_templates` (nullable) and `template_name`; `subject`, `body`,
+`delivery_status`, `attempt_count`, `sent_at`, timestamps. CHECKs `ck_university_messages_channel`, `ck_university_messages_email` (email
+⇔ subject and delivery status), `ck_university_messages_status`. Indexes `(university_id, sent_at)`, `(contact_id, sent_at)`,
+`(sender_user_id, sent_at)`.
+
+**Design notes:**
+- Calls and messages are permanent; the recipient's number and address are read from the contact, never stored.
+- A contact's `last_interaction_at` is derived: its latest call or message (failed emails excluded).
+- `downgrade()` refuses while any template, call or message exists.
+
+**Addendum, 2026-10-09 (`upc-020`, `DEC-SCOPE-141` — Partnership tasks + follow-ups):** `partnership_tasks` (FK `universities`
 RESTRICT; `kind` CHECK follow_up / task; `title` ≤ 200; `notes` ≤ 2000; `assignee_user_id`, `created_by_user_id` FK `users` RESTRICT;
 `due_on`; `priority` CHECK high / medium / low default medium; `status` CHECK open / done / cancelled; `source` CHECK manual / stage /
 meeting / visit / agreement; `rule` (`stage:<key>` / `visit:<id>`, NULL exactly when manual); `completed_at` / `cancelled_at` set exactly
 in their status; `cancel_reason` only when cancelled; timestamps). Indexes `(assignee_user_id, status, due_on)`, `(university_id,
 status, due_on)` and the partial unique `uq_partnership_tasks_open_rule (university_id, rule) WHERE status = 'open' AND rule IS NOT NULL`
-(one open auto-task per rule, TK7). No backfill. **Migration `0125_partnership_tasks`**; `downgrade()` refuses while any task exists
-(API §12BH).
+(one open auto-task per rule, TK7). No backfill. **Migration `0126_partnership_tasks`**; `downgrade()` refuses while any task exists
+(API §12BI).

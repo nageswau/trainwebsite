@@ -1,4 +1,4 @@
-"""upc-020 (DEC-SCOPE-140, spec TK2-TK5): partnership task values, the §19 title catalogue (EVID-020 L645-L667, source order and wording)
+"""upc-020 (DEC-SCOPE-141, spec TK2-TK5): partnership task values, the §19 title catalogue (EVID-020 L645-L667, source order and wording)
 and the Q-22 auto-task rules (recommended defaults, NEEDS_CONFIRMATION).
 
 Constants only, with no app imports, so the model CHECKs, the migration's parity test, the service and the schemas share one list."""

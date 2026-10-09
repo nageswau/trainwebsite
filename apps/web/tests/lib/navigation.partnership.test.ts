@@ -30,6 +30,7 @@ describe("upc-001 navigation", () => {
       { label: "Partnership Pipeline", href: "/partnership/pipeline" }, { label: "University Visits", href: "/partnership/visits" },
       { label: "Visit approvals", href: "/partnership/visits/approvals" }, { label: "Follow-ups & Tasks", href: "/partnership/tasks" },
       { label: "Documents", href: "/partnership/documents" },
+      { label: "Message templates", href: "/partnership/head/templates" },
     ]);
   });
 

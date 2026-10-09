@@ -161,6 +161,7 @@ export const PARTNERSHIP_HEAD_NAV: NavItem[] = [
   { label: "University Visits", href: "/partnership/visits" }, { label: "Visit approvals", href: "/partnership/visits/approvals" }, // upc-010 (VS4)
   { label: "Follow-ups & Tasks", href: "/partnership/tasks" }, // upc-020
   { label: "Documents", href: "/partnership/documents" }, // upc-026 (DC12)
+  { label: "Message templates", href: "/partnership/head/templates" }, // upc-012 (UC4)
 ];
 
 // SCH-001/SCH-003 -- School roles use their own dedicated pages (bespoke forms/actions,

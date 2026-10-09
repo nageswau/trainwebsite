@@ -1,4 +1,4 @@
-"""upc-020 (DEC-SCOPE-140, spec §3): partnership follow-ups and tasks.
+"""upc-020 (DEC-SCOPE-141, spec §3): partnership follow-ups and tasks.
 
 Every partnership reader reads every task (TK8). Every write is one transaction: the task row lock, the actor (the assignee or their
 head: 403 logged), the state (409), validation (422), the change + audit row, one commit here, then the structured log."""

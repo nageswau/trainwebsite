@@ -1,9 +1,9 @@
 """upc-020 -- Partnership tasks + follow-ups.
 
-Revision ID: 0125_partnership_tasks
-Revises: 0124_university_documents
+Revision ID: 0126_partnership_tasks
+Revises: 0125_university_comms
 
-docs/superpowers/specs/2026-10-09-upc-020-partnership-tasks-design.md §2 (DEC-SCOPE-140). Adds `partnership_tasks`. 0001 builds a fresh
+docs/superpowers/specs/2026-10-09-upc-020-partnership-tasks-design.md §2 (DEC-SCOPE-141). Adds `partnership_tasks`. 0001 builds a fresh
 database from the current models, which already carry it, so the step is guarded. CHECKS repeats app.models (test_upc_020_migration).
 No backfill: existing universities have no tasks. downgrade() refuses while any task exists: it would drop follow-ups and their history.
 
@@ -12,7 +12,9 @@ rec-010's `0123_candidate_consents` merged first (main @ `6fc05526`), so this is
 database stamped at `0123_partnership_tasks` is re-stamped with `alembic stamp --purge 0122_candidate_skills`, then `upgrade head`
 (every step here is guarded). Re-chained again: upc-026's `0124_university_documents` merged first (main @ `e91932a3`), so this is
 `0125` (DEC-SCOPE-140, API §12BH, RBAC §2.66); a database stamped at `0124_partnership_tasks` is re-stamped with
-`alembic stamp --purge 0123_candidate_consents`, then `upgrade head`.
+`alembic stamp --purge 0123_candidate_consents`, then `upgrade head`. Re-chained a third time: upc-012's `0125_university_comms` merged
+first (main @ `a0725b6d`), so this is `0126` (DEC-SCOPE-141, API §12BI, RBAC §2.67); a database stamped at `0125_partnership_tasks` is
+re-stamped with `alembic stamp --purge 0124_university_documents`, then `upgrade head`.
 """
 
 import sqlalchemy as sa
@@ -20,8 +22,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0125_partnership_tasks"
-down_revision = "0124_university_documents"
+revision = "0126_partnership_tasks"
+down_revision = "0125_university_comms"
 branch_labels = None
 depends_on = None
 
@@ -76,5 +78,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text("SELECT 1 FROM partnership_tasks LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0125_partnership_tasks: partnership tasks exist. Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0126_partnership_tasks: partnership tasks exist. Remove them deliberately first.")
     op.drop_table("partnership_tasks")
