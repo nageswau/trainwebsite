@@ -3,7 +3,7 @@
 - **Item:** `docs/delivery/RECRUITER_CRM_BACKLOG.md` rec-023 (depends on rec-022, MERGED PR #206).
 - **Evidence:** `EVID-018` §17 (lines 704–730): it tracks Expected Joining Date, Actual Joining Date, Joining Location, Reporting Manager, Joining
   Confirmation, Proof/Confirmation and Joining Status. The final statuses are Joined and Did Not Join, because "selection is not the same as placement".
-- **Decision:** `DEC-SCOPE-158` (JN1–JN10). These are the recommended answers to Q-22. They are **UNVERIFIED**: the owner said to proceed with recommended
+- **Decision:** `DEC-SCOPE-158` (JN1–JN10). These are the recommended answers to Q-22. The owner **confirmed them as built** on 2026-10-09 (EXPLICIT_APPROVAL), after building with the recommended
   answers. Migration `0140_joining_management`, API §12BZ, RBAC §2.84.
 
 ## 1. Decisions (JN1–JN10)
