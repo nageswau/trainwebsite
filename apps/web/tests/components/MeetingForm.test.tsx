@@ -5,7 +5,8 @@ import MeetingForm from "@/components/MeetingForm";
 import { meeting } from "./meetingFixtures";
 
 const push = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push, refresh: vi.fn() }) }));
+const refresh = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push, refresh }) }));
 
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const contacts = { items: [{ id: "k1", name: "Priya Raman", designation: "Director" }, { id: "k2", name: "James Hart", designation: null }], total: 2, limit: 50, offset: 0 };
@@ -23,6 +24,7 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   push.mockReset();
+  refresh.mockReset();
 });
 
 describe("MeetingForm (upc-009)", () => {
@@ -62,7 +64,7 @@ describe("MeetingForm (upc-009)", () => {
     render(<MeetingForm university={university} canPickResponsible={false} />);
     expect(screen.queryByText(/has no link yet/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByLabelText("Online"));
-    expect(screen.getByText(/has no link yet/)).toBeInTheDocument();
+    expect(screen.getByText(/has no link yet/)).toHaveClass("form-warning"); // QA-03: styled as a warning
     fireEvent.change(screen.getByLabelText("Meeting link"), { target: { value: "https://meet.example.com/x" } });
     expect(screen.queryByText(/has no link yet/)).not.toBeInTheDocument();
   });
@@ -76,6 +78,7 @@ describe("MeetingForm (upc-009)", () => {
     fireEvent.change(screen.getByLabelText("Reason for the new time (optional)"), { target: { value: "Dean travelling" } });
     fireEvent.click(screen.getByRole("button", { name: "Save meeting" }));
     await waitFor(() => expect(push).toHaveBeenCalledWith("/partnership/meetings/m1"));
+    expect(refresh).toHaveBeenCalled(); // QA-01: the detail page is re-read, never served from the router cache
     const [url, init] = saveCall(mock);
     expect(url).toBe("/api/v1/partnership/meetings/m1");
     expect(init.method).toBe("PATCH");

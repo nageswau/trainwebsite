@@ -112,7 +112,12 @@ export default function MeetingForm({ meeting, university, canPickResponsible }:
     sending.current = false;
     setBusy(false);
     const saved = outcome.ok ? (outcome.data.meeting as { id?: string } | undefined) : undefined;
-    if (saved?.id) return router.push(meetingPath(saved.id));
+    if (saved?.id) {
+      // QA-01: re-read the detail page too -- a page visited moments ago would otherwise come from the router cache, unedited.
+      router.push(meetingPath(saved.id));
+      router.refresh();
+      return;
+    }
     if (outcome.ok) return setFailure(SAVE_FAILED);
     const mapped = outcome.status === 422 ? fieldErrors(outcome.detail) : {};
     setErrors(mapped);
@@ -129,7 +134,7 @@ export default function MeetingForm({ meeting, university, canPickResponsible }:
 
   return (
     <form onSubmit={save} noValidate aria-label={meeting ? `Edit ${meeting.code}` : "Schedule a university meeting"} style={{ display: "grid", gap: 16 }}>
-      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", alignItems: "start" }}>
         {uni && (meeting || university) ? (
           <div className="field">
             <span className="muted">University</span>
@@ -173,11 +178,11 @@ export default function MeetingForm({ meeting, university, canPickResponsible }:
             </label>
           ))}
         </div>
-        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", alignItems: "start" }}>
           {text("location")}
           {text("meeting_url")}
         </div>
-        {linkMissing && <p className="notice" role="note" style={{ margin: 0 }}>{LINK_MISSING_TEXT}</p>}
+        {linkMissing && <p className="form-warning" role="note" style={{ margin: 0 }}>{LINK_MISSING_TEXT}</p>}
       </fieldset>
       <fieldset className="card" style={{ padding: 14, display: "grid", gap: 10 }} disabled={busy}>
         <legend>University side</legend>
@@ -234,7 +239,7 @@ export default function MeetingForm({ meeting, university, canPickResponsible }:
           }} />
         {fieldError("participant_user_ids")}
       </fieldset>
-      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", alignItems: "start" }}>
         {text("agenda")}
         {text("notes")}
       </div>

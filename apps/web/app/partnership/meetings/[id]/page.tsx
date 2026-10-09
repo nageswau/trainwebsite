@@ -48,15 +48,16 @@ export default async function MeetingPage({ params }: { params: Promise<{ id: st
           </div>
           {m.permissions.can_edit && <Link className="btn secondary" href={meetingPath(m.id, true)}>Edit</Link>}
         </div>
-        {m.warnings.includes("link_missing") && <p className="notice" role="note">{LINK_MISSING_TEXT}</p>}
-        {m.status === "cancelled" && m.cancel_reason && <p className="notice" role="note" style={{ whiteSpace: "pre-line" }}><strong>Cancelled:</strong> {m.cancel_reason}</p>}
+        {m.warnings.includes("link_missing") && <p className="form-warning" role="note">{LINK_MISSING_TEXT}</p>}
         <div className="action-grid">
-          {(m.permissions.can_complete || m.permissions.can_cancel) && (
-            <section className="action-card wide" aria-labelledby="meeting-actions">
-              <h3 id="meeting-actions">Status: {status}</h3>
-              <MeetingActions meeting={m} />
-            </section>
-          )}
+          {/* QA-02: always rendered, so MeetingActions keeps its confirmation after the re-read removes the last action */}
+          <section className="action-card wide" aria-labelledby="meeting-actions">
+            <h3 id="meeting-actions">Status: {status}</h3>
+            {m.status === "cancelled" && <p style={{ margin: 0, whiteSpace: "pre-line", overflowWrap: "anywhere" }}><strong>Cancelled:</strong> {m.cancel_reason}</p>}
+            {m.status === "completed" && m.completed_by && m.completed_at && <p className="muted" style={{ margin: 0 }}>Outcome recorded by {m.completed_by.full_name}, {meetingWhen(m.completed_at)}.</p>}
+            {m.status === "scheduled" && !m.permissions.can_edit && <p className="muted" style={{ margin: 0 }}>Only the responsible employee or the person who scheduled it can change this meeting.</p>}
+            <MeetingActions meeting={m} />
+          </section>
           <section className="action-card wide" aria-labelledby="meeting-plan">
             <h3 id="meeting-plan">Meeting</h3>
             <Facts rows={[
