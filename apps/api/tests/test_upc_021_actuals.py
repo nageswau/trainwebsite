@@ -7,7 +7,14 @@ from datetime import UTC, date, datetime, timedelta
 import pytest
 from sqlalchemy import update
 
-from app.models import University, UniversityAgreement, UniversityAgreementEvent, UniversityAssignmentHistory, UniversityStageHistory
+from app.models import (
+    University,
+    UniversityAgreement,
+    UniversityAgreementEvent,
+    UniversityAssignmentHistory,
+    UniversityMeeting,
+    UniversityStageHistory,
+)
 from app.services.partnership_metrics import target_actuals
 from tests.upc003_helpers import catalogue_country, create, login, make_head, make_pm, url
 from tests.upc007_helpers import move_ok
@@ -16,7 +23,7 @@ MARCH = date(2025, 3, 1)
 IN_MARCH = datetime(2025, 3, 15, 6, tzinfo=UTC)
 FEB = datetime(2025, 2, 10, 6, tzinfo=UTC)
 APRIL = datetime(2025, 4, 10, 6, tzinfo=UTC)
-ZERO = {"new_universities": 0, "contacted": 0, "proposals": 0, "negotiations": 0, "mous": 0, "new_active": 0}
+ZERO = {"new_universities": 0, "contacted": 0, "meetings": 0, "proposals": 0, "negotiations": 0, "mous": 0, "new_active": 0}
 
 
 async def _university(client, db, head) -> dict:
@@ -222,3 +229,30 @@ async def test_a_university_owned_before_assignment_history_is_not_new_when_reas
     await _assign(client, head, uni["id"], pm)
     await _date_assignments(db_session, uni["id"], IN_MARCH)
     assert [a["new_universities"] for a in await _actuals(db_session, legacy, pm)] == [0, 0]
+
+
+async def _meeting(db, university_id, head, *, completed_at: datetime | None, cancelled: bool = False) -> None:
+    status = "completed" if completed_at else "cancelled" if cancelled else "scheduled"
+    db.add(
+        UniversityMeeting(
+            code=f"T-{uuid.uuid4().hex[:10]}", university_id=uuid.UUID(str(university_id)), meeting_type="introduction", starts_at=completed_at or IN_MARCH,
+            mode="online", responsible_user_id=head.id, created_by_user_id=head.id, status=status, completed_at=completed_at,
+            completed_by_user_id=head.id if completed_at else None, cancelled_at=IN_MARCH if cancelled else None, cancel_reason="Off" if cancelled else None,
+        )
+    )  # fmt: skip
+    await db.commit()
+
+
+@pytest.mark.asyncio
+async def test_meetings_counts_meetings_completed_in_the_month(client, db_session):
+    """T3 = D7 (TG13): completed in the month, credited to the primary at completion; scheduled, cancelled and other months do not count."""
+    head = await make_head(db_session)
+    pm = await make_pm(db_session, head)
+    uni = await _owned(client, db_session, head, pm)
+    await _meeting(db_session, uni["id"], head, completed_at=IN_MARCH)
+    await _meeting(db_session, uni["id"], head, completed_at=IN_MARCH + timedelta(days=2))
+    await _meeting(db_session, uni["id"], head, completed_at=APRIL)
+    await _meeting(db_session, uni["id"], head, completed_at=None)
+    await _meeting(db_session, uni["id"], head, completed_at=None, cancelled=True)
+    [mine] = await _actuals(db_session, pm)
+    assert mine["meetings"] == 2

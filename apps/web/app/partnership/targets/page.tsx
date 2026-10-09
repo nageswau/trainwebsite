@@ -59,7 +59,7 @@ export default async function PartnershipTargetsPage({ searchParams }: { searchP
         </div>
         {own && <TargetsEditor key={own.month} initial={own} ownerId={own.manager.id} ownerField="manager_user_id" saveUrl={TARGETS_URL} />}
         {team && <PartnershipTargetsTable team={team} month={month} />}
-        {team && <p className="muted" style={{ fontSize: 13 }}>Each cell is actual / target · achievement. Meetings are counted once Meetings is available.</p>}
+        {team && <p className="muted" style={{ fontSize: 13 }}>Each cell is actual / target · achievement.</p>}
       </div>
     </PortalShell>
   );

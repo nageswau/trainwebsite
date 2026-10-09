@@ -2233,8 +2233,8 @@ its terms into the new draft.
 `DEC-SCOPE-146`; design spec `docs/superpowers/specs/2026-10-09-upc-021-partnership-targets-design.md` §4. Migration `0131_partnership_targets`. Checks run role → scope: a role with no access is `403`, a
 manager outside the caller's scope `404`. Readers: `partnership_manager` (with a profile; own figures only), `partnership_head` (direct
 reports), `super_admin` (all). Writer: `partnership_head` (direct reports) and `super_admin`. The month is `YYYY-MM` (IST; default the
-current month; malformed `422`). A KPI value is `{key, target, achieved, percent}`: `achieved` is null for Meetings (not tracked until
-upc-009) and before the month starts; `percent` is null without a target. GETs have no side effects; actuals are never stored.
+current month; malformed `422`). A KPI value is `{key, target, achieved, percent}`: `achieved` is null before the month starts (and for a
+KPI whose source does not exist, `tracked: false`; none today); `percent` is null without a target. GETs have no side effects; actuals are never stored.
 
 | Method/Path | Notes / status codes |
 |---|---|

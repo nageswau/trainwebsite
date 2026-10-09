@@ -5942,11 +5942,12 @@ Migration `0131_partnership_targets`, API contract §12BN, RBAC §2.72. Spec: `d
 | TG7 | Who reads | Manager: own only (another → `404`); head: direct reports; `super_admin`: all; every other role (incl. `overseas_admin`) → `403` |
 | TG8 | Attribution | The university's primary manager **at the time of the event**, from the append-only `university_assignment_history` (current primary when it was never reassigned); the backup is not credited |
 | TG9 | "Past months are never re-scored" | Actuals derive only from append-only history; a later reassignment, Lost, deactivation or backward move never changes a closed month. No snapshot table |
-| TG10 | Counting | T1 = first-ever primary assignment in the month (managers never create universities, upc-003 UM8); T2 = first entry into Initial Contact or later; T4/T5/T7 = distinct universities moved into Proposal Sent / Commercial Discussion / Partner Activated; T6 = agreements with a status event to Signed; **T3 Meetings is "Not tracked" until upc-009** |
+| TG10 | Counting | T1 = first-ever primary assignment in the month (managers never create universities, upc-003 UM8); T2 = first entry into Initial Contact or later; T4/T5/T7 = distinct universities moved into Proposal Sent / Commercial Discussion / Partner Activated; T6 = agreements with a status event to Signed |
+| TG13 | Meetings (T3 = D7), after upc-009 merged | University meetings with status `completed` and `completed_at` in the month (completion is final in upc-009, so the date never moves), credited by TG8 at `completed_at`; scheduled and cancelled meetings never count |
 | TG11 | Joining mid-month | Listed from the month their account was created; credited only after becoming primary. Inactive managers are listed only for months where they hold a target |
 | TG12 | Team | Team target = Σ set targets; team actual = Σ listed managers' actuals |
 
 **Consequences:** table `partnership_targets`; routes `GET /partnership/targets`, `GET /partnership/targets/{manager_user_id}`,
 `PUT /partnership/targets`; `services/partnership_metrics.py` created (upc-018 adds the funnel to it); the "Targets & Forecast" menu entry is
-live for managers, heads and `super_admin`. upc-009 turns T3 on; upc-023 adds the forecast half of the page; upc-031 exports it.
+live for managers, heads and `super_admin`; T3 counts upc-009 meetings. upc-023 adds the forecast half of the page; upc-031 exports it.
 **New Feature ID authorized:** `upc-021`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-021.

@@ -151,7 +151,7 @@ async def test_other_roles_are_refused(client, db_session):
 
 @pytest.mark.asyncio
 async def test_comparison_per_manager_and_team(client, db_session):
-    """AC1 / AC6 / TG5 / TG12: actual vs target per manager, the team row, and meetings not tracked."""
+    """AC1 / AC6 / TG5 / TG12: actual vs target per manager and the team row."""
     head, pm, uni = await owned_university(client, db_session)
     peer = await make_pm(db_session, head)
     await move_ok(client, uni["id"], "target_university", "proposal_sent")
@@ -163,12 +163,12 @@ async def test_comparison_per_manager_and_team(client, db_session):
     rows = {m["manager"]["id"]: {k["key"]: k for k in m["kpis"]} for m in team["managers"]}
     assert rows[str(pm.id)]["proposals"] == {"key": "proposals", "target": 4, "achieved": 1, "percent": 25}
     assert rows[str(pm.id)]["new_universities"]["achieved"] == 1 and rows[str(pm.id)]["new_universities"]["percent"] is None
-    assert rows[str(pm.id)]["meetings"] == {"key": "meetings", "target": 2, "achieved": None, "percent": None}
+    assert rows[str(pm.id)]["meetings"] == {"key": "meetings", "target": 2, "achieved": 0, "percent": 0}
     assert rows[str(peer.id)]["proposals"] == {"key": "proposals", "target": 6, "achieved": 0, "percent": 0}
     totals = {k["key"]: k for k in team["team"]}
     assert totals["proposals"] == {"key": "proposals", "target": 10, "achieved": 1, "percent": 10}
     assert totals["mous"] == {"key": "mous", "target": None, "achieved": 0, "percent": None}
-    assert totals["meetings"]["achieved"] is None
+    assert totals["meetings"] == {"key": "meetings", "target": 2, "achieved": 0, "percent": 0}
 
 
 @pytest.mark.asyncio

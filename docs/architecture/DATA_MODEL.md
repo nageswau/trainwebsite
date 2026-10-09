@@ -1749,7 +1749,8 @@ backfill. **Migration `0130_university_meetings`**; `downgrade()` refuses while 
 
 **Design notes:**
 - Only targets are stored. Actuals are computed on read by `services/partnership_metrics.target_actuals` from the append-only
-  `university_assignment_history`, `university_stage_history` and `university_agreement_events`, credited to the primary manager at the
+  `university_assignment_history`, `university_stage_history`, `university_agreement_events` and the once-set
+  `university_meetings.completed_at`, credited to the primary manager at the
   time of each event, so a closed month is never re-scored (TG8/TG9).
 - Clearing a target deletes its row; the history is the audit log (`partnership_target.set`).
 - `downgrade()` refuses while any target exists.

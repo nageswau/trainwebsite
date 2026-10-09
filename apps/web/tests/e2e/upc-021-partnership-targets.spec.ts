@@ -78,7 +78,7 @@ test("the head sets targets, the comparison counts actuals, the manager reads th
   const proposals = page.getByRole("rowheader", { name: /^Proposals/ }).locator("xpath=..");
   await expect(proposals).toContainText("1");
   await expect(proposals).toContainText("25%");
-  await expect(page.getByRole("rowheader", { name: /^Meetings/ }).locator("xpath=..")).toContainText("Not tracked");
+  await expect(page.getByRole("rowheader", { name: /^Meetings/ }).locator("xpath=..")).not.toContainText("Not tracked"); // TG13: upc-009 meetings count
 
   // AC6: back on the comparison, the manager's row and the team row read actual / target · achievement.
   await page.getByRole("link", { name: "All team targets" }).click();

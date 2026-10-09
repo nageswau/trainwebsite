@@ -1,6 +1,6 @@
 """upc-021 (DEC-SCOPE-146, spec TG1/TG10): the §21 monthly target KPIs, in source order (EVID-020 §21, L703-L715), each with the written
-definition of its actual (backlog Appendix B T1-T7). Meetings (T3 = D7) waits for upc-009, so it is not tracked yet: a target can be set,
-the actual says "Not tracked", never 0.
+definition of its actual (backlog Appendix B T1-T7). Meetings (T3 = D7) counts upc-009's completed meetings (TG13). `tracked` stays for a
+KPI whose source does not exist yet: a target can be set, the actual says "Not tracked", never 0.
 
 Constants only, with no app imports, so the model CHECK, the migration's parity test, the service and the schemas share one list."""
 
@@ -17,7 +17,7 @@ class Kpi(NamedTuple):
 KPIS: tuple[Kpi, ...] = (
     Kpi("new_universities", "New universities identified", "Universities first assigned to the manager as primary this month"),
     Kpi("contacted", "Contacted", "Universities that first reached Initial Contact or a later stage this month"),
-    Kpi("meetings", "Meetings", "Meetings completed this month — counted once Meetings (upc-009) is available", tracked=False),
+    Kpi("meetings", "Meetings", "University meetings completed this month"),
     Kpi("proposals", "Proposals", "Universities moved into Proposal Sent this month"),
     Kpi("negotiations", "Negotiations", "Universities moved into Commercial Discussion this month"),
     Kpi("mous", "MoUs", "Agreements that reached Signed this month"),

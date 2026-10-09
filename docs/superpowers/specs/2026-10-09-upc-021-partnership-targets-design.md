@@ -5,7 +5,7 @@
   are provisional until merge, the existing re-chain idiom).
 - **Branch:** `worktree-upc-021` from `origin/main` @ `52646217` (upc-008 merged, PR #188); pushed as `feature/upc-021`.
 - **Dependencies:** upc-001 (roles, `partnership_profiles`) and upc-007 (stage history) — merged. upc-014 (agreement events) — merged,
-  so T6 is tracked. **upc-009 (Meetings) is not built**, so T3 is "Not tracked" (the bdm-016 R7 idiom) until it lands. upc-018 owns
+  so T6 is tracked. upc-009 (Meetings) was not built when this item started, so T3 was first "Not tracked" (the bdm-016 R7 idiom); upc-009 merged during Phase 9, so T3 now counts completed meetings (TG13). upc-018 owns
   `services/partnership_metrics.py` but is not built; this item creates the module with the target actuals only.
 - **Evidence:** EVID-020 §21 (`DERIVED_BLUEPRINT`); backlog U3 (`EXPLICIT_APPROVAL`: `partnership_head` sets targets); Q-23 ("the 7 §21
   KPIs per manager per month; set by the head; history kept"); Appendix B T1–T7 and D6/D7/D9/D11/D12. The numbers in §21 (50, 30, …) are
@@ -33,7 +33,8 @@ kept, Q-23). The forecast half of the page is upc-023.
 | TG7 | Who reads | Manager: own only (another id → 404). Head: direct reports. `super_admin`: all. `overseas_admin` and others → 403 (targets are not in U3's overseas_admin read access). |
 | TG8 | Attribution ("this manager") | A KPI event counts for the university's **primary manager at the time of the event**, reconstructed from the append-only `university_assignment_history` (latest primary row at or before the event → its `to`; else the earliest later row's `from`; else the current primary). The backup manager is not credited. |
 | TG9 | "Past months are never re-scored" (AC) | Every actual is derived from immutable facts only — `university_stage_history`, `university_agreement_events`, `university_assignment_history` (all append-only) — and TG8 resolves the owner as of the event. A later reassignment, Lost flag, deactivation or stage move back never changes a closed month. No snapshot table. |
-| TG10 | Counting | T1: universities whose **first-ever primary assignment** is in the month, credited to that assignee (upc-003 UM8: managers never create universities; heads create them unowned and then assign, so "created with this manager as primary" is read as the first primary assignment — a creation-date reading would re-score a closed month when the assignment comes later). T2 (=D6): universities whose **first** history entry into Initial Contact or a later stage is in the month. T4/T5/T7: distinct universities with a `move` into Proposal Sent / Commercial Discussion / Partner Activated in the month (a university bounced back and re-entered counts once a month). T6 (=D11): agreements with a status event to `signed` in the month (all agreement types; a signed renewal counts). T3 (=D7, meetings completed): **Not tracked** until upc-009. Lost/inactive universities still count (TG9). |
+| TG10 | Counting | T1: universities whose **first-ever primary assignment** is in the month, credited to that assignee (upc-003 UM8: managers never create universities; heads create them unowned and then assign, so "created with this manager as primary" is read as the first primary assignment — a creation-date reading would re-score a closed month when the assignment comes later). T2 (=D6): universities whose **first** history entry into Initial Contact or a later stage is in the month. T4/T5/T7: distinct universities with a `move` into Proposal Sent / Commercial Discussion / Partner Activated in the month (a university bounced back and re-entered counts once a month). T6 (=D11): agreements with a status event to `signed` in the month (all agreement types; a signed renewal counts). T3 (=D7): see TG13. Lost/inactive universities still count (TG9). |
+| TG13 | Meetings (T3 = D7), after upc-009 merged | University meetings with status `completed` and `completed_at` in the month (completion is final in upc-009, so the date never moves), credited by TG8 at `completed_at`; scheduled and cancelled meetings never count |
 | TG11 | Manager joining mid-month (edge case) | Listed for every month from the month their user was created; credited only for events after they became primary (TG8). Managers created after a month are not listed for it. A deactivated manager is listed only for months where they have a target. |
 | TG12 | Team comparison | Team target = Σ set targets (null when none set); team actual = Σ listed managers' actuals; team % from those. |
 
@@ -79,7 +80,7 @@ are neither written nor audited; one commit. Logs carry actor id, month and coun
 
 - `/partnership/targets` (menu "Targets & Forecast", upc-021 now `live`; added to the head nav and the super_admin nav):
   - month picker (a plain GET form; malformed month → this month + note);
-  - manager: their own sheet, read-only (target / actual / achievement per KPI; "Not tracked" for T3);
+  - manager: their own sheet, read-only (target / actual / achievement per KPI);
   - head / super_admin: comparison table, one row per manager and a Team row, each cell "actual / target · %", with "Set targets" /
     "View" per manager; empty state "No partnership managers report to you yet."
 - `/partnership/targets/[managerId]?month=`: one manager's editable sheet. Reuses the bdm-016 editor, generalised to a
@@ -88,7 +89,7 @@ are neither written nor audited; one commit. Logs carry actor id, month and coun
 
 ## 6. Acceptance criteria (testable)
 
-1. AC1 Each actual matches its definition (TG10) in fixtures; T3 is not tracked.
+1. AC1 Each actual matches its definition (TG10, TG13) in fixtures.
 2. AC2 Past months are never re-scored: reassigning, marking lost or deactivating a university, or moving it back after the month leaves
    that month's actuals unchanged.
 3. AC3 The head sets a manager's monthly targets; history is kept (audit row with from/to).

@@ -36,7 +36,7 @@ def test_catalogue_is_the_source_list():
         "New universities identified", "Contacted", "Meetings", "Proposals", "Negotiations", "MoUs", "New active universities",
     ]  # fmt: skip
     assert KPI_KEYS == ("new_universities", "contacted", "meetings", "proposals", "negotiations", "mous", "new_active")
-    assert [k.key for k in KPIS if not k.tracked] == ["meetings"]  # T3 waits for upc-009
+    assert all(k.tracked for k in KPIS)  # T3 Meetings counts upc-009's completed meetings (TG13)
 
 
 def test_model_matches_the_migration():

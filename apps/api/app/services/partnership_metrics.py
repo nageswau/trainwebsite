@@ -1,7 +1,7 @@
-"""Partnership metrics (backlog Appendix B). upc-018 owns the module; upc-021 (DEC-SCOPE-146, spec TG8-TG11) adds the monthly target actuals.
+"""Partnership metrics (backlog Appendix B). upc-018 owns the module; upc-021 (DEC-SCOPE-146, spec TG8-TG13) adds the monthly target actuals.
 
-Every actual is read from append-only facts -- `university_assignment_history`, `university_stage_history`, `university_agreement_events`
--- and credited to the university's primary manager *at the time of the event*, so a closed month never changes (AC2: past months are
+Every actual is read from append-only facts -- `university_assignment_history`, `university_stage_history`, `university_agreement_events`,
+the once-set `university_meetings.completed_at` -- and credited to the university's primary manager *at the time of the event*, so a closed month never changes (AC2: past months are
 never re-scored). A constant number of queries whatever the team size."""
 
 from collections import defaultdict
@@ -11,7 +11,14 @@ from uuid import UUID
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import University, UniversityAgreement, UniversityAgreementEvent, UniversityAssignmentHistory, UniversityStageHistory
+from app.models import (
+    University,
+    UniversityAgreement,
+    UniversityAgreementEvent,
+    UniversityAssignmentHistory,
+    UniversityMeeting,
+    UniversityStageHistory,
+)
 from app.partnership_stages import STAGE_KEYS
 from app.partnership_target_kpis import KPIS
 from app.services.bdm_metrics import month_range
@@ -34,7 +41,7 @@ def _owner_at(rows: list[tuple[datetime, UUID | None, UUID | None]], current: UU
 
 
 async def target_actuals(db: AsyncSession, manager_ids: list[UUID], month: date) -> dict[UUID, dict[str, int]]:
-    """The tracked §21 KPIs (T1, T2, T4-T7) per manager for the IST month. Not-tracked KPIs and the future are the caller's."""
+    """The tracked §21 KPIs (T1-T7) per manager for the IST month. Not-tracked KPIs and the future are the caller's."""
     start, end = month_range(month)
     managers = set(manager_ids)
     found: dict[UUID, dict[str, set]] = {m: defaultdict(set) for m in managers}
@@ -85,6 +92,14 @@ async def target_actuals(db: AsyncSession, manager_ids: list[UUID], month: date)
         )
     )  # fmt: skip
     events += [(u, "mous", agreement, at) for u, agreement, at in signed.all()]
+    # T3 = D7 (TG13): meetings completed in the month; completion is final, so `completed_at` never moves.
+    completed = await db.execute(
+        select(UniversityMeeting.university_id, UniversityMeeting.id, UniversityMeeting.completed_at).where(
+            UniversityMeeting.status == "completed", UniversityMeeting.completed_at >= start, UniversityMeeting.completed_at < end,
+            ever_owned(UniversityMeeting.university_id),
+        )
+    )  # fmt: skip
+    events += [(u, "meetings", meeting, at) for u, meeting, at in completed.all() if at is not None]  # the WHERE already ensures it
 
     if events:
         universities = {u for u, *_ in events}
