@@ -181,6 +181,13 @@ class ProfileUpdate(BaseModel):
         return value
 
 
+class PlacementPoolOptIn(BaseModel):
+    """rec-010 (spec §4): the consent version the student read. There is no user id: a student only ever acts for themselves, so any
+    other key is ignored."""
+
+    consent_version: str = Field(min_length=1, max_length=20)
+
+
 class NotificationPreferencesIn(BaseModel):
     """ENH-014 (spec §5.2): the only two writable values. Strict booleans; any other field is a 422 (AC15)."""
 
@@ -8434,7 +8441,7 @@ class CandidateSkillStatusChange(BaseModel):
     status: Literal[CANDIDATE_SKILL_STATUSES]
 
 
-# upc-026 (DEC-SCOPE-138): the document centre. Uploads are multipart (the route validates its form fields with the same rules); the
+# upc-026 (DEC-SCOPE-139): the document centre. Uploads are multipart (the route validates its form fields with the same rules); the
 # metadata PATCH is JSON. DC11: a title is 2-200 characters after trimming.
 UNIVERSITY_DOCUMENT_TITLE_MESSAGE = "Enter a title of 2-200 characters"
 

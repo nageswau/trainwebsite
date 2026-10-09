@@ -18,6 +18,7 @@ import pytest
 
 from app.core.security import hash_password
 from app.models import Company, EmployerProfile, Job, User
+from app.services.applications import candidate_for_student
 from tests.rec017_helpers import student_application
 
 
@@ -43,12 +44,15 @@ async def _create_job(db_session, company: Company, status="requirement_received
     return job
 
 
-async def _create_student(db_session) -> User:
+async def _create_student(db_session, *, opted_in: bool = True) -> User:
+    """rec-010 (DEC-SCOPE-138 OI4): an employer shortlists only students in the opted-in pool, so by default this student has opted in."""
     student = User(
         email=f"emp004-student-{uuid.uuid4().hex[:8]}@example.local", password_hash=hash_password("Sup3r-Secret-Pass!"),
         full_name="Test Student", role="it_student", division="it", active=True,
     )
     db_session.add(student)
+    await db_session.flush()
+    (await candidate_for_student(db_session, student)).opted_in = opted_in
     await db_session.commit()
     return student
 
@@ -80,6 +84,18 @@ async def test_shortlisting_the_same_candidate_twice_is_rejected(client, db_sess
     await client.post("/api/v1/employer/shortlist", json={"job_id": str(job.id), "student_id": str(student.id)})
     response = await client.post("/api/v1/employer/shortlist", json={"job_id": str(job.id), "student_id": str(student.id)})
     assert response.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_employer_cannot_shortlist_a_student_outside_the_opted_in_pool(client, db_session):
+    employer, company = await _create_employer(db_session)
+    job = await _create_job(db_session, company)
+    student = await _create_student(db_session, opted_in=False)
+
+    await _login(client, employer.email)
+    response = await client.post("/api/v1/employer/shortlist", json={"job_id": str(job.id), "student_id": str(student.id)})
+    assert response.status_code == 422
+    assert response.json()["detail"] == "Valid student candidate is required"
 
 
 @pytest.mark.asyncio

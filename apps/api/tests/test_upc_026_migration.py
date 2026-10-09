@@ -1,4 +1,4 @@
-"""upc-026 -- migration 0123_university_documents (spec §2). Round trip, constraints and the downgrade refusal run in a throwaway database
+"""upc-026 -- migration 0124_university_documents (spec §2). Round trip, constraints and the downgrade refusal run in a throwaway database
 built from scratch (the rec-008 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -14,16 +14,16 @@ from app.core.config import settings
 from tests.test_tel_001_migration import _config, _sql
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_upc_026_migration_0123", VERSIONS / "0123_university_documents.py")
+_spec = importlib.util.spec_from_file_location("_upc_026_migration_0124", VERSIONS / "0124_university_documents.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0122_candidate_skills", "0123_university_documents"
+BASE, HEAD = "0123_candidate_consents", "0124_university_documents"
 DOCUMENT_COLUMNS = {"id", "university_id", "kind", "title", "shareable", "current_version", "created_by_user_id", "created_at", "updated_at"}
 VERSION_COLUMNS = {"id", "document_id", "version", "storage_key", "file_name", "content_type", "size_bytes", "uploaded_by_user_id", "uploaded_at"}
 
 
-def test_migration_chains_after_0122_and_there_is_a_single_head():
+def test_migration_chains_after_0123_and_there_is_a_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1
 

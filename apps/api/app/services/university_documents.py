@@ -1,4 +1,4 @@
-"""upc-026 (DEC-SCOPE-138, spec §1-§3): the university document centre -- kinds, who sees which documents, files, versions and output.
+"""upc-026 (DEC-SCOPE-139, spec §1-§3): the university document centre -- kinds, who sees which documents, files, versions and output.
 
 Functions only; nothing here commits -- the route owns the transaction. Access reuses the University Master's (upc-003):
 - the partnership roles and super_admin (CONTACT_ROLES) read every document and write within the master's edit scope (DC8);

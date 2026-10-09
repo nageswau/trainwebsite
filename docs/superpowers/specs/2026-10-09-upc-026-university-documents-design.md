@@ -2,14 +2,14 @@
 
 **Status:** design written 2026-10-09. The owner's standing instruction for this session is "proceed with the recommended answers;
 ask only if genuinely blocking". So the item answers DC1–DC15 (§1) are **recommended defaults accepted under that instruction**
-(`NEEDS_CONFIRMATION` as separate per-question approvals) and are registered that way in `DEC-SCOPE-138`.
+(`NEEDS_CONFIRMATION` as separate per-question approvals) and are registered that way in `DEC-SCOPE-139`.
 
 **Branch:** `feature/upc-026`, cut from `origin/main` @ `f4207d39`.
 **Backlog:** `docs/delivery/UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §4 upc-026. Dependency upc-003 (`0105`, `DEC-SCOPE-120`) is merged on
 main (PR #151) — verified in code (`University`, `services/partnership_universities.py`, `/partnership/universities/[id]`).
 **Source:** `EVID-020` §28 (lines 908–936: 12 document kinds; "Everything related to that university should be in one place"), §13
 line 489 (agreement document, stored here for upc-014), §32 menu line 1092 ("Documents"), line 1129 + U2 (commission visibility).
-**Numbering:** migration `0123_university_documents`, `DEC-SCOPE-138`, API §12BF, RBAC §2.64 (provisional; re-chained at merge time).
+**Numbering:** migration `0124_university_documents`, `DEC-SCOPE-139`, API §12BG, RBAC §2.65 (drafted as `0123` / `DEC-SCOPE-138` / §12BF / §2.64; renumbered on merging `main` @ `6fc05526`, where rec-010 took those).
 **Gate:** `APPROVAL_GATES.md` GATE-09.
 
 ## 1. Decisions (recommended defaults)
@@ -32,7 +32,7 @@ line 489 (agreement document, stored here for upc-014), §32 menu line 1092 ("Do
 | DC14 | Storage keys | Server-generated `university-documents/<uuid>`; the file is stored before the row lock and discarded if the write does not commit (rec-008) |
 | DC15 | Rate limit | None beyond the size cap: internal authenticated staff only, scoped writes (recorded as a known gap for upc-033) |
 
-## 2. Data model — migration `0123_university_documents`
+## 2. Data model — migration `0124_university_documents`
 
 - `university_documents`: id, university_id FK RESTRICT, kind String(30) CHECK (DC1), title String(200) NOT NULL, shareable bool NOT NULL,
   current_version int NOT NULL CHECK ≥ 1, created_by_user_id FK users, created_at, updated_at. CHECK
@@ -90,7 +90,7 @@ line 489 (agreement document, stored here for upc-014), §32 menu line 1092 ("Do
 1. Migration + models + parity/round-trip test (`test_upc_026_migration.py`).
 2. Service + routes: read/visibility tests, then upload/version/patch/download/limits tests, then code. `can_manage_documents`.
 3. Frontend lib + `UniversityDocuments` + page wiring + menu page + nav, vitest.
-4. Playwright `upc-026-university-documents.spec.ts`; docs (DEC-SCOPE-138, API §12BF, RBAC §2.64, DATA_MODEL, SCREEN_CATALOG, backlog).
+4. Playwright `upc-026-university-documents.spec.ts`; docs (DEC-SCOPE-139, API §12BG, RBAC §2.65, DATA_MODEL, SCREEN_CATALOG, backlog).
 
 ## 7. Regression set (lite)
 

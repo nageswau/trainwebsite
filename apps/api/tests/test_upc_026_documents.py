@@ -1,4 +1,4 @@
-"""upc-026 -- University document centre (spec §1-§5; AC1, AC2, P1, N1, E1, R1, S1; DEC-SCOPE-138 DC1-DC15)."""
+"""upc-026 -- University document centre (spec §1-§5; AC1, AC2, P1, N1, E1, R1, S1; DEC-SCOPE-139 DC1-DC15)."""
 
 import io
 import uuid

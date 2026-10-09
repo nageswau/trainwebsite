@@ -4105,6 +4105,29 @@ class CandidateResume(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+# rec-010 (DEC-SCOPE-138): migration 0123 repeats CANDIDATE_CONSENT_CHECKS (test_rec_010_migration asserts they stay identical).
+CANDIDATE_CONSENT_ACTIONS = ("opt_in", "opt_out")
+CANDIDATE_CONSENT_CHECKS = {"ck_candidate_consents_action": f"action IN ({', '.join(repr(v) for v in CANDIDATE_CONSENT_ACTIONS)})"}
+
+
+class CandidateConsent(Base):
+    """rec-010 (AC4): one opt-in or opt-out of the placement candidate pool by the student themselves -- the ConsentRecord idiom,
+    append-only. `candidates.opted_in` is the gate; this is its history and the consent evidence."""
+
+    __tablename__ = "candidate_consents"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in CANDIDATE_CONSENT_CHECKS.items()),
+        Index("ix_candidate_consents_candidate", "candidate_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    candidate_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="RESTRICT"))
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    action: Mapped[str] = mapped_column(String(10))
+    consent_version: Mapped[str] = mapped_column(String(20))
+    ip_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 # rec-011 (DEC-SCOPE-137): EVID-018 S2-§3 levels (SK1), the six S2-§17 skill sources and the three statuses. Migration 0122 repeats
 # CANDIDATE_SKILL_CHECKS (test_rec_011_migration asserts they stay identical). Labels live in the web client.
 CANDIDATE_SKILL_LEVELS = ("beginner", "intermediate", "advanced", "expert")
@@ -4309,7 +4332,7 @@ class RecruiterMessage(Base, TimestampMixin):
     sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
-# upc-026 (DEC-SCOPE-138, spec §2): the §28 document centre. The 12 kinds in source order (DC1); the commission agreement is never
+# upc-026 (DEC-SCOPE-139, spec §2): the §28 document centre. The 12 kinds in source order (DC1); the commission agreement is never
 # shareable (DC2). Migration 0123 repeats the checks; test_upc_026_migration keeps them identical.
 UNIVERSITY_DOCUMENT_KINDS = (
     "mou", "partnership_agreement", "commission_agreement", "brochure", "course_list", "fee_structure", "entry_requirements",

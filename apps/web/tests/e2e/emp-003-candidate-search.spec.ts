@@ -1,17 +1,15 @@
 import { test, expect } from "@playwright/test";
 
 // EMP-003 -- Candidate profile search. Requires the stack running via `docker compose
-// up` with `python -m app.seed` already applied. No `PlacementProfile` is seeded by
-// default, so this creates one for the seeded demo IT student via the real admin API
-// (not a shared seed row, and reversible -- `available` is just flipped true).
+// up` with `python -m app.seed` already applied. rec-010 (DEC-SCOPE-138, R12): employers
+// see only students who opted in to the placement candidate pool, so the seeded demo IT
+// student opts in through the real API (idempotent; their own consent, reversible).
 
 async function ensureSeededStudentIsAnAvailableCandidate(page: import("@playwright/test").Page) {
   await page.request.post("/api/v1/auth/login", { data: { email: "student.it@edusphere.local", password: "Demo@123", division: "it" } });
   const student = await (await page.request.get("/api/v1/auth/me")).json();
-
-  await page.request.post("/api/v1/auth/login", { data: { email: "itadmin@edusphere.local", password: "Demo@123", division: "it" } });
-  const updated = await page.request.put(`/api/v1/workflows/it/placement/profiles/${student.id}`, { data: { available: true, withdrawn: false } });
-  expect(updated.ok()).toBeTruthy();
+  const joined = await page.request.post("/api/v1/account/placement-pool/opt-in", { data: { consent_version: "v1" } });
+  expect(joined.ok()).toBeTruthy();
 
   return { name: student.full_name as string };
 }

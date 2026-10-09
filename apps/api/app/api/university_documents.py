@@ -1,4 +1,4 @@
-"""upc-026 (DEC-SCOPE-138, spec §3): the university document centre -- list, upload, new version, edit, download, and the menu list.
+"""upc-026 (DEC-SCOPE-139, spec §3): the university document centre -- list, upload, new version, edit, download, and the menu list.
 
 Every write: the read gate (`require_reader`, 403), the university (404) and its `can_manage_documents` (403 role/team, 409 inactive),
 all before a byte is read; then the file is sniffed and stored, the university row is locked (FOR UPDATE serialises the limits, titles

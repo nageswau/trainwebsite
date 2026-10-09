@@ -1038,8 +1038,8 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-026 — University document centre
-- **Status (2026-10-09):** built on `feature/upc-026` under `DEC-SCOPE-138`, with migration `0123_university_documents`, API §12BF and
-  RBAC §2.64. Spec: `docs/superpowers/specs/2026-10-09-upc-026-university-documents-design.md`.
+- **Status (2026-10-09):** built on `feature/upc-026` under `DEC-SCOPE-139`, with migration `0124_university_documents`, API §12BG and
+  RBAC §2.65. Spec: `docs/superpowers/specs/2026-10-09-upc-026-university-documents-design.md`.
   - Q-26 and the design-level rules are answered by the recommended defaults DC1–DC15 (`NEEDS_CONFIRMATION`): shareable by default for
     the catalogue-style kinds, internal for MoU / partnership agreement / contact documents; the commission agreement is always internal
     and stripped server-side for roles without commission access; PDF, DOCX, XLSX, PPTX, JPEG, PNG up to 20 MB; append-only versions.

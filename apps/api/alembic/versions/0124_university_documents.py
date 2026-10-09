@@ -1,12 +1,16 @@
 """upc-026 -- university_documents + university_document_versions: the §28 document centre.
 
-Revision ID: 0123_university_documents
-Revises: 0122_candidate_skills
+Revision ID: 0124_university_documents
+Revises: 0123_candidate_consents
 
-docs/superpowers/specs/2026-10-09-upc-026-university-documents-design.md §2 (DEC-SCOPE-138). New tables only; no existing row changes.
+docs/superpowers/specs/2026-10-09-upc-026-university-documents-design.md §2 (DEC-SCOPE-139). New tables only; no existing row changes.
 0001 builds a fresh database from the current models, which already carry both tables, so they are created only when missing (0117's
 idiom). KINDS / DOCUMENT_CHECKS / VERSION_CHECKS repeat app.models (test_upc_026_migration). downgrade() refuses while any document exists:
 entered data is never dropped silently.
+
+Re-chained on 2026-10-09: drafted as `0123_university_documents` (DEC-SCOPE-138, §12BF, §2.64) on `0122_candidate_skills`; rec-010
+(`0123_candidate_consents`) merged first. A database stamped at the draft is re-stamped with `alembic stamp --purge 0122_candidate_skills`,
+then `upgrade head` (the table step is guarded).
 """
 
 import sqlalchemy as sa
@@ -14,8 +18,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0123_university_documents"
-down_revision = "0122_candidate_skills"
+revision = "0124_university_documents"
+down_revision = "0123_candidate_consents"
 branch_labels = None
 depends_on = None
 
@@ -78,6 +82,6 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {DOCUMENTS} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0123_university_documents: university documents exist. Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0124_university_documents: university documents exist. Remove them deliberately first.")
     op.drop_table(VERSIONS)
     op.drop_table(DOCUMENTS)
