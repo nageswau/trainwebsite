@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, type ReactNode, useRef, useState } from "react";
 
 import AgreementForm from "@/components/AgreementForm";
+import CommissionTerms from "@/components/CommissionTerms";
 import LocalTime from "@/components/LocalTime";
 import { sendJson, type SendOutcome } from "@/lib/apiErrors";
 import { type Agreement, type AgreementOptions, agreementUrl, dateText, EXCLUSIVITY, expiryText, statusLabel } from "@/lib/universityAgreements";
@@ -201,6 +202,8 @@ export default function UniversityAgreements({ universityId, agreements, options
                   <Details a={a} />
                 </details>
                 <History a={a} />
+                {/* upc-016 (U2): present in the payload for the commission roles only */}
+                {a.commission_terms && <CommissionTerms agreement={a} terms={a.commission_terms} options={options} />}
                 {(a.moves.length > 0 || editable || a.permissions.can_renew) && (
                   <div className="actions" style={{ marginTop: 4 }}>
                     {a.moves.map((m) => (
