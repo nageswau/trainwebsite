@@ -30,8 +30,10 @@ from app.models import (
 from app.services import partnership_pipeline as pipeline
 from app.services import partnership_tasks
 from app.services import partnership_universities as unis
+from app.services import university_commission as commission
 from app.services.bdm_travel import india_today
 from app.services.partnership import partnership_context
+from app.services.partnership_access import can_see_commission, strip_commission
 from app.services.telecaller import person_ref
 
 logger = logging.getLogger("app.partnership")
@@ -254,6 +256,11 @@ async def agreements_out(db: AsyncSession, user: User, rows: list[tuple[Universi
             history.setdefault(e.agreement_id, []).append(e)
     people_ids = {a.created_by_user_id for a, _ in rows} | {a.edusphere_signatory_user_id for a, _ in rows} | {e.actor_user_id for es in history.values() for e in es}
     people = await _lookup(db, User, people_ids - {None})
+    # upc-016 (CM12): commission terms ride along for the commission roles only; every item still passes through strip_commission
+    terms: dict[UUID, list] = {}
+    if can_see_commission(user):
+        editable = {a.id for a, uni in rows if unis.permissions(user, uni, team)["can_manage_agreements"] and a.status in TERM_STATUSES}
+        terms = await commission.terms_by_agreement(db, ids, editable)
 
     def ref(other: UniversityAgreement | None) -> dict | None:
         return {"id": other.id, "mou_number": other.mou_number, "status": other.status, "effective_status": effective_status(other, today)} if other else None
@@ -293,13 +300,14 @@ async def agreements_out(db: AsyncSession, user: User, rows: list[tuple[Universi
                 "can_renew": perms["can_manage_agreements"] and a.status in IN_FORCE and a.id not in successors,
             },
             "moves": _moves(a, perms),
+            "commission_terms": terms.get(a.id, []),
         }
         if events:
             item["events"] = [
                 {"kind": e.kind, "from_status": e.from_status, "to_status": e.to_status, "note": e.note, "changed": e.changed, "actor": person_ref(people[e.actor_user_id]), "created_at": e.created_at}
                 for e in history.get(a.id, [])
             ]  # fmt: skip
-        out.append(item)
+        out.append(strip_commission(user, item))
     return out
 
 
