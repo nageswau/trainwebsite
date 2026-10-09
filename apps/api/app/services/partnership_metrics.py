@@ -5,22 +5,31 @@ the once-set `university_meetings.completed_at` -- and credited to the universit
 never re-scored). A constant number of queries whatever the team size."""
 
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date, datetime, time, timedelta
+from typing import NamedTuple
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from fastapi import HTTPException
+from sqlalchemy import Subquery, and_, distinct, func, not_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
+    AgentStudentShortlistEntry,
+    ApplicationDeposit,
+    ApplicationStatusHistory,
+    OverseasApplication,
     University,
     UniversityAgreement,
     UniversityAgreementEvent,
     UniversityAssignmentHistory,
     UniversityMeeting,
     UniversityStageHistory,
+    VisaCase,
 )
 from app.partnership_stages import STAGE_KEYS
 from app.partnership_target_kpis import KPIS
+from app.services.agent_applications import OFFER_COUNTED_STATUSES, WITHDRAWN
+from app.services.bdm_appointments import IST
 from app.services.bdm_metrics import month_range
 
 TRACKED = tuple(k.key for k in KPIS if k.tracked)
@@ -115,3 +124,100 @@ async def target_actuals(db: AsyncSession, manager_ids: list[UUID], month: date)
             if owner in managers:
                 found[owner][kpi].add(item)
     return {m: {k: len(found[m][k]) for k in TRACKED} for m in managers}
+
+
+# --- upc-018 (DEC-SCOPE-152, spec PF1-PF4): the §17 student funnel / §18 university performance, Appendix B F1-F9 ---
+# Each step counts in the period it was *reached* (Appendix B is event-based), per university, for every application owner (agency,
+# self-service, School-bridged). Counts only: no student is identified (PF10). Commission (F10/F11) is upc-019's.
+
+
+class Step(NamedTuple):
+    key: str
+    label: str
+    tracked: bool
+
+
+STEPS = (
+    Step("leads", "Leads", False),  # F1 (U8): leads have no university link
+    Step("counselling", "Counselling", False),  # F2
+    Step("interested", "Students interested", True),  # F3
+    Step("eligible", "Profiles eligible", False),  # F4
+    Step("applications", "Applications", True),  # F5
+    Step("offers", "Offers", True),  # F6
+    Step("deposits", "Deposits", True),  # F7
+    Step("visas", "Visa approvals", True),  # F8
+    Step("enrolled", "Enrolled", True),  # F9
+)
+FUNNEL = tuple(s.key for s in STEPS if s.tracked)
+MAX_PERIOD_DAYS = 366
+
+
+def period(first: date, last: date) -> tuple[date, date]:
+    """PF1: inclusive IST days, at most a (leap) year."""
+    if first > last:
+        raise HTTPException(422, "The period must start on or before its end")
+    if (last - first).days >= MAX_PERIOD_DAYS:
+        raise HTTPException(422, f"A period can be at most {MAX_PERIOD_DAYS} days")
+    return first, last
+
+
+def ist_range(first: date, last: date) -> tuple[datetime, datetime]:
+    """The inclusive IST days as a half-open instant range."""
+    return datetime.combine(first, time.min, tzinfo=IST), datetime.combine(last + timedelta(days=1), time.min, tzinfo=IST)
+
+
+def _first_entry(statuses) -> Subquery:
+    """Per application, its first status-history entry into one of `statuses`."""
+    H = ApplicationStatusHistory
+    return select(H.application_id, func.min(H.created_at).label("at")).where(H.to_status.in_(statuses)).group_by(H.application_id).subquery()
+
+
+async def funnel_counts(db: AsyncSession, university_ids: list[UUID], first: date, last: date) -> dict[UUID, dict[str, int]]:
+    """F3 and F5-F9 per university over the inclusive IST days. One grouped query per step (constant). Universities with nothing are
+    absent; the caller fills zeros."""
+    if not university_ids:
+        return {}
+    start, end = ist_range(first, last)
+    App = OverseasApplication
+    Shortlist = AgentStudentShortlistEntry
+
+    def during(column):
+        return and_(column >= start, column < end)
+
+    ours = App.university_id.in_(university_ids)
+    offered, enrolled = _first_entry(OFFER_COUNTED_STATUSES), _first_entry(["enrolled"])
+    queries = {
+        # F3: distinct agency students shortlisting the university.
+        "interested": select(Shortlist.university_id, func.count(distinct(Shortlist.agent_student_id)))
+        .where(Shortlist.university_id.in_(university_ids), during(Shortlist.created_at))
+        .group_by(Shortlist.university_id),
+        # F5: created in the period, except those withdrawn before submission (PF3).
+        "applications": select(App.university_id, func.count())
+        .where(ours, during(App.created_at), not_(and_(App.status == WITHDRAWN, App.submitted_on.is_(None))))
+        .group_by(App.university_id),
+        # F6: the recorded offer date (AGN-010), else the first entry into an offer-or-later stage; a later withdrawal keeps it (PF4).
+        "offers": select(App.university_id, func.count())
+        .outerjoin(offered, offered.c.application_id == App.id)
+        .where(ours, or_(App.offer_date.between(first, last), and_(App.offer_date.is_(None), during(offered.c.at))))
+        .group_by(App.university_id),
+        # F7: paid in the period; a later remittance or refund does not un-count it.
+        "deposits": select(App.university_id, func.count())
+        .join(ApplicationDeposit, ApplicationDeposit.application_id == App.id)
+        .where(ours, during(ApplicationDeposit.paid_at))
+        .group_by(App.university_id),
+        # F8: applications with a visa approved in the period (two approved cases on one application count once).
+        "visas": select(App.university_id, func.count(distinct(App.id)))
+        .join(VisaCase, VisaCase.application_id == App.id)
+        .where(ours, VisaCase.decision == "approved", during(VisaCase.decided_at))
+        .group_by(App.university_id),
+        # F9: applications enrolled now, timed by their first entry into enrolled, else the enrolment confirmation.
+        "enrolled": select(App.university_id, func.count())
+        .outerjoin(enrolled, enrolled.c.application_id == App.id)
+        .where(ours, App.status == "enrolled", during(func.coalesce(enrolled.c.at, App.enrollment_confirmed_at)))
+        .group_by(App.university_id),
+    }
+    found: dict[UUID, dict[str, int]] = {}
+    for step, stmt in queries.items():
+        for university_id, n in (await db.execute(stmt)).all():
+            found.setdefault(university_id, dict.fromkeys(FUNNEL, 0))[step] = n
+    return found
