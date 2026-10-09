@@ -1,4 +1,4 @@
-"""upc-017 (DEC-SCOPE-146 CO14, Q-21): a university's course CSV -- each row is created, reported as a duplicate (CO12's key, against the
+"""upc-017 (DEC-SCOPE-147 CO14, Q-21): a university's course CSV -- each row is created, reported as a duplicate (CO12's key, against the
 university's courses and earlier rows) or reported invalid with its reason. Every row goes through `CourseIn` and the master's rules, as a
 manual add does. Commission and scholarships are per-record decisions and are not imported. Functions only; the route commits."""
 

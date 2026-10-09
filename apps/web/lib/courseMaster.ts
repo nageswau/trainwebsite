@@ -1,4 +1,4 @@
-// upc-017 (DEC-SCOPE-146): the §16 course master -- types, value lists, words, URLs and the "Courses & Programs" menu's query helpers.
+// upc-017 (DEC-SCOPE-147): the §16 course master -- types, value lists, words, URLs and the "Courses & Programs" menu's query helpers.
 // The API is the gate: it leaves `commission` out of every course for the non-commission roles (U2) and refuses them setting it. Nothing
 // here filters for security.
 import type { Page } from "@/lib/apiErrors";

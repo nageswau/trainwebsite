@@ -798,8 +798,8 @@ Common conventions:
 - **Complexity:** medium · **Risk:** high
 
 ### upc-017 — Course / program master
-- **Status (2026-10-09):** built on `feature/upc-017` under `DEC-SCOPE-146` (Q-21, Q-33 + CO1–CO16, recommended answers), with migration
-  `0131_university_courses`, API §12BN and RBAC §2.72. Spec: `docs/superpowers/specs/2026-10-09-upc-017-course-master-design.md`.
+- **Status (2026-10-09):** built on `feature/upc-017` under `DEC-SCOPE-147` (Q-21, Q-33 + CO1–CO16, recommended answers), with migration
+  `0132_university_courses`, API §12BO and RBAC §2.73. Spec: `docs/superpowers/specs/2026-10-09-upc-017-course-master-design.md`.
 - **Business requirement:** §16 (14 fields; "counselors know exactly what each partner university offers") (U6).
 - **Existing behavior:** `overseas_courses` has title, level, category, duration, free-text tuition and intake. No create API.
 - **Expected behavior:**
@@ -951,6 +951,11 @@ Common conventions:
 - **Edge cases:** a manager joining mid-month.
 - **Regression risks:** none.
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-09):** built on `feature/upc-021` under `DEC-SCOPE-146`, with migration `0131_partnership_targets`, API §12BN and
+  RBAC §2.72. Spec: `docs/superpowers/specs/2026-10-09-upc-021-partnership-targets-design.md`.
+  - Q-23 and TG1–TG13 are recommended answers (`NEEDS_CONFIRMATION`). Actuals are credited to the primary manager at the time of each
+    event from append-only history, so past months are never re-scored (no snapshot). T1 is read as the first primary assignment
+    (managers never create universities). T3 counts upc-009's completed meetings. The forecast half of the page is upc-023's.
 
 ### upc-022 — Partnership manager dashboard
 - **Business requirement:** §22 (Global Partnership Overview with 4 figures + total; This Month with 9 figures); §20 dashboard bands.

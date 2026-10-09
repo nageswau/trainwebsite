@@ -1,4 +1,4 @@
-"""upc-017 (DEC-SCOPE-146, spec §3): the §16 course master -- a university's courses (list, add, edit, deactivate), the form's scholarship
+"""upc-017 (DEC-SCOPE-147, spec §3): the §16 course master -- a university's courses (list, add, edit, deactivate), the form's scholarship
 options and the "Courses & Programs" menu list. The CSV import lives in `university_course_import`.
 
 Every write: the read gate (403), the university row FOR UPDATE (404), the write permission (403 role/team, 409 inactive), the commission

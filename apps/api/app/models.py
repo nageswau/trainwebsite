@@ -39,6 +39,8 @@ from app.partnership_meeting_types import TYPES as UNIVERSITY_MEETING_TYPES
 from app.partnership_milestones import MILESTONE_KEYS as UNIVERSITY_MILESTONE_KEYS
 from app.partnership_stages import FIRST_STAGE as UNIVERSITY_FIRST_STAGE
 from app.partnership_stages import STAGE_KEYS as UNIVERSITY_STAGE_KEYS
+from app.partnership_target_kpis import KPI_KEYS as PARTNERSHIP_TARGET_KPI_KEYS
+from app.partnership_target_kpis import TARGET_MAX as PARTNERSHIP_TARGET_MAX
 from app.partnership_task_rules import KINDS as PARTNERSHIP_TASK_KINDS
 from app.partnership_task_rules import PRIORITIES as PARTNERSHIP_TASK_PRIORITIES
 from app.partnership_task_rules import SOURCES as PARTNERSHIP_TASK_SOURCES
@@ -1397,9 +1399,9 @@ class UniversityMessage(Base, TimestampMixin):
     sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
-# upc-017 (DEC-SCOPE-146, spec §1-§2): the §16 course master extends `overseas_courses` (U6). `tuition_fee` and `intake` stay the
+# upc-017 (DEC-SCOPE-147, spec §1-§2): the §16 course master extends `overseas_courses` (U6). `tuition_fee` and `intake` stay the
 # catalogue's display texts, re-derived whenever the structured amount / months are saved (CO4, CO7). The per-course commission is
-# RESTRICTED (U2, CO2). Migration 0131 repeats these; test_upc_017_migration keeps them identical.
+# RESTRICTED (U2, CO2). Migration 0132 repeats these; test_upc_017_migration keeps them identical.
 COURSE_CURRENCIES = ("INR", "USD", "GBP", "EUR", "CAD", "AUD", "NZD")  # = COUNSELING_CURRENCIES (defined later in this module)
 COURSE_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 ENGLISH_TESTS = ("IELTS", "TOEFL", "PTE", "Duolingo", "Other")
@@ -4823,3 +4825,30 @@ class UniversityCommissionTerm(Base, TimestampMixin):
     payment_terms: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+# upc-021 (DEC-SCOPE-146, spec §3): monthly partnership targets. Migration 0131 repeats these strings; test_upc_021_migration asserts they
+# stay identical.
+PARTNERSHIP_TARGET_CHECKS = {
+    "ck_partnership_targets_month_start": "EXTRACT(DAY FROM month) = 1",
+    "ck_partnership_targets_kpi": _one_of("kpi_key", PARTNERSHIP_TARGET_KPI_KEYS, nullable=False),
+    "ck_partnership_targets_target_range": f"target >= 0 AND target <= {PARTNERSHIP_TARGET_MAX}",
+}
+
+
+class PartnershipTarget(Base, TimestampMixin):
+    """upc-021 (DEC-SCOPE-146): a head-set monthly target for one §21 KPI of one partnership manager. `month` is the month's first day.
+    Actuals are never stored: `services/partnership_metrics.target_actuals` derives them from append-only history (TG9). Clearing a target
+    deletes the row; every change is in the audit log (Q-23: history kept)."""
+
+    __tablename__ = "partnership_targets"
+    __table_args__ = (
+        UniqueConstraint("manager_user_id", "month", "kpi_key", name="uq_partnership_targets_manager_month_kpi"),
+        *(CheckConstraint(sql, name=name) for name, sql in PARTNERSHIP_TARGET_CHECKS.items()),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    manager_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    month: Mapped[date] = mapped_column(Date)
+    kpi_key: Mapped[str] = mapped_column(String(40))
+    target: Mapped[int] = mapped_column(Integer)
+    set_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    set_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

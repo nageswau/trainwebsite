@@ -1,4 +1,4 @@
-"""upc-017 -- migration 0131_university_courses (spec §2, CO5). Round trip, the legacy tuition / intake parse, constraints and the downgrade
+"""upc-017 -- migration 0132_university_courses (spec §2, CO5). Round trip, the legacy tuition / intake parse, constraints and the downgrade
 refusal run in a throwaway database built from scratch (the rec-008 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -16,18 +16,18 @@ from tests.test_tel_001_migration import _config, _sql
 from tests.test_upc_026_migration import _setup
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_upc_017_migration_0131", VERSIONS / "0131_university_courses.py")
+_spec = importlib.util.spec_from_file_location("_upc_017_migration_0132", VERSIONS / "0132_university_courses.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0130_university_meetings", "0131_university_courses"
+BASE, HEAD = "0131_partnership_targets", "0132_university_courses"
 NEW_COLUMNS = {
     "tuition_amount", "tuition_currency", "application_fee", "application_fee_currency", "intakes", "entry_requirements", "english_test",
     "english_score", "scholarship_ids", "application_process", "deadline", "active", "commission_percent", "commission_amount", "commission_currency",
 }  # fmt: skip
 
 
-def test_migration_chains_after_0130_and_there_is_a_single_head():
+def test_migration_chains_after_0131_and_there_is_a_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1
 

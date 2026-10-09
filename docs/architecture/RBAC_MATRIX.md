@@ -1304,7 +1304,18 @@ edit scope (upc-006's `can_edit_contacts`); edit, reschedule, complete and cance
 | `super_admin` | read only | all | `upc-009` |
 | `overseas_admin` and every other role | `403` | — | `upc-009` |
 
-### 2.72 University courses *(net-new, added 2026-10-09 — `DEC-SCOPE-146`, `upc-017`)*
+### 2.72 Monthly partnership targets *(net-new, added 2026-10-09 — `DEC-SCOPE-146`, `upc-021`)*
+
+Enforced inline in `api/partnership_targets.py` (`require_reader` / `require_setter`, then the manager scope: the caller themself, a head's
+direct reports, or every manager for `super_admin`). Targets carry no commission data. Audit and logs carry ids, KPI keys and numbers only.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Read targets vs actual | own only (another manager `404`) | direct reports + team row | `403` | ✅ all | `403` |
+| Set / clear targets | `403` (even their own) | direct reports; current month and up to 12 ahead | `403` | ✅ all, past months too | `403` |
+| Inactive manager | — | `422` on write | — | `422` on write | — |
+
+### 2.73 University courses *(net-new, added 2026-10-09 — `DEC-SCOPE-147`, `upc-017`)*
 
 Enforced inline in `api/university_courses.py` + `api/university_course_import.py` (`partnership_universities.require_reader`, then the
 university's `can_edit`). **U2:** a course's `commission` is removed server-side by `partnership_access.strip_commission` for every

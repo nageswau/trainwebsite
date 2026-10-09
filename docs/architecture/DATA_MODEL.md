@@ -1738,7 +1738,24 @@ completed; timestamps; indexes `(university_id, starts_at)`, `(status, starts_at
 (append-only: scheduled / edited / rescheduled with old and new start / completed / cancelled with reason; `position` identity). No
 backfill. **Migration `0130_university_meetings`**; `downgrade()` refuses while any meeting exists (API §12BM).
 
-## Course / program master (`upc-017`, `DEC-SCOPE-146`; migration `0131_university_courses`, after `0130_university_meetings`)
+## Monthly partnership targets (`upc-021`, `DEC-SCOPE-146`; migration `0131_partnership_targets`, after `0130_university_meetings`)
+
+**`partnership_targets` columns:**
+- `id`, `manager_user_id` → `users` (FK RESTRICT), `month` date (CHECK first day of the month), `kpi_key` varchar(40) (CHECK: the 7 §21
+  keys, `app/partnership_target_kpis.py`), `target` integer (CHECK 0–100000), `set_by_user_id` → `users` (FK RESTRICT), `set_at`, timestamps.
+
+**Constraints and indexes:** `ck_partnership_targets_month_start`, `ck_partnership_targets_kpi`, `ck_partnership_targets_target_range`;
+`uq_partnership_targets_manager_month_kpi (manager_user_id, month, kpi_key)` (also the read path and the upsert key).
+
+**Design notes:**
+- Only targets are stored. Actuals are computed on read by `services/partnership_metrics.target_actuals` from the append-only
+  `university_assignment_history`, `university_stage_history`, `university_agreement_events` and the once-set
+  `university_meetings.completed_at`, credited to the primary manager at the
+  time of each event, so a closed month is never re-scored (TG8/TG9).
+- Clearing a target deletes its row; the history is the audit log (`partnership_target.set`).
+- `downgrade()` refuses while any target exists.
+
+## Course / program master (`upc-017`, `DEC-SCOPE-147`; migration `0132_university_courses`, after `0131_partnership_targets`)
 
 **`overseas_courses` new columns (all nullable or defaulted; existing rows, applications, shortlists and commission terms unchanged):**
 - `tuition_amount` numeric(12,2) + `tuition_currency` varchar(3), `application_fee` numeric(10,2) + `application_fee_currency` varchar(3)
