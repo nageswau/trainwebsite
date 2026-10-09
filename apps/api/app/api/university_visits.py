@@ -26,6 +26,7 @@ from app.schemas import (
     VisitOptionPage,
     VisitStatus,
 )
+from app.services import partnership_tasks as tasks
 from app.services import university_visits as svc
 from app.services.bdm_travel import india_today
 from app.services.partnership_universities import search_filters
@@ -159,6 +160,8 @@ async def edit_visit(visit_id: UUID, payload: UniversityVisitUpdate, user: User 
         if key not in current:
             setattr(v, key, changes[key])
     await svc.replace_links(db, v, *(changes[k] if k in changed else None for k in current))  # participants, contacts
+    if "follow_up_date" in changed:
+        await tasks.sync_visit_due(db, v)  # upc-020 TK16
     svc.record(db, user, v, "edit", v.status, fields=changed)
     await db.commit()
     svc.log("university_visit_edited", user, v, fields=changed)
@@ -175,6 +178,8 @@ async def _transition(db: AsyncSession, user: User, visit_id: UUID, action: str,
     apply(v)
     await db.flush()
     svc.record(db, user, v, action, before, reason=reason)
+    if action == "complete":
+        await tasks.on_visit_completed(db, user, v)  # upc-020 TK4: the follow-up date becomes a follow-up
     if action == "submit":
         uni = await db.get_one(University, v.university_id)
         for recipient in await svc.approvers(db, v):

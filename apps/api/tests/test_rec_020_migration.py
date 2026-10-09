@@ -1,4 +1,4 @@
-"""rec-020 -- migration 0126_interview_management (spec §2). The backfill (codes in creation order, status from the legacy result), the
+"""rec-020 -- migration 0133_interview_management (spec §2). The backfill (codes in creation order, status from the legacy result), the
 CHECKs, the round trip and the downgrade refusal run in a throwaway database built from scratch (the rec-017 pattern); a downgrade never
 runs against the shared test database."""
 
@@ -16,11 +16,11 @@ from tests.test_rec_017_migration import _external, _job
 from tests.test_tel_001_migration import _config, _sql
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_rec_020_migration_0126", VERSIONS / "0126_interview_management.py")
+_spec = importlib.util.spec_from_file_location("_rec_020_migration_0133", VERSIONS / "0133_interview_management.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0125_university_comms", "0126_interview_management"
+BASE, HEAD = "0132_university_courses", "0133_interview_management"
 
 
 def test_migration_chains_and_there_is_a_single_head():
@@ -54,7 +54,7 @@ def isolated_db():
     try:
         settings.database_url = url
         command.upgrade(cfg, "head")
-        command.downgrade(cfg, BASE)  # the real 0125 shape of `interviews`
+        command.downgrade(cfg, BASE)  # the real 0132 shape of `interviews`
         yield {"cfg": cfg, "url": url}
     finally:
         settings.database_url = original

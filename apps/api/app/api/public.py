@@ -154,7 +154,8 @@ async def university(slug: str, db: AsyncSession = Depends(get_db)):
     u = await db.scalar(select(University).where(University.slug == slug, *public_visible()))
     if not u:  # an internal university is indistinguishable from an unknown one
         raise HTTPException(404, "University not found")
-    cs = (await db.scalars(select(OverseasCourse).where(OverseasCourse.university_id == u.id))).all()
+    # upc-017 (CO11, CO13): the active offer only; the keys stay the catalogue's (never the master's fields or its commission).
+    cs = (await db.scalars(select(OverseasCourse).where(OverseasCourse.university_id == u.id, OverseasCourse.active.is_(True)))).all()
     return {
         "university": UniversityOut.model_validate(u),
         "courses": [{"id": c.id, "title": c.title, "level": c.level, "category": c.category, "duration": c.duration, "tuition_fee": c.tuition_fee, "intake": c.intake} for c in cs],
@@ -167,7 +168,7 @@ async def overseas_courses(category: str | None = None, level: str | None = None
         select(OverseasCourse, University, Country)
         .join(University, OverseasCourse.university_id == University.id)
         .join(Country, University.country_id == Country.id)
-        .where(*public_visible())
+        .where(*public_visible(), OverseasCourse.active.is_(True))  # upc-017 (CO13): active courses of published universities
     )
     if category:
         stmt = stmt.where(OverseasCourse.category == category)

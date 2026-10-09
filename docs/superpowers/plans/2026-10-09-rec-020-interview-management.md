@@ -1,9 +1,9 @@
 # rec-020 — Interview management (plan)
 
-Spec: `docs/superpowers/specs/2026-10-09-rec-020-interview-management-design.md` (DEC-SCOPE-141, IV1–IV12). TDD per task: write the
+Spec: `docs/superpowers/specs/2026-10-09-rec-020-interview-management-design.md` (DEC-SCOPE-148, IV1–IV12). TDD per task: write the
 failing test, run it (RED), implement the minimum (GREEN), then refactor and re-run.
 
-1. **Model + migration `0126`.** `Interview` gains `interview_code`, `round`, `status`, `interviewer`, `location`, `contact_id`,
+1. **Model + migration `0133`.** `Interview` gains `interview_code`, `round`, `status`, `interviewer`, `location`, `contact_id`,
    `created_by_user_id` + CHECKs. Add `InterviewEvent` and `interview_code_seq`; backfill codes and statuses. Test:
    `test_rec_020_migration.py` (the CHECKs equal the model, the head, the backfill, the downgrade refusal).
 2. **Service `services/interviews.py`.** The catalogues, `check_time` (rec-028's rule, kept local: importing rec-028 cycles through workflows.py), the clash check (candidate lock), `create`,
@@ -19,7 +19,7 @@ failing test, run it (RED), implement the minimum (GREEN), then refactor and re-
    `RecruiterApplicationInterviews` (the section on the candidate row) and `RecruiterInterviewsPanel` + `/recruiter/interviews` page + nav.
    vitest for each.
 7. **e2e** `rec-020-interviews.spec.ts`.
-8. **Docs.** DEC-SCOPE-141 in the register, API_CONTRACT §12BI, DATA_MODEL, RBAC_MATRIX §2.67, SCREEN_CATALOG and the backlog status.
+8. **Docs.** DEC-SCOPE-148 in the register, API_CONTRACT §12BP, DATA_MODEL, RBAC_MATRIX §2.74, SCREEN_CATALOG and the backlog status.
 
 Focused test set (lite): `test_rec_020_*`, `test_emp_004*`, `test_emp_005*`, `test_adm_007*`, `test_adm_008*`, `test_rec_017*`,
 `test_rec_005_pipeline.py`, `test_rec_026*`, plus the route-inventory/RBAC tests that enumerate routes.

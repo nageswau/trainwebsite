@@ -1,4 +1,4 @@
-// rec-020 (DEC-SCOPE-141): interviews -- types, the EVID-018 §14 round labels, the views, the endpoints and the notice wording. The API
+// rec-020 (DEC-SCOPE-148): interviews -- types, the EVID-018 §14 round labels, the views, the endpoints and the notice wording. The API
 // decides scope, every rule (the moves, AC2's after-the-time gate, the clash) and what the viewer may do (`allowed_statuses`, `can_edit`,
 // `can_reschedule`, `can_schedule`); the UI only offers what it allows.
 import { isPage, type Page } from "@/lib/apiErrors";

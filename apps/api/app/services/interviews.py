@@ -1,4 +1,4 @@
-"""rec-020 (DEC-SCOPE-141, spec §1-§3): interview management -- rounds, statuses and their moves, reschedule with history, the per-candidate
+"""rec-020 (DEC-SCOPE-148, spec §1-§3): interview management -- rounds, statuses and their moves, reschedule with history, the per-candidate
 clash, the side effects on the application (rec-017) and the company (rec-005), the notices (Q-20), the lists and the output.
 
 An interview belongs to its application, so every recruiter read and write resolves through rec-017's `load_scoped` (rec-007's

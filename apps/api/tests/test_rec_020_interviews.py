@@ -1,4 +1,4 @@
-"""rec-020 -- interview management (spec §1-§3; AC1, AC2; DEC-SCOPE-141 IV1-IV12). The shared test database is never truncated, so every
+"""rec-020 -- interview management (spec §1-§3; AC1, AC2; DEC-SCOPE-148 IV1-IV12). The shared test database is never truncated, so every
 value is unique per test; a "past" interview is made by moving its time back in the database (the API refuses a past time)."""
 
 from datetime import UTC, datetime, timedelta

@@ -5742,7 +5742,252 @@ to proceed with the recommended answers.
   rec-026's Messages section and templates panel are shared (`MessagesSection`, a `library` prop); recruiter behaviour is unchanged.
 - **New Feature ID authorized:** `upc-012`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-012.
 
-### DEC-SCOPE-141 — Interview management (`rec-020`)
+### DEC-SCOPE-141 — Partnership tasks + follow-ups, auto-generated (`upc-020`)
+
+**Evidence:** `EVID-020` §19 (L639–L671: "The CRM should automatically generate tasks", 12 example tasks, "Task → Employee → Due Date →
+Priority → Status") and §20 (L673–L693: "Next Action + Next Action Date", the XYZ example, Overdue / Due Today / Due Tomorrow /
+Upcoming); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U11, Q-22 and §4 upc-020.
+**Status:** TK1–TK16, including **Q-22** (which event creates which task, with what due offset), are the recommended answers applied under
+the owner's standing instruction for the build session ("proceed with the recommended answers; ask only if genuinely blocking").
+**Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. Migration `0126_partnership_tasks`, API contract §12BI, RBAC §2.67.
+Spec: `docs/superpowers/specs/2026-10-09-upc-020-partnership-tasks-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| TK1 | What a task belongs to | One university, always; kind `follow_up` or `task` |
+| TK2 | Fields | Title, assignee, due date, priority (high / medium / low, default medium), status (open / done / cancelled), notes, kind, source |
+| TK3 | The 12 §19 examples | A title catalogue offered as suggestions; the title stays free text (≤ 200) |
+| TK4 | Q-22 events | Entering one of ten stages creates its task (table below); completing a visit creates "Follow up after visit" on the visit's follow-up date. `meeting` / `agreement` sources are reserved for upc-009 / upc-014 |
+| TK5 | Q-22 due offsets | Calendar days after the IST day of the event |
+| TK6 | Auto assignee | Active primary manager → active backup → the partnership actor → none (skipped, logged; the event still succeeds) |
+| TK7 | Duplicate auto-tasks | One open task per (university, rule); a partial unique index is the backstop |
+| TK8 | Who reads | Partnership managers (with a profile), heads and super_admin read every task; others `403` |
+| TK9 | Who adds | Managers and heads, on an active university in their edit scope; super_admin reads only |
+| TK10 | Assignee | A manager assigns themselves; a head themselves or an active direct report; anyone else `422` |
+| TK11 | Who changes a task | The assignee or the assignee's reporting head |
+| TK12 | Commands | Edit (title, notes, priority, assignee), reschedule (today or later), complete, cancel (reason); a closed task `409` |
+| TK13 | Bands | IST: overdue, today, tomorrow, upcoming; plus done and cancelled. A done or cancelled task is never overdue |
+| TK14 | Next Action | The university's earliest open follow-up (title, date, owner, priority, band) |
+| TK15 | Last Action | The later of the latest completed task and the latest stage move ("Moved to …"), until upc-013's timeline |
+| TK16 | Visit follow-up date edited | Moves the visit's open follow-up |
+
+**Q-22 stage rules:** Initial Contact → follow-up "Follow up with university" (+3, medium); Interested → "Schedule meeting" (+2, high);
+Meeting Completed → "Send partnership proposal" (+3, high); **Proposal Sent → follow-up "Follow up on proposal" (+7, high)**; Commercial
+Discussion → "Negotiate commission" (+7, medium); Documents Shared → "Send MoU" (+5, medium); Agreement Under Review → follow-up "Follow up
+on MoU" (+7, high); Agreement Signed → "Activate university" (+7, high); Partner Activated → "Conduct training" (+14, medium); Student
+Recruitment Started → "Send student applications" (+14, medium). "Arrange university visit", "Collect documents" and "Follow up on
+offers" are manual only.
+
+**Consequences:**
+- `partnership_tasks` (`0126`), `app/partnership_task_rules.py`, `services/partnership_tasks.py`, `api/partnership_tasks.py`
+  (`/partnership/tasks…`); the stage move (upc-007) and visit completion / follow-up-date edit (upc-010) call it in their transactions.
+- `UniversityDetail` gains `follow_up {next_action, last_action}` for every university reader.
+- Page `/partnership/tasks`; a Follow-ups & tasks section on `/partnership/universities/[id]`; the manager menu's Follow-ups & Tasks goes
+  live; head and super admin nav entries.
+- **New Feature ID authorized:** `upc-020`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-020.
+
+### DEC-SCOPE-142 — MoU / agreement management (`upc-014`)
+
+**Evidence:** `EVID-020` §13 (L453–L497: "This should be a major module"; 18 tracked rows; "Draft → Sent → Under Review → Negotiation →
+Approved → Signed → Active → Expiring → Renewed"), §28 L489 (agreement document), §32 ("MoU & Agreements"), L1129;
+`UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U2 (`EXPLICIT_APPROVAL`, 2026-10-08), §3.2 Q-16 and §4 upc-014.
+**Status:** Q-16 and AG1–AG18 are recommended answers applied under the owner's standing instruction for the build session ("proceed
+with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off.
+Migration `0127_university_agreements`, API contract §12BJ, RBAC §2.68.
+Spec: `docs/superpowers/specs/2026-10-09-upc-014-university-agreements-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| AG1 | Q-16 MoU number | Server-generated `MOU-000001` (own sequence); a renewal gets its own number |
+| AG2 | Agreement type | MoU, Partnership agreement, Commission agreement (the document centre's agreement kinds) |
+| AG3 | Fields | §13's 18 rows minus Commission (upc-016): 17 stored and returned |
+| AG4 | Q-16 statuses | Stored: draft … active, renewed. Derived: Expiring (signed/active, expiry within 90 days, IST), Expired (past expiry) |
+| AG5 | Transitions | draft→sent; sent→under_review/negotiation; under_review↔negotiation; →approved; approved→signed/negotiation; signed→active; `from_status` guard (409) |
+| AG6 | Approval | Only a partnership head in scope or super_admin |
+| AG7 | Signing | Needs the agreement document (same university, kind = type) and both signatories with dates (not future); DB CHECK backstop |
+| AG8 | Q-16 renewal | A new linked draft copying the terms; the old row becomes Renewed when the new one is signed; one successor each |
+| AG9 | Overlap | Signing refused (409) when a signed/active agreement of the same type overlaps; the predecessor excluded |
+| AG10 | Stage | Signing moves the university forward to Agreement Signed (never back), raising upc-020's stage auto-task as a manual move does; a lost university cannot sign (409) |
+| AG11 | Editing | Terms until approved; signing fields until signed; nothing after |
+| AG12 | Validation | expiry > start (422), renewal date in the window, courses of this university, real countries, text limits |
+| AG13 | Readers | partnership_manager, partnership_head, super_admin; overseas_admin and every other role `403` |
+| AG14 | Writers | `can_manage_agreements` (the contacts rule); approval `can_approve_agreements` |
+| AG15 | Commission | Not stored here (upc-016); every reader is a commission role today |
+| AG16 | Delete | Not in this item |
+| AG17 | Audit | `university_agreement.create/update/status/renew`, ids, number, statuses, field names only |
+| AG18 | Menu page | `/partnership/agreements`: effective status, type and text filters, soonest expiry first, paged |
+
+**Consequences:** tables `university_agreements` and `university_agreement_events`, sequence `university_agreement_mou_seq`; routes
+`/partnership/universities/{id}/agreements|agreement-options`, `/partnership/agreements…`, `/partnership/agreement-signatories`;
+`permissions.can_manage_agreements` / `can_approve_agreements` on the university; an Agreements section on `/partnership/universities/[id]`;
+page `/partnership/agreements`; the manager menu's "MoU & Agreements" goes live and the head nav gains it. upc-015 reads the expiry dates;
+upc-016 hangs commission terms off agreements; upc-013 can show the agreement events.
+**New Feature ID authorized:** `upc-014`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-014.
+
+### DEC-SCOPE-143 — Expected timeline + milestone tracker (`upc-008`)
+
+**Evidence:** `EVID-020` §5 (L176–L210: six per-university targets, a milestone table with target date and status, the ABC University
+example) and §6 (L212–L242: 13 milestones, "The system should automatically highlight delayed milestones");
+`UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.2 Q-10, Q-11 and §4 upc-008.
+**Status:** Q-10, Q-11 and MS1–MS12 are recommended answers applied under the owner's standing instruction for the build session
+("proceed with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off.
+Migration `0128_university_milestones`, API contract §12BK, RBAC §2.69.
+Spec: `docs/superpowers/specs/2026-10-09-upc-008-partnership-timeline-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| MS1 | Milestone kinds | The 13 §6 milestones in source order and wording (constants in `app/partnership_milestones.py`) |
+| MS2 | "Created from a template when a university leaves Target" | The catalogue is the template for every university; rows are stored only once a date is recorded (no stage hook, no backfill, no invented rows) |
+| MS3 | Q-11 delayed | Computed, never stored: done when achieved; delayed when the target date is before today (IST), no grace days; the earliest not-done milestone is in progress (unless delayed); the rest pending |
+| MS4 | Auto-completion | Proposal: first move into Proposal Sent or later. Signed: first signed/active/renewed agreement (upc-014), the later signature date. First Application: first application. First Admission: first `enrolled` status. Meeting stays manual until upc-009 |
+| MS5 | How | Derived on read (no hooks into the application write sites); a recorded achieved date wins; clearing it falls back to the derived date |
+| MS6 | Validation | Achieved date not after today (IST) → 422; target dates unrestricted (a past one shows as delayed) |
+| MS7 | Target moved after a delay | Kept in the audit log: `university.milestone_updated` with the target date from / to and `was_delayed` |
+| MS8 | Q-10 month / quarter | Derived from the target partnership date (calendar quarters), never stored |
+| MS9 | §5 targets | `target_partnership_date`, `expected_intake` (text ≤ 80), `expected_agreement_date`, `expected_recruitment_start` on `universities` |
+| MS10 | Who edits | `can_edit_timeline` = the stage rule: primary/backup manager, the head in write scope, super_admin; overseas_admin reads only; inactive → 409 |
+| MS11 | Who reads | Every university reader |
+| MS12 | API | `GET …/milestones`, `PATCH …/milestones/{kind}` (one milestone per call), `PATCH …/expected` |
+
+**Consequences:** columns on `universities`, table `university_milestones`; routes `/partnership/universities/{id}/milestones[/{kind}]`
+and `/partnership/universities/{id}/expected`; `permissions.can_edit_timeline` and an `expected` block on the university; a "Partnership
+timeline" section on `/partnership/universities/[id]`. upc-015 reads the delayed milestones (the same status rule); upc-023 reads the
+expected agreement date; upc-009 adds the Meeting auto-completion.
+**New Feature ID authorized:** `upc-008`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-008.
+
+### DEC-SCOPE-144 — Commercial / commission terms, restricted (`upc-016`)
+
+**Evidence:** `EVID-020` §15 (L515–L543: 9 terms; "Commission payable after visa approval + student enrolment"; Finance manages
+receipts), §32 ("💰 Commercial Terms", L1080), L1129 ("Commissions should not be seen by anyone.");
+`UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U2 + U4 (`EXPLICIT_APPROVAL`, 2026-10-08), §3.2 Q-18, Q-19 and §4 upc-016.
+**Status:** Q-18, Q-19 and CM1–CM15 are recommended answers applied under the owner's standing instruction for the build session
+("proceed with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off.
+Migration `0129_university_commission_terms`, API contract §12BL, RBAC §2.70. Spec: `docs/superpowers/specs/2026-10-09-upc-016-commission-terms-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| CM1 | Q-19 triggers | Student enrolment; Visa approval + enrolment; Tuition paid. Required. (Expected counting only once met: upc-019) |
+| CM2 | Q-18 rate | Exactly one of commission % (0 < % ≤ 100, 2 dp) or fixed amount (> 0, 2 dp) per term; both/neither `422` |
+| CM3 | Q-18 currency | Required, from the project list (INR, USD, GBP, EUR, CAD, AUD, NZD); no FX; others `NEEDS_CONFIRMATION` |
+| CM4 | Q-18 precedence | For upc-019: a programme-specific term beats an all-programmes one; a country-specific beats all-countries |
+| CM5 | Shape | Terms per agreement; eligible programmes = that university's course ids (empty = all); eligible countries (empty = all); ≤ 20 terms |
+| CM6 | Fields | The 9 §15 terms (conditions / payment terms ≤ 2000, payment timeline ≤ 500) |
+| CM7 | Readers (U2) | `can_see_commission`: super_admin, partnership_head, partnership_manager (with profile); every other role `403`, anonymous `401` |
+| CM8 | Writers | The agreement's university `can_manage_agreements` |
+| CM9 | When | While the agreement's terms are editable (draft … negotiation); afterwards `409` (renew to change) |
+| CM10 | Renewal | A renewal copies the agreement's commission terms |
+| CM11 | Delete | Allowed while editable; audited |
+| CM12 | `strip_commission` | `partnership_access.strip_commission(user, payload)` drops `COMMISSION_FIELDS` (`commission_terms`) for non-commission roles; every agreement payload passes through it |
+| CM13 | Audit | `university_commission_term.create/update/delete`: ids, MoU number, field names only — never rates, amounts or texts |
+| CM14 | Menu page | `/partnership/commercial-terms`: every term, trigger / currency / text filters, newest first, paged 50 |
+| CM15 | Concurrency | university → agreement → term locks; the 20-term cap checked under the agreement lock |
+
+**Consequences:** table `university_commission_terms`; routes `/partnership/agreements/{id}/commission-terms[/{term_id}]` and
+`/partnership/commission-terms`; agreements carry `commission_terms` for commission roles only; a "Commission terms (Restricted)" block in
+each agreement card; page `/partnership/commercial-terms`; the manager menu's "Commercial Terms" goes live and the head nav gains it.
+upc-017 adds the course `commission` to `COMMISSION_FIELDS`; upc-019 computes Expected from these terms; Management M3 adds `partner` to
+`COMMISSION_ROLES` when that role exists.
+**New Feature ID authorized:** `upc-016`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-016.
+
+### DEC-SCOPE-145 — University meetings (`upc-009`)
+
+**Evidence:** `EVID-020` §7 (L244–L312: "The Partnership Manager should be able to schedule every interaction", 19 meeting fields, 12
+meeting types); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §4 upc-009 and Q-12.
+**Status:** MG1–MG16, including **Q-12** (a meeting's "Next meeting date" creates a follow-up, not a draft meeting), are the recommended
+answers applied under the owner's standing instruction for the build session ("proceed with the recommended answers; ask only if
+genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. Migration `0130_university_meetings`, API contract
+§12BM, RBAC §2.71. Spec: `docs/superpowers/specs/2026-10-09-upc-009-university-meetings-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| MG1 | Meeting types | The 12 §7 values in source order; "University visit" / "Campus visit" are types only (the approved trip stays upc-010) |
+| MG2 | Meeting ID | `UMT-000001` from `university_meeting_code_seq` |
+| MG3 | Date and time | One `starts_at`, entered in IST; future and within 366 days at scheduling and on reschedule |
+| MG4 | Online/Offline, location, link | `online` / `offline`; location ≤ 200; link ≤ 500, `http(s)` only, typed in; an online meeting without a link is allowed with a `link_missing` warning |
+| MG5 | Contact person + designation | A contact of this university (else `422`); name and designation copied onto the meeting (FK `SET NULL`) |
+| MG6 | University participants | Contacts of this university, ≤ 20; the contact person always attends |
+| MG7 | EduSphere participants | Active partnership managers / heads other than the responsible employee, ≤ 10 |
+| MG8 | Responsible employee | A manager: themselves; a head: themselves or an active direct report |
+| MG9 | Statuses | scheduled → completed (after the start) or cancelled (reason); reschedule = a new start, recorded with old and new times |
+| MG10 | Outcome | Notes / discussion points / decisions (at least one) on completion |
+| MG11 | Next action | Needs a due date; creates a upc-020 follow-up (source `meeting`, priority high) for the responsible employee |
+| MG12 | Q-12 next meeting date | A follow-up "Schedule the next meeting" due on that date (not a draft meeting) |
+| MG13 | Stage | Scheduling → Meeting Scheduled, completing → Meeting Completed, only when earlier; never backwards, lost or inactive |
+| MG14 | Who reads | Partnership managers (with a profile), heads and super_admin read every meeting; others `403` |
+| MG15 | Who acts | Schedule: managers / heads in the university edit scope; edit / complete / cancel: the responsible employee or the scheduler |
+| MG16 | Lists | Upcoming, Awaiting outcome, Completed, Cancelled with counts; "Only my meetings"; university filter |
+
+**Consequences:**
+- `university_meetings`, `university_meeting_participants`, `university_meeting_events` (`0130`); `app/partnership_meeting_types.py`,
+  `services/university_meetings.py`, `api/university_meetings.py` (`/partnership/meetings…`); the stage moves reuse upc-014's
+  forward-only `advance_to`; upc-020 gains `on_meeting_completed` (rules `meeting:<id>` and `meeting:<id>:next`).
+- Pages `/partnership/meetings`, `/new`, `/[id]`, `/[id]/edit`; a Meetings section on `/partnership/universities/[id]`; the manager menu's
+  Meetings goes live; head and super admin nav entries.
+- **New Feature ID authorized:** `upc-009`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-009.
+
+### DEC-SCOPE-146 — Monthly partnership targets vs actual (`upc-021`)
+
+**Evidence:** `EVID-020` §21 (L695–L719: "Management can give the Partnership Manager monthly targets", the seven September KPIs —
+illustrative numbers — and "CRM automatically compares Target vs Actual"); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` U3 (`partnership_head`
+sets targets), §3.2 Q-23, §4 upc-021 and Appendix B T1–T7 / D6, D7, D9, D11, D12.
+**Status:** Q-23 and TG1–TG12 are recommended answers applied under the owner's standing instruction for the build session ("proceed with
+the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off.
+Migration `0131_partnership_targets`, API contract §12BN, RBAC §2.72. Spec: `docs/superpowers/specs/2026-10-09-upc-021-partnership-targets-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| TG1 | KPIs | The 7 §21 KPIs in source order (`app/partnership_target_kpis.py`): new universities identified, contacted, meetings, proposals, negotiations, MoUs, new active universities |
+| TG2–TG5 | Month, editable months, value, achievement | bdm-016's rules: IST month `YYYY-MM`; current month and up to 12 ahead, a past month only `super_admin`; whole number 0–100000, null clears; `round(actual × 100 / target)`, none without a target |
+| TG6 | Who sets | `partnership_head` for direct reports; `super_admin` any manager. A manager setting a target (even their own) → `403`; another head's manager → `404`; an inactive manager → `422` |
+| TG7 | Who reads | Manager: own only (another → `404`); head: direct reports; `super_admin`: all; every other role (incl. `overseas_admin`) → `403` |
+| TG8 | Attribution | The university's primary manager **at the time of the event**, from the append-only `university_assignment_history` (current primary when it was never reassigned); the backup is not credited |
+| TG9 | "Past months are never re-scored" | Actuals derive only from append-only history; a later reassignment, Lost, deactivation or backward move never changes a closed month. No snapshot table |
+| TG10 | Counting | T1 = first-ever primary assignment in the month (managers never create universities, upc-003 UM8); T2 = first entry into Initial Contact or later; T4/T5/T7 = distinct universities moved into Proposal Sent / Commercial Discussion / Partner Activated; T6 = agreements with a status event to Signed |
+| TG13 | Meetings (T3 = D7), after upc-009 merged | University meetings with status `completed` and `completed_at` in the month (completion is final in upc-009, so the date never moves), credited by TG8 at `completed_at`; scheduled and cancelled meetings never count |
+| TG11 | Joining mid-month | Listed from the month their account was created; credited only after becoming primary. Inactive managers are listed only for months where they hold a target |
+| TG12 | Team | Team target = Σ set targets; team actual = Σ listed managers' actuals |
+
+**Consequences:** table `partnership_targets`; routes `GET /partnership/targets`, `GET /partnership/targets/{manager_user_id}`,
+`PUT /partnership/targets`; `services/partnership_metrics.py` created (upc-018 adds the funnel to it); the "Targets & Forecast" menu entry is
+live for managers, heads and `super_admin`; T3 counts upc-009 meetings. upc-023 adds the forecast half of the page; upc-031 exports it.
+**New Feature ID authorized:** `upc-021`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-021.
+
+### DEC-SCOPE-147 — Course / program master (`upc-017`)
+
+**Evidence:** `EVID-020` §16 (L545–L579: the 14 course fields; "your counselors know exactly what each partner university offers"), §32
+("🎓 Courses & Programs", L1082), L1129 ("Commissions should not be seen by anyone."); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U2, U5,
+U6 (`EXPLICIT_APPROVAL`, 2026-10-08), §3.2 Q-21, Q-33 and §4 upc-017.
+**Status:** Q-21, Q-33 (courses) and CO1–CO16 are recommended answers applied under the owner's standing instruction for the build session
+("proceed with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off.
+Migration `0132_university_courses`, API contract §12BO, RBAC §2.73. Spec: `docs/superpowers/specs/2026-10-09-upc-017-course-master-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| CO1 | Q-33 (courses) writers | The university's `can_edit` rule: its managers, their head, overseas_admin, super_admin; active university. Readers: the master's read roles |
+| CO2 | Commission (U2) | Optional per course: a % (0–100] or an amount (> 0) + currency. Read and set by `COMMISSION_ROLES` only; stripped for everyone else (`COMMISSION_FIELDS` gains `commission`); overseas_admin sending it `403` |
+| CO3 | Level | UG / PG / PhD / Diploma / Foundation for new and edited courses; legacy values kept until the level is edited |
+| CO4 | Q-21 tuition | Amount (≥ 0) + currency, both or neither; the legacy `tuition_fee` text is kept and re-derived ("GBP 18,000") when an amount is saved |
+| CO5 | Q-21 legacy parse | Best effort in the migration (symbol/code + one number; bare `$` and text stay unparsed); intakes from month names; texts never changed |
+| CO6 | Application fee | Amount (≥ 0) + currency, both or neither |
+| CO7 | Intakes | Months Jan–Dec, unique, calendar order; the legacy `intake` text re-derived |
+| CO8 | English | Test ∈ IELTS / TOEFL / PTE / Duolingo / Other + score (> 0, ≤ 9 / 120 / 90 / 160 / 999.9); a score needs a test |
+| CO9 | Scholarships | ≤ 20, of this university or its country's university-wide ones |
+| CO10 | Other fields | Entry requirements, application process (≤ 2000), deadline (date), title / category / duration required |
+| CO11 | Deactivate | `active=false`, allowed with open applications (they keep `course_id`); leaves the catalogue; no delete |
+| CO12 | Duplicates | Same university + normalised title + level → `409` (CSV: `duplicate`) |
+| CO13 | Catalogue | `/public/overseas-courses` and `/public/universities/{slug}`: active courses of published universities; keys unchanged |
+| CO14 | Q-21 CSV | Per university, by CO1's writers; 15 columns (no commission, no scholarships); created / duplicate / invalid per row; 1 MB, 1,000 rows; Idempotency-Key replay; `course_import_batches` keeps counts + results, never the file |
+| CO15 | Menu page | `/partnership/courses`: every course, level / status / text filters, paged 50; commission column for commission roles only |
+| CO16 | Audit / locks | `university_course.create/update/import`: ids + field names (never commission values); university row then course row locks |
+
+**Consequences:** `overseas_courses` gains 15 columns + CHECKs + `(university_id, level)` index; table `course_import_batches`; routes
+`/partnership/universities/{id}/courses[/{course_id}]`, `…/course-options`, `…/courses/import`, `…/courses/imports/template`,
+`/partnership/courses`; the public catalogue filters inactive courses; a "Courses & programmes" section on the university page; page
+`/partnership/courses`; the manager menu's "Courses & Programs" goes live and the head nav gains it. Counselors read the catalogue now and
+the role-sliced 360 view in upc-030 (U14).
+**New Feature ID authorized:** `upc-017`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-017.
+
+### DEC-SCOPE-148 — Interview management (`rec-020`)
 
 **Evidence:**
 - `EVID-018` §14 (lines 594–652): 12 fields (Interview ID, Company, Requirement, Candidate, Round, Date, Time, Interview Mode, Meeting
@@ -5757,9 +6002,10 @@ to proceed with the recommended answers.
 **Status:** built on branch `feature/rec-020`. Every answer below is a **recommended default, `UNVERIFIED`**, taken on the owner's
 instruction to proceed with the recommended answers. IV9 answers Q-20.
 
-**Numbering (FINAL):** migration `0126_interview_management` (after `0125_university_comms`), API §12BI and RBAC §2.67. Drafted as
-`0124` / `DEC-SCOPE-141` / §12BI / §2.67; rec-010 (`0123`, 138, §12BF, §2.64), upc-026 (`0124`, 139, §12BI, §2.67) and the `0125` item
-(140, §12BH, §2.66) merged first. The next rec item takes `0127`, `DEC-SCOPE-142`, §12BJ and §2.68 (re-check `main`). Spec `docs/superpowers/specs/2026-10-09-rec-020-interview-management-design.md`.
+**Numbering (FINAL):** migration `0133_interview_management` (after `0132_university_courses`), API §12BP and RBAC §2.74. Drafted as
+`0124` / `DEC-SCOPE-139` / §12BG / §2.65, then `0126` / 141 / §12BI / §2.67: rec-010 (`0123`), upc-026 (`0124`), upc-012 (`0125`) and
+seven more upc items (`0126`–`0132`, DEC-SCOPE-141..147, §12BI–§12BO, §2.67–§2.73) merged first. The next rec item takes `0134`,
+`DEC-SCOPE-149`, §12BQ and §2.75 (re-check `main`). Spec `docs/superpowers/specs/2026-10-09-rec-020-interview-management-design.md`.
 
 | # | Point | Answer |
 |---|---|---|

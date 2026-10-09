@@ -127,3 +127,10 @@ describe("bdm-016 My Day targets card", () => {
     expect(screen.getByText("Unable to load your targets right now.")).toBeTruthy();
   });
 });
+
+describe("bdm-016 target editor on the shared editor (upc-021 QA21-01)", () => {
+  it("hands the client editor only serializable props, so a server page can render it", () => {
+    const element = BdmTargetsEditor({ initial: sheet() });
+    expect(Object.values(element.props as Record<string, unknown>).some((v) => typeof v === "function")).toBe(false);
+  });
+});

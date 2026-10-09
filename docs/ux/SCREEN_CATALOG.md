@@ -3276,6 +3276,43 @@ Design spec `docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.
 - **Route:** `/partnership/universities/[id]` gains a **Visits** section (latest 5, "Plan a visit", "All N visits") for the partnership
   roles and super admin. **Responsive:** tables become labelled cards; no side-scroll at 390 px.
 
+## upc-020 addendum (2026-10-09, `DEC-SCOPE-141`) — Follow-ups & tasks
+
+Design spec `docs/superpowers/specs/2026-10-09-upc-020-partnership-tasks-design.md` §4. Visual-reference mapping: None — not inspected. Do not claim parity.
+
+- **Route:** `/partnership/tasks` — §20 band tabs with counts (Overdue, Due today, Due tomorrow, Upcoming, Done, Cancelled; Due today
+  first), a "Show" filter (manager: My items / Everyone; head: My items / My team / Everyone; super admin: everyone), "Add follow-up or
+  task" for managers and heads, the list and URL paging. Each item: title, band / kind / priority badges in words, due date, university
+  link, owner, source ("Added by hand", "Auto: stage change", "Auto: university visit"), notes; Done, Reschedule (inline date), Edit,
+  Cancel task (reason) per `permissions`. **States:** loading, "Nothing due today." (per band), past-the-end, "Unable to load
+  follow-ups." + Retry, session ended → sign in; a non-reader gets the access card.
+- **Form:** university (fixed or a search picker), kind, title with §19's twelve titles as suggestions, due date (IST), priority, assign
+  to (heads), notes. Required-field errors before sending; a `422` under its field; Escape cancels and returns focus.
+- **Route:** `/partnership/universities/[id]` gains **Follow-ups & tasks**: Last action, Next action, Date (+ band), Owner, Priority (the
+  §20 XYZ layout) for every reader; the open items and "Add follow-up or task" for task readers (refreshed after a stage move).
+- **Nav:** the manager menu's Follow-ups & Tasks goes live; the head and super admin navs gain it. **Responsive:** single column, no
+  side-scroll at 390 px.
+
+## upc-009 addendum (2026-10-09, `DEC-SCOPE-145`) — Meetings
+
+Design spec `docs/superpowers/specs/2026-10-09-upc-009-university-meetings-design.md` §4. Visual-reference mapping: None — not inspected. Do not claim parity.
+
+- **Route:** `/partnership/meetings` — Upcoming / Awaiting outcome / Completed / Cancelled tabs (links, with counts; the view and paging
+  live in the URL), "Only my meetings", "Schedule a meeting" for managers and heads, and the list (meeting ID, university, type, when in
+  IST, mode with "no link yet", contact person, responsible, status; cards below 640 px). **States:** per-view empty text, past-the-end,
+  access card for other roles.
+- **Routes:** `/partnership/meetings/new?university=<id>` and `/partnership/meetings/[id]/edit` — the meeting form: university (fixed or
+  a search picker), responsible employee (heads), meeting type (12), date and time (IST), Online / Offline, location, meeting link (a
+  non-blocking "no link yet" note for an online meeting), contact person with its designation, university participants (the contact
+  person ticked and fixed), EduSphere participants (chips + picker), agenda, notes; on edit a changed time asks for an optional reason.
+  Required-field errors before sending; a `422` under its field.
+- **Route:** `/partnership/meetings/[id]` — the §7 facts, the link warning, Record outcome (notes, discussion points, decisions, next
+  action + due date, next meeting date; offered once the meeting has started) and Cancel meeting (reason) per `permissions`; the outcome
+  with the follow-ups it created; the history (reschedules show old → new time).
+- **Route:** `/partnership/universities/[id]` gains **Meetings** (latest 5, scheduled first; "Schedule a meeting"; "All N meetings").
+- **Nav:** the manager menu's Meetings goes live; the head nav and the super admin nav ("Partnership Meetings") gain it. **Responsive:**
+  single column, no side-scroll at 390 px.
+
 ## rec-024 addendum (2026-10-08, `DEC-SCOPE-131`) — Recruiter follow-ups
 
 Design spec `docs/superpowers/specs/2026-10-08-rec-024-recruiter-follow-ups-design.md` §4.
@@ -3437,7 +3474,99 @@ Design spec `docs/superpowers/specs/2026-10-09-upc-012-university-comms-design.m
     delivery status, polled while sending.
   - **Contacts:** each contact shows "Last interaction: <date, time IST>" once called or messaged.
 
-## rec-020 addendum (2026-10-09, `DEC-SCOPE-141`) — Interview management
+## upc-014 addendum (2026-10-09, `DEC-SCOPE-142`) — MoU / agreement management
+
+Design spec `docs/superpowers/specs/2026-10-09-upc-014-university-agreements-design.md` §4. Visual-reference mapping: None — not inspected. Do not claim parity.
+
+- **Route:** `/partnership/universities/[id]` gains an **Agreements** section (partnership roles and super admin only; overseas_admin
+  never sees it) — one card per agreement: MoU number with type, status (Expiring/Expired derived) and "Expires in n days" badges; period,
+  exclusivity, territory; "Renewal of / Renewed by" links; an "Agreement details" disclosure with the 17 fields (the document links to
+  its audited download); a "History (n)" disclosure. Buttons only for what the API offers: **Move to <status>** (an inline note form),
+  **Edit** (terms until approved, then the signing fields only), **Renew** (dates prefilled after the current expiry). With
+  `can_manage_agreements`: **New agreement** (type, exclusivity, dates, territory, four text terms, courses checklist or "All courses",
+  countries chips with a country search, signing fieldset: document select filtered by type, a searched EduSphere signatory, dates not in
+  the future, university signatory). Missing type/dates/order are caught before sending; API refusals in `.form-error[role=alert]` with the
+  form kept; notices in `p[role=status]` (rendered only when shown); buttons disabled while sending. **Empty:** "No agreements recorded yet."
+- **Route:** `/partnership/agreements` (manager menu "MoU & Agreements", head nav) — table (MoU number, university link + code, type,
+  status badge + expiry text, period, exclusivity), soonest expiry first; GET filter form (status incl. Expiring/Expired, type, search);
+  URL paging. **States:** "No agreements recorded yet." / "No agreements match these filters." / past-the-end link; 403 → access card.
+- **Responsive:** cards and form grids stack; the menu table becomes labelled cards below 640 px; no side-scroll at 390 px.
+
+## upc-008 addendum (2026-10-09, `DEC-SCOPE-143`) — Expected timeline + milestone tracker
+
+Design spec `docs/superpowers/specs/2026-10-09-upc-008-partnership-timeline-design.md` §4. Visual-reference mapping: None — not inspected. Do not claim parity.
+
+- **Route:** `/partnership/universities/[id]` gains a **Partnership timeline** section after the stage history, for every university
+  reader (overseas_admin read only). **Expected timeline** (§5): target partnership date, expected month and quarter (derived, e.g.
+  "November 2026", "Q4 2026 (Oct–Dec)"), expected intake, expected agreement date, expected student recruitment start date ("Not set" when
+  empty); with `can_edit_timeline` an **Edit expected timeline** form (four fields, Save / Cancel, Escape closes) that refreshes the page.
+  **Milestones** (§6): a table of the 13 milestones (Milestone, Target date, Achieved, Status). Status is a text badge — Done, In progress
+  (blue), Pending (amber), Delayed (red) — and a delayed row is also tinted, with an "n milestones delayed" line above the table (AC1;
+  never colour alone). Auto-achieved dates say "(Auto, from the stage move / signed agreement / first application / first admission)".
+  With `can_edit_timeline`, each row has **Edit** (`aria-label` "Edit <milestone>") opening a form under the table (target date, achieved
+  date with `max` = today in IST, a hint when blank keeps the automatic date). Saving replaces the table, shows "<Milestone> saved." in
+  `p[role=status]` (rendered only when shown) and returns focus to Edit.
+- **States:** server-rendered; a failed first read shows "Unable to load the milestones." with **Try again**; saving shows "Saving…" and
+  ignores a second click; API refusals (`403` / `409` / network) in `.form-error[role=alert]` with the form and typed values kept; a 422
+  sits under its field.
+- **Responsive:** at 390 px the milestone table sizes to its content (Status stays on screen) and the expected-timeline facts keep a
+  readable value column; no page-level side-scroll (QA8-01..04).
+
+## upc-016 addendum (2026-10-09, `DEC-SCOPE-144`) — Commercial / commission terms (restricted)
+
+Design spec `docs/superpowers/specs/2026-10-09-upc-016-commission-terms-design.md` §4. Visual-reference mapping: None — not inspected. Do not claim parity.
+
+- **Route:** `/partnership/universities/[id]` — each agreement card gains a **Commission terms** block with a "Restricted" badge, rendered
+  only when the API sends `commission_terms` (partnership roles and super admin; never overseas_admin, counselors, BDMs, agents, the
+  university rep or the public). One row per term: the rate ("15%" or "GBP 1,500"), currency · trigger, "Applies to" (programmes ·
+  countries, or "All programmes · All countries"), conditions, payment timeline, payment terms. With edit rights (agreement still
+  negotiable): **Add commission term**, **Edit**, **Remove** (inline "Yes, remove" confirmation). The form: percentage / fixed amount
+  radio, the value, currency, trigger, payment timeline, conditions, payment terms, eligible programmes checklist, eligible countries chips
+  with a country search. Missing / out-of-range / > 2-decimal values are caught before sending; API refusals in `.form-error[role=alert]`
+  with the form kept; notices in `p[role=status]` (rendered only when shown); buttons disabled while sending; focus returns to Add.
+  **Empty:** "No commission terms recorded yet."
+- **Route:** `/partnership/commercial-terms` (manager menu "Commercial Terms", head nav) — table (university link + code, MoU number +
+  status, commission, trigger, applies to, payment timeline), newest first; GET filter form (trigger, currency, search); URL paging.
+  **States:** "No commission terms recorded yet." / "No commission terms match these filters." / past-the-end link; 403 → access card
+  ("Commission terms access required").
+- **Responsive:** the form grid stacks; the table becomes labelled cards below 640 px; no side-scroll at 820 px or 390 px.
+
+## upc-021 addendum (2026-10-09, `DEC-SCOPE-146`) — Targets & Forecast (monthly targets vs actual)
+
+Design spec `docs/superpowers/specs/2026-10-09-upc-021-partnership-targets-design.md` §5. Visual-reference mapping: None — not inspected. Do not claim parity.
+
+- **Route `/partnership/targets`** (menu "Targets & Forecast" for managers and heads; "Partnership Targets" for super_admin). A month
+  select (a year back to a year ahead; a plain GET form, so it works without JavaScript; a malformed month falls back to this month with a
+  note). **Head / super_admin:** "Team targets — <Month>": a table with one row per manager (an inactive one is marked) and a **Team** row
+  in the footer, one column per §21 KPI, each cell "actual / target · achievement" ("Not started" for a future month, never 0); each row has **Set targets** (or **View** for a past month / inactive manager) to the manager's page. Empty: "No
+  partnership managers report to you yet." **Manager:** "My targets — <Month>", their own sheet, read-only.
+- **Route `/partnership/targets/[managerId]`**: "<Manager> — <Month>" with a link back to all team targets; the shared targets editor (the
+  bdm-016 table: KPI with its definition, Target input, Achieved, Achievement) with **Save targets** (sends only changed values; blank
+  clears; a second click is ignored), "Saved n targets." in `role=status`, a refusal or an invalid value in `.form-error[role=alert]`.
+  Past months and inactive managers are read-only with a note. A malformed id or a manager out of scope shows "Partnership manager not found".
+- **Responsive / a11y:** the comparison scrolls inside its focusable, labelled region; the page has no side-scroll at 375 px; KPI headers
+  carry their definition as a tooltip and the editor shows it inline; every input has a label.
+
+## upc-017 addendum (2026-10-09, `DEC-SCOPE-147`) — Course / program master
+
+Design spec `docs/superpowers/specs/2026-10-09-upc-017-course-master-design.md` §4. Visual-reference mapping: None — not inspected. Do not claim parity.
+
+- **Route:** `/partnership/universities/[id]` — a **Courses & programmes** section for every reader of the page: one row per course (title,
+  level badge, "Inactive" badge), then category, duration, intakes, tuition fee, application fee, English, entry requirements, application
+  process, deadline, scholarships and — only when the API sends it (partnership roles, super admin) — "Commission (restricted)". Writers get
+  **Add course**, **Edit** per course and **Import courses (CSV)**. The form: title, level, category, duration (required), 12 intake month
+  checkboxes, tuition fee + currency, application fee + currency, English test + minimum score, deadline, entry requirements, application
+  process, scholarships checklist, commission (not recorded / percentage / amount + currency; commission roles only), "Offered (active)".
+  Checks before sending (required, negative, > 2 decimals, half a pair, score scale); API refusals in `.form-error[role=alert]`; notices in
+  `p[role=status]` (only when shown); busy-disabled buttons. The import panel: template link, file input (.csv, 1 MB), result counts and a
+  table of rows not added. **Empty:** "No courses recorded yet."
+- **Route:** `/partnership/courses` (manager menu "Courses & Programs", head nav) — table (course + Inactive badge, university link +
+  country, level, duration, intakes, tuition, English, commission for commission roles), GET filters (level, status, search), URL paging.
+  **States:** "No courses recorded yet." / "No courses match these filters." / past-the-end link; 403 → access card.
+- **Public catalogue:** unchanged screens; inactive courses no longer appear.
+- **Responsive:** the form grid stacks; the table becomes labelled cards below 640 px; no side-scroll at 820 px or 390 px.
+
+## rec-020 addendum (2026-10-09, `DEC-SCOPE-148`) — Interview management
 
 Design spec `docs/superpowers/specs/2026-10-09-rec-020-interview-management-design.md` §4.
 
