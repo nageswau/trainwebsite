@@ -1,4 +1,4 @@
-// rec-022 (DEC-SCOPE-152): offers -- types, the EVID-018 §16 status labels, the endpoints and the history wording. The API decides scope,
+// rec-022 (DEC-SCOPE-155): offers -- types, the EVID-018 §16 status labels, the endpoints and the history wording. The API decides scope,
 // every rule (Selected only, the moves, the dates, the letter type) and what the viewer may do (`can_create`, `allowed_statuses`,
 // `can_edit`, `can_upload`); the UI only offers what it allows.
 

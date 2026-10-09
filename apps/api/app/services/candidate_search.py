@@ -2,17 +2,23 @@
 related skills (FS2), the S2-§18 filters (FS5), the F1-F3 facets (FS7) and the result cards (FS8).
 
 Read only. Terms become skill ids before any candidate is read, and only ids and escaped patterns reach SQL as bound parameters (no
-expression is ever parsed into SQL). Six queries whatever the pool or page size: terms, related, counts, locations, page, page skills."""
+expression is ever parsed into SQL). Six queries whatever the pool or page size: terms, related, counts, locations, page, page skills.
+
+rec-014 (DEC-SCOPE-154, FT1-FT6): an optional `text` matches the current resume's generated `search_vector` through
+websearch_to_tsquery('english', :text) -- the text is a bound parameter, never SQL -- ranks by relevance and adds `ts_headline`
+snippets. It adds two queries: the stop-word check and the page's snippets."""
 
 import logging
+import re
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import and_, exists, func, literal, or_, select, union_all
+from sqlalchemy import and_, exists, false, func, literal, literal_column, or_, select, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.api.lookups import _pattern as like_pattern
-from app.models import Candidate, CandidateSkill, RecCandidateSource, Skill, SkillAlias, SkillRelated, User
+from app.models import Candidate, CandidateResume, CandidateSkill, RecCandidateSource, Skill, SkillAlias, SkillRelated, User
 from app.schemas import CandidateSearch
 from app.services.candidates import pool_filter
 
@@ -23,6 +29,24 @@ TOP_LOCATIONS = 5
 OTHER, NONE = "__other__", None
 EXPERIENCE_BANDS = (("y0_1", 0, 11), ("y1_3", 12, 35), ("y3_5", 36, 59), ("y5_plus", 60, None))  # F1, months, inclusive
 AVAILABILITY_BANDS = (("immediate", 0, 0), ("d15", 1, 15), ("d30", 16, 30), ("d31_59", 31, 59), ("d60_plus", 60, None))  # F3, days
+
+# rec-014: the vector's configuration (models.RESUME_SEARCH_VECTOR); ts_headline marks hits with private-use characters, removed from the
+# resume first, and the page receives [{text, hit}] segments -- never HTML (FT6).
+ENGLISH = literal_column("'english'::regconfig")
+START, STOP = "\ue000", "\ue001"
+HEADLINE = f'StartSel={START}, StopSel={STOP}, MaxFragments=2, MaxWords=20, MinWords=8, FragmentDelimiter=" … "'
+SNIPPET_CHARS = 300
+STOP_WORDS_NOTICE = "Your resume search only has common words like “the” or “and”, so it matches nothing. Add a more specific word."
+
+
+def _tsquery(text: str):
+    return func.websearch_to_tsquery(ENGLISH, text)
+
+
+def _current(resume):
+    """The resume row is its candidate's highest version (rec-009: the current resume)."""
+    newer = aliased(CandidateResume)
+    return resume.version == select(func.max(newer.version)).where(newer.candidate_id == resume.candidate_id).scalar_subquery()
 
 
 def _between(column, low: int, high: int | None):
@@ -104,6 +128,9 @@ def filters(body: CandidateSearch, terms: dict[str, dict]) -> list:
         out.append(Candidate.source_id == body.source_id)
     if body.status:
         out.append(Candidate.status == body.status)
+    if body.text:  # FT1: the GIN index finds matching resumes; only a candidate's current one counts
+        resume = aliased(CandidateResume)
+        out.append(Candidate.id.in_(select(resume.candidate_id).where(resume.search_vector.op("@@")(_tsquery(body.text)), _current(resume))))
     return out
 
 
@@ -136,11 +163,17 @@ async def facets(db: AsyncSession, where: list) -> tuple[int, dict]:
     }
 
 
-async def page(db: AsyncSession, where: list, terms: dict[str, dict], limit: int, offset: int) -> list[dict]:
-    """The page's cards, newest first (FS11): one query for the candidates with their source, one for all their skills."""
+async def page(db: AsyncSession, where: list, terms: dict[str, dict], limit: int, offset: int, text: str | None = None) -> list[dict]:
+    """The page's cards, newest first (FS11) -- with text, the most relevant current resume first (FT5): one query for the candidates
+    with their source, one for all their skills."""
+    order = [Candidate.created_at.desc(), Candidate.id.desc()]
+    if text:
+        resume = aliased(CandidateResume)
+        rank = select(func.ts_rank_cd(resume.search_vector, _tsquery(text))).where(resume.candidate_id == Candidate.id, _current(resume))
+        order.insert(0, rank.scalar_subquery().desc())
     rows = (await db.execute(
         select(Candidate, RecCandidateSource).join(RecCandidateSource, RecCandidateSource.id == Candidate.source_id).where(*where)
-        .order_by(Candidate.created_at.desc(), Candidate.id.desc()).limit(limit).offset(offset)
+        .order_by(*order).limit(limit).offset(offset)
     )).all()
     matched = set().union(*(t["ids"] for t in terms.values()))
     skills: dict[UUID, list] = {c.id: [] for c, _ in rows}
@@ -158,28 +191,67 @@ async def page(db: AsyncSession, where: list, terms: dict[str, dict], limit: int
             "id": c.id, "candidate_code": c.candidate_code, "name": c.name, "preferred_role": c.preferred_role, "current_company": c.current_company,
             "experience_months": c.experience_months, "location": c.location, "notice_days": c.notice_days, "expected_salary": c.expected_salary,
             "source": {"id": s.id, "name": s.name, "active": s.active}, "source_detail": c.source_detail, "status": c.status, "skills": skills[c.id],
+            "snippet": None,
         }
         for c, s in rows
     ]
 
 
+def _segments(headline: str) -> list[dict]:
+    """ts_headline's output as alternating plain / hit segments (the markers alternate), whitespace collapsed, capped at SNIPPET_CHARS."""
+    out, room = [], SNIPPET_CHARS
+    for n, part in enumerate(re.split(f"[{START}{STOP}]", headline)):
+        part = re.sub(r"\s+", " ", part)
+        if not part:
+            continue
+        if len(part) > room:
+            if room > 0:
+                out.append({"text": part[:room], "hit": n % 2 == 1})
+            out.append({"text": "…", "hit": False})
+            break
+        out.append({"text": part, "hit": n % 2 == 1})
+        room -= len(part)
+    return out
+
+
+async def snippets(db: AsyncSession, candidate_ids: list[UUID], text: str) -> dict[UUID, list[dict]]:
+    """FT6: one query -- the page's current resumes around their hits."""
+    resume = aliased(CandidateResume)
+    source = func.translate(resume.extracted_text, START + STOP, "")
+    rows = await db.execute(
+        select(resume.candidate_id, func.ts_headline(ENGLISH, source, _tsquery(text), HEADLINE))
+        .where(resume.candidate_id.in_(candidate_ids), _current(resume))
+    )
+    return {candidate_id: _segments(headline) for candidate_id, headline in rows.all()}
+
+
 async def search(db: AsyncSession, body: CandidateSearch, *, limit: int, offset: int) -> dict:
     terms = await resolve_terms(db, body)
     where = filters(body, terms)
+    notice = None
+    if body.text and not await db.scalar(select(func.numnode(_tsquery(body.text)))):
+        where.append(false())  # FT3: only stop words -- the same shape, nothing in it
+        notice = STOP_WORDS_NOTICE
     total, facet_counts = await facets(db, where)
+    items = await page(db, where, terms, limit, offset, body.text)
+    if body.text and items:
+        found = await snippets(db, [item["id"] for item in items], body.text)
+        for item in items:
+            item["snippet"] = found.get(item["id"])
     return {
-        "items": await page(db, where, terms, limit, offset),
+        "items": items,
         "total": total,
         "limit": limit,
         "offset": offset,
         "facets": facet_counts,
         "terms": [{"term": t["term"], "skill": t["skill"], "also": t["also"]} for t in terms.values()],
+        "notice": notice,
     }
 
 
 def log(user: User, body: CandidateSearch, total: int) -> None:
-    """Counts only -- never the search text (it can name a person's skills) or a candidate."""
+    """Counts only -- never the search or resume text (it can name a person's skills) or a candidate."""
     logger.info(
         "candidate_search",
-        extra={"user_id": str(user.id), "terms": len(body.all) + sum(len(g) for g in body.any), "groups": len(body.any), "total": total},
+        extra={"user_id": str(user.id), "terms": len(body.all) + sum(len(g) for g in body.any), "groups": len(body.any), "text": body.text is not None, "total": total},
     )

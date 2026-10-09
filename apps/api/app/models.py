@@ -7,6 +7,7 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     CheckConstraint,
+    Computed,
     Date,
     DateTime,
     ForeignKey,
@@ -24,6 +25,7 @@ from sqlalchemy import (
     text,
     true,
 )
+from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column, relationship, validates
 from sqlalchemy.sql import func
 
@@ -32,6 +34,8 @@ from app.bdm_stages import MANUAL_STAGES as BDM_MANUAL_STAGES
 from app.core.identifiers import normalize_key
 from app.lead_stages import STAGES as LEAD_STAGES
 from app.notifications.phone import normalise_phone
+from app.partnership_event_kinds import KINDS as PARTNERSHIP_EVENT_KINDS
+from app.partnership_event_kinds import STATUSES as PARTNERSHIP_EVENT_STATUSES
 from app.partnership_meeting_types import EVENTS as UNIVERSITY_MEETING_EVENTS
 from app.partnership_meeting_types import MODES as UNIVERSITY_MEETING_MODES
 from app.partnership_meeting_types import STATUSES as UNIVERSITY_MEETING_STATUSES
@@ -875,7 +879,7 @@ class PlacementProfile(Base, TimestampMixin):
     withdrawn: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
-# rec-022 (DEC-SCOPE-152, OF1): the EVID-018 §16 offer statuses in source order (L700). Migration 0136 repeats them
+# rec-022 (DEC-SCOPE-155, OF1): the EVID-018 §16 offer statuses in source order (L700). Migration 0138 repeats them
 # (test_rec_022_migration). Labels live in services/offers.py and the web client.
 OFFER_STATUSES = ("offer_pending", "offer_received", "accepted", "declined")
 OFFER_EVENTS = ("created", "status", "revised", "letter")
@@ -1440,6 +1444,53 @@ class UniversityMeetingEvent(Base):
     actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# upc-011 (DEC-SCOPE-152, spec §2): the §9 calendar's own events (conferences, fairs, webinars...; CL1-CL6). Migration 0136 repeats these
+# checks (test_upc_011_migration keeps them identical). PEV-000123 codes: a rolled-back create skips a number.
+PARTNERSHIP_EVENT_CODE_SEQ = Sequence("partnership_event_code_seq", metadata=Base.metadata)
+PARTNERSHIP_EVENT_CHECKS = {
+    "ck_partnership_events_kind": _one_of("kind", PARTNERSHIP_EVENT_KINDS, nullable=False),
+    "ck_partnership_events_status": _one_of("status", PARTNERSHIP_EVENT_STATUSES, nullable=False),
+    "ck_partnership_events_dates": "ends_on >= starts_on",
+    "ck_partnership_events_cancelled": "(status = 'cancelled') = (cancelled_at IS NOT NULL) AND (cancelled_at IS NULL) = (cancel_reason IS NULL)",
+}
+
+
+class PartnershipEvent(Base, TimestampMixin):
+    """upc-011: an all-day, possibly multi-day event (CL3) with an optional university. Never deleted: cancelled instead (CL6). Rules live
+    in `services/partnership_events.py`."""
+
+    __tablename__ = "partnership_events"
+    __table_args__ = (
+        UniqueConstraint("code", name="uq_partnership_events_code"),
+        *(CheckConstraint(sql, name=name) for name, sql in PARTNERSHIP_EVENT_CHECKS.items()),
+        Index("ix_partnership_events_dates", "starts_on", "ends_on"),
+        Index("ix_partnership_events_owner", "owner_user_id"),
+        Index("ix_partnership_events_university", "university_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    code: Mapped[str] = mapped_column(String(20))
+    kind: Mapped[str] = mapped_column(String(30))
+    title: Mapped[str] = mapped_column(String(200))
+    university_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"), nullable=True)
+    starts_on: Mapped[date] = mapped_column(Date)
+    ends_on: Mapped[date] = mapped_column(Date)
+    location: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    owner_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    status: Mapped[str] = mapped_column(String(12), default="scheduled", server_default=text("'scheduled'"))
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancel_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class PartnershipEventParticipant(Base):
+    """CL5: other EduSphere employees at the event (active partnership users when added)."""
+
+    __tablename__ = "partnership_event_participants"
+    event_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("partnership_events.id", ondelete="CASCADE"), primary_key=True)
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), primary_key=True)
 
 
 # upc-012 (DEC-SCOPE-140, spec §2): calls, WhatsApp and email stored against the university (§12, U10). Migration 0125 repeats these
@@ -4533,11 +4584,18 @@ class Candidate(Base, TimestampMixin):
     archived_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
+# rec-014 (DEC-SCOPE-154): English stemming and stop words over the extracted text; scans ('') and unextracted (null) resumes are empty.
+RESUME_SEARCH_VECTOR = "to_tsvector('english'::regconfig, coalesce(extracted_text, ''))"
+
+
 class CandidateResume(Base):
     """rec-009 (AC4): one uploaded resume version, append-only. The current resume is the candidate's highest version."""
 
     __tablename__ = "candidate_resumes"
-    __table_args__ = (UniqueConstraint("candidate_id", "version", name="uq_candidate_resumes_version"),)
+    __table_args__ = (
+        UniqueConstraint("candidate_id", "version", name="uq_candidate_resumes_version"),
+        Index("ix_candidate_resumes_search", "search_vector", postgresql_using="gin"),
+    )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     candidate_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id"))
     version: Mapped[int] = mapped_column(Integer)
@@ -4552,6 +4610,11 @@ class CandidateResume(Base):
     extracted_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     extraction_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     extracted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # rec-014 (DEC-SCOPE-154, FT8): the resume search vector, generated by Postgres from the extracted text (migration 0137 repeats the
+    # expression), so every extraction refreshes it. Never loaded into Python; candidate_search matches and ranks it in SQL.
+    search_vector: Mapped[str | None] = mapped_column(
+        TSVECTOR, Computed(RESUME_SEARCH_VECTOR, persisted=True), nullable=True, deferred=True
+    )
 
 
 # rec-010 (DEC-SCOPE-138): migration 0123 repeats CANDIDATE_CONSENT_CHECKS (test_rec_010_migration asserts they stay identical).

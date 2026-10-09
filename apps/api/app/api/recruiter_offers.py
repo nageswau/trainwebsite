@@ -1,4 +1,4 @@
-"""rec-022 (DEC-SCOPE-152, spec §3): offers -- an application's offer, record, revise, status, the letter upload and download; and the
+"""rec-022 (DEC-SCOPE-155, spec §3): offers -- an application's offer, record, revise, status, the letter upload and download; and the
 student's own offers.
 
 Scope is the requirement's (rec-007 `caller_scope` through rec-017's `load_scoped`; other roles 403, out of scope 404). Every write is one

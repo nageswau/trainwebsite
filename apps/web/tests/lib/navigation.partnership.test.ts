@@ -18,14 +18,15 @@ describe("upc-001 navigation", () => {
     expect(new Set(PARTNERSHIP_MENU.map((e) => e.href)).size).toBe(19);
   });
 
-  it("links only the live entries, plus Profile (upc-003 University Master, upc-007 Partnership Pipeline, upc-009 Meetings, upc-010 University Visits, upc-014 MoU & Agreements, upc-016 Commercial Terms, upc-017 Courses & Programs, upc-020 Follow-ups & Tasks, upc-026 Documents, upc-021 Targets & Forecast)", () => {
-    expect(PARTNERSHIP_MENU.filter((e) => e.live).map((e) => e.label)).toEqual(["Dashboard", "University Master", "Partnership Pipeline", "Meetings", "University Visits", "MoU & Agreements", "Commercial Terms", "Courses & Programs", "Follow-ups & Tasks", "Documents", "Targets & Forecast"]);
+  it("links only the live entries, plus Profile (upc-003 University Master, upc-007 Partnership Pipeline, upc-009 Meetings, upc-010 University Visits, upc-014 MoU & Agreements, upc-016 Commercial Terms, upc-017 Courses & Programs, upc-018 Student Opportunities + University Performance, upc-020 Follow-ups & Tasks, upc-011 Calendar, upc-026 Documents, upc-021 Targets & Forecast)", () => {
+    expect(PARTNERSHIP_MENU.filter((e) => e.live).map((e) => e.label)).toEqual(["Dashboard", "University Master", "Partnership Pipeline", "Meetings", "University Visits", "MoU & Agreements", "Commercial Terms", "Courses & Programs", "Student Opportunities", "University Performance", "Follow-ups & Tasks", "Calendar", "Documents", "Targets & Forecast"]);
     expect(PARTNERSHIP_NAV).toEqual([
       { label: "Dashboard", href: "/partnership/dashboard" }, { label: "University Master", href: "/partnership/universities" },
       { label: "Partnership Pipeline", href: "/partnership/pipeline" }, { label: "Meetings", href: "/partnership/meetings" },
       { label: "University Visits", href: "/partnership/visits" }, { label: "MoU & Agreements", href: "/partnership/agreements" },
       { label: "Commercial Terms", href: "/partnership/commercial-terms" }, { label: "Courses & Programs", href: "/partnership/courses" },
-      { label: "Follow-ups & Tasks", href: "/partnership/tasks" },
+      { label: "Student Opportunities", href: "/partnership/opportunities" }, { label: "University Performance", href: "/partnership/performance" }, // upc-018
+      { label: "Follow-ups & Tasks", href: "/partnership/tasks" }, { label: "Calendar", href: "/partnership/calendar" },
       { label: "Documents", href: "/partnership/documents" }, { label: "Targets & Forecast", href: "/partnership/targets" },
       { label: "Profile", href: "/partnership/profile" },
     ]);
@@ -35,9 +36,15 @@ describe("upc-001 navigation", () => {
       { label: "University Visits", href: "/partnership/visits" }, { label: "Visit approvals", href: "/partnership/visits/approvals" },
       { label: "MoU & Agreements", href: "/partnership/agreements" }, { label: "Commercial Terms", href: "/partnership/commercial-terms" },
       { label: "Courses & Programs", href: "/partnership/courses" },
-      { label: "Follow-ups & Tasks", href: "/partnership/tasks" }, { label: "Documents", href: "/partnership/documents" },
+      { label: "Student Opportunities", href: "/partnership/opportunities" }, { label: "University Performance", href: "/partnership/performance" }, // upc-018
+      { label: "Follow-ups & Tasks", href: "/partnership/tasks" }, { label: "Calendar", href: "/partnership/calendar" }, // upc-011
+      { label: "Documents", href: "/partnership/documents" },
       { label: "Message templates", href: "/partnership/head/templates" }, { label: "Targets & Forecast", href: "/partnership/targets" },
     ]);
+  });
+
+  it("gives the Super Admin the partnership calendar (upc-011 CL9: everyone)", () => {
+    expect(SUPER_ADMIN_NAV).toContainEqual({ label: "Partnership Calendar", href: "/partnership/calendar" });
   });
 
   it("gives the Super Admin the visit approval queue (upc-010 VS4 fallback)", () => {

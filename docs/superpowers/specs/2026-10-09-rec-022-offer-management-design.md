@@ -8,11 +8,11 @@
   Date, Offer Letter, Offer Status) and 4 statuses, "Offer Pending → Offer Received → Accepted → Declined". The section opens with "Once
   selected". §5's pipeline stage "Selected" (rec-005, event `candidate_selected`, reserved for rec-022) is reached by an offer.
 - **Module scope:** `DEC-SCOPE-116`. R8: candidate phone and email are never shared. R10: recruiters do every write.
-- **Decision:** `DEC-SCOPE-152`. OF1–OF10 are **recommended defaults**, taken on the owner's standing instruction for build sessions
+- **Decision:** `DEC-SCOPE-155`. OF1–OF10 are **recommended defaults**, taken on the owner's standing instruction for build sessions
   ("proceed with the recommended answers; ask only if required"). They stay `UNVERIFIED` until the owner confirms them. OF2, OF6 and OF7
   answer the backlog's Q-21.
-- **Numbering (draft):** migration `0136_offer_management` on `0135_resume_extraction`, API §12BT and RBAC §2.78. Re-check `main` before
-  merging: rec-014 is being built in parallel.
+- **Numbering (FINAL):** migration `0138_offer_management` on `0137_resume_search`, API §12BW and RBAC §2.81. Drafted as `0136` /
+  DEC-SCOPE-152 / §12BT / §2.78; upc-011 (`0136`, 152), upc-018 (153) and rec-014 (`0137`, 154) merged first.
 
 ## 1. Decisions (UNVERIFIED defaults)
 
@@ -29,7 +29,7 @@
 | OF9 | Legacy routes | `POST /workflows/it/offers` and `PATCH /workflows/it/offers/{id}` (placement_team, hr_team, it_admin) delegate to `services/offers`. A legacy status word is mapped: offered → offer_received, pending → offer_pending, accepted and joined → accepted, declined and rejected → declined. Any other word → `422` (it used to be stored free; the CHECK now refuses it). They keep their permissive moves (any of the 4), but every change writes a history row (AC2). **AC3:** a legacy accepted/joined still moves the application to Joined via `follow`, as before. Legacy create still follows the application to Selected and notifies the student. `letter_url` stays writable there. Responses only gain fields |
 | OF10 | Data mapping | Existing rows: offered → offer_received; accepted, joined → accepted; declined, rejected, withdrawn → declined; pending → offer_pending; any other value → offer_received (it was recorded as an offer). No history is backfilled |
 
-## 2. Data (`0136`)
+## 2. Data (`0138`)
 
 - **`job_offers`** gains `position` (String 160, nullable: legacy rows), `letter_key` (String 255), `letter_content_type` (String 80),
   `letter_name` (String 255, display only), `letter_uploaded_at`, `created_by_user_id` (FK users, RESTRICT, nullable: legacy). Its
@@ -40,7 +40,7 @@
   `actor_user_id` (FK, nullable), `position` (identity), `created_at`. Index `(offer_id, position)`.
 - `downgrade()` refuses while any event exists. The steps are guarded (0001 builds a fresh database from the current models).
 
-## 3. API (§12BT)
+## 3. API (§12BW)
 
 | Method/Path | Notes |
 |---|---|
@@ -89,7 +89,7 @@ history and no actor names.
 
 ## 6. Plan (TDD, in order)
 
-1. Model + migration: `OFFER_STATUSES`, `OFFER_CHECKS`, `JobOffer` columns, `JobOfferEvent`; `0136` with the mapping. Test first:
+1. Model + migration: `OFFER_STATUSES`, `OFFER_CHECKS`, `JobOffer` columns, `JobOfferEvent`; `0138` with the mapping. Test first:
    `test_rec_022_migration.py`.
 2. `services/offers.py`: catalogue, `from_legacy`, moves, `create`, `revise`, `change_status`, the letter, reads. Test first:
    `test_rec_022_offers.py` per behaviour.
@@ -97,7 +97,7 @@ history and no actor names.
    portal offers / placement-status sections use the labels; the two fixtures move to the new keys.
 4. Web: `lib/recruiterOffers.ts`, `RecruiterApplicationOffer.tsx`, the Offer toggle, `StudentOffersCard.tsx` on placement-status;
    vitest first.
-5. e2e spec, browser QA on an isolated stack (`-p rec022`, web 3122, api 8122), docs (DEC-SCOPE-152, API §12BT, RBAC §2.78, DATA_MODEL,
+5. e2e spec, browser QA on an isolated stack (`-p rec022`, web 3122, api 8122), docs (DEC-SCOPE-155, API §12BW, RBAC §2.81, DATA_MODEL,
    backlog status).
 
 ## 7. Security review (Phase 3)

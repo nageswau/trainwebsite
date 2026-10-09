@@ -1,4 +1,4 @@
-"""rec-022 (DEC-SCOPE-152, spec §1-§3): offer management -- the §16 statuses and their moves, record, revise, the letter, the side effects on
+"""rec-022 (DEC-SCOPE-155, spec §1-§3): offer management -- the §16 statuses and their moves, record, revise, the letter, the side effects on
 the application (rec-017) and the company (rec-005), the student notice and the reads.
 
 An offer belongs to its application, so every recruiter read and write resolves through rec-017's `load_scoped` (rec-007's requirement

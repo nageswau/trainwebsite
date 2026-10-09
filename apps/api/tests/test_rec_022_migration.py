@@ -1,4 +1,4 @@
-"""rec-022 -- migration 0136_offer_management (spec §2, OF10). The status mapping, the CHECKs, the round trip and the downgrade refusal run in
+"""rec-022 -- migration 0138_offer_management (spec §2, OF10). The status mapping, the CHECKs, the round trip and the downgrade refusal run in
 a throwaway database built from scratch (the rec-017 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -15,11 +15,11 @@ from tests.test_rec_017_migration import _external, _job
 from tests.test_tel_001_migration import _config, _sql
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_rec_022_migration_0136", VERSIONS / "0136_offer_management.py")
+_spec = importlib.util.spec_from_file_location("_rec_022_migration_0138", VERSIONS / "0138_offer_management.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0135_resume_extraction", "0136_offer_management"
+BASE, HEAD = "0137_resume_search", "0138_offer_management"
 
 
 def test_migration_chains_and_there_is_a_single_head():
@@ -63,7 +63,7 @@ def isolated_db():
     try:
         settings.database_url = url
         command.upgrade(cfg, "head")
-        command.downgrade(cfg, BASE)  # the real 0135 shape of `job_offers`
+        command.downgrade(cfg, BASE)  # the real 0137 shape of `job_offers`
         yield {"cfg": cfg, "url": url}
     finally:
         settings.database_url = original

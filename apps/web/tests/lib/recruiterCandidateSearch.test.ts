@@ -8,10 +8,10 @@ const params = (query: string) => new URLSearchParams(query);
 
 describe("rec-013 search state <-> URL", () => {
   it("reads skills, groups and filters from the URL and writes them back unchanged", () => {
-    const query = "all=Java&all=Spring+Boot&any1=AWS&any1=Azure&any2=SQL&verified=1&exp_min=2&exp_max=5&location=Hyderabad&avail=immediate&avail=d15&qualification=B.Tech&sal_min=5&sal_max=10.5&source_id=0f8fad5b-d9cb-469f-a165-70867728950e&status=available&offset=50";
+    const query = "q=%22AWS+Certified%22+Kafka&all=Java&all=Spring+Boot&any1=AWS&any1=Azure&any2=SQL&verified=1&exp_min=2&exp_max=5&location=Hyderabad&avail=immediate&avail=d15&qualification=B.Tech&sal_min=5&sal_max=10.5&source_id=0f8fad5b-d9cb-469f-a165-70867728950e&status=available&offset=50";
     const state = stateOf(params(query));
     expect(state).toEqual({
-      all: ["Java", "Spring Boot"], any: [["AWS", "Azure"], ["SQL"]], verified: true, expMin: "2", expMax: "5", location: "Hyderabad",
+      text: '"AWS Certified" Kafka', all: ["Java", "Spring Boot"], any: [["AWS", "Azure"], ["SQL"]], verified: true, expMin: "2", expMax: "5", location: "Hyderabad",
       availability: ["immediate", "d15"], qualification: "B.Tech", salMin: "5", salMax: "10.5",
       sourceId: "0f8fad5b-d9cb-469f-a165-70867728950e", status: "available", offset: 50,
     });
@@ -38,8 +38,14 @@ describe("rec-013 request body", () => {
     });
   });
 
-  it("is null without a skill (nothing to search)", () => {
+  it("is null without a skill or resume words (nothing to search)", () => {
     expect(searchBody({ ...EMPTY_SEARCH, location: "Pune" })).toBeNull();
+  });
+
+  it("sends rec-014's resume search alone, whitespace collapsed and capped as the API does", () => {
+    expect(searchBody(stateOf(params(`q=${encodeURIComponent("  Spring   Boot  ")}`)))).toEqual({ text: "Spring Boot" });
+    expect((stateOf(params(`q=${"a".repeat(250)}`)).text)).toHaveLength(200);
+    expect(stateOf(params("q=+++")).text).toBe("");
   });
 });
 

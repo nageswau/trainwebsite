@@ -812,6 +812,9 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** large · **Risk:** high
 
 ### rec-014 — Resume full-text search
+- **Status (2026-10-09):** **MERGED** to `main` as PR #204 @ `dd32255d`. `DEC-SCOPE-154` (FT1–FT10 recommended defaults, UNVERIFIED). Migration
+  `0137_resume_search` (generated `search_vector` + GIN), API §12BV, RBAC §2.80 (drafted as 0136 / 152 / §12BT / §2.78; upc-011 and upc-018 merged
+  first). The next rec item takes `0138`, `DEC-SCOPE-155`, §12BW and §2.81 (re-check `main`).
 - **Business requirement:** S2-§15 global resume search over structured skills, resume content, previous job titles, certifications and
   projects.
 - **Existing behavior:** none.
@@ -1109,8 +1112,8 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
   1. An offer only for a Selected application.
   2. Status history kept.
   3. The legacy `accepted/joined ⇒ hired` behaviour is preserved through the mapping.
-- **Status (2026-10-09):** **BUILT** on `feature/rec-022` (PR pending). `DEC-SCOPE-152` (OF1–OF10 recommended defaults, UNVERIFIED; Q-21
-  answered by OF2, OF6–OF8); migration `0136_offer_management`, API §12BT, RBAC §2.78 (re-check `main` before merging). Spec
+- **Status (2026-10-09):** **BUILT** on `feature/rec-022` (PR pending). `DEC-SCOPE-155` (OF1–OF10 recommended defaults, UNVERIFIED; Q-21
+  answered by OF2, OF6–OF8); migration `0138_offer_management` (after rec-014's `0137`), API §12BW, RBAC §2.81 (drafted as 0136 / 152 / 12BT / 2.78). Spec
   `docs/superpowers/specs/2026-10-09-rec-022-offer-management-design.md`.
 - **Positive scenarios:** Offer Received with a letter, then Accepted.
 - **Negative scenarios:** a second offer for one application → 409 (existing unique).

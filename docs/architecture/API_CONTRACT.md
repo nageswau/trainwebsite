@@ -2333,10 +2333,65 @@ candidate outside the pool `404`; archived `409` "Restore this candidate first";
 |---|---|
 | `POST /recruiter/candidates/search?limit=&offset=` | **Body** (unknown keys → `422`): `all: [skill]` (every one), `any: [[skill]]` (at least one of each group), `verified_only`, `experience_min_months`/`experience_max_months` (0–600), `location`, `qualification` (≤ 120, substring), `availability: [immediate\|d15\|d30\|d31_59\|d60_plus]`, `salary_min`/`salary_max` (INR/year, ≥ 0), `source_id`, `status`. 1–20 terms, ≤ 5 groups of 1–10, min ≤ max — else `422` (one sentence). A term that is no active skill name or alias → `422 {message, code: "unknown_skill", term, suggestions}`. Each term also matches the skill's related skills. **→ 200** `{items, total, limit, offset, facets: {experience: [{key, count}], location: [{value, count}], availability: [{key, count}]}, terms: [{term, skill: {id, name}, also: [name]}]}`; item = `id, candidate_code, name, preferred_role, current_company, experience_months, location, notice_days, expected_salary, source {id, name, active}, source_detail, status, skills: [{name, level, status, matched}]` — never mobile or email. Location facet values: a location, `"__other__"`, or `null` (not recorded). Newest first; `limit` ≤ 100 (default 50). Read only; logged as `candidate_search` with counts, never the text |
 
-## 12BT. Offer management (`rec-022`) — addendum, 2026-10-09
+## 12BT. Partnership calendar and events (`upc-011`) — addendum, 2026-10-09
 
-- **Basis:** `DEC-SCOPE-152` (OF1–OF10). Design spec `docs/superpowers/specs/2026-10-09-rec-022-offer-management-design.md` §3.
-  Migration `0136`.
+- **Basis:** `DEC-SCOPE-152` (CL1–CL14, Q-14). Design spec `docs/superpowers/specs/2026-10-09-upc-011-partnership-calendar-design.md` §3. Migration `0136`.
+- **Common rules:** readers are `partnership_manager` (with a profile), `partnership_head` and `super_admin`; every other role → `403`
+  before anything is read. A missing event → `404` "Event not found". Event writes lock the event, then check the actor (the owner or the
+  creator; otherwise `403`, logged with ids only), then the state (`409` "This event was cancelled"), then validation (`422`, on the body
+  field). Bodies refuse unknown keys. Audit `partnership_event.{create,update,cancel}` with ids, code, kind, counts and field names (never
+  title, notes or reason).
+- **Overlap (`CalendarOverlap`):** `{employee {id, full_name, active}, item {source (meeting|visit|event), id, code, title}}` — the same
+  employee on two items whose times intersect (a visit = its whole IST day, confirmed else proposed date; an event = its whole days; a
+  meeting = 60 minutes from its start). Cancelled meetings and events and visits closed before they happened are ignored. Warning only.
+- **Event item (`{event}` envelope):** `{id, code (PEV-000001), kind (conference|education_fair|partner_meeting|mou_signing|webinar|
+  university_presentation), title, university {id, name}|null, starts_on, ends_on, location, notes, status (scheduled|cancelled), owner,
+  created_by, participants [person], cancelled_at, cancel_reason, overlaps [CalendarOverlap], permissions {can_edit, can_cancel},
+  created_at, updated_at}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/calendar` | `date_from`, `date_to` (inclusive IST dates; from ≤ to and ≤ 31 days, else `422`), `user_id?`. Without `user_id`: a manager → themselves, a head → themselves + direct reports, super_admin → everyone. `user_id` outside that set (a manager: anyone but themselves) → `404` "Employee not found". → `{date_from, date_to, today, employee|null, truncated, items [{source, kind (university_meeting|university_visit|<event kind>), id, code, title, starts_on, ends_on, starts_at (meetings only), status, university {id, name}|null, people [person], overlaps [CalendarOverlap]}]}` ordered by start; ≤ 500 rows per source (`truncated`). Overlaps are listed for the people in that set |
+| `GET /partnership/calendar/employees` | `{items: [person]}` — the people the caller may choose (a manager: themselves) |
+| `POST /partnership/events` | Managers and heads. `{kind, title (1–200), university_id?, starts_on, ends_on, location? (≤ 200), notes? (≤ 2000), owner_user_id?, participant_user_ids? (≤ 10)}` → `201`. A date before today (IST), an end before the start, or more than 31 days → `422`; an unknown or inactive university → `422`; an owner other than the caller or (for a head) an active direct report → `422`; an employee who is not active partnership staff, or is the owner → `422`. Not idempotent |
+| `GET /partnership/events/{id}` | The item |
+| `PATCH /partnership/events/{id}` | Scheduled only. Any create field; a changed date must be today or later; a sent null kind / title / date / owner → `422` |
+| `POST /partnership/events/{id}/cancel` | `{reason}` (1–1000) |
+
+- **Changed (additive):** the meeting item (§12BM) and the visit item (§12AX) gain `overlaps [CalendarOverlap]` for all their people.
+
+## 12BU. Student opportunity funnel + university performance (`upc-018`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-153` (PF1–PF10). Spec: `docs/superpowers/specs/2026-10-09-upc-018-student-funnel-performance-design.md` §4.
+  No migration.
+- **Readers:** the University Master's read roles: `partnership_manager` with a profile, `partnership_head`, `overseas_admin` (overseas
+  division) and `super_admin`. Any other role → `403` "University master access required". Anonymous → `401`.
+- **Behaviour:** read-only, with no audit row. Counts only: no student or application identifier, and no commission (F10/F11 arrive with
+  upc-019).
+- **Period:** `from` / `to` are `YYYY-MM-DD` inclusive IST days. The default is this IST month to date. A malformed or impossible date,
+  `from > to`, or a span over 366 days → `422`.
+- **Counts** are `{leads, counselling, interested, eligible, applications, offers, deposits, visas, enrolled}`. The untracked
+  `leads` / `counselling` / `eligible` are `null`.
+- **`steps`** is `[{key, label, tracked}]` in source order.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/performance?from=&to=&limit=&offset=` | `{from, to, steps, totals, items: [{rank, university: {id, university_code, name, country, stage, stage_label, partner}, counts}], total, limit, offset}`. **Rows:** active universities in the caller's scope (manager = primary/backup; head = team + unowned; super_admin / overseas_admin = all) that are partners (G1) or have any step in the period. **Order:** enrolled ↓, applications ↓, name. **`totals`:** over every ranked row. `limit` 1–100 (default 25), `offset` ≥ 0, else `422`. Constant query count |
+| `GET /partnership/universities/{id}/performance?from=&to=` | `{from, to, steps, university, counts}` for any university a reader can read, active or not. Unknown id → `404`. Non-UUID → `422` |
+
+## 12BV. Resume full-text search on Find Candidates (`rec-014`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-154` (FT1–FT10). Spec: `docs/superpowers/specs/2026-10-09-rec-014-resume-full-text-search-design.md` §3–§4.
+  Migration `0137`. Roles, pool and status codes are §12BS's; every change is additive.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `POST /recruiter/candidates/search?limit=&offset=` | **Body** gains `text` (1–200 characters after collapsing whitespace; blank = absent; control characters → `422` "The resume search contains invalid characters"; > 200 → `422`). A body needs ≥ 1 skill **or** `text`, else `422` "Add at least one skill or some resume search text". `text` is matched with `websearch_to_tsquery('english', text)` against the candidate's **current** resume's extracted text (all words, `"phrase"`, `or`, `-word`); it ANDs with the skills and filters, so facets still add up. **→ 200** gains `notice: string \| null` (only stop words → no items and the sentence) and each item gains `snippet: [{text, hit}] \| null` (≤ 300 characters, plain text; `null` without `text`). With `text` the order is relevance, then newest. Logged with `text: true/false`, never the text |
+
+## 12BW. Offer management (`rec-022`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-155` (OF1–OF10). Design spec `docs/superpowers/specs/2026-10-09-rec-022-offer-management-design.md` §3.
+  Migration `0138`.
 - **Common rules:**
   - Scope is rec-007's requirement scope through rec-017's `load_scoped`: out of scope or unknown → `404` "Offer not found" (or "Job
     application not found"); a role without a recruiter scope → `403` before anything is read.

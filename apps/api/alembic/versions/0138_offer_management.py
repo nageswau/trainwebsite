@@ -1,14 +1,19 @@
 """rec-022 -- offer management: job_offers gains position / letter file / creator, the §16 statuses (legacy values mapped) and their CHECK;
 job_offer_events.
 
-Revision ID: 0136_offer_management
-Revises: 0135_resume_extraction
+Revision ID: 0138_offer_management
+Revises: 0137_resume_search
 
-docs/superpowers/specs/2026-10-09-rec-022-offer-management-design.md §2 (DEC-SCOPE-152). 0001 builds a fresh database from the current
+docs/superpowers/specs/2026-10-09-rec-022-offer-management-design.md §2 (DEC-SCOPE-155). 0001 builds a fresh database from the current
 models, which already carry these columns and the table, so every step is guarded. The mapping (OF10) is one-way: offered -> offer_received;
 accepted, joined -> accepted; declined, rejected, withdrawn -> declined; pending -> offer_pending; any other value -> offer_received. No
 history is backfilled. CHECKS repeats app.models.OFFER_CHECKS (test_rec_022_migration). downgrade() refuses while any offer history exists:
 entered data is never dropped silently.
+
+Re-chained on 2026-10-09: drafted as `0136_offer_management` (DEC-SCOPE-152, API §12BT, RBAC §2.78) on `0135_resume_extraction`. upc-011
+(`0136_partnership_events`, 152), upc-018 (153) and rec-014 (`0137_resume_search`, 154) merged first, so this is `0138` (DEC-SCOPE-155,
+§12BW, §2.81). A database stamped at the draft is re-stamped with `alembic stamp --purge 0135_resume_extraction`, then `upgrade head`
+(every step is guarded).
 """
 
 import sqlalchemy as sa
@@ -16,8 +21,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0136_offer_management"
-down_revision = "0135_resume_extraction"
+revision = "0138_offer_management"
+down_revision = "0137_resume_search"
 branch_labels = None
 depends_on = None
 
@@ -94,7 +99,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {EVENTS_TABLE} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0136_offer_management: offer history exists. Clear it deliberately first.")
+        raise RuntimeError("Cannot downgrade 0138_offer_management: offer history exists. Clear it deliberately first.")
     op.drop_table(EVENTS_TABLE)
     for name in CHECKS:
         op.drop_constraint(name, TABLE, type_="check")

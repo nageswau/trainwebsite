@@ -613,6 +613,11 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-011 — Travel & visit calendar + partnership events
+- **Status (2026-10-09):** built on `feature/upc-011` under `DEC-SCOPE-152`, with migration `0136_partnership_events`, API §12BT and
+  RBAC §2.78. Spec: `docs/superpowers/specs/2026-10-09-upc-011-partnership-calendar-design.md`.
+  - Q-14 is answered by the recommended defaults CL2 and CL10 (`NEEDS_CONFIRMATION`): a new `partnership_events` record (all-day, optional
+    university); an overlap is the same employee on intersecting items (visit = its day, event = its days, meeting = 60 minutes), shown as
+    a warning on the calendar and on the meeting, visit and event pages.
 - **Business requirement:** §9 (8 event kinds; "prevents overlapping travel and meetings").
 - **Existing behavior:** none (BDM calendar is BDM-only).
 - **Expected behavior:**
@@ -831,6 +836,8 @@ Common conventions:
 - **Complexity:** large · **Risk:** high
 
 ### upc-018 — Student opportunity funnel + university performance
+- **Status (2026-10-09):** built on `feature/upc-018` under `DEC-SCOPE-153` (PF1–PF10, recommended answers), with **no migration**, API
+  §12BU and RBAC §2.79. Commission F10/F11 are left to upc-019. Spec: `docs/superpowers/specs/2026-10-09-upc-018-student-funnel-performance-design.md`.
 - **Business requirement:** §17 funnel (7 steps), §18 metrics (9) (U8, U4).
 - **Existing behavior:** per-university breakdowns exist only inside agency reports (`agent_dashboard.py:162`, `agent_reports.py:287`).
 - **Expected behavior:**

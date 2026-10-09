@@ -1,4 +1,4 @@
-"""rec-022 -- offer management (spec §1-§3; AC1-AC3; DEC-SCOPE-152 OF1-OF10). The shared test database is never truncated, so every value
+"""rec-022 -- offer management (spec §1-§3; AC1-AC3; DEC-SCOPE-155 OF1-OF10). The shared test database is never truncated, so every value
 is unique per test."""
 
 from datetime import date, timedelta

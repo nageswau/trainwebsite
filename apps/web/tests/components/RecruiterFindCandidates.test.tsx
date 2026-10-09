@@ -48,9 +48,9 @@ afterEach(() => {
 const searchCalls = () => fetchMock.mock.calls.filter(([u]) => String(u).startsWith("/api/v1/recruiter/candidates/search"));
 
 describe("RecruiterFindCandidates", () => {
-  it("asks for a skill first and sends nothing", () => {
+  it("asks for a skill or resume words first and sends nothing", () => {
     render(<RecruiterFindCandidates writes sourceFilter />);
-    expect(screen.getByText("Add at least one skill to search every candidate in the pool.")).toBeInTheDocument();
+    expect(screen.getByText("Add a skill or a resume search to search every candidate in the pool.")).toBeInTheDocument();
     expect(searchCalls()).toHaveLength(0);
   });
 
@@ -157,6 +157,41 @@ describe("RecruiterFindCandidates", () => {
     finish(res({ ...result, total: 3 }));
     expect(await screen.findByRole("heading", { name: "3 candidates found" })).toBeInTheDocument();
     expect(scrolled).toHaveBeenCalled();
+  });
+
+  // rec-014 (DEC-SCOPE-154): the resume search box rides in the URL as q, alone or with skills; hits come back as segments, shown in <mark>.
+  it("sends the resume search alone and shows the card's resume snippet with its hits marked", async () => {
+    query = "q=Microservices+Kafka";
+    searchReply = () => res({
+      ...result, terms: [], notice: null,
+      items: [{ ...card, snippet: [{ text: "Built ", hit: false }, { text: "Microservices", hit: true }, { text: " on <b>Kafka</b>", hit: false }] }],
+    });
+    render(<RecruiterFindCandidates writes sourceFilter />);
+    const item = await screen.findByRole("listitem", { name: /Rahul Kumar/ });
+    expect(JSON.parse(searchCalls()[0][1].body)).toEqual({ text: "Microservices Kafka" });
+    expect(screen.getByRole("textbox", { name: "Resume search" })).toHaveValue("Microservices Kafka");
+    const snippet = within(item).getByText("From the resume").parentElement!;
+    expect(snippet.querySelector("mark")).toHaveTextContent("Microservices");
+    expect(snippet).toHaveTextContent("Built Microservices on <b>Kafka</b>"); // resume text is text, never markup
+  });
+
+  it("puts the typed resume search in the URL with the skills", () => {
+    query = "all=Java";
+    render(<RecruiterFindCandidates writes sourceFilter />);
+    fireEvent.change(screen.getByRole("textbox", { name: "Resume search" }), { target: { value: '  "AWS Certified"   architect ' } });
+    fireEvent.click(screen.getByRole("button", { name: "Search candidates" }));
+    expect(push).toHaveBeenLastCalledWith("/recruiter/find-candidates?q=%22AWS+Certified%22+architect&all=Java", { scroll: false });
+  });
+
+  it("shows the API's notice when the resume search has only common words", async () => {
+    query = "q=the+and";
+    searchReply = () => res({
+      ...result, items: [], total: 0, terms: [], notice: "Your resume search only has common words like “the” or “and”, so it matches nothing. Add a more specific word.",
+      facets: { experience: [{ key: "none", count: 0 }], location: [], availability: [{ key: "none", count: 0 }] },
+    });
+    render(<RecruiterFindCandidates writes sourceFilter />);
+    expect(await screen.findByText(/only has common words/)).toBeInTheDocument();
+    expect(screen.queryByText("No candidates match. Remove a skill or a filter to see more.")).toBeNull();
   });
 
   it("offers the first page when a hand-edited offset is past the end (QA-07)", async () => {
