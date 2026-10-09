@@ -46,6 +46,8 @@ from app.models import (
     CANDIDATE_STATUSES,
     CONTACT_CHANNELS,
     COURSE_LEVELS,
+    COURSE_MONTHS,
+    ENGLISH_TESTS,
     GENDERS,
     INSTITUTION_TYPES,
     JOB_EMPLOYMENT_TYPES,
@@ -9061,3 +9063,86 @@ class PartnershipTargetTeam(BaseModel):
     kpis: list[PartnershipTargetKpiDef]
     managers: list[PartnershipTargetManagerRow]
     team: list[PartnershipTargetValue]
+
+
+# upc-017 (DEC-SCOPE-147): the §16 course master. The service checks the merged row's cross-field rules (amount ⇔ currency, a score needs
+# a test and fits it, scholarships of this university or its country) because a PATCH carries only part of it.
+CourseText = _university_str(2000, multiline=True)
+CourseLevel = Literal[COURSE_LEVELS]  # CO3: the master's levels for new and edited courses
+EnglishTest = Literal[ENGLISH_TESTS]  # CO8
+CourseMoney = Annotated[Decimal, Field(ge=0, le=Decimal("9999999999.99"), max_digits=12, decimal_places=2)]  # CO4: never negative
+CourseFee = Annotated[Decimal, Field(ge=0, le=Decimal("99999999.99"), max_digits=10, decimal_places=2)]  # CO6
+EnglishScore = Annotated[Decimal, Field(gt=0, le=Decimal("999.9"), max_digits=4, decimal_places=1)]
+COURSE_MAX_SCHOLARSHIPS = 20
+
+
+def _calendar_months(months: list[str] | None) -> list[str] | None:
+    """CO7: unique, in calendar order."""
+    return None if months is None else [m for m in COURSE_MONTHS if m in months]
+
+
+CourseIntakes = Annotated[list[Literal[COURSE_MONTHS]], Field(max_length=len(COURSE_MONTHS)), AfterValidator(_calendar_months)]
+CourseScholarships = Annotated[list[UUID], Field(max_length=COURSE_MAX_SCHOLARSHIPS), AfterValidator(_unique_ids)]
+
+
+class CourseCommissionIn(BaseModel):
+    """CO2: a percentage, or an amount with its currency (restricted, U2)."""
+
+    model_config = ConfigDict(extra="forbid")
+    percent: CommissionPercent | None = None
+    amount: CommissionAmount | None = None
+    currency: CounselingCurrency | None = None
+
+    @model_validator(mode="after")
+    def _one_rate(self):
+        if (self.percent is None) == (self.amount is None):
+            raise ValueError("Enter a commission percentage or an amount, not both")
+        if (self.amount is None) != (self.currency is None):
+            raise ValueError("A commission amount needs a currency (a percentage has none)")
+        return self
+
+
+class CourseIn(BaseModel):
+    """CO10: the §16 fields; country and university come from the university."""
+
+    model_config = ConfigDict(extra="forbid")
+    title: UniversityName
+    level: CourseLevel
+    category: _university_str(80, required=True)
+    duration: _university_str(80, required=True)
+    tuition_amount: CourseMoney | None = None
+    tuition_currency: CounselingCurrency | None = None
+    application_fee: CourseFee | None = None
+    application_fee_currency: CounselingCurrency | None = None
+    intakes: CourseIntakes = []
+    entry_requirements: CourseText = None
+    english_test: EnglishTest | None = None
+    english_score: EnglishScore | None = None
+    scholarship_ids: CourseScholarships = []
+    application_process: CourseText = None
+    deadline: date | None = None
+    active: bool = True
+    commission: CourseCommissionIn | None = None
+
+
+class CourseUpdate(BaseModel):
+    """PATCH: omitted = unchanged; null clears an optional field and fails a required one (the service checks the merged row)."""
+
+    model_config = ConfigDict(extra="forbid")
+    title: _university_str(200) = None
+    level: CourseLevel | None = None
+    category: _university_str(80) = None
+    duration: _university_str(80) = None
+    tuition_amount: CourseMoney | None = None
+    tuition_currency: CounselingCurrency | None = None
+    application_fee: CourseFee | None = None
+    application_fee_currency: CounselingCurrency | None = None
+    intakes: CourseIntakes = None
+    entry_requirements: CourseText = None
+    english_test: EnglishTest | None = None
+    english_score: EnglishScore | None = None
+    scholarship_ids: CourseScholarships = None
+    application_process: CourseText = None
+    deadline: date | None = None
+    active: bool | None = None
+    commission: CourseCommissionIn | None = None

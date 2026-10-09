@@ -1315,6 +1315,19 @@ direct reports, or every manager for `super_admin`). Targets carry no commission
 | Set / clear targets | `403` (even their own) | direct reports; current month and up to 12 ahead | `403` | ✅ all, past months too | `403` |
 | Inactive manager | — | `422` on write | — | `422` on write | — |
 
+### 2.73 University courses *(net-new, added 2026-10-09 — `DEC-SCOPE-147`, `upc-017`)*
+
+Enforced inline in `api/university_courses.py` + `api/university_course_import.py` (`partnership_universities.require_reader`, then the
+university's `can_edit`). **U2:** a course's `commission` is removed server-side by `partnership_access.strip_commission` for every
+non-commission role, and only `COMMISSION_ROLES` may set it. Audit and logs carry ids and field names only.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Read courses (university page, menu) | ✅ all | ✅ all | ✅ all (no commission) | ✅ all | `403` (anonymous `401`); counselors read the public catalogue |
+| Add, edit, deactivate, import | own universities (primary/backup) | unowned + team universities | ✅ all | ✅ all | `403` |
+| Read / set course commission | ✅ (write: own) | ✅ (write: unowned + team) | stripped / `403` | ✅ | stripped / `403` |
+| Public catalogue (active courses of published universities) | ✅ | ✅ | ✅ | ✅ | ✅ anonymous, never commission |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

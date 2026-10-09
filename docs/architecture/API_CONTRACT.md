@@ -2242,6 +2242,28 @@ KPI whose source does not exist, `tracked: false`; none today); `percent` is nul
 | `GET /partnership/targets/{manager_user_id}?month=` | `{month, month_status, editable, manager, kpis: [{key, label, definition, tracked, target, achieved, percent}]}`; outside scope / unknown `404` |
 | `PUT /partnership/targets` | JSON `{month, items: [{manager_user_id, kpi_key, target: int 0–100000 \| null}]}` (1–200 items, one per manager + KPI; unknown fields `422`). `200 {month, changed}`. Manager or other role `403`; manager outside scope `404`; inactive manager `422`; past month by a head or > 12 months ahead `422`. All or nothing; unchanged values are neither written nor audited (`partnership_target.set`, `{month, changes: [{kpi, from, to}]}`). No ETags or idempotency keys: a repeated PUT changes nothing |
 
+## 12BO. Course / program master (`upc-017`) — addendum, 2026-10-09
+
+`DEC-SCOPE-147`; design spec `docs/superpowers/specs/2026-10-09-upc-017-course-master-design.md` §3. Migration `0132_university_courses`.
+Readers: the University Master's read roles (`partnership_manager` with a profile, `partnership_head`, `overseas_admin` overseas division,
+`super_admin`), every university; any other role `403`, anonymous `401`. Writers: the university's `can_edit` (`403` role/team, `409`
+inactive). Every write locks the university then the course and writes `university_course.<create|update|import>` (ids, field names), one
+commit. A course is `{id, university_id, title, level, category, duration, tuition_fee, intake, tuition_amount: "18000.00" | null,
+tuition_currency, application_fee, application_fee_currency, intakes: ["Jan","Sep"], entry_requirements, english_test, english_score: "6.5" |
+null, scholarships: [{id, title, amount}], application_process, deadline, active, created_at, updated_at, commission?: {percent, amount,
+currency} | null, permissions: {can_edit}}` — **`commission` is present for the commission roles only (U2, `strip_commission`)**.
+**§public change:** `/public/overseas-courses` and `/public/universities/{slug}` now list active courses only; their keys are unchanged.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/universities/{id}/courses` | `{items, total, limit, offset, can_edit}` by title; `include_inactive` (default false), `limit` ≤ 50. Unknown university `404` |
+| `GET /partnership/universities/{id}/course-options` | Writers only: `{scholarships: [{id, title, amount}]}` (this university's + its country's university-wide, active) |
+| `POST /partnership/universities/{id}/courses` | JSON: `title`, `level` (UG/PG/PhD/Diploma/Foundation), `category`, `duration` required; the rest optional; unknown fields `422`. Negative or > 2-decimal money, half a currency pair, score without test / above the test's scale, unknown month / currency / test, foreign scholarship, both or half a commission rate → `422`. A non-commission role sending `commission` `403`. Same title + level in the university `409`. `201 {course}` |
+| `PATCH /partnership/universities/{id}/courses/{course_id}` | Sent fields only (`commission: null` clears; `active: false` deactivates); a merged row breaking the rules `422`; a course of another university `404`. `200 {course}` |
+| `GET /partnership/universities/{id}/courses/imports/template` | Writers: the CSV header row |
+| `POST /partnership/universities/{id}/courses/import` | Writers; multipart `file` + `Idempotency-Key` (missing/bad `422`); wrong / unknown / repeated columns `422`, > 1 MB `413`, > 1,000 rows `422`. `201 {id, university_id, uploaded_by, total_rows, created_count, duplicate_count, invalid_count, created_at, rows: [{row_number, status: created/duplicate/invalid, title, level, course_id, reason}]}`; same key + same file replays, same key + other file `422` |
+| `GET /partnership/courses` | Every course with `university: {id, name, university_code, country}`, by university then title; `level` (else `422`), `status` active (default) / inactive / all, `q` (title, university name or code), `limit` ≤ 50 |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

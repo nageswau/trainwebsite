@@ -5951,3 +5951,38 @@ Migration `0131_partnership_targets`, API contract §12BN, RBAC §2.72. Spec: `d
 `PUT /partnership/targets`; `services/partnership_metrics.py` created (upc-018 adds the funnel to it); the "Targets & Forecast" menu entry is
 live for managers, heads and `super_admin`; T3 counts upc-009 meetings. upc-023 adds the forecast half of the page; upc-031 exports it.
 **New Feature ID authorized:** `upc-021`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-021.
+
+### DEC-SCOPE-147 — Course / program master (`upc-017`)
+
+**Evidence:** `EVID-020` §16 (L545–L579: the 14 course fields; "your counselors know exactly what each partner university offers"), §32
+("🎓 Courses & Programs", L1082), L1129 ("Commissions should not be seen by anyone."); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U2, U5,
+U6 (`EXPLICIT_APPROVAL`, 2026-10-08), §3.2 Q-21, Q-33 and §4 upc-017.
+**Status:** Q-21, Q-33 (courses) and CO1–CO16 are recommended answers applied under the owner's standing instruction for the build session
+("proceed with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off.
+Migration `0132_university_courses`, API contract §12BO, RBAC §2.73. Spec: `docs/superpowers/specs/2026-10-09-upc-017-course-master-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| CO1 | Q-33 (courses) writers | The university's `can_edit` rule: its managers, their head, overseas_admin, super_admin; active university. Readers: the master's read roles |
+| CO2 | Commission (U2) | Optional per course: a % (0–100] or an amount (> 0) + currency. Read and set by `COMMISSION_ROLES` only; stripped for everyone else (`COMMISSION_FIELDS` gains `commission`); overseas_admin sending it `403` |
+| CO3 | Level | UG / PG / PhD / Diploma / Foundation for new and edited courses; legacy values kept until the level is edited |
+| CO4 | Q-21 tuition | Amount (≥ 0) + currency, both or neither; the legacy `tuition_fee` text is kept and re-derived ("GBP 18,000") when an amount is saved |
+| CO5 | Q-21 legacy parse | Best effort in the migration (symbol/code + one number; bare `$` and text stay unparsed); intakes from month names; texts never changed |
+| CO6 | Application fee | Amount (≥ 0) + currency, both or neither |
+| CO7 | Intakes | Months Jan–Dec, unique, calendar order; the legacy `intake` text re-derived |
+| CO8 | English | Test ∈ IELTS / TOEFL / PTE / Duolingo / Other + score (> 0, ≤ 9 / 120 / 90 / 160 / 999.9); a score needs a test |
+| CO9 | Scholarships | ≤ 20, of this university or its country's university-wide ones |
+| CO10 | Other fields | Entry requirements, application process (≤ 2000), deadline (date), title / category / duration required |
+| CO11 | Deactivate | `active=false`, allowed with open applications (they keep `course_id`); leaves the catalogue; no delete |
+| CO12 | Duplicates | Same university + normalised title + level → `409` (CSV: `duplicate`) |
+| CO13 | Catalogue | `/public/overseas-courses` and `/public/universities/{slug}`: active courses of published universities; keys unchanged |
+| CO14 | Q-21 CSV | Per university, by CO1's writers; 15 columns (no commission, no scholarships); created / duplicate / invalid per row; 1 MB, 1,000 rows; Idempotency-Key replay; `course_import_batches` keeps counts + results, never the file |
+| CO15 | Menu page | `/partnership/courses`: every course, level / status / text filters, paged 50; commission column for commission roles only |
+| CO16 | Audit / locks | `university_course.create/update/import`: ids + field names (never commission values); university row then course row locks |
+
+**Consequences:** `overseas_courses` gains 15 columns + CHECKs + `(university_id, level)` index; table `course_import_batches`; routes
+`/partnership/universities/{id}/courses[/{course_id}]`, `…/course-options`, `…/courses/import`, `…/courses/imports/template`,
+`/partnership/courses`; the public catalogue filters inactive courses; a "Courses & programmes" section on the university page; page
+`/partnership/courses`; the manager menu's "Courses & Programs" goes live and the head nav gains it. Counselors read the catalogue now and
+the role-sliced 360 view in upc-030 (U14).
+**New Feature ID authorized:** `upc-017`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-017.

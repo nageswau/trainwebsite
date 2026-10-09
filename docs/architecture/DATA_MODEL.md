@@ -1754,3 +1754,27 @@ backfill. **Migration `0130_university_meetings`**; `downgrade()` refuses while 
   time of each event, so a closed month is never re-scored (TG8/TG9).
 - Clearing a target deletes its row; the history is the audit log (`partnership_target.set`).
 - `downgrade()` refuses while any target exists.
+
+## Course / program master (`upc-017`, `DEC-SCOPE-147`; migration `0132_university_courses`, after `0131_partnership_targets`)
+
+**`overseas_courses` new columns (all nullable or defaulted; existing rows, applications, shortlists and commission terms unchanged):**
+- `tuition_amount` numeric(12,2) + `tuition_currency` varchar(3), `application_fee` numeric(10,2) + `application_fee_currency` varchar(3)
+  (both or neither, ≥ 0, project currency list), `intakes` JSON (months Jan–Dec, default `[]`), `entry_requirements` text, `english_test`
+  varchar(10) (IELTS / TOEFL / PTE / Duolingo / Other), `english_score` numeric(4,1) (> 0, needs a test), `scholarship_ids` JSON (default `[]`),
+  `application_process` text, `deadline` date, `active` boolean NOT NULL default true, and **RESTRICTED (U2)** `commission_percent`
+  numeric(5,2) / `commission_amount` numeric(12,2) + `commission_currency` varchar(3) (at most one rate).
+- `tuition_fee` / `intake` (legacy texts) stay the catalogue's display values, re-derived when the structured values are saved.
+
+**`course_import_batches`:** `id`, `university_id` → `universities`, `uploaded_by_user_id` → `users`, `idempotency_key`, `file_sha256`,
+`total_rows` / `created_count` / `duplicate_count` / `invalid_count`, `results_json`, timestamps.
+
+**Constraints and indexes:** CHECKs `ck_overseas_courses_tuition`, `_tuition_currency`, `_fee`, `_fee_currency`, `_english_test`,
+`_english_score`, `_commission`, `_commission_percent`, `_commission_amount`, `_commission_currency`; `ix_overseas_courses_university_level
+(university_id, level)`; `uq_course_import_batches_key (uploaded_by_user_id, idempotency_key)`, `ck_course_import_batches_counts`,
+`ix_course_import_batches_university (university_id, created_at)`.
+
+**Design notes:**
+- The upgrade parses legacy fee / intake texts best effort into the empty structured columns (texts kept). `downgrade()` refuses while any
+  import batch exists or any course holds master-only data (fee, requirements, English, scholarships, process, deadline, inactive, commission).
+- Duplicate title + level per university is an application rule (CO12), checked under the university row lock; no DB unique index, since
+  legacy rows are not guaranteed distinct.

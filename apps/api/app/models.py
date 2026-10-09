@@ -1399,8 +1399,32 @@ class UniversityMessage(Base, TimestampMixin):
     sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+# upc-017 (DEC-SCOPE-147, spec §1-§2): the §16 course master extends `overseas_courses` (U6). `tuition_fee` and `intake` stay the
+# catalogue's display texts, re-derived whenever the structured amount / months are saved (CO4, CO7). The per-course commission is
+# RESTRICTED (U2, CO2). Migration 0132 repeats these; test_upc_017_migration keeps them identical.
+COURSE_CURRENCIES = ("INR", "USD", "GBP", "EUR", "CAD", "AUD", "NZD")  # = COUNSELING_CURRENCIES (defined later in this module)
+COURSE_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+ENGLISH_TESTS = ("IELTS", "TOEFL", "PTE", "Duolingo", "Other")
+COURSE_CHECKS = {
+    "ck_overseas_courses_tuition": "(tuition_amount IS NULL) = (tuition_currency IS NULL) AND (tuition_amount IS NULL OR tuition_amount >= 0)",
+    "ck_overseas_courses_tuition_currency": _one_of("tuition_currency", COURSE_CURRENCIES),
+    "ck_overseas_courses_fee": "(application_fee IS NULL) = (application_fee_currency IS NULL) AND (application_fee IS NULL OR application_fee >= 0)",
+    "ck_overseas_courses_fee_currency": _one_of("application_fee_currency", COURSE_CURRENCIES),
+    "ck_overseas_courses_english_test": _one_of("english_test", ENGLISH_TESTS),
+    "ck_overseas_courses_english_score": "english_score IS NULL OR (english_score > 0 AND english_test IS NOT NULL)",
+    "ck_overseas_courses_commission": "commission_percent IS NULL OR commission_amount IS NULL",
+    "ck_overseas_courses_commission_percent": "commission_percent IS NULL OR (commission_percent > 0 AND commission_percent <= 100)",
+    "ck_overseas_courses_commission_amount": "(commission_amount IS NULL) = (commission_currency IS NULL) AND (commission_amount IS NULL OR commission_amount > 0)",
+    "ck_overseas_courses_commission_currency": _one_of("commission_currency", COURSE_CURRENCIES),
+}
+
+
 class OverseasCourse(Base, TimestampMixin):
     __tablename__ = "overseas_courses"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in COURSE_CHECKS.items()),
+        Index("ix_overseas_courses_university_level", "university_id", "level"),
+    )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id"), index=True)
     title: Mapped[str] = mapped_column(String(200))
@@ -1409,6 +1433,43 @@ class OverseasCourse(Base, TimestampMixin):
     duration: Mapped[str] = mapped_column(String(80))
     tuition_fee: Mapped[str] = mapped_column(String(120))
     intake: Mapped[str] = mapped_column(String(120))
+    tuition_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    tuition_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    application_fee: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    application_fee_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    intakes: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    entry_requirements: Mapped[str | None] = mapped_column(Text, nullable=True)
+    english_test: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    english_score: Mapped[Decimal | None] = mapped_column(Numeric(4, 1), nullable=True)
+    scholarship_ids: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    application_process: Mapped[str | None] = mapped_column(Text, nullable=True)
+    deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    commission_percent: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    commission_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    commission_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+
+
+class CourseImportBatch(Base, TimestampMixin):
+    """upc-017 (CO14): one CSV import into a university's course list -- upc-005's batch shape plus the university. The file is never
+    stored: only its hash, the counts and each row's outcome {row_number, status, title, level, course_id, reason}."""
+
+    __tablename__ = "course_import_batches"
+    __table_args__ = (
+        UniqueConstraint("uploaded_by_user_id", "idempotency_key", name="uq_course_import_batches_key"),
+        CheckConstraint("created_count + duplicate_count + invalid_count = total_rows", name="ck_course_import_batches_counts"),
+        Index("ix_course_import_batches_university", "university_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"))
+    uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    idempotency_key: Mapped[str] = mapped_column(String(120))
+    file_sha256: Mapped[str] = mapped_column(String(64))
+    total_rows: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    created_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    duplicate_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    invalid_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    results_json: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
 
 
 class OverseasApplication(Base, TimestampMixin):

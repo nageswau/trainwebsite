@@ -6,7 +6,7 @@ role exists."""
 from app.models import User
 
 COMMISSION_ROLES = frozenset({"super_admin", "partnership_manager", "partnership_head"})
-COMMISSION_FIELDS = frozenset({"commission_terms"})  # upc-016: an agreement's commission terms
+COMMISSION_FIELDS = frozenset({"commission_terms", "commission"})  # upc-016: an agreement's terms; upc-017 (CO2): a course's commission
 
 
 def can_see_commission(user: User) -> bool:
