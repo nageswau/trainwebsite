@@ -6364,3 +6364,39 @@ Spec: `docs/superpowers/specs/2026-10-09-rec-022-offer-management-design.md`.
 - Out of scope: Share (rec-019), talent-pool matching (rec-015) and AI scoring (R7).
 - **New Feature ID authorized:** `rec-016`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-016.
 
+### DEC-SCOPE-158 — Talent pools: rule-based automatic membership (`rec-015`)
+
+**Evidence:**
+- `EVID-018` S2-§8 (lines 1351–1379: "Recruiter can create pools such as …", ten example pools, "Whenever a candidate is added, they are
+  automatically placed into the relevant pools based on their skills");
+- S2-§20 (1736–1790: the Java talent pool, "gets the entire relevant candidate pool immediately");
+- `DEC-SCOPE-116` R7 (rule-based) and R11 (the whole opted-in pool); `DEC-SCOPE-151` (rec-013's expression and search);
+- `RECRUITER_CRM_BACKLOG.md` §rec-015 AC1–AC2 and Q-16.
+
+**Status:**
+- Built on `feature/rec-015`. Migration `0140_talent_pools`, API contract §12BZ, RBAC §2.84.
+- P1–P8 are the recommended answers to Q-16 and the item's open points. They were applied under the owner's standing instruction for
+  the build session ("proceed with the recommended answers; ask only if genuinely blocking"). Every row is **UNVERIFIED**
+  (`NEEDS_CONFIRMATION` at sign-off).
+- Spec: `docs/superpowers/specs/2026-10-09-rec-015-talent-pools-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| P1 | Q-16: rule pools only, or manual pools too? | **Rule pools only.** Membership is computed on read from the pool's rule, so it is always current and nothing is copied. No manual add or remove |
+| P2 | Q-16: the Fresher and Experienced thresholds | **Freshers = 0 years** (0–11 months, AC2). **Experienced Professionals = 1 year or more** (12+ months). No recorded experience is in neither |
+| P3 | Q-16: seed the ten examples? | Seed the **six** the seeded Skills Master can express: Java Developers, Python Developers, Full Stack Developers (a frontend skill AND a backend language), Cloud Engineers (AWS OR Azure OR GCP), Freshers, Experienced Professionals. Cyber Security, SAP, Digital Marketing and Data Analysts need skills the Skills Master lacks, so the manager creates them later. The seed is idempotent by name and never overwrites an edit |
+| P4 | The rule | rec-013's expression (`all` AND, up to 5 `any` OR groups, 20 skills) plus an experience band; at least one skill or one bound. Each term must be an active skill or alias when saved (`422 unknown_skill` with suggestions); the skill's name is stored. Aliases and related skills count when members are computed. Claimed skills count |
+| P5 | A pool whose skill was deactivated (or renamed or deleted) | The term is **unavailable** and matches nobody: an unavailable `all` term empties the pool; in an `any` group it drops out. The pool lists its unavailable terms, the list marks it "Needs attention", the page explains it, and the Find Candidates link leaves the term out (QA-03). A merged skill keeps working (its name became an alias) |
+| P6 | Roles | Read: candidate readers (`placement_team`, `placement_manager`, `super_admin`, `hr_team`), active pools only. Write: `placement_manager` and `super_admin`, any pool; they also see inactive pools |
+| P7 | Fields and lifecycle | Name 1–80, unique ignoring case (`409`); no delete, a pool is deactivated and can be reactivated; `created_by` is null for the seed; one audit row per create or change (field names only) |
+| P8 | Members | The whole pool (`pool_filter`, R11), not archived, as rec-013 cards, newest first, 50 per page; no phone or email. The list shows every pool's member count from one query. Members are read-only on the pool page; "Refine in Find Candidates" opens rec-013 with the rule filled in, for refining and shortlisting |
+
+**Consequences:**
+- New code: `talent_pools` (`TalentPool`), `services/talent_pools.py`, `api/recruiter_pools.py`, `TalentPoolCreate` / `TalentPoolUpdate`.
+- Changed: `candidate_search.resolve_terms` gains `strict=False` (an unknown term resolves to nobody instead of a 422); rec-013's caps
+  moved into `schemas.expression_terms`, shared by the search and the pool rule (same messages).
+- Web: `/recruiter/pools` and `/recruiter/pools/{id}` (`RecruiterTalentPools`, `RecruiterTalentPool`, `RecruiterTalentPoolForm`,
+  `lib/recruiterPools.ts`); "Talent Pools" in the recruiter, manager, HR and super-admin navigation; rec-013's `SkillChips` and `Card`
+  are exported for reuse (`Card` gains `matchNote`).
+- Out of scope: manual pool membership, pool-based sharing or campaigns, and the four examples needing new skills.
+- **New Feature ID authorized:** `rec-015`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-015.

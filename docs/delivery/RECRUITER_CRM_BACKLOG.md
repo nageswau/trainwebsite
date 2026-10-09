@@ -843,6 +843,9 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-015 — Talent pools
+- **Status (2026-10-09):** built on `feature/rec-015`.
+  - `DEC-SCOPE-158` (P1–P8, the recommended answers to Q-16; UNVERIFIED).
+  - Migration `0140_talent_pools`, API §12BZ, RBAC §2.84. The next rec item takes `0141`, `DEC-SCOPE-159`, §12CA and §2.85 (re-check `main`).
 - **Business requirement:** S2-§8 pools (10 examples), "automatically placed into the relevant pools based on their skills"; S2-§20 the
   Java Talent Pool.
 - **Existing behavior:** none.

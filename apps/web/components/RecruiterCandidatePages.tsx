@@ -7,10 +7,13 @@ import RecruiterCandidateDetail from "@/components/RecruiterCandidateDetail";
 import RecruiterCandidateForm from "@/components/RecruiterCandidateForm";
 import RecruiterCandidateList from "@/components/RecruiterCandidateList";
 import RecruiterFindCandidates from "@/components/RecruiterFindCandidates";
+import RecruiterTalentPool from "@/components/RecruiterTalentPool";
+import RecruiterTalentPools from "@/components/RecruiterTalentPools";
 import { ApiError, serverApi } from "@/lib/api";
 import { PORTAL_NAV, RECRUITER_MANAGER_NAV, RECRUITER_NAV, SUPER_ADMIN_NAV, type NavItem } from "@/lib/navigation";
 import { PLACEMENT_MANAGER_LABEL, RECRUITER_ROLE_LABEL } from "@/lib/recruiter";
 import { CANDIDATES_PATH, candidateUrl, type CandidateDetail } from "@/lib/recruiterCandidates";
+import { POOLS_PATH } from "@/lib/recruiterPools";
 import type { User } from "@/lib/types";
 
 // rec-009 (spec §6): the candidate master's three pages -- list, add, detail -- shared by recruiters, placement managers, super_admin
@@ -81,6 +84,35 @@ export async function FindCandidatesPage() {
       <Suspense fallback={<p className="muted" role="status">Loading search…</p>}>
         <RecruiterFindCandidates writes={s.writes} sourceFilter={s.writes} />
       </Suspense>
+    </Frame>
+  );
+}
+
+// rec-015 (DEC-SCOPE-158): talent pools -- the same readers as Find Candidates; the API tells the page who may create and edit (P6).
+export async function TalentPoolsPage() {
+  const s = await shell();
+  if (!("nav" in s)) return s;
+  return (
+    <Frame s={s}>
+      <div className="portal-title">
+        <div>
+          <div className="eyebrow">Candidate pool</div>
+          <h2>Talent Pools</h2>
+          <p className="muted">Ready-made groups of candidates by skill and experience. Candidates join a pool automatically as soon as they match its rule.</p>
+        </div>
+      </div>
+      <RecruiterTalentPools />
+    </Frame>
+  );
+}
+
+export async function TalentPoolPage({ id }: { id: string }) {
+  const s = await shell();
+  if (!("nav" in s)) return s;
+  return (
+    <Frame s={s}>
+      <p style={{ margin: "0 0 12px" }}><Link href={POOLS_PATH}>← Back to talent pools</Link></p>
+      <RecruiterTalentPool poolId={id} />
     </Frame>
   );
 }

@@ -2453,6 +2453,20 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `PUT /recruiter/requirements/{requirement_id}/skill-weights` | **Body:** `{weights: [{id (job skill), weight 1–10}]}` (1–60 items, distinct ids), `extra="forbid"`. **→ 200** `{requirement}` (§12AW). **422**: a weight out of range, a duplicate id, or an id that is not this requirement's skill ("Choose skills of this requirement"). Unchanged weights write nothing. A change writes one audit row `recruiter_requirement.weights` `{skills: [ids]}` |
 | `GET /recruiter/requirements/{requirement_id}` (§12AW) | `permissions` gains `can_view_matches` (additive): whether the caller may read the matches |
 
+## 12BZ. Talent pools (`rec-015`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-158` (P1–P8). Spec: `docs/superpowers/specs/2026-10-09-rec-015-talent-pools-design.md` §3. Migration `0140_talent_pools`.
+- **Reads:** candidate readers (rec-009: `placement_team`, `placement_manager`, `super_admin`, `hr_team`), checked first; any other role
+  → `403`. Readers see active pools only: an inactive or unknown pool is `404` for them.
+- **Writes:** `placement_manager` and `super_admin`, any pool (`403` for everyone else). They also see inactive pools.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/pools?include_inactive=false` | **→ 200** `{items[], can_manage}`, sorted by name. `include_inactive` is honoured for writers only. A pool is `{id, name, all: [skill name], any: [[skill name]], experience_min_months, experience_max_months, active, members, unavailable: [term], created_by: {id, name} \| null, updated_at}`. `members` is computed now (one query for every pool); `unavailable` lists the rule's terms that are no longer an active skill or alias (they match nobody, P5) |
+| `POST /recruiter/pools` | **Body:** `{name (1–80), all?, any? (≤ 5 groups of 1–10), experience_min_months? (0–600), experience_max_months?, active?}`, `extra="forbid"`, at most 20 skills, at least one skill or one experience bound, min ≤ max. Every term must be an active skill or alias; the skill's name is stored. **→ 201** pool. **422**: the first validation error as one sentence, or `{message, code: "unknown_skill", term, suggestions}`; **409** a name taken (ignoring case, the unique index settles a race). One audit row `talent_pool.create` `{terms, groups}` |
+| `PATCH /recruiter/pools/{pool_id}` | Partial, the same fields; null clears an experience bound only. The merged rule is checked again. **→ 200** pool. `404` / `409` / `422` as above. A change writes one audit row `talent_pool.update` `{fields}` |
+| `GET /recruiter/pools/{pool_id}/candidates?limit=50&offset=0` | `limit` 1–100. **→ 200** `{pool, items[], total, limit, offset, terms[], can_manage}`. `items` are rec-013 cards (§12BS: no phone or email), newest first; `terms` are the resolved terms (rec-013 shape, `skill: null` when unavailable). Members are the whole pool (`pool_filter`, R11), not archived |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

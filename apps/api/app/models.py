@@ -5119,3 +5119,31 @@ class RecruiterContractEvent(Base):
     document_key: Mapped[str | None] = mapped_column(String(200), nullable=True)
     position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+TALENT_POOL_EXPERIENCE_CHECK = (
+    "(experience_min_months IS NULL OR experience_min_months BETWEEN 0 AND 600) "
+    "AND (experience_max_months IS NULL OR experience_max_months BETWEEN 0 AND 600) "
+    "AND (experience_min_months IS NULL OR experience_max_months IS NULL OR experience_min_months <= experience_max_months)"
+)
+
+
+class TalentPool(Base, TimestampMixin):
+    """rec-015 (DEC-SCOPE-158): a manager-defined pool. Its rule is a rec-013 expression -- `all_terms` (skill names, AND), `any_terms`
+    (lists of skill names, each at least one of) -- plus an experience band. Membership is computed on read (P1); nothing is copied.
+    `created_by_user_id` is null for the seeded examples (P3)."""
+
+    __tablename__ = "talent_pools"
+    __table_args__ = (
+        CheckConstraint(TALENT_POOL_EXPERIENCE_CHECK, name="ck_talent_pools_experience"),
+        Index("uq_talent_pools_name", text("lower(name)"), unique=True),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(80))
+    all_terms: Mapped[list] = mapped_column(JSON, default=list)
+    any_terms: Mapped[list] = mapped_column(JSON, default=list)
+    experience_min_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    experience_max_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)

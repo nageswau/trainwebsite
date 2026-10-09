@@ -9532,19 +9532,92 @@ class CandidateSearch(BaseModel):
 
     @model_validator(mode="after")
     def _limits(self):
-        if len(self.any) > CANDIDATE_SEARCH_MAX_GROUPS:
-            raise ValueError(f"Use at most {CANDIDATE_SEARCH_MAX_GROUPS} groups of “at least one of” skills")
-        if any(not group or len(group) > CANDIDATE_SEARCH_GROUP_TERMS for group in self.any):
-            raise ValueError(f"Each “at least one of” group holds 1 to {CANDIDATE_SEARCH_GROUP_TERMS} skills")
-        terms = len(self.all) + sum(len(group) for group in self.any)
+        terms = expression_terms(self.all, self.any)
         if terms == 0 and self.text is None:
             raise ValueError("Add at least one skill or some resume search text")
-        if terms > CANDIDATE_SEARCH_MAX_TERMS:
-            raise ValueError(f"Search for at most {CANDIDATE_SEARCH_MAX_TERMS} skills at once")
-        if None not in (self.experience_min_months, self.experience_max_months) and self.experience_min_months > self.experience_max_months:
-            raise ValueError("The minimum experience cannot be above the maximum")
+        _experience_order(self.experience_min_months, self.experience_max_months)
         if None not in (self.salary_min, self.salary_max) and self.salary_min > self.salary_max:
             raise ValueError("The minimum salary cannot be above the maximum")
+        return self
+
+
+def expression_terms(all_terms: list, any_groups: list[list]) -> int:
+    """rec-013 FS4's caps on a skill expression (also a rec-015 pool rule); returns its number of terms."""
+    if len(any_groups) > CANDIDATE_SEARCH_MAX_GROUPS:
+        raise ValueError(f"Use at most {CANDIDATE_SEARCH_MAX_GROUPS} groups of “at least one of” skills")
+    if any(not group or len(group) > CANDIDATE_SEARCH_GROUP_TERMS for group in any_groups):
+        raise ValueError(f"Each “at least one of” group holds 1 to {CANDIDATE_SEARCH_GROUP_TERMS} skills")
+    terms = len(all_terms) + sum(len(group) for group in any_groups)
+    if terms > CANDIDATE_SEARCH_MAX_TERMS:
+        raise ValueError(f"Search for at most {CANDIDATE_SEARCH_MAX_TERMS} skills at once")
+    return terms
+
+
+def _experience_order(low: int | None, high: int | None) -> None:
+    if None not in (low, high) and low > high:
+        raise ValueError("The minimum experience cannot be above the maximum")
+
+
+# --- rec-015 (DEC-SCOPE-158, spec §1 P4/P7): talent pools -- a name and a rule (a rec-013 expression + an experience band) ---------------
+TALENT_POOL_LABELS = {
+    "name": "Pool name", "all": "Skills", "any": "Skills", "experience_min_months": "Minimum experience",
+    "experience_max_months": "Maximum experience", "active": "Active",
+}
+TALENT_POOL_NAME_MAX = 80
+
+
+def _pool_name(value: str) -> str:
+    value = re.sub(r"\s+", " ", value).strip()
+    if not value:
+        raise ValueError("Enter a pool name")
+    if len(value) > TALENT_POOL_NAME_MAX:
+        raise ValueError(f"A pool name is at most {TALENT_POOL_NAME_MAX} characters")
+    if _BDM_CONTROL.search(value):
+        raise ValueError("The pool name contains invalid characters")
+    return value
+
+
+def check_pool_rule(all_terms: list, any_groups: list[list], low: int | None, high: int | None) -> None:
+    """P4: rec-013's caps, at least one skill or one experience bound, and min ≤ max. Also run on a PATCH's merged rule."""
+    if expression_terms(all_terms, any_groups) == 0 and low is None and high is None:
+        raise ValueError("Add at least one skill or an experience range")
+    _experience_order(low, high)
+
+
+PoolName = Annotated[StrictStr, AfterValidator(_pool_name)]
+
+
+class TalentPoolCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: PoolName
+    all: list[SearchTerm] = []
+    any: list[list[SearchTerm]] = []
+    experience_min_months: RecMonths = None
+    experience_max_months: RecMonths = None
+    active: StrictBool = True
+
+    @model_validator(mode="after")
+    def _rule(self):
+        check_pool_rule(self.all, self.any, self.experience_min_months, self.experience_max_months)
+        return self
+
+
+class TalentPoolUpdate(BaseModel):
+    """Partial: only the sent fields change; the merged rule is checked by the service. Null clears an experience bound only."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: PoolName | None = None
+    all: list[SearchTerm] | None = None
+    any: list[list[SearchTerm]] | None = None
+    experience_min_months: RecMonths = None
+    experience_max_months: RecMonths = None
+    active: StrictBool | None = None
+
+    @model_validator(mode="after")
+    def _no_nulls(self):
+        for field in ("name", "all", "any", "active"):
+            if field in self.model_fields_set and getattr(self, field) is None:
+                raise ValueError(f"{TALENT_POOL_LABELS[field]} cannot be empty")
         return self
 
 
