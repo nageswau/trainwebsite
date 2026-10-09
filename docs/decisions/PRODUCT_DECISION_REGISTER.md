@@ -6115,10 +6115,11 @@ taken on the owner's instruction to proceed with the recommended answers. The ne
   `(skill_id, status, candidate_id)` index), `DEC-SCOPE-136` (rec-017: adding a candidate to a requirement).
 - `RECRUITER_CRM_BACKLOG.md` §rec-013: AC1–AC5 and question Q-15.
 
-**Status:** the owner asked to proceed with the recommended answers, so nothing was asked; every row below is **UNVERIFIED** (a recorded
-default) until confirmed.
+**Status:** **MERGED** to `main` as PR #199 @ `4b260e21` (2026-10-09). The owner asked to proceed with the recommended answers, so
+nothing was asked; every row below is **UNVERIFIED** (a recorded default) until confirmed. The next rec item takes `0136`,
+`DEC-SCOPE-152`, §12BT and §2.78 (re-check `main`).
 
-**Numbering:** `DEC-SCOPE-151`, API §12BS, RBAC §2.77, **no migration**. Drafted as 141 / §12BI / §2.67 and re-chained as main moved; upc-026, upc-012, upc-020, upc-014, upc-008, upc-016, upc-009,
+**Numbering (FINAL):** `DEC-SCOPE-151`, API §12BS, RBAC §2.77, **no migration**. Drafted as 141 / §12BI / §2.67 and re-chained as main moved; upc-026, upc-012, upc-020, upc-014, upc-008, upc-016, upc-009,
 upc-021, upc-017, rec-020, rec-018 and rec-012 merged first and hold 139–150 / §12BG–§12BR / §2.65–§2.76. Spec:
 `docs/superpowers/specs/2026-10-09-rec-013-find-candidates-design.md`.
 

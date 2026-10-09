@@ -4,9 +4,11 @@ Backlog: `docs/delivery/RECRUITER_CRM_BACKLOG.md` rec-013. Source: EVID-018 user
 §7 (1329–1349), §9 (1381–1425), §12 (1503–1539), §13 (1541–1561), §16 (1607–1643), §18 (1677–1714), §19 (1716–1734); Appendix B F1–F3.
 Depends on rec-006 (merged PR #150), rec-009 (merged PR #155) and rec-011 (merged PR #180); all three are on `main`.
 
-**Numbering:** `DEC-SCOPE-151`, API §12BS, RBAC §2.77, **no migration**. Drafted as 141 / §12BI / §2.67 and re-chained as main moved; upc-026, upc-012, upc-020, upc-014, upc-008, upc-016, upc-009,
+**Status: MERGED** as PR #199 @ `4b260e21` (2026-10-09).
+
+**Numbering (FINAL):** `DEC-SCOPE-151`, API §12BS, RBAC §2.77, **no migration**. Drafted as 141 / §12BI / §2.67 and re-chained as main moved; upc-026, upc-012, upc-020, upc-014, upc-008, upc-016, upc-009,
 upc-021, upc-017, rec-020, rec-018 and rec-012 merged first and hold 139–150 / §12BG–§12BR / §2.65–§2.76. Re-check
-origin/main before the merge and re-chain if needed.
+origin/main before the next rec item.
 
 ## 1. Answers (2026-10-09)
 The owner asked to proceed with the recommended answers, so nothing was asked. Every row below is **UNVERIFIED** (a recorded default).
