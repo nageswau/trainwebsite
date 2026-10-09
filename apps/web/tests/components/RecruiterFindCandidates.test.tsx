@@ -23,7 +23,7 @@ const result = {
   facets: {
     experience: [{ key: "y0_1", count: 10 }, { key: "y1_3", count: 40 }, { key: "y3_5", count: 30 }, { key: "y5_plus", count: 5 }, { key: "none", count: 2 }],
     location: [{ value: "Hyderabad", count: 80 }, { value: "__other__", count: 5 }, { value: null, count: 2 }],
-    availability: [{ key: "immediate", count: 50 }, { key: "d15", count: 10 }, { key: "d30", count: 10 }, { key: "d31_59", count: 5 }, { key: "d60_plus", count: 10 }, { key: "none", count: 2 }],
+    availability: [{ key: "immediate", count: 50 }, { key: "d15", count: 10 }, { key: "d30", count: 20 }, { key: "d31_59", count: 0 }, { key: "d60_plus", count: 5 }, { key: "none", count: 2 }],
   },
   terms: [{ term: "j2ee", skill: { id: "k1", name: "Java" }, also: ["Core Java"] }],
 };
@@ -76,10 +76,11 @@ describe("RecruiterFindCandidates", () => {
 
   it("adds a chip on Enter, and Search also takes a skill typed but not added", () => {
     render(<RecruiterFindCandidates writes sourceFilter />);
-    const box = screen.getByLabelText("Must have all of these skills");
+    const box = screen.getByRole("textbox", { name: "Must have all of these skills" });
     fireEvent.change(box, { target: { value: "Java" } });
     fireEvent.keyDown(box, { key: "Enter" });
     expect(screen.getByRole("button", { name: "Remove Java" })).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Must have all of these skills: chosen" })).toHaveTextContent("Java");
     fireEvent.change(box, { target: { value: "Spring Boot" } });
     fireEvent.click(screen.getByRole("button", { name: "Search candidates" }));
     expect(push).toHaveBeenLastCalledWith("/recruiter/find-candidates?all=Java&all=Spring+Boot", { scroll: false });
@@ -113,5 +114,57 @@ describe("RecruiterFindCandidates", () => {
     expect(screen.queryByLabelText("Shortlist into requirement")).toBeNull();
     expect(screen.queryByLabelText("Candidate source")).toBeNull();
     expect(fetchMock.mock.calls.some(([u]) => String(u).includes("/catalogue/"))).toBe(false);
+  });
+
+  it("hides empty facet rows (QA-04), and on no results shows neither facets nor the shortlist picker (QA-01)", async () => {
+    query = "all=Java";
+    render(<RecruiterFindCandidates writes sourceFilter />);
+    await screen.findByRole("heading", { name: "87 candidates found" });
+    expect(screen.queryByRole("button", { name: /31–59 days/ })).toBeNull();
+    expect(screen.queryByText("31–59 days", { selector: "aside *" })).toBeNull();
+    cleanup();
+    searchReply = () => res({ ...result, items: [], total: 0, facets: { experience: [{ key: "none", count: 0 }], location: [], availability: [{ key: "none", count: 0 }] } });
+    render(<RecruiterFindCandidates writes sourceFilter />);
+    expect(await screen.findByRole("heading", { name: "0 candidates found" })).toBeInTheDocument();
+    expect(screen.getByText("No candidates match. Remove a skill or a filter to see more.")).toBeInTheDocument();
+    expect(screen.queryByRole("complementary", { name: "Refine results" })).toBeNull();
+    expect(screen.queryByLabelText("Shortlist into requirement")).toBeNull();
+  });
+
+  it("offers no Retry for a refused search (QA-02)", async () => {
+    query = "all=Java&sal_min=10&sal_max=2";
+    searchReply = () => res({ detail: "The minimum salary cannot be above the maximum" }, 422);
+    render(<RecruiterFindCandidates writes sourceFilter />);
+    expect(await screen.findByText("The minimum salary cannot be above the maximum")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+  });
+
+  it("brings the results into view after a Search (QA-03) and shows that newer results are loading (QA-05)", async () => {
+    const scrolled = vi.fn();
+    Element.prototype.scrollIntoView = scrolled;
+    query = "all=Java";
+    const view = render(<RecruiterFindCandidates writes sourceFilter />);
+    await screen.findByRole("heading", { name: "87 candidates found" });
+    expect(scrolled).not.toHaveBeenCalled(); // opening a link does not jump
+    fireEvent.click(screen.getByRole("button", { name: "Search candidates" }));
+    let finish: (r: Response) => void = () => undefined;
+    searchReply = () => undefined as unknown as Response;
+    fetchMock.mockImplementation((url: string) =>
+      url.startsWith("/api/v1/recruiter/catalogue/") ? Promise.resolve(res({ items: [], total: 0, limit: 100, offset: 0 })) : new Promise<Response>((r) => { finish = r; }));
+    query = "all=Java&location=Pune";
+    view.rerender(<RecruiterFindCandidates writes sourceFilter />);
+    expect(await screen.findByText("Updating results…")).toBeInTheDocument();
+    finish(res({ ...result, total: 3 }));
+    expect(await screen.findByRole("heading", { name: "3 candidates found" })).toBeInTheDocument();
+    expect(scrolled).toHaveBeenCalled();
+  });
+
+  it("offers the first page when a hand-edited offset is past the end (QA-07)", async () => {
+    query = "all=Java&offset=500";
+    searchReply = () => res({ ...result, items: [], offset: 500 });
+    render(<RecruiterFindCandidates writes sourceFilter />);
+    fireEvent.click(await screen.findByRole("button", { name: "Go to the first page" }));
+    expect(push).toHaveBeenLastCalledWith("/recruiter/find-candidates?all=Java", { scroll: false });
+    expect(screen.queryByRole("navigation", { name: "Result pages" })).toBeNull();
   });
 });

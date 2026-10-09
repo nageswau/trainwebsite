@@ -62,7 +62,7 @@ test("find candidates: alias + related, OR group, facet, refresh/back, shortlist
   await page.getByRole("link", { name: "Find Candidates" }).first().click();
   await page.waitForURL("**/recruiter/find-candidates");
   await expect(page.getByText("Add at least one skill to search every candidate in the pool.")).toBeVisible();
-  const all = page.getByLabel("Must have all of these skills");
+  const all = page.getByRole("textbox", { name: "Must have all of these skills" });
   await all.fill(`E2EJ2EE ${stamp}`);
   await all.press("Enter");
   await page.getByRole("button", { name: "Search candidates" }).click();
@@ -71,7 +71,7 @@ test("find candidates: alias + related, OR group, facet, refresh/back, shortlist
 
   // AC3: Java AND (AWS OR Azure).
   await page.getByRole("button", { name: "+ Add an “at least one of” group" }).click();
-  const group = page.getByLabel("And at least one of these (group 1)");
+  const group = page.getByRole("textbox", { name: "And at least one of these (group 1)" });
   for (const s of ["E2EAWS", "E2EAzure"]) {
     await group.fill(`${s} ${stamp}`);
     await group.press("Enter");
@@ -107,7 +107,7 @@ test("find candidates: alias + related, OR group, facet, refresh/back, shortlist
 
   // FS3: an unknown skill names the suggestion, which swaps in.
   await page.goto(`/recruiter/find-candidates?all=${encodeURIComponent(`Java ${stamp}`)}`);
-  await expect(page.getByRole("alert")).toContainText(`No skill is called “Java ${stamp}”`);
+  await expect(page.locator("p[role=alert]")).toContainText(`No skill is called “Java ${stamp}”`);
   await page.getByRole("button", { name: `Use E2EJava ${stamp}` }).click();
   await expect(page.getByRole("heading", { name: "3 candidates found" })).toBeVisible();
 
@@ -125,6 +125,7 @@ test("find candidates: alias + related, OR group, facet, refresh/back, shortlist
   await expect(page.getByRole("button", { name: /^Shortlist/ })).toHaveCount(0);
   await expect(page.getByRole("link", { name: /^Contact/ })).toHaveCount(0);
 
-  expect(consoleErrors).toEqual([]);
+  // The deliberate unknown-skill 422 is logged by the browser; nothing else may be.
+  expect(consoleErrors.filter((e) => !e.includes("status of 422"))).toEqual([]);
   expect(failedCalls).toEqual([]);
 });

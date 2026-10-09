@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { type FormEvent, type KeyboardEvent, useEffect, useState } from "react";
+import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import SearchableSelect from "@/components/SearchableSelect";
 import { detailMessage, sendJson } from "@/lib/apiErrors";
@@ -18,7 +18,7 @@ import {
 import { CANDIDATES_PATH, experienceLabel, STATUS_LABEL, STATUSES } from "@/lib/recruiterCandidates";
 import { STATUS_LABEL as SKILL_STATUS_LABEL } from "@/lib/recruiterCandidateSkills";
 
-type Failure = { message: string; term?: string; suggestions?: string[] } | null;
+type Failure = { message: string; retry: boolean; term?: string; suggestions?: string[] } | null;
 type Shortlisted = Record<string, { busy?: boolean; text: string; failed?: boolean }>;
 const termCount = (s: SearchState) => s.all.length + s.any.reduce((n, g) => n + g.length, 0);
 
@@ -42,7 +42,7 @@ function SkillChips({ id, label, hint, terms, text, room, onText, onChange }: {
       <label htmlFor={id}>{label}</label>
       <span id={`${id}-hint`} className="muted" style={{ fontSize: 13 }}>{hint}</span>
       {terms.length > 0 && (
-        <ul aria-label={label} style={{ listStyle: "none", padding: 0, margin: "6px 0", display: "flex", flexWrap: "wrap", gap: 6 }}>
+        <ul aria-label={`${label}: chosen`} style={{ listStyle: "none", padding: 0, margin: "6px 0", display: "flex", flexWrap: "wrap", gap: 6 }}>
           {terms.map((term) => (
             <li key={term} className="badge" style={{ alignItems: "center", gap: 4 }}>
               {term}
@@ -135,6 +135,8 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
   const [sources, setSources] = useState<CatalogueValue[]>([]);
   const [requirement, setRequirement] = useState<PickOption | null>(null);
   const [shortlisted, setShortlisted] = useState<Shortlisted>({});
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const jump = useRef(false); // QA-03: a Search from the form brings its results into view; a facet or a link does not
   const state = stateOf(new URLSearchParams(key));
 
   useEffect(() => {
@@ -161,16 +163,24 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
         setResult(null);
         const unknown = unknownSkill(data?.detail);
         const message = unknown ? String((data.detail as { message?: unknown }).message ?? "") : detailMessage(data?.detail, "Unable to search candidates.");
-        setFailure({ message: response.status >= 500 || !message ? "Unable to search candidates." : message, ...(unknown ?? {}) });
+        const broken = response.status >= 500 || !message;
+        setFailure({ message: broken ? "Unable to search candidates." : message, retry: broken, ...(unknown ?? {}) }); // QA-02: a 4xx needs an edit, not a retry
       })
       .catch(() => {
         if (controller.signal.aborted) return;
         setResult(null);
-        setFailure({ message: "Unable to search candidates. Check your connection and try again." });
+        setFailure({ message: "Unable to search candidates. Check your connection and try again.", retry: true });
       })
       .finally(() => controller.signal.aborted || setLoading(false));
     return () => controller.abort();
   }, [key, version]);
+
+  useEffect(() => {
+    if (!jump.current || (!result && !failure)) return;
+    jump.current = false;
+    resultsRef.current?.scrollIntoView({ block: "start" });
+    resultsRef.current?.focus({ preventScroll: true });
+  }, [result, failure]);
 
   useEffect(() => {
     if (!sourceFilter) return;
@@ -189,7 +199,14 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
     event.preventDefault();
     const all = distinctTerms([...draft.all, texts.all ?? ""], MAX_TERMS);
     const any = draft.any.map((group, i) => distinctTerms([...group, texts[`any${i}`] ?? ""], GROUP_TERMS)).filter((g) => g.length);
-    go({ ...draft, all, any, offset: 0 });
+    const next = { ...draft, all, any, offset: 0 };
+    if (!searchBody(next)) return go(next);
+    jump.current = true;
+    if (paramsOf(next).toString() === key && (result || failure)) {
+      jump.current = false; // the same search: nothing reloads, so just show it
+      resultsRef.current?.scrollIntoView({ block: "start" });
+    }
+    go(next);
   }
 
   function replaceTerm(term: string, by: string) {
@@ -295,6 +312,7 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
         </div>
       </form>
 
+      <div ref={resultsRef} tabIndex={-1} style={{ outline: "none", scrollMarginTop: 80 }}>
       {!searched ? (
         <p className="muted" role="status">Add at least one skill to search every candidate in the pool.</p>
       ) : failure ? (
@@ -307,7 +325,7 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
               ))}
             </div>
           )}
-          {!failure.term && <button type="button" className="btn secondary small" style={{ justifySelf: "start" }} onClick={() => setVersion((v) => v + 1)}>Retry</button>}
+          {failure.retry && <button type="button" className="btn secondary small" style={{ justifySelf: "start" }} onClick={() => setVersion((v) => v + 1)}>Retry</button>}
         </div>
       ) : result === null ? (
         <p className="muted" role="status">Searching candidates…</p>
@@ -315,6 +333,7 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
         <Results result={result} state={state} loading={loading} writes={writes} requirement={requirement} shortlisted={shortlisted}
           onRequirement={(r) => { setRequirement(r); setShortlisted({}); }} onShortlist={shortlist} narrow={narrow} page={(offset) => go({ ...state, offset })} />
       )}
+      </div>
     </div>
   );
 }
@@ -324,9 +343,9 @@ function Results({ result, state, loading, writes, requirement, shortlisted, onR
   onRequirement: (r: PickOption | null) => void; onShortlist: (c: CandidateCard) => void; narrow: (c: Partial<SearchState>) => void; page: (offset: number) => void;
 }) {
   const expanded = result.terms.filter((t) => t.also.length || t.skill.name.toLowerCase() !== t.term.toLowerCase());
-  const facetButton = (label: string, count: number, onClick?: () => void, pressed = false) => (
+  const facetButton = (label: string, count: number, onClick?: () => void, pressed = false) => count > 0 && ( // QA-04: empty rows are noise
     <li key={label}>
-      {onClick && count > 0 ? (
+      {onClick ? (
         <button type="button" className="btn ghost small" aria-pressed={pressed} onClick={onClick} style={{ width: "100%", justifyContent: "space-between" }}>
           <span>{label}</span><span>{count}</span>
         </button>
@@ -335,14 +354,13 @@ function Results({ result, state, loading, writes, requirement, shortlisted, onR
       )}
     </li>
   );
-  const facet = (title: string, items: React.ReactNode[]) => (
+  const facet = (title: string, items: React.ReactNode[]) => items.some(Boolean) && (
     <div>
       <h3 style={{ fontSize: 15, margin: "0 0 4px" }}>{title}</h3>
       <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 4 }}>{items}</ul>
     </div>
   );
-  return (
-    <section aria-label="Search results" aria-busy={loading} style={{ display: "grid", gap: 12 }}>
+  const header = (
       <div>
         <div role="status"><h2 style={{ fontSize: 22, margin: 0 }}>{result.total === 1 ? "1 candidate found" : `${result.total} candidates found`}</h2></div>
         {expanded.length > 0 && (
@@ -350,10 +368,19 @@ function Results({ result, state, loading, writes, requirement, shortlisted, onR
             {expanded.map((t) => `${t.term} → ${[t.skill.name, ...t.also].join(", ")}`).join("; ")}
           </p>
         )}
+        {loading && <p className="muted" role="status" style={{ margin: "4px 0 0", fontSize: 13 }}>Updating results…</p>}
       </div>
+  );
+  const sectionProps = { "aria-label": "Search results", "aria-busy": loading, style: { display: "grid", gap: 12 } } as const;
+  if (result.total === 0) { // QA-01: nothing to refine or shortlist
+    return <section {...sectionProps}>{header}<p className="muted">No candidates match. Remove a skill or a filter to see more.</p></section>;
+  }
+  return (
+    <section {...sectionProps}>
+      {header}
       {writes && (
         <div className="action-card" style={{ gap: 6 }}>
-          <SearchableSelect label="Shortlist into requirement" noun="requirement" search={requirementSearch} onChange={onRequirement} />
+          <SearchableSelect label="Shortlist into requirement" noun="requirement" search={requirementSearch} onChange={onRequirement} initial={requirement} />
           <span className="muted" style={{ fontSize: 13 }}>
             {requirement ? `Shortlist adds a candidate to ${requirement.label} as Shortlisted.` : "Choose one of your open requirements to shortlist candidates into it."}
           </span>
@@ -376,8 +403,8 @@ function Results({ result, state, loading, writes, requirement, shortlisted, onR
           )))}
         </aside>
         <div style={{ flex: "3 1 22rem", minWidth: 0, display: "grid", gap: 12 }}>
-          {result.items.length === 0 ? (
-            <p className="muted" role="status">No candidates match. Remove a skill or a filter to see more.</p>
+          {result.items.length === 0 ? ( // QA-07: a hand-edited offset past the end
+            <p className="muted">No candidates on this page. <button type="button" className="btn secondary small" onClick={() => page(0)}>Go to the first page</button></p>
           ) : (
             <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 12 }}>
               {result.items.map((c) => (
@@ -385,7 +412,7 @@ function Results({ result, state, loading, writes, requirement, shortlisted, onR
               ))}
             </ul>
           )}
-          {result.total > PAGE_SIZE && (
+          {result.total > PAGE_SIZE && result.items.length > 0 && (
             <nav aria-label="Result pages" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
               <span className="muted" style={{ fontSize: 13 }}>Showing {result.offset + 1}–{result.offset + result.items.length} of {result.total}</span>
               <button type="button" className="btn secondary small" aria-label="Previous page" disabled={result.offset === 0} onClick={() => page(Math.max(0, result.offset - PAGE_SIZE))}>Previous</button>
