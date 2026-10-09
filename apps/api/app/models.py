@@ -882,8 +882,15 @@ class PlacementProfile(Base, TimestampMixin):
 # rec-022 (DEC-SCOPE-155, OF1): the EVID-018 §16 offer statuses in source order (L700). Migration 0138 repeats them
 # (test_rec_022_migration). Labels live in services/offers.py and the web client.
 OFFER_STATUSES = ("offer_pending", "offer_received", "accepted", "declined")
-OFFER_EVENTS = ("created", "status", "revised", "letter")
+OFFER_EVENTS = ("created", "status", "revised", "letter", "joining", "joined", "did_not_join", "proof")  # rec-023 appends the last four
 OFFER_CHECKS = {"ck_job_offers_status": "status IN (" + ", ".join(f"'{s}'" for s in OFFER_STATUSES) + ")"}
+# rec-023 (DEC-SCOPE-158, JN2-JN5): the EVID-018 §17 joining statuses; NULL until the offer is Accepted. Migration 0140 repeats them
+# (test_rec_023_migration).
+JOINING_STATUSES = ("pending", "joined", "did_not_join")
+JOINING_CHECKS = {
+    "ck_job_offers_joining_status": "joining_status IS NULL OR joining_status IN (" + ", ".join(f"'{s}'" for s in JOINING_STATUSES) + ")",
+    "ck_job_offers_not_joined_reason": "joining_status IS DISTINCT FROM 'did_not_join' OR not_joined_reason IS NOT NULL",
+}
 OFFER_EVENT_CHECKS = {"ck_job_offer_events_event": "event IN (" + ", ".join(f"'{s}'" for s in OFFER_EVENTS) + ")"}
 
 
@@ -892,7 +899,7 @@ class JobOffer(Base, TimestampMixin):
     link, `letter_key` the uploaded letter (OF7). `position` and `created_by_user_id` are NULL on legacy rows."""
 
     __tablename__ = "job_offers"
-    __table_args__ = tuple(CheckConstraint(sql, name=name) for name, sql in OFFER_CHECKS.items())
+    __table_args__ = tuple(CheckConstraint(sql, name=name) for name, sql in {**OFFER_CHECKS, **JOINING_CHECKS}.items())
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("job_applications.id"), unique=True, index=True)
     offered_on: Mapped[date] = mapped_column(Date, default=date.today)
@@ -907,11 +914,24 @@ class JobOffer(Base, TimestampMixin):
     letter_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     letter_uploaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    # rec-023 (JN1): the joining. `joining_date` above is the Expected Joining Date; services/joinings.py is the only writer.
+    joining_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    actual_joining_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    joining_location: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    reporting_manager: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    joining_confirmed_by: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    joining_confirmed_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    not_joined_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    proof_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    proof_content_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    proof_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    proof_uploaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class JobOfferEvent(Base):
     """rec-022 (AC2): one row per record, status move, revision (field names only) and letter upload (`letter_key` = the replaced object,
-    never returned). Append-only; `position` orders rows written in one transaction. `actor_user_id` is NULL only for a system write."""
+    never returned); rec-023 adds the joining's details (field names), Joined / Did Not Join (note = the reason) and the proof upload
+    (`letter_key` = the replaced proof). Append-only; `position` orders rows written in one transaction. `actor_user_id` is NULL only for a system write."""
 
     __tablename__ = "job_offer_events"
     __table_args__ = (
