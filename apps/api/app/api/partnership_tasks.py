@@ -26,6 +26,7 @@ from app.schemas import (
 )
 from app.services import partnership_tasks as svc
 from app.services import partnership_universities as unis
+from app.services import university_visits as visits
 
 router = APIRouter(prefix="/partnership/tasks", tags=["partnership-tasks"])
 
@@ -116,7 +117,7 @@ async def reschedule(task_id: UUID, payload: PartnershipTaskReschedule, user: Us
 async def complete(task_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """A second complete meets `done` under the lock → 409."""
     task = await svc.load_for_write(db, user, task_id, "complete")
-    task.status, task.completed_at = "done", svc.now()
+    task.status, task.completed_at = "done", visits.now()
     svc.audit(db, user, "complete", task.id, {"source": task.source})
     await db.commit()
     svc.log("partnership_task_completed", user, task.id, source=task.source)
@@ -127,7 +128,7 @@ async def complete(task_id: UUID, user: User = Depends(get_current_user), db: As
 async def cancel(task_id: UUID, payload: PartnershipTaskCancel, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """The reason is kept on the task and never logged."""
     task = await svc.load_for_write(db, user, task_id, "cancel")
-    task.status, task.cancelled_at, task.cancel_reason = "cancelled", svc.now(), payload.reason
+    task.status, task.cancelled_at, task.cancel_reason = "cancelled", visits.now(), payload.reason
     svc.audit(db, user, "cancel", task.id, {"source": task.source})
     await db.commit()
     svc.log("partnership_task_cancelled", user, task.id, source=task.source)

@@ -46,4 +46,4 @@ STAGE_RULES: dict[str, Rule] = {
     "partner_activated": Rule("task", "Conduct training", 14, "medium"),
     "student_recruitment_started": Rule("task", "Send student applications", 14, "medium"),
 }
-VISIT_TITLE = "Follow up after visit"  # due on the visit's follow-up date (upc-010 VS16)
+VISIT_RULE = Rule("follow_up", "Follow up after visit", 0, "high")  # due on the visit's follow-up date (upc-010 VS16), not an offset

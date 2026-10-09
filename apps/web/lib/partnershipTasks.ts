@@ -67,5 +67,6 @@ export const taskOf = (data: unknown): PartnershipTask | null => {
 };
 
 export function isTaskPage(data: unknown): data is TaskPage {
-  return isPage(data) && typeof (data as { counts?: unknown }).counts === "object" && (data as { counts?: unknown }).counts !== null;
+  const counts = (data as { counts?: unknown } | null)?.counts;
+  return isPage(data) && typeof counts === "object" && counts !== null;
 }

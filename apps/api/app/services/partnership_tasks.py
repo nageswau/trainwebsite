@@ -9,7 +9,7 @@ notes or reason text.
 """
 
 import logging
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, datetime, timedelta
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException
@@ -19,7 +19,7 @@ from sqlalchemy.orm import aliased
 
 from app.models import AuditLog, PartnershipProfile, PartnershipTask, University, UniversityStageHistory, UniversityVisit, User
 from app.partnership_stages import label_of
-from app.partnership_task_rules import STAGE_RULES, VISIT_TITLE, Rule
+from app.partnership_task_rules import STAGE_RULES, VISIT_RULE, Rule
 from app.services import bdm_activities
 from app.services import university_visits as visits
 from app.services.bdm_travel import india_today
@@ -217,32 +217,31 @@ async def _auto_assignee(db: AsyncSession, actor: User, uni: University) -> User
     return actor if actor.role in CREATE_ROLES else None
 
 
-async def _auto_create(db: AsyncSession, actor: User, university_id: UUID, rule: str, assignee: User | None, kind: str, title: str, due_on: date, priority: str, source: str) -> None:
-    """TK7: one open task per (university, rule). A skipped rule is logged, never an error: the event itself must not fail."""
+async def _auto_create(db: AsyncSession, actor: User, university_id: UUID, key: str, assignee: User | None, rule: Rule, due_on: date, source: str) -> None:
+    """TK7: one open task per (university, rule key). A skipped rule is logged, never an error: the event itself must not fail."""
     if assignee is None:
-        log("partnership_task_auto_skipped", actor, "-", university_id=str(university_id), rule=rule, why="no_assignee")
+        log("partnership_task_auto_skipped", actor, "-", university_id=str(university_id), rule=key, why="no_assignee")
         return
-    open_already = await db.scalar(select(PartnershipTask.id).where(PartnershipTask.university_id == university_id, PartnershipTask.rule == rule, PartnershipTask.status == "open"))
+    open_already = await db.scalar(select(PartnershipTask.id).where(PartnershipTask.university_id == university_id, PartnershipTask.rule == key, PartnershipTask.status == "open"))
     if open_already is not None:
-        log("partnership_task_auto_skipped", actor, open_already, university_id=str(university_id), rule=rule, why="open_duplicate")
+        log("partnership_task_auto_skipped", actor, open_already, university_id=str(university_id), rule=key, why="open_duplicate")
         return
     task = PartnershipTask(
-        id=uuid4(), university_id=university_id, kind=kind, title=title, due_on=due_on, priority=priority, source=source, rule=rule,
+        id=uuid4(), university_id=university_id, kind=rule.kind, title=rule.title, due_on=due_on, priority=rule.priority, source=source, rule=key,
         assignee_user_id=assignee.id, created_by_user_id=actor.id, status="open",
     )  # fmt: skip
     db.add(task)
-    audit(db, actor, "auto_create", task.id, {"kind": kind, "source": source, "university_id": str(university_id), "rule": rule})
-    log("partnership_task_auto_created", actor, task.id, university_id=str(university_id), rule=rule)
+    audit(db, actor, "auto_create", task.id, {"kind": rule.kind, "source": source, "university_id": str(university_id), "rule": key})
+    log("partnership_task_auto_created", actor, task.id, university_id=str(university_id), rule=key)
 
 
 async def on_stage_entered(db: AsyncSession, actor: User, uni: University) -> None:
     """Called by the stage move, on the university row it has locked."""
-    rule: Rule | None = STAGE_RULES.get(uni.stage)
+    rule = STAGE_RULES.get(uni.stage)
     if rule is None:
         return
-    assignee = await _auto_assignee(db, actor, uni)
     due = india_today() + timedelta(days=rule.days)
-    await _auto_create(db, actor, uni.id, f"stage:{uni.stage}", assignee, rule.kind, rule.title, due, rule.priority, "stage")
+    await _auto_create(db, actor, uni.id, f"stage:{uni.stage}", await _auto_assignee(db, actor, uni), rule, due, "stage")
 
 
 async def on_visit_completed(db: AsyncSession, actor: User, v: UniversityVisit) -> None:
@@ -251,7 +250,7 @@ async def on_visit_completed(db: AsyncSession, actor: User, v: UniversityVisit) 
         return
     lead = await db.get(User, v.lead_user_id)
     assignee = lead if lead is not None and lead.active else None
-    await _auto_create(db, actor, v.university_id, f"visit:{v.id}", assignee, "follow_up", VISIT_TITLE, v.follow_up_date, "high", "visit")
+    await _auto_create(db, actor, v.university_id, f"visit:{v.id}", assignee, VISIT_RULE, v.follow_up_date, "visit")
 
 
 async def sync_visit_due(db: AsyncSession, v: UniversityVisit) -> None:
@@ -304,7 +303,3 @@ def audit(db: AsyncSession, user: User, action: str, task_id: UUID, metadata: di
 
 def log(event: str, user: User, task_id, **extra) -> None:
     logger.info(event, extra={"extra_fields": {"actor_id": str(user.id), "task_id": str(task_id), **extra}})
-
-
-def now() -> datetime:
-    return datetime.now(UTC)
