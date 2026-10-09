@@ -33,10 +33,10 @@ async def load_resume(db: AsyncSession, candidate: Candidate, version: int) -> C
     return resume
 
 
-async def writable(db: AsyncSession, candidate_id: UUID, *, lock: bool) -> Candidate:
-    """An archived candidate's resumes are read only (rec-009). Apply locks the row (every skill write is serialised on it); Extract does
-    not, so a slow file never holds the candidate's lock."""
-    candidate = await candidates.load(db, candidate_id, lock=lock)
+async def extractable(db: AsyncSession, candidate_id: UUID) -> Candidate:
+    """An archived candidate's resumes are read only (rec-009). Unlike Apply (candidate_skills.writable, which locks the row), Extract
+    takes no lock, so a slow file never holds the candidate's lock."""
+    candidate = await candidates.load(db, candidate_id)
     if candidate.archived_at is not None:
         raise HTTPException(409, candidates.ARCHIVED)
     return candidate

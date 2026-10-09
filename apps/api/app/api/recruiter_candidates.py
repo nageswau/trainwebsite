@@ -23,6 +23,7 @@ from app.core.database import get_db
 from app.models import Candidate, CandidateResume, RecCandidateSource, User
 from app.notifications.phone import normalise_phone
 from app.schemas import CANDIDATE_FIELD_LABELS, RESUME_APPLY_LABELS, CandidateCreate, CandidateDetail, CandidatePage, CandidateStatus, CandidateUpdate, ResumeApply
+from app.services import candidate_skills
 from app.services import candidates as svc
 from app.services import resume_extraction as extraction
 from app.services.telecaller import _parse
@@ -208,7 +209,7 @@ async def extract_resume(candidate_id: UUID, version: int, user: User = Depends(
     """EX1/EX2: suggestions from this version's text, stored on the resume row only -- the candidate and their skills are unchanged
     until Apply (AC2). A scanned PDF answers `no_text` (AC3); an unreadable or password-protected file is a 422 sentence."""
     svc.require_writer(user)
-    candidate = await extraction.writable(db, candidate_id, lock=False)
+    candidate = await extraction.extractable(db, candidate_id)
     resume = await extraction.load_resume(db, candidate, version)
     await extraction.extract(db, resume)
     stored = resume.extraction_json
@@ -223,7 +224,7 @@ async def apply_resume(candidate_id: UUID, version: int, payload: dict = Body(..
     """EX6/EX7: the ticked skills and profile fields, all or nothing."""
     svc.require_writer(user)
     body = _parse(ResumeApply, payload, NOT_AN_OBJECT, RESUME_APPLY_LABELS)
-    candidate = await extraction.writable(db, candidate_id, lock=True)
+    candidate = await candidate_skills.writable(db, candidate_id)
     resume = await extraction.load_resume(db, candidate, version)
     result = await extraction.apply(db, user, candidate, resume, body)
     await db.commit()
