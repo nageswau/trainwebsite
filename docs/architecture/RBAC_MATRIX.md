@@ -1204,6 +1204,20 @@ writer may set Verified or Assessed; who and when are recorded.
 | `hr_team` | read only (every write `403`; the Skills Master stays `403`) | the whole pool | `rec-011` |
 | `it_admin`, `employer`, `bdm`, students, every other role | `403` | — | `rec-011` |
 
+### 2.64 University documents *(net-new, added 2026-10-09 — `DEC-SCOPE-138`, `upc-026`)*
+
+Enforced inline in `api/university_documents.py` + `services/university_documents.py` (the University Master's `require_reader`, then
+the per-role slice, then `can_manage_documents`). The commission agreement is stripped server-side by `can_see_commission` (U2). Audit and
+logs carry ids only.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Read a university's documents + the Documents menu | ✅ all | ✅ all | shareable only | ✅ all | `403` |
+| See / download the commission agreement | ✅ | ✅ | `404` (never listed) | ✅ | `403` |
+| Upload, new version, edit title / sharing | own universities (primary/backup) | unowned + team universities | `403` | ✅ all | `403` |
+| Delete | — (not in this item, DC9) | — | — | — | — |
+
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

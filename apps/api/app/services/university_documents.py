@@ -30,9 +30,7 @@ logger = logging.getLogger("app.partnership")
 KINDS = UNIVERSITY_DOCUMENT_KINDS
 COMMISSION_KIND = "commission_agreement"
 # DC3 (Q-26): what a counsellor-facing reader may see unless the uploader says otherwise. The commission agreement is never shareable.
-SHAREABLE_BY_DEFAULT = frozenset(
-    {"brochure", "course_list", "fee_structure", "entry_requirements", "scholarship_information", "marketing_materials", "application_guidelines", "training_documents"}
-)
+SHAREABLE_BY_DEFAULT = frozenset({"brochure", "course_list", "fee_structure", "entry_requirements", "scholarship_information", "marketing_materials", "application_guidelines", "training_documents"})
 MAX_DOCUMENTS = 200  # per university (DC6)
 MAX_VERSIONS = 50  # per document (DC6)
 STORAGE_PREFIX = "university-documents"
@@ -90,9 +88,7 @@ async def count(db: AsyncSession, university_id: UUID) -> int:
 
 async def check_title_free(db: AsyncSession, university_id: UUID, kind: str, title: str, document_id: UUID | None = None) -> None:
     """DC11, under the university lock (uq_university_documents_title is the backstop). Checked across every document, hidden ones too."""
-    stmt = select(UniversityDocument.id).where(
-        UniversityDocument.university_id == university_id, UniversityDocument.kind == kind, func.lower(UniversityDocument.title) == title.lower()
-    )
+    stmt = select(UniversityDocument.id).where(UniversityDocument.university_id == university_id, UniversityDocument.kind == kind, func.lower(UniversityDocument.title) == title.lower())
     if document_id is not None:
         stmt = stmt.where(UniversityDocument.id != document_id)
     if await db.scalar(stmt.limit(1)):
@@ -182,11 +178,7 @@ def _university_ref(university: University) -> dict:
 async def documents_out(db: AsyncSession, rows: list[tuple[UniversityDocument, University]]) -> list[dict]:
     """Each document with its versions (newest first) and who uploaded them; two queries for the whole page."""
     ids = [document.id for document, _ in rows]
-    versions = (
-        (await db.scalars(select(UniversityDocumentVersion).where(UniversityDocumentVersion.document_id.in_(ids)).order_by(UniversityDocumentVersion.version.desc()))).all()
-        if ids
-        else []
-    )
+    versions = (await db.scalars(select(UniversityDocumentVersion).where(UniversityDocumentVersion.document_id.in_(ids)).order_by(UniversityDocumentVersion.version.desc()))).all() if ids else []
     user_ids = {v.uploaded_by_user_id for v in versions}
     people = {u.id: u for u in (await db.scalars(select(User).where(User.id.in_(user_ids)))).all()} if user_ids else {}
     by_document: dict[UUID, list[dict]] = {}

@@ -185,6 +185,7 @@ async def test_a_new_version_becomes_current_and_the_old_one_still_downloads(cli
     assert response.status_code == 201, response.text
     body = response.json()["document"]
     assert body["current_version"] == 2 and [v["version"] for v in body["versions"]] == [2, 1]
+    assert body["updated_at"] > doc["updated_at"]  # the menu list's newest-change order
     assert (await client.get(file_url(uni["id"], doc["id"]))).content == PDF + b"% v2\n"
     assert (await client.get(file_url(uni["id"], doc["id"], 1))).content == PDF
     assert (await client.get(file_url(uni["id"], doc["id"], 3))).status_code == 404
@@ -227,6 +228,8 @@ async def test_patch_renames_and_toggles_shareable_auditing_field_names(client, 
     audit = await db_session.scalar(select(AuditLog).where(AuditLog.entity_id == doc["id"], AuditLog.action == "university_document.update"))
     assert audit.metadata_json["fields"] == ["shareable", "title"]
     assert (await client.patch(docs_url(uni["id"], f"/{doc['id']}"), json={"kind": "brochure"})).status_code == 422  # extra field
+    for null in ({"title": None}, {"shareable": None}):
+        assert (await client.patch(docs_url(uni["id"], f"/{doc['id']}"), json=null)).status_code == 422
 
 
 # --- AC2: the commission agreement (DC2) -------------------------------------------------------------------------------------

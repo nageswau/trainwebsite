@@ -2033,6 +2033,28 @@ can_complete, can_follow_up, can_close}, editable_fields, created_at, updated_at
 | `POST /recruiter/candidates/{id}/skills/{sid}/status` | `{status}` → item. `verified` / `assessed` set `verified_by` and `verified_at` (the caller, now); `claimed` clears them (AC3). The same status → `409`. The backlog named this route `…/verify`; it is `…/status` because it also sets `claimed` and `assessed` |
 | `POST /recruiter/skills/{id}/merge` | Skills Master writers only (placement manager, super_admin; recruiters `403`). `{into_skill_id}` → the kept skill (the §12AM skill item). This skill (active or not) is merged into an active one: candidate skills move (a candidate with both keeps the stronger status, the kept skill's row on a tie), requirement skills (`job_skills.skill_id`) move, aliases move, related links are re-made on the kept skill, this skill is **deleted** and its name becomes an alias of the kept one. **Refusals:** into itself → `422`; unknown or inactive target → `422` "Choose an active skill to merge into"; unknown skill → `404`. Audit `recruiter.skill_merge` (the merged id and name, counts) |
 
+## 12BF. University document centre (`upc-026`) — addendum, 2026-10-09
+
+`DEC-SCOPE-138`; design spec `docs/superpowers/specs/2026-10-09-upc-026-university-documents-design.md` §3. Migration
+`0123_university_documents`. Readers: the University Master readers (`partnership_manager` with a profile, `partnership_head`,
+`super_admin`, `overseas_admin` of the overseas division); other roles `403`. Slice: `overseas_admin` sees `shareable` documents only;
+the `commission_agreement` kind is removed for every role without commission access (`services/partnership_access.can_see_commission`).
+A document outside the reader's slice, of another university, or unknown is `404`. Writers: `can_manage_documents` on the university
+(partnership roles and `super_admin` in the master's edit scope; `403` otherwise, checked before any byte is read; inactive university
+`409`). Every write: file sniffed and stored under a server key, university row `FOR UPDATE`, checks, rows, audit
+`university_document.<action>` (ids, kind, version, content type, size, field names), one commit; on failure the stored file is discarded.
+A document is `{id, university: {id, name, university_code}, kind, title, shareable, current_version, versions: [{version, file_name,
+content_type, size_bytes, uploaded_by: {id, full_name, active}, uploaded_at}] (newest first), created_at, updated_at}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/universities/{id}/documents` | `{items, total, limit, offset}` in §28 kind order, then title; `kind` (the 12, else `422`); `limit` ≤ 200. Unknown university `404` |
+| `POST /partnership/universities/{id}/documents` | multipart `kind`, `title` (2–200), `shareable` (optional; default per kind, DC3), `file`. PDF/DOCX/XLSX/PPTX/JPEG/PNG by the bytes (else `422`), empty `422`, over `max_upload_bytes` `413`; a shareable commission agreement `422`; same kind + title (case-insensitive) `409`; > 200 documents `409`. `201 {document}` (version 1) |
+| `POST /partnership/universities/{id}/documents/{doc}/versions` | multipart `file` (same checks); > 50 versions `409`. `201 {document}` with the new current version |
+| `PATCH /partnership/universities/{id}/documents/{doc}` | JSON `title`, `shareable` (sent fields only; null or other fields `422`; title clash `409`; commission agreement shareable `422`). `200 {document}`; an equal value is not a change (no audit) |
+| `GET /partnership/universities/{id}/documents/{doc}/file` | The current version, or `?version=n` (unknown `404`). Audited before streaming; `Content-Disposition: attachment; filename="<university_code>-<kind>-v<n>.<ext>"`, `Cache-Control: private, no-store`, `nosniff`, sandbox CSP |
+| `GET /partnership/documents` | The reader's slice across universities, newest change first; `kind`, `q` (title, university name or code; ≤ 100), `limit` ≤ 50 |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

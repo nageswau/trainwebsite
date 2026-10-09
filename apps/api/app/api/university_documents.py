@@ -43,7 +43,7 @@ def _title(value: str) -> str:
 async def _page(db: AsyncSession, filters: list, order, limit: int, offset: int) -> dict:
     base = select(UniversityDocument, University).join(University, University.id == UniversityDocument.university_id).where(*filters)
     total = await db.scalar(select(func.count()).select_from(base.subquery()))
-    rows = [tuple(r) for r in (await db.execute(base.order_by(*order).limit(limit).offset(offset))).all()]
+    rows = [(d, u) for d, u in (await db.execute(base.order_by(*order).limit(limit).offset(offset))).tuples().all()]
     return {"items": await svc.documents_out(db, rows), "total": total or 0, "limit": limit, "offset": offset}
 
 
@@ -118,9 +118,7 @@ async def upload_document(
 
 
 @router.post("/universities/{university_id}/documents/{document_id}/versions", status_code=201)
-async def upload_version(
-    university_id: UUID, document_id: UUID, file: UploadFile = File(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
-):
+async def upload_version(university_id: UUID, document_id: UUID, file: UploadFile = File(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """DC6: the file becomes version n+1 and current; earlier versions stay downloadable."""
     await unis.require_reader(db, user)
     await _writable(db, user, university_id, "document_version")
@@ -134,8 +132,7 @@ async def upload_version(
             raise HTTPException(409, f"A document can have at most {svc.MAX_VERSIONS} versions")
         version = document.current_version + 1
         svc.add_version(db, user, document, version, {"storage_key": key, "file_name": file_name, "content_type": content_type, "size_bytes": len(data)})
-        document.current_version = version
-        document.updated_at = func.now()
+        document.current_version = version  # TimestampMixin moves updated_at (the menu list's order)
         svc.audit(db, user, "version", document, version=version, content_type=content_type, size_bytes=len(data))
         await db.commit()
     except Exception:
@@ -147,16 +144,12 @@ async def upload_version(
 
 
 @router.patch("/universities/{university_id}/documents/{document_id}")
-async def update_document(
-    university_id: UUID, document_id: UUID, payload: UniversityDocumentUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
-):
+async def update_document(university_id: UUID, document_id: UUID, payload: UniversityDocumentUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Title and shareable only; a value equal to the stored one is not a change (no audit)."""
     await unis.require_reader(db, user)
     uni = await _writable(db, user, university_id, "document_update", lock=True)
     document = await svc.load(db, user, uni.id, document_id, lock=True)
     changes = payload.model_dump(exclude_unset=True)
-    if None in changes.values():
-        raise HTTPException(422, "Title and shareable cannot be empty")
     changed = sorted(k for k, v in changes.items() if getattr(document, k) != v)
     if "shareable" in changed:
         svc.check_shareable(document.kind, changes["shareable"])
@@ -185,9 +178,7 @@ async def download_document(
     uni = await unis.load(db, university_id)
     document = await svc.load(db, user, uni.id, document_id)
     number = version or document.current_version
-    stored = await db.scalar(
-        select(UniversityDocumentVersion).where(UniversityDocumentVersion.document_id == document.id, UniversityDocumentVersion.version == number)
-    )
+    stored = await db.scalar(select(UniversityDocumentVersion).where(UniversityDocumentVersion.document_id == document.id, UniversityDocumentVersion.version == number))
     if stored is None:
         raise HTTPException(404, "This document has no such version")
     data = svc.file_bytes(stored)
