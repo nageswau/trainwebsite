@@ -54,7 +54,8 @@ Created only when missing (0001 builds from models); downgrade refuses while any
 | `DELETE /partnership/agreements/{id}/commission-terms/{term_id}` | CM8 + CM9 | → 204 |
 | `GET /partnership/commission-terms` | CM7 | CM14 menu list (`trigger`, `currency`, `q`) |
 
-Order of refusals: 401 → 403 role → 404 agreement/term → 403 scope → 409 inactive university → 409 agreement frozen → 422 values → 409 cap.
+Order of refusals (writes): 401 → 403 role → 404 agreement → 403 scope → 409 inactive university → 409 agreement frozen → 404 term (of
+this agreement only — no IDOR through the URL) → 422 values → 409 cap.
 `university_agreements.agreements_out` adds `commission_terms` (one extra query per page) and returns each item through `strip_commission`.
 
 ## 4. Frontend
@@ -89,3 +90,30 @@ Order of refusals: 401 → 403 role → 404 agreement/term → 403 scope → 409
 
 `test_upc_014_*.py`, `test_upc_026_*.py`, `UniversityAgreements.test.tsx`, `UniversityDetailPage.test.tsx`, `navigation.partnership.test.ts`,
 the upc-014 e2e spec.
+
+## 8. QA (Phase 5, 2026-10-09, `upc016` stack on :13216)
+
+Playwright e2e `upc-016-commission-terms.spec.ts` passed (with the upc-001 / upc-014 / upc-026 specs). An exploratory script (scratchpad)
+covered: empty state; client validation (no rate, > 100, missing currency / trigger); an induced 500 ("could not be saved") and a dropped
+request (the shared "did not complete" text); the busy label; a double click (one POST); focus back on Add; cancel; a no-change save;
+reload; remove-cancel; tablet (820 px) / phone (390 px) with the form open and on the menu page, no side scroll; menu filtered-empty and
+past-end states and back navigation; the head (Add while negotiable, read-only once approved); a non-owner manager (reads, no buttons); a
+counselor (menu refused, no commission in the HTML, API 403); signed out (login redirect); no broken images. Console / network errors were
+only the induced ones and aborted GETs of other sections during navigation.
+
+| ID | Severity | Role / page | Found | Fix |
+|---|---|---|---|---|
+| QA-01 | Low | manager, university page form | A % with 3 decimals showed the validator's wording "Decimal input should have no more than 2 decimal places" | Client check "Use at most two decimal places." (vitest), commit `836414d2` |
+| QA-02 | — | manager, after Add | The list read empty for ~200 ms after the "added" notice | Not a defect: the page-wide `router.refresh` pattern; the row appears on its own |
+
+Pre-existing, not touched: `PartnershipTeamTable.test.tsx` ("17 areas still to come") fails on main already.
+
+## 9. Phase 3 review notes (api-and-interface-design, frontend-ui-engineering, security-and-hardening)
+
+- **API:** additive. Agreements gain `commission_terms` for commission roles only; renewal now also copies the terms (the one behaviour
+  change to a upc-014 route). Money is returned as 2-decimal strings (no float rounding). `extra=forbid`; PATCH sends nulls to switch rate.
+- **Security:** reads gated by `can_see_commission` on every route **and** `strip_commission` on every agreement payload; a term id must
+  belong to the agreement in the URL (404 otherwise); course ids re-validated against the agreement's university; no rates, amounts or
+  texts in audit rows or logs; anonymous 401 from `get_current_user`; text rendered as React text.
+- **Frontend:** the block lives inside the existing agreement card (no new page chrome), reuses `SearchableSelect`, `.form-error[role=alert]`,
+  `p[role=status]` only when shown, busy-disabled buttons as the double-submit guard, `noValidate` so the form's own messages are read out.

@@ -1690,3 +1690,20 @@ status, due_on)` and the partial unique `uq_partnership_tasks_open_rule (univers
 **Design notes:**
 - Commission is not stored here (upc-016). Courses/countries are validated on write; a JSON id that later disappears is skipped on output.
 - Agreements and events are not deleted in this item; `downgrade()` refuses while any agreement exists.
+
+## University commission terms (`upc-016`, `DEC-SCOPE-143`; migration `0128_university_commission_terms`, after `0127_university_agreements`)
+
+**`university_commission_terms` columns (RESTRICTED, U2):**
+- `id`, `agreement_id` → `university_agreements` (FK RESTRICT), `commission_percent` numeric(5,2) (nullable), `fixed_amount`
+  numeric(12,2) (nullable), `currency` varchar(3) (CHECK: INR / USD / GBP / EUR / CAD / AUD / NZD), `conditions` text, `course_ids` JSON
+  (ids of the agreement's university's `overseas_courses`; empty = all), `country_ids` JSON (ids of `countries`; empty = all),
+  `payment_timeline` varchar(500), `trigger` varchar(30) (CHECK: enrolment / visa_and_enrolment / tuition_paid), `payment_terms` text,
+  `created_by_user_id` / `updated_by_user_id` → `users`, timestamps
+
+**Constraints and indexes:**
+- CHECKs `ck_university_commission_terms_one_rate` (exactly one of % / fixed), `_percent` (0 < % ≤ 100), `_fixed` (> 0), `_currency`,
+  `_trigger`. `ix_university_commission_terms_agreement (agreement_id, created_at)`.
+
+**Design notes:**
+- Only the commission roles read the table (`partnership_access.COMMISSION_ROLES`). Rows are removable while the agreement is negotiable;
+  a renewal copies them. `downgrade()` refuses while any term exists.

@@ -1268,6 +1268,19 @@ Audit and logs carry ids, the MoU number, statuses and field names only.
 | Delete | — (not in this item, AG16) | — | — | — | — |
 
 
+### 2.69 University commission terms *(net-new, added 2026-10-09 — `DEC-SCOPE-143`, `upc-016`)*
+
+Enforced inline in `api/university_commission.py` + `services/university_commission.py` (`require_reader` = `partnership_access.
+can_see_commission`, then the University Master's `can_manage_agreements` and the agreement's freeze rule). **U2:** the fields are also
+removed server-side by `partnership_access.strip_commission` from every agreement payload for any other role. Audit and logs carry ids, the
+MoU number and field names only.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Read commission terms (agreement card, list, menu) | ✅ all | ✅ all | `403` | ✅ all | `403` (anonymous `401`) |
+| Add, edit, remove (agreement draft … negotiation) | own universities (primary/backup) | unowned + team universities | `403` | ✅ all | `403` |
+| Change after approval | `409` (renew) | `409` | `403` | `409` | `403` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

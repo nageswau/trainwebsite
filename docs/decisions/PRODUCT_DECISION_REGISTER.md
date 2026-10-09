@@ -5823,3 +5823,37 @@ Spec: `docs/superpowers/specs/2026-10-09-upc-014-university-agreements-design.md
 page `/partnership/agreements`; the manager menu's "MoU & Agreements" goes live and the head nav gains it. upc-015 reads the expiry dates;
 upc-016 hangs commission terms off agreements; upc-013 can show the agreement events.
 **New Feature ID authorized:** `upc-014`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-014.
+
+### DEC-SCOPE-143 — Commercial / commission terms, restricted (`upc-016`)
+
+**Evidence:** `EVID-020` §15 (L515–L543: 9 terms; "Commission payable after visa approval + student enrolment"; Finance manages
+receipts), §32 ("💰 Commercial Terms", L1080), L1129 ("Commissions should not be seen by anyone.");
+`UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U2 + U4 (`EXPLICIT_APPROVAL`, 2026-10-08), §3.2 Q-18, Q-19 and §4 upc-016.
+**Status:** Q-18, Q-19 and CM1–CM15 are recommended answers applied under the owner's standing instruction for the build session
+("proceed with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off.
+Migration `0128_university_commission_terms`, API contract §12BK, RBAC §2.69. Spec: `docs/superpowers/specs/2026-10-09-upc-016-commission-terms-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| CM1 | Q-19 triggers | Student enrolment; Visa approval + enrolment; Tuition paid. Required. (Expected counting only once met: upc-019) |
+| CM2 | Q-18 rate | Exactly one of commission % (0 < % ≤ 100, 2 dp) or fixed amount (> 0, 2 dp) per term; both/neither `422` |
+| CM3 | Q-18 currency | Required, from the project list (INR, USD, GBP, EUR, CAD, AUD, NZD); no FX; others `NEEDS_CONFIRMATION` |
+| CM4 | Q-18 precedence | For upc-019: a programme-specific term beats an all-programmes one; a country-specific beats all-countries |
+| CM5 | Shape | Terms per agreement; eligible programmes = that university's course ids (empty = all); eligible countries (empty = all); ≤ 20 terms |
+| CM6 | Fields | The 9 §15 terms (conditions / payment terms ≤ 2000, payment timeline ≤ 500) |
+| CM7 | Readers (U2) | `can_see_commission`: super_admin, partnership_head, partnership_manager (with profile); every other role `403`, anonymous `401` |
+| CM8 | Writers | The agreement's university `can_manage_agreements` |
+| CM9 | When | While the agreement's terms are editable (draft … negotiation); afterwards `409` (renew to change) |
+| CM10 | Renewal | A renewal copies the agreement's commission terms |
+| CM11 | Delete | Allowed while editable; audited |
+| CM12 | `strip_commission` | `partnership_access.strip_commission(user, payload)` drops `COMMISSION_FIELDS` (`commission_terms`) for non-commission roles; every agreement payload passes through it |
+| CM13 | Audit | `university_commission_term.create/update/delete`: ids, MoU number, field names only — never rates, amounts or texts |
+| CM14 | Menu page | `/partnership/commercial-terms`: every term, trigger / currency / text filters, newest first, paged 50 |
+| CM15 | Concurrency | university → agreement → term locks; the 20-term cap checked under the agreement lock |
+
+**Consequences:** table `university_commission_terms`; routes `/partnership/agreements/{id}/commission-terms[/{term_id}]` and
+`/partnership/commission-terms`; agreements carry `commission_terms` for commission roles only; a "Commission terms (Restricted)" block in
+each agreement card; page `/partnership/commercial-terms`; the manager menu's "Commercial Terms" goes live and the head nav gains it.
+upc-017 adds the course `commission` to `COMMISSION_FIELDS`; upc-019 computes Expected from these terms; Management M3 adds `partner` to
+`COMMISSION_ROLES` when that role exists.
+**New Feature ID authorized:** `upc-016`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-016.

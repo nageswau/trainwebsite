@@ -2158,6 +2158,27 @@ changed, actor, created_at}]}`.
 | `POST /partnership/agreements/{id}/status` | `{from_status, to_status, note?}`: stale `from_status` `409 status_changed`; a move outside AG5 `409`; `approved` by a manager `403`; `signed` without document + both signatories `422`, lost university `409`, overlapping signed/active agreement of the same type `409 agreement_overlap`. Signing advances the university to Agreement Signed and marks the renewed predecessor Renewed |
 | `POST /partnership/agreements/{id}/renew` | `{start_date, expiry_date, renewal_date?}` on a signed/active agreement without a renewal (else `409`); dates `422`. `201 {agreement}` (a new draft with `previous`) |
 
+## 12BK. Commercial / commission terms, restricted (`upc-016`) — addendum, 2026-10-09
+
+`DEC-SCOPE-143`; design spec `docs/superpowers/specs/2026-10-09-upc-016-commission-terms-design.md` §3. Migration `0128_university_commission_terms`. **Restricted (U2):** readers are the commission
+roles (`partnership_manager` with a profile, `partnership_head`, `super_admin`) for every agreement; every other role `403` (overseas_admin
+included), anonymous `401`. Writers: the agreement's university `can_manage_agreements` (`403` role/team, `409` inactive) while the
+agreement is draft / sent / under review / negotiation (else `409`, CM9). Every write locks the university, then the agreement (then the
+term), writes an audit row `university_commission_term.<create|update|delete>` (ids, MoU number, field names), one commit.
+A term is `{id, agreement_id, commission_percent: "15.00" | null, fixed_amount: "1500.00" | null, currency, trigger, trigger_label,
+conditions, courses: [{id, title, level}], countries: [{id, name}], payment_timeline, payment_terms, created_by, updated_by, created_at,
+updated_at, permissions: {can_edit}}` (empty `courses` / `countries` = all). **§12BJ change (additive):** for the commission roles every
+agreement also carries `commission_terms: [term]`; for any other role the key is absent (`strip_commission`). Renewing an agreement copies
+its terms into the new draft.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/agreements/{id}/commission-terms` | `{items, total, limit, offset}` oldest first, `limit` ≤ 50. Unknown agreement `404` |
+| `POST /partnership/agreements/{id}/commission-terms` | JSON: `currency`, `trigger` and exactly one of `commission_percent` / `fixed_amount` required; `conditions`, `course_ids`, `country_ids`, `payment_timeline`, `payment_terms` optional; unknown fields `422`. % ∉ (0, 100], amount ≤ 0, > 2 decimals, both/neither rate, unknown currency/trigger, another university's course, unknown country → `422`. 21st term `409`. `201 {term}` |
+| `PATCH /partnership/agreements/{id}/commission-terms/{term_id}` | Sent fields only; switching rate kind sends the other as `null`; a merged row breaking the rules `422`. A term of another agreement `404`. `200 {term}` |
+| `DELETE /partnership/agreements/{id}/commission-terms/{term_id}` | `204` |
+| `GET /partnership/commission-terms` | Every term, newest first, each with `agreement: {id, mou_number, agreement_type, type_label, status, effective_status, status_label}` and `university: {id, name, university_code}`; `trigger`, `currency` (else `422`), `q` (MoU number, university name or code), `limit` ≤ 50 |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
