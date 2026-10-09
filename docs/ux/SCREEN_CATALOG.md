@@ -3565,3 +3565,19 @@ Design spec `docs/superpowers/specs/2026-10-09-upc-017-course-master-design.md` 
   **States:** "No courses recorded yet." / "No courses match these filters." / past-the-end link; 403 → access card.
 - **Public catalogue:** unchanged screens; inactive courses no longer appear.
 - **Responsive:** the form grid stacks; the table becomes labelled cards below 640 px; no side-scroll at 820 px or 390 px.
+
+## rec-012 addendum (2026-10-09, `DEC-SCOPE-148`) — Review extracted details
+
+Design spec `docs/superpowers/specs/2026-10-09-rec-012-resume-extraction-design.md` §5.
+
+- **Candidate detail → Resume card** (`/recruiter/candidates/[id]`, writers on an active candidate): an upload opens **Review extracted
+  details — version N**; **Review extracted details** on the current version reopens it.
+  - States: "Reading the resume…"; the server's sentence with Retry/Close (password-protected, unreadable); "No text found in this
+    resume — it may be a scanned image. Add the details by hand."; a note when a long resume was only partly read.
+  - **Skills found (N):** a checkbox per Skills Master skill (category, "found as …" when the text differs), ticked by default, with a
+    Level select (default Intermediate); "Already on profile" skills are shown locked.
+  - **Profile details:** qualification, total experience, location with "(current: …)"; ticked only when the candidate has no value.
+  - **Also in the resume:** job titles, certifications, industry (kept with the resume, not added to the profile).
+  - **Save selected** (disabled when nothing is ticked; double-submit guarded) and **Discard**. A refusal keeps the ticks; success
+    closes the panel, shows "Added N skills and updated …", and reloads the profile and the Skills card.
+  - Responsive: the Level select wraps under its skill on phones; no side-scroll. `hr_team` and archived candidates see no Review.

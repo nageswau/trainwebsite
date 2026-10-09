@@ -2264,6 +2264,18 @@ currency} | null, permissions: {can_edit}}` — **`commission` is present for th
 | `POST /partnership/universities/{id}/courses/import` | Writers; multipart `file` + `Idempotency-Key` (missing/bad `422`); wrong / unknown / repeated columns `422`, > 1 MB `413`, > 1,000 rows `422`. `201 {id, university_id, uploaded_by, total_rows, created_count, duplicate_count, invalid_count, created_at, rows: [{row_number, status: created/duplicate/invalid, title, level, course_id, reason}]}`; same key + same file replays, same key + other file `422` |
 | `GET /partnership/courses` | Every course with `university: {id, name, university_code, country}`, by university then title; `level` (else `422`), `status` active (default) / inactive / all, `q` (title, university name or code), `limit` ≤ 50 |
 
+## 12BP. Resume text + rule-based extraction (`rec-012`) — addendum, 2026-10-09
+
+`DEC-SCOPE-148`; design spec `docs/superpowers/specs/2026-10-09-rec-012-resume-extraction-design.md` §4. Migration `0133_resume_extraction`.
+Writers only: `placement_team`, `placement_manager`, `super_admin` (R11). `hr_team` and every other role `403` (anonymous `401`); a
+candidate outside the pool `404`; archived `409` "Restore this candidate first"; an unknown version `404`. No AI provider (R7): `pypdf` /
+`python-docx`, in a thread with a 20 s limit, the first 30 PDF pages, text cut at 100,000 characters, DOCX zip guard (2,000 parts / 50 MB).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `POST /recruiter/candidates/{id}/resume/{version}/extract` | No body. Stores `extracted_text`, `extraction_json`, `extracted_at` on the resume row only (AC2). `200 {version, no_text, truncated, text_chars, extracted_at, skills: [{skill{id,name,active}, category{id,name}, matched, on_profile}], qualification, experience_months, location, job_titles[], certifications[], industries[]}`. A scanned/empty PDF is `200` with `no_text: true` (AC3). Password-protected, unreadable or too slow → `422` with a sentence. Audit `candidate.resume_extract` (version, counts; never text) |
+| `POST /recruiter/candidates/{id}/resume/{version}/apply` | JSON `{skills: [{skill_id, level? (default intermediate)}] (≤ 100), qualification?, experience_months? (0–600), location?}`; unknown keys `422`. Nothing chosen, a repeated skill, an unknown or inactive skill, over the 100-skill cap → `422`; a skill already on the candidate → `409` naming it; not extracted yet → `409`. All or nothing. Each skill is added as `source=resume`, `status=claimed` (rec-011 audit `candidate.skill_add`); then `candidate.resume_apply` (version, skill ids, changed field names). `200 {skills_added, fields}` |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

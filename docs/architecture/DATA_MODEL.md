@@ -1778,3 +1778,12 @@ backfill. **Migration `0130_university_meetings`**; `downgrade()` refuses while 
   import batch exists or any course holds master-only data (fee, requirements, English, scholarships, process, deadline, inactive, commission).
 - Duplicate title + level per university is an application rule (CO12), checked under the university row lock; no DB unique index, since
   legacy rows are not guaranteed distinct.
+
+## Resume extraction (`rec-012`, `DEC-SCOPE-148`; migration `0133_resume_extraction`, after `0132_university_courses`)
+
+**`candidate_resumes` gains three nullable columns:** `extracted_text` text (null until extracted; `''` when the file had no text),
+`extraction_json` json (the last suggestions: skill ids + matched text, qualification, experience_months, location, job_titles,
+certifications, industries, truncated), `extracted_at` timestamptz.
+
+**Design notes:** derived from the stored file and recomputed on every extraction; nothing reaches `candidates` or `candidate_skills`
+until Apply. rec-014 searches `extracted_text`. `downgrade()` drops the columns (recomputable data).

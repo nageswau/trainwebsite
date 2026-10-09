@@ -5986,3 +5986,40 @@ Migration `0132_university_courses`, API contract §12BO, RBAC §2.73. Spec: `do
 `/partnership/courses`; the manager menu's "Courses & Programs" goes live and the head nav gains it. Counselors read the catalogue now and
 the role-sliced 360 view in upc-030 (U14).
 **New Feature ID authorized:** `upc-017`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-017.
+
+### DEC-SCOPE-148 — Resume text + rule-based skill extraction (`rec-012`)
+
+**Evidence:**
+- `EVID-018` S2-§4 (lines 1235–1285): upload a CV → extract skills, technologies, qualification, experience, job titles, certifications,
+  tools, industry and location → the recruiter verifies/edits before saving; the example sentence yields Java, Spring Boot, Hibernate,
+  REST API and MySQL.
+- `RECRUITER_CRM_BACKLOG.md` §rec-012: AC1–AC3, the DOCX "3 years" positive case, the encrypted-PDF negative case, the "go" stop-word and
+  truncation edge cases. `DEC-SCOPE-116` R7: rule-based, in-house (`pypdf`, `python-docx`), no AI provider; R11: every recruiter edits
+  the pool. `DEC-SCOPE-122` (rec-009) resumes and roles; `DEC-SCOPE-137` (rec-011) candidate skills.
+
+**Status:** **BUILT** on `feature/rec-012`, not merged. Every answer below is a **recommended default, `UNVERIFIED`**, taken on the owner's
+instruction to proceed with the recommended answers.
+
+**Numbering:** migration `0133_resume_extraction` (after `0132_university_courses`), API §12BP, RBAC §2.74. rec-020 (unmerged) drafted
+the same numbers; whichever merges second re-chains (expected `0134` / `DEC-SCOPE-149` / §12BQ / §2.75). Spec
+`docs/superpowers/specs/2026-10-09-rec-012-resume-extraction-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| EX1 | When extraction runs | Upload is unchanged; the client calls Extract for the new version, and writers can re-run it on the current version. Recomputed each time |
+| EX2 | What Extract stores | Only the resume row (`extracted_text`, `extraction_json`, `extracted_at`); nothing reaches the profile or skills until Apply (AC2) |
+| EX3 | Skills, technologies, tools | All matched against the Skills Master (names + aliases, active); the category tells them apart |
+| EX4 | Matching | One tokeniser for text and terms; leftmost-longest wins; trailing plural "s"; single letters and a stop-word list (go, spring, rest, …) need the master's casing |
+| EX5 | Other suggestions | Patterns: qualification (highest degree), experience (near "experience"), location ("Location:" line or known city), job titles, certifications, industry; ≤ 10 each |
+| EX6 | What Apply writes | Ticked skills as `resume` / `claimed` with the chosen level (default Intermediate); ticked qualification / experience / location overwrite; titles, certifications, industry stay with the resume |
+| EX7 | Apply rules | All or nothing; existing skill `409`; unknown/inactive/repeated/empty `422`; the 100-skill cap; not extracted `409` |
+| EX8 | Limits | 5 MB upload (rec-009); 30 PDF pages; 100,000 characters; DOCX ≤ 2,000 parts / 50 MB uncompressed; thread + 20 s; no Celery |
+| EX9 | Failures | Password-protected / unreadable / timeout `422` sentences; scanned or empty PDF `200` `no_text` (AC3) |
+| EX10 | Who | Writers (recruiter, placement manager, super_admin); `hr_team` `403`; archived `409`; outside the pool `404` |
+
+**Consequences:**
+- New pinned dependencies `pypdf` (BSD-3-Clause) and `python-docx` (MIT); the api image must be rebuilt.
+- `candidate_resumes` gains three columns (`0133`); `services/resume_extract.py` (pure), `services/resume_extraction.py`; two routes on
+  `api/recruiter_candidates.py`.
+- The candidate page's Resume card gains "Review extracted details".
+- **New Feature ID authorized:** `rec-012`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-012.

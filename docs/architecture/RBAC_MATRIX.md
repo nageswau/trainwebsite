@@ -1328,6 +1328,17 @@ non-commission role, and only `COMMISSION_ROLES` may set it. Audit and logs carr
 | Read / set course commission | ✅ (write: own) | ✅ (write: unowned + team) | stripped / `403` | ✅ | stripped / `403` |
 | Public catalogue (active courses of published universities) | ✅ | ✅ | ✅ | ✅ | ✅ anonymous, never commission |
 
+### 2.74 Resume extraction *(net-new, added 2026-10-09 — `DEC-SCOPE-148`, `rec-012`)*
+
+Enforced inline in `api/recruiter_candidates.py` (`services/candidates.require_writer` before anything is read). Extract writes the
+resume row, so it is a write. EX10 (UNVERIFIED).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team`, `placement_manager`, `super_admin` | extract a resume version; apply the chosen suggestions | the whole candidate pool, active candidates (archived `409`) | `rec-012` |
+| `hr_team` | none (reads the candidate and downloads resumes as before; extract/apply `403`) | — | `rec-012` |
+| every other role | `403` | — | `rec-012` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
