@@ -1159,7 +1159,7 @@ PARTNERSHIP_TASK_CHECKS = {
 
 
 class PartnershipTask(Base, TimestampMixin):
-    """upc-020 (DEC-SCOPE-138): a university's follow-up or task (§19/§20), added by hand or by a Q-22 rule (`rule` names it:
+    """upc-020 (DEC-SCOPE-139): a university's follow-up or task (§19/§20), added by hand or by a Q-22 rule (`rule` names it:
     `stage:<key>` or `visit:<id>`; at most one open task per rule and university, TK7). Rules live in `services/partnership_tasks.py`."""
 
     __tablename__ = "partnership_tasks"
@@ -4146,6 +4146,29 @@ class CandidateResume(Base):
     file_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     size_bytes: Mapped[int] = mapped_column(Integer)
     uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# rec-010 (DEC-SCOPE-138): migration 0123 repeats CANDIDATE_CONSENT_CHECKS (test_rec_010_migration asserts they stay identical).
+CANDIDATE_CONSENT_ACTIONS = ("opt_in", "opt_out")
+CANDIDATE_CONSENT_CHECKS = {"ck_candidate_consents_action": f"action IN ({', '.join(repr(v) for v in CANDIDATE_CONSENT_ACTIONS)})"}
+
+
+class CandidateConsent(Base):
+    """rec-010 (AC4): one opt-in or opt-out of the placement candidate pool by the student themselves -- the ConsentRecord idiom,
+    append-only. `candidates.opted_in` is the gate; this is its history and the consent evidence."""
+
+    __tablename__ = "candidate_consents"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in CANDIDATE_CONSENT_CHECKS.items()),
+        Index("ix_candidate_consents_candidate", "candidate_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    candidate_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="RESTRICT"))
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    action: Mapped[str] = mapped_column(String(10))
+    consent_version: Mapped[str] = mapped_column(String(20))
+    ip_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

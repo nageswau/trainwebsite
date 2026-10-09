@@ -1,4 +1,4 @@
-"""upc-020 -- migration 0123_partnership_tasks (spec §2) and the Q-22 rule catalogue (spec §1). Round trip and the downgrade refusal run in
+"""upc-020 -- migration 0124_partnership_tasks (spec §2) and the Q-22 rule catalogue (spec §1). Round trip and the downgrade refusal run in
 a throwaway database built from scratch (the upc-001 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -14,14 +14,14 @@ from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_upc_020_migration_0123", VERSIONS / "0123_partnership_tasks.py")
+_spec = importlib.util.spec_from_file_location("_upc_020_migration_0124", VERSIONS / "0124_partnership_tasks.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0122_candidate_skills", "0123_partnership_tasks"
+BASE, HEAD = "0123_candidate_consents", "0124_partnership_tasks"
 
 
-def test_migration_chains_after_0122_and_is_the_single_head():
+def test_migration_chains_after_0123_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
@@ -67,7 +67,7 @@ async def test_table_and_indexes_exist_in_the_shared_database(db_session):
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0122."""
+    """A fresh database at 0123."""
     cfg = _config()
     original = settings.database_url
     name = f"upc020_migration_{uuid.uuid4().hex[:8]}"

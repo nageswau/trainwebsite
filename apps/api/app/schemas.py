@@ -181,6 +181,13 @@ class ProfileUpdate(BaseModel):
         return value
 
 
+class PlacementPoolOptIn(BaseModel):
+    """rec-010 (spec §4): the consent version the student read. There is no user id: a student only ever acts for themselves, so any
+    other key is ignored."""
+
+    consent_version: str = Field(min_length=1, max_length=20)
+
+
 class NotificationPreferencesIn(BaseModel):
     """ENH-014 (spec §5.2): the only two writable values. Strict booleans; any other field is a 422 (AC15)."""
 
@@ -7355,7 +7362,7 @@ class VisitOptionPage(BaseModel):
     total: int
 
 
-# --- upc-020 (DEC-SCOPE-138, spec §3): partnership tasks and follow-ups ----------------------------------------------------------
+# --- upc-020 (DEC-SCOPE-139, spec §3): partnership tasks and follow-ups ----------------------------------------------------------
 PartnershipTaskKind = Literal["follow_up", "task"]  # = partnership_task_rules.KINDS
 PartnershipTaskPriority = Literal["high", "medium", "low"]  # = partnership_task_rules.PRIORITIES
 PartnershipTaskBand = Literal["overdue", "today", "tomorrow", "upcoming", "open", "done", "cancelled"]  # TK13 (+ every open item)

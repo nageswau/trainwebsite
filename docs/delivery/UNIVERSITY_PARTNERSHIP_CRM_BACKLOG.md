@@ -901,8 +901,8 @@ Common conventions:
 - **Edge cases:** duplicate auto-task suppression.
 - **Regression risks:** none.
 - **Complexity:** medium · **Risk:** medium
-- **Status (2026-10-09):** built on `feature/upc-020` under `DEC-SCOPE-138`, with migration `0123_partnership_tasks`, API §12BF and RBAC
-  §2.64. Spec: `docs/superpowers/specs/2026-10-09-upc-020-partnership-tasks-design.md`.
+- **Status (2026-10-09):** built on `feature/upc-020` under `DEC-SCOPE-139`, with migration `0124_partnership_tasks`, API §12BG and RBAC
+  §2.65. Spec: `docs/superpowers/specs/2026-10-09-upc-020-partnership-tasks-design.md`.
   - Q-22 is answered by the recommended stage rules (TK4/TK5, `NEEDS_CONFIRMATION`); a completed visit's follow-up date becomes a task
     (upc-010 VS16). Meeting (upc-009) and agreement (upc-014) rules arrive with those items.
   - Next Action = the earliest open follow-up; Last Action = the latest completed task or stage move until upc-013's timeline.
