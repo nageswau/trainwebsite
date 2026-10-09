@@ -532,8 +532,19 @@ Common conventions:
 - **Edge cases:** a target date moved after it was delayed (history kept?).
 - **Regression risks:** none.
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-09):** built on `feature/upc-008` under `DEC-SCOPE-143`, with migration `0128_university_milestones`, API §12BK and
+  RBAC §2.69. Spec: `docs/superpowers/specs/2026-10-09-upc-008-partnership-timeline-design.md`.
+  - Q-10 (month and quarter derived from the target partnership date, calendar quarters) and Q-11 (delayed = target before today in IST,
+    not achieved, no grace days) are answered by recommended defaults (MS3/MS8, `NEEDS_CONFIRMATION`).
+  - The catalogue is the template for every university and rows are stored only once a date is recorded (MS2). Proposal, Signed
+    (upc-014), First Application and First Admission complete themselves on read; Meeting waits for upc-009. The edge case is answered:
+    a moved target keeps its history in the audit log (MS7).
 
 ### upc-009 — Meetings
+- **Status (2026-10-09):** built on `feature/upc-009` under `DEC-SCOPE-145`, with migration `0130_university_meetings`, API §12BM and
+  RBAC §2.71. Spec: `docs/superpowers/specs/2026-10-09-upc-009-university-meetings-design.md`.
+  - Q-12 is answered by the recommended default (MG12, `NEEDS_CONFIRMATION`): the next meeting date creates the follow-up "Schedule the
+    next meeting", not a draft meeting. Completing a meeting moves the stage to Meeting Completed when earlier (MG13).
 - **Business requirement:** §7 (19 fields; 12 meeting types).
 - **Existing behavior:** none for universities.
 - **Expected behavior:**
@@ -688,6 +699,8 @@ Common conventions:
 - **Complexity:** medium · **Risk:** low
 
 ### upc-014 — MoU / agreement management
+- **Status (2026-10-09):** built on `feature/upc-014` under `DEC-SCOPE-142` (Q-16 + AG1–AG18, recommended answers), with migration
+  `0127_university_agreements`, API §12BJ and RBAC §2.68. Spec: `docs/superpowers/specs/2026-10-09-upc-014-university-agreements-design.md`.
 - **Business requirement:** §13 ("a major module"; 17 fields; Draft → Sent → Under Review → Negotiation → Approved → Signed → Active →
   Expiring → Renewed).
 - **Existing behavior:** none for universities (`BdmMou` is BDM-only).
@@ -755,6 +768,8 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-016 — Commercial / commission terms (restricted)
+- **Status (2026-10-09):** built on `feature/upc-016` under `DEC-SCOPE-144` (Q-18, Q-19 + CM1–CM15, recommended answers), with
+  migration `0129_university_commission_terms`, API §12BL and RBAC §2.70. Spec: `docs/superpowers/specs/2026-10-09-upc-016-commission-terms-design.md`.
 - **Business requirement:** §15 (9 terms; the example trigger "visa approval + student enrolment"; Finance manages receipts) (U2, U4).
 - **Existing behavior:** none (agent commission only).
 - **Expected behavior:**
@@ -783,6 +798,8 @@ Common conventions:
 - **Complexity:** medium · **Risk:** high
 
 ### upc-017 — Course / program master
+- **Status (2026-10-09):** built on `feature/upc-017` under `DEC-SCOPE-147` (Q-21, Q-33 + CO1–CO16, recommended answers), with migration
+  `0132_university_courses`, API §12BO and RBAC §2.73. Spec: `docs/superpowers/specs/2026-10-09-upc-017-course-master-design.md`.
 - **Business requirement:** §16 (14 fields; "counselors know exactly what each partner university offers") (U6).
 - **Existing behavior:** `overseas_courses` has title, level, category, duration, free-text tuition and intake. No create API.
 - **Expected behavior:**
@@ -904,6 +921,11 @@ Common conventions:
 - **Edge cases:** duplicate auto-task suppression.
 - **Regression risks:** none.
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-09):** built on `feature/upc-020` under `DEC-SCOPE-141`, with migration `0126_partnership_tasks`, API §12BI and RBAC
+  §2.67. Spec: `docs/superpowers/specs/2026-10-09-upc-020-partnership-tasks-design.md`.
+  - Q-22 is answered by the recommended stage rules (TK4/TK5, `NEEDS_CONFIRMATION`); a completed visit's follow-up date becomes a task
+    (upc-010 VS16). Meeting (upc-009) and agreement (upc-014) rules arrive with those items.
+  - Next Action = the earliest open follow-up; Last Action = the latest completed task or stage move until upc-013's timeline.
 
 ### upc-021 — Monthly targets vs actual
 - **Business requirement:** §21 (7 monthly KPIs; "CRM automatically compares Target vs Actual").
@@ -929,6 +951,11 @@ Common conventions:
 - **Edge cases:** a manager joining mid-month.
 - **Regression risks:** none.
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-09):** built on `feature/upc-021` under `DEC-SCOPE-146`, with migration `0131_partnership_targets`, API §12BN and
+  RBAC §2.72. Spec: `docs/superpowers/specs/2026-10-09-upc-021-partnership-targets-design.md`.
+  - Q-23 and TG1–TG13 are recommended answers (`NEEDS_CONFIRMATION`). Actuals are credited to the primary manager at the time of each
+    event from append-only history, so past months are never re-scored (no snapshot). T1 is read as the first primary assignment
+    (managers never create universities). T3 counts upc-009's completed meetings. The forecast half of the page is upc-023's.
 
 ### upc-022 — Partnership manager dashboard
 - **Business requirement:** §22 (Global Partnership Overview with 4 figures + total; This Month with 9 figures); §20 dashboard bands.

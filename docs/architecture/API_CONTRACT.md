@@ -2102,10 +2102,202 @@ content_type, size_bytes, uploaded_by: {id, full_name, active}, uploaded_at}] (n
 - **Changed (additive):** `GET /partnership/universities/{id}/contacts` and `PATCH /partnership/contacts/{id}` items gain `whatsapp_to`
   and `last_interaction_at` (null outside the partnership roles).
 
-## 12BI. Application screening (`rec-018`) — addendum, 2026-10-09
+## 12BI. Partnership tasks + follow-ups (`upc-020`) — addendum, 2026-10-09
 
-- **Basis:** `DEC-SCOPE-141` (SC1–SC8). Design spec `docs/superpowers/specs/2026-10-09-rec-018-application-screening-design.md` §3.
-  Migration `0126`.
+- **Basis:** `DEC-SCOPE-141` (TK1–TK16, Q-22). Design spec `docs/superpowers/specs/2026-10-09-upc-020-partnership-tasks-design.md` §3. Migration `0126`.
+- **Common rules:** readers are `partnership_manager` (with a profile), `partnership_head` and `super_admin`; every other role → `403`
+  before anything is read. A missing task → `404` "Task not found". Writes lock the task, then check the actor (the assignee or their
+  reporting head; otherwise `403`, logged with ids only), then the state (`409` "This task is already done" / "This task was cancelled"),
+  then validation (`422`). Bodies refuse unknown keys. Each write adds an audit row `partnership_task.{create,update,reschedule,complete,
+  cancel,auto_create}` with ids, kind, source, rule and field names (never title, notes or reason).
+- **Item (`{task}` envelope):** `{id, university {id, university_code, name}, kind (follow_up|task), title, notes, due_on, priority
+  (high|medium|low), status (open|done|cancelled), band (overdue|today|tomorrow|upcoming|done|cancelled, IST), overdue, source
+  (manual|stage|visit|meeting|agreement), assignee, created_by, completed_at, cancelled_at, cancel_reason, created_at, updated_at,
+  permissions {can_edit, can_reschedule, can_complete, can_cancel}}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/tasks` | `band` (default `today`; also `open`), `assignee` (`me` / `team` / user id; `team` = a head and their direct reports), `university_id`, `kind`, `limit`, `offset` → `{items, total, limit, offset, today, counts {overdue, today, tomorrow, upcoming, done, cancelled}}`. Counts use every filter but the band. Open bands order by due date, priority, creation; done / cancelled newest first. Unknown values → `422` |
+| `GET /partnership/tasks/catalogue` | `{titles}`: §19's twelve titles in source order |
+| `POST /partnership/tasks` | Managers and heads. `{university_id, kind, title (1–200), due_on, priority?, assignee_user_id?, notes? (≤ 2000)}` → `201`. Unknown university `422`; outside the edit scope `403`; inactive `409`; assignee not the caller or (for a head) an active direct report `422`; past due date `422`; 200 manual tasks per creator per IST day `409`. Not idempotent |
+| `PATCH /partnership/tasks/{id}` | `{title?, priority?, assignee_user_id?, notes?}`; a null title / priority / assignee `422`; `due_on` is refused (use reschedule) |
+| `POST /partnership/tasks/{id}/reschedule` | `{due_on}`, today or later (IST) |
+| `POST /partnership/tasks/{id}/complete` | No body; a second call `409` |
+| `POST /partnership/tasks/{id}/cancel` | `{reason}` (1–500) |
+
+- **Changed:** `POST /partnership/universities/{id}/stage` creates the new stage's Q-22 task in the same transaction (skipped when one is
+  already open, or nobody can be assigned); `POST /partnership/visits/{id}/complete` creates "Follow up after visit"; `PATCH
+  /partnership/visits/{id}` with a new `follow_up_date` moves that open task. `GET /partnership/universities/{id}` (and every
+  `UniversityEnvelope`) gains `follow_up {next_action {id, title, due_on, priority, band, assignee} | null, last_action {title, at} |
+  null}`.
+
+## 12BJ. MoU / agreement management (`upc-014`) — addendum, 2026-10-09
+
+`DEC-SCOPE-142`; design spec `docs/superpowers/specs/2026-10-09-upc-014-university-agreements-design.md` §3. Migration
+`0127_university_agreements`. Readers: `partnership_manager` with a profile, `partnership_head`, `super_admin` (every university); other
+roles `403` (overseas_admin included, AG13). Writers: `can_manage_agreements` on the university (`403` role/team, `409` inactive);
+approval: `can_approve_agreements` (head in scope / super_admin). Every write locks the university row then the agreement, writes an
+event and an audit row `university_agreement.<create|update|status|renew>` (ids, number, statuses, field names), one commit.
+An agreement is `{id, mou_number, university: {id, name, university_code}, agreement_type, type_label, status (stored), effective_status,
+status_label, days_to_expiry, start_date, expiry_date, renewal_date, commercial_terms, exclusivity, territory, recruitment_rights,
+all_courses, courses: [{id, title, level}], countries: [{id, name}], payment_terms, marketing_rights, document: {id, title, kind,
+current_version} | null, edusphere_signatory: {id, full_name, active} | null, edusphere_signed_on, university_signatory_name,
+university_signed_on, previous / renewed_by: {id, mou_number, status, effective_status} | null, created_by, created_at, updated_at,
+permissions: {can_edit_terms, can_edit_signing, can_renew}, moves: [{to_status, label}], events?: [{kind, from_status, to_status, note,
+changed, actor, created_at}]}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/universities/{id}/agreements` | `{items, total, limit, offset}` newest first, with `events`; `limit` ≤ 50. Unknown university `404` |
+| `POST /partnership/universities/{id}/agreements` | JSON: `agreement_type`, `start_date`, `expiry_date`, `exclusivity` required; the other AG3 fields optional; unknown fields `422`. expiry ≤ start, renewal outside the window, foreign course, unknown country, wrong-kind/foreign document, non-staff signatory, future signing date → `422`. `201 {agreement}` (draft) |
+| `GET /partnership/universities/{id}/agreement-options` | `can_manage_agreements`: `{courses, documents}` (this university's courses; its documents of the three agreement kinds) |
+| `GET /partnership/agreement-signatories` | Readers: `{items: [{id, label, detail}], truncated}` — active partnership managers/heads and super admins by `q` (name or email), `limit` ≤ 50 |
+| `GET /partnership/agreements` | Every agreement, soonest expiry first, without `events`; `status` (the 10 effective statuses, else `422`), `agreement_type`, `q` (MoU number, university name or code), `limit` ≤ 50 |
+| `GET /partnership/agreements/{id}` | `{agreement}`; unknown `404` |
+| `PATCH /partnership/agreements/{id}` | Sent fields only (type, university and status never); an equal value is not a change. Terms after approval / anything after signing `409`; same `422`s as create. `200 {agreement}` |
+| `POST /partnership/agreements/{id}/status` | `{from_status, to_status, note?}`: stale `from_status` `409 status_changed`; a move outside AG5 `409`; `approved` by a manager `403`; `signed` without document + both signatories `422`, lost university `409`, overlapping signed/active agreement of the same type `409 agreement_overlap`. Signing advances the university to Agreement Signed and marks the renewed predecessor Renewed |
+| `POST /partnership/agreements/{id}/renew` | `{start_date, expiry_date, renewal_date?}` on a signed/active agreement without a renewal (else `409`); dates `422`. `201 {agreement}` (a new draft with `previous`) |
+
+## 12BK. Expected timeline + milestone tracker (`upc-008`) — addendum, 2026-10-09
+
+`DEC-SCOPE-143`; design spec `docs/superpowers/specs/2026-10-09-upc-008-partnership-timeline-design.md` §3. Migration
+`0128_university_milestones`. Readers: every university reader (`partnership_manager` with a profile, `partnership_head`,
+`overseas_admin` of the overseas division, `super_admin`); other roles `403`. Writers: `can_edit_timeline` on the university (the stage
+rule: primary/backup manager, the head in write scope, super_admin; `403` role/team, `409` inactive). Every write locks the university
+row, changes only the fields sent (an equal value is not a change), writes an audit row only when something changed
+(`university.milestone_updated`: kind, field names, target date from/to and `was_delayed`; `university.expected_updated`: field names),
+one commit. No ETags or idempotency keys: a repeated PATCH is a no-op.
+A milestone is `{kind, label, target_date, achieved_on, achieved_by: manual|auto|null, auto_source: stage|agreement|application|admission|
+null, status: done|in_progress|pending|delayed}` (Q-11, computed in IST, never stored). The university gains `expected:
+{target_partnership_date, expected_month (YYYY-MM), expected_quarter (YYYY-Qn), expected_intake, expected_agreement_date,
+expected_recruitment_start}` and `permissions.can_edit_timeline`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/universities/{id}/milestones` | `{items (13, source order), today, can_edit}`. Unknown university `404` |
+| `PATCH /partnership/universities/{id}/milestones/{kind}` | JSON `{target_date?, achieved_on?}` (null clears; at least one field; unknown fields `422`); unknown `kind` `422`; `achieved_on` after today (IST) `422`. `200` the full page (statuses depend on each other) |
+| `PATCH /partnership/universities/{id}/expected` | JSON `{target_partnership_date?, expected_intake? (≤ 80, blank → null), expected_agreement_date?, expected_recruitment_start?}`; at least one field; unknown fields (incl. the derived month/quarter) `422`. `200 {university}` |
+
+## 12BL. Commercial / commission terms, restricted (`upc-016`) — addendum, 2026-10-09
+
+`DEC-SCOPE-144`; design spec `docs/superpowers/specs/2026-10-09-upc-016-commission-terms-design.md` §3. Migration `0129_university_commission_terms`. **Restricted (U2):** readers are the commission
+roles (`partnership_manager` with a profile, `partnership_head`, `super_admin`) for every agreement; every other role `403` (overseas_admin
+included), anonymous `401`. Writers: the agreement's university `can_manage_agreements` (`403` role/team, `409` inactive) while the
+agreement is draft / sent / under review / negotiation (else `409`, CM9). Every write locks the university, then the agreement (then the
+term), writes an audit row `university_commission_term.<create|update|delete>` (ids, MoU number, field names), one commit.
+A term is `{id, agreement_id, commission_percent: "15.00" | null, fixed_amount: "1500.00" | null, currency, trigger, trigger_label,
+conditions, courses: [{id, title, level}], countries: [{id, name}], payment_timeline, payment_terms, created_by, updated_by, created_at,
+updated_at, permissions: {can_edit}}` (empty `courses` / `countries` = all). **§12BJ change (additive):** for the commission roles every
+agreement also carries `commission_terms: [term]`; for any other role the key is absent (`strip_commission`). Renewing an agreement copies
+its terms into the new draft.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/agreements/{id}/commission-terms` | `{items, total, limit, offset}` oldest first, `limit` ≤ 50. Unknown agreement `404` |
+| `POST /partnership/agreements/{id}/commission-terms` | JSON: `currency`, `trigger` and exactly one of `commission_percent` / `fixed_amount` required; `conditions`, `course_ids`, `country_ids`, `payment_timeline`, `payment_terms` optional; unknown fields `422`. % ∉ (0, 100], amount ≤ 0, > 2 decimals, both/neither rate, unknown currency/trigger, another university's course, unknown country → `422`. 21st term `409`. `201 {term}` |
+| `PATCH /partnership/agreements/{id}/commission-terms/{term_id}` | Sent fields only; switching rate kind sends the other as `null`; a merged row breaking the rules `422`. A term of another agreement `404`. `200 {term}` |
+| `DELETE /partnership/agreements/{id}/commission-terms/{term_id}` | `204` |
+| `GET /partnership/commission-terms` | Every term, newest first, each with `agreement: {id, mou_number, agreement_type, type_label, status, effective_status, status_label}` and `university: {id, name, university_code}`; `trigger`, `currency` (else `422`), `q` (MoU number, university name or code), `limit` ≤ 50 |
+
+## 12BM. University meetings (`upc-009`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-145` (MG1–MG16, Q-12). Design spec `docs/superpowers/specs/2026-10-09-upc-009-university-meetings-design.md` §3. Migration `0130`.
+- **Common rules:** readers are `partnership_manager` (with a profile), `partnership_head` and `super_admin`; every other role → `403`
+  before anything is read. A missing meeting → `404` "Meeting not found". Writes lock (complete: the university, then the meeting;
+  edit / cancel: the meeting), then check the actor (the responsible employee or the scheduler; otherwise `403`, logged with ids only),
+  then the state (`409` "This meeting's outcome is already recorded" / "This meeting was cancelled"), then validation (`422`, on the body
+  field where one applies). Bodies refuse unknown keys. Each write adds an audit row `university_meeting.{create,update,complete,cancel}`
+  with ids, code, type, mode, counts and field names (never agenda, notes, discussion points, decisions, next action or reasons).
+- **Item (`{meeting}` envelope):** `{id, code, university {id, name, university_code, city, country}, meeting_type, starts_at, mode
+  (online|offline), status (scheduled|completed|cancelled), responsible, contact {id|null, name, designation}|null, warnings
+  (["link_missing"] while an online meeting has no link), location, meeting_url, agenda, notes, discussion_points, decisions, next_action,
+  next_action_due_on, next_meeting_date, created_by, completed_by, completed_at, cancelled_at, cancel_reason, participants {contacts,
+  employees}, events [{event, old_starts_at, new_starts_at, reason, actor, created_at}], follow_ups [{id, title, due_on, status,
+  assignee}], permissions {can_edit, can_complete, can_cancel}, created_at, updated_at}`. List rows carry the fields up to `warnings`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/meetings` | `view` (`upcoming / awaiting_outcome / completed / cancelled`; omitted = every meeting, scheduled first by start), `university_id`, `mine` (responsible, scheduler or EduSphere participant), `limit`, `offset` → `{items, total, limit, offset, counts {upcoming, awaiting_outcome, completed, cancelled}}`. Counts use every filter but the view. Unknown view → `422` |
+| `POST /partnership/meetings` | Managers and heads. `{university_id, meeting_type, starts_at, mode, location?, meeting_url?, contact_id?, responsible_user_id?, agenda?, notes?, participant_contact_ids? (≤ 20), participant_user_ids? (≤ 10)}` → `201`. Unknown university `422`; outside the edit scope `403`; inactive `409`; a past start or one beyond 366 days `422`; a contact of another university `422`; an employee who is not active partnership staff, or is the responsible employee, `422`; a responsible employee other than the caller or (for a head) an active direct report `422`. Moves the university to Meeting Scheduled when earlier (not lost / inactive). Not idempotent |
+| `GET /partnership/meetings/{id}` | The item |
+| `PATCH /partnership/meetings/{id}` | Scheduled only. Any create field except `university_id`, plus `reschedule_reason?` (≤ 500); a changed `starts_at` is a reschedule (future, ≤ 366 days); a sent null type / start / mode / responsible `422` |
+| `POST /partnership/meetings/{id}/complete` | Once started (`422` before). `{notes?, discussion_points? (≤ 4000), decisions?, next_action? (≤ 200), next_action_due_on?, next_meeting_date?}`; at least one of notes / discussion points / decisions; a next action needs its due date and vice versa; dates today or later (IST). Creates the upc-020 follow-ups and moves the university to Meeting Completed when earlier |
+| `POST /partnership/meetings/{id}/cancel` | `{reason}` (1–1000) |
+
+- **Reused:** the pickers are `GET /partnership/visits/university-options | lead-options | employee-options` (§12AX), the contacts
+  `GET /partnership/universities/{id}/contacts` (§12AQ). **Changed:** none of their shapes; the stage history gains automatic `move`
+  rows with the note "Automatic: meeting UMT-… scheduled/completed", and `partnership_tasks.source = 'meeting'` rows appear.
+
+## 12BN. Monthly partnership targets vs actual (`upc-021`) — addendum, 2026-10-09
+
+`DEC-SCOPE-146`; design spec `docs/superpowers/specs/2026-10-09-upc-021-partnership-targets-design.md` §4. Migration `0131_partnership_targets`. Checks run role → scope: a role with no access is `403`, a
+manager outside the caller's scope `404`. Readers: `partnership_manager` (with a profile; own figures only), `partnership_head` (direct
+reports), `super_admin` (all). Writer: `partnership_head` (direct reports) and `super_admin`. The month is `YYYY-MM` (IST; default the
+current month; malformed `422`). A KPI value is `{key, target, achieved, percent}`: `achieved` is null before the month starts (and for a
+KPI whose source does not exist, `tracked: false`; none today); `percent` is null without a target. GETs have no side effects; actuals are never stored.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/targets?month=` | `{month, month_status: past\|current\|future, editable, kpis: [{key, label, definition, tracked}], managers: [{manager {id, full_name}, active, kpis: [value]}], team: [value]}`. Managers in scope who existed by the month's end, active or holding a target that month, ordered by name. Not a list endpoint: no paging (constant query count) |
+| `GET /partnership/targets/{manager_user_id}?month=` | `{month, month_status, editable, manager, kpis: [{key, label, definition, tracked, target, achieved, percent}]}`; outside scope / unknown `404` |
+| `PUT /partnership/targets` | JSON `{month, items: [{manager_user_id, kpi_key, target: int 0–100000 \| null}]}` (1–200 items, one per manager + KPI; unknown fields `422`). `200 {month, changed}`. Manager or other role `403`; manager outside scope `404`; inactive manager `422`; past month by a head or > 12 months ahead `422`. All or nothing; unchanged values are neither written nor audited (`partnership_target.set`, `{month, changes: [{kpi, from, to}]}`). No ETags or idempotency keys: a repeated PUT changes nothing |
+
+## 12BO. Course / program master (`upc-017`) — addendum, 2026-10-09
+
+`DEC-SCOPE-147`; design spec `docs/superpowers/specs/2026-10-09-upc-017-course-master-design.md` §3. Migration `0132_university_courses`.
+Readers: the University Master's read roles (`partnership_manager` with a profile, `partnership_head`, `overseas_admin` overseas division,
+`super_admin`), every university; any other role `403`, anonymous `401`. Writers: the university's `can_edit` (`403` role/team, `409`
+inactive). Every write locks the university then the course and writes `university_course.<create|update|import>` (ids, field names), one
+commit. A course is `{id, university_id, title, level, category, duration, tuition_fee, intake, tuition_amount: "18000.00" | null,
+tuition_currency, application_fee, application_fee_currency, intakes: ["Jan","Sep"], entry_requirements, english_test, english_score: "6.5" |
+null, scholarships: [{id, title, amount}], application_process, deadline, active, created_at, updated_at, commission?: {percent, amount,
+currency} | null, permissions: {can_edit}}` — **`commission` is present for the commission roles only (U2, `strip_commission`)**.
+**§public change:** `/public/overseas-courses` and `/public/universities/{slug}` now list active courses only; their keys are unchanged.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/universities/{id}/courses` | `{items, total, limit, offset, can_edit}` by title; `include_inactive` (default false), `limit` ≤ 50. Unknown university `404` |
+| `GET /partnership/universities/{id}/course-options` | Writers only: `{scholarships: [{id, title, amount}]}` (this university's + its country's university-wide, active) |
+| `POST /partnership/universities/{id}/courses` | JSON: `title`, `level` (UG/PG/PhD/Diploma/Foundation), `category`, `duration` required; the rest optional; unknown fields `422`. Negative or > 2-decimal money, half a currency pair, score without test / above the test's scale, unknown month / currency / test, foreign scholarship, both or half a commission rate → `422`. A non-commission role sending `commission` `403`. Same title + level in the university `409`. `201 {course}` |
+| `PATCH /partnership/universities/{id}/courses/{course_id}` | Sent fields only (`commission: null` clears; `active: false` deactivates); a merged row breaking the rules `422`; a course of another university `404`. `200 {course}` |
+| `GET /partnership/universities/{id}/courses/imports/template` | Writers: the CSV header row |
+| `POST /partnership/universities/{id}/courses/import` | Writers; multipart `file` + `Idempotency-Key` (missing/bad `422`); wrong / unknown / repeated columns `422`, > 1 MB `413`, > 1,000 rows `422`. `201 {id, university_id, uploaded_by, total_rows, created_count, duplicate_count, invalid_count, created_at, rows: [{row_number, status: created/duplicate/invalid, title, level, course_id, reason}]}`; same key + same file replays, same key + other file `422` |
+| `GET /partnership/courses` | Every course with `university: {id, name, university_code, country}`, by university then title; `level` (else `422`), `status` active (default) / inactive / all, `q` (title, university name or code), `limit` ≤ 50 |
+
+## 12BP. Interview management (`rec-020`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-148` (IV1–IV12). Design spec `docs/superpowers/specs/2026-10-09-rec-020-interview-management-design.md` §3.
+  Migration `0133`.
+- **Common rules:**
+  - Scope is rec-007's requirement scope through rec-017's `load_scoped`: out of scope or unknown → `404` "Interview not found" (or
+    "Job application not found"); a role without a recruiter scope → `403` before anything is read.
+  - Writers are `placement_team` (in scope) and `super_admin`; `placement_manager` and the assigned BDM → `403` on every write.
+  - Bodies refuse unknown keys (`422`). Times are minute-precision, timezone-aware; a time rule is a `422` on `scheduled_at`.
+  - Every write locks the application, then the candidate (when a time is set), then the interview; commits once; writes an audit row
+    `recruiter_interview.{create,update,reschedule,status}` with ids, keys and field names only; then publishes queued emails.
+- **Item:** `{id, code, round, round_label, scheduled_at, mode, meeting_url, interviewer, location, status, status_label, result,
+  application {id, status, status_label}, candidate {id, code, name}, requirement {id, code, title}, company {id, name},
+  contact {id, name}|null, history [{event (scheduled|rescheduled|status), from_status, to_status, old_scheduled_at, new_scheduled_at,
+  note, actor, created_at}], allowed_statuses [{key, label}], can_edit, can_reschedule}`.
+- **Notices:** `{candidate: in_app|queued|no_email|email_off|off, contact: queued|no_email|email_off|off|null}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/interviews?view=upcoming\|awaiting_update\|on_hold\|closed&limit&offset` | `{items, total, limit, offset, counts}` (IV12). Unknown view → `422` |
+| `GET /recruiter/interviews/{id}` | The item |
+| `GET /recruiter/applications/{id}/interviews` | `{items (newest first), can_schedule}` |
+| `POST /recruiter/interviews` | `{application_id, round, scheduled_at, mode, meeting_url?, interviewer? (≤160), location? (≤200), contact_id?, notify (default true)}` → `201 {interview, notifications}`. **Refusals:** past or > 366 days → `422`; a contact not active on the requirement's company → `422` on `contact_id`; a closed/cancelled requirement or an application that is not open → `409`; the same candidate already has an open interview at that minute → `409` "This candidate already has an interview scheduled at this time" |
+| `PATCH /recruiter/interviews/{id}` | Partial `{round?, mode?, meeting_url?, interviewer?, location?, contact_id?}` → the item. Null round or mode → `422`; `scheduled_at` is an unknown field; a selected/rejected interview → `409` |
+| `POST /recruiter/interviews/{id}/reschedule` | `{scheduled_at, reason? (≤500), notify}` → `{interview, notifications}`. From scheduled, confirmed, rescheduled, on hold or no show (else `409`). The same time, a past time or > 366 days → `422`; a clash → `409` |
+| `POST /recruiter/interviews/{id}/status` | `{status (confirmed\|completed\|no_show\|selected\|rejected\|on_hold), note?}` → `{interview}`. A move not in IV3 → `409`; Completed / No Show / Selected / Rejected before the scheduled time → `422` "You can mark this once the interview time has passed" |
+| `POST /workflows/it/interviews` *(legacy, changed)* | Response gains `code`. Now refuses the IV6 clash (`409`) |
+| `PATCH /workflows/it/interviews/{id}` *(legacy, changed)* | Response gains `status`. A changed `scheduled_at` is recorded as a reschedule (the clash applies) |
+| `POST /employer/interviews`, `GET /employer/interviews` *(changed)* | The clash now counts open interviews at the same minute; list items gain `code`, `round`, `status` |
+
+## 12BQ. Application screening (`rec-018`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-149` (SC1–SC8). Design spec `docs/superpowers/specs/2026-10-09-rec-018-application-screening-design.md` §3.
+  Migration `0134`.
 - **Common rules:** the application resolves through rec-017's requirement scope (§12BD): another recruiter's application or an unknown
   id → `404`; a role with no requirement scope (`hr_team`, students, the employer, …) → `403`; signed out → `401`.
 - **Screening:** `{qualification_verified, experience_verified, skills_verified, expected_salary (number|null), notice_days,

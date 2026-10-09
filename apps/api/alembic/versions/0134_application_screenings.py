@@ -1,17 +1,17 @@
 """rec-018 -- application_screenings.
 
-Revision ID: 0126_application_screenings
-Revises: 0125_university_comms
+Revision ID: 0134_application_screenings
+Revises: 0133_interview_management
 
-docs/superpowers/specs/2026-10-09-rec-018-application-screening-design.md §1 (DEC-SCOPE-141). A new table only; no existing row changes.
+docs/superpowers/specs/2026-10-09-rec-018-application-screening-design.md §1 (DEC-SCOPE-149). A new table only; no existing row changes.
 0001 builds a fresh database from the current models, which already carry this table, so it is created only when missing (0122's idiom).
 CHECKS repeats app.models.SCREENING_CHECKS (test_rec_018_migration). downgrade() refuses while any row exists: entered data is never
 dropped silently.
 
-Re-chained on 2026-10-09: drafted as `0125_application_screenings` (DEC-SCOPE-140, API §12BH, RBAC §2.66) on `0122_candidate_skills`;
-rec-010 (`0123`), upc-026 (`0124`) and upc-012 (`0125_university_comms`, which took DEC-SCOPE-140 / §12BH / §2.66) merged first, so
-this is `0126` (DEC-SCOPE-141, §12BI, §2.67). A database stamped at the draft is re-stamped with
-`alembic stamp --purge 0124_university_documents`, then `upgrade head` (the table step is guarded).
+Re-chained on 2026-10-09: drafted as `0125_application_screenings` (DEC-SCOPE-140, API §12BH, RBAC §2.66) on `0122_candidate_skills`,
+then `0126` (141 / §12BI / §2.67) after upc-012. rec-010, upc-026, upc-012 and then the upc items through `0132` and rec-020
+(`0133_interview_management`, DEC-SCOPE-148) merged first, so this is `0134` (DEC-SCOPE-149, §12BQ, §2.75). A database stamped at an
+earlier draft is re-stamped with `alembic stamp --purge <that draft's down_revision>`, then `upgrade head` (the table step is guarded).
 """
 
 import sqlalchemy as sa
@@ -19,8 +19,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0126_application_screenings"
-down_revision = "0125_university_comms"
+revision = "0134_application_screenings"
+down_revision = "0133_interview_management"
 branch_labels = None
 depends_on = None
 
@@ -70,5 +70,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {TABLE} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0126_application_screenings: screenings exist. Clear them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0134_application_screenings: screenings exist. Clear them deliberately first.")
     op.drop_table(TABLE)

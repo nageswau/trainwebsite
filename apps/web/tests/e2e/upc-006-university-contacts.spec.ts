@@ -54,7 +54,7 @@ async function addContact(page: Page, fields: Record<string, string>, options: {
   if (options.shareable) await editor.getByLabel("Visible to counsellors (shareable)").check();
   if (options.primary) await editor.getByLabel("Make this the primary contact").check();
   await editor.getByRole("button", { name: "Save contact" }).click();
-  await expect(page.getByRole("status")).toHaveText("Contact added.");
+  await expect(page.getByRole("region", { name: "Contacts" }).getByRole("status")).toHaveText("Contact added.");
 }
 
 test("the owning manager keeps contacts; overseas_admin sees the shareable slice", async ({ page }) => {
@@ -90,11 +90,11 @@ test("the owning manager keeps contacts; overseas_admin sees the shareable slice
   await editor.getByLabel("Role").selectOption("finance_contact");
   await editor.getByLabel("Notes (internal)").fill("Internal remark");
   await editor.getByRole("button", { name: "Save contact" }).click();
-  await expect(page.getByRole("status")).toHaveText("Contact added.");
+  await expect(page.getByRole("region", { name: "Contacts" }).getByRole("status")).toHaveText("Contact added.");
 
   // Move the primary, and the refreshed list puts it first.
   await page.getByRole("button", { name: "Make Ben Finance primary" }).click();
-  await expect(page.getByRole("status")).toHaveText("Primary contact changed.");
+  await expect(page.getByRole("region", { name: "Contacts" }).getByRole("status")).toHaveText("Primary contact changed.");
   await expect(contacts.getByRole("listitem").first()).toContainText("Ben Finance");
   await expect(contacts.getByRole("listitem").first()).toContainText("Primary");
 

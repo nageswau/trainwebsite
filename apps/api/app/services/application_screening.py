@@ -1,4 +1,4 @@
-"""rec-018 (DEC-SCOPE-141, spec §2): an application's screening -- the §13 checklist and its result (SC1-SC8).
+"""rec-018 (DEC-SCOPE-149, spec §2): an application's screening -- the §13 checklist and its result (SC1-SC8).
 
 Functions only; nothing here commits -- the route owns the transaction and has already locked the application (rec-017's
 `load_scoped(lock=True)`), so concurrent saves serialise. The status moves only through `applications.change_status` (SC3). Logs and the

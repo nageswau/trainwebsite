@@ -1240,7 +1240,110 @@ university's `can_edit_contacts`. Neither is ever edited or deleted (UC1, UC9).
 | `super_admin` | everything | all | `upc-012` |
 | `overseas_admin`, `counselor`, every other role | `403` | — | `upc-012` |
 
-### 2.67 Application screening *(net-new, added 2026-10-09 — `DEC-SCOPE-141`, `rec-018`)*
+### 2.67 Partnership tasks + follow-ups *(net-new, added 2026-10-09 — `DEC-SCOPE-141`, `upc-020`)*
+
+Every partnership reader reads every task (TK8, the "a manager reads every university" convention). Writes are for the assignee or the
+assignee's reporting head (TK11); adding needs the university edit scope (upc-006's `can_edit_contacts`). Auto-tasks are written by the
+stage move or visit completion that triggers them, under that write's own permission.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `partnership_manager` | read; add (assigned to themselves); edit, reschedule, complete, cancel their own tasks | reads all; adds on universities they own (primary/backup) | `upc-020` |
+| `partnership_head` | read; add (themselves or an active direct report); edit, reassign within the team, reschedule, complete, cancel | reads all; adds on unowned and team universities; acts on own and direct reports' tasks | `upc-020` |
+| `super_admin` | read only | all | `upc-020` |
+| `overseas_admin` | the university's Next / Last Action summary only; task routes `403` | — | `upc-020` |
+| every other role | `403` | — | `upc-020` |
+
+### 2.68 University agreements *(net-new, added 2026-10-09 — `DEC-SCOPE-142`, `upc-014`)*
+
+Enforced inline in `api/university_agreements.py` + `services/university_agreements.py` (`require_reader`, then the University Master's
+`can_manage_agreements` / `can_approve_agreements`). No commission field exists here (upc-016); every reader is a commission role today.
+Audit and logs carry ids, the MoU number, statuses and field names only.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Read agreements (university section, menu, detail) | ✅ all | ✅ all | `403` | ✅ all | `403` |
+| Create, edit, send / review / negotiate, sign, activate, renew | own universities (primary/backup) | unowned + team universities | `403` | ✅ all | `403` |
+| Approve | `403` | unowned + team universities | `403` | ✅ all | `403` |
+| Delete | — (not in this item, AG16) | — | — | — | — |
+
+### 2.69 University expected timeline + milestones *(net-new, added 2026-10-09 — `DEC-SCOPE-143`, `upc-008`)*
+
+Enforced inline in `api/partnership_milestones.py` (`require_reader`, then the University Master's `can_edit_timeline`, the upc-007 stage
+rule). Milestones and expected dates carry no commission data. Audit and logs carry ids, kinds, field names and dates only.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Read the expected timeline and milestones | ✅ all | ✅ all | ✅ all (read only) | ✅ all | `403` |
+| Edit expected dates, milestone target / achieved dates | own universities (primary/backup) | unowned + team universities | `403` | ✅ all | `403` |
+| Inactive university | `409` for every writer | | | | |
+
+### 2.70 University commission terms *(net-new, added 2026-10-09 — `DEC-SCOPE-144`, `upc-016`)*
+
+Enforced inline in `api/university_commission.py` + `services/university_commission.py` (`require_reader` = `partnership_access.
+can_see_commission`, then the University Master's `can_manage_agreements` and the agreement's freeze rule). **U2:** the fields are also
+removed server-side by `partnership_access.strip_commission` from every agreement payload for any other role. Audit and logs carry ids, the
+MoU number and field names only.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Read commission terms (agreement card, list, menu) | ✅ all | ✅ all | `403` | ✅ all | `403` (anonymous `401`) |
+| Add, edit, remove (agreement draft … negotiation) | own universities (primary/backup) | unowned + team universities | `403` | ✅ all | `403` |
+| Change after approval | `409` (renew) | `409` | `403` | `409` | `403` |
+
+### 2.71 University meetings *(net-new, added 2026-10-09 — `DEC-SCOPE-145`, `upc-009`)*
+
+Every partnership reader reads every meeting (MG14, the "a manager reads every university" convention). Scheduling needs the university
+edit scope (upc-006's `can_edit_contacts`); edit, reschedule, complete and cancel are for the responsible employee or the scheduler
+(MG15). The automatic stage move and follow-ups are written under that write's own permission.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `partnership_manager` | read; schedule (responsible themselves); edit, reschedule, record the outcome, cancel the meetings they are responsible for or scheduled | reads all; schedules on universities they own (primary/backup) | `upc-009` |
+| `partnership_head` | read; schedule (themselves or an active direct report responsible); the same actions on meetings they are responsible for or scheduled | reads all; schedules on unowned and team universities | `upc-009` |
+| `super_admin` | read only | all | `upc-009` |
+| `overseas_admin` and every other role | `403` | — | `upc-009` |
+
+### 2.72 Monthly partnership targets *(net-new, added 2026-10-09 — `DEC-SCOPE-146`, `upc-021`)*
+
+Enforced inline in `api/partnership_targets.py` (`require_reader` / `require_setter`, then the manager scope: the caller themself, a head's
+direct reports, or every manager for `super_admin`). Targets carry no commission data. Audit and logs carry ids, KPI keys and numbers only.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Read targets vs actual | own only (another manager `404`) | direct reports + team row | `403` | ✅ all | `403` |
+| Set / clear targets | `403` (even their own) | direct reports; current month and up to 12 ahead | `403` | ✅ all, past months too | `403` |
+| Inactive manager | — | `422` on write | — | `422` on write | — |
+
+### 2.73 University courses *(net-new, added 2026-10-09 — `DEC-SCOPE-147`, `upc-017`)*
+
+Enforced inline in `api/university_courses.py` + `api/university_course_import.py` (`partnership_universities.require_reader`, then the
+university's `can_edit`). **U2:** a course's `commission` is removed server-side by `partnership_access.strip_commission` for every
+non-commission role, and only `COMMISSION_ROLES` may set it. Audit and logs carry ids and field names only.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Read courses (university page, menu) | ✅ all | ✅ all | ✅ all (no commission) | ✅ all | `403` (anonymous `401`); counselors read the public catalogue |
+| Add, edit, deactivate, import | own universities (primary/backup) | unowned + team universities | ✅ all | ✅ all | `403` |
+| Read / set course commission | ✅ (write: own) | ✅ (write: unowned + team) | stripped / `403` | ✅ | stripped / `403` |
+| Public catalogue (active courses of published universities) | ✅ | ✅ | ✅ | ✅ | ✅ anonymous, never commission |
+
+### 2.74 Interview management *(net-new, added 2026-10-09 — `DEC-SCOPE-148`, `rec-020`)*
+
+Interviews take their application's scope (rec-007's requirement scope, §2.62). The role check runs before anything is read; out of scope
+is `404`.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` | read; schedule, edit, reschedule, change status | requirements assigned to them or on their companies | `rec-020` |
+| `placement_manager` | read only (writes `403`) | the team's requirements and the unassigned queue | `rec-020` |
+| `bdm` | read only | requirements of companies where they are the assigned BDM (R10) | `rec-020` |
+| `super_admin` | everything | all | `rec-020` |
+| `hr_team`, `it_admin` | `403` on `/recruiter/interviews*`; the legacy `/workflows/it/interviews` routes as before | — | `rec-020` |
+| `employer` | `403` on `/recruiter/*`; `/employer/interviews` for their own jobs as before | own jobs | `rec-020` |
+| students, every other role | `403` | — | `rec-020` |
+
+### 2.75 Application screening *(net-new, added 2026-10-09 — `DEC-SCOPE-149`, `rec-018`)*
 
 Screening follows rec-017's requirement scope (§2.62): the scope check runs first (outside it → `404`). Salary and remarks are internal:
 no employer, student or `hr_team` route reads a screening. SC8 (UNVERIFIED).

@@ -2,10 +2,10 @@
 
 - **Backlog:** `docs/delivery/RECRUITER_CRM_BACKLOG.md` rec-018. **Evidence:** `EVID-018` §13 (lines 556–592): 11 checklist items and 4
   results. **Dependency:** rec-017 (PR #178), merged. The module scope is `DEC-SCOPE-116`.
-- **Decision:** `DEC-SCOPE-141`. **Migration:** `0126_application_screenings` on `0125_university_comms`. **API:** §12BI.
-  **RBAC:** §2.67.
-  - Drafted as 0125 / DEC-SCOPE-140 / §12BH / §2.66 on `0122_candidate_skills`. rec-010 (0123 / 138 / §12BF / §2.64), upc-026 (0124 /
-    139 / §12BG / §2.65) and upc-012 (0125 / 140 / §12BH / §2.66) merged first, so this item was re-numbered.
+- **Decision:** `DEC-SCOPE-149`. **Migration:** `0134_application_screenings` on `0133_interview_management`. **API:** §12BQ.
+  **RBAC:** §2.75.
+  - Drafted as 0125 / DEC-SCOPE-140 / §12BH / §2.66 on `0122_candidate_skills`, then 0126 / 141 / §12BI / §2.67. rec-010, upc-026,
+    upc-012, the upc items through 0132 and rec-020 (0133 / 148 / §12BP / §2.74) merged first, so this item was re-numbered.
 - **Answers.** SC1–SC8 are **recommended defaults**. They were taken on the owner's standing instruction for build sessions ("proceed with
   the recommended answers; ask only if blocking"). They stay `UNVERIFIED` until the owner confirms them. SC1 and SC2 answer the backlog's
   Q-18.
@@ -42,7 +42,7 @@
     and the assigned BDM. Writers are rec-017's `WRITERS` (`placement_team` in scope and `super_admin`). The employer, students and
     `hr_team` never see a screening ("salary data internal only").
 
-## 1. Data (migration 0126)
+## 1. Data (migration 0134)
 
 New table `application_screenings`:
 
@@ -76,7 +76,7 @@ the models and the migration repeats it; the migration test asserts the two are 
   - Nothing in it commits; the route has already locked the application (rec-017's `load_scoped(lock=True)`), so concurrent saves
     serialise.
 
-## 3. API (§12BI), in `api/recruiter_applications.py`
+## 3. API (§12BQ), in `api/recruiter_applications.py`
 
 | Route | Who | Rules |
 |---|---|---|

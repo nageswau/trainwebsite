@@ -22,7 +22,7 @@ export type CandidateApplication = {
   status: string; status_label: string; stage_changed_at: string; in_scope: boolean;
 };
 
-// rec-018 (DEC-SCOPE-141): an application's screening. The API decides the status move (SC3), whether the viewer may edit (SC4/SC8)
+// rec-018 (DEC-SCOPE-149): an application's screening. The API decides the status move (SC3), whether the viewer may edit (SC4/SC8)
 // and every range; the form only mirrors the ranges so the browser can say so before a 422.
 export type ScreeningFields = {
   qualification_verified: boolean; experience_verified: boolean; skills_verified: boolean; expected_salary: number | null;

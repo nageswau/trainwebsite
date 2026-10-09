@@ -273,7 +273,7 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
         </ul>
       </section>
       {/* rec-017: after the requirement's own status controls and history, so its two "Change status" forms never sit side by side (QA-02). */}
-      <RecruiterRequirementCandidates requirementId={r.id} />
+      <RecruiterRequirementCandidates requirementId={r.id} companyId={r.company.id} />
     </>
   );
 }

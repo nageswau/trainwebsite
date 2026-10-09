@@ -1,4 +1,4 @@
-"""rec-018 -- screening form + result (spec §2-§3; AC1, AC2; DEC-SCOPE-141 SC1-SC8). Names are unique per test (the database is shared
+"""rec-018 -- screening form + result (spec §2-§3; AC1, AC2; DEC-SCOPE-149 SC1-SC8). Names are unique per test (the database is shared
 and never truncated)."""
 
 import uuid
