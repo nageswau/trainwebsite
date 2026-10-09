@@ -1,4 +1,4 @@
-"""rec-018 -- migration 0125_application_screenings (spec §1). Round trip, constraints and downgrade refusal run in a throwaway database
+"""rec-018 -- migration 0126_application_screenings (spec §1). Round trip, constraints and downgrade refusal run in a throwaway database
 built from scratch (the tel-002 pattern); a downgrade never runs against the shared test database. Plain tests: alembic/env.py calls
 asyncio.run()."""
 
@@ -15,11 +15,11 @@ from app.core.config import settings
 from tests.test_tel_001_migration import _config, _sql
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_rec_018_migration_0125", VERSIONS / "0125_application_screenings.py")
+_spec = importlib.util.spec_from_file_location("_rec_018_migration_0126", VERSIONS / "0126_application_screenings.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0124_university_documents", "0125_application_screenings"
+BASE, HEAD = "0125_university_comms", "0126_application_screenings"
 
 
 def test_migration_chains_and_is_the_single_head():
@@ -63,7 +63,7 @@ def isolated_db():
     _sql(original, f'CREATE DATABASE "{name}"', autocommit=True)
     try:
         settings.database_url = url
-        # 0001's create_all builds today's models (this table included); going to head and back down gives the real 0124 shape.
+        # 0001's create_all builds today's models (this table included); going to head and back down gives the real 0125 shape.
         command.upgrade(cfg, "head")
         command.downgrade(cfg, BASE)
         yield {"cfg": cfg, "url": url}

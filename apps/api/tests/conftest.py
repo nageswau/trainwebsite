@@ -72,6 +72,16 @@ def recruiter_emails_enqueued(monkeypatch):
     return captured
 
 
+@pytest.fixture
+def university_emails_enqueued(monkeypatch):
+    """upc-012: likewise for university emails -- every published university_messages id, as (message_id, countdown)."""
+    from app.notifications import dispatch
+
+    captured: list[tuple[str, int]] = []
+    monkeypatch.setattr(dispatch, "_publish_university_email", lambda message_id, countdown: captured.append((message_id, countdown)), raising=False)
+    return captured
+
+
 @pytest.fixture(autouse=True)
 def _reset_broker_backoff(monkeypatch):
     """ENH-014 QAF-01: a test that makes a publish fail opens the broker back-off; start every test with it closed."""

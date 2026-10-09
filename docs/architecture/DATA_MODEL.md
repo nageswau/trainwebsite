@@ -1634,7 +1634,29 @@ varchar(64) null; `created_at`.
 - Versions are append-only (never updated or deleted); documents are not deleted in this item (DC9).
 - `downgrade()` refuses while any document exists.
 
-## Application screenings (`rec-018`, `DEC-SCOPE-140`; migration `0125_application_screenings`, after `0124_university_documents`)
+## University calls, partnership templates and messages (`upc-012`, `DEC-SCOPE-140`; migration `0125_university_comms`, after `0124_university_documents`)
+
+**`partnership_message_templates` columns:** `id`, `channel` varchar(20), `name` varchar(160), `subject` varchar(200) (nullable), `body`
+text, `active` bool, timestamps. CHECKs `ck_partnership_message_templates_channel`, `ck_partnership_message_templates_subject`
+(`(channel = 'email') = (subject IS NOT NULL)`). Unique index `(channel, lower(name))`. No seed.
+
+**`university_calls` columns:** `id`; `university_id` → `universities` (RESTRICT); `contact_id` → `university_contacts` (**SET NULL**,
+nullable); `caller_user_id` → `users`; `occurred_at`; `duration_seconds` (nullable); `direction`; `outcome`; `notes` (nullable);
+`next_follow_up_on` date (nullable); timestamps. CHECKs on outcome (rec-025's six), direction and duration (0–14400). Indexes
+`(university_id, occurred_at)`, `(contact_id, occurred_at)`, `(caller_user_id, occurred_at)`.
+
+**`university_messages` columns:** `id`; `university_id` → `universities`; `contact_id` → `university_contacts` (**SET NULL**, nullable);
+`sender_user_id` → `users`; `channel`; `template_id` → `partnership_message_templates` (nullable) and `template_name`; `subject`, `body`,
+`delivery_status`, `attempt_count`, `sent_at`, timestamps. CHECKs `ck_university_messages_channel`, `ck_university_messages_email` (email
+⇔ subject and delivery status), `ck_university_messages_status`. Indexes `(university_id, sent_at)`, `(contact_id, sent_at)`,
+`(sender_user_id, sent_at)`.
+
+**Design notes:**
+- Calls and messages are permanent; the recipient's number and address are read from the contact, never stored.
+- A contact's `last_interaction_at` is derived: its latest call or message (failed emails excluded).
+- `downgrade()` refuses while any template, call or message exists.
+
+## Application screenings (`rec-018`, `DEC-SCOPE-141`; migration `0126_application_screenings`, after `0125_university_comms`)
 
 **`application_screenings` columns:**
 - `application_id` PK → `job_applications` (FK RESTRICT): one current screening per application (SC5).

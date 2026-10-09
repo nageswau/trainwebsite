@@ -1,10 +1,10 @@
 # rec-018 — Screening form + result (plan)
 
-The spec is `docs/superpowers/specs/2026-10-09-rec-018-application-screening-design.md` (DEC-SCOPE-140, SC1–SC8). The work is TDD, one
+The spec is `docs/superpowers/specs/2026-10-09-rec-018-application-screening-design.md` (DEC-SCOPE-141, SC1–SC8). The work is TDD, one
 task at a time.
 
 1. **Model and migration.** Add `SCREENING_RESULTS`, `SCREENING_CHECKS` and `ApplicationScreening` to `models.py`. Add
-   `0125_application_screenings`. Add `test_rec_018_migration.py`, covering the chain, model = migration, the round trip and the
+   `0126_application_screenings`. Add `test_rec_018_migration.py`, covering the chain, model = migration, the round trip and the
    downgrade refusal.
 2. **Schema, service and routes.**
    - `RecScreeningIn`: `extra=forbid`, the SC6 ranges, and the SC7 model validator.
@@ -20,7 +20,7 @@ task at a time.
    - Add the vitest `RecruiterApplicationScreening.test.tsx`.
 5. **e2e.** `rec-018-screening.spec.ts`: a writer screens a candidate to Shortlisted and sees the status and the badge; Hold, then a
    re-screen; Rejected without remarks is blocked.
-6. **Docs.** Update the DEC register (DEC-SCOPE-140), API_CONTRACT §12BH, DATA_MODEL, RBAC_MATRIX §2.66, SCREEN_CATALOG and the backlog
+6. **Docs.** Update the DEC register (DEC-SCOPE-141), API_CONTRACT §12BI, DATA_MODEL, RBAC_MATRIX §2.67, SCREEN_CATALOG and the backlog
    status.
 
 ## Phase 3 review notes
