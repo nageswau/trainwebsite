@@ -86,13 +86,18 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
                       <tr key={d.id}>
                         <td data-label="Document" style={{ overflowWrap: "anywhere" }}>{d.title}</td>
                         <td data-label="Kind">{kindLabel(d.kind)}</td>
-                        <td data-label="University"><Link href={universityPath(d.university.id)}>{d.university.name}</Link> <span className="muted">{d.university.university_code}</span></td>
+                        {/* QA-01: one wrapper per mixed cell -- on a phone each cell is a flex row, which would split the parts into columns */}
+                        <td data-label="University">
+                          <span><Link href={universityPath(d.university.id)}>{d.university.name}</Link> <span className="muted" style={{ whiteSpace: "nowrap" }}>{d.university.university_code}</span></span>
+                        </td>
                         <td data-label="Version">{d.current_version}</td>
                         <td data-label="Sharing"><span className="badge">{d.shareable ? "Shareable" : "Internal"}</span></td>
-                        <td data-label="Last upload">{current ? <>{current.uploaded_by.full_name}, <LocalTime value={current.uploaded_at} /></> : "—"}</td>
+                        <td data-label="Last upload"><span>{current ? <>{current.uploaded_by.full_name}, <LocalTime value={current.uploaded_at} /></> : "—"}</span></td>
                         <td data-label="File">
-                          <a href={documentFileUrl(d)} download>Download<span className="visually-hidden"> {d.title}</span></a>
-                          {current && <span className="muted"> · {fileSize(current.size_bytes)}</span>}
+                          <span>
+                            <a href={documentFileUrl(d)} download>Download<span className="visually-hidden"> {d.title}</span></a>
+                            {current && <span className="muted"> · {fileSize(current.size_bytes)}</span>}
+                          </span>
                         </td>
                       </tr>
                     );

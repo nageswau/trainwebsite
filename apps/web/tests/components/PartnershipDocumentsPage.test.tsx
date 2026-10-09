@@ -39,6 +39,11 @@ describe("upc-026 documents menu page", () => {
     expect(links.some((el) => el.props.href === "/partnership/universities/u1")).toBe(true);
     expect(links.some((el) => el.props.href === "/api/v1/partnership/universities/u1/documents/d1/file")).toBe(true);
     expect(text(view)).toContain("Fee structure");
+    // QA-01: on a phone each cell is a flex row, so a cell with mixed content must hold one wrapper (or the parts split into columns).
+    for (const label of ["University", "Last upload", "File"]) {
+      const cell = tree.find((el) => el.type === "td" && el.props["data-label"] === label)!;
+      expect(cell.props.children, label).toMatchObject({ type: "span" });
+    }
   });
 
   it("shows the empty and the filtered-empty states", async () => {
