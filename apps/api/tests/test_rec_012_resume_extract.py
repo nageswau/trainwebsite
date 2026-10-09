@@ -139,6 +139,12 @@ def test_job_titles_certifications_and_industry():
     assert result["industries"] == ["Banking & Finance", "E-commerce & Retail", "Insurance"]
 
 
+def test_a_certification_shares_a_line_with_other_parts():
+    """QA-01: a header line "Title | Certification" yields only the certification part."""
+    result = rx.suggest("Senior Java Developer | AWS Certified Developer - Associate", [])
+    assert result["certifications"] == ["AWS Certified Developer - Associate"]
+
+
 def test_lists_are_capped():
     text = "\n".join(f"Software Engineer {i}\n" for i in range(30)) + "\n".join(f"Certified Thing {i}" for i in range(30))
     result = rx.suggest(text, [])

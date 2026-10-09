@@ -239,9 +239,10 @@ def job_titles(text: str) -> list[str]:
 
 
 def certifications(text: str) -> list[str]:
-    """Lines that mention a certification (a "Certifications:" line is split into its items), then the known acronyms anywhere."""
+    """Lines that mention a certification (a "Certifications:" line is split into its items), then the known acronyms anywhere. A line
+    of "|"-separated parts (a resume header) is judged part by part (QA-01)."""
     found = []
-    for raw in text.splitlines():
+    for raw in (part for line in text.splitlines() for part in line.split("|")):
         line = _BULLET.sub("", raw).strip()
         if not line or len(line) > 150 or "certifi" not in line.lower():
             continue
