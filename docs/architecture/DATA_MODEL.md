@@ -1598,3 +1598,25 @@ history notes.
 - Rows are hard-deleted on remove (audited). The skill merge (SK7) re-points rows to the kept skill and deletes the loser of a clash
   before it deletes the merged skill, so no row ever points at a deleted skill. The merge also re-points `job_skills.skill_id`.
 - `downgrade()` refuses while any row exists.
+
+## University calls, partnership templates and messages (`upc-012`, `DEC-SCOPE-138`; migration `0123_university_comms`, after `0122_candidate_skills`)
+
+**`partnership_message_templates` columns:** `id`, `channel` varchar(20), `name` varchar(160), `subject` varchar(200) (nullable), `body`
+text, `active` bool, timestamps. CHECKs `ck_partnership_message_templates_channel`, `ck_partnership_message_templates_subject`
+(`(channel = 'email') = (subject IS NOT NULL)`). Unique index `(channel, lower(name))`. No seed.
+
+**`university_calls` columns:** `id`; `university_id` → `universities` (RESTRICT); `contact_id` → `university_contacts` (**SET NULL**,
+nullable); `caller_user_id` → `users`; `occurred_at`; `duration_seconds` (nullable); `direction`; `outcome`; `notes` (nullable);
+`next_follow_up_on` date (nullable); timestamps. CHECKs on outcome (rec-025's six), direction and duration (0–14400). Indexes
+`(university_id, occurred_at)`, `(contact_id, occurred_at)`, `(caller_user_id, occurred_at)`.
+
+**`university_messages` columns:** `id`; `university_id` → `universities`; `contact_id` → `university_contacts` (**SET NULL**, nullable);
+`sender_user_id` → `users`; `channel`; `template_id` → `partnership_message_templates` (nullable) and `template_name`; `subject`, `body`,
+`delivery_status`, `attempt_count`, `sent_at`, timestamps. CHECKs `ck_university_messages_channel`, `ck_university_messages_email` (email
+⇔ subject and delivery status), `ck_university_messages_status`. Indexes `(university_id, sent_at)`, `(contact_id, sent_at)`,
+`(sender_user_id, sent_at)`.
+
+**Design notes:**
+- Calls and messages are permanent; the recipient's number and address are read from the contact, never stored.
+- A contact's `last_interaction_at` is derived: its latest call or message (failed emails excluded).
+- `downgrade()` refuses while any template, call or message exists.

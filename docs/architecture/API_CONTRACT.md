@@ -2033,6 +2033,33 @@ can_complete, can_follow_up, can_close}, editable_fields, created_at, updated_at
 | `POST /recruiter/candidates/{id}/skills/{sid}/status` | `{status}` → item. `verified` / `assessed` set `verified_by` and `verified_at` (the caller, now); `claimed` clears them (AC3). The same status → `409`. The backlog named this route `…/verify`; it is `…/status` because it also sets `claimed` and `assessed` |
 | `POST /recruiter/skills/{id}/merge` | Skills Master writers only (placement manager, super_admin; recruiters `403`). `{into_skill_id}` → the kept skill (the §12AM skill item). This skill (active or not) is merged into an active one: candidate skills move (a candidate with both keeps the stronger status, the kept skill's row on a tie), requirement skills (`job_skills.skill_id`) move, aliases move, related links are re-made on the kept skill, this skill is **deleted** and its name becomes an alias of the kept one. **Refusals:** into itself → `422`; unknown or inactive target → `422` "Choose an active skill to merge into"; unknown skill → `404`. Audit `recruiter.skill_merge` (the merged id and name, counts) |
 
+## 12BF. University calls, message templates, WhatsApp and email (`upc-012`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-138` (UC1–UC10). Design spec `docs/superpowers/specs/2026-10-09-upc-012-university-comms-design.md` §3. Migration
+  `0123`.
+- **Common rules:** readers are `partnership_manager` (with a profile), `partnership_head` and `super_admin`; every other role → `403`
+  before anything is read. Writes lock the university, then need its `can_edit_contacts` (`403`) and an active university (`409`); the
+  university is always read from the contact. An unknown contact → `404` "Contact not found". Bodies refuse unknown keys (`422`).
+- **Call item:** `{id, university_id, contact {id, name}|null, occurred_at, duration_seconds, direction, outcome, outcome_label, connected,
+  notes, next_follow_up_on, caller {id, full_name}, created_at}`.
+- **Message item:** `{id, university_id, contact {id, name}|null, channel, template {id, name}|null, subject, body,
+  delivery_status (queued|sending|retrying|sent|failed, email only), sent_at, sender {id, full_name}}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/templates` | `channel?`, `active?`, `q?`, `limit`, `offset`. Managers get active rows only. Item `{id, channel, name, subject, body, active}` |
+| `POST /partnership/templates` | Head or `super_admin` (`403`). `{channel, name, subject (email only), body}` → `201`. Unknown placeholder, subject on WhatsApp, missing email subject, body over 1000 / 5000 → `422`; the same name in the channel → `409` |
+| `PATCH /partnership/templates/{id}` | Head or `super_admin`. Partial `{name?, subject?, body?, active?}`; the merged row is re-checked; a channel change → `422` |
+| `GET /partnership/templates/{id}/preview` | `{subject, body, missing}` with sample values (Priya Sharma, University of Example, the caller). Inactive → `404` for a manager |
+| `GET /partnership/messages/render?template_id=&contact_id=` | The contact (`404`), then an active template (`404`) → `{template {id, name, channel}, subject, body, missing}` |
+| `POST /partnership/messages` | `{contact_id, channel, template_id?, subject (email), body}` → `201` message. SMTP unset `503`; no email / no usable number `409`; a template of another channel or inactive `422`; caps `409` (WhatsApp) / `429` (email). Not idempotent. An email is queued and published after the commit |
+| `GET /partnership/universities/{id}/messages` | Newest first, paged. Unknown university `404` |
+| `POST /partnership/calls` | `{contact_id, outcome, occurred_at?, duration_seconds?, direction?, notes?, next_follow_up_on?}` → `201` call. Future / older than 7 days / follow-up out of range → `422` on the field; cap `409`. Not idempotent |
+| `GET /partnership/universities/{id}/calls` | Newest first, paged. Unknown university `404` |
+
+- **Changed (additive):** `GET /partnership/universities/{id}/contacts` and `PATCH /partnership/contacts/{id}` items gain `whatsapp_to`
+  and `last_interaction_at` (null outside the partnership roles).
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

@@ -1,9 +1,8 @@
 // upc-012 (DEC-SCOPE-138): calls, WhatsApp and email kept on a university -- types, endpoints, the partnership template library (UC4/UC5)
 // and the composer target for one contact. The API decides scope and every rule (UC1-UC9); the UI only offers what it allows. Calls and
 // messages are permanent: there is no edit or delete.
-import type { DeliveryStatus } from "@/lib/telecallerMessages";
 import { templatesFrom, type Channel, type TemplateLibrary } from "@/lib/recruiterMessages";
-import type { ComposerTarget } from "@/lib/telecallerMessages";
+import type { ComposerTarget, DeliveryStatus } from "@/lib/telecallerMessages";
 
 /** UC3: who reads a university's calls and messages (overseas_admin reads the master only). */
 export const COMMS_READERS = new Set(["partnership_manager", "partnership_head", "super_admin"]);

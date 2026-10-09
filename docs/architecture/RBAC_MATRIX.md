@@ -1204,6 +1204,18 @@ writer may set Verified or Assessed; who and when are recorded.
 | `hr_team` | read only (every write `403`; the Skills Master stays `403`) | the whole pool | `rec-011` |
 | `it_admin`, `employer`, `bdm`, students, every other role | `403` | — | `rec-011` |
 
+### 2.64 University calls, message templates and messages *(net-new, added 2026-10-09 — `DEC-SCOPE-138`, `upc-012`)*
+
+Calls and messages are kept on the university and follow upc-006's contacts (§2.49): reads are the full contact view, writes the
+university's `can_edit_contacts`. Neither is ever edited or deleted (UC1, UC9).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `partnership_manager` (with a profile) | read active templates; read every university's calls and messages; log calls and send WhatsApp/email | writes: universities they own (primary or backup) | `upc-012` |
+| `partnership_head` | everything a manager does; create, edit, deactivate templates | writes: universities of their team or unassigned | `upc-012` |
+| `super_admin` | everything | all | `upc-012` |
+| `overseas_admin`, `counselor`, every other role | `403` | — | `upc-012` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

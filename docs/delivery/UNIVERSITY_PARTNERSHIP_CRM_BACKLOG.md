@@ -631,6 +631,9 @@ Common conventions:
 - **Complexity:** medium · **Risk:** low
 
 ### upc-012 — Calls + message templates + WhatsApp + email
+- **Status (2026-10-09):** built on `feature/upc-012` under `DEC-SCOPE-138`, with migration `0123_university_comms`, API §12BF and
+  RBAC §2.64. Spec: `docs/superpowers/specs/2026-10-09-upc-012-university-comms-design.md`. UC1–UC10 are `UNVERIFIED` defaults: no
+  template kinds or seeds (the source names none); calls are permanent; contact deletes keep the history (`SET NULL`).
 - **Business requirement:** §12 "every email/call/WhatsApp/meeting should be stored against the university" (U10).
 - **Existing behavior:** none for universities.
 - **Expected behavior:**
