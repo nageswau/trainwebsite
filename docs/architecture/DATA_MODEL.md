@@ -1614,11 +1614,31 @@ varchar(64) null; `created_at`.
 - `downgrade()` refuses while any row exists, so consent evidence is never dropped silently. Retention follows Q-09
   (`NEEDS_CONFIRMATION`).
 
-**Addendum, 2026-10-09 (`upc-020`, `DEC-SCOPE-139` — Partnership tasks + follow-ups):** `partnership_tasks` (FK `universities`
+## University documents (`upc-026`, `DEC-SCOPE-139`; migration `0124_university_documents`, after `0123_candidate_consents`)
+
+**`university_documents` columns:**
+- `id`, `university_id` → `universities` (FK RESTRICT), `kind` varchar(30) (CHECK: the 12 §28 kinds), `title` varchar(200),
+  `shareable` bool, `current_version` int (CHECK ≥ 1), `created_by_user_id` → `users`, timestamps (`updated_at` moves on every version)
+
+**`university_document_versions` columns:**
+- `id`, `document_id` → `university_documents` (FK RESTRICT), `version` int (CHECK ≥ 1), `storage_key` varchar(300) (server-generated,
+  `university-documents/<uuid>`), `file_name` varchar(255) (display only), `content_type` varchar(120), `size_bytes` int (CHECK > 0),
+  `uploaded_by_user_id` → `users`, `uploaded_at`
+
+**Constraints and indexes:**
+- CHECK `ck_university_documents_commission_internal`: a commission agreement is never shareable (DC2).
+- `uq_university_documents_title` UNIQUE `(university_id, kind, lower(title))` (DC11); `ix_university_documents_updated` (menu order).
+- `uq_university_document_versions_version` UNIQUE `(document_id, version)`; `uq_university_document_versions_key` UNIQUE `(storage_key)`.
+
+**Design notes:**
+- Versions are append-only (never updated or deleted); documents are not deleted in this item (DC9).
+- `downgrade()` refuses while any document exists.
+
+**Addendum, 2026-10-09 (`upc-020`, `DEC-SCOPE-140` — Partnership tasks + follow-ups):** `partnership_tasks` (FK `universities`
 RESTRICT; `kind` CHECK follow_up / task; `title` ≤ 200; `notes` ≤ 2000; `assignee_user_id`, `created_by_user_id` FK `users` RESTRICT;
 `due_on`; `priority` CHECK high / medium / low default medium; `status` CHECK open / done / cancelled; `source` CHECK manual / stage /
 meeting / visit / agreement; `rule` (`stage:<key>` / `visit:<id>`, NULL exactly when manual); `completed_at` / `cancelled_at` set exactly
 in their status; `cancel_reason` only when cancelled; timestamps). Indexes `(assignee_user_id, status, due_on)`, `(university_id,
 status, due_on)` and the partial unique `uq_partnership_tasks_open_rule (university_id, rule) WHERE status = 'open' AND rule IS NOT NULL`
-(one open auto-task per rule, TK7). No backfill. **Migration `0124_partnership_tasks`**; `downgrade()` refuses while any task exists
-(API §12BG).
+(one open auto-task per rule, TK7). No backfill. **Migration `0125_partnership_tasks`**; `downgrade()` refuses while any task exists
+(API §12BH).

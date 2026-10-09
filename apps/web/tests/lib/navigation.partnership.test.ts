@@ -18,17 +18,18 @@ describe("upc-001 navigation", () => {
     expect(new Set(PARTNERSHIP_MENU.map((e) => e.href)).size).toBe(19);
   });
 
-  it("links only the live entries, plus Profile (upc-003 University Master, upc-007 Partnership Pipeline, upc-010 University Visits, upc-020 Follow-ups & Tasks)", () => {
-    expect(PARTNERSHIP_MENU.filter((e) => e.live).map((e) => e.label)).toEqual(["Dashboard", "University Master", "Partnership Pipeline", "University Visits", "Follow-ups & Tasks"]);
+  it("links only the live entries, plus Profile (upc-003 University Master, upc-007 Partnership Pipeline, upc-010 University Visits, upc-020 Follow-ups & Tasks, upc-026 Documents)", () => {
+    expect(PARTNERSHIP_MENU.filter((e) => e.live).map((e) => e.label)).toEqual(["Dashboard", "University Master", "Partnership Pipeline", "University Visits", "Follow-ups & Tasks", "Documents"]);
     expect(PARTNERSHIP_NAV).toEqual([
       { label: "Dashboard", href: "/partnership/dashboard" }, { label: "University Master", href: "/partnership/universities" },
       { label: "Partnership Pipeline", href: "/partnership/pipeline" }, { label: "University Visits", href: "/partnership/visits" },
-      { label: "Follow-ups & Tasks", href: "/partnership/tasks" }, { label: "Profile", href: "/partnership/profile" },
+      { label: "Follow-ups & Tasks", href: "/partnership/tasks" }, { label: "Documents", href: "/partnership/documents" }, { label: "Profile", href: "/partnership/profile" },
     ]);
     expect(PARTNERSHIP_HEAD_NAV).toEqual([
       { label: "Team", href: "/partnership/head/team" }, { label: "University Master", href: "/partnership/universities" },
       { label: "Partnership Pipeline", href: "/partnership/pipeline" }, { label: "University Visits", href: "/partnership/visits" },
       { label: "Visit approvals", href: "/partnership/visits/approvals" }, { label: "Follow-ups & Tasks", href: "/partnership/tasks" },
+      { label: "Documents", href: "/partnership/documents" },
     ]);
   });
 

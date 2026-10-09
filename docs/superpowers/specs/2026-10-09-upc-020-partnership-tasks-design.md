@@ -3,7 +3,7 @@
 **Status:** design written 2026-10-09. The owner's standing instruction for this session is "proceed with the recommended answers;
 ask only if genuinely blocking". The item answers TK1–TK16 (§1), including **Q-22** (the auto-task rules), are **recommended defaults
 accepted under that instruction** (`NEEDS_CONFIRMATION` as separate per-question approvals). They are registered that way in
-`DEC-SCOPE-139`.
+`DEC-SCOPE-140`.
 
 **Branch:** `feature/upc-020`, cut from `origin/main` @ `f4207d39` (after #181).
 **Backlog:** `docs/delivery/UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §4 upc-020, U11, Q-22, Appendix A L639–L693.
@@ -11,8 +11,9 @@ accepted under that instruction** (`NEEDS_CONFIRMATION` as separate per-question
 item also hooks the merged upc-007 stage engine (`api/partnership_pipeline.py`) and upc-010 visits (`api/university_visits.py`, VS16).
 **Source:** `EVID-020` §19 (L639–L671: "The CRM should automatically generate tasks", 12 examples, "Task → Employee → Due Date → Priority →
 Status") and §20 (L673–L693: "Next Action + Next Action Date", the XYZ example, Overdue / Due Today / Due Tomorrow / Upcoming).
-**Numbering:** migration `0124_partnership_tasks`, `DEC-SCOPE-139`, API §12BG, RBAC §2.65 (renumbered at merge if another item lands first).
-Drafted as `0123` / `DEC-SCOPE-138` / §12BF / §2.64; renumbered on merging `main` @ `6fc05526` (rec-010 took them first).
+**Numbering:** migration `0125_partnership_tasks`, `DEC-SCOPE-140`, API §12BH, RBAC §2.66 (renumbered at merge if another item lands first).
+Drafted as `0123` / `DEC-SCOPE-138` / §12BF / §2.64; renumbered on merging `main` @ `6fc05526` (rec-010 took them first). Renumbered again from `0124` / `DEC-SCOPE-139` / §12BG / §2.65 on merging `main` @ `e91932a3` (upc-026 took them
+first).
 **Gate:** `APPROVAL_GATES.md` GATE-09.
 **Template:** bdm-008 (`BdmTask`, `services/bdm_tasks.py`, `api/bdm_tasks.py`, `BdmTasksPanel` / `BdmTaskItem` / `BdmTaskForm`): the same
 bucket filters, lock-then-check writes and audit idiom, applied to universities. The BDM code itself is not changed.
@@ -56,7 +57,7 @@ bucket filters, lock-then-check writes and audit idiom, applied to universities.
 The other stages create nothing. "Arrange university visit", "Collect documents" and "Follow up on offers" are manual-only catalogue
 titles (offers arrive with upc-018).
 
-## 2. Data model — migration `0124_partnership_tasks`
+## 2. Data model — migration `0125_partnership_tasks`
 
 `partnership_tasks`:
 - id; university_id FK RESTRICT; kind String(20); title String(200); notes String(2000) null;
@@ -137,7 +138,7 @@ commits), `api/partnership_tasks.py` (prefix `/partnership/tasks`, owns the tran
 3. Auto-creation hooks + university `follow_up` summary (`test_upc_020_auto.py`).
 4. Frontend: lib, form, item, panel, page, university section, nav, with vitest.
 5. Playwright `upc-020-partnership-tasks.spec.ts`.
-6. Docs: DEC-SCOPE-139, API §12BG, RBAC §2.65, DATA_MODEL, SCREEN_CATALOG, backlog status.
+6. Docs: DEC-SCOPE-140, API §12BH, RBAC §2.66, DATA_MODEL, SCREEN_CATALOG, backlog status.
 
 ## 7. Regression set (lite)
 

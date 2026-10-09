@@ -901,8 +901,8 @@ Common conventions:
 - **Edge cases:** duplicate auto-task suppression.
 - **Regression risks:** none.
 - **Complexity:** medium · **Risk:** medium
-- **Status (2026-10-09):** built on `feature/upc-020` under `DEC-SCOPE-139`, with migration `0124_partnership_tasks`, API §12BG and RBAC
-  §2.65. Spec: `docs/superpowers/specs/2026-10-09-upc-020-partnership-tasks-design.md`.
+- **Status (2026-10-09):** built on `feature/upc-020` under `DEC-SCOPE-140`, with migration `0125_partnership_tasks`, API §12BH and RBAC
+  §2.66. Spec: `docs/superpowers/specs/2026-10-09-upc-020-partnership-tasks-design.md`.
   - Q-22 is answered by the recommended stage rules (TK4/TK5, `NEEDS_CONFIRMATION`); a completed visit's follow-up date becomes a task
     (upc-010 VS16). Meeting (upc-009) and agreement (upc-014) rules arrive with those items.
   - Next Action = the earliest open follow-up; Last Action = the latest completed task or stage move until upc-013's timeline.
@@ -1043,6 +1043,12 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-026 — University document centre
+- **Status (2026-10-09):** built on `feature/upc-026` under `DEC-SCOPE-139`, with migration `0124_university_documents`, API §12BG and
+  RBAC §2.65. Spec: `docs/superpowers/specs/2026-10-09-upc-026-university-documents-design.md`.
+  - Q-26 and the design-level rules are answered by the recommended defaults DC1–DC15 (`NEEDS_CONFIRMATION`): shareable by default for
+    the catalogue-style kinds, internal for MoU / partnership agreement / contact documents; the commission agreement is always internal
+    and stripped server-side for roles without commission access; PDF, DOCX, XLSX, PPTX, JPEG, PNG up to 20 MB; append-only versions.
+  - Counselors read the shareable slice via upc-030; deleting documents is not in this item.
 - **Business requirement:** §28 (12 document kinds; "everything related to that university in one place").
 - **Existing behavior:** none.
 - **Expected behavior:**

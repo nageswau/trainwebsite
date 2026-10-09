@@ -1215,7 +1215,20 @@ Consent is the gate to employer visibility (R4, R12). The routes carry no user i
 | `placement_team`, `placement_manager`, `super_admin`, `hr_team` | no change: the candidate master (§2.48) already shows opted-in students and returns `404` after an opt-out | the pool | `rec-010` |
 | every other role (staff, `overseas_student`, admins) | `/account/placement-pool*` → `403` | — | `rec-010` |
 
-### 2.65 Partnership tasks + follow-ups *(net-new, added 2026-10-09 — `DEC-SCOPE-139`, `upc-020`)*
+### 2.65 University documents *(net-new, added 2026-10-09 — `DEC-SCOPE-139`, `upc-026`)*
+
+Enforced inline in `api/university_documents.py` + `services/university_documents.py` (the University Master's `require_reader`, then
+the per-role slice, then `can_manage_documents`). The commission agreement is stripped server-side by `can_see_commission` (U2). Audit and
+logs carry ids only.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Read a university's documents + the Documents menu | ✅ all | ✅ all | shareable only | ✅ all | `403` |
+| See / download the commission agreement | ✅ | ✅ | `404` (never listed) | ✅ | `403` |
+| Upload, new version, edit title / sharing | own universities (primary/backup) | unowned + team universities | `403` | ✅ all | `403` |
+| Delete | — (not in this item, DC9) | — | — | — | — |
+
+### 2.66 Partnership tasks + follow-ups *(net-new, added 2026-10-09 — `DEC-SCOPE-140`, `upc-020`)*
 
 Every partnership reader reads every task (TK8, the "a manager reads every university" convention). Writes are for the assignee or the
 assignee's reporting head (TK11); adding needs the university edit scope (upc-006's `can_edit_contacts`). Auto-tasks are written by the

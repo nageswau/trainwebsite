@@ -55,6 +55,7 @@ ROLE_REFUSALS = {
     "can_move_stage": "Only the university's partnership managers or their head can change its stage",
     "can_reopen": "Only a partnership head can reopen a lost university",
     "can_edit_contacts": "Only the university's partnership managers can edit its contacts",
+    "can_manage_documents": "Only the university's partnership managers can manage its documents",
 }
 TEAM_REFUSAL = "This university belongs to another partnership team"
 OVERRIDE_ROLES = frozenset({"partnership_head", "super_admin"})  # upc-004 UD2: may add a duplicate, with a reason
@@ -103,6 +104,7 @@ _ACTION_ROLES = {
     "can_reopen": ASSIGN_ROLES,
     "can_move_stage": STAGE_ROLES,
     "can_edit_contacts": CONTACT_ROLES,
+    "can_manage_documents": CONTACT_ROLES,  # upc-026 DC8: the contacts rule
 }
 
 

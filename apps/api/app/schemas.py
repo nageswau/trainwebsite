@@ -6915,6 +6915,7 @@ class UniversityPermissions(BaseModel):
     can_move_stage: bool  # upc-007 PS5
     can_reopen: bool  # upc-007 PS6
     can_edit_contacts: bool  # upc-006 CT5
+    can_manage_documents: bool  # upc-026 DC8
 
 
 class UniversityRow(BaseModel):
@@ -7362,7 +7363,7 @@ class VisitOptionPage(BaseModel):
     total: int
 
 
-# --- upc-020 (DEC-SCOPE-139, spec §3): partnership tasks and follow-ups ----------------------------------------------------------
+# --- upc-020 (DEC-SCOPE-140, spec §3): partnership tasks and follow-ups ----------------------------------------------------------
 PartnershipTaskKind = Literal["follow_up", "task"]  # = partnership_task_rules.KINDS
 PartnershipTaskPriority = Literal["high", "medium", "low"]  # = partnership_task_rules.PRIORITIES
 PartnershipTaskBand = Literal["overdue", "today", "tomorrow", "upcoming", "open", "done", "cancelled"]  # TK13 (+ every open item)
@@ -8566,3 +8567,23 @@ class CandidateSkillCreate(CandidateSkillUpdate):
 class CandidateSkillStatusChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
     status: Literal[CANDIDATE_SKILL_STATUSES]
+
+
+# upc-026 (DEC-SCOPE-139): the document centre. Uploads are multipart (the route validates its form fields with the same rules); the
+# metadata PATCH is JSON. DC11: a title is 2-200 characters after trimming.
+UNIVERSITY_DOCUMENT_TITLE_MESSAGE = "Enter a title of 2-200 characters"
+
+
+def university_document_title(value: str) -> str:
+    value = value.strip()
+    if not 2 <= len(value) <= 200:
+        raise PydanticCustomError("document_title", UNIVERSITY_DOCUMENT_TITLE_MESSAGE)
+    return value
+
+
+class UniversityDocumentUpdate(BaseModel):
+    """PATCH: omitted = unchanged; null fails (title and shareable are required values)."""
+
+    model_config = ConfigDict(extra="forbid")
+    title: Annotated[str, AfterValidator(university_document_title)] = None
+    shareable: StrictBool = None

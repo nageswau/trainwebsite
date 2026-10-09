@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import BdmStageHistory from "@/components/BdmStageHistory";
 import PartnershipTasksPanel from "@/components/PartnershipTasksPanel";
 import UniversityFollowUp from "@/components/UniversityFollowUp";
+import UniversityDocuments from "@/components/UniversityDocuments";
 import UniversityStagePanel from "@/components/UniversityStagePanel";
 import { serverApi } from "@/lib/api";
 import UniversityPage from "@/app/partnership/universities/[id]/page";
@@ -15,7 +16,7 @@ const university = {
   id: ID, university_code: "UNV-000001", name: "ABC", city: "London", country: { name: "United Kingdom", region: "UK" }, active: true,
   catalogue_visible: false, course_levels: [], popular_programs: [], rankings: [], application_count: 0, overview: "",
   relationship_strength: null, linked_bdm_organizations: [], // upc-006 / upc-004 fields
-  permissions: { can_edit: true, can_assign: false, can_publish: false, can_deactivate: false, can_edit_contacts: false, can_move_stage: true, can_reopen: false },
+  permissions: { can_edit: true, can_assign: false, can_publish: false, can_deactivate: false, can_edit_contacts: false, can_manage_documents: true, can_move_stage: true, can_reopen: false },
   pipeline: { stage: "interested", stage_label: "Interested", column: "interested", column_label: "Interested", changed_at: "2026-10-08T10:00:00Z", lost: null, stages: [] },
   follow_up: { // upc-020 TK14/TK15
     next_action: { id: "t1", title: "Follow-up call", due_on: "2026-09-18", priority: "high", band: "upcoming", assignee: { id: "p1", full_name: "Rahul", active: true } },
@@ -23,6 +24,7 @@ const university = {
   },
 };
 const history = { items: [], total: 0, limit: 20, offset: 0 };
+const documents = { items: [{ id: "d1" }], total: 1, limit: 200, offset: 0 };
 
 beforeEach(() => {
   vi.mocked(serverApi).mockReset();
@@ -35,6 +37,7 @@ describe("upc-007 university detail page", () => {
       if (p.includes("/stage-history")) return history as never;
       if (p.includes("/contacts")) return { items: [], total: 0, limit: 50, offset: 0 } as never; // upc-006
       if (p.includes("/partnership/visits")) return { items: [], total: 0, limit: 5, offset: 0 } as never; // upc-010
+      if (p.includes("/documents")) return documents as never; // upc-026
       return { university } as never;
     });
     const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
@@ -48,6 +51,9 @@ describe("upc-007 university detail page", () => {
     expect(tree.find((el) => el.type === UniversityFollowUp)!.props.followUp).toEqual(university.follow_up);
     const hist = tree.find((el) => el.type === BdmStageHistory)!.props;
     expect(hist).toMatchObject({ orgId: ID, initial: history, version: 0, url: `/api/v1/partnership/universities/${ID}/stage-history` });
+    // upc-026: the Documents section, read beside the university
+    expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/universities/${ID}/documents`);
+    expect(tree.find((el) => el.type === UniversityDocuments)!.props).toEqual({ universityId: ID, documents: documents.items, canManage: true });
   });
 
   it("a failed history read still shows the page, with Try again in the section", async () => {
@@ -56,6 +62,7 @@ describe("upc-007 university detail page", () => {
       if (p.includes("/stage-history")) throw new Error("down");
       if (p.includes("/contacts")) return { items: [], total: 0, limit: 50, offset: 0 } as never;
       if (p.includes("/partnership/visits")) return { items: [], total: 0, limit: 5, offset: 0 } as never;
+      if (p.includes("/documents")) return documents as never;
       return { university } as never;
     });
     const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
