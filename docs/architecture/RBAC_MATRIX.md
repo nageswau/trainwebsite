@@ -1389,6 +1389,12 @@ edit and cancel are for the event's owner or creator (CL7).
 | `super_admin` | read everyone's calendar or any partnership employee's; read events (no writes) | all | `upc-011` |
 | `overseas_admin` and every other role | `403` | — | `upc-011` |
 
+### 2.79 Resume search *(added 2026-10-09 — `DEC-SCOPE-153`, `rec-014`)*
+
+No new route or role: `text` is a field of §2.77's search, so §2.77's roles and pool apply unchanged. Resume snippets therefore reach
+`placement_team`, `placement_manager`, `super_admin` and `hr_team` (read), who may already open the resume itself (rec-009); every other
+role is `403` before the body is read.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

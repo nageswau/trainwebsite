@@ -3642,3 +3642,14 @@ Design spec: `docs/superpowers/specs/2026-10-09-rec-013-find-candidates-design.m
   - Error: "Unable to search candidates." with Retry.
 - **Layout:** on phones the facets stack above the cards; nothing scrolls sideways.
 - **Candidate detail:** the calls and messages cards sit in a `#contact` section.
+
+## rec-014 addendum (2026-10-09, `DEC-SCOPE-153`) — Resume search on Find Candidates
+
+Design spec: `docs/superpowers/specs/2026-10-09-rec-014-resume-full-text-search-design.md` §5.
+- **Form:** a "Resume search" box first ("Words anywhere in the candidate's latest resume — job titles, certifications, projects. Use
+  "quotes" for a phrase."); Enter or "Search candidates" runs it, alone or with the skills; the URL keeps it as `q`.
+- **Cards:** "From the resume" with the matched words in `<mark>`.
+- **States:** before any skill or words: "Add a skill or a resume search to search every candidate in the pool."; only common words: the
+  server's notice in place of "No candidates match…".
+- **Intro:** "…or by words in their resume…".
+
