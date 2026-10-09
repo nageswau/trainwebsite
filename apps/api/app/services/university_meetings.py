@@ -1,4 +1,4 @@
-"""upc-009 (DEC-SCOPE-143, spec §1, §3): university meetings -- who reads, schedules and acts, the §7 record, the stage advance, the
+"""upc-009 (DEC-SCOPE-144, spec §1, §3): university meetings -- who reads, schedules and acts, the §7 record, the stage advance, the
 follow-ups, the four lists and output.
 
 Functions only; nothing here commits -- the route owns the transaction. Every partnership reader reads every meeting (MG14); only the

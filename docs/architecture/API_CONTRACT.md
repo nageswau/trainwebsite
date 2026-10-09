@@ -2158,9 +2158,29 @@ changed, actor, created_at}]}`.
 | `POST /partnership/agreements/{id}/status` | `{from_status, to_status, note?}`: stale `from_status` `409 status_changed`; a move outside AG5 `409`; `approved` by a manager `403`; `signed` without document + both signatories `422`, lost university `409`, overlapping signed/active agreement of the same type `409 agreement_overlap`. Signing advances the university to Agreement Signed and marks the renewed predecessor Renewed |
 | `POST /partnership/agreements/{id}/renew` | `{start_date, expiry_date, renewal_date?}` on a signed/active agreement without a renewal (else `409`); dates `422`. `201 {agreement}` (a new draft with `previous`) |
 
-## 12BK. University meetings (`upc-009`) — addendum, 2026-10-09
+## 12BK. Expected timeline + milestone tracker (`upc-008`) — addendum, 2026-10-09
 
-- **Basis:** `DEC-SCOPE-143` (MG1–MG16, Q-12). Design spec `docs/superpowers/specs/2026-10-09-upc-009-university-meetings-design.md` §3. Migration `0128`.
+`DEC-SCOPE-143`; design spec `docs/superpowers/specs/2026-10-09-upc-008-partnership-timeline-design.md` §3. Migration
+`0128_university_milestones`. Readers: every university reader (`partnership_manager` with a profile, `partnership_head`,
+`overseas_admin` of the overseas division, `super_admin`); other roles `403`. Writers: `can_edit_timeline` on the university (the stage
+rule: primary/backup manager, the head in write scope, super_admin; `403` role/team, `409` inactive). Every write locks the university
+row, changes only the fields sent (an equal value is not a change), writes an audit row only when something changed
+(`university.milestone_updated`: kind, field names, target date from/to and `was_delayed`; `university.expected_updated`: field names),
+one commit. No ETags or idempotency keys: a repeated PATCH is a no-op.
+A milestone is `{kind, label, target_date, achieved_on, achieved_by: manual|auto|null, auto_source: stage|agreement|application|admission|
+null, status: done|in_progress|pending|delayed}` (Q-11, computed in IST, never stored). The university gains `expected:
+{target_partnership_date, expected_month (YYYY-MM), expected_quarter (YYYY-Qn), expected_intake, expected_agreement_date,
+expected_recruitment_start}` and `permissions.can_edit_timeline`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/universities/{id}/milestones` | `{items (13, source order), today, can_edit}`. Unknown university `404` |
+| `PATCH /partnership/universities/{id}/milestones/{kind}` | JSON `{target_date?, achieved_on?}` (null clears; at least one field; unknown fields `422`); unknown `kind` `422`; `achieved_on` after today (IST) `422`. `200` the full page (statuses depend on each other) |
+| `PATCH /partnership/universities/{id}/expected` | JSON `{target_partnership_date?, expected_intake? (≤ 80, blank → null), expected_agreement_date?, expected_recruitment_start?}`; at least one field; unknown fields (incl. the derived month/quarter) `422`. `200 {university}` |
+
+## 12BL. University meetings (`upc-009`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-144` (MG1–MG16, Q-12). Design spec `docs/superpowers/specs/2026-10-09-upc-009-university-meetings-design.md` §3. Migration `0129`.
 - **Common rules:** readers are `partnership_manager` (with a profile), `partnership_head` and `super_admin`; every other role → `403`
   before anything is read. A missing meeting → `404` "Meeting not found". Writes lock (complete: the university, then the meeting;
   edit / cancel: the meeting), then check the actor (the responsible employee or the scheduler; otherwise `403`, logged with ids only),

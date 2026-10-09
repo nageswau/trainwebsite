@@ -532,10 +532,17 @@ Common conventions:
 - **Edge cases:** a target date moved after it was delayed (history kept?).
 - **Regression risks:** none.
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-09):** built on `feature/upc-008` under `DEC-SCOPE-143`, with migration `0128_university_milestones`, API §12BK and
+  RBAC §2.69. Spec: `docs/superpowers/specs/2026-10-09-upc-008-partnership-timeline-design.md`.
+  - Q-10 (month and quarter derived from the target partnership date, calendar quarters) and Q-11 (delayed = target before today in IST,
+    not achieved, no grace days) are answered by recommended defaults (MS3/MS8, `NEEDS_CONFIRMATION`).
+  - The catalogue is the template for every university and rows are stored only once a date is recorded (MS2). Proposal, Signed
+    (upc-014), First Application and First Admission complete themselves on read; Meeting waits for upc-009. The edge case is answered:
+    a moved target keeps its history in the audit log (MS7).
 
 ### upc-009 — Meetings
-- **Status (2026-10-09):** built on `feature/upc-009` under `DEC-SCOPE-143`, with migration `0128_university_meetings`, API §12BK and
-  RBAC §2.69. Spec: `docs/superpowers/specs/2026-10-09-upc-009-university-meetings-design.md`.
+- **Status (2026-10-09):** built on `feature/upc-009` under `DEC-SCOPE-144`, with migration `0129_university_meetings`, API §12BL and
+  RBAC §2.70. Spec: `docs/superpowers/specs/2026-10-09-upc-009-university-meetings-design.md`.
   - Q-12 is answered by the recommended default (MG12, `NEEDS_CONFIRMATION`): the next meeting date creates the follow-up "Schedule the
     next meeting", not a draft meeting. Completing a meeting moves the stage to Meeting Completed when earlier (MG13).
 - **Business requirement:** §7 (19 fields; 12 meeting types).

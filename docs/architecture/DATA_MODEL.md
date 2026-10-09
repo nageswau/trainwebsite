@@ -1691,7 +1691,26 @@ status, due_on)` and the partial unique `uq_partnership_tasks_open_rule (univers
 - Commission is not stored here (upc-016). Courses/countries are validated on write; a JSON id that later disappears is skipped on output.
 - Agreements and events are not deleted in this item; `downgrade()` refuses while any agreement exists.
 
-**Addendum, 2026-10-09 (`upc-009`, `DEC-SCOPE-143` — University meetings):** `university_meeting_code_seq` (`UMT-000001`);
+## Expected timeline + milestones (`upc-008`, `DEC-SCOPE-143`; migration `0128_university_milestones`, after `0127_university_agreements`)
+
+**`universities` gains (§5, all nullable, no backfill):** `target_partnership_date` date, `expected_intake` varchar(80),
+`expected_agreement_date` date, `expected_recruitment_start` date. Expected month and quarter are derived from `target_partnership_date`
+on output (Q-10), never stored.
+
+**`university_milestones` columns:**
+- `id`, `university_id` → `universities` (FK RESTRICT), `kind` varchar(40) (CHECK: the 13 §6 keys, `app/partnership_milestones.py`),
+  `target_date` date (nullable), `achieved_on` date (nullable), `updated_by_user_id` → `users` (FK RESTRICT), timestamps.
+
+**Constraints and indexes:** `ck_university_milestones_kind`; `uq_university_milestones_kind (university_id, kind)` (also the read path).
+
+**Design notes:**
+- Sparse: a row exists only once someone records a date; the catalogue is the template for every university (MS2).
+- Status (done / in progress / pending / delayed) is computed in IST on read (Q-11), never stored.
+- Proposal, Signed, First Application and First Admission are derived on read from `university_stage_history`, `university_agreements`,
+  `overseas_applications` and `application_status_history` (MS4/MS5); a recorded `achieved_on` wins over the derived date.
+- `downgrade()` refuses while any milestone row or expected value exists.
+
+**Addendum, 2026-10-09 (`upc-009`, `DEC-SCOPE-144` — University meetings):** `university_meeting_code_seq` (`UMT-000001`);
 `university_meetings` (`code` unique; FK `universities` RESTRICT; `contact_id` FK `university_contacts` SET NULL with the copied
 `contact_name` / `contact_designation`; `meeting_type` CHECK the 12 §7 values; `starts_at`; `mode` CHECK online / offline; `location` ≤ 200;
 `meeting_url` ≤ 500; `agenda`, `notes`, `discussion_points`, `decisions`; `next_action` ≤ 200 with `next_action_due_on` (both or neither);
@@ -1700,4 +1719,4 @@ completed / cancelled; `completed_at` / `cancelled_at` + `cancel_reason` set exa
 completed; timestamps; indexes `(university_id, starts_at)`, `(status, starts_at)`, `(responsible_user_id)`).
 `university_meeting_participants` (one contact — FK CASCADE — or one user per row; unique per meeting). `university_meeting_events`
 (append-only: scheduled / edited / rescheduled with old and new start / completed / cancelled with reason; `position` identity). No
-backfill. **Migration `0128_university_meetings`**; `downgrade()` refuses while any meeting exists (API §12BK).
+backfill. **Migration `0129_university_meetings`**; `downgrade()` refuses while any meeting exists (API §12BL).

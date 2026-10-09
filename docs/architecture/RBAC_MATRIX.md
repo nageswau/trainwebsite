@@ -1267,7 +1267,18 @@ Audit and logs carry ids, the MoU number, statuses and field names only.
 | Approve | `403` | unowned + team universities | `403` | ✅ all | `403` |
 | Delete | — (not in this item, AG16) | — | — | — | — |
 
-### 2.69 University meetings *(net-new, added 2026-10-09 — `DEC-SCOPE-143`, `upc-009`)*
+### 2.69 University expected timeline + milestones *(net-new, added 2026-10-09 — `DEC-SCOPE-143`, `upc-008`)*
+
+Enforced inline in `api/partnership_milestones.py` (`require_reader`, then the University Master's `can_edit_timeline`, the upc-007 stage
+rule). Milestones and expected dates carry no commission data. Audit and logs carry ids, kinds, field names and dates only.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Read the expected timeline and milestones | ✅ all | ✅ all | ✅ all (read only) | ✅ all | `403` |
+| Edit expected dates, milestone target / achieved dates | own universities (primary/backup) | unowned + team universities | `403` | ✅ all | `403` |
+| Inactive university | `409` for every writer | | | | |
+
+### 2.70 University meetings *(net-new, added 2026-10-09 — `DEC-SCOPE-144`, `upc-009`)*
 
 Every partnership reader reads every meeting (MG14, the "a manager reads every university" convention). Scheduling needs the university
 edit scope (upc-006's `can_edit_contacts`); edit, reschedule, complete and cancel are for the responsible employee or the scheduler

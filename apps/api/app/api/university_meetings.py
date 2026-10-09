@@ -1,4 +1,4 @@
-"""upc-009 (DEC-SCOPE-143, spec §3): university meetings -- the four lists, schedule, read, edit/reschedule, complete and cancel.
+"""upc-009 (DEC-SCOPE-144, spec §3): university meetings -- the four lists, schedule, read, edit/reschedule, complete and cancel.
 
 Every write is one transaction: the row locks (university then meeting, services.university_meetings.load_for_write), the actor check,
 the change, the history and audit rows, the stage advance and upc-020 follow-ups, one commit here, then a structured log (ids only). The

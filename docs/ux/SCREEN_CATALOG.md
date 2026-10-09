@@ -3293,7 +3293,7 @@ Design spec `docs/superpowers/specs/2026-10-09-upc-020-partnership-tasks-design.
 - **Nav:** the manager menu's Follow-ups & Tasks goes live; the head and super admin navs gain it. **Responsive:** single column, no
   side-scroll at 390 px.
 
-## upc-009 addendum (2026-10-09, `DEC-SCOPE-143`) — Meetings
+## upc-009 addendum (2026-10-09, `DEC-SCOPE-144`) — Meetings
 
 Design spec `docs/superpowers/specs/2026-10-09-upc-009-university-meetings-design.md` §4. Visual-reference mapping: None — not inspected. Do not claim parity.
 
@@ -3491,3 +3491,23 @@ Design spec `docs/superpowers/specs/2026-10-09-upc-014-university-agreements-des
   status badge + expiry text, period, exclusivity), soonest expiry first; GET filter form (status incl. Expiring/Expired, type, search);
   URL paging. **States:** "No agreements recorded yet." / "No agreements match these filters." / past-the-end link; 403 → access card.
 - **Responsive:** cards and form grids stack; the menu table becomes labelled cards below 640 px; no side-scroll at 390 px.
+
+## upc-008 addendum (2026-10-09, `DEC-SCOPE-143`) — Expected timeline + milestone tracker
+
+Design spec `docs/superpowers/specs/2026-10-09-upc-008-partnership-timeline-design.md` §4. Visual-reference mapping: None — not inspected. Do not claim parity.
+
+- **Route:** `/partnership/universities/[id]` gains a **Partnership timeline** section after the stage history, for every university
+  reader (overseas_admin read only). **Expected timeline** (§5): target partnership date, expected month and quarter (derived, e.g.
+  "November 2026", "Q4 2026 (Oct–Dec)"), expected intake, expected agreement date, expected student recruitment start date ("Not set" when
+  empty); with `can_edit_timeline` an **Edit expected timeline** form (four fields, Save / Cancel, Escape closes) that refreshes the page.
+  **Milestones** (§6): a table of the 13 milestones (Milestone, Target date, Achieved, Status). Status is a text badge — Done, In progress
+  (blue), Pending (amber), Delayed (red) — and a delayed row is also tinted, with an "n milestones delayed" line above the table (AC1;
+  never colour alone). Auto-achieved dates say "(Auto, from the stage move / signed agreement / first application / first admission)".
+  With `can_edit_timeline`, each row has **Edit** (`aria-label` "Edit <milestone>") opening a form under the table (target date, achieved
+  date with `max` = today in IST, a hint when blank keeps the automatic date). Saving replaces the table, shows "<Milestone> saved." in
+  `p[role=status]` (rendered only when shown) and returns focus to Edit.
+- **States:** server-rendered; a failed first read shows "Unable to load the milestones." with **Try again**; saving shows "Saving…" and
+  ignores a second click; API refusals (`403` / `409` / network) in `.form-error[role=alert]` with the form and typed values kept; a 422
+  sits under its field.
+- **Responsive:** at 390 px the milestone table sizes to its content (Status stays on screen) and the expected-timeline facts keep a
+  readable value column; no page-level side-scroll (QA8-01..04).

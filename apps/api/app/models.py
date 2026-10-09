@@ -36,6 +36,7 @@ from app.partnership_meeting_types import EVENTS as UNIVERSITY_MEETING_EVENTS
 from app.partnership_meeting_types import MODES as UNIVERSITY_MEETING_MODES
 from app.partnership_meeting_types import STATUSES as UNIVERSITY_MEETING_STATUSES
 from app.partnership_meeting_types import TYPES as UNIVERSITY_MEETING_TYPES
+from app.partnership_milestones import MILESTONE_KEYS as UNIVERSITY_MILESTONE_KEYS
 from app.partnership_stages import FIRST_STAGE as UNIVERSITY_FIRST_STAGE
 from app.partnership_stages import STAGE_KEYS as UNIVERSITY_STAGE_KEYS
 from app.partnership_task_rules import KINDS as PARTNERSHIP_TASK_KINDS
@@ -930,6 +931,11 @@ class University(Base, TimestampMixin):
     lost_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     lost_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     relationship_strength: Mapped[str | None] = mapped_column(String(12), nullable=True)  # upc-006 CT11: set by hand (CT1)
+    # upc-008 (§5, MS8/MS9): the expected timeline. Expected month and quarter are derived from target_partnership_date (Q-10).
+    target_partnership_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    expected_intake: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    expected_agreement_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    expected_recruitment_start: Mapped[date | None] = mapped_column(Date, nullable=True)
     country = relationship("Country")
 
     @validates("name")
@@ -995,6 +1001,26 @@ class UniversityImportBatch(Base, TimestampMixin):
     duplicate_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     invalid_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     results_json: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+
+
+UNIVERSITY_MILESTONE_CHECKS = {"ck_university_milestones_kind": _one_of("kind", UNIVERSITY_MILESTONE_KEYS, nullable=False)}
+
+
+class UniversityMilestone(Base, TimestampMixin):
+    """upc-008 (DEC-SCOPE-143, MS2): a university's recorded dates for one §6 milestone. Sparse: a row exists only once a date was
+    recorded (the catalogue is the template). Status is never stored (Q-11, computed by services/partnership_milestones)."""
+
+    __tablename__ = "university_milestones"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_MILESTONE_CHECKS.items()),
+        UniqueConstraint("university_id", "kind", name="uq_university_milestones_kind"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"))
+    kind: Mapped[str] = mapped_column(String(40))
+    target_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    achieved_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
 
 
 class UniversityStageHistory(Base):
@@ -1190,7 +1216,7 @@ class PartnershipTask(Base, TimestampMixin):
     cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
-# upc-009 (DEC-SCOPE-143, spec §2): university meetings (§7). Migration 0128 repeats these checks (test_upc_009_migration keeps them
+# upc-009 (DEC-SCOPE-144, spec §2): university meetings (§7). Migration 0129 repeats these checks (test_upc_009_migration keeps them
 # identical). The outcome fields are written only when the meeting is completed (MG10-MG12).
 UNIVERSITY_MEETING_CODE_SEQ = Sequence("university_meeting_code_seq", metadata=Base.metadata)
 UNIVERSITY_MEETING_CHECKS = {
@@ -1213,7 +1239,7 @@ def _university_meeting_checks(*names: str) -> tuple[CheckConstraint, ...]:
 
 
 class UniversityMeeting(Base, TimestampMixin):
-    """upc-009 (DEC-SCOPE-143): a meeting with a university (§7). Never deleted: cancelled instead. The contact person's name and
+    """upc-009 (DEC-SCOPE-144): a meeting with a university (§7). Never deleted: cancelled instead. The contact person's name and
     designation are copied when set (MG5), so the record keeps them after the contact changes or is deleted (FK SET NULL)."""
 
     __tablename__ = "university_meetings"

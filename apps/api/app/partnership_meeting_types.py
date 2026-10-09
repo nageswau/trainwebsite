@@ -1,4 +1,4 @@
-"""upc-009 (DEC-SCOPE-143, spec MG1/MG4/MG9): university meeting values -- the §7 meeting types (EVID-020 L288-L312, source order), the
+"""upc-009 (DEC-SCOPE-144, spec MG1/MG4/MG9): university meeting values -- the §7 meeting types (EVID-020 L288-L312, source order), the
 Online/Offline mode, statuses and history events.
 
 Constants only, with no app imports, so the model CHECKs, the migration's parity test, the service and the schemas share one list. Labels
