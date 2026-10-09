@@ -6219,7 +6219,8 @@ RBAC §2.79. Spec: `docs/superpowers/specs/2026-10-09-upc-018-student-funnel-per
 job titles, certifications and projects"); `DEC-SCOPE-116` R7 (Postgres `tsvector`); `DEC-SCOPE-150` (rec-012: `extracted_text` on the
 resume row); `DEC-SCOPE-151` (rec-013: the search endpoint, pool, roles, facets); `RECRUITER_CRM_BACKLOG.md` §rec-014 AC1–AC2.
 
-**Status:** FT1–FT10 are the recommended answers, applied under the owner's standing instruction for the build session ("proceed with the
+**Status:** **MERGED** to `main` as PR #204 @ `dd32255d` (2026-10-09); the next rec item takes `0138`, `DEC-SCOPE-155`, §12BW and §2.81
+(re-check `main`). FT1–FT10 are the recommended answers, applied under the owner's standing instruction for the build session ("proceed with the
 recommended answers; ask only if genuinely blocking"). Every row is **UNVERIFIED** (`NEEDS_CONFIRMATION` at sign-off). Migration
 `0137_resume_search` (after upc-011's `0136`), API contract §12BV, RBAC §2.80. Drafted as 0136 / 152 / §12BT / §2.78; upc-011 (0136 / 152)
 and upc-018 (153 / §12BU / §2.79) merged first. Spec: `docs/superpowers/specs/2026-10-09-rec-014-resume-full-text-search-design.md`.
