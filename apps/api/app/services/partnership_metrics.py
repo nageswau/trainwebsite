@@ -1,4 +1,4 @@
-"""Partnership metrics (backlog Appendix B). upc-018 owns the module; upc-021 (DEC-SCOPE-144, spec TG8-TG11) adds the monthly target actuals.
+"""Partnership metrics (backlog Appendix B). upc-018 owns the module; upc-021 (DEC-SCOPE-146, spec TG8-TG11) adds the monthly target actuals.
 
 Every actual is read from append-only facts -- `university_assignment_history`, `university_stage_history`, `university_agreement_events`
 -- and credited to the university's primary manager *at the time of the event*, so a closed month never changes (AC2: past months are

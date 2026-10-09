@@ -1,4 +1,4 @@
-"""upc-021 (DEC-SCOPE-144, spec §4): monthly partnership targets vs actual (EVID-020 §21).
+"""upc-021 (DEC-SCOPE-146, spec §4): monthly partnership targets vs actual (EVID-020 §21).
 
 Checks run role → scope → write (the partnership convention): a role with no access is a 403, a manager outside the caller's scope a 404.
 A manager reads only their own figures; a head reads and sets their direct reports'; super_admin all and, alone, past months (TG3). The

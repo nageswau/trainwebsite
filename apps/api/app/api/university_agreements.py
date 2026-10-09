@@ -21,6 +21,7 @@ from app.models import UNIVERSITY_AGREEMENT_TYPES, OverseasCourse, University, U
 from app.schemas import UniversityAgreementIn, UniversityAgreementMove, UniversityAgreementRenew, UniversityAgreementUpdate
 from app.services import partnership_universities as unis
 from app.services import university_agreements as svc
+from app.services import university_commission as commission
 from app.services.bdm_travel import india_today
 
 router = APIRouter(prefix="/partnership", tags=["partnership-agreements"])
@@ -194,6 +195,7 @@ async def renew_agreement(agreement_id: UUID, payload: UniversityAgreementRenew,
     db.add(renewal)
     await db.flush()
     svc.record(db, user, renewal, "renew", None, note=f"Renewal of {a.mou_number}")
+    await commission.copy_terms(db, user, a, renewal)  # upc-016 CM10
     await db.commit()
     svc.log("university_agreement_renewed", user, renewal, previous_id=str(a.id))
     return {"agreement": await svc.agreement_out(db, user, renewal)}

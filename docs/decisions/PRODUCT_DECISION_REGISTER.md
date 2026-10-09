@@ -5855,14 +5855,84 @@ timeline" section on `/partnership/universities/[id]`. upc-015 reads the delayed
 expected agreement date; upc-009 adds the Meeting auto-completion.
 **New Feature ID authorized:** `upc-008`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-008.
 
-### DEC-SCOPE-144 — Monthly partnership targets vs actual (`upc-021`)
+### DEC-SCOPE-144 — Commercial / commission terms, restricted (`upc-016`)
+
+**Evidence:** `EVID-020` §15 (L515–L543: 9 terms; "Commission payable after visa approval + student enrolment"; Finance manages
+receipts), §32 ("💰 Commercial Terms", L1080), L1129 ("Commissions should not be seen by anyone.");
+`UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U2 + U4 (`EXPLICIT_APPROVAL`, 2026-10-08), §3.2 Q-18, Q-19 and §4 upc-016.
+**Status:** Q-18, Q-19 and CM1–CM15 are recommended answers applied under the owner's standing instruction for the build session
+("proceed with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off.
+Migration `0129_university_commission_terms`, API contract §12BL, RBAC §2.70. Spec: `docs/superpowers/specs/2026-10-09-upc-016-commission-terms-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| CM1 | Q-19 triggers | Student enrolment; Visa approval + enrolment; Tuition paid. Required. (Expected counting only once met: upc-019) |
+| CM2 | Q-18 rate | Exactly one of commission % (0 < % ≤ 100, 2 dp) or fixed amount (> 0, 2 dp) per term; both/neither `422` |
+| CM3 | Q-18 currency | Required, from the project list (INR, USD, GBP, EUR, CAD, AUD, NZD); no FX; others `NEEDS_CONFIRMATION` |
+| CM4 | Q-18 precedence | For upc-019: a programme-specific term beats an all-programmes one; a country-specific beats all-countries |
+| CM5 | Shape | Terms per agreement; eligible programmes = that university's course ids (empty = all); eligible countries (empty = all); ≤ 20 terms |
+| CM6 | Fields | The 9 §15 terms (conditions / payment terms ≤ 2000, payment timeline ≤ 500) |
+| CM7 | Readers (U2) | `can_see_commission`: super_admin, partnership_head, partnership_manager (with profile); every other role `403`, anonymous `401` |
+| CM8 | Writers | The agreement's university `can_manage_agreements` |
+| CM9 | When | While the agreement's terms are editable (draft … negotiation); afterwards `409` (renew to change) |
+| CM10 | Renewal | A renewal copies the agreement's commission terms |
+| CM11 | Delete | Allowed while editable; audited |
+| CM12 | `strip_commission` | `partnership_access.strip_commission(user, payload)` drops `COMMISSION_FIELDS` (`commission_terms`) for non-commission roles; every agreement payload passes through it |
+| CM13 | Audit | `university_commission_term.create/update/delete`: ids, MoU number, field names only — never rates, amounts or texts |
+| CM14 | Menu page | `/partnership/commercial-terms`: every term, trigger / currency / text filters, newest first, paged 50 |
+| CM15 | Concurrency | university → agreement → term locks; the 20-term cap checked under the agreement lock |
+
+**Consequences:** table `university_commission_terms`; routes `/partnership/agreements/{id}/commission-terms[/{term_id}]` and
+`/partnership/commission-terms`; agreements carry `commission_terms` for commission roles only; a "Commission terms (Restricted)" block in
+each agreement card; page `/partnership/commercial-terms`; the manager menu's "Commercial Terms" goes live and the head nav gains it.
+upc-017 adds the course `commission` to `COMMISSION_FIELDS`; upc-019 computes Expected from these terms; Management M3 adds `partner` to
+`COMMISSION_ROLES` when that role exists.
+**New Feature ID authorized:** `upc-016`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-016.
+
+### DEC-SCOPE-145 — University meetings (`upc-009`)
+
+**Evidence:** `EVID-020` §7 (L244–L312: "The Partnership Manager should be able to schedule every interaction", 19 meeting fields, 12
+meeting types); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §4 upc-009 and Q-12.
+**Status:** MG1–MG16, including **Q-12** (a meeting's "Next meeting date" creates a follow-up, not a draft meeting), are the recommended
+answers applied under the owner's standing instruction for the build session ("proceed with the recommended answers; ask only if
+genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. Migration `0130_university_meetings`, API contract
+§12BM, RBAC §2.71. Spec: `docs/superpowers/specs/2026-10-09-upc-009-university-meetings-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| MG1 | Meeting types | The 12 §7 values in source order; "University visit" / "Campus visit" are types only (the approved trip stays upc-010) |
+| MG2 | Meeting ID | `UMT-000001` from `university_meeting_code_seq` |
+| MG3 | Date and time | One `starts_at`, entered in IST; future and within 366 days at scheduling and on reschedule |
+| MG4 | Online/Offline, location, link | `online` / `offline`; location ≤ 200; link ≤ 500, `http(s)` only, typed in; an online meeting without a link is allowed with a `link_missing` warning |
+| MG5 | Contact person + designation | A contact of this university (else `422`); name and designation copied onto the meeting (FK `SET NULL`) |
+| MG6 | University participants | Contacts of this university, ≤ 20; the contact person always attends |
+| MG7 | EduSphere participants | Active partnership managers / heads other than the responsible employee, ≤ 10 |
+| MG8 | Responsible employee | A manager: themselves; a head: themselves or an active direct report |
+| MG9 | Statuses | scheduled → completed (after the start) or cancelled (reason); reschedule = a new start, recorded with old and new times |
+| MG10 | Outcome | Notes / discussion points / decisions (at least one) on completion |
+| MG11 | Next action | Needs a due date; creates a upc-020 follow-up (source `meeting`, priority high) for the responsible employee |
+| MG12 | Q-12 next meeting date | A follow-up "Schedule the next meeting" due on that date (not a draft meeting) |
+| MG13 | Stage | Scheduling → Meeting Scheduled, completing → Meeting Completed, only when earlier; never backwards, lost or inactive |
+| MG14 | Who reads | Partnership managers (with a profile), heads and super_admin read every meeting; others `403` |
+| MG15 | Who acts | Schedule: managers / heads in the university edit scope; edit / complete / cancel: the responsible employee or the scheduler |
+| MG16 | Lists | Upcoming, Awaiting outcome, Completed, Cancelled with counts; "Only my meetings"; university filter |
+
+**Consequences:**
+- `university_meetings`, `university_meeting_participants`, `university_meeting_events` (`0130`); `app/partnership_meeting_types.py`,
+  `services/university_meetings.py`, `api/university_meetings.py` (`/partnership/meetings…`); the stage moves reuse upc-014's
+  forward-only `advance_to`; upc-020 gains `on_meeting_completed` (rules `meeting:<id>` and `meeting:<id>:next`).
+- Pages `/partnership/meetings`, `/new`, `/[id]`, `/[id]/edit`; a Meetings section on `/partnership/universities/[id]`; the manager menu's
+  Meetings goes live; head and super admin nav entries.
+- **New Feature ID authorized:** `upc-009`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-009.
+
+### DEC-SCOPE-146 — Monthly partnership targets vs actual (`upc-021`)
 
 **Evidence:** `EVID-020` §21 (L695–L719: "Management can give the Partnership Manager monthly targets", the seven September KPIs —
 illustrative numbers — and "CRM automatically compares Target vs Actual"); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` U3 (`partnership_head`
 sets targets), §3.2 Q-23, §4 upc-021 and Appendix B T1–T7 / D6, D7, D9, D11, D12.
 **Status:** Q-23 and TG1–TG12 are recommended answers applied under the owner's standing instruction for the build session ("proceed with
 the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off.
-Migration `0129_partnership_targets`, API contract §12BL, RBAC §2.70. Spec: `docs/superpowers/specs/2026-10-09-upc-021-partnership-targets-design.md`.
+Migration `0131_partnership_targets`, API contract §12BN, RBAC §2.72. Spec: `docs/superpowers/specs/2026-10-09-upc-021-partnership-targets-design.md`.
 
 | # | Question | Answer |
 |---|---|---|

@@ -3293,6 +3293,26 @@ Design spec `docs/superpowers/specs/2026-10-09-upc-020-partnership-tasks-design.
 - **Nav:** the manager menu's Follow-ups & Tasks goes live; the head and super admin navs gain it. **Responsive:** single column, no
   side-scroll at 390 px.
 
+## upc-009 addendum (2026-10-09, `DEC-SCOPE-145`) — Meetings
+
+Design spec `docs/superpowers/specs/2026-10-09-upc-009-university-meetings-design.md` §4. Visual-reference mapping: None — not inspected. Do not claim parity.
+
+- **Route:** `/partnership/meetings` — Upcoming / Awaiting outcome / Completed / Cancelled tabs (links, with counts; the view and paging
+  live in the URL), "Only my meetings", "Schedule a meeting" for managers and heads, and the list (meeting ID, university, type, when in
+  IST, mode with "no link yet", contact person, responsible, status; cards below 640 px). **States:** per-view empty text, past-the-end,
+  access card for other roles.
+- **Routes:** `/partnership/meetings/new?university=<id>` and `/partnership/meetings/[id]/edit` — the meeting form: university (fixed or
+  a search picker), responsible employee (heads), meeting type (12), date and time (IST), Online / Offline, location, meeting link (a
+  non-blocking "no link yet" note for an online meeting), contact person with its designation, university participants (the contact
+  person ticked and fixed), EduSphere participants (chips + picker), agenda, notes; on edit a changed time asks for an optional reason.
+  Required-field errors before sending; a `422` under its field.
+- **Route:** `/partnership/meetings/[id]` — the §7 facts, the link warning, Record outcome (notes, discussion points, decisions, next
+  action + due date, next meeting date; offered once the meeting has started) and Cancel meeting (reason) per `permissions`; the outcome
+  with the follow-ups it created; the history (reschedules show old → new time).
+- **Route:** `/partnership/universities/[id]` gains **Meetings** (latest 5, scheduled first; "Schedule a meeting"; "All N meetings").
+- **Nav:** the manager menu's Meetings goes live; the head nav and the super admin nav ("Partnership Meetings") gain it. **Responsive:**
+  single column, no side-scroll at 390 px.
+
 ## rec-024 addendum (2026-10-08, `DEC-SCOPE-131`) — Recruiter follow-ups
 
 Design spec `docs/superpowers/specs/2026-10-08-rec-024-recruiter-follow-ups-design.md` §4.
@@ -3492,7 +3512,26 @@ Design spec `docs/superpowers/specs/2026-10-09-upc-008-partnership-timeline-desi
 - **Responsive:** at 390 px the milestone table sizes to its content (Status stays on screen) and the expected-timeline facts keep a
   readable value column; no page-level side-scroll (QA8-01..04).
 
-## upc-021 addendum (2026-10-09, `DEC-SCOPE-144`) — Targets & Forecast (monthly targets vs actual)
+## upc-016 addendum (2026-10-09, `DEC-SCOPE-144`) — Commercial / commission terms (restricted)
+
+Design spec `docs/superpowers/specs/2026-10-09-upc-016-commission-terms-design.md` §4. Visual-reference mapping: None — not inspected. Do not claim parity.
+
+- **Route:** `/partnership/universities/[id]` — each agreement card gains a **Commission terms** block with a "Restricted" badge, rendered
+  only when the API sends `commission_terms` (partnership roles and super admin; never overseas_admin, counselors, BDMs, agents, the
+  university rep or the public). One row per term: the rate ("15%" or "GBP 1,500"), currency · trigger, "Applies to" (programmes ·
+  countries, or "All programmes · All countries"), conditions, payment timeline, payment terms. With edit rights (agreement still
+  negotiable): **Add commission term**, **Edit**, **Remove** (inline "Yes, remove" confirmation). The form: percentage / fixed amount
+  radio, the value, currency, trigger, payment timeline, conditions, payment terms, eligible programmes checklist, eligible countries chips
+  with a country search. Missing / out-of-range / > 2-decimal values are caught before sending; API refusals in `.form-error[role=alert]`
+  with the form kept; notices in `p[role=status]` (rendered only when shown); buttons disabled while sending; focus returns to Add.
+  **Empty:** "No commission terms recorded yet."
+- **Route:** `/partnership/commercial-terms` (manager menu "Commercial Terms", head nav) — table (university link + code, MoU number +
+  status, commission, trigger, applies to, payment timeline), newest first; GET filter form (trigger, currency, search); URL paging.
+  **States:** "No commission terms recorded yet." / "No commission terms match these filters." / past-the-end link; 403 → access card
+  ("Commission terms access required").
+- **Responsive:** the form grid stacks; the table becomes labelled cards below 640 px; no side-scroll at 820 px or 390 px.
+
+## upc-021 addendum (2026-10-09, `DEC-SCOPE-146`) — Targets & Forecast (monthly targets vs actual)
 
 Design spec `docs/superpowers/specs/2026-10-09-upc-021-partnership-targets-design.md` §5. Visual-reference mapping: None — not inspected. Do not claim parity.
 

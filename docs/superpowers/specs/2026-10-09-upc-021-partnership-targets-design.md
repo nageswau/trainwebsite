@@ -1,7 +1,7 @@
 # upc-021 — Monthly partnership targets vs actual — design
 
 - **Feature:** upc-021 (`docs/delivery/UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §4 upc-021; Appendix B T1–T7; EVID-020 §21, L695–L719)
-- **Decision:** `DEC-SCOPE-144`. Migration `0129_partnership_targets` after `0128_university_milestones`; API §12BL; RBAC §2.70 (numbers
+- **Decision:** `DEC-SCOPE-146`. Migration `0131_partnership_targets` after `0130_university_meetings`; API §12BN; RBAC §2.72 (numbers
   are provisional until merge, the existing re-chain idiom).
 - **Branch:** `worktree-upc-021` from `origin/main` @ `52646217` (upc-008 merged, PR #188); pushed as `feature/upc-021`.
 - **Dependencies:** upc-001 (roles, `partnership_profiles`) and upc-007 (stage history) — merged. upc-014 (agreement events) — merged,
@@ -39,7 +39,7 @@ kept, Q-23). The forecast half of the page is upc-023.
 
 ## 3. Data
 
-`partnership_targets` (migration `0129_partnership_targets`, additive; guarded create; downgrade refuses while rows exist):
+`partnership_targets` (migration `0131_partnership_targets`, additive; guarded create; downgrade refuses while rows exist):
 
 | Column | Type | Notes |
 |---|---|---|
@@ -116,7 +116,7 @@ are neither written nor audited; one commit. Logs carry actor id, month and coun
 2. `services/partnership_metrics.py` `target_actuals(db, manager_ids, month)` — RED tests T1–T7, TG8 attribution, AC2 re-scoring → GREEN.
 3. `services/partnership_targets.py` (rules, sheet, comparison, save) + `api/partnership_targets.py` + schemas — RED scope/rule/audit tests → GREEN.
 4. Web: extract `TargetsEditor`; `lib/partnershipTargets.ts`; the two pages; nav entries — vitest first.
-5. Playwright e2e; docs (DEC-SCOPE-144, API §12BL, RBAC §2.70, DATA_MODEL, SCREEN_CATALOG, backlog status).
+5. Playwright e2e; docs (DEC-SCOPE-146, API §12BN, RBAC §2.72, DATA_MODEL, SCREEN_CATALOG, backlog status).
 
 ## 10. Phase 3 reviews (applied above)
 

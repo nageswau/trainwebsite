@@ -2178,9 +2178,59 @@ expected_recruitment_start}` and `permissions.can_edit_timeline`.
 | `PATCH /partnership/universities/{id}/milestones/{kind}` | JSON `{target_date?, achieved_on?}` (null clears; at least one field; unknown fields `422`); unknown `kind` `422`; `achieved_on` after today (IST) `422`. `200` the full page (statuses depend on each other) |
 | `PATCH /partnership/universities/{id}/expected` | JSON `{target_partnership_date?, expected_intake? (≤ 80, blank → null), expected_agreement_date?, expected_recruitment_start?}`; at least one field; unknown fields (incl. the derived month/quarter) `422`. `200 {university}` |
 
-## 12BL. Monthly partnership targets vs actual (`upc-021`) — addendum, 2026-10-09
+## 12BL. Commercial / commission terms, restricted (`upc-016`) — addendum, 2026-10-09
 
-`DEC-SCOPE-144`; design spec `docs/superpowers/specs/2026-10-09-upc-021-partnership-targets-design.md` §4. Migration `0129_partnership_targets`. Checks run role → scope: a role with no access is `403`, a
+`DEC-SCOPE-144`; design spec `docs/superpowers/specs/2026-10-09-upc-016-commission-terms-design.md` §3. Migration `0129_university_commission_terms`. **Restricted (U2):** readers are the commission
+roles (`partnership_manager` with a profile, `partnership_head`, `super_admin`) for every agreement; every other role `403` (overseas_admin
+included), anonymous `401`. Writers: the agreement's university `can_manage_agreements` (`403` role/team, `409` inactive) while the
+agreement is draft / sent / under review / negotiation (else `409`, CM9). Every write locks the university, then the agreement (then the
+term), writes an audit row `university_commission_term.<create|update|delete>` (ids, MoU number, field names), one commit.
+A term is `{id, agreement_id, commission_percent: "15.00" | null, fixed_amount: "1500.00" | null, currency, trigger, trigger_label,
+conditions, courses: [{id, title, level}], countries: [{id, name}], payment_timeline, payment_terms, created_by, updated_by, created_at,
+updated_at, permissions: {can_edit}}` (empty `courses` / `countries` = all). **§12BJ change (additive):** for the commission roles every
+agreement also carries `commission_terms: [term]`; for any other role the key is absent (`strip_commission`). Renewing an agreement copies
+its terms into the new draft.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/agreements/{id}/commission-terms` | `{items, total, limit, offset}` oldest first, `limit` ≤ 50. Unknown agreement `404` |
+| `POST /partnership/agreements/{id}/commission-terms` | JSON: `currency`, `trigger` and exactly one of `commission_percent` / `fixed_amount` required; `conditions`, `course_ids`, `country_ids`, `payment_timeline`, `payment_terms` optional; unknown fields `422`. % ∉ (0, 100], amount ≤ 0, > 2 decimals, both/neither rate, unknown currency/trigger, another university's course, unknown country → `422`. 21st term `409`. `201 {term}` |
+| `PATCH /partnership/agreements/{id}/commission-terms/{term_id}` | Sent fields only; switching rate kind sends the other as `null`; a merged row breaking the rules `422`. A term of another agreement `404`. `200 {term}` |
+| `DELETE /partnership/agreements/{id}/commission-terms/{term_id}` | `204` |
+| `GET /partnership/commission-terms` | Every term, newest first, each with `agreement: {id, mou_number, agreement_type, type_label, status, effective_status, status_label}` and `university: {id, name, university_code}`; `trigger`, `currency` (else `422`), `q` (MoU number, university name or code), `limit` ≤ 50 |
+
+## 12BM. University meetings (`upc-009`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-145` (MG1–MG16, Q-12). Design spec `docs/superpowers/specs/2026-10-09-upc-009-university-meetings-design.md` §3. Migration `0130`.
+- **Common rules:** readers are `partnership_manager` (with a profile), `partnership_head` and `super_admin`; every other role → `403`
+  before anything is read. A missing meeting → `404` "Meeting not found". Writes lock (complete: the university, then the meeting;
+  edit / cancel: the meeting), then check the actor (the responsible employee or the scheduler; otherwise `403`, logged with ids only),
+  then the state (`409` "This meeting's outcome is already recorded" / "This meeting was cancelled"), then validation (`422`, on the body
+  field where one applies). Bodies refuse unknown keys. Each write adds an audit row `university_meeting.{create,update,complete,cancel}`
+  with ids, code, type, mode, counts and field names (never agenda, notes, discussion points, decisions, next action or reasons).
+- **Item (`{meeting}` envelope):** `{id, code, university {id, name, university_code, city, country}, meeting_type, starts_at, mode
+  (online|offline), status (scheduled|completed|cancelled), responsible, contact {id|null, name, designation}|null, warnings
+  (["link_missing"] while an online meeting has no link), location, meeting_url, agenda, notes, discussion_points, decisions, next_action,
+  next_action_due_on, next_meeting_date, created_by, completed_by, completed_at, cancelled_at, cancel_reason, participants {contacts,
+  employees}, events [{event, old_starts_at, new_starts_at, reason, actor, created_at}], follow_ups [{id, title, due_on, status,
+  assignee}], permissions {can_edit, can_complete, can_cancel}, created_at, updated_at}`. List rows carry the fields up to `warnings`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/meetings` | `view` (`upcoming / awaiting_outcome / completed / cancelled`; omitted = every meeting, scheduled first by start), `university_id`, `mine` (responsible, scheduler or EduSphere participant), `limit`, `offset` → `{items, total, limit, offset, counts {upcoming, awaiting_outcome, completed, cancelled}}`. Counts use every filter but the view. Unknown view → `422` |
+| `POST /partnership/meetings` | Managers and heads. `{university_id, meeting_type, starts_at, mode, location?, meeting_url?, contact_id?, responsible_user_id?, agenda?, notes?, participant_contact_ids? (≤ 20), participant_user_ids? (≤ 10)}` → `201`. Unknown university `422`; outside the edit scope `403`; inactive `409`; a past start or one beyond 366 days `422`; a contact of another university `422`; an employee who is not active partnership staff, or is the responsible employee, `422`; a responsible employee other than the caller or (for a head) an active direct report `422`. Moves the university to Meeting Scheduled when earlier (not lost / inactive). Not idempotent |
+| `GET /partnership/meetings/{id}` | The item |
+| `PATCH /partnership/meetings/{id}` | Scheduled only. Any create field except `university_id`, plus `reschedule_reason?` (≤ 500); a changed `starts_at` is a reschedule (future, ≤ 366 days); a sent null type / start / mode / responsible `422` |
+| `POST /partnership/meetings/{id}/complete` | Once started (`422` before). `{notes?, discussion_points? (≤ 4000), decisions?, next_action? (≤ 200), next_action_due_on?, next_meeting_date?}`; at least one of notes / discussion points / decisions; a next action needs its due date and vice versa; dates today or later (IST). Creates the upc-020 follow-ups and moves the university to Meeting Completed when earlier |
+| `POST /partnership/meetings/{id}/cancel` | `{reason}` (1–1000) |
+
+- **Reused:** the pickers are `GET /partnership/visits/university-options | lead-options | employee-options` (§12AX), the contacts
+  `GET /partnership/universities/{id}/contacts` (§12AQ). **Changed:** none of their shapes; the stage history gains automatic `move`
+  rows with the note "Automatic: meeting UMT-… scheduled/completed", and `partnership_tasks.source = 'meeting'` rows appear.
+
+## 12BN. Monthly partnership targets vs actual (`upc-021`) — addendum, 2026-10-09
+
+`DEC-SCOPE-146`; design spec `docs/superpowers/specs/2026-10-09-upc-021-partnership-targets-design.md` §4. Migration `0131_partnership_targets`. Checks run role → scope: a role with no access is `403`, a
 manager outside the caller's scope `404`. Readers: `partnership_manager` (with a profile; own figures only), `partnership_head` (direct
 reports), `super_admin` (all). Writer: `partnership_head` (direct reports) and `super_admin`. The month is `YYYY-MM` (IST; default the
 current month; malformed `422`). A KPI value is `{key, target, achieved, percent}`: `achieved` is null for Meetings (not tracked until

@@ -1,7 +1,7 @@
 import type { MonthStatus, TargetKpi } from "@/lib/bdmTargets";
 import type { PersonRef } from "@/lib/bdmTravel";
 
-// upc-021 (DEC-SCOPE-144): monthly partnership targets vs actual (§21). The API computes actuals and percent and decides every rule (who
+// upc-021 (DEC-SCOPE-146): monthly partnership targets vs actual (§21). The API computes actuals and percent and decides every rule (who
 // reads, who sets, which months are editable); `editable` only tells the page whether to offer inputs. The month helpers are bdm-016's.
 export type TargetKpiDef = { key: string; label: string; definition: string; tracked: boolean };
 export type TargetValue = { key: string; target: number | null; achieved: number | null; percent: number | null };

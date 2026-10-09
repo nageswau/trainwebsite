@@ -1,9 +1,9 @@
 """upc-021 -- partnership_targets.
 
-Revision ID: 0129_partnership_targets
-Revises: 0128_university_milestones
+Revision ID: 0131_partnership_targets
+Revises: 0130_university_meetings
 
-docs/superpowers/specs/2026-10-09-upc-021-partnership-targets-design.md §3 (DEC-SCOPE-144). Additive: one table; no existing row is read
+docs/superpowers/specs/2026-10-09-upc-021-partnership-targets-design.md §3 (DEC-SCOPE-146). Additive: one table; no existing row is read
 or written. 0001 builds a fresh database from the current models, which already carry it, so creation is guarded (0096's idiom). CHECKS
 repeats app.models (test_upc_021_migration). downgrade() refuses while targets exist: each is the only record of what a head set.
 """
@@ -13,8 +13,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0129_partnership_targets"
-down_revision = "0128_university_milestones"
+revision = "0131_partnership_targets"
+down_revision = "0130_university_meetings"
 branch_labels = None
 depends_on = None
 
@@ -49,5 +49,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {TABLE} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0129_partnership_targets: partnership targets exist. Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0131_partnership_targets: partnership targets exist. Remove them deliberately first.")
     op.drop_table(TABLE)

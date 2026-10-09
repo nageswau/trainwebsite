@@ -79,6 +79,10 @@ from app.models import (
     UNIVERSITY_RELATIONSHIPS,
 )
 from app.notifications.phone import normalise_phone
+from app.partnership_meeting_types import MAX_CONTACTS as MEETING_MAX_CONTACTS
+from app.partnership_meeting_types import MAX_EMPLOYEES as MEETING_MAX_EMPLOYEES
+from app.partnership_meeting_types import MODES as MEETING_MODES
+from app.partnership_meeting_types import TYPES as MEETING_TYPES
 from app.services.agent_visa import VISA_CASE_STAGES
 from app.tel_content_kinds import ASSET_KINDS as TEL_ASSET_KINDS
 from app.tel_sources import TEL_SOURCES
@@ -7498,6 +7502,168 @@ class UniversityFollowUpOut(BaseModel):
     last_action: UniversityLastAction | None
 
 
+# --- upc-009 (DEC-SCOPE-145, spec §1-§3): university meetings (§7). Limits per MG4-MG12 ------------------------------------------
+UniversityMeetingType = Literal[MEETING_TYPES]
+UniversityMeetingMode = Literal[MEETING_MODES]
+UniversityMeetingView = Literal["upcoming", "awaiting_outcome", "completed", "cancelled"]  # MG16
+MeetingLocation = _university_str(200)
+MeetingText = _university_str(2000, multiline=True)
+MeetingDiscussion = _university_str(4000, multiline=True)
+MeetingNextAction = _university_str(200)  # becomes a upc-020 task title (≤ 200)
+MeetingReason = _university_str(1000, required=True, multiline=True)
+MeetingRescheduleReason = _university_str(500, multiline=True)
+MeetingContacts = Annotated[list[UUID], Field(max_length=MEETING_MAX_CONTACTS), AfterValidator(_unique_ids)]
+MeetingEmployees = Annotated[list[UUID], Field(max_length=MEETING_MAX_EMPLOYEES), AfterValidator(_unique_ids)]
+
+
+class UniversityMeetingIn(BaseModel):
+    """MG1-MG8: `responsible_user_id` defaults to the caller. Code, status and the outcome fields are server-owned or set on complete
+    (unknown fields here); contacts and employees are checked in the service."""
+
+    model_config = ConfigDict(extra="forbid")
+    university_id: UUID
+    meeting_type: UniversityMeetingType
+    starts_at: BdmApptStart
+    mode: UniversityMeetingMode
+    location: MeetingLocation = None
+    meeting_url: LeadApptLink = None
+    contact_id: UUID | None = None
+    responsible_user_id: UUID | None = None
+    agenda: MeetingText = None
+    notes: MeetingText = None
+    participant_contact_ids: MeetingContacts = []
+    participant_user_ids: MeetingEmployees = []
+
+
+class UniversityMeetingUpdate(BaseModel):
+    """Edit a scheduled meeting: omitted = unchanged; null clears an optional field and fails a required one. A changed `starts_at` is a
+    reschedule (MG9). The university never changes (schedule a new meeting)."""
+
+    model_config = ConfigDict(extra="forbid")
+    meeting_type: UniversityMeetingType = None
+    starts_at: BdmApptStart = None
+    mode: UniversityMeetingMode = None
+    location: MeetingLocation = None
+    meeting_url: LeadApptLink = None
+    contact_id: UUID | None = None
+    responsible_user_id: UUID = None
+    agenda: MeetingText = None
+    notes: MeetingText = None
+    participant_contact_ids: MeetingContacts = None
+    participant_user_ids: MeetingEmployees = None
+    reschedule_reason: MeetingRescheduleReason = None
+
+
+class UniversityMeetingComplete(BaseModel):
+    """MG10-MG12: the outcome. At least one of notes / discussion points / decisions; a next action needs its due date (the service)."""
+
+    model_config = ConfigDict(extra="forbid")
+    notes: MeetingText = None
+    discussion_points: MeetingDiscussion = None
+    decisions: MeetingText = None
+    next_action: MeetingNextAction = None
+    next_action_due_on: date | None = None
+    next_meeting_date: date | None = None
+
+
+class UniversityMeetingCancel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: MeetingReason
+
+
+class MeetingContactPerson(BaseModel):
+    """MG5: the contact person as copied when set; `id` is null once the contact was deleted."""
+
+    id: UUID | None
+    name: str | None
+    designation: str | None
+
+
+class MeetingParticipants(BaseModel):
+    contacts: list[VisitContactRef]
+    employees: list[VisitPerson]
+
+
+class MeetingEventOut(BaseModel):
+    event: str
+    old_starts_at: datetime | None
+    new_starts_at: datetime | None
+    reason: str | None
+    actor: VisitPerson
+    created_at: datetime
+
+
+class MeetingFollowUp(BaseModel):
+    """The upc-020 tasks this meeting created (MG11, MG12)."""
+
+    id: UUID
+    title: str
+    due_on: date
+    status: str
+    assignee: VisitPerson
+
+
+class MeetingPermissions(BaseModel):
+    can_edit: bool
+    can_complete: bool
+    can_cancel: bool
+
+
+class UniversityMeetingRow(BaseModel):
+    id: UUID
+    code: str
+    university: VisitUniversityRef
+    meeting_type: str
+    starts_at: datetime
+    mode: str
+    status: str
+    responsible: VisitPerson
+    contact: MeetingContactPerson | None
+    warnings: list[str]  # MG4: "link_missing" while an online meeting has no link
+
+
+class UniversityMeetingOut(UniversityMeetingRow):
+    location: str | None
+    meeting_url: str | None
+    agenda: str | None
+    notes: str | None
+    discussion_points: str | None
+    decisions: str | None
+    next_action: str | None
+    next_action_due_on: date | None
+    next_meeting_date: date | None
+    created_by: VisitPerson
+    completed_by: VisitPerson | None
+    completed_at: datetime | None
+    cancelled_at: datetime | None
+    cancel_reason: str | None
+    participants: MeetingParticipants
+    events: list[MeetingEventOut]
+    follow_ups: list[MeetingFollowUp]
+    permissions: MeetingPermissions
+    created_at: datetime
+    updated_at: datetime
+
+
+class UniversityMeetingEnvelope(BaseModel):
+    meeting: UniversityMeetingOut
+
+
+class MeetingCounts(BaseModel):
+    upcoming: int
+    awaiting_outcome: int
+    completed: int
+    cancelled: int
+
+
+class UniversityMeetingPage(BaseModel):
+    items: list[UniversityMeetingRow]
+    total: int
+    limit: int
+    offset: int
+    counts: MeetingCounts
+
+
 # --- rec-006 (DEC-SCOPE-119): the recruiter Skills Master ------------------------------------------------------------------------
 SKILL_FIELD_LABELS = {
     "name": "Name", "alias": "Alias", "active": "Active", "category_id": "Category", "tag_category_ids": "Other categories", "skill_id": "Related skill",
@@ -8798,8 +8964,44 @@ class UniversityMilestonePage(BaseModel):
     today: date  # IST, the day statuses were computed for
     can_edit: bool
 
+# upc-016 (DEC-SCOPE-144): §15 commission terms (restricted). The service checks the cross-field rules on the merged row (exactly one rate,
+# CM2; programmes of the agreement's university, CM5) because a PATCH carries only part of it.
+CommissionTrigger = Literal["enrolment", "visa_and_enrolment", "tuition_paid"]  # = models.COMMISSION_TRIGGERS (CM1)
+CommissionPercent = Annotated[Decimal, Field(gt=0, le=100, max_digits=5, decimal_places=2)]
+CommissionAmount = Annotated[Decimal, Field(gt=0, le=Decimal("99999999.99"), max_digits=10, decimal_places=2)]
+CommissionTimeline = _university_str(500, multiline=True)
 
-# upc-021 (DEC-SCOPE-144, spec §4): monthly partnership targets. The month and target rules are bdm-016's (TG2-TG4); the KPI is checked
+
+class CommissionTermIn(BaseModel):
+    """CM6: the 9 §15 terms. Empty programme / country lists mean every programme / country (CM5)."""
+
+    model_config = ConfigDict(extra="forbid")
+    commission_percent: CommissionPercent | None = None
+    fixed_amount: CommissionAmount | None = None
+    currency: CounselingCurrency  # CM3: models.COMMISSION_CURRENCIES
+    trigger: CommissionTrigger
+    conditions: AgreementText = None
+    course_ids: AgreementCourses = []
+    country_ids: AgreementCountries = []
+    payment_timeline: CommissionTimeline = None
+    payment_terms: AgreementText = None
+
+
+class CommissionTermUpdate(BaseModel):
+    """PATCH: omitted = unchanged; null clears an optional field and fails a required one (the service checks the merged row)."""
+
+    model_config = ConfigDict(extra="forbid")
+    commission_percent: CommissionPercent | None = None
+    fixed_amount: CommissionAmount | None = None
+    currency: CounselingCurrency | None = None
+    trigger: CommissionTrigger | None = None
+    conditions: AgreementText = None
+    course_ids: AgreementCourses = None
+    country_ids: AgreementCountries = None
+    payment_timeline: CommissionTimeline = None
+    payment_terms: AgreementText = None
+
+# upc-021 (DEC-SCOPE-146, spec §4): monthly partnership targets. The month and target rules are bdm-016's (TG2-TG4); the KPI is checked
 # against the §21 catalogue here, the owner and scope in the service. `achieved` is null when not tracked or the month hasn't started.
 PartnershipTargetKpiKey = Literal[PARTNERSHIP_TARGET_KPI_KEYS]
 

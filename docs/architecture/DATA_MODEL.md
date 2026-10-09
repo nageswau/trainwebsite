@@ -1710,7 +1710,35 @@ on output (Q-10), never stored.
   `overseas_applications` and `application_status_history` (MS4/MS5); a recorded `achieved_on` wins over the derived date.
 - `downgrade()` refuses while any milestone row or expected value exists.
 
-## Monthly partnership targets (`upc-021`, `DEC-SCOPE-144`; migration `0129_partnership_targets`, after `0128_university_milestones`)
+## University commission terms (`upc-016`, `DEC-SCOPE-144`; migration `0129_university_commission_terms`, after `0128_university_milestones`)
+
+**`university_commission_terms` columns (RESTRICTED, U2):**
+- `id`, `agreement_id` → `university_agreements` (FK RESTRICT), `commission_percent` numeric(5,2) (nullable), `fixed_amount`
+  numeric(12,2) (nullable), `currency` varchar(3) (CHECK: INR / USD / GBP / EUR / CAD / AUD / NZD), `conditions` text, `course_ids` JSON
+  (ids of the agreement's university's `overseas_courses`; empty = all), `country_ids` JSON (ids of `countries`; empty = all),
+  `payment_timeline` varchar(500), `trigger` varchar(30) (CHECK: enrolment / visa_and_enrolment / tuition_paid), `payment_terms` text,
+  `created_by_user_id` / `updated_by_user_id` → `users`, timestamps
+
+**Constraints and indexes:**
+- CHECKs `ck_university_commission_terms_one_rate` (exactly one of % / fixed), `_percent` (0 < % ≤ 100), `_fixed` (> 0), `_currency`,
+  `_trigger`. `ix_university_commission_terms_agreement (agreement_id, created_at)`.
+
+**Design notes:**
+- Only the commission roles read the table (`partnership_access.COMMISSION_ROLES`). Rows are removable while the agreement is negotiable;
+  a renewal copies them. `downgrade()` refuses while any term exists.
+
+**Addendum, 2026-10-09 (`upc-009`, `DEC-SCOPE-145` — University meetings):** `university_meeting_code_seq` (`UMT-000001`);
+`university_meetings` (`code` unique; FK `universities` RESTRICT; `contact_id` FK `university_contacts` SET NULL with the copied
+`contact_name` / `contact_designation`; `meeting_type` CHECK the 12 §7 values; `starts_at`; `mode` CHECK online / offline; `location` ≤ 200;
+`meeting_url` ≤ 500; `agenda`, `notes`, `discussion_points`, `decisions`; `next_action` ≤ 200 with `next_action_due_on` (both or neither);
+`next_meeting_date`; `responsible_user_id`, `created_by_user_id`, `completed_by_user_id` FK `users` RESTRICT; `status` CHECK scheduled /
+completed / cancelled; `completed_at` / `cancelled_at` + `cancel_reason` set exactly in their status; the outcome fields only when
+completed; timestamps; indexes `(university_id, starts_at)`, `(status, starts_at)`, `(responsible_user_id)`).
+`university_meeting_participants` (one contact — FK CASCADE — or one user per row; unique per meeting). `university_meeting_events`
+(append-only: scheduled / edited / rescheduled with old and new start / completed / cancelled with reason; `position` identity). No
+backfill. **Migration `0130_university_meetings`**; `downgrade()` refuses while any meeting exists (API §12BM).
+
+## Monthly partnership targets (`upc-021`, `DEC-SCOPE-146`; migration `0131_partnership_targets`, after `0130_university_meetings`)
 
 **`partnership_targets` columns:**
 - `id`, `manager_user_id` → `users` (FK RESTRICT), `month` date (CHECK first day of the month), `kpi_key` varchar(40) (CHECK: the 7 §21

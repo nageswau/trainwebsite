@@ -541,6 +541,10 @@ Common conventions:
     a moved target keeps its history in the audit log (MS7).
 
 ### upc-009 — Meetings
+- **Status (2026-10-09):** built on `feature/upc-009` under `DEC-SCOPE-145`, with migration `0130_university_meetings`, API §12BM and
+  RBAC §2.71. Spec: `docs/superpowers/specs/2026-10-09-upc-009-university-meetings-design.md`.
+  - Q-12 is answered by the recommended default (MG12, `NEEDS_CONFIRMATION`): the next meeting date creates the follow-up "Schedule the
+    next meeting", not a draft meeting. Completing a meeting moves the stage to Meeting Completed when earlier (MG13).
 - **Business requirement:** §7 (19 fields; 12 meeting types).
 - **Existing behavior:** none for universities.
 - **Expected behavior:**
@@ -764,6 +768,8 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-016 — Commercial / commission terms (restricted)
+- **Status (2026-10-09):** built on `feature/upc-016` under `DEC-SCOPE-144` (Q-18, Q-19 + CM1–CM15, recommended answers), with
+  migration `0129_university_commission_terms`, API §12BL and RBAC §2.70. Spec: `docs/superpowers/specs/2026-10-09-upc-016-commission-terms-design.md`.
 - **Business requirement:** §15 (9 terms; the example trigger "visa approval + student enrolment"; Finance manages receipts) (U2, U4).
 - **Existing behavior:** none (agent commission only).
 - **Expected behavior:**

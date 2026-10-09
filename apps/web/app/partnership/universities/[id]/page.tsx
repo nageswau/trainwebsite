@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { accessUnavailable } from "@/components/AccessUnavailable";
 import BdmStageHistory from "@/components/BdmStageHistory";
+import MeetingTable from "@/components/MeetingTable";
 import PartnershipTasksPanel from "@/components/PartnershipTasksPanel";
 import PortalShell from "@/components/PortalShell";
 import UniversityActions from "@/components/UniversityActions";
@@ -44,6 +45,7 @@ import type { MilestonePage } from "@/lib/partnershipMilestones";
 import { firstMilestones, firstStageHistory, loadUniversity } from "@/lib/universitiesServer";
 import { type Agreement, AGREEMENT_READERS, type AgreementOptions, agreementOptionsUrl, agreementsUrl } from "@/lib/universityAgreements";
 import { documentsUrl, type UniversityDocument } from "@/lib/universityDocuments";
+import { MEETING_READERS, type MeetingPage, MEETINGS_PATH, MEETINGS_URL, newMeetingPath, SCHEDULER_ROLES } from "@/lib/meetings";
 import { newVisitPath, PLANNER_ROLES, VISIT_READERS, VISITS_PATH, VISITS_URL, type VisitRow } from "@/lib/visits";
 import { TASK_CREATORS, TASK_READERS, TASKS_PATH } from "@/lib/partnershipTasks";
 
@@ -52,7 +54,7 @@ import { TASK_CREATORS, TASK_READERS, TASKS_PATH } from "@/lib/partnershipTasks"
 // upc-020: §20's Next / Last Action for every reader, and the open follow-ups and tasks for the task readers (TK8; the panel loads
 // them itself). upc-026: the Documents section (§28, "everything related to that university in one place"). upc-014: the Agreements
 // section (§13). upc-008: the Partnership timeline (§5 expected timeline + §6 milestones) for every reader; editing per
-// `can_edit_timeline`.
+// `can_edit_timeline`. upc-009: the Meetings section (MG16: the latest 5, scheduled first), for the meeting readers only.
 function Facts({ rows }: { rows: [string, ReactNode][] }) {
   return (
     <dl style={{ display: "grid", gridTemplateColumns: "minmax(120px, max-content) 1fr", gap: "6px 16px", margin: 0 }}>
@@ -68,20 +70,21 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
   const { id } = await params;
   let user: User, u: University, history: Page<StageEvent> | null, contacts: Page<UniversityContact>, roles: ContactRole[], visits: Page<VisitRow> | null,
     documents: Page<UniversityDocument>, agreements: Page<Agreement> | null, agreementOptions: AgreementOptions | null,
-    milestones: MilestonePage | null;
+    milestones: MilestonePage | null, meetings: MeetingPage | null;
   try {
     [user, u, history, milestones] = await Promise.all([serverApi<User>("/api/v1/auth/me"), loadUniversity(id), firstStageHistory(id), firstMilestones(id)]);
     // upc-006: the contacts this reader may see (the API slices them), and the role list only for those who can edit.
     // upc-010: the latest visits, only for the roles that read visits (VS7; overseas_admin reads the master but not visits).
     // upc-026: the documents this reader may see (the API slices them: shareable only for overseas_admin, no commission agreement).
     // upc-014: agreements only for the roles that read them (AG13), and the form's options only for those who may write them.
-    [contacts, roles, visits, documents, agreements, agreementOptions] = await Promise.all([
+    [contacts, roles, visits, documents, agreements, agreementOptions, meetings] = await Promise.all([
       serverApi<Page<UniversityContact>>(`${contactsUrl(u.id)}?limit=50`),
       u.permissions.can_edit_contacts ? serverApi<{ items: ContactRole[] }>(CONTACT_ROLES_URL).then((r) => r.items) : Promise.resolve([]),
       VISIT_READERS.has(user.role) ? serverApi<Page<VisitRow>>(`${VISITS_URL}?university_id=${u.id}&limit=5`) : Promise.resolve(null),
       serverApi<Page<UniversityDocument>>(documentsUrl(u.id)),
       AGREEMENT_READERS.has(user.role) ? serverApi<Page<Agreement>>(agreementsUrl(u.id)) : Promise.resolve(null),
       u.permissions.can_manage_agreements ? serverApi<AgreementOptions>(agreementOptionsUrl(u.id)) : Promise.resolve(null),
+      MEETING_READERS.has(user.role) ? serverApi<MeetingPage>(`${MEETINGS_URL}?university_id=${u.id}&limit=5`) : Promise.resolve(null),
     ]);
   } catch (e) {
     return accessUnavailable(e, "/overseas/login");
@@ -149,6 +152,16 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
                 contacts={contacts.items.map((c) => ({ id: c.id, name: c.name, phone: c.phone ?? c.whatsapp }))} />
               <UniversityMessages universityId={u.id} contacts={contacts.items} canWrite={u.permissions.can_edit_contacts} />
             </>
+          )}
+          {meetings && (
+            <section className="action-card wide" aria-labelledby="uni-meetings">
+              <h3 id="uni-meetings">Meetings</h3>
+              {meetings.total === 0 ? <p className="muted">No meetings scheduled yet.</p> : <MeetingTable items={meetings.items} total={meetings.total} label="Meetings with this university" showUniversity={false} />}
+              <div className="actions" style={{ marginTop: 12 }}>
+                {SCHEDULER_ROLES.has(user.role) && u.permissions.can_edit_contacts && <Link className="btn secondary small" href={newMeetingPath(u.id)}>Schedule a meeting</Link>}
+                {meetings.total > meetings.items.length && <Link className="btn ghost small" href={`${MEETINGS_PATH}?university_id=${u.id}`}>All {meetings.total} meetings</Link>}
+              </div>
+            </section>
           )}
           {visits && (
             <section className="action-card wide" aria-labelledby="uni-visits">

@@ -1,4 +1,4 @@
-"""upc-021 (DEC-SCOPE-144, spec TG1/TG10): the §21 monthly target KPIs, in source order (EVID-020 §21, L703-L715), each with the written
+"""upc-021 (DEC-SCOPE-146, spec TG1/TG10): the §21 monthly target KPIs, in source order (EVID-020 §21, L703-L715), each with the written
 definition of its actual (backlog Appendix B T1-T7). Meetings (T3 = D7) waits for upc-009, so it is not tracked yet: a target can be set,
 the actual says "Not tracked", never 0.
 

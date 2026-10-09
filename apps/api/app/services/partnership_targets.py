@@ -1,4 +1,4 @@
-"""upc-021 (DEC-SCOPE-144, spec §2, §4): monthly partnership targets -- who reads and sets them, the per-manager sheet, the team comparison
+"""upc-021 (DEC-SCOPE-146, spec §2, §4): monthly partnership targets -- who reads and sets them, the per-manager sheet, the team comparison
 and the batch save.
 
 Functions only; nothing here commits -- the route owns the transaction. The month rules are bdm-016's (TG2-TG5). Actuals are never stored:
