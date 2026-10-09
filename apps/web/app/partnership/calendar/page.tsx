@@ -28,6 +28,13 @@ async function read(path: string): Promise<Read> {
   }
 }
 
+/** Whose calendar this is: one named person, the caller's own, or (no person chosen) the head's team / everyone for super_admin. */
+function headingFor(user: User, chosen: ManagerRef | null): string {
+  if (chosen) return chosen.id === user.id ? "Your calendar" : `${chosen.full_name}'s calendar`;
+  if (user.role === "super_admin") return "Everyone's calendar";
+  return user.role === "partnership_head" ? "Team calendar" : "Your calendar";
+}
+
 export default async function PartnershipCalendarPage({ searchParams }: { searchParams: Search }) {
   const params = await searchParams;
   const view = parseView(params.view);
@@ -46,8 +53,7 @@ export default async function PartnershipCalendarPage({ searchParams }: { search
   }
   const { nav, roleLabel } = shellFor(user.role);
   const chooses = user.role !== "partnership_manager";
-  const chosen = result.data?.employee;
-  const heading = chosen && chosen.id !== user.id ? `${chosen.full_name}'s calendar` : chooses && !chosen ? (user.role === "super_admin" ? "Everyone's calendar" : "Team calendar") : "Your calendar";
+  const heading = headingFor(user, result.data?.employee ?? null);
   return (
     <PortalShell nav={nav} roleLabel={roleLabel} userName={user.full_name}>
       <div className="portal-content">

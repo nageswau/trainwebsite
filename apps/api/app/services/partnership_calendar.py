@@ -89,7 +89,8 @@ async def employees(db: AsyncSession, user: User) -> list[User]:
         return [user]
     if user.role == "partnership_head":
         return await _team(db, user)
-    return list((await db.scalars(select(User).where(User.role.in_(STAFF_ROLES)).order_by(User.full_name, User.id).limit(MAX_ROWS))).all())
+    # Every partnership employee, uncapped: a silent cut would hide people from the choice (the staff list is bounded by headcount).
+    return list((await db.scalars(select(User).where(User.role.in_(STAFF_ROLES)).order_by(User.full_name, User.id))).all())
 
 
 async def scope(db: AsyncSession, user: User, user_id: UUID | None) -> tuple[set[UUID] | None, User | None]:
@@ -210,16 +211,20 @@ def item_out(item: Item, users: dict[UUID, User]) -> dict:
     }  # fmt: skip
 
 
-async def calendar(db: AsyncSession, date_from: date, date_to: date, people: set[UUID] | None) -> tuple[list[dict], bool]:
-    items, truncated = await items_in(db, date_from, date_to, people)
+async def _marked(db: AsyncSession, first: date, last: date, people: set[UUID] | None) -> tuple[list[Item], dict[UUID, User], bool]:
+    """The items in [first, last] for `people`, their users, with overlaps marked for those people."""
+    items, truncated = await items_in(db, first, last, people)
     users = await users_of(db, items)
     mark_overlaps(items, people, users)
+    return items, users, truncated
+
+
+async def calendar(db: AsyncSession, date_from: date, date_to: date, people: set[UUID] | None) -> tuple[list[dict], bool]:
+    items, users, truncated = await _marked(db, date_from, date_to, people)
     return [item_out(item, users) for item in items], truncated
 
 
 async def overlaps_for(db: AsyncSession, source: str, item_id: UUID, first: date, last: date, people: set[UUID]) -> list[dict]:
     """CL11/CL12: one item's overlaps for all its people, computed over the item's own days (complete for multi-day events)."""
-    items, _ = await items_in(db, first, last, people)
-    users = await users_of(db, items)
-    mark_overlaps(items, people, users)
+    items, _, _ = await _marked(db, first, last, people)
     return next((item.overlaps for item in items if item.source == source and item.id == item_id), [])

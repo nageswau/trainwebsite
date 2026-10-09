@@ -12,7 +12,7 @@ export const KIND_LABELS: Record<string, string> = {
 };
 export const EVENT_KINDS = ["conference", "education_fair", "partner_meeting", "mou_signing", "webinar", "university_presentation"] as const;
 export const EVENT_STATUSES: Record<string, string> = { scheduled: "Scheduled", cancelled: "Cancelled" };
-export const EVENT_LIMITS = { title: 200, location: 200, notes: 2000, reason: 1000, span: 31, employees: 10 } as const;
+export const EVENT_LIMITS = { title: 200, location: 200, notes: 2000, reason: 1000, employees: 10 } as const;
 
 export type Source = "meeting" | "visit" | "event";
 export type ItemRef = { source: Source; id: string; code: string; title: string };
