@@ -3674,3 +3674,26 @@ Design spec: `docs/superpowers/specs/2026-10-09-rec-014-resume-full-text-search-
   server's notice in place of "No candidates match…".
 - **Intro:** "…or by words in their resume…".
 
+## rec-030 addendum (2026-10-09, `DEC-SCOPE-155`) — Contract / MoU on the company page
+
+Design spec: `docs/superpowers/specs/2026-10-09-rec-030-recruiter-contracts-design.md` §4. On `/recruiter/companies/{id}`, after
+Meetings:
+- **Details:** a "Contract status" row (the current contract's status, or "No contract yet").
+- **Contract / MoU section:**
+  - A status badge, and a step list in source order (Discussion → … → Active → Expired). Each step is marked Done, Current or Upcoming
+    as text, never by colour alone.
+  - "Expired on …" when the end date has passed.
+  - "Edit contract" and "Start renewal", rendered from `permissions`.
+  - The terms (agreement type, dates, fee as "₹50,000 per hire" / "8.33% of CTC", payment terms, replacement policy).
+  - Two document rows (Contract document, MoU), each with download and upload or replace (PDF / JPEG / PNG, 20 MB).
+  - "Contract history" (collapsed; loaded when opened) and "Previous contracts (n)".
+- **Form:** the status (disabled when Expired, with a hint), agreement type, start and end dates (required for Active), fee basis and
+  fee, payment terms and replacement policy. A 422 lands on its field. An overlap message shows on the form. A conflict reloads the
+  section.
+- **States:**
+  - Loading.
+  - "No contract yet." with "Start contract".
+  - "Unable to load the contract." with "Try again".
+  - Read-only for the manager and the assigned BDM.
+  - Success notices go to the page's live region.
+

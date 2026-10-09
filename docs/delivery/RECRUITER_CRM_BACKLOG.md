@@ -1337,6 +1337,11 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-030 — Recruiter contracts / MoU
+- **Status (2026-10-09):** built on `feature/rec-030`.
+  - `DEC-SCOPE-155` (CT1–CT10 recommended defaults, UNVERIFIED).
+  - Migration `0138_recruiter_contracts`, API §12BW, RBAC §2.81. It was drafted as 0137 / 153 / §12BU / §2.79; upc-018 and rec-014
+    merged first.
+  - The next rec item takes `0139`, `DEC-SCOPE-156`, §12BX and §2.82 (re-check `main`).
 - **Business requirement:** §22 (9 fields; Discussion → Proposal Sent → Negotiation → Contract Sent → Signed → Active → Expired); §3
   Existing Agreement, MoU/Contract Status, Payment/Commercial Terms.
 - **Existing behavior:** none for companies (`BdmMou` is BDM-only).

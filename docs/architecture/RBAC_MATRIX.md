@@ -1406,6 +1406,22 @@ No new route or role: `text` is a field of §2.77's search, so §2.77's roles an
 `placement_team`, `placement_manager`, `super_admin` and `hr_team` (read), who may already open the resume itself (rec-009); every other
 role is `403` before the body is read.
 
+### 2.81 Recruiter contracts / MoU *(net-new, added 2026-10-09 — `DEC-SCOPE-155`, `rec-030`)*
+
+The inline pattern, scope in the SQL `WHERE`. Routes are listed in §12BW.
+
+| Role | Read (contracts, history, documents) | Write (start / renew, edit, upload) |
+|---|---|---|
+| `placement_team` | Companies assigned to them | The same companies, while active |
+| `placement_manager` | Their team's companies and unassigned companies | None (`403`; rec-003 D6) |
+| `super_admin` | Every company | Every active company |
+| `bdm` | Companies where they are the assigned BDM (R10) | None (`403`) |
+| any other role, including `employer` and `hr_team` | `403` (commercial terms are staff-only) | `403` |
+
+- Out of scope is `404`, the same as an unknown id, including `/recruiter/contracts/{id}/…` (IDOR).
+- An archived company is read-only (`409`).
+- Audit rows `recruiter_contract.*` carry ids, status keys, field names and the document kind only, never the terms, fee or file name.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
