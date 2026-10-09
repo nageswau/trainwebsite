@@ -3,10 +3,10 @@
 - **Feature:** upc-012 (`docs/delivery/UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-012), EVID-020 §12 "Every email/call/WhatsApp/meeting
   should be stored against the university" (L437–451), backlog decision U10 (telecaller pattern; templates maintained by
   `partnership_head`).
-- **Decision:** `DEC-SCOPE-138`. UC1–UC10 are recommended defaults and are **UNVERIFIED**. The owner said "proceed with recommended
+- **Decision:** `DEC-SCOPE-139`. UC1–UC10 are recommended defaults and are **UNVERIFIED**. The owner said "proceed with recommended
   answers".
-- **Numbering (checked on `origin/main` @ `f4207d39`):** migration `0123_university_comms` (down `0122_candidate_skills`), API §12BF,
-  RBAC §2.64.
+- **Numbering (re-chained on `origin/main` @ `6fc05526`, after rec-010 took 0123 / DEC-SCOPE-138 / §12BF / §2.64):** migration `0124_university_comms` (down `0123_candidate_consents`), API §12BG,
+  RBAC §2.65.
 - **Dependency:** upc-006 (university contacts) is MERGED.
 
 ## Understanding
@@ -44,7 +44,7 @@ copied rather than shared: `recruiter_messages` and `recruiter_calls` are FK-bou
 | UC9 | **A message is permanent.** Audit and logs carry ids, the channel and the template id — never the text, a subject, a number or an address. |
 | UC10 | **Last interaction** of a contact is the later of its latest call `occurred_at` and its latest message `sent_at` (failed emails excluded), computed on read in grouped queries, on the contact list and the contact detail. upc-009 meetings join later. |
 
-## 2. Data (migration 0123)
+## 2. Data (migration 0124)
 
 ### `partnership_message_templates`
 `id`, `channel`, `name` (160), `subject` (200, nullable), `body` (Text), `active`, `created_at`, `updated_at`.
@@ -63,7 +63,7 @@ Indexes `(university_id, sent_at)`, `(contact_id, sent_at)`, `(sender_user_id, s
 
 The upgrade is guarded (0110's idiom). The downgrade refuses while any call or message exists.
 
-## 3. API (§12BF)
+## 3. API (§12BG)
 
 | Method | Path | Notes |
 |---|---|---|
@@ -135,4 +135,4 @@ Additive output: `whatsapp_to` and `last_interaction_at` on `UniversityContactOu
 - The templates panel gains a `library` prop; rec-026's panel tests are rerun.
 - `UniversityContactOut` gains fields; upc-006 tests are rerun.
 - Route-inventory and RBAC tests need rows for the new routes.
-- Parallel sessions race for 0123 / DEC-SCOPE-138 / §12BF / §2.64; renumber in Phase 9 if main moved.
+- Parallel sessions race for 0124 / DEC-SCOPE-139 / §12BG / §2.65; renumber in Phase 9 if main moved.

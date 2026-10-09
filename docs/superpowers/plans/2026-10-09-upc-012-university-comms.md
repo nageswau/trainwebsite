@@ -1,10 +1,10 @@
 # upc-012 — University calls, message templates, WhatsApp and email (plan)
 
-Spec: `docs/superpowers/specs/2026-10-09-upc-012-university-comms-design.md` (DEC-SCOPE-138, UC1–UC10).
+Spec: `docs/superpowers/specs/2026-10-09-upc-012-university-comms-design.md` (DEC-SCOPE-139, UC1–UC10).
 Branch `feature/upc-012`. TDD per task: write the test, see it fail for the expected reason, implement, see it pass.
 
 ## Backend
-1. **Models + migration 0123.** `PARTNERSHIP_MESSAGE_*` / `UNIVERSITY_CALL_*` constants and checks; `PartnershipMessageTemplate`,
+1. **Models + migration 0124.** `PARTNERSHIP_MESSAGE_*` / `UNIVERSITY_CALL_*` constants and checks; `PartnershipMessageTemplate`,
    `UniversityCall`, `UniversityMessage`. Migration guarded, downgrade refuses with rows. Test: `test_upc_012_migration.py` (checks equal
    the models', single head, downgrade refusal).
 2. **Schemas.** `PartnershipTemplateCreate/Update`, `UniversityCallCreate`, `UniversityWhatsAppCreate | UniversityEmailCreate`;
@@ -27,4 +27,4 @@ Branch `feature/upc-012`. TDD per task: write the test, see it fail for the expe
 ## Verify and document
 12. Focused pytest + vitest + tsc + eslint + ruff/mypy on touched files; `next build`.
 13. Playwright `upc-012-university-comms.spec.ts`; browser QA (desktop/tablet/mobile).
-14. Docs: DEC-SCOPE-138, API §12BF, RBAC §2.64, DATA_MODEL, SCREEN_CATALOG, backlog status.
+14. Docs: DEC-SCOPE-139, API §12BG, RBAC §2.65, DATA_MODEL, SCREEN_CATALOG, backlog status.

@@ -1,4 +1,4 @@
-"""upc-012 -- university calls, partnership message templates, WhatsApp and email (spec §1-§3; DEC-SCOPE-138 UC1-UC10; AC1-AC3, the
+"""upc-012 -- university calls, partnership message templates, WhatsApp and email (spec §1-§3; DEC-SCOPE-139 UC1-UC10; AC1-AC3, the
 proposal-email positive, the unknown-placeholder negative and the no-email edge). The shared test database is never truncated, so every
 template name is unique per test."""
 

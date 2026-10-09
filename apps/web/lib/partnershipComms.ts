@@ -1,4 +1,4 @@
-// upc-012 (DEC-SCOPE-138): calls, WhatsApp and email kept on a university -- types, endpoints, the partnership template library (UC4/UC5)
+// upc-012 (DEC-SCOPE-139): calls, WhatsApp and email kept on a university -- types, endpoints, the partnership template library (UC4/UC5)
 // and the composer target for one contact. The API decides scope and every rule (UC1-UC9); the UI only offers what it allows. Calls and
 // messages are permanent: there is no edit or delete.
 import { templatesFrom, type Channel, type TemplateLibrary } from "@/lib/recruiterMessages";

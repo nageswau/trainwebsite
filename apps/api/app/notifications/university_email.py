@@ -1,4 +1,4 @@
-"""upc-012 (DEC-SCOPE-138 UC7, AC1; spec §4): the worker side of a partnership manager's email to a university contact -- rec-026's
+"""upc-012 (DEC-SCOPE-139 UC7, AC1; spec §4): the worker side of a partnership manager's email to a university contact -- rec-026's
 `recruiter_email` pattern on a `university_messages` row (tel-014's SMTP classification `_send` and ENH-014's retry constants are reused;
 tel-014 and rec-026 are untouched). Claim the row atomically (`queued`/`retrying` -> `sending`), so a duplicate task can never send twice;
 send with no transaction open; record `sent`, `retrying` or `failed`. The address is the contact's now; a deleted contact (UC2) fails as

@@ -181,7 +181,7 @@ def sweep_stale_recruiter_emails_task():
 
 @celery.task
 def deliver_university_email_task(message_id: str):
-    """upc-012 (DEC-SCOPE-138 UC7): send one queued university email; retries are re-enqueued by `deliver_university_email` itself."""
+    """upc-012 (DEC-SCOPE-139 UC7): send one queued university email; retries are re-enqueued by `deliver_university_email` itself."""
     from app.notifications.university_email import deliver_university_email
 
     return _run_with_fresh_pool(lambda: deliver_university_email(UUID(message_id)))

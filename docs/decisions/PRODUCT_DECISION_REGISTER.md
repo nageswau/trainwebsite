@@ -5636,7 +5636,42 @@ taken on the owner's instruction to proceed with the recommended answers. The ne
 - Archived candidates' skills are read only. `hr_team` reads candidate skills but still cannot read the Skills Master.
 - **New Feature ID authorized:** `rec-011`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-011.
 
-### DEC-SCOPE-138 — University calls, message templates, WhatsApp and email (`upc-012`)
+### DEC-SCOPE-138 — IT-student opt-in to the placement candidate pool; EMP-003 re-pointed (`rec-010`)
+
+**Evidence:**
+- `EVID-018` §27 (lines 1036–1090): an IT student "enters the Recruiter Candidate Pool". S2-§20 (1736–1790): "after they opt into
+  recruitment/placement services".
+- `DEC-SCOPE-116` R4 (an IT student appears only after opting in; opting out hides them), R6 (backfilled students stay out of the pool
+  until they opt in), and R12 (EMP-003 keeps today's fields but reads the opted-in pool).
+- `RECRUITER_CRM_BACKLOG.md` §rec-010: AC1–AC4 and question Q-10.
+- `DEC-SCOPE-122` (rec-009): `candidates.user_id` / `opted_in` and the pool filter. `DEC-SCOPE-136` (rec-017): `candidate_for_student`
+  and the "Edusphere students" source.
+
+**Status:** answers given by the owner in session on 2026-10-09 (`EXPLICIT_APPROVAL`). All four are the recommended options.
+**MERGED** to `main` as PR #182 @ `333a7706` (2026-10-09). The next rec item takes `0124`, `DEC-SCOPE-139`, §12BG and §2.65 (re-check
+`main`).
+
+**Numbering:** migration `0123_candidate_consents` (after rec-011's `0122_candidate_skills`), API §12BF, RBAC §2.64. Spec:
+`docs/superpowers/specs/2026-10-09-rec-010-placement-pool-opt-in-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| OI1 (Q-10) | Who may opt in | Any active `it_student` in the IT division; every other role → `403` |
+| OI2 (Q-10) | Consent wording | Version `v1` (the text is in the spec §1 and `services/placement_pool.CONSENT_TEXT`); a stale version → `409` |
+| OI3 (Q-10) | Seed data | The student's candidate via `candidate_for_student` (linked, an unlinked match by email or mobile, or new under "Edusphere students"). Empty fields only: source detail = latest course; email or mobile if free (Q-07); profile skills the Skills Master resolves become `claimed` skills (level `beginner`, source `resume`). Recruiter values are never overwritten |
+| OI4 | EMP-003 and EMP-004 | Opted-in, non-archived candidates of active IT students whose `PlacementProfile` is missing or not withdrawn; fields unchanged; `availability` = candidate status `available`. The EMP-004 shortlist accepts only these students (`422` otherwise) |
+
+**Consequences:**
+- New: `candidate_consents` (`0123`, append-only history), `services/placement_pool.py`, and `GET/POST /account/placement-pool[/opt-in|/opt-out]`.
+- Changed: `/employer/candidates` and `/employer/shortlist`.
+- The student's **Placement Status** page gets the "Join the placement candidate pool" card.
+- **Deliberate change (R12):** a `PlacementProfile` alone no longer makes a student visible to employers. The EMP-003/004/005 tests now
+  opt the student in.
+- Opting out leaves applications, interviews and offers untouched. Recruiter reads of the candidate then return `404`, the pool rule
+  already in place.
+- **New Feature ID authorized:** `rec-010`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-010.
+
+### DEC-SCOPE-139 — University calls, message templates, WhatsApp and email (`upc-012`)
 
 **Evidence:**
 - `EVID-020` §12 (lines 437–451): "Every email/call/WhatsApp/meeting should be stored against the university"; the timeline example.
@@ -5649,7 +5684,7 @@ taken on the owner's instruction to proceed with the recommended answers. The ne
 **Status:** built on `feature/upc-012`. Every answer below is a **recommended default, `UNVERIFIED`**, taken on the owner's instruction
 to proceed with the recommended answers.
 
-**Numbering:** migration `0123_university_comms` (after rec-011's `0122_candidate_skills`), API §12BF and RBAC §2.64. Spec
+**Numbering:** migration `0124_university_comms` (after rec-010's `0123_candidate_consents`; drafted as `0123` / DEC-SCOPE-138 / §12BF / §2.64 before rec-010 merged), API §12BG and RBAC §2.65. Spec
 `docs/superpowers/specs/2026-10-09-upc-012-university-comms-design.md`.
 
 | # | Point | Answer |
@@ -5666,7 +5701,7 @@ to proceed with the recommended answers.
 | UC10 | Last interaction | A contact's latest call or message (failed emails excluded), computed on read; meetings (upc-009) join later |
 
 **Consequences:**
-- `partnership_message_templates`, `university_calls`, `university_messages` (`0123`); `services/university_comms.py`,
+- `partnership_message_templates`, `university_calls`, `university_messages` (`0124`); `services/university_comms.py`,
   `api/university_comms.py`, `notifications/university_email.py` (+ dispatch, worker task and beat entry).
 - `UniversityContactOut` gains `whatsapp_to` and `last_interaction_at` (additive).
 - Web: Calls and Messages sections on the university page; `/partnership/head/templates` ("Message templates" in the head's sidebar).

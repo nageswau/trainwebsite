@@ -2033,10 +2033,30 @@ can_complete, can_follow_up, can_close}, editable_fields, created_at, updated_at
 | `POST /recruiter/candidates/{id}/skills/{sid}/status` | `{status}` → item. `verified` / `assessed` set `verified_by` and `verified_at` (the caller, now); `claimed` clears them (AC3). The same status → `409`. The backlog named this route `…/verify`; it is `…/status` because it also sets `claimed` and `assessed` |
 | `POST /recruiter/skills/{id}/merge` | Skills Master writers only (placement manager, super_admin; recruiters `403`). `{into_skill_id}` → the kept skill (the §12AM skill item). This skill (active or not) is merged into an active one: candidate skills move (a candidate with both keeps the stronger status, the kept skill's row on a tie), requirement skills (`job_skills.skill_id`) move, aliases move, related links are re-made on the kept skill, this skill is **deleted** and its name becomes an alias of the kept one. **Refusals:** into itself → `422`; unknown or inactive target → `422` "Choose an active skill to merge into"; unknown skill → `404`. Audit `recruiter.skill_merge` (the merged id and name, counts) |
 
-## 12BF. University calls, message templates, WhatsApp and email (`upc-012`) — addendum, 2026-10-09
+## 12BF. Placement candidate pool opt-in; EMP-003 re-pointed (`rec-010`) — addendum, 2026-10-09
 
-- **Basis:** `DEC-SCOPE-138` (UC1–UC10). Design spec `docs/superpowers/specs/2026-10-09-upc-012-university-comms-design.md` §3. Migration
-  `0123`.
+- **Basis:** `DEC-SCOPE-138` (OI1–OI4). Spec: `docs/superpowers/specs/2026-10-09-rec-010-placement-pool-opt-in-design.md` §3–§4.
+  Migration: `0123`.
+- **Common rules:**
+  - Login is required (`401`). Only an `it_student` in the IT division may call these routes; anyone else → `403` "Only IT students
+    can join the placement candidate pool".
+  - No route takes a user id: a student only ever acts for themselves, and unknown body keys are ignored.
+  - Each write locks the student's user row, commits once, and returns the new state.
+- **State:** `{opted_in, consent: {version, text}, history: [{action (opt_in|opt_out), consent_version, created_at}]}`, history newest
+  first, at most 20 rows.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /account/placement-pool` | → state. Creates nothing |
+| `POST /account/placement-pool/opt-in` | **Body:** `{consent_version}` (1–20 chars; missing → `422`). A version other than the current one → `409` "The consent wording has changed. Review it and try again.". Links or creates the student's candidate (never a second one), sets `opted_in`, seeds empty fields (OI3), and adds a `candidate_consents` row plus audit `placement_pool.opt_in` (`{consent_version, skills_added}`). Already in the pool → `200`, no new row |
+| `POST /account/placement-pool/opt-out` | Clears `opted_in` and adds an `opt_out` row plus audit `placement_pool.opt_out`. Not in the pool → `200`, no new row. Applications are untouched |
+| `GET /employer/candidates` (EMP-003, changed) | Same fields and `q`. The rows are now the opted-in, non-archived candidates of active IT students whose `PlacementProfile` is missing or not withdrawn; `availability` = candidate status `available` (R12) |
+| `POST /employer/shortlist` (EMP-004, changed) | A student who is not employer-visible (as above) → `422` "Valid student candidate is required". It no longer creates a candidate |
+
+## 12BG. University calls, message templates, WhatsApp and email (`upc-012`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-139` (UC1–UC10). Design spec `docs/superpowers/specs/2026-10-09-upc-012-university-comms-design.md` §3. Migration
+  `0124`.
 - **Common rules:** readers are `partnership_manager` (with a profile), `partnership_head` and `super_admin`; every other role → `403`
   before anything is read. Writes lock the university, then need its `can_edit_contacts` (`403`) and an active university (`409`); the
   university is always read from the contact. An unknown contact → `404` "Contact not found". Bodies refuse unknown keys (`422`).
