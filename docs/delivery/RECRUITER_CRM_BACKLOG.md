@@ -758,7 +758,7 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Negative scenarios:** an encrypted PDF → a readable error, not a 500.
 - **Edge cases:** an alias collision ("Go" vs the word "go") goes on the stop-word list; very long resumes are truncated at the cap.
 - **Regression risks:** none (new path); container image size.
-- **Status (2026-10-09):** **BUILT** on `feature/rec-012`, not merged. `DEC-SCOPE-150` (EX1–EX10 recommended defaults, UNVERIFIED);
+- **Status (2026-10-09):** **MERGED** to `main` as PR #197 @ `87f7cfa4`. `DEC-SCOPE-150` (EX1–EX10 recommended defaults, UNVERIFIED);
   migration `0135_resume_extraction` (after `0134_application_screenings`), API §12BR, RBAC §2.76 (drafted as `0133` / 148 / §12BP /
   §2.74; rec-020 and rec-018 merged first). Extraction runs in a thread (no Celery task). The next rec item takes `0136`,
   `DEC-SCOPE-151`, §12BS and §2.77 (re-check `main`).

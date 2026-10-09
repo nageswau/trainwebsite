@@ -4,9 +4,11 @@ Backlog: `docs/delivery/RECRUITER_CRM_BACKLOG.md` rec-012. Source: EVID-018 S2-�
 rule-based, in-house extraction with `pypdf` and `python-docx`, and no AI provider. Depends on rec-006 (merged PR #150), rec-009 (merged
 PR #155) and rec-011 (merged PR #180).
 
+**Status: MERGED** as PR #197 @ `87f7cfa4` (2026-10-09).
+
 **Numbering (re-chained 2026-10-09 after rec-020 and rec-018 merged; drafted as `0133` / DEC-SCOPE-148 / §12BP / §2.74):**
 `DEC-SCOPE-150`, migration `0135_resume_extraction` (after `0134_application_screenings`), API §12BR, RBAC §2.76. Re-check
-origin/main before the merge.
+origin/main before the next rec item.
 
 ## 1. Answers (2026-10-09)
 The owner asked to proceed with the recommended answers, so nothing was asked. Every row below is **UNVERIFIED** (a recorded default).
