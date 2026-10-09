@@ -2,11 +2,10 @@
 
 - **Backlog:** `docs/delivery/RECRUITER_CRM_BACKLOG.md` rec-018. **Evidence:** `EVID-018` §13 (lines 556–592): 11 checklist items and 4
   results. **Dependency:** rec-017 (PR #178), merged. The module scope is `DEC-SCOPE-116`.
-- **Decision:** `DEC-SCOPE-140`. **Migration (draft):** `0125_application_screenings` on `0122_candidate_skills`. **API:** §12BH. **RBAC:**
-  §2.66.
-  - rec-010 (0123 / DEC-SCOPE-138 / §12BF / §2.64) and rec-020 (0124 / DEC-SCOPE-139 / §12BG / §2.65) are in progress in parallel, so
-    this item reserves the next set.
-  - Whichever merges later re-chains `down_revision` only.
+- **Decision:** `DEC-SCOPE-140`. **Migration:** `0125_application_screenings` on `0124_university_documents`. **API:** §12BH.
+  **RBAC:** §2.66.
+  - Drafted on `0122_candidate_skills`. rec-010 (0123 / DEC-SCOPE-138 / §12BF / §2.64) and upc-026 (0124 / DEC-SCOPE-139 / §12BG /
+    §2.65) merged first, so only `down_revision` was re-chained.
 - **Answers.** SC1–SC8 are **recommended defaults**. They were taken on the owner's standing instruction for build sessions ("proceed with
   the recommended answers; ask only if blocking"). They stay `UNVERIFIED` until the owner confirms them. SC1 and SC2 answer the backlog's
   Q-18.

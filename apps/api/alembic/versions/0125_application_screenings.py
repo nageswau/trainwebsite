@@ -1,14 +1,17 @@
 """rec-018 -- application_screenings.
 
 Revision ID: 0125_application_screenings
-Revises: 0122_candidate_skills
+Revises: 0124_university_documents
 
 docs/superpowers/specs/2026-10-09-rec-018-application-screening-design.md §1 (DEC-SCOPE-140). A new table only; no existing row changes.
 0001 builds a fresh database from the current models, which already carry this table, so it is created only when missing (0122's idiom).
 CHECKS repeats app.models.SCREENING_CHECKS (test_rec_018_migration). downgrade() refuses while any row exists: entered data is never
 dropped silently.
 
-Numbered 0125 while rec-010 (0123) and rec-020 (0124) are open in parallel branches; whichever merges later re-chains `down_revision` only.
+Drafted on `0122_candidate_skills`; re-chained on 2026-10-09 after rec-010 (`0123_candidate_consents`) and upc-026
+(`0124_university_documents`) merged first. The number, DEC-SCOPE-140, §12BH and §2.66 were already the next free set, so only
+`down_revision` changed. A database stamped at the draft is re-stamped with `alembic stamp --purge 0122_candidate_skills`, then
+`upgrade head` (the table step is guarded).
 """
 
 import sqlalchemy as sa
@@ -17,7 +20,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0125_application_screenings"
-down_revision = "0122_candidate_skills"
+down_revision = "0124_university_documents"
 branch_labels = None
 depends_on = None
 

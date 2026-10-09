@@ -23,6 +23,8 @@ async function registerEmployer(page: import("@playwright/test").Page) {
 async function ensureSeededStudentIsAnAvailableCandidate(page: import("@playwright/test").Page) {
   await page.request.post("/api/v1/auth/login", { data: { email: "student.it@edusphere.local", password: "Demo@123", division: "it" } });
   const student = await (await page.request.get("/api/v1/auth/me")).json();
+  // rec-010 (DEC-SCOPE-138, R12): employers only see and shortlist students who opted in to the placement candidate pool.
+  expect((await page.request.post("/api/v1/account/placement-pool/opt-in", { data: { consent_version: "v1" } })).ok()).toBeTruthy();
   await page.request.post("/api/v1/auth/login", { data: { email: "itadmin@edusphere.local", password: "Demo@123", division: "it" } });
   await page.request.put(`/api/v1/workflows/it/placement/profiles/${student.id}`, { data: { available: true, withdrawn: false } });
   return { name: student.full_name as string };

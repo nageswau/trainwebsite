@@ -641,6 +641,16 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** large · **Risk:** high
 
 ### rec-010 — IT-student opt-in to the candidate pool + EMP-003 re-pointed
+- **Status (2026-10-09):**
+  - **MERGED** to `main` as PR #182 @ `333a7706`. The next rec item takes `0124`, `DEC-SCOPE-139`, §12BG and §2.65 (re-check `main`).
+  - Numbers: `DEC-SCOPE-138`, migration `0123_candidate_consents` (after rec-011's `0122`), API §12BF, RBAC §2.64.
+  - Q-10 was answered by the owner in session (OI1–OI4, the recommended options):
+    - any active `it_student`;
+    - consent text `v1`;
+    - seed name/email/phone, the course as source detail, and Master-resolved profile skills, filling empty fields only;
+    - EMP-003 availability = candidate status, with withdrawn and archived students hidden; the EMP-004 shortlist is gated the same way.
+  - The new routes are `/account/placement-pool[/opt-in|/opt-out]`.
+  - Spec: `docs/superpowers/specs/2026-10-09-rec-010-placement-pool-opt-in-design.md`.
 - **Business requirement:** §27 "IT student … enters Recruiter Candidate Pool"; S2-§20 "after they opt into recruitment/placement
   services"; R4, R12.
 - **Existing behavior:**
@@ -931,8 +941,8 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 ### rec-018 — Screening form + result
 - **Status (2026-10-09):** **BUILT** on `feature/rec-018`; not merged. `DEC-SCOPE-140` (SC1–SC8 recommended defaults, UNVERIFIED; Q-18
   answered: screening not required before Shortlisted, Hold / Need More Information do not pause and are a board flag); one current
-  screening per application, overwritten. Migration `0125_application_screenings` (draft, on `0122`; rec-010 holds `0123`, rec-020
-  `0124`), API §12BH, RBAC §2.66.
+  screening per application, overwritten. Migration `0125_application_screenings` (after upc-026's `0124_university_documents`;
+  drafted on `0122`, re-chained after rec-010 and upc-026 merged), API §12BH, RBAC §2.66.
 - **Business requirement:** §13 checklist (11 items) and result (Shortlisted / Hold / Rejected / Need More Information).
 - **Existing behavior:** none (an application status "screening" exists).
 - **Expected behavior:**

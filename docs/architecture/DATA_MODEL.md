@@ -1599,7 +1599,42 @@ history notes.
   before it deletes the merged skill, so no row ever points at a deleted skill. The merge also re-points `job_skills.skill_id`.
 - `downgrade()` refuses while any row exists.
 
-## Application screenings (`rec-018`, `DEC-SCOPE-140`; migration `0125_application_screenings`, after `0122_candidate_skills`)
+## Candidate consents (`rec-010`, `DEC-SCOPE-138`; migration `0123_candidate_consents`, after `0122_candidate_skills`)
+
+**`candidate_consents` columns:** `id`; `candidate_id` → `candidates` (FK RESTRICT); `user_id` → `users` (FK RESTRICT; the student who
+acted); `action` varchar(10) (CHECK `ck_candidate_consents_action`: `opt_in` / `opt_out`); `consent_version` varchar(20); `ip_address`
+varchar(64) null; `created_at`.
+
+**Index:** `ix_candidate_consents_candidate (candidate_id, created_at)`, for the newest-first history.
+
+**Design notes:**
+- Append-only, following the `ConsentRecord` idiom: a row is written for each change of `candidates.opted_in` by the student, and never
+  for a no-op.
+- `candidates.opted_in` stays the gate that pool reads, EMP-003 and the EMP-004 shortlist follow.
+- `downgrade()` refuses while any row exists, so consent evidence is never dropped silently. Retention follows Q-09
+  (`NEEDS_CONFIRMATION`).
+
+## University documents (`upc-026`, `DEC-SCOPE-139`; migration `0124_university_documents`, after `0123_candidate_consents`)
+
+**`university_documents` columns:**
+- `id`, `university_id` → `universities` (FK RESTRICT), `kind` varchar(30) (CHECK: the 12 §28 kinds), `title` varchar(200),
+  `shareable` bool, `current_version` int (CHECK ≥ 1), `created_by_user_id` → `users`, timestamps (`updated_at` moves on every version)
+
+**`university_document_versions` columns:**
+- `id`, `document_id` → `university_documents` (FK RESTRICT), `version` int (CHECK ≥ 1), `storage_key` varchar(300) (server-generated,
+  `university-documents/<uuid>`), `file_name` varchar(255) (display only), `content_type` varchar(120), `size_bytes` int (CHECK > 0),
+  `uploaded_by_user_id` → `users`, `uploaded_at`
+
+**Constraints and indexes:**
+- CHECK `ck_university_documents_commission_internal`: a commission agreement is never shareable (DC2).
+- `uq_university_documents_title` UNIQUE `(university_id, kind, lower(title))` (DC11); `ix_university_documents_updated` (menu order).
+- `uq_university_document_versions_version` UNIQUE `(document_id, version)`; `uq_university_document_versions_key` UNIQUE `(storage_key)`.
+
+**Design notes:**
+- Versions are append-only (never updated or deleted); documents are not deleted in this item (DC9).
+- `downgrade()` refuses while any document exists.
+
+## Application screenings (`rec-018`, `DEC-SCOPE-140`; migration `0125_application_screenings`, after `0124_university_documents`)
 
 **`application_screenings` columns:**
 - `application_id` PK → `job_applications` (FK RESTRICT): one current screening per application (SC5).

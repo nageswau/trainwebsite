@@ -5636,6 +5636,75 @@ taken on the owner's instruction to proceed with the recommended answers. The ne
 - Archived candidates' skills are read only. `hr_team` reads candidate skills but still cannot read the Skills Master.
 - **New Feature ID authorized:** `rec-011`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-011.
 
+### DEC-SCOPE-138 — IT-student opt-in to the placement candidate pool; EMP-003 re-pointed (`rec-010`)
+
+**Evidence:**
+- `EVID-018` §27 (lines 1036–1090): an IT student "enters the Recruiter Candidate Pool". S2-§20 (1736–1790): "after they opt into
+  recruitment/placement services".
+- `DEC-SCOPE-116` R4 (an IT student appears only after opting in; opting out hides them), R6 (backfilled students stay out of the pool
+  until they opt in), and R12 (EMP-003 keeps today's fields but reads the opted-in pool).
+- `RECRUITER_CRM_BACKLOG.md` §rec-010: AC1–AC4 and question Q-10.
+- `DEC-SCOPE-122` (rec-009): `candidates.user_id` / `opted_in` and the pool filter. `DEC-SCOPE-136` (rec-017): `candidate_for_student`
+  and the "Edusphere students" source.
+
+**Status:** answers given by the owner in session on 2026-10-09 (`EXPLICIT_APPROVAL`). All four are the recommended options.
+**MERGED** to `main` as PR #182 @ `333a7706` (2026-10-09). The next rec item takes `0124`, `DEC-SCOPE-139`, §12BG and §2.65 (re-check
+`main`).
+
+**Numbering:** migration `0123_candidate_consents` (after rec-011's `0122_candidate_skills`), API §12BF, RBAC §2.64. Spec:
+`docs/superpowers/specs/2026-10-09-rec-010-placement-pool-opt-in-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| OI1 (Q-10) | Who may opt in | Any active `it_student` in the IT division; every other role → `403` |
+| OI2 (Q-10) | Consent wording | Version `v1` (the text is in the spec §1 and `services/placement_pool.CONSENT_TEXT`); a stale version → `409` |
+| OI3 (Q-10) | Seed data | The student's candidate via `candidate_for_student` (linked, an unlinked match by email or mobile, or new under "Edusphere students"). Empty fields only: source detail = latest course; email or mobile if free (Q-07); profile skills the Skills Master resolves become `claimed` skills (level `beginner`, source `resume`). Recruiter values are never overwritten |
+| OI4 | EMP-003 and EMP-004 | Opted-in, non-archived candidates of active IT students whose `PlacementProfile` is missing or not withdrawn; fields unchanged; `availability` = candidate status `available`. The EMP-004 shortlist accepts only these students (`422` otherwise) |
+
+**Consequences:**
+- New: `candidate_consents` (`0123`, append-only history), `services/placement_pool.py`, and `GET/POST /account/placement-pool[/opt-in|/opt-out]`.
+- Changed: `/employer/candidates` and `/employer/shortlist`.
+- The student's **Placement Status** page gets the "Join the placement candidate pool" card.
+- **Deliberate change (R12):** a `PlacementProfile` alone no longer makes a student visible to employers. The EMP-003/004/005 tests now
+  opt the student in.
+- Opting out leaves applications, interviews and offers untouched. Recruiter reads of the candidate then return `404`, the pool rule
+  already in place.
+- **New Feature ID authorized:** `rec-010`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-010.
+
+### DEC-SCOPE-139 — University document centre (`upc-026`)
+
+**Evidence:** `EVID-020` §28 (L908–L936: 12 document kinds; "Everything related to that university should be in one place"), §13 L489
+(the agreement document lives here), §32 L1092 ("Documents"), L1129 ("Commissions should not be seen by anyone");
+`UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U2 and U14 (`EXPLICIT_APPROVAL`, 2026-10-08) and §4 upc-026.
+**Status:** DC1–DC15 are the recommended answers to backlog Q-26 plus design-level rules, applied under the owner's standing instruction
+for the build session ("proceed with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed:
+`NEEDS_CONFIRMATION` at sign-off. Migration `0124_university_documents`, API contract §12BG, RBAC §2.65.
+Spec: `docs/superpowers/specs/2026-10-09-upc-026-university-documents-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| DC1 | Kinds | The 12 of §28, in source order |
+| DC2 | Commission agreement | Stripped server-side for every role without commission access (lists, menu list, downloads); never shareable (422 + CHECK) |
+| DC3 | Q-26 shareable default | Shareable: brochure, course list, fee structure, entry requirements, scholarship information, marketing materials, application guidelines, training documents. Internal: MoU, partnership agreement, contact documents; commission agreement always. The uploader may override |
+| DC4 | Q-26 file types | By the bytes: PDF, DOCX, XLSX, PPTX, JPEG, PNG (image metadata stripped); anything else, executables included → `422` |
+| DC5 | Q-26 size | The platform cap (`max_upload_bytes`, 20 MB) → `413`; empty → `422` |
+| DC6 | Versions | A document has append-only versions; a new upload is current, older ones stay downloadable. ≤ 50 versions, ≤ 200 documents per university |
+| DC7 | Who reads | Partnership roles + super_admin: everything (DC2 by role); overseas_admin: shareable only; counselors via upc-030 |
+| DC8 | Who writes | `can_manage_documents` = the contacts rule (partnership roles + super_admin in the master's edit scope; active university) |
+| DC9 | Delete | Not in this item; a wrong file is superseded by a new version |
+| DC10 | "Signed download" | An authenticated, scoped, audited API download (`no-store`, `nosniff`, sandbox CSP, attachment named from code/kind/version); no public URL |
+| DC11 | Title | 2–200 characters, unique per university + kind (case-insensitive) → `409` |
+| DC12 | Menu page | `/partnership/documents`: the reader's slice across universities, kind + text filters, newest change first, paged |
+| DC13 | Audit | `university_document.upload/version/update/download`, ids, kind, version and field names only |
+| DC14 | Storage | Server-generated keys under `university-documents/`; stored before the lock, discarded when the write does not commit |
+| DC15 | Rate limit | None beyond the size cap (internal staff, scoped writes); recorded for upc-033 |
+
+**Consequences:** tables `university_documents` and `university_document_versions`; routes `/partnership/universities/{id}/documents…`
+and `/partnership/documents`; `permissions.can_manage_documents` on the university; a Documents section on
+`/partnership/universities/[id]`; page `/partnership/documents`; the manager menu's Documents goes live and the head nav gains it.
+upc-014 stores agreement documents here; upc-030 gives counselors the shareable slice.
+**New Feature ID authorized:** `upc-026`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-026.
+
 ### DEC-SCOPE-140 — Screening form and result (`rec-018`)
 
 **Evidence:**
@@ -5650,9 +5719,9 @@ taken on the owner's instruction to proceed with the recommended answers. The ne
 **Status:** **BUILT** on `feature/rec-018` (2026-10-09); not merged yet. Every answer below is a **recommended default, `UNVERIFIED`**,
 taken on the owner's instruction to proceed with the recommended answers.
 
-**Numbering (draft):** migration `0125_application_screenings` on `0122_candidate_skills`, API §12BH, RBAC §2.66. rec-010 (`0123` /
-`DEC-SCOPE-138` / §12BF / §2.64) and rec-020 (`0124` / `DEC-SCOPE-139` / §12BG / §2.65) are open in parallel; whichever merges later
-re-chains `down_revision` only. Spec `docs/superpowers/specs/2026-10-09-rec-018-application-screening-design.md`.
+**Numbering:** migration `0125_application_screenings` (after upc-026's `0124_university_documents`), API §12BH, RBAC §2.66. Drafted
+on `0122_candidate_skills`; rec-010 (`0123` / `DEC-SCOPE-138` / §12BF / §2.64) and upc-026 (`0124` / `DEC-SCOPE-139` / §12BG / §2.65)
+merged first, so only `down_revision` was re-chained. rec-020 (open) must re-chain after this. Spec `docs/superpowers/specs/2026-10-09-rec-018-application-screening-design.md`.
 
 | # | Point | Answer |
 |---|---|---|

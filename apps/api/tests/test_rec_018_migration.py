@@ -19,7 +19,7 @@ _spec = importlib.util.spec_from_file_location("_rec_018_migration_0125", VERSIO
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0122_candidate_skills", "0125_application_screenings"
+BASE, HEAD = "0124_university_documents", "0125_application_screenings"
 
 
 def test_migration_chains_and_is_the_single_head():
@@ -63,7 +63,7 @@ def isolated_db():
     _sql(original, f'CREATE DATABASE "{name}"', autocommit=True)
     try:
         settings.database_url = url
-        # 0001's create_all builds today's models (this table included); going to head and back down gives the real 0122 shape.
+        # 0001's create_all builds today's models (this table included); going to head and back down gives the real 0124 shape.
         command.upgrade(cfg, "head")
         command.downgrade(cfg, BASE)
         yield {"cfg": cfg, "url": url}
