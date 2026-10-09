@@ -3,18 +3,24 @@
 import { type FormEvent, useRef, useState } from "react";
 
 import LocalTime from "@/components/LocalTime";
+import RecruiterResumeExtraction from "@/components/RecruiterResumeExtraction";
 import { sendRequest } from "@/lib/apiErrors";
 import { RESUME_ACCEPT, RESUME_MAX_BYTES, candidateUrl, fileSize, resumeUrl, type CandidateResume } from "@/lib/recruiterCandidates";
+import type { CurrentProfile } from "@/lib/recruiterResumeExtract";
 
 // rec-009 (AC4, Q-09 default): the resume versions, newest first -- the first is current -- and, for writers, an upload of a new
 // version (PDF or DOCX, at most 5 MB; the API judges the type by the bytes). Downloads are plain links: the API audits each one.
-type Props = { candidateId: string; resumes: CandidateResume[]; canUpload: boolean; onUploaded: () => void };
+// rec-012 (EX1): an upload opens "Review extracted details" for the new version; writers can reopen it on the current version.
+type Props = {
+  candidateId: string; resumes: CandidateResume[]; canUpload: boolean; current: CurrentProfile; onUploaded: () => void; onApplied: () => void;
+};
 
-export default function RecruiterCandidateResumes({ candidateId, resumes, canUpload, onUploaded }: Props) {
+export default function RecruiterCandidateResumes({ candidateId, resumes, canUpload, current, onUploaded, onApplied }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const sending = useRef(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ text: string; failed: boolean } | null>(null);
+  const [reviewing, setReviewing] = useState<number | null>(null);
 
   async function upload(event: FormEvent) {
     event.preventDefault();
@@ -33,6 +39,7 @@ export default function RecruiterCandidateResumes({ candidateId, resumes, canUpl
     if (!outcome.ok) return setNotice({ text: outcome.message, failed: true });
     if (input.current) input.current.value = "";
     setNotice({ text: `Resume version ${outcome.data.version} uploaded.`, failed: false });
+    setReviewing(Number(outcome.data.version));
     onUploaded();
   }
 
@@ -52,9 +59,16 @@ export default function RecruiterCandidateResumes({ candidateId, resumes, canUpl
               <span className="muted" style={{ fontSize: 13 }}>
                 {fileSize(r.size_bytes)} · <LocalTime value={r.created_at} time />{r.uploaded_by ? ` · ${r.uploaded_by.full_name}` : ""}
               </span>
+              {i === 0 && canUpload && reviewing === null && (
+                <button type="button" className="btn secondary small" onClick={() => { setNotice(null); setReviewing(r.version); }}>Review extracted details</button>
+              )}
             </li>
           ))}
         </ul>
+      )}
+      {reviewing !== null && canUpload && (
+        <RecruiterResumeExtraction key={reviewing} candidateId={candidateId} version={reviewing} current={current} onClose={() => setReviewing(null)}
+          onApplied={(text) => { setReviewing(null); setNotice({ text, failed: false }); onApplied(); }} />
       )}
       {canUpload && (
         <form onSubmit={upload} style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-end" }}>
