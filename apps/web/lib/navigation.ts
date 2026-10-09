@@ -126,6 +126,7 @@ export const RECRUITER_NAV: NavItem[] = [
   { label: "Job Requirements", href: "/recruiter/requirements" }, // rec-007
   { label: "Follow-ups", href: "/recruiter/follow-ups" }, // rec-024
   { label: "Meetings", href: "/recruiter/meetings" }, // rec-028
+  { label: "Interviews", href: "/recruiter/interviews" }, // rec-020
   ...LEGACY_PLACEMENT.map((x) => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, (c) => c.toUpperCase()), href: `/it/placement/${x}` })),
 ];
 export const RECRUITER_MANAGER_NAV: NavItem[] = [
@@ -136,6 +137,7 @@ export const RECRUITER_MANAGER_NAV: NavItem[] = [
   { label: "Job Requirements", href: "/recruiter/requirements" }, // rec-007: the team's requirements
   { label: "Follow-ups", href: "/recruiter/follow-ups" }, // rec-024: the team's lists, read only
   { label: "Meetings", href: "/recruiter/meetings" }, // rec-028: the team's meetings, read only
+  { label: "Interviews", href: "/recruiter/interviews" }, // rec-020: the team's interviews, read only
   { label: "Message templates", href: "/recruiter/manager/templates" }, // rec-026
 ];
 
@@ -146,11 +148,11 @@ const menu = (label: string, path: string, item: string, live = false): Partners
 export const PARTNERSHIP_MENU: PartnershipMenuEntry[] = [
   menu("Dashboard", "dashboard", "upc-022", true), menu("Global University Database", "search", "upc-024"),
   menu("University Master", "universities", "upc-003", true), menu("Contact Management", "contacts", "upc-006"),
-  menu("Partnership Pipeline", "pipeline", "upc-007", true), menu("Meetings", "meetings", "upc-009"), menu("University Visits", "visits", "upc-010", true),
-  menu("MoU & Agreements", "agreements", "upc-014"), menu("Commercial Terms", "commercial-terms", "upc-016"),
-  menu("Courses & Programs", "courses", "upc-017"), menu("Student Opportunities", "opportunities", "upc-018"),
+  menu("Partnership Pipeline", "pipeline", "upc-007", true), menu("Meetings", "meetings", "upc-009", true), menu("University Visits", "visits", "upc-010", true),
+  menu("MoU & Agreements", "agreements", "upc-014", true), menu("Commercial Terms", "commercial-terms", "upc-016", true),
+  menu("Courses & Programs", "courses", "upc-017", true), menu("Student Opportunities", "opportunities", "upc-018"),
   menu("University Performance", "performance", "upc-018"), menu("Follow-ups & Tasks", "tasks", "upc-020", true), menu("Calendar", "calendar", "upc-011"),
-  menu("Documents", "documents", "upc-026", true), menu("Alerts", "alerts", "upc-015"), menu("Targets & Forecast", "targets", "upc-021"),
+  menu("Documents", "documents", "upc-026", true), menu("Alerts", "alerts", "upc-015"), menu("Targets & Forecast", "targets", "upc-021", true),
   menu("Global Partnership Map", "map", "upc-025"), menu("Reports", "reports", "upc-031"),
 ];
 export const PARTNERSHIP_NAV: NavItem[] = [
@@ -159,11 +161,15 @@ export const PARTNERSHIP_NAV: NavItem[] = [
 ];
 export const PARTNERSHIP_HEAD_NAV: NavItem[] = [
   { label: "Team", href: "/partnership/head/team" }, { label: "University Master", href: "/partnership/universities" },
-  { label: "Partnership Pipeline", href: "/partnership/pipeline" },
+  { label: "Partnership Pipeline", href: "/partnership/pipeline" }, { label: "Meetings", href: "/partnership/meetings" }, // upc-009
   { label: "University Visits", href: "/partnership/visits" }, { label: "Visit approvals", href: "/partnership/visits/approvals" }, // upc-010 (VS4)
+  { label: "MoU & Agreements", href: "/partnership/agreements" }, // upc-014 (AG18)
+  { label: "Commercial Terms", href: "/partnership/commercial-terms" }, // upc-016 (CM14)
+  { label: "Courses & Programs", href: "/partnership/courses" }, // upc-017 (CO15)
   { label: "Follow-ups & Tasks", href: "/partnership/tasks" }, // upc-020
   { label: "Documents", href: "/partnership/documents" }, // upc-026 (DC12)
   { label: "Message templates", href: "/partnership/head/templates" }, // upc-012 (UC4)
+  { label: "Targets & Forecast", href: "/partnership/targets" }, // upc-021
 ];
 
 // SCH-001/SCH-003 -- School roles use their own dedicated pages (bespoke forms/actions,
@@ -250,4 +256,4 @@ export function agentNavFor(nav: NavItem[], memberRole?: string | null, permissi
     .map((item) => (item.href === STAFF_STUDENTS.href ? STAFF_STUDENTS : item));
 }
 // ENH-016: the cross-school School Analytics page lives under /overseas/admin (D1: Overseas and Super Admins).
-export const SUPER_ADMIN_NAV:NavItem[] = [...["dashboard","users","students","staff","programs","batches","universities","recruiters","content","blogs","gallery","events","leads","applications","payments","reports","notifications","roles","settings","security-logs","backups"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:x==="dashboard"?"/admin":`/admin/${x}`})),{label:"BDMs",href:"/admin/bdms"},{label:"BDM Travel Approvals",href:"/admin/bdm-travel-approvals"},{label:"BDM Dashboard",href:"/bdm/manager/dashboard"},{label:"BDM Performance",href:"/bdm/manager/performance"},{label:"BDM Master View",href:"/bdm/manager/hierarchy"},{label:"Telecallers",href:"/admin/telecallers"},{label:"Telecaller Performance",href:"/admin/telecaller-performance"},{label:"Telecaller Reports",href:"/admin/telecaller-reports"},{label:"Recruiter Staff",href:"/admin/recruiter-staff"},{label:"Recruiter Companies",href:"/recruiter/companies"},{label:"Recruiter Pipeline",href:"/recruiter/pipeline"},{label:"Partnership managers",href:"/admin/partnership-managers"},{label:"Partnership Visit Approvals",href:"/partnership/visits/approvals"},{label:"Partnership Follow-ups & Tasks",href:"/partnership/tasks"},{label:"Candidate Master",href:"/recruiter/candidates"},{label:"Find Candidates",href:"/recruiter/find-candidates"},{label:"Recruiter Requirements",href:"/recruiter/requirements"},{label:"School Analytics",href:"/overseas/admin/school-analytics"}];
+export const SUPER_ADMIN_NAV:NavItem[] = [...["dashboard","users","students","staff","programs","batches","universities","recruiters","content","blogs","gallery","events","leads","applications","payments","reports","notifications","roles","settings","security-logs","backups"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:x==="dashboard"?"/admin":`/admin/${x}`})),{label:"BDMs",href:"/admin/bdms"},{label:"BDM Travel Approvals",href:"/admin/bdm-travel-approvals"},{label:"BDM Dashboard",href:"/bdm/manager/dashboard"},{label:"BDM Performance",href:"/bdm/manager/performance"},{label:"BDM Master View",href:"/bdm/manager/hierarchy"},{label:"Telecallers",href:"/admin/telecallers"},{label:"Telecaller Performance",href:"/admin/telecaller-performance"},{label:"Telecaller Reports",href:"/admin/telecaller-reports"},{label:"Recruiter Staff",href:"/admin/recruiter-staff"},{label:"Recruiter Companies",href:"/recruiter/companies"},{label:"Recruiter Pipeline",href:"/recruiter/pipeline"},{label:"Partnership managers",href:"/admin/partnership-managers"},{label:"Partnership Visit Approvals",href:"/partnership/visits/approvals"},{label:"Partnership Follow-ups & Tasks",href:"/partnership/tasks"},{label:"Partnership Meetings",href:"/partnership/meetings"},{label:"Partnership Targets",href:"/partnership/targets"},{label:"Candidate Master",href:"/recruiter/candidates"},{label:"Find Candidates",href:"/recruiter/find-candidates"},{label:"Recruiter Requirements",href:"/recruiter/requirements"},{label:"School Analytics",href:"/overseas/admin/school-analytics"}];

@@ -3,6 +3,9 @@ import Link from "next/link";
 import { type FormEvent, useEffect, useId, useState } from "react";
 
 import LocalTime from "@/components/LocalTime";
+import RecruiterApplicationInterviews from "@/components/RecruiterApplicationInterviews";
+import RecruiterApplicationScreening from "@/components/RecruiterApplicationScreening";
+import type { ContactOption } from "@/components/RecruiterInterviewForm";
 import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson } from "@/lib/apiErrors";
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
@@ -20,6 +23,7 @@ import {
   type RequirementCandidates,
 } from "@/lib/recruiterApplications";
 import { CANDIDATES_PATH } from "@/lib/recruiterCandidates";
+import { contactsOf, isContactList } from "@/lib/recruiterContacts";
 
 type Notice = { text: string; failed: boolean } | null;
 const search = candidateSearch();
@@ -138,9 +142,14 @@ function StatusForm({ application, onChanged, onCancel }: { application: RecAppl
 }
 
 /** One candidate as a stacked item (the rec-025 Calls pattern), so the status and actions stay on screen at phone width (QA-03). */
-function ApplicationItem({ application, onChanged }: { application: RecApplication; onChanged: (a: RecApplication) => void }) {
-  const [open, setOpen] = useState<"none" | "status" | "history">("none");
-  const toggle = (panel: "status" | "history") => setOpen((current) => (current === panel ? "none" : panel));
+type Panel = "none" | "status" | "history" | "interviews" | "screening";
+
+function ApplicationItem({ application, contacts, onChanged, onInterview, onScreened }: {
+  application: RecApplication; contacts: ContactOption[]; onChanged: (a: RecApplication) => void; onInterview: (notice: string) => void;
+  onScreened: (a: RecApplication) => void;
+}) {
+  const [open, setOpen] = useState<Panel>("none");
+  const toggle = (panel: Exclude<Panel, "none">) => setOpen((current) => (current === panel ? "none" : panel));
   const id = useId();
   return (
     <li className="action-card" style={{ listStyle: "none", gap: 6 }} aria-labelledby={`${id}-name`}>
@@ -149,6 +158,7 @@ function ApplicationItem({ application, onChanged }: { application: RecApplicati
           {application.candidate.name}
         </Link>
         <span className="badge">{application.status_label}</span>
+        {application.screening_result && <span className="badge">Screening: {application.screening_result.label}</span>}
       </div>
       <p className="muted" style={{ margin: 0, fontSize: 13 }}>
         {application.candidate.code} · since <LocalTime value={application.stage_changed_at} time />
@@ -162,16 +172,30 @@ function ApplicationItem({ application, onChanged }: { application: RecApplicati
         <button type="button" className="btn secondary small" aria-expanded={open === "history"} onClick={() => toggle("history")}>
           History<span className="visually-hidden"> of {application.candidate.name}</span>
         </button>
+        <button type="button" className="btn secondary small" aria-expanded={open === "interviews"} onClick={() => toggle("interviews")}>
+          Interviews<span className="visually-hidden"> of {application.candidate.name}</span>
+        </button>
+        <button type="button" className="btn secondary small" aria-expanded={open === "screening"} onClick={() => toggle("screening")}>
+          Screening<span className="visually-hidden"> of {application.candidate.name}</span>
+        </button>
       </div>
       {open === "status" && <StatusForm application={application} onCancel={() => setOpen("none")} onChanged={(next) => { setOpen("none"); onChanged(next); }} />}
       {open === "history" && <History applicationId={application.id} />}
+      {open === "interviews" && (
+        <RecruiterApplicationInterviews applicationId={application.id} candidateName={application.candidate.name} contacts={contacts} onChanged={onInterview} />
+      )}
+      {open === "screening" && (
+        <RecruiterApplicationScreening applicationId={application.id} candidateName={application.candidate.name} onCancel={() => setOpen("none")}
+          onSaved={(next) => { setOpen("none"); onScreened(next); }} />
+      )}
     </li>
   );
 }
 
 /** rec-017 (spec §5): the requirement's candidates and each one's §12 status. Writers (the requirement's recruiter, super_admin) add
- *  pool candidates and move statuses; managers and the assigned BDM read. Every write re-reads the list. */
-export default function RecruiterRequirementCandidates({ requirementId }: { requirementId: string }) {
+ *  pool candidates and move statuses; managers and the assigned BDM read. Every write re-reads the list. rec-020: each row opens its
+ *  interviews; the company's active contacts (when the caller can read them) feed the interview form. */
+export default function RecruiterRequirementCandidates({ requirementId, companyId }: { requirementId: string; companyId?: string }) {
   const [data, setData] = useState<RequirementCandidates | null>(null);
   const [failed, setFailed] = useState(false);
   const [version, setVersion] = useState(0);
@@ -179,6 +203,7 @@ export default function RecruiterRequirementCandidates({ requirementId }: { requ
   const [notice, setNotice] = useState<Notice>(null);
   const headingId = `${useId()}-candidates`;
   const reload = () => setVersion((n) => n + 1);
+  const [contacts, setContacts] = useState<ContactOption[]>([]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -189,6 +214,17 @@ export default function RecruiterRequirementCandidates({ requirementId }: { requ
       .catch(() => controller.signal.aborted || setFailed(true));
     return () => controller.abort();
   }, [requirementId, version]);
+
+  const canWrite = !!data && (data.can_add || data.items.some((a) => a.allowed_statuses.length > 0));
+  useEffect(() => {
+    if (!companyId || !canWrite) return;
+    const controller = new AbortController();
+    fetch(contactsOf(companyId), { signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body) => isContactList(body) && setContacts(body.items.filter((c) => c.active).map((c) => ({ id: c.id, name: c.name }))))
+      .catch(() => undefined); // contacts are optional: without them the form still schedules an interview
+    return () => controller.abort();
+  }, [companyId, canWrite]);
 
   const done = (text: string) => {
     setNotice({ text, failed: false });
@@ -221,7 +257,9 @@ export default function RecruiterRequirementCandidates({ requirementId }: { requ
       ) : (
         <ul aria-label="Candidates on this requirement" style={{ padding: 0, margin: "8px 0 0", display: "grid", gap: 8 }}>
           {data.items.map((application) => (
-            <ApplicationItem key={application.id} application={application} onChanged={(a) => done(`${a.candidate.name} is now ${a.status_label}.`)} />
+            <ApplicationItem key={application.id} application={application} contacts={contacts} onInterview={done}
+              onChanged={(a) => done(`${a.candidate.name} is now ${a.status_label}.`)}
+              onScreened={(a) => done(`Screening saved — ${a.candidate.name} is now ${a.status_label}.`)} />
           ))}
         </ul>
       )}

@@ -761,11 +761,11 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-013 — Find Candidates: skill AND/OR search, filters, facets, result cards
-- **Status (2026-10-09):** built on `feature/rec-013` (not yet merged). `DEC-SCOPE-142` (FS1–FS12 recommended defaults, UNVERIFIED;
+- **Status (2026-10-09):** built on `feature/rec-013` (not yet merged). `DEC-SCOPE-150` (FS1–FS12 recommended defaults, UNVERIFIED;
   Q-15 = a chip builder with "all of" skills and up to 5 "at least one of" groups). **No migration** (rec-011's
-  `ix_candidate_skills_skill_candidate` serves the search; the 10k-candidate test stays under 2 s). API §12BJ, RBAC §2.68 (drafted as 141 / §12BI / §2.67;
-  upc-026 and upc-012 merged first with 139–140 / §12BG–§12BH / §2.65–§2.66, and upc-020 took `0126` / 141 / §12BI / §2.67 — re-check
-  `main` before the merge). Not built here: job-type filter (FS6, no candidate field), match % (rec-016), Share (rec-019).
+  `ix_candidate_skills_skill_candidate` serves the search; the 10k-candidate test stays under 2 s). API §12BR, RBAC §2.76 (drafted as
+  141 / §12BI / §2.67; the upc items, rec-020 and rec-018 merged first and hold 139–149 / §12BG–§12BQ / §2.65–§2.75 — re-check `main`
+  before the merge). Not built here: job-type filter (FS6, no candidate field), match % (rec-016), Share (rec-019).
 - **Business requirement:** user question at line 1092; S2-§5, §6, §7, §9, §12, §13, §18, §19.
 - **Existing behavior:** `/workflows/it/placement/candidates?q` does a name ILIKE; `/employer/candidates` does an in-Python substring
   match. No skill logic.
@@ -944,6 +944,11 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** large · **Risk:** high
 
 ### rec-018 — Screening form + result
+- **Status (2026-10-09):** **BUILT** on `feature/rec-018`; not merged. `DEC-SCOPE-149` (SC1–SC8 recommended defaults, UNVERIFIED; Q-18
+  answered: screening not required before Shortlisted, Hold / Need More Information do not pause and are a board flag); one current
+  screening per application, overwritten. Migration `0134_application_screenings` (after rec-020's `0133_interview_management`), API
+  §12BQ, RBAC §2.75. Drafted as `0125` / 140 / §12BH / §2.66, then `0126` / 141; rec-010, upc-026, upc-012, upc items to `0132` and
+  rec-020 merged first.
 - **Business requirement:** §13 checklist (11 items) and result (Shortlisted / Hold / Rejected / Need More Information).
 - **Existing behavior:** none (an application status "screening" exists).
 - **Expected behavior:**
@@ -1012,6 +1017,10 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** large · **Risk:** high
 
 ### rec-020 — Interview management
+- **Status (2026-10-09):** **MERGED** to `main` as PR #193 @ `10da5148`. `DEC-SCOPE-148` (IV1–IV12 recommended defaults, UNVERIFIED; IV9 answers Q-20); migration
+  `0133_interview_management` (after `0132_university_courses`), API §12BP, RBAC §2.74. Drafted as `0124` / 139 / §12BG / §2.65, then
+  `0126` / 141 / §12BI / §2.67; rec-010 and ten upc items merged first. rec-020 then took `0133`, `DEC-SCOPE-148`, §12BP and §2.74;
+  the next rec item takes `0134`, `DEC-SCOPE-149`, §12BQ and §2.75 (re-check `main`). The status and reschedule routes are `POST …/status` and `POST …/reschedule` as planned.
 - **Business requirement:** §14 (12 fields, 5 rounds, 8 statuses); quick action "+ Schedule Interview"; R14.
 - **Existing behavior:** `interviews` (application, time, mode, link, free-text result); staff create at `workflows.py:1614`, employers at
   `employer.py:241`; no notification.

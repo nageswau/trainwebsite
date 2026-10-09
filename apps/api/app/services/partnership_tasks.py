@@ -17,9 +17,9 @@ from sqlalchemy import and_, case, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.models import AuditLog, PartnershipProfile, PartnershipTask, University, UniversityStageHistory, UniversityVisit, User
+from app.models import AuditLog, PartnershipProfile, PartnershipTask, University, UniversityMeeting, UniversityStageHistory, UniversityVisit, User
 from app.partnership_stages import label_of
-from app.partnership_task_rules import STAGE_RULES, VISIT_RULE, Rule
+from app.partnership_task_rules import MEETING_NEXT_ACTION_RULE, NEXT_MEETING_RULE, STAGE_RULES, VISIT_RULE, Rule
 from app.services import bdm_activities
 from app.services import university_visits as visits
 from app.services.bdm_travel import india_today
@@ -251,6 +251,18 @@ async def on_visit_completed(db: AsyncSession, actor: User, v: UniversityVisit) 
     lead = await db.get(User, v.lead_user_id)
     assignee = lead if lead is not None and lead.active else None
     await _auto_create(db, actor, v.university_id, f"visit:{v.id}", assignee, VISIT_RULE, v.follow_up_date, "visit")
+
+
+async def on_meeting_completed(db: AsyncSession, actor: User, m: UniversityMeeting, uni: University) -> None:
+    """upc-009 MG11/MG12: the next action and the next meeting date become follow-ups for the responsible employee when active (else the
+    TK6 fallback), on the university row the completion has locked."""
+    responsible = await db.get(User, m.responsible_user_id)
+    assignee = responsible if responsible is not None and responsible.active else await _auto_assignee(db, actor, uni)
+    if m.next_action and m.next_action_due_on:
+        rule = MEETING_NEXT_ACTION_RULE._replace(title=m.next_action)
+        await _auto_create(db, actor, uni.id, f"meeting:{m.id}", assignee, rule, m.next_action_due_on, "meeting")
+    if m.next_meeting_date:
+        await _auto_create(db, actor, uni.id, f"meeting:{m.id}:next", assignee, NEXT_MEETING_RULE, m.next_meeting_date, "meeting")
 
 
 async def sync_visit_due(db: AsyncSession, v: UniversityVisit) -> None:

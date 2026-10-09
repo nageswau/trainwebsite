@@ -15,7 +15,7 @@ const STATUSES = [
 const application = (over: Partial<RecApplication> = {}): RecApplication => ({
   id: "A1", job_id: "J1", candidate: { id: "C1", code: "CAN-000001", name: "Rahul Kumar" }, status: "sourced", status_label: "Sourced",
   stage_changed_at: "2026-10-08T05:30:00Z", created_at: "2026-10-08T05:30:00Z",
-  allowed_statuses: [{ key: "screened", label: "Screened" }, { key: "interview", label: "Interview" }], ...over,
+  allowed_statuses: [{ key: "screened", label: "Screened" }, { key: "interview", label: "Interview" }], screening_result: null, ...over,
 });
 
 let list: RequirementCandidates;

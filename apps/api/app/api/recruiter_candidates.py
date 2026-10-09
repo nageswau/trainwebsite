@@ -93,7 +93,7 @@ async def duplicate_check(
 async def search_candidates(
     payload: dict = Body(...), limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
-    """rec-013 (DEC-SCOPE-142): Find Candidates over the whole pool (R11) -- skill AND / OR groups expanded through aliases and related
+    """rec-013 (DEC-SCOPE-150): Find Candidates over the whole pool (R11) -- skill AND / OR groups expanded through aliases and related
     skills, the S2-§18 filters, the F1-F3 facets. Read only; the role check runs before the body is read."""
     svc.require_reader(user)
     body = _parse(CandidateSearch, payload, NOT_AN_OBJECT, CANDIDATE_SEARCH_LABELS)

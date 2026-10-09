@@ -32,8 +32,15 @@ from app.bdm_stages import MANUAL_STAGES as BDM_MANUAL_STAGES
 from app.core.identifiers import normalize_key
 from app.lead_stages import STAGES as LEAD_STAGES
 from app.notifications.phone import normalise_phone
+from app.partnership_meeting_types import EVENTS as UNIVERSITY_MEETING_EVENTS
+from app.partnership_meeting_types import MODES as UNIVERSITY_MEETING_MODES
+from app.partnership_meeting_types import STATUSES as UNIVERSITY_MEETING_STATUSES
+from app.partnership_meeting_types import TYPES as UNIVERSITY_MEETING_TYPES
+from app.partnership_milestones import MILESTONE_KEYS as UNIVERSITY_MILESTONE_KEYS
 from app.partnership_stages import FIRST_STAGE as UNIVERSITY_FIRST_STAGE
 from app.partnership_stages import STAGE_KEYS as UNIVERSITY_STAGE_KEYS
+from app.partnership_target_kpis import KPI_KEYS as PARTNERSHIP_TARGET_KPI_KEYS
+from app.partnership_target_kpis import TARGET_MAX as PARTNERSHIP_TARGET_MAX
 from app.partnership_task_rules import KINDS as PARTNERSHIP_TASK_KINDS
 from app.partnership_task_rules import PRIORITIES as PARTNERSHIP_TASK_PRIORITIES
 from app.partnership_task_rules import SOURCES as PARTNERSHIP_TASK_SOURCES
@@ -755,14 +762,100 @@ class JobApplicationStatusHistory(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+# rec-020 (DEC-SCOPE-148, IV1/IV2): the EVID-018 §14 rounds and statuses, in source order. Migration 0133 repeats them
+# (test_rec_020_migration). Labels live in services/interviews.py and the web client.
+INTERVIEW_ROUNDS = ("hr_round", "technical_round", "manager_round", "final_round", "client_round")
+INTERVIEW_STATUSES = ("scheduled", "confirmed", "completed", "rescheduled", "no_show", "selected", "rejected", "on_hold")
+INTERVIEW_EVENTS = ("scheduled", "rescheduled", "status")
+INTERVIEW_CODE_SEQ = Sequence("interview_code_seq", metadata=Base.metadata)
+# The database numbers every interview, whoever inserts it (legacy routes, employers, tests): INT-000001, growing past six digits.
+INTERVIEW_CODE_DEFAULT = "'INT-' || to_char(nextval('interview_code_seq'), 'FM999999999000000')"
+INTERVIEW_CHECKS = {
+    "ck_interviews_status": "status IN (" + ", ".join(f"'{s}'" for s in INTERVIEW_STATUSES) + ")",
+    "ck_interviews_round": "round IS NULL OR round IN (" + ", ".join(f"'{s}'" for s in INTERVIEW_ROUNDS) + ")",
+}
+INTERVIEW_EVENT_CHECKS = {"ck_interview_events_event": "event IN (" + ", ".join(f"'{s}'" for s in INTERVIEW_EVENTS) + ")"}
+
+# rec-018 (DEC-SCOPE-149, EVID-018 §13): the four screening results in source order (L586-L592). Migration 0134 repeats SCREENING_CHECKS
+# (test_rec_018_migration). Labels live in services/application_screening.py.
+SCREENING_RESULTS = ("shortlisted", "hold", "rejected", "need_more_info")
+SCREENING_CHECKS = {
+    "ck_application_screenings_result": "result IN (" + ", ".join(f"'{r}'" for r in SCREENING_RESULTS) + ")",
+    "ck_application_screenings_rejected_remarks": "result <> 'rejected' OR remarks IS NOT NULL",
+    "ck_application_screenings_communication": "communication_rating IS NULL OR communication_rating BETWEEN 1 AND 5",
+    "ck_application_screenings_technical": "technical_rating IS NULL OR technical_rating BETWEEN 1 AND 5",
+    "ck_application_screenings_notice": "notice_days IS NULL OR notice_days BETWEEN 0 AND 365",
+    "ck_application_screenings_salary": "expected_salary IS NULL OR expected_salary >= 0",
+}
+
+
+class ApplicationScreening(Base, TimestampMixin):
+    """rec-018 (SC5): the one current screening of an application, overwritten by each save. Salary and remarks are internal: no
+    employer, student or hr_team route reads this table, and the audit keeps field names only."""
+
+    __tablename__ = "application_screenings"
+    __table_args__ = tuple(CheckConstraint(sql, name=name) for name, sql in SCREENING_CHECKS.items())
+    application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("job_applications.id", ondelete="RESTRICT"), primary_key=True)
+    qualification_verified: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    experience_verified: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    skills_verified: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    expected_salary: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    notice_days: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    location_preference: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    communication_rating: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    technical_rating: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    availability: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    willing_to_relocate: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    remarks: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    result: Mapped[str] = mapped_column(String(20))
+    screened_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
 class Interview(Base, TimestampMixin):
+    """rec-020 (IV1-IV7): one interview round of one application. services/interviews.py is the status writer for the recruiter routes;
+    `result` is the legacy free-text outcome the /workflows and employer screens still read. `round` and `created_by_user_id` are NULL on
+    legacy rows."""
+
     __tablename__ = "interviews"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in INTERVIEW_CHECKS.items()),
+        Index("ix_interviews_status_scheduled", "status", "scheduled_at"),
+    )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    interview_code: Mapped[str] = mapped_column(String(20), unique=True, server_default=text(INTERVIEW_CODE_DEFAULT))
     application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("job_applications.id"), index=True)
     scheduled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     mode: Mapped[str] = mapped_column(String(30), default="Online")
     meeting_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     result: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    round: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="scheduled", server_default=text("'scheduled'"))
+    interviewer: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    location: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("company_contacts.id", ondelete="RESTRICT"), nullable=True)
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+
+
+class InterviewEvent(Base):
+    """rec-020 (IV3/IV4, AC1): one row per schedule, reschedule (old and new time) and status move. Append-only; `position` orders rows
+    written in one transaction. `actor_user_id` is NULL only for a system write."""
+
+    __tablename__ = "interview_events"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in INTERVIEW_EVENT_CHECKS.items()),
+        Index("ix_interview_events_interview", "interview_id", "position"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    interview_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("interviews.id", ondelete="RESTRICT"))
+    event: Mapped[str] = mapped_column(String(16))
+    from_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    to_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    old_scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    new_scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    actor_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class PlacementProfile(Base, TimestampMixin):
@@ -926,6 +1019,11 @@ class University(Base, TimestampMixin):
     lost_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     lost_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     relationship_strength: Mapped[str | None] = mapped_column(String(12), nullable=True)  # upc-006 CT11: set by hand (CT1)
+    # upc-008 (§5, MS8/MS9): the expected timeline. Expected month and quarter are derived from target_partnership_date (Q-10).
+    target_partnership_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    expected_intake: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    expected_agreement_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    expected_recruitment_start: Mapped[date | None] = mapped_column(Date, nullable=True)
     country = relationship("Country")
 
     @validates("name")
@@ -991,6 +1089,26 @@ class UniversityImportBatch(Base, TimestampMixin):
     duplicate_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     invalid_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     results_json: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+
+
+UNIVERSITY_MILESTONE_CHECKS = {"ck_university_milestones_kind": _one_of("kind", UNIVERSITY_MILESTONE_KEYS, nullable=False)}
+
+
+class UniversityMilestone(Base, TimestampMixin):
+    """upc-008 (DEC-SCOPE-143, MS2): a university's recorded dates for one §6 milestone. Sparse: a row exists only once a date was
+    recorded (the catalogue is the template). Status is never stored (Q-11, computed by services/partnership_milestones)."""
+
+    __tablename__ = "university_milestones"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_MILESTONE_CHECKS.items()),
+        UniqueConstraint("university_id", "kind", name="uq_university_milestones_kind"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"))
+    kind: Mapped[str] = mapped_column(String(40))
+    target_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    achieved_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
 
 
 class UniversityStageHistory(Base):
@@ -1186,6 +1304,104 @@ class PartnershipTask(Base, TimestampMixin):
     cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
+# upc-009 (DEC-SCOPE-145, spec §2): university meetings (§7). Migration 0130 repeats these checks (test_upc_009_migration keeps them
+# identical). The outcome fields are written only when the meeting is completed (MG10-MG12).
+UNIVERSITY_MEETING_CODE_SEQ = Sequence("university_meeting_code_seq", metadata=Base.metadata)
+UNIVERSITY_MEETING_CHECKS = {
+    "ck_university_meetings_type": _one_of("meeting_type", UNIVERSITY_MEETING_TYPES, nullable=False),
+    "ck_university_meetings_mode": _one_of("mode", UNIVERSITY_MEETING_MODES, nullable=False),
+    "ck_university_meetings_status": _one_of("status", UNIVERSITY_MEETING_STATUSES, nullable=False),
+    "ck_university_meetings_completed": "(status = 'completed') = (completed_at IS NOT NULL) AND (completed_at IS NULL) = (completed_by_user_id IS NULL)",
+    "ck_university_meetings_cancelled": "(status = 'cancelled') = (cancelled_at IS NOT NULL) AND (cancelled_at IS NULL) = (cancel_reason IS NULL)",
+    "ck_university_meetings_next_action": "(next_action IS NULL) = (next_action_due_on IS NULL)",
+    "ck_university_meetings_outcome": (
+        "status = 'completed' OR (discussion_points IS NULL AND decisions IS NULL AND next_action IS NULL AND next_meeting_date IS NULL)"
+    ),
+    "ck_university_meeting_participants_one": "(contact_id IS NULL) <> (user_id IS NULL)",
+    "ck_university_meeting_events_event": _one_of("event", UNIVERSITY_MEETING_EVENTS, nullable=False),
+}
+
+
+def _university_meeting_checks(*names: str) -> tuple[CheckConstraint, ...]:
+    return tuple(CheckConstraint(UNIVERSITY_MEETING_CHECKS[name], name=name) for name in names)
+
+
+class UniversityMeeting(Base, TimestampMixin):
+    """upc-009 (DEC-SCOPE-145): a meeting with a university (§7). Never deleted: cancelled instead. The contact person's name and
+    designation are copied when set (MG5), so the record keeps them after the contact changes or is deleted (FK SET NULL)."""
+
+    __tablename__ = "university_meetings"
+    __table_args__ = (
+        UniqueConstraint("code", name="uq_university_meetings_code"),
+        *_university_meeting_checks(
+            "ck_university_meetings_type", "ck_university_meetings_mode", "ck_university_meetings_status", "ck_university_meetings_completed",
+            "ck_university_meetings_cancelled", "ck_university_meetings_next_action", "ck_university_meetings_outcome",
+        ),
+        Index("ix_university_meetings_university_starts", "university_id", "starts_at"),
+        Index("ix_university_meetings_status_starts", "status", "starts_at"),
+        Index("ix_university_meetings_responsible", "responsible_user_id"),
+    )  # fmt: skip
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    code: Mapped[str] = mapped_column(String(20))
+    university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"))
+    contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("university_contacts.id", ondelete="SET NULL"), nullable=True)
+    contact_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    contact_designation: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    meeting_type: Mapped[str] = mapped_column(String(40))
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    mode: Mapped[str] = mapped_column(String(10))
+    location: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    meeting_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    agenda: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    discussion_points: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decisions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    next_action: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    next_action_due_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    next_meeting_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    responsible_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    status: Mapped[str] = mapped_column(String(12), default="scheduled", server_default=text("'scheduled'"))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancel_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class UniversityMeetingParticipant(Base):
+    """MG6/MG7: one university contact or one EduSphere employee per row. A deleted contact leaves the list (CASCADE: PII deletion wins)."""
+
+    __tablename__ = "university_meeting_participants"
+    __table_args__ = (
+        *_university_meeting_checks("ck_university_meeting_participants_one"),
+        UniqueConstraint("meeting_id", "contact_id", name="uq_university_meeting_participants_contact"),
+        UniqueConstraint("meeting_id", "user_id", name="uq_university_meeting_participants_user"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    meeting_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("university_meetings.id", ondelete="CASCADE"))
+    contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("university_contacts.id", ondelete="CASCADE"), nullable=True)
+    user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+
+
+class UniversityMeetingEvent(Base):
+    """MG9: one row per schedule, edit, reschedule (old and new time), completion and cancellation. Append-only; `position` orders rows."""
+
+    __tablename__ = "university_meeting_events"
+    __table_args__ = (
+        *_university_meeting_checks("ck_university_meeting_events_event"),
+        Index("ix_university_meeting_events_meeting", "meeting_id", "position"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    meeting_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("university_meetings.id", ondelete="CASCADE"))
+    event: Mapped[str] = mapped_column(String(12))
+    old_starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    new_starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 # upc-012 (DEC-SCOPE-140, spec §2): calls, WhatsApp and email stored against the university (§12, U10). Migration 0125 repeats these
 # checks (test_upc_012_migration keeps them identical). Call outcomes, directions and the duration bound are rec-025's (UC1).
 PARTNERSHIP_TEMPLATE_CHECKS = {
@@ -1269,8 +1485,32 @@ class UniversityMessage(Base, TimestampMixin):
     sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+# upc-017 (DEC-SCOPE-147, spec §1-§2): the §16 course master extends `overseas_courses` (U6). `tuition_fee` and `intake` stay the
+# catalogue's display texts, re-derived whenever the structured amount / months are saved (CO4, CO7). The per-course commission is
+# RESTRICTED (U2, CO2). Migration 0132 repeats these; test_upc_017_migration keeps them identical.
+COURSE_CURRENCIES = ("INR", "USD", "GBP", "EUR", "CAD", "AUD", "NZD")  # = COUNSELING_CURRENCIES (defined later in this module)
+COURSE_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+ENGLISH_TESTS = ("IELTS", "TOEFL", "PTE", "Duolingo", "Other")
+COURSE_CHECKS = {
+    "ck_overseas_courses_tuition": "(tuition_amount IS NULL) = (tuition_currency IS NULL) AND (tuition_amount IS NULL OR tuition_amount >= 0)",
+    "ck_overseas_courses_tuition_currency": _one_of("tuition_currency", COURSE_CURRENCIES),
+    "ck_overseas_courses_fee": "(application_fee IS NULL) = (application_fee_currency IS NULL) AND (application_fee IS NULL OR application_fee >= 0)",
+    "ck_overseas_courses_fee_currency": _one_of("application_fee_currency", COURSE_CURRENCIES),
+    "ck_overseas_courses_english_test": _one_of("english_test", ENGLISH_TESTS),
+    "ck_overseas_courses_english_score": "english_score IS NULL OR (english_score > 0 AND english_test IS NOT NULL)",
+    "ck_overseas_courses_commission": "commission_percent IS NULL OR commission_amount IS NULL",
+    "ck_overseas_courses_commission_percent": "commission_percent IS NULL OR (commission_percent > 0 AND commission_percent <= 100)",
+    "ck_overseas_courses_commission_amount": "(commission_amount IS NULL) = (commission_currency IS NULL) AND (commission_amount IS NULL OR commission_amount > 0)",
+    "ck_overseas_courses_commission_currency": _one_of("commission_currency", COURSE_CURRENCIES),
+}
+
+
 class OverseasCourse(Base, TimestampMixin):
     __tablename__ = "overseas_courses"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in COURSE_CHECKS.items()),
+        Index("ix_overseas_courses_university_level", "university_id", "level"),
+    )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id"), index=True)
     title: Mapped[str] = mapped_column(String(200))
@@ -1279,6 +1519,43 @@ class OverseasCourse(Base, TimestampMixin):
     duration: Mapped[str] = mapped_column(String(80))
     tuition_fee: Mapped[str] = mapped_column(String(120))
     intake: Mapped[str] = mapped_column(String(120))
+    tuition_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    tuition_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    application_fee: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    application_fee_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    intakes: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    entry_requirements: Mapped[str | None] = mapped_column(Text, nullable=True)
+    english_test: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    english_score: Mapped[Decimal | None] = mapped_column(Numeric(4, 1), nullable=True)
+    scholarship_ids: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    application_process: Mapped[str | None] = mapped_column(Text, nullable=True)
+    deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    commission_percent: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    commission_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    commission_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+
+
+class CourseImportBatch(Base, TimestampMixin):
+    """upc-017 (CO14): one CSV import into a university's course list -- upc-005's batch shape plus the university. The file is never
+    stored: only its hash, the counts and each row's outcome {row_number, status, title, level, course_id, reason}."""
+
+    __tablename__ = "course_import_batches"
+    __table_args__ = (
+        UniqueConstraint("uploaded_by_user_id", "idempotency_key", name="uq_course_import_batches_key"),
+        CheckConstraint("created_count + duplicate_count + invalid_count = total_rows", name="ck_course_import_batches_counts"),
+        Index("ix_course_import_batches_university", "university_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"))
+    uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    idempotency_key: Mapped[str] = mapped_column(String(120))
+    file_sha256: Mapped[str] = mapped_column(String(64))
+    total_rows: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    created_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    duplicate_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    invalid_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    results_json: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
 
 
 class OverseasApplication(Base, TimestampMixin):
@@ -4513,3 +4790,151 @@ class UniversityDocumentVersion(Base):
     size_bytes: Mapped[int] = mapped_column(Integer)
     uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# upc-014 (DEC-SCOPE-142, spec §2): §13 MoU / agreement management. Types = the document centre's agreement kinds (AG2); the stored
+# statuses of §13's flow (AG4: Expiring and Expired are derived from the expiry date, never stored). Migration 0127 repeats these;
+# test_upc_014_migration keeps them identical. MOU-000123 numbers (AG1): a rolled-back create skips a number.
+UNIVERSITY_AGREEMENT_TYPES = ("mou", "partnership_agreement", "commission_agreement")
+UNIVERSITY_AGREEMENT_STATUSES = ("draft", "sent", "under_review", "negotiation", "approved", "signed", "active", "renewed")
+UNIVERSITY_AGREEMENT_EXCLUSIVITY = ("exclusive", "non_exclusive")
+UNIVERSITY_AGREEMENT_EVENT_KINDS = ("create", "update", "status", "renew")
+UNIVERSITY_AGREEMENT_CHECKS = {
+    "ck_university_agreements_type": _one_of("agreement_type", UNIVERSITY_AGREEMENT_TYPES, nullable=False),
+    "ck_university_agreements_status": _one_of("status", UNIVERSITY_AGREEMENT_STATUSES, nullable=False),
+    "ck_university_agreements_exclusivity": _one_of("exclusivity", UNIVERSITY_AGREEMENT_EXCLUSIVITY, nullable=False),
+    "ck_university_agreements_dates": "expiry_date > start_date",
+    "ck_university_agreements_renewal_window": "renewal_date IS NULL OR (renewal_date >= start_date AND renewal_date <= expiry_date)",
+    "ck_university_agreements_signed_complete": (
+        "status NOT IN ('signed', 'active', 'renewed') OR (document_id IS NOT NULL AND edusphere_signatory_user_id IS NOT NULL AND "
+        "edusphere_signed_on IS NOT NULL AND university_signatory_name IS NOT NULL AND university_signed_on IS NOT NULL)"
+    ),
+}
+UNIVERSITY_AGREEMENT_MOU_SEQ = Sequence("university_agreement_mou_seq", metadata=Base.metadata)
+
+
+class UniversityAgreement(Base, TimestampMixin):
+    """upc-014 (§13): one agreement with one university -- the 17 tracked fields (AG3; commission is upc-016's). A renewal is a new row
+    pointing at the one it renews (AG8, at most one successor). Rules live in `services/university_agreements.py`; the CHECKs are the
+    backstop (AC2: a signed row carries its document and both signatories)."""
+
+    __tablename__ = "university_agreements"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_AGREEMENT_CHECKS.items()),
+        UniqueConstraint("mou_number", name="uq_university_agreements_mou_number"),
+        Index("uq_university_agreements_previous", "previous_agreement_id", unique=True, postgresql_where=text("previous_agreement_id IS NOT NULL")),
+        Index("ix_university_agreements_university", "university_id", "created_at"),
+        Index("ix_university_agreements_expiry", "status", "expiry_date"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    mou_number: Mapped[str] = mapped_column(String(20))
+    university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"))
+    agreement_type: Mapped[str] = mapped_column(String(30))
+    status: Mapped[str] = mapped_column(String(20), default="draft", server_default="draft")
+    status_changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    start_date: Mapped[date] = mapped_column(Date)
+    expiry_date: Mapped[date] = mapped_column(Date)
+    renewal_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    commercial_terms: Mapped[str | None] = mapped_column(Text, nullable=True)
+    exclusivity: Mapped[str] = mapped_column(String(20))
+    territory: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    recruitment_rights: Mapped[str | None] = mapped_column(Text, nullable=True)
+    all_courses: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    course_ids: Mapped[list] = mapped_column(JSON, default=list)
+    country_ids: Mapped[list] = mapped_column(JSON, default=list)
+    payment_terms: Mapped[str | None] = mapped_column(Text, nullable=True)
+    marketing_rights: Mapped[str | None] = mapped_column(Text, nullable=True)
+    document_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("university_documents.id", ondelete="RESTRICT"), nullable=True)
+    edusphere_signatory_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    edusphere_signed_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    university_signatory_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    university_signed_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    previous_agreement_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("university_agreements.id", ondelete="RESTRICT"), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+class UniversityAgreementEvent(Base):
+    """upc-014: one row per agreement write, append-only -- create, edit (`changed` = field names), a status move (with its note) and a
+    renewal. Ordered by `position`."""
+
+    __tablename__ = "university_agreement_events"
+    __table_args__ = (
+        CheckConstraint(_in_list("kind", UNIVERSITY_AGREEMENT_EVENT_KINDS), name="ck_university_agreement_events_kind"),
+        Index("ix_university_agreement_events_agreement", "agreement_id", "position"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    agreement_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("university_agreements.id", ondelete="RESTRICT"))
+    kind: Mapped[str] = mapped_column(String(10))
+    from_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    to_status: Mapped[str] = mapped_column(String(20))
+    actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    changed: Mapped[list] = mapped_column(JSON, default=list)
+    position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# upc-016 (DEC-SCOPE-144, spec §2): §15 commercial / commission terms -- what a university pays EduSphere under one agreement, optionally
+# for some programmes / student countries (CM5). RESTRICTED (U2): only `partnership_access.COMMISSION_ROLES` ever see a row. Exactly one
+# rate per term, % or fixed (CM2); the currency list is the project's (CM3); the triggers answer Q-19 (CM1). Migration 0128 repeats
+# these; test_upc_016_migration keeps them identical.
+COMMISSION_TRIGGERS = ("enrolment", "visa_and_enrolment", "tuition_paid")
+COMMISSION_CURRENCIES = COUNSELING_CURRENCIES
+COMMISSION_TERM_CHECKS = {
+    "ck_university_commission_terms_one_rate": "(commission_percent IS NULL) <> (fixed_amount IS NULL)",
+    "ck_university_commission_terms_percent": "commission_percent IS NULL OR (commission_percent > 0 AND commission_percent <= 100)",
+    "ck_university_commission_terms_fixed": "fixed_amount IS NULL OR fixed_amount > 0",
+    "ck_university_commission_terms_currency": _in_list("currency", COMMISSION_CURRENCIES),
+    "ck_university_commission_terms_trigger": _in_list("trigger", COMMISSION_TRIGGERS),
+}
+
+
+class UniversityCommissionTerm(Base, TimestampMixin):
+    """upc-016 (§15): one commission term of an agreement -- the 9 terms. Empty `course_ids` = every programme, empty `country_ids` = every
+    student country. Rules live in `services/university_commission.py`; the CHECKs are the backstop."""
+
+    __tablename__ = "university_commission_terms"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in COMMISSION_TERM_CHECKS.items()),
+        Index("ix_university_commission_terms_agreement", "agreement_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    agreement_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("university_agreements.id", ondelete="RESTRICT"))
+    commission_percent: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    fixed_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    currency: Mapped[str] = mapped_column(String(3))
+    conditions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    course_ids: Mapped[list] = mapped_column(JSON, default=list)
+    country_ids: Mapped[list] = mapped_column(JSON, default=list)
+    payment_timeline: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    trigger: Mapped[str] = mapped_column(String(30))
+    payment_terms: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+# upc-021 (DEC-SCOPE-146, spec §3): monthly partnership targets. Migration 0131 repeats these strings; test_upc_021_migration asserts they
+# stay identical.
+PARTNERSHIP_TARGET_CHECKS = {
+    "ck_partnership_targets_month_start": "EXTRACT(DAY FROM month) = 1",
+    "ck_partnership_targets_kpi": _one_of("kpi_key", PARTNERSHIP_TARGET_KPI_KEYS, nullable=False),
+    "ck_partnership_targets_target_range": f"target >= 0 AND target <= {PARTNERSHIP_TARGET_MAX}",
+}
+
+
+class PartnershipTarget(Base, TimestampMixin):
+    """upc-021 (DEC-SCOPE-146): a head-set monthly target for one §21 KPI of one partnership manager. `month` is the month's first day.
+    Actuals are never stored: `services/partnership_metrics.target_actuals` derives them from append-only history (TG9). Clearing a target
+    deletes the row; every change is in the audit log (Q-23: history kept)."""
+
+    __tablename__ = "partnership_targets"
+    __table_args__ = (
+        UniqueConstraint("manager_user_id", "month", "kpi_key", name="uq_partnership_targets_manager_month_kpi"),
+        *(CheckConstraint(sql, name=name) for name, sql in PARTNERSHIP_TARGET_CHECKS.items()),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    manager_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    month: Mapped[date] = mapped_column(Date)
+    kpi_key: Mapped[str] = mapped_column(String(40))
+    target: Mapped[int] = mapped_column(Integer)
+    set_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    set_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -108,13 +108,14 @@ from app.schemas import (
     VisaCaseCreate,
 )
 from app.services import agent_notifications as agency_notices
-from app.services import applications
+from app.services import applications, interviews
 from app.services import recruiter_requirements as requirements
 from app.services.agent_applications import ARCHIVED, DEFAULT_NEXT_ACTION, OFFER_STAGES_ON, OVERSEAS_APPLICATION_STAGES, WITHDRAWN, WITHDRAWN_REFUSED, owned, with_owner
 from app.services.agent_documents import add_event, in_scope
 from app.services.agent_orgs import lock_org, notification_recipients, org_member_ids
 from app.services.agent_students import application_scope, student_scope
 from app.services.agent_visa import VISA_CASE_STAGES, VISA_DECIDED, VISA_DECISION_DISCLAIMER, VISA_ENROLLED, VISA_OFFER_NEEDED, update_case
+from app.services.bdm_appointments import db_now
 from app.services.certificates import generate_certificate_pdf
 from app.services.storage import storage
 
@@ -1636,33 +1637,33 @@ async def schedule_interview(payload: dict, user: User = Depends(get_current_use
     application = await db.get(JobApplication, uuid_reference(payload.get("application_id"), "job application reference"))
     if not application:
         raise HTTPException(404, "Application not found")
-    item = Interview(application_id=application.id, scheduled_at=datetime.fromisoformat(payload["scheduled_at"]), mode=payload.get("mode", "Online"), meeting_url=payload.get("meeting_url"))
+    # rec-020 (IV11): the code, the first event and the per-candidate clash (409) come from the service; no other new rule here.
+    item = await interviews.insert(db, user, application, datetime.fromisoformat(payload["scheduled_at"]), mode=payload.get("mode", "Online"), meeting_url=payload.get("meeting_url"))
     applications.follow(db, user, application, "interview", "Interview scheduled")
-    db.add(item)
-    await db.flush()
     await _audit(db, user, "interview.schedule", "interview", item.id)
     await db.commit()
     await db.refresh(item)
-    return {"id": item.id, "scheduled_at": item.scheduled_at}
+    return {"id": item.id, "code": item.interview_code, "scheduled_at": item.scheduled_at}
 
 
 @router.patch("/it/interviews/{interview_id}")
 async def update_interview(interview_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require(user, {"placement_team", "hr_team", "it_admin"}, "it")
-    item = await db.get(Interview, interview_id)
+    item = await db.scalar(select(Interview).where(Interview.id == interview_id).with_for_update())
     if not item:
         raise HTTPException(404, "Interview not found")
     for key in {"mode", "meeting_url", "result"}:
         if key in payload:
             setattr(item, key, payload[key])
-    if payload.get("scheduled_at"):
-        item.scheduled_at = datetime.fromisoformat(payload["scheduled_at"])
     application = await db.get(JobApplication, item.application_id)
+    # rec-020 (IV11): a changed time is recorded as a reschedule; a known result also sets the status when the move is allowed.
+    scheduled_at = datetime.fromisoformat(payload["scheduled_at"]) if payload.get("scheduled_at") else None
+    await interviews.legacy_update(db, user, item, application, scheduled_at, payload.get("result"), await db_now(db))
     if application and item.result in {"selected", "rejected"}:  # rec-017 A2: a selected result now means Selected
         applications.follow(db, user, application, item.result, f"Interview result: {item.result}")
     await _audit(db, user, "interview.update", "interview", item.id, payload)
     await db.commit()
-    return {"id": item.id, "result": item.result}
+    return {"id": item.id, "result": item.result, "status": item.status}
 
 
 @router.get("/it/placement/profiles")

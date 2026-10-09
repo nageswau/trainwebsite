@@ -1,4 +1,4 @@
-"""rec-013 (DEC-SCOPE-142, spec §3): Find Candidates -- skill AND / OR search over the whole pool (R11), expanded through aliases and
+"""rec-013 (DEC-SCOPE-150, spec §3): Find Candidates -- skill AND / OR search over the whole pool (R11), expanded through aliases and
 related skills (FS2), the S2-§18 filters (FS5), the F1-F3 facets (FS7) and the result cards (FS8).
 
 Read only. Terms become skill ids before any candidate is read, and only ids and escaped patterns reach SQL as bound parameters (no

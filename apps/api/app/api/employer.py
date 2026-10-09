@@ -13,7 +13,7 @@ from app.core.database import get_db
 from app.core.security import hash_password
 from app.models import AuditLog, Candidate, Company, EmployerProfile, Interview, Job, JobApplication, PlacementProfile, User
 from app.schemas import EmployerInterviewCreate, EmployerJobCreate, EmployerJobUpdate, EmployerRegistrationRequest, EmployerShortlistCreate, UserOut
-from app.services import applications, placement_pool
+from app.services import applications, interviews, placement_pool
 from app.services import recruiter_requirements as requirements
 from app.services.recruiter_companies import employer_lead_source_id
 
@@ -258,20 +258,11 @@ async def schedule_interview(payload: EmployerInterviewCreate, user: User = Depe
     # EMP-004-AC03: own candidates only -- verified via the application's own job,
     # even via a direct application id.
     await _own_job(application.job_id, company, db)
-    # EMP-004-AC02: flagged (409), not silently double-booked -- no `duration` field
-    # exists anywhere on `Interview` to compute a true overlap window, so the only
-    # honestly detectable conflict, without inventing an assumed duration, is another
-    # interview already scheduled for this same candidate at the exact same instant.
-    conflict = await db.scalar(
-        select(Interview.id)
-        .join(JobApplication, JobApplication.id == Interview.application_id)
-        .where(JobApplication.candidate_id == application.candidate_id, Interview.scheduled_at == payload.scheduled_at)
-    )
-    if conflict:
-        raise HTTPException(409, "This candidate already has an interview scheduled at this time")
-    item = Interview(application_id=application.id, scheduled_at=payload.scheduled_at, mode=payload.mode, meeting_url=payload.meeting_url)
-    db.add(item)
-    await db.flush()
+    # EMP-004-AC02: flagged (409), not silently double-booked -- `Interview` has no
+    # duration, so the honestly detectable conflict is another open interview of this
+    # same candidate at the same minute. rec-020 (IV6/IV11): the service runs that check
+    # under a candidate lock for every creator, and adds the code and the first event.
+    item = await interviews.insert(db, user, application, payload.scheduled_at, mode=payload.mode, meeting_url=payload.meeting_url)
     if application.status == "sourced":  # the legacy applied -> shortlisted (rec-017 A1)
         applications.follow(db, user, application, "shortlisted", "Interview scheduled by the employer")
     db.add(AuditLog(user_id=user.id, action="employer.interview.schedule", entity_type="interview", entity_id=str(item.id)))
@@ -294,6 +285,6 @@ async def list_employer_interviews(user: User = Depends(get_current_user), db: A
         )
     ).all()
     return [
-        {"id": interview.id, "candidate": student.full_name, "job_title": job.title, "scheduled_at": interview.scheduled_at, "mode": interview.mode, "meeting_url": interview.meeting_url, "result": interview.result}
+        {"id": interview.id, "code": interview.interview_code, "candidate": student.full_name, "job_title": job.title, "scheduled_at": interview.scheduled_at, "mode": interview.mode, "meeting_url": interview.meeting_url, "result": interview.result, "round": interview.round, "status": interview.status}
         for interview, _application, student, job in rows
     ]

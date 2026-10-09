@@ -1,4 +1,4 @@
-"""rec-013 -- Find Candidates (spec §1-§4, §6; DEC-SCOPE-142 FS1-FS12): skill AND / OR search expanded through aliases and related skills,
+"""rec-013 -- Find Candidates (spec §1-§4, §6; DEC-SCOPE-150 FS1-FS12): skill AND / OR search expanded through aliases and related skills,
 the S2-§18 filters, the F1-F3 facets, the pool, the 422 caps and the roles. The shared test database is never truncated, so every test
 makes its own skills (unique names) and only its own candidates can ever hold them."""
 

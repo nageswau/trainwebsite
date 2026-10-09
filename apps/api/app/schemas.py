@@ -47,8 +47,11 @@ from app.models import (
     CANDIDATE_STATUSES,
     CONTACT_CHANNELS,
     COURSE_LEVELS,
+    COURSE_MONTHS,
+    ENGLISH_TESTS,
     GENDERS,
     INSTITUTION_TYPES,
+    INTERVIEW_ROUNDS,
     JOB_EMPLOYMENT_TYPES,
     JOB_PRIORITIES,
     JOB_SHIFTS,
@@ -61,6 +64,8 @@ from app.models import (
     LEAD_FOLLOW_UP_REASONS,
     LEAD_PRIORITIES,
     PARTNERSHIP_POTENTIALS,
+    PARTNERSHIP_TARGET_KPI_KEYS,
+    PARTNERSHIP_TARGET_MAX,
     QUAL_MODES,
     QUAL_PASSPORT,
     QUAL_SKILL_LEVELS,
@@ -72,12 +77,17 @@ from app.models import (
     RECRUITER_FOLLOW_UP_REASONS,
     RECRUITER_MEETING_TYPES,
     RELATIONSHIP_STRENGTHS,
+    SCREENING_RESULTS,
     TEL_TARGET_KPIS,
     UNIVERSITY_OWNERSHIP_TYPES,
     UNIVERSITY_PRIORITIES,
     UNIVERSITY_RELATIONSHIPS,
 )
 from app.notifications.phone import normalise_phone
+from app.partnership_meeting_types import MAX_CONTACTS as MEETING_MAX_CONTACTS
+from app.partnership_meeting_types import MAX_EMPLOYEES as MEETING_MAX_EMPLOYEES
+from app.partnership_meeting_types import MODES as MEETING_MODES
+from app.partnership_meeting_types import TYPES as MEETING_TYPES
 from app.services.agent_visa import VISA_CASE_STAGES
 from app.tel_content_kinds import ASSET_KINDS as TEL_ASSET_KINDS
 from app.tel_sources import TEL_SOURCES
@@ -6917,6 +6927,9 @@ class UniversityPermissions(BaseModel):
     can_reopen: bool  # upc-007 PS6
     can_edit_contacts: bool  # upc-006 CT5
     can_manage_documents: bool  # upc-026 DC8
+    can_manage_agreements: bool  # upc-014 AG14
+    can_approve_agreements: bool  # upc-014 AG6
+    can_edit_timeline: bool  # upc-008 MS10
 
 
 class UniversityRow(BaseModel):
@@ -6980,6 +6993,7 @@ class UniversityDetail(UniversityRow):
     updated_at: datetime
     pipeline: UniversityPipelineOut
     follow_up: "UniversityFollowUpOut"  # upc-020 TK14/TK15
+    expected: "UniversityExpectedOut"  # upc-008 §5
 
 
 class LinkedBdmOrganization(BaseModel):
@@ -7491,6 +7505,168 @@ class UniversityLastAction(BaseModel):
 class UniversityFollowUpOut(BaseModel):
     next_action: UniversityNextAction | None
     last_action: UniversityLastAction | None
+
+
+# --- upc-009 (DEC-SCOPE-145, spec §1-§3): university meetings (§7). Limits per MG4-MG12 ------------------------------------------
+UniversityMeetingType = Literal[MEETING_TYPES]
+UniversityMeetingMode = Literal[MEETING_MODES]
+UniversityMeetingView = Literal["upcoming", "awaiting_outcome", "completed", "cancelled"]  # MG16
+MeetingLocation = _university_str(200)
+MeetingText = _university_str(2000, multiline=True)
+MeetingDiscussion = _university_str(4000, multiline=True)
+MeetingNextAction = _university_str(200)  # becomes a upc-020 task title (≤ 200)
+MeetingReason = _university_str(1000, required=True, multiline=True)
+MeetingRescheduleReason = _university_str(500, multiline=True)
+MeetingContacts = Annotated[list[UUID], Field(max_length=MEETING_MAX_CONTACTS), AfterValidator(_unique_ids)]
+MeetingEmployees = Annotated[list[UUID], Field(max_length=MEETING_MAX_EMPLOYEES), AfterValidator(_unique_ids)]
+
+
+class UniversityMeetingIn(BaseModel):
+    """MG1-MG8: `responsible_user_id` defaults to the caller. Code, status and the outcome fields are server-owned or set on complete
+    (unknown fields here); contacts and employees are checked in the service."""
+
+    model_config = ConfigDict(extra="forbid")
+    university_id: UUID
+    meeting_type: UniversityMeetingType
+    starts_at: BdmApptStart
+    mode: UniversityMeetingMode
+    location: MeetingLocation = None
+    meeting_url: LeadApptLink = None
+    contact_id: UUID | None = None
+    responsible_user_id: UUID | None = None
+    agenda: MeetingText = None
+    notes: MeetingText = None
+    participant_contact_ids: MeetingContacts = []
+    participant_user_ids: MeetingEmployees = []
+
+
+class UniversityMeetingUpdate(BaseModel):
+    """Edit a scheduled meeting: omitted = unchanged; null clears an optional field and fails a required one. A changed `starts_at` is a
+    reschedule (MG9). The university never changes (schedule a new meeting)."""
+
+    model_config = ConfigDict(extra="forbid")
+    meeting_type: UniversityMeetingType = None
+    starts_at: BdmApptStart = None
+    mode: UniversityMeetingMode = None
+    location: MeetingLocation = None
+    meeting_url: LeadApptLink = None
+    contact_id: UUID | None = None
+    responsible_user_id: UUID = None
+    agenda: MeetingText = None
+    notes: MeetingText = None
+    participant_contact_ids: MeetingContacts = None
+    participant_user_ids: MeetingEmployees = None
+    reschedule_reason: MeetingRescheduleReason = None
+
+
+class UniversityMeetingComplete(BaseModel):
+    """MG10-MG12: the outcome. At least one of notes / discussion points / decisions; a next action needs its due date (the service)."""
+
+    model_config = ConfigDict(extra="forbid")
+    notes: MeetingText = None
+    discussion_points: MeetingDiscussion = None
+    decisions: MeetingText = None
+    next_action: MeetingNextAction = None
+    next_action_due_on: date | None = None
+    next_meeting_date: date | None = None
+
+
+class UniversityMeetingCancel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: MeetingReason
+
+
+class MeetingContactPerson(BaseModel):
+    """MG5: the contact person as copied when set; `id` is null once the contact was deleted."""
+
+    id: UUID | None
+    name: str | None
+    designation: str | None
+
+
+class MeetingParticipants(BaseModel):
+    contacts: list[VisitContactRef]
+    employees: list[VisitPerson]
+
+
+class MeetingEventOut(BaseModel):
+    event: str
+    old_starts_at: datetime | None
+    new_starts_at: datetime | None
+    reason: str | None
+    actor: VisitPerson
+    created_at: datetime
+
+
+class MeetingFollowUp(BaseModel):
+    """The upc-020 tasks this meeting created (MG11, MG12)."""
+
+    id: UUID
+    title: str
+    due_on: date
+    status: str
+    assignee: VisitPerson
+
+
+class MeetingPermissions(BaseModel):
+    can_edit: bool
+    can_complete: bool
+    can_cancel: bool
+
+
+class UniversityMeetingRow(BaseModel):
+    id: UUID
+    code: str
+    university: VisitUniversityRef
+    meeting_type: str
+    starts_at: datetime
+    mode: str
+    status: str
+    responsible: VisitPerson
+    contact: MeetingContactPerson | None
+    warnings: list[str]  # MG4: "link_missing" while an online meeting has no link
+
+
+class UniversityMeetingOut(UniversityMeetingRow):
+    location: str | None
+    meeting_url: str | None
+    agenda: str | None
+    notes: str | None
+    discussion_points: str | None
+    decisions: str | None
+    next_action: str | None
+    next_action_due_on: date | None
+    next_meeting_date: date | None
+    created_by: VisitPerson
+    completed_by: VisitPerson | None
+    completed_at: datetime | None
+    cancelled_at: datetime | None
+    cancel_reason: str | None
+    participants: MeetingParticipants
+    events: list[MeetingEventOut]
+    follow_ups: list[MeetingFollowUp]
+    permissions: MeetingPermissions
+    created_at: datetime
+    updated_at: datetime
+
+
+class UniversityMeetingEnvelope(BaseModel):
+    meeting: UniversityMeetingOut
+
+
+class MeetingCounts(BaseModel):
+    upcoming: int
+    awaiting_outcome: int
+    completed: int
+    cancelled: int
+
+
+class UniversityMeetingPage(BaseModel):
+    items: list[UniversityMeetingRow]
+    total: int
+    limit: int
+    offset: int
+    counts: MeetingCounts
 
 
 # --- rec-006 (DEC-SCOPE-119): the recruiter Skills Master ------------------------------------------------------------------------
@@ -8202,8 +8378,10 @@ REC_REQUIREMENT_LABELS = {
     # rec-008's JD (the same text rules)
     "role": "Job role", "experience": "Experience", "skills": "Skills", "salary": "Salary", "responsibilities": "Responsibilities",
     "requirements": "Requirements",
+    # rec-018's screening (the same text rules)
+    "location_preference": "Location preference", "availability": "Availability", "remarks": "Remarks",
 }
-REC_REQUIREMENT_MULTILINE = frozenset({"description", "note", "skills", "responsibilities", "requirements"})
+REC_REQUIREMENT_MULTILINE = frozenset({"description", "note", "skills", "responsibilities", "requirements", "remarks"})
 REC_REQUIREMENT_FIELDS = (  # the `jobs` columns a create or edit may write; code, status, assignee and creator are server-owned
     "title", "location", "description", "department", "job_category_id", "vacancies", "qualification", "experience_min_months",
     "experience_max_months", "salary_min", "salary_max", "work_mode", "shift", "employment_type", "joining_requirement", "closes_on",
@@ -8536,6 +8714,85 @@ class RecApplicationStatusChange(BaseModel):
     note: _rec_requirement_text_type(500, multiline=True) = None
 
 
+# --- rec-018 (DEC-SCOPE-149): an application's screening (services/application_screening) -----------------------------------------
+class RecScreeningIn(BaseModel):
+    """SC5-SC7: the whole form -- a field left out is cleared. The ranges are the table's CHECKs (app.models.SCREENING_CHECKS)."""
+
+    model_config = ConfigDict(extra="forbid")
+    qualification_verified: bool = False
+    experience_verified: bool = False
+    skills_verified: bool = False
+    expected_salary: Decimal | None = Field(default=None, ge=0, max_digits=12, decimal_places=2)
+    notice_days: int | None = Field(default=None, ge=0, le=365)
+    location_preference: _rec_requirement_text_type(200) = None
+    communication_rating: int | None = Field(default=None, ge=1, le=5)
+    technical_rating: int | None = Field(default=None, ge=1, le=5)
+    availability: _rec_requirement_text_type(120) = None
+    willing_to_relocate: bool | None = None
+    remarks: _rec_requirement_text_type(2000, multiline=True) = None
+    result: Literal[SCREENING_RESULTS]
+
+    @model_validator(mode="after")
+    def _rejected_needs_remarks(self):
+        if self.result == "rejected" and not self.remarks:
+            raise ValueError("Remarks are required when the result is Rejected")
+        return self
+
+
+# --- rec-020 (DEC-SCOPE-148, spec §1/§3): interviews -------------------------------------------------------------------------------
+RecInterviewRound = Literal[INTERVIEW_ROUNDS]
+RecInterviewMove = Literal["confirmed", "completed", "no_show", "selected", "rejected", "on_hold"]  # IV3: never scheduled / rescheduled
+
+
+class RecInterviewCreate(BaseModel):
+    """IV5 / IV7: the §14 fields. Code, status, creator and history are server-owned (unknown fields here); the time rules, the clash and
+    the contact are checked in the service."""
+
+    model_config = ConfigDict(extra="forbid")
+    application_id: UUID
+    round: RecInterviewRound
+    scheduled_at: BdmApptStart
+    mode: RecMeetingMode
+    meeting_url: LeadApptLink = None
+    interviewer: _bdm_appt_optional(160) = None
+    location: _bdm_appt_optional(200) = None
+    contact_id: UUID | None = None
+    notify: StrictBool = True
+
+
+class RecInterviewUpdate(BaseModel):
+    """Edit the details of a non-final interview: only the keys sent are considered; the time changes only through reschedule. Null
+    clears an optional field, never the round or the mode."""
+
+    model_config = ConfigDict(extra="forbid")
+    round: RecInterviewRound | None = None
+    mode: RecMeetingMode | None = None
+    meeting_url: LeadApptLink = None
+    interviewer: _bdm_appt_optional(160) = None
+    location: _bdm_appt_optional(200) = None
+    contact_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def _required_stay_set(self):
+        for key in ("round", "mode"):
+            if key in self.model_fields_set and getattr(self, key) is None:
+                raise ValueError(f"{key.capitalize()} can't be removed")
+        return self
+
+
+class RecInterviewReschedule(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    scheduled_at: BdmApptStart
+    reason: _bdm_appt_optional(500) = None
+    notify: StrictBool = True
+
+
+class RecInterviewStatusChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: RecInterviewMove
+    note: _rec_requirement_text_type(500, multiline=True) = None
+
+
 # --- rec-011 (DEC-SCOPE-137, spec §1/§4): a candidate's skills -------------------------------------------------------------------
 CANDIDATE_SKILL_LABELS = {"skill": "Skill", "level": "Level", "experience_months": "Experience (months)", "last_used_year": "Last used", "source": "Source", "status": "Status"}
 
@@ -8649,7 +8906,332 @@ class UniversityEmailCreate(_UniversityMessageBase):
 
 UniversityMessageCreate = Annotated[UniversityWhatsAppCreate | UniversityEmailCreate, Field(discriminator="channel")]
 
-# rec-013 (DEC-SCOPE-142): the Find Candidates expression and filters. FS1: skills come as chips (never a typed query), FS4 caps the
+# upc-014 (DEC-SCOPE-142): §13 agreements. Status never travels in a create or edit (AG5: only the commands move it); the service checks
+# the cross-field rules (dates, courses of this university, the document's kind) because they need the stored row.
+AgreementType = Literal["mou", "partnership_agreement", "commission_agreement"]  # = UNIVERSITY_AGREEMENT_TYPES (AG2)
+AgreementStatus = Literal["draft", "sent", "under_review", "negotiation", "approved", "signed", "active", "renewed"]  # stored (AG4)
+AgreementExclusivity = Literal["exclusive", "non_exclusive"]
+AgreementText = _university_str(2000, multiline=True)
+AgreementTerritory = _university_str(500, multiline=True)
+AGREEMENT_MAX_COURSES = 200
+AGREEMENT_MAX_COUNTRIES = 250
+AgreementCourses = Annotated[list[UUID], Field(max_length=AGREEMENT_MAX_COURSES), AfterValidator(_unique_ids)]
+AgreementCountries = Annotated[list[UUID], Field(max_length=AGREEMENT_MAX_COUNTRIES), AfterValidator(_unique_ids)]
+
+
+def _short_name(value: str | None) -> str | None:
+    if value is not None and len(value) < 2:
+        raise PydanticCustomError("signatory_name", "Enter the university signatory's name (2-200 characters)")
+    return value
+
+
+AgreementSignatoryName = Annotated[_university_str(200), AfterValidator(_short_name)]
+
+
+class UniversityAgreementIn(BaseModel):
+    """AG3: the terms of a new agreement (a draft). Signing fields may be filled now or later (AG11)."""
+
+    model_config = ConfigDict(extra="forbid")
+    agreement_type: AgreementType
+    start_date: date
+    expiry_date: date
+    renewal_date: date | None = None
+    commercial_terms: AgreementText = None
+    exclusivity: AgreementExclusivity
+    territory: AgreementTerritory = None
+    recruitment_rights: AgreementText = None
+    all_courses: StrictBool = False
+    course_ids: AgreementCourses = []
+    country_ids: AgreementCountries = []
+    payment_terms: AgreementText = None
+    marketing_rights: AgreementText = None
+    document_id: UUID | None = None
+    edusphere_signatory_user_id: UUID | None = None
+    edusphere_signed_on: date | None = None
+    university_signatory_name: AgreementSignatoryName = None
+    university_signed_on: date | None = None
+
+
+class UniversityAgreementUpdate(BaseModel):
+    """PATCH: omitted = unchanged; null clears an optional field and fails a required one. The type and the university never change."""
+
+    model_config = ConfigDict(extra="forbid")
+    start_date: date = None
+    expiry_date: date = None
+    renewal_date: date | None = None
+    commercial_terms: AgreementText = None
+    exclusivity: AgreementExclusivity = None
+    territory: AgreementTerritory = None
+    recruitment_rights: AgreementText = None
+    all_courses: StrictBool = None
+    course_ids: AgreementCourses = None
+    country_ids: AgreementCountries = None
+    payment_terms: AgreementText = None
+    marketing_rights: AgreementText = None
+    document_id: UUID | None = None
+    edusphere_signatory_user_id: UUID | None = None
+    edusphere_signed_on: date | None = None
+    university_signatory_name: AgreementSignatoryName = None
+    university_signed_on: date | None = None
+
+
+class UniversityAgreementMove(BaseModel):
+    """AG5: `from_status` is the status the screen was showing -- a different stored status is a 409."""
+
+    model_config = ConfigDict(extra="forbid")
+    from_status: AgreementStatus
+    to_status: AgreementStatus
+    note: AgreementText = None
+
+
+class UniversityAgreementRenew(BaseModel):
+    """AG8: the renewal's own dates; the terms are copied from the agreement it renews."""
+
+    model_config = ConfigDict(extra="forbid")
+    start_date: date
+    expiry_date: date
+    renewal_date: date | None = None
+
+
+
+# --- upc-008 (DEC-SCOPE-143, spec §3): expected timeline + milestone tracker -------------------------------------------------------
+MilestoneKind = Literal[
+    "university_contacted", "meeting", "presentation", "proposal", "documents", "negotiation", "agreement", "signed", "onboarding",
+    "student_recruitment", "first_application", "first_admission", "active_partnership",
+]  # = partnership_milestones.MILESTONE_KEYS (test_upc_008_migration)  # fmt: skip
+MilestoneStatus = Literal["done", "in_progress", "pending", "delayed"]  # Q-11 (MS3)
+
+
+class _OneOrMore(BaseModel):
+    """A PATCH body: only the fields sent change (null clears one); an empty body is a 422."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def _not_empty(self):
+        if not self.model_fields_set:
+            raise ValueError("Send at least one field to change")
+        return self
+
+
+class UniversityMilestoneUpdate(_OneOrMore):
+    target_date: date | None = None
+    achieved_on: date | None = None  # not after today (IST), MS6: checked by the service
+
+
+class UniversityExpectedUpdate(_OneOrMore):
+    target_partnership_date: date | None = None
+    expected_intake: _university_str(80) = None
+    expected_agreement_date: date | None = None
+    expected_recruitment_start: date | None = None
+
+
+class UniversityExpectedOut(BaseModel):
+    target_partnership_date: date | None
+    expected_month: str | None  # YYYY-MM, derived (Q-10, MS8)
+    expected_quarter: str | None  # YYYY-Qn, calendar quarters, derived
+    expected_intake: str | None
+    expected_agreement_date: date | None
+    expected_recruitment_start: date | None
+
+
+class UniversityMilestoneOut(BaseModel):
+    kind: MilestoneKind
+    label: str
+    target_date: date | None
+    achieved_on: date | None
+    achieved_by: Literal["manual", "auto"] | None
+    auto_source: Literal["stage", "agreement", "application", "admission"] | None  # the event that achieves it (MS4), when it has one
+    status: MilestoneStatus
+
+
+class UniversityMilestonePage(BaseModel):
+    items: list[UniversityMilestoneOut]
+    today: date  # IST, the day statuses were computed for
+    can_edit: bool
+
+# upc-016 (DEC-SCOPE-144): §15 commission terms (restricted). The service checks the cross-field rules on the merged row (exactly one rate,
+# CM2; programmes of the agreement's university, CM5) because a PATCH carries only part of it.
+CommissionTrigger = Literal["enrolment", "visa_and_enrolment", "tuition_paid"]  # = models.COMMISSION_TRIGGERS (CM1)
+CommissionPercent = Annotated[Decimal, Field(gt=0, le=100, max_digits=5, decimal_places=2)]
+CommissionAmount = Annotated[Decimal, Field(gt=0, le=Decimal("99999999.99"), max_digits=10, decimal_places=2)]
+CommissionTimeline = _university_str(500, multiline=True)
+
+
+class CommissionTermIn(BaseModel):
+    """CM6: the 9 §15 terms. Empty programme / country lists mean every programme / country (CM5)."""
+
+    model_config = ConfigDict(extra="forbid")
+    commission_percent: CommissionPercent | None = None
+    fixed_amount: CommissionAmount | None = None
+    currency: CounselingCurrency  # CM3: models.COMMISSION_CURRENCIES
+    trigger: CommissionTrigger
+    conditions: AgreementText = None
+    course_ids: AgreementCourses = []
+    country_ids: AgreementCountries = []
+    payment_timeline: CommissionTimeline = None
+    payment_terms: AgreementText = None
+
+
+class CommissionTermUpdate(BaseModel):
+    """PATCH: omitted = unchanged; null clears an optional field and fails a required one (the service checks the merged row)."""
+
+    model_config = ConfigDict(extra="forbid")
+    commission_percent: CommissionPercent | None = None
+    fixed_amount: CommissionAmount | None = None
+    currency: CounselingCurrency | None = None
+    trigger: CommissionTrigger | None = None
+    conditions: AgreementText = None
+    course_ids: AgreementCourses = None
+    country_ids: AgreementCountries = None
+    payment_timeline: CommissionTimeline = None
+    payment_terms: AgreementText = None
+
+# upc-021 (DEC-SCOPE-146, spec §4): monthly partnership targets. The month and target rules are bdm-016's (TG2-TG4); the KPI is checked
+# against the §21 catalogue here, the owner and scope in the service. `achieved` is null when not tracked or the month hasn't started.
+PartnershipTargetKpiKey = Literal[PARTNERSHIP_TARGET_KPI_KEYS]
+
+
+class PartnershipTargetItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    manager_user_id: UUID
+    kpi_key: PartnershipTargetKpiKey
+    target: Annotated[StrictInt, Field(ge=0, le=PARTNERSHIP_TARGET_MAX)] | None
+
+
+class PartnershipTargetsPut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    month: BdmTargetMonth
+    items: list[PartnershipTargetItem] = Field(min_length=1, max_length=BDM_TARGET_BATCH_MAX)
+
+    @model_validator(mode="after")
+    def _one_value_per_kpi(self):
+        pairs = [(i.manager_user_id, i.kpi_key) for i in self.items]
+        if len(set(pairs)) != len(pairs):
+            raise ValueError("Each manager's KPI can appear only once")
+        return self
+
+
+class PartnershipTargetSheet(BaseModel):
+    month: str
+    month_status: Literal["past", "current", "future"]
+    editable: bool
+    manager: BdmPersonRef
+    kpis: list[BdmTargetKpi]
+
+
+class PartnershipTargetKpiDef(BaseModel):
+    key: str
+    label: str
+    definition: str
+    tracked: bool
+
+
+class PartnershipTargetValue(BaseModel):
+    key: str
+    target: int | None
+    achieved: int | None
+    percent: int | None
+
+
+class PartnershipTargetManagerRow(BaseModel):
+    manager: BdmPersonRef
+    active: bool
+    kpis: list[PartnershipTargetValue]
+
+
+class PartnershipTargetTeam(BaseModel):
+    month: str
+    month_status: Literal["past", "current", "future"]
+    editable: bool
+    kpis: list[PartnershipTargetKpiDef]
+    managers: list[PartnershipTargetManagerRow]
+    team: list[PartnershipTargetValue]
+
+
+# upc-017 (DEC-SCOPE-147): the §16 course master. The service checks the merged row's cross-field rules (amount ⇔ currency, a score needs
+# a test and fits it, scholarships of this university or its country) because a PATCH carries only part of it.
+CourseText = _university_str(2000, multiline=True)
+CourseLevel = Literal[COURSE_LEVELS]  # CO3: the master's levels for new and edited courses
+EnglishTest = Literal[ENGLISH_TESTS]  # CO8
+CourseMoney = Annotated[Decimal, Field(ge=0, le=Decimal("9999999999.99"), max_digits=12, decimal_places=2)]  # CO4: never negative
+CourseFee = Annotated[Decimal, Field(ge=0, le=Decimal("99999999.99"), max_digits=10, decimal_places=2)]  # CO6
+EnglishScore = Annotated[Decimal, Field(gt=0, le=Decimal("999.9"), max_digits=4, decimal_places=1)]
+COURSE_MAX_SCHOLARSHIPS = 20
+
+
+def _calendar_months(months: list[str] | None) -> list[str] | None:
+    """CO7: unique, in calendar order."""
+    return None if months is None else [m for m in COURSE_MONTHS if m in months]
+
+
+CourseIntakes = Annotated[list[Literal[COURSE_MONTHS]], Field(max_length=len(COURSE_MONTHS)), AfterValidator(_calendar_months)]
+CourseScholarships = Annotated[list[UUID], Field(max_length=COURSE_MAX_SCHOLARSHIPS), AfterValidator(_unique_ids)]
+
+
+class CourseCommissionIn(BaseModel):
+    """CO2: a percentage, or an amount with its currency (restricted, U2)."""
+
+    model_config = ConfigDict(extra="forbid")
+    percent: CommissionPercent | None = None
+    amount: CommissionAmount | None = None
+    currency: CounselingCurrency | None = None
+
+    @model_validator(mode="after")
+    def _one_rate(self):
+        if (self.percent is None) == (self.amount is None):
+            raise ValueError("Enter a commission percentage or an amount, not both")
+        if (self.amount is None) != (self.currency is None):
+            raise ValueError("A commission amount needs a currency (a percentage has none)")
+        return self
+
+
+class CourseIn(BaseModel):
+    """CO10: the §16 fields; country and university come from the university."""
+
+    model_config = ConfigDict(extra="forbid")
+    title: UniversityName
+    level: CourseLevel
+    category: _university_str(80, required=True)
+    duration: _university_str(80, required=True)
+    tuition_amount: CourseMoney | None = None
+    tuition_currency: CounselingCurrency | None = None
+    application_fee: CourseFee | None = None
+    application_fee_currency: CounselingCurrency | None = None
+    intakes: CourseIntakes = []
+    entry_requirements: CourseText = None
+    english_test: EnglishTest | None = None
+    english_score: EnglishScore | None = None
+    scholarship_ids: CourseScholarships = []
+    application_process: CourseText = None
+    deadline: date | None = None
+    active: bool = True
+    commission: CourseCommissionIn | None = None
+
+
+class CourseUpdate(BaseModel):
+    """PATCH: omitted = unchanged; null clears an optional field and fails a required one (the service checks the merged row)."""
+
+    model_config = ConfigDict(extra="forbid")
+    title: _university_str(200) = None
+    level: CourseLevel | None = None
+    category: _university_str(80) = None
+    duration: _university_str(80) = None
+    tuition_amount: CourseMoney | None = None
+    tuition_currency: CounselingCurrency | None = None
+    application_fee: CourseFee | None = None
+    application_fee_currency: CounselingCurrency | None = None
+    intakes: CourseIntakes = None
+    entry_requirements: CourseText = None
+    english_test: EnglishTest | None = None
+    english_score: EnglishScore | None = None
+    scholarship_ids: CourseScholarships = None
+    application_process: CourseText = None
+    deadline: date | None = None
+    active: bool | None = None
+    commission: CourseCommissionIn | None = None
+
+# rec-013 (DEC-SCOPE-150): the Find Candidates expression and filters. FS1: skills come as chips (never a typed query), FS4 caps the
 # size, FS5 the filters (experience in months, salary in INR per year), F3 the availability bands. Labels live in the web client.
 CANDIDATE_SEARCH_MAX_TERMS, CANDIDATE_SEARCH_MAX_GROUPS, CANDIDATE_SEARCH_GROUP_TERMS = 20, 5, 10
 AVAILABILITY_BANDS = ("immediate", "d15", "d30", "d31_59", "d60_plus")

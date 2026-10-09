@@ -1664,3 +1664,153 @@ in their status; `cancel_reason` only when cancelled; timestamps). Indexes `(ass
 status, due_on)` and the partial unique `uq_partnership_tasks_open_rule (university_id, rule) WHERE status = 'open' AND rule IS NOT NULL`
 (one open auto-task per rule, TK7). No backfill. **Migration `0126_partnership_tasks`**; `downgrade()` refuses while any task exists
 (API §12BI).
+
+## University agreements (`upc-014`, `DEC-SCOPE-142`; migration `0127_university_agreements`, after `0126_partnership_tasks`)
+
+**`university_agreements` columns:**
+- `id`, `mou_number` varchar(20) (unique; `MOU-000001` from `university_agreement_mou_seq`), `university_id` → `universities` (FK RESTRICT),
+  `agreement_type` varchar(30) (CHECK: mou / partnership_agreement / commission_agreement), `status` varchar(20) (CHECK: the 8 stored
+  statuses; Expiring/Expired are derived), `status_changed_at`, `start_date`, `expiry_date`, `renewal_date` (nullable),
+  `commercial_terms` text, `exclusivity` varchar(20) (CHECK: exclusive / non_exclusive), `territory` varchar(500), `recruitment_rights`
+  text, `all_courses` bool, `course_ids` JSON (ids of this university's `overseas_courses`), `country_ids` JSON (ids of `countries`),
+  `payment_terms` text, `marketing_rights` text, `document_id` → `university_documents` (nullable), `edusphere_signatory_user_id` →
+  `users` (nullable), `edusphere_signed_on`, `university_signatory_name` varchar(200), `university_signed_on`, `previous_agreement_id` →
+  `university_agreements` (nullable; the agreement this one renews), `created_by_user_id` → `users`, timestamps
+
+**`university_agreement_events` columns:**
+- `id`, `agreement_id` → `university_agreements`, `kind` (CHECK: create / update / status / renew), `from_status`, `to_status`,
+  `actor_user_id` → `users`, `note` text, `changed` JSON (field names), `position` identity, `created_at`
+
+**Constraints and indexes:**
+- CHECKs `ck_university_agreements_dates` (expiry > start), `_renewal_window`, `_signed_complete` (a signed/active/renewed row has its
+  document and both signatories with dates — AC2 backstop), `_type`, `_status`, `_exclusivity`.
+- `uq_university_agreements_mou_number`; `uq_university_agreements_previous` UNIQUE partial (one renewal per agreement);
+  `ix_university_agreements_university (university_id, created_at)`; `ix_university_agreements_expiry (status, expiry_date)` (upc-015).
+
+**Design notes:**
+- Commission is not stored here (upc-016). Courses/countries are validated on write; a JSON id that later disappears is skipped on output.
+- Agreements and events are not deleted in this item; `downgrade()` refuses while any agreement exists.
+
+## Expected timeline + milestones (`upc-008`, `DEC-SCOPE-143`; migration `0128_university_milestones`, after `0127_university_agreements`)
+
+**`universities` gains (§5, all nullable, no backfill):** `target_partnership_date` date, `expected_intake` varchar(80),
+`expected_agreement_date` date, `expected_recruitment_start` date. Expected month and quarter are derived from `target_partnership_date`
+on output (Q-10), never stored.
+
+**`university_milestones` columns:**
+- `id`, `university_id` → `universities` (FK RESTRICT), `kind` varchar(40) (CHECK: the 13 §6 keys, `app/partnership_milestones.py`),
+  `target_date` date (nullable), `achieved_on` date (nullable), `updated_by_user_id` → `users` (FK RESTRICT), timestamps.
+
+**Constraints and indexes:** `ck_university_milestones_kind`; `uq_university_milestones_kind (university_id, kind)` (also the read path).
+
+**Design notes:**
+- Sparse: a row exists only once someone records a date; the catalogue is the template for every university (MS2).
+- Status (done / in progress / pending / delayed) is computed in IST on read (Q-11), never stored.
+- Proposal, Signed, First Application and First Admission are derived on read from `university_stage_history`, `university_agreements`,
+  `overseas_applications` and `application_status_history` (MS4/MS5); a recorded `achieved_on` wins over the derived date.
+- `downgrade()` refuses while any milestone row or expected value exists.
+
+## University commission terms (`upc-016`, `DEC-SCOPE-144`; migration `0129_university_commission_terms`, after `0128_university_milestones`)
+
+**`university_commission_terms` columns (RESTRICTED, U2):**
+- `id`, `agreement_id` → `university_agreements` (FK RESTRICT), `commission_percent` numeric(5,2) (nullable), `fixed_amount`
+  numeric(12,2) (nullable), `currency` varchar(3) (CHECK: INR / USD / GBP / EUR / CAD / AUD / NZD), `conditions` text, `course_ids` JSON
+  (ids of the agreement's university's `overseas_courses`; empty = all), `country_ids` JSON (ids of `countries`; empty = all),
+  `payment_timeline` varchar(500), `trigger` varchar(30) (CHECK: enrolment / visa_and_enrolment / tuition_paid), `payment_terms` text,
+  `created_by_user_id` / `updated_by_user_id` → `users`, timestamps
+
+**Constraints and indexes:**
+- CHECKs `ck_university_commission_terms_one_rate` (exactly one of % / fixed), `_percent` (0 < % ≤ 100), `_fixed` (> 0), `_currency`,
+  `_trigger`. `ix_university_commission_terms_agreement (agreement_id, created_at)`.
+
+**Design notes:**
+- Only the commission roles read the table (`partnership_access.COMMISSION_ROLES`). Rows are removable while the agreement is negotiable;
+  a renewal copies them. `downgrade()` refuses while any term exists.
+
+**Addendum, 2026-10-09 (`upc-009`, `DEC-SCOPE-145` — University meetings):** `university_meeting_code_seq` (`UMT-000001`);
+`university_meetings` (`code` unique; FK `universities` RESTRICT; `contact_id` FK `university_contacts` SET NULL with the copied
+`contact_name` / `contact_designation`; `meeting_type` CHECK the 12 §7 values; `starts_at`; `mode` CHECK online / offline; `location` ≤ 200;
+`meeting_url` ≤ 500; `agenda`, `notes`, `discussion_points`, `decisions`; `next_action` ≤ 200 with `next_action_due_on` (both or neither);
+`next_meeting_date`; `responsible_user_id`, `created_by_user_id`, `completed_by_user_id` FK `users` RESTRICT; `status` CHECK scheduled /
+completed / cancelled; `completed_at` / `cancelled_at` + `cancel_reason` set exactly in their status; the outcome fields only when
+completed; timestamps; indexes `(university_id, starts_at)`, `(status, starts_at)`, `(responsible_user_id)`).
+`university_meeting_participants` (one contact — FK CASCADE — or one user per row; unique per meeting). `university_meeting_events`
+(append-only: scheduled / edited / rescheduled with old and new start / completed / cancelled with reason; `position` identity). No
+backfill. **Migration `0130_university_meetings`**; `downgrade()` refuses while any meeting exists (API §12BM).
+
+## Monthly partnership targets (`upc-021`, `DEC-SCOPE-146`; migration `0131_partnership_targets`, after `0130_university_meetings`)
+
+**`partnership_targets` columns:**
+- `id`, `manager_user_id` → `users` (FK RESTRICT), `month` date (CHECK first day of the month), `kpi_key` varchar(40) (CHECK: the 7 §21
+  keys, `app/partnership_target_kpis.py`), `target` integer (CHECK 0–100000), `set_by_user_id` → `users` (FK RESTRICT), `set_at`, timestamps.
+
+**Constraints and indexes:** `ck_partnership_targets_month_start`, `ck_partnership_targets_kpi`, `ck_partnership_targets_target_range`;
+`uq_partnership_targets_manager_month_kpi (manager_user_id, month, kpi_key)` (also the read path and the upsert key).
+
+**Design notes:**
+- Only targets are stored. Actuals are computed on read by `services/partnership_metrics.target_actuals` from the append-only
+  `university_assignment_history`, `university_stage_history`, `university_agreement_events` and the once-set
+  `university_meetings.completed_at`, credited to the primary manager at the
+  time of each event, so a closed month is never re-scored (TG8/TG9).
+- Clearing a target deletes its row; the history is the audit log (`partnership_target.set`).
+- `downgrade()` refuses while any target exists.
+
+## Course / program master (`upc-017`, `DEC-SCOPE-147`; migration `0132_university_courses`, after `0131_partnership_targets`)
+
+**`overseas_courses` new columns (all nullable or defaulted; existing rows, applications, shortlists and commission terms unchanged):**
+- `tuition_amount` numeric(12,2) + `tuition_currency` varchar(3), `application_fee` numeric(10,2) + `application_fee_currency` varchar(3)
+  (both or neither, ≥ 0, project currency list), `intakes` JSON (months Jan–Dec, default `[]`), `entry_requirements` text, `english_test`
+  varchar(10) (IELTS / TOEFL / PTE / Duolingo / Other), `english_score` numeric(4,1) (> 0, needs a test), `scholarship_ids` JSON (default `[]`),
+  `application_process` text, `deadline` date, `active` boolean NOT NULL default true, and **RESTRICTED (U2)** `commission_percent`
+  numeric(5,2) / `commission_amount` numeric(12,2) + `commission_currency` varchar(3) (at most one rate).
+- `tuition_fee` / `intake` (legacy texts) stay the catalogue's display values, re-derived when the structured values are saved.
+
+**`course_import_batches`:** `id`, `university_id` → `universities`, `uploaded_by_user_id` → `users`, `idempotency_key`, `file_sha256`,
+`total_rows` / `created_count` / `duplicate_count` / `invalid_count`, `results_json`, timestamps.
+
+**Constraints and indexes:** CHECKs `ck_overseas_courses_tuition`, `_tuition_currency`, `_fee`, `_fee_currency`, `_english_test`,
+`_english_score`, `_commission`, `_commission_percent`, `_commission_amount`, `_commission_currency`; `ix_overseas_courses_university_level
+(university_id, level)`; `uq_course_import_batches_key (uploaded_by_user_id, idempotency_key)`, `ck_course_import_batches_counts`,
+`ix_course_import_batches_university (university_id, created_at)`.
+
+**Design notes:**
+- The upgrade parses legacy fee / intake texts best effort into the empty structured columns (texts kept). `downgrade()` refuses while any
+  import batch exists or any course holds master-only data (fee, requirements, English, scholarships, process, deadline, inactive, commission).
+- Duplicate title + level per university is an application rule (CO12), checked under the university row lock; no DB unique index, since
+  legacy rows are not guaranteed distinct.
+
+## Interview management (`rec-020`, `DEC-SCOPE-148`; migration `0133_interview_management`, after `0132_university_courses`)
+
+**`interviews` gains:**
+- `interview_code` varchar(20) UNIQUE NOT NULL, default `'INT-' || to_char(nextval('interview_code_seq'), 'FM999999999000000')` (so every
+  creator, including the legacy routes, gets a code; existing rows backfilled in `created_at` order)
+- `round` varchar(20) NULL (CHECK `ck_interviews_round`: the 5 §14 rounds), `status` varchar(16) NOT NULL default `scheduled`
+  (CHECK `ck_interviews_status`: the 8 §14 statuses; backfilled from the legacy `result` — selected/rejected/on_hold kept, any other
+  value → on_hold, none → scheduled)
+- `interviewer` varchar(160), `location` varchar(200), `contact_id` → `company_contacts` (RESTRICT), `created_by_user_id` → `users`
+  (RESTRICT; NULL on legacy rows)
+- Index `ix_interviews_status_scheduled (status, scheduled_at)`. `result` stays (the legacy screens read it).
+
+**`interview_events`** (append-only): `id`, `interview_id` → `interviews` (RESTRICT), `event` (CHECK scheduled/rescheduled/status),
+`from_status`, `to_status`, `old_scheduled_at`, `new_scheduled_at`, `note` varchar(500), `actor_user_id` → `users` (nullable),
+`position` (identity), `created_at`. Index `(interview_id, position)`. Not backfilled.
+
+**Design notes:** the per-candidate clash is checked under a candidate row lock, not a constraint (no duration exists to define an
+overlap). `downgrade()` refuses while any event exists.
+
+## Application screenings (`rec-018`, `DEC-SCOPE-149`; migration `0134_application_screenings`, after `0133_interview_management`)
+
+**`application_screenings` columns:**
+- `application_id` PK → `job_applications` (FK RESTRICT): one current screening per application (SC5).
+- `qualification_verified`, `experience_verified`, `skills_verified` boolean NOT NULL default false
+- `expected_salary` numeric(12,2) (CHECK ≥ 0), `notice_days` smallint (CHECK 0–365), `location_preference` varchar(200)
+- `communication_rating`, `technical_rating` smallint (CHECK 1–5), `availability` varchar(120), `willing_to_relocate` boolean (NULL =
+  not asked), `remarks` varchar(2000)
+- `result` varchar(20) (CHECK shortlisted/hold/rejected/need_more_info), CHECK `ck_application_screenings_rejected_remarks` (Rejected
+  needs remarks)
+- `screened_by_user_id` → `users` (the last saver), timestamps
+
+**Design notes:**
+- Each save overwrites the row; the audit keeps field names and the result per save, and the status history keeps any move (SC3).
+- Salary and remarks are internal: only the recruiter routes read the table.
+- `downgrade()` refuses while any row exists.

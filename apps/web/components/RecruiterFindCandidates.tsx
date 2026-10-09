@@ -118,7 +118,7 @@ function Card({ c, writes, requirement, shortlisted, onShortlist }: {
   );
 }
 
-/** rec-013 (spec §5; DEC-SCOPE-142): Find Candidates. The whole search lives in the URL, so refresh keeps it and Back returns to the
+/** rec-013 (spec §5; DEC-SCOPE-150): Find Candidates. The whole search lives in the URL, so refresh keeps it and Back returns to the
  *  previous one (the tel-008 idiom); the form edits a draft that Search (or a facet) pushes. Shortlist and Contact are for writers;
  *  `sourceFilter` is false for hr_team, whom the recruiter catalogue refuses (rec-002 C3). */
 export default function RecruiterFindCandidates({ writes, sourceFilter }: { writes: boolean; sourceFilter: boolean }) {

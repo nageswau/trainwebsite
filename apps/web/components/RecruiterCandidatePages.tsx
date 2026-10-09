@@ -65,7 +65,7 @@ export async function CandidateListPage() {
   );
 }
 
-/** rec-013 (DEC-SCOPE-142): Find Candidates, in the same shell and for the same roles as the list. */
+/** rec-013 (DEC-SCOPE-150): Find Candidates, in the same shell and for the same roles as the list. */
 export async function FindCandidatesPage() {
   const s = await shell();
   if (!("nav" in s)) return s;

@@ -35,6 +35,7 @@ from app.models import (
 from app.partnership_stages import label_of
 from app.services import partnership_tasks
 from app.services.partnership import partnership_context
+from app.services.partnership_milestones import expected_out
 from app.services.partnership_pipeline import pipeline_out
 from app.services.telecaller import person_ref
 
@@ -56,6 +57,9 @@ ROLE_REFUSALS = {
     "can_reopen": "Only a partnership head can reopen a lost university",
     "can_edit_contacts": "Only the university's partnership managers can edit its contacts",
     "can_manage_documents": "Only the university's partnership managers can manage its documents",
+    "can_manage_agreements": "Only the university's partnership managers can manage its agreements",
+    "can_approve_agreements": "Only the university's partnership head approves its agreements",
+    "can_edit_timeline": "Only the university's partnership managers or their head can change its timeline",
 }
 TEAM_REFUSAL = "This university belongs to another partnership team"
 OVERRIDE_ROLES = frozenset({"partnership_head", "super_admin"})  # upc-004 UD2: may add a duplicate, with a reason
@@ -105,6 +109,9 @@ _ACTION_ROLES = {
     "can_move_stage": STAGE_ROLES,
     "can_edit_contacts": CONTACT_ROLES,
     "can_manage_documents": CONTACT_ROLES,  # upc-026 DC8: the contacts rule
+    "can_manage_agreements": CONTACT_ROLES,  # upc-014 AG14: the contacts rule
+    "can_approve_agreements": ASSIGN_ROLES,  # upc-014 AG6: the head (super_admin) approves
+    "can_edit_timeline": STAGE_ROLES,  # upc-008 MS10: the stage rule (owner / head / super_admin)
 }
 
 
@@ -275,6 +282,7 @@ async def detail_out(db: AsyncSession, user: User, uni: University, team: frozen
         "pipeline": pipeline_out(uni),
         "linked_bdm_organizations": await linked_bdm_organizations(db, uni.id),
         "follow_up": await partnership_tasks.follow_up_out(db, uni.id),  # upc-020 TK14/TK15
+        "expected": expected_out(uni),  # upc-008 §5
     }
 
 
