@@ -39,7 +39,17 @@ def test_models_match_the_migration():
     names = {c.name for t in (table, JobOfferEvent.__table__) for c in t.constraints} | {i.name for i in JobOfferEvent.__table__.indexes}
     assert set(OFFER_CHECKS) | set(OFFER_EVENT_CHECKS) | {"ix_job_offer_events_offer"} <= names
     assert {c.name for c in JobOfferEvent.__table__.columns} == {
-        "id", "offer_id", "event", "from_status", "to_status", "fields", "note", "letter_key", "actor_user_id", "position", "created_at",
+        "id",
+        "offer_id",
+        "event",
+        "from_status",
+        "to_status",
+        "fields",
+        "note",
+        "letter_key",
+        "actor_user_id",
+        "position",
+        "created_at",
     }
 
 
@@ -62,15 +72,21 @@ def isolated_db():
 
 def _application(url) -> uuid.UUID:
     app_id, job_id = uuid.uuid4(), _job(url)
-    _sql(url, "INSERT INTO job_applications (id, job_id, candidate_id, status, stage_changed_at, created_at, updated_at) VALUES (:id, :j, :c, 'selected', now(), now(), now())",
-         {"id": app_id, "j": job_id, "c": _external(url, email=f"{app_id.hex[:10]}@example.com")})
+    _sql(
+        url,
+        "INSERT INTO job_applications (id, job_id, candidate_id, status, stage_changed_at, created_at, updated_at) VALUES (:id, :j, :c, 'selected', now(), now(), now())",
+        {"id": app_id, "j": job_id, "c": _external(url, email=f"{app_id.hex[:10]}@example.com")},
+    )
     return app_id
 
 
 def _offer(url, status: str) -> uuid.UUID:
     offer_id = uuid.uuid4()
-    _sql(url, "INSERT INTO job_offers (id, application_id, offered_on, currency, status, created_at, updated_at) VALUES (:id, :a, current_date, 'INR', :s, now(), now())",
-         {"id": offer_id, "a": _application(url), "s": status})
+    _sql(
+        url,
+        "INSERT INTO job_offers (id, application_id, offered_on, currency, status, created_at, updated_at) VALUES (:id, :a, current_date, 'INR', :s, now(), now())",
+        {"id": offer_id, "a": _application(url), "s": status},
+    )
     return offer_id
 
 
@@ -81,8 +97,14 @@ def test_upgrade_maps_the_legacy_statuses(isolated_db):
     command.upgrade(cfg, HEAD)
     stored = dict(_sql(url, "SELECT id, status FROM job_offers"))
     assert {word: stored[rows[word]] for word in legacy} == {
-        "offered": "offer_received", "accepted": "accepted", "joined": "accepted", "declined": "declined", "rejected": "declined",
-        "withdrawn": "declined", "pending": "offer_pending", "on hold": "offer_received",
+        "offered": "offer_received",
+        "accepted": "accepted",
+        "joined": "accepted",
+        "declined": "declined",
+        "rejected": "declined",
+        "withdrawn": "declined",
+        "pending": "offer_pending",
+        "on hold": "offer_received",
     }
     assert _sql(url, "SELECT count(*) FROM job_offer_events") == [(0,)]
 

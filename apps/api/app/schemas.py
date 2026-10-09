@@ -8793,6 +8793,57 @@ class RecInterviewStatusChange(BaseModel):
     note: _rec_requirement_text_type(500, multiline=True) = None
 
 
+# --- rec-022 (DEC-SCOPE-152, spec §1/§3): offers ------------------------------------------------------------------------------------
+def _rec_offer_position(value: str | None) -> str:
+    if value is None or len(value) < 2:
+        raise ValueError("Enter the position (at least 2 characters)")
+    return value
+
+
+RecOfferPosition = Annotated[_bdm_appt_optional(160), AfterValidator(_rec_offer_position)]
+RecOfferSalary = Annotated[Decimal, Field(gt=0, max_digits=14, decimal_places=2)]
+RecOfferCurrency = Annotated[str, StringConstraints(strip_whitespace=True, to_upper=True, pattern=r"^[A-Z]{3}$")]
+RecOfferMove = Literal["offer_received", "accepted", "declined"]  # OF3: Offer Pending is only ever the starting status
+
+
+class RecOfferCreate(BaseModel):
+    """OF4: the §16 fields the recruiter types. Candidate, company and job come from the application; status history, the creator and the
+    letter are server-owned (the letter is its own upload). The date rules are the service's (they need today and the stored dates)."""
+
+    model_config = ConfigDict(extra="forbid")
+    status: Literal["offer_pending", "offer_received"] = "offer_pending"
+    position: RecOfferPosition
+    compensation: RecOfferSalary | None = None
+    currency: RecOfferCurrency = "INR"
+    offered_on: date | None = None
+    joining_date: date | None = None
+
+
+class RecOfferUpdate(BaseModel):
+    """OF5: a revision of a non-final offer -- only the keys sent are considered. Null clears the salary or the joining date, never the
+    position, currency or offer date."""
+
+    model_config = ConfigDict(extra="forbid")
+    position: RecOfferPosition | None = None
+    compensation: RecOfferSalary | None = None
+    currency: RecOfferCurrency | None = None
+    offered_on: date | None = None
+    joining_date: date | None = None
+
+    @model_validator(mode="after")
+    def _required_stay_set(self):
+        for key, label in (("position", "Position"), ("currency", "Currency"), ("offered_on", "Offer date")):
+            if key in self.model_fields_set and getattr(self, key) is None:
+                raise ValueError(f"{label} can't be removed")
+        return self
+
+
+class RecOfferStatusChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: RecOfferMove
+    note: _rec_requirement_text_type(500, multiline=True) = None
+
+
 # --- rec-011 (DEC-SCOPE-137, spec §1/§4): a candidate's skills -------------------------------------------------------------------
 CANDIDATE_SKILL_LABELS = {"skill": "Skill", "level": "Level", "experience_months": "Experience (months)", "last_used_year": "Last used", "source": "Source", "status": "Status"}
 

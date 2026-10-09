@@ -108,7 +108,7 @@ from app.schemas import (
     VisaCaseCreate,
 )
 from app.services import agent_notifications as agency_notices
-from app.services import applications, interviews
+from app.services import applications, interviews, offers
 from app.services import recruiter_requirements as requirements
 from app.services.agent_applications import ARCHIVED, DEFAULT_NEXT_ACTION, OFFER_STAGES_ON, OVERSEAS_APPLICATION_STAGES, WITHDRAWN, WITHDRAWN_REFUSED, owned, with_owner
 from app.services.agent_documents import add_event, in_scope
@@ -1723,24 +1723,16 @@ async def create_job_offer(payload: dict, user: User = Depends(get_current_user)
     application = await db.get(JobApplication, uuid_reference(payload.get("application_id"), "job application reference"))
     if not application:
         raise HTTPException(404, "Job application not found")
-    existing = await db.scalar(select(JobOffer).where(JobOffer.application_id == application.id))
-    if existing:
-        raise HTTPException(409, "An offer already exists for this application")
+    # rec-022 OF9: through services/offers (the mapped status, the created history row, the 409 on a second offer, the student notice).
+    status = offers.from_legacy(payload.get("status", "offered"))
+    if status is None:
+        raise HTTPException(422, offers.UNKNOWN_STATUS)
     joining = date.fromisoformat(payload["joining_date"]) if payload.get("joining_date") else None
-    item = JobOffer(
-        application_id=application.id,
-        compensation=payload.get("compensation"),
-        currency=payload.get("currency", "INR"),
-        status=payload.get("status", "offered"),
-        joining_date=joining,
-        letter_url=payload.get("letter_url"),
-    )
     applications.follow(db, user, application, "selected", "Offer recorded")
-    db.add(item)
-    await db.flush()
-    student = await db.get(User, application.student_id)
-    if student:
-        await _notify_user(db, student, "Job offer received", "A job offer has been recorded in your placement portal.", "/it/student/placement-status")
+    item = await offers.insert(
+        db, user, application, status,
+        compensation=payload.get("compensation"), currency=payload.get("currency", "INR"), joining_date=joining, letter_url=payload.get("letter_url"),
+    )
     await _audit(db, user, "placement.offer_create", "job_offer", item.id)
     await db.commit()
     await db.refresh(item)
@@ -1753,15 +1745,15 @@ async def update_job_offer(offer_id: UUID, payload: dict, user: User = Depends(g
     item = await db.get(JobOffer, offer_id)
     if not item:
         raise HTTPException(404, "Offer not found")
-    for key in {"compensation", "currency", "status", "letter_url"}:
+    for key in {"compensation", "currency", "letter_url"}:
         if key in payload:
             setattr(item, key, payload[key])
     if "joining_date" in payload:
         item.joining_date = date.fromisoformat(payload["joining_date"]) if payload["joining_date"] else None
-    application = await db.get(JobApplication, item.application_id)
-    if application and item.status in {"accepted", "joined"}:
-        applications.follow(db, user, application, "joined", f"Offer {item.status}")
-    await _audit(db, user, "placement.offer_update", "job_offer", item.id, payload)
+    if "status" in payload:  # rec-022 OF9 / AC3: mapped, with history; accepted/joined still joins the application
+        application = await db.get(JobApplication, item.application_id)
+        await offers.legacy_status(db, user, item, application, payload["status"])
+    await _audit(db, user, "placement.offer_update", "job_offer", item.id, {k: v for k, v in payload.items() if k != "compensation"})
     await db.commit()
     return {"id": item.id, "status": item.status}
 
