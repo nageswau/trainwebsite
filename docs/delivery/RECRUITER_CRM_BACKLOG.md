@@ -1112,7 +1112,7 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
   1. An offer only for a Selected application.
   2. Status history kept.
   3. The legacy `accepted/joined ⇒ hired` behaviour is preserved through the mapping.
-- **Status (2026-10-09):** **BUILT** on `feature/rec-022` (PR pending). `DEC-SCOPE-155` (OF1–OF10 recommended defaults, UNVERIFIED; Q-21
+- **Status (2026-10-09):** **MERGED** to `main` as PR #206 @ `27c41baa`; the next rec item takes `0139`, `DEC-SCOPE-156`, §12BX and §2.82 (re-check `main`). `DEC-SCOPE-155` (OF1–OF10 recommended defaults, UNVERIFIED; Q-21
   answered by OF2, OF6–OF8); migration `0138_offer_management` (after rec-014's `0137`), API §12BW, RBAC §2.81 (drafted as 0136 / 152 / 12BT / 2.78). Spec
   `docs/superpowers/specs/2026-10-09-rec-022-offer-management-design.md`.
 - **Positive scenarios:** Offer Received with a letter, then Accepted.

@@ -1,6 +1,6 @@
 # rec-022 — Offer management (design)
 
-**Status: BUILDING** on `feature/rec-022` (worktree `.claude/worktrees/rec-022`), from `main` @ `365fdd97`.
+**Status: MERGED** as PR #206 @ `27c41baa` (2026-10-09). Built on `feature/rec-022` from `main` @ `365fdd97`.
 
 - **Feature:** `rec-022` (`docs/delivery/RECRUITER_CRM_BACKLOG.md` §rec-022). **Dependencies:** rec-020 (PR #193) and rec-017 (PR #178), both
   merged.
