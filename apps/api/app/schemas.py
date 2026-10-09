@@ -8795,3 +8795,40 @@ class UniversityMilestonePage(BaseModel):
     items: list[UniversityMilestoneOut]
     today: date  # IST, the day statuses were computed for
     can_edit: bool
+
+# upc-016 (DEC-SCOPE-144): §15 commission terms (restricted). The service checks the cross-field rules on the merged row (exactly one rate,
+# CM2; programmes of the agreement's university, CM5) because a PATCH carries only part of it.
+CommissionTrigger = Literal["enrolment", "visa_and_enrolment", "tuition_paid"]  # = models.COMMISSION_TRIGGERS (CM1)
+CommissionPercent = Annotated[Decimal, Field(gt=0, le=100, max_digits=5, decimal_places=2)]
+CommissionAmount = Annotated[Decimal, Field(gt=0, le=Decimal("99999999.99"), max_digits=10, decimal_places=2)]
+CommissionTimeline = _university_str(500, multiline=True)
+
+
+class CommissionTermIn(BaseModel):
+    """CM6: the 9 §15 terms. Empty programme / country lists mean every programme / country (CM5)."""
+
+    model_config = ConfigDict(extra="forbid")
+    commission_percent: CommissionPercent | None = None
+    fixed_amount: CommissionAmount | None = None
+    currency: CounselingCurrency  # CM3: models.COMMISSION_CURRENCIES
+    trigger: CommissionTrigger
+    conditions: AgreementText = None
+    course_ids: AgreementCourses = []
+    country_ids: AgreementCountries = []
+    payment_timeline: CommissionTimeline = None
+    payment_terms: AgreementText = None
+
+
+class CommissionTermUpdate(BaseModel):
+    """PATCH: omitted = unchanged; null clears an optional field and fails a required one (the service checks the merged row)."""
+
+    model_config = ConfigDict(extra="forbid")
+    commission_percent: CommissionPercent | None = None
+    fixed_amount: CommissionAmount | None = None
+    currency: CounselingCurrency | None = None
+    trigger: CommissionTrigger | None = None
+    conditions: AgreementText = None
+    course_ids: AgreementCourses = None
+    country_ids: AgreementCountries = None
+    payment_timeline: CommissionTimeline = None
+    payment_terms: AgreementText = None

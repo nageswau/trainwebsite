@@ -764,6 +764,8 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-016 — Commercial / commission terms (restricted)
+- **Status (2026-10-09):** built on `feature/upc-016` under `DEC-SCOPE-144` (Q-18, Q-19 + CM1–CM15, recommended answers), with
+  migration `0129_university_commission_terms`, API §12BL and RBAC §2.70. Spec: `docs/superpowers/specs/2026-10-09-upc-016-commission-terms-design.md`.
 - **Business requirement:** §15 (9 terms; the example trigger "visa approval + student enrolment"; Finance manages receipts) (U2, U4).
 - **Existing behavior:** none (agent commission only).
 - **Expected behavior:**

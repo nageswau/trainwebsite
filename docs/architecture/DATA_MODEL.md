@@ -1709,3 +1709,20 @@ on output (Q-10), never stored.
 - Proposal, Signed, First Application and First Admission are derived on read from `university_stage_history`, `university_agreements`,
   `overseas_applications` and `application_status_history` (MS4/MS5); a recorded `achieved_on` wins over the derived date.
 - `downgrade()` refuses while any milestone row or expected value exists.
+
+## University commission terms (`upc-016`, `DEC-SCOPE-144`; migration `0129_university_commission_terms`, after `0128_university_milestones`)
+
+**`university_commission_terms` columns (RESTRICTED, U2):**
+- `id`, `agreement_id` → `university_agreements` (FK RESTRICT), `commission_percent` numeric(5,2) (nullable), `fixed_amount`
+  numeric(12,2) (nullable), `currency` varchar(3) (CHECK: INR / USD / GBP / EUR / CAD / AUD / NZD), `conditions` text, `course_ids` JSON
+  (ids of the agreement's university's `overseas_courses`; empty = all), `country_ids` JSON (ids of `countries`; empty = all),
+  `payment_timeline` varchar(500), `trigger` varchar(30) (CHECK: enrolment / visa_and_enrolment / tuition_paid), `payment_terms` text,
+  `created_by_user_id` / `updated_by_user_id` → `users`, timestamps
+
+**Constraints and indexes:**
+- CHECKs `ck_university_commission_terms_one_rate` (exactly one of % / fixed), `_percent` (0 < % ≤ 100), `_fixed` (> 0), `_currency`,
+  `_trigger`. `ix_university_commission_terms_agreement (agreement_id, created_at)`.
+
+**Design notes:**
+- Only the commission roles read the table (`partnership_access.COMMISSION_ROLES`). Rows are removable while the agreement is negotiable;
+  a renewal copies them. `downgrade()` refuses while any term exists.
