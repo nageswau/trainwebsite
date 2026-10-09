@@ -765,7 +765,7 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-013 — Find Candidates: skill AND/OR search, filters, facets, result cards
-- **Status (2026-10-09):** built on `feature/rec-013` (not yet merged). `DEC-SCOPE-151` (FS1–FS12 recommended defaults, UNVERIFIED;
+- **Status (2026-10-09):** **MERGED** to `main` as PR #199 @ `4b260e21`; the next rec item takes `0136`, `DEC-SCOPE-152`, §12BT and §2.78 (re-check `main`). `DEC-SCOPE-151` (FS1–FS12 recommended defaults, UNVERIFIED;
   Q-15 = a chip builder with "all of" skills and up to 5 "at least one of" groups). **No migration** (rec-011's
   `ix_candidate_skills_skill_candidate` serves the search; the 10k-candidate test stays under 2 s). API §12BS, RBAC §2.77 (drafted as
   141 / §12BI / §2.67; the upc items, rec-020, rec-018 and rec-012 merged first and hold 139–150 / §12BG–§12BR / §2.65–§2.76 — re-check `main`
