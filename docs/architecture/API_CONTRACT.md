@@ -2439,6 +2439,20 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `GET /recruiter/contracts/{contract_id}/documents/{kind}` | The file as an attachment named `{kind}-{company code}.{ext}`, with `Cache-Control: private, no-store` and a sandbox CSP. The download is audited before the bytes are sent. **404** when none is on file or out of scope |
 | `GET /recruiter/companies/{company_id}` (§12AO) | Gains `contract: {status, status_label} \| null`, the current contract's effective status (additive) |
 
+## 12BY. Requirement → candidate matching (`rec-016`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-157` (M1–M8). Spec: `docs/superpowers/specs/2026-10-09-rec-016-requirement-matching-design.md` §2. No migration.
+- **Scope:** every `{requirement_id}` resolves through the requirement's read scope (§12AW): out of scope or unknown → `404`.
+- **Reads:** candidate readers only (rec-009: `placement_team`, `placement_manager`, `super_admin`), checked before scope. Any other role,
+  including the assigned BDM, → `403`.
+- **Weights:** the requirement's `can_edit` (its recruiter or `super_admin`). Wrong role → `403`; cancelled requirement → `409`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/requirements/{requirement_id}/matches?limit=20&offset=0` | `limit` 1–50. **→ 200** `{criteria, reason, items[], total, limit, offset, can_shortlist, can_edit_weights}`. `criteria` is `{skills: [{id (job skill), name, kind, weight, points, in_master}], experience: {min_months, max_months, points} \| null, location: {value, points} \| null}`. `reason` is `"no_skills"` (no Skills-Master skill; `items` empty) or `null`. Each item is `{id, candidate_code, name, preferred_role, current_company, experience_months, location, notice_days, status, score, breakdown: [{key, label, kind (required \| preferred \| experience \| location), points, max, matched}], application: {id, status, status_label} \| null}`. The breakdown's points sum to `score`. Items are ordered by score desc, then the newest candidate. No phone or email |
+| `PUT /recruiter/requirements/{requirement_id}/skill-weights` | **Body:** `{weights: [{id (job skill), weight 1–10}]}` (1–60 items, distinct ids), `extra="forbid"`. **→ 200** `{requirement}` (§12AW). **422**: a weight out of range, a duplicate id, or an id that is not this requirement's skill ("Choose skills of this requirement"). Unchanged weights write nothing. A change writes one audit row `recruiter_requirement.weights` `{skills: [ids]}` |
+| `GET /recruiter/requirements/{requirement_id}` (§12AW) | `permissions` gains `can_view_matches` (additive): whether the caller may read the matches |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

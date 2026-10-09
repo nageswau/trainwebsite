@@ -32,6 +32,7 @@ from app.models import (
 from app.services import company_pipeline
 from app.services import skills as skills_master
 from app.services.bdm_appointments import IST
+from app.services.candidates import READERS as CANDIDATE_READERS
 from app.services.recruiter import MANAGER_ROLE, ROLE, recruiter_context
 from app.services.recruiter_companies import person, ref
 
@@ -230,6 +231,7 @@ def permissions(user: User, job: Job) -> dict[str, bool]:
         "can_edit": writer and job.status != "cancelled",
         "can_change_status": writer and bool(TRANSITIONS[job.status]),
         "can_reassign": user.role in (MANAGER_ROLE, "super_admin") and job.status != "cancelled",
+        "can_view_matches": user.role in CANDIDATE_READERS,  # rec-016 (M7): the assigned BDM reads the requirement, not the pool
     }
 
 

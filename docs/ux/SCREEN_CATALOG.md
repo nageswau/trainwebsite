@@ -3697,3 +3697,28 @@ Meetings:
   - Read-only for the manager and the assigned BDM.
   - Success notices go to the page's live region.
 
+
+## rec-016 addendum (2026-10-09, `DEC-SCOPE-157`) — Matching candidates on the requirement page
+
+Design spec: `docs/superpowers/specs/2026-10-09-rec-016-requirement-matching-design.md` §4. On `/recruiter/requirements/{id}`, after the
+rec-017 Candidates section. Shown only when the requirement's `permissions.can_view_matches` is true, so it is hidden from the assigned BDM.
+- **Header:** "Matching candidates (n)". Writers also see "Adjust weights".
+- **Explanation:** "Score out of 100: Java 30 · … · Experience 10 · Location (Hyderabad) 10. Candidates must have every required skill."
+  Skills outside the Skills Master are listed under "Not used for matching".
+- **Rows:** stacked cards, so the layout holds at phone width. Each card has:
+  - the name (link) with a "{score}% match" badge, and the status on this requirement as a badge (or "Not on this requirement");
+  - the code, preferred role, experience and location;
+  - the breakdown as chips ("Java: 30 of 30"). Matched chips are filled. The matched or missing state is also in visually hidden text,
+    never shown by colour alone;
+  - View profile, Contact (writers) and Shortlist. Shortlist appears only for writers on an open requirement, and only when the candidate
+    is not already on it.
+- **Paging:** 20 per page, with Previous and Next.
+- **Adjust weights form:** one number field (1–10) per requirement skill. An out-of-range value is refused before sending. Save and Cancel
+  return focus to "Adjust weights" (QA-02). "Match weights saved." goes to the section's live region.
+- **States:**
+  - "Loading matching candidates…".
+  - "Unable to load matching candidates." with Retry.
+  - No Skills-Master skill: "Add required or preferred skills from the Skills Master to this requirement to see matching candidates."
+  - No match: "No candidates in the pool have the required skills yet."
+  - Read-only for the manager.
+  - A Shortlist success ("{name} shortlisted.") re-reads the Candidates section. A refusal shows the API's message.
