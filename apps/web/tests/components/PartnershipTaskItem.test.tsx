@@ -24,6 +24,7 @@ describe("PartnershipTaskItem (upc-020)", () => {
     expect(screen.getByText("Follow-up")).toBeInTheDocument();
     expect(screen.getByText("Auto: stage change")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "XYZ University" })).toHaveAttribute("href", "/partnership/universities/u1");
+    expect(screen.getByRole("link", { name: "XYZ University" })).toHaveStyle({ textDecoration: "underline" }); // QA-04
     expect(screen.getByText(/Owner: Rahul/)).toBeInTheDocument();
   });
 

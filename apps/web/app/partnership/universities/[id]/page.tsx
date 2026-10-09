@@ -107,7 +107,8 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
             <UniversityFollowUp followUp={u.follow_up} />
             {TASK_READERS.has(user.role) && (
               <>
-                <PartnershipTasksPanel role={user.role} university={{ id: u.id, name: u.name }} canAdd={TASK_CREATORS.has(user.role) && u.permissions.can_edit_contacts} />
+                {/* QA-01: remounted after each stage change (the page refreshes), so a new auto-task shows without a reload */}
+                <PartnershipTasksPanel key={`tasks|${u.pipeline.changed_at}`} role={user.role} university={{ id: u.id, name: u.name }} canAdd={TASK_CREATORS.has(user.role) && u.permissions.can_edit_contacts} />
                 <div className="actions" style={{ marginTop: 12 }}><Link className="btn ghost small" href={TASKS_PATH}>All follow-ups &amp; tasks</Link></div>
               </>
             )}

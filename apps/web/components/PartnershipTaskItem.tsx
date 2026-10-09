@@ -6,6 +6,7 @@ import BdmAppointmentReasonForm from "@/components/BdmAppointmentReasonForm";
 import PartnershipTaskForm from "@/components/PartnershipTaskForm";
 import ReturnToLoginLink from "@/components/ReturnToLoginLink";
 import { sendJson } from "@/lib/apiErrors";
+import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import { SAVE_FAILED, SESSION_ENDED, writeFailure } from "@/lib/bdmTasks";
 import { formatCalendarDate, formatSchoolDateTime } from "@/lib/formatDate";
 import { BAND_LABEL, type Band, KIND_LABEL, type PartnershipTask, PRIORITY_LABEL, SOURCE_LABEL, taskUrl, taskOf } from "@/lib/partnershipTasks";
@@ -14,6 +15,8 @@ import { indiaToday } from "@/lib/visits";
 
 // Typed text keeps its line breaks and wraps even an unbroken word, so it never widens the page (bdm-008 QA8-01).
 const TEXT = { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } as const;
+// QA-04: the university link looks like a link, and is a tap target of at least 24px (WCAG 2.2 SC 2.5.8), as bdm-008's.
+const META_LINK = { ...LINK_STYLE, display: "inline-block", minHeight: 24, lineHeight: "24px" } as const;
 
 // upc-020: one follow-up or task. Actions render from `permissions` only -- the server enforces every rule (TK11/TK12). A write the
 // server refuses because the task changed (403/404/409) goes to the list, which says why and reloads; anything else stays on the row.
@@ -66,7 +69,7 @@ export default function PartnershipTaskItem({ task, showUniversity, canAssign = 
       <p className="muted" style={{ margin: "4px 0", display: "flex", flexWrap: "wrap", gap: 8 }}>
         <span>Due {formatCalendarDate(task.due_on)}</span>
         {showUniversity && (
-          <Link href={`/partnership/universities/${task.university.id}`} style={{ display: "inline-block", minHeight: 24, lineHeight: "24px" }}>{task.university.name}</Link>
+          <Link href={`/partnership/universities/${task.university.id}`} style={META_LINK}>{task.university.name}</Link>
         )}
         <span>Owner: {task.assignee.full_name}{!task.assignee.active && " (inactive)"}</span>
         <span>{SOURCE_LABEL[task.source] ?? task.source}</span>

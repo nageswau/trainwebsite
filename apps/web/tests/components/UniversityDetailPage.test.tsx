@@ -41,7 +41,9 @@ describe("upc-007 university detail page", () => {
     expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/universities/${ID}/stage-history?limit=20&offset=0`);
     expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/visits?university_id=${ID}&limit=5`); // upc-010 Visits section
     expect(tree.find((el) => el.type === UniversityStagePanel)!.props.university).toEqual(university);
-    const panel = tree.find((el) => el.type === PartnershipTasksPanel)!.props; // upc-020: the university's open follow-ups and tasks
+    const panelEl = tree.find((el) => el.type === PartnershipTasksPanel)!;
+    expect(panelEl.key).toContain(university.pipeline.changed_at); // QA-01: a stage move's auto-task shows without a reload
+    const panel = panelEl.props; // upc-020: the university's open follow-ups and tasks
     expect(panel).toMatchObject({ role: "partnership_manager", university: { id: ID, name: "ABC" }, canAdd: false });
     expect(tree.find((el) => el.type === UniversityFollowUp)!.props.followUp).toEqual(university.follow_up);
     const hist = tree.find((el) => el.type === BdmStageHistory)!.props;

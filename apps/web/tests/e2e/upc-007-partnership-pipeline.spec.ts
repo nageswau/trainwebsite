@@ -42,7 +42,7 @@ async function moveTo(page: Page, stage: string, note?: string) {
   await page.getByLabel("Move to").selectOption({ label: stage });
   if (note) await page.getByLabel(/Reason \(required when moving back\)|Note \(optional\)/).fill(note);
   await page.getByRole("button", { name: "Move", exact: true }).click();
-  await expect(page.getByRole("status")).toHaveText(`Moved to ${stage}.`);
+  await expect(page.getByRole("region", { name: "Partnership stage" }).getByRole("status")).toHaveText(`Moved to ${stage}.`); // upc-020 adds the follow-ups section's live regions
   await expect(page.locator("li[aria-current='step']")).toContainText(stage);
 }
 
@@ -111,7 +111,7 @@ test("owner moves through the stages, marks lost; the head reopens; the board co
   await page.getByRole("button", { name: "Reopen" }).click();
   await page.getByLabel("Reason").fill("They called back");
   await page.getByRole("button", { name: "Yes, reopen" }).click();
-  await expect(page.getByRole("status")).toHaveText("Reopened.");
+  await expect(page.getByRole("region", { name: "Partnership stage" }).getByRole("status")).toHaveText("Reopened.");
   await expect(page.locator("li[aria-current='step']")).toContainText("Interested");
   await expect(history.getByRole("listitem").first()).toContainText("Reopened at Interested");
 

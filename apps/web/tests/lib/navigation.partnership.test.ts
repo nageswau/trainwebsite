@@ -34,6 +34,7 @@ describe("upc-001 navigation", () => {
 
   it("gives the Super Admin the visit approval queue (upc-010 VS4 fallback)", () => {
     expect(SUPER_ADMIN_NAV).toContainEqual({ label: "Partnership Visit Approvals", href: "/partnership/visits/approvals" });
+    expect(SUPER_ADMIN_NAV).toContainEqual({ label: "Partnership Follow-ups & Tasks", href: "/partnership/tasks" }); // upc-020 QA-03
   });
 
   it("gives the Super Admin and Overseas Admin a Partnership managers entry", () => {

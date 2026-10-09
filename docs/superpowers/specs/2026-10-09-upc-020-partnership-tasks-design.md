@@ -169,3 +169,19 @@ commits), `api/partnership_tasks.py` (prefix `/partnership/tasks`, owns the tran
     `role=alert`. Badges carry text, never colour alone. Every action is a button reachable by keyboard; Escape closes a form.
   - Loading, empty (per band), past-the-end, error (Retry) and session-ended states, as bdm-008's panel.
   - Wraps on mobile (flex-wrap; long titles `overflow-wrap: anywhere`).
+
+## 9. Browser QA (Phase 5/6)
+
+First pass (no code changes), Playwright against the isolated stack (`http://localhost:13020`), 1280 / 820 / 390 px. Passed: past due
+date and blank title (field errors), Escape returns focus to Add, refresh keeps the band, back restores the previous band, edit and
+cancel (reason required), loading text and a 500 → "Unable to load follow-ups." → Retry, no horizontal overflow at any width, a non-owning
+manager reads but gets no actions or Add, overseas_admin sees the Next / Last Action summary but `/partnership/tasks` refuses it, signed
+out → overseas sign-in, head nav entry, head team view. Console errors were only the deliberate 422 / 500 responses.
+
+| ID | Severity | Role / page | Finding | Fix |
+|---|---|---|---|---|
+| QA-01 | Medium | manager / university page | After a stage move, Next / Last Action updated (server refresh) but the client-loaded task list stayed stale until a reload | The panel is keyed on `pipeline.changed_at`, so it remounts and refetches (the stage history's idiom); vitest + e2e without reload |
+| QA-02 | — | manager / add form | Double-click on Add appeared to create two tasks | **Not a defect**: the DB held one row; the second match was the same title shown as Next action. Withdrawn |
+| QA-03 | Low | super_admin / nav | super_admin reads every task (TK8) but had no menu entry | `SUPER_ADMIN_NAV` gains "Partnership Follow-ups & Tasks"; nav test + e2e |
+| QA-04 | Low | all / task list | The university name link looked like plain muted text | bdm-008's `LINK_STYLE` with a 24px tap target; vitest |
+| QA-05 | Low | e2e regression | The new section's `role=status` live regions made upc-006's and upc-007's unscoped `getByRole("status")` ambiguous | Their locators are scoped to their own region (test-only change; several live regions on a page are valid) |
