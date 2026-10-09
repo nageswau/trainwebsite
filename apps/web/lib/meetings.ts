@@ -1,5 +1,6 @@
 // upc-009 (DEC-SCOPE-145): university meetings (§7) -- types, words, URLs and list helpers shared by the meeting pages and forms. The
 // university, responsible-employee and employee pickers are upc-010's (`lib/visits`), which apply the same roles and scope.
+import type { Overlap } from "@/lib/partnershipCalendar";
 import type { ManagerRef } from "@/lib/telecaller";
 import type { VisitUniversity } from "@/lib/visits";
 
@@ -40,6 +41,7 @@ export type Meeting = MeetingRow & {
   created_by: ManagerRef; completed_by: ManagerRef | null; completed_at: string | null; cancelled_at: string | null; cancel_reason: string | null;
   participants: { contacts: { id: string; name: string; designation: string | null }[]; employees: ManagerRef[] };
   events: MeetingEvent[]; follow_ups: MeetingFollowUp[]; permissions: MeetingPermissions; created_at: string; updated_at: string;
+  overlaps?: Overlap[]; // upc-011 CL11
 };
 export type MeetingPage = { items: MeetingRow[]; total: number; limit: number; offset: number; counts: Record<MeetingView, number> };
 

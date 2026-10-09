@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { accessUnavailable } from "@/components/AccessUnavailable";
 import MeetingActions from "@/components/MeetingActions";
+import OverlapNotice from "@/components/OverlapNotice";
 import PortalShell from "@/components/PortalShell";
 import { serverApi } from "@/lib/api";
 import {
@@ -49,6 +50,7 @@ export default async function MeetingPage({ params }: { params: Promise<{ id: st
           {m.permissions.can_edit && <Link className="btn secondary" href={meetingPath(m.id, true)}>Edit</Link>}
         </div>
         {m.warnings.includes("link_missing") && <p className="form-warning" role="note">{LINK_MISSING_TEXT}</p>}
+        {m.status === "scheduled" && <OverlapNotice overlaps={m.overlaps} />}
         <div className="action-grid">
           {/* QA-02: always rendered, so MeetingActions keeps its confirmation after the re-read removes the last action */}
           <section className="action-card wide" aria-labelledby="meeting-actions">

@@ -1,5 +1,6 @@
 // upc-010 (DEC-SCOPE-130): university visits (§8) -- types, words, URLs and the option searches shared by the visit pages and forms.
 import type { LookupPage } from "@/lib/lookups";
+import type { Overlap } from "@/lib/partnershipCalendar";
 import type { ManagerRef } from "@/lib/telecaller";
 
 export const VISIT_STATUSES: Record<string, string> = {
@@ -26,6 +27,7 @@ export type Visit = VisitRow & {
   agenda: string | null; expected_outcome: string | null; follow_up_date: string | null; rejection_reason: string | null; decided_by: ManagerRef | null;
   decided_at: string | null; close_reason: string | null; participants: ManagerRef[]; contacts: { id: string; name: string; designation: string | null }[];
   events: VisitEvent[]; permissions: VisitPermissions; editable_fields: string[]; created_at: string; updated_at: string;
+  overlaps?: Overlap[]; // upc-011 CL11
 };
 
 export const VISITS_URL = "/api/v1/partnership/visits";
