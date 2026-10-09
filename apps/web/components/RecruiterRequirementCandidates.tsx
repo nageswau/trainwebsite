@@ -4,6 +4,7 @@ import { type FormEvent, useEffect, useId, useState } from "react";
 
 import LocalTime from "@/components/LocalTime";
 import RecruiterApplicationInterviews from "@/components/RecruiterApplicationInterviews";
+import RecruiterApplicationScreening from "@/components/RecruiterApplicationScreening";
 import type { ContactOption } from "@/components/RecruiterInterviewForm";
 import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson } from "@/lib/apiErrors";
@@ -141,11 +142,14 @@ function StatusForm({ application, onChanged, onCancel }: { application: RecAppl
 }
 
 /** One candidate as a stacked item (the rec-025 Calls pattern), so the status and actions stay on screen at phone width (QA-03). */
-function ApplicationItem({ application, contacts, onChanged, onInterview }: {
+type Panel = "none" | "status" | "history" | "interviews" | "screening";
+
+function ApplicationItem({ application, contacts, onChanged, onInterview, onScreened }: {
   application: RecApplication; contacts: ContactOption[]; onChanged: (a: RecApplication) => void; onInterview: (notice: string) => void;
+  onScreened: (a: RecApplication) => void;
 }) {
-  const [open, setOpen] = useState<"none" | "status" | "history" | "interviews">("none");
-  const toggle = (panel: "status" | "history" | "interviews") => setOpen((current) => (current === panel ? "none" : panel));
+  const [open, setOpen] = useState<Panel>("none");
+  const toggle = (panel: Exclude<Panel, "none">) => setOpen((current) => (current === panel ? "none" : panel));
   const id = useId();
   return (
     <li className="action-card" style={{ listStyle: "none", gap: 6 }} aria-labelledby={`${id}-name`}>
@@ -154,6 +158,7 @@ function ApplicationItem({ application, contacts, onChanged, onInterview }: {
           {application.candidate.name}
         </Link>
         <span className="badge">{application.status_label}</span>
+        {application.screening_result && <span className="badge">Screening: {application.screening_result.label}</span>}
       </div>
       <p className="muted" style={{ margin: 0, fontSize: 13 }}>
         {application.candidate.code} · since <LocalTime value={application.stage_changed_at} time />
@@ -170,11 +175,18 @@ function ApplicationItem({ application, contacts, onChanged, onInterview }: {
         <button type="button" className="btn secondary small" aria-expanded={open === "interviews"} onClick={() => toggle("interviews")}>
           Interviews<span className="visually-hidden"> of {application.candidate.name}</span>
         </button>
+        <button type="button" className="btn secondary small" aria-expanded={open === "screening"} onClick={() => toggle("screening")}>
+          Screening<span className="visually-hidden"> of {application.candidate.name}</span>
+        </button>
       </div>
       {open === "status" && <StatusForm application={application} onCancel={() => setOpen("none")} onChanged={(next) => { setOpen("none"); onChanged(next); }} />}
       {open === "history" && <History applicationId={application.id} />}
       {open === "interviews" && (
         <RecruiterApplicationInterviews applicationId={application.id} candidateName={application.candidate.name} contacts={contacts} onChanged={onInterview} />
+      )}
+      {open === "screening" && (
+        <RecruiterApplicationScreening applicationId={application.id} candidateName={application.candidate.name} onCancel={() => setOpen("none")}
+          onSaved={(next) => { setOpen("none"); onScreened(next); }} />
       )}
     </li>
   );
@@ -246,7 +258,8 @@ export default function RecruiterRequirementCandidates({ requirementId, companyI
         <ul aria-label="Candidates on this requirement" style={{ padding: 0, margin: "8px 0 0", display: "grid", gap: 8 }}>
           {data.items.map((application) => (
             <ApplicationItem key={application.id} application={application} contacts={contacts} onInterview={done}
-              onChanged={(a) => done(`${a.candidate.name} is now ${a.status_label}.`)} />
+              onChanged={(a) => done(`${a.candidate.name} is now ${a.status_label}.`)}
+              onScreened={(a) => done(`Screening saved — ${a.candidate.name} is now ${a.status_label}.`)} />
           ))}
         </ul>
       )}

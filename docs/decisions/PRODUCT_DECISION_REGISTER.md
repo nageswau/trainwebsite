@@ -6029,3 +6029,38 @@ seven more upc items (`0126`–`0132`, DEC-SCOPE-141..147, §12BI–§12BO, §2.
 - The requirement page's candidate rows gain an Interviews section; `/recruiter/interviews` is new in the recruiter and manager navs.
 - rec-021 (feedback) and rec-022 (offers) build on `interviews.status`.
 - **New Feature ID authorized:** `rec-020`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-020.
+
+### DEC-SCOPE-149 — Screening form and result (`rec-018`)
+
+**Evidence:**
+- `EVID-018` §13 (lines 556–592): a screening form with 11 checklist items (qualification, experience and skills verified; salary
+  expectation; notice period; location preference; communication skills; technical screening; availability; willingness to relocate;
+  recruiter remarks) and 4 results (Shortlisted, Hold, Rejected, Need More Information).
+- `RECRUITER_CRM_BACKLOG.md` §rec-018: AC1 (Shortlisted moves the status and writes history), AC2 (Rejected requires remarks). The
+  negative scenario is a rating out of range (→ 422). The edge case is re-screening after Hold. Question Q-18.
+- `DEC-SCOPE-136` (rec-017) A1: there is no `on_hold` status, so rec-018's Hold is a flag. A2: the permissive moves and the single
+  status writer.
+
+**Status:** **BUILT** on `feature/rec-018` (2026-10-09); not merged yet. Every answer below is a **recommended default, `UNVERIFIED`**,
+taken on the owner's instruction to proceed with the recommended answers.
+
+**Numbering:** migration `0134_application_screenings` (after rec-020's `0133_interview_management`), API §12BQ, RBAC §2.75. Drafted
+as `0125` / `DEC-SCOPE-140` / §12BH / §2.66 on `0122_candidate_skills`, then `0126` / 141 / §12BI / §2.67; rec-010, upc-026, upc-012,
+the upc items through `0132` and rec-020 (`0133` / 148 / §12BP / §2.74) merged first. Spec `docs/superpowers/specs/2026-10-09-rec-018-application-screening-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| SC1 (Q-18a) | Is screening required before Shortlisted? | No. rec-017's direct moves and "add at Shortlisted" stay |
+| SC2 (Q-18b) | Does Hold / Need More Information pause the application? | No. The status stays; the board shows `Screening: <result>` as a flag |
+| SC3 | Result → status | Shortlisted → `shortlisted` from sourced or screened only (forward only); Rejected → `rejected`; Hold and Need More Information never move it. A move goes through `applications.change_status` with the note `Screening: <result>`, and notifies a student as the status route does |
+| SC4 | When can it be saved? | Only while the application is open (sourced … interview); otherwise `409` "Only an open application can be screened. Reopen it first." |
+| SC5 | Storage | One current screening per application, overwritten by each save (PUT replaces the form). Audit `recruiter_application.screening` with the changed field names and the result, never values; an unchanged form writes no audit |
+| SC6 | Field types | Three verified booleans; expected salary ≥ 0 (numeric 12,2); notice 0–365 days; location preference ≤ 200; communication and technical ratings 1–5, optional; availability ≤ 120 text; relocate yes / no / not asked; remarks ≤ 2000; result required |
+| SC7 | Rejected | Requires remarks (`422`; also a table CHECK) |
+| SC8 | Who | Readers are the requirement's readers (recruiter own, manager team, super_admin, assigned BDM); writers are rec-017's (`placement_team` in scope, `super_admin`). The employer, students and `hr_team` never see a screening |
+
+**Consequences:**
+- `application_screenings` (`0134`), `services/application_screening.py`, `GET`/`PUT /recruiter/applications/{id}/screening`.
+- The rec-017 application item gains `screening_result {key, label} | null` (additive).
+- The requirement board gains a Screening disclosure per candidate and a `Screening: <result>` badge.
+- **New Feature ID authorized:** `rec-018`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-018.

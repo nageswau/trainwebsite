@@ -776,6 +776,40 @@ INTERVIEW_CHECKS = {
 }
 INTERVIEW_EVENT_CHECKS = {"ck_interview_events_event": "event IN (" + ", ".join(f"'{s}'" for s in INTERVIEW_EVENTS) + ")"}
 
+# rec-018 (DEC-SCOPE-149, EVID-018 §13): the four screening results in source order (L586-L592). Migration 0134 repeats SCREENING_CHECKS
+# (test_rec_018_migration). Labels live in services/application_screening.py.
+SCREENING_RESULTS = ("shortlisted", "hold", "rejected", "need_more_info")
+SCREENING_CHECKS = {
+    "ck_application_screenings_result": "result IN (" + ", ".join(f"'{r}'" for r in SCREENING_RESULTS) + ")",
+    "ck_application_screenings_rejected_remarks": "result <> 'rejected' OR remarks IS NOT NULL",
+    "ck_application_screenings_communication": "communication_rating IS NULL OR communication_rating BETWEEN 1 AND 5",
+    "ck_application_screenings_technical": "technical_rating IS NULL OR technical_rating BETWEEN 1 AND 5",
+    "ck_application_screenings_notice": "notice_days IS NULL OR notice_days BETWEEN 0 AND 365",
+    "ck_application_screenings_salary": "expected_salary IS NULL OR expected_salary >= 0",
+}
+
+
+class ApplicationScreening(Base, TimestampMixin):
+    """rec-018 (SC5): the one current screening of an application, overwritten by each save. Salary and remarks are internal: no
+    employer, student or hr_team route reads this table, and the audit keeps field names only."""
+
+    __tablename__ = "application_screenings"
+    __table_args__ = tuple(CheckConstraint(sql, name=name) for name, sql in SCREENING_CHECKS.items())
+    application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("job_applications.id", ondelete="RESTRICT"), primary_key=True)
+    qualification_verified: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    experience_verified: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    skills_verified: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    expected_salary: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    notice_days: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    location_preference: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    communication_rating: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    technical_rating: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    availability: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    willing_to_relocate: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    remarks: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    result: Mapped[str] = mapped_column(String(20))
+    screened_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
 
 class Interview(Base, TimestampMixin):
     """rec-020 (IV1-IV7): one interview round of one application. services/interviews.py is the status writer for the recruiter routes;

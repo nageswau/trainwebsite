@@ -1797,3 +1797,20 @@ backfill. **Migration `0130_university_meetings`**; `downgrade()` refuses while 
 
 **Design notes:** the per-candidate clash is checked under a candidate row lock, not a constraint (no duration exists to define an
 overlap). `downgrade()` refuses while any event exists.
+
+## Application screenings (`rec-018`, `DEC-SCOPE-149`; migration `0134_application_screenings`, after `0133_interview_management`)
+
+**`application_screenings` columns:**
+- `application_id` PK → `job_applications` (FK RESTRICT): one current screening per application (SC5).
+- `qualification_verified`, `experience_verified`, `skills_verified` boolean NOT NULL default false
+- `expected_salary` numeric(12,2) (CHECK ≥ 0), `notice_days` smallint (CHECK 0–365), `location_preference` varchar(200)
+- `communication_rating`, `technical_rating` smallint (CHECK 1–5), `availability` varchar(120), `willing_to_relocate` boolean (NULL =
+  not asked), `remarks` varchar(2000)
+- `result` varchar(20) (CHECK shortlisted/hold/rejected/need_more_info), CHECK `ck_application_screenings_rejected_remarks` (Rejected
+  needs remarks)
+- `screened_by_user_id` → `users` (the last saver), timestamps
+
+**Design notes:**
+- Each save overwrites the row; the audit keeps field names and the result per save, and the status history keeps any move (SC3).
+- Salary and remarks are internal: only the recruiter routes read the table.
+- `downgrade()` refuses while any row exists.

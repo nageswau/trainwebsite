@@ -2294,6 +2294,22 @@ currency} | null, permissions: {can_edit}}` — **`commission` is present for th
 | `PATCH /workflows/it/interviews/{id}` *(legacy, changed)* | Response gains `status`. A changed `scheduled_at` is recorded as a reschedule (the clash applies) |
 | `POST /employer/interviews`, `GET /employer/interviews` *(changed)* | The clash now counts open interviews at the same minute; list items gain `code`, `round`, `status` |
 
+## 12BQ. Application screening (`rec-018`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-149` (SC1–SC8). Design spec `docs/superpowers/specs/2026-10-09-rec-018-application-screening-design.md` §3.
+  Migration `0134`.
+- **Common rules:** the application resolves through rec-017's requirement scope (§12BD): another recruiter's application or an unknown
+  id → `404`; a role with no requirement scope (`hr_team`, students, the employer, …) → `403`; signed out → `401`.
+- **Screening:** `{qualification_verified, experience_verified, skills_verified, expected_salary (number|null), notice_days,
+  location_preference, communication_rating, technical_rating, availability, willing_to_relocate (bool|null), remarks, result
+  (shortlisted|hold|rejected|need_more_info), result_label, screened_by {id, full_name}, updated_at}`.
+- **The §12BD application item** gains `screening_result: {key, label} | null` on every route that returns it (additive).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/applications/{id}/screening` | The requirement's readers → `{screening \| null, results [{key, label}], can_edit}`. `can_edit` = a writer and the application is open |
+| `PUT /recruiter/applications/{id}/screening` | Writers in scope (`placement_team`, `super_admin`; manager / BDM `403`). **Body:** the whole form, unknown keys refused; a field left out is cleared; `result` required. Ratings 1–5, notice 0–365, salary ≥ 0, text limits 200/120/2000 → otherwise `422`; Rejected without remarks → `422` "Remarks are required when the result is Rejected" (AC2). Not open → `409` "Only an open application can be screened. Reopen it first.". **Effect (SC3):** Shortlisted moves sourced/screened → shortlisted; Rejected → rejected; Hold / Need More Information keep the status. A move writes history (`Screening: <result>`) and notifies a student. → `{screening, application}`. Audit `recruiter_application.screening` (field names + result); an unchanged form writes no audit |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

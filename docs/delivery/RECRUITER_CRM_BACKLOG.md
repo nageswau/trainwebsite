@@ -939,6 +939,11 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** large · **Risk:** high
 
 ### rec-018 — Screening form + result
+- **Status (2026-10-09):** **BUILT** on `feature/rec-018`; not merged. `DEC-SCOPE-149` (SC1–SC8 recommended defaults, UNVERIFIED; Q-18
+  answered: screening not required before Shortlisted, Hold / Need More Information do not pause and are a board flag); one current
+  screening per application, overwritten. Migration `0134_application_screenings` (after rec-020's `0133_interview_management`), API
+  §12BQ, RBAC §2.75. Drafted as `0125` / 140 / §12BH / §2.66, then `0126` / 141; rec-010, upc-026, upc-012, upc items to `0132` and
+  rec-020 merged first.
 - **Business requirement:** §13 checklist (11 items) and result (Shortlisted / Hold / Rejected / Need More Information).
 - **Existing behavior:** none (an application status "screening" exists).
 - **Expected behavior:**

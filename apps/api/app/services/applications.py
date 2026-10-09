@@ -204,7 +204,8 @@ def allowed(application: JobApplication) -> list[dict]:
     return [{"key": s, "label": LABELS[s]} for s in TRANSITIONS.get(application.status, ())]
 
 
-def item_out(user: User, application: JobApplication, candidate: Candidate) -> dict:
+def item_out(user: User, application: JobApplication, candidate: Candidate, screening_result: dict | None = None) -> dict:
+    """`screening_result` is rec-018's flag ({key, label} of the current screening), which the caller reads."""
     return {
         "id": application.id,
         "job_id": application.job_id,
@@ -214,6 +215,7 @@ def item_out(user: User, application: JobApplication, candidate: Candidate) -> d
         "stage_changed_at": application.stage_changed_at,
         "created_at": application.created_at,
         "allowed_statuses": allowed(application) if can_write(user) else [],
+        "screening_result": screening_result,
     }
 
 

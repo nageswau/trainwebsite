@@ -76,6 +76,7 @@ from app.models import (
     RECRUITER_FOLLOW_UP_REASONS,
     RECRUITER_MEETING_TYPES,
     RELATIONSHIP_STRENGTHS,
+    SCREENING_RESULTS,
     TEL_TARGET_KPIS,
     UNIVERSITY_OWNERSHIP_TYPES,
     UNIVERSITY_PRIORITIES,
@@ -8376,8 +8377,10 @@ REC_REQUIREMENT_LABELS = {
     # rec-008's JD (the same text rules)
     "role": "Job role", "experience": "Experience", "skills": "Skills", "salary": "Salary", "responsibilities": "Responsibilities",
     "requirements": "Requirements",
+    # rec-018's screening (the same text rules)
+    "location_preference": "Location preference", "availability": "Availability", "remarks": "Remarks",
 }
-REC_REQUIREMENT_MULTILINE = frozenset({"description", "note", "skills", "responsibilities", "requirements"})
+REC_REQUIREMENT_MULTILINE = frozenset({"description", "note", "skills", "responsibilities", "requirements", "remarks"})
 REC_REQUIREMENT_FIELDS = (  # the `jobs` columns a create or edit may write; code, status, assignee and creator are server-owned
     "title", "location", "description", "department", "job_category_id", "vacancies", "qualification", "experience_min_months",
     "experience_max_months", "salary_min", "salary_max", "work_mode", "shift", "employment_type", "joining_requirement", "closes_on",
@@ -8708,6 +8711,31 @@ class RecApplicationStatusChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
     status: Literal[APPLICATION_STATUSES]
     note: _rec_requirement_text_type(500, multiline=True) = None
+
+
+# --- rec-018 (DEC-SCOPE-149): an application's screening (services/application_screening) -----------------------------------------
+class RecScreeningIn(BaseModel):
+    """SC5-SC7: the whole form -- a field left out is cleared. The ranges are the table's CHECKs (app.models.SCREENING_CHECKS)."""
+
+    model_config = ConfigDict(extra="forbid")
+    qualification_verified: bool = False
+    experience_verified: bool = False
+    skills_verified: bool = False
+    expected_salary: Decimal | None = Field(default=None, ge=0, max_digits=12, decimal_places=2)
+    notice_days: int | None = Field(default=None, ge=0, le=365)
+    location_preference: _rec_requirement_text_type(200) = None
+    communication_rating: int | None = Field(default=None, ge=1, le=5)
+    technical_rating: int | None = Field(default=None, ge=1, le=5)
+    availability: _rec_requirement_text_type(120) = None
+    willing_to_relocate: bool | None = None
+    remarks: _rec_requirement_text_type(2000, multiline=True) = None
+    result: Literal[SCREENING_RESULTS]
+
+    @model_validator(mode="after")
+    def _rejected_needs_remarks(self):
+        if self.result == "rejected" and not self.remarks:
+            raise ValueError("Remarks are required when the result is Rejected")
+        return self
 
 
 # --- rec-020 (DEC-SCOPE-148, spec §1/§3): interviews -------------------------------------------------------------------------------
