@@ -3,6 +3,7 @@
 - **Feature:** rec-016 (`docs/delivery/RECRUITER_CRM_BACKLOG.md`). Sources: EVID-018 §10 (lines 475–498), S2-§10 (1427–1473), S2-§11 (1475–1501).
 - **Decision:** `DEC-SCOPE-157` (M1–M8 below are **recommended defaults, UNVERIFIED**; the owner had not answered Q-14). API §12BY, RBAC
   §2.83. **No migration** (the weights already live on `job_skills.weight`, rec-007).
+- **Status:** **MERGED** to `main` as PR #211 @ `ccfb66bb` (2026-10-09).
 - **Dependencies (all merged):** rec-007 (PR #166), rec-013 (PR #199), rec-017 (PR #178).
 
 ## 1. Decisions (Q-14 and item-level; UNVERIFIED)

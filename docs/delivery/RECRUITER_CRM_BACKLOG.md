@@ -872,7 +872,7 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** low
 
 ### rec-016 — Requirement → candidate matching + match score
-- **Status (2026-10-09):** **BUILT** on `feature/rec-016` (PR pending).
+- **Status (2026-10-09):** **MERGED** to `main` as PR #211 @ `ccfb66bb` (2026-10-09), built on `feature/rec-016`.
   - `DEC-SCOPE-157` (M1–M8, the recommended answers to Q-14; UNVERIFIED).
   - No migration. API §12BY, RBAC §2.83. The next rec item takes `0140`, `DEC-SCOPE-158`, §12BZ and §2.84 (re-check `main`).
   - Share waits for rec-019.
