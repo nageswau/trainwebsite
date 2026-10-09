@@ -1,4 +1,4 @@
-"""rec-030 -- recruiter contracts / MoU (spec §1-§3; DEC-SCOPE-153 CT1-CT10): statuses in source order (AC1), Expired derived (AC2),
+"""rec-030 -- recruiter contracts / MoU (spec §1-§3; DEC-SCOPE-155 CT1-CT10): statuses in source order (AC1), Expired derived (AC2),
 Signed needs the contract document (AC3), end before start 422, overlapping contracts 409, renewal, documents, history and roles. The
 shared test database is never truncated, so every assertion uses a company created by the test."""
 

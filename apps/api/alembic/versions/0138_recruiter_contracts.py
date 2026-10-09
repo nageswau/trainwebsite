@@ -1,9 +1,9 @@
 """rec-030 -- recruiter contracts / MoU: recruiter_contracts and recruiter_contract_events.
 
-Revision ID: 0137_recruiter_contracts
-Revises: 0136_partnership_events
+Revision ID: 0138_recruiter_contracts
+Revises: 0137_resume_search
 
-docs/superpowers/specs/2026-10-09-rec-030-recruiter-contracts-design.md §2 (DEC-SCOPE-153). Additive: two new tables, no existing row read
+docs/superpowers/specs/2026-10-09-rec-030-recruiter-contracts-design.md §2 (DEC-SCOPE-155). Additive: two new tables, no existing row read
 or written. 0001 builds a fresh database from the current models, which already carry both tables, so each is created only when
 missing. STATUSES / EVENT_KINDS / CHECKS are frozen copies of app.models.RECRUITER_CONTRACT_* (test_rec_030_migration). downgrade()
 refuses while any contract exists: recorded agreements are never dropped silently.
@@ -14,8 +14,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0137_recruiter_contracts"
-down_revision = "0136_partnership_events"
+revision = "0138_recruiter_contracts"
+down_revision = "0137_resume_search"
 branch_labels = None
 depends_on = None
 
@@ -105,6 +105,6 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {CONTRACTS} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0137_recruiter_contracts: recruiter contracts exist. Clear them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0138_recruiter_contracts: recruiter contracts exist. Clear them deliberately first.")
     op.drop_table(EVENTS)
     op.drop_table(CONTRACTS)

@@ -61,7 +61,7 @@ test("find candidates: alias + related, OR group, facet, refresh/back, shortlist
   // AC1: the alias finds Java's holders, and Core Java (related) counts too.
   await page.getByRole("link", { name: "Find Candidates" }).first().click();
   await page.waitForURL("**/recruiter/find-candidates");
-  await expect(page.getByText("Add at least one skill to search every candidate in the pool.")).toBeVisible();
+  await expect(page.getByText("Add a skill or a resume search to search every candidate in the pool.")).toBeVisible();
   const all = page.getByRole("textbox", { name: "Must have all of these skills" });
   await all.fill(`E2EJ2EE ${stamp}`);
   await all.press("Enter");

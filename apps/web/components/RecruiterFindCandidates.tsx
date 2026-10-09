@@ -13,7 +13,7 @@ import { activeValues, type CatalogueValue } from "@/lib/recruiterCatalogue";
 import {
   availabilityOf, BAND_LABEL, BANDS, type CandidateCard, distinctTerms, EMPTY_SEARCH, EXPERIENCE_LABEL, experienceBand, GROUP_TERMS, isSearchResult,
   MAX_GROUPS, MAX_TERMS, OTHER_LOCATION, PAGE_SIZE, paramsOf, requirementSearch, salaryText, SEARCH_URL, searchBody, type SearchResult,
-  type SearchState, stateOf, unknownSkill,
+  type SearchState, searchText, stateOf, TEXT_MAX, unknownSkill,
 } from "@/lib/recruiterCandidateSearch";
 import { CANDIDATES_PATH, experienceLabel, STATUS_LABEL, STATUSES } from "@/lib/recruiterCandidates";
 import { STATUS_LABEL as SKILL_STATUS_LABEL } from "@/lib/recruiterCandidateSkills";
@@ -93,6 +93,14 @@ function Card({ c, writes, requirement, shortlisted, onShortlist }: {
           </ul>
         )}
       </div>
+      {c.snippet && c.snippet.length > 0 && (
+        <div>
+          <span className="muted" style={{ fontSize: 13 }}>From the resume</span>
+          <p style={{ margin: "2px 0 0", fontSize: 14, overflowWrap: "anywhere" }}>
+            {c.snippet.map((s, i) => (s.hit ? <mark key={i}>{s.text}</mark> : <span key={i}>{s.text}</span>))}
+          </p>
+        </div>
+      )}
       <dl style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(9rem, 1fr))", gap: "6px 12px", margin: 0 }}>
         {facts.map(([term, value]) => (
           <div key={term}>
@@ -199,7 +207,7 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
     event.preventDefault();
     const all = distinctTerms([...draft.all, texts.all ?? ""], MAX_TERMS);
     const any = draft.any.map((group, i) => distinctTerms([...group, texts[`any${i}`] ?? ""], GROUP_TERMS)).filter((g) => g.length);
-    const next = { ...draft, all, any, offset: 0 };
+    const next = { ...draft, text: searchText(draft.text), all, any, offset: 0 };
     if (!searchBody(next)) return go(next);
     jump.current = true;
     if (paramsOf(next).toString() === key && (result || failure)) {
@@ -231,6 +239,14 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <form role="search" aria-label="Find candidates" onSubmit={submit} className="action-card" style={{ gap: 14 }}>
+        <div className="field" style={{ marginBottom: 0 }}>
+          <label htmlFor="find-text">Resume search</label>
+          <span id="find-text-hint" className="muted" style={{ fontSize: 13 }}>
+            Words anywhere in the candidate&apos;s latest resume — job titles, certifications, projects. Use &quot;quotes&quot; for a phrase.
+          </span>
+          <input id="find-text" aria-describedby="find-text-hint" maxLength={TEXT_MAX} placeholder="e.g. Microservices Kafka"
+            value={draft.text} onChange={(e) => set("text", e.target.value)} />
+        </div>
         <SkillChips id="find-all" label="Must have all of these skills" hint="Type a skill or another name for it, then press Enter. Related skills count too."
           terms={draft.all} text={texts.all ?? ""} room={room} onText={(v) => setTexts((t) => ({ ...t, all: v }))} onChange={(all) => set("all", all)} />
         {draft.any.map((group, i) => (
@@ -314,7 +330,7 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
 
       <div ref={resultsRef} tabIndex={-1} style={{ outline: "none", scrollMarginTop: 80 }}>
       {!searched ? (
-        <p className="muted" role="status">Add at least one skill to search every candidate in the pool.</p>
+        <p className="muted" role="status">Add a skill or a resume search to search every candidate in the pool.</p>
       ) : failure ? (
         <div className="action-card" style={{ gap: 8 }}>
           <p className="form-error" role="alert" style={{ margin: 0 }}>{failure.message}</p>
@@ -372,8 +388,8 @@ function Results({ result, state, loading, writes, requirement, shortlisted, onR
       </div>
   );
   const sectionProps = { "aria-label": "Search results", "aria-busy": loading, style: { display: "grid", gap: 12 } } as const;
-  if (result.total === 0) { // QA-01: nothing to refine or shortlist
-    return <section {...sectionProps}>{header}<p className="muted">No candidates match. Remove a skill or a filter to see more.</p></section>;
+  if (result.total === 0) { // QA-01: nothing to refine or shortlist; rec-014 FT3: the API says why a resume search matched nothing
+    return <section {...sectionProps}>{header}<p className="muted">{result.notice ?? "No candidates match. Remove a skill or a filter to see more."}</p></section>;
   }
   return (
     <section {...sectionProps}>

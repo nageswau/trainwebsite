@@ -75,7 +75,7 @@ export async function FindCandidatesPage() {
         <div>
           <div className="eyebrow">Candidate pool</div>
           <h2>Find Candidates</h2>
-          <p className="muted">Search every candidate by skill — other names for a skill and related skills count too — then narrow by experience, location and availability.</p>
+          <p className="muted">Search every candidate by skill — other names for a skill and related skills count too — or by words in their resume, then narrow by experience, location and availability.</p>
         </div>
       </div>
       <Suspense fallback={<p className="muted" role="status">Loading search…</p>}>

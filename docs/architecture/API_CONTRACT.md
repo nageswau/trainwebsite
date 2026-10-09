@@ -2360,6 +2360,34 @@ candidate outside the pool `404`; archived `409` "Restore this candidate first";
 
 - **Changed (additive):** the meeting item (§12BM) and the visit item (§12AX) gain `overlaps [CalendarOverlap]` for all their people.
 
+## 12BU. Student opportunity funnel + university performance (`upc-018`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-153` (PF1–PF10). Spec: `docs/superpowers/specs/2026-10-09-upc-018-student-funnel-performance-design.md` §4.
+  No migration.
+- **Readers:** the University Master's read roles: `partnership_manager` with a profile, `partnership_head`, `overseas_admin` (overseas
+  division) and `super_admin`. Any other role → `403` "University master access required". Anonymous → `401`.
+- **Behaviour:** read-only, with no audit row. Counts only: no student or application identifier, and no commission (F10/F11 arrive with
+  upc-019).
+- **Period:** `from` / `to` are `YYYY-MM-DD` inclusive IST days. The default is this IST month to date. A malformed or impossible date,
+  `from > to`, or a span over 366 days → `422`.
+- **Counts** are `{leads, counselling, interested, eligible, applications, offers, deposits, visas, enrolled}`. The untracked
+  `leads` / `counselling` / `eligible` are `null`.
+- **`steps`** is `[{key, label, tracked}]` in source order.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/performance?from=&to=&limit=&offset=` | `{from, to, steps, totals, items: [{rank, university: {id, university_code, name, country, stage, stage_label, partner}, counts}], total, limit, offset}`. **Rows:** active universities in the caller's scope (manager = primary/backup; head = team + unowned; super_admin / overseas_admin = all) that are partners (G1) or have any step in the period. **Order:** enrolled ↓, applications ↓, name. **`totals`:** over every ranked row. `limit` 1–100 (default 25), `offset` ≥ 0, else `422`. Constant query count |
+| `GET /partnership/universities/{id}/performance?from=&to=` | `{from, to, steps, university, counts}` for any university a reader can read, active or not. Unknown id → `404`. Non-UUID → `422` |
+
+## 12BV. Resume full-text search on Find Candidates (`rec-014`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-154` (FT1–FT10). Spec: `docs/superpowers/specs/2026-10-09-rec-014-resume-full-text-search-design.md` §3–§4.
+  Migration `0137`. Roles, pool and status codes are §12BS's; every change is additive.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `POST /recruiter/candidates/search?limit=&offset=` | **Body** gains `text` (1–200 characters after collapsing whitespace; blank = absent; control characters → `422` "The resume search contains invalid characters"; > 200 → `422`). A body needs ≥ 1 skill **or** `text`, else `422` "Add at least one skill or some resume search text". `text` is matched with `websearch_to_tsquery('english', text)` against the candidate's **current** resume's extracted text (all words, `"phrase"`, `or`, `-word`); it ANDs with the skills and filters, so facets still add up. **→ 200** gains `notice: string \| null` (only stop words → no items and the sentence) and each item gains `snippet: [{text, hit}] \| null` (≤ 300 characters, plain text; `null` without `text`). With `text` the order is relevance, then newest. Logged with `text: true/false`, never the text |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

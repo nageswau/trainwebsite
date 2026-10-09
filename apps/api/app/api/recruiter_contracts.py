@@ -1,4 +1,4 @@
-"""rec-030 (DEC-SCOPE-153, spec §3): a company's contract / MoU, its documents and history.
+"""rec-030 (DEC-SCOPE-155, spec §3): a company's contract / MoU, its documents and history.
 
 Every `{company_id}` resolves through `recruiter_companies.load_scoped` (out of scope = 404; a non-recruiter role = 403). Every write is
 one transaction -- company lock, `require(can_edit)` (the assigned recruiter or super_admin; archived 409), the current contract lock, the

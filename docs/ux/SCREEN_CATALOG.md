@@ -3642,3 +3642,35 @@ Design spec: `docs/superpowers/specs/2026-10-09-rec-013-find-candidates-design.m
   - Error: "Unable to search candidates." with Retry.
 - **Layout:** on phones the facets stack above the cards; nothing scrolls sideways.
 - **Candidate detail:** the calls and messages cards sit in a `#contact` section.
+
+## upc-018 addendum (2026-10-09, `DEC-SCOPE-153`) — Student Opportunities + University Performance
+
+Design spec: `docs/superpowers/specs/2026-10-09-upc-018-student-funnel-performance-design.md` §5. Visual-reference mapping: none (not
+inspected), so no parity is claimed.
+
+- **Route `/partnership/opportunities`** (manager menu "Student Opportunities", head nav, super admin nav):
+  - The §17 funnel for the period over every university in scope, or for one university with `?university_id=`. It is a 9-step list:
+    label, count and a decorative bar sized against the largest step.
+  - Leads, Counselling and Profiles eligible read "Not tracked" in muted italic, with no bar (QA18-01).
+  - A From / To date GET form. A bad URL period falls back to this month with a note.
+  - Links: "Open university", "All universities" and "University performance".
+- **Route `/partnership/performance`** (menu "University Performance"):
+  - A table ranked by enrolments: #, university (link), country, stage, and the six tracked counts.
+  - A Total row, and Previous / Next URL paging (25 per page).
+  - Empty state: "No student activity for these universities in this period."
+  - A note on the untracked steps and on how the totals add up.
+  - The table scrolls inside its focusable region.
+- **Route `/partnership/universities/[id]`:** a "Student opportunities this month" card (the funnel) with an "Another period" link.
+- **States:** a role without access gets the access card ("University performance access required"). Signed out → `/overseas/login?next=…`.
+- **Responsive:** no page side-scroll at 1366 px, 820 px or 375 px.
+
+## rec-014 addendum (2026-10-09, `DEC-SCOPE-154`) — Resume search on Find Candidates
+
+Design spec: `docs/superpowers/specs/2026-10-09-rec-014-resume-full-text-search-design.md` §5.
+- **Form:** a "Resume search" box first ("Words anywhere in the candidate's latest resume — job titles, certifications, projects. Use
+  "quotes" for a phrase."); Enter or "Search candidates" runs it, alone or with the skills; the URL keeps it as `q`.
+- **Cards:** "From the resume" with the matched words in `<mark>`.
+- **States:** before any skill or words: "Add a skill or a resume search to search every candidate in the pool."; only common words: the
+  server's notice in place of "No candidates match…".
+- **Intro:** "…or by words in their resume…".
+

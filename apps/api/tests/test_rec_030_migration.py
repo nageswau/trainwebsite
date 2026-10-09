@@ -1,4 +1,4 @@
-"""rec-030 -- migration 0137_recruiter_contracts (spec §2). Round trip and downgrade refusal run in a throwaway database built from scratch
+"""rec-030 -- migration 0138_recruiter_contracts (spec §2). Round trip and downgrade refusal run in a throwaway database built from scratch
 (the rec-028 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -14,11 +14,11 @@ from app.core.config import settings
 from tests.test_tel_001_migration import _config, _sql
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_rec_030_migration_0137", VERSIONS / "0137_recruiter_contracts.py")
+_spec = importlib.util.spec_from_file_location("_rec_030_migration_0138", VERSIONS / "0138_recruiter_contracts.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0136_partnership_events", "0137_recruiter_contracts"
+BASE, HEAD = "0137_resume_search", "0138_recruiter_contracts"
 CONTRACT_COLUMNS = {
     "id", "company_id", "created_by_user_id", "status", "status_changed_at", "agreement_type", "start_date", "end_date", "fee_basis",
     "fee_value", "payment_terms", "replacement_policy", "contract_document_key", "contract_document_content_type", "contract_document_name",
@@ -27,7 +27,7 @@ CONTRACT_COLUMNS = {
 }
 
 
-def test_migration_chains_after_0136_and_there_is_a_single_head():
+def test_migration_chains_after_0137_and_there_is_a_single_head():
     assert _migration.revision == HEAD
     assert _migration.down_revision == BASE
     assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1

@@ -1835,3 +1835,10 @@ with CHECK `(status = cancelled) = (cancelled_at IS NOT NULL) AND (cancelled_at 
 Indexes `ix_partnership_events_dates (starts_on, ends_on)`, `ix_partnership_events_owner`, `ix_partnership_events_university`.
 `partnership_event_participants` (`event_id` FK CASCADE, `user_id` FK `users` RESTRICT; composite PK). New tables only; no backfill.
 `downgrade()` refuses while any event exists (API §12BT).
+
+## Resume search (`rec-014`, `DEC-SCOPE-154`; migration `0137_resume_search`, after `0136_partnership_events`)
+
+**`candidate_resumes.search_vector`** tsvector `GENERATED ALWAYS AS (to_tsvector('english'::regconfig, coalesce(extracted_text, '')))
+STORED` + GIN index `ix_candidate_resumes_search`. Postgres fills it for existing rows on upgrade and refreshes it on every extraction; the
+ORM never loads it (deferred). Search matches only a candidate's highest version. `downgrade()` drops the index and the column (derived).
+
