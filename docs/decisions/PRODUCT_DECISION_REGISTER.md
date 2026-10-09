@@ -6289,6 +6289,8 @@ Spec: `docs/superpowers/specs/2026-10-09-rec-022-offer-management-design.md`.
 - `RECRUITER_CRM_BACKLOG.md` §rec-030 AC1–AC3.
 
 **Status:**
+- **MERGED** to `main` as PR #208 @ `819ce385` (2026-10-09). The next rec item takes `0140`, `DEC-SCOPE-157`, §12BY and §2.83 (re-check
+  `main`).
 - CT1–CT10 are the recommended answers, applied under the owner's standing instruction for the build session ("proceed with the
   recommended answers; ask only if genuinely blocking"). Every row is **UNVERIFIED** (`NEEDS_CONFIRMATION` at sign-off).
 - Numbers: migration `0139_recruiter_contracts` (after rec-022's `0138_offer_management`), API contract §12BX, RBAC §2.82. It was drafted
