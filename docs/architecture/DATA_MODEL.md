@@ -1690,3 +1690,22 @@ status, due_on)` and the partial unique `uq_partnership_tasks_open_rule (univers
 **Design notes:**
 - Commission is not stored here (upc-016). Courses/countries are validated on write; a JSON id that later disappears is skipped on output.
 - Agreements and events are not deleted in this item; `downgrade()` refuses while any agreement exists.
+
+## Expected timeline + milestones (`upc-008`, `DEC-SCOPE-143`; migration `0128_university_milestones`, after `0127_university_agreements`)
+
+**`universities` gains (§5, all nullable, no backfill):** `target_partnership_date` date, `expected_intake` varchar(80),
+`expected_agreement_date` date, `expected_recruitment_start` date. Expected month and quarter are derived from `target_partnership_date`
+on output (Q-10), never stored.
+
+**`university_milestones` columns:**
+- `id`, `university_id` → `universities` (FK RESTRICT), `kind` varchar(40) (CHECK: the 13 §6 keys, `app/partnership_milestones.py`),
+  `target_date` date (nullable), `achieved_on` date (nullable), `updated_by_user_id` → `users` (FK RESTRICT), timestamps.
+
+**Constraints and indexes:** `ck_university_milestones_kind`; `uq_university_milestones_kind (university_id, kind)` (also the read path).
+
+**Design notes:**
+- Sparse: a row exists only once someone records a date; the catalogue is the template for every university (MS2).
+- Status (done / in progress / pending / delayed) is computed in IST on read (Q-11), never stored.
+- Proposal, Signed, First Application and First Admission are derived on read from `university_stage_history`, `university_agreements`,
+  `overseas_applications` and `application_status_history` (MS4/MS5); a recorded `achieved_on` wins over the derived date.
+- `downgrade()` refuses while any milestone row or expected value exists.

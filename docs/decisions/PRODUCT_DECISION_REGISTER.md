@@ -5823,3 +5823,34 @@ Spec: `docs/superpowers/specs/2026-10-09-upc-014-university-agreements-design.md
 page `/partnership/agreements`; the manager menu's "MoU & Agreements" goes live and the head nav gains it. upc-015 reads the expiry dates;
 upc-016 hangs commission terms off agreements; upc-013 can show the agreement events.
 **New Feature ID authorized:** `upc-014`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-014.
+
+### DEC-SCOPE-143 — Expected timeline + milestone tracker (`upc-008`)
+
+**Evidence:** `EVID-020` §5 (L176–L210: six per-university targets, a milestone table with target date and status, the ABC University
+example) and §6 (L212–L242: 13 milestones, "The system should automatically highlight delayed milestones");
+`UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.2 Q-10, Q-11 and §4 upc-008.
+**Status:** Q-10, Q-11 and MS1–MS12 are recommended answers applied under the owner's standing instruction for the build session
+("proceed with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off.
+Migration `0128_university_milestones`, API contract §12BK, RBAC §2.69.
+Spec: `docs/superpowers/specs/2026-10-09-upc-008-partnership-timeline-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| MS1 | Milestone kinds | The 13 §6 milestones in source order and wording (constants in `app/partnership_milestones.py`) |
+| MS2 | "Created from a template when a university leaves Target" | The catalogue is the template for every university; rows are stored only once a date is recorded (no stage hook, no backfill, no invented rows) |
+| MS3 | Q-11 delayed | Computed, never stored: done when achieved; delayed when the target date is before today (IST), no grace days; the earliest not-done milestone is in progress (unless delayed); the rest pending |
+| MS4 | Auto-completion | Proposal: first move into Proposal Sent or later. Signed: first signed/active/renewed agreement (upc-014), the later signature date. First Application: first application. First Admission: first `enrolled` status. Meeting stays manual until upc-009 |
+| MS5 | How | Derived on read (no hooks into the application write sites); a recorded achieved date wins; clearing it falls back to the derived date |
+| MS6 | Validation | Achieved date not after today (IST) → 422; target dates unrestricted (a past one shows as delayed) |
+| MS7 | Target moved after a delay | Kept in the audit log: `university.milestone_updated` with the target date from / to and `was_delayed` |
+| MS8 | Q-10 month / quarter | Derived from the target partnership date (calendar quarters), never stored |
+| MS9 | §5 targets | `target_partnership_date`, `expected_intake` (text ≤ 80), `expected_agreement_date`, `expected_recruitment_start` on `universities` |
+| MS10 | Who edits | `can_edit_timeline` = the stage rule: primary/backup manager, the head in write scope, super_admin; overseas_admin reads only; inactive → 409 |
+| MS11 | Who reads | Every university reader |
+| MS12 | API | `GET …/milestones`, `PATCH …/milestones/{kind}` (one milestone per call), `PATCH …/expected` |
+
+**Consequences:** columns on `universities`, table `university_milestones`; routes `/partnership/universities/{id}/milestones[/{kind}]`
+and `/partnership/universities/{id}/expected`; `permissions.can_edit_timeline` and an `expected` block on the university; a "Partnership
+timeline" section on `/partnership/universities/[id]`. upc-015 reads the delayed milestones (the same status rule); upc-023 reads the
+expected agreement date; upc-009 adds the Meeting auto-completion.
+**New Feature ID authorized:** `upc-008`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-008.
