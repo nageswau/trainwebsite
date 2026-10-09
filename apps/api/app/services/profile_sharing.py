@@ -217,22 +217,20 @@ async def create(db: AsyncSession, user: User, payload: RecShareCreate, now: dat
     await _check_channel(db, job, payload.channel, contact)
     people = await _candidates(db, payload.candidate_ids)
     existing = {
-        a.candidate_id: a
-        for a in (
-            await db.scalars(
-                select(JobApplication).where(JobApplication.job_id == job.id, JobApplication.candidate_id.in_(payload.candidate_ids)).with_for_update()
-            )
-        ).all()
+        a.candidate_id: a for a in (await db.scalars(select(JobApplication).where(JobApplication.job_id == job.id, JobApplication.candidate_id.in_(payload.candidate_ids)).with_for_update())).all()
     }
     closed = [c for c in people if c.id in existing and existing[c.id].status in REFUSED]
     if closed:
         raise HTTPException(422, f"Rejected, withdrawn or joined candidates cannot be shared for this requirement: {_names(closed)}")
     repeats = await _repeats(db, job, people)
     if repeats and not payload.repeat:
-        raise HTTPException(409, {
-            "message": f"{len(repeats)} of these candidates were already shared for this requirement. Share again?",
-            "duplicates": [{"id": str(c.id), "name": c.name, "code": c.candidate_code} for c in repeats],
-        })
+        raise HTTPException(
+            409,
+            {
+                "message": f"{len(repeats)} of these candidates were already shared for this requirement. Share again?",
+                "duplicates": [{"id": str(c.id), "name": c.name, "code": c.candidate_code} for c in repeats],
+            },
+        )
     if payload.channel in MESSAGE_CHANNELS:
         await messages.check_cap(db, user, payload.channel, now)
 
@@ -246,9 +244,7 @@ async def create(db: AsyncSession, user: User, payload: RecShareCreate, now: dat
     resumes = dict(
         (
             await db.execute(
-                select(CandidateResume.candidate_id, CandidateResume.id).join(
-                    latest, (latest.c.candidate_id == CandidateResume.candidate_id) & (latest.c.version == CandidateResume.version)
-                )
+                select(CandidateResume.candidate_id, CandidateResume.id).join(latest, (latest.c.candidate_id == CandidateResume.candidate_id) & (latest.c.version == CandidateResume.version))
             )
         ).all()
     )
@@ -265,15 +261,26 @@ async def create(db: AsyncSession, user: User, payload: RecShareCreate, now: dat
             subject, body = None, whatsapp_text(job, contact, user, entries, expires_at)
             url = wa_url(contact.mobile, body)
         message = RecruiterMessage(
-            company_id=company.id, contact_id=contact.id, sender_user_id=user.id, channel=payload.channel, subject=subject, body=body,
-            delivery_status="queued" if payload.channel == "email" else None, sent_at=now,
+            company_id=company.id,
+            contact_id=contact.id,
+            sender_user_id=user.id,
+            channel=payload.channel,
+            subject=subject,
+            body=body,
+            delivery_status="queued" if payload.channel == "email" else None,
+            sent_at=now,
         )
         db.add(message)
         await db.flush()
 
     share = ProfileShare(
-        job_id=job.id, company_id=company.id, contact_id=contact.id if contact else None, channel=payload.channel, note=payload.note,
-        message_id=message.id if message else None, shared_by_user_id=user.id,
+        job_id=job.id,
+        company_id=company.id,
+        contact_id=contact.id if contact else None,
+        channel=payload.channel,
+        note=payload.note,
+        message_id=message.id if message else None,
+        shared_by_user_id=user.id,
     )
     db.add(share)
     await db.flush()
@@ -285,18 +292,27 @@ async def create(db: AsyncSession, user: User, payload: RecShareCreate, now: dat
         elif application.status in MOVABLE:
             await applications.change_status(db, user, application, "profile_shared", note)
         token = tokens[candidate.id]
-        db.add(ProfileShareItem(
-            share_id=share.id, candidate_id=candidate.id, application_id=application.id, resume_id=resumes.get(candidate.id),
-            token_hash=digest(token) if token else None, token_expires_at=expires_at if token else None,
-        ))
+        db.add(
+            ProfileShareItem(
+                share_id=share.id,
+                candidate_id=candidate.id,
+                application_id=application.id,
+                resume_id=resumes.get(candidate.id),
+                token_hash=digest(token) if token else None,
+                token_expires_at=expires_at if token else None,
+            )
+        )
     await db.flush()
-    await company_pipeline.apply_event(
-        db, await db.scalar(select(Company).where(Company.id == company.id).with_for_update().execution_options(populate_existing=True)), "profiles_shared", user
+    await company_pipeline.apply_event(db, await db.scalar(select(Company).where(Company.id == company.id).with_for_update().execution_options(populate_existing=True)), "profiles_shared", user)
+    db.add(
+        AuditLog(
+            user_id=user.id,
+            action="profile_share.create",
+            entity_type="profile_share",
+            entity_id=str(share.id),
+            metadata_json={"job_id": str(job.id), "channel": share.channel, "candidate_ids": [str(c.id) for c in people], "repeat": bool(repeats)},
+        )
     )
-    db.add(AuditLog(
-        user_id=user.id, action="profile_share.create", entity_type="profile_share", entity_id=str(share.id),
-        metadata_json={"job_id": str(job.id), "channel": share.channel, "candidate_ids": [str(c.id) for c in people], "repeat": bool(repeats)},
-    ))
     return share, url
 
 
@@ -312,11 +328,7 @@ def respond(item: ProfileShareItem, user: User, response: str | None, now: datet
 
 async def load_item(db: AsyncSession, share_id: UUID, item_id: UUID) -> tuple[ProfileShare, ProfileShareItem]:
     row = (
-        await db.execute(
-            select(ProfileShare, ProfileShareItem)
-            .join(ProfileShareItem, ProfileShareItem.share_id == ProfileShare.id)
-            .where(ProfileShare.id == share_id, ProfileShareItem.id == item_id)
-        )
+        await db.execute(select(ProfileShare, ProfileShareItem).join(ProfileShareItem, ProfileShareItem.share_id == ProfileShare.id).where(ProfileShare.id == share_id, ProfileShareItem.id == item_id))
     ).first()
     if row is None:
         raise HTTPException(404, ITEM_NOT_FOUND)
@@ -386,10 +398,15 @@ async def item_by_token(db: AsyncSession, token: str, now: datetime) -> tuple[Pr
 
 
 def download_audit(db: AsyncSession, user: User | None, item: ProfileShareItem, via: str) -> None:
-    db.add(AuditLog(
-        user_id=user.id if user else None, action="profile_share.resume_download", entity_type="profile_share_item", entity_id=str(item.id),
-        metadata_json={"via": via, "candidate_id": str(item.candidate_id)},
-    ))
+    db.add(
+        AuditLog(
+            user_id=user.id if user else None,
+            action="profile_share.resume_download",
+            entity_type="profile_share_item",
+            entity_id=str(item.id),
+            metadata_json={"via": via, "candidate_id": str(item.candidate_id)},
+        )
+    )
 
 
 def resume_name(candidate: Candidate, resume: CandidateResume) -> str:

@@ -77,8 +77,7 @@ def _share(url, ids, channel: str = "other", columns: str = "", values: str = ""
     row = uuid.uuid4()
     _sql(
         url,
-        f"INSERT INTO profile_shares (id, job_id, company_id, channel, shared_by_user_id{columns}) "
-        f"VALUES (:id, (SELECT id FROM jobs LIMIT 1), :c, :ch, :u{values})",
+        f"INSERT INTO profile_shares (id, job_id, company_id, channel, shared_by_user_id{columns}) VALUES (:id, (SELECT id FROM jobs LIMIT 1), :c, :ch, :u{values})",
         {"id": row, "c": ids["company"], "ch": channel, "u": ids["user"], **params},
     )
     return row
@@ -87,8 +86,7 @@ def _share(url, ids, channel: str = "other", columns: str = "", values: str = ""
 def _job(url, ids) -> None:
     _sql(
         url,
-        "INSERT INTO jobs (id, company_id, title, location, description, skills, status, created_at, updated_at) "
-        "VALUES (:id, :c, 'Dev', 'Remote', '', '[]', 'sourcing', now(), now())",
+        "INSERT INTO jobs (id, company_id, title, location, description, skills, status, created_at, updated_at) VALUES (:id, :c, 'Dev', 'Remote', '', '[]', 'sourcing', now(), now())",
         {"id": ids["job"], "c": ids["company"]},
     )
 

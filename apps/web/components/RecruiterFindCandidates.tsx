@@ -149,7 +149,7 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
   const [requirement, setRequirement] = useState<PickOption | null>(null);
   const [shortlisted, setShortlisted] = useState<Shortlisted>({});
   const [selected, setSelected] = useState<Map<string, ShareCandidate>>(new Map()); // rec-019: kept across pages until shared
-  const [sharing, setSharing] = useState(false);
+  const [sharing, setSharing] = useState<ShareCandidate[] | null>(null); // the selection when the dialog opened (QA-01)
   const select = (c: CandidateCard, on: boolean) => setSelected((current) => {
     const next = new Map(current);
     if (on) next.set(c.id, { id: c.id, name: c.name, code: c.candidate_code });
@@ -360,13 +360,12 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
         <p className="muted" role="status">Searching candidates…</p>
       ) : (
         <>
-          {sharing && requirement && selected.size > 0 && (
-            <RecruiterShareDialog requirement={requirement} candidates={[...selected.values()]} onClose={() => setSharing(false)}
-              onShared={() => setSelected(new Map())} />
+          {sharing && requirement && (
+            <RecruiterShareDialog requirement={requirement} candidates={sharing} onClose={() => setSharing(null)} onShared={() => setSelected(new Map())} />
           )}
           <Results result={result} state={state} loading={loading} writes={writes} requirement={requirement} shortlisted={shortlisted}
-            onRequirement={(r) => { setRequirement(r); setShortlisted({}); setSelected(new Map()); setSharing(false); }} onShortlist={shortlist} narrow={narrow}
-            page={(offset) => go({ ...state, offset })} selected={selected} onSelect={select} onShare={() => setSharing(true)} />
+            onRequirement={(r) => { setRequirement(r); setShortlisted({}); setSelected(new Map()); setSharing(null); }} onShortlist={shortlist} narrow={narrow}
+            page={(offset) => go({ ...state, offset })} selected={selected} onSelect={select} onShare={() => setSharing([...selected.values()])} />
         </>
       )}
       </div>

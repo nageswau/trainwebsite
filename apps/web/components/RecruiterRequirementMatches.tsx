@@ -119,7 +119,7 @@ export default function RecruiterRequirementMatches({ requirementId, requirement
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const [selected, setSelected] = useState<Map<string, ShareCandidate>>(new Map());
-  const [sharing, setSharing] = useState(false);
+  const [sharing, setSharing] = useState<ShareCandidate[] | null>(null); // the selection when the dialog opened (QA-01)
   const headingId = `${useId()}-matches`;
   const adjustId = `${headingId}-adjust`;
   const focus = useFocusAfterRender();
@@ -167,7 +167,7 @@ export default function RecruiterRequirementMatches({ requirementId, requirement
         <h3 id={headingId} style={{ margin: 0 }}>Matching candidates{data && !data.reason ? ` (${data.total})` : ""}</h3>
         <div className="actions" style={{ flexWrap: "wrap", gap: 8 }}>
           {selected.size > 0 && !sharing && (
-            <button type="button" className="btn small" onClick={() => { setSharing(true); setNotice(null); }}>Share selected ({selected.size})</button>
+            <button type="button" className="btn small" onClick={() => { setSharing([...selected.values()]); setNotice(null); }}>Share selected ({selected.size})</button>
           )}
           {data?.can_edit_weights && data.criteria.skills.length > 0 && !editing && (
             <button id={adjustId} type="button" className="btn secondary small" onClick={() => { setEditing(true); setNotice(null); }}>Adjust weights</button>
@@ -185,9 +185,9 @@ export default function RecruiterRequirementMatches({ requirementId, requirement
       <div role="status" aria-live="polite">
         {notice && <p className={notice.failed ? "form-error" : "form-message"} style={{ margin: "6px 0 0", fontSize: 13 }}>{notice.text}</p>}
       </div>
-      {sharing && selected.size > 0 && (
-        <RecruiterShareDialog requirement={{ id: requirementId, label: requirementLabel }} companyId={companyId} candidates={[...selected.values()]}
-          onClose={() => setSharing(false)} onShared={() => { setSelected(new Map()); reload(); onShared?.(); }} />
+      {sharing && (
+        <RecruiterShareDialog requirement={{ id: requirementId, label: requirementLabel }} companyId={companyId} candidates={sharing}
+          onClose={() => setSharing(null)} onShared={() => { setSelected(new Map()); reload(); onShared?.(); }} />
       )}
       {editing && data && (
         <WeightsForm requirementId={requirementId} skills={data.criteria.skills} onCancel={closeWeights}

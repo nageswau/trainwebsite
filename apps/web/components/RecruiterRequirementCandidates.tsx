@@ -7,7 +7,7 @@ import RecruiterApplicationInterviews from "@/components/RecruiterApplicationInt
 import RecruiterApplicationOffer from "@/components/RecruiterApplicationOffer";
 import RecruiterApplicationScreening from "@/components/RecruiterApplicationScreening";
 import type { ContactOption } from "@/components/RecruiterInterviewForm";
-import RecruiterShareDialog from "@/components/RecruiterShareDialog";
+import RecruiterShareDialog, { type ShareCandidate } from "@/components/RecruiterShareDialog";
 import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson } from "@/lib/apiErrors";
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
@@ -217,7 +217,7 @@ export default function RecruiterRequirementCandidates({ requirementId, requirem
   const reload = () => setVersion((n) => n + 1);
   const [contacts, setContacts] = useState<ContactOption[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [sharing, setSharing] = useState(false);
+  const [sharing, setSharing] = useState<ShareCandidate[] | null>(null); // the selection when the dialog opened (QA-01)
 
   useEffect(() => {
     const controller = new AbortController();
@@ -258,7 +258,7 @@ export default function RecruiterRequirementCandidates({ requirementId, requirem
         <h3 id={headingId} style={{ margin: 0 }}>Candidates{data ? ` (${data.items.length})` : ""}</h3>
         <div className="actions" style={{ flexWrap: "wrap", gap: 8 }}>
           {picked.length > 0 && !sharing && (
-            <button type="button" className="btn small" onClick={() => { setSharing(true); setNotice(null); }}>Share selected ({picked.length})</button>
+            <button type="button" className="btn small" onClick={() => { setSharing(picked.map((a) => a.candidate)); setNotice(null); }}>Share selected ({picked.length})</button>
           )}
           {data?.can_add && !adding && (
             <button type="button" className="btn secondary small" onClick={() => { setAdding(true); setNotice(null); }}>Add candidate</button>
@@ -268,9 +268,9 @@ export default function RecruiterRequirementCandidates({ requirementId, requirem
       <div role="status" aria-live="polite">
         {notice && <p className={notice.failed ? "form-error" : "form-message"} style={{ margin: "6px 0 0", fontSize: 13 }}>{notice.text}</p>}
       </div>
-      {sharing && picked.length > 0 && (
+      {sharing && (
         <RecruiterShareDialog requirement={{ id: requirementId, label: requirementLabel }} companyId={companyId}
-          candidates={picked.map((a) => a.candidate)} onClose={() => setSharing(false)}
+          candidates={sharing} onClose={() => setSharing(null)}
           onShared={() => { setSelected(new Set()); reload(); onShared?.(); }} />
       )}
       {adding && data?.can_add && (
