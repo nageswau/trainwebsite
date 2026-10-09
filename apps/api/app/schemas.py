@@ -6978,6 +6978,7 @@ class UniversityDetail(UniversityRow):
     created_at: datetime
     updated_at: datetime
     pipeline: UniversityPipelineOut
+    follow_up: "UniversityFollowUpOut"  # upc-020 TK14/TK15
 
 
 class LinkedBdmOrganization(BaseModel):
@@ -7362,6 +7363,133 @@ class VisitOption(BaseModel):
 class VisitOptionPage(BaseModel):
     items: list[VisitOption]
     total: int
+
+
+# --- upc-020 (DEC-SCOPE-141, spec §3): partnership tasks and follow-ups ----------------------------------------------------------
+PartnershipTaskKind = Literal["follow_up", "task"]  # = partnership_task_rules.KINDS
+PartnershipTaskPriority = Literal["high", "medium", "low"]  # = partnership_task_rules.PRIORITIES
+PartnershipTaskBand = Literal["overdue", "today", "tomorrow", "upcoming", "open", "done", "cancelled"]  # TK13 (+ every open item)
+PartnershipTaskTitle = _university_str(200, required=True)
+PartnershipTaskNotes = _university_str(2000, multiline=True)
+PartnershipTaskReason = _university_str(500, required=True, multiline=True)
+
+
+class PartnershipTaskIn(BaseModel):
+    """TK9/TK10: the assignee defaults to the caller. Source, status and timestamps are server-owned (unknown fields here)."""
+
+    model_config = ConfigDict(extra="forbid")
+    university_id: UUID
+    kind: PartnershipTaskKind
+    title: PartnershipTaskTitle
+    due_on: date
+    priority: PartnershipTaskPriority = "medium"
+    assignee_user_id: UUID | None = None
+    notes: PartnershipTaskNotes = None
+
+
+class PartnershipTaskUpdate(BaseModel):
+    """TK12: omitted = unchanged; `notes: null` clears; a sent null title, priority or assignee is refused. The due date changes only
+    through `reschedule`."""
+
+    model_config = ConfigDict(extra="forbid")
+    title: PartnershipTaskTitle = None
+    priority: PartnershipTaskPriority = None
+    assignee_user_id: UUID = None
+    notes: PartnershipTaskNotes = None
+
+
+class PartnershipTaskReschedule(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    due_on: date
+
+
+class PartnershipTaskCancel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: PartnershipTaskReason
+
+
+class PartnershipTaskUniversity(BaseModel):
+    id: UUID
+    university_code: str
+    name: str
+
+
+class PartnershipTaskPermissions(BaseModel):
+    can_edit: bool
+    can_reschedule: bool
+    can_complete: bool
+    can_cancel: bool
+
+
+class PartnershipTaskOut(BaseModel):
+    id: UUID
+    university: PartnershipTaskUniversity
+    kind: str
+    title: str
+    notes: str | None
+    due_on: date
+    priority: str
+    status: str
+    band: str
+    overdue: bool
+    source: str
+    assignee: BdmManagerRef
+    created_by: BdmManagerRef
+    completed_at: datetime | None
+    cancelled_at: datetime | None
+    cancel_reason: str | None
+    created_at: datetime
+    updated_at: datetime
+    permissions: PartnershipTaskPermissions
+
+
+class PartnershipTaskEnvelope(BaseModel):
+    task: PartnershipTaskOut
+
+
+class PartnershipTaskCounts(BaseModel):
+    overdue: int
+    today: int
+    tomorrow: int
+    upcoming: int
+    done: int
+    cancelled: int
+
+
+class PartnershipTaskPage(BaseModel):
+    items: list[PartnershipTaskOut]
+    total: int
+    limit: int
+    offset: int
+    today: date
+    counts: PartnershipTaskCounts
+
+
+class PartnershipTaskCatalogue(BaseModel):
+    titles: list[str]
+
+
+class UniversityNextAction(BaseModel):
+    """TK14: the earliest open follow-up (§20 "Next Action + Next Action Date", Owner, Priority)."""
+
+    id: UUID
+    title: str
+    due_on: date
+    priority: str
+    band: str
+    assignee: BdmManagerRef
+
+
+class UniversityLastAction(BaseModel):
+    """TK15: the later of the latest completed task and the latest stage move."""
+
+    title: str
+    at: datetime
+
+
+class UniversityFollowUpOut(BaseModel):
+    next_action: UniversityNextAction | None
+    last_action: UniversityLastAction | None
 
 
 # --- rec-006 (DEC-SCOPE-119): the recruiter Skills Master ------------------------------------------------------------------------

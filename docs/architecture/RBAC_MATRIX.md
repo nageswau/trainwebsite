@@ -1240,6 +1240,20 @@ university's `can_edit_contacts`. Neither is ever edited or deleted (UC1, UC9).
 | `super_admin` | everything | all | `upc-012` |
 | `overseas_admin`, `counselor`, every other role | `403` | — | `upc-012` |
 
+### 2.67 Partnership tasks + follow-ups *(net-new, added 2026-10-09 — `DEC-SCOPE-141`, `upc-020`)*
+
+Every partnership reader reads every task (TK8, the "a manager reads every university" convention). Writes are for the assignee or the
+assignee's reporting head (TK11); adding needs the university edit scope (upc-006's `can_edit_contacts`). Auto-tasks are written by the
+stage move or visit completion that triggers them, under that write's own permission.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `partnership_manager` | read; add (assigned to themselves); edit, reschedule, complete, cancel their own tasks | reads all; adds on universities they own (primary/backup) | `upc-020` |
+| `partnership_head` | read; add (themselves or an active direct report); edit, reassign within the team, reschedule, complete, cancel | reads all; adds on unowned and team universities; acts on own and direct reports' tasks | `upc-020` |
+| `super_admin` | read only | all | `upc-020` |
+| `overseas_admin` | the university's Next / Last Action summary only; task routes `403` | — | `upc-020` |
+| every other role | `403` | — | `upc-020` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
