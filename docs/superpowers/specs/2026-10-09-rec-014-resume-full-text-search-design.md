@@ -4,7 +4,7 @@ Backlog: `docs/delivery/RECRUITER_CRM_BACKLOG.md` rec-014. Source: S2-§15 resum
 skills, resume content, previous job titles, certifications and projects"; R7 (Postgres `tsvector`). Depends on rec-012 (merged PR #197:
 `candidate_resumes.extracted_text`) and rec-013 (merged PR #199: `POST /recruiter/candidates/search`); both are on `main`.
 
-**Status: DRAFT** on `feature/rec-014`.
+**Status: MERGED** as PR #204 @ `dd32255d` (2026-10-09). The next rec item takes `0138`, `DEC-SCOPE-155`, §12BW and §2.81 (re-check `main`).
 
 **Numbering:** migration `0137_resume_search` (after upc-011's `0136_partnership_events`), `DEC-SCOPE-154`, API §12BV, RBAC §2.80 (a
 note only: the roles are rec-013's). Drafted as 0136 / 152 / §12BT / §2.78; upc-011 (PR #202: 0136 / 152 / §12BT / §2.78) and upc-018

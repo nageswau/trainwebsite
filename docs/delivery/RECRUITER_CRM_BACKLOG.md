@@ -812,7 +812,7 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** large · **Risk:** high
 
 ### rec-014 — Resume full-text search
-- **Status (2026-10-09):** built on `feature/rec-014`. `DEC-SCOPE-154` (FT1–FT10 recommended defaults, UNVERIFIED). Migration
+- **Status (2026-10-09):** **MERGED** to `main` as PR #204 @ `dd32255d`. `DEC-SCOPE-154` (FT1–FT10 recommended defaults, UNVERIFIED). Migration
   `0137_resume_search` (generated `search_vector` + GIN), API §12BV, RBAC §2.80 (drafted as 0136 / 152 / §12BT / §2.78; upc-011 and upc-018 merged
   first). The next rec item takes `0138`, `DEC-SCOPE-155`, §12BW and §2.81 (re-check `main`).
 - **Business requirement:** S2-§15 global resume search over structured skills, resume content, previous job titles, certifications and
