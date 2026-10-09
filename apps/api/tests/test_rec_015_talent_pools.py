@@ -1,4 +1,4 @@
-"""rec-015 -- talent pools (spec §1-§3; DEC-SCOPE-158 P1-P8): a manager-defined rule (a rec-013 expression + an experience band) whose
+"""rec-015 -- talent pools (spec §1-§3; DEC-SCOPE-159 P1-P8): a manager-defined rule (a rec-013 expression + an experience band) whose
 members are computed on read. The shared test database is never truncated, so each test makes its own skills (unique names) and asserts
 only on its own candidates."""
 

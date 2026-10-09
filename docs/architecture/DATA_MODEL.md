@@ -1884,7 +1884,7 @@ the effective from/to status, `changed` (field names only), the replaced documen
 
 Additive: no existing row is read or written. `downgrade()` refuses while any contract exists.
 
-## Talent pools (`rec-015`, `DEC-SCOPE-158`; migration `0140_talent_pools`, after `0139_recruiter_contracts`)
+## Talent pools (`rec-015`, `DEC-SCOPE-159`; migration `0141_talent_pools`, after `0140_joining_management`)
 
 **`talent_pools`** has these columns:
 - `name` varchar(80), unique on `lower(name)` (`uq_talent_pools_name`);

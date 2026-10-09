@@ -1,9 +1,9 @@
 """rec-015 -- talent pools: talent_pools (seeded with the six expressible S2-§8 examples).
 
-Revision ID: 0140_talent_pools
-Revises: 0139_recruiter_contracts
+Revision ID: 0141_talent_pools
+Revises: 0140_joining_management
 
-docs/superpowers/specs/2026-10-09-rec-015-talent-pools-design.md §2 (DEC-SCOPE-158). Additive: one new table, no existing row read or
+docs/superpowers/specs/2026-10-09-rec-015-talent-pools-design.md §2 (DEC-SCOPE-159). Additive: one new table, no existing row read or
 written. 0001 builds a fresh database from the current models, which already carry the table, so creation is guarded (0104's idiom) --
 but the seed always runs, inserting only a pool whose name (ignoring case) is missing, so it is idempotent and never overwrites a
 manager's edit. EXPERIENCE_CHECK is a frozen copy of app.models.TALENT_POOL_EXPERIENCE_CHECK (test_rec_015_migration). downgrade()
@@ -18,8 +18,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0140_talent_pools"
-down_revision = "0139_recruiter_contracts"
+revision = "0141_talent_pools"
+down_revision = "0140_joining_management"
 branch_labels = None
 depends_on = None
 
@@ -82,5 +82,5 @@ def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(
         sa.text(f"SELECT 1 FROM {TABLE} WHERE created_by_user_id IS NOT NULL OR updated_by_user_id IS NOT NULL LIMIT 1")
     ).first():
-        raise RuntimeError("Cannot downgrade 0140_talent_pools: managers have created or edited talent pools. Clear them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0141_talent_pools: managers have created or edited talent pools. Clear them deliberately first.")
     op.drop_table(TABLE)

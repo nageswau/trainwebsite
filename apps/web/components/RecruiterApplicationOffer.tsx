@@ -9,7 +9,7 @@ import { fieldErrors } from "@/lib/bdmTravel";
 import { formatCalendarDate, formatSchoolDateTime } from "@/lib/formatDate";
 import { RECRUITER_SIGN_IN } from "@/lib/recruiterCompanies";
 import {
-  type ApplicationOffer, applicationOfferUrl, isApplicationOffer, LETTER_ACCEPT, LETTER_MAX_BYTES, NOTE_MAX, OFFER_STATUS_LABELS, offerEventText,
+  type ApplicationOffer, applicationOfferUrl, isApplicationOffer, type Joining, LETTER_ACCEPT, LETTER_MAX_BYTES, NOTE_MAX, OFFER_STATUS_LABELS, offerEventText,
   offerOf, offerUrl, type RecOffer, salaryText, START_STATUSES,
 } from "@/lib/recruiterOffers";
 
@@ -172,8 +172,9 @@ function StatusForm({ offer, onSaved, onCancel }: { offer: RecOffer; onSaved: Sa
   );
 }
 
-/** OF7: the letter (PDF, JPG or PNG; the API judges the type by the bytes). Replacing keeps the old one in the history. */
-function LetterUpload({ offer, onSaved }: { offer: RecOffer; onSaved: Saved }) {
+/** OF7 / JN4: the letter or the joining proof (PDF, JPG or PNG; the API judges the type by the bytes). Replacing keeps the old one in the
+ *  history. */
+function FileUpload({ label, url, onSaved }: { label: string; url: string; onSaved: Saved }) {
   const id = useId();
   const input = useRef<HTMLInputElement>(null);
   const { busy, failure, setFailure, run } = useSubmit((saved) => {
@@ -184,21 +185,161 @@ function LetterUpload({ offer, onSaved }: { offer: RecOffer; onSaved: Saved }) {
     event.preventDefault();
     const file = input.current?.files?.[0];
     if (!file) return setFailure({ kind: "error", message: "Choose a PDF, JPG or PNG file first." });
-    if (file.size > LETTER_MAX_BYTES) return setFailure({ kind: "error", message: "The letter must be at most 20 MB." });
+    if (file.size > LETTER_MAX_BYTES) return setFailure({ kind: "error", message: "The file must be at most 20 MB." });
     const form = new FormData();
     form.append("file", file);
-    void run(() => sendRequest(offerUrl(offer.id, "letter"), { method: "PUT", body: form }));
+    void run(() => sendRequest(url, { method: "PUT", body: form }));
   }
   return (
     <form onSubmit={submit} style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-end" }}>
       <div className="field" style={{ flex: "1 1 14rem", marginBottom: 0 }}>
-        <label htmlFor={`${id}-file`}>{offer.letter ? "Replace offer letter" : "Upload offer letter"}</label>
+        <label htmlFor={`${id}-file`}>{label}</label>
         <span id={`${id}-hint`} className="muted" style={{ fontSize: 13 }}>PDF, JPG or PNG, up to 20 MB</span>
         <input id={`${id}-file`} ref={input} type="file" accept={LETTER_ACCEPT} aria-describedby={`${id}-hint`} disabled={busy} />
       </div>
       <button type="submit" className="btn secondary small" disabled={busy}>{busy ? "Uploading…" : "Upload"}</button>
       <div style={{ flexBasis: "100%" }}><Problem failure={failure} /></div>
     </form>
+  );
+}
+
+type JoiningValues = {
+  joining_status: string; expected_joining_date: string; actual_joining_date: string; joining_location: string; reporting_manager: string;
+  confirmed_by: string; confirmed_on: string; reason: string;
+};
+const MOVE_HINT: Record<string, string> = {
+  joined: "Joined is final and also moves the candidate to Joined (and closes the requirement when its vacancies are filled).",
+  did_not_join: "Did Not Join is final and also moves the candidate to Withdrawn.",
+};
+
+/** JN1-JN6: the whole §17 joining in one PUT (empty = cleared), optionally with its move; the API judges the dates and what each move
+ *  needs, and its 422s go on their fields. */
+function JoiningForm({ offer, joining: j, onSaved, onCancel }: { offer: RecOffer; joining: Joining; onSaved: Saved; onCancel: () => void }) {
+  const id = useId();
+  const [v, setV] = useState<JoiningValues>({
+    joining_status: j.status, expected_joining_date: j.expected_joining_date ?? "", actual_joining_date: j.actual_joining_date ?? "",
+    joining_location: j.location ?? "", reporting_manager: j.reporting_manager ?? "", confirmed_by: j.confirmed_by ?? "", confirmed_on: j.confirmed_on ?? "",
+    reason: j.reason ?? "",
+  });
+  const { busy, errors, failure, run } = useSubmit(onSaved);
+  const fid = (key: string) => `${id}-${key}`;
+  const set = (key: keyof JoiningValues) => (e: { target: { value: string } }) => setV({ ...v, [key]: e.target.value });
+  const invalid = (key: string) => ({ "aria-invalid": errors[key] ? true : undefined, "aria-describedby": errors[key] ? `${fid(key)}-error` : undefined });
+  const text = (key: keyof JoiningValues) => v[key].trim() || null;
+  const notJoining = v.joining_status === "did_not_join";
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    void run(() => sendJson(offerUrl(offer.id, "joining"), "PUT", {
+      joining_status: v.joining_status, expected_joining_date: v.expected_joining_date || null, actual_joining_date: v.actual_joining_date || null,
+      joining_location: text("joining_location"), reporting_manager: text("reporting_manager"), confirmed_by: text("confirmed_by"),
+      confirmed_on: v.confirmed_on || null, reason: notJoining ? text("reason") : null,
+    }));
+  }
+  const input = (key: keyof JoiningValues, label: string, type = "text") => (
+    <Field id={fid(key)} label={label} error={errors[key]}>
+      <input id={fid(key)} type={type} maxLength={type === "text" ? 160 : undefined} value={v[key]} onChange={set(key)} {...invalid(key)} />
+    </Field>
+  );
+  return (
+    <form aria-label="Update joining" className="action-card" noValidate onSubmit={submit} onKeyDown={(e) => e.key === "Escape" && onCancel()}>
+      <div className="form-grid" style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(12rem, 1fr))" }}>
+        <Field id={fid("joining_status")} label="Joining status" error={errors.joining_status}>
+          <select id={fid("joining_status")} autoFocus value={v.joining_status} onChange={set("joining_status")} {...invalid("joining_status")}>
+            <option value={j.status}>{j.status_label}</option>
+            {j.allowed_statuses.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+          </select>
+        </Field>
+        {input("expected_joining_date", "Expected joining date", "date")}
+        {input("actual_joining_date", v.joining_status === "joined" ? "Actual joining date (required)" : "Actual joining date", "date")}
+        {input("joining_location", "Joining location")}
+        {input("reporting_manager", "Reporting manager")}
+        {input("confirmed_by", "Confirmed by (who at the company)")}
+        {input("confirmed_on", "Confirmation date", "date")}
+      </div>
+      {MOVE_HINT[v.joining_status] && <p className="muted" style={{ margin: 0, fontSize: 13 }}>{MOVE_HINT[v.joining_status]}</p>}
+      {v.joining_status === "joined" && <p className="muted" style={{ margin: 0, fontSize: 13 }}>Joined needs who confirmed it, or an uploaded joining proof.</p>}
+      {notJoining && (
+        <Field id={fid("reason")} label="Reason (required)" error={errors.reason}>
+          <textarea id={fid("reason")} rows={2} maxLength={NOTE_MAX} required aria-required="true" value={v.reason} onChange={set("reason")} {...invalid("reason")} />
+        </Field>
+      )}
+      <Problem failure={failure} />
+      <div className="actions">
+        <button type="submit" className="btn small" disabled={busy}>{busy ? "Saving…" : "Save joining"}</button>
+        <button type="button" className="btn secondary small" onClick={onCancel}>Cancel</button>
+      </div>
+    </form>
+  );
+}
+
+/** rec-023 (spec §4): an Accepted offer's §17 joining -- the facts, the proof, "Update joining" while Pending and the proof upload. */
+function JoiningSection({ offer: o, joining: j, candidateName, onChanged }: {
+  offer: RecOffer; joining: Joining; candidateName: string; onChanged: (offer: RecOffer, notice: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const headingId = useId();
+  // QA-02: closing the form (Cancel, Escape, Save) returns focus to "Update joining", or to the heading once a move removed that button.
+  const updateButton = useRef<HTMLButtonElement>(null);
+  const heading = useRef<HTMLElement>(null);
+  const returnFocus = useRef(false);
+  useEffect(() => {
+    if (editing || !returnFocus.current) return;
+    returnFocus.current = false;
+    (updateButton.current ?? heading.current)?.focus();
+  });
+  const close = () => {
+    returnFocus.current = true;
+    setEditing(false);
+  };
+  const facts = [
+    ["Expected joining date", j.expected_joining_date && formatCalendarDate(j.expected_joining_date)],
+    ["Actual joining date", j.actual_joining_date && formatCalendarDate(j.actual_joining_date)],
+    ["Joining location", j.location],
+    ["Reporting manager", j.reporting_manager],
+    ["Confirmed by", j.confirmed_by],
+    ["Confirmation date", j.confirmed_on && formatCalendarDate(j.confirmed_on)],
+    ["Reason", j.reason],
+  ].filter(([, value]) => value) as [string, string][];
+  const done = (text: (next: RecOffer) => string) => (next: RecOffer) => {
+    close();
+    onChanged(next, text(next));
+  };
+  return (
+    <section className="action-card" style={{ gap: 6 }} aria-labelledby={headingId}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "baseline" }}>
+        <strong id={headingId} ref={heading} tabIndex={-1}>Joining<span className="visually-hidden"> for {candidateName}</span></strong>
+        <span className="badge">{j.status_label}</span>
+        {j.overdue && <span className="badge status error">Overdue</span>}
+      </div>
+      {facts.length > 0 ? (
+        <dl style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(10rem, 1fr))", gap: "4px 16px", margin: 0 }}>
+          {facts.map(([term, value]) => (
+            <div key={term}>
+              <dt className="muted" style={{ fontSize: 13 }}>{term}</dt>
+              <dd style={{ margin: 0, overflowWrap: "anywhere" }}>{value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : <p className="muted" style={{ margin: 0, fontSize: 13 }}>No joining details yet.</p>}
+      {j.proof && (
+        <p style={{ margin: 0 }}>
+          <a href={offerUrl(o.id, "joining/proof")} download style={LINK_STYLE}>Download joining proof<span className="muted" style={{ fontSize: 13 }}>{j.proof.name ? ` (${j.proof.name})` : ""}</span></a>
+        </p>
+      )}
+      {j.can_edit && !editing && (
+        <div className="actions">
+          <button ref={updateButton} type="button" className="btn secondary small" onClick={() => setEditing(true)}>Update joining<span className="visually-hidden"> of {candidateName}</span></button>
+        </div>
+      )}
+      {editing && (
+        <JoiningForm offer={o} joining={j} onCancel={close}
+          onSaved={done((next) => (next.joining && next.joining.status !== j.status ? `Joining for ${candidateName} is now ${next.joining.status_label}.` : `Joining details saved for ${candidateName}.`))} />
+      )}
+      {j.can_upload_proof && !editing && (
+        <FileUpload label={j.proof ? "Replace joining proof" : "Upload joining proof"} url={offerUrl(o.id, "joining/proof")} onSaved={(next) => onChanged(next, `Joining proof uploaded for ${candidateName}.`)} />
+      )}
+    </section>
   );
 }
 
@@ -246,7 +387,9 @@ function OfferView({ offer: o, candidateName, onChanged }: { offer: RecOffer; ca
       )}
       {mode === "status" && <StatusForm offer={o} onCancel={() => setMode("view")} onSaved={(next) => done(`Offer for ${candidateName} is now ${next.status_label}.`)(next)} />}
       {mode === "edit" && <OfferForm applicationId={o.application.id} offer={o} onCancel={() => setMode("view")} onSaved={done(`Offer for ${candidateName} revised.`)} />}
-      {o.can_upload && mode === "view" && <LetterUpload offer={o} onSaved={done(`Offer letter uploaded for ${candidateName}.`)} />}
+      {o.can_upload && mode === "view" && (
+        <FileUpload label={o.letter ? "Replace offer letter" : "Upload offer letter"} url={offerUrl(o.id, "letter")} onSaved={done(`Offer letter uploaded for ${candidateName}.`)} />
+      )}
       <details>
         <summary>History ({o.history.length})</summary>
         <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 13 }}>
@@ -295,7 +438,15 @@ export default function RecruiterApplicationOffer({ applicationId, candidateName
     );
   }
   if (data === null) return <p className="muted" role="status" style={{ margin: 0, fontSize: 13 }}>Loading offer…</p>;
-  if (data.offer) return <OfferView offer={data.offer} candidateName={candidateName} onChanged={changed} />;
+  if (data.offer) {
+    const { offer } = data;
+    return (
+      <div style={{ display: "grid", gap: 8 }}>
+        <OfferView offer={offer} candidateName={candidateName} onChanged={changed} />
+        {offer.joining && <JoiningSection offer={offer} joining={offer.joining} candidateName={candidateName} onChanged={changed} />}
+      </div>
+    );
+  }
   return (
     <div style={{ display: "grid", gap: 8 }}>
       <p className="muted" style={{ margin: 0, fontSize: 13 }}>No offer yet.</p>

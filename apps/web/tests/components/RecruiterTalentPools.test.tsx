@@ -5,7 +5,7 @@ import RecruiterTalentPool from "@/components/RecruiterTalentPool";
 import RecruiterTalentPools from "@/components/RecruiterTalentPools";
 import { findHref, formOf, type Pool, poolBody, ruleText } from "@/lib/recruiterPools";
 
-// rec-015 (DEC-SCOPE-158): the pools list (managers create), the pool page (members, the P5 warning, Edit for managers) and the rule
+// rec-015 (DEC-SCOPE-159): the pools list (managers create), the pool page (members, the P5 warning, Edit for managers) and the rule
 // helpers (P2: years <-> months, as on Find Candidates).
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }), usePathname: () => "/recruiter/pools", useSearchParams: () => new URLSearchParams() }));

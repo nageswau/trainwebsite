@@ -128,6 +128,7 @@ export const RECRUITER_NAV: NavItem[] = [
   { label: "Follow-ups", href: "/recruiter/follow-ups" }, // rec-024
   { label: "Meetings", href: "/recruiter/meetings" }, // rec-028
   { label: "Interviews", href: "/recruiter/interviews" }, // rec-020
+  { label: "Joinings", href: "/recruiter/joinings" }, // rec-023
   ...LEGACY_PLACEMENT.map((x) => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, (c) => c.toUpperCase()), href: `/it/placement/${x}` })),
 ];
 export const RECRUITER_MANAGER_NAV: NavItem[] = [
@@ -140,6 +141,7 @@ export const RECRUITER_MANAGER_NAV: NavItem[] = [
   { label: "Follow-ups", href: "/recruiter/follow-ups" }, // rec-024: the team's lists, read only
   { label: "Meetings", href: "/recruiter/meetings" }, // rec-028: the team's meetings, read only
   { label: "Interviews", href: "/recruiter/interviews" }, // rec-020: the team's interviews, read only
+  { label: "Joinings", href: "/recruiter/joinings" }, // rec-023: the team's joinings, read only
   { label: "Message templates", href: "/recruiter/manager/templates" }, // rec-026
 ];
 

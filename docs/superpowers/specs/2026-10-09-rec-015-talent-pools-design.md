@@ -1,9 +1,9 @@
 # rec-015 — Talent pools (rule-based automatic membership) — design
 
 - **Feature ID:** `rec-015` (`RECRUITER_CRM_BACKLOG.md` §rec-015). **Dependencies:** rec-011 (PR #180) and rec-013 (PR #199), both merged.
-- **Decision:** `DEC-SCOPE-158` (P1–P8, the recommended answers to Q-16 and the item's open points; **UNVERIFIED**, applied under the
+- **Decision:** `DEC-SCOPE-159` (P1–P8, the recommended answers to Q-16 and the item's open points; **UNVERIFIED**, applied under the
   owner's standing instruction "proceed with the recommended answers; ask only if genuinely blocking").
-- **Numbers:** migration `0140_talent_pools`, API §12BZ, RBAC §2.84.
+- **Numbers:** migration `0141_talent_pools`, API §12CA, RBAC §2.85.
 - **Evidence:** `EVID-018` S2-§8 (lines 1351–1379: "Recruiter can create pools such as …", ten examples, "Whenever a candidate is added,
   they are automatically placed into the relevant pools based on their skills"), S2-§20 (1736–1790: the Java talent pool, "gets the
   entire relevant candidate pool immediately"); `DEC-SCOPE-116` R7 (rule-based), R11 (the whole opted-in pool).
@@ -23,7 +23,7 @@
 
 ## 2. Data
 
-`talent_pools` (migration `0140_talent_pools`, guarded create like 0139; downgrade refuses while a non-seed pool exists):
+`talent_pools` (migration `0141_talent_pools`, guarded create like 0140; downgrade refuses while a non-seed pool exists):
 
 | Column | Type | Notes |
 |---|---|---|
@@ -36,7 +36,7 @@
 | `created_by_user_id` / `updated_by_user_id` | uuid FK users null | null = seed |
 | `created_at` / `updated_at` | timestamptz | |
 
-## 3. API (§12BZ)
+## 3. API (§12CA)
 
 | Method/Path | Behaviour |
 |---|---|

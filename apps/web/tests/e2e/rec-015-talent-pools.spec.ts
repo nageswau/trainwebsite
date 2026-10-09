@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// rec-015 (AC1-AC2; DEC-SCOPE-158 P1-P8): the placement manager makes test skills and a "Cloud" pool (AWS OR Azure) from the form; the
+// rec-015 (AC1-AC2; DEC-SCOPE-159 P1-P8): the placement manager makes test skills and a "Cloud" pool (AWS OR Azure) from the form; the
 // seeded recruiter's candidates join it with no other action (AC1); an unknown skill is refused with suggestions; a deactivated skill is
 // flagged and left out of the Find Candidates link; a deactivated pool disappears for the recruiter; the page holds at phone width.
 

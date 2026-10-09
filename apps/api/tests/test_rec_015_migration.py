@@ -1,4 +1,4 @@
-"""rec-015 -- migration 0140_talent_pools (spec §2). Round trip, the seed's idempotency and the downgrade refusal run in a throwaway
+"""rec-015 -- migration 0141_talent_pools (spec §2). Round trip, the seed's idempotency and the downgrade refusal run in a throwaway
 database built from scratch (the rec-030 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -14,15 +14,15 @@ from app.core.config import settings
 from tests.test_tel_001_migration import _config, _sql
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_rec_015_migration_0140", VERSIONS / "0140_talent_pools.py")
+_spec = importlib.util.spec_from_file_location("_rec_015_migration_0141", VERSIONS / "0141_talent_pools.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0139_recruiter_contracts", "0140_talent_pools"
+BASE, HEAD = "0140_joining_management", "0141_talent_pools"
 SEEDED = {"Java Developers", "Python Developers", "Full Stack Developers", "Cloud Engineers", "Freshers", "Experienced Professionals"}
 
 
-def test_migration_chains_after_0139_and_there_is_a_single_head():
+def test_migration_chains_after_0140_and_there_is_a_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1
 

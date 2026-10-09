@@ -844,8 +844,8 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 
 ### rec-015 — Talent pools
 - **Status (2026-10-09):** built on `feature/rec-015`.
-  - `DEC-SCOPE-158` (P1–P8, the recommended answers to Q-16; UNVERIFIED).
-  - Migration `0140_talent_pools`, API §12BZ, RBAC §2.84. The next rec item takes `0141`, `DEC-SCOPE-159`, §12CA and §2.85 (re-check `main`).
+  - `DEC-SCOPE-159` (P1–P8, the recommended answers to Q-16; UNVERIFIED).
+  - Migration `0141_talent_pools`, API §12CA, RBAC §2.85 (drafted as 0140 / 158 / §12BZ / §2.84; rec-023 merged first). The next rec item takes `0142`, `DEC-SCOPE-160`, §12CB and §2.86 (re-check `main`).
 - **Business requirement:** S2-§8 pools (10 examples), "automatically placed into the relevant pools based on their skills"; S2-§20 the
   Java Talent Pool.
 - **Existing behavior:** none.
@@ -1129,6 +1129,9 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-023 — Joining management + placement closure
+- **Status (2026-10-09):** **BUILT** on `feature/rec-023` (PR pending). `DEC-SCOPE-158` (JN1–JN10, the recommended answers to Q-22;
+  UNVERIFIED). Migration `0140_joining_management`, API §12BZ, RBAC §2.84. The next rec item takes `0141`, `DEC-SCOPE-159`, §12CA and §2.85
+  (re-check `main`). Spec `docs/superpowers/specs/2026-10-09-rec-023-joining-management-design.md`.
 - **Business requirement:** §17 (7 fields; Joined / Did Not Join; "selection is not the same as placement").
 - **Existing behavior:** `joining_date` + offer status `joined`.
 - **Expected behavior:**

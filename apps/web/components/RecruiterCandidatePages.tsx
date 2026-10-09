@@ -88,7 +88,7 @@ export async function FindCandidatesPage() {
   );
 }
 
-// rec-015 (DEC-SCOPE-158): talent pools -- the same readers as Find Candidates; the API tells the page who may create and edit (P6).
+// rec-015 (DEC-SCOPE-159): talent pools -- the same readers as Find Candidates; the API tells the page who may create and edit (P6).
 export async function TalentPoolsPage() {
   const s = await shell();
   if (!("nav" in s)) return s;

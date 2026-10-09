@@ -1,4 +1,4 @@
-"""rec-015 (DEC-SCOPE-158, spec §1/§4): talent pools. A pool's rule is a saved rec-013 expression plus an experience band; its members are
+"""rec-015 (DEC-SCOPE-159, spec §1/§4): talent pools. A pool's rule is a saved rec-013 expression plus an experience band; its members are
 computed on read through services/candidate_search, so a candidate joins or leaves the moment their skills change (P1, AC1).
 
 Functions only; nothing here commits -- the route owns the transaction. Logs and audit rows carry ids, counts and field names only."""

@@ -1,4 +1,4 @@
-// rec-015 (DEC-SCOPE-158): talent pools -- types, the rule's plain-English summary, the form <-> body mapping (experience in whole years,
+// rec-015 (DEC-SCOPE-159): talent pools -- types, the rule's plain-English summary, the form <-> body mapping (experience in whole years,
 // as on Find Candidates) and the Find Candidates link. The API resolves the skills, computes the members and decides who may change a
 // pool; nothing here filters for security.
 import type { CandidateCard } from "@/lib/recruiterCandidateSearch";

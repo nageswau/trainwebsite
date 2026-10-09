@@ -1,4 +1,4 @@
-"""rec-015 (DEC-SCOPE-158, spec §3): talent pools. Candidate readers (rec-009) read the active pools and their members; placement
+"""rec-015 (DEC-SCOPE-159, spec §3): talent pools. Candidate readers (rec-009) read the active pools and their members; placement
 managers and super_admin create and change any pool (P6). The role check runs before anything is read.
 
 Bodies are untyped dicts parsed by services/telecaller._parse, so a 422 is one sentence naming the field (the tel-002 idiom). Each write

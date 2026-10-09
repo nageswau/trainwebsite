@@ -3723,7 +3723,37 @@ rec-017 Candidates section. Shown only when the requirement's `permissions.can_v
   - Read-only for the manager.
   - A Shortlist success ("{name} shortlisted.") re-reads the Candidates section. A refusal shows the API's message.
 
-## rec-015 addendum (2026-10-09, `DEC-SCOPE-158`) — Talent pools
+## rec-023 addendum (2026-10-09, `DEC-SCOPE-158`) — Joining section and Joinings page
+
+Design spec: `docs/superpowers/specs/2026-10-09-rec-023-joining-management-design.md` §4.
+
+**Joining section.** It sits inside the offer panel of a candidate row on `/recruiter/requirements/{id}`, and only for an Accepted offer.
+- **Header:** "Joining", with a status badge (Pending, Joined or Did Not Join) and an "Overdue" badge when the joining is pending past its expected date.
+- **Details:** the §17 facts that are set — expected and actual date, location, reporting manager, confirmed by, confirmation date and reason.
+  With none set, it reads "No joining details yet."
+- **Proof:** "Download joining proof (name)" when a proof is on file.
+- **Writers, while Pending:** an "Update joining" button that opens the form below.
+- **Update joining form:**
+  - Joining status: the current status plus the moves the API allows.
+  - Expected date, Actual date ("(required)" for Joined), location, reporting manager, Confirmed by and Confirmation date.
+  - Reason: only for Did Not Join, and required.
+  - A hint per move: Joined also moves the candidate to Joined and can close the requirement; Did Not Join also moves them to Withdrawn.
+  - The API's 422s appear on their fields, and typed values are kept.
+- **Proof upload:** "Upload / Replace joining proof" (PDF, JPG or PNG, up to 20 MB). It is shown while the joining is not Did Not Join.
+- Success notices go to the requirement page's live region: "Joining for {name} is now Joined.", "Joining details saved for {name}." and
+  "Joining proof uploaded for {name}.".
+
+**`/recruiter/joinings` ("Joinings").** The nav entry is shown to the recruiter and to the manager (read only).
+- **Tabs:** "Joining due", "Joined" and "Did not join", each with its count. The tab and page are kept in the URL.
+- **Cards:** the candidate (name and code), status, Overdue badge, a requirement link with the company and position, the expected and
+  actual dates, the location, and the reason for a Did Not Join.
+- **States:**
+  - "Loading joinings…".
+  - "Unable to load joinings." with Retry.
+  - An empty message for each view.
+  - Paging, 50 at a time.
+
+## rec-015 addendum (2026-10-09, `DEC-SCOPE-159`) — Talent pools
 
 Design spec: `docs/superpowers/specs/2026-10-09-rec-015-talent-pools-design.md` §4. "Talent Pools" follows Find Candidates in the recruiter, manager, HR and super-admin navigation.
 - **`/recruiter/pools`:** a grid of pool cards (one column at phone width). Each card has the name (link), the rule in words ("Java ·
