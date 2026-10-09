@@ -51,6 +51,17 @@ describe("PartnershipEventForm (upc-011)", () => {
     expect(screen.queryByLabelText("Owner")).toBeNull(); // a manager owns their own events (CL4)
   });
 
+  it("never sends twice: a click after a successful save, before the page changes, is ignored (QA-01)", async () => {
+    const mock = serve();
+    render(<PartnershipEventForm event={event} canPickOwner={false} />);
+    fireEvent.change(screen.getByLabelText("Title"), { target: { value: "QS Fair Delhi" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save event" }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/partnership/events/e9"));
+    fireEvent.click(screen.getByRole("button", { name: /Sav/ }));
+    expect(mock).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: /Sav/ })).toBeDisabled();
+  });
+
   it("checks required fields and the date order before sending", () => {
     const mock = serve();
     render(<PartnershipEventForm canPickOwner />);

@@ -57,7 +57,7 @@ export default async function PartnershipCalendarPage({ searchParams }: { search
             <h2>{heading}</h2>
             <p className="muted">University meetings, university visits, conferences, education fairs, partner meetings, MoU signings, webinars and university presentations. Read-only; open an item to change it. Times are India time (IST).</p>
           </div>
-          {EVENT_CREATORS.has(user.role) && <div className="actions"><Link className="btn" href={NEW_EVENT_PATH}>Add an event</Link></div>}
+          {EVENT_CREATORS.has(user.role) && <div className="actions"><Link className="btn" href={NEW_EVENT_PATH} style={{ whiteSpace: "nowrap" }}>Add an event</Link></div>}
         </div>
         {chooses && people.length > 0 && (
           <form method="get" action={CALENDAR_PATH} className="card" aria-label="Choose whose calendar" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "end", padding: 14, marginBottom: 16 }}>

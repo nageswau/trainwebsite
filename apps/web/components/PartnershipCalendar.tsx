@@ -5,8 +5,8 @@ import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import { SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 import { MEETING_STATUSES } from "@/lib/meetings";
 import {
-  type CalendarItem, type CalendarView, datesText, itemHref, itemsOn, KIND_LABELS, overlapText, pageHref, type PartnershipCalendarData,
-  rangeDays, rangeOf, stepDate,
+  type CalendarItem, type CalendarView, datesText, itemHref, type ItemRef, itemsOn, KIND_LABELS, type Overlap, pageHref,
+  type PartnershipCalendarData, rangeDays, rangeOf, stepDate,
 } from "@/lib/partnershipCalendar";
 import { statusText } from "@/lib/visits";
 
@@ -40,13 +40,27 @@ function renderItem(item: CalendarItem) {
       <Link href={itemHref(item)} style={LINK}>{item.code} — {item.title}</Link>
       {label && <span className="status pending">{label}</span>}
       {item.people.length > 0 && <span className="muted" style={{ overflowWrap: "anywhere" }}>{item.people.map((p) => p.full_name).join(", ")}</span>}
-      {item.overlaps.length > 0 && (
-        <span className="status error" style={{ flexBasis: "100%" }}>
-          Overlap: {item.overlaps.map(overlapText).join("; ")}
-        </span>
-      )}
+      {byEmployee(item.overlaps).map(([name, refs]) => (
+        <p key={name} className="form-warning" style={{ flexBasis: "100%", margin: 0, padding: "4px 8px", fontSize: 14, overflowWrap: "anywhere" }}>
+          Overlap — {name}:{" "}
+          {refs.map((ref, n) => (
+            <span key={`${ref.source}-${ref.id}`}>{n > 0 && ", "}<Link href={itemHref(ref)} title={ref.title} style={LINK}>{ref.code}</Link></span>
+          ))}
+        </p>
+      ))}
     </li>
   );
+}
+
+// QA-02: one short line per person ("Overlap — Asha Rao: VIS-000003, UMT-000002"), each item a link with its title on hover.
+function byEmployee(overlaps: Overlap[]): [string, ItemRef[]][] {
+  const groups = new Map<string, [string, ItemRef[]]>();
+  for (const o of overlaps) {
+    const group = groups.get(o.employee.id) ?? [o.employee.full_name, []];
+    group[1].push(o.item);
+    groups.set(o.employee.id, group);
+  }
+  return [...groups.values()];
 }
 
 function renderDay(data: PartnershipCalendarData, day: string, items: CalendarItem[]) {
@@ -93,7 +107,7 @@ export default function PartnershipCalendar({ data, view, date, employee }: Prop
           {data.truncated && <p className="muted" role="status">Some items are not shown.</p>}
           {overlapping > 0 && (
             <p className="form-warning" role="note" style={{ marginTop: 12 }}>
-              {overlapping === 1 ? "1 item overlaps" : `${overlapping} items overlap`} with another plan for the same person. Check the items marked “Overlap”.
+              {overlapping === 1 ? "1 item overlaps" : `${overlapping} items overlap`} with another plan for the same person. Check the lines marked “Overlap”.
             </p>
           )}
           {data.items.length === 0 && <p className="empty" role="status">Nothing planned this {view}.</p>}

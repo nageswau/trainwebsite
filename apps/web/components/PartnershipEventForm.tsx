@@ -84,14 +84,15 @@ export default function PartnershipEventForm({ event, canPickOwner }: { event?: 
     sending.current = true;
     setBusy(true);
     const outcome = await sendJson(event ? eventUrl(event.id) : EVENTS_URL, event ? "PATCH" : "POST", payload);
-    sending.current = false;
-    setBusy(false);
     const saved = outcome.ok ? (outcome.data.event as { id?: string } | undefined) : undefined;
     if (saved?.id) {
+      // QA-01: stay locked until the event page replaces the form, so a click in between can't add a second event.
       router.push(eventPath(saved.id));
       router.refresh(); // upc-009 QA-01: a page visited moments ago would otherwise come from the router cache
       return;
     }
+    sending.current = false;
+    setBusy(false);
     if (outcome.ok) return setFailure(SAVE_FAILED);
     const mapped = outcome.status === 422 ? fieldErrors(outcome.detail) : {};
     setErrors(mapped);

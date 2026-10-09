@@ -38,7 +38,21 @@ describe("PartnershipCalendar", () => {
   it("flags overlapping items and summarises them (AC2)", () => {
     render(<PartnershipCalendar data={data([item({ overlaps: [overlap(visit)] }), item({ ...visit, overlaps: [overlap(fair)] })])} view="week" date="2031-03-05" />);
     expect(screen.getByRole("note")).toHaveTextContent("2 items overlap");
-    expect(within(screen.getByRole("region", { name: /Wednesday 5 Mar/ })).getAllByText(/^Overlap:/)).toHaveLength(2);
+    const wednesday = screen.getByRole("region", { name: /Wednesday 5 Mar/ });
+    const markers = within(wednesday).getAllByText(/^Overlap — Asha Rao:/);
+    expect(markers).toHaveLength(2);
+    // QA-02: one short line per person; each overlapping item is a link by its code (its title on hover), the name not repeated.
+    expect(within(markers[0]).getByRole("link", { name: "VIS-000003" })).toHaveAttribute("href", "/partnership/visits/v1");
+    expect(within(markers[0]).getByRole("link", { name: "VIS-000003" })).toHaveAttribute("title", "Oxford, Oxford");
+  });
+
+  it("lists one line per person with several overlaps (QA-02)", () => {
+    const ben = { id: "u2", full_name: "Ben Ito", active: true };
+    const busy = item({ overlaps: [overlap(visit), overlap(meeting), { employee: ben, item: overlap(visit).item }] });
+    render(<PartnershipCalendar data={data([busy])} view="week" date="2031-03-05" />);
+    const tuesday = screen.getByRole("region", { name: /Tuesday 4 Mar/ });
+    expect(within(tuesday).getByText(/^Overlap — Asha Rao:/)).toHaveTextContent("Overlap — Asha Rao: VIS-000003, UMT-000002");
+    expect(within(tuesday).getByText(/^Overlap — Ben Ito:/)).toHaveTextContent("Overlap — Ben Ito: VIS-000003");
   });
 
   it("shows only days with items in the month view, keeping the employee in links", () => {

@@ -109,3 +109,20 @@ Meeting (§12BM) and visit (§12AX) detail items gain `overlaps` (CL11).
 - The 60-minute meeting slot is an assumption (CL10, `NEEDS_CONFIRMATION`).
 - Query cost: three range queries + three participant queries per calendar read, bounded by 500 rows each; detail overlaps reuse the
   same code over the item's own days.
+
+## 7. Browser QA (Phase 5/6)
+
+First pass (no code changes), Playwright against the isolated stack (`http://localhost:13111`), 1280 / 820 / 390 px, as super_admin,
+head, two managers and a counselor. Passed: the empty week, bad `view` / `date` fall back to this week, a manager naming a colleague (or a
+malformed id) gets "This person is not in your team", the meeting and visit pages show the overlap notice after a meeting is scheduled on a
+visit day (AC2), required fields, the 200-character title cap, a past date placed on its field, the event page warns on create, refresh
+and back keep the page, a malformed event id is "not found", no horizontal overflow at any width, no broken images, a participant sees the
+meeting, a colleague's PATCH is a 403 (no IDOR), the head's team calendar and employee choice, super_admin's "Everyone's calendar" without
+"Add an event", a counselor gets the access card (API 403), signed out → overseas sign-in. Console errors were only the deliberate 422
+(plus Next prefetches cancelled by signing out).
+
+| ID | Severity | Role / page | Finding | Fix |
+|---|---|---|---|---|
+| QA-01 | Medium | manager / `/partnership/events/new` | A click between the save's response and the navigation sent a second POST: two identical events (PEV-000056/57) | The form stays locked (busy) after a successful save until the event page replaces it; vitest "never sends twice" + browser (1 POST) |
+| QA-02 | Low | all / calendar | The overlap marker was one long red pill repeating the person's name per overlap ("QA Manager … is also at …; QA Manager … is also at …"), a blob on a phone | One amber line per person, "Overlap — Asha Rao: VIS-000003, UMT-000002", each code an underlined link with its title on hover; vitest + e2e + screenshots |
+| QA-03 | Low | manager, head / calendar (desktop) | "Add an event" wrapped onto three lines beside the long description | `white-space: nowrap` on the button; verified by screenshot |
