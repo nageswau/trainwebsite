@@ -76,6 +76,16 @@ describe("upc-018 funnel", () => {
     expect(rows[8]).toContain("4");
   });
 
+  it("QA18-01: an untracked step reads differently from a count -- muted, and no bar track that suggests a measured zero", () => {
+    render(<PartnershipFunnel steps={STEPS} counts={counts()} label="Funnel" />);
+    const leads = screen.getByText("Leads").closest("li")!;
+    expect(leads.querySelector(".funnel-track")).toBeNull();
+    expect(within(leads).getByText("Not tracked")).toHaveClass("funnel-untracked");
+    const enrolled = screen.getByText("Enrolled").closest("li")!;
+    expect(enrolled.querySelector(".funnel-track")).not.toBeNull();
+    expect(within(enrolled).getByText("4")).not.toHaveClass("funnel-untracked");
+  });
+
   it("draws no bar for a zero or untracked step", () => {
     const { container } = render(<PartnershipFunnel steps={STEPS} counts={counts({ interested: 0, applications: 0, offers: 0, deposits: 0, visas: 0, enrolled: 0 })} label="Funnel" />);
     expect(container.querySelectorAll(".funnel-fill")).toHaveLength(0);

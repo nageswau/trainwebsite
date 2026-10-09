@@ -11,10 +11,16 @@ export default function PartnershipFunnel({ steps, counts, label }: { steps: Per
         return (
           <li className="funnel-row" key={s.key}>
             <span className="funnel-label">{s.label}</span>
-            <span className={count === null ? "funnel-count muted" : "funnel-count"}>{countText(count)}</span>
-            <span className="funnel-track" aria-hidden="true">
-              {!!count && <span className="funnel-fill" style={{ width: `${Math.max(2, Math.round((count * 100) / largest))}%` }} />}
-            </span>
+            {count === null ? (
+              <span className="funnel-count funnel-untracked">{countText(count)}</span> // QA18-01: no bar -- nothing was measured
+            ) : (
+              <>
+                <span className="funnel-count">{countText(count)}</span>
+                <span className="funnel-track" aria-hidden="true">
+                  {count > 0 && <span className="funnel-fill" style={{ width: `${Math.max(2, Math.round((count * 100) / largest))}%` }} />}
+                </span>
+              </>
+            )}
           </li>
         );
       })}
