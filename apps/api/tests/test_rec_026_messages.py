@@ -229,7 +229,8 @@ async def test_a_candidate_with_no_email_or_a_contact_with_no_number_is_409(clie
 
 
 @pytest.mark.asyncio
-async def test_without_smtp_an_email_is_503_and_nothing_is_stored(client, db_session, recruiter_emails_enqueued):
+async def test_without_smtp_an_email_is_503_and_nothing_is_stored(client, db_session, recruiter_emails_enqueued, monkeypatch):
+    monkeypatch.setattr(settings, "smtp_host", None)  # whatever the environment configures (upc-012: a stack may run a mail sink)
     await _team(client, db_session)
     candidate = await _candidate(client, db_session)
     assert (await client.post(MESSAGES, json=email(candidate_id=candidate["id"]))).status_code == 503

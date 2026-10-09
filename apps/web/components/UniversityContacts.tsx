@@ -5,6 +5,7 @@ import { type ReactNode, useRef, useState } from "react";
 import BdmConfirm from "@/components/BdmConfirm";
 import { sendJson, sendRequest, type SendOutcome } from "@/lib/apiErrors";
 import { fieldErrors } from "@/lib/bdmPipeline";
+import { formatSchoolDateTime } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 import {
   CONTACT_CHANNELS,
@@ -141,6 +142,7 @@ function ContactCard({ c }: { c: UniversityContact }) {
         <p style={{ margin: 0, display: "flex", flexWrap: "wrap", columnGap: 12, overflowWrap: "anywhere" }}>{reach}</p>
       )}
       {c.notes && <p className="muted" style={{ margin: 0, whiteSpace: "pre-line", overflowWrap: "anywhere" }}>{c.notes}</p>}
+      {c.last_interaction_at && <p className="muted" style={{ margin: 0, fontSize: 13 }}>Last interaction: {formatSchoolDateTime(c.last_interaction_at, true)}</p>}
     </>
   );
 }
