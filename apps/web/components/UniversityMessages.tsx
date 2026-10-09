@@ -18,6 +18,6 @@ export default function UniversityMessages({ universityId, contacts, canWrite }:
   );
   return (
     <MessagesSection listUrl={universityMessagesUrl(universityId)} parties={parties} picker targetFor={(party) => contactTarget(party.id)}
-      canWrite={canWrite} noParties="Add a contact to send a message." onChanged={() => router.refresh()} />
+      canWrite={canWrite} noParties="Add a contact to send a message." onChanged={() => router.refresh()} wide />
   );
 }

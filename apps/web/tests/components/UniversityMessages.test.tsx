@@ -52,6 +52,13 @@ describe("UniversityMessages (upc-012)", () => {
     expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/partnership/universities/U1/messages?limit=50");
   });
 
+  it("spans the page's full row, like Calls (QA-01)", async () => {
+    render(<UniversityMessages universityId="U1" contacts={contacts} canWrite />);
+    await screen.findByRole("list", { name: "Messages" });
+    expect(screen.getByRole("region", { name: "Messages" }).className).toBe("action-card wide");
+    expect(screen.queryAllByRole("status")).toHaveLength(0); // QA-02: no empty live region beside the page's own status messages
+  });
+
   it("disables both buttons with the reason for a contact without a number or an email (edge)", async () => {
     render(<UniversityMessages universityId="U1" contacts={contacts} canWrite />);
     await screen.findByRole("list", { name: "Messages" });

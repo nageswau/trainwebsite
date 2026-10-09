@@ -52,6 +52,7 @@ describe("UniversityCalls (upc-012)", () => {
     expect(second.textContent).toContain("Not connected");
     expect(second.textContent).toContain("a removed contact");
     expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/partnership/universities/U1/calls?limit=50");
+    expect(screen.queryAllByRole("status")).toHaveLength(0); // QA-02: no empty live region beside the page's own status messages
   });
 
   it("shows the empty state and hides Log call for a reader", async () => {

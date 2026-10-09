@@ -60,9 +60,7 @@ export default function UniversityCalls({ universityId, contacts, canWrite }: { 
         )}
       </div>
       {canWrite && contacts.length === 0 && <p className="muted" style={{ fontSize: 13, margin: "6px 0 0" }}>Add a contact to log a call.</p>}
-      <div role="status" aria-live="polite">
-        {notice && <p className="form-message" style={{ margin: "6px 0 0", fontSize: 13 }}>{notice}</p>}
-      </div>
+      {notice && <p className="form-message" role="status" style={{ margin: "6px 0 0", fontSize: 13 }}>{notice}</p>}
       {adding && canWrite && (
         <UniversityCallForm contacts={contacts} onCancel={() => setAdding(false)}
           onLogged={() => { setAdding(false); setNotice("Call logged."); reload(); router.refresh(); }} />

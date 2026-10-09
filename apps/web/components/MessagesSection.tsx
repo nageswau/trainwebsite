@@ -39,9 +39,9 @@ function MessageItem({ message, showTo }: { message: MessageLine; showTo: boolea
  *  recipient picker (`picker`) with Send WhatsApp and Send email, each disabled with its reason when the recipient has no usable number /
  *  address. WhatsApp is recorded only on the composer's confirm; an email is queued and its status refreshes. `parties` is null while the
  *  owner is still loading them. */
-export default function MessagesSection({ listUrl, parties, picker, targetFor, canWrite, onChanged, noParties }: {
+export default function MessagesSection({ listUrl, parties, picker, targetFor, canWrite, onChanged, noParties, wide = false }: {
   listUrl: string; parties: Party[] | null; picker: boolean; targetFor: (party: Party) => ComposerTarget; canWrite: boolean; onChanged?: () => void;
-  noParties: string;
+  noParties: string; wide?: boolean;
 }) {
   const [data, setData] = useState<Page<MessageLine> | null>(null);
   const [failed, setFailed] = useState(false);
@@ -92,7 +92,7 @@ export default function MessagesSection({ listUrl, parties, picker, targetFor, c
   ].filter(Boolean);
 
   return (
-    <section aria-labelledby={`${pickerId}-heading`} className="action-card" style={{ display: "grid", gap: 8 }}>
+    <section aria-labelledby={`${pickerId}-heading`} className={wide ? "action-card wide" : "action-card"} style={{ display: "grid", gap: 8 }}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
         <h3 id={`${pickerId}-heading`} style={{ margin: 0 }}>Messages</h3>
         {canWrite && !composing && party && (
@@ -115,9 +115,7 @@ export default function MessagesSection({ listUrl, parties, picker, targetFor, c
         )
       )}
       {canWrite && !composing && reasons.length > 0 && <p id={reasonId} className="muted" style={{ fontSize: 13, margin: 0 }}>{reasons.join(" ")}</p>}
-      <div role="status" aria-live="polite">
-        {notice && <p className="form-message" style={{ margin: 0, fontSize: 13 }}>{notice}</p>}
-      </div>
+      {notice && <p className="form-message" role="status" style={{ margin: 0, fontSize: 13 }}>{notice}</p>}
       {party && composing === "whatsapp" && party.whatsappTo && (
         <WhatsAppComposer key={party.id} target={targetFor(party)} to={party.whatsappTo} onCancel={() => setComposing(null)}
           onRecorded={() => done(`WhatsApp to ${party.name} recorded.`)} />
