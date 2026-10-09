@@ -83,9 +83,9 @@ from app.models import (
     UNIVERSITY_RELATIONSHIPS,
 )
 from app.notifications.phone import normalise_phone
-from app.partnership_meeting_types import MAX_CONTACTS as MEETING_MAX_CONTACTS
 from app.partnership_event_kinds import KINDS as EVENT_KINDS
 from app.partnership_event_kinds import MAX_EMPLOYEES as EVENT_MAX_EMPLOYEES
+from app.partnership_meeting_types import MAX_CONTACTS as MEETING_MAX_CONTACTS
 from app.partnership_meeting_types import MAX_EMPLOYEES as MEETING_MAX_EMPLOYEES
 from app.partnership_meeting_types import MODES as MEETING_MODES
 from app.partnership_meeting_types import TYPES as MEETING_TYPES

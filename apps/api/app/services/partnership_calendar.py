@@ -28,8 +28,8 @@ from app.models import (
 from app.services.bdm_appointments import IST
 from app.services.partnership import partnership_context
 from app.services.telecaller import person_ref
-from app.services.university_visits import STAFF_ROLES
 
+STAFF_ROLES = ("partnership_manager", "partnership_head")  # = university_visits.STAFF_ROLES (visits import this module)
 READ_ROLES = frozenset({"partnership_manager", "partnership_head", "super_admin"})  # CL7
 MAX_DAYS = 31  # CL8 (bdm-013 K2)
 MAX_ROWS = 500  # per source; far above real use
@@ -189,7 +189,7 @@ def mark_overlaps(items: list[Item], among: set[UUID] | None, users: dict[UUID, 
     for pid, mine in by_person.items():
         for i, a in enumerate(mine):
             a_start, a_end = a.interval
-            for b in mine[i + 1:]:
+            for b in mine[i + 1 :]:
                 b_start, b_end = b.interval
                 if a_start < b_end and b_start < a_end:
                     employee = person_ref(users[pid])

@@ -28,6 +28,7 @@ from app.models import (
     UniversityVisitParticipant,
     User,
 )
+from app.services import partnership_calendar as calendar
 from app.services import partnership_universities as unis
 from app.services.bdm_travel import india_today
 from app.services.partnership import partnership_context
@@ -338,6 +339,8 @@ async def detail_out(db: AsyncSession, user: User, v: UniversityVisit) -> dict:
         )
     ).all()
     actor = is_actor(user, v)
+    when = v.confirmed_date or v.proposed_date
+    overlaps = await calendar.overlaps_for(db, "visit", v.id, when, when, {v.lead_user_id, *(p.id for p in people)})  # upc-011 CL11
     permissions = {flag: actor and RULES[action](v) for flag, action in FLAGS.items()}
     permissions["can_decide"] = RULES["decide"](v) and await can_decide(db, user, v)
     return {
@@ -367,6 +370,7 @@ async def detail_out(db: AsyncSession, user: User, v: UniversityVisit) -> dict:
         "events": [{"action": e.action, "from_status": e.from_status, "to_status": e.to_status, "actor": person_ref(a), "reason": e.reason, "created_at": e.created_at} for e, a in events],
         "permissions": permissions,
         "editable_fields": sorted(editable_fields(v)) if actor else [],
+        "overlaps": overlaps,
     }
 
 
