@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import RecruiterApplicationInterviews from "@/components/RecruiterApplicationInterviews";
@@ -76,6 +76,28 @@ describe("RecruiterApplicationInterviews", () => {
     expect([url, method]).toEqual(["/api/v1/recruiter/interviews", "POST"]);
     expect(body).toEqual({ application_id: "A1", scheduled_at: "2030-01-15T11:00:00+05:30", notify: true, round: "technical_round", mode: "Online",
       meeting_url: null, interviewer: null, location: null, contact_id: "K1" });
+  });
+
+  it("sends one request when Schedule is clicked twice in a row (QA-01)", async () => {
+    items = [];
+    section();
+    fireEvent.click(await screen.findByRole("button", { name: /Schedule interview/ }));
+    const form = screen.getByRole("form", { name: "Schedule interview" });
+    fireEvent.change(within(form).getByLabelText("Round (required)"), { target: { value: "hr_round" } });
+    fireEvent.change(within(form).getByLabelText("Date and time (IST, required)"), { target: { value: "2030-01-15T11:00" } });
+    const submit = within(form).getByRole("button", { name: "Schedule interview" });
+    act(() => { submit.click(); submit.click(); }); // one task, as a fast double click: the second runs before React re-renders
+    await waitFor(() => expect(writes()).toHaveLength(1));
+  });
+
+  it("sends one request when Save status is clicked twice in a row (QA-01)", async () => {
+    section();
+    fireEvent.click(await screen.findByRole("button", { name: /Change status/ }));
+    const form = screen.getByRole("form", { name: "Change status of INT-000001" });
+    fireEvent.change(within(form).getByLabelText("New status (required)"), { target: { value: "confirmed" } });
+    const submit = within(form).getByRole("button", { name: "Save status" });
+    act(() => { submit.click(); submit.click(); }); // one task, as a fast double click: the second runs before React re-renders
+    await waitFor(() => expect(writes()).toHaveLength(1));
   });
 
   it("keeps the server's clash refusal on the form", async () => {

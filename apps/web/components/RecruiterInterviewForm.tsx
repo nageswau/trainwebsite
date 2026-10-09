@@ -1,5 +1,5 @@
 "use client";
-import { type ChangeEvent, type FormEvent, useId, useState } from "react";
+import { type ChangeEvent, type FormEvent, useId, useRef, useState } from "react";
 
 import ReturnToLoginLink from "@/components/ReturnToLoginLink";
 import { sendJson, type SendOutcome } from "@/lib/apiErrors";
@@ -29,6 +29,7 @@ export default function RecruiterInterviewForm({ applicationId, interview, conta
   const [v, setV] = useState(start);
   const [notify, setNotify] = useState(true);
   const [busy, setBusy] = useState(false);
+  const inFlight = useRef(false); // QA-01: a fast double click runs submit twice before `busy` re-renders the button disabled
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState<string | null>(null);
   const [sessionEnded, setSessionEnded] = useState(false);
@@ -61,13 +62,16 @@ export default function RecruiterInterviewForm({ applicationId, interview, conta
     if (!v.round) missing.round = "Choose a round";
     if (!interview && !v.start) missing.scheduled_at = "Choose a date and time";
     if (Object.keys(missing).length) return setErrors(missing);
+    if (inFlight.current) return;
     const request = send();
     if (!request) return onCancel();
+    inFlight.current = true;
     setBusy(true);
     setErrors({});
     setFailure(null);
     setSessionEnded(false);
     const result = await request;
+    inFlight.current = false;
     setBusy(false);
     if (result.ok) {
       const saved = interviewOf(result.data);

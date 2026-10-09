@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { type FormEvent, type ReactNode, useId, useState } from "react";
+import { type FormEvent, type ReactNode, useId, useRef, useState } from "react";
 
 import RecruiterInterviewForm, { type ContactOption } from "@/components/RecruiterInterviewForm";
 import ReturnToLoginLink from "@/components/ReturnToLoginLink";
@@ -29,11 +29,15 @@ function useSubmit(onSaved: Saved) {
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState<Failure | null>(null);
-  async function run(request: Promise<SendOutcome>) {
+  const inFlight = useRef(false); // QA-01: a fast double click runs submit twice before `busy` re-renders the button disabled
+  async function run(send: () => Promise<SendOutcome>) {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     setErrors({});
     setFailure(null);
-    const result = await request;
+    const result = await send();
+    inFlight.current = false;
     setBusy(false);
     if (result.ok) {
       const saved = interviewOf(result.data);
@@ -75,7 +79,7 @@ function StatusForm({ interview, onSaved, onCancel }: { interview: RecInterview;
   function submit(event: FormEvent) {
     event.preventDefault();
     if (!status) return setErrors({ status: "Choose a status" });
-    void run(sendJson(interviewUrl(interview.id, "status"), "POST", { status, ...(note.trim() ? { note: note.trim() } : {}) }));
+    void run(() => sendJson(interviewUrl(interview.id, "status"), "POST", { status, ...(note.trim() ? { note: note.trim() } : {}) }));
   }
   return (
     <form aria-label={`Change status of ${interview.code}`} className="action-card" noValidate onSubmit={submit} onKeyDown={(e) => e.key === "Escape" && onCancel()}>
@@ -109,7 +113,7 @@ function RescheduleForm({ interview, onSaved, onCancel }: { interview: RecInterv
   function submit(event: FormEvent) {
     event.preventDefault();
     if (!start) return setErrors({ scheduled_at: "Choose the new date and time" });
-    void run(sendJson(interviewUrl(interview.id, "reschedule"), "POST", { scheduled_at: istInputToIso(start), reason: reason.trim() || null, notify }));
+    void run(() => sendJson(interviewUrl(interview.id, "reschedule"), "POST", { scheduled_at: istInputToIso(start), reason: reason.trim() || null, notify }));
   }
   return (
     <form aria-label={`Reschedule ${interview.code}`} className="action-card" noValidate onSubmit={submit} onKeyDown={(e) => e.key === "Escape" && onCancel()}>

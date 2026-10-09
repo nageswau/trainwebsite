@@ -27,7 +27,8 @@ test("interviews: schedule an HR round, clash refused, reschedule history, confi
   const stamp = Date.now();
   const name = `E2E Interviewee ${stamp}`;
   const consoleErrors: string[] = [];
-  page.on("console", (message) => message.type() === "error" && consoleErrors.push(message.text()));
+  // The clash step is refused on purpose: the browser logs that 409 itself, which is not a page error.
+  page.on("console", (message) => message.type() === "error" && !message.text().includes("status of 409") && consoleErrors.push(message.text()));
   const failedCalls: string[] = [];
   page.on("response", (response) => response.url().includes("/api/v1/recruiter/") && response.status() >= 500 && failedCalls.push(response.url()));
   await signIn(page, "it", RECRUITER, "/recruiter/dashboard");
