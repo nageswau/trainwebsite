@@ -19,3 +19,6 @@ alembic>=1.14,<2
 reportlab>=4,<5
 # ENH-015 (QA15-02): lets reportlab shape Devanagari (vowel signs, conjuncts) in the report PDFs.
 uharfbuzz>=0.39,<1
+# rec-012 (R7): in-house resume text extraction. pypdf is BSD-3-Clause, python-docx is MIT; both are pure Python and run no macros.
+pypdf>=5.1,<7
+python-docx>=1.1,<2
