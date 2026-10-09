@@ -1656,7 +1656,16 @@ nullable); `caller_user_id` → `users`; `occurred_at`; `duration_seconds` (null
 - A contact's `last_interaction_at` is derived: its latest call or message (failed emails excluded).
 - `downgrade()` refuses while any template, call or message exists.
 
-## University agreements (`upc-014`, `DEC-SCOPE-141`; migration `0126_university_agreements`, after `0125_university_comms`)
+**Addendum, 2026-10-09 (`upc-020`, `DEC-SCOPE-141` — Partnership tasks + follow-ups):** `partnership_tasks` (FK `universities`
+RESTRICT; `kind` CHECK follow_up / task; `title` ≤ 200; `notes` ≤ 2000; `assignee_user_id`, `created_by_user_id` FK `users` RESTRICT;
+`due_on`; `priority` CHECK high / medium / low default medium; `status` CHECK open / done / cancelled; `source` CHECK manual / stage /
+meeting / visit / agreement; `rule` (`stage:<key>` / `visit:<id>`, NULL exactly when manual); `completed_at` / `cancelled_at` set exactly
+in their status; `cancel_reason` only when cancelled; timestamps). Indexes `(assignee_user_id, status, due_on)`, `(university_id,
+status, due_on)` and the partial unique `uq_partnership_tasks_open_rule (university_id, rule) WHERE status = 'open' AND rule IS NOT NULL`
+(one open auto-task per rule, TK7). No backfill. **Migration `0126_partnership_tasks`**; `downgrade()` refuses while any task exists
+(API §12BI).
+
+## University agreements (`upc-014`, `DEC-SCOPE-142`; migration `0127_university_agreements`, after `0126_partnership_tasks`)
 
 **`university_agreements` columns:**
 - `id`, `mou_number` varchar(20) (unique; `MOU-000001` from `university_agreement_mou_seq`), `university_id` → `universities` (FK RESTRICT),

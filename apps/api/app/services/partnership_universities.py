@@ -33,6 +33,7 @@ from app.models import (
     User,
 )
 from app.partnership_stages import label_of
+from app.services import partnership_tasks
 from app.services.partnership import partnership_context
 from app.services.partnership_pipeline import pipeline_out
 from app.services.telecaller import person_ref
@@ -277,6 +278,7 @@ async def detail_out(db: AsyncSession, user: User, uni: University, team: frozen
         "application_count": await application_count(db, uni.id),
         "pipeline": pipeline_out(uni),
         "linked_bdm_organizations": await linked_bdm_organizations(db, uni.id),
+        "follow_up": await partnership_tasks.follow_up_out(db, uni.id),  # upc-020 TK14/TK15
     }
 
 

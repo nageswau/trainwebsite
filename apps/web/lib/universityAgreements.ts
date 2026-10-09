@@ -1,4 +1,4 @@
-// upc-014 (DEC-SCOPE-141): §13 MoU / agreement management -- types, words, URLs and the menu list's query helpers. The API decides every
+// upc-014 (DEC-SCOPE-142): §13 MoU / agreement management -- types, words, URLs and the menu list's query helpers. The API decides every
 // permission and move (`permissions`, `moves`); nothing here filters for security.
 import type { LookupPage } from "@/lib/lookups";
 import type { ManagerRef } from "@/lib/telecaller";

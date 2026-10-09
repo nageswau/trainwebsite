@@ -1,4 +1,4 @@
-"""upc-014 (DEC-SCOPE-141, spec §1-§3): §13 MoU / agreement management -- who reads and writes, the status flow, the derived Expiring /
+"""upc-014 (DEC-SCOPE-142, spec §1-§3): §13 MoU / agreement management -- who reads and writes, the status flow, the derived Expiring /
 Expired, signing, renewal, the overlap rule and output.
 
 Functions only; nothing here commits -- the route owns the transaction. Access reuses the University Master's (upc-003):
@@ -28,6 +28,7 @@ from app.models import (
     User,
 )
 from app.services import partnership_pipeline as pipeline
+from app.services import partnership_tasks
 from app.services import partnership_universities as unis
 from app.services.bdm_travel import india_today
 from app.services.partnership import partnership_context
@@ -210,7 +211,8 @@ async def sign(db: AsyncSession, user: User, a: UniversityAgreement, uni: Univer
         if previous.status in IN_FORCE:
             before, previous.status, previous.status_changed_at = previous.status, "renewed", datetime.now(UTC)
             record(db, user, previous, "status", before, note=f"Renewed by {a.mou_number}")
-    pipeline.advance_to(db, user, uni, "agreement_signed", f"Advanced by agreement {a.mou_number} signed")
+    if pipeline.advance_to(db, user, uni, "agreement_signed", f"Advanced by agreement {a.mou_number} signed") is not None:
+        await partnership_tasks.on_stage_entered(db, user, uni)  # upc-020 Q-22: the same auto-task as a manual move
 
 
 # --- the record -----------------------------------------------------------------------------------------------------------------

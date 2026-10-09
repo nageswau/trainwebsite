@@ -1,4 +1,4 @@
-"""upc-014 (DEC-SCOPE-141, spec §3): MoU / agreement management -- a university's agreements, the menu list, create, edit, the status
+"""upc-014 (DEC-SCOPE-142, spec §3): MoU / agreement management -- a university's agreements, the menu list, create, edit, the status
 commands (approve, sign) and renewal.
 
 Every write: the read gate (403), then the university row FOR UPDATE (serialises numbers, overlap checks and renewals per university)

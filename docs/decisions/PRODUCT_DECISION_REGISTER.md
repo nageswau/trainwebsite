@@ -5742,14 +5742,58 @@ to proceed with the recommended answers.
   rec-026's Messages section and templates panel are shared (`MessagesSection`, a `library` prop); recruiter behaviour is unchanged.
 - **New Feature ID authorized:** `upc-012`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-012.
 
-### DEC-SCOPE-141 — MoU / agreement management (`upc-014`)
+### DEC-SCOPE-141 — Partnership tasks + follow-ups, auto-generated (`upc-020`)
+
+**Evidence:** `EVID-020` §19 (L639–L671: "The CRM should automatically generate tasks", 12 example tasks, "Task → Employee → Due Date →
+Priority → Status") and §20 (L673–L693: "Next Action + Next Action Date", the XYZ example, Overdue / Due Today / Due Tomorrow /
+Upcoming); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U11, Q-22 and §4 upc-020.
+**Status:** TK1–TK16, including **Q-22** (which event creates which task, with what due offset), are the recommended answers applied under
+the owner's standing instruction for the build session ("proceed with the recommended answers; ask only if genuinely blocking").
+**Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. Migration `0126_partnership_tasks`, API contract §12BI, RBAC §2.67.
+Spec: `docs/superpowers/specs/2026-10-09-upc-020-partnership-tasks-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| TK1 | What a task belongs to | One university, always; kind `follow_up` or `task` |
+| TK2 | Fields | Title, assignee, due date, priority (high / medium / low, default medium), status (open / done / cancelled), notes, kind, source |
+| TK3 | The 12 §19 examples | A title catalogue offered as suggestions; the title stays free text (≤ 200) |
+| TK4 | Q-22 events | Entering one of ten stages creates its task (table below); completing a visit creates "Follow up after visit" on the visit's follow-up date. `meeting` / `agreement` sources are reserved for upc-009 / upc-014 |
+| TK5 | Q-22 due offsets | Calendar days after the IST day of the event |
+| TK6 | Auto assignee | Active primary manager → active backup → the partnership actor → none (skipped, logged; the event still succeeds) |
+| TK7 | Duplicate auto-tasks | One open task per (university, rule); a partial unique index is the backstop |
+| TK8 | Who reads | Partnership managers (with a profile), heads and super_admin read every task; others `403` |
+| TK9 | Who adds | Managers and heads, on an active university in their edit scope; super_admin reads only |
+| TK10 | Assignee | A manager assigns themselves; a head themselves or an active direct report; anyone else `422` |
+| TK11 | Who changes a task | The assignee or the assignee's reporting head |
+| TK12 | Commands | Edit (title, notes, priority, assignee), reschedule (today or later), complete, cancel (reason); a closed task `409` |
+| TK13 | Bands | IST: overdue, today, tomorrow, upcoming; plus done and cancelled. A done or cancelled task is never overdue |
+| TK14 | Next Action | The university's earliest open follow-up (title, date, owner, priority, band) |
+| TK15 | Last Action | The later of the latest completed task and the latest stage move ("Moved to …"), until upc-013's timeline |
+| TK16 | Visit follow-up date edited | Moves the visit's open follow-up |
+
+**Q-22 stage rules:** Initial Contact → follow-up "Follow up with university" (+3, medium); Interested → "Schedule meeting" (+2, high);
+Meeting Completed → "Send partnership proposal" (+3, high); **Proposal Sent → follow-up "Follow up on proposal" (+7, high)**; Commercial
+Discussion → "Negotiate commission" (+7, medium); Documents Shared → "Send MoU" (+5, medium); Agreement Under Review → follow-up "Follow up
+on MoU" (+7, high); Agreement Signed → "Activate university" (+7, high); Partner Activated → "Conduct training" (+14, medium); Student
+Recruitment Started → "Send student applications" (+14, medium). "Arrange university visit", "Collect documents" and "Follow up on
+offers" are manual only.
+
+**Consequences:**
+- `partnership_tasks` (`0126`), `app/partnership_task_rules.py`, `services/partnership_tasks.py`, `api/partnership_tasks.py`
+  (`/partnership/tasks…`); the stage move (upc-007) and visit completion / follow-up-date edit (upc-010) call it in their transactions.
+- `UniversityDetail` gains `follow_up {next_action, last_action}` for every university reader.
+- Page `/partnership/tasks`; a Follow-ups & tasks section on `/partnership/universities/[id]`; the manager menu's Follow-ups & Tasks goes
+  live; head and super admin nav entries.
+- **New Feature ID authorized:** `upc-020`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-020.
+
+### DEC-SCOPE-142 — MoU / agreement management (`upc-014`)
 
 **Evidence:** `EVID-020` §13 (L453–L497: "This should be a major module"; 18 tracked rows; "Draft → Sent → Under Review → Negotiation →
 Approved → Signed → Active → Expiring → Renewed"), §28 L489 (agreement document), §32 ("MoU & Agreements"), L1129;
 `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U2 (`EXPLICIT_APPROVAL`, 2026-10-08), §3.2 Q-16 and §4 upc-014.
 **Status:** Q-16 and AG1–AG18 are recommended answers applied under the owner's standing instruction for the build session ("proceed
 with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off.
-Migration `0126_university_agreements`, API contract §12BI, RBAC §2.67.
+Migration `0127_university_agreements`, API contract §12BJ, RBAC §2.68.
 Spec: `docs/superpowers/specs/2026-10-09-upc-014-university-agreements-design.md`.
 
 | # | Question | Answer |
@@ -5763,7 +5807,7 @@ Spec: `docs/superpowers/specs/2026-10-09-upc-014-university-agreements-design.md
 | AG7 | Signing | Needs the agreement document (same university, kind = type) and both signatories with dates (not future); DB CHECK backstop |
 | AG8 | Q-16 renewal | A new linked draft copying the terms; the old row becomes Renewed when the new one is signed; one successor each |
 | AG9 | Overlap | Signing refused (409) when a signed/active agreement of the same type overlaps; the predecessor excluded |
-| AG10 | Stage | Signing moves the university forward to Agreement Signed (never back); a lost university cannot sign (409) |
+| AG10 | Stage | Signing moves the university forward to Agreement Signed (never back), raising upc-020's stage auto-task as a manual move does; a lost university cannot sign (409) |
 | AG11 | Editing | Terms until approved; signing fields until signed; nothing after |
 | AG12 | Validation | expiry > start (422), renewal date in the window, courses of this university, real countries, text limits |
 | AG13 | Readers | partnership_manager, partnership_head, super_admin; overseas_admin and every other role `403` |

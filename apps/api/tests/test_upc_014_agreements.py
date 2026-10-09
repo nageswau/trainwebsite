@@ -1,4 +1,4 @@
-"""upc-014 -- MoU / agreement management (spec §1-§5; AC1-AC4, P1, N1, E1, S1, R1; DEC-SCOPE-141 AG1-AG18)."""
+"""upc-014 -- MoU / agreement management (spec §1-§5; AC1-AC4, P1, N1, E1, S1, R1; DEC-SCOPE-142 AG1-AG18)."""
 
 import re
 import uuid
@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import select, update
 
-from app.models import AuditLog, Country, OverseasCourse, University, UniversityAgreement, UniversityStageHistory
+from app.models import AuditLog, Country, OverseasCourse, PartnershipTask, University, UniversityAgreement, UniversityStageHistory
 from app.services.bdm_travel import india_today
 from tests.test_upc_026_documents import _owned, add
 from tests.upc003_helpers import as_role, catalogue_country, create, login, url
@@ -168,6 +168,9 @@ async def test_head_approves_and_signing_needs_the_document_and_both_signatories
     assert detail["stage"] == "agreement_signed"
     rows = (await db_session.scalars(select(UniversityStageHistory).where(UniversityStageHistory.university_id == uuid.UUID(uni["id"])))).all()
     assert [(r.kind, r.to_stage) for r in rows] == [("move", "agreement_signed")] and a["mou_number"] in rows[0].note
+    # upc-020 Q-22: entering Agreement Signed this way raises the same auto-task as a manual stage move
+    tasks = (await db_session.scalars(select(PartnershipTask).where(PartnershipTask.university_id == uuid.UUID(uni["id"])))).all()
+    assert [(t.rule, t.title, t.assignee_user_id) for t in tasks] == [("stage:agreement_signed", "Activate university", pm.id)]
 
 
 @pytest.mark.asyncio

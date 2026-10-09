@@ -688,8 +688,8 @@ Common conventions:
 - **Complexity:** medium · **Risk:** low
 
 ### upc-014 — MoU / agreement management
-- **Status (2026-10-09):** built on `feature/upc-014` under `DEC-SCOPE-141` (Q-16 + AG1–AG18, recommended answers), with migration
-  `0126_university_agreements`, API §12BI and RBAC §2.67. Spec: `docs/superpowers/specs/2026-10-09-upc-014-university-agreements-design.md`.
+- **Status (2026-10-09):** built on `feature/upc-014` under `DEC-SCOPE-142` (Q-16 + AG1–AG18, recommended answers), with migration
+  `0127_university_agreements`, API §12BJ and RBAC §2.68. Spec: `docs/superpowers/specs/2026-10-09-upc-014-university-agreements-design.md`.
 - **Business requirement:** §13 ("a major module"; 17 fields; Draft → Sent → Under Review → Negotiation → Approved → Signed → Active →
   Expiring → Renewed).
 - **Existing behavior:** none for universities (`BdmMou` is BDM-only).
@@ -906,6 +906,11 @@ Common conventions:
 - **Edge cases:** duplicate auto-task suppression.
 - **Regression risks:** none.
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-09):** built on `feature/upc-020` under `DEC-SCOPE-141`, with migration `0126_partnership_tasks`, API §12BI and RBAC
+  §2.67. Spec: `docs/superpowers/specs/2026-10-09-upc-020-partnership-tasks-design.md`.
+  - Q-22 is answered by the recommended stage rules (TK4/TK5, `NEEDS_CONFIRMATION`); a completed visit's follow-up date becomes a task
+    (upc-010 VS16). Meeting (upc-009) and agreement (upc-014) rules arrive with those items.
+  - Next Action = the earliest open follow-up; Last Action = the latest completed task or stage move until upc-013's timeline.
 
 ### upc-021 — Monthly targets vs actual
 - **Business requirement:** §21 (7 monthly KPIs; "CRM automatically compares Target vs Actual").

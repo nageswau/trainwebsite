@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import BdmStageHistory from "@/components/BdmStageHistory";
+import PartnershipTasksPanel from "@/components/PartnershipTasksPanel";
 import UniversityAgreements from "@/components/UniversityAgreements";
+import UniversityFollowUp from "@/components/UniversityFollowUp";
 import UniversityDocuments from "@/components/UniversityDocuments";
 import UniversityCalls from "@/components/UniversityCalls";
 import UniversityMessages from "@/components/UniversityMessages";
@@ -19,6 +21,10 @@ const university = {
   relationship_strength: null, linked_bdm_organizations: [], // upc-006 / upc-004 fields
   permissions: { can_edit: true, can_assign: false, can_publish: false, can_deactivate: false, can_edit_contacts: false, can_manage_documents: true, can_move_stage: true, can_reopen: false, can_manage_agreements: true, can_approve_agreements: false },
   pipeline: { stage: "interested", stage_label: "Interested", column: "interested", column_label: "Interested", changed_at: "2026-10-08T10:00:00Z", lost: null, stages: [] },
+  follow_up: { // upc-020 TK14/TK15
+    next_action: { id: "t1", title: "Follow-up call", due_on: "2026-09-18", priority: "high", band: "upcoming", assignee: { id: "p1", full_name: "Rahul", active: true } },
+    last_action: { title: "Proposal sent", at: "2026-09-10T10:00:00Z" },
+  },
 };
 const history = { items: [], total: 0, limit: 20, offset: 0 };
 const documents = { items: [{ id: "d1" }], total: 1, limit: 200, offset: 0 };
@@ -45,6 +51,11 @@ describe("upc-007 university detail page", () => {
     expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/universities/${ID}/stage-history?limit=20&offset=0`);
     expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/visits?university_id=${ID}&limit=5`); // upc-010 Visits section
     expect(tree.find((el) => el.type === UniversityStagePanel)!.props.university).toEqual(university);
+    const panelEl = tree.find((el) => el.type === PartnershipTasksPanel)!;
+    expect(panelEl.key).toContain(university.pipeline.changed_at); // QA-01: a stage move's auto-task shows without a reload
+    const panel = panelEl.props; // upc-020: the university's open follow-ups and tasks
+    expect(panel).toMatchObject({ role: "partnership_manager", university: { id: ID, name: "ABC" }, canAdd: false });
+    expect(tree.find((el) => el.type === UniversityFollowUp)!.props.followUp).toEqual(university.follow_up);
     const hist = tree.find((el) => el.type === BdmStageHistory)!.props;
     expect(hist).toMatchObject({ orgId: ID, initial: history, version: 0, url: `/api/v1/partnership/universities/${ID}/stage-history` });
     // upc-026: the Documents section, read beside the university
