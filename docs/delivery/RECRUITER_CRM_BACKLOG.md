@@ -765,6 +765,11 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-013 — Find Candidates: skill AND/OR search, filters, facets, result cards
+- **Status (2026-10-09):** built on `feature/rec-013` (not yet merged). `DEC-SCOPE-151` (FS1–FS12 recommended defaults, UNVERIFIED;
+  Q-15 = a chip builder with "all of" skills and up to 5 "at least one of" groups). **No migration** (rec-011's
+  `ix_candidate_skills_skill_candidate` serves the search; the 10k-candidate test stays under 2 s). API §12BS, RBAC §2.77 (drafted as
+  141 / §12BI / §2.67; the upc items, rec-020, rec-018 and rec-012 merged first and hold 139–150 / §12BG–§12BR / §2.65–§2.76 — re-check `main`
+  before the merge). Not built here: job-type filter (FS6, no candidate field), match % (rec-016), Share (rec-019).
 - **Business requirement:** user question at line 1092; S2-§5, §6, §7, §9, §12, §13, §18, §19.
 - **Existing behavior:** `/workflows/it/placement/candidates?q` does a name ILIKE; `/employer/candidates` does an in-Python substring
   match. No skill logic.

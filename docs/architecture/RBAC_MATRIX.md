@@ -1367,6 +1367,16 @@ resume row, so it is a write. EX10 (UNVERIFIED).
 | `hr_team` | none (reads the candidate and downloads resumes as before; extract/apply `403`) | — | `rec-012` |
 | every other role | `403` | — | `rec-012` |
 
+### 2.77 Find Candidates *(net-new, added 2026-10-09 — `DEC-SCOPE-151`, `rec-013`)*
+
+Read only, over the whole pool (R11): there is no per-recruiter scope to search within. The role check runs before the body is read.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team`, `placement_manager`, `super_admin` | `POST /recruiter/candidates/search`; on a card, Shortlist (through rec-017's add route, so its requirement scope and rules apply) and Contact (the profile) | external + opted-in candidates, not archived | `rec-013` |
+| `hr_team` | the same search, read only (no Shortlist, no Contact, no source picker) | same | `rec-013` |
+| `employer`, `it_admin`, `it_student`, every other role | `403` | — | `rec-013` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

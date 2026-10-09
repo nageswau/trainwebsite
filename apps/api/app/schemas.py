@@ -16,6 +16,7 @@ from pydantic import (
     Field,
     StrictBool,
     StrictInt,
+    StrictStr,
     StringConstraints,
     TypeAdapter,
     ValidationError,
@@ -9248,3 +9249,63 @@ class CourseUpdate(BaseModel):
     deadline: date | None = None
     active: bool | None = None
     commission: CourseCommissionIn | None = None
+
+# rec-013 (DEC-SCOPE-151): the Find Candidates expression and filters. FS1: skills come as chips (never a typed query), FS4 caps the
+# size, FS5 the filters (experience in months, salary in INR per year), F3 the availability bands. Labels live in the web client.
+CANDIDATE_SEARCH_MAX_TERMS, CANDIDATE_SEARCH_MAX_GROUPS, CANDIDATE_SEARCH_GROUP_TERMS = 20, 5, 10
+AVAILABILITY_BANDS = ("immediate", "d15", "d30", "d31_59", "d60_plus")
+CANDIDATE_SEARCH_LABELS = {
+    "all": "Skills", "any": "Skills", "verified_only": "Verified only", "experience_min_months": "Minimum experience",
+    "experience_max_months": "Maximum experience", "location": "Location", "availability": "Availability", "qualification": "Qualification",
+    "salary_min": "Minimum salary", "salary_max": "Maximum salary", "source_id": "Candidate source", "status": "Status",
+}
+
+
+def _search_term(value: str) -> str:
+    value = re.sub(r"\s+", " ", value).strip()
+    if not value:
+        raise ValueError("A skill cannot be blank")
+    if len(value) > 120:
+        raise ValueError("A skill is at most 120 characters")
+    if _BDM_CONTROL.search(value):
+        raise ValueError("A skill contains invalid characters")
+    return value
+
+
+SearchTerm = Annotated[StrictStr, AfterValidator(_search_term)]
+SearchText = Annotated[StrictStr | None, StringConstraints(strip_whitespace=True, max_length=120)]
+
+
+class CandidateSearch(BaseModel):
+    """`all` = every one of these skills (AND); each `any` group = at least one of its skills (OR), the groups ANDed with the rest."""
+
+    model_config = ConfigDict(extra="forbid")
+    all: list[SearchTerm] = []
+    any: list[list[SearchTerm]] = []
+    verified_only: StrictBool = False
+    experience_min_months: RecMonths = None
+    experience_max_months: RecMonths = None
+    location: SearchText = None
+    availability: list[Literal[AVAILABILITY_BANDS]] = []
+    qualification: SearchText = None
+    salary_min: RecMoney = None
+    salary_max: RecMoney = None
+    source_id: UUID | None = None
+    status: CandidateStatus | None = None
+
+    @model_validator(mode="after")
+    def _limits(self):
+        if len(self.any) > CANDIDATE_SEARCH_MAX_GROUPS:
+            raise ValueError(f"Use at most {CANDIDATE_SEARCH_MAX_GROUPS} groups of “at least one of” skills")
+        if any(not group or len(group) > CANDIDATE_SEARCH_GROUP_TERMS for group in self.any):
+            raise ValueError(f"Each “at least one of” group holds 1 to {CANDIDATE_SEARCH_GROUP_TERMS} skills")
+        terms = len(self.all) + sum(len(group) for group in self.any)
+        if terms == 0:
+            raise ValueError("Add at least one skill")
+        if terms > CANDIDATE_SEARCH_MAX_TERMS:
+            raise ValueError(f"Search for at most {CANDIDATE_SEARCH_MAX_TERMS} skills at once")
+        if None not in (self.experience_min_months, self.experience_max_months) and self.experience_min_months > self.experience_max_months:
+            raise ValueError("The minimum experience cannot be above the maximum")
+        if None not in (self.salary_min, self.salary_max) and self.salary_min > self.salary_max:
+            raise ValueError("The minimum salary cannot be above the maximum")
+        return self

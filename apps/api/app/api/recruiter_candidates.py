@@ -22,8 +22,19 @@ from app.api.telecaller_catalogue import NOT_AN_OBJECT
 from app.core.database import get_db
 from app.models import Candidate, CandidateResume, RecCandidateSource, User
 from app.notifications.phone import normalise_phone
-from app.schemas import CANDIDATE_FIELD_LABELS, RESUME_APPLY_LABELS, CandidateCreate, CandidateDetail, CandidatePage, CandidateStatus, CandidateUpdate, ResumeApply
-from app.services import candidate_skills
+from app.schemas import (
+    CANDIDATE_FIELD_LABELS,
+    CANDIDATE_SEARCH_LABELS,
+    RESUME_APPLY_LABELS,
+    CandidateCreate,
+    CandidateDetail,
+    CandidatePage,
+    CandidateSearch,
+    CandidateStatus,
+    CandidateUpdate,
+    ResumeApply,
+)
+from app.services import candidate_search, candidate_skills
 from app.services import candidates as svc
 from app.services import resume_extraction as extraction
 from app.services.telecaller import _parse
@@ -79,6 +90,19 @@ async def duplicate_check(
     """The form's live panel (on blur); the create and the edit re-check. An unparseable mobile matches nothing."""
     svc.require_writer(user)
     return {"matches": await svc.find_matches(db, *svc.keys(mobile, email), exclude_id=exclude_id)}
+
+
+@router.post("/search")
+async def search_candidates(
+    payload: dict = Body(...), limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    """rec-013 (DEC-SCOPE-151): Find Candidates over the whole pool (R11) -- skill AND / OR groups expanded through aliases and related
+    skills, the S2-§18 filters, the F1-F3 facets. Read only; the role check runs before the body is read."""
+    svc.require_reader(user)
+    body = _parse(CandidateSearch, payload, NOT_AN_OBJECT, CANDIDATE_SEARCH_LABELS)
+    result = await candidate_search.search(db, body, limit=limit, offset=offset)
+    candidate_search.log(user, body, result["total"])
+    return result
 
 
 @router.post("", response_model=CandidateDetail, status_code=201)
@@ -203,7 +227,7 @@ async def download_resume(candidate_id: UUID, version: int, user: User = Depends
     return Response(content=data, media_type=resume.content_type, headers={**HEADERS, "Content-Disposition": f'attachment; filename="{filename}"'})
 
 
-# --- rec-012: extraction (DEC-SCOPE-150) ------------------------------------------------------------------------------------------
+# --- rec-012: extraction (DEC-SCOPE-151) ------------------------------------------------------------------------------------------
 @router.post("/{candidate_id}/resume/{version}/extract")
 async def extract_resume(candidate_id: UUID, version: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """EX1/EX2: suggestions from this version's text, stored on the resume row only -- the candidate and their skills are unchanged
