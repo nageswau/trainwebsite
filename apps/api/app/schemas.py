@@ -7159,6 +7159,8 @@ class UniversityContactOut(BaseModel):
     shareable: bool
     created_at: datetime
     updated_at: datetime
+    whatsapp_to: str | None = None  # upc-012 UC6: the wa.me number (WhatsApp, else phone, as E.164 digits); None when unusable
+    last_interaction_at: datetime | None = None  # upc-012 UC10: the latest call or message (partnership roles only)
 
 
 class UniversityContactEnvelope(BaseModel):
@@ -8431,3 +8433,61 @@ class CandidateSkillCreate(CandidateSkillUpdate):
 class CandidateSkillStatusChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
     status: Literal[CANDIDATE_SKILL_STATUSES]
+
+
+# --- upc-012 (DEC-SCOPE-138): university calls, partnership message templates, WhatsApp and email ------------------------------------
+class PartnershipTemplateCreate(BaseModel):
+    """UC4: no kind. The subject and body rules are checked in the service on the merged row, so the 422 names the channel."""
+
+    model_config = ConfigDict(extra="forbid")
+    channel: TelChannel
+    name: TelContentName
+    subject: TelSubject = None
+    body: TelBody
+
+
+class PartnershipTemplateUpdate(BaseModel):
+    """Omitted = unchanged. `channel` exists only so a change is refused with a sentence."""
+
+    model_config = ConfigDict(extra="forbid")
+    channel: TelChannel = None
+    name: TelContentName = None
+    subject: TelSubject = None
+    body: TelBody = None
+    active: StrictBool = None
+
+
+class UniversityCallCreate(BaseModel):
+    """UC1: one university contact (the university is read from it). `occurred_at` defaults to now; caller and timestamps are
+    server-owned (unknown fields here)."""
+
+    model_config = ConfigDict(extra="forbid")
+    contact_id: UUID
+    occurred_at: AwareDatetime | None = None
+    duration_seconds: RecCallDuration | None = None
+    direction: Literal[RECRUITER_CALL_DIRECTIONS] = "outgoing"
+    outcome: Literal[RECRUITER_CALL_OUTCOMES]
+    notes: RecCallNotes = None
+    next_follow_up_on: date | None = None
+
+
+class _UniversityMessageBase(BaseModel):
+    """UC6/UC7: one university contact. The recipient's number or address is never a request field."""
+
+    model_config = ConfigDict(extra="forbid")
+    contact_id: UUID
+    template_id: UUID | None = None
+
+
+class UniversityWhatsAppCreate(_UniversityMessageBase):
+    channel: Literal["whatsapp"]
+    body: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
+
+
+class UniversityEmailCreate(_UniversityMessageBase):
+    channel: Literal["email"]
+    subject: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200), BeforeValidator(_one_line)]
+    body: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=5000)]
+
+
+UniversityMessageCreate = Annotated[UniversityWhatsAppCreate | UniversityEmailCreate, Field(discriminator="channel")]

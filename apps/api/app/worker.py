@@ -179,6 +179,22 @@ def sweep_stale_recruiter_emails_task():
     return _run_with_fresh_pool(sweep_stale_recruiter_emails)
 
 
+@celery.task
+def deliver_university_email_task(message_id: str):
+    """upc-012 (DEC-SCOPE-138 UC7): send one queued university email; retries are re-enqueued by `deliver_university_email` itself."""
+    from app.notifications.university_email import deliver_university_email
+
+    return _run_with_fresh_pool(lambda: deliver_university_email(UUID(message_id)))
+
+
+@celery.task
+def sweep_stale_university_emails_task():
+    """upc-012 (UC7): every 5 minutes via beat."""
+    from app.notifications.university_email import sweep_stale_university_emails
+
+    return _run_with_fresh_pool(sweep_stale_university_emails)
+
+
 celery.conf.beat_schedule = {
     "enh014-sweep-stale-deliveries": {"task": "app.worker.sweep_stale_deliveries_task", "schedule": 300.0},
     "agn017-daily-reminders": {"task": "app.worker.send_daily_reminders_task", "schedule": crontab(hour=2, minute=30)},  # UTC = 08:00 IST
@@ -187,4 +203,5 @@ celery.conf.beat_schedule = {
     "tel014-sweep-stale-lead-emails": {"task": "app.worker.sweep_stale_lead_emails_task", "schedule": 300.0},
     "tel020-alerts": {"task": "app.worker.send_telecaller_alerts_task", "schedule": 900.0},
     "rec026-sweep-stale-recruiter-emails": {"task": "app.worker.sweep_stale_recruiter_emails_task", "schedule": 300.0},
+    "upc012-sweep-stale-university-emails": {"task": "app.worker.sweep_stale_university_emails_task", "schedule": 300.0},
 }
