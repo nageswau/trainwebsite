@@ -1815,7 +1815,7 @@ overlap). `downgrade()` refuses while any event exists.
 - Salary and remarks are internal: only the recruiter routes read the table.
 - `downgrade()` refuses while any row exists.
 
-## Resume extraction (`rec-012`, `DEC-SCOPE-150`; migration `0135_resume_extraction`, after `0132_university_courses`)
+## Resume extraction (`rec-012`, `DEC-SCOPE-150`; migration `0135_resume_extraction`, after `0134_application_screenings`)
 
 **`candidate_resumes` gains three nullable columns:** `extracted_text` text (null until extracted; `''` when the file had no text),
 `extraction_json` json (the last suggestions: skill ids + matched text, qualification, experience_months, location, job_titles,
