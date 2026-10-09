@@ -4,6 +4,7 @@ import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } fr
 import ReturnToLoginLink from "@/components/ReturnToLoginLink";
 import { sendJson, sendRequest, type SendOutcome } from "@/lib/apiErrors";
 import { SAVE_FAILED, SESSION_ENDED, writeFailure } from "@/lib/bdmTasks";
+import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import { fieldErrors } from "@/lib/bdmTravel";
 import { formatCalendarDate, formatSchoolDateTime } from "@/lib/formatDate";
 import { RECRUITER_SIGN_IN } from "@/lib/recruiterCompanies";
@@ -37,7 +38,8 @@ function useSubmit(onSaved: Saved) {
     const placed = fieldErrors(result.detail);
     if (Object.keys(placed).length) return setErrors(placed);
     const kind = writeFailure(result.status);
-    setFailure(kind === "session" ? { kind, message: SESSION_ENDED } : { kind: "error", message: kind === "retry" ? SAVE_FAILED : result.message });
+    const fileRefused = result.status === 413 || result.status === 415; // QA-02: the letter's type or size, in the server's words
+    setFailure(kind === "session" ? { kind, message: SESSION_ENDED } : { kind: "error", message: kind === "retry" && !fileRefused ? SAVE_FAILED : result.message });
   }
   return { busy, errors, setErrors, failure, setFailure, run };
 }
@@ -232,8 +234,8 @@ function OfferView({ offer: o, candidateName, onChanged }: { offer: RecOffer; ca
       </dl>
       {(o.letter || o.letter_url) && (
         <p style={{ margin: 0, display: "flex", flexWrap: "wrap", gap: 12 }}>
-          {o.letter && <a href={offerUrl(o.id, "letter")} download>Download offer letter<span className="muted" style={{ fontSize: 13 }}>{o.letter.name ? ` (${o.letter.name})` : ""}</span></a>}
-          {o.letter_url && <a href={o.letter_url} target="_blank" rel="noopener noreferrer">Letter link<span className="visually-hidden"> (opens in a new tab)</span></a>}
+          {o.letter && <a href={offerUrl(o.id, "letter")} download style={LINK_STYLE}>Download offer letter<span className="muted" style={{ fontSize: 13 }}>{o.letter.name ? ` (${o.letter.name})` : ""}</span></a>}
+          {o.letter_url && <a href={o.letter_url} target="_blank" rel="noopener noreferrer" style={LINK_STYLE}>Letter link<span className="visually-hidden"> (opens in a new tab)</span></a>}
         </p>
       )}
       {mode === "view" && (o.allowed_statuses.length > 0 || o.can_edit) && (

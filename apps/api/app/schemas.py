@@ -8800,9 +8800,24 @@ def _rec_offer_position(value: str | None) -> str:
     return value
 
 
+def _rec_offer_salary(value: Decimal) -> Decimal:
+    """QA-01: the form shows these words as they are. The column is Numeric(14, 2)."""
+    if value <= 0:
+        raise ValueError("Enter a salary above 0")
+    if value >= 10**12 or value != value.quantize(Decimal("0.01")):
+        raise ValueError("Enter a salary below 1,000,000,000,000 with at most 2 decimals")
+    return value
+
+
+def _rec_offer_currency(value: str) -> str:
+    if not re.fullmatch(r"[A-Z]{3}", value):
+        raise ValueError("Enter a 3-letter currency code, such as INR")
+    return value
+
+
 RecOfferPosition = Annotated[_bdm_appt_optional(160), AfterValidator(_rec_offer_position)]
-RecOfferSalary = Annotated[Decimal, Field(gt=0, max_digits=14, decimal_places=2)]
-RecOfferCurrency = Annotated[str, StringConstraints(strip_whitespace=True, to_upper=True, pattern=r"^[A-Z]{3}$")]
+RecOfferSalary = Annotated[Decimal, AfterValidator(_rec_offer_salary)]
+RecOfferCurrency = Annotated[str, StringConstraints(strip_whitespace=True, to_upper=True), AfterValidator(_rec_offer_currency)]
 RecOfferMove = Literal["offer_received", "accepted", "declined"]  # OF3: Offer Pending is only ever the starting status
 
 

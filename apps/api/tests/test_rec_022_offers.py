@@ -139,6 +139,21 @@ async def test_record_validation_422(client, db_session, over, field):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(("over", "message"), [
+    ({"compensation": 0}, "Enter a salary above 0"),
+    ({"compensation": 1e13}, "Enter a salary below 1,000,000,000,000 with at most 2 decimals"),
+    ({"compensation": 10.123}, "Enter a salary below 1,000,000,000,000 with at most 2 decimals"),
+    ({"currency": "rs1"}, "Enter a 3-letter currency code, such as INR"),
+])
+async def test_salary_and_currency_errors_are_plain_words(client, db_session, over, message):
+    """QA-01: the form shows these messages as they are, so they must not be pydantic's own wording."""
+    s = await _setup(client, db_session)
+    response = await _record(client, s["application"]["id"], **over)
+    assert response.status_code == 422
+    assert message in response.json()["detail"][0]["msg"]
+
+
+@pytest.mark.asyncio
 async def test_record_received_notifies_the_student(client, db_session):
     s = await _setup(client, db_session)
     student = await make_user(db_session, "it_student", "it")
@@ -323,3 +338,13 @@ async def test_legacy_routes_map_words_write_history_and_keep_accepted_joined(cl
     events = (await db_session.scalars(select(JobOfferEvent).where(JobOfferEvent.offer_id == offer_id).order_by(JobOfferEvent.position))).all()
     assert [(e.event, e.from_status, e.to_status) for e in events] == [("created", None, "offer_received"), ("status", "offer_received", "accepted")]
     assert (await client.post(WF, json={"application_id": str(application.id)})).status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_the_student_placement_status_page_no_longer_repeats_offers(client, db_session):
+    """QA-04: the "My offers" card (GET /workflows/it/student/offers) supersedes the portal's text-only Offers panel."""
+    student = await make_user(db_session, "it_student", "it")
+    await login(client, student)
+    body = (await client.get("/api/v1/portal/it/student/placement-status")).json()
+    assert body["title"] == "Placement Status"
+    assert all(panel["title"] != "Offers" for panel in body.get("panels") or [])

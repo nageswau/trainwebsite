@@ -337,16 +337,8 @@ async def _it_student(db: AsyncSession, user: User, section: str):
             ({"role": j.title, "company": c.name, "scheduled": i.scheduled_at, "mode": i.mode, "link": i.meeting_url, "result": i.result} for i, j, c in rows),
         )
     if section == "placement-status":
+        # rec-022 QA-04: the offers are the "My offers" card (GET /workflows/it/student/offers), with the letter; no text panel here.
         profile = await db.scalar(select(PlacementProfile).where(PlacementProfile.student_id == user.id))
-        offers = (
-            await db.execute(
-                select(JobOffer, Job, Company)
-                .join(JobApplication, JobApplication.id == JobOffer.application_id)
-                .join(Job, Job.id == JobApplication.job_id)
-                .join(Company, Company.id == Job.company_id)
-                .where(JobApplication.student_id == user.id)
-            )
-        ).all()
         rows = (
             ()
             if not profile
@@ -363,7 +355,6 @@ async def _it_student(db: AsyncSession, user: User, section: str):
             "Preparation stages, offers, and joining progress.",
             (("stage", "Stage"), ("status", "Status")),
             rows,
-            panels=({"title": "Offers", "items": [f"{c.name} - {j.title}: {offer_status_label(o.status)}" for o, j, c in offers]},),
         )
     if section == "job-applications":
         rows = (

@@ -67,7 +67,7 @@ test("offers: record for a Selected candidate, upload the letter, Received then 
 
   // OF7: the letter.
   await offer.getByLabel("Upload offer letter").setInputFiles({ name: "offer-letter.pdf", mimeType: "application/pdf", buffer: PDF });
-  await offer.getByRole("button", { name: "Upload" }).click();
+  await offer.getByRole("button", { name: "Upload", exact: true }).click();
   await expect(candidates.getByRole("status").first()).toContainText(`Offer letter uploaded for ${name}.`);
   await expect(offer.getByRole("link", { name: /Download offer letter/ })).toBeVisible();
   const letter = await page.request.get(`/api/v1/recruiter/offers/${(await (await page.request.get(`/api/v1/recruiter/applications/${applicationId}/offer`)).json()).offer.id}/letter`);

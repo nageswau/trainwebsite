@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 
+import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import { formatCalendarDate } from "@/lib/formatDate";
 import { isStudentOffers, salaryText, STUDENT_OFFERS_URL, studentLetterUrl, type StudentOffer } from "@/lib/recruiterOffers";
 
@@ -47,9 +48,9 @@ export default function StudentOffersCard() {
                 <span className="muted" style={{ fontSize: 13 }}>
                   {[salary, `Offered ${formatCalendarDate(o.offered_on)}`, o.joining_date && `Joining ${formatCalendarDate(o.joining_date)}`].filter(Boolean).join(" · ")}
                 </span>
-                {o.has_letter && <a href={studentLetterUrl(o.id)} download>Download offer letter<span className="visually-hidden"> from {o.company}</span></a>}
+                {o.has_letter && <a href={studentLetterUrl(o.id)} download style={LINK_STYLE}>Download offer letter<span className="visually-hidden"> from {o.company}</span></a>}
                 {!o.has_letter && o.letter_url && (
-                  <a href={o.letter_url} target="_blank" rel="noopener noreferrer">Offer letter link<span className="visually-hidden"> (opens in a new tab)</span></a>
+                  <a href={o.letter_url} target="_blank" rel="noopener noreferrer" style={LINK_STYLE}>Offer letter link<span className="visually-hidden"> (opens in a new tab)</span></a>
                 )}
               </li>
             );

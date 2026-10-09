@@ -120,6 +120,15 @@ describe("RecruiterApplicationOffer", () => {
     expect(writes()[0]).toEqual(["/api/v1/recruiter/offers/O1/letter", "PUT", "form"]);
   });
 
+  it("shows the server's reason when the letter is the wrong type or too large (QA-02)", async () => {
+    writeReply = () => res({ detail: "Upload a PDF, JPEG or PNG file" }, 415);
+    section();
+    const input = (await screen.findByLabelText(/Upload offer letter/)) as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [new File(["MZ"], "letter.exe", { type: "application/octet-stream" })] } });
+    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+    expect(await screen.findByText("Upload a PDF, JPEG or PNG file")).toBeTruthy();
+  });
+
   it("is read-only when the API allows nothing", async () => {
     current = { offer: recOffer({ allowed_statuses: [], can_edit: false, can_upload: false }), can_create: false };
     section();
