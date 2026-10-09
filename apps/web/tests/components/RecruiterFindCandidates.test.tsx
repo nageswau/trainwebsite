@@ -159,7 +159,7 @@ describe("RecruiterFindCandidates", () => {
     expect(scrolled).toHaveBeenCalled();
   });
 
-  // rec-014 (DEC-SCOPE-153): the resume search box rides in the URL as q, alone or with skills; hits come back as segments, shown in <mark>.
+  // rec-014 (DEC-SCOPE-154): the resume search box rides in the URL as q, alone or with skills; hits come back as segments, shown in <mark>.
   it("sends the resume search alone and shows the card's resume snippet with its hits marked", async () => {
     query = "q=Microservices+Kafka";
     searchReply = () => res({

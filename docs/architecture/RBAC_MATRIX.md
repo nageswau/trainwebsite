@@ -1389,7 +1389,18 @@ edit and cancel are for the event's owner or creator (CL7).
 | `super_admin` | read everyone's calendar or any partnership employee's; read events (no writes) | all | `upc-011` |
 | `overseas_admin` and every other role | `403` | — | `upc-011` |
 
-### 2.79 Resume search *(added 2026-10-09 — `DEC-SCOPE-153`, `rec-014`)*
+### 2.79 Student funnel + university performance *(net-new, added 2026-10-09 — `DEC-SCOPE-153`, `upc-018`)*
+
+Enforced inline in `api/partnership_performance.py`: `partnership_universities.require_reader` first, then the ranking's scope filter. The
+endpoints are read-only and return counts only: no student identifier, no audit row, and no commission (U2: F10/F11 are upc-019's and will
+pass through `strip_commission`).
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| University Performance ranking + Student Opportunities totals | own universities (primary/backup) | team + unowned | ✅ all | ✅ all | `403` (anonymous `401`) |
+| One university's funnel (university page card, Opportunities `?university_id=`) | ✅ any university | ✅ any | ✅ any | ✅ any | `403` |
+
+### 2.80 Resume search *(added 2026-10-09 — `DEC-SCOPE-154`, `rec-014`)*
 
 No new route or role: `text` is a field of §2.77's search, so §2.77's roles and pool apply unchanged. Resume snippets therefore reach
 `placement_team`, `placement_manager`, `super_admin` and `hr_team` (read), who may already open the resume itself (rec-009); every other

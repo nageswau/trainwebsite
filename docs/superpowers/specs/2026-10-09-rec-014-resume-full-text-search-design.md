@@ -6,9 +6,9 @@ skills, resume content, previous job titles, certifications and projects"; R7 (P
 
 **Status: DRAFT** on `feature/rec-014`.
 
-**Numbering:** migration `0137_resume_search` (after upc-011's `0136_partnership_events`), `DEC-SCOPE-153`, API §12BU, RBAC §2.79 (a
-note only: the roles are rec-013's). Drafted as 0136 / 152 / §12BT / §2.78; upc-011 merged first (PR #202) and took them. Re-check
-origin/main before merging.
+**Numbering:** migration `0137_resume_search` (after upc-011's `0136_partnership_events`), `DEC-SCOPE-154`, API §12BV, RBAC §2.80 (a
+note only: the roles are rec-013's). Drafted as 0136 / 152 / §12BT / §2.78; upc-011 (PR #202: 0136 / 152 / §12BT / §2.78) and upc-018
+(PR #203: 153 / §12BU / §2.79) merged first. Re-check origin/main before merging.
 
 ## 1. Answers (2026-10-09)
 The owner asked to proceed with the recommended answers, so nothing was asked. Every row below is **UNVERIFIED** (a recorded default).

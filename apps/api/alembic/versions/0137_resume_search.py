@@ -3,14 +3,15 @@
 Revision ID: 0137_resume_search
 Revises: 0136_partnership_events
 
-docs/superpowers/specs/2026-10-09-rec-014-resume-full-text-search-design.md §2 (DEC-SCOPE-153, FT8). A STORED generated column, so
+docs/superpowers/specs/2026-10-09-rec-014-resume-full-text-search-design.md §2 (DEC-SCOPE-154, FT8). A STORED generated column, so
 Postgres fills it for every existing row on the way in and refreshes it on every extraction; no row's data changes. The table is small
 and append-only, so the GIN index is built normally (not CONCURRENTLY). 0001 builds a fresh database from the current models, which
 already carry both, so each step runs only when missing (0135's idiom). downgrade() drops them: the vector is derived from the text.
 
 Re-chained on 2026-10-09: drafted as `0136_resume_search` (DEC-SCOPE-152, API §12BT, RBAC §2.78) on `0135_resume_extraction`; upc-011
-(`0136_partnership_events`) merged first, so this is `0137` (DEC-SCOPE-153, §12BU, §2.79). A database stamped at the draft is re-stamped
-with `alembic stamp --purge 0135_resume_extraction`, then `upgrade head` (both steps here are guarded).
+(`0136_partnership_events`) merged first, so this is `0137`; upc-018 then took DEC-SCOPE-153 / §12BU / §2.79, so the decision is
+DEC-SCOPE-154 (§12BV, §2.80). A database stamped at the draft is re-stamped with `alembic stamp --purge 0135_resume_extraction`, then
+`upgrade head` (both steps here are guarded).
 """
 
 import sqlalchemy as sa

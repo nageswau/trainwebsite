@@ -45,9 +45,9 @@ focused tests only.
 - Code: `lib/recruiterCandidateSearch.ts` (state/params/body/types), `RecruiterFindCandidates.tsx` (input, card snippet, notice).
 
 ## Task 5 — Docs
-- DEC-SCOPE-153 (FT1–FT10).
-- API §12BU.
-- RBAC §2.79 note.
+- DEC-SCOPE-154 (FT1–FT10).
+- API §12BV.
+- RBAC §2.80 note.
 - DATA_MODEL 0137.
 - Backlog rec-014 status.
 

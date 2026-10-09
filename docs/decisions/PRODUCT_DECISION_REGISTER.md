@@ -6179,7 +6179,41 @@ blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. Migr
   manager menu's Calendar goes live; head and super admin nav entries.
 - **New Feature ID authorized:** `upc-011`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-011.
 
-### DEC-SCOPE-153 — Resume full-text search on Find Candidates (`rec-014`)
+### DEC-SCOPE-153 — Student opportunity funnel + university performance (`upc-018`)
+
+**Evidence:**
+- `EVID-020` §17 (L581–L619: the 7-step funnel, the "ABC University" example, "Management can see the business value of every
+  partnership").
+- `EVID-020` §18 (L621–L637: the 9 performance metrics per active university). The figures in the source are illustrative.
+- `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U2, U4, U8 (`EXPLICIT_APPROVAL`, 2026-10-08), §4 upc-018 and Appendix B F1–F11.
+
+**Status:** PF1–PF10 are recommended answers, applied under the owner's standing instruction for the build session ("proceed with the
+recommended answers"). They are **not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. **No migration.** API contract §12BU,
+RBAC §2.79. Spec: `docs/superpowers/specs/2026-10-09-upc-018-student-funnel-performance-design.md`.
+**Numbering:** drafted as 152 / §12BT / §2.78 and renumbered after upc-011 (PR #202) took those numbers.
+
+| # | Question | Answer |
+|---|---|---|
+| PF1 | Period | `from` / `to` as inclusive IST days. Default: this IST month to date. `from > to`, a span over 366 days, or an impossible date → `422` |
+| PF2 | Steps (source order) | Leads, Counselling, Students interested, Profiles eligible, Applications, Offers, Deposits, Visa approvals, Enrolled. Leads, Counselling and Eligible are **not tracked** (U8) and returned as `null` |
+| PF3 | Counting (event in period) | **Interested:** distinct agency students shortlisting the university. **Applications:** created, except withdrawn before submission. **Offers:** `offer_date`, else the first status-history entry into an offer-or-later status. **Deposits:** `paid_at`. **Visas:** distinct applications with a visa case `approved` at `decided_at`. **Enrolled:** status `enrolled`, timed by the first history entry into it, else `enrollment_confirmed_at`. Every owner kind counts: agency, self-service and School-bridged |
+| PF4 | Withdrawn | Counts at every step reached before withdrawal, and never later |
+| PF5 | Readers | The University Master's read roles. Anyone else → `403` (BDM, counselor, student, agent). The counselor's U14 slice stays with upc-030 |
+| PF6 | Scope | Ranking: manager = primary/backup universities; head = team + unowned; super_admin / overseas_admin = all. One university's funnel: every reader, as the master's read rule allows |
+| PF7 | Ranked rows | Active universities in scope that are partners (G1) or have any step in the period. Ordered by enrolled, then applications, then name. Paged (limit ≤ 100) |
+| PF8 | Totals | The sum of the per-university rows, over every ranked row (a student interested in two universities counts twice) |
+| PF9 | Commission | F10 / F11 are not in this item. upc-019 adds them for the commission roles through `strip_commission` |
+| PF10 | Privacy | Counts only. No student or application identifier in a response, a log or an audit row. Reads are not audited |
+
+- New:
+  - `services/partnership_metrics.funnel_counts` (one grouped query per step, a constant count) with `period` and `ist_range`.
+  - `api/partnership_performance.py`.
+  - The pages `/partnership/opportunities` and `/partnership/performance`.
+  - A "Student opportunities this month" card on the university page.
+- Changed: the §32 menu entries "Student Opportunities" and "University Performance" are live for managers, heads and super admin.
+- **New Feature ID authorized:** `upc-018`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-018.
+
+### DEC-SCOPE-154 — Resume full-text search on Find Candidates (`rec-014`)
 
 **Evidence:** `EVID-018` S2-§15 resume search (lines 1585–1605: "global resume search over structured skills, resume content, previous
 job titles, certifications and projects"); `DEC-SCOPE-116` R7 (Postgres `tsvector`); `DEC-SCOPE-150` (rec-012: `extracted_text` on the
@@ -6187,8 +6221,8 @@ resume row); `DEC-SCOPE-151` (rec-013: the search endpoint, pool, roles, facets)
 
 **Status:** FT1–FT10 are the recommended answers, applied under the owner's standing instruction for the build session ("proceed with the
 recommended answers; ask only if genuinely blocking"). Every row is **UNVERIFIED** (`NEEDS_CONFIRMATION` at sign-off). Migration
-`0137_resume_search` (after upc-011's `0136`), API contract §12BU, RBAC §2.79. Drafted as 0136 / 152 / §12BT / §2.78; upc-011 merged
-first. Spec: `docs/superpowers/specs/2026-10-09-rec-014-resume-full-text-search-design.md`.
+`0137_resume_search` (after upc-011's `0136`), API contract §12BV, RBAC §2.80. Drafted as 0136 / 152 / §12BT / §2.78; upc-011 (0136 / 152)
+and upc-018 (153 / §12BU / §2.79) merged first. Spec: `docs/superpowers/specs/2026-10-09-rec-014-resume-full-text-search-design.md`.
 
 | # | Question | Answer |
 |---|---|---|

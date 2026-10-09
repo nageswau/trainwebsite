@@ -1,4 +1,4 @@
-"""rec-014 -- resume full-text search on Find Candidates (spec §1, §3-§4; DEC-SCOPE-153 FT1-FT9): the current resume's extracted text,
+"""rec-014 -- resume full-text search on Find Candidates (spec §1, §3-§4; DEC-SCOPE-154 FT1-FT9): the current resume's extracted text,
 matched with websearch_to_tsquery('english'), combined with rec-013's skill chips and filters, ranked, with ts_headline snippets. The
 shared test database is never truncated, so every test searches for its own unique word (the World tag)."""
 
