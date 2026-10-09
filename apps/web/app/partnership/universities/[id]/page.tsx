@@ -3,10 +3,12 @@ import type { ReactNode } from "react";
 
 import { accessUnavailable } from "@/components/AccessUnavailable";
 import BdmStageHistory from "@/components/BdmStageHistory";
+import PartnershipTasksPanel from "@/components/PartnershipTasksPanel";
 import PortalShell from "@/components/PortalShell";
 import UniversityActions from "@/components/UniversityActions";
 import UniversityAssignForm from "@/components/UniversityAssignForm";
 import UniversityContacts from "@/components/UniversityContacts";
+import UniversityFollowUp from "@/components/UniversityFollowUp";
 import UniversityStagePanel from "@/components/UniversityStagePanel";
 import VisitTable from "@/components/VisitTable";
 import { serverApi } from "@/lib/api";
@@ -34,9 +36,11 @@ import {
 } from "@/lib/universities";
 import { firstStageHistory, loadUniversity } from "@/lib/universitiesServer";
 import { newVisitPath, PLANNER_ROLES, VISIT_READERS, VISITS_PATH, VISITS_URL, type VisitRow } from "@/lib/visits";
+import { TASK_CREATORS, TASK_READERS, TASKS_PATH } from "@/lib/partnershipTasks";
 
 // upc-003: one university's master record -- the §1 fields, rankings, ownership (§27) and catalogue status. Later upc items add their
-// own sections (contacts, pipeline, agreements, courses ...) to this page. upc-007: the partnership stage and its history.
+// own sections (contacts, pipeline, agreements, courses ...) to this page. upc-007: the partnership stage and its history. upc-020: §20's
+// Next / Last Action for every reader, and the open follow-ups and tasks for the task readers (TK8; the panel loads them itself).
 function Facts({ rows }: { rows: [string, ReactNode][] }) {
   return (
     <dl style={{ display: "grid", gridTemplateColumns: "minmax(120px, max-content) 1fr", gap: "6px 16px", margin: 0 }}>
@@ -97,6 +101,16 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
               ["Relationship strength", u.relationship_strength && label(RELATIONSHIP_STRENGTHS, u.relationship_strength)],
               ["Applications", String(u.application_count)],
             ]} />
+          </section>
+          <section className="action-card wide" aria-labelledby="uni-follow-ups">
+            <h3 id="uni-follow-ups">Follow-ups &amp; tasks</h3>
+            <UniversityFollowUp followUp={u.follow_up} />
+            {TASK_READERS.has(user.role) && (
+              <>
+                <PartnershipTasksPanel role={user.role} university={{ id: u.id, name: u.name }} canAdd={TASK_CREATORS.has(user.role) && u.permissions.can_edit_contacts} />
+                <div className="actions" style={{ marginTop: 12 }}><Link className="btn ghost small" href={TASKS_PATH}>All follow-ups &amp; tasks</Link></div>
+              </>
+            )}
           </section>
           <UniversityStagePanel university={u} />
           {/* remounted after each stage change (the page refreshes), so it starts from the new first page */}

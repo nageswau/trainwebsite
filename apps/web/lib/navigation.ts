@@ -147,7 +147,7 @@ export const PARTNERSHIP_MENU: PartnershipMenuEntry[] = [
   menu("Partnership Pipeline", "pipeline", "upc-007", true), menu("Meetings", "meetings", "upc-009"), menu("University Visits", "visits", "upc-010", true),
   menu("MoU & Agreements", "agreements", "upc-014"), menu("Commercial Terms", "commercial-terms", "upc-016"),
   menu("Courses & Programs", "courses", "upc-017"), menu("Student Opportunities", "opportunities", "upc-018"),
-  menu("University Performance", "performance", "upc-018"), menu("Follow-ups & Tasks", "tasks", "upc-020"), menu("Calendar", "calendar", "upc-011"),
+  menu("University Performance", "performance", "upc-018"), menu("Follow-ups & Tasks", "tasks", "upc-020", true), menu("Calendar", "calendar", "upc-011"),
   menu("Documents", "documents", "upc-026"), menu("Alerts", "alerts", "upc-015"), menu("Targets & Forecast", "targets", "upc-021"),
   menu("Global Partnership Map", "map", "upc-025"), menu("Reports", "reports", "upc-031"),
 ];
@@ -159,6 +159,7 @@ export const PARTNERSHIP_HEAD_NAV: NavItem[] = [
   { label: "Team", href: "/partnership/head/team" }, { label: "University Master", href: "/partnership/universities" },
   { label: "Partnership Pipeline", href: "/partnership/pipeline" },
   { label: "University Visits", href: "/partnership/visits" }, { label: "Visit approvals", href: "/partnership/visits/approvals" }, // upc-010 (VS4)
+  { label: "Follow-ups & Tasks", href: "/partnership/tasks" }, // upc-020
 ];
 
 // SCH-001/SCH-003 -- School roles use their own dedicated pages (bespoke forms/actions,
