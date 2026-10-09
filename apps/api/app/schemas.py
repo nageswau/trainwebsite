@@ -50,6 +50,7 @@ from app.models import (
     ENGLISH_TESTS,
     GENDERS,
     INSTITUTION_TYPES,
+    INTERVIEW_ROUNDS,
     JOB_EMPLOYMENT_TYPES,
     JOB_PRIORITIES,
     JOB_SHIFTS,
@@ -8706,6 +8707,60 @@ class RecApplicationCreate(BaseModel):
 class RecApplicationStatusChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
     status: Literal[APPLICATION_STATUSES]
+    note: _rec_requirement_text_type(500, multiline=True) = None
+
+
+# --- rec-020 (DEC-SCOPE-148, spec §1/§3): interviews -------------------------------------------------------------------------------
+RecInterviewRound = Literal[INTERVIEW_ROUNDS]
+RecInterviewMove = Literal["confirmed", "completed", "no_show", "selected", "rejected", "on_hold"]  # IV3: never scheduled / rescheduled
+
+
+class RecInterviewCreate(BaseModel):
+    """IV5 / IV7: the §14 fields. Code, status, creator and history are server-owned (unknown fields here); the time rules, the clash and
+    the contact are checked in the service."""
+
+    model_config = ConfigDict(extra="forbid")
+    application_id: UUID
+    round: RecInterviewRound
+    scheduled_at: BdmApptStart
+    mode: RecMeetingMode
+    meeting_url: LeadApptLink = None
+    interviewer: _bdm_appt_optional(160) = None
+    location: _bdm_appt_optional(200) = None
+    contact_id: UUID | None = None
+    notify: StrictBool = True
+
+
+class RecInterviewUpdate(BaseModel):
+    """Edit the details of a non-final interview: only the keys sent are considered; the time changes only through reschedule. Null
+    clears an optional field, never the round or the mode."""
+
+    model_config = ConfigDict(extra="forbid")
+    round: RecInterviewRound | None = None
+    mode: RecMeetingMode | None = None
+    meeting_url: LeadApptLink = None
+    interviewer: _bdm_appt_optional(160) = None
+    location: _bdm_appt_optional(200) = None
+    contact_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def _required_stay_set(self):
+        for key in ("round", "mode"):
+            if key in self.model_fields_set and getattr(self, key) is None:
+                raise ValueError(f"{key.capitalize()} can't be removed")
+        return self
+
+
+class RecInterviewReschedule(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    scheduled_at: BdmApptStart
+    reason: _bdm_appt_optional(500) = None
+    notify: StrictBool = True
+
+
+class RecInterviewStatusChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: RecInterviewMove
     note: _rec_requirement_text_type(500, multiline=True) = None
 
 

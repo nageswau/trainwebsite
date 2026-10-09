@@ -762,14 +762,66 @@ class JobApplicationStatusHistory(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+# rec-020 (DEC-SCOPE-148, IV1/IV2): the EVID-018 §14 rounds and statuses, in source order. Migration 0133 repeats them
+# (test_rec_020_migration). Labels live in services/interviews.py and the web client.
+INTERVIEW_ROUNDS = ("hr_round", "technical_round", "manager_round", "final_round", "client_round")
+INTERVIEW_STATUSES = ("scheduled", "confirmed", "completed", "rescheduled", "no_show", "selected", "rejected", "on_hold")
+INTERVIEW_EVENTS = ("scheduled", "rescheduled", "status")
+INTERVIEW_CODE_SEQ = Sequence("interview_code_seq", metadata=Base.metadata)
+# The database numbers every interview, whoever inserts it (legacy routes, employers, tests): INT-000001, growing past six digits.
+INTERVIEW_CODE_DEFAULT = "'INT-' || to_char(nextval('interview_code_seq'), 'FM999999999000000')"
+INTERVIEW_CHECKS = {
+    "ck_interviews_status": "status IN (" + ", ".join(f"'{s}'" for s in INTERVIEW_STATUSES) + ")",
+    "ck_interviews_round": "round IS NULL OR round IN (" + ", ".join(f"'{s}'" for s in INTERVIEW_ROUNDS) + ")",
+}
+INTERVIEW_EVENT_CHECKS = {"ck_interview_events_event": "event IN (" + ", ".join(f"'{s}'" for s in INTERVIEW_EVENTS) + ")"}
+
+
 class Interview(Base, TimestampMixin):
+    """rec-020 (IV1-IV7): one interview round of one application. services/interviews.py is the status writer for the recruiter routes;
+    `result` is the legacy free-text outcome the /workflows and employer screens still read. `round` and `created_by_user_id` are NULL on
+    legacy rows."""
+
     __tablename__ = "interviews"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in INTERVIEW_CHECKS.items()),
+        Index("ix_interviews_status_scheduled", "status", "scheduled_at"),
+    )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    interview_code: Mapped[str] = mapped_column(String(20), unique=True, server_default=text(INTERVIEW_CODE_DEFAULT))
     application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("job_applications.id"), index=True)
     scheduled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     mode: Mapped[str] = mapped_column(String(30), default="Online")
     meeting_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     result: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    round: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="scheduled", server_default=text("'scheduled'"))
+    interviewer: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    location: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("company_contacts.id", ondelete="RESTRICT"), nullable=True)
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+
+
+class InterviewEvent(Base):
+    """rec-020 (IV3/IV4, AC1): one row per schedule, reschedule (old and new time) and status move. Append-only; `position` orders rows
+    written in one transaction. `actor_user_id` is NULL only for a system write."""
+
+    __tablename__ = "interview_events"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in INTERVIEW_EVENT_CHECKS.items()),
+        Index("ix_interview_events_interview", "interview_id", "position"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    interview_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("interviews.id", ondelete="RESTRICT"))
+    event: Mapped[str] = mapped_column(String(16))
+    from_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    to_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    old_scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    new_scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    actor_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class PlacementProfile(Base, TimestampMixin):
