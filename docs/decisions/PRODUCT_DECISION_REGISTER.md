@@ -6252,7 +6252,8 @@ and upc-018 (153 / §12BU / §2.79) merged first. Spec: `docs/superpowers/specs/
 - `RECRUITER_CRM_BACKLOG.md` §rec-022: AC1 (an offer only for a Selected application), AC2 (status history kept), AC3 (the legacy
   accepted/joined ⇒ hired behaviour preserved through the mapping), and question Q-21.
 
-**Status:** **BUILDING** on `feature/rec-022`. The owner asked to proceed with the recommended answers, so nothing was asked; every row
+**Status:** **MERGED** to `main` as PR #206 @ `27c41baa` (2026-10-09); the next rec item takes `0139`, `DEC-SCOPE-156`, §12BX and §2.82
+(re-check `main`). The owner asked to proceed with the recommended answers, so nothing was asked; every row
 below is **UNVERIFIED** (a recorded default) until confirmed.
 
 **Numbering (FINAL):** migration `0138_offer_management` (after rec-014's `0137_resume_search`), `DEC-SCOPE-155`, API §12BW, RBAC §2.81. Drafted as `0136` / 152 / §12BT / §2.78; upc-011 (152), upc-018 (153) and rec-014 (154) merged first.
