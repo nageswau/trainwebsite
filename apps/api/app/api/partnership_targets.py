@@ -15,7 +15,7 @@ from app.core.database import get_db
 from app.models import User
 from app.schemas import BDM_TARGET_MONTH_PATTERN, BdmTargetsSaved, PartnershipTargetSheet, PartnershipTargetsPut, PartnershipTargetTeam
 from app.services import partnership_targets as svc
-from app.services.bdm_targets import parse_month
+from app.services.bdm_targets import check_editable, parse_month
 
 router = APIRouter(prefix="/partnership", tags=["partnership-targets"])
 MONTH = Query(None, pattern=BDM_TARGET_MONTH_PATTERN, description="IST month, YYYY-MM (default the current month)")
@@ -43,7 +43,7 @@ async def save_targets(payload: PartnershipTargetsPut, user: User = Depends(get_
     svc.require_setter(user)
     current = await _current_month(db)
     month = parse_month(payload.month, current)
-    svc.check_editable(user, month, current)
+    check_editable(user, month, current)
     changed = await svc.save(db, user, month, payload.items)
     await db.commit()
     svc.log("partnership_targets_saved", user, month, changed)

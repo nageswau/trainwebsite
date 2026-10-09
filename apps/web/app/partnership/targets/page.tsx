@@ -33,7 +33,6 @@ export default async function PartnershipTargetsPage({ searchParams }: { searchP
     return accessUnavailable(e, "/overseas/login");
   }
   const { nav, roleLabel } = shellFor(user.role);
-  const sheet = own ?? team!; // exactly one was read
   return (
     <PortalShell nav={nav} roleLabel={roleLabel} userName={user.full_name}>
       <div className="portal-content">
@@ -55,15 +54,12 @@ export default async function PartnershipTargetsPage({ searchParams }: { searchP
               <button className="btn secondary" type="submit">Show</button>
             </form>
             {note && <p className="muted">{note}</p>}
-            {!own && !sheet.editable && <p className="muted">{sheet.month_status === "past" ? "Past months are read-only." : "Targets can be set up to 12 months ahead."}</p>}
+            {team && !team.editable && <p className="muted">{team.month_status === "past" ? "Past months are read-only." : "Targets can be set up to 12 months ahead."}</p>}
           </div>
         </div>
-        {own ? (
-          <TargetsEditor key={own.month} initial={own} ownerId={own.manager.id} ownerField="manager_user_id" saveUrl={TARGETS_URL} />
-        ) : (
-          <PartnershipTargetsTable team={team!} month={month} />
-        )}
-        {!own && <p className="muted" style={{ fontSize: 13 }}>Each cell is actual / target · achievement. Meetings are counted once Meetings is available.</p>}
+        {own && <TargetsEditor key={own.month} initial={own} ownerId={own.manager.id} ownerField="manager_user_id" saveUrl={TARGETS_URL} />}
+        {team && <PartnershipTargetsTable team={team} month={month} />}
+        {team && <p className="muted" style={{ fontSize: 13 }}>Each cell is actual / target · achievement. Meetings are counted once Meetings is available.</p>}
       </div>
     </PortalShell>
   );

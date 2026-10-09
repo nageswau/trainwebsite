@@ -111,11 +111,6 @@ async def team(db: AsyncSession, user: User, month: date, current: date) -> dict
     return {"month": month_text(month), "month_status": status, "editable": editable, "kpis": KPI_DEFS, "managers": rows, "team": totals}
 
 
-def check_editable(user: User, month: date, current: date) -> None:
-    if refusal := edit_refusal(user, month, current):
-        raise HTTPException(422, refusal)
-
-
 async def save(db: AsyncSession, actor: User, month: date, items: list[PartnershipTargetItem]) -> int:
     """Validate the whole batch first (nothing is written on any refusal), then upsert / clear only the values that change."""
     ids = {i.manager_user_id for i in items}
