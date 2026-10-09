@@ -61,7 +61,6 @@ async def schedule_meeting(payload: UniversityMeetingIn, user: User = Depends(ge
 @router.get("/{meeting_id}", response_model=UniversityMeetingEnvelope)
 async def get_meeting(meeting_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     await svc.require_reader(db, user)
-    await svc.load(db, meeting_id)
     return {"meeting": await svc.detail_out(db, user, meeting_id, _now())}
 
 

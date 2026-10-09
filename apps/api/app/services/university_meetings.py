@@ -61,7 +61,7 @@ LINK_MISSING = "link_missing"  # MG4 warning key
 M = UniversityMeeting
 P = UniversityMeetingParticipant
 IS_SCHEDULED = M.status == "scheduled"
-Responsible, Creator, Completer = aliased(User), aliased(User), aliased(User)
+Responsible = aliased(User)
 
 
 # --- access ---------------------------------------------------------------------------------------------------------------------
@@ -113,11 +113,6 @@ async def load_for_write(db: AsyncSession, user: User, meeting_id: UUID, action:
     if m.status != "scheduled":
         raise HTTPException(409, STATE_REFUSALS[m.status])
     return m
-
-
-async def load(db: AsyncSession, meeting_id: UUID) -> None:
-    if await db.scalar(select(M.id).where(M.id == meeting_id)) is None:
-        raise HTTPException(404, NOT_FOUND)
 
 
 # --- people (MG5-MG8) -----------------------------------------------------------------------------------------------------------
@@ -349,7 +344,10 @@ async def page(db: AsyncSession, filters: list, view: str | None, now: datetime,
 
 async def detail_out(db: AsyncSession, user: User, meeting_id: UUID, now: datetime) -> dict:
     """What every route returns, read as written (populate_existing: never a stale identity-map copy after a commit)."""
-    m, uni, country, responsible = (await db.execute(_rows().where(M.id == meeting_id).execution_options(populate_existing=True))).one()
+    row = (await db.execute(_rows().where(M.id == meeting_id).execution_options(populate_existing=True))).first()
+    if row is None:
+        raise HTTPException(404, NOT_FOUND)
+    m, uni, country, responsible = row
     creator = await db.get_one(User, m.created_by_user_id)
     completer = await db.get(User, m.completed_by_user_id) if m.completed_by_user_id else None
     contacts = (await db.scalars(

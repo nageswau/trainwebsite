@@ -62,9 +62,9 @@ export default function MeetingForm({ meeting, university, canPickResponsible }:
   const set = (name: keyof Draft, value: string) => setDraft((d) => ({ ...d, [name]: value }));
   const a11y = (name: string) => (errors[name] ? { "aria-invalid": true as const, "aria-describedby": `meeting-${name}-error` } : {});
   const fieldError = (name: string) => errors[name] && <p className="form-error" id={`meeting-${name}-error`}>{errors[name]}</p>;
-  const field = (name: string, control: ReactNode, id = `meeting-${name}`) => (
+  const field = (name: string, control: ReactNode) => (
     <div className="field" key={name}>
-      <label htmlFor={id}>{LABELS[name]}</label>
+      <label htmlFor={`meeting-${name}`}>{LABELS[name]}</label>
       {control}
       {fieldError(name)}
     </div>
