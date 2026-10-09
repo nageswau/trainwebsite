@@ -1598,3 +1598,18 @@ history notes.
 - Rows are hard-deleted on remove (audited). The skill merge (SK7) re-points rows to the kept skill and deletes the loser of a clash
   before it deletes the merged skill, so no row ever points at a deleted skill. The merge also re-points `job_skills.skill_id`.
 - `downgrade()` refuses while any row exists.
+
+## Candidate consents (`rec-010`, `DEC-SCOPE-138`; migration `0123_candidate_consents`, after `0122_candidate_skills`)
+
+**`candidate_consents` columns:** `id`; `candidate_id` → `candidates` (FK RESTRICT); `user_id` → `users` (FK RESTRICT; the student who
+acted); `action` varchar(10) (CHECK `ck_candidate_consents_action`: `opt_in` / `opt_out`); `consent_version` varchar(20); `ip_address`
+varchar(64) null; `created_at`.
+
+**Index:** `ix_candidate_consents_candidate (candidate_id, created_at)`, for the newest-first history.
+
+**Design notes:**
+- Append-only, following the `ConsentRecord` idiom: a row is written for each change of `candidates.opted_in` by the student, and never
+  for a no-op.
+- `candidates.opted_in` stays the gate that pool reads, EMP-003 and the EMP-004 shortlist follow.
+- `downgrade()` refuses while any row exists, so consent evidence is never dropped silently. Retention follows Q-09
+  (`NEEDS_CONFIRMATION`).
