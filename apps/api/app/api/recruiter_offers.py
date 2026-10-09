@@ -34,8 +34,8 @@ def _file(data: bytes, offer: JobOffer, filename: str) -> Response:
 
 @router.get("/applications/{application_id}/offer")
 async def application_offer(application_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    application, _job = await applications.load_scoped(db, user, application_id)
-    return await svc.for_application(db, user, application)
+    application, job = await applications.load_scoped(db, user, application_id)
+    return await svc.for_application(db, user, application, job)
 
 
 @router.post("/applications/{application_id}/offer", status_code=201)

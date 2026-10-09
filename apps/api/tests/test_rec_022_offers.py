@@ -82,7 +82,7 @@ def test_legacy_words_map_to_keys(word, key):
 async def test_record_on_a_selected_application_with_history_company_stage_and_audit(client, db_session):
     s = await _setup(client, db_session)
     empty = await client.get(f"{APPS}/{s['application']['id']}/offer")
-    assert empty.status_code == 200 and empty.json() == {"offer": None, "can_create": True}
+    assert empty.status_code == 200 and empty.json() == {"offer": None, "can_create": True, "suggested_position": s["job"].title}
     joining = (date.today() + timedelta(days=30)).isoformat()
     item = await _offer(client, s["application"]["id"], joining_date=joining)
     assert (item["status"], item["status_label"], item["position"], item["currency"]) == ("offer_pending", "Offer Pending", "Java Developer", "INR")

@@ -4,6 +4,7 @@ import { type FormEvent, useEffect, useId, useState } from "react";
 
 import LocalTime from "@/components/LocalTime";
 import RecruiterApplicationInterviews from "@/components/RecruiterApplicationInterviews";
+import RecruiterApplicationOffer from "@/components/RecruiterApplicationOffer";
 import RecruiterApplicationScreening from "@/components/RecruiterApplicationScreening";
 import type { ContactOption } from "@/components/RecruiterInterviewForm";
 import SearchableSelect from "@/components/SearchableSelect";
@@ -142,7 +143,7 @@ function StatusForm({ application, onChanged, onCancel }: { application: RecAppl
 }
 
 /** One candidate as a stacked item (the rec-025 Calls pattern), so the status and actions stay on screen at phone width (QA-03). */
-type Panel = "none" | "status" | "history" | "interviews" | "screening";
+type Panel = "none" | "status" | "history" | "interviews" | "screening" | "offer";
 
 function ApplicationItem({ application, contacts, onChanged, onInterview, onScreened }: {
   application: RecApplication; contacts: ContactOption[]; onChanged: (a: RecApplication) => void; onInterview: (notice: string) => void;
@@ -178,6 +179,9 @@ function ApplicationItem({ application, contacts, onChanged, onInterview, onScre
         <button type="button" className="btn secondary small" aria-expanded={open === "screening"} onClick={() => toggle("screening")}>
           Screening<span className="visually-hidden"> of {application.candidate.name}</span>
         </button>
+        <button type="button" className="btn secondary small" aria-expanded={open === "offer"} onClick={() => toggle("offer")}>
+          Offer<span className="visually-hidden"> of {application.candidate.name}</span>
+        </button>
       </div>
       {open === "status" && <StatusForm application={application} onCancel={() => setOpen("none")} onChanged={(next) => { setOpen("none"); onChanged(next); }} />}
       {open === "history" && <History applicationId={application.id} />}
@@ -188,6 +192,7 @@ function ApplicationItem({ application, contacts, onChanged, onInterview, onScre
         <RecruiterApplicationScreening applicationId={application.id} candidateName={application.candidate.name} onCancel={() => setOpen("none")}
           onSaved={(next) => { setOpen("none"); onScreened(next); }} />
       )}
+      {open === "offer" && <RecruiterApplicationOffer applicationId={application.id} candidateName={application.candidate.name} onChanged={onInterview} />}
     </li>
   );
 }

@@ -309,11 +309,12 @@ async def one(db: AsyncSession, user: User, offer_id: UUID) -> dict:
     }
 
 
-async def for_application(db: AsyncSession, user: User, application: JobApplication) -> dict:
+async def for_application(db: AsyncSession, user: User, application: JobApplication, job: Job) -> dict:
+    """The offer, or none with `can_create` and the requirement title the form starts the position from."""
     offer_id = await db.scalar(select(JobOffer.id).where(JobOffer.application_id == application.id))
     if offer_id is not None:
         return {"offer": await one(db, user, offer_id), "can_create": False}
-    return {"offer": None, "can_create": applications.can_write(user) and application.status == "selected"}
+    return {"offer": None, "can_create": applications.can_write(user) and application.status == "selected", "suggested_position": job.title}
 
 
 def _student_rows(user: User):
