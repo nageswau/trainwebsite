@@ -6375,9 +6375,10 @@ Spec: `docs/superpowers/specs/2026-10-09-rec-022-offer-management-design.md`.
 - `RECRUITER_CRM_BACKLOG.md` §rec-023, AC1–AC3 and Q-22.
 
 **Status:**
-- Built on `feature/rec-023` (PR pending).
+- **MERGED** to `main` as PR #213 @ `d3de75e6` (2026-10-09), built on `feature/rec-023`.
   - Migration `0140_joining_management`, API contract §12BZ, RBAC §2.84.
-  - The next rec item takes `0141`, `DEC-SCOPE-159`, §12CA and §2.85 (re-check `main`).
+  - rec-015 then merged with `0141`, `DEC-SCOPE-159`, §12CA and §2.85, so the next rec item takes `0142`, `DEC-SCOPE-160`, §12CB and §2.86
+    (re-check `main`).
 - JN1–JN10 are the recommended answers to Q-22 and to the item's open points. They were applied under the owner's standing instruction for the
   build session ("proceed with recommended answers"). Every row is **UNVERIFIED** (`NEEDS_CONFIRMATION` at sign-off).
 - Spec: `docs/superpowers/specs/2026-10-09-rec-023-joining-management-design.md`.
