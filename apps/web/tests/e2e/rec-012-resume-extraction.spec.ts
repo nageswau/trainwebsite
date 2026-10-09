@@ -53,7 +53,7 @@ test("a recruiter reviews a resume's extracted details and saves the chosen ones
       "Developed enterprise applications using Java, Spring Boot, Hibernate and REST APIs with MySQL.",
     ]),
   });
-  await resumeCard.getByRole("button", { name: "Upload" }).click();
+  await resumeCard.getByRole("button", { name: "Upload", exact: true }).click();
 
   // AC1: the five skills of the source sentence, ticked at Intermediate; the profile details the candidate lacks are ticked too.
   const panel = page.getByRole("region", { name: /Review extracted details — version 1/ });
@@ -76,7 +76,7 @@ test("a recruiter reviews a resume's extracted details and saves the chosen ones
   await skills.getByRole("combobox", { name: "Level for Java" }).selectOption("advanced");
   await details.getByRole("checkbox", { name: /Location: Pune/ }).uncheck();
   await panel.getByRole("button", { name: "Save selected" }).click();
-  await expect(resumeCard.getByText("Added 4 skills and updated qualification and total experience.")).toBeVisible();
+  await expect(resumeCard.getByText("Added 4 skills and updated total experience and qualification.")).toBeVisible();
   await expect(panel).toHaveCount(0);
 
   const java = skillsCard.getByRole("row", { name: /^Java Programming/ });
