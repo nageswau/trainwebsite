@@ -18,26 +18,28 @@ describe("upc-001 navigation", () => {
     expect(new Set(PARTNERSHIP_MENU.map((e) => e.href)).size).toBe(19);
   });
 
-  it("links only the live entries, plus Profile (upc-003 University Master, upc-007 Partnership Pipeline, upc-010 University Visits, upc-014 MoU & Agreements, upc-020 Follow-ups & Tasks, upc-026 Documents)", () => {
-    expect(PARTNERSHIP_MENU.filter((e) => e.live).map((e) => e.label)).toEqual(["Dashboard", "University Master", "Partnership Pipeline", "University Visits", "MoU & Agreements", "Follow-ups & Tasks", "Documents"]);
+  it("links only the live entries, plus Profile (upc-003 University Master, upc-007 Partnership Pipeline, upc-010 University Visits, upc-014 MoU & Agreements, upc-020 Follow-ups & Tasks, upc-026 Documents, upc-021 Targets & Forecast)", () => {
+    expect(PARTNERSHIP_MENU.filter((e) => e.live).map((e) => e.label)).toEqual(["Dashboard", "University Master", "Partnership Pipeline", "University Visits", "MoU & Agreements", "Follow-ups & Tasks", "Documents", "Targets & Forecast"]);
     expect(PARTNERSHIP_NAV).toEqual([
       { label: "Dashboard", href: "/partnership/dashboard" }, { label: "University Master", href: "/partnership/universities" },
       { label: "Partnership Pipeline", href: "/partnership/pipeline" }, { label: "University Visits", href: "/partnership/visits" },
       { label: "MoU & Agreements", href: "/partnership/agreements" }, { label: "Follow-ups & Tasks", href: "/partnership/tasks" },
-      { label: "Documents", href: "/partnership/documents" }, { label: "Profile", href: "/partnership/profile" },
+      { label: "Documents", href: "/partnership/documents" }, { label: "Targets & Forecast", href: "/partnership/targets" },
+      { label: "Profile", href: "/partnership/profile" },
     ]);
     expect(PARTNERSHIP_HEAD_NAV).toEqual([
       { label: "Team", href: "/partnership/head/team" }, { label: "University Master", href: "/partnership/universities" },
       { label: "Partnership Pipeline", href: "/partnership/pipeline" }, { label: "University Visits", href: "/partnership/visits" },
       { label: "Visit approvals", href: "/partnership/visits/approvals" }, { label: "MoU & Agreements", href: "/partnership/agreements" },
       { label: "Follow-ups & Tasks", href: "/partnership/tasks" }, { label: "Documents", href: "/partnership/documents" },
-      { label: "Message templates", href: "/partnership/head/templates" },
+      { label: "Message templates", href: "/partnership/head/templates" }, { label: "Targets & Forecast", href: "/partnership/targets" },
     ]);
   });
 
   it("gives the Super Admin the visit approval queue (upc-010 VS4 fallback)", () => {
     expect(SUPER_ADMIN_NAV).toContainEqual({ label: "Partnership Visit Approvals", href: "/partnership/visits/approvals" });
     expect(SUPER_ADMIN_NAV).toContainEqual({ label: "Partnership Follow-ups & Tasks", href: "/partnership/tasks" }); // upc-020 QA-03
+    expect(SUPER_ADMIN_NAV).toContainEqual({ label: "Partnership Targets", href: "/partnership/targets" }); // upc-021
   });
 
   it("gives the Super Admin and Overseas Admin a Partnership managers entry", () => {
