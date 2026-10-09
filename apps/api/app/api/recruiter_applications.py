@@ -17,7 +17,7 @@ from app.models import APPLICATION_STATUSES, ApplicationScreening, Candidate, Co
 from app.schemas import RecApplicationCreate, RecApplicationStatusChange, RecScreeningIn
 from app.services import application_screening as screening
 from app.services import applications as svc
-from app.services import candidates
+from app.services import candidates, joinings
 from app.services import recruiter_requirements as requirements
 
 router = APIRouter(prefix="/recruiter", tags=["recruiter-applications"])
@@ -69,6 +69,8 @@ async def add_requirement_candidate(requirement_id: UUID, payload: RecApplicatio
 async def change_application_status(application_id: UUID, payload: RecApplicationStatusChange, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     application, _job = await svc.load_scoped(db, user, application_id, lock=True)
     svc.require_writer(user, application.id, "change_application_status")
+    if payload.status == "joined" and await joinings.has_offer(db, application.id):
+        raise HTTPException(409, joinings.USE_JOINING)  # rec-023 JN9: an offered candidate joins through the joining (actual date)
     previous = await svc.change_status(db, user, application, payload.status, payload.note)
     await svc.notify_student(db, application)
     svc.audit(db, user, "status", application, {"from": previous, "to": payload.status})

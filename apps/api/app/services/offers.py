@@ -33,6 +33,10 @@ FINAL = ("accepted", "declined")
 LEGACY = {"offered": "offer_received", "pending": "offer_pending", "joined": "accepted", "rejected": "declined"}  # OF9; the keys map to themselves
 REVISABLE = ("position", "compensation", "currency", "offered_on", "joining_date")
 STORAGE_PREFIX = "job-offers"
+PROOF_PREFIX = "job-joinings"  # rec-023: the joining proof
+# rec-023 (DEC-SCOPE-158, JN2/JN3): the §17 joining statuses and moves; the writes are services/joinings.py's, the output is the offer's.
+JOINING_LABELS = {"pending": "Pending", "joined": "Joined", "did_not_join": "Did Not Join"}
+JOINING_MOVES = {"pending": ("joined", "did_not_join"), "joined": (), "did_not_join": ()}
 
 NOT_FOUND = "Offer not found"
 NOT_SELECTED = "An offer can be recorded only for a Selected candidate"
@@ -55,7 +59,7 @@ def from_legacy(word: str | None) -> str | None:
     return word if word in STATUS_LABELS else LEGACY.get(word)
 
 
-def _event(db: AsyncSession, offer: JobOffer, actor: User | None, event: str, *, from_status=None, fields=None, note=None, letter_key=None) -> None:
+def record_event(db: AsyncSession, offer: JobOffer, actor: User | None, event: str, *, from_status=None, fields=None, note=None, letter_key=None) -> None:
     db.add(JobOfferEvent(offer_id=offer.id, event=event, from_status=from_status, to_status=offer.status, fields=fields, note=note, letter_key=letter_key, actor_user_id=actor.id if actor else None))
 
 
@@ -91,7 +95,7 @@ async def insert(db: AsyncSession, actor: User, application: JobApplication, sta
         if UNIQUE in str(exc.orig):
             raise HTTPException(409, DUPLICATE) from None
         raise
-    _event(db, offer, actor, "created")
+    record_event(db, offer, actor, "created")
     if status == "offer_received":
         await _notify_received(db, application)
     return offer
@@ -102,14 +106,22 @@ async def _apply_status(db: AsyncSession, actor: User, offer: JobOffer, applicat
     Accepted joins it (AC3). Returns the previous status."""
     previous = offer.status
     offer.status = target
-    _event(db, offer, actor, "status", from_status=previous, note=note)
+    record_event(db, offer, actor, "status", from_status=previous, note=note)
     if target == "declined":
         applications.follow(db, actor, application, "withdrawn", "Offer declined")
     elif target == "offer_received":
         await _notify_received(db, application)
-    elif target == "accepted" and legacy:
-        applications.follow(db, actor, application, "joined", "Offer accepted")
+    elif target == "accepted":
+        if legacy:
+            applications.follow(db, actor, application, "joined", "Offer accepted")
+        start_joining(offer, application)
     return previous
+
+
+def start_joining(offer: JobOffer, application: JobApplication) -> None:
+    """JN2 / JN9: Accepted starts the joining; on the legacy routes the application is already Joined, so the joining is too."""
+    if offer.joining_status in (None, "pending"):
+        offer.joining_status = "joined" if application.status == "joined" else "pending"
 
 
 async def change_status(db: AsyncSession, user: User, offer: JobOffer, application: JobApplication, target: str, note: str | None) -> str:
@@ -131,6 +143,7 @@ async def legacy_status(db: AsyncSession, user: User, offer: JobOffer, applicati
         await _apply_status(db, user, offer, application, target, None, legacy=True)
     elif target == "accepted":
         applications.follow(db, user, application, "joined", "Offer accepted")
+        start_joining(offer, application)
 
 
 # --- recruiter writes ---------------------------------------------------------------------------------------------------------------
@@ -172,7 +185,7 @@ def revise(db: AsyncSession, user: User, offer: JobOffer, payload: RecOfferUpdat
         _check_dates(changes.get("offered_on", offer.offered_on), changes.get("joining_date", offer.joining_date), today)
     for key in changed:
         setattr(offer, key, changes[key])
-    _event(db, offer, user, "revised", from_status=offer.status, fields=changed)
+    record_event(db, offer, user, "revised", from_status=offer.status, fields=changed)
     audit(db, user, "update", offer, {"fields": changed})
     return changed
 
@@ -187,9 +200,9 @@ def check_letter_open(offer: JobOffer) -> None:
         raise HTTPException(409, LETTER_CLOSED)
 
 
-def store(data: bytes, content_type: str) -> str:
+def store(data: bytes, content_type: str, prefix: str = STORAGE_PREFIX) -> str:
     """A server-generated key; the client never names a path. A storage failure is a 500, logged by key digest (never the key)."""
-    key = f"{STORAGE_PREFIX}/{uuid4().hex}"
+    key = f"{prefix}/{uuid4().hex}"
     try:
         storage.write_bytes(key, data, content_type)
     except Exception:
@@ -200,7 +213,7 @@ def store(data: bytes, content_type: str) -> str:
 
 def discard(key: str) -> None:
     """Delete an object stored for a write that did not commit; only this module's keys. A failure leaves a logged orphan."""
-    if not key.startswith(f"{STORAGE_PREFIX}/"):
+    if not key.startswith((f"{STORAGE_PREFIX}/", f"{PROOF_PREFIX}/")):
         logger.error("recruiter_offer_letter_discard_refused", extra={"extra_fields": {"key_digest": _digest(key)}})
         return
     try:
@@ -213,18 +226,19 @@ def attach_letter(db: AsyncSession, user: User, offer: JobOffer, key: str, conte
     """The replaced object is kept; its key goes on the history row, never into a response."""
     old_key = offer.letter_key
     offer.letter_key, offer.letter_content_type, offer.letter_name, offer.letter_uploaded_at = key, content_type, name, datetime.now(UTC)
-    _event(db, offer, user, "letter", from_status=offer.status, letter_key=old_key)
+    record_event(db, offer, user, "letter", from_status=offer.status, letter_key=old_key)
     audit(db, user, "letter", offer, {"content_type": content_type, "replaced": old_key is not None, "bytes": size})
 
 
-def read_letter(offer: JobOffer) -> bytes:
-    if offer.letter_key is None:
-        raise HTTPException(404, NO_LETTER)
+def read_file(offer: JobOffer, key: str | None, missing: str) -> bytes:
+    """The letter's or the proof's bytes; a missing key or object is the 404 `missing`."""
+    if key is None:
+        raise HTTPException(404, missing)
     try:
-        return storage.read_bytes(offer.letter_key)
+        return storage.read_bytes(key)
     except FileNotFoundError:
-        logger.warning("recruiter_offer_letter_missing", extra={"extra_fields": {"offer_id": str(offer.id), "key_digest": _digest(offer.letter_key)}})
-        raise HTTPException(404, NO_LETTER) from None
+        logger.warning("recruiter_offer_file_missing", extra={"extra_fields": {"offer_id": str(offer.id), "key_digest": _digest(key)}})
+        raise HTTPException(404, missing) from None
 
 
 # --- reads --------------------------------------------------------------------------------------------------------------------------
@@ -249,6 +263,31 @@ async def load_readable(db: AsyncSession, user: User, offer_id: UUID) -> tuple[J
 def safe_link(url: str | None) -> str | None:
     """The legacy typed link is shown only when it is http(s) (never a `javascript:` URL)."""
     return url if url and url.lower().startswith(("https://", "http://")) else None
+
+
+def joining_out(user: User, offer: JobOffer, today: date) -> dict | None:
+    """rec-023: None until the offer is Accepted. Overdue = still pending after the expected date (IST today)."""
+    status = offer.joining_status
+    if status is None:
+        return None
+    writer = applications.can_write(user)
+    proof = None if offer.proof_key is None else {"name": offer.proof_name, "content_type": offer.proof_content_type, "uploaded_at": offer.proof_uploaded_at}
+    return {
+        "status": status,
+        "status_label": JOINING_LABELS.get(status, status),
+        "expected_joining_date": offer.joining_date,
+        "actual_joining_date": offer.actual_joining_date,
+        "location": offer.joining_location,
+        "reporting_manager": offer.reporting_manager,
+        "confirmed_by": offer.joining_confirmed_by,
+        "confirmed_on": offer.joining_confirmed_on,
+        "reason": offer.not_joined_reason,
+        "proof": proof,
+        "overdue": status == "pending" and offer.joining_date is not None and offer.joining_date < today,
+        "allowed_statuses": [{"key": k, "label": JOINING_LABELS[k]} for k in JOINING_MOVES.get(status, ())] if writer else [],
+        "can_edit": writer and status == "pending",
+        "can_upload_proof": writer and status != "did_not_join",
+    }
 
 
 def _letter(offer: JobOffer) -> dict | None:
@@ -306,6 +345,7 @@ async def one(db: AsyncSession, user: User, offer_id: UUID) -> dict:
         "allowed_statuses": [{"key": k, "label": STATUS_LABELS[k]} for k in MOVES.get(o.status, ())] if writer else [],
         "can_edit": writer and o.status not in FINAL,
         "can_upload": writer and o.status != "declined",
+        "joining": joining_out(user, o, requirements.ist_today()),
     }
 
 
@@ -359,10 +399,10 @@ async def student_offer(db: AsyncSession, user: User, offer_id: UUID) -> JobOffe
     return row[0]
 
 
-async def letter_filename(db: AsyncSession, offer: JobOffer, extension: str) -> str:
+async def letter_filename(db: AsyncSession, offer: JobOffer, extension: str, stem: str = "offer") -> str:
     """Built from the candidate code, never the uploaded name."""
     code = await db.scalar(select(Candidate.candidate_code).join(JobApplication, JobApplication.candidate_id == Candidate.id).where(JobApplication.id == offer.application_id))
-    return f"offer-{code}.{extension}"
+    return f"{stem}-{code}.{extension}"
 
 
 def audit(db: AsyncSession, user: User, action: str, offer: JobOffer, metadata: dict | None = None) -> None:

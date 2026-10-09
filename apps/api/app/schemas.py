@@ -9015,6 +9015,21 @@ class RecOfferStatusChange(BaseModel):
     note: _rec_requirement_text_type(500, multiline=True) = None
 
 
+class RecJoiningUpdate(BaseModel):
+    """rec-023 (JN1-JN6): the §17 joining, replaced as a whole (PUT; omitted = cleared). `joining_status` omitted keeps the current one.
+    What Joined and Did Not Join need, and the date rules, are the service's (they need today and the offer)."""
+
+    model_config = ConfigDict(extra="forbid")
+    joining_status: Literal["pending", "joined", "did_not_join"] | None = None
+    expected_joining_date: date | None = None
+    actual_joining_date: date | None = None
+    joining_location: _rec_requirement_text_type(160) = None
+    reporting_manager: _rec_requirement_text_type(160) = None
+    confirmed_by: _rec_requirement_text_type(160) = None
+    confirmed_on: date | None = None
+    reason: _rec_requirement_text_type(500, multiline=True) = None
+
+
 # --- rec-011 (DEC-SCOPE-137, spec §1/§4): a candidate's skills -------------------------------------------------------------------
 CANDIDATE_SKILL_LABELS = {"skill": "Skill", "level": "Level", "experience_months": "Experience (months)", "last_used_year": "Last used", "source": "Source", "status": "Status"}
 

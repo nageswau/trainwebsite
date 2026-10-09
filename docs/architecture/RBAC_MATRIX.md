@@ -1453,6 +1453,22 @@ The inline pattern, scope in the SQL `WHERE`. Routes are listed in §12BY.
 - Match rows never include a candidate's phone number or email (R8).
 - The weights audit row carries job-skill ids only.
 
+### 2.84 Joining management *(net-new, added 2026-10-09 — `DEC-SCOPE-158`, `rec-023`)*
+
+The inline pattern, scope in the SQL `WHERE`. Routes are listed in §12BZ.
+
+| Role | Read joining / list / proof | Update joining, upload proof |
+|---|---|---|
+| `placement_team` | Requirements in their scope (rec-007) | The same |
+| `placement_manager` | Their team's requirements and unassigned ones | None (`403`) |
+| `super_admin` | Every requirement | Every requirement |
+| `bdm` (assigned BDM) | Their companies' requirements (read only) | `403` |
+| any other role, including `hr_team`, `employer` and `it_student` | `403` | `403` |
+
+- Out of scope is `404`, the same as an unknown id (IDOR).
+- The proof is PII. It is stored under a server-generated key that is never returned, and every download is audited.
+- Audit rows `recruiter_joining.*` carry field names, statuses and file type/size only — never the reason, a name or a file name.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
