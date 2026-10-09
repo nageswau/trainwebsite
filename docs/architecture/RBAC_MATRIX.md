@@ -1377,6 +1377,18 @@ Read only, over the whole pool (R11): there is no per-recruiter scope to search 
 | `hr_team` | the same search, read only (no Shortlist, no Contact, no source picker) | same | `rec-013` |
 | `employer`, `it_admin`, `it_student`, every other role | `403` | — | `rec-013` |
 
+### 2.78 Partnership calendar and events *(net-new, added 2026-10-09 — `DEC-SCOPE-152`, `upc-011`)*
+
+The calendar is read-only; whose items it shows is scoped by role (CL9). Every partnership reader reads every event (as meetings, §2.71);
+edit and cancel are for the event's owner or creator (CL7).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `partnership_manager` | read their own calendar; add events (owner themselves); edit / cancel the events they own or added; read any event | own calendar | `upc-011` |
+| `partnership_head` | read the team calendar or one direct report's; add events (themselves or an active direct report as owner); edit / cancel the events they own or added | self + direct reports | `upc-011` |
+| `super_admin` | read everyone's calendar or any partnership employee's; read events (no writes) | all | `upc-011` |
+| `overseas_admin` and every other role | `403` | — | `upc-011` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
