@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { accessUnavailable } from "@/components/AccessUnavailable";
+import OverlapNotice from "@/components/OverlapNotice";
 import PortalShell from "@/components/PortalShell";
 import VisitActions from "@/components/VisitActions";
 import { serverApi } from "@/lib/api";
@@ -49,6 +50,7 @@ export default async function VisitPage({ params }: { params: Promise<{ id: stri
           <p className="notice" role="note" style={{ whiteSpace: "pre-line" }}><strong>Returned for changes:</strong> {v.rejection_reason}</p>
         )}
         {v.status === "closed" && v.close_reason && <p className="notice" role="note" style={{ whiteSpace: "pre-line" }}><strong>Closed:</strong> {v.close_reason}</p>}
+        {v.status !== "closed" && <OverlapNotice overlaps={v.overlaps} />}
         <div className="action-grid">
           <section className="action-card wide" aria-labelledby="visit-actions">
             <h3 id="visit-actions">Status: {statusText(v)}</h3>

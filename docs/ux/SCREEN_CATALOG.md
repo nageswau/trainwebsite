@@ -3643,7 +3643,7 @@ Design spec: `docs/superpowers/specs/2026-10-09-rec-013-find-candidates-design.m
 - **Layout:** on phones the facets stack above the cards; nothing scrolls sideways.
 - **Candidate detail:** the calls and messages cards sit in a `#contact` section.
 
-## upc-018 addendum (2026-10-09, `DEC-SCOPE-152`) — Student Opportunities + University Performance
+## upc-018 addendum (2026-10-09, `DEC-SCOPE-153`) — Student Opportunities + University Performance
 
 Design spec: `docs/superpowers/specs/2026-10-09-upc-018-student-funnel-performance-design.md` §5. Visual-reference mapping: none (not
 inspected), so no parity is claimed.

@@ -2,7 +2,7 @@
 
 - **Feature:** upc-018 (`docs/delivery/UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §4 upc-018; Appendix B F1–F9; EVID-020 §17 L581–L619 and
   §18 L621–L637)
-- **Decision:** `DEC-SCOPE-152`. **No migration.** API §12BT; RBAC §2.78. These numbers are provisional until merge, as with earlier items.
+- **Decision:** `DEC-SCOPE-153`. **No migration.** API §12BU; RBAC §2.79. These numbers are provisional until merge, as with earlier items.
 - **Branch:** `feature/upc-018` from `origin/main` @ `365fdd97`.
 - **Dependencies:** upc-003 (University Master, scope) and upc-017 (course master) are both merged. upc-019 (commission ledger) is **not
   built**, so F10/F11 (Commission Expected / Received) are not in this item. upc-019 adds them behind `strip_commission`.
@@ -114,7 +114,7 @@ current IST date.
 2. `partnership_metrics.period` parsing plus the `api/partnership_performance.py` routes and schemas: RED role/scope/order/422/404
    tests, then GREEN. Register the router in `main.py`.
 3. Web: lib, `PartnershipFunnel`, the two pages, the university card and the nav, with vitest first.
-4. Playwright e2e. Docs: DEC-SCOPE-152, API §12BT, RBAC §2.78, SCREEN_CATALOG and the backlog status.
+4. Playwright e2e. Docs: DEC-SCOPE-153, API §12BU, RBAC §2.79, SCREEN_CATALOG and the backlog status.
 
 ## 10. Phase 3 reviews (applied above)
 

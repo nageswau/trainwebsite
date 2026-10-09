@@ -84,6 +84,8 @@ from app.models import (
     UNIVERSITY_RELATIONSHIPS,
 )
 from app.notifications.phone import normalise_phone
+from app.partnership_event_kinds import KINDS as EVENT_KINDS
+from app.partnership_event_kinds import MAX_EMPLOYEES as EVENT_MAX_EMPLOYEES
 from app.partnership_meeting_types import MAX_CONTACTS as MEETING_MAX_CONTACTS
 from app.partnership_meeting_types import MAX_EMPLOYEES as MEETING_MAX_EMPLOYEES
 from app.partnership_meeting_types import MODES as MEETING_MODES
@@ -7322,6 +7324,22 @@ class VisitPermissions(BaseModel):
     can_close: bool
 
 
+class CalendarItemRef(BaseModel):
+    """upc-011 (CL10/CL11): which calendar item another one overlaps."""
+
+    source: Literal["meeting", "visit", "event"]
+    id: UUID
+    code: str
+    title: str
+
+
+class CalendarOverlap(BaseModel):
+    """upc-011 (CL10): `employee` is on both this item and `item`, whose times intersect. A warning, never a refusal."""
+
+    employee: VisitPerson
+    item: CalendarItemRef
+
+
 class UniversityVisitRow(BaseModel):
     id: UUID
     code: str
@@ -7354,6 +7372,7 @@ class UniversityVisitOut(UniversityVisitRow):
     events: list[VisitEventOut]
     permissions: VisitPermissions
     editable_fields: list[str]
+    overlaps: list[CalendarOverlap] = []  # upc-011 CL11
     created_at: datetime
     updated_at: datetime
 
@@ -7646,6 +7665,7 @@ class UniversityMeetingOut(UniversityMeetingRow):
     events: list[MeetingEventOut]
     follow_ups: list[MeetingFollowUp]
     permissions: MeetingPermissions
+    overlaps: list[CalendarOverlap] = []  # upc-011 CL11
     created_at: datetime
     updated_at: datetime
 
@@ -7667,6 +7687,116 @@ class UniversityMeetingPage(BaseModel):
     limit: int
     offset: int
     counts: MeetingCounts
+
+
+# --- upc-011 (DEC-SCOPE-152, spec §1-§3): partnership events and the §9 calendar. Limits per CL2-CL6 -------------------------------
+PartnershipEventKind = Literal[EVENT_KINDS]
+EventTitle = _university_str(200, required=True)
+EventLocation = _university_str(200)
+EventNotes = _university_str(2000, multiline=True)
+EventReason = _university_str(1000, required=True, multiline=True)
+EventEmployees = Annotated[list[UUID], Field(max_length=EVENT_MAX_EMPLOYEES), AfterValidator(_unique_ids)]
+
+
+class PartnershipEventIn(BaseModel):
+    """CL2-CL5: `owner_user_id` defaults to the caller; the dates, university, owner and employees are checked in the service."""
+
+    model_config = ConfigDict(extra="forbid")
+    kind: PartnershipEventKind
+    title: EventTitle
+    university_id: UUID | None = None
+    starts_on: date
+    ends_on: date
+    location: EventLocation = None
+    notes: EventNotes = None
+    owner_user_id: UUID | None = None
+    participant_user_ids: EventEmployees = []
+
+
+class PartnershipEventUpdate(BaseModel):
+    """Edit a scheduled event: omitted = unchanged; null clears an optional field and fails a required one (the service)."""
+
+    model_config = ConfigDict(extra="forbid")
+    kind: PartnershipEventKind = None
+    title: EventTitle = None
+    university_id: UUID | None = None
+    starts_on: date = None
+    ends_on: date = None
+    location: EventLocation = None
+    notes: EventNotes = None
+    owner_user_id: UUID = None
+    participant_user_ids: EventEmployees = None
+
+
+class PartnershipEventCancel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: EventReason
+
+
+class EventUniversityRef(BaseModel):
+    id: UUID
+    name: str
+
+
+class PartnershipEventPermissions(BaseModel):
+    can_edit: bool
+    can_cancel: bool
+
+
+class PartnershipEventOut(BaseModel):
+    id: UUID
+    code: str
+    kind: str
+    title: str
+    university: EventUniversityRef | None
+    starts_on: date
+    ends_on: date
+    location: str | None
+    notes: str | None
+    status: str
+    owner: VisitPerson
+    created_by: VisitPerson
+    participants: list[VisitPerson]
+    cancelled_at: datetime | None
+    cancel_reason: str | None
+    overlaps: list[CalendarOverlap]
+    permissions: PartnershipEventPermissions
+    created_at: datetime
+    updated_at: datetime
+
+
+class PartnershipEventEnvelope(BaseModel):
+    event: PartnershipEventOut
+
+
+class CalendarItem(BaseModel):
+    """CL1: one of the eight §9 kinds. `starts_at` only for meetings (a 60-minute slot, CL10); visits and events are whole days."""
+
+    source: Literal["meeting", "visit", "event"]
+    kind: str
+    id: UUID
+    code: str
+    title: str
+    starts_on: date
+    ends_on: date
+    starts_at: datetime | None
+    status: str
+    university: EventUniversityRef | None
+    people: list[VisitPerson]
+    overlaps: list[CalendarOverlap]
+
+
+class PartnershipCalendarOut(BaseModel):
+    date_from: date
+    date_to: date
+    today: date
+    employee: VisitPerson | None
+    truncated: bool
+    items: list[CalendarItem]
+
+
+class CalendarEmployeesOut(BaseModel):
+    items: list[VisitPerson]
 
 
 # --- rec-006 (DEC-SCOPE-119): the recruiter Skills Master ------------------------------------------------------------------------
@@ -9311,7 +9441,7 @@ class CandidateSearch(BaseModel):
         return self
 
 
-# upc-018 (DEC-SCOPE-152, spec §4): the §17 funnel / §18 performance. Counts only -- the explicit fields keep any student identifier
+# upc-018 (DEC-SCOPE-153, spec §4): the §17 funnel / §18 performance. Counts only -- the explicit fields keep any student identifier
 # or commission figure out (PF9, PF10). A not-tracked step (U8) is null.
 class PerformanceStep(BaseModel):
     key: str

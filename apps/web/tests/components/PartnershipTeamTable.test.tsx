@@ -25,10 +25,11 @@ describe("PartnershipTeamTable (upc-001 AC4)", () => {
 });
 
 describe("PartnershipMenuCard (upc-001 PU8)", () => {
-  it("lists the 6 areas still to come (13 of the 19 are live, incl. upc-021 Targets & Forecast and upc-018 Student Opportunities + University Performance), as text with no links", () => {
+  it("lists the 5 areas still to come (14 of the 19 are live, incl. upc-009 Meetings, upc-011 Calendar, upc-018 Student Opportunities + University Performance, upc-016 Commercial Terms and upc-021 Targets & Forecast), as text with no links", () => {
     render(<PartnershipMenuCard />);
     const items = screen.getAllByRole("listitem");
-    expect(items).toHaveLength(6);
+    expect(items).toHaveLength(5);
+    expect(items.some((i) => i.textContent?.includes("Calendar"))).toBe(false);
     expect(items.some((i) => i.textContent?.includes("University Performance"))).toBe(false);
     expect(items.some((i) => i.textContent?.includes("Targets & Forecast"))).toBe(false);
     expect(items.some((i) => i.textContent?.includes("University Master"))).toBe(false);

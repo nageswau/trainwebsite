@@ -29,10 +29,12 @@ from app.models import (
     User,
 )
 from app.schemas import UniversityMeetingComplete, UniversityMeetingIn, UniversityMeetingUpdate
+from app.services import partnership_calendar as calendar
 from app.services import partnership_pipeline as pipeline
 from app.services import partnership_tasks as tasks
 from app.services import partnership_universities as unis
 from app.services import university_visits as visits
+from app.services.bdm_appointments import IST
 from app.services.bdm_travel import india_today
 from app.services.partnership import partnership_context
 from app.services.recruiter_meetings import check_time, field_error
@@ -365,6 +367,8 @@ async def detail_out(db: AsyncSession, user: User, meeting_id: UUID, now: dateti
         .where(PartnershipTask.rule.in_((f"meeting:{m.id}", f"meeting:{m.id}:next"))).order_by(PartnershipTask.due_on, PartnershipTask.id)
     )).all()  # fmt: skip
     can_change = m.status == "scheduled" and is_actor(user, m)
+    when = m.starts_at.astimezone(IST).date()
+    overlaps = await calendar.overlaps_for(db, "meeting", m.id, when, when, {m.responsible_user_id, *(u.id for u in employees)})  # upc-011 CL11
     return {
         **row_out(m, uni, country, responsible),
         **{k: getattr(m, k) for k in ("location", "meeting_url", "agenda", "notes", "discussion_points", "decisions", "next_action", "next_action_due_on",
@@ -375,6 +379,7 @@ async def detail_out(db: AsyncSession, user: User, meeting_id: UUID, now: dateti
         "events": [{"event": e.event, "old_starts_at": e.old_starts_at, "new_starts_at": e.new_starts_at, "reason": e.reason, "actor": person_ref(a), "created_at": e.created_at} for e, a in events],
         "follow_ups": [{"id": t.id, "title": t.title, "due_on": t.due_on, "status": t.status, "assignee": person_ref(a)} for t, a in follow_ups],
         "permissions": {"can_edit": can_change, "can_complete": can_change and m.starts_at <= now, "can_cancel": can_change},
+        "overlaps": overlaps,
     }  # fmt: skip
 
 

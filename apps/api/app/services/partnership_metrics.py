@@ -126,7 +126,7 @@ async def target_actuals(db: AsyncSession, manager_ids: list[UUID], month: date)
     return {m: {k: len(found[m][k]) for k in TRACKED} for m in managers}
 
 
-# --- upc-018 (DEC-SCOPE-152, spec PF1-PF4): the §17 student funnel / §18 university performance, Appendix B F1-F9 ---
+# --- upc-018 (DEC-SCOPE-153, spec PF1-PF4): the §17 student funnel / §18 university performance, Appendix B F1-F9 ---
 # Each step counts in the period it was *reached* (Appendix B is event-based), per university, for every application owner (agency,
 # self-service, School-bridged). Counts only: no student is identified (PF10). Commission (F10/F11) is upc-019's.
 

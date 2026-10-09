@@ -2333,9 +2333,36 @@ candidate outside the pool `404`; archived `409` "Restore this candidate first";
 |---|---|
 | `POST /recruiter/candidates/search?limit=&offset=` | **Body** (unknown keys → `422`): `all: [skill]` (every one), `any: [[skill]]` (at least one of each group), `verified_only`, `experience_min_months`/`experience_max_months` (0–600), `location`, `qualification` (≤ 120, substring), `availability: [immediate\|d15\|d30\|d31_59\|d60_plus]`, `salary_min`/`salary_max` (INR/year, ≥ 0), `source_id`, `status`. 1–20 terms, ≤ 5 groups of 1–10, min ≤ max — else `422` (one sentence). A term that is no active skill name or alias → `422 {message, code: "unknown_skill", term, suggestions}`. Each term also matches the skill's related skills. **→ 200** `{items, total, limit, offset, facets: {experience: [{key, count}], location: [{value, count}], availability: [{key, count}]}, terms: [{term, skill: {id, name}, also: [name]}]}`; item = `id, candidate_code, name, preferred_role, current_company, experience_months, location, notice_days, expected_salary, source {id, name, active}, source_detail, status, skills: [{name, level, status, matched}]` — never mobile or email. Location facet values: a location, `"__other__"`, or `null` (not recorded). Newest first; `limit` ≤ 100 (default 50). Read only; logged as `candidate_search` with counts, never the text |
 
-## 12BT. Student opportunity funnel + university performance (`upc-018`) — addendum, 2026-10-09
+## 12BT. Partnership calendar and events (`upc-011`) — addendum, 2026-10-09
 
-- **Basis:** `DEC-SCOPE-152` (PF1–PF10). Spec: `docs/superpowers/specs/2026-10-09-upc-018-student-funnel-performance-design.md` §4.
+- **Basis:** `DEC-SCOPE-152` (CL1–CL14, Q-14). Design spec `docs/superpowers/specs/2026-10-09-upc-011-partnership-calendar-design.md` §3. Migration `0136`.
+- **Common rules:** readers are `partnership_manager` (with a profile), `partnership_head` and `super_admin`; every other role → `403`
+  before anything is read. A missing event → `404` "Event not found". Event writes lock the event, then check the actor (the owner or the
+  creator; otherwise `403`, logged with ids only), then the state (`409` "This event was cancelled"), then validation (`422`, on the body
+  field). Bodies refuse unknown keys. Audit `partnership_event.{create,update,cancel}` with ids, code, kind, counts and field names (never
+  title, notes or reason).
+- **Overlap (`CalendarOverlap`):** `{employee {id, full_name, active}, item {source (meeting|visit|event), id, code, title}}` — the same
+  employee on two items whose times intersect (a visit = its whole IST day, confirmed else proposed date; an event = its whole days; a
+  meeting = 60 minutes from its start). Cancelled meetings and events and visits closed before they happened are ignored. Warning only.
+- **Event item (`{event}` envelope):** `{id, code (PEV-000001), kind (conference|education_fair|partner_meeting|mou_signing|webinar|
+  university_presentation), title, university {id, name}|null, starts_on, ends_on, location, notes, status (scheduled|cancelled), owner,
+  created_by, participants [person], cancelled_at, cancel_reason, overlaps [CalendarOverlap], permissions {can_edit, can_cancel},
+  created_at, updated_at}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/calendar` | `date_from`, `date_to` (inclusive IST dates; from ≤ to and ≤ 31 days, else `422`), `user_id?`. Without `user_id`: a manager → themselves, a head → themselves + direct reports, super_admin → everyone. `user_id` outside that set (a manager: anyone but themselves) → `404` "Employee not found". → `{date_from, date_to, today, employee|null, truncated, items [{source, kind (university_meeting|university_visit|<event kind>), id, code, title, starts_on, ends_on, starts_at (meetings only), status, university {id, name}|null, people [person], overlaps [CalendarOverlap]}]}` ordered by start; ≤ 500 rows per source (`truncated`). Overlaps are listed for the people in that set |
+| `GET /partnership/calendar/employees` | `{items: [person]}` — the people the caller may choose (a manager: themselves) |
+| `POST /partnership/events` | Managers and heads. `{kind, title (1–200), university_id?, starts_on, ends_on, location? (≤ 200), notes? (≤ 2000), owner_user_id?, participant_user_ids? (≤ 10)}` → `201`. A date before today (IST), an end before the start, or more than 31 days → `422`; an unknown or inactive university → `422`; an owner other than the caller or (for a head) an active direct report → `422`; an employee who is not active partnership staff, or is the owner → `422`. Not idempotent |
+| `GET /partnership/events/{id}` | The item |
+| `PATCH /partnership/events/{id}` | Scheduled only. Any create field; a changed date must be today or later; a sent null kind / title / date / owner → `422` |
+| `POST /partnership/events/{id}/cancel` | `{reason}` (1–1000) |
+
+- **Changed (additive):** the meeting item (§12BM) and the visit item (§12AX) gain `overlaps [CalendarOverlap]` for all their people.
+
+## 12BU. Student opportunity funnel + university performance (`upc-018`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-153` (PF1–PF10). Spec: `docs/superpowers/specs/2026-10-09-upc-018-student-funnel-performance-design.md` §4.
   No migration.
 - **Readers:** the University Master's read roles: `partnership_manager` with a profile, `partnership_head`, `overseas_admin` (overseas
   division) and `super_admin`. Any other role → `403` "University master access required". Anonymous → `401`.

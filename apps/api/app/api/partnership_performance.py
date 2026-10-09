@@ -1,4 +1,4 @@
-"""upc-018 (DEC-SCOPE-152, spec §4): the §17 student opportunity funnel and the §18 university performance ranking (EVID-020).
+"""upc-018 (DEC-SCOPE-153, spec §4): the §17 student opportunity funnel and the §18 university performance ranking (EVID-020).
 
 Read-only and computed live by `services.partnership_metrics` (Appendix B F1-F9); nothing is stored or audited. The readers are the
 University Master's (PF5). The ranking covers the caller's scope (PF6: manager = primary/backup, head = team + unowned, super_admin and

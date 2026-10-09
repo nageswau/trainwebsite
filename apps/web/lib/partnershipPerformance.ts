@@ -1,4 +1,4 @@
-// upc-018 (DEC-SCOPE-152): the §17 student opportunity funnel and the §18 university performance ranking. The API counts every figure
+// upc-018 (DEC-SCOPE-153): the §17 student opportunity funnel and the §18 university performance ranking. The API counts every figure
 // and decides who reads and which universities are in scope; a null count is a step the CRM does not track (U8: Leads, Counselling,
 // Profiles eligible). Counts only -- no student is named and no commission is shown (upc-019 adds it for the commission roles).
 export type StepKey = "leads" | "counselling" | "interested" | "eligible" | "applications" | "offers" | "deposits" | "visas" | "enrolled";
