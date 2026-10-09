@@ -87,7 +87,7 @@ function OfferForm({ applicationId, offer, suggested, onSaved, onCancel }: {
       ...(v.offered_on ? { offered_on: v.offered_on } : {}), joining_date: v.joining_date || null,
     };
     if (!offer) {
-      return Object.fromEntries([["status", v.status], ...Object.entries(fields).filter(([key, value]) => value !== null || key === "position")]);
+      return { status: v.status, ...Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== null)) };
     }
     const stored: Record<string, unknown> = {
       position: offer.position, compensation: offer.compensation == null ? null : Number(offer.compensation), currency: offer.currency,

@@ -28,10 +28,6 @@ async def _today(db: AsyncSession):
     return (await db_now(db)).date()
 
 
-def _file(data: bytes, offer: JobOffer, filename: str) -> Response:
-    return Response(content=data, media_type=offer.letter_content_type or "application/octet-stream", headers={**HEADERS, "Content-Disposition": f'attachment; filename="{filename}"'})
-
-
 @router.get("/applications/{application_id}/offer")
 async def application_offer(application_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     application, job = await applications.load_scoped(db, user, application_id)
@@ -94,12 +90,17 @@ async def upload_letter(offer_id: UUID, file: UploadFile = File(...), user: User
 async def download_letter(offer_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """In the requirement's read scope only. The audit row is committed before any byte leaves (a failed commit serves nothing)."""
     offer, _application, _job = await svc.load_readable(db, user, offer_id)
+    return await _download(db, user, offer)
+
+
+async def _download(db: AsyncSession, user: User, offer: JobOffer) -> Response:
+    """The audit row is committed before any byte leaves (a failed commit serves nothing); the name is built, never the uploaded one."""
     data = svc.read_letter(offer)
     filename = await svc.letter_filename(db, offer, EXTENSION.get(offer.letter_content_type, "bin"))
     svc.audit(db, user, "letter_downloaded", offer, {"role": user.role})
     await db.commit()
-    svc.log("recruiter_offer_letter_downloaded", user, offer_id, role=user.role)
-    return _file(data, offer, filename)
+    svc.log("recruiter_offer_letter_downloaded", user, offer.id, role=user.role)
+    return Response(content=data, media_type=offer.letter_content_type or "application/octet-stream", headers={**HEADERS, "Content-Disposition": f'attachment; filename="{filename}"'})
 
 
 def _require_student(user: User) -> None:
@@ -116,9 +117,4 @@ async def my_offers(user: User = Depends(get_current_user), db: AsyncSession = D
 @student_router.get("/offers/{offer_id}/letter")
 async def my_offer_letter(offer_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require_student(user)
-    offer = await svc.student_offer(db, user, offer_id)
-    data = svc.read_letter(offer)
-    filename = await svc.letter_filename(db, offer, EXTENSION.get(offer.letter_content_type, "bin"))
-    svc.audit(db, user, "letter_downloaded", offer, {"role": user.role})
-    await db.commit()
-    return _file(data, offer, filename)
+    return await _download(db, user, await svc.student_offer(db, user, offer_id))

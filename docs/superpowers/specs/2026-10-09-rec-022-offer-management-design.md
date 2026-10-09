@@ -70,7 +70,8 @@ history and no actor names.
 - **Requirement page, candidate row:** an **Offer** toggle next to Interviews. It shows the offer (status, position, salary, dates,
   letter download or link, history) with Change status, Edit and Upload letter when the API allows them, or "No offer yet." with
   "+ Record offer" when `can_create`. Any change re-reads the candidates list, so the application's status follows (Declined → Withdrawn).
-- **Student placement-status page:** a "My offers" card (company, position, status, salary, dates, Download letter).
+- **Student placement-status page:** a "My offers" card (company, position, status, salary, dates, Download letter). It replaces the
+  portal's text-only "Offers" panel there (QA-04: the same offers were listed twice).
 - **ADM-007 offers screen** (`/it/placement/offers`): the status column shows the label. The legacy "Create offer" form stays.
 - Loading, empty, error and retry states; 422s placed on their fields; an in-flight guard on every submit (rec-020 QA-01).
 
