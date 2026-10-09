@@ -3,6 +3,7 @@
 import { ApiError, serverApi } from "@/lib/api";
 import type { Page } from "@/lib/apiErrors";
 import type { StageEvent } from "@/lib/bdmPipeline";
+import { type MilestonePage, milestonesUrl } from "@/lib/partnershipMilestones";
 import { stageHistoryUrl } from "@/lib/partnershipPipeline";
 import { type University, UNIVERSITIES_URL } from "@/lib/universities";
 
@@ -17,4 +18,9 @@ export async function loadUniversity(id: string): Promise<University> {
  * and the section offers "Try again". Call after loadUniversity has accepted the id. */
 export function firstStageHistory(id: string): Promise<Page<StageEvent> | null> {
   return serverApi<Page<StageEvent>>(stageHistoryUrl(id)).catch(() => null);
+}
+
+/** upc-008: the milestone table, read alongside the university. Never rejects, like firstStageHistory: null offers "Try again". */
+export function firstMilestones(id: string): Promise<MilestonePage | null> {
+  return serverApi<MilestonePage>(milestonesUrl(id)).catch(() => null);
 }

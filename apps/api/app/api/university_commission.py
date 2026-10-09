@@ -1,4 +1,4 @@
-"""upc-016 (DEC-SCOPE-143, spec §3): §15 commission terms of an agreement -- RESTRICTED to the commission roles (U2). An agreement's terms,
+"""upc-016 (DEC-SCOPE-144, spec §3): §15 commission terms of an agreement -- RESTRICTED to the commission roles (U2). An agreement's terms,
 add, edit, remove, and the "Commercial Terms" menu list.
 
 Every write: the read gate (403), the agreement (404), the university row FOR UPDATE then the agreement FOR UPDATE (upc-014's order), the

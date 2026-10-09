@@ -1,12 +1,16 @@
 """upc-016 -- university_commission_terms: §15 commercial / commission terms (restricted, U2).
 
-Revision ID: 0128_university_commission_terms
-Revises: 0127_university_agreements
+Revision ID: 0129_university_commission_terms
+Revises: 0128_university_milestones
 
-docs/superpowers/specs/2026-10-09-upc-016-commission-terms-design.md §2 (DEC-SCOPE-143). A new table only; no existing row changes.
+docs/superpowers/specs/2026-10-09-upc-016-commission-terms-design.md §2 (DEC-SCOPE-144). A new table only; no existing row changes.
 0001 builds a fresh database from the current models, which already carry the table, so it is created only when missing (0117's idiom).
 TRIGGERS / CURRENCIES / CHECKS repeat app.models (test_upc_016_migration). downgrade() refuses while any term exists: entered data is never
 dropped silently.
+
+Re-chained on 2026-10-09: drafted as `0128_university_commission_terms` on `0127_university_agreements`; upc-008 (`0128_university_milestones`)
+merged first. A database stamped at the draft is re-stamped with `alembic stamp --purge 0127_university_agreements`, then `upgrade head`
+(the table step is guarded).
 """
 
 import sqlalchemy as sa
@@ -14,8 +18,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0128_university_commission_terms"
-down_revision = "0127_university_agreements"
+revision = "0129_university_commission_terms"
+down_revision = "0128_university_milestones"
 branch_labels = None
 depends_on = None
 
@@ -69,5 +73,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {TERMS} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0128_university_commission_terms: commission terms exist. Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0129_university_commission_terms: commission terms exist. Remove them deliberately first.")
     op.drop_table(TERMS)

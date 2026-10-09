@@ -6918,6 +6918,7 @@ class UniversityPermissions(BaseModel):
     can_manage_documents: bool  # upc-026 DC8
     can_manage_agreements: bool  # upc-014 AG14
     can_approve_agreements: bool  # upc-014 AG6
+    can_edit_timeline: bool  # upc-008 MS10
 
 
 class UniversityRow(BaseModel):
@@ -6981,6 +6982,7 @@ class UniversityDetail(UniversityRow):
     updated_at: datetime
     pipeline: UniversityPipelineOut
     follow_up: "UniversityFollowUpOut"  # upc-020 TK14/TK15
+    expected: "UniversityExpectedOut"  # upc-008 §5
 
 
 class LinkedBdmOrganization(BaseModel):
@@ -8737,7 +8739,64 @@ class UniversityAgreementRenew(BaseModel):
     renewal_date: date | None = None
 
 
-# upc-016 (DEC-SCOPE-143): §15 commission terms (restricted). The service checks the cross-field rules on the merged row (exactly one rate,
+
+# --- upc-008 (DEC-SCOPE-143, spec §3): expected timeline + milestone tracker -------------------------------------------------------
+MilestoneKind = Literal[
+    "university_contacted", "meeting", "presentation", "proposal", "documents", "negotiation", "agreement", "signed", "onboarding",
+    "student_recruitment", "first_application", "first_admission", "active_partnership",
+]  # = partnership_milestones.MILESTONE_KEYS (test_upc_008_migration)  # fmt: skip
+MilestoneStatus = Literal["done", "in_progress", "pending", "delayed"]  # Q-11 (MS3)
+
+
+class _OneOrMore(BaseModel):
+    """A PATCH body: only the fields sent change (null clears one); an empty body is a 422."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def _not_empty(self):
+        if not self.model_fields_set:
+            raise ValueError("Send at least one field to change")
+        return self
+
+
+class UniversityMilestoneUpdate(_OneOrMore):
+    target_date: date | None = None
+    achieved_on: date | None = None  # not after today (IST), MS6: checked by the service
+
+
+class UniversityExpectedUpdate(_OneOrMore):
+    target_partnership_date: date | None = None
+    expected_intake: _university_str(80) = None
+    expected_agreement_date: date | None = None
+    expected_recruitment_start: date | None = None
+
+
+class UniversityExpectedOut(BaseModel):
+    target_partnership_date: date | None
+    expected_month: str | None  # YYYY-MM, derived (Q-10, MS8)
+    expected_quarter: str | None  # YYYY-Qn, calendar quarters, derived
+    expected_intake: str | None
+    expected_agreement_date: date | None
+    expected_recruitment_start: date | None
+
+
+class UniversityMilestoneOut(BaseModel):
+    kind: MilestoneKind
+    label: str
+    target_date: date | None
+    achieved_on: date | None
+    achieved_by: Literal["manual", "auto"] | None
+    auto_source: Literal["stage", "agreement", "application", "admission"] | None  # the event that achieves it (MS4), when it has one
+    status: MilestoneStatus
+
+
+class UniversityMilestonePage(BaseModel):
+    items: list[UniversityMilestoneOut]
+    today: date  # IST, the day statuses were computed for
+    can_edit: bool
+
+# upc-016 (DEC-SCOPE-144): §15 commission terms (restricted). The service checks the cross-field rules on the merged row (exactly one rate,
 # CM2; programmes of the agreement's university, CM5) because a PATCH carries only part of it.
 CommissionTrigger = Literal["enrolment", "visa_and_enrolment", "tuition_paid"]  # = models.COMMISSION_TRIGGERS (CM1)
 CommissionPercent = Annotated[Decimal, Field(gt=0, le=100, max_digits=5, decimal_places=2)]

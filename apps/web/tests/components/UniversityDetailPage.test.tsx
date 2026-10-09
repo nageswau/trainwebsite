@@ -8,6 +8,7 @@ import UniversityDocuments from "@/components/UniversityDocuments";
 import UniversityCalls from "@/components/UniversityCalls";
 import UniversityMessages from "@/components/UniversityMessages";
 import UniversityStagePanel from "@/components/UniversityStagePanel";
+import UniversityTimeline from "@/components/UniversityTimeline";
 import { serverApi } from "@/lib/api";
 import UniversityPage from "@/app/partnership/universities/[id]/page";
 import { elements } from "@/tests/helpers/elementTree";
@@ -19,7 +20,7 @@ const university = {
   id: ID, university_code: "UNV-000001", name: "ABC", city: "London", country: { name: "United Kingdom", region: "UK" }, active: true,
   catalogue_visible: false, course_levels: [], popular_programs: [], rankings: [], application_count: 0, overview: "",
   relationship_strength: null, linked_bdm_organizations: [], // upc-006 / upc-004 fields
-  permissions: { can_edit: true, can_assign: false, can_publish: false, can_deactivate: false, can_edit_contacts: false, can_manage_documents: true, can_move_stage: true, can_reopen: false, can_manage_agreements: true, can_approve_agreements: false },
+  permissions: { can_edit: true, can_assign: false, can_publish: false, can_deactivate: false, can_edit_contacts: false, can_manage_documents: true, can_move_stage: true, can_reopen: false, can_manage_agreements: true, can_approve_agreements: false, can_edit_timeline: true },
   pipeline: { stage: "interested", stage_label: "Interested", column: "interested", column_label: "Interested", changed_at: "2026-10-08T10:00:00Z", lost: null, stages: [] },
   follow_up: { // upc-020 TK14/TK15
     next_action: { id: "t1", title: "Follow-up call", due_on: "2026-09-18", priority: "high", band: "upcoming", assignee: { id: "p1", full_name: "Rahul", active: true } },
@@ -27,6 +28,7 @@ const university = {
   },
 };
 const history = { items: [], total: 0, limit: 20, offset: 0 };
+const milestones = { items: [], today: "2026-10-09", can_edit: true }; // upc-008
 const documents = { items: [{ id: "d1" }], total: 1, limit: 200, offset: 0 };
 const agreements = { items: [{ id: "a1" }], total: 1, limit: 50, offset: 0 }; // upc-014
 const options = { courses: [], documents: [] };
@@ -40,6 +42,7 @@ describe("upc-007 university detail page", () => {
     vi.mocked(serverApi).mockImplementation(async (p: string) => {
       if (p === "/api/v1/auth/me") return { role: "partnership_manager", full_name: "Rahul" } as never;
       if (p.includes("/stage-history")) return history as never;
+      if (p.includes("/milestones")) return milestones as never; // upc-008
       if (p.includes("/contacts")) return { items: [], total: 0, limit: 50, offset: 0 } as never; // upc-006
       if (p.includes("/partnership/visits")) return { items: [], total: 0, limit: 5, offset: 0 } as never; // upc-010
       if (p.includes("/documents")) return documents as never; // upc-026
@@ -96,11 +99,40 @@ describe("upc-007 university detail page", () => {
   });
 });
 
+describe("upc-008 university detail page", () => {
+  const expected = { target_partnership_date: "2026-11-15", expected_month: "2026-11", expected_quarter: "2026-Q4", expected_intake: null,
+    expected_agreement_date: null, expected_recruitment_start: null };
+  const serve = (milestonesRead: () => Promise<unknown>) => vi.mocked(serverApi).mockImplementation(async (p: string) => {
+    if (p === "/api/v1/auth/me") return { role: "overseas_admin", full_name: "Asha" } as never;
+    if (p.includes("/stage-history")) return history as never;
+    if (p.includes("/milestones")) return milestonesRead() as never;
+    if (p.includes("/contacts")) return { items: [], total: 0, limit: 50, offset: 0 } as never;
+    if (p.includes("/documents")) return documents as never;
+    return { university: { ...university, expected, permissions: { ...university.permissions, can_edit_timeline: false } } } as never;
+  });
+
+  it("adds the Partnership timeline for every reader, read with the university and remounted after a stage move", async () => {
+    serve(async () => milestones);
+    const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
+    expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/universities/${ID}/milestones`);
+    const timeline = tree.find((el) => el.type === UniversityTimeline)!;
+    expect(timeline.props).toEqual({ universityId: ID, expected, canEdit: false, initial: milestones });
+    expect(timeline.key).toContain(university.pipeline.changed_at); // a move into Proposal Sent auto-completes Proposal (MS4)
+  });
+
+  it("a failed milestones read still shows the page, with Try again in the section", async () => {
+    serve(async () => { throw new Error("down"); });
+    const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
+    expect(tree.find((el) => el.type === UniversityTimeline)!.props.initial).toBeNull();
+  });
+});
+
 describe("upc-012 university detail page", () => {
   const contact = { id: "K1", name: "Priya Raman", phone: null, whatsapp: "+91 98450 00000", email: "p@abc.ac.uk", whatsapp_to: "919845000000" };
   const serve = (role: string, canEditContacts: boolean) => vi.mocked(serverApi).mockImplementation(async (p: string) => {
     if (p === "/api/v1/auth/me") return { role, full_name: "Rahul" } as never;
     if (p.includes("/stage-history")) return history as never;
+    if (p.includes("/milestones")) return milestones as never; // upc-008
     if (p.includes("/contacts")) return { items: [contact], total: 1, limit: 50, offset: 0 } as never;
     if (p.includes("/partnership/visits")) return { items: [], total: 0, limit: 5, offset: 0 } as never;
     return { university: { ...university, permissions: { ...university.permissions, can_edit_contacts: canEditContacts } } } as never;

@@ -1,4 +1,4 @@
-"""upc-016 -- commercial / commission terms, restricted (spec §1-§5; AC1, AC2, P1, N1, E1; DEC-SCOPE-143 CM1-CM15)."""
+"""upc-016 -- commercial / commission terms, restricted (spec §1-§5; AC1, AC2, P1, N1, E1; DEC-SCOPE-144 CM1-CM15)."""
 
 import uuid
 from types import SimpleNamespace

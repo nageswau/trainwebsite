@@ -2,7 +2,7 @@
 
 **Status:** design written 2026-10-09. The owner's standing instruction for this session is "proceed with the recommended answers;
 ask only if genuinely blocking". So Q-18, Q-19 and the item answers CM1–CM15 (§1) are **recommended defaults accepted under that
-instruction** (`NEEDS_CONFIRMATION` as separate per-question approvals) and are registered that way in `DEC-SCOPE-143`.
+instruction** (`NEEDS_CONFIRMATION` as separate per-question approvals) and are registered that way in `DEC-SCOPE-144`.
 
 **Branch:** `feature/upc-016`, cut from `origin/main` @ `7ba4cb36`.
 **Backlog:** `docs/delivery/UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §4 upc-016. Dependency upc-014 (`0127`, `DEC-SCOPE-142`, PR #187) is merged
@@ -10,7 +10,8 @@ on main — verified in code (`UniversityAgreement`, `services/university_agreem
 **Source:** `EVID-020` §15 (lines 515–543: 9 terms, the example trigger "visa approval + student enrolment", "Finance manages receipts"),
 §32 menu "💰 Commercial Terms" (1080), line 1129 "Commissions should not be seen by anyone." + U2 (visibility) + U4 (universities pay
 EduSphere).
-**Numbering:** migration `0128_university_commission_terms`, `DEC-SCOPE-143`, API §12BK, RBAC §2.69.
+**Numbering:** migration `0129_university_commission_terms`, `DEC-SCOPE-144`, API §12BL, RBAC §2.70 (drafted as `0128` / `DEC-SCOPE-143` /
+§12BK / §2.69; renumbered on merging `main` @ `52646217` (upc-008), which took those).
 **Gate:** `APPROVAL_GATES.md` GATE-09.
 
 ## 1. Decisions (recommended defaults)
@@ -33,7 +34,7 @@ EduSphere).
 | CM14 | Menu page | `/partnership/commercial-terms`: every term (newest first) with its agreement and university, filtered by trigger, currency and MoU-number/university search, paged 50. Live in the manager and head sidebars |
 | CM15 | Concurrency | Writes lock university → agreement → term rows (upc-014 order); last write wins for a PATCH; the 20-term cap is checked under the agreement lock |
 
-## 2. Data model — migration `0128_university_commission_terms`
+## 2. Data model — migration `0129_university_commission_terms`
 
 `university_commission_terms`: id, agreement_id FK `university_agreements` RESTRICT, commission_percent Numeric(5,2)?, fixed_amount
 Numeric(12,2)?, currency String(3), conditions Text?, course_ids JSON, country_ids JSON, payment_timeline String(500)?, trigger
@@ -84,7 +85,7 @@ this agreement only — no IDOR through the URL) → 422 values → 409 cap.
 2. `strip_commission` unit tests → code; routes tests (create/read/validation, access per role, freeze, delete, cap, renewal copy, menu,
    agreement payload embedding) → service + routes.
 3. Frontend lib + form + section + menu page + nav, vitest.
-4. Playwright `upc-016-commission-terms.spec.ts`; docs (DEC-SCOPE-143, API §12BK, RBAC §2.69, DATA_MODEL, SCREEN_CATALOG, backlog).
+4. Playwright `upc-016-commission-terms.spec.ts`; docs (DEC-SCOPE-144, API §12BL, RBAC §2.70, DATA_MODEL, SCREEN_CATALOG, backlog).
 
 ## 7. Regression set (lite)
 

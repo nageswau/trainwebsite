@@ -32,6 +32,7 @@ from app.bdm_stages import MANUAL_STAGES as BDM_MANUAL_STAGES
 from app.core.identifiers import normalize_key
 from app.lead_stages import STAGES as LEAD_STAGES
 from app.notifications.phone import normalise_phone
+from app.partnership_milestones import MILESTONE_KEYS as UNIVERSITY_MILESTONE_KEYS
 from app.partnership_stages import FIRST_STAGE as UNIVERSITY_FIRST_STAGE
 from app.partnership_stages import STAGE_KEYS as UNIVERSITY_STAGE_KEYS
 from app.partnership_task_rules import KINDS as PARTNERSHIP_TASK_KINDS
@@ -926,6 +927,11 @@ class University(Base, TimestampMixin):
     lost_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     lost_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     relationship_strength: Mapped[str | None] = mapped_column(String(12), nullable=True)  # upc-006 CT11: set by hand (CT1)
+    # upc-008 (§5, MS8/MS9): the expected timeline. Expected month and quarter are derived from target_partnership_date (Q-10).
+    target_partnership_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    expected_intake: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    expected_agreement_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    expected_recruitment_start: Mapped[date | None] = mapped_column(Date, nullable=True)
     country = relationship("Country")
 
     @validates("name")
@@ -991,6 +997,26 @@ class UniversityImportBatch(Base, TimestampMixin):
     duplicate_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     invalid_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     results_json: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+
+
+UNIVERSITY_MILESTONE_CHECKS = {"ck_university_milestones_kind": _one_of("kind", UNIVERSITY_MILESTONE_KEYS, nullable=False)}
+
+
+class UniversityMilestone(Base, TimestampMixin):
+    """upc-008 (DEC-SCOPE-143, MS2): a university's recorded dates for one §6 milestone. Sparse: a row exists only once a date was
+    recorded (the catalogue is the template). Status is never stored (Q-11, computed by services/partnership_milestones)."""
+
+    __tablename__ = "university_milestones"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_MILESTONE_CHECKS.items()),
+        UniqueConstraint("university_id", "kind", name="uq_university_milestones_kind"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"))
+    kind: Mapped[str] = mapped_column(String(40))
+    target_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    achieved_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
 
 
 class UniversityStageHistory(Base):
@@ -4597,7 +4623,7 @@ class UniversityAgreementEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-# upc-016 (DEC-SCOPE-143, spec §2): §15 commercial / commission terms -- what a university pays EduSphere under one agreement, optionally
+# upc-016 (DEC-SCOPE-144, spec §2): §15 commercial / commission terms -- what a university pays EduSphere under one agreement, optionally
 # for some programmes / student countries (CM5). RESTRICTED (U2): only `partnership_access.COMMISSION_ROLES` ever see a row. Exactly one
 # rate per term, % or fixed (CM2); the currency list is the project's (CM3); the triggers answer Q-19 (CM1). Migration 0128 repeats
 # these; test_upc_016_migration keeps them identical.

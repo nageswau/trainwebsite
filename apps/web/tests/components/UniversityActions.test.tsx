@@ -12,6 +12,7 @@ const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), 
 const all = {
   can_edit: true, can_assign: true, can_publish: true, can_deactivate: true, can_edit_contacts: true, can_manage_documents: true, can_move_stage: true, can_reopen: true,
   can_manage_agreements: true, can_approve_agreements: true, // upc-014
+  can_edit_timeline: true, // upc-008
 };
 const uni = (over: Partial<University> = {}) => ({ id: "u1", name: "ABC", active: true, catalogue_visible: false, application_count: 0, permissions: all,
   primary_manager: null, backup_manager: null, ...over }) as University;

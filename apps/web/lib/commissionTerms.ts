@@ -1,4 +1,4 @@
-// upc-016 (DEC-SCOPE-143): §15 commercial / commission terms -- RESTRICTED (U2). Types, words, URLs and the menu list's query helpers.
+// upc-016 (DEC-SCOPE-144): §15 commercial / commission terms -- RESTRICTED (U2). Types, words, URLs and the menu list's query helpers.
 // The API is the gate: it answers 403 to every non-commission role and leaves `commission_terms` out of their agreements. Nothing here
 // filters for security.
 import type { ManagerRef } from "@/lib/telecaller";

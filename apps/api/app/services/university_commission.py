@@ -1,4 +1,4 @@
-"""upc-016 (DEC-SCOPE-143, spec §1-§3): §15 commercial / commission terms of a university agreement -- RESTRICTED (U2, line 1129).
+"""upc-016 (DEC-SCOPE-144, spec §1-§3): §15 commercial / commission terms of a university agreement -- RESTRICTED (U2, line 1129).
 
 Functions only; nothing here commits -- the route owns the transaction. It imports nothing from `university_agreements` (that module embeds
 the terms in every agreement payload, CM12), so the agreement's freeze rule (CM9) is applied by the route.

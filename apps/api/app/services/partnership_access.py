@@ -1,5 +1,5 @@
 """upc-001 (DEC-SCOPE-118 PU9, backlog U2): who may see university commission data -- terms, per-course commission, expected and
-received, and the commission search filter. Every other role gets those fields stripped server-side. upc-016 (DEC-SCOPE-143 CM12) adds
+received, and the commission search filter. Every other role gets those fields stripped server-side. upc-016 (DEC-SCOPE-144 CM12) adds
 `strip_commission` with the fields it owns (upc-017 adds the course `commission`), and Management M3 adds the `partner` role here when that
 role exists."""
 
