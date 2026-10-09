@@ -2033,6 +2033,35 @@ can_complete, can_follow_up, can_close}, editable_fields, created_at, updated_at
 | `POST /recruiter/candidates/{id}/skills/{sid}/status` | `{status}` → item. `verified` / `assessed` set `verified_by` and `verified_at` (the caller, now); `claimed` clears them (AC3). The same status → `409`. The backlog named this route `…/verify`; it is `…/status` because it also sets `claimed` and `assessed` |
 | `POST /recruiter/skills/{id}/merge` | Skills Master writers only (placement manager, super_admin; recruiters `403`). `{into_skill_id}` → the kept skill (the §12AM skill item). This skill (active or not) is merged into an active one: candidate skills move (a candidate with both keeps the stronger status, the kept skill's row on a tie), requirement skills (`job_skills.skill_id`) move, aliases move, related links are re-made on the kept skill, this skill is **deleted** and its name becomes an alias of the kept one. **Refusals:** into itself → `422`; unknown or inactive target → `422` "Choose an active skill to merge into"; unknown skill → `404`. Audit `recruiter.skill_merge` (the merged id and name, counts) |
 
+## 12BF. Partnership tasks + follow-ups (`upc-020`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-138` (TK1–TK16, Q-22). Design spec `docs/superpowers/specs/2026-10-09-upc-020-partnership-tasks-design.md` §3. Migration `0123`.
+- **Common rules:** readers are `partnership_manager` (with a profile), `partnership_head` and `super_admin`; every other role → `403`
+  before anything is read. A missing task → `404` "Task not found". Writes lock the task, then check the actor (the assignee or their
+  reporting head; otherwise `403`, logged with ids only), then the state (`409` "This task is already done" / "This task was cancelled"),
+  then validation (`422`). Bodies refuse unknown keys. Each write adds an audit row `partnership_task.{create,update,reschedule,complete,
+  cancel,auto_create}` with ids, kind, source, rule and field names (never title, notes or reason).
+- **Item (`{task}` envelope):** `{id, university {id, university_code, name}, kind (follow_up|task), title, notes, due_on, priority
+  (high|medium|low), status (open|done|cancelled), band (overdue|today|tomorrow|upcoming|done|cancelled, IST), overdue, source
+  (manual|stage|visit|meeting|agreement), assignee, created_by, completed_at, cancelled_at, cancel_reason, created_at, updated_at,
+  permissions {can_edit, can_reschedule, can_complete, can_cancel}}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/tasks` | `band` (default `today`; also `open`), `assignee` (`me` / `team` / user id; `team` = a head and their direct reports), `university_id`, `kind`, `limit`, `offset` → `{items, total, limit, offset, today, counts {overdue, today, tomorrow, upcoming, done, cancelled}}`. Counts use every filter but the band. Open bands order by due date, priority, creation; done / cancelled newest first. Unknown values → `422` |
+| `GET /partnership/tasks/catalogue` | `{titles}`: §19's twelve titles in source order |
+| `POST /partnership/tasks` | Managers and heads. `{university_id, kind, title (1–200), due_on, priority?, assignee_user_id?, notes? (≤ 2000)}` → `201`. Unknown university `422`; outside the edit scope `403`; inactive `409`; assignee not the caller or (for a head) an active direct report `422`; past due date `422`; 200 manual tasks per creator per IST day `409`. Not idempotent |
+| `PATCH /partnership/tasks/{id}` | `{title?, priority?, assignee_user_id?, notes?}`; a null title / priority / assignee `422`; `due_on` is refused (use reschedule) |
+| `POST /partnership/tasks/{id}/reschedule` | `{due_on}`, today or later (IST) |
+| `POST /partnership/tasks/{id}/complete` | No body; a second call `409` |
+| `POST /partnership/tasks/{id}/cancel` | `{reason}` (1–500) |
+
+- **Changed:** `POST /partnership/universities/{id}/stage` creates the new stage's Q-22 task in the same transaction (skipped when one is
+  already open, or nobody can be assigned); `POST /partnership/visits/{id}/complete` creates "Follow up after visit"; `PATCH
+  /partnership/visits/{id}` with a new `follow_up_date` moves that open task. `GET /partnership/universities/{id}` (and every
+  `UniversityEnvelope`) gains `follow_up {next_action {id, title, due_on, priority, band, assignee} | null, last_action {title, at} |
+  null}`.
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

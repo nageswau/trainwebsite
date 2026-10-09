@@ -3276,6 +3276,23 @@ Design spec `docs/superpowers/specs/2026-10-08-upc-010-university-visits-design.
 - **Route:** `/partnership/universities/[id]` gains a **Visits** section (latest 5, "Plan a visit", "All N visits") for the partnership
   roles and super admin. **Responsive:** tables become labelled cards; no side-scroll at 390 px.
 
+## upc-020 addendum (2026-10-09, `DEC-SCOPE-138`) — Follow-ups & tasks
+
+Design spec `docs/superpowers/specs/2026-10-09-upc-020-partnership-tasks-design.md` §4. Visual-reference mapping: None — not inspected. Do not claim parity.
+
+- **Route:** `/partnership/tasks` — §20 band tabs with counts (Overdue, Due today, Due tomorrow, Upcoming, Done, Cancelled; Due today
+  first), a "Show" filter (manager: My items / Everyone; head: My items / My team / Everyone; super admin: everyone), "Add follow-up or
+  task" for managers and heads, the list and URL paging. Each item: title, band / kind / priority badges in words, due date, university
+  link, owner, source ("Added by hand", "Auto: stage change", "Auto: university visit"), notes; Done, Reschedule (inline date), Edit,
+  Cancel task (reason) per `permissions`. **States:** loading, "Nothing due today." (per band), past-the-end, "Unable to load
+  follow-ups." + Retry, session ended → sign in; a non-reader gets the access card.
+- **Form:** university (fixed or a search picker), kind, title with §19's twelve titles as suggestions, due date (IST), priority, assign
+  to (heads), notes. Required-field errors before sending; a `422` under its field; Escape cancels and returns focus.
+- **Route:** `/partnership/universities/[id]` gains **Follow-ups & tasks**: Last action, Next action, Date (+ band), Owner, Priority (the
+  §20 XYZ layout) for every reader; the open items and "Add follow-up or task" for task readers (refreshed after a stage move).
+- **Nav:** the manager menu's Follow-ups & Tasks goes live; the head and super admin navs gain it. **Responsive:** single column, no
+  side-scroll at 390 px.
+
 ## rec-024 addendum (2026-10-08, `DEC-SCOPE-131`) — Recruiter follow-ups
 
 Design spec `docs/superpowers/specs/2026-10-08-rec-024-recruiter-follow-ups-design.md` §4.

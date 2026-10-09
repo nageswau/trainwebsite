@@ -1598,3 +1598,12 @@ history notes.
 - Rows are hard-deleted on remove (audited). The skill merge (SK7) re-points rows to the kept skill and deletes the loser of a clash
   before it deletes the merged skill, so no row ever points at a deleted skill. The merge also re-points `job_skills.skill_id`.
 - `downgrade()` refuses while any row exists.
+
+**Addendum, 2026-10-09 (`upc-020`, `DEC-SCOPE-138` — Partnership tasks + follow-ups):** `partnership_tasks` (FK `universities`
+RESTRICT; `kind` CHECK follow_up / task; `title` ≤ 200; `notes` ≤ 2000; `assignee_user_id`, `created_by_user_id` FK `users` RESTRICT;
+`due_on`; `priority` CHECK high / medium / low default medium; `status` CHECK open / done / cancelled; `source` CHECK manual / stage /
+meeting / visit / agreement; `rule` (`stage:<key>` / `visit:<id>`, NULL exactly when manual); `completed_at` / `cancelled_at` set exactly
+in their status; `cancel_reason` only when cancelled; timestamps). Indexes `(assignee_user_id, status, due_on)`, `(university_id,
+status, due_on)` and the partial unique `uq_partnership_tasks_open_rule (university_id, rule) WHERE status = 'open' AND rule IS NOT NULL`
+(one open auto-task per rule, TK7). No backfill. **Migration `0123_partnership_tasks`**; `downgrade()` refuses while any task exists
+(API §12BF).
