@@ -1340,7 +1340,7 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-030 — Recruiter contracts / MoU
-- **Status (2026-10-09):** built on `feature/rec-030`.
+- **Status (2026-10-09):** **MERGED** to `main` as PR #208 @ `819ce385` (2026-10-09), built on `feature/rec-030`.
   - `DEC-SCOPE-156` (CT1–CT10 recommended defaults, UNVERIFIED).
   - Migration `0139_recruiter_contracts`, API §12BX, RBAC §2.82. It was drafted as 0137 / 153 / §12BU / §2.79; upc-018, rec-014 and rec-022
     merged first.

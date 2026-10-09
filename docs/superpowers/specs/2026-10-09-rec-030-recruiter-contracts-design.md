@@ -4,8 +4,8 @@
   7 statuses) and §3 (Existing Agreement, MoU/Contract Status, Payment/Commercial Terms). `DERIVED_BLUEPRINT`, in scope by R1.
 - **Dependency:** rec-003 (company master), merged as PR #152.
 - **Pattern:** bdm-005 `bdm_mous` (clone; R9 "contracts follow the BDM MoU pattern").
-- **Decision:** DEC-SCOPE-156, migration `0139_recruiter_contracts`, API §12BX, RBAC §2.82 (to be re-checked on `origin/main` before
-  merge).
+- **Decision:** DEC-SCOPE-156, migration `0139_recruiter_contracts`, API §12BX, RBAC §2.82. Merged to `main` as PR #208 @ `819ce385`
+  (2026-10-09).
 - **Answers:** the owner said "proceed with recommended answers". CT1–CT10 below are the recommended defaults. They are
   **UNVERIFIED** until the owner confirms them.
 
