@@ -1,9 +1,9 @@
 """upc-017 -- overseas_courses becomes the §16 course master; course_import_batches (CSV import).
 
-Revision ID: 0130_university_courses
-Revises: 0129_university_commission_terms
+Revision ID: 0131_university_courses
+Revises: 0130_university_meetings
 
-docs/superpowers/specs/2026-10-09-upc-017-course-master-design.md §2 (DEC-SCOPE-145). New nullable / defaulted columns, so every existing
+docs/superpowers/specs/2026-10-09-upc-017-course-master-design.md §2 (DEC-SCOPE-146). New nullable / defaulted columns, so every existing
 course, application, shortlist entry and commission term keeps its row and its course_id. 0001 builds a fresh database from the current
 models, which already carry them, so each step runs only when missing (0117's idiom).
 
@@ -11,6 +11,10 @@ CO5 (Q-21): the legacy `tuition_fee` / `intake` texts are parsed best effort int
 texts themselves are never changed. CURRENCIES / MONTHS / TESTS / CHECKS repeat app.models (test_upc_017_migration). downgrade() refuses
 while any course holds data only the master columns carry (the parsed tuition and intakes are re-derivable from the kept texts) or any
 import batch exists.
+
+Re-chained on 2026-10-09: drafted as `0130_university_courses` on `0129_university_commission_terms`; upc-009 (`0130_university_meetings`)
+merged first. A database stamped at the draft is re-stamped with `alembic stamp --purge 0129_university_commission_terms`, then `upgrade
+head` (every step is guarded).
 """
 
 import re
@@ -21,8 +25,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0130_university_courses"
-down_revision = "0129_university_commission_terms"
+revision = "0131_university_courses"
+down_revision = "0130_university_meetings"
 branch_labels = None
 depends_on = None
 
@@ -170,7 +174,7 @@ def downgrade() -> None:
     if not op.get_context().as_sql:
         bind = op.get_bind()
         if bind.execute(sa.text(f"SELECT 1 FROM {BATCHES} LIMIT 1")).first() or bind.execute(sa.text(f"SELECT 1 FROM {COURSES} WHERE {MASTER_ONLY} LIMIT 1")).first():
-            raise RuntimeError("Cannot downgrade 0130_university_courses: course master data exists. Export and remove it deliberately first.")
+            raise RuntimeError("Cannot downgrade 0131_university_courses: course master data exists. Export and remove it deliberately first.")
     op.drop_table(BATCHES)
     op.drop_index(INDEX, table_name=COURSES)
     for name in CHECKS:

@@ -1,4 +1,4 @@
-"""upc-017 -- course / program master (spec §1-§5; AC1, AC2, P1, N1, E1, U2; DEC-SCOPE-145 CO1-CO16)."""
+"""upc-017 -- course / program master (spec §1-§5; AC1, AC2, P1, N1, E1, U2; DEC-SCOPE-146 CO1-CO16)."""
 
 import uuid
 

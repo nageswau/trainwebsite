@@ -1727,7 +1727,18 @@ on output (Q-10), never stored.
 - Only the commission roles read the table (`partnership_access.COMMISSION_ROLES`). Rows are removable while the agreement is negotiable;
   a renewal copies them. `downgrade()` refuses while any term exists.
 
-## Course / program master (`upc-017`, `DEC-SCOPE-145`; migration `0130_university_courses`, after `0129_university_commission_terms`)
+**Addendum, 2026-10-09 (`upc-009`, `DEC-SCOPE-145` — University meetings):** `university_meeting_code_seq` (`UMT-000001`);
+`university_meetings` (`code` unique; FK `universities` RESTRICT; `contact_id` FK `university_contacts` SET NULL with the copied
+`contact_name` / `contact_designation`; `meeting_type` CHECK the 12 §7 values; `starts_at`; `mode` CHECK online / offline; `location` ≤ 200;
+`meeting_url` ≤ 500; `agenda`, `notes`, `discussion_points`, `decisions`; `next_action` ≤ 200 with `next_action_due_on` (both or neither);
+`next_meeting_date`; `responsible_user_id`, `created_by_user_id`, `completed_by_user_id` FK `users` RESTRICT; `status` CHECK scheduled /
+completed / cancelled; `completed_at` / `cancelled_at` + `cancel_reason` set exactly in their status; the outcome fields only when
+completed; timestamps; indexes `(university_id, starts_at)`, `(status, starts_at)`, `(responsible_user_id)`).
+`university_meeting_participants` (one contact — FK CASCADE — or one user per row; unique per meeting). `university_meeting_events`
+(append-only: scheduled / edited / rescheduled with old and new start / completed / cancelled with reason; `position` identity). No
+backfill. **Migration `0130_university_meetings`**; `downgrade()` refuses while any meeting exists (API §12BM).
+
+## Course / program master (`upc-017`, `DEC-SCOPE-146`; migration `0131_university_courses`, after `0130_university_meetings`)
 
 **`overseas_courses` new columns (all nullable or defaulted; existing rows, applications, shortlists and commission terms unchanged):**
 - `tuition_amount` numeric(12,2) + `tuition_currency` varchar(3), `application_fee` numeric(10,2) + `application_fee_currency` varchar(3)

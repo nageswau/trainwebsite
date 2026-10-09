@@ -32,6 +32,10 @@ from app.bdm_stages import MANUAL_STAGES as BDM_MANUAL_STAGES
 from app.core.identifiers import normalize_key
 from app.lead_stages import STAGES as LEAD_STAGES
 from app.notifications.phone import normalise_phone
+from app.partnership_meeting_types import EVENTS as UNIVERSITY_MEETING_EVENTS
+from app.partnership_meeting_types import MODES as UNIVERSITY_MEETING_MODES
+from app.partnership_meeting_types import STATUSES as UNIVERSITY_MEETING_STATUSES
+from app.partnership_meeting_types import TYPES as UNIVERSITY_MEETING_TYPES
 from app.partnership_milestones import MILESTONE_KEYS as UNIVERSITY_MILESTONE_KEYS
 from app.partnership_stages import FIRST_STAGE as UNIVERSITY_FIRST_STAGE
 from app.partnership_stages import STAGE_KEYS as UNIVERSITY_STAGE_KEYS
@@ -1212,6 +1216,104 @@ class PartnershipTask(Base, TimestampMixin):
     cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
+# upc-009 (DEC-SCOPE-145, spec §2): university meetings (§7). Migration 0130 repeats these checks (test_upc_009_migration keeps them
+# identical). The outcome fields are written only when the meeting is completed (MG10-MG12).
+UNIVERSITY_MEETING_CODE_SEQ = Sequence("university_meeting_code_seq", metadata=Base.metadata)
+UNIVERSITY_MEETING_CHECKS = {
+    "ck_university_meetings_type": _one_of("meeting_type", UNIVERSITY_MEETING_TYPES, nullable=False),
+    "ck_university_meetings_mode": _one_of("mode", UNIVERSITY_MEETING_MODES, nullable=False),
+    "ck_university_meetings_status": _one_of("status", UNIVERSITY_MEETING_STATUSES, nullable=False),
+    "ck_university_meetings_completed": "(status = 'completed') = (completed_at IS NOT NULL) AND (completed_at IS NULL) = (completed_by_user_id IS NULL)",
+    "ck_university_meetings_cancelled": "(status = 'cancelled') = (cancelled_at IS NOT NULL) AND (cancelled_at IS NULL) = (cancel_reason IS NULL)",
+    "ck_university_meetings_next_action": "(next_action IS NULL) = (next_action_due_on IS NULL)",
+    "ck_university_meetings_outcome": (
+        "status = 'completed' OR (discussion_points IS NULL AND decisions IS NULL AND next_action IS NULL AND next_meeting_date IS NULL)"
+    ),
+    "ck_university_meeting_participants_one": "(contact_id IS NULL) <> (user_id IS NULL)",
+    "ck_university_meeting_events_event": _one_of("event", UNIVERSITY_MEETING_EVENTS, nullable=False),
+}
+
+
+def _university_meeting_checks(*names: str) -> tuple[CheckConstraint, ...]:
+    return tuple(CheckConstraint(UNIVERSITY_MEETING_CHECKS[name], name=name) for name in names)
+
+
+class UniversityMeeting(Base, TimestampMixin):
+    """upc-009 (DEC-SCOPE-145): a meeting with a university (§7). Never deleted: cancelled instead. The contact person's name and
+    designation are copied when set (MG5), so the record keeps them after the contact changes or is deleted (FK SET NULL)."""
+
+    __tablename__ = "university_meetings"
+    __table_args__ = (
+        UniqueConstraint("code", name="uq_university_meetings_code"),
+        *_university_meeting_checks(
+            "ck_university_meetings_type", "ck_university_meetings_mode", "ck_university_meetings_status", "ck_university_meetings_completed",
+            "ck_university_meetings_cancelled", "ck_university_meetings_next_action", "ck_university_meetings_outcome",
+        ),
+        Index("ix_university_meetings_university_starts", "university_id", "starts_at"),
+        Index("ix_university_meetings_status_starts", "status", "starts_at"),
+        Index("ix_university_meetings_responsible", "responsible_user_id"),
+    )  # fmt: skip
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    code: Mapped[str] = mapped_column(String(20))
+    university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"))
+    contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("university_contacts.id", ondelete="SET NULL"), nullable=True)
+    contact_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    contact_designation: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    meeting_type: Mapped[str] = mapped_column(String(40))
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    mode: Mapped[str] = mapped_column(String(10))
+    location: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    meeting_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    agenda: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    discussion_points: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decisions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    next_action: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    next_action_due_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    next_meeting_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    responsible_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    status: Mapped[str] = mapped_column(String(12), default="scheduled", server_default=text("'scheduled'"))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancel_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class UniversityMeetingParticipant(Base):
+    """MG6/MG7: one university contact or one EduSphere employee per row. A deleted contact leaves the list (CASCADE: PII deletion wins)."""
+
+    __tablename__ = "university_meeting_participants"
+    __table_args__ = (
+        *_university_meeting_checks("ck_university_meeting_participants_one"),
+        UniqueConstraint("meeting_id", "contact_id", name="uq_university_meeting_participants_contact"),
+        UniqueConstraint("meeting_id", "user_id", name="uq_university_meeting_participants_user"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    meeting_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("university_meetings.id", ondelete="CASCADE"))
+    contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("university_contacts.id", ondelete="CASCADE"), nullable=True)
+    user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+
+
+class UniversityMeetingEvent(Base):
+    """MG9: one row per schedule, edit, reschedule (old and new time), completion and cancellation. Append-only; `position` orders rows."""
+
+    __tablename__ = "university_meeting_events"
+    __table_args__ = (
+        *_university_meeting_checks("ck_university_meeting_events_event"),
+        Index("ix_university_meeting_events_meeting", "meeting_id", "position"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    meeting_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("university_meetings.id", ondelete="CASCADE"))
+    event: Mapped[str] = mapped_column(String(12))
+    old_starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    new_starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 # upc-012 (DEC-SCOPE-140, spec §2): calls, WhatsApp and email stored against the university (§12, U10). Migration 0125 repeats these
 # checks (test_upc_012_migration keeps them identical). Call outcomes, directions and the duration bound are rec-025's (UC1).
 PARTNERSHIP_TEMPLATE_CHECKS = {
@@ -1295,9 +1397,9 @@ class UniversityMessage(Base, TimestampMixin):
     sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
-# upc-017 (DEC-SCOPE-145, spec §1-§2): the §16 course master extends `overseas_courses` (U6). `tuition_fee` and `intake` stay the
+# upc-017 (DEC-SCOPE-146, spec §1-§2): the §16 course master extends `overseas_courses` (U6). `tuition_fee` and `intake` stay the
 # catalogue's display texts, re-derived whenever the structured amount / months are saved (CO4, CO7). The per-course commission is
-# RESTRICTED (U2, CO2). Migration 0130 repeats these; test_upc_017_migration keeps them identical.
+# RESTRICTED (U2, CO2). Migration 0131 repeats these; test_upc_017_migration keeps them identical.
 COURSE_CURRENCIES = ("INR", "USD", "GBP", "EUR", "CAD", "AUD", "NZD")  # = COUNSELING_CURRENCIES (defined later in this module)
 COURSE_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 ENGLISH_TESTS = ("IELTS", "TOEFL", "PTE", "Duolingo", "Other")

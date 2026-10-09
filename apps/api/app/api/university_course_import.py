@@ -1,4 +1,4 @@
-"""upc-017 (DEC-SCOPE-145 CO14, spec §3): a university's course CSV import -- the template and the upload, by the university's writers (CO1).
+"""upc-017 (DEC-SCOPE-146 CO14, spec §3): a university's course CSV import -- the template and the upload, by the university's writers (CO1).
 
 The bounded read and the CSV parser are ENH-028's (`school_bulk`), the batch and replay are upc-005's (IM6): one request = one transaction
 under the university row lock; the batch keeps counts and per-row outcomes, never the file, and replays its report for a repeated

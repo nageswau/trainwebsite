@@ -1,4 +1,4 @@
-"""upc-017 (DEC-SCOPE-145, spec §1-§3): the §16 course master -- a university's courses in `overseas_courses` (U6).
+"""upc-017 (DEC-SCOPE-146, spec §1-§3): the §16 course master -- a university's courses in `overseas_courses` (U6).
 
 Functions only; nothing here commits -- the route owns the transaction.
 - read: the University Master's read roles (upc-003), every university;

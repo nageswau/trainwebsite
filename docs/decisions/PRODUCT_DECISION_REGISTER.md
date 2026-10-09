@@ -5889,14 +5889,50 @@ upc-017 adds the course `commission` to `COMMISSION_FIELDS`; upc-019 computes Ex
 `COMMISSION_ROLES` when that role exists.
 **New Feature ID authorized:** `upc-016`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-016.
 
-### DEC-SCOPE-145 — Course / program master (`upc-017`)
+### DEC-SCOPE-145 — University meetings (`upc-009`)
+
+**Evidence:** `EVID-020` §7 (L244–L312: "The Partnership Manager should be able to schedule every interaction", 19 meeting fields, 12
+meeting types); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §4 upc-009 and Q-12.
+**Status:** MG1–MG16, including **Q-12** (a meeting's "Next meeting date" creates a follow-up, not a draft meeting), are the recommended
+answers applied under the owner's standing instruction for the build session ("proceed with the recommended answers; ask only if
+genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. Migration `0130_university_meetings`, API contract
+§12BM, RBAC §2.71. Spec: `docs/superpowers/specs/2026-10-09-upc-009-university-meetings-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| MG1 | Meeting types | The 12 §7 values in source order; "University visit" / "Campus visit" are types only (the approved trip stays upc-010) |
+| MG2 | Meeting ID | `UMT-000001` from `university_meeting_code_seq` |
+| MG3 | Date and time | One `starts_at`, entered in IST; future and within 366 days at scheduling and on reschedule |
+| MG4 | Online/Offline, location, link | `online` / `offline`; location ≤ 200; link ≤ 500, `http(s)` only, typed in; an online meeting without a link is allowed with a `link_missing` warning |
+| MG5 | Contact person + designation | A contact of this university (else `422`); name and designation copied onto the meeting (FK `SET NULL`) |
+| MG6 | University participants | Contacts of this university, ≤ 20; the contact person always attends |
+| MG7 | EduSphere participants | Active partnership managers / heads other than the responsible employee, ≤ 10 |
+| MG8 | Responsible employee | A manager: themselves; a head: themselves or an active direct report |
+| MG9 | Statuses | scheduled → completed (after the start) or cancelled (reason); reschedule = a new start, recorded with old and new times |
+| MG10 | Outcome | Notes / discussion points / decisions (at least one) on completion |
+| MG11 | Next action | Needs a due date; creates a upc-020 follow-up (source `meeting`, priority high) for the responsible employee |
+| MG12 | Q-12 next meeting date | A follow-up "Schedule the next meeting" due on that date (not a draft meeting) |
+| MG13 | Stage | Scheduling → Meeting Scheduled, completing → Meeting Completed, only when earlier; never backwards, lost or inactive |
+| MG14 | Who reads | Partnership managers (with a profile), heads and super_admin read every meeting; others `403` |
+| MG15 | Who acts | Schedule: managers / heads in the university edit scope; edit / complete / cancel: the responsible employee or the scheduler |
+| MG16 | Lists | Upcoming, Awaiting outcome, Completed, Cancelled with counts; "Only my meetings"; university filter |
+
+**Consequences:**
+- `university_meetings`, `university_meeting_participants`, `university_meeting_events` (`0130`); `app/partnership_meeting_types.py`,
+  `services/university_meetings.py`, `api/university_meetings.py` (`/partnership/meetings…`); the stage moves reuse upc-014's
+  forward-only `advance_to`; upc-020 gains `on_meeting_completed` (rules `meeting:<id>` and `meeting:<id>:next`).
+- Pages `/partnership/meetings`, `/new`, `/[id]`, `/[id]/edit`; a Meetings section on `/partnership/universities/[id]`; the manager menu's
+  Meetings goes live; head and super admin nav entries.
+- **New Feature ID authorized:** `upc-009`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-009.
+
+### DEC-SCOPE-146 — Course / program master (`upc-017`)
 
 **Evidence:** `EVID-020` §16 (L545–L579: the 14 course fields; "your counselors know exactly what each partner university offers"), §32
 ("🎓 Courses & Programs", L1082), L1129 ("Commissions should not be seen by anyone."); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U2, U5,
 U6 (`EXPLICIT_APPROVAL`, 2026-10-08), §3.2 Q-21, Q-33 and §4 upc-017.
 **Status:** Q-21, Q-33 (courses) and CO1–CO16 are recommended answers applied under the owner's standing instruction for the build session
 ("proceed with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off.
-Migration `0130_university_courses`, API contract §12BM, RBAC §2.71. Spec: `docs/superpowers/specs/2026-10-09-upc-017-course-master-design.md`.
+Migration `0131_university_courses`, API contract §12BN, RBAC §2.72. Spec: `docs/superpowers/specs/2026-10-09-upc-017-course-master-design.md`.
 
 | # | Question | Answer |
 |---|---|---|

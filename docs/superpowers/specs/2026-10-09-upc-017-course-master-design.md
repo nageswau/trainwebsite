@@ -2,14 +2,14 @@
 
 **Status:** design written 2026-10-09. The owner's standing instruction for this session is "proceed with the recommended answers;
 ask only if genuinely blocking". So Q-21, Q-33 (courses) and the item answers CO1–CO16 (§1) are **recommended defaults accepted under
-that instruction** (`NEEDS_CONFIRMATION` as separate per-question approvals) and are registered that way in `DEC-SCOPE-145`.
+that instruction** (`NEEDS_CONFIRMATION` as separate per-question approvals) and are registered that way in `DEC-SCOPE-146`.
 
 **Branch:** `feature/upc-017`, cut from `origin/main` @ `362cf3ca`.
 **Backlog:** `docs/delivery/UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §4 upc-017. Dependencies upc-003 (`0105`, `DEC-SCOPE-120`) and upc-016
 (`0129`, `DEC-SCOPE-144`, PR #189) are merged on main — verified in code (`University.catalogue_visible`, `partnership_access.strip_commission`).
 **Source:** `EVID-020` §16 (lines 545–579: the 14 fields, "your counselors know exactly what each partner university offers"), §32 menu
 "🎓 Courses & Programs" (1082), line 1129 + U2 (commission visibility), U5 (catalogue flag), U6 (extend `overseas_courses`).
-**Numbering:** migration `0130_university_courses`, `DEC-SCOPE-145`, API §12BM, RBAC §2.71.
+**Numbering:** migration `0131_university_courses`, `DEC-SCOPE-146`, API §12BN, RBAC §2.72 (drafted as `0130` / `DEC-SCOPE-145` / §12BM / §2.71; renumbered on merging `main` @ `94dedfba` (upc-009), which took those).
 **Gate:** `APPROVAL_GATES.md` GATE-09.
 
 ## 1. Decisions (recommended defaults)
@@ -35,7 +35,7 @@ that instruction** (`NEEDS_CONFIRMATION` as separate per-question approvals) and
 
 Counselors (backlog "read"): they see active courses through the public catalogue now; the role-sliced 360 view is upc-030 (U14).
 
-## 2. Data model — migration `0130_university_courses`
+## 2. Data model — migration `0131_university_courses`
 
 `overseas_courses` gains (all nullable / defaulted, guarded since 0001 builds from models): `tuition_amount` Numeric(12,2), `tuition_currency`
 String(3), `application_fee` Numeric(10,2), `application_fee_currency` String(3), `intakes` JSON default `[]`, `entry_requirements` Text,
@@ -88,7 +88,7 @@ Refusal order (writes): 401 → 403 role → 404 university → 403 scope / 409 
 2. Service + routes: create/read/update, validation, access per role, commission strip, duplicates, deactivate, options, menu (`test_upc_017_courses.py`); public filter (`test_upc_017_public.py`).
 3. CSV import (`test_upc_017_import.py`).
 4. Frontend lib + form + section + import panel + menu page + nav, vitest.
-5. Playwright `upc-017-course-master.spec.ts`; docs (DEC-SCOPE-145, API §12BM, RBAC §2.71, DATA_MODEL, SCREEN_CATALOG, backlog).
+5. Playwright `upc-017-course-master.spec.ts`; docs (DEC-SCOPE-146, API §12BN, RBAC §2.72, DATA_MODEL, SCREEN_CATALOG, backlog).
 
 ## 7. Regression set (lite)
 
