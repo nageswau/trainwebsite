@@ -13,6 +13,7 @@ import UniversityFollowUp from "@/components/UniversityFollowUp";
 import UniversityDocuments from "@/components/UniversityDocuments";
 import UniversityMessages from "@/components/UniversityMessages";
 import UniversityStagePanel from "@/components/UniversityStagePanel";
+import UniversityTimeline from "@/components/UniversityTimeline";
 import VisitTable from "@/components/VisitTable";
 import { serverApi } from "@/lib/api";
 import type { Page } from "@/lib/apiErrors";
@@ -38,7 +39,8 @@ import {
   universityUrl,
   visibilityLabel,
 } from "@/lib/universities";
-import { firstStageHistory, loadUniversity } from "@/lib/universitiesServer";
+import type { MilestonePage } from "@/lib/partnershipMilestones";
+import { firstMilestones, firstStageHistory, loadUniversity } from "@/lib/universitiesServer";
 import { documentsUrl, type UniversityDocument } from "@/lib/universityDocuments";
 import { newVisitPath, PLANNER_ROLES, VISIT_READERS, VISITS_PATH, VISITS_URL, type VisitRow } from "@/lib/visits";
 import { TASK_CREATORS, TASK_READERS, TASKS_PATH } from "@/lib/partnershipTasks";
@@ -46,7 +48,8 @@ import { TASK_CREATORS, TASK_READERS, TASKS_PATH } from "@/lib/partnershipTasks"
 // upc-003: one university's master record -- the §1 fields, rankings, ownership (§27) and catalogue status. Later upc items add their
 // own sections (contacts, pipeline, agreements, courses ...) to this page. upc-007: the partnership stage and its history.
 // upc-020: §20's Next / Last Action for every reader, and the open follow-ups and tasks for the task readers (TK8; the panel loads
-// them itself). upc-026: the Documents section (§28, "everything related to that university in one place").
+// them itself). upc-026: the Documents section (§28, "everything related to that university in one place"). upc-008: the Partnership
+// timeline (§5 expected timeline + §6 milestones) for every reader; editing per `can_edit_timeline`.
 function Facts({ rows }: { rows: [string, ReactNode][] }) {
   return (
     <dl style={{ display: "grid", gridTemplateColumns: "minmax(120px, max-content) 1fr", gap: "6px 16px", margin: 0 }}>
@@ -61,9 +64,9 @@ function Facts({ rows }: { rows: [string, ReactNode][] }) {
 export default async function UniversityPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   let user: User, u: University, history: Page<StageEvent> | null, contacts: Page<UniversityContact>, roles: ContactRole[], visits: Page<VisitRow> | null,
-    documents: Page<UniversityDocument>;
+    documents: Page<UniversityDocument>, milestones: MilestonePage | null;
   try {
-    [user, u, history] = await Promise.all([serverApi<User>("/api/v1/auth/me"), loadUniversity(id), firstStageHistory(id)]);
+    [user, u, history, milestones] = await Promise.all([serverApi<User>("/api/v1/auth/me"), loadUniversity(id), firstStageHistory(id), firstMilestones(id)]);
     // upc-006: the contacts this reader may see (the API slices them), and the role list only for those who can edit.
     // upc-010: the latest visits, only for the roles that read visits (VS7; overseas_admin reads the master but not visits).
     // upc-026: the documents this reader may see (the API slices them: shareable only for overseas_admin, no commission agreement).
@@ -125,6 +128,8 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
           <UniversityStagePanel university={u} />
           {/* remounted after each stage change (the page refreshes), so it starts from the new first page */}
           <BdmStageHistory key={`${u.pipeline.changed_at}|${u.pipeline.lost?.at ?? ""}`} orgId={u.id} initial={history} version={0} url={universityUrl(u.id, "stage-history")} />
+          {/* upc-008: remounted after each stage change, so a move into Proposal Sent shows Proposal achieved (MS4) */}
+          <UniversityTimeline key={`timeline|${u.pipeline.changed_at}`} universityId={u.id} expected={u.expected} canEdit={u.permissions.can_edit_timeline} initial={milestones} />
           <UniversityContacts universityId={u.id} contacts={contacts.items} roles={roles} canEdit={u.permissions.can_edit_contacts} />
           <UniversityDocuments universityId={u.id} documents={documents.items} canManage={u.permissions.can_manage_documents} />
           {/* upc-012 (UC3): calls and messages, for the partnership roles only; the contacts are the recipients */}

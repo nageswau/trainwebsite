@@ -1,6 +1,7 @@
 // upc-003 (DEC-SCOPE-120): the Global University Master's types, words, URLs and pickers, shared by its pages and forms.
 import type { UniversityFollowUpData } from "@/lib/partnershipTasks";
 import type { LookupPage } from "@/lib/lookups";
+import type { UniversityExpected } from "@/lib/partnershipMilestones";
 import type { UniversityPipeline } from "@/lib/partnershipPipeline";
 import { PARTNERSHIP_HEAD_NAV, PARTNERSHIP_NAV, PORTAL_NAV, SUPER_ADMIN_NAV, type NavItem } from "@/lib/navigation";
 import { ROLE_LABEL } from "@/lib/partnership";
@@ -8,7 +9,7 @@ import type { ManagerOption, ManagerRef } from "@/lib/telecaller";
 
 export type UniversityPermissions = {
   can_edit: boolean; can_assign: boolean; can_publish: boolean; can_deactivate: boolean; can_edit_contacts: boolean; can_manage_documents: boolean; can_move_stage: boolean;
-  can_reopen: boolean;
+  can_reopen: boolean; can_edit_timeline: boolean; // upc-008 MS10
 };
 export type UniversityCountry = { id: string; name: string; iso2: string | null; region: string | null; catalogue_visible: boolean };
 export type Ranking = { system: string; other_name: string | null; year: number; rank: string };
@@ -22,6 +23,7 @@ export type University = UniversityRow & {
   international_office: string | null; existing_relationship: string | null; overview: string; eligibility: string; rankings: Ranking[];
   application_count: number; linked_bdm_organizations: LinkedBdmOrganization[]; created_at: string; updated_at: string; pipeline: UniversityPipeline;
   follow_up: UniversityFollowUpData; // upc-020 TK14/TK15
+  expected: UniversityExpected; // upc-008 §5
 };
 // upc-004: a BDM University organization linked to this master record (text only: partnership roles cannot open BDM records).
 export type LinkedBdmOrganization = { id: string; code: string; name: string; city: string; bdm_type: string; assigned_bdm_name: string; archived: boolean };
