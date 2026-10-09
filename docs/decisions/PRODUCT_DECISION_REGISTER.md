@@ -6076,10 +6076,11 @@ the upc items through `0132` and rec-020 (`0133` / 148 / §12BP / §2.74) merged
   truncation edge cases. `DEC-SCOPE-116` R7: rule-based, in-house (`pypdf`, `python-docx`), no AI provider; R11: every recruiter edits
   the pool. `DEC-SCOPE-122` (rec-009) resumes and roles; `DEC-SCOPE-137` (rec-011) candidate skills.
 
-**Status:** **BUILT** on `feature/rec-012`, not merged. Every answer below is a **recommended default, `UNVERIFIED`**, taken on the owner's
-instruction to proceed with the recommended answers.
+**Status:** **MERGED** to `main` as PR #197 @ `87f7cfa4` (2026-10-09). Every answer below is a **recommended default, `UNVERIFIED`**,
+taken on the owner's instruction to proceed with the recommended answers. The next rec item takes `0136`, `DEC-SCOPE-151`, §12BS and
+§2.77 (re-check `main`).
 
-**Numbering:** migration `0135_resume_extraction` (after `0134_application_screenings`), API §12BR and RBAC §2.76. Drafted as `0133` /
+**Numbering (FINAL):** migration `0135_resume_extraction` (after `0134_application_screenings`), API §12BR and RBAC §2.76. Drafted as `0133` /
 `DEC-SCOPE-148` / §12BP / §2.74; rec-020 and then rec-018 merged first and took those numbers. Spec
 `docs/superpowers/specs/2026-10-09-rec-012-resume-extraction-design.md`.
 
