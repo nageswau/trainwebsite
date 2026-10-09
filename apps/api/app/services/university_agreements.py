@@ -137,6 +137,11 @@ def check_dates(state: dict) -> None:
         raise HTTPException(422, "The renewal date must fall between the start and expiry dates")
 
 
+def terms_editable(perms: dict[str, bool], a: UniversityAgreement) -> bool:
+    """AG11 / upc-016 CM9: the caller may manage the university's agreements and this one's terms (commission included) are still open."""
+    return perms["can_manage_agreements"] and a.status in TERM_STATUSES
+
+
 def check_editable(a: UniversityAgreement, fields: set[str]) -> None:
     if a.status not in SIGNING_STATUSES:
         raise HTTPException(409, FROZEN_SIGNED)
@@ -259,7 +264,7 @@ async def agreements_out(db: AsyncSession, user: User, rows: list[tuple[Universi
     # upc-016 (CM12): commission terms ride along for the commission roles only; every item still passes through strip_commission
     terms: dict[UUID, list] = {}
     if can_see_commission(user):
-        editable = {a.id for a, uni in rows if unis.permissions(user, uni, team)["can_manage_agreements"] and a.status in TERM_STATUSES}
+        editable = {a.id for a, uni in rows if terms_editable(unis.permissions(user, uni, team), a)}
         terms = await commission.terms_by_agreement(db, ids, editable)
 
     def ref(other: UniversityAgreement | None) -> dict | None:
@@ -295,7 +300,7 @@ async def agreements_out(db: AsyncSession, user: User, rows: list[tuple[Universi
             "created_at": a.created_at,
             "updated_at": a.updated_at,
             "permissions": {
-                "can_edit_terms": perms["can_manage_agreements"] and a.status in TERM_STATUSES,
+                "can_edit_terms": terms_editable(perms, a),
                 "can_edit_signing": perms["can_manage_agreements"] and a.status in SIGNING_STATUSES,
                 "can_renew": perms["can_manage_agreements"] and a.status in IN_FORCE and a.id not in successors,
             },

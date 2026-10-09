@@ -53,7 +53,7 @@ async def load(db: AsyncSession, agreement_id: UUID, term_id: UUID) -> Universit
 async def check_room(db: AsyncSession, agreement_id: UUID) -> None:
     """Called under the agreement lock, so two concurrent adds cannot both pass (CM15)."""
     count = await db.scalar(select(func.count()).select_from(UniversityCommissionTerm).where(UniversityCommissionTerm.agreement_id == agreement_id))
-    if count >= MAX_TERMS:
+    if (count or 0) >= MAX_TERMS:
         raise HTTPException(409, TOO_MANY)
 
 

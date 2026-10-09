@@ -32,7 +32,7 @@ Currency = Literal[COMMISSION_CURRENCIES]
 async def _editable(db: AsyncSession, user: User, pairs: list[tuple[UniversityAgreement, University]]) -> set[UUID]:
     """The agreements whose terms this caller may change now: may manage the university's agreements, and the terms are not frozen."""
     team = await unis.team_of(db, user)
-    return {a.id for a, uni in pairs if unis.permissions(user, uni, team)["can_manage_agreements"] and a.status in agreements.TERM_STATUSES}
+    return {a.id for a, uni in pairs if agreements.terms_editable(unis.permissions(user, uni, team), a)}
 
 
 async def _locked(db: AsyncSession, user: User, agreement_id: UUID, route: str) -> tuple[UniversityAgreement, University]:
