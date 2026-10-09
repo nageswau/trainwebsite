@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import BdmStageHistory from "@/components/BdmStageHistory";
+import MeetingTable from "@/components/MeetingTable";
 import PartnershipTasksPanel from "@/components/PartnershipTasksPanel";
 import UniversityFollowUp from "@/components/UniversityFollowUp";
 import UniversityDocuments from "@/components/UniversityDocuments";
@@ -26,6 +27,9 @@ const university = {
   },
 };
 const history = { items: [], total: 0, limit: 20, offset: 0 };
+const meeting = { id: "m1", code: "UMT-000001", meeting_type: "introduction", starts_at: "2030-01-10T04:30:00Z", mode: "offline", status: "scheduled",
+  university: { id: ID, name: "ABC" }, responsible: { id: "p1", full_name: "Rahul", active: true }, contact: null, warnings: [] };
+const meetings = { items: [meeting], total: 7, limit: 5, offset: 0, counts: { upcoming: 1, awaiting_outcome: 0, completed: 6, cancelled: 0 } };
 const documents = { items: [{ id: "d1" }], total: 1, limit: 200, offset: 0 };
 
 beforeEach(() => {
@@ -39,6 +43,7 @@ describe("upc-007 university detail page", () => {
       if (p.includes("/stage-history")) return history as never;
       if (p.includes("/contacts")) return { items: [], total: 0, limit: 50, offset: 0 } as never; // upc-006
       if (p.includes("/partnership/visits")) return { items: [], total: 0, limit: 5, offset: 0 } as never; // upc-010
+      if (p.includes("/partnership/meetings")) return meetings as never; // upc-009
       if (p.includes("/documents")) return documents as never; // upc-026
       return { university } as never;
     });
@@ -56,6 +61,10 @@ describe("upc-007 university detail page", () => {
     // upc-026: the Documents section, read beside the university
     expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/universities/${ID}/documents`);
     expect(tree.find((el) => el.type === UniversityDocuments)!.props).toEqual({ universityId: ID, documents: documents.items, canManage: true });
+    // upc-009: the Meetings section, every view (scheduled first) for the meeting readers
+    expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/meetings?university_id=${ID}&limit=5`);
+    expect(tree.find((el) => el.type === MeetingTable)!.props).toMatchObject({ items: [meeting], total: 7, showUniversity: false });
+    expect(tree.some((el) => el.props?.href === `/partnership/meetings?university_id=${ID}`)).toBe(true); // "All 7 meetings"
   });
 
   it("a failed history read still shows the page, with Try again in the section", async () => {
@@ -64,6 +73,7 @@ describe("upc-007 university detail page", () => {
       if (p.includes("/stage-history")) throw new Error("down");
       if (p.includes("/contacts")) return { items: [], total: 0, limit: 50, offset: 0 } as never;
       if (p.includes("/partnership/visits")) return { items: [], total: 0, limit: 5, offset: 0 } as never;
+      if (p.includes("/partnership/meetings")) return meetings as never;
       if (p.includes("/documents")) return documents as never;
       return { university } as never;
     });
@@ -79,6 +89,7 @@ describe("upc-012 university detail page", () => {
     if (p.includes("/stage-history")) return history as never;
     if (p.includes("/contacts")) return { items: [contact], total: 1, limit: 50, offset: 0 } as never;
     if (p.includes("/partnership/visits")) return { items: [], total: 0, limit: 5, offset: 0 } as never;
+    if (p.includes("/partnership/meetings")) return meetings as never;
     return { university: { ...university, permissions: { ...university.permissions, can_edit_contacts: canEditContacts } } } as never;
   });
 
@@ -95,5 +106,7 @@ describe("upc-012 university detail page", () => {
     const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
     expect(tree.find((el) => el.type === UniversityCalls)).toBeUndefined();
     expect(tree.find((el) => el.type === UniversityMessages)).toBeUndefined();
+    expect(tree.find((el) => el.type === MeetingTable)).toBeUndefined(); // upc-009 MG14: meetings are not read for overseas_admin
+    expect(serverApi).not.toHaveBeenCalledWith(expect.stringContaining("/partnership/meetings"));
   });
 });

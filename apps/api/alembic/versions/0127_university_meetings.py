@@ -32,9 +32,7 @@ CHECKS = {
     "ck_university_meetings_completed": "(status = 'completed') = (completed_at IS NOT NULL) AND (completed_at IS NULL) = (completed_by_user_id IS NULL)",
     "ck_university_meetings_cancelled": "(status = 'cancelled') = (cancelled_at IS NOT NULL) AND (cancelled_at IS NULL) = (cancel_reason IS NULL)",
     "ck_university_meetings_next_action": "(next_action IS NULL) = (next_action_due_on IS NULL)",
-    "ck_university_meetings_outcome": (
-        "status = 'completed' OR (discussion_points IS NULL AND decisions IS NULL AND next_action IS NULL AND next_meeting_date IS NULL)"
-    ),
+    "ck_university_meetings_outcome": ("status = 'completed' OR (discussion_points IS NULL AND decisions IS NULL AND next_action IS NULL AND next_meeting_date IS NULL)"),
     "ck_university_meeting_participants_one": "(contact_id IS NULL) <> (user_id IS NULL)",
     "ck_university_meeting_events_event": "event IN ('scheduled', 'edited', 'rescheduled', 'completed', 'cancelled')",
 }
