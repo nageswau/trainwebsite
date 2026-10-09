@@ -9,7 +9,8 @@ import type { ManagerOption, ManagerRef } from "@/lib/telecaller";
 
 export type UniversityPermissions = {
   can_edit: boolean; can_assign: boolean; can_publish: boolean; can_deactivate: boolean; can_edit_contacts: boolean; can_manage_documents: boolean; can_move_stage: boolean;
-  can_reopen: boolean; can_edit_timeline: boolean; // upc-008 MS10
+  can_reopen: boolean; can_manage_agreements: boolean; can_approve_agreements: boolean;
+  can_edit_timeline: boolean; // upc-008 MS10
 };
 export type UniversityCountry = { id: string; name: string; iso2: string | null; region: string | null; catalogue_visible: boolean };
 export type Ranking = { system: string; other_name: string | null; year: number; rank: string };

@@ -1254,6 +1254,20 @@ stage move or visit completion that triggers them, under that write's own permis
 | `overseas_admin` | the university's Next / Last Action summary only; task routes `403` | — | `upc-020` |
 | every other role | `403` | — | `upc-020` |
 
+### 2.68 University agreements *(net-new, added 2026-10-09 — `DEC-SCOPE-142`, `upc-014`)*
+
+Enforced inline in `api/university_agreements.py` + `services/university_agreements.py` (`require_reader`, then the University Master's
+`can_manage_agreements` / `can_approve_agreements`). No commission field exists here (upc-016); every reader is a commission role today.
+Audit and logs carry ids, the MoU number, statuses and field names only.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Read agreements (university section, menu, detail) | ✅ all | ✅ all | `403` | ✅ all | `403` |
+| Create, edit, send / review / negotiate, sign, activate, renew | own universities (primary/backup) | unowned + team universities | `403` | ✅ all | `403` |
+| Approve | `403` | unowned + team universities | `403` | ✅ all | `403` |
+| Delete | — (not in this item, AG16) | — | — | — | — |
+
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

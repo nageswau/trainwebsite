@@ -1,4 +1,4 @@
-"""upc-008 (DEC-SCOPE-142, spec §3): a university's expected timeline (§5) and milestone tracker (§6).
+"""upc-008 (DEC-SCOPE-143, spec §3): a university's expected timeline (§5) and milestone tracker (§6).
 
 Reads are open to every university reader (MS11). Every write is one transaction, as upc-003's: the university row lock (FOR UPDATE), the
 scope check (`can_edit_timeline`: 403 logged; inactive 409), the change, an audit row only when something changed, one commit here, then

@@ -1,4 +1,4 @@
-"""upc-008 -- migration 0127_university_milestones (spec §2) and the §6 milestone catalogue (spec MS1). Round trip and the downgrade refusal
+"""upc-008 -- migration 0128_university_milestones (spec §2) and the §6 milestone catalogue (spec MS1). Round trip and the downgrade refusal
 run in a throwaway database built from scratch (the upc-001 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -14,15 +14,15 @@ from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_upc_008_migration_0127", VERSIONS / "0127_university_milestones.py")
+_spec = importlib.util.spec_from_file_location("_upc_008_migration_0128", VERSIONS / "0128_university_milestones.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0126_partnership_tasks", "0127_university_milestones"
+BASE, HEAD = "0127_university_agreements", "0128_university_milestones"
 EXPECTED_COLUMNS = {"target_partnership_date", "expected_intake", "expected_agreement_date", "expected_recruitment_start"}
 
 
-def test_migration_chains_after_0126_and_is_the_single_head():
+def test_migration_chains_after_0127_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
@@ -37,7 +37,7 @@ def test_catalogue_is_the_source_list():
         "Student Recruitment", "First Application", "First Admission", "Active Partnership",
     ]  # fmt: skip
     assert len(set(MILESTONE_KEYS)) == 13
-    assert AUTO_SOURCES == {"proposal": "stage", "first_application": "application", "first_admission": "admission"}
+    assert AUTO_SOURCES == {"proposal": "stage", "signed": "agreement", "first_application": "application", "first_admission": "admission"}
 
 
 def test_model_matches_the_migration():
@@ -69,7 +69,7 @@ async def test_table_columns_and_index_exist_in_the_shared_database(db_session):
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0126."""
+    """A fresh database at 0127."""
     cfg = _config()
     original = settings.database_url
     name = f"upc008_migration_{uuid.uuid4().hex[:8]}"

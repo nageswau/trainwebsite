@@ -1,9 +1,9 @@
 """upc-008 -- Expected timeline + milestone tracker.
 
-Revision ID: 0127_university_milestones
-Revises: 0126_partnership_tasks
+Revision ID: 0128_university_milestones
+Revises: 0127_university_agreements
 
-docs/superpowers/specs/2026-10-09-upc-008-partnership-timeline-design.md §2 (DEC-SCOPE-142). Adds the four §5 expected-timeline columns to
+docs/superpowers/specs/2026-10-09-upc-008-partnership-timeline-design.md §2 (DEC-SCOPE-143). Adds the four §5 expected-timeline columns to
 `universities` and the sparse `university_milestones` table. 0001 builds a fresh database from the current models, which already carry
 them, so every step is guarded. CHECKS repeats app.models (test_upc_008_migration). No backfill: inventing targets would invent facts.
 downgrade() refuses while any milestone or expected value exists: it would drop them.
@@ -14,8 +14,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0127_university_milestones"
-down_revision = "0126_partnership_tasks"
+revision = "0128_university_milestones"
+down_revision = "0127_university_agreements"
 branch_labels = None
 depends_on = None
 
@@ -66,7 +66,7 @@ def downgrade() -> None:
         any_expected = " OR ".join(f"{name} IS NOT NULL" for name, _ in COLUMNS)
         found = op.get_bind().execute(sa.text(f"SELECT 1 FROM {TABLE} UNION ALL SELECT 1 FROM universities WHERE {any_expected} LIMIT 1")).first()
         if found:
-            raise RuntimeError("Cannot downgrade 0127_university_milestones: milestones or expected timeline values exist. Remove them deliberately first.")
+            raise RuntimeError("Cannot downgrade 0128_university_milestones: milestones or expected timeline values exist. Remove them deliberately first.")
     op.drop_table(TABLE)
     for name, _ in reversed(COLUMNS):
         op.drop_column("universities", name)

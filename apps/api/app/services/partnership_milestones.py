@@ -1,4 +1,4 @@
-"""upc-008 (DEC-SCOPE-142, spec §3): a university's expected timeline (§5) and milestone tracker (§6).
+"""upc-008 (DEC-SCOPE-143, spec §3): a university's expected timeline (§5) and milestone tracker (§6).
 
 Functions only; nothing here commits -- the route owns the transaction and the audit row. Milestone rows are sparse (MS2: the catalogue
 is the template); statuses are computed on read in IST (Q-11, MS3) and three milestones are achieved by events, derived on read (MS4,
@@ -12,8 +12,8 @@ from fastapi.exceptions import RequestValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import ApplicationStatusHistory, OverseasApplication, University, UniversityMilestone, UniversityStageHistory, User
-from app.partnership_milestones import ADMITTED_STATUS, AUTO_SOURCES, MILESTONES, PROPOSAL_STAGE
+from app.models import ApplicationStatusHistory, OverseasApplication, University, UniversityAgreement, UniversityMilestone, UniversityStageHistory, User
+from app.partnership_milestones import ADMITTED_STATUS, AUTO_SOURCES, MILESTONES, PROPOSAL_STAGE, SIGNED_STATUSES
 from app.partnership_stages import STAGE_KEYS
 from app.schemas import UniversityExpectedUpdate, UniversityMilestoneUpdate
 from app.services.bdm_appointments import IST
@@ -55,6 +55,12 @@ async def _derived(db: AsyncSession, university_id: UUID) -> dict[str, date]:
         )
         .scalar_subquery()
     )
+    # Signed: the day the first agreement was fully signed, i.e. the later of its two signatures (upc-014 AG7 requires both).
+    agreement = (
+        select(func.min(func.greatest(UniversityAgreement.edusphere_signed_on, UniversityAgreement.university_signed_on)))
+        .where(UniversityAgreement.university_id == university_id, UniversityAgreement.status.in_(SIGNED_STATUSES))
+        .scalar_subquery()
+    )
     application = select(func.min(OverseasApplication.created_at)).where(OverseasApplication.university_id == university_id).scalar_subquery()
     admission = (
         select(func.min(ApplicationStatusHistory.created_at))
@@ -62,9 +68,12 @@ async def _derived(db: AsyncSession, university_id: UUID) -> dict[str, date]:
         .where(OverseasApplication.university_id == university_id, ApplicationStatusHistory.to_status == ADMITTED_STATUS)
         .scalar_subquery()
     )
-    row = (await db.execute(select(proposal, application, admission))).one()
-    instants: dict[str, datetime | None] = dict(zip(("proposal", "first_application", "first_admission"), row, strict=True))
-    return {kind: at.astimezone(IST).date() for kind, at in instants.items() if at is not None}
+    proposed, signed_on, applied, admitted = (await db.execute(select(proposal, agreement, application, admission))).one()
+    instants: dict[str, datetime | None] = {"proposal": proposed, "first_application": applied, "first_admission": admitted}
+    derived = {kind: at.astimezone(IST).date() for kind, at in instants.items() if at is not None}
+    if signed_on is not None:  # already a calendar date
+        derived["signed"] = signed_on
+    return derived
 
 
 async def _rows(db: AsyncSession, university_id: UUID) -> dict[str, UniversityMilestone]:

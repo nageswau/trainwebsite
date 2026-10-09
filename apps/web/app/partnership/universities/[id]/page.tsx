@@ -6,6 +6,7 @@ import BdmStageHistory from "@/components/BdmStageHistory";
 import PartnershipTasksPanel from "@/components/PartnershipTasksPanel";
 import PortalShell from "@/components/PortalShell";
 import UniversityActions from "@/components/UniversityActions";
+import UniversityAgreements from "@/components/UniversityAgreements";
 import UniversityAssignForm from "@/components/UniversityAssignForm";
 import UniversityCalls from "@/components/UniversityCalls";
 import UniversityContacts from "@/components/UniversityContacts";
@@ -41,6 +42,7 @@ import {
 } from "@/lib/universities";
 import type { MilestonePage } from "@/lib/partnershipMilestones";
 import { firstMilestones, firstStageHistory, loadUniversity } from "@/lib/universitiesServer";
+import { type Agreement, AGREEMENT_READERS, type AgreementOptions, agreementOptionsUrl, agreementsUrl } from "@/lib/universityAgreements";
 import { documentsUrl, type UniversityDocument } from "@/lib/universityDocuments";
 import { newVisitPath, PLANNER_ROLES, VISIT_READERS, VISITS_PATH, VISITS_URL, type VisitRow } from "@/lib/visits";
 import { TASK_CREATORS, TASK_READERS, TASKS_PATH } from "@/lib/partnershipTasks";
@@ -48,8 +50,9 @@ import { TASK_CREATORS, TASK_READERS, TASKS_PATH } from "@/lib/partnershipTasks"
 // upc-003: one university's master record -- the §1 fields, rankings, ownership (§27) and catalogue status. Later upc items add their
 // own sections (contacts, pipeline, agreements, courses ...) to this page. upc-007: the partnership stage and its history.
 // upc-020: §20's Next / Last Action for every reader, and the open follow-ups and tasks for the task readers (TK8; the panel loads
-// them itself). upc-026: the Documents section (§28, "everything related to that university in one place"). upc-008: the Partnership
-// timeline (§5 expected timeline + §6 milestones) for every reader; editing per `can_edit_timeline`.
+// them itself). upc-026: the Documents section (§28, "everything related to that university in one place"). upc-014: the Agreements
+// section (§13). upc-008: the Partnership timeline (§5 expected timeline + §6 milestones) for every reader; editing per
+// `can_edit_timeline`.
 function Facts({ rows }: { rows: [string, ReactNode][] }) {
   return (
     <dl style={{ display: "grid", gridTemplateColumns: "minmax(120px, max-content) 1fr", gap: "6px 16px", margin: 0 }}>
@@ -64,17 +67,21 @@ function Facts({ rows }: { rows: [string, ReactNode][] }) {
 export default async function UniversityPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   let user: User, u: University, history: Page<StageEvent> | null, contacts: Page<UniversityContact>, roles: ContactRole[], visits: Page<VisitRow> | null,
-    documents: Page<UniversityDocument>, milestones: MilestonePage | null;
+    documents: Page<UniversityDocument>, agreements: Page<Agreement> | null, agreementOptions: AgreementOptions | null,
+    milestones: MilestonePage | null;
   try {
     [user, u, history, milestones] = await Promise.all([serverApi<User>("/api/v1/auth/me"), loadUniversity(id), firstStageHistory(id), firstMilestones(id)]);
     // upc-006: the contacts this reader may see (the API slices them), and the role list only for those who can edit.
     // upc-010: the latest visits, only for the roles that read visits (VS7; overseas_admin reads the master but not visits).
     // upc-026: the documents this reader may see (the API slices them: shareable only for overseas_admin, no commission agreement).
-    [contacts, roles, visits, documents] = await Promise.all([
+    // upc-014: agreements only for the roles that read them (AG13), and the form's options only for those who may write them.
+    [contacts, roles, visits, documents, agreements, agreementOptions] = await Promise.all([
       serverApi<Page<UniversityContact>>(`${contactsUrl(u.id)}?limit=50`),
       u.permissions.can_edit_contacts ? serverApi<{ items: ContactRole[] }>(CONTACT_ROLES_URL).then((r) => r.items) : Promise.resolve([]),
       VISIT_READERS.has(user.role) ? serverApi<Page<VisitRow>>(`${VISITS_URL}?university_id=${u.id}&limit=5`) : Promise.resolve(null),
       serverApi<Page<UniversityDocument>>(documentsUrl(u.id)),
+      AGREEMENT_READERS.has(user.role) ? serverApi<Page<Agreement>>(agreementsUrl(u.id)) : Promise.resolve(null),
+      u.permissions.can_manage_agreements ? serverApi<AgreementOptions>(agreementOptionsUrl(u.id)) : Promise.resolve(null),
     ]);
   } catch (e) {
     return accessUnavailable(e, "/overseas/login");
@@ -131,6 +138,9 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
           {/* upc-008: remounted after each stage change, so a move into Proposal Sent shows Proposal achieved (MS4) */}
           <UniversityTimeline key={`timeline|${u.pipeline.changed_at}`} universityId={u.id} expected={u.expected} canEdit={u.permissions.can_edit_timeline} initial={milestones} />
           <UniversityContacts universityId={u.id} contacts={contacts.items} roles={roles} canEdit={u.permissions.can_edit_contacts} />
+          {agreements && (
+            <UniversityAgreements universityId={u.id} agreements={agreements.items} options={agreementOptions} canManage={u.permissions.can_manage_agreements} />
+          )}
           <UniversityDocuments universityId={u.id} documents={documents.items} canManage={u.permissions.can_manage_documents} />
           {/* upc-012 (UC3): calls and messages, for the partnership roles only; the contacts are the recipients */}
           {COMMS_READERS.has(user.role) && (

@@ -3,7 +3,7 @@
 **Status:** design written 2026-10-09. The owner's standing instruction for this session is "proceed with the recommended answers;
 ask only if genuinely blocking". So the item answers MS1–MS12 (§1), including **Q-10** and **Q-11**, are **recommended defaults
 accepted under that instruction** (`NEEDS_CONFIRMATION` as separate per-question approvals). They are registered that way in
-`DEC-SCOPE-142`.
+`DEC-SCOPE-143`.
 
 **Branch:** `feature/upc-008`, cut from `origin/main` @ `788b1636` (after #186, upc-020).
 **Backlog:** `docs/delivery/UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §4 upc-008, Q-10, Q-11, Appendix A L176–L242.
@@ -11,8 +11,10 @@ accepted under that instruction** (`NEEDS_CONFIRMATION` as separate per-question
 (`app/partnership_stages.py`, `services/partnership_pipeline.py`, `university_stage_history`).
 **Source:** `EVID-020` §5 (L176–L210: six per-university targets, a milestone table with target date and status, the ABC University
 example) and §6 (L212–L242: 13 milestones, "The system should automatically highlight delayed milestones").
-**Numbering:** migration `0127_university_milestones`, `DEC-SCOPE-142`, API §12BJ, RBAC §2.68 (renumbered at merge if another item lands
-first).
+**Numbering:** migration `0128_university_milestones`, `DEC-SCOPE-143`, API §12BK, RBAC §2.69 (renumbered at merge if another item lands
+first). Drafted as `0127` / `DEC-SCOPE-142` / §12BJ / §2.68; renumbered on merging `main` @ `7ba4cb36` (upc-014 took them first). A
+database stamped at `0127_university_milestones` is re-stamped with `alembic stamp --purge 0126_partnership_tasks`, then `upgrade head`
+(every step is guarded).
 **Gate:** `APPROVAL_GATES.md` GATE-09.
 
 ## 0. Discovery (Phase 1)
@@ -34,7 +36,7 @@ Reusable: `_locked` / `require` / `audit` / `log` (upc-003), `india_today` (bdm_
 | MS1 | Milestone kinds | The 13 §6 milestones in source order and wording (University Contacted … Active Partnership), as constants in `app/partnership_milestones.py`. They are shared by the model CHECK, the migration parity test, the service and the schemas |
 | MS2 | "Created from a template when a university leaves Target" | **The catalogue is the template and applies to every university**. Stored rows exist only once someone records a date (sparse rows, upserted under the university row lock). Visible behaviour after leaving Target is the same. It needs no stage hook, no backfill and no invented rows, and it works for universities that left Target before this item. Before leaving Target the table simply shows 13 pending milestones that can already be planned |
 | MS3 | Q-11 status (computed, never stored) | `done`: there is an achieved date. `delayed`: not done and the target date is **before today (IST)**, with no grace days (AC1). `in_progress`: the earliest not-done milestone in catalogue order, unless it is delayed. `pending`: everything else. On the target day itself the milestone is not delayed yet |
-| MS4 | Auto-completion (backlog list) | **Proposal**: the IST date of the first stage move into Proposal Sent or any later stage (`university_stage_history`). **First Application**: the IST date of the university's first `overseas_applications` row (AC2). **First Admission**: the IST date of the first `application_status_history` row with `to_status = 'enrolled'` (the product's "Admitted", `schools.py`) for that university. **Meeting** (upc-009) and **Signed** (upc-014) are reserved for those items and stay manual until then |
+| MS4 | Auto-completion (backlog list) | **Proposal**: the IST date of the first stage move into Proposal Sent or any later stage (`university_stage_history`). **First Application**: the IST date of the university's first `overseas_applications` row (AC2). **First Admission**: the IST date of the first `application_status_history` row with `to_status = 'enrolled'` (the product's "Admitted", `schools.py`) for that university. **Signed** (upc-014, merged on main during Phase 9): the first agreement in status signed / active / renewed, dated the later of its two signatures (AG7 requires both). **Meeting** (upc-009) is reserved for that item and stays manual until then |
 | MS5 | How auto-completion is computed | **Derived on read**, not written by hooks. That avoids changing ~8 application write sites, needs no backfill, and stays correct for applications that existed before this item. A manually recorded achieved date wins over the derived one; clearing it falls back to the derived date. An auto-achieved milestone cannot be un-achieved by hand |
 | MS6 | Achieved date validation | Not after today (IST) → 422 "The achieved date can't be in the future" (backlog negative scenario). The target date may be any date: a past target simply shows as delayed |
 | MS7 | Edge: target date moved after it was delayed ("history kept?") | **Yes, in the audit log**: `university.milestone_updated` carries the kind, the changed field names, the target date `from` / `to` and `was_delayed`. Dates are not sensitive. The table shows the current target only |
@@ -44,7 +46,7 @@ Reusable: `_locked` / `require` / `audit` / `log` (upc-003), `india_today` (bdm_
 | MS11 | Who reads | Every university reader (`require_reader`: partnership roles, overseas_admin, super_admin), as stage history (PS9). Milestones carry dates and labels only |
 | MS12 | API shape | `GET /partnership/universities/{id}/milestones`; `PATCH /partnership/universities/{id}/milestones/{kind}` (one milestone per call, so a stale form cannot overwrite other rows); `PATCH /partnership/universities/{id}/expected`. The backlog's "GET/PATCH …/milestones" is refined to a per-kind PATCH |
 
-## 2. Data model — migration `0127_university_milestones`
+## 2. Data model — migration `0128_university_milestones`
 
 `universities` gains (guarded, as 0001 builds from models): `target_partnership_date` Date null, `expected_intake` String(80) null,
 `expected_agreement_date` Date null, `expected_recruitment_start` Date null. There is no backfill (inventing targets would invent facts).
@@ -62,7 +64,7 @@ Downgrade refuses while any milestone row exists or any university has an expect
 - `services/partnership_milestones.py` (functions only, never commits):
   - `derived_dates(db, uni)`: three small queries for proposal, first application and first admission, as IST dates.
   - `status_of(...)`, `page(db, uni, can_edit)`: `{items, today, can_edit}`. Each item is `{kind, label, target_date, achieved_on,
-    achieved_by: manual|auto|null, auto_source: stage|application|admission|null, status}`.
+    achieved_by: manual|auto|null, auto_source: stage|agreement|application|admission|null, status}`.
   - `update(db, user, uni, kind, payload)`: upsert under the university lock, MS6 check, audit MS7, log.
   - `expected_out(uni)`, `update_expected(...)`.
 - `api/partnership_milestones.py` (prefix `/partnership/universities`):
@@ -109,7 +111,7 @@ Downgrade refuses while any milestone row exists or any university has an expect
 | N1 | An achieved date in the future → 422 | `test_upc_008_milestones.py`; vitest |
 | N2 | Non-owner manager → 403; overseas_admin write → 403 (reads 200); inactive → 409; unknown university 404; unknown kind / extra field / empty body → 422 | `test_upc_008_milestones.py` |
 | E1 | A target date moved after it was delayed: the status recomputes and the audit keeps from/to + `was_delayed` | `test_upc_008_milestones.py` |
-| E2 | Proposal auto-completes from a stage move into Proposal Sent (or later); First Admission from the first `enrolled` status | `test_upc_008_milestones.py` |
+| E2 | Proposal auto-completes from a stage move into Proposal Sent (or later); Signed from the first signed agreement; First Admission from the first `enrolled` status | `test_upc_008_milestones.py` |
 | X1 | Expected targets: edit + read; month/quarter derived (Q-10); blank intake → null; only owner/head/super_admin | `test_upc_008_expected.py` |
 | M1 | Migration: CHECK and unique index equal the model; downgrade guard | `test_upc_008_migration.py` |
 
@@ -120,7 +122,7 @@ Downgrade refuses while any milestone row exists or any university has an expect
 3. Expected route + `detail_out` `expected` + `can_edit_timeline` (`test_upc_008_expected.py`).
 4. Frontend lib + `UniversityTimeline` + page wiring, with vitest (`UniversityTimeline.test.tsx`, the detail-page stub).
 5. Playwright `upc-008-partnership-timeline.spec.ts`.
-6. Docs: DEC-SCOPE-142, API §12BJ, RBAC §2.68, DATA_MODEL, SCREEN_CATALOG, backlog status.
+6. Docs: DEC-SCOPE-143, API §12BK, RBAC §2.69, DATA_MODEL, SCREEN_CATALOG, backlog status.
 
 ## 7. Regression set (lite)
 

@@ -176,6 +176,20 @@ async def test_a_move_to_proposal_sent_or_later_auto_marks_proposal(client, db_s
 
 
 @pytest.mark.asyncio
+async def test_the_first_signed_agreement_auto_marks_signed(client, db_session):
+    """MS4 (upc-014 merged): Signed is the day the first agreement was fully signed -- the later of the two signatures."""
+    from tests.test_upc_014_agreements import day, make, signed
+    from tests.test_upc_026_documents import _owned
+
+    head, pm, _, uni = await _owned(client, db_session)
+    await make(client, uni["id"])  # a draft does not count
+    assert _by_kind(await _page(client, uni["id"]))["signed"]["achieved_on"] is None
+    await signed(client, head, pm, uni["id"], agreement_type="partnership_agreement")  # signatures day(-1) and day(-2)
+    item = _by_kind(await _page(client, uni["id"]))["signed"]
+    assert item["status"] == "done" and item["achieved_by"] == "auto" and item["auto_source"] == "agreement" and item["achieved_on"] == day(-1)
+
+
+@pytest.mark.asyncio
 async def test_a_recorded_date_wins_over_the_derived_one_and_clearing_falls_back(client, db_session):
     _, _, uni = await owned_university(client, db_session)
     await make_application(db_session, uuid.UUID(uni["id"]))

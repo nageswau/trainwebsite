@@ -1,11 +1,11 @@
-// upc-008 (DEC-SCOPE-142): a university's expected timeline (§5) and milestone tracker (§6). The API owns the catalogue, the Q-11 statuses
+// upc-008 (DEC-SCOPE-143): a university's expected timeline (§5) and milestone tracker (§6). The API owns the catalogue, the Q-11 statuses
 // and the auto-completed dates; these helpers only shape requests and word responses.
 import { universityUrl } from "@/lib/universities";
 
 export type MilestoneStatus = "done" | "in_progress" | "pending" | "delayed";
 export type Milestone = {
   kind: string; label: string; target_date: string | null; achieved_on: string | null; achieved_by: "manual" | "auto" | null;
-  auto_source: "stage" | "application" | "admission" | null; status: MilestoneStatus;
+  auto_source: "stage" | "agreement" | "application" | "admission" | null; status: MilestoneStatus;
 };
 export type MilestonePage = { items: Milestone[]; today: string; can_edit: boolean };
 export type UniversityExpected = {
@@ -16,7 +16,7 @@ export type ExpectedField = "target_partnership_date" | "expected_intake" | "exp
 
 export const STATUS_LABEL: Record<MilestoneStatus, string> = { done: "Done", in_progress: "In progress", pending: "Pending", delayed: "Delayed" };
 export const AUTO_LABEL: Record<NonNullable<Milestone["auto_source"]>, string> = {
-  stage: "from the stage move", application: "from the first application", admission: "from the first admission",
+  stage: "from the stage move", agreement: "from the signed agreement", application: "from the first application", admission: "from the first admission",
 };
 export const EXPECTED_FIELDS: { key: ExpectedField; label: string; type: "date" | "text" }[] = [
   { key: "target_partnership_date", label: "Target partnership date", type: "date" },
