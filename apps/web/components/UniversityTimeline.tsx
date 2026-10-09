@@ -13,6 +13,7 @@ import {
   isMilestonePage,
   type Milestone,
   type MilestonePage,
+  type MilestoneStatus,
   milestonesUrl,
   monthLabel,
   quarterLabel,
@@ -22,6 +23,8 @@ import {
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 type Values = Record<string, string>;
+// QA8-04: the current milestone (blue) stands apart from the pending ones (amber); the label always says which (never colour alone).
+const STATUS_CLASS: Record<MilestoneStatus, string> = { done: "status", in_progress: "badge", pending: "status pending", delayed: "status error" };
 const blankToNull = (values: Values) => Object.fromEntries(Object.entries(values).map(([k, v]) => [k, v.trim() === "" ? null : v.trim()]));
 
 // upc-008 (spec §4): §5's expected timeline (month and quarter derived by the API, Q-10) and §6's milestone table with its Q-11 status as
@@ -156,7 +159,8 @@ export default function UniversityTimeline({ universityId, expected, canEdit, in
         </form>
       ) : (
         <>
-          <dl role="group" aria-labelledby={id("expected")} style={{ display: "grid", gridTemplateColumns: "minmax(120px, max-content) 1fr", gap: "6px 16px", margin: "0 0 12px" }}>
+          {/* QA8-03: the value column keeps room for a whole word ("November 2026") on phones; long labels wrap instead */}
+          <dl role="group" aria-labelledby={id("expected")} style={{ display: "grid", gridTemplateColumns: "minmax(min(120px, 40%), max-content) minmax(9rem, 1fr)", gap: "6px 16px", margin: "0 0 12px" }}>
             {facts.map(([term, value]) => [
               <dt key={`${term}-t`} className="muted">{term}</dt>,
               <dd key={`${term}-d`} style={{ margin: 0, overflowWrap: "anywhere" }}>{value || notSet}</dd>,
@@ -188,13 +192,13 @@ export default function UniversityTimeline({ universityId, expected, canEdit, in
               <tbody>
                 {milestones.items.map((m) => (
                   <tr key={m.kind} className={m.status === "delayed" ? "milestone-delayed" : undefined}>
-                    <th scope="row" style={{ fontWeight: 650 }}>{m.label}</th>
+                    <th scope="row">{m.label}</th>
                     <td>{m.target_date ? formatCalendarDate(m.target_date) : "—"}</td>
                     <td>
                       {m.achieved_on ? formatCalendarDate(m.achieved_on) : "—"}
                       {m.achieved_by === "auto" && m.auto_source && <span className="muted"> (Auto, {AUTO_LABEL[m.auto_source]})</span>}
                     </td>
-                    <td><span className={`status${m.status === "delayed" ? " error" : m.status === "done" ? "" : " pending"}`}>{STATUS_LABEL[m.status]}</span></td>
+                    <td><span className={STATUS_CLASS[m.status]}>{STATUS_LABEL[m.status]}</span></td>
                     {milestones.can_edit && (
                       <td>
                         <button id={editId(m)} type="button" className="btn ghost small" aria-label={`Edit ${m.label}`} onClick={() => open(m)} disabled={busy || editing !== null}>

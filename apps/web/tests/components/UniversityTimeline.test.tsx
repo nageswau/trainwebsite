@@ -73,6 +73,12 @@ describe("UniversityTimeline (upc-008)", () => {
     expect(screen.getByText("1 milestone delayed")).toBeInTheDocument();
   });
 
+  it("sets the current milestone apart from the pending ones (QA8-04)", () => {
+    show({ initial: page([ms("meeting", "Meeting", { status: "in_progress" }), ms("presentation", "Presentation")]) });
+    expect(screen.getByText("In progress")).toHaveClass("badge");
+    expect(screen.getByText("Pending")).toHaveClass("status", "pending");
+  });
+
   it("offers no edit controls to a reader", () => {
     show({ canEdit: false, initial: page(ITEMS, false) });
     expect(screen.queryByRole("button", { name: /Edit/ })).not.toBeInTheDocument();

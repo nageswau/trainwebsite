@@ -110,4 +110,16 @@ test("expected timeline, delayed milestones, auto Proposal and the head's edit",
   await page.reload();
   await expect(section.getByRole("table", { name: "Partnership milestones" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  // QA8-02: the Status column (AC1's "Delayed") is on screen without scrolling the table sideways.
+  const status = await meeting.getByText("Done").boundingBox();
+  expect(status!.x + status!.width).toBeLessThanOrEqual(390);
+  // QA8-01: milestone names are row labels, not styled like the column headings.
+  expect(await meeting.locator("th").evaluate((el) => getComputedStyle(el).textTransform)).toBe("none");
+  // QA8-03: values wrap on words -- "November 2026" keeps "November" whole on one line.
+  const month = await section.getByRole("group", { name: "Expected timeline" }).getByText("November 2026").evaluate((el) => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    return [...range.getClientRects()].map((r) => Math.round(r.width));
+  });
+  expect(month.every((w) => w >= 60)).toBe(true); // no fragment narrower than a whole word
 });
