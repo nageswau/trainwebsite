@@ -6041,10 +6041,11 @@ seven more upc items (`0126`–`0132`, DEC-SCOPE-141..147, §12BI–§12BO, §2.
 - `DEC-SCOPE-136` (rec-017) A1: there is no `on_hold` status, so rec-018's Hold is a flag. A2: the permissive moves and the single
   status writer.
 
-**Status:** **BUILT** on `feature/rec-018` (2026-10-09); not merged yet. Every answer below is a **recommended default, `UNVERIFIED`**,
-taken on the owner's instruction to proceed with the recommended answers.
+**Status:** **MERGED** to `main` as PR #195 @ `0d80aadf` (2026-10-09). Every answer below is a **recommended default, `UNVERIFIED`**,
+taken on the owner's instruction to proceed with the recommended answers. SC1 and SC2 answer Q-18. The next rec item takes `0135`,
+`DEC-SCOPE-150`, §12BR and §2.76 (re-check `main`).
 
-**Numbering:** migration `0134_application_screenings` (after rec-020's `0133_interview_management`), API §12BQ, RBAC §2.75. Drafted
+**Numbering (FINAL):** migration `0134_application_screenings` (after rec-020's `0133_interview_management`), API §12BQ, RBAC §2.75. Drafted
 as `0125` / `DEC-SCOPE-140` / §12BH / §2.66 on `0122_candidate_skills`, then `0126` / 141 / §12BI / §2.67; rec-010, upc-026, upc-012,
 the upc items through `0132` and rec-020 (`0133` / 148 / §12BP / §2.74) merged first. Spec `docs/superpowers/specs/2026-10-09-rec-018-application-screening-design.md`.
 
