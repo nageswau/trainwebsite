@@ -12,12 +12,12 @@ describe("rec-001 navigation", () => {
 
   it("gives the recruiter their workspace plus the legacy placement screens (Q-29), and the manager only manager pages", () => {
     const hrefs = RECRUITER_NAV.map((x) => x.href);
-    expect(hrefs.slice(0, 9)).toEqual(["/recruiter/dashboard", "/recruiter/companies", "/recruiter/profile", "/recruiter/skills", "/recruiter/candidates", "/recruiter/pipeline", "/recruiter/requirements", "/recruiter/follow-ups", "/recruiter/meetings"]); // rec-003, rec-006, rec-009, rec-005, rec-007, rec-024, rec-028
+    expect(hrefs.slice(0, 10)).toEqual(["/recruiter/dashboard", "/recruiter/companies", "/recruiter/profile", "/recruiter/skills", "/recruiter/candidates", "/recruiter/find-candidates", "/recruiter/pipeline", "/recruiter/requirements", "/recruiter/follow-ups", "/recruiter/meetings"]); // rec-003, rec-006, rec-009, rec-013, rec-005, rec-007, rec-024, rec-028
     expect(hrefs).toEqual(expect.arrayContaining(["/it/placement/candidates", "/it/placement/company-requirements", "/it/placement/reports"]));
     expect(hrefs.filter((h) => h.startsWith("/recruiter/manager"))).toEqual([]);
-    expect(RECRUITER_MANAGER_NAV.map((x) => x.href)).toEqual(["/recruiter/manager/team", "/recruiter/companies", "/recruiter/manager/catalogue", "/recruiter/manager/skills", "/recruiter/candidates", "/recruiter/pipeline", "/recruiter/requirements", "/recruiter/follow-ups", "/recruiter/meetings", "/recruiter/manager/templates"]); // rec-002, rec-003, rec-006, rec-009, rec-005 + rec-007, rec-024, rec-028, rec-026
+    expect(RECRUITER_MANAGER_NAV.map((x) => x.href)).toEqual(["/recruiter/manager/team", "/recruiter/companies", "/recruiter/manager/catalogue", "/recruiter/manager/skills", "/recruiter/candidates", "/recruiter/find-candidates", "/recruiter/pipeline", "/recruiter/requirements", "/recruiter/follow-ups", "/recruiter/meetings", "/recruiter/manager/templates"]); // rec-002, rec-003, rec-006, rec-009, rec-013, rec-005 + rec-007, rec-024, rec-028, rec-026
     expect(PORTAL_NAV["it/placement"]).toContainEqual({ label: "Recruiter Workspace", href: "/recruiter/dashboard" });
-    expect(PORTAL_NAV["it/hr"].map((x) => x.href).filter((h) => h.startsWith("/recruiter"))).toEqual(["/recruiter/candidates"]); // rec-009: read only
+    expect(PORTAL_NAV["it/hr"].map((x) => x.href).filter((h) => h.startsWith("/recruiter"))).toEqual(["/recruiter/candidates", "/recruiter/find-candidates"]); // rec-009 / rec-013: read only
   });
 
   it("gives super admin and IT admin a Recruiter Staff entry, leaving the companies page alone", () => {
@@ -25,6 +25,7 @@ describe("rec-001 navigation", () => {
     expect(SUPER_ADMIN_NAV).toContainEqual({ label: "Recruiters", href: "/admin/recruiters" });
     expect(SUPER_ADMIN_NAV).toContainEqual({ label: "Recruiter Companies", href: "/recruiter/companies" }); // rec-003
     expect(SUPER_ADMIN_NAV).toContainEqual({ label: "Recruiter Requirements", href: "/recruiter/requirements" }); // rec-007
+    expect(SUPER_ADMIN_NAV).toContainEqual({ label: "Find Candidates", href: "/recruiter/find-candidates" }); // rec-013
     expect(PORTAL_NAV["it/admin"]).toContainEqual({ label: "Recruiter Staff", href: "/it/admin/recruiter-staff" });
     expect(PORTAL_NAV["overseas/admin"].map((x) => x.href)).not.toContain("/overseas/admin/recruiter-staff");
   });

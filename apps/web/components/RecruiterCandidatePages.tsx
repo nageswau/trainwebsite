@@ -6,6 +6,7 @@ import PortalShell from "@/components/PortalShell";
 import RecruiterCandidateDetail from "@/components/RecruiterCandidateDetail";
 import RecruiterCandidateForm from "@/components/RecruiterCandidateForm";
 import RecruiterCandidateList from "@/components/RecruiterCandidateList";
+import RecruiterFindCandidates from "@/components/RecruiterFindCandidates";
 import { ApiError, serverApi } from "@/lib/api";
 import { PORTAL_NAV, RECRUITER_MANAGER_NAV, RECRUITER_NAV, SUPER_ADMIN_NAV, type NavItem } from "@/lib/navigation";
 import { PLACEMENT_MANAGER_LABEL, RECRUITER_ROLE_LABEL } from "@/lib/recruiter";
@@ -59,6 +60,26 @@ export async function CandidateListPage() {
       </div>
       <Suspense fallback={<p className="muted" role="status">Loading candidates…</p>}>
         <RecruiterCandidateList sourceFilter={s.writes} />
+      </Suspense>
+    </Frame>
+  );
+}
+
+/** rec-013 (DEC-SCOPE-141): Find Candidates, in the same shell and for the same roles as the list. */
+export async function FindCandidatesPage() {
+  const s = await shell();
+  if (!("nav" in s)) return s;
+  return (
+    <Frame s={s}>
+      <div className="portal-title">
+        <div>
+          <div className="eyebrow">Candidate pool</div>
+          <h2>Find Candidates</h2>
+          <p className="muted">Search every candidate by skill — other names for a skill and related skills count too — then narrow by experience, location and availability.</p>
+        </div>
+      </div>
+      <Suspense fallback={<p className="muted" role="status">Loading search…</p>}>
+        <RecruiterFindCandidates writes={s.writes} sourceFilter={s.writes} />
       </Suspense>
     </Frame>
   );
