@@ -1,4 +1,5 @@
-"""upc-007 (DEC-SCOPE-126, spec §3): stage moves, Lost / Reopen, stage history and the Kanban board.
+"""upc-007 (DEC-SCOPE-126, spec §3): stage moves, Lost / Reopen, stage history and the Kanban board. upc-020: a move creates the new
+stage's Q-22 auto-task in the same transaction.
 
 Every write is one transaction, as upc-003's: the university row lock (FOR UPDATE), the scope check (`can_move_stage` / `can_reopen`: 403
 logged; inactive 409), the pipeline rules (services.partnership_pipeline, the single writer), change + history row + audit row, one commit
@@ -16,6 +17,7 @@ from app.core.database import get_db
 from app.models import User
 from app.schemas import UniversityEnvelope, UniversityPipelinePage, UniversityStageEventPage, UniversityStageMove, UniversityStageReason
 from app.services import partnership_pipeline as pipeline
+from app.services import partnership_tasks as tasks
 from app.services import partnership_universities as svc
 
 router = APIRouter(prefix="/partnership", tags=["partnership-pipeline"])
@@ -32,6 +34,7 @@ async def move_stage(university_id: UUID, payload: UniversityStageMove, user: Us
         if isinstance(e.detail, dict) and e.detail.get("code") == "stage_changed":
             svc.log("university_stage_conflict", user, uni.id, current_stage=uni.stage, to_stage=payload.to_stage)
         raise
+    await tasks.on_stage_entered(db, user, uni)  # upc-020 Q-22: the new stage's auto-task, in this transaction
     svc.audit(db, user, "stage_changed", uni.id, {"from": from_stage, "to": payload.to_stage, "backward": backward, "note": payload.note is not None})
     await db.commit()
     svc.log("university_stage_changed", user, uni.id, from_stage=from_stage, to_stage=payload.to_stage, backward=backward)

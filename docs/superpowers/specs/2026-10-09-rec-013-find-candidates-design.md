@@ -5,7 +5,8 @@ Backlog: `docs/delivery/RECRUITER_CRM_BACKLOG.md` rec-013. Source: EVID-018 user
 Depends on rec-006 (merged PR #150), rec-009 (merged PR #155) and rec-011 (merged PR #180); all three are on `main`.
 
 **Numbering:** `DEC-SCOPE-142`, API §12BJ, RBAC §2.68, **no migration**. Drafted as 141 / §12BI / §2.67; upc-026
-(139 / §12BG / §2.65) and upc-012 (140 / §12BH / §2.66) merged first, and rec-020 (unmerged) holds `0126` / 141 / §12BI / §2.67. Re-check
+(139 / §12BG / §2.65) and upc-012 (140 / §12BH / §2.66) merged first, and upc-020 (`0126` / 141 / §12BI / §2.67)
+merged after them. Re-check
 origin/main before the merge and re-chain if needed.
 
 ## 1. Answers (2026-10-09)

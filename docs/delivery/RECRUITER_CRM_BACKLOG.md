@@ -764,7 +764,7 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Status (2026-10-09):** built on `feature/rec-013` (not yet merged). `DEC-SCOPE-142` (FS1–FS12 recommended defaults, UNVERIFIED;
   Q-15 = a chip builder with "all of" skills and up to 5 "at least one of" groups). **No migration** (rec-011's
   `ix_candidate_skills_skill_candidate` serves the search; the 10k-candidate test stays under 2 s). API §12BJ, RBAC §2.68 (drafted as 141 / §12BI / §2.67;
-  upc-026 and upc-012 merged first with 139–140 / §12BG–§12BH / §2.65–§2.66, and rec-020 holds `0126` / 141 / §12BI / §2.67 — re-check
+  upc-026 and upc-012 merged first with 139–140 / §12BG–§12BH / §2.65–§2.66, and upc-020 took `0126` / 141 / §12BI / §2.67 — re-check
   `main` before the merge). Not built here: job-type filter (FS6, no candidate field), match % (rec-016), Share (rec-019).
 - **Business requirement:** user question at line 1092; S2-§5, §6, §7, §9, §12, §13, §18, §19.
 - **Existing behavior:** `/workflows/it/placement/candidates?q` does a name ILIKE; `/employer/candidates` does an in-Python substring
