@@ -50,6 +50,15 @@ describe("UniversityCourses (upc-017)", () => {
     expect(screen.getByText("12.5%")).toBeInTheDocument();
   });
 
+  it("moves focus into the form it opens (QA-01: the button that had focus is gone)", () => {
+    render(<UniversityCourses universityId="u1" page={page([course()])} options={options} canSetCommission={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add course" }));
+    expect(within(screen.getByRole("form", { name: "New course" })).getByLabelText("Course title (required)")).toHaveFocus();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit MSc Cyber Security" }));
+    expect(within(screen.getByRole("form", { name: "Edit MSc Cyber Security" })).getByLabelText("Course title (required)")).toHaveFocus();
+  });
+
   it("adds a course and refreshes the page", async () => {
     const fetchMock = vi.fn().mockResolvedValue(res({ course: course() }, 201));
     vi.stubGlobal("fetch", fetchMock);
@@ -106,7 +115,7 @@ describe("CourseForm (upc-017)", () => {
     fireEvent.change(within(form).getByLabelText("Tuition currency"), { target: { value: "GBP" } });
     fireEvent.change(within(form).getByLabelText("Minimum score"), { target: { value: "9.5" } });
     save();
-    expect(alert()).toBe("An IELTS score cannot be above 9.");
+    expect(alert()).toBe("The IELTS score cannot be above 9.");
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

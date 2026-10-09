@@ -55,7 +55,7 @@ export function scoreProblem(test: string, score: string): string | null {
   if (!test) return "Choose the English test the score is for.";
   const n = Number(score);
   if (!(n > 0)) return "The English score must be more than 0.";
-  if (n > MAX_SCORE[test]) return `An ${test} score cannot be above ${MAX_SCORE[test]}.`;
+  if (n > MAX_SCORE[test]) return `The ${test} score cannot be above ${MAX_SCORE[test]}.`;
   return null;
 }
 

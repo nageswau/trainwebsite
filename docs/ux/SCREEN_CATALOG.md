@@ -3510,3 +3510,22 @@ Design spec `docs/superpowers/specs/2026-10-09-upc-016-commission-terms-design.m
   **States:** "No commission terms recorded yet." / "No commission terms match these filters." / past-the-end link; 403 → access card
   ("Commission terms access required").
 - **Responsive:** the form grid stacks; the table becomes labelled cards below 640 px; no side-scroll at 820 px or 390 px.
+
+## upc-017 addendum (2026-10-09, `DEC-SCOPE-145`) — Course / program master
+
+Design spec `docs/superpowers/specs/2026-10-09-upc-017-course-master-design.md` §4. Visual-reference mapping: None — not inspected. Do not claim parity.
+
+- **Route:** `/partnership/universities/[id]` — a **Courses & programmes** section for every reader of the page: one row per course (title,
+  level badge, "Inactive" badge), then category, duration, intakes, tuition fee, application fee, English, entry requirements, application
+  process, deadline, scholarships and — only when the API sends it (partnership roles, super admin) — "Commission (restricted)". Writers get
+  **Add course**, **Edit** per course and **Import courses (CSV)**. The form: title, level, category, duration (required), 12 intake month
+  checkboxes, tuition fee + currency, application fee + currency, English test + minimum score, deadline, entry requirements, application
+  process, scholarships checklist, commission (not recorded / percentage / amount + currency; commission roles only), "Offered (active)".
+  Checks before sending (required, negative, > 2 decimals, half a pair, score scale); API refusals in `.form-error[role=alert]`; notices in
+  `p[role=status]` (only when shown); busy-disabled buttons. The import panel: template link, file input (.csv, 1 MB), result counts and a
+  table of rows not added. **Empty:** "No courses recorded yet."
+- **Route:** `/partnership/courses` (manager menu "Courses & Programs", head nav) — table (course + Inactive badge, university link +
+  country, level, duration, intakes, tuition, English, commission for commission roles), GET filters (level, status, search), URL paging.
+  **States:** "No courses recorded yet." / "No courses match these filters." / past-the-end link; 403 → access card.
+- **Public catalogue:** unchanged screens; inactive courses no longer appear.
+- **Responsive:** the form grid stacks; the table becomes labelled cards below 640 px; no side-scroll at 820 px or 390 px.

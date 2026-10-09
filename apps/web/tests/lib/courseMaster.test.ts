@@ -28,7 +28,7 @@ describe("courseMaster (upc-017)", () => {
 
   it("checks a score against its test's scale", () => {
     expect(scoreProblem("IELTS", "6.5")).toBeNull();
-    expect(scoreProblem("IELTS", "9.5")).toBe("An IELTS score cannot be above 9.");
+    expect(scoreProblem("IELTS", "9.5")).toBe("The IELTS score cannot be above 9.");
     expect(scoreProblem("", "6.5")).toBe("Choose the English test the score is for.");
     expect(scoreProblem("TOEFL", "0")).toBe("The English score must be more than 0.");
     expect(scoreProblem("PTE", "")).toBeNull();

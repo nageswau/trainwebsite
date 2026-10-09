@@ -794,6 +794,8 @@ Common conventions:
 - **Complexity:** medium · **Risk:** high
 
 ### upc-017 — Course / program master
+- **Status (2026-10-09):** built on `feature/upc-017` under `DEC-SCOPE-145` (Q-21, Q-33 + CO1–CO16, recommended answers), with migration
+  `0130_university_courses`, API §12BM and RBAC §2.71. Spec: `docs/superpowers/specs/2026-10-09-upc-017-course-master-design.md`.
 - **Business requirement:** §16 (14 fields; "counselors know exactly what each partner university offers") (U6).
 - **Existing behavior:** `overseas_courses` has title, level, category, duration, free-text tuition and intake. No create API.
 - **Expected behavior:**

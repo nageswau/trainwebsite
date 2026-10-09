@@ -1292,6 +1292,19 @@ MoU number and field names only.
 | Add, edit, remove (agreement draft … negotiation) | own universities (primary/backup) | unowned + team universities | `403` | ✅ all | `403` |
 | Change after approval | `409` (renew) | `409` | `403` | `409` | `403` |
 
+### 2.71 University courses *(net-new, added 2026-10-09 — `DEC-SCOPE-145`, `upc-017`)*
+
+Enforced inline in `api/university_courses.py` + `api/university_course_import.py` (`partnership_universities.require_reader`, then the
+university's `can_edit`). **U2:** a course's `commission` is removed server-side by `partnership_access.strip_commission` for every
+non-commission role, and only `COMMISSION_ROLES` may set it. Audit and logs carry ids and field names only.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Read courses (university page, menu) | ✅ all | ✅ all | ✅ all (no commission) | ✅ all | `403` (anonymous `401`); counselors read the public catalogue |
+| Add, edit, deactivate, import | own universities (primary/backup) | unowned + team universities | ✅ all | ✅ all | `403` |
+| Read / set course commission | ✅ (write: own) | ✅ (write: unowned + team) | stripped / `403` | ✅ | stripped / `403` |
+| Public catalogue (active courses of published universities) | ✅ | ✅ | ✅ | ✅ | ✅ anonymous, never commission |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

@@ -127,7 +127,7 @@ export default function CourseForm({ universityId, options, course = null, canSe
     <form onSubmit={submit} noValidate aria-label={label} aria-busy={busy} className="card" style={{ padding: 14, display: "grid", gap: 12 }}>
       <fieldset disabled={busy} style={{ ...plain, display: "grid", gap: 12 }}>
         <div style={grid}>
-          {field("title", "Course title (required)", <input id={`${prefix}-title`} value={values.title} maxLength={200} onChange={set("title")} placeholder="MSc Cyber Security" />)}
+          {field("title", "Course title (required)", <input id={`${prefix}-title`} autoFocus value={values.title} maxLength={200} onChange={set("title")} placeholder="MSc Cyber Security" />)}
           {field("level", "Level (required)", (
             <select id={`${prefix}-level`} value={values.level} onChange={set("level")}>
               <option value="">Choose</option>

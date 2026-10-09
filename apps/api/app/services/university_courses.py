@@ -84,7 +84,7 @@ def check_rules(state: dict) -> None:
         if test is None:
             raise HTTPException(422, "Choose the English test the score is for")
         if score > MAX_SCORE[test]:
-            raise HTTPException(422, f"A {test} score cannot be above {MAX_SCORE[test]}")
+            raise HTTPException(422, f"The {test} score cannot be above {MAX_SCORE[test]}")
 
 
 async def existing_keys(db: AsyncSession, university_id: UUID, exclude_id: UUID | None = None) -> set[tuple[str, str]]:
