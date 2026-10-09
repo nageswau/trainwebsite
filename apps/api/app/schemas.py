@@ -8870,6 +8870,46 @@ class RecApplicationStatusChange(BaseModel):
     note: _rec_requirement_text_type(500, multiline=True) = None
 
 
+# --- rec-019 (DEC-SCOPE-158): profile sharing (services/profile_sharing) ---------------------------------------------------------------
+ShareResponse = Literal["pending", "interested", "not_interested", "interview_requested"]  # models.PROFILE_SHARE_RESPONSES
+
+
+class RecShareCreate(BaseModel):
+    """S1: 1-20 distinct candidates; the contact is checked against the requirement's company by the service (S3)."""
+
+    model_config = ConfigDict(extra="forbid")
+    requirement_id: UUID
+    candidate_ids: Annotated[list[UUID], Field(min_length=1, max_length=20)]
+    channel: Literal["email", "whatsapp", "portal", "other"]
+    contact_id: UUID | None = None
+    note: _rec_requirement_text_type(500, multiline=True) = None
+    repeat: bool = False
+
+    @field_validator("candidate_ids")
+    @classmethod
+    def _distinct(cls, value: list[UUID]) -> list[UUID]:
+        if len(set(value)) != len(value):
+            raise ValueError("Each candidate can be chosen only once")
+        return value
+
+
+class RecShareItemUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    response: ShareResponse | None = None
+    feedback: _rec_requirement_text_type(1000, multiline=True) = None
+
+    @model_validator(mode="after")
+    def _something(self):
+        if not self.model_fields_set:
+            raise ValueError("Give a response or feedback")
+        return self
+
+
+class EmployerShareResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    response: ShareResponse
+
+
 # --- rec-018 (DEC-SCOPE-149): an application's screening (services/application_screening) -----------------------------------------
 class RecScreeningIn(BaseModel):
     """SC5-SC7: the whole form -- a field left out is cleared. The ranges are the table's CHECKs (app.models.SCREENING_CHECKS)."""

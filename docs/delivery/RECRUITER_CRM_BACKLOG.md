@@ -988,6 +988,10 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** small · **Risk:** low
 
 ### rec-019 — Profile sharing
+- **Status (2026-10-09):** built on `feature/rec-019` (`DEC-SCOPE-158`, migration `0140_profile_shares`, API §12BZ, RBAC §2.84). Q-19
+  answered with recommended defaults S1–S14 (UNVERIFIED): 7-day random resume links, Portal shares visible to every employer user of the
+  company, responses recorded by the recruiter and (Portal) the employer, a repeat share warned (409) then allowed with "Share again".
+  Spec: `docs/superpowers/specs/2026-10-09-rec-019-profile-sharing-design.md`.
 - **Business requirement:** §11: select multiple candidates → Share Profiles via Email/WhatsApp/Portal/Other; record 7 fields (R8).
 - **Existing behavior:** none. Employers see only search and their shortlists.
 - **Expected behavior:**

@@ -5119,3 +5119,65 @@ class RecruiterContractEvent(Base):
     document_key: Mapped[str | None] = mapped_column(String(200), nullable=True)
     position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# rec-019 (DEC-SCOPE-158, spec §2): profile sharing (EVID-018 §11). One share is one requirement, one company and one channel; each item is
+# one candidate with the company's response. Email / WhatsApp shares point at their `recruiter_messages` row and carry a contact; Portal /
+# Other have no message. Migration 0140 repeats these (test_rec_019_migration pins them).
+PROFILE_SHARE_CHANNELS = ("email", "whatsapp", "portal", "other")
+PROFILE_SHARE_RESPONSES = ("pending", "interested", "not_interested", "interview_requested")
+PROFILE_SHARE_CHECKS = {
+    "ck_profile_shares_channel": _in_list("channel", PROFILE_SHARE_CHANNELS),
+    "ck_profile_shares_message": "(channel IN ('email', 'whatsapp')) = (message_id IS NOT NULL) AND (channel NOT IN ('email', 'whatsapp') OR contact_id IS NOT NULL)",
+    "ck_profile_shares_note": "note IS NULL OR char_length(note) <= 500",
+}
+PROFILE_SHARE_ITEM_CHECKS = {
+    "ck_profile_share_items_response": _in_list("response", PROFILE_SHARE_RESPONSES),
+    "ck_profile_share_items_token": "(token_hash IS NULL) = (token_expires_at IS NULL)",
+    "ck_profile_share_items_feedback": "feedback IS NULL OR char_length(feedback) <= 1000",
+}
+
+
+class ProfileShare(Base, TimestampMixin):
+    """rec-019: one share of 1-20 candidates for one requirement, to its company over one channel. Permanent: never edited or deleted (S13).
+    `note` is the recruiter side's own remark and is never sent."""
+
+    __tablename__ = "profile_shares"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in PROFILE_SHARE_CHECKS.items()),
+        Index("ix_profile_shares_job", "job_id", "created_at"),
+        Index("ix_profile_shares_company", "company_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="RESTRICT"))
+    company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"))
+    contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("company_contacts.id", ondelete="RESTRICT"), nullable=True)
+    channel: Mapped[str] = mapped_column(String(16))
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    message_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_messages.id", ondelete="RESTRICT"), nullable=True)
+    shared_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+class ProfileShareItem(Base, TimestampMixin):
+    """rec-019: one candidate of a share. `resume_id` is the version current at share time; `token_hash` is the SHA-256 of the resume
+    link's random token (the token itself is never stored or logged, S7). The response is the company's, recorded by the recruiter or, on a
+    Portal share, by an employer user (S9)."""
+
+    __tablename__ = "profile_share_items"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in PROFILE_SHARE_ITEM_CHECKS.items()),
+        UniqueConstraint("share_id", "candidate_id", name="uq_profile_share_items_candidate"),
+        Index("ix_profile_share_items_candidate", "candidate_id"),
+        Index("uq_profile_share_items_token", "token_hash", unique=True, postgresql_where=text("token_hash IS NOT NULL")),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    share_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("profile_shares.id", ondelete="RESTRICT"))
+    candidate_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="RESTRICT"))
+    application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("job_applications.id", ondelete="RESTRICT"))
+    resume_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidate_resumes.id", ondelete="RESTRICT"), nullable=True)
+    token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    response: Mapped[str] = mapped_column(String(24), default="pending", server_default="pending")
+    feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
+    responded_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

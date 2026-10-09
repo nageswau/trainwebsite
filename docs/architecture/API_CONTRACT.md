@@ -2453,6 +2453,27 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `PUT /recruiter/requirements/{requirement_id}/skill-weights` | **Body:** `{weights: [{id (job skill), weight 1–10}]}` (1–60 items, distinct ids), `extra="forbid"`. **→ 200** `{requirement}` (§12AW). **422**: a weight out of range, a duplicate id, or an id that is not this requirement's skill ("Choose skills of this requirement"). Unchanged weights write nothing. A change writes one audit row `recruiter_requirement.weights` `{skills: [ids]}` |
 | `GET /recruiter/requirements/{requirement_id}` (§12AW) | `permissions` gains `can_view_matches` (additive): whether the caller may read the matches |
 
+## 12BZ. Profile sharing (`rec-019`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-158` (S1–S14). Spec: `docs/superpowers/specs/2026-10-09-rec-019-profile-sharing-design.md` §3. Migration `0140_profile_shares`.
+- **Scope:** the requirement's read scope (§12AW) for the share and the requirement list, the company's (§12AO) for the company list:
+  out of scope or unknown → `404`. Writes need the requirement's writer (rec-017: its recruiter or `super_admin`; others `403`) and a
+  requirement that is not closed or cancelled (`409`).
+- **R8:** the email, the WhatsApp text and the employer view carry the summary allowlist only (code, name, qualification, college, passing
+  year, experience, current company, location, preferred locations, preferred role, notice period, up to 10 skill names) — never a phone,
+  email, LinkedIn or salary.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `POST /recruiter/shares` | **Body:** `{requirement_id, candidate_ids[1–20, distinct], channel: email \| whatsapp \| portal \| other, contact_id?, note? (≤500, never sent), repeat? (false)}`, `extra="forbid"`. **→ 201** `{share, whatsapp_url}` (`whatsapp_url` only for WhatsApp). Error order: `403`/`404` role and scope; `409` closed/cancelled; `422` contact missing (email/WhatsApp) or not a contact of the requirement's company; `409` inactive contact; `503` SMTP not set up (email); `409` no contact email / mobile, or no employer-portal user (portal); `422` a candidate not in the opted-in pool or archived, or a Rejected / Withdrawn / Joined application on this requirement; **`409` repeat** `{detail: {message, duplicates: [{id, name, code}]}}` unless `repeat: true`; `409` / `429` the rec-026 daily WhatsApp / email cap. Effects: each candidate's application moves to `profile_shared` (from Sourced / Screened / Shortlisted; added at Profile Shared when absent; later open stages unchanged) with history; the company stage gets `profiles_shared`; email / WhatsApp write one `recruiter_messages` row (email `queued`, published after the commit); audit `profile_share.create` (ids only) |
+| `GET /recruiter/requirements/{requirement_id}/shares?limit&offset` | **→ 200** `{items[], total, limit, offset}` newest first. A share is `{id, channel, channel_label, requirement {id, code, title}, company_id, contact {id, name} \| null, note, message {id, delivery_status} \| null, shared_by {id, full_name}, created_at, can_respond, items[]}`; an item is `{id, candidate {id, code, name}, application_id, has_resume, link_expires_at, response, response_label, feedback, responded_by {id, full_name} \| null, responded_at}` |
+| `GET /recruiter/companies/{company_id}/shares?limit&offset` | The same page for the company |
+| `PATCH /recruiter/shares/{share_id}/items/{item_id}` | **Body:** `{response?: pending \| interested \| not_interested \| interview_requested, feedback? (≤1000)}` (at least one). **→ 200** the item. `404` unknown pair or out of scope; `403` not a writer; `409` closed requirement. A response change records who and when; audit `profile_share.respond` |
+| `GET /employer/shared-profiles?limit&offset` | `employer` only (`403`). **→ 200** `{items: [{id, shared_at, requirement {code, title}, candidate (summary), has_resume, response, response_label}], total, limit, offset}` — the caller's company's **Portal** shares only |
+| `PATCH /employer/shared-profiles/{item_id}` | **Body:** `{response}`. **→ 200** the item. Another company's item, or a non-Portal one, → `404` |
+| `GET /employer/shared-profiles/{item_id}/resume` | **→ 200** the resume version current at share time (`attachment`, `no-store`, `nosniff`); `404` none / archived / not this company's. Audit `profile_share.resume_download` `{via: portal}` |
+| `GET /public/shared-resume/{token}` | **No session.** The token is the 7-day random link of an email / WhatsApp item (only its SHA-256 is stored). **→ 200** the file; every failure (unknown, expired, archived candidate, unreadable) → `404` "This link has expired or is no longer available". Audit `profile_share.resume_download` `{via: link}` (no user) |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

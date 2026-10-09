@@ -7,14 +7,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.auth import _set_auth_cookies, _sync_role_assignment
+from app.api.bdm import LIMIT, OFFSET
 from app.api.deps import get_current_user
+from app.api.portfolio_certificates import HEADERS
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import hash_password
-from app.models import AuditLog, Candidate, Company, EmployerProfile, Interview, Job, JobApplication, PlacementProfile, User
-from app.schemas import EmployerInterviewCreate, EmployerJobCreate, EmployerJobUpdate, EmployerRegistrationRequest, EmployerShortlistCreate, UserOut
-from app.services import applications, interviews, placement_pool
+from app.models import AuditLog, Candidate, CandidateResume, Company, EmployerProfile, Interview, Job, JobApplication, PlacementProfile, User
+from app.schemas import (
+    EmployerInterviewCreate,
+    EmployerJobCreate,
+    EmployerJobUpdate,
+    EmployerRegistrationRequest,
+    EmployerShareResponse,
+    EmployerShortlistCreate,
+    UserOut,
+)
+from app.services import applications, candidates, interviews, placement_pool
+from app.services import profile_sharing as sharing
 from app.services import recruiter_requirements as requirements
+from app.services.bdm_appointments import db_now
 from app.services.recruiter_companies import employer_lead_source_id
 
 router = APIRouter(prefix="/employer", tags=["employer"])
@@ -269,6 +281,40 @@ async def schedule_interview(payload: EmployerInterviewCreate, user: User = Depe
     await db.commit()
     await db.refresh(item)
     return {"id": item.id, "application_id": item.application_id, "scheduled_at": item.scheduled_at, "mode": item.mode}
+
+
+@router.get("/shared-profiles")
+async def list_shared_profiles(limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """rec-019 (S8): every employer user of the company sees its Portal shares -- the R8 summary only, newest first."""
+    company_id = await sharing.employer_company(db, user)
+    return await sharing.portal_page(db, company_id, limit, offset)
+
+
+@router.patch("/shared-profiles/{item_id}")
+async def respond_to_shared_profile(item_id: UUID, payload: EmployerShareResponse, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """rec-019 (S9): the company's response on a Portal item; another company's item is 404."""
+    company_id = await sharing.employer_company(db, user)
+    item, share, candidate, job = await sharing.portal_item(db, company_id, item_id, lock=True)
+    if sharing.respond(item, user, payload.response, await db_now(db)):
+        db.add(AuditLog(user_id=user.id, action="profile_share.respond", entity_type="profile_share_item", entity_id=str(item.id), metadata_json={"fields": ["response"], "response": item.response}))
+    await db.commit()
+    sharing.log("profile_share_employer_response", user, item.id, response=item.response)
+    skills = await sharing.skill_names(db, [candidate.id])
+    return sharing.portal_out(item, share, candidate, job, skills[candidate.id])
+
+
+@router.get("/shared-profiles/{item_id}/resume")
+async def shared_profile_resume(item_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """rec-019 (S7, S8): the resume version shared, audited before any byte leaves."""
+    company_id = await sharing.employer_company(db, user)
+    item, _share, candidate, _job = await sharing.portal_item(db, company_id, item_id)
+    resume = await db.get(CandidateResume, item.resume_id) if item.resume_id else None
+    if resume is None or candidate.archived_at is not None:
+        raise HTTPException(404, "Resume not available")
+    data = candidates.read_file(resume)
+    sharing.download_audit(db, user, item, "portal")
+    await db.commit()
+    return Response(content=data, media_type=resume.content_type, headers={**HEADERS, "Content-Disposition": f'attachment; filename="{sharing.resume_name(candidate, resume)}"'})
 
 
 @router.get("/interviews")

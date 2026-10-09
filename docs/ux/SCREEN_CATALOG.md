@@ -3722,3 +3722,24 @@ rec-017 Candidates section. Shown only when the requirement's `permissions.can_v
   - No match: "No candidates in the pool have the required skills yet."
   - Read-only for the manager.
   - A Shortlist success ("{name} shortlisted.") re-reads the Candidates section. A refusal shows the API's message.
+
+## rec-019 addendum (2026-10-09, `DEC-SCOPE-158`) — Profile sharing
+
+Design spec: `docs/superpowers/specs/2026-10-09-rec-019-profile-sharing-design.md` §5.
+- **Selecting:** writers get a "Select {name} to share" checkbox on the requirement's Candidates rows (not on Rejected / Withdrawn /
+  Joined), on the Matching rows, and on the Find Candidates cards once a requirement is chosen. "Share selected (n)" opens the dialog; the
+  Matching and Find Candidates selections survive paging.
+- **Share dialog** (`RecruiterShareDialog`, inline card): the candidates' names and codes; "Share via" radio group (Email, WhatsApp, Portal,
+  Other, each with a one-line hint); Contact (the company's active contacts, the primary preselected; required for Email / WhatsApp, an
+  inline error when the contact lacks the email / mobile); an internal note; the R8 reminder "The company sees each candidate's profile
+  summary and resume — never their phone number, email or salary." The button reads "Share n profiles" or "Record and open WhatsApp".
+  A repeat lists who was already shared with "Share again". Success: "Shared n profiles for {requirement} by {channel} with {contact}."
+  (+ "The email is queued."), an "Open WhatsApp" link for WhatsApp (also opened in a new tab), and Close.
+- **Shared profiles section** (`RecruiterShares`) on the requirement page (after Matching) and the company page (after Job
+  Requirements): newest first, 20 per page; each share card shows "{channel} to {contact} · n profiles", the email delivery badge, when and
+  by whom, the note, and each candidate with the response badge, feedback and who answered. Writers get "Record response" (response
+  select + feedback). States: loading, error with Retry, empty ("No profiles shared yet…").
+- **Employer dashboard** (`/it/employer/dashboard`) gains "Shared with you (n)" (`EmployerSharedProfilesPanel`) before Interviews: one card
+  per profile with the summary (qualification, experience, current company, location, preferred locations and role, notice, skills),
+  "Download resume" or "Resume on request", and "Your response" + "Save response". States: loading, error with Retry, empty.
+- All of it uses stacked cards, so it holds at phone width; every control has a visible or visually hidden name.

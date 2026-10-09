@@ -9,6 +9,7 @@ import RecruiterRequirementForm from "@/components/RecruiterRequirementForm";
 import RecruiterRequirementCandidates from "@/components/RecruiterRequirementCandidates";
 import RecruiterRequirementJd from "@/components/RecruiterRequirementJd";
 import RecruiterRequirementMatches from "@/components/RecruiterRequirementMatches";
+import RecruiterShares from "@/components/RecruiterShares";
 import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson } from "@/lib/apiErrors";
 import { display, LINK_STYLE } from "@/lib/bdmOrganizations";
@@ -173,6 +174,7 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
   const [editing, setEditing] = useState(false);
   const [notice, setNotice] = useState<string | null>(created ? `Requirement ${initial.code} created.` : null);
   const [shortlists, setShortlists] = useState(0);
+  const [shares, setShares] = useState(0); // rec-019: a share from either section re-reads the board and the Shared profiles list
   const focus = useFocusAfterRender();
   useEffect(() => {
     if (created) window.history.replaceState(null, "", `${REQUIREMENTS_PATH}/${initial.id}`);
@@ -275,8 +277,13 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
         </ul>
       </section>
       {/* rec-017: after the requirement's own status controls and history, so its two "Change status" forms never sit side by side (QA-02). */}
-      <RecruiterRequirementCandidates requirementId={r.id} companyId={r.company.id} refreshKey={shortlists} />
-      {p.can_view_matches && <RecruiterRequirementMatches requirementId={r.id} version={r.updated_at} onRequirementChanged={setRequirement} onShortlisted={() => setShortlists((n) => n + 1)} />}
+      <RecruiterRequirementCandidates requirementId={r.id} requirementLabel={r.title} companyId={r.company.id} refreshKey={shortlists + shares}
+        onShared={() => setShares((n) => n + 1)} />
+      {p.can_view_matches && (
+        <RecruiterRequirementMatches requirementId={r.id} requirementLabel={r.title} companyId={r.company.id} version={r.updated_at}
+          onRequirementChanged={setRequirement} onShortlisted={() => setShortlists((n) => n + 1)} onShared={() => setShares((n) => n + 1)} />
+      )}
+      <RecruiterShares source={{ kind: "requirement", requirementId: r.id }} refreshKey={shares} />
     </>
   );
 }
