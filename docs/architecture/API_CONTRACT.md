@@ -2033,6 +2033,36 @@ can_complete, can_follow_up, can_close}, editable_fields, created_at, updated_at
 | `POST /recruiter/candidates/{id}/skills/{sid}/status` | `{status}` → item. `verified` / `assessed` set `verified_by` and `verified_at` (the caller, now); `claimed` clears them (AC3). The same status → `409`. The backlog named this route `…/verify`; it is `…/status` because it also sets `claimed` and `assessed` |
 | `POST /recruiter/skills/{id}/merge` | Skills Master writers only (placement manager, super_admin; recruiters `403`). `{into_skill_id}` → the kept skill (the §12AM skill item). This skill (active or not) is merged into an active one: candidate skills move (a candidate with both keeps the stronger status, the kept skill's row on a tie), requirement skills (`job_skills.skill_id`) move, aliases move, related links are re-made on the kept skill, this skill is **deleted** and its name becomes an alias of the kept one. **Refusals:** into itself → `422`; unknown or inactive target → `422` "Choose an active skill to merge into"; unknown skill → `404`. Audit `recruiter.skill_merge` (the merged id and name, counts) |
 
+## 12BG. Interview management (`rec-020`) — addendum, 2026-10-09
+
+- **Basis:** `DEC-SCOPE-139` (IV1–IV12). Design spec `docs/superpowers/specs/2026-10-09-rec-020-interview-management-design.md` §3.
+  Migration `0124`.
+- **Common rules:**
+  - Scope is rec-007's requirement scope through rec-017's `load_scoped`: out of scope or unknown → `404` "Interview not found" (or
+    "Job application not found"); a role without a recruiter scope → `403` before anything is read.
+  - Writers are `placement_team` (in scope) and `super_admin`; `placement_manager` and the assigned BDM → `403` on every write.
+  - Bodies refuse unknown keys (`422`). Times are minute-precision, timezone-aware; a time rule is a `422` on `scheduled_at`.
+  - Every write locks the application, then the candidate (when a time is set), then the interview; commits once; writes an audit row
+    `recruiter_interview.{create,update,reschedule,status}` with ids, keys and field names only; then publishes queued emails.
+- **Item:** `{id, code, round, round_label, scheduled_at, mode, meeting_url, interviewer, location, status, status_label, result,
+  application {id, status, status_label}, candidate {id, code, name}, requirement {id, code, title}, company {id, name},
+  contact {id, name}|null, history [{event (scheduled|rescheduled|status), from_status, to_status, old_scheduled_at, new_scheduled_at,
+  note, actor, created_at}], allowed_statuses [{key, label}], can_edit, can_reschedule}`.
+- **Notices:** `{candidate: in_app|queued|no_email|email_off|off, contact: queued|no_email|email_off|off|null}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/interviews?view=upcoming\|awaiting_update\|on_hold\|closed&limit&offset` | `{items, total, limit, offset, counts}` (IV12). Unknown view → `422` |
+| `GET /recruiter/interviews/{id}` | The item |
+| `GET /recruiter/applications/{id}/interviews` | `{items (newest first), can_schedule}` |
+| `POST /recruiter/interviews` | `{application_id, round, scheduled_at, mode, meeting_url?, interviewer? (≤160), location? (≤200), contact_id?, notify (default true)}` → `201 {interview, notifications}`. **Refusals:** past or > 366 days → `422`; a contact not active on the requirement's company → `422` on `contact_id`; a closed/cancelled requirement or an application that is not open → `409`; the same candidate already has an open interview at that minute → `409` "This candidate already has an interview scheduled at this time" |
+| `PATCH /recruiter/interviews/{id}` | Partial `{round?, mode?, meeting_url?, interviewer?, location?, contact_id?}` → the item. Null round or mode → `422`; `scheduled_at` is an unknown field; a selected/rejected interview → `409` |
+| `POST /recruiter/interviews/{id}/reschedule` | `{scheduled_at, reason? (≤500), notify}` → `{interview, notifications}`. From scheduled, confirmed, rescheduled, on hold or no show (else `409`). The same time, a past time or > 366 days → `422`; a clash → `409` |
+| `POST /recruiter/interviews/{id}/status` | `{status (confirmed\|completed\|no_show\|selected\|rejected\|on_hold), note?}` → `{interview}`. A move not in IV3 → `409`; Completed / No Show / Selected / Rejected before the scheduled time → `422` "You can mark this once the interview time has passed" |
+| `POST /workflows/it/interviews` *(legacy, changed)* | Response gains `code`. Now refuses the IV6 clash (`409`) |
+| `PATCH /workflows/it/interviews/{id}` *(legacy, changed)* | Response gains `status`. A changed `scheduled_at` is recorded as a reschedule (the clash applies) |
+| `POST /employer/interviews`, `GET /employer/interviews` *(changed)* | The clash now counts open interviews at the same minute; list items gain `code`, `round`, `status` |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

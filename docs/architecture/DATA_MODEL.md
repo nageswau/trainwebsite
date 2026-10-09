@@ -1598,3 +1598,22 @@ history notes.
 - Rows are hard-deleted on remove (audited). The skill merge (SK7) re-points rows to the kept skill and deletes the loser of a clash
   before it deletes the merged skill, so no row ever points at a deleted skill. The merge also re-points `job_skills.skill_id`.
 - `downgrade()` refuses while any row exists.
+
+## Interview management (`rec-020`, `DEC-SCOPE-139`; migration `0124_interview_management`, on `0122_candidate_skills`)
+
+**`interviews` gains:**
+- `interview_code` varchar(20) UNIQUE NOT NULL, default `'INT-' || to_char(nextval('interview_code_seq'), 'FM999999999000000')` (so every
+  creator, including the legacy routes, gets a code; existing rows backfilled in `created_at` order)
+- `round` varchar(20) NULL (CHECK `ck_interviews_round`: the 5 §14 rounds), `status` varchar(16) NOT NULL default `scheduled`
+  (CHECK `ck_interviews_status`: the 8 §14 statuses; backfilled from the legacy `result` — selected/rejected/on_hold kept, any other
+  value → on_hold, none → scheduled)
+- `interviewer` varchar(160), `location` varchar(200), `contact_id` → `company_contacts` (RESTRICT), `created_by_user_id` → `users`
+  (RESTRICT; NULL on legacy rows)
+- Index `ix_interviews_status_scheduled (status, scheduled_at)`. `result` stays (the legacy screens read it).
+
+**`interview_events`** (append-only): `id`, `interview_id` → `interviews` (RESTRICT), `event` (CHECK scheduled/rescheduled/status),
+`from_status`, `to_status`, `old_scheduled_at`, `new_scheduled_at`, `note` varchar(500), `actor_user_id` → `users` (nullable),
+`position` (identity), `created_at`. Index `(interview_id, position)`. Not backfilled.
+
+**Design notes:** the per-candidate clash is checked under a candidate row lock, not a constraint (no duration exists to define an
+overlap). `downgrade()` refuses while any event exists.

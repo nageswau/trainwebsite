@@ -5635,3 +5635,44 @@ taken on the owner's instruction to proceed with the recommended answers. The ne
 - rec-006 S6 ("skills are deactivated, never deleted") now has one exception: the merged-away skill is deleted, audited with its id and name.
 - Archived candidates' skills are read only. `hr_team` reads candidate skills but still cannot read the Skills Master.
 - **New Feature ID authorized:** `rec-011`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-011.
+
+### DEC-SCOPE-139 — Interview management (`rec-020`)
+
+**Evidence:**
+- `EVID-018` §14 (lines 594–652): 12 fields (Interview ID, Company, Requirement, Candidate, Round, Date, Time, Interview Mode, Meeting
+  Link, Interviewer, Location, Status), 5 rounds (HR, Technical, Manager, Final, Client) and 8 statuses (Scheduled, Confirmed, Completed,
+  Rescheduled, No Show, Selected, Rejected, On Hold). Line 47: the "+ Schedule Interview" quick action (rec-032 owns the dashboard).
+- `RECRUITER_CRM_BACKLOG.md` §rec-020: AC1 (a rescheduled interview keeps history), AC2 (No Show only after the scheduled time), AC3 (the
+  EMP-004/005 tests pass). The negative scenarios are a past time → 422 and an overlapping time for the same candidate → 409. Q-20 asks
+  about notifications to candidates and contacts.
+- `DEC-SCOPE-116` R14 (links typed in) and R8 (candidate contact details never shared). `DEC-SCOPE-136` (rec-017) is the application
+  status engine. `DEC-SCOPE-127` (rec-005) reserved the `interview_scheduled` pipeline event for rec-020.
+
+**Status:** built on branch `feature/rec-020`. Every answer below is a **recommended default, `UNVERIFIED`**, taken on the owner's
+instruction to proceed with the recommended answers. IV9 answers Q-20.
+
+**Numbering:** migration `0124_interview_management` (on `0122_candidate_skills`), API §12BG and RBAC §2.65. rec-010 is in progress in
+parallel and planned `0123` / `DEC-SCOPE-138` / §12BF / §2.64, so this item reserved the next set. Whichever merges second re-chains
+`down_revision` only. Spec `docs/superpowers/specs/2026-10-09-rec-020-interview-management-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| IV1 | Rounds | The 5 §14 values in source order. Required on the recruiter routes; NULL on legacy rows and the legacy/employer routes |
+| IV2 | Statuses | The 8 §14 values. Open = scheduled, confirmed, rescheduled |
+| IV3 | Moves | Confirmed ← scheduled/rescheduled. Completed and No Show ← open, **only after the scheduled time** (AC2, `422`). On Hold ← open or completed. Selected and Rejected ← completed or on hold, after the time; both final. Anything else `409` |
+| IV4 | Reschedule | From open, on hold or no show. The new time is in the future, within 366 days, and different; the status becomes Rescheduled; an event keeps old → new and an optional reason (AC1) |
+| IV5 | Schedule | Future time within 366 days (`422`). The application must be open and the requirement not closed or cancelled (`409`). Several rounds per application and per day are allowed |
+| IV6 | Clash | Another open interview of the same candidate (any requirement) at the same minute → `409`. No duration is invented (§14 has none). Every creator; the candidate row is locked |
+| IV7 | Fields | `INT-000001` (database default from `interview_code_seq`, so every creator gets one). Mode Online/Phone/In person; typed http(s) link; free-text interviewer and location; optional contact of the requirement's company |
+| IV8 | Side effects | Scheduling → application Interview (rec-017 `follow`) and company `interview_scheduled` (rec-005). Rejected → application Rejected. Selected → application Selected only on a Final or Client round |
+| IV9 (Q-20) | Notices | On schedule and reschedule, unless turned off: a student candidate gets the in-app notification (+ ENH-014 deliveries); an external candidate and the chosen contact get an email through rec-026's queue. The contact's email names the candidate by name and code only (R8). No SMTP or no address → still saved; the reply says which notices were skipped. The rec-026 daily cap does not apply |
+| IV10 | Who | Writers are rec-017's (`placement_team` in the requirement's scope, `super_admin`). `placement_manager` and the assigned BDM read. Out of scope `404`; other roles `403` |
+| IV11 | Legacy routes | `/workflows/it/interviews` and `/employer/interviews` keep their contracts and gain the code, the first event and the clash. The legacy PATCH records a changed time as a reschedule and sets the status from a known result when the move is allowed |
+| IV12 | Lists | Upcoming (by day), Awaiting update (time passed, or completed), On hold, Closed (selected, rejected, no show), with counts |
+
+**Consequences:**
+- `interviews` gains `interview_code`, `round`, `status`, `interviewer`, `location`, `contact_id`, `created_by_user_id`; new
+  `interview_events`; `interview_code_seq`. `services/interviews.py`, `api/recruiter_interviews.py`.
+- The requirement page's candidate rows gain an Interviews section; `/recruiter/interviews` is new in the recruiter and manager navs.
+- rec-021 (feedback) and rec-022 (offers) build on `interviews.status`.
+- **New Feature ID authorized:** `rec-020`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-020.

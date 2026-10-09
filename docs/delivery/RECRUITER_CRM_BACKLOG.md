@@ -997,6 +997,9 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** large · **Risk:** high
 
 ### rec-020 — Interview management
+- **Status (2026-10-09):** built on `feature/rec-020`. `DEC-SCOPE-139` (IV1–IV12 recommended defaults, UNVERIFIED; IV9 answers Q-20); migration
+  `0124_interview_management` (on `0122`; rec-010 holds `0123` / 138 / §12BF / §2.64 in parallel), API §12BG, RBAC §2.65. The
+  status and reschedule routes are `POST …/status` and `POST …/reschedule` as planned.
 - **Business requirement:** §14 (12 fields, 5 rounds, 8 statuses); quick action "+ Schedule Interview"; R14.
 - **Existing behavior:** `interviews` (application, time, mode, link, free-text result); staff create at `workflows.py:1614`, employers at
   `employer.py:241`; no notification.

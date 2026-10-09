@@ -1204,6 +1204,21 @@ writer may set Verified or Assessed; who and when are recorded.
 | `hr_team` | read only (every write `403`; the Skills Master stays `403`) | the whole pool | `rec-011` |
 | `it_admin`, `employer`, `bdm`, students, every other role | `403` | — | `rec-011` |
 
+### 2.65 Interview management *(net-new, added 2026-10-09 — `DEC-SCOPE-139`, `rec-020`)*
+
+Interviews take their application's scope (rec-007's requirement scope, §2.62). The role check runs before anything is read; out of scope
+is `404`.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` | read; schedule, edit, reschedule, change status | requirements assigned to them or on their companies | `rec-020` |
+| `placement_manager` | read only (writes `403`) | the team's requirements and the unassigned queue | `rec-020` |
+| `bdm` | read only | requirements of companies where they are the assigned BDM (R10) | `rec-020` |
+| `super_admin` | everything | all | `rec-020` |
+| `hr_team`, `it_admin` | `403` on `/recruiter/interviews*`; the legacy `/workflows/it/interviews` routes as before | — | `rec-020` |
+| `employer` | `403` on `/recruiter/*`; `/employer/interviews` for their own jobs as before | own jobs | `rec-020` |
+| students, every other role | `403` | — | `rec-020` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

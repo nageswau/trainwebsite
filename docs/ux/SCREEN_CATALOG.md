@@ -3380,3 +3380,19 @@ Design spec `docs/superpowers/specs/2026-10-08-rec-011-candidate-skills-design.m
   - `hr_team` and an archived candidate see the table with no controls.
 - **Skills Master detail** (`/recruiter/manager/skills`, manager and super_admin): **Merge into another skill** — a picker (never the
   skill itself), then a confirm naming what happens. On success the detail shows the kept skill with the merged name among its aliases.
+
+## rec-020 addendum (2026-10-09, `DEC-SCOPE-139`) — Interview management
+
+Design spec `docs/superpowers/specs/2026-10-09-rec-020-interview-management-design.md` §4.
+
+- **Requirement detail** (`/recruiter/requirements/[id]`), each candidate row: an **Interviews** toggle next to History.
+  - The application's interviews, newest first: round, code, status badge, time (IST), mode, interviewer, location, contact, the
+    meeting link (opens in a new tab) and a History disclosure (scheduled, rescheduled old → new with the reason, each status move).
+  - **+ Schedule interview** (writers, open application, live requirement): round, date and time (IST), mode, link, interviewer,
+    location, company contact (the company's active contacts), "Notify the candidate (and the contact)".
+  - Per interview, only when the API allows: **Change status** (the moves allowed now, with a note), **Reschedule** (new time, reason,
+    notify) and **Edit** (details only).
+  - The reply's notices are spelled out ("Candidate: email queued."). The candidates list re-reads, so the application status follows.
+- **Interviews** (`/recruiter/interviews`, recruiter and manager navs): tabs Upcoming / Awaiting update / On hold / Closed with counts;
+  Upcoming is grouped by IST day (the calendar). Each card links the candidate to its requirement. Loading, empty, error-with-Retry.
+  Managers see no write control.

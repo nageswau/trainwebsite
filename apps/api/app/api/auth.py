@@ -20,8 +20,8 @@ from app.models import AuditLog, Notification, NotificationDelivery, PasswordRes
 from app.schemas import ChangePasswordRequest, LoginRequest, LoginResponse, ProfileUpdate, RegistrationRequest, UserOut
 from app.services.agent_orgs import ensure_agent_org
 from app.services.integrations import send_notification
-from app.services.provisioning import ADMIN_PORTAL_ROLES
 from app.services.telecaller import parse_self_update
+from app.services.provisioning import ADMIN_PORTAL_ROLES
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
