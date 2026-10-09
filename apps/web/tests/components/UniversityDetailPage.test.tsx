@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import BdmStageHistory from "@/components/BdmStageHistory";
+import UniversityAgreements from "@/components/UniversityAgreements";
 import UniversityDocuments from "@/components/UniversityDocuments";
 import UniversityStagePanel from "@/components/UniversityStagePanel";
 import { serverApi } from "@/lib/api";
@@ -14,11 +15,13 @@ const university = {
   id: ID, university_code: "UNV-000001", name: "ABC", city: "London", country: { name: "United Kingdom", region: "UK" }, active: true,
   catalogue_visible: false, course_levels: [], popular_programs: [], rankings: [], application_count: 0, overview: "",
   relationship_strength: null, linked_bdm_organizations: [], // upc-006 / upc-004 fields
-  permissions: { can_edit: true, can_assign: false, can_publish: false, can_deactivate: false, can_edit_contacts: false, can_manage_documents: true, can_move_stage: true, can_reopen: false },
+  permissions: { can_edit: true, can_assign: false, can_publish: false, can_deactivate: false, can_edit_contacts: false, can_manage_documents: true, can_move_stage: true, can_reopen: false, can_manage_agreements: true, can_approve_agreements: false },
   pipeline: { stage: "interested", stage_label: "Interested", column: "interested", column_label: "Interested", changed_at: "2026-10-08T10:00:00Z", lost: null, stages: [] },
 };
 const history = { items: [], total: 0, limit: 20, offset: 0 };
 const documents = { items: [{ id: "d1" }], total: 1, limit: 200, offset: 0 };
+const agreements = { items: [{ id: "a1" }], total: 1, limit: 50, offset: 0 }; // upc-014
+const options = { courses: [], documents: [] };
 
 beforeEach(() => {
   vi.mocked(serverApi).mockReset();
@@ -32,6 +35,8 @@ describe("upc-007 university detail page", () => {
       if (p.includes("/contacts")) return { items: [], total: 0, limit: 50, offset: 0 } as never; // upc-006
       if (p.includes("/partnership/visits")) return { items: [], total: 0, limit: 5, offset: 0 } as never; // upc-010
       if (p.includes("/documents")) return documents as never; // upc-026
+      if (p.includes("/agreement-options")) return options as never; // upc-014
+      if (p.includes("/agreements")) return agreements as never;
       return { university } as never;
     });
     const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
@@ -43,6 +48,23 @@ describe("upc-007 university detail page", () => {
     // upc-026: the Documents section, read beside the university
     expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/universities/${ID}/documents`);
     expect(tree.find((el) => el.type === UniversityDocuments)!.props).toEqual({ universityId: ID, documents: documents.items, canManage: true });
+    // upc-014: the Agreements section, with the form's options for a manager who may write
+    expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/universities/${ID}/agreements`);
+    expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/universities/${ID}/agreement-options`);
+    expect(tree.find((el) => el.type === UniversityAgreements)!.props).toEqual({ universityId: ID, agreements: agreements.items, options, canManage: true });
+  });
+
+  it("an overseas_admin never asks for agreements (upc-014 AG13)", async () => {
+    vi.mocked(serverApi).mockImplementation(async (p: string) => {
+      if (p === "/api/v1/auth/me") return { role: "overseas_admin", full_name: "Asha" } as never;
+      if (p.includes("/stage-history")) return history as never;
+      if (p.includes("/contacts")) return { items: [], total: 0, limit: 50, offset: 0 } as never;
+      if (p.includes("/documents")) return documents as never;
+      return { university: { ...university, permissions: { ...university.permissions, can_manage_agreements: false } } } as never;
+    });
+    const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
+    expect(vi.mocked(serverApi).mock.calls.some(([p]) => String(p).includes("agreement"))).toBe(false);
+    expect(tree.find((el) => el.type === UniversityAgreements)).toBeUndefined();
   });
 
   it("a failed history read still shows the page, with Try again in the section", async () => {
@@ -52,6 +74,8 @@ describe("upc-007 university detail page", () => {
       if (p.includes("/contacts")) return { items: [], total: 0, limit: 50, offset: 0 } as never;
       if (p.includes("/partnership/visits")) return { items: [], total: 0, limit: 5, offset: 0 } as never;
       if (p.includes("/documents")) return documents as never;
+      if (p.includes("/agreement-options")) return options as never;
+      if (p.includes("/agreements")) return agreements as never;
       return { university } as never;
     });
     const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));

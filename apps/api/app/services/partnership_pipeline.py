@@ -76,6 +76,17 @@ def move(db: AsyncSession, user: User, uni: University, payload: UniversityStage
     return backward
 
 
+def advance_to(db: AsyncSession, user: User, uni: University, stage: str, note: str) -> str | None:
+    """upc-014 AG10 (the bdm-005 idiom): move a locked university forward to `stage` as one `move` row; at or past it, nothing. Returns
+    the stage it left, or None. The caller checks Lost and owns the audit row and the commit."""
+    if STAGE_KEYS.index(uni.stage) >= STAGE_KEYS.index(stage):
+        return None
+    from_stage = uni.stage
+    uni.stage, uni.stage_changed_at = stage, datetime.now(UTC)
+    _record(db, user, uni, "move", from_stage, stage, note)
+    return from_stage
+
+
 def set_lost(db: AsyncSession, user: User, uni: University, reason: str, lost: bool) -> str:
     """PS1/PS6: Lost is a flag with a reason on top of the kept stage; reopen clears it. Returns the history kind."""
     if lost and uni.lost_at is not None:
