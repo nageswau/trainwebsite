@@ -56,12 +56,12 @@ test("talent pools: create from the form, automatic membership, unknown and deac
   await expect(page.getByRole("heading", { name: "Talent Pools" })).toBeVisible();
   await page.getByRole("button", { name: "+ New pool" }).click();
   await page.getByLabel("Pool name").fill(n("Cloud"));
-  await page.getByLabel("Must have all of these skills").fill(`PAW ${stamp}`);
+  await page.getByRole("textbox", { name: "Must have all of these skills", exact: true }).fill(`PAW ${stamp}`);
   await page.getByRole("button", { name: "Create pool" }).click();
-  await expect(page.getByRole("alert")).toContainText(`No skill is called “PAW ${stamp}”`);
+  await expect(page.getByRole("alert").filter({ hasText: `No skill is called “PAW ${stamp}”` })).toBeVisible(); // the route announcer is an alert too
   await page.getByRole("button", { name: `Remove PAW ${stamp}` }).click();
   await page.getByRole("button", { name: "+ Add an “at least one of” group" }).click();
-  const group = page.getByLabel("And at least one of these (group 1)");
+  const group = page.getByRole("textbox", { name: "And at least one of these (group 1)", exact: true }); // the chip list is labelled "…: chosen"
   await group.fill(n("PAWS"));
   await group.press("Enter");
   await group.fill(n("PAzure"));
@@ -70,7 +70,7 @@ test("talent pools: create from the form, automatic membership, unknown and deac
   const poolUrl = page.url();
   await expect(page.getByRole("heading", { name: n("Cloud") })).toBeVisible();
   await expect(page.getByRole("heading", { name: "2 candidates" })).toBeVisible();
-  await expect(page.getByRole("link", { name: n("Asha") })).toBeVisible();
+  await expect(page.getByRole("link", { name: n("Asha"), exact: true })).toBeVisible();
 
   // AC1: a new skill places a candidate in the pool with no other action
   await send(page, "post", `/api/v1/recruiter/candidates/${late.id}/skills`, { skill: n("PAzure"), level: "beginner" });
@@ -99,17 +99,18 @@ test("talent pools: create from the form, automatic membership, unknown and deac
   // the recruiter: no create, the inactive pool is gone; phone width holds
   await signIn(page, "it", RECRUITER, "/recruiter/dashboard");
   await page.goto("/recruiter/pools");
-  await expect(page.getByRole("link", { name: "Java Developers" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Java Developers", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "+ New pool" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: n("Cloud") })).toHaveCount(0);
   await page.goto(poolUrl);
-  await expect(page.getByRole("alert")).toContainText("Talent pool not found");
+  await expect(page.getByRole("alert").filter({ hasText: "Talent pool not found" })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/recruiter/pools");
-  await expect(page.getByRole("link", { name: "Java Developers" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Java Developers", exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await page.screenshot({ path: "test-results/rec-015-pools-phone.png", fullPage: true });
 
   expect(failedCalls).toEqual([]);
-  expect(consoleErrors.filter((e) => !e.includes("404"))).toEqual([]);
+  // the browser logs the two deliberate refusals above (the unknown skill's 422, the recruiter's 404 on the inactive pool)
+  expect(consoleErrors.filter((e) => !/status of (404|422)/.test(e))).toEqual([]);
 });
