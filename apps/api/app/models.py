@@ -5141,9 +5141,36 @@ class RecruiterContractEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-# rec-019 (DEC-SCOPE-159, spec §2): profile sharing (EVID-018 §11). One share is one requirement, one company and one channel; each item is
+TALENT_POOL_EXPERIENCE_CHECK = (
+    "(experience_min_months IS NULL OR experience_min_months BETWEEN 0 AND 600) "
+    "AND (experience_max_months IS NULL OR experience_max_months BETWEEN 0 AND 600) "
+    "AND (experience_min_months IS NULL OR experience_max_months IS NULL OR experience_min_months <= experience_max_months)"
+)
+
+
+class TalentPool(Base, TimestampMixin):
+    """rec-015 (DEC-SCOPE-159): a manager-defined pool. Its rule is a rec-013 expression -- `all_terms` (skill names, AND), `any_terms`
+    (lists of skill names, each at least one of) -- plus an experience band. Membership is computed on read (P1); nothing is copied.
+    `created_by_user_id` is null for the seeded examples (P3)."""
+
+    __tablename__ = "talent_pools"
+    __table_args__ = (
+        CheckConstraint(TALENT_POOL_EXPERIENCE_CHECK, name="ck_talent_pools_experience"),
+        Index("uq_talent_pools_name", text("lower(name)"), unique=True),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(80))
+    all_terms: Mapped[list] = mapped_column(JSON, default=list)
+    any_terms: Mapped[list] = mapped_column(JSON, default=list)
+    experience_min_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    experience_max_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+
+# rec-019 (DEC-SCOPE-160, spec §2): profile sharing (EVID-018 §11). One share is one requirement, one company and one channel; each item is
 # one candidate with the company's response. Email / WhatsApp shares point at their `recruiter_messages` row and carry a contact; Portal /
-# Other have no message. Migration 0141 repeats these (test_rec_019_migration pins them).
+# Other have no message. Migration 0142 repeats these (test_rec_019_migration pins them).
 PROFILE_SHARE_CHANNELS = ("email", "whatsapp", "portal", "other")
 PROFILE_SHARE_RESPONSES = ("pending", "interested", "not_interested", "interview_requested")
 PROFILE_SHARE_CHECKS = {

@@ -843,6 +843,9 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-015 — Talent pools
+- **Status (2026-10-09):** built on `feature/rec-015`.
+  - `DEC-SCOPE-159` (P1–P8, the recommended answers to Q-16; UNVERIFIED).
+  - Migration `0141_talent_pools`, API §12CA, RBAC §2.85 (drafted as 0140 / 158 / §12BZ / §2.84; rec-023 merged first). The next rec item takes `0142`, `DEC-SCOPE-160`, §12CB and §2.86 (re-check `main`).
 - **Business requirement:** S2-§8 pools (10 examples), "automatically placed into the relevant pools based on their skills"; S2-§20 the
   Java Talent Pool.
 - **Existing behavior:** none.
@@ -988,7 +991,7 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** small · **Risk:** low
 
 ### rec-019 — Profile sharing
-- **Status (2026-10-09):** built on `feature/rec-019` (`DEC-SCOPE-159`, migration `0141_profile_shares`, API §12CA, RBAC §2.85). Q-19
+- **Status (2026-10-09):** built on `feature/rec-019` (`DEC-SCOPE-160`, migration `0142_profile_shares`, API §12CB, RBAC §2.86). Q-19
   answered with recommended defaults S1–S14 (UNVERIFIED): 7-day random resume links, Portal shares visible to every employer user of the
   company, responses recorded by the recruiter and (Portal) the employer, a repeat share warned (409) then allowed with "Share again".
   Spec: `docs/superpowers/specs/2026-10-09-rec-019-profile-sharing-design.md`.
@@ -1130,9 +1133,9 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-023 — Joining management + placement closure
-- **Status (2026-10-09):** **BUILT** on `feature/rec-023` (PR pending). `DEC-SCOPE-158` (JN1–JN10, the recommended answers to Q-22;
-  UNVERIFIED). Migration `0140_joining_management`, API §12BZ, RBAC §2.84. The next rec item takes `0141`, `DEC-SCOPE-159`, §12CA and §2.85
-  (re-check `main`). Spec `docs/superpowers/specs/2026-10-09-rec-023-joining-management-design.md`.
+- **Status (2026-10-09):** **MERGED** to `main` as PR #213 @ `d3de75e6`. `DEC-SCOPE-158` (JN1–JN10, the recommended answers to Q-22;
+  UNVERIFIED). Migration `0140_joining_management`, API §12BZ, RBAC §2.84. rec-015 then merged with `0141`, `DEC-SCOPE-159`, §12CA and §2.85,
+  so the next rec item takes `0142`, `DEC-SCOPE-160`, §12CB and §2.86 (re-check `main`). Spec `docs/superpowers/specs/2026-10-09-rec-023-joining-management-design.md`.
 - **Business requirement:** §17 (7 fields; Joined / Did Not Join; "selection is not the same as placement").
 - **Existing behavior:** `joining_date` + offer status `joined`.
 - **Expected behavior:**

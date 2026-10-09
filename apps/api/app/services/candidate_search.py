@@ -67,11 +67,14 @@ async def _unknown(db: AsyncSession, term: str) -> HTTPException:
     return HTTPException(422, {"message": message, "code": "unknown_skill", "term": term, "suggestions": suggestions})
 
 
-async def resolve_terms(db: AsyncSession, body: CandidateSearch) -> dict[str, dict]:
+async def resolve_terms(db: AsyncSession, body: CandidateSearch, *, strict: bool = True) -> dict[str, dict]:
     """Every distinct term (case-insensitive) → {skill, ids, also}. One query resolves all terms (a name wins over an alias, the
-    services/skills.resolve rule); one reads the related pairs of every resolved skill."""
+    services/skills.resolve rule); one reads the related pairs of every resolved skill. Not `strict` (a saved rec-015 pool rule), a term
+    that is no longer an active skill resolves to {skill: None, ids: ∅}, which `filters` turns into "matches nobody" (P5)."""
     texts = {t.lower(): t for t in [*body.all, *(t for group in body.any for t in group)]}
     keys = list(texts)
+    if not keys:
+        return {}
     by_name = select(func.lower(Skill.name).label("term"), Skill.id, Skill.name, literal(0).label("rank")).where(
         func.lower(Skill.name).in_(keys), Skill.active.is_(True))
     by_alias = select(func.lower(SkillAlias.alias).label("term"), Skill.id, Skill.name, literal(1).label("rank")).join(
@@ -79,9 +82,9 @@ async def resolve_terms(db: AsyncSession, body: CandidateSearch) -> dict[str, di
     found: dict[str, tuple] = {}
     for term, skill_id, name, _ in (await db.execute(union_all(by_name, by_alias).order_by("rank"))).all():
         found.setdefault(term, (skill_id, name))
-    for key in keys:
-        if key not in found:
-            raise await _unknown(db, texts[key])
+    missing = [key for key in keys if key not in found]
+    if missing and strict:
+        raise await _unknown(db, texts[missing[0]])
     skill_ids = {skill_id for skill_id, _ in found.values()}
     related: dict[UUID, dict[UUID, str]] = {i: {} for i in skill_ids}
     other = Skill.__table__.alias("other")
@@ -96,6 +99,8 @@ async def resolve_terms(db: AsyncSession, body: CandidateSearch) -> dict[str, di
     for key, (skill_id, name) in found.items():
         also = sorted(related[skill_id].items(), key=lambda kv: kv[1].lower())
         out[key] = {"term": texts[key], "skill": {"id": skill_id, "name": name}, "ids": {skill_id, *related[skill_id]}, "also": [n for _, n in also]}
+    for key in missing:
+        out[key] = {"term": texts[key], "skill": None, "ids": set(), "also": []}
     return out
 
 

@@ -25,7 +25,7 @@ const termCount = (s: SearchState) => s.all.length + s.any.reduce((n, g) => n + 
 
 /** One list of skill chips: type a skill and press Enter (or Add); × removes it. The text box's draft is the parent's, so Search can add
  *  a skill typed but not yet added. */
-function SkillChips({ id, label, hint, terms, text, room, onText, onChange }: {
+export function SkillChips({ id, label, hint, terms, text, room, onText, onChange }: {
   id: string; label: string; hint: string; terms: string[]; text: string; room: boolean; onText: (v: string) => void; onChange: (t: string[]) => void;
 }) {
   const add = () => {
@@ -62,9 +62,10 @@ function SkillChips({ id, label, hint, terms, text, room, onText, onChange }: {
   );
 }
 
-function Card({ c, writes, requirement, shortlisted, onShortlist, selected, onSelect }: {
+export function Card({ c, writes, requirement, shortlisted, onShortlist, matchNote = "matches your search", selected = null, onSelect }: {
   c: CandidateCard; writes: boolean; requirement: PickOption | null; shortlisted?: Shortlisted[string]; onShortlist: (c: CandidateCard) => void;
-  selected: boolean | null; onSelect: (on: boolean) => void;
+  matchNote?: string; // rec-015: a talent pool's page says "matches this pool"
+  selected?: boolean | null; onSelect?: (on: boolean) => void; // rec-019: select to share (null = not offered)
 }) {
   const role = [c.preferred_role, experienceLabel(c.experience_months) === "—" ? null : experienceLabel(c.experience_months)].filter(Boolean).join(" | ");
   const facts: [string, string][] = [
@@ -75,7 +76,7 @@ function Card({ c, writes, requirement, shortlisted, onShortlist, selected, onSe
     <li className="action-card" style={{ gap: 10 }} aria-labelledby={`card-${c.id}`}>
       <div>
         {selected !== null && ( // QA-03: outside the heading, so the card's name stays the candidate's
-          <input type="checkbox" checked={selected} onChange={(e) => onSelect(e.target.checked)} aria-label={`Select ${c.name} to share`} style={{ float: "left", margin: "6px 8px 0 0" }} />
+          <input type="checkbox" checked={selected} onChange={(e) => onSelect?.(e.target.checked)} aria-label={`Select ${c.name} to share`} style={{ float: "left", margin: "6px 8px 0 0" }} />
         )}
         <h3 id={`card-${c.id}`} style={{ margin: 0, fontSize: 18 }}>
           <Link href={`${CANDIDATES_PATH}/${encodeURIComponent(c.id)}`} style={LINK_STYLE}>{c.name}</Link>{" "}
@@ -92,7 +93,7 @@ function Card({ c, writes, requirement, shortlisted, onShortlist, selected, onSe
               <li key={s.name} className={s.matched ? "badge" : undefined}
                 style={s.matched ? undefined : { border: "1px solid var(--line)", borderRadius: 99, padding: "4px 10px", fontSize: 12 }}>
                 {s.name}{s.status !== "claimed" && <> · {SKILL_STATUS_LABEL[s.status]}</>}
-                {s.matched && <span className="visually-hidden"> (matches your search)</span>}
+                {s.matched && <span className="visually-hidden"> ({matchNote})</span>}
               </li>
             ))}
           </ul>

@@ -3753,7 +3753,25 @@ Design spec: `docs/superpowers/specs/2026-10-09-rec-023-joining-management-desig
   - An empty message for each view.
   - Paging, 50 at a time.
 
-## rec-019 addendum (2026-10-09, `DEC-SCOPE-159`) — Profile sharing
+## rec-015 addendum (2026-10-09, `DEC-SCOPE-159`) — Talent pools
+
+Design spec: `docs/superpowers/specs/2026-10-09-rec-015-talent-pools-design.md` §4. "Talent Pools" follows Find Candidates in the recruiter, manager, HR and super-admin navigation.
+- **`/recruiter/pools`:** a grid of pool cards (one column at phone width). Each card has the name (link), the rule in words ("Java ·
+  AWS or Azure · Under 1 year of experience"), the member count, and "Inactive" / "Needs attention" badges. Managers also get
+  "Show inactive pools" and "+ New pool" (the form opens inline; Create goes to the new pool).
+- **`/recruiter/pools/{id}`:** "← Back to talent pools", the name, the rule, "Refine in Find Candidates" (rec-013 with the rule filled in,
+  unavailable skills left out; hidden for a pool without usable skills) and, for managers, "Edit pool". A pool with unavailable skills
+  shows a note naming them. Members are rec-013 cards without Contact or Shortlist; matched skills are badges, with "(matches this pool)"
+  in visually hidden text. 50 per page, Previous and Next.
+- **Form:** pool name, "Must have all of these skills" and "And at least one of these" groups (rec-013's chips: Enter or Add; Save adds a
+  typed skill), experience from / to in whole years ("0" means under 1 year), and Active on edit. The name and years are checked before
+  sending; an unknown skill shows the API's sentence with suggestions in an alert, and the entry is kept. Save and Cancel return focus to
+  "Edit pool" (QA-02); "Pool saved. Members are recalculated from the new rule." goes to a status region.
+- **States:** "Loading talent pools…" / "Loading pool…"; "Unable to load …" with Try again (5xx or network); a 404 shows "Talent pool not
+  found"; "No talent pools yet." (with who creates them); "No candidates match this pool yet."; a BDM or other role gets the
+  "Your role cannot view candidates" access page.
+
+## rec-019 addendum (2026-10-09, `DEC-SCOPE-160`) — Profile sharing
 
 Design spec: `docs/superpowers/specs/2026-10-09-rec-019-profile-sharing-design.md` §5.
 - **Selecting:** writers get a "Select {name} to share" checkbox on the requirement's Candidates rows (not on Rejected / Withdrawn /

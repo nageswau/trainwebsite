@@ -1,4 +1,4 @@
-"""rec-019 (DEC-SCOPE-159, spec §3): profile sharing -- share, the requirement's and the company's shares, the recruiter's response and
+"""rec-019 (DEC-SCOPE-160, spec §3): profile sharing -- share, the requirement's and the company's shares, the recruiter's response and
 feedback, and the public resume link.
 
 Every write is one transaction -- scope, the requirement lock, the writer (403), state, the rules, the change, audit, one commit here; then

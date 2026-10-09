@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import RecruiterShares from "@/components/RecruiterShares";
 import type { Share, ShareItem } from "@/lib/recruiterShares";
 
-// rec-019 (DEC-SCOPE-159; S9, S14): the Shared profiles section -- loading / error + retry / empty, each share with its candidates and
+// rec-019 (DEC-SCOPE-160; S9, S14): the Shared profiles section -- loading / error + retry / empty, each share with its candidates and
 // responses, and the writer's response form.
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const item = (over: Partial<ShareItem> = {}): ShareItem => ({

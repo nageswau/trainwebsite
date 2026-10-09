@@ -1,4 +1,4 @@
-// rec-019 (DEC-SCOPE-159): profile sharing -- types, endpoints, guards and the requirement picker. The API decides every rule (the contact,
+// rec-019 (DEC-SCOPE-160): profile sharing -- types, endpoints, guards and the requirement picker. The API decides every rule (the contact,
 // the pool, the repeat warning, the channel's preconditions) and what a company may see (R8: never a phone, email or salary); the page
 // only shows its answers. `can_respond` on each share says whether the viewer may record a response.
 import { REQUIREMENTS_URL } from "@/lib/recruiterRequirements";
