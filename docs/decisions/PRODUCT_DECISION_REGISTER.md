@@ -5704,3 +5704,41 @@ and `/partnership/documents`; `permissions.can_manage_documents` on the universi
 `/partnership/universities/[id]`; page `/partnership/documents`; the manager menu's Documents goes live and the head nav gains it.
 upc-014 stores agreement documents here; upc-030 gives counselors the shareable slice.
 **New Feature ID authorized:** `upc-026`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-026.
+
+### DEC-SCOPE-140 — MoU / agreement management (`upc-014`)
+
+**Evidence:** `EVID-020` §13 (L453–L497: "This should be a major module"; 18 tracked rows; "Draft → Sent → Under Review → Negotiation →
+Approved → Signed → Active → Expiring → Renewed"), §28 L489 (agreement document), §32 ("MoU & Agreements"), L1129;
+`UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U2 (`EXPLICIT_APPROVAL`, 2026-10-08), §3.2 Q-16 and §4 upc-014.
+**Status:** Q-16 and AG1–AG18 are recommended answers applied under the owner's standing instruction for the build session ("proceed
+with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off.
+Migration `0125_university_agreements`, API contract §12BH, RBAC §2.66.
+Spec: `docs/superpowers/specs/2026-10-09-upc-014-university-agreements-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| AG1 | Q-16 MoU number | Server-generated `MOU-000001` (own sequence); a renewal gets its own number |
+| AG2 | Agreement type | MoU, Partnership agreement, Commission agreement (the document centre's agreement kinds) |
+| AG3 | Fields | §13's 18 rows minus Commission (upc-016): 17 stored and returned |
+| AG4 | Q-16 statuses | Stored: draft … active, renewed. Derived: Expiring (signed/active, expiry within 90 days, IST), Expired (past expiry) |
+| AG5 | Transitions | draft→sent; sent→under_review/negotiation; under_review↔negotiation; →approved; approved→signed/negotiation; signed→active; `from_status` guard (409) |
+| AG6 | Approval | Only a partnership head in scope or super_admin |
+| AG7 | Signing | Needs the agreement document (same university, kind = type) and both signatories with dates (not future); DB CHECK backstop |
+| AG8 | Q-16 renewal | A new linked draft copying the terms; the old row becomes Renewed when the new one is signed; one successor each |
+| AG9 | Overlap | Signing refused (409) when a signed/active agreement of the same type overlaps; the predecessor excluded |
+| AG10 | Stage | Signing moves the university forward to Agreement Signed (never back); a lost university cannot sign (409) |
+| AG11 | Editing | Terms until approved; signing fields until signed; nothing after |
+| AG12 | Validation | expiry > start (422), renewal date in the window, courses of this university, real countries, text limits |
+| AG13 | Readers | partnership_manager, partnership_head, super_admin; overseas_admin and every other role `403` |
+| AG14 | Writers | `can_manage_agreements` (the contacts rule); approval `can_approve_agreements` |
+| AG15 | Commission | Not stored here (upc-016); every reader is a commission role today |
+| AG16 | Delete | Not in this item |
+| AG17 | Audit | `university_agreement.create/update/status/renew`, ids, number, statuses, field names only |
+| AG18 | Menu page | `/partnership/agreements`: effective status, type and text filters, soonest expiry first, paged |
+
+**Consequences:** tables `university_agreements` and `university_agreement_events`, sequence `university_agreement_mou_seq`; routes
+`/partnership/universities/{id}/agreements|agreement-options`, `/partnership/agreements…`, `/partnership/agreement-signatories`;
+`permissions.can_manage_agreements` / `can_approve_agreements` on the university; an Agreements section on `/partnership/universities/[id]`;
+page `/partnership/agreements`; the manager menu's "MoU & Agreements" goes live and the head nav gains it. upc-015 reads the expiry dates;
+upc-016 hangs commission terms off agreements; upc-013 can show the agreement events.
+**New Feature ID authorized:** `upc-014`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-014.
