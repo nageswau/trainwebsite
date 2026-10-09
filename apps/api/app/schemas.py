@@ -181,6 +181,13 @@ class ProfileUpdate(BaseModel):
         return value
 
 
+class PlacementPoolOptIn(BaseModel):
+    """rec-010 (spec §4): the consent version the student read. There is no user id: a student only ever acts for themselves, so any
+    other key is ignored."""
+
+    consent_version: str = Field(min_length=1, max_length=20)
+
+
 class NotificationPreferencesIn(BaseModel):
     """ENH-014 (spec §5.2): the only two writable values. Strict booleans; any other field is a 422 (AC15)."""
 

@@ -1204,6 +1204,17 @@ writer may set Verified or Assessed; who and when are recorded.
 | `hr_team` | read only (every write `403`; the Skills Master stays `403`) | the whole pool | `rec-011` |
 | `it_admin`, `employer`, `bdm`, students, every other role | `403` | — | `rec-011` |
 
+### 2.64 Placement candidate pool opt-in *(net-new, added 2026-10-09 — `DEC-SCOPE-138`, `rec-010`)*
+
+Consent is the gate to employer visibility (R4, R12). The routes carry no user id, so the only scope is the caller.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `it_student` (IT division, active) | read their pool state and consent history; opt in (with the current consent version); opt out | themselves only | `rec-010` |
+| `employer` | EMP-003 search and EMP-004 shortlist see **only** opted-in, non-archived, non-withdrawn students; the fields are unchanged (no email, phone or resume) | opted-in pool | `rec-010` |
+| `placement_team`, `placement_manager`, `super_admin`, `hr_team` | no change: the candidate master (§2.48) already shows opted-in students and returns `404` after an opt-out | the pool | `rec-010` |
+| every other role (staff, `overseas_student`, admins) | `/account/placement-pool*` → `403` | — | `rec-010` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

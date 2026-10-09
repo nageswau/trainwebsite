@@ -3380,3 +3380,25 @@ Design spec `docs/superpowers/specs/2026-10-08-rec-011-candidate-skills-design.m
   - `hr_team` and an archived candidate see the table with no controls.
 - **Skills Master detail** (`/recruiter/manager/skills`, manager and super_admin): **Merge into another skill** — a picker (never the
   skill itself), then a confirm naming what happens. On success the detail shows the kept skill with the merged name among its aliases.
+
+## rec-010 addendum (2026-10-09, `DEC-SCOPE-138`) — Placement candidate pool opt-in
+
+Design spec: `docs/superpowers/specs/2026-10-09-rec-010-placement-pool-opt-in-design.md` §5.
+
+**Student → Placement Status** (`/it/student/placement-status`) gets a card in the Actions area:
+- **Not in the pool:**
+  - The heading "Join the placement candidate pool", the consent text, and "Version v1".
+  - The required checkbox "I agree to the consent text above".
+  - The "Join the pool" button, disabled until the box is ticked and while saving ("Joining…").
+- **In the pool:**
+  - The badge "In the placement pool", and what employers see (never email or phone).
+  - "Leave the pool", with a confirmation: "Leave the pool? Employers will no longer find you; your applications continue." The buttons
+    are "Yes, leave" and "Cancel".
+- **History:** "Joined" or "Left", the date in the viewer's zone, and the consent version.
+- **States:**
+  - Loading: "Loading your placement pool status…".
+  - Load error: an alert with Retry.
+  - The server's message is shown on a failed save, for example a stale consent version.
+  - Success: a polite status message.
+
+The employer's **Search Candidates** and **Shortlist** panels are unchanged; their data now comes from the opted-in pool.

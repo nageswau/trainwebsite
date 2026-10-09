@@ -2,7 +2,7 @@ import json
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +11,8 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import AuditLog, Certificate, ConsentRecord, DataSubjectRequest, Enrollment, NotificationPreference, Payment, User, UserRoleAssignment
 from app.notifications.phone import normalise_phone
-from app.schemas import NotificationPreferencesIn, NotificationPreferencesOut
+from app.schemas import NotificationPreferencesIn, NotificationPreferencesOut, PlacementPoolOptIn
+from app.services import placement_pool
 from app.services.storage import storage
 
 router = APIRouter(prefix="/account", tags=["account"])
@@ -111,6 +112,33 @@ async def put_notification_preferences(payload: NotificationPreferencesIn, user:
         db.add(AuditLog(user_id=user.id, action="notification_preference.update", entity_type="user", entity_id=str(user.id), metadata_json={"before": before, "after": after, "consent_text": CONSENT_TEXT_VERSION}))
     await db.commit()
     return _preferences_out(await db.get(NotificationPreference, user.id, populate_existing=True), user)
+
+
+# --- rec-010 (DEC-SCOPE-138, API §12BF): the student's own placement-pool consent. No user id anywhere: only ever the caller. ---------
+def _client_ip(request: Request) -> str | None:
+    return request.client.host if request.client else None
+
+
+@router.get("/placement-pool")
+async def get_placement_pool(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    placement_pool.require_student(user)
+    return await placement_pool.state(db, user)
+
+
+@router.post("/placement-pool/opt-in")
+async def opt_in_placement_pool(payload: PlacementPoolOptIn, request: Request, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    placement_pool.require_student(user)
+    await placement_pool.opt_in(db, user, payload.consent_version, _client_ip(request))
+    await db.commit()
+    return await placement_pool.state(db, user)
+
+
+@router.post("/placement-pool/opt-out")
+async def opt_out_placement_pool(request: Request, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    placement_pool.require_student(user)
+    await placement_pool.opt_out(db, user, _client_ip(request))
+    await db.commit()
+    return await placement_pool.state(db, user)
 
 
 @router.post("/data-requests", status_code=201)
