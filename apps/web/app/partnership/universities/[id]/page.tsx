@@ -3,11 +3,13 @@ import type { ReactNode } from "react";
 
 import { accessUnavailable } from "@/components/AccessUnavailable";
 import BdmStageHistory from "@/components/BdmStageHistory";
+import CommissionLedger from "@/components/CommissionLedger";
 import MeetingTable from "@/components/MeetingTable";
 import PartnershipFunnel from "@/components/PartnershipFunnel";
 import PartnershipTasksPanel from "@/components/PartnershipTasksPanel";
 import PortalShell from "@/components/PortalShell";
 import UniversityActions from "@/components/UniversityActions";
+import UniversityActivity from "@/components/UniversityActivity";
 import UniversityAgreements from "@/components/UniversityAgreements";
 import UniversityAssignForm from "@/components/UniversityAssignForm";
 import UniversityCalls from "@/components/UniversityCalls";
@@ -44,14 +46,16 @@ import {
   visibilityLabel,
 } from "@/lib/universities";
 import type { MilestonePage } from "@/lib/partnershipMilestones";
-import { firstMilestones, firstStageHistory, loadUniversity } from "@/lib/universitiesServer";
+import { firstMilestones, firstStageHistory, firstTimeline, loadUniversity } from "@/lib/universitiesServer";
+import type { ActivityRow } from "@/lib/universityActivity";
 import { type Agreement, AGREEMENT_READERS, type AgreementOptions, agreementOptionsUrl, agreementsUrl } from "@/lib/universityAgreements";
 import { documentsUrl, type UniversityDocument } from "@/lib/universityDocuments";
 import { MEETING_READERS, type MeetingPage, MEETINGS_PATH, MEETINGS_URL, newMeetingPath, SCHEDULER_ROLES } from "@/lib/meetings";
 import { COMMISSION_ROLES, type CourseOptions, courseOptionsUrl, type CoursePage, coursesUrl } from "@/lib/courseMaster";
 import { newVisitPath, PLANNER_ROLES, VISIT_READERS, VISITS_PATH, VISITS_URL, type VisitRow } from "@/lib/visits";
 import { TASK_CREATORS, TASK_READERS, TASKS_PATH } from "@/lib/partnershipTasks";
-import { chosenPeriod, opportunitiesHref, PERFORMANCE_READERS, type UniversityPerformance, universityPerformanceUrl } from "@/lib/partnershipPerformance";
+import { chosenPeriod, istToday, opportunitiesHref, PERFORMANCE_READERS, type UniversityPerformance, universityPerformanceUrl } from "@/lib/partnershipPerformance";
+import { type CommissionLedger as Ledger, ledgerUrl } from "@/lib/commissionLedger";
 
 // upc-003: one university's master record -- the §1 fields, rankings, ownership (§27) and catalogue status. Later upc items add their
 // own sections (contacts, pipeline, agreements, courses ...) to this page. upc-007: the partnership stage and its history.
@@ -59,6 +63,8 @@ import { chosenPeriod, opportunitiesHref, PERFORMANCE_READERS, type UniversityPe
 // them itself). upc-026: the Documents section (§28, "everything related to that university in one place"). upc-014: the Agreements
 // section (§13). upc-008: the Partnership timeline (§5 expected timeline + §6 milestones) for every reader; editing per
 // `can_edit_timeline`. upc-009: the Meetings section (MG16: the latest 5, scheduled first), for the meeting readers only.
+// upc-019: the Commission ledger (Expected / Received / Outstanding), for the commission roles only (U2). upc-013: the
+// Communication history (§12: everything kept on the university, newest first) for the communications readers.
 function Facts({ rows }: { rows: [string, ReactNode][] }) {
   return (
     <dl style={{ display: "grid", gridTemplateColumns: "minmax(120px, max-content) 1fr", gap: "6px 16px", margin: 0 }}>
@@ -75,7 +81,7 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
   let user: User, u: University, history: Page<StageEvent> | null, contacts: Page<UniversityContact>, roles: ContactRole[], visits: Page<VisitRow> | null,
     documents: Page<UniversityDocument>, agreements: Page<Agreement> | null, agreementOptions: AgreementOptions | null,
     milestones: MilestonePage | null, meetings: MeetingPage | null, courses: CoursePage, courseOptions: CourseOptions | null,
-    performance: UniversityPerformance | null;
+    performance: UniversityPerformance | null, ledger: Ledger | null, timeline: Page<ActivityRow> | null;
   try {
     [user, u, history, milestones] = await Promise.all([serverApi<User>("/api/v1/auth/me"), loadUniversity(id), firstStageHistory(id), firstMilestones(id)]);
     // upc-006: the contacts this reader may see (the API slices them), and the role list only for those who can edit.
@@ -83,7 +89,8 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
     // upc-026: the documents this reader may see (the API slices them: shareable only for overseas_admin, no commission agreement).
     // upc-014: agreements only for the roles that read them (AG13), and the form's options only for those who may write them.
     // upc-017: the courses (inactive ones marked) for every reader; the form's scholarship options only for those who may write them.
-    [contacts, roles, visits, documents, agreements, agreementOptions, meetings, courses, courseOptions, performance] = await Promise.all([
+    // upc-013: the communication history's first page, for the communications readers (TL2); a failed read is null (Retry).
+    [contacts, roles, visits, documents, agreements, agreementOptions, meetings, courses, courseOptions, performance, ledger, timeline] = await Promise.all([
       serverApi<Page<UniversityContact>>(`${contactsUrl(u.id)}?limit=50`),
       u.permissions.can_edit_contacts ? serverApi<{ items: ContactRole[] }>(CONTACT_ROLES_URL).then((r) => r.items) : Promise.resolve([]),
       VISIT_READERS.has(user.role) ? serverApi<Page<VisitRow>>(`${VISITS_URL}?university_id=${u.id}&limit=5`) : Promise.resolve(null),
@@ -95,6 +102,9 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
       u.permissions.can_edit ? serverApi<CourseOptions>(courseOptionsUrl(u.id)) : Promise.resolve(null),
       // upc-018: this IST month's student funnel (§17), for the performance readers.
       PERFORMANCE_READERS.has(user.role) ? serverApi<UniversityPerformance>(universityPerformanceUrl(u.id, chosenPeriod(undefined, undefined).period)) : Promise.resolve(null),
+      // upc-019: the commission ledger, for the commission roles only (U2; the API answers 403 to everyone else).
+      COMMISSION_ROLES.has(user.role) ? serverApi<Ledger>(ledgerUrl(u.id)) : Promise.resolve(null),
+      COMMS_READERS.has(user.role) ? firstTimeline(u.id) : Promise.resolve(null),
     ]);
   } catch (e) {
     return accessUnavailable(e, "/overseas/login");
@@ -160,6 +170,7 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
               <div className="actions" style={{ marginTop: 12 }}><Link className="btn ghost small" href={opportunitiesHref(u.id)}>Another period</Link></div>
             </section>
           )}
+          {ledger && <CommissionLedger ledger={ledger} today={istToday()} />}
           {agreements && (
             <UniversityAgreements universityId={u.id} agreements={agreements.items} options={agreementOptions} canManage={u.permissions.can_manage_agreements} />
           )}
@@ -170,6 +181,10 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
               <UniversityCalls universityId={u.id} canWrite={u.permissions.can_edit_contacts}
                 contacts={contacts.items.map((c) => ({ id: c.id, name: c.name, phone: c.phone ?? c.whatsapp }))} />
               <UniversityMessages universityId={u.id} contacts={contacts.items} canWrite={u.permissions.can_edit_contacts} />
+              <section className="action-card wide" aria-labelledby="uni-history">
+                <h3 id="uni-history">Communication history</h3>
+                <UniversityActivity universityId={u.id} initial={timeline} />
+              </section>
             </>
           )}
           {meetings && (

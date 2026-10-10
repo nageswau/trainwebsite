@@ -4,22 +4,28 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import LocalTime from "@/components/LocalTime";
 import type { Page } from "@/lib/apiErrors";
-import { TIMELINE_LIMIT, actorName, timelineEntry, type TimelineRow } from "@/lib/leadTimeline";
+import { TIMELINE_LIMIT, actorName, timelineEntry, type TimelineEntry, type TimelineRow } from "@/lib/leadTimeline";
 import { getPage } from "@/lib/telecallerCatalogue";
 
-type State = { rows: TimelineRow[]; total: number } | "loading" | "failed";
+/** What the list itself reads; each timeline brings its own row type and mappers (upc-013: the university history). */
+type Row = { id: string; kind: string; at: string; event?: string | null };
+type State<R> = { rows: R[]; total: number } | "loading" | "failed";
 
-const pageOf = (page: Page<TimelineRow>): State => ({ rows: page.items, total: page.total });
+const pageOf = <R,>(page: Page<R>): State<R> => ({ rows: page.items, total: page.total });
 // A follow-up has up to three entries with its id (scheduled / done / cancelled): the event keeps their keys apart.
-const keyOf = (row: TimelineRow) => `${row.kind}-${row.event ?? ""}-${row.id}`;
+const keyOf = (row: Row) => `${row.kind}-${row.event ?? ""}-${row.id}`;
 
 /** tel-015 (DEC-SCOPE-114 D8): a lead's merged timeline, newest first, as the `.jtl` timeline -- shared by the telecaller / manager
  *  detail, the counselor's lead and the admin History. `initial` is the server-rendered first page (`null`: it failed; omitted: load
- *  here). A `version` change re-reads the first page (something on the page just changed); "Show older entries" appends the next one. */
-export default function LeadTimeline({ url, initial, version, label = "Lead activity" }: {
-  url: string; initial?: Page<TimelineRow> | null; version: number; label?: string;
+ *  here). A `version` change re-reads the first page (something on the page just changed); "Show older entries" appends the next one.
+ *  upc-013: `entryOf` / `actorOf` map another timeline's rows (default: the lead's); only a client component can pass them. */
+export default function LeadTimeline<R extends Row = TimelineRow>({
+  url, initial, version, label = "Lead activity",
+  entryOf = timelineEntry as unknown as (row: R) => TimelineEntry, actorOf = actorName as unknown as (row: R) => string,
+}: {
+  url: string; initial?: Page<R> | null; version: number; label?: string; entryOf?: (row: R) => TimelineEntry; actorOf?: (row: R) => string;
 }) {
-  const [state, setState] = useState<State>(initial === undefined ? "loading" : initial === null ? "failed" : pageOf(initial));
+  const [state, setState] = useState<State<R>>(initial === undefined ? "loading" : initial === null ? "failed" : pageOf(initial));
   const [older, setOlder] = useState<"idle" | "loading" | "failed">("idle");
   const latest = useRef(0);
   const firstVersion = useRef(initial === undefined ? null : version);
@@ -27,7 +33,7 @@ export default function LeadTimeline({ url, initial, version, label = "Lead acti
   const load = useCallback(() => {
     const request = ++latest.current;
     setOlder("idle");
-    getPage<TimelineRow>(`${url}?limit=${TIMELINE_LIMIT}&offset=0`).then(
+    getPage<R>(`${url}?limit=${TIMELINE_LIMIT}&offset=0`).then(
       (page) => request === latest.current && setState(pageOf(page)),
       () => request === latest.current && setState("failed"),
     );
@@ -48,7 +54,7 @@ export default function LeadTimeline({ url, initial, version, label = "Lead acti
     if (typeof state !== "object") return;
     const request = latest.current;
     setOlder("loading");
-    getPage<TimelineRow>(`${url}?limit=${TIMELINE_LIMIT}&offset=${state.rows.length}`).then(
+    getPage<R>(`${url}?limit=${TIMELINE_LIMIT}&offset=${state.rows.length}`).then(
       (page) => {
         if (request !== latest.current) return; // a refresh replaced the list meanwhile
         setState((current) => {
@@ -77,7 +83,7 @@ export default function LeadTimeline({ url, initial, version, label = "Lead acti
     <>
       <ol className="jtl" aria-label={label} style={{ listStyle: "none", margin: "8px 0 0", padding: 0 }}>
         {state.rows.map((row) => {
-          const entry = timelineEntry(row);
+          const entry = entryOf(row);
           const tone = { "--jtl-color": entry.tone } as React.CSSProperties;
           return (
             <li className="jtl-row" key={keyOf(row)}>
@@ -87,7 +93,7 @@ export default function LeadTimeline({ url, initial, version, label = "Lead acti
                   {entry.title}
                   <span className="jtl-badge" style={tone}>{entry.badge}</span>
                 </p>
-                <p className="jtl-detail">{actorName(row)} · <LocalTime value={row.at} time /></p>
+                <p className="jtl-detail">{actorOf(row)} · <LocalTime value={row.at} time /></p>
                 {(entry.meta.length > 0 || entry.when) && (
                   <p className="jtl-detail" style={{ overflowWrap: "anywhere" }}>
                     {entry.meta.join(" · ")}

@@ -103,7 +103,9 @@ async def test_one_university_funnel_with_untracked_steps_and_no_identifiers(cli
     }  # enrolled implies the offer stage
     assert body["university"]["id"] == str(uni.id) and (body["from"], body["to"]) == (JUNE["from"], JUNE["to"])
     text = response.text.lower()
-    assert "commission" not in text and "student_id" not in text and "application_reference" not in text
+    assert "student_id" not in text and "application_reference" not in text
+    # upc-019 (CL13): a commission role (this manager) also gets F10/F11 -- per currency amounts only, nothing that names a student.
+    assert body["commission"] == {"expected": [], "received": []}
 
 
 @pytest.mark.asyncio
@@ -156,7 +158,7 @@ async def test_ranking_partners_and_totals(client, db_session):
     assert str(idle.id) not in str(body)
     paged = (await client.get(PERFORMANCE, params=JUNE | {"limit": 1, "offset": 1})).json()
     assert [row["rank"] for row in paged["items"]] == [2] and paged["totals"] == body["totals"] and paged["total"] == 4
-    assert "commission" not in str(body).lower()
+    assert body["commission"] == {"expected": [], "received": []}  # upc-019 CL13: no terms here, so nothing is expected
 
 
 @pytest.mark.asyncio

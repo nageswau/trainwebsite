@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import BdmStageHistory from "@/components/BdmStageHistory";
+import CommissionLedger from "@/components/CommissionLedger";
 import MeetingTable from "@/components/MeetingTable";
 import PartnershipFunnel from "@/components/PartnershipFunnel";
 import PartnershipTasksPanel from "@/components/PartnershipTasksPanel";
+import UniversityActivity from "@/components/UniversityActivity";
 import UniversityAgreements from "@/components/UniversityAgreements";
 import UniversityCourses from "@/components/UniversityCourses";
 import UniversityFollowUp from "@/components/UniversityFollowUp";
@@ -44,6 +46,11 @@ const performance = { // upc-018: this month's funnel for the university
   counts: { leads: null, counselling: null, interested: 0, eligible: null, applications: 3, offers: 1, deposits: 0, visas: 0, enrolled: 1 },
 };
 
+const ledger = { // upc-019
+  university: { id: ID, name: "ABC", university_code: "UNV-000001" }, totals: [], applications: [], applications_total: 0, receipts: [], receipts_total: 0,
+  permissions: { can_record: false },
+};
+
 beforeEach(() => {
   vi.mocked(serverApi).mockReset();
 });
@@ -61,9 +68,13 @@ describe("upc-007 university detail page", () => {
       if (p.includes("/agreement-options")) return options as never; // upc-014
       if (p.includes("/agreements")) return agreements as never;
       if (p.includes("/performance")) return performance as never; // upc-018
+      if (p.endsWith("/commission")) return ledger as never; // upc-019
       return { university } as never;
     });
     const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
+    // upc-019: the commission ledger for a commission role, with today's IST day for the receipt form
+    expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/universities/${ID}/commission`);
+    expect(tree.find((el) => el.type === CommissionLedger)!.props).toEqual({ ledger, today: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) });
     expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/universities/${ID}/stage-history?limit=20&offset=0`);
     expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/visits?university_id=${ID}&limit=5`); // upc-010 Visits section
     expect(tree.find((el) => el.type === UniversityStagePanel)!.props.university).toEqual(university);
@@ -103,6 +114,9 @@ describe("upc-007 university detail page", () => {
     const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
     expect(vi.mocked(serverApi).mock.calls.some(([p]) => String(p).includes("agreement"))).toBe(false);
     expect(tree.find((el) => el.type === UniversityAgreements)).toBeUndefined();
+    // upc-019 (U2): no commission ledger request and no section for a non-commission role
+    expect(vi.mocked(serverApi).mock.calls.some(([p]) => String(p).includes("/commission"))).toBe(false);
+    expect(tree.find((el) => el.type === CommissionLedger)).toBeUndefined();
   });
 
   it("shows the course master to every reader; the form options only for writers (upc-017)", async () => {
@@ -208,5 +222,41 @@ describe("upc-012 university detail page", () => {
     expect(tree.find((el) => el.type === UniversityMessages)).toBeUndefined();
     expect(tree.find((el) => el.type === MeetingTable)).toBeUndefined(); // upc-009 MG14: meetings are not read for overseas_admin
     expect(serverApi).not.toHaveBeenCalledWith(expect.stringContaining("/partnership/meetings"));
+  });
+});
+
+describe("upc-013 university detail page", () => {
+  const activity = { items: [{ id: "s1", kind: "stage" }], total: 1, limit: 50, offset: 0 };
+  const serve = (role: string, timelineRead: () => Promise<unknown>) => vi.mocked(serverApi).mockImplementation(async (p: string) => {
+    if (p === "/api/v1/auth/me") return { role, full_name: "Rahul" } as never;
+    if (p.includes("/timeline")) return timelineRead() as never;
+    if (p.includes("/stage-history")) return history as never;
+    if (p.includes("/milestones")) return milestones as never;
+    if (p.includes("/contacts")) return { items: [], total: 0, limit: 50, offset: 0 } as never;
+    if (p.includes("/partnership/visits")) return { items: [], total: 0, limit: 5, offset: 0 } as never;
+    if (p.includes("/partnership/meetings")) return meetings as never;
+    if (p.includes("/performance")) return performance as never;
+    return { university: { ...university, permissions: { ...university.permissions, can_manage_agreements: false } } } as never;
+  });
+
+  it("shows the communication history to the partnership roles, its first page read with the university (TL2, TL9)", async () => {
+    serve("partnership_head", async () => activity);
+    const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
+    expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/universities/${ID}/timeline?limit=50&offset=0`);
+    expect(tree.find((el) => el.type === UniversityActivity)!.props).toEqual({ universityId: ID, initial: activity });
+    expect(tree.some((el) => el.props?.id === "uni-history")).toBe(true);
+  });
+
+  it("a failed read still shows the page, with Retry in the section", async () => {
+    serve("partnership_manager", async () => { throw new Error("down"); });
+    const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
+    expect(tree.find((el) => el.type === UniversityActivity)!.props.initial).toBeNull();
+  });
+
+  it("is neither read nor shown for overseas_admin", async () => {
+    serve("overseas_admin", async () => activity);
+    const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
+    expect(tree.find((el) => el.type === UniversityActivity)).toBeUndefined();
+    expect(serverApi).not.toHaveBeenCalledWith(expect.stringContaining("/timeline"));
   });
 });

@@ -2572,9 +2572,34 @@ moves the application to Joined (AC3). Every change writes offer history.
 - Read state uses the existing `PATCH /workflows/notifications/{id}/read` (AL13). The alerts are raised by the beat task
   `app.worker.send_partnership_alerts_task` (`upc015-alerts`, `crontab(minute=30)` UTC, acting from 09:00 IST), never by a request.
 
-## 12CG. Partnership manager dashboard (`upc-022`) — addendum, 2026-10-10
+## 12CG. Commission ledger (`upc-019`) — addendum, 2026-10-10
 
-- **Basis:** `DEC-SCOPE-165` (DB1–DB16). Spec: `docs/superpowers/specs/2026-10-10-upc-022-partnership-dashboard-design.md`. No migration.
+- **Basis:** `DEC-SCOPE-165` (CL1–CL14). Spec: `docs/superpowers/specs/2026-10-10-upc-019-commission-ledger-design.md` §3. Migration
+  `0144_commission_receipts`.
+- **Readers (U2):** `super_admin`, `partnership_head`, `partnership_manager` (with a profile) — every university. Everyone else `403`,
+  no session `401`. **Recorders (Q-20):** `partnership_head`, `super_admin`.
+- Money is a 2-dp string; totals are per currency, never converted.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/universities/{university_id}/commission` | **→ 200** `{university {id, name, university_code}, totals: [{currency, expected, received, outstanding}], applications: [{id, course, intake, reference, enrolled_on, status, status_label, term_id, currency, amount}] (≤ 200, newest enrolment first), applications_total, receipts: [{id, amount, currency, received_on, reference, note, application_ids, created_by, created_at}] (≤ 200, newest first), receipts_total, permissions {can_record}}`. `status` ∈ `counted`, `awaiting_visa`, `trigger_not_tracked`, `no_term`, `tuition_unknown`, `date_unknown`. `404` unknown university |
+| `POST /partnership/universities/{university_id}/commission/receipts` | **Body:** `{amount (> 0, ≤ 99,999,999.99, 2 dp), currency (INR, USD, GBP, EUR, CAD, AUD, NZD), received_on (date, not future), reference (1–120), note? (≤ 500), application_ids? (≤ 200; a repeat counts once)}`, `extra="forbid"`. **→ 201** `{receipt}`. `403` a reader who may not record; `404` unknown university; `422` invalid values or an application that is not an enrolled application of this university; `409` the reference is already recorded for the university (any case). University row locked; audit `university_commission_receipt.create` |
+| `DELETE /partnership/universities/{university_id}/commission/receipts/{receipt_id}` | **→ 204**. `403` not a recorder; `404` unknown pair. Audit `university_commission_receipt.delete` |
+| `GET /partnership/performance`, `GET /partnership/universities/{id}/performance` (§12BU) | For the commission roles each row, the page and the single university also carry `commission: {expected: [{currency, amount}], received: [...]}` — F10 = Expected of applications enrolled in the period whose trigger is met; F11 = receipts dated in the period. The key is absent for every other reader |
+
+## 12CH. University communication history (`upc-013`) — addendum, 2026-10-10
+
+- **Basis:** `DEC-SCOPE-166` (TL1–TL10). Spec: `docs/superpowers/specs/2026-10-10-upc-013-university-communication-history-design.md` §3. No migration.
+- **Readers:** `partnership_manager` (with a profile), `partnership_head`, `super_admin` (the upc-012 UC3 readers); others `403`; no session `401`.
+- **Behaviour:** read-only, not audited; two queries per page.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/universities/{university_id}/timeline?limit(1–100, 50)&offset` | **→ 200** `{items: [{id, kind: stage\|call\|message\|meeting\|visit\|agreement\|task\|document, at, actor {id, full_name} \| null, event, from_value, from_label, to_value, to_label, subject, status, reason, duration_seconds, scheduled_for}], total, limit, offset}`, newest first (TL5). Per kind (spec D3): stage = move/lost/reopened with stage keys + labels; call = direction, outcome + label, contact name; message = channel, template name, contact name, subject, delivery status; meeting = event, meeting type, code, start; visit = action, from/to status, code; agreement = event, from/to status, MoU number, type; task = scheduled/done/cancelled, kind, due date, assignee name, title, source; document = uploaded/new_version, kind, version, title. Free text ≤ 200 characters. `404` unknown university; `422` non-UUID or bad paging |
+
+## 12CI. Partnership manager dashboard (`upc-022`) — addendum, 2026-10-10
+
+- **Basis:** `DEC-SCOPE-167` (DB1–DB16). Spec: `docs/superpowers/specs/2026-10-10-upc-022-partnership-dashboard-design.md`. No migration.
 - **Readers:** `partnership_manager` (with a profile), `partnership_head`, `super_admin`; others `403`; no session `401`. Scope in SQL
   from the caller (no ids accepted).
 

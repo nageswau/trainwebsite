@@ -6002,6 +6002,33 @@ class LeadTimelinePage(BaseModel):
     offset: int
 
 
+class UniversityTimelineRow(BaseModel):
+    """upc-013 (DEC-SCOPE-166 D3): one entry of a university's communication history. `id` is the source row's id (a task's scheduled /
+    done / cancelled entries share it; `event` tells them apart). `to_label` is a stage label or a person / contact name, else ""."""
+
+    id: UUID
+    kind: Literal["stage", "call", "message", "meeting", "visit", "agreement", "task", "document"]
+    at: datetime
+    actor: LeadStageActor | None
+    event: str | None
+    from_value: str
+    from_label: str
+    to_value: str
+    to_label: str
+    subject: str | None
+    status: str | None
+    reason: str | None
+    duration_seconds: int | None
+    scheduled_for: datetime | None
+
+
+class UniversityTimelinePage(BaseModel):
+    items: list[UniversityTimelineRow]
+    total: int
+    limit: int
+    offset: int
+
+
 # --- tel-007 (DEC-SCOPE-087, spec §5): distribution rules, the unassigned queue and manual (re)assignment ---------------------------
 class TelDistributionRuleCreate(BaseModel):
     """The service checks the shape (a product rule names a product, a city rule a city), the product and the telecaller."""
@@ -9355,6 +9382,19 @@ CommissionTrigger = Literal["enrolment", "visa_and_enrolment", "tuition_paid"]  
 CommissionPercent = Annotated[Decimal, Field(gt=0, le=100, max_digits=5, decimal_places=2)]
 CommissionAmount = Annotated[Decimal, Field(gt=0, le=Decimal("99999999.99"), max_digits=10, decimal_places=2)]
 CommissionTimeline = _university_str(500, multiline=True)
+CommissionReference = _university_str(120, required=True)  # upc-019 CL10
+
+
+class CommissionReceiptIn(BaseModel):
+    """upc-019 (CL10): a commission receipt -- a lump sum per university, optionally linked to its enrolled applications."""
+
+    model_config = ConfigDict(extra="forbid")
+    amount: CommissionAmount
+    currency: CounselingCurrency  # models.COMMISSION_CURRENCIES
+    received_on: date
+    reference: CommissionReference
+    note: CommissionTimeline = None
+    application_ids: AgreementCourses = []
 
 
 class CommissionTermIn(BaseModel):
@@ -9848,10 +9888,24 @@ class _PerformancePeriod(BaseModel):
     steps: list[PerformanceStep]
 
 
+class CurrencyAmount(BaseModel):
+    currency: str
+    amount: str
+
+
+class PerformanceCommission(BaseModel):
+    """upc-019 (CL13, Appendix B F10/F11): per currency, no FX. Sent to the commission roles only; the routes exclude unset fields, so
+    every other reader gets no `commission` key at all (U2)."""
+
+    expected: list[CurrencyAmount]
+    received: list[CurrencyAmount]
+
+
 class UniversityPerformanceRow(BaseModel):
     rank: int
     university: PerformanceUniversity
     counts: PerformanceCounts
+    commission: PerformanceCommission | None = None
 
 
 class UniversityPerformancePage(_PerformancePeriod):
@@ -9860,11 +9914,13 @@ class UniversityPerformancePage(_PerformancePeriod):
     total: int
     limit: int
     offset: int
+    commission: PerformanceCommission | None = None  # over every ranked row, as `totals`
 
 
 class UniversityPerformance(_PerformancePeriod):
     university: PerformanceUniversity
     counts: PerformanceCounts
+    commission: PerformanceCommission | None = None
 
 
 # --- upc-023 (DEC-SCOPE-161, spec §4): §23 expected partnerships, the §24 probability and the weighted forecast (Appendix B E1-E4) ---
@@ -9937,7 +9993,7 @@ class ExpectedPage(BaseModel):
     items: list[ExpectedUniversity]
 
 
-# --- upc-022 (DEC-SCOPE-165, spec DB1-DB16): the §22 partnership manager dashboard, Appendix B D1-D14 + the §20 bands ---------------
+# --- upc-022 (DEC-SCOPE-167, spec DB1-DB16): the §22 partnership manager dashboard, Appendix B D1-D14 + the §20 bands ---------------
 class DashboardMonth(BaseModel):
     first: date
     last: date

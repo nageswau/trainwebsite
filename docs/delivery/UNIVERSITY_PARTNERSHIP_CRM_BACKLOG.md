@@ -680,6 +680,8 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-013 — University timeline (communication history)
+- **Status (2026-10-10):** built on `feature/upc-013` under `DEC-SCOPE-166` (TL1–TL10, recommended answers), no migration, API §12CH and
+  RBAC §2.92. Spec: `docs/superpowers/specs/2026-10-10-upc-013-university-communication-history-design.md`.
 - **Business requirement:** §12 timeline example; "never loses the history".
 - **Existing behavior:** none.
 - **Expected behavior:** a read-only UNION ALL of stage history, calls, messages, meetings, visits, agreement events, follow-ups and
@@ -901,6 +903,10 @@ Common conventions:
 - **Edge cases:** an application later withdrawn after enrolment (expected reversed?); multi-currency.
 - **Regression risks:** `AgentCommission` untouched (separate concept).
 - **Complexity:** medium · **Risk:** high
+- **Status (2026-10-10):** built on `feature/upc-019` under `DEC-SCOPE-165` (CL1–CL14, recommended answers), with migration
+  `0144_commission_receipts`, API §12CG and RBAC §2.91. Spec: `docs/superpowers/specs/2026-10-10-upc-019-commission-ledger-design.md`.
+  - Edge "withdrawn after enrolment": cannot occur (an enrolled application cannot be withdrawn); if it ever leaves `enrolled` it stops counting.
+  - `tuition_paid` terms and country-restricted terms are not evaluable from CRM data (CL1, CL6, `NEEDS_CONFIRMATION`).
 
 ### upc-020 — Tasks + follow-ups (auto-generated)
 - **Business requirement:** §19 (12 example tasks; Task → Employee → Due Date → Priority → Status); §20 (Next Action + Date; the
@@ -991,8 +997,8 @@ Common conventions:
 - **Edge cases:** month boundary in IST.
 - **Regression risks:** none.
 - **Complexity:** medium · **Risk:** medium
-- **Status (2026-10-10):** built on `feature/upc-022` under `DEC-SCOPE-165` (DB1–DB16, recommended answers), with **no migration**, API
-  §12CG and RBAC §2.91. Spec: `docs/superpowers/specs/2026-10-10-upc-022-partnership-dashboard-design.md`.
+- **Status (2026-10-10):** built on `feature/upc-022` under `DEC-SCOPE-167` (DB1–DB16, recommended answers), with **no migration**, API
+  §12CI and RBAC §2.93. Spec: `docs/superpowers/specs/2026-10-10-upc-022-partnership-dashboard-design.md`.
   - Figures cover the universities in the caller's scope now (upc-018 PF6); D13 reuses upc-023's E1 rows; the bands follow the Tasks
     page's default assignees. Heads open the dashboard from their nav and still land on Team.
 

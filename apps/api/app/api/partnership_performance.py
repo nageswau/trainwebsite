@@ -6,6 +6,7 @@ overseas_admin = all); one university's funnel follows the master's read rule (e
 count: the scope, one grouped query per step and the clock."""
 
 from datetime import date
+from decimal import Decimal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -18,8 +19,10 @@ from app.models import Country, University, User
 from app.partnership_stages import GROUPS, label_of
 from app.schemas import UniversityPerformance, UniversityPerformancePage
 from app.services import partnership_universities as universities
+from app.services import university_commission as commission
 from app.services.bdm_activities import india_date
 from app.services.bdm_appointments import db_now
+from app.services.partnership_access import can_see_commission
 from app.services.partnership_metrics import FUNNEL, STEPS, funnel_counts, period
 from app.services.partnership_metrics import scope_filter as _scope  # PF6, shared with upc-022's dashboard
 
@@ -57,7 +60,28 @@ def _counts(found: dict[str, int] | None) -> dict:
     return {step.key: (found or {}).get(step.key, 0) if step.tracked else None for step in STEPS}
 
 
-@router.get("/performance", response_model=UniversityPerformancePage)
+def _amounts(sums: dict[str, Decimal]) -> list[dict]:
+    return [{"currency": c, "amount": commission.money_str(v)} for c, v in sorted(sums.items())]
+
+
+def _add(total: dict[str, Decimal], part: dict[str, Decimal]) -> None:
+    for currency, value in part.items():
+        total[currency] = total.get(currency, Decimal(0)) + value
+
+
+async def _commission(db: AsyncSession, user: User, university_ids: list[UUID], first: date, last: date) -> dict[UUID, dict] | None:
+    """upc-019 CL13 (F10/F11) per university for the period -- computed only for the commission roles (U2); None for everyone else."""
+    if not can_see_commission(user):
+        return None
+    rows, received = await commission.expected_rows(db, university_ids), await commission.received_sums(db, university_ids, first, last)
+    return {u: {"expected": commission.currency_sums(rows.get(u, []), first, last), "received": received.get(u, {})} for u in university_ids}
+
+
+def _commission_out(sums: dict) -> dict:
+    return {"expected": _amounts(sums["expected"]), "received": _amounts(sums["received"])}
+
+
+@router.get("/performance", response_model=UniversityPerformancePage, response_model_exclude_unset=True)
 async def performance(first: str | None = FROM, last: str | None = TO, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """PF7: active universities in scope that are partners or have any step in the period, by enrolled then applications.
     `totals` is over every ranked row (PF8), not the page."""
@@ -70,10 +94,20 @@ async def performance(first: str | None = FROM, last: str | None = TO, limit: in
     ranked.sort(key=lambda r: (-r[2].get("enrolled", 0), -r[2].get("applications", 0), r[0].name.casefold(), str(r[0].id)))
     totals = {key: sum(counts.get(key, 0) for *_, counts in ranked) for key in FUNNEL}
     items = [{"rank": offset + i + 1, "university": _university(uni, country), "counts": _counts(counts)} for i, (uni, country, counts) in enumerate(ranked[offset : offset + limit])]
-    return {"from": first_day, "to": last_day, "steps": STEPS_OUT, "totals": _counts(totals), "items": items, "total": len(ranked), "limit": limit, "offset": offset}
+    page = {"from": first_day, "to": last_day, "steps": STEPS_OUT, "totals": _counts(totals), "items": items, "total": len(ranked), "limit": limit, "offset": offset}
+    money = await _commission(db, user, [uni.id for uni, *_ in ranked], first_day, last_day)
+    if money is not None:
+        overall: dict[str, dict[str, Decimal]] = {"expected": {}, "received": {}}
+        for sums in money.values():
+            _add(overall["expected"], sums["expected"])
+            _add(overall["received"], sums["received"])
+        for item, (uni, *_) in zip(items, ranked[offset : offset + limit], strict=True):
+            item["commission"] = _commission_out(money[uni.id])
+        page["commission"] = _commission_out(overall)
+    return page
 
 
-@router.get("/universities/{university_id}/performance", response_model=UniversityPerformance)
+@router.get("/universities/{university_id}/performance", response_model=UniversityPerformance, response_model_exclude_unset=True)
 async def university_performance(university_id: UUID, first: str | None = FROM, last: str | None = TO, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """One university's funnel (§17), active or not; an unknown id is a 404."""
     await universities.require_reader(db, user)
@@ -83,4 +117,8 @@ async def university_performance(university_id: UUID, first: str | None = FROM, 
         raise HTTPException(404, universities.NOT_FOUND)
     uni, country = row
     found = await funnel_counts(db, [uni.id], first_day, last_day)
-    return {"from": first_day, "to": last_day, "steps": STEPS_OUT, "university": _university(uni, country), "counts": _counts(found.get(uni.id))}
+    out = {"from": first_day, "to": last_day, "steps": STEPS_OUT, "university": _university(uni, country), "counts": _counts(found.get(uni.id))}
+    money = await _commission(db, user, [uni.id], first_day, last_day)
+    if money is not None:
+        out["commission"] = _commission_out(money[uni.id])
+    return out
