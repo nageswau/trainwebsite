@@ -28,6 +28,7 @@ commission. Frontend: none. Backend: tests only, unless the sweep finds a gap (P
 | PX7 | A gap found by the sweep | Fixed inside upc-033 when it breaks the documented rule and the fix is local (tel-026 PM4). Found: `POST /partnership/universities/{id}/courses/import` (upc-017) read and parsed the upload before any role check, so a counselor got `422`/`413` instead of `403` (a validation oracle, and work done for a refused caller). Fix: `require_reader` first, as upc-005's university import does. |
 | PX8 | AC2 "every serializer" | A source net: every module under `app/api` and `app/services` that emits university commission data (`strip_commission`, `can_see_commission`, `commission_terms`, the term/receipt models, `commission_expected/received`, a `"commission":` key) must be mapped to the sweep endpoints that exercise it. A new emitter without a mapping fails the test. |
 | PX9 | As-built notes, not changed | Recorded in RBAC §2.100 as `NEEDS_CONFIRMATION`, not changed here: a head records / removes receipts on **any** university (upc-019 CL9 names no team scope); an event may link any active university (upc-011); pm_out / head_out read any university's performance, commission included (upc-018 PF "any university"); typed query/body validation (`422`) runs before the role check (FastAPI, repo-wide), so the matrix sends valid inputs. |
+| PX11 | Second gap (found by the sweep) | `GET /workflows/overseas/applications` (the overseas student / counselor / rep / agent application list) failed with a 500 on `main`: `join(University)` without an ON clause became ambiguous ("multiple FROMS which can join"), and 5 agn/ovs tests failed with it. The sweep cannot verify an endpoint that crashes, so the join names its ON clause, as its five sibling queries do (`admin.py`, `portal.py`, `schools.py`). |
 | PX10 | Frontend | None (backlog). Browser QA checks the UI as built: overseas_admin's and counselor's university pages show no commission, and the partnership pages refuse other roles. A Playwright spec records that check (tests only). |
 
 ## 3. Design
@@ -44,3 +45,21 @@ commission. Frontend: none. Backend: tests only, unless the sweep finds a gap (P
 
 Tests only apart from PX7, so the risk is in the shared test database (every value unique per call; nothing truncated) and in run time
 (about 130 rows × 14 roles). PX7 changes only the status a refused role gets on a bad upload (`403` before `422`/`413`).
+
+## 5. QA evidence (2026-10-10)
+
+Isolated stack `upc033` (web 13233 / api 18233), Chromium via Playwright. Super admin planted commission (a course percentage `73.19`, a course
+amount `24,681.35`, a term `61.83` with planted conditions, a `commission_agreement` document) on a new published university and on the seeded
+rep's university. Then: signed out, overseas_admin, counselor, university_rep, agent, overseas student, it_admin and college BDM opened
+their university / course / application / dashboard pages and the partnership pages (36 page visits); desktop 1366, tablet 820, phone 390.
+
+- Positive control: the super admin's university page shows every planted value.
+- No planted value on any non-commission page; overseas_admin's partnership university page lists the course without a commission
+  column and without the commission ledger; the public catalogue and the counselor's university page show no "commission" at all.
+- Commercial Terms / Agreements answer "Access unavailable" to overseas_admin; every partnership page answers it to counselor, rep, agent,
+  student, it_admin and BDM; signed out redirects to `/overseas/login`.
+- PX7: counselor's bad course-import upload → `403`. PX11: `/workflows/overseas/applications` → `200` for student and counselor.
+- No sideways scroll and no broken images at any width; no 5xx. Console: `401`s on public pages right after a sign-out (the stale-cookie
+  session check, pre-existing, not upc-033).
+- No defect attributable to upc-033. `apps/web/tests/e2e/upc-033-commission-visibility.spec.ts` records the check (only overseas_admin's own
+  menu says "Commissions" -- the agent-commission module, `DEC-SCOPE-005`, PX8 -- so the word check reads the page's `main`).

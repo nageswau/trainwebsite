@@ -1257,7 +1257,8 @@ stage move or visit completion that triggers them, under that write's own permis
 ### 2.68 University agreements *(net-new, added 2026-10-09 — `DEC-SCOPE-142`, `upc-014`)*
 
 Enforced inline in `api/university_agreements.py` + `services/university_agreements.py` (`require_reader`, then the University Master's
-`can_manage_agreements` / `can_approve_agreements`). No commission field exists here (upc-016); every reader is a commission role today.
+`can_manage_agreements` / `can_approve_agreements`). Since upc-016 (CM12) an agreement carries its `commission_terms` for
+`can_see_commission` roles and every payload passes `strip_commission`; every reader is a commission role today (corrected by upc-033, §2.100).
 Audit and logs carry ids, the MoU number, statuses and field names only.
 
 | Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
@@ -1392,8 +1393,9 @@ edit and cancel are for the event's owner or creator (CL7).
 ### 2.79 Student funnel + university performance *(net-new, added 2026-10-09 — `DEC-SCOPE-153`, `upc-018`)*
 
 Enforced inline in `api/partnership_performance.py`: `partnership_universities.require_reader` first, then the ranking's scope filter. The
-endpoints are read-only and return counts only: no student identifier, no audit row, and no commission (U2: F10/F11 are upc-019's and will
-pass through `strip_commission`).
+endpoints are read-only and return counts only: no student identifier and no audit row. Since upc-019 / upc-028 the commission roles also
+get `commission` (F10/F11) and the health `factors`; both are computed or kept only when `can_see_commission`, so `overseas_admin` gets
+neither (corrected by upc-033, §2.100).
 
 | Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
 |---|---|---|---|---|---|
@@ -1666,6 +1668,47 @@ data. Commission columns per U2 (server-side, screen and CSV). An export is audi
 | `partnership_head` | Their direct reports' universities + unowned | Their direct reports + team row | ✅ |
 | `super_admin` | All | Every manager | ✅ |
 | any other role (incl. `overseas_admin`, counselor) | `403` (anonymous `401`) | — | — |
+
+### 2.100 University Partnership CRM permission matrix + commission sweep *(added 2026-10-10 — `DEC-SCOPE-174`, `upc-033`)*
+
+The consolidated view of §2.44–§2.99 and the confidentiality net for `EVID-020` line 1129 (U2). No grant changes here: every cell is the
+as-built rule of the item that owns the route, proven route × role by `apps/api/tests/test_upc_033_matrix.py` (`MATRIX`: all 127
+operations under `/partnership/`, `/admin/partnership-` and `/universities/` (the 360 view), called as a manager and a head with the
+records **and** one of each on another team, `super_admin`, `overseas_admin`, `it_admin`, a college BDM, an overseas counselor, the
+university's rep, an agent, an overseas student and signed out; an inventory test fails on any route without a row, or a row without a
+route). A role outside a route is `403`; signed out is `401`.
+
+| Group (owning items) | Manager (own) | Manager (other team) | Head (own team) | Head (other team) | `super_admin` | `overseas_admin` | Every other role |
+|---|---|---|---|---|---|---|---|
+| University master reads, search, map, pipeline, stage history, milestones, onboarding, contacts, documents, courses, performance (003/004/006/007/008/017/018/024/025/026/027) | ✅ | ✅ (reads are not team-filtered, U14) | ✅ | ✅ | ✅ | ✅ read-only slices: shareable contacts, shareable documents (never `commission_agreement`), courses and performance **without commission** | `403` |
+| University writes: edit, contacts, stage / lost, milestones, expected, probability, onboarding, documents, agreements, terms, messages, calls (003/006/007/008/014/016/012/023/026/027) | ✅ | `403` | ✅ | `403` "another partnership team" | ✅ | edit the master and courses only (UM, CO2: never `commission`) | `403` |
+| Catalogue: create, publish, (de)activate, import (003/005) | `403` | `403` | ✅ | ✅ create / import; `403` on another team's university | ✅ | ✅ | `403` |
+| Assign, reopen, approve agreements, reassign (003/007/014/032) | `403` | `403` | ✅ | `403` | ✅ | `403` | `403` |
+| Agreements, commission terms, ledger, timeline, templates, meetings, visits, events, tasks, calendar, alerts, dashboard, expected, reports, targets (009–016/019–023/031) | ✅ (own actor rows) | ✅ reads | ✅ | ✅ reads | ✅ reads (read-only on meetings, visits, events, tasks) | `403` | `403` |
+| Global dashboard (029) | `403` | `403` | ✅ | ✅ | ✅ | `403` | `403` |
+| University 360 view (030) | `403` | `403` | `403` | `403` | `403` | ✅ | counselor / BDM / rep slices (§2.88); others `403` |
+
+`404` appears only where the owning item hides: another uploader's import batch (upc-005), another manager's target sheet or a head's
+`PUT` for another team's manager (upc-021), a calendar `user_id` out of scope (upc-011), and a university outside a 360-view slice
+(upc-030).
+
+**Commission sweep** (`apps/api/tests/test_upc_033_commission_sweep.py`): a sentinel sits in every commission column (course percent and
+amount, a term's percent and conditions, a receipt's amount, reference and note, a `commission_agreement` document's title). Every
+inventoried `GET` plus the public catalogue (`/public/universities[/{slug}]`, `/public/overseas-courses`, `/public/search`,
+`/public/countries/{slug}`), the 360 view and its file, `/admin/universities`, `/workflows/overseas/applications`,
+`/lookups/overseas-applications` and the overseas portal sections is called as every non-commission role (signed out, `overseas_admin`,
+`it_admin`, BDM, counselor, rep, agent, student). Whatever the status, no response holds a key naming commission, the health `factors`
+breakdown or a sentinel. A control proves each sentinel is visible to the commission roles, and a source net fails when a module that
+emits commission data has no swept endpoint (agent commission, `DEC-SCOPE-005`, is listed apart).
+
+**Gaps found and fixed (upc-033):** the course CSV import read and judged the upload before the role (a counselor got `422`/`413`, not
+`403`); it now refuses the role first, as the university import does. `GET /workflows/overseas/applications` failed with a 500 (an
+ambiguous join to `universities`); the join now names its ON clause, as its five sibling queries do.
+
+**As-built notes (`NEEDS_CONFIRMATION`, not changed):** a head records and removes commission receipts on **any** university (upc-019 CL9
+names no team rule); an event may link any active university (upc-011); a manager or head of another team reads any university's
+performance with its commission (upc-018 "any university"); FastAPI validates typed query parameters and bodies (`422`) before the
+role check, so a refused role with a malformed request sees `422` (reports avoid this by validating after the role, RP4).
 
 ## 3. Support / admin audit controls
 
