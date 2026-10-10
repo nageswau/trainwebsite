@@ -5,6 +5,7 @@ module only sees its id and the reader, for upc-026's document visibility (TL7).
 Keys, not labels, for meetings, visits, agreements, documents and tasks (the web client owns those labels); stage and call-outcome labels
 come from their server catalogues, people and contacts by name. Free text is a 200-character excerpt (TL6)."""
 
+from datetime import timedelta
 from uuid import UUID
 
 from sqlalchemy import String, case, cast, func, select, union_all
@@ -54,13 +55,14 @@ def _sources(university_id: UUID, user: User) -> list:
     AE, A, DV, D = UniversityAgreementEvent, UniversityAgreement, UniversityDocumentVersion, UniversityDocument
     Contact, Assignee = UniversityContact, aliased(User)
     task = dict(from_value=T.kind, subject=T.title, status=T.source, rank=TASK)
+    # QA-01 (tel-015 QA15-01): the call form sends its time to the minute, so a call logged now would read seconds before what was recorded
+    # earlier in that minute; within the minute it is placed when it was recorded. A call dated earlier keeps its own time.
+    call_at = case((C.created_at < C.occurred_at + timedelta(minutes=1), C.created_at), else_=C.occurred_at)
     return [
         _branch(S.id, "stage", S.created_at, seq=S.position, actor=S.actor_user_id, event=S.kind, from_value=S.from_stage, to_value=S.to_stage, reason=S.note, rank=STAGE).where(
             S.university_id == university_id
         ),
-        _branch(
-            C.id, "call", C.occurred_at, actor=C.caller_user_id, event=C.direction, from_value=C.outcome, to_name=Contact.name, reason=_excerpt(C.notes), duration=C.duration_seconds, rank=ACTIVITY
-        )
+        _branch(C.id, "call", call_at, actor=C.caller_user_id, event=C.direction, from_value=C.outcome, to_name=Contact.name, reason=_excerpt(C.notes), duration=C.duration_seconds, rank=ACTIVITY)
         .outerjoin(Contact, Contact.id == C.contact_id)
         .where(C.university_id == university_id),
         _branch(

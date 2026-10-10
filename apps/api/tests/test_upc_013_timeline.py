@@ -3,7 +3,7 @@ actor and summary (AC), every source kind, the tie order (edge), out of scope â†
 database is never truncated, so every assertion is scoped to universities made here."""
 
 import uuid
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
@@ -136,6 +136,35 @@ async def test_equal_timestamps_read_in_causal_order_and_page_stably(client, db_
     paged = [(await timeline(client, uni["id"], limit=1, offset=i))["items"][0]["kind"] for i in range(3)]
     assert paged == kinds
     assert (await timeline(client, uni["id"], limit=1, offset=3))["items"] == []
+
+
+@pytest.mark.asyncio
+async def test_a_call_logged_now_reads_at_its_recording_time_a_backdated_one_at_its_own(client, db_session):
+    """QA-01 (tel-015 QA15-01): the call form sends its time to the minute, so a call logged now would read seconds before what was
+    recorded earlier in that minute. Within the minute the call is placed when it was recorded; an earlier call keeps its own time."""
+    _, pm, _, uni, person = await _setup(client, db_session)
+    uni_id, contact_id = uuid.UUID(uni["id"]), uuid.UUID(person["id"])
+    minute = datetime(2026, 9, 7, 10, 15, tzinfo=UTC)
+    db_session.add_all(
+        [
+            UniversityStageHistory(university_id=uni_id, actor_user_id=pm.id, kind="move", from_stage="target_university", to_stage="initial_contact", created_at=minute + timedelta(seconds=30)),
+            UniversityCall(university_id=uni_id, contact_id=contact_id, caller_user_id=pm.id, occurred_at=minute, direction="outgoing", outcome="connected", created_at=minute + timedelta(seconds=50)),
+            UniversityCall(
+                university_id=uni_id,
+                contact_id=contact_id,
+                caller_user_id=pm.id,
+                occurred_at=minute - timedelta(hours=2),
+                direction="outgoing",
+                outcome="busy",
+                created_at=minute + timedelta(seconds=55),
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    rows = (await timeline(client, uni["id"]))["items"]
+    assert [(r["kind"], r["from_value"]) for r in rows] == [("call", "connected"), ("stage", "target_university"), ("call", "busy")]
+    assert rows[0]["at"].startswith("2026-09-07T10:15:50") and rows[2]["at"].startswith("2026-09-07T08:15:00")
 
 
 @pytest.mark.asyncio
