@@ -6896,3 +6896,34 @@ Spec: `docs/superpowers/specs/2026-10-10-upc-029-global-partnership-dashboard-de
 `api/partnership_performance.ranking` / `commission_totals` extracted (the performance route is unchanged in behaviour); page
 `/partnership/head/global-dashboard` with `components/GlobalCounts.tsx` and `lib/partnershipGlobal.ts`. Feeds mgmt-023 (its totals equal these).
 - **New Feature ID authorized:** `upc-029`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-029.
+
+### DEC-SCOPE-173 — Partnership reports + CSV export (`upc-031`)
+
+**Evidence:** `EVID-020` §32 ("📑 Reports", no detail in the source); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U1 and U2
+(`EXPLICIT_APPROVAL` 2026-10-08), §3.2 Q-25, §4 upc-031.
+**Status:** Q-25 and RP1–RP14 are recommended answers applied under the owner's standing instruction for the build session ("proceed with the
+recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. No migration.
+API contract §12CO, RBAC §2.99. Spec: `docs/superpowers/specs/2026-10-10-upc-031-partnership-reports-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| RP1 | Which reports (Q-25) | Pipeline by country, expected partnerships, university performance, agreements expiring, targets vs actual |
+| RP2 | Readers | Partnership manager (with a profile), head, super_admin (the dashboard's, DB15); others 403 |
+| RP3 | Scope | upc-018 PF6 (manager = primary/backup; head = team + unowned; super_admin = all); targets: upc-021's (self / direct reports / all) |
+| RP4 | Check order | role (403) → kind (404) → inputs (422) |
+| RP5 | Pipeline | Per country of the active universities in scope: Total, Partners, In progress, Targets, Lost, At risk; Total row = dashboard D1–D5 + lost |
+| RP6 | Expected | upc-023's rows for a window (all / this month / next month / this quarter / undated); Total row Weighted = E4; this month = D13 |
+| RP7 | Performance | upc-018's ranking for a period (default this IST month to date), every ranked row, F3 + F5–F9; Total row = the page's totals; no health score |
+| RP8 | Agreements | AG4 effective status Expiring today, universities in scope, soonest first, days left; no commission terms |
+| RP9 | Targets | upc-021's team comparison for a month: target + achieved per KPI per manager; Total row = the team row |
+| RP10 | Filters | Plain strings validated after authorization; a bad value 422 naming the field |
+| RP11 | Row cap | Screen 500 rows (`truncated`); CSV over 5,000 rows refused (422), never cut short |
+| RP12 | Commission | Commission columns only for `can_see_commission` roles, server-side |
+| RP13 | CSV | tel-024 `to_csv`: BOM, on-screen labels, Total row last, `_safe_cell` formula guard |
+| RP14 | Audit / logs | Reads not audited; export audited `partnership_report.export` (kind, filter names, rows), committed first; logs carry no values or names |
+
+**Consequences:** `services/partnership_reports.py`, `api/partnership_reports.py`; `api/partnership_expected.chosen_rows` extracted (the
+Expected route is unchanged in behaviour); upc-029's `partnership_performance.ranking` reused; page `/partnership/reports` with
+`components/PartnershipReportView.tsx` and `lib/partnershipReports.ts`; Reports goes live in the manager's §32 menu, the head's nav and the
+super-admin nav ("Partnership Reports").
+- **New Feature ID authorized:** `upc-031`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-031.

@@ -1,7 +1,7 @@
 # upc-031 — Partnership Reports + CSV export (design)
 
 **Item:** `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-031 (EVID-020 §32 "📑 Reports"; Q-25). **Depends on:** upc-018, upc-021, upc-023
-(all merged). **Gate:** Q-25 and RP1–RP14 below are recommended answers applied under the owner's standing build instruction ("proceed
+(all merged). DEC-SCOPE-173, API §12CO, RBAC §2.99. **Gate:** Q-25 and RP1–RP14 below are recommended answers applied under the owner's standing build instruction ("proceed
 with the recommended answers; ask only if genuinely blocking") — `NEEDS_CONFIRMATION` at sign-off. No migration.
 
 ## 1. Intent
@@ -40,8 +40,8 @@ empty report, not an error.
 ## 4. Backend structure
 
 `services/partnership_reports.py` holds the five builders and the shared payload shape. Each reuses the existing computation:
-`partnership_metrics.scope_filter` + `GROUPS` (pipeline), `api.partnership_expected.expected_rows` / `window_figures` (expected),
-a `ranked()` helper extracted from `api.partnership_performance.performance` with no behaviour change (performance),
+`partnership_metrics.scope_filter` + `GROUPS` (pipeline), `api.partnership_expected.expected_rows` + `chosen_rows` (extracted from the
+Expected route with no behaviour change; expected), upc-029's `api.partnership_performance.ranking` (performance),
 `university_agreements.effective_status_sql` (agreements), `partnership_targets.team` (targets). No new tables, no schema.
 
 ## 5. Frontend
@@ -64,3 +64,17 @@ count/weighted; performance totals = `/partnership/performance` totals; agreemen
 targets total row = `/partnership/targets` team); manager scope; empty period; CSV BOM/header/formula guard/audit row/attachment;
 commission columns stripped for a non-U2 role (service level); the CSV cap. Web (vitest): lib URL helpers, the view (columns, empty,
 error, totals, filters per kind), nav lists. E2E (Playwright): a head opens each report and downloads a CSV; a counselor is refused.
+
+## 8. QA evidence (2026-10-10)
+
+Isolated stack `upc031` (web 13231 / api 18231), Chromium via Playwright; manager, head, super_admin, counselor and signed-out sessions;
+desktop 1366, tablet 820, phone 390. Each report opened from the tabs; window / period / month filters, Apply, Refresh and Back; invalid
+inputs (impossible day, reversed period, month 13, unknown window); an empty period; an unknown `?report=`; CSV download (incl. a double
+click) and a university named `=SUM(…)`.
+
+| ID | Severity | Role | Finding | Fix |
+|---|---|---|---|---|
+| QA31-01 | Minor | any reader | Apply a window → Refresh → Back: the URL said `?report=expected` (all) but the select still showed "No expected date" (browser form-state restore) | Form `autoComplete="off"`; unit test + e2e Back step |
+
+No console errors and no failed requests besides the designed 403/422s; no sideways scroll on tablet or phone; CSV cells guarded (`'=SUM…`);
+the counselor sees the access card and gets a 403 on the API; signed out redirects to `/overseas/login?next=…`.

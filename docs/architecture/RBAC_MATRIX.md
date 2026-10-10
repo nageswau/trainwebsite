@@ -1655,6 +1655,18 @@ notes); commission per U2.
 | `partnership_manager` | `403` (their own figures: §2.94) | — |
 | any other role | `403` (anonymous `401`) | — |
 
+### 2.99 Partnership reports + CSV export *(net-new, added 2026-10-10 — `DEC-SCOPE-173`, `upc-031`)*
+
+The inline pattern; the scope is in the SQL `WHERE`. Routes are listed in §12CO. Counts, university / manager names and dates; no student
+data. Commission columns per U2 (server-side, screen and CSV). An export is audited.
+
+| Role | `GET /partnership/reports/{kind}(.csv)` — universities (pipeline, expected, performance, agreements) | Targets vs actual | Commission columns |
+|---|---|---|---|
+| `partnership_manager` (with a profile) | Primary or backup | Themself | ✅ |
+| `partnership_head` | Their direct reports' universities + unowned | Their direct reports + team row | ✅ |
+| `super_admin` | All | Every manager | ✅ |
+| any other role (incl. `overseas_admin`, counselor) | `403` (anonymous `401`) | — | — |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
