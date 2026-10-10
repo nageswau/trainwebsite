@@ -771,6 +771,11 @@ Common conventions:
 - **Edge cases:** an agreement created already inside 30 days (only the next threshold fires).
 - **Regression risks:** the beat schedule (worker restart).
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-10):** built on `feature/upc-015` under `DEC-SCOPE-162` (no migration), API §12CD and RBAC §2.88. Spec:
+  `docs/superpowers/specs/2026-10-10-upc-015-partnership-alerts-design.md`.
+  - Q-17 and AL1–AL14 are recommended answers (`NEEDS_CONFIRMATION`): alerts are `notifications` rows keyed `upc015:…` (no log table);
+    hourly beat acting from 09:00 IST; expiry exactly at 90 / 60 / 30 / 7 days to primary + backup + the primary's head; newly delayed =
+    target within the last 7 days (upc-008's rule) to primary + backup; a daily overdue digest to each assignee; in-app + email.
 
 ### upc-016 — Commercial / commission terms (restricted)
 - **Status (2026-10-09):** built on `feature/upc-016` under `DEC-SCOPE-144` (Q-18, Q-19 + CM1–CM15, recommended answers), with

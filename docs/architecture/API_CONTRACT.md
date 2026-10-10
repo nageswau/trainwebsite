@@ -2518,6 +2518,19 @@ moves the application to Joined (AC3). Every change writes offer history.
 
 - `GET /partnership/universities/{id}` (and every route returning the detail) gains `probability: {stage, override, reason, effective}` (additive).
 
+## 12CD. Partnership alerts (`upc-015`) — addendum, 2026-10-10
+
+- **Basis:** `DEC-SCOPE-162` (AL1–AL14). Spec: `docs/superpowers/specs/2026-10-10-upc-015-partnership-alerts-design.md`. No migration.
+- **Readers:** `partnership_manager` (with a profile), `partnership_head`, `super_admin` (receives none: an empty list); others `403`; no
+  session `401`. Recipients only: every row is the caller's own.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/alerts?kind=all\|agreement_expiry\|milestone_delayed\|overdue_digest&limit(1–100, 25)&offset` | **→ 200** `{items: [{id, kind, title, body, read, action_url, created_at}], total, unread, limit, offset}`, newest first. `unread` counts every kind (the nav badge). `422` unknown kind / bad paging |
+
+- Read state uses the existing `PATCH /workflows/notifications/{id}/read` (AL13). The alerts are raised by the beat task
+  `app.worker.send_partnership_alerts_task` (`upc015-alerts`, `crontab(minute=30)` UTC, acting from 09:00 IST), never by a request.
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

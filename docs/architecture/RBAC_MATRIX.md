@@ -1517,6 +1517,19 @@ The inline pattern, scope in the SQL `WHERE`. Routes are listed in §12CC.
 
 - The override follows the stage rule (`can_move_stage`); an inactive university is `409`. The audit row carries values only, never the reason text.
 
+### 2.88 Partnership alerts *(net-new, added 2026-10-10 — `DEC-SCOPE-162`, `upc-015`)*
+
+The inline pattern; the scope is `notifications.user_id = caller` in the SQL `WHERE`. Routes are listed in §12CD.
+
+| Role | Receives (beat, AL9) | Reads `GET /partnership/alerts` |
+|---|---|---|
+| `partnership_manager` (with a profile) | Expiry and delayed-milestone alerts for universities where they are primary or backup; their own overdue digest | Their own alerts |
+| `partnership_head` | Expiry alerts for universities whose primary manager reports to them; their own overdue digest | Their own alerts |
+| `super_admin` | None | `200`, empty |
+| `overseas_admin`, any other role | None | `403` |
+
+- Inactive users receive nothing; a recipient is read at fire time. Bodies carry names, MoU numbers and dates only.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

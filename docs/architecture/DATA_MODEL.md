@@ -1922,3 +1922,18 @@ Every FK is RESTRICT; shares are permanent. Additive: no existing row is read or
 - The stage probability is a constant (`app/partnership_stages.py`, Appendix B P); only the manual override is stored (EX2). It stays until
   cleared (EX3). The expected list and the forecast are computed on read from `expected_agreement_date` (upc-008); nothing else is stored.
 - Changes are audited (`university.probability_overridden`). `downgrade()` refuses while any override exists.
+
+## Partnership alerts (`upc-015`, `DEC-SCOPE-162`; no migration)
+
+**No new table (AL1).** An alert is a `notifications` row (plus its `notification_deliveries` email row) whose `dedupe_key` is
+`upc015:<kind>:<event>:<user_id>`; the existing partial unique index `ux_notifications_dedupe_key` makes each one fire once.
+
+| Kind | `<event>` | Re-armed by |
+|---|---|---|
+| `agreement_expiry` | `<agreement_id>:<expiry_date>:<days>` (90 / 60 / 30 / 7) | A new threshold or a new expiry date |
+| `milestone_delayed` | `<university_milestones.id>:<target_date>` | A moved target |
+| `overdue_digest` | `<IST date>` | The next day |
+
+**Reads:** `university_agreements` by `ix_university_agreements_expiry (status, expiry_date)`; `university_milestones` by target date (a
+small, sparse table); `partnership_tasks` grouped by assignee (`ix_partnership_tasks_assignee_status_due`). The Alerts list reads
+`notifications` by `user_id` (indexed) and the key prefix.
