@@ -18,8 +18,8 @@ describe("upc-001 navigation", () => {
     expect(new Set(PARTNERSHIP_MENU.map((e) => e.href)).size).toBe(19);
   });
 
-  it("links only the live entries, plus Profile (upc-003 University Master, upc-007 Partnership Pipeline, upc-009 Meetings, upc-010 University Visits, upc-014 MoU & Agreements, upc-016 Commercial Terms, upc-017 Courses & Programs, upc-018 Student Opportunities + University Performance, upc-020 Follow-ups & Tasks, upc-011 Calendar, upc-026 Documents, upc-021 Targets & Forecast, upc-024 Global University Database)", () => {
-    expect(PARTNERSHIP_MENU.filter((e) => e.live).map((e) => e.label)).toEqual(["Dashboard", "Global University Database", "University Master", "Partnership Pipeline", "Meetings", "University Visits", "MoU & Agreements", "Commercial Terms", "Courses & Programs", "Student Opportunities", "University Performance", "Follow-ups & Tasks", "Calendar", "Documents", "Targets & Forecast"]);
+  it("links only the live entries, plus Profile (upc-003 University Master, upc-007 Partnership Pipeline, upc-009 Meetings, upc-010 University Visits, upc-014 MoU & Agreements, upc-016 Commercial Terms, upc-017 Courses & Programs, upc-018 Student Opportunities + University Performance, upc-020 Follow-ups & Tasks, upc-011 Calendar, upc-026 Documents, upc-021 Targets & Forecast, upc-024 Global University Database, upc-025 Global Partnership Map)", () => {
+    expect(PARTNERSHIP_MENU.filter((e) => e.live).map((e) => e.label)).toEqual(["Dashboard", "Global University Database", "University Master", "Partnership Pipeline", "Meetings", "University Visits", "MoU & Agreements", "Commercial Terms", "Courses & Programs", "Student Opportunities", "University Performance", "Follow-ups & Tasks", "Calendar", "Documents", "Targets & Forecast", "Global Partnership Map"]);
     expect(PARTNERSHIP_NAV).toEqual([
       { label: "Dashboard", href: "/partnership/dashboard" }, { label: "Global University Database", href: "/partnership/search" }, // upc-024
       { label: "University Master", href: "/partnership/universities" },
@@ -29,10 +29,12 @@ describe("upc-001 navigation", () => {
       { label: "Student Opportunities", href: "/partnership/opportunities" }, { label: "University Performance", href: "/partnership/performance" }, // upc-018
       { label: "Follow-ups & Tasks", href: "/partnership/tasks" }, { label: "Calendar", href: "/partnership/calendar" },
       { label: "Documents", href: "/partnership/documents" }, { label: "Targets & Forecast", href: "/partnership/targets" },
+      { label: "Global Partnership Map", href: "/partnership/map" }, // upc-025
       { label: "Profile", href: "/partnership/profile" },
     ]);
     expect(PARTNERSHIP_HEAD_NAV).toEqual([
       { label: "Team", href: "/partnership/head/team" }, { label: "Global University Database", href: "/partnership/search" }, // upc-024
+      { label: "Global Partnership Map", href: "/partnership/map" }, // upc-025
       { label: "University Master", href: "/partnership/universities" },
       { label: "Partnership Pipeline", href: "/partnership/pipeline" }, { label: "Meetings", href: "/partnership/meetings" }, // upc-009
       { label: "University Visits", href: "/partnership/visits" }, { label: "Visit approvals", href: "/partnership/visits/approvals" },

@@ -8,7 +8,8 @@ import { COMMISSION_ROLES, CURRENCIES, LEVELS, MONTHS } from "@/lib/courseMaster
 import { pageOffset } from "@/lib/telecaller";
 import type { User } from "@/lib/types";
 import { dateText } from "@/lib/universityAgreements";
-import { INSTITUTION_TYPES, label, OWNERSHIP_TYPES, RANKING_SYSTEMS, REGIONS, shellFor, universityPath } from "@/lib/universities";
+import { ACTIVITY, EXCLUSIVITY } from "@/lib/partnershipMap";
+import { INSTITUTION_TYPES, label, OWNERSHIP_TYPES, PRIORITIES, RANKING_SYSTEMS, REGIONS, shellFor, universityPath } from "@/lib/universities";
 import {
   filterProblem, isFiltered, PARTNER_STATUSES, type SearchFilters, searchHref, type SearchPage, searchQuery, SEARCH_PATH, SEARCH_URL,
   statusCounts,
@@ -26,7 +27,7 @@ function Choice({ id, name, text, value, options, any = "Any" }: { id: string; n
     <div className="field">
       <label htmlFor={id}>{text}</label>
       <select id={id} name={name} defaultValue={value ?? ""}>
-        <option value="">{any}</option>
+        {any && <option value="">{any}</option>}
         {options.map(([key, word]) => <option key={key} value={key}>{word}</option>)}
       </select>
     </div>
@@ -66,6 +67,11 @@ export default async function SearchUniversitiesPage({ searchParams }: { searchP
   const managerOptions: Option[] = [...(user.role === "partnership_manager" ? [["me", "Assigned to me"] as Option] : []), ["none", "Unassigned"]];
   const withCourses = page?.items.some((u) => u.matching_courses !== null) ?? false; // the API sends counts only for a course filter
   const end = page ? page.offset + page.items.length : 0;
+  const first = page?.items[0];
+  const fromMap = [
+    filters.iso2 && { key: "iso2" as const, text: `Country: ${first?.country.iso2 === filters.iso2.toUpperCase() ? first.country.name : filters.iso2.toUpperCase()}` },
+    filters.stage && { key: "stage" as const, text: `Stage: ${page?.items.find((u) => u.stage === filters.stage)?.stage_label ?? filters.stage}` },
+  ].filter((x) => !!x);
   return (
     <PortalShell nav={nav} roleLabel={roleLabel} userName={user.full_name}>
       <div className="portal-content">
@@ -98,10 +104,24 @@ export default async function SearchUniversitiesPage({ searchParams }: { searchP
               <Input id="us-commission" name="commission_min" text="Commission at least (%)" type="number" min={0.01} max={100} step="any" value={filters.commission_min} />
             )}
             <Choice id="us-status" name="partner_status" text="Partner status" value={filters.partner_status} options={Object.entries(PARTNER_STATUSES)} />
+            <Choice id="us-priority" name="priority" text="Priority" value={filters.priority} options={pairs(PRIORITIES)} />
             <Choice id="us-manager" name="manager" text="Partnership manager" value={filters.manager} options={managerOptions} />
             <Input id="us-expected-from" name="expected_from" text="Expected partnership from" type="date" value={filters.expected_from} />
             <Input id="us-expected-to" name="expected_to" text="Expected partnership to" type="date" value={filters.expected_to} />
+            <Choice id="us-activity" name="activity" text="Active / inactive" value={filters.activity} options={Object.entries(ACTIVITY)} any="" />
+            <Choice id="us-exclusivity" name="exclusivity" text="Exclusive / non-exclusive" value={filters.exclusivity} options={Object.entries(EXCLUSIVITY)} />
           </div>
+          {/* upc-025: the map's exact country and stage have no field here; they ride along and can be removed */}
+          {fromMap.length > 0 && (
+            <p className="muted" style={{ fontSize: 13, margin: "12px 0 0" }}>
+              {fromMap.map(({ key, text }) => (
+                <span key={key} style={{ marginRight: 12 }}>
+                  <input type="hidden" name={key} value={filters[key]} />
+                  {text} <Link href={searchHref(filters, { [key]: "" })} aria-label={`Remove ${text}`}>Remove</Link>
+                </span>
+              ))}
+            </p>
+          )}
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12, marginTop: 12 }}>
             <button className="btn small" type="submit">Search</button>
             {isFiltered(filters) && <Link className="btn secondary small" href={SEARCH_PATH}>Clear</Link>}
@@ -144,7 +164,7 @@ export default async function SearchUniversitiesPage({ searchParams }: { searchP
                       {page.items.map((u) => (
                         <tr key={u.id}>
                           {/* one wrapper per mixed cell -- on a phone each cell is a flex row (upc-026 QA-01) */}
-                          <td data-label="University"><span><Link href={universityPath(u.id)}>{u.name}</Link> <span className="muted" style={{ whiteSpace: "nowrap" }}>{u.university_code}</span></span></td>
+                          <td data-label="University"><span><Link href={universityPath(u.id)}>{u.name}</Link> <span className="muted" style={{ whiteSpace: "nowrap" }}>{u.university_code}</span>{!u.active && <> <span className="badge">Inactive</span></>}</span></td>
                           <td data-label="Country / city"><span>{u.country.name} <span className="muted">{u.city}</span></span></td>
                           <td data-label="Type">{label(INSTITUTION_TYPES, u.institution_type)}{u.ownership_type && `, ${label(OWNERSHIP_TYPES, u.ownership_type)}`}</td>
                           <td data-label="Ranking">{u.ranking ?? "—"}</td>
