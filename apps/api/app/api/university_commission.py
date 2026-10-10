@@ -5,19 +5,29 @@ Every write: the read gate (403), the agreement (404), the university row FOR UP
 write permission (403 role/team, 409 inactive), the freeze rule (409 once approved, CM9), the term (404), the value checks (422), the
 change and an audit row, one commit here, then a structured log (ids only). Lists are {items, total, limit, offset}."""
 
+from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.bdm import OFFSET
 from app.api.deps import get_current_user
 from app.api.lookups import _pattern as like_pattern
 from app.core.database import get_db
-from app.models import COMMISSION_CURRENCIES, COMMISSION_TRIGGERS, University, UniversityAgreement, UniversityCommissionTerm, User
-from app.schemas import CommissionTermIn, CommissionTermUpdate
+from app.models import (
+    COMMISSION_CURRENCIES,
+    COMMISSION_TRIGGERS,
+    University,
+    UniversityAgreement,
+    UniversityCommissionReceipt,
+    UniversityCommissionTerm,
+    User,
+)
+from app.schemas import CommissionReceiptIn, CommissionTermIn, CommissionTermUpdate
 from app.services import partnership_universities as unis
 from app.services import university_agreements as agreements
 from app.services import university_commission as svc
@@ -148,3 +158,68 @@ async def menu_terms(
         item["university"] = {"id": uni.id, "name": uni.name, "university_code": uni.university_code}
         items.append(item)
     return {"items": items, "total": total or 0, "limit": limit, "offset": offset}
+
+
+# --- upc-019 (DEC-SCOPE-161, spec §3): the commission ledger of one university -- Expected (computed), Received (recorded), Outstanding --
+LISTED = 200  # applications and receipts shown; the totals are over all of them
+
+
+@router.get("/universities/{university_id}/commission")
+async def ledger(university_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """CL11: totals per currency (no FX); every commission role reads every university (as CM7)."""
+    await svc.require_reader(db, user)
+    uni = await unis.load(db, university_id)
+    rows = (await svc.expected_rows(db, [uni.id])).get(uni.id, [])
+    expected, received = svc.currency_sums(rows), (await svc.received_sums(db, [uni.id])).get(uni.id, {})
+    zero = Decimal(0)
+    totals = [
+        {"currency": c, "expected": svc._money(expected.get(c, zero)), "received": svc._money(received.get(c, zero)), "outstanding": svc._money(expected.get(c, zero) - received.get(c, zero))}
+        for c in sorted(expected.keys() | received.keys())
+    ]
+    R = UniversityCommissionReceipt
+    receipts_total = await db.scalar(select(func.count()).select_from(R).where(R.university_id == uni.id))
+    receipts = (await db.scalars(select(R).where(R.university_id == uni.id).order_by(R.received_on.desc(), R.created_at.desc(), R.id).limit(LISTED))).all()
+    applications = [r | {"amount": svc._money(r["amount"])} for r in rows[:LISTED]]
+    return {
+        "university": {"id": uni.id, "name": uni.name, "university_code": uni.university_code}, "totals": totals,
+        "applications": applications, "applications_total": len(rows), "receipts": await svc.receipts_out(db, list(receipts)),
+        "receipts_total": receipts_total or 0, "permissions": {"can_record": svc.can_record(user)},
+    }  # fmt: skip
+
+
+@router.post("/universities/{university_id}/commission/receipts", status_code=201)
+async def record_receipt(university_id: UUID, payload: CommissionReceiptIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """CL10: one lump sum, under the university lock so two concurrent saves of one reference can't both pass."""
+    await svc.require_reader(db, user)
+    svc.require_recorder(user)
+    uni = await unis.load(db, university_id, lock=True)
+    await svc.check_receipt(db, uni.id, payload.received_on, payload.reference, payload.application_ids)
+    receipt = UniversityCommissionReceipt(university_id=uni.id, created_by_user_id=user.id, **payload.model_dump() | {"application_ids": [str(i) for i in payload.application_ids]})
+    db.add(receipt)
+    await db.flush()
+    svc.record_receipt(db, user, receipt, "create")
+    try:
+        await db.commit()
+    except IntegrityError as e:  # the per-university reference index (a race the lock did not see)
+        await db.rollback()
+        raise HTTPException(409, svc.DUPLICATE_REFERENCE) from e
+    svc.log_receipt("university_commission_receipt_created", user, receipt)
+    await db.refresh(receipt)
+    return {"receipt": (await svc.receipts_out(db, [receipt]))[0]}
+
+
+@router.delete("/universities/{university_id}/commission/receipts/{receipt_id}", status_code=204)
+async def remove_receipt(university_id: UUID, receipt_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """CL12: a mistaken receipt comes out (audited) and is re-entered; receipts are never edited."""
+    await svc.require_reader(db, user)
+    svc.require_recorder(user)
+    uni = await unis.load(db, university_id, lock=True)
+    R = UniversityCommissionReceipt
+    receipt = await db.scalar(select(R).where(R.id == receipt_id, R.university_id == uni.id).with_for_update())
+    if receipt is None:
+        raise HTTPException(404, svc.RECEIPT_NOT_FOUND)
+    svc.record_receipt(db, user, receipt, "delete")
+    await db.delete(receipt)
+    await db.commit()
+    svc.log_receipt("university_commission_receipt_deleted", user, receipt)
+    return Response(status_code=204)
