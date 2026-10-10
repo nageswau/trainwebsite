@@ -6483,3 +6483,38 @@ Spec: `docs/superpowers/specs/2026-10-09-rec-022-offer-management-design.md`.
 | S14 | Lists | "Shared profiles" on the requirement and company pages; "Shared with you" on the employer dashboard |
 
 - **New Feature ID authorized:** `rec-019`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-019.
+
+### DEC-SCOPE-161 — University 360 view for other roles (`upc-030`)
+
+**Evidence:**
+- `EVID-020` closing note (L1102–L1127: one university record as the central source of truth, each role sees only what is relevant).
+- `EVID-020` §16 L579 ("counselors know exactly what each partner university offers").
+- `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U2, U13, U14 (`EXPLICIT_APPROVAL`, 2026-10-08) and §4 upc-030.
+
+**Status:** UV1–UV12 are recommended answers, applied under the owner's standing instruction for the build session ("proceed with the
+recommended answers"). They are **not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. **No migration.** API contract §12CC,
+RBAC §2.87. Spec: `docs/superpowers/specs/2026-10-10-upc-030-university-360-view-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| UV1 | Endpoint | `GET /universities/{id}/view`, one route with a role-sliced serializer |
+| UV2 | Who | Overseas-division `counselor` and `overseas_admin`, `bdm` (with profile), `bdm_manager`, `university_rep`. Every other role, the partnership roles and super_admin included → `403` |
+| UV3 | Which universities | Counselor: published and active only. overseas_admin and BDMs: every university. Rep: their own only. Anything else → `404` |
+| UV4 | Profile | Descriptive fields and rankings only. Never the international office, existing relationship, priority, potential, relationship strength, flags, managers, expected dates or follow-ups |
+| UV5 | Partnership status | `{stage, stage_label, lost}` for counselor, overseas_admin and BDM |
+| UV6 | Manager | BDM only (U13): the primary partnership manager's name and email |
+| UV7 | Contacts | Shareable only (the upc-006 CT5 slice). No notes, relationship strength or last interaction |
+| UV8 | Courses | Active only, without commission (allow-list plus `strip_commission`) |
+| UV9 | Documents | Shareable and never the commission agreement. A view-scoped download, audited. The upc-026 routes are unchanged (counselor still `403` there) |
+| UV10 | Applications | Counselor: their own. overseas_admin: all for the university. ≤ 50, School-bridged excluded |
+| UV11 | Shape | `{slice, university, …sections}`. A section outside the slice is absent |
+| UV12 | Audit | Reads are not audited. A refusal is logged with ids and role only. A download is audited |
+
+- **New:**
+  - `services/university_view.py` and `api/university_view.py`.
+  - `components/UniversityView.tsx`.
+  - The pages `/overseas/counselor/universities(/[id])`, `/bdm/universities/[id]` and `/overseas/university/profile`.
+  - Nav: counselor "Universities", rep "University Profile".
+  - The BDM organisation's "University Master" row becomes a link.
+- **overseas_admin UI:** unchanged. Their University Master page is already a superset of the slice; the API serves the slice.
+- **New Feature ID authorized:** `upc-030`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-030.

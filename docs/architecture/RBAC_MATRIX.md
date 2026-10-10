@@ -1503,6 +1503,20 @@ The inline pattern, scope in the SQL `WHERE`. Routes are listed in §12CB.
 - R8 is enforced server-side: no phone, email, LinkedIn or salary leaves in an email, a WhatsApp text or the portal.
 - Only the token's SHA-256 is stored; every resume download is audited; audit rows and logs carry ids only.
 
+### 2.87 University 360 view *(net-new, added 2026-10-10 — `DEC-SCOPE-161`, `upc-030`)*
+
+Enforced in `services/university_view.py`. The role gate (`403`) comes first, then the slice's scope (`404`, so an internal university
+does not leak). Each slice is an explicit allow-list, and no slice carries commission (U2). Routes are listed in §12CC.
+
+| Role | Universities | Sees | Document download |
+|---|---|---|---|
+| `counselor` (overseas) | Published **and** active only | Profile, partnership stage, shareable contacts (no notes), active courses, shareable documents, **their own** students' applications | Shareable documents (audited) |
+| `overseas_admin` (overseas) | Every university | The counselor's slice, with **every** application for the university | Shareable documents (audited) |
+| `bdm` (with profile), `bdm_manager` | Every university (U13) | Profile, partnership stage, primary partnership manager | `403` |
+| `university_rep` | Only `profile.university_id`; any other → `404` | Profile, active courses | `403` |
+| partnership roles, `super_admin` | — (they use the University Master) | `403` | `403` |
+| any other role, IT counselor included | — | `403` (anonymous `401`) | `403` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
