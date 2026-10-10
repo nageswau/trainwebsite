@@ -1321,6 +1321,11 @@ Common conventions:
 - **Complexity:** medium · **Risk:** high
 
 ### upc-033 — Permission matrix + commission-stripping sweep
+- **Status (2026-10-10):** built on `feature/upc-033` under `DEC-SCOPE-174` (PX1–PX11, recommended answers), with **no migration**, no API
+  contract section, RBAC §2.100. Spec: `docs/superpowers/specs/2026-10-10-upc-033-permission-matrix-design.md`.
+  - 127 routes × 13 roles in `test_upc_033_matrix.py`; the sweep in `test_upc_033_commission_sweep.py` (sentinels, positive control,
+    serializer net). Two gaps fixed: course import authorizes before reading the upload (PX7); the overseas application list's 500 (PX11).
+  - Browser QA (spec §5) and `e2e/upc-033-commission-visibility.spec.ts`: no commission on any non-commission role's page.
 - **Business requirement:** U2 (line 1129), U3, U13, U14.
 - **Existing behavior:** RBAC_MATRIX §2.7 (university_rep, overseas_admin).
 - **Expected behavior:**

@@ -6927,3 +6927,31 @@ Expected route is unchanged in behaviour); upc-029's `partnership_performance.ra
 `components/PartnershipReportView.tsx` and `lib/partnershipReports.ts`; Reports goes live in the manager's §32 menu, the head's nav and the
 super-admin nav ("Partnership Reports").
 - **New Feature ID authorized:** `upc-031`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-031.
+
+### DEC-SCOPE-174 — Partnership permission matrix + commission-stripping sweep (`upc-033`)
+
+**Evidence:** `EVID-020` line 1129 ("Commissions should not be seen by anyone."); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U2, U3, U13
+and U14 (`EXPLICIT_APPROVAL` 2026-10-08), §4 upc-033; precedent `DEC-SCOPE-115` (tel-026).
+**Status:** PX1–PX11 are recommended answers applied under the owner's standing instruction for the build session ("proceed with the
+recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. No migration, no API
+contract change (PX7 and PX11 change only a refused caller's status and a failing query). RBAC §2.100. Spec:
+`docs/superpowers/specs/2026-10-10-upc-033-permission-matrix-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| PX1 | Inventoried routes | Every operation under `/partnership/`, `/admin/partnership-`, `/universities/` (127); a route without a row, or a stale row, fails |
+| PX2 | Roles | Manager and head, each with the records and on another team; super_admin, overseas_admin, it_admin, college BDM, overseas counselor, the university's rep, agent, overseas student, signed out |
+| PX3 | Expected cell | The owning item's as-built rule (§2.44–§2.99, checked against the code); unlisted roles `403`, signed out `401`; never adjusted to pass |
+| PX4 | 403 vs 404 | Out of team is `403` in this module (upc-003); `404` only where the owning item hides (imports, target sheets, calendar user, 360 slice) |
+| PX5 | Worlds | Refused cells and reads share one world per row; every other 2xx cell gets a fresh world |
+| PX6 | Sweep | Sentinels in every commission column; every swept endpoint as every non-commission role: no commission key, no health `factors`, no sentinel, whatever the status; a positive control proves the sentinels are reachable |
+| PX7 | Gap: course import order | `require_reader` before the upload is read (a refused role got `422`/`413`); the university import's order |
+| PX8 | AC2 "every serializer" | A source net maps every commission-emitting module to swept endpoints; agent commission (`DEC-SCOPE-005`) listed apart |
+| PX9 | As-built notes | Not changed, `NEEDS_CONFIRMATION`: head receipts on any university (CL9), events on any active university (upc-011), other-team reads of performance commission (upc-018), FastAPI `422` before the role check |
+| PX10 | Frontend | None; browser QA and a Playwright spec check the as-built UI (no commission for overseas_admin / counselor; partnership pages refuse other roles) |
+| PX11 | Gap: overseas application list | `GET /workflows/overseas/applications` failed with a 500 (ambiguous join to `universities`, failing 5 agn/ovs tests on main); explicit ON clause, as its five siblings |
+
+**Consequences:** `tests/upc033_helpers.py`, `tests/test_upc_033_matrix.py`, `tests/test_upc_033_commission_sweep.py`; one line each in
+`api/university_course_import.py` (PX7) and `api/workflows.py` (PX11); RBAC §2.68 and §2.79 corrected (commission now flows there for the
+commission roles only).
+- **New Feature ID authorized:** `upc-033`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-033.
