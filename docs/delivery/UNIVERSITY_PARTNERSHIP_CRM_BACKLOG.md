@@ -896,8 +896,8 @@ Common conventions:
 - **Edge cases:** an application later withdrawn after enrolment (expected reversed?); multi-currency.
 - **Regression risks:** `AgentCommission` untouched (separate concept).
 - **Complexity:** medium · **Risk:** high
-- **Status (2026-10-10):** built on `feature/upc-019` under `DEC-SCOPE-162` (CL1–CL14, recommended answers), with migration
-  `0144_commission_receipts`, API §12CD and RBAC §2.88. Spec: `docs/superpowers/specs/2026-10-10-upc-019-commission-ledger-design.md`.
+- **Status (2026-10-10):** built on `feature/upc-019` under `DEC-SCOPE-163` (CL1–CL14, recommended answers), with migration
+  `0144_commission_receipts`, API §12CE and RBAC §2.89. Spec: `docs/superpowers/specs/2026-10-10-upc-019-commission-ledger-design.md`.
   - Edge "withdrawn after enrolment": cannot occur (an enrolled application cannot be withdrawn); if it ever leaves `enrolled` it stops counting.
   - `tuition_paid` terms and country-restricted terms are not evaluable from CRM data (CL1, CL6, `NEEDS_CONFIRMATION`).
 
@@ -1204,6 +1204,8 @@ Common conventions:
 - **Complexity:** medium · **Risk:** low
 
 ### upc-030 — University 360 view for other roles
+- **Status (2026-10-10):** built on `feature/upc-030` under `DEC-SCOPE-162` (UV1–UV12, recommended answers), with **no migration**, API
+  §12CD and RBAC §2.88. Spec: `docs/superpowers/specs/2026-10-10-upc-030-university-360-view-design.md`.
 - **Business requirement:** the closing note (one record; each role sees only what is relevant); §16 "counselors know exactly what each
   partner university offers" (U14).
 - **Existing behavior:**

@@ -160,7 +160,7 @@ async def menu_terms(
     return {"items": items, "total": total or 0, "limit": limit, "offset": offset}
 
 
-# --- upc-019 (DEC-SCOPE-162, spec §3): the commission ledger of one university -- Expected (computed), Received (recorded), Outstanding --
+# --- upc-019 (DEC-SCOPE-163, spec §3): the commission ledger of one university -- Expected (computed), Received (recorded), Outstanding --
 LISTED = 200  # applications and receipts shown; the totals are over all of them
 
 

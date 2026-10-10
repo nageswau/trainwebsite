@@ -2517,10 +2517,28 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `PUT /partnership/universities/{university_id}/probability` | **Body:** `{probability: int 0–100 \| null, reason?: ≤500}`, `extra="forbid"`; a value needs a reason, null takes none (the error is on `reason`). **→ 200** `{university}` (the detail). `403` not the stage rule / another team; `404` unknown; `409` inactive. Audit `university.probability_overridden` `{from, to, reason: bool}` only when it changes |
 
 - `GET /partnership/universities/{id}` (and every route returning the detail) gains `probability: {stage, override, reason, effective}` (additive).
+## 12CD. University 360 view for other roles (`upc-030`) — addendum, 2026-10-10
 
-## 12CD. Commission ledger (`upc-019`) — addendum, 2026-10-10
+- **Basis:** `DEC-SCOPE-162` (UV1–UV12). Spec: `docs/superpowers/specs/2026-10-10-upc-030-university-360-view-design.md` §4. No migration.
+- **Callers:**
+  - `counselor` and `overseas_admin` (both overseas division only).
+  - `bdm` (needs a BDM profile) and `bdm_manager`.
+  - `university_rep`.
+- **Refusals:**
+  - Every other role, the partnership roles and `super_admin` included → `403` "University view access required".
+  - Anonymous → `401`.
+- **Behaviour:** read-only and not audited.
+  - **Allow-list per slice:** a section outside the slice is absent, not null.
+  - **No commission** key at any depth (U2).
 
-- **Basis:** `DEC-SCOPE-162` (CL1–CL14). Spec: `docs/superpowers/specs/2026-10-10-upc-019-commission-ledger-design.md` §3. Migration
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /universities/{id}/view` | `{slice, university: {id, university_code, name, institution_type, ownership_type, country{name, iso2, region}, state_region, city, website, overview, eligibility, course_levels, popular_programs, rankings}, …}`. **Sections by slice:**<ul><li>`counselor` / `overseas_admin`: `partnership{stage, stage_label, lost}`; `contacts[]` (shareable only, no notes, ≤ 50); `courses[]` (active, ≤ 200, the course fields without commission); `documents[]` (shareable, never the commission agreement: `{id, kind, title, current_version, updated_at}`); `applications[]` (≤ 50, newest first: a counselor's own, or all for overseas_admin: `{id, reference, student_name, intake, status, next_action, updated_at}`).</li><li>`bdm`: `partnership`, `manager{full_name, email}` or null.</li><li>`university_rep`: `courses[]`.</li></ul>**Scope:** a counselor sees published + active universities only, and a rep sees only `profile.university_id`. Out of scope or unknown → `404` "University not found". Non-UUID → `422` |
+| `GET /universities/{id}/view/documents/{document_id}/file` | The current version as an attachment with a server-built file name, for the slices that list documents (counselor, overseas_admin). It is audited (`university_document.download`, role in metadata) and committed before any byte leaves. BDM / rep → `403`. A hidden, commission or unknown document → `404`. Scope as above |
+
+## 12CE. Commission ledger (`upc-019`) — addendum, 2026-10-10
+
+- **Basis:** `DEC-SCOPE-163` (CL1–CL14). Spec: `docs/superpowers/specs/2026-10-10-upc-019-commission-ledger-design.md` §3. Migration
   `0144_commission_receipts`.
 - **Readers (U2):** `super_admin`, `partnership_head`, `partnership_manager` (with a profile) — every university. Everyone else `403`,
   no session `401`. **Recorders (Q-20):** `partnership_head`, `super_admin`.

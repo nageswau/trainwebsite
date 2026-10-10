@@ -3664,7 +3664,7 @@ inspected), so no parity is claimed.
 - **States:** a role without access gets the access card ("University performance access required"). Signed out → `/overseas/login?next=…`.
 - **Responsive:** no page side-scroll at 1366 px, 820 px or 375 px.
 
-## upc-019 addendum (2026-10-10, `DEC-SCOPE-162`) — Commission ledger (restricted)
+## upc-019 addendum (2026-10-10, `DEC-SCOPE-163`) — Commission ledger (restricted)
 
 Design spec: `docs/superpowers/specs/2026-10-10-upc-019-commission-ledger-design.md` §4. Visual-reference mapping: none (not inspected),
 so no parity is claimed.
@@ -3825,3 +3825,32 @@ Design spec `docs/superpowers/specs/2026-10-10-upc-023-expected-partnerships-des
   **Override probability** (Probability (%) 0–100 with the stage's value as a hint, Reason; checked before sending: "Enter a whole number
   from 0 to 100."; API refusals on their field) and **Clear override**; notices in `role=status`.
 - **Responsive / a11y:** tiles wrap; the table scrolls inside its focusable, labelled region; no side-scroll at 375 px.
+## upc-030 addendum (2026-10-10, `DEC-SCOPE-162`) — University 360 view for other roles
+
+Design spec: `docs/superpowers/specs/2026-10-10-upc-030-university-360-view-design.md` §5. Visual-reference mapping: none (not
+inspected), so no parity is claimed.
+
+All the pages below use one component, `UniversityView`. It renders only the sections the API's slice carries:
+- the Profile card;
+- Partnership (stage, plus the manager for BDMs);
+- Application contacts;
+- Courses (with English requirement and entry requirements);
+- Documents (with Download);
+- Applications ("Your students' applications" for a counselor).
+
+Empty sections say so in words.
+
+- **Route `/overseas/counselor/universities`** (counselor nav "Universities"):
+  - A GET search form over the published universities.
+  - One card per university, each linking to its view; at most 50 are shown, with a "search to narrow" note.
+  - Empty: "No universities match …" / "No universities are published yet."
+  - Any other role gets the access card ("University view access required").
+- **Route `/overseas/counselor/universities/[id]`:** the counselor slice, with a "← All universities" link. An unpublished or unknown
+  university gets the access card ("University not found").
+- **Route `/bdm/universities/[id]`:** the BDM slice (profile, stage, partnership manager). It opens from the BDM organisation page,
+  whose "University Master" row is now a link. The BDM or BDM-manager nav is used.
+- **Route `/overseas/university/profile`** (university rep nav "University Profile"):
+  - Their own university's profile and active courses.
+  - Not linked: "Your account is not linked to a university yet. Contact EduSphere Overseas Admin."
+- **States:** signed out → the login link.
+- **Responsive:** single-column cards at phone width. The applications table scrolls inside its own wrapper.
