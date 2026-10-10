@@ -69,7 +69,7 @@ def _counts(found: dict[str, int] | None) -> dict:
 
 
 def _amounts(sums: dict[str, Decimal]) -> list[dict]:
-    return [{"currency": c, "amount": f"{v:.2f}"} for c, v in sorted(sums.items())]
+    return [{"currency": c, "amount": commission.money_str(v)} for c, v in sorted(sums.items())]
 
 
 def _add(total: dict[str, Decimal], part: dict[str, Decimal]) -> None:

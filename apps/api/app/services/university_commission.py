@@ -117,7 +117,7 @@ async def _lookup(db: AsyncSession, model, ids: set) -> dict:
     return {row.id: row for row in (await db.scalars(select(model).where(model.id.in_(ids)))).all()} if ids else {}
 
 
-def _money(value) -> str | None:
+def money_str(value) -> str | None:
     return None if value is None else f"{value:.2f}"
 
 
@@ -131,8 +131,8 @@ async def terms_out(db: AsyncSession, rows: list[UniversityCommissionTerm], edit
         {
             "id": t.id,
             "agreement_id": t.agreement_id,
-            "commission_percent": _money(t.commission_percent),
-            "fixed_amount": _money(t.fixed_amount),
+            "commission_percent": money_str(t.commission_percent),
+            "fixed_amount": money_str(t.fixed_amount),
             "currency": t.currency,
             "trigger": t.trigger,
             "trigger_label": TRIGGER_LABELS[t.trigger],
@@ -243,7 +243,7 @@ async def expected_rows(db: AsyncSession, university_ids: list[UUID]) -> dict[UU
         status = _status(day, chosen, visa_ok, money)
         currency, amount = money if status == "counted" and money else (None, None)
         found.setdefault(app.university_id, []).append({
-            "id": app.id, "university_id": app.university_id, "course": course.title if course else None, "intake": app.intake,
+            "id": app.id, "course": course.title if course else None, "intake": app.intake,
             "reference": app.application_reference, "enrolled_on": day, "status": status, "status_label": EXPECTED_STATUSES[status],
             "term_id": chosen.id if chosen else None, "currency": currency, "amount": amount,
         })  # fmt: skip
@@ -304,16 +304,23 @@ async def check_receipt(db: AsyncSession, university_id: UUID, received_on: date
         raise HTTPException(409, DUPLICATE_REFERENCE)
 
 
-def receipt_out(r: UniversityCommissionReceipt, people: dict[UUID, User]) -> dict:
-    return {
-        "id": r.id, "amount": _money(r.amount), "currency": r.currency, "received_on": r.received_on, "reference": r.reference, "note": r.note,
-        "application_ids": [str(i) for i in r.application_ids], "created_by": person_ref(people[r.created_by_user_id]), "created_at": r.created_at,
-    }  # fmt: skip
-
-
 async def receipts_out(db: AsyncSession, rows: list[UniversityCommissionReceipt]) -> list[dict]:
+    """Receipts with who recorded them, in one extra query."""
     people = await _lookup(db, User, {r.created_by_user_id for r in rows})
-    return [receipt_out(r, people) for r in rows]
+    return [
+        {
+            "id": r.id,
+            "amount": money_str(r.amount),
+            "currency": r.currency,
+            "received_on": r.received_on,
+            "reference": r.reference,
+            "note": r.note,
+            "application_ids": [str(i) for i in r.application_ids],
+            "created_by": person_ref(people[r.created_by_user_id]),
+            "created_at": r.created_at,
+        }
+        for r in rows
+    ]
 
 
 def record_receipt(db: AsyncSession, user: User, r: UniversityCommissionReceipt, kind: str) -> None:

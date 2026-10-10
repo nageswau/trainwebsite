@@ -173,13 +173,13 @@ async def ledger(university_id: UUID, user: User = Depends(get_current_user), db
     expected, received = svc.currency_sums(rows), (await svc.received_sums(db, [uni.id])).get(uni.id, {})
     zero = Decimal(0)
     totals = [
-        {"currency": c, "expected": svc._money(expected.get(c, zero)), "received": svc._money(received.get(c, zero)), "outstanding": svc._money(expected.get(c, zero) - received.get(c, zero))}
+        {"currency": c, "expected": svc.money_str(expected.get(c, zero)), "received": svc.money_str(received.get(c, zero)), "outstanding": svc.money_str(expected.get(c, zero) - received.get(c, zero))}
         for c in sorted(expected.keys() | received.keys())
     ]
     R = UniversityCommissionReceipt
     receipts_total = await db.scalar(select(func.count()).select_from(R).where(R.university_id == uni.id))
     receipts = (await db.scalars(select(R).where(R.university_id == uni.id).order_by(R.received_on.desc(), R.created_at.desc(), R.id).limit(LISTED))).all()
-    applications = [r | {"amount": svc._money(r["amount"])} for r in rows[:LISTED]]
+    applications = [r | {"amount": svc.money_str(r["amount"])} for r in rows[:LISTED]]
     return {
         "university": {"id": uni.id, "name": uni.name, "university_code": uni.university_code}, "totals": totals,
         "applications": applications, "applications_total": len(rows), "receipts": await svc.receipts_out(db, list(receipts)),
