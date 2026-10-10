@@ -127,3 +127,24 @@ health: null | {
   - ORM-bound queries only. No PII, no message bodies, no logging per read. CSRF does not apply.
 - **Frontend:** reuses the `.status` / `.badge` pills and the table / `table-scroll` idioms. The badge text carries the band, so the
   meaning is not conveyed by colour alone. The breakdown table has a caption, and the component is data-only (the upc-021 lesson).
+
+## 11. QA evidence (2026-10-10, Docker stack `upc028`, Chromium via Playwright)
+
+| ID | Severity | Role / page | Steps | Expected | Actual | Status |
+|---|---|---|---|---|---|---|
+| QA28-01 | Low | Commission roles: the university page at 375 px | Open a partner's health card on a phone | Factor, measure, weight and points are readable without side-scrolling | The generic `.table` 650 px minimum pushed Weight and Points off screen inside the scroll region | **Fixed:** `.table.health-breakdown { min-width: 0 }` and tighter cell padding under 480 px. Unit test added; re-checked at 375 / 820 / 1366 px (the Points header is on screen) |
+
+**Exploratory pass (33 checks, all as expected after the fix):**
+- **API:**
+  - super_admin's year ranking: 19 partners scored out of 31 rows. Non-partners get `null`, every breakdown adds up to its score, and
+    the bands match the thresholds.
+  - Non-UUID `422`; unknown id `404`; POST `405`. Health is identical for two different periods (HS2).
+- **Layout:** no page side-scroll on the ranking or the university page at 1366, 820 and 375 px. The badge never wraps.
+- **Keyboard:** the breakdown region takes focus.
+- **Navigation:** refresh keeps the Health column; back returns to the ranking.
+- **Roles:**
+  - overseas_admin sees the card's band but no table, and its list response has no `factors` / `commission`.
+  - Signed out → `/overseas/login?next=…`. A counselor sees "University performance access required"; a student gets API `403`.
+- **Browser health:** no console errors, and no unexpected 4xx/5xx on page loads.
+- **Regression e2e:** the upc-018 and upc-019 specs pass. The upc-018 spec now reads Applications one cell later, after the new Health
+  column.

@@ -3924,3 +3924,29 @@ inspected), so no parity is claimed.
   - a refused value (422): "These filters are not valid…";
   - no access: the access card.
 - **Responsive:** the map scales to the width, the table turns into cards on a phone, and there is no page side-scroll at 390 px.
+
+## upc-028 addendum (2026-10-10, `DEC-SCOPE-168`) — Partnership health score
+
+Design spec: `docs/superpowers/specs/2026-10-10-upc-028-partnership-health-design.md` §5. Visual-reference mapping: none (not
+inspected), so no parity is claimed.
+
+- **Route `/partnership/performance`:**
+  - A "Health" column after Stage. It shows the band badge ("72/100 – Good"; "Insufficient data" in a neutral pill), or "Not scored"
+    for a non-partner.
+  - The Total row has no health.
+  - The footnote adds "Health is scored as of today, whatever the period, for active partners only."
+- **Route `/partnership/universities/[id]`:** a "Partnership health" card after Student opportunities, for performance readers when the
+  university is an active partner. It is built from the performance read the page already makes.
+  - The badge, with "as of <date>".
+  - "Not enough activity yet…" when there is no data.
+  - For the commission roles, a breakdown table (Factor, Measure, Weight, Points, and a Score row) in a focusable region with a caption.
+  - A note on how the score is built.
+- **Badge colours:**
+  - Excellent: `.status` (green);
+  - Good: `.badge` (blue);
+  - Needs attention: `.status.error` (red);
+  - Insufficient data: `.badge.health-unknown` (grey).
+
+  The text always names the band.
+- **Responsive:** the breakdown has no wide-table minimum, so all four columns fit at 375 px (QA28-01). There is no page side-scroll at
+  1366, 820 or 375 px.

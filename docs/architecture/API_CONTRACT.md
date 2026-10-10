@@ -2625,6 +2625,25 @@ moves the application to Joined (AC3). Every change writes offer history.
 
   Existing calls are unchanged.
 
+## 12CJ. Partnership health score (`upc-028`) — addendum, 2026-10-10
+
+- **Basis:** `DEC-SCOPE-168` (HS1–HS12). Spec: `docs/superpowers/specs/2026-10-10-upc-028-partnership-health-design.md` §3. No migration.
+- **Readers:** the same as §12BU (`401` / `403` / `404` / `422` unchanged).
+- **Behaviour:** read-only, with no audit row. The change is additive: existing keys and the ranking order are unchanged.
+
+| Method/Path | Change |
+|---|---|
+| `GET /partnership/performance` | Each `items[]` row gains `health` (scored for the rows on the page only) |
+| `GET /partnership/universities/{id}/performance` | Gains `health` |
+
+- **`health`:** `null` for a university that is not an active partner (HS1). Otherwise:
+  `{as_of, score: int | null, band: excellent | good | needs_attention | insufficient_data, band_label, factors?}`.
+- **`factors`:** commission roles only. For every other reader the key is absent. The list is
+  `[{key, label, tracked, has_data, measure, weight, points}]`, in a fixed order with satisfaction last. When `score` is not null,
+  Σ `points` = `score`.
+- **Period:** health is always as of today (`as_of`). The `from` / `to` parameters do not change it.
+- **Queries:** a constant number per request, whatever the data.
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

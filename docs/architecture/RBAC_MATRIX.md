@@ -1594,6 +1594,17 @@ Enforced in `api/partnership_universities.partnership_map`: `partnership_univers
 | Exclusivity filter (agreement metadata, not commercial) | ✅ | ✅ | ✅ | ✅ | — |
 | Commission filter (`commission_min`) | ✅ | ✅ | ignored (never filters) | ✅ | — |
 
+### 2.94 Partnership health score *(net-new, added 2026-10-10 — `DEC-SCOPE-168`, `upc-028`)*
+
+Enforced in `api/partnership_performance._health`. `partnership_universities.require_reader` comes first, then the §2.79 scope. The
+score always includes the commission factor. The breakdown is removed for any role without `partnership_access.can_see_commission`
+(U2), and the route excludes unset fields.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Health score and band of the partners in the list / one university | ✅ scope | ✅ scope | ✅ all | ✅ all | `403` (anonymous `401`) |
+| Breakdown (`factors`, including the commission measure) | ✅ | ✅ | — (key absent) | ✅ | — |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

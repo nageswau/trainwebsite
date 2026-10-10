@@ -1154,6 +1154,9 @@ Common conventions:
 - **Complexity:** small · **Risk:** low
 
 ### upc-028 — Partnership health score
+- **Status (2026-10-10):** built on `feature/upc-028` under `DEC-SCOPE-168` (HS1–HS12, recommended answers; Q-24 included), with
+  **no migration**, API §12CJ and RBAC §2.94. `health` is added to both performance responses. Spec:
+  `docs/superpowers/specs/2026-10-10-upc-028-partnership-health-design.md`.
 - **Business requirement:** §30 (9 factors; "92/100 – Excellent", "48/100 – Needs Attention"; identify partnerships becoming inactive).
 - **Existing behavior:** none.
 - **Expected behavior:**
