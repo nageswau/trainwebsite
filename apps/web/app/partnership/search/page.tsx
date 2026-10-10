@@ -76,7 +76,8 @@ export default async function SearchUniversitiesPage({ searchParams }: { searchP
             <p className="muted">Every active university in the University Master, whoever manages it. Combine filters, e.g. Japan + Cyber Security + Not partnered.</p>
           </div>
         </div>
-        <form className="action-card wide" method="get" action={SEARCH_PATH} role="search" aria-label="Search universities">
+        {/* keyed on the search: a chip, Clear or paging is a client navigation that would otherwise keep the old uncontrolled values (QA24-01) */}
+        <form key={searchHref(filters)} className="action-card wide" method="get" action={SEARCH_PATH} role="search" aria-label="Search universities">
           <div className="form-grid" style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
             <Input id="us-q" name="q" text="University" type="search" maxLength={200} value={filters.q} placeholder="Name, code, city or country" />
             <Input id="us-country" name="country" text="Country" maxLength={100} value={filters.country} placeholder="e.g. Japan or JP" />

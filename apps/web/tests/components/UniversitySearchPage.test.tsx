@@ -86,6 +86,15 @@ describe("upc-024 Global University Database page", () => {
     expect(chips[1].getAttribute("href")).toBe("/partnership/search?partner_status=partner");
   });
 
+  it("shows the new URL's filters after an in-app navigation (QA24-01: a chip or Clear must not leave stale fields)", async () => {
+    answer(head, page());
+    const { rerender } = render(await SearchPage({ searchParams: Promise.resolve({ partner_status: "in_progress", course: "Business" }) }));
+    expect((screen.getByRole("combobox", { name: "Partner status" }) as HTMLSelectElement).value).toBe("in_progress");
+    rerender(await SearchPage({ searchParams: Promise.resolve({ partner_status: "partner" }) }));
+    expect((screen.getByRole("combobox", { name: "Partner status" }) as HTMLSelectElement).value).toBe("partner");
+    expect((screen.getByLabelText("Course") as HTMLInputElement).value).toBe("");
+  });
+
   it("offers the commission filter to commission roles only (U2)", async () => {
     answer(head, page());
     render(await SearchPage({ searchParams: Promise.resolve({}) }));
