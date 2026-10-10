@@ -4,6 +4,7 @@ import BdmStageHistory from "@/components/BdmStageHistory";
 import CommissionLedger from "@/components/CommissionLedger";
 import MeetingTable from "@/components/MeetingTable";
 import PartnershipFunnel from "@/components/PartnershipFunnel";
+import PartnershipHealth from "@/components/PartnershipHealth";
 import PartnershipTasksPanel from "@/components/PartnershipTasksPanel";
 import UniversityActivity from "@/components/UniversityActivity";
 import UniversityAgreements from "@/components/UniversityAgreements";
@@ -288,5 +289,32 @@ describe("upc-027 university detail page", () => {
     serve(async () => { throw new Error("down"); });
     const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
     expect(tree.find((el) => el.type === UniversityOnboarding)!.props.initial).toBeNull();
+  });
+});
+
+describe("upc-028 university detail page", () => {
+  const health = { as_of: "2026-10-10", score: 72, band: "good", band_label: "Good" };
+  const serve = (perf: unknown) => vi.mocked(serverApi).mockImplementation(async (p: string) => {
+    if (p === "/api/v1/auth/me") return { role: "overseas_admin", full_name: "Olga" } as never;
+    if (p.includes("/stage-history")) return history as never;
+    if (p.includes("/milestones")) return milestones as never;
+    if (p.includes("/contacts")) return { items: [], total: 0, limit: 50, offset: 0 } as never;
+    if (p.includes("/partnership/visits")) return { items: [], total: 0, limit: 5, offset: 0 } as never;
+    if (p.includes("/partnership/meetings")) return meetings as never;
+    if (p.includes("/performance")) return perf as never;
+    return { university: { ...university, permissions: { ...university.permissions, can_manage_agreements: false } } } as never;
+  });
+
+  it("shows the health card from the performance read it already makes (no extra request)", async () => {
+    serve({ ...performance, health });
+    const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
+    expect(tree.find((el) => el.type === PartnershipHealth)!.props).toEqual({ health });
+    expect(vi.mocked(serverApi).mock.calls.filter(([p]) => String(p).includes("/performance"))).toHaveLength(1);
+  });
+
+  it("shows no card for a university that is not scored", async () => {
+    serve({ ...performance, health: null });
+    const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
+    expect(tree.find((el) => el.type === PartnershipHealth)).toBeUndefined();
   });
 });

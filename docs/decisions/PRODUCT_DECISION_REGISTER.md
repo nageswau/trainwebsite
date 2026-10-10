@@ -6794,3 +6794,40 @@ filled in, and the head's nav gains Dashboard (a head still lands on Team, U3).
   `api/university_onboarding.py`, `components/UniversityOnboarding.tsx`, `lib/universityOnboarding.ts`. The course routes
   (`api/university_courses.py`, `api/university_course_import.py`) call `university_onboarding.activate_if_complete` before their commit.
 - **New Feature ID authorized:** `upc-027`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-027.
+### DEC-SCOPE-170 — Partnership health score (`upc-028`)
+
+**Evidence:**
+- `EVID-020` §30 (L970–L1002): nine factors; the "92/100 – Excellent" and "48/100 – Needs Attention" examples (illustrative); "identify
+  partnerships that are becoming inactive".
+- `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U2 and U8 (`EXPLICIT_APPROVAL`, 2026-10-08), §4 upc-028, Appendix B "Health score", and
+  the open question Q-24.
+
+**Status:** HS1–HS12 are recommended answers, applied under the owner's standing instruction for the build session ("proceed with the
+recommended answers"). They are **not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off, Q-24 included. **No migration.** API
+contract §12CL, RBAC §2.96. Spec: `docs/superpowers/specs/2026-10-10-upc-028-partnership-health-design.md`.
+**Numbering:** drafted as 168 / §12CJ / §2.94 and renumbered after upc-022 (PR #225) and upc-027 (PR #226) took 168–169 / §12CJ–§12CK /
+§2.94–§2.95.
+
+| # | Question | Answer |
+|---|---|---|
+| HS1 | Which universities | Active universities in group G1 (Partner Activated or later) that are not lost. Any other → `health: null` |
+| HS2 | As of when | Today (IST), with trailing windows. The score ignores the page period, and `as_of` is returned |
+| HS3 | Factors and weights (Q-24) | Applications 15 (F5 in 365 days ÷ 20), Offers 10 (F6 ÷ F5), Visa success 10 (approved ÷ approved + refused), Enrolments 15 (F9 ÷ 10), Commission 10 (collection rate: received ÷ expected per currency, all time), Response time 10 (HS4), Meeting frequency 15 (completed in 90 days ÷ 3), Agreement 15 (active / signed 1, expiring 0.5, else 0). Student satisfaction is not tracked and has weight 0 |
+| HS4 | Response time (Q-24) | The median days from each WhatsApp / email in the last 90 days (failed emails excluded) to the contact's next incoming call, connected outgoing call or completed meeting. Unanswered waits until now. ≤ 2 days = full, ≥ 14 days = 0 |
+| HS5 | A factor without data | Left out, with its weight shared out across the rest. A count of zero is data |
+| HS6 | Breakdown | Points are rounded by the largest remainder, so they always add up to the score |
+| HS7 | Bands (Q-24) | Excellent ≥ 80, Good 60–79, Needs attention < 60 |
+| HS8 | Insufficient data | No evidence in any factor (no student activity, no meeting or message in 90 days, no agreement that is or was in force, no expected commission). The score is null |
+| HS9 | Who sees what (U2) | Score and band for every performance reader. The breakdown (`factors`) for the commission roles only. A residual risk is recorded: a non-commission reader could, in principle, back out a coarse collection ratio from the score, never an amount |
+| HS10 | Cost | Only the page's partner rows are scored, with a constant number of grouped queries |
+| HS11 | Privacy / audit | Counts and ratios only. Not audited and not logged per read |
+| HS12 | Ranking | Unchanged: Health is an extra column |
+
+- **New:**
+  - `partnership_metrics.health` / `health_score` / `band`, with `HEALTH_FACTORS`;
+  - `components/PartnershipHealth.tsx` (`HealthBadge` and the card).
+- **Changed:**
+  - Both `/partnership/performance` responses gain `health`. The change is additive.
+  - University Performance gains a Health column.
+  - The university page gains a "Partnership health" card.
+- **New Feature ID authorized:** `upc-028`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-028.

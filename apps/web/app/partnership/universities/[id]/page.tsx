@@ -6,6 +6,7 @@ import BdmStageHistory from "@/components/BdmStageHistory";
 import CommissionLedger from "@/components/CommissionLedger";
 import MeetingTable from "@/components/MeetingTable";
 import PartnershipFunnel from "@/components/PartnershipFunnel";
+import PartnershipHealth from "@/components/PartnershipHealth";
 import PartnershipTasksPanel from "@/components/PartnershipTasksPanel";
 import PortalShell from "@/components/PortalShell";
 import UniversityActions from "@/components/UniversityActions";
@@ -175,6 +176,8 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
               <div className="actions" style={{ marginTop: 12 }}><Link className="btn ghost small" href={opportunitiesHref(u.id)}>Another period</Link></div>
             </section>
           )}
+          {/* upc-028: an active partner's health score, carried by the same performance read */}
+          {performance?.health && <PartnershipHealth health={performance.health} />}
           {ledger && <CommissionLedger ledger={ledger} today={istToday()} />}
           {agreements && (
             <UniversityAgreements universityId={u.id} agreements={agreements.items} options={agreementOptions} canManage={u.permissions.can_manage_agreements} />
