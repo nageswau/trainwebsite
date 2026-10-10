@@ -92,7 +92,7 @@ export default async function PartnershipMapPage({ searchParams }: { searchParam
             <Choice id="pm-manager" name="manager" text="Partnership manager" value={filters.manager} options={managerOptions} />
             <Input id="pm-expected-from" name="expected_from" text="Expected partnership from" type="date" value={filters.expected_from} />
             <Input id="pm-expected-to" name="expected_to" text="Expected partnership to" type="date" value={filters.expected_to} />
-            <Choice id="pm-activity" name="activity" text="Active / inactive" value={filters.activity} options={Object.entries(ACTIVITY)} any="" />
+            <Choice id="pm-activity" name="activity" text="Active / inactive" value={filters.activity} options={Object.entries(ACTIVITY)} any="Active" />
             <Choice id="pm-exclusivity" name="exclusivity" text="Exclusive / non-exclusive" value={filters.exclusivity} options={Object.entries(EXCLUSIVITY)} />
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12, marginTop: 12 }}>

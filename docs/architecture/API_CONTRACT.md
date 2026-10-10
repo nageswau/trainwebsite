@@ -2559,6 +2559,35 @@ moves the application to Joined (AC3). Every change writes offer history.
 - **Queries:** a constant count.
 - **Route order:** declared before `/{university_id}`.
 
+## 12CF. Global partnership map (`upc-025`) — addendum, 2026-10-10
+
+- **Basis:** `DEC-SCOPE-164` (MP1–MP14). Spec: `docs/superpowers/specs/2026-10-10-upc-025-global-partnership-map-design.md` §3.
+  No migration.
+- **Readers:** the same as §12CE. Any other role → `403` "University master access required". Anonymous → `401`.
+- **Behaviour:** read-only, with no audit row. It counts exactly the universities §12CE would list for the same filters.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/universities/map?<every §12CE filter except limit/offset>` | See the notes below this table |
+
+- **Response:** `{countries: [{iso2, name, region, partner, in_progress, target, lost, total}], totals: {partner, in_progress, target,
+  lost, total}, stages: [{key, label}]}`.
+  - Only countries with at least one matching university, ordered by name.
+  - `lost` is the Lost/Closed flag. The other three are Appendix B G1–G3.
+  - The partner-status filter applies to the counts.
+- **Not a list endpoint:** no paging, ETag or idempotency key. It is bounded by the number of countries.
+- **`422`:** as §12CE, plus the new filters.
+- **Queries:** one grouped query, whatever the data.
+- **Route order:** declared before `/{university_id}`.
+- **§12CE additions (both routes, all optional):**
+  - `iso2`: two letters, exact and case-insensitive;
+  - `stage`: a stored stage key;
+  - `priority`: `A` / `B` / `C`;
+  - `activity`: `active` (default) / `inactive` / `all`;
+  - `exclusivity`: `exclusive` / `non_exclusive`, by the current agreements (signed / active, not expired).
+
+  Existing calls are unchanged.
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

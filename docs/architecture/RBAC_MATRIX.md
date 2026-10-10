@@ -1541,6 +1541,18 @@ route is read-only, and no commission value appears in a response. Each row's `p
 | Search every active university (all filters but commission) | ✅ all | ✅ all | ✅ all | ✅ all | `403` (anonymous `401`) |
 | Commission filter (`commission_min`) | ✅ | ✅ | ignored (never filters) | ✅ | — |
 
+### 2.90 Global partnership map *(net-new, added 2026-10-10 — `DEC-SCOPE-164`, `upc-025`)*
+
+Enforced in `api/partnership_universities.partnership_map`: `partnership_universities.require_reader` comes first. In
+`services/university_search.country_counts`, `commission_min` is dropped for any role without `partnership_access.can_see_commission`
+(U2), as in §2.89. The response holds counts only, with no commission value and no row-level data.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Per-country partner-status counts for every university (all filters but commission) | ✅ all | ✅ all | ✅ all | ✅ all | `403` (anonymous `401`) |
+| Exclusivity filter (agreement metadata, not commercial) | ✅ | ✅ | ✅ | ✅ | — |
+| Commission filter (`commission_min`) | ✅ | ✅ | ignored (never filters) | ✅ | — |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

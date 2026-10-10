@@ -23,7 +23,8 @@ export const STATUS_LABELS: Record<MapStatus, string> = {
   partner: "Partner universities", in_progress: "Partnership in progress", target: "Target universities", lost: "Partnership lost / closed",
 };
 export const STATUS_ORDER: MapStatus[] = ["partner", "in_progress", "target", "lost"];
-export const ACTIVITY: Record<string, string> = { active: "Active", inactive: "Inactive", all: "Active and inactive" };
+// The empty choice is "Active", the API's default (MP7), so an untouched form adds nothing to the URL.
+export const ACTIVITY: Record<string, string> = { inactive: "Inactive", all: "Active and inactive" };
 export const EXCLUSIVITY: Record<string, string> = { exclusive: "Exclusive", non_exclusive: "Non-exclusive" };
 
 function params(filters: MapFilters, keys: readonly string[] = MAP_KEYS): URLSearchParams {

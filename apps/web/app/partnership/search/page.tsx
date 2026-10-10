@@ -108,7 +108,7 @@ export default async function SearchUniversitiesPage({ searchParams }: { searchP
             <Choice id="us-manager" name="manager" text="Partnership manager" value={filters.manager} options={managerOptions} />
             <Input id="us-expected-from" name="expected_from" text="Expected partnership from" type="date" value={filters.expected_from} />
             <Input id="us-expected-to" name="expected_to" text="Expected partnership to" type="date" value={filters.expected_to} />
-            <Choice id="us-activity" name="activity" text="Active / inactive" value={filters.activity} options={Object.entries(ACTIVITY)} any="" />
+            <Choice id="us-activity" name="activity" text="Active / inactive" value={filters.activity} options={Object.entries(ACTIVITY)} any="Active" />
             <Choice id="us-exclusivity" name="exclusivity" text="Exclusive / non-exclusive" value={filters.exclusivity} options={Object.entries(EXCLUSIVITY)} />
           </div>
           {/* upc-025: the map's exact country and stage have no field here; they ride along and can be removed */}
