@@ -2505,6 +2505,19 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `GET /employer/shared-profiles/{item_id}/resume` | **→ 200** the resume version current at share time (`attachment`, `no-store`, `nosniff`); `404` none / archived / not this company's. Audit `profile_share.resume_download` `{via: portal}` |
 | `GET /public/shared-resume/{token}` | **No session.** The token is the 7-day random link of an email / WhatsApp item (only its SHA-256 is stored). **→ 200** the file; every failure (unknown, expired, archived candidate, unreadable) → `404` "This link has expired or is no longer available". Audit `profile_share.resume_download` `{via: link}` (no user) |
 
+## 12CC. Expected partnerships + probability (`upc-023`) — addendum, 2026-10-10
+
+- **Basis:** `DEC-SCOPE-161` (EX1–EX12). Spec: `docs/superpowers/specs/2026-10-10-upc-023-expected-partnerships-design.md` §4. Migration
+  `0143_university_probability`.
+- **Readers:** `partnership_manager` (with a profile), `partnership_head`, `super_admin`; others `403`; no session `401`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/expected?window=all\|this_month\|next_month\|this_quarter\|undated&limit(1–100, 25)&offset` | **→ 200** `{today, window, windows: [{key, label, first, last, count, weighted}] ×3 (E1–E3; weighted = Σ probability / 100, 1 dp), undated_count, total, limit, offset, items: [{university {id, university_code, name}, country, stage, stage_label, expected_agreement_date, owner {id, full_name, active} \| null, probability, stage_probability, override_reason}]}`. Scope EX6; active, not lost, before Agreement Signed. Unknown window / bad paging `422`. Read-only |
+| `PUT /partnership/universities/{university_id}/probability` | **Body:** `{probability: int 0–100 \| null, reason?: ≤500}`, `extra="forbid"`; a value needs a reason, null takes none (the error is on `reason`). **→ 200** `{university}` (the detail). `403` not the stage rule / another team; `404` unknown; `409` inactive. Audit `university.probability_overridden` `{from, to, reason: bool}` only when it changes |
+
+- `GET /partnership/universities/{id}` (and every route returning the detail) gains `probability: {stage, override, reason, effective}` (additive).
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

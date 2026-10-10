@@ -6483,3 +6483,33 @@ Spec: `docs/superpowers/specs/2026-10-09-rec-022-offer-management-design.md`.
 | S14 | Lists | "Shared profiles" on the requirement and company pages; "Shared with you" on the employer dashboard |
 
 - **New Feature ID authorized:** `rec-019`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-019.
+
+### DEC-SCOPE-161 — Expected partnerships + probability + weighted forecast (`upc-023`)
+
+**Evidence:** `EVID-020` §23 (L754–L780: "Create a dedicated screen: Expected University Partnerships", the six columns, expected this
+month / next month / this quarter — the 8 / 12 / 25 figures and table rows are illustrative) and §24 (L782–L808: the seven probability
+bands and "Weighted Partnership Forecast … 10 universities × 80% probability = 8"); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.2 Q-09, §4
+upc-023 and Appendix B P, E1–E4.
+**Status:** Q-09 and EX1–EX12 are recommended answers applied under the owner's standing instruction for the build session ("proceed with
+the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off.
+Migration `0143_university_probability`, API contract §12CC, RBAC §2.87. Spec: `docs/superpowers/specs/2026-10-10-upc-023-expected-partnerships-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| EX1 | Probability per stage (Q-09) | Appendix B P (`app/partnership_stages.py`): the §24 bands, plus Researching / Contact Identified 10%, Meeting Scheduled 40%, Commercial Discussion / Documents Shared 75%, every Signed-or-later stage 100%; Lost/Closed 0% |
+| EX2 | Manual override (Q-09) | Allowed: a whole number 0–100 with a required reason (≤ 500), stored on the university; null clears it (no reason). Outside 0–100, a missing reason or a reason without a value → `422` |
+| EX3 | Override and stage moves | The override stays until cleared; the screen shows the stage probability beside it, so a stale one is visible |
+| EX4 | Who overrides | The stage rule (`can_move_stage`: the university's managers, their head, `super_admin`); another team → `403`; inactive → `409`; audited `university.probability_overridden` (values, no free text) |
+| EX5 | Who reads | `partnership_manager` (with a profile), `partnership_head`, `super_admin`; every other role (incl. `overseas_admin`) → `403` |
+| EX6 | Scope | upc-018 PF6: manager = primary or backup; head = team + unowned; `super_admin` = all; active universities only |
+| EX7 | Not yet signed | A stage before Agreement Signed and not Lost |
+| EX8 | Expected date | `expected_agreement_date` (upc-008 §5) |
+| EX9 | Windows | IST today (DB clock): this calendar month, the next, this calendar quarter; `all` = every dated row (overdue included); `undated` = no expected date, never counted in a window |
+| EX10 | Figures | Per window the raw count and Σ probability / 100 to one decimal (E4) |
+| EX11 | Owner | The primary manager ("Unassigned" when none) |
+| EX12 | List | By expected date, then name; 25 per page (max 100); figures cover the whole scope, not the page |
+
+**Consequences:** columns `universities.probability_override`, `probability_override_reason`; routes `GET /partnership/expected`,
+`PUT /partnership/universities/{id}/probability`; the university detail gains `probability`; the "Targets & Forecast" page gets the forecast
+tiles; new page `/partnership/expected`. upc-022 reads E1 for D13; upc-031 exports the list.
+- **New Feature ID authorized:** `upc-023`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-023.

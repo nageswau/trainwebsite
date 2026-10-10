@@ -2,7 +2,7 @@
 import { useRouter } from "next/navigation";
 import { type FormEvent, type KeyboardEvent, useRef, useState } from "react";
 
-import { sendJson } from "@/lib/apiErrors";
+import { type SendOutcome, sendJson } from "@/lib/apiErrors";
 import { fieldErrors } from "@/lib/bdmPipeline";
 import { formatCalendarDate } from "@/lib/formatDate";
 import {
@@ -19,6 +19,7 @@ import {
   STATUS_LABEL,
   type UniversityExpected,
 } from "@/lib/partnershipMilestones";
+import { probabilityText, probabilityUrl, type UniversityProbability } from "@/lib/partnershipExpected";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 type Values = Record<string, string>;
@@ -30,13 +31,17 @@ const blankToNull = (values: Values) => Object.fromEntries(Object.entries(values
 // text -- a delayed milestone is also highlighted, never by colour alone. Writes go to the API, which enforces every rule (owner / head /
 // super_admin, achieved not in the future); a refusal keeps what was typed. The expected timeline lives on the server-rendered university,
 // so saving it refreshes the page; a milestone save replaces the whole table, since statuses depend on each other.
-export default function UniversityTimeline({ universityId, expected, canEdit, initial }: {
-  universityId: string; expected: UniversityExpected; canEdit: boolean; initial: MilestonePage | null;
+// upc-023 (§24, EX2-EX4): the partnership probability -- the stage's band, or a manual override (0-100, with a reason) set by those who may
+// move the stage; it lives on the server-rendered university too, so saving refreshes the page.
+type Target = "expected" | "probability" | Milestone;
+
+export default function UniversityTimeline({ universityId, expected, canEdit, initial, probability, canOverride }: {
+  universityId: string; expected: UniversityExpected; canEdit: boolean; initial: MilestonePage | null; probability: UniversityProbability; canOverride: boolean;
 }) {
   const router = useRouter();
   const [milestones, setMilestones] = useState<MilestonePage | null>(initial);
   const [loadFailed, setLoadFailed] = useState(initial === null);
-  const [editing, setEditing] = useState<"expected" | Milestone | null>(null);
+  const [editing, setEditing] = useState<Target | null>(null);
   const [values, setValues] = useState<Values>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState<string | null>(null);
@@ -45,9 +50,10 @@ export default function UniversityTimeline({ universityId, expected, canEdit, in
   const inFlight = useRef(false); // a second submit before the re-render (double click) sends nothing
   const focus = useFocusAfterRender();
   const id = (part: string) => `timeline-${universityId}-${part}`;
-  const editId = (m: Milestone | "expected") => id(m === "expected" ? "edit-expected" : `edit-${m.kind}`);
+  const editId = (m: Target) => id(typeof m === "string" ? `edit-${m}` : `edit-${m.kind}`);
   const delayed = milestones?.items.filter((m) => m.status === "delayed").length ?? 0;
-  const editingMilestone = editing !== null && editing !== "expected" ? editing : null;
+  const editingMilestone = editing !== null && typeof editing !== "string" ? editing : null;
+  const overridden = probability.override !== null;
 
   async function reload() {
     setLoadFailed(false);
@@ -57,12 +63,15 @@ export default function UniversityTimeline({ universityId, expected, canEdit, in
     else setLoadFailed(true);
   }
 
-  function open(target: "expected" | Milestone) {
+  function open(target: Target) {
     setEditing(target);
     setErrors({});
     setFailure(null);
     setNotice(null);
-    if (target === "expected") {
+    if (target === "probability") {
+      setValues({ probability: probability.override?.toString() ?? "", reason: probability.reason ?? "" });
+      focus(id("probability"));
+    } else if (target === "expected") {
       setValues(Object.fromEntries(EXPECTED_FIELDS.map((f) => [f.key, expected[f.key] ?? ""])));
       focus(id(EXPECTED_FIELDS[0].key));
     } else {
@@ -84,18 +93,29 @@ export default function UniversityTimeline({ universityId, expected, canEdit, in
     if (event.key === "Escape") close();
   };
 
-  async function save(event: FormEvent) {
-    event.preventDefault();
-    if (editing === null || inFlight.current) return;
+  function request(target: Target, sent: Values): Promise<SendOutcome> {
+    if (target === "probability") {
+      const { probability: value, reason } = blankToNull(sent);
+      return sendJson(probabilityUrl(universityId), "PUT", { probability: value === null ? null : Number(value), reason });
+    }
+    return sendJson(target === "expected" ? expectedUrl(universityId) : milestonesUrl(universityId, target.kind), "PATCH", blankToNull(sent));
+  }
+
+  async function save(event: FormEvent | null, target: Target | null = editing, sent: Values = values) {
+    event?.preventDefault();
+    if (target === null || inFlight.current) return;
+    const percent = sent.probability?.trim() ?? "";
+    if (target === "probability" && percent !== "" && !(/^\d+$/.test(percent) && Number(percent) <= 100)) {
+      setErrors({ probability: "Enter a whole number from 0 to 100." }); // QA23-01: the API's range wording is Pydantic's
+      return;
+    }
     inFlight.current = true;
     setBusy(true);
     setFailure(null);
     setNotice(null);
     setErrors({});
-    const target = editing;
     try {
-      const url = target === "expected" ? expectedUrl(universityId) : milestonesUrl(universityId, target.kind);
-      const outcome = await sendJson(url, "PATCH", blankToNull(values));
+      const outcome = await request(target, sent);
       if (!outcome.ok) {
         const fields = fieldErrors(outcome.detail);
         if (Object.keys(fields).length) setErrors(fields);
@@ -104,7 +124,10 @@ export default function UniversityTimeline({ universityId, expected, canEdit, in
       }
       setEditing(null);
       focus(editId(target));
-      if (target === "expected") {
+      if (target === "probability") {
+        setNotice(sent.probability.trim() === "" ? "Probability override cleared." : "Probability saved.");
+        router.refresh();
+      } else if (target === "expected") {
         setNotice("Expected timeline saved.");
         router.refresh();
       } else {
@@ -117,11 +140,11 @@ export default function UniversityTimeline({ universityId, expected, canEdit, in
     }
   }
 
-  const field = (key: string, label: string, type: "date" | "text", extra: { max?: string; maxLength?: number; hint?: string } = {}) => (
+  const field = (key: string, label: string, type: "date" | "text" | "number", extra: { min?: string; max?: string; maxLength?: number; hint?: string } = {}) => (
     <div className="field" key={key}>
       <label htmlFor={id(key)}>{label}</label>
       <input id={id(key)} type={type} value={values[key] ?? ""} onChange={(e) => setValues((v) => ({ ...v, [key]: e.target.value }))}
-        max={extra.max} maxLength={extra.maxLength} aria-invalid={errors[key] ? true : undefined}
+        min={extra.min} max={extra.max} maxLength={extra.maxLength} aria-invalid={errors[key] ? true : undefined}
         aria-describedby={[errors[key] && id(`${key}-error`), extra.hint && id(`${key}-hint`)].filter(Boolean).join(" ") || undefined} />
       {extra.hint && <p id={id(`${key}-hint`)} className="muted" style={{ margin: 0, fontSize: 13 }}>{extra.hint}</p>}
       {errors[key] && <p id={id(`${key}-error`)} className="form-error">{errors[key]}</p>}
@@ -169,6 +192,32 @@ export default function UniversityTimeline({ universityId, expected, canEdit, in
             <button id={editId("expected")} type="button" className="btn secondary small" onClick={() => open("expected")} disabled={busy} style={{ justifySelf: "start" }}>
               Edit expected timeline
             </button>
+          )}
+        </>
+      )}
+
+      <h4 id={id("probability-heading")} style={{ margin: "20px 0 8px" }}>Partnership probability</h4>
+      {editing === "probability" ? (
+        <form className="form-grid" onSubmit={save} onKeyDown={onKeyDown} aria-label="Override probability" noValidate style={{ alignItems: "start" }}>
+          {field("probability", "Probability (%)", "number", { min: "0", max: "100", hint: `The stage gives ${probability.stage}%. Leave blank to use it.` })}
+          {field("reason", "Reason", "text", { maxLength: 500 })}
+          {buttons("Save probability")}
+        </form>
+      ) : (
+        <>
+          <p style={{ margin: "0 0 4px" }}>{probabilityText(probability.effective, probability.stage, overridden)}</p>
+          {overridden && probability.reason && <p className="muted" style={{ margin: "0 0 8px", overflowWrap: "anywhere" }}>Reason: {probability.reason}</p>}
+          {canOverride && (
+            <div className="actions">
+              <button id={editId("probability")} type="button" className="btn secondary small" onClick={() => open("probability")} disabled={busy}>
+                {overridden ? "Change override" : "Override probability"}
+              </button>
+              {overridden && (
+                <button type="button" className="btn ghost small" onClick={() => void save(null, "probability", { probability: "", reason: "" })} disabled={busy}>
+                  Clear override
+                </button>
+              )}
+            </div>
           )}
         </>
       )}
