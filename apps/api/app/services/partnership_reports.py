@@ -13,7 +13,7 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.partnership_expected import expected_rows
+from app.api.partnership_expected import READERS, chosen_rows, expected_rows
 from app.api.partnership_performance import _add, _commission, ranked_rows
 from app.models import Country, University, UniversityAgreement, User
 from app.partnership_stages import effective_probability, label_of
@@ -22,10 +22,9 @@ from app.services import partnership_targets, partnership_universities
 from app.services.bdm_activities import india_date
 from app.services.bdm_appointments import db_now
 from app.services.partnership import partnership_context
-from app.services.partnership_metrics import STEPS, _in_group, forecast_windows, period, scope_filter, weighted
+from app.services.partnership_metrics import STEPS, _in_group, period, scope_filter, weighted
 from app.services.university_agreements import STATUS_LABELS, TYPE_LABELS, effective_status_sql
 
-READERS = frozenset({"partnership_manager", "partnership_head", "super_admin"})  # RP2: the dashboard's readers
 ROLE_REQUIRED = "Partnership reports are for partnership managers and heads"
 SCREEN_ROWS = 500  # RP11: the page shows the first rows; the CSV has them all
 CSV_ROWS = 5_000  # a larger export is refused, never cut short
@@ -44,7 +43,7 @@ class ReportInputError(Exception):
 
 
 async def require_reader(db: AsyncSession, user: User) -> None:
-    if user.role not in READERS:
+    if user.role not in READERS:  # RP2: the dashboard's readers (DB15)
         raise HTTPException(403, ROLE_REQUIRED)
     if user.role == "partnership_manager":
         await partnership_context(db, user)  # a manager without a profile is a 403 (upc-001)
@@ -98,16 +97,8 @@ async def _expected(db: AsyncSession, user: User, today: date, raw: dict) -> dic
     if window not in WINDOWS:
         raise ReportInputError("Expected date window: choose one of the listed windows")
     rows = await expected_rows(db, user, await partnership_universities.team_of(db, user))
-    if window == "undated":
-        chosen = [r for r in rows if r[0].expected_agreement_date is None]
-    elif window == "all":
-        chosen = [r for r in rows if r[0].expected_agreement_date is not None]
-    else:
-        w = next(w for w in forecast_windows(today) if w.key == window)
-        chosen = [r for r in rows if r[0].expected_agreement_date is not None and w.first <= r[0].expected_agreement_date <= w.last]
-    chosen.sort(key=lambda r: (r[0].expected_agreement_date or date.max, r[0].name.casefold(), str(r[0].id)))
     items = []
-    for uni, country, owner in chosen:
+    for uni, country, owner in chosen_rows(rows, window, today):
         probability = effective_probability(uni.stage, uni.probability_override)
         items.append({
             "university": uni.name, "code": uni.university_code, "country": country, "stage": label_of(uni.stage),
