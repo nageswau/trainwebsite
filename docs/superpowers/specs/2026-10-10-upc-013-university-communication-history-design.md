@@ -46,7 +46,7 @@ Applied under the owner's standing instruction for the build session ("proceed w
   | kind | source | at | actor | event | from | to | subject | status | other |
   |---|---|---|---|---|---|---|---|---|---|
   | `stage` | `university_stage_history` | `created_at` | actor | `move` / `lost` / `reopened` | stage key + label | stage key + label | — | — | seq = position, reason = note |
-  | `call` | `university_calls` | `occurred_at` | caller | direction | outcome key + label | — / contact name | — | — | duration, reason = notes |
+  | `call` | `university_calls` | `occurred_at` (its recording time when logged within that minute, QA-01) | caller | direction | outcome key + label | — / contact name | — | — | duration, reason = notes |
   | `message` | `university_messages` | `sent_at` | sender | channel | template name (`""` = custom) | — / contact name | email subject | delivery status | reason = body |
   | `meeting` | `university_meeting_events` ⋈ meetings | event `created_at` | actor | meeting event | meeting type | — | meeting code | — | seq = position, scheduled_for = new or current start, reason |
   | `visit` | `university_visit_events` ⋈ visits | event `created_at` | actor | action | from status | to status | visit code | — | reason |
