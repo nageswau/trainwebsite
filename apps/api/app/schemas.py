@@ -9355,6 +9355,19 @@ CommissionTrigger = Literal["enrolment", "visa_and_enrolment", "tuition_paid"]  
 CommissionPercent = Annotated[Decimal, Field(gt=0, le=100, max_digits=5, decimal_places=2)]
 CommissionAmount = Annotated[Decimal, Field(gt=0, le=Decimal("99999999.99"), max_digits=10, decimal_places=2)]
 CommissionTimeline = _university_str(500, multiline=True)
+CommissionReference = _university_str(120, required=True)  # upc-019 CL10
+
+
+class CommissionReceiptIn(BaseModel):
+    """upc-019 (CL10): a commission receipt -- a lump sum per university, optionally linked to its enrolled applications."""
+
+    model_config = ConfigDict(extra="forbid")
+    amount: CommissionAmount
+    currency: CounselingCurrency  # models.COMMISSION_CURRENCIES
+    received_on: date
+    reference: CommissionReference
+    note: CommissionTimeline = None
+    application_ids: AgreementCourses = []
 
 
 class CommissionTermIn(BaseModel):
@@ -9848,10 +9861,24 @@ class _PerformancePeriod(BaseModel):
     steps: list[PerformanceStep]
 
 
+class CurrencyAmount(BaseModel):
+    currency: str
+    amount: str
+
+
+class PerformanceCommission(BaseModel):
+    """upc-019 (CL13, Appendix B F10/F11): per currency, no FX. Sent to the commission roles only; the routes exclude unset fields, so
+    every other reader gets no `commission` key at all (U2)."""
+
+    expected: list[CurrencyAmount]
+    received: list[CurrencyAmount]
+
+
 class UniversityPerformanceRow(BaseModel):
     rank: int
     university: PerformanceUniversity
     counts: PerformanceCounts
+    commission: PerformanceCommission | None = None
 
 
 class UniversityPerformancePage(_PerformancePeriod):
@@ -9860,11 +9887,13 @@ class UniversityPerformancePage(_PerformancePeriod):
     total: int
     limit: int
     offset: int
+    commission: PerformanceCommission | None = None  # over every ranked row, as `totals`
 
 
 class UniversityPerformance(_PerformancePeriod):
     university: PerformanceUniversity
     counts: PerformanceCounts
+    commission: PerformanceCommission | None = None
 
 
 # --- upc-023 (DEC-SCOPE-161, spec §4): §23 expected partnerships, the §24 probability and the weighted forecast (Appendix B E1-E4) ---

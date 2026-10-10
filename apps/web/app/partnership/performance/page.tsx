@@ -4,6 +4,7 @@ import { accessDenied, accessUnavailable } from "@/components/AccessUnavailable"
 import PerformancePeriodForm from "@/components/PerformancePeriodForm";
 import PortalShell from "@/components/PortalShell";
 import { serverApi } from "@/lib/api";
+import { amountsText } from "@/lib/commissionLedger";
 import {
   chosenPeriod,
   countText,
@@ -37,6 +38,7 @@ export default async function UniversityPerformancePage({ searchParams }: { sear
   }
   const { nav, roleLabel } = shellFor(user.role);
   const tracked = data.steps.filter((s) => s.tracked);
+  const money = data.commission; // upc-019 F10 / F11: sent to the commission roles only
   const pageHref = (to: number) => `${PERFORMANCE_PATH}?${periodQuery(period, { offset: String(to) })}`;
   const last = data.offset + data.items.length;
   return (
@@ -65,6 +67,7 @@ export default async function UniversityPerformancePage({ searchParams }: { sear
                     <th scope="col">Country</th>
                     <th scope="col">Stage</th>
                     {tracked.map((s) => <th key={s.key} scope="col">{s.label}</th>)}
+                    {money && <><th scope="col">Commission expected</th><th scope="col">Commission received</th></>}
                   </tr>
                 </thead>
                 <tbody>
@@ -75,6 +78,7 @@ export default async function UniversityPerformancePage({ searchParams }: { sear
                       <td>{row.university.country}</td>
                       <td>{row.university.stage_label}</td>
                       {tracked.map((s) => <td key={s.key}>{countText(row.counts[s.key])}</td>)}
+                      {money && <><td>{amountsText(row.commission?.expected ?? [])}</td><td>{amountsText(row.commission?.received ?? [])}</td></>}
                     </tr>
                   ))}
                 </tbody>
@@ -83,6 +87,7 @@ export default async function UniversityPerformancePage({ searchParams }: { sear
                     <td />
                     <th scope="row" colSpan={3}>Total</th>
                     {tracked.map((s) => <td key={s.key}>{countText(data.totals[s.key])}</td>)}
+                    {money && <><td>{amountsText(money.expected)}</td><td>{amountsText(money.received)}</td></>}
                   </tr>
                 </tfoot>
               </table>
@@ -99,6 +104,7 @@ export default async function UniversityPerformancePage({ searchParams }: { sear
         <p className="muted" style={{ fontSize: 13 }}>
           Leads, Counselling and Profiles eligible are not tracked: those records have no university link. The Total row adds each university&apos;s figures, so a
           student interested in two universities counts twice.
+          {money && " Commission expected counts students enrolled in the period whose commission trigger is met; commission received counts receipts dated in the period. Amounts are per currency (restricted)."}
         </p>
       </div>
     </PortalShell>
