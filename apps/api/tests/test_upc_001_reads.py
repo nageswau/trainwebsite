@@ -95,7 +95,7 @@ async def test_head_sees_only_direct_reports_including_inactive(client, db_sessi
     ids = {row["id"] for row in body["items"]}
     assert {mine["id"], inactive["id"]} == ids and theirs["id"] not in ids and body["total"] == 2
     assert {row["active"] for row in body["items"]} == {True, False}
-    assert set(body["items"][0]) == {"id", "full_name", "email", "phone", "active", "employee_id"}
+    assert set(body["items"][0]) == {"id", "full_name", "email", "phone", "active", "employee_id", "work"}  # upc-032 RA14 adds `work`
 
 
 @pytest.mark.asyncio

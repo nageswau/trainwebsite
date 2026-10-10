@@ -6745,8 +6745,20 @@ class PartnershipAdminRow(PartnershipTeamRow):
     head_active: bool
 
 
+class PartnershipWork(BaseModel):
+    """upc-032 (RA14): a manager's primary and backup universities and open tasks."""
+
+    primary: int
+    backup: int
+    tasks: int
+
+
+class PartnershipTeamMemberRow(PartnershipTeamRow):
+    work: PartnershipWork
+
+
 class PartnershipTeamPage(BaseModel):
-    items: list[PartnershipTeamRow]
+    items: list[PartnershipTeamMemberRow]
     total: int
     limit: int
     offset: int
@@ -6757,6 +6769,19 @@ class PartnershipAdminPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+class PartnershipReassign(BaseModel):
+    """upc-032 (RA5): move every university slot and open task of one manager to another."""
+
+    model_config = ConfigDict(extra="forbid")
+    from_user_id: UUID
+    to_user_id: UUID
+
+
+class PartnershipReassignOut(BaseModel):
+    from_user_id: UUID
+    to_user_id: UUID
+    moved: PartnershipWork
 
 
 class PartnershipHeadPage(BaseModel):
