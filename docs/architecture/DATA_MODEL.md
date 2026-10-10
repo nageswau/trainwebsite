@@ -1911,3 +1911,14 @@ share time, nullable), `token_hash` (SHA-256 of the 7-day resume-link token; the
 `uq_profile_share_items_token` (partial unique); index on `candidate_id`.
 
 Every FK is RESTRICT; shares are permanent. Additive: no existing row is read or written. `downgrade()` refuses while any share exists.
+
+## Partnership probability override (`upc-023`, `DEC-SCOPE-161`; migration `0143_university_probability`, after `0142_profile_shares`)
+
+**`universities` new columns (nullable; existing rows unchanged):** `probability_override` smallint, `probability_override_reason` varchar(500).
+
+**Constraints:** `ck_universities_probability_override` (null or 0–100), `ck_universities_probability_reason` (both set or both null).
+
+**Design notes:**
+- The stage probability is a constant (`app/partnership_stages.py`, Appendix B P); only the manual override is stored (EX2). It stays until
+  cleared (EX3). The expected list and the forecast are computed on read from `expected_agreement_date` (upc-008); nothing else is stored.
+- Changes are audited (`university.probability_overridden`). `downgrade()` refuses while any override exists.

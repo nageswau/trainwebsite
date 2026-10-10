@@ -57,6 +57,11 @@ def column_of(key: str) -> str:
     return _BY_KEY[key].column
 
 
+def effective_probability(stage: str, override: int | None) -> int:
+    """upc-023 EX1/EX2: the manual override when there is one (0 included), otherwise the stage's §24 band (P)."""
+    return PROBABILITY[stage] if override is None else override
+
+
 def label_of(key: str) -> str:
     """A stage key's source label; a key no longer in the catalogue (history after a future change) is shown as stored."""
     stage = _BY_KEY.get(key)

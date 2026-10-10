@@ -219,3 +219,38 @@ async def funnel_counts(db: AsyncSession, university_ids: list[UUID], first: dat
         for university_id, n in (await db.execute(stmt)).all():
             found.setdefault(cast(UUID, university_id), dict.fromkeys(FUNNEL, 0))[step] = n  # never null: filtered by `IN university_ids`
     return found
+
+
+# --- upc-023 (DEC-SCOPE-161, spec EX1, EX9, EX10): §23 expected partnerships and the §24 weighted forecast, Appendix B E1-E4 ---
+
+
+class Window(NamedTuple):
+    key: str
+    label: str
+    first: date
+    last: date
+
+
+def _month_start(day: date, months_ahead: int = 0) -> date:
+    index = day.year * 12 + day.month - 1 + months_ahead
+    return date(index // 12, index % 12 + 1, 1)
+
+
+def forecast_windows(today: date) -> tuple[Window, ...]:
+    """E1-E3 as inclusive IST days: this calendar month, the next one and this calendar quarter (AC2)."""
+    quarter = _month_start(today, -((today.month - 1) % 3))
+    this_month, next_month = _month_start(today), _month_start(today, 1)
+
+    def last(first: date, months: int) -> date:
+        return _month_start(first, months) - timedelta(days=1)
+
+    return (
+        Window("this_month", "Expected Partnerships This Month", this_month, last(this_month, 1)),
+        Window("next_month", "Expected Next Month", next_month, last(next_month, 1)),
+        Window("this_quarter", "Expected This Quarter", quarter, last(quarter, 3)),
+    )
+
+
+def weighted(probabilities: list[int]) -> float:
+    """E4: Σ probability, in partnerships (10 × 80% = 8.0), to one decimal."""
+    return round(sum(probabilities) / 100, 1)

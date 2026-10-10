@@ -1,9 +1,13 @@
+import Link from "next/link";
+
 import { accessDenied, accessUnavailable } from "@/components/AccessUnavailable";
+import ExpectedForecastCards from "@/components/ExpectedForecastCards";
 import PartnershipTargetsTable from "@/components/PartnershipTargetsTable";
 import PortalShell from "@/components/PortalShell";
 import TargetsEditor from "@/components/TargetsEditor";
 import { serverApi } from "@/lib/api";
 import { chosenMonth, currentMonth, monthLabel, monthOptions } from "@/lib/bdmTargets";
+import { EXPECTED_PATH, EXPECTED_URL, type ExpectedPage } from "@/lib/partnershipExpected";
 import {
   type ManagerTargetSheet,
   managerTargetUrl,
@@ -17,7 +21,7 @@ import { shellFor } from "@/lib/universities";
 
 // upc-021 (§21, spec §5): the "Targets & Forecast" menu. A head (or super_admin) compares each manager's month and the team's -- actual /
 // target and achievement per KPI -- and opens a manager to set targets. A manager sees their own month, read-only. The month lives in the
-// URL (a plain GET form); the API is the gate and computes every figure. The forecast half arrives with upc-023.
+// URL (a plain GET form); the API is the gate and computes every figure. upc-023 adds the forecast half (E1-E3 tiles + the expected list).
 export default async function PartnershipTargetsPage({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
   const current = currentMonth();
   const { month, note } = chosenMonth((await searchParams).month, current);
@@ -32,6 +36,8 @@ export default async function PartnershipTargetsPage({ searchParams }: { searchP
   } catch (e) {
     return accessUnavailable(e, "/overseas/login");
   }
+  // upc-023: the forecast half. Its own read, so a failure here leaves the targets working.
+  const forecast = await serverApi<ExpectedPage>(`${EXPECTED_URL}?limit=1`).catch(() => null);
   const { nav, roleLabel } = shellFor(user.role);
   return (
     <PortalShell nav={nav} roleLabel={roleLabel} userName={user.full_name}>
@@ -60,6 +66,14 @@ export default async function PartnershipTargetsPage({ searchParams }: { searchP
         {own && <TargetsEditor key={own.month} initial={own} ownerId={own.manager.id} ownerField="manager_user_id" saveUrl={TARGETS_URL} />}
         {team && <PartnershipTargetsTable team={team} month={month} />}
         {team && <p className="muted" style={{ fontSize: 13 }}>Each cell is actual / target · achievement.</p>}
+        {forecast ? (
+          <>
+            <ExpectedForecastCards windows={forecast.windows} undatedCount={forecast.undated_count} />
+            <p><Link className="btn secondary small" href={EXPECTED_PATH}>All expected partnerships</Link></p>
+          </>
+        ) : (
+          <p className="form-error">Unable to load the partnership forecast. Reload the page to try again.</p>
+        )}
       </div>
     </PortalShell>
   );

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import UniversityTimeline from "@/components/UniversityTimeline";
 import { formatCalendarDate } from "@/lib/formatDate";
+import type { UniversityProbability } from "@/lib/partnershipExpected";
 import { type Milestone, type MilestonePage, monthLabel, quarterLabel, type UniversityExpected } from "@/lib/partnershipMilestones";
 
 const refresh = vi.fn();
@@ -28,8 +29,12 @@ const EXPECTED: UniversityExpected = {
   target_partnership_date: "2026-11-15", expected_month: "2026-11", expected_quarter: "2026-Q4", expected_intake: "January 2027",
   expected_agreement_date: "2026-10-30", expected_recruitment_start: "2026-12-01",
 };
-const show = (over: { initial?: MilestonePage | null; expected?: UniversityExpected; canEdit?: boolean } = {}) =>
-  render(<UniversityTimeline universityId="u1" expected={over.expected ?? EXPECTED} canEdit={over.canEdit ?? true} initial={over.initial === undefined ? page(ITEMS) : over.initial} />);
+const STAGE_ONLY: UniversityProbability = { stage: 40, override: null, reason: null, effective: 40 };
+const show = (over: { initial?: MilestonePage | null; expected?: UniversityExpected; canEdit?: boolean; probability?: UniversityProbability; canOverride?: boolean } = {}) =>
+  render(
+    <UniversityTimeline universityId="u1" expected={over.expected ?? EXPECTED} canEdit={over.canEdit ?? true} initial={over.initial === undefined ? page(ITEMS) : over.initial}
+      probability={over.probability ?? STAGE_ONLY} canOverride={over.canOverride ?? true} />,
+  );
 
 afterEach(() => {
   cleanup();
@@ -174,5 +179,79 @@ describe("UniversityTimeline (upc-008)", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Unable to load the milestones.");
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByRole("table", { name: "Partnership milestones" })).toBeInTheDocument();
+  });
+});
+
+describe("UniversityTimeline probability (upc-023 §24)", () => {
+  const OVERRIDDEN: UniversityProbability = { stage: 40, override: 70, reason: "Dean confirmed the budget", effective: 70 };
+  const university = { university: { id: "u1" } };
+
+  it("shows the stage probability, or an override with the stage beside it and its reason", () => {
+    show();
+    expect(screen.getByText("40%")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Clear override" })).toBeNull();
+    cleanup();
+    show({ probability: OVERRIDDEN });
+    expect(screen.getByText("70% (override; stage 40%)")).toBeInTheDocument();
+    expect(screen.getByText("Reason: Dean confirmed the budget")).toBeInTheDocument();
+  });
+
+  it("offers no override to a role that cannot move the stage", () => {
+    show({ canOverride: false, probability: OVERRIDDEN });
+    expect(screen.queryByRole("button", { name: /override/i })).toBeNull();
+  });
+
+  it("saves an override as a whole number with its reason and refreshes the page", async () => {
+    const mock = vi.fn(() => Promise.resolve(res(university)));
+    vi.stubGlobal("fetch", mock);
+    show();
+    fireEvent.click(screen.getByRole("button", { name: "Override probability" }));
+    const form = screen.getByRole("form", { name: "Override probability" });
+    expect(within(form).getByText("The stage gives 40%. Leave blank to use it.")).toBeInTheDocument();
+    fireEvent.change(within(form).getByLabelText("Probability (%)"), { target: { value: "70" } });
+    fireEvent.change(within(form).getByLabelText("Reason"), { target: { value: " Dean confirmed " } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save probability" }));
+    expect(await screen.findByText("Probability saved.")).toBeInTheDocument();
+    const [url, init] = mock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("/api/v1/partnership/universities/u1/probability");
+    expect(init.method).toBe("PUT");
+    expect(bodyOf(mock)).toEqual({ probability: 70, reason: "Dean confirmed" });
+    expect(refresh).toHaveBeenCalled();
+  });
+
+  it("clears an override in one click", async () => {
+    const mock = vi.fn(() => Promise.resolve(res(university)));
+    vi.stubGlobal("fetch", mock);
+    show({ probability: OVERRIDDEN });
+    fireEvent.click(screen.getByRole("button", { name: "Clear override" }));
+    expect(await screen.findByText("Probability override cleared.")).toBeInTheDocument();
+    expect(bodyOf(mock)).toEqual({ probability: null, reason: null });
+  });
+
+  it.each(["150", "-5", "50.5"])("refuses %s in plain words before asking the API (QA23-01)", async (value) => {
+    const mock = vi.fn();
+    vi.stubGlobal("fetch", mock);
+    show();
+    fireEvent.click(screen.getByRole("button", { name: "Override probability" }));
+    const form = screen.getByRole("form", { name: "Override probability" });
+    fireEvent.change(within(form).getByLabelText("Probability (%)"), { target: { value } });
+    fireEvent.change(within(form).getByLabelText("Reason"), { target: { value: "x" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save probability" }));
+    expect(await within(form).findByText("Enter a whole number from 0 to 100.")).toBeInTheDocument();
+    expect(within(form).getByLabelText("Probability (%)")).toHaveAttribute("aria-invalid", "true");
+    expect(mock).not.toHaveBeenCalled();
+  });
+
+  it("puts a 422 on its field and keeps what was typed", async () => {
+    const detail = [{ loc: ["body", "reason"], msg: "Value error, Give a reason for the probability override" }];
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(res({ detail }, 422))));
+    show();
+    fireEvent.click(screen.getByRole("button", { name: "Override probability" }));
+    const form = screen.getByRole("form", { name: "Override probability" });
+    fireEvent.change(within(form).getByLabelText("Probability (%)"), { target: { value: "70" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save probability" }));
+    expect(await within(form).findByText("Give a reason for the probability override")).toBeInTheDocument();
+    expect(within(form).getByLabelText("Reason")).toHaveAttribute("aria-invalid", "true");
+    expect(within(form).getByLabelText("Probability (%)")).toHaveValue(70);
   });
 });

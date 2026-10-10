@@ -6998,6 +6998,7 @@ class UniversityDetail(UniversityRow):
     pipeline: UniversityPipelineOut
     follow_up: "UniversityFollowUpOut"  # upc-020 TK14/TK15
     expected: "UniversityExpectedOut"  # upc-008 §5
+    probability: "UniversityProbabilityOut"  # upc-023 §24
 
 
 class LinkedBdmOrganization(BaseModel):
@@ -9891,3 +9892,73 @@ class UniversityPerformance(_PerformancePeriod):
     university: PerformanceUniversity
     counts: PerformanceCounts
     commission: PerformanceCommission | None = None
+
+
+# --- upc-023 (DEC-SCOPE-161, spec §4): §23 expected partnerships, the §24 probability and the weighted forecast (Appendix B E1-E4) ---
+ExpectedWindowKey = Literal["all", "this_month", "next_month", "this_quarter", "undated"]
+
+
+class UniversityProbabilityOut(BaseModel):
+    stage: int  # Appendix B P (EX1)
+    override: int | None
+    reason: str | None
+    effective: int
+
+
+class UniversityProbabilityPut(BaseModel):
+    """EX2: a whole number 0-100 with its reason, or null (and no reason) to go back to the stage probability."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    probability: StrictInt | None = Field(..., ge=0, le=100)
+    reason: _university_str(500, multiline=True) = Field(None, validate_default=True)  # checked even when omitted
+
+    @field_validator("reason")
+    @classmethod
+    def _reason_with_value(cls, reason: str | None, info: ValidationInfo) -> str | None:
+        """On `reason`, so a form can show the 422 on its field. A bad `probability` is already its own error."""
+        if "probability" not in info.data:
+            return reason
+        if info.data["probability"] is not None and reason is None:
+            raise PydanticCustomError("reason_required", "Give a reason for the probability override")
+        if info.data["probability"] is None and reason is not None:
+            raise PydanticCustomError("reason_without_value", "Clearing the override takes no reason")
+        return reason
+
+
+class ExpectedWindow(BaseModel):
+    key: str
+    label: str
+    first: date
+    last: date
+    count: int
+    weighted: float  # E4: Σ probability / 100, one decimal
+
+
+class ExpectedUniversityRef(BaseModel):
+    id: UUID
+    university_code: str
+    name: str
+
+
+class ExpectedUniversity(BaseModel):
+    university: ExpectedUniversityRef
+    country: str
+    stage: str
+    stage_label: str
+    expected_agreement_date: date | None
+    owner: BdmManagerRef | None  # the primary manager (EX11)
+    probability: int
+    stage_probability: int
+    override_reason: str | None
+
+
+class ExpectedPage(BaseModel):
+    today: date
+    window: ExpectedWindowKey
+    windows: list[ExpectedWindow]
+    undated_count: int
+    total: int
+    limit: int
+    offset: int
+    items: list[ExpectedUniversity]

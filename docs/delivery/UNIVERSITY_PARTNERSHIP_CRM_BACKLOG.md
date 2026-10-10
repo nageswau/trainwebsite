@@ -896,8 +896,8 @@ Common conventions:
 - **Edge cases:** an application later withdrawn after enrolment (expected reversed?); multi-currency.
 - **Regression risks:** `AgentCommission` untouched (separate concept).
 - **Complexity:** medium · **Risk:** high
-- **Status (2026-10-10):** built on `feature/upc-019` under `DEC-SCOPE-161` (CL1–CL14, recommended answers), with migration
-  `0143_commission_receipts`, API §12CC and RBAC §2.87. Spec: `docs/superpowers/specs/2026-10-10-upc-019-commission-ledger-design.md`.
+- **Status (2026-10-10):** built on `feature/upc-019` under `DEC-SCOPE-162` (CL1–CL14, recommended answers), with migration
+  `0144_commission_receipts`, API §12CD and RBAC §2.88. Spec: `docs/superpowers/specs/2026-10-10-upc-019-commission-ledger-design.md`.
   - Edge "withdrawn after enrolment": cannot occur (an enrolled application cannot be withdrawn); if it ever leaves `enrolled` it stops counting.
   - `tuition_paid` terms and country-restricted terms are not evaluable from CRM data (CL1, CL6, `NEEDS_CONFIRMATION`).
 
@@ -1019,6 +1019,11 @@ Common conventions:
 - **Edge cases:** no expected date (excluded, listed separately).
 - **Regression risks:** none.
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-10):** built on `feature/upc-023` under `DEC-SCOPE-161`, with migration `0143_university_probability`, API §12CC and
+  RBAC §2.87. Spec: `docs/superpowers/specs/2026-10-10-upc-023-expected-partnerships-design.md`.
+  - Q-09 and EX1–EX12 are recommended answers (`NEEDS_CONFIRMATION`): the Appendix B P bands; an optional override 0–100 with a reason,
+    kept until cleared, set by the stage rule; readers = partnership roles + `super_admin` with upc-018's scope; windows by
+    `expected_agreement_date` in IST calendar months / quarters. The forecast tiles also sit on Targets & Forecast (upc-021's page).
 
 ### upc-024 — Global university search
 - **Business requirement:** §25 (6 search fields; 15 filters; 3 combined examples); "all universities globally".

@@ -1,12 +1,16 @@
 """upc-019 -- university_commission_receipts: commission received from a university (restricted, U2).
 
-Revision ID: 0143_commission_receipts
-Revises: 0142_profile_shares
+Revision ID: 0144_commission_receipts
+Revises: 0143_university_probability
 
-docs/superpowers/specs/2026-10-10-upc-019-commission-ledger-design.md §2 (DEC-SCOPE-161). A new table only; no existing row changes.
+docs/superpowers/specs/2026-10-10-upc-019-commission-ledger-design.md §2 (DEC-SCOPE-162). A new table only; no existing row changes.
 0001 builds a fresh database from the current models, which already carry the table, so it is created only when missing (0117's idiom).
 CURRENCIES / CHECKS repeat app.models (test_upc_019_migration). downgrade() refuses while any receipt exists: money records are never
 dropped silently.
+
+Re-chained on 2026-10-10: drafted as `0143_commission_receipts` on `0142_profile_shares`; upc-023 (`0143_university_probability`) merged
+first. A database stamped at the draft is re-stamped with `alembic stamp --purge 0142_profile_shares`, then `upgrade head` (the table step
+is guarded).
 """
 
 import sqlalchemy as sa
@@ -14,8 +18,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0143_commission_receipts"
-down_revision = "0142_profile_shares"
+revision = "0144_commission_receipts"
+down_revision = "0143_university_probability"
 branch_labels = None
 depends_on = None
 
@@ -63,5 +67,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {RECEIPTS} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0143_commission_receipts: commission receipts exist. Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0144_commission_receipts: commission receipts exist. Remove them deliberately first.")
     op.drop_table(RECEIPTS)
