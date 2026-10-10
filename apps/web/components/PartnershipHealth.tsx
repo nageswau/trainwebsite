@@ -18,7 +18,7 @@ export default function PartnershipHealth({ health }: { health: PerformanceHealt
       {health.score === null && <p className="muted">Not enough activity yet: no students, meetings, messages or agreement in force to score.</p>}
       {health.factors && (
         <div className="table-scroll" role="region" aria-labelledby="uni-health-caption" tabIndex={0}>
-          <table className="table">
+          <table className="table health-breakdown">
             <caption id="uni-health-caption" className="visually-hidden">Health score breakdown, as of {asOf}</caption>
             <thead>
               <tr><th scope="col">Factor</th><th scope="col">Measure</th><th scope="col">Weight</th><th scope="col">Points</th></tr>

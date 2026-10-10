@@ -65,6 +65,11 @@ describe("upc-028 health card", () => {
     expect(card.textContent).toContain("as of 10 Oct 2026");
   });
 
+  it("QA28-01: the breakdown opts out of the wide-table minimum, so Weight and Points fit a phone", () => {
+    render(<PartnershipHealth health={GOOD} />);
+    expect(screen.getByRole("table", { name: /Health score breakdown/ }).className).toBe("table health-breakdown");
+  });
+
   it("shows only the score and band when the API sent no breakdown", () => {
     render(<PartnershipHealth health={BARE} />);
     const card = screen.getByRole("region", { name: "Partnership health" });
