@@ -6587,3 +6587,34 @@ took 162 / §12CD / §2.88.
 - Changed: the manager filter moves into `services/partnership_universities.manager_filter`, so the master list and the board share it,
   with unchanged behaviour.
 - **New Feature ID authorized:** `upc-024`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-024.
+
+### DEC-SCOPE-164 — Partnership alerts engine (`upc-015`)
+
+**Evidence:** `EVID-020` §14 (L499–L513: alerts 90 / 60 / 30 / 7 days before expiry; "⚠️ ABC University partnership expires in 30 days.
+Renewal action required."), §6 (L242: "automatically highlight delayed milestones"), §20 (L673–L693: Overdue), §32 ("🔔 Alerts");
+`UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U11 (`EXPLICIT_APPROVAL` 2026-10-08), Q-11, Q-17 and §4 upc-015.
+**Status:** **Q-17** and AL1–AL14 are recommended answers applied under the owner's standing instruction for the build session ("proceed
+with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off.
+No migration. API contract §12CF, RBAC §2.90. Spec: `docs/superpowers/specs/2026-10-10-upc-015-partnership-alerts-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| AL1 | Storage | Reuse `notifications` with `upc015:` dedupe keys (the "sent" record); no `partnership_alert_log` table, no migration |
+| AL2 | Kinds | Agreement expiry, milestone delayed, overdue digest |
+| AL3 | Q-17 send hour | Beat every IST hour (`crontab(minute=30)` UTC); acts from 09:00 IST; later runs that day are no-ops |
+| AL4 | Expiry | Signed / active agreements of active universities, exactly 90 / 60 / 30 / 7 days before expiry (IST); one alert per threshold and recipient. Signed inside a threshold → only the thresholds still ahead; expired or renewed → none |
+| AL5 | Expiry text | The §14 sentence exactly, then the MoU number, type and expiry date |
+| AL6 | Newly delayed | upc-008's status rule (Q-11, MS3; an event-achieved milestone is not delayed); the target fell within the last 7 days; live universities only; a moved target re-arms |
+| AL7 | Milestone text | "{University}: the {Milestone} milestone was due on {date} and is not complete." |
+| AL8 | Overdue digest | One per IST day per assignee with open tasks due before today (upc-020's band), with the count and the oldest due date |
+| AL9 | Q-17 recipients | Expiry: primary, backup, the primary's reporting head. Milestone: primary, backup. Digest: the assignee. Active users only, each once |
+| AL10 | Channels | In-app + email (outbox, SMTP); never WhatsApp / SMS |
+| AL11 | Failures | Savepoint per alert; counted and logged with ids; commit per 200 rows |
+| AL12 | API | `GET /partnership/alerts`: own alerts, kind filter, paging, unread count; partnership roles + super_admin (empty); others 403 |
+| AL13 | Read state | The shared notification mark-read route |
+| AL14 | UI | Page `/partnership/alerts` with kind tabs; §32 Alerts live for managers; heads' nav gains it; unread badge on the Alerts page, manager dashboard and head team page |
+
+**Consequences:** `services/partnership_alerts.py`, `api/partnership_alerts.py`, worker task `send_partnership_alerts_task` + beat entry
+`upc015-alerts`, the `partnership_alert` email kind in `notifications/delivery.py`; page `/partnership/alerts`. upc-022 can show the unread
+count on the manager dashboard.
+- **New Feature ID authorized:** `upc-015`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-015.
