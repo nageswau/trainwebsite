@@ -6483,3 +6483,43 @@ Spec: `docs/superpowers/specs/2026-10-09-rec-022-offer-management-design.md`.
 | S14 | Lists | "Shared profiles" on the requirement and company pages; "Shared with you" on the employer dashboard |
 
 - **New Feature ID authorized:** `rec-019`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-019.
+
+### DEC-SCOPE-161 — Global university search (`upc-024`)
+
+**Evidence:**
+- `EVID-020` §25 (L810–L866):
+  - "all universities globally";
+  - the 6 search fields and 15 filters;
+  - the examples "Japan + Cyber Security + Not Partnered", "UK + Business + Partnership in Progress" and "Germany + IT + Active Partner".
+- `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U2, U5, U7, U14 (`EXPLICIT_APPROVAL`, 2026-10-08), §4 upc-024 and Appendix B G1–G4.
+
+**Status:** SR1–SR16 are recommended answers, applied under the owner's standing instruction for the build session ("proceed with the
+recommended answers"). They are **not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. **No migration.** API contract §12CC,
+RBAC §2.87. Spec: `docs/superpowers/specs/2026-10-10-upc-024-global-university-search-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| SR1 | Readers | The University Master's read roles. Any other role → `403`. The counselor's U14 slice stays with upc-030 |
+| SR2 | Which universities | Every **active** university, whoever owns it |
+| SR3 | `q` | Literal substring of name, code, city or country name |
+| SR4 | Location | `country`: name substring or ISO-2. `region`: one of the 9 regions. `city`: substring |
+| SR5 | Institution | `institution_type`, `ownership_type` (public / private) |
+| SR6 | Ranking | `ranking_max`: a ranking whose leading number is ≤ N (a band counts by its start). Optional `ranking_system`. Each row shows its best ranking |
+| SR7 | Course filters | `course` (a word or phrase that starts a word in the title or category: "IT" matches "IT", not "Security"), `level`, `intake` (month) and the tuition range. All must hold for **one** active course. `matching_courses` per row when any course filter is sent |
+| SR8 | Tuition | `tuition_min` / `tuition_max` in one `tuition_currency` (no FX). A bound without a currency, or min > max → `422` |
+| SR9 | Scholarship | `scholarship=true`: an active university scholarship, or an active course with a linked scholarship |
+| SR10 | Commission (U2) | `commission_min` %: an active course's percent, or a term of a signed / active agreement, ≥ x. Fixed amounts are not compared. **Ignored for every non-commission role**: dropped before any SQL, so nothing can be inferred |
+| SR11 | Partner status | `partner` (G1), `in_progress` (G2, incl. Agreement Signed), `target` (G3), `lost`, and `not_partnered` (G2 + G3). Lost universities are excluded except under `lost` |
+| SR12 | Manager | `me` / `none` / an id, primary or backup (the master list's rule) |
+| SR13 | Expected date | `expected_from` / `expected_to` on `target_partnership_date`. from > to → `422` |
+| SR14 | Response | `{items, total, limit, offset, facets.partner_status}`. The facet is counted without its own filter |
+| SR15 | Performance | No migration. Existing indexes back the `EXISTS` subqueries. A constant query count. 1,300 × 3 searched in under 2 s |
+| SR16 | Page / menu / logs | `/partnership/search`: a GET form, chips and paging. Live §32 entry, plus head, super admin and overseas admin navs. Reads are not audited |
+
+- New:
+  - `services/university_search.py`;
+  - `GET /partnership/universities/search`;
+  - the page `/partnership/search`.
+- Changed: the manager filter moves into `services/partnership_universities.manager_filter`, so the master list and the board share it,
+  with unchanged behaviour.
+- **New Feature ID authorized:** `upc-024`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-024.

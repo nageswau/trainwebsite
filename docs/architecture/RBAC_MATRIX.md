@@ -1503,6 +1503,17 @@ The inline pattern, scope in the SQL `WHERE`. Routes are listed in §12CB.
 - R8 is enforced server-side: no phone, email, LinkedIn or salary leaves in an email, a WhatsApp text or the portal.
 - Only the token's SHA-256 is stored; every resume download is audited; audit rows and logs carry ids only.
 
+### 2.87 Global university search *(net-new, added 2026-10-10 — `DEC-SCOPE-161`, `upc-024`)*
+
+Enforced in `api/partnership_universities.search_universities`: `partnership_universities.require_reader` comes first. In
+`services/university_search.search`, `commission_min` is dropped for any role without `partnership_access.can_see_commission` (U2). The
+route is read-only, and no commission value appears in a response. Each row's `permissions` are the master's own, worked out per caller.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Search every active university (all filters but commission) | ✅ all | ✅ all | ✅ all | ✅ all | `403` (anonymous `401`) |
+| Commission filter (`commission_min`) | ✅ | ✅ | ignored (never filters) | ✅ | — |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

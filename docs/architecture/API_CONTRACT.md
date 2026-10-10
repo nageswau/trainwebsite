@@ -2505,6 +2505,29 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `GET /employer/shared-profiles/{item_id}/resume` | **→ 200** the resume version current at share time (`attachment`, `no-store`, `nosniff`); `404` none / archived / not this company's. Audit `profile_share.resume_download` `{via: portal}` |
 | `GET /public/shared-resume/{token}` | **No session.** The token is the 7-day random link of an email / WhatsApp item (only its SHA-256 is stored). **→ 200** the file; every failure (unknown, expired, archived candidate, unreadable) → `404` "This link has expired or is no longer available". Audit `profile_share.resume_download` `{via: link}` (no user) |
 
+## 12CC. Global university search (`upc-024`) — addendum, 2026-10-10
+
+- **Basis:** `DEC-SCOPE-161` (SR1–SR16). Spec: `docs/superpowers/specs/2026-10-10-upc-024-global-university-search-design.md` §3.
+  No migration.
+- **Readers:** the University Master's read roles (`partnership_manager` with a profile, `partnership_head`, `overseas_admin` in the
+  overseas division, `super_admin`). Any other role → `403` "University master access required". Anonymous → `401`.
+- **Behaviour:** read-only, with no audit row. It searches every **active** university.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/universities/search?q=&country=&region=&city=&institution_type=&ownership_type=&ranking_max=&ranking_system=&course=&level=&intake=&tuition_min=&tuition_max=&tuition_currency=&scholarship=&commission_min=&partner_status=&manager=&expected_from=&expected_to=&limit=&offset=` | See the notes below this table |
+
+- **Response:** `{items, total, limit, offset, facets: {partner_status: {partner, in_progress, target, lost}}}`.
+- **Items:** the University Master row plus `ownership_type`, `partner_status`, `target_partnership_date`, `ranking` (best, text or null)
+  and `matching_courses` (null without a course filter).
+- **Filters:** every filter ANDs. `course`, `level`, `intake` and the tuition range hold for one active course.
+- **`commission_min`** (0 < x ≤ 100) applies to commission roles only and is **ignored** for everyone else.
+- **Order:** name, then id. `limit` is 1–100 (default 50).
+- **`422`:** an unknown enum value (region, type, ownership, level, intake, system, currency, partner status), `ranking_max` outside
+  1–10000, a tuition bound without a currency, min > max, `expected_from > expected_to`, an invalid `manager`, or out-of-range paging.
+- **Queries:** a constant count.
+- **Route order:** declared before `/{university_id}`.
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

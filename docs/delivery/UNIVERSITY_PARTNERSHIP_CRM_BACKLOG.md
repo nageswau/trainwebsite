@@ -1017,6 +1017,8 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-024 — Global university search
+- **Status (2026-10-10):** built on `feature/upc-024` under `DEC-SCOPE-161` (SR1–SR16, recommended answers), with **no migration**, API
+  §12CC and RBAC §2.87. Spec: `docs/superpowers/specs/2026-10-10-upc-024-global-university-search-design.md`.
 - **Business requirement:** §25 (6 search fields; 15 filters; 3 combined examples); "all universities globally".
 - **Existing behavior:** `/public/universities?q&country` (ILIKE).
 - **Expected behavior:**
