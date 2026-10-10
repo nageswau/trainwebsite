@@ -14,7 +14,7 @@ import {
   statusCounts,
 } from "@/lib/universitySearch";
 
-// upc-024 (DEC-SCOPE-161): §32's "🌍 Global University Database" -- every active university in the master, by the §25 search fields and
+// upc-024 (DEC-SCOPE-162): §32's "🌍 Global University Database" -- every active university in the master, by the §25 search fields and
 // filters. A plain GET form: the URL holds the search, so Back, Refresh and a shared link keep it, and it works without client JS. The
 // commission filter is offered to the commission roles only; the API ignores it for everyone else (U2, SR10).
 const PAGE_SIZE = 50;

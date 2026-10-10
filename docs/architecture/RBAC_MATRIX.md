@@ -1503,7 +1503,21 @@ The inline pattern, scope in the SQL `WHERE`. Routes are listed in §12CB.
 - R8 is enforced server-side: no phone, email, LinkedIn or salary leaves in an email, a WhatsApp text or the portal.
 - Only the token's SHA-256 is stored; every resume download is audited; audit rows and logs carry ids only.
 
-### 2.87 Global university search *(net-new, added 2026-10-10 — `DEC-SCOPE-161`, `upc-024`)*
+### 2.87 Expected partnerships + probability *(net-new, added 2026-10-10 — `DEC-SCOPE-161`, `upc-023`)*
+
+The inline pattern, scope in the SQL `WHERE`. Routes are listed in §12CC.
+
+| Role | Read the expected list / forecast | Override a university's probability |
+|---|---|---|
+| `partnership_manager` (with a profile) | Universities where they are primary or backup | Those universities |
+| `partnership_head` | Their team's universities and unowned ones | The same |
+| `super_admin` | Every university | Every active university |
+| `overseas_admin` | `403` | `403` (reads the master, never moves stages) |
+| any other role | `403` | `403` |
+
+- The override follows the stage rule (`can_move_stage`); an inactive university is `409`. The audit row carries values only, never the reason text.
+
+### 2.88 Global university search *(net-new, added 2026-10-10 — `DEC-SCOPE-162`, `upc-024`)*
 
 Enforced in `api/partnership_universities.search_universities`: `partnership_universities.require_reader` comes first. In
 `services/university_search.search`, `commission_min` is dropped for any role without `partnership_access.can_see_commission` (U2). The

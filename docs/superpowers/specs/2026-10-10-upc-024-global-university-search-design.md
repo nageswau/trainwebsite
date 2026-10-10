@@ -1,7 +1,7 @@
 # upc-024 — Global university search — design
 
 - **Feature:** upc-024 (`docs/delivery/UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §4 upc-024; EVID-020 §25 L810–L866; Appendix B G1–G4)
-- **Decision:** `DEC-SCOPE-161`. **No migration.** API §12CC; RBAC §2.87. As with earlier items, these numbers are provisional until merge.
+- **Decision:** `DEC-SCOPE-162`. **No migration.** API §12CD; RBAC §2.88. As with earlier items, these numbers are provisional until merge.
 - **Branch:** `feature/upc-024` (worktree branch `worktree-upc-024`), taken from `origin/main` @ `89ac6147`.
 - **Dependencies:** all merged on main:
   - upc-003: University Master, readers and `row_out`.
@@ -132,7 +132,7 @@ Results are paged, with counts. The filters live in the URL, so a search can be 
    menu-count tests.
 4. e2e `upc-024-global-university-search.spec.ts`: a head searches "UK + Business + Partnership in Progress", the chips, paging and
    mobile.
-5. Docs: DEC-SCOPE-161, API §12CC, RBAC §2.87, SCREEN_CATALOG, the backlog status, and the QA notes in this spec.
+5. Docs: DEC-SCOPE-162, API §12CD, RBAC §2.88, SCREEN_CATALOG, the backlog status, and the QA notes in this spec.
 
 ## 7. Regression set (lite)
 

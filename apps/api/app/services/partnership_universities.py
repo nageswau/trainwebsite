@@ -32,7 +32,7 @@ from app.models import (
     UniversityRanking,
     User,
 )
-from app.partnership_stages import label_of
+from app.partnership_stages import PROBABILITY, effective_probability, label_of
 from app.services import partnership_tasks
 from app.services.partnership import partnership_context
 from app.services.partnership_milestones import expected_out
@@ -297,7 +297,14 @@ async def detail_out(db: AsyncSession, user: User, uni: University, team: frozen
         "linked_bdm_organizations": await linked_bdm_organizations(db, uni.id),
         "follow_up": await partnership_tasks.follow_up_out(db, uni.id),  # upc-020 TK14/TK15
         "expected": expected_out(uni),  # upc-008 §5
+        "probability": probability_out(uni),  # upc-023 §24
     }
+
+
+def probability_out(uni: University) -> dict:
+    """upc-023 (spec §4): the detail's §24 block -- the stage band, the manual override and its reason, and the one that counts."""
+    override = uni.probability_override
+    return {"stage": PROBABILITY[uni.stage], "override": override, "reason": uni.probability_override_reason, "effective": effective_probability(uni.stage, override)}
 
 
 def name_key_of(name: str) -> str:

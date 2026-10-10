@@ -1,4 +1,4 @@
-"""upc-024 (DEC-SCOPE-161, spec SR1-SR15): the Global University Database -- every active university, searched by the §25 fields and
+"""upc-024 (DEC-SCOPE-162, spec SR1-SR15): the Global University Database -- every active university, searched by the §25 fields and
 narrowed by its 15 filters. Read only.
 
 Every value reaches SQL as a bound parameter: substrings go through `lookups._pattern` (ILIKE, escaped) and the course term through

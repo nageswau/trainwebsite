@@ -149,7 +149,8 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
           {/* remounted after each stage change (the page refreshes), so it starts from the new first page */}
           <BdmStageHistory key={`${u.pipeline.changed_at}|${u.pipeline.lost?.at ?? ""}`} orgId={u.id} initial={history} version={0} url={universityUrl(u.id, "stage-history")} />
           {/* upc-008: remounted after each stage change, so a move into Proposal Sent shows Proposal achieved (MS4) */}
-          <UniversityTimeline key={`timeline|${u.pipeline.changed_at}`} universityId={u.id} expected={u.expected} canEdit={u.permissions.can_edit_timeline} initial={milestones} />
+          <UniversityTimeline key={`timeline|${u.pipeline.changed_at}`} universityId={u.id} expected={u.expected} canEdit={u.permissions.can_edit_timeline} initial={milestones}
+            probability={u.probability} canOverride={u.permissions.can_move_stage} />
           <UniversityContacts universityId={u.id} contacts={contacts.items} roles={roles} canEdit={u.permissions.can_edit_contacts} />
           <UniversityCourses universityId={u.id} page={courses} options={courseOptions} canSetCommission={COMMISSION_ROLES.has(user.role)} />
           {performance && (
