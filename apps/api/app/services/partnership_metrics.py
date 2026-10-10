@@ -261,7 +261,7 @@ def weighted(probabilities: list[int]) -> float:
     return round(sum(probabilities) / 100, 1)
 
 
-# --- upc-022 (DEC-SCOPE-167, spec DB1-DB14): the §22 manager dashboard, Appendix B D1-D12 and D14, and the §20 follow-up bands ---
+# --- upc-022 (DEC-SCOPE-168, spec DB1-DB14): the §22 manager dashboard, Appendix B D1-D12 and D14, and the §20 follow-up bands ---
 # Counts only, over the universities the caller's scope holds *now* (DB2); D13 is upc-023's E1, added by the route. One statement per
 # figure, whatever the data size.
 

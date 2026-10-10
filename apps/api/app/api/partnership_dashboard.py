@@ -1,4 +1,4 @@
-"""upc-022 (DEC-SCOPE-167, spec §3): the §22 partnership manager dashboard -- Appendix B D1-D14 and the §20 follow-up bands.
+"""upc-022 (DEC-SCOPE-168, spec §3): the §22 partnership manager dashboard -- Appendix B D1-D14 and the §20 follow-up bands.
 
 Read-only and computed live: the figures come from `services.partnership_metrics.dashboard_figures` over the caller's scope (DB1: manager =
 primary/backup, head = team + unowned, super_admin = all) and the IST month of the database clock (DB3); D13 is upc-023's E1, from the same

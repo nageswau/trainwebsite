@@ -20,12 +20,14 @@ from app.models import COUNTRY_REGIONS, Country, PartnershipProfile, University,
 from app.schemas import (
     InstitutionType,
     PartnershipHeadPage,
+    PartnershipMapPage,
     PartnershipPotential,
     RelationshipStrength,
     UniversityAssign,
     UniversityCreate,
     UniversityDeactivate,
     UniversityEnvelope,
+    UniversityFilterQuery,
     UniversityMatchPage,
     UniversityPage,
     UniversityPriority,
@@ -97,6 +99,14 @@ async def search_universities(query: Annotated[UniversitySearchQuery, Query()], 
     before /{university_id}, which would otherwise read "search" as an id."""
     await svc.require_reader(db, user)
     return await university_search.search(db, user, query)
+
+
+@router.get("/map", response_model=PartnershipMapPage)
+async def partnership_map(query: Annotated[UniversityFilterQuery, Query()], user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """upc-025: the Global Partnership Map -- partner-status counts per country for the search's filters (MP2-MP10). Declared before
+    /{university_id}."""
+    await svc.require_reader(db, user)
+    return await university_search.country_counts(db, user, query)
 
 
 @router.post("", status_code=201, response_model=UniversityEnvelope)

@@ -94,6 +94,7 @@ from app.partnership_meeting_types import MAX_CONTACTS as MEETING_MAX_CONTACTS
 from app.partnership_meeting_types import MAX_EMPLOYEES as MEETING_MAX_EMPLOYEES
 from app.partnership_meeting_types import MODES as MEETING_MODES
 from app.partnership_meeting_types import TYPES as MEETING_TYPES
+from app.partnership_stages import STAGE_KEYS as PARTNERSHIP_STAGE_KEYS
 from app.services.agent_visa import VISA_CASE_STAGES
 from app.tel_content_kinds import ASSET_KINDS as TEL_ASSET_KINDS
 from app.tel_sources import TEL_SOURCES
@@ -9993,7 +9994,7 @@ class ExpectedPage(BaseModel):
     items: list[ExpectedUniversity]
 
 
-# --- upc-022 (DEC-SCOPE-167, spec DB1-DB16): the §22 partnership manager dashboard, Appendix B D1-D14 + the §20 bands ---------------
+# --- upc-022 (DEC-SCOPE-168, spec DB1-DB16): the §22 partnership manager dashboard, Appendix B D1-D14 + the §20 bands ---------------
 class DashboardMonth(BaseModel):
     first: date
     last: date
@@ -10039,11 +10040,18 @@ class PartnershipDashboard(BaseModel):
 PartnerStatusFilter = Literal["partner", "in_progress", "target", "lost", "not_partnered"]  # SR11 (Appendix B G1-G4)
 
 
-class UniversitySearchQuery(BaseModel):
-    """The §25 search fields and filters as query parameters; every one only narrows. Cross-field rules (SR8, SR13) are 422s."""
+class UniversityFilterQuery(BaseModel):
+    """The §25 search fields and filters as query parameters; every one only narrows. Cross-field rules (SR8, SR13) are 422s. upc-025's
+    map takes exactly these (MP3), so a country link to the search lists what the map counted; it added iso2, stage, priority, activity
+    and exclusivity (MP4-MP8)."""
 
     q: str | None = Field(None, max_length=200)
     country: str | None = Field(None, max_length=100)
+    iso2: str | None = Field(None, pattern="^[A-Za-z]{2}$")
+    stage: Literal[PARTNERSHIP_STAGE_KEYS] | None = None
+    priority: UniversityPriority | None = None
+    activity: Literal["active", "inactive", "all"] = "active"
+    exclusivity: AgreementExclusivity | None = None
     region: Literal[COUNTRY_REGIONS] | None = None
     city: str | None = Field(None, max_length=120)
     institution_type: InstitutionType | None = None
@@ -10062,11 +10070,9 @@ class UniversitySearchQuery(BaseModel):
     manager: str | None = Field(None, max_length=36)
     expected_from: date | None = None
     expected_to: date | None = None
-    limit: int = Field(50, ge=1, le=100)
-    offset: int = Field(0, ge=0)
 
     @model_validator(mode="after")
-    def _ranges(self) -> "UniversitySearchQuery":
+    def _ranges(self) -> "UniversityFilterQuery":
         if (self.tuition_min is not None or self.tuition_max is not None) and self.tuition_currency is None:
             raise ValueError("Choose a currency for the tuition range")
         if self.tuition_min is not None and self.tuition_max is not None and self.tuition_min > self.tuition_max:
@@ -10078,6 +10084,11 @@ class UniversitySearchQuery(BaseModel):
     @property
     def course_filtered(self) -> bool:
         return bool((self.course or "").strip() or self.level or self.intake or self.tuition_currency)
+
+
+class UniversitySearchQuery(UniversityFilterQuery):
+    limit: int = Field(50, ge=1, le=100)
+    offset: int = Field(0, ge=0)
 
 
 class UniversitySearchRow(UniversityRow):
@@ -10120,3 +10131,30 @@ class PartnershipAlertPage(BaseModel):
     unread: int  # every kind, for the nav badge
     limit: int
     offset: int
+
+
+class PartnershipMapTotals(BaseModel):
+    """upc-025: Appendix B G1 (partner), G2 (in progress), G3 (target) and the Lost/Closed flag, plus their sum."""
+
+    partner: int
+    in_progress: int
+    target: int
+    lost: int
+    total: int
+
+
+class PartnershipMapCountry(PartnershipMapTotals):
+    iso2: str | None
+    name: str
+    region: str | None
+
+
+class PartnershipMapStage(BaseModel):
+    key: str
+    label: str
+
+
+class PartnershipMapPage(BaseModel):
+    countries: list[PartnershipMapCountry]
+    totals: PartnershipMapTotals
+    stages: list[PartnershipMapStage]

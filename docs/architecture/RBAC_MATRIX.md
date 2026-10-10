@@ -1568,7 +1568,6 @@ Restricted (U2). Routes are listed in §12CG.
 | no session | `401` | `401` | `401` |
 
 - No student identity leaves these routes; audit rows and logs carry ids, the currency and a count only — never an amount, a reference or a note.
-
 ### 2.92 University communication history *(net-new, added 2026-10-10 — `DEC-SCOPE-166`, `upc-013`)*
 
 The upc-012 communications rule (`university_comms.require_reader`): the role gate (`403`) first, then the university (`404`). Read-only.
@@ -1583,9 +1582,21 @@ Routes are listed in §12CH.
 
 - Documents follow upc-026's visibility (never the commission agreement for a non-commission role); no entry carries commission terms.
 
-### 2.93 Partnership manager dashboard *(net-new, added 2026-10-10 — `DEC-SCOPE-167`, `upc-022`)*
+### 2.93 Global partnership map *(net-new, added 2026-10-10 — `DEC-SCOPE-167`, `upc-025`)*
 
-The inline pattern; the scope is in the SQL `WHERE`. Routes are listed in §12CI. Counts only: no names, no commission data.
+Enforced in `api/partnership_universities.partnership_map`: `partnership_universities.require_reader` comes first. In
+`services/university_search.country_counts`, `commission_min` is dropped for any role without `partnership_access.can_see_commission`
+(U2), as in §2.89. The response holds counts only, with no commission value and no row-level data.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Per-country partner-status counts for every university (all filters but commission) | ✅ all | ✅ all | ✅ all | ✅ all | `403` (anonymous `401`) |
+| Exclusivity filter (agreement metadata, not commercial) | ✅ | ✅ | ✅ | ✅ | — |
+| Commission filter (`commission_min`) | ✅ | ✅ | ignored (never filters) | ✅ | — |
+
+### 2.94 Partnership manager dashboard *(net-new, added 2026-10-10 — `DEC-SCOPE-168`, `upc-022`)*
+
+The inline pattern; the scope is in the SQL `WHERE`. Routes are listed in §12CJ. Counts only: no names, no commission data.
 
 | Role | `GET /partnership/dashboard` — universities (D1–D13) | Follow-up bands (D14) |
 |---|---|---|

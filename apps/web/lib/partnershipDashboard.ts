@@ -1,6 +1,6 @@
 import { expectedHref, weightedText } from "@/lib/partnershipExpected";
 
-// upc-022 (DEC-SCOPE-167, §22 + §20): the partnership manager dashboard -- Appendix B D1-D14 and the follow-up bands. The API computes
+// upc-022 (DEC-SCOPE-168, §22 + §20): the partnership manager dashboard -- Appendix B D1-D14 and the follow-up bands. The API computes
 // every figure for the caller's scope; this file only names the tiles and the list each one opens (DB16: the closest existing filter).
 export type PartnershipDashboard = {
   today: string;

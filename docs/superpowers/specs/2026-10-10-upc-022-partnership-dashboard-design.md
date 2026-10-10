@@ -11,7 +11,7 @@
   their team; a counselor → 403; month boundary in IST.*
 - Dependencies upc-007, 009, 010, 014, 020, 023 are merged on main.
 
-## 2. Decisions (recommended answers, `NEEDS_CONFIRMATION` at sign-off — registered as DEC-SCOPE-167)
+## 2. Decisions (recommended answers, `NEEDS_CONFIRMATION` at sign-off — registered as DEC-SCOPE-168)
 
 | # | Question | Answer |
 |---|---|---|

@@ -323,7 +323,7 @@ Division `global`; signs in at `/admin/login`; lands on `/telecaller/manager/tea
 Division `overseas`; signs in at `/overseas/login`; lands on `/partnership/dashboard`. Sidebar: Dashboard · Profile. The EVID-020 §32
 menu (19 entries, `PARTNERSHIP_MENU` in `lib/navigation.ts`) joins the sidebar one entry at a time as each upc item lands (PU8).
 
-- /partnership/dashboard — greeting, a profile summary card (Employee ID, reporting head) and "Coming soon to your CRM" (the §32 areas not yet built, as text). *(upc-022, `DEC-SCOPE-167`)* above them: Follow-ups (4 bands), Global Partnership Overview (D1–D5) and This Month (D6–D14), each figure linking to its list; heads open it from their nav (first entry, Dashboard). A missing profile shows the 403 message.
+- /partnership/dashboard — greeting, a profile summary card (Employee ID, reporting head) and "Coming soon to your CRM" (the §32 areas not yet built, as text). *(upc-022, `DEC-SCOPE-168`)* above them: Follow-ups (4 bands), Global Partnership Overview (D1–D5) and This Month (D6–D14), each figure linking to its list; heads open it from their nav (first entry, Dashboard). A missing profile shows the 403 message.
 - /partnership/profile — read-only profile (name, Employee ID, mobile, email, reporting head, status) plus an editable mobile (PU3).
 - /partnership — redirects to `/partnership/dashboard`.
 - /partnership/universities — *(upc-003, `DEC-SCOPE-120`)* the University Master, now a live sidebar entry (Dashboard · University
