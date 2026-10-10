@@ -9902,11 +9902,33 @@ class PerformanceCommission(BaseModel):
     received: list[CurrencyAmount]
 
 
+class PerformanceHealthFactor(BaseModel):
+    key: str
+    label: str
+    tracked: bool
+    has_data: bool
+    measure: str | None
+    weight: int
+    points: int | None
+
+
+class PerformanceHealth(BaseModel):
+    """upc-028 (DEC-SCOPE-168, HS1-HS9): the §30 score as of today. `factors` (the breakdown, which includes commission) is sent to the
+    commission roles only; the routes exclude unset fields, so every other reader gets the score and band without it."""
+
+    as_of: date
+    score: int | None
+    band: Literal["excellent", "good", "needs_attention", "insufficient_data"]
+    band_label: str
+    factors: list[PerformanceHealthFactor] | None = None
+
+
 class UniversityPerformanceRow(BaseModel):
     rank: int
     university: PerformanceUniversity
     counts: PerformanceCounts
     commission: PerformanceCommission | None = None
+    health: PerformanceHealth | None = None  # null for a non-partner (HS1)
 
 
 class UniversityPerformancePage(_PerformancePeriod):
@@ -9922,6 +9944,7 @@ class UniversityPerformance(_PerformancePeriod):
     university: PerformanceUniversity
     counts: PerformanceCounts
     commission: PerformanceCommission | None = None
+    health: PerformanceHealth | None = None
 
 
 # --- upc-023 (DEC-SCOPE-161, spec §4): §23 expected partnerships, the §24 probability and the weighted forecast (Appendix B E1-E4) ---

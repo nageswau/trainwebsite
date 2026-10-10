@@ -6,6 +6,8 @@ never re-scored). A constant number of queries whatever the team size."""
 
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta
+from math import floor
+from statistics import median
 from typing import NamedTuple, cast
 from uuid import UUID
 
@@ -22,15 +24,19 @@ from app.models import (
     UniversityAgreement,
     UniversityAgreementEvent,
     UniversityAssignmentHistory,
+    UniversityCall,
     UniversityMeeting,
+    UniversityMessage,
     UniversityStageHistory,
     VisaCase,
 )
 from app.partnership_stages import STAGE_KEYS
 from app.partnership_target_kpis import KPIS
+from app.services import university_commission as commission
 from app.services.agent_applications import OFFER_COUNTED_STATUSES, WITHDRAWN
-from app.services.bdm_appointments import IST
+from app.services.bdm_appointments import IST, today_ist
 from app.services.bdm_metrics import month_range
+from app.services.university_agreements import STATUS_LABELS, effective_status
 
 TRACKED = tuple(k.key for k in KPIS if k.tracked)
 CONTACTED_OR_LATER = STAGE_KEYS[STAGE_KEYS.index("initial_contact") :]  # T2 = D6
@@ -254,3 +260,176 @@ def forecast_windows(today: date) -> tuple[Window, ...]:
 def weighted(probabilities: list[int]) -> float:
     """E4: Σ probability, in partnerships (10 × 80% = 8.0), to one decimal."""
     return round(sum(probabilities) / 100, 1)
+
+
+# --- upc-028 (DEC-SCOPE-168, spec HS1-HS11): the §30 partnership health score, computed on read as of today (IST) -------------------
+# Each factor is normalised to 0-1 (None = no data: left out, its weight shared out over the rest, HS5); the points are rounded by the
+# largest remainder so the breakdown always adds up to the score (AC1). The commission factor is in every score but its breakdown is the
+# caller's to strip for non-commission roles (HS9).
+
+
+class Factor(NamedTuple):
+    key: str
+    label: str
+    weight: int
+    tracked: bool
+
+
+HEALTH_FACTORS = (
+    Factor("applications", "Student applications", 15, True),
+    Factor("offers", "Offers", 10, True),
+    Factor("visa_success", "Visa success", 10, True),
+    Factor("enrolments", "Enrolments", 15, True),
+    Factor("commission", "Commission", 10, True),
+    Factor("response_time", "Response time", 10, True),
+    Factor("meetings", "Meeting frequency", 15, True),
+    Factor("agreement", "Agreement status", 15, True),
+    Factor("satisfaction", "Student satisfaction", 0, False),  # Q-24: not tracked, excluded
+)
+BAND_LABELS = {"excellent": "Excellent", "good": "Good", "needs_attention": "Needs attention", "insufficient_data": "Insufficient data"}
+HEALTH_DAYS, RECENT_DAYS = 365, 90  # HS3: the student factors look back a year; meetings and replies 90 days
+FULL_APPLICATIONS, FULL_ENROLMENTS, FULL_MEETINGS = 20, 10, 3
+FAST_REPLY_DAYS, SLOW_REPLY_DAYS = 2, 14  # HS4
+AGREEMENT_VALUES = {"active": 1.0, "signed": 1.0, "expiring": 0.5}  # AG4 effective status; anything else 0
+EVER_IN_FORCE = ("signed", "active", "renewed")  # HS8: an agreement that is or was in force is evidence
+
+
+def band(score: int) -> str:
+    """HS7: Excellent >= 80, Good 60-79, Needs attention < 60."""
+    return "excellent" if score >= 80 else "good" if score >= 60 else "needs_attention"
+
+
+def health_score(values: dict[str, float | None]) -> tuple[int, dict[str, int | None]]:
+    """HS5/HS6: the 0-100 score and each factor's points (None when untracked or without data); Σ points = score."""
+    have = [f for f in HEALTH_FACTORS if f.tracked and values.get(f.key) is not None]
+    weights = sum(f.weight for f in have)
+    shares = {f.key: f.weight * min(max(cast(float, values[f.key]), 0.0), 1.0) * 100 / weights for f in have} if weights else {}
+    score = floor(sum(shares.values()) + 0.5 + 1e-9)
+    points = {key: floor(share + 1e-9) for key, share in shares.items()}
+    by_remainder = sorted(shares, key=lambda key: points[key] - shares[key])  # largest remainder first; stable in factor order
+    for key in by_remainder[: score - sum(points.values())]:
+        points[key] += 1
+    return score, {f.key: points.get(f.key) for f in HEALTH_FACTORS}
+
+
+def _ratio(part: int, whole: int, noun: str) -> str:
+    return f"{part} of {whole} {noun} ({round(part * 100 / whole)}%)"
+
+
+def _days(value: float) -> str:
+    text = f"{value:.1f}".removesuffix(".0")
+    return f"{text} day" if text == "1" else f"{text} days"
+
+
+async def health(db: AsyncSession, university_ids: list[UUID], now: datetime) -> dict[UUID, dict]:
+    """HS3/HS4/HS8 per university as of `now`; the caller passes partners only (HS1). A constant number of grouped queries."""
+    if not university_ids:
+        return {}
+    today = today_ist(now)
+    first = today - timedelta(days=HEALTH_DAYS - 1)
+    start, end = ist_range(first, today)
+    recent = ist_range(today - timedelta(days=RECENT_DAYS - 1), today)[0]
+    ours = OverseasApplication.university_id.in_(university_ids)
+    funnel = await funnel_counts(db, university_ids, first, today)
+
+    decided: dict[UUID, dict[str, int]] = defaultdict(dict)
+    rows = await db.execute(
+        select(OverseasApplication.university_id, VisaCase.decision, func.count())
+        .join(VisaCase, VisaCase.application_id == OverseasApplication.id)
+        .where(ours, VisaCase.decision.in_(("approved", "refused")), VisaCase.decided_at >= start, VisaCase.decided_at < end)
+        .group_by(OverseasApplication.university_id, VisaCase.decision)
+    )
+    for university_id, decision, n in rows.all():
+        decided[university_id][cast(str, decision)] = n  # the WHERE excludes null
+
+    # Replies (HS4): an incoming call, a connected outgoing call or a completed meeting; completed meetings also give the frequency.
+    replies: dict[UUID, list[datetime]] = defaultdict(list)
+    meetings: dict[UUID, int] = defaultdict(int)
+    completed = await db.execute(
+        select(UniversityMeeting.university_id, UniversityMeeting.completed_at).where(
+            UniversityMeeting.university_id.in_(university_ids), UniversityMeeting.status == "completed", UniversityMeeting.completed_at >= recent,
+            UniversityMeeting.completed_at < end,
+        )
+    )  # fmt: skip
+    for university_id, at in completed.all():
+        meetings[university_id] += 1
+        replies[university_id].append(cast(datetime, at))  # completed, so never null (the CHECK)
+    calls = await db.execute(
+        select(UniversityCall.university_id, UniversityCall.occurred_at).where(
+            UniversityCall.university_id.in_(university_ids), UniversityCall.occurred_at >= recent, UniversityCall.occurred_at <= now,
+            or_(UniversityCall.direction == "incoming", UniversityCall.outcome == "connected"),
+        )
+    )  # fmt: skip
+    for university_id, at in calls.all():
+        replies[university_id].append(at)
+    sent: dict[UUID, list[datetime]] = defaultdict(list)
+    messages = await db.execute(
+        select(UniversityMessage.university_id, UniversityMessage.sent_at).where(
+            UniversityMessage.university_id.in_(university_ids), UniversityMessage.sent_at >= recent, UniversityMessage.sent_at <= now,
+            or_(UniversityMessage.delivery_status.is_(None), UniversityMessage.delivery_status != "failed"),  # a failed email never arrived
+        )
+    )  # fmt: skip
+    for university_id, at in messages.all():
+        sent[university_id].append(at)
+
+    agreements: dict[UUID, list[UniversityAgreement]] = defaultdict(list)
+    for a in (await db.scalars(select(UniversityAgreement).where(UniversityAgreement.university_id.in_(university_ids)))).all():
+        agreements[a.university_id].append(a)
+
+    expected_rows = await commission.expected_rows(db, university_ids)
+    received = await commission.received_sums(db, university_ids)
+
+    found: dict[UUID, dict] = {}
+    for university_id in university_ids:
+        counts = funnel.get(university_id, dict.fromkeys(FUNNEL, 0))
+        applications, offers, enrolments = counts["applications"], counts["offers"], counts["enrolled"]
+        approved, refused = decided[university_id].get("approved", 0), decided[university_id].get("refused", 0)
+        decisions = approved + refused
+        expected = {c: v for c, v in commission.currency_sums(expected_rows.get(university_id, [])).items() if v > 0}
+        paid = received.get(university_id, {})
+        collected = sum(min(float(paid.get(c, 0)) / float(v), 1.0) for c, v in expected.items()) / len(expected) if expected else None
+        waits = [
+            (min((r for r in replies[university_id] if r > at), default=now) - at).total_seconds() / 86400 for at in sent[university_id]
+        ]  # fmt: skip
+        wait = median(waits) if waits else None
+        statuses = [effective_status(a, today) for a in agreements[university_id]]
+        best = max(statuses, key=lambda s: AGREEMENT_VALUES.get(s, 0.0), default=None)
+
+        values: dict[str, float | None] = {
+            "applications": min(applications / FULL_APPLICATIONS, 1.0),
+            "offers": min(offers / applications, 1.0) if applications else None,
+            "visa_success": approved / decisions if decisions else None,
+            "enrolments": min(enrolments / FULL_ENROLMENTS, 1.0),
+            "commission": collected,
+            "response_time": None if wait is None else min(max((SLOW_REPLY_DAYS - wait) / (SLOW_REPLY_DAYS - FAST_REPLY_DAYS), 0.0), 1.0),
+            "meetings": min(meetings[university_id] / FULL_MEETINGS, 1.0),
+            "agreement": AGREEMENT_VALUES.get(best, 0.0) if best else 0.0,
+        }
+        measures = {
+            "applications": f"{applications} in the last 12 months",
+            "offers": _ratio(offers, applications, "applications") if applications else "No applications in the last 12 months",
+            "visa_success": _ratio(approved, decisions, "decisions approved") if decisions else "No visa decisions in the last 12 months",
+            "enrolments": f"{enrolments} in the last 12 months",
+            "commission": f"{round(cast(float, collected) * 100)}% of expected commission received" if expected else "No expected commission",
+            "response_time": f"Median {_days(wait)} to a reply ({len(waits)} message{'' if len(waits) == 1 else 's'})" if wait is not None else "No messages in the last 90 days",
+            "meetings": f"{meetings[university_id]} completed in the last {RECENT_DAYS} days",
+            "agreement": STATUS_LABELS.get(best, best) if best else "No agreement",
+            "satisfaction": "Not tracked",
+        }  # fmt: skip
+        evidence = (
+            applications or offers or decisions or enrolments or meetings[university_id] or sent[university_id] or expected
+            or any(a.status in EVER_IN_FORCE for a in agreements[university_id])
+        )  # fmt: skip
+        score, points = health_score(values) if evidence else (None, {})
+        key = band(score) if score is not None else "insufficient_data"
+        found[university_id] = {
+            "as_of": today, "score": score, "band": key, "band_label": BAND_LABELS[key],
+            "factors": [
+                {
+                    "key": f.key, "label": f.label, "tracked": f.tracked, "has_data": values.get(f.key) is not None, "measure": measures[f.key],
+                    "weight": f.weight, "points": points.get(f.key), "value": values.get(f.key),
+                }
+                for f in HEALTH_FACTORS
+            ],
+        }  # fmt: skip
+    return found
