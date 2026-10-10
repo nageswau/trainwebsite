@@ -65,6 +65,7 @@ async def import_courses(
 ):
     """201 with the per-row report; a bad file is 422/413 before any row (nothing is created)."""
     started = time.monotonic()
+    await unis.require_reader(db, user)  # upc-033 PX7: refuse the role before the upload is read (the university import's order)
     key, raw = await _read_upload(file, idempotency_key, TARGET, user)
     filled = _read_csv(raw, target_type=TARGET, user=user, required=imp.REQUIRED, columns=imp.COLUMNS, max_rows=imp.MAX_ROWS, known=imp.COLUMNS)
     try:

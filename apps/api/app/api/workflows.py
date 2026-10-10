@@ -1887,7 +1887,7 @@ async def send_counselor_message(payload: dict, user: User = Depends(get_current
 @router.get("/overseas/applications")
 async def list_overseas_applications(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require(user, {"overseas_student", "counselor", "overseas_admin", "university_rep", "agent"}, "overseas")
-    stmt = with_owner(select(OverseasApplication, University).join(University))
+    stmt = with_owner(select(OverseasApplication, University).join(University, University.id == OverseasApplication.university_id))
     if user.role == "overseas_student":
         stmt = stmt.where(OverseasApplication.student_id == user.id)
     elif user.role == "counselor":
