@@ -1200,6 +1200,8 @@ Common conventions:
 - **Complexity:** medium · **Risk:** low
 
 ### upc-030 — University 360 view for other roles
+- **Status (2026-10-10):** built on `feature/upc-030` under `DEC-SCOPE-162` (UV1–UV12, recommended answers), with **no migration**, API
+  §12CD and RBAC §2.88. Spec: `docs/superpowers/specs/2026-10-10-upc-030-university-360-view-design.md`.
 - **Business requirement:** the closing note (one record; each role sees only what is relevant); §16 "counselors know exactly what each
   partner university offers" (U14).
 - **Existing behavior:**
