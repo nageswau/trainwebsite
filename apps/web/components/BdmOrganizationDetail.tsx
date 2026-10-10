@@ -28,6 +28,7 @@ import type { SchoolActivity } from "@/lib/bdmSchoolActivity";
 import type { TaskPage } from "@/lib/bdmTasks";
 import { display, isOrganizationBody, LINK_STYLE, meetingText, type Organization, ORG_TYPE_LABEL, ORGS_URL, safeWebsite } from "@/lib/bdmOrganizations";
 import { formatDate } from "@/lib/formatDate";
+import { bdmUniversityPath } from "@/lib/universityView";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // bdm-005 QA5-06: an archived or Lost organization refuses every MoU write (409); the card says so instead of just showing no buttons.
@@ -126,9 +127,14 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
       ),
     ],
     ["Existing partner", org.existing_partner ? "Yes" : "No"],
-    // upc-004 UD10: the linked University Master record (read-only for BDMs)
+    // upc-004 UD10: the linked University Master record (read-only for BDMs); upc-030: it opens the BDM's 360 view of it (U13)
     ...(org.org_type === "university"
-      ? ([["University Master", org.university ? `${org.university.university_code} · ${org.university.name}, ${org.university.country_name}` : "Not linked"]] as [string, string][])
+      ? ([[
+          "University Master",
+          org.university ? (
+            <Link href={bdmUniversityPath(org.university.id)}>{`${org.university.university_code} · ${org.university.name}, ${org.university.country_name}`}</Link>
+          ) : "Not linked",
+        ]] as [string, ReactNode][])
       : []),
     ["Courses interested", multiline(org.courses_interested)],
     ["Number of students", display(org.student_count)],
