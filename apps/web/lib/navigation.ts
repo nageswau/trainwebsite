@@ -156,7 +156,7 @@ export const PARTNERSHIP_MENU: PartnershipMenuEntry[] = [
   menu("MoU & Agreements", "agreements", "upc-014", true), menu("Commercial Terms", "commercial-terms", "upc-016", true),
   menu("Courses & Programs", "courses", "upc-017", true), menu("Student Opportunities", "opportunities", "upc-018", true),
   menu("University Performance", "performance", "upc-018", true), menu("Follow-ups & Tasks", "tasks", "upc-020", true), menu("Calendar", "calendar", "upc-011", true),
-  menu("Documents", "documents", "upc-026", true), menu("Alerts", "alerts", "upc-015"), menu("Targets & Forecast", "targets", "upc-021", true),
+  menu("Documents", "documents", "upc-026", true), menu("Alerts", "alerts", "upc-015", true), menu("Targets & Forecast", "targets", "upc-021", true),
   menu("Global Partnership Map", "map", "upc-025"), menu("Reports", "reports", "upc-031"),
 ];
 export const PARTNERSHIP_NAV: NavItem[] = [
@@ -174,6 +174,7 @@ export const PARTNERSHIP_HEAD_NAV: NavItem[] = [
   { label: "Follow-ups & Tasks", href: "/partnership/tasks" }, // upc-020
   { label: "Calendar", href: "/partnership/calendar" }, // upc-011
   { label: "Documents", href: "/partnership/documents" }, // upc-026 (DC12)
+  { label: "Alerts", href: "/partnership/alerts" }, // upc-015 (AL14)
   { label: "Message templates", href: "/partnership/head/templates" }, // upc-012 (UC4)
   { label: "Targets & Forecast", href: "/partnership/targets" }, // upc-021
 ];

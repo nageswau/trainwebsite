@@ -148,6 +148,15 @@ def send_telecaller_alerts_task():
 
 
 @celery.task
+def send_partnership_alerts_task():
+    """upc-015 (DEC-SCOPE-162 AL3): every IST hour via beat, acting from 09:00 IST. Idempotent per alert (notifications.dedupe_key), so the
+    later runs of the day create nothing new and a worker restart during the day still sends that day's alerts."""
+    from app.services.partnership_alerts import run_partnership_alerts
+
+    return _run_with_fresh_pool(run_partnership_alerts)
+
+
+@celery.task
 def deliver_lead_email_task(message_id: str):
     """tel-014 (DEC-SCOPE-106 E4/E5): send one queued lead email; retries are re-enqueued by `deliver_lead_email` itself."""
     from app.notifications.lead_email import deliver_lead_email
@@ -204,4 +213,5 @@ celery.conf.beat_schedule = {
     "tel020-alerts": {"task": "app.worker.send_telecaller_alerts_task", "schedule": 900.0},
     "rec026-sweep-stale-recruiter-emails": {"task": "app.worker.sweep_stale_recruiter_emails_task", "schedule": 300.0},
     "upc012-sweep-stale-university-emails": {"task": "app.worker.sweep_stale_university_emails_task", "schedule": 300.0},
+    "upc015-alerts": {"task": "app.worker.send_partnership_alerts_task", "schedule": crontab(minute=30)},  # UTC :30 = every IST hour
 }
