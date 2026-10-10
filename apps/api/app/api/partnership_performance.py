@@ -91,18 +91,24 @@ async def _health(db: AsyncSession, user: User, unis: list[University]) -> dict[
     return {u.id: scored.get(u.id) for u in unis}
 
 
+async def ranked_rows(db: AsyncSession, user: User, first_day: date, last_day: date) -> tuple[list[tuple[University, str, dict[str, int]]], dict[str, int]]:
+    """PF7/PF8: active universities in scope that are partners or have any step in the period, by enrolled then applications, and the
+    totals over every ranked row (upc-031's performance report reads the same rows)."""
+    team = await universities.team_of(db, user)
+    rows = (await db.execute(select(University, Country.name).join(Country, Country.id == University.country_id).where(University.active.is_(True), *_scope(user, team)))).all()
+    found = await funnel_counts(db, [uni.id for uni, _ in rows], first_day, last_day)
+    ranked = [(uni, country, found.get(uni.id, {})) for uni, country in rows if uni.id in found or _partner(uni)]
+    ranked.sort(key=lambda r: (-r[2].get("enrolled", 0), -r[2].get("applications", 0), r[0].name.casefold(), str(r[0].id)))
+    return ranked, {key: sum(counts.get(key, 0) for *_, counts in ranked) for key in FUNNEL}
+
+
 @router.get("/performance", response_model=UniversityPerformancePage, response_model_exclude_unset=True)
 async def performance(first: str | None = FROM, last: str | None = TO, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """PF7: active universities in scope that are partners or have any step in the period, by enrolled then applications.
     `totals` is over every ranked row (PF8), not the page."""
     await universities.require_reader(db, user)
     first_day, last_day = await _period(db, first, last)
-    team = await universities.team_of(db, user)
-    rows = (await db.execute(select(University, Country.name).join(Country, Country.id == University.country_id).where(University.active.is_(True), *_scope(user, team)))).all()
-    found = await funnel_counts(db, [uni.id for uni, _ in rows], first_day, last_day)
-    ranked = [(uni, country, found.get(uni.id, {})) for uni, country in rows if uni.id in found or _partner(uni)]
-    ranked.sort(key=lambda r: (-r[2].get("enrolled", 0), -r[2].get("applications", 0), r[0].name.casefold(), str(r[0].id)))
-    totals = {key: sum(counts.get(key, 0) for *_, counts in ranked) for key in FUNNEL}
+    ranked, totals = await ranked_rows(db, user, first_day, last_day)
     shown = ranked[offset : offset + limit]
     scores = await _health(db, user, [uni for uni, *_ in shown])  # HS10: the page's rows only
     items = [{"rank": offset + i + 1, "university": _university(uni, country), "counts": _counts(counts), "health": scores[uni.id]} for i, (uni, country, counts) in enumerate(shown)]
