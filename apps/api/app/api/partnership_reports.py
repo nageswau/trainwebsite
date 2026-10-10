@@ -1,4 +1,4 @@
-"""upc-031 (DEC-SCOPE-171, spec §3): the §32 partnership reports and their CSV export.
+"""upc-031 (DEC-SCOPE-173, spec §3): the §32 partnership reports and their CSV export.
 
 Checks run role (403; a manager without a profile too) → kind (404) → inputs (422, a sentence naming the form's field), so a refused caller
 never learns which kinds exist (RP4, the tel-024 order). Query parameters are plain strings validated after authorization. Reads are not

@@ -1,12 +1,14 @@
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import PartnershipTeamTable from "@/components/PartnershipTeamTable";
 import PartnershipMenuCard from "@/components/PartnershipMenuCard";
 
 afterEach(cleanup);
 
-const member = { id: "p1", full_name: "Rahul", email: "rahul@x.local", phone: null, active: false, employee_id: "P-1" };
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }) }));
+
+const member = { id: "p1", full_name: "Rahul", email: "rahul@x.local", phone: null, active: false, employee_id: "P-1", work: { primary: 0, backup: 0, tasks: 0 } };
 
 describe("PartnershipTeamTable (upc-001 AC4)", () => {
   it("lists the head's managers with status words and a caption", () => {
@@ -15,6 +17,16 @@ describe("PartnershipTeamTable (upc-001 AC4)", () => {
     expect(screen.getByText("Inactive")).toBeInTheDocument();
     expect(screen.getByText("—")).toBeInTheDocument();
     expect(screen.queryByRole("navigation")).toBeNull();
+  });
+
+  it("upc-032: shows each manager's universities and open tasks, with Reassign only for a manager with work", () => {
+    const busy = { ...member, id: "p2", full_name: "Meera", work: { primary: 3, backup: 1, tasks: 2 } };
+    render(<PartnershipTeamTable page={{ items: [member, busy], total: 2, limit: 50, offset: 0 }} />);
+    const [, , meera] = screen.getAllByRole("row");
+    expect(meera).toHaveTextContent("3 primary · 1 backup");
+    expect(screen.getByRole("cell", { name: "2" })).toHaveAttribute("data-label", "Open tasks");
+    expect(screen.getAllByRole("button")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Reassign Meera's work" })).toBeInTheDocument();
   });
 
   it("pages with links that keep the offset in the URL", () => {

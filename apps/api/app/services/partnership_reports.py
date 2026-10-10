@@ -1,4 +1,4 @@
-"""upc-031 (DEC-SCOPE-171, spec docs/superpowers/specs/2026-10-10-upc-031-partnership-reports-design.md): the §32 partnership reports.
+"""upc-031 (DEC-SCOPE-173, spec docs/superpowers/specs/2026-10-10-upc-031-partnership-reports-design.md): the §32 partnership reports.
 
 Five read-only tables, each built from the code behind the figure it repeats, so a report always reconciles with its page (AC): pipeline
 by country = the dashboard overview (upc-022 D1-D5), expected = upc-023's rows, performance = upc-018's ranking, agreements expiring =
@@ -14,7 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.partnership_expected import READERS, chosen_rows, expected_rows
-from app.api.partnership_performance import _add, _commission, ranked_rows
+from app.api.partnership_performance import _add, ranking
 from app.models import Country, University, UniversityAgreement, User
 from app.partnership_stages import effective_probability, label_of
 from app.partnership_target_kpis import KPIS
@@ -116,7 +116,7 @@ async def _expected(db: AsyncSession, user: User, today: date, raw: dict) -> dic
 async def _performance(db: AsyncSession, user: User, today: date, raw: dict) -> dict:
     """RP7: upc-018's ranking over the period (PF1: default this IST month to date), every ranked row, F3 + F5-F9."""
     first, last = period(_day(raw.get("from"), "From", today.replace(day=1)), _day(raw.get("to"), "To", today))
-    ranked, totals = await ranked_rows(db, user, first, last)
+    ranked, totals, money = await ranking(db, user, await partnership_universities.team_of(db, user), first, last)  # money: None outside U2 (RP12)
     steps = [s for s in STEPS if s.tracked]
     columns = [_col("rank", "Rank", True), _col("university", "University"), _col("code", "Code"), _col("country", "Country"), _col("stage", "Stage"),
                *(_col(s.key, s.label, True) for s in steps)]  # fmt: skip
@@ -125,7 +125,6 @@ async def _performance(db: AsyncSession, user: User, today: date, raw: dict) -> 
         for i, (uni, country, counts) in enumerate(ranked, start=1)
     ]  # fmt: skip
     out_totals: dict = {"rank": None, "university": "Total", "code": None, "country": None, "stage": None, **totals}
-    money = await _commission(db, user, [uni.id for uni, *_ in ranked], first, last)  # None for a non-U2 role (RP12)
     if money is not None:
         columns += [_col("commission_expected", "Commission expected"), _col("commission_received", "Commission received")]
         overall: dict[str, dict[str, Decimal]] = {"expected": {}, "received": {}}

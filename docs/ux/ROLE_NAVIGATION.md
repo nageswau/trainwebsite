@@ -333,10 +333,13 @@ menu (19 entries, `PARTNERSHIP_MENU` in `lib/navigation.ts`) joins the sidebar o
 
 Division `global`; created only by a Super Admin from Users; signs in at `/admin/login`; lands on `/partnership/head/team`. Sidebar: Team. Password recovery stays in the admin portal (the welcome/reset link opens `/admin/reset-password`, and `login_portal` is `"admin"`).
 
-- /partnership/head/team — the partnership managers who report to this head (paged, inactive included). A Super Admin sees all of them.
+- /partnership/head/team — the partnership managers who report to this head (paged, inactive included). A Super Admin sees all of them. upc-032: each row shows the manager's universities and open tasks, and Reassign moves them to another manager of the team.
 - /partnership/head — redirects to `/partnership/head/team`.
 - /partnership/universities — *(upc-003)* University Master in the head's sidebar (Team · University Master): add, edit and publish
   unowned or team-owned universities and assign their managers. Overseas Admin and Super Admin reach it from their Universities section.
+- /partnership/head/global-dashboard — *(upc-029, `DEC-SCOPE-172`)* "Global Dashboard" (second in the head's sidebar; "Partnership Global
+  Dashboard" for Super Admin): the §31 three columns, the Management §19 pipeline, the student funnel and commission totals for the team's
+  scope. Partnership managers are refused.
 
 **Signed-out `/partnership/*` (PU1):** `/partnership/head*` → `/admin/login?next=…`; any other `/partnership/*` → `/overseas/login?next=…`.
 

@@ -1194,6 +1194,10 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-029 — Complete global partnership dashboard (management)
+- **Status (2026-10-10):** built on `feature/upc-029` under `DEC-SCOPE-172` (GD1–GD17, recommended answers), with **no migration**, API
+  §12CN and RBAC §2.98. Spec: `docs/superpowers/specs/2026-10-10-upc-029-global-partnership-dashboard-design.md`.
+  - Managers are refused (their figures are upc-022's); the columns equal upc-022's D2–D4 and the funnel / commission equal
+    `/partnership/performance` for the same period (tested).
 - **Business requirement:** §31 (Active Partners / In Progress / Target List columns with the sub-views; pipeline; student funnel;
   commission).
 - **Existing behavior:** none.
@@ -1284,6 +1288,9 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-032 — Manager deactivation + bulk reassignment
+- **Status (2026-10-10):** built on `feature/upc-032` under `DEC-SCOPE-171` (Q-30 + RA1–RA14, recommended answers), with **no
+  migration**, API §12CM and RBAC §2.97. Spec: `docs/superpowers/specs/2026-10-10-upc-032-manager-reassignment-design.md`.
+  - Q-30: no automatic promotion; only the primary slot blocks deactivation; the head reassigns everything (primary, backup, open tasks).
 - **Business requirement:** §27 primary/backup ownership ("only the assigned manager should normally manage"); tel-025 precedent.
 - **Existing behavior:** generic user deactivation.
 - **Expected behavior:**

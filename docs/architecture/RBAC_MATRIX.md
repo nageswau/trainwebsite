@@ -1630,6 +1630,31 @@ score always includes the commission factor. The breakdown is removed for any ro
 | Health score and band of the partners in the list / one university | ✅ scope | ✅ scope | ✅ all | ✅ all | `403` (anonymous `401`) |
 | Breakdown (`factors`, including the commission measure) | ✅ | ✅ | — (key absent) | ✅ | — |
 
+### 2.97 Partnership manager deactivation + bulk reassignment *(net-new, added 2026-10-10 — `DEC-SCOPE-171`, `upc-032`)*
+
+`require_head`, then the source must be the head's direct report (`403` otherwise, logged); the target goes through upc-003's
+`locked_manager` (`422`). Routes are listed in §12CM.
+
+| Role | Reassign a manager's work | Deactivate a primary manager (`PATCH /admin/users`) |
+|---|---|---|
+| `partnership_head` | Direct reports → an active direct report | — (not an admin) |
+| `super_admin` | Any manager → any active manager | `422` until reassigned |
+| `overseas_admin` | `403` | `422` until reassigned |
+| `partnership_manager` | `403` | — |
+| any other role | `403` (anonymous `401`) | — |
+
+### 2.98 Complete global partnership dashboard *(net-new, added 2026-10-10 — `DEC-SCOPE-172`, `upc-029`)*
+
+The inline pattern; the scope is in the SQL `WHERE`. Routes are listed in §12CN. Counts, university names and open-task titles (never
+notes); commission per U2.
+
+| Role | `GET /partnership/global-dashboard` — universities | Commission totals |
+|---|---|---|
+| `partnership_head` | Their direct reports' universities + unowned | ✅ |
+| `super_admin` | All | ✅ |
+| `partnership_manager` | `403` (their own figures: §2.94) | — |
+| any other role | `403` (anonymous `401`) | — |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

@@ -16,7 +16,7 @@ const EMPTY: Record<PartnershipReportKind, string> = {
 
 const show = (value: string | number | null | undefined) => (value === null || value === undefined || value === "" ? "—" : String(value));
 
-// upc-031 (DEC-SCOPE-171, spec §5): one partnership report -- the tel-024 layout. A strip of report links (each report is its own
+// upc-031 (DEC-SCOPE-173, spec §5): one partnership report -- the tel-024 layout. A strip of report links (each report is its own
 // address, so a view can be shared and Back works), a plain GET filter form for the reports that have filters (no client JS), the
 // table and its CSV. Columns, labels and the Total row are the server's. On a phone the table stacks into labelled blocks
 // (`.table.stack`). `report` null + `error` = the read failed or the API refused the inputs; the form stays so they can be corrected.

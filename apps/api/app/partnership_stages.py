@@ -49,6 +49,17 @@ COLUMN_LABELS: dict[str, str] = {
 }
 COLUMNS: tuple[str, ...] = tuple(COLUMN_LABELS)
 GROUPS: dict[str, str] = {s.key: s.group for s in STAGES}
+# Appendix B "Management §19 pipeline" (Q-31; upc-029 GD13): each step and the §4 Kanban columns it gathers, in source order.
+MANAGEMENT_STEPS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
+    ("identified", "Identified", ("target",)),
+    ("contacted", "Contacted", ("contacted", "interested")),
+    ("meeting", "Meeting", ("meeting_scheduled",)),
+    ("proposal", "Proposal", ("proposal_sent",)),
+    ("negotiation", "Negotiation", ("negotiation",)),
+    ("agreement", "Agreement", ("agreement_pending",)),
+    ("signed", "Signed", ("signed",)),
+    ("active_partner", "Active Partner", ("active_partners",)),
+)
 PROBABILITY: dict[str, int] = {s.key: s.probability for s in STAGES}
 _BY_KEY: dict[str, Stage] = {s.key: s for s in STAGES}
 

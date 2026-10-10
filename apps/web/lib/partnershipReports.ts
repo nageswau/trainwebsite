@@ -1,4 +1,4 @@
-// upc-031 (DEC-SCOPE-171, spec §5): the five partnership reports -- types, tabs and URLs. Every figure, column label and Total row comes
+// upc-031 (DEC-SCOPE-173, spec §5): the five partnership reports -- types, tabs and URLs. Every figure, column label and Total row comes
 // from the API (services/partnership_reports.py), so the screen and the CSV always agree; the browser only lays them out.
 
 export type PartnershipReportKind = "pipeline" | "expected" | "performance" | "agreements" | "targets";

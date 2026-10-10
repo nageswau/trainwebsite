@@ -8,7 +8,7 @@ import { shellFor } from "@/lib/universities";
 
 const UNAVAILABLE = "This report is unavailable right now. Please try again.";
 
-// upc-031 (DEC-SCOPE-171, §32 "Reports"): the five partnership reports. The API decides the scope (a manager's universities, a head's team
+// upc-031 (DEC-SCOPE-173, §32 "Reports"): the five partnership reports. The API decides the scope (a manager's universities, a head's team
 // + unowned, everything for super_admin) and every figure; the role check here only spares other roles a screen that can only fail. A 422
 // (a refused filter) is shown above the form; a 403 is the access card.
 export default async function PartnershipReportsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
