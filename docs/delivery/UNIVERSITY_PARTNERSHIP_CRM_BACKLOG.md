@@ -1126,6 +1126,8 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-027 — Partner onboarding checklist
+- **Status (2026-10-10):** built on `feature/upc-027` under `DEC-SCOPE-167` (Q-27 + OB1–OB13, recommended answers), with migration
+  `0145_university_onboarding`, API §12CI and RBAC §2.93. Spec: `docs/superpowers/specs/2026-10-10-upc-027-partner-onboarding-design.md`.
 - **Business requirement:** §29 (Signed → Partner Onboarding; 10 items; Not Started → In Progress → Completed).
 - **Existing behavior:** none.
 - **Expected behavior:**

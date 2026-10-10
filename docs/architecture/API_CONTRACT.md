@@ -2597,6 +2597,19 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `GET /partnership/universities/{university_id}/timeline?limit(1–100, 50)&offset` | **→ 200** `{items: [{id, kind: stage\|call\|message\|meeting\|visit\|agreement\|task\|document, at, actor {id, full_name} \| null, event, from_value, from_label, to_value, to_label, subject, status, reason, duration_seconds, scheduled_for}], total, limit, offset}`, newest first (TL5). Per kind (spec D3): stage = move/lost/reopened with stage keys + labels; call = direction, outcome + label, contact name; message = channel, template name, contact name, subject, delivery status; meeting = event, meeting type, code, start; visit = action, from/to status, code; agreement = event, from/to status, MoU number, type; task = scheduled/done/cancelled, kind, due date, assignee name, title, source; document = uploaded/new_version, kind, version, title. Free text ≤ 200 characters. `404` unknown university; `422` non-UUID or bad paging |
 
+## 12CI. Partner onboarding checklist (`upc-027`) — addendum, 2026-10-10
+
+- **Basis:** `DEC-SCOPE-167` (OB1–OB13). Spec: `docs/superpowers/specs/2026-10-10-upc-027-partner-onboarding-design.md` §3. Migration `0145_university_onboarding`.
+- **Readers:** every university reader (`partnership_manager`, `partnership_head`, `overseas_admin` (division overseas), `super_admin`);
+  others `403`; no session `401`. **Writers:** `can_edit_timeline` (the university's managers, their head, `super_admin`).
+- **Behaviour:** one transaction per write (university row lock, scope, started / Lost checks, change, Partner Activated move, audit).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/universities/{university_id}/onboarding` | **→ 200** `{started, started_on, status: not_started\|in_progress\|completed, completed_count, items: [{kind, label, status, completed_by: manual\|auto\|null, completed_on, owner {id, full_name} \| null, due_date, note}], can_edit}`, the ten items in source order. `404` unknown university; `422` non-UUID |
+| `PATCH /partnership/universities/{university_id}/onboarding/{kind}` | Body (at least one): `status` (not null), `owner_user_id` (null clears), `due_date`, `note` (≤ 500, blank → null). **→ 200** the GET shape + `stage_advanced`. `403` role / scope; `404` university; `409` `onboarding_not_started`, `university_lost`, inactive; `422` unknown kind, bad status, owner not an active partnership manager / head / super_admin, note too long, empty body |
+| Course writes (§12 upc-017) | `POST …/courses`, `PATCH …/courses/{id}`, `POST …/courses/import` may also move the university to Partner Activated (OB8); their responses are unchanged |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

@@ -12,6 +12,7 @@ import UniversityFollowUp from "@/components/UniversityFollowUp";
 import UniversityDocuments from "@/components/UniversityDocuments";
 import UniversityCalls from "@/components/UniversityCalls";
 import UniversityMessages from "@/components/UniversityMessages";
+import UniversityOnboarding from "@/components/UniversityOnboarding";
 import UniversityStagePanel from "@/components/UniversityStagePanel";
 import UniversityTimeline from "@/components/UniversityTimeline";
 import { serverApi } from "@/lib/api";
@@ -258,5 +259,34 @@ describe("upc-013 university detail page", () => {
     const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
     expect(tree.find((el) => el.type === UniversityActivity)).toBeUndefined();
     expect(serverApi).not.toHaveBeenCalledWith(expect.stringContaining("/timeline"));
+  });
+});
+
+describe("upc-027 university detail page", () => {
+  const onboarding = { started: true, started_on: "2026-10-01", status: "not_started", completed_count: 0, items: [], can_edit: false };
+  const serve = (onboardingRead: () => Promise<unknown>) => vi.mocked(serverApi).mockImplementation(async (p: string) => {
+    if (p === "/api/v1/auth/me") return { role: "overseas_admin", full_name: "Asha" } as never;
+    if (p.includes("/stage-history")) return history as never;
+    if (p.includes("/milestones")) return milestones as never;
+    if (p.includes("/onboarding")) return onboardingRead() as never;
+    if (p.includes("/contacts")) return { items: [], total: 0, limit: 50, offset: 0 } as never;
+    if (p.includes("/documents")) return documents as never;
+    if (p.includes("/performance")) return performance as never;
+    return { university } as never;
+  });
+
+  it("adds Partner onboarding for every reader, read with the university and never remounted (QA27-01: the notice survives a refresh)", async () => {
+    serve(async () => onboarding);
+    const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
+    expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/universities/${ID}/onboarding`);
+    const section = tree.find((el) => el.type === UniversityOnboarding)!;
+    expect(section.props).toEqual({ universityId: ID, initial: onboarding });
+    expect(section.key).toBeNull(); // the section takes each refreshed `initial` itself
+  });
+
+  it("a failed onboarding read still shows the page, with Try again in the section", async () => {
+    serve(async () => { throw new Error("down"); });
+    const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
+    expect(tree.find((el) => el.type === UniversityOnboarding)!.props.initial).toBeNull();
   });
 });

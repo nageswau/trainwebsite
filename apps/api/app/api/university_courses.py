@@ -21,6 +21,7 @@ from app.models import COURSE_LEVELS, Country, OverseasCourse, University, User
 from app.schemas import CourseIn, CourseUpdate
 from app.services import partnership_universities as unis
 from app.services import university_courses as svc
+from app.services import university_onboarding as onboarding
 
 router = APIRouter(prefix="/partnership", tags=["partnership-courses"])
 PAGE = Query(50, ge=1, le=50)
@@ -71,6 +72,7 @@ async def create_course(university_id: UUID, payload: CourseIn, user: User = Dep
     db.add(course)
     await db.flush()
     svc.record(db, user, course, "create", changed=sorted(k for k, v in values.items() if v not in (None, "", [])))
+    await onboarding.activate_if_complete(db, user, uni)  # upc-027 OB8: the first active course can complete the checklist
     await db.commit()
     svc.log("university_course_created", user, course)
     return await _one(db, user, course)
@@ -89,6 +91,7 @@ async def update_course(university_id: UUID, course_id: UUID, payload: CourseUpd
             setattr(course, key, changes[key])
         svc.derive_texts(course, set(changed))
         svc.record(db, user, course, "update", changed=changed)
+        await onboarding.activate_if_complete(db, user, uni)  # upc-027 OB8: reactivating a course can complete the checklist
         await db.commit()
         svc.log("university_course_updated", user, course, fields=svc.field_names(changed))
     return await _one(db, user, course)

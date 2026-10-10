@@ -18,6 +18,7 @@ import UniversityCourses from "@/components/UniversityCourses";
 import UniversityFollowUp from "@/components/UniversityFollowUp";
 import UniversityDocuments from "@/components/UniversityDocuments";
 import UniversityMessages from "@/components/UniversityMessages";
+import UniversityOnboarding from "@/components/UniversityOnboarding";
 import UniversityStagePanel from "@/components/UniversityStagePanel";
 import UniversityTimeline from "@/components/UniversityTimeline";
 import VisitTable from "@/components/VisitTable";
@@ -46,7 +47,8 @@ import {
   visibilityLabel,
 } from "@/lib/universities";
 import type { MilestonePage } from "@/lib/partnershipMilestones";
-import { firstMilestones, firstStageHistory, firstTimeline, loadUniversity } from "@/lib/universitiesServer";
+import { firstMilestones, firstOnboarding, firstStageHistory, firstTimeline, loadUniversity } from "@/lib/universitiesServer";
+import type { OnboardingPage } from "@/lib/universityOnboarding";
 import type { ActivityRow } from "@/lib/universityActivity";
 import { type Agreement, AGREEMENT_READERS, type AgreementOptions, agreementOptionsUrl, agreementsUrl } from "@/lib/universityAgreements";
 import { documentsUrl, type UniversityDocument } from "@/lib/universityDocuments";
@@ -64,7 +66,8 @@ import { type CommissionLedger as Ledger, ledgerUrl } from "@/lib/commissionLedg
 // section (§13). upc-008: the Partnership timeline (§5 expected timeline + §6 milestones) for every reader; editing per
 // `can_edit_timeline`. upc-009: the Meetings section (MG16: the latest 5, scheduled first), for the meeting readers only.
 // upc-019: the Commission ledger (Expected / Received / Outstanding), for the commission roles only (U2). upc-013: the
-// Communication history (§12: everything kept on the university, newest first) for the communications readers.
+// Communication history (§12: everything kept on the university, newest first) for the communications readers. upc-027: Partner
+// onboarding (§29) for every reader, after the agreements (it starts when one is signed); editing per the API's `can_edit`.
 function Facts({ rows }: { rows: [string, ReactNode][] }) {
   return (
     <dl style={{ display: "grid", gridTemplateColumns: "minmax(120px, max-content) 1fr", gap: "6px 16px", margin: 0 }}>
@@ -80,10 +83,12 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
   const { id } = await params;
   let user: User, u: University, history: Page<StageEvent> | null, contacts: Page<UniversityContact>, roles: ContactRole[], visits: Page<VisitRow> | null,
     documents: Page<UniversityDocument>, agreements: Page<Agreement> | null, agreementOptions: AgreementOptions | null,
-    milestones: MilestonePage | null, meetings: MeetingPage | null, courses: CoursePage, courseOptions: CourseOptions | null,
+    milestones: MilestonePage | null, onboarding: OnboardingPage | null, meetings: MeetingPage | null, courses: CoursePage, courseOptions: CourseOptions | null,
     performance: UniversityPerformance | null, ledger: Ledger | null, timeline: Page<ActivityRow> | null;
   try {
-    [user, u, history, milestones] = await Promise.all([serverApi<User>("/api/v1/auth/me"), loadUniversity(id), firstStageHistory(id), firstMilestones(id)]);
+    [user, u, history, milestones, onboarding] = await Promise.all([
+      serverApi<User>("/api/v1/auth/me"), loadUniversity(id), firstStageHistory(id), firstMilestones(id), firstOnboarding(id),
+    ]);
     // upc-006: the contacts this reader may see (the API slices them), and the role list only for those who can edit.
     // upc-010: the latest visits, only for the roles that read visits (VS7; overseas_admin reads the master but not visits).
     // upc-026: the documents this reader may see (the API slices them: shareable only for overseas_admin, no commission agreement).
@@ -174,6 +179,8 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
           {agreements && (
             <UniversityAgreements universityId={u.id} agreements={agreements.items} options={agreementOptions} canManage={u.permissions.can_manage_agreements} />
           )}
+          {/* upc-027: not keyed -- it takes each refreshed checklist itself, so its notice survives the refresh (QA27-01) */}
+          <UniversityOnboarding universityId={u.id} initial={onboarding} />
           <UniversityDocuments universityId={u.id} documents={documents.items} canManage={u.permissions.can_manage_documents} />
           {/* upc-012 (UC3): calls and messages, for the partnership roles only; the contacts are the recipients */}
           {COMMS_READERS.has(user.role) && (

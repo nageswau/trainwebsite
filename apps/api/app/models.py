@@ -41,6 +41,9 @@ from app.partnership_meeting_types import MODES as UNIVERSITY_MEETING_MODES
 from app.partnership_meeting_types import STATUSES as UNIVERSITY_MEETING_STATUSES
 from app.partnership_meeting_types import TYPES as UNIVERSITY_MEETING_TYPES
 from app.partnership_milestones import MILESTONE_KEYS as UNIVERSITY_MILESTONE_KEYS
+from app.partnership_onboarding import ITEM_KEYS as ONBOARDING_ITEM_KEYS
+from app.partnership_onboarding import NOTE_MAX as ONBOARDING_NOTE_MAX
+from app.partnership_onboarding import STATUSES as ONBOARDING_STATUSES
 from app.partnership_stages import FIRST_STAGE as UNIVERSITY_FIRST_STAGE
 from app.partnership_stages import STAGE_KEYS as UNIVERSITY_STAGE_KEYS
 from app.partnership_target_kpis import KPI_KEYS as PARTNERSHIP_TARGET_KPI_KEYS
@@ -1181,6 +1184,35 @@ class UniversityMilestone(Base, TimestampMixin):
     kind: Mapped[str] = mapped_column(String(40))
     target_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     achieved_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+UNIVERSITY_ONBOARDING_CHECKS = {
+    "ck_university_onboarding_items_kind": _one_of("kind", ONBOARDING_ITEM_KEYS, nullable=False),
+    "ck_university_onboarding_items_status": _one_of("status", ONBOARDING_STATUSES, nullable=False),
+    "ck_university_onboarding_items_completed": "(status = 'completed') = (completed_on IS NOT NULL)",
+    "ck_university_onboarding_items_note": f"note IS NULL OR char_length(note) <= {ONBOARDING_NOTE_MAX}",
+}
+
+
+class UniversityOnboardingItem(Base, TimestampMixin):
+    """upc-027 (DEC-SCOPE-167, OB2): a university's recorded progress on one §29 onboarding item. Sparse: a row exists only once the item
+    was edited (the catalogue is the template), so a signed university shows ten Not Started items without a signing hook. The overall
+    status and the automatic course item are computed on read (services/university_onboarding)."""
+
+    __tablename__ = "university_onboarding_items"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_ONBOARDING_CHECKS.items()),
+        UniqueConstraint("university_id", "kind", name="uq_university_onboarding_items_kind"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"))
+    kind: Mapped[str] = mapped_column(String(40))
+    status: Mapped[str] = mapped_column(String(20), default="not_started", server_default=text("'not_started'"))
+    owner_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    completed_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
 
 
