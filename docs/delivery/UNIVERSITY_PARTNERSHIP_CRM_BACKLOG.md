@@ -1191,6 +1191,10 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-029 — Complete global partnership dashboard (management)
+- **Status (2026-10-10):** built on `feature/upc-029` under `DEC-SCOPE-170` (GD1–GD17, recommended answers), with **no migration**, API
+  §12CL and RBAC §2.96. Spec: `docs/superpowers/specs/2026-10-10-upc-029-global-partnership-dashboard-design.md`.
+  - Managers are refused (their figures are upc-022's); the columns equal upc-022's D2–D4 and the funnel / commission equal
+    `/partnership/performance` for the same period (tested).
 - **Business requirement:** §31 (Active Partners / In Progress / Target List columns with the sub-views; pipeline; student funnel;
   commission).
 - **Existing behavior:** none.

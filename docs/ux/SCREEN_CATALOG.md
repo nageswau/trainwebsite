@@ -3955,3 +3955,19 @@ Design spec: `docs/superpowers/specs/2026-10-10-upc-027-partner-onboarding-desig
     refusals in `.form-error` (field) or `.form-error[role=alert]` (conflict); a failed load offers "Try again".
 - **Responsive:** the table scrolls inside `.table-wrap` with the compact tracker styling (`milestone-table`); no page side-scroll at
   375 px.
+
+## upc-029 addendum (2026-10-10, `DEC-SCOPE-170`) — Complete global partnership dashboard
+
+Design spec `docs/superpowers/specs/2026-10-10-upc-029-global-partnership-dashboard-design.md` §4. Visual-reference mapping: None — not inspected. Do not claim parity.
+
+- **Route `/partnership/head/global-dashboard`** (heads and super_admin from their nav; signed out → `/admin/login`): title "🌍 EduSphere
+  Global Partnerships", the period form (it drives the funnel and commission only), then:
+  - three column cards — 🟢 Active Partners (Country-wise, University-wise with active course counts, Course-wise), 🟡 In Progress
+    (Expected agreement date, Probability + weighted forecast, Next action with an Overdue pill), 🔵 Target List (Priority, Country, Course
+    levels offered) — each heading "Title (n)" linking to its pipeline column;
+  - Partnership Pipeline (the eight Management §19 steps as tiles, "Includes n lost / closed in the total of N");
+  - Student Recruitment (the upc-018 funnel, "Not tracked" steps) and University Commission (Expected / Received per currency).
+- **States:** an empty column reads "No universities in this column."; a failed read shows "The global dashboard is unavailable right now."
+  (`role=status`) under the title; a manager or other role sees the access card.
+- **Responsive / a11y:** columns stack below 1200 px and sit three across above; count tables are captioned, column cards are labelled
+  regions, icons `aria-hidden`; no page side-scroll at 375 px.

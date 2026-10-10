@@ -1620,6 +1620,18 @@ Reads use `partnership_universities.require_reader`; writes use `_locked(..., "c
 
 - Owners are limited to active `partnership_manager` / `partnership_head` / `super_admin` users (`422` otherwise). No commission data.
 
+### 2.96 Complete global partnership dashboard *(net-new, added 2026-10-10 — `DEC-SCOPE-170`, `upc-029`)*
+
+The inline pattern; the scope is in the SQL `WHERE`. Routes are listed in §12CL. Counts, university names and open-task titles (never
+notes); commission per U2.
+
+| Role | `GET /partnership/global-dashboard` — universities | Commission totals |
+|---|---|---|
+| `partnership_head` | Their direct reports' universities + unowned | ✅ |
+| `super_admin` | All | ✅ |
+| `partnership_manager` | `403` (their own figures: §2.94) | — |
+| any other role | `403` (anonymous `401`) | — |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
