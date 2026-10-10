@@ -14,7 +14,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.api.partnership_performance import _scope
 from app.api.partnership_universities import _locked
 from app.core.database import get_db
 from app.models import Country, University, User
@@ -24,7 +23,7 @@ from app.services import partnership_universities as universities
 from app.services.bdm_activities import india_date
 from app.services.bdm_appointments import db_now
 from app.services.partnership import partnership_context
-from app.services.partnership_metrics import forecast_windows, weighted
+from app.services.partnership_metrics import forecast_windows, scope_filter, weighted
 from app.services.telecaller import person_ref
 
 router = APIRouter(prefix="/partnership", tags=["partnership-expected"])
@@ -52,6 +51,26 @@ def _in(day: date | None, first: date, last: date) -> bool:
     return day is not None and first <= day <= last
 
 
+async def expected_rows(db: AsyncSession, user: User, team: frozenset[UUID]) -> list:
+    """EX6/EX7: the caller's active, not-lost universities before Agreement Signed, with their country and owner (one query)."""
+    stmt = (
+        select(University, Country.name, User)
+        .join(Country, Country.id == University.country_id)
+        .outerjoin(User, User.id == University.primary_manager_user_id)
+        .where(University.active.is_(True), University.lost_at.is_(None), University.stage.in_(NOT_SIGNED), *scope_filter(user, team))
+    )
+    return list((await db.execute(stmt)).all())
+
+
+def window_figures(rows: list, today: date) -> list[dict]:
+    """E1-E3 with E4: per window its raw count and weighted forecast (upc-022's D13 reads `this_month`)."""
+    figures = []
+    for w in forecast_windows(today):
+        inside = [effective_probability(uni.stage, uni.probability_override) for uni, *_ in rows if _in(uni.expected_agreement_date, w.first, w.last)]
+        figures.append({**w._asdict(), "count": len(inside), "weighted": weighted(inside)})
+    return figures
+
+
 @router.get("/expected", response_model=ExpectedPage)
 async def expected(
     window: ExpectedWindowKey = "all",
@@ -64,19 +83,9 @@ async def expected(
     Ordered by expected date, then name (EX12); every figure covers the whole scope, not the page."""
     await _require_reader(db, user)
     today = india_date(await db_now(db))
-    team = await universities.team_of(db, user)
-    stmt = (
-        select(University, Country.name, User)
-        .join(Country, Country.id == University.country_id)
-        .outerjoin(User, User.id == University.primary_manager_user_id)
-        .where(University.active.is_(True), University.lost_at.is_(None), University.stage.in_(NOT_SIGNED), *_scope(user, team))
-    )
-    rows = (await db.execute(stmt)).all()
+    rows = await expected_rows(db, user, await universities.team_of(db, user))
     windows = forecast_windows(today)
-    figures = []
-    for w in windows:
-        inside = [effective_probability(uni.stage, uni.probability_override) for uni, *_ in rows if _in(uni.expected_agreement_date, w.first, w.last)]
-        figures.append({**w._asdict(), "count": len(inside), "weighted": weighted(inside)})
+    figures = window_figures(rows, today)
     if window == "undated":
         chosen = [r for r in rows if r[0].expected_agreement_date is None]
     elif window == "all":

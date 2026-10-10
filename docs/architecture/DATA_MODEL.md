@@ -1938,7 +1938,7 @@ Every FK is RESTRICT; shares are permanent. Additive: no existing row is read or
 small, sparse table); `partnership_tasks` grouped by assignee (`ix_partnership_tasks_assignee_status_due`). The Alerts list reads
 `notifications` by `user_id` (indexed) and the key prefix.
 
-## Partner onboarding checklist (`upc-027`, `DEC-SCOPE-167`; migration `0145_university_onboarding`, after `0144_commission_receipts`)
+## Partner onboarding checklist (`upc-027`, `DEC-SCOPE-169`; migration `0145_university_onboarding`, after `0144_commission_receipts`)
 
 **`university_onboarding_items` columns:**
 - `id`, `university_id` → `universities` (FK RESTRICT), `kind` varchar(40) (CHECK: the ten §29 keys, `app/partnership_onboarding.py`),

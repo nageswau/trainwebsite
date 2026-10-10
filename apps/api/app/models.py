@@ -1196,7 +1196,7 @@ UNIVERSITY_ONBOARDING_CHECKS = {
 
 
 class UniversityOnboardingItem(Base, TimestampMixin):
-    """upc-027 (DEC-SCOPE-167, OB2): a university's recorded progress on one §29 onboarding item. Sparse: a row exists only once the item
+    """upc-027 (DEC-SCOPE-169, OB2): a university's recorded progress on one §29 onboarding item. Sparse: a row exists only once the item
     was edited (the catalogue is the template), so a signed university shows ten Not Started items without a signing hook. The overall
     status and the automatic course item are computed on read (services/university_onboarding)."""
 

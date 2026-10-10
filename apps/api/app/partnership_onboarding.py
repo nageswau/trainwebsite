@@ -1,4 +1,4 @@
-"""upc-027 (DEC-SCOPE-167, spec OB1/OB4/OB7/OB8): the partner onboarding checklist, in source order and wording (EVID-020 §29,
+"""upc-027 (DEC-SCOPE-169, spec OB1/OB4/OB7/OB8): the partner onboarding checklist, in source order and wording (EVID-020 §29,
 L946-L968), and its three statuses ("Not Started -> In Progress -> Completed").
 
 Constants only, with no app imports, so the model CHECK, the migration's parity test, the service and the schemas share one list."""

@@ -2,7 +2,7 @@
 
 **Status:** design written 2026-10-10. The owner's standing instruction for this session is "proceed with the recommended answers;
 ask only if genuinely blocking". So the item answers OB1–OB13 (§1), including **Q-27**, are **recommended defaults accepted under that
-instruction** (`NEEDS_CONFIRMATION` as separate per-question approvals). They are registered that way in `DEC-SCOPE-167`.
+instruction** (`NEEDS_CONFIRMATION` as separate per-question approvals). They are registered that way in `DEC-SCOPE-169`.
 
 **Branch:** `feature/upc-027` (worktree branch `worktree-upc-027`), cut from `origin/main` @ `b7d29bca` (after #223, upc-013).
 **Backlog:** `docs/delivery/UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §4 upc-027, Q-27, Appendix A L938–L968.
@@ -11,8 +11,9 @@ instruction** (`NEEDS_CONFIRMATION` as separate per-question approvals). They ar
 `university_agreements.sign`, `partnership_milestones.SIGNED_STATUSES`.
 **Source:** `EVID-020` §29 (L938–L968): "After partnership signing: Signed → Partner Onboarding", ten items to track, and the status
 flow "Not Started → In Progress → Completed".
-**Numbering:** migration `0145_university_onboarding`, `DEC-SCOPE-167`, API §12CI, RBAC §2.93 (renumbered at merge if another item
-lands first).
+**Numbering:** migration `0145_university_onboarding`, `DEC-SCOPE-169`, API §12CK, RBAC §2.95. Drafted as 167 / §12CI / §2.93 and
+renumbered on merging `main` @ `bed0816f`: upc-025 (PR #224) and upc-022 (PR #225) took 167–168 / §12CI–§12CJ / §2.93–§2.94 with no
+migration, so `0145` is unchanged.
 **Gate:** `APPROVAL_GATES.md` GATE-09.
 
 ## 0. Discovery (Phase 1)
@@ -103,7 +104,7 @@ No backfill (OB2). `downgrade()` refuses while any row exists (it would drop rec
 3. Activation (OB8) on PATCH; course hooks (create, update, import).
 4. Web lib + component (vitest: not started, started table, edit/save, refusal, auto item, stage refresh, load failure).
 5. Page wiring + `UniversityDetailPage.test.tsx` stub; Playwright e2e.
-6. Docs: DEC-SCOPE-167, API §12CI, RBAC §2.93, DATA_MODEL, SCREEN_CATALOG, backlog status.
+6. Docs: DEC-SCOPE-169, API §12CK, RBAC §2.95, DATA_MODEL, SCREEN_CATALOG, backlog status.
 
 ## 7. Regression set (lite)
 

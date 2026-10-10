@@ -1,4 +1,4 @@
-// upc-027 (DEC-SCOPE-167): a university's partner onboarding checklist (§29). The API owns the catalogue, the started / Lost rules, the
+// upc-027 (DEC-SCOPE-169): a university's partner onboarding checklist (§29). The API owns the catalogue, the started / Lost rules, the
 // overall status, the automatic course item and the Partner Activated move; these helpers only shape requests and word responses.
 import { universityUrl } from "@/lib/universities";
 

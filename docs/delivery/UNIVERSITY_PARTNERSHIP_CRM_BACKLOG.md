@@ -997,6 +997,10 @@ Common conventions:
 - **Edge cases:** month boundary in IST.
 - **Regression risks:** none.
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-10):** built on `feature/upc-022` under `DEC-SCOPE-168` (DB1–DB16, recommended answers), with **no migration**, API
+  §12CJ and RBAC §2.94. Spec: `docs/superpowers/specs/2026-10-10-upc-022-partnership-dashboard-design.md`.
+  - Figures cover the universities in the caller's scope now (upc-018 PF6); D13 reuses upc-023's E1 rows; the bands follow the Tasks
+    page's default assignees. Heads open the dashboard from their nav and still land on Team.
 
 ### upc-023 — Expected partnerships + probability + weighted forecast
 - **Business requirement:** §23 (list: university, country, stage, expected date, owner, probability; this month / next month / this
@@ -1063,6 +1067,9 @@ Common conventions:
 - **Complexity:** large · **Risk:** medium
 
 ### upc-025 — Global partnership map
+- **Status (2026-10-10):** built on `feature/upc-025` under `DEC-SCOPE-167` (MP1–MP14, recommended answers; Q-07 and Q-32 included),
+  with **no migration**, API §12CI and RBAC §2.93. The route is `GET /partnership/universities/map`. Spec:
+  `docs/superpowers/specs/2026-10-10-upc-025-global-partnership-map-design.md`.
 - **Business requirement:** §2 ("one of the most important features"; per-country status counts; click → university list; 12 filters)
   (U12).
 - **Existing behavior:** none; no map library.
@@ -1126,8 +1133,8 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-027 — Partner onboarding checklist
-- **Status (2026-10-10):** built on `feature/upc-027` under `DEC-SCOPE-167` (Q-27 + OB1–OB13, recommended answers), with migration
-  `0145_university_onboarding`, API §12CI and RBAC §2.93. Spec: `docs/superpowers/specs/2026-10-10-upc-027-partner-onboarding-design.md`.
+- **Status (2026-10-10):** built on `feature/upc-027` under `DEC-SCOPE-169` (Q-27 + OB1–OB13, recommended answers), with migration
+  `0145_university_onboarding`, API §12CK and RBAC §2.95. Spec: `docs/superpowers/specs/2026-10-10-upc-027-partner-onboarding-design.md`.
 - **Business requirement:** §29 (Signed → Partner Onboarding; 10 items; Not Started → In Progress → Completed).
 - **Existing behavior:** none.
 - **Expected behavior:**

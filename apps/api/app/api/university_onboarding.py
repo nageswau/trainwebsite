@@ -1,4 +1,4 @@
-"""upc-027 (DEC-SCOPE-167, spec §3): a university's partner onboarding checklist (§29).
+"""upc-027 (DEC-SCOPE-169, spec §3): a university's partner onboarding checklist (§29).
 
 Reads are open to every university reader (OB11). Every write is one transaction, as upc-003's: the university row lock (FOR UPDATE), the
 scope check (`can_edit_timeline`: 403 logged; inactive 409), the started / Lost checks (409), the change, the Partner Activated move when

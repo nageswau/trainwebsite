@@ -17,10 +17,12 @@ export type SearchRow = UniversityRow & {
 export type SearchFacets = { partner_status: Record<"partner" | "in_progress" | "target" | "lost", number> };
 export type SearchPage = Page<SearchRow> & { facets: SearchFacets };
 
-// Only these keys travel from the page URL to the API (spec SR3-SR13), in the form's order.
+// Only these keys travel from the page URL to the API (spec SR3-SR13), in the form's order. upc-025 added the map's iso2, stage,
+// priority, activity and exclusivity (MP4-MP8), so a country link from the map lists exactly what the map counted.
 export const SEARCH_KEYS = [
-  "q", "country", "region", "city", "institution_type", "ownership_type", "ranking_max", "ranking_system", "course", "level", "intake",
-  "tuition_min", "tuition_max", "tuition_currency", "scholarship", "commission_min", "partner_status", "manager", "expected_from", "expected_to",
+  "q", "country", "iso2", "region", "city", "institution_type", "ownership_type", "ranking_max", "ranking_system", "course", "level", "intake",
+  "tuition_min", "tuition_max", "tuition_currency", "scholarship", "commission_min", "partner_status", "stage", "priority", "manager",
+  "expected_from", "expected_to", "activity", "exclusivity",
 ] as const;
 export type SearchFilters = Partial<Record<(typeof SEARCH_KEYS)[number] | "offset", string>>;
 

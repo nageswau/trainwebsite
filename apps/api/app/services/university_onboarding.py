@@ -1,4 +1,4 @@
-"""upc-027 (DEC-SCOPE-167, spec §3): a university's partner onboarding checklist (§29).
+"""upc-027 (DEC-SCOPE-169, spec §3): a university's partner onboarding checklist (§29).
 
 Functions only; nothing here commits -- the route owns the transaction. Rows are sparse (OB2): onboarding has started once the
 university has a signed agreement, and an item without a row is Not Started. The overall status and the automatic course item (OB7) are

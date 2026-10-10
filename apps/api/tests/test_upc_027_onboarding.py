@@ -1,4 +1,4 @@
-"""upc-027 -- the partner onboarding checklist (spec §1, §5; AC1-AC6, S1, S2; DEC-SCOPE-167 OB1-OB13)."""
+"""upc-027 -- the partner onboarding checklist (spec §1, §5; AC1-AC6, S1, S2; DEC-SCOPE-169 OB1-OB13)."""
 
 import uuid
 from datetime import timedelta

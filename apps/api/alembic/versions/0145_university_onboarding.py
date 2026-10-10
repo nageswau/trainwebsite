@@ -3,7 +3,7 @@
 Revision ID: 0145_university_onboarding
 Revises: 0144_commission_receipts
 
-docs/superpowers/specs/2026-10-10-upc-027-partner-onboarding-design.md §2 (DEC-SCOPE-167). A new table only; no existing row changes.
+docs/superpowers/specs/2026-10-10-upc-027-partner-onboarding-design.md §2 (DEC-SCOPE-169). A new table only; no existing row changes.
 Rows are sparse (OB2: the catalogue is the template), so there is no backfill. 0001 builds a fresh database from the current models,
 which already carry the table, so it is created only when missing (0117's idiom). KINDS / STATUSES / CHECKS repeat app.models
 (test_upc_027_migration). downgrade() refuses while any row exists: it would drop recorded onboarding progress.
