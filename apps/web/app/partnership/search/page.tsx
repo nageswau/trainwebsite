@@ -10,7 +10,7 @@ import type { User } from "@/lib/types";
 import { dateText } from "@/lib/universityAgreements";
 import { INSTITUTION_TYPES, label, OWNERSHIP_TYPES, RANKING_SYSTEMS, REGIONS, shellFor, universityPath } from "@/lib/universities";
 import {
-  filterProblem, hasCourseFilter, isFiltered, PARTNER_STATUSES, type SearchFilters, searchHref, type SearchPage, searchQuery, SEARCH_PATH, SEARCH_URL,
+  filterProblem, isFiltered, PARTNER_STATUSES, type SearchFilters, searchHref, type SearchPage, searchQuery, SEARCH_PATH, SEARCH_URL,
   statusCounts,
 } from "@/lib/universitySearch";
 
@@ -51,15 +51,20 @@ export default async function SearchUniversitiesPage({ searchParams }: { searchP
   let user: User, page: SearchPage | null = null;
   try {
     user = await serverApi<User>("/api/v1/auth/me");
-    if (!problem) page = await serverApi<SearchPage>(`${SEARCH_URL}?${searchQuery(filters, PAGE_SIZE, offset)}`);
   } catch (e) {
-    if (!(e instanceof ApiError && e.status === 422)) return accessUnavailable(e, "/overseas/login");
-    problem = INVALID;
-    user = await serverApi<User>("/api/v1/auth/me");
+    return accessUnavailable(e, "/overseas/login");
+  }
+  if (!problem) {
+    try {
+      page = await serverApi<SearchPage>(`${SEARCH_URL}?${searchQuery(filters, PAGE_SIZE, offset)}`);
+    } catch (e) {
+      if (!(e instanceof ApiError && e.status === 422)) return accessUnavailable(e, "/overseas/login");
+      problem = INVALID;
+    }
   }
   const { nav, roleLabel } = shellFor(user.role);
   const managerOptions: Option[] = [...(user.role === "partnership_manager" ? [["me", "Assigned to me"] as Option] : []), ["none", "Unassigned"]];
-  const withCourses = hasCourseFilter(filters);
+  const withCourses = page?.items.some((u) => u.matching_courses !== null) ?? false; // the API sends counts only for a course filter
   const end = page ? page.offset + page.items.length : 0;
   return (
     <PortalShell nav={nav} roleLabel={roleLabel} userName={user.full_name}>
@@ -101,7 +106,7 @@ export default async function SearchUniversitiesPage({ searchParams }: { searchP
             {isFiltered(filters) && <Link className="btn secondary small" href={SEARCH_PATH}>Clear</Link>}
           </div>
         </form>
-        {problem || !page ? (
+        {!page ? (
           <p className="form-error" role="alert">{problem}</p>
         ) : (
           <>

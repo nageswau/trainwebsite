@@ -49,7 +49,6 @@ export function searchHref(filters: SearchFilters, changes: SearchFilters = {}, 
 }
 
 export const isFiltered = (filters: SearchFilters) => SEARCH_KEYS.some((key) => filters[key]?.trim());
-export const hasCourseFilter = (filters: SearchFilters) => ["course", "level", "intake", "tuition_currency"].some((key) => filters[key as keyof SearchFilters]?.trim());
 
 /** The cross-field rules the API answers with a 422 (SR8, SR13), worded for the page so it can say what to fix. */
 export function filterProblem(filters: SearchFilters): string | null {
