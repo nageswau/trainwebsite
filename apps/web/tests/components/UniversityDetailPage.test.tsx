@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import BdmStageHistory from "@/components/BdmStageHistory";
+import CommissionLedger from "@/components/CommissionLedger";
 import MeetingTable from "@/components/MeetingTable";
 import PartnershipFunnel from "@/components/PartnershipFunnel";
 import PartnershipTasksPanel from "@/components/PartnershipTasksPanel";
@@ -45,6 +46,11 @@ const performance = { // upc-018: this month's funnel for the university
   counts: { leads: null, counselling: null, interested: 0, eligible: null, applications: 3, offers: 1, deposits: 0, visas: 0, enrolled: 1 },
 };
 
+const ledger = { // upc-019
+  university: { id: ID, name: "ABC", university_code: "UNV-000001" }, totals: [], applications: [], applications_total: 0, receipts: [], receipts_total: 0,
+  permissions: { can_record: false },
+};
+
 beforeEach(() => {
   vi.mocked(serverApi).mockReset();
 });
@@ -62,9 +68,13 @@ describe("upc-007 university detail page", () => {
       if (p.includes("/agreement-options")) return options as never; // upc-014
       if (p.includes("/agreements")) return agreements as never;
       if (p.includes("/performance")) return performance as never; // upc-018
+      if (p.endsWith("/commission")) return ledger as never; // upc-019
       return { university } as never;
     });
     const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
+    // upc-019: the commission ledger for a commission role, with today's IST day for the receipt form
+    expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/universities/${ID}/commission`);
+    expect(tree.find((el) => el.type === CommissionLedger)!.props).toEqual({ ledger, today: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) });
     expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/universities/${ID}/stage-history?limit=20&offset=0`);
     expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/visits?university_id=${ID}&limit=5`); // upc-010 Visits section
     expect(tree.find((el) => el.type === UniversityStagePanel)!.props.university).toEqual(university);
@@ -104,6 +114,9 @@ describe("upc-007 university detail page", () => {
     const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
     expect(vi.mocked(serverApi).mock.calls.some(([p]) => String(p).includes("agreement"))).toBe(false);
     expect(tree.find((el) => el.type === UniversityAgreements)).toBeUndefined();
+    // upc-019 (U2): no commission ledger request and no section for a non-commission role
+    expect(vi.mocked(serverApi).mock.calls.some(([p]) => String(p).includes("/commission"))).toBe(false);
+    expect(tree.find((el) => el.type === CommissionLedger)).toBeUndefined();
   });
 
   it("shows the course master to every reader; the form options only for writers (upc-017)", async () => {

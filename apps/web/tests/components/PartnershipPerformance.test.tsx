@@ -125,6 +125,25 @@ describe("upc-018 University Performance page", () => {
     expect(screen.queryByRole("link", { name: "Previous" })).toBeNull();
   });
 
+  it("upc-019: shows Commission expected / received (F10 / F11) per currency only when the API sent them", async () => {
+    const commission = { expected: [{ currency: "GBP", amount: "5400.00" }], received: [] };
+    answer({
+      "/api/v1/auth/me": head,
+      "/api/v1/partnership/performance": page({ items: [{ rank: 1, university, counts: counts(), commission }], commission: { expected: [{ currency: "GBP", amount: "5400.00" }, { currency: "USD", amount: "50.00" }], received: [{ currency: "GBP", amount: "1000.00" }] } }),
+    });
+    render(await PerformancePage({ searchParams: Promise.resolve(JUNE) }));
+    expect(screen.getByRole("columnheader", { name: "Commission expected" })).toBeInTheDocument();
+    const row = screen.getByRole("rowheader", { name: /ABC University/ }).closest("tr")!;
+    expect(row.textContent).toContain("GBP 5,400.00");
+    expect(row.textContent).toContain("—");
+    expect(screen.getByRole("rowheader", { name: "Total" }).closest("tr")!.textContent).toContain("GBP 5,400.00 · USD 50.00");
+    cleanup();
+    answer({ "/api/v1/auth/me": { ...head, role: "overseas_admin" }, "/api/v1/partnership/performance": page() }); // U2: no key, no columns
+    render(await PerformancePage({ searchParams: Promise.resolve(JUNE) }));
+    expect(screen.queryByRole("columnheader", { name: /Commission/ })).toBeNull();
+    expect(screen.getByText(/Leads, Counselling and Profiles eligible/).textContent).not.toMatch(/commission/i);
+  });
+
   it("refuses other roles before calling the API, and reports a bad period", async () => {
     answer({ "/api/v1/auth/me": { ...head, role: "counselor" } });
     expect(message(await PerformancePage({ searchParams: Promise.resolve({}) }))).toBe("University performance access required");

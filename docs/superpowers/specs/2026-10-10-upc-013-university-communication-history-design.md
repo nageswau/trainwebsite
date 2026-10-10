@@ -1,6 +1,6 @@
 # upc-013 — University communication history (timeline) (design)
 
-Status: draft for DEC-SCOPE-165 · API §12CG · RBAC §2.91 · **no migration**. Branch `worktree-upc-013` (pushed as `feature/upc-013`),
+Status: draft for DEC-SCOPE-166 · API §12CH · RBAC §2.92 · **no migration**. Branch `worktree-upc-013` (pushed as `feature/upc-013`),
 cut from main @ `1aa70166`.
 
 ## 1. Evidence and intent

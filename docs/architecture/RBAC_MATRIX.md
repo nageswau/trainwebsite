@@ -1554,10 +1554,25 @@ The inline pattern; the scope is `notifications.user_id = caller` in the SQL `WH
 
 - Inactive users receive nothing; a recipient is read at fire time. Bodies carry names, MoU numbers and dates only.
 
-### 2.91 University communication history *(net-new, added 2026-10-10 — `DEC-SCOPE-165`, `upc-013`)*
+### 2.91 Commission ledger *(net-new, added 2026-10-10 — `DEC-SCOPE-165`, `upc-019`)*
+
+Restricted (U2). Routes are listed in §12CG.
+
+| Role | Read Expected / Received / Outstanding | Record / remove a receipt | F10 / F11 on performance |
+|---|---|---|---|
+| `super_admin` | Every university | Yes | Yes |
+| `partnership_head` | Every university | Yes | Yes |
+| `partnership_manager` (with a profile) | Every university | `403` | Yes |
+| `overseas_admin` | `403` | `403` | No `commission` key (counts only) |
+| any other role | `403` | `403` | — (`403` on performance, §2.79) |
+| no session | `401` | `401` | `401` |
+
+- No student identity leaves these routes; audit rows and logs carry ids, the currency and a count only — never an amount, a reference or a note.
+
+### 2.92 University communication history *(net-new, added 2026-10-10 — `DEC-SCOPE-166`, `upc-013`)*
 
 The upc-012 communications rule (`university_comms.require_reader`): the role gate (`403`) first, then the university (`404`). Read-only.
-Routes are listed in §12CG.
+Routes are listed in §12CH.
 
 | Role | Read a university's history |
 |---|---|

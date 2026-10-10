@@ -23,4 +23,4 @@
 
 ## Task 4 — e2e + docs
 - `tests/e2e/upc-013-university-timeline.spec.ts` (desktop + mobile; overseas_admin has no section).
-- DEC-SCOPE-165, API §12CG, RBAC §2.91, backlog status.
+- DEC-SCOPE-166, API §12CH, RBAC §2.92, backlog status.
