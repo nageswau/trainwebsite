@@ -1554,6 +1554,17 @@ The inline pattern; the scope is `notifications.user_id = caller` in the SQL `WH
 
 - Inactive users receive nothing; a recipient is read at fire time. Bodies carry names, MoU numbers and dates only.
 
+### 2.91 Partnership manager dashboard *(net-new, added 2026-10-10 — `DEC-SCOPE-165`, `upc-022`)*
+
+The inline pattern; the scope is in the SQL `WHERE`. Routes are listed in §12CG. Counts only: no names, no commission data.
+
+| Role | `GET /partnership/dashboard` — universities (D1–D13) | Follow-up bands (D14) |
+|---|---|---|
+| `partnership_manager` (with a profile) | Primary or backup | Their own tasks |
+| `partnership_head` | Their direct reports' universities + unowned | Their own and their reports' tasks |
+| `super_admin` | All | All |
+| any other role | `403` | — |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

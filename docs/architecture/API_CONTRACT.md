@@ -2572,6 +2572,16 @@ moves the application to Joined (AC3). Every change writes offer history.
 - Read state uses the existing `PATCH /workflows/notifications/{id}/read` (AL13). The alerts are raised by the beat task
   `app.worker.send_partnership_alerts_task` (`upc015-alerts`, `crontab(minute=30)` UTC, acting from 09:00 IST), never by a request.
 
+## 12CG. Partnership manager dashboard (`upc-022`) — addendum, 2026-10-10
+
+- **Basis:** `DEC-SCOPE-165` (DB1–DB16). Spec: `docs/superpowers/specs/2026-10-10-upc-022-partnership-dashboard-design.md`. No migration.
+- **Readers:** `partnership_manager` (with a profile), `partnership_head`, `super_admin`; others `403`; no session `401`. Scope in SQL
+  from the caller (no ids accepted).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/dashboard` | **→ 200** `{today, month: {first, last}, overview: {total, partners, in_progress, targets, at_risk, lost}, this_month: {contacted, meetings, visits, proposals, mous_negotiating, mous_signed, activated, expected_count, expected_weighted}, followups: {overdue, today, tomorrow, upcoming}}`. Counts only; a fixed number of statements |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

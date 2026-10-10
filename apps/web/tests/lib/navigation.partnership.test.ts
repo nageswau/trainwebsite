@@ -33,6 +33,7 @@ describe("upc-001 navigation", () => {
       { label: "Profile", href: "/partnership/profile" },
     ]);
     expect(PARTNERSHIP_HEAD_NAV).toEqual([
+      { label: "Dashboard", href: "/partnership/dashboard" }, // upc-022
       { label: "Team", href: "/partnership/head/team" }, { label: "Global University Database", href: "/partnership/search" }, // upc-024
       { label: "University Master", href: "/partnership/universities" },
       { label: "Partnership Pipeline", href: "/partnership/pipeline" }, { label: "Meetings", href: "/partnership/meetings" }, // upc-009

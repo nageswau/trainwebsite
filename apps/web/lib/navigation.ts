@@ -164,6 +164,7 @@ export const PARTNERSHIP_NAV: NavItem[] = [
   { label: "Profile", href: "/partnership/profile" },
 ];
 export const PARTNERSHIP_HEAD_NAV: NavItem[] = [
+  { label: "Dashboard", href: "/partnership/dashboard" }, // upc-022: the team's figures; a head still lands on Team (U3)
   { label: "Team", href: "/partnership/head/team" }, { label: "Global University Database", href: "/partnership/search" }, // upc-024
   { label: "University Master", href: "/partnership/universities" },
   { label: "Partnership Pipeline", href: "/partnership/pipeline" }, { label: "Meetings", href: "/partnership/meetings" }, // upc-009

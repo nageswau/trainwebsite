@@ -9936,6 +9936,49 @@ class ExpectedPage(BaseModel):
     offset: int
     items: list[ExpectedUniversity]
 
+
+# --- upc-022 (DEC-SCOPE-165, spec DB1-DB16): the §22 partnership manager dashboard, Appendix B D1-D14 + the §20 bands ---------------
+class DashboardMonth(BaseModel):
+    first: date
+    last: date
+
+
+class DashboardOverview(BaseModel):
+    total: int  # D1 = partners + in_progress + targets + lost
+    partners: int  # D2 (G1)
+    in_progress: int  # D3 (G2)
+    targets: int  # D4 (G3)
+    at_risk: int  # D5
+    lost: int
+
+
+class DashboardThisMonth(BaseModel):
+    contacted: int  # D6
+    meetings: int  # D7
+    visits: int  # D8
+    proposals: int  # D9
+    mous_negotiating: int  # D10 (current, not dated)
+    mous_signed: int  # D11
+    activated: int  # D12
+    expected_count: int  # D13: upc-023 E1, raw
+    expected_weighted: float  # D13: Σ probability / 100
+
+
+class DashboardFollowups(BaseModel):
+    overdue: int  # D14
+    today: int
+    tomorrow: int
+    upcoming: int
+
+
+class PartnershipDashboard(BaseModel):
+    today: date
+    month: DashboardMonth
+    overview: DashboardOverview
+    this_month: DashboardThisMonth
+    followups: DashboardFollowups
+
+
 # --- upc-024 (DEC-SCOPE-163, spec SR1-SR16): the Global University Database search ---------------------------------------------
 PartnerStatusFilter = Literal["partner", "in_progress", "target", "lost", "not_partnered"]  # SR11 (Appendix B G1-G4)
 
