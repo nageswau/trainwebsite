@@ -6728,7 +6728,73 @@ migration.** API contract §12CI, RBAC §2.93. Spec: `docs/superpowers/specs/202
   - The search page keeps them in the URL.
 - **New Feature ID authorized:** `upc-025`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-025.
 
-### DEC-SCOPE-168 — Partnership health score (`upc-028`)
+
+### DEC-SCOPE-168 — Partnership manager dashboard (`upc-022`)
+
+**Evidence:** `EVID-020` §22 (L721–L752: Global Partnership Overview and This Month; the numbers are illustrative), §20 (L688–L693: the
+dashboard's Overdue / Due Today / Due Tomorrow / Upcoming bands), §32 ("Dashboard"); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U1
+(`EXPLICIT_APPROVAL` 2026-10-08), §4 upc-022 and Appendix B D1–D14.
+**Status:** DB1–DB16 are recommended answers applied under the owner's standing instruction for the build session ("proceed with the
+recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. No migration.
+API contract §12CJ, RBAC §2.94. Spec: `docs/superpowers/specs/2026-10-10-upc-022-partnership-dashboard-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| DB1 | Scope | upc-018 PF6: manager = primary or backup; head = direct reports' universities + unowned; super_admin = all |
+| DB2 | Whose events | The universities in scope **now** (the tile's list), not upc-021's credit-at-the-time |
+| DB3 | This month | The current IST calendar month, half-open, from the database clock |
+| DB4 | D1 | Active universities in scope, Lost/Closed included; `lost` is returned so D1 = D2 + D3 + D4 + lost |
+| DB5 | D2–D4 | Active, not lost, stage group G1 / G2 / G3 |
+| DB6 | D5 | Active, `relationship_strength = at_risk` |
+| DB7 | D6 | First stage-history entry into Initial Contact or later in the month (upc-021 T2) |
+| DB8 | D7 | Meetings completed in the month (T3) |
+| DB9 | D8 | Distinct visits with a status event into Visit Completed in the month |
+| DB10 | D9 / D12 | Distinct universities moved into Proposal Sent / Partner Activated in the month (T4 / T7) |
+| DB11 | D10 | Agreements now Sent / Under Review / Negotiation (current, shown under This Month as in the source) |
+| DB12 | D11 | Distinct agreements with a status event into Signed in the month (T5) |
+| DB13 | D13 | upc-023 E1: the same rows as `/partnership/expected`, raw count + weighted |
+| DB14 | Bands, D14 | Open tasks per upc-020 band; assignees as the Tasks page default (manager own, head own + reports, super_admin all); D14 = overdue |
+| DB15 | Readers | Partnership manager (with a profile), head, super_admin; others 403 |
+| DB16 | Links | Each tile opens the closest existing list; no new list filters |
+
+**Consequences:** `services/partnership_metrics.dashboard_figures` (+ `scope_filter`, moved there from `api/partnership_performance.py`),
+`api/partnership_dashboard.py`, `expected_rows` / `window_figures` extracted in `api/partnership_expected.py`; page `/partnership/dashboard`
+filled in, and the head's nav gains Dashboard (a head still lands on Team, U3).
+- **New Feature ID authorized:** `upc-022`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-022.
+
+### DEC-SCOPE-169 — Partner onboarding checklist (`upc-027`)
+
+**Evidence:**
+- `EVID-020` §29 (L938–L968: "After partnership signing: Signed → Partner Onboarding", ten items to track, "Not Started → In Progress →
+  Completed").
+- `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.2 Q-27 and §4 upc-027.
+
+**Status:** OB1–OB13, including **Q-27**, are recommended answers, applied under the owner's standing instruction for the build session
+("proceed with the recommended answers"). They are **not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. Migration
+`0145_university_onboarding`, API contract §12CK, RBAC §2.95. Spec: `docs/superpowers/specs/2026-10-10-upc-027-partner-onboarding-design.md`.
+**Numbering:** drafted as 167 / §12CI / §2.93 and renumbered after upc-025 (PR #224) and upc-022 (PR #225) took 167–168 / §12CI–§12CJ / §2.93–§2.94.
+
+| # | Question | Answer |
+|---|---|---|
+| OB1 | Items | The ten §29 items in source order and wording (`app/partnership_onboarding.py`) |
+| OB2 | **Q-27 (a)** Start at Agreement Signed? | **Yes**, automatically: started once the university has an agreement in signed / active / renewed. Rows are sparse (the catalogue is the template): no signing hook, no backfill |
+| OB3 | Before signing | GET `started: false`, read only; PATCH `409 onboarding_not_started` |
+| OB4 | Statuses | Not Started / In Progress / Completed, any move; `completed_on` set by the server (IST) on Completed, cleared on leaving it |
+| OB5 | Fields | status, owner (an active partnership manager / head / super_admin, else 422), due date, note ≤ 500 |
+| OB6 | Overall status | Derived: Completed when all ten are, Not Started when none moved, else In Progress; `started_on` = first signing date |
+| OB7 | Course database updated | Completed automatically while the university has ≥ 1 active course (derived on read, `completed_by: auto`) |
+| OB8 | **Q-27 (b)** Completion → Partner Activated? | **Yes, forward only**: `partnership_pipeline.advance_to` + `partnership_tasks.on_stage_entered`; checked on the onboarding PATCH and on course create / update / import; no move when Lost or already at/past it |
+| OB9 | Lost university | PATCH `409 university_lost` |
+| OB10 | Re-signing after a renewal | The checklist belongs to the university: kept as it was |
+| OB11 | Who edits / reads | Edit: `can_edit_timeline` (the stage rule); inactive `409`. Read: every university reader |
+| OB12 | Audit | `university.onboarding_item_updated` (kind, field names, status from/to; never the note), `university.onboarding_completed` (from stage) |
+| OB13 | API | `GET …/onboarding`; `PATCH …/onboarding/{kind}` (one item per call; returns the checklist + `stage_advanced`) |
+
+- **New:** `app/partnership_onboarding.py`, `UniversityOnboardingItem`, `services/university_onboarding.py`,
+  `api/university_onboarding.py`, `components/UniversityOnboarding.tsx`, `lib/universityOnboarding.ts`. The course routes
+  (`api/university_courses.py`, `api/university_course_import.py`) call `university_onboarding.activate_if_complete` before their commit.
+- **New Feature ID authorized:** `upc-027`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-027.
+### DEC-SCOPE-170 — Partnership health score (`upc-028`)
 
 **Evidence:**
 - `EVID-020` §30 (L970–L1002): nine factors; the "92/100 – Excellent" and "48/100 – Needs Attention" examples (illustrative); "identify
@@ -6738,7 +6804,9 @@ migration.** API contract §12CI, RBAC §2.93. Spec: `docs/superpowers/specs/202
 
 **Status:** HS1–HS12 are recommended answers, applied under the owner's standing instruction for the build session ("proceed with the
 recommended answers"). They are **not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off, Q-24 included. **No migration.** API
-contract §12CJ, RBAC §2.94. Spec: `docs/superpowers/specs/2026-10-10-upc-028-partnership-health-design.md`.
+contract §12CL, RBAC §2.96. Spec: `docs/superpowers/specs/2026-10-10-upc-028-partnership-health-design.md`.
+**Numbering:** drafted as 168 / §12CJ / §2.94 and renumbered after upc-022 (PR #225) and upc-027 (PR #226) took 168–169 / §12CJ–§12CK /
+§2.94–§2.95.
 
 | # | Question | Answer |
 |---|---|---|

@@ -112,7 +112,7 @@ describe("upc-015 Alerts page", () => {
 describe("upc-015 badge on the manager dashboard", () => {
   it("shows the unread alerts on the sidebar", async () => {
     const me = { id: "m1", full_name: "Rahul", email: "r@x.in", role: "partnership_manager", partnership_profile: { employee_id: "E1", reporting_head: { id: "h1", full_name: "Hema" } } };
-    answer({ "/api/v1/partnership/me": me, "/api/v1/partnership/alerts": page({ unread: 2 }) });
+    answer({ "/api/v1/auth/me": manager, "/api/v1/partnership/me": me, "/api/v1/partnership/alerts": page({ unread: 2 }) }); // upc-022 reads the role first
     const tree = elements(await PartnershipDashboardPage());
     expect(alertsBadge(tree)).toBe(2);
   });

@@ -20,6 +20,7 @@ from app.models import (
     ApplicationDeposit,
     ApplicationStatusHistory,
     OverseasApplication,
+    PartnershipTask,
     University,
     UniversityAgreement,
     UniversityAgreementEvent,
@@ -28,14 +29,18 @@ from app.models import (
     UniversityMeeting,
     UniversityMessage,
     UniversityStageHistory,
+    UniversityVisit,
+    UniversityVisitEvent,
+    User,
     VisaCase,
 )
-from app.partnership_stages import STAGE_KEYS
+from app.partnership_stages import GROUPS, STAGE_KEYS
 from app.partnership_target_kpis import KPIS
 from app.services import university_commission as commission
 from app.services.agent_applications import OFFER_COUNTED_STATUSES, WITHDRAWN
 from app.services.bdm_appointments import IST, today_ist
 from app.services.bdm_metrics import month_range
+from app.services.partnership_tasks import band_filter
 from app.services.university_agreements import STATUS_LABELS, effective_status
 
 TRACKED = tuple(k.key for k in KPIS if k.tracked)
@@ -262,7 +267,82 @@ def weighted(probabilities: list[int]) -> float:
     return round(sum(probabilities) / 100, 1)
 
 
-# --- upc-028 (DEC-SCOPE-168, spec HS1-HS11): the §30 partnership health score, computed on read as of today (IST) -------------------
+# --- upc-022 (DEC-SCOPE-168, spec DB1-DB14): the §22 manager dashboard, Appendix B D1-D12 and D14, and the §20 follow-up bands ---
+# Counts only, over the universities the caller's scope holds *now* (DB2); D13 is upc-023's E1, added by the route. One statement per
+# figure, whatever the data size.
+
+PENDING_AGREEMENTS = ("sent", "under_review", "negotiation")  # D10
+OPEN_BANDS = ("overdue", "today", "tomorrow", "upcoming")
+
+
+def scope_filter(user: User, team: frozenset[UUID]) -> list:
+    """upc-018 PF6: manager = primary or backup; head = their team's universities + unowned ones; super_admin, overseas_admin = all."""
+    if user.role == "partnership_manager":
+        return [or_(University.primary_manager_user_id == user.id, University.backup_manager_user_id == user.id)]
+    if user.role == "partnership_head":
+        unowned = and_(University.primary_manager_user_id.is_(None), University.backup_manager_user_id.is_(None))
+        return [or_(unowned, University.primary_manager_user_id.in_(team), University.backup_manager_user_id.in_(team))]
+    return []
+
+
+def _assignees(user: User, team: frozenset[UUID]) -> list:
+    """DB14, the Tasks page default: a manager's own, a head's own and their reports', everyone's for super_admin."""
+    if user.role == "partnership_manager":
+        return [PartnershipTask.assignee_user_id == user.id]
+    if user.role == "partnership_head":
+        return [PartnershipTask.assignee_user_id.in_(team | {user.id})]
+    return []
+
+
+def _in_group(group: str):
+    return and_(University.lost_at.is_(None), University.stage.in_([key for key, g in GROUPS.items() if g == group]))
+
+
+async def dashboard_figures(db: AsyncSession, user: User, team: frozenset[UUID], today: date) -> dict:
+    """D1-D12 and D14 for the IST month holding `today`; the bands are over the IST days around `today`."""
+    start, end = month_range(today.replace(day=1))
+
+    def during(column):
+        return and_(column >= start, column < end)
+
+    live = [University.active.is_(True), *scope_filter(user, team)]
+    scope = select(University.id).where(*live)
+    overview = (
+        await db.execute(
+            select(
+                func.count(), func.count().filter(_in_group("partner")), func.count().filter(_in_group("in_progress")), func.count().filter(_in_group("target")),
+                func.count().filter(University.relationship_strength == "at_risk"), func.count().filter(University.lost_at.is_not(None)),
+            ).where(*live)
+        )
+    ).one()  # fmt: skip
+
+    S, Event, Agreement = UniversityStageHistory, UniversityAgreementEvent, UniversityAgreement
+    contacted = (
+        select(S.university_id).where(S.to_stage.in_(CONTACTED_OR_LATER), S.university_id.in_(scope)).group_by(S.university_id).having(during(func.min(S.created_at))).subquery()
+    )  # D6: the first entry into Initial Contact or later falls in the month
+    entered = and_(S.kind == "move", S.from_stage != S.to_stage, during(S.created_at), S.university_id.in_(scope))
+    month = {
+        "contacted": select(func.count()).select_from(contacted),  # D6
+        "meetings": select(func.count()).where(UniversityMeeting.status == "completed", during(UniversityMeeting.completed_at), UniversityMeeting.university_id.in_(scope)),  # D7
+        "visits": select(func.count(distinct(UniversityVisitEvent.visit_id)))
+        .join(UniversityVisit, UniversityVisit.id == UniversityVisitEvent.visit_id)
+        .where(UniversityVisitEvent.to_status == "visit_completed", during(UniversityVisitEvent.created_at), UniversityVisit.university_id.in_(scope)),  # D8
+        "proposals": select(func.count(distinct(S.university_id))).where(entered, S.to_stage == "proposal_sent"),  # D9
+        "mous_negotiating": select(func.count()).where(Agreement.status.in_(PENDING_AGREEMENTS), Agreement.university_id.in_(scope)),  # D10
+        "mous_signed": select(func.count(distinct(Event.agreement_id)))
+        .join(Agreement, Agreement.id == Event.agreement_id)
+        .where(Event.kind == "status", Event.to_status == "signed", during(Event.created_at), Agreement.university_id.in_(scope)),  # D11
+        "activated": select(func.count(distinct(S.university_id))).where(entered, S.to_stage == "partner_activated"),  # D12
+    }
+    bands = (await db.execute(select(*(func.count().filter(band_filter(b, today)) for b in OPEN_BANDS)).select_from(PartnershipTask).where(*_assignees(user, team)))).one()
+    return {
+        "overview": dict(zip(("total", "partners", "in_progress", "targets", "at_risk", "lost"), overview, strict=True)),
+        "this_month": {key: await db.scalar(stmt) or 0 for key, stmt in month.items()},
+        "followups": dict(zip(OPEN_BANDS, bands, strict=True)),  # D14 = overdue
+    }
+
+
+# --- upc-028 (DEC-SCOPE-170, spec HS1-HS11): the §30 partnership health score, computed on read as of today (IST) -------------------
 # Each factor is normalised to 0-1 (None = no data: left out, its weight shared out over the rest, HS5); the points are rounded by the
 # largest remainder so the breakdown always adds up to the score (AC1). The commission factor is in every score but its breakdown is the
 # caller's to strip for non-commission roles (HS9).

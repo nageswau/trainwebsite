@@ -1,5 +1,5 @@
 """upc-018 (DEC-SCOPE-153, spec §4): the §17 student opportunity funnel and the §18 university performance ranking (EVID-020);
-upc-028 (DEC-SCOPE-168) adds each active partner's §30 health score as of today.
+upc-028 (DEC-SCOPE-170) adds each active partner's §30 health score as of today.
 
 Read-only and computed live by `services.partnership_metrics` (Appendix B F1-F9); nothing is stored or audited. The readers are the
 University Master's (PF5). The ranking covers the caller's scope (PF6: manager = primary/backup, head = team + unowned, super_admin and
@@ -11,7 +11,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import and_, or_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
@@ -25,6 +25,7 @@ from app.services.bdm_activities import india_date
 from app.services.bdm_appointments import db_now
 from app.services.partnership_access import can_see_commission
 from app.services.partnership_metrics import FUNNEL, STEPS, funnel_counts, health, period
+from app.services.partnership_metrics import scope_filter as _scope  # PF6, shared with upc-022's dashboard
 
 router = APIRouter(prefix="/partnership", tags=["partnership-performance"])
 DAY = r"^\d{4}-\d{2}-\d{2}$"
@@ -43,15 +44,6 @@ async def _period(db: AsyncSession, first: str | None, last: str | None) -> tupl
         return period(date.fromisoformat(first) if first else today.replace(day=1), date.fromisoformat(last) if last else today)
     except ValueError as e:  # a well-formed but impossible day, e.g. 2025-02-30
         raise HTTPException(422, "Use a real date (YYYY-MM-DD)") from e
-
-
-def _scope(user: User, team: frozenset[UUID]) -> list:
-    if user.role == "partnership_manager":
-        return [or_(University.primary_manager_user_id == user.id, University.backup_manager_user_id == user.id)]
-    if user.role == "partnership_head":
-        unowned = and_(University.primary_manager_user_id.is_(None), University.backup_manager_user_id.is_(None))
-        return [or_(unowned, University.primary_manager_user_id.in_(team), University.backup_manager_user_id.in_(team))]
-    return []  # super_admin, overseas_admin: every university
 
 
 def _partner(uni: University) -> bool:

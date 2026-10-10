@@ -5,7 +5,7 @@
   (commission restricted) and **U8** (funnel from existing FKs), both `EXPLICIT_APPROVAL`; §3.2 **Q-24** (`NEEDS_CONFIRMATION`); Appendix B
   F5/F6/F8/F9 (upc-018), F10/F11 + CL1–CL8 (upc-019), D7 meetings (upc-009/021), AG4 effective agreement status (upc-014).
 - **Dependencies:** upc-009, upc-013, upc-014, upc-018 and upc-019 are all merged on `main`.
-- **Decision:** `DEC-SCOPE-168`. **No migration.** **API:** §12CJ. **RBAC:** §2.94. The numbers are provisional until merge, as with
+- **Decision:** `DEC-SCOPE-170`. **No migration.** **API:** §12CL. **RBAC:** §2.96. The numbers are provisional until merge, as with
   earlier items.
 - **Status:** HS1–HS12 below are recommended answers, applied under the owner's standing instruction for the build session ("proceed
   with the recommended answers; ask only if genuinely blocking"). They are **not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off.
@@ -34,7 +34,7 @@ breakdown on the university page.
 | HS11 | Privacy / audit | Counts and ratios only: no student, contact or message content in the response. Reads are not audited, as with the other partnership dashboards. Nothing is logged per read |
 | HS12 | Ranking | The upc-018 ranking order (PF7) is unchanged. Health is an extra column, not a sort key |
 
-## 3. API (§12CJ) — additive
+## 3. API (§12CL) — additive
 
 Both `GET /partnership/performance` (on each `items[]` row) and `GET /partnership/universities/{id}/performance` gain:
 
@@ -110,7 +110,7 @@ health: null | {
 3. Schemas and routes: attach `health` to the partner rows and to one university, and strip `factors` for non-commission roles. RED
    API tests, then GREEN. Re-run the upc-018 and upc-019 performance tests.
 4. Web: the types and `healthText`, the `PartnershipHealth` component, the ranking column and the university card, with vitest first.
-5. Playwright e2e. Docs: DEC-SCOPE-168, API §12CJ, RBAC §2.94, SCREEN_CATALOG and the backlog status.
+5. Playwright e2e. Docs: DEC-SCOPE-170, API §12CL, RBAC §2.96, SCREEN_CATALOG and the backlog status.
 
 ## 10. Phase 3 reviews (applied above)
 

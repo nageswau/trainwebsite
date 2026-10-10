@@ -94,6 +94,9 @@ from app.partnership_meeting_types import MAX_CONTACTS as MEETING_MAX_CONTACTS
 from app.partnership_meeting_types import MAX_EMPLOYEES as MEETING_MAX_EMPLOYEES
 from app.partnership_meeting_types import MODES as MEETING_MODES
 from app.partnership_meeting_types import TYPES as MEETING_TYPES
+from app.partnership_onboarding import ITEM_KEYS as ONBOARDING_ITEM_KEYS
+from app.partnership_onboarding import NOTE_MAX as ONBOARDING_NOTE_MAX
+from app.partnership_onboarding import STATUSES as ONBOARDING_STATUSES
 from app.partnership_stages import STAGE_KEYS as PARTNERSHIP_STAGE_KEYS
 from app.services.agent_visa import VISA_CASE_STAGES
 from app.tel_content_kinds import ASSET_KINDS as TEL_ASSET_KINDS
@@ -9377,6 +9380,50 @@ class UniversityMilestonePage(BaseModel):
     today: date  # IST, the day statuses were computed for
     can_edit: bool
 
+
+# upc-027 (DEC-SCOPE-169): the §29 partner onboarding checklist. One item per PATCH (OB13); the service checks the started / lost / owner
+# rules on the locked university.
+OnboardingItemKind = Literal[ONBOARDING_ITEM_KEYS]  # = partnership_onboarding.ITEM_KEYS (test_upc_027_migration)
+OnboardingStatus = Literal[ONBOARDING_STATUSES]
+
+
+class UniversityOnboardingUpdate(_OneOrMore):
+    status: OnboardingStatus | None = None
+    owner_user_id: UUID | None = None  # an active partnership manager / head / super_admin (OB5), checked by the service
+    due_date: date | None = None
+    note: _university_str(ONBOARDING_NOTE_MAX, multiline=True) = None
+
+    @field_validator("status")
+    @classmethod
+    def _status_required(cls, value):
+        if value is None:
+            raise ValueError("Choose a status")
+        return value
+
+
+class UniversityOnboardingItemOut(BaseModel):
+    kind: OnboardingItemKind
+    label: str
+    status: OnboardingStatus  # effective: the automatic course item reads Completed (OB7)
+    completed_by: Literal["manual", "auto"] | None
+    completed_on: date | None
+    owner: BdmPersonRef | None
+    due_date: date | None
+    note: str | None
+
+
+class UniversityOnboardingPage(BaseModel):
+    started: bool  # a signed agreement exists (OB2)
+    started_on: date | None
+    status: OnboardingStatus  # overall, derived (OB6)
+    completed_count: int
+    items: list[UniversityOnboardingItemOut]
+    can_edit: bool
+
+
+class UniversityOnboardingUpdateOut(UniversityOnboardingPage):
+    stage_advanced: bool  # this write moved the university to Partner Activated (OB8)
+
 # upc-016 (DEC-SCOPE-144): §15 commission terms (restricted). The service checks the cross-field rules on the merged row (exactly one rate,
 # CM2; programmes of the agreement's university, CM5) because a PATCH carries only part of it.
 CommissionTrigger = Literal["enrolment", "visa_and_enrolment", "tuition_paid"]  # = models.COMMISSION_TRIGGERS (CM1)
@@ -9913,7 +9960,7 @@ class PerformanceHealthFactor(BaseModel):
 
 
 class PerformanceHealth(BaseModel):
-    """upc-028 (DEC-SCOPE-168, HS1-HS9): the §30 score as of today. `factors` (the breakdown, which includes commission) is sent to the
+    """upc-028 (DEC-SCOPE-170, HS1-HS9): the §30 score as of today. `factors` (the breakdown, which includes commission) is sent to the
     commission roles only; the routes exclude unset fields, so every other reader gets the score and band without it."""
 
     as_of: date
@@ -10015,6 +10062,49 @@ class ExpectedPage(BaseModel):
     limit: int
     offset: int
     items: list[ExpectedUniversity]
+
+
+# --- upc-022 (DEC-SCOPE-168, spec DB1-DB16): the §22 partnership manager dashboard, Appendix B D1-D14 + the §20 bands ---------------
+class DashboardMonth(BaseModel):
+    first: date
+    last: date
+
+
+class DashboardOverview(BaseModel):
+    total: int  # D1 = partners + in_progress + targets + lost
+    partners: int  # D2 (G1)
+    in_progress: int  # D3 (G2)
+    targets: int  # D4 (G3)
+    at_risk: int  # D5
+    lost: int
+
+
+class DashboardThisMonth(BaseModel):
+    contacted: int  # D6
+    meetings: int  # D7
+    visits: int  # D8
+    proposals: int  # D9
+    mous_negotiating: int  # D10 (current, not dated)
+    mous_signed: int  # D11
+    activated: int  # D12
+    expected_count: int  # D13: upc-023 E1, raw
+    expected_weighted: float  # D13: Σ probability / 100
+
+
+class DashboardFollowups(BaseModel):
+    overdue: int  # D14
+    today: int
+    tomorrow: int
+    upcoming: int
+
+
+class PartnershipDashboard(BaseModel):
+    today: date
+    month: DashboardMonth
+    overview: DashboardOverview
+    this_month: DashboardThisMonth
+    followups: DashboardFollowups
+
 
 # --- upc-024 (DEC-SCOPE-163, spec SR1-SR16): the Global University Database search ---------------------------------------------
 PartnerStatusFilter = Literal["partner", "in_progress", "target", "lost", "not_partnered"]  # SR11 (Appendix B G1-G4)

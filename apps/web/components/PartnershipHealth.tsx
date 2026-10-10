@@ -1,6 +1,6 @@
 import { type HealthBand, healthText, type PerformanceHealth, periodLabel } from "@/lib/partnershipPerformance";
 
-// upc-028 (§30, DEC-SCOPE-168): the partnership health score, data only (it renders on the server). The badge reuses the existing pills
+// upc-028 (§30, DEC-SCOPE-170): the partnership health score, data only (it renders on the server). The badge reuses the existing pills
 // and its text always names the band, so colour is never the only signal. The breakdown is shown only when the API sent it (the
 // commission roles, U2); its points add up to the score.
 const PILL: Record<HealthBand, string> = { excellent: "status", good: "badge", needs_attention: "status error", insufficient_data: "badge health-unknown" };

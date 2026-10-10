@@ -1594,7 +1594,32 @@ Enforced in `api/partnership_universities.partnership_map`: `partnership_univers
 | Exclusivity filter (agreement metadata, not commercial) | ✅ | ✅ | ✅ | ✅ | — |
 | Commission filter (`commission_min`) | ✅ | ✅ | ignored (never filters) | ✅ | — |
 
-### 2.94 Partnership health score *(net-new, added 2026-10-10 — `DEC-SCOPE-168`, `upc-028`)*
+### 2.94 Partnership manager dashboard *(net-new, added 2026-10-10 — `DEC-SCOPE-168`, `upc-022`)*
+
+The inline pattern; the scope is in the SQL `WHERE`. Routes are listed in §12CJ. Counts only: no names, no commission data.
+
+| Role | `GET /partnership/dashboard` — universities (D1–D13) | Follow-up bands (D14) |
+|---|---|---|
+| `partnership_manager` (with a profile) | Primary or backup | Their own tasks |
+| `partnership_head` | Their direct reports' universities + unowned | Their own and their reports' tasks |
+| `super_admin` | All | All |
+| any other role | `403` | — |
+
+### 2.95 Partner onboarding checklist *(net-new, added 2026-10-10 — `DEC-SCOPE-169`, `upc-027`)*
+
+Reads use `partnership_universities.require_reader`; writes use `_locked(..., "can_edit_timeline")` (the stage rule: `403` logged, inactive
+`409`), then the started / Lost checks (`409`). Routes are listed in §12CK.
+
+| Role | Read | Edit an item |
+|---|---|---|
+| `partnership_manager` | Every university | The universities they manage (primary / backup) |
+| `partnership_head` | Every university | Universities in their write scope |
+| `super_admin` | Every university | Every university |
+| `overseas_admin` (division overseas) | Every university | `403` |
+| any other role | `403` (anonymous `401`) | `403` |
+
+- Owners are limited to active `partnership_manager` / `partnership_head` / `super_admin` users (`422` otherwise). No commission data.
+### 2.96 Partnership health score *(net-new, added 2026-10-10 — `DEC-SCOPE-170`, `upc-028`)*
 
 Enforced in `api/partnership_performance._health`. `partnership_universities.require_reader` comes first, then the §2.79 scope. The
 score always includes the commission factor. The breakdown is removed for any role without `partnership_access.can_see_commission`

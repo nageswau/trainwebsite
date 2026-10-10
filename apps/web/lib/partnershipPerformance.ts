@@ -8,7 +8,7 @@ export type PerformanceStep = { key: StepKey; label: string; tracked: boolean };
 export type PerformanceCounts = Record<StepKey, number | null>;
 export type PerformanceUniversity = { id: string; university_code: string; name: string; country: string; stage: string; stage_label: string; partner: boolean };
 export type Period = { from: string; to: string };
-// upc-028 (DEC-SCOPE-168): the §30 health score as of today -- null for a university that is not an active partner. `factors` (the
+// upc-028 (DEC-SCOPE-170): the §30 health score as of today -- null for a university that is not an active partner. `factors` (the
 // breakdown, which includes commission) is present only for the commission roles; everyone else gets the score and band alone.
 export type HealthBand = "excellent" | "good" | "needs_attention" | "insufficient_data";
 export type HealthFactor = { key: string; label: string; tracked: boolean; has_data: boolean; measure: string | null; weight: number; points: number | null };

@@ -997,6 +997,10 @@ Common conventions:
 - **Edge cases:** month boundary in IST.
 - **Regression risks:** none.
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-10):** built on `feature/upc-022` under `DEC-SCOPE-168` (DB1–DB16, recommended answers), with **no migration**, API
+  §12CJ and RBAC §2.94. Spec: `docs/superpowers/specs/2026-10-10-upc-022-partnership-dashboard-design.md`.
+  - Figures cover the universities in the caller's scope now (upc-018 PF6); D13 reuses upc-023's E1 rows; the bands follow the Tasks
+    page's default assignees. Heads open the dashboard from their nav and still land on Team.
 
 ### upc-023 — Expected partnerships + probability + weighted forecast
 - **Business requirement:** §23 (list: university, country, stage, expected date, owner, probability; this month / next month / this
@@ -1129,6 +1133,8 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-027 — Partner onboarding checklist
+- **Status (2026-10-10):** built on `feature/upc-027` under `DEC-SCOPE-169` (Q-27 + OB1–OB13, recommended answers), with migration
+  `0145_university_onboarding`, API §12CK and RBAC §2.95. Spec: `docs/superpowers/specs/2026-10-10-upc-027-partner-onboarding-design.md`.
 - **Business requirement:** §29 (Signed → Partner Onboarding; 10 items; Not Started → In Progress → Completed).
 - **Existing behavior:** none.
 - **Expected behavior:**
@@ -1154,8 +1160,8 @@ Common conventions:
 - **Complexity:** small · **Risk:** low
 
 ### upc-028 — Partnership health score
-- **Status (2026-10-10):** built on `feature/upc-028` under `DEC-SCOPE-168` (HS1–HS12, recommended answers; Q-24 included), with
-  **no migration**, API §12CJ and RBAC §2.94. `health` is added to both performance responses. Spec:
+- **Status (2026-10-10):** built on `feature/upc-028` under `DEC-SCOPE-170` (HS1–HS12, recommended answers; Q-24 included), with
+  **no migration**, API §12CL and RBAC §2.96. `health` is added to both performance responses. Spec:
   `docs/superpowers/specs/2026-10-10-upc-028-partnership-health-design.md`.
 - **Business requirement:** §30 (9 factors; "92/100 – Excellent", "48/100 – Needs Attention"; identify partnerships becoming inactive).
 - **Existing behavior:** none.

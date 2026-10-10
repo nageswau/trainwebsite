@@ -3925,7 +3925,37 @@ inspected), so no parity is claimed.
   - no access: the access card.
 - **Responsive:** the map scales to the width, the table turns into cards on a phone, and there is no page side-scroll at 390 px.
 
-## upc-028 addendum (2026-10-10, `DEC-SCOPE-168`) — Partnership health score
+## upc-022 addendum (2026-10-10, `DEC-SCOPE-168`) — Partnership manager dashboard
+
+Design spec `docs/superpowers/specs/2026-10-10-upc-022-partnership-dashboard-design.md` §4. Visual-reference mapping: None — not inspected. Do not claim parity.
+
+- **Route `/partnership/dashboard`** (managers land here; heads open it from their nav; super_admin by URL): the welcome line ("Your
+  universities" / "Your team's universities" at a glance), then three KPI tile groups, each tile a figure with **View list**: *Follow-ups*
+  (🔴 Overdue, 🟠 Due Today, 🟡 Due Tomorrow, 🟢 Upcoming → Tasks for that band); *Global Partnership Overview* (Total Universities with
+  "Includes n lost / closed", 🟢 Active Partners, 🟡 Partnership in Progress, 🔵 Target Universities, 🔴 At Risk); *This Month — Month
+  Year* (New universities contacted, Meetings, University visits, Proposals sent, MoUs under negotiation, MoUs signed, New partnerships
+  activated, Expected partnerships with "Weighted forecast: n", Overdue follow-ups). Managers keep the profile card and "Coming soon".
+- **States:** zeros for an empty scope; if the figures fail, "The dashboard figures are unavailable right now." (`role=status`) and the
+  rest renders; another role sees the access card; a manager without a profile sees the 403 message.
+- **Responsive / a11y:** tiles auto-fit (two per row at 390 px, the five overview figures on one desktop row); each group is a labelled
+  region; links are named "View <figure>"; the icons are `aria-hidden`.
+
+## upc-027 addendum (2026-10-10, `DEC-SCOPE-169`) — Partner onboarding checklist
+
+Design spec: `docs/superpowers/specs/2026-10-10-upc-027-partner-onboarding-design.md` §4. Visual-reference mapping: none (not inspected), so no parity is claimed.
+
+- **Route `/partnership/universities/[id]`:** a "Partner onboarding" section after Agreements, for every university reader
+  (`UniversityOnboarding`):
+  - Before a signed agreement: "Onboarding starts when an agreement is signed."
+  - Started: the overall status badge, "N of 10 completed · Started <date>", then a table (Item, Status, Owner, Due date, Completed,
+    Note, Edit). Statuses are text; "Course database updated" can read "Automatic: the university has active courses".
+  - Edit (owner / head / super admin): one form below the table: Status (not offered for the automatic item), Owner (searchable
+    partnership staff), Due date, Note. Escape / Cancel return focus to the row's Edit button; a double submit sends once.
+  - Notices in `p[role=status]` only when shown ("<Item> saved." / "Onboarding completed: the university is now Partner Activated.");
+    refusals in `.form-error` (field) or `.form-error[role=alert]` (conflict); a failed load offers "Try again".
+- **Responsive:** the table scrolls inside `.table-wrap` with the compact tracker styling (`milestone-table`); no page side-scroll at
+  375 px.
+## upc-028 addendum (2026-10-10, `DEC-SCOPE-170`) — Partnership health score
 
 Design spec: `docs/superpowers/specs/2026-10-10-upc-028-partnership-health-design.md` §5. Visual-reference mapping: none (not
 inspected), so no parity is claimed.
