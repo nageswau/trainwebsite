@@ -1620,6 +1620,20 @@ Reads use `partnership_universities.require_reader`; writes use `_locked(..., "c
 
 - Owners are limited to active `partnership_manager` / `partnership_head` / `super_admin` users (`422` otherwise). No commission data.
 
+### 2.96 Partnership manager deactivation + bulk reassignment *(net-new, added 2026-10-10 — `DEC-SCOPE-170`, `upc-032`)*
+
+`require_head`, then the source must be the head's direct report (`403` otherwise, logged); the target goes through upc-003's
+`locked_manager` (`422`). Routes are listed in §12CL.
+
+| Role | Reassign a manager's work | Deactivate a primary manager (`PATCH /admin/users`) |
+|---|---|---|
+| `partnership_head` | Direct reports → an active direct report | — (not an admin) |
+| `super_admin` | Any manager → any active manager | `422` until reassigned |
+| `overseas_admin` | `403` | `422` until reassigned |
+| `partnership_manager` | `403` | — |
+| any other role | `403` (anonymous `401`) | — |
+
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

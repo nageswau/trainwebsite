@@ -3955,3 +3955,15 @@ Design spec: `docs/superpowers/specs/2026-10-10-upc-027-partner-onboarding-desig
     refusals in `.form-error` (field) or `.form-error[role=alert]` (conflict); a failed load offers "Try again".
 - **Responsive:** the table scrolls inside `.table-wrap` with the compact tracker styling (`milestone-table`); no page side-scroll at
   375 px.
+
+## upc-032 addendum (2026-10-10, `DEC-SCOPE-170`) — Partnership manager reassignment
+
+Design spec: `docs/superpowers/specs/2026-10-10-upc-032-manager-reassignment-design.md` §4. Visual-reference mapping: none (not inspected), so no parity is claimed.
+
+- **Route `/partnership/head/team`:** the table gains *Universities* ("N primary · N backup"), *Open tasks* and *Actions*. A manager
+  with work has **Reassign** (`PartnershipReassign`): an inline group with the counts, a "Move everything to" manager search (the head's
+  active team, the manager excluded), the RA6 note and Reassign / Cancel (Escape cancels, focus returns to the button). Reassign is
+  disabled until a manager is picked and while sending. Success: `p[role=status]` "Moved to <name>: …" and the page refreshes; refusals
+  in `.form-error[role=alert]` (server sentence for 4xx, plain words for 5xx), focused.
+- **Route `/admin/partnership-managers`:** Deactivate of a primary manager shows the server's 422 sentence under the row.
+- **Responsive:** below 640 px each Team row is a card of labelled lines (`.telecaller-list`); no page side-scroll at 375 px.

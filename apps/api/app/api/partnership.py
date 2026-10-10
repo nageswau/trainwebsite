@@ -1,7 +1,7 @@
 """upc-001 (DEC-SCOPE-118, spec §5): partnership manager and head reads, the manager's phone self-edit (PU3), the admin list and the
-reporting-head picker.
+reporting-head picker. upc-032 (DEC-SCOPE-170): the team rows' work counts and the head's bulk reassignment.
 
-Scope always comes from the session -- no /partnership route takes a user id -- so there is no IDOR surface. Lists reuse bdm-001's
+Scope comes from the session; the one route that takes user ids (upc-032's reassign) checks both against the head's team. Lists reuse bdm-001's
 paging helpers: {items, total, limit, offset}, ordered by name then id."""
 
 from fastapi import APIRouter, Body, Depends
@@ -15,7 +15,8 @@ from app.api.deps import get_current_user
 from app.api.lookups import _pattern as like_pattern
 from app.core.database import get_db
 from app.models import AuditLog, PartnershipProfile, User
-from app.schemas import PartnershipAdminPage, PartnershipHeadPage, PartnershipMeOut, PartnershipTeamPage
+from app.schemas import PartnershipAdminPage, PartnershipHeadPage, PartnershipMeOut, PartnershipReassign, PartnershipReassignOut, PartnershipTeamPage
+from app.services import partnership_lifecycle
 from app.services.partnership import partnership_context, profile_out, require_creator_may, require_head, team_filter
 from app.services.telecaller import parse_self_update, person_ref
 
@@ -73,9 +74,26 @@ async def update_own_profile(payload: dict = Body(...), user: User = Depends(get
 
 @router.get("/head/team", response_model=PartnershipTeamPage)
 async def team(q: str | None = SEARCH, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """AC4: a head's direct reports (inactive included, with their status); super_admin sees all. `q` only narrows."""
+    """AC4: a head's direct reports (inactive included, with their status); super_admin sees all. `q` only narrows. upc-032 (RA14): each
+    row carries the manager's work (primary, backup, open tasks)."""
     require_head(user)
-    return await _paged(db, _profiles(team_filter(user) + _searched(q)), limit, offset, lambda profile, member, _head: _team_row(profile, member))
+    page = await _paged(db, _profiles(team_filter(user) + _searched(q)), limit, offset, lambda profile, member, _head: _team_row(profile, member))
+    work = await partnership_lifecycle.work_counts(db, [row["id"] for row in page["items"]])
+    return {**page, "items": [{**row, "work": work[row["id"]]} for row in page["items"]]}
+
+
+@router.post("/head/reassign", response_model=PartnershipReassignOut)
+async def reassign(payload: PartnershipReassign, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """upc-032 (RA4-RA11): every university slot and open task of one manager moves to an active manager of the same team, in one
+    transaction, with assignment history and audit. The source may be inactive (RA8)."""
+    require_head(user)
+    source = await partnership_lifecycle.load_source(db, user, payload.from_user_id)
+    moved = await partnership_lifecycle.reassign(db, user, source, payload.to_user_id)
+    db.add(AuditLog(user_id=user.id, action="partnership.reassign", entity_type="user", entity_id=str(source.id),
+                    metadata_json={"to_user_id": str(payload.to_user_id), "moved": moved}))
+    await db.commit()
+    partnership_lifecycle.log("partnership_reassigned", user, from_user_id=str(source.id), to_user_id=str(payload.to_user_id), **moved)
+    return {"from_user_id": source.id, "to_user_id": payload.to_user_id, "moved": moved}
 
 
 @admin_router.get("/partnership-managers", response_model=PartnershipAdminPage)
