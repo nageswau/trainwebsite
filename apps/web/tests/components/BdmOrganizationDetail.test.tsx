@@ -384,6 +384,11 @@ describe("BdmOrganizationDetail University Master link (upc-004 UD10)", () => {
     expect(masterRow()!.nextElementSibling).toHaveTextContent("Not linked");
   });
 
+  it("links the record to the BDM's University 360 view (upc-030)", () => {
+    render(<BdmOrganizationDetail initial={org({ org_type: "university", university })} basePath="/bdm/organizations" />);
+    expect(screen.getByRole("link", { name: "UNV-000012 · ABC University, United Kingdom" })).toHaveAttribute("href", "/bdm/universities/u1");
+  });
+
   it("says nothing about the master for other organization types", () => {
     render(<BdmOrganizationDetail initial={org()} basePath="/bdm/organizations" />);
     expect(masterRow()).toBeNull();

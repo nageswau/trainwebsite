@@ -9936,7 +9936,7 @@ class ExpectedPage(BaseModel):
     offset: int
     items: list[ExpectedUniversity]
 
-# --- upc-024 (DEC-SCOPE-162, spec SR1-SR16): the Global University Database search ---------------------------------------------
+# --- upc-024 (DEC-SCOPE-163, spec SR1-SR16): the Global University Database search ---------------------------------------------
 PartnerStatusFilter = Literal["partner", "in_progress", "target", "lost", "not_partnered"]  # SR11 (Appendix B G1-G4)
 
 

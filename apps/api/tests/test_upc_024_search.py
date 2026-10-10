@@ -1,4 +1,4 @@
-"""upc-024 -- Global university search (spec §2 SR1-SR16, §5 AC1-AC10; DEC-SCOPE-162). The test database is shared and never
+"""upc-024 -- Global university search (spec §2 SR1-SR16, §5 AC1-AC10; DEC-SCOPE-163). The test database is shared and never
 truncated, so every university here carries a per-test tag in its name and each search sends `q=<tag>`."""
 
 import time

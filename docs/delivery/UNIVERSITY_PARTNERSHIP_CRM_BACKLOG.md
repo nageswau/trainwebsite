@@ -1022,8 +1022,8 @@ Common conventions:
     `expected_agreement_date` in IST calendar months / quarters. The forecast tiles also sit on Targets & Forecast (upc-021's page).
 
 ### upc-024 — Global university search
-- **Status (2026-10-10):** built on `feature/upc-024` under `DEC-SCOPE-162` (SR1–SR16, recommended answers), with **no migration**, API
-  §12CD and RBAC §2.88. Spec: `docs/superpowers/specs/2026-10-10-upc-024-global-university-search-design.md`.
+- **Status (2026-10-10):** built on `feature/upc-024` under `DEC-SCOPE-163` (SR1–SR16, recommended answers), with **no migration**, API
+  §12CE and RBAC §2.89. Spec: `docs/superpowers/specs/2026-10-10-upc-024-global-university-search-design.md`.
 - **Business requirement:** §25 (6 search fields; 15 filters; 3 combined examples); "all universities globally".
 - **Existing behavior:** `/public/universities?q&country` (ILIKE).
 - **Expected behavior:**
@@ -1202,6 +1202,8 @@ Common conventions:
 - **Complexity:** medium · **Risk:** low
 
 ### upc-030 — University 360 view for other roles
+- **Status (2026-10-10):** built on `feature/upc-030` under `DEC-SCOPE-162` (UV1–UV12, recommended answers), with **no migration**, API
+  §12CD and RBAC §2.88. Spec: `docs/superpowers/specs/2026-10-10-upc-030-university-360-view-design.md`.
 - **Business requirement:** the closing note (one record; each role sees only what is relevant); §16 "counselors know exactly what each
   partner university offers" (U14).
 - **Existing behavior:**
