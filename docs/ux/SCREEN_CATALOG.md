@@ -3837,3 +3837,40 @@ Empty sections say so in words.
   - Not linked: "Your account is not linked to a university yet. Contact EduSphere Overseas Admin."
 - **States:** signed out → the login link.
 - **Responsive:** single-column cards at phone width. The applications table scrolls inside its own wrapper.
+
+## upc-024 addendum (2026-10-10, `DEC-SCOPE-163`) — Global University Database
+
+Design spec: `docs/superpowers/specs/2026-10-10-upc-024-global-university-search-design.md` §4. Visual-reference mapping: none (not
+inspected), so no parity is claimed.
+
+**Route `/partnership/search`:**
+- Where it appears: the manager's §32 menu "Global University Database" (now live), the head nav, the super admin nav ("Partnership
+  University Search") and the overseas admin nav.
+- **Form:** a GET search form ("Search universities") that holds every filter in the URL:
+  - University, Country, Region, City, University type, Public / private;
+  - Ranked in top, Ranking system;
+  - Course, UG / PG, Intake;
+  - Tuition from / up to / currency, Scholarship;
+  - **Commission at least (%)**, for commission roles only;
+  - Partner status, Partnership manager, Expected partnership from / to;
+  - Search and Clear buttons.
+- **Chips:** a "Partner status" nav of chip links with counts: Any, Partner, Partnership in progress, Target, Not partnered, Lost /
+  closed. The current chip has `aria-current`.
+- **Table** (in a focusable region, with the caption "Universities found, N in total"):
+  - University (link + code);
+  - Country / city;
+  - Type;
+  - Ranking;
+  - Partner status (badge + stage);
+  - Manager;
+  - Expected partnership;
+  - Matching courses, only when a course filter is sent.
+- **Paging:** Previous / Next, 50 per page.
+- **States:**
+  - empty: "No active universities yet.";
+  - filtered empty: "No universities match these filters.";
+  - past the end: "This page is past the end of the results.";
+  - conflicting filters: the reason is named, e.g. "Choose a currency for the tuition range.";
+  - a refused value (422): "These filters are not valid…";
+  - no access: the access card.
+- **Responsive:** the phone layout turns each row into a card of labelled lines (`data-label`), with no page side-scroll at 390 px.

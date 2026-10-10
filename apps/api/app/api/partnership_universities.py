@@ -3,7 +3,7 @@
 Every write is one transaction: the university row lock (FOR UPDATE), the scope check, the change, the audit row, one commit here, then a
 structured log. Lists are {items, total, limit, offset}, ordered by name then id, in one joined query (no N+1)."""
 
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -29,25 +29,15 @@ from app.schemas import (
     UniversityMatchPage,
     UniversityPage,
     UniversityPriority,
+    UniversitySearchPage,
+    UniversitySearchQuery,
     UniversityUpdate,
 )
 from app.services import partnership_universities as svc
+from app.services import university_search
 
 router = APIRouter(prefix="/partnership/universities", tags=["partnership-universities"])
 Primary, Backup = aliased(User), aliased(User)
-MANAGER_FILTER_INVALID = "manager must be me, none or a manager id"
-
-
-def _manager_filter(user: User, manager: str | None) -> list:
-    if manager is None:
-        return []
-    if manager == "none":
-        return [University.primary_manager_user_id.is_(None)]
-    try:
-        manager_id = user.id if manager == "me" else UUID(manager)
-    except ValueError:
-        raise HTTPException(422, MANAGER_FILTER_INVALID) from None
-    return [(University.primary_manager_user_id == manager_id) | (University.backup_manager_user_id == manager_id)]
 
 
 @router.get("", response_model=UniversityPage)
@@ -69,7 +59,7 @@ async def list_universities(
 ):
     """Filters are ANDed and only narrow. `q` matches name, code or city (literal, case-insensitive)."""
     await svc.require_reader(db, user)
-    filters = svc.search_filters(like_pattern(q)) + _manager_filter(user, manager)
+    filters = svc.search_filters(like_pattern(q)) + svc.manager_filter(user, manager)
     if not include_inactive:
         filters.append(University.active.is_(True))
     for column, value in (
@@ -99,6 +89,14 @@ async def list_universities(
     team = await svc.team_of(db, user)
     rows = (await db.execute(stmt)).all()
     return {"items": [svc.row_out(user, uni, country, primary, backup, team) for uni, country, primary, backup in rows], "total": total or 0, "limit": limit, "offset": offset}
+
+
+@router.get("/search", response_model=UniversitySearchPage)
+async def search_universities(query: Annotated[UniversitySearchQuery, Query()], user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """upc-024: the Global University Database -- every active university, by the §25 search fields and filters (SR1-SR15). Declared
+    before /{university_id}, which would otherwise read "search" as an id."""
+    await svc.require_reader(db, user)
+    return await university_search.search(db, user, query)
 
 
 @router.post("", status_code=201, response_model=UniversityEnvelope)

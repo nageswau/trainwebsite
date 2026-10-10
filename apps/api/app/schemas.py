@@ -46,6 +46,8 @@ from app.models import (
     CANDIDATE_SKILL_STATUSES,
     CANDIDATE_STATUSES,
     CONTACT_CHANNELS,
+    COUNTRY_REGIONS,
+    COURSE_CURRENCIES,
     COURSE_LEVELS,
     COURSE_MONTHS,
     ENGLISH_TESTS,
@@ -9933,3 +9935,67 @@ class ExpectedPage(BaseModel):
     limit: int
     offset: int
     items: list[ExpectedUniversity]
+
+# --- upc-024 (DEC-SCOPE-163, spec SR1-SR16): the Global University Database search ---------------------------------------------
+PartnerStatusFilter = Literal["partner", "in_progress", "target", "lost", "not_partnered"]  # SR11 (Appendix B G1-G4)
+
+
+class UniversitySearchQuery(BaseModel):
+    """The §25 search fields and filters as query parameters; every one only narrows. Cross-field rules (SR8, SR13) are 422s."""
+
+    q: str | None = Field(None, max_length=200)
+    country: str | None = Field(None, max_length=100)
+    region: Literal[COUNTRY_REGIONS] | None = None
+    city: str | None = Field(None, max_length=120)
+    institution_type: InstitutionType | None = None
+    ownership_type: UniversityOwnership | None = None
+    ranking_max: int | None = Field(None, ge=1, le=10000)
+    ranking_system: Literal[RANKING_SYSTEMS] | None = None
+    course: str | None = Field(None, max_length=100)
+    level: CourseLevel | None = None
+    intake: Literal[COURSE_MONTHS] | None = None
+    tuition_min: CourseMoney | None = None
+    tuition_max: CourseMoney | None = None
+    tuition_currency: Literal[COURSE_CURRENCIES] | None = None
+    scholarship: bool = False
+    commission_min: Decimal | None = Field(None, gt=0, le=100, max_digits=5, decimal_places=2)
+    partner_status: PartnerStatusFilter | None = None
+    manager: str | None = Field(None, max_length=36)
+    expected_from: date | None = None
+    expected_to: date | None = None
+    limit: int = Field(50, ge=1, le=100)
+    offset: int = Field(0, ge=0)
+
+    @model_validator(mode="after")
+    def _ranges(self) -> "UniversitySearchQuery":
+        if (self.tuition_min is not None or self.tuition_max is not None) and self.tuition_currency is None:
+            raise ValueError("Choose a currency for the tuition range")
+        if self.tuition_min is not None and self.tuition_max is not None and self.tuition_min > self.tuition_max:
+            raise ValueError("The lowest tuition is above the highest")
+        if self.expected_from and self.expected_to and self.expected_from > self.expected_to:
+            raise ValueError("The expected date range ends before it starts")
+        return self
+
+    @property
+    def course_filtered(self) -> bool:
+        return bool((self.course or "").strip() or self.level or self.intake or self.tuition_currency)
+
+
+class UniversitySearchRow(UniversityRow):
+    ownership_type: str | None
+    partner_status: Literal["partner", "in_progress", "target", "lost"]
+    target_partnership_date: date | None
+    ranking: str | None
+    matching_courses: int | None
+
+
+class UniversitySearchFacets(BaseModel):
+    partner_status: dict[str, int]
+
+
+class UniversitySearchPage(BaseModel):
+    items: list[UniversitySearchRow]
+    total: int
+    limit: int
+    offset: int
+    facets: UniversitySearchFacets
