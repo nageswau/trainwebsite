@@ -8,9 +8,16 @@ export type PerformanceStep = { key: StepKey; label: string; tracked: boolean };
 export type PerformanceCounts = Record<StepKey, number | null>;
 export type PerformanceUniversity = { id: string; university_code: string; name: string; country: string; stage: string; stage_label: string; partner: boolean };
 export type Period = { from: string; to: string };
+// upc-028 (DEC-SCOPE-170): the §30 health score as of today -- null for a university that is not an active partner. `factors` (the
+// breakdown, which includes commission) is present only for the commission roles; everyone else gets the score and band alone.
+export type HealthBand = "excellent" | "good" | "needs_attention" | "insufficient_data";
+export type HealthFactor = { key: string; label: string; tracked: boolean; has_data: boolean; measure: string | null; weight: number; points: number | null };
+export type PerformanceHealth = { as_of: string; score: number | null; band: HealthBand; band_label: string; factors?: HealthFactor[] };
 // upc-019 (CL13): `commission` (F10 / F11) is present only for the commission roles -- the API leaves the key out for everyone else.
-export type UniversityPerformance = Period & { steps: PerformanceStep[]; university: PerformanceUniversity; counts: PerformanceCounts; commission?: PerformanceCommission };
-export type PerformanceRow = { rank: number; university: PerformanceUniversity; counts: PerformanceCounts; commission?: PerformanceCommission };
+export type UniversityPerformance = Period & {
+  steps: PerformanceStep[]; university: PerformanceUniversity; counts: PerformanceCounts; commission?: PerformanceCommission; health?: PerformanceHealth | null;
+};
+export type PerformanceRow = { rank: number; university: PerformanceUniversity; counts: PerformanceCounts; commission?: PerformanceCommission; health?: PerformanceHealth | null };
 export type PerformancePage = Period & {
   steps: PerformanceStep[]; totals: PerformanceCounts; items: PerformanceRow[]; total: number; limit: number; offset: number; commission?: PerformanceCommission;
 };
@@ -52,3 +59,6 @@ export function periodLabel({ from, to }: Period): string {
 }
 
 export const countText = (value: number | null) => (value === null ? "Not tracked" : value.toLocaleString("en-IN"));
+
+/** The source's "92/100 – Excellent"; a partner with no data reads "Insufficient data". */
+export const healthText = (health: PerformanceHealth) => (health.score === null ? health.band_label : `${health.score}/100 – ${health.band_label}`);

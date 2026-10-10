@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { accessDenied, accessUnavailable } from "@/components/AccessUnavailable";
+import { HealthBadge } from "@/components/PartnershipHealth";
 import PerformancePeriodForm from "@/components/PerformancePeriodForm";
 import PortalShell from "@/components/PortalShell";
 import { serverApi } from "@/lib/api";
@@ -66,6 +67,7 @@ export default async function UniversityPerformancePage({ searchParams }: { sear
                     <th scope="col">University</th>
                     <th scope="col">Country</th>
                     <th scope="col">Stage</th>
+                    <th scope="col">Health</th>
                     {tracked.map((s) => <th key={s.key} scope="col">{s.label}</th>)}
                     {money && <><th scope="col">Commission expected</th><th scope="col">Commission received</th></>}
                   </tr>
@@ -77,6 +79,7 @@ export default async function UniversityPerformancePage({ searchParams }: { sear
                       <th scope="row"><Link href={universityPath(row.university.id)}>{row.university.name}</Link></th>
                       <td>{row.university.country}</td>
                       <td>{row.university.stage_label}</td>
+                      <td>{row.health ? <HealthBadge health={row.health} /> : <span className="muted">Not scored</span>}</td>
                       {tracked.map((s) => <td key={s.key}>{countText(row.counts[s.key])}</td>)}
                       {money && <><td>{amountsText(row.commission?.expected ?? [])}</td><td>{amountsText(row.commission?.received ?? [])}</td></>}
                     </tr>
@@ -85,7 +88,7 @@ export default async function UniversityPerformancePage({ searchParams }: { sear
                 <tfoot>
                   <tr>
                     <td />
-                    <th scope="row" colSpan={3}>Total</th>
+                    <th scope="row" colSpan={4}>Total</th>
                     {tracked.map((s) => <td key={s.key}>{countText(data.totals[s.key])}</td>)}
                     {money && <><td>{amountsText(money.expected)}</td><td>{amountsText(money.received)}</td></>}
                   </tr>
@@ -103,7 +106,7 @@ export default async function UniversityPerformancePage({ searchParams }: { sear
         )}
         <p className="muted" style={{ fontSize: 13 }}>
           Leads, Counselling and Profiles eligible are not tracked: those records have no university link. The Total row adds each university&apos;s figures, so a
-          student interested in two universities counts twice.
+          student interested in two universities counts twice. Health is scored as of today, whatever the period, for active partners only.
           {money && " Commission expected counts students enrolled in the period whose commission trigger is met; commission received counts receipts dated in the period. Amounts are per currency (restricted)."}
         </p>
       </div>

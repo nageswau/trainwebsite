@@ -1619,10 +1619,20 @@ Reads use `partnership_universities.require_reader`; writes use `_locked(..., "c
 | any other role | `403` (anonymous `401`) | `403` |
 
 - Owners are limited to active `partnership_manager` / `partnership_head` / `super_admin` users (`422` otherwise). No commission data.
+### 2.96 Partnership health score *(net-new, added 2026-10-10 — `DEC-SCOPE-170`, `upc-028`)*
 
-### 2.96 Complete global partnership dashboard *(net-new, added 2026-10-10 — `DEC-SCOPE-170`, `upc-029`)*
+Enforced in `api/partnership_performance._health`. `partnership_universities.require_reader` comes first, then the §2.79 scope. The
+score always includes the commission factor. The breakdown is removed for any role without `partnership_access.can_see_commission`
+(U2), and the route excludes unset fields.
 
-The inline pattern; the scope is in the SQL `WHERE`. Routes are listed in §12CL. Counts, university names and open-task titles (never
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Health score and band of the partners in the list / one university | ✅ scope | ✅ scope | ✅ all | ✅ all | `403` (anonymous `401`) |
+| Breakdown (`factors`, including the commission measure) | ✅ | ✅ | — (key absent) | ✅ | — |
+
+### 2.97 Complete global partnership dashboard *(net-new, added 2026-10-10 — `DEC-SCOPE-171`, `upc-029`)*
+
+The inline pattern; the scope is in the SQL `WHERE`. Routes are listed in §12CM. Counts, university names and open-task titles (never
 notes); commission per U2.
 
 | Role | `GET /partnership/global-dashboard` — universities | Commission totals |

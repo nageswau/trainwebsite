@@ -2647,10 +2647,28 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `GET /partnership/universities/{university_id}/onboarding` | **→ 200** `{started, started_on, status: not_started\|in_progress\|completed, completed_count, items: [{kind, label, status, completed_by: manual\|auto\|null, completed_on, owner {id, full_name} \| null, due_date, note}], can_edit}`, the ten items in source order. `404` unknown university; `422` non-UUID |
 | `PATCH /partnership/universities/{university_id}/onboarding/{kind}` | Body (at least one): `status` (not null), `owner_user_id` (null clears), `due_date`, `note` (≤ 500, blank → null). **→ 200** the GET shape + `stage_advanced`. `403` role / scope; `404` university; `409` `onboarding_not_started`, `university_lost`, inactive; `422` unknown kind, bad status, owner not an active partnership manager / head / super_admin, note too long, empty body |
 | Course writes (§12 upc-017) | `POST …/courses`, `PATCH …/courses/{id}`, `POST …/courses/import` may also move the university to Partner Activated (OB8); their responses are unchanged |
+## 12CL. Partnership health score (`upc-028`) — addendum, 2026-10-10
 
-## 12CL. Complete global partnership dashboard (`upc-029`) — addendum, 2026-10-10
+- **Basis:** `DEC-SCOPE-170` (HS1–HS12). Spec: `docs/superpowers/specs/2026-10-10-upc-028-partnership-health-design.md` §3. No migration.
+- **Readers:** the same as §12BU (`401` / `403` / `404` / `422` unchanged).
+- **Behaviour:** read-only, with no audit row. The change is additive: existing keys and the ranking order are unchanged.
 
-- **Basis:** `DEC-SCOPE-170` (GD1–GD17). Spec: `docs/superpowers/specs/2026-10-10-upc-029-global-partnership-dashboard-design.md` §3. No migration.
+| Method/Path | Change |
+|---|---|
+| `GET /partnership/performance` | Each `items[]` row gains `health` (scored for the rows on the page only) |
+| `GET /partnership/universities/{id}/performance` | Gains `health` |
+
+- **`health`:** `null` for a university that is not an active partner (HS1). Otherwise:
+  `{as_of, score: int | null, band: excellent | good | needs_attention | insufficient_data, band_label, factors?}`.
+- **`factors`:** commission roles only. For every other reader the key is absent. The list is
+  `[{key, label, tracked, has_data, measure, weight, points}]`, in a fixed order with satisfaction last. When `score` is not null,
+  Σ `points` = `score`.
+- **Period:** health is always as of today (`as_of`). The `from` / `to` parameters do not change it.
+- **Queries:** a constant number per request, whatever the data.
+
+## 12CM. Complete global partnership dashboard (`upc-029`) — addendum, 2026-10-10
+
+- **Basis:** `DEC-SCOPE-171` (GD1–GD17). Spec: `docs/superpowers/specs/2026-10-10-upc-029-global-partnership-dashboard-design.md` §3. No migration.
 - **Readers:** `partnership_head`, `super_admin`; `partnership_manager` and every other role `403`; no session `401`. Scope in SQL from the
   caller (no ids accepted).
 

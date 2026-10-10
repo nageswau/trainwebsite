@@ -337,7 +337,7 @@ Division `global`; created only by a Super Admin from Users; signs in at `/admin
 - /partnership/head — redirects to `/partnership/head/team`.
 - /partnership/universities — *(upc-003)* University Master in the head's sidebar (Team · University Master): add, edit and publish
   unowned or team-owned universities and assign their managers. Overseas Admin and Super Admin reach it from their Universities section.
-- /partnership/head/global-dashboard — *(upc-029, `DEC-SCOPE-170`)* "Global Dashboard" (second in the head's sidebar; "Partnership Global
+- /partnership/head/global-dashboard — *(upc-029, `DEC-SCOPE-171`)* "Global Dashboard" (second in the head's sidebar; "Partnership Global
   Dashboard" for Super Admin): the §31 three columns, the Management §19 pipeline, the student funnel and commission totals for the team's
   scope. Partnership managers are refused.
 
