@@ -178,6 +178,9 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 .funnel-fill { display: block; height: 100%; background: var(--blue); }
 /* upc-018 QA18-01: a step the CRM does not track reads as a note, not a count. */
 .funnel-count.funnel-untracked { font-weight: 600; font-style: italic; color: var(--muted); }
+/* upc-028: a partner without enough data to score -- a neutral pill, not a band colour; the health pill never wraps in the ranking. */
+.badge.health-unknown { background: #eef1f5; color: var(--muted); }
+.table td > :is(.badge, .status) { white-space: nowrap; }
 /* ENH-020: Closed is an outcome, not an error -- a neutral pill that carries its word; finished cases sit under a disclosure. */
 .status.closed { background: var(--soft); color: var(--muted); }
 .funding-finished { margin-top: 16px; }
