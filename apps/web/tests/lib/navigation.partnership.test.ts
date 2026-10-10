@@ -18,8 +18,8 @@ describe("upc-001 navigation", () => {
     expect(new Set(PARTNERSHIP_MENU.map((e) => e.href)).size).toBe(19);
   });
 
-  it("links only the live entries, plus Profile (upc-003 University Master, upc-007 Partnership Pipeline, upc-009 Meetings, upc-010 University Visits, upc-014 MoU & Agreements, upc-016 Commercial Terms, upc-017 Courses & Programs, upc-018 Student Opportunities + University Performance, upc-020 Follow-ups & Tasks, upc-011 Calendar, upc-026 Documents, upc-015 Alerts, upc-021 Targets & Forecast, upc-024 Global University Database, upc-025 Global Partnership Map)", () => {
-    expect(PARTNERSHIP_MENU.filter((e) => e.live).map((e) => e.label)).toEqual(["Dashboard", "Global University Database", "University Master", "Partnership Pipeline", "Meetings", "University Visits", "MoU & Agreements", "Commercial Terms", "Courses & Programs", "Student Opportunities", "University Performance", "Follow-ups & Tasks", "Calendar", "Documents", "Alerts", "Targets & Forecast", "Global Partnership Map"]);
+  it("links only the live entries, plus Profile (upc-003 University Master, upc-007 Partnership Pipeline, upc-009 Meetings, upc-010 University Visits, upc-014 MoU & Agreements, upc-016 Commercial Terms, upc-017 Courses & Programs, upc-018 Student Opportunities + University Performance, upc-020 Follow-ups & Tasks, upc-011 Calendar, upc-026 Documents, upc-015 Alerts, upc-021 Targets & Forecast, upc-024 Global University Database, upc-025 Global Partnership Map, upc-031 Reports)", () => {
+    expect(PARTNERSHIP_MENU.filter((e) => e.live).map((e) => e.label)).toEqual(["Dashboard", "Global University Database", "University Master", "Partnership Pipeline", "Meetings", "University Visits", "MoU & Agreements", "Commercial Terms", "Courses & Programs", "Student Opportunities", "University Performance", "Follow-ups & Tasks", "Calendar", "Documents", "Alerts", "Targets & Forecast", "Global Partnership Map", "Reports"]);
     expect(PARTNERSHIP_NAV).toEqual([
       { label: "Dashboard", href: "/partnership/dashboard" }, { label: "Global University Database", href: "/partnership/search" }, // upc-024
       { label: "University Master", href: "/partnership/universities" },
@@ -30,6 +30,7 @@ describe("upc-001 navigation", () => {
       { label: "Follow-ups & Tasks", href: "/partnership/tasks" }, { label: "Calendar", href: "/partnership/calendar" },
       { label: "Documents", href: "/partnership/documents" }, { label: "Alerts", href: "/partnership/alerts" }, // upc-015
       { label: "Targets & Forecast", href: "/partnership/targets" }, { label: "Global Partnership Map", href: "/partnership/map" }, // upc-025
+      { label: "Reports", href: "/partnership/reports" }, // upc-031
       { label: "Profile", href: "/partnership/profile" },
     ]);
     expect(PARTNERSHIP_HEAD_NAV).toEqual([
@@ -46,6 +47,7 @@ describe("upc-001 navigation", () => {
       { label: "Follow-ups & Tasks", href: "/partnership/tasks" }, { label: "Calendar", href: "/partnership/calendar" }, // upc-011
       { label: "Documents", href: "/partnership/documents" }, { label: "Alerts", href: "/partnership/alerts" }, // upc-015
       { label: "Message templates", href: "/partnership/head/templates" }, { label: "Targets & Forecast", href: "/partnership/targets" },
+      { label: "Reports", href: "/partnership/reports" }, // upc-031
     ]);
   });
 
@@ -58,6 +60,7 @@ describe("upc-001 navigation", () => {
     expect(SUPER_ADMIN_NAV).toContainEqual({ label: "Partnership Follow-ups & Tasks", href: "/partnership/tasks" }); // upc-020 QA-03
     expect(SUPER_ADMIN_NAV).toContainEqual({ label: "Partnership Meetings", href: "/partnership/meetings" }); // upc-009 MG14
     expect(SUPER_ADMIN_NAV).toContainEqual({ label: "Partnership Targets", href: "/partnership/targets" }); // upc-021
+    expect(SUPER_ADMIN_NAV).toContainEqual({ label: "Partnership Reports", href: "/partnership/reports" }); // upc-031
   });
 
   it("gives the Super Admin and Overseas Admin a Partnership managers entry", () => {

@@ -1264,6 +1264,11 @@ Common conventions:
 - **Complexity:** medium · **Risk:** high
 
 ### upc-031 — Reports + CSV export
+- **Status (2026-10-10):** built on `feature/upc-031` under `DEC-SCOPE-173` (Q-25 + RP1–RP14, recommended answers), with **no migration**, API
+  §12CO and RBAC §2.99. Spec: `docs/superpowers/specs/2026-10-10-upc-031-partnership-reports-design.md`.
+  - Five reports at `/partnership/reports` (pipeline by country, expected partnerships, university performance, agreements expiring,
+    targets vs actual), each built from the code behind the figure it repeats; CSV via tel-024's `to_csv` (BOM, formula guard), export
+    audited. Readers: managers, heads, `super_admin` (`overseas_admin` and counselors 403).
 - **Business requirement:** §32 menu "📑 Reports" (no detail in the source).
 - **Existing behavior:** none.
 - **Expected behavior:** the reports listed per Q-25 (e.g. pipeline by country, expected partnerships, university performance, agreements

@@ -71,6 +71,19 @@ def window_figures(rows: list, today: date) -> list[dict]:
     return figures
 
 
+def chosen_rows(rows: list, window: str, today: date) -> list:
+    """EX9/EX12: `all` = every dated row (overdue included), a window = its IST days, `undated` = no expected date; by expected date, then
+    name (upc-031's expected report lists the same rows)."""
+    if window == "undated":
+        chosen = [r for r in rows if r[0].expected_agreement_date is None]
+    elif window == "all":
+        chosen = [r for r in rows if r[0].expected_agreement_date is not None]
+    else:
+        w = next(w for w in forecast_windows(today) if w.key == window)
+        chosen = [r for r in rows if _in(r[0].expected_agreement_date, w.first, w.last)]
+    return sorted(chosen, key=lambda r: (r[0].expected_agreement_date or date.max, r[0].name.casefold(), str(r[0].id)))
+
+
 @router.get("/expected", response_model=ExpectedPage)
 async def expected(
     window: ExpectedWindowKey = "all",
@@ -84,16 +97,8 @@ async def expected(
     await _require_reader(db, user)
     today = india_date(await db_now(db))
     rows = await expected_rows(db, user, await universities.team_of(db, user))
-    windows = forecast_windows(today)
     figures = window_figures(rows, today)
-    if window == "undated":
-        chosen = [r for r in rows if r[0].expected_agreement_date is None]
-    elif window == "all":
-        chosen = [r for r in rows if r[0].expected_agreement_date is not None]
-    else:
-        w = next(w for w in windows if w.key == window)
-        chosen = [r for r in rows if _in(r[0].expected_agreement_date, w.first, w.last)]
-    chosen.sort(key=lambda r: (r[0].expected_agreement_date or date.max, r[0].name.casefold(), str(r[0].id)))
+    chosen = chosen_rows(rows, window, today)
     return {
         "today": today, "window": window, "windows": figures, "undated_count": sum(1 for uni, *_ in rows if uni.expected_agreement_date is None),
         "total": len(chosen), "limit": limit, "offset": offset, "items": [_row(*r) for r in chosen[offset : offset + limit]],

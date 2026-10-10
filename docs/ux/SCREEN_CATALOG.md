@@ -4009,3 +4009,22 @@ Design spec `docs/superpowers/specs/2026-10-10-upc-029-global-partnership-dashbo
   (`role=status`) under the title; a manager or other role sees the access card.
 - **Responsive / a11y:** columns stack below 1200 px and sit three across above; count tables are captioned, column cards are labelled
   regions, icons `aria-hidden`; no page side-scroll at 375 px.
+
+## upc-031 addendum (2026-10-10, `DEC-SCOPE-173`) — Partnership reports
+
+Design spec `docs/superpowers/specs/2026-10-10-upc-031-partnership-reports-design.md` §5. Visual-reference mapping: None — not inspected. Do
+not claim parity.
+
+- **Route:** `/partnership/reports?report=<kind>` (server page). Readers: partnership manager, head, super_admin; any other role sees the
+  access card; signed out → `/overseas/login?next=…`.
+- **Layout (tel-024 pattern):** a report tab strip (Pipeline by Country, Expected Partnerships, University Performance, Agreements Expiring,
+  Targets vs Actual — links, `aria-current`), a plain GET filter form for the kinds that have filters (window select / From–To dates /
+  Month; `autoComplete="off"` and keyed on the address, QA31-01), the server's notes, the table (`.table compact stack`, labelled scroll
+  region, caption, Total row in `<tfoot>`), "Download CSV" (`ReportDownloadButton`, outcome announced).
+- **States:** empty → a per-report `role=status` message and no download; a refused filter → `.form-error[role=alert]` above the form, the
+  inputs kept; a failed read → "This report is unavailable right now."; more than 500 rows → "Showing the first 500 of N rows…".
+- **Responsive / a11y:** the table stacks into labelled blocks on a phone (no side-scroll at 390 px); the desktop table scrolls inside its
+  focusable region; numbers right-aligned.
+- **QA (2026-10-10, Chromium, desktop 1366 / tablet 820 / phone 390):** QA31-01 (minor) — Back after Apply + Refresh showed the
+  remembered window over the address's; fixed (form `autoComplete="off"`), unit + e2e. No console errors or failed requests; formula
+  cell guarded in the CSV; a counselor gets the access card and a 403 on the API.

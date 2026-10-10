@@ -2688,6 +2688,20 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `GET /partnership/global-dashboard?from=YYYY-MM-DD&to=YYYY-MM-DD` | **→ 200** `{today, from, to, active: {count, countries: [{name, iso2, count}], universities: [{id, university_code, name, country, courses}], courses: [{level, courses, universities}]}, in_progress: {count, expected: {earlier, this_month, next_month, later, undated}, probability: [{probability, count}], weighted, next_actions: [{university: {id, university_code, name}, task_id, title, due_on, overdue}], without_action}, target: {count, priorities: [{priority, count}], countries, course_levels: [{level, count}], no_course_levels}, pipeline: {steps: [{key, label, count}], lost, total}, funnel: {steps, totals}, commission?: {expected, received}}`. Columns / pipeline are now; `funnel` / `commission` cover the period (default this IST month to date). `commission` only for U2 roles. `422` bad or impossible date, `from` after `to`, more than 366 days. A fixed number of statements |
 
+## 12CO. Partnership reports + CSV export (`upc-031`) — addendum, 2026-10-10
+
+- **Basis:** `DEC-SCOPE-173` (Q-25 + RP1–RP14). Spec: `docs/superpowers/specs/2026-10-10-upc-031-partnership-reports-design.md` §3. No migration.
+- **Readers:** `partnership_manager` (with a profile), `partnership_head`, `super_admin`; others `403` (before the kind is checked); no session
+  `401`. Scope in SQL from the caller (no ids accepted). `kind` ∈ `pipeline`, `expected`, `performance`, `agreements`, `targets`; another
+  `404`. Filters are plain strings validated after authorization: `window` (expected: `all`, `this_month`, `next_month`, `this_quarter`,
+  `undated`), `from` / `to` (performance, `YYYY-MM-DD`, ≤ 366 days), `month` (targets, `YYYY-MM`); a bad value `422` with a sentence naming the
+  field. `Cache-Control: private, no-store`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/reports/{kind}` | **→ 200** `{kind, title, as_of, filters, columns: [{key, label, numeric}], items, totals \| null, total, truncated, notes}`; the first 500 rows (`truncated` when `total` is larger). Commission columns (performance) only for U2 roles. Not audited |
+| `GET /partnership/reports/{kind}.csv` | **→ 200** `text/csv; charset=utf-8`, attachment `partnership-<kind>-<as_of>.csv`: UTF-8 BOM, the on-screen labels as the header, the Total row last, text cells through `_safe_cell`. **422** over 5,000 rows ("narrow the filters"), never cut short. Audited `partnership_report.export` (kind, filter names, row count), committed before the file |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
