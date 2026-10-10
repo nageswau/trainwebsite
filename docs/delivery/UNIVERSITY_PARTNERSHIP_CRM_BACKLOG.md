@@ -680,6 +680,8 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-013 — University timeline (communication history)
+- **Status (2026-10-10):** built on `feature/upc-013` under `DEC-SCOPE-163` (TL1–TL10, recommended answers), no migration, API §12CE and
+  RBAC §2.89. Spec: `docs/superpowers/specs/2026-10-10-upc-013-university-communication-history-design.md`.
 - **Business requirement:** §12 timeline example; "never loses the history".
 - **Existing behavior:** none.
 - **Expected behavior:** a read-only UNION ALL of stage history, calls, messages, meetings, visits, agreement events, follow-ups and

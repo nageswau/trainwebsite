@@ -2536,6 +2536,16 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `GET /universities/{id}/view` | `{slice, university: {id, university_code, name, institution_type, ownership_type, country{name, iso2, region}, state_region, city, website, overview, eligibility, course_levels, popular_programs, rankings}, …}`. **Sections by slice:**<ul><li>`counselor` / `overseas_admin`: `partnership{stage, stage_label, lost}`; `contacts[]` (shareable only, no notes, ≤ 50); `courses[]` (active, ≤ 200, the course fields without commission); `documents[]` (shareable, never the commission agreement: `{id, kind, title, current_version, updated_at}`); `applications[]` (≤ 50, newest first: a counselor's own, or all for overseas_admin: `{id, reference, student_name, intake, status, next_action, updated_at}`).</li><li>`bdm`: `partnership`, `manager{full_name, email}` or null.</li><li>`university_rep`: `courses[]`.</li></ul>**Scope:** a counselor sees published + active universities only, and a rep sees only `profile.university_id`. Out of scope or unknown → `404` "University not found". Non-UUID → `422` |
 | `GET /universities/{id}/view/documents/{document_id}/file` | The current version as an attachment with a server-built file name, for the slices that list documents (counselor, overseas_admin). It is audited (`university_document.download`, role in metadata) and committed before any byte leaves. BDM / rep → `403`. A hidden, commission or unknown document → `404`. Scope as above |
 
+## 12CE. University communication history (`upc-013`) — addendum, 2026-10-10
+
+- **Basis:** `DEC-SCOPE-163` (TL1–TL10). Spec: `docs/superpowers/specs/2026-10-10-upc-013-university-communication-history-design.md` §3. No migration.
+- **Readers:** `partnership_manager` (with a profile), `partnership_head`, `super_admin` (the upc-012 UC3 readers); others `403`; no session `401`.
+- **Behaviour:** read-only, not audited; two queries per page.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/universities/{university_id}/timeline?limit(1–100, 50)&offset` | **→ 200** `{items: [{id, kind: stage\|call\|message\|meeting\|visit\|agreement\|task\|document, at, actor {id, full_name} \| null, event, from_value, from_label, to_value, to_label, subject, status, reason, duration_seconds, scheduled_for}], total, limit, offset}`, newest first (TL5). Per kind (spec D3): stage = move/lost/reopened with stage keys + labels; call = direction, outcome + label, contact name; message = channel, template name, contact name, subject, delivery status; meeting = event, meeting type, code, start; visit = action, from/to status, code; agreement = event, from/to status, MoU number, type; task = scheduled/done/cancelled, kind, due date, assignee name, title, source; document = uploaded/new_version, kind, version, title. Free text ≤ 200 characters. `404` unknown university; `422` non-UUID or bad paging |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
