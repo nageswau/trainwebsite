@@ -66,6 +66,7 @@ OVERRIDE_ROLES = frozenset({"partnership_head", "super_admin"})  # upc-004 UD2: 
 MAX_MATCHES = 10
 DUPLICATE_MESSAGE = "This university is already in the University Master"
 INACTIVE = "Reactivate this university first"
+MANAGER_FILTER_INVALID = "manager must be me, none or a manager id"
 
 
 def public_visible() -> list:
@@ -216,6 +217,19 @@ def manager_options_filter(user: User) -> list:
     if user.role != "super_admin":
         filters.append(PartnershipProfile.reporting_head_user_id == user.id)
     return filters
+
+
+def manager_filter(user: User, manager: str | None) -> list:
+    """`manager` = me, none (no primary) or a manager id, matched as primary or backup; shared by the list and upc-024's search."""
+    if manager is None:
+        return []
+    if manager == "none":
+        return [University.primary_manager_user_id.is_(None)]
+    try:
+        manager_id = user.id if manager == "me" else UUID(manager)
+    except ValueError:
+        raise HTTPException(422, MANAGER_FILTER_INVALID) from None
+    return [(University.primary_manager_user_id == manager_id) | (University.backup_manager_user_id == manager_id)]
 
 
 def search_filters(pattern: str | None) -> list:
