@@ -4,6 +4,7 @@ import BdmStageHistory from "@/components/BdmStageHistory";
 import MeetingTable from "@/components/MeetingTable";
 import PartnershipFunnel from "@/components/PartnershipFunnel";
 import PartnershipTasksPanel from "@/components/PartnershipTasksPanel";
+import UniversityActivity from "@/components/UniversityActivity";
 import UniversityAgreements from "@/components/UniversityAgreements";
 import UniversityCourses from "@/components/UniversityCourses";
 import UniversityFollowUp from "@/components/UniversityFollowUp";
@@ -208,5 +209,41 @@ describe("upc-012 university detail page", () => {
     expect(tree.find((el) => el.type === UniversityMessages)).toBeUndefined();
     expect(tree.find((el) => el.type === MeetingTable)).toBeUndefined(); // upc-009 MG14: meetings are not read for overseas_admin
     expect(serverApi).not.toHaveBeenCalledWith(expect.stringContaining("/partnership/meetings"));
+  });
+});
+
+describe("upc-013 university detail page", () => {
+  const activity = { items: [{ id: "s1", kind: "stage" }], total: 1, limit: 50, offset: 0 };
+  const serve = (role: string, timelineRead: () => Promise<unknown>) => vi.mocked(serverApi).mockImplementation(async (p: string) => {
+    if (p === "/api/v1/auth/me") return { role, full_name: "Rahul" } as never;
+    if (p.includes("/timeline")) return timelineRead() as never;
+    if (p.includes("/stage-history")) return history as never;
+    if (p.includes("/milestones")) return milestones as never;
+    if (p.includes("/contacts")) return { items: [], total: 0, limit: 50, offset: 0 } as never;
+    if (p.includes("/partnership/visits")) return { items: [], total: 0, limit: 5, offset: 0 } as never;
+    if (p.includes("/partnership/meetings")) return meetings as never;
+    if (p.includes("/performance")) return performance as never;
+    return { university: { ...university, permissions: { ...university.permissions, can_manage_agreements: false } } } as never;
+  });
+
+  it("shows the communication history to the partnership roles, its first page read with the university (TL2, TL9)", async () => {
+    serve("partnership_head", async () => activity);
+    const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
+    expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/universities/${ID}/timeline?limit=50&offset=0`);
+    expect(tree.find((el) => el.type === UniversityActivity)!.props).toEqual({ universityId: ID, initial: activity });
+    expect(tree.some((el) => el.props?.id === "uni-history")).toBe(true);
+  });
+
+  it("a failed read still shows the page, with Retry in the section", async () => {
+    serve("partnership_manager", async () => { throw new Error("down"); });
+    const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
+    expect(tree.find((el) => el.type === UniversityActivity)!.props.initial).toBeNull();
+  });
+
+  it("is neither read nor shown for overseas_admin", async () => {
+    serve("overseas_admin", async () => activity);
+    const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
+    expect(tree.find((el) => el.type === UniversityActivity)).toBeUndefined();
+    expect(serverApi).not.toHaveBeenCalledWith(expect.stringContaining("/timeline"));
   });
 });

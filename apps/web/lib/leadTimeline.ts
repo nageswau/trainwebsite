@@ -20,7 +20,7 @@ export type TimelineEntry = {
 };
 
 export const TIMELINE_LIMIT = 50;
-const EXCERPT = 200; // TM2: the API cuts free text here; the full text stays in the Calls / Messages / Follow-ups sections
+export const EXCERPT = 200; // TM2: the API cuts free text here; the full text stays in the Calls / Messages / Follow-ups sections
 
 const TONE = { stage: "var(--blue)", contact: "var(--green)", plan: "var(--amber)", owner: "var(--navy)", stop: "var(--red)" };
 const METHOD: Record<string, string> = { manual: "Manual", round_robin: "Round robin", product_rule: "Product rule", location_rule: "Location rule" };
@@ -28,7 +28,7 @@ const APPOINTMENT_TYPE: Record<string, string> = {
   career_counselling: "Career counselling", it_course_counselling: "IT course counselling", overseas_counselling: "Overseas counselling",
   university_counselling: "University counselling",
 };
-const EMAIL_TITLE: Record<string, string> = { queued: "Email sending", sending: "Email sending", retrying: "Email delayed", sent: "Email sent", failed: "Email failed" };
+export const EMAIL_TITLE: Record<string, string> = { queued: "Email sending", sending: "Email sending", retrying: "Email delayed", sent: "Email sent", failed: "Email failed" };
 
 const source = (key: string) => SOURCE_LABEL[key] ?? key;
 const humanise = (key: string) => (key ? statusText(key) : key);
