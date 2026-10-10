@@ -49,5 +49,5 @@ export const searchHref = (status: "partner" | "in_progress" | "target", filter:
   `${SEARCH_PATH}?${new URLSearchParams({ partner_status: status, ...filter })}`;
 
 export function pipelineTiles(d: GlobalDashboard): DashboardTile[] {
-  return d.pipeline.steps.map((s) => ({ key: s.key, label: s.label, value: s.count, href: pipelineColumn(STEP_COLUMN[s.key] ?? "target") }));
+  return d.pipeline.steps.map((s) => ({ key: s.key, label: s.label, value: s.count, href: pipelineColumn(STEP_COLUMN[s.key]) }));
 }

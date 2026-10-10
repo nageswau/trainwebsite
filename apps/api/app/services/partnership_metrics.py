@@ -386,7 +386,7 @@ async def global_figures(db: AsyncSession, user: User, team: frozenset[UUID], to
 
     named = {uni.id: uni for uni, _ in progress}
     earliest = await db.execute(
-        select(T.university_id, T.id, T.title, T.due_on).where(T.university_id.in_(named), T.status == "open")
+        select(T.university_id, T.id, T.title, T.due_on).where(T.university_id.in_(list(named)), T.status == "open")
         .order_by(T.university_id, T.due_on, T.created_at, T.id).ext(distinct_on(T.university_id))
     )  # fmt: skip
     actions = sorted(earliest.all(), key=lambda t: (t.due_on, named[t.university_id].name.casefold(), str(t.university_id)))
