@@ -3892,7 +3892,7 @@ inspected), so no parity is claimed.
   - no access: the access card.
 - **Responsive:** the phone layout turns each row into a card of labelled lines (`data-label`), with no page side-scroll at 390 px.
 
-## upc-025 addendum (2026-10-10, `DEC-SCOPE-166`) — Global Partnership Map
+## upc-025 addendum (2026-10-10, `DEC-SCOPE-167`) — Global Partnership Map
 
 Design spec: `docs/superpowers/specs/2026-10-10-upc-025-global-partnership-map-design.md` §4. Visual-reference mapping: none (not
 inspected), so no parity is claimed.

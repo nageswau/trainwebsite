@@ -43,13 +43,14 @@ def _excerpt(column):
 
 
 def _branch(row_id, kind: str, at, *, seq=None, actor=None, from_value=None, from_name=None, to_value=None, to_name=None, reason=None,
-            event=None, subject=None, status=None, duration=None, scheduled_for=None):
-    """One source as the shared column list. A missing value is a typed NULL (or "" for from/to, which the contract keeps as strings)."""
+            event=None, subject=None, status=None, duration=None, scheduled_for=None, rank=None):
+    """One source as the shared column list. A missing value is a typed NULL (or "" for from/to, which the contract keeps as strings).
+    `rank` overrides the lead ranks (upc-013 has its own causal order)."""
     def text(value):
         return cast(null(), String) if value is None else (literal(value, String) if isinstance(value, str) else cast(value, String))
 
     return select(
-        row_id.label("id"), literal(kind, String).label("kind"), literal(RANK.get(kind, OTHER_RANK), Integer).label("rank"), at.label("at"),
+        row_id.label("id"), literal(kind, String).label("kind"), literal(RANK.get(kind, OTHER_RANK) if rank is None else rank, Integer).label("rank"), at.label("at"),
         (literal(0, BigInteger) if seq is None else seq).label("seq"), (cast(null(), Uuid) if actor is None else actor).label("actor_id"),
         func.coalesce(text(from_value), "").label("from_value"), text(from_name).label("from_name"),
         func.coalesce(text(to_value), "").label("to_value"), text(to_name).label("to_name"), text(reason).label("reason"),

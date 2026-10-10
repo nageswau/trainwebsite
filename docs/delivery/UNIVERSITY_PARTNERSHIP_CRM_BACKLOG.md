@@ -680,6 +680,8 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-013 — University timeline (communication history)
+- **Status (2026-10-10):** built on `feature/upc-013` under `DEC-SCOPE-166` (TL1–TL10, recommended answers), no migration, API §12CH and
+  RBAC §2.92. Spec: `docs/superpowers/specs/2026-10-10-upc-013-university-communication-history-design.md`.
 - **Business requirement:** §12 timeline example; "never loses the history".
 - **Existing behavior:** none.
 - **Expected behavior:** a read-only UNION ALL of stage history, calls, messages, meetings, visits, agreement events, follow-ups and
@@ -1061,8 +1063,8 @@ Common conventions:
 - **Complexity:** large · **Risk:** medium
 
 ### upc-025 — Global partnership map
-- **Status (2026-10-10):** built on `feature/upc-025` under `DEC-SCOPE-166` (MP1–MP14, recommended answers; Q-07 and Q-32 included),
-  with **no migration**, API §12CH and RBAC §2.92. The route is `GET /partnership/universities/map`. Spec:
+- **Status (2026-10-10):** built on `feature/upc-025` under `DEC-SCOPE-167` (MP1–MP14, recommended answers; Q-07 and Q-32 included),
+  with **no migration**, API §12CI and RBAC §2.93. The route is `GET /partnership/universities/map`. Spec:
   `docs/superpowers/specs/2026-10-10-upc-025-global-partnership-map-design.md`.
 - **Business requirement:** §2 ("one of the most important features"; per-country status counts; click → university list; 12 filters)
   (U12).

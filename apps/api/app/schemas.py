@@ -6003,6 +6003,33 @@ class LeadTimelinePage(BaseModel):
     offset: int
 
 
+class UniversityTimelineRow(BaseModel):
+    """upc-013 (DEC-SCOPE-166 D3): one entry of a university's communication history. `id` is the source row's id (a task's scheduled /
+    done / cancelled entries share it; `event` tells them apart). `to_label` is a stage label or a person / contact name, else ""."""
+
+    id: UUID
+    kind: Literal["stage", "call", "message", "meeting", "visit", "agreement", "task", "document"]
+    at: datetime
+    actor: LeadStageActor | None
+    event: str | None
+    from_value: str
+    from_label: str
+    to_value: str
+    to_label: str
+    subject: str | None
+    status: str | None
+    reason: str | None
+    duration_seconds: int | None
+    scheduled_for: datetime | None
+
+
+class UniversityTimelinePage(BaseModel):
+    items: list[UniversityTimelineRow]
+    total: int
+    limit: int
+    offset: int
+
+
 # --- tel-007 (DEC-SCOPE-087, spec §5): distribution rules, the unassigned queue and manual (re)assignment ---------------------------
 class TelDistributionRuleCreate(BaseModel):
     """The service checks the shape (a product rule names a product, a city rule a city), the product and the telecaller."""

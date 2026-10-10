@@ -1568,7 +1568,21 @@ Restricted (U2). Routes are listed in §12CG.
 | no session | `401` | `401` | `401` |
 
 - No student identity leaves these routes; audit rows and logs carry ids, the currency and a count only — never an amount, a reference or a note.
-### 2.92 Global partnership map *(net-new, added 2026-10-10 — `DEC-SCOPE-166`, `upc-025`)*
+### 2.92 University communication history *(net-new, added 2026-10-10 — `DEC-SCOPE-166`, `upc-013`)*
+
+The upc-012 communications rule (`university_comms.require_reader`): the role gate (`403`) first, then the university (`404`). Read-only.
+Routes are listed in §12CH.
+
+| Role | Read a university's history |
+|---|---|
+| `partnership_manager` (with a profile) | Every university (UM9) |
+| `partnership_head`, `super_admin` | Every university |
+| `overseas_admin` | `403` (reads the master, not communications) |
+| any other role | `403` (anonymous `401`) |
+
+- Documents follow upc-026's visibility (never the commission agreement for a non-commission role); no entry carries commission terms.
+
+### 2.93 Global partnership map *(net-new, added 2026-10-10 — `DEC-SCOPE-167`, `upc-025`)*
 
 Enforced in `api/partnership_universities.partnership_map`: `partnership_universities.require_reader` comes first. In
 `services/university_search.country_counts`, `commission_min` is dropped for any role without `partnership_access.can_see_commission`

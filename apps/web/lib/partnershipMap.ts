@@ -1,4 +1,4 @@
-// upc-025 (DEC-SCOPE-166): the Global Partnership Map -- its URL-held filters, the query it sends, the colour rule (Q-32) and the words it
+// upc-025 (DEC-SCOPE-167): the Global Partnership Map -- its URL-held filters, the query it sends, the colour rule (Q-32) and the words it
 // shows. The map counts exactly what the upc-024 search lists for the same filters (MP3), so a country links to that search plus `iso2`.
 import { SEARCH_PATH } from "@/lib/universitySearch";
 
