@@ -2678,6 +2678,16 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `GET /partnership/head/team` | Rows gain `work: {primary, backup, tasks}` (additive) |
 | `PATCH /admin/users/{id}` | `{active:false}` on a partnership manager who is primary on ≥ 1 university → `422` "This manager is the primary manager of N universities. A partnership head must reassign them (Team page) before deactivation." |
 
+## 12CN. Complete global partnership dashboard (`upc-029`) — addendum, 2026-10-10
+
+- **Basis:** `DEC-SCOPE-172` (GD1–GD17). Spec: `docs/superpowers/specs/2026-10-10-upc-029-global-partnership-dashboard-design.md` §3. No migration.
+- **Readers:** `partnership_head`, `super_admin`; `partnership_manager` and every other role `403`; no session `401`. Scope in SQL from the
+  caller (no ids accepted).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/global-dashboard?from=YYYY-MM-DD&to=YYYY-MM-DD` | **→ 200** `{today, from, to, active: {count, countries: [{name, iso2, count}], universities: [{id, university_code, name, country, courses}], courses: [{level, courses, universities}]}, in_progress: {count, expected: {earlier, this_month, next_month, later, undated}, probability: [{probability, count}], weighted, next_actions: [{university: {id, university_code, name}, task_id, title, due_on, overdue}], without_action}, target: {count, priorities: [{priority, count}], countries, course_levels: [{level, count}], no_course_levels}, pipeline: {steps: [{key, label, count}], lost, total}, funnel: {steps, totals}, commission?: {expected, received}}`. Columns / pipeline are now; `funnel` / `commission` cover the period (default this IST month to date). `commission` only for U2 roles. `422` bad or impossible date, `from` after `to`, more than 366 days. A fixed number of statements |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

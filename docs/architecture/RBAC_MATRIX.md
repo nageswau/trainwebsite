@@ -1643,6 +1643,17 @@ score always includes the commission factor. The breakdown is removed for any ro
 | `partnership_manager` | `403` | — |
 | any other role | `403` (anonymous `401`) | — |
 
+### 2.98 Complete global partnership dashboard *(net-new, added 2026-10-10 — `DEC-SCOPE-172`, `upc-029`)*
+
+The inline pattern; the scope is in the SQL `WHERE`. Routes are listed in §12CN. Counts, university names and open-task titles (never
+notes); commission per U2.
+
+| Role | `GET /partnership/global-dashboard` — universities | Commission totals |
+|---|---|---|
+| `partnership_head` | Their direct reports' universities + unowned | ✅ |
+| `super_admin` | All | ✅ |
+| `partnership_manager` | `403` (their own figures: §2.94) | — |
+| any other role | `403` (anonymous `401`) | — |
 
 ## 3. Support / admin audit controls
 

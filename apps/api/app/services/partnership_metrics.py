@@ -4,7 +4,7 @@ Every actual is read from append-only facts -- `university_assignment_history`, 
 the once-set `university_meetings.completed_at` -- and credited to the university's primary manager *at the time of the event*, so a closed month never changes (AC2: past months are
 never re-scored). A constant number of queries whatever the team size."""
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import date, datetime, time, timedelta
 from math import floor
 from statistics import median
@@ -13,13 +13,16 @@ from uuid import UUID
 
 from fastapi import HTTPException
 from sqlalchemy import Subquery, and_, distinct, func, not_, or_, select
+from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
     AgentStudentShortlistEntry,
     ApplicationDeposit,
     ApplicationStatusHistory,
+    Country,
     OverseasApplication,
+    OverseasCourse,
     PartnershipTask,
     University,
     UniversityAgreement,
@@ -34,7 +37,7 @@ from app.models import (
     User,
     VisaCase,
 )
-from app.partnership_stages import GROUPS, STAGE_KEYS
+from app.partnership_stages import GROUPS, MANAGEMENT_STEPS, STAGE_KEYS, column_of, effective_probability
 from app.partnership_target_kpis import KPIS
 from app.services import university_commission as commission
 from app.services.agent_applications import OFFER_COUNTED_STATUSES, WITHDRAWN
@@ -512,3 +515,93 @@ async def health(db: AsyncSession, university_ids: list[UUID], now: datetime) ->
             ],
         }  # fmt: skip
     return found
+
+
+# --- upc-029 (spec GD3-GD13): the §31 global dashboard's three columns and the Management §19 pipeline --------------------------------
+# Folded in Python over one scoped university query, so every sub-view adds up to its column (and the columns to upc-022's D2-D4); one
+# course query and one task query besides, whatever the data size. Funnel and commission are upc-018's / upc-019's, added by the route.
+
+TOP = 10  # GD5 / GD9: the longest lists shown
+PRIORITY_KEYS = ("A", "B", "C", None)  # GD10: the UM priorities, then not set
+
+
+def _countries(rows: list) -> list[dict]:
+    found = Counter((country.name, country.iso2) for _, country in rows)
+    return [{"name": name, "iso2": iso2, "count": n} for (name, iso2), n in sorted(found.items(), key=lambda kv: (-kv[1], kv[0][0].casefold()))]
+
+
+def _by_count(found: Counter) -> list[tuple]:
+    return sorted(found.items(), key=lambda kv: (-kv[1], kv[0]))
+
+
+def _expected_bucket(day: date | None, today: date) -> str:
+    """GD7: whole IST calendar months, as upc-023's windows."""
+    if day is None:
+        return "undated"
+    if day < _month_start(today):
+        return "earlier"
+    if day < _month_start(today, 1):
+        return "this_month"
+    return "next_month" if day < _month_start(today, 2) else "later"
+
+
+async def global_figures(db: AsyncSession, user: User, team: frozenset[UUID], today: date) -> dict:
+    """GD3-GD13 for the caller's scope now: active universities, Lost/Closed in the pipeline's `lost` only."""
+    rows = (await db.execute(select(University, Country).join(Country, Country.id == University.country_id).where(University.active.is_(True), *scope_filter(user, team)))).all()
+    live = [r for r in rows if r[0].lost_at is None]
+    partners, progress, targets = ([r for r in live if GROUPS[r[0].stage] == g] for g in ("partner", "in_progress", "target"))
+
+    C, T = OverseasCourse, PartnershipTask
+    courses = await db.execute(select(C.university_id, C.level, func.count()).where(C.university_id.in_([u.id for u, _ in partners]), C.active.is_(True)).group_by(C.university_id, C.level))
+    per_university: Counter = Counter()
+    per_level: Counter = Counter()
+    offering: dict[str, set] = defaultdict(set)
+    for university_id, level, n in courses.all():
+        per_university[university_id] += n
+        per_level[level] += n
+        offering[level].add(university_id)
+    ranked = sorted(partners, key=lambda r: (-per_university[r[0].id], r[0].name.casefold(), str(r[0].id)))
+
+    named = {uni.id: uni for uni, _ in progress}
+    earliest = await db.execute(
+        select(T.university_id, T.id, T.title, T.due_on).where(T.university_id.in_(list(named)), T.status == "open")
+        .order_by(T.university_id, T.due_on, T.created_at, T.id).ext(distinct_on(T.university_id))
+    )  # fmt: skip
+    actions = sorted(earliest.all(), key=lambda t: (t.due_on, named[t.university_id].name.casefold(), str(t.university_id)))
+    probabilities = [effective_probability(uni.stage, uni.probability_override) for uni, _ in progress]
+    expected = Counter(_expected_bucket(uni.expected_agreement_date, today) for uni, _ in progress)
+
+    levels = Counter(level for uni, _ in targets for level in set(uni.course_levels or []))
+    priorities = Counter(uni.priority for uni, _ in targets)
+    columns = Counter(column_of(uni.stage) for uni, _ in live)
+    return {
+        "active": {
+            "count": len(partners),
+            "countries": _countries(partners),
+            "universities": [{"id": uni.id, "university_code": uni.university_code, "name": uni.name, "country": country.name, "courses": per_university[uni.id]} for uni, country in ranked[:TOP]],
+            "courses": [{"level": level, "courses": n, "universities": len(offering[level])} for level, n in _by_count(per_level)],
+        },
+        "in_progress": {
+            "count": len(progress),
+            "expected": {key: expected[key] for key in ("earlier", "this_month", "next_month", "later", "undated")},
+            "probability": [{"probability": p, "count": n} for p, n in sorted(Counter(probabilities).items(), reverse=True)],
+            "weighted": weighted(probabilities),
+            "next_actions": [
+                {"university": {"id": u, "university_code": named[u].university_code, "name": named[u].name}, "task_id": task_id, "title": title, "due_on": due_on, "overdue": due_on < today}
+                for u, task_id, title, due_on in actions[:TOP]
+            ],  # fmt: skip
+            "without_action": len(progress) - len(actions),
+        },
+        "target": {
+            "count": len(targets),
+            "priorities": [{"priority": p, "count": priorities[p]} for p in PRIORITY_KEYS],
+            "countries": _countries(targets),
+            "course_levels": [{"level": level, "count": n} for level, n in _by_count(levels)],
+            "no_course_levels": sum(1 for uni, _ in targets if not uni.course_levels),
+        },
+        "pipeline": {
+            "steps": [{"key": key, "label": label, "count": sum(columns[c] for c in gathered)} for key, label, gathered in MANAGEMENT_STEPS],
+            "lost": len(rows) - len(live),
+            "total": len(rows),
+        },
+    }

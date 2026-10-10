@@ -3993,3 +3993,19 @@ Design spec: `docs/superpowers/specs/2026-10-10-upc-032-manager-reassignment-des
   in `.form-error[role=alert]` (server sentence for 4xx, plain words for 5xx), focused.
 - **Route `/admin/partnership-managers`:** Deactivate of a primary manager shows the server's 422 sentence under the row.
 - **Responsive:** below 640 px each Team row is a card of labelled lines (`.telecaller-list`); no page side-scroll at 375 px.
+
+## upc-029 addendum (2026-10-10, `DEC-SCOPE-172`) — Complete global partnership dashboard
+
+Design spec `docs/superpowers/specs/2026-10-10-upc-029-global-partnership-dashboard-design.md` §4. Visual-reference mapping: None — not inspected. Do not claim parity.
+
+- **Route `/partnership/head/global-dashboard`** (heads and super_admin from their nav; signed out → `/admin/login`): title "🌍 EduSphere
+  Global Partnerships", the period form (it drives the funnel and commission only), then:
+  - three column cards — 🟢 Active Partners (Country-wise, University-wise with active course counts, Course-wise), 🟡 In Progress
+    (Expected agreement date, Probability + weighted forecast, Next action with an Overdue pill), 🔵 Target List (Priority, Country, Course
+    levels offered) — each heading "Title (n)" linking to its pipeline column;
+  - Partnership Pipeline (the eight Management §19 steps as tiles, "Includes n lost / closed in the total of N");
+  - Student Recruitment (the upc-018 funnel, "Not tracked" steps) and University Commission (Expected / Received per currency).
+- **States:** an empty column reads "No universities in this column."; a failed read shows "The global dashboard is unavailable right now."
+  (`role=status`) under the title; a manager or other role sees the access card.
+- **Responsive / a11y:** columns stack below 1200 px and sit three across above; count tables are captioned, column cards are labelled
+  regions, icons `aria-hidden`; no page side-scroll at 375 px.

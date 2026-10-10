@@ -10131,6 +10131,118 @@ class PartnershipDashboard(BaseModel):
     followups: DashboardFollowups
 
 
+# --- upc-029 (spec §3, GD1-GD17): the §31 global partnership dashboard. Counts, university names and task titles only; commission per U2 ---
+class GlobalCountry(BaseModel):
+    name: str
+    iso2: str | None
+    count: int
+
+
+class GlobalPartner(BaseModel):
+    id: UUID
+    university_code: str
+    name: str
+    country: str
+    courses: int  # GD5: active courses
+
+
+class GlobalCourseLevel(BaseModel):
+    level: str
+    courses: int
+    universities: int
+
+
+class GlobalActive(BaseModel):
+    count: int  # = upc-022 D2
+    countries: list[GlobalCountry]
+    universities: list[GlobalPartner]  # the first 10 (TOP)
+    courses: list[GlobalCourseLevel]
+
+
+class GlobalExpected(BaseModel):
+    earlier: int
+    this_month: int
+    next_month: int
+    later: int
+    undated: int
+
+
+class GlobalProbability(BaseModel):
+    probability: int
+    count: int
+
+
+class GlobalUniversityRef(BaseModel):
+    id: UUID
+    university_code: str
+    name: str
+
+
+class GlobalNextAction(BaseModel):
+    university: GlobalUniversityRef
+    task_id: UUID
+    title: str
+    due_on: date
+    overdue: bool
+
+
+class GlobalInProgress(BaseModel):
+    count: int  # = upc-022 D3
+    expected: GlobalExpected
+    probability: list[GlobalProbability]
+    weighted: float
+    next_actions: list[GlobalNextAction]  # the first 10 (TOP)
+    without_action: int
+
+
+class GlobalPriority(BaseModel):
+    priority: UniversityPriority | None
+    count: int
+
+
+class GlobalLevelCount(BaseModel):
+    level: str
+    count: int
+
+
+class GlobalTarget(BaseModel):
+    count: int  # = upc-022 D4
+    priorities: list[GlobalPriority]
+    countries: list[GlobalCountry]
+    course_levels: list[GlobalLevelCount]
+    no_course_levels: int
+
+
+class GlobalPipelineStep(BaseModel):
+    key: str
+    label: str
+    count: int
+
+
+class GlobalPipeline(BaseModel):
+    steps: list[GlobalPipelineStep]  # Management §19 (GD13)
+    lost: int
+    total: int  # = upc-022 D1
+
+
+class GlobalFunnel(BaseModel):
+    steps: list[PerformanceStep]
+    totals: PerformanceCounts  # = /partnership/performance totals
+
+
+class GlobalPartnershipDashboard(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    today: date
+    from_: date = Field(alias="from")
+    to: date
+    active: GlobalActive
+    in_progress: GlobalInProgress
+    target: GlobalTarget
+    pipeline: GlobalPipeline
+    funnel: GlobalFunnel
+    commission: PerformanceCommission | None = None  # U2 roles only; unset (absent) for anyone else
+
+
 # --- upc-024 (DEC-SCOPE-163, spec SR1-SR16): the Global University Database search ---------------------------------------------
 PartnerStatusFilter = Literal["partner", "in_progress", "target", "lost", "not_partnered"]  # SR11 (Appendix B G1-G4)
 

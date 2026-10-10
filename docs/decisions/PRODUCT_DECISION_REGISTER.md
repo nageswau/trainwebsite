@@ -6865,3 +6865,34 @@ contract §12CM, RBAC §2.97. Spec: `docs/superpowers/specs/2026-10-10-upc-032-m
 - **New:** `services/partnership_lifecycle.py`, `components/PartnershipReassign.tsx`. **Changed:** `api/partnership.py` (route + team
   counts), `api/admin.py` (`update_user` pre-check), `schemas.py`, `components/PartnershipTeamTable.tsx`, `lib/partnership.ts`.
 - **New Feature ID authorized:** `upc-032`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-032.
+
+
+### DEC-SCOPE-172 — Complete global partnership dashboard (`upc-029`)
+
+**Evidence:** `EVID-020` §31 (L1004–L1058: "EDUSPHERE GLOBAL PARTNERSHIPS", Active Partners / In Progress / Target List with three
+sub-views each, the pipeline, the student recruitment funnel and University Commission; no numbers); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md`
+§3.1 U1/U2 (`EXPLICIT_APPROVAL` 2026-10-08), §4 upc-029 and Appendix B (G groups, Management §19 pipeline, Q-31).
+**Status:** GD1–GD17 are recommended answers applied under the owner's standing instruction for the build session ("proceed with the
+recommended answers"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. No migration. API contract §12CN, RBAC §2.98.
+Spec: `docs/superpowers/specs/2026-10-10-upc-029-global-partnership-dashboard-design.md`.
+**Numbering:** drafted as 170 / §12CL / §2.96 and renumbered after upc-028 (PR #227) and upc-032 (PR #228) took 170–171 / §12CL–§12CM /
+§2.96–§2.97.
+
+| # | Question | Answer |
+|---|---|---|
+| GD1 | Readers | `partnership_head`, `super_admin`; a `partnership_manager` is `403` (their figures are upc-022's); others `403` |
+| GD2 | Scope | upc-018 PF6 as upc-022: head = direct reports' universities + unowned; super_admin = all; active universities |
+| GD3 | Columns | G1 / G2 / G3, not lost; each column's count equals upc-022 D2 / D3 / D4 |
+| GD4–GD6 | Active Partners | Country-wise; University-wise (active course count, first 10); Course-wise (active courses per level, partners offering it) |
+| GD7–GD9 | In Progress | Expected date in whole IST months (earlier / this / next / later / not dated); probability (upc-023 EX1) + weighted (E4); next action = the earliest-due open task (first 10) + how many have none |
+| GD10–GD12 | Target List | Priority A / B / C / not set; country; declared `course_levels` (a level each) + not stated |
+| GD13 | Pipeline | Management §19 (Appendix B, Q-31): Identified K1 · Contacted K2–K3 · Meeting K4 · Proposal K5 · Negotiation K6 · Agreement K7 · Signed K8 · Active Partner K9; `lost` aside; Σ + lost = D1 |
+| GD14 | Funnel | upc-018 F1–F9 totals for a period (`from` / `to`, default this IST month to date); equal to `/partnership/performance` `totals` |
+| GD15 | Commission | upc-019 F10 / F11 per currency for the period, U2 roles only (key absent otherwise); equal to `/partnership/performance` `commission` |
+| GD16 | Links | Headings → pipeline columns; universities / next actions → university page; country, priority, level → upc-024 search |
+| GD17 | Page / nav | `/partnership/head/global-dashboard`; head nav "Global Dashboard" (after Dashboard), super_admin nav "Partnership Global Dashboard"; not a §32 menu entry |
+
+**Consequences:** `services/partnership_metrics.global_figures`, `partnership_stages.MANAGEMENT_STEPS`, `api/partnership_global_dashboard.py`;
+`api/partnership_performance.ranking` / `commission_totals` extracted (the performance route is unchanged in behaviour); page
+`/partnership/head/global-dashboard` with `components/GlobalCounts.tsx` and `lib/partnershipGlobal.ts`. Feeds mgmt-023 (its totals equal these).
+- **New Feature ID authorized:** `upc-029`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-029.
