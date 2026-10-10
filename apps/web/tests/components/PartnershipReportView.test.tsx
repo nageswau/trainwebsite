@@ -62,6 +62,8 @@ describe("PartnershipReportView (upc-031)", () => {
   it("offers the window filter on the expected report, the period on performance, the month on targets, none on pipeline", () => {
     const { rerender } = render(<PartnershipReportView kind="expected" report={report()} error="" params={{ window: "undated" }} />);
     expect(screen.getByRole("combobox", { name: "Expected date window" })).toHaveValue("undated");
+    // QA31-01: Back must not restore a value the browser remembered over the one in the address.
+    expect(screen.getByRole("form", { name: "Report filters" })).toHaveAttribute("autocomplete", "off");
     rerender(<PartnershipReportView kind="performance" report={report({ kind: "performance", filters: { from: "2026-10-01", to: "2026-10-10" } })} error="" params={{}} />);
     expect(screen.getByLabelText("From")).toHaveValue("2026-10-01");
     expect(screen.getByLabelText("To")).toHaveValue("2026-10-10");

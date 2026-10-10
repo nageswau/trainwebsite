@@ -50,8 +50,9 @@ export default function PartnershipReportView({ kind, report, error, params }: {
       <h3>{report?.title ?? `${REPORT_TABS.find((t) => t.key === kind)?.label} Report`}</h3>
       {error && <p className="form-error" role="alert">{error}</p>}
       {filters.length > 0 && (
-        // Keyed on the address: an uncontrolled form would keep its old values after a client navigation to the same page.
-        <form key={`${kind}${reportQuery(kind, params)}`} method="get" action={REPORTS_PATH} aria-label="Report filters" className="analytics-form">
+        // Keyed on the address: an uncontrolled form would keep its old values after a client navigation to the same page; and
+        // autoComplete off stops the browser restoring a remembered value over the address's on Back (QA31-01).
+        <form key={`${kind}${reportQuery(kind, params)}`} method="get" action={REPORTS_PATH} aria-label="Report filters" className="analytics-form" autoComplete="off">
           <input type="hidden" name="report" value={kind} />
           {filters.includes("window") && (
             <div className="field" style={{ margin: 0 }}>
