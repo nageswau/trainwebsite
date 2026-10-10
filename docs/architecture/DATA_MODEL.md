@@ -1937,3 +1937,19 @@ Every FK is RESTRICT; shares are permanent. Additive: no existing row is read or
 **Reads:** `university_agreements` by `ix_university_agreements_expiry (status, expiry_date)`; `university_milestones` by target date (a
 small, sparse table); `partnership_tasks` grouped by assignee (`ix_partnership_tasks_assignee_status_due`). The Alerts list reads
 `notifications` by `user_id` (indexed) and the key prefix.
+
+## Partner onboarding checklist (`upc-027`, `DEC-SCOPE-169`; migration `0145_university_onboarding`, after `0144_commission_receipts`)
+
+**`university_onboarding_items` columns:**
+- `id`, `university_id` → `universities` (FK RESTRICT), `kind` varchar(40) (CHECK: the ten §29 keys, `app/partnership_onboarding.py`),
+  `status` varchar(20) (CHECK: not_started / in_progress / completed; default not_started), `owner_user_id` → `users` (nullable),
+  `due_date` date, `note` text (≤ 500), `completed_on` date, `updated_by_user_id` → `users`, timestamps.
+
+**Constraints and indexes:** `ck_university_onboarding_items_kind`, `_status`, `_completed` (`(status = 'completed') = (completed_on IS NOT
+NULL)`), `_note`; `uq_university_onboarding_items_kind (university_id, kind)` (also the read path).
+
+**Design notes:**
+- Sparse: a row exists only once an item is edited; onboarding has started once the university has a signed / active / renewed agreement
+  (OB2), so there is no backfill and no signing hook.
+- The overall status and "Course database updated" (≥ 1 active course, OB7) are computed on read.
+- `downgrade()` refuses while any row exists.

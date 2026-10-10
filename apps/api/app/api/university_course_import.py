@@ -20,6 +20,7 @@ from app.models import AuditLog, CourseImportBatch, University, User
 from app.services import course_import as imp
 from app.services import partnership_universities as unis
 from app.services import university_courses as courses
+from app.services import university_onboarding as onboarding
 
 router = APIRouter(prefix="/partnership/universities", tags=["partnership-course-import"])
 TARGET = "course_import"  # the file-error log label shared with the ENH-028 parser
@@ -86,6 +87,8 @@ async def import_courses(
     tally = {"created": batch.created_count, "duplicate": batch.duplicate_count, "invalid": batch.invalid_count}
     meta = {"university_id": str(uni.id), "total": batch.total_rows, **tally, "file_sha256": batch.file_sha256}
     db.add(AuditLog(user_id=user.id, action="university_course.import", entity_type="course_import_batch", entity_id=str(batch.id), metadata_json=meta))
+    if batch.created_count:
+        await onboarding.activate_if_complete(db, user, uni)  # upc-027 OB8: imported courses can complete the checklist
     await db.commit()
     unis.log("university_course_import_completed", user, uni.id, batch_id=str(batch.id), **tally, duration_ms=round((time.monotonic() - started) * 1000))
     return await _report(db, batch)

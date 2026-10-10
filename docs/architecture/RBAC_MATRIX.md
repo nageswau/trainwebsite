@@ -1605,6 +1605,21 @@ The inline pattern; the scope is in the SQL `WHERE`. Routes are listed in §12CJ
 | `super_admin` | All | All |
 | any other role | `403` | — |
 
+### 2.95 Partner onboarding checklist *(net-new, added 2026-10-10 — `DEC-SCOPE-169`, `upc-027`)*
+
+Reads use `partnership_universities.require_reader`; writes use `_locked(..., "can_edit_timeline")` (the stage rule: `403` logged, inactive
+`409`), then the started / Lost checks (`409`). Routes are listed in §12CK.
+
+| Role | Read | Edit an item |
+|---|---|---|
+| `partnership_manager` | Every university | The universities they manage (primary / backup) |
+| `partnership_head` | Every university | Universities in their write scope |
+| `super_admin` | Every university | Every university |
+| `overseas_admin` (division overseas) | Every university | `403` |
+| any other role | `403` (anonymous `401`) | `403` |
+
+- Owners are limited to active `partnership_manager` / `partnership_head` / `super_admin` users (`422` otherwise). No commission data.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

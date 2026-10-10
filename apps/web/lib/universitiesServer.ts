@@ -8,6 +8,7 @@ import { type MilestonePage, milestonesUrl } from "@/lib/partnershipMilestones";
 import { stageHistoryUrl } from "@/lib/partnershipPipeline";
 import { type University, UNIVERSITIES_URL } from "@/lib/universities";
 import { type ActivityRow, universityTimelineUrl } from "@/lib/universityActivity";
+import { type OnboardingPage, onboardingUrl } from "@/lib/universityOnboarding";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -25,6 +26,11 @@ export function firstStageHistory(id: string): Promise<Page<StageEvent> | null> 
 /** upc-008: the milestone table, read alongside the university. Never rejects, like firstStageHistory: null offers "Try again". */
 export function firstMilestones(id: string): Promise<MilestonePage | null> {
   return serverApi<MilestonePage>(milestonesUrl(id)).catch(() => null);
+}
+
+/** upc-027: the partner onboarding checklist, read alongside the university. Never rejects, like firstMilestones: null offers "Try again". */
+export function firstOnboarding(id: string): Promise<OnboardingPage | null> {
+  return serverApi<OnboardingPage>(onboardingUrl(id)).catch(() => null);
 }
 
 /** upc-013: the communication history's first page. Never rejects, like firstStageHistory: null offers "Retry". */
