@@ -19,11 +19,12 @@ const keyOf = (row: Row) => `${row.kind}-${row.event ?? ""}-${row.id}`;
  *  detail, the counselor's lead and the admin History. `initial` is the server-rendered first page (`null`: it failed; omitted: load
  *  here). A `version` change re-reads the first page (something on the page just changed); "Show older entries" appends the next one.
  *  upc-013: `entryOf` / `actorOf` map another timeline's rows (default: the lead's); only a client component can pass them. */
-export default function LeadTimeline<R extends Row = TimelineRow>({ url, initial, version, label = "Lead activity", entryOf, actorOf }: {
+export default function LeadTimeline<R extends Row = TimelineRow>({
+  url, initial, version, label = "Lead activity",
+  entryOf = timelineEntry as unknown as (row: R) => TimelineEntry, actorOf = actorName as unknown as (row: R) => string,
+}: {
   url: string; initial?: Page<R> | null; version: number; label?: string; entryOf?: (row: R) => TimelineEntry; actorOf?: (row: R) => string;
 }) {
-  const entry = entryOf ?? (timelineEntry as unknown as (row: R) => TimelineEntry);
-  const actor = actorOf ?? (actorName as unknown as (row: R) => string);
   const [state, setState] = useState<State<R>>(initial === undefined ? "loading" : initial === null ? "failed" : pageOf(initial));
   const [older, setOlder] = useState<"idle" | "loading" | "failed">("idle");
   const latest = useRef(0);
@@ -82,25 +83,25 @@ export default function LeadTimeline<R extends Row = TimelineRow>({ url, initial
     <>
       <ol className="jtl" aria-label={label} style={{ listStyle: "none", margin: "8px 0 0", padding: 0 }}>
         {state.rows.map((row) => {
-          const shown = entry(row);
-          const tone = { "--jtl-color": shown.tone } as React.CSSProperties;
+          const entry = entryOf(row);
+          const tone = { "--jtl-color": entry.tone } as React.CSSProperties;
           return (
             <li className="jtl-row" key={keyOf(row)}>
               <div className="jtl-rail" aria-hidden="true"><span className="jtl-node" style={tone} /></div>
               <div style={{ minWidth: 0 }}>
                 <p className="jtl-title" style={{ fontSize: 14, overflowWrap: "anywhere" }}>
-                  {shown.title}
-                  <span className="jtl-badge" style={tone}>{shown.badge}</span>
+                  {entry.title}
+                  <span className="jtl-badge" style={tone}>{entry.badge}</span>
                 </p>
-                <p className="jtl-detail">{actor(row)} · <LocalTime value={row.at} time /></p>
-                {(shown.meta.length > 0 || shown.when) && (
+                <p className="jtl-detail">{actorOf(row)} · <LocalTime value={row.at} time /></p>
+                {(entry.meta.length > 0 || entry.when) && (
                   <p className="jtl-detail" style={{ overflowWrap: "anywhere" }}>
-                    {shown.meta.join(" · ")}
-                    {shown.when && <>{shown.meta.length > 0 && " · "}{shown.when.label} <LocalTime value={shown.when.value} time /></>}
+                    {entry.meta.join(" · ")}
+                    {entry.when && <>{entry.meta.length > 0 && " · "}{entry.when.label} <LocalTime value={entry.when.value} time /></>}
                   </p>
                 )}
-                {shown.detail && (
-                  <p className="jtl-detail" style={{ color: "var(--ink)", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{shown.detail}</p>
+                {entry.detail && (
+                  <p className="jtl-detail" style={{ color: "var(--ink)", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{entry.detail}</p>
                 )}
               </div>
             </li>

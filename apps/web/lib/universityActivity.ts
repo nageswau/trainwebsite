@@ -8,7 +8,7 @@ import { AGREEMENT_STATUSES, AGREEMENT_TYPES } from "@/lib/universityAgreements"
 import { DOCUMENT_KINDS } from "@/lib/universityDocuments";
 import { dateText, EVENT_ACTIONS, VISIT_STATUSES } from "@/lib/visits";
 
-export type ActivityKind = "stage" | "call" | "message" | "meeting" | "visit" | "agreement" | "task" | "document";
+type ActivityKind = "stage" | "call" | "message" | "meeting" | "visit" | "agreement" | "task" | "document";
 export type ActivityRow = {
   id: string; kind: ActivityKind; at: string; actor: { id: string; full_name: string } | null; event: string | null;
   from_value: string; from_label: string; to_value: string; to_label: string; subject: string | null; status: string | null;
