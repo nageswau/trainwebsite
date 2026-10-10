@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { E2E_PASSWORD, activateWithToken } from "./helpers/welcome";
 
-// upc-013 (DEC-SCOPE-163; AC: the §12 example sequence in order with actor and summary): the owning manager logs a call on the page and
+// upc-013 (DEC-SCOPE-165; AC: the §12 example sequence in order with actor and summary): the owning manager logs a call on the page and
 // the Communication history shows it without a reload (TL10); a meeting and two stage moves recorded through the API read newest first
 // with the actor; the section fits a phone; overseas_admin reads the master but has no history section (TL2). Throwaway accounts.
 

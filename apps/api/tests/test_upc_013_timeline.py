@@ -1,4 +1,4 @@
-"""upc-013 -- a university's communication history (spec §1-§5; DEC-SCOPE-163 TL1-TL10): the §12 example chain newest first with
+"""upc-013 -- a university's communication history (spec §1-§5; DEC-SCOPE-165 TL1-TL10): the §12 example chain newest first with
 actor and summary (AC), every source kind, the tie order (edge), out of scope → 404 (negative) and the readers (TL2). The shared test
 database is never truncated, so every assertion is scoped to universities made here."""
 

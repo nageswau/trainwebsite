@@ -1530,10 +1530,34 @@ does not leak). Each slice is an explicit allow-list, and no slice carries commi
 | partnership roles, `super_admin` | — (they use the University Master) | `403` | `403` |
 | any other role, IT counselor included | — | `403` (anonymous `401`) | `403` |
 
-### 2.89 University communication history *(net-new, added 2026-10-10 — `DEC-SCOPE-163`, `upc-013`)*
+### 2.89 Global university search *(net-new, added 2026-10-10 — `DEC-SCOPE-163`, `upc-024`)*
+
+Enforced in `api/partnership_universities.search_universities`: `partnership_universities.require_reader` comes first. In
+`services/university_search.search`, `commission_min` is dropped for any role without `partnership_access.can_see_commission` (U2). The
+route is read-only, and no commission value appears in a response. Each row's `permissions` are the master's own, worked out per caller.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Search every active university (all filters but commission) | ✅ all | ✅ all | ✅ all | ✅ all | `403` (anonymous `401`) |
+| Commission filter (`commission_min`) | ✅ | ✅ | ignored (never filters) | ✅ | — |
+
+### 2.90 Partnership alerts *(net-new, added 2026-10-10 — `DEC-SCOPE-164`, `upc-015`)*
+
+The inline pattern; the scope is `notifications.user_id = caller` in the SQL `WHERE`. Routes are listed in §12CF.
+
+| Role | Receives (beat, AL9) | Reads `GET /partnership/alerts` |
+|---|---|---|
+| `partnership_manager` (with a profile) | Expiry and delayed-milestone alerts for universities where they are primary or backup; their own overdue digest | Their own alerts |
+| `partnership_head` | Expiry alerts for universities whose primary manager reports to them; their own overdue digest | Their own alerts |
+| `super_admin` | None | `200`, empty |
+| `overseas_admin`, any other role | None | `403` |
+
+- Inactive users receive nothing; a recipient is read at fire time. Bodies carry names, MoU numbers and dates only.
+
+### 2.91 University communication history *(net-new, added 2026-10-10 — `DEC-SCOPE-165`, `upc-013`)*
 
 The upc-012 communications rule (`university_comms.require_reader`): the role gate (`403`) first, then the university (`404`). Read-only.
-Routes are listed in §12CE.
+Routes are listed in §12CG.
 
 | Role | Read a university's history |
 |---|---|

@@ -6523,7 +6523,21 @@ tiles; new page `/partnership/expected`. upc-022 reads E1 for D13; upc-031 expor
 **Status:** UV1–UV12 are recommended answers, applied under the owner's standing instruction for the build session ("proceed with the
 recommended answers"). They are **not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. **No migration.** API contract §12CD,
 RBAC §2.88. Spec: `docs/superpowers/specs/2026-10-10-upc-030-university-360-view-design.md`.
-**Numbering:** drafted as 161 / §12CC / §2.87 and renumbered after upc-023 (PR #218) took those numbers.
+
+### DEC-SCOPE-163 — Global university search (`upc-024`)
+
+**Evidence:**
+- `EVID-020` §25 (L810–L866):
+  - "all universities globally";
+  - the 6 search fields and 15 filters;
+  - the examples "Japan + Cyber Security + Not Partnered", "UK + Business + Partnership in Progress" and "Germany + IT + Active Partner".
+- `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U2, U5, U7, U14 (`EXPLICIT_APPROVAL`, 2026-10-08), §4 upc-024 and Appendix B G1–G4.
+
+**Status:** SR1–SR16 are recommended answers, applied under the owner's standing instruction for the build session ("proceed with the
+recommended answers"). They are **not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. **No migration.** API contract §12CE,
+RBAC §2.89. Spec: `docs/superpowers/specs/2026-10-10-upc-024-global-university-search-design.md`.
+**Numbering:** drafted as 161 / §12CC / §2.87 and renumbered after upc-023 (PR #218), then to 163 / §12CE / §2.89 after upc-030 (PR #219)
+took 162 / §12CD / §2.88.
 
 | # | Question | Answer |
 |---|---|---|
@@ -6548,7 +6562,63 @@ RBAC §2.88. Spec: `docs/superpowers/specs/2026-10-10-upc-030-university-360-vie
   - The BDM organisation's "University Master" row becomes a link.
 - **overseas_admin UI:** unchanged. Their University Master page is already a superset of the slice; the API serves the slice.
 - **New Feature ID authorized:** `upc-030`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-030.
-### DEC-SCOPE-163 — University communication history / timeline (`upc-013`)
+
+| SR1 | Readers | The University Master's read roles. Any other role → `403`. The counselor's U14 slice stays with upc-030 |
+| SR2 | Which universities | Every **active** university, whoever owns it |
+| SR3 | `q` | Literal substring of name, code, city or country name |
+| SR4 | Location | `country`: name substring or ISO-2. `region`: one of the 9 regions. `city`: substring |
+| SR5 | Institution | `institution_type`, `ownership_type` (public / private) |
+| SR6 | Ranking | `ranking_max`: a ranking whose leading number is ≤ N (a band counts by its start). Optional `ranking_system`. Each row shows its best ranking |
+| SR7 | Course filters | `course` (a word or phrase that starts a word in the title or category: "IT" matches "IT", not "Security"), `level`, `intake` (month) and the tuition range. All must hold for **one** active course. `matching_courses` per row when any course filter is sent |
+| SR8 | Tuition | `tuition_min` / `tuition_max` in one `tuition_currency` (no FX). A bound without a currency, or min > max → `422` |
+| SR9 | Scholarship | `scholarship=true`: an active university scholarship, or an active course with a linked scholarship |
+| SR10 | Commission (U2) | `commission_min` %: an active course's percent, or a term of a signed / active agreement, ≥ x. Fixed amounts are not compared. **Ignored for every non-commission role**: dropped before any SQL, so nothing can be inferred |
+| SR11 | Partner status | `partner` (G1), `in_progress` (G2, incl. Agreement Signed), `target` (G3), `lost`, and `not_partnered` (G2 + G3). Lost universities are excluded except under `lost` |
+| SR12 | Manager | `me` / `none` / an id, primary or backup (the master list's rule) |
+| SR13 | Expected date | `expected_from` / `expected_to` on `target_partnership_date`. from > to → `422` |
+| SR14 | Response | `{items, total, limit, offset, facets.partner_status}`. The facet is counted without its own filter |
+| SR15 | Performance | No migration. Existing indexes back the `EXISTS` subqueries. A constant query count. 1,300 × 3 searched in under 2 s |
+| SR16 | Page / menu / logs | `/partnership/search`: a GET form, chips and paging. Live §32 entry, plus head, super admin and overseas admin navs. Reads are not audited |
+
+- New:
+  - `services/university_search.py`;
+  - `GET /partnership/universities/search`;
+  - the page `/partnership/search`.
+- Changed: the manager filter moves into `services/partnership_universities.manager_filter`, so the master list and the board share it,
+  with unchanged behaviour.
+- **New Feature ID authorized:** `upc-024`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-024.
+
+### DEC-SCOPE-164 — Partnership alerts engine (`upc-015`)
+
+**Evidence:** `EVID-020` §14 (L499–L513: alerts 90 / 60 / 30 / 7 days before expiry; "⚠️ ABC University partnership expires in 30 days.
+Renewal action required."), §6 (L242: "automatically highlight delayed milestones"), §20 (L673–L693: Overdue), §32 ("🔔 Alerts");
+`UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U11 (`EXPLICIT_APPROVAL` 2026-10-08), Q-11, Q-17 and §4 upc-015.
+**Status:** **Q-17** and AL1–AL14 are recommended answers applied under the owner's standing instruction for the build session ("proceed
+with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off.
+No migration. API contract §12CF, RBAC §2.90. Spec: `docs/superpowers/specs/2026-10-10-upc-015-partnership-alerts-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| AL1 | Storage | Reuse `notifications` with `upc015:` dedupe keys (the "sent" record); no `partnership_alert_log` table, no migration |
+| AL2 | Kinds | Agreement expiry, milestone delayed, overdue digest |
+| AL3 | Q-17 send hour | Beat every IST hour (`crontab(minute=30)` UTC); acts from 09:00 IST; later runs that day are no-ops |
+| AL4 | Expiry | Signed / active agreements of active universities, exactly 90 / 60 / 30 / 7 days before expiry (IST); one alert per threshold and recipient. Signed inside a threshold → only the thresholds still ahead; expired or renewed → none |
+| AL5 | Expiry text | The §14 sentence exactly, then the MoU number, type and expiry date |
+| AL6 | Newly delayed | upc-008's status rule (Q-11, MS3; an event-achieved milestone is not delayed); the target fell within the last 7 days; live universities only; a moved target re-arms |
+| AL7 | Milestone text | "{University}: the {Milestone} milestone was due on {date} and is not complete." |
+| AL8 | Overdue digest | One per IST day per assignee with open tasks due before today (upc-020's band), with the count and the oldest due date |
+| AL9 | Q-17 recipients | Expiry: primary, backup, the primary's reporting head. Milestone: primary, backup. Digest: the assignee. Active users only, each once |
+| AL10 | Channels | In-app + email (outbox, SMTP); never WhatsApp / SMS |
+| AL11 | Failures | Savepoint per alert; counted and logged with ids; commit per 200 rows |
+| AL12 | API | `GET /partnership/alerts`: own alerts, kind filter, paging, unread count; partnership roles + super_admin (empty); others 403 |
+| AL13 | Read state | The shared notification mark-read route |
+| AL14 | UI | Page `/partnership/alerts` with kind tabs; §32 Alerts live for managers; heads' nav gains it; unread badge on the Alerts page, manager dashboard and head team page |
+
+**Consequences:** `services/partnership_alerts.py`, `api/partnership_alerts.py`, worker task `send_partnership_alerts_task` + beat entry
+`upc015-alerts`, the `partnership_alert` email kind in `notifications/delivery.py`; page `/partnership/alerts`. upc-022 can show the unread
+count on the manager dashboard.
+- **New Feature ID authorized:** `upc-015`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-015.
+### DEC-SCOPE-165 — University communication history / timeline (`upc-013`)
 
 **Evidence:**
 - `EVID-020` §12 (L437–L451: "Every email/call/WhatsApp/meeting should be stored against the university", the example timeline 05 Sep
@@ -6557,8 +6627,9 @@ RBAC §2.88. Spec: `docs/superpowers/specs/2026-10-10-upc-030-university-360-vie
   upc-013.
 
 **Status:** TL1–TL10 are recommended answers, applied under the owner's standing instruction for the build session ("proceed with the
-recommended answers"). They are **not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. **No migration.** API contract §12CE,
-RBAC §2.89. Spec: `docs/superpowers/specs/2026-10-10-upc-013-university-communication-history-design.md`.
+recommended answers"). They are **not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. **No migration.** API contract §12CG,
+RBAC §2.91. Spec: `docs/superpowers/specs/2026-10-10-upc-013-university-communication-history-design.md`.
+**Numbering:** drafted as 163 / §12CE / §2.89 and renumbered after upc-024 (PR #221) and upc-015 (PR #222) took 163–164 / §12CE–§12CF / §2.89–§2.90.
 
 | # | Question | Answer |
 |---|---|---|

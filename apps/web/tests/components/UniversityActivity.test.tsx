@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import UniversityActivity from "@/components/UniversityActivity";
 import type { ActivityRow } from "@/lib/universityActivity";
 
-// upc-013 (DEC-SCOPE-163 D5): the communication history renders through the shared LeadTimeline list with the university mappers.
+// upc-013 (DEC-SCOPE-165 D5): the communication history renders through the shared LeadTimeline list with the university mappers.
 const row = (id: string, over: Partial<ActivityRow> = {}): ActivityRow => ({
   id, kind: "stage", at: "2026-09-14T05:00:00Z", actor: { id: "p1", full_name: "Asha Menon" }, event: "move", from_value: "meeting_completed",
   from_label: "Meeting Completed", to_value: "proposal_sent", to_label: "Proposal Sent", subject: null, status: null, reason: null,

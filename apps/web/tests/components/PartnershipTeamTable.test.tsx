@@ -25,15 +25,17 @@ describe("PartnershipTeamTable (upc-001 AC4)", () => {
 });
 
 describe("PartnershipMenuCard (upc-001 PU8)", () => {
-  it("lists the 5 areas still to come (14 of the 19 are live, incl. upc-009 Meetings, upc-011 Calendar, upc-018 Student Opportunities + University Performance, upc-016 Commercial Terms and upc-021 Targets & Forecast), as text with no links", () => {
+  it("lists the 3 areas still to come (16 of the 19 are live, incl. upc-015 Alerts, upc-009 Meetings, upc-011 Calendar, upc-018 Student Opportunities + University Performance, upc-016 Commercial Terms, upc-021 Targets & Forecast and upc-024 Global University Database), as text with no links", () => {
     render(<PartnershipMenuCard />);
     const items = screen.getAllByRole("listitem");
-    expect(items).toHaveLength(5);
+    expect(items).toHaveLength(3);
+    expect(items.some((i) => i.textContent?.includes("Alerts"))).toBe(false);
     expect(items.some((i) => i.textContent?.includes("Calendar"))).toBe(false);
     expect(items.some((i) => i.textContent?.includes("University Performance"))).toBe(false);
     expect(items.some((i) => i.textContent?.includes("Targets & Forecast"))).toBe(false);
     expect(items.some((i) => i.textContent?.includes("University Master"))).toBe(false);
-    expect(items[0]).toHaveTextContent("Global University Database");
+    expect(items.some((i) => i.textContent?.includes("Global University Database"))).toBe(false);
+    expect(items[0]).toHaveTextContent("Contact Management");
     expect(screen.queryByRole("link")).toBeNull();
   });
 });

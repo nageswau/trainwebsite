@@ -1,4 +1,4 @@
-"""upc-013 (DEC-SCOPE-163, spec §3): a university's communication history (§12) -- one `UNION ALL` over the tables that already record
+"""upc-013 (DEC-SCOPE-165, spec §3): a university's communication history (§12) -- one `UNION ALL` over the tables that already record
 each event (D2: nothing is copied; tel-015's branch builder and order). The route has checked the reader and the university (D1); this
 module only sees its id and the reader, for upc-026's document visibility (TL7). Read only; nothing is logged (TL8).
 
