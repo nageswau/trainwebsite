@@ -1015,6 +1015,11 @@ Common conventions:
 - **Edge cases:** no expected date (excluded, listed separately).
 - **Regression risks:** none.
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-10):** built on `feature/upc-023` under `DEC-SCOPE-161`, with migration `0143_university_probability`, API §12CC and
+  RBAC §2.87. Spec: `docs/superpowers/specs/2026-10-10-upc-023-expected-partnerships-design.md`.
+  - Q-09 and EX1–EX12 are recommended answers (`NEEDS_CONFIRMATION`): the Appendix B P bands; an optional override 0–100 with a reason,
+    kept until cleared, set by the stage rule; readers = partnership roles + `super_admin` with upc-018's scope; windows by
+    `expected_agreement_date` in IST calendar months / quarters. The forecast tiles also sit on Targets & Forecast (upc-021's page).
 
 ### upc-024 — Global university search
 - **Business requirement:** §25 (6 search fields; 15 filters; 3 combined examples); "all universities globally".
@@ -1195,8 +1200,8 @@ Common conventions:
 - **Complexity:** medium · **Risk:** low
 
 ### upc-030 — University 360 view for other roles
-- **Status (2026-10-10):** built on `feature/upc-030` under `DEC-SCOPE-161` (UV1–UV12, recommended answers), with **no migration**, API
-  §12CC and RBAC §2.87. Spec: `docs/superpowers/specs/2026-10-10-upc-030-university-360-view-design.md`.
+- **Status (2026-10-10):** built on `feature/upc-030` under `DEC-SCOPE-162` (UV1–UV12, recommended answers), with **no migration**, API
+  §12CD and RBAC §2.88. Spec: `docs/superpowers/specs/2026-10-10-upc-030-university-360-view-design.md`.
 - **Business requirement:** the closing note (one record; each role sees only what is relevant); §16 "counselors know exactly what each
   partner university offers" (U14).
 - **Existing behavior:**

@@ -46,6 +46,6 @@ Spec: `docs/superpowers/specs/2026-10-10-upc-030-university-360-view-design.md` 
    - nav items (counselor "universities", university "university-profile" → static `profile` route).
    - BDM org row link.
    - Update the nav tests.
-5. **Docs:** DEC-SCOPE-161, API §12CC, RBAC §2.87, backlog status, SCREEN_CATALOG rows.
+5. **Docs:** DEC-SCOPE-162, API §12CD, RBAC §2.88, backlog status, SCREEN_CATALOG rows.
 6. **Playwright** `e2e/upc-030-university-view.spec.ts`: a counselor searches, opens a university and sees the IELTS requirement; a
    rep opens their profile; a BDM opens it from the org link.

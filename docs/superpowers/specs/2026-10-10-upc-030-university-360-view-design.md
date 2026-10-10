@@ -2,7 +2,7 @@
 
 - **Feature:** upc-030 (`docs/delivery/UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §4 upc-030; decision U14, U13, U2; EVID-020 closing note
   L1102–L1127 and §16 L579)
-- **Decision:** `DEC-SCOPE-161`. **No migration.** API §12CC; RBAC §2.87. These numbers are provisional until merge, as with earlier items.
+- **Decision:** `DEC-SCOPE-162`. **No migration.** API §12CD; RBAC §2.88. These numbers are provisional until merge, as with earlier items.
 - **Branch:** `feature/upc-030` from `origin/main` @ `89ac6147`.
 - **Dependencies (all merged):** upc-003 (University Master), upc-006 (contacts + `shareable`), upc-016 (commission terms, U2 roles),
   upc-017 (course master + `strip_commission`), upc-026 (documents + `shareable`).

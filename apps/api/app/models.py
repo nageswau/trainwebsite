@@ -1021,6 +1021,11 @@ UNIVERSITY_PIPELINE_CHECKS = {
     "ck_universities_stage": _one_of("stage", UNIVERSITY_STAGE_KEYS, nullable=False),
     "ck_universities_lost": "(lost_at IS NULL) = (lost_reason IS NULL)",
 }
+# upc-023 (EX2): the optional manual probability override, 0-100, always with its reason (0143_university_probability repeats these).
+UNIVERSITY_PROBABILITY_CHECKS = {
+    "ck_universities_probability_override": "probability_override IS NULL OR probability_override BETWEEN 0 AND 100",
+    "ck_universities_probability_reason": "(probability_override IS NULL) = (probability_override_reason IS NULL)",
+}
 UNIVERSITY_STAGE_HISTORY_CHECKS = {
     "ck_university_stage_history_kind": _one_of("kind", UNIVERSITY_STAGE_EVENT_KINDS, nullable=False),
     "ck_university_stage_history_note": "kind = 'move' OR note IS NOT NULL",
@@ -1043,6 +1048,7 @@ class University(Base, TimestampMixin):
         UniqueConstraint("university_code", name="uq_universities_code"),
         *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_CHECKS.items()),
         *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_PIPELINE_CHECKS.items()),
+        *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_PROBABILITY_CHECKS.items()),
         Index("ix_universities_stage", "stage"),
         CheckConstraint(UNIVERSITY_RELATIONSHIP_CHECK, name="ck_universities_relationship_strength"),
         Index("ix_universities_primary_manager", "primary_manager_user_id"),
@@ -1088,6 +1094,9 @@ class University(Base, TimestampMixin):
     expected_intake: Mapped[str | None] = mapped_column(String(80), nullable=True)
     expected_agreement_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     expected_recruitment_start: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # upc-023 (§24, EX2/EX3): replaces the stage probability until cleared; the stage probability is a constant (partnership_stages).
+    probability_override: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    probability_override_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     country = relationship("Country")
 
     @validates("name")

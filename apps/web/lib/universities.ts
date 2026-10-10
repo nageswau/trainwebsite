@@ -1,6 +1,7 @@
 // upc-003 (DEC-SCOPE-120): the Global University Master's types, words, URLs and pickers, shared by its pages and forms.
 import type { UniversityFollowUpData } from "@/lib/partnershipTasks";
 import type { LookupPage } from "@/lib/lookups";
+import type { UniversityProbability } from "@/lib/partnershipExpected";
 import type { UniversityExpected } from "@/lib/partnershipMilestones";
 import type { UniversityPipeline } from "@/lib/partnershipPipeline";
 import { PARTNERSHIP_HEAD_NAV, PARTNERSHIP_NAV, PORTAL_NAV, SUPER_ADMIN_NAV, type NavItem } from "@/lib/navigation";
@@ -25,6 +26,7 @@ export type University = UniversityRow & {
   application_count: number; linked_bdm_organizations: LinkedBdmOrganization[]; created_at: string; updated_at: string; pipeline: UniversityPipeline;
   follow_up: UniversityFollowUpData; // upc-020 TK14/TK15
   expected: UniversityExpected; // upc-008 §5
+  probability: UniversityProbability; // upc-023 §24
 };
 // upc-004: a BDM University organization linked to this master record (text only: partnership roles cannot open BDM records).
 export type LinkedBdmOrganization = { id: string; code: string; name: string; city: string; bdm_type: string; assigned_bdm_name: string; archived: boolean };
