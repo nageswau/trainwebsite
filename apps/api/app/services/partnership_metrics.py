@@ -291,7 +291,6 @@ HEALTH_DAYS, RECENT_DAYS = 365, 90  # HS3: the student factors look back a year;
 FULL_APPLICATIONS, FULL_ENROLMENTS, FULL_MEETINGS = 20, 10, 3
 FAST_REPLY_DAYS, SLOW_REPLY_DAYS = 2, 14  # HS4
 AGREEMENT_VALUES = {"active": 1.0, "signed": 1.0, "expiring": 0.5}  # AG4 effective status; anything else 0
-EVER_IN_FORCE = ("signed", "active", "renewed")  # HS8: an agreement that is or was in force is evidence
 
 
 def band(score: int) -> str:
@@ -418,7 +417,7 @@ async def health(db: AsyncSession, university_ids: list[UUID], now: datetime) ->
         }  # fmt: skip
         evidence = (
             applications or offers or decisions or enrolments or meetings[university_id] or sent[university_id] or expected
-            or any(a.status in EVER_IN_FORCE for a in agreements[university_id])
+            or any(a.status in commission.APPLIED_STATUSES for a in agreements[university_id])  # HS8: an agreement that is or was in force
         )  # fmt: skip
         score, points = health_score(values) if evidence else (None, {})
         key = band(score) if score is not None else "insufficient_data"
@@ -427,7 +426,7 @@ async def health(db: AsyncSession, university_ids: list[UUID], now: datetime) ->
             "factors": [
                 {
                     "key": f.key, "label": f.label, "tracked": f.tracked, "has_data": values.get(f.key) is not None, "measure": measures[f.key],
-                    "weight": f.weight, "points": points.get(f.key), "value": values.get(f.key),
+                    "weight": f.weight, "points": points.get(f.key), "value": values.get(f.key),  # the 0-1 value: tests only, not in the schema
                 }
                 for f in HEALTH_FACTORS
             ],
