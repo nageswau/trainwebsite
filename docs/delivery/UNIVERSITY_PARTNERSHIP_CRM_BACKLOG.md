@@ -896,8 +896,8 @@ Common conventions:
 - **Edge cases:** an application later withdrawn after enrolment (expected reversed?); multi-currency.
 - **Regression risks:** `AgentCommission` untouched (separate concept).
 - **Complexity:** medium · **Risk:** high
-- **Status (2026-10-10):** built on `feature/upc-019` under `DEC-SCOPE-163` (CL1–CL14, recommended answers), with migration
-  `0144_commission_receipts`, API §12CE and RBAC §2.89. Spec: `docs/superpowers/specs/2026-10-10-upc-019-commission-ledger-design.md`.
+- **Status (2026-10-10):** built on `feature/upc-019` under `DEC-SCOPE-164` (CL1–CL14, recommended answers), with migration
+  `0144_commission_receipts`, API §12CF and RBAC §2.90. Spec: `docs/superpowers/specs/2026-10-10-upc-019-commission-ledger-design.md`.
   - Edge "withdrawn after enrolment": cannot occur (an enrolled application cannot be withdrawn); if it ever leaves `enrolled` it stops counting.
   - `tuition_paid` terms and country-restricted terms are not evaluable from CRM data (CL1, CL6, `NEEDS_CONFIRMATION`).
 
@@ -1026,6 +1026,8 @@ Common conventions:
     `expected_agreement_date` in IST calendar months / quarters. The forecast tiles also sit on Targets & Forecast (upc-021's page).
 
 ### upc-024 — Global university search
+- **Status (2026-10-10):** built on `feature/upc-024` under `DEC-SCOPE-163` (SR1–SR16, recommended answers), with **no migration**, API
+  §12CE and RBAC §2.89. Spec: `docs/superpowers/specs/2026-10-10-upc-024-global-university-search-design.md`.
 - **Business requirement:** §25 (6 search fields; 15 filters; 3 combined examples); "all universities globally".
 - **Existing behavior:** `/public/universities?q&country` (ILIKE).
 - **Expected behavior:**

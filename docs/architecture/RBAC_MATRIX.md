@@ -1530,9 +1530,20 @@ does not leak). Each slice is an explicit allow-list, and no slice carries commi
 | partnership roles, `super_admin` | — (they use the University Master) | `403` | `403` |
 | any other role, IT counselor included | — | `403` (anonymous `401`) | `403` |
 
-### 2.89 Commission ledger *(net-new, added 2026-10-10 — `DEC-SCOPE-163`, `upc-019`)*
+### 2.89 Global university search *(net-new, added 2026-10-10 — `DEC-SCOPE-163`, `upc-024`)*
 
-Restricted (U2). Routes are listed in §12CE.
+Enforced in `api/partnership_universities.search_universities`: `partnership_universities.require_reader` comes first. In
+`services/university_search.search`, `commission_min` is dropped for any role without `partnership_access.can_see_commission` (U2). The
+route is read-only, and no commission value appears in a response. Each row's `permissions` are the master's own, worked out per caller.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Search every active university (all filters but commission) | ✅ all | ✅ all | ✅ all | ✅ all | `403` (anonymous `401`) |
+| Commission filter (`commission_min`) | ✅ | ✅ | ignored (never filters) | ✅ | — |
+
+### 2.90 Commission ledger *(net-new, added 2026-10-10 — `DEC-SCOPE-164`, `upc-019`)*
+
+Restricted (U2). Routes are listed in §12CF.
 
 | Role | Read Expected / Received / Outstanding | Record / remove a receipt | F10 / F11 on performance |
 |---|---|---|---|

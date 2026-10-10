@@ -2536,9 +2536,32 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `GET /universities/{id}/view` | `{slice, university: {id, university_code, name, institution_type, ownership_type, country{name, iso2, region}, state_region, city, website, overview, eligibility, course_levels, popular_programs, rankings}, …}`. **Sections by slice:**<ul><li>`counselor` / `overseas_admin`: `partnership{stage, stage_label, lost}`; `contacts[]` (shareable only, no notes, ≤ 50); `courses[]` (active, ≤ 200, the course fields without commission); `documents[]` (shareable, never the commission agreement: `{id, kind, title, current_version, updated_at}`); `applications[]` (≤ 50, newest first: a counselor's own, or all for overseas_admin: `{id, reference, student_name, intake, status, next_action, updated_at}`).</li><li>`bdm`: `partnership`, `manager{full_name, email}` or null.</li><li>`university_rep`: `courses[]`.</li></ul>**Scope:** a counselor sees published + active universities only, and a rep sees only `profile.university_id`. Out of scope or unknown → `404` "University not found". Non-UUID → `422` |
 | `GET /universities/{id}/view/documents/{document_id}/file` | The current version as an attachment with a server-built file name, for the slices that list documents (counselor, overseas_admin). It is audited (`university_document.download`, role in metadata) and committed before any byte leaves. BDM / rep → `403`. A hidden, commission or unknown document → `404`. Scope as above |
 
-## 12CE. Commission ledger (`upc-019`) — addendum, 2026-10-10
+## 12CE. Global university search (`upc-024`) — addendum, 2026-10-10
 
-- **Basis:** `DEC-SCOPE-163` (CL1–CL14). Spec: `docs/superpowers/specs/2026-10-10-upc-019-commission-ledger-design.md` §3. Migration
+- **Basis:** `DEC-SCOPE-163` (SR1–SR16). Spec: `docs/superpowers/specs/2026-10-10-upc-024-global-university-search-design.md` §3.
+  No migration.
+- **Readers:** the University Master's read roles (`partnership_manager` with a profile, `partnership_head`, `overseas_admin` in the
+  overseas division, `super_admin`). Any other role → `403` "University master access required". Anonymous → `401`.
+- **Behaviour:** read-only, with no audit row. It searches every **active** university.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/universities/search?q=&country=&region=&city=&institution_type=&ownership_type=&ranking_max=&ranking_system=&course=&level=&intake=&tuition_min=&tuition_max=&tuition_currency=&scholarship=&commission_min=&partner_status=&manager=&expected_from=&expected_to=&limit=&offset=` | See the notes below this table |
+
+- **Response:** `{items, total, limit, offset, facets: {partner_status: {partner, in_progress, target, lost}}}`.
+- **Items:** the University Master row plus `ownership_type`, `partner_status`, `target_partnership_date`, `ranking` (best, text or null)
+  and `matching_courses` (null without a course filter).
+- **Filters:** every filter ANDs. `course`, `level`, `intake` and the tuition range hold for one active course.
+- **`commission_min`** (0 < x ≤ 100) applies to commission roles only and is **ignored** for everyone else.
+- **Order:** name, then id. `limit` is 1–100 (default 50).
+- **`422`:** an unknown enum value (region, type, ownership, level, intake, system, currency, partner status), `ranking_max` outside
+  1–10000, a tuition bound without a currency, min > max, `expected_from > expected_to`, an invalid `manager`, or out-of-range paging.
+- **Queries:** a constant count.
+- **Route order:** declared before `/{university_id}`.
+
+## 12CF. Commission ledger (`upc-019`) — addendum, 2026-10-10
+
+- **Basis:** `DEC-SCOPE-164` (CL1–CL14). Spec: `docs/superpowers/specs/2026-10-10-upc-019-commission-ledger-design.md` §3. Migration
   `0144_commission_receipts`.
 - **Readers (U2):** `super_admin`, `partnership_head`, `partnership_manager` (with a profile) — every university. Everyone else `403`,
   no session `401`. **Recorders (Q-20):** `partnership_head`, `super_admin`.

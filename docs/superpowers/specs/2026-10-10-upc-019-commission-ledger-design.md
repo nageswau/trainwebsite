@@ -5,7 +5,7 @@
   (Commission Expected / Received), L1129 ("Commissions should not be seen by anyone."); backlog §3.1 **U2, U4** (`EXPLICIT_APPROVAL`,
   2026-10-08); §3.2 Q-18, Q-19, Q-20; `DEC-SCOPE-144` CM1–CM4 (upc-016), `DEC-SCOPE-153` PF9 (upc-018).
 - **Dependencies:** upc-016 (terms, merged via PR #192 chain) and upc-018 (funnel, PR #203) are both on `main`.
-- **Decision:** `DEC-SCOPE-163`. **Migration:** `0144_commission_receipts`. **API:** §12CE. **RBAC:** §2.89.
+- **Decision:** `DEC-SCOPE-164`. **Migration:** `0144_commission_receipts`. **API:** §12CF. **RBAC:** §2.90.
 - **Status:** CL1–CL14 below are recommended answers applied under the owner's standing instruction for the build session ("proceed with
   the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off.
 
@@ -35,7 +35,7 @@ Date, `reference` String(120), `note` Text?, `application_ids` JSON (default `[]
 CHECKs: amount > 0; currency in the project list; note ≤ 500. Index `(university_id, received_on)`; unique index
 `(university_id, lower(reference))`. Additive; the downgrade refuses while any receipt exists (money records are never dropped silently).
 
-## 3. API (§12CE)
+## 3. API (§12CF)
 
 - `GET /partnership/universities/{id}/commission` → `{university, totals: [{currency, expected, received, outstanding}],
   applications: [{id, ref, course, intake, enrolled_on, status, status_label, term_id, currency, expected}], receipts: [...],

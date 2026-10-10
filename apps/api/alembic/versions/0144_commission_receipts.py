@@ -3,7 +3,7 @@
 Revision ID: 0144_commission_receipts
 Revises: 0143_university_probability
 
-docs/superpowers/specs/2026-10-10-upc-019-commission-ledger-design.md §2 (DEC-SCOPE-163). A new table only; no existing row changes.
+docs/superpowers/specs/2026-10-10-upc-019-commission-ledger-design.md §2 (DEC-SCOPE-164). A new table only; no existing row changes.
 0001 builds a fresh database from the current models, which already carry the table, so it is created only when missing (0117's idiom).
 CURRENCIES / CHECKS repeat app.models (test_upc_019_migration). downgrade() refuses while any receipt exists: money records are never
 dropped silently.

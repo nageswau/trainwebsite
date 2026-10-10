@@ -5,7 +5,7 @@ the terms in every agreement payload, CM12), so the agreement's freeze rule (CM9
 - read: `partnership_access.can_see_commission` (super_admin, partnership head, partnership manager with a profile); every other role 403;
 - write: the agreement's university `can_manage_agreements`, while the agreement's terms are editable.
 Logs and audit rows carry ids, the MoU number and field names only -- never a rate, an amount or a text (CM13).
-upc-019 (DEC-SCOPE-163) adds the ledger: Commission Expected computed from enrolled applications x these terms, and the receipts
+upc-019 (DEC-SCOPE-164) adds the ledger: Commission Expected computed from enrolled applications x these terms, and the receipts
 recorded by the head / super_admin (Q-20), both read by the same commission roles.
 """
 
@@ -162,7 +162,7 @@ async def terms_by_agreement(db: AsyncSession, agreement_ids: list[UUID], editab
     return grouped
 
 
-# --- upc-019 (DEC-SCOPE-163, spec CL1-CL8): Commission Expected, computed live from enrolled applications x the applicable terms -------
+# --- upc-019 (DEC-SCOPE-164, spec CL1-CL8): Commission Expected, computed live from enrolled applications x the applicable terms -------
 # Nothing is stored: an application that leaves `enrolled` simply stops counting. Two queries whatever the number of universities.
 EXPECTED_STATUSES = {
     "counted": "Counted",
