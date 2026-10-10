@@ -997,6 +997,10 @@ Common conventions:
 - **Edge cases:** month boundary in IST.
 - **Regression risks:** none.
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-10):** built on `feature/upc-022` under `DEC-SCOPE-168` (DB1–DB16, recommended answers), with **no migration**, API
+  §12CJ and RBAC §2.94. Spec: `docs/superpowers/specs/2026-10-10-upc-022-partnership-dashboard-design.md`.
+  - Figures cover the universities in the caller's scope now (upc-018 PF6); D13 reuses upc-023's E1 rows; the bands follow the Tasks
+    page's default assignees. Heads open the dashboard from their nav and still land on Team.
 
 ### upc-023 — Expected partnerships + probability + weighted forecast
 - **Business requirement:** §23 (list: university, country, stage, expected date, owner, probability; this month / next month / this

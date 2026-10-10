@@ -6727,3 +6727,37 @@ migration.** API contract §12CI, RBAC §2.93. Spec: `docs/superpowers/specs/202
     are unchanged.
   - The search page keeps them in the URL.
 - **New Feature ID authorized:** `upc-025`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-025.
+
+
+### DEC-SCOPE-168 — Partnership manager dashboard (`upc-022`)
+
+**Evidence:** `EVID-020` §22 (L721–L752: Global Partnership Overview and This Month; the numbers are illustrative), §20 (L688–L693: the
+dashboard's Overdue / Due Today / Due Tomorrow / Upcoming bands), §32 ("Dashboard"); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U1
+(`EXPLICIT_APPROVAL` 2026-10-08), §4 upc-022 and Appendix B D1–D14.
+**Status:** DB1–DB16 are recommended answers applied under the owner's standing instruction for the build session ("proceed with the
+recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. No migration.
+API contract §12CJ, RBAC §2.94. Spec: `docs/superpowers/specs/2026-10-10-upc-022-partnership-dashboard-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| DB1 | Scope | upc-018 PF6: manager = primary or backup; head = direct reports' universities + unowned; super_admin = all |
+| DB2 | Whose events | The universities in scope **now** (the tile's list), not upc-021's credit-at-the-time |
+| DB3 | This month | The current IST calendar month, half-open, from the database clock |
+| DB4 | D1 | Active universities in scope, Lost/Closed included; `lost` is returned so D1 = D2 + D3 + D4 + lost |
+| DB5 | D2–D4 | Active, not lost, stage group G1 / G2 / G3 |
+| DB6 | D5 | Active, `relationship_strength = at_risk` |
+| DB7 | D6 | First stage-history entry into Initial Contact or later in the month (upc-021 T2) |
+| DB8 | D7 | Meetings completed in the month (T3) |
+| DB9 | D8 | Distinct visits with a status event into Visit Completed in the month |
+| DB10 | D9 / D12 | Distinct universities moved into Proposal Sent / Partner Activated in the month (T4 / T7) |
+| DB11 | D10 | Agreements now Sent / Under Review / Negotiation (current, shown under This Month as in the source) |
+| DB12 | D11 | Distinct agreements with a status event into Signed in the month (T5) |
+| DB13 | D13 | upc-023 E1: the same rows as `/partnership/expected`, raw count + weighted |
+| DB14 | Bands, D14 | Open tasks per upc-020 band; assignees as the Tasks page default (manager own, head own + reports, super_admin all); D14 = overdue |
+| DB15 | Readers | Partnership manager (with a profile), head, super_admin; others 403 |
+| DB16 | Links | Each tile opens the closest existing list; no new list filters |
+
+**Consequences:** `services/partnership_metrics.dashboard_figures` (+ `scope_filter`, moved there from `api/partnership_performance.py`),
+`api/partnership_dashboard.py`, `expected_rows` / `window_figures` extracted in `api/partnership_expected.py`; page `/partnership/dashboard`
+filled in, and the head's nav gains Dashboard (a head still lands on Team, U3).
+- **New Feature ID authorized:** `upc-022`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-022.

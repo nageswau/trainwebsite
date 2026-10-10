@@ -1594,6 +1594,17 @@ Enforced in `api/partnership_universities.partnership_map`: `partnership_univers
 | Exclusivity filter (agreement metadata, not commercial) | ✅ | ✅ | ✅ | ✅ | — |
 | Commission filter (`commission_min`) | ✅ | ✅ | ignored (never filters) | ✅ | — |
 
+### 2.94 Partnership manager dashboard *(net-new, added 2026-10-10 — `DEC-SCOPE-168`, `upc-022`)*
+
+The inline pattern; the scope is in the SQL `WHERE`. Routes are listed in §12CJ. Counts only: no names, no commission data.
+
+| Role | `GET /partnership/dashboard` — universities (D1–D13) | Follow-up bands (D14) |
+|---|---|---|
+| `partnership_manager` (with a profile) | Primary or backup | Their own tasks |
+| `partnership_head` | Their direct reports' universities + unowned | Their own and their reports' tasks |
+| `super_admin` | All | All |
+| any other role | `403` | — |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
