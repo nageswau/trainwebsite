@@ -6,7 +6,7 @@ import PortalShell from "@/components/PortalShell";
 import { serverApi } from "@/lib/api";
 import type { Page } from "@/lib/apiErrors";
 import { PARTNERSHIP_HEAD_NAV, SUPER_ADMIN_NAV } from "@/lib/navigation";
-import { ROLE_LABEL, TEAM_PATH, type PartnershipTeamRow } from "@/lib/partnership";
+import { ROLE_LABEL, TEAM_PATH, type PartnershipTeamMember } from "@/lib/partnership";
 import { withAlertBadge } from "@/lib/partnershipAlerts";
 import { PAGE_SIZE, pageOffset } from "@/lib/telecaller";
 import type { User } from "@/lib/types";
@@ -15,11 +15,11 @@ import type { User } from "@/lib/types";
 // in the URL. upc-015: a head's landing page, so it carries the unread alerts badge.
 export default async function PartnershipHeadTeamPage({ searchParams }: { searchParams: Promise<{ offset?: string }> }) {
   const offset = pageOffset((await searchParams).offset);
-  let user: User, team: Page<PartnershipTeamRow>;
+  let user: User, team: Page<PartnershipTeamMember>;
   try {
     [user, team] = await Promise.all([
       serverApi<User>("/api/v1/auth/me"),
-      serverApi<Page<PartnershipTeamRow>>(`/api/v1/partnership/head/team?limit=${PAGE_SIZE}&offset=${offset}`),
+      serverApi<Page<PartnershipTeamMember>>(`/api/v1/partnership/head/team?limit=${PAGE_SIZE}&offset=${offset}`),
     ]);
   } catch (e) {
     return accessUnavailable(e, "/admin/login");

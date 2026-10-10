@@ -1284,6 +1284,9 @@ Common conventions:
 - **Complexity:** medium · **Risk:** medium
 
 ### upc-032 — Manager deactivation + bulk reassignment
+- **Status (2026-10-10):** built on `feature/upc-032` under `DEC-SCOPE-171` (Q-30 + RA1–RA14, recommended answers), with **no
+  migration**, API §12CM and RBAC §2.97. Spec: `docs/superpowers/specs/2026-10-10-upc-032-manager-reassignment-design.md`.
+  - Q-30: no automatic promotion; only the primary slot blocks deactivation; the head reassigns everything (primary, backup, open tasks).
 - **Business requirement:** §27 primary/backup ownership ("only the assigned manager should normally manage"); tel-025 precedent.
 - **Existing behavior:** generic user deactivation.
 - **Expected behavior:**

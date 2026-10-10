@@ -6831,3 +6831,37 @@ contract §12CL, RBAC §2.96. Spec: `docs/superpowers/specs/2026-10-10-upc-028-p
   - University Performance gains a Health column.
   - The university page gains a "Partnership health" card.
 - **New Feature ID authorized:** `upc-028`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-028.
+
+
+### DEC-SCOPE-171 — Partnership manager deactivation + bulk reassignment (`upc-032`)
+
+**Evidence:**
+- `EVID-020` §27 (L896–L906: primary + backup manager; "only the assigned manager should normally manage the active partnership, while
+  management has visibility").
+- `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.2 Q-30 and §4 upc-032 (added on the tel-025 precedent, not in the source); `DEC-SCOPE-118` PU10.
+
+**Status:** RA1–RA14, including **Q-30**, are recommended answers, applied under the owner's standing instruction for the build session
+("proceed with the recommended answers"). They are **not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. No migration; API
+contract §12CM, RBAC §2.97. Spec: `docs/superpowers/specs/2026-10-10-upc-032-manager-reassignment-design.md`.
+**Numbering:** drafted as 170 / §12CL / §2.96 and renumbered after upc-028 (PR #227) took 170 / §12CL / §2.96.
+
+| # | Question | Answer |
+|---|---|---|
+| RA1 | **Q-30** Backup promoted automatically? | **No.** A head (or super_admin) reassigns explicitly from the Team page |
+| RA2 | What blocks deactivation | Being the **primary** manager of ≥ 1 university (active or inactive). Backup slots and open tasks do not block |
+| RA3 | Refusal | `PATCH /admin/users/{id}` `{active:false}` → `422` "This manager is the primary manager of N universities. A partnership head must reassign them (Team page) before deactivation." (422, not 409: tel-025 D5) |
+| RA4 | Who reassigns | `partnership_head` (their direct reports) and `super_admin` (any manager → any active manager); `overseas_admin`, managers `403` |
+| RA5 | What moves | Every primary slot, every backup slot and every **open** task of the source; done / cancelled tasks keep their assignee |
+| RA6 | Target already holds the other slot | The target is (or becomes) primary and the backup is cleared |
+| RA7 | Inactive universities | Move too |
+| RA8 | Source state | Active or inactive |
+| RA9 | Invalid input | Source not a manager `404`; outside the head's team `403`; target inactive / not a manager / outside the team / same as source `422`; nothing to move `409` |
+| RA10 | History | `university_assignment_history` per changed slot; `university.assign` audit (`reason: reassign`) per university; `partnership_task.reassign` per task; `partnership.reassign` summary on the source |
+| RA11 | Transaction | One; locks: universities, then open tasks (by id), then the target FOR SHARE |
+| RA12 | Deactivation race | The pre-check locks the user row FOR UPDATE before counting |
+| RA13 | Notifications | None |
+| RA14 | Preview | `GET /partnership/head/team` rows carry `work: {primary, backup, tasks}` |
+
+- **New:** `services/partnership_lifecycle.py`, `components/PartnershipReassign.tsx`. **Changed:** `api/partnership.py` (route + team
+  counts), `api/admin.py` (`update_user` pre-check), `schemas.py`, `components/PartnershipTeamTable.tsx`, `lib/partnership.ts`.
+- **New Feature ID authorized:** `upc-032`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-032.

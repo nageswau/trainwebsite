@@ -7,6 +7,10 @@ export type PartnershipProfile = { employee_id: string; reporting_head: ManagerR
 export type PartnershipMe = { id: string; full_name: string; email: string; phone: string | null; active: boolean; division: string; partnership_profile: PartnershipProfile };
 export type PartnershipTeamRow = { id: string; full_name: string; email: string; phone: string | null; active: boolean; employee_id: string };
 export type PartnershipAdminRow = PartnershipTeamRow & { reporting_head: ManagerRef; head_active: boolean };
+// upc-032 (DEC-SCOPE-171 RA14): what a head's Team row carries -- the manager's primary and backup universities and open tasks.
+export type PartnershipWork = { primary: number; backup: number; tasks: number };
+export type PartnershipTeamMember = PartnershipTeamRow & { work: PartnershipWork };
+export const REASSIGN_URL = "/api/v1/partnership/head/reassign";
 
 export const MANAGERS_URL = "/api/v1/admin/partnership-managers";
 export const HEADS_URL = "/api/v1/admin/partnership-heads";
