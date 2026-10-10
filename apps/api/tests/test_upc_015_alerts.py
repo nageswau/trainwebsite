@@ -1,4 +1,4 @@
-"""upc-015 (DEC-SCOPE-162, spec §2 AL1-AL11, §6 AC1-AC7) -- the partnership alerts beat: agreement expiry at 90/60/30/7 days, newly
+"""upc-015 (DEC-SCOPE-164, spec §2 AL1-AL11, §6 AC1-AC7) -- the partnership alerts beat: agreement expiry at 90/60/30/7 days, newly
 delayed milestones and the overdue digest, each once per recipient (notifications.dedupe_key), in-app + email. Rows are dated 2034 so other
 tests' rows (the database is shared and never truncated) stay out of the windows; every assertion is about this test's own users."""
 

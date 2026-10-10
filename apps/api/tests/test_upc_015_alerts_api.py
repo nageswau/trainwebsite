@@ -1,4 +1,4 @@
-"""upc-015 -- GET /partnership/alerts (DEC-SCOPE-162 AL12, AL13; spec §6 AC8): the caller's own alerts only, newest first, a kind filter,
+"""upc-015 -- GET /partnership/alerts (DEC-SCOPE-164 AL12, AL13; spec §6 AC8): the caller's own alerts only, newest first, a kind filter,
 paging and the unread count; other roles 403."""
 
 import uuid

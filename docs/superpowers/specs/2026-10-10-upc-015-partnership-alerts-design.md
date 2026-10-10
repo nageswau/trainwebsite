@@ -1,6 +1,6 @@
 # upc-015 — Partnership alerts engine (design)
 
-**Feature:** upc-015 · **Decision:** DEC-SCOPE-162 · **API:** §12CD · **RBAC:** §2.88 · **Migration:** none
+**Feature:** upc-015 · **Decision:** DEC-SCOPE-164 · **API:** §12CF · **RBAC:** §2.90 · **Migration:** none
 **Evidence:** `EVID-020` §14 (L499–L513: 90 / 60 / 30 / 7 days before expiry; "⚠️ ABC University partnership expires in 30 days. Renewal
 action required."), §6 (L242: "automatically highlight delayed milestones"), §20 (L673–L693: Overdue band), §32 ("🔔 Alerts");
 `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U11 (`EXPLICIT_APPROVAL` 2026-10-08: in-app + email, daily IST beat, once each by dedupe key,

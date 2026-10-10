@@ -1516,10 +1516,34 @@ The inline pattern, scope in the SQL `WHERE`. Routes are listed in §12CC.
 | any other role | `403` | `403` |
 
 - The override follows the stage rule (`can_move_stage`); an inactive university is `409`. The audit row carries values only, never the reason text.
+### 2.88 University 360 view *(net-new, added 2026-10-10 — `DEC-SCOPE-162`, `upc-030`)*
 
-### 2.88 Partnership alerts *(net-new, added 2026-10-10 — `DEC-SCOPE-162`, `upc-015`)*
+Enforced in `services/university_view.py`. The role gate (`403`) comes first, then the slice's scope (`404`, so an internal university
+does not leak). Each slice is an explicit allow-list, and no slice carries commission (U2). Routes are listed in §12CD.
 
-The inline pattern; the scope is `notifications.user_id = caller` in the SQL `WHERE`. Routes are listed in §12CD.
+| Role | Universities | Sees | Document download |
+|---|---|---|---|
+| `counselor` (overseas) | Published **and** active only | Profile, partnership stage, shareable contacts (no notes), active courses, shareable documents, **their own** students' applications | Shareable documents (audited) |
+| `overseas_admin` (overseas) | Every university | The counselor's slice, with **every** application for the university | Shareable documents (audited) |
+| `bdm` (with profile), `bdm_manager` | Every university (U13) | Profile, partnership stage, primary partnership manager | `403` |
+| `university_rep` | Only `profile.university_id`; any other → `404` | Profile, active courses | `403` |
+| partnership roles, `super_admin` | — (they use the University Master) | `403` | `403` |
+| any other role, IT counselor included | — | `403` (anonymous `401`) | `403` |
+
+### 2.89 Global university search *(net-new, added 2026-10-10 — `DEC-SCOPE-163`, `upc-024`)*
+
+Enforced in `api/partnership_universities.search_universities`: `partnership_universities.require_reader` comes first. In
+`services/university_search.search`, `commission_min` is dropped for any role without `partnership_access.can_see_commission` (U2). The
+route is read-only, and no commission value appears in a response. Each row's `permissions` are the master's own, worked out per caller.
+
+| Capability | partnership_manager | partnership_head | overseas_admin | super_admin | Other roles |
+|---|---|---|---|---|---|
+| Search every active university (all filters but commission) | ✅ all | ✅ all | ✅ all | ✅ all | `403` (anonymous `401`) |
+| Commission filter (`commission_min`) | ✅ | ✅ | ignored (never filters) | ✅ | — |
+
+### 2.90 Partnership alerts *(net-new, added 2026-10-10 — `DEC-SCOPE-164`, `upc-015`)*
+
+The inline pattern; the scope is `notifications.user_id = caller` in the SQL `WHERE`. Routes are listed in §12CF.
 
 | Role | Receives (beat, AL9) | Reads `GET /partnership/alerts` |
 |---|---|---|

@@ -149,7 +149,7 @@ def send_telecaller_alerts_task():
 
 @celery.task
 def send_partnership_alerts_task():
-    """upc-015 (DEC-SCOPE-162 AL3): every IST hour via beat, acting from 09:00 IST. Idempotent per alert (notifications.dedupe_key), so the
+    """upc-015 (DEC-SCOPE-164 AL3): every IST hour via beat, acting from 09:00 IST. Idempotent per alert (notifications.dedupe_key), so the
     later runs of the day create nothing new and a worker restart during the day still sends that day's alerts."""
     from app.services.partnership_alerts import run_partnership_alerts
 

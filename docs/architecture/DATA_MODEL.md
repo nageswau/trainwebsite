@@ -1923,7 +1923,7 @@ Every FK is RESTRICT; shares are permanent. Additive: no existing row is read or
   cleared (EX3). The expected list and the forecast are computed on read from `expected_agreement_date` (upc-008); nothing else is stored.
 - Changes are audited (`university.probability_overridden`). `downgrade()` refuses while any override exists.
 
-## Partnership alerts (`upc-015`, `DEC-SCOPE-162`; no migration)
+## Partnership alerts (`upc-015`, `DEC-SCOPE-164`; no migration)
 
 **No new table (AL1).** An alert is a `notifications` row (plus its `notification_deliveries` email row) whose `dedupe_key` is
 `upc015:<kind>:<event>:<user_id>`; the existing partial unique index `ux_notifications_dedupe_key` makes each one fire once.

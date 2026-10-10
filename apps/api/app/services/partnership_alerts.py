@@ -1,4 +1,4 @@
-"""upc-015 (DEC-SCOPE-162, spec §2): the partnership alerts (EVID-020 §14 expiry, §6 delayed milestones, §20 overdue follow-ups, §32
+"""upc-015 (DEC-SCOPE-164, spec §2): the partnership alerts (EVID-020 §14 expiry, §6 delayed milestones, §20 overdue follow-ups, §32
 "Alerts"), raised by an hourly beat that acts from 09:00 IST (AL3), each one in-app notice plus one email (AL10).
 
 An alert is a `notifications` row whose `dedupe_key` is `upc015:<kind>:<event>:<user>` (AL1): the partial unique index is the "sent" record

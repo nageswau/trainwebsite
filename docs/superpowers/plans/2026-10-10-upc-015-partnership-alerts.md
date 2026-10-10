@@ -76,7 +76,7 @@ Test: in `test_upc_015_alerts.py` assert the beat entry and that the task name r
 
 ### Task 5: E2E + docs
 
-**Files:** `apps/web/tests/e2e/upc-015-partnership-alerts.spec.ts`; docs: DEC-SCOPE-162 (register), API §12CD, RBAC §2.88,
+**Files:** `apps/web/tests/e2e/upc-015-partnership-alerts.spec.ts`; docs: DEC-SCOPE-164 (register), API §12CF, RBAC §2.90,
 DATA_MODEL note (dedupe key kinds), backlog status.
 
 - [ ] E2E: seed via API container script (run job with a fixed `now`), manager sees alert, tabs filter, Open marks read; head sees nav.

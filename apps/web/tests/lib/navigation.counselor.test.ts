@@ -26,9 +26,14 @@ describe("tel-017 IT counselor navigation", () => {
     expect(hrefs.indexOf("/it/admin/counselors")).toBe(hrefs.indexOf("/it/admin/trainers") + 1);
   });
 
-  it("keeps the overseas counselor nav unchanged", () => {
+  // upc-030 (DEC-SCOPE-161) adds Universities (the 360 view) after Applications.
+  it("keeps the overseas counselor nav, plus Universities", () => {
     expect(PORTAL_NAV["overseas/counselor"].map((item) => item.href.split("/").pop())).toEqual(
-      ["dashboard", "students", "leads", "documents", "applications", "school-applications", "visa", "appointments", "counselor-chat", "reports"],
+      ["dashboard", "students", "leads", "documents", "applications", "universities", "school-applications", "visa", "appointments", "counselor-chat", "reports"],
     );
+  });
+
+  it("gives the university rep a University Profile page (upc-030)", () => {
+    expect(PORTAL_NAV["overseas/university"].at(-1)).toEqual({ label: "University Profile", href: "/overseas/university/profile" });
   });
 });

@@ -1,4 +1,4 @@
-"""upc-015 (DEC-SCOPE-162 AL12, spec §2): the §32 "Alerts" list -- the caller's own partnership alerts (recipients only), newest first.
+"""upc-015 (DEC-SCOPE-164 AL12, spec §2): the §32 "Alerts" list -- the caller's own partnership alerts (recipients only), newest first.
 The beat raises them (services/partnership_alerts); read state is the shared `PATCH /workflows/notifications/{id}/read` (AL13)."""
 
 from typing import Literal

@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.bdm import LIMIT, OFFSET
 from app.api.deps import get_current_user
-from app.api.partnership_universities import _locked, _manager_filter
+from app.api.partnership_universities import _locked
 from app.core.database import get_db
 from app.models import User
 from app.schemas import UniversityEnvelope, UniversityPipelinePage, UniversityStageEventPage, UniversityStageMove, UniversityStageReason
@@ -82,4 +82,4 @@ async def board(
     """PS11/PS12: counts per Kanban column over every active university the filters keep (each read role reads every row, UM9),
     optionally one manager (`me`, `none` or an id, the list's rule); the page lists one column, `lost`, or every open university."""
     await svc.require_reader(db, user)
-    return await pipeline.board(db, _manager_filter(user, manager), column, limit, offset)
+    return await pipeline.board(db, svc.manager_filter(user, manager), column, limit, offset)

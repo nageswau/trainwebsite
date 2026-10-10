@@ -2,7 +2,7 @@ import type { NotificationItem } from "@/components/SchoolNotificationList";
 import { serverApi } from "@/lib/api";
 import { withBadge, type NavItem } from "@/lib/navigation";
 
-// upc-015 (DEC-SCOPE-162 AL12-AL14): the §32 Alerts list -- the caller's own agreement-expiry, delayed-milestone and overdue-digest
+// upc-015 (DEC-SCOPE-164 AL12-AL14): the §32 Alerts list -- the caller's own agreement-expiry, delayed-milestone and overdue-digest
 // alerts. The API is the gate and the scope (recipients only); the kind and page live in the URL.
 export type AlertKind = "agreement_expiry" | "milestone_delayed" | "overdue_digest";
 export type AlertTab = "all" | AlertKind;
