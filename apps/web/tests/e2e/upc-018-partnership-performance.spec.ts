@@ -56,7 +56,7 @@ test("a manager ranks their universities, reads the funnel and the university ca
   await expect(page.getByRole("heading", { name: /^Partner performance — / })).toBeVisible();
   const row = page.getByRole("rowheader", { name: university.name }).locator("xpath=..");
   await expect(row).toContainText("1");
-  await expect(row.locator("td").nth(4)).toHaveText("1"); // # , Country, Stage, Interested, Applications
+  await expect(row.locator("td").nth(5)).toHaveText("1"); // # , Country, Stage, Health (upc-028), Interested, Applications
   await expect(page.getByRole("rowheader", { name: "Total" })).toBeVisible();
 
   // AC2: Student Opportunities -- the funnel with the untracked steps.
