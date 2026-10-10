@@ -5,7 +5,7 @@
   (Commission Expected / Received), L1129 ("Commissions should not be seen by anyone."); backlog §3.1 **U2, U4** (`EXPLICIT_APPROVAL`,
   2026-10-08); §3.2 Q-18, Q-19, Q-20; `DEC-SCOPE-144` CM1–CM4 (upc-016), `DEC-SCOPE-153` PF9 (upc-018).
 - **Dependencies:** upc-016 (terms, merged via PR #192 chain) and upc-018 (funnel, PR #203) are both on `main`.
-- **Decision:** `DEC-SCOPE-161`. **Migration:** `0143_university_commission_receipts`. **API:** §12CC. **RBAC:** §2.87.
+- **Decision:** `DEC-SCOPE-161`. **Migration:** `0143_commission_receipts`. **API:** §12CC. **RBAC:** §2.87.
 - **Status:** CL1–CL14 below are recommended answers applied under the owner's standing instruction for the build session ("proceed with
   the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off.
 
@@ -25,7 +25,7 @@
 | CL10 | Q-20 receipt shape | A **lump sum per university**: amount (> 0, ≤ 99,999,999.99, 2 dp), currency (project list), date received (not in the future, IST), reference (required, 1–120, unique per university case-insensitively — a remittance reference is recorded once), note (≤ 500), linked applications (optional, ≤ 200, enrolled applications of this university) |
 | CL11 | Outstanding | Per currency: Σ Expected − Σ Received (all time, on the university panel). Negative = received more than expected (shown as such, not hidden) |
 | CL12 | Corrections | A receipt is never edited; a mistaken one is removed by a recorder (audited) and re-entered |
-| CL13 | Performance (F10 / F11) | For the commission roles only, `/partnership/performance` rows and totals and `/partnership/universities/{id}/performance` gain `commission: {expected: [{currency, amount}], received: [...]}`: F10 = Σ Expected of applications whose enrolment day is in the period and trigger met; F11 = Σ receipts with `received_on` in the period. Every other reader (overseas_admin) gets **no** `commission` key (`strip_commission`) |
+| CL13 | Performance (F10 / F11) | For the commission roles only, each `/partnership/performance` row, the page itself (summed over every ranked row, like `totals`) and `/partnership/universities/{id}/performance` gain `commission: {expected: [{currency, amount}], received: [...]}`: F10 = Σ Expected of applications whose enrolment day is in the period and trigger met; F11 = Σ receipts with `received_on` in the period. Every other reader (overseas_admin) gets **no** `commission` key (computed only behind `can_see_commission`; the routes exclude unset fields) |
 | CL14 | Privacy / audit | No student name or contact in any response; applications are identified by a short id, programme, intake and the university's reference. Audit `university_commission_receipt.create/delete`: ids + currency only, never the amount, reference or note. Reads are not audited. Logs: ids only |
 
 ## 2. Data

@@ -1503,6 +1503,21 @@ The inline pattern, scope in the SQL `WHERE`. Routes are listed in §12CB.
 - R8 is enforced server-side: no phone, email, LinkedIn or salary leaves in an email, a WhatsApp text or the portal.
 - Only the token's SHA-256 is stored; every resume download is audited; audit rows and logs carry ids only.
 
+### 2.87 Commission ledger *(net-new, added 2026-10-10 — `DEC-SCOPE-161`, `upc-019`)*
+
+Restricted (U2). Routes are listed in §12CC.
+
+| Role | Read Expected / Received / Outstanding | Record / remove a receipt | F10 / F11 on performance |
+|---|---|---|---|
+| `super_admin` | Every university | Yes | Yes |
+| `partnership_head` | Every university | Yes | Yes |
+| `partnership_manager` (with a profile) | Every university | `403` | Yes |
+| `overseas_admin` | `403` | `403` | No `commission` key (counts only) |
+| any other role | `403` | `403` | — (`403` on performance, §2.79) |
+| no session | `401` | `401` | `401` |
+
+- No student identity leaves these routes; audit rows and logs carry ids, the currency and a count only — never an amount, a reference or a note.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

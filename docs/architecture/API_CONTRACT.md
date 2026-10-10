@@ -2505,6 +2505,21 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `GET /employer/shared-profiles/{item_id}/resume` | **→ 200** the resume version current at share time (`attachment`, `no-store`, `nosniff`); `404` none / archived / not this company's. Audit `profile_share.resume_download` `{via: portal}` |
 | `GET /public/shared-resume/{token}` | **No session.** The token is the 7-day random link of an email / WhatsApp item (only its SHA-256 is stored). **→ 200** the file; every failure (unknown, expired, archived candidate, unreadable) → `404` "This link has expired or is no longer available". Audit `profile_share.resume_download` `{via: link}` (no user) |
 
+## 12CC. Commission ledger (`upc-019`) — addendum, 2026-10-10
+
+- **Basis:** `DEC-SCOPE-161` (CL1–CL14). Spec: `docs/superpowers/specs/2026-10-10-upc-019-commission-ledger-design.md` §3. Migration
+  `0143_commission_receipts`.
+- **Readers (U2):** `super_admin`, `partnership_head`, `partnership_manager` (with a profile) — every university. Everyone else `403`,
+  no session `401`. **Recorders (Q-20):** `partnership_head`, `super_admin`.
+- Money is a 2-dp string; totals are per currency, never converted.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/universities/{university_id}/commission` | **→ 200** `{university {id, name, university_code}, totals: [{currency, expected, received, outstanding}], applications: [{id, course, intake, reference, enrolled_on, status, status_label, term_id, currency, amount}] (≤ 200, newest enrolment first), applications_total, receipts: [{id, amount, currency, received_on, reference, note, application_ids, created_by, created_at}] (≤ 200, newest first), receipts_total, permissions {can_record}}`. `status` ∈ `counted`, `awaiting_visa`, `trigger_not_tracked`, `no_term`, `tuition_unknown`, `date_unknown`. `404` unknown university |
+| `POST /partnership/universities/{university_id}/commission/receipts` | **Body:** `{amount (> 0, ≤ 99,999,999.99, 2 dp), currency (INR, USD, GBP, EUR, CAD, AUD, NZD), received_on (date, not future), reference (1–120), note? (≤ 500), application_ids? (≤ 200; a repeat counts once)}`, `extra="forbid"`. **→ 201** `{receipt}`. `403` a reader who may not record; `404` unknown university; `422` invalid values or an application that is not an enrolled application of this university; `409` the reference is already recorded for the university (any case). University row locked; audit `university_commission_receipt.create` |
+| `DELETE /partnership/universities/{university_id}/commission/receipts/{receipt_id}` | **→ 204**. `403` not a recorder; `404` unknown pair. Audit `university_commission_receipt.delete` |
+| `GET /partnership/performance`, `GET /partnership/universities/{id}/performance` (§12BU) | For the commission roles each row, the page and the single university also carry `commission: {expected: [{currency, amount}], received: [...]}` — F10 = Expected of applications enrolled in the period whose trigger is met; F11 = receipts dated in the period. The key is absent for every other reader |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
