@@ -3664,7 +3664,7 @@ inspected), so no parity is claimed.
 - **States:** a role without access gets the access card ("University performance access required"). Signed out → `/overseas/login?next=…`.
 - **Responsive:** no page side-scroll at 1366 px, 820 px or 375 px.
 
-## upc-019 addendum (2026-10-10, `DEC-SCOPE-164`) — Commission ledger (restricted)
+## upc-019 addendum (2026-10-10, `DEC-SCOPE-165`) — Commission ledger (restricted)
 
 Design spec: `docs/superpowers/specs/2026-10-10-upc-019-commission-ledger-design.md` §4. Visual-reference mapping: none (not inspected),
 so no parity is claimed.

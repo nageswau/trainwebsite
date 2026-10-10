@@ -10028,3 +10028,25 @@ class UniversitySearchPage(BaseModel):
     limit: int
     offset: int
     facets: UniversitySearchFacets
+
+# upc-015 (DEC-SCOPE-164 AL12): the caller's own partnership alerts. The kinds repeat services/partnership_alerts.KINDS (a Literal needs
+# the values spelled out; test_upc_015_alerts_api keeps them equal).
+PartnershipAlertKind = Literal["agreement_expiry", "milestone_delayed", "overdue_digest"]
+
+
+class PartnershipAlertItem(BaseModel):
+    id: UUID
+    kind: PartnershipAlertKind
+    title: str
+    body: str
+    read: bool
+    action_url: str | None
+    created_at: datetime
+
+
+class PartnershipAlertPage(BaseModel):
+    items: list[PartnershipAlertItem]
+    total: int
+    unread: int  # every kind, for the nav badge
+    limit: int
+    offset: int

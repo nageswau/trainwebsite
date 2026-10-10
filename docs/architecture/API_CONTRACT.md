@@ -2559,9 +2559,22 @@ moves the application to Joined (AC3). Every change writes offer history.
 - **Queries:** a constant count.
 - **Route order:** declared before `/{university_id}`.
 
-## 12CF. Commission ledger (`upc-019`) — addendum, 2026-10-10
+## 12CF. Partnership alerts (`upc-015`) — addendum, 2026-10-10
 
-- **Basis:** `DEC-SCOPE-164` (CL1–CL14). Spec: `docs/superpowers/specs/2026-10-10-upc-019-commission-ledger-design.md` §3. Migration
+- **Basis:** `DEC-SCOPE-164` (AL1–AL14). Spec: `docs/superpowers/specs/2026-10-10-upc-015-partnership-alerts-design.md`. No migration.
+- **Readers:** `partnership_manager` (with a profile), `partnership_head`, `super_admin` (receives none: an empty list); others `403`; no
+  session `401`. Recipients only: every row is the caller's own.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/alerts?kind=all\|agreement_expiry\|milestone_delayed\|overdue_digest&limit(1–100, 25)&offset` | **→ 200** `{items: [{id, kind, title, body, read, action_url, created_at}], total, unread, limit, offset}`, newest first. `unread` counts every kind (the nav badge). `422` unknown kind / bad paging |
+
+- Read state uses the existing `PATCH /workflows/notifications/{id}/read` (AL13). The alerts are raised by the beat task
+  `app.worker.send_partnership_alerts_task` (`upc015-alerts`, `crontab(minute=30)` UTC, acting from 09:00 IST), never by a request.
+
+## 12CG. Commission ledger (`upc-019`) — addendum, 2026-10-10
+
+- **Basis:** `DEC-SCOPE-165` (CL1–CL14). Spec: `docs/superpowers/specs/2026-10-10-upc-019-commission-ledger-design.md` §3. Migration
   `0144_commission_receipts`.
 - **Readers (U2):** `super_admin`, `partnership_head`, `partnership_manager` (with a profile) — every university. Everyone else `403`,
   no session `401`. **Recorders (Q-20):** `partnership_head`, `super_admin`.

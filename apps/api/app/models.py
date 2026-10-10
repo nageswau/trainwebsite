@@ -5050,7 +5050,7 @@ class UniversityCommissionTerm(Base, TimestampMixin):
     updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
 
 
-# upc-019 (DEC-SCOPE-164, spec §2): commission a university actually paid EduSphere, recorded by hand until a Finance module is decided
+# upc-019 (DEC-SCOPE-165, spec §2): commission a university actually paid EduSphere, recorded by hand until a Finance module is decided
 # (U4, Q-20 CL10: a lump sum per university, optionally linked to enrolled applications). RESTRICTED (U2). Migration 0143 repeats these;
 # test_upc_019_migration keeps them identical.
 COMMISSION_RECEIPT_CHECKS = {
