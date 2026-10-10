@@ -138,3 +138,23 @@ Results are paged, with counts. The filters live in the URL, so a search can be 
 
 `test_upc_003_*`, `test_upc_017_courses.py` and `test_upc_001_access.py`. Web: the navigation tests, `PartnershipTeamTable.test.tsx` and
 the new page test.
+
+## 8. QA (Phase 5, 2026-10-10, `upc024` stack on :13024)
+
+The exploratory pass ran headless Chromium against the production build. It covered:
+- roles: head, manager, overseas_admin, counselor and signed-out;
+- searches: the 3 source examples and the intake, tuition, commission, ownership and ranking filters;
+- states: the 422 and conflicting-filter messages, filtered empty, past the end;
+- navigation: paging, Back, Refresh, the chips, Clear, a double submit and Enter;
+- layout and errors: tablet (820 px) and mobile (390 px), broken images, console and network errors.
+
+| ID | Severity | Finding | Resolution |
+|---|---|---|---|
+| QA24-01 | Medium | After a chip, Clear or paging click (Next's client navigation), the uncontrolled form fields kept their old values. The next Search re-sent a stale filter, e.g. the old partner status | Fixed: the form is keyed on the search. Vitest regression test, red then green. Re-run 36/36 |
+| QA24-02 | Low | One React #418 (hydration) `pageerror` on the first head load | Not reproduced in 15 further loads across `/partnership/search`, `/courses`, `/universities` and `/performance`, nor in the full re-run. It matches the intermittent production-only #418 seen earlier on unchanged partnership list pages (upc-010 notes). Not caused by this item |
+
+Cosmetic follow-ups (not defects):
+- At 1366 px the native Partner status select truncates "Partnership in progress".
+- On a phone the 20-field form comes before the results. A collapsible "More filters" group could help.
+
+e2e: `upc-024-global-university-search.spec.ts` passes 1/1.
