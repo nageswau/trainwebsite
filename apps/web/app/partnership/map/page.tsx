@@ -7,7 +7,7 @@ import PortalShell from "@/components/PortalShell";
 import { ApiError, serverApi } from "@/lib/api";
 import { LEVELS } from "@/lib/courseMaster";
 import {
-  ACTIVITY, colourOf, countryHref, EXCLUSIVITY, isFiltered, MAP_PATH, MAP_URL, type MapFilters, mapHref, type MapPage, mapQuery,
+  ACTIVITY, colourOf, countryHref, EXCLUSIVITY, MAP_KEYS, MAP_PATH, MAP_URL, type MapFilters, mapHref, type MapPage, mapQuery,
   STATUS_LABELS, STATUS_ORDER,
 } from "@/lib/partnershipMap";
 import type { User } from "@/lib/types";
@@ -65,6 +65,7 @@ export default async function PartnershipMapPage({ searchParams }: { searchParam
   const { nav, roleLabel } = shellFor(user.role);
   const managerOptions: Option[] = [...(user.role === "partnership_manager" ? [["me", "Assigned to me"] as Option] : []), ["none", "Unassigned"]];
   const undrawn = page?.countries.filter((c) => !c.iso2 || !SHAPES[c.iso2]) ?? [];
+  const applied = MAP_KEYS.filter((key) => filters[key]?.trim()).length;
   return (
     <PortalShell nav={nav} roleLabel={roleLabel} userName={user.full_name}>
       <div className="portal-content">
@@ -78,7 +79,10 @@ export default async function PartnershipMapPage({ searchParams }: { searchParam
         {/* keyed on the filters: a view switch or Clear is a client navigation that would otherwise keep the old uncontrolled values (upc-024 QA24-01) */}
         <form key={mapHref(filters)} className="action-card wide" method="get" action={MAP_PATH} aria-label="Map filters">
           {table && <input type="hidden" name="view" value="table" />}
-          <div className="form-grid" style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+          {/* QA25-01: folded until a filter is applied, so the map is near the top (15 fields fill a phone screen) */}
+          <details className="map-filters" open={applied > 0}>
+          <summary>{applied ? `Filters (${applied} applied)` : "Filters"}</summary>
+          <div className="form-grid" style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", marginTop: 12 }}>
             <Input id="pm-country" name="country" text="Country" maxLength={100} value={filters.country} placeholder="e.g. Japan or JP" />
             <Choice id="pm-region" name="region" text="Region" value={filters.region} options={pairs(REGIONS)} />
             <Choice id="pm-status" name="partner_status" text="Partner status" value={filters.partner_status} options={Object.entries(PARTNER_STATUSES)} />
@@ -97,8 +101,9 @@ export default async function PartnershipMapPage({ searchParams }: { searchParam
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12, marginTop: 12 }}>
             <button className="btn small" type="submit">Apply filters</button>
-            {isFiltered(filters) && <Link className="btn secondary small" href={mapHref({ view: filters.view })}>Clear</Link>}
+            {applied > 0 && <Link className="btn secondary small" href={mapHref({ view: filters.view })}>Clear</Link>}
           </div>
+          </details>
         </form>
         {!page ? (
           <p className="form-error" role="alert">{problem}</p>
@@ -121,7 +126,7 @@ export default async function PartnershipMapPage({ searchParams }: { searchParam
               country takes the colour of its best status: partner, then in progress, then target, then lost.
             </p>
             {page.totals.total === 0 ? (
-              <p className="empty" role="status">{isFiltered(filters) ? "No universities match these filters." : "No universities yet."}</p>
+              <p className="empty" role="status">{applied > 0 ? "No universities match these filters." : "No universities yet."}</p>
             ) : table ? (
               <div className="telecaller-list">
                 <div className="table-wrap" role="region" aria-label="Universities by country" tabIndex={0}>
@@ -158,6 +163,7 @@ export default async function PartnershipMapPage({ searchParams }: { searchParam
               </div>
             ) : (
               <>
+                <p className="map-phone-hint muted">On a small screen the <Link href={mapHref(filters, { view: "table" })}>table</Link> may be easier to read.</p>
                 <PartnershipWorldMap countries={page.countries} filters={filters} />
                 {undrawn.length > 0 && (
                   <p className="muted" style={{ fontSize: 13 }}>

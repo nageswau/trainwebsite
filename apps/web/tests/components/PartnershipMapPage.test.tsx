@@ -119,6 +119,21 @@ describe("Global Partnership Map page", () => {
     expect((within(form).getByLabelText("Exclusive / non-exclusive") as HTMLSelectElement).value).toBe("exclusive");
   });
 
+  it("keeps the filters folded until one is applied, so the map is near the top (QA25-01)", async () => {
+    answer(page());
+    const { container } = render(await MapPage({ searchParams: Promise.resolve({}) }));
+    const folded = container.querySelector("details.map-filters") as HTMLDetailsElement;
+    expect(folded.open).toBe(false);
+    expect(folded.querySelector("summary")?.textContent).toBe("Filters");
+    expect(folded.querySelector("#pm-region")).not.toBeNull();
+    cleanup();
+    answer(page());
+    const filtered = render(await MapPage({ searchParams: Promise.resolve({ region: "UK", priority: "A" }) }));
+    const open = filtered.container.querySelector("details.map-filters") as HTMLDetailsElement;
+    expect(open.open).toBe(true);
+    expect(open.querySelector("summary")?.textContent).toBe("Filters (2 applied)");
+  });
+
   it("has an empty state and explains a refused value (422)", async () => {
     answer(page({ countries: [], totals: { partner: 0, in_progress: 0, target: 0, lost: 0, total: 0 } }));
     render(await MapPage({ searchParams: Promise.resolve({ region: "Asia" }) }));

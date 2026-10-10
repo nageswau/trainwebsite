@@ -64,6 +64,7 @@ def _activity(value: str) -> list:
 def _exclusivity(value: str):
     """upc-025 MP8 (Q-07): the current agreements are the in-force ones (signed/active) not past their expiry date (upc-014 AG4).
     `exclusive` = one of them is exclusive; `non_exclusive` = there is one and none is exclusive."""
+
     def current(*conditions):
         return (
             select(UniversityAgreement.id)
@@ -180,7 +181,7 @@ async def _matching_courses(db: AsyncSession, query: UniversitySearchQuery, ids:
     return dict((await db.execute(stmt)).all())
 
 
-def _for(user: User, query):
+def _drop_hidden_commission(user: User, query):
     """SR10 (U2): commission is dropped before any SQL for other roles, so neither the list nor the map depends on commission data."""
     return query if can_see_commission(user) else query.model_copy(update={"commission_min": None})
 
@@ -192,7 +193,7 @@ def _grouped(*columns):
 
 
 async def search(db: AsyncSession, user: User, query: UniversitySearchQuery) -> dict:
-    query = _for(user, query)
+    query = _drop_hidden_commission(user, query)
     base = filters(user, query)
     where = [*base, *_partner_status(query.partner_status)]
     total = await db.scalar(select(func.count()).select_from(University).join(Country, Country.id == University.country_id).where(*where))
@@ -231,7 +232,7 @@ async def search(db: AsyncSession, user: User, query: UniversitySearchQuery) -> 
 async def country_counts(db: AsyncSession, user: User, query: UniversityFilterQuery) -> dict:
     """upc-025 (MP2, MP3, MP10): the partner-status counts per country of exactly what the search would list for the same filters (the
     partner-status filter included), in one grouped query. Only countries with a matching university, ordered by name."""
-    query = _for(user, query)
+    query = _drop_hidden_commission(user, query)
     where = [*filters(user, query), *_partner_status(query.partner_status)]
     rows: dict[UUID, dict] = {}
     for country_id, iso2, name, region, lost, stage, count in (await db.execute(_grouped(Country.id, Country.iso2, Country.name, Country.region).where(*where))).all():

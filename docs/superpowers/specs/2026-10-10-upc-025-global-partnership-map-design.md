@@ -155,3 +155,24 @@ Backlog acceptance criteria:
 
 API: `test_upc_024_search.py`, `test_upc_003_*` (the list) and `test_upc_001_access.py`. Web: the navigation tests,
 `PartnershipTeamTable.test.tsx`, `UniversitySearchPage.test.tsx`, and the new tests.
+
+## 8. QA (Phase 5, 2026-10-10, `upc025` stack on :13025)
+
+The exploratory pass ran headless Chromium (Playwright) against the production build:
+- **Roles:** partnership head, partnership manager, overseas_admin, super_admin, counselor (wrong role) and signed-out.
+- **Checks:** happy path; "Assigned to me"; hover, focus and Tab to countries and the Singapore marker; click-through to the search (same
+  filters + `iso2`) and its Remove link; Map / Table; Refresh and Back; a double submit; invalid URL values (stage, dates); the filtered
+  empty state.
+- **Layouts:** desktop 1440, tablet 820 and mobile 390, checking for side-scroll.
+- **Errors:** console errors, failed network calls and broken images.
+
+The final run: 32 of 32 checks pass, with no console errors, failed calls or broken images.
+
+| ID | Severity | Finding | Outcome |
+|---|---|---|---|
+| QA25-01 | Medium | All readers: the 15 filter fields pushed the map below the fold on desktop and about 1,600 px down on a phone | **Fixed** (TDD): the filters sit in a native `<details>` ("Filters", or "Filters (N applied)"), closed until a filter is applied; phones get a hint pointing to the table |
+| QA25-02 | — | Refresh then Back seemed to leave the table showing | **Not reproduced**: a race in the QA script (`isVisible` does not wait); the manual replay passes |
+| QA25-03 | Low | With `display:flex`, the `<summary>` lost its disclosure triangle, so "Filters" did not look expandable | **Fixed**: a ▸ / ▾ marker in CSS |
+
+Observed and not changed: a submitted GET form puts its empty fields in the URL (`country=&…`). That is the upc-024 form's native
+behaviour too, and the links the page builds itself (view switch, Clear, country links) stay clean.

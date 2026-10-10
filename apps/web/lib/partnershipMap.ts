@@ -54,8 +54,6 @@ export function countryHref(filters: MapFilters, iso2: string): string {
   return `${SEARCH_PATH}?${query.toString()}`;
 }
 
-export const isFiltered = (filters: MapFilters) => MAP_KEYS.some((key) => filters[key]?.trim());
-
 /** Q-32 (MP11): the best status present wins -- partner, then in progress, then target, then lost; none when nothing matches. */
 export function colourOf(row: MapCounts): MapColour {
   return STATUS_ORDER.find((status) => row[status] > 0) ?? "none";

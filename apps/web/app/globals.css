@@ -372,3 +372,11 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
 .map-swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; background: currentColor; }
 .map-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; min-height: 44px; margin-top: 8px; font-size: 14px; }
 .map-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 12px 0; padding: 0; list-style: none; font-size: 14px; }
+/* upc-025 QA25-01: the filters fold away until one is applied, so the map is near the top; phones are pointed to the table. */
+.map-filters > summary { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; font-weight: 700; list-style: none; }
+.map-filters > summary::-webkit-details-marker { display: none; }
+.map-filters > summary::before { content: "▸"; color: var(--blue); }
+.map-filters[open] > summary::before { content: "▾"; }
+.map-filters > summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 8px; }
+.map-phone-hint { display: none; margin: 0 0 8px; font-size: 13px; }
+@media (max-width: 640px) { .map-phone-hint { display: block; } }

@@ -52,9 +52,12 @@ test("a head reads the Global Partnership Map by keyboard, as a table, and opens
   await page.getByRole("link", { name: "Global Partnership Map" }).first().click();
   await expect(page.getByRole("heading", { name: "Global Partnership Map" })).toBeVisible();
   const form = page.getByRole("form", { name: "Map filters" });
+  await expect(form.getByLabel("Region")).toBeHidden(); // QA25-01: folded until a filter is applied
+  await form.getByText("Filters", { exact: true }).click();
   await form.getByLabel("Region").selectOption("Europe");
   await form.getByRole("button", { name: "Apply filters" }).click();
   await expect(page).toHaveURL(/region=Europe/);
+  await expect(form.getByText("Filters (1 applied)")).toBeVisible();
 
   // AC2: Iceland is a named, focusable link; focus shows its counts in the panel. Asia's Singapore is filtered out.
   const map = page.getByRole("group", { name: "World map of university partnerships" });
