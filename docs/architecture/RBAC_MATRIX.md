@@ -1569,6 +1569,20 @@ Restricted (U2). Routes are listed in §12CG.
 
 - No student identity leaves these routes; audit rows and logs carry ids, the currency and a count only — never an amount, a reference or a note.
 
+### 2.92 University communication history *(net-new, added 2026-10-10 — `DEC-SCOPE-166`, `upc-013`)*
+
+The upc-012 communications rule (`university_comms.require_reader`): the role gate (`403`) first, then the university (`404`). Read-only.
+Routes are listed in §12CH.
+
+| Role | Read a university's history |
+|---|---|
+| `partnership_manager` (with a profile) | Every university (UM9) |
+| `partnership_head`, `super_admin` | Every university |
+| `overseas_admin` | `403` (reads the master, not communications) |
+| any other role | `403` (anonymous `401`) |
+
+- Documents follow upc-026's visibility (never the commission agreement for a non-commission role); no entry carries commission terms.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

@@ -6650,3 +6650,34 @@ recommended answers; ask only if genuinely blocking"). **Not** separately confir
 section on `/partnership/universities/[id]`; "Commission expected / received" columns on `/partnership/performance`. `AgentCommission`
 is untouched. Management mgmt-005/006 may read the receipts later (M4).
 - **New Feature ID authorized:** `upc-019`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-019.
+
+### DEC-SCOPE-166 — University communication history / timeline (`upc-013`)
+
+**Evidence:**
+- `EVID-020` §12 (L437–L451: "Every email/call/WhatsApp/meeting should be stored against the university", the example timeline 05 Sep
+  Email sent … 22 Sep Commercial discussion, "the Partnership Manager never loses the history").
+- `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U10 (`EXPLICIT_APPROVAL`, 2026-10-08: "Everything appears on the university timeline") and §4
+  upc-013.
+
+**Status:** TL1–TL10 are recommended answers, applied under the owner's standing instruction for the build session ("proceed with the
+recommended answers"). They are **not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. **No migration.** API contract §12CH,
+RBAC §2.92. Spec: `docs/superpowers/specs/2026-10-10-upc-013-university-communication-history-design.md`.
+**Numbering:** drafted as 163 / §12CE / §2.89 and renumbered after upc-024 (PR #221) and upc-015 (PR #222) took 163–164 / §12CE–§12CF / §2.89–§2.90, then after upc-019 (PR #220) took 165 / §12CG / §2.91.
+
+| # | Question | Answer |
+|---|---|---|
+| TL1 | Endpoint | `GET /partnership/universities/{id}/timeline?limit(1–100, 50)&offset` → `{items, total, limit, offset}` |
+| TL2 | Who reads | The upc-012 communications readers: `partnership_manager` (with a profile), `partnership_head`, `super_admin`. `overseas_admin` and every other role → `403`; anonymous `401` |
+| TL3 | Which universities | Every university (upc-003 UM9). Unknown → `404`; non-UUID → `422` |
+| TL4 | Sources | Stage history, calls, messages, meeting events, visit events, agreement events, tasks / follow-ups (added, done, cancelled), document versions |
+| TL5 | Order | `at DESC`, then rank (task 3 > stage 2 > activity 1: one transaction's effect above its cause), then position, then id. A call logged within its minute reads at its recording time (QA-01, tel-015 QA15-01) |
+| TL6 | Free text | A 200-character excerpt; the full text stays in its own section |
+| TL7 | Commission | Documents use upc-026's `visibility(user)`; agreement events carry no commission terms. Every TL2 reader is a commission role today |
+| TL8 | Audit / logs | Read-only, not audited, nothing logged |
+| TL9 | Web | A "Communication history" section on the university detail page for the TL2 readers; the server reads the first page; "Show older entries" |
+| TL10 | Freshness | A write on the page refreshes it; a new first page remounts the list |
+
+- **New:** `services/university_timeline.py`, the route in `api/university_comms.py`, `components/UniversityActivity.tsx`,
+  `lib/universityActivity.ts`. `lead_timeline._branch` gains an optional `rank`; `LeadTimeline` gains optional `entryOf` / `actorOf`
+  (lead callers unchanged).
+- **New Feature ID authorized:** `upc-013`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-013.

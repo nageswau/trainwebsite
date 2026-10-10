@@ -19,9 +19,17 @@ from app.api.telecaller_catalogue import NOT_AN_OBJECT, _locked, _page
 from app.core.database import get_db
 from app.models import PartnershipMessageTemplate, User
 from app.notifications.dispatch import enqueue_university_email
-from app.schemas import TEL_CONTENT_FIELD_LABELS, PartnershipTemplateCreate, PartnershipTemplateUpdate, UniversityCallCreate, UniversityMessageCreate
+from app.schemas import (
+    TEL_CONTENT_FIELD_LABELS,
+    PartnershipTemplateCreate,
+    PartnershipTemplateUpdate,
+    UniversityCallCreate,
+    UniversityMessageCreate,
+    UniversityTimelinePage,
+)
 from app.services import partnership_universities as unis
 from app.services import university_comms as svc
+from app.services import university_timeline as timeline
 from app.services.bdm_appointments import db_now
 from app.services.telecaller import _parse
 from app.services.telecaller_catalogue import apply_changes, flush_unique
@@ -146,6 +154,14 @@ async def _history(db: AsyncSession, user: User, kind: str, university_id: UUID,
 @router.get("/universities/{university_id}/calls")
 async def university_calls(university_id: UUID, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     return await _history(db, user, "calls", university_id, limit, offset)
+
+
+@router.get("/universities/{university_id}/timeline", response_model=UniversityTimelinePage)
+async def university_timeline(university_id: UUID, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """upc-013 (TL1-TL3): everything kept on the university, newest first -- the communications readers, every university."""
+    await svc.require_reader(db, user)
+    await unis.load(db, university_id)
+    return await timeline.page(db, university_id, user, limit, offset)
 
 
 @router.get("/universities/{university_id}/messages")
