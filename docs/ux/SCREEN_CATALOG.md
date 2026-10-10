@@ -3791,3 +3791,20 @@ Design spec: `docs/superpowers/specs/2026-10-09-rec-019-profile-sharing-design.m
   per profile with the summary (qualification, experience, current company, location, preferred locations and role, notice, skills),
   "Download resume" or "Resume on request", and "Your response" + "Save response". States: loading, error with Retry, empty.
 - All of it uses stacked cards, so it holds at phone width; every control has a visible or visually hidden name.
+
+## upc-023 addendum (2026-10-10, `DEC-SCOPE-161`) — Expected University Partnerships + forecast
+
+Design spec `docs/superpowers/specs/2026-10-10-upc-023-expected-partnerships-design.md` §5. Visual-reference mapping: None — not inspected. Do not claim parity.
+
+- **Route `/partnership/expected`** (from Targets & Forecast; managers, heads, super_admin): "Expected University Partnerships" with
+  **Back to targets**; a "Partnership forecast" tile row (Expected Partnerships This Month / Expected Next Month / Expected This Quarter:
+  count, "Weighted forecast: n", the date range, **View list**) and a note with a link to the undated ones; window tabs (All dated, This
+  month, Next month, This quarter, No expected date (n)) as links with `aria-current`; the §23 table (University link, Country, Stage,
+  Expected date with an "Overdue" badge before today, Owner or "Unassigned", Probability — "70% (override; stage 40%)" with the reason
+  below); Previous / Next paging. Empty per window; a page past the end links back to the first page. Another role sees the access page.
+- **`/partnership/targets`** gains the same tiles under the targets and **All expected partnerships**; if the forecast fails to load, a note
+  shows and the targets still render.
+- **`/partnership/universities/[id]`**, Partnership timeline: a "Partnership probability" line; owners, their head and super_admin get
+  **Override probability** (Probability (%) 0–100 with the stage's value as a hint, Reason; checked before sending: "Enter a whole number
+  from 0 to 100."; API refusals on their field) and **Clear override**; notices in `role=status`.
+- **Responsive / a11y:** tiles wrap; the table scrolls inside its focusable, labelled region; no side-scroll at 375 px.

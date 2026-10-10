@@ -160,15 +160,16 @@ describe("upc-008 university detail page", () => {
     if (p.includes("/contacts")) return { items: [], total: 0, limit: 50, offset: 0 } as never;
     if (p.includes("/documents")) return documents as never;
     if (p.includes("/performance")) return performance as never; // upc-018
-    return { university: { ...university, expected, permissions: { ...university.permissions, can_edit_timeline: false } } } as never;
+    return { university: { ...university, expected, probability, permissions: { ...university.permissions, can_edit_timeline: false, can_move_stage: false } } } as never;
   });
+  const probability = { stage: 10, override: null, reason: null, effective: 10 }; // upc-023
 
   it("adds the Partnership timeline for every reader, read with the university and remounted after a stage move", async () => {
     serve(async () => milestones);
     const tree = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) }));
     expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/universities/${ID}/milestones`);
     const timeline = tree.find((el) => el.type === UniversityTimeline)!;
-    expect(timeline.props).toEqual({ universityId: ID, expected, canEdit: false, initial: milestones });
+    expect(timeline.props).toEqual({ universityId: ID, expected, canEdit: false, initial: milestones, probability, canOverride: false }); // upc-023: the stage rule
     expect(timeline.key).toContain(university.pipeline.changed_at); // a move into Proposal Sent auto-completes Proposal (MS4)
   });
 
