@@ -2586,7 +2586,6 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `POST /partnership/universities/{university_id}/commission/receipts` | **Body:** `{amount (> 0, ≤ 99,999,999.99, 2 dp), currency (INR, USD, GBP, EUR, CAD, AUD, NZD), received_on (date, not future), reference (1–120), note? (≤ 500), application_ids? (≤ 200; a repeat counts once)}`, `extra="forbid"`. **→ 201** `{receipt}`. `403` a reader who may not record; `404` unknown university; `422` invalid values or an application that is not an enrolled application of this university; `409` the reference is already recorded for the university (any case). University row locked; audit `university_commission_receipt.create` |
 | `DELETE /partnership/universities/{university_id}/commission/receipts/{receipt_id}` | **→ 204**. `403` not a recorder; `404` unknown pair. Audit `university_commission_receipt.delete` |
 | `GET /partnership/performance`, `GET /partnership/universities/{id}/performance` (§12BU) | For the commission roles each row, the page and the single university also carry `commission: {expected: [{currency, amount}], received: [...]}` — F10 = Expected of applications enrolled in the period whose trigger is met; F11 = receipts dated in the period. The key is absent for every other reader |
-
 ## 12CH. University communication history (`upc-013`) — addendum, 2026-10-10
 
 - **Basis:** `DEC-SCOPE-166` (TL1–TL10). Spec: `docs/superpowers/specs/2026-10-10-upc-013-university-communication-history-design.md` §3. No migration.
@@ -2596,6 +2595,35 @@ moves the application to Joined (AC3). Every change writes offer history.
 | Method/Path | Notes / status codes |
 |---|---|
 | `GET /partnership/universities/{university_id}/timeline?limit(1–100, 50)&offset` | **→ 200** `{items: [{id, kind: stage\|call\|message\|meeting\|visit\|agreement\|task\|document, at, actor {id, full_name} \| null, event, from_value, from_label, to_value, to_label, subject, status, reason, duration_seconds, scheduled_for}], total, limit, offset}`, newest first (TL5). Per kind (spec D3): stage = move/lost/reopened with stage keys + labels; call = direction, outcome + label, contact name; message = channel, template name, contact name, subject, delivery status; meeting = event, meeting type, code, start; visit = action, from/to status, code; agreement = event, from/to status, MoU number, type; task = scheduled/done/cancelled, kind, due date, assignee name, title, source; document = uploaded/new_version, kind, version, title. Free text ≤ 200 characters. `404` unknown university; `422` non-UUID or bad paging |
+
+## 12CI. Global partnership map (`upc-025`) — addendum, 2026-10-10
+
+- **Basis:** `DEC-SCOPE-167` (MP1–MP14). Spec: `docs/superpowers/specs/2026-10-10-upc-025-global-partnership-map-design.md` §3.
+  No migration.
+- **Readers:** the same as §12CE. Any other role → `403` "University master access required". Anonymous → `401`.
+- **Behaviour:** read-only, with no audit row. It counts exactly the universities §12CE would list for the same filters.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/universities/map?<every §12CE filter except limit/offset>` | See the notes below this table |
+
+- **Response:** `{countries: [{iso2, name, region, partner, in_progress, target, lost, total}], totals: {partner, in_progress, target,
+  lost, total}, stages: [{key, label}]}`.
+  - Only countries with at least one matching university, ordered by name.
+  - `lost` is the Lost/Closed flag. The other three are Appendix B G1–G3.
+  - The partner-status filter applies to the counts.
+- **Not a list endpoint:** no paging, ETag or idempotency key. It is bounded by the number of countries.
+- **`422`:** as §12CE, plus the new filters.
+- **Queries:** one grouped query, whatever the data.
+- **Route order:** declared before `/{university_id}`.
+- **§12CE additions (both routes, all optional):**
+  - `iso2`: two letters, exact and case-insensitive;
+  - `stage`: a stored stage key;
+  - `priority`: `A` / `B` / `C`;
+  - `activity`: `active` (default) / `inactive` / `all`;
+  - `exclusivity`: `exclusive` / `non_exclusive`, by the current agreements (signed / active, not expired).
+
+  Existing calls are unchanged.
 
 ## 13. Traceability check
 

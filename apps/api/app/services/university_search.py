@@ -9,16 +9,17 @@ course counts when a course filter is sent (SR15)."""
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import Numeric, cast, func, or_, select
+from sqlalchemy import Numeric, and_, cast, func, or_, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.api.lookups import _pattern as like_pattern
 from app.models import Country, OverseasCourse, Scholarship, University, UniversityAgreement, UniversityCommissionTerm, UniversityRanking, User
-from app.partnership_stages import GROUPS
-from app.schemas import UniversitySearchQuery
+from app.partnership_stages import GROUPS, STAGES
+from app.schemas import UniversityFilterQuery, UniversitySearchQuery
 from app.services import partnership_universities as svc
+from app.services.bdm_travel import india_today
 from app.services.partnership_access import can_see_commission
 from app.services.university_agreements import IN_FORCE
 
@@ -37,8 +38,12 @@ def _lead_number(column):
     return cast(func.substring(column, "^[0-9]+"), Numeric)
 
 
+def _group(lost: bool, stage: str) -> str:
+    return "lost" if lost else GROUPS.get(stage, "target")
+
+
 def partner_status_of(uni: University) -> str:
-    return "lost" if uni.lost_at is not None else GROUPS.get(uni.stage, "target")
+    return _group(uni.lost_at is not None, uni.stage)
 
 
 def _partner_status(value: str | None) -> list:
@@ -51,7 +56,27 @@ def _partner_status(value: str | None) -> list:
     return [University.lost_at.is_(None), University.stage.in_([key for key, group in GROUPS.items() if group in groups])]
 
 
-def _course_conditions(query: UniversitySearchQuery) -> list:
+def _activity(value: str) -> list:
+    """upc-025 MP7: active only by default (SR2), as before."""
+    return [] if value == "all" else [University.active.is_(value == "active")]
+
+
+def _exclusivity(value: str):
+    """upc-025 MP8 (Q-07): the current agreements are the in-force ones (signed/active) not past their expiry date (upc-014 AG4).
+    `exclusive` = one of them is exclusive; `non_exclusive` = there is one and none is exclusive."""
+
+    def current(*conditions):
+        return (
+            select(UniversityAgreement.id)
+            .where(UniversityAgreement.university_id == University.id, UniversityAgreement.status.in_(IN_FORCE), UniversityAgreement.expiry_date >= india_today(), *conditions)
+            .exists()
+        )
+
+    exclusive = current(UniversityAgreement.exclusivity == "exclusive")
+    return exclusive if value == "exclusive" else and_(current(), ~exclusive)
+
+
+def _course_conditions(query: UniversityFilterQuery) -> list:
     """SR7/SR8: the conditions one active course must meet (without the correlation to its university)."""
     conditions: list = [OverseasCourse.active.is_(True)]
     if term := (query.course or "").strip():
@@ -93,16 +118,16 @@ def _commission(minimum: Decimal):
     return or_(by_course, by_term)
 
 
-def _ranking(query: UniversitySearchQuery):
+def _ranking(query: UniversityFilterQuery):
     conditions = [UniversityRanking.university_id == University.id, _lead_number(UniversityRanking.rank) <= query.ranking_max]
     if query.ranking_system:
         conditions.append(UniversityRanking.system == query.ranking_system)
     return select(UniversityRanking.id).where(*conditions).exists()
 
 
-def filters(user: User, query: UniversitySearchQuery) -> list:
-    """Every filter except partner status (the facet is counted without it, SR14). Active universities only (SR2)."""
-    out = [University.active.is_(True), *svc.manager_filter(user, query.manager)]
+def filters(user: User, query: UniversityFilterQuery) -> list:
+    """Every filter except partner status (the facet is counted without it, SR14). Active universities unless `activity` says otherwise."""
+    out = [*_activity(query.activity), *svc.manager_filter(user, query.manager)]
     if pattern := like_pattern(query.q):
         out.append(or_(*(c.ilike(pattern, escape="\\") for c in (University.name, University.university_code, University.city, Country.name))))
     if country := (query.country or "").strip():
@@ -110,9 +135,12 @@ def filters(user: User, query: UniversitySearchQuery) -> list:
     if pattern := like_pattern(query.city):
         out.append(University.city.ilike(pattern, escape="\\"))
     for column, value in (
+        (Country.iso2, query.iso2 and query.iso2.upper()),  # upc-025 MP4: one exact country, the map's click target
         (Country.region, query.region),
         (University.institution_type, query.institution_type),
         (University.ownership_type, query.ownership_type),
+        (University.stage, query.stage),
+        (University.priority, query.priority),
     ):
         if value is not None:
             out.append(column == value)
@@ -124,6 +152,8 @@ def filters(user: User, query: UniversitySearchQuery) -> list:
         out.append(_scholarship())
     if query.commission_min is not None:
         out.append(_commission(query.commission_min))
+    if query.exclusivity:
+        out.append(_exclusivity(query.exclusivity))
     if query.expected_from:
         out.append(University.target_partnership_date >= query.expected_from)
     if query.expected_to:
@@ -151,9 +181,19 @@ async def _matching_courses(db: AsyncSession, query: UniversitySearchQuery, ids:
     return dict((await db.execute(stmt)).all())
 
 
+def _drop_hidden_commission(user: User, query):
+    """SR10 (U2): commission is dropped before any SQL for other roles, so neither the list nor the map depends on commission data."""
+    return query if can_see_commission(user) else query.model_copy(update={"commission_min": None})
+
+
+def _grouped(*columns):
+    """Counts by the given columns plus partner status: the lost flag and the stage (one GROUP BY)."""
+    lost = University.lost_at.is_not(None)
+    return select(*columns, lost, University.stage, func.count()).join(Country, Country.id == University.country_id).group_by(*columns, lost, University.stage)
+
+
 async def search(db: AsyncSession, user: User, query: UniversitySearchQuery) -> dict:
-    if not can_see_commission(user):  # SR10 (U2): dropped before any SQL, so results never depend on commission data
-        query = query.model_copy(update={"commission_min": None})
+    query = _drop_hidden_commission(user, query)
     base = filters(user, query)
     where = [*base, *_partner_status(query.partner_status)]
     total = await db.scalar(select(func.count()).select_from(University).join(Country, Country.id == University.country_id).where(*where))
@@ -169,9 +209,8 @@ async def search(db: AsyncSession, user: User, query: UniversitySearchQuery) -> 
     )
     rows = (await db.execute(stmt)).all()
     facet = {status: 0 for status in PARTNER_STATUSES}
-    grouped = select(University.lost_at.is_not(None), University.stage, func.count()).join(Country, Country.id == University.country_id).where(*base)
-    for lost, stage, count in (await db.execute(grouped.group_by(University.lost_at.is_not(None), University.stage))).all():
-        facet["lost" if lost else GROUPS.get(stage, "target")] += count
+    for lost, stage, count in (await db.execute(_grouped().where(*base))).all():
+        facet[_group(lost, stage)] += count
     ids = [uni.id for uni, *_ in rows]
     rankings = await _best_rankings(db, ids) if ids else {}
     matching = await _matching_courses(db, query, ids) if ids and query.course_filtered else {}
@@ -188,3 +227,18 @@ async def search(db: AsyncSession, user: User, query: UniversitySearchQuery) -> 
         for uni, country, primary, backup in rows
     ]
     return {"items": items, "total": total or 0, "limit": query.limit, "offset": query.offset, "facets": {"partner_status": facet}}
+
+
+async def country_counts(db: AsyncSession, user: User, query: UniversityFilterQuery) -> dict:
+    """upc-025 (MP2, MP3, MP10): the partner-status counts per country of exactly what the search would list for the same filters (the
+    partner-status filter included), in one grouped query. Only countries with a matching university, ordered by name."""
+    query = _drop_hidden_commission(user, query)
+    where = [*filters(user, query), *_partner_status(query.partner_status)]
+    rows: dict[UUID, dict] = {}
+    for country_id, iso2, name, region, lost, stage, count in (await db.execute(_grouped(Country.id, Country.iso2, Country.name, Country.region).where(*where))).all():
+        row = rows.setdefault(country_id, {"iso2": iso2, "name": name, "region": region, **dict.fromkeys(PARTNER_STATUSES, 0), "total": 0})
+        row[_group(lost, stage)] += count
+        row["total"] += count
+    countries = sorted(rows.values(), key=lambda r: (r["name"], r["iso2"] or ""))
+    totals = {key: sum(r[key] for r in countries) for key in (*PARTNER_STATUSES, "total")}
+    return {"countries": countries, "totals": totals, "stages": [{"key": s.key, "label": s.label} for s in STAGES]}
