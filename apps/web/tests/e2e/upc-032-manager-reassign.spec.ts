@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { E2E_PASSWORD, activateWithToken } from "./helpers/welcome";
 
-// upc-032 (DEC-SCOPE-170 RA2/RA3/RA5): the super admin's Deactivate of a manager who is primary on a university is refused with the
+// upc-032 (DEC-SCOPE-171 RA2/RA3/RA5): the super admin's Deactivate of a manager who is primary on a university is refused with the
 // server's sentence; the head opens Team, sees the manager's universities and open tasks, and reassigns everything to another manager;
 // the old manager can no longer edit the university and the Deactivate then succeeds. The Team page fits a phone.
 

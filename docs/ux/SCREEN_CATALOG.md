@@ -3955,8 +3955,34 @@ Design spec: `docs/superpowers/specs/2026-10-10-upc-027-partner-onboarding-desig
     refusals in `.form-error` (field) or `.form-error[role=alert]` (conflict); a failed load offers "Try again".
 - **Responsive:** the table scrolls inside `.table-wrap` with the compact tracker styling (`milestone-table`); no page side-scroll at
   375 px.
+## upc-028 addendum (2026-10-10, `DEC-SCOPE-170`) — Partnership health score
 
-## upc-032 addendum (2026-10-10, `DEC-SCOPE-170`) — Partnership manager reassignment
+Design spec: `docs/superpowers/specs/2026-10-10-upc-028-partnership-health-design.md` §5. Visual-reference mapping: none (not
+inspected), so no parity is claimed.
+
+- **Route `/partnership/performance`:**
+  - A "Health" column after Stage. It shows the band badge ("72/100 – Good"; "Insufficient data" in a neutral pill), or "Not scored"
+    for a non-partner.
+  - The Total row has no health.
+  - The footnote adds "Health is scored as of today, whatever the period, for active partners only."
+- **Route `/partnership/universities/[id]`:** a "Partnership health" card after Student opportunities, for performance readers when the
+  university is an active partner. It is built from the performance read the page already makes.
+  - The badge, with "as of <date>".
+  - "Not enough activity yet…" when there is no data.
+  - For the commission roles, a breakdown table (Factor, Measure, Weight, Points, and a Score row) in a focusable region with a caption.
+  - A note on how the score is built.
+- **Badge colours:**
+  - Excellent: `.status` (green);
+  - Good: `.badge` (blue);
+  - Needs attention: `.status.error` (red);
+  - Insufficient data: `.badge.health-unknown` (grey).
+
+  The text always names the band.
+- **Responsive:** the breakdown has no wide-table minimum, so all four columns fit at 375 px (QA28-01). There is no page side-scroll at
+  1366, 820 or 375 px.
+
+
+## upc-032 addendum (2026-10-10, `DEC-SCOPE-171`) — Partnership manager reassignment
 
 Design spec: `docs/superpowers/specs/2026-10-10-upc-032-manager-reassignment-design.md` §4. Visual-reference mapping: none (not inspected), so no parity is claimed.
 

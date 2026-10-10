@@ -1,4 +1,4 @@
-"""upc-032 (DEC-SCOPE-170, spec §2): partnership manager deactivation and the head's bulk reassignment of universities and open tasks.
+"""upc-032 (DEC-SCOPE-171, spec §2): partnership manager deactivation and the head's bulk reassignment of universities and open tasks.
 
 Functions only; nothing here commits -- the route (or `admin.update_user`) owns the transaction. Lock order (RA11): the source's
 universities (by id), then its open tasks (by id), then the target (FOR SHARE, upc-003 `locked_manager`) -- the assign route's

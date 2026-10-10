@@ -700,7 +700,7 @@ async def update_user(user_id: UUID, payload: dict, user: User = Depends(ensure_
         await bdm_lifecycle.refuse_plain_deactivation(db, item)
         # tel-025 (DEC-SCOPE-104 D5): the same rule for telecallers with open leads and managers with reports; otherwise it ends the session.
         await telecaller_lifecycle.plain_deactivation(db, user, item)
-        # upc-032 (DEC-SCOPE-170 RA2): a partnership manager who is primary on any university waits for a head's reassignment.
+        # upc-032 (DEC-SCOPE-171 RA2): a partnership manager who is primary on any university waits for a head's reassignment.
         await partnership_lifecycle.refuse_primary_deactivation(db, item)
     # ADM-001-AC02: deactivating a trainer with active/upcoming assigned batches is
     # blocked unless explicitly confirmed -- never a silent operation that would strand

@@ -1,5 +1,5 @@
 """upc-001 (DEC-SCOPE-118, spec §5): partnership manager and head reads, the manager's phone self-edit (PU3), the admin list and the
-reporting-head picker. upc-032 (DEC-SCOPE-170): the team rows' work counts and the head's bulk reassignment.
+reporting-head picker. upc-032 (DEC-SCOPE-171): the team rows' work counts and the head's bulk reassignment.
 
 Scope comes from the session; the one route that takes user ids (upc-032's reassign) checks both against the head's team. Lists reuse bdm-001's
 paging helpers: {items, total, limit, offset}, ordered by name then id."""

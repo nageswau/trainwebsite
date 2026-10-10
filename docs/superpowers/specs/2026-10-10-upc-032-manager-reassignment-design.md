@@ -13,7 +13,7 @@
 - Dependencies upc-003 (ownership columns, `university_assignment_history`) and upc-020 (`partnership_tasks`) are merged on main.
   DEC-SCOPE-118 PU10 left the plain `PATCH active` in place "no reassignment (upc-032)".
 
-## 2. Decisions (recommended answers, `NEEDS_CONFIRMATION` at sign-off — registered as DEC-SCOPE-170)
+## 2. Decisions (recommended answers, `NEEDS_CONFIRMATION` at sign-off — registered as DEC-SCOPE-171)
 
 | # | Question | Answer |
 |---|---|---|

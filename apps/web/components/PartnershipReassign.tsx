@@ -14,7 +14,7 @@ export function workText(work: PartnershipWork): string {
   return `primary on ${plural(work.primary, "university", "universities")}, backup on ${work.backup}, ${plural(work.tasks, "open task")}`;
 }
 
-// upc-032 (DEC-SCOPE-170): a Team row's Reassign -- every university slot and open task of this manager moves to another active manager
+// upc-032 (DEC-SCOPE-171): a Team row's Reassign -- every university slot and open task of this manager moves to another active manager
 // of the head's team in one server transaction (RA5). The tel-025 AdminTelecallerLifecycle conventions: no dialog library, the group takes
 // focus, Escape cancels, an error takes focus; the server re-checks every rule. The cell stays mounted after the refresh, so the notice
 // survives the row losing its work.

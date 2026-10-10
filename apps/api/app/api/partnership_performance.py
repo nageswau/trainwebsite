@@ -1,4 +1,5 @@
-"""upc-018 (DEC-SCOPE-153, spec §4): the §17 student opportunity funnel and the §18 university performance ranking (EVID-020).
+"""upc-018 (DEC-SCOPE-153, spec §4): the §17 student opportunity funnel and the §18 university performance ranking (EVID-020);
+upc-028 (DEC-SCOPE-170) adds each active partner's §30 health score as of today.
 
 Read-only and computed live by `services.partnership_metrics` (Appendix B F1-F9); nothing is stored or audited. The readers are the
 University Master's (PF5). The ranking covers the caller's scope (PF6: manager = primary/backup, head = team + unowned, super_admin and
@@ -23,7 +24,7 @@ from app.services import university_commission as commission
 from app.services.bdm_activities import india_date
 from app.services.bdm_appointments import db_now
 from app.services.partnership_access import can_see_commission
-from app.services.partnership_metrics import FUNNEL, STEPS, funnel_counts, period
+from app.services.partnership_metrics import FUNNEL, STEPS, funnel_counts, health, period
 from app.services.partnership_metrics import scope_filter as _scope  # PF6, shared with upc-022's dashboard
 
 router = APIRouter(prefix="/partnership", tags=["partnership-performance"])
@@ -81,6 +82,15 @@ def _commission_out(sums: dict) -> dict:
     return {"expected": _amounts(sums["expected"]), "received": _amounts(sums["received"])}
 
 
+async def _health(db: AsyncSession, user: User, unis: list[University]) -> dict[UUID, dict | None]:
+    """upc-028 (HS1, HS2, HS9): today's score for each active partner (None for the rest); the breakdown, which carries the commission
+    factor, only for the commission roles."""
+    scored = await health(db, [u.id for u in unis if u.active and _partner(u)], await db_now(db))
+    if not can_see_commission(user):
+        scored = {u: {k: v for k, v in h.items() if k != "factors"} for u, h in scored.items()}
+    return {u.id: scored.get(u.id) for u in unis}
+
+
 @router.get("/performance", response_model=UniversityPerformancePage, response_model_exclude_unset=True)
 async def performance(first: str | None = FROM, last: str | None = TO, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """PF7: active universities in scope that are partners or have any step in the period, by enrolled then applications.
@@ -93,7 +103,9 @@ async def performance(first: str | None = FROM, last: str | None = TO, limit: in
     ranked = [(uni, country, found.get(uni.id, {})) for uni, country in rows if uni.id in found or _partner(uni)]
     ranked.sort(key=lambda r: (-r[2].get("enrolled", 0), -r[2].get("applications", 0), r[0].name.casefold(), str(r[0].id)))
     totals = {key: sum(counts.get(key, 0) for *_, counts in ranked) for key in FUNNEL}
-    items = [{"rank": offset + i + 1, "university": _university(uni, country), "counts": _counts(counts)} for i, (uni, country, counts) in enumerate(ranked[offset : offset + limit])]
+    shown = ranked[offset : offset + limit]
+    scores = await _health(db, user, [uni for uni, *_ in shown])  # HS10: the page's rows only
+    items = [{"rank": offset + i + 1, "university": _university(uni, country), "counts": _counts(counts), "health": scores[uni.id]} for i, (uni, country, counts) in enumerate(shown)]
     page = {"from": first_day, "to": last_day, "steps": STEPS_OUT, "totals": _counts(totals), "items": items, "total": len(ranked), "limit": limit, "offset": offset}
     money = await _commission(db, user, [uni.id for uni, *_ in ranked], first_day, last_day)
     if money is not None:
@@ -101,7 +113,7 @@ async def performance(first: str | None = FROM, last: str | None = TO, limit: in
         for sums in money.values():
             _add(overall["expected"], sums["expected"])
             _add(overall["received"], sums["received"])
-        for item, (uni, *_) in zip(items, ranked[offset : offset + limit], strict=True):
+        for item, (uni, *_) in zip(items, shown, strict=True):
             item["commission"] = _commission_out(money[uni.id])
         page["commission"] = _commission_out(overall)
     return page
@@ -117,7 +129,10 @@ async def university_performance(university_id: UUID, first: str | None = FROM, 
         raise HTTPException(404, universities.NOT_FOUND)
     uni, country = row
     found = await funnel_counts(db, [uni.id], first_day, last_day)
-    out = {"from": first_day, "to": last_day, "steps": STEPS_OUT, "university": _university(uni, country), "counts": _counts(found.get(uni.id))}
+    out = {
+        "from": first_day, "to": last_day, "steps": STEPS_OUT, "university": _university(uni, country), "counts": _counts(found.get(uni.id)),
+        "health": (await _health(db, user, [uni]))[uni.id],
+    }  # fmt: skip
     money = await _commission(db, user, [uni.id], first_day, last_day)
     if money is not None:
         out["commission"] = _commission_out(money[uni.id])
