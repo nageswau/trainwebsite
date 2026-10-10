@@ -29,9 +29,10 @@ REFUSED = "University view access required"
 # UV2: the role -> its slice name; the overseas roles must be in the overseas division.
 SLICES = {"counselor": "counselor", "overseas_admin": "overseas_admin", "bdm": "bdm", "bdm_manager": "bdm", "university_rep": "university_rep"}
 OVERSEAS_ONLY = frozenset({"counselor", "overseas_admin"})
+OVERSEAS_SECTIONS = ("partnership", "contacts", "courses", "documents", "applications")
 SECTIONS = {
-    "counselor": ("partnership", "contacts", "courses", "documents", "applications"),
-    "overseas_admin": ("partnership", "contacts", "courses", "documents", "applications"),
+    "counselor": OVERSEAS_SECTIONS,
+    "overseas_admin": OVERSEAS_SECTIONS,
     "bdm": ("partnership", "manager"),
     "university_rep": ("courses",),
 }
@@ -61,14 +62,12 @@ async def slice_of(db: AsyncSession, user: User) -> str:
     return name
 
 
-def _rep_university(user: User) -> str | None:
-    return (user.profile or {}).get("university_id")
-
-
 async def visible_university(db: AsyncSession, user: User, slice_name: str, university_id: UUID) -> University:
-    """UV3: 404 for an unknown id and for one outside the slice's scope, so neither leaks its existence."""
+    """UV3: 404 for an unknown id and for one outside the slice's scope, so neither leaks its existence. A rep's university is the
+    server-owned `profile.university_id` (UNI-001)."""
     uni = await db.get(University, university_id)
-    if uni is None or (slice_name == "counselor" and not (uni.catalogue_visible and uni.active)) or (slice_name == "university_rep" and _rep_university(user) != str(university_id)):
+    not_own = slice_name == "university_rep" and (user.profile or {}).get("university_id") != str(university_id)
+    if uni is None or (slice_name == "counselor" and not (uni.catalogue_visible and uni.active)) or not_own:
         raise HTTPException(404, NOT_FOUND)
     return uni
 

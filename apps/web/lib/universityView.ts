@@ -69,7 +69,6 @@ export const viewDocumentFileUrl = (universityId: string, documentId: string) =>
 export const COUNSELOR_UNIVERSITIES_PATH = "/overseas/counselor/universities";
 export const counselorUniversityPath = (id: string) => `${COUNSELOR_UNIVERSITIES_PATH}/${id}`;
 export const bdmUniversityPath = (id: string) => `/bdm/universities/${id}`;
-export const REP_PROFILE_PATH = "/overseas/university/profile";
 export const VIEW_REFUSED = "University view access required"; // the API's refusal (services/university_view.py REFUSED)
 export const NOT_LINKED = "Your account is not linked to a university yet. Contact EduSphere Overseas Admin.";
 
