@@ -1,14 +1,19 @@
 // upc-018 (DEC-SCOPE-153): the §17 student opportunity funnel and the §18 university performance ranking. The API counts every figure
 // and decides who reads and which universities are in scope; a null count is a step the CRM does not track (U8: Leads, Counselling,
-// Profiles eligible). Counts only -- no student is named and no commission is shown (upc-019 adds it for the commission roles).
+// Profiles eligible). Counts only -- no student is named; upc-019 adds the commission figures for the commission roles.
+import type { PerformanceCommission } from "@/lib/commissionLedger";
+
 export type StepKey = "leads" | "counselling" | "interested" | "eligible" | "applications" | "offers" | "deposits" | "visas" | "enrolled";
 export type PerformanceStep = { key: StepKey; label: string; tracked: boolean };
 export type PerformanceCounts = Record<StepKey, number | null>;
 export type PerformanceUniversity = { id: string; university_code: string; name: string; country: string; stage: string; stage_label: string; partner: boolean };
 export type Period = { from: string; to: string };
-export type UniversityPerformance = Period & { steps: PerformanceStep[]; university: PerformanceUniversity; counts: PerformanceCounts };
-export type PerformanceRow = { rank: number; university: PerformanceUniversity; counts: PerformanceCounts };
-export type PerformancePage = Period & { steps: PerformanceStep[]; totals: PerformanceCounts; items: PerformanceRow[]; total: number; limit: number; offset: number };
+// upc-019 (CL13): `commission` (F10 / F11) is present only for the commission roles -- the API leaves the key out for everyone else.
+export type UniversityPerformance = Period & { steps: PerformanceStep[]; university: PerformanceUniversity; counts: PerformanceCounts; commission?: PerformanceCommission };
+export type PerformanceRow = { rank: number; university: PerformanceUniversity; counts: PerformanceCounts; commission?: PerformanceCommission };
+export type PerformancePage = Period & {
+  steps: PerformanceStep[]; totals: PerformanceCounts; items: PerformanceRow[]; total: number; limit: number; offset: number; commission?: PerformanceCommission;
+};
 
 export const PERFORMANCE_URL = "/api/v1/partnership/performance";
 export const PERFORMANCE_PATH = "/partnership/performance";

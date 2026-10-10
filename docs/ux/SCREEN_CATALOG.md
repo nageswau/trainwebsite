@@ -3664,6 +3664,23 @@ inspected), so no parity is claimed.
 - **States:** a role without access gets the access card ("University performance access required"). Signed out → `/overseas/login?next=…`.
 - **Responsive:** no page side-scroll at 1366 px, 820 px or 375 px.
 
+## upc-019 addendum (2026-10-10, `DEC-SCOPE-165`) — Commission ledger (restricted)
+
+Design spec: `docs/superpowers/specs/2026-10-10-upc-019-commission-ledger-design.md` §4. Visual-reference mapping: none (not inspected),
+so no parity is claimed.
+
+- **Route `/partnership/universities/[id]`:** a "Commission (Restricted)" section for `super_admin`, `partnership_head` and
+  `partnership_manager` only (`CommissionLedger`):
+  - Totals by currency: Expected, Received, Outstanding (a negative outstanding says "received more than expected").
+  - Enrolled applications: application (reference or short id · programme · intake, never the student), enrolled on, status, expected.
+  - Commission received: date, amount, reference, note, linked count, recorded by; Remove with an inline confirm (recorders only).
+  - "Record a receipt" form (head / super admin): amount, currency, date received (today by default, no future), reference, note, linked
+    applications. Inline validation in `.form-error[role=alert]`; success notice in `p[role=status]`; the page re-reads.
+  - Empty states: "No commission expected or received yet.", "No enrolled applications yet.", "No receipts recorded yet."
+- **Route `/partnership/performance`:** "Commission expected" / "Commission received" columns (per currency, "—" for none) and Total-row
+  sums, only when the API sent them, with a note on how they are counted.
+- **Responsive:** the tables scroll inside focusable regions; no page side-scroll at 375 px.
+
 ## rec-014 addendum (2026-10-09, `DEC-SCOPE-154`) — Resume search on Find Candidates
 
 Design spec: `docs/superpowers/specs/2026-10-09-rec-014-resume-full-text-search-design.md` §5.
@@ -3875,7 +3892,7 @@ inspected), so no parity is claimed.
   - no access: the access card.
 - **Responsive:** the phone layout turns each row into a card of labelled lines (`data-label`), with no page side-scroll at 390 px.
 
-## upc-025 addendum (2026-10-10, `DEC-SCOPE-164`) — Global Partnership Map
+## upc-025 addendum (2026-10-10, `DEC-SCOPE-166`) — Global Partnership Map
 
 Design spec: `docs/superpowers/specs/2026-10-10-upc-025-global-partnership-map-design.md` §4. Visual-reference mapping: none (not
 inspected), so no parity is claimed.

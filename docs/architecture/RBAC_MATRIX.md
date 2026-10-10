@@ -1541,7 +1541,34 @@ route is read-only, and no commission value appears in a response. Each row's `p
 | Search every active university (all filters but commission) | ✅ all | ✅ all | ✅ all | ✅ all | `403` (anonymous `401`) |
 | Commission filter (`commission_min`) | ✅ | ✅ | ignored (never filters) | ✅ | — |
 
-### 2.90 Global partnership map *(net-new, added 2026-10-10 — `DEC-SCOPE-164`, `upc-025`)*
+### 2.90 Partnership alerts *(net-new, added 2026-10-10 — `DEC-SCOPE-164`, `upc-015`)*
+
+The inline pattern; the scope is `notifications.user_id = caller` in the SQL `WHERE`. Routes are listed in §12CF.
+
+| Role | Receives (beat, AL9) | Reads `GET /partnership/alerts` |
+|---|---|---|
+| `partnership_manager` (with a profile) | Expiry and delayed-milestone alerts for universities where they are primary or backup; their own overdue digest | Their own alerts |
+| `partnership_head` | Expiry alerts for universities whose primary manager reports to them; their own overdue digest | Their own alerts |
+| `super_admin` | None | `200`, empty |
+| `overseas_admin`, any other role | None | `403` |
+
+- Inactive users receive nothing; a recipient is read at fire time. Bodies carry names, MoU numbers and dates only.
+
+### 2.91 Commission ledger *(net-new, added 2026-10-10 — `DEC-SCOPE-165`, `upc-019`)*
+
+Restricted (U2). Routes are listed in §12CG.
+
+| Role | Read Expected / Received / Outstanding | Record / remove a receipt | F10 / F11 on performance |
+|---|---|---|---|
+| `super_admin` | Every university | Yes | Yes |
+| `partnership_head` | Every university | Yes | Yes |
+| `partnership_manager` (with a profile) | Every university | `403` | Yes |
+| `overseas_admin` | `403` | `403` | No `commission` key (counts only) |
+| any other role | `403` | `403` | — (`403` on performance, §2.79) |
+| no session | `401` | `401` | `401` |
+
+- No student identity leaves these routes; audit rows and logs carry ids, the currency and a count only — never an amount, a reference or a note.
+### 2.92 Global partnership map *(net-new, added 2026-10-10 — `DEC-SCOPE-166`, `upc-025`)*
 
 Enforced in `api/partnership_universities.partnership_map`: `partnership_universities.require_reader` comes first. In
 `services/university_search.country_counts`, `commission_min` is dropped for any role without `partnership_access.can_see_commission`

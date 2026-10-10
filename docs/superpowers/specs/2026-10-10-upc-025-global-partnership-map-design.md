@@ -1,7 +1,7 @@
 # upc-025 — Global partnership map — design
 
 - **Feature:** upc-025 (`docs/delivery/UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §4 upc-025; EVID-020 §2 L35–L90; Appendix B G1–G4; U12)
-- **Decision:** `DEC-SCOPE-164`. **No migration.** API §12CF; RBAC §2.90. As with earlier items, these numbers are provisional until merge.
+- **Decision:** `DEC-SCOPE-166`. **No migration.** API §12CH; RBAC §2.92. As with earlier items, these numbers are provisional until merge.
 - **Branch:** `feature/upc-025` (worktree branch `worktree-upc-025`), taken from `origin/main` @ `e99db53c`.
 - **Dependencies:** all merged on main:
   - upc-002 (#145): ISO-2 code and region on every country.
@@ -149,7 +149,7 @@ Backlog acceptance criteria:
    `PartnershipMapPage.test.tsx`; the search page's new keys, with an updated `UniversitySearchPage.test.tsx`; then the nav and its tests.
 4. e2e `upc-025-global-partnership-map.spec.ts`: a head filters the map, reads the counts, tabs to a country, opens the table, and clicks
    through to the search; then on mobile.
-5. Docs: DEC-SCOPE-164, API §12CF, RBAC §2.90, SCREEN_CATALOG, backlog status, and the QA notes in this spec.
+5. Docs: DEC-SCOPE-166, API §12CH, RBAC §2.92, SCREEN_CATALOG, backlog status, and the QA notes in this spec.
 
 ## 7. Regression set (lite)
 

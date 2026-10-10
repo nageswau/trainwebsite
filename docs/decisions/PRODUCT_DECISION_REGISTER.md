@@ -6588,7 +6588,69 @@ took 162 / §12CD / §2.88.
   with unchanged behaviour.
 - **New Feature ID authorized:** `upc-024`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-024.
 
-### DEC-SCOPE-164 — Global partnership map (`upc-025`)
+### DEC-SCOPE-164 — Partnership alerts engine (`upc-015`)
+
+**Evidence:** `EVID-020` §14 (L499–L513: alerts 90 / 60 / 30 / 7 days before expiry; "⚠️ ABC University partnership expires in 30 days.
+Renewal action required."), §6 (L242: "automatically highlight delayed milestones"), §20 (L673–L693: Overdue), §32 ("🔔 Alerts");
+`UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §3.1 U11 (`EXPLICIT_APPROVAL` 2026-10-08), Q-11, Q-17 and §4 upc-015.
+**Status:** **Q-17** and AL1–AL14 are recommended answers applied under the owner's standing instruction for the build session ("proceed
+with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off.
+No migration. API contract §12CF, RBAC §2.90. Spec: `docs/superpowers/specs/2026-10-10-upc-015-partnership-alerts-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| AL1 | Storage | Reuse `notifications` with `upc015:` dedupe keys (the "sent" record); no `partnership_alert_log` table, no migration |
+| AL2 | Kinds | Agreement expiry, milestone delayed, overdue digest |
+| AL3 | Q-17 send hour | Beat every IST hour (`crontab(minute=30)` UTC); acts from 09:00 IST; later runs that day are no-ops |
+| AL4 | Expiry | Signed / active agreements of active universities, exactly 90 / 60 / 30 / 7 days before expiry (IST); one alert per threshold and recipient. Signed inside a threshold → only the thresholds still ahead; expired or renewed → none |
+| AL5 | Expiry text | The §14 sentence exactly, then the MoU number, type and expiry date |
+| AL6 | Newly delayed | upc-008's status rule (Q-11, MS3; an event-achieved milestone is not delayed); the target fell within the last 7 days; live universities only; a moved target re-arms |
+| AL7 | Milestone text | "{University}: the {Milestone} milestone was due on {date} and is not complete." |
+| AL8 | Overdue digest | One per IST day per assignee with open tasks due before today (upc-020's band), with the count and the oldest due date |
+| AL9 | Q-17 recipients | Expiry: primary, backup, the primary's reporting head. Milestone: primary, backup. Digest: the assignee. Active users only, each once |
+| AL10 | Channels | In-app + email (outbox, SMTP); never WhatsApp / SMS |
+| AL11 | Failures | Savepoint per alert; counted and logged with ids; commit per 200 rows |
+| AL12 | API | `GET /partnership/alerts`: own alerts, kind filter, paging, unread count; partnership roles + super_admin (empty); others 403 |
+| AL13 | Read state | The shared notification mark-read route |
+| AL14 | UI | Page `/partnership/alerts` with kind tabs; §32 Alerts live for managers; heads' nav gains it; unread badge on the Alerts page, manager dashboard and head team page |
+
+**Consequences:** `services/partnership_alerts.py`, `api/partnership_alerts.py`, worker task `send_partnership_alerts_task` + beat entry
+`upc015-alerts`, the `partnership_alert` email kind in `notifications/delivery.py`; page `/partnership/alerts`. upc-022 can show the unread
+count on the manager dashboard.
+- **New Feature ID authorized:** `upc-015`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-015.
+
+### DEC-SCOPE-165 — Commission expected + received ledger, restricted (`upc-019`)
+
+**Evidence:** `EVID-020` §15 (L517, L541, L543: "Finance manages actual receipts"), §17 (L617 "University commission generated"), §18
+(L634–L635 Commission Expected / Received), L1129 ("Commissions should not be seen by anyone."); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md`
+§3.1 U2 + U4 (`EXPLICIT_APPROVAL`, 2026-10-08), §3.2 Q-18, Q-19, Q-20, Appendix B F10/F11; `DEC-SCOPE-144` CM1–CM4; `DEC-SCOPE-153` PF9.
+**Status:** CL1–CL14 are recommended answers applied under the owner's standing instruction for the build session ("proceed with the
+recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off. Migration
+`0144_commission_receipts`, API contract §12CG, RBAC §2.91. Spec: `docs/superpowers/specs/2026-10-10-upc-019-commission-ledger-design.md`.
+
+| # | Question | Answer |
+|---|---|---|
+| CL1 | Q-19: Expected only once the trigger is met? | Yes. `enrolment` = status enrolled; `visa_and_enrolment` = enrolled + an approved visa case; `tuition_paid` is **not tracked** (no tuition-payment record) and adds nothing |
+| CL2 | Which applications | Current status `enrolled`, every owner kind (as F9); computed live, nothing stored |
+| CL3 | Enrolment day | First history entry into enrolled, else `enrollment_confirmed_at` (IST days), else `enrollment_date`; none → "Enrolment date unknown" |
+| CL4 | Applicable agreement | Stored status `signed`, `active` or `renewed`, with start ≤ enrolment day ≤ expiry |
+| CL5 | Q-18 precedence | A term naming the programme beats an all-programmes term; ties → the newest term |
+| CL6 | Student country | Not recorded on applications, so a country-restricted term never matches (`NEEDS_CONFIRMATION`) |
+| CL7 | Per-course commission (upc-017) | Not used for Expected (U4: "enrolled students × terms"); reference only (`NEEDS_CONFIRMATION`) |
+| CL8 | Amount | Fixed → the term's amount and currency; % → course tuition × % (half-up, 2 dp) in the course's currency; no tuition → "Tuition unknown"; no FX |
+| CL9 | Q-20 who records | `partnership_head`, `super_admin` record and remove; `partnership_manager` reads; others `403`, anonymous `401` |
+| CL10 | Q-20 receipt | A lump sum per university: amount (> 0, 2 dp), currency, date received (not future, IST), reference (1–120, unique per university, any case → `409`), note (≤ 500), optional enrolled applications of the university |
+| CL11 | Outstanding | Per currency, Expected − Received (all time); negative shown as such |
+| CL12 | Corrections | Never edited; a mistaken receipt is removed (audited) and re-entered |
+| CL13 | F10 / F11 | `commission {expected, received}` per currency on `/partnership/performance` (rows + page) and one university's performance, for the commission roles only; no key for anyone else |
+| CL14 | Privacy / audit | No student identity in any response. Audit `university_commission_receipt.create/delete`: ids, currency, linked count — never amount, reference or note. Reads not audited |
+
+**Consequences:** table `university_commission_receipts`; routes `/partnership/universities/{id}/commission` and
+`…/commission/receipts[/{receipt_id}]`; `commission` on the performance responses for the commission roles; a "Commission (Restricted)"
+section on `/partnership/universities/[id]`; "Commission expected / received" columns on `/partnership/performance`. `AgentCommission`
+is untouched. Management mgmt-005/006 may read the receipts later (M4).
+- **New Feature ID authorized:** `upc-019`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-019.
+### DEC-SCOPE-166 — Global partnership map (`upc-025`)
 
 **Evidence:**
 - `EVID-020` §2 (L35–L90):
@@ -6602,7 +6664,9 @@ took 162 / §12CD / §2.88.
 
 **Status:** MP1–MP14 are recommended answers, applied under the owner's standing instruction for the build session ("proceed with the
 recommended answers"). They are **not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off, Q-07 and Q-32 included. **No
-migration.** API contract §12CF, RBAC §2.90. Spec: `docs/superpowers/specs/2026-10-10-upc-025-global-partnership-map-design.md`.
+migration.** API contract §12CH, RBAC §2.92. Spec: `docs/superpowers/specs/2026-10-10-upc-025-global-partnership-map-design.md`.
+**Numbering:** drafted as 164 / §12CF / §2.90 and renumbered after upc-015 (PR #222) and upc-019 (PR #220) took 164–165 / §12CF–§12CG /
+§2.90–§2.91.
 
 | # | Question | Answer |
 |---|---|---|

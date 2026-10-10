@@ -2559,9 +2559,36 @@ moves the application to Joined (AC3). Every change writes offer history.
 - **Queries:** a constant count.
 - **Route order:** declared before `/{university_id}`.
 
-## 12CF. Global partnership map (`upc-025`) — addendum, 2026-10-10
+## 12CF. Partnership alerts (`upc-015`) — addendum, 2026-10-10
 
-- **Basis:** `DEC-SCOPE-164` (MP1–MP14). Spec: `docs/superpowers/specs/2026-10-10-upc-025-global-partnership-map-design.md` §3.
+- **Basis:** `DEC-SCOPE-164` (AL1–AL14). Spec: `docs/superpowers/specs/2026-10-10-upc-015-partnership-alerts-design.md`. No migration.
+- **Readers:** `partnership_manager` (with a profile), `partnership_head`, `super_admin` (receives none: an empty list); others `403`; no
+  session `401`. Recipients only: every row is the caller's own.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/alerts?kind=all\|agreement_expiry\|milestone_delayed\|overdue_digest&limit(1–100, 25)&offset` | **→ 200** `{items: [{id, kind, title, body, read, action_url, created_at}], total, unread, limit, offset}`, newest first. `unread` counts every kind (the nav badge). `422` unknown kind / bad paging |
+
+- Read state uses the existing `PATCH /workflows/notifications/{id}/read` (AL13). The alerts are raised by the beat task
+  `app.worker.send_partnership_alerts_task` (`upc015-alerts`, `crontab(minute=30)` UTC, acting from 09:00 IST), never by a request.
+
+## 12CG. Commission ledger (`upc-019`) — addendum, 2026-10-10
+
+- **Basis:** `DEC-SCOPE-165` (CL1–CL14). Spec: `docs/superpowers/specs/2026-10-10-upc-019-commission-ledger-design.md` §3. Migration
+  `0144_commission_receipts`.
+- **Readers (U2):** `super_admin`, `partnership_head`, `partnership_manager` (with a profile) — every university. Everyone else `403`,
+  no session `401`. **Recorders (Q-20):** `partnership_head`, `super_admin`.
+- Money is a 2-dp string; totals are per currency, never converted.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /partnership/universities/{university_id}/commission` | **→ 200** `{university {id, name, university_code}, totals: [{currency, expected, received, outstanding}], applications: [{id, course, intake, reference, enrolled_on, status, status_label, term_id, currency, amount}] (≤ 200, newest enrolment first), applications_total, receipts: [{id, amount, currency, received_on, reference, note, application_ids, created_by, created_at}] (≤ 200, newest first), receipts_total, permissions {can_record}}`. `status` ∈ `counted`, `awaiting_visa`, `trigger_not_tracked`, `no_term`, `tuition_unknown`, `date_unknown`. `404` unknown university |
+| `POST /partnership/universities/{university_id}/commission/receipts` | **Body:** `{amount (> 0, ≤ 99,999,999.99, 2 dp), currency (INR, USD, GBP, EUR, CAD, AUD, NZD), received_on (date, not future), reference (1–120), note? (≤ 500), application_ids? (≤ 200; a repeat counts once)}`, `extra="forbid"`. **→ 201** `{receipt}`. `403` a reader who may not record; `404` unknown university; `422` invalid values or an application that is not an enrolled application of this university; `409` the reference is already recorded for the university (any case). University row locked; audit `university_commission_receipt.create` |
+| `DELETE /partnership/universities/{university_id}/commission/receipts/{receipt_id}` | **→ 204**. `403` not a recorder; `404` unknown pair. Audit `university_commission_receipt.delete` |
+| `GET /partnership/performance`, `GET /partnership/universities/{id}/performance` (§12BU) | For the commission roles each row, the page and the single university also carry `commission: {expected: [{currency, amount}], received: [...]}` — F10 = Expected of applications enrolled in the period whose trigger is met; F11 = receipts dated in the period. The key is absent for every other reader |
+## 12CH. Global partnership map (`upc-025`) — addendum, 2026-10-10
+
+- **Basis:** `DEC-SCOPE-166` (MP1–MP14). Spec: `docs/superpowers/specs/2026-10-10-upc-025-global-partnership-map-design.md` §3.
   No migration.
 - **Readers:** the same as §12CE. Any other role → `403` "University master access required". Anonymous → `401`.
 - **Behaviour:** read-only, with no audit row. It counts exactly the universities §12CE would list for the same filters.

@@ -15,7 +15,7 @@ import { INSTITUTION_TYPES, PRIORITIES, RANKING_SYSTEMS, REGIONS, shellFor } fro
 import { filterProblem, PARTNER_STATUSES } from "@/lib/universitySearch";
 import { SHAPES } from "@/lib/worldMapShapes";
 
-// upc-025 (DEC-SCOPE-164): §2 "Global University Partnership Map" -- every country's partner, in-progress, target and lost counts for
+// upc-025 (DEC-SCOPE-166): §2 "Global University Partnership Map" -- every country's partner, in-progress, target and lost counts for
 // the §2 filters, on an inline SVG map or as a table (the same figures). A plain GET form: the URL holds the filters and the view, so
 // Back, Refresh and a shared link keep them, and the page works without client JS. A country opens the upc-024 search for it (MP3).
 const INVALID = "These filters are not valid. Change or clear them and try again.";

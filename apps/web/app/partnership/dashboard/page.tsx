@@ -5,9 +5,10 @@ import PortalShell from "@/components/PortalShell";
 import { serverApi } from "@/lib/api";
 import { PARTNERSHIP_NAV } from "@/lib/navigation";
 import { ME_URL, ROLE_LABEL, type PartnershipMe } from "@/lib/partnership";
+import { withAlertBadge } from "@/lib/partnershipAlerts";
 
 // upc-001 (AC3): the partnership manager's landing page. The API is the gate: any other role, or a manager without a profile, gets its
-// 403 message here with a link home. upc-022 fills in the dashboard itself.
+// 403 message here with a link home. upc-022 fills in the dashboard itself. upc-015: the unread alerts on the sidebar's Alerts entry.
 export default async function PartnershipDashboardPage() {
   let me: PartnershipMe;
   try {
@@ -16,7 +17,7 @@ export default async function PartnershipDashboardPage() {
     return accessUnavailable(e, "/overseas/login");
   }
   return (
-    <PortalShell nav={PARTNERSHIP_NAV} roleLabel={ROLE_LABEL.manager} userName={me.full_name}>
+    <PortalShell nav={await withAlertBadge(PARTNERSHIP_NAV)} roleLabel={ROLE_LABEL.manager} userName={me.full_name}>
       <div className="portal-content">
         <div className="portal-title">
           <div>

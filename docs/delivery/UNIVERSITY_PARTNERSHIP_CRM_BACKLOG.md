@@ -771,6 +771,11 @@ Common conventions:
 - **Edge cases:** an agreement created already inside 30 days (only the next threshold fires).
 - **Regression risks:** the beat schedule (worker restart).
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-10):** built on `feature/upc-015` under `DEC-SCOPE-164` (no migration), API §12CF and RBAC §2.90. Spec:
+  `docs/superpowers/specs/2026-10-10-upc-015-partnership-alerts-design.md`.
+  - Q-17 and AL1–AL14 are recommended answers (`NEEDS_CONFIRMATION`): alerts are `notifications` rows keyed `upc015:…` (no log table);
+    hourly beat acting from 09:00 IST; expiry exactly at 90 / 60 / 30 / 7 days to primary + backup + the primary's head; newly delayed =
+    target within the last 7 days (upc-008's rule) to primary + backup; a daily overdue digest to each assignee; in-app + email.
 
 ### upc-016 — Commercial / commission terms (restricted)
 - **Status (2026-10-09):** built on `feature/upc-016` under `DEC-SCOPE-144` (Q-18, Q-19 + CM1–CM15, recommended answers), with
@@ -896,6 +901,10 @@ Common conventions:
 - **Edge cases:** an application later withdrawn after enrolment (expected reversed?); multi-currency.
 - **Regression risks:** `AgentCommission` untouched (separate concept).
 - **Complexity:** medium · **Risk:** high
+- **Status (2026-10-10):** built on `feature/upc-019` under `DEC-SCOPE-165` (CL1–CL14, recommended answers), with migration
+  `0144_commission_receipts`, API §12CG and RBAC §2.91. Spec: `docs/superpowers/specs/2026-10-10-upc-019-commission-ledger-design.md`.
+  - Edge "withdrawn after enrolment": cannot occur (an enrolled application cannot be withdrawn); if it ever leaves `enrolled` it stops counting.
+  - `tuition_paid` terms and country-restricted terms are not evaluable from CRM data (CL1, CL6, `NEEDS_CONFIRMATION`).
 
 ### upc-020 — Tasks + follow-ups (auto-generated)
 - **Business requirement:** §19 (12 example tasks; Task → Employee → Due Date → Priority → Status); §20 (Next Action + Date; the
@@ -1052,8 +1061,8 @@ Common conventions:
 - **Complexity:** large · **Risk:** medium
 
 ### upc-025 — Global partnership map
-- **Status (2026-10-10):** built on `feature/upc-025` under `DEC-SCOPE-164` (MP1–MP14, recommended answers; Q-07 and Q-32 included),
-  with **no migration**, API §12CF and RBAC §2.90. The route is `GET /partnership/universities/map`. Spec:
+- **Status (2026-10-10):** built on `feature/upc-025` under `DEC-SCOPE-166` (MP1–MP14, recommended answers; Q-07 and Q-32 included),
+  with **no migration**, API §12CH and RBAC §2.92. The route is `GET /partnership/universities/map`. Spec:
   `docs/superpowers/specs/2026-10-10-upc-025-global-partnership-map-design.md`.
 - **Business requirement:** §2 ("one of the most important features"; per-country status counts; click → university list; 12 filters)
   (U12).

@@ -5049,6 +5049,38 @@ class UniversityCommissionTerm(Base, TimestampMixin):
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
 
+
+# upc-019 (DEC-SCOPE-165, spec §2): commission a university actually paid EduSphere, recorded by hand until a Finance module is decided
+# (U4, Q-20 CL10: a lump sum per university, optionally linked to enrolled applications). RESTRICTED (U2). Migration 0143 repeats these;
+# test_upc_019_migration keeps them identical.
+COMMISSION_RECEIPT_CHECKS = {
+    "ck_university_commission_receipts_amount": "amount > 0",
+    "ck_university_commission_receipts_currency": _in_list("currency", COMMISSION_CURRENCIES),
+    "ck_university_commission_receipts_note": "note IS NULL OR char_length(note) <= 500",
+}
+
+
+class UniversityCommissionReceipt(Base, TimestampMixin):
+    """upc-019: one commission receipt from a university. Never edited; a mistaken row is removed (audited) and re-entered (CL12). Rules
+    live in `services/university_commission.py`; the CHECKs and the per-university reference index are the backstop."""
+
+    __tablename__ = "university_commission_receipts"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in COMMISSION_RECEIPT_CHECKS.items()),
+        Index("ix_university_commission_receipts_university", "university_id", "received_on"),
+        Index("uq_university_commission_receipts_reference", "university_id", text("lower(reference)"), unique=True),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    university_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id", ondelete="RESTRICT"))
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    currency: Mapped[str] = mapped_column(String(3))
+    received_on: Mapped[date] = mapped_column(Date)
+    reference: Mapped[str] = mapped_column(String(120))
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    application_ids: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
 # upc-021 (DEC-SCOPE-146, spec §3): monthly partnership targets. Migration 0131 repeats these strings; test_upc_021_migration asserts they
 # stay identical.
 PARTNERSHIP_TARGET_CHECKS = {

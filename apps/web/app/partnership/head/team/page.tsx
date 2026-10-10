@@ -7,11 +7,12 @@ import { serverApi } from "@/lib/api";
 import type { Page } from "@/lib/apiErrors";
 import { PARTNERSHIP_HEAD_NAV, SUPER_ADMIN_NAV } from "@/lib/navigation";
 import { ROLE_LABEL, TEAM_PATH, type PartnershipTeamRow } from "@/lib/partnership";
+import { withAlertBadge } from "@/lib/partnershipAlerts";
 import { PAGE_SIZE, pageOffset } from "@/lib/telecaller";
 import type { User } from "@/lib/types";
 
 // upc-001 (AC4): exactly the partnership managers who report to this head (the API scopes it; super_admin sees all). The offset lives
-// in the URL.
+// in the URL. upc-015: a head's landing page, so it carries the unread alerts badge.
 export default async function PartnershipHeadTeamPage({ searchParams }: { searchParams: Promise<{ offset?: string }> }) {
   const offset = pageOffset((await searchParams).offset);
   let user: User, team: Page<PartnershipTeamRow>;
@@ -25,7 +26,7 @@ export default async function PartnershipHeadTeamPage({ searchParams }: { search
   }
   const superAdmin = user.role === "super_admin";
   return (
-    <PortalShell nav={superAdmin ? SUPER_ADMIN_NAV : PARTNERSHIP_HEAD_NAV} roleLabel={superAdmin ? "Super Administrator" : ROLE_LABEL.head} userName={user.full_name}>
+    <PortalShell nav={superAdmin ? SUPER_ADMIN_NAV : await withAlertBadge(PARTNERSHIP_HEAD_NAV)} roleLabel={superAdmin ? "Super Administrator" : ROLE_LABEL.head} userName={user.full_name}>
       <div className="portal-content">
         <div className="portal-title">
           <div>

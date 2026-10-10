@@ -1,4 +1,4 @@
-"""upc-025 -- Global partnership map (spec §2 MP1-MP14, §5 AC1-AC9; DEC-SCOPE-164). The map counts exactly what the upc-024 search would
+"""upc-025 -- Global partnership map (spec §2 MP1-MP14, §5 AC1-AC9; DEC-SCOPE-166). The map counts exactly what the upc-024 search would
 list for the same filters (MP2/MP3), per country and partner status. The test database is shared and never truncated, so every
 university carries a per-test tag in its name and each request sends `q=<tag>` (reused from the upc-024 tests)."""
 
