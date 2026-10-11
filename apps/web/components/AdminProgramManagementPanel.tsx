@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import ProgramSkillsEditor from "@/components/ProgramSkillsEditor";
+
 type AdminProgramRow = { id: string; slug: string; category: string; title: string; duration: string; fees: number; active: boolean };
 
 function detailMessage(detail: unknown) {
@@ -22,6 +24,7 @@ export default function AdminProgramManagementPanel() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ id: string; text: string; failed: boolean } | null>(null);
+  const [skillsFor, setSkillsFor] = useState<AdminProgramRow | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -104,13 +107,19 @@ export default function AdminProgramManagementPanel() {
                   <td>{row.duration}</td>
                   <td>{row.active ? "Active" : "Inactive"}</td>
                   <td>
-                    <button
-                      className="btn small"
-                      disabled={busyId === row.id}
-                      onClick={() => toggleActive(row, confirmingId === row.id)}
-                    >
-                      {busyId === row.id ? "Saving…" : confirmingId === row.id ? "Confirm deactivate" : row.active ? "Deactivate" : "Reactivate"}
-                    </button>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      <button
+                        className="btn small"
+                        disabled={busyId === row.id}
+                        onClick={() => toggleActive(row, confirmingId === row.id)}
+                      >
+                        {busyId === row.id ? "Saving…" : confirmingId === row.id ? "Confirm deactivate" : row.active ? "Deactivate" : "Reactivate"}
+                      </button>
+                      <button type="button" className="btn secondary small" aria-expanded={skillsFor?.id === row.id} aria-label={`Skills for ${row.title}`}
+                        onClick={() => setSkillsFor(skillsFor?.id === row.id ? null : row)}>
+                        Skills
+                      </button>
+                    </div>
                     {message?.id === row.id && (
                       <div className={message.failed ? "form-error" : "form-message"} role="status" aria-live="polite" style={{ marginTop: 6, fontSize: 13 }}>
                         {message.text}
@@ -123,6 +132,8 @@ export default function AdminProgramManagementPanel() {
           </table>
         </div>
       )}
+      {/* rec-036: the chosen program's skill tags (one editor at a time). */}
+      {skillsFor && <ProgramSkillsEditor key={skillsFor.id} programId={skillsFor.id} programTitle={skillsFor.title} onClose={() => setSkillsFor(null)} />}
     </div>
   );
 }

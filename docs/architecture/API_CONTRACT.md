@@ -2715,6 +2715,21 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `PUT /recruiter/interviews/{id}/feedback` *(new)* | The whole form `{overall_rating (1–5), technical_rating? (1–5), communication_rating? (1–5), strengths?, weaknesses?, recruiter_comments?, company_feedback? (each ≤2000), next_round? (a §14 round), final_decision? (selected\|rejected\|on_hold)}`; a field left out is cleared → `{interview}`. **Refusals:** not Completed (and no feedback yet) → `409` "Feedback can be recorded once the interview is Completed"; a decision the IV3 moves do not allow (e.g. Selected → Rejected) → `409`, nothing saved; a rating outside 1–5, an unknown round or decision, a next round with Rejected → `422` on that field. A decision different from the status moves the interview (history note `Feedback`; IV8 feeds the application). Audit `recruiter_interview.feedback` with field names and the decision only; an unchanged form writes nothing |
 
+## 12CQ. Program skill tags + candidate journey (`rec-036`) — addendum, 2026-10-11
+
+- **Basis:** `DEC-SCOPE-176` (CI1–CI8). Design spec `docs/superpowers/specs/2026-10-11-rec-036-it-training-integration-design.md` §3.
+  Migration `0147`. Additive: no existing request or response changes shape.
+- **Side effects on existing routes:** `POST /account/placement-pool/opt-in` and `POST /workflows/it/certificates/{enrollment_id}/issue`
+  add the course-completed skills of an opted-in student in the same transaction (CI3); `POST /recruiter/skills/{id}/merge` moves program
+  tags to the kept skill (CI8).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /admin/programs/skill-options?q=` *(new)* | `it_admin`/`super_admin` → `{items: [{id, name, category}]}`, active skills whose name or alias matches, by name, at most 20. Others `403` |
+| `GET /admin/programs/{id}/skills` *(new)* | → `{items: [{id, name, active, category}]}` by name. Unknown program `404`; other roles `403` |
+| `PUT /admin/programs/{id}/skills` *(new)* | `{skill_ids: [uuid]}` replaces the set (repeats ignored) → `{items, candidates_updated}`. An unknown or inactive skill or more than 30 → `422`; `404`/`403` as above. A newly added tag is granted to the program's opted-in, non-archived certificate holders (CI3/CI5); a removed tag leaves candidates' skills (CI6). Audit `program.skills_update` `{added, removed}` and `candidate.skill_course_grant` per changed candidate (skill ids only) |
+| `GET /recruiter/candidates/{id}/journey` *(new)* | rec-009 readers → `{lead: {lead_code, source, created_at, converted_at} \| null, enrolments: [{program, batch, enrolled_on, status}], certificates: [{program, certificate_no, issued_on}], candidate: {added_at, opted_in_at}, applications: {count, first_at}, placements: [{company, position, joined_on}]}`. Outside the pool `404`; other roles `403`. Never the lead's phone, email or message |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
