@@ -603,6 +603,12 @@ JOB_CHECKS = {  # migration 0114 repeats these strings; test_rec_007_migration a
     " AND (experience_min_months IS NULL OR experience_max_months IS NULL OR experience_min_months <= experience_max_months)",
     "ck_jobs_salary": "(salary_min IS NULL OR salary_min >= 0) AND (salary_max IS NULL OR salary_max >= 0) AND (salary_min IS NULL OR salary_max IS NULL OR salary_min <= salary_max)",
 }
+JOB_FEE_BASES = ("fixed", "percent_of_ctc")  # rec-031 (RV1): the per-requirement fee override, the rec-030 CT4 shape
+JOB_FEE_CHECKS = {  # migration 0146 repeats these strings (test_rec_031_migration)
+    "ck_jobs_fee_pair": "(fee_basis IS NULL) = (fee_value IS NULL)",
+    "ck_jobs_fee_basis": _in("fee_basis", JOB_FEE_BASES),
+    "ck_jobs_fee_value": "fee_value IS NULL OR (fee_value >= 0 AND (fee_basis <> 'percent_of_ctc' OR fee_value <= 100))",
+}
 
 
 class Job(Base, TimestampMixin):
@@ -613,7 +619,7 @@ class Job(Base, TimestampMixin):
     __tablename__ = "jobs"
     __table_args__ = (
         UniqueConstraint("requirement_code", name="uq_jobs_requirement_code"),
-        *(CheckConstraint(sql, name=name) for name, sql in JOB_CHECKS.items()),
+        *(CheckConstraint(sql, name=name) for name, sql in {**JOB_CHECKS, **JOB_FEE_CHECKS}.items()),
         Index("ix_jobs_status", "status"),
         Index("ix_jobs_assigned_recruiter", "assigned_recruiter_user_id"),
         Index("ix_jobs_closes_on", "closes_on"),
@@ -644,6 +650,8 @@ class Job(Base, TimestampMixin):
     priority: Mapped[str | None] = mapped_column(String(10), nullable=True)
     assigned_recruiter_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    fee_basis: Mapped[str | None] = mapped_column(String(20), nullable=True)  # rec-031 (RV1): overrides the contract's fee per hire
+    fee_value: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     company = relationship("Company")
 
 
@@ -5301,3 +5309,53 @@ class ProfileShareItem(Base, TimestampMixin):
     feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
     responded_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# rec-031 (DEC-SCOPE-175, RV6-RV8): manually recorded invoices and payments per requirement (track only, R9). Migration 0146 repeats
+# these strings (test_rec_031_migration). services/recruiter_revenue.py owns every rule; the CHECKs are the backstop.
+RECRUITER_INVOICE_CHECKS = {
+    "ck_recruiter_invoices_amount": "amount > 0",
+    "ck_recruiter_invoices_due": "due_date >= invoice_date",
+    "ck_recruiter_invoices_cancel": "(cancelled_at IS NULL) = (cancelled_by_user_id IS NULL) AND (cancelled_at IS NULL) = (cancel_reason IS NULL)",
+}
+RECRUITER_PAYMENT_CHECKS = {"ck_recruiter_payments_amount": "amount > 0"}
+
+
+class RecruiterInvoice(Base, TimestampMixin):
+    """rec-031: an invoice EduSphere issued for a requirement, recorded by hand (no PDF, no GST). Never edited or deleted (RV8): a mistake is
+    cancelled with a reason, and its number stays used (the unique index ignores case and cancellation)."""
+
+    __tablename__ = "recruiter_invoices"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in RECRUITER_INVOICE_CHECKS.items()),
+        Index("uq_recruiter_invoices_number", text("lower(invoice_number)"), unique=True),
+        Index("ix_recruiter_invoices_job", "job_id", "invoice_date"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="RESTRICT"))
+    invoice_number: Mapped[str] = mapped_column(String(40))
+    invoice_date: Mapped[date] = mapped_column(Date)
+    due_date: Mapped[date] = mapped_column(Date)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+
+class RecruiterPayment(Base):
+    """rec-031 (RV7): money received against an invoice. Append-only; the received total never exceeds the invoice amount."""
+
+    __tablename__ = "recruiter_payments"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in RECRUITER_PAYMENT_CHECKS.items()),
+        Index("ix_recruiter_payments_invoice", "invoice_id", "received_on"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    invoice_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_invoices.id", ondelete="RESTRICT"))
+    received_on: Mapped[date] = mapped_column(Date)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

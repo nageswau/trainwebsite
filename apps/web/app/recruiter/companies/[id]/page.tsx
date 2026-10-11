@@ -8,6 +8,7 @@ import { type Company, COMPANIES_PATH, COMPANIES_URL, companyShell, RECRUITER_SI
 import type { Page } from "@/lib/apiErrors";
 import type { StageEvent } from "@/lib/recruiterPipeline";
 import { historyUrl } from "@/lib/recruiterPipeline";
+import { canSeeRevenue } from "@/lib/recruiterRevenue";
 import type { User } from "@/lib/types";
 
 // rec-003: one company. A 404 (unknown, or outside the caller's scope) is a plain "not found" -- it never says which.
@@ -36,7 +37,7 @@ export default async function RecruiterCompanyPage({ params, searchParams }: { p
     <PortalShell nav={nav} roleLabel={roleLabel} userName={user.full_name}>
       <div className="portal-content">
         {company ? (
-          <RecruiterCompanyDetail initial={company} created={created} history={history} />
+          <RecruiterCompanyDetail initial={company} created={created} history={history} showRevenue={canSeeRevenue(user.role)} />
         ) : (
           <div className="action-card">
             <h2>Company not found</h2>

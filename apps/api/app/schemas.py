@@ -55,6 +55,7 @@ from app.models import (
     INSTITUTION_TYPES,
     INTERVIEW_ROUNDS,
     JOB_EMPLOYMENT_TYPES,
+    JOB_FEE_BASES,
     JOB_PRIORITIES,
     JOB_SHIFTS,
     JOB_STATUSES,
@@ -10365,3 +10366,213 @@ class PartnershipMapPage(BaseModel):
     countries: list[PartnershipMapCountry]
     totals: PartnershipMapTotals
     stages: list[PartnershipMapStage]
+
+
+# --- rec-031 (DEC-SCOPE-175): revenue / commercial tracking, track only --------------------------------------------------------------
+REC_REVENUE_LABELS = {"invoice_number": "Invoice number", "note": "Note", "reference": "Reference", "reason": "Reason"}
+REC_REVENUE_AMOUNT_FORMAT = "Enter the amount as a number with up to 2 decimals"
+RecFeeBasis = Literal[JOB_FEE_BASES]
+RecPaymentStatus = Literal["unpaid", "part_paid", "paid", "cancelled"]
+
+
+def _revenue_amount(value):
+    """RV6 / RV7: more than zero, up to 2 decimals, within Numeric(12, 2)."""
+    try:
+        amount = Decimal(str(value).strip())
+    except (InvalidOperation, ValueError):
+        raise PydanticCustomError("revenue_amount", REC_REVENUE_AMOUNT_FORMAT) from None
+    exponent = amount.as_tuple().exponent
+    if not amount.is_finite() or (isinstance(exponent, int) and exponent < -2):
+        raise PydanticCustomError("revenue_amount", REC_REVENUE_AMOUNT_FORMAT)
+    if amount <= 0:
+        raise PydanticCustomError("revenue_amount", "The amount must be more than ₹0")
+    if amount > REC_CONTRACT_FEE_MAX:
+        raise PydanticCustomError("revenue_amount", "The amount is too large")
+    return amount
+
+
+RecRevenueAmount = Annotated[Decimal, BeforeValidator(_revenue_amount)]
+def _blank_if_null(value):
+    """QA31-01: the form sends null for a blank field, so a required text says "is required" rather than the parser's "valid string"."""
+    return "" if value is None else value
+
+
+def _revenue_reason(value: str) -> str:
+    if len(value) < 2:
+        raise PydanticCustomError("revenue_reason", "The reason needs at least 2 characters")
+    return value
+
+
+RecRevenueText = Annotated[Annotated[str, _trimmed(500)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, REC_REVENUE_LABELS)), BeforeValidator(_bdm_newlines)]
+
+
+class RecFeeOverride(BaseModel):
+    """RV1: the requirement's own fee per hire; both null clears it (the contract's fee applies again). The pair and the 0-100 cap of a
+    percentage are checked in the service, so each 422 names its field."""
+
+    model_config = ConfigDict(extra="forbid")
+    fee_basis: RecFeeBasis | None
+    fee_value: RecContractFee
+
+
+class RecInvoiceCreate(BaseModel):
+    """RV6. The dates against today (IST) are checked in the service."""
+
+    model_config = ConfigDict(extra="forbid")
+    requirement_id: UUID
+    invoice_number: Annotated[Annotated[str, _trimmed(40)], AfterValidator(_trip_text(_BDM_CONTROL, True, REC_REVENUE_LABELS)), BeforeValidator(_blank_if_null)]
+    invoice_date: Annotated[date, BeforeValidator(_trip_date("invoice date"))]
+    due_date: Annotated[date, BeforeValidator(_trip_date("due date"))]
+    amount: RecRevenueAmount
+    note: RecRevenueText = None
+
+
+class RecPaymentCreate(BaseModel):
+    """RV7. The received date and the outstanding cap are checked in the service under the invoice lock."""
+
+    model_config = ConfigDict(extra="forbid")
+    received_on: Annotated[date, BeforeValidator(_trip_date("received date"))]
+    amount: RecRevenueAmount
+    reference: Annotated[Annotated[str, _trimmed(100)] | None, AfterValidator(_trip_text(_BDM_CONTROL, False, REC_REVENUE_LABELS))] = None
+
+
+class RecInvoiceCancel(BaseModel):
+    """RV8: an unpaid invoice is cancelled with a reason (2-500)."""
+
+    model_config = ConfigDict(extra="forbid")
+    reason: Annotated[
+        Annotated[str, _trimmed(500)],
+        AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, True, REC_REVENUE_LABELS)),
+        AfterValidator(_revenue_reason),
+        BeforeValidator(_bdm_newlines),
+        BeforeValidator(_blank_if_null),
+    ]
+
+
+class RecRevenueRef(BaseModel):
+    id: UUID
+    code: str
+    name: str
+
+
+class RecRevenueRequirementRef(BaseModel):
+    id: UUID
+    code: str
+    title: str
+
+
+class RecPaymentOut(BaseModel):
+    id: UUID
+    received_on: date
+    amount: Decimal
+    reference: str | None
+    created_by: RecPersonRef
+    created_at: datetime
+
+
+class RecInvoicePermissions(BaseModel):
+    can_pay: bool
+    can_cancel: bool
+
+
+class RecInvoiceOut(BaseModel):
+    id: UUID
+    invoice_number: str
+    invoice_date: date
+    due_date: date
+    amount: Decimal
+    note: str | None
+    received: Decimal
+    outstanding: Decimal
+    payment_status: RecPaymentStatus
+    payment_status_label: str
+    overdue: bool
+    cancelled_at: datetime | None
+    cancel_reason: str | None
+    requirement: RecRevenueRequirementRef
+    company: RecRevenueRef
+    created_by: RecPersonRef
+    payments: list[RecPaymentOut]
+    permissions: RecInvoicePermissions
+    created_at: datetime
+
+
+class RecInvoiceEnvelope(BaseModel):
+    invoice: RecInvoiceOut
+
+
+class RecFeeValue(BaseModel):
+    basis: RecFeeBasis
+    value: Decimal
+
+
+class RecRevenueFee(BaseModel):
+    basis: RecFeeBasis | None
+    value: Decimal | None
+    source: Literal["requirement", "contract"] | None
+    contract_status_label: str | None
+    override: RecFeeValue | None
+
+
+class RecRevenueHire(BaseModel):
+    application_id: UUID
+    candidate: RecRevenueRef
+    joined_on: date | None
+    fee: Decimal | None  # None: unpriced (RV2) or no fee set (RV1)
+
+
+class RecRevenuePermissions(BaseModel):
+    can_invoice: bool
+    can_set_fee: bool
+
+
+class RecRequirementRevenue(BaseModel):
+    requirement: RecRevenueRequirementRef
+    company: RecRevenueRef
+    selected: int
+    joined: int
+    fee: RecRevenueFee
+    hires: list[RecRevenueHire]
+    expected_revenue: Decimal | None
+    unpriced_hires: int
+    invoiced: Decimal
+    received: Decimal
+    outstanding: Decimal
+    over_invoiced: bool
+    invoices: list[RecInvoiceOut]
+    permissions: RecRevenuePermissions
+
+
+class RecCompanyRevenueRow(BaseModel):
+    requirement: RecRevenueRequirementRef
+    status_label: str
+    selected: int
+    joined: int
+    fee: RecRevenueFee
+    expected_revenue: Decimal | None
+    invoiced: Decimal
+    received: Decimal
+    outstanding: Decimal
+
+
+class RecCompanyRevenueTotals(BaseModel):
+    selected: int
+    joined: int
+    expected_revenue: Decimal
+    invoiced: Decimal
+    received: Decimal
+    outstanding: Decimal
+
+
+class RecCompanyRevenue(BaseModel):
+    requirements: list[RecCompanyRevenueRow]
+    totals: RecCompanyRevenueTotals
+
+
+class RecInvoicePage(BaseModel):
+    items: list[RecInvoiceOut]
+    total: int
+    limit: int
+    offset: int
+    counts: dict[str, int]
+    outstanding_total: Decimal
