@@ -1762,6 +1762,18 @@ A drive takes its company's scope (§2.47, rec-003). The role check runs before 
 | `super_admin` | everything | all | `rec-029` |
 | `hr_team`, `it_admin`, `employer`, students, every other role | `403` | — | `rec-029` |
 
+### 2.105 Recruiter dashboard *(net-new, added 2026-10-11 — `DEC-SCOPE-179`, `rec-032`)*
+
+Counts only (no personal data). Each tile uses the scope of the list it opens (§2.47 companies, §2.55 requirements). The role check runs
+first; the recruiter filter only narrows and is checked server-side.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` | read own dashboard; naming another recruiter `403` | companies / requirements assigned to them | `rec-032` |
+| `placement_manager` | read the team's dashboard, or one direct report's (another id `404`) | the team + the unassigned queue | `rec-032` |
+| `super_admin` | read everything, or any one recruiter's | all | `rec-032` |
+| `hr_team`, `bdm`, `it_admin`, `employer`, students, every other role | `403` (`hr_team` keeps the legacy placement dashboard) | — | `rec-032` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

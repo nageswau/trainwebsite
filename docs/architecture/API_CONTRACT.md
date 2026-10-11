@@ -2773,6 +2773,15 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `GET /recruiter/drives/{id}/candidates?limit&offset` *(new)* | The drive-tagged applications `{items [{application_id, candidate {id, code, name}, requirement {id, code, title}, status, status_label}], total, limit, offset}` |
 | `POST /recruiter/requirements/{id}/candidates` *(changed, additive)* | Optional `drive_id` (DR9): a drive in scope that includes this requirement, else `422` on `drive_id`; a cancelled drive `409`. The application keeps the tag; omitted = unchanged behaviour |
 
+## 12CT. Recruiter dashboard (`rec-032`) — addendum, 2026-10-11
+
+- **Basis:** `DEC-SCOPE-179` (DB1–DB10). Design spec `docs/superpowers/specs/2026-10-11-rec-032-recruiter-dashboard-design.md` §4–§5. No
+  migration. Read-only, `Cache-Control: no-store`, no audit row. One aggregate statement (plus the scope gates): a fixed statement count.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/dashboard?recruiter` *(new)* | `{day, period {from, to}, recruiter {id, full_name} \| null, tiles {new_leads, contacts_pending, hot_companies, meetings_scheduled, active_companies, new_requirements, candidates_sourced, profiles_shared, interviews_scheduled, candidates_selected, candidates_joined, candidates_rejected, follow_ups_due, requirements_expiring, requirements_expired}}` — Appendix B D1–D14 as built (spec §4). `401` signed out; `403` any role but recruiter / placement manager / `super_admin`, a recruiter without a profile, or a recruiter naming another recruiter; `404` a recruiter outside the manager's team (or not a recruiter); `422` a malformed id |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

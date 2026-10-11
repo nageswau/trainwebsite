@@ -1,4 +1,4 @@
-// rec-032 (DEC-SCOPE-177): the recruiter dashboard -- types, endpoint, tiles, quick actions and the skill search box. Every figure is
+// rec-032 (DEC-SCOPE-179): the recruiter dashboard -- types, endpoint, tiles, quick actions and the skill search box. Every figure is
 // computed by the API (services/recruiter_metrics.py, backlog Appendix B D1-D14); the browser only lays them out and links each to its list.
 import { distinctTerms } from "@/lib/recruiterCandidateSearch";
 

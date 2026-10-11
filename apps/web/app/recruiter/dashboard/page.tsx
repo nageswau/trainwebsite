@@ -19,7 +19,7 @@ const INTRO: Record<string, string> = {
   super_admin: "Every recruiter's figures. Select a figure to open its list.",
 };
 
-// rec-001 (AC3) + rec-032 (DEC-SCOPE-177): the recruiter dashboard -- the §1 tiles for the caller's scope, the quick actions and the
+// rec-001 (AC3) + rec-032 (DEC-SCOPE-179): the recruiter dashboard -- the §1 tiles for the caller's scope, the quick actions and the
 // one-click skill search. The API is the gate: any other role (hr_team included, Q-28), or a recruiter without a profile, gets its 403
 // message here. A manager or super_admin may narrow to one recruiter (`?recruiter=`); one outside their team says so in place of the tiles.
 export default async function RecruiterDashboardPage({ searchParams }: { searchParams: Promise<{ recruiter?: string }> }) {

@@ -1,4 +1,4 @@
-"""rec-032 (DEC-SCOPE-177, spec §3-§5): the single source of every Recruiter CRM count -- the dashboard tiles D1-D14 (EVID-018 §1;
+"""rec-032 (DEC-SCOPE-179, spec §3-§5): the single source of every Recruiter CRM count -- the dashboard tiles D1-D14 (EVID-018 §1;
 backlog Appendix B). rec-033…035 extend it.
 
 Scope is the lists' own (DB1): company-side tiles use rec-003's `companies.caller_scope`, requirement-side tiles rec-007's

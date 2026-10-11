@@ -1,4 +1,4 @@
-"""rec-032 (DEC-SCOPE-177, API §12CR): the recruiter dashboard -- the fourteen §1 tiles, every figure computed by
+"""rec-032 (DEC-SCOPE-179, API §12CT): the recruiter dashboard -- the fourteen §1 tiles, every figure computed by
 `services/recruiter_metrics.py`. Read-only and never cached; one request for the page that shows it.
 
 Scope (DB1-DB3): a recruiter reads their own figures (another recruiter id → 403); a placement manager their team + the unassigned

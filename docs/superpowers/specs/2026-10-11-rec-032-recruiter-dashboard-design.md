@@ -1,7 +1,7 @@
 # rec-032 — Recruiter dashboard + quick actions + one-click skill search (design)
 
 Status: DRAFT, built under the user's standing instruction to proceed on recommended answers (2026-10-11). Every DBn default below is
-**UNVERIFIED** until confirmed and is registered as `DEC-SCOPE-177` (number re-checked against `main` before merge).
+**UNVERIFIED** until confirmed and is registered as `DEC-SCOPE-179` (number re-checked against `main` before merge).
 
 ## 1. Sources and authority
 - `EVID-018` §1 (14 tiles, 6 quick actions; L9–L48) and S2-§9 (one-click skill search; L1381–L1425) — `DERIVED_BLUEPRINT`.
@@ -25,7 +25,7 @@ every number is computed live in `services/recruiter_metrics.py`, the single sou
 | DB6 | D2 | No follow-up reason is a call (rec-024 FU reasons), so D2 = active New Lead companies with **no call logged** (rec-025). |
 | DB7 | D14 | rec-007's `deadline_filter("expiring") ∪ ("expired")` (J4, N = 7 days); the tile shows how many are already past their deadline. |
 | DB8 | Tile links | Each tile opens its nearest existing list with the matching filter (table §4). No new list endpoints (rec-032 owns no lists). When a manager filters to one recruiter, Companies/Requirements links carry `assigned=<id>`. |
-| DB9 | Quick actions | §1's "+ Add Recruiter" and "+ Add Company" are one action for recruiters and managers (R3: the lead *is* the company) — "+ Add Company / Recruiter Lead". super_admin also gets "+ Add Recruiter" (the admin Recruiter Staff page). Schedule Meeting/Interview open the Companies / Job Requirements lists (both are scheduled from a company / a candidate on a requirement) and are shown only to roles that can write them (recruiter, super_admin). |
+| DB9 | Quick actions | All six §1 actions. "+ Add Recruiter" reuses rec-004's meaning (a company and its first contact: `/recruiter/companies/new?with=contact`, the companies page's own button); "+ Add Company" the plain company form; "+ Add Job Requirement" / "+ Add Candidate" their create forms (recruiter, manager, super_admin). Schedule Meeting / Interview open the Companies / Job Requirements lists (both are scheduled from a company / a candidate on a requirement) and show only for roles that can write them (recruiter, super_admin). |
 | DB10 | Skill box | Comma-separated skills → `/recruiter/find-candidates?all=<skill>&all=…` (rec-013 AND search; its facets F1–F3 show on the results). |
 
 ## 4. Tiles (Appendix B, as built)
@@ -33,7 +33,7 @@ every number is computed live in `services/recruiter_metrics.py`, the single sou
 |---|---|---|---|
 | D1 | `new_leads` | stage `new_lead`, not archived, not lost, created ≥ now − 7 days | `/recruiter/pipeline?stage=new_lead` |
 | D2 | `contacts_pending` | stage `new_lead`, not archived, not lost, no `recruiter_calls` row on the company | `/recruiter/pipeline?stage=new_lead` |
-| D3 | `hot_companies` | priority `hot`, not archived, not lost, stage ≠ `requirement_closed` | `/recruiter/companies` |
+| D3 | `hot_companies` | priority `hot`, not archived, not lost, stage ≠ `requirement_closed` | `/recruiter/companies?priority=hot` |
 | D4 | `meetings_scheduled` | meeting status `scheduled`, now ≤ starts_at < now + 7 days | `/recruiter/meetings?view=upcoming` |
 | D5 | `active_companies` | not archived, ≥1 requirement with status ∉ {on_hold, closed, cancelled} | `/recruiter/companies` |
 | D6 | `new_requirements` | requirements created ≥ now − 7 days | `/recruiter/requirements` |
