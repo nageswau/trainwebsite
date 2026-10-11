@@ -27,25 +27,21 @@ def _plural(n: int, singular: str, plural: str | None = None) -> str:
     return f"{n} {singular if n == 1 else plural or singular + 's'}"
 
 
-def _open_follow_ups(*where):
-    return (
-        select(Company.assigned_recruiter_user_id, func.count())
+async def work_counts(db: AsyncSession, user_ids: list[UUID]) -> dict[UUID | None, dict[str, int]]:
+    """RC15: what a reassignment would move -- three grouped queries for a whole page (the owner column is nullable, hence the key type)."""
+    counts: dict[UUID | None, dict[str, int]] = {uid: {"companies": 0, "requirements": 0, "follow_ups": 0} for uid in user_ids}
+    owner = Company.assigned_recruiter_user_id
+    queries = {
+        "companies": select(owner, func.count()).where(owner.in_(user_ids)).group_by(owner),
+        "requirements": select(Job.assigned_recruiter_user_id, func.count()).where(Job.assigned_recruiter_user_id.in_(user_ids)).group_by(Job.assigned_recruiter_user_id),
+        "follow_ups": select(owner, func.count())
         .select_from(RecruiterFollowUp)
         .join(Company, Company.id == RecruiterFollowUp.company_id)
-        .where(RecruiterFollowUp.status == "open", *where)
-    )
-
-
-async def work_counts(db: AsyncSession, user_ids: list[UUID]) -> dict[UUID, dict[str, int]]:
-    """RC15: what a reassignment would move -- three grouped queries for a whole page."""
-    counts = {uid: {"companies": 0, "requirements": 0, "follow_ups": 0} for uid in user_ids}
-    queries = {
-        "companies": select(Company.assigned_recruiter_user_id, func.count()).where(Company.assigned_recruiter_user_id.in_(user_ids)),
-        "requirements": select(Job.assigned_recruiter_user_id, func.count()).where(Job.assigned_recruiter_user_id.in_(user_ids)),
-        "follow_ups": _open_follow_ups(Company.assigned_recruiter_user_id.in_(user_ids)),
+        .where(owner.in_(user_ids), RecruiterFollowUp.status == "open")
+        .group_by(owner),
     }
     for key, stmt in queries.items():
-        for uid, n in (await db.execute(stmt.group_by(stmt.selected_columns[0]))).all():
+        for uid, n in (await db.execute(stmt)).all():
             counts[uid][key] = n
     return counts
 
@@ -58,7 +54,11 @@ async def refuse_open_work_deactivation(db: AsyncSession, user: User) -> None:
     await db.execute(select(User.id).where(User.id == user.id).with_for_update())
     companies = await db.scalar(select(func.count()).select_from(Company).where(Company.assigned_recruiter_user_id == user.id, Company.archived_at.is_(None))) or 0
     requirements = await db.scalar(select(func.count()).select_from(Job).where(Job.assigned_recruiter_user_id == user.id, Job.status.notin_(recruiter_requirements.ENDED))) or 0
-    parts = [_plural(companies, "company", "companies")] * bool(companies) + [_plural(requirements, "open requirement")] * bool(requirements)
+    parts = []
+    if companies:
+        parts.append(_plural(companies, "company", "companies"))
+    if requirements:
+        parts.append(_plural(requirements, "open requirement"))
     if parts:
         raise HTTPException(422, f"This recruiter has {' and '.join(parts)}. A placement manager must reassign them (Team page) before deactivation.")
     user.session_version += 1
