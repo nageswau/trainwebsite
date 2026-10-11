@@ -4771,6 +4771,18 @@ class CandidateSkill(Base, TimestampMixin):
     updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
 
 
+class ProgramSkill(Base):
+    """rec-036 (DEC-SCOPE-176, CI1): a Skills Master skill a program teaches. A student holding the program's issued certificate gets it as
+    a `course_completed` skill once opted in (services/course_skills). A skill merge re-points these rows (CI8)."""
+
+    __tablename__ = "program_skills"
+    __table_args__ = (Index("ix_program_skills_skill", "skill_id"),)
+    program_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("programs.id", ondelete="CASCADE"), primary_key=True)
+    skill_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("skills.id", ondelete="RESTRICT"), primary_key=True)
+    added_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 # rec-028 (DEC-SCOPE-134): EVID-018 §20 company meetings -- the 7 types in source order (L800-L812), the states (MT6) and the events of the
 # append-only history. Migration 0119 repeats RECRUITER_MEETING_CHECKS (test_rec_028_migration asserts they stay identical). Labels live in
 # the web client.
