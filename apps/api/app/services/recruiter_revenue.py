@@ -1,4 +1,4 @@
-"""rec-031 (DEC-SCOPE-175, spec §1-§3): revenue / commercial tracking per requirement, track only (R9: no invoice PDF, no GST, no sync).
+"""rec-031 (DEC-SCOPE-176, spec §1-§3): revenue / commercial tracking per requirement, track only (R9: no invoice PDF, no GST, no sync).
 
 Functions only; nothing here commits -- the route owns the transaction. Every requirement resolves through rec-007's `load_scoped` and every
 invoice through its requirement's scope, so an id outside the caller's scope is the same 404 as a missing one. The role gate (RV10) runs

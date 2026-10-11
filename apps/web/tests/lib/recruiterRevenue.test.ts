@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { feeSourceText, inr, invoicesUrl, isReceivableView, revenueConflict } from "@/lib/recruiterRevenue";
 
-// rec-031 (DEC-SCOPE-175): the revenue helpers -- Indian-grouped rupees, where the fee per hire comes from, the coded 409s, the list URL.
+// rec-031 (DEC-SCOPE-176): the revenue helpers -- Indian-grouped rupees, where the fee per hire comes from, the coded 409s, the list URL.
 describe("recruiterRevenue helpers (rec-031)", () => {
   it("formats rupees with Indian grouping and always two decimals", () => {
     expect(inr("150000.00")).toBe("₹1,50,000.00");

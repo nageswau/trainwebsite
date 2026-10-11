@@ -1,4 +1,4 @@
-"""rec-031 -- revenue / commercial tracking, track only (spec §1-§3; AC1-AC3; DEC-SCOPE-175 RV1-RV10). The shared test database is never
+"""rec-031 -- revenue / commercial tracking, track only (spec §1-§3; AC1-AC3; DEC-SCOPE-176 RV1-RV10). The shared test database is never
 truncated, so every value is unique per test and every list assertion is scoped to the test's own requirement."""
 
 import uuid

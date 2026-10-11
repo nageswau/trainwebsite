@@ -2,7 +2,7 @@ import { COMPANIES_URL } from "@/lib/recruiterCompanies";
 import { type FeeBasis, feeText } from "@/lib/recruiterContracts";
 import { REQUIREMENTS_URL } from "@/lib/recruiterRequirements";
 
-// rec-031 (DEC-SCOPE-175): revenue per requirement and company, invoices, payments and the receivables list. Track only (R9): the API
+// rec-031 (DEC-SCOPE-176): revenue per requirement and company, invoices, payments and the receivables list. Track only (R9): the API
 // computes every figure and enforces every rule (Joined only, the fee source, the over-payment cap, scope); these helpers shape requests
 // and words. Amounts travel as decimal strings ("150000.00") and are shown in rupees with Indian grouping.
 export type PaymentStatus = "unpaid" | "part_paid" | "paid" | "cancelled";

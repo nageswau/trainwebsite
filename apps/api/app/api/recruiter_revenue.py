@@ -1,4 +1,4 @@
-"""rec-031 (DEC-SCOPE-175, spec §3): revenue per requirement and company, the fee override, invoices, payments and the receivables list.
+"""rec-031 (DEC-SCOPE-176, spec §3): revenue per requirement and company, the fee override, invoices, payments and the receivables list.
 
 Role first (403: RV10), then the requirement's scope (404, rec-007 `load_scoped`). Every write is one transaction -- the row lock, the rules
 (422 on a field / coded 409), the write, an audit row (ids and amounts only), one commit here, then the log line. Track only (R9)."""

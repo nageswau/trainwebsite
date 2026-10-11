@@ -1,4 +1,4 @@
-"""rec-031 -- migration 0146_recruiter_revenue (spec §2). Round trip and downgrade refusal run in a throwaway database built from scratch
+"""rec-031 -- migration 0147_recruiter_revenue (spec §2). Round trip and downgrade refusal run in a throwaway database built from scratch
 (the rec-028 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -14,11 +14,11 @@ from app.core.config import settings
 from tests.test_tel_001_migration import _config, _sql
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_rec_031_migration_0146", VERSIONS / "0146_recruiter_revenue.py")
+_spec = importlib.util.spec_from_file_location("_rec_031_migration_0147", VERSIONS / "0147_recruiter_revenue.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0145_university_onboarding", "0146_recruiter_revenue"
+BASE, HEAD = "0146_interview_feedback", "0147_recruiter_revenue"
 INVOICE_COLUMNS = {
     "id",
     "job_id",
@@ -37,7 +37,7 @@ INVOICE_COLUMNS = {
 PAYMENT_COLUMNS = {"id", "invoice_id", "received_on", "amount", "reference", "created_by_user_id", "created_at"}
 
 
-def test_migration_chains_after_0145_and_there_is_a_single_head():
+def test_migration_chains_after_0146_and_there_is_a_single_head():
     assert _migration.revision == HEAD
     assert _migration.down_revision == BASE
     assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1

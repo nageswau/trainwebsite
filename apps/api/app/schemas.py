@@ -10392,7 +10392,7 @@ class PartnershipMapPage(BaseModel):
     stages: list[PartnershipMapStage]
 
 
-# --- rec-031 (DEC-SCOPE-175): revenue / commercial tracking, track only --------------------------------------------------------------
+# --- rec-031 (DEC-SCOPE-176): revenue / commercial tracking, track only --------------------------------------------------------------
 REC_REVENUE_LABELS = {"invoice_number": "Invoice number", "note": "Note", "reference": "Reference", "reason": "Reason"}
 REC_REVENUE_AMOUNT_FORMAT = "Enter the amount as a number with up to 2 decimals"
 RecFeeBasis = Literal[JOB_FEE_BASES]

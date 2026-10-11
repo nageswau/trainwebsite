@@ -604,7 +604,7 @@ JOB_CHECKS = {  # migration 0114 repeats these strings; test_rec_007_migration a
     "ck_jobs_salary": "(salary_min IS NULL OR salary_min >= 0) AND (salary_max IS NULL OR salary_max >= 0) AND (salary_min IS NULL OR salary_max IS NULL OR salary_min <= salary_max)",
 }
 JOB_FEE_BASES = ("fixed", "percent_of_ctc")  # rec-031 (RV1): the per-requirement fee override, the rec-030 CT4 shape
-JOB_FEE_CHECKS = {  # migration 0146 repeats these strings (test_rec_031_migration)
+JOB_FEE_CHECKS = {  # migration 0147 repeats these strings (test_rec_031_migration)
     "ck_jobs_fee_pair": "(fee_basis IS NULL) = (fee_value IS NULL)",
     "ck_jobs_fee_basis": _in("fee_basis", JOB_FEE_BASES),
     "ck_jobs_fee_value": "fee_value IS NULL OR (fee_value >= 0 AND (fee_basis <> 'percent_of_ctc' OR fee_value <= 100))",
@@ -5342,7 +5342,7 @@ class ProfileShareItem(Base, TimestampMixin):
     responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
-# rec-031 (DEC-SCOPE-175, RV6-RV8): manually recorded invoices and payments per requirement (track only, R9). Migration 0146 repeats
+# rec-031 (DEC-SCOPE-176, RV6-RV8): manually recorded invoices and payments per requirement (track only, R9). Migration 0147 repeats
 # these strings (test_rec_031_migration). services/recruiter_revenue.py owns every rule; the CHECKs are the backstop.
 RECRUITER_INVOICE_CHECKS = {
     "ck_recruiter_invoices_amount": "amount > 0",

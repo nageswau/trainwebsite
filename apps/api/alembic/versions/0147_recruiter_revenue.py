@@ -1,9 +1,9 @@
 """rec-031 -- recruiter revenue: the per-requirement fee override on jobs, recruiter_invoices and recruiter_payments.
 
-Revision ID: 0146_recruiter_revenue
-Revises: 0145_university_onboarding
+Revision ID: 0147_recruiter_revenue
+Revises: 0146_interview_feedback
 
-docs/superpowers/specs/2026-10-11-rec-031-recruiter-revenue-design.md §2 (DEC-SCOPE-175). Two nullable columns on jobs and two new tables;
+docs/superpowers/specs/2026-10-11-rec-031-recruiter-revenue-design.md §2 (DEC-SCOPE-176). Two nullable columns on jobs and two new tables;
 no existing row changes, so there is no backfill. 0001 builds a fresh database from the current models, which already carry them, so each
 piece is created only when missing (0117's idiom). The CHECK strings repeat app.models (test_rec_031_migration). downgrade() refuses while
 any invoice or fee override exists: it would drop recorded commercial data.
@@ -14,8 +14,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0146_recruiter_revenue"
-down_revision = "0145_university_onboarding"
+revision = "0147_recruiter_revenue"
+down_revision = "0146_interview_feedback"
 branch_labels = None
 depends_on = None
 
@@ -90,7 +90,7 @@ def downgrade() -> None:
     if not op.get_context().as_sql:
         bind = op.get_bind()
         if bind.execute(sa.text(f"SELECT 1 FROM {INVOICES} LIMIT 1")).first() or bind.execute(sa.text("SELECT 1 FROM jobs WHERE fee_basis IS NOT NULL LIMIT 1")).first():
-            raise RuntimeError("Cannot downgrade 0146_recruiter_revenue: revenue data exists (invoices or fee overrides). Clear it deliberately first.")
+            raise RuntimeError("Cannot downgrade 0147_recruiter_revenue: revenue data exists (invoices or fee overrides). Clear it deliberately first.")
     op.drop_table(PAYMENTS)
     op.drop_table(INVOICES)
     for name in JOB_CHECKS:

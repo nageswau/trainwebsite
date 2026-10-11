@@ -4,7 +4,7 @@
   Candidates selected, Candidates joined, Fee per hire, Total invoice, Invoice date, Payment due, Payment received, Outstanding amount).
   `DERIVED_BLUEPRINT`, in scope by R9 ("track only": no invoice PDF, no accounting sync, no GST computation).
 - **Dependencies:** rec-023 (joining, PR #213, owner-confirmed JN1–JN10) and rec-030 (contracts, PR #208). Both are merged.
-- **Decision:** `DEC-SCOPE-175` (RV1–RV10). Migration `0146_recruiter_revenue`, API §12CP, RBAC §2.101.
+- **Decision:** `DEC-SCOPE-176` (RV1–RV10). Migration `0147_recruiter_revenue`, API §12CQ, RBAC §2.102.
 - **Answers:** the owner said "proceed with recommended answers". RV1–RV10 are the recommended answers to Q-24. They are **UNVERIFIED**
   until the owner confirms them.
 
@@ -23,7 +23,7 @@
 | RV9 | Did Not Join after invoicing (Q-24) | Nothing changes automatically. When the open invoices exceed the expected revenue, the revenue view says so ("Invoiced more than the expected revenue"), so the recruiter can cancel and re-issue. |
 | RV10 | Roles (Q-24 "manager?") | Read and record invoices/payments: `placement_team`, `placement_manager`, `super_admin`, within the rec-007 requirement scope (out of scope = 404). Set the fee override: `placement_manager` and `super_admin` (a pricing exception to the contract). The BDM, HR, students and employers get 403 / see nothing. |
 
-## 2. Data (migration 0146)
+## 2. Data (migration 0147)
 
 - `jobs` gains `fee_basis` String(20) and `fee_value` Numeric(12,2), both nullable, with CHECKs: both null or both set; basis in
   (`fixed`, `percent_of_ctc`); value ≥ 0, ≤ 100 for a percentage.
@@ -34,7 +34,7 @@
   created_at. Index (invoice_id, received_on).
 - The downgrade refuses while any invoice or fee override exists.
 
-## 3. API (§12CP)
+## 3. API (§12CQ)
 
 | Method | Path | Notes |
 |---|---|---|
@@ -73,3 +73,24 @@ unknown ones.
 
 - invoice PDFs, GST, accounting sync (R9); editing or deleting payments; currencies other than INR;
 - revenue dashboards and the period figure B12 (rec-033, mgmt-008).
+
+## 7. QA evidence (2026-10-11)
+
+Exploratory pass with Playwright (Chromium) on the worktree's Docker stack, seeded recruiter / manager / hr accounts, a company with a
+₹50,000 contract fee and a requirement with 3 joined hires and 1 selected:
+- Recruiter: figures (4 selected, 3 joined, ₹1,50,000 expected, fee "from the company contract (Negotiation)"); negative amount and blank
+  fields refused on their fields; ₹1,50,000 invoice saved once on a double click; duplicate number (other case) refused; over-payment refused
+  naming ₹1,50,000.00 outstanding (AC2); ₹1,00,000 received → ₹50,000 outstanding, Part paid (AC1); refresh keeps it; no Cancel on a
+  part-paid invoice; no fee override; Receivables tab in the URL and Back; company totals and "Receivables for this company".
+- Manager: a fee value without a basis is refused on Fee basis; ₹60,000 override → ₹1,80,000 expected; clearing returns to the contract fee.
+- hr_team: Receivables shows "Access unavailable — Revenue is visible to recruiters and their managers"; the revenue API is `403`. Signed
+  out: redirected to `/it/login?next=…`.
+- Tablet (820) and mobile (390): no horizontal overflow on the requirement or Receivables; no console errors other than the browser's own
+  log lines for the 4xx answers the pass provoked on purpose; no 5xx.
+
+| ID | Severity | Finding | Outcome |
+|---|---|---|---|
+| QA31-01 | Low | A blank invoice number (or cancel reason) said "Input should be a valid string": the form sends `null` for a blank field | Fixed: `null` is read as blank, so the message is "Invoice number is required" / "Reason is required" (test `test_blank_required_text_says_it_is_required`), re-verified in the browser |
+
+Pre-existing, not rec-031: `RecruiterCompanies.test.tsx` "archives after confirming" fails on `main` too (its first write is rec-030's
+contract read).
