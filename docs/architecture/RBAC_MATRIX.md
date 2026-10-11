@@ -1762,6 +1762,19 @@ A drive takes its company's scope (§2.47, rec-003). The role check runs before 
 | `super_admin` | everything | all | `rec-029` |
 | `hr_team`, `it_admin`, `employer`, students, every other role | `403` | — | `rec-029` |
 
+### 2.105 Program skill tags + candidate journey *(net-new, added 2026-10-11 — `DEC-SCOPE-179`, `rec-036`)*
+
+Tags are global per program (no row scope); the journey takes the candidate's scope (§2.63: the opted-in pool, R11). The role check runs
+before anything is read; a candidate outside the pool is `404`.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `it_admin`, `super_admin` | read and replace a program's skill tags (`GET/PUT /admin/programs/{id}/skills`); the tag picker (`GET /admin/programs/skill-options`) | every program | `rec-036` |
+| `placement_team`, `placement_manager`, `super_admin`, `hr_team` | read a candidate's journey (`GET /recruiter/candidates/{id}/journey`) | the pool (external + opted-in students) | `rec-036` |
+| `it_student` | none directly; opting in (rec-010) and a certificate issued to them add their course skills (CI3) | own | `rec-036` |
+| `trainer`, `it_admin` (issuing a certificate) | no new action; an issue to an opted-in student adds the course skills in the same transaction | own batches / all | `rec-036` |
+| `employer`, `overseas_admin`, `trainer`, students, every other role | `403` on the tag and journey routes; `it_admin` `403` on the journey (not a candidate reader) | — | `rec-036` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

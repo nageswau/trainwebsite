@@ -1614,6 +1614,19 @@ varchar(64) null; `created_at`.
 - `downgrade()` refuses while any row exists, so consent evidence is never dropped silently. Retention follows Q-09
   (`NEEDS_CONFIRMATION`).
 
+## Program skills (`rec-036`, `DEC-SCOPE-179`; migration `0149_program_skills`, after `0148_recruitment_drives`)
+
+**`program_skills` columns:** `program_id` → `programs` (FK CASCADE: a program's tags go with it); `skill_id` → `skills` (FK RESTRICT; a
+merge re-points the row first, CI8); `added_by_user_id` → `users` (FK RESTRICT); `created_at`. Primary key `(program_id, skill_id)`.
+
+**Index:** `ix_program_skills_skill (skill_id)`, for the merge and the course-skill grant join.
+
+**Design notes:**
+- No backfill: no program had tags before this item.
+- A course skill on a candidate is an ordinary `candidate_skills` row with `source = 'course_completed'` (CI4); removing a tag never
+  deletes those rows (CI6).
+- `downgrade()` refuses while any row exists.
+
 ## University documents (`upc-026`, `DEC-SCOPE-139`; migration `0124_university_documents`, after `0123_candidate_consents`)
 
 **`university_documents` columns:**

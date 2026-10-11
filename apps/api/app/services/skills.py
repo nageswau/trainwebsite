@@ -7,10 +7,10 @@ checks the other table, so the cross-table rule holds under concurrency too."""
 import re
 
 from fastapi import HTTPException
-from sqlalchemy import func, or_, select, text, update
+from sqlalchemy import delete, func, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import JobSkill, Skill, SkillAlias, SkillCategory, SkillCategoryTag, SkillRelated, User
+from app.models import JobSkill, ProgramSkill, Skill, SkillAlias, SkillCategory, SkillCategoryTag, SkillRelated, User
 
 READERS = frozenset({"placement_team", "placement_manager", "super_admin"})  # S3: hr_team / it_admin are not readers (Q-28)
 WRITERS = frozenset({"placement_manager", "super_admin"})
@@ -85,10 +85,14 @@ async def locked_active_categories(db: AsyncSession, ids) -> dict:
 
 async def absorb(db: AsyncSession, source: Skill, target: Skill) -> dict:
     """rec-011 SK7, under `lock_terms` with both skills locked: the Skills Master half of a merge. Requirement skills (rec-007) and
-    aliases move to the target, related links are re-made on it (never to itself, never twice), then the source is deleted -- its tags
+    aliases (and rec-036 program tags) move to the target, related links are re-made on it (never to itself, never twice), then the source is deleted -- its tags
     and remaining links cascade -- and its name becomes an alias of the target, so the old spelling still resolves. Candidate skills are
     re-pointed first by services/candidate_skills.repoint (no other row references a skill). Returns the counts for the audit row."""
     jobs = await db.execute(update(JobSkill).where(JobSkill.skill_id == source.id).values(skill_id=target.id).execution_options(synchronize_session=False))
+    # rec-036 CI8: program tags move too; a program tagged with both keeps the target's row (the primary key allows one).
+    both = select(ProgramSkill.program_id).where(ProgramSkill.skill_id == target.id)
+    await db.execute(delete(ProgramSkill).where(ProgramSkill.skill_id == source.id, ProgramSkill.program_id.in_(both)).execution_options(synchronize_session=False))
+    await db.execute(update(ProgramSkill).where(ProgramSkill.skill_id == source.id).values(skill_id=target.id).execution_options(synchronize_session=False))
     aliases = await db.execute(update(SkillAlias).where(SkillAlias.skill_id == source.id).values(skill_id=target.id).execution_options(synchronize_session=False))
     pairs = (await db.scalars(select(SkillRelated).where(or_(SkillRelated.skill_a_id == source.id, SkillRelated.skill_b_id == source.id)))).all()
     others = {p.skill_b_id if p.skill_a_id == source.id else p.skill_a_id for p in pairs} - {target.id}

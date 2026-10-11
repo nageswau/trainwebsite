@@ -9805,6 +9805,13 @@ SearchTerm = Annotated[StrictStr, AfterValidator(_search_term)]
 SearchText = Annotated[StrictStr | None, StringConstraints(strip_whitespace=True, max_length=120)]
 
 
+class ProgramSkillsUpdate(BaseModel):
+    """rec-036 (CI1): a program's full set of skill tags -- Skills Master ids; repeats are ignored, the service caps the count."""
+
+    model_config = ConfigDict(extra="forbid")
+    skill_ids: list[UUID] = Field(max_length=60)
+
+
 class CandidateSearch(BaseModel):
     """`all` = every one of these skills (AND); each `any` group = at least one of its skills (OR), the groups ANDed with the rest."""
 
