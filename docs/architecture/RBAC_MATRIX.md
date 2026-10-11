@@ -1737,7 +1737,20 @@ read (`403`); an id out of scope is the same `404` as an unknown one. Track only
 
 Every write is audited in the same transaction (`recruiter_revenue.*`: ids and amounts only — never notes, references, reasons or names).
 
-### 2.103 Campus recruitment drives *(net-new, added 2026-10-11 — `DEC-SCOPE-177`, `rec-029`)*
+### 2.103 Recruiter deactivation + bulk reassignment *(net-new, added 2026-10-11 — `DEC-SCOPE-177`, `rec-037`)*
+
+`require_manager`, then the source must be the manager's direct report (`403` otherwise, logged); the target goes through rec-003's
+`locked_recruiter_target` (`422`). Routes are listed in §12CR.
+
+| Role | Reassign a recruiter's work | Deactivate a recruiter with open work (`PATCH /admin/users`) |
+|---|---|---|
+| `placement_manager` | Direct reports → an active direct report | — (not an admin) |
+| `super_admin` | Any recruiter (a recruiter with no manager included) → any active recruiter | `422` until reassigned |
+| `it_admin` | `403` | `422` until reassigned |
+| `placement_team` | `403` | — |
+| any other role | `403` (anonymous `401`) | — |
+
+### 2.104 Campus recruitment drives *(net-new, added 2026-10-11 — `DEC-SCOPE-178`, `rec-029`)*
 
 A drive takes its company's scope (§2.47, rec-003). The role check runs before anything is read; out of scope is `404`.
 

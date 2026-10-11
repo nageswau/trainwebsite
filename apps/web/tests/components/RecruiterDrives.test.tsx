@@ -5,7 +5,7 @@ import RecruiterDriveDetail from "@/components/RecruiterDriveDetail";
 import RecruiterDrives from "@/components/RecruiterDrives";
 import type { Drive, DriveList } from "@/lib/recruiterDrives";
 
-// rec-029 (DEC-SCOPE-177): the drives list (search, status, empty / error states, "+ New drive" only for writers) and a drive's page
+// rec-029 (DEC-SCOPE-178): the drives list (search, status, empty / error states, "+ New drive" only for writers) and a drive's page
 // (the funnel, Edit only for writers, adding a candidate through the drive sends its drive_id).
 const push = vi.fn();
 const refresh = vi.fn();

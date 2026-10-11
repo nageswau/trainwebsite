@@ -5394,7 +5394,7 @@ class RecruiterPayment(Base):
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-# rec-029 (DEC-SCOPE-177, DR1-DR7): campus recruitment drives (§21). Migration 0148 repeats the statuses and checks
+# rec-029 (DEC-SCOPE-178, DR1-DR7): campus recruitment drives (§21). Migration 0148 repeats the statuses and checks
 # (test_rec_029_migration). Labels live in services/recruitment_drives.py and the web client.
 RECRUITMENT_DRIVE_STATUSES = ("planned", "completed", "cancelled")
 RECRUITMENT_DRIVE_CODE_SEQ = Sequence("recruitment_drive_code_seq", metadata=Base.metadata)
@@ -5408,7 +5408,7 @@ RECRUITMENT_DRIVE_CHECKS = {
 
 
 class RecruitmentDrive(Base, TimestampMixin):
-    """rec-029 (DEC-SCOPE-177): a campus drive of one company at one college -- a BDM college organisation or a typed name (R15, DR2).
+    """rec-029 (DEC-SCOPE-178): a campus drive of one company at one college -- a BDM college organisation or a typed name (R15, DR2).
     Registered and attended are typed counts; shortlisted to joined are computed from the applications tagged with the drive (DR7).
     Never deleted: cancelled instead (DR3)."""
 

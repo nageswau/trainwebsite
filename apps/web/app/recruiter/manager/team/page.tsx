@@ -6,18 +6,18 @@ import RecruiterTeamTable from "@/components/RecruiterTeamTable";
 import { serverApi } from "@/lib/api";
 import type { Page } from "@/lib/apiErrors";
 import { RECRUITER_MANAGER_NAV, SUPER_ADMIN_NAV } from "@/lib/navigation";
-import { PLACEMENT_MANAGER_LABEL, type RecruiterTeamRow } from "@/lib/recruiter";
+import { PLACEMENT_MANAGER_LABEL, type RecruiterTeamMember } from "@/lib/recruiter";
 import { PAGE_SIZE, pageOffset } from "@/lib/telecaller";
 import type { User } from "@/lib/types";
 
 // rec-001 (AC4): exactly the recruiters who report to this manager (the API scopes it; super_admin sees all). The offset lives in the URL.
 export default async function RecruiterManagerTeamPage({ searchParams }: { searchParams: Promise<{ offset?: string }> }) {
   const offset = pageOffset((await searchParams).offset);
-  let user: User, team: Page<RecruiterTeamRow>;
+  let user: User, team: Page<RecruiterTeamMember>;
   try {
     [user, team] = await Promise.all([
       serverApi<User>("/api/v1/auth/me"),
-      serverApi<Page<RecruiterTeamRow>>(`/api/v1/recruiter/manager/team?limit=${PAGE_SIZE}&offset=${offset}`),
+      serverApi<Page<RecruiterTeamMember>>(`/api/v1/recruiter/manager/team?limit=${PAGE_SIZE}&offset=${offset}`),
     ]);
   } catch (e) {
     return accessUnavailable(e, "/admin/login");

@@ -4029,7 +4029,7 @@ not claim parity.
   remembered window over the address's; fixed (form `autoComplete="off"`), unit + e2e. No console errors or failed requests; formula
   cell guarded in the CSV; a counselor gets the access card and a 403 on the API.
 
-## rec-029 addendum (2026-10-11, `DEC-SCOPE-177`) — Campus Drives
+## rec-029 addendum (2026-10-11, `DEC-SCOPE-178`) — Campus Drives
 
 Design spec: `docs/superpowers/specs/2026-10-11-rec-029-campus-drives-design.md` §4. "Campus Drives" joins the recruiter, placement
 manager and super admin menus (after Joinings / Recruiter Requirements).

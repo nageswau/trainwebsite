@@ -3,7 +3,7 @@
 Revision ID: 0148_recruitment_drives
 Revises: 0147_recruiter_revenue
 
-docs/superpowers/specs/2026-10-11-rec-029-campus-drives-design.md §2 (DEC-SCOPE-177). Additive: two new tables and one nullable column; no
+docs/superpowers/specs/2026-10-11-rec-029-campus-drives-design.md §2 (DEC-SCOPE-178). Additive: two new tables and one nullable column; no
 existing row read or written (no backfill). 0001 builds a fresh database from the current models, which already carry all of it, so
 each piece is created only when missing. STATUSES / CHECKS are frozen copies of app.models.RECRUITMENT_DRIVE_* (test_rec_029_migration).
 downgrade() refuses while any drive exists: recorded drives and their tags are never dropped silently.

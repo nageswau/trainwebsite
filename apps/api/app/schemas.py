@@ -6597,11 +6597,37 @@ class RecruiterAdminRow(RecruiterTeamRow):
     reporting_manager: BdmManagerRef | None
 
 
+class RecruiterWork(BaseModel):
+    """rec-037 (RC15): a recruiter's companies (archived included) and requirements, and the open follow-ups on those companies."""
+
+    companies: int
+    requirements: int
+    follow_ups: int
+
+
+class RecruiterTeamMemberRow(RecruiterTeamRow):
+    work: RecruiterWork
+
+
 class RecruiterTeamPage(BaseModel):
-    items: list[RecruiterTeamRow]
+    items: list[RecruiterTeamMemberRow]
     total: int
     limit: int
     offset: int
+
+
+class RecruiterReassign(BaseModel):
+    """rec-037 (RC5): move every company and requirement of one recruiter to another."""
+
+    model_config = ConfigDict(extra="forbid")
+    from_user_id: UUID
+    to_user_id: UUID
+
+
+class RecruiterReassignOut(BaseModel):
+    from_user_id: UUID
+    to_user_id: UUID
+    moved: RecruiterWork
 
 
 class RecruiterAdminPage(BaseModel):
@@ -8932,7 +8958,7 @@ class RecApplicationStatusChange(BaseModel):
     note: _rec_requirement_text_type(500, multiline=True) = None
 
 
-# --- rec-029 (DEC-SCOPE-177): campus recruitment drives (services/recruitment_drives) ----------------------------------------------------
+# --- rec-029 (DEC-SCOPE-178): campus recruitment drives (services/recruitment_drives) ----------------------------------------------------
 # The cross-field rules (exactly one college, attended <= registered, the company's requirements) live in the service, so a PATCH is
 # checked against the stored values the same way and each 422 names its field.
 REC_DRIVE_LABELS = {"college_name": "College", "job_role": "Job role", "eligibility": "Eligibility"}

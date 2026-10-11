@@ -6,9 +6,9 @@
   Students Attended, Shortlisted, Interviewed, Selected, Joined; the ABC College + XYZ Technologies funnel example (illustrative only).
   Appendix B C1–C7 defines every figure. R15 (`EXPLICIT_APPROVAL`, 2026-10-07): college = BDM college org or free text; registered and
   attended typed; shortlisted → joined computed from drive-tagged applications.
-- **Decision:** `DEC-SCOPE-177`. DR1–DR10 are **recommended defaults** taken on the owner's standing instruction ("proceed with the
+- **Decision:** `DEC-SCOPE-178`. DR1–DR10 are **recommended defaults** taken on the owner's standing instruction ("proceed with the
   recommended answers; ask only if blocking"). They stay `UNVERIFIED` until the owner confirms them. DR3 answers Q-30.
-- **Numbering (FINAL unless main moves):** migration `0148_recruitment_drives`, API §12CR, RBAC §2.103. Drafted as `0146` / 175 / §12CP / §2.101, then `0147` / 176 / §12CQ / §2.102; rec-021 and then rec-031 merged first and took those numbers.
+- **Numbering (FINAL unless main moves):** migration `0148_recruitment_drives`, API §12CS, RBAC §2.104. Drafted as `0146` / 175 / §12CP / §2.101, then `0147` / 176 / §12CQ / §2.102, then 177 / §12CR / §2.103; rec-021, rec-031 and then rec-037 merged first and took those numbers.
 
 ## 1. Decisions (UNVERIFIED defaults)
 
@@ -34,7 +34,7 @@
 - `drive_requirements`: `drive_id`, `job_id`, PK both; index `job_id`.
 - `job_applications.drive_id` nullable FK + index. Additive; no backfill. Every FK RESTRICT. `downgrade()` refuses while a drive exists.
 
-## 3. API (§12CR)
+## 3. API (§12CS)
 
 | Method/Path | Notes |
 |---|---|

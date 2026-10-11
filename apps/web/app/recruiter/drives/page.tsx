@@ -11,7 +11,7 @@ const INTRO: Record<string, string> = {
   placement_manager: "Your team's campus drives (read only).",
 };
 
-// rec-029 (DEC-SCOPE-177): the campus drives list. The API is the gate: a role without access (hr_team, it_admin, employer...) or a
+// rec-029 (DEC-SCOPE-178): the campus drives list. The API is the gate: a role without access (hr_team, it_admin, employer...) or a
 // recruiter without a profile gets its 403 message here, from the probe read alongside the session (the rec-028 pattern).
 export default async function RecruiterDrivesPage() {
   let user: User;

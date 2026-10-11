@@ -1,7 +1,7 @@
 """rec-001 (DEC-SCOPE-116, spec §4): recruiter and placement-manager reads, the recruiter's phone self-edit, the admin Recruiter Staff
 list and the reporting-manager picker.
 
-Scope always comes from the session -- no /recruiter route takes a user id -- so there is no IDOR surface. The admin routes are
+Scope comes from the session; the one route that takes user ids (rec-037's reassign) checks both against the manager's team. The admin routes are
 super_admin / it_admin only (recruiters are IT). Lists reuse bdm-001's paging helpers: {items, total, limit, offset}, ordered by name
 then id; one query each (the manager is an outer join, since a backfilled recruiter has none)."""
 
@@ -15,7 +15,8 @@ from app.api.deps import get_current_user
 from app.api.lookups import _pattern as like_pattern
 from app.core.database import get_db
 from app.models import AuditLog, RecruiterProfile, User
-from app.schemas import PlacementManagerPage, RecruiterAdminPage, RecruiterMeOut, RecruiterTeamPage
+from app.schemas import PlacementManagerPage, RecruiterAdminPage, RecruiterMeOut, RecruiterReassign, RecruiterReassignOut, RecruiterTeamPage
+from app.services import recruiter_lifecycle
 from app.services.recruiter import MANAGER_ROLE, manager_ref, profile_out, recruiter_context, require_manager, require_recruiter_admin, team_filter
 from app.services.telecaller import parse_self_update
 
@@ -71,9 +72,26 @@ async def update_own_profile(payload: dict = Body(...), user: User = Depends(get
 
 @router.get("/manager/team", response_model=RecruiterTeamPage)
 async def team(q: str | None = SEARCH, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """AC4: a manager's direct reports (inactive included, with their status); super_admin sees all. `q` only narrows."""
+    """AC4: a manager's direct reports (inactive included, with their status); super_admin sees all. `q` only narrows. rec-037 (RC15): each
+    row carries the recruiter's work (companies, requirements, open follow-ups)."""
     require_manager(user)
-    return await _paged(db, _profiles(team_filter(user) + _searched(q)), limit, offset, _team_row)
+    page = await _paged(db, _profiles(team_filter(user) + _searched(q)), limit, offset, _team_row)
+    work = await recruiter_lifecycle.work_counts(db, [row["id"] for row in page["items"]])
+    return {**page, "items": [{**row, "work": work[row["id"]]} for row in page["items"]]}
+
+
+@router.post("/manager/reassign", response_model=RecruiterReassignOut)
+async def reassign(payload: RecruiterReassign, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """rec-037 (RC4-RC13): every company and requirement of one recruiter moves to an active recruiter of the same team, in one
+    transaction, with assignment history and audit. The source may be inactive (RC7). The two ids are checked against the team."""
+    require_manager(user)
+    source = await recruiter_lifecycle.load_source(db, user, payload.from_user_id)
+    moved = await recruiter_lifecycle.reassign(db, user, source, payload.to_user_id)
+    db.add(AuditLog(user_id=user.id, action="recruiter.reassign", entity_type="user", entity_id=str(source.id),
+                    metadata_json={"to_user_id": str(payload.to_user_id), "moved": moved}))
+    await db.commit()
+    recruiter_lifecycle.log("recruiter_reassigned", user, from_user_id=str(source.id), to_user_id=str(payload.to_user_id), **moved)
+    return {"from_user_id": source.id, "to_user_id": payload.to_user_id, "moved": moved}
 
 
 @admin_router.get("/recruiters", response_model=RecruiterAdminPage)
