@@ -7,6 +7,7 @@ figures are then that recruiter's own scope. "Today" is the IST date; flow tiles
 numbers come from one statement of scalar sub-selects. Reads only; nothing here writes."""
 
 from datetime import date, datetime, time, timedelta
+from decimal import Decimal
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -14,24 +15,33 @@ from sqlalchemy import ColumnElement, Date, String, and_, cast, distinct, exists
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
+    RECRUITER_CONTRACT_EXPIRING,
     Company,
+    CompanyStageHistory,
     Interview,
+    InterviewEvent,
     Job,
     JobApplication,
     JobApplicationStatusHistory,
     JobOffer,
+    JobOfferEvent,
     JobStatusHistory,
     ProfileShare,
     ProfileShareItem,
     RecruiterCall,
+    RecruiterContract,
+    RecruiterContractEvent,
     RecruiterFollowUp,
     RecruiterMeeting,
+    RecruiterMessage,
     RecruiterProfile,
     User,
 )
+from app.recruiter_stages import ORDER as COMPANY_STAGES
 from app.services import recruiter_companies as companies
 from app.services import recruiter_follow_ups as follow_ups
 from app.services import recruiter_requirements as requirements
+from app.services import recruiter_revenue
 from app.services.bdm_appointments import IST, today_ist
 from app.services.interviews import OPEN as OPEN_INTERVIEWS
 from app.services.recruiter import MANAGER_ROLE, ROLE
@@ -201,10 +211,12 @@ UNASSIGNED = "Unassigned"
 PERFORMANCE_REFUSED = "Recruiter performance is for managers and administrators"
 
 
-async def _people(db: AsyncSession, user: User, recruiter_id: UUID | None) -> list[User]:
+async def _people(
+    db: AsyncSession, user: User, recruiter_id: UUID | None, roles: tuple[str, ...] = PERFORMANCE_ROLES, refused: str = PERFORMANCE_REFUSED
+) -> list[User]:
     """PF1: the recruiters the caller compares (a manager's direct reports; every recruiter for an administrator), or the one drilled into."""
-    if user.role not in PERFORMANCE_ROLES:
-        raise HTTPException(403, PERFORMANCE_REFUSED)
+    if user.role not in roles:
+        raise HTTPException(403, refused)
     stmt = select(User).join(RecruiterProfile, RecruiterProfile.user_id == User.id).where(User.role == ROLE)
     if user.role == MANAGER_ROLE:
         stmt = stmt.where(RecruiterProfile.reporting_manager_user_id == user.id)
@@ -214,6 +226,24 @@ async def _people(db: AsyncSession, user: User, recruiter_id: UUID | None) -> li
     if person is None:
         raise HTTPException(404, NOT_FOUND)
     return [person]
+
+
+def _period(date_from: date | None, date_to: date | None, now: datetime) -> tuple[date, date, datetime, datetime]:
+    """PF3: the IST dates and the half-open instants [start, end) they cover."""
+    first, last = date_range(date_from, date_to, today_ist(now))
+    return first, last, datetime.combine(first, time.min, tzinfo=IST), datetime.combine(last + timedelta(days=1), time.min, tzinfo=IST)
+
+
+def _grouped(key: str, owner, value, *froms, where: list):
+    """One figure per owner, as rows (figure, owner, value) of the UNION ALL."""
+    stmt = select(literal(key, String).label("figure"), owner.label("owner"), value.label("value")).select_from(froms[0])
+    for model, on in froms[1:]:
+        stmt = stmt.join(model, on)
+    return stmt.where(*where).group_by(owner)
+
+
+def _during(column, start: datetime, end: datetime) -> list:
+    return [column >= start, column < end]
 
 
 def _figures(sums: dict[str, int]) -> dict:
@@ -229,8 +259,7 @@ async def performance(db: AsyncSession, user: User, recruiter_id: UUID | None, d
     owner (PF2): a company's assigned recruiter; a requirement's assigned recruiter, else its company's. One statement for every figure."""
     people = await _people(db, user, recruiter_id)
     today = today_ist(now)
-    first, last = date_range(date_from, date_to, today)
-    start, end = datetime.combine(first, time.min, tzinfo=IST), datetime.combine(last + timedelta(days=1), time.min, tzinfo=IST)
+    first, last, start, end = _period(date_from, date_to, now)
     ids = [person.id for person in people]
 
     company_owner = Company.assigned_recruiter_user_id
@@ -240,13 +269,10 @@ async def performance(db: AsyncSession, user: User, recruiter_id: UUID | None, d
 
     def grouped(key: str, owner, value, *froms, where: list):
         scope = owner.in_(ids) if recruiter_id else or_(owner.in_(ids), owner.is_(None))
-        stmt = select(literal(key, String).label("figure"), owner.label("owner"), value.label("value")).select_from(froms[0])
-        for model, on in froms[1:]:
-            stmt = stmt.join(model, on)
-        return stmt.where(*where, scope).group_by(owner)
+        return _grouped(key, owner, value, *froms, where=[*where, scope])
 
     def during(column) -> list:
-        return [column >= start, column < end]
+        return _during(column, start, end)
 
     # PF4: a requirement's status at the period end -- today's when the period ends today (so P2 = D5), else its last history row before then.
     latest = (
@@ -310,4 +336,124 @@ async def performance(db: AsyncSession, user: User, recruiter_id: UUID | None, d
         "columns": COLUMNS,
         "items": items,
         "totals": {"user_id": None, "full_name": "Total", "active": True, "status": "", **_figures(totals)},
+    }
+
+
+# --- rec-034 (DEC-SCOPE-183 BP1-BP8): §25 Recruiter/BDM performance, B1-B12 per recruiter, credited to the actor of each event ------------
+BY_RECRUITER_ROLES = (ROLE, MANAGER_ROLE, "super_admin")  # BP1: it_admin is not a revenue reader (rec-031 RV10)
+BY_RECRUITER_COUNTS = (
+    "companies_contacted", "meetings", "new_leads", "new_companies", "new_contracts", "new_requirements",  # business development
+    "candidates_sourced", "profiles_shared", "interviews", "selections", "joining",  # recruitment (+ revenue)
+)
+PAST_INTERESTED = COMPANY_STAGES[COMPANY_STAGES.index("interested") + 1:]  # B4: a genuine prospect (line 122; Q-02)
+OWN_ROW_ONLY = "You can only view your own performance"
+BY_RECRUITER_REFUSED = "Recruiter comparison is for recruiters, placement managers and super admins"
+
+
+def _first(entity, actor, at, *where, order):
+    """BP6: each entity's first qualifying event (by `order`) with its actor and time, as a subquery (entity, actor, at)."""
+    rank = func.row_number().over(partition_by=entity, order_by=order).label("rank")
+    ranked = select(entity.label("entity"), actor.label("actor"), at.label("at"), rank).where(*where).subquery()
+    return select(ranked.c.entity, ranked.c.actor, ranked.c.at).where(ranked.c.rank == 1).subquery()
+
+
+def _latest_actor(event_model, parent_id, *where):
+    """The actor of a row's latest matching event (by `position`), correlated to the parent row."""
+    return select(event_model.actor_user_id).where(parent_id, *where).order_by(event_model.position.desc()).limit(1).scalar_subquery()
+
+
+async def by_recruiter(db: AsyncSession, user: User, recruiter_id: UUID | None, date_from: date | None, date_to: date | None, now: datetime) -> dict:
+    """B1-B12 per recruiter in scope over the period (BP1), each figure credited to the person who did the work (BP2), and a Total that is
+    the sum of the rows shown (BP4; none for a recruiter's own view). One aggregate statement and one hires query, whatever the team size."""
+    if user.role == ROLE:
+        if recruiter_id not in (None, user.id):
+            raise HTTPException(403, OWN_ROW_ONLY)
+        people = [user]
+    else:
+        people = await _people(db, user, recruiter_id, BY_RECRUITER_ROLES, BY_RECRUITER_REFUSED)
+    first, last, start, end = _period(date_from, date_to, now)
+    ids = [person.id for person in people]
+
+    def grouped(key: str, actor, value, *froms, where: list):
+        return _grouped(key, actor, value, *froms, where=[*where, actor.in_(ids)])
+
+    def during(column) -> list:
+        return _during(column, start, end)
+
+    touches = union_all(  # B1: a contact call, a contact message or a completed meeting
+        select(RecruiterCall.company_id.label("company"), RecruiterCall.caller_user_id.label("actor")).where(RecruiterCall.company_id.is_not(None), *during(RecruiterCall.occurred_at)),
+        select(RecruiterMessage.company_id, RecruiterMessage.sender_user_id).where(RecruiterMessage.company_id.is_not(None), *during(RecruiterMessage.sent_at)),
+        select(RecruiterMeeting.company_id, RecruiterMeeting.completed_by_user_id).where(RecruiterMeeting.status == "completed", *during(RecruiterMeeting.completed_at)),
+    ).subquery()
+    crossed = _first(
+        CompanyStageHistory.company_id, CompanyStageHistory.actor_user_id, CompanyStageHistory.created_at,
+        CompanyStageHistory.from_stage.not_in(PAST_INTERESTED), CompanyStageHistory.to_stage.in_(PAST_INTERESTED),
+        order=CompanyStageHistory.position,
+    )
+    signed = _first(
+        RecruiterContractEvent.contract_id, RecruiterContractEvent.actor_user_id, RecruiterContractEvent.created_at,
+        RecruiterContractEvent.to_status.in_(RECRUITER_CONTRACT_EXPIRING), order=RecruiterContractEvent.position,
+    )
+    selected = _first(
+        JobApplicationStatusHistory.application_id, JobApplicationStatusHistory.changed_by_user_id, JobApplicationStatusHistory.created_at,
+        JobApplicationStatusHistory.to_status == "selected", *during(JobApplicationStatusHistory.created_at),
+        order=(JobApplicationStatusHistory.created_at, JobApplicationStatusHistory.id),
+    )
+    interviewer = func.coalesce(  # B9: whoever recorded the outcome, else (no status event) the creator
+        _latest_actor(InterviewEvent, InterviewEvent.interview_id == Interview.id, InterviewEvent.event == "status"), Interview.created_by_user_id
+    )
+    held = select(interviewer.label("actor")).select_from(Interview).where(Interview.status.in_(HELD_INTERVIEWS), *during(Interview.scheduled_at)).subquery()
+    shared_by = ProfileShare.shared_by_user_id
+
+    statement = union_all(
+        grouped("companies_contacted", touches.c.actor, func.count(distinct(touches.c.company)), touches, where=[]),
+        grouped("meetings", RecruiterMeeting.completed_by_user_id, func.count(), RecruiterMeeting,
+                where=[RecruiterMeeting.status == "completed", *during(RecruiterMeeting.completed_at)]),
+        grouped("new_leads", Company.created_by_user_id, func.count(), Company, where=during(Company.created_at)),
+        grouped("new_companies", crossed.c.actor, func.count(), crossed, where=during(crossed.c.at)),
+        grouped("new_contracts", signed.c.actor, func.count(), signed, where=during(signed.c.at)),
+        grouped("new_requirements", Job.created_by_user_id, func.count(), Job, where=during(Job.created_at)),
+        grouped("candidates_sourced", JobApplication.added_by_user_id, func.count(), JobApplication, where=during(JobApplication.created_at)),
+        grouped("profiles_shared", shared_by, func.count(), ProfileShareItem, (ProfileShare, ProfileShare.id == ProfileShareItem.share_id),
+                where=during(ProfileShareItem.created_at)),
+        grouped("interviews", held.c.actor, func.count(), held, where=[]),
+        grouped("selections", selected.c.actor, func.count(), selected, where=[]),
+    )
+    values = {(row.figure, row.owner): int(row.value or 0) for row in await db.execute(statement)}
+
+    # B11 / B12: the period's joinings (as P8), credited to whoever recorded the Joined, priced by rec-031's fee per hire (BP7).
+    joined_by = _latest_actor(JobOfferEvent, JobOfferEvent.offer_id == JobOffer.id, JobOfferEvent.event == "joined")
+    contract = and_(RecruiterContract.company_id == Job.company_id, RecruiterContract.is_current, RecruiterContract.fee_basis.is_not(None))
+    hires = await db.execute(
+        select(joined_by, Job.fee_basis, Job.fee_value, RecruiterContract.fee_basis, RecruiterContract.fee_value, JobOffer.compensation, JobOffer.currency)
+        .select_from(JobOffer)
+        .join(JobApplication, JobApplication.id == JobOffer.application_id)
+        .join(Job, Job.id == JobApplication.job_id)
+        .outerjoin(RecruiterContract, contract)
+        .where(JobOffer.joining_status == "joined", JobOffer.actual_joining_date >= first, JobOffer.actual_joining_date <= last, joined_by.in_(ids))
+    )
+    revenue: dict[UUID, Decimal] = {}
+    for actor, job_basis, job_value, contract_basis, contract_value, compensation, currency in hires:
+        basis, value = (job_basis, job_value) if job_basis else (contract_basis, contract_value)
+        fee = recruiter_revenue._hire_fee({"basis": basis, "value": recruiter_revenue.money(value)}, compensation, currency) if basis else None
+        values[("joining", actor)] = values.get(("joining", actor), 0) + 1
+        revenue[actor] = revenue.get(actor, recruiter_revenue.ZERO) + (fee or recruiter_revenue.ZERO)
+
+    rows: list[dict] = []
+    for person in people:  # BP3: an inactive recruiter only with something to show for the period
+        counts = {key: values.get((key, person.id), 0) for key in BY_RECRUITER_COUNTS}
+        money = revenue.get(person.id, recruiter_revenue.ZERO)
+        if person.active or any(counts.values()) or money:
+            rows.append({"user_id": person.id, "full_name": person.full_name, "active": person.active, **counts, "revenue": money})
+    def out(row: dict) -> dict:
+        return {**row, "revenue": f"{recruiter_revenue.money(row['revenue']):.2f}"}
+
+    total = {key: sum(row[key] for row in rows) for key in (*BY_RECRUITER_COUNTS, "revenue")}
+    subject = people[0] if recruiter_id else None
+    return {
+        "date_from": first,
+        "date_to": last,
+        "recruiter": {"id": subject.id, "full_name": subject.full_name} if subject else None,
+        "items": [out(row) for row in rows],
+        "totals": None if user.role == ROLE else out({"user_id": None, "full_name": "Total", "active": True, **total}),
     }
