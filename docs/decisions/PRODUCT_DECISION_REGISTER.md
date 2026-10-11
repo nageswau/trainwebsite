@@ -7095,3 +7095,70 @@ owner's instruction to proceed with the recommended answers.
 **Consequences:** tables `recruitment_drives`, `drive_requirements`, column `job_applications.drive_id`; `services/recruitment_drives.py`,
 `api/recruiter_drives.py`; `/recruiter/drives` list + detail pages ("Campus Drives" in the recruiter, manager and super admin menus).
 - **New Feature ID authorized:** `rec-029`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-029.
+
+### DEC-SCOPE-179 — IT-training ↔ recruiter integration (`rec-036`)
+
+**Evidence:**
+- `EVID-018` §27 (lines 1036–1090): Lead → IT Student → Trained Candidate → Recruiter Candidate → Placed Candidate; §9 (source detail =
+  course); S2-§17 "Course Completed" skill source; S2-§20 "500 Java students … Java talent pool" after opting in.
+- `RECRUITER_CRM_BACKLOG.md` §rec-036: AC1 (an opted-in Python Full Stack completer has Python/Django/SQL marked course_completed), AC2
+  (the journey shows each stage with dates); negative "a non-opted-in student is never shown"; edge case "a program re-tagged after
+  students completed it (re-derive vs keep)". Q-11 (who maintains course skill tags; does a certificate auto-add them) and Q-13 (status).
+- R4 (an IT student appears only after opting in); `DEC-SCOPE-137` (rec-011) SK6 cap and SK7 "stronger evidence wins"; `DEC-SCOPE-138`
+  (rec-010) OI3 seed; Q-28 (it_admin is not a Skills Master reader).
+
+**Status:** in review on `feature/rec-036` (2026-10-11). Every answer below is a **recommended default, `UNVERIFIED`**, taken on the
+owner's instruction to proceed with the recommended answers.
+
+**Numbering:** migration `0149_program_skills` (after `0148_recruitment_drives`), API §12CT and RBAC §2.105 (re-check `main` at merge).
+Spec `docs/superpowers/specs/2026-10-11-rec-036-it-training-integration-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| CI1 | Who tags (Q-11) | `it_admin` and `super_admin`, on the IT admin Programs page; active Skills Master skills, at most 30 per program |
+| CI2 | Completed | The student holds an issued certificate of the program; enrolment status alone does not count |
+| CI3 | When (Q-11) | On opt-in; when a certificate is issued to an opted-in student; when a tag is added (to the program's opted-in completers). Never for a student who has not opted in, nor an archived candidate |
+| CI4 | Status (Q-13) | `verified` by the certificate's approver (`claimed` when the certificate has none); level `beginner`; source `course_completed` |
+| CI5 | Already has it | A `claimed` row is upgraded to `course_completed` + CI4's status; `verified`/`assessed` rows are kept; the 100-skill cap holds |
+| CI6 | Re-tagged (edge case) | Additive: a new tag reaches existing completers; a removed tag never deletes candidates' skills |
+| CI7 | Journey | Read only, rec-009 readers, the pool filter (outside → `404`); the lead shows its code, source and dates only |
+| CI8 | Skill merge | Program tags move to the kept skill (a program with both keeps one) |
+
+**Consequences:** table `program_skills`; `services/course_skills.py` (tags, `grant`, `journey`) called from the opt-in, the certificate
+issue and the tag save; `GET/PUT /admin/programs/{id}/skills`, `GET /admin/programs/skill-options`, `GET /recruiter/candidates/{id}/journey`;
+the web Programs page tag editor and the candidate Journey card.
+- **New Feature ID authorized:** `rec-036`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-036.
+
+### DEC-SCOPE-180 — Recruiter dashboard + quick actions + one-click skill search (`rec-032`)
+
+**Evidence:**
+- `EVID-018` §1 (lines 9–48): the recruiter dashboard's 14 figures and 6 quick actions; S2-§9 (lines 1381–1425): "Find Candidates by
+  Skill" on the dashboard, with experience / location / availability facets.
+- `RECRUITER_CRM_BACKLOG.md` §rec-032 + Appendix B D1–D14 (proposed definitions); AC1 (each tile equals its definition), AC2 (a recruiter
+  sees only their own figures), AC3 (a tile opens the matching list). Q-25 (metric meanings) was still open.
+- R2 / R3 / R11 (`EXPLICIT_APPROVAL`, 2026-10-07): recruiter own scope, manager = direct reports + unassigned queue; the lead is the
+  company; the whole opted-in pool is searchable.
+
+**Status:** in review on `feature/rec-032` (2026-10-11). Every answer below is a **recommended default, `UNVERIFIED`**, taken on the
+owner's instruction to proceed with the recommended answers.
+
+**Numbering:** no migration. API §12CU and RBAC §2.106. Drafted as 177 / §12CR / §2.103, then 179 / §12CT / §2.105; rec-037, rec-029
+and rec-036 merged first and took 177, 178 and 179. Spec `docs/superpowers/specs/2026-10-11-rec-032-recruiter-dashboard-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| DB1 | Scope | Company-side tiles (D1–D5, D13) use rec-003's company scope; requirement-side tiles (D6–D12, D14) rec-007's requirement scope, so a tile and the list it opens agree |
+| DB2 | Who | `placement_team` (own), `placement_manager` (team + unassigned), `super_admin` (all). Every other role `403`; `hr_team` keeps the legacy placement dashboard |
+| DB3 | Recruiter filter | `?recruiter=`: manager → a direct report, super_admin → any recruiter (else `404`); a recruiter → only their own id (else `403`). The figures are then that recruiter's own scope |
+| DB4 | Days and period | "Today" = IST date of the database clock; flow tiles (D7, D8, D10, D11, D12) count the current IST month to now |
+| DB5 | Q-25 | D1 = New Lead companies added in the last 7 days; D3 "Hot Recruiters" = open companies with priority Hot (not lost, archived or Requirement Closed); D5 = companies with ≥ 1 requirement not On Hold / Closed / Cancelled |
+| DB6 | D2 | No rec-024 follow-up reason is a call, so D2 = open New Lead companies with no call logged (rec-025) |
+| DB7 | D14 | rec-007's expiring ∪ expired deadline filters (J4, 7 days); the tile also shows how many are past the deadline |
+| DB8 | Tile links | Each tile opens its nearest existing list and filter (spec §4); no new list endpoints. With a recruiter filter, Companies / Requirements links carry `assigned=` |
+| DB9 | Quick actions | All six: "+ Add Recruiter" = rec-004's company + first contact form; "+ Add Company", "+ Add Job Requirement", "+ Add Candidate" (recruiter, manager, super_admin); "+ Schedule Meeting" / "+ Schedule Interview" open the Companies / Requirements lists (recruiter, super_admin only — managers read meetings and interviews) |
+| DB10 | Skill box | Comma-separated skills → rec-013 `?all=` (AND); its facets F1–F3 show on the results |
+
+**Consequences:** `services/recruiter_metrics.py` (the single source for rec-033…035), `api/recruiter_dashboard.py`; the
+`/recruiter/dashboard` page (tiles, quick actions, skill search, recruiter filter); "Dashboard" in the placement manager's menu (their
+landing stays Team). No schema change.
+- **New Feature ID authorized:** `rec-032`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-032.

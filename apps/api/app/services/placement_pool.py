@@ -12,7 +12,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AuditLog, Batch, Candidate, CandidateConsent, CandidateSkill, Enrollment, PlacementProfile, Program, User
-from app.services import candidates
+from app.services import candidates, course_skills
 from app.services import skills as skills_master
 from app.services.applications import candidate_for_student
 from app.services.candidate_skills import MAX_SKILLS
@@ -126,6 +126,7 @@ async def opt_in(db: AsyncSession, user: User, version: str, ip: str | None) -> 
     if candidate.opted_in and latest and latest[0].action == "opt_in":
         return  # already in, with the consent on record: a second click adds nothing
     candidate.opted_in = True
+    await course_skills.grant(db, user, student_id=user.id)  # rec-036: course skills first, so the profile seed skips them
     added = await _seed(db, user, candidate)
     _record(db, user, candidate, "opt_in", ip, {"consent_version": CONSENT_VERSION, "skills_added": added})
 

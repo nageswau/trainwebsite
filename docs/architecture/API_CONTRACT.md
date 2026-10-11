@@ -2773,6 +2773,30 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `GET /recruiter/drives/{id}/candidates?limit&offset` *(new)* | The drive-tagged applications `{items [{application_id, candidate {id, code, name}, requirement {id, code, title}, status, status_label}], total, limit, offset}` |
 | `POST /recruiter/requirements/{id}/candidates` *(changed, additive)* | Optional `drive_id` (DR9): a drive in scope that includes this requirement, else `422` on `drive_id`; a cancelled drive `409`. The application keeps the tag; omitted = unchanged behaviour |
 
+## 12CT. Program skill tags + candidate journey (`rec-036`) — addendum, 2026-10-11
+
+- **Basis:** `DEC-SCOPE-179` (CI1–CI8). Design spec `docs/superpowers/specs/2026-10-11-rec-036-it-training-integration-design.md` §3.
+  Migration `0147`. Additive: no existing request or response changes shape.
+- **Side effects on existing routes:** `POST /account/placement-pool/opt-in` and `POST /workflows/it/certificates/{enrollment_id}/issue`
+  add the course-completed skills of an opted-in student in the same transaction (CI3); `POST /recruiter/skills/{id}/merge` moves program
+  tags to the kept skill (CI8).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /admin/programs/skill-options?q=` *(new)* | `it_admin`/`super_admin` → `{items: [{id, name, category}]}`, active skills whose name or alias matches, by name, at most 20. Others `403` |
+| `GET /admin/programs/{id}/skills` *(new)* | → `{items: [{id, name, active, category}]}` by name. Unknown program `404`; other roles `403` |
+| `PUT /admin/programs/{id}/skills` *(new)* | `{skill_ids: [uuid]}` replaces the set (repeats ignored) → `{items, candidates_updated}`. An unknown or inactive skill or more than 30 → `422`; `404`/`403` as above. A newly added tag is granted to the program's opted-in, non-archived certificate holders (CI3/CI5); a removed tag leaves candidates' skills (CI6). Audit `program.skills_update` `{added, removed}` and `candidate.skill_course_grant` per changed candidate (skill ids only) |
+| `GET /recruiter/candidates/{id}/journey` *(new)* | rec-009 readers → `{lead: {lead_code, source, created_at, converted_at} \| null, enrolments: [{program, batch, enrolled_on, status}], certificates: [{program, certificate_no, issued_on}], candidate: {added_at, opted_in_at}, applications: {count, first_at}, placements: [{company, position, joined_on}]}`. Outside the pool `404`; other roles `403`. Never the lead's phone, email or message |
+
+## 12CU. Recruiter dashboard (`rec-032`) — addendum, 2026-10-11
+
+- **Basis:** `DEC-SCOPE-180` (DB1–DB10). Design spec `docs/superpowers/specs/2026-10-11-rec-032-recruiter-dashboard-design.md` §4–§5. No
+  migration. Read-only, `Cache-Control: no-store`, no audit row. One aggregate statement (plus the scope gates): a fixed statement count.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/dashboard?recruiter` *(new)* | `{day, period {from, to}, recruiter {id, full_name} \| null, tiles {new_leads, contacts_pending, hot_companies, meetings_scheduled, active_companies, new_requirements, candidates_sourced, profiles_shared, interviews_scheduled, candidates_selected, candidates_joined, candidates_rejected, follow_ups_due, requirements_expiring, requirements_expired}}` — Appendix B D1–D14 as built (spec §4). `401` signed out; `403` any role but recruiter / placement manager / `super_admin`, a recruiter without a profile, or a recruiter naming another recruiter; `404` a recruiter outside the manager's team (or not a recruiter); `422` a malformed id |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
