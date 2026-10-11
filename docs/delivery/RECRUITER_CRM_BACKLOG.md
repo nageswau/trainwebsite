@@ -1394,6 +1394,10 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-031 — Revenue / commercial tracking (track only)
+- **Status (2026-10-11):** **IN REVIEW** on `feature/rec-031`. `DEC-SCOPE-176` (RV1–RV10 recommended answers to Q-24, UNVERIFIED).
+  Migration `0147_recruiter_revenue`, API §12CQ, RBAC §2.102 (drafted as 0146 / 175 / §12CP / §2.101; rec-021 merged first). Spec
+  `docs/superpowers/specs/2026-10-11-rec-031-recruiter-revenue-design.md`. The next rec item takes `0148`, `DEC-SCOPE-177`, §12CR and §2.103
+  (re-check `main`).
 - **Business requirement:** §23 (9 fields) (R9).
 - **Existing behavior:** none.
 - **Expected behavior:**

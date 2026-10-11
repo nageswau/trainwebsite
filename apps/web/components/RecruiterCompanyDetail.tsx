@@ -8,6 +8,7 @@ import LocalTime from "@/components/LocalTime";
 import RecruiterCalls from "@/components/RecruiterCalls";
 import RecruiterCompanyContacts from "@/components/RecruiterCompanyContacts";
 import RecruiterCompanyContract from "@/components/RecruiterCompanyContract";
+import RecruiterCompanyRevenue from "@/components/RecruiterCompanyRevenue";
 import RecruiterCompanyFollowUps from "@/components/RecruiterCompanyFollowUps";
 import RecruiterCompanyForm from "@/components/RecruiterCompanyForm";
 import RecruiterCompanyMeetings from "@/components/RecruiterCompanyMeetings";
@@ -97,7 +98,9 @@ function Reassign({ company, onChanged }: { company: Company; onChanged: (c: Com
   );
 }
 
-export default function RecruiterCompanyDetail({ initial, created = false, history = null }: { initial: Company; created?: boolean; history?: Page<StageEvent> | null }) {
+export default function RecruiterCompanyDetail({ initial, created = false, history = null, showRevenue = false }: {
+  initial: Company; created?: boolean; history?: Page<StageEvent> | null; showRevenue?: boolean;
+}) {
   const [company, setCompany] = useState(initial);
   const [version, setVersion] = useState(0);
   const [editing, setEditing] = useState(false);
@@ -267,6 +270,7 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
       <RecruiterCompanyFollowUps key={`follow-ups-${company.id}-${company.archived}-${callFollowUps}-${meetingChanges}`} companyId={company.id} canWrite={p.can_edit} onChanged={() => void followUpChanged()} />
       <RecruiterCompanyMeetings key={`meetings-${company.id}-${company.archived}`} companyId={company.id} canWrite={p.can_edit} onChanged={() => void meetingChanged()} />
       <RecruiterCompanyContract key={`contract-${company.id}-${company.archived}`} companyId={company.id} onChanged={(text) => void contractChanged(text)} />
+      {showRevenue && <RecruiterCompanyRevenue companyId={company.id} />}
       <RecruiterMessages key={`messages-${company.id}-${company.archived}`} source={{ kind: "company", companyId: company.id }} canWrite={p.can_edit}
         onChanged={() => setMessageChanges((n) => n + 1)} />
       <RecruiterCompanyPipeline

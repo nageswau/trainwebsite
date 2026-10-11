@@ -6987,3 +6987,39 @@ merge). Spec `docs/superpowers/specs/2026-10-11-rec-021-interview-feedback-desig
 **Consequences:** table `interview_feedback`; `services/interviews.py` (`save_feedback`, `feedback` + `can_feedback` on every item);
 `PUT /recruiter/interviews/{id}/feedback`; the web interview item (form + summary) and the application's interviews (next-round draft).
 - **New Feature ID authorized:** `rec-021`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-021.
+
+### DEC-SCOPE-176 — Revenue / commercial tracking, track only (`rec-031`)
+
+**Evidence:**
+- `EVID-018` §23 (lines 918–940): "If Edusphere charges companies for recruitment" — Requirement, Candidates selected, Candidates joined,
+  Fee per hire, Total invoice, Invoice date, Payment due, Payment received, Outstanding amount (9 fields).
+- `RECRUITER_CRM_BACKLOG.md` R9 (revenue is **tracked only**: no invoice PDF, no accounting sync) and §rec-031: AC1 (outstanding = invoiced −
+  received), AC2 (payments can't exceed the invoice, "or allowed with a warning; design"), AC3 (revenue uses Joined only); negative scenario a
+  negative amount → 422; edge case "a Did Not Join after invoicing (Q-24)". Q-24 asks where the fee per hire is set, the currency, GST and
+  the Did Not Join effect; the item asks "edits restricted to manager?".
+- `DEC-SCOPE-156` (rec-030) CT4 leaves GST and per-requirement overrides to rec-031; `DEC-SCOPE-158` (rec-023, `EXPLICIT_APPROVAL` of
+  JN1–JN10) makes Joined final and moves the application to Joined.
+
+**Status:** in review on `feature/rec-031` (2026-10-11). Every answer below is a **recommended default, `UNVERIFIED`**, taken on the
+owner's instruction to proceed with the recommended answers. `NEEDS_CONFIRMATION` at sign-off.
+
+**Numbering:** migration `0147_recruiter_revenue` (after `0146_interview_feedback`), API §12CQ and RBAC §2.102. Drafted as 0146 / 175 /
+§12CP / §2.101; rec-021 merged first. Spec `docs/superpowers/specs/2026-10-11-rec-031-recruiter-revenue-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| RV1 | Fee per hire (Q-24) | The requirement's override (`jobs.fee_basis` + `fee_value`, CT4 shape) wins; otherwise the company's current contract fee at any status (its status is shown); otherwise "No fee set" and no expected revenue |
+| RV2 | Percentage of CTC | Per joined hire: the accepted offer's INR `compensation` × % ÷ 100, rounded to paise. A hire without an INR compensation is unpriced: counted and shown, not in expected revenue |
+| RV3 | Currency / GST (Q-24) | INR only; amounts are recorded as invoiced; EduSphere computes no GST |
+| RV4 | Joined only (AC3) | Joined = applications at Joined (rec-007 `joined_count`); expected revenue = Σ fee of joined hires |
+| RV5 | Selected | Applications that ever entered Selected (status history) or are Selected / Joined now |
+| RV6 | Invoices | Manual per requirement: number (1–40, unique ignoring case, never reused), invoice date ≤ today (IST), due ≥ invoice date, amount > 0, note ≤ 500. Payment status derived (Unpaid / Part paid / Paid; Overdue when unpaid past due) |
+| RV7 | Payments (AC2) | Received date between the invoice date and today (IST), amount > 0, reference ≤ 100. Refused (`422` on amount) when it would pass the invoice amount, under the invoice row lock — the backlog's "can't exceed" option |
+| RV8 | Corrections | Invoices and payments are never edited or deleted. An unpaid invoice can be cancelled with a reason; it then counts nowhere and its number stays used |
+| RV9 | Did Not Join after invoicing (Q-24) | Nothing changes automatically; the revenue view flags open invoices above expected revenue so the recruiter can cancel and re-issue |
+| RV10 | Roles ("manager?") | Recruiter, manager and super_admin read and record within the requirement scope; only the manager and super_admin set the fee override. BDM and every other role `403` |
+
+**Consequences:** columns `jobs.fee_basis` / `fee_value`; tables `recruiter_invoices`, `recruiter_payments`; `services/recruiter_revenue.py`;
+`api/recruiter_revenue.py` (§12CQ); the Revenue sections on the requirement and company pages and `/recruiter/receivables` (nav for recruiter
+and manager). Unblocks rec-033 and mgmt-008's recruitment income (receipts = `recruiter_payments`).
+- **New Feature ID authorized:** `rec-031`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-031.
