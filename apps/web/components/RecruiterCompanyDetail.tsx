@@ -14,6 +14,7 @@ import RecruiterCompanyForm from "@/components/RecruiterCompanyForm";
 import RecruiterCompanyMeetings from "@/components/RecruiterCompanyMeetings";
 import RecruiterCompanyPipeline from "@/components/RecruiterCompanyPipeline";
 import RecruiterStageHistory from "@/components/RecruiterStageHistory";
+import RecruiterTimeline from "@/components/RecruiterTimeline";
 import RecruiterCompanyRequirements from "@/components/RecruiterCompanyRequirements";
 import RecruiterMessages from "@/components/RecruiterMessages";
 import RecruiterShares from "@/components/RecruiterShares";
@@ -30,6 +31,7 @@ import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 // the company the API returns (no refetch). Contacts are rec-004's section; rec-005 adds the pipeline and its history (reloaded after
 // each pipeline write); rec-024 the follow-ups (a change re-reads the company's Next follow-up); rec-028 the meetings; rec-030 the contract
 // (a write re-reads the company's Contract status).
+// rec-027: the Timeline section re-reads its first page after any of those writes.
 function linkOrText(url: string | null) {
   const safe = safeLink(url);
   return safe ? (
@@ -112,6 +114,8 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
   const [callFollowUps, setCallFollowUps] = useState(0); // rec-025: a call that added a follow-up re-reads the follow-ups
   const [meetingChanges, setMeetingChanges] = useState(0); // rec-028: a meeting change re-reads the follow-ups and contacts
   const [messageChanges, setMessageChanges] = useState(0); // rec-026: a send moves the contact's Last contacted
+  const [activity, setActivity] = useState(0); // rec-027: every write below re-reads the timeline's first page
+  const touched = () => setActivity((n) => n + 1);
   const focus = useFocusAfterRender();
   // "created" is said once: the flag leaves the address, so a refresh or a shared link doesn't repeat it (BdmOrganizationDetail's rule).
   useEffect(() => {
@@ -130,6 +134,7 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
   const stageChanged = (next: Company) => {
     setCompany(next);
     setVersion((v) => v + 1); // only pipeline writes add history rows
+    touched();
   };
   const closeEditor = () => {
     setEditing(false);
@@ -140,6 +145,7 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
   // a failed read leaves the old value, the follow-ups section already shows the change).
   async function followUpChanged() {
     setFollowUpChanges((n) => n + 1);
+    touched();
     const outcome = await sendRequest(`${COMPANIES_URL}/${company.id}`, { method: "GET" });
     if (outcome.ok && isCompanyBody(outcome.data)) setCompany(outcome.data.company);
   }
@@ -156,6 +162,7 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
   async function contractChanged(text: string) {
     setNotice(text);
     setFailure(null);
+    touched();
     const outcome = await sendRequest(`${COMPANIES_URL}/${company.id}`, { method: "GET" });
     if (outcome.ok && isCompanyBody(outcome.data)) setCompany(outcome.data.company);
   }
@@ -272,7 +279,7 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
       <RecruiterCompanyContract key={`contract-${company.id}-${company.archived}`} companyId={company.id} onChanged={(text) => void contractChanged(text)} />
       {showRevenue && <RecruiterCompanyRevenue companyId={company.id} />}
       <RecruiterMessages key={`messages-${company.id}-${company.archived}`} source={{ kind: "company", companyId: company.id }} canWrite={p.can_edit}
-        onChanged={() => setMessageChanges((n) => n + 1)} />
+        onChanged={() => { setMessageChanges((n) => n + 1); touched(); }} />
       <RecruiterCompanyPipeline
         company={company}
         onChanged={(c, text) => {
@@ -286,6 +293,7 @@ export default function RecruiterCompanyDetail({ initial, created = false, histo
       {/* rec-007: the recruiter who owns the company, a manager or super admin may add a requirement while it is active. */}
       <RecruiterCompanyRequirements companyId={company.id} canAdd={!company.archived && (p.can_edit || p.can_reassign)} />
       <RecruiterShares source={{ kind: "company", companyId: company.id }} />
+      <RecruiterTimeline party={{ kind: "company", id: company.id }} version={activity} />
       {p.can_reassign && (
         <Reassign
           company={company}

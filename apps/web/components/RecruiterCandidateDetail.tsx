@@ -9,13 +9,14 @@ import RecruiterCandidateForm from "@/components/RecruiterCandidateForm";
 import RecruiterCandidateResumes from "@/components/RecruiterCandidateResumes";
 import RecruiterCandidateSkills from "@/components/RecruiterCandidateSkills";
 import RecruiterMessages from "@/components/RecruiterMessages";
+import RecruiterTimeline from "@/components/RecruiterTimeline";
 import { sendRequest } from "@/lib/apiErrors";
 import { telHref } from "@/lib/recruiterCalls";
 import { STATUS_LABEL, candidateUrl, experienceLabel, type CandidateDetail } from "@/lib/recruiterCandidates";
 
 // rec-009 (spec §6): one candidate -- the §8 profile, Edit (writers), Archive/Restore with a confirm, and the resume versions. hr_team reads
 // only (`can_edit` false). Skills (rec-011) sit above the resumes; Applications (rec-017), Calls (rec-025) and messages (rec-026) sit
-// under them; the timeline arrives with rec-027; no empty tabs stand in.
+// under them; rec-027's Timeline closes the page (a call or message re-reads it).
 const money = (v: string | null) => (v === null ? null : Number(v).toLocaleString("en-IN", { maximumFractionDigits: 2 }));
 
 export default function RecruiterCandidateDetail({ initial }: { initial: CandidateDetail }) {
@@ -24,6 +25,8 @@ export default function RecruiterCandidateDetail({ initial }: { initial: Candida
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ text: string; failed: boolean } | null>(null);
   const [skillsVersion, setSkillsVersion] = useState(0); // rec-012: Apply adds skills, so the Skills card re-reads
+  const [activity, setActivity] = useState(0); // rec-027: a call or message re-reads the timeline
+  const touched = () => setActivity((n) => n + 1);
   const sending = useRef(false);
   const archived = candidate.archived_at !== null;
   const canEdit = candidate.can_edit && !archived;
@@ -104,11 +107,12 @@ export default function RecruiterCandidateDetail({ initial }: { initial: Candida
       {/* rec-013: Find Candidates' Contact links here (#contact). */}
       <div id="contact" style={{ display: "grid", gap: 16, scrollMarginTop: 16 }}>
         {/* rec-025: re-keyed on archive/restore, so Log call and each call's Edit follow the candidate's state. */}
-        <RecruiterCalls key={`${candidate.id}-${archived}`} party={{ kind: "candidate", candidateId: candidate.id }} canWrite={canEdit} />
+        <RecruiterCalls key={`${candidate.id}-${archived}`} party={{ kind: "candidate", candidateId: candidate.id }} canWrite={canEdit} onChanged={touched} />
         {/* rec-026: re-keyed on archive/restore and on an edit of the mobile or email, so the buttons follow the candidate. */}
-        <RecruiterMessages key={`messages-${candidate.id}-${archived}-${candidate.whatsapp_to}-${candidate.email}`} canWrite={canEdit}
+        <RecruiterMessages key={`messages-${candidate.id}-${archived}-${candidate.whatsapp_to}-${candidate.email}`} canWrite={canEdit} onChanged={touched}
           source={{ kind: "candidate", party: { kind: "candidate", id: candidate.id, name: candidate.name, whatsappTo: candidate.whatsapp_to ?? null, email: candidate.email } }} />
       </div>
+      <RecruiterTimeline party={{ kind: "candidate", id: candidate.id }} version={activity} />
     </div>
   );
 }
