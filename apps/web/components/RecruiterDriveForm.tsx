@@ -4,6 +4,7 @@ import { type FormEvent, useId, useState } from "react";
 
 import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson } from "@/lib/apiErrors";
+import type { PickOption } from "@/lib/lookups";
 import {
   collegeSearch, companyRequirementSearch, type Drive, driveBody, type DriveForm, DRIVES_URL, driveUrl, formProblem, isDrive, STATUS_OPTIONS,
 } from "@/lib/recruiterDrives";
@@ -38,7 +39,7 @@ export default function RecruiterDriveForm({ initial, driveId, onSaved, onCancel
     setFailure(outcome.ok ? "The drive could not be saved. Try again." : outcome.message);
   }
 
-  const addRequirement = (option: { id: string; label: string; detail?: string | null } | null) => {
+  const addRequirement = (option: PickOption | null) => {
     if (!option) return;
     if (!form.requirements.some((r) => r.id === option.id)) set("requirements", [...form.requirements, option]);
     setPicker((n) => n + 1);

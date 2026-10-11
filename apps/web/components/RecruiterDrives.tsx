@@ -102,13 +102,19 @@ export default function RecruiterDrives() {
           ))}
         </ul>
       )}
-      {data.total > PAGE && (
-        <nav aria-label="Drive pages" className="actions" style={{ gap: 8, alignItems: "center" }}>
-          <button type="button" className="btn secondary small" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE))}>Previous</button>
-          <span className="muted">{offset + 1}–{Math.min(offset + PAGE, data.total)} of {data.total}</span>
-          <button type="button" className="btn secondary small" disabled={offset + PAGE >= data.total} onClick={() => setOffset(offset + PAGE)}>Next</button>
-        </nav>
-      )}
+      <Pager label="Drive pages" offset={offset} total={data.total} onOffset={setOffset} />
     </div>
+  );
+}
+
+/** Previous / Next over PAGE-sized pages; nothing when everything fits on one page. */
+export function Pager({ label, offset, total, onOffset }: { label: string; offset: number; total: number; onOffset: (offset: number) => void }) {
+  if (total <= PAGE) return null;
+  return (
+    <nav aria-label={label} className="actions" style={{ gap: 8, alignItems: "center" }}>
+      <button type="button" className="btn secondary small" disabled={offset === 0} onClick={() => onOffset(Math.max(0, offset - PAGE))}>Previous</button>
+      <span className="muted">{offset + 1}–{Math.min(offset + PAGE, total)} of {total}</span>
+      <button type="button" className="btn secondary small" disabled={offset + PAGE >= total} onClick={() => onOffset(offset + PAGE)}>Next</button>
+    </nav>
   );
 }

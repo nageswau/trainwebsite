@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import RecruiterDriveForm from "@/components/RecruiterDriveForm";
+import { Pager } from "@/components/RecruiterDrives";
 import { AddCandidate } from "@/components/RecruiterRequirementCandidates";
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import { formatCalendarDate } from "@/lib/formatDate";
@@ -45,13 +46,7 @@ function DriveCandidateList({ driveId, version }: { driveId: string; version: nu
           </li>
         ))}
       </ul>
-      {data.total > PAGE && (
-        <nav aria-label="Candidate pages" className="actions" style={{ gap: 8, alignItems: "center" }}>
-          <button type="button" className="btn secondary small" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE))}>Previous</button>
-          <span className="muted">{offset + 1}–{Math.min(offset + PAGE, data.total)} of {data.total}</span>
-          <button type="button" className="btn secondary small" disabled={offset + PAGE >= data.total} onClick={() => setOffset(offset + PAGE)}>Next</button>
-        </nav>
-      )}
+      <Pager label="Candidate pages" offset={offset} total={data.total} onOffset={setOffset} />
     </>
   );
 }
