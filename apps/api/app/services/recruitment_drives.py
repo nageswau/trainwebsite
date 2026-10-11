@@ -49,7 +49,9 @@ REACHED_SHORTLISTED = ("shortlisted", "profile_shared", "interview", "selected",
 REACHED_SELECTED = ("selected", "joined")  # C6
 INTERVIEW_DONE = ("completed", "selected", "rejected")  # C5: a held interview (no_show and open ones are not)
 
-D, A, H = RecruitmentDrive, JobApplication, JobApplicationStatusHistory
+D = RecruitmentDrive
+A = JobApplication
+H = JobApplicationStatusHistory
 
 
 # --- reads ---------------------------------------------------------------------------------------------------------------------------
@@ -93,7 +95,7 @@ def _rows():
 
 async def list_page(db: AsyncSession, user: User, pattern: str | None, status: str | None, limit: int, offset: int) -> dict:
     """The caller's companies' drives, latest drive date first; `pattern` matches the code, role, college and company."""
-    where = await companies.caller_scope(db, user)
+    where: list = await companies.caller_scope(db, user)
     if status:
         where.append(D.status == status)
     if pattern:
@@ -140,7 +142,7 @@ async def candidates_page(db: AsyncSession, drive_id: UUID, limit: int, offset: 
 
 async def college_options(db: AsyncSession, pattern: str | None, limit: int) -> dict:
     """DR2's picker: live BDM college and university organisations -- code, name and city only."""
-    where = [BdmOrganization.org_type.in_(COLLEGE_ORG_TYPES), BdmOrganization.archived_at.is_(None)]
+    where: list = [BdmOrganization.org_type.in_(COLLEGE_ORG_TYPES), BdmOrganization.archived_at.is_(None)]
     if pattern:
         where.append(or_(BdmOrganization.name.ilike(pattern), BdmOrganization.code.ilike(pattern)))
     total = await db.scalar(select(func.count()).select_from(BdmOrganization).where(*where))
@@ -159,7 +161,10 @@ async def load(db: AsyncSession, user: User, drive_id: UUID, *, lock: bool = Fal
     except HTTPException as exc:
         raise HTTPException(404, NOT_FOUND) if exc.status_code == 404 else exc from None
     stmt = select(D).where(D.id == drive_id).execution_options(populate_existing=True)
-    return company, await db.scalar(stmt.with_for_update() if lock else stmt)
+    drive = await db.scalar(stmt.with_for_update() if lock else stmt)
+    if drive is None:  # never in practice (drives are not deleted); narrows the type without an assert
+        raise HTTPException(404, NOT_FOUND)
+    return company, drive
 
 
 # --- rules -----------------------------------------------------------------------------------------------------------------------------
