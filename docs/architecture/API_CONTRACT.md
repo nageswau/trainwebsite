@@ -2715,9 +2715,33 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `PUT /recruiter/interviews/{id}/feedback` *(new)* | The whole form `{overall_rating (1–5), technical_rating? (1–5), communication_rating? (1–5), strengths?, weaknesses?, recruiter_comments?, company_feedback? (each ≤2000), next_round? (a §14 round), final_decision? (selected\|rejected\|on_hold)}`; a field left out is cleared → `{interview}`. **Refusals:** not Completed (and no feedback yet) → `409` "Feedback can be recorded once the interview is Completed"; a decision the IV3 moves do not allow (e.g. Selected → Rejected) → `409`, nothing saved; a rating outside 1–5, an unknown round or decision, a next round with Rejected → `422` on that field. A decision different from the status moves the interview (history note `Feedback`; IV8 feeds the application). Audit `recruiter_interview.feedback` with field names and the decision only; an unchanged form writes nothing |
 
-## 12CQ. Recruiter deactivation + bulk reassignment (`rec-037`) — addendum, 2026-10-11
+## 12CQ. Recruiter revenue / commercial tracking (`rec-031`) — addendum, 2026-10-11
 
-- **Basis:** `DEC-SCOPE-176` (RC1–RC15). Spec: `docs/superpowers/specs/2026-10-11-rec-037-recruiter-reassignment-design.md` §3. No migration.
+- **Basis:** `DEC-SCOPE-176` (RV1–RV10). Design spec `docs/superpowers/specs/2026-10-11-rec-031-recruiter-revenue-design.md` §3.
+  Migration `0147_recruiter_revenue`. Track only (R9). Amounts are decimal strings in INR (`"150000.00"`).
+- **Common rules:** the role check first (`403` for anyone but `placement_team`, `placement_manager`, `super_admin`), then the rec-007
+  requirement scope (`404`, unknown and out of scope alike). A rule on a field is a `422` whose `loc` names the field; a coded `409` has
+  `detail = {message, code}`. Each write: row lock, rules, write, audit row (`recruiter_revenue.*`), one commit.
+- **Figures** (`RecRequirementRevenue`): `selected`, `joined` (applications at Joined only, AC3), `fee {basis, value, source:
+  requirement|contract|null, contract_status_label, override}`, `hires[] {application_id, candidate {id, code, name}, joined_on, fee}`,
+  `expected_revenue` (null without a fee), `unpriced_hires`, `invoiced`, `received`, `outstanding` (= invoiced − received over open
+  invoices, AC1), `over_invoiced`, `invoices[]`, `permissions {can_invoice, can_set_fee}`.
+- **Invoice** (`RecInvoiceOut`): number, dates, amount, note, `received`, `outstanding`, `payment_status` (`unpaid|part_paid|paid|cancelled`)
+  + label, `overdue`, cancellation, requirement / company refs, `payments[]`, `permissions {can_pay, can_cancel}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/requirements/{id}/revenue` *(new)* | `200` figures; `403` role; `404` scope |
+| `PUT /recruiter/requirements/{id}/fee` *(new)* | `{fee_basis: fixed\|percent_of_ctc\|null, fee_value: ≥0, 2 dp\|null}` → `200` figures. Both null clears. `403` unless manager / super_admin; `422` on `fee_basis` (value without basis, unknown basis) or `fee_value` (basis without value, negative, > 100 for a %, 3 dp). Unchanged = no audit |
+| `POST /recruiter/invoices` *(new)* | `{requirement_id, invoice_number (1–40), invoice_date (≤ today IST), due_date (≥ invoice date), amount (> 0, 2 dp), note? (≤ 500)}` → `201 {invoice}`. `409 invoice_number_taken` (case-insensitive, cancelled numbers stay used); `422` per field; `404` requirement out of scope |
+| `POST /recruiter/invoices/{id}/payments` *(new)* | `{received_on (invoice date … today IST), amount (> 0), reference? (≤ 100)}` → `201 {invoice}`. `422` on `amount` when it would exceed the outstanding (AC2, under the invoice lock); `409 invoice_cancelled` |
+| `POST /recruiter/invoices/{id}/cancel` *(new)* | `{reason (2–500)}` → `200 {invoice}`. `409 invoice_cancelled` / `invoice_has_payments` |
+| `GET /recruiter/companies/{id}/revenue` *(new)* | `{requirements[] {requirement, status_label, selected, joined, fee, expected_revenue, invoiced, received, outstanding}, totals}` over the company's requirements in the caller's requirement scope; `404` company out of scope |
+| `GET /recruiter/invoices?view=outstanding\|overdue\|paid\|cancelled&company_id?&limit&offset` *(new)* | `{items, total, limit, offset, counts {4 views}, outstanding_total}`; outstanding/overdue by due date ascending, paid by invoice date, cancelled newest first; `422` unknown view |
+
+## 12CR. Recruiter deactivation + bulk reassignment (`rec-037`) — addendum, 2026-10-11
+
+- **Basis:** `DEC-SCOPE-177` (RC1–RC15). Spec: `docs/superpowers/specs/2026-10-11-rec-037-recruiter-reassignment-design.md` §3. No migration.
 - **Callers:** `placement_manager` (from and to their direct reports), `super_admin` (any recruiter); others `403`; no session `401`.
 - **Behaviour:** one transaction (the source's companies, then its requirements, locked by id, then the target FOR SHARE), one
   `company_assignment_history` row and one audit per moved company, one audit per moved requirement, a `recruiter.reassign` summary audit.

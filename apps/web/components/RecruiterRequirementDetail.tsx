@@ -9,6 +9,7 @@ import RecruiterRequirementForm from "@/components/RecruiterRequirementForm";
 import RecruiterRequirementCandidates from "@/components/RecruiterRequirementCandidates";
 import RecruiterRequirementJd from "@/components/RecruiterRequirementJd";
 import RecruiterRequirementMatches from "@/components/RecruiterRequirementMatches";
+import RecruiterRequirementRevenue from "@/components/RecruiterRequirementRevenue";
 import RecruiterShares from "@/components/RecruiterShares";
 import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson } from "@/lib/apiErrors";
@@ -169,7 +170,9 @@ function skillItems(requirement: Requirement, kind: "required" | "preferred"): R
   );
 }
 
-export default function RecruiterRequirementDetail({ initial, initialJd, created = false }: { initial: Requirement; initialJd: Jd | null; created?: boolean }) {
+export default function RecruiterRequirementDetail({ initial, initialJd, created = false, showRevenue = false }: {
+  initial: Requirement; initialJd: Jd | null; created?: boolean; showRevenue?: boolean;
+}) {
   const [requirement, setRequirement] = useState(initial);
   const [editing, setEditing] = useState(false);
   const [notice, setNotice] = useState<string | null>(created ? `Requirement ${initial.code} created.` : null);
@@ -284,6 +287,8 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
           onRequirementChanged={setRequirement} onShortlisted={() => setShortlists((n) => n + 1)} onShared={() => setShares((n) => n + 1)} />
       )}
       <RecruiterShares source={{ kind: "requirement", requirementId: r.id }} refreshKey={shares} />
+      {/* rec-031: the §23 revenue, for the roles that see it (RV10) */}
+      {showRevenue && <RecruiterRequirementRevenue requirementId={r.id} />}
     </>
   );
 }

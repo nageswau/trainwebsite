@@ -1,4 +1,4 @@
-"""rec-037 (DEC-SCOPE-176, spec §2): recruiter deactivation and the placement manager's bulk reassignment of companies and requirements.
+"""rec-037 (DEC-SCOPE-177, spec §2): recruiter deactivation and the placement manager's bulk reassignment of companies and requirements.
 
 Functions only; nothing here commits -- the route (or `admin.update_user`) owns the transaction. Lock order (RC10): the source's companies
 (by id), then its requirements (by id), then the target (FOR SHARE, rec-003 `locked_recruiter_target`) -- the assign routes' row-then-

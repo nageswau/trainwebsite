@@ -1722,10 +1722,25 @@ Feedback takes its interview's scope (§2.74). The role check runs before anythi
 | `super_admin` | everything | all | `rec-021` |
 | `hr_team`, `it_admin`, `employer`, students, every other role | `403`; feedback is never returned on the legacy or employer interview routes (FB6, FB8) | — | `rec-021` |
 
-### 2.102 Recruiter deactivation + bulk reassignment *(net-new, added 2026-10-11 — `DEC-SCOPE-176`, `rec-037`)*
+### 2.102 Recruiter revenue / commercial tracking *(net-new, added 2026-10-11 — `DEC-SCOPE-176`, `rec-031`)*
+
+Revenue takes its requirement's scope (§2.74, rec-007 `caller_scope`); an invoice takes its requirement's. The role check runs before anything is
+read (`403`); an id out of scope is the same `404` as an unknown one. Track only (R9): no invoice PDF, no GST, no accounting sync.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` | read revenue; record invoices and payments; cancel an unpaid invoice; the receivables list. Fee override `403` | requirements assigned to them or on their companies | `rec-031` |
+| `placement_manager` | the recruiter's actions, **plus** set or clear the requirement's fee override (`PUT …/fee`, RV10) | the team's requirements and the unassigned queue | `rec-031` |
+| `super_admin` | everything | all | `rec-031` |
+| `bdm` | `403` on every revenue route, although it reads the requirement (R10); the web hides the sections | — | `rec-031` |
+| `hr_team`, `it_admin`, `employer`, students, every other role | `403`; revenue is never returned on the employer or legacy routes | — | `rec-031` |
+
+Every write is audited in the same transaction (`recruiter_revenue.*`: ids and amounts only — never notes, references, reasons or names).
+
+### 2.103 Recruiter deactivation + bulk reassignment *(net-new, added 2026-10-11 — `DEC-SCOPE-177`, `rec-037`)*
 
 `require_manager`, then the source must be the manager's direct report (`403` otherwise, logged); the target goes through rec-003's
-`locked_recruiter_target` (`422`). Routes are listed in §12CQ.
+`locked_recruiter_target` (`422`). Routes are listed in §12CR.
 
 | Role | Reassign a recruiter's work | Deactivate a recruiter with open work (`PATCH /admin/users`) |
 |---|---|---|
