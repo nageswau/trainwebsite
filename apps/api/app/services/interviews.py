@@ -274,7 +274,7 @@ async def save_feedback(db: AsyncSession, user: User, interview: Interview, appl
             db.add(row)
         for field in FEEDBACK_FIELDS:
             setattr(row, field, sent[field])
-        row.recorded_by_user_id, row.updated_at = user.id, await db.scalar(select(func.now()))
+        row.recorded_by_user_id = user.id  # updated_at: TimestampMixin's onupdate
         audit(db, user, "feedback", interview, {"fields": sorted(changed), "final_decision": decision})
     return previous
 
