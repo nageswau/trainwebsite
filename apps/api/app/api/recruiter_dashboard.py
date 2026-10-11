@@ -5,7 +5,9 @@ Scope (DB1-DB3): a recruiter reads their own figures (another recruiter id → 4
 queue, or one direct report; super_admin everything, or any one recruiter (an id out of scope → 404). Every other role → 403.
 
 rec-033 (DEC-SCOPE-182, API §12CW): the §24 performance dashboard -- P1-P15 per recruiter over a period, for the placement manager (their
-team + Unassigned), super_admin and it_admin (everyone); `.csv` is the same table, audited."""
+team + Unassigned), super_admin and it_admin (everyone); `.csv` is the same table, audited.
+
+rec-035 (API §12CX): the §26 management dashboard -- M1-M9 for the same readers and scope as rec-033."""
 
 from datetime import date
 from uuid import UUID
@@ -60,3 +62,16 @@ async def performance(response: Response, read: tuple[User, dict] = Depends(_per
     """§24: P1-P15 (Appendix B) per recruiter in scope over the period, with a Total that is the sum of the rows."""
     response.headers.update(NO_STORE)
     return read[1]
+
+
+@router.get("/management")
+async def management(
+    response: Response,
+    date_from: date | None = Query(None, alias="from"),
+    date_to: date | None = Query(None, alias="to"),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """§26: M1-M9 (Appendix B) -- the seven totals, the top companies by hires and the top job categories for the caller's scope."""
+    response.headers.update(NO_STORE)
+    return await metrics.management(db, user, date_from, date_to, await db_now(db))

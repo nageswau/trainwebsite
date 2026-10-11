@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
     Company,
+    CompanyContact,
     Interview,
     Job,
     JobApplication,
@@ -23,6 +24,7 @@ from app.models import (
     JobStatusHistory,
     ProfileShare,
     ProfileShareItem,
+    RecJobCategory,
     RecruiterCall,
     RecruiterFollowUp,
     RecruiterMeeting,
@@ -310,4 +312,75 @@ async def performance(db: AsyncSession, user: User, recruiter_id: UUID | None, d
         "columns": COLUMNS,
         "items": items,
         "totals": {"user_id": None, "full_name": "Total", "active": True, "status": "", **_figures(totals)},
+    }
+
+
+# --- rec-035 (DEC-SCOPE MG1-MG8): the §26 management dashboard, M1-M9 for the caller's whole scope ---------------------------------------
+FINISHED_APPLICATIONS = ("joined", "rejected", "withdrawn")  # M4: a candidate is in the pipeline while any application is not one of these
+TOP = 10  # M8, M9
+
+
+async def management(db: AsyncSession, user: User, date_from: date | None, date_to: date | None, now: datetime) -> dict:
+    """M1-M9: who and whose figures as rec-033 (MG1/MG2: PF1 roles, PF2 owners, Unassigned included). M1-M4 and M9 are now; M5-M8 count
+    the period (MG3). Three statements after the team lookup: the seven totals, the top companies, the top job categories."""
+    ids = [person.id for person in await _people(db, user, None)]
+    first, last = date_range(date_from, date_to, today_ist(now))
+    start, end = datetime.combine(first, time.min, tzinfo=IST), datetime.combine(last + timedelta(days=1), time.min, tzinfo=IST)
+
+    def in_scope(owner) -> ColumnElement[bool]:
+        return or_(owner.in_(ids), owner.is_(None))
+
+    company_scope = in_scope(Company.assigned_recruiter_user_id)
+    job_scope = in_scope(func.coalesce(Job.assigned_recruiter_user_id, Company.assigned_recruiter_user_id))
+    of_job = (Company, Company.id == Job.company_id)
+    of_application = ((Job, Job.id == JobApplication.job_id), of_job)
+    open_job = Job.status.not_in(PARKED_REQUIREMENTS)
+    active_company = and_(Company.archived_at.is_(None), exists().where(Job.company_id == Company.id, open_job))
+    joined = and_(JobOffer.joining_status == "joined", JobOffer.actual_joining_date >= first, JobOffer.actual_joining_date <= last)
+    history = JobApplicationStatusHistory
+
+    figures = {
+        "companies": _count(Company, where=[company_scope, Company.archived_at.is_(None), Company.stage != "new_lead"]),  # MG4
+        "active_recruiters": _count(CompanyContact, (Company, Company.id == CompanyContact.company_id),
+                                    where=[company_scope, CompanyContact.active.is_(True), active_company]),  # MG5
+        "open_requirements": _count(Job, of_job, where=[job_scope, open_job]),
+        "candidates_in_pipeline": _count(JobApplication, *of_application, of=JobApplication.candidate_id,
+                                         where=[job_scope, JobApplication.status.not_in(FINISHED_APPLICATIONS)]),
+        "interviews": _count(Interview, (JobApplication, JobApplication.id == Interview.application_id), *of_application,
+                             where=[job_scope, Interview.scheduled_at >= start, Interview.scheduled_at < end]),
+        "selected": _count(history, (JobApplication, JobApplication.id == history.application_id), *of_application, of=history.application_id,
+                           where=[job_scope, history.to_status == "selected", history.created_at >= start, history.created_at < end]),
+        "joined": _count(JobOffer, (JobApplication, JobApplication.id == JobOffer.application_id), *of_application, where=[job_scope, joined]),
+    }
+    totals = (await db.execute(select(*(value.label(key) for key, value in figures.items())))).one()
+
+    hires = func.count().label("joined")
+    top_companies = await db.execute(  # MG7
+        select(Company.id, Company.name, hires)
+        .select_from(JobOffer)
+        .join(JobApplication, JobApplication.id == JobOffer.application_id)
+        .join(Job, Job.id == JobApplication.job_id)
+        .join(Company, Company.id == Job.company_id)
+        .where(job_scope, joined)
+        .group_by(Company.id, Company.name)
+        .order_by(hires.desc(), func.lower(Company.name), Company.id)
+        .limit(TOP)
+    )
+    open_count = func.count().label("open_requirements")
+    top_categories = await db.execute(  # MG8
+        select(RecJobCategory.id, RecJobCategory.name, open_count)
+        .select_from(Job)
+        .join(Company, Company.id == Job.company_id)
+        .join(RecJobCategory, RecJobCategory.id == Job.job_category_id)
+        .where(job_scope, open_job)
+        .group_by(RecJobCategory.id, RecJobCategory.name)
+        .order_by(open_count.desc(), func.lower(RecJobCategory.name), RecJobCategory.id)
+        .limit(TOP)
+    )
+    return {
+        "date_from": first,
+        "date_to": last,
+        "totals": {key: getattr(totals, key) or 0 for key in figures},
+        "top_companies": [{"id": row.id, "name": row.name, "joined": row.joined} for row in top_companies],
+        "top_categories": [{"id": row.id, "name": row.name, "open_requirements": row.open_requirements} for row in top_categories],
     }
