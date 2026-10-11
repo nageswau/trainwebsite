@@ -1,4 +1,4 @@
-"""rec-032 -- the recruiter dashboard (DEC-SCOPE-179 DB1-DB10; backlog Appendix B D1-D14; AC1-AC3). The shared test database is never
+"""rec-032 -- the recruiter dashboard (DEC-SCOPE-180 DB1-DB10; backlog Appendix B D1-D14; AC1-AC3). The shared test database is never
 truncated, so every figure is asserted for a fresh recruiter whose scope holds only this test's rows."""
 
 import uuid
@@ -29,7 +29,7 @@ from app.services.bdm_appointments import IST, today_ist
 from tests.rec001_helpers import as_role, login, make_pm, make_recruiter
 
 URL = "/api/v1/recruiter/dashboard"
-TILE_KEYS = (  # the API contract (§12CT), in EVID-018 §1 order
+TILE_KEYS = (  # the API contract (§12CU), in EVID-018 §1 order
     "new_leads",
     "contacts_pending",
     "hot_companies",

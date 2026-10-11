@@ -59,6 +59,7 @@ from app.schemas import (
     LeadStageHistoryPage,
     LeadStageMove,
     LeadTimelinePage,
+    ProgramSkillsUpdate,
     SchoolCreate,
     SchoolCreateIn,
     SchoolLinkedBdm,
@@ -70,7 +71,7 @@ from app.schemas import (
 )
 from app.services import bdm as bdm_rules
 from app.services import bdm_leads as lead_rules
-from app.services import bdm_lifecycle, lead_handover, lead_pipeline, lead_timeline, partnership_lifecycle, recruiter_lifecycle, telecaller_lifecycle
+from app.services import bdm_lifecycle, course_skills, lead_handover, lead_pipeline, lead_timeline, partnership_lifecycle, recruiter_lifecycle, telecaller_lifecycle
 from app.services import partnership as pm_rules
 from app.services import recruiter as rec_rules
 from app.services import telecaller as tel_rules
@@ -811,6 +812,34 @@ async def update_program(program_id: UUID, payload: dict, user: User = Depends(e
     db.add(AuditLog(user_id=user.id, action="program.update", entity_type="program", entity_id=str(item.id), metadata_json=payload))
     await db.commit()
     return {"ok": True}
+
+
+# rec-036 (DEC-SCOPE-179 CI1): a program's skill tags. `skill-options` is the editor's picker (it_admin cannot read the Skills Master).
+@router.get("/programs/skill-options")
+async def program_skill_options(q: str | None = Query(None, max_length=80), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    course_skills.require_editor(user)
+    return {"items": await course_skills.skill_options(db, q)}
+
+
+@router.get("/programs/{program_id}/skills")
+async def program_skills(program_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    course_skills.require_editor(user)
+    if not await db.get(Program, program_id):
+        raise HTTPException(404, "Program not found")
+    return {"items": await course_skills.program_skills_out(db, program_id)}
+
+
+@router.put("/programs/{program_id}/skills")
+async def set_program_skills(program_id: UUID, payload: ProgramSkillsUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Replaces the tags. A new tag reaches the program's opted-in certificate holders at once (CI3/CI6); a removed tag leaves their skills."""
+    course_skills.require_editor(user)
+    program = await course_skills.program_for_update(db, program_id)
+    added = await course_skills.set_program_skills(db, user, program, payload.skill_ids)
+    updated = await course_skills.grant(db, user, program_id=program.id, skill_ids=added) if added else 0
+    items = await course_skills.program_skills_out(db, program.id)
+    await db.commit()
+    logger.info("program_skills_updated", extra={"extra_fields": {"actor_id": str(user.id), "program_id": str(program.id), "added": len(added), "candidates_updated": updated}})
+    return {"items": items, "candidates_updated": updated}
 
 
 @router.post("/universities", status_code=201)

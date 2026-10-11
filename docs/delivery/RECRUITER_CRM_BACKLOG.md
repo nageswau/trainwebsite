@@ -1463,8 +1463,8 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Edge cases:** the day boundary in IST.
 - **Regression risks:** the legacy placement dashboard (kept for `hr_team`).
 - **Complexity:** medium · **Risk:** medium
-- **Status (2026-10-11):** **IN REVIEW** on `feature/rec-032`. `DEC-SCOPE-179` (DB1–DB10 recommended defaults, UNVERIFIED; DB5 answers
-  Q-25 for D1/D3/D5), no migration, API §12CT, RBAC §2.105. `services/recruiter_metrics.py` now exists for rec-033…035.
+- **Status (2026-10-11):** **IN REVIEW** on `feature/rec-032`. `DEC-SCOPE-180` (DB1–DB10 recommended defaults, UNVERIFIED; DB5 answers
+  Q-25 for D1/D3/D5), no migration, API §12CU, RBAC §2.106. `services/recruiter_metrics.py` now exists for rec-033…035.
   - **AC1:** every tile asserted against fixtures for a fresh recruiter (`test_rec_032_dashboard.py`), including the IST day boundary.
   - **AC2:** a peer's and the unassigned queue's rows never show for a recruiter; the manager / super_admin filter narrows; `hr_team`,
     `bdm`, `it_admin` and students `403`.
@@ -1548,6 +1548,12 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** small · **Risk:** low
 
 ### rec-036 — IT-training ↔ recruiter integration
+- **Status (2026-10-11):** **IN REVIEW** on `feature/rec-036`. `DEC-SCOPE-179` (CI1–CI8 recommended defaults, UNVERIFIED; CI1/CI3 answer
+  Q-11, CI4 answers Q-13 for course skills, CI6 the re-tag edge case: additive); migration `0149_program_skills` (after
+  `0148_recruitment_drives`), API §12CT, RBAC §2.105. The grant is a write-time hook (opt-in, certificate issue, tag added), not a
+  read-time union, so rec-013 search, rec-015 pools and rec-016 matching see course skills unchanged. QA evidence
+  `docs/quality/REC-036_EXPLORATORY_QA_2026-10-11.md`.
+  - Spec: `docs/superpowers/specs/2026-10-11-rec-036-it-training-integration-design.md`.
 - **Business requirement:** §27 (Lead → IT Student → Trained Candidate → Recruiter Candidate → Placed Candidate); §9 example source = course;
   S2-§17 "Course Completed" skill source; S2-§20 "500 Java students … Java Talent Pool".
 - **Existing behavior:** `Program` has no skill tags; nothing links training to placement.

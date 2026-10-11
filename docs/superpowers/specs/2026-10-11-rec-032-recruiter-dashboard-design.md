@@ -1,7 +1,7 @@
 # rec-032 — Recruiter dashboard + quick actions + one-click skill search (design)
 
 Status: DRAFT, built under the user's standing instruction to proceed on recommended answers (2026-10-11). Every DBn default below is
-**UNVERIFIED** until confirmed and is registered as `DEC-SCOPE-179` (number re-checked against `main` before merge).
+**UNVERIFIED** until confirmed and is registered as `DEC-SCOPE-180` (number re-checked against `main` before merge).
 
 ## 1. Sources and authority
 - `EVID-018` §1 (14 tiles, 6 quick actions; L9–L48) and S2-§9 (one-click skill search; L1381–L1425) — `DERIVED_BLUEPRINT`.

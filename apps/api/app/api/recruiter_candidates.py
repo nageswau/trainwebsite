@@ -34,7 +34,7 @@ from app.schemas import (
     CandidateUpdate,
     ResumeApply,
 )
-from app.services import candidate_search, candidate_skills
+from app.services import candidate_search, candidate_skills, course_skills
 from app.services import candidates as svc
 from app.services import resume_extraction as extraction
 from app.services.telecaller import _parse
@@ -126,6 +126,13 @@ async def create_candidate(payload: dict = Body(...), user: User = Depends(get_c
 async def get_candidate(candidate_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     svc.require_reader(user)
     return await svc.detail_out(db, user, await svc.load(db, candidate_id))
+
+
+@router.get("/{candidate_id}/journey")
+async def get_journey(candidate_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """rec-036 (CI7): lead → IT student → trained → recruiter candidate → placed, read only. Outside the pool is a 404 (R4)."""
+    svc.require_reader(user)
+    return await course_skills.journey(db, await svc.load(db, candidate_id))
 
 
 @router.patch("/{candidate_id}", response_model=CandidateDetail)

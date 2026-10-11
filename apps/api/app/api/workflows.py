@@ -108,7 +108,7 @@ from app.schemas import (
     VisaCaseCreate,
 )
 from app.services import agent_notifications as agency_notices
-from app.services import applications, interviews, offers
+from app.services import applications, course_skills, interviews, offers
 from app.services import recruiter_requirements as requirements
 from app.services.agent_applications import ARCHIVED, DEFAULT_NEXT_ACTION, OFFER_STAGES_ON, OVERSEAS_APPLICATION_STAGES, WITHDRAWN, WITHDRAWN_REFUSED, owned, with_owner
 from app.services.agent_documents import add_event, in_scope
@@ -1304,6 +1304,7 @@ async def issue_certificate(enrollment_id: UUID, payload: dict, user: User = Dep
     )
     db.add(item)
     await db.flush()
+    await course_skills.grant(db, user, student_id=student.id, program_id=program.id)  # rec-036 CI3: opted-in students only
     await _notify_user(db, student, "Certificate issued", f"Your {program.title} certificate is ready.", "/it/student/certificates")
     item.emailed_at = datetime.now(UTC)
     await _audit(db, user, "certificate.issue", "certificate", item.id, {"enrollment_id": enrollment.id, "override": override, "override_reason": override_reason if override else None})

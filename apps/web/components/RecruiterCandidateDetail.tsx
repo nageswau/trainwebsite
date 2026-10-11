@@ -6,6 +6,7 @@ import LocalTime from "@/components/LocalTime";
 import RecruiterCalls from "@/components/RecruiterCalls";
 import RecruiterCandidateApplications from "@/components/RecruiterCandidateApplications";
 import RecruiterCandidateForm from "@/components/RecruiterCandidateForm";
+import RecruiterCandidateJourney from "@/components/RecruiterCandidateJourney";
 import RecruiterCandidateResumes from "@/components/RecruiterCandidateResumes";
 import RecruiterCandidateSkills from "@/components/RecruiterCandidateSkills";
 import RecruiterMessages from "@/components/RecruiterMessages";
@@ -98,6 +99,8 @@ export default function RecruiterCandidateDetail({ initial }: { initial: Candida
       )}
       {/* rec-011: re-keyed on archive/restore, so the card re-reads can_edit (an archived candidate's skills are read only). */}
       <RecruiterCandidateSkills key={`skills-${candidate.id}-${archived}-${skillsVersion}`} candidateId={candidate.id} />
+      {/* rec-036: lead → IT student → trained → recruiter candidate → placed (read only). */}
+      <RecruiterCandidateJourney candidateId={candidate.id} />
       <RecruiterCandidateResumes candidateId={candidate.id} resumes={candidate.resumes} canUpload={canEdit} current={candidate}
         onUploaded={() => void reload()} onApplied={() => { void reload(); setSkillsVersion((n) => n + 1); }} />
       <RecruiterCandidateApplications candidateId={candidate.id} />
