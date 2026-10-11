@@ -1528,6 +1528,11 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Edge cases:** a deactivated recruiter in the period.
 - **Regression risks:** none.
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-11):** **IN REVIEW** on `feature/rec-034`. `DEC-SCOPE-183` (BP1–BP8 recommended defaults, UNVERIFIED; BP1/BP2/BP6
+  answer Q-25, BP7 answers Q-24), no migration, API §12CX, RBAC §2.109. Page `/recruiter/performance`.
+  - **AC (definitions):** every B1–B12 column asserted on fixtures, incl. first-event rules and fee per hire (`test_rec_034_by_recruiter.py`).
+  - **AC (credit):** a call, company, requirement and candidate stay with their actor after reassignment (pytest); Total = Σ rows (pytest,
+    e2e `rec-034-comparison.spec.ts`); a recruiter's own row only, another's `403` (pytest, e2e).
 
 ### rec-035 — Management dashboard (recruiter business)
 - **Business requirement:** §26 (7 totals, top companies by hires, top job categories).
@@ -1552,8 +1557,8 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Edge cases:** no data.
 - **Regression risks:** none.
 - **Complexity:** small · **Risk:** low
-- **Status (2026-10-11):** **IN REVIEW** on `feature/rec-035`. `DEC-SCOPE-183` (MG1–MG8 recommended defaults, UNVERIFIED; MG1/MG4/MG5/MG8
-  answer Q-25), no migration, API §12CX, RBAC §2.109. Page `/recruiter/manager/business`. QA evidence
+- **Status (2026-10-11):** **IN REVIEW** on `feature/rec-035`. `DEC-SCOPE-184` (MG1–MG8 recommended defaults, UNVERIFIED; MG1/MG4/MG5/MG8
+  answer Q-25), no migration, API §12CY, RBAC §2.110. Page `/recruiter/manager/business`. QA evidence
   `docs/quality/REC-035_EXPLORATORY_QA_2026-10-11.md`.
   - **AC:** top companies by joined count then name, top categories by open requirements then name (`test_rec_035_management.py`);
     recruiter 403; no data → zeros and empty-state lines (pytest, vitest, `rec-035-management.spec.ts`).

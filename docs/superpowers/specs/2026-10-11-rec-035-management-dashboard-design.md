@@ -1,7 +1,7 @@
 # rec-035 — Management dashboard, recruiter business view (design)
 
 Status: DRAFT, built under the user's standing instruction to proceed on recommended answers (2026-10-11). Every MGn default below is
-**UNVERIFIED** until confirmed and is registered as `DEC-SCOPE-183` (API §12CX, RBAC §2.109).
+**UNVERIFIED** until confirmed and is registered as `DEC-SCOPE-184` (API §12CY, RBAC §2.110).
 
 ## 1. Sources and authority
 - `EVID-018` §26 "Management Dashboard" (L1007–L1034: "The CEO/Manager should get one view": 7 totals, Top Companies, Top Job

@@ -1,4 +1,4 @@
-"""rec-035 -- the management dashboard, recruiter business view (DEC-SCOPE-183 MG1-MG8; backlog Appendix B M1-M9; AC: top companies by
+"""rec-035 -- the management dashboard, recruiter business view (DEC-SCOPE-184 MG1-MG8; backlog Appendix B M1-M9; AC: top companies by
 joined count, ties by name; top job categories by open requirements). The shared test database is never truncated, so the snapshot totals
 are asserted as deltas over a fresh manager's team, and the period figures over one far-past day that no other test writes to."""
 

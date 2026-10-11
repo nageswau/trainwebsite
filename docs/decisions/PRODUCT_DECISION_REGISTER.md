@@ -7225,7 +7225,39 @@ on the owner's instruction to proceed with the recommended answers.
 it_admin. No schema change.
 - **New Feature ID authorized:** `rec-033`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-033.
 
-### DEC-SCOPE-183 — Management dashboard, recruiter business view (`rec-035`)
+### DEC-SCOPE-183 — Recruiter/BDM performance per recruiter (`rec-034`)
+
+**Evidence:**
+- `EVID-018` §25 (lines 973–1005): 6 business-development and 6 recruitment metrics per person; "This prevents management from measuring a
+  recruiter only on calls."
+- `RECRUITER_CRM_BACKLOG.md` §rec-034 + Appendix B B1–B12 (proposed definitions, "credit = the actor or assignee at the event"); AC "each
+  column equals its definition; credit after reassignment follows the actor of the event"; a recruiter sees their own row and another's is
+  `403`; edge case: a deactivated recruiter in the period. Q-24 (revenue) and Q-25 (meanings, roles) were still open.
+- R10: §25 metrics are per recruiter, from their own activity. `DEC-SCOPE-176` (rec-031): fee per hire and revenue readers (RV10).
+- `DEC-SCOPE-182` (rec-033): the period rules; P6/P8 reused for B9/B11.
+
+**Status:** in review on `feature/rec-034` (2026-10-11). Every answer below is a **recommended default, `UNVERIFIED`**. They were taken
+on the owner's instruction to proceed with the recommended answers.
+
+**Numbering:** no migration. API §12CX and RBAC §2.109. Spec `docs/superpowers/specs/2026-10-11-rec-034-recruiter-bd-performance-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| BP1 | Who (Q-25) | `placement_team` (own row; another id `403`), `placement_manager` (direct reports; another id `404`), `super_admin` (everyone). `it_admin` and every other role `403` (the table carries revenue, RV10) |
+| BP2 | Credit (AC) | The actor of each event: caller / sender / meeting completer (B1, B2), company and requirement creator (B3, B6), stage-history actor (B4), contract-event actor (B5), application adder (B7), sharer (B8), outcome recorder else creator (B9), status-history actor (B10), Joined recorder (B11, B12). Work by non-recruiters is in no row |
+| BP3 | Rows | Recruiters in scope by name; an inactive recruiter only with a non-zero figure in the period; no Unassigned row |
+| BP4 | Total | Σ of the rows shown; none for a recruiter's own view |
+| BP5 | Period | rec-033 PF3 |
+| BP6 | "First" events | B4 / B5 count a company / contract once, at its first move past Interested / first Signed-or-Active ever; B10 an application once, at its first Selected in the period |
+| BP7 | Revenue (Q-24) | Expected revenue: Σ fee per hire over B11's hires (requirement override, else the current contract; a percentage needs the offer's INR compensation, else the hire adds 0) |
+| BP8 | Export | None |
+
+**Consequences:** `recruiter_metrics.by_recruiter` (rec-033's period/grouping helpers shared); `GET /recruiter/performance/by-recruiter`
+in `api/recruiter_dashboard.py`; the `/recruiter/performance` page; "My Performance" in the recruiter's menu, "Comparison" in the placement
+manager's and "Recruiter Comparison" for super_admin. No schema change.
+- **New Feature ID authorized:** `rec-034`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-034.
+
+### DEC-SCOPE-184 — Management dashboard, recruiter business view (`rec-035`)
 
 **Evidence:**
 - `EVID-018` §26 (lines 1007–1034): "The CEO/Manager should get one view": 7 totals, Top Companies, Top Job Categories (the counts and
@@ -7237,7 +7269,7 @@ it_admin. No schema change.
 **Status:** in review on `feature/rec-035` (2026-10-11). Every answer below is a **recommended default, `UNVERIFIED`**. They were taken
 on the owner's instruction to proceed with the recommended answers.
 
-**Numbering:** no migration. API §12CX and RBAC §2.109. Spec `docs/superpowers/specs/2026-10-11-rec-035-management-dashboard-design.md`.
+**Numbering:** no migration. API §12CY and RBAC §2.110. Drafted as 183 / §12CX / §2.109; rec-034 merged first and took them. Spec `docs/superpowers/specs/2026-10-11-rec-035-management-dashboard-design.md`.
 
 | # | Point | Answer |
 |---|---|---|

@@ -7,7 +7,10 @@ queue, or one direct report; super_admin everything, or any one recruiter (an id
 rec-033 (DEC-SCOPE-182, API §12CW): the §24 performance dashboard -- P1-P15 per recruiter over a period, for the placement manager (their
 team + Unassigned), super_admin and it_admin (everyone); `.csv` is the same table, audited.
 
-rec-035 (DEC-SCOPE-183, API §12CX): the §26 management dashboard -- M1-M9 for the same readers and scope as rec-033."""
+rec-034 (DEC-SCOPE-183, API §12CX): §25 per recruiter -- B1-B12 credited to the actor of each event; a recruiter reads their own row, a
+placement manager their team, super_admin everyone.
+
+rec-035 (DEC-SCOPE-184, API §12CY): the §26 management dashboard -- M1-M9 for the same readers and scope as rec-033."""
 
 from datetime import date
 from uuid import UUID
@@ -64,6 +67,18 @@ async def performance(response: Response, read: tuple[User, dict] = Depends(_per
     return read[1]
 
 
+@router.get("/performance/by-recruiter")
+async def performance_by_recruiter(
+    response: Response,
+    date_from: date | None = Query(None, alias="from"),
+    date_to: date | None = Query(None, alias="to"),
+    recruiter: UUID | None = None,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """§25: B1-B12 (Appendix B) per recruiter over the period, credited to the actor of each event; a recruiter reads their own row."""
+    response.headers.update(NO_STORE)
+    return await metrics.by_recruiter(db, user, recruiter, date_from, date_to, await db_now(db))
 @router.get("/management")
 async def management(
     response: Response,

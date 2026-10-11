@@ -10,7 +10,7 @@ import type { User } from "@/lib/types";
 
 const ROLES = ["placement_manager", "super_admin", "it_admin"]; // MG1 (rec-033 PF1)
 
-// rec-035 (EVID-018 §26, DEC-SCOPE-183): "The CEO/Manager should get one view" of the recruiter business. The role check only spares other roles a
+// rec-035 (EVID-018 §26, DEC-SCOPE-184): "The CEO/Manager should get one view" of the recruiter business. The role check only spares other roles a
 // screen that can only fail; the API decides whose figures are in scope (a manager's team + the Unassigned queue; administrators all).
 export default async function RecruiterManagementPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const params = managementParams(await searchParams);

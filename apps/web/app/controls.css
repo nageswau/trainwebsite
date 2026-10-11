@@ -68,3 +68,6 @@ main:focus{outline:none}
 
 /* bdm-010 QA10-05: an in-text link that looks like one (the global `a` rule inherits colour and drops the underline). */
 .text-link{color:var(--blue);text-decoration:underline;text-underline-offset:2px;font-weight:700}
+
+/* rec-034 QA34-03: a divider where a group of table columns starts (business development | recruitment). */
+.table .group-start{border-left:1px solid var(--line)}

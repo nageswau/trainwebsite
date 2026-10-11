@@ -1812,7 +1812,20 @@ role check runs first; the `recruiter` filter only narrows and is checked server
 | `super_admin`, `it_admin` | read + CSV; drill into any recruiter | every recruiter + the Unassigned row | `rec-033` |
 | `placement_team`, `hr_team`, `bdm`, `overseas_admin`, `employer`, students, every other role | `403` | — | `rec-033` |
 
-### 2.109 Management dashboard, recruiter business view *(net-new, added 2026-10-11 — `DEC-SCOPE-183`, `rec-035`)*
+### 2.109 Recruiter/BDM performance per recruiter *(net-new, added 2026-10-11 — `DEC-SCOPE-183`, `rec-034`)*
+
+Counts, expected revenue and staff names only. Each figure is credited to the actor of its event (BP2), never today's assignment. Read only,
+no export. The `recruiter` filter only narrows and is checked server-side. `it_admin` is refused because the table carries revenue
+(rec-031 RV10).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` | read own row (another recruiter's id `403`) | self | `rec-034` |
+| `placement_manager` | read; narrow to a direct report (another id `404`) | direct reports | `rec-034` |
+| `super_admin` | read; narrow to any recruiter | every recruiter | `rec-034` |
+| `it_admin`, `hr_team`, `bdm`, `overseas_admin`, `employer`, students, every other role | `403` | — | `rec-034` |
+
+### 2.110 Management dashboard, recruiter business view *(net-new, added 2026-10-11 — `DEC-SCOPE-184`, `rec-035`)*
 
 Counts and company / job-category names only (no candidate data). Read-only. Readers and owners as §2.108 (MG1/MG2); the caller cannot
 choose a recruiter, so the scope is always the server's.

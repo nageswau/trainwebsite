@@ -1,4 +1,4 @@
-// rec-035 (DEC-SCOPE-183, API §12CX): the management dashboard -- types, the seven §26 totals and the URL rules. Every figure is computed by the API
+// rec-035 (DEC-SCOPE-184, API §12CY): the management dashboard -- types, the seven §26 totals and the URL rules. Every figure is computed by the API
 // (services/recruiter_metrics.py, backlog Appendix B M1-M9); the page only lays it out.
 import { dayParam } from "@/lib/telecallerMetrics";
 
