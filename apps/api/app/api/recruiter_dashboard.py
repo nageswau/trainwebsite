@@ -5,7 +5,10 @@ Scope (DB1-DB3): a recruiter reads their own figures (another recruiter id → 4
 queue, or one direct report; super_admin everything, or any one recruiter (an id out of scope → 404). Every other role → 403.
 
 rec-033 (DEC-SCOPE-182, API §12CW): the §24 performance dashboard -- P1-P15 per recruiter over a period, for the placement manager (their
-team + Unassigned), super_admin and it_admin (everyone); `.csv` is the same table, audited."""
+team + Unassigned), super_admin and it_admin (everyone); `.csv` is the same table, audited.
+
+rec-034 (DEC-SCOPE-183, API §12CX): §25 per recruiter -- B1-B12 credited to the actor of each event; a recruiter reads their own row, a
+placement manager their team, super_admin everyone."""
 
 from datetime import date
 from uuid import UUID
@@ -60,3 +63,17 @@ async def performance(response: Response, read: tuple[User, dict] = Depends(_per
     """§24: P1-P15 (Appendix B) per recruiter in scope over the period, with a Total that is the sum of the rows."""
     response.headers.update(NO_STORE)
     return read[1]
+
+
+@router.get("/performance/by-recruiter")
+async def performance_by_recruiter(
+    response: Response,
+    date_from: date | None = Query(None, alias="from"),
+    date_to: date | None = Query(None, alias="to"),
+    recruiter: UUID | None = None,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """§25: B1-B12 (Appendix B) per recruiter over the period, credited to the actor of each event; a recruiter reads their own row."""
+    response.headers.update(NO_STORE)
+    return await metrics.by_recruiter(db, user, recruiter, date_from, date_to, await db_now(db))
