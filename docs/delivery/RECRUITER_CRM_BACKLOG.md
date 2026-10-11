@@ -1499,6 +1499,10 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Edge cases:** an empty period.
 - **Regression risks:** none.
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-11):** **IN REVIEW** on `feature/rec-033`. `DEC-SCOPE-182` (PF1–PF9 recommended defaults, UNVERIFIED; PF1/PF6/PF7
+  answer Q-25, PF9 answers Q-26), no migration, API §12CW, RBAC §2.108. Page `/recruiter/manager/performance`.
+  - **AC1:** every figure and ratio asserted on fixtures, zero denominators `null` → "—" (`test_rec_033_performance.py`, vitest).
+  - **AC2:** one owner per figure (PF2); Total = Σ rows asserted in pytest and in the e2e (`rec-033-performance.spec.ts`).
 
 ### rec-034 — Recruiter/BDM performance (per recruiter)
 - **Business requirement:** §25 (6 BD + 6 recruitment metrics); "prevents management from measuring a recruiter only on calls" (R10).
