@@ -1,14 +1,17 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }) }));
 
 import RecruiterProfileCard from "@/components/RecruiterProfileCard";
 import RecruiterTeamTable from "@/components/RecruiterTeamTable";
-import type { RecruiterMe, RecruiterTeamRow } from "@/lib/recruiter";
+import type { RecruiterMe, RecruiterTeamMember } from "@/lib/recruiter";
 
 afterEach(cleanup);
 
-const row = (i: number, active = true, employee_id: string | null = `R-${i}`): RecruiterTeamRow => ({
+const row = (i: number, active = true, employee_id: string | null = `R-${i}`, companies = 0): RecruiterTeamMember => ({
   id: `r${i}`, full_name: `Recruiter ${i}`, email: `r${i}@x.local`, phone: i % 2 ? null : "+91 1", active, employee_id,
+  work: { companies, requirements: companies ? 2 : 0, follow_ups: 0 },
 });
 
 describe("RecruiterTeamTable (rec-001 AC4)", () => {
@@ -20,6 +23,15 @@ describe("RecruiterTeamTable (rec-001 AC4)", () => {
     expect(table.getByText("Inactive")).toBeInTheDocument();
     expect(table.getAllByText("—").length).toBe(2); // the missing mobile and the missing Employee ID
     expect(screen.queryByRole("navigation", { name: "Team pages" })).toBeNull();
+  });
+
+  it("shows each recruiter's work and offers Reassign only where there is some (rec-037)", () => {
+    render(<RecruiterTeamTable page={{ items: [row(1, true, "R-1", 12), row(2)], total: 2, limit: 50, offset: 0 }} />);
+    const table = within(screen.getByRole("region", { name: "Team" }));
+    expect(table.getByRole("columnheader", { name: "Companies" })).toBeInTheDocument();
+    expect(table.getByText("12")).toBeInTheDocument();
+    expect(table.getByRole("button", { name: "Reassign Recruiter 1's work" })).toBeInTheDocument();
+    expect(table.queryByRole("button", { name: "Reassign Recruiter 2's work" })).toBeNull();
   });
 
   it("pages with links that keep the offset in the URL", () => {
