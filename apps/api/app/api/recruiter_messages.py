@@ -118,7 +118,9 @@ async def render_message(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """MS2: the template with the party's values -- the party's scope first (404), then an active template (404)."""
+    """MS2: the template with the party's values -- the template reader's role first (403; rec-038 RM6: the assigned BDM and hr_team read a
+    party's messages but never a template, §2.61), then the party's scope (404), then an active template (404)."""
+    svc.require_template_reader(user)
     company, contact, candidate = await svc.load_party(db, user, contact_id, candidate_id)
     template = await svc.active_template(db, template_id)
     return {"template": {"id": template.id, "name": template.name, "channel": template.channel, "kind": template.kind}, **svc.rendered(template, svc.party_values(user, company, contact, candidate))}

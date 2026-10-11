@@ -7286,3 +7286,31 @@ on the owner's instruction to proceed with the recommended answers.
 `/recruiter/manager/business` page; "Management Dashboard" in the placement manager's menu and "Recruiter Management Dashboard" for
 super_admin and it_admin. No schema change.
 - **New Feature ID authorized:** `rec-035`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-035.
+
+### DEC-SCOPE-185 — Recruiter CRM permission matrix + cross-role 403/404 sweep (`rec-038`)
+
+**Evidence:**
+- `RECRUITER_CRM_BACKLOG.md` §rec-038: RBAC rows for every recruiter route; a route-inventory test (the tel-026 idiom) asserting `403` for
+  roles with no access, `404` out of scope, the employer and student exclusions and BDM read-only; AC: every `/recruiter/*` route is in the
+  inventory and the test fails on an unlisted route. Sources R2, R10, R11, R12 (`EXPLICIT_APPROVAL`, 2026-10-07) and S2-§12.
+- Precedents `DEC-SCOPE-115` (tel-026) and `DEC-SCOPE-174` (upc-033).
+
+**Status:** in review on `feature/rec-038` (2026-10-11). Every answer below is a **recommended default, `UNVERIFIED`**. They were taken
+on the owner's instruction to proceed with the recommended answers.
+
+**Numbering:** no migration, no API contract section (the render row of rec-026's §12BC updated for RM6). RBAC §2.111. Spec
+`docs/superpowers/specs/2026-10-11-rec-038-permission-matrix-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| RM1 | Inventory | Every operation under `/recruiter/` plus the recruiter-owned ones elsewhere (admin pickers, program skill tags, pool consent, student offers, employer shared profiles, public shared resume): 170. Read from `app.openapi()`; a route without a row, or a row without a route, fails |
+| RM2 | Roles | Recruiter and placement manager with the records and on another team, `super_admin`, `it_admin`, `overseas_admin`, `hr_team`, the assigned BDM and another BDM, the company's employer, an opted-in IT student, signed out |
+| RM3 | Expectations | Each owning item's as-built, owner-approved rule (RBAC §2.42–§2.110), checked against code and docs; unlisted = `403` / `401` |
+| RM4 | 403 vs 404 | Role first (`403`); then scope: out of scope reads as missing (`404`) on reads and writes |
+| RM5 | Worlds | Refused cells and reads share one world per row; each 2xx write gets a fresh world; direct inserts |
+| RM6 | A gap | Fixed when it breaks the documented rule and the fix is local. Found and fixed: `GET /recruiter/messages/render` rendered templates for the assigned BDM and `hr_team` (§2.61 refuses templates to both); it now checks the template reader's role first |
+| RM7 | Frontend | None. Browser QA records the UI as built (`apps/web/tests/e2e/rec-038-recruiter-access.spec.ts`) |
+
+**Consequences:** `apps/api/tests/test_rec_038_matrix.py`, `rec038_helpers.py`, `rec038_rows_{profile,candidates,hiring,activity}.py`;
+`api/recruiter_messages.py` (`render_message` role check). As-built notes left `NEEDS_CONFIRMATION` are listed in RBAC §2.111.
+- **New Feature ID authorized:** `rec-038`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-038.
