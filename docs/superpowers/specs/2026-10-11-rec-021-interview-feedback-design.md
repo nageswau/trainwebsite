@@ -1,6 +1,6 @@
 # rec-021 — Interview feedback (design)
 
-**Status: IN PROGRESS** (2026-10-11).
+**Status: IN REVIEW** on `feature/rec-021` (2026-10-11). QA: `docs/quality/REC-021_EXPLORATORY_QA_2026-10-11.md`.
 
 - **Backlog:** `docs/delivery/RECRUITER_CRM_BACKLOG.md` rec-021. **Evidence:** `EVID-018` §15 (lines 654–674): nine fields captured
   "after every interview". **Dependency:** rec-020 (PR #193 @ `10da5148`), merged. The module scope is `DEC-SCOPE-116`.
