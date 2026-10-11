@@ -9,5 +9,6 @@ export const recInterview = (over: Partial<RecInterview> = {}): RecInterview => 
   history: [{ event: "scheduled", from_status: null, to_status: "scheduled", old_scheduled_at: null, new_scheduled_at: "2026-10-12T05:30:00Z", note: null,
     actor: { id: "r1", full_name: "Riya Recruiter" }, created_at: "2026-10-09T05:30:00Z" }],
   allowed_statuses: [{ key: "confirmed", label: "Confirmed" }, { key: "on_hold", label: "On Hold" }], can_edit: true, can_reschedule: true,
+  feedback: null, can_feedback: false,
   ...over,
 });

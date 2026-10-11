@@ -2702,6 +2702,19 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `GET /partnership/reports/{kind}` | **→ 200** `{kind, title, as_of, filters, columns: [{key, label, numeric}], items, totals \| null, total, truncated, notes}`; the first 500 rows (`truncated` when `total` is larger). Commission columns (performance) only for U2 roles. Not audited |
 | `GET /partnership/reports/{kind}.csv` | **→ 200** `text/csv; charset=utf-8`, attachment `partnership-<kind>-<as_of>.csv`: UTF-8 BOM, the on-screen labels as the header, the Total row last, text cells through `_safe_cell`. **422** over 5,000 rows ("narrow the filters"), never cut short. Audited `partnership_report.export` (kind, filter names, row count), committed before the file |
 
+## 12CP. Interview feedback (`rec-021`) — addendum, 2026-10-11
+
+- **Basis:** `DEC-SCOPE-175` (FB1–FB8). Design spec `docs/superpowers/specs/2026-10-11-rec-021-interview-feedback-design.md` §3.
+  Migration `0146`. The §12BP common rules apply (scope, writers, unknown keys `422`, the locks, one commit).
+- **Item (§12BP) gains:** `feedback` — `null` or `{technical_rating, communication_rating, overall_rating, strengths, weaknesses,
+  recruiter_comments, company_feedback, next_round, next_round_label, final_decision, final_decision_label, recorded_by {id, full_name},
+  updated_at}` — and `can_feedback` (a writer, and the interview is Completed, or it has feedback and is On Hold / Selected / Rejected).
+  Every reader of the interview sees `feedback`; no employer, student or `hr_team` route returns it.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `PUT /recruiter/interviews/{id}/feedback` *(new)* | The whole form `{overall_rating (1–5), technical_rating? (1–5), communication_rating? (1–5), strengths?, weaknesses?, recruiter_comments?, company_feedback? (each ≤2000), next_round? (a §14 round), final_decision? (selected\|rejected\|on_hold)}`; a field left out is cleared → `{interview}`. **Refusals:** not Completed (and no feedback yet) → `409` "Feedback can be recorded once the interview is Completed"; a decision the IV3 moves do not allow (e.g. Selected → Rejected) → `409`, nothing saved; a rating outside 1–5, an unknown round or decision, a next round with Rejected → `422` on that field. A decision different from the status moves the interview (history note `Feedback`; IV8 feeds the application). Audit `recruiter_interview.feedback` with field names and the decision only; an unchanged form writes nothing |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

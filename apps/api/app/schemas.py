@@ -51,6 +51,7 @@ from app.models import (
     COURSE_LEVELS,
     COURSE_MONTHS,
     ENGLISH_TESTS,
+    FEEDBACK_DECISIONS,
     GENDERS,
     INSTITUTION_TYPES,
     INTERVIEW_ROUNDS,
@@ -9047,6 +9048,29 @@ class RecInterviewStatusChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
     status: RecInterviewMove
     note: _rec_requirement_text_type(500, multiline=True) = None
+
+
+# --- rec-021 (DEC-SCOPE-175, spec §3): interview feedback ---------------------------------------------------------------------------
+class RecInterviewFeedbackIn(BaseModel):
+    """FB3: the whole form -- a field left out is cleared. The ranges are the table's CHECKs (app.models.FEEDBACK_CHECKS)."""
+
+    model_config = ConfigDict(extra="forbid")
+    technical_rating: int | None = Field(default=None, ge=1, le=5)
+    communication_rating: int | None = Field(default=None, ge=1, le=5)
+    overall_rating: int = Field(ge=1, le=5)
+    strengths: _rec_requirement_text_type(2000, multiline=True) = None
+    weaknesses: _rec_requirement_text_type(2000, multiline=True) = None
+    recruiter_comments: _rec_requirement_text_type(2000, multiline=True) = None
+    company_feedback: _rec_requirement_text_type(2000, multiline=True) = None
+    final_decision: Literal[FEEDBACK_DECISIONS] | None = None
+    next_round: RecInterviewRound | None = None
+
+    @field_validator("next_round")
+    @classmethod
+    def _no_next_round_after_rejected(cls, value, info: ValidationInfo):
+        if value is not None and info.data.get("final_decision") == "rejected":
+            raise ValueError("A rejected candidate has no next round")
+        return value
 
 
 # --- rec-022 (DEC-SCOPE-155, spec §1/§3): offers ------------------------------------------------------------------------------------
