@@ -93,8 +93,7 @@ row plus `context`.
   - `tests/lib/recruiterTimeline.test.ts`
   - `tests/components/RecruiterTimeline.test.tsx`
   - `e2e/rec-027-timeline.spec.ts`
-- **Docs:** DEC-SCOPE, API_CONTRACT §, RBAC_MATRIX §, and the backlog status line. These take the next free numbers, which are checked
-  against `main` right before the push.
+- **Docs:** `DEC-SCOPE-181`, API_CONTRACT §12CV, RBAC_MATRIX §2.107, and the backlog status line.
 
 ## 4. Plan (TDD, one slice at a time)
 1. **API RED:** a call and then an email appear in order with time, actor and summary (AC1). Every company kind appears. The tie order is

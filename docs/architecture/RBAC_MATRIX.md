@@ -1787,6 +1787,20 @@ first; the recruiter filter only narrows and is checked server-side.
 | `super_admin` | read everything, or any one recruiter's | all | `rec-032` |
 | `hr_team`, `bdm`, `it_admin`, `employer`, students, every other role | `403` (`hr_team` keeps the legacy placement dashboard) | — | `rec-032` |
 
+### 2.107 Company + candidate timeline *(net-new, added 2026-10-11 — `DEC-SCOPE-181`, `rec-027`)*
+
+Read only. Each entry shows only what its own section already shows to that reader: candidates by name and code, never their contact
+details; no document keys or fees. A company out of scope is `404` (never `403`).
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` | read company timeline; read any pool candidate's timeline | companies assigned to them (§2.47); the whole pool (R11) | `rec-027` |
+| `placement_manager` | read both | the team + unassigned queue; the whole pool | `rec-027` |
+| `super_admin` | read both | all | `rec-027` |
+| `bdm` | read the company timeline only | companies where they are the assigned BDM | `rec-027` |
+| `hr_team` | read the candidate timeline only (company: `403`) | the whole pool | `rec-027` |
+| `it_admin`, `employer`, `telecaller`, students, every other role | `403` | — | `rec-027` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

@@ -1270,6 +1270,8 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-027 — Company timeline (+ candidate timeline)
+- **Status (2026-10-11):** **IN REVIEW** on `feature/rec-027`. `DEC-SCOPE-181` (TL1–TL10 recommended defaults, UNVERIFIED); no
+  migration; API §12CV, RBAC §2.107. Spec: `docs/superpowers/specs/2026-10-11-rec-027-timeline-design.md`.
 - **Business requirement:** §19 "Every communication should appear in the company timeline".
 - **Existing behavior:** none.
 - **Expected behavior:** a read-only timeline that is a UNION ALL over stage history, calls, messages, meetings, follow-ups, shares,
