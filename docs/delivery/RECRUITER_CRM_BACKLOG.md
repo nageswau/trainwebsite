@@ -1557,6 +1557,11 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Edge cases:** no data.
 - **Regression risks:** none.
 - **Complexity:** small · **Risk:** low
+- **Status (2026-10-11):** **IN REVIEW** on `feature/rec-035`. `DEC-SCOPE-184` (MG1–MG8 recommended defaults, UNVERIFIED; MG1/MG4/MG5/MG8
+  answer Q-25), no migration, API §12CY, RBAC §2.110. Page `/recruiter/manager/business`. QA evidence
+  `docs/quality/REC-035_EXPLORATORY_QA_2026-10-11.md`.
+  - **AC:** top companies by joined count then name, top categories by open requirements then name (`test_rec_035_management.py`);
+    recruiter 403; no data → zeros and empty-state lines (pytest, vitest, `rec-035-management.spec.ts`).
 
 ### rec-036 — IT-training ↔ recruiter integration
 - **Status (2026-10-11):** **IN REVIEW** on `feature/rec-036`. `DEC-SCOPE-179` (CI1–CI8 recommended defaults, UNVERIFIED; CI1/CI3 answer
