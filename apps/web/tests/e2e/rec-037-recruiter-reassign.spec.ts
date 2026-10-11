@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { E2E_PASSWORD, activateWithToken } from "./helpers/welcome";
 
-// rec-037 (DEC-SCOPE-175 RC2/RC3/RC5): the super admin's Deactivate of a recruiter who holds a company is refused with the server's
+// rec-037 (DEC-SCOPE-176 RC2/RC3/RC5): the super admin's Deactivate of a recruiter who holds a company is refused with the server's
 // sentence; the placement manager opens Team, sees the recruiter's work and reassigns everything to another recruiter; the old recruiter
 // can no longer read the company and the Deactivate then succeeds. The Team page fits a phone.
 

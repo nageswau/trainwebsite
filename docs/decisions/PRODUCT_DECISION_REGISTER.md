@@ -6987,3 +6987,40 @@ merge). Spec `docs/superpowers/specs/2026-10-11-rec-021-interview-feedback-desig
 **Consequences:** table `interview_feedback`; `services/interviews.py` (`save_feedback`, `feedback` + `can_feedback` on every item);
 `PUT /recruiter/interviews/{id}/feedback`; the web interview item (form + summary) and the application's interviews (next-round draft).
 - **New Feature ID authorized:** `rec-021`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-021.
+
+### DEC-SCOPE-176 — Recruiter deactivation + bulk reassignment (`rec-037`)
+
+**Evidence:**
+- `RECRUITER_CRM_BACKLOG.md` §1 "Added though not in the source" (rec-037: deactivation and reassignment, the tel-025 precedent), §3.1 R2
+  (own-assignment scope, `EXPLICIT_APPROVAL` 2026-10-07), §3.2 Q-27 and §4 rec-037 (AC1 deactivation blocked with open work; AC2
+  reassignment moves everything, writes history, the old recruiter loses access; P1 12 companies; N1 target outside the team → 422; E1 a
+  recruiter with no manager).
+- `DEC-SCOPE-131` (rec-024) FU4: a follow-up belongs to its company, so a company reassignment moves it. Precedents `DEC-SCOPE-104`
+  (tel-025) and `DEC-SCOPE-171` (upc-032).
+
+**Status:** RC1–RC15, including **Q-27**, are recommended answers applied under the owner's standing instruction for the build session
+("proceed with the recommended answers; ask only if genuinely blocking"). **Not** separately confirmed: `NEEDS_CONFIRMATION` at sign-off.
+No migration; API contract §12CQ, RBAC §2.102. Spec: `docs/superpowers/specs/2026-10-11-rec-037-recruiter-reassignment-design.md`.
+**Numbering:** drafted as 175 / §12CP / §2.101; rec-021 (PR #232) took those first.
+
+| # | Question | Answer |
+|---|---|---|
+| RC1 | **Q-27** What happens to a deactivated recruiter's work? | Nothing automatic. Plain deactivation is refused while they hold open work; a placement manager (or super_admin) reassigns from the Team page, then deactivates |
+| RC2 | What blocks | ≥ 1 non-archived company, or ≥ 1 requirement not `closed`/`cancelled`, assigned to the recruiter |
+| RC3 | Refusal | `PATCH /admin/users/{id}` → `422` "This recruiter has N companies and M open requirements. A placement manager must reassign them (Team page) before deactivation." (zero parts left out; 422 not 409, tel-025 D5); super_admin and it_admin alike |
+| RC4 | Who reassigns | `placement_manager` (own direct reports) and `super_admin` (anyone); every other role `403`, anonymous `401` |
+| RC5 | What moves | Every company of the source (archived too) with a `company_assignment_history` row + audit each; every requirement of the source (any status — a closed one can be reopened) with an audit each; open follow-ups ride with the company (FU4) and are counted |
+| RC6 | Third-recruiter requirements on a moved company | Stay with that recruiter; unassigned ones stay unassigned |
+| RC7 | Source state | Active or inactive |
+| RC8 | Invalid input | Not a recruiter `404`; outside the manager's team `403`; target inactive / not a recruiter / outside the team / the source `422` (rec-003 `REASSIGN_INVALID`); nothing to move `409` |
+| RC9 | No manager (E1) | Only super_admin can move them |
+| RC10 | Locks | One transaction: source companies, then requirements (by id, FOR UPDATE), then the target (FOR SHARE) |
+| RC11 | Deactivation race | The pre-check locks the user row before counting |
+| RC12 | Session | Plain deactivation of a recruiter also increments `session_version`; reassignment removes access through scope |
+| RC13 | Audit / logs | `recruiter.reassign` summary audit on the source; logs carry ids and counts only |
+| RC14 | Notifications | None (`NEEDS_CONFIRMATION`) |
+| RC15 | Preview | Team rows carry `work: {companies, requirements, follow_ups}` |
+
+**Consequences:** `services/recruiter_lifecycle.py`; `POST /recruiter/manager/reassign` and `work` on `GET /recruiter/manager/team`
+(`api/recruiter.py`); one pre-check line in `admin.update_user`; web `RecruiterReassign.tsx` and the Team table's work columns.
+- **New Feature ID authorized:** `rec-037`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-037.

@@ -2715,6 +2715,19 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `PUT /recruiter/interviews/{id}/feedback` *(new)* | The whole form `{overall_rating (1–5), technical_rating? (1–5), communication_rating? (1–5), strengths?, weaknesses?, recruiter_comments?, company_feedback? (each ≤2000), next_round? (a §14 round), final_decision? (selected\|rejected\|on_hold)}`; a field left out is cleared → `{interview}`. **Refusals:** not Completed (and no feedback yet) → `409` "Feedback can be recorded once the interview is Completed"; a decision the IV3 moves do not allow (e.g. Selected → Rejected) → `409`, nothing saved; a rating outside 1–5, an unknown round or decision, a next round with Rejected → `422` on that field. A decision different from the status moves the interview (history note `Feedback`; IV8 feeds the application). Audit `recruiter_interview.feedback` with field names and the decision only; an unchanged form writes nothing |
 
+## 12CQ. Recruiter deactivation + bulk reassignment (`rec-037`) — addendum, 2026-10-11
+
+- **Basis:** `DEC-SCOPE-176` (RC1–RC15). Spec: `docs/superpowers/specs/2026-10-11-rec-037-recruiter-reassignment-design.md` §3. No migration.
+- **Callers:** `placement_manager` (from and to their direct reports), `super_admin` (any recruiter); others `403`; no session `401`.
+- **Behaviour:** one transaction (the source's companies, then its requirements, locked by id, then the target FOR SHARE), one
+  `company_assignment_history` row and one audit per moved company, one audit per moved requirement, a `recruiter.reassign` summary audit.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `POST /recruiter/manager/reassign` | Body `{from_user_id, to_user_id}` (extra keys `422`). **→ 200** `{from_user_id, to_user_id, moved: {companies, requirements, follow_ups}}`. Every company (archived included) and every requirement (any status) assigned to the source moves to the target; open follow-ups move with their company (counted). `403` role, or source outside the manager's team; `404` source not a recruiter; `409` nothing to move; `422` target inactive, not a recruiter, outside the team or the source itself |
+| `GET /recruiter/manager/team` | Rows gain `work: {companies, requirements, follow_ups}` (additive) |
+| `PATCH /admin/users/{id}` | `{active:false}` on a recruiter with ≥ 1 non-archived company or ≥ 1 requirement not closed/cancelled → `422` "This recruiter has N companies and M open requirements. A placement manager must reassign them (Team page) before deactivation."; otherwise the deactivation also increments `session_version` |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

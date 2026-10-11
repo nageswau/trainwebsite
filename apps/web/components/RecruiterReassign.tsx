@@ -14,7 +14,7 @@ export function workText(work: RecruiterWork): string {
   return `${plural(work.companies, "company", "companies")}, ${plural(work.requirements, "requirement")} and ${plural(work.follow_ups, "open follow-up")}`;
 }
 
-// rec-037 (DEC-SCOPE-175): a Team row's Reassign -- every company and requirement of this recruiter (open follow-ups ride with their
+// rec-037 (DEC-SCOPE-176): a Team row's Reassign -- every company and requirement of this recruiter (open follow-ups ride with their
 // company) moves to another active recruiter of the manager's team in one server transaction (RC5). The upc-032 PartnershipReassign
 // conventions: no dialog library, the group takes focus, Escape cancels, an error takes focus; the server re-checks every rule. The cell
 // stays mounted after the refresh, so the notice survives the row losing its work.

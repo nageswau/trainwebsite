@@ -14,7 +14,7 @@
   rec-009 (candidates — no owner: R11 pool, nothing to move) and rec-024 (follow-ups belong to the company, FU4) are merged on main.
 - Closest as-built precedent: upc-032 (`DEC-SCOPE-171`, `services/partnership_lifecycle.py`, `PartnershipReassign.tsx`).
 
-## 2. Decisions (recommended answers, `NEEDS_CONFIRMATION` at sign-off — registered as DEC-SCOPE-175)
+## 2. Decisions (recommended answers, `NEEDS_CONFIRMATION` at sign-off — registered as DEC-SCOPE-176)
 
 | # | Question | Answer |
 |---|---|---|
@@ -65,4 +65,4 @@
    `refuse_open_work_deactivation`, `load_source`, `reassign`, `log`) — tests first.
 2. `admin.update_user` hook (RC3, RC12); `api/recruiter.py` team `work` + reassign route.
 3. Web: `lib/recruiter.ts` types + URL, `RecruiterReassign.tsx`, `RecruiterTeamTable.tsx` columns — vitest first.
-4. E2E spec; docs (DEC-SCOPE-175, API §12CP, RBAC §2.101, backlog status) — numbers re-checked against main in Phase 9.
+4. E2E spec; docs (DEC-SCOPE-176, API §12CQ, RBAC §2.102, backlog status) — numbers re-checked against main in Phase 9.

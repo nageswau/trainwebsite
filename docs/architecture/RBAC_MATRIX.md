@@ -1722,6 +1722,19 @@ Feedback takes its interview's scope (§2.74). The role check runs before anythi
 | `super_admin` | everything | all | `rec-021` |
 | `hr_team`, `it_admin`, `employer`, students, every other role | `403`; feedback is never returned on the legacy or employer interview routes (FB6, FB8) | — | `rec-021` |
 
+### 2.102 Recruiter deactivation + bulk reassignment *(net-new, added 2026-10-11 — `DEC-SCOPE-176`, `rec-037`)*
+
+`require_manager`, then the source must be the manager's direct report (`403` otherwise, logged); the target goes through rec-003's
+`locked_recruiter_target` (`422`). Routes are listed in §12CQ.
+
+| Role | Reassign a recruiter's work | Deactivate a recruiter with open work (`PATCH /admin/users`) |
+|---|---|---|
+| `placement_manager` | Direct reports → an active direct report | — (not an admin) |
+| `super_admin` | Any recruiter (a recruiter with no manager included) → any active recruiter | `422` until reassigned |
+| `it_admin` | `403` | `422` until reassigned |
+| `placement_team` | `403` | — |
+| any other role | `403` (anonymous `401`) | — |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

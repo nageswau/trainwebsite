@@ -1562,6 +1562,10 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-037 — Recruiter deactivation + bulk reassignment
+- **Status (2026-10-11):** **IN REVIEW** on `feature/rec-037`. `DEC-SCOPE-176` (RC1–RC15 recommended defaults, UNVERIFIED; RC1 answers
+  Q-27: no automatic move, deactivation is refused until a manager reassigns); no migration, API §12CQ, RBAC §2.102. Reassignment moves
+  every company (archived too) and requirement (any status) of the source; open follow-ups ride with the company. QA evidence
+  `docs/quality/REC-037_EXPLORATORY_QA_2026-10-11.md`.
 - **Business requirement:** derived from R2 (own-assignment scope) and the tel-025 precedent. A deactivated recruiter's companies,
   requirements and follow-ups must not be orphaned.
 - **Existing behavior:** user deactivation is generic.
