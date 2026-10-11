@@ -55,7 +55,7 @@ export default function RecruiterDriveForm({ initial, driveId, onSaved, onCancel
       )}
 
       <fieldset style={{ border: 0, padding: 0, margin: 0, display: "grid", gap: 8 }}>
-        <legend style={{ fontWeight: 600, marginBottom: 4 }}>Job requirements</legend>
+        <legend style={{ fontWeight: 800, fontSize: 13, marginBottom: 4 }}>Job requirements</legend>
         {form.requirements.length > 0 && (
           <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexWrap: "wrap", gap: 6 }}>
             {form.requirements.map((r) => (
@@ -78,7 +78,7 @@ export default function RecruiterDriveForm({ initial, driveId, onSaved, onCancel
       </fieldset>
 
       <fieldset style={{ border: 0, padding: 0, margin: 0, display: "grid", gap: 8 }}>
-        <legend style={{ fontWeight: 600, marginBottom: 4 }}>College</legend>
+        <legend style={{ fontWeight: 800, fontSize: 13, marginBottom: 4 }}>College</legend>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
           <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
             <input type="radio" name={`${id}-college-kind`} checked={!form.typed} onChange={() => set("typed", false)} /> From BDM colleges
@@ -97,7 +97,7 @@ export default function RecruiterDriveForm({ initial, driveId, onSaved, onCancel
         )}
       </fieldset>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(11rem, 1fr))", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(11rem, 1fr))", gap: 12, alignItems: "start" }}>{/* QA29-01 */}
         <div className="field" style={{ marginBottom: 0 }}>
           <label htmlFor={`${id}-date`}>Drive date</label>
           <input id={`${id}-date`} type="date" required value={form.drive_date} onChange={(e) => set("drive_date", e.target.value)} />

@@ -34,20 +34,17 @@ function DriveCandidateList({ driveId, version }: { driveId: string; version: nu
   if (!data.items.length) return <p className="muted" style={{ margin: 0 }}>No candidates added through this drive yet.</p>;
   return (
     <>
-      <div style={{ overflowX: "auto" }}>
-        <table className="table">
-          <thead><tr><th scope="col">Candidate</th><th scope="col">Requirement</th><th scope="col">Status</th></tr></thead>
-          <tbody>
-            {data.items.map((a) => (
-              <tr key={a.application_id}>
-                <td><Link href={`${CANDIDATES_PATH}/${encodeURIComponent(a.candidate.id)}`} style={LINK_STYLE}>{a.candidate.name}</Link> <span className="muted">{a.candidate.code}</span></td>
-                <td><Link href={`${REQUIREMENTS_PATH}/${encodeURIComponent(a.requirement.id)}`} style={LINK_STYLE}>{a.requirement.title}</Link></td>
-                <td>{a.status_label}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {/* QA29-03: stacked items (rec-017's phone-width pattern), not a table that scrolls sideways */}
+      <ul aria-label="Candidates from this drive" style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 8 }}>
+        {data.items.map((a) => (
+          <li key={a.application_id} style={{ borderTop: "1px solid var(--line)", paddingTop: 8, display: "grid", gap: 2, overflowWrap: "anywhere" }}>
+            <span><Link href={`${CANDIDATES_PATH}/${encodeURIComponent(a.candidate.id)}`} style={LINK_STYLE}>{a.candidate.name}</Link> <span className="muted">{a.candidate.code}</span></span>
+            <span style={{ fontSize: 14 }}>
+              <Link href={`${REQUIREMENTS_PATH}/${encodeURIComponent(a.requirement.id)}`} style={LINK_STYLE}>{a.requirement.title}</Link> · {a.status_label}
+            </span>
+          </li>
+        ))}
+      </ul>
       {data.total > PAGE && (
         <nav aria-label="Candidate pages" className="actions" style={{ gap: 8, alignItems: "center" }}>
           <button type="button" className="btn secondary small" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE))}>Previous</button>

@@ -115,6 +115,10 @@ describe("RecruiterDriveDetail", () => {
       expect(JSON.parse(String((post?.[1] as RequestInit).body))).toEqual({ candidate_id: "k1", status: "sourced", drive_id: "d1" });
     });
     expect(await screen.findByRole("link", { name: "Rahul Kumar" })).toHaveAttribute("href", "/recruiter/candidates/k1");
+    // QA29-03: stacked items, not a table that scrolls sideways at phone width
+    const items = within(screen.getByRole("list", { name: "Candidates from this drive" })).getAllByRole("listitem");
+    expect(items.map((li) => li.textContent)).toEqual(["Rahul Kumar CAN-000001GET · Sourced"]);
+    expect(screen.queryByRole("table")).toBeNull();
     expect(screen.getByRole("status")).toHaveTextContent("Candidate added through this drive.");
   });
 });
