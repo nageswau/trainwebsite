@@ -18,7 +18,21 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.models import AuditLog, Candidate, Company, CompanyContact, Interview, InterviewEvent, Job, JobApplication, Notification, RecruiterMessage, User
+from app.models import (
+    FEEDBACK_DECISIONS,
+    AuditLog,
+    Candidate,
+    Company,
+    CompanyContact,
+    Interview,
+    InterviewEvent,
+    InterviewFeedback,
+    Job,
+    JobApplication,
+    Notification,
+    RecruiterMessage,
+    User,
+)
 from app.notifications.dispatch import queue_deliveries
 from app.schemas import RecInterviewCreate, RecInterviewUpdate
 from app.services import applications, company_pipeline, mailer
@@ -44,6 +58,12 @@ AFTER_START = ("completed", "no_show", "selected", "rejected")  # AC2: only once
 FINAL = ("selected", "rejected")
 RESCHEDULABLE = (*OPEN, "on_hold", "no_show")
 DECIDING_ROUNDS = ("final_round", "client_round")  # IV8: only these rounds' Selected selects the application
+# rec-021 (DEC-SCOPE-175): FB2 -- first recorded on a Completed interview, then editable while the decision it led to stands
+FEEDBACK_EDITABLE = ("completed", *FEEDBACK_DECISIONS)
+FEEDBACK_FIELDS = (
+    "technical_rating", "communication_rating", "overall_rating", "strengths", "weaknesses", "recruiter_comments", "company_feedback",
+    "next_round", "final_decision",
+)
 IST = ZoneInfo("Asia/Kolkata")
 
 NOT_FOUND = "Interview not found"
@@ -56,6 +76,7 @@ SAME_TIME = "Choose a different time to reschedule"
 CONTACT_INVALID = "Choose an active contact of this requirement's company"
 TIME_PAST = "Choose an interview time in the future"
 TIME_FAR = "Choose an interview time within the next 12 months"
+NOT_COMPLETED = "Feedback can be recorded once the interview is Completed"
 
 
 HORIZON = timedelta(days=366)  # tel-011's horizon, as rec-028's meetings (not imported: workflows.py -> here must not reach the telecaller modules)
@@ -227,6 +248,55 @@ async def legacy_update(db: AsyncSession, user: User, interview: Interview, appl
         _event(db, interview, user, "status", from_status=previous)
 
 
+# --- feedback (rec-021, FB1-FB4) ----------------------------------------------------------------------------------------------------
+async def _feedback_row(db: AsyncSession, interview_id: UUID) -> InterviewFeedback | None:
+    stmt = select(InterviewFeedback).where(InterviewFeedback.interview_id == interview_id).execution_options(populate_existing=True)
+    return await db.scalar(stmt)
+
+
+def can_feedback(user: User, status: str, recorded: bool) -> bool:
+    return applications.can_write(user) and (status == "completed" or (recorded and status in FEEDBACK_EDITABLE))
+
+
+async def save_feedback(db: AsyncSession, user: User, interview: Interview, application: JobApplication, sent: dict, now: datetime) -> str | None:
+    """The caller holds `load_for_write`'s locks. FB2 (409), FB4 the decision's move through `change_status` (its 409 refuses changing a
+    decided outcome, before anything is written), FB1 the one row replaced and audited by field name. Returns the previous status when
+    the decision moved it."""
+    row = await _feedback_row(db, interview.id)
+    if interview.status != "completed" and not (row is not None and interview.status in FEEDBACK_EDITABLE):
+        raise HTTPException(409, NOT_COMPLETED)
+    decision = sent["final_decision"]
+    previous = change_status(db, user, interview, application, decision, "Feedback", now) if decision and decision != interview.status else None
+    changed = [f for f in FEEDBACK_FIELDS if row is None or getattr(row, f) != sent[f]]
+    if changed:
+        if row is None:
+            row = InterviewFeedback(interview_id=interview.id, recorded_by_user_id=user.id)
+            db.add(row)
+        for field in FEEDBACK_FIELDS:
+            setattr(row, field, sent[field])
+        row.recorded_by_user_id = user.id  # updated_at: TimestampMixin's onupdate
+        audit(db, user, "feedback", interview, {"fields": sorted(changed), "final_decision": decision})
+    return previous
+
+
+async def _feedback(db: AsyncSession, ids: list[UUID]) -> dict[UUID, dict]:
+    """The saved feedback of these interviews, in one query (no N+1)."""
+    if not ids:
+        return {}
+    rows = await db.execute(
+        select(InterviewFeedback, User).join(User, User.id == InterviewFeedback.recorded_by_user_id).where(InterviewFeedback.interview_id.in_(ids))
+        .execution_options(populate_existing=True)
+    )
+    return {
+        row.interview_id: {
+            **{f: getattr(row, f) for f in FEEDBACK_FIELDS}, "next_round_label": round_label(row.next_round),
+            "final_decision_label": status_label(row.final_decision) if row.final_decision else None,
+            "recorded_by": {"id": by.id, "full_name": by.full_name}, "updated_at": row.updated_at,
+        }
+        for row, by in rows
+    }
+
+
 # --- notices (IV9, Q-20) ------------------------------------------------------------------------------------------------------------
 def _when(value: datetime) -> str:
     return value.astimezone(IST).strftime("%d %b %Y, %I:%M %p IST")
@@ -331,7 +401,8 @@ async def _history(db: AsyncSession, ids: list[UUID]) -> dict[UUID, list]:
     return history
 
 
-def _out(user: User, now: datetime, history: dict, i: Interview, a: JobApplication, c: Candidate, job: Job, company: Company, contact) -> dict:
+def _out(user: User, now: datetime, history: dict, feedback: dict, i: Interview, a: JobApplication, c: Candidate, job: Job, company: Company,
+         contact) -> dict:
     writer = applications.can_write(user)
     return {
         "id": i.id, "code": i.interview_code, "round": i.round, "round_label": round_label(i.round), "scheduled_at": i.scheduled_at, "mode": i.mode,
@@ -346,12 +417,15 @@ def _out(user: User, now: datetime, history: dict, i: Interview, a: JobApplicati
         "allowed_statuses": [{"key": k, "label": STATUS_LABELS[k]} for k in allowed(i, now)] if writer else [],
         "can_edit": writer and i.status not in FINAL,
         "can_reschedule": writer and i.status in RESCHEDULABLE,
+        "feedback": feedback.get(i.id),
+        "can_feedback": can_feedback(user, i.status, i.id in feedback),
     }
 
 
 async def _items(db: AsyncSession, user: User, now: datetime, rows) -> list[dict]:
-    history = await _history(db, [row[0].id for row in rows])
-    return [_out(user, now, history, *row) for row in rows]
+    ids = [row[0].id for row in rows]
+    history, feedback = await _history(db, ids), await _feedback(db, ids)
+    return [_out(user, now, history, feedback, *row) for row in rows]
 
 
 async def one(db: AsyncSession, user: User, interview_id: UUID, now: datetime) -> dict:

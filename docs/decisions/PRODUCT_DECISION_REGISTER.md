@@ -6955,3 +6955,35 @@ contract change (PX7 and PX11 change only a refused caller's status and a failin
 `api/university_course_import.py` (PX7) and `api/workflows.py` (PX11); RBAC §2.68 and §2.79 corrected (commission now flows there for the
 commission roles only).
 - **New Feature ID authorized:** `upc-033`. **Status:** see `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md` §upc-033.
+
+### DEC-SCOPE-175 — Interview feedback (`rec-021`)
+
+**Evidence:**
+- `EVID-018` §15 (lines 654–674): after every interview the recruiter captures technical, communication and overall ratings, strengths,
+  weaknesses, recruiter comments, company feedback, next round and final decision (9 fields).
+- `RECRUITER_CRM_BACKLOG.md` §rec-021: AC1 (feedback only for Completed interviews), AC2 (next round creates a draft for the next
+  interview); negative scenario a rating of 6 → 422; edge case "feedback edited later (history kept or overwritten at design)". Q-13 asks
+  who verifies skills.
+- `DEC-SCOPE-148` (rec-020) IV3 moves and IV8 side effects; `DEC-SCOPE-149` (rec-018) SC5 one-current-row pattern; `DEC-SCOPE-137`
+  (rec-011) Q-13 "any writer verifies".
+
+**Status:** in review on `feature/rec-021` (2026-10-11). Every answer below is a **recommended default, `UNVERIFIED`**, taken on the
+owner's instruction to proceed with the recommended answers.
+
+**Numbering:** migration `0146_interview_feedback` (after `0145_university_onboarding`), API §12CP and RBAC §2.101 (re-check `main` at
+merge). Spec `docs/superpowers/specs/2026-10-11-rec-021-interview-feedback-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| FB1 | Edited later | One current feedback per interview, overwritten by each save; the audit row keeps the changed field names and the decision, never the text; an unchanged form writes nothing |
+| FB2 | When (AC1) | First recorded only on a Completed interview (`409`); then editable while the interview is Completed, On Hold, Selected or Rejected |
+| FB3 | Fields | Ratings 1–5 (overall required, technical and communication optional); four texts ≤ 2,000; next round one of the 5 §14 rounds; final decision Selected / Rejected / On Hold; a next round with Rejected → `422` |
+| FB4 | Decision | Sets the interview status through rec-020's moves in the same transaction (history note `Feedback`; IV8: Rejected rejects the application, Selected on a Final/Client round selects it). A decided interview keeps its decision (`409`, nothing saved) |
+| FB5 | Next round (AC2) | The draft is the schedule form opened with the suggested round pre-chosen, after the save and whenever the newest interview's feedback suggests a round. No interview row is inserted (a time is required, IV4/IV5) |
+| FB6 | Company feedback | Recorded by the recruiter as relayed; no employer write route, the employer portal is unchanged |
+| FB7 | Skills (Q-13) | Not automatic; the recruiter marks a skill Interview Verified on the candidate's skill profile (rec-011) |
+| FB8 | Who | Readers are the interview's readers (IV10); writers rec-017's `WRITERS`. Employer, students, `hr_team` and `it_admin` never see feedback |
+
+**Consequences:** table `interview_feedback`; `services/interviews.py` (`save_feedback`, `feedback` + `can_feedback` on every item);
+`PUT /recruiter/interviews/{id}/feedback`; the web interview item (form + summary) and the application's interviews (next-round draft).
+- **New Feature ID authorized:** `rec-021`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-021.

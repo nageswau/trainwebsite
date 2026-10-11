@@ -16,7 +16,7 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import User
 from app.notifications.dispatch import enqueue_recruiter_email
-from app.schemas import RecInterviewCreate, RecInterviewReschedule, RecInterviewStatusChange, RecInterviewUpdate
+from app.schemas import RecInterviewCreate, RecInterviewFeedbackIn, RecInterviewReschedule, RecInterviewStatusChange, RecInterviewUpdate
 from app.services import applications
 from app.services import interviews as svc
 from app.services.bdm_appointments import db_now
@@ -100,4 +100,17 @@ async def change_interview_status(interview_id: UUID, payload: RecInterviewStatu
     previous = svc.change_status(db, user, interview, application, payload.status, payload.note, now)
     await db.commit()
     svc.log("recruiter_interview_status_changed", user, interview_id, from_status=previous, to_status=payload.status)
+    return {"interview": await svc.one(db, user, interview_id, now)}
+
+
+@router.put("/interviews/{interview_id}/feedback")
+async def save_interview_feedback(interview_id: UUID, payload: RecInterviewFeedbackIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """rec-021 (FB1-FB4; AC1): the whole form replaces the one current feedback; a decision moves the interview as the status route does.
+    The text is never logged."""
+    interview, application, _job = await svc.load_for_write(db, user, interview_id, "interview_feedback")
+    now = await db_now(db)
+    sent = payload.model_dump()
+    previous = await svc.save_feedback(db, user, interview, application, sent, now)
+    await db.commit()
+    svc.log("recruiter_interview_feedback_saved", user, interview_id, final_decision=sent["final_decision"], from_status=previous)
     return {"interview": await svc.one(db, user, interview_id, now)}

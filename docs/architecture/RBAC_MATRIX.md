@@ -1710,6 +1710,18 @@ names no team rule); an event may link any active university (upc-011); a manage
 performance with its commission (upc-018 "any university"); FastAPI validates typed query parameters and bodies (`422`) before the
 role check, so a refused role with a malformed request sees `422` (reports avoid this by validating after the role, RP4).
 
+### 2.101 Interview feedback *(net-new, added 2026-10-11 — `DEC-SCOPE-175`, `rec-021`)*
+
+Feedback takes its interview's scope (§2.74). The role check runs before anything is read; out of scope is `404`.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` | read; record and edit feedback (`PUT /recruiter/interviews/{id}/feedback`) | requirements assigned to them or on their companies | `rec-021` |
+| `placement_manager` | read only (writes `403`) | the team's requirements and the unassigned queue | `rec-021` |
+| `bdm` | read only | requirements of companies where they are the assigned BDM (R10) | `rec-021` |
+| `super_admin` | everything | all | `rec-021` |
+| `hr_team`, `it_admin`, `employer`, students, every other role | `403`; feedback is never returned on the legacy or employer interview routes (FB6, FB8) | — | `rec-021` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
