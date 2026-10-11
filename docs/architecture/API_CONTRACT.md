@@ -2739,6 +2739,19 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `GET /recruiter/companies/{id}/revenue` *(new)* | `{requirements[] {requirement, status_label, selected, joined, fee, expected_revenue, invoiced, received, outstanding}, totals}` over the company's requirements in the caller's requirement scope; `404` company out of scope |
 | `GET /recruiter/invoices?view=outstanding\|overdue\|paid\|cancelled&company_id?&limit&offset` *(new)* | `{items, total, limit, offset, counts {4 views}, outstanding_total}`; outstanding/overdue by due date ascending, paid by invoice date, cancelled newest first; `422` unknown view |
 
+## 12CR. Recruiter deactivation + bulk reassignment (`rec-037`) — addendum, 2026-10-11
+
+- **Basis:** `DEC-SCOPE-177` (RC1–RC15). Spec: `docs/superpowers/specs/2026-10-11-rec-037-recruiter-reassignment-design.md` §3. No migration.
+- **Callers:** `placement_manager` (from and to their direct reports), `super_admin` (any recruiter); others `403`; no session `401`.
+- **Behaviour:** one transaction (the source's companies, then its requirements, locked by id, then the target FOR SHARE), one
+  `company_assignment_history` row and one audit per moved company, one audit per moved requirement, a `recruiter.reassign` summary audit.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `POST /recruiter/manager/reassign` | Body `{from_user_id, to_user_id}` (extra keys `422`). **→ 200** `{from_user_id, to_user_id, moved: {companies, requirements, follow_ups}}`. Every company (archived included) and every requirement (any status) assigned to the source moves to the target; open follow-ups move with their company (counted). `403` role, or source outside the manager's team; `404` source not a recruiter; `409` nothing to move; `422` target inactive, not a recruiter, outside the team or the source itself |
+| `GET /recruiter/manager/team` | Rows gain `work: {companies, requirements, follow_ups}` (additive) |
+| `PATCH /admin/users/{id}` | `{active:false}` on a recruiter with ≥ 1 non-archived company or ≥ 1 requirement not closed/cancelled → `422` "This recruiter has N companies and M open requirements. A placement manager must reassign them (Team page) before deactivation."; otherwise the deactivation also increments `session_version` |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

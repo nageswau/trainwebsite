@@ -6597,11 +6597,37 @@ class RecruiterAdminRow(RecruiterTeamRow):
     reporting_manager: BdmManagerRef | None
 
 
+class RecruiterWork(BaseModel):
+    """rec-037 (RC15): a recruiter's companies (archived included) and requirements, and the open follow-ups on those companies."""
+
+    companies: int
+    requirements: int
+    follow_ups: int
+
+
+class RecruiterTeamMemberRow(RecruiterTeamRow):
+    work: RecruiterWork
+
+
 class RecruiterTeamPage(BaseModel):
-    items: list[RecruiterTeamRow]
+    items: list[RecruiterTeamMemberRow]
     total: int
     limit: int
     offset: int
+
+
+class RecruiterReassign(BaseModel):
+    """rec-037 (RC5): move every company and requirement of one recruiter to another."""
+
+    model_config = ConfigDict(extra="forbid")
+    from_user_id: UUID
+    to_user_id: UUID
+
+
+class RecruiterReassignOut(BaseModel):
+    from_user_id: UUID
+    to_user_id: UUID
+    moved: RecruiterWork
 
 
 class RecruiterAdminPage(BaseModel):

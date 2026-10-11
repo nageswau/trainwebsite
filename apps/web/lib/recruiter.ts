@@ -7,6 +7,10 @@ export type RecruiterProfile = { employee_id: string | null; reporting_manager: 
 export type RecruiterMe = { id: string; full_name: string; email: string; phone: string | null; active: boolean; division: string; recruiter_profile: RecruiterProfile };
 export type RecruiterTeamRow = { id: string; full_name: string; email: string; phone: string | null; active: boolean; employee_id: string | null };
 export type RecruiterAdminRow = RecruiterTeamRow & { reporting_manager: ManagerRef | null };
+/** rec-037 (RC15): what a reassignment would move -- companies (archived included), requirements, open follow-ups on those companies. */
+export type RecruiterWork = { companies: number; requirements: number; follow_ups: number };
+export type RecruiterTeamMember = RecruiterTeamRow & { work: RecruiterWork };
+export const RECRUITER_REASSIGN_URL = "/api/v1/recruiter/manager/reassign";
 
 export const RECRUITERS_URL = "/api/v1/admin/recruiters";
 export const PLACEMENT_MANAGERS_URL = "/api/v1/admin/placement-managers";
