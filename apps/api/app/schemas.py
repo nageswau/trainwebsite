@@ -8931,7 +8931,7 @@ class RecApplicationStatusChange(BaseModel):
     note: _rec_requirement_text_type(500, multiline=True) = None
 
 
-# --- rec-029 (DEC-SCOPE-175): campus recruitment drives (services/recruitment_drives) ----------------------------------------------------
+# --- rec-029 (DEC-SCOPE-176): campus recruitment drives (services/recruitment_drives) ----------------------------------------------------
 # The cross-field rules (exactly one college, attended <= registered, the company's requirements) live in the service, so a PATCH is
 # checked against the stored values the same way and each 422 names its field.
 REC_DRIVE_LABELS = {"college_name": "College", "job_role": "Job role", "eligibility": "Eligibility"}

@@ -1329,6 +1329,11 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-029 — Campus recruitment drives
+- **Status (2026-10-11):** **IN REVIEW** on `feature/rec-029`. `DEC-SCOPE-176` (DR1–DR10 recommended defaults, UNVERIFIED; DR3 answers
+  Q-30: one drive per application, closed by hand; DR8: the college's BDM gets no access); migration `0147_recruitment_drives` (after
+  `0146_interview_feedback`), API §12CQ, RBAC §2.102. Drafted as `0146` / 175 / §12CP / §2.101; rec-021 merged first. Service is
+  `services/recruitment_drives.py`; `job_applications.drive_id` lands here (rec-017 A4) and the tag is set through rec-017's add
+  (`drive_id`). QA evidence `docs/quality/REC-029_EXPLORATORY_QA_2026-10-11.md`.
 - **Business requirement:** §21 (13 fields; funnel example) (R15).
 - **Existing behavior:** none.
 - **Expected behavior:**

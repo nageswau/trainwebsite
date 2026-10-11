@@ -1,9 +1,9 @@
 """rec-029 -- campus recruitment drives: recruitment_drives, drive_requirements, recruitment_drive_code_seq and job_applications.drive_id.
 
-Revision ID: 0146_recruitment_drives
-Revises: 0145_university_onboarding
+Revision ID: 0147_recruitment_drives
+Revises: 0146_interview_feedback
 
-docs/superpowers/specs/2026-10-11-rec-029-campus-drives-design.md §2 (DEC-SCOPE-175). Additive: two new tables and one nullable column; no
+docs/superpowers/specs/2026-10-11-rec-029-campus-drives-design.md §2 (DEC-SCOPE-176). Additive: two new tables and one nullable column; no
 existing row read or written (no backfill). 0001 builds a fresh database from the current models, which already carry all of it, so
 each piece is created only when missing. STATUSES / CHECKS are frozen copies of app.models.RECRUITMENT_DRIVE_* (test_rec_029_migration).
 downgrade() refuses while any drive exists: recorded drives and their tags are never dropped silently.
@@ -14,8 +14,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0146_recruitment_drives"
-down_revision = "0145_university_onboarding"
+revision = "0147_recruitment_drives"
+down_revision = "0146_interview_feedback"
 branch_labels = None
 depends_on = None
 
@@ -78,7 +78,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {DRIVES} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0146_recruitment_drives: recruitment drives exist. Clear them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0147_recruitment_drives: recruitment drives exist. Clear them deliberately first.")
     op.drop_index("ix_job_applications_drive", table_name=APPLICATIONS)
     op.drop_column(APPLICATIONS, "drive_id")
     op.drop_table(LINKS)

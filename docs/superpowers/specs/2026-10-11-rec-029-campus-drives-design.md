@@ -6,9 +6,9 @@
   Students Attended, Shortlisted, Interviewed, Selected, Joined; the ABC College + XYZ Technologies funnel example (illustrative only).
   Appendix B C1–C7 defines every figure. R15 (`EXPLICIT_APPROVAL`, 2026-10-07): college = BDM college org or free text; registered and
   attended typed; shortlisted → joined computed from drive-tagged applications.
-- **Decision:** `DEC-SCOPE-175`. DR1–DR10 are **recommended defaults** taken on the owner's standing instruction ("proceed with the
+- **Decision:** `DEC-SCOPE-176`. DR1–DR10 are **recommended defaults** taken on the owner's standing instruction ("proceed with the
   recommended answers; ask only if blocking"). They stay `UNVERIFIED` until the owner confirms them. DR3 answers Q-30.
-- **Numbering (drafted):** migration `0146_recruitment_drives`, API §12CP, RBAC §2.101 (re-check `main` at Phase 9).
+- **Numbering (FINAL unless main moves):** migration `0147_recruitment_drives`, API §12CQ, RBAC §2.102. Drafted as `0146` / 175 / §12CP / §2.101; rec-021 merged first and took those numbers.
 
 ## 1. Decisions (UNVERIFIED defaults)
 
@@ -25,7 +25,7 @@
 | DR9 | Adding candidates | `POST /recruiter/requirements/{id}/candidates` gains optional `drive_id`. The drive must be in scope, not cancelled and include this requirement (`422` on `drive_id`); everything else is rec-017's add (pool candidate, duplicate `409`, requirement ended `409`) |
 | DR10 | Audit/log | Create/update audit rows (`recruitment_drive.create/update`, field names only); logs carry ids only |
 
-## 2. Data (`0146`)
+## 2. Data (`0147`)
 
 - `recruitment_drives`: `id`, `drive_code` (unique), `company_id` (FK), `college_org_id` (FK `bdm_organizations`, nullable), `college_name`
   (nullable), `drive_date`, `job_role`, `vacancies`, `eligibility`, `students_registered`, `students_attended`, `status` (CHECK 3),
@@ -34,7 +34,7 @@
 - `drive_requirements`: `drive_id`, `job_id`, PK both; index `job_id`.
 - `job_applications.drive_id` nullable FK + index. Additive; no backfill. Every FK RESTRICT. `downgrade()` refuses while a drive exists.
 
-## 3. API (§12CP)
+## 3. API (§12CQ)
 
 | Method/Path | Notes |
 |---|---|

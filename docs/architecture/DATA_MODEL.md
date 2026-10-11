@@ -1953,3 +1953,22 @@ NULL)`), `_note`; `uq_university_onboarding_items_kind (university_id, kind)` (a
   (OB2), so there is no backfill and no signing hook.
 - The overall status and "Course database updated" (≥ 1 active course, OB7) are computed on read.
 - `downgrade()` refuses while any row exists.
+
+## Campus recruitment drives (`rec-029`, `DEC-SCOPE-176`; migration `0147_recruitment_drives`, after `0146_interview_feedback`)
+
+**`recruitment_drives`** has these columns:
+- `drive_code` (unique, `DRV-000001` from `recruitment_drive_code_seq`), `company_id` (FK `companies`, RESTRICT);
+- `college_org_id` (FK `bdm_organizations`, RESTRICT, nullable) or `college_name` varchar(200) — exactly one;
+- `drive_date`, `job_role` varchar(150), `vacancies`, `eligibility` varchar(1000);
+- `students_registered`, `students_attended` (typed counts, default 0);
+- `status` (`planned` / `completed` / `cancelled`), `created_by_user_id`, plus timestamps.
+
+The CHECKs are `RECRUITMENT_DRIVE_CHECKS`: the status, exactly one college, counts ≥ 0, attended ≤ registered (AC2) and vacancies ≥ 1.
+Indexes `(company_id, drive_date)` and `(drive_date)`.
+
+**`drive_requirements`** (`drive_id`, `job_id`; both PK, RESTRICT; index on `job_id`) holds the requirements a drive recruits for.
+
+**`job_applications.drive_id`** (nullable FK `recruitment_drives`, RESTRICT; `ix_job_applications_drive`) is the one drive an application came
+through (DR3). Shortlisted, interviewed, selected and joined are computed from these rows on read, never stored.
+
+Additive: no existing row is read or written (no backfill). `downgrade()` refuses while any drive exists.

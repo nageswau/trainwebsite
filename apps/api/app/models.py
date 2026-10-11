@@ -5337,7 +5337,7 @@ class ProfileShareItem(Base, TimestampMixin):
     responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
-# rec-029 (DEC-SCOPE-175, DR1-DR7): campus recruitment drives (§21). Migration 0146 repeats the statuses and checks
+# rec-029 (DEC-SCOPE-176, DR1-DR7): campus recruitment drives (§21). Migration 0147 repeats the statuses and checks
 # (test_rec_029_migration). Labels live in services/recruitment_drives.py and the web client.
 RECRUITMENT_DRIVE_STATUSES = ("planned", "completed", "cancelled")
 RECRUITMENT_DRIVE_CODE_SEQ = Sequence("recruitment_drive_code_seq", metadata=Base.metadata)
@@ -5351,7 +5351,7 @@ RECRUITMENT_DRIVE_CHECKS = {
 
 
 class RecruitmentDrive(Base, TimestampMixin):
-    """rec-029 (DEC-SCOPE-175): a campus drive of one company at one college -- a BDM college organisation or a typed name (R15, DR2).
+    """rec-029 (DEC-SCOPE-176): a campus drive of one company at one college -- a BDM college organisation or a typed name (R15, DR2).
     Registered and attended are typed counts; shortlisted to joined are computed from the applications tagged with the drive (DR7).
     Never deleted: cancelled instead (DR3)."""
 

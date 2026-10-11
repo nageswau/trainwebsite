@@ -2715,6 +2715,27 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `PUT /recruiter/interviews/{id}/feedback` *(new)* | The whole form `{overall_rating (1–5), technical_rating? (1–5), communication_rating? (1–5), strengths?, weaknesses?, recruiter_comments?, company_feedback? (each ≤2000), next_round? (a §14 round), final_decision? (selected\|rejected\|on_hold)}`; a field left out is cleared → `{interview}`. **Refusals:** not Completed (and no feedback yet) → `409` "Feedback can be recorded once the interview is Completed"; a decision the IV3 moves do not allow (e.g. Selected → Rejected) → `409`, nothing saved; a rating outside 1–5, an unknown round or decision, a next round with Rejected → `422` on that field. A decision different from the status moves the interview (history note `Feedback`; IV8 feeds the application). Audit `recruiter_interview.feedback` with field names and the decision only; an unchanged form writes nothing |
 
+## 12CQ. Campus recruitment drives (`rec-029`) — addendum, 2026-10-11
+
+- **Basis:** `DEC-SCOPE-176` (DR1–DR10). Design spec `docs/superpowers/specs/2026-10-11-rec-029-campus-drives-design.md` §3. Migration
+  `0147`. A drive takes its company's scope (rec-003 `caller_scope`): out of scope = `404`, other roles `403`. Writes need the company's
+  `can_edit` (assigned recruiter, `super_admin`; manager / BDM `403`; archived company `409`). Unknown keys `422`. One commit per write.
+- **Drive item:** `{id, code (DRV-000001), status (planned|completed|cancelled), status_label, drive_date, job_role, vacancies, eligibility,
+  students_registered, students_attended, company {id, code, name}, college {org_id, code, name, city}, can_edit, created_at, updated_at}`.
+  The detail adds `requirements [{id, code, title, status, open}]`, `funnel` and `statuses` (rec-017's catalogue, for the add form).
+- **Funnel:** `{registered, attended, tagged, shortlisted, interviewed, selected, joined}` (Appendix B C2–C7, DR7), one statement.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/drives?q&status&limit&offset` *(new)* | `{items (+ requirement_count), total, limit, offset, can_create}`, latest drive date first; `q` matches code, job role, college, company |
+| `GET /recruiter/drives/college-options?q&limit` *(new)* | Live BDM `college` / `university` organisations: `{items [{id, code, name, city}], total}`. Recruiters, managers, `super_admin`; others `403` |
+| `POST /recruiter/drives` *(new)* | `{company_id, college_org_id?, college_name?, requirement_ids[1–10], drive_date, job_role (≤150), vacancies (1–100000), eligibility? (≤1000), students_registered? / students_attended? (0–1000000, default 0)}` → `201` detail. Exactly one college else `422` on `college_org_id`; a requirement not live or not of the company → `422` on `requirement_ids`; attended > registered → `422` on `students_attended` (AC2). Not idempotent |
+| `GET /recruiter/drives/{id}` *(new)* | The detail |
+| `PATCH /recruiter/drives/{id}` *(new)* | Partial; either college key replaces both; `requirement_ids` replaces the set (removing one with drive-tagged applications → `409`); AC2 on the merged counts; null on a required field `422`; a cancelled drive → `409` |
+| `GET /recruiter/drives/{id}/funnel` *(new)* | The funnel |
+| `GET /recruiter/drives/{id}/candidates?limit&offset` *(new)* | The drive-tagged applications `{items [{application_id, candidate {id, code, name}, requirement {id, code, title}, status, status_label}], total, limit, offset}` |
+| `POST /recruiter/requirements/{id}/candidates` *(changed, additive)* | Optional `drive_id` (DR9): a drive in scope that includes this requirement, else `422` on `drive_id`; a cancelled drive `409`. The application keeps the tag; omitted = unchanged behaviour |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
