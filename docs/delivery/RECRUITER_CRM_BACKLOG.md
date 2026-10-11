@@ -1329,6 +1329,11 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-029 — Campus recruitment drives
+- **Status (2026-10-11):** **IN REVIEW** on `feature/rec-029`. `DEC-SCOPE-178` (DR1–DR10 recommended defaults, UNVERIFIED; DR3 answers
+  Q-30: one drive per application, closed by hand; DR8: the college's BDM gets no access); migration `0148_recruitment_drives` (after
+  `0147_recruiter_revenue`), API §12CS, RBAC §2.104. Drafted as `0146` / 175 / §12CP / §2.101, then `0147` / 176 / §12CQ / §2.102, then 177 / §12CR / §2.103; rec-021, rec-031 and then rec-037 merged first. Service is
+  `services/recruitment_drives.py`; `job_applications.drive_id` lands here (rec-017 A4) and the tag is set through rec-017's add
+  (`drive_id`). QA evidence `docs/quality/REC-029_EXPLORATORY_QA_2026-10-11.md`.
 - **Business requirement:** §21 (13 fields; funnel example) (R15).
 - **Existing behavior:** none.
 - **Expected behavior:**
@@ -1566,6 +1571,10 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-037 — Recruiter deactivation + bulk reassignment
+- **Status (2026-10-11):** **IN REVIEW** on `feature/rec-037`. `DEC-SCOPE-177` (RC1–RC15 recommended defaults, UNVERIFIED; RC1 answers
+  Q-27: no automatic move, deactivation is refused until a manager reassigns); no migration, API §12CR, RBAC §2.103. Reassignment moves
+  every company (archived too) and requirement (any status) of the source; open follow-ups ride with the company. QA evidence
+  `docs/quality/REC-037_EXPLORATORY_QA_2026-10-11.md`.
 - **Business requirement:** derived from R2 (own-assignment scope) and the tel-025 precedent. A deactivated recruiter's companies,
   requirements and follow-ups must not be orphaned.
 - **Existing behavior:** user deactivation is generic.

@@ -1737,6 +1737,31 @@ read (`403`); an id out of scope is the same `404` as an unknown one. Track only
 
 Every write is audited in the same transaction (`recruiter_revenue.*`: ids and amounts only — never notes, references, reasons or names).
 
+### 2.103 Recruiter deactivation + bulk reassignment *(net-new, added 2026-10-11 — `DEC-SCOPE-177`, `rec-037`)*
+
+`require_manager`, then the source must be the manager's direct report (`403` otherwise, logged); the target goes through rec-003's
+`locked_recruiter_target` (`422`). Routes are listed in §12CR.
+
+| Role | Reassign a recruiter's work | Deactivate a recruiter with open work (`PATCH /admin/users`) |
+|---|---|---|
+| `placement_manager` | Direct reports → an active direct report | — (not an admin) |
+| `super_admin` | Any recruiter (a recruiter with no manager included) → any active recruiter | `422` until reassigned |
+| `it_admin` | `403` | `422` until reassigned |
+| `placement_team` | `403` | — |
+| any other role | `403` (anonymous `401`) | — |
+
+### 2.104 Campus recruitment drives *(net-new, added 2026-10-11 — `DEC-SCOPE-178`, `rec-029`)*
+
+A drive takes its company's scope (§2.47, rec-003). The role check runs before anything is read; out of scope is `404`.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` | read; create and edit drives; add candidates through a drive (`drive_id` on rec-017's add) | companies assigned to them | `rec-029` |
+| `placement_manager` | read only (writes `403`); the college picker | the team's companies and the unassigned queue | `rec-029` |
+| `bdm` | read only (the company's assigned BDM, R10). The college's BDM gets no access (DR8, Q-30) | companies where they are the assigned BDM | `rec-029` |
+| `super_admin` | everything | all | `rec-029` |
+| `hr_team`, `it_admin`, `employer`, students, every other role | `403` | — | `rec-029` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

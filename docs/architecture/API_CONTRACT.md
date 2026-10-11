@@ -2739,6 +2739,40 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `GET /recruiter/companies/{id}/revenue` *(new)* | `{requirements[] {requirement, status_label, selected, joined, fee, expected_revenue, invoiced, received, outstanding}, totals}` over the company's requirements in the caller's requirement scope; `404` company out of scope |
 | `GET /recruiter/invoices?view=outstanding\|overdue\|paid\|cancelled&company_id?&limit&offset` *(new)* | `{items, total, limit, offset, counts {4 views}, outstanding_total}`; outstanding/overdue by due date ascending, paid by invoice date, cancelled newest first; `422` unknown view |
 
+## 12CR. Recruiter deactivation + bulk reassignment (`rec-037`) — addendum, 2026-10-11
+
+- **Basis:** `DEC-SCOPE-177` (RC1–RC15). Spec: `docs/superpowers/specs/2026-10-11-rec-037-recruiter-reassignment-design.md` §3. No migration.
+- **Callers:** `placement_manager` (from and to their direct reports), `super_admin` (any recruiter); others `403`; no session `401`.
+- **Behaviour:** one transaction (the source's companies, then its requirements, locked by id, then the target FOR SHARE), one
+  `company_assignment_history` row and one audit per moved company, one audit per moved requirement, a `recruiter.reassign` summary audit.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `POST /recruiter/manager/reassign` | Body `{from_user_id, to_user_id}` (extra keys `422`). **→ 200** `{from_user_id, to_user_id, moved: {companies, requirements, follow_ups}}`. Every company (archived included) and every requirement (any status) assigned to the source moves to the target; open follow-ups move with their company (counted). `403` role, or source outside the manager's team; `404` source not a recruiter; `409` nothing to move; `422` target inactive, not a recruiter, outside the team or the source itself |
+| `GET /recruiter/manager/team` | Rows gain `work: {companies, requirements, follow_ups}` (additive) |
+| `PATCH /admin/users/{id}` | `{active:false}` on a recruiter with ≥ 1 non-archived company or ≥ 1 requirement not closed/cancelled → `422` "This recruiter has N companies and M open requirements. A placement manager must reassign them (Team page) before deactivation."; otherwise the deactivation also increments `session_version` |
+
+## 12CS. Campus recruitment drives (`rec-029`) — addendum, 2026-10-11
+
+- **Basis:** `DEC-SCOPE-178` (DR1–DR10). Design spec `docs/superpowers/specs/2026-10-11-rec-029-campus-drives-design.md` §3. Migration
+  `0148`. A drive takes its company's scope (rec-003 `caller_scope`): out of scope = `404`, other roles `403`. Writes need the company's
+  `can_edit` (assigned recruiter, `super_admin`; manager / BDM `403`; archived company `409`). Unknown keys `422`. One commit per write.
+- **Drive item:** `{id, code (DRV-000001), status (planned|completed|cancelled), status_label, drive_date, job_role, vacancies, eligibility,
+  students_registered, students_attended, company {id, code, name}, college {org_id, code, name, city}, can_edit, created_at, updated_at}`.
+  The detail adds `requirements [{id, code, title, status, open}]`, `funnel` and `statuses` (rec-017's catalogue, for the add form).
+- **Funnel:** `{registered, attended, tagged, shortlisted, interviewed, selected, joined}` (Appendix B C2–C7, DR7), one statement.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/drives?q&status&limit&offset` *(new)* | `{items (+ requirement_count), total, limit, offset, can_create}`, latest drive date first; `q` matches code, job role, college, company |
+| `GET /recruiter/drives/college-options?q&limit` *(new)* | Live BDM `college` / `university` organisations: `{items [{id, code, name, city}], total}`. Recruiters, managers, `super_admin`; others `403` |
+| `POST /recruiter/drives` *(new)* | `{company_id, college_org_id?, college_name?, requirement_ids[1–10], drive_date, job_role (≤150), vacancies (1–100000), eligibility? (≤1000), students_registered? / students_attended? (0–1000000, default 0)}` → `201` detail. Exactly one college else `422` on `college_org_id`; a requirement not live or not of the company → `422` on `requirement_ids`; attended > registered → `422` on `students_attended` (AC2). Not idempotent |
+| `GET /recruiter/drives/{id}` *(new)* | The detail |
+| `PATCH /recruiter/drives/{id}` *(new)* | Partial; either college key replaces both; `requirement_ids` replaces the set (removing one with drive-tagged applications → `409`); AC2 on the merged counts; null on a required field `422`; a cancelled drive → `409` |
+| `GET /recruiter/drives/{id}/funnel` *(new)* | The funnel |
+| `GET /recruiter/drives/{id}/candidates?limit&offset` *(new)* | The drive-tagged applications `{items [{application_id, candidate {id, code, name}, requirement {id, code, title}, status, status_label}], total, limit, offset}` |
+| `POST /recruiter/requirements/{id}/candidates` *(changed, additive)* | Optional `drive_id` (DR9): a drive in scope that includes this requirement, else `422` on `drive_id`; a cancelled drive `409`. The application keeps the tag; omitted = unchanged behaviour |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
