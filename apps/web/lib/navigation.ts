@@ -133,6 +133,7 @@ export const RECRUITER_NAV: NavItem[] = [
   ...LEGACY_PLACEMENT.map((x) => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, (c) => c.toUpperCase()), href: `/it/placement/${x}` })),
 ];
 export const RECRUITER_MANAGER_NAV: NavItem[] = [
+  { label: "Dashboard", href: "/recruiter/dashboard" }, // rec-032: the team's figures; a manager still lands on Team
   { label: "Team", href: "/recruiter/manager/team" }, { label: "Companies", href: "/recruiter/companies" }, { label: "Catalogues", href: "/recruiter/manager/catalogue" }, { label: "Skills Master", href: "/recruiter/manager/skills" },
   { label: "Candidate Master", href: "/recruiter/candidates" }, // rec-009: shared with recruiters (R11)
   { label: "Find Candidates", href: "/recruiter/find-candidates" }, // rec-013: the whole pool (R11)
