@@ -1,4 +1,4 @@
-"""rec-036 (DEC-SCOPE-176, spec §1-§3): IT training ↔ recruiter. A program's skill tags (CI1), the "Course completed" skills an opted-in
+"""rec-036 (DEC-SCOPE-179, spec §1-§3): IT training ↔ recruiter. A program's skill tags (CI1), the "Course completed" skills an opted-in
 student gets for each program they hold an issued certificate of (CI2-CI6), and the candidate's §27 journey (CI7).
 
 Functions only; nothing here commits -- the route owns the transaction. Audit rows and logs carry ids, never a name."""

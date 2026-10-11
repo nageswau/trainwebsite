@@ -1,4 +1,4 @@
-"""rec-036 -- migration 0147_program_skills (spec §2). Round trip, keys and downgrade refusal run in a throwaway database built from
+"""rec-036 -- migration 0149_program_skills (spec §2). Round trip, keys and downgrade refusal run in a throwaway database built from
 scratch (the tel-002 pattern); a downgrade never runs against the shared test database. Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -14,11 +14,11 @@ from app.core.config import settings
 from tests.test_tel_001_migration import _config, _sql
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_rec_036_migration_0147", VERSIONS / "0147_program_skills.py")
+_spec = importlib.util.spec_from_file_location("_rec_036_migration_0147", VERSIONS / "0149_program_skills.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0146_interview_feedback", "0147_program_skills"
+BASE, HEAD = "0148_recruitment_drives", "0149_program_skills"
 
 
 def test_migration_chains_and_is_the_single_head():

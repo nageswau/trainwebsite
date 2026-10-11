@@ -1,4 +1,4 @@
-// rec-036 (DEC-SCOPE-176 CI7): a candidate's EVID-018 §27 journey -- lead → IT student → trained → recruiter candidate → placed.
+// rec-036 (DEC-SCOPE-179 CI7): a candidate's EVID-018 §27 journey -- lead → IT student → trained → recruiter candidate → placed.
 import { CANDIDATES_URL } from "@/lib/recruiterCandidates";
 
 export type CandidateJourney = {

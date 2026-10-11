@@ -19,6 +19,7 @@ from app.services import application_screening as screening
 from app.services import applications as svc
 from app.services import candidates, joinings
 from app.services import recruiter_requirements as requirements
+from app.services import recruitment_drives as drives
 
 router = APIRouter(prefix="/recruiter", tags=["recruiter-applications"])
 
@@ -58,8 +59,11 @@ async def add_requirement_candidate(requirement_id: UUID, payload: RecApplicatio
     candidate = await db.scalar(select(Candidate).where(Candidate.id == payload.candidate_id, *candidates.pool_filter()).with_for_update(read=True))
     if candidate is None or candidate.archived_at is not None:
         raise HTTPException(422, "Choose an active candidate from the pool")
-    application = await svc.create(db, user, job, candidate, payload.status, payload.note)
-    svc.audit(db, user, "add", application, {"job_id": str(job.id), "candidate_id": str(candidate.id), "status": payload.status})
+    if payload.drive_id is not None:
+        await drives.check_tag(db, user, job, payload.drive_id)
+    application = await svc.create(db, user, job, candidate, payload.status, payload.note, drive_id=payload.drive_id)
+    svc.audit(db, user, "add", application, {"job_id": str(job.id), "candidate_id": str(candidate.id), "status": payload.status,
+                                             **({"drive_id": str(payload.drive_id)} if payload.drive_id else {})})
     await db.commit()
     svc.log("recruiter_application_added", user, application, status=payload.status)
     return {"application": await _item(db, user, application)}

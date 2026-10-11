@@ -3,9 +3,9 @@
 - **Backlog:** `docs/delivery/RECRUITER_CRM_BACKLOG.md` § rec-036. Dependencies rec-010 (PR #182) and rec-011 (PR #180) are merged.
 - **Evidence:** EVID-018 §27 (Lead → IT Student → Trained Candidate → Recruiter Candidate → Placed Candidate), §9 (source detail =
   course), S2-§17 ("Course Completed" skill source), S2-§20 ("500 Java students … Java talent pool", after opt-in). R4 (opted-in only).
-- **Decision:** `DEC-SCOPE-176` — CI1–CI8 below are **recommended defaults, UNVERIFIED** (the owner asked the session to proceed with the
+- **Decision:** `DEC-SCOPE-179` — CI1–CI8 below are **recommended defaults, UNVERIFIED** (the owner asked the session to proceed with the
   recommended answers; Q-11 and the Q-13 part for course skills stay open for confirmation).
-- **Numbers:** migration `0147_program_skills`, API §12CQ, RBAC §2.102 (re-checked against `main` at Phase 9).
+- **Numbers:** migration `0149_program_skills`, API §12CT, RBAC §2.105 (re-checked against `main` at Phase 9).
 
 ## 1. Recommended defaults (Q-11, Q-13, edge cases)
 

@@ -1,4 +1,4 @@
-// rec-036 (DEC-SCOPE-176 CI1): a program's skill tags -- types and endpoints. The API decides who may edit and every rule (active Skills
+// rec-036 (DEC-SCOPE-179 CI1): a program's skill tags -- types and endpoints. The API decides who may edit and every rule (active Skills
 // Master skills, at most 30); `skill-options` is the IT admin's picker (it_admin cannot read the Skills Master itself, Q-28).
 import type { LookupPage } from "@/lib/lookups";
 

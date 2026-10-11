@@ -603,6 +603,12 @@ JOB_CHECKS = {  # migration 0114 repeats these strings; test_rec_007_migration a
     " AND (experience_min_months IS NULL OR experience_max_months IS NULL OR experience_min_months <= experience_max_months)",
     "ck_jobs_salary": "(salary_min IS NULL OR salary_min >= 0) AND (salary_max IS NULL OR salary_max >= 0) AND (salary_min IS NULL OR salary_max IS NULL OR salary_min <= salary_max)",
 }
+JOB_FEE_BASES = ("fixed", "percent_of_ctc")  # rec-031 (RV1): the per-requirement fee override, the rec-030 CT4 shape
+JOB_FEE_CHECKS = {  # migration 0147 repeats these strings (test_rec_031_migration)
+    "ck_jobs_fee_pair": "(fee_basis IS NULL) = (fee_value IS NULL)",
+    "ck_jobs_fee_basis": _in("fee_basis", JOB_FEE_BASES),
+    "ck_jobs_fee_value": "fee_value IS NULL OR (fee_value >= 0 AND (fee_basis <> 'percent_of_ctc' OR fee_value <= 100))",
+}
 
 
 class Job(Base, TimestampMixin):
@@ -613,7 +619,7 @@ class Job(Base, TimestampMixin):
     __tablename__ = "jobs"
     __table_args__ = (
         UniqueConstraint("requirement_code", name="uq_jobs_requirement_code"),
-        *(CheckConstraint(sql, name=name) for name, sql in JOB_CHECKS.items()),
+        *(CheckConstraint(sql, name=name) for name, sql in {**JOB_CHECKS, **JOB_FEE_CHECKS}.items()),
         Index("ix_jobs_status", "status"),
         Index("ix_jobs_assigned_recruiter", "assigned_recruiter_user_id"),
         Index("ix_jobs_closes_on", "closes_on"),
@@ -644,6 +650,8 @@ class Job(Base, TimestampMixin):
     priority: Mapped[str | None] = mapped_column(String(10), nullable=True)
     assigned_recruiter_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    fee_basis: Mapped[str | None] = mapped_column(String(20), nullable=True)  # rec-031 (RV1): overrides the contract's fee per hire
+    fee_value: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     company = relationship("Company")
 
 
@@ -743,6 +751,7 @@ class JobApplication(Base, TimestampMixin):
         UniqueConstraint("candidate_id", "job_id", name="uq_job_applications_candidate_job"),
         Index("ix_job_applications_job_status", "job_id", "status"),
         Index("ix_job_applications_candidate", "candidate_id"),
+        Index("ix_job_applications_drive", "drive_id"),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id"), index=True)
@@ -752,6 +761,8 @@ class JobApplication(Base, TimestampMixin):
     resume_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     stage_changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     added_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    # rec-029 (DR3): the one campus drive the candidate came through, set when added through it and never changed.
+    drive_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruitment_drives.id", ondelete="RESTRICT"), nullable=True)
 
 
 class JobApplicationStatusHistory(Base):
@@ -4772,7 +4783,7 @@ class CandidateSkill(Base, TimestampMixin):
 
 
 class ProgramSkill(Base):
-    """rec-036 (DEC-SCOPE-176, CI1): a Skills Master skill a program teaches. A student holding the program's issued certificate gets it as
+    """rec-036 (DEC-SCOPE-179, CI1): a Skills Master skill a program teaches. A student holding the program's issued certificate gets it as
     a `course_completed` skill once opted in (services/course_skills). A skill merge re-points these rows (CI8)."""
 
     __tablename__ = "program_skills"
@@ -5344,3 +5355,101 @@ class ProfileShareItem(Base, TimestampMixin):
     feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
     responded_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# rec-031 (DEC-SCOPE-176, RV6-RV8): manually recorded invoices and payments per requirement (track only, R9). Migration 0147 repeats
+# these strings (test_rec_031_migration). services/recruiter_revenue.py owns every rule; the CHECKs are the backstop.
+RECRUITER_INVOICE_CHECKS = {
+    "ck_recruiter_invoices_amount": "amount > 0",
+    "ck_recruiter_invoices_due": "due_date >= invoice_date",
+    "ck_recruiter_invoices_cancel": "(cancelled_at IS NULL) = (cancelled_by_user_id IS NULL) AND (cancelled_at IS NULL) = (cancel_reason IS NULL)",
+}
+RECRUITER_PAYMENT_CHECKS = {"ck_recruiter_payments_amount": "amount > 0"}
+
+
+class RecruiterInvoice(Base, TimestampMixin):
+    """rec-031: an invoice EduSphere issued for a requirement, recorded by hand (no PDF, no GST). Never edited or deleted (RV8): a mistake is
+    cancelled with a reason, and its number stays used (the unique index ignores case and cancellation)."""
+
+    __tablename__ = "recruiter_invoices"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in RECRUITER_INVOICE_CHECKS.items()),
+        Index("uq_recruiter_invoices_number", text("lower(invoice_number)"), unique=True),
+        Index("ix_recruiter_invoices_job", "job_id", "invoice_date"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="RESTRICT"))
+    invoice_number: Mapped[str] = mapped_column(String(40))
+    invoice_date: Mapped[date] = mapped_column(Date)
+    due_date: Mapped[date] = mapped_column(Date)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+
+class RecruiterPayment(Base):
+    """rec-031 (RV7): money received against an invoice. Append-only; the received total never exceeds the invoice amount."""
+
+    __tablename__ = "recruiter_payments"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in RECRUITER_PAYMENT_CHECKS.items()),
+        Index("ix_recruiter_payments_invoice", "invoice_id", "received_on"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    invoice_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_invoices.id", ondelete="RESTRICT"))
+    received_on: Mapped[date] = mapped_column(Date)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+# rec-029 (DEC-SCOPE-178, DR1-DR7): campus recruitment drives (§21). Migration 0148 repeats the statuses and checks
+# (test_rec_029_migration). Labels live in services/recruitment_drives.py and the web client.
+RECRUITMENT_DRIVE_STATUSES = ("planned", "completed", "cancelled")
+RECRUITMENT_DRIVE_CODE_SEQ = Sequence("recruitment_drive_code_seq", metadata=Base.metadata)
+RECRUITMENT_DRIVE_CHECKS = {
+    "ck_recruitment_drives_status": _in_list("status", RECRUITMENT_DRIVE_STATUSES),
+    "ck_recruitment_drives_college": "(college_org_id IS NULL) <> (college_name IS NULL)",
+    "ck_recruitment_drives_counts": "students_registered >= 0 AND students_attended >= 0",
+    "ck_recruitment_drives_attended": "students_attended <= students_registered",
+    "ck_recruitment_drives_vacancies": "vacancies >= 1",
+}
+
+
+class RecruitmentDrive(Base, TimestampMixin):
+    """rec-029 (DEC-SCOPE-178): a campus drive of one company at one college -- a BDM college organisation or a typed name (R15, DR2).
+    Registered and attended are typed counts; shortlisted to joined are computed from the applications tagged with the drive (DR7).
+    Never deleted: cancelled instead (DR3)."""
+
+    __tablename__ = "recruitment_drives"
+    __table_args__ = (
+        UniqueConstraint("drive_code", name="uq_recruitment_drives_code"),
+        *(CheckConstraint(sql, name=name) for name, sql in RECRUITMENT_DRIVE_CHECKS.items()),
+        Index("ix_recruitment_drives_company_date", "company_id", "drive_date"),
+        Index("ix_recruitment_drives_date", "drive_date"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    drive_code: Mapped[str] = mapped_column(String(20))
+    company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"))
+    college_org_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"), nullable=True)
+    college_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    drive_date: Mapped[date] = mapped_column(Date)
+    job_role: Mapped[str] = mapped_column(String(150))
+    vacancies: Mapped[int] = mapped_column(Integer)
+    eligibility: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    students_registered: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    students_attended: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    status: Mapped[str] = mapped_column(String(16), default="planned", server_default=text("'planned'"))
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+class DriveRequirement(Base):
+    """rec-029 (DR4): the requirements a drive recruits for -- each a requirement of the drive's company."""
+
+    __tablename__ = "drive_requirements"
+    __table_args__ = (Index("ix_drive_requirements_job", "job_id"),)
+    drive_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruitment_drives.id", ondelete="RESTRICT"), primary_key=True)
+    job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="RESTRICT"), primary_key=True)

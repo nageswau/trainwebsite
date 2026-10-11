@@ -10,7 +10,8 @@ import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 // rec-001 (spec §5, AC5): one recruiter -- view, inline edit (Esc cancels), deactivate and reactivate. A recruiter from before the
 // Recruiter Staff page has no Employee ID or manager; the row flags that and Edit sets both. The manager picker starts on the
 // current manager, so an unrelated edit never silently reassigns the reporting line. The list refreshes only after the server says
-// yes; focus returns to the row's controls on success and moves to the message on error. Reassigning open work is rec-037.
+// yes; focus returns to the row's controls on success and moves to the message on error. rec-037: Deactivate shows the server's 422
+// while the recruiter still holds companies or open requirements (a placement manager reassigns them from the Team page).
 export default function AdminRecruiterRow({ row, onChanged }: { row: RecruiterAdminRow; onChanged: (notice: string) => void }) {
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);

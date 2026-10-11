@@ -1,9 +1,9 @@
 """rec-036 -- program_skills.
 
-Revision ID: 0147_program_skills
-Revises: 0146_interview_feedback
+Revision ID: 0149_program_skills
+Revises: 0148_recruitment_drives
 
-docs/superpowers/specs/2026-10-11-rec-036-it-training-integration-design.md §2 (DEC-SCOPE-176). A new table only; no existing row changes
+docs/superpowers/specs/2026-10-11-rec-036-it-training-integration-design.md §2 (DEC-SCOPE-179). A new table only; no existing row changes
 and nothing is backfilled (no program has tags yet). 0001 builds a fresh database from the current models, which already carry this
 table, so it is created only when missing (0122's idiom). downgrade() refuses while any row exists: entered data is never dropped silently.
 """
@@ -13,8 +13,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0147_program_skills"
-down_revision = "0146_interview_feedback"
+revision = "0149_program_skills"
+down_revision = "0148_recruitment_drives"
 branch_labels = None
 depends_on = None
 
@@ -37,6 +37,6 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {TABLE} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0147_program_skills: program skill tags exist. Clear them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0149_program_skills: program skill tags exist. Clear them deliberately first.")
     op.drop_index("ix_program_skills_skill", table_name=TABLE)
     op.drop_table(TABLE)

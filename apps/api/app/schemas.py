@@ -56,6 +56,7 @@ from app.models import (
     INSTITUTION_TYPES,
     INTERVIEW_ROUNDS,
     JOB_EMPLOYMENT_TYPES,
+    JOB_FEE_BASES,
     JOB_PRIORITIES,
     JOB_SHIFTS,
     JOB_STATUSES,
@@ -6596,11 +6597,37 @@ class RecruiterAdminRow(RecruiterTeamRow):
     reporting_manager: BdmManagerRef | None
 
 
+class RecruiterWork(BaseModel):
+    """rec-037 (RC15): a recruiter's companies (archived included) and requirements, and the open follow-ups on those companies."""
+
+    companies: int
+    requirements: int
+    follow_ups: int
+
+
+class RecruiterTeamMemberRow(RecruiterTeamRow):
+    work: RecruiterWork
+
+
 class RecruiterTeamPage(BaseModel):
-    items: list[RecruiterTeamRow]
+    items: list[RecruiterTeamMemberRow]
     total: int
     limit: int
     offset: int
+
+
+class RecruiterReassign(BaseModel):
+    """rec-037 (RC5): move every company and requirement of one recruiter to another."""
+
+    model_config = ConfigDict(extra="forbid")
+    from_user_id: UUID
+    to_user_id: UUID
+
+
+class RecruiterReassignOut(BaseModel):
+    from_user_id: UUID
+    to_user_id: UUID
+    moved: RecruiterWork
 
 
 class RecruiterAdminPage(BaseModel):
@@ -8922,12 +8949,83 @@ class RecApplicationCreate(BaseModel):
     candidate_id: UUID
     status: Literal["sourced", "screened", "shortlisted"] = "sourced"  # applications.INITIAL
     note: _rec_requirement_text_type(500, multiline=True) = None
+    drive_id: UUID | None = None  # rec-029 (DR9): added through this campus drive (checked by services/recruitment_drives)
 
 
 class RecApplicationStatusChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
     status: Literal[APPLICATION_STATUSES]
     note: _rec_requirement_text_type(500, multiline=True) = None
+
+
+# --- rec-029 (DEC-SCOPE-178): campus recruitment drives (services/recruitment_drives) ----------------------------------------------------
+# The cross-field rules (exactly one college, attended <= registered, the company's requirements) live in the service, so a PATCH is
+# checked against the stored values the same way and each 422 names its field.
+REC_DRIVE_LABELS = {"college_name": "College", "job_role": "Job role", "eligibility": "Eligibility"}
+
+
+def _rec_drive_text(value: str | None, info: ValidationInfo) -> str | None:
+    """No control characters (a line break only in eligibility); runs of spaces collapse in one-line fields; blank -> None."""
+    if value is None:
+        return None
+    multiline = info.field_name == "eligibility"
+    if (_BDM_CONTROL_MULTILINE if multiline else _BDM_CONTROL).search(value):
+        raise ValueError(f"{REC_DRIVE_LABELS[info.field_name]} contains invalid characters")
+    return (value if multiline else " ".join(value.split())) or None
+
+
+def _rec_drive_text_type(max_length: int, *, multiline: bool = False):
+    text = Annotated[Annotated[str, StringConstraints(strip_whitespace=True, max_length=max_length)] | None, AfterValidator(_rec_drive_text)]
+    return Annotated[text, BeforeValidator(_bdm_newlines)] if multiline else text
+
+
+def _rec_drive_required(value: str | None) -> str:
+    if value is None:
+        raise ValueError("Job role is required")
+    return value
+
+
+RecDriveRole = Annotated[_rec_drive_text_type(150), AfterValidator(_rec_drive_required)]
+RecDriveCount = Annotated[int, Field(ge=0, le=1_000_000)]
+RecDriveVacancies = Annotated[int, Field(ge=1, le=100_000)]
+RecDriveRequirements = Annotated[list[UUID], Field(min_length=1, max_length=10)]
+
+
+class RecDriveCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    company_id: UUID
+    college_org_id: UUID | None = None
+    college_name: _rec_drive_text_type(200) = None
+    requirement_ids: RecDriveRequirements
+    drive_date: date
+    job_role: RecDriveRole
+    vacancies: RecDriveVacancies
+    eligibility: _rec_drive_text_type(1000, multiline=True) = None
+    students_registered: RecDriveCount = 0
+    students_attended: RecDriveCount = 0
+
+
+class RecDriveUpdate(BaseModel):
+    """PATCH: omitted = unchanged. Sending either college key replaces both (the one not sent becomes null). The company never changes."""
+
+    model_config = ConfigDict(extra="forbid")
+    college_org_id: UUID | None = None
+    college_name: _rec_drive_text_type(200) = None
+    requirement_ids: RecDriveRequirements | None = None
+    drive_date: date | None = None
+    job_role: RecDriveRole | None = None
+    vacancies: RecDriveVacancies | None = None
+    eligibility: _rec_drive_text_type(1000, multiline=True) = None
+    students_registered: RecDriveCount | None = None
+    students_attended: RecDriveCount | None = None
+    status: Literal["planned", "completed", "cancelled"] | None = None  # models.RECRUITMENT_DRIVE_STATUSES
+
+    @model_validator(mode="after")
+    def _required_stay_set(self):
+        for key in ("requirement_ids", "drive_date", "job_role", "vacancies", "students_registered", "students_attended", "status"):
+            if key in self.model_fields_set and getattr(self, key) is None:
+                raise ValueError(f"{key.replace('_', ' ').capitalize()} can't be removed")
+        return self
 
 
 # --- rec-019 (DEC-SCOPE-160): profile sharing (services/profile_sharing) ---------------------------------------------------------------
@@ -10396,3 +10494,213 @@ class PartnershipMapPage(BaseModel):
     countries: list[PartnershipMapCountry]
     totals: PartnershipMapTotals
     stages: list[PartnershipMapStage]
+
+
+# --- rec-031 (DEC-SCOPE-176): revenue / commercial tracking, track only --------------------------------------------------------------
+REC_REVENUE_LABELS = {"invoice_number": "Invoice number", "note": "Note", "reference": "Reference", "reason": "Reason"}
+REC_REVENUE_AMOUNT_FORMAT = "Enter the amount as a number with up to 2 decimals"
+RecFeeBasis = Literal[JOB_FEE_BASES]
+RecPaymentStatus = Literal["unpaid", "part_paid", "paid", "cancelled"]
+
+
+def _revenue_amount(value):
+    """RV6 / RV7: more than zero, up to 2 decimals, within Numeric(12, 2)."""
+    try:
+        amount = Decimal(str(value).strip())
+    except (InvalidOperation, ValueError):
+        raise PydanticCustomError("revenue_amount", REC_REVENUE_AMOUNT_FORMAT) from None
+    exponent = amount.as_tuple().exponent
+    if not amount.is_finite() or (isinstance(exponent, int) and exponent < -2):
+        raise PydanticCustomError("revenue_amount", REC_REVENUE_AMOUNT_FORMAT)
+    if amount <= 0:
+        raise PydanticCustomError("revenue_amount", "The amount must be more than ₹0")
+    if amount > REC_CONTRACT_FEE_MAX:
+        raise PydanticCustomError("revenue_amount", "The amount is too large")
+    return amount
+
+
+RecRevenueAmount = Annotated[Decimal, BeforeValidator(_revenue_amount)]
+def _blank_if_null(value):
+    """QA31-01: the form sends null for a blank field, so a required text says "is required" rather than the parser's "valid string"."""
+    return "" if value is None else value
+
+
+def _revenue_reason(value: str) -> str:
+    if len(value) < 2:
+        raise PydanticCustomError("revenue_reason", "The reason needs at least 2 characters")
+    return value
+
+
+RecRevenueText = Annotated[Annotated[str, _trimmed(500)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, REC_REVENUE_LABELS)), BeforeValidator(_bdm_newlines)]
+
+
+class RecFeeOverride(BaseModel):
+    """RV1: the requirement's own fee per hire; both null clears it (the contract's fee applies again). The pair and the 0-100 cap of a
+    percentage are checked in the service, so each 422 names its field."""
+
+    model_config = ConfigDict(extra="forbid")
+    fee_basis: RecFeeBasis | None
+    fee_value: RecContractFee
+
+
+class RecInvoiceCreate(BaseModel):
+    """RV6. The dates against today (IST) are checked in the service."""
+
+    model_config = ConfigDict(extra="forbid")
+    requirement_id: UUID
+    invoice_number: Annotated[Annotated[str, _trimmed(40)], AfterValidator(_trip_text(_BDM_CONTROL, True, REC_REVENUE_LABELS)), BeforeValidator(_blank_if_null)]
+    invoice_date: Annotated[date, BeforeValidator(_trip_date("invoice date"))]
+    due_date: Annotated[date, BeforeValidator(_trip_date("due date"))]
+    amount: RecRevenueAmount
+    note: RecRevenueText = None
+
+
+class RecPaymentCreate(BaseModel):
+    """RV7. The received date and the outstanding cap are checked in the service under the invoice lock."""
+
+    model_config = ConfigDict(extra="forbid")
+    received_on: Annotated[date, BeforeValidator(_trip_date("received date"))]
+    amount: RecRevenueAmount
+    reference: Annotated[Annotated[str, _trimmed(100)] | None, AfterValidator(_trip_text(_BDM_CONTROL, False, REC_REVENUE_LABELS))] = None
+
+
+class RecInvoiceCancel(BaseModel):
+    """RV8: an unpaid invoice is cancelled with a reason (2-500)."""
+
+    model_config = ConfigDict(extra="forbid")
+    reason: Annotated[
+        Annotated[str, _trimmed(500)],
+        AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, True, REC_REVENUE_LABELS)),
+        AfterValidator(_revenue_reason),
+        BeforeValidator(_bdm_newlines),
+        BeforeValidator(_blank_if_null),
+    ]
+
+
+class RecRevenueRef(BaseModel):
+    id: UUID
+    code: str
+    name: str
+
+
+class RecRevenueRequirementRef(BaseModel):
+    id: UUID
+    code: str
+    title: str
+
+
+class RecPaymentOut(BaseModel):
+    id: UUID
+    received_on: date
+    amount: Decimal
+    reference: str | None
+    created_by: RecPersonRef
+    created_at: datetime
+
+
+class RecInvoicePermissions(BaseModel):
+    can_pay: bool
+    can_cancel: bool
+
+
+class RecInvoiceOut(BaseModel):
+    id: UUID
+    invoice_number: str
+    invoice_date: date
+    due_date: date
+    amount: Decimal
+    note: str | None
+    received: Decimal
+    outstanding: Decimal
+    payment_status: RecPaymentStatus
+    payment_status_label: str
+    overdue: bool
+    cancelled_at: datetime | None
+    cancel_reason: str | None
+    requirement: RecRevenueRequirementRef
+    company: RecRevenueRef
+    created_by: RecPersonRef
+    payments: list[RecPaymentOut]
+    permissions: RecInvoicePermissions
+    created_at: datetime
+
+
+class RecInvoiceEnvelope(BaseModel):
+    invoice: RecInvoiceOut
+
+
+class RecFeeValue(BaseModel):
+    basis: RecFeeBasis
+    value: Decimal
+
+
+class RecRevenueFee(BaseModel):
+    basis: RecFeeBasis | None
+    value: Decimal | None
+    source: Literal["requirement", "contract"] | None
+    contract_status_label: str | None
+    override: RecFeeValue | None
+
+
+class RecRevenueHire(BaseModel):
+    application_id: UUID
+    candidate: RecRevenueRef
+    joined_on: date | None
+    fee: Decimal | None  # None: unpriced (RV2) or no fee set (RV1)
+
+
+class RecRevenuePermissions(BaseModel):
+    can_invoice: bool
+    can_set_fee: bool
+
+
+class RecRequirementRevenue(BaseModel):
+    requirement: RecRevenueRequirementRef
+    company: RecRevenueRef
+    selected: int
+    joined: int
+    fee: RecRevenueFee
+    hires: list[RecRevenueHire]
+    expected_revenue: Decimal | None
+    unpriced_hires: int
+    invoiced: Decimal
+    received: Decimal
+    outstanding: Decimal
+    over_invoiced: bool
+    invoices: list[RecInvoiceOut]
+    permissions: RecRevenuePermissions
+
+
+class RecCompanyRevenueRow(BaseModel):
+    requirement: RecRevenueRequirementRef
+    status_label: str
+    selected: int
+    joined: int
+    fee: RecRevenueFee
+    expected_revenue: Decimal | None
+    invoiced: Decimal
+    received: Decimal
+    outstanding: Decimal
+
+
+class RecCompanyRevenueTotals(BaseModel):
+    selected: int
+    joined: int
+    expected_revenue: Decimal
+    invoiced: Decimal
+    received: Decimal
+    outstanding: Decimal
+
+
+class RecCompanyRevenue(BaseModel):
+    requirements: list[RecCompanyRevenueRow]
+    totals: RecCompanyRevenueTotals
+
+
+class RecInvoicePage(BaseModel):
+    items: list[RecInvoiceOut]
+    total: int
+    limit: int
+    offset: int
+    counts: dict[str, int]
+    outstanding_total: Decimal

@@ -2,7 +2,7 @@
 
 Spec: `docs/superpowers/specs/2026-10-11-rec-036-it-training-integration-design.md`. TDD per task; focused tests only.
 
-1. **Model + migration** — `ProgramSkill` in `models.py`; `0147_program_skills` (create if missing, downgrade refuses with rows);
+1. **Model + migration** — `ProgramSkill` in `models.py`; `0149_program_skills` (create if missing, downgrade refuses with rows);
    `tests/test_rec_036_migration.py` (chain, model/migration parity, round trip, refusal).
 2. **Program tags API** — `services/course_skills.py` (`program_skills_out`, `set_program_skills`, `skill_options`); routes in
    `admin.py`. Tests: roles (it_admin, super_admin write; recruiter/overseas_admin 403), unknown/inactive/too many → 422, replace semantics,
@@ -16,7 +16,7 @@ Spec: `docs/superpowers/specs/2026-10-11-rec-036-it-training-integration-design.
 6. **Web** — `lib/programSkills.ts`, tags editor in `AdminProgramManagementPanel`, `lib/candidateJourney.ts` +
    `RecruiterCandidateJourney.tsx` on the detail page. Vitest for both.
 7. **E2E** — `tests/e2e/rec-036-it-integration.spec.ts`.
-8. **Docs** — DEC-SCOPE-176, API §12CQ, RBAC §2.102, DATA_MODEL, backlog status.
+8. **Docs** — DEC-SCOPE-179, API §12CT, RBAC §2.105, DATA_MODEL, backlog status.
 
 ## Phase 3 review notes (applied above)
 

@@ -71,7 +71,7 @@ from app.schemas import (
 )
 from app.services import bdm as bdm_rules
 from app.services import bdm_leads as lead_rules
-from app.services import bdm_lifecycle, course_skills, lead_handover, lead_pipeline, lead_timeline, partnership_lifecycle, telecaller_lifecycle
+from app.services import bdm_lifecycle, course_skills, lead_handover, lead_pipeline, lead_timeline, partnership_lifecycle, recruiter_lifecycle, telecaller_lifecycle
 from app.services import partnership as pm_rules
 from app.services import recruiter as rec_rules
 from app.services import telecaller as tel_rules
@@ -703,6 +703,8 @@ async def update_user(user_id: UUID, payload: dict, user: User = Depends(ensure_
         await telecaller_lifecycle.plain_deactivation(db, user, item)
         # upc-032 (DEC-SCOPE-171 RA2): a partnership manager who is primary on any university waits for a head's reassignment.
         await partnership_lifecycle.refuse_primary_deactivation(db, item)
+        # rec-037 (DEC-SCOPE-177 RC2/RC12): a recruiter with open companies or requirements waits for a manager's reassignment.
+        await recruiter_lifecycle.refuse_open_work_deactivation(db, item)
     # ADM-001-AC02: deactivating a trainer with active/upcoming assigned batches is
     # blocked unless explicitly confirmed -- never a silent operation that would strand
     # those batches without a trainer.
@@ -812,7 +814,7 @@ async def update_program(program_id: UUID, payload: dict, user: User = Depends(e
     return {"ok": True}
 
 
-# rec-036 (DEC-SCOPE-176 CI1): a program's skill tags. `skill-options` is the editor's picker (it_admin cannot read the Skills Master).
+# rec-036 (DEC-SCOPE-179 CI1): a program's skill tags. `skill-options` is the editor's picker (it_admin cannot read the Skills Master).
 @router.get("/programs/skill-options")
 async def program_skill_options(q: str | None = Query(None, max_length=80), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     course_skills.require_editor(user)

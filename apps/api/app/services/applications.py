@@ -131,7 +131,7 @@ async def candidate_for_student(db: AsyncSession, student: User) -> Candidate:
 
 
 # --- create --------------------------------------------------------------------------------------------------------------------------
-async def create(db: AsyncSession, actor: User, job: Job, candidate: Candidate, status: str = "sourced", note: str | None = None, resume_url: str | None = None) -> JobApplication:
+async def create(db: AsyncSession, actor: User, job: Job, candidate: Candidate, status: str = "sourced", note: str | None = None, resume_url: str | None = None, drive_id: UUID | None = None) -> JobApplication:
     """One candidate on one requirement (409 on a duplicate, the unique index deciding a race), its first history row and rec-005's
     `candidates_sourcing` event on the company (forward only, so a company already further on never moves back)."""
     if await db.scalar(select(JobApplication.id).where(JobApplication.candidate_id == candidate.id, JobApplication.job_id == job.id)):
@@ -143,6 +143,7 @@ async def create(db: AsyncSession, actor: User, job: Job, candidate: Candidate, 
         status=status,
         resume_url=resume_url,
         added_by_user_id=None if actor.id == candidate.user_id else actor.id,
+        drive_id=drive_id,
     )
     db.add(application)
     try:

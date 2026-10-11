@@ -2715,9 +2715,67 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `PUT /recruiter/interviews/{id}/feedback` *(new)* | The whole form `{overall_rating (1–5), technical_rating? (1–5), communication_rating? (1–5), strengths?, weaknesses?, recruiter_comments?, company_feedback? (each ≤2000), next_round? (a §14 round), final_decision? (selected\|rejected\|on_hold)}`; a field left out is cleared → `{interview}`. **Refusals:** not Completed (and no feedback yet) → `409` "Feedback can be recorded once the interview is Completed"; a decision the IV3 moves do not allow (e.g. Selected → Rejected) → `409`, nothing saved; a rating outside 1–5, an unknown round or decision, a next round with Rejected → `422` on that field. A decision different from the status moves the interview (history note `Feedback`; IV8 feeds the application). Audit `recruiter_interview.feedback` with field names and the decision only; an unchanged form writes nothing |
 
-## 12CQ. Program skill tags + candidate journey (`rec-036`) — addendum, 2026-10-11
+## 12CQ. Recruiter revenue / commercial tracking (`rec-031`) — addendum, 2026-10-11
 
-- **Basis:** `DEC-SCOPE-176` (CI1–CI8). Design spec `docs/superpowers/specs/2026-10-11-rec-036-it-training-integration-design.md` §3.
+- **Basis:** `DEC-SCOPE-176` (RV1–RV10). Design spec `docs/superpowers/specs/2026-10-11-rec-031-recruiter-revenue-design.md` §3.
+  Migration `0147_recruiter_revenue`. Track only (R9). Amounts are decimal strings in INR (`"150000.00"`).
+- **Common rules:** the role check first (`403` for anyone but `placement_team`, `placement_manager`, `super_admin`), then the rec-007
+  requirement scope (`404`, unknown and out of scope alike). A rule on a field is a `422` whose `loc` names the field; a coded `409` has
+  `detail = {message, code}`. Each write: row lock, rules, write, audit row (`recruiter_revenue.*`), one commit.
+- **Figures** (`RecRequirementRevenue`): `selected`, `joined` (applications at Joined only, AC3), `fee {basis, value, source:
+  requirement|contract|null, contract_status_label, override}`, `hires[] {application_id, candidate {id, code, name}, joined_on, fee}`,
+  `expected_revenue` (null without a fee), `unpriced_hires`, `invoiced`, `received`, `outstanding` (= invoiced − received over open
+  invoices, AC1), `over_invoiced`, `invoices[]`, `permissions {can_invoice, can_set_fee}`.
+- **Invoice** (`RecInvoiceOut`): number, dates, amount, note, `received`, `outstanding`, `payment_status` (`unpaid|part_paid|paid|cancelled`)
+  + label, `overdue`, cancellation, requirement / company refs, `payments[]`, `permissions {can_pay, can_cancel}`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/requirements/{id}/revenue` *(new)* | `200` figures; `403` role; `404` scope |
+| `PUT /recruiter/requirements/{id}/fee` *(new)* | `{fee_basis: fixed\|percent_of_ctc\|null, fee_value: ≥0, 2 dp\|null}` → `200` figures. Both null clears. `403` unless manager / super_admin; `422` on `fee_basis` (value without basis, unknown basis) or `fee_value` (basis without value, negative, > 100 for a %, 3 dp). Unchanged = no audit |
+| `POST /recruiter/invoices` *(new)* | `{requirement_id, invoice_number (1–40), invoice_date (≤ today IST), due_date (≥ invoice date), amount (> 0, 2 dp), note? (≤ 500)}` → `201 {invoice}`. `409 invoice_number_taken` (case-insensitive, cancelled numbers stay used); `422` per field; `404` requirement out of scope |
+| `POST /recruiter/invoices/{id}/payments` *(new)* | `{received_on (invoice date … today IST), amount (> 0), reference? (≤ 100)}` → `201 {invoice}`. `422` on `amount` when it would exceed the outstanding (AC2, under the invoice lock); `409 invoice_cancelled` |
+| `POST /recruiter/invoices/{id}/cancel` *(new)* | `{reason (2–500)}` → `200 {invoice}`. `409 invoice_cancelled` / `invoice_has_payments` |
+| `GET /recruiter/companies/{id}/revenue` *(new)* | `{requirements[] {requirement, status_label, selected, joined, fee, expected_revenue, invoiced, received, outstanding}, totals}` over the company's requirements in the caller's requirement scope; `404` company out of scope |
+| `GET /recruiter/invoices?view=outstanding\|overdue\|paid\|cancelled&company_id?&limit&offset` *(new)* | `{items, total, limit, offset, counts {4 views}, outstanding_total}`; outstanding/overdue by due date ascending, paid by invoice date, cancelled newest first; `422` unknown view |
+
+## 12CR. Recruiter deactivation + bulk reassignment (`rec-037`) — addendum, 2026-10-11
+
+- **Basis:** `DEC-SCOPE-177` (RC1–RC15). Spec: `docs/superpowers/specs/2026-10-11-rec-037-recruiter-reassignment-design.md` §3. No migration.
+- **Callers:** `placement_manager` (from and to their direct reports), `super_admin` (any recruiter); others `403`; no session `401`.
+- **Behaviour:** one transaction (the source's companies, then its requirements, locked by id, then the target FOR SHARE), one
+  `company_assignment_history` row and one audit per moved company, one audit per moved requirement, a `recruiter.reassign` summary audit.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `POST /recruiter/manager/reassign` | Body `{from_user_id, to_user_id}` (extra keys `422`). **→ 200** `{from_user_id, to_user_id, moved: {companies, requirements, follow_ups}}`. Every company (archived included) and every requirement (any status) assigned to the source moves to the target; open follow-ups move with their company (counted). `403` role, or source outside the manager's team; `404` source not a recruiter; `409` nothing to move; `422` target inactive, not a recruiter, outside the team or the source itself |
+| `GET /recruiter/manager/team` | Rows gain `work: {companies, requirements, follow_ups}` (additive) |
+| `PATCH /admin/users/{id}` | `{active:false}` on a recruiter with ≥ 1 non-archived company or ≥ 1 requirement not closed/cancelled → `422` "This recruiter has N companies and M open requirements. A placement manager must reassign them (Team page) before deactivation."; otherwise the deactivation also increments `session_version` |
+
+## 12CS. Campus recruitment drives (`rec-029`) — addendum, 2026-10-11
+
+- **Basis:** `DEC-SCOPE-178` (DR1–DR10). Design spec `docs/superpowers/specs/2026-10-11-rec-029-campus-drives-design.md` §3. Migration
+  `0148`. A drive takes its company's scope (rec-003 `caller_scope`): out of scope = `404`, other roles `403`. Writes need the company's
+  `can_edit` (assigned recruiter, `super_admin`; manager / BDM `403`; archived company `409`). Unknown keys `422`. One commit per write.
+- **Drive item:** `{id, code (DRV-000001), status (planned|completed|cancelled), status_label, drive_date, job_role, vacancies, eligibility,
+  students_registered, students_attended, company {id, code, name}, college {org_id, code, name, city}, can_edit, created_at, updated_at}`.
+  The detail adds `requirements [{id, code, title, status, open}]`, `funnel` and `statuses` (rec-017's catalogue, for the add form).
+- **Funnel:** `{registered, attended, tagged, shortlisted, interviewed, selected, joined}` (Appendix B C2–C7, DR7), one statement.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/drives?q&status&limit&offset` *(new)* | `{items (+ requirement_count), total, limit, offset, can_create}`, latest drive date first; `q` matches code, job role, college, company |
+| `GET /recruiter/drives/college-options?q&limit` *(new)* | Live BDM `college` / `university` organisations: `{items [{id, code, name, city}], total}`. Recruiters, managers, `super_admin`; others `403` |
+| `POST /recruiter/drives` *(new)* | `{company_id, college_org_id?, college_name?, requirement_ids[1–10], drive_date, job_role (≤150), vacancies (1–100000), eligibility? (≤1000), students_registered? / students_attended? (0–1000000, default 0)}` → `201` detail. Exactly one college else `422` on `college_org_id`; a requirement not live or not of the company → `422` on `requirement_ids`; attended > registered → `422` on `students_attended` (AC2). Not idempotent |
+| `GET /recruiter/drives/{id}` *(new)* | The detail |
+| `PATCH /recruiter/drives/{id}` *(new)* | Partial; either college key replaces both; `requirement_ids` replaces the set (removing one with drive-tagged applications → `409`); AC2 on the merged counts; null on a required field `422`; a cancelled drive → `409` |
+| `GET /recruiter/drives/{id}/funnel` *(new)* | The funnel |
+| `GET /recruiter/drives/{id}/candidates?limit&offset` *(new)* | The drive-tagged applications `{items [{application_id, candidate {id, code, name}, requirement {id, code, title}, status, status_label}], total, limit, offset}` |
+| `POST /recruiter/requirements/{id}/candidates` *(changed, additive)* | Optional `drive_id` (DR9): a drive in scope that includes this requirement, else `422` on `drive_id`; a cancelled drive `409`. The application keeps the tag; omitted = unchanged behaviour |
+
+## 12CT. Program skill tags + candidate journey (`rec-036`) — addendum, 2026-10-11
+
+- **Basis:** `DEC-SCOPE-179` (CI1–CI8). Design spec `docs/superpowers/specs/2026-10-11-rec-036-it-training-integration-design.md` §3.
   Migration `0147`. Additive: no existing request or response changes shape.
 - **Side effects on existing routes:** `POST /account/placement-pool/opt-in` and `POST /workflows/it/certificates/{enrollment_id}/issue`
   add the course-completed skills of an opted-in student in the same transaction (CI3); `POST /recruiter/skills/{id}/merge` moves program
