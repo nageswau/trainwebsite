@@ -8307,6 +8307,34 @@ class RecStageEventPage(BaseModel):
     offset: int
 
 
+class RecTimelineRow(BaseModel):
+    """rec-027 (spec §2): one entry of a company's or a candidate's timeline -- upc-013's row plus `context` (the company of a candidate
+    entry). `id` is the source row's id (a follow-up's scheduled / done / cancelled entries share it; `event` tells them apart)."""
+
+    id: UUID
+    kind: Literal["stage", "call", "message", "meeting", "follow_up", "requirement", "share", "share_response", "contract", "application", "interview", "offer"]
+    at: datetime
+    actor: LeadStageActor | None
+    event: str | None
+    from_value: str
+    from_label: str
+    to_value: str
+    to_label: str
+    subject: str | None
+    status: str | None
+    reason: str | None
+    context: str | None
+    duration_seconds: int | None
+    scheduled_for: datetime | None
+
+
+class RecTimelinePage(BaseModel):
+    items: list[RecTimelineRow]
+    total: int
+    limit: int
+    offset: int
+
+
 class RecBoardStage(BaseModel):
     key: str
     label: str
