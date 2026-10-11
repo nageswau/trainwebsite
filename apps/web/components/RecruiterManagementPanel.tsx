@@ -3,7 +3,7 @@ import { MANAGEMENT_PATH, TOTALS, count, type Management, type ManagementParams 
 const FIELD = { display: "grid", gap: 4 } as const;
 const LISTS = { display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(min(18rem, 100%), 1fr))", marginTop: 16 } as const;
 
-// rec-035 (EVID-018 §26): the recruiter business on one card -- the seven totals as tiles, then the top companies by hires and the top
+// rec-035 (EVID-018 §26, DEC-SCOPE-183): the recruiter business on one card -- the seven totals as tiles, then the top companies by hires and the top
 // job categories by open requirements. The period is a plain GET form (keyed, `autoComplete="off"`: rec-033's QA lessons), so a view can
 // be shared and needs no client JS.
 export default function RecruiterManagementPanel({ data, error, params, today }: {

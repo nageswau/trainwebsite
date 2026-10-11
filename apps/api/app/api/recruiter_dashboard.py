@@ -7,7 +7,7 @@ queue, or one direct report; super_admin everything, or any one recruiter (an id
 rec-033 (DEC-SCOPE-182, API §12CW): the §24 performance dashboard -- P1-P15 per recruiter over a period, for the placement manager (their
 team + Unassigned), super_admin and it_admin (everyone); `.csv` is the same table, audited.
 
-rec-035 (API §12CX): the §26 management dashboard -- M1-M9 for the same readers and scope as rec-033."""
+rec-035 (DEC-SCOPE-183, API §12CX): the §26 management dashboard -- M1-M9 for the same readers and scope as rec-033."""
 
 from datetime import date
 from uuid import UUID

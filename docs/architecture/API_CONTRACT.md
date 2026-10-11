@@ -2823,6 +2823,16 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `GET /recruiter/performance?from&to&recruiter` *(new)* | `{date_from, date_to, recruiter {id, full_name} \| null, columns, items [row], totals row}`. Items: the recruiters in scope by name, then `Unassigned` (`user_id` null); with `recruiter=` only that recruiter. `totals` = Σ items, ratios recomputed. Period default: the 1st of the IST month → today. `401` signed out; `403` any role but `placement_manager` / `super_admin` / `it_admin`; `404` a recruiter outside the manager's team or not a recruiter; `422` malformed id or date, start after end, end in the future, more than 366 days |
 | `GET /recruiter/performance.csv?from&to&recruiter` *(new)* | The same rows as CSV (UTF-8 BOM, on-screen labels, Total last, `null` → blank), `attachment; filename="recruiter-performance-<from>-to-<to>.csv"`. One `recruiter_performance.export` audit row committed before the file. Same refusals |
 
+## 12CX. Management dashboard, recruiter business view (`rec-035`) — addendum, 2026-10-11
+
+- **Basis:** `DEC-SCOPE-183` (MG1–MG8). Design spec `docs/superpowers/specs/2026-10-11-rec-035-management-dashboard-design.md` §3–§4.
+- No migration. Read-only, no audit. `Cache-Control: no-store`. The team lookup, then three statements (totals, top companies, top
+  categories): a fixed statement count.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/management?from&to` *(new)* | `{date_from, date_to, totals {companies, active_recruiters, open_requirements, candidates_in_pipeline, interviews, selected, joined}, top_companies [{id, name, joined}], top_categories [{id, name, open_requirements}]}` — Appendix B M1–M9 as built (MG4–MG8). Totals M1–M4 and the categories are as of now; interviews, selected, joined and the companies count the period (default: the 1st of the IST month → today). Each list: count ↓ then name, at most 10, empty when nothing counts. `401` signed out; `403` any role but `placement_manager` / `super_admin` / `it_admin`; `422` malformed date, start after end, end in the future, more than 366 days |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

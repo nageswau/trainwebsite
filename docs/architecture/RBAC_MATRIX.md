@@ -1812,6 +1812,17 @@ role check runs first; the `recruiter` filter only narrows and is checked server
 | `super_admin`, `it_admin` | read + CSV; drill into any recruiter | every recruiter + the Unassigned row | `rec-033` |
 | `placement_team`, `hr_team`, `bdm`, `overseas_admin`, `employer`, students, every other role | `403` | — | `rec-033` |
 
+### 2.109 Management dashboard, recruiter business view *(net-new, added 2026-10-11 — `DEC-SCOPE-183`, `rec-035`)*
+
+Counts and company / job-category names only (no candidate data). Read-only. Readers and owners as §2.108 (MG1/MG2); the caller cannot
+choose a recruiter, so the scope is always the server's.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_manager` | read | direct reports + the Unassigned queue | `rec-035` |
+| `super_admin`, `it_admin` | read | every recruiter + the Unassigned queue | `rec-035` |
+| `placement_team`, `hr_team`, `bdm`, `overseas_admin`, `employer`, students, every other role | `403` | — | `rec-035` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

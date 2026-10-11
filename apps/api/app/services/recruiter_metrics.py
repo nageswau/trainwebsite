@@ -315,7 +315,7 @@ async def performance(db: AsyncSession, user: User, recruiter_id: UUID | None, d
     }
 
 
-# --- rec-035 (DEC-SCOPE MG1-MG8): the §26 management dashboard, M1-M9 for the caller's whole scope ---------------------------------------
+# --- rec-035 (DEC-SCOPE-183 MG1-MG8): the §26 management dashboard, M1-M9 for the caller's whole scope ---------------------------------------
 FINISHED_APPLICATIONS = ("joined", "rejected", "withdrawn")  # M4: a candidate is in the pipeline while any application is not one of these
 TOP = 10  # M8, M9
 

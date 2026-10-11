@@ -7224,3 +7224,33 @@ on the owner's instruction to proceed with the recommended answers.
 `/recruiter/manager/performance` page; "Performance" in the placement manager's menu and "Recruiter Performance" for super_admin and
 it_admin. No schema change.
 - **New Feature ID authorized:** `rec-033`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-033.
+
+### DEC-SCOPE-183 — Management dashboard, recruiter business view (`rec-035`)
+
+**Evidence:**
+- `EVID-018` §26 (lines 1007–1034): "The CEO/Manager should get one view": 7 totals, Top Companies, Top Job Categories (the counts and
+  company names are illustrative).
+- `RECRUITER_CRM_BACKLOG.md` §rec-035 + Appendix B M1–M9 (proposed definitions); AC: top companies by joined count, ties by name; top job
+  categories by open requirements or hires (Q-25); a recruiter `403`; no data. Q-25 (meanings, roles) was still open.
+- `DEC-SCOPE-182` (rec-033): PF1 readers, PF2 owners, PF3 period; `services/recruiter_metrics.py` is the single source.
+
+**Status:** in review on `feature/rec-035` (2026-10-11). Every answer below is a **recommended default, `UNVERIFIED`**. They were taken
+on the owner's instruction to proceed with the recommended answers.
+
+**Numbering:** no migration. API §12CX and RBAC §2.109. Spec `docs/superpowers/specs/2026-10-11-rec-035-management-dashboard-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| MG1 | Who (Q-25) | As PF1: `placement_manager` (direct reports + Unassigned), `super_admin` and `it_admin` (everyone). Every other role `403` |
+| MG2 | Scope | PF2 owners: company figures by the company's recruiter; requirement figures by the requirement's recruiter, else its company's; none = Unassigned (in scope). So Selected / Joined equal rec-033's Total |
+| MG3 | Period | PF3 (`from`/`to`, default this IST month). M1–M4 and M9 are as of now; M5–M8 count the period |
+| MG4 | M1 Companies (Q-25) | Non-archived companies past New Lead (Lost included) |
+| MG5 | M2 Active Recruiters (Q-25) | Active company contacts at active companies (D5). EVID-018's "recruiter" is the hiring-side person (rec-004), not a `placement_team` user |
+| MG6 | M3 / M4 / M5 | M3 = requirements not On Hold / Closed / Cancelled; M4 = distinct candidates with ≥ 1 application not Joined / Rejected / Withdrawn; M5 = interviews scheduled in the period, any status |
+| MG7 | M8 Top Companies | By Joined count in the period (P8), ties by name, top 10, ≥ 1 hire |
+| MG8 | M9 Top Job Categories (Q-25) | By open requirements (M3's set), ties by name, top 10, ≥ 1 |
+
+**Consequences:** `recruiter_metrics.management`; `GET /recruiter/management` in `api/recruiter_dashboard.py`; the
+`/recruiter/manager/business` page; "Management Dashboard" in the placement manager's menu and "Recruiter Management Dashboard" for
+super_admin and it_admin. No schema change.
+- **New Feature ID authorized:** `rec-035`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-035.
