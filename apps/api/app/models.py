@@ -798,6 +798,18 @@ SCREENING_CHECKS = {
     "ck_application_screenings_salary": "expected_salary IS NULL OR expected_salary >= 0",
 }
 
+# rec-021 (DEC-SCOPE-175, EVID-018 §15): the feedback's decisions are the interview's own decision statuses (FB3). Migration 0146 repeats
+# FEEDBACK_CHECKS (test_rec_021_migration). Labels live in services/interviews.py and the web client.
+FEEDBACK_DECISIONS = ("selected", "rejected", "on_hold")
+FEEDBACK_CHECKS = {
+    "ck_interview_feedback_overall": "overall_rating BETWEEN 1 AND 5",
+    "ck_interview_feedback_technical": "technical_rating IS NULL OR technical_rating BETWEEN 1 AND 5",
+    "ck_interview_feedback_communication": "communication_rating IS NULL OR communication_rating BETWEEN 1 AND 5",
+    "ck_interview_feedback_next_round": "next_round IS NULL OR next_round IN (" + ", ".join(f"'{s}'" for s in INTERVIEW_ROUNDS) + ")",
+    "ck_interview_feedback_decision": "final_decision IS NULL OR final_decision IN (" + ", ".join(f"'{s}'" for s in FEEDBACK_DECISIONS) + ")",
+    "ck_interview_feedback_rejected_no_next": "final_decision IS DISTINCT FROM 'rejected' OR next_round IS NULL",
+}
+
 
 class ApplicationScreening(Base, TimestampMixin):
     """rec-018 (SC5): the one current screening of an application, overwritten by each save. Salary and remarks are internal: no
@@ -844,6 +856,25 @@ class Interview(Base, TimestampMixin):
     location: Mapped[str | None] = mapped_column(String(200), nullable=True)
     contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("company_contacts.id", ondelete="RESTRICT"), nullable=True)
     created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+
+
+class InterviewFeedback(Base, TimestampMixin):
+    """rec-021 (FB1): the one current feedback of an interview, overwritten by each save. Internal to the recruiter module: no employer,
+    student or hr_team route reads this table, and the audit keeps field names only."""
+
+    __tablename__ = "interview_feedback"
+    __table_args__ = tuple(CheckConstraint(sql, name=name) for name, sql in FEEDBACK_CHECKS.items())
+    interview_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("interviews.id", ondelete="RESTRICT"), primary_key=True)
+    technical_rating: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    communication_rating: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    overall_rating: Mapped[int] = mapped_column(SmallInteger)
+    strengths: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    weaknesses: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    recruiter_comments: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    company_feedback: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    next_round: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    final_decision: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    recorded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
 
 
 class InterviewEvent(Base):

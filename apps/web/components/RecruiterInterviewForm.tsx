@@ -17,13 +17,13 @@ type Values = { round: string; start: string; mode: string; url: string; intervi
 // rec-020 (spec §4; IV5, IV7): schedule an interview for one application, or edit the details of one (the time changes only through
 // Reschedule). The time is entered in IST. The contact comes from the requirement company's active contacts (a stored one since
 // deactivated stays listed). The API decides every rule; its 422s are placed on their fields and typed text is never cleared.
-export default function RecruiterInterviewForm({ applicationId, interview, contacts, onSaved, onCancel }: {
-  applicationId?: string; interview?: RecInterview; contacts: ContactOption[];
+export default function RecruiterInterviewForm({ applicationId, interview, draftRound, contacts, onSaved, onCancel }: {
+  applicationId?: string; interview?: RecInterview; draftRound?: string; contacts: ContactOption[];
   onSaved: (interview: RecInterview, notices?: Notices) => void; onCancel: () => void;
 }) {
   const id = useId();
   const [start] = useState<Values>({
-    round: interview?.round ?? "", start: "", mode: interview?.mode ?? "Online", url: interview?.meeting_url ?? "",
+    round: interview?.round ?? draftRound ?? "", start: "", mode: interview?.mode ?? "Online", url: interview?.meeting_url ?? "",
     interviewer: interview?.interviewer ?? "", location: interview?.location ?? "", contact_id: interview?.contact?.id ?? "",
   });
   const [v, setV] = useState(start);
