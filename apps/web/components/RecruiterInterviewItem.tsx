@@ -11,7 +11,22 @@ import { SAVE_FAILED, SESSION_ENDED, writeFailure } from "@/lib/bdmTasks";
 import { fieldErrors } from "@/lib/bdmTravel";
 import { formatSchoolDateTime } from "@/lib/formatDate";
 import { RECRUITER_SIGN_IN, safeLink } from "@/lib/recruiterCompanies";
-import { interviewOf, interviewUrl, type InterviewEvent, NOTE_MAX, type Notices, noticeText, type RecInterview, STATUS_LABELS } from "@/lib/recruiterInterviews";
+import {
+  DECISIONS,
+  FEEDBACK_TEXT_MAX,
+  type FeedbackFields,
+  type InterviewEvent,
+  type InterviewFeedback,
+  interviewOf,
+  interviewUrl,
+  NOTE_MAX,
+  type Notices,
+  noticeText,
+  type RecInterview,
+  type Round,
+  ROUNDS,
+  STATUS_LABELS,
+} from "@/lib/recruiterInterviews";
 import { REQUIREMENTS_PATH } from "@/lib/recruiterRequirements";
 
 const TEXT = { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } as const;
@@ -139,6 +154,114 @@ function RescheduleForm({ interview, onSaved, onCancel }: { interview: RecInterv
   );
 }
 
+const RATINGS = ["1", "2", "3", "4", "5"];
+const TEXTS = [["strengths", "Strengths"], ["weaknesses", "Weaknesses"], ["recruiter_comments", "Recruiter comments"], ["company_feedback", "Company feedback"]] as const;
+const RATING_FIELDS = [["technical_rating", "Technical"], ["communication_rating", "Communication"]] as const;
+// The form's own shape: every value is a string until sent ("" = not given).
+type FeedbackDraft = { [K in keyof FeedbackFields]: string };
+
+function feedbackDraft(f: InterviewFeedback | null): FeedbackDraft {
+  const str = (v: number | string | null | undefined) => (v === null || v === undefined ? "" : String(v));
+  return {
+    technical_rating: str(f?.technical_rating), communication_rating: str(f?.communication_rating), overall_rating: str(f?.overall_rating),
+    strengths: str(f?.strengths), weaknesses: str(f?.weaknesses), recruiter_comments: str(f?.recruiter_comments),
+    company_feedback: str(f?.company_feedback), next_round: str(f?.next_round), final_decision: str(f?.final_decision),
+  };
+}
+
+function feedbackBody(d: FeedbackDraft): FeedbackFields {
+  const num = (v: string) => (v === "" ? null : Number(v));
+  const text = (v: string) => v.trim() || null;
+  return {
+    technical_rating: num(d.technical_rating), communication_rating: num(d.communication_rating), overall_rating: Number(d.overall_rating),
+    strengths: text(d.strengths), weaknesses: text(d.weaknesses), recruiter_comments: text(d.recruiter_comments), company_feedback: text(d.company_feedback),
+    next_round: (d.next_round || null) as Round | null, final_decision: (d.final_decision || null) as FeedbackFields["final_decision"],
+  };
+}
+
+/** rec-021 (FB1-FB4): the §15 feedback -- the whole form replaces the saved one; a decision moves the interview (the API decides). */
+function FeedbackForm({ interview, onSaved, onCancel }: { interview: RecInterview; onSaved: Saved; onCancel: () => void }) {
+  const id = useId();
+  const [d, setD] = useState(() => feedbackDraft(interview.feedback));
+  const { busy, errors, setErrors, failure, run } = useSubmit(onSaved);
+  const set = (key: keyof FeedbackDraft) => (e: { target: { value: string } }) => setD((prev) => ({ ...prev, [key]: e.target.value }));
+  const rejected = d.final_decision === "rejected";
+  const aria = (key: string) => ({ "aria-invalid": errors[key] ? true : undefined, "aria-describedby": errors[key] ? `${id}-${key}-error` : undefined });
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!d.overall_rating) return setErrors({ overall_rating: "Choose an overall rating" });
+    void run(() => sendJson(interviewUrl(interview.id, "feedback"), "PUT", feedbackBody(d)));
+  }
+  function rating(key: "technical_rating" | "communication_rating" | "overall_rating", label: string, required = false) {
+    return (
+      <Field id={`${id}-${key}`} label={required ? `${label} (required)` : label} error={errors[key]}>
+        <select id={`${id}-${key}`} value={d[key]} onChange={set(key)} {...(required ? { required: true, "aria-required": true } : {})} {...aria(key)}>
+          <option value="">{required ? "Choose a rating" : "Not rated"}</option>
+          {RATINGS.map((r) => <option key={r} value={r}>{r} / 5</option>)}
+        </select>
+      </Field>
+    );
+  }
+  return (
+    <form aria-label={`Feedback for ${interview.code}`} className="action-card" noValidate onSubmit={submit} onKeyDown={(e) => e.key === "Escape" && onCancel()}>
+      <div className="form-grid" style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(11rem, 1fr))" }}>
+        {rating("technical_rating", "Technical rating")}
+        {rating("communication_rating", "Communication rating")}
+        {rating("overall_rating", "Overall rating", true)}
+      </div>
+      <div className="form-grid" style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(16rem, 1fr))" }}>
+        {TEXTS.map(([key, label]) => (
+          <Field key={key} id={`${id}-${key}`} label={label} error={errors[key]}>
+            <textarea id={`${id}-${key}`} rows={2} maxLength={FEEDBACK_TEXT_MAX} value={d[key]} onChange={set(key)} {...aria(key)} />
+          </Field>
+        ))}
+      </div>
+      <div className="form-grid" style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(13rem, 1fr))" }}>
+        <Field id={`${id}-final_decision`} label="Final decision" error={errors.final_decision}>
+          <select id={`${id}-final_decision`} value={d.final_decision} {...aria("final_decision")}
+            onChange={(e) => setD((prev) => ({ ...prev, final_decision: e.target.value, next_round: e.target.value === "rejected" ? "" : prev.next_round }))}>
+            <option value="">No decision yet</option>
+            {DECISIONS.map((k) => <option key={k} value={k}>{STATUS_LABELS[k]}</option>)}
+          </select>
+        </Field>
+        <Field id={`${id}-next_round`} label="Next round" error={errors.next_round}>
+          <select id={`${id}-next_round`} value={d.next_round} onChange={set("next_round")} disabled={rejected} {...aria("next_round")}>
+            <option value="">No next round</option>
+            {ROUNDS.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
+          </select>
+        </Field>
+      </div>
+      <p className="muted" style={{ margin: 0, fontSize: 13 }}>A decision also sets the interview&apos;s status.</p>
+      <Problem failure={failure} />
+      <div className="actions">
+        <button type="submit" className="btn small" disabled={busy}>{busy ? "Saving…" : "Save feedback"}</button>
+        <button type="button" className="btn secondary small" onClick={onCancel}>Cancel</button>
+      </div>
+    </form>
+  );
+}
+
+/** The saved feedback, for every reader of the interview. */
+function FeedbackSummary({ code, feedback: f }: { code: string; feedback: InterviewFeedback }) {
+  const score = (v: number | null) => (v === null ? "Not rated" : `${v} / 5`);
+  const rows: [string, string][] = [
+    ["Overall", score(f.overall_rating)],
+    ...RATING_FIELDS.map(([key, label]): [string, string] => [label, score(f[key])]),
+    ...TEXTS.filter(([key]) => f[key]).map(([key, label]): [string, string] => [label, f[key] as string]),
+    ["Next round", f.next_round_label ?? "None"],
+    ["Final decision", f.final_decision_label ?? "Not decided"],
+  ];
+  return (
+    <div style={{ display: "grid", gap: 2 }}>
+      <strong style={{ fontSize: 13 }}>Feedback</strong>
+      <ul aria-label={`Feedback of ${code}`} style={{ margin: 0, paddingLeft: 18, fontSize: 13, display: "grid", gap: 2 }}>
+        {rows.map(([name, value]) => <li key={name}><span className="muted">{name}:</span> <span style={TEXT}>{value}</span></li>)}
+      </ul>
+      <p className="muted" style={{ margin: 0, fontSize: 13 }}>Recorded by {f.recorded_by.full_name}, {formatSchoolDateTime(f.updated_at, true)}</p>
+    </div>
+  );
+}
+
 function historyText(h: InterviewEvent): string {
   const by = h.actor ? ` by ${h.actor.full_name}` : "";
   const note = h.note ? ` — ${h.note}` : "";
@@ -156,14 +279,19 @@ function historyText(h: InterviewEvent): string {
 /** rec-020 (spec §4): one interview with its actions -- Change status, Reschedule and Edit -- offered only when the API allows them.
  *  `card` is the list form (the candidate and requirement first, linked); without it the item sits on its application. */
 export default function RecruiterInterviewItem({ interview: i, card = false, contacts = [], onChanged }: {
-  interview: RecInterview; card?: boolean; contacts?: ContactOption[]; onChanged: (interview: RecInterview, notice: string) => void;
+  interview: RecInterview; card?: boolean; contacts?: ContactOption[]; onChanged: (interview: RecInterview, notice: string, nextRound?: Round) => void;
 }) {
-  const [mode, setMode] = useState<"view" | "status" | "reschedule" | "edit">("view");
+  const [mode, setMode] = useState<"view" | "status" | "reschedule" | "edit" | "feedback">("view");
   const id = useId();
   const link = safeLink(i.meeting_url);
   const done = (text: string) => (next: RecInterview, notices?: Notices) => {
     setMode("view");
     onChanged(next, [text, noticeText(notices)].filter(Boolean).join(" "));
+  };
+  const feedbackSaved = (next: RecInterview) => {
+    setMode("view");
+    const suggested = next.feedback?.next_round_label;
+    onChanged(next, suggested ? `Feedback saved. Next round suggested: ${suggested}.` : "Feedback saved.", next.feedback?.next_round ?? undefined);
   };
   const facts = [
     card && ["Requirement", `${i.requirement.title} · ${i.company.name}`],
@@ -211,7 +339,9 @@ export default function RecruiterInterviewItem({ interview: i, card = false, con
       {mode === "status" && <StatusForm interview={i} onCancel={() => setMode("view")} onSaved={done("Status saved.")} />}
       {mode === "reschedule" && <RescheduleForm interview={i} onCancel={() => setMode("view")} onSaved={done("Interview rescheduled.")} />}
       {mode === "edit" && <RecruiterInterviewForm interview={i} contacts={contacts} onCancel={() => setMode("view")} onSaved={done("Interview updated.")} />}
-      {mode === "view" && (i.allowed_statuses.length > 0 || i.can_reschedule || i.can_edit) && (
+      {i.feedback && mode !== "feedback" && <FeedbackSummary code={i.code} feedback={i.feedback} />}
+      {mode === "feedback" && <FeedbackForm interview={i} onCancel={() => setMode("view")} onSaved={feedbackSaved} />}
+      {mode === "view" && (i.allowed_statuses.length > 0 || i.can_reschedule || i.can_edit || i.can_feedback) && (
         <div className="actions" style={{ flexWrap: "wrap" }}>
           {i.allowed_statuses.length > 0 && (
             <button type="button" className="btn small" onClick={() => setMode("status")}>Change status<span className="visually-hidden"> of {i.code}</span></button>
@@ -220,6 +350,11 @@ export default function RecruiterInterviewItem({ interview: i, card = false, con
             <button type="button" className="btn secondary small" onClick={() => setMode("reschedule")}>Reschedule<span className="visually-hidden"> {i.code}</span></button>
           )}
           {i.can_edit && <button type="button" className="btn secondary small" onClick={() => setMode("edit")}>Edit<span className="visually-hidden"> {i.code}</span></button>}
+          {i.can_feedback && (
+            <button type="button" className={i.feedback ? "btn secondary small" : "btn small"} onClick={() => setMode("feedback")}>
+              {i.feedback ? "Edit feedback" : "Record feedback"}<span className="visually-hidden"> for {i.code}</span>
+            </button>
+          )}
         </div>
       )}
     </li>
