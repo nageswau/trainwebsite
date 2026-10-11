@@ -1750,6 +1750,18 @@ Every write is audited in the same transaction (`recruiter_revenue.*`: ids and a
 | `placement_team` | `403` | — |
 | any other role | `403` (anonymous `401`) | — |
 
+### 2.104 Campus recruitment drives *(net-new, added 2026-10-11 — `DEC-SCOPE-178`, `rec-029`)*
+
+A drive takes its company's scope (§2.47, rec-003). The role check runs before anything is read; out of scope is `404`.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` | read; create and edit drives; add candidates through a drive (`drive_id` on rec-017's add) | companies assigned to them | `rec-029` |
+| `placement_manager` | read only (writes `403`); the college picker | the team's companies and the unassigned queue | `rec-029` |
+| `bdm` | read only (the company's assigned BDM, R10). The college's BDM gets no access (DR8, Q-30) | companies where they are the assigned BDM | `rec-029` |
+| `super_admin` | everything | all | `rec-029` |
+| `hr_team`, `it_admin`, `employer`, students, every other role | `403` | — | `rec-029` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

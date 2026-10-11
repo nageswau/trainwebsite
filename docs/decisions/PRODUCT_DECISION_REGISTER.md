@@ -7060,3 +7060,38 @@ No migration; API contract §12CR, RBAC §2.103. Spec: `docs/superpowers/specs/2
 **Consequences:** `services/recruiter_lifecycle.py`; `POST /recruiter/manager/reassign` and `work` on `GET /recruiter/manager/team`
 (`api/recruiter.py`); one pre-check line in `admin.update_user`; web `RecruiterReassign.tsx` and the Team table's work columns.
 - **New Feature ID authorized:** `rec-037`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-037.
+
+### DEC-SCOPE-178 — Campus recruitment drives (`rec-029`)
+
+**Evidence:**
+- `EVID-018` §21 (lines 838–886): Campus Recruitment Drive with Drive ID, College, Company, Date, Job Role, Vacancies, Eligibility,
+  Students Registered, Students Attended, Shortlisted, Interviewed, Selected and Joined; the ABC College + XYZ Technologies funnel
+  (illustrative). Appendix B C1–C7 defines each figure.
+- R15 (`EXPLICIT_APPROVAL`, 2026-10-07): the college is a BDM college organisation or free text; registered and attended are typed;
+  shortlisted to joined are computed from the applications that carry the drive.
+- `RECRUITER_CRM_BACKLOG.md` §rec-029: AC1 (funnel = counts of drive-tagged applications by status), AC2 (attended ≤ registered,
+  negative scenario `422`); edge cases a college not in BDM and a drive spanning two requirements. Q-30 asks whether an application belongs
+  to one drive only and whether a drive is closed by hand. rec-017 A4 (`DEC-SCOPE-136`) moved `job_applications.drive_id` here.
+
+**Status:** in review on `feature/rec-029` (2026-10-11). Every answer below is a **recommended default, `UNVERIFIED`**, taken on the
+owner's instruction to proceed with the recommended answers.
+
+**Numbering:** migration `0148_recruitment_drives` (after `0147_recruiter_revenue`), API §12CS and RBAC §2.104. Drafted as `0146` / 175 /
+§12CP / §2.101; rec-021 merged first and took those numbers. Spec `docs/superpowers/specs/2026-10-11-rec-029-campus-drives-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| DR1 | Drive ID | `DRV-000001` from `recruitment_drive_code_seq`, server-owned |
+| DR2 | College | Exactly one of a live BDM `college` / `university` organisation or a typed name (≤ 200); a picked org later archived stays shown |
+| DR3 | Q-30 | One drive per application (`job_applications.drive_id`), set when the candidate is added through the drive and never changed; a candidate already on the requirement stays the existing `409`. Closed by hand: `planned` ↔ `completed`, `cancelled` final (no edits, no candidates) |
+| DR4 | Requirements | 1–10 live requirements of the drive's company; PATCH replaces the set; removing one with drive-tagged applications `409`; the company is fixed |
+| DR5 | Fields | Date, job role (≤ 150) and vacancies (1–100000) required; eligibility ≤ 1000 optional; registered / attended 0–1000000, default 0 |
+| DR6 | AC2 | Attended ≤ registered on the merged values (`422` on `students_attended`), backed by a CHECK |
+| DR7 | Funnel (AC1) | Over drive-tagged applications, one query: Shortlisted = reached shortlisted or later (current or history); Interviewed = ≥ 1 interview Completed / Selected / Rejected; Selected = reached selected or joined; Joined = at joined |
+| DR8 | Who | The company's scope: recruiter own, manager team + unassigned (read), assigned BDM (read), `super_admin` all. Writes = the company's `can_edit`. The college's BDM has no access (Q-30 "read?" → no) |
+| DR9 | Adding | rec-017's add takes an optional `drive_id`: in scope and including the requirement (`422` on `drive_id`), not cancelled (`409`) |
+| DR10 | Audit | `recruitment_drive.create` / `.update` (field names only); logs carry ids |
+
+**Consequences:** tables `recruitment_drives`, `drive_requirements`, column `job_applications.drive_id`; `services/recruitment_drives.py`,
+`api/recruiter_drives.py`; `/recruiter/drives` list + detail pages ("Campus Drives" in the recruiter, manager and super admin menus).
+- **New Feature ID authorized:** `rec-029`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-029.

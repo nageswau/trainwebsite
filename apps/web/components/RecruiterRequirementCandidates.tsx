@@ -14,6 +14,7 @@ import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import type { PickOption } from "@/lib/lookups";
 import {
   applicationUrl,
+  type ApplicationStatus,
   candidateSearch,
   type HistoryEntry,
   isApplicationBody,
@@ -40,9 +41,10 @@ function NoteField({ id, value, onChange }: { id: string; value: string; onChang
   );
 }
 
-/** Add one pool candidate at Sourced / Screened / Shortlisted. A duplicate or a closed requirement comes back as the API's message. */
-function AddCandidate({ requirementId, data, onAdded, onCancel }: {
-  requirementId: string; data: RequirementCandidates; onAdded: (a: RecApplication) => void; onCancel: () => void;
+/** Add one pool candidate at Sourced / Screened / Shortlisted. A duplicate or a closed requirement comes back as the API's message.
+ *  rec-029 (DR9): with `driveId`, the candidate comes through that campus drive (the application carries the drive tag). */
+export function AddCandidate({ requirementId, statuses, driveId, label = "Add candidate", onAdded, onCancel }: {
+  requirementId: string; statuses: ApplicationStatus[]; driveId?: string; label?: string; onAdded: (a: RecApplication) => void; onCancel: () => void;
 }) {
   const [picked, setPicked] = useState<PickOption | null>(null);
   const [status, setStatus] = useState("sourced");
@@ -56,19 +58,21 @@ function AddCandidate({ requirementId, data, onAdded, onCancel }: {
     if (!picked || busy) return;
     setBusy(true);
     setFailure(null);
-    const outcome = await sendJson(requirementCandidatesUrl(requirementId), "POST", { candidate_id: picked.id, status, ...(note.trim() ? { note: note.trim() } : {}) });
+    const outcome = await sendJson(requirementCandidatesUrl(requirementId), "POST", {
+      candidate_id: picked.id, status, ...(note.trim() ? { note: note.trim() } : {}), ...(driveId ? { drive_id: driveId } : {}),
+    });
     setBusy(false);
     if (outcome.ok && isApplicationBody(outcome.data)) onAdded(outcome.data.application);
     else setFailure(outcome.ok ? "Unable to add the candidate." : outcome.message);
   }
 
   return (
-    <form onSubmit={submit} className="action-card" style={{ gap: 10 }} aria-label="Add candidate">
+    <form onSubmit={submit} className="action-card" style={{ gap: 10 }} aria-label={label}>
       <SearchableSelect label="Candidate" noun="candidate" required search={search} onChange={setPicked} />
       <label htmlFor={`${id}-status`} style={{ display: "grid", gap: 4 }}>
         Starting status
         <select id={`${id}-status`} value={status} onChange={(e) => setStatus(e.target.value)}>
-          {data.statuses.filter((s) => s.initial).map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+          {statuses.filter((s) => s.initial).map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
         </select>
       </label>
       <NoteField id={`${id}-note`} value={note} onChange={setNote} />
@@ -274,7 +278,7 @@ export default function RecruiterRequirementCandidates({ requirementId, requirem
           onShared={() => { setSelected(new Set()); reload(); onShared?.(); }} />
       )}
       {adding && data?.can_add && (
-        <AddCandidate requirementId={requirementId} data={data} onCancel={() => setAdding(false)}
+        <AddCandidate requirementId={requirementId} statuses={data.statuses} onCancel={() => setAdding(false)}
           onAdded={(a) => { setAdding(false); done(`${a.candidate.name} added as ${a.status_label}.`); }} />
       )}
       {failed ? (

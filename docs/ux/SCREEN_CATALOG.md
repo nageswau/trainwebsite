@@ -4028,3 +4028,22 @@ not claim parity.
 - **QA (2026-10-10, Chromium, desktop 1366 / tablet 820 / phone 390):** QA31-01 (minor) — Back after Apply + Refresh showed the
   remembered window over the address's; fixed (form `autoComplete="off"`), unit + e2e. No console errors or failed requests; formula
   cell guarded in the CSV; a counselor gets the access card and a 403 on the API.
+
+## rec-029 addendum (2026-10-11, `DEC-SCOPE-178`) — Campus Drives
+
+Design spec: `docs/superpowers/specs/2026-10-11-rec-029-campus-drives-design.md` §4. "Campus Drives" joins the recruiter, placement
+manager and super admin menus (after Joinings / Recruiter Requirements).
+
+- **`/recruiter/drives`** (`RecruiterDrives`): search (code, college, company, role) and a status filter; drive cards (code — role, status
+  badge, college with city, company · date, registered · attended · vacancies); 50 per page with Previous / Next. "+ New drive" (writers
+  only) opens the form inline and goes to the new drive on save. States: loading, empty ("No campus drives yet." / "No drives match these
+  filters."), the API's message with Try again, the access card for other roles (the API's 403).
+- **New / edit form** (`RecruiterDriveForm`, `noValidate`): company picker (fixed once created); requirement picker of that company's live
+  requirements, chosen ones as removable chips (1–10); college as "From BDM colleges" (picker) or "Not in the list — type the name";
+  date, job role, vacancies, registered, attended (hint "No more than registered"), eligibility; on edit a status select. The first
+  problem shows in a `.form-error` alert before any request (AC2 included); the API's message otherwise.
+- **`/recruiter/drives/{id}`** (`RecruiterDriveDetail`): title "{role} at {college}", company link and status badge; Details; Funnel
+  (Registered, Attended, Shortlisted, Interviewed, Selected, Joined — tiles that wrap to two per row on phones); Job requirements with
+  "+ Add candidate" on each open one (writers), which opens rec-017's add form sending the drive id; Candidates from this drive as stacked
+  items (name + code, requirement · status). Readers (manager, assigned BDM) see no Edit or Add. Unknown or malformed id: "Drive not found".
+- **Browser QA (2026-10-11):** `docs/quality/REC-029_EXPLORATORY_QA_2026-10-11.md` (QA29-01..03 fixed).

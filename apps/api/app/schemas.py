@@ -8949,12 +8949,83 @@ class RecApplicationCreate(BaseModel):
     candidate_id: UUID
     status: Literal["sourced", "screened", "shortlisted"] = "sourced"  # applications.INITIAL
     note: _rec_requirement_text_type(500, multiline=True) = None
+    drive_id: UUID | None = None  # rec-029 (DR9): added through this campus drive (checked by services/recruitment_drives)
 
 
 class RecApplicationStatusChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
     status: Literal[APPLICATION_STATUSES]
     note: _rec_requirement_text_type(500, multiline=True) = None
+
+
+# --- rec-029 (DEC-SCOPE-178): campus recruitment drives (services/recruitment_drives) ----------------------------------------------------
+# The cross-field rules (exactly one college, attended <= registered, the company's requirements) live in the service, so a PATCH is
+# checked against the stored values the same way and each 422 names its field.
+REC_DRIVE_LABELS = {"college_name": "College", "job_role": "Job role", "eligibility": "Eligibility"}
+
+
+def _rec_drive_text(value: str | None, info: ValidationInfo) -> str | None:
+    """No control characters (a line break only in eligibility); runs of spaces collapse in one-line fields; blank -> None."""
+    if value is None:
+        return None
+    multiline = info.field_name == "eligibility"
+    if (_BDM_CONTROL_MULTILINE if multiline else _BDM_CONTROL).search(value):
+        raise ValueError(f"{REC_DRIVE_LABELS[info.field_name]} contains invalid characters")
+    return (value if multiline else " ".join(value.split())) or None
+
+
+def _rec_drive_text_type(max_length: int, *, multiline: bool = False):
+    text = Annotated[Annotated[str, StringConstraints(strip_whitespace=True, max_length=max_length)] | None, AfterValidator(_rec_drive_text)]
+    return Annotated[text, BeforeValidator(_bdm_newlines)] if multiline else text
+
+
+def _rec_drive_required(value: str | None) -> str:
+    if value is None:
+        raise ValueError("Job role is required")
+    return value
+
+
+RecDriveRole = Annotated[_rec_drive_text_type(150), AfterValidator(_rec_drive_required)]
+RecDriveCount = Annotated[int, Field(ge=0, le=1_000_000)]
+RecDriveVacancies = Annotated[int, Field(ge=1, le=100_000)]
+RecDriveRequirements = Annotated[list[UUID], Field(min_length=1, max_length=10)]
+
+
+class RecDriveCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    company_id: UUID
+    college_org_id: UUID | None = None
+    college_name: _rec_drive_text_type(200) = None
+    requirement_ids: RecDriveRequirements
+    drive_date: date
+    job_role: RecDriveRole
+    vacancies: RecDriveVacancies
+    eligibility: _rec_drive_text_type(1000, multiline=True) = None
+    students_registered: RecDriveCount = 0
+    students_attended: RecDriveCount = 0
+
+
+class RecDriveUpdate(BaseModel):
+    """PATCH: omitted = unchanged. Sending either college key replaces both (the one not sent becomes null). The company never changes."""
+
+    model_config = ConfigDict(extra="forbid")
+    college_org_id: UUID | None = None
+    college_name: _rec_drive_text_type(200) = None
+    requirement_ids: RecDriveRequirements | None = None
+    drive_date: date | None = None
+    job_role: RecDriveRole | None = None
+    vacancies: RecDriveVacancies | None = None
+    eligibility: _rec_drive_text_type(1000, multiline=True) = None
+    students_registered: RecDriveCount | None = None
+    students_attended: RecDriveCount | None = None
+    status: Literal["planned", "completed", "cancelled"] | None = None  # models.RECRUITMENT_DRIVE_STATUSES
+
+    @model_validator(mode="after")
+    def _required_stay_set(self):
+        for key in ("requirement_ids", "drive_date", "job_role", "vacancies", "students_registered", "students_attended", "status"):
+            if key in self.model_fields_set and getattr(self, key) is None:
+                raise ValueError(f"{key.replace('_', ' ').capitalize()} can't be removed")
+        return self
 
 
 # --- rec-019 (DEC-SCOPE-160): profile sharing (services/profile_sharing) ---------------------------------------------------------------

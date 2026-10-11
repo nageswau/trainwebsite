@@ -751,6 +751,7 @@ class JobApplication(Base, TimestampMixin):
         UniqueConstraint("candidate_id", "job_id", name="uq_job_applications_candidate_job"),
         Index("ix_job_applications_job_status", "job_id", "status"),
         Index("ix_job_applications_candidate", "candidate_id"),
+        Index("ix_job_applications_drive", "drive_id"),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id"), index=True)
@@ -760,6 +761,8 @@ class JobApplication(Base, TimestampMixin):
     resume_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     stage_changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     added_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    # rec-029 (DR3): the one campus drive the candidate came through, set when added through it and never changed.
+    drive_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruitment_drives.id", ondelete="RESTRICT"), nullable=True)
 
 
 class JobApplicationStatusHistory(Base):
@@ -5390,3 +5393,51 @@ class RecruiterPayment(Base):
     reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+# rec-029 (DEC-SCOPE-178, DR1-DR7): campus recruitment drives (§21). Migration 0148 repeats the statuses and checks
+# (test_rec_029_migration). Labels live in services/recruitment_drives.py and the web client.
+RECRUITMENT_DRIVE_STATUSES = ("planned", "completed", "cancelled")
+RECRUITMENT_DRIVE_CODE_SEQ = Sequence("recruitment_drive_code_seq", metadata=Base.metadata)
+RECRUITMENT_DRIVE_CHECKS = {
+    "ck_recruitment_drives_status": _in_list("status", RECRUITMENT_DRIVE_STATUSES),
+    "ck_recruitment_drives_college": "(college_org_id IS NULL) <> (college_name IS NULL)",
+    "ck_recruitment_drives_counts": "students_registered >= 0 AND students_attended >= 0",
+    "ck_recruitment_drives_attended": "students_attended <= students_registered",
+    "ck_recruitment_drives_vacancies": "vacancies >= 1",
+}
+
+
+class RecruitmentDrive(Base, TimestampMixin):
+    """rec-029 (DEC-SCOPE-178): a campus drive of one company at one college -- a BDM college organisation or a typed name (R15, DR2).
+    Registered and attended are typed counts; shortlisted to joined are computed from the applications tagged with the drive (DR7).
+    Never deleted: cancelled instead (DR3)."""
+
+    __tablename__ = "recruitment_drives"
+    __table_args__ = (
+        UniqueConstraint("drive_code", name="uq_recruitment_drives_code"),
+        *(CheckConstraint(sql, name=name) for name, sql in RECRUITMENT_DRIVE_CHECKS.items()),
+        Index("ix_recruitment_drives_company_date", "company_id", "drive_date"),
+        Index("ix_recruitment_drives_date", "drive_date"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    drive_code: Mapped[str] = mapped_column(String(20))
+    company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"))
+    college_org_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("bdm_organizations.id", ondelete="RESTRICT"), nullable=True)
+    college_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    drive_date: Mapped[date] = mapped_column(Date)
+    job_role: Mapped[str] = mapped_column(String(150))
+    vacancies: Mapped[int] = mapped_column(Integer)
+    eligibility: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    students_registered: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    students_attended: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    status: Mapped[str] = mapped_column(String(16), default="planned", server_default=text("'planned'"))
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+class DriveRequirement(Base):
+    """rec-029 (DR4): the requirements a drive recruits for -- each a requirement of the drive's company."""
+
+    __tablename__ = "drive_requirements"
+    __table_args__ = (Index("ix_drive_requirements_job", "job_id"),)
+    drive_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruitment_drives.id", ondelete="RESTRICT"), primary_key=True)
+    job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="RESTRICT"), primary_key=True)
