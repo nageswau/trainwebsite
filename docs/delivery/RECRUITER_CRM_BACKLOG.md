@@ -1329,9 +1329,9 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-029 — Campus recruitment drives
-- **Status (2026-10-11):** **IN REVIEW** on `feature/rec-029`. `DEC-SCOPE-176` (DR1–DR10 recommended defaults, UNVERIFIED; DR3 answers
-  Q-30: one drive per application, closed by hand; DR8: the college's BDM gets no access); migration `0147_recruitment_drives` (after
-  `0146_interview_feedback`), API §12CQ, RBAC §2.102. Drafted as `0146` / 175 / §12CP / §2.101; rec-021 merged first. Service is
+- **Status (2026-10-11):** **IN REVIEW** on `feature/rec-029`. `DEC-SCOPE-177` (DR1–DR10 recommended defaults, UNVERIFIED; DR3 answers
+  Q-30: one drive per application, closed by hand; DR8: the college's BDM gets no access); migration `0148_recruitment_drives` (after
+  `0147_recruiter_revenue`), API §12CR, RBAC §2.103. Drafted as `0146` / 175 / §12CP / §2.101, then `0147` / 176 / §12CQ / §2.102; rec-021 and then rec-031 merged first. Service is
   `services/recruitment_drives.py`; `job_applications.drive_id` lands here (rec-017 A4) and the tag is set through rec-017's add
   (`drive_id`). QA evidence `docs/quality/REC-029_EXPLORATORY_QA_2026-10-11.md`.
 - **Business requirement:** §21 (13 fields; funnel example) (R15).
@@ -1399,6 +1399,10 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-031 — Revenue / commercial tracking (track only)
+- **Status (2026-10-11):** **IN REVIEW** on `feature/rec-031`. `DEC-SCOPE-176` (RV1–RV10 recommended answers to Q-24, UNVERIFIED).
+  Migration `0147_recruiter_revenue`, API §12CQ, RBAC §2.102 (drafted as 0146 / 175 / §12CP / §2.101; rec-021 merged first). Spec
+  `docs/superpowers/specs/2026-10-11-rec-031-recruiter-revenue-design.md`. The next rec item takes `0148`, `DEC-SCOPE-177`, §12CR and §2.103
+  (re-check `main`).
 - **Business requirement:** §23 (9 fields) (R9).
 - **Existing behavior:** none.
 - **Expected behavior:**

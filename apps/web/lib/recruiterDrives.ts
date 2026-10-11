@@ -1,4 +1,4 @@
-// rec-029 (DEC-SCOPE-176): campus recruitment drives -- types, URLs, the form <-> body mapping (a PATCH sends only what changed), the
+// rec-029 (DEC-SCOPE-177): campus recruitment drives -- types, URLs, the form <-> body mapping (a PATCH sends only what changed), the
 // form's own checks (AC2: attended <= registered) and the funnel's steps (Appendix B C2-C7). The API decides scope, re-checks every rule
 // and computes the funnel; nothing here filters for security.
 import type { ApplicationStatus } from "@/lib/recruiterApplications";

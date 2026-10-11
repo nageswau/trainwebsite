@@ -1,4 +1,4 @@
-"""rec-029 (DEC-SCOPE-176, spec §3): campus recruitment drives -- the list, the college picker, create, a drive with its funnel, edit, the
+"""rec-029 (DEC-SCOPE-177, spec §3): campus recruitment drives -- the list, the college picker, create, a drive with its funnel, edit, the
 funnel alone and the candidates added through the drive.
 
 Scope is the company's (rec-003 `caller_scope`; other roles 403, out of scope 404). Every write is one transaction -- scope, the company

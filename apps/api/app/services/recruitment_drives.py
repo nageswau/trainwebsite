@@ -1,4 +1,4 @@
-"""rec-029 (DEC-SCOPE-176, spec §1-§3): campus recruitment drives -- rules, reads, the funnel and the drive tag on a new application.
+"""rec-029 (DEC-SCOPE-177, spec §1-§3): campus recruitment drives -- rules, reads, the funnel and the drive tag on a new application.
 
 A drive belongs to its company: every read and write goes through rec-003's company scope (`caller_scope` / `load_scoped`), so another
 recruiter's drive is the same 404 as a missing one (DR8). Writes need the company's `can_edit` and lock the company, then the drive. The

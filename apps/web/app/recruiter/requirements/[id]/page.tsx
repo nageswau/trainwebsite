@@ -7,6 +7,7 @@ import { ApiError, serverApi } from "@/lib/api";
 import { companyShell, RECRUITER_SIGN_IN } from "@/lib/recruiterCompanies";
 import { type Jd, jdUrl } from "@/lib/recruiterJd";
 import { type Requirement, REQUIREMENTS_PATH, REQUIREMENTS_URL } from "@/lib/recruiterRequirements";
+import { canSeeRevenue } from "@/lib/recruiterRevenue";
 import type { User } from "@/lib/types";
 
 // rec-007: one requirement. A 404 (unknown, or outside the caller's scope) is a plain "not found" -- it never says which.
@@ -36,7 +37,7 @@ export default async function RecruiterRequirementPage({ params, searchParams }:
     <PortalShell nav={nav} roleLabel={roleLabel} userName={user.full_name}>
       <div className="portal-content">
         {requirement ? (
-          <RecruiterRequirementDetail initial={requirement} initialJd={jd} created={created} />
+          <RecruiterRequirementDetail initial={requirement} initialJd={jd} created={created} showRevenue={canSeeRevenue(user.role)} />
         ) : (
           <div className="action-card">
             <h2>Job requirement not found</h2>

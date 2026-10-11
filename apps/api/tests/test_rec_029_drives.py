@@ -1,4 +1,4 @@
-"""rec-029 -- campus recruitment drives (spec §1-§3; AC1, AC2; DEC-SCOPE-176 DR1-DR10). Names are unique per test (the database is
+"""rec-029 -- campus recruitment drives (spec §1-§3; AC1, AC2; DEC-SCOPE-177 DR1-DR10). Names are unique per test (the database is
 shared and never truncated)."""
 
 import uuid

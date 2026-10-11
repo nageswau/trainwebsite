@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { collegeText, type Drive, driveBody, EMPTY_DRIVE, formOf, formProblem, funnelSteps } from "@/lib/recruiterDrives";
 
-// rec-029 (DEC-SCOPE-176): the drive form <-> body mapping (a PATCH sends only what changed), the client-side form checks (AC2 too), the
+// rec-029 (DEC-SCOPE-177): the drive form <-> body mapping (a PATCH sends only what changed), the client-side form checks (AC2 too), the
 // college line and the funnel steps (Appendix B C2-C7).
 const drive = (over: Partial<Drive> = {}): Drive => ({
   id: "d1", code: "DRV-000001", status: "planned", status_label: "Planned", drive_date: "2026-11-20", job_role: "Graduate Engineer Trainee",

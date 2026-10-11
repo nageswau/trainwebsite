@@ -1954,7 +1954,7 @@ NULL)`), `_note`; `uq_university_onboarding_items_kind (university_id, kind)` (a
 - The overall status and "Course database updated" (≥ 1 active course, OB7) are computed on read.
 - `downgrade()` refuses while any row exists.
 
-## Campus recruitment drives (`rec-029`, `DEC-SCOPE-176`; migration `0147_recruitment_drives`, after `0146_interview_feedback`)
+## Campus recruitment drives (`rec-029`, `DEC-SCOPE-177`; migration `0148_recruitment_drives`, after `0147_recruiter_revenue`)
 
 **`recruitment_drives`** has these columns:
 - `drive_code` (unique, `DRV-000001` from `recruitment_drive_code_seq`), `company_id` (FK `companies`, RESTRICT);

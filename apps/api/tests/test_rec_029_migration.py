@@ -1,4 +1,4 @@
-"""rec-029 -- migration 0147_recruitment_drives (spec §2). Round trip and downgrade refusal run in a throwaway database built from scratch
+"""rec-029 -- migration 0148_recruitment_drives (spec §2). Round trip and downgrade refusal run in a throwaway database built from scratch
 (the rec-028 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -15,18 +15,18 @@ from tests.test_rec_030_migration import _setup
 from tests.test_tel_001_migration import _config, _sql
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_rec_029_migration_0147", VERSIONS / "0147_recruitment_drives.py")
+_spec = importlib.util.spec_from_file_location("_rec_029_migration_0148", VERSIONS / "0148_recruitment_drives.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0146_interview_feedback", "0147_recruitment_drives"
+BASE, HEAD = "0147_recruiter_revenue", "0148_recruitment_drives"
 DRIVE_COLUMNS = {
     "id", "drive_code", "company_id", "college_org_id", "college_name", "drive_date", "job_role", "vacancies", "eligibility",
     "students_registered", "students_attended", "status", "created_by_user_id", "created_at", "updated_at",
 }
 
 
-def test_migration_chains_after_0146_and_there_is_a_single_head():
+def test_migration_chains_after_0147_and_there_is_a_single_head():
     assert _migration.revision == HEAD and len(HEAD) <= 32
     assert _migration.down_revision == BASE
     assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1
