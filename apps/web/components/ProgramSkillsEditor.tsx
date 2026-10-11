@@ -56,7 +56,7 @@ export default function ProgramSkillsEditor({ programId, programTitle, onClose }
   }
 
   return (
-    <section className="action-card" aria-labelledby={`${id}-heading`} style={{ marginTop: 12, display: "grid", gap: 8 }}>
+    <section className="action-card" aria-labelledby={`${id}-heading`} style={{ display: "grid", gap: 8 }}>
       <h4 id={`${id}-heading`} ref={headingRef} tabIndex={-1} style={{ margin: 0, overflowWrap: "anywhere" }}>Skills taught in {programTitle}</h4>
       <p className="muted" style={{ margin: 0, fontSize: 13 }}>
         Students who hold this program&apos;s certificate and have joined the placement pool get these skills as &ldquo;Course completed&rdquo;.

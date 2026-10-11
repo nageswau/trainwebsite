@@ -1,11 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import ProgramSkillsEditor from "@/components/ProgramSkillsEditor";
+import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 type AdminProgramRow = { id: string; slug: string; category: string; title: string; duration: string; fees: number; active: boolean };
+
+const skillsButtonId = (programId: string) => `program-skills-${programId}`;
+
+function matches(p: AdminProgramRow, query: string) {
+  const normalized = query.trim().toLowerCase();
+  return !normalized || p.title.toLowerCase().includes(normalized) || p.category.toLowerCase().includes(normalized) || p.slug.toLowerCase().includes(normalized);
+}
 
 function detailMessage(detail: unknown) {
   if (typeof detail === "string") return detail;
@@ -24,7 +32,8 @@ export default function AdminProgramManagementPanel() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ id: string; text: string; failed: boolean } | null>(null);
-  const [skillsFor, setSkillsFor] = useState<AdminProgramRow | null>(null);
+  const [skillsFor, setSkillsFor] = useState<string | null>(null); // rec-036: the program whose Skills editor is open
+  const focusAfterRender = useFocusAfterRender();
 
   useEffect(() => {
     let cancelled = false;
@@ -37,12 +46,18 @@ export default function AdminProgramManagementPanel() {
     };
   }, []);
 
-  const visible = useMemo(() => {
-    if (!programs) return [];
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) return programs;
-    return programs.filter((p) => p.title.toLowerCase().includes(normalized) || p.category.toLowerCase().includes(normalized) || p.slug.toLowerCase().includes(normalized));
-  }, [programs, query]);
+  const visible = useMemo(() => (programs ?? []).filter((p) => matches(p, query)), [programs, query]);
+
+  function search(text: string) {
+    setQuery(text);
+    // rec-036 QA36-02: an editor never stays open for a program the search has hidden.
+    if (skillsFor && !programs?.some((p) => p.id === skillsFor && matches(p, text))) setSkillsFor(null);
+  }
+
+  function closeSkills(programId: string) {
+    setSkillsFor(null);
+    focusAfterRender(skillsButtonId(programId)); // QA36-01: back to the row the editor belonged to
+  }
 
   async function toggleActive(row: AdminProgramRow, confirmCascade: boolean) {
     setBusyId(row.id);
@@ -83,12 +98,12 @@ export default function AdminProgramManagementPanel() {
       <h3>Manage programs</h3>
       <div className="field" style={{ marginTop: 8 }}>
         <label htmlFor="admin-program-search">Search by title, category, or slug</label>
-        <input id="admin-program-search" className="search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} />
+        <input id="admin-program-search" className="search" type="search" value={query} onChange={(event) => search(event.target.value)} />
       </div>
       {visible.length === 0 ? (
         <p className="muted" style={{ marginTop: 12 }}>{programs.length === 0 ? "No programs found." : "No programs match this search."}</p>
       ) : (
-        <div className="table-wrap" style={{ marginTop: 12 }}>
+        <div className="table-wrap" style={{ marginTop: 12, containerType: "inline-size" }}>
           <table className="table">
             <thead>
               <tr>
@@ -101,7 +116,8 @@ export default function AdminProgramManagementPanel() {
             </thead>
             <tbody>
               {visible.map((row) => (
-                <tr key={row.id}>
+                <Fragment key={row.id}>
+                <tr>
                   <th scope="row">{row.title}</th>
                   <td>{row.category}</td>
                   <td>{row.duration}</td>
@@ -115,8 +131,8 @@ export default function AdminProgramManagementPanel() {
                       >
                         {busyId === row.id ? "Saving…" : confirmingId === row.id ? "Confirm deactivate" : row.active ? "Deactivate" : "Reactivate"}
                       </button>
-                      <button type="button" className="btn secondary small" aria-expanded={skillsFor?.id === row.id} aria-label={`Skills for ${row.title}`}
-                        onClick={() => setSkillsFor(skillsFor?.id === row.id ? null : row)}>
+                      <button type="button" id={skillsButtonId(row.id)} className="btn secondary small" aria-expanded={skillsFor === row.id}
+                        aria-label={`Skills for ${row.title}`} onClick={() => setSkillsFor(skillsFor === row.id ? null : row.id)}>
                         Skills
                       </button>
                     </div>
@@ -127,13 +143,24 @@ export default function AdminProgramManagementPanel() {
                     )}
                   </td>
                 </tr>
+                {/* rec-036 (QA36-01): the program's skill tags open directly under its row, one editor at a time. */}
+                {skillsFor === row.id && (
+                  <tr>
+                    <td colSpan={5}>
+                      {/* QA36-03: the table scrolls sideways when it is wider than its card; the editor sticks to the visible part and is
+                          as wide as it (100cqw = the scrolling wrap's visible width), so it is never cut off however far the table is scrolled. */}
+                      <div style={{ position: "sticky", left: 0, width: "min(40rem, calc(100cqw - 32px))" }}>
+                        <ProgramSkillsEditor programId={row.id} programTitle={row.title} onClose={() => closeSkills(row.id)} />
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ))}
             </tbody>
           </table>
         </div>
       )}
-      {/* rec-036: the chosen program's skill tags (one editor at a time). */}
-      {skillsFor && <ProgramSkillsEditor key={skillsFor.id} programId={skillsFor.id} programTitle={skillsFor.title} onClose={() => setSkillsFor(null)} />}
     </div>
   );
 }

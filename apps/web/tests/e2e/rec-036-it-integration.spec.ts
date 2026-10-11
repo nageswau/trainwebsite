@@ -54,8 +54,9 @@ test("course skills reach an opted-in completer when the IT admin tags the progr
   // CI1: the IT admin tags the program on the Programs page.
   await signIn(page, ADMIN, "/it/admin/dashboard");
   await page.goto("/it/admin/programs");
-  await page.getByLabel("Search by title, category, or slug").fill(batch.program);
-  await page.getByRole("button", { name: `Skills for ${batch.program}` }).first().click();
+  const slug = ((await (await admin.get("/api/v1/admin/programs")).json()) as { id: string; slug: string }[]).find((p) => p.id === batch.program_id)!.slug;
+  await page.getByLabel("Search by title, category, or slug").fill(slug); // the slug is unique; titles repeat in a shared test database
+  await page.getByRole("button", { name: `Skills for ${batch.program}` }).click();
   const editor = page.getByRole("region", { name: `Skills taught in ${batch.program}` });
   await expect(editor.getByRole("heading")).toBeFocused();
   const picker = editor.getByRole("combobox", { name: /Add a skill/ });
@@ -64,6 +65,16 @@ test("course skills reach an opted-in completer when the IT admin tags the progr
   await expect(editor.getByRole("list", { name: "Skills taught" })).toContainText(skillName);
   await editor.getByRole("button", { name: "Save skills" }).click();
   await expect(editor.getByRole("status")).toContainText(/Skills saved\. \d+ candidates? (was|were) updated\./);
+
+  // QA36-03: on a phone the program table scrolls sideways; the editor stays within the visible part, Save included.
+  await page.setViewportSize({ width: 375, height: 800 });
+  await editor.getByRole("button", { name: "Save skills" }).scrollIntoViewIfNeeded();
+  const save = (await editor.getByRole("button", { name: "Save skills" }).boundingBox())!;
+  const heading = (await editor.getByRole("heading").boundingBox())!;
+  expect(save.x).toBeGreaterThanOrEqual(0);
+  expect(heading.x).toBeGreaterThanOrEqual(0);
+  expect(heading.x + heading.width).toBeLessThanOrEqual(375);
+  await page.setViewportSize({ width: 1280, height: 720 });
 
   // AC1: the recruiter sees the course skill, Verified; AC2: the journey shows each stage with dates.
   const recruiter = await api(browser, RECRUITER, "it");
@@ -76,7 +87,7 @@ test("course skills reach an opted-in completer when the IT admin tags the progr
   await expect(row).toContainText("Course completed");
   await expect(row).toContainText("Verified");
   const journey = page.getByRole("list", { name: "Candidate journey" });
-  await expect(journey.getByRole("listitem", { name: "IT student" })).toContainText(/enrolled \d{1,2} \w{3} \d{4}/);
+  await expect(journey.getByRole("listitem", { name: "IT student" })).toContainText(/enrolled \d{1,2} \w{3,4} \d{4}/);
   await expect(journey.getByRole("listitem", { name: "Trained" })).toContainText(batch.program);
   await expect(journey.getByRole("listitem", { name: "Recruiter candidate" })).toContainText("joined the placement pool");
 
