@@ -204,19 +204,19 @@ function FeedbackForm({ interview, onSaved, onCancel }: { interview: RecIntervie
   }
   return (
     <form aria-label={`Feedback for ${interview.code}`} className="action-card" noValidate onSubmit={submit} onKeyDown={(e) => e.key === "Escape" && onCancel()}>
-      <div className="form-grid" style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(11rem, 1fr))" }}>
+      <div className="form-grid" style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(min(11rem, 100%), 1fr))" }}>
         {rating("technical_rating", "Technical rating")}
         {rating("communication_rating", "Communication rating")}
         {rating("overall_rating", "Overall rating", true)}
       </div>
-      <div className="form-grid" style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(16rem, 1fr))" }}>
+      <div className="form-grid" style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(min(16rem, 100%), 1fr))" }}>
         {TEXTS.map(([key, label]) => (
           <Field key={key} id={`${id}-${key}`} label={label} error={errors[key]}>
             <textarea id={`${id}-${key}`} rows={2} maxLength={FEEDBACK_TEXT_MAX} value={d[key]} onChange={set(key)} {...aria(key)} />
           </Field>
         ))}
       </div>
-      <div className="form-grid" style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(13rem, 1fr))" }}>
+      <div className="form-grid" style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(min(13rem, 100%), 1fr))" }}>
         <Field id={`${id}-final_decision`} label="Final decision" error={errors.final_decision}>
           <select id={`${id}-final_decision`} value={d.final_decision} {...aria("final_decision")}
             onChange={(e) => setD((prev) => ({ ...prev, final_decision: e.target.value, next_round: e.target.value === "rejected" ? "" : prev.next_round }))}>
