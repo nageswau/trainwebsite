@@ -175,7 +175,7 @@ async def dashboard(db: AsyncSession, user: User, recruiter_id: UUID | None, now
     }
 
 
-# --- rec-033 (DEC-SCOPE-181 PF1-PF9): the §24 performance dashboard, P1-P15 per recruiter over a period ----------------------------------
+# --- rec-033 (DEC-SCOPE-182 PF1-PF9): the §24 performance dashboard, P1-P15 per recruiter over a period ----------------------------------
 PERFORMANCE_ROLES = (MANAGER_ROLE, "super_admin", "it_admin")  # PF1 (Q-25): recruiters are IT staff (R2), so it_admin reads too
 COUNTS = ("recruiter_leads", "active_companies", "requirements", "candidates_sourced", "profiles_shared", "interviews", "selected", "joined", "requirements_closed")
 # PF6/PF8: key -> (numerator, denominator, scale, decimals); a zero denominator is None ("—").

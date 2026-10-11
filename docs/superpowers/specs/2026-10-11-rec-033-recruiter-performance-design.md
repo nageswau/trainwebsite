@@ -1,7 +1,7 @@
 # rec-033 — Recruiter performance dashboard (design)
 
 Status: DRAFT, built under the user's standing instruction to proceed on recommended answers (2026-10-11). Every PFn default below is
-**UNVERIFIED** until confirmed and is registered as `DEC-SCOPE-181` (number re-checked against `main` before merge).
+**UNVERIFIED** until confirmed and is registered as `DEC-SCOPE-182` (number re-checked against `main` before merge).
 
 ## 1. Sources and authority
 - `EVID-018` §24 "Recruiter Performance Dashboard" (L942–L971: 8 KPIs + 7 ratios, "Management should see") — `DERIVED_BLUEPRINT`.

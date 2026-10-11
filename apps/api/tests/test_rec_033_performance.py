@@ -1,4 +1,4 @@
-"""rec-033 -- the recruiter performance dashboard (DEC-SCOPE-181 PF1-PF9; backlog Appendix B P1-P15; AC1 ratios with "—" on a zero
+"""rec-033 -- the recruiter performance dashboard (DEC-SCOPE-182 PF1-PF9; backlog Appendix B P1-P15; AC1 ratios with "—" on a zero
 denominator, AC2 the Total is the sum of the recruiters). The shared test database is never truncated, so every figure is asserted on a
 fresh manager's fresh recruiters; the Unassigned row (shared by every test) is only checked through the Total = Σ rows rule."""
 

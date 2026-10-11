@@ -4,7 +4,7 @@
 Scope (DB1-DB3): a recruiter reads their own figures (another recruiter id → 403); a placement manager their team + the unassigned
 queue, or one direct report; super_admin everything, or any one recruiter (an id out of scope → 404). Every other role → 403.
 
-rec-033 (DEC-SCOPE-181, API §12CV): the §24 performance dashboard -- P1-P15 per recruiter over a period, for the placement manager (their
+rec-033 (DEC-SCOPE-182, API §12CW): the §24 performance dashboard -- P1-P15 per recruiter over a period, for the placement manager (their
 team + Unassigned), super_admin and it_admin (everyone); `.csv` is the same table, audited."""
 
 from datetime import date

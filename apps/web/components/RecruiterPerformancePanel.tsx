@@ -7,7 +7,7 @@ import {
 
 const FIELD = { display: "grid", gap: 4 } as const;
 
-// rec-033 (EVID-018 §24, DEC-SCOPE-181): the period's fifteen figures as tiles (the Total, or the recruiter drilled into) and, for the
+// rec-033 (EVID-018 §24, DEC-SCOPE-182): the period's fifteen figures as tiles (the Total, or the recruiter drilled into) and, for the
 // whole scope, the same figures per recruiter with the Total as the footer (AC2). The period is a plain GET form, so a view can be shared
 // and needs no client JS; it is keyed and `autoComplete="off"` so a client navigation or Chrome's form restore never shows stale dates.
 export default function RecruiterPerformancePanel({ data, error, params, today }: {

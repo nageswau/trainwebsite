@@ -11,7 +11,7 @@ import type { User } from "@/lib/types";
 const ROLES = ["placement_manager", "super_admin", "it_admin"]; // PF1
 const UNASSIGNED_NOTE = "plus companies and requirements not yet given to a recruiter (Unassigned)";
 
-// rec-033 (EVID-018 §24, DEC-SCOPE-181): the recruiter performance dashboard for the placement manager, super_admin and it_admin. The
+// rec-033 (EVID-018 §24, DEC-SCOPE-182): the recruiter performance dashboard for the placement manager, super_admin and it_admin. The
 // role check only spares other roles a screen that can only fail; the API decides whose figures are in scope (a recruiter outside the
 // team → 404, said in place of the figures, with the way back to everyone).
 export default async function RecruiterPerformancePage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {

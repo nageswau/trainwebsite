@@ -2810,6 +2810,19 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `GET /recruiter/companies/{id}/timeline?limit&offset` *(new)* | `{items, total, limit, offset}`; `kind` ∈ stage, call, message, meeting, follow_up, requirement, share, share_response, contract. `401` signed out; `403` a role with no company access; `404` unknown or out of scope; `422` malformed id, `limit` outside 1–100, negative `offset` |
 | `GET /recruiter/candidates/{id}/timeline?limit&offset` *(new)* | as above; `kind` ∈ call, message, application, interview, offer, share, share_response. `403` not a candidate reader; `404` unknown or outside the pool |
 
+## 12CW. Recruiter performance dashboard (`rec-033`) — addendum, 2026-10-11
+
+- **Basis:** `DEC-SCOPE-182` (PF1–PF9). Design spec `docs/superpowers/specs/2026-10-11-rec-033-recruiter-performance-design.md` §4–§5.
+- No migration. `Cache-Control: no-store`. The role and recruiter lookups, then one `UNION ALL` statement: a fixed statement count.
+- **Row:** `{user_id | null, full_name, active, status, recruiter_leads, active_companies, requirements, candidates_sourced, profiles_shared,
+  interviews, selected, joined, selection_pct, joining_pct, profile_to_interview, interview_to_selection, selection_to_joining,
+  avg_closure_days, requirements_closed}` — Appendix B P1–P15 as built (spec §4). A ratio is `null` when its denominator is 0.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/performance?from&to&recruiter` *(new)* | `{date_from, date_to, recruiter {id, full_name} \| null, columns, items [row], totals row}`. Items: the recruiters in scope by name, then `Unassigned` (`user_id` null); with `recruiter=` only that recruiter. `totals` = Σ items, ratios recomputed. Period default: the 1st of the IST month → today. `401` signed out; `403` any role but `placement_manager` / `super_admin` / `it_admin`; `404` a recruiter outside the manager's team or not a recruiter; `422` malformed id or date, start after end, end in the future, more than 366 days |
+| `GET /recruiter/performance.csv?from&to&recruiter` *(new)* | The same rows as CSV (UTF-8 BOM, on-screen labels, Total last, `null` → blank), `attachment; filename="recruiter-performance-<from>-to-<to>.csv"`. One `recruiter_performance.export` audit row committed before the file. Same refusals |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

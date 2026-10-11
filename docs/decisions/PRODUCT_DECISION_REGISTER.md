@@ -7192,3 +7192,35 @@ on the owner's instruction to proceed with the recommended answers.
 **Consequences:** `services/recruiter_timeline.py`, `api/recruiter_timeline.py`, `RecTimelinePage`; the `RecruiterTimeline` section. No
 schema change.
 - **New Feature ID authorized:** `rec-027`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-027.
+
+### DEC-SCOPE-182 — Recruiter performance dashboard (`rec-033`)
+
+**Evidence:**
+- `EVID-018` §24 (lines 942–971): "Management should see" 8 KPIs and 7 ratios.
+- `RECRUITER_CRM_BACKLOG.md` §rec-033 + Appendix B P1–P15 (proposed definitions); AC1 (ratios match their definitions, division by zero
+  shown as "—"), AC2 (totals equal the sum of the recruiters); a recruiter `403`. Q-25 (meanings, roles) and Q-26 (CSV) were still open.
+- R2 (`EXPLICIT_APPROVAL`, 2026-10-07): recruiter own-assignment scope; recruiters are IT staff (`recruiter.ADMIN_ROLES`).
+- `DEC-SCOPE-180` (rec-032): `services/recruiter_metrics.py` is the single source; P4/P5/P7/P8 reuse D7/D8/D10/D11.
+
+**Status:** in review on `feature/rec-033` (2026-10-11). Every answer below is a **recommended default, `UNVERIFIED`**. They were taken
+on the owner's instruction to proceed with the recommended answers.
+
+**Numbering:** no migration. API §12CW and RBAC §2.108. Drafted as 181 / §12CV / §2.107; rec-027 merged first and took them. Spec
+`docs/superpowers/specs/2026-10-11-rec-033-recruiter-performance-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| PF1 | Who (Q-25) | `placement_manager` (direct reports + Unassigned), `super_admin` and `it_admin` (every recruiter + Unassigned). `placement_team` and every other role `403` |
+| PF2 | Credit (AC2) | One owner per figure: a company's assigned recruiter (P1, P2); a requirement's assigned recruiter, else its company's (P3–P8, P14, P15); none → Unassigned. Today's assignment (event-actor credit is rec-034's) |
+| PF3 | Period | IST dates `from`–`to`; default the 1st of the month → today; start ≤ end ≤ today, ≤ 366 days (tel-023's rules) |
+| PF4 | P2 at period end | Not archived before the end, ≥ 1 requirement created before the end whose status then (last status-history row before the end, else current) is not On Hold / Closed / Cancelled. A period ending today uses the current status, so P2 = D5 |
+| PF5 | P6 Interviews | Scheduled in the period with status Completed, Selected or Rejected |
+| PF6 | P9 (Q-25) | Selected ÷ sourced × 100 |
+| PF7 | P14 / P15 | P15 = requirements that entered Closed in the period (once each, even if reopened); P14 = mean days from the requirement date (else its IST created date) to its last Closed in the period |
+| PF8 | Rounding | Percentages 1 decimal, ratios 2, days 1; `null` ("—"; blank in CSV) on a zero denominator; Total ratios from the Total counts |
+| PF9 | CSV (Q-26) | The table as CSV; counts and staff names only, so nothing to mask; one `recruiter_performance.export` audit row, fail closed |
+
+**Consequences:** `recruiter_metrics.performance`; `GET /recruiter/performance` and `.csv` in `api/recruiter_dashboard.py`; the
+`/recruiter/manager/performance` page; "Performance" in the placement manager's menu and "Recruiter Performance" for super_admin and
+it_admin. No schema change.
+- **New Feature ID authorized:** `rec-033`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-033.

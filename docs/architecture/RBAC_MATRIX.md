@@ -1801,6 +1801,17 @@ details; no document keys or fees. A company out of scope is `404` (never `403`)
 | `hr_team` | read the candidate timeline only (company: `403`) | the whole pool | `rec-027` |
 | `it_admin`, `employer`, `telecaller`, students, every other role | `403` | — | `rec-027` |
 
+### 2.108 Recruiter performance dashboard *(net-new, added 2026-10-11 — `DEC-SCOPE-182`, `rec-033`)*
+
+Counts and staff names only (no candidate data). Each figure is credited to one owner (PF2), so the Total is the sum of the rows. The
+role check runs first; the `recruiter` filter only narrows and is checked server-side. The CSV export writes an audit row.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_manager` | read + CSV; drill into a direct report (another id `404`) | direct reports + the Unassigned row | `rec-033` |
+| `super_admin`, `it_admin` | read + CSV; drill into any recruiter | every recruiter + the Unassigned row | `rec-033` |
+| `placement_team`, `hr_team`, `bdm`, `overseas_admin`, `employer`, students, every other role | `403` | — | `rec-033` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

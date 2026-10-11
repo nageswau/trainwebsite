@@ -1,4 +1,4 @@
-// rec-033 (DEC-SCOPE-181, API §12CV): the recruiter performance dashboard -- types, the fifteen §24 figures and the URL rules. Every
+// rec-033 (DEC-SCOPE-182, API §12CW): the recruiter performance dashboard -- types, the fifteen §24 figures and the URL rules. Every
 // figure is computed by the API (services/recruiter_metrics.py, backlog Appendix B P1-P15); the page only lays it out.
 import { dayParam } from "@/lib/telecallerMetrics";
 
