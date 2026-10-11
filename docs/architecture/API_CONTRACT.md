@@ -2823,6 +2823,19 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `GET /recruiter/performance?from&to&recruiter` *(new)* | `{date_from, date_to, recruiter {id, full_name} \| null, columns, items [row], totals row}`. Items: the recruiters in scope by name, then `Unassigned` (`user_id` null); with `recruiter=` only that recruiter. `totals` = Σ items, ratios recomputed. Period default: the 1st of the IST month → today. `401` signed out; `403` any role but `placement_manager` / `super_admin` / `it_admin`; `404` a recruiter outside the manager's team or not a recruiter; `422` malformed id or date, start after end, end in the future, more than 366 days |
 | `GET /recruiter/performance.csv?from&to&recruiter` *(new)* | The same rows as CSV (UTF-8 BOM, on-screen labels, Total last, `null` → blank), `attachment; filename="recruiter-performance-<from>-to-<to>.csv"`. One `recruiter_performance.export` audit row committed before the file. Same refusals |
 
+## 12CX. Recruiter/BDM performance per recruiter (`rec-034`) — addendum, 2026-10-11
+
+- **Basis:** `DEC-SCOPE-183` (BP1–BP8). Design spec `docs/superpowers/specs/2026-10-11-rec-034-recruiter-bd-performance-design.md` §4–§5.
+- No migration. `Cache-Control: no-store`. The team lookup (none for a recruiter), one `UNION ALL` aggregate and one hires query: a fixed
+  statement count.
+- **Row:** `{user_id, full_name, active, companies_contacted, meetings, new_leads, new_companies, new_contracts, new_requirements,
+  candidates_sourced, profiles_shared, interviews, selections, joining, revenue}` — Appendix B B1–B12 as built (spec §4); every count is
+  credited to the actor of its event; `revenue` is a 2-decimal string (expected revenue, rec-031's fee per hire).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/performance/by-recruiter?from&to&recruiter` *(new)* | `{date_from, date_to, recruiter {id, full_name} \| null, items [row], totals row \| null}`. Items: the recruiters in scope by name (an inactive one only with a non-zero figure); `placement_team` gets its own row and `totals: null`; with `recruiter=` only that recruiter. `totals` = Σ items. Period as §12CW. `401` signed out; `403` a recruiter asking for another id, or any role but `placement_team` / `placement_manager` / `super_admin`; `404` a recruiter outside the manager's team or not a recruiter; `422` malformed id or date, range rules |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
