@@ -2797,6 +2797,19 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `GET /recruiter/dashboard?recruiter` *(new)* | `{day, period {from, to}, recruiter {id, full_name} \| null, tiles {new_leads, contacts_pending, hot_companies, meetings_scheduled, active_companies, new_requirements, candidates_sourced, profiles_shared, interviews_scheduled, candidates_selected, candidates_joined, candidates_rejected, follow_ups_due, requirements_expiring, requirements_expired}}` — Appendix B D1–D14 as built (spec §4). `401` signed out; `403` any role but recruiter / placement manager / `super_admin`, a recruiter without a profile, or a recruiter naming another recruiter; `404` a recruiter outside the manager's team (or not a recruiter); `422` a malformed id |
 
+## 12CV. Company + candidate timeline (`rec-027`) — addendum, 2026-10-11
+
+- **Basis:** `DEC-SCOPE-181` (TL1–TL10). Design spec `docs/superpowers/specs/2026-10-11-rec-027-timeline-design.md` §1–§2.
+- No migration. Read-only, no audit row. Two statements per page, whatever the data.
+- **Row:** `{id, kind, at, actor {id, full_name} | null, event, from_value, from_label, to_value, to_label, subject, status, reason, context,
+  duration_seconds, scheduled_for}`.
+- **Order:** newest first, total (TL5).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /recruiter/companies/{id}/timeline?limit&offset` *(new)* | `{items, total, limit, offset}`; `kind` ∈ stage, call, message, meeting, follow_up, requirement, share, share_response, contract. `401` signed out; `403` a role with no company access; `404` unknown or out of scope; `422` malformed id, `limit` outside 1–100, negative `offset` |
+| `GET /recruiter/candidates/{id}/timeline?limit&offset` *(new)* | as above; `kind` ∈ call, message, application, interview, offer, share, share_response. `403` not a candidate reader; `404` unknown or outside the pool |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

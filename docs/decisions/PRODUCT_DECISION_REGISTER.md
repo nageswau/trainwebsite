@@ -7162,3 +7162,33 @@ and rec-036 merged first and took 177, 178 and 179. Spec `docs/superpowers/specs
 `/recruiter/dashboard` page (tiles, quick actions, skill search, recruiter filter); "Dashboard" in the placement manager's menu (their
 landing stays Team). No schema change.
 - **New Feature ID authorized:** `rec-032`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-032.
+
+### DEC-SCOPE-181 — Company timeline (+ candidate timeline) (`rec-027`)
+
+**Evidence:**
+- `EVID-018` §19 (line 794): "Every communication should appear in the company timeline."
+- `RECRUITER_CRM_BACKLOG.md` §rec-027: AC1 (every communication kind appears with time, actor and summary) and AC2 (order is stable on
+  ties); out of scope → 404; deleted calls are excluded; nothing masked may leak to a BDM.
+- R10 / R11 (`EXPLICIT_APPROVAL`, 2026-10-07): the assigned BDM reads the company; every recruiter reads the whole candidate pool.
+
+**Status:** in review on `feature/rec-027` (2026-10-11). Every answer below is a **recommended default, `UNVERIFIED`**. They were taken
+on the owner's instruction to proceed with the recommended answers.
+
+**Numbering:** no migration. API §12CV and RBAC §2.107. Spec `docs/superpowers/specs/2026-10-11-rec-027-timeline-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| TL1 | Company sources | Stage history, contact calls, contact messages, meeting events, follow-ups (scheduled / done / cancelled), requirement status history, profile shares, share responses, contract events. Not included: assignments, revenue (hidden from the BDM by rec-031), interviews and offers (candidate side) |
+| TL2 | Candidate sources | Calls, messages, application status history, interview events, offer events, the candidate's share items and their responses. Each entry names its requirement (`subject`) and company (`context`) |
+| TL3 | Readers | Company: rec-003 `load_scoped` (the recruiter, the manager's team + unassigned queue, super_admin, the assigned BDM); out of scope `404`. Candidate: the candidate readers (recruiters, manager, super_admin, hr_team) and the pool filter, like the candidate's calls and applications |
+| TL4 | Masking | Explicit columns only: candidates by name / code, never mobile or email; no document or letter key, share token, fee value or changed-field list; free text is a 200-character excerpt |
+| TL5 | Order | `at DESC, rank DESC, seq DESC, id DESC`, so it is total. Within one transaction: stage (3) above an effect (follow-up, application move: 2) above its activity (1) |
+| TL6 | Deleted calls | Calls are hard-deleted (rec-025 CA4), so they drop out |
+| TL7 | Paging | `limit` 1–100 (default 50), `offset`; two statements per page |
+| TL8 | Labels | Server labels for stage, requirement, application, interview, offer and contract statuses and call outcomes; the web labels meeting types, follow-up reasons, share channels / responses and interview rounds |
+| TL9 | Audit | Read only; no audit row, no log |
+| TL10 | UI | A Timeline section on the company and candidate pages (the shared `LeadTimeline` list). Each write on the page re-reads its first page |
+
+**Consequences:** `services/recruiter_timeline.py`, `api/recruiter_timeline.py`, `RecTimelinePage`; the `RecruiterTimeline` section. No
+schema change.
+- **New Feature ID authorized:** `rec-027`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-027.
