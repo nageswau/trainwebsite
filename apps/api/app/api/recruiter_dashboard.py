@@ -2,17 +2,21 @@
 `services/recruiter_metrics.py`. Read-only and never cached; one request for the page that shows it.
 
 Scope (DB1-DB3): a recruiter reads their own figures (another recruiter id → 403); a placement manager their team + the unassigned
-queue, or one direct report; super_admin everything, or any one recruiter (an id out of scope → 404). Every other role → 403."""
+queue, or one direct report; super_admin everything, or any one recruiter (an id out of scope → 404). Every other role → 403.
 
+rec-033 (DEC-SCOPE-181, API §12CV): the §24 performance dashboard -- P1-P15 per recruiter over a period, for the placement manager (their
+team + Unassigned), super_admin and it_admin (everyone); `.csv` is the same table, audited."""
+
+from datetime import date
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.agent_reports import NO_STORE
+from app.api.agent_reports import NO_STORE, to_csv
 from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.models import User
+from app.models import AuditLog, User
 from app.services import recruiter_metrics as metrics
 from app.services.bdm_appointments import db_now
 
@@ -24,3 +28,35 @@ async def dashboard(response: Response, recruiter: UUID | None = None, user: Use
     """§1: D1-D14 (Appendix B) for the caller's scope, optionally narrowed to one recruiter."""
     response.headers.update(NO_STORE)
     return await metrics.dashboard(db, user, recruiter, await db_now(db))
+
+
+async def _performance(
+    date_from: date | None = Query(None, alias="from"),
+    date_to: date | None = Query(None, alias="to"),
+    recruiter: UUID | None = None,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> tuple[User, dict]:
+    return user, await metrics.performance(db, user, recruiter, date_from, date_to, await db_now(db))
+
+
+@router.get("/performance.csv")
+async def performance_csv(read: tuple[User, dict] = Depends(_performance), db: AsyncSession = Depends(get_db)):
+    """PF9: CSV = the table (same columns and rows, Total last). One audit row, committed before the file is returned (fail closed)."""
+    user, payload = read
+    body = to_csv(payload)
+    recruiter = payload["recruiter"]
+    db.add(AuditLog(user_id=user.id, action="recruiter_performance.export", entity_type="recruiter_performance", entity_id="performance", metadata_json={
+        "date_from": payload["date_from"].isoformat(), "date_to": payload["date_to"].isoformat(),
+        "recruiter": str(recruiter["id"]) if recruiter else None, "rows": len(payload["items"]),
+    }))
+    await db.commit()
+    filename = f"recruiter-performance-{payload['date_from']}-to-{payload['date_to']}.csv"
+    return Response(content=body, media_type="text/csv; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{filename}"', **NO_STORE})
+
+
+@router.get("/performance")
+async def performance(response: Response, read: tuple[User, dict] = Depends(_performance)):
+    """§24: P1-P15 (Appendix B) per recruiter in scope over the period, with a Total that is the sum of the rows."""
+    response.headers.update(NO_STORE)
+    return read[1]
