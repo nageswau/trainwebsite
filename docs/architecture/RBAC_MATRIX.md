@@ -1836,6 +1836,44 @@ choose a recruiter, so the scope is always the server's.
 | `super_admin`, `it_admin` | read | every recruiter + the Unassigned queue | `rec-035` |
 | `placement_team`, `hr_team`, `bdm`, `overseas_admin`, `employer`, students, every other role | `403` | — | `rec-035` |
 
+### 2.111 Recruiter CRM permission matrix + cross-role 403/404 sweep *(added 2026-10-11 — `DEC-SCOPE-185`, `rec-038`)*
+
+The consolidated view of §2.42–§2.110 and the security net for R2/R10/R11/R12. No grant changes here except the RM6 fix below: every cell
+is the as-built rule of the item that owns the route, proven route × role by `apps/api/tests/test_rec_038_matrix.py` (`MATRIX`, built from
+`rec038_rows_{profile,candidates,hiring,activity}.py`: all 170 operations under `/recruiter/`, the recruiter admin pickers, the program
+skill tags, the student's pool consent and offers, the employer's shared profiles and the public shared resume). Each route is called as a
+recruiter and a placement manager with the records **and** each again on another team, `super_admin`, `it_admin`, `overseas_admin`,
+`hr_team`, the company's assigned BDM and another BDM, the company's employer user, an opted-in IT student and signed out. An inventory test
+fails on any route without a row, or a row without a route. A role outside a route is `403`; signed out is `401`.
+
+| Group (owning items) | Recruiter (own) | Recruiter (other team) | Manager (own team) | Manager (other team) | `super_admin` | Assigned BDM | `hr_team` | Every other role |
+|---|---|---|---|---|---|---|---|---|
+| Own profile (001) | ✅ | ✅ (their own) | `403` | `403` | `403` | `403` | `403` | `403`; Recruiter Staff / manager picker: `super_admin`, `it_admin` |
+| Catalogues, Skills Master (002/006) | read | read | ✅ | ✅ | ✅ | `403` | `403` | `403` |
+| Company, contacts, pipeline, follow-ups, calls, contact messages, meetings, drives, contracts, timeline (003/004/005/024–030) | ✅ | `404` (lists: their own) | read; restore / assign / reopen | `404` | ✅ | read only (R10) | `403` | `403` |
+| Requirement, JD, applications, screening, interviews, feedback, offers, joining, shares (007/008/016–023) | ✅ | `404` | read; create / assign | `404` | ✅ | read only (R10) | `403` | `403` |
+| Candidate pool, skills, resumes, search, journey, candidate calls / messages / timeline (009/011–014/025–027/036) | ✅ | ✅ (R11, one pool) | ✅ | ✅ | ✅ | `403` | read only (R11, Q-28) | `403` |
+| Talent pools, templates (015/026) | read | read | ✅ | ✅ | ✅ | `403` | pools: read | `403` |
+| Revenue, invoices, payments, fee (031) | ✅ except the fee | `404` (list: their own) | ✅ incl. the fee | `404` | ✅ | `403` | `403` | `403` |
+| Dashboard and own performance row (032/034) | own | own; `403` on another's | team | `404` on another's recruiter | all | `403` | `403` | `403` |
+| Performance dashboard, CSV, management (033/035) | `403` | `403` | team | team (`404` on another's recruiter) | all | `403` | `403` | `it_admin` reads all (§2.108, §2.110) |
+| Reassignment (037) | `403` | `403` | ✅ (direct reports) | `403` | ✅ | `403` | `403` | `403` |
+| Student offers, pool consent (010/022) · employer shared profiles (019) · public shared resume (019) | — | — | — | — | `403` | `403` | `403` | the student only · the company's employer only · any caller with a valid token |
+
+`404` means out of scope: a record outside the caller's company or requirement scope reads as missing, on reads **and** writes, so another
+team's records never confirm that they exist (RM4). Lists are filtered by scope, so they answer `200` with only the caller's rows.
+
+**Gap found and fixed (rec-038 RM6):** `GET /recruiter/messages/render` rendered a template for any caller who could read the party, so the
+assigned BDM (a contact) and `hr_team` (a candidate) got a template's name, kind and text, though §2.61 refuses templates to both. It now
+checks the template reader's role first (`403`), as the preview does.
+
+**As-built notes (`NEEDS_CONFIRMATION`, not changed):** writes on a requirement check scope before the action, so an out-of-scope manager or
+BDM gets `404` (not `403`) on a write its role could never make (RM4 reading of §2.55); `PUT /admin/programs/{id}/skills` validates its
+typed body (`422`) before the role check (repo-wide FastAPI order, as upc-033 PX9); §2.42's "no `/recruiter` route takes a user id" predates
+rec-037's `POST /recruiter/manager/reassign`; the rec-033/034/035 metrics bind every recruiter id once per figure, so an all-recruiters
+read by `super_admin` / `it_admin` fails (`500`, the 32,767-parameter limit) at about 3,600 recruiters (seen only on a long-lived test
+database; follow-up).
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

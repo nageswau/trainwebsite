@@ -1634,6 +1634,9 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** high
 
 ### rec-038 — Permission matrix + cross-role 403/404 sweep
+- **Status (2026-10-11):** **IN REVIEW** on `feature/rec-038`. `DEC-SCOPE-185` (RM1–RM7 recommended defaults, UNVERIFIED); no migration,
+  RBAC §2.111. 170 routes × 13 roles in `test_rec_038_matrix.py`; one gap fixed (RM6: `GET /recruiter/messages/render` now refuses the
+  assigned BDM and `hr_team`, who read messages but not templates). QA evidence `docs/quality/REC-038_EXPLORATORY_QA_2026-10-11.md`.
 - **Business requirement:** R2, R10, R11, R12 together. "With appropriate permissions" (S2-§12).
 - **Existing behavior:** RBAC_MATRIX §2.5/§2.6 cover placement, hr and employer.
 - **Expected behavior:**
