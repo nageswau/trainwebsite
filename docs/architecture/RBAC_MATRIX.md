@@ -1775,6 +1775,18 @@ before anything is read; a candidate outside the pool is `404`.
 | `trainer`, `it_admin` (issuing a certificate) | no new action; an issue to an opted-in student adds the course skills in the same transaction | own batches / all | `rec-036` |
 | `employer`, `overseas_admin`, `trainer`, students, every other role | `403` on the tag and journey routes; `it_admin` `403` on the journey (not a candidate reader) | — | `rec-036` |
 
+### 2.106 Recruiter dashboard *(net-new, added 2026-10-11 — `DEC-SCOPE-180`, `rec-032`)*
+
+Counts only (no personal data). Each tile uses the scope of the list it opens (§2.47 companies, §2.55 requirements). The role check runs
+first; the recruiter filter only narrows and is checked server-side.
+
+| Role | Actions | Scope | Feature |
+|---|---|---|---|
+| `placement_team` | read own dashboard; naming another recruiter `403` | companies / requirements assigned to them | `rec-032` |
+| `placement_manager` | read the team's dashboard, or one direct report's (another id `404`) | the team + the unassigned queue | `rec-032` |
+| `super_admin` | read everything, or any one recruiter's | all | `rec-032` |
+| `hr_team`, `bdm`, `it_admin`, `employer`, students, every other role | `403` (`hr_team` keeps the legacy placement dashboard) | — | `rec-032` |
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

@@ -1463,6 +1463,14 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Edge cases:** the day boundary in IST.
 - **Regression risks:** the legacy placement dashboard (kept for `hr_team`).
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-11):** **IN REVIEW** on `feature/rec-032`. `DEC-SCOPE-180` (DB1–DB10 recommended defaults, UNVERIFIED; DB5 answers
+  Q-25 for D1/D3/D5), no migration, API §12CU, RBAC §2.106. `services/recruiter_metrics.py` now exists for rec-033…035.
+  - **AC1:** every tile asserted against fixtures for a fresh recruiter (`test_rec_032_dashboard.py`), including the IST day boundary.
+  - **AC2:** a peer's and the unassigned queue's rows never show for a recruiter; the manager / super_admin filter narrows; `hr_team`,
+    `bdm`, `it_admin` and students `403`.
+  - **AC3:** each tile links to its list (vitest + e2e `rec-032-dashboard.spec.ts`: Follow-ups Due opens `/recruiter/follow-ups?due=today`).
+  - Browser QA: QA32-01 (doubled landmarks on the skill search / quick actions) and QA32-02 (quick actions under 44px on phones), both
+    fixed and re-verified. Fixed statement count (3 for a recruiter, 1 for a manager).
 
 ### rec-033 — Recruiter performance dashboard
 - **Business requirement:** §24 (8 KPIs + 7 ratios) "Management should see".
