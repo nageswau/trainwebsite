@@ -24,12 +24,25 @@ export type InterviewEvent = {
   event: "scheduled" | "rescheduled" | "status"; from_status: string | null; to_status: string | null; old_scheduled_at: string | null;
   new_scheduled_at: string | null; note: string | null; actor: PersonRef | null; created_at: string;
 };
+/** rec-021 (FB3): the decisions are the interview's own decision statuses. */
+export const DECISIONS = ["selected", "rejected", "on_hold"] as const;
+export type Decision = (typeof DECISIONS)[number];
+export type FeedbackFields = {
+  technical_rating: number | null; communication_rating: number | null; overall_rating: number; strengths: string | null; weaknesses: string | null;
+  recruiter_comments: string | null; company_feedback: string | null; next_round: Round | null; final_decision: Decision | null;
+};
+export type InterviewFeedback = FeedbackFields & {
+  next_round_label: string | null; final_decision_label: string | null; recorded_by: PersonRef; updated_at: string;
+};
+export const FEEDBACK_TEXT_MAX = 2000;
+
 export type RecInterview = {
   id: string; code: string; round: Round | null; round_label: string | null; scheduled_at: string; mode: string; meeting_url: string | null;
   interviewer: string | null; location: string | null; status: string; status_label: string; result: string | null;
   application: { id: string; status: string; status_label: string }; candidate: { id: string; code: string; name: string };
   requirement: { id: string; code: string; title: string }; company: { id: string; name: string }; contact: { id: string; name: string } | null;
   history: InterviewEvent[]; allowed_statuses: StatusOption[]; can_edit: boolean; can_reschedule: boolean;
+  feedback: InterviewFeedback | null; can_feedback: boolean;
 };
 export type Notices = { candidate: string; contact: string | null };
 export type ApplicationInterviews = { items: RecInterview[]; can_schedule: boolean };
@@ -40,7 +53,7 @@ export type InterviewListPage = Page<RecInterview> & { counts: Record<InterviewV
 export const INTERVIEWS_URL = "/api/v1/recruiter/interviews";
 export const LIST_LIMIT = 50;
 export const NOTE_MAX = 500;
-export const interviewUrl = (id: string, action?: "reschedule" | "status") => `${INTERVIEWS_URL}/${encodeURIComponent(id)}${action ? `/${action}` : ""}`;
+export const interviewUrl = (id: string, action?: "reschedule" | "status" | "feedback") => `${INTERVIEWS_URL}/${encodeURIComponent(id)}${action ? `/${action}` : ""}`;
 export const applicationInterviewsUrl = (applicationId: string) => `/api/v1/recruiter/applications/${encodeURIComponent(applicationId)}/interviews`;
 
 export function interviewsUrl(view: InterviewView, offset = 0): string {

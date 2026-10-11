@@ -14,7 +14,7 @@ export default function RecruiterApplicationInterviews({ applicationId, candidat
   const [data, setData] = useState<ApplicationInterviews | null>(null);
   const [failed, setFailed] = useState(false);
   const [version, setVersion] = useState(0);
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState<string | null>(null); // the schedule form's round: "" = blank, a round = rec-021's next-round draft
   const reload = () => setVersion((n) => n + 1);
 
   useEffect(() => {
@@ -40,24 +40,35 @@ export default function RecruiterApplicationInterviews({ applicationId, candidat
     );
   }
   if (data === null) return <p className="muted" role="status" style={{ margin: 0, fontSize: 13 }}>Loading interviews…</p>;
+  const suggested = data.items[0]?.feedback; // rec-021 FB5: the newest interview's next round, while it is the newest
   return (
     <div style={{ display: "grid", gap: 8 }}>
-      {data.can_schedule && !adding && (
-        <div>
-          <button type="button" className="btn secondary small" onClick={() => setAdding(true)}>
+      {data.can_schedule && adding === null && (
+        <div className="actions" style={{ flexWrap: "wrap" }}>
+          {suggested?.next_round && (
+            <button type="button" className="btn small" onClick={() => setAdding(suggested.next_round)}>
+              + Schedule {suggested.next_round_label} (suggested)<span className="visually-hidden"> for {candidateName}</span>
+            </button>
+          )}
+          <button type="button" className="btn secondary small" onClick={() => setAdding("")}>
             + Schedule interview<span className="visually-hidden"> for {candidateName}</span>
           </button>
         </div>
       )}
-      {adding && (
-        <RecruiterInterviewForm applicationId={applicationId} contacts={contacts} onCancel={() => setAdding(false)}
-          onSaved={(saved, notices) => { setAdding(false); changed([`${saved.round_label} scheduled for ${candidateName}.`, noticeText(notices)].filter(Boolean).join(" ")); }} />
+      {data.can_schedule && adding !== null && (
+        <RecruiterInterviewForm key={adding} applicationId={applicationId} draftRound={adding} contacts={contacts} onCancel={() => setAdding(null)}
+          onSaved={(saved, notices) => { setAdding(null); changed([`${saved.round_label} scheduled for ${candidateName}.`, noticeText(notices)].filter(Boolean).join(" ")); }} />
       )}
       {data.items.length === 0 ? (
         <p className="muted" style={{ margin: 0, fontSize: 13 }}>No interviews yet.</p>
       ) : (
         <ul aria-label={`Interviews of ${candidateName}`} style={{ padding: 0, margin: 0, display: "grid", gap: 8 }}>
-          {data.items.map((i) => <RecruiterInterviewItem key={i.id} interview={i} contacts={contacts} onChanged={(_, notice) => changed(notice)} />)}
+          {data.items.map((i) => (
+            <RecruiterInterviewItem key={i.id} interview={i} contacts={contacts} onChanged={(_, notice, nextRound) => {
+              changed(notice);
+              if (nextRound) setAdding(nextRound); // AC2: the next round's draft opens once the list has reloaded
+            }} />
+          ))}
         </ul>
       )}
     </div>

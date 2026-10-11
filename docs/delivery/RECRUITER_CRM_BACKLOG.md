@@ -1071,6 +1071,10 @@ Conventions for every item: own-scope checks via `services/recruiter*.scope(user
 - **Complexity:** medium · **Risk:** medium
 
 ### rec-021 — Interview feedback
+- **Status (2026-10-11):** **IN REVIEW** on `feature/rec-021`. `DEC-SCOPE-175` (FB1–FB8 recommended defaults, UNVERIFIED; FB7 answers
+  Q-13 for this item: no automatic skill verification); migration `0146_interview_feedback` (after `0145_university_onboarding`), API
+  §12CP, RBAC §2.101. The route is `PUT /recruiter/interviews/{id}/feedback` as planned; the next-round "draft" is the pre-chosen schedule
+  form (FB5), not an interview row. QA evidence `docs/quality/REC-021_EXPLORATORY_QA_2026-10-11.md`.
 - **Business requirement:** §15 (9 fields).
 - **Existing behavior:** only a free-text `result`.
 - **Expected behavior:**
