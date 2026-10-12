@@ -115,7 +115,8 @@ def upgrade() -> None:
         op.create_index("ix_ledger_entry_events_entry", "ledger_entry_events", ["entry_id", "created_at"])
     if op.get_context().as_sql or not op.get_bind().execute(sa.text("SELECT 1 FROM ledger_categories LIMIT 1")).first():
         rows = [("expense", "fixed", n) for n in FIXED] + [("expense", "variable", n) for n in VARIABLE] + [("income", None, n) for n in INCOME]
-        table = sa.table("ledger_categories", sa.column("id", UUID), sa.column("kind"), sa.column("nature"), sa.column("name"))
+        # Typed columns, so offline (--sql) mode can render the literals.
+        table = sa.table("ledger_categories", sa.column("id", UUID), sa.column("kind", sa.String), sa.column("nature", sa.String), sa.column("name", sa.String))
         op.bulk_insert(table, [{"id": uuid.uuid4(), "kind": k, "nature": n, "name": name} for k, n, name in rows])
 
 
