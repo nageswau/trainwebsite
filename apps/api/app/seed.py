@@ -9,7 +9,7 @@ from app.core.database import SessionLocal, engine
 from app.core.identifiers import unique_student_code
 from app.core.security import hash_password
 from app.models import *
-from app.services import applications
+from app.services import applications, management_audit
 from app.services import recruiter_requirements as requirements
 from app.services.agent_orgs import ensure_agent_org
 
@@ -883,9 +883,22 @@ async def main():
         if not await db.scalar(select(RecruiterProfile.id).where(RecruiterProfile.user_id == recruiter.id)):
             db.add(RecruiterProfile(user_id=recruiter.id, employee_id="REC-DEMO-001", reporting_manager_user_id=placement_manager.id))
         # mgmt-001 (Management M2/M5): two partners and an accountant, all global, signing in at /admin.
-        await user(db, "partner.one@edusphere.local", "Arjun Partner", "partner", "global")
-        await user(db, "partner.two@edusphere.local", "Meera Partner", "partner", "global")
-        await user(db, "accountant@edusphere.local", "Ravi Accountant", "accountant", "global")
+        partner_one = await user(db, "partner.one@edusphere.local", "Arjun Partner", "partner", "global")
+        partner_two = await user(db, "partner.two@edusphere.local", "Meera Partner", "partner", "global")
+        accountant = await user(db, "accountant@edusphere.local", "Ravi Accountant", "accountant", "global")
+        # mgmt-002 (MA12): demo activity for EVID-017 §2's seven points, once, until the items that write them land.
+        if not await db.scalar(select(AuditLog.id).where(AuditLog.entity_type.like("mgmt.%"), AuditLog.entity_id.like("DEMO-%")).limit(1)):
+            for actor, kind, verb, entity_id, fields, values in [
+                (partner_one, "mgmt.task", "create", "DEMO-TASK-1", ["title", "deadline"], None),
+                (partner_two, "mgmt.plan", "update", "DEMO-PLAN-1", ["target"], None),
+                (accountant, "mgmt.ledger", "create", "DEMO-EXP-1", ["category", "amount"], {"amount": (None, "45000.00")}),
+                (partner_one, "mgmt.ledger", "approve", "DEMO-EXP-1", ["status"], {"status": ("pending", "approved")}),
+                (accountant, "mgmt.ledger", "update", "DEMO-EXP-1", ["amount"], {"amount": ("45000.00", "48000.00")}),
+                (partner_two, "mgmt.investment", "create", "DEMO-INV-1", ["name", "amount"], {"amount": (None, "500000.00")}),
+                (partner_one, "mgmt.decision", "decide", "DEMO-DEC-1", ["status"], None),
+                (partner_two, "mgmt.task", "complete", "DEMO-TASK-1", ["status"], None),
+            ]:
+                management_audit.record(db, actor, kind, verb, entity_id, fields=fields, values=values)
 
         await db.commit()
     print("Seed complete; demo password:", PASSWORD)

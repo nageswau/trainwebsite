@@ -71,7 +71,18 @@ from app.schemas import (
 )
 from app.services import bdm as bdm_rules
 from app.services import bdm_leads as lead_rules
-from app.services import bdm_lifecycle, course_skills, lead_handover, lead_pipeline, lead_timeline, management_access, partnership_lifecycle, recruiter_lifecycle, telecaller_lifecycle
+from app.services import (
+    bdm_lifecycle,
+    course_skills,
+    lead_handover,
+    lead_pipeline,
+    lead_timeline,
+    management_access,
+    management_audit,
+    partnership_lifecycle,
+    recruiter_lifecycle,
+    telecaller_lifecycle,
+)
 from app.services import partnership as pm_rules
 from app.services import recruiter as rec_rules
 from app.services import telecaller as tel_rules
@@ -1213,7 +1224,8 @@ async def create_emi_schedule(payload: dict, user: User = Depends(ensure_admin),
 
 @router.get("/audit")
 async def audit(user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
-    stmt = select(AuditLog).order_by(AuditLog.created_at.desc()).limit(500)
+    # mgmt-002 (MA8): finance and partner-only management rows are not admin data (M13).
+    stmt = select(AuditLog).where(management_audit.hidden_from_admin_audit()).order_by(AuditLog.created_at.desc()).limit(500)
     rows = (await db.scalars(stmt)).all()
     # Division admins only see events performed by users from their own division.
     if user.role != "super_admin":
@@ -1232,7 +1244,7 @@ async def export_audit_log(user: User = Depends(get_current_user), db: AsyncSess
     # cross-division privileged action... is itself audit-logged").
     if user.role != "super_admin":
         raise HTTPException(403, "Super Admin role required")
-    rows = (await db.scalars(select(AuditLog).order_by(AuditLog.created_at.desc()).limit(2000))).all()
+    rows = (await db.scalars(select(AuditLog).where(management_audit.hidden_from_admin_audit()).order_by(AuditLog.created_at.desc()).limit(2000))).all()
     export = [
         {
             "id": str(x.id),

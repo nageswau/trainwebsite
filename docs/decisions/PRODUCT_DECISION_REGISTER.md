@@ -7352,6 +7352,38 @@ sign-in copy. Tests `test_mgmt_001_roles.py`, `management.test.ts`, `ManagementC
 - **New Feature ID authorized:** `mgmt-001` (mgmt-002…034 remain behind GATE-09 individually). **Status:** see
   `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-001.
 
+### DEC-SCOPE-187 — Management audit trail, "who did what" (`mgmt-002`)
+
+**Evidence:**
+- `EVID-017` (`functionalities/edusphere_markdown/Management Functionalities.md`, `DERIVED_BLUEPRINT`) §2: seven "who did X" audit points.
+- `DEC-SCOPE-186` M2/M13 (`EXPLICIT_APPROVAL`): tiers; partner-only data hidden from `super_admin` and the accountant.
+
+**Status:** MA1–MA12 below are **recommended defaults, `UNVERIFIED`**, taken on the owner's instruction to proceed with recommended
+answers (2026-10-12, `feature/mgmt-002`). Q-33 (masking, retention, CSV) stays `NEEDS_CONFIRMATION`; MA3 is its interim default.
+
+**Numbering (provisional):** no migration; API §12DA; RBAC §2.113. Spec `docs/superpowers/specs/2026-10-12-mgmt-002-management-audit-trail-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| MA1 | Kinds | Fixed catalogue `management_audit.KINDS` (entity type → label + tier): task, plan, decision (operational); ledger (finance); investment, capital (partner-only). Later items register theirs; unregistered kinds are refused |
+| MA2 | Verbs | create, update, approve, complete, decide, import; action `<kind>.<verb>` |
+| MA3 | Values (Q-33 interim) | Field names always; before/after values only for finance and partner-only kinds, only for named fields, as strings |
+| MA4 | Bulk | One entry, verb `import`, with a `count` |
+| MA5 | Visibility | By kind tier (partner all; accountant finance; super_admin operational). A kind outside the tier → empty page; unknown kind → `422`; no tier → `403` |
+| MA6 | Filters | actor, kind, IST date range (inclusive), `limit` 1–100, `offset` ≤ 10 000; newest first |
+| MA7 | Response | `{items, total, limit, offset, kinds, actors}` |
+| MA8 | Admin audit | `GET /admin/audit` and `POST /admin/audit/export` leave out finance and partner-only `mgmt.*` rows |
+| MA9 | Index | None: `ix_audit_logs_entity` already leads with `entity_type` |
+| MA10 | Immutability | No edit/delete route; `record` adds in the caller's transaction (no commit) |
+| MA11 | Record stamps | Each record-owning item shows its own `created_by` / `updated_by`; activity rows show "by <name> · <IST time>" |
+| MA12 | Demo data | `app.seed` adds eight demo entries (the seven §2 points) by the demo partners and accountant, once |
+
+**Consequences:** new `services/management_audit.py`; `api/management.py` (`GET /management/activity`); `schemas.py`; `api/admin.py`
+(MA8); `seed.py`; web `lib/management.ts`, `lib/navigation.ts`, new `app/management/activity/page.tsx`, `components/ManagementActivity.tsx`.
+Tests `test_mgmt_002_activity.py`, `ManagementActivity.test.tsx`, `management.test.ts`, `mgmt-002-activity.spec.ts`.
+- **New Feature ID authorized:** `mgmt-002` (mgmt-004…034 remain behind GATE-09 individually). **Status:** see
+  `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-002.
+
 ### DEC-SCOPE-188 — Business snapshot S1–S15 + `management_metrics` (`mgmt-003`)
 
 **Evidence:** `EVID-017` §3 (`DERIVED_BLUEPRINT`); `DEC-SCOPE-186` (M1, M13 `EXPLICIT_APPROVAL`); backlog Appendix B S1–S15 and Q-03.

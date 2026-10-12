@@ -1,3 +1,4 @@
+import { isCalendarDate } from "@/lib/formatDate";
 import type { NavItem } from "@/lib/navigation";
 
 // mgmt-001 (Management M13): the tiers GET /management/me returns, and who sees what. The API refuses every tier it does not grant;
@@ -53,8 +54,72 @@ export function pillarsFor(tiers: ManagementTiers, pillars: ManagementPillar[] =
     .filter((pillar) => pillar.entries.length > 0);
 }
 
-/** The sidebar: the Command Center home, then each live entry the tiers allow. */
+/** The sidebar: the Command Center home, Management activity (every tier sees its own entries), then each live entry the tiers allow. */
 export function managementNavFor(tiers: ManagementTiers, pillars: ManagementPillar[] = MANAGEMENT_PILLARS): NavItem[] {
   const live = pillarsFor(tiers, pillars).flatMap((pillar) => pillar.entries.flatMap((entry) => (entry.href ? [{ label: entry.label, href: entry.href }] : [])));
-  return [{ label: "Command Center", href: MANAGEMENT_HOME }, ...live];
+  return [{ label: "Command Center", href: MANAGEMENT_HOME }, { label: "Management activity", href: MANAGEMENT_ACTIVITY }, ...live];
+}
+
+// mgmt-002 (DEC-SCOPE-187 MA5-MA7): GET /management/activity. The API lists only the kinds the caller's tier may see and returns the
+// kinds and actors it may filter by; the page passes the filters through as a GET form, so refresh, back and shared links keep them.
+export const MANAGEMENT_ACTIVITY = "/management/activity";
+export const ACTIVITY_PAGE_SIZE = 25;
+
+export type ManagementActor = { id: string; full_name: string; role: string };
+export type ManagementActivityItem = {
+  id: string; at: string; actor: ManagementActor | null; kind: string; kind_label: string; verb: string; entity_id: string | null;
+  fields: string[]; values: Record<string, { before: string | null; after: string | null }> | null; count: number | null;
+};
+export type ManagementActivityPage = {
+  items: ManagementActivityItem[]; total: number; limit: number; offset: number;
+  kinds: { value: string; label: string }[]; actors: ManagementActor[];
+};
+export type ActivityFilters = { actor: string; kind: string; date_from: string; date_to: string; offset: number };
+
+const FILTER_KEYS = ["actor", "kind", "date_from", "date_to"] as const;
+const VERB_LABEL: Record<string, string> = { create: "created", update: "changed", approve: "approved", complete: "completed", decide: "made", import: "imported" };
+
+const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** The filters from the page's search params; anything else (or a repeated param) is dropped. A malformed actor id or an impossible
+ * date only comes from a hand-edited address and is dropped too, so the API's only 422s are its own worded ones (kind, date order). */
+export function activityFilters(search: Record<string, string | string[] | undefined>): ActivityFilters {
+  const one = (key: string) => (typeof search[key] === "string" ? (search[key] as string) : "");
+  const day = (key: string) => (isCalendarDate(one(key)) ? one(key) : "");
+  const offset = Number.parseInt(one("offset"), 10);
+  return { actor: UUID_SHAPE.test(one("actor")) ? one("actor") : "", kind: one("kind"), date_from: day("date_from"), date_to: day("date_to"), offset: offset > 0 ? offset : 0 };
+}
+
+function activityQuery(filters: ActivityFilters): URLSearchParams {
+  const query = new URLSearchParams();
+  for (const key of FILTER_KEYS) if (filters[key]) query.set(key, filters[key]);
+  if (filters.offset > 0) query.set("offset", String(filters.offset));
+  return query;
+}
+
+/** The page link for these filters (paging links reuse it with another offset). */
+export function activityHref(filters: ActivityFilters): string {
+  const query = activityQuery(filters).toString();
+  return query ? `${MANAGEMENT_ACTIVITY}?${query}` : MANAGEMENT_ACTIVITY;
+}
+
+export function activityUrl(filters: ActivityFilters): string {
+  const query = activityQuery(filters);
+  query.set("limit", String(ACTIVITY_PAGE_SIZE));
+  return `/api/v1${MANAGEMENT_ACTIVITY}?${query}`;
+}
+
+/** One entry in words: "Ledger entry approved", then the fields (with before → after where the API kept values) or a bulk count. */
+export function describeActivity(item: ManagementActivityItem): { title: string; detail: string } {
+  const title = `${item.kind_label} ${VERB_LABEL[item.verb] ?? item.verb}`;
+  if (item.count !== null) return { title, detail: `${item.count} records` };
+  const shown = (value: string | null) => value ?? "—";
+  const detail = item.fields.map((field) => {
+    const name = field.replaceAll("_", " ");
+    const change = item.values?.[field];
+    if (!change) return name;
+    // Browser QA-01: a value set for the first time reads as the value, not "— → value".
+    return change.before === null ? `${name}: ${shown(change.after)}` : `${name}: ${change.before} → ${shown(change.after)}`;
+  });
+  return { title, detail: detail.join(", ") };
 }

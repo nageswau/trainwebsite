@@ -32,6 +32,7 @@ describe("mgmt-001 Command Center page", () => {
     expect(shell.props.userName).toBe("Arjun Partner");
     expect(shell.props.nav).toContainEqual({ label: "Command Center", href: "/management" });
     expect(shell.props.nav).toContainEqual({ label: "Business snapshot", href: "/management/snapshot" });
+    expect(shell.props.nav).toContainEqual({ label: "Management activity", href: "/management/activity" }); // mgmt-002
     render(<>{shell.props.children}</>);
     expect(screen.getByRole("heading", { level: 2, name: "Management Command Center" })).toBeTruthy();
     expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual(MANAGEMENT_PILLARS.map((p) => p.title));
