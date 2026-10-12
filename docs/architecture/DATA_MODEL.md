@@ -2000,3 +2000,32 @@ the register's date filter and order.
 **Design notes:**
 - ROI is computed on read ((actual − amount) ÷ amount × 100), never stored. Partner-only (M13). No delete: a mistake is cancelled.
 - Additive: no existing row is read or written. `downgrade()` refuses while any investment exists.
+
+## Salary management (`mgmt-011`, `DEC-SCOPE-193`; migration `0153_salaries`, after `0152_management_discussions`)
+
+**`departments` columns:**
+- `id`
+- `name` varchar(80), unique ignoring case (`uq_departments_name` on `lower(name)`)
+- `active` boolean (default true)
+- `created_by_user_id`, `updated_by_user_id` → `users` (FK RESTRICT, nullable for the seed)
+- timestamps
+
+The migration seeds 10 departments when the table is empty.
+
+**`salary_month_totals` columns:**
+- `id`
+- `month` date (CHECK day = 1)
+- `department_id` → `departments` (FK RESTRICT)
+- `headcount` integer (CHECK ≥ 0)
+- `payable`, `paid`, `incentives`, `commissions`, `employer_cost` numeric(14,2) (CHECK ≥ 0)
+- `created_by_user_id`, `updated_by_user_id` → `users` (FK RESTRICT)
+- timestamps
+
+**Constraints and index:** UNIQUE `(month, department_id)`; `ix_salary_month_totals_month (month)`.
+
+**Design notes:**
+- Department totals only (M6), never per person. Finance tier (M13).
+- R6 (paid + incentives + commissions + employer cost) and R7 (R6 ÷ ledger income × 100) are computed on read.
+- `ledger.lines()` reads each row with cost > 0 as an automatic "Salaries" expense line. Nothing is copied.
+- One existing row changes: the mgmt-004 "Salaries" expense category is set inactive (SM9). `downgrade()` reactivates it and refuses
+  while any salary row exists.

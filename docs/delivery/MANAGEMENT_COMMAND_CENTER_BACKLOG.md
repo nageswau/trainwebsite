@@ -561,6 +561,9 @@ Common conventions for every item:
 - **Complexity:** small · **Risk:** low
 
 ### mgmt-011 — Salary management + employee cost ratio
+- **Status (2026-10-12):** **IN REVIEW** on `feature/mgmt-011`. `DEC-SCOPE-193` (SM1–SM14 recommended defaults, UNVERIFIED; Q-13 department
+  list interim, role mapping open; Q-33 for this item). Migration `0153_salaries`; API §12DG; RBAC §2.118.
+  QA evidence `docs/quality/MGMT-011_EXPLORATORY_QA_2026-10-12.md`.
 - **Business requirement:** §9 (total employees, department-wise salary, payable, paid, incentives, commissions, employer cost; total
   monthly employee cost; ratio = employee cost ÷ revenue × 100) (M6).
 - **Existing behavior:** none.

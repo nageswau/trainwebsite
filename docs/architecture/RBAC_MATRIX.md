@@ -1953,6 +1953,21 @@ Counts only, no personal data; nothing else changes.
 - Another user's decision id on `/me/…` is `404` (no existence leak). Discussion audit rows (`mgmt.decision`) are operational: field
   names only (MA3), visible in `/admin/audit`.
 
+### 2.118 Salary management + employee cost ratio *(net-new, added 2026-10-12 — `DEC-SCOPE-193`, `mgmt-011`)*
+
+| Role | `GET/PUT /management/salaries`, `GET/POST/PATCH /management/departments`, page `/management/salaries` | Command Center entries |
+|---|---|---|
+| `partner` | Full read and write | "Salaries" (Finance), "Employee cost" (People) |
+| `accountant` | Full read and write (M6: the accountant enters the month) | "Salaries", "Employee cost" |
+| `super_admin` | `403` "Finance access required"; page "Access unavailable" (M13: no salaries) | None |
+| Every other role | `403` "Management access required"; signed out `401` (page → `/admin/login?next=`) | None |
+
+- The refusal happens before any lookup.
+- Salary amounts also reach the finance-only ledger as automatic "Salaries" lines.
+- The audit kinds `mgmt.salary` and `mgmt.department` are finance tier. They are hidden from super_admin in Management activity and left
+  out of `/admin/audit` (mgmt-002 MA8, unchanged).
+- Q-33: a department with a headcount of 1 is shown unmasked to the finance tier.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
