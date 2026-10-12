@@ -41,7 +41,7 @@ describe("mgmt-005 automatic lines", () => {
   it("labels every source and formats other currencies in their own money", () => {
     expect(SOURCE_LABEL).toEqual({
       payment: "Student payment", agent_commission: "Agent commission", trip_expense: "BDM trip expense", recruiter_payment: "Recruiter payment",
-      university_commission: "University commission",
+      university_commission: "University commission", salary: "Salaries",
     });
     expect(formatMoney("120000.00", "INR")).toBe("₹1,20,000.00");
     expect(formatMoney("300.00", "GBP")).toBe("£300.00");
