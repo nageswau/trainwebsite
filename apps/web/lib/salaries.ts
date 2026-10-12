@@ -58,16 +58,18 @@ export function salaryBody(drafts: { department_id: string; draft: SalaryDraft }
   return { rows };
 }
 
-/** The API's 422 items placed on their department rows (`loc: ["body", "rows", i, field]`), worded with the field's label. */
+/** The API's 422 items placed on their department rows (`loc: ["body", "rows", i, field]`), worded with the field's label; a row with
+ * several problems lists them all (QA-02). */
 export function rowErrors(detail: unknown, sentIds: string[]): Record<string, string> {
   if (!Array.isArray(detail)) return {};
   const out: Record<string, string> = {};
   for (const item of detail as { loc?: unknown[]; msg?: string }[]) {
     const [, list, index, field] = item.loc ?? [];
     const id = list === "rows" && typeof index === "number" ? sentIds[index] : undefined;
-    if (!id || out[id]) continue;
+    if (!id) continue;
     const label = FIELD_LABEL[field as SalaryField];
-    out[id] = label ? `${label}: ${item.msg}` : String(item.msg);
+    const text = label ? `${label}: ${item.msg}` : String(item.msg);
+    out[id] = out[id] ? `${out[id]} · ${text}` : text;
   }
   return out;
 }

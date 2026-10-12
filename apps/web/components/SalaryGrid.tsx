@@ -65,7 +65,7 @@ export default function SalaryGrid({ data }: { data: SalaryMonth }) {
 
   return (
     <>
-      <ul className="metric-grid snapshot-tiles money-tiles" aria-label={`Salary figures for ${label}`}>
+      <ul className="metric-grid snapshot-tiles money-tiles salary-tiles" aria-label={`Salary figures for ${label}`}>
         <li className="metric"><span>Total employees</span><strong>{(t.headcount ?? 0).toLocaleString("en-IN")}</strong></li>
         {MONEY_FIELDS.map((f) => (
           <li className="metric" key={f}><span>{FIELD_LABEL[f]}</span><strong>{rupees(t[f])}</strong></li>
@@ -74,7 +74,7 @@ export default function SalaryGrid({ data }: { data: SalaryMonth }) {
 
       <section className="action-card" id="employee-cost" aria-labelledby="employee-cost-title" style={{ display: "grid", gap: 12 }}>
         <h3 id="employee-cost-title" style={{ margin: 0 }}>Employee cost ratio</h3>
-        <ul className="metric-grid snapshot-tiles money-tiles" aria-label="Employee cost against revenue">
+        <ul className="metric-grid snapshot-tiles money-tiles salary-tiles" aria-label="Employee cost against revenue">
           <li className="metric"><span>Total monthly employee cost</span><strong>{rupees(t.total_cost)}</strong></li>
           <li className="metric"><span>Revenue</span><strong>{rupees(data.revenue)}</strong></li>
           <li className="metric"><span>Employee Cost Ratio</span><strong>{ratioText(data.ratio)}</strong></li>

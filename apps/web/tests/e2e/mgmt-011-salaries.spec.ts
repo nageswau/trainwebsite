@@ -24,7 +24,7 @@ test("the accountant records a month's salaries, sees the employee cost and find
   await page.getByRole("link", { name: "Salaries" }).first().click();
   await expect(page.getByRole("heading", { level: 2, name: "Salaries & employee cost" })).toBeVisible();
 
-  await page.getByLabel("Month").fill(month);
+  await page.getByLabel("Month", { exact: true }).fill(month);
   await page.getByRole("button", { name: "Show month" }).click();
   await expect(page).toHaveURL(new RegExp(`month=${month}`));
 
@@ -40,7 +40,7 @@ test("the accountant records a month's salaries, sees the employee cost and find
 
   const cost = page.getByRole("region", { name: "Employee cost ratio" });
   await expect(cost).toContainText("₹2,15,000.00");
-  await expect(cost.getByText("—")).toBeVisible(); // no revenue in a far-past month
+  await expect(cost.getByText("—", { exact: true })).toBeVisible(); // no revenue in a far-past month
   await expect(page.getByRole("list", { name: /^Salary figures for / })).toContainText("4");
 
   // SM8: the saved row is one automatic "Salaries" expense line in the ledger.

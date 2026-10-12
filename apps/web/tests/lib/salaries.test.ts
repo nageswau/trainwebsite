@@ -70,6 +70,14 @@ describe("mgmt-011 grid body (SM4)", () => {
     expect(rowErrors(detail, ["d1", "d2"])).toEqual({ d2: "Salary paid: An amount can't be negative", d1: "Training is no longer in use; reactivate it first" });
     expect(rowErrors("Finance access required", ["d1"])).toEqual({});
   });
+
+  it("keeps every message of a row, not only the first (QA-02)", () => {
+    const detail = [
+      { loc: ["body", "rows", 0, "headcount"], msg: "Input should be greater than or equal to 0" },
+      { loc: ["body", "rows", 0, "paid"], msg: "Enter rupees as a number with up to 2 decimals" },
+    ];
+    expect(rowErrors(detail, ["d1"])).toEqual({ d1: "Employees: Input should be greater than or equal to 0 · Salary paid: Enter rupees as a number with up to 2 decimals" });
+  });
 });
 
 describe("mgmt-011 navigation and ledger source", () => {
