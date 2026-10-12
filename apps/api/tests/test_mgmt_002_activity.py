@@ -118,7 +118,8 @@ async def test_ac2_accountant_cannot_see_an_investment_entry(client, db_session)
     body = await activity(client, actor=str(partner.id))
     assert {i["kind"] for i in body["items"]} == {"mgmt.ledger"}  # finance only: no investment, no operational kinds
     assert body["total"] == 2
-    assert {k["value"] for k in body["kinds"]} == {"mgmt.ledger", "mgmt.ledger_category"}  # mgmt-004 registered the category kind
+    # mgmt-004 registered the category kind, mgmt-011 the salary and department kinds
+    assert {k["value"] for k in body["kinds"]} == {"mgmt.ledger", "mgmt.ledger_category", "mgmt.salary", "mgmt.department"}
     assert (await activity(client, actor=str(partner.id), kind="mgmt.investment"))["items"] == []
 
 
