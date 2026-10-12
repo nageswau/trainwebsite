@@ -1953,6 +1953,20 @@ Counts only, no personal data; nothing else changes.
 - Another user's decision id on `/me/…` is `404` (no existence leak). Discussion audit rows (`mgmt.decision`) are operational: field
   names only (MA3), visible in `/admin/audit`.
 
+### 2.118 Management to-do + staff "Management tasks" *(net-new, added 2026-10-12 — `DEC-SCOPE-193`, `mgmt-028`)*
+
+| Role | To-do: list, read, create, edit, cancel (`/management/tasks`) | Own tasks (`/me/management-tasks`, `/account/management-tasks`) |
+|---|---|---|
+| `partner` | yes | yes, when owner |
+| `super_admin` | yes (M13 operational tier) | yes, when owner |
+| `accountant` | `403` "Operational management access required" | yes, when owner (management sidebar link) |
+| any other active staff role (MT6) | `403` | yes, when owner: title, priority, deadline, status, band only; status open / in progress / completed; "Management tasks" in their portal sidebar |
+| students, parents, agents, university reps, employers, school-side users | `403` | never owners (`422` on assignment), so an empty list; no sidebar link |
+| signed out | `401` (pages redirect to `/admin/login?next=`) | `401` |
+
+- Another user's task id on `/me/…` is `404` (no existence leak). Task audit rows (`mgmt.task`) are operational: field names only (MA3),
+  visible in `/admin/audit`; the owner's status change is recorded with the owner as actor.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

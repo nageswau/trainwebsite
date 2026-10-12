@@ -92,6 +92,8 @@ from app.models import (
     RECRUITER_MEETING_TYPES,
     RELATIONSHIP_STRENGTHS,
     SCREENING_RESULTS,
+    TASK_PRIORITIES,
+    TASK_STATUSES,
     TEL_TARGET_KPIS,
     UNIVERSITY_OWNERSHIP_TYPES,
     UNIVERSITY_PRIORITIES,
@@ -11301,4 +11303,93 @@ class MyDecisionPage(BaseModel):
 
 
 class MyDecisionStatusIn(BaseModel):
+    status: Literal["open", "in_progress", "completed"]
+
+
+# mgmt-028 (spec MT1-MT14): the management to-do. Field rules live here; the ones that need the database (an active staff owner) or
+# today's IST date (the deadline window, MT8) are raised by `services/management_tasks.py` in the same field-located shape.
+TaskStatus = Literal[TASK_STATUSES]  # type: ignore[valid-type]
+TaskPriority = Literal[TASK_PRIORITIES]  # type: ignore[valid-type]
+TaskBand = Literal["overdue", "today", "week", "later", "completed", "cancelled"]
+TaskTitle = Annotated[str, AfterValidator(_ledger_text(2, 200, "The title"))]
+
+
+class TaskUpdate(BaseModel):
+    """MT1/MT7: a partial change. No field can be cleared; `source` is never the client's (MT5)."""
+
+    model_config = ConfigDict(extra="forbid")
+    title: TaskTitle | None = None
+    owner_user_id: UUID | None = None
+    priority: TaskPriority | None = None
+    deadline: date | None = None
+    status: TaskStatus | None = None
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def _required(cls, value, info: ValidationInfo):
+        if value is None:
+            raise ValueError(f"{(info.field_name or '').removesuffix('_user_id').capitalize()} is required")
+        return value
+
+
+class TaskCreate(TaskUpdate):
+    title: TaskTitle
+    owner_user_id: UUID
+    priority: TaskPriority = "medium"
+    deadline: date
+    status: TaskStatus = "open"
+
+
+class TaskOut(BaseModel):
+    id: UUID
+    title: str
+    owner: DiscussionPerson
+    owner_active: bool
+    priority: str
+    deadline: date
+    status: str
+    band: str | None
+    source: str
+    completed_at: datetime | None
+    created_by: DiscussionPerson
+    created_at: datetime
+    updated_at: datetime
+
+
+class TaskCounts(BaseModel):
+    overdue: int
+    today: int
+    week: int
+    later: int
+    completed: int
+
+
+class TaskPage(BaseModel):
+    items: list[TaskOut]
+    total: int
+    limit: int
+    offset: int
+    today: date
+    counts: TaskCounts
+
+
+class MyTaskOut(BaseModel):
+    """MT9: the owner's slice -- no creator or other people."""
+
+    id: UUID
+    title: str
+    priority: str
+    deadline: date
+    status: str
+    band: str | None
+    updated_at: datetime
+
+
+class MyTaskPage(BaseModel):
+    items: list[MyTaskOut]
+    today: date
+    counts: TaskCounts
+
+
+class MyTaskStatusIn(BaseModel):
     status: Literal["open", "in_progress", "completed"]

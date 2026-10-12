@@ -1,5 +1,5 @@
 import { isCalendarDate } from "@/lib/formatDate";
-import type { NavItem } from "@/lib/navigation";
+import { MANAGEMENT_TASKS_NAV, type NavItem } from "@/lib/navigation";
 
 // mgmt-001 (Management M13): the tiers GET /management/me returns, and who sees what. The API refuses every tier it does not grant;
 // this filter only decides what the page lists.
@@ -41,7 +41,7 @@ export const MANAGEMENT_PILLARS: ManagementPillar[] = [
     entries: [
       { ...op("Business snapshot", "mgmt-003"), href: "/management/snapshot" },
       own("This month's performance", "mgmt-031"), op("Next month plan & targets", "mgmt-026"), op("Long-term strategy", "mgmt-026"),
-      { ...op("Discussions & decisions", "mgmt-027"), href: "/management/discussions" }, op("To-do", "mgmt-028"), op("Meetings", "mgmt-029"), own("Business health score", "mgmt-030"),
+      { ...op("Discussions & decisions", "mgmt-027"), href: "/management/discussions" }, { ...op("To-do", "mgmt-028"), href: "/management/tasks" }, op("Meetings", "mgmt-029"), own("Business health score", "mgmt-030"),
       own("Monthly business review", "mgmt-032"),
     ],
   },
@@ -57,7 +57,9 @@ export function pillarsFor(tiers: ManagementTiers, pillars: ManagementPillar[] =
 /** The sidebar: the Command Center home, Management activity (every tier sees its own entries), then each live entry the tiers allow. */
 export function managementNavFor(tiers: ManagementTiers, pillars: ManagementPillar[] = MANAGEMENT_PILLARS): NavItem[] {
   const live = pillarsFor(tiers, pillars).flatMap((pillar) => pillar.entries.flatMap((entry) => (entry.href ? [{ label: entry.label, href: entry.href }] : [])));
-  return [{ label: "Command Center", href: MANAGEMENT_HOME }, { label: "Management activity", href: MANAGEMENT_ACTIVITY }, ...live];
+  // mgmt-028 (MT14): a caller outside the operational tier (the accountant) has no To-do, so their own Management tasks link instead.
+  const myTasks = tiers.operational ? [] : [MANAGEMENT_TASKS_NAV];
+  return [{ label: "Command Center", href: MANAGEMENT_HOME }, { label: "Management activity", href: MANAGEMENT_ACTIVITY }, ...live, ...myTasks];
 }
 
 // mgmt-002 (DEC-SCOPE-187 MA5-MA7): GET /management/activity. The API lists only the kinds the caller's tier may see and returns the

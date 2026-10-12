@@ -32,6 +32,7 @@ describe("upc-001 navigation", () => {
       { label: "Targets & Forecast", href: "/partnership/targets" }, { label: "Global Partnership Map", href: "/partnership/map" }, // upc-025
       { label: "Reports", href: "/partnership/reports" }, // upc-031
       { label: "Profile", href: "/partnership/profile" },
+      { label: "Management tasks", href: "/account/management-tasks" }, // mgmt-028 (MT14)
     ]);
     expect(PARTNERSHIP_HEAD_NAV).toEqual([
       { label: "Dashboard", href: "/partnership/dashboard" }, // upc-022
@@ -48,6 +49,7 @@ describe("upc-001 navigation", () => {
       { label: "Documents", href: "/partnership/documents" }, { label: "Alerts", href: "/partnership/alerts" }, // upc-015
       { label: "Message templates", href: "/partnership/head/templates" }, { label: "Targets & Forecast", href: "/partnership/targets" },
       { label: "Reports", href: "/partnership/reports" }, // upc-031
+      { label: "Management tasks", href: "/account/management-tasks" }, // mgmt-028 (MT14)
     ]);
   });
 

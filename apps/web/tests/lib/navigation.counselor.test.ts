@@ -18,6 +18,7 @@ describe("tel-017 IT counselor navigation", () => {
       { label: "Dashboard", href: "/it/counselor/dashboard" },
       { label: "Leads", href: "/it/counselor/leads" },
       { label: "Appointments", href: "/it/counselor/appointments" },
+      { label: "Management tasks", href: "/account/management-tasks" }, // mgmt-028 (MT14)
     ]);
   });
 
@@ -29,7 +30,7 @@ describe("tel-017 IT counselor navigation", () => {
   // upc-030 (DEC-SCOPE-161) adds Universities (the 360 view) after Applications.
   it("keeps the overseas counselor nav, plus Universities", () => {
     expect(PORTAL_NAV["overseas/counselor"].map((item) => item.href.split("/").pop())).toEqual(
-      ["dashboard", "students", "leads", "documents", "applications", "universities", "school-applications", "visa", "appointments", "counselor-chat", "reports"],
+      ["dashboard", "students", "leads", "documents", "applications", "universities", "school-applications", "visa", "appointments", "counselor-chat", "reports", "management-tasks"], // mgmt-028 (MT14)
     );
   });
 
