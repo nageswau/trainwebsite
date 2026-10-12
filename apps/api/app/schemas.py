@@ -51,6 +51,7 @@ from app.models import (
     COURSE_CURRENCIES,
     COURSE_LEVELS,
     COURSE_MONTHS,
+    DISCUSSION_STATUSES,
     ENGLISH_TESTS,
     FEEDBACK_DECISIONS,
     GENDERS,
@@ -11168,3 +11169,136 @@ class InvestmentPageOut(BaseModel):
     offset: int
     totals: InvestmentTotals
     investors: list[InvestmentPerson]
+
+
+# mgmt-027 (spec MD1-MD14): management discussions & decisions. Field rules live here; rules that need the database or the merged
+# state of a partial change (staff users, decision before responsible, deadline after the discussion) are raised by
+# `services/management_discussions.py` in the same field-located shape.
+DiscussionStatus = Literal[DISCUSSION_STATUSES]  # type: ignore[valid-type]
+DiscussionTopic = Annotated[str, AfterValidator(_ledger_text(2, 200, "The topic"))]
+DiscussionDepartment = Annotated[str, AfterValidator(_ledger_text(2, 80, "The department"))]
+DiscussionDecision = Annotated[str, AfterValidator(_ledger_text(2, 500, "The decision"))]
+DiscussionDate = Annotated[date, AfterValidator(_ledger_date)]
+_DISCUSSION_REQUIRED = ("topic", "discussion_date", "status", "participant_ids")
+
+
+def _discussion_points(value: str | None) -> str | None:
+    """Line breaks are kept (unlike the one-line fields); blank means none."""
+    if value is None or not value.strip():
+        return None
+    if len(value.strip()) > 10_000:
+        raise ValueError("The discussion points must be at most 10,000 characters")
+    return value.strip()
+
+
+def _discussion_later_date(value: date | None) -> date | None:
+    if value is not None and not LEDGER_FIRST_DATE <= value <= date(2100, 12, 31):
+        raise ValueError("Choose a date between 2000 and 2100")
+    return value
+
+
+DiscussionLaterDate = Annotated[date | None, AfterValidator(_discussion_later_date)]
+
+
+class DiscussionUpdate(BaseModel):
+    """MD1/MD7: a partial change. An explicit null clears an optional field; `participant_ids` replaces the whole set (MD2)."""
+
+    model_config = ConfigDict(extra="forbid")
+    topic: DiscussionTopic | None = None
+    discussion_date: DiscussionDate | None = None
+    department: DiscussionDepartment | None = None
+    points: Annotated[str | None, AfterValidator(_discussion_points)] = None
+    decision: DiscussionDecision | None = None
+    responsible_user_id: UUID | None = None
+    deadline: DiscussionLaterDate = None
+    status: DiscussionStatus | None = None
+    follow_up_date: DiscussionLaterDate = None
+    participant_ids: list[UUID] | None = Field(None, max_length=30)
+
+    @field_validator(*_DISCUSSION_REQUIRED, mode="before")
+    @classmethod
+    def _required(cls, value, info: ValidationInfo):
+        if value is None:
+            raise ValueError(f"{info.field_name.replace('_ids', 's').replace('_', ' ').capitalize()} is required")
+        return value
+
+
+class DiscussionCreate(DiscussionUpdate):
+    topic: DiscussionTopic
+    discussion_date: DiscussionDate
+    status: DiscussionStatus = "open"
+    participant_ids: list[UUID] = Field(default_factory=list, max_length=30)
+
+
+class DiscussionPerson(BaseModel):
+    id: UUID
+    full_name: str
+    role: str
+
+
+class DiscussionAttachmentOut(BaseModel):
+    id: UUID
+    name: str | None
+    content_type: str
+    shareable: bool
+    created_at: datetime
+
+
+class DiscussionOut(BaseModel):
+    """A list row: never the notes (points), participants or attachments."""
+
+    id: UUID
+    topic: str
+    discussion_date: date
+    department: str | None
+    decision: str | None
+    responsible: DiscussionPerson | None
+    deadline: date | None
+    status: str
+    follow_up_date: date | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class DiscussionDetail(DiscussionOut):
+    points: str | None
+    participants: list[DiscussionPerson]
+    attachments: list[DiscussionAttachmentOut]
+    created_by: DiscussionPerson | None
+    updated_by: DiscussionPerson | None
+
+
+class DiscussionPage(BaseModel):
+    items: list[DiscussionOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class DiscussionOptions(BaseModel):
+    users: list[DiscussionPerson]
+
+
+class MyDecisionAttachment(BaseModel):
+    id: UUID
+    name: str | None
+    content_type: str
+
+
+class MyDecisionOut(BaseModel):
+    """MD8/MD14: the responsible person's slice -- the decision line only."""
+
+    id: UUID
+    decision: str
+    deadline: date | None
+    status: str
+    attachments: list[MyDecisionAttachment]
+    updated_at: datetime
+
+
+class MyDecisionPage(BaseModel):
+    items: list[MyDecisionOut]
+
+
+class MyDecisionStatusIn(BaseModel):
+    status: Literal["open", "in_progress", "completed"]

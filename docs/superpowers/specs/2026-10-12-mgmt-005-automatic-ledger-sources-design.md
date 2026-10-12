@@ -6,7 +6,7 @@
 - **Evidence:** `DEC-SCOPE-186` M4 (`EXPLICIT_APPROVAL`): "Income: paid `Payment` rows by vertical (agent deposits excluded as pass-through),
   plus rec-031 and upc-019 receipts … Expenses: … automatic lines from paid agent commissions and BDM trip expenses". `EVID-017` §22
   ("connected to every module", `DERIVED_BLUEPRINT`). mgmt-004 `DEC-SCOPE-189` (ML5 INR only, ML10 figures).
-- **Decision:** `DEC-SCOPE-191` (provisional). MA1–MA12 below answer Q-06 (auto-line part), Q-07 and Q-08 with **recommended
+- **Decision:** `DEC-SCOPE-192` (provisional). MA1–MA12 below answer Q-06 (auto-line part), Q-07 and Q-08 with **recommended
   defaults, `UNVERIFIED`**, on the owner's instruction to proceed with recommended answers. Q-32 (student PII in drill-downs) stays open:
   auto lines carry **no student or agent names** until it is answered.
 

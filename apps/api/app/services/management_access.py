@@ -12,6 +12,13 @@ FINANCE_ROLES = frozenset({"partner", "accountant"})  # ledger, finance dashboar
 PARTNER_ONLY_ROLES = frozenset({"partner"})  # investments, capital accounts, everything
 MANAGEMENT_ROLES = OPERATIONAL_ROLES | FINANCE_ROLES
 NEW_ROLES = frozenset({"partner", "accountant"})  # global, created by a super_admin only (MG1)
+# mgmt-027 (M14, spec MD6): the internal staff who can take part in a discussion, be responsible for a decision or own a task.
+# Students, parents, agents, university reps, employers and school-side users are not EduSphere staff.
+STAFF_ROLES = MANAGEMENT_ROLES | frozenset({
+    "it_admin", "overseas_admin", "trainer", "placement_team", "placement_manager", "hr_team", "counselor", "academic_team",
+    "career_counselor", "psychometric_team", "bdm", "bdm_manager", "telecaller", "telecaller_manager", "partnership_manager",
+    "partnership_head",
+})
 
 NO_ACCESS = "Management access required"
 PARTNER_ONLY = "Only partners can open this"
