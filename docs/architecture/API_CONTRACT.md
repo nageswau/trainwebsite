@@ -2931,6 +2931,15 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `PATCH /me/management-decisions/{id}` *(new)* | `{status: open \| in_progress \| completed}` → `200` the line. `404` not the caller's (or unknown); `409` cancelled; `422` other status |
 | `GET /me/management-decisions/{id}/attachments/{aid}` *(new)* | A shareable attachment of the caller's own, non-cancelled decision; audited; else `404` |
 
+## 12DF. Automatic ledger sources (`mgmt-005`) — addendum, 2026-10-12
+
+- **Basis:** `DEC-SCOPE-192` (MA1–MA12). Design spec `docs/superpowers/specs/2026-10-12-mgmt-005-automatic-ledger-sources-design.md`.
+  No migration, no new route. Access as §12DC (finance tier only).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/ledger` *(changed, additive)* | New query `include=auto` (any other value `422`). Without it the response is §12DC's, each item now also carrying `source: "manual"`. With it, `items` mixes manual entries and automatic lines `{source "payment"\|"agent_commission"\|"trip_expense"\|"recruiter_payment"\|"university_commission", id (the source row), entry_date (IST day the money moved), kind, vertical, category_label, amount, currency, description (no person names), counted}`, newest first, paged as before. `month`, `kind`, `vertical` filter every line; `category` and `status` keep manual entries only. `totals {income, expense, net, not_counted[{currency, kind, amount, count}]}`: approved manual entries + INR automatic lines; other currencies are only in `not_counted`. Agent deposits never appear |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

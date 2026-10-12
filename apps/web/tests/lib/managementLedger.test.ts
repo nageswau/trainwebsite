@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import { describeActivity, managementNavFor, type ManagementActivityItem } from "@/lib/management";
-import { formatInr, ledgerFilters, ledgerHref, ledgerUrl, LEDGER_HOME, statusClass } from "@/lib/managementLedger";
+import { formatInr, formatMoney, ledgerFilters, ledgerHref, ledgerUrl, LEDGER_HOME, SOURCE_LABEL, statusClass } from "@/lib/managementLedger";
 
 const UUID = "0b7a1f8e-3c55-4b0e-9a51-2f3c4d5e6f70";
-const none = { month: "", kind: "", category: "", vertical: "", status: "", offset: 0 };
+const none = { month: "", kind: "", category: "", vertical: "", status: "", include: "", offset: 0 };
 
 describe("mgmt-004 ledger filters and links", () => {
   it("keeps only well-formed filters from the address", () => {
     expect(ledgerFilters({ month: "2026-10", kind: "expense", category: UUID, vertical: "shared", status: "submitted", offset: "25", other: "x" }))
-      .toEqual({ month: "2026-10", kind: "expense", category: UUID, vertical: "shared", status: "submitted", offset: 25 });
+      .toEqual({ month: "2026-10", kind: "expense", category: UUID, vertical: "shared", status: "submitted", include: "", offset: 25 });
     expect(ledgerFilters({ month: "2026-13", kind: "transfer", category: "nope", vertical: "branch", status: "paid", offset: "-3" })).toEqual(none);
     expect(ledgerFilters({ month: ["2026-10", "2026-11"] })).toEqual(none);
   });
@@ -27,6 +27,24 @@ describe("mgmt-004 ledger filters and links", () => {
     expect(statusClass("submitted")).toBe("status pending");
     expect(statusClass("rejected")).toBe("status error");
     expect(statusClass("draft")).toBe("badge");
+  });
+});
+
+describe("mgmt-005 automatic lines", () => {
+  it("keeps include=auto from the address and sends it to the page link and the API", () => {
+    expect(ledgerFilters({ include: "auto", month: "2026-10" })).toEqual({ ...none, include: "auto", month: "2026-10" });
+    expect(ledgerFilters({ include: "everything" })).toEqual(none);
+    expect(ledgerHref({ ...none, include: "auto" })).toBe("/management/ledger?include=auto");
+    expect(ledgerUrl({ ...none, include: "auto", kind: "income" })).toBe("/api/v1/management/ledger?kind=income&include=auto&limit=25");
+  });
+
+  it("labels every source and formats other currencies in their own money", () => {
+    expect(SOURCE_LABEL).toEqual({
+      payment: "Student payment", agent_commission: "Agent commission", trip_expense: "BDM trip expense", recruiter_payment: "Recruiter payment",
+      university_commission: "University commission",
+    });
+    expect(formatMoney("120000.00", "INR")).toBe("₹1,20,000.00");
+    expect(formatMoney("300.00", "GBP")).toBe("£300.00");
   });
 });
 

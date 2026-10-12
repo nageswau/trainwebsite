@@ -11,18 +11,29 @@ export type LedgerNamed = { id: string; name: string };
 export type LedgerCategory = { id: string; kind: LedgerKind; nature: "fixed" | "variable" | null; name: string; active: boolean };
 export type LedgerEvent = { id: string; at: string; actor: LedgerPerson | null; event: string; from_status: string | null; to_status: string | null; fields: string[]; reason: string | null };
 export type LedgerEntry = {
-  id: string; entry_date: string; kind: LedgerKind; category: { id: string; name: string; active: boolean }; amount: string; description: string;
+  source?: "manual"; id: string; entry_date: string; kind: LedgerKind; category: { id: string; name: string; active: boolean }; amount: string; description: string;
   vertical: string; channel: string | null; program: LedgerNamed | null; batch: LedgerNamed | null; status: LedgerStatus; reversal_of_id: string | null;
   reversed_by_id: string | null; receipt: { name: string | null; content_type: string } | null; created_by: LedgerPerson | null;
   updated_by: LedgerPerson | null; decided_by: LedgerPerson | null; submitted_at: string | null; decided_at: string | null;
   rejection_reason: string | null; created_at: string; updated_at: string; can: { edit: boolean; submit: boolean; decide: boolean; reverse: boolean };
 };
 export type LedgerEntryDetail = LedgerEntry & { events: LedgerEvent[] };
-export type LedgerTotals = { income: string; expense: string; net: string };
-export type LedgerPage = { items: LedgerEntry[]; total: number; limit: number; offset: number; totals: LedgerTotals };
+// mgmt-005 (MA1-MA11): a read-only line computed from another module's money row (`include=auto`); `id` is that row's id.
+export type LedgerSource = "payment" | "agent_commission" | "trip_expense" | "recruiter_payment" | "university_commission";
+export type LedgerAutoLine = {
+  source: LedgerSource; id: string; entry_date: string; kind: LedgerKind; vertical: string; category_label: string; amount: string; currency: string;
+  description: string; counted: boolean;
+};
+export type LedgerNotCounted = { currency: string; kind: LedgerKind; amount: string; count: number };
+export type LedgerTotals = { income: string; expense: string; net: string; not_counted?: LedgerNotCounted[] };
+export type LedgerPage = { items: (LedgerEntry | LedgerAutoLine)[]; total: number; limit: number; offset: number; totals: LedgerTotals };
+
+export function isAutoLine(item: LedgerEntry | LedgerAutoLine): item is LedgerAutoLine {
+  return item.source !== undefined && item.source !== "manual";
+}
 export type LedgerChoice = { value: string; label: string };
 export type LedgerOptions = { categories: LedgerCategory[]; channels: LedgerChoice[]; verticals: LedgerChoice[]; programs: (LedgerNamed & { batches: LedgerNamed[] })[] };
-export type LedgerFilters = { month: string; kind: string; category: string; vertical: string; status: string; offset: number };
+export type LedgerFilters = { month: string; kind: string; category: string; vertical: string; status: string; include: string; offset: number };
 
 export const KIND_LABEL: Record<LedgerKind, string> = { income: "Income", expense: "Expense" };
 export const STATUS_LABEL: Record<LedgerStatus, string> = { draft: "Draft", submitted: "Awaiting approval", approved: "Approved", rejected: "Rejected" };
@@ -33,13 +44,19 @@ export const EVENT_LABEL: Record<string, string> = {
   created: "Created", updated: "Changed", submitted: "Submitted for approval", approved: "Approved", rejected: "Rejected", reversed: "Reversal requested", receipt: "Receipt attached",
 };
 
-const FILTER_KEYS = ["month", "kind", "category", "vertical", "status"] as const;
+export const SOURCE_LABEL: Record<LedgerSource, string> = {
+  payment: "Student payment", agent_commission: "Agent commission", trip_expense: "BDM trip expense", recruiter_payment: "Recruiter payment",
+  university_commission: "University commission",
+};
+
+const FILTER_KEYS = ["month", "kind", "category", "vertical", "status", "include"] as const;
 const SHAPES: Record<(typeof FILTER_KEYS)[number], RegExp> = {
   month: /^\d{4}-(0[1-9]|1[0-2])$/,
   kind: /^(income|expense)$/,
   category: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
   vertical: /^(abroad|it|recruitment|school|other|shared)$/,
   status: /^(draft|submitted|approved|rejected)$/,
+  include: /^auto$/,
 };
 
 /** The filters from the page's search params. A malformed or repeated value only comes from a hand-edited address and is dropped, so
@@ -74,6 +91,11 @@ const INR = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR",
 /** "120000.00" -> "₹1,20,000.00" (the API sends amounts as decimal strings). */
 export function formatInr(amount: string): string {
   return INR.format(Number(amount));
+}
+
+/** An automatic line in another currency (MA8) is shown in its own money: "300.00", "GBP" -> "£300.00". */
+export function formatMoney(amount: string, currency: string): string {
+  return currency === "INR" ? formatInr(amount) : new Intl.NumberFormat("en-IN", { style: "currency", currency, minimumFractionDigits: 2 }).format(Number(amount));
 }
 
 export function statusClass(status: LedgerStatus): string {

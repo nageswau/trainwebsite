@@ -10961,6 +10961,7 @@ class LedgerEventOut(BaseModel):
 
 
 class LedgerEntryOut(BaseModel):
+    source: Literal["manual"] = "manual"  # mgmt-005 (MA9): tells a manual entry from an automatic line in a mixed list
     id: UUID
     entry_date: date
     kind: str
@@ -10990,18 +10991,46 @@ class LedgerEntryDetail(LedgerEntryOut):
     events: list[LedgerEventOut]
 
 
+# mgmt-005 (DEC-SCOPE spec MA1-MA11): a read-only line computed from another module's money row; `id` is that row's id (MA9 source link).
+LEDGER_AUTO_SOURCES = ("payment", "agent_commission", "trip_expense", "recruiter_payment", "university_commission")
+
+
+class LedgerAutoLine(BaseModel):
+    source: Literal[LEDGER_AUTO_SOURCES]  # type: ignore[valid-type]
+    id: UUID
+    entry_date: date
+    kind: str
+    vertical: str
+    category_label: str
+    amount: Decimal
+    currency: str
+    description: str
+    counted: bool  # MA8: INR only
+
+
+class LedgerNotCounted(BaseModel):
+    currency: str
+    kind: str
+    amount: Decimal
+    count: int
+
+
 class LedgerTotals(BaseModel):
     income: Decimal
     expense: Decimal
     net: Decimal
 
 
+class LedgerLinesTotals(LedgerTotals):
+    not_counted: list[LedgerNotCounted]  # mgmt-005 (MA8, MA11): only with `include=auto`, so mgmt-004's totals keep their shape
+
+
 class LedgerPage(BaseModel):
-    items: list[LedgerEntryOut]
+    items: list[Annotated[LedgerEntryOut | LedgerAutoLine, Field(discriminator="source")]]
     total: int
     limit: int
     offset: int
-    totals: LedgerTotals
+    totals: LedgerLinesTotals | LedgerTotals
 
 
 class LedgerChoice(BaseModel):

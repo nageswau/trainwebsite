@@ -383,6 +383,9 @@ Common conventions for every item:
 - **Complexity:** large · **Risk:** high
 
 ### mgmt-005 — Automatic ledger sources
+- **Status (2026-10-12):** **IN REVIEW** on `feature/mgmt-005`. `DEC-SCOPE-192` (MA1–MA12 recommended defaults, UNVERIFIED; answers
+  Q-06 automatic-line part, Q-07, Q-08; Q-32 open, so no names on automatic lines). No migration; API §12DF.
+  QA evidence `docs/quality/MGMT-005_EXPLORATORY_QA_2026-10-12.md`.
 - **Business requirement:** M4 ("auto from paid Payments … + rec-031/upc-019 receipts … + auto lines from paid agent commissions and
   BDM trip expenses"); §22 "connected to every module".
 - **Existing behavior:**
