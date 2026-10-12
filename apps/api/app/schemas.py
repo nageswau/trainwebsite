@@ -5,6 +5,7 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Annotated, Any, Literal
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from pydantic import (
     AfterValidator,
@@ -67,6 +68,10 @@ from app.models import (
     LEAD_CALL_TYPES,
     LEAD_FOLLOW_UP_REASONS,
     LEAD_PRIORITIES,
+    LEDGER_KINDS,
+    LEDGER_NATURES,
+    LEDGER_STATUSES,
+    LEDGER_VERTICALS,
     PARTNERSHIP_POTENTIALS,
     PARTNERSHIP_TARGET_KPI_KEYS,
     PARTNERSHIP_TARGET_MAX,
@@ -10798,3 +10803,224 @@ class ManagementKpi(BaseModel):
 class ManagementSnapshotOut(BaseModel):
     as_of: date
     kpis: list[ManagementKpi]
+
+
+# mgmt-004 (spec ML1-ML16): the management ledger. Simple field rules live here so a 422 names its field; rules that need the database
+# (category, batch, channel on an existing entry) are raised by `services/ledger.py` in the same field-located shape.
+LEDGER_MAX_AMOUNT = Decimal("999999999999.99")  # Numeric(14, 2)
+LEDGER_FIRST_DATE = date(2000, 1, 1)
+LEDGER_IST = ZoneInfo("Asia/Kolkata")
+_LEDGER_REQUIRED = ("entry_date", "category_id", "amount", "description", "vertical")
+
+
+def _ledger_amount(value: Decimal) -> Decimal:
+    if value <= 0:
+        raise ValueError("The amount must be more than 0")
+    if value.as_tuple().exponent < -2:  # type: ignore[operator]
+        raise ValueError("The amount can have at most 2 decimal places")
+    if value > LEDGER_MAX_AMOUNT:
+        raise ValueError("The amount is too large")
+    return value
+
+
+def _ledger_date(value: date) -> date:
+    if value > datetime.now(LEDGER_IST).date():  # an India calendar day (ML4)
+        raise ValueError("The date can't be in the future")
+    if value < LEDGER_FIRST_DATE:
+        raise ValueError("The date can't be before 2000")
+    return value
+
+
+def _ledger_text(minimum: int, maximum: int, label: str):
+    def check(value: str) -> str:
+        value = " ".join(value.split())
+        if not minimum <= len(value) <= maximum:
+            raise ValueError(f"{label} must be {minimum}-{maximum} characters")
+        return value
+
+    return check
+
+
+LedgerAmount = Annotated[Decimal, AfterValidator(_ledger_amount)]
+LedgerDate = Annotated[date, AfterValidator(_ledger_date)]
+LedgerDescription = Annotated[str, AfterValidator(_ledger_text(2, 500, "The description"))]
+LedgerReason = Annotated[str, AfterValidator(_ledger_text(2, 500, "The reason"))]
+LedgerCategoryName = Annotated[str, AfterValidator(_ledger_text(2, 80, "The name"))]
+LedgerVertical = Literal[LEDGER_VERTICALS]  # type: ignore[valid-type]
+LedgerChannel = Literal[TEL_SOURCES]  # type: ignore[valid-type]
+
+
+class LedgerEntryUpdate(BaseModel):
+    """ML7/ML8: a partial change of a draft or rejected entry. The kind never changes; an explicit null clears only an optional tag."""
+
+    model_config = ConfigDict(extra="forbid")
+    entry_date: LedgerDate | None = None
+    category_id: UUID | None = None
+    amount: LedgerAmount | None = None
+    description: LedgerDescription | None = None
+    vertical: LedgerVertical | None = None
+    channel: LedgerChannel | None = None
+    program_id: UUID | None = None
+    batch_id: UUID | None = None
+
+    @field_validator(*_LEDGER_REQUIRED, mode="before")
+    @classmethod
+    def _required(cls, value, info: ValidationInfo):
+        if value is None:
+            raise ValueError(f"{info.field_name.replace('_id', '').replace('_', ' ').capitalize()} is required")
+        return value
+
+
+class LedgerEntryCreate(LedgerEntryUpdate):
+    kind: Literal[LEDGER_KINDS]  # type: ignore[valid-type]
+    entry_date: LedgerDate
+    category_id: UUID
+    amount: LedgerAmount
+    description: LedgerDescription
+    vertical: LedgerVertical
+
+    @field_validator("channel")
+    @classmethod
+    def _channel_on_expenses(cls, value, info: ValidationInfo):
+        if value is not None and info.data.get("kind") == "income":
+            raise ValueError("A marketing channel is only for expenses")
+        return value
+
+
+class LedgerReasonIn(BaseModel):
+    reason: LedgerReason
+
+
+class LedgerCategoryCreate(BaseModel):
+    kind: Literal[LEDGER_KINDS]  # type: ignore[valid-type]
+    nature: Literal[LEDGER_NATURES] | None = Field(None, validate_default=True)  # type: ignore[valid-type]
+    name: LedgerCategoryName
+
+    @field_validator("nature")
+    @classmethod
+    def _nature_for_expenses(cls, value, info: ValidationInfo):
+        kind = info.data.get("kind")
+        if kind == "expense" and value is None:
+            raise ValueError("Choose fixed or variable for an expense category")
+        if kind == "income" and value is not None:
+            raise ValueError("An income category has no fixed/variable type")
+        return value
+
+
+class LedgerCategoryUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: LedgerCategoryName | None = None
+    active: StrictBool | None = None
+
+
+class LedgerCategoryOut(BaseModel):
+    id: UUID
+    kind: str
+    nature: str | None
+    name: str
+    active: bool
+
+
+class LedgerCategoryPage(BaseModel):
+    items: list[LedgerCategoryOut]
+
+
+class LedgerCategoryRef(BaseModel):
+    id: UUID
+    name: str
+    active: bool
+
+
+class LedgerPerson(BaseModel):
+    id: UUID
+    full_name: str
+
+
+class LedgerNamed(BaseModel):
+    id: UUID
+    name: str
+
+
+class LedgerReceipt(BaseModel):
+    name: str | None
+    content_type: str
+
+
+class LedgerCan(BaseModel):
+    edit: bool
+    submit: bool
+    decide: bool
+    reverse: bool
+
+
+class LedgerEventOut(BaseModel):
+    id: UUID
+    at: datetime
+    actor: LedgerPerson | None
+    event: str
+    from_status: str | None
+    to_status: str | None
+    fields: list[str]
+    reason: str | None
+
+
+class LedgerEntryOut(BaseModel):
+    id: UUID
+    entry_date: date
+    kind: str
+    category: LedgerCategoryRef
+    amount: Decimal
+    description: str
+    vertical: str
+    channel: str | None
+    program: LedgerNamed | None
+    batch: LedgerNamed | None
+    status: Literal[LEDGER_STATUSES]  # type: ignore[valid-type]
+    reversal_of_id: UUID | None
+    reversed_by_id: UUID | None
+    receipt: LedgerReceipt | None
+    created_by: LedgerPerson | None
+    updated_by: LedgerPerson | None
+    decided_by: LedgerPerson | None
+    submitted_at: datetime | None
+    decided_at: datetime | None
+    rejection_reason: str | None
+    created_at: datetime
+    updated_at: datetime
+    can: LedgerCan
+
+
+class LedgerEntryDetail(LedgerEntryOut):
+    events: list[LedgerEventOut]
+
+
+class LedgerTotals(BaseModel):
+    income: Decimal
+    expense: Decimal
+    net: Decimal
+
+
+class LedgerPage(BaseModel):
+    items: list[LedgerEntryOut]
+    total: int
+    limit: int
+    offset: int
+    totals: LedgerTotals
+
+
+class LedgerChoice(BaseModel):
+    value: str
+    label: str
+
+
+class LedgerProgramOption(BaseModel):
+    id: UUID
+    name: str
+    batches: list[LedgerNamed]
+
+
+class LedgerOptions(BaseModel):
+    categories: list[LedgerCategoryOut]
+    channels: list[LedgerChoice]
+    verticals: list[LedgerChoice]
+    programs: list[LedgerProgramOption]
