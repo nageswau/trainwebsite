@@ -7652,3 +7652,60 @@ tests, `mgmt-028-tasks.spec.ts`. QA `docs/quality/MGMT-028_EXPLORATORY_QA_2026-1
   - e2e: `mgmt-011-salaries.spec.ts`.
 - **QA:** `docs/quality/MGMT-011_EXPLORATORY_QA_2026-10-12.md`.
 - **New Feature ID authorized:** `mgmt-011`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-011.
+
+### DEC-SCOPE-195 — Accounts dashboard: income, expenses, receivables, payables, cash, tax (`mgmt-013`)
+
+**Evidence:**
+- `EVID-017` §22 (lines 881–929, `DERIVED_BLUEPRINT`) lists 5 income heads, 8 expense heads and 6 financial-position figures, and says
+  the dashboard is "connected to every module".
+- `DEC-SCOPE-186` M4/M5/M13 (`EXPLICIT_APPROVAL`) sets these rules:
+  - the ledger is the money source;
+  - receivables come from unpaid payments and invoices;
+  - payables, cash/bank and tax liabilities are entered by hand, by the accountant;
+  - there is no GST computation;
+  - only the finance tier sees the dashboard.
+- Backlog Appendix B R4, R8, R9 and R10, plus Q-15.
+
+**Status:** AD1–AD14 are in review on `feature/mgmt-013` (2026-10-12).
+- Every AD answer is a **recommended default, `UNVERIFIED`**, taken on the owner's instruction to proceed with recommended answers.
+- AD7 answers Q-15 as an interim default: month-end balances, not transactions.
+
+**Numbering (provisional):** migration `0155_finance_balances` (after mgmt-011's `0154_salaries`); API §12DI; RBAC §2.120. Spec
+`docs/superpowers/specs/2026-10-12-mgmt-013-accounts-dashboard-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| AD1 | Month | `?month=YYYY-MM`, default the current IST month; a future month `422` |
+| AD2 | Income heads | The month's counted ledger income by vertical: Abroad education, IT training, Recruitment, School projects, Other (+ `shared`) |
+| AD3 | Expense heads | Counted ledger expenses by category label: Salaries; Rent ← Office rent; Marketing ← Marketing, Events; Travel; Trainers ← Trainer payments; Commissions ← Agent commissions; Technology ← Internet, Software; **Operations ← everything else**. Each head lists its labels |
+| AD4 | Totals, profit (R4) | From `ledger.lines_totals`; heads add up exactly. Automatic lines in another currency are listed as not counted |
+| AD5 | Receivables (R8) | As of today, INR. (a) `payments` `pending`/`overdue` except agent deposits; (b) rec-031 invoices not cancelled, amount − received; (c) upc-019 Expected − received per university and currency, floored at 0. Overdue = `overdue` status or a past due date, plus rec-031 invoices past due. Other currencies listed, not added |
+| AD6 | Pending invoices (R9) | Count + amount of fee invoices still owed (agent deposits excluded) + rec-031 invoices with an outstanding amount. University commission has no invoices |
+| AD7 | Balances (Q-15 interim, R10) | `finance_balances` per month: `cash_bank` (may be negative), `payables`, `tax_liabilities` (≥ 0), each nullable |
+| AD8 | Write | `PUT /management/accounts/balances?month` saves the row; all null removes it; a per-month advisory lock |
+| AD9 | Not entered | Null shows "Not entered", never 0; no carry-forward |
+| AD10 | Access | Finance tier (`require_finance`): super_admin `403` "Finance access required"; others `403`; signed out `401`. Partner and accountant both write |
+| AD11 | Audit | `mgmt.balance` (finance tier): create/update with the changed field names, no amounts; a no-op writes none |
+| AD12 | University commission | One aggregate only (no university names); the finance tier already sees the receipts as ledger lines (MA12) |
+| AD13 | Page | `/management/accounts?month`: position tiles + receivables by source, income and expense head tables, the balances form; the "Accounts" entry goes live |
+| AD14 | Read | `{month, current_month, as_of, income, expenses, profit, not_counted, receivables, pending_invoices, balances}` |
+
+**Consequences:**
+- **Data:** new table `finance_balances` (migration 0155). No existing table changes.
+- **Backend:**
+  - `models.py`, `schemas.py`;
+  - new `services/accounts.py`;
+  - `services/salaries.py` (`first_day` takes the future-month wording);
+  - `services/management_audit.py` (one kind);
+  - `api/management.py` (two routes).
+- **Web:**
+  - `lib/accounts.ts`, `lib/management.ts` (the live entry);
+  - `components/AccountsDashboard.tsx`, `components/BalancesForm.tsx`;
+  - `app/management/accounts/page.tsx`;
+  - `globals.css` (`accounts-tiles` joins the phone rule).
+- **Tests:**
+  - backend: `test_mgmt_013_accounts.py`, `test_mgmt_013_migration.py`, and `test_mgmt_002_activity.py` (the accountant's kinds);
+  - web: `accounts.test.ts`, `Accounts.test.tsx`;
+  - e2e: `mgmt-013-accounts.spec.ts`.
+- **QA:** `docs/quality/MGMT-013_EXPLORATORY_QA_2026-10-12.md`.
+- **New Feature ID authorized:** `mgmt-013`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-013.

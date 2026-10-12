@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { accountsHref, accountsUrl, amountText, balancesBody, balancesUrl, fieldErrors } from "@/lib/accounts";
+import { accountsUrl, amountText, balancesBody, balancesUrl, fieldErrors } from "@/lib/accounts";
 
 describe("accounts lib (mgmt-013)", () => {
-  it("builds the page and API links, with no month meaning the current month", () => {
-    expect(accountsHref("2026-09")).toBe("/management/accounts?month=2026-09");
+  it("builds the API links, with no month meaning the current month", () => {
     expect(accountsUrl("2026-09")).toBe("/api/v1/management/accounts?month=2026-09");
     expect(accountsUrl("")).toBe("/api/v1/management/accounts");
     expect(balancesUrl("2026-09")).toBe("/api/v1/management/accounts/balances?month=2026-09");

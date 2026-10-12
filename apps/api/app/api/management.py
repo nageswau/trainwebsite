@@ -194,5 +194,5 @@ async def save_accounts_balances(
     first = salaries.first_day(month, accounts.FUTURE)
     changed = await accounts.save_balances(db, user, first, body)
     await db.commit()
-    accounts.log("finance_balances_saved", user, month=month, fields=changed)
+    salaries.log("finance_balances_saved", user, month=month, fields=changed)
     return await accounts.view(db, first)

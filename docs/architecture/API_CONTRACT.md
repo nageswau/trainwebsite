@@ -2976,6 +2976,21 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `PATCH /management/departments/{id}` *(new)* | **Body:** `{name?, active?}`. A change that changes nothing writes nothing.<br>**Errors:** `404` unknown id; `409` duplicate name.<br>**Audit:** `mgmt.department.update` |
 | `GET /management/ledger?include=auto` *(changed, additive)* | A sixth automatic source, `salary`:<br>• one expense line per saved department month with cost > 0;<br>• dated the month's last day, vertical `shared`, label "Salaries", description "Salaries · <department>", INR, counted.<br>`LedgerAutoLine.source` gains `"salary"` |
 
+## 12DI. Accounts dashboard (`mgmt-013`) — addendum, 2026-10-12
+
+- **Basis:** `DEC-SCOPE-195` (AD1–AD14). Design spec `docs/superpowers/specs/2026-10-12-mgmt-013-accounts-dashboard-design.md`.
+- **Migration:** `0155_finance_balances` (after mgmt-011's `0154_salaries`).
+- **Access:** finance tier only (M13), through the ledger's `require_finance`:
+  - super_admin gets `403` "Finance access required";
+  - every other role gets `403` "Management access required";
+  - signed out gets `401`.
+- **Money:** INR as decimal strings. `month` is `YYYY-MM`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/accounts` *(new)* | **Query:** `month` (default: the current IST month).<br>**`200`:** `{month, current_month, as_of, income, expenses, profit, not_counted[], receivables, pending_invoices, balances}`.<br>• `income`/`expenses` = `{heads[{key, label, amount, parts[{label, amount}]}], total}`. There are 5 income heads (`abroad`, `it`, `recruitment`, `school`, `other`) and 8 expense heads (`salaries`, `rent`, `marketing`, `travel`, `trainers`, `commissions`, `operations`, `technology`), all from the month's counted ledger lines.<br>• `profit` = income − expenses (R4).<br>• `not_counted[]` = `{currency, kind, amount, count}`.<br>• `receivables` = `{total, overdue, fees, recruitment, university, not_counted[]}`, as of `as_of` (today, IST).<br>• `pending_invoices` = `{count, amount}`.<br>• `balances` = `{cash_bank, payables, tax_liabilities, updated_at, updated_by}`, where null means not entered.<br>**`422`:** a malformed month, or a month after the current one |
+| `PUT /management/accounts/balances?month=YYYY-MM` *(new)* | **Body:** `{cash_bank, payables, tax_liabilities}`. Each is a decimal string or null; `cash_bank` may be negative; `payables`/`tax_liabilities` must be ≥ 0. At most 2 decimals, magnitude below 10¹², extra fields refused.<br>**Effect:** saves the month's row, and all null removes it. A transaction-scoped advisory lock serialises saves of one month.<br>**`200`:** the month as GET shows it.<br>**`422`:** on the field, or a future or missing month.<br>**Audit:** one `mgmt.balance.create`/`update` (changed field names, no amounts) when something changed |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

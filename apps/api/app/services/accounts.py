@@ -7,7 +7,6 @@ rec-031, upc-019) as of today. Only cash/bank, payables and tax liabilities are 
 Spec: docs/superpowers/specs/2026-10-12-mgmt-013-accounts-dashboard-design.md.
 """
 
-import logging
 from collections import defaultdict
 from datetime import date
 from decimal import Decimal
@@ -21,7 +20,6 @@ from app.services import ledger, management_audit, university_commission
 from app.services.agent_deposits import REFERENCE_TYPE as AGENT_DEPOSIT
 from app.services.salaries import month_key
 
-logger = logging.getLogger("app.management")
 CENTS = Decimal("0.01")
 ZERO = Decimal("0.00")
 FUTURE = "Accounts can be shown up to the current month"
@@ -47,10 +45,6 @@ def expense_head(label: str) -> str:
 
 def income_head(vertical: str) -> str:
     return "other" if vertical == "shared" else vertical
-
-
-def log(event: str, user: User, **extra) -> None:
-    logger.info(event, extra={"extra_fields": {"actor_id": str(user.id), **extra}})
 
 
 def _money(value) -> Decimal:

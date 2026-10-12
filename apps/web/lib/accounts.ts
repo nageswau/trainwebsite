@@ -20,7 +20,6 @@ export type BalancesDraft = Record<BalanceField, string>;
 
 export const BALANCE_LABEL: Record<BalanceField, string> = { cash_bank: "Cash/bank", payables: "Payables", tax_liabilities: "Tax liabilities" };
 
-export const accountsHref = (month: string) => `${ACCOUNTS_HOME}?month=${month}`;
 export const accountsUrl = (month: string) => (month ? `${ACCOUNTS_API}?month=${month}` : ACCOUNTS_API);
 export const balancesUrl = (month: string) => `${ACCOUNTS_API}/balances?month=${month}`;
 
