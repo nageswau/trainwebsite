@@ -1042,6 +1042,9 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** medium
 
 ### mgmt-028 — Management to-do + staff "Management tasks" list
+- **Status (2026-10-12):** **IN REVIEW** on `feature/mgmt-028`. `DEC-SCOPE-193` (MT1–MT14 recommended defaults, UNVERIFIED; answers
+  Q-27). Migration `0153_management_tasks`; API §12DG; RBAC §2.118. Every staff portal's sidebar links the shared
+  `/account/management-tasks` (tasks in bands + the mgmt-027 decision lines). QA evidence `docs/quality/MGMT-028_EXPLORATORY_QA_2026-10-12.md`.
 - **Business requirement:** §28 (My Tasks bands Overdue / Due Today / This Week / Completed; 7 examples; owner + priority + deadline +
   status) (M14).
 - **Existing behavior:** none generic.
