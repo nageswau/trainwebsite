@@ -7411,3 +7411,37 @@ taken on the owner's instruction to proceed with the recommended answers.
 `components/ManagementSnapshot.tsx`. Tests `test_mgmt_003_snapshot.py`, `ManagementSnapshot.test.tsx`, `management.test.ts`,
 `mgmt-003-business-snapshot.spec.ts`.
 - **New Feature ID authorized:** `mgmt-003`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-003.
+
+### DEC-SCOPE-189 — Investment register + ROI (`mgmt-014`)
+
+**Evidence:** `EVID-017` §23 (lines 931–969, `DERIVED_BLUEPRINT`): eleven fields, ₹5,00,000 → ₹18,00,000 = 260%. `DEC-SCOPE-186` M2/M13
+(`EXPLICIT_APPROVAL`): investments are partner-only. Backlog Appendix B I1 and Q-16.
+
+**Status:** MI1–MI14 in review on `feature/mgmt-014` (2026-10-12). Every MI answer is a **recommended default, `UNVERIFIED`**, taken on the
+owner's instruction to proceed with the recommended answers. Q-16 (status values) is answered by MI3 as an interim default.
+
+**Numbering (provisional):** migration `0150_investments`; API §12DC; RBAC §2.115. Spec `docs/superpowers/specs/2026-10-12-mgmt-014-investment-register-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| MI1 | Investment ID | `INV-000001` from `investment_code_seq`; never edited |
+| MI2 | Fields | date, investor, amount, purpose (2–200), vertical, expected return, actual return, status, notes (≤ 2000); ROI computed |
+| MI3 | Status (Q-16 interim) | planned / active / completed / cancelled; default active; any change allowed |
+| MI4 | Investor | `company`, or `partner` + an active partner user (one already on the record is kept if they leave) |
+| MI5 | Vertical | abroad, it, recruitment, school, shared (company-wide), other — mgmt-004's list |
+| MI6 | Money | INR (Q-06 interim), `Numeric(12,2)`; amount > 0; returns ≥ 0, optional |
+| MI7 | ROI (I1) | (actual − amount) ÷ amount × 100, half-up to 2 decimals; null ("—") until the actual return is known |
+| MI8 | Totals | Over every filtered investment except cancelled; overall ROI over those with an actual return |
+| MI9 | Filters | dates on `invested_on` (inclusive), vertical, status; `limit` 1–100, `offset` ≤ 10 000; newest first |
+| MI10 | Edit | PATCH changes only the fields sent; row lock; a no-change PATCH writes nothing; no delete (cancel instead) |
+| MI11 | Audit | `mgmt.investment` create (fields set + values) / update (changed fields + before/after), same transaction |
+| MI12 | Access | partner only; super_admin and accountant `403` "Only partners can open this"; others `403`; signed out `401`; unknown `404` |
+| MI13 | Pages | `/management/investments` (totals, filters, table, add) and `/management/investments/[id]` (record, edit); Command Center entry live |
+| MI14 | Demo | `app.seed` adds the §23 example once |
+
+**Consequences:** new table `investments` + `investment_code_seq` (migration 0150); `models.py`; `schemas.py`; new
+`services/investments.py`; `api/management.py` (four routes); `seed.py`; web `lib/investments.ts`, `lib/management.ts` (live entry),
+`components/InvestmentRegister.tsx`, `components/InvestmentForm.tsx`, `app/management/investments/page.tsx`, `[id]/page.tsx`,
+`globals.css` (`money-tiles`). Tests `test_mgmt_014_investments.py`, `test_mgmt_014_migration.py`, `investments.test.ts`,
+`Investments.test.tsx`, `mgmt-014-investments.spec.ts`. QA `docs/quality/MGMT-014_EXPLORATORY_QA_2026-10-12.md`.
+- **New Feature ID authorized:** `mgmt-014`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-014.

@@ -1915,6 +1915,18 @@ action. **Partner-only data is refused to `super_admin` and the accountant at th
 
 Counts only, no personal data; nothing else changes.
 
+### 2.115 Investment register + ROI *(net-new, added 2026-10-12 — `DEC-SCOPE-189`, `mgmt-014`)*
+
+| Role | `GET/POST /management/investments`, `GET/PATCH /management/investments/{id}`, pages | Command Center entry |
+|---|---|---|
+| `partner` | full read and write (every partner sees and edits every investment, §2 shared company data) | "Investments & ROI" (Finance pillar) |
+| `accountant` | `403` "Only partners can open this"; page "Access unavailable" | none |
+| `super_admin` | `403` "Only partners can open this"; page "Access unavailable" | none |
+| every other role | `403` "Management access required"; signed out `401` (page → `/admin/login?next=`) | none |
+
+- The refusal happens before any lookup, so a `404` never tells a non-partner that an id exists. Audit rows (`mgmt.investment`) stay
+  partner-only in Management activity and are left out of `/admin/audit` (mgmt-002 MA8, unchanged).
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

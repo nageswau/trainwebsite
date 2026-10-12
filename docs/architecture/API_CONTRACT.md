@@ -2876,6 +2876,19 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `GET /management/snapshot` *(new)* | `{as_of (IST date), kpis: [{id "S1"…"S15", key, label, value int}]}` in §3 source order. Partner, `super_admin` → `200`; accountant and every other role → `403` ("Operational access required" / "Management access required"); signed out → `401`. One SQL statement for all fifteen counts |
 
+## 12DC. Investment register + ROI (`mgmt-014`) — addendum, 2026-10-12
+
+- **Basis:** `DEC-SCOPE-189` (MI1–MI14). Design spec `docs/superpowers/specs/2026-10-12-mgmt-014-investment-register-design.md`.
+  Migration `0150_investments`. Partner-only (M13): every route answers `403` to the accountant and super_admin ("Only partners can open
+  this") and to every other role ("Management access required"); signed out `401`. Money is INR as decimal strings.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/investments` *(new)* | Query `date_from`, `date_to` (on `invested_on`, inclusive), `vertical`, `status`, `limit` 1–100 (25), `offset` 0–10 000. `200` `{items[Investment], total, limit, offset, totals {count, invested, actual_return, roi \| null}, investors[{id, full_name}]}`; newest first; totals over every match, cancelled excluded. `422` unknown vertical/status, `date_to` before `date_from`, malformed parameter |
+| `POST /management/investments` *(new)* | Body `{invested_on, investor_kind "partner"\|"company", investor_user_id?, amount > 0, purpose 2–200, vertical, expected_return?, actual_return? (≥ 0), status? ("active"), notes? ≤ 2000}`, extra fields refused. `201` Investment. `422` worded per field, or "Choose the partner who invested" / "Choose an active partner as the investor" / "A company investment has no partner investor". Audited `mgmt.investment.create` |
+| `GET /management/investments/{id}` *(new)* | `200` Investment `{id, code "INV-000001", invested_on, investor_kind, investor {id, full_name} \| null, amount, purpose, vertical, expected_return, actual_return, roi \| null, status, notes, created_by, updated_by, created_at, updated_at}`; `404` unknown |
+| `PATCH /management/investments/{id}` *(new)* | Any subset of the POST fields; null for a required field `422`. Row locked; only changed fields are written and audited (`mgmt.investment.update`, before/after); no change → `200`, nothing written. `404` unknown. No `DELETE` (cancel instead) |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
