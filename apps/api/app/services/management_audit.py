@@ -25,6 +25,7 @@ KINDS: dict[str, tuple[str, str]] = {
     "mgmt.ledger_category": ("Ledger category", "finance"),  # mgmt-004
     "mgmt.salary": ("Salary month", "finance"),  # mgmt-011
     "mgmt.department": ("Department", "finance"),  # mgmt-011
+    "mgmt.balance": ("Month-end balances", "finance"),  # mgmt-013
     "mgmt.investment": ("Investment", "partner_only"),
     "mgmt.capital": ("Capital account", "partner_only"),
 }

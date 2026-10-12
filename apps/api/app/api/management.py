@@ -11,10 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user, get_db
 from app.models import INVESTMENT_STATUSES, INVESTMENT_VERTICALS, User
 from app.schemas import (
+    AccountsOut,
     DepartmentCreate,
     DepartmentOut,
     DepartmentPage,
     DepartmentUpdate,
+    FinanceBalancesIn,
     InvestmentCreate,
     InvestmentOut,
     InvestmentPageOut,
@@ -25,7 +27,7 @@ from app.schemas import (
     SalaryMonthIn,
     SalaryMonthOut,
 )
-from app.services import investments, ledger, management_audit, management_metrics, salaries
+from app.services import accounts, investments, ledger, management_audit, management_metrics, salaries
 from app.services.bdm_activities import india_date
 from app.services.bdm_appointments import db_now
 from app.services.management_access import can_view_operational, require_management, require_partner_only, tiers
@@ -173,3 +175,24 @@ async def change_department(department_id: UUID, body: DepartmentUpdate, user: U
     await db.commit()
     salaries.log("department_changed", user, department_id=str(department.id))
     return salaries.department_out(department)
+
+
+# --- mgmt-013: accounts dashboard (spec AD1-AD14). Finance tier only (M13): super_admin and every other role 403 ------------------------
+@router.get("/accounts", response_model=AccountsOut)
+async def accounts_month(month: str | None = Query(None, pattern=MONTH), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """AD14: the month's income and expense heads, profit, today's receivables and pending invoices, and the entered balances."""
+    ledger.require_finance(user)
+    return await accounts.view(db, salaries.first_day(month, accounts.FUTURE))
+
+
+@router.put("/accounts/balances", response_model=AccountsOut)
+async def save_accounts_balances(
+    body: FinanceBalancesIn, month: str = Query(..., pattern=MONTH), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    """AD8: saves the month's cash/bank, payables and tax liabilities (all null removes them); answers with the month as GET shows it."""
+    ledger.require_finance(user)
+    first = salaries.first_day(month, accounts.FUTURE)
+    changed = await accounts.save_balances(db, user, first, body)
+    await db.commit()
+    accounts.log("finance_balances_saved", user, month=month, fields=changed)
+    return await accounts.view(db, first)
