@@ -22,10 +22,11 @@ KINDS: dict[str, tuple[str, str]] = {
     "mgmt.plan": ("Plan & target", "operational"),
     "mgmt.decision": ("Decision", "operational"),
     "mgmt.ledger": ("Ledger entry", "finance"),
+    "mgmt.ledger_category": ("Ledger category", "finance"),  # mgmt-004
     "mgmt.investment": ("Investment", "partner_only"),
     "mgmt.capital": ("Capital account", "partner_only"),
 }
-VERBS = frozenset({"create", "update", "approve", "complete", "decide", "import"})  # MA2
+VERBS = frozenset({"create", "update", "approve", "complete", "decide", "import", "submit", "reject", "reverse", "download"})  # MA2; mgmt-004 adds the last four
 _CAN_VIEW = {"operational": can_view_operational, "finance": can_view_finance, "partner_only": can_view_partner_only}
 
 

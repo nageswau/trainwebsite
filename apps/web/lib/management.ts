@@ -29,7 +29,7 @@ export const MANAGEMENT_PILLARS: ManagementPillar[] = [
   {
     title: "Finance",
     entries: [
-      fin("Ledger", "mgmt-004"), fin("Abroad Education revenue", "mgmt-006"), fin("IT Training revenue", "mgmt-007"), fin("Recruitment revenue", "mgmt-008"),
+      { ...fin("Ledger", "mgmt-004"), href: "/management/ledger" }, fin("Abroad Education revenue", "mgmt-006"), fin("IT Training revenue", "mgmt-007"), fin("Recruitment revenue", "mgmt-008"),
       fin("Expenses & rent", "mgmt-010"), fin("Profit & loss", "mgmt-009"), fin("Salaries", "mgmt-011"), fin("Accounts", "mgmt-013"),
       own("Investments & ROI", "mgmt-014"), own("Partner capital accounts", "mgmt-015"),
     ],
@@ -77,7 +77,10 @@ export type ManagementActivityPage = {
 export type ActivityFilters = { actor: string; kind: string; date_from: string; date_to: string; offset: number };
 
 const FILTER_KEYS = ["actor", "kind", "date_from", "date_to"] as const;
-const VERB_LABEL: Record<string, string> = { create: "created", update: "changed", approve: "approved", complete: "completed", decide: "made", import: "imported" };
+const VERB_LABEL: Record<string, string> = {
+  create: "created", update: "changed", approve: "approved", complete: "completed", decide: "made", import: "imported",
+  submit: "submitted", reject: "rejected", reverse: "reversed", download: "downloaded", // mgmt-004
+};
 
 const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
