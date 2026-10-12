@@ -6,7 +6,7 @@ export default function ManagementSnapshot({ snapshot }: { snapshot: Snapshot })
   return (
     <>
       <p className="muted">As of {formatCalendarDate(snapshot.as_of)} (India time). Counts are live from the EduSphere records.</p>
-      <ul className="metric-grid" aria-label="Business snapshot figures" style={{ listStyle: "none", padding: 0 }}>
+      <ul className="metric-grid snapshot-tiles" aria-label="Business snapshot figures">
         {snapshot.kpis.map((kpi) => (
           <li key={kpi.key} className="metric">
             <span>{kpi.label}</span>

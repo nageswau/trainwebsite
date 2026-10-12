@@ -72,6 +72,11 @@ describe("mgmt-003 ManagementSnapshot tiles", () => {
     expect(screen.getByText(/As of 12 Oct 2026/)).toBeTruthy();
   });
 
+  it("uses the compact tile grid (two columns on a phone, QA-01)", () => {
+    render(<ManagementSnapshot snapshot={snapshot} />);
+    expect(screen.getByRole("list", { name: "Business snapshot figures" }).className).toBe("metric-grid snapshot-tiles");
+  });
+
   it("shows a zero as 0", () => {
     render(<ManagementSnapshot snapshot={{ as_of: "2026-10-12", kpis: [{ id: "S7", key: "active_agents", label: "Active Agents", value: 0 }] }} />);
     expect(within(screen.getByRole("listitem")).getByText("0")).toBeTruthy();
