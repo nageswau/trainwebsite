@@ -76,6 +76,7 @@ describe("InvestmentForm (mgmt-014 add / edit)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save investment" }));
     expect(screen.getByRole("alert").textContent).toBe("Choose the partner who invested.");
     expect(screen.getByLabelText("Partner").getAttribute("aria-invalid")).toBe("true");
+    expect(document.activeElement).toBe(screen.getByLabelText("Partner")); // browser QA-04: focus goes to the field to fix
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

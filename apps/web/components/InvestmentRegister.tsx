@@ -32,7 +32,7 @@ export default function InvestmentRegister({ data, error, filters }: { data: Inv
   return (
     <div className="action-card" style={{ display: "grid", gap: 12 }}>
       {data && (
-        <ul className="metric-grid snapshot-tiles" aria-label="Investment totals">
+        <ul className="metric-grid snapshot-tiles money-tiles" aria-label="Investment totals">
           <li className="metric"><span>Investments</span><strong>{data.totals.count.toLocaleString("en-IN")}</strong></li>
           <li className="metric"><span>Total invested</span><strong>{rupees(data.totals.invested)}</strong></li>
           <li className="metric"><span>Actual return</span><strong>{rupees(data.totals.actual_return)}</strong></li>
@@ -57,7 +57,7 @@ export default function InvestmentRegister({ data, error, filters }: { data: Inv
       {data && data.items.length > 0 && (
         <>
           <div className="table-scroll" role="region" aria-label="Investments, scrollable" tabIndex={0}>
-            <table className="table">
+            <table className="table" style={{ minWidth: 1040 }}>
               <caption className="visually-hidden">Investments</caption>
               <thead>
                 <tr>

@@ -4,6 +4,7 @@ import { isCalendarDate } from "@/lib/formatDate";
 // here filters for security. Money is INR, sent and received as decimal strings; ROI is the API's (MI7), never recomputed here.
 export const MANAGEMENT_INVESTMENTS = "/management/investments";
 export const INVESTMENTS_PAGE_SIZE = 25;
+const MAX_OFFSET = 10_000; // the API's cap (browser QA-01: past it the page showed the API's 422 list as "[object Object]")
 
 export const INVESTMENT_STATUS_LABEL: Record<string, string> = { planned: "Planned", active: "Active", completed: "Completed", cancelled: "Cancelled" };
 export const INVESTMENT_VERTICAL_LABEL: Record<string, string> = {
@@ -36,7 +37,7 @@ export function investmentFilters(search: Record<string, string | string[] | und
   const offset = Number.parseInt(one("offset"), 10);
   return {
     date_from: day("date_from"), date_to: day("date_to"), vertical: known("vertical", INVESTMENT_VERTICAL_LABEL),
-    status: known("status", INVESTMENT_STATUS_LABEL), offset: offset > 0 ? offset : 0,
+    status: known("status", INVESTMENT_STATUS_LABEL), offset: offset > 0 ? Math.min(offset, MAX_OFFSET) : 0,
   };
 }
 

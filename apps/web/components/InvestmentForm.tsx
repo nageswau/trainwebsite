@@ -48,7 +48,10 @@ export default function InvestmentForm({ investors, investment }: { investors: I
     event.preventDefault();
     if (sending.current) return;
     const wrong = investmentProblem(values);
-    if (wrong) return setProblem(wrong);
+    if (wrong) {
+      setProblem(wrong);
+      return document.getElementById(id(wrong.field))?.focus(); // browser QA-04: straight to the field to fix
+    }
     sending.current = true;
     setBusy(true);
     setProblem(null);

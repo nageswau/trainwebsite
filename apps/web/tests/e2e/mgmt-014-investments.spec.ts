@@ -22,8 +22,8 @@ test("a partner sees the §23 example at 260%, adds an investment and records it
   await expect(page.getByRole("heading", { level: 2, name: "Investments & ROI" })).toBeVisible();
 
   // The demo is dated 2026-04-01; filtering to that day keeps rows other runs added out of the way.
-  await page.getByLabel("From").fill("2026-04-01");
-  await page.getByLabel("To").fill("2026-04-01");
+  await page.getByLabel("From", { exact: true }).fill("2026-04-01");
+  await page.getByLabel("To", { exact: true }).fill("2026-04-01");
   await page.getByRole("button", { name: "Apply" }).click();
   await expect(page).toHaveURL(/date_from=2026-04-01/);
   const demo = page.getByRole("table", { name: "Investments" }).getByRole("row").filter({ hasText: "Marketing Campaign" }).filter({ hasText: "₹18,00,000.00" }).first();

@@ -42,6 +42,8 @@ describe("mgmt-014 register filters and URLs (MI9)", () => {
       date_from: "2026-04-01", date_to: "", vertical: "it", status: "", offset: 25,
     });
     expect(investmentFilters({ vertical: ["it", "abroad"], offset: "-3" })).toEqual({ date_from: "", date_to: "", vertical: "", status: "", offset: 0 });
+    // Browser QA-01: past the API's 10 000 cap the API answered with a list 422, shown as "[object Object]".
+    expect(investmentFilters({ offset: "999999" }).offset).toBe(10_000);
   });
 
   it("builds the page link and the API URL", () => {
