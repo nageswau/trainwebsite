@@ -2868,6 +2868,14 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `GET /management/activity` *(new)* | Query `actor` (UUID), `kind`, `date_from`, `date_to` (IST days, inclusive), `limit` 1–100 (25), `offset` 0–10 000. `200` `{items[{id, at, actor {id, full_name, role} \| null, kind, kind_label, verb, entity_id, fields, values \| null, count \| null}], total, limit, offset, kinds[{value, label}], actors[]}`, newest first, only kinds the caller's tier may see (a kind outside it → empty page). `401` signed out; `403` "Management access required"; `422` unknown kind, `date_to` before `date_from`, or a malformed parameter. No write methods (`405`) |
 | `GET /admin/audit`, `POST /admin/audit/export` *(changed)* | Finance and partner-only `mgmt.*` rows are left out (M13). Everything else unchanged |
 
+## 12DB. Business snapshot (`mgmt-003`) — addendum, 2026-10-12
+
+- **Basis:** `DEC-SCOPE-188` (MS1–MS19). Design spec `docs/superpowers/specs/2026-10-12-mgmt-003-business-snapshot-design.md`. No migration.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/snapshot` *(new)* | `{as_of (IST date), kpis: [{id "S1"…"S15", key, label, value int}]}` in §3 source order. Partner, `super_admin` → `200`; accountant and every other role → `403` ("Operational access required" / "Management access required"); signed out → `401`. One SQL statement for all fifteen counts |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

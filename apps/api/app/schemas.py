@@ -10785,3 +10785,16 @@ class ManagementActivityOut(BaseModel):
     offset: int
     kinds: list[ManagementKindChoice]
     actors: list[ManagementActor]
+
+
+# mgmt-003 (spec MS16/MS19): the business snapshot, S1-S15 in source order, counted live on `as_of` (the IST date).
+class ManagementKpi(BaseModel):
+    id: str
+    key: str
+    label: str
+    value: int
+
+
+class ManagementSnapshotOut(BaseModel):
+    as_of: date
+    kpis: list[ManagementKpi]

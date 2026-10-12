@@ -6,6 +6,9 @@ import type { NavItem } from "@/lib/navigation";
 export type ManagementTier = "operational" | "finance" | "partner_only";
 export type ManagementTiers = Record<ManagementTier, boolean>;
 export type ManagementMe = { id: string; full_name: string; role: string; tiers: ManagementTiers };
+// mgmt-003 (MS16): GET /management/snapshot -- S1-S15 in source order, counted live on `as_of` (the IST date).
+export type ManagementKpi = { id: string; key: string; label: string; value: number };
+export type ManagementSnapshot = { as_of: string; kpis: ManagementKpi[] };
 
 export const MANAGEMENT_HOME = "/management";
 export const MANAGEMENT_ROLE_LABEL: Record<string, string> = { partner: "Partner", accountant: "Accountant", super_admin: "Super Administrator" };
@@ -36,6 +39,7 @@ export const MANAGEMENT_PILLARS: ManagementPillar[] = [
   {
     title: "Business Intelligence",
     entries: [
+      { ...op("Business snapshot", "mgmt-003"), href: "/management/snapshot" },
       own("This month's performance", "mgmt-031"), op("Next month plan & targets", "mgmt-026"), op("Long-term strategy", "mgmt-026"),
       op("Discussions & decisions", "mgmt-027"), op("To-do", "mgmt-028"), op("Meetings", "mgmt-029"), own("Business health score", "mgmt-030"),
       own("Monthly business review", "mgmt-032"),

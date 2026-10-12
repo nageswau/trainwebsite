@@ -357,6 +357,9 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
 @media (max-width: 640px) { .agent-network .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 /* bdm-004 QA4-03: on phones the pipeline's stage tiles sit two per row, so the organization list is not ~1,900 px down (QA22-10's rule). */
 @media (max-width: 640px) { .metric-grid.pipeline-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* mgmt-003 (QA-01): the business snapshot's fifteen counts -- a list without bullets; two columns on a phone, as above. */
+.snapshot-tiles { list-style: none; padding: 0; }
+@media (max-width: 640px) { .metric-grid.snapshot-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 /* tel-021: the ten §1 dashboard tiles -- five across on a wide screen, then three, then two on tablets and phones; a hint under each
    figure. The daily activity table reuses .tel-targets (short columns, row headers as labels). */
 .metric-grid.tel-tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); list-style: none; padding: 0; margin: 0 0 24px; }

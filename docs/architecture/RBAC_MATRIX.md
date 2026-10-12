@@ -1904,6 +1904,17 @@ action. **Partner-only data is refused to `super_admin` and the accountant at th
 
 - The trail is read-only: no route edits or deletes an entry. Values are kept only for finance and partner-only kinds (MA3).
 
+### 2.114 Business snapshot *(added 2026-10-12 — `DEC-SCOPE-188`, `mgmt-003`)*
+
+| Role | `GET /management/snapshot`, `/management/snapshot` page |
+|---|---|
+| `partner` | `200`; a "Business snapshot" entry under Business Intelligence |
+| `super_admin` | `200` (operational tier, M13); reached from the Command Center |
+| `accountant` | `403` "Operational access required"; no entry; the page shows "Access unavailable" |
+| every other role | `403` "Management access required"; signed out `401` (the page redirects to `/admin/login?next=`) |
+
+Counts only, no personal data; nothing else changes.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

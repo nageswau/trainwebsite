@@ -310,6 +310,9 @@ Common conventions for every item:
 - **Complexity:** small · **Risk:** medium
 
 ### mgmt-003 — Business snapshot + `management_metrics` foundation
+- **Status (2026-10-12):** **IN REVIEW** on `feature/mgmt-003`. `DEC-SCOPE-188` answers Q-03 (MS1–MS19, recommended defaults, UNVERIFIED).
+  UPC and Recruiter have merged, so S9/S10/S15 are computed (no "not available yet" figure remains). No migration; API §12DB; RBAC §2.114.
+  QA evidence `docs/quality/MGMT-003_EXPLORATORY_QA_2026-10-12.md`.
 - **Business requirement:** §3, 15 KPIs: "the actual numbers should come from your database".
 - **Existing behavior:** the admin dashboard counts users, enquiries, programs, universities and applications only.
 - **Expected behavior:**
