@@ -26,6 +26,9 @@ export function rupees(amount: string | null): string {
   return amount === null ? "—" : `₹${Number(amount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+/** "Company", or the partner who invested. */
+export const investorText = (i: Pick<Investment, "investor_kind" | "investor">) => (i.investor_kind === "company" ? "Company" : (i.investor?.full_name ?? "—"));
+
 /** "260.00%", or a dash while the actual return is not known (backlog edge case). */
 export const roiText = (roi: string | null) => (roi === null ? "—" : `${roi}%`);
 

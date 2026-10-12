@@ -2,7 +2,6 @@ import Link from "next/link";
 
 import { accessUnavailable } from "@/components/AccessUnavailable";
 import InvestmentForm from "@/components/InvestmentForm";
-import { investorText } from "@/components/InvestmentRegister";
 import PortalShell from "@/components/PortalShell";
 import { ApiError, serverApi } from "@/lib/api";
 import { formatCalendarDate, formatDateTimeIn, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
@@ -10,6 +9,7 @@ import {
   INVESTMENT_STATUS_LABEL,
   INVESTMENT_VERTICAL_LABEL,
   investmentsUrl,
+  investorText,
   investmentUrl,
   MANAGEMENT_INVESTMENTS,
   roiText,

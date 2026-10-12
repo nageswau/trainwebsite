@@ -92,7 +92,7 @@ async def update(db: AsyncSession, actor: User, investment_id: UUID, body: Inves
     changed = {name: (getattr(investment, name), value) for name, value in changes.items() if getattr(investment, name) != value}
     if not changed:
         await db.rollback()  # release the lock; nothing to write or audit
-        return await get(db, investment_id)
+        return investment  # the route re-reads it (`one` refreshes)
     for name, (_, value) in changed.items():
         setattr(investment, name, value)
     investment.updated_by_user_id = actor.id
@@ -138,12 +138,14 @@ async def totals(db: AsyncSession, where: list) -> dict:
     }
 
 
-async def people(db: AsyncSession, ids: set[UUID]) -> dict[UUID, dict]:
-    rows = (await db.execute(select(User.id, User.full_name).where(User.id.in_(ids)))).all() if ids else []
+async def people(db: AsyncSession, ids: set[UUID | None]) -> dict[UUID | None, dict]:
+    """Id -> {id, full_name} for the users named; a company investment's missing investor (None) is skipped."""
+    wanted = ids - {None}
+    rows = (await db.execute(select(User.id, User.full_name).where(User.id.in_(wanted)))).all() if wanted else []
     return {user_id: {"id": user_id, "full_name": name} for user_id, name in rows}
 
 
-def out(investment: Investment, names: dict[UUID, dict]) -> dict:
+def out(investment: Investment, names: dict[UUID | None, dict]) -> dict:
     return {
         "id": investment.id,
         "code": investment.code,
@@ -167,7 +169,7 @@ def out(investment: Investment, names: dict[UUID, dict]) -> dict:
 
 async def one(db: AsyncSession, investment: Investment) -> dict:
     await db.refresh(investment)  # the server-set timestamps
-    ids = {investment.created_by_user_id, investment.updated_by_user_id, investment.investor_user_id} - {None}
+    ids = {investment.created_by_user_id, investment.updated_by_user_id, investment.investor_user_id}
     return out(investment, await people(db, ids))
 
 
@@ -176,7 +178,7 @@ async def page(db: AsyncSession, *, date_from: date | None = None, date_to: date
     where = _filters(date_from, date_to, vertical, status)
     total = await db.scalar(select(func.count()).select_from(Investment).where(*where))
     rows = (await db.scalars(select(Investment).where(*where).order_by(Investment.invested_on.desc(), Investment.code.desc()).limit(limit).offset(offset))).all()
-    ids = {i for r in rows for i in (r.created_by_user_id, r.updated_by_user_id, r.investor_user_id)} - {None}
+    ids = {i for r in rows for i in (r.created_by_user_id, r.updated_by_user_id, r.investor_user_id)}
     names = await people(db, ids)
     investors = (await db.execute(select(User.id, User.full_name).where(User.role == "partner", User.active.is_(True)).order_by(User.full_name))).all()
     return {

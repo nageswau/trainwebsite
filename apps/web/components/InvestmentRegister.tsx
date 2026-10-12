@@ -5,10 +5,10 @@ import {
   INVESTMENT_STATUS_LABEL,
   INVESTMENT_VERTICAL_LABEL,
   investmentsHref,
+  investorText,
   MANAGEMENT_INVESTMENTS,
   roiText,
   rupees,
-  type Investment,
   type InvestmentFilters,
   type InvestmentPage,
 } from "@/lib/investments";
@@ -16,7 +16,6 @@ import {
 // mgmt-014 (EVID-017 §23, MI8/MI9): the investment register -- totals over every match (cancelled left out), a GET filter form (refresh,
 // back and shared links keep it, as on Management activity), the table and paging. `data` is null when the read failed or the API refused
 // the filters; the form stays so they can be fixed.
-export const investorText = (i: Pick<Investment, "investor_kind" | "investor">) => (i.investor_kind === "company" ? "Company" : (i.investor?.full_name ?? "—"));
 
 export default function InvestmentRegister({ data, error, filters }: { data: InvestmentPage | null; error: string; filters: InvestmentFilters }) {
   const select = (name: "vertical" | "status", label: string, all: string, labels: Record<string, string>) => (
