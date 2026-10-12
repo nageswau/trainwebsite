@@ -10994,7 +10994,7 @@ class LedgerEntryDetail(LedgerEntryOut):
 
 
 # mgmt-005 (DEC-SCOPE spec MA1-MA11): a read-only line computed from another module's money row; `id` is that row's id (MA9 source link).
-LEDGER_AUTO_SOURCES = ("payment", "agent_commission", "trip_expense", "recruiter_payment", "university_commission")
+LEDGER_AUTO_SOURCES = ("payment", "agent_commission", "trip_expense", "recruiter_payment", "university_commission", "salary")  # mgmt-011 SM8
 
 
 class LedgerAutoLine(BaseModel):
@@ -11215,6 +11215,103 @@ class InvestmentPageOut(BaseModel):
     offset: int
     totals: InvestmentTotals
     investors: list[InvestmentPerson]
+
+
+# mgmt-011 (spec SM1-SM14): salary management. Field rules live here so a 422 names its field; rules that need the database (unknown or
+# inactive department, future month) are raised by `services/salaries.py` in the same shape.
+SALARY_MONEY_MAX = Decimal("999999999999.99")  # Numeric(14, 2)
+
+
+def _salary_money(value):
+    """SM3: rupees, 0 or more, at most 2 decimals, within Numeric(14, 2)."""
+    try:
+        amount = Decimal(str(value).strip())
+    except (InvalidOperation, ValueError):
+        raise PydanticCustomError("salary_money", "Enter rupees as a number with up to 2 decimals") from None
+    exponent = amount.as_tuple().exponent
+    if not amount.is_finite() or (isinstance(exponent, int) and exponent < -2):
+        raise PydanticCustomError("salary_money", "Enter rupees as a number with up to 2 decimals")
+    if amount < 0:
+        raise PydanticCustomError("salary_money", "An amount can't be negative")
+    if amount > SALARY_MONEY_MAX:
+        raise PydanticCustomError("salary_money", "The amount is too large")
+    return amount.quantize(Decimal("0.01"))
+
+
+SalaryMoney = Annotated[Decimal, BeforeValidator(_salary_money)]
+
+
+class DepartmentCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: LedgerCategoryName
+
+
+class DepartmentUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: LedgerCategoryName | None = None
+    active: StrictBool | None = None
+
+
+class DepartmentOut(BaseModel):
+    id: UUID
+    name: str
+    active: bool
+
+
+class DepartmentPage(BaseModel):
+    items: list[DepartmentOut]
+
+
+class SalaryRowIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    department_id: UUID
+    headcount: int = Field(ge=0, le=100_000)
+    payable: SalaryMoney
+    paid: SalaryMoney
+    incentives: SalaryMoney
+    commissions: SalaryMoney
+    employer_cost: SalaryMoney
+
+
+class SalaryMonthIn(BaseModel):
+    """SM4: the whole month; rows left out are removed."""
+
+    model_config = ConfigDict(extra="forbid")
+    rows: list[SalaryRowIn] = Field(max_length=500)
+
+    @field_validator("rows")
+    @classmethod
+    def _each_department_once(cls, rows: list[SalaryRowIn]) -> list[SalaryRowIn]:
+        if len({r.department_id for r in rows}) != len(rows):
+            raise ValueError("Each department can appear only once in a month")
+        return rows
+
+
+class SalaryFigures(BaseModel):
+    headcount: int | None
+    payable: Decimal | None
+    paid: Decimal | None
+    incentives: Decimal | None
+    commissions: Decimal | None
+    employer_cost: Decimal | None
+    total_cost: Decimal | None  # SM6 (R6)
+
+
+class SalaryRowOut(SalaryFigures):
+    department: DepartmentOut
+    entered: bool
+    warnings: list[Literal["paid_exceeds_payable"]]
+
+
+class SalaryMonthOut(BaseModel):
+    month: str
+    current_month: str
+    rows: list[SalaryRowOut]
+    totals: SalaryFigures
+    revenue: Decimal  # SM7: the month's counted ledger income
+    ratio: Decimal | None  # R7; null when there is no revenue
+    updated_at: datetime | None
+    updated_by: InvestmentPerson | None
 
 
 # mgmt-027 (spec MD1-MD14): management discussions & decisions. Field rules live here; rules that need the database or the merged

@@ -14,7 +14,7 @@ from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
-from sqlalchemy import Date, String, Uuid, case, cast, func, literal, null, select, union_all
+from sqlalchemy import Date, String, Uuid, case, cast, func, literal, literal_column, null, select, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.payments import PAID_STATUSES
@@ -24,6 +24,7 @@ from app.models import (
     BdmProfile,
     BdmTrip,
     BdmTripExpense,
+    Department,
     LedgerCategory,
     LedgerEntry,
     LedgerEntryEvent,
@@ -32,6 +33,7 @@ from app.models import (
     Receipt,
     RecruiterInvoice,
     RecruiterPayment,
+    SalaryMonthTotal,
     University,
     UniversityCommissionReceipt,
     User,
@@ -322,7 +324,7 @@ def _auto(source: str, *, id, entry_date, kind: str, vertical, label, amount, cu
 
 
 def lines():
-    """MA1: the manual entries UNION ALL the five automatic sources, one subquery with `ledger_entries`' filter column names. A manual
+    """MA1: the manual entries UNION ALL the automatic sources (five from mgmt-005, salaries from mgmt-011), one subquery with `ledger_entries`' filter column names. A manual
     entry counts once approved (a reversal negatively, ML10); an automatic line counts when in rupees. Nothing is copied or stored."""
     manual = select(
         literal("manual", String).label("source"),
@@ -413,7 +415,20 @@ def lines():
         description=func.concat(University.name, " · ", UniversityCommissionReceipt.reference),
         created_at=UniversityCommissionReceipt.created_at,
     ).join(University, University.id == UniversityCommissionReceipt.university_id)
-    return union_all(manual, payments, commissions, trips, recruiter, universities).subquery("ledger_lines")
+    salary_cost = SalaryMonthTotal.paid + SalaryMonthTotal.incentives + SalaryMonthTotal.commissions + SalaryMonthTotal.employer_cost
+    salaries = _auto(  # mgmt-011 SM8: a saved department month, dated its last day; the manual "Salaries" category is inactive (SM9)
+        "salary",
+        id=SalaryMonthTotal.id,
+        entry_date=cast(SalaryMonthTotal.month + literal_column("INTERVAL '1 month - 1 day'"), Date),
+        kind="expense",
+        vertical=literal("shared", String),
+        label=literal("Salaries", String),
+        amount=salary_cost,
+        currency=literal(CURRENCY, String),
+        description=func.concat("Salaries · ", Department.name),
+        created_at=SalaryMonthTotal.created_at,
+    ).join(Department, Department.id == SalaryMonthTotal.department_id).where(salary_cost > 0)
+    return union_all(manual, payments, commissions, trips, recruiter, universities, salaries).subquery("ledger_lines")
 
 
 async def lines_totals(db: AsyncSession, table, where: list) -> dict:

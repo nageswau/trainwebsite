@@ -20,4 +20,4 @@ Spec: `docs/superpowers/specs/2026-10-12-mgmt-010-expense-dashboard-design.md` (
    (update `management.test.ts` expectations if they list live entries).
 4. CSS for the share bars in `globals.css`.
 5. Playwright `tests/e2e/mgmt-010-expenses.spec.ts`.
-6. Docs: DEC-SCOPE, API §12DH, RBAC §2.119, backlog status, QA report.
+6. Docs: DEC-SCOPE, API §12DI, RBAC §2.120, backlog status, QA report.

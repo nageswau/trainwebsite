@@ -537,8 +537,8 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** medium
 
 ### mgmt-010 — Expense dashboard
-- **Status (2026-10-12):** **IN REVIEW** on `feature/mgmt-010`. `DEC-SCOPE-194` (ME1–ME10 recommended defaults, UNVERIFIED; answers
-  the financial-year point of Q-04: Indian financial year, 1 April). No migration; API §12DH; RBAC §2.119.
+- **Status (2026-10-12):** **IN REVIEW** on `feature/mgmt-010`. `DEC-SCOPE-195` (ME1–ME10 recommended defaults, UNVERIFIED; answers
+  the financial-year point of Q-04: Indian financial year, 1 April). No migration; API §12DI; RBAC §2.120.
   QA evidence `docs/quality/MGMT-010_EXPLORATORY_QA_2026-10-12.md`.
 - **Business requirement:** §8 dashboard (monthly + annual per category + total).
 - **Existing behavior:** none.
@@ -564,6 +564,9 @@ Common conventions for every item:
 - **Complexity:** small · **Risk:** low
 
 ### mgmt-011 — Salary management + employee cost ratio
+- **Status (2026-10-12):** **IN REVIEW** on `feature/mgmt-011`. `DEC-SCOPE-194` (SM1–SM14 recommended defaults, UNVERIFIED; Q-13 department
+  list interim, role mapping open; Q-33 for this item). Migration `0154_salaries`; API §12DH; RBAC §2.119.
+  QA evidence `docs/quality/MGMT-011_EXPLORATORY_QA_2026-10-12.md`.
 - **Business requirement:** §9 (total employees, department-wise salary, payable, paid, incentives, commissions, employer cost; total
   monthly employee cost; ratio = employee cost ÷ revenue × 100) (M6).
 - **Existing behavior:** none.

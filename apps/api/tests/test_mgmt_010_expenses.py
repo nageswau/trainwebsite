@@ -13,6 +13,9 @@ import pytest
 from tests.bdm001_helpers import login, make_user
 from tests.test_mgmt_004_ledger import TODAY, as_user, category, create, post
 from tests.test_mgmt_005_auto_lines import ist, paid_commission, paid_payment, trip_expense
+from tests.test_mgmt_011_salaries import department
+from tests.test_mgmt_011_salaries import put as put_salaries
+from tests.test_mgmt_011_salaries import row as salary_row
 
 EXPENSES = "/api/v1/management/expenses"
 LEDGER = "/api/v1/management/ledger"
@@ -148,7 +151,6 @@ async def test_an_approved_rent_expense_counts_under_rent_for_the_month_and_year
 @pytest.mark.parametrize(
     "name,key",
     [
-        ("Salaries", "salaries"),
         ("Marketing", "marketing"),
         ("Travel", "travel"),
         ("Trainer payments", "trainers"),
@@ -237,6 +239,18 @@ async def login_back(client, db):
     partner = await make_user(db, "partner", "global")
     await as_user(client, db)
     return partner
+
+
+@pytest.mark.asyncio
+async def test_saved_salary_months_count_under_salaries(client, db_session):
+    """mgmt-011 (SM8/SM9): salaries reach the ledger as automatic lines labelled "Salaries", dated the month's last day."""
+    year, month = a_month()
+    await as_user(client, db_session)
+    before = await dashboard(client, month_param(year, month))
+    dept = await department(client)
+    assert (await put_salaries(client, month_param(year, month), [salary_row(dept["id"])])).status_code == 200
+    after = await dashboard(client, month_param(year, month))
+    assert delta(before, after, "salaries") == (Decimal("220000.00"), Decimal("220000.00"))  # paid + incentives + commissions + employer cost
 
 
 @pytest.mark.asyncio

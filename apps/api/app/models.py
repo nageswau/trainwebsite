@@ -5582,6 +5582,50 @@ class Investment(Base, TimestampMixin):
     updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
 
 
+# mgmt-011 (salary management, spec SM1-SM14): EVID-017 §9 as department totals per month (M6), never per person. Finance tier only
+# (M13). Rules live in `services/salaries.py`; migration 0153 repeats the CHECKs (test_mgmt_011_migration keeps them identical).
+SALARY_MONEY = ("payable", "paid", "incentives", "commissions", "employer_cost")
+SALARY_CHECKS = {
+    "ck_salary_month_totals_month": "EXTRACT(DAY FROM month) = 1",
+    "ck_salary_month_totals_headcount": "headcount >= 0",
+    "ck_salary_month_totals_money": " AND ".join(f"{c} >= 0" for c in SALARY_MONEY),
+}
+
+
+class Department(Base, TimestampMixin):
+    """SM1/SM2: the managed department list. A deactivated department keeps its months."""
+
+    __tablename__ = "departments"
+    __table_args__ = (Index("uq_departments_name", func.lower(text("name")), unique=True),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(80))
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+
+
+class SalaryMonthTotal(Base, TimestampMixin):
+    """SM3: one department's salary totals for one month (`month` is its 1st day), in rupees."""
+
+    __tablename__ = "salary_month_totals"
+    __table_args__ = (
+        UniqueConstraint("month", "department_id", name="uq_salary_month_totals_month_department"),
+        *(CheckConstraint(sql, name=name) for name, sql in SALARY_CHECKS.items()),
+        Index("ix_salary_month_totals_month", "month"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    month: Mapped[date] = mapped_column(Date)
+    department_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("departments.id", ondelete="RESTRICT"))
+    headcount: Mapped[int] = mapped_column(Integer)
+    payable: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    paid: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    incentives: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    commissions: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    employer_cost: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
 # mgmt-027 (management discussions & decisions, spec MD1-MD14): EVID-017 §27. Rules live in `services/management_discussions.py`; the
 # responsible person sees only the decision line (MD8/MD14).
 DISCUSSION_STATUSES = ("open", "in_progress", "completed", "cancelled")

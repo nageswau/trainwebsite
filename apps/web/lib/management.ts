@@ -30,11 +30,11 @@ export const MANAGEMENT_PILLARS: ManagementPillar[] = [
     title: "Finance",
     entries: [
       { ...fin("Ledger", "mgmt-004"), href: "/management/ledger" }, fin("Abroad Education revenue", "mgmt-006"), fin("IT Training revenue", "mgmt-007"), fin("Recruitment revenue", "mgmt-008"),
-      { ...fin("Expenses & rent", "mgmt-010"), href: "/management/expenses" }, fin("Profit & loss", "mgmt-009"), fin("Salaries", "mgmt-011"), fin("Accounts", "mgmt-013"),
+      { ...fin("Expenses & rent", "mgmt-010"), href: "/management/expenses" }, fin("Profit & loss", "mgmt-009"), { ...fin("Salaries", "mgmt-011"), href: "/management/salaries" }, fin("Accounts", "mgmt-013"),
       { ...own("Investments & ROI", "mgmt-014"), href: "/management/investments" }, own("Partner capital accounts", "mgmt-015"),
     ],
   },
-  { title: "People", entries: [op("Trainers", "mgmt-017"), op("Counselors", "mgmt-018"), op("Telecallers", "mgmt-019"), op("Recruiters", "mgmt-025"), fin("Employee cost", "mgmt-011")] },
+  { title: "People", entries: [op("Trainers", "mgmt-017"), op("Counselors", "mgmt-018"), op("Telecallers", "mgmt-019"), op("Recruiters", "mgmt-025"), { ...fin("Employee cost", "mgmt-011"), href: "/management/salaries#employee-cost" }] },
   { title: "Partnerships", entries: [op("Agents", "mgmt-021"), op("Schools", "mgmt-022"), op("Universities", "mgmt-023"), op("Companies", "mgmt-025")] },
   {
     title: "Business Intelligence",
