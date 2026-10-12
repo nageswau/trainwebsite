@@ -1893,7 +1893,7 @@ action. **Partner-only data is refused to `super_admin` and the accountant at th
   performance / monthly review → partner-only until their own items decide (`NEEDS_CONFIRMATION`).
 - Not changed here: university commission for partners (M3, `partnership_access.COMMISSION_ROLES`) lands with mgmt-006 / 023 / 034 (MG11).
 
-### 2.113 Business snapshot *(added 2026-10-12 — `DEC-SCOPE-187`, `mgmt-003`)*
+### 2.114 Business snapshot *(added 2026-10-12 — `DEC-SCOPE-188`, `mgmt-003`)*
 
 | Role | `GET /management/snapshot`, `/management/snapshot` page |
 |---|---|

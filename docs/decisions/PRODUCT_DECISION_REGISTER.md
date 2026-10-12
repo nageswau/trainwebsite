@@ -7352,14 +7352,14 @@ sign-in copy. Tests `test_mgmt_001_roles.py`, `management.test.ts`, `ManagementC
 - **New Feature ID authorized:** `mgmt-001` (mgmt-002…034 remain behind GATE-09 individually). **Status:** see
   `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-001.
 
-### DEC-SCOPE-187 — Business snapshot S1–S15 + `management_metrics` (`mgmt-003`)
+### DEC-SCOPE-188 — Business snapshot S1–S15 + `management_metrics` (`mgmt-003`)
 
 **Evidence:** `EVID-017` §3 (`DERIVED_BLUEPRINT`); `DEC-SCOPE-186` (M1, M13 `EXPLICIT_APPROVAL`); backlog Appendix B S1–S15 and Q-03.
 
 **Status:** MS1–MS19 in review on `feature/mgmt-003` (2026-10-12). Every MS answer is a **recommended default, `UNVERIFIED`** (Q-03),
 taken on the owner's instruction to proceed with the recommended answers.
 
-**Numbering:** no migration; API §12DA; RBAC §2.113. Spec `docs/superpowers/specs/2026-10-12-mgmt-003-business-snapshot-design.md`.
+**Numbering (provisional):** no migration; API §12DB; RBAC §2.114 (mgmt-002, in review, holds `DEC-SCOPE-187`, §12DA and §2.113). Spec `docs/superpowers/specs/2026-10-12-mgmt-003-business-snapshot-design.md`.
 
 | # | Point | Answer |
 |---|---|---|

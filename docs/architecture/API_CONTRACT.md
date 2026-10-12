@@ -2858,9 +2858,9 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `POST /auth/reset-password` *(changed)* | `login_portal: "admin"` for both roles |
 | `GET /management/me` *(new)* | `{id, full_name, role, tiers {operational, finance, partner_only}}`: partner all true; accountant finance only; `super_admin` operational only. `401` signed out; `403` "Management access required" for every other role |
 
-## 12DA. Business snapshot (`mgmt-003`) — addendum, 2026-10-12
+## 12DB. Business snapshot (`mgmt-003`) — addendum, 2026-10-12
 
-- **Basis:** `DEC-SCOPE-187` (MS1–MS19). Design spec `docs/superpowers/specs/2026-10-12-mgmt-003-business-snapshot-design.md`. No migration.
+- **Basis:** `DEC-SCOPE-188` (MS1–MS19). Design spec `docs/superpowers/specs/2026-10-12-mgmt-003-business-snapshot-design.md`. No migration.
 
 | Method/Path | Notes / status codes |
 |---|---|
