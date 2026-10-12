@@ -57,7 +57,7 @@ describe("mgmt-028 management to-do", () => {
     expect(within(overdue).getByText("Owner inactive — reassign")).toBeTruthy();
     const today = screen.getByRole("region", { name: "Due Today (1)" });
     expect(today.textContent).toContain("Uma BDM");
-    expect(today.textContent).toContain("High");
+    expect(within(today).getByText("High priority")).toBeTruthy(); // QA-01: the priority badge says what it is
     expect(within(today).getByRole("link", { name: "Edit Approve marketing budget" }).getAttribute("href")).toBe("/management/tasks/t1/edit");
     expect(screen.getByRole("link", { name: "Everyone" }).getAttribute("aria-current")).toBe("page");
   });

@@ -25,7 +25,7 @@ export default function ManagementTasks({ data, error, filters }: { data: TaskPa
             <div className="muted" style={{ fontSize: 14, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
               <span>{task.owner.full_name} ({roleLabel(task.owner.role)})</span>
               <span>· Due {formatDay(task.deadline)}</span>
-              <span className={priorityClass(task.priority)}>{PRIORITY_LABEL[task.priority]}</span>
+              <span className={priorityClass(task.priority)}>{PRIORITY_LABEL[task.priority]} priority</span>
               <span className={statusClass(task.status)}>{STATUS_LABEL[task.status]}</span>
             </div>
             {!task.owner_active && <p style={{ margin: 0 }}><span className="status error">Owner inactive — reassign</span></p>}
