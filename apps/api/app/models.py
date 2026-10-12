@@ -5453,3 +5453,43 @@ class DriveRequirement(Base):
     __table_args__ = (Index("ix_drive_requirements_job", "job_id"),)
     drive_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruitment_drives.id", ondelete="RESTRICT"), primary_key=True)
     job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="RESTRICT"), primary_key=True)
+
+
+# mgmt-014 (DEC-SCOPE-189, spec MI1-MI6): EVID-017 §23's investment register. Partner-only (M13); ROI is computed, never stored.
+# Migration 0150 repeats the CHECKs (test_mgmt_014_migration keeps them identical). INV-000123 codes: a rolled-back create skips a number.
+INVESTMENT_STATUSES = ("planned", "active", "completed", "cancelled")
+INVESTMENT_VERTICALS = ("abroad", "it", "recruitment", "school", "shared", "other")
+INVESTMENT_CHECKS = {
+    "ck_investments_status": _one_of("status", INVESTMENT_STATUSES, nullable=False),
+    "ck_investments_vertical": _one_of("vertical", INVESTMENT_VERTICALS, nullable=False),
+    "ck_investments_investor": "(investor_kind = 'company' AND investor_user_id IS NULL) OR (investor_kind = 'partner' AND investor_user_id IS NOT NULL)",
+    "ck_investments_amount": "amount > 0",
+    "ck_investments_returns": "(expected_return IS NULL OR expected_return >= 0) AND (actual_return IS NULL OR actual_return >= 0)",
+}
+INVESTMENT_CODE_SEQ = Sequence("investment_code_seq", metadata=Base.metadata)
+
+
+class Investment(Base, TimestampMixin):
+    """mgmt-014 (§23): money EduSphere invested and what it returned. Never deleted: a mistake is set to `cancelled`. Rules live in
+    `services/investments.py`; every write is audited as `mgmt.investment` (mgmt-002)."""
+
+    __tablename__ = "investments"
+    __table_args__ = (
+        UniqueConstraint("code", name="uq_investments_code"),
+        *(CheckConstraint(sql, name=name) for name, sql in INVESTMENT_CHECKS.items()),
+        Index("ix_investments_invested_on", "invested_on"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    code: Mapped[str] = mapped_column(String(20))
+    invested_on: Mapped[date] = mapped_column(Date)
+    investor_kind: Mapped[str] = mapped_column(String(10))
+    investor_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    purpose: Mapped[str] = mapped_column(String(200))
+    vertical: Mapped[str] = mapped_column(String(16))
+    expected_return: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    actual_return: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="active", server_default=text("'active'"))
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
