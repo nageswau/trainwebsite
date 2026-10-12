@@ -2896,6 +2896,27 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `GET /management/ledger/options` *(new)* | `{categories (active), channels[{value, label}], verticals[], programs[{id, name, batches[{id, name}]}]}` |
 | `GET /management/ledger/categories`, `POST …/categories {kind, nature?, name}`, `PATCH …/categories/{id} {name?, active?}` *(new)* | All categories; create `201` (`409` duplicate name per kind, `422` nature rules); rename / (de)activate (`404`, `409`) |
 
+## 12DD. Management discussions & decisions (`mgmt-027`) — addendum, 2026-10-12
+
+- **Basis:** `DEC-SCOPE-190` (MD1–MD14). Design spec `docs/superpowers/specs/2026-10-12-mgmt-027-discussions-decisions-design.md`.
+  Migration `0151_management_discussions`. `/management/discussions*`: partner + super_admin only (M13 operational tier); the accountant
+  → `403` "Operational management access required"; other roles `403` "Management access required"; signed out `401`.
+  `/me/management-decisions*`: any signed-in user, scoped to decisions where they are the responsible person.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/discussions` *(new)* | Query `status` (open / in_progress / completed / cancelled), `responsible` (UUID), `pending` (bool: a named person, open or in progress, by deadline, none last), `limit` 1–100 (25), `offset` 0–10 000. `200` `{items[row], total, limit, offset}`; row = `id, topic, discussion_date, department, decision, responsible {id, full_name, role} \| null, deadline, status, follow_up_date, created_at, updated_at` (never the points). `422` malformed filter |
+| `GET /management/discussions/options` *(new)* | `{users[{id, full_name, role}]}`: active staff users (MD6) |
+| `POST /management/discussions` *(new)* | `{topic, discussion_date, department?, points?, decision?, responsible_user_id?, deadline?, status? (open), follow_up_date?, participant_ids? (≤ 30)}` → `201` detail. `422` field-located: inactive / non-staff responsible or participant, responsible or deadline without a decision, deadline / follow-up before the discussion date, future discussion date, lengths. Notifies the responsible person (in-app + email) |
+| `GET /management/discussions/{id}` *(new)* | `200` detail = row + `points, participants[], attachments[{id, name, content_type, shareable, created_at}], created_by, updated_by`. `404` |
+| `PATCH /management/discussions/{id}` *(new)* | Partial; explicit `null` clears an optional field; `participant_ids` replaces the set. No change → `200`, nothing recorded. A new responsible person, or a changed decision / deadline / status, notifies the responsible person (not when they are the actor) |
+| `POST /management/discussions/{id}/attachments` *(new)* | Multipart `file` + `shareable` (bool, default false); PDF/JPEG/PNG by content (`415`), size cap (`413`), empty (`422`); `409` at 10 attachments. `201` detail |
+| `GET /management/discussions/{id}/attachments/{aid}` *(new)* | The file, `attachment; filename="discussion-attachment-<date>-<id8>.<ext>"`, `nosniff`; audited; `404` |
+| `DELETE /management/discussions/{id}/attachments/{aid}` *(new)* | `204`; the stored object is deleted after commit; `404` |
+| `GET /me/management-decisions` *(new)* | `200` `{items[{id, decision, deadline, status, attachments[{id, name, content_type}] (shareable only), updated_at}]}`: the caller's decisions, not cancelled; open/in progress first by deadline, then completed. Never the topic, points, participants, department or follow-up |
+| `PATCH /me/management-decisions/{id}` *(new)* | `{status: open \| in_progress \| completed}` → `200` the line. `404` not the caller's (or unknown); `409` cancelled; `422` other status |
+| `GET /me/management-decisions/{id}/attachments/{aid}` *(new)* | A shareable attachment of the caller's own, non-cancelled decision; audited; else `404` |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

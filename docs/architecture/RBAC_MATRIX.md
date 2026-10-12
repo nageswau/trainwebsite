@@ -1926,6 +1926,20 @@ Counts only, no personal data; nothing else changes.
 
 - Ledger audit rows (`mgmt.ledger`, `mgmt.ledger_category`) are finance-tier: hidden from `/admin/audit` and its export (MA8).
 
+### 2.116 Management discussions & decisions *(net-new, added 2026-10-12 — `DEC-SCOPE-190`, `mgmt-027`)*
+
+| Role | Discussions: list, read, create, edit, attachments | Own decision line (`/me/management-decisions`) |
+|---|---|---|
+| `partner` | yes | yes, when responsible |
+| `super_admin` | yes (M13 operational tier) | yes, when responsible |
+| `accountant` | `403` "Operational management access required" | yes, when responsible |
+| any other active staff role (MD6) | `403` | yes, when responsible: decision, deadline, status, shareable attachments only; status open / in progress / completed |
+| students, parents, agents, university reps, employers, school-side users | `403` | never named (`422` on assignment), so an empty list |
+| signed out | `401` (pages redirect to `/admin/login?next=`) | `401` |
+
+- Another user's decision id on `/me/…` is `404` (no existence leak). Discussion audit rows (`mgmt.decision`) are operational: field
+  names only (MA3), visible in `/admin/audit`.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
