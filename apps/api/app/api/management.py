@@ -122,15 +122,11 @@ async def update_investment(investment_id: UUID, body: InvestmentUpdate, user: U
 MONTH = r"^\d{4}-(0[1-9]|1[0-2])$"
 
 
-def _salary_month(month: str | None) -> date:
-    return salaries.first_day(month or salaries.month_key(ledger.today()))
-
-
 @router.get("/salaries", response_model=SalaryMonthOut)
 async def salary_month(month: str | None = Query(None, pattern=MONTH), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """SM14: the month's grid (active departments + any with a row), totals, R6, revenue and the Employee Cost Ratio (R7)."""
     ledger.require_finance(user)
-    return await salaries.month_view(db, _salary_month(month))
+    return await salaries.month_view(db, salaries.first_day(month))
 
 
 @router.put("/salaries", response_model=SalaryMonthOut)
@@ -139,7 +135,7 @@ async def save_salary_month(
 ):
     """SM4: replaces the month with the rows sent; answers with the month as GET shows it."""
     ledger.require_finance(user)
-    first = _salary_month(month)
+    first = salaries.first_day(month)
     changed = await salaries.save_month(db, user, first, body.rows)
     await db.commit()
     salaries.log("salary_month_saved", user, month=month, changed=changed)

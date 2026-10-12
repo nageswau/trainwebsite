@@ -31,11 +31,15 @@ def month_key(day: date) -> str:
     return f"{day.year:04d}-{day.month:02d}"
 
 
-def first_day(month: str) -> date:
-    """`YYYY-MM` (the route's pattern has already checked the shape) -> the month's 1st; a month after the current IST month is 422."""
+def first_day(month: str | None) -> date:
+    """`YYYY-MM` (the route's pattern has already checked the shape) -> the month's 1st, the current IST month when none is given; a
+    month after the current one is 422."""
+    current = ledger.today().replace(day=1)
+    if month is None:
+        return current
     year, number = (int(part) for part in month.split("-"))
     first = date(year, number, 1)
-    if first > ledger.today().replace(day=1):
+    if first > current:
         raise HTTPException(422, [{"loc": ["query", "month"], "msg": FUTURE, "type": "value_error"}])
     return first
 
