@@ -37,7 +37,7 @@ export default async function ManagementLedgerPage({ searchParams }: { searchPar
     </>
   );
   return (
-    <LedgerShell me={me} title="Ledger" actions={actions} intro="Manual income and expenses, in rupees. The accountant and partners record entries; a partner approves each one before it counts. Approved entries are corrected by a reversal, never edited.">
+    <LedgerShell me={me} title="Ledger" actions={actions} intro="Manual income and expenses, in rupees. The accountant and partners record entries; a partner approves each one before it counts. Approved entries are corrected by a reversal, never edited. Choose “Manual + automatic” to add the money other modules record.">
       <ManagementLedger data={data} error={error} filters={filters} categories={categories} />
     </LedgerShell>
   );

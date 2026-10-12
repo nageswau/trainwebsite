@@ -1,14 +1,18 @@
 import Link from "next/link";
 
 import {
-  formatInr, KIND_LABEL, LEDGER_HOME, ledgerHref, STATUS_LABEL, statusClass, VERTICAL_LABEL, type LedgerCategory, type LedgerFilters, type LedgerPage,
+  formatInr, formatMoney, isAutoLine, KIND_LABEL, LEDGER_HOME, ledgerHref, SOURCE_LABEL, STATUS_LABEL, statusClass, VERTICAL_LABEL, type LedgerCategory, type LedgerFilters,
+  type LedgerPage,
 } from "@/lib/managementLedger";
 
 // mgmt-004 (ML10, ML15): the ledger list. A GET form keyed on its own link (a chip or pager link back to this page must not keep the old
 // values) with autoComplete off (no browser-restored selects), so refresh, back and shared links keep the filters. `data` is null when
 // the read failed; the form stays usable. Totals are the approved entries matching every filter but status.
+// mgmt-005 (MA8-MA11): "Manual + automatic" adds other modules' money lines, read-only with a source badge (no link until mgmt-033);
+// a line in another currency is listed but not counted, and the totals say so.
 export default function ManagementLedger({ data, error, filters, categories }: { data: LedgerPage | null; error: string; filters: LedgerFilters; categories: LedgerCategory[] }) {
-  const select = (name: "kind" | "category" | "vertical" | "status", label: string, all: string, choices: { value: string; label: string }[]) => (
+  const auto = filters.include === "auto";
+  const select = (name: "kind" | "category" | "vertical" | "status" | "include", label: string, all: string, choices: { value: string; label: string }[]) => (
     <div className="field" style={{ margin: 0 }}>
       <label htmlFor={`ledger-${name}`}>{label}</label>
       <select id={`ledger-${name}`} name={name} defaultValue={filters[name]}>
@@ -32,13 +36,17 @@ export default function ManagementLedger({ data, error, filters, categories }: {
         {select("category", "Category", "All categories", categoryChoices)}
         {select("vertical", "Vertical", "All verticals", entries(VERTICAL_LABEL))}
         {select("status", "Status", "Any status", entries(STATUS_LABEL))}
+        {select("include", "Lines", "Manual entries only", [{ value: "auto", label: "Manual + automatic" }])}
         <button className="btn" type="submit">Apply</button>
         <Link className="btn secondary" href={LEDGER_HOME}>Clear filters</Link>
       </form>
       {data && (
         <>
-          <ul aria-label="Approved totals" className="kpi-grid" style={{ listStyle: "none", padding: 0 }}>
-            {([["income", "Approved income"], ["expense", "Approved expenses"], ["net", "Net (income − expenses)"]] as const).map(([key, label]) => (
+          <ul aria-label={auto ? "Totals" : "Approved totals"} className="kpi-grid" style={{ listStyle: "none", padding: 0 }}>
+            {(auto
+              ? ([["income", "Income (approved + automatic)"], ["expense", "Expenses (approved + automatic)"], ["net", "Net (income − expenses)"]] as const)
+              : ([["income", "Approved income"], ["expense", "Approved expenses"], ["net", "Net (income − expenses)"]] as const)
+            ).map(([key, label]) => (
               <li key={key} className="kpi-tile">
                 <dl style={{ margin: 0 }}>
                   <dt>{label}</dt>
@@ -47,7 +55,15 @@ export default function ManagementLedger({ data, error, filters, categories }: {
               </li>
             ))}
           </ul>
-          <p className="muted" style={{ fontSize: 13 }}>Only approved entries count in the totals; drafts, entries awaiting approval and rejected entries are listed but not counted.</p>
+          <p className="muted" style={{ fontSize: 13 }}>
+            Only approved entries count in the totals; drafts, entries awaiting approval and rejected entries are listed but not counted.
+            {auto && " Automatic lines (paid fees, paid agent commissions, approved BDM trip expenses, recruiter and university receipts) count on the day the money moved; agent deposits are pass-through and never shown."}
+          </p>
+          {!!data.totals.not_counted?.length && (
+            <p className="muted" style={{ fontSize: 13 }}>
+              Not counted (not in rupees): {data.totals.not_counted.map((n) => `${formatMoney(n.amount, n.currency)} ${n.kind} (${n.count} ${n.count === 1 ? "line" : "lines"})`).join(", ")}.
+            </p>
+          )}
           {data.items.length === 0 ? (
             <p className="empty" role="status">No ledger entries match these filters.</p>
           ) : (
@@ -59,7 +75,22 @@ export default function ManagementLedger({ data, error, filters, categories }: {
                   <tr><th scope="col">Date</th><th scope="col">Entry</th><th scope="col">Category</th><th scope="col">Vertical</th><th scope="col">Status</th><th scope="col" style={{ textAlign: "right" }}>Amount</th></tr>
                 </thead>
                 <tbody>
-                  {data.items.map((item) => (
+                  {data.items.map((item) => isAutoLine(item) ? (
+                    <tr key={`${item.source}-${item.id}`}>
+                      <td style={{ whiteSpace: "nowrap" }}>{item.entry_date}</td>
+                      <td style={{ overflowWrap: "anywhere" }}>
+                        {item.description}
+                        <div className="muted" style={{ fontSize: 13 }}>Automatic · {SOURCE_LABEL[item.source]} · {KIND_LABEL[item.kind]}</div>
+                      </td>
+                      <td>{item.category_label}</td>
+                      <td>{VERTICAL_LABEL[item.vertical] ?? item.vertical}</td>
+                      <td><span className="badge">Automatic</span></td>
+                      <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                        {formatMoney(item.amount, item.currency)}
+                        {!item.counted && <div className="muted" style={{ fontSize: 13 }}>Not counted</div>}
+                      </td>
+                    </tr>
+                  ) : (
                     <tr key={item.id}>
                       <td style={{ whiteSpace: "nowrap" }}>{item.entry_date}</td>
                       <td style={{ overflowWrap: "anywhere" }}>

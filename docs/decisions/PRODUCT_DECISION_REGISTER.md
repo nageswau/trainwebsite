@@ -7487,3 +7487,38 @@ owner's instruction to proceed with the recommended answers. Q-16 (status values
 `globals.css` (`money-tiles`). Tests `test_mgmt_014_investments.py`, `test_mgmt_014_migration.py`, `investments.test.ts`,
 `Investments.test.tsx`, `mgmt-014-investments.spec.ts`. QA `docs/quality/MGMT-014_EXPLORATORY_QA_2026-10-12.md`.
 - **New Feature ID authorized:** `mgmt-014`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-014.
+
+
+### DEC-SCOPE-191 — Automatic ledger sources (`mgmt-005`)
+
+**Evidence:** `DEC-SCOPE-186` M4 (`EXPLICIT_APPROVAL`): income = paid `Payment` rows by vertical (agent deposits excluded as pass-through)
++ rec-031 and upc-019 receipts; expenses add automatic lines from paid agent commissions and BDM trip expenses. `EVID-017` §22
+("connected to every module", `DERIVED_BLUEPRINT`). `DEC-SCOPE-189` ML5 (INR only), ML10 (figures).
+
+**Status:** MA1–MA12 in review on `feature/mgmt-005` (2026-10-12). Every MA answer is a **recommended default, `UNVERIFIED`**, taken on the
+owner's instruction to proceed with recommended answers. They answer Q-06 (automatic-line part), Q-07 and Q-08. Q-32 (student PII in
+drill-downs) stays `NEEDS_CONFIRMATION` for mgmt-033; until then automatic lines carry no person names.
+
+**Numbering (provisional):** no migration; API §12DE; no new RBAC row (the §2.115 ledger row covers the read). Spec
+`docs/superpowers/specs/2026-10-12-mgmt-005-automatic-ledger-sources-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| MA1 | Sources | Manual entries; paid `Payment` (not `agent_deposit`); paid `AgentCommission`; `BdmTripExpense` of approved trips; rec-031 `RecruiterPayment`; upc-019 `UniversityCommissionReceipt` |
+| MA2 | Recognition (Q-07) | Cash basis, IST day: receipt `issued_at` else payment `updated_at`; commission `paid_at`; trip `expense_date`; `received_on` |
+| MA3 | Paid | Payment `paid`/`succeeded`; commission `paid` and > 0; trip `approved` |
+| MA4 | Refunds, EMI (Q-07) | Unpaid / failed / provider-refunded payments excluded; nothing negative (no refund state on a paid payment); each EMI instalment counts when paid |
+| MA5 | Verticals (Q-08) | Payment division it → IT, overseas → Abroad, else Other; commission → Abroad; trip by BDM type (college IT, agent Abroad, school School, none Shared); recruiter → Recruitment; university → Abroad |
+| MA6 | Labels | Income head of the vertical; "Agent commissions"; "Travel"; "Recruitment"; "University commission" |
+| MA7 | Description (Q-32 interim) | Fee kind / instalment / receipt no.; claim reference; trip code + category; invoice number; university + reference. No person names |
+| MA8 | Currency (Q-06) | INR counts; other currencies listed as "Not counted" and summed per currency; no conversion |
+| MA9 | API | `GET /management/ledger?include=auto`; without it mgmt-004's response (+ `source: "manual"`) |
+| MA10 | Filters | month/kind/vertical on every line; category/status keep manual entries only |
+| MA11 | Totals | Approved manual (reversals negative) + INR automatic, all filters but status; `not_counted[]` |
+| MA12 | Access | Finance tier only; `super_admin` and others `403` |
+
+**Consequences:** `services/ledger.py` (`lines`, `lines_page`, `lines_totals`; `list_filters` takes the table), `api/management_ledger.py`
+(`include`), `schemas.py` (`LedgerAutoLine`, `LedgerLinesTotals`, `source`); web `lib/managementLedger.ts`, `components/ManagementLedger.tsx`,
+ledger page intro. Tests `test_mgmt_005_auto_lines.py`, `managementLedger.test.ts`, `ManagementLedger.test.tsx`, `mgmt-005-auto-lines.spec.ts`.
+QA `docs/quality/MGMT-005_EXPLORATORY_QA_2026-10-12.md`.
+- **New Feature ID authorized:** `mgmt-005`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-005.

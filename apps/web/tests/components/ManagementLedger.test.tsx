@@ -10,7 +10,7 @@ import ManagementLedger from "@/components/ManagementLedger";
 import LedgerShell from "@/components/LedgerShell";
 import { ApiError, serverApi } from "@/lib/api";
 import type { ManagementMe } from "@/lib/management";
-import type { LedgerCategory, LedgerEntry, LedgerFilters, LedgerOptions, LedgerPage as Page } from "@/lib/managementLedger";
+import type { LedgerAutoLine, LedgerCategory, LedgerEntry, LedgerFilters, LedgerOptions, LedgerPage as Page } from "@/lib/managementLedger";
 import { elements } from "@/tests/helpers/elementTree";
 
 const router = { replace: vi.fn(), refresh: vi.fn(), push: vi.fn() };
@@ -23,7 +23,7 @@ const RENT: LedgerCategory = { id: "c1", kind: "expense", nature: "fixed", name:
 const TRAVEL: LedgerCategory = { id: "c2", kind: "expense", nature: "variable", name: "Travel", active: true };
 const FEES: LedgerCategory = { id: "c3", kind: "income", nature: null, name: "IT training", active: true };
 const OLD: LedgerCategory = { id: "c4", kind: "expense", nature: "fixed", name: "Old phone line", active: false };
-const filters: LedgerFilters = { month: "", kind: "", category: "", vertical: "", status: "", offset: 0 };
+const filters: LedgerFilters = { month: "", kind: "", category: "", vertical: "", status: "", include: "", offset: 0 };
 const can = { edit: true, submit: true, decide: false, reverse: false };
 
 function entry(overrides: Partial<LedgerEntry> = {}): LedgerEntry {
@@ -100,6 +100,52 @@ describe("mgmt-004 ledger list", () => {
     render(<ManagementLedger data={page({ total: 60, offset: 25 })} error="" filters={{ ...filters, status: "approved", offset: 25 }} categories={[]} />);
     expect(screen.getByRole("link", { name: "Previous page" }).getAttribute("href")).toBe("/management/ledger?status=approved");
     expect(screen.getByRole("link", { name: "Next page" }).getAttribute("href")).toBe("/management/ledger?status=approved&offset=50");
+  });
+});
+
+describe("mgmt-005 automatic lines in the list", () => {
+  const fee: LedgerAutoLine = {
+    source: "payment", id: "p1", entry_date: "2026-10-05", kind: "income", vertical: "it", category_label: "IT training", amount: "32500.00", currency: "INR",
+    description: "Enrolment fee · receipt RCP-1", counted: true,
+  };
+  const gbp: LedgerAutoLine = {
+    source: "university_commission", id: "u1", entry_date: "2026-10-04", kind: "income", vertical: "abroad", category_label: "University commission",
+    amount: "300.00", currency: "GBP", description: "Oxbridge · UC-9", counted: false,
+  };
+  const mixed = page({
+    items: [entry(), fee, gbp], total: 3,
+    totals: { income: "32500.00", expense: "0.00", net: "32500.00", not_counted: [{ currency: "GBP", kind: "income", amount: "300.00", count: 1 }] },
+  });
+
+  it("offers manual-only or manual + automatic lines, keeping the choice", () => {
+    render(<ManagementLedger data={mixed} error="" filters={{ ...filters, include: "auto" }} categories={[]} />);
+    const lines = screen.getByRole("combobox", { name: "Lines" }) as HTMLSelectElement;
+    expect([...lines.options].map((o) => [o.value, o.textContent])).toEqual([["", "Manual entries only"], ["auto", "Manual + automatic"]]);
+    expect(lines.value).toBe("auto");
+  });
+
+  it("shows an automatic line read-only with its source badge, label and money", () => {
+    render(<ManagementLedger data={mixed} error="" filters={{ ...filters, include: "auto" }} categories={[]} />);
+    const rows = within(screen.getByRole("table")).getAllByRole("row").slice(1);
+    expect(within(rows[1]).queryByRole("link")).toBeNull();
+    expect(rows[1].textContent).toContain("Enrolment fee · receipt RCP-1");
+    expect(rows[1].textContent).toContain("Automatic · Student payment · Income");
+    expect(rows[1].textContent).toContain("IT training");
+    expect(rows[1].textContent).toContain("IT Training");
+    expect(within(rows[1]).getByText("Automatic").className).toBe("badge");
+    expect(rows[1].textContent).toContain("₹32,500.00");
+    expect(rows[2].textContent).toContain("£300.00");
+    expect(rows[2].textContent).toContain("Not counted");
+    expect(within(rows[0]).getByRole("link", { name: "Office rent for October" })).toBeTruthy();
+  });
+
+  it("names the totals and lists what was not counted", () => {
+    render(<ManagementLedger data={mixed} error="" filters={{ ...filters, include: "auto" }} categories={[]} />);
+    const totals = screen.getByRole("list", { name: "Totals" });
+    expect(within(totals).getAllByRole("listitem").map((tile) => tile.textContent)).toEqual([
+      "Income (approved + automatic)₹32,500.00", "Expenses (approved + automatic)₹0.00", "Net (income − expenses)₹32,500.00",
+    ]);
+    expect(screen.getByText(/Not counted \(not in rupees\)/).textContent).toBe("Not counted (not in rupees): £300.00 income (1 line).");
   });
 });
 
