@@ -10879,13 +10879,6 @@ class LedgerEntryCreate(LedgerEntryUpdate):
     description: LedgerDescription
     vertical: LedgerVertical
 
-    @field_validator("channel")
-    @classmethod
-    def _channel_on_expenses(cls, value, info: ValidationInfo):
-        if value is not None and info.data.get("kind") == "income":
-            raise ValueError("A marketing channel is only for expenses")
-        return value
-
 
 class LedgerReasonIn(BaseModel):
     reason: LedgerReason
