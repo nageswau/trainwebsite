@@ -2940,10 +2940,27 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `GET /management/ledger` *(changed, additive)* | New query `include=auto` (any other value `422`). Without it the response is §12DC's, each item now also carrying `source: "manual"`. With it, `items` mixes manual entries and automatic lines `{source "payment"\|"agent_commission"\|"trip_expense"\|"recruiter_payment"\|"university_commission", id (the source row), entry_date (IST day the money moved), kind, vertical, category_label, amount, currency, description (no person names), counted}`, newest first, paged as before. `month`, `kind`, `vertical` filter every line; `category` and `status` keep manual entries only. `totals {income, expense, net, not_counted[{currency, kind, amount, count}]}`: approved manual entries + INR automatic lines; other currencies are only in `not_counted`. Agent deposits never appear |
 
-## 12DG. Salary management + employee cost ratio (`mgmt-011`) — addendum, 2026-10-12
+## 12DG. Management to-do + staff "Management tasks" (`mgmt-028`) — addendum, 2026-10-12
 
-- **Basis:** `DEC-SCOPE-193` (SM1–SM14). Design spec `docs/superpowers/specs/2026-10-12-mgmt-011-salary-management-design.md`.
-- **Migration:** `0153_salaries` (after mgmt-027's `0152_management_discussions`).
+- **Basis:** `DEC-SCOPE-193` (MT1–MT14). Design spec `docs/superpowers/specs/2026-10-12-mgmt-028-management-tasks-design.md`.
+  Migration `0153_management_tasks`. `/management/tasks*`: partner + super_admin only (M13 operational tier); the accountant → `403`
+  "Operational management access required"; other roles `403` "Management access required"; signed out `401`.
+  `/me/management-tasks*`: any signed-in user, scoped to tasks they own.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/tasks` *(new)* | Query `owner` (`me` or a user id; else `422`), `band` (overdue / today / week / later / completed / cancelled; else `422`), `limit` 1–200 (100), `offset` 0–10 000. Without `band`: every band but cancelled (completed = the last 7 IST days). `200` `{items[task], total, limit, offset, today, counts{overdue, today, week, later, completed}}`; task = `id, title, owner {id, full_name, role}, owner_active, priority, deadline, status, band, source, completed_at, created_by, created_at, updated_at`. Bands are IST days; This Week = after today up to Sunday (Monday–Sunday week) |
+| `GET /management/tasks/options` *(new)* | `{users[{id, full_name, role}]}`: active staff users (MT6) |
+| `POST /management/tasks` *(new)* | `{title (2–200), owner_user_id, priority? (medium), deadline, status? (open)}` → `201` task. `422` field-located: inactive / non-staff owner, deadline before today (IST) or more than two years ahead, lengths, unknown field (`source` is never the client's). Notifies the owner (in-app + email) unless they are the actor |
+| `GET /management/tasks/{id}` *(new)* | `200` task; `404` |
+| `PATCH /management/tasks/{id}` *(new)* | Partial; no field can be `null` (`422`). No change → `200`, nothing recorded. A changed owner is checked (active staff); an unchanged past deadline or departed owner is not. A new owner, or a changed title / deadline / priority / status, notifies the owner (not when they are the actor). Completing stamps `completed_at`; reopening clears it |
+| `GET /me/management-tasks` *(new)* | `200` `{items[{id, title, priority, deadline, status, band, updated_at}], today, counts}`: the caller's tasks, not cancelled, completed only for the last 7 days (at most 200) |
+| `PATCH /me/management-tasks/{id}` *(new)* | `{status: open \| in_progress \| completed}` → `200` the task. `404` not the caller's (or unknown); `409` cancelled; `422` other status |
+
+## 12DH. Salary management + employee cost ratio (`mgmt-011`) — addendum, 2026-10-12
+
+- **Basis:** `DEC-SCOPE-194` (SM1–SM14). Design spec `docs/superpowers/specs/2026-10-12-mgmt-011-salary-management-design.md`.
+- **Migration:** `0154_salaries` (after mgmt-028's `0153_management_tasks`).
 - **Access:** finance tier only (M13), through the ledger's `require_finance`:
   - super_admin gets `403` "Finance access required";
   - every other role gets `403` "Management access required";

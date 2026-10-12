@@ -5677,3 +5677,34 @@ class ManagementDiscussionAttachment(Base):
     shareable: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# mgmt-028 (spec MT1-MT5): the management to-do. `source` / `source_id` let mgmt-029 (meetings) and mgmt-026 (plans) link a task later;
+# every task mgmt-028 creates is `manual`.
+TASK_STATUSES = ("open", "in_progress", "completed", "cancelled")
+TASK_PRIORITIES = ("high", "medium", "low")
+TASK_SOURCES = ("manual", "decision", "meeting", "plan")
+
+
+class ManagementTask(Base, TimestampMixin):
+    """MT1: one task for one staff owner. `completed_at` drives the 7-day Completed band (MT3)."""
+
+    __tablename__ = "management_tasks"
+    __table_args__ = (
+        CheckConstraint(_in_list("status", TASK_STATUSES), name="ck_management_tasks_status"),
+        CheckConstraint(_in_list("priority", TASK_PRIORITIES), name="ck_management_tasks_priority"),
+        CheckConstraint(_in_list("source", TASK_SOURCES), name="ck_management_tasks_source"),
+        Index("ix_management_tasks_owner_deadline_status", "owner_user_id", "deadline", "status"),
+        Index("ix_management_tasks_status_deadline", "status", "deadline"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    title: Mapped[str] = mapped_column(String(200))
+    owner_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    priority: Mapped[str] = mapped_column(String(8), default="medium", server_default=text("'medium'"))
+    deadline: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(12), default="open", server_default=text("'open'"))
+    source: Mapped[str] = mapped_column(String(10), default="manual", server_default=text("'manual'"))
+    source_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))

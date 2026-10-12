@@ -6,6 +6,11 @@ export type NavItem = { label:string; href:string; children?:NavItem[]; badge?:n
 
 export const AGENT_NOTIFICATIONS_HREF = "/overseas/agent/notifications";
 
+// mgmt-028 (MT14): every staff portal links to the one shared "Management tasks" page (like /account/password), which lists only the
+// signed-in member's own tasks and decisions. Students, parents, agents, university reps, employers and school-side users get no link.
+export const MANAGEMENT_TASKS_NAV: NavItem = { label: "Management tasks", href: "/account/management-tasks" };
+const withTasks = (nav: NavItem[]): NavItem[] => [...nav, MANAGEMENT_TASKS_NAV];
+
 // AGN-017 (DEC-SCOPE-059 N8): the unread count on one nav item; no count (null, 0) leaves the nav as it was.
 export function withBadge(nav: NavItem[], href: string, count: number | null): NavItem[] {
   return count ? nav.map((item) => (item.href === href ? { ...item, badge: count } : item)) : nav;
@@ -72,6 +77,7 @@ export const BDM_NAV: NavItem[] = [
   { label: "Activities", href: "/bdm/activities" }, { label: "Daily report", href: "/bdm/daily-report" }, // bdm-015
   { label: "Travel", href: "/bdm/travel" },
   { label: "Notifications", href: BDM_NOTIFICATIONS_HREF }, { label: "Profile", href: "/bdm/profile" },
+  MANAGEMENT_TASKS_NAV, // mgmt-028 (MT14)
 ];
 export const BDM_MANAGER_NAV: NavItem[] = [
   { label: "Dashboard", href: "/bdm/manager/dashboard" },
@@ -86,6 +92,7 @@ export const BDM_MANAGER_NAV: NavItem[] = [
   { label: "Targets", href: "/bdm/manager/targets" }, // bdm-016
   { label: "Approvals", href: "/bdm/manager/approvals" },
   { label: "Notifications", href: BDM_MANAGER_NOTIFICATIONS_HREF },
+  MANAGEMENT_TASKS_NAV, // mgmt-028 (MT14)
 ];
 export const BDM_SIGN_IN = "/bdm/sign-in";
 
@@ -99,6 +106,7 @@ export const TELECALLER_NAV: NavItem[] = [
   { label: "BDM requests", href: "/telecaller/meeting-requests" }, // tel-019
   { label: "Notifications", href: TELECALLER_NOTIFICATIONS_HREF },
   { label: "Profile", href: "/telecaller/profile" },
+  MANAGEMENT_TASKS_NAV, // mgmt-028 (MT14)
 ];
 // tel-002: Products and Campaigns (the catalogue the manager maintains); tel-022: Targets; tel-007: Lead assignment and Distribution rules.
 export const TELECALLER_MANAGER_NAV: NavItem[] = [
@@ -115,6 +123,7 @@ export const TELECALLER_MANAGER_NAV: NavItem[] = [
   // tel-012: the content library telecallers work from.
   { label: "Scripts", href: "/telecaller/manager/scripts" }, { label: "Templates", href: "/telecaller/manager/templates" },
   { label: "Brochures", href: "/telecaller/manager/brochures" },
+  MANAGEMENT_TASKS_NAV, // mgmt-028 (MT14)
 ];
 export const TELECALLER_SIGN_IN = "/telecaller/sign-in";
 
@@ -136,6 +145,7 @@ export const RECRUITER_NAV: NavItem[] = [
   { label: "Campus Drives", href: "/recruiter/drives" }, // rec-029
   { label: "My Performance", href: "/recruiter/performance" }, // rec-034: §25, their own row
   ...LEGACY_PLACEMENT.map((x) => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, (c) => c.toUpperCase()), href: `/it/placement/${x}` })),
+  MANAGEMENT_TASKS_NAV, // mgmt-028 (MT14)
 ];
 export const RECRUITER_MANAGER_NAV: NavItem[] = [
   { label: "Dashboard", href: "/recruiter/dashboard" }, // rec-032: the team's figures; a manager still lands on Team
@@ -155,6 +165,7 @@ export const RECRUITER_MANAGER_NAV: NavItem[] = [
   { label: "Receivables", href: "/recruiter/receivables" }, // rec-031: the team's invoices (RV10: the manager records too)
   { label: "Campus Drives", href: "/recruiter/drives" }, // rec-029: the team's drives, read only
   { label: "Message templates", href: "/recruiter/manager/templates" }, // rec-026
+  MANAGEMENT_TASKS_NAV, // mgmt-028 (MT14)
 ];
 
 // upc-001 (PU8): the EVID-020 §32 main menu, in source order, each entry naming the item that builds its page. An entry joins the
@@ -174,6 +185,7 @@ export const PARTNERSHIP_MENU: PartnershipMenuEntry[] = [
 export const PARTNERSHIP_NAV: NavItem[] = [
   ...PARTNERSHIP_MENU.filter((e) => e.live).map(({ label, href }) => ({ label, href })),
   { label: "Profile", href: "/partnership/profile" },
+  MANAGEMENT_TASKS_NAV, // mgmt-028 (MT14)
 ];
 export const PARTNERSHIP_HEAD_NAV: NavItem[] = [
   { label: "Dashboard", href: "/partnership/dashboard" }, // upc-022: the team's figures; a head still lands on Team (U3)
@@ -194,6 +206,7 @@ export const PARTNERSHIP_HEAD_NAV: NavItem[] = [
   { label: "Message templates", href: "/partnership/head/templates" }, // upc-012 (UC4)
   { label: "Targets & Forecast", href: "/partnership/targets" }, // upc-021
   { label: "Reports", href: "/partnership/reports" }, // upc-031
+  MANAGEMENT_TASKS_NAV, // mgmt-028 (MT14)
 ];
 
 // SCH-001/SCH-003 -- School roles use their own dedicated pages (bespoke forms/actions,
@@ -208,10 +221,10 @@ export const SCHOOL_NAV: Record<string, NavItem[]> = {
   teacher: ["dashboard", "attendance"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/teacher/${x}` })),
   parent: ["dashboard", "notifications"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/parent/${x}` })),
   // SCH-004/005/006 -- single-item nav, same shape as principal/teacher/parent above.
-  "academic-team": ["dashboard"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/academic-team/${x}` })),
+  "academic-team": withTasks(["dashboard"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/academic-team/${x}` }))),
   // ENH-011: Skills (Soft Skills / Digital Skills batches). ENH-020: Funding (loan / scholarship / funding support cases).
-  "career-counselor": ["dashboard", "skills", "funding"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/career-counselor/${x}` })),
-  "psychometric-team": ["dashboard"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/psychometric-team/${x}` })),
+  "career-counselor": withTasks(["dashboard", "skills", "funding"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/career-counselor/${x}` }))),
+  "psychometric-team": withTasks(["dashboard"].map(x => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase()), href: `/school/psychometric-team/${x}` }))),
 };
 export const IT_PUBLIC:NavItem[] = [
   {label:"Home",href:"/it"},{label:"About",href:"/it/about"},
@@ -241,18 +254,18 @@ const AGENT_DOCUMENT_VIEWS: NavItem[] = VIEWS.map((v) => ({ label: VIEW_NAV_LABE
 
 export const PORTAL_NAV:Record<string,NavItem[]> = {
   "it/student": ["dashboard","profile","course","attendance","assignments","projects","examinations","certificates","feedback","questions","fees","interview-schedule","placement-status","job-applications","downloads","support"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/student/${x}`})),
-  "it/trainer": ["dashboard","attendance","assignments","assessments","materials","live-sessions","student-progress","questions","support"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/trainer/${x}`})),
-  "it/placement": [...["dashboard","candidates","company-requirements","interviews","offers","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/placement/${x}`})),{label:"Recruiter Workspace",href:"/recruiter/dashboard"}], // rec-001: the way back
-  "it/hr": [...["dashboard","job-requirements","shortlists","candidates","interviews"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/hr/${x}`})),{label:"Candidate Master",href:"/recruiter/candidates"},{label:"Find Candidates",href:"/recruiter/find-candidates"},{label:"Talent Pools",href:"/recruiter/pools"}], // rec-009 / rec-013 / rec-015: read only
+  "it/trainer": withTasks(["dashboard","attendance","assignments","assessments","materials","live-sessions","student-progress","questions","support"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/trainer/${x}`}))),
+  "it/placement": withTasks([...["dashboard","candidates","company-requirements","interviews","offers","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/placement/${x}`})),{label:"Recruiter Workspace",href:"/recruiter/dashboard"}]), // rec-001: the way back
+  "it/hr": withTasks([...["dashboard","job-requirements","shortlists","candidates","interviews"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/hr/${x}`})),{label:"Candidate Master",href:"/recruiter/candidates"},{label:"Find Candidates",href:"/recruiter/find-candidates"},{label:"Talent Pools",href:"/recruiter/pools"}]), // rec-009 / rec-013 / rec-015: read only
   // bdm-001: "BDMs" is written out -- the generated label would read "Bdms".
   // tel-017 (DEC-SCOPE-076 C1): an IT counselor works leads only; tel-016 added Appointments (lead bookings), tel-018 the student link.
-  "it/counselor": ["dashboard","leads","appointments"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/counselor/${x}`})),
-  "it/admin": [...["dashboard","users","students","trainers","counselors","employers","programs","batches","enrollments","certificates","resources","consent","payments","roles","leads","support","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/admin/${x}`})),{label:"BDMs",href:"/it/admin/bdms"},{label:"Telecallers",href:"/it/admin/telecallers"},{label:"Telecaller Performance",href:"/it/admin/telecaller-performance"},{label:"Telecaller Reports",href:"/it/admin/telecaller-reports"},{label:"Recruiter Staff",href:"/it/admin/recruiter-staff"},{label:"Recruiter Performance",href:"/recruiter/manager/performance"},{label:"Recruiter Management Dashboard",href:"/recruiter/manager/business"}],
+  "it/counselor": withTasks(["dashboard","leads","appointments"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/counselor/${x}`}))),
+  "it/admin": withTasks([...["dashboard","users","students","trainers","counselors","employers","programs","batches","enrollments","certificates","resources","consent","payments","roles","leads","support","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/admin/${x}`})),{label:"BDMs",href:"/it/admin/bdms"},{label:"Telecallers",href:"/it/admin/telecallers"},{label:"Telecaller Performance",href:"/it/admin/telecaller-performance"},{label:"Telecaller Reports",href:"/it/admin/telecaller-reports"},{label:"Recruiter Staff",href:"/it/admin/recruiter-staff"},{label:"Recruiter Performance",href:"/recruiter/manager/performance"},{label:"Recruiter Management Dashboard",href:"/recruiter/manager/business"}]),
   "overseas/student": ["dashboard","profile","applications","documents","offer-letters","visa-status","scholarships","university-communication","payments","appointments","counselor-chat","downloads"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/student/${x}`})),
   // upc-030 (DEC-SCOPE-161): Universities (the 360 view) for the overseas counselor; University Profile for the university rep.
-  "overseas/counselor": ["dashboard","students","leads","documents","applications","universities","school-applications","visa","appointments","counselor-chat","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/counselor/${x}`})),
+  "overseas/counselor": withTasks(["dashboard","students","leads","documents","applications","universities","school-applications","visa","appointments","counselor-chat","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/counselor/${x}`}))),
   "overseas/university": [...["dashboard","applications","offer-letters","admission-updates","student-communication","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/university/${x}`})),{label:"University Profile",href:"/overseas/university/profile"}],
-  "overseas/admin": [...["dashboard","users","students","counselors","agents","commissions","universities","schools","school-staff","school-applications","school-transfers","activity-feedback","school-analytics","applications","leads","payments","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/admin/${x}`})),{label:"BDMs",href:"/overseas/admin/bdms"},{label:"Telecallers",href:"/overseas/admin/telecallers"},{label:"Telecaller Performance",href:"/overseas/admin/telecaller-performance"},{label:"Telecaller Reports",href:"/overseas/admin/telecaller-reports"},{label:"Partnership managers",href:"/overseas/admin/partnership-managers"},{label:"Global University Database",href:"/partnership/search"},{label:"Partnership Map",href:"/partnership/map"},{label:"Agent deposits",href:"/overseas/admin/agent-deposits"},{label:"Agent network",href:"/overseas/admin/agent-network"}], // AGN-011: its own page (DEC-SCOPE-058); AGN-022: its own page (DEC-SCOPE-064)
+  "overseas/admin": withTasks([...["dashboard","users","students","counselors","agents","commissions","universities","schools","school-staff","school-applications","school-transfers","activity-feedback","school-analytics","applications","leads","payments","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/admin/${x}`})),{label:"BDMs",href:"/overseas/admin/bdms"},{label:"Telecallers",href:"/overseas/admin/telecallers"},{label:"Telecaller Performance",href:"/overseas/admin/telecaller-performance"},{label:"Telecaller Reports",href:"/overseas/admin/telecaller-reports"},{label:"Partnership managers",href:"/overseas/admin/partnership-managers"},{label:"Global University Database",href:"/partnership/search"},{label:"Partnership Map",href:"/partnership/map"},{label:"Agent deposits",href:"/overseas/admin/agent-deposits"},{label:"Agent network",href:"/overseas/admin/agent-network"}]), // AGN-011: its own page (DEC-SCOPE-058); AGN-022: its own page (DEC-SCOPE-064)
   // AGN-007 (DEC-SCOPE-049): Universities is the agency's own university list. AGN-008 (DEC-SCOPE-050 A7): Applications carries
   // the EVID-015 §4 sidebar filters as sub-links (same page, ?status=). AGN-016 (DEC-SCOPE-053 T5): Tasks, for Masters and staff,
   // after Documents (the EVID-015 §4 sidebar order). AGN-017 (DEC-SCOPE-059 N8): Notifications, for Masters and staff, after Tasks.
@@ -281,4 +294,4 @@ export function agentNavFor(nav: NavItem[], memberRole?: string | null, permissi
     .map((item) => (item.href === STAFF_STUDENTS.href ? STAFF_STUDENTS : item));
 }
 // ENH-016: the cross-school School Analytics page lives under /overseas/admin (D1: Overseas and Super Admins).
-export const SUPER_ADMIN_NAV:NavItem[] = [...["dashboard","users","students","staff","programs","batches","universities","recruiters","content","blogs","gallery","events","leads","applications","payments","reports","notifications","roles","settings","security-logs","backups"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:x==="dashboard"?"/admin":`/admin/${x}`})),{label:"BDMs",href:"/admin/bdms"},{label:"BDM Travel Approvals",href:"/admin/bdm-travel-approvals"},{label:"BDM Dashboard",href:"/bdm/manager/dashboard"},{label:"BDM Performance",href:"/bdm/manager/performance"},{label:"BDM Master View",href:"/bdm/manager/hierarchy"},{label:"Telecallers",href:"/admin/telecallers"},{label:"Telecaller Performance",href:"/admin/telecaller-performance"},{label:"Telecaller Reports",href:"/admin/telecaller-reports"},{label:"Recruiter Staff",href:"/admin/recruiter-staff"},{label:"Recruiter Companies",href:"/recruiter/companies"},{label:"Recruiter Pipeline",href:"/recruiter/pipeline"},{label:"Recruiter Performance",href:"/recruiter/manager/performance"},{label:"Recruiter Management Dashboard",href:"/recruiter/manager/business"},{label:"Recruiter Comparison",href:"/recruiter/performance"},{label:"Partnership managers",href:"/admin/partnership-managers"},{label:"Partnership Visit Approvals",href:"/partnership/visits/approvals"},{label:"Partnership Follow-ups & Tasks",href:"/partnership/tasks"},{label:"Partnership Meetings",href:"/partnership/meetings"},{label:"Partnership Calendar",href:"/partnership/calendar"},{label:"Partnership Targets",href:"/partnership/targets"},{label:"Partnership Reports",href:"/partnership/reports"},{label:"Partnership Student Opportunities",href:"/partnership/opportunities"},{label:"Partnership University Performance",href:"/partnership/performance"},{label:"Partnership University Search",href:"/partnership/search"},{label:"Partnership Map",href:"/partnership/map"},{label:"Partnership Global Dashboard",href:"/partnership/head/global-dashboard"},{label:"Candidate Master",href:"/recruiter/candidates"},{label:"Find Candidates",href:"/recruiter/find-candidates"},{label:"Talent Pools",href:"/recruiter/pools"},{label:"Recruiter Requirements",href:"/recruiter/requirements"},{label:"Campus Drives",href:"/recruiter/drives"},{label:"School Analytics",href:"/overseas/admin/school-analytics"},{label:"Management Command Center",href:"/management"},{label:"Management activity",href:"/management/activity"}];
+export const SUPER_ADMIN_NAV:NavItem[] = [...["dashboard","users","students","staff","programs","batches","universities","recruiters","content","blogs","gallery","events","leads","applications","payments","reports","notifications","roles","settings","security-logs","backups"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:x==="dashboard"?"/admin":`/admin/${x}`})),{label:"BDMs",href:"/admin/bdms"},{label:"BDM Travel Approvals",href:"/admin/bdm-travel-approvals"},{label:"BDM Dashboard",href:"/bdm/manager/dashboard"},{label:"BDM Performance",href:"/bdm/manager/performance"},{label:"BDM Master View",href:"/bdm/manager/hierarchy"},{label:"Telecallers",href:"/admin/telecallers"},{label:"Telecaller Performance",href:"/admin/telecaller-performance"},{label:"Telecaller Reports",href:"/admin/telecaller-reports"},{label:"Recruiter Staff",href:"/admin/recruiter-staff"},{label:"Recruiter Companies",href:"/recruiter/companies"},{label:"Recruiter Pipeline",href:"/recruiter/pipeline"},{label:"Recruiter Performance",href:"/recruiter/manager/performance"},{label:"Recruiter Management Dashboard",href:"/recruiter/manager/business"},{label:"Recruiter Comparison",href:"/recruiter/performance"},{label:"Partnership managers",href:"/admin/partnership-managers"},{label:"Partnership Visit Approvals",href:"/partnership/visits/approvals"},{label:"Partnership Follow-ups & Tasks",href:"/partnership/tasks"},{label:"Partnership Meetings",href:"/partnership/meetings"},{label:"Partnership Calendar",href:"/partnership/calendar"},{label:"Partnership Targets",href:"/partnership/targets"},{label:"Partnership Reports",href:"/partnership/reports"},{label:"Partnership Student Opportunities",href:"/partnership/opportunities"},{label:"Partnership University Performance",href:"/partnership/performance"},{label:"Partnership University Search",href:"/partnership/search"},{label:"Partnership Map",href:"/partnership/map"},{label:"Partnership Global Dashboard",href:"/partnership/head/global-dashboard"},{label:"Candidate Master",href:"/recruiter/candidates"},{label:"Find Candidates",href:"/recruiter/find-candidates"},{label:"Talent Pools",href:"/recruiter/pools"},{label:"Recruiter Requirements",href:"/recruiter/requirements"},{label:"Campus Drives",href:"/recruiter/drives"},{label:"School Analytics",href:"/overseas/admin/school-analytics"},{label:"Management Command Center",href:"/management"},{label:"Management activity",href:"/management/activity"},MANAGEMENT_TASKS_NAV];

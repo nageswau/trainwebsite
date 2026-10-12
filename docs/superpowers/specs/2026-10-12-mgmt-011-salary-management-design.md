@@ -7,7 +7,7 @@
   revenue, and the Employee Cost Ratio = employee cost ÷ revenue × 100. The source calls it "a very important business KPI". Management
   M6 and M13 (`EXPLICIT_APPROVAL`, `DEC-SCOPE-186`) set department totals per month with no per-person salaries, and give the finance
   tier only, with super_admin excluded. Backlog Appendix B defines R6 and R7.
-- **Decision:** `DEC-SCOPE-193` (provisional number). SM1–SM14 below are **recommended defaults, `UNVERIFIED`**. I took them on the
+- **Decision:** `DEC-SCOPE-194` (provisional number). SM1–SM14 below are **recommended defaults, `UNVERIFIED`**. I took them on the
   owner's instruction to proceed with recommended answers. They answer Q-13 (the department list) as an interim default. The second half
   of Q-13 (the role → department mapping for productivity) stays open, so headcount is entered, not counted.
 
@@ -40,7 +40,7 @@ role are refused at the route, so no salary figure reaches them.
 
 ## 3. Data
 
-Migration `0153_salaries` (provisional), guarded like 0150 and 0151:
+Migration `0154_salaries` (provisional), guarded like 0150 and 0151:
 
 - `departments` (id, name, active, created/updated by, timestamps) with the unique index `lower(name)`. Seeded when the table is empty.
 - `salary_month_totals` (id, `month` date = the 1st, department_id FK RESTRICT, headcount, payable, paid, incentives, commissions,

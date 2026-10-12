@@ -2001,7 +2001,7 @@ the register's date filter and order.
 - ROI is computed on read ((actual − amount) ÷ amount × 100), never stored. Partner-only (M13). No delete: a mistake is cancelled.
 - Additive: no existing row is read or written. `downgrade()` refuses while any investment exists.
 
-## Salary management (`mgmt-011`, `DEC-SCOPE-193`; migration `0153_salaries`, after `0152_management_discussions`)
+## Salary management (`mgmt-011`, `DEC-SCOPE-194`; migration `0154_salaries`, after mgmt-028's `0153_management_tasks`)
 
 **`departments` columns:**
 - `id`

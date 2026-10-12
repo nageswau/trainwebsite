@@ -7,7 +7,7 @@ session.
 
 | # | Task | Test first | Files |
 |---|---|---|---|
-| 1 | `Department` and `SalaryMonthTotal` models + CHECKs. Migration `0153_salaries`: guarded, seeds departments, deactivates the "Salaries" category, downgrade refuses with data | `test_mgmt_011_migration.py` | `models.py`, `alembic/versions/0153_salaries.py` |
+| 1 | `Department` and `SalaryMonthTotal` models + CHECKs. Migration `0154_salaries`: guarded, seeds departments, deactivates the "Salaries" category, downgrade refuses with data | `test_mgmt_011_migration.py` | `models.py`, `alembic/versions/0154_salaries.py` |
 | 2 | Schemas: the month-row validation (SM3), duplicate departments (SM4), output | `test_put_rejects_*` | `schemas.py` |
 | 3 | `GET/POST/PATCH /management/departments` (SM1, SM2, SM11) | `test_department_*` | `services/salaries.py`, `api/management.py`, `management_audit.py` |
 | 4 | `PUT /management/salaries`: replace the month, advisory lock, future/inactive/unknown 422, audit (SM4, SM11, SM12) | `test_put_*` | same |

@@ -1,5 +1,6 @@
-"""mgmt-011 -- migration 0153_salaries (spec §3). The chain, the model/migration match and the shared database's state; the round trip
-runs in a throwaway database built from scratch (the upc-001 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
+"""mgmt-011 -- migration 0154_salaries (spec §3; re-chained after mgmt-028). The chain, the model/migration match and the shared
+database's state; the round trip runs in a throwaway database built from scratch (the upc-001 pattern). Plain tests: alembic/env.py calls
+asyncio.run()."""
 
 import importlib.util
 import uuid
@@ -14,14 +15,14 @@ from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_mgmt_011_migration_0153", VERSIONS / "0153_salaries.py")
+_spec = importlib.util.spec_from_file_location("_mgmt_011_migration_0154", VERSIONS / "0154_salaries.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0152_management_discussions", "0153_salaries"
+BASE, HEAD = "0153_management_tasks", "0154_salaries"
 
 
-def test_migration_chains_after_0152_and_is_the_single_head():
+def test_migration_chains_after_0153_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     assert len(HEAD) <= 32  # alembic_version.version_num is VARCHAR(32)
     script = ScriptDirectory.from_config(_config())
@@ -57,7 +58,7 @@ SALARIES = "SELECT active FROM ledger_categories WHERE kind = 'expense' AND name
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0152."""
+    """A fresh database at 0153."""
     cfg = _config()
     original = settings.database_url
     name = f"mgmt011_migration_{uuid.uuid4().hex[:8]}"

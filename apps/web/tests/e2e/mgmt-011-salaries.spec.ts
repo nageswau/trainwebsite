@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// mgmt-011 (EVID-017 §9, DEC-SCOPE-193): salary totals per department. The accountant records a month and sees the employee cost, the
+// mgmt-011 (EVID-017 §9, DEC-SCOPE-194): salary totals per department. The accountant records a month and sees the employee cost, the
 // ratio ("—" without revenue) and the automatic "Salaries" ledger line; the super admin is refused (M13). Each run uses its own far-past
 // month, since the stack DB is shared and never emptied.
 

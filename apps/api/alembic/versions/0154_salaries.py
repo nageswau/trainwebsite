@@ -1,9 +1,9 @@
 """mgmt-011 -- salary management: `departments` (+ seed) and `salary_month_totals`; the manual "Salaries" ledger category is deactivated.
 
-Revision ID: 0153_salaries
-Revises: 0152_management_discussions
+Revision ID: 0154_salaries
+Revises: 0153_management_tasks
 
-docs/superpowers/specs/2026-10-12-mgmt-011-salary-management-design.md §3 (DEC-SCOPE-193). New tables, plus one existing row changed: the
+docs/superpowers/specs/2026-10-12-mgmt-011-salary-management-design.md §3 (DEC-SCOPE-194). New tables, plus one existing row changed: the
 mgmt-004 "Salaries" expense category is deactivated (SM9), because saved salary totals now reach the ledger as automatic lines and must
 not be entered twice; its entries keep it (ML3). 0001 builds a fresh database from the current models, which already carry the tables,
 so each step is guarded and the departments are seeded whenever the table is empty. CHECKS repeats app.models (test_mgmt_011_migration).
@@ -17,8 +17,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0153_salaries"
-down_revision = "0152_management_discussions"
+revision = "0154_salaries"
+down_revision = "0153_management_tasks"
 branch_labels = None
 depends_on = None
 
@@ -83,7 +83,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text("SELECT 1 FROM salary_month_totals LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0153_salaries: salary rows exist. Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0154_salaries: salary rows exist. Remove them deliberately first.")
     op.execute(SALARIES_CATEGORY.format(active="true"))
     op.drop_table("salary_month_totals")
     op.drop_table("departments")

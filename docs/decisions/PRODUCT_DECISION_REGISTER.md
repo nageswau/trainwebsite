@@ -7562,7 +7562,46 @@ ledger page intro. Tests `test_mgmt_005_auto_lines.py`, `managementLedger.test.t
 QA `docs/quality/MGMT-005_EXPLORATORY_QA_2026-10-12.md`.
 - **New Feature ID authorized:** `mgmt-005`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-005.
 
-### DEC-SCOPE-193 — Salary management (department totals) + employee cost ratio (`mgmt-011`)
+### DEC-SCOPE-193 — Management to-do + staff "Management tasks": IST bands, owner's own list, sidebar entry in every staff portal (`mgmt-028`)
+
+**Evidence:**
+- `EVID-017` (`DERIVED_BLUEPRINT`) §28 ("My Tasks"; 🔴 Overdue / 🟠 Due Today / 🟡 This Week / 🟢 Completed; seven example tasks; "Owner +
+  Priority + Deadline + Status").
+- `DEC-SCOPE-186` M13/M14 (`EXPLICIT_APPROVAL`): the to-do is operational tier; any staff user can own a task and sees only their own.
+  `DEC-SCOPE-187` (audit helper; kind `mgmt.task`). `DEC-SCOPE-191` MD6 (`STAFF_ROLES`) and the decision line.
+
+**Status:** MT1–MT14 below are **recommended defaults, `UNVERIFIED`**, taken on the owner's instruction to proceed with recommended
+answers (2026-10-12, `feature/mgmt-028`). They answer Q-27.
+
+**Numbering (provisional):** migration `0153_management_tasks`; API §12DG; RBAC §2.118. Spec
+`docs/superpowers/specs/2026-10-12-mgmt-028-management-tasks-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| MT1 | Fields | Title 2–200, owner, priority high / medium / low (medium), deadline (IST date, required), status, source, created/updated by, completed_at |
+| MT2 | Status | open → in_progress → completed, plus cancelled (management only); reopening clears completed_at |
+| MT3 | Bands (Q-27) | IST. Overdue < today; Due Today; This Week = up to Sunday of the Monday–Sunday week; Later (added so nothing open is hidden); Completed = the last 7 IST days; cancelled in no band |
+| MT4 | Order | Deadline, priority, created; completed newest first |
+| MT5 | Source | `manual` only in mgmt-028; CHECK also allows decision / meeting / plan (+ `source_id`) for mgmt-029 / mgmt-026; never client-set |
+| MT6 | Owner | Any active staff user (MD6); inactive / non-staff `422`; a departed owner is flagged "Owner inactive — reassign" |
+| MT7 | Writers | Operational tier (partner, super_admin); accountant and others `403`; no delete (cancel) |
+| MT8 | Deadline | A set or changed deadline is today … two years ahead (`422`); an unchanged past one stays editable |
+| MT9 | Owner slice | `/me/management-tasks`: title, priority, deadline, status, band; status open / in_progress / completed; others' ids `404`; cancelled `409` |
+| MT10 | Decisions | The staff page lists tasks, then the mgmt-027 decision lines (`/me/management-decisions`); no task row copied from a decision |
+| MT11 | Notification | In-app + email on assignment / reassignment and when management changes title, deadline, priority or status; link `/account/management-tasks` |
+| MT12 | Audit | `mgmt.task`, field names only; create / complete / update; the owner's change recorded as theirs |
+| MT13 | Concurrency | Row lock on every write; ownership re-checked after the lock |
+| MT14 | Navigation | "Management tasks" → `/account/management-tasks` in every staff portal sidebar; Command Center "To-do" live at `/management/tasks`; the accountant's management sidebar links Management tasks |
+
+**Consequences:** migration `0153_management_tasks` (1 new table); `models.py`, `schemas.py`, `main.py`; new `services/management_tasks.py`,
+`api/management_tasks.py`; web `lib/managementTasks.ts`, `lib/management.ts` (To-do live, accountant link), `lib/navigation.ts`
+(`MANAGEMENT_TASKS_NAV` in every staff nav), pages `/management/tasks` (+ `/new`, `/[id]/edit`), `/account/management-tasks`; components
+`ManagementTaskBands`, `ManagementTasks`, `ManagementTaskForm`, `MyManagementTasks`; `DiscussionsShell` takes a `section`. Tests
+`test_mgmt_028_tasks.py`, `test_mgmt_028_migration.py`, `managementTasks.test.ts`, `ManagementTasks.test.tsx`, the pinned staff-nav
+tests, `mgmt-028-tasks.spec.ts`. QA `docs/quality/MGMT-028_EXPLORATORY_QA_2026-10-12.md`.
+- **New Feature ID authorized:** `mgmt-028`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-028.
+
+### DEC-SCOPE-194 — Salary management (department totals) + employee cost ratio (`mgmt-011`)
 
 **Evidence:**
 - `EVID-017` §9 (lines 356–386, `DERIVED_BLUEPRINT`) lists seven figures: total employees, department-wise salary, payable, paid,
@@ -7578,7 +7617,7 @@ QA `docs/quality/MGMT-005_EXPLORATORY_QA_2026-10-12.md`.
   entered, not counted.
 - Q-33 for this item: a department with a headcount of 1 is shown unmasked to the finance tier.
 
-**Numbering (provisional):** migration `0153_salaries` (after `0152_management_discussions`); API §12DG; RBAC §2.118. Spec
+**Numbering (provisional):** migration `0154_salaries` (after mgmt-028's `0153_management_tasks`); API §12DH; RBAC §2.119. Spec
 `docs/superpowers/specs/2026-10-12-mgmt-011-salary-management-design.md`.
 
 | # | Point | Answer |
