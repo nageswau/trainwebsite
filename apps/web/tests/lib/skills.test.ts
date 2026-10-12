@@ -90,6 +90,7 @@ describe("lib/skills", () => {
       ["Dashboard", "/school/career-counselor/dashboard"],
       ["Skills", "/school/career-counselor/skills"],
       ["Funding", "/school/career-counselor/funding"], // ENH-020 (DEC-SCOPE-045 D11)
+      ["Management tasks", "/account/management-tasks"], // mgmt-028 (MT14)
     ]);
   });
 });
