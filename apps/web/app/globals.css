@@ -365,7 +365,7 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
 .money-tiles .metric strong { font-size: 22px; overflow-wrap: anywhere; }
 /* mgmt-011 browser QA-01: on a phone a lakh figure ("₹2,00,000.00") broke mid-number in the two-across salary tiles; a smaller figure
    keeps it on one line (crore figures still wrap inside the tile). */
-@media (max-width: 420px) { .salary-tiles .metric strong { font-size: 17px; } }
+@media (max-width: 420px) { .salary-tiles .metric strong, .accounts-tiles .metric strong { font-size: 17px; } } /* + mgmt-013 QA-02 */
 /* mgmt-010 (ME8): each expense head's share of the year -- a bar beside the written percentage. */
 .expense-share { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
 .expense-bar { display: inline-block; width: 120px; height: 10px; border-radius: 999px; background: var(--soft); overflow: hidden; }

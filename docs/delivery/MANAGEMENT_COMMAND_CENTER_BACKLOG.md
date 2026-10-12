@@ -632,6 +632,9 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** medium
 
 ### mgmt-013 — Accounts dashboard
+- **Status (2026-10-12):** **IN REVIEW** on `feature/mgmt-013`. `DEC-SCOPE-196` (AD1–AD14 recommended defaults, UNVERIFIED; Q-15
+  interim: month-end balances). Migration `0155_finance_balances`; API §12DJ; RBAC §2.121.
+  QA evidence `docs/quality/MGMT-013_EXPLORATORY_QA_2026-10-12.md`.
 - **Business requirement:** §22: income (5 heads), expenses (8 heads), and financial position (receivables, payables, cash/bank,
   profit, tax liabilities, pending invoices).
 - **Existing behavior:** none (unpaid payments exist).

@@ -11314,6 +11314,82 @@ class SalaryMonthOut(BaseModel):
     updated_by: InvestmentPerson | None
 
 
+# mgmt-013 (spec AD1-AD14): the accounts dashboard. Field rules live here so a 422 names its field; the future month is raised by
+# `services/accounts.py` in the same shape.
+def _signed_money(value):
+    """AD7: cash/bank may be an overdraft -- the salary money rules on the magnitude, with the sign kept."""
+    text = str(value).strip()
+    return -_salary_money(text[1:]) if text.startswith("-") else _salary_money(text)
+
+
+class FinanceBalancesIn(BaseModel):
+    """AD8: the month's three hand-entered figures; null = not entered, and all three null removes the month's row."""
+
+    model_config = ConfigDict(extra="forbid")
+    cash_bank: Annotated[Decimal, BeforeValidator(_signed_money)] | None
+    payables: SalaryMoney | None
+    tax_liabilities: SalaryMoney | None
+
+
+class AccountsPart(BaseModel):
+    label: str
+    amount: Decimal
+
+
+class AccountsHead(BaseModel):
+    key: str
+    label: str
+    amount: Decimal
+    parts: list[AccountsPart]
+
+
+class AccountsSection(BaseModel):
+    heads: list[AccountsHead]
+    total: Decimal
+
+
+class AccountsNotCounted(BaseModel):
+    currency: str
+    kind: str
+    amount: Decimal
+    count: int
+
+
+class AccountsReceivables(BaseModel):
+    total: Decimal  # R8, rupees only
+    overdue: Decimal
+    fees: Decimal
+    recruitment: Decimal
+    university: Decimal
+    not_counted: list[AccountsNotCounted]  # receivables in another currency, never converted
+
+
+class AccountsPendingInvoices(BaseModel):
+    count: int  # R9
+    amount: Decimal
+
+
+class AccountsBalances(BaseModel):
+    cash_bank: Decimal | None  # R10; null = not entered
+    payables: Decimal | None
+    tax_liabilities: Decimal | None
+    updated_at: datetime | None
+    updated_by: InvestmentPerson | None
+
+
+class AccountsOut(BaseModel):
+    month: str
+    current_month: str
+    as_of: date
+    income: AccountsSection
+    expenses: AccountsSection
+    profit: Decimal  # R4
+    not_counted: list[AccountsNotCounted]  # the month's automatic lines in another currency (MA8)
+    receivables: AccountsReceivables
+    pending_invoices: AccountsPendingInvoices
+    balances: AccountsBalances
+
+
 # mgmt-027 (spec MD1-MD14): management discussions & decisions. Field rules live here; rules that need the database or the merged
 # state of a partial change (staff users, decision before responsible, deadline after the discussion) are raised by
 # `services/management_discussions.py` in the same field-located shape.

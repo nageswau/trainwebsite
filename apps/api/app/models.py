@@ -5708,3 +5708,30 @@ class ManagementTask(Base, TimestampMixin):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+# mgmt-013 (accounts dashboard, spec AD1-AD14): EVID-017 §22's hand-entered month-end figures (R10, Q-15 interim). Each is nullable (not
+# entered); cash may be negative (an overdraft). Rules live in `services/accounts.py`; migration 0155 repeats the CHECKs
+# (test_mgmt_013_migration keeps them identical).
+FINANCE_BALANCE_CHECKS = {
+    "ck_finance_balances_month": "EXTRACT(DAY FROM month) = 1",
+    "ck_finance_balances_payables": "payables >= 0",
+    "ck_finance_balances_tax": "tax_liabilities >= 0",
+}
+
+
+class FinanceBalance(Base, TimestampMixin):
+    """AD7: one month's cash/bank, payables and tax liabilities (`month` is its 1st day), in rupees."""
+
+    __tablename__ = "finance_balances"
+    __table_args__ = (
+        UniqueConstraint("month", name="uq_finance_balances_month"),
+        *(CheckConstraint(sql, name=name) for name, sql in FINANCE_BALANCE_CHECKS.items()),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    month: Mapped[date] = mapped_column(Date)
+    cash_bank: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    payables: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    tax_liabilities: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))

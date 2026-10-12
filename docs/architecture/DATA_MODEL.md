@@ -2029,3 +2029,23 @@ The migration seeds 10 departments when the table is empty.
 - `ledger.lines()` reads each row with cost > 0 as an automatic "Salaries" expense line. Nothing is copied.
 - One existing row changes: the mgmt-004 "Salaries" expense category is set inactive (SM9). `downgrade()` reactivates it and refuses
   while any salary row exists.
+
+## Accounts dashboard (`mgmt-013`, `DEC-SCOPE-196`; migration `0155_finance_balances`, after mgmt-011's `0154_salaries`)
+
+**`finance_balances` columns:**
+- `id`
+- `month` date (CHECK day = 1), UNIQUE (`uq_finance_balances_month`)
+- `cash_bank` numeric(14,2), nullable. It may be negative (an overdraft).
+- `payables`, `tax_liabilities` numeric(14,2), nullable (CHECK ≥ 0)
+- `created_by_user_id`, `updated_by_user_id` → `users` (FK RESTRICT)
+- timestamps
+
+**Design notes:**
+- These are the month-end figures entered by hand (R10, Q-15 interim). Null means "not entered". There is no carry-forward.
+- Finance tier (M13). The audit (`mgmt.balance`) names the changed fields and stores no amounts.
+- Everything else on the dashboard is computed on read, and nothing is copied:
+  - income and expense heads and profit come from `ledger.lines()`;
+  - receivables come from `payments` (`pending`/`overdue`, agent deposits excluded), rec-031 invoice balances and upc-019 expected −
+    received;
+  - pending invoices come from `invoices` and rec-031.
+- No existing table changes. `downgrade()` refuses while any row exists.

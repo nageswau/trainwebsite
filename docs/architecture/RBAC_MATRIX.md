@@ -1993,6 +1993,21 @@ Counts only, no personal data; nothing else changes.
 
 - Read-only aggregate: head and category names and rupee sums only; no person names, ids or source rows. No audit row (no write).
 
+### 2.121 Accounts dashboard *(net-new, added 2026-10-12 — `DEC-SCOPE-196`, `mgmt-013`)*
+
+| Role | `GET /management/accounts`, `PUT /management/accounts/balances`, page `/management/accounts` | Command Center entry |
+|---|---|---|
+| `partner` | Full read and write | "Accounts" (Finance) |
+| `accountant` | Full read and write (M5: the accountant enters payables, cash and tax) | "Accounts" |
+| `super_admin` | `403` "Finance access required"; page "Access unavailable" (M13: no finance figures) | None |
+| Every other role | `403` "Management access required"; signed out `401` (page → `/admin/login?next=`) | None |
+
+- The refusal happens before any lookup.
+- University commission outstanding is one aggregate, with no university names. The finance tier already sees the receipts as ledger
+  lines (mgmt-005 MA12).
+- The audit kind `mgmt.balance` is finance tier. It is hidden from super_admin in Management activity and left out of `/admin/audit`
+  (mgmt-002 MA8, unchanged).
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
