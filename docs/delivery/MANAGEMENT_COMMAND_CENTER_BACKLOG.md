@@ -225,6 +225,9 @@ Common conventions for every item:
   - `can_view_partner_only(user)`
 
 ### mgmt-001 — `partner` + `accountant` roles, sign-in, Command Center shell
+- **Status (2026-10-12):** **IN REVIEW** on `feature/mgmt-001`. `DEC-SCOPE-186` registers M1–M14 and answers Q-01/Q-02/Q-34 (MG1–MG12
+  recommended defaults, UNVERIFIED: no partner cap; only `super_admin` creates either role; partners are read + management-only;
+  `/management` via `/admin/login`). No migration; API §12CZ; RBAC §2.112. QA evidence `docs/quality/MGMT-001_EXPLORATORY_QA_2026-10-12.md`.
 - **Business requirement:**
   - §2: two partners, each with their own login and dashboard, "full management access".
   - §1/§33: the hierarchy.

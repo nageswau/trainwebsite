@@ -370,7 +370,8 @@ const ROLES_BY_DIVISION: Record<string, string[]> = {
   // (profile required). rec-001: a placement manager likewise; a recruiter (placement_team, above) gets an empty profile here and
   // its Employee ID and manager are set on Recruiter Staff.
   // upc-001: likewise a partnership head here; a partnership manager on its own admin page (profile required).
-  global: ["super_admin", "bdm_manager", "telecaller_manager", "placement_manager", "partnership_head"],
+  // mgmt-001 (MG1): partners and accountants likewise (no profile; a super_admin only, so only its dropdown offers them).
+  global: ["super_admin", "bdm_manager", "telecaller_manager", "placement_manager", "partnership_head", "partner", "accountant"],
 };
 
 // RAID.md I-31 (ADM-001 follow-up): `it_admin`/`overseas_admin` can never create outside

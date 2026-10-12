@@ -59,6 +59,9 @@ PERMISSIONS: dict[str, set[str]] = {
     # upc-001 (DEC-SCOPE-118): coarse bundles; self/team scope is enforced in services/partnership.py.
     "partnership_manager": {"partnership:self"},
     "partnership_head": {"partnership:team"},
+    # mgmt-001 (Management M2/M5/M13): coarse bundles; the tiers are enforced in services/management_access.py.
+    "partner": {"management:*"},
+    "accountant": {"management:finance"},
 }
 
 

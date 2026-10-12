@@ -7314,3 +7314,40 @@ on the owner's instruction to proceed with the recommended answers.
 **Consequences:** `apps/api/tests/test_rec_038_matrix.py`, `rec038_helpers.py`, `rec038_rows_{profile,candidates,hiring,activity}.py`;
 `api/recruiter_messages.py` (`render_message` role check). As-built notes left `NEEDS_CONFIRMATION` are listed in RBAC §2.111.
 - **New Feature ID authorized:** `rec-038`. **Status:** see `RECRUITER_CRM_BACKLOG.md` §rec-038.
+
+### DEC-SCOPE-186 — Management Command Center scope (M1–M14) + partner and accountant roles (`mgmt-001`)
+
+**Evidence:**
+- `EVID-017` (`functionalities/edusphere_markdown/Management Functionalities.md`, `DERIVED_BLUEPRINT`) §1, §2, §33.
+- The owner's in-session answers of 2026-10-08, M1–M14 (`EXPLICIT_APPROVAL`), as tabled in `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §3.1.
+  The backlog says they are registered as one DEC-SCOPE when mgmt-001 starts; this is that registration. They lift `PRD_OPEN_ITEMS.md`
+  item 69 and `CONFLICT_MATRIX.md` C-10 for `EVID-017`, and M3 amends UPC U2 (partners see university commission).
+- Precedents for a global role: `DEC-SCOPE-055` (bdm-001), `DEC-SCOPE-073` (tel-001), `DEC-SCOPE-116` (rec-001), `DEC-SCOPE-118` (upc-001).
+
+**Status:** M1–M14 `EXPLICIT_APPROVAL` (2026-10-08). MG1–MG12 below, which answer Q-01, Q-02 and Q-34: in review on `feature/mgmt-001`
+(2026-10-12). Every MG answer is a **recommended default, `UNVERIFIED`**. They were taken on the owner's instruction to proceed with the
+recommended answers.
+
+**Numbering:** no migration; API §12CZ; RBAC §2.112. Spec `docs/superpowers/specs/2026-10-12-mgmt-001-partner-accountant-roles-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| MG1 (Q-01) | Cap; who creates the accountant | No hard cap (M2). Only `super_admin` creates partners **and** accountants; partners have no `/admin` access, so partner-created accountants would widen `ensure_admin` (a later item may add it) |
+| MG2 (Q-02) | Partner powers outside management | Read + management-only; no existing module gate admits either role |
+| MG3 (Q-34) | Paths | `/management/*`; both roles sign in at `/admin/login` and land on `/management` |
+| MG4 | Tiers (M13) | `management_access`: operational = partner, super_admin; finance = partner, accountant; partner-only = partner |
+| MG5 | `GET /management/me` | Role + tier flags; `403` without a tier |
+| MG6 | Last active partner | Cannot be deactivated (`422`); rows locked `FOR UPDATE` |
+| MG7 | Session end | Deactivation ends sessions (active-only session load); no new mechanism |
+| MG8 | Shell | §33 pillars + Business Intelligence; entries listed "Coming soon" until their item lands (PU8 idiom); sidebar = home + live entries |
+| MG9 | Entry tiers | Operational / finance / partner-only as RBAC §2.112; mixed pages partner-only until their items decide |
+| MG10 | `super_admin` | Operational tier; a Command Center sidebar link |
+| MG11 | Commission (M3) | Applied by mgmt-006 / 023 / 034, when partners reach those pages |
+| MG12 | Demo data | Seed two partners and an accountant |
+
+**Consequences:** `core/rbac.py` (`partner`, `accountant`); `api/admin.py` (create 403 / global set, last-partner guard);
+`services/provisioning.py` (`ADMIN_PORTAL_ROLES`); new `services/management_access.py`, `api/management.py`; web `middleware.ts`,
+`lib/navigation.ts`, new `lib/management.ts`, `app/management/page.tsx`, `components/ManagementPillars.tsx`, the create-user role list and
+sign-in copy. Tests `test_mgmt_001_roles.py`, `management.test.ts`, `ManagementCommandCenter.test.tsx`, `mgmt-001-command-center.spec.ts`.
+- **New Feature ID authorized:** `mgmt-001` (mgmt-002…034 remain behind GATE-09 individually). **Status:** see
+  `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-001.
