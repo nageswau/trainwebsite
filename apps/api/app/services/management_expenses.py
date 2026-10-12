@@ -45,7 +45,7 @@ def next_month(day: date) -> date:
 
 async def dashboard(db: AsyncSession, month_start: date) -> dict:
     """The heads, categories and month-by-month totals for `month_start`'s month and its financial year to date (ME3-ME7)."""
-    year_start, end = financial_year_start(month_start), next_month(month_start)
+    year_start, end, chosen = financial_year_start(month_start), next_month(month_start), month_key(month_start)
     table = ledger.lines()
     c = table.c
     in_range = [c.kind == "expense", c.entry_date >= year_start, c.entry_date < end]
@@ -62,7 +62,7 @@ async def dashboard(db: AsyncSession, month_start: date) -> dict:
         key = month_key(month)  # date_trunc returns a timestamp; only its year and month are read
         months[key] += amount
         by_label[label]["year"] += amount
-        if key == month_key(month_start):
+        if key == chosen:
             by_label[label]["month"] += amount
 
     heads = {key: {"month": Decimal(0), "year": Decimal(0)} for key, _, _ in HEADS}
@@ -77,7 +77,7 @@ async def dashboard(db: AsyncSession, month_start: date) -> dict:
     other = await db.execute(select(c.currency, func.sum(c.amount), func.count()).where(*in_range, c.source != "manual", c.counted.is_(False)).group_by(c.currency).order_by(c.currency))
     q = ledger.CENTS
     return {
-        "month": month_key(month_start),
+        "month": chosen,
         "year_start": year_start,
         "year_label": f"{year_start.year}-{(year_start.year + 1) % 100:02d}",
         "groups": [{"key": key, "label": label, "month": heads[key]["month"].quantize(q), "year": heads[key]["year"].quantize(q), "share": share(heads[key]["year"])} for key, label, _ in HEADS],
@@ -87,6 +87,6 @@ async def dashboard(db: AsyncSession, month_start: date) -> dict:
             if sums["month"] or sums["year"]  # browser QA-01: a category netted to zero by a reversal says nothing
         ],
         "months": [{"month": key, "total": total.quantize(q)} for key, total in months.items()],
-        "totals": {"month": sum((h["month"] for h in heads.values()), Decimal(0)).quantize(q), "year": year_total.quantize(q)},
+        "totals": {"month": months[chosen].quantize(q), "year": year_total.quantize(q)},
         "not_counted": [{"currency": currency, "amount": Decimal(amount).quantize(q), "count": count} for currency, amount, count in other.all()],
     }
