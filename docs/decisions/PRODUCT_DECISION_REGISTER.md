@@ -7600,3 +7600,55 @@ answers (2026-10-12, `feature/mgmt-028`). They answer Q-27.
 `test_mgmt_028_tasks.py`, `test_mgmt_028_migration.py`, `managementTasks.test.ts`, `ManagementTasks.test.tsx`, the pinned staff-nav
 tests, `mgmt-028-tasks.spec.ts`. QA `docs/quality/MGMT-028_EXPLORATORY_QA_2026-10-12.md`.
 - **New Feature ID authorized:** `mgmt-028`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-028.
+
+### DEC-SCOPE-194 — Salary management (department totals) + employee cost ratio (`mgmt-011`)
+
+**Evidence:**
+- `EVID-017` §9 (lines 356–386, `DERIVED_BLUEPRINT`) lists seven figures: total employees, department-wise salary, payable, paid,
+  incentives, commissions and employer cost. It adds the total monthly employee cost compared with revenue, and the Employee Cost Ratio
+  = employee cost ÷ revenue × 100.
+- `DEC-SCOPE-186` M6/M13 (`EXPLICIT_APPROVAL`) sets department totals per month, with no per-person salaries. Only the finance tier sees
+  them; super_admin is excluded.
+- Backlog Appendix B R6/R7, plus Q-13 and Q-33.
+
+**Status:** SM1–SM14 are in review on `feature/mgmt-011` (2026-10-12).
+- Every SM answer is a **recommended default, `UNVERIFIED`**, taken on the owner's instruction to proceed with the recommended answers.
+- SM1 answers the department-list half of Q-13 as an interim default. Its role → department mapping half stays open, so headcount is
+  entered, not counted.
+- Q-33 for this item: a department with a headcount of 1 is shown unmasked to the finance tier.
+
+**Numbering (provisional):** migration `0154_salaries` (after mgmt-028's `0153_management_tasks`); API §12DH; RBAC §2.119. Spec
+`docs/superpowers/specs/2026-10-12-mgmt-011-salary-management-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| SM1 | Departments (Q-13 interim) | Managed list, name 2–80, unique ignoring case. Seeded with Management, Counseling, Telecalling, Business Development, Training, Placement & Recruitment, Partnerships, Marketing, Accounts & Administration, Operations & Support |
+| SM2 | Managing departments | Partner and accountant add, rename, deactivate and reactivate. A deactivated department keeps its months and is left out of a month that has no row for it |
+| SM3 | Month row | One per (month, department): headcount 0–100 000; payable, paid, incentives, commissions and employer cost in INR, ≥ 0, `Numeric(14,2)`. Employer cost = the employer's contributions on top of salary |
+| SM4 | Write | `PUT ?month` replaces the month: rows left out are removed. A duplicate, unknown or newly inactive department `422`; a future month `422` |
+| SM5 | Paid > payable | Saved with the warning `paid_exceeds_payable` |
+| SM6 | R6 | Paid + incentives + commissions + employer cost (cash basis, like MA2) |
+| SM7 | R7 | R6 ÷ the month's counted ledger income × 100, half-up to 2 decimals; null ("—") without revenue |
+| SM8 | Ledger | Each saved row with cost > 0 is an automatic `salary` expense line: shared, "Salaries · <department>", the month's last day, INR, counted on save |
+| SM9 | Counted once | Migration 0153 deactivates the manual "Salaries" ledger category (its existing entries keep it). Reactivating it lets manual salary entries count too |
+| SM10 | Access | Finance tier (`require_finance`). super_admin `403` "Finance access required"; others `403`; signed out `401` |
+| SM11 | Audit | `mgmt.salary` (one row per changing PUT: field names + count, no values); `mgmt.department` create/update. Both finance tier |
+| SM12 | Concurrency | A per-month transaction advisory lock; the last save wins. Department name race → `409` |
+| SM13 | Page | `/management/salaries?month`: the month form, the seven figures, the employee cost ratio (`#employee-cost`), the department grid with totals and Save, and Departments. Both Command Center entries are live |
+| SM14 | Read | The month view: active departments plus any with a row; `entered: false` rows have null figures |
+
+**Consequences:**
+- **Data:** new tables `departments` and `salary_month_totals` (migration 0153, which also deactivates the "Salaries" category).
+- **Backend:** `models.py`, `schemas.py`, new `services/salaries.py`, `services/ledger.py` (the `salary` source in `lines()`),
+  `services/management_audit.py` (two kinds), `api/management.py` (five routes).
+- **Web:**
+  - `lib/salaries.ts`, `lib/management.ts` (live entries), `lib/managementLedger.ts` (source label);
+  - `components/SalaryGrid.tsx`, `components/Departments.tsx`;
+  - `app/management/salaries/page.tsx`;
+  - `globals.css` (`salary-tiles`).
+- **Tests:**
+  - backend: `test_mgmt_011_salaries.py`, `test_mgmt_011_migration.py`, and `test_mgmt_002_activity.py` (the accountant's kinds);
+  - web: `salaries.test.ts`, `Salaries.test.tsx`, `managementLedger.test.ts`;
+  - e2e: `mgmt-011-salaries.spec.ts`.
+- **QA:** `docs/quality/MGMT-011_EXPLORATORY_QA_2026-10-12.md`.
+- **New Feature ID authorized:** `mgmt-011`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-011.

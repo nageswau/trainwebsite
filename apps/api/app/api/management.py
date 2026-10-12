@@ -5,11 +5,16 @@ from datetime import date
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
 from app.models import INVESTMENT_STATUSES, INVESTMENT_VERTICALS, User
 from app.schemas import (
+    DepartmentCreate,
+    DepartmentOut,
+    DepartmentPage,
+    DepartmentUpdate,
     InvestmentCreate,
     InvestmentOut,
     InvestmentPageOut,
@@ -17,8 +22,10 @@ from app.schemas import (
     ManagementActivityOut,
     ManagementMeOut,
     ManagementSnapshotOut,
+    SalaryMonthIn,
+    SalaryMonthOut,
 )
-from app.services import investments, management_audit, management_metrics
+from app.services import investments, ledger, management_audit, management_metrics, salaries
 from app.services.bdm_activities import india_date
 from app.services.bdm_appointments import db_now
 from app.services.management_access import can_view_operational, require_management, require_partner_only, tiers
@@ -109,3 +116,60 @@ async def update_investment(investment_id: UUID, body: InvestmentUpdate, user: U
     """mgmt-014 (MI10/MI11): changes only the fields sent; a change is audited with before and after values."""
     _partner(user)
     return await investments.one(db, await investments.update(db, user, investment_id, body))
+
+
+# --- mgmt-011: salaries + departments (spec SM1-SM14). Finance tier only (M13): super_admin and every other role 403 --------------------
+MONTH = r"^\d{4}-(0[1-9]|1[0-2])$"
+
+
+@router.get("/salaries", response_model=SalaryMonthOut)
+async def salary_month(month: str | None = Query(None, pattern=MONTH), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """SM14: the month's grid (active departments + any with a row), totals, R6, revenue and the Employee Cost Ratio (R7)."""
+    ledger.require_finance(user)
+    return await salaries.month_view(db, salaries.first_day(month))
+
+
+@router.put("/salaries", response_model=SalaryMonthOut)
+async def save_salary_month(
+    body: SalaryMonthIn, month: str = Query(..., pattern=MONTH), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    """SM4: replaces the month with the rows sent; answers with the month as GET shows it."""
+    ledger.require_finance(user)
+    first = salaries.first_day(month)
+    changed = await salaries.save_month(db, user, first, body.rows)
+    await db.commit()
+    salaries.log("salary_month_saved", user, month=month, changed=changed)
+    return await salaries.month_view(db, first)
+
+
+@router.get("/departments", response_model=DepartmentPage)
+async def list_departments(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    ledger.require_finance(user)
+    return {"items": await salaries.departments(db)}
+
+
+@router.post("/departments", response_model=DepartmentOut, status_code=201)
+async def create_department(body: DepartmentCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    ledger.require_finance(user)
+    try:
+        department = await salaries.create_department(db, user, body)
+    except IntegrityError:  # the unique index, when two people add the same name at once
+        await db.rollback()
+        raise HTTPException(409, salaries.DUPLICATE) from None
+    await db.commit()
+    salaries.log("department_created", user, department_id=str(department.id))
+    return salaries.department_out(department)
+
+
+@router.patch("/departments/{department_id}", response_model=DepartmentOut)
+async def change_department(department_id: UUID, body: DepartmentUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Rename or (de)activate (SM2)."""
+    ledger.require_finance(user)
+    try:
+        department = await salaries.change_department(db, user, department_id, body)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(409, salaries.DUPLICATE) from None
+    await db.commit()
+    salaries.log("department_changed", user, department_id=str(department.id))
+    return salaries.department_out(department)

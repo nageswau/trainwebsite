@@ -2957,6 +2957,25 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `GET /me/management-tasks` *(new)* | `200` `{items[{id, title, priority, deadline, status, band, updated_at}], today, counts}`: the caller's tasks, not cancelled, completed only for the last 7 days (at most 200) |
 | `PATCH /me/management-tasks/{id}` *(new)* | `{status: open \| in_progress \| completed}` → `200` the task. `404` not the caller's (or unknown); `409` cancelled; `422` other status |
 
+## 12DH. Salary management + employee cost ratio (`mgmt-011`) — addendum, 2026-10-12
+
+- **Basis:** `DEC-SCOPE-194` (SM1–SM14). Design spec `docs/superpowers/specs/2026-10-12-mgmt-011-salary-management-design.md`.
+- **Migration:** `0154_salaries` (after mgmt-028's `0153_management_tasks`).
+- **Access:** finance tier only (M13), through the ledger's `require_finance`:
+  - super_admin gets `403` "Finance access required";
+  - every other role gets `403` "Management access required";
+  - signed out gets `401`.
+- **Money:** INR as decimal strings. `month` is `YYYY-MM`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/salaries` *(new)* | **Query:** `month` (default: the current IST month). **`200`:** `{month, current_month, rows[], totals, revenue, ratio, updated_at, updated_by}`.<br>• `rows[]` = `{department {id, name, active}, entered, headcount, payable, paid, incentives, commissions, employer_cost, total_cost, warnings ["paid_exceeds_payable"]}`. They are the active departments plus any inactive department with a row in the month. A department without a row has `entered: false` and null figures.<br>• `totals` holds the same figures over the entered rows.<br>• `total_cost` = paid + incentives + commissions + employer cost (R6).<br>• `revenue` = the month's counted ledger income.<br>• `ratio` = R6 ÷ revenue × 100 (2 decimals) or null.<br>**`422`:** malformed month, or a month after the current one |
+| `PUT /management/salaries?month=YYYY-MM` *(new)* | **Body:** `{rows: [{department_id, headcount 0–100 000, payable, paid, incentives, commissions, employer_cost (each ≥ 0, ≤ 2 decimals)}]}` (≤ 500 rows, extra fields refused).<br>**Effect:** replaces the month — rows sent are upserted, rows left out are removed, and `rows: []` clears it. Paid > payable is saved with a warning. A transaction-scoped advisory lock serialises saves of one month.<br>**`200`:** the month as GET shows it.<br>**`422`:** on the field (`rows.N.field`), or a duplicate department ("Each department can appear only once in a month"), an unknown department, an inactive department not yet in the month, or a future month.<br>**Audit:** one `mgmt.salary.update` (changed field names + count, no values) when something changed |
+| `GET /management/departments` *(new)* | **`200`:** `{items[{id, name, active}]}`, active first |
+| `POST /management/departments` *(new)* | **Body:** `{name 2–80}`.<br>**`201`:** the department.<br>**Errors:** `409` "A department with this name already exists" (case-insensitive); `422` name length.<br>**Audit:** `mgmt.department.create` |
+| `PATCH /management/departments/{id}` *(new)* | **Body:** `{name?, active?}`. A change that changes nothing writes nothing.<br>**Errors:** `404` unknown id; `409` duplicate name.<br>**Audit:** `mgmt.department.update` |
+| `GET /management/ledger?include=auto` *(changed, additive)* | A sixth automatic source, `salary`:<br>• one expense line per saved department month with cost > 0;<br>• dated the month's last day, vertical `shared`, label "Salaries", description "Salaries · <department>", INR, counted.<br>`LedgerAutoLine.source` gains `"salary"` |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
