@@ -2030,7 +2030,7 @@ The migration seeds 10 departments when the table is empty.
 - One existing row changes: the mgmt-004 "Salaries" expense category is set inactive (SM9). `downgrade()` reactivates it and refuses
   while any salary row exists.
 
-## Accounts dashboard (`mgmt-013`, `DEC-SCOPE-195`; migration `0155_finance_balances`, after mgmt-011's `0154_salaries`)
+## Accounts dashboard (`mgmt-013`, `DEC-SCOPE-196`; migration `0155_finance_balances`, after mgmt-011's `0154_salaries`)
 
 **`finance_balances` columns:**
 - `id`

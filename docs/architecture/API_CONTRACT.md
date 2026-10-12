@@ -2976,9 +2976,18 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `PATCH /management/departments/{id}` *(new)* | **Body:** `{name?, active?}`. A change that changes nothing writes nothing.<br>**Errors:** `404` unknown id; `409` duplicate name.<br>**Audit:** `mgmt.department.update` |
 | `GET /management/ledger?include=auto` *(changed, additive)* | A sixth automatic source, `salary`:<br>• one expense line per saved department month with cost > 0;<br>• dated the month's last day, vertical `shared`, label "Salaries", description "Salaries · <department>", INR, counted.<br>`LedgerAutoLine.source` gains `"salary"` |
 
-## 12DI. Accounts dashboard (`mgmt-013`) — addendum, 2026-10-12
+## 12DI. Expense dashboard (`mgmt-010`) — addendum, 2026-10-12
 
-- **Basis:** `DEC-SCOPE-195` (AD1–AD14). Design spec `docs/superpowers/specs/2026-10-12-mgmt-013-accounts-dashboard-design.md`.
+- **Basis:** `DEC-SCOPE-195` (ME1–ME10). Design spec `docs/superpowers/specs/2026-10-12-mgmt-010-expense-dashboard-design.md`.
+  No migration. Finance tier only (partner, accountant); `super_admin` `403` "Finance access required"; other roles `403`; signed out `401`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/expenses` *(new)* | Query `month` (`YYYY-MM`; default the current IST month). `422`: not `YYYY-MM`, before 2000-01, or after the current IST month ("Choose this month or an earlier one"). `200` `{month, year_start (1 April of the Indian financial year), year_label ("2026-27"), groups[{key, label, month, year, share}] (the 8 §8 heads, always all, source order), categories[{label, group, month, year}] (money in the year to date, largest first), months[{month, total}] (financial year start … selected month), totals{month, year}, not_counted[{currency, amount, count}]}`. Rupees only: approved manual expenses (reversals negative) + INR automatic expense lines; other currencies only in `not_counted`. Totals = the sum of the heads; year = the sum of the months. Read-only |
+
+## 12DJ. Accounts dashboard (`mgmt-013`) — addendum, 2026-10-12
+
+- **Basis:** `DEC-SCOPE-196` (AD1–AD14). Design spec `docs/superpowers/specs/2026-10-12-mgmt-013-accounts-dashboard-design.md`.
 - **Migration:** `0155_finance_balances` (after mgmt-011's `0154_salaries`).
 - **Access:** finance tier only (M13), through the ledger's `require_finance`:
   - super_admin gets `403` "Finance access required";

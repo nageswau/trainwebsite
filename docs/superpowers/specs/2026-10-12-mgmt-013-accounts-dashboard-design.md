@@ -9,7 +9,7 @@
   `DEC-SCOPE-186`) make the ledger the money source. Receivables come from unpaid payments and invoices. Payables, cash/bank and tax
   liabilities are entered by hand, there is no GST computation, the accountant enters the figures, and only the finance tier sees them.
   Backlog Appendix B defines R4, R8, R9 and R10.
-- **Decision:** `DEC-SCOPE-195` (provisional number). AD1–AD14 below are **recommended defaults, `UNVERIFIED`**. I took them on the
+- **Decision:** `DEC-SCOPE-196` (provisional number). AD1–AD14 below are **recommended defaults, `UNVERIFIED`**. I took them on the
   owner's instruction to proceed with recommended answers. AD7 answers Q-15 as an interim default: month-end balances, not transactions.
 
 ## 1. Intent

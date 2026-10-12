@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// mgmt-013 (EVID-017 §22, DEC-SCOPE-195): the accounts dashboard. The accountant opens a month, sees its income and expense heads and the
+// mgmt-013 (EVID-017 §22, DEC-SCOPE-196): the accounts dashboard. The accountant opens a month, sees its income and expense heads and the
 // financial position ("Not entered" until the month-end balances are typed), saves the balances and sees a 422 on its field; the super
 // admin is refused (M13). Each run uses its own far-past month, since the stack DB is shared and never emptied.
 

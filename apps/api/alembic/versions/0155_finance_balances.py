@@ -3,7 +3,7 @@
 Revision ID: 0155_finance_balances
 Revises: 0154_salaries
 
-docs/superpowers/specs/2026-10-12-mgmt-013-accounts-dashboard-design.md §3 (DEC-SCOPE-195). One new table; nothing existing changes. 0001
+docs/superpowers/specs/2026-10-12-mgmt-013-accounts-dashboard-design.md §3 (DEC-SCOPE-196). One new table; nothing existing changes. 0001
 builds a fresh database from the current models, which already carry the table, so the step is guarded. CHECKS repeats app.models
 (test_mgmt_013_migration). downgrade() refuses while any row exists: it would drop finance records.
 """

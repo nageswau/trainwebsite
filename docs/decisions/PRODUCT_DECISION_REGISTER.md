@@ -7653,7 +7653,37 @@ tests, `mgmt-028-tasks.spec.ts`. QA `docs/quality/MGMT-028_EXPLORATORY_QA_2026-1
 - **QA:** `docs/quality/MGMT-011_EXPLORATORY_QA_2026-10-12.md`.
 - **New Feature ID authorized:** `mgmt-011`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-011.
 
-### DEC-SCOPE-195 — Accounts dashboard: income, expenses, receivables, payables, cash, tax (`mgmt-013`)
+### DEC-SCOPE-195 — Expense dashboard: the eight §8 heads, monthly + Indian financial year to date (`mgmt-010`)
+
+**Evidence:** `EVID-017` §8 "Expense Dashboard" (Expense | Monthly | Annual; Rent, Salaries, Marketing, Travel, Trainers, Commissions,
+Technology, Other, Total — `DERIVED_BLUEPRINT`). `DEC-SCOPE-186` M4/M13 (`EXPLICIT_APPROVAL`). `DEC-SCOPE-189` ML1 (the §22 expense
+heads are dashboard groupings for mgmt-010/013, not extra categories), ML10. `DEC-SCOPE-192` MA1–MA11.
+
+**Status:** ME1–ME10 in review on `feature/mgmt-010` (2026-10-12). Every ME answer is a **recommended default, `UNVERIFIED`**, taken on the
+owner's instruction to proceed with recommended answers. They answer the backlog item's "financial-year start per Q-04?" point (ME4).
+
+**Numbering (provisional):** no migration; API §12DI; RBAC §2.120. Spec `docs/superpowers/specs/2026-10-12-mgmt-010-expense-dashboard-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| ME1 | Rows (§8) | The 8 heads in source order: Rent ← Office rent; Salaries ← Salaries + automatic salary lines (mgmt-011); Marketing ← Marketing; Travel ← Travel + automatic trip lines; Trainers ← Trainer payments; Commissions ← Agent commissions + automatic paid commissions; Technology ← Internet, Software; Other ← every other category |
+| ME2 | Mapping key | The category's current name / automatic label, ignoring case; renamed or new categories → Other. No schema change |
+| ME3 | Monthly | The selected month (IST), default the current IST month |
+| ME4 | Annual (Q-04 FY part) | Indian financial year (1 April – 31 March) to date through the selected month; the month-by-month list sums to it |
+| ME5 | Figures | Approved manual expenses (reversals negative) + INR automatic expense lines (`ledger.lines()`); nothing else counts |
+| ME6 | Other currencies | Not counted; summed per currency for the year to date in `not_counted` |
+| ME7 | Categories | Each category / automatic label with money in the year to date (netted-to-zero left out), its head, monthly and annual; largest first |
+| ME8 | Bars | A bar per head of its share of the annual total, with the percentage written out; no chart library |
+| ME9 | Validation | `month` = `YYYY-MM`, 2000-01 or later, not after the current IST month → else `422` |
+| ME10 | Access | Finance tier only (partner, accountant); `super_admin` `403` "Finance access required"; others `403`; signed out `401` |
+
+**Consequences:** new `services/management_expenses.py`; `api/management.py` (`GET /management/expenses`); `schemas.py`
+(`ExpenseDashboardOut` and rows). `services/ledger.py` unchanged. Web `lib/managementExpenses.ts`, `components/ManagementExpenses.tsx`,
+page `/management/expenses`, `lib/management.ts` ("Expenses & rent" live), `globals.css` (share bars). Tests `test_mgmt_010_expenses.py`,
+`managementExpenses.test.ts`, `ManagementExpenses.test.tsx`, `mgmt-010-expenses.spec.ts`. QA `docs/quality/MGMT-010_EXPLORATORY_QA_2026-10-12.md`.
+- **New Feature ID authorized:** `mgmt-010`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-010.
+
+### DEC-SCOPE-196 — Accounts dashboard: income, expenses, receivables, payables, cash, tax (`mgmt-013`)
 
 **Evidence:**
 - `EVID-017` §22 (lines 881–929, `DERIVED_BLUEPRINT`) lists 5 income heads, 8 expense heads and 6 financial-position figures, and says
@@ -7670,7 +7700,7 @@ tests, `mgmt-028-tasks.spec.ts`. QA `docs/quality/MGMT-028_EXPLORATORY_QA_2026-1
 - Every AD answer is a **recommended default, `UNVERIFIED`**, taken on the owner's instruction to proceed with recommended answers.
 - AD7 answers Q-15 as an interim default: month-end balances, not transactions.
 
-**Numbering (provisional):** migration `0155_finance_balances` (after mgmt-011's `0154_salaries`); API §12DI; RBAC §2.120. Spec
+**Numbering (provisional):** migration `0155_finance_balances` (after mgmt-011's `0154_salaries`); API §12DJ; RBAC §2.121. Spec
 `docs/superpowers/specs/2026-10-12-mgmt-013-accounts-dashboard-design.md`.
 
 | # | Point | Answer |

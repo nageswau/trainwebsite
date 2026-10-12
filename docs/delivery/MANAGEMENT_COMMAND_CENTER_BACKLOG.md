@@ -537,6 +537,9 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** medium
 
 ### mgmt-010 — Expense dashboard
+- **Status (2026-10-12):** **IN REVIEW** on `feature/mgmt-010`. `DEC-SCOPE-195` (ME1–ME10 recommended defaults, UNVERIFIED; answers
+  the financial-year point of Q-04: Indian financial year, 1 April). No migration; API §12DI; RBAC §2.120.
+  QA evidence `docs/quality/MGMT-010_EXPLORATORY_QA_2026-10-12.md`.
 - **Business requirement:** §8 dashboard (monthly + annual per category + total).
 - **Existing behavior:** none.
 - **Expected behavior:** expense totals per category for the month and year-to-date (financial-year start per Q-04?), from approved
@@ -629,8 +632,8 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** medium
 
 ### mgmt-013 — Accounts dashboard
-- **Status (2026-10-12):** **IN REVIEW** on `feature/mgmt-013`. `DEC-SCOPE-195` (AD1–AD14 recommended defaults, UNVERIFIED; Q-15
-  interim: month-end balances). Migration `0155_finance_balances`; API §12DI; RBAC §2.120.
+- **Status (2026-10-12):** **IN REVIEW** on `feature/mgmt-013`. `DEC-SCOPE-196` (AD1–AD14 recommended defaults, UNVERIFIED; Q-15
+  interim: month-end balances). Migration `0155_finance_balances`; API §12DJ; RBAC §2.121.
   QA evidence `docs/quality/MGMT-013_EXPLORATORY_QA_2026-10-12.md`.
 - **Business requirement:** §22: income (5 heads), expenses (8 heads), and financial position (receivables, payables, cash/bank,
   profit, tax liabilities, pending invoices).

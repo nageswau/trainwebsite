@@ -1982,7 +1982,18 @@ Counts only, no personal data; nothing else changes.
   out of `/admin/audit` (mgmt-002 MA8, unchanged).
 - Q-33: a department with a headcount of 1 is shown unmasked to the finance tier.
 
-### 2.120 Accounts dashboard *(net-new, added 2026-10-12 — `DEC-SCOPE-195`, `mgmt-013`)*
+### 2.120 Expense dashboard *(added 2026-10-12 — `DEC-SCOPE-195`, `mgmt-010`)*
+
+| Role | Read `GET /management/expenses`, page `/management/expenses` |
+|---|---|
+| `partner` | yes |
+| `accountant` | yes |
+| `super_admin` | `403` "Finance access required" (M13); no "Expenses & rent" entry in the Command Center |
+| every other role | `403`; signed out `401` (the page redirects to `/admin/login?next=`) |
+
+- Read-only aggregate: head and category names and rupee sums only; no person names, ids or source rows. No audit row (no write).
+
+### 2.121 Accounts dashboard *(net-new, added 2026-10-12 — `DEC-SCOPE-196`, `mgmt-013`)*
 
 | Role | `GET /management/accounts`, `PUT /management/accounts/balances`, page `/management/accounts` | Command Center entry |
 |---|---|---|

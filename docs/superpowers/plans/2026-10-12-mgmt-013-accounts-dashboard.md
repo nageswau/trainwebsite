@@ -32,7 +32,7 @@ RED → GREEN → REFACTOR, with focused tests only.
 9. **Page** `app/management/accounts/page.tsx`, plus the "Accounts" href in `lib/management.ts` (with the existing nav test updated if
    it lists live entries).
 10. **Playwright** `e2e/mgmt-013-accounts.spec.ts`.
-11. **Docs:** `DEC-SCOPE-195`, API §12DI, RBAC §2.120, `DATA_MODEL`, backlog status. Renumber at merge if main moved.
+11. **Docs:** `DEC-SCOPE-196`, API §12DJ, RBAC §2.121, `DATA_MODEL`, backlog status. Renumber at merge if main moved.
 
 ## Phase 3 review notes (folded into the tasks above)
 

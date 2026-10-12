@@ -11035,6 +11035,50 @@ class LedgerPage(BaseModel):
     totals: LedgerLinesTotals | LedgerTotals
 
 
+# mgmt-010 (spec ME1-ME10): the §8 expense dashboard -- the eight heads, the categories behind them and the month-by-month totals of
+# the Indian financial year to date. Amounts are rupees (approved manual + INR automatic expense lines).
+class ExpenseHead(BaseModel):
+    key: str
+    label: str
+    month: Decimal
+    year: Decimal
+    share: float  # ME8: % of the annual total, 0 when the total is not positive
+
+
+class ExpenseCategoryRow(BaseModel):
+    label: str
+    group: str
+    month: Decimal
+    year: Decimal
+
+
+class ExpenseMonth(BaseModel):
+    month: str
+    total: Decimal
+
+
+class ExpenseTotals(BaseModel):
+    month: Decimal
+    year: Decimal
+
+
+class ExpenseNotCounted(BaseModel):
+    currency: str
+    amount: Decimal
+    count: int
+
+
+class ExpenseDashboardOut(BaseModel):
+    month: str
+    year_start: date
+    year_label: str
+    groups: list[ExpenseHead]
+    categories: list[ExpenseCategoryRow]
+    months: list[ExpenseMonth]
+    totals: ExpenseTotals
+    not_counted: list[ExpenseNotCounted]
+
+
 class LedgerChoice(BaseModel):
     value: str
     label: str
