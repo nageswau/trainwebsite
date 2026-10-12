@@ -97,15 +97,19 @@ async def list_entries(
     category: UUID | None = None,
     vertical: Literal[LEDGER_VERTICALS] | None = None,  # type: ignore[valid-type]
     status: Literal[LEDGER_STATUSES] | None = None,  # type: ignore[valid-type]
+    include: Literal["auto"] | None = None,
     limit: int = Query(25, ge=1, le=100),
     offset: int = Query(0, ge=0, le=10_000),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """ML15: newest date first; `totals` are the approved entries matching every filter but status (ML10)."""
+    """ML15: newest date first; `totals` are the approved entries matching every filter but status (ML10). mgmt-005 (MA9):
+    `include=auto` adds the automatic lines of other modules, read-only, to the list and the totals."""
     svc.require_finance(user)
-    where = svc.list_filters(month=month, kind=kind, category_id=category, vertical=vertical)
-    return await svc.page(db, user, where, status, limit, offset)
+    filters = {"month": month, "kind": kind, "category_id": category, "vertical": vertical}
+    if include:
+        return await svc.lines_page(db, user, filters, status, limit, offset)
+    return await svc.page(db, user, svc.list_filters(**filters), status, limit, offset)
 
 
 @router.post("", status_code=201, response_model=LedgerEntryDetail)

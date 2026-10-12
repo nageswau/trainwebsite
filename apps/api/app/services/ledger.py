@@ -1,4 +1,5 @@
 """mgmt-004 (spec ML1-ML16): the management ledger, the single money source of the Command Center (owner; frozen after mgmt-005).
+mgmt-005 (spec MA1-MA12) adds `lines`: the manual entries UNION ALL the automatic money lines of other modules, computed on read.
 
 Manual income and expense entries move draft -> submitted -> approved / rejected; only approved entries count (ML10), and an approved
 entry is corrected only by a reversing entry (ML11). Every write adds an entry event and a `management_audit` row in the caller's
@@ -13,11 +14,30 @@ from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
-from sqlalchemy import case, func, select
+from sqlalchemy import Date, String, Uuid, case, cast, func, literal, null, select, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Batch, LedgerCategory, LedgerEntry, LedgerEntryEvent, Program, User
+from app.api.payments import PAID_STATUSES
+from app.models import (
+    AgentCommission,
+    Batch,
+    BdmProfile,
+    BdmTrip,
+    BdmTripExpense,
+    LedgerCategory,
+    LedgerEntry,
+    LedgerEntryEvent,
+    Payment,
+    Program,
+    Receipt,
+    RecruiterInvoice,
+    RecruiterPayment,
+    University,
+    UniversityCommissionReceipt,
+    User,
+)
 from app.services import management_audit
+from app.services.agent_deposits import REFERENCE_TYPE as AGENT_DEPOSIT
 from app.services.management_access import can_view_finance, require_management
 from app.services.storage import storage
 from app.services.telecaller_reports import SOURCE_LABELS
@@ -179,6 +199,7 @@ async def entries_out(db: AsyncSession, user: User, rows: list[LedgerEntry]) -> 
         category = cats[r.category_id]
         out.append(
             {
+                "source": "manual",
                 "id": r.id,
                 "entry_date": r.entry_date,
                 "kind": r.kind,
@@ -234,19 +255,21 @@ async def entry_detail(db: AsyncSession, user: User, entry: LedgerEntry) -> dict
     return out
 
 
-def list_filters(*, month: str | None, kind: str | None, category_id, vertical: str | None) -> list:
-    """ML15, without the status filter: the totals use the same clauses with status = approved (ML10)."""
+def list_filters(*, month: str | None, kind: str | None, category_id, vertical: str | None, table=LedgerEntry.__table__) -> list:
+    """ML15, without the status filter: the totals use the same clauses with status = approved (ML10). `table` is `ledger_entries` or
+    the mgmt-005 `lines()` subquery, which has the same column names."""
+    c = table.c
     where: list = []
     if month:
         year, number = (int(part) for part in month.split("-"))
         first = date(year, number, 1)
-        where += [LedgerEntry.entry_date >= first, LedgerEntry.entry_date < (date(year + 1, 1, 1) if number == 12 else date(year, number + 1, 1))]
+        where += [c.entry_date >= first, c.entry_date < (date(year + 1, 1, 1) if number == 12 else date(year, number + 1, 1))]
     if kind:
-        where.append(LedgerEntry.kind == kind)
+        where.append(c.kind == kind)
     if category_id:
-        where.append(LedgerEntry.category_id == category_id)
+        where.append(c.category_id == category_id)
     if vertical:
-        where.append(LedgerEntry.vertical == vertical)
+        where.append(c.vertical == vertical)
     return where
 
 
@@ -263,6 +286,163 @@ async def page(db: AsyncSession, user: User, where: list, status: str | None, li
     total = await db.scalar(select(func.count()).select_from(LedgerEntry).where(*rows_where))
     rows = (await db.scalars(select(LedgerEntry).where(*rows_where).order_by(LedgerEntry.entry_date.desc(), LedgerEntry.created_at.desc(), LedgerEntry.id).limit(limit).offset(offset))).all()
     return {"items": await entries_out(db, user, list(rows)), "total": total, "limit": limit, "offset": offset, "totals": await totals(db, where)}
+
+
+# --- automatic lines (mgmt-005, MA1-MA11) -------------------------------------------------------------------------------------
+CURRENCY = "INR"
+PAYMENT_VERTICAL = case((Payment.division == "it", "it"), (Payment.division == "overseas", "abroad"), else_="other")  # MA5 (Q-08)
+PAYMENT_KIND = case((Payment.reference_type.in_(("enrollment_fee", "enrollment")), "Enrolment fee"), (Payment.reference_type == "service_fee", "Service fee"), else_="Payment")
+TRIP_VERTICAL = case((BdmProfile.bdm_type == "college", "it"), (BdmProfile.bdm_type == "agent", "abroad"), (BdmProfile.bdm_type == "school", "school"), else_="shared")
+AUTO_FIELDS = ("source", "id", "entry_date", "kind", "vertical", "category_label", "amount", "currency", "description", "counted")
+
+
+def ist_day(moment):
+    """MA2: the IST calendar day of a timestamptz."""
+    return cast(func.timezone(IST.key, moment), Date)
+
+
+def _auto(source: str, *, id, entry_date, kind: str, vertical, label, amount, currency, description, created_at):
+    """One automatic source in the `lines` column shape: no ledger category, no status; it counts when it is in rupees (MA8)."""
+    return select(
+        literal(source, String).label("source"),
+        id.label("id"),
+        entry_date.label("entry_date"),
+        literal(kind, String).label("kind"),
+        vertical.label("vertical"),
+        cast(null(), Uuid).label("category_id"),
+        label.label("category_label"),
+        cast(null(), String).label("status"),
+        amount.label("amount"),
+        amount.label("signed_amount"),
+        currency.label("currency"),
+        description.label("description"),
+        (currency == CURRENCY).label("counted"),
+        created_at.label("created_at"),
+    )
+
+
+def lines():
+    """MA1: the manual entries UNION ALL the five automatic sources, one subquery with `ledger_entries`' filter column names. A manual
+    entry counts once approved (a reversal negatively, ML10); an automatic line counts when in rupees. Nothing is copied or stored."""
+    manual = select(
+        literal("manual", String).label("source"),
+        LedgerEntry.id,
+        LedgerEntry.entry_date,
+        LedgerEntry.kind,
+        LedgerEntry.vertical,
+        LedgerEntry.category_id,
+        LedgerCategory.name.label("category_label"),
+        LedgerEntry.status,
+        LedgerEntry.amount,
+        case((LedgerEntry.reversal_of_id.is_(None), LedgerEntry.amount), else_=-LedgerEntry.amount).label("signed_amount"),
+        literal(CURRENCY, String).label("currency"),
+        LedgerEntry.description,
+        (LedgerEntry.status == "approved").label("counted"),
+        LedgerEntry.created_at,
+    ).join(LedgerCategory, LedgerCategory.id == LedgerEntry.category_id)
+    payments = (
+        _auto(
+            "payment",
+            id=Payment.id,
+            entry_date=ist_day(func.coalesce(Receipt.issued_at, Payment.updated_at)),  # MA2: a paid payment never moves again (AGN-011 D2)
+            kind="income",
+            vertical=PAYMENT_VERTICAL,
+            label=case((PAYMENT_VERTICAL == "it", "IT training"), (PAYMENT_VERTICAL == "abroad", "Abroad education"), else_="Other"),
+            amount=Payment.amount,
+            currency=Payment.currency,
+            description=func.concat(
+                PAYMENT_KIND,
+                case((Payment.installment_no.is_not(None), func.concat(" · instalment ", cast(Payment.installment_no, String)))),
+                case((Receipt.receipt_no.is_not(None), func.concat(" · receipt ", Receipt.receipt_no))),
+            ),
+            created_at=Payment.created_at,
+        )
+        .outerjoin(Receipt, Receipt.payment_id == Payment.id)
+        .where(Payment.status.in_(PAID_STATUSES), Payment.reference_type != AGENT_DEPOSIT)
+    )
+    commissions = _auto(
+        "agent_commission",
+        id=AgentCommission.id,
+        entry_date=ist_day(func.coalesce(AgentCommission.paid_at, AgentCommission.updated_at)),
+        kind="expense",
+        vertical=literal("abroad", String),
+        label=literal("Agent commissions", String),
+        amount=AgentCommission.amount,
+        currency=AgentCommission.currency,
+        description=func.concat("Agent commission", case((AgentCommission.claim_reference.is_not(None), func.concat(" · claim ", AgentCommission.claim_reference)))),
+        created_at=AgentCommission.created_at,
+    ).where(AgentCommission.status == "paid", AgentCommission.amount > 0)
+    trips = (
+        _auto(
+            "trip_expense",
+            id=BdmTripExpense.id,
+            entry_date=BdmTripExpense.expense_date,
+            kind="expense",
+            vertical=TRIP_VERTICAL,
+            label=literal("Travel", String),
+            amount=BdmTripExpense.amount,
+            currency=BdmTrip.currency,
+            description=func.concat("Trip ", BdmTrip.code, " · ", BdmTripExpense.category),
+            created_at=BdmTripExpense.created_at,
+        )
+        .join(BdmTrip, BdmTrip.id == BdmTripExpense.trip_id)
+        .outerjoin(BdmProfile, BdmProfile.user_id == BdmTrip.bdm_user_id)
+        .where(BdmTrip.approval_status == "approved")
+    )
+    recruiter = _auto(
+        "recruiter_payment",
+        id=RecruiterPayment.id,
+        entry_date=RecruiterPayment.received_on,
+        kind="income",
+        vertical=literal("recruitment", String),
+        label=literal("Recruitment", String),
+        amount=RecruiterPayment.amount,
+        currency=literal(CURRENCY, String),  # rec-031 invoices are in rupees
+        description=func.concat("Invoice ", RecruiterInvoice.invoice_number, " payment"),
+        created_at=RecruiterPayment.created_at,
+    ).join(RecruiterInvoice, RecruiterInvoice.id == RecruiterPayment.invoice_id)
+    universities = _auto(
+        "university_commission",
+        id=UniversityCommissionReceipt.id,
+        entry_date=UniversityCommissionReceipt.received_on,
+        kind="income",
+        vertical=literal("abroad", String),
+        label=literal("University commission", String),
+        amount=UniversityCommissionReceipt.amount,
+        currency=UniversityCommissionReceipt.currency,
+        description=func.concat(University.name, " · ", UniversityCommissionReceipt.reference),
+        created_at=UniversityCommissionReceipt.created_at,
+    ).join(University, University.id == UniversityCommissionReceipt.university_id)
+    return union_all(manual, payments, commissions, trips, recruiter, universities).subquery("ledger_lines")
+
+
+async def lines_totals(db: AsyncSession, table, where: list) -> dict:
+    """MA11: the counted lines (approved manual entries + rupee automatic lines) over every filter but status, plus the automatic
+    lines in another currency, per currency and kind (MA8)."""
+    c = table.c
+    sums: dict = dict((await db.execute(select(c.kind, func.coalesce(func.sum(c.signed_amount), 0)).where(*where, c.counted).group_by(c.kind))).all())
+    income, expense = (Decimal(sums.get(k, 0)).quantize(CENTS) for k in ("income", "expense"))
+    other = await db.execute(
+        select(c.currency, c.kind, func.sum(c.amount), func.count()).where(*where, c.source != "manual", c.counted.is_(False)).group_by(c.currency, c.kind).order_by(c.currency, c.kind)
+    )
+    not_counted = [{"currency": cur, "kind": kind, "amount": Decimal(amount).quantize(CENTS), "count": count} for cur, kind, amount, count in other.all()]
+    return {"income": income, "expense": expense, "net": (income - expense).quantize(CENTS), "not_counted": not_counted}
+
+
+async def lines_page(db: AsyncSession, user: User, filters: dict, status: str | None, limit: int, offset: int) -> dict:
+    """MA9-MA11: the mixed list, newest first. `category` and `status` are manual fields, so with either set the automatic lines (NULL
+    there) drop out through the same clauses (MA10). Manual rows keep mgmt-004's full shape."""
+    table = lines()
+    c = table.c
+    where = list_filters(**filters, table=table)
+    rows_where = [*where, *([c.status == status] if status else [])]
+    total = await db.scalar(select(func.count()).select_from(table).where(*rows_where))
+    rows = (await db.execute(select(table).where(*rows_where).order_by(c.entry_date.desc(), c.created_at.desc(), c.id).limit(limit).offset(offset))).all()
+    manual_ids = [r.id for r in rows if r.source == "manual"]
+    entries = (await db.scalars(select(LedgerEntry).where(LedgerEntry.id.in_(manual_ids)))).all() if manual_ids else []
+    manual = {e["id"]: e for e in await entries_out(db, user, list(entries))}
+    items = [manual[r.id] if r.source == "manual" else {k: getattr(r, k) for k in AUTO_FIELDS} for r in rows]
+    return {"items": items, "total": total, "limit": limit, "offset": offset, "totals": await lines_totals(db, table, where)}
 
 
 async def options(db: AsyncSession) -> dict:
