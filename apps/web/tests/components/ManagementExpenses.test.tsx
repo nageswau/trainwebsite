@@ -63,6 +63,16 @@ describe("mgmt-010 ManagementExpenses", () => {
     expect(within(months).getByRole("row", { name: /financial year to date/i })).toHaveTextContent("₹3,00,000.00");
   });
 
+  it("titles the category and month tables with left-aligned headings outside their scroll areas (browser QA-02)", () => {
+    render(<ManagementExpenses data={dashboard()} error="" month="2026-05" maxMonth="2026-10" />);
+    for (const name of ["By category", "Month by month"]) {
+      const heading = screen.getByRole("heading", { level: 3, name });
+      expect(heading.closest(".table-wrap")).toBeNull();
+      expect(screen.getByRole("region", { name })).toHaveAttribute("aria-labelledby", heading.id);
+    }
+    expect(screen.getByRole("table", { name: /month by month/i }).style.minWidth).toBe("0");
+  });
+
   it("links to the month's expense lines in the ledger", () => {
     render(<ManagementExpenses data={dashboard()} error="" month="2026-05" maxMonth="2026-10" />);
     expect(screen.getByRole("link", { name: /expense lines in the ledger/i })).toHaveAttribute("href", "/management/ledger?month=2026-05&kind=expense&include=auto");

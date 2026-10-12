@@ -32,12 +32,12 @@ test("the accountant reads the expense dashboard and picks an earlier month", as
   const monthly = await months.locator("tbody tr td").allTextContents();
   expect(Math.abs(monthly.map(rupees).reduce((a, b) => a + b, 0) - rupees(total ?? ""))).toBeLessThan(0.01);
 
-  await page.getByLabel("Month").fill("2025-04");
+  await page.getByLabel("Month", { exact: true }).fill("2025-04");
   await page.getByRole("button", { name: "Show" }).click();
   await expect(page).toHaveURL(/month=2025-04/);
   await expect(page.getByText(/Monthly: April 2025\. Annual: the financial year 2025-26/)).toBeVisible();
   await page.reload();
-  await expect(page.getByLabel("Month")).toHaveValue("2025-04");
+  await expect(page.getByLabel("Month", { exact: true })).toHaveValue("2025-04");
   await expect(page.getByRole("table", { name: "Month by month" }).locator("tbody tr")).toHaveCount(1);
   await expect(page.getByRole("link", { name: /expense lines in the ledger/ })).toHaveAttribute("href", "/management/ledger?month=2025-04&kind=expense&include=auto");
 });

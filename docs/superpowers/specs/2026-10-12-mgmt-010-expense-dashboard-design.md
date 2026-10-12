@@ -26,7 +26,7 @@ behind each head, and the month-by-month totals that add up to the year. Read-on
 | ME4 | Annual (Q-04 FY part) | **Indian financial year to date**: 1 April of the financial year containing the selected month through the end of that month. The month-by-month list covers the same months, so annual = the sum of the months (AC) |
 | ME5 | Figures | Approved manual expense entries (a reversal counts negative, ML10) + automatic expense lines in rupees (MA8). Drafts, submitted and rejected entries never count. Income is not read |
 | ME6 | Other currencies | Automatic expense lines in another currency in the financial year to date are not counted and are summed per currency in `not_counted` (as MA8); the page shows them as a note |
-| ME7 | Categories | A second table lists each category (or automatic label) with money in the financial year to date, its head, monthly and annual figures, largest annual first |
+| ME7 | Categories | A second table lists each category (or automatic label) with money in the financial year to date (one netted to zero by a reversal is left out, browser QA-01), its head, monthly and annual figures, largest annual first |
 | ME8 | Bars | Each head gets a horizontal bar of its share of the annual total (non-negative; the percentage is also written out). No chart library |
 | ME9 | Validation | `month` must match `YYYY-MM`, be 2000-01 or later and not after the current IST month → else `422` with a message |
 | ME10 | Access (M13) | Finance tier only (`ledger.require_finance`): partner and accountant. `super_admin` `403` "Finance access required"; any other role `403`; signed out `401` |

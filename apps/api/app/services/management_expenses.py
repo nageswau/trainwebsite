@@ -84,6 +84,7 @@ async def dashboard(db: AsyncSession, month_start: date) -> dict:
         "categories": [
             {"label": label, "group": head_of(label), "month": sums["month"].quantize(q), "year": sums["year"].quantize(q)}
             for label, sums in sorted(by_label.items(), key=lambda item: (-item[1]["year"], item[0].lower()))
+            if sums["month"] or sums["year"]  # browser QA-01: a category netted to zero by a reversal says nothing
         ],
         "months": [{"month": key, "total": total.quantize(q)} for key, total in months.items()],
         "totals": {"month": sum((h["month"] for h in heads.values()), Decimal(0)).quantize(q), "year": year_total.quantize(q)},

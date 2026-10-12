@@ -7620,7 +7620,7 @@ owner's instruction to proceed with recommended answers. They answer the backlog
 | ME4 | Annual (Q-04 FY part) | Indian financial year (1 April – 31 March) to date through the selected month; the month-by-month list sums to it |
 | ME5 | Figures | Approved manual expenses (reversals negative) + INR automatic expense lines (`ledger.lines()`); nothing else counts |
 | ME6 | Other currencies | Not counted; summed per currency for the year to date in `not_counted` |
-| ME7 | Categories | Each category / automatic label with money in the year to date, its head, monthly and annual; largest first |
+| ME7 | Categories | Each category / automatic label with money in the year to date (netted-to-zero left out), its head, monthly and annual; largest first |
 | ME8 | Bars | A bar per head of its share of the annual total, with the percentage written out; no chart library |
 | ME9 | Validation | `month` = `YYYY-MM`, 2000-01 or later, not after the current IST month → else `422` |
 | ME10 | Access | Finance tier only (partner, accountant); `super_admin` `403` "Finance access required"; others `403`; signed out `401` |

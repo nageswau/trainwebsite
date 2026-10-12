@@ -217,6 +217,21 @@ async def test_a_reversal_nets_the_expense_out(client, db_session):
     assert delta(before, after, "technology") == (Decimal("0.00"), Decimal("0.00"))
 
 
+@pytest.mark.asyncio
+async def test_a_category_that_nets_to_zero_is_not_listed(client, db_session):
+    """Browser QA-01: a category whose only expense was reversed adds a ₹0.00 / ₹0.00 row that says nothing."""
+    month = TODAY.strftime("%Y-%m")
+    await as_user(client, db_session)
+    custom = await category(client)
+    entry = await approved_expense(client, db_session, "", TODAY, "40.00", category_id=custom["id"])
+    partner = await login_back(client, db_session)
+    reversal = (await post(client, entry["id"], "reverse", reason="Duplicate")).json()
+    await login(client, partner)
+    assert (await post(client, reversal["id"], "approve")).status_code == 200
+    data = await dashboard(client, month)
+    assert custom["name"] not in [c["label"] for c in data["categories"]]
+
+
 async def login_back(client, db):
     """Switch to a fresh accountant and return a fresh partner (who did not create the reversal) to approve it."""
     partner = await make_user(db, "partner", "global")

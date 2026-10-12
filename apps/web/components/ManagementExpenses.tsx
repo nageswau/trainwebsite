@@ -59,24 +59,29 @@ export default function ManagementExpenses({ data, error, month, maxMonth }: { d
               </tfoot>
             </table>
           </div>
+          {/* Browser QA-02: the titles sit outside the scroll areas, so a phone sees them whole, not a centred, clipped caption. */}
           {data.categories.length > 0 && (
-            <div className="table-wrap" role="region" aria-label="By category" tabIndex={0} style={{ overflowX: "auto" }}>
-              <table className="table" style={{ minWidth: 560 }}>
-                <caption>By category</caption>
-                <thead>
-                  <tr><th scope="col">Category</th><th scope="col">Head</th><th scope="col">Monthly</th><th scope="col">Annual</th></tr>
-                </thead>
-                <tbody>
-                  {data.categories.map((c) => (
-                    <tr key={c.label}><th scope="row">{c.label}</th><td>{heads.get(c.group) ?? c.group}</td><td>{formatInr(c.month)}</td><td>{formatInr(c.year)}</td></tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <>
+              <h3 id="expense-categories">By category</h3>
+              <div className="table-wrap" role="region" aria-labelledby="expense-categories" tabIndex={0} style={{ overflowX: "auto" }}>
+                <table className="table" style={{ minWidth: 560 }}>
+                  <caption className="visually-hidden">By category</caption>
+                  <thead>
+                    <tr><th scope="col">Category</th><th scope="col">Head</th><th scope="col">Monthly</th><th scope="col">Annual</th></tr>
+                  </thead>
+                  <tbody>
+                    {data.categories.map((c) => (
+                      <tr key={c.label}><th scope="row">{c.label}</th><td>{heads.get(c.group) ?? c.group}</td><td>{formatInr(c.month)}</td><td>{formatInr(c.year)}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
-          <div className="table-wrap" role="region" aria-label="Month by month" tabIndex={0} style={{ overflowX: "auto" }}>
-            <table className="table">
-              <caption>Month by month</caption>
+          <h3 id="expense-months">Month by month</h3>
+          <div className="table-wrap" role="region" aria-labelledby="expense-months" tabIndex={0} style={{ overflowX: "auto" }}>
+            <table className="table" style={{ minWidth: 0 }}>
+              <caption className="visually-hidden">Month by month</caption>
               <thead>
                 <tr><th scope="col">Month</th><th scope="col">Expenses</th></tr>
               </thead>
