@@ -49,8 +49,8 @@ export function pillarsFor(tiers: ManagementTiers, pillars: ManagementPillar[] =
     .filter((pillar) => pillar.entries.length > 0);
 }
 
-/** The sidebar: the Command Center home, then each live entry the tiers allow (once per page). */
+/** The sidebar: the Command Center home, then each live entry the tiers allow. */
 export function managementNavFor(tiers: ManagementTiers, pillars: ManagementPillar[] = MANAGEMENT_PILLARS): NavItem[] {
   const live = pillarsFor(tiers, pillars).flatMap((pillar) => pillar.entries.flatMap((entry) => (entry.href ? [{ label: entry.label, href: entry.href }] : [])));
-  return [{ label: "Command Center", href: MANAGEMENT_HOME }, ...live.filter((item, index) => live.findIndex((other) => other.href === item.href) === index)];
+  return [{ label: "Command Center", href: MANAGEMENT_HOME }, ...live];
 }
