@@ -83,7 +83,10 @@ def active_filter(today: date):
 async def check(db: AsyncSession, state: dict, before: dict | None = None) -> None:
     """The merged state of a create or change; only fields set or changed are checked, so an overdue task or one whose owner has
     since left stays editable."""
-    changed = lambda field: before is None or state[field] != before[field]  # noqa: E731
+
+    def changed(field: str) -> bool:
+        return before is None or state[field] != before[field]
+
     if changed("owner_user_id") and state["owner_user_id"] not in await staff_ids(db, [state["owner_user_id"]]):
         raise field_error("owner_user_id", "Choose an active staff member")
     today = india_today()

@@ -10,8 +10,8 @@ import { dashboardPathFor } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
 // mgmt-027 (M14, MD8): any staff member's management decisions. Like /account/password (ENH-006) this belongs to no one role's portal
-// nav, so it is one shared route: the decision notification links here, and mgmt-028 later lists these in each portal's
-// "Management tasks". It gates itself (/account/* is outside middleware.ts's matcher); the API returns only the caller's own lines.
+// nav, so it is one shared route: the decision notification links here, and mgmt-028's shared
+// "Management tasks" page (/account/management-tasks) lists these too. It gates itself (/account/* is outside middleware.ts's matcher); the API returns only the caller's own lines.
 const NEXT = encodeURIComponent(MY_DECISIONS_HOME);
 
 export const metadata: Metadata = { title: "Management decisions" };
