@@ -1926,7 +1926,20 @@ Counts only, no personal data; nothing else changes.
 
 - Ledger audit rows (`mgmt.ledger`, `mgmt.ledger_category`) are finance-tier: hidden from `/admin/audit` and its export (MA8).
 
-### 2.116 Management discussions & decisions *(net-new, added 2026-10-12 — `DEC-SCOPE-190`, `mgmt-027`)*
+
+### 2.116 Investment register + ROI *(net-new, added 2026-10-12 — `DEC-SCOPE-190`, `mgmt-014`)*
+
+| Role | `GET/POST /management/investments`, `GET/PATCH /management/investments/{id}`, pages | Command Center entry |
+|---|---|---|
+| `partner` | full read and write (every partner sees and edits every investment, §2 shared company data) | "Investments & ROI" (Finance pillar) |
+| `accountant` | `403` "Only partners can open this"; page "Access unavailable" | none |
+| `super_admin` | `403` "Only partners can open this"; page "Access unavailable" | none |
+| every other role | `403` "Management access required"; signed out `401` (page → `/admin/login?next=`) | none |
+
+- The refusal happens before any lookup, so a `404` never tells a non-partner that an id exists. Audit rows (`mgmt.investment`) stay
+  partner-only in Management activity and are left out of `/admin/audit` (mgmt-002 MA8, unchanged).
+
+### 2.117 Management discussions & decisions *(net-new, added 2026-10-12 — `DEC-SCOPE-191`, `mgmt-027`)*
 
 | Role | Discussions: list, read, create, edit, attachments | Own decision line (`/me/management-decisions`) |
 |---|---|---|

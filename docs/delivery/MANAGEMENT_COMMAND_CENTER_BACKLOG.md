@@ -653,6 +653,9 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** high
 
 ### mgmt-014 — Investment register + ROI
+- **Status (2026-10-12):** **IN REVIEW** on `feature/mgmt-014`. `DEC-SCOPE-190` (MI1–MI14 recommended defaults, UNVERIFIED; Q-16 interim
+  answer MI3: planned / active / completed / cancelled). Migration `0151_investments`; API §12DD; RBAC §2.116. QA evidence
+  `docs/quality/MGMT-014_EXPLORATORY_QA_2026-10-12.md`.
 - **Business requirement:** §23 (11 fields; the example ₹5 L → ₹18 L = 260%; "where company money is being invested and what it
   produces").
 - **Existing behavior:** none.
@@ -1002,8 +1005,8 @@ Common conventions for every item:
 - **Complexity:** large · **Risk:** medium
 
 ### mgmt-027 — Discussions & decisions
-- **Status (2026-10-12):** **IN REVIEW** on `feature/mgmt-027`. `DEC-SCOPE-190` (MD1–MD14 recommended defaults, UNVERIFIED; answers
-  Q-26). Migration `0151_management_discussions`; API §12DD; RBAC §2.116. The responsible person's view is the shared
+- **Status (2026-10-12):** **IN REVIEW** on `feature/mgmt-027`. `DEC-SCOPE-191` (MD1–MD14 recommended defaults, UNVERIFIED; answers
+  Q-26). Migration `0152_management_discussions`; API §12DE; RBAC §2.117. The responsible person's view is the shared
   `/account/management-decisions` until mgmt-028 adds each portal's "Management tasks". QA evidence
   `docs/quality/MGMT-027_EXPLORATORY_QA_2026-10-12.md`.
 - **Business requirement:** §27 (11 fields; the Japan example) (M14).

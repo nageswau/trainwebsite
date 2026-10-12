@@ -2896,10 +2896,24 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `GET /management/ledger/options` *(new)* | `{categories (active), channels[{value, label}], verticals[], programs[{id, name, batches[{id, name}]}]}` |
 | `GET /management/ledger/categories`, `POST …/categories {kind, nature?, name}`, `PATCH …/categories/{id} {name?, active?}` *(new)* | All categories; create `201` (`409` duplicate name per kind, `422` nature rules); rename / (de)activate (`404`, `409`) |
 
-## 12DD. Management discussions & decisions (`mgmt-027`) — addendum, 2026-10-12
 
-- **Basis:** `DEC-SCOPE-190` (MD1–MD14). Design spec `docs/superpowers/specs/2026-10-12-mgmt-027-discussions-decisions-design.md`.
-  Migration `0151_management_discussions`. `/management/discussions*`: partner + super_admin only (M13 operational tier); the accountant
+## 12DD. Investment register + ROI (`mgmt-014`) — addendum, 2026-10-12
+
+- **Basis:** `DEC-SCOPE-190` (MI1–MI14). Design spec `docs/superpowers/specs/2026-10-12-mgmt-014-investment-register-design.md`.
+  Migration `0151_investments` (after mgmt-004's `0150_management_ledger`). Partner-only (M13): every route answers `403` to the accountant and super_admin ("Only partners can open
+  this") and to every other role ("Management access required"); signed out `401`. Money is INR as decimal strings.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/investments` *(new)* | Query `date_from`, `date_to` (on `invested_on`, inclusive), `vertical`, `status`, `limit` 1–100 (25), `offset` 0–10 000. `200` `{items[Investment], total, limit, offset, totals {count, invested, actual_return, roi \| null}, investors[{id, full_name}]}`; newest first; totals over every match, cancelled excluded. `422` unknown vertical/status, `date_to` before `date_from`, malformed parameter |
+| `POST /management/investments` *(new)* | Body `{invested_on, investor_kind "partner"\|"company", investor_user_id?, amount > 0, purpose 2–200, vertical, expected_return?, actual_return? (≥ 0), status? ("active"), notes? ≤ 2000}`, extra fields refused. `201` Investment. `422` worded per field, or "Choose the partner who invested" / "Choose an active partner as the investor" / "A company investment has no partner investor". Audited `mgmt.investment.create` |
+| `GET /management/investments/{id}` *(new)* | `200` Investment `{id, code "INV-000001", invested_on, investor_kind, investor {id, full_name} \| null, amount, purpose, vertical, expected_return, actual_return, roi \| null, status, notes, created_by, updated_by, created_at, updated_at}`; `404` unknown |
+| `PATCH /management/investments/{id}` *(new)* | Any subset of the POST fields; null for a required field `422`. Row locked; only changed fields are written and audited (`mgmt.investment.update`, before/after); no change → `200`, nothing written. `404` unknown. No `DELETE` (cancel instead) |
+
+## 12DE. Management discussions & decisions (`mgmt-027`) — addendum, 2026-10-12
+
+- **Basis:** `DEC-SCOPE-191` (MD1–MD14). Design spec `docs/superpowers/specs/2026-10-12-mgmt-027-discussions-decisions-design.md`.
+  Migration `0152_management_discussions`. `/management/discussions*`: partner + super_admin only (M13 operational tier); the accountant
   → `403` "Operational management access required"; other roles `403` "Management access required"; signed out `401`.
   `/me/management-decisions*`: any signed-in user, scoped to decisions where they are the responsible person.
 

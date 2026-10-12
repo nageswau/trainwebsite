@@ -360,6 +360,9 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
 /* mgmt-003 (QA-01): the business snapshot's fifteen counts -- a list without bullets; two columns on a phone, as above. */
 .snapshot-tiles { list-style: none; padding: 0; }
 @media (max-width: 640px) { .metric-grid.snapshot-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* mgmt-014 browser QA-03: rupee totals ("₹1,15,00,000.00") wrap inside their tile instead of widening a phone's page. */
+.money-tiles .metric { min-width: 0; }
+.money-tiles .metric strong { font-size: 22px; overflow-wrap: anywhere; }
 /* tel-021: the ten §1 dashboard tiles -- five across on a wide screen, then three, then two on tablets and phones; a hint under each
    figure. The daily activity table reuses .tel-targets (short columns, row headers as labels). */
 .metric-grid.tel-tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); list-style: none; padding: 0; margin: 0 0 24px; }

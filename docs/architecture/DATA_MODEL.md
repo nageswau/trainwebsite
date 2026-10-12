@@ -1985,3 +1985,18 @@ Indexes `(company_id, drive_date)` and `(drive_date)`.
 through (DR3). Shortlisted, interviewed, selected and joined are computed from these rows on read, never stored.
 
 Additive: no existing row is read or written (no backfill). `downgrade()` refuses while any drive exists.
+
+## Investment register (`mgmt-014`, `DEC-SCOPE-190`; migration `0151_investments`, after `0150_management_ledger`)
+
+**`investments` columns:** `id`; `code` varchar(20) unique (`INV-000001` from `investment_code_seq`); `invested_on` date; `investor_kind`
+varchar(10) (`partner` | `company`); `investor_user_id` → `users` (FK RESTRICT, null for `company`); `amount` numeric(12,2) (CHECK > 0);
+`purpose` varchar(200); `vertical` varchar(16) (CHECK: abroad, it, recruitment, school, shared, other); `expected_return`,
+`actual_return` numeric(12,2) nullable (CHECK ≥ 0); `status` varchar(16) (CHECK: planned, active, completed, cancelled; default active);
+`notes` text; `created_by_user_id`, `updated_by_user_id` → `users` (FK RESTRICT); timestamps.
+
+**Constraints and index:** `ck_investments_investor` keeps the investor pair consistent; `ix_investments_invested_on (invested_on)` serves
+the register's date filter and order.
+
+**Design notes:**
+- ROI is computed on read ((actual − amount) ÷ amount × 100), never stored. Partner-only (M13). No delete: a mistake is cancelled.
+- Additive: no existing row is read or written. `downgrade()` refuses while any investment exists.

@@ -57,6 +57,8 @@ from app.models import (
     GENDERS,
     INSTITUTION_TYPES,
     INTERVIEW_ROUNDS,
+    INVESTMENT_STATUSES,
+    INVESTMENT_VERTICALS,
     JOB_EMPLOYMENT_TYPES,
     JOB_FEE_BASES,
     JOB_PRIORITIES,
@@ -11018,6 +11020,126 @@ class LedgerOptions(BaseModel):
     channels: list[LedgerChoice]
     verticals: list[LedgerChoice]
     programs: list[LedgerProgramOption]
+
+
+# --- mgmt-014 (DEC-SCOPE-190 MI1-MI12): the investment register, partner-only -------------------------------------------------
+InvestmentStatus = Literal[INVESTMENT_STATUSES]
+InvestmentVertical = Literal[INVESTMENT_VERTICALS]
+InvestorKind = Literal["partner", "company"]
+INVESTMENT_LABELS = {"purpose": "Purpose", "notes": "Notes"}
+INVESTMENT_MONEY_FORMAT = "Enter the amount in rupees as a number with up to 2 decimals"
+INVESTMENT_MONEY_MAX = Decimal("9999999999.99")  # Numeric(12, 2)
+
+
+def _investment_money(positive: bool):
+    """MI6: INR, at most 2 decimals, within Numeric(12, 2); the amount is more than 0, a return is 0 or more."""
+    def parse(value):
+        try:
+            amount = Decimal(str(value).strip())
+        except (InvalidOperation, ValueError):
+            raise PydanticCustomError("investment_money", INVESTMENT_MONEY_FORMAT) from None
+        exponent = amount.as_tuple().exponent
+        if not amount.is_finite() or (isinstance(exponent, int) and exponent < -2):
+            raise PydanticCustomError("investment_money", INVESTMENT_MONEY_FORMAT)
+        if positive and amount <= 0:
+            raise PydanticCustomError("investment_money", "The amount must be more than ₹0")
+        if amount < 0:
+            raise PydanticCustomError("investment_money", "A return can't be negative")
+        if amount > INVESTMENT_MONEY_MAX:
+            raise PydanticCustomError("investment_money", "The amount is too large")
+        return amount.quantize(Decimal("0.01"))  # "500000" reads back (and is audited) as "500000.00"
+    return parse
+
+
+def _purpose(value: str) -> str:
+    if len(value) < 2:
+        raise PydanticCustomError("investment_purpose", "The purpose needs at least 2 characters")
+    return value
+
+
+InvestmentAmount = Annotated[Decimal, BeforeValidator(_investment_money(True))]
+InvestmentReturn = Annotated[Decimal | None, BeforeValidator(lambda v: v if v is None else _investment_money(False)(v))]
+InvestmentDate = Annotated[date, BeforeValidator(_trip_date("investment date"))]
+InvestmentPurpose = Annotated[
+    Annotated[str, _trimmed(200)], AfterValidator(_trip_text(_BDM_CONTROL, True, INVESTMENT_LABELS)), AfterValidator(_purpose),
+    BeforeValidator(_blank_if_null),
+]
+InvestmentNotes = Annotated[
+    Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, INVESTMENT_LABELS)), BeforeValidator(_bdm_newlines),
+]
+
+
+class InvestmentCreate(BaseModel):
+    """MI2/MI4. Whether `investor_user_id` names an active partner is checked in the service, so the 422 names the field."""
+
+    model_config = ConfigDict(extra="forbid")
+    invested_on: InvestmentDate
+    investor_kind: InvestorKind
+    investor_user_id: UUID | None = None
+    amount: InvestmentAmount
+    purpose: InvestmentPurpose
+    vertical: InvestmentVertical
+    expected_return: InvestmentReturn = None
+    actual_return: InvestmentReturn = None
+    status: InvestmentStatus = "active"
+    notes: InvestmentNotes = None
+
+
+class InvestmentUpdate(BaseModel):
+    """MI10: only the fields sent change. A required field sent as null fails its own validator (422); the defaults are never validated."""
+
+    model_config = ConfigDict(extra="forbid")
+    invested_on: InvestmentDate = None
+    investor_kind: InvestorKind = None
+    investor_user_id: UUID | None = None
+    amount: InvestmentAmount = None
+    purpose: InvestmentPurpose = None
+    vertical: InvestmentVertical = None
+    expected_return: InvestmentReturn = None
+    actual_return: InvestmentReturn = None
+    status: InvestmentStatus = None
+    notes: InvestmentNotes = None
+
+
+class InvestmentPerson(BaseModel):
+    id: UUID
+    full_name: str
+
+
+class InvestmentOut(BaseModel):
+    id: UUID
+    code: str
+    invested_on: date
+    investor_kind: InvestorKind
+    investor: InvestmentPerson | None
+    amount: Decimal
+    purpose: str
+    vertical: InvestmentVertical
+    expected_return: Decimal | None
+    actual_return: Decimal | None
+    roi: Decimal | None
+    status: InvestmentStatus
+    notes: str | None
+    created_by: InvestmentPerson
+    updated_by: InvestmentPerson
+    created_at: datetime
+    updated_at: datetime
+
+
+class InvestmentTotals(BaseModel):
+    count: int
+    invested: Decimal
+    actual_return: Decimal
+    roi: Decimal | None
+
+
+class InvestmentPageOut(BaseModel):
+    items: list[InvestmentOut]
+    total: int
+    limit: int
+    offset: int
+    totals: InvestmentTotals
+    investors: list[InvestmentPerson]
 
 
 # mgmt-027 (spec MD1-MD14): management discussions & decisions. Field rules live here; rules that need the database or the merged

@@ -33,7 +33,7 @@ participants and follow-up stay management-only. mgmt-028 later folds these line
 | MD13 | Concurrency | Every write locks the discussion row (`FOR UPDATE`) and commits once; an assignee status change racing a reassignment re-checks ownership after the lock (`404`) |
 | MD14 | Visibility of notes | The assignee API serializer never includes topic, points, participants, department, follow-up or non-shareable attachments (AC3) |
 
-## 3. Data (migration `0151_management_discussions`)
+## 3. Data (migration `0152_management_discussions`)
 
 - `management_discussions`: id, topic, discussion_date, department, points, decision, responsible_user_id → users, deadline, status
   (CHECK), follow_up_date, created_by, updated_by, timestamps. CHECKs: status; `responsible_user_id IS NULL OR decision IS NOT NULL`.
