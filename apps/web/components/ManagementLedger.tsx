@@ -51,8 +51,9 @@ export default function ManagementLedger({ data, error, filters, categories }: {
           {data.items.length === 0 ? (
             <p className="empty" role="status">No ledger entries match these filters.</p>
           ) : (
-            <div className="table-wrap">
-              <table className="table">
+            // QA-03: on a phone the table scrolls sideways in its own focusable region instead of squeezing the entry to a word per line.
+            <div className="table-wrap" role="region" aria-label="Ledger entries" tabIndex={0} style={{ overflowX: "auto" }}>
+              <table className="table" style={{ minWidth: 720 }}>
                 <caption className="visually-hidden">Ledger entries, newest first</caption>
                 <thead>
                   <tr><th scope="col">Date</th><th scope="col">Entry</th><th scope="col">Category</th><th scope="col">Vertical</th><th scope="col">Status</th><th scope="col" style={{ textAlign: "right" }}>Amount</th></tr>

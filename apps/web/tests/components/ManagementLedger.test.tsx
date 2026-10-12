@@ -148,7 +148,7 @@ describe("mgmt-004 ledger page", () => {
 describe("mgmt-004 entry page", () => {
   it("shows the fields, receipt link, reversal link, history and a step notice", async () => {
     const detail = {
-      ...entry({ status: "approved", reversed_by_id: "r1", receipt: { name: "rent.pdf", content_type: "application/pdf" }, decided_by: { id: "p2", full_name: "Meera Partner" }, decided_at: "2026-10-02T04:30:00Z", can: { edit: false, submit: false, decide: false, reverse: false } }),
+      ...entry({ status: "approved", reversed_by_id: "r1", channel: "exhibition_event", receipt: { name: "rent.pdf", content_type: "application/pdf" }, decided_by: { id: "p2", full_name: "Meera Partner" }, decided_at: "2026-10-02T04:30:00Z", can: { edit: false, submit: false, decide: false, reverse: false } }),
       events: [{ id: "v1", at: "2026-10-01T04:30:00Z", actor: { id: "a1", full_name: "Asha Accountant" }, event: "rejected", from_status: "submitted", to_status: "rejected", fields: [], reason: "No receipt" }],
     };
     vi.mocked(serverApi).mockImplementation(async (path: string) => (path === "/api/v1/management/me" ? partner : detail) as never);
@@ -159,6 +159,7 @@ describe("mgmt-004 entry page", () => {
     expect(screen.getByRole("link", { name: "Download receipt (rent.pdf)" }).getAttribute("href")).toBe("/api/v1/management/ledger/e1/receipt");
     expect(screen.getByRole("link", { name: "open the reversal" }).getAttribute("href")).toBe("/management/ledger/r1");
     expect(screen.getByText("Approved by")).toBeTruthy();
+    expect(screen.getByText("Exhibition/Event")).toBeTruthy(); // QA-04: the channel's label, not its key
     expect(within(screen.getByRole("region", { name: "History" })).getByText(/No receipt/)).toBeTruthy();
   });
 });
@@ -282,6 +283,16 @@ describe("mgmt-004 entry actions", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirm reversal" }));
     await waitFor(() => expect(router.push).toHaveBeenCalledWith("/management/ledger/r1"));
     expect(calls[0]).toEqual({ url: "/api/v1/management/ledger/e1/reverse", method: "POST", body: { reason: "Duplicate entry" } });
+  });
+
+  it("keeps the confirmation when the refreshed entry leaves no action (QA-01)", async () => {
+    respond({ body: { id: "e1" } });
+    const { rerender } = render(<LedgerEntryActions entry={entry()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Submit for approval" }));
+    await waitFor(() => expect(router.refresh).toHaveBeenCalled());
+    rerender(<LedgerEntryActions entry={entry({ status: "submitted", can: { edit: false, submit: false, decide: false, reverse: false } })} />);
+    expect(screen.getByRole("status").textContent).toBe("Submitted for approval.");
+    expect(screen.queryByRole("button")).toBeNull();
   });
 
   it("shows the server's refusal", async () => {

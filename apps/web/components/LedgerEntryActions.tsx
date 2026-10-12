@@ -53,16 +53,17 @@ export default function LedgerEntryActions({ entry }: { entry: LedgerEntry }) {
   }
 
   const { can } = entry;
-  if (!can.edit && !can.submit && !can.decide && !can.reverse) return null;
+  const any = can.edit || can.submit || can.decide || can.reverse;
+  if (!any && !result) return null; // QA-01: the confirmation stays after the refresh leaves no action
   return (
     <div className="action-card" style={{ display: "grid", gap: 12 }}>
-      <div className="actions">
+      {any && <div className="actions">
         {can.edit && <Link className="btn secondary" href={`${LEDGER_HOME}/${entry.id}/edit`}>Edit</Link>}
         {can.submit && <button className="btn" type="button" disabled={busy} onClick={() => void run("submit", "Submitted for approval.")}>Submit for approval</button>}
         {can.decide && <button className="btn" type="button" disabled={busy} onClick={() => void run("approve", "Entry approved.")}>Approve</button>}
         {can.decide && <button className="btn secondary" type="button" disabled={busy} onClick={() => setStep("reject")}>Reject</button>}
         {can.reverse && <button className="btn secondary" type="button" disabled={busy} onClick={() => setStep("reverse")}>Reverse</button>}
-      </div>
+      </div>}
       {step && (
         <div className="field">
           <label htmlFor="ledger-reason">{CONFIRM[step].label}</label>

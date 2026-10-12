@@ -9,6 +9,7 @@ import type { ManagementMe } from "@/lib/management";
 import {
   EVENT_LABEL, formatInr, KIND_LABEL, LEDGER_API, LEDGER_HOME, STATUS_LABEL, statusClass, VERTICAL_LABEL, type LedgerEntryDetail,
 } from "@/lib/managementLedger";
+import { SOURCE_LABEL } from "@/lib/telecallerCatalogue";
 
 const NOTICES: Record<string, string> = {
   receipt: "The entry was saved, but the receipt could not be uploaded. Edit the entry to attach it again.",
@@ -47,7 +48,7 @@ export default async function LedgerEntryPage({ params, searchParams }: { params
     ["Amount", `${entry.reversal_of_id ? "−" : ""}${formatInr(entry.amount)}`],
     ["Category", entry.category.active ? entry.category.name : `${entry.category.name} (inactive)`],
     ["Vertical", VERTICAL_LABEL[entry.vertical] ?? entry.vertical],
-    ["Marketing channel", entry.channel ?? "—"],
+    ["Marketing channel", entry.channel ? (SOURCE_LABEL[entry.channel] ?? entry.channel) : "—"],
     ["Course", entry.program?.name ?? "—"],
     ["Batch", entry.batch?.name ?? "—"],
     ["Created by", `${entry.created_by?.full_name ?? "—"} · ${at(entry.created_at)}`],
