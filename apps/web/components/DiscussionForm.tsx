@@ -33,7 +33,7 @@ function body(values: Values): Record<string, unknown> {
   return {
     topic: values.topic.trim(), discussion_date: values.discussion_date, department: blank(values.department), points: blank(values.points),
     decision: blank(values.decision), responsible_user_id: values.responsible_user_id || null, deadline: values.deadline || null, status: values.status,
-    follow_up_date: values.follow_up_date || null, participant_ids: values.participant_ids,
+    follow_up_date: values.follow_up_date || null, participant_ids: [...values.participant_ids].sort(), // sorted, so an edit compares sets
   };
 }
 
@@ -96,8 +96,7 @@ export default function DiscussionForm({ options, today, discussion }: { options
     let payload = body(values);
     if (discussion) {
       const before = body(initial(discussion, today));
-      const same = (key: string) => JSON.stringify(key === "participant_ids" ? [...(payload[key] as string[])].sort() : payload[key]) === JSON.stringify(key === "participant_ids" ? [...(before[key] as string[])].sort() : before[key]);
-      payload = Object.fromEntries(Object.entries(payload).filter(([key]) => !same(key)));
+      payload = Object.fromEntries(Object.entries(payload).filter(([key, value]) => JSON.stringify(value) !== JSON.stringify(before[key])));
       if (Object.keys(payload).length === 0) {
         router.push(`${DISCUSSIONS_HOME}/${discussion.id}`);
         return;
