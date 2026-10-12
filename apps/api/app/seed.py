@@ -899,6 +899,14 @@ async def main():
                 (partner_two, "mgmt.task", "complete", "DEMO-TASK-1", ["status"], None),
             ]:
                 management_audit.record(db, actor, kind, verb, entity_id, fields=fields, values=values)
+        # mgmt-014 (MI14): EVID-017 §23's ROI example (₹5,00,000 -> ₹18,00,000 = 260%), once.
+        demo_note = "Demo: the §23 ROI example."
+        if not await db.scalar(select(Investment.id).where(Investment.notes == demo_note).limit(1)):
+            db.add(Investment(
+                code=f"INV-{await db.scalar(select(INVESTMENT_CODE_SEQ.next_value())):06d}", invested_on=date(2026, 4, 1), investor_kind="company",
+                amount=Decimal("500000.00"), purpose="Marketing Campaign", vertical="shared", expected_return=Decimal("1500000.00"),
+                actual_return=Decimal("1800000.00"), status="completed", notes=demo_note, created_by_user_id=partner_two.id, updated_by_user_id=partner_two.id,
+            ))
 
         await db.commit()
     print("Seed complete; demo password:", PASSWORD)
