@@ -6,6 +6,8 @@ import { dashboardPathFor, ROLE_DASHBOARD_PATH, SUPER_ADMIN_NAV } from "@/lib/na
 const PARTNER: ManagementTiers = { operational: true, finance: true, partner_only: true };
 const ACCOUNTANT: ManagementTiers = { operational: false, finance: true, partner_only: false };
 const SUPER_ADMIN: ManagementTiers = { operational: true, finance: false, partner_only: false };
+const HOME = { label: "Command Center", href: "/management" };
+const ACTIVITY = { label: "Management activity", href: "/management/activity" };
 
 describe("mgmt-001 landing (AC3)", () => {
   it("lands partners and accountants on the Command Center", () => {
@@ -21,6 +23,7 @@ describe("mgmt-001 landing (AC3)", () => {
 
   it("gives the super admin a Command Center link (MG10)", () => {
     expect(SUPER_ADMIN_NAV).toContainEqual({ label: "Management Command Center", href: "/management" });
+    expect(SUPER_ADMIN_NAV).toContainEqual(ACTIVITY); // mgmt-002
   });
 });
 
@@ -56,14 +59,14 @@ describe("mgmt-001 pillars (§33, MG8/MG9)", () => {
     expect(pillarsFor(SUPER_ADMIN).map((p) => p.title)).not.toContain("Finance");
   });
 
-  it("puts only the Command Center home in the sidebar while no entry is live", () => {
-    expect(managementNavFor(PARTNER)).toEqual([{ label: "Command Center", href: "/management" }]);
-    expect(managementNavFor(ACCOUNTANT)).toEqual([{ label: "Command Center", href: "/management" }]);
+  it("puts the Command Center home and Management activity (mgmt-002) in the sidebar while no entry is live", () => {
+    expect(managementNavFor(PARTNER)).toEqual([HOME, ACTIVITY]);
+    expect(managementNavFor(ACCOUNTANT)).toEqual([HOME, ACTIVITY]);
   });
 
   it("adds a live entry to the sidebar for the tiers that may see it", () => {
     const live = [{ title: "Finance", entries: [{ label: "Salaries", item: "mgmt-011", tier: "finance" as const, href: "/management/salaries" }] }];
     expect(managementNavFor(ACCOUNTANT, live)).toContainEqual({ label: "Salaries", href: "/management/salaries" });
-    expect(managementNavFor(SUPER_ADMIN, live)).toEqual([{ label: "Command Center", href: "/management" }]);
+    expect(managementNavFor(SUPER_ADMIN, live)).toEqual([HOME, ACTIVITY]);
   });
 });

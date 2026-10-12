@@ -30,7 +30,7 @@ describe("mgmt-001 Command Center page", () => {
     const shell = shellOf(tree);
     expect(shell.props.roleLabel).toBe("Partner");
     expect(shell.props.userName).toBe("Arjun Partner");
-    expect(shell.props.nav).toEqual([{ label: "Command Center", href: "/management" }]);
+    expect(shell.props.nav).toEqual([{ label: "Command Center", href: "/management" }, { label: "Management activity", href: "/management/activity" }]);
     render(<>{shell.props.children}</>);
     expect(screen.getByRole("heading", { level: 2, name: "Management Command Center" })).toBeTruthy();
     expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual(MANAGEMENT_PILLARS.map((p) => p.title));

@@ -10746,3 +10746,42 @@ class ManagementMeOut(BaseModel):
     full_name: str
     role: str
     tiers: ManagementTiers
+
+
+# mgmt-002 (DEC-SCOPE-187 MA7): one page of the management audit trail, plus the filter choices the caller may use.
+class ManagementActor(BaseModel):
+    id: UUID
+    full_name: str
+    role: str
+
+
+class ManagementChangedValue(BaseModel):
+    before: str | None
+    after: str | None
+
+
+class ManagementActivityItem(BaseModel):
+    id: UUID
+    at: datetime
+    actor: ManagementActor | None
+    kind: str
+    kind_label: str
+    verb: str
+    entity_id: str | None
+    fields: list[str]
+    values: dict[str, ManagementChangedValue] | None
+    count: int | None
+
+
+class ManagementKindChoice(BaseModel):
+    value: str
+    label: str
+
+
+class ManagementActivityOut(BaseModel):
+    items: list[ManagementActivityItem]
+    total: int
+    limit: int
+    offset: int
+    kinds: list[ManagementKindChoice]
+    actors: list[ManagementActor]
