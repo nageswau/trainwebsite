@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { sendRequest } from "@/lib/apiErrors";
 import { DISCUSSIONS_API, type DiscussionDetail } from "@/lib/managementDiscussions";
@@ -16,11 +16,26 @@ export default function DiscussionAttachments({ discussion }: { discussion: Disc
   const [file, setFile] = useState<File | null>(null);
   const [shareable, setShareable] = useState(false);
   const [busy, setBusy] = useState(false);
+  const sending = useRef(false); // QA-01: a second click before the re-render disables the buttons is ignored
   const [removing, setRemoving] = useState<string | null>(null);
   const [result, setResult] = useState<{ text: string; failed: boolean } | null>(null);
   const [inputKey, setInputKey] = useState(0);
   const base = `${DISCUSSIONS_API}/${discussion.id}/attachments`;
   const full = discussion.attachments.length >= MAX;
+
+  /** One request at a time; reports the outcome and refreshes the page after a change. */
+  async function send(url: string, init: RequestInit, done: string): Promise<boolean> {
+    if (sending.current) return false;
+    sending.current = true;
+    setBusy(true);
+    setResult(null);
+    const outcome = await sendRequest(url, init);
+    sending.current = false;
+    setBusy(false);
+    setResult(outcome.ok ? { text: done, failed: false } : { text: outcome.message, failed: true });
+    if (outcome.ok) router.refresh();
+    return outcome.ok;
+  }
 
   async function upload() {
     if (!file) {
@@ -30,29 +45,16 @@ export default function DiscussionAttachments({ discussion }: { discussion: Disc
     const form = new FormData();
     form.append("file", file);
     form.append("shareable", String(shareable));
-    setBusy(true);
-    setResult(null);
-    const outcome = await sendRequest(base, { method: "POST", body: form });
-    setBusy(false);
-    if (!outcome.ok) {
-      setResult({ text: outcome.message, failed: true });
-      return;
+    if (await send(base, { method: "POST", body: form }, "File attached.")) {
+      setFile(null);
+      setShareable(false);
+      setInputKey((k) => k + 1);
     }
-    setFile(null);
-    setShareable(false);
-    setInputKey((k) => k + 1);
-    setResult({ text: "File attached.", failed: false });
-    router.refresh();
   }
 
   async function remove(id: string) {
-    setBusy(true);
-    setResult(null);
-    const outcome = await sendRequest(`${base}/${id}`, { method: "DELETE" });
-    setBusy(false);
+    await send(`${base}/${id}`, { method: "DELETE" }, "File removed.");
     setRemoving(null);
-    setResult(outcome.ok ? { text: "File removed.", failed: false } : { text: outcome.message, failed: true });
-    if (outcome.ok) router.refresh();
   }
 
   return (

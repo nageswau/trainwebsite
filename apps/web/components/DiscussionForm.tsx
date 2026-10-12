@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { sendJson } from "@/lib/apiErrors";
 import { fieldErrors } from "@/lib/bdmTravel";
@@ -61,8 +61,12 @@ export default function DiscussionForm({ options, today, discussion }: { options
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const sending = useRef(false); // QA-01: a second click before the re-render disables the form is ignored
   const [search, setSearch] = useState("");
-  const set = (key: Field, value: string) => setValues((v) => ({ ...v, [key]: value }));
+  const set = (key: Field, value: string) => {
+    setValues((v) => ({ ...v, [key]: value }));
+    setErrors((e) => Object.fromEntries(Object.entries(e).filter(([field]) => field !== key))); // QA-02: a changed field drops its old error
+  };
 
   // A person named earlier who has since left still shows, so the current value is never silently dropped.
   const people = [...options.users];
@@ -81,6 +85,7 @@ export default function DiscussionForm({ options, today, discussion }: { options
   const toggle = (id: string) => setValues((v) => ({ ...v, participant_ids: v.participant_ids.includes(id) ? v.participant_ids.filter((x) => x !== id) : [...v.participant_ids, id] }));
 
   async function save() {
+    if (sending.current) return;
     const found = validate(values);
     setErrors(found);
     if (Object.keys(found).length) {
@@ -98,6 +103,7 @@ export default function DiscussionForm({ options, today, discussion }: { options
         return;
       }
     }
+    sending.current = true;
     setBusy(true);
     setMessage("");
     const saved = discussion ? await sendJson(`${DISCUSSIONS_API}/${discussion.id}`, "PATCH", payload) : await sendJson(DISCUSSIONS_API, "POST", payload);
@@ -105,6 +111,7 @@ export default function DiscussionForm({ options, today, discussion }: { options
       const placed = fieldErrors(saved.detail);
       setErrors(placed);
       setMessage(Object.keys(placed).length ? "Check the highlighted fields." : saved.message);
+      sending.current = false;
       setBusy(false);
       return;
     }

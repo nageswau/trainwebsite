@@ -104,6 +104,25 @@ describe("mgmt-027 discussion form", () => {
     expect(router.push).not.toHaveBeenCalled();
   });
 
+  it("QA-01: a double click saves once", async () => {
+    respond({ status: 201, body: { id: "d9" } });
+    render(<DiscussionForm options={options} today="2026-10-08" />);
+    fireEvent.change(screen.getByLabelText("Topic"), { target: { value: "Weekly sync" } });
+    const save = screen.getByRole("button", { name: "Save discussion" });
+    fireEvent.click(save);
+    fireEvent.click(save);
+    await waitFor(() => expect(router.push).toHaveBeenCalled());
+    expect(calls).toHaveLength(1);
+  });
+
+  it("QA-02: a field's error clears once the field is changed", () => {
+    render(<DiscussionForm options={options} today="2026-10-08" />);
+    fireEvent.click(screen.getByRole("button", { name: "Save discussion" }));
+    expect(screen.getByText("Give the topic (2-200 characters)")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Topic"), { target: { value: "Weekly sync" } });
+    expect(screen.queryByText("Give the topic (2-200 characters)")).toBeNull();
+  });
+
   it("sends only what changed when editing", async () => {
     respond({ body: { id: "d1" } });
     render(<DiscussionForm options={options} today="2026-10-08" discussion={detail()} />);
@@ -124,8 +143,11 @@ describe("mgmt-027 attachments", () => {
     const file = new File(["%PDF-1.4"], "minutes.pdf", { type: "application/pdf" });
     fireEvent.change(screen.getByLabelText("Add a file"), { target: { files: [file] } });
     fireEvent.click(screen.getByLabelText("Share with the responsible person"));
-    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
-    await waitFor(() => expect(calls).toHaveLength(1));
+    const upload = screen.getByRole("button", { name: "Upload" });
+    fireEvent.click(upload);
+    fireEvent.click(upload); // QA-01: one upload
+    await waitFor(() => expect(screen.getByText("File attached.")).toBeTruthy());
+    expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe("/api/v1/management/discussions/d1/attachments");
     expect((calls[0].body as FormData).get("shareable")).toBe("true");
     fireEvent.click(screen.getByRole("button", { name: "Remove terms.pdf" }));
