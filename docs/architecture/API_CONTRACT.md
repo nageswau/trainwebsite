@@ -2846,6 +2846,18 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `GET /recruiter/management?from&to` *(new)* | `{date_from, date_to, totals {companies, active_recruiters, open_requirements, candidates_in_pipeline, interviews, selected, joined}, top_companies [{id, name, joined}], top_categories [{id, name, open_requirements}]}` — Appendix B M1–M9 as built (MG4–MG8). Totals M1–M4 and the categories are as of now; interviews, selected, joined and the companies count the period (default: the 1st of the IST month → today). Each list: count ↓ then name, at most 10, empty when nothing counts. `401` signed out; `403` any role but `placement_manager` / `super_admin` / `it_admin`; `422` malformed date, start after end, end in the future, more than 366 days |
 
+## 12CZ. Partner + accountant roles, Command Center (`mgmt-001`) — addendum, 2026-10-12
+
+- **Basis:** `DEC-SCOPE-186` (Management M1–M14; MG1–MG12). Design spec `docs/superpowers/specs/2026-10-12-mgmt-001-partner-accountant-roles-design.md`.
+- No migration (`users.role` is free text). Tier helpers in `services/management_access.py`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `POST /admin/users` *(changed)* | `role: partner` / `accountant`, division `global` → `201` (welcome link opens `/admin/reset-password`). Caller not `super_admin` → **`403`** "Only a Super Admin can create partners and accountants" (before the division gate, so whatever division is sent); division other than `global` → `422`. Response unchanged |
+| `PATCH /admin/users/{id}` *(changed)* | `active: false` on the last active partner → **`422`** "At least one partner must stay active" (active partner rows locked `FOR UPDATE`). Otherwise unchanged |
+| `POST /auth/reset-password` *(changed)* | `login_portal: "admin"` for both roles |
+| `GET /management/me` *(new)* | `{id, full_name, role, tiers {operational, finance, partner_only}}`: partner all true; accountant finance only; `super_admin` operational only. `401` signed out; `403` "Management access required" for every other role |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

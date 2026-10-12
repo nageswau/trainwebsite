@@ -1874,6 +1874,25 @@ rec-037's `POST /recruiter/manager/reassign`; the rec-033/034/035 metrics bind e
 read by `super_admin` / `it_admin` fails (`500`, the 32,767-parameter limit) at about 3,600 recruiters (seen only on a long-lived test
 database; follow-up).
 
+### 2.112 Partner + accountant roles, Management Command Center *(net-new, added 2026-10-12 — `DEC-SCOPE-186`, `mgmt-001`)*
+
+Two global roles (Management M2/M5) and the M13 tiers, checked inline in the order `User.role` → `services/management_access.py` → the
+action. **Partner-only data is refused to `super_admin` and the accountant at the route and serializer**, never only in the UI.
+
+| Role | Bundle | Created by | Signs in / lands | Tiers (`GET /management/me`) | Other access |
+|---|---|---|---|---|---|
+| `partner` | `management:*` | `super_admin` only (MG1); no cap | `/admin/login` → `/management` | operational, finance, partner-only | None outside management (MG2): every existing module gate and `/admin/*` route is unchanged (`403`) |
+| `accountant` | `management:finance` | `super_admin` only (MG1) | `/admin/login` → `/management` | finance | None outside management; no investments or capital |
+| `super_admin` | `*` (unchanged) | — | unchanged (`/admin`); a "Management Command Center" sidebar link | operational only | Unchanged everywhere else |
+| every other role | unchanged | — | — | none: `GET /management/me` `403`; the page shows "Access unavailable" with a link to the caller's own dashboard | Unchanged (AC5) |
+
+- `it_admin` / `overseas_admin` creating either role → `403` (AC2). The last active partner cannot be deactivated (`422`, MG6). A deactivated
+  partner's next request is `401` (the session ends; MG7).
+- Entry tiers on the Command Center (MG9): operational dashboards, plans, discussions, to-do, meetings → operational; ledger, revenue,
+  expenses, P&L, salaries, marketing budget/ROI, accounts → finance; investments, capital, and the mixed health score / this-month
+  performance / monthly review → partner-only until their own items decide (`NEEDS_CONFIRMATION`).
+- Not changed here: university commission for partners (M3, `partnership_access.COMMISSION_ROLES`) lands with mgmt-006 / 023 / 034 (MG11).
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
