@@ -1,8 +1,8 @@
 """mgmt-027 -- management discussions & decisions: management_discussions, management_discussion_participants,
 management_discussion_attachments.
 
-Revision ID: 0151_management_discussions
-Revises: 0150_management_ledger
+Revision ID: 0152_management_discussions
+Revises: 0151_investments
 
 docs/superpowers/specs/2026-10-12-mgmt-027-discussions-decisions-design.md §3. New tables only; no existing row changes. 0001 builds a
 fresh database from the current models, which already carry these tables, so each is created only when missing (0122's idiom).
@@ -14,8 +14,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0151_management_discussions"
-down_revision = "0150_management_ledger"
+revision = "0152_management_discussions"
+down_revision = "0151_investments"
 branch_labels = None
 depends_on = None
 
@@ -75,7 +75,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text("SELECT 1 FROM management_discussions LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0151_management_discussions: discussions exist. Clear them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0152_management_discussions: discussions exist. Clear them deliberately first.")
     op.drop_table("management_discussion_attachments")
     op.drop_table("management_discussion_participants")
     op.drop_table("management_discussions")
