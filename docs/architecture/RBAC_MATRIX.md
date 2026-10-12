@@ -1967,6 +1967,17 @@ Counts only, no personal data; nothing else changes.
 - Another user's task id on `/me/…` is `404` (no existence leak). Task audit rows (`mgmt.task`) are operational: field names only (MA3),
   visible in `/admin/audit`; the owner's status change is recorded with the owner as actor.
 
+### 2.119 Expense dashboard *(added 2026-10-12 — `DEC-SCOPE-194`, `mgmt-010`)*
+
+| Role | Read `GET /management/expenses`, page `/management/expenses` |
+|---|---|
+| `partner` | yes |
+| `accountant` | yes |
+| `super_admin` | `403` "Finance access required" (M13); no "Expenses & rent" entry in the Command Center |
+| every other role | `403`; signed out `401` (the page redirects to `/admin/login?next=`) |
+
+- Read-only aggregate: head and category names and rupee sums only; no person names, ids or source rows. No audit row (no write).
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

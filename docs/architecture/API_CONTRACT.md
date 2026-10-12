@@ -2957,6 +2957,15 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `GET /me/management-tasks` *(new)* | `200` `{items[{id, title, priority, deadline, status, band, updated_at}], today, counts}`: the caller's tasks, not cancelled, completed only for the last 7 days (at most 200) |
 | `PATCH /me/management-tasks/{id}` *(new)* | `{status: open \| in_progress \| completed}` → `200` the task. `404` not the caller's (or unknown); `409` cancelled; `422` other status |
 
+## 12DH. Expense dashboard (`mgmt-010`) — addendum, 2026-10-12
+
+- **Basis:** `DEC-SCOPE-194` (ME1–ME10). Design spec `docs/superpowers/specs/2026-10-12-mgmt-010-expense-dashboard-design.md`.
+  No migration. Finance tier only (partner, accountant); `super_admin` `403` "Finance access required"; other roles `403`; signed out `401`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/expenses` *(new)* | Query `month` (`YYYY-MM`; default the current IST month). `422`: not `YYYY-MM`, before 2000-01, or after the current IST month ("Choose this month or an earlier one"). `200` `{month, year_start (1 April of the Indian financial year), year_label ("2026-27"), groups[{key, label, month, year, share}] (the 8 §8 heads, always all, source order), categories[{label, group, month, year}] (money in the year to date, largest first), months[{month, total}] (financial year start … selected month), totals{month, year}, not_counted[{currency, amount, count}]}`. Rupees only: approved manual expenses (reversals negative) + INR automatic expense lines; other currencies only in `not_counted`. Totals = the sum of the heads; year = the sum of the months. Read-only |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

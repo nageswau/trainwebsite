@@ -537,6 +537,9 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** medium
 
 ### mgmt-010 — Expense dashboard
+- **Status (2026-10-12):** **IN REVIEW** on `feature/mgmt-010`. `DEC-SCOPE-194` (ME1–ME10 recommended defaults, UNVERIFIED; answers
+  the financial-year point of Q-04: Indian financial year, 1 April). No migration; API §12DH; RBAC §2.119.
+  QA evidence `docs/quality/MGMT-010_EXPLORATORY_QA_2026-10-12.md`.
 - **Business requirement:** §8 dashboard (monthly + annual per category + total).
 - **Existing behavior:** none.
 - **Expected behavior:** expense totals per category for the month and year-to-date (financial-year start per Q-04?), from approved

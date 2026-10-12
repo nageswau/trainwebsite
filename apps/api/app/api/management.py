@@ -8,8 +8,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
+from app.api.management_ledger import MONTH
 from app.models import INVESTMENT_STATUSES, INVESTMENT_VERTICALS, User
 from app.schemas import (
+    ExpenseDashboardOut,
     InvestmentCreate,
     InvestmentOut,
     InvestmentPageOut,
@@ -18,12 +20,13 @@ from app.schemas import (
     ManagementMeOut,
     ManagementSnapshotOut,
 )
-from app.services import investments, management_audit, management_metrics
+from app.services import investments, ledger, management_audit, management_expenses, management_metrics
 from app.services.bdm_activities import india_date
 from app.services.bdm_appointments import db_now
 from app.services.management_access import can_view_operational, require_management, require_partner_only, tiers
 
 router = APIRouter(prefix="/management", tags=["management"])
+EARLIEST_MONTH = date(2000, 1, 1)  # mgmt-010 (ME9): the ledger's earliest entry date (ML4)
 
 
 @router.get("/me", response_model=ManagementMeOut)
@@ -62,6 +65,20 @@ async def management_snapshot(user: User = Depends(get_current_user), db: AsyncS
     today = india_date(await db_now(db))
     figures = await management_metrics.snapshot(db, today)
     return {"as_of": today, "kpis": [{"id": kpi_id, "key": key, "label": label, "value": figures[key]} for kpi_id, key, label in management_metrics.SNAPSHOT]}
+
+
+@router.get("/expenses", response_model=ExpenseDashboardOut)
+async def expense_dashboard(month: str | None = Query(None, pattern=MONTH), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """mgmt-010 (§8, spec ME1-ME10): the expense heads for `month` (YYYY-MM, default this IST month) and its financial year to date.
+    Finance tier only (partner, accountant); super_admin gets "Finance access required" (M13)."""
+    ledger.require_finance(user)
+    this_month = india_date(await db_now(db)).replace(day=1)
+    chosen = date(int(month[:4]), int(month[5:]), 1) if month else this_month
+    if chosen < EARLIEST_MONTH:
+        raise HTTPException(422, "Choose January 2000 or a later month")
+    if chosen > this_month:
+        raise HTTPException(422, "Choose this month or an earlier one")
+    return await management_expenses.dashboard(db, chosen)
 
 
 def _partner(user: User) -> User:
