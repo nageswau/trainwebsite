@@ -71,7 +71,7 @@ from app.schemas import (
 )
 from app.services import bdm as bdm_rules
 from app.services import bdm_leads as lead_rules
-from app.services import bdm_lifecycle, course_skills, lead_handover, lead_pipeline, lead_timeline, partnership_lifecycle, recruiter_lifecycle, telecaller_lifecycle
+from app.services import bdm_lifecycle, course_skills, lead_handover, lead_pipeline, lead_timeline, management_access, partnership_lifecycle, recruiter_lifecycle, telecaller_lifecycle
 from app.services import partnership as pm_rules
 from app.services import recruiter as rec_rules
 from app.services import telecaller as tel_rules
@@ -566,6 +566,10 @@ async def create_user(payload: dict, user: User = Depends(ensure_admin), db: Asy
         raise HTTPException(422, "Only a partnership manager has a partnership profile")
     elif role == "partnership_head" and user.role != "super_admin":
         raise HTTPException(403, "Only a Super Admin can create partnership heads")
+    # mgmt-001 (MG1, AC2): partners and accountants are global and created by a super_admin only -- checked before the division
+    # gate, so a division admin gets this 403 whatever division it sends.
+    if role in management_access.NEW_ROLES and user.role != "super_admin":
+        raise HTTPException(403, "Only a Super Admin can create partners and accountants")
     if user.role != "super_admin" and division != user.division:
         raise HTTPException(403, "Cannot create users in another division")
     _reject_supplied_password(payload, user, USERS_ROUTE, "password")
@@ -573,7 +577,7 @@ async def create_user(payload: dict, user: User = Depends(ensure_admin), db: Asy
         # tel-017 (DEC-SCOPE-076, T3): a counselor belongs to IT or Overseas.
         "it": {"it_student", "trainer", "placement_team", "hr_team", "it_admin", "bdm", "telecaller", "counselor"},
         "overseas": {"overseas_student", "counselor", "university_rep", "agent", "overseas_admin", "bdm", "telecaller", "partnership_manager"},
-        "global": {"super_admin", "bdm_manager", "telecaller_manager", "placement_manager", "partnership_head"},
+        "global": {"super_admin", "bdm_manager", "telecaller_manager", "placement_manager", "partnership_head", "partner", "accountant"},
     }
     if role not in allowed_by_division.get(division, set()):
         raise HTTPException(422, "Role is not valid for the selected division")
@@ -705,6 +709,8 @@ async def update_user(user_id: UUID, payload: dict, user: User = Depends(ensure_
         await partnership_lifecycle.refuse_primary_deactivation(db, item)
         # rec-037 (DEC-SCOPE-177 RC2/RC12): a recruiter with open companies or requirements waits for a manager's reassignment.
         await recruiter_lifecycle.refuse_open_work_deactivation(db, item)
+        # mgmt-001 (MG6): the company always keeps one active partner.
+        await management_access.refuse_last_partner_deactivation(db, item)
     # ADM-001-AC02: deactivating a trainer with active/upcoming assigned batches is
     # blocked unless explicitly confirmed -- never a silent operation that would strand
     # those batches without a trainer.

@@ -882,6 +882,10 @@ async def main():
         recruiter = await user(db, "placement@edusphere.local", "Kiran Placement", "placement_team", "it")
         if not await db.scalar(select(RecruiterProfile.id).where(RecruiterProfile.user_id == recruiter.id)):
             db.add(RecruiterProfile(user_id=recruiter.id, employee_id="REC-DEMO-001", reporting_manager_user_id=placement_manager.id))
+        # mgmt-001 (Management M2/M5): two partners and an accountant, all global, signing in at /admin.
+        await user(db, "partner.one@edusphere.local", "Arjun Partner", "partner", "global")
+        await user(db, "partner.two@edusphere.local", "Meera Partner", "partner", "global")
+        await user(db, "accountant@edusphere.local", "Ravi Accountant", "accountant", "global")
 
         await db.commit()
     print("Seed complete; demo password:", PASSWORD)

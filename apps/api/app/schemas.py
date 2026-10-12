@@ -10732,3 +10732,17 @@ class RecInvoicePage(BaseModel):
     offset: int
     counts: dict[str, int]
     outstanding_total: Decimal
+
+
+# mgmt-001 (spec MG5): the Command Center caller and the M13 tiers it may see.
+class ManagementTiers(BaseModel):
+    operational: bool
+    finance: bool
+    partner_only: bool
+
+
+class ManagementMeOut(BaseModel):
+    id: UUID
+    full_name: str
+    role: str
+    tiers: ManagementTiers

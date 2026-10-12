@@ -110,3 +110,16 @@ describe("middleware /it/counselor (tel-017)", () => {
     expect(go("/overseas/counselor/dashboard")).toBe("http://localhost/overseas/login?next=%2Foverseas%2Fcounselor%2Fdashboard");
   });
 });
+
+describe("middleware /management (mgmt-001 AC4)", () => {
+  it("sends a signed-out Command Center route to the admin sign-in, keeping next", () => {
+    expect(go("/management")).toBe("http://localhost/admin/login?next=%2Fmanagement");
+    expect(go("/management/finance?month=2026-10")).toBe("http://localhost/admin/login?next=%2Fmanagement%2Ffinance%3Fmonth%3D2026-10");
+  });
+
+  it("lets signed-in visits through, leaves look-alike paths alone, and matches /management", () => {
+    expect(go("/management", true)).toBeNull();
+    expect(go("/managementx")).toBeNull();
+    expect(config.matcher).toContain("/management/:path*");
+  });
+});
