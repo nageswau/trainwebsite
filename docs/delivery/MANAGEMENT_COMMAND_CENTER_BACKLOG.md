@@ -1005,6 +1005,10 @@ Common conventions for every item:
 - **Complexity:** large · **Risk:** medium
 
 ### mgmt-027 — Discussions & decisions
+- **Status (2026-10-12):** **IN REVIEW** on `feature/mgmt-027`. `DEC-SCOPE-191` (MD1–MD14 recommended defaults, UNVERIFIED; answers
+  Q-26). Migration `0152_management_discussions`; API §12DE; RBAC §2.117. The responsible person's view is the shared
+  `/account/management-decisions` until mgmt-028 adds each portal's "Management tasks". QA evidence
+  `docs/quality/MGMT-027_EXPLORATORY_QA_2026-10-12.md`.
 - **Business requirement:** §27 (11 fields; the Japan example) (M14).
 - **Existing behavior:** none.
 - **Expected behavior:**

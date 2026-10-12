@@ -41,7 +41,7 @@ export const MANAGEMENT_PILLARS: ManagementPillar[] = [
     entries: [
       { ...op("Business snapshot", "mgmt-003"), href: "/management/snapshot" },
       own("This month's performance", "mgmt-031"), op("Next month plan & targets", "mgmt-026"), op("Long-term strategy", "mgmt-026"),
-      op("Discussions & decisions", "mgmt-027"), op("To-do", "mgmt-028"), op("Meetings", "mgmt-029"), own("Business health score", "mgmt-030"),
+      { ...op("Discussions & decisions", "mgmt-027"), href: "/management/discussions" }, op("To-do", "mgmt-028"), op("Meetings", "mgmt-029"), own("Business health score", "mgmt-030"),
       own("Monthly business review", "mgmt-032"),
     ],
   },

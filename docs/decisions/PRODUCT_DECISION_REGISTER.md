@@ -7487,3 +7487,42 @@ owner's instruction to proceed with the recommended answers. Q-16 (status values
 `globals.css` (`money-tiles`). Tests `test_mgmt_014_investments.py`, `test_mgmt_014_migration.py`, `investments.test.ts`,
 `Investments.test.tsx`, `mgmt-014-investments.spec.ts`. QA `docs/quality/MGMT-014_EXPLORATORY_QA_2026-10-12.md`.
 - **New Feature ID authorized:** `mgmt-014`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-014.
+
+### DEC-SCOPE-191 — Management discussions & decisions: the 11 §27 fields, decision line for the responsible person, attachments (`mgmt-027`)
+
+**Evidence:**
+- `EVID-017` (`DERIVED_BLUEPRINT`) §27 (11 fields; the Japan example: "Proceed with agreement — University BDM — 10 October — In
+  Progress").
+- `DEC-SCOPE-186` M13/M14 (`EXPLICIT_APPROVAL`): discussions are operational tier; any active staff user can be named responsible and
+  sees only that item; discussion notes stay management-only. `DEC-SCOPE-187` (audit helper; kind `mgmt.decision`).
+
+**Status:** MD1–MD14 below are **recommended defaults, `UNVERIFIED`**, taken on the owner's instruction to proceed with recommended
+answers (2026-10-12, `feature/mgmt-027`). They answer Q-26.
+
+**Numbering (provisional):** migration `0152_management_discussions`; API §12DE; RBAC §2.117. Spec
+`docs/superpowers/specs/2026-10-12-mgmt-027-discussions-decisions-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| MD1 | Fields | Topic 2–200, discussion date (IST, not future, ≥ 2000), participants, department (optional), points (optional, ≤ 10 000, line breaks kept), decision (optional, 2–500), responsible, deadline, status, attachments, follow-up date |
+| MD2 | Participants (Q-26) | Active staff users only, 0–30; replaced as a whole on edit |
+| MD3 | Department | Free text (no department model yet) |
+| MD4 | Status | open → in_progress → completed, plus cancelled (management only) |
+| MD5 | Decision rules | One decision per discussion; responsible or deadline need a decision (`422`); deadline / follow-up ≥ discussion date |
+| MD6 | Staff | Every internal role (super_admin, partner, accountant, division admins, trainer, placement, HR, counselor, school service teams, BDM, telecaller, partnership roles). Students, parents, agents, university reps, employers, school-side users are refused (`422`) |
+| MD7 | Writers | Operational tier (partner, super_admin); accountant and others `403`; no delete |
+| MD8 | Assignee slice | `/me/management-decisions`: decision, deadline, status, shareable attachments; status open / in_progress / completed; others' ids `404`; cancelled `409` |
+| MD9 | Notification | In-app + email (ENH-014 outbox) on assignment / reassignment and when management changes the decision, deadline or status; body = the decision line only; link `/account/management-decisions` |
+| MD10 | Attachments (Q-26) | PDF/JPEG/PNG (`read_upload`), ≤ 10 per discussion, shareable flag (default off); downloads audited |
+| MD11 | Audit | `mgmt.decision`, field names only; verbs create / decide / complete / update / download; the assignee's change is recorded as theirs |
+| MD12 | List | Filters status, responsible, pending (deadline order); newest first otherwise; Pending decisions panel (10) |
+| MD13 | Concurrency | Row lock on every write; ownership re-checked after the lock |
+| MD14 | Notes privacy | The assignee serializer never carries topic, points, participants, department, follow-up or non-shareable files |
+
+**Consequences:** migration `0152_management_discussions` (3 new tables); `models.py`, `schemas.py`, `main.py`;
+`services/management_access.py` (`STAFF_ROLES`); new `services/management_discussions.py`, `api/management_discussions.py`; web
+`lib/managementDiscussions.ts`, `lib/management.ts` (entry live), pages `/management/discussions` (+ `/new`, `/[id]`, `/[id]/edit`),
+`/account/management-decisions`; components `ManagementDiscussions`, `DiscussionsShell`, `DiscussionForm`, `DiscussionAttachments`,
+`MyManagementDecisions`. Tests `test_mgmt_027_discussions.py`, `ManagementDiscussions.test.tsx`, `managementDiscussions.test.ts`,
+`mgmt-027-discussions.spec.ts`. mgmt-028 later lists these lines in each portal's "Management tasks".
+- **New Feature ID authorized:** `mgmt-027`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-027.
