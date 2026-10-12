@@ -51,7 +51,7 @@ UNIVERSITY_PARTNER_STAGES = tuple(key for key, group in GROUPS.items() if group 
 PARTNER_COMPANY_STAGES = COMPANY_STAGES[COMPANY_STAGES.index("interested") + 1 :]  # MS10: past "Interested"
 
 active_student = and_(User.active.is_(True), User.role.in_(STUDENT_ROLES))
-running_enrolment = and_(Enrollment.status != WITHDRAWN, Batch.status == "active")  # MS3: an enrolment in an active batch
+running_enrolment = and_(Enrollment.status != "withdrawn", Batch.status == "active")  # MS3: an enrolment in an active batch
 live_application = OverseasApplication.status != WITHDRAWN
 open_application = OverseasApplication.status.not_in((WITHDRAWN, "enrolled"))  # MS2: neither withdrawn nor already abroad
 # MS5: an active student of an agency whose organisation is active (`agent_id` is any member of it, as AGN-001 scopes students).
