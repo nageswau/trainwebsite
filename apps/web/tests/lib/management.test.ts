@@ -6,6 +6,7 @@ import { dashboardPathFor, ROLE_DASHBOARD_PATH, SUPER_ADMIN_NAV } from "@/lib/na
 const PARTNER: ManagementTiers = { operational: true, finance: true, partner_only: true };
 const ACCOUNTANT: ManagementTiers = { operational: false, finance: true, partner_only: false };
 const SUPER_ADMIN: ManagementTiers = { operational: true, finance: false, partner_only: false };
+const SNAPSHOT_LINK = { label: "Business snapshot", href: "/management/snapshot" };
 
 describe("mgmt-001 landing (AC3)", () => {
   it("lands partners and accountants on the Command Center", () => {
@@ -29,10 +30,10 @@ describe("mgmt-001 pillars (§33, MG8/MG9)", () => {
     expect(MANAGEMENT_PILLARS.map((p) => p.title)).toEqual(["Students", "Sales", "Finance", "People", "Partnerships", "Business Intelligence"]);
   });
 
-  it("names a mgmt item and a tier on every entry; nothing is live yet", () => {
+  it("names a mgmt item and a tier on every entry; only the landed items are live", () => {
     const entries = MANAGEMENT_PILLARS.flatMap((p) => p.entries);
     expect(entries.every((e) => /^mgmt-\d{3}$/.test(e.item) && ["operational", "finance", "partner_only"].includes(e.tier))).toBe(true);
-    expect(entries.some((e) => e.href)).toBe(false);
+    expect(entries.filter((e) => e.href).map((e) => e.item)).toContain("mgmt-003");
   });
 
   it("shows a partner every pillar and entry", () => {
@@ -56,14 +57,30 @@ describe("mgmt-001 pillars (§33, MG8/MG9)", () => {
     expect(pillarsFor(SUPER_ADMIN).map((p) => p.title)).not.toContain("Finance");
   });
 
-  it("puts only the Command Center home in the sidebar while no entry is live", () => {
-    expect(managementNavFor(PARTNER)).toEqual([{ label: "Command Center", href: "/management" }]);
-    expect(managementNavFor(ACCOUNTANT)).toEqual([{ label: "Command Center", href: "/management" }]);
+  it("puts the Command Center home first, and a live entry only in the sidebars of the tiers that may see it", () => {
+    expect(managementNavFor(PARTNER)[0]).toEqual({ label: "Command Center", href: "/management" });
+    expect(managementNavFor(PARTNER)).toContainEqual(SNAPSHOT_LINK);
+    expect(managementNavFor(ACCOUNTANT)[0]).toEqual({ label: "Command Center", href: "/management" });
+    expect(managementNavFor(ACCOUNTANT)).not.toContainEqual(SNAPSHOT_LINK);
   });
 
   it("adds a live entry to the sidebar for the tiers that may see it", () => {
     const live = [{ title: "Finance", entries: [{ label: "Salaries", item: "mgmt-011", tier: "finance" as const, href: "/management/salaries" }] }];
     expect(managementNavFor(ACCOUNTANT, live)).toContainEqual({ label: "Salaries", href: "/management/salaries" });
     expect(managementNavFor(SUPER_ADMIN, live)).toEqual([{ label: "Command Center", href: "/management" }]);
+  });
+});
+
+describe("mgmt-003 business snapshot entry (MS18)", () => {
+  it("is the first Business Intelligence entry, live, operational tier", () => {
+    const bi = MANAGEMENT_PILLARS.find((p) => p.title === "Business Intelligence")!;
+    expect(bi.entries[0]).toEqual({ label: "Business snapshot", item: "mgmt-003", tier: "operational", href: "/management/snapshot" });
+  });
+
+  it("reaches the partner and the super admin, never the accountant (M13)", () => {
+    const labels = (tiers: ManagementTiers) => pillarsFor(tiers).flatMap((p) => p.entries.map((e) => e.label));
+    expect(labels(PARTNER)).toContain("Business snapshot");
+    expect(labels(SUPER_ADMIN)).toContain("Business snapshot");
+    expect(labels(ACCOUNTANT)).not.toContain("Business snapshot");
   });
 });

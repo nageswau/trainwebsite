@@ -7351,3 +7351,31 @@ recommended answers.
 sign-in copy. Tests `test_mgmt_001_roles.py`, `management.test.ts`, `ManagementCommandCenter.test.tsx`, `mgmt-001-command-center.spec.ts`.
 - **New Feature ID authorized:** `mgmt-001` (mgmt-002…034 remain behind GATE-09 individually). **Status:** see
   `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-001.
+
+### DEC-SCOPE-188 — Business snapshot S1–S15 + `management_metrics` (`mgmt-003`)
+
+**Evidence:** `EVID-017` §3 (`DERIVED_BLUEPRINT`); `DEC-SCOPE-186` (M1, M13 `EXPLICIT_APPROVAL`); backlog Appendix B S1–S15 and Q-03.
+
+**Status:** MS1–MS19 in review on `feature/mgmt-003` (2026-10-12). Every MS answer is a **recommended default, `UNVERIFIED`** (Q-03),
+taken on the owner's instruction to proceed with the recommended answers.
+
+**Numbering (provisional):** no migration; API §12DB; RBAC §2.114 (mgmt-002, in review, holds `DEC-SCOPE-187`, §12DA and §2.113). Spec `docs/superpowers/specs/2026-10-12-mgmt-003-business-snapshot-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| MS1 | S1 Total Students | Active `it_student` + `overseas_student` users + every school student + login-less agency students of active agencies |
+| MS2 | S2 Active Students | Of S1: an enrolment in an `active` batch or an open (not withdrawn, not enrolled) application; school students in the `active` academic year or with an open application; login-less agency students with an open application |
+| MS3–MS4 | S3, S4 | Distinct active users enrolled (not withdrawn) in an `active` batch; distinct people (agency student → school student → user) with a non-withdrawn application |
+| MS5–MS8 | S5–S8 | Active agency students of `active` organisations; rec-010 opted-in, unarchived candidates of active users; `active` organisations; schools with a tier valid on the IST date |
+| MS9–MS10 | S9, S10 | **Now computable** (upc and rec-005 merged): active, not-lost universities in the `partner` stage group (upc-025 G1); open companies past "Interested" |
+| MS11–MS15 | Staff | Active `trainer` / `counselor` (any division) / `telecaller` / `bdm` users; active `placement_team` users with a recruiter profile. Managers are not counted |
+| MS16 | AC2 | No source module is missing, so no figure is "not available yet"; values are plain integers |
+| MS17 | Query count | One `SELECT` of fifteen scalar subqueries |
+| MS18 | Page | `/management/snapshot`; the first Business Intelligence entry (operational) |
+| MS19 | Freshness | Live per request; `as_of` = the IST date of the database clock |
+
+**Consequences:** new `services/management_metrics.py`; `api/management.py` (`GET /management/snapshot`); `schemas.py`
+(`ManagementKpi`, `ManagementSnapshotOut`); web `lib/management.ts` (live entry, types), new `app/management/snapshot/page.tsx`,
+`components/ManagementSnapshot.tsx`. Tests `test_mgmt_003_snapshot.py`, `ManagementSnapshot.test.tsx`, `management.test.ts`,
+`mgmt-003-business-snapshot.spec.ts`.
+- **New Feature ID authorized:** `mgmt-003`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-003.

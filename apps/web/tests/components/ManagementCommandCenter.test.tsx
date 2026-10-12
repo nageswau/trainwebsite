@@ -30,7 +30,8 @@ describe("mgmt-001 Command Center page", () => {
     const shell = shellOf(tree);
     expect(shell.props.roleLabel).toBe("Partner");
     expect(shell.props.userName).toBe("Arjun Partner");
-    expect(shell.props.nav).toEqual([{ label: "Command Center", href: "/management" }]);
+    expect(shell.props.nav).toContainEqual({ label: "Command Center", href: "/management" });
+    expect(shell.props.nav).toContainEqual({ label: "Business snapshot", href: "/management/snapshot" });
     render(<>{shell.props.children}</>);
     expect(screen.getByRole("heading", { level: 2, name: "Management Command Center" })).toBeTruthy();
     expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual(MANAGEMENT_PILLARS.map((p) => p.title));
@@ -72,7 +73,8 @@ describe("mgmt-001 Command Center page", () => {
 describe("mgmt-001 ManagementPillars", () => {
   it("lists upcoming entries as plain text, never as links", () => {
     render(<ManagementPillars pillars={MANAGEMENT_PILLARS} />);
-    expect(screen.queryAllByRole("link")).toHaveLength(0);
+    const live = MANAGEMENT_PILLARS.flatMap((p) => p.entries.flatMap((e) => (e.href ? [e.href] : [])));
+    expect(screen.queryAllByRole("link").map((link) => link.getAttribute("href"))).toEqual(live);
     const students = screen.getByRole("region", { name: "Students" });
     expect(within(students).getAllByText("Coming soon").length).toBe(MANAGEMENT_PILLARS[0].entries.length);
   });

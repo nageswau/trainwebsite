@@ -1893,6 +1893,17 @@ action. **Partner-only data is refused to `super_admin` and the accountant at th
   performance / monthly review → partner-only until their own items decide (`NEEDS_CONFIRMATION`).
 - Not changed here: university commission for partners (M3, `partnership_access.COMMISSION_ROLES`) lands with mgmt-006 / 023 / 034 (MG11).
 
+### 2.114 Business snapshot *(added 2026-10-12 — `DEC-SCOPE-188`, `mgmt-003`)*
+
+| Role | `GET /management/snapshot`, `/management/snapshot` page |
+|---|---|
+| `partner` | `200`; a "Business snapshot" entry under Business Intelligence |
+| `super_admin` | `200` (operational tier, M13); reached from the Command Center |
+| `accountant` | `403` "Operational access required"; no entry; the page shows "Access unavailable" |
+| every other role | `403` "Management access required"; signed out `401` (the page redirects to `/admin/login?next=`) |
+
+Counts only, no personal data; nothing else changes.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
