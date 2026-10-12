@@ -218,6 +218,15 @@ async def test_income_and_expense_heads_follow_the_section_22_mapping_and_add_up
     assert {p["label"] for p in technology["parts"]} >= {"Software", "Internet"}
 
 
+def test_a_label_that_nets_to_zero_is_not_listed_under_its_head():
+    """QA-03: an entry and its reversal in one month leave nothing to show in the head's breakdown."""
+    from app.services.accounts import EXPENSE_HEADS, _section
+
+    section = _section(EXPENSE_HEADS, {"rent": {"Office rent": D("0"), "Rent deposit": D("500")}}, D("500.00"))
+    rent = next(h for h in section["heads"] if h["key"] == "rent")
+    assert rent["parts"] == [{"label": "Rent deposit", "amount": D("500.00")}] and rent["amount"] == D("500.00")
+
+
 def test_a_category_added_later_falls_into_operations_and_known_labels_ignore_case():
     from app.services.accounts import expense_head
 

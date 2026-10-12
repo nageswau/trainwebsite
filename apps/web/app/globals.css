@@ -365,7 +365,7 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
 .money-tiles .metric strong { font-size: 22px; overflow-wrap: anywhere; }
 /* mgmt-011 browser QA-01: on a phone a lakh figure ("₹2,00,000.00") broke mid-number in the two-across salary tiles; a smaller figure
    keeps it on one line (crore figures still wrap inside the tile). */
-@media (max-width: 420px) { .salary-tiles .metric strong { font-size: 17px; } }
+@media (max-width: 420px) { .salary-tiles .metric strong, .accounts-tiles .metric strong { font-size: 17px; } } /* + mgmt-013 QA-02 */
 /* tel-021: the ten §1 dashboard tiles -- five across on a wide screen, then three, then two on tablets and phones; a hint under each
    figure. The daily activity table reuses .tel-targets (short columns, row headers as labels). */
 .metric-grid.tel-tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); list-style: none; padding: 0; margin: 0 0 24px; }

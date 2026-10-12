@@ -48,18 +48,21 @@ export default function AccountsDashboard({ data }: { data: AccountsMonth }) {
     <>
       <section className="action-card" aria-labelledby="accounts-position" style={{ display: "grid", gap: 12 }}>
         <h3 id="accounts-position" style={{ margin: 0 }}>Financial position</h3>
-        <ul className="metric-grid snapshot-tiles money-tiles" aria-label="Financial position">
+        <ul className="metric-grid snapshot-tiles money-tiles accounts-tiles" aria-label="Financial position">
           <li className="metric"><span>Receivables</span><strong>{rupees(r.total)}</strong><small className="muted">{rupees(r.overdue)} overdue</small></li>
           <li className="metric"><span>Payables</span><strong>{amountText(b.payables)}</strong></li>
           <li className="metric"><span>Cash/bank</span><strong>{amountText(b.cash_bank)}</strong></li>
           <li className="metric"><span>Profit</span><strong>{amountText(data.profit)}</strong><small className="muted">{label}</small></li>
           <li className="metric"><span>Tax liabilities</span><strong>{amountText(b.tax_liabilities)}</strong></li>
-          <li className="metric"><span>Pending invoices</span><strong>{`${data.pending_invoices.count} · ${rupees(data.pending_invoices.amount)}`}</strong></li>
+          <li className="metric">
+            <span>Pending invoices</span><strong>{rupees(data.pending_invoices.amount)}</strong>
+            <small className="muted">{data.pending_invoices.count} {data.pending_invoices.count === 1 ? "invoice" : "invoices"}</small>
+          </li>
         </ul>
         <ul className="muted" aria-label="Receivables by source" style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
-          <li><span>Student fees</span>{rupees(r.fees)}</li>
-          <li><span>Recruitment invoices</span>{rupees(r.recruitment)}</li>
-          <li><span>University commission</span>{rupees(r.university)}</li>
+          <li>Student fees: {rupees(r.fees)}</li>
+          <li>Recruitment invoices: {rupees(r.recruitment)}</li>
+          <li>University commission: {rupees(r.university)}</li>
         </ul>
         <p className="muted" style={{ margin: 0, fontSize: 13 }}>
           Receivables and pending invoices are what is owed today ({asOf}): unpaid student fees, open recruitment invoices and university

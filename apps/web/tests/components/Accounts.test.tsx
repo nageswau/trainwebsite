@@ -54,12 +54,18 @@ describe("AccountsDashboard (mgmt-013 §22)", () => {
     render(<AccountsDashboard data={data()} />);
     const position = screen.getByRole("list", { name: "Financial position" }).textContent ?? "";
     for (const text of ["Receivables", "₹1,18,500.00", "₹43,500.00 overdue", "Payables", "₹18,000.00", "Cash/bank", "-₹2,500.50", "Profit", "₹5,13,500.00",
-      "Tax liabilities", "Not entered", "Pending invoices", "2 · ₹24,000.00"]) {
+      "Tax liabilities", "Not entered", "Pending invoices", "₹24,000.00", "2 invoices"]) {
       expect(position).toContain(text);
     }
+    expect(screen.getByRole("list", { name: "Financial position" }).classList.contains("accounts-tiles")).toBe(true); // QA-02: phone-sized figures
     const parts = screen.getByRole("list", { name: "Receivables by source" }).textContent ?? "";
-    expect(parts).toContain("Student fees₹13,500.00");
-    expect(parts).toContain("University commission₹45,000.00");
+    expect(parts).toContain("Student fees: ₹13,500.00"); // QA-01: label and amount apart
+    expect(parts).toContain("University commission: ₹45,000.00");
+  });
+
+  it("says '1 invoice' for one pending invoice", () => {
+    render(<AccountsDashboard data={data({ pending_invoices: { count: 1, amount: "4000.00" } })} />);
+    expect(screen.getByRole("list", { name: "Financial position" }).textContent).toContain("1 invoice");
   });
 
   it("says which money is not converted", () => {

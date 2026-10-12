@@ -61,7 +61,8 @@ def _section(heads: tuple[tuple[str, str], ...], parts: dict[str, dict[str, Deci
     out = []
     for key, label in heads:
         found = parts.get(key, {})
-        out.append({"key": key, "label": label, "amount": _money(sum(found.values(), ZERO)), "parts": [{"label": k, "amount": _money(v)} for k, v in sorted(found.items())]})
+        listed = [{"label": k, "amount": _money(v)} for k, v in sorted(found.items()) if v != 0]  # QA-03: a label netting to 0 says nothing
+        out.append({"key": key, "label": label, "amount": _money(sum(found.values(), ZERO)), "parts": listed})
     return {"heads": out, "total": total}
 
 
