@@ -277,6 +277,9 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** high
 
 ### mgmt-002 — Management audit trail ("who did what")
+- **Status (2026-10-12):** **IN REVIEW** on `feature/mgmt-002`. `DEC-SCOPE-187` (MA1–MA12 recommended defaults, UNVERIFIED; Q-33
+  interim). No migration (the existing `ix_audit_logs_entity` serves it); API §12DA; RBAC §2.113. QA evidence
+  `docs/quality/MGMT-002_EXPLORATORY_QA_2026-10-12.md`.
 - **Business requirement:** §2: record who created a task, changed a target, approved an expense, added an investment, changed a
   financial figure, made a decision, completed an action.
 - **Existing behavior:** `AuditLog` exists. `/admin/audit` shows the latest 500 rows; export is super_admin JSON.

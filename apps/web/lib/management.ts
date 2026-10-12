@@ -113,7 +113,9 @@ export function describeActivity(item: ManagementActivityItem): { title: string;
   const detail = item.fields.map((field) => {
     const name = field.replaceAll("_", " ");
     const change = item.values?.[field];
-    return change ? `${name}: ${shown(change.before)} → ${shown(change.after)}` : name;
+    if (!change) return name;
+    // Browser QA-01: a value set for the first time reads as the value, not "— → value".
+    return change.before === null ? `${name}: ${shown(change.after)}` : `${name}: ${change.before} → ${shown(change.after)}`;
   });
   return { title, detail: detail.join(", ") };
 }

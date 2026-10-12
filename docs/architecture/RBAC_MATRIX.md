@@ -1893,6 +1893,17 @@ action. **Partner-only data is refused to `super_admin` and the accountant at th
   performance / monthly review → partner-only until their own items decide (`NEEDS_CONFIRMATION`).
 - Not changed here: university commission for partners (M3, `partnership_access.COMMISSION_ROLES`) lands with mgmt-006 / 023 / 034 (MG11).
 
+### 2.113 Management audit trail *(net-new, added 2026-10-12 — `DEC-SCOPE-187`, `mgmt-002`)*
+
+| Role | `GET /management/activity` sees | `/admin/audit` + export |
+|---|---|---|
+| `partner` | every management kind (operational, finance, partner-only) | no `/admin` access (unchanged) |
+| `accountant` | finance kinds (ledger); never investments or capital (AC2) | no `/admin` access (unchanged) |
+| `super_admin` | operational kinds (task, plan, decision); a capital filter returns none | every row **except** finance and partner-only `mgmt.*` rows |
+| every other role | `403` | unchanged |
+
+- The trail is read-only: no route edits or deletes an entry. Values are kept only for finance and partner-only kinds (MA3).
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

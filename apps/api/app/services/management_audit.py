@@ -4,6 +4,7 @@ Every management write calls `record` in its own transaction, so the record and 
 only the kinds the caller's M13 tier may see. Spec: docs/superpowers/specs/2026-10-12-mgmt-002-management-audit-trail-design.md.
 """
 
+from collections.abc import Sequence
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
@@ -32,7 +33,7 @@ def _value(value) -> str | None:
     return None if value is None else str(value)
 
 
-def record(db: AsyncSession, actor: User, kind: str, verb: str, entity_id: str | None, *, fields: list[str] = (),
+def record(db: AsyncSession, actor: User, kind: str, verb: str, entity_id: str | None, *, fields: Sequence[str] = (),
            values: dict[str, tuple] | None = None, count: int | None = None) -> AuditLog:
     """Adds one audit row to the caller's session (no commit, MA10). Field names always; before/after values only for finance and
     partner-only kinds and only for the fields named (MA3, Q-33 interim). A bulk write is one row with a `count` (MA4)."""

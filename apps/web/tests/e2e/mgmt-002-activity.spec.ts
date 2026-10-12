@@ -22,7 +22,14 @@ test("a partner sees every kind and filters by who and what", async ({ page }) =
   await signIn(page, "partner.two@edusphere.local", "/management");
   await page.getByRole("link", { name: "Management activity" }).first().click();
   await expect(page.getByRole("heading", { level: 2, name: "Management activity" })).toBeVisible();
-  await expect(list(page).getByText("Investment created").first()).toBeVisible();
+  await expect(list(page).getByRole("listitem").first()).toBeVisible();
+
+  // The demo investment (Meera Partner); a partner sees partner-only kinds. Browser QA-01: a first-time value reads as the value.
+  await page.getByLabel("Done by").selectOption({ label: "Meera Partner (Partner)" });
+  await page.getByLabel("Kind").selectOption({ label: "Investment" });
+  await page.getByRole("button", { name: "Apply" }).click();
+  await expect(page).toHaveURL(/kind=mgmt.investment/);
+  await expect(list(page).getByRole("listitem").filter({ hasText: "DEMO-INV-1" })).toContainText("name, amount: 500000.00");
 
   await page.getByLabel("Done by").selectOption({ label: "Arjun Partner (Partner)" });
   await page.getByLabel("Kind").selectOption({ label: "Ledger entry" });
@@ -58,7 +65,7 @@ test("the super admin sees operational kinds only; capital returns none", async 
   const capital = await (await page.request.get("/api/v1/management/activity?kind=mgmt.capital")).json();
   expect(capital.total).toBe(0);
   await page.goto("/management/activity?date_from=2026-02-02&date_to=2026-02-01");
-  await expect(page.getByRole("alert")).toHaveText("The end date must be on or after the start date");
+  await expect(page.locator(".form-error[role=alert]")).toHaveText("The end date must be on or after the start date");
 });
 
 test("an IT admin cannot open it", async ({ page }) => {
