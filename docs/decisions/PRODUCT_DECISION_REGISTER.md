@@ -7411,3 +7411,44 @@ taken on the owner's instruction to proceed with the recommended answers.
 `components/ManagementSnapshot.tsx`. Tests `test_mgmt_003_snapshot.py`, `ManagementSnapshot.test.tsx`, `management.test.ts`,
 `mgmt-003-business-snapshot.spec.ts`.
 - **New Feature ID authorized:** `mgmt-003`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-003.
+
+### DEC-SCOPE-189 — Management ledger: categories, manual income/expense, approval, reversal, receipts (`mgmt-004`)
+
+**Evidence:**
+- `EVID-017` (`DERIVED_BLUEPRINT`) §8 (one centralised expense module; 8 fixed + 9 variable categories), §22 (income heads), §2 ("who
+  approved an expense").
+- `DEC-SCOPE-186` M4/M5/M7/M13 (`EXPLICIT_APPROVAL`): an internal ledger, the accountant records, partners approve, channel-tagged
+  marketing spend, finance tier. `DEC-SCOPE-187` (audit helper).
+
+**Status:** ML1–ML16 below are **recommended defaults, `UNVERIFIED`**, taken on the owner's instruction to proceed with recommended
+answers (2026-10-12, `feature/mgmt-004`). They answer Q-04 (ledger part), Q-05, Q-06 (ledger part), Q-11 and Q-33 (interim). Q-23
+(school tag vs school columns) stays `NEEDS_CONFIRMATION` for mgmt-022; shared-cost allocation (Q-04 second half) stays with mgmt-009.
+
+**Numbering (provisional):** migration `0150_management_ledger`; API §12DC; RBAC §2.115. Spec
+`docs/superpowers/specs/2026-10-12-mgmt-004-management-ledger-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| ML1 | Categories (Q-04) | Managed list; seeded with the 17 §8 expense categories (8 fixed, 9 variable) and 5 §22 income heads. §22's expense heads are dashboard groupings (mgmt-010/013) |
+| ML2 | Managing | Partner + accountant add, rename, (de)activate; 2–80 chars; unique per kind ignoring case (`409`); kind and nature fixed; no delete |
+| ML3 | Deactivated category | Keeps its entries and figures; not offered for new entries or a change of category (`422`) |
+| ML4 | Entry | IST date (not future, not before 2000), kind, category of that kind, amount, description 2–500, vertical (abroad / it / recruitment / school / other / shared) |
+| ML5 | Currency (Q-06) | INR only; amount > 0, ≤ 2 decimals, ≤ 99,99,99,99,999.99 |
+| ML6 | Tags (M7, Q-11) | Optional channel (13 lead sources, expenses only), course, batch (must belong to the course; a batch alone sets it). School tag deferred (Q-23) |
+| ML7 | Statuses | draft → submitted → approved / rejected; editing a rejected entry returns it to draft |
+| ML8 | Writers | Partner and accountant create, edit (draft/rejected), submit, attach receipts, reverse |
+| ML9 | Approval (Q-05) | Every manual entry, one partner, no threshold; never the entry's creator (`403`); reject needs a reason |
+| ML10 | Figures | Approved only; a reversal counts negative; list `totals {income, expense, net}` over the other filters |
+| ML11 | Reversal | `POST …/reverse {reason}` on an approved original → a submitted reversing entry dated today; one live reversal; never reversed itself |
+| ML12 | Immutability | Submitted and approved entries can't be edited or have their receipt replaced (`409`); no delete |
+| ML13 | Receipt | One PDF/JPEG/PNG per entry (`read_upload`), key under `ledger-receipts/`; download audited |
+| ML14 | History + audit | `ledger_entry_events` per write + `management_audit` (`mgmt.ledger`, `mgmt.ledger_category`; new verbs submit, reject, reverse, download; amount/date/vertical/status values per MA3) |
+| ML15 | List | Filters month, kind, category, vertical, status; `limit` 1–100, `offset` ≤ 10 000; newest date first; partners' approval queue = `status=submitted` |
+| ML16 | Access (M13) | Finance tier only; `super_admin` and every other role `403`; approve/reject partner only |
+
+**Consequences:** migration `0150_management_ledger` (3 new tables + category seed); `models.py`, `schemas.py`, `main.py`; new
+`services/ledger.py`, `api/management_ledger.py`; `services/management_audit.py` (kind + verbs); web `lib/managementLedger.ts`,
+`lib/management.ts` (Ledger entry live, verb labels), pages `/management/ledger` (+ `/new`, `/[id]`, `/[id]/edit`, `/categories`),
+components `ManagementLedger`, `LedgerShell`, `LedgerEntryForm`, `LedgerEntryActions`, `LedgerCategories`. Tests
+`test_mgmt_004_ledger.py`, `ManagementLedger.test.tsx`, `managementLedger.test.ts`, `mgmt-004-ledger.spec.ts`.
+- **New Feature ID authorized:** `mgmt-004`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-004.

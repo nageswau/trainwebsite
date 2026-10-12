@@ -1915,6 +1915,17 @@ action. **Partner-only data is refused to `super_admin` and the accountant at th
 
 Counts only, no personal data; nothing else changes.
 
+### 2.115 Management ledger *(net-new, added 2026-10-12 — `DEC-SCOPE-189`, `mgmt-004`)*
+
+| Role | Read ledger, categories, receipts | Create / edit / submit / receipt / reverse / categories | Approve / reject |
+|---|---|---|---|
+| `partner` | yes | yes | yes, except entries they created (`403`) |
+| `accountant` | yes | yes | `403` |
+| `super_admin` | `403` "Finance access required" (M13); no Ledger entry in the Command Center | `403` | `403` |
+| every other role | `403`; signed out `401` (pages redirect to `/admin/login?next=`) | `403` | `403` |
+
+- Ledger audit rows (`mgmt.ledger`, `mgmt.ledger_category`) are finance-tier: hidden from `/admin/audit` and its export (MA8).
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
