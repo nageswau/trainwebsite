@@ -5540,3 +5540,56 @@ class LedgerEntryEvent(Base):
     reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     receipt_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# mgmt-027 (management discussions & decisions, spec MD1-MD14): EVID-017 §27. Rules live in `services/management_discussions.py`; the
+# responsible person sees only the decision line (MD8/MD14).
+DISCUSSION_STATUSES = ("open", "in_progress", "completed", "cancelled")
+
+
+class ManagementDiscussion(Base, TimestampMixin):
+    """MD1/MD5: one discussion and at most one decision. A responsible person needs a decision (CHECK)."""
+
+    __tablename__ = "management_discussions"
+    __table_args__ = (
+        CheckConstraint(_in_list("status", DISCUSSION_STATUSES), name="ck_management_discussions_status"),
+        CheckConstraint("responsible_user_id IS NULL OR decision IS NOT NULL", name="ck_management_discussions_responsible_decision"),
+        Index("ix_management_discussions_date", "discussion_date"),
+        Index("ix_management_discussions_responsible_status", "responsible_user_id", "status"),
+        Index("ix_management_discussions_status_deadline", "status", "deadline"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    topic: Mapped[str] = mapped_column(String(200))
+    discussion_date: Mapped[date] = mapped_column(Date)
+    department: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    points: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decision: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    responsible_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(String(12), default="open", server_default=text("'open'"))
+    follow_up_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+class ManagementDiscussionParticipant(Base):
+    """MD2: staff users only; replaced as a whole on edit."""
+
+    __tablename__ = "management_discussion_participants"
+    discussion_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("management_discussions.id", ondelete="CASCADE"), primary_key=True)
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), primary_key=True)
+
+
+class ManagementDiscussionAttachment(Base):
+    """MD10: a stored file; only `shareable` ones reach the responsible person. The key is server-generated and never returned."""
+
+    __tablename__ = "management_discussion_attachments"
+    __table_args__ = (Index("ix_management_discussion_attachments_discussion", "discussion_id", "created_at"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    discussion_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("management_discussions.id", ondelete="CASCADE"))
+    storage_key: Mapped[str] = mapped_column(String(255))
+    content_type: Mapped[str] = mapped_column(String(100))
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    shareable: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
