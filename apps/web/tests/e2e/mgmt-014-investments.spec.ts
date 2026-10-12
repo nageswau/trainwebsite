@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// mgmt-014 (EVID-017 §23, DEC-SCOPE-189): the investment register. The seeded §23 example (app.seed, MI14) shows 260%; a partner adds an
+// mgmt-014 (EVID-017 §23, DEC-SCOPE-190): the investment register. The seeded §23 example (app.seed, MI14) shows 260%; a partner adds an
 // investment and edits it, and the change reaches Management activity; the accountant and the super admin are refused (M13).
 
 async function signIn(page: Page, email: string, landing: string) {

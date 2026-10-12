@@ -1,9 +1,9 @@
 """mgmt-014 -- the investment register: `investment_code_seq` and `investments`.
 
-Revision ID: 0150_investments
-Revises: 0149_program_skills
+Revision ID: 0151_investments
+Revises: 0150_management_ledger
 
-docs/superpowers/specs/2026-10-12-mgmt-014-investment-register-design.md §3 (DEC-SCOPE-189). One new table; no existing row changes. 0001
+docs/superpowers/specs/2026-10-12-mgmt-014-investment-register-design.md §3 (DEC-SCOPE-190). One new table; no existing row changes. 0001
 builds a fresh database from the current models, which already carry it, so each step is guarded. CHECKS repeats app.models
 (test_mgmt_014_migration). downgrade() refuses while any investment exists: it would drop partner-only financial records.
 """
@@ -13,8 +13,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0150_investments"
-down_revision = "0149_program_skills"
+revision = "0151_investments"
+down_revision = "0150_management_ledger"
 branch_labels = None
 depends_on = None
 
@@ -62,6 +62,6 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text("SELECT 1 FROM investments LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0150_investments: investments exist. Remove them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0151_investments: investments exist. Remove them deliberately first.")
     op.drop_table("investments")
     op.execute("DROP SEQUENCE IF EXISTS investment_code_seq")

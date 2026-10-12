@@ -2876,10 +2876,31 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `GET /management/snapshot` *(new)* | `{as_of (IST date), kpis: [{id "S1"…"S15", key, label, value int}]}` in §3 source order. Partner, `super_admin` → `200`; accountant and every other role → `403` ("Operational access required" / "Management access required"); signed out → `401`. One SQL statement for all fifteen counts |
 
-## 12DC. Investment register + ROI (`mgmt-014`) — addendum, 2026-10-12
+## 12DC. Management ledger (`mgmt-004`) — addendum, 2026-10-12
 
-- **Basis:** `DEC-SCOPE-189` (MI1–MI14). Design spec `docs/superpowers/specs/2026-10-12-mgmt-014-investment-register-design.md`.
-  Migration `0150_investments`. Partner-only (M13): every route answers `403` to the accountant and super_admin ("Only partners can open
+- **Basis:** `DEC-SCOPE-189` (ML1–ML16). Design spec `docs/superpowers/specs/2026-10-12-mgmt-004-management-ledger-design.md`.
+  Migration `0150_management_ledger`. Every route: partner + accountant only; `super_admin` → `403` "Finance access required"; other
+  roles `403` "Management access required"; signed out `401`. Amounts are decimal strings (INR).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/ledger` *(new)* | Query `month` (YYYY-MM), `kind`, `category` (UUID), `vertical`, `status`, `limit` 1–100 (25), `offset` 0–10 000. `200` `{items[entry], total, limit, offset, totals {income, expense, net}}`; totals = approved entries (reversals negative) matching every filter but status. `422` malformed filter |
+| `POST /management/ledger` *(new)* | `{kind, entry_date, category_id, amount, description, vertical, channel?, program_id?, batch_id?}` → `201` entry detail (draft). `422` field-located (amount ≤ 0 / > 2 decimals / too large, future date, inactive / wrong-kind category, channel on income, batch of another course) |
+| `GET /management/ledger/{id}` *(new)* | `200` entry detail: entry + `events[{id, at, actor, event, from_status, to_status, fields, reason}]`. Entry: `id, entry_date, kind, category {id, name, active}, amount, description, vertical, channel, program, batch, status, reversal_of_id, reversed_by_id, receipt {name, content_type} \| null, created_by, updated_by, decided_by, submitted_at, decided_at, rejection_reason, created_at, updated_at, can {edit, submit, decide, reverse}`. `404` |
+| `PATCH /management/ledger/{id}` *(new)* | Partial, same fields minus `kind` (`422` if sent). Draft/rejected only (`409`); a rejected entry returns to draft. No change → `200`, nothing recorded |
+| `POST /management/ledger/{id}/submit` *(new)* | Draft/rejected → submitted; else `409` |
+| `POST /management/ledger/{id}/approve`, `…/reject {reason}` *(new)* | Partner only (`403` accountant); never the creator (`403`); submitted only (`409`); reason 2–500 (`422`) |
+| `POST /management/ledger/{id}/reverse {reason}` *(new)* | Approved original only (`409`); `409` second live reversal or reversing a reversal. `201` the new submitted reversal |
+| `PUT /management/ledger/{id}/receipt` *(new)* | Multipart `file`; PDF/JPEG/PNG by content (`415`), size cap (`413`), empty (`422`); draft/rejected only (`409`). `200` entry detail |
+| `GET /management/ledger/{id}/receipt` *(new)* | The file, `attachment; filename="ledger-receipt-<date>-<id8>.<ext>"`, `nosniff`; audited; `404` none |
+| `GET /management/ledger/options` *(new)* | `{categories (active), channels[{value, label}], verticals[], programs[{id, name, batches[{id, name}]}]}` |
+| `GET /management/ledger/categories`, `POST …/categories {kind, nature?, name}`, `PATCH …/categories/{id} {name?, active?}` *(new)* | All categories; create `201` (`409` duplicate name per kind, `422` nature rules); rename / (de)activate (`404`, `409`) |
+
+
+## 12DD. Investment register + ROI (`mgmt-014`) — addendum, 2026-10-12
+
+- **Basis:** `DEC-SCOPE-190` (MI1–MI14). Design spec `docs/superpowers/specs/2026-10-12-mgmt-014-investment-register-design.md`.
+  Migration `0151_investments` (after mgmt-004's `0150_management_ledger`). Partner-only (M13): every route answers `403` to the accountant and super_admin ("Only partners can open
   this") and to every other role ("Management access required"); signed out `401`. Money is INR as decimal strings.
 
 | Method/Path | Notes / status codes |

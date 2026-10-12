@@ -1,4 +1,4 @@
-"""mgmt-014 (DEC-SCOPE-189 MI1-MI14): EVID-017 §23's investment register -- what EduSphere invested and what it produced.
+"""mgmt-014 (DEC-SCOPE-190 MI1-MI14): EVID-017 §23's investment register -- what EduSphere invested and what it produced.
 
 Partner-only (M13): the routes refuse everyone else before calling in here. Every create and change writes its `mgmt.investment` audit
 row in the same transaction (mgmt-002 MA10). Spec: docs/superpowers/specs/2026-10-12-mgmt-014-investment-register-design.md.

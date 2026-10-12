@@ -342,6 +342,9 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** medium
 
 ### mgmt-004 — Management ledger: categories, manual income/expense, approval, tags
+- **Status (2026-10-12):** **IN REVIEW** on `feature/mgmt-004`. `DEC-SCOPE-189` (ML1–ML16 recommended defaults, UNVERIFIED; answers
+  Q-04 ledger part, Q-05, Q-06 ledger part, Q-11, Q-33 interim; Q-23 open). Migration `0150_management_ledger`; API §12DC; RBAC §2.115.
+  QA evidence `docs/quality/MGMT-004_EXPLORATORY_QA_2026-10-12.md`.
 - **Business requirement:** §8 "one centralized expense module" (8 fixed + 9 variable categories); §22 income/expense heads; §2 "who
   approved an expense"; M4, M5, M7.
 - **Existing behavior:** no expense or income ledger.
@@ -650,8 +653,8 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** high
 
 ### mgmt-014 — Investment register + ROI
-- **Status (2026-10-12):** **IN REVIEW** on `feature/mgmt-014`. `DEC-SCOPE-189` (MI1–MI14 recommended defaults, UNVERIFIED; Q-16 interim
-  answer MI3: planned / active / completed / cancelled). Migration `0150_investments`; API §12DC; RBAC §2.115. QA evidence
+- **Status (2026-10-12):** **IN REVIEW** on `feature/mgmt-014`. `DEC-SCOPE-190` (MI1–MI14 recommended defaults, UNVERIFIED; Q-16 interim
+  answer MI3: planned / active / completed / cancelled). Migration `0151_investments`; API §12DD; RBAC §2.116. QA evidence
   `docs/quality/MGMT-014_EXPLORATORY_QA_2026-10-12.md`.
 - **Business requirement:** §23 (11 fields; the example ₹5 L → ₹18 L = 260%; "where company money is being invested and what it
   produces").

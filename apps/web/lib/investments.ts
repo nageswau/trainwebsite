@@ -1,6 +1,6 @@
 import { isCalendarDate } from "@/lib/formatDate";
 
-// mgmt-014 (DEC-SCOPE-189 MI1-MI14): EVID-017 §23's investment register. Partner-only (M13): the API refuses everyone else, so nothing
+// mgmt-014 (DEC-SCOPE-190 MI1-MI14): EVID-017 §23's investment register. Partner-only (M13): the API refuses everyone else, so nothing
 // here filters for security. Money is INR, sent and received as decimal strings; ROI is the API's (MI7), never recomputed here.
 export const MANAGEMENT_INVESTMENTS = "/management/investments";
 export const INVESTMENTS_PAGE_SIZE = 25;

@@ -5,7 +5,7 @@ Spec: `docs/superpowers/specs/2026-10-12-mgmt-014-investment-register-design.md`
 
 | # | Task | Test first | Files |
 |---|---|---|---|
-| 1 | `Investment` model, `investment_code_seq`, CHECKs; migration `0150_investments` (guarded, downgrade refuses with data) | `test_mgmt_014_migration.py` | `models.py`, `alembic/versions/0150_investments.py` |
+| 1 | `Investment` model, `investment_code_seq`, CHECKs; migration `0151_investments` (guarded, downgrade refuses with data) | `test_mgmt_014_migration.py` | `models.py`, `alembic/versions/0151_investments.py` |
 | 2 | `investments.roi` (MI7) and totals (MI8) | `test_roi_*`, `test_totals_*` | `services/investments.py` |
 | 3 | Schemas: create/update validation (MI2, MI4–MI6), output, page | `test_create_rejects_*` | `schemas.py` |
 | 4 | `POST /management/investments`: code, investor rule, audit create (MI11) | `test_create_*` | `services/investments.py`, `api/management.py` |
@@ -17,7 +17,7 @@ Spec: `docs/superpowers/specs/2026-10-12-mgmt-014-investment-register-design.md`
 | 10 | Register page: totals, filter form, table, empty/error/403 states, paging; add form | `InvestmentRegister.test.tsx`, `InvestmentForm.test.tsx` | `components/Investment*.tsx`, `app/management/investments/page.tsx` |
 | 11 | Detail page: fields, ROI, created/updated by, edit form, 404 | `InvestmentForm.test.tsx` | `app/management/investments/[id]/page.tsx` |
 | 12 | Playwright: partner add/edit + 260% demo; accountant and super_admin refused | `mgmt-014-investments.spec.ts` | `tests/e2e/` |
-| 13 | Docs: DEC-SCOPE-189, API §12DC, RBAC §2.115, DATA_MODEL note, backlog status, QA report | — | `docs/` |
+| 13 | Docs: DEC-SCOPE-190, API §12DD, RBAC §2.116, DATA_MODEL note, backlog status, QA report | — | `docs/` |
 
-Regression watch: alembic single head (sibling branches may also claim 0150 — re-chain at merge); mgmt-001/002/003 tests; `/admin/audit`
+Regression watch: alembic single head (re-chained after mgmt-004's 0150 at merge); mgmt-001/002/003 tests; `/admin/audit`
 hides `mgmt.investment` rows (MA8, unchanged); `management.test.ts` / `ManagementCommandCenter.test.tsx`.

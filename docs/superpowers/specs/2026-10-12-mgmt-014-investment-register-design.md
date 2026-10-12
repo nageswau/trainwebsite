@@ -4,7 +4,7 @@
   (merged, PR #245).
 - **Evidence:** `EVID-017` §23 (lines 931–969, `DERIVED_BLUEPRINT`): 11 fields, the ROI example ₹5,00,000 → ₹18,00,000 = 260%, "where
   company money is being invested and what it produces". Management M2/M13 (`EXPLICIT_APPROVAL`, `DEC-SCOPE-186`): partner-only.
-- **Decision:** `DEC-SCOPE-189` (provisional number). Answers MI1–MI14 below are **recommended defaults, `UNVERIFIED`**, taken on the
+- **Decision:** `DEC-SCOPE-190` (provisional number). Answers MI1–MI14 below are **recommended defaults, `UNVERIFIED`**, taken on the
   owner's instruction to proceed with recommended answers. Q-16 (status values) is answered by MI3 as an interim default.
 
 ## 1. Intent
@@ -37,7 +37,7 @@ refused at the route, so no investment figure ever reaches them. Every add and c
 
 - `models.py`: `INVESTMENT_*` constants, `investment_code_seq`, `Investment` (`investments`; CHECKs on status, vertical, investor pair,
   amount > 0, returns ≥ 0; index `ix_investments_invested_on`).
-- Migration `0150_investments` (after `0149_program_skills`), guarded like 0115; `downgrade()` refuses while any investment exists.
+- Migration `0151_investments` (after `0150_management_ledger`, mgmt-004), guarded like 0115; `downgrade()` refuses while any investment exists.
 - `schemas.py`: `InvestmentCreate`, `InvestmentUpdate`, `InvestmentOut`, `InvestmentPageOut` (+ totals, investor choices).
 - `services/investments.py`: `roi`, `create`, `update`, `get`, `page` — validation against the DB (investor), audit, totals.
 - `api/management.py`: `GET /management/investments`, `POST /management/investments`, `GET/PATCH /management/investments/{id}`.

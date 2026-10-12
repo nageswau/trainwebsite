@@ -5455,8 +5455,95 @@ class DriveRequirement(Base):
     job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="RESTRICT"), primary_key=True)
 
 
-# mgmt-014 (DEC-SCOPE-189, spec MI1-MI6): EVID-017 §23's investment register. Partner-only (M13); ROI is computed, never stored.
-# Migration 0150 repeats the CHECKs (test_mgmt_014_migration keeps them identical). INV-000123 codes: a rolled-back create skips a number.
+# mgmt-004 (management ledger, spec ML1-ML16): manual income and expense entries, their categories and their history. Rules live in
+# `services/ledger.py`; only approved entries count in the money figures (ML10).
+LEDGER_KINDS = ("income", "expense")
+LEDGER_NATURES = ("fixed", "variable")
+LEDGER_VERTICALS = ("abroad", "it", "recruitment", "school", "other", "shared")
+LEDGER_STATUSES = ("draft", "submitted", "approved", "rejected")
+LEDGER_EVENTS = ("created", "updated", "submitted", "approved", "rejected", "reversed", "receipt")
+
+
+class LedgerCategory(Base, TimestampMixin):
+    """ML1/ML2: the managed category list. Kind and nature are fixed once created; a deactivated category keeps its entries (ML3)."""
+
+    __tablename__ = "ledger_categories"
+    __table_args__ = (
+        CheckConstraint(_in_list("kind", LEDGER_KINDS), name="ck_ledger_categories_kind"),
+        CheckConstraint("(kind = 'expense' AND nature IN ('fixed', 'variable')) OR (kind = 'income' AND nature IS NULL)", name="ck_ledger_categories_nature"),
+        Index("uq_ledger_categories_kind_name", "kind", func.lower(text("name")), unique=True),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    kind: Mapped[str] = mapped_column(String(10))
+    nature: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    name: Mapped[str] = mapped_column(String(80))
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+
+
+class LedgerEntry(Base, TimestampMixin):
+    """ML4-ML13: one manual income or expense line, INR only. A reversal (ML11) points at the approved entry it cancels and counts as
+    the negative of its amount."""
+
+    __tablename__ = "ledger_entries"
+    __table_args__ = (
+        CheckConstraint(_in_list("kind", LEDGER_KINDS), name="ck_ledger_entries_kind"),
+        CheckConstraint(_in_list("vertical", LEDGER_VERTICALS), name="ck_ledger_entries_vertical"),
+        CheckConstraint(_in_list("status", LEDGER_STATUSES), name="ck_ledger_entries_status"),
+        CheckConstraint("amount > 0", name="ck_ledger_entries_amount"),
+        CheckConstraint(f"channel IS NULL OR (kind = 'expense' AND channel IN ({', '.join(repr(s) for s in TEL_SOURCES)}))", name="ck_ledger_entries_channel"),
+        Index("ix_ledger_entries_date", "entry_date"),
+        Index("ix_ledger_entries_category_date", "category_id", "entry_date"),
+        Index("ix_ledger_entries_vertical_date", "vertical", "entry_date"),
+        Index("ix_ledger_entries_status", "status"),
+        Index("uq_ledger_entries_live_reversal", "reversal_of_id", unique=True, postgresql_where=text("status <> 'rejected'")),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    entry_date: Mapped[date] = mapped_column(Date)
+    kind: Mapped[str] = mapped_column(String(10))
+    category_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("ledger_categories.id", ondelete="RESTRICT"))
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    description: Mapped[str] = mapped_column(String(500))
+    vertical: Mapped[str] = mapped_column(String(12))
+    channel: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    program_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("programs.id", ondelete="RESTRICT"), nullable=True)
+    batch_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("batches.id", ondelete="RESTRICT"), nullable=True)
+    status: Mapped[str] = mapped_column(String(10), default="draft", server_default=text("'draft'"))
+    reversal_of_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("ledger_entries.id", ondelete="RESTRICT"), nullable=True)
+    receipt_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    receipt_content_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    receipt_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    decided_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    rejection_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+
+class LedgerEntryEvent(Base):
+    """ML14: an entry's history, one row per write. `receipt_key` keeps a replaced receipt's key (never returned)."""
+
+    __tablename__ = "ledger_entry_events"
+    __table_args__ = (
+        CheckConstraint(_in_list("event", LEDGER_EVENTS), name="ck_ledger_entry_events_event"),
+        Index("ix_ledger_entry_events_entry", "entry_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    entry_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("ledger_entries.id", ondelete="CASCADE"))
+    actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    event: Mapped[str] = mapped_column(String(10))
+    from_status: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    to_status: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    fields: Mapped[list] = mapped_column(JSON, default=list)
+    reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    receipt_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# mgmt-014 (DEC-SCOPE-190, spec MI1-MI6): EVID-017 §23's investment register. Partner-only (M13); ROI is computed, never stored.
+# Migration 0151 repeats the CHECKs (test_mgmt_014_migration keeps them identical). INV-000123 codes: a rolled-back create skips a number.
 INVESTMENT_STATUSES = ("planned", "active", "completed", "cancelled")
 INVESTMENT_VERTICALS = ("abroad", "it", "recruitment", "school", "shared", "other")
 INVESTMENT_CHECKS = {

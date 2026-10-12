@@ -51,7 +51,7 @@ test("an accountant never sees investment entries, even by asking for them (AC2)
   await page.goto("/management/activity");
   await expect(list(page).getByText("Ledger entry changed").first()).toBeVisible();
   await expect(list(page).getByText("Investment created")).toHaveCount(0);
-  await expect(page.getByLabel("Kind").locator("option")).toHaveText(["All kinds", "Ledger entry"]);
+  await expect(page.getByLabel("Kind").locator("option")).toHaveText(["All kinds", "Ledger entry", "Ledger category"]); // mgmt-004 added the category kind
   const asked = await page.request.get("/api/v1/management/activity?kind=mgmt.investment");
   expect(asked.status()).toBe(200);
   expect((await asked.json()).items).toEqual([]);

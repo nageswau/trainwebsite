@@ -1986,7 +1986,7 @@ through (DR3). Shortlisted, interviewed, selected and joined are computed from t
 
 Additive: no existing row is read or written (no backfill). `downgrade()` refuses while any drive exists.
 
-## Investment register (`mgmt-014`, `DEC-SCOPE-189`; migration `0150_investments`, after `0149_program_skills`)
+## Investment register (`mgmt-014`, `DEC-SCOPE-190`; migration `0151_investments`, after `0150_management_ledger`)
 
 **`investments` columns:** `id`; `code` varchar(20) unique (`INV-000001` from `investment_code_seq`); `invested_on` date; `investor_kind`
 varchar(10) (`partner` | `company`); `investor_user_id` → `users` (FK RESTRICT, null for `company`); `amount` numeric(12,2) (CHECK > 0);
