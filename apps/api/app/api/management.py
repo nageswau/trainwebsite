@@ -14,6 +14,7 @@ from app.models import INVESTMENT_STATUSES, INVESTMENT_VERTICALS, User
 from app.schemas import (
     AbroadRevenueOut,
     AccountsOut,
+    ApplicationFunnelOut,
     DepartmentCreate,
     DepartmentOut,
     DepartmentPage,
@@ -91,6 +92,51 @@ async def management_snapshot(user: User = Depends(get_current_user), db: AsyncS
     today = india_date(await db_now(db))
     figures = await management_metrics.snapshot(db, today)
     return {"as_of": today, "kpis": [{"id": kpi_id, "key": key, "label": label, "value": figures[key]} for kpi_id, key, label in management_metrics.SNAPSHOT]}
+
+
+def _id_or_none(value: str | None) -> UUID | str | None:
+    """mgmt-024 (MF14): an agency / counselor filter -- "none" or an id; anything else is a 422."""
+    if value is None or value == "none":
+        return value
+    try:
+        return UUID(value)
+    except ValueError:
+        raise HTTPException(422, "Unknown filter value") from None
+
+
+@router.get("/applications", response_model=ApplicationFunnelOut)
+async def application_funnel(
+    date_from: date | None = None,
+    date_to: date | None = None,
+    agency: str | None = Query(None, max_length=36),
+    counselor: str | None = Query(None, max_length=36),
+    country: UUID | None = None,
+    university: UUID | None = None,
+    course: UUID | None = None,
+    intake: str | None = Query(None, max_length=80),
+    staff: UUID | None = None,
+    status: str | None = Query(None, max_length=50),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """mgmt-024 (§20, spec MF1-MF18): the application funnel over the filtered applications, counts only, for the operational tier
+    (partner, super_admin); the accountant and everyone else 403."""
+    require_management(user)
+    if not can_view_operational(user):
+        raise HTTPException(403, "Operational access required")
+    if date_from and date_to and date_to < date_from:
+        raise HTTPException(422, "The end date must be on or after the start date")
+    filters = management_metrics.ApplicationFunnelFilters(
+        date_from=date_from, date_to=date_to, agency=_id_or_none(agency), counselor=_id_or_none(counselor), country=country,
+        university=university, course=course, intake=intake or None, staff=staff, status=status or None,
+    )  # fmt: skip
+    counts = await management_metrics.applications(db, filters)
+    return {
+        "filters": {key: None if value is None else str(value) for key, value in vars(filters).items()},
+        "stages": [{"key": key, "label": label, "tracked": tracked, "value": counts[key] if tracked else None} for key, label, tracked in management_metrics.FUNNEL],
+        "withdrawn": counts["withdrawn"],
+        "options": await management_metrics.application_options(db),
+    }
 
 
 def _operational(user: User) -> User:

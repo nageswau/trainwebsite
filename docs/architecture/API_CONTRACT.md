@@ -3038,6 +3038,16 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `GET /management/revenue/recruitment` *(new)* | **Query:** `month`, `period` (as §12DK).<br>**`200`:** `{month, period, start, end, label, kpi_end, revenue_visible, revenue{total, kinds[{key, label, amount}]} \| null, kpis{recruiters, partner_companies, open_positions, candidates, interviews, selections, joining, placement_pct, revenue_per_placement}}`.<br>• Kind keys `recruiter_invoices` (always first), then `ledger:<category>`; `total` = Σ kinds.<br>• `candidates`/`interviews`/`selections`/`joining` = `GET /recruiter/performance?from=start&to=kpi_end` Total (P4/P6/P7/P8); `kpi_end` = min(end, today).<br>• `placement_pct` = joining ÷ candidates × 100 (1 dp), `revenue_per_placement` = total ÷ joining; `null` on a zero denominator.<br>**`422`:** a malformed, pre-2000 or future month, or a bad period |
 
+## 12DN. Applications funnel dashboard (`mgmt-024`) — addendum, 2026-10-13
+
+- **Basis:** `DEC-SCOPE-200` (MF1–MF18). Design spec `docs/superpowers/specs/2026-10-13-mgmt-024-applications-funnel-design.md`.
+  No migration. Operational tier only (partner, super_admin); accountant `403` "Operational access required"; other roles `403`
+  "Management access required"; signed out `401`. Read-only: no write, lock or audit row.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/applications` *(new)* | Query (all optional, AND-combined): `date_from`, `date_to` (created, India days), `agency` (org id or `none`), `counselor` (user id or `none`), `country`, `university`, `course`, `staff` (ids), `intake` (≤ 80), `status` (≤ 50). `422` malformed id/date, "Unknown filter value", "The end date must be on or after the start date". `200` `{filters{…applied, string or null}, stages[{key, label, tracked, value}] (11, source order; `value` null for under_review, accepted, cas_coe), withdrawn, options{agencies, counselors, countries, universities, courses, intakes, staff, statuses: [{value, label}]}}`. Counts only; an unknown well-formed id gives zeros |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

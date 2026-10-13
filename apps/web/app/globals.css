@@ -178,6 +178,12 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 .funnel-fill { display: block; height: 100%; background: var(--blue); }
 /* upc-018 QA18-01: a step the CRM does not track reads as a note, not a count. */
 .funnel-count.funnel-untracked { font-weight: 600; font-style: italic; color: var(--muted); }
+/* mgmt-024 QA24-02/04: the funnel's ten filters on an even grid (one column on a phone), and space before the note under the bars. */
+.funnel-filters { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr)); gap: 12px; align-items: end; margin: 12px 0; }
+.funnel-filters .field { margin: 0; }
+.funnel-filters select, .funnel-filters input { width: 100%; }
+.funnel-filter-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.funnel-note { margin-top: 16px; }
 /* upc-028: a partner without enough data to score -- a neutral pill, not a band colour; the health pill never wraps in the ranking. */
 .badge.health-unknown { background: #eef1f5; color: var(--muted); }
 .table td > :is(.badge, .status) { white-space: nowrap; }

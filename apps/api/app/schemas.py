@@ -10810,6 +10810,51 @@ class ManagementSnapshotOut(BaseModel):
     kpis: list[ManagementKpi]
 
 
+# mgmt-024 (spec MF1-MF18): the §20 application funnel -- eleven stages in source order (`value` None = not tracked), the withdrawn
+# count, the applied filters and the dropdown choices.
+class FunnelStage(BaseModel):
+    key: str
+    label: str
+    tracked: bool
+    value: int | None
+
+
+class FilterChoice(BaseModel):
+    value: str
+    label: str
+
+
+class ApplicationFunnelFiltersOut(BaseModel):
+    date_from: date | None
+    date_to: date | None
+    agency: str | None
+    counselor: str | None
+    country: str | None
+    university: str | None
+    course: str | None
+    intake: str | None
+    staff: str | None
+    status: str | None
+
+
+class ApplicationFunnelOptions(BaseModel):
+    agencies: list[FilterChoice]
+    counselors: list[FilterChoice]
+    countries: list[FilterChoice]
+    universities: list[FilterChoice]
+    courses: list[FilterChoice]
+    intakes: list[FilterChoice]
+    staff: list[FilterChoice]
+    statuses: list[FilterChoice]
+
+
+class ApplicationFunnelOut(BaseModel):
+    filters: ApplicationFunnelFiltersOut
+    stages: list[FunnelStage]
+    withdrawn: int
+    options: ApplicationFunnelOptions
+
+
 # mgmt-020 (spec BD1-BD12): GET /management/bdm -- one BDM type's §16 figures; `value` is null when the figure is not tracked.
 class ManagementBdmFigure(BaseModel):
     key: str
