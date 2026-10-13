@@ -28,6 +28,7 @@ from app.schemas import (
     ItRevenueOut,
     ItRevenuePaymentPage,
     ManagementActivityOut,
+    ManagementAgentsOut,
     ManagementBdmOut,
     ManagementCounselingOut,
     ManagementMeOut,
@@ -42,6 +43,7 @@ from app.services import (
     investments,
     ledger,
     management_abroad_revenue,
+    management_agents,
     management_audit,
     management_bdm,
     management_counseling,
@@ -376,3 +378,13 @@ async def telecalling(date_from: date | None = None, date_to: date | None = None
     _operational(user)
     first, last = telecaller_performance.date_range(date_from, date_to, india_date(await db_now(db)))
     return await management_telecalling.dashboard(db, first, last)
+
+
+# --- mgmt-021: Agent network dashboard (spec AN1-AN14). Operational tier (M13); money for the finance tier only (AN9) ---------------------
+@router.get("/agents", response_model=ManagementAgentsOut)
+async def agents_dashboard(from_: date | None = Query(None, alias="from"), to: date | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """§17 for every approved agency and in total, for `from`..`to` (IST, default this month; AN13). The accountant and everyone else 403."""
+    _operational(user)
+    now = await db_now(db)
+    start, end = period(from_, to, india_date(now))
+    return await management_agents.dashboard(db, user, start, end, now)

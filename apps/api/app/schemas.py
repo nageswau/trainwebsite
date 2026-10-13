@@ -10917,6 +10917,56 @@ class ManagementCounselingOut(BaseModel):
     counselors: list[ManagementCounselorRow]
 
 
+# mgmt-021 (spec AN1-AN14): the agent network dashboard. Money is a decimal string, or null unless `money_visible` (the finance tier, AN9).
+class ManagementAgentFigure(BaseModel):
+    key: str
+    label: str
+    definition: str
+
+
+class ManagementAgentCounts(BaseModel):
+    staff: int
+    students: int
+    applications: int
+    offers: int
+    visa: int
+    enrollments: int
+    commission: Decimal | None
+    revenue: Decimal | None
+
+
+class ManagementAgentTotals(ManagementAgentCounts):
+    agents: int
+    new_agents: int
+    active_agents: int
+    inactive_agents: int
+
+
+class ManagementAgencyRow(ManagementAgentCounts):
+    id: UUID
+    name: str
+    prefix: str
+    status: str
+    new: bool
+
+
+class ManagementAgentChainStep(BaseModel):
+    key: str
+    label: str
+    value: int | Decimal
+
+
+class ManagementAgentsOut(BaseModel):
+    from_: date = Field(serialization_alias="from")
+    to: date
+    as_of: datetime
+    money_visible: bool
+    figures: list[ManagementAgentFigure]
+    totals: ManagementAgentTotals
+    chain: list[ManagementAgentChainStep]
+    agencies: list[ManagementAgencyRow]
+
+
 # mgmt-004 (spec ML1-ML16): the management ledger. Simple field rules live here so a 422 names its field; rules that need the database
 # (category, batch, channel on an existing entry) are raised by `services/ledger.py` in the same field-located shape.
 LEDGER_MAX_AMOUNT = Decimal("999999999999.99")  # Numeric(14, 2)
